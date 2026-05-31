@@ -1,0 +1,333 @@
+.configurator {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (max-width: 959px) {
+  .configurator {
+    grid-template-columns: 1fr;
+  }
+
+  .configurator-options {
+    padding-bottom: min(55vh, 420px);
+  }
+}
+
+@media (min-width: 960px) {
+  .configurator {
+    grid-template-columns: 1fr 340px;
+    gap: var(--space-2xl);
+  }
+}
+
+.configurator-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.config-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-md);
+}
+
+.option-grid {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+@media (min-width: 640px) {
+  .option-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+.option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 60px;
+  padding: var(--space-md);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.option-card:hover:not(.is-disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.option-card.is-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+.option-card.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.option-card-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.option-card-desc {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
+.option-card-price {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--space-sm);
+}
+
+.color-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 60px;
+  padding: var(--space-md) var(--space-sm);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.color-swatch.is-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+.color-swatch-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.color-swatch-name {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  line-height: 1.25;
+}
+
+.color-swatch-price {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.package-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.package-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 60px;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.package-item.is-active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+.package-item input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.package-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.package-item-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.package-item-desc {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.package-item-price {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.package-item.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.package-item-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.payment-tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.payment-tab {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 var(--space-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  transition: all var(--transition);
+}
+
+.payment-tab.is-active {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: #fff;
+}
+
+.payment-details {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .payment-details {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .payment-details--two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.config-equipment-list {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.config-equipment-list li {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  padding-left: 1rem;
+  position: relative;
+}
+
+.config-equipment-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--color-text-muted);
+}
+
+.config-equipment-more {
+  font-style: italic;
+  color: var(--color-text-muted) !important;
+}
+
+.color-swatch-circle--twotone {
+  box-shadow: inset 0 -8px 0 #1a1a1a;
+}
+
+.config-wltp-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.config-wltp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.config-wltp-row:last-child {
+  margin-bottom: 0;
+}
+
+.config-wltp-row strong {
+  color: var(--color-text);
+  text-align: right;
+}
+
+.config-legal-notes {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.config-legal-notes li {
+  margin-bottom: 4px;
+}
+
+.config-meta {
+  margin: 10px 0 0;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.config-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 400;
+  margin: 0;
+}

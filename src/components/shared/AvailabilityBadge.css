@@ -1,0 +1,50 @@
+.avail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.avail-badge--compact {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.avail-badge--lager {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+}
+
+.avail-badge--vorlauf {
+  background: rgba(255, 204, 0, 0.15);
+  color: #996600;
+}
+
+.avail-badge--bestellt {
+  background: rgba(0, 113, 227, 0.1);
+  color: #0071e3;
+}
+
+.avail-badge--konfigurierbar {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.avail-badge-emoji {
+  line-height: 1;
+}
+
+.avail-badge-text {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .avail-badge-text {
+    white-space: normal;
+  }
+}

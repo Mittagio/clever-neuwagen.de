@@ -1,0 +1,37 @@
+.import-history-page {
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-3xl);
+}
+
+.import-history-page__header {
+  margin-bottom: var(--space-xl);
+}
+
+.import-history-page__back {
+  display: inline-block;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.import-history-page__title {
+  margin: 0 0 8px;
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.import-history-page__subtitle {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.import-history-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

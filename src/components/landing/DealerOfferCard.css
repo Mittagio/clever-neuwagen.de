@@ -1,0 +1,137 @@
+.offer-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  min-height: 220px;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition);
+}
+
+.offer-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 640px) {
+  .offer-card {
+    padding: var(--space-xl);
+  }
+}
+
+.offer-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.offer-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.offer-chip-dealer {
+  background: var(--color-text);
+  color: #fff;
+}
+
+.offer-chip-delivery {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.offer-chip-sync--live {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+}
+
+.offer-chip-sync--partial {
+  background: rgba(255, 149, 0, 0.12);
+  color: #c93400;
+}
+
+.offer-chip-sync--none {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.offer-card-vehicle {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.offer-inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.offer-inventory-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.offer-inventory-detail {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding-left: 2px;
+}
+
+.offer-card-rate-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.offer-card-rate {
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.offer-card-rate--request {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  letter-spacing: -0.02em;
+  color: var(--color-text-secondary);
+}
+
+.offer-card-rate-unit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.offer-card-distance {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-md);
+}
+
+.offer-card-disclaimer {
+  margin-top: 10px;
+}
+
+.offer-card-btn {
+  width: 100%;
+  min-height: 52px;
+}

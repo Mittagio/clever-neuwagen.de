@@ -1,0 +1,128 @@
+.cust-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  transition: box-shadow var(--transition);
+}
+
+.cust-item:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.cust-item-brand {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.cust-item-name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+
+.cust-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.cust-item-meta span:not(:last-child)::after {
+  content: '·';
+  margin-left: var(--space-sm);
+}
+
+.cust-item-rate {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cust-item-valid {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.cust-item-status {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cust-status-requested {
+  background: rgba(0, 113, 227, 0.1);
+  color: var(--color-accent);
+}
+
+.cust-status-compared {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.cust-status-offer {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+}
+
+.cust-status-saved {
+  background: rgba(0, 113, 227, 0.06);
+  color: var(--color-text-secondary);
+}
+
+.cust-status-planned {
+  background: rgba(13, 148, 136, 0.12);
+  color: #0d9488;
+}
+
+.cust-item-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.cust-item-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cust-item-compare-list {
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.cust-item-code {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.cust-item-link--btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: right;
+}

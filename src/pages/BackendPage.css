@@ -1,0 +1,215 @@
+.backend {
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-3xl);
+}
+
+.backend-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+@media (min-width: 768px) {
+  .backend-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.backend-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.backend-preview {
+  margin-bottom: var(--space-xl);
+  background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+  border-color: rgba(0, 113, 227, 0.15);
+}
+
+.backend-scope {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.backend-scope-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.backend-scope-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.backend-scope-tag {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  background: rgba(52, 199, 89, 0.1);
+  color: #248a3d;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.backend-preview-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.backend-preview-rate {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-top: var(--space-xs);
+}
+
+.backend-preview-meta {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-sm);
+}
+
+.backend-section {
+  margin-bottom: var(--space-lg);
+}
+
+.backend-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+.backend-section-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-top: calc(var(--space-md) * -1);
+  margin-bottom: var(--space-md);
+}
+
+.backend-discount-grid {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .backend-discount-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 960px) {
+  .backend-discount-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.backend-input-suffix {
+  position: relative;
+}
+
+.backend-input-suffix .form-input {
+  padding-right: 2.5rem;
+}
+
+.backend-suffix {
+  position: absolute;
+  right: var(--space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.backend-leasing-grid {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .backend-leasing-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.backend-leasing-term {
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.backend-leasing-term-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.backend-finance-grid {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .backend-finance-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.backend-hint-top {
+  margin-top: 0;
+  margin-bottom: var(--space-md);
+}
+
+.backend-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-md);
+}
+
+.backend-preview-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.backend-preview-tag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.backend-preview-tag--pub {
+  color: #248a3d;
+}
+
+.backend-preview-rate--muted {
+  font-size: 1.5rem;
+  color: var(--color-text-secondary);
+}
+
+.backend-main {
+  min-height: 40vh;
+}
+
+.backend-save-note {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: var(--space-xl);
+}

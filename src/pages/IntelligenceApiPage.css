@@ -1,0 +1,211 @@
+.intel-api-page {
+  min-height: 100dvh;
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.intel-api-header {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 0;
+}
+
+.intel-api-back {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0071e3;
+  text-decoration: none;
+}
+
+.intel-api-title {
+  margin: 12px 0 4px;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.intel-api-sub {
+  margin: 0 0 12px;
+  color: #636366;
+}
+
+.intel-api-mode {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.intel-api-mode--live {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.intel-api-mode--mock {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.intel-api-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intel-api-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.intel-api-card--muted {
+  background: #fafafa;
+}
+
+.intel-api-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.125rem;
+}
+
+.intel-api-text {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #636366;
+}
+
+.intel-api-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.intel-api-code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 200px;
+}
+
+.intel-api-code--sm {
+  margin-top: 8px;
+  font-size: 0.75rem;
+}
+
+.intel-api-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: #0071e3;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.intel-api-btn--sm {
+  min-height: 36px;
+  font-size: 0.8125rem;
+}
+
+.intel-api-btn--ghost {
+  background: #f2f2f7;
+  color: #1d1d1f;
+}
+
+.intel-api-params {
+  display: flex;
+  gap: 16px;
+}
+
+.intel-api-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.intel-api-label select {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.intel-api-resources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.intel-api-resource {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+.intel-api-resource__name {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.intel-api-resource__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #636366;
+}
+
+.intel-api-resource__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.intel-api-preview {
+  margin: 0 0 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  max-height: 420px;
+}
+
+.intel-api-preview--sm {
+  max-height: 240px;
+}
+
+.intel-api-preview--summary {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  white-space: pre-wrap;
+}

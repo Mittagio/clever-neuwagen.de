@@ -1,0 +1,56 @@
+.import-approval {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.import-approval__hint {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.import-approval__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.import-approval__btn {
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.import-approval__btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.import-approval__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.import-approval__btn--approve {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.import-approval__btn--reject {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+}
+
+@media (max-width: 400px) {
+  .import-approval__actions {
+    grid-template-columns: 1fr;
+  }
+}

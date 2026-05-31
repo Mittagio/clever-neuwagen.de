@@ -1,0 +1,347 @@
+/* Launch Admin – Sprint 4 */
+
+.launch-page {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.launch-header {
+  margin-bottom: 24px;
+}
+
+.launch-header__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.launch-header__back {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0071e3;
+  text-decoration: none;
+}
+
+.launch-header__kicker {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #86868b;
+}
+
+.launch-header__title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.launch-header__sub {
+  margin: 0;
+  color: #6e6e73;
+  line-height: 1.5;
+}
+
+.launch-header__actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.launch-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.launch-nav__link {
+  min-height: 36px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #e5e5e5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6e6e73;
+  text-decoration: none;
+  background: #fff;
+}
+
+.launch-nav__link.is-active {
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+}
+
+.launch-kpi-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 560px) {
+  .launch-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 768px) {
+  .launch-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.launch-kpi {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+
+.launch-kpi__label {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #86868b;
+}
+
+.launch-kpi__value {
+  margin: 0;
+  font-size: clamp(1.375rem, 4vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.launch-kpi__hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #a3a3a3;
+}
+
+.launch-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 12px;
+}
+
+.launch-card__title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.launch-card__sub {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: #6e6e73;
+}
+
+.launch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.launch-chip--success { background: #ecfdf5; color: #047857; }
+.launch-chip--warning { background: #fefce8; color: #a16207; }
+.launch-chip--danger { background: #fef2f2; color: #b91c1c; }
+.launch-chip--muted { background: #f5f5f5; color: #737373; }
+
+.launch-role-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.launch-progress {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.launch-progress__bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #10b981, #059669);
+  transition: width 0.3s ease;
+}
+
+.launch-progress__label {
+  margin: 8px 0 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.launch-checklist-section {
+  margin-bottom: 24px;
+}
+
+.launch-checklist-section__title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.launch-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.launch-checklist__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fafafa;
+  font-size: 0.875rem;
+}
+
+.launch-checklist__item.is-done {
+  background: #ecfdf5;
+}
+
+.launch-btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.launch-btn--primary {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.launch-btn--secondary {
+  background: #fff;
+  color: #0a0a0a;
+  border: 1px solid #e5e5e5;
+}
+
+.launch-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  margin: 16px 0;
+}
+
+.launch-flow__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.launch-flow__step.is-done .launch-flow__label {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.launch-flow__label {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.launch-flow__arrow {
+  color: #a3a3a3;
+  font-size: 0.75rem;
+}
+
+.launch-table-card {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .launch-table-card {
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+  }
+}
+
+.launch-email-preview {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fafafa;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #525252;
+  font-family: ui-monospace, monospace;
+}
+
+.launch-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.launch-var {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f0f0f0;
+  font-size: 0.6875rem;
+  font-family: ui-monospace, monospace;
+}
+
+.launch-future {
+  margin-top: 28px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px dashed #d4d4d4;
+  font-size: 0.8125rem;
+  color: #86868b;
+  line-height: 1.5;
+}
+
+.launch-ready-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #0a0a0a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.launch-ready-badge.is-pending {
+  background: #fef3c7;
+  color: #92400e;
+}

@@ -1,0 +1,123 @@
+.cust-auth {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.cust-auth-intro {
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.cust-auth-title {
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.cust-auth-sub {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+  line-height: 1.5;
+}
+
+.cust-auth-back {
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: var(--space-lg);
+  cursor: pointer;
+}
+
+.cust-auth-back:hover {
+  text-decoration: underline;
+}
+
+.cust-auth-demo {
+  text-align: center;
+  font-size: 0.8125rem;
+  padding: var(--space-md);
+  background: rgba(0, 113, 227, 0.06);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+  color: var(--color-text-secondary);
+}
+
+.cust-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.cust-auth-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.cust-auth-input {
+  min-height: 56px;
+  padding: 0 var(--space-md);
+  font-size: 1.0625rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.cust-auth-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+.cust-auth-input--code {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-align: center;
+}
+
+.cust-auth-error {
+  font-size: 0.8125rem;
+  color: #d70015;
+}
+
+.cust-auth-btn {
+  min-height: 56px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-text);
+  border: none;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.cust-auth-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cust-auth-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.cust-auth-link {
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: var(--space-sm);
+  cursor: pointer;
+  text-align: center;
+}
+
+.cust-auth-link:hover {
+  text-decoration: underline;
+}

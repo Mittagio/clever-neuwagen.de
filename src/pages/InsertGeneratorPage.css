@@ -1,0 +1,178 @@
+.insert-gen {
+  min-height: 100dvh;
+  background: var(--bg);
+  padding-bottom: 32px;
+}
+
+.insert-gen__header {
+  padding: 20px 20px 16px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
+}
+
+.insert-gen__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.insert-gen__back {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.insert-gen__badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.insert-gen__title {
+  margin: 0 0 6px;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.insert-gen__sub {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.insert-gen__picker,
+.insert-gen__blocks {
+  padding: 20px;
+}
+
+.insert-gen__section-title {
+  margin: 0 0 14px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.insert-gen__hint {
+  margin: -6px 0 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.insert-gen__vehicle-chips,
+.insert-gen__package-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.insert-gen__chip {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.insert-gen__chip--sm {
+  min-height: 44px;
+  font-size: 0.8125rem;
+  padding: 0 14px;
+}
+
+.insert-gen__chip--active {
+  border-color: var(--accent);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent);
+}
+
+.insert-gen__chip:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.insert-gen__selects {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.insert-gen__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.insert-gen__field span {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.insert-gen__field select {
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 1rem;
+  color: var(--text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.insert-gen__packages-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.insert-gen__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.insert-gen__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.insert-gen__footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+@media (min-width: 640px) {
+  .insert-gen__selects {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .insert-gen__header,
+  .insert-gen__picker,
+  .insert-gen__blocks {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}

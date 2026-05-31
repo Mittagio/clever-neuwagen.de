@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Kia Sportage Seite">
+  <rect width="640" height="360" fill="#f1f5f9"/>
+  <ellipse cx="320" cy="290" rx="200" ry="16" fill="rgba(99,102,241,0.1)"/>
+  <path d="M120 230c20-40 120-50 200-50s180 10 200 50v28H120v-28z" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="180" cy="258" r="30" fill="#334155"/>
+  <circle cx="460" cy="258" r="30" fill="#334155"/>
+</svg>

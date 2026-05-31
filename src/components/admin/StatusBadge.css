@@ -1,0 +1,33 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.status-active,
+.status-complete {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+}
+
+.status-planned,
+.status-draft {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.status-review {
+  background: rgba(255, 149, 0, 0.12);
+  color: #c93400;
+}
+
+.status-outdated {
+  background: rgba(255, 59, 48, 0.1);
+  color: #d70015;
+}

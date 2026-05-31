@@ -1,0 +1,507 @@
+.sales-disclaimer {
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+.sales-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ─── Header ─── */
+.sales-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md);
+  padding-top: max(var(--space-md), env(safe-area-inset-top));
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.sales-header-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+  color: var(--color-accent);
+  text-decoration: none;
+  border-radius: 50%;
+}
+
+.sales-header-back:active {
+  background: rgba(0, 113, 227, 0.08);
+}
+
+.sales-header-center {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.sales-header-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.sales-header-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sales-header-timer {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-success);
+  background: rgba(52, 199, 89, 0.12);
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.sales-header-link {
+  text-decoration: none;
+  color: var(--color-accent, #2563eb);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.sales-header-link--secondary {
+  font-size: 0.6875rem;
+  padding: 6px 8px;
+  background: var(--color-bg, #f1f5f9);
+}
+
+/* ─── Main ─── */
+.sales-main {
+  flex: 1;
+  padding: var(--space-md);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sales-section {
+  margin-bottom: var(--space-lg);
+}
+
+.sales-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.sales-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sales-input,
+.sales-select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--space-md);
+  font-size: 1rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: border-color var(--transition);
+}
+
+.sales-input:focus,
+.sales-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+/* ─── Wunschrate Hero ─── */
+.sales-wish-hero {
+  padding: var(--space-lg);
+  background: var(--color-bg);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+
+.sales-wish-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.sales-wish-rate {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.sales-wish-input {
+  width: 120px;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  text-align: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.sales-wish-input:focus {
+  outline: none;
+}
+
+.sales-wish-unit {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.sales-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+.sales-mini-field label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ─── CTA ─── */
+.sales-calc-btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-text);
+  border: none;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: transform var(--transition), opacity var(--transition);
+  margin-top: var(--space-md);
+}
+
+.sales-calc-btn:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* ─── Ergebnisse ─── */
+.sales-results {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0));
+}
+
+.sales-results-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.sales-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* ─── Fahrzeugtyp-Tabs ─── */
+.sales-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: var(--space-sm);
+}
+
+.sales-type-tab {
+  min-height: 44px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sales-type-tab.is-active {
+  background: var(--color-text);
+  color: #fff;
+  border-color: var(--color-text);
+}
+
+.sales-input--optional {
+  margin-top: var(--space-xs);
+}
+
+/* ─── Vorschlags-Karte ─── */
+.sales-suggestion-card {
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sales-suggestion-card.is-expanded {
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+}
+
+.sales-suggestion-card__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-sm);
+  align-items: start;
+}
+
+.sales-suggestion-card__rank {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-bg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.sales-suggestion-card__vehicle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sales-suggestion-card__trim {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.sales-suggestion-card__rate {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.sales-suggestion-card__facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+}
+
+.sales-suggestion-card__facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sales-suggestion-card__facts dt {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.sales-suggestion-card__facts dd {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.sales-suggestion-card__reason-label {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.sales-suggestion-card__reason-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.sales-suggestion-card__deviation {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #d97706;
+}
+
+.sales-suggestion-card__deviation.is-under {
+  color: #16a34a;
+}
+
+.sales-suggestion-card__highlights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.sales-suggestion-card__highlights li {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-size: 0.8125rem;
+}
+
+.sales-suggestion-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sales-suggestion-btn {
+  min-height: 52px;
+  border-radius: var(--radius-xl);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.sales-suggestion-btn--primary {
+  background: var(--color-text);
+  color: #fff;
+}
+
+.sales-suggestion-btn--compare {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+}
+
+.sales-suggestion-btn--compare.is-active {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.sales-suggestion-btn--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  min-height: 44px;
+}
+
+/* ─── Vergleichs-Leiste ─── */
+.sales-compare-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.sales-compare-bar__text {
+  flex: 1;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.sales-compare-bar__btn {
+  min-height: 52px;
+  padding: 0 var(--space-lg);
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sales-compare-bar__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Legacy – entfernt wenn ungenutzt */
+.sales-offer-list {
+  display: none;
+}
+
+/* ─── Toast ─── */
+.sales-toast {
+  position: fixed;
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-text);
+  color: #fff;
+  font-size: 0.875rem;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  animation: sales-toast-in 0.2s ease;
+}
+
+@keyframes sales-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

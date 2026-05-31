@@ -1,0 +1,286 @@
+.delivery-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  background: #f5f5f7;
+}
+
+.delivery-page--empty {
+  background: #f5f5f7;
+}
+
+.delivery-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 28px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.delivery-card--success {
+  border: 2px solid #34c759;
+}
+
+.delivery-card--info {
+  border: 2px solid #ff9500;
+}
+
+.delivery-kicker {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #86868b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.delivery-card h1 {
+  margin: 0 0 12px;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #1d1d1f;
+  line-height: 1.2;
+}
+
+.delivery-sub {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: #86868b;
+}
+
+.delivery-vehicle {
+  margin: 0 0 24px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.delivery-greeting {
+  margin: 20px 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  text-align: left;
+}
+
+.delivery-text {
+  margin: 0 0 28px;
+  font-size: 0.9375rem;
+  color: #86868b;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.delivery-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.delivery-btn {
+  min-height: 56px;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s;
+}
+
+.delivery-btn:active {
+  transform: scale(0.98);
+}
+
+.delivery-btn--yes {
+  background: #34c759;
+  color: #fff;
+}
+
+.delivery-btn--no {
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border: 2px solid #e8e8ed;
+}
+
+.delivery-icon {
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.delivery-rewards {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.delivery-reward {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f5f5f7;
+}
+
+.delivery-reward--partner {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.delivery-reward__code,
+.delivery-reward__valid {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: #86868b;
+}
+
+.delivery-reward__code {
+  font-weight: 600;
+  color: #0071e3;
+}
+
+.delivery-drive {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #86868b;
+}
+
+.delivery-reward__label {
+  font-size: 0.9375rem;
+  color: #86868b;
+}
+
+.delivery-reward__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  font-variant-numeric: tabular-nums;
+}
+
+.delivery-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #86868b;
+}
+
+.delivery-page--empty .delivery-card h1 {
+  font-size: 1.375rem;
+}
+
+.delivery-page--empty p {
+  color: #86868b;
+  margin-bottom: 20px;
+}
+
+.delivery-page--wide .delivery-card {
+  max-width: 520px;
+  text-align: left;
+}
+
+.delivery-page--wide .delivery-icon,
+.delivery-page--wide h1,
+.delivery-page--wide .delivery-sub,
+.delivery-page--wide .delivery-vehicle {
+  text-align: center;
+}
+
+.delivery-gift {
+  margin-top: 8px;
+}
+
+.delivery-gift__title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.delivery-gift__sub {
+  margin: 0 0 20px;
+  font-size: 0.875rem;
+  color: #86868b;
+  text-align: center;
+}
+
+.delivery-gift__group {
+  margin-bottom: 18px;
+}
+
+.delivery-gift__group-label {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #86868b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.delivery-gift__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.delivery-gift__option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 60px;
+  padding: 12px 14px;
+  border: 2px solid #e8e8ed;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.delivery-gift__option.is-picked {
+  border-color: #34c759;
+  background: rgba(52, 199, 89, 0.08);
+}
+
+.delivery-gift__option-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.delivery-gift__option-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #34c759;
+}
+
+.delivery-gift__option-valid {
+  font-size: 0.75rem;
+  color: #86868b;
+}
+
+.delivery-gift__confirm {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.delivery-page--wide .delivery-hint {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.delivery-hint--error {
+  color: #dc2626;
+  font-weight: 500;
+}

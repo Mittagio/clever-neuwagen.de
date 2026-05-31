@@ -1,0 +1,140 @@
+.admin-dashboard {
+  margin-bottom: var(--space-2xl);
+}
+
+.dashboard-import-banner {
+  display: block;
+  margin-bottom: var(--space-xl);
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.dashboard-import-banner:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-import-banner__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.dashboard-import-banner__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dashboard-import-banner__badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 149, 0, 0.12);
+  color: #c93400;
+}
+
+.dashboard-import-banner__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.dashboard-import-banner__action {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.dashboard-brand-grid {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .dashboard-brand-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-brand-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dashboard-brand-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  min-height: 140px;
+  padding: var(--space-lg);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.dashboard-brand-card.is-active:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-brand-card.is-planned {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dashboard-brand-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-sm);
+}
+
+.dashboard-brand-name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.dashboard-brand-meta {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.dashboard-brand-stats {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+}
+
+.dashboard-stat {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.dashboard-brand-action {
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  margin-top: auto;
+}
+
+.dashboard-brand-planned {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}

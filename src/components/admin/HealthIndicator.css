@@ -1,0 +1,38 @@
+.health-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.health-indicator--sm {
+  font-size: 0.75rem;
+}
+
+.health-indicator--md {
+  font-size: 0.8125rem;
+}
+
+.health-indicator--lg {
+  font-size: 0.9375rem;
+}
+
+.health-indicator-emoji {
+  line-height: 1;
+}
+
+.health-indicator-label {
+  letter-spacing: 0.01em;
+}
+
+.health-current .health-indicator-label {
+  color: #248a3d;
+}
+
+.health-review .health-indicator-label {
+  color: #c93400;
+}
+
+.health-outdated .health-indicator-label {
+  color: #d70015;
+}

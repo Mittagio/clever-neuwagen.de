@@ -1,0 +1,20 @@
+.guide-page {
+  min-height: 100dvh;
+  background: #fafbfc;
+  color: #1e293b;
+}
+
+.guide-page__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+}
+
+.guide-page__inner--wide {
+  max-width: 960px;
+}
+
+.guide-shell .header + main,
+.guide-shell main {
+  flex: 1;
+}

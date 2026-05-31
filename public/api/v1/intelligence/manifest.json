@@ -1,0 +1,26 @@
+{
+  "apiVersion": "1.0.0",
+  "resource": "manifest",
+  "source": "clever-neuwagen-intelligence",
+  "publisher": "Clever-Neuwagen",
+  "description": "Statisches API-Manifest. Live-Daten unter /api/v1/intelligence/:resource?period=7d",
+  "resources": [
+    "manifest",
+    "overview",
+    "search",
+    "recommendations",
+    "comparisons",
+    "offers",
+    "sales",
+    "leasing",
+    "family-index",
+    "electro-index",
+    "delivery",
+    "best-deals",
+    "trend-pages",
+    "dashboard"
+  ],
+  "periods": ["today", "7d", "30d"],
+  "docs": "/intelligence/api",
+  "example": "/api/v1/intelligence/overview?period=7d"
+}

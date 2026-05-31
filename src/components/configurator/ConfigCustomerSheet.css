@@ -1,0 +1,116 @@
+.cfg-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.cfg-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  padding-bottom: max(var(--space-lg), env(safe-area-inset-bottom));
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+}
+
+.cfg-sheet__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-bg, #f1f5f9);
+  cursor: pointer;
+}
+
+.cfg-sheet h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.cfg-sheet__sub {
+  margin: 0 0 var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.cfg-sheet__logged-in {
+  padding: var(--space-sm) var(--space-md);
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+.cfg-sheet__login-link {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: var(--space-md);
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cfg-sheet__login {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.cfg-sheet__demo {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.cfg-sheet label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.cfg-sheet input {
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.cfg-sheet__error {
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.cfg-sheet__submit {
+  width: 100%;
+  min-height: 56px;
+  margin-top: var(--space-sm);
+}
+
+@media (min-width: 640px) {
+  .cfg-sheet-overlay {
+    align-items: center;
+  }
+
+  .cfg-sheet {
+    border-radius: 20px;
+  }
+}

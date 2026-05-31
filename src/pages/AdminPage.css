@@ -1,0 +1,120 @@
+.admin-shell,
+.shell-main.admin-shell {
+  background: #ffffff;
+}
+
+.admin-page {
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-3xl);
+}
+
+.admin-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+@media (min-width: 768px) {
+  .admin-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.admin-header-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.admin-header-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.admin-header-link-btn {
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.admin-header-link-btn:hover {
+  text-decoration: underline;
+}
+
+.admin-header-link {
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  white-space: nowrap;
+  text-decoration: none;
+  padding: var(--space-sm) 0;
+}
+
+.admin-header-link:hover {
+  text-decoration: underline;
+}
+
+.admin-notice {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-2xl);
+  background: rgba(0, 113, 227, 0.04);
+  border-color: rgba(0, 113, 227, 0.15);
+}
+
+.admin-notice-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.admin-notice-text {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.admin-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.admin-section-head {
+  margin-bottom: var(--space-lg);
+}
+
+.admin-section-title {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.admin-section-desc {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+.admin-back-btn {
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  padding: 0;
+  margin-bottom: var(--space-sm);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.admin-back-btn:hover {
+  text-decoration: underline;
+}

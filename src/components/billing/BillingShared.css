@@ -1,0 +1,463 @@
+/* Billing – Admin & Backend (Mobile First, Karten) */
+
+.bill-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.bill-header {
+  margin-bottom: 24px;
+}
+
+.bill-header__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bill-header__back,
+.bill-header__link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent, #0071e3);
+  text-decoration: none;
+}
+
+.bill-header__links {
+  display: flex;
+  gap: 12px;
+}
+
+.bill-header__kicker {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #86868b);
+}
+
+.bill-header__title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.bill-header__sub {
+  margin: 0;
+  color: var(--color-text-secondary, #6e6e73);
+  line-height: 1.5;
+}
+
+.bill-header__actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bill-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+}
+
+.bill-nav__link {
+  min-height: 40px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e5e5e5);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6e6e73);
+  text-decoration: none;
+  background: #fff;
+}
+
+.bill-nav__link.is-active {
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+  background: #fafafa;
+}
+
+.bill-kpi-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+@media (min-width: 560px) {
+  .bill-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .bill-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.bill-kpi-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+
+.bill-kpi-card__label {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #86868b;
+}
+
+.bill-kpi-card__value {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #0a0a0a;
+}
+
+.bill-kpi-card__hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #a3a3a3;
+}
+
+.bill-section-title {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.bill-dealer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bill-dealer-card {
+  display: block;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bill-dealer-card:hover {
+  border-color: #d4d4d4;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.bill-dealer-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bill-dealer-card__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bill-dealer-card__city {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: #86868b;
+}
+
+.bill-dealer-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+}
+
+@media (min-width: 560px) {
+  .bill-dealer-card__stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.bill-dealer-card__stat dt {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a3a3a3;
+}
+
+.bill-dealer-card__stat dd {
+  margin: 2px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.bill-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bill-status--success { background: #ecfdf5; color: #047857; }
+.bill-status--warning { background: #fefce8; color: #a16207; }
+.bill-status--reminder { background: #fff7ed; color: #c2410c; }
+.bill-status--danger { background: #fef2f2; color: #b91c1c; }
+
+.bill-money {
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bill-btn--primary {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.bill-btn--secondary {
+  background: #fff;
+  color: #0a0a0a;
+  border: 1px solid #e5e5e5;
+}
+
+.bill-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.bill-chain__label {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bill-sale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.bill-sale-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+
+.bill-sale-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.bill-sale-card__vehicle {
+  margin: 0;
+  font-weight: 600;
+}
+
+.bill-sale-card__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #86868b;
+}
+
+.bill-total-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.bill-total-card__label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.bill-total-card__value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.bill-delivery-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+
+.bill-delivery-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bill-delivery-card__name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.bill-delivery-card__vehicle {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+}
+
+.bill-delivery-card__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #86868b;
+}
+
+.bill-invoice-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+
+.bill-invoice-card__number {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #86868b;
+}
+
+.bill-invoice-card__dealer {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bill-invoice-card__rows {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+}
+
+.bill-invoice-card__row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.bill-reward-grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 560px) {
+  .bill-reward-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.bill-reward-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  text-align: center;
+}
+
+.bill-reward-card__icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.bill-reward-card__title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.bill-reward-card__amount {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.bill-analytics-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+@media (min-width: 560px) {
+  .bill-analytics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.bill-future-note {
+  margin-top: 28px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px dashed #d4d4d4;
+  font-size: 0.8125rem;
+  color: #86868b;
+  line-height: 1.5;
+}
+
+.bill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bill-dealer-active {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+}
