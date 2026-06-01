@@ -12,19 +12,19 @@ export const MANUFACTURER_MEDIA = {
   kia: {
     sportage: {
       default: `${KIA}/sportage/default.svg`,
-      hero: `${KIA}/sportage/default.svg`,
-      card: `${KIA}/sportage/default.svg`,
+      hero: `${KIA}/sportage/hero.jpg`,
+      card: `${KIA}/sportage/hero.jpg`,
       side: `${KIA}/sportage/side.svg`,
     },
     ev3: {
       default: `${KIA}/ev3/default.svg`,
-      hero: `${KIA}/ev3/default.svg`,
-      card: `${KIA}/ev3/default.svg`,
+      hero: `${KIA}/ev3/hero.jpg`,
+      card: `${KIA}/ev3/hero.jpg`,
     },
     ev4: {
       default: `${KIA}/ev4/default.svg`,
-      hero: `${KIA}/ev4/default.svg`,
-      card: `${KIA}/ev4/default.svg`,
+      hero: `${KIA}/ev4/hero.jpg`,
+      card: `${KIA}/ev4/hero.jpg`,
     },
     niro: {
       default: `${KIA}/niro/default.svg`,

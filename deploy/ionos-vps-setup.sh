@@ -7,8 +7,10 @@ APP_DIR="${APP_DIR:-/var/www/clever-neuwagen}"
 APP_USER="${APP_USER:-www-data}"
 
 echo "==> System aktualisieren & Basis-Pakete"
+export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y curl git nginx
+apt-get upgrade -y -qq
+apt-get install -y curl git nginx ufw
 
 echo "==> Node.js 22 (NodeSource)"
 if ! command -v node >/dev/null 2>&1; then
@@ -21,16 +23,24 @@ npm -v
 echo "==> PM2 global"
 npm install -g pm2
 
+echo "==> Firewall (ufw)"
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw --force enable
+
 echo "==> App-Verzeichnis"
-mkdir -p "$APP_DIR/data"
-chown -R "$APP_USER:$APP_USER" "$(dirname "$APP_DIR")"
+mkdir -p "$APP_DIR"
+chown -R "$APP_USER:$APP_USER" "$(dirname "$APP_DIR")" 2>/dev/null || true
 
 echo ""
-echo "Nächste Schritte (manuell):"
-echo "  1. Projekt nach $APP_DIR kopieren (git clone / scp / rsync)"
+echo "✓ Basis-Installation abgeschlossen."
+echo ""
+echo "Nächste Schritte (siehe DEPLOY.md):"
+echo "  1. git clone https://github.com/Mittagio/clever-neuwagen.de.git $APP_DIR"
 echo "  2. cd $APP_DIR && npm ci && npm run build"
 echo "  3. cp .env.example .env && nano .env"
-echo "  4. pm2 start ecosystem.config.cjs --env production"
-echo "  5. pm2 save && pm2 startup"
-echo "  6. sudo cp deploy/clever-neuwagen.de.nginx /etc/nginx/sites-available/clever-neuwagen"
-echo "  7. DNS A @ + www → VPS-IP | certbot --nginx -d clever-neuwagen.de -d www.clever-neuwagen.de"
+echo "  4. pm2 start ecosystem.config.cjs --env production && pm2 save && pm2 startup"
+echo "  5. sudo bash deploy/configure-nginx.sh"
+echo "  6. DNS: A @ + www → VPS-IP"
+echo "  7. sudo apt install -y certbot python3-certbot-nginx"
+echo "     sudo certbot --nginx -d clever-neuwagen.de -d www.clever-neuwagen.de"

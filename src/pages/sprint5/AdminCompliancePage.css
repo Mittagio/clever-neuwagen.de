@@ -1,0 +1,79 @@
+.compliance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.compliance-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.compliance-card__engine {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.compliance-card__score {
+  text-align: right;
+}
+
+.compliance-card__score-value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #059669;
+}
+
+.compliance-card__score[data-blocked='true'] .compliance-card__score-value {
+  color: #dc2626;
+}
+
+.compliance-card__score-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.compliance-values {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 20px;
+  margin: 0;
+}
+
+.compliance-values__row dt {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.compliance-values__row dd {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.compliance-card__missing {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.compliance-card__warn {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .compliance-values {
+    grid-template-columns: 1fr;
+  }
+}

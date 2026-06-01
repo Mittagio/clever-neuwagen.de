@@ -1,0 +1,65 @@
+.pub-vehicles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pub-vehicle-btn {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pub-vehicle-btn.is-active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.pub-compliance {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.pub-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pub-channel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.pub-preview {
+  margin: 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.pub-copied {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: #059669;
+  font-weight: 600;
+}

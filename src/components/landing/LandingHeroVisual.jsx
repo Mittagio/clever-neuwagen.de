@@ -1,22 +1,6 @@
-import VehicleImage from '../shared/VehicleImage.jsx';
-import { AUTOHAUS_TRINKLE_ID } from '../../data/dealers/autohausTrinkle.js';
+import LandingHeroVehicleCards from './LandingHeroVehicleCards.jsx';
 
-/** Hero-Fahrzeugbild: Priorität Händler → Hersteller → Standard */
+/** Drei schwebende Premium-Fahrzeugkarten mit Kia-Pressebildern */
 export default function LandingHeroVisual() {
-  return (
-    <div className="lp-hero-visual" aria-hidden>
-      <VehicleImage
-        brand="Kia"
-        model="Sportage"
-        trim="Spirit"
-        dealerId={AUTOHAUS_TRINKLE_ID}
-        bodyType="suv"
-        variant="hero"
-        glow
-        className="lp-hero-visual__frame"
-        imageClassName="lp-hero-visual__img"
-        placeholderVariant="sportage"
-      />
-    </div>
-  );
+  return <LandingHeroVehicleCards />;
 }

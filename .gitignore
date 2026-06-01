@@ -28,3 +28,8 @@ dist-ssr
 # Intelligence event store (runtime data)
 data/intelligence-events.json
 data/published-trends.json
+
+# Sprint 5 – sensible Laufzeitdaten (niemals committen)
+server/data/documents/
+server/data/documents-meta.json
+server/data/selbstauskunft.json

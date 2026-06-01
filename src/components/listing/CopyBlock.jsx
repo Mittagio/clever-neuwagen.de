@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import './CopyBlock.css';
 
-export default function CopyBlock({ label, text, compact = false }) {
+export default function CopyBlock({ label, text, compact = false, onCopied }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      onCopied?.();
     } catch {
       const ta = document.createElement('textarea');
       ta.value = text;
@@ -16,9 +15,10 @@ export default function CopyBlock({ label, text, compact = false }) {
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      onCopied?.();
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   }
 
   return (

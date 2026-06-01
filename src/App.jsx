@@ -63,6 +63,10 @@ import AdminSystemPage from './pages/launch-admin/AdminSystemPage.jsx';
 import AdminAuditPage from './pages/launch-admin/AdminAuditPage.jsx';
 import AdminBackupPage from './pages/launch-admin/AdminBackupPage.jsx';
 import AdminDomainsPage from './pages/launch-admin/AdminDomainsPage.jsx';
+import BackendDocumentsPage from './pages/sprint5/BackendDocumentsPage.jsx';
+import BackendPublishingPage from './pages/sprint5/BackendPublishingPage.jsx';
+import SelbstauskunftPage from './pages/sprint5/SelbstauskunftPage.jsx';
+import AdminCompliancePage from './pages/sprint5/AdminCompliancePage.jsx';
 
 export default function App() {
   return (
@@ -112,6 +116,10 @@ export default function App() {
                     <Route path="/admin/backup" element={<AdminBackupPage />} />
                     <Route path="/admin/domains" element={<AdminDomainsPage />} />
                     <Route path="/backend/billing" element={<BackendBillingPage />} />
+                    <Route path="/backend/documents" element={<BackendDocumentsPage />} />
+                    <Route path="/backend/publishing" element={<BackendPublishingPage />} />
+                    <Route path="/selbstauskunft" element={<SelbstauskunftPage />} />
+                    <Route path="/admin/compliance" element={<AdminCompliancePage />} />
                     <Route path="/sales" element={<SalesPage />} />
                     <Route path="/assistant" element={<AssistantPage />} />
                     <Route path="/dealer-ai" element={<DealerAIPage />} />

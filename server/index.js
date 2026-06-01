@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import intelligenceRoutes from './intelligenceRoutes.js';
+import sprint5Routes from './sprint5Routes.js';
+import { startDocumentCleanupInterval } from './documentStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -19,11 +21,23 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use(cors({
   origin: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept'],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Accept',
+    'X-File-Type',
+    'X-File-Name',
+    'X-Lead-Id',
+    'X-Seller-Id',
+    'X-Seller-Name',
+  ],
 }));
 
+app.use(express.json({ limit: '1mb' }));
+app.use('/api/v1', sprint5Routes);
 app.use('/api', intelligenceRoutes);
+
+startDocumentCleanupInterval();
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'clever-neuwagen', ts: new Date().toISOString() });

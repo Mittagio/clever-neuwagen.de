@@ -7,6 +7,7 @@ import {
   LaunchCard,
   SystemSeverityChip,
 } from '../../components/launch-admin/LaunchAdminShared.jsx';
+import { SECURITY_BASELINE, SECURITY_STATUS_LABELS } from '../../data/securityConfig.js';
 import '../../components/launch-admin/LaunchAdminShared.css';
 
 export default function AdminSystemPage() {
@@ -28,6 +29,21 @@ export default function AdminSystemPage() {
       <div className="launch-page">
         <LaunchPageHeader title="Fehlercenter" subtitle="Fehler, Warnungen und Systemstatus." />
         <LaunchAdminNav />
+
+        <LaunchCard>
+          <p className="launch-card__title">Sicherheits-Grundlagen (Sprint 5)</p>
+          <ul style={{ margin: '12px 0 0', padding: 0, listStyle: 'none' }}>
+            {SECURITY_BASELINE.map((item) => (
+              <li key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <strong>{item.label}</strong>
+                <span style={{ marginLeft: 8, fontSize: '0.75rem', color: '#64748b' }}>
+                  {SECURITY_STATUS_LABELS[item.status]}
+                </span>
+                <p className="launch-card__sub" style={{ marginTop: 4 }}>{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </LaunchCard>
 
         {sorted.map((issue) => (
           <LaunchCard key={issue.id}>

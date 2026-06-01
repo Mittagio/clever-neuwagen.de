@@ -1,0 +1,24 @@
+.sa-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sa-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0 20px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.sa-success {
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.sa-success .s5-btn {
+  margin-top: 16px;
+}

@@ -14,10 +14,22 @@ kia/
   ceed/default.jpg
 ```
 
+## Hero (Landing)
+
+Für die drei schwebenden Hero-Karten: `hero.jpg` pro Modell (Pressebild, Querformat).
+
+```
+sportage/hero.jpg
+ev3/hero.jpg
+ev4/hero.jpg
+```
+
+Bis `hero.jpg` fehlt, lädt die App Pressebilder aus `src/data/landingHeroVehicles.js` (Fallback).
+
 ## Demo
 
 Bis echte JPGs hinterlegt sind, liegen SVG-Platzhalter als `default.svg` vor.
-Nach dem Austausch: Pfad in `manufacturerImages.js` auf `.jpg` ändern.
+`hero`/`card` in `manufacturerImages.js` verweisen bereits auf `hero.jpg`.
 
 ## Priorität (VehicleImage)
 

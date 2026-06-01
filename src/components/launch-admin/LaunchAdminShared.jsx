@@ -11,6 +11,7 @@ export const LAUNCH_NAV = [
   { to: '/admin/roles', label: 'Rollen' },
   { to: '/admin/email', label: 'E-Mail' },
   { to: '/admin/system', label: 'System' },
+  { to: '/admin/compliance', label: 'Compliance' },
   { to: '/admin/audit', label: 'Audit' },
   { to: '/admin/backup', label: 'Backup' },
   { to: '/admin/domains', label: 'Domains' },

@@ -19,6 +19,12 @@ npm run build
 npm run start:prod
 ```
 
+## Live (IONOS VPS Linux)
+
+Schritt-für-Schritt: **[DEPLOY.md](./DEPLOY.md)**
+
+Kurz: VPS Linux (Ubuntu) → `deploy/ionos-vps-setup.sh` → `npm ci && npm run build` → PM2 → nginx → DNS → Certbot.
+
 ## Herstellerbilder
 
 Zentrale Registry: `src/data/media/manufacturerImages.js`  
