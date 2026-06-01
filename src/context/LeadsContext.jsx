@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEMO_LEADS, PILOT_DEMO_LEAD, PILOT_LEAD_ID } from '../data/demoLeads.js';
 import { LEAD_STATUS } from '../data/leadTypes.js';
+import { normalizeLead, normalizeLeads } from '../logic/leadNormalization.js';
+import { DEALER_SELLERS } from '../data/salesChanceTypes.js';
 import { loadPartnersFromStorage } from './VoucherPartnersContext.jsx';
 import { recordIntelligenceSale } from '../services/intelligenceAnalytics.js';
 import {
@@ -29,12 +31,14 @@ function loadLeads() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length) return ensurePilotLead(parsed);
+      if (Array.isArray(parsed) && parsed.length) {
+        return normalizeLeads(ensurePilotLead(parsed));
+      }
     }
   } catch {
     /* Fallback */
   }
-  return [...DEMO_LEADS];
+  return normalizeLeads([...DEMO_LEADS]);
 }
 
 function saveLeads(leads) {
@@ -120,11 +124,73 @@ export function LeadsProvider({ children }) {
       setLeads((prev) =>
         prev.map((lead) =>
           lead.id === id
-            ? {
+            ? normalizeLead({
                 ...lead,
                 contact: { ...lead.contact, ...contact },
                 updatedAt: new Date().toISOString(),
-              }
+              })
+            : lead,
+        ),
+      );
+    },
+
+    updateWish(id, wish) {
+      setLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === id
+            ? normalizeLead({
+                ...lead,
+                wish: { ...lead.wish, ...wish },
+                paymentType: wish.paymentType ?? lead.paymentType,
+                updatedAt: new Date().toISOString(),
+              })
+            : lead,
+        ),
+      );
+    },
+
+    assignOwner(id, ownerId) {
+      const seller = DEALER_SELLERS.find((s) => s.id === ownerId);
+      const now = new Date().toISOString();
+      setLeads((prev) =>
+        prev.map((lead) => {
+          if (lead.id !== id) return lead;
+          const patch = {
+            ...lead,
+            ownerId: ownerId || null,
+            ownerName: seller?.name ?? null,
+            assignedAt: ownerId ? now : null,
+            updatedAt: now,
+          };
+          const next = normalizeLead(patch);
+          return {
+            ...next,
+            history: [
+              ...(lead.history ?? []),
+              historyEntry(
+                ownerId
+                  ? `Zuständig: ${seller.name}`
+                  : 'Zuweisung entfernt',
+                'system',
+              ),
+            ],
+          };
+        }),
+      );
+    },
+
+    applyPricingResult(id, { leasingRate, financeRate, cashPrice, listPrice, deliveryTime, complianceStatus }) {
+      setLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === id
+            ? normalizeLead({
+                ...lead,
+                currentRate: leasingRate ?? lead.currentRate,
+                listPrice,
+                deliveryTime,
+                complianceStatus,
+                updatedAt: new Date().toISOString(),
+              })
             : lead,
         ),
       );

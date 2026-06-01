@@ -148,6 +148,55 @@
   cursor: pointer;
 }
 
+.comm-composer__reminder-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e9edef;
+}
+
+.comm-composer__reminder-title {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.comm-composer__reminder-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.comm-composer__reminder-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.comm-composer__reminder-form input,
+.comm-composer__reminder-form select {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+.comm-composer__reminder-save {
+  grid-column: 1 / -1;
+  border: none;
+  background: #075e54;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .comm-profile--empty {
   display: flex;
   align-items: center;

@@ -16,6 +16,13 @@ import {
   sendWhatsAppToLead,
 } from '../logic/communicationService.js';
 import { linkOfferToLead } from '../logic/offerLeadService.js';
+import { calculateRateForLead as computeLeadPricing } from '../logic/salesChancePricing.js';
+import { sendMockEmail } from '../services/mockMailService.js';
+import {
+  CURRENT_SELLER_STORAGE_KEY,
+  DEALER_SELLERS,
+  REMINDER_TYPES,
+} from '../data/salesChanceTypes.js';
 
 const REMINDERS_KEY = 'clever-neuwagen-comm-reminders';
 const AUDIT_KEY = 'clever-neuwagen-comm-audit';
@@ -49,6 +56,21 @@ export function CommunicationProvider({ children }) {
   const { conditions } = useDealerConditions();
   const [reminders, setReminders] = useState(() => loadJson(REMINDERS_KEY, []));
   const [auditLog, setAuditLog] = useState(() => loadJson(AUDIT_KEY, []));
+  const [currentSellerId, setCurrentSellerId] = useState(() => {
+    try {
+      return localStorage.getItem(CURRENT_SELLER_STORAGE_KEY) ?? 'mike-quach';
+    } catch {
+      return 'mike-quach';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CURRENT_SELLER_STORAGE_KEY, currentSellerId);
+    } catch {
+      /* ignorieren */
+    }
+  }, [currentSellerId]);
 
   useEffect(() => {
     saveJson(REMINDERS_KEY, reminders);
@@ -103,19 +125,64 @@ export function CommunicationProvider({ children }) {
         return result;
       },
 
-      sendEmail(leadId, { message, subject, templateId }) {
+      currentSellerId,
+      setCurrentSellerId,
+      dealers: DEALER_SELLERS,
+
+      getCurrentSeller() {
+        return DEALER_SELLERS.find((s) => s.id === currentSellerId) ?? DEALER_SELLERS[0];
+      },
+
+      assignOwner: leadsApi.assignOwner,
+      updateWish: leadsApi.updateWish,
+      updateLead: leadsApi.updateLead,
+      applyPricingResult: leadsApi.applyPricingResult,
+
+      getPricingPreview(leadId) {
+        const lead = leadsApi.getLead(leadId);
+        if (!lead) return null;
+        return computeLeadPricing(lead, conditions);
+      },
+
+      updateRateForLead(leadId) {
+        const lead = leadsApi.getLead(leadId);
+        if (!lead) return { ok: false };
+        const result = computeLeadPricing(lead, conditions);
+        leadsApi.applyPricingResult(leadId, result);
+        leadsApi.addHistory(
+          leadId,
+          `Rate aktualisiert: ${result.leasingRate ?? '—'} €/Monat`,
+          'offer',
+        );
+        return { ok: true, result };
+      },
+
+      async sendEmail(leadId, { message, subject, templateId, useMailto = false }) {
         const lead = leadsApi.getLead(leadId);
         if (!lead?.contact?.email) return { ok: false, code: 'NO_EMAIL' };
 
-        sendEmailToLead(lead, message, conditions.dealerName, subject);
+        const sub = subject ?? `Ihre Anfrage – ${lead.vehicle?.label ?? 'Fahrzeug'}`;
+
+        if (useMailto) {
+          sendEmailToLead(lead, message, conditions.dealerName, sub);
+        } else {
+          await sendMockEmail({
+            to: lead.contact.email,
+            subject: sub,
+            body: message,
+            leadId,
+            templateId,
+          });
+        }
+
         appendHistory(leadId, 'E-Mail gesendet', {
           channel: 'email',
           direction: 'outbound',
           templateId,
-          subject,
+          subject: sub,
           type: 'communication',
         });
-        recordAudit(AUDIT_ACTIONS.EMAIL_SENT, leadId, subject ?? 'E-Mail');
+        recordAudit(AUDIT_ACTIONS.EMAIL_SENT, leadId, sub);
         return { ok: true };
       },
 
@@ -206,6 +273,7 @@ export function CommunicationProvider({ children }) {
           dueAt: addDays(preset.days),
           createdAt: new Date().toISOString(),
           done: false,
+          type: 'other',
         };
         setReminders((prev) => [reminder, ...prev]);
         appendHistory(leadId, `Wiedervorlage: ${preset.label}`, {
@@ -213,6 +281,28 @@ export function CommunicationProvider({ children }) {
           type: 'system',
         });
         recordAudit(AUDIT_ACTIONS.REMINDER_SET, leadId, preset.label);
+        return reminder;
+      },
+
+      setDetailedReminder(leadId, { date, time, note, type }) {
+        const typeLabel = REMINDER_TYPES.find((t) => t.id === type)?.label ?? type;
+        const dueAt = new Date(`${date}T${time || '09:00'}:00`).toISOString();
+        const reminder = {
+          id: uid('rem'),
+          leadId,
+          label: note || `${typeLabel} – ${new Date(dueAt).toLocaleDateString('de-DE')}`,
+          dueAt,
+          note,
+          type,
+          createdAt: new Date().toISOString(),
+          done: false,
+        };
+        setReminders((prev) => [reminder, ...prev]);
+        appendHistory(leadId, `Wiedervorlage: ${reminder.label}`, {
+          channel: 'system',
+          type: 'system',
+        });
+        recordAudit(AUDIT_ACTIONS.REMINDER_SET, leadId, reminder.label);
         return reminder;
       },
 
@@ -262,7 +352,7 @@ export function CommunicationProvider({ children }) {
       updateContact: leadsApi.updateContact,
       addHistory: leadsApi.addHistory,
     };
-  }, [leadsApi, offers, conditions, reminders, auditLog, addOffer, markSent]);
+  }, [leadsApi, offers, conditions, reminders, auditLog, addOffer, markSent, currentSellerId]);
 
   return (
     <CommunicationContext.Provider value={api}>
