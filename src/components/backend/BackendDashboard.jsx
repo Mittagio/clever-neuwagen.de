@@ -91,7 +91,8 @@ export default function BackendDashboard({ conditions }) {
         <Link to="/backend/billing" className="btn btn-secondary backend-card-link">Abrechnung</Link>
         <Link to="/backend/documents" className="btn btn-secondary backend-card-link">Dokumenten-Tresor (48h)</Link>
         <Link to="/backend/publishing" className="btn btn-secondary backend-card-link">Publishing Center</Link>
-        <Link to="/leads" className="btn btn-secondary backend-card-link">Leadcenter öffnen</Link>
+        <Link to="/communication" className="btn btn-secondary backend-card-link">Sales Communication Center</Link>
+        <Link to="/leads/classic" className="btn btn-secondary backend-card-link">Leadcenter (klassisch)</Link>
         <Link to="/offers" className="btn btn-secondary backend-card-link">Angebotszentrum</Link>
         <Link to="/assistant" className="btn btn-secondary backend-card-link">Verkaufsassistent</Link>
         <Link to="/dealer-ai" className="btn btn-primary backend-card-link">Dealer AI</Link>

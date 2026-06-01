@@ -3,6 +3,43 @@
   padding-bottom: var(--space-3xl);
 }
 
+.backend--v2 {
+  background: var(--color-bg);
+}
+
+.backend-header--slim {
+  margin-bottom: var(--space-md);
+}
+
+.backend-header-eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.backend-header-title {
+  margin: 4px 0 0;
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+}
+
+.backend-save-note__reset {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+}
+
 .backend-header {
   display: flex;
   flex-direction: column;

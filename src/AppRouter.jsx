@@ -13,6 +13,10 @@ import InsertGeneratorPage from './pages/InsertGeneratorPage';
 import EquipmentAdvisorPage from './pages/EquipmentAdvisorPage';
 import AdvisorPage from './pages/AdvisorPage';
 import LeadsPage from './pages/LeadsPage';
+import CommunicationCenterPage from './pages/communication/CommunicationCenterPage.jsx';
+import CommunicationEmailPage from './pages/communication/CommunicationEmailPage.jsx';
+import CommunicationWhatsAppPage from './pages/communication/CommunicationWhatsAppPage.jsx';
+import CommunicationTemplatesPage from './pages/communication/CommunicationTemplatesPage.jsx';
 import TemplatesPage from './pages/TemplatesPage';
 import OfferPage from './pages/OfferPage';
 import OffersPage from './pages/OffersPage';
@@ -127,7 +131,12 @@ export default function AppRouter() {
         <Route path="/trends/:slug" element={<TrendArticlePage />} />
         <Route path="/berater" element={<AdvisorPage />} />
         <Route path="/berater/ausstattung" element={<EquipmentAdvisorPage />} />
-        <Route path="/leads" element={<LeadsPage />} />
+        <Route path="/communication" element={<CommunicationCenterPage />} />
+        <Route path="/communication/email" element={<CommunicationEmailPage />} />
+        <Route path="/communication/whatsapp" element={<CommunicationWhatsAppPage />} />
+        <Route path="/communication/templates" element={<CommunicationTemplatesPage />} />
+        <Route path="/leads" element={<Navigate to="/communication" replace />} />
+        <Route path="/leads/classic" element={<LeadsPage />} />
         <Route path="/offers" element={<OffersPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/angebot/:code" element={<AngebotPage />} />

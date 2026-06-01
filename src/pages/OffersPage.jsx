@@ -39,6 +39,9 @@ export default function OffersPage() {
     if (location.state?.selectedCode) {
       setSelectedCode(location.state.selectedCode);
     }
+    if (location.state?.openCreate) {
+      setShowCreate(true);
+    }
   }, [location.state]);
 
   const filtered = useMemo(() => {

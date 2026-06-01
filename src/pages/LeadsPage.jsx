@@ -56,12 +56,12 @@ export default function LeadsPage() {
         <header className="leads-page__header">
           <div className="leads-page__header-top">
             <Link to="/backend" className="leads-page__back">←</Link>
-            <h1 className="leads-page__title">Leadcenter</h1>
+            <h1 className="leads-page__title">Leadcenter (klassisch)</h1>
             {neuCount > 0 && (
               <span className="leads-page__badge">{neuCount}</span>
             )}
-            <Link to="/templates" className="leads-page__templates" title="Schnellantworten">
-              📝
+            <Link to="/communication" className="leads-page__templates" title="Sales Communication">
+              💬
             </Link>
           </div>
           <input

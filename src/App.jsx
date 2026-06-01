@@ -4,6 +4,7 @@ import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { LeadsProvider } from './context/LeadsContext';
 import { TemplatesProvider } from './context/TemplatesContext';
 import { OffersProvider } from './context/OffersContext';
+import { CommunicationProvider } from './context/CommunicationContext.jsx';
 import { PartnerOnboardingProvider } from './context/PartnerOnboardingContext';
 import { VoucherPartnersProvider } from './context/VoucherPartnersContext';
 import { PriceListImportProvider } from './context/PriceListImportContext';
@@ -22,6 +23,7 @@ export default function App() {
           <VoucherPartnersProvider>
           <TemplatesProvider>
             <OffersProvider>
+              <CommunicationProvider>
               <PartnerOnboardingProvider>
               <PriceListImportProvider>
               <BillingProvider>
@@ -39,6 +41,7 @@ export default function App() {
               </BillingProvider>
               </PriceListImportProvider>
               </PartnerOnboardingProvider>
+              </CommunicationProvider>
             </OffersProvider>
           </TemplatesProvider>
           </VoucherPartnersProvider>

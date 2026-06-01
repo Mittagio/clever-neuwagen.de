@@ -41,12 +41,18 @@ function saveLeads(leads) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
 }
 
-function historyEntry(text, type = 'system') {
+function historyEntry(text, type = 'system', meta = {}) {
   return {
     id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     at: new Date().toISOString(),
     type,
     text,
+    direction: meta.direction ?? null,
+    channel: meta.channel ?? null,
+    templateId: meta.templateId ?? null,
+    offerCode: meta.offerCode ?? null,
+    documentType: meta.documentType ?? null,
+    subject: meta.subject ?? null,
   };
 }
 
@@ -268,14 +274,14 @@ export function LeadsProvider({ children }) {
       return flow;
     },
 
-    addHistory(id, text, type = 'note') {
+    addHistory(id, text, type = 'note', meta = {}) {
       setLeads((prev) =>
         prev.map((lead) =>
           lead.id === id
             ? {
                 ...lead,
                 updatedAt: new Date().toISOString(),
-                history: [...(lead.history ?? []), historyEntry(text, type)],
+                history: [...(lead.history ?? []), historyEntry(text, type, meta)],
               }
             : lead,
         ),
