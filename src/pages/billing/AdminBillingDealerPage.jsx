@@ -82,8 +82,8 @@ export default function AdminBillingDealerPage() {
                 </div>
               </div>
               {sale.leadId && (
-                <Link to="/leads" className="bill-header__link" style={{ fontSize: '0.8125rem' }}>
-                  Lead nachvollziehen →
+                <Link to="/communication" className="bill-header__link" style={{ fontSize: '0.8125rem' }}>
+                  Verkaufschance nachvollziehen →
                 </Link>
               )}
             </article>

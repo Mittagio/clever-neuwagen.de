@@ -28,7 +28,7 @@ export default function AdminAnalyticsPage() {
         <div className="launch-kpi-grid">
           <LaunchKpi label="Aktive Händler" value={a.activeDealers} />
           <LaunchKpi label="Aktive Kunden" value={a.activeCustomers} />
-          <LaunchKpi label="Leads" value={a.leadsCount} />
+          <LaunchKpi label="Verkaufschancen" value={a.leadsCount} />
           <LaunchKpi label="Angebote" value={a.offersCount} />
           <LaunchKpi label="Verkäufe" value={a.salesCount} />
           <LaunchKpi label="Conversion Rate" value={`${a.conversionRate} %`} />

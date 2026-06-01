@@ -16,8 +16,8 @@ const ADMIN_LINKS = [
     icon: '🔒',
   },
   {
-    title: 'Sales Communication',
-    desc: 'Leads, Nachrichten, Vorlagen',
+    title: 'Verkaufskommunikation',
+    desc: 'Verkaufschancen, Nachrichten, Vorlagen',
     href: '/communication',
     icon: '💬',
   },

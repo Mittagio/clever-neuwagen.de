@@ -61,7 +61,7 @@ export function BillingMoney({ amount, compact }) {
 
 export function ProvisionChain() {
   const steps = [
-    'Lead', 'Angebot', 'Bestellung', 'Auslieferung', 'Bestätigung', 'Provision aktiv',
+    'Verkaufschance', 'Angebot', 'Bestellung', 'Auslieferung', 'Bestätigung', 'Provision aktiv',
   ];
   return (
     <div className="bill-chain" aria-label="Provisionskette">

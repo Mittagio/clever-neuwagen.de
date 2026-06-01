@@ -41,7 +41,7 @@ export const DEALER_PACKAGES = [
     maxBrands: 1,
     features: [
       'Händlerprofil auf clever-neuwagen.de',
-      'KI-Berater & Lead-Erfassung',
+      'KI-Berater & Verkaufschancen-Erfassung',
       '1 Marke freigeschaltet',
     ],
   },

@@ -113,7 +113,7 @@ export default function DealerAIPage() {
           <Link to="/backend" className="dealer-ai-back">← Backend</Link>
           <div className="dealer-ai-header__links">
             <Link to="/offers">Angebote</Link>
-            <Link to="/leads">Leads</Link>
+            <Link to="/communication">Verkaufschancen</Link>
           </div>
         </div>
       </header>

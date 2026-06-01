@@ -30,7 +30,7 @@ export default function CommunicationWhatsAppPage() {
 
   function handleOpen() {
     if (!selectedLeadId) {
-      setToast('Bitte Lead wählen');
+      setToast('Bitte Verkaufschance wählen');
       return;
     }
     const res = sendWhatsApp(selectedLeadId, message);
@@ -51,14 +51,14 @@ export default function CommunicationWhatsAppPage() {
           Phase 2 (WhatsApp Business API) folgt.
         </p>
 
-        <label className="comm-subpage__label" htmlFor="wa-lead">Lead</label>
+        <label className="comm-subpage__label" htmlFor="wa-lead">Verkaufschance</label>
         <select
           id="wa-lead"
           className="comm-subpage__select"
           value={selectedLeadId}
           onChange={(e) => setSelectedLeadId(e.target.value)}
         >
-          <option value="">Lead wählen…</option>
+          <option value="">Verkaufschance wählen…</option>
           {leads.map((l) => (
             <option key={l.id} value={l.id}>
               {l.contact.name || 'Unbekannt'} – {l.contact.phone || 'ohne Tel.'}

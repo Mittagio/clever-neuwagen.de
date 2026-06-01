@@ -42,7 +42,7 @@ export default function TemplatesPage() {
   return (
     <div className="templates-page">
       <header className="templates-page__header">
-        <Link to="/leads" className="templates-page__back">←</Link>
+        <Link to="/communication" className="templates-page__back">←</Link>
         <div>
           <h1 className="templates-page__title">Schnellantworten</h1>
           <p className="templates-page__sub">Vorlagen für WhatsApp, Mail &amp; Kopieren</p>

@@ -70,7 +70,7 @@ export default function DashboardPage() {
         <div className="dash-header__top">
           <Link to="/backend" className="dash-header__back">←</Link>
           <div className="dash-header__nav">
-            <Link to="/leads">Leads</Link>
+            <Link to="/communication">Verkaufschancen</Link>
             <Link to="/offers">Angebote</Link>
             <Link to="/intelligence">Intelligence</Link>
             <Link to="/dealer-ai">Dealer AI</Link>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
       <main className="dash-main">
         <section className="dash-kpis" aria-label="Kennzahlen">
-          <KpiCard label="Leads heute" value={metrics.kpis.leadsToday} accent="blue" />
+          <KpiCard label="Verkaufschancen heute" value={metrics.kpis.leadsToday} accent="blue" />
           <KpiCard label="Offene Angebote" value={metrics.kpis.openOffers} accent="purple" />
           <KpiCard label="Probefahrten" value={metrics.kpis.testDrives} accent="teal" />
           <KpiCard label="Bestellungen" value={metrics.kpis.orders} accent="green" />
@@ -96,7 +96,7 @@ export default function DashboardPage() {
             <p className="dash-conversion__label">Conversion Rate</p>
             <p className="dash-conversion__value">{metrics.conversionRate}%</p>
             <p className="dash-conversion__detail">
-              {metrics.conversionDetail.won} Abschlüsse von {metrics.conversionDetail.pipeline} aktiven Leads
+              {metrics.conversionDetail.won} Abschlüsse von {metrics.conversionDetail.pipeline} aktiven Verkaufschancen
             </p>
             <div className="dash-conversion__ring" aria-hidden="true">
               <svg viewBox="0 0 120 120">

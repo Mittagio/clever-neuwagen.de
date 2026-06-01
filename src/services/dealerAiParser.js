@@ -13,7 +13,7 @@ export const DEALER_AI_ACTIONS = {
   create_customer_offer: {
     id: 'create_customer_offer',
     label: 'Kundenangebot erstellen',
-    description: 'Personalisiertes Angebot mit Lead-Verknüpfung',
+    description: 'Personalisiertes Angebot mit Verkaufschancen-Verknüpfung',
   },
   publish_online: {
     id: 'publish_online',

@@ -14,7 +14,7 @@ export default function CommunicationLeadProfile({ lead, onStatusChange }) {
   if (!lead) {
     return (
       <div className="comm-profile comm-profile--empty">
-        <p>Kundendaten erscheinen hier, sobald ein Lead ausgewählt ist.</p>
+        <p>Kundendaten erscheinen hier, sobald eine Verkaufschance ausgewählt ist.</p>
       </div>
     );
   }

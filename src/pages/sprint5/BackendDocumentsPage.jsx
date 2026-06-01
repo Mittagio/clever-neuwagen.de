@@ -123,7 +123,7 @@ export default function BackendDocumentsPage() {
               </select>
             </label>
             <label className="s5-field">
-              <span>Lead-ID (optional)</span>
+              <span>Verkaufschancen-ID (optional)</span>
               <input value={leadId} onChange={(e) => setLeadId(e.target.value)} placeholder="lead-…" />
             </label>
           </div>

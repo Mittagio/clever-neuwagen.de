@@ -37,7 +37,7 @@ export default function DealerAiResultPanel({ result, vehicleCard }) {
           <div className="dai-result-links">
             <Link to={`/angebot/${result.offerCode}`} className="dai-link">Angebot öffnen</Link>
             <Link to="/offers" className="dai-link">Angebotszentrum</Link>
-            {result.leadId && <Link to="/leads" className="dai-link">CRM / Leads</Link>}
+            {result.leadId && <Link to="/communication" className="dai-link">Verkaufschancen</Link>}
           </div>
         </div>
       )}
@@ -81,7 +81,7 @@ export default function DealerAiResultPanel({ result, vehicleCard }) {
           <p className="dai-sync__value">
             {result.syncStatus === 'synchronized' && '🟢 Händlerseite synchronisiert'}
             {result.syncStatus === 'draft_pending' && '🟡 Entwurf – bitte im Backend veröffentlichen'}
-            {result.syncStatus === 'created' && '🟢 Angebot & CRM angelegt'}
+            {result.syncStatus === 'created' && '🟢 Angebot & Verkaufschance angelegt'}
           </p>
           {result.landingPage && (
             <Link to={result.landingPage} className="dai-link">Landingpage / Händlerseite</Link>

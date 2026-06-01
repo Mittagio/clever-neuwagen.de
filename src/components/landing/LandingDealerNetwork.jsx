@@ -6,7 +6,7 @@ export default function LandingDealerNetwork() {
     <section className="lp-section lp-dealers" aria-labelledby="lp-dealers-title">
       <div className="lp-dealer-cta">
         <h2 id="lp-dealers-title" className="lp-dealer-cta__title">Für Händler</h2>
-        <p className="lp-dealer-cta__sub">Mehr Abschlüsse statt mehr Leads.</p>
+        <p className="lp-dealer-cta__sub">Mehr Abschlüsse statt mehr Verkaufschancen.</p>
         <Link to="/partner/register" className="lp-btn lp-btn--secondary">
           Für Händler
         </Link>

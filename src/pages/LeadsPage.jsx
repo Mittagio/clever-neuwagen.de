@@ -56,7 +56,7 @@ export default function LeadsPage() {
         <header className="leads-page__header">
           <div className="leads-page__header-top">
             <Link to="/backend" className="leads-page__back">←</Link>
-            <h1 className="leads-page__title">Leadcenter (klassisch)</h1>
+            <h1 className="leads-page__title">Verkaufschancen (klassisch)</h1>
             {neuCount > 0 && (
               <span className="leads-page__badge">{neuCount}</span>
             )}
@@ -101,7 +101,7 @@ export default function LeadsPage() {
 
         <div className="leads-page__items">
           {filtered.length === 0 ? (
-            <p className="leads-page__empty">Keine Leads in dieser Ansicht.</p>
+            <p className="leads-page__empty">Keine Verkaufschancen in dieser Ansicht.</p>
           ) : (
             filtered.map((lead) => (
               <LeadListItem
@@ -124,7 +124,7 @@ export default function LeadsPage() {
         ) : (
           <div className="leads-page__placeholder">
             <span className="leads-page__placeholder-icon">💬</span>
-            <p>Lead auswählen, um Details zu sehen</p>
+            <p>Verkaufschance auswählen, um Details zu sehen</p>
           </div>
         )}
       </main>

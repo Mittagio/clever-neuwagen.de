@@ -228,7 +228,7 @@ export function getPaymentStatusMeta(statusId) {
 
 export function provisionChainSteps() {
   return [
-    { step: 1, label: 'Lead' },
+    { step: 1, label: 'Verkaufschance' },
     { step: 2, label: 'Angebot' },
     { step: 3, label: 'Bestellung' },
     { step: 4, label: 'Auslieferung' },

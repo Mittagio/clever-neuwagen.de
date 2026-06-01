@@ -35,7 +35,7 @@ export default function CommunicationEmailPage() {
   function handleSend(e) {
     e.preventDefault();
     if (!selectedLeadId) {
-      setToast('Bitte Lead wählen');
+      setToast('Bitte Verkaufschance wählen');
       return;
     }
     const res = sendEmail(selectedLeadId, {
@@ -43,7 +43,7 @@ export default function CommunicationEmailPage() {
       subject: subject || subjectDefault,
       templateId: templateId || undefined,
     });
-    setToast(res.ok ? 'E-Mail geöffnet – Versand protokolliert' : 'Keine E-Mail beim Lead');
+    setToast(res.ok ? 'E-Mail geöffnet – Versand protokolliert' : 'Keine E-Mail bei der Verkaufschance');
     setTimeout(() => setToast(''), 3000);
   }
 
@@ -55,14 +55,14 @@ export default function CommunicationEmailPage() {
       </header>
 
       <form className="comm-subpage__card" onSubmit={handleSend}>
-        <label className="comm-subpage__label" htmlFor="email-lead">Lead</label>
+        <label className="comm-subpage__label" htmlFor="email-lead">Verkaufschance</label>
         <select
           id="email-lead"
           className="comm-subpage__select"
           value={selectedLeadId}
           onChange={(e) => setSelectedLeadId(e.target.value)}
         >
-          <option value="">Lead wählen…</option>
+          <option value="">Verkaufschance wählen…</option>
           {leads.map((l) => (
             <option key={l.id} value={l.id}>
               {l.contact.name || 'Unbekannt'} – {l.vehicle?.label ?? 'Fahrzeug'}
@@ -109,7 +109,7 @@ export default function CommunicationEmailPage() {
         </div>
 
         <p className="comm-subpage__hint">
-          Versand öffnet Ihr Standard-E-Mail-Programm. Der Vorgang wird im Lead-Verlauf und Audit-Log gespeichert.
+          Versand öffnet Ihr Standard-E-Mail-Programm. Der Vorgang wird im Verkaufschancen-Verlauf und Audit-Log gespeichert.
         </p>
       </form>
 

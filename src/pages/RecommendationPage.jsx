@@ -77,7 +77,7 @@ export default function RecommendationPage() {
     };
     const lead = createLeadFromSales(customer, offer, conditions);
     addLead(lead);
-    showToast(`${offer.label} als Lead gespeichert`);
+    showToast(`${offer.label} als Verkaufschance gespeichert`);
   }
 
   async function handleWhatsApp() {
@@ -124,7 +124,7 @@ export default function RecommendationPage() {
           <p className="rec-header-kicker">Empfehlungsengine</p>
           <h1 className="rec-header-title">System verkauft mit</h1>
         </div>
-        <Link to="/leads" className="rec-header-link">Leads</Link>
+        <Link to="/communication" className="rec-header-link">Verkaufschancen</Link>
       </header>
 
       <main className="rec-main">
@@ -268,7 +268,7 @@ export default function RecommendationPage() {
                 className="rec-action rec-action--primary"
                 onClick={() => handleSelectOffer(selected)}
               >
-                Als Lead speichern
+                Als Verkaufschance speichern
               </button>
               <button
                 type="button"

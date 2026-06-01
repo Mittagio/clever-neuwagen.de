@@ -86,7 +86,7 @@ export default function OffersPage() {
     linkLead(offer.code, leadId);
     setSelectedCode(offer.code);
     setShowCreate(false);
-    showToast(`Angebot ${offer.code} erstellt${isNew ? ' · Lead angelegt' : ' · Lead verknüpft'}`);
+    showToast(`Angebot ${offer.code} erstellt${isNew ? ' · Verkaufschance angelegt' : ' · Verkaufschance verknüpft'}`);
   }
 
   function handleStatusChange(code, status) {
@@ -295,11 +295,11 @@ export default function OffersPage() {
               </button>
               {selected.leadId && (
                 <Link
-                  to="/leads"
+                  to="/communication"
                   state={{ selectedLeadId: selected.leadId }}
                   className="btn btn-secondary offers-detail__action"
                 >
-                  Lead anzeigen
+                  Verkaufschance anzeigen
                 </Link>
               )}
             </section>

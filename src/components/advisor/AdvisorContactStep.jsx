@@ -145,7 +145,7 @@ export default function AdvisorContactStep({
       </form>
 
       <p className="adv-contact-step__legal">
-        Mit Absenden erhalten Sie Ihr Angebot und ein Lead wird an {rec?.dealerName ?? 'den Händler'} übermittelt.
+        Mit Absenden erhalten Sie Ihr Angebot und eine Verkaufschance wird an {rec?.dealerName ?? 'den Händler'} übermittelt.
       </p>
     </section>
   );

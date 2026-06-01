@@ -16,7 +16,7 @@ export const ROLES = {
   sales: {
     id: 'sales',
     label: 'Verkäufer',
-    description: 'Leads, Angebote, Konfiguration',
+    description: 'Verkaufschancen, Angebote, Konfiguration',
     scope: 'dealer',
   },
   customer: {

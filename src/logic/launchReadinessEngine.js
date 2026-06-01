@@ -55,7 +55,7 @@ export function computeLaunchChecklist(ctx) {
       id: 'sales',
       title: 'Vertrieb',
       items: [
-        { id: 'crm', label: 'CRM', done: true },
+        { id: 'crm', label: 'Verkaufschancen', done: true },
         { id: 'offers', label: 'Angebote', done: true },
         { id: 'compare', label: 'Vergleich', done: true },
         { id: 'advisor', label: 'KI-Beratung', done: true },
@@ -143,7 +143,7 @@ export function computePilotStats(dealerId, ctx) {
     { label: 'KI-Beratung', done: true },
     { label: 'Vergleich', done: true },
     { label: 'Angebot', done: dealerOffers > 0 },
-    { label: 'Lead', done: dealerLeads.length > 0 },
+    { label: 'Verkaufschance', done: dealerLeads.length > 0 },
     { label: 'Verkauf', done: dealerSales > 0 },
     { label: 'Auslieferung', done: deliveries.some((d) => d.dealerId === dealerId && d.confirmed) },
     { label: 'Provision', done: anyProvision, note: anyBillable && !anyProvision ? 'Warte auf Gutschein' : null },

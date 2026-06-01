@@ -142,8 +142,8 @@ export default function AdminDeliveriesPage() {
                     </button>
                   )}
                   {item.leadId && (
-                    <Link to="/leads" className="bill-header__link" style={{ fontSize: '0.8125rem', alignSelf: 'center' }}>
-                      Lead öffnen →
+                    <Link to="/communication" className="bill-header__link" style={{ fontSize: '0.8125rem', alignSelf: 'center' }}>
+                      Verkaufschance öffnen →
                     </Link>
                   )}
                 </div>

@@ -12,7 +12,7 @@ import './BackendHome.css';
 const TODAY_TILES = [
   {
     key: 'newLeads',
-    label: 'Neue Leads',
+    label: 'Neue Verkaufschancen',
     hint: 'Noch nicht bearbeitet',
     href: '/communication',
     filter: 'neu',
@@ -44,7 +44,7 @@ const TODAY_TILES = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: 'Neuer Lead', icon: '👤', href: '/sales', desc: 'Kunde erfassen' },
+  { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kunde erfassen' },
   { label: 'Neues Angebot', icon: '📄', href: '/offers', state: { openCreate: true }, desc: 'Angebot erstellen' },
   { label: 'Fahrzeug veröffentlichen', icon: '📢', href: '/backend/publishing', desc: 'Marketing & Inserate' },
   { label: 'Dealer AI', icon: '🤖', href: '/dealer-ai', desc: 'KI-Verkaufsassistent', primary: true },
@@ -137,7 +137,7 @@ export default function BackendHome({ conditions, onNavigate }) {
               Angebot, Text & nächster Schritt – in Sekunden
             </h3>
             <p className="backend-home__ai-desc">
-              Die KI kennt Ihre Konditionen, Leads und Fahrzeuge. Ideal für Erstkontakt,
+              Die KI kennt Ihre Konditionen, Verkaufschancen und Fahrzeuge. Ideal für Erstkontakt,
               Angebotsmail und Nachfassen.
             </p>
             <div className="backend-home__ai-actions">
@@ -160,7 +160,7 @@ export default function BackendHome({ conditions, onNavigate }) {
         <div className="backend-home__kpi-grid">
           <div className="backend-home__kpi">
             <span className="backend-home__kpi-value">{today.inProgress}</span>
-            <span className="backend-home__kpi-label">Leads in Bearbeitung</span>
+            <span className="backend-home__kpi-label">Verkaufschancen in Bearbeitung</span>
           </div>
           <div className="backend-home__kpi">
             <span className="backend-home__kpi-value">{kpis.emailsSent}</span>

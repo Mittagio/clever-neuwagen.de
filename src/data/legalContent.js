@@ -128,7 +128,7 @@ export const datenschutzSections = [
       'Angebotssystem und Angebotsvermittlung',
       'Händlerportal und Konditionsverwaltung',
       'Kundenkonto',
-      'Kontaktformulare und Lead-Weiterleitung',
+      'Kontaktformulare und Verkaufschancen-Weiterleitung',
     ],
   },
   {
@@ -366,7 +366,7 @@ export const haendlerAgbSections = [
     title: 'Daten und Inhalte',
     paragraphs: [
       'Der Händler stellt Clever-Neuwagen die zur Plattformnutzung erforderlichen Geschäfts- und Kontaktdaten zur Verfügung.',
-      'Clever-Neuwagen darf diese Daten zur Bereitstellung der Plattform, Lead-Weiterleitung und Abrechnung verarbeiten.',
+      'Clever-Neuwagen darf diese Daten zur Bereitstellung der Plattform, Verkaufschancen-Weiterleitung und Abrechnung verarbeiten.',
     ],
   },
   {

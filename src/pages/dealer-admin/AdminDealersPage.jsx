@@ -48,7 +48,7 @@ export default function AdminDealersPage() {
                   <dd>{countModelsForDealer(dealer)}</dd>
                 </div>
                 <div className="dop-dealer-card__stat">
-                  <dt>Leads</dt>
+                  <dt>Verkaufschancen</dt>
                   <dd>{dealer.stats.leads}</dd>
                 </div>
                 <div className="dop-dealer-card__stat">
