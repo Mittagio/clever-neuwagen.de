@@ -1,10 +1,18 @@
 import { useState } from 'react';
 import './CopyBlock.css';
 
-export default function CopyBlock({ label, text, compact = false, onCopied }) {
+export default function CopyBlock({
+  label,
+  text,
+  compact = false,
+  onCopied,
+  disabled = false,
+  disabledReason = 'Kopieren nicht verfügbar',
+}) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
+    if (disabled) return;
     try {
       await navigator.clipboard.writeText(text);
       onCopied?.();
@@ -27,10 +35,12 @@ export default function CopyBlock({ label, text, compact = false, onCopied }) {
         <h3 className="copy-block__label">{label}</h3>
         <button
           type="button"
-          className={`copy-block__btn${copied ? ' copy-block__btn--done' : ''}`}
+          className={`copy-block__btn${copied ? ' copy-block__btn--done' : ''}${disabled ? ' copy-block__btn--disabled' : ''}`}
           onClick={handleCopy}
+          disabled={disabled}
+          title={disabled ? disabledReason : undefined}
         >
-          {copied ? '✓ Kopiert' : 'Kopieren'}
+          {disabled ? 'Gesperrt' : (copied ? '✓ Kopiert' : 'Kopieren')}
         </button>
       </header>
       <pre className="copy-block__text">{text}</pre>

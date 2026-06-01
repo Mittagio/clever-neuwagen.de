@@ -5,6 +5,11 @@ export const SPRINT5_AUDIT_TYPES = {
   document_deleted: 'document_deleted',
   vehicle_published: 'vehicle_published',
   compliance_error: 'compliance_error',
+  compliance_checked: 'compliance_checked',
+  publish_blocked: 'publish_blocked',
+  legal_block_copied: 'legal_block_copied',
+  compliance_approved: 'compliance_approved',
+  compliance_source_changed: 'compliance_source_changed',
   selbstauskunft_created: 'selbstauskunft_created',
 };
 
@@ -56,6 +61,57 @@ export function auditVehiclePublished(vehicleLabel, actor = 'Verkäufer') {
     actor,
     actorRole: 'dealer',
     action: `Fahrzeug veröffentlicht: ${vehicleLabel}`,
+    target: vehicleLabel,
+  });
+}
+
+export function auditComplianceChecked(vehicleLabel, score, actor = 'System') {
+  return appendAuditEntry({
+    type: SPRINT5_AUDIT_TYPES.compliance_checked,
+    actor,
+    actorRole: 'system',
+    action: `Compliance geprüft: ${vehicleLabel} (${score} %)`,
+    target: vehicleLabel,
+  });
+}
+
+export function auditPublishBlocked(vehicleLabel, missingFields = [], actor = 'Compliance Shield') {
+  const labels = missingFields.map((f) => (typeof f === 'string' ? f : f.label)).join(', ');
+  return appendAuditEntry({
+    type: SPRINT5_AUDIT_TYPES.publish_blocked,
+    actor,
+    actorRole: 'system',
+    action: `Veröffentlichung blockiert: ${vehicleLabel}${labels ? ` – ${labels}` : ''}`,
+    target: vehicleLabel,
+  });
+}
+
+export function auditLegalBlockCopied(vehicleLabel, channel, actor = 'Verkäufer') {
+  return appendAuditEntry({
+    type: SPRINT5_AUDIT_TYPES.legal_block_copied,
+    actor,
+    actorRole: 'dealer',
+    action: `Pflichtblock kopiert: ${vehicleLabel}${channel ? ` (${channel})` : ''}`,
+    target: vehicleLabel,
+  });
+}
+
+export function auditComplianceApproved(vehicleLabel, actor = 'Admin') {
+  return appendAuditEntry({
+    type: SPRINT5_AUDIT_TYPES.compliance_approved,
+    actor,
+    actorRole: 'admin',
+    action: `WLTP-Daten freigegeben: ${vehicleLabel}`,
+    target: vehicleLabel,
+  });
+}
+
+export function auditComplianceSourceChanged(vehicleLabel, source, actor = 'Admin') {
+  return appendAuditEntry({
+    type: SPRINT5_AUDIT_TYPES.compliance_source_changed,
+    actor,
+    actorRole: 'admin',
+    action: `Compliance-Quelle geändert: ${vehicleLabel} → ${source}`,
     target: vehicleLabel,
   });
 }

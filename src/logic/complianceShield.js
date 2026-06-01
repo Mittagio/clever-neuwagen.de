@@ -1,118 +1,196 @@
-import { sportage } from '../data/kiaSportage.js';
-
-/** Pflichtfelder – nur aus Herstellerdaten, keine Freitexteingabe */
-export const COMPLIANCE_REQUIRED_FIELDS = [
-  { id: 'fuel', label: 'Kraftstoff' },
-  { id: 'consumption', label: 'Verbrauch (komb.)' },
-  { id: 'co2', label: 'CO₂-Emissionen' },
-  { id: 'electricConsumption', label: 'Stromverbrauch' },
-  { id: 'wltp', label: 'WLTP-Prüfverfahren' },
-  { id: 'range', label: 'Reichweite' },
-  { id: 'energyClass', label: 'Energieeffizienzklasse' },
-];
-
-function getEngine(engineId) {
-  return sportage.engines.find((e) => e.id === engineId) ?? null;
-}
-
-function getWltp(engineId) {
-  return sportage.wltp.find((w) => w.engineId === engineId) ?? null;
-}
-
-function formatRange(min, max, unit) {
-  if (min == null && max == null) return null;
-  if (min === max || max == null) return `${min} ${unit}`;
-  return `${min}–${max} ${unit}`;
-}
-
 /**
- * Compliance-Werte ausschließlich aus Herstellerdatenbank
+ * Compliance Shield – harte Sperre für WLTP / Verbrauch / CO₂
  */
-export function getOemComplianceValues(engineId) {
-  const engine = getEngine(engineId);
-  const wltp = getWltp(engineId);
-  const isElectric = /elektro|electric/i.test(engine?.fuelType ?? '');
+import {
+  COMPLIANCE_STATUS,
+  COMPLIANCE_STATUS_UI,
+  getRequiredFieldsForPowertrain,
+} from '../data/complianceSchema.js';
+import { resolveVehicleComplianceProfile, listAllComplianceProfiles } from '../data/vehicleComplianceRegistry.js';
 
-  const consumption = wltp?.consumptionCombined
-    ? formatRange(wltp.consumptionCombined.min, wltp.consumptionCombined.max, wltp.consumptionCombined.unit)
-    : null;
+export { COMPLIANCE_STATUS, COMPLIANCE_STATUS_UI };
+export { getRequiredFieldsForPowertrain } from '../data/complianceSchema.js';
+export { listAllComplianceProfiles };
 
-  const co2 = wltp?.co2Combined
-    ? formatRange(wltp.co2Combined.min, wltp.co2Combined.max, wltp.co2Combined.unit)
-    : null;
+const BLOCKED_COPY_MESSAGE = 'Veröffentlichung blockiert: Pflichtangaben fehlen.';
 
-  const electricConsumption = wltp?.electricConsumption
-    ? formatRange(
-      wltp.electricConsumption.min,
-      wltp.electricConsumption.max,
-      wltp.electricConsumption.unit,
-    )
-    : (isElectric ? consumption : 'n. a. (Verbrenner/Hybrid)');
-
-  const range = wltp?.electricRange
-    ? formatRange(wltp.electricRange.min, wltp.electricRange.max, wltp.electricRange.unit)
-    : (isElectric ? null : 'n. a. (nicht elektrisch)');
-
-  return {
-    fuel: engine?.fuelType ?? null,
-    consumption,
-    co2,
-    electricConsumption,
-    wltp: wltp ? 'WLTP (EU)' : null,
-    range,
-    energyClass: wltp?.efficiencyClass ?? wltp?.co2Class ?? null,
-  };
+function isPresent(value) {
+  if (value == null) return false;
+  const s = String(value).trim();
+  if (!s) return false;
+  if (/^n\.?\s*a\.|^–$|^-$/i.test(s)) return false;
+  return true;
 }
 
-function fieldSatisfied(fieldId, values, engine) {
-  const isElectric = /elektro|electric/i.test(engine?.fuelType ?? '');
+function resolveEffectiveStatus(compliance, missingCount) {
+  if (missingCount > 0) return COMPLIANCE_STATUS.missing;
+  if (compliance?.status === COMPLIANCE_STATUS.needs_review) return COMPLIANCE_STATUS.needs_review;
+  if (compliance?.status === COMPLIANCE_STATUS.verified) return COMPLIANCE_STATUS.verified;
+  return COMPLIANCE_STATUS.missing;
+}
 
-  switch (fieldId) {
-    case 'fuel':
-    case 'consumption':
-    case 'co2':
-    case 'wltp':
-    case 'energyClass':
-      return Boolean(values[fieldId]);
-    case 'electricConsumption':
-      return isElectric ? Boolean(values.electricConsumption) && !String(values.electricConsumption).startsWith('n. a.')
-        : Boolean(values.electricConsumption);
-    case 'range':
-      return isElectric ? Boolean(values.range) && !String(values.range).startsWith('n. a.')
-        : Boolean(values.range);
+function buildLegalBlockIce(values) {
+  const parts = [];
+  if (isPresent(values.consumptionCombined)) {
+    parts.push(`Kraftstoffverbrauch kombiniert: ${values.consumptionCombined}`);
+  }
+  if (isPresent(values.co2Combined)) {
+    parts.push(`CO₂-Emissionen kombiniert: ${values.co2Combined}`);
+  }
+  if (isPresent(values.co2Class)) {
+    parts.push(`CO₂-Klasse: ${values.co2Class}`);
+  }
+  return parts.join('; ') + (parts.length ? '.' : '');
+}
+
+function buildLegalBlockBev(values) {
+  const parts = [];
+  if (isPresent(values.electricConsumptionCombined)) {
+    parts.push(`Stromverbrauch kombiniert: ${values.electricConsumptionCombined}`);
+  }
+  if (isPresent(values.co2Combined)) {
+    parts.push(`CO₂-Emissionen kombiniert: ${values.co2Combined}`);
+  }
+  if (isPresent(values.co2Class)) {
+    parts.push(`CO₂-Klasse: ${values.co2Class}`);
+  }
+  if (isPresent(values.electricRange)) {
+    parts.push(`elektrische Reichweite: ${values.electricRange}`);
+  }
+  return parts.join('; ') + (parts.length ? '.' : '');
+}
+
+function buildLegalBlockPhev(values) {
+  const parts = [];
+  if (isPresent(values.weightedConsumptionCombined)) {
+    parts.push(`Kraftstoffverbrauch gewichtet kombiniert: ${values.weightedConsumptionCombined}`);
+  }
+  if (isPresent(values.weightedElectricConsumption)) {
+    parts.push(`Stromverbrauch gewichtet kombiniert: ${values.weightedElectricConsumption}`);
+  }
+  if (isPresent(values.weightedCo2Combined)) {
+    parts.push(`CO₂-Emissionen gewichtet kombiniert: ${values.weightedCo2Combined}`);
+  }
+  if (isPresent(values.co2Class)) {
+    parts.push(`CO₂-Klasse: ${values.co2Class}`);
+  }
+  if (isPresent(values.depletedBatteryConsumption)) {
+    parts.push(`bei entladener Batterie: ${values.depletedBatteryConsumption}`);
+  }
+  if (isPresent(values.electricRange)) {
+    parts.push(`elektrische Reichweite: ${values.electricRange}`);
+  }
+  return parts.join('; ') + (parts.length ? '.' : '');
+}
+
+export function buildRequiredLegalBlock(powertrain, values) {
+  switch (powertrain) {
+    case 'bev':
+      return buildLegalBlockBev(values);
+    case 'phev':
+      return buildLegalBlockPhev(values);
+    case 'hev':
+    case 'ice':
     default:
-      return false;
+      return buildLegalBlockIce(values);
   }
 }
 
-export function evaluateVehicleCompliance({ vehicleLabel, engineId }) {
-  const engine = getEngine(engineId);
-  const values = getOemComplianceValues(engineId);
+/**
+ * @param {object} vehicleOrOffer – Fahrzeug, Angebot, Konfiguration oder { engineId, brand, model, … }
+ */
+export function validateVehicleCompliance(vehicleOrOffer = {}) {
+  const profile = resolveVehicleComplianceProfile(vehicleOrOffer);
+  const powertrain = profile.powertrainType ?? 'ice';
+  const requiredFields = getRequiredFieldsForPowertrain(powertrain);
+  const values = { ...(profile.wltp ?? {}) };
+  const warnings = [];
 
-  const missingFields = COMPLIANCE_REQUIRED_FIELDS.filter(
-    (f) => !fieldSatisfied(f.id, values, engine),
-  );
+  if (!isPresent(values.dataStandard) && profile.compliance?.dataStandard) {
+    values.dataStandard = profile.compliance.dataStandard;
+  }
 
-  const total = COMPLIANCE_REQUIRED_FIELDS.length;
-  const score = Math.round(((total - missingFields.length) / total) * 100);
-  const publishBlocked = missingFields.length > 0;
+  const missingFields = requiredFields.filter((f) => !isPresent(values[f.id]));
+
+  const engineIds = profile.engineIds ?? (profile.engineId ? [profile.engineId] : []);
+  if (vehicleOrOffer.advertiseRange && engineIds.length > 1) {
+    warnings.push('Wertebereich nur mit expliziter Variantenangabe zulässig.');
+  }
+
+  if (!profile.compliance?.verifiedAt && profile.compliance?.status !== COMPLIANCE_STATUS.verified) {
+    warnings.push('WLTP-Daten noch nicht durch Admin freigegeben.');
+  }
+
+  const effectiveStatus = resolveEffectiveStatus(profile.compliance, missingFields.length);
+  const multiVariantBlocked = engineIds.length > 1 && !vehicleOrOffer.allowMultiVariant;
+  if (multiVariantBlocked) {
+    warnings.push('Veröffentlichung blockiert: Mehrere Varianten – bitte eine Motorisierung wählen.');
+  }
+
+  const publishable = effectiveStatus === COMPLIANCE_STATUS.verified
+    && missingFields.length === 0
+    && !multiVariantBlocked
+    && !(vehicleOrOffer.advertiseRange && engineIds.length > 1);
+
+  const total = requiredFields.length;
+  const score = total === 0 ? 0 : Math.round(((total - missingFields.length) / total) * 100);
+
+  const requiredLegalBlock = publishable
+    ? buildRequiredLegalBlock(powertrain, values)
+    : '';
+
+  const statusUi = COMPLIANCE_STATUS_UI[effectiveStatus] ?? COMPLIANCE_STATUS_UI.missing;
 
   return {
-    vehicleLabel: vehicleLabel ?? `${sportage.brand} ${sportage.model}`,
-    engineId,
-    engineName: engine?.name ?? '–',
-    values,
-    missingFields,
+    publishable,
     score,
-    publishBlocked,
-    statusLabel: publishBlocked ? 'Pflichtangaben fehlen' : 'Fahrzeug veröffentlichbar',
-    statusEmoji: publishBlocked ? '🔴' : '🟢',
+    missingFields,
+    warnings,
+    requiredLegalBlock,
+    blockedCopyMessage: BLOCKED_COPY_MESSAGE,
+    powertrain,
+    values,
+    compliance: profile.compliance,
+    vehicleLabel: profile.label,
+    engineId: profile.engineId,
+    engineName: profile.variant ?? '',
+    status: effectiveStatus,
+    statusEmoji: statusUi.emoji,
+    statusLabel: publishable ? statusUi.label : (missingFields.length ? 'Pflichtangaben fehlen' : statusUi.label),
+    publishBlocked: !publishable,
+    source: profile.compliance?.source ?? '–',
+    verifiedAt: profile.compliance?.verifiedAt ?? '–',
+    verifiedBy: profile.compliance?.verifiedBy ?? '–',
   };
 }
 
+/** @deprecated Alias – nutzt validateVehicleCompliance */
+export function evaluateVehicleCompliance({ vehicleLabel, engineId, ...rest } = {}) {
+  const result = validateVehicleCompliance({ engineId, label: vehicleLabel, ...rest });
+  return {
+    ...result,
+    values: result.values,
+    missingFields: result.missingFields,
+  };
+}
+
+/** @deprecated */
+export function getOemComplianceValues(engineId) {
+  return validateVehicleCompliance({ engineId }).values;
+}
+
 export function listComplianceVehicles() {
-  return sportage.engines.map((engine) => evaluateVehicleCompliance({
-    vehicleLabel: `${sportage.brand} ${sportage.model} · ${engine.name}`,
-    engineId: engine.id,
-  }));
+  return listAllComplianceProfiles().map((p) => validateVehicleCompliance(p));
+}
+
+export function appendLegalBlockToText(text, validation) {
+  if (!validation?.publishable || !validation.requiredLegalBlock) return text;
+  const block = validation.requiredLegalBlock.trim();
+  if (!block) return text;
+  if (text.includes(block)) return text;
+  return `${text.trim()}\n\n${block}`;
+}
+
+export function canCopyComplianceContent(validation) {
+  return Boolean(validation?.publishable);
 }

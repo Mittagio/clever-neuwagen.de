@@ -1,20 +1,38 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageShell from '../../components/layout/PageShell';
 import usePageSeo from '../../hooks/usePageSeo';
-import {
-  COMPLIANCE_REQUIRED_FIELDS,
-  listComplianceVehicles,
-} from '../../logic/complianceShield.js';
-import './Sprint5Shared.css';
+import { COMPLIANCE_STATUS } from '../../data/complianceSchema.js';
+import { listComplianceVehicles } from '../../logic/complianceShield.js';
+import ComplianceShieldBanner from '../../components/compliance/ComplianceShieldBanner.jsx';
+import '../sprint5/Sprint5Shared.css';
 import './AdminCompliancePage.css';
 
+const TABS = [
+  { id: 'all', label: 'Alle' },
+  { id: COMPLIANCE_STATUS.verified, label: '🟢 Geprüft' },
+  { id: COMPLIANCE_STATUS.needs_review, label: '🟡 Prüfung nötig' },
+  { id: COMPLIANCE_STATUS.missing, label: '🔴 Blockiert' },
+];
+
 export default function AdminCompliancePage() {
+  const [tab, setTab] = useState('all');
   const vehicles = useMemo(() => listComplianceVehicles(), []);
+
+  const filtered = useMemo(() => {
+    if (tab === 'all') return vehicles;
+    return vehicles.filter((v) => v.status === tab);
+  }, [vehicles, tab]);
+
+  const counts = useMemo(() => ({
+    verified: vehicles.filter((v) => v.status === COMPLIANCE_STATUS.verified).length,
+    needs_review: vehicles.filter((v) => v.status === COMPLIANCE_STATUS.needs_review).length,
+    missing: vehicles.filter((v) => v.status === COMPLIANCE_STATUS.missing).length,
+  }), [vehicles]);
 
   usePageSeo({
     title: 'Compliance Shield',
-    description: 'WLTP- und CO₂-Pflichtangaben aus Herstellerdaten – Veröffentlichung blockiert bei Lücken.',
+    description: 'Harte Sperre für WLTP-, Verbrauchs- und CO₂-Pflichtangaben.',
     path: '/admin/compliance',
   });
 
@@ -22,56 +40,60 @@ export default function AdminCompliancePage() {
     <PageShell className="admin-shell">
       <div className="s5-page compliance-page">
         <Link to="/admin" className="s5-header__back">← Admin</Link>
-        <p className="s5-header__kicker">Abmahnschutz</p>
-        <h1 className="s5-header__title">Compliance Shield</h1>
+        <p className="s5-header__kicker">Abmahnschutz · Compliance Shield</p>
+        <h1 className="s5-header__title">WLTP / CO₂ Compliance</h1>
         <p className="s5-header__sub">
-          Pflichtangaben kommen ausschließlich aus Herstellerdatenbank, Preisliste und Import –
-          Verkäufer können diese Werte nicht frei eintippen.
+          Kein Inserat, Angebot oder Social-Media-Text ohne geprüfte Pflichtangaben aus der
+          Herstellerdatenbank. Händler können Verbrauchswerte nicht frei eingeben.
         </p>
 
-        <div className="s5-banner s5-banner--info">
-          Pflichtfelder: {COMPLIANCE_REQUIRED_FIELDS.map((f) => f.label).join(' · ')}
+        <div className="compliance-stats">
+          <div className="compliance-stat compliance-stat--ok">
+            <span className="compliance-stat__n">{counts.verified}</span>
+            <span>Geprüft</span>
+          </div>
+          <div className="compliance-stat compliance-stat--warn">
+            <span className="compliance-stat__n">{counts.needs_review}</span>
+            <span>Prüfung nötig</span>
+          </div>
+          <div className="compliance-stat compliance-stat--bad">
+            <span className="compliance-stat__n">{counts.missing}</span>
+            <span>Blockiert</span>
+          </div>
+        </div>
+
+        <div className="compliance-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`compliance-tab${tab === t.id ? ' is-active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         <ul className="compliance-list">
-          {vehicles.map((v) => (
-            <li key={v.engineId} className="s5-card compliance-card">
-              <div className="compliance-card__head">
-                <div>
-                  <h2 className="s5-card__title">{v.vehicleLabel}</h2>
-                  <p className="compliance-card__engine">{v.engineName}</p>
-                </div>
-                <div className="compliance-card__score" data-blocked={v.publishBlocked}>
-                  <span className="compliance-card__score-value">{v.score} %</span>
-                  <span className="compliance-card__score-label">
-                    {v.statusEmoji} {v.statusLabel}
-                  </span>
-                </div>
-              </div>
-
-              {v.publishBlocked && (
-                <div className="s5-banner s5-banner--warn compliance-card__warn">
-                  Pflichtangaben fehlen – Veröffentlichung blockiert
-                </div>
-              )}
-
+          {filtered.map((v) => (
+            <li key={`${v.engineId}-${v.vehicleLabel}`} className="s5-card compliance-card">
+              <ComplianceShieldBanner validation={v} showFields />
               <dl className="compliance-values">
-                {COMPLIANCE_REQUIRED_FIELDS.map((field) => (
-                  <div key={field.id} className="compliance-values__row">
-                    <dt>{field.label}</dt>
-                    <dd>{v.values[field.id] ?? '–'}</dd>
+                {Object.entries(v.values ?? {}).map(([key, val]) => (
+                  <div key={key} className="compliance-values__row">
+                    <dt>{key}</dt>
+                    <dd>{val ?? '–'}</dd>
                   </div>
                 ))}
               </dl>
-
-              {v.missingFields.length > 0 && (
-                <p className="compliance-card__missing">
-                  Fehlend: {v.missingFields.map((f) => f.label).join(', ')}
-                </p>
-              )}
             </li>
           ))}
         </ul>
+
+        {filtered.length === 0 && (
+          <p className="compliance-empty">Keine Fahrzeuge in dieser Kategorie.</p>
+        )}
       </div>
     </PageShell>
   );

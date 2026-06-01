@@ -1,0 +1,94 @@
+.compliance-banner {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.compliance-banner--verified {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.compliance-banner--needs_review {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.compliance-banner--missing {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.compliance-banner--compact {
+  padding: 12px 14px;
+}
+
+.compliance-banner__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.compliance-banner__score {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.compliance-banner__status {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.compliance-banner__block-msg {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.compliance-banner__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.compliance-banner__meta dt {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.compliance-banner__meta dd {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.compliance-banner__missing,
+.compliance-banner__legal {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.compliance-banner__warnings {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+  color: #b45309;
+}
+
+@media (max-width: 640px) {
+  .compliance-banner__meta {
+    grid-template-columns: 1fr;
+  }
+}

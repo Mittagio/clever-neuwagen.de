@@ -20,7 +20,12 @@ const FILTER_OPTIONS = [
   { id: SPRINT5_AUDIT_TYPES.document_uploaded, label: 'Dokument hochgeladen' },
   { id: SPRINT5_AUDIT_TYPES.document_deleted, label: 'Dokument gelöscht' },
   { id: SPRINT5_AUDIT_TYPES.selbstauskunft_created, label: 'Selbstauskunft' },
-  { id: SPRINT5_AUDIT_TYPES.compliance_error, label: 'Compliance' },
+  { id: SPRINT5_AUDIT_TYPES.compliance_error, label: 'Compliance Fehler' },
+  { id: SPRINT5_AUDIT_TYPES.compliance_checked, label: 'Compliance geprüft' },
+  { id: SPRINT5_AUDIT_TYPES.publish_blocked, label: 'Veröffentlichung blockiert' },
+  { id: SPRINT5_AUDIT_TYPES.legal_block_copied, label: 'Pflichtblock kopiert' },
+  { id: SPRINT5_AUDIT_TYPES.compliance_approved, label: 'Daten freigegeben' },
+  { id: SPRINT5_AUDIT_TYPES.compliance_source_changed, label: 'Quelle geändert' },
   { id: SPRINT5_AUDIT_TYPES.vehicle_published, label: 'Veröffentlicht' },
 ];
 

@@ -8,6 +8,8 @@ import ChangeCenter from './ChangeCenter.jsx';
 import HealthIndicator from './HealthIndicator.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
+import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
+import { validateVehicleCompliance } from '../../logic/complianceShield.js';
 import './SportageDetail.css';
 
 function FieldRow({ label, value, hint }) {
@@ -174,28 +176,22 @@ function TabSerienausstattung() {
 function TabWltp() {
   return (
     <div className="admin-tab-content">
+      <p className="admin-tab-hint">
+        WLTP-Werte nur aus Herstellerdatenbank – Änderungen über Preislisten-Import / Admin-Freigabe.
+      </p>
       <div className="admin-item-list">
-        {sportage.wltp.map((entry) => {
-          const engine = sportage.engines.find((e) => e.id === entry.engineId);
+        {sportage.engines.map((engine) => {
+          const validation = validateVehicleCompliance({ engineId: engine.id });
           return (
-            <article key={entry.engineId} className="admin-item-card">
-              <h3 className="admin-item-title">{engine?.name ?? entry.engineId}</h3>
+            <article key={engine.id} className="admin-item-card">
+              <h3 className="admin-item-title">{engine.name}</h3>
+              <ComplianceShieldBanner validation={validation} compact />
               <div className="admin-wltp-grid">
-                <FieldRow
-                  label="Verbrauch komb."
-                  value={`${entry.consumptionCombined.min}–${entry.consumptionCombined.max} ${entry.consumptionCombined.unit}`}
-                />
-                <FieldRow
-                  label="CO₂ komb."
-                  value={`${entry.co2Combined.min}–${entry.co2Combined.max} ${entry.co2Combined.unit}`}
-                />
-                <FieldRow label="Effizienzklasse" value={entry.efficiencyClass} />
-                {entry.electricRange && (
-                  <FieldRow
-                    label="E-Reichweite"
-                    value={`${entry.electricRange.min}–${entry.electricRange.max} ${entry.electricRange.unit}`}
-                  />
-                )}
+                <FieldRow label="Kraftstoff" value={validation.values.fuel} />
+                <FieldRow label="Verbrauch komb." value={validation.values.consumptionCombined} />
+                <FieldRow label="CO₂ komb." value={validation.values.co2Combined} />
+                <FieldRow label="CO₂-Klasse" value={validation.values.co2Class} />
+                <FieldRow label="Datenstandard" value={validation.values.dataStandard} />
               </div>
             </article>
           );

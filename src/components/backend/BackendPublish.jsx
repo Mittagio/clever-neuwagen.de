@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom';
 import { formatPublishedAt, getSyncStatusLabel } from '../../data/dealerConditionsSchema.js';
+import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
+import { listComplianceVehicles } from '../../logic/complianceShield.js';
 import './BackendSections.css';
 
 export default function BackendPublish({
@@ -9,6 +12,7 @@ export default function BackendPublish({
   onDiscard,
 }) {
   const syncStatus = getSyncStatusLabel(conditions, publishedConditions ?? conditions);
+  const blockedCompliance = listComplianceVehicles().filter((v) => !v.publishable);
 
   return (
     <div className="backend-sections">
@@ -18,6 +22,21 @@ export default function BackendPublish({
           Entwürfe sind nur im Backend sichtbar. Nach Veröffentlichung aktualisieren sich Händlerseite,
           Konfigurator, Landingpage und Verkäuferflow automatisch.
         </p>
+
+        {blockedCompliance.length > 0 ? (
+          <div className="backend-compliance-gate">
+            <ComplianceShieldBanner validation={blockedCompliance[0]} />
+            <p className="backend-section-intro">
+              {blockedCompliance.length} Motorisierung(en) blockiert – Inserate & Publishing gesperrt.
+              {' '}
+              <Link to="/admin/compliance">Compliance Shield →</Link>
+            </p>
+          </div>
+        ) : (
+          <p className="backend-section-intro" style={{ color: '#059669', fontWeight: 600 }}>
+            🟢 Compliance Shield: alle Sportage-Motorisierungen veröffentlichbar
+          </p>
+        )}
 
         <dl className="backend-meta-list">
           <div>

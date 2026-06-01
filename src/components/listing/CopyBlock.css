@@ -45,6 +45,17 @@
   background: #10b981;
 }
 
+.copy-block__btn--disabled,
+.copy-block__btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.copy-block__btn:disabled:active {
+  transform: none;
+}
+
 .copy-block__text {
   margin: 0;
   padding: 16px;

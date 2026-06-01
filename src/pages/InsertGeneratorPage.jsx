@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
 import { sportage } from '../data/kiaSportage.js';
-import CopyBlock from '../components/listing/CopyBlock.jsx';
+import ComplianceShieldBanner from '../components/compliance/ComplianceShieldBanner.jsx';
+import ComplianceCopyBlock from '../components/compliance/ComplianceCopyBlock.jsx';
 import {
   GENERATOR_VEHICLES,
   LISTING_BLOCK_KEYS,
@@ -21,6 +22,13 @@ export default function InsertGeneratorPage() {
     () => generateListingBlocks(config, conditions),
     [config, conditions],
   );
+
+  const vehicleRef = useMemo(() => ({
+    engineId: config.engineId,
+    trimId: config.trimId,
+    brand: sportage.brand,
+    model: sportage.model,
+  }), [config.engineId, config.trimId]);
 
   function update(field, value) {
     setConfig((prev) => ({ ...prev, [field]: value }));
@@ -124,20 +132,34 @@ export default function InsertGeneratorPage() {
         </div>
       </section>
 
+      <ComplianceShieldBanner vehicleRef={vehicleRef} validation={blocks.compliance} />
+
       <section className="insert-gen__blocks">
         <h2 className="insert-gen__section-title">Blöcke kopieren</h2>
         <p className="insert-gen__hint">
-          Tippen → Kopieren → in mobile.de einfügen. Kein Export nötig.
+          {blocks.compliance?.publishable
+            ? 'Pflichtblock wird bei Kopie automatisch angehängt.'
+            : 'Kopieren gesperrt – Pflichtangaben unvollständig oder ungeprüft.'}
         </p>
 
-        <CopyBlock
+        <ComplianceCopyBlock
+          vehicleRef={vehicleRef}
+          validation={blocks.compliance}
           label={LISTING_BLOCK_KEYS[0].label}
           text={blocks.mobileTitle}
+          channelId="mobile-title"
           compact
         />
 
         {LISTING_BLOCK_KEYS.slice(1).map(({ id, label }) => (
-          <CopyBlock key={id} label={label} text={blocks[id]} />
+          <ComplianceCopyBlock
+            key={id}
+            vehicleRef={vehicleRef}
+            validation={blocks.compliance}
+            label={label}
+            text={blocks[id]}
+            channelId={id}
+          />
         ))}
       </section>
 

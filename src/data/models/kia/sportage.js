@@ -21,6 +21,17 @@ export const kiaSportage = {
     updatedBy: 'Clever-Neuwagen Admin',
   },
 
+  /** WLTP-Compliance – nur Admin-Freigabe, keine Händler-Eingabe */
+  compliance: {
+    source: 'Kia Deutschland Preisliste 05/2026',
+    sourceUrl: '',
+    dataStandard: 'WLTP',
+    verifiedBy: 'Clever-Neuwagen Admin',
+    verifiedAt: '2026-05-29',
+    status: 'verified',
+    notes: [],
+  },
+
   trims: [
     {
       id: 'core',

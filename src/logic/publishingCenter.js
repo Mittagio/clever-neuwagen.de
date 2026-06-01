@@ -1,7 +1,10 @@
 import { sportage } from '../data/kiaSportage.js';
 import { calculatePrice } from './priceCalculator.js';
 import { generateListingBlocks } from './listingGenerator.js';
-import { getOemComplianceValues } from './complianceShield.js';
+import {
+  appendLegalBlockToText,
+  validateVehicleCompliance,
+} from './complianceShield.js';
 
 const LEASING_DEFAULTS = {
   termMonths: 48,
@@ -41,17 +44,9 @@ function buildVehicleHeadline(config, conditions) {
   };
 }
 
-function wltpFooter(engineId) {
-  const v = getOemComplianceValues(engineId);
-  const lines = [
-    `Verbrauch komb.: ${v.consumption ?? '–'}`,
-    `CO₂: ${v.co2 ?? '–'}`,
-    `Effizienzklasse: ${v.energyClass ?? '–'}`,
-  ];
-  if (v.range && !String(v.range).startsWith('n. a.')) {
-    lines.push(`Reichweite: ${v.range}`);
-  }
-  return lines.join(' · ');
+function wltpFooter(validation) {
+  if (validation?.requiredLegalBlock) return validation.requiredLegalBlock;
+  return '';
 }
 
 export const PUBLISHING_CHANNELS = [
@@ -65,13 +60,25 @@ export const PUBLISHING_CHANNELS = [
 ];
 
 export function generatePublishingTexts(config, conditions) {
-  const blocks = generateListingBlocks(config, conditions);
+  const vehicleRef = {
+    engineId: config.engineId,
+    trimId: config.trimId,
+    brand: 'Kia',
+    model: 'Sportage',
+  };
+  const validation = validateVehicleCompliance(vehicleRef);
+
+  if (!validation.publishable) {
+    return { texts: null, validation };
+  }
+
+  const blocks = generateListingBlocks(config, conditions, { skipComplianceAppend: true });
   const head = buildVehicleHeadline(config, conditions);
   const vehicleLine = `${sportage.brand} ${sportage.model} ${head.trim?.name} · ${head.engine?.name}`;
   const rateLine = head.leasingRate != null
     ? `ab ${head.leasingRate.toLocaleString('de-DE')} €/Monat*`
     : `ab ${head.cashPrice?.toLocaleString('de-DE')} €`;
-  const footer = wltpFooter(config.engineId);
+  const footer = wltpFooter(validation);
 
   const baseExtras = [
     `Lieferzeit: ${head.delivery}`,
@@ -79,7 +86,7 @@ export function generatePublishingTexts(config, conditions) {
     blocks.serienausstattung.split('\n').slice(2, 5).map((l) => l.replace(/^• /, '')).join(' · '),
   ].filter(Boolean).join('\n');
 
-  return {
+  const texts = {
     mobile: [
       blocks.mobileTitle,
       '',
@@ -167,6 +174,13 @@ export function generatePublishingTexts(config, conditions) {
       `<p><small>${footer}</small></p>`,
     ].join('\n'),
   };
+
+  const withLegal = {};
+  Object.keys(texts).forEach((key) => {
+    withLegal[key] = appendLegalBlockToText(texts[key], validation);
+  });
+
+  return { texts: withLegal, validation };
 }
 
 export const PUBLISHING_VEHICLES = [

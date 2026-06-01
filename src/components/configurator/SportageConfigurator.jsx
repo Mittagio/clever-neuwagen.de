@@ -20,6 +20,8 @@ import { createOfferFromConfig } from '../../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../../logic/offerLeadService.js';
 import ConfigCustomerSheet, { CONFIG_RESTORE_KEY } from './ConfigCustomerSheet.jsx';
 import PriceSummary from './PriceSummary.jsx';
+import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
+import { validateVehicleCompliance } from '../../logic/complianceShield.js';
 import './SportageConfigurator.css';
 
 
@@ -164,6 +166,16 @@ export default function SportageConfigurator({ dealerName }) {
   const activeEquipment = getEquipment(config.trimId);
 
   const wltp = getWltp(config.engineId);
+
+  const compliance = useMemo(
+    () => validateVehicleCompliance({
+      engineId: config.engineId,
+      trimId: config.trimId,
+      brand: kiaSportage.brand,
+      model: kiaSportage.model,
+    }),
+    [config.engineId, config.trimId],
+  );
 
   const activeVariant = getVariant(config.trimId, config.engineId);
 
@@ -703,6 +715,12 @@ export default function SportageConfigurator({ dealerName }) {
         </section>
 
 
+
+        <ComplianceShieldBanner
+          validation={compliance}
+          compact
+          showFields={false}
+        />
 
         {wltp && (
 

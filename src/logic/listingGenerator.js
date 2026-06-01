@@ -1,6 +1,10 @@
 import { sportage, formatPrice, getUpe } from '../data/kiaSportage.js';
 import { RATE_DISCLAIMER } from '../constants/legal.js';
 import { calculatePrice } from './priceCalculator.js';
+import {
+  appendLegalBlockToText,
+  validateVehicleCompliance,
+} from './complianceShield.js';
 
 const LEASING_DEFAULTS = {
   termMonths: 48,
@@ -241,7 +245,7 @@ export const LISTING_BLOCK_KEYS = [
   { id: 'rechtstext', label: 'Rechtstext', short: 'Recht' },
 ];
 
-export function generateListingBlocks(config, conditions) {
+export function generateListingBlocks(config, conditions, options = {}) {
   const normalized = {
     engineId: config.engineId ?? sportage.engines[0].id,
     trimId: config.trimId ?? sportage.trims[0].id,
@@ -249,11 +253,20 @@ export function generateListingBlocks(config, conditions) {
     packageIds: config.packageIds ?? [],
   };
 
-  return {
+  const validation = validateVehicleCompliance({
+    engineId: normalized.engineId,
+    trimId: normalized.trimId,
+    brand: sportage.brand,
+    model: sportage.model,
+  });
+
+  const blocks = {
     mobileTitle: buildMobileTitle(normalized),
     leasingExample: buildLeasingExample(normalized, conditions),
     financeExample: buildFinanceExample(normalized, conditions),
-    wltpBlock: buildWltpBlock(normalized.engineId),
+    wltpBlock: validation.publishable
+      ? validation.requiredLegalBlock
+      : buildWltpBlock(normalized.engineId),
     serienausstattung: buildSerienausstattung(normalized.trimId),
     sonderausstattung: buildSonderausstattung(normalized),
     ansprechpartner: buildAnsprechpartner(conditions),
@@ -262,7 +275,17 @@ export function generateListingBlocks(config, conditions) {
       upe: getUpe(normalized.trimId, normalized.engineId),
       vehicle: `${sportage.brand} ${sportage.model}`,
     },
+    compliance: validation,
   };
+
+  if (validation.publishable && !options.skipComplianceAppend) {
+    const legal = validation.requiredLegalBlock;
+    blocks.leasingExample = appendLegalBlockToText(blocks.leasingExample, validation);
+    blocks.financeExample = appendLegalBlockToText(blocks.financeExample, validation);
+    blocks.rechtstext = `${blocks.rechtstext}\n\n${legal}`.trim();
+  }
+
+  return blocks;
 }
 
 export const GENERATOR_VEHICLES = [

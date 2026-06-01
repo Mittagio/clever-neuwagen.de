@@ -12,6 +12,8 @@ import {
 import OfferCompare from '../components/offers/OfferCompare.jsx';
 import OfferVehicleImage from '../components/shared/OfferVehicleImage.jsx';
 import LegalDisclaimer from '../components/legal/LegalDisclaimer.jsx';
+import ComplianceShieldBanner from '../components/compliance/ComplianceShieldBanner.jsx';
+import { validateVehicleCompliance } from '../logic/complianceShield.js';
 import './OfferPage.css';
 
 function ActionModal({ title, offer, onClose, onSubmit, requireMessage = false }) {
@@ -160,6 +162,13 @@ export default function OfferPage() {
 
   const contact = offer.dealer.contact ?? {};
   const pricing = offer.pricing;
+  const offerCompliance = validateVehicleCompliance({
+    engineId: offer.vehicle?.engineId,
+    trimId: offer.vehicle?.trimId,
+    brand: offer.vehicle?.brand,
+    model: offer.vehicle?.model,
+    label: offer.vehicle?.label,
+  });
 
   const paymentOptions = [
     { id: 'leasing', label: 'Leasing', rate: pricing.leasingRate },
@@ -268,6 +277,12 @@ export default function OfferPage() {
             )}
           </dl>
           <LegalDisclaimer compact className="offer-page__rate-disclaimer" />
+          <ComplianceShieldBanner validation={offerCompliance} compact />
+          {offerCompliance.publishable && offerCompliance.requiredLegalBlock && (
+            <p className="offer-page__legal-block">
+              <strong>Pflichtangaben (WLTP):</strong> {offerCompliance.requiredLegalBlock}
+            </p>
+          )}
         </section>
 
         <section className="offer-page__contact card">
