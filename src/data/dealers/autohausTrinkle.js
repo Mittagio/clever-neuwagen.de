@@ -8,6 +8,8 @@ export const AUTOHAUS_TRINKLE_ID = 'autohaus-trinkle';
 
 export const autohausTrinkleSeed = buildDealerConditionsFromLegacy({
   dealerId: AUTOHAUS_TRINKLE_ID,
+  slug: AUTOHAUS_TRINKLE_ID,
+  subdomain: 'autohaus-trinkle.clever-neuwagen.de',
   dealerName: 'Autohaus Trinkle',
   city: 'Heilbronn',
   plz: '74072',

@@ -1,0 +1,24 @@
+/** Marken-Icon: Auto mit KI-Netzwerk (viewBox 100×100) */
+export default function BrandLogoIcon({ className = '' }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M15 55C15 48 22 42 35 40L42 30H68L75 40C88 42 95 48 95 55V68H85C85 62 80 58 74 58C68 58 63 62 63 68H37C37 62 32 58 26 58C20 58 15 62 15 68H5V55H15Z"
+        fill="#1A202C"
+      />
+      <path d="M44 33H66L71 40H39L44 33Z" fill="#FFFFFF" />
+      <circle cx="70" cy="35" r="18" fill="#FFFFFF" stroke="#1A202C" strokeWidth="3" />
+      <circle cx="64" cy="35" r="3" fill="#5E46E8" />
+      <circle cx="76" cy="27" r="3" fill="#5E46E8" />
+      <circle cx="76" cy="43" r="3" fill="#5E46E8" />
+      <line x1="64" y1="35" x2="76" y2="27" stroke="#5E46E8" strokeWidth="2" />
+      <line x1="64" y1="35" x2="76" y2="43" stroke="#5E46E8" strokeWidth="2" />
+    </svg>
+  );
+}

@@ -29,7 +29,8 @@ export const LEGAL_FOOTER_LINKS = [
   { to: '/legal/agb', label: 'AGB' },
   { to: '/legal/haendler-agb', label: 'Händler-AGB' },
   { to: 'mailto:info@clever-neuwagen.de', label: 'Kontakt', external: true },
-  { to: '/partner', label: 'Für Händler' },
+  { to: '/partner/register', label: 'Für Händler' },
+  { to: '/account', label: 'Mein Konto' },
 ];
 
 export const LEGAL_NAV = [

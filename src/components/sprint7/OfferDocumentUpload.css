@@ -1,0 +1,98 @@
+.offer-docs__hint {
+  margin: 0 0 14px;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.offer-docs__drop {
+  display: block;
+  cursor: pointer;
+}
+
+.offer-docs__input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.offer-docs__drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.offer-docs__drop:hover .offer-docs__drop-inner {
+  border-color: #5e46e8;
+  background: #f5f3ff;
+}
+
+.offer-docs__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #5e46e8;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.offer-docs__list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.offer-docs__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+.offer-docs__name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.offer-docs__meta {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.offer-docs__login-hint {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.offer-docs__login-hint a {
+  color: #5e46e8;
+  font-weight: 600;
+}
+
+.offer-docs__toast {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  color: #15803d;
+  font-weight: 600;
+}

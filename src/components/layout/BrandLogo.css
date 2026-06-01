@@ -1,0 +1,101 @@
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.brand-logo__icon {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.brand-logo__icon-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.brand-logo__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.brand-logo__wordmark {
+  display: flex;
+  align-items: baseline;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.brand-logo__clever {
+  color: #5e46e8;
+}
+
+.brand-logo__domain {
+  color: #1a202c;
+}
+
+.brand-logo__tagline {
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+/* Header / enge Bereiche */
+.brand-logo--compact .brand-logo__icon {
+  width: 40px;
+  height: 40px;
+}
+
+.brand-logo--compact .brand-logo__wordmark {
+  font-size: 1.125rem;
+}
+
+.brand-logo--compact .brand-logo__tagline {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .header--marketing .brand-logo--compact .brand-logo__icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .header--marketing .brand-logo--compact .brand-logo__wordmark {
+    font-size: 1.25rem;
+  }
+
+  .header--marketing .brand-logo--compact .brand-logo__tagline {
+    display: block;
+    font-size: 0.625rem;
+  }
+}
+
+/* Kundenbereich & volle Darstellung */
+.brand-logo--full .brand-logo__icon {
+  width: 4rem;
+  height: 4rem;
+}
+
+.brand-logo--full .brand-logo__wordmark {
+  font-size: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .brand-logo--full .brand-logo__wordmark {
+    font-size: 2.25rem;
+  }
+
+  .brand-logo--full .brand-logo__tagline {
+    font-size: 0.8125rem;
+  }
+}

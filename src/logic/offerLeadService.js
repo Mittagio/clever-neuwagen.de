@@ -144,7 +144,7 @@ export function createLeadFromOffer(offer, action = 'inquiry', contact = {}) {
     currentRate: offer.pricing.rate,
     notes: `${actionLabel} via Angebotslink ${offer.code}`,
     history: [
-      historyEntry(`Anfrage über Angebotslink /offer/${offer.code}`),
+      historyEntry(`Anfrage über Angebotslink /angebot/${offer.code}`),
       historyEntry(actionLabel, 'note'),
     ],
   };

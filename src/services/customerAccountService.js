@@ -9,6 +9,8 @@ export const EMPTY_CUSTOMER_DATA = {
   configurations: [],
   favorites: [],
   testDrives: [],
+  documents: [],
+  vehicleStatus: [],
 };
 
 function uid(prefix) {
@@ -24,6 +26,8 @@ export function normalizeCustomerData(raw) {
     configurations: Array.isArray(raw.configurations) ? raw.configurations : [],
     favorites: Array.isArray(raw.favorites) ? raw.favorites : [],
     testDrives: Array.isArray(raw.testDrives) ? raw.testDrives : [],
+    documents: Array.isArray(raw.documents) ? raw.documents : [],
+    vehicleStatus: Array.isArray(raw.vehicleStatus) ? raw.vehicleStatus : [],
     // Legacy keys migrieren
     ...(raw.watchlist && !raw.favorites?.length
       ? { favorites: raw.watchlist.map((w) => ({ ...w, id: w.id ?? uid('fav') })) }
@@ -169,6 +173,85 @@ export function addFavoriteToAccount(data, entry) {
 
 export function updateProfile(data, profile) {
   return { ...data, profile: { ...data.profile, ...profile } };
+}
+
+export function buildDocumentEntry({ offerCode, fileName, fileSize, label, vehicleLabel }) {
+  return {
+    id: uid('doc'),
+    offerCode: offerCode ?? null,
+    fileName,
+    fileSize: fileSize ?? 0,
+    label: label ?? fileName,
+    vehicleLabel: vehicleLabel ?? '',
+    uploadedAt: new Date().toISOString(),
+    status: 'hochgeladen',
+  };
+}
+
+export function addDocumentToAccount(data, entry) {
+  return { ...data, documents: [entry, ...data.documents] };
+}
+
+export function buildVehicleStatusEntry(offer, stage = 'angebot') {
+  return {
+    id: uid('vs'),
+    offerCode: offer.code,
+    label: offer.vehicle?.label ?? `${offer.vehicle?.brand} ${offer.vehicle?.model}`,
+    dealer: offer.dealer?.name ?? '',
+    deliveryTime: offer.deliveryTime ?? '–',
+    stage,
+    updatedAt: new Date().toISOString(),
+    events: [
+      {
+        at: new Date().toISOString(),
+        label: VEHICLE_STATUS_LABELS[stage] ?? stage,
+      },
+    ],
+  };
+}
+
+const VEHICLE_STATUS_LABELS = {
+  angebot: 'Angebot erhalten',
+  interessiert: 'Interesse bestätigt',
+  bestellung: 'Bestellung aufgegeben',
+  produktion: 'Fahrzeug in Produktion',
+  transport: 'Auf dem Transportweg',
+  auslieferung: 'Auslieferung geplant',
+  ausgeliefert: 'Ausgeliefert',
+};
+
+export function upsertVehicleStatus(data, entry) {
+  const idx = data.vehicleStatus.findIndex((v) => v.offerCode === entry.offerCode);
+  if (idx >= 0) {
+    const existing = data.vehicleStatus[idx];
+    const events = [
+      ...(existing.events ?? []),
+      ...(entry.events ?? []),
+    ];
+    const next = [...data.vehicleStatus];
+    next[idx] = { ...existing, ...entry, events };
+    return { ...data, vehicleStatus: next };
+  }
+  return { ...data, vehicleStatus: [entry, ...data.vehicleStatus] };
+}
+
+export function updateVehicleStatusStage(data, offerCode, stage) {
+  return {
+    ...data,
+    vehicleStatus: data.vehicleStatus.map((v) =>
+      v.offerCode === offerCode
+        ? {
+            ...v,
+            stage,
+            updatedAt: new Date().toISOString(),
+            events: [
+              ...(v.events ?? []),
+              { at: new Date().toISOString(), label: VEHICLE_STATUS_LABELS[stage] ?? stage },
+            ],
+          }
+        : v,
+    ),
+  };
 }
 
 export function mergeLiveOffers(accountOffers, globalOffers, email) {

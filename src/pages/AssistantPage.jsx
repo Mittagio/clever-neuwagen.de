@@ -4,7 +4,7 @@ import { usePublishedDealerConditions } from '../context/DealerConditionsContext
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useOffers } from '../context/OffersContext.jsx';
 import { SALES_DEFAULTS, VEHICLE_TYPE_OPTIONS } from '../data/salesCatalog.js';
-import { createOfferFromSales, buildOfferUrl } from '../logic/offerService.js';
+import { createOfferFromSales, buildOfferUrl, buildOfferPath } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import { getRecommendations, formatRecommendationRate } from '../services/recommendationEngine.js';
 import { recordAssistantSession } from '../services/assistantAnalytics.js';
@@ -150,13 +150,13 @@ export default function AssistantPage() {
   function handleCreateOffer(rec, openView = false) {
     const existing = createdOffers[rec.id];
     if (existing) {
-      if (openView) navigate(`/offer/${existing.offer.code}`);
+      if (openView) navigate(buildOfferPath(existing.offer.code));
       return existing;
     }
     const result = persistOffer(rec);
     showToast(`Angebot ${result.offer.code} erstellt`);
     if (openView) {
-      navigate(`/offer/${result.offer.code}`);
+      navigate(buildOfferPath(result.offer.code));
     }
     return result;
   }
@@ -180,7 +180,7 @@ export default function AssistantPage() {
       if (!firstCode) firstCode = offer.code;
     }
     showToast(`${compareItems.length} Vergleichsangebote erstellt`);
-    navigate(`/offer/${firstCode}`);
+    navigate(buildOfferPath(firstCode));
   }
 
   function toggleCompare(id) {

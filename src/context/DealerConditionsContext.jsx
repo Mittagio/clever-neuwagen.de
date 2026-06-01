@@ -6,7 +6,7 @@ import {
   LEASING_TERM_OPTIONS,
   LEASING_MILEAGE_OPTIONS,
 } from '../data/dealerConditionsSchema.js';
-import { DEFAULT_DEALER_ID, getDealerSeed } from '../data/dealers/index.js';
+import { DEFAULT_DEALER_ID, getDealerSeed, DEALER_REGISTRY } from '../data/dealers/index.js';
 import {
   createEmptyInventoryItem,
   normalizeInventoryItem,
@@ -55,12 +55,13 @@ function loadStore() {
     /* Fallback */
   }
 
-  const seed = getDealerSeed(DEFAULT_DEALER_ID);
+  const dealers = {};
+  for (const entry of Object.values(DEALER_REGISTRY)) {
+    dealers[entry.id] = createDealerPair(entry.seed);
+  }
   return {
     version: STORE_VERSION,
-    dealers: {
-      [DEFAULT_DEALER_ID]: createDealerPair(seed),
-    },
+    dealers,
   };
 }
 
@@ -69,7 +70,12 @@ function saveStore(store) {
 }
 
 function getDealerPair(store, dealerId = DEFAULT_DEALER_ID) {
-  return store.dealers[dealerId] ?? store.dealers[DEFAULT_DEALER_ID];
+  if (store.dealers[dealerId]) return store.dealers[dealerId];
+  const seed = getDealerSeed(dealerId);
+  if (DEALER_REGISTRY[dealerId]) {
+    return createDealerPair(seed);
+  }
+  return store.dealers[DEFAULT_DEALER_ID];
 }
 
 function updateModelMap(prev, mapKey, modelId, updater) {

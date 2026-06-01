@@ -47,9 +47,15 @@ export default function AdminDomainsPage() {
               <button type="button" className="launch-btn launch-btn--secondary" onClick={() => toggleDomainStatus(dom.id)}>
                 {dom.status === 'active' ? 'Deaktivieren' : 'Aktivieren'}
               </button>
-              <button type="button" className="launch-btn launch-btn--secondary" disabled>
-                Domain erstellen (VPS)
-              </button>
+              <a
+                href={`https://${dom.host}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="launch-btn launch-btn--secondary"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+              >
+                Seite öffnen →
+              </a>
             </div>
           </LaunchCard>
         ))}

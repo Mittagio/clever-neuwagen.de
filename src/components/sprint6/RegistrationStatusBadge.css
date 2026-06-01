@@ -1,0 +1,34 @@
+.reg-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reg-status--muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.reg-status--info {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.reg-status--warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.reg-status--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.reg-status--danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}

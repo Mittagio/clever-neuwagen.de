@@ -35,7 +35,7 @@ export default function DealerAiResultPanel({ result, vehicleCard }) {
           <p className="dai-result-kpi">{result.offerCode}</p>
           <p className="dai-result-sub">Angebotsnummer</p>
           <div className="dai-result-links">
-            <Link to={`/offer/${result.offerCode}`} className="dai-link">Angebot öffnen</Link>
+            <Link to={`/angebot/${result.offerCode}`} className="dai-link">Angebot öffnen</Link>
             <Link to="/offers" className="dai-link">Angebotszentrum</Link>
             {result.leadId && <Link to="/leads" className="dai-link">CRM / Leads</Link>}
           </div>

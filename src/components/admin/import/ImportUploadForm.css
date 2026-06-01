@@ -107,6 +107,13 @@
   cursor: not-allowed;
 }
 
+.import-upload__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 @media (prefers-color-scheme: dark) {
   .import-upload__submit {
     background: #f5f5f7;

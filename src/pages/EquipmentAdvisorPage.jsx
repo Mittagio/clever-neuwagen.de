@@ -12,7 +12,7 @@ import {
   CUSTOMER_WISHES,
   formatPrice,
 } from '../logic/equipmentAdvisor.js';
-import { createOfferFromConfig } from '../logic/offerService.js';
+import { createOfferFromConfig, buildOfferPath } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import ConfigCustomerSheet, { stashConfigForRestore } from '../components/configurator/ConfigCustomerSheet.jsx';
 import { recordIntelligenceEquipment } from '../services/intelligenceAnalytics.js';
@@ -320,7 +320,7 @@ export default function EquipmentAdvisorPage() {
           <p className="eq-advisor__success-title">✓ Angebot erstellt</p>
           <p>Angebotsnummer: <strong>{createdOfferCode}</strong></p>
           <div className="eq-advisor__success-actions">
-            <Link to={`/offer/${createdOfferCode}`} className="btn btn-primary">
+            <Link to={buildOfferPath(createdOfferCode)} className="btn btn-primary">
               Angebot ansehen
             </Link>
             <Link to="/kunde" className="btn btn-secondary">

@@ -12,6 +12,7 @@ import {
   countModelsForDealer,
   getBrandLabels,
 } from '../logic/dealerAdminEngine.js';
+import { getPackageById } from '../logic/dealerRegistration.js';
 
 const STORAGE_KEY = 'clever-neuwagen-dealer-admin';
 
@@ -216,6 +217,150 @@ export function DealerAdminProvider({ children }) {
         activities: DEMO_DEALER_ACTIVITIES,
         approvals: DEMO_APPROVALS,
         notifications: DEMO_NOTIFICATIONS,
+      });
+    },
+
+    createFromRegistration(application) {
+      const pkg = getPackageById(application.packageId);
+      const dealerId = application.slug;
+      if (!dealerId) return;
+
+      setState((prev) => {
+        if (prev.dealers.some((d) => d.id === dealerId)) {
+          return prev;
+        }
+
+        const companyName = application.company.legalName?.trim()
+          || application.company.tradeName?.trim();
+        const contactPerson = `${application.contact.firstName} ${application.contact.lastName}`.trim();
+        const address = `${application.company.street}, ${application.company.zip} ${application.company.city}`;
+
+        const newDealer = {
+          id: dealerId,
+          companyName,
+          contactPerson,
+          email: application.contact.email,
+          phone: application.contact.phone,
+          address,
+          city: application.company.city,
+          status: 'draft',
+          registrationStatus: 'submitted',
+          brands: [...application.brands],
+          models: {},
+          contract: {
+            startDate: null,
+            type: `Paket ${pkg.name}`,
+            platformFee: pkg.monthlyFee,
+            provisionModel: `${pkg.successProvision} € pro bestätigter Auslieferung`,
+            cancellationStatus: 'Warte auf Freigabe',
+          },
+          stats: { leads: 0, offers: 0, sales: 0, monthlyRevenue: 0 },
+          onboardingStep: 1,
+          packageId: application.packageId,
+          registrationId: application.id,
+          createdAt: application.submittedAt ?? new Date().toISOString(),
+        };
+
+        const approval = {
+          id: `appr-reg-${dealerId}`,
+          type: 'registration',
+          title: `Neue Registrierung: ${companyName}`,
+          dealerId,
+          status: 'pending',
+          createdAt: application.submittedAt ?? new Date().toISOString(),
+          meta: { registrationId: application.id, packageId: application.packageId },
+        };
+
+        const notification = {
+          id: `notif-reg-${dealerId}`,
+          text: `Neue Händlerregistrierung: ${companyName}`,
+          approvalId: approval.id,
+          read: false,
+          createdAt: approval.createdAt,
+        };
+
+        return {
+          ...prev,
+          dealers: [...prev.dealers, newDealer],
+          approvals: [approval, ...prev.approvals],
+          notifications: [notification, ...prev.notifications],
+          activities: [
+            {
+              id: `act-reg-${Date.now()}`,
+              dealerId,
+              action: 'Self-Service-Registrierung eingereicht',
+              createdAt: approval.createdAt,
+            },
+            ...prev.activities,
+          ],
+        };
+      });
+    },
+
+    syncRegistrationStatus(dealerId, registrationStatus) {
+      setState((prev) => {
+        const dealer = prev.dealers.find((d) => d.id === dealerId);
+        if (!dealer) return prev;
+
+        let status = dealer.status;
+        let onboardingStep = dealer.onboardingStep;
+
+        switch (registrationStatus) {
+          case 'submitted':
+            status = 'draft';
+            onboardingStep = Math.max(onboardingStep, 1);
+            break;
+          case 'review':
+            status = 'review';
+            onboardingStep = Math.max(onboardingStep, 3);
+            break;
+          case 'approved':
+            status = 'review';
+            onboardingStep = Math.max(onboardingStep, 4);
+            break;
+          case 'live':
+            status = 'active';
+            onboardingStep = 5;
+            break;
+          case 'rejected':
+            status = 'blocked';
+            break;
+          default:
+            break;
+        }
+
+        const contract = registrationStatus === 'live'
+          ? {
+              ...dealer.contract,
+              startDate: new Date().toISOString().slice(0, 10),
+              cancellationStatus: 'Unbefristet',
+            }
+          : dealer.contract;
+
+        return {
+          ...prev,
+          dealers: prev.dealers.map((d) =>
+            d.id === dealerId
+              ? { ...d, status, registrationStatus, onboardingStep, contract }
+              : d,
+          ),
+          activities: [
+            {
+              id: `act-${Date.now()}`,
+              dealerId,
+              action: `Onboarding-Status: ${registrationStatus}`,
+              createdAt: new Date().toISOString(),
+            },
+            ...prev.activities,
+          ],
+          approvals: registrationStatus === 'approved' || registrationStatus === 'live'
+            ? prev.approvals.map((a) =>
+                a.dealerId === dealerId && a.type === 'registration' && a.status === 'pending'
+                  ? { ...a, status: 'approved' }
+                  : a,
+              )
+            : prev.approvals,
+        };
       });
     },
 

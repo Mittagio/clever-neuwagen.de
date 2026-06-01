@@ -1,22 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
+import BrandLogo from './BrandLogo.jsx';
+import { useDealerSubdomain } from '../../context/DealerSubdomainContext.jsx';
+import './BrandLogo.css';
 import './Header.css';
 
 export default function Header() {
+  const { isSubdomain } = useDealerSubdomain();
   const location = useLocation();
   const path = location.pathname;
   const isAdmin = path.startsWith('/admin');
   const isBackend = path.startsWith('/backend');
   const isSales = path.startsWith('/sales');
-  const isCustomer = path.startsWith('/kunde');
-  const isPublicMarketing = !isAdmin && !isBackend && !isSales && !isCustomer;
+  const isCustomer = path.startsWith('/kunde') || path.startsWith('/account');
+  const isOfferPage = path.startsWith('/angebot') || path.startsWith('/offer');
+  const isPublicMarketing = !isAdmin && !isBackend && !isSales && !isCustomer && !isOfferPage;
 
-  if (isSales || isCustomer) return null;
+  if (isSales || isCustomer || isOfferPage || isSubdomain) return null;
 
   return (
     <header className={`header${isPublicMarketing ? ' header--marketing' : ''}`}>
       <div className="header-inner container">
-        <Link to="/" className="header-logo">
-          clever-neuwagen<span className="header-logo-dot">.de</span>
+        <Link to="/" className="header-logo" aria-label="Clever-Neuwagen Startseite">
+          <BrandLogo />
         </Link>
 
         {isPublicMarketing && (
@@ -25,7 +30,7 @@ export default function Header() {
             <Link to="/ratgeber" className="header-link">Ratgeber</Link>
             <Link to="/trends" className="header-link">Trends</Link>
             <Link to="/haendler/autohaus-trinkle" className="header-link">Händler</Link>
-            <Link to="/kunde" className="header-link">Mein Bereich</Link>
+            <Link to="/account" className="header-link">Mein Bereich</Link>
           </nav>
         )}
 
@@ -39,8 +44,8 @@ export default function Header() {
         <div className="header-actions">
           {isPublicMarketing ? (
             <>
-              <Link to="/partner" className="header-link header-link--dealer">Für Händler</Link>
-              <Link to="/kunde" className="header-link header-link--signin">Anmelden</Link>
+              <Link to="/partner/register" className="header-link header-link--dealer">Für Händler</Link>
+              <Link to="/account" className="header-link header-link--signin">Anmelden</Link>
               <Link to="/backend" className="header-btn header-btn--login">Login</Link>
             </>
           ) : (

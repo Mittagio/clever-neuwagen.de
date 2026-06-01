@@ -1,4 +1,5 @@
 import { kiaSportage } from './sportage.js';
+import { getUpeOverride } from '../../vehicleCatalogStore.js';
 
 /** Abwärtskompatibilität für Bestandsdaten (Inventory, Sales, Demo) */
 export const LEGACY_ENGINE_MAP = {
@@ -61,6 +62,8 @@ export function getVariant(trimId, engineId) {
 }
 
 export function getVariantPrice(trimId, engineId) {
+  const override = getUpeOverride('kia', 'sportage', trimId);
+  if (override != null) return override;
   return getVariant(trimId, engineId)?.priceGross ?? 0;
 }
 

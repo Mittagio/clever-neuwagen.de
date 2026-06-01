@@ -134,6 +134,10 @@ Test im Browser (noch HTTP): `http://IHRE-VPS-IP` – sollte die App zeigen, wen
 |-----|------|------|-----|
 | **A** | `@` | `IHRE-VPS-IP` | 300 |
 | **A** | `www` | `IHRE-VPS-IP` | 300 |
+| **A** | `autohaus-trinkle` | `IHRE-VPS-IP` | 300 |
+| **A** | `autohaus-mueller` | `IHRE-VPS-IP` | 300 |
+
+Alternativ für alle Händler: **A** `*` → VPS-IP (Wildcard-DNS bei IONOS, falls verfügbar).
 
 Propagation kann **5–60 Minuten** dauern. Prüfen:
 
@@ -161,6 +165,27 @@ sudo certbot renew --dry-run
 ```
 
 **Live-URL:** https://www.clever-neuwagen.de
+
+### Händler-Subdomains
+
+```bash
+sudo cp /var/www/clever-neuwagen/deploy/clever-neuwagen-dealer-subdomains.nginx /etc/nginx/sites-available/clever-neuwagen-dealers
+sudo ln -sf /etc/nginx/sites-available/clever-neuwagen-dealers /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Wildcard-Zertifikat (DNS-Challenge bei IONOS):
+
+```bash
+sudo certbot certonly --manual --preferred-challenges dns -d '*.clever-neuwagen.de'
+```
+
+**Live-Beispiele:**
+
+- https://autohaus-trinkle.clever-neuwagen.de  
+- https://autohaus-mueller.clever-neuwagen.de  
+
+**Lokal testen:** `http://localhost:5173/haendler/autohaus-trinkle` oder `?dealer=autohaus-mueller`
 
 ---
 

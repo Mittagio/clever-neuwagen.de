@@ -7,7 +7,7 @@ export default function LandingDealerNetwork() {
       <div className="lp-dealer-cta">
         <h2 id="lp-dealers-title" className="lp-dealer-cta__title">Für Händler</h2>
         <p className="lp-dealer-cta__sub">Mehr Abschlüsse statt mehr Leads.</p>
-        <Link to="/partner" className="lp-btn lp-btn--secondary">
+        <Link to="/partner/register" className="lp-btn lp-btn--secondary">
           Für Händler
         </Link>
       </div>

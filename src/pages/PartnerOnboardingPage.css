@@ -34,6 +34,18 @@
   letter-spacing: -0.03em;
 }
 
+.partner-header__sub {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.partner-header__sub a {
+  color: #5e46e8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .partner-steps {
   display: flex;
   gap: 6px;

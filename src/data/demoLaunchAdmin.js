@@ -67,7 +67,7 @@ export const DEMO_AUDIT_LOG = [
 
 export const DEMO_DEALER_DOMAINS = [
   { id: 'dom-trinkle', dealerId: 'autohaus-trinkle', dealerName: 'Autohaus Trinkle', subdomain: 'autohaus-trinkle', host: 'autohaus-trinkle.clever-neuwagen.de', ssl: true, status: 'active', redirect: null },
-  { id: 'dom-mueller', dealerId: 'autohaus-mueller', dealerName: 'Autohaus Müller', subdomain: 'autohaus-mueller', host: 'autohaus-mueller.clever-neuwagen.de', ssl: false, status: 'pending', redirect: null },
+  { id: 'dom-mueller', dealerId: 'autohaus-mueller', dealerName: 'Autohaus Müller', subdomain: 'autohaus-mueller', host: 'autohaus-mueller.clever-neuwagen.de', ssl: true, status: 'active', redirect: null },
   { id: 'dom-stuttgart', dealerId: 'autohaus-stuttgart', dealerName: 'Autohaus Stuttgart', subdomain: 'autohaus-stuttgart', host: 'autohaus-stuttgart.clever-neuwagen.de', ssl: true, status: 'active', redirect: null },
 ];
 

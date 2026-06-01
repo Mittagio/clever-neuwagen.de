@@ -4,7 +4,7 @@ import { usePublishedDealerConditions } from '../context/DealerConditionsContext
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useOffers } from '../context/OffersContext.jsx';
 import { SALES_DEFAULTS, VEHICLE_TYPE_OPTIONS } from '../data/salesCatalog.js';
-import { createOfferFromSales, buildOfferUrl } from '../logic/offerService.js';
+import { createOfferFromSales, buildOfferUrl, buildOfferPath } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import { matchSalesOffers } from '../logic/salesMatcher.js';
 import SalesSuggestionCard from '../components/sales/SalesSuggestionCard.jsx';
@@ -96,7 +96,7 @@ export default function SalesPage() {
     }
 
     showToast(`${compareSuggestions.length} Vergleichsangebote erstellt`);
-    navigate(`/offer/${firstCode}`);
+    navigate(buildOfferPath(firstCode));
   }
 
   function toggleCompare(id) {

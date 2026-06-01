@@ -13,6 +13,11 @@ import {
   buildConfigurationEntry,
   addConfigurationToAccount,
   linkConfigurationOffer,
+  buildDocumentEntry,
+  addDocumentToAccount,
+  buildVehicleStatusEntry,
+  upsertVehicleStatus,
+  updateVehicleStatusStage,
 } from '../services/customerAccountService.js';
 
 const SESSION_KEY = 'clever-neuwagen-customer-session';
@@ -205,6 +210,32 @@ export function CustomerAuthProvider({ children }) {
 
     getDataForEmail(email) {
       return loadCustomerData(email);
+    },
+
+    registerDocument({ offerCode, fileName, fileSize, label, vehicleLabel }, emailOverride) {
+      const targetEmail = emailOverride ?? session?.email;
+      if (!targetEmail) return null;
+      const entry = buildDocumentEntry({ offerCode, fileName, fileSize, label, vehicleLabel });
+      const current = loadCustomerData(targetEmail);
+      const next = addDocumentToAccount(current, entry);
+      return persistData(targetEmail, next);
+    },
+
+    syncVehicleStatusFromOffer(offer, stage = 'angebot', emailOverride) {
+      const targetEmail = emailOverride ?? offer.customer?.email ?? session?.email;
+      if (!targetEmail || !offer?.code) return null;
+      const entry = buildVehicleStatusEntry(offer, stage);
+      const current = loadCustomerData(targetEmail);
+      const next = upsertVehicleStatus(current, entry);
+      return persistData(targetEmail.trim().toLowerCase(), next);
+    },
+
+    advanceVehicleStatus(offerCode, stage, emailOverride) {
+      const targetEmail = emailOverride ?? session?.email;
+      if (!targetEmail) return null;
+      const current = loadCustomerData(targetEmail);
+      const next = updateVehicleStatusStage(current, offerCode, stage);
+      return persistData(targetEmail, next);
     },
   }), [session, customerData, pendingEmail, demoCode]);
 

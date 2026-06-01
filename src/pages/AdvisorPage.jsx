@@ -20,7 +20,7 @@ import {
   recordIntelligenceSearch,
 } from '../services/intelligenceAnalytics.js';
 import { parseAdvisorUrlProfile } from '../services/landingAdvisorBridge.js';
-import { createOfferFromAdvisor, buildOfferUrl } from '../logic/offerService.js';
+import { createOfferFromAdvisor, buildOfferUrl, buildOfferPath } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import AdvisorResultCard from '../components/advisor/AdvisorResultCard.jsx';
 import AdvisorPodium from '../components/advisor/AdvisorPodium.jsx';
@@ -86,6 +86,7 @@ export default function AdvisorPage() {
     customerData,
     registerOffer,
     saveComparison,
+    addFavorite,
     saveProfile,
     registerTestDrive,
     loginWithEmail,
@@ -239,6 +240,8 @@ export default function AdvisorPage() {
     setPhase('compare');
     if (isLoggedIn) {
       saveComparison(recommendations, profile);
+      const top = recommendations?.[0];
+      if (top) addFavorite(top);
     }
   }
 
@@ -594,7 +597,7 @@ export default function AdvisorPage() {
             offer={createdOffer}
             offerUrl={buildOfferUrl(createdOffer.code)}
             wantTestDrive={wantTestDrive}
-            onGoOffer={() => navigate(`/offer/${createdOffer.code}`)}
+            onGoOffer={() => navigate(buildOfferPath(createdOffer.code))}
             onGoAccount={() => navigate('/kunde')}
           />
         )}

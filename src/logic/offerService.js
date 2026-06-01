@@ -2,7 +2,7 @@ import { sportage, formatPrice } from '../data/kiaSportage.js';
 import { calculatePrice } from './priceCalculator.js';
 import { OFFER_SOURCES } from '../data/offerTypes.js';
 
-const OFFER_BASE_URL = 'https://clever-neuwagen.de/offer';
+const OFFER_BASE_URL = 'https://clever-neuwagen.de/angebot';
 
 export function generateOfferNumber(existingOffers = []) {
   const year = new Date().getFullYear();
@@ -32,9 +32,13 @@ export function generateOfferCode(existingCodes = new Set()) {
   return generateOfferNumber(list);
 }
 
+export function buildOfferPath(code) {
+  return `/angebot/${encodeURIComponent(code)}`;
+}
+
 export function buildOfferUrl(code) {
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return `${window.location.origin}/offer/${encodeURIComponent(code)}`;
+    return `${window.location.origin}${buildOfferPath(code)}`;
   }
   return `${OFFER_BASE_URL}/${encodeURIComponent(code)}`;
 }

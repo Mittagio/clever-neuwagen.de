@@ -1,0 +1,236 @@
+.account-dashboard {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+}
+
+.account-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 8px 0 20px;
+}
+
+.account-dashboard-greeting {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.account-dashboard-email {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.account-dashboard-logout {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #475569;
+}
+
+.account-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  margin-bottom: 20px;
+}
+
+.account-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.account-tab {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.account-tab.is-active {
+  background: #5e46e8;
+  color: #fff;
+}
+
+.account-tab-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  font-size: 0.6875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-tab.is-active .account-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.account-section-title {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.account-empty {
+  padding: 32px 20px;
+  text-align: center;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px dashed #e2e8f0;
+}
+
+.account-empty p {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.account-empty-cta {
+  display: inline-flex;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #5e46e8;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-doc-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.account-doc-item__name {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.account-doc-item__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.account-doc-item__link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #5e46e8;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.account-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.account-status-card {
+  padding: 18px;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.account-status-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.account-status-card__head h3 {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.account-status-card__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.account-status-card__dealer,
+.account-status-card__delivery {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.account-status-card__link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #5e46e8;
+  text-decoration: none;
+}
+
+.account-status-timeline {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #f1f5f9;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-status-timeline li {
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.account-status-timeline span {
+  display: block;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+}

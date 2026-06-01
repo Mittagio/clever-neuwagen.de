@@ -38,8 +38,10 @@ export default function PriceListImportPage() {
 
   function handleApprove() {
     if (!reviewImport) return;
-    approveImport(reviewImport.id);
-    showToast(`${reviewImport.brand} ${reviewImport.model} – Änderungen übernommen`);
+    const result = approveImport(reviewImport.id);
+    const msg = result?.applyResult?.message
+      ?? `${reviewImport.brand} ${reviewImport.model} – Änderungen übernommen`;
+    showToast(msg);
   }
 
   function handleReject() {
@@ -71,7 +73,7 @@ export default function PriceListImportPage() {
             <section className="import-page__card">
               <h2 className="import-page__section-title">Upload</h2>
               <p className="import-page__section-desc">
-                Händler pflegen keine Preislisten – nur Clever-Neuwagen importiert zentral.
+                Händler pflegen keine Fahrzeugdaten mehr – nach Ihrer Freigabe werden alle Händler automatisch aktualisiert.
               </p>
               <ImportUploadForm onSubmit={handleUpload} disabled={analyzing} />
               {analyzeError && (
@@ -92,9 +94,12 @@ export default function PriceListImportPage() {
           {reviewImport && !analyzing && (
             <>
               <section className="import-page__changes">
-                <h2 className="import-page__section-title">Änderungsvergleich</h2>
+                <h2 className="import-page__section-title">Änderungsübersicht vor Freigabe</h2>
                 <p className="import-page__section-desc">
-                  {reviewImport.changes.length} Änderungen · Version {reviewImport.version}
+                  {reviewImport.changes.length} erkannte Änderungen · Version {reviewImport.version}
+                  {reviewImport.analysisSummary?.newEngines > 0 && (
+                    <> · z. B. neue Ausstattungslinien</>
+                  )}
                 </p>
                 <div className="import-page__change-grid">
                   {reviewImport.changes.map((change) => (

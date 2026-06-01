@@ -1,32 +1,52 @@
 import { useRef, useState } from 'react';
 import { IMPORT_BRANDS } from '../../../data/priceListImport.js';
+import { isAcceptedPriceListFile } from '../../../logic/priceListFileReader.js';
+import ImportExamples from './ImportExamples.jsx';
 import './ImportUploadForm.css';
+
+const ACCEPT = '.pdf,.csv,.xlsx,.xls,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export default function ImportUploadForm({ onSubmit, disabled }) {
   const inputRef = useRef(null);
   const [brand, setBrand] = useState('Kia');
   const [model, setModel] = useState('Sportage');
-  const [modelYear, setModelYear] = useState(String(new Date().getFullYear() + 1));
+  const [modelYear, setModelYear] = useState(String(new Date().getFullYear()));
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [fileError, setFileError] = useState('');
 
   function handleFile(f) {
     if (!f) return;
-    if (f.type !== 'application/pdf') return;
+    if (!isAcceptedPriceListFile(f)) {
+      setFileError('Bitte PDF, Excel (.xlsx) oder CSV hochladen.');
+      setFile(null);
+      return;
+    }
+    setFileError('');
     setFile(f);
   }
 
   function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
-    const f = e.dataTransfer.files?.[0];
-    handleFile(f);
+    handleFile(e.dataTransfer.files?.[0]);
   }
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!file || disabled) return;
     onSubmit({ brand, model, modelYear }, file);
+  }
+
+  function handleExample(ex) {
+    setBrand(ex.brand);
+    setModel(ex.model);
+    setFileError('');
+    setFile({
+      name: ex.fileName,
+      size: 2400000,
+      type: ex.format === 'PDF' ? 'application/pdf' : ex.format === 'CSV' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
   }
 
   const canSubmit = Boolean(file) && model.trim() && modelYear.trim() && !disabled;
@@ -48,7 +68,7 @@ export default function ImportUploadForm({ onSubmit, disabled }) {
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            placeholder="z. B. Sportage"
+            placeholder="z. B. Sportage, EV4, RAV4"
           />
         </label>
         <label className="import-upload__field">
@@ -76,11 +96,11 @@ export default function ImportUploadForm({ onSubmit, disabled }) {
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,.pdf"
+          accept={ACCEPT}
           className="import-upload__input"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
-        <span className="import-upload__icon" aria-hidden>📄</span>
+        <span className="import-upload__icon" aria-hidden>📋</span>
         {file ? (
           <>
             <p className="import-upload__filename">{file.name}</p>
@@ -90,14 +110,18 @@ export default function ImportUploadForm({ onSubmit, disabled }) {
           </>
         ) : (
           <>
-            <p className="import-upload__title">PDF hier ablegen</p>
-            <p className="import-upload__hint">oder tippen zum Auswählen · Hersteller-Preisliste</p>
+            <p className="import-upload__title">PDF, Excel oder CSV</p>
+            <p className="import-upload__hint">Ablegen oder auswählen · Hersteller-Preisliste</p>
           </>
         )}
       </div>
 
+      {fileError && <p className="import-upload__error" role="alert">{fileError}</p>}
+
+      <ImportExamples onSelectExample={handleExample} />
+
       <button type="submit" className="import-upload__submit" disabled={!canSubmit}>
-        {disabled ? 'Analyse läuft…' : 'Preisliste analysieren'}
+        {disabled ? 'KI-Analyse läuft…' : 'Mit KI analysieren'}
       </button>
     </form>
   );

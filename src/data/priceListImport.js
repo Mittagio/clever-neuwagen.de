@@ -80,7 +80,7 @@ export function formatImportDateTime(iso) {
   });
 }
 
-function change(id, type, field, oldValue, newValue, group) {
+export function change(id, type, field, oldValue, newValue, group) {
   return { id, type, field, oldValue, newValue, group };
 }
 
@@ -158,5 +158,7 @@ export function createImportRecord(meta, file, analysisResult) {
     approved: false,
     approvedAt: null,
     analysisSummary: analysisResult.summary,
+    fileFormat: analysisResult.fileFormat ?? null,
+    parserVersion: analysisResult.parserVersion ?? null,
   };
 }

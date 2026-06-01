@@ -96,7 +96,11 @@ export default function PartnerOnboardingPage() {
         <Link to="/" className="partner-header__back">←</Link>
         <div>
           <p className="partner-header__kicker">Partner werden</p>
-          <h1 className="partner-header__title">Händler-Onboarding</h1>
+          <h1 className="partner-header__title">Konditionen einrichten</h1>
+          <p className="partner-header__sub">
+            Noch nicht registriert?{' '}
+            <Link to="/partner/register">Händler registrieren →</Link>
+          </p>
         </div>
       </header>
 

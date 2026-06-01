@@ -7,7 +7,7 @@ export default function ImportAnalysisCenter({ importRecord, loading }) {
         <div className="import-analysis__spinner" aria-hidden />
         <h2 className="import-analysis__title">Analyse läuft…</h2>
         <p className="import-analysis__sub">
-          Preisliste wird ausgewertet. Später übernimmt hier der KI-Parser.
+          KI erkennt Modelle, Preise, Pakete, Farben, WLTP und Reichweiten…
         </p>
       </section>
     );
@@ -19,10 +19,12 @@ export default function ImportAnalysisCenter({ importRecord, loading }) {
   const summary = analysisSummary ?? {};
 
   const items = [
-    summary.priceChanges > 0 && `${summary.priceChanges} Preisänderung${summary.priceChanges > 1 ? 'en' : ''} erkannt`,
-    summary.newColors > 0 && `${summary.newColors} neue Farbe${summary.newColors > 1 ? 'n' : ''} erkannt`,
-    summary.newPackages > 0 && `${summary.newPackages} neue Pakete erkannt`,
-    summary.wltpUpdated && 'WLTP aktualisiert',
+    summary.priceChanges > 0 && `${summary.priceChanges} Preisänderung${summary.priceChanges > 1 ? 'en' : ''}`,
+    summary.newEngines > 0 && `${summary.newEngines} neue Ausstattungslinie${summary.newEngines > 1 ? 'n' : ''}`,
+    summary.newColors > 0 && `${summary.newColors} neue Farbe${summary.newColors > 1 ? 'n' : ''}`,
+    summary.newPackages > 0 && `${summary.newPackages} Paket-Änderung${summary.newPackages > 1 ? 'en' : ''}`,
+    summary.wltpUpdated && 'WLTP / Verbrauch aktualisiert',
+    summary.rangeUpdates > 0 && `${summary.rangeUpdates} Reichweiten-Update`,
   ].filter(Boolean);
 
   return (

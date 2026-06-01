@@ -1,8 +1,10 @@
-import { useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useRef, useEffect, useMemo } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import SportageConfigurator from '../components/configurator/SportageConfigurator';
-import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
+import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
+import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
+import { getMainSiteUrl } from '../logic/dealerSubdomain.js';
 import { sportage } from '../data/kiaSportage.js';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import VehicleDataReadonlyBanner from '../components/shared/VehicleDataReadonlyBanner.jsx';
@@ -16,9 +18,16 @@ const KIA_MODELS = [
 ];
 
 export default function DealerPage() {
-  const { publishedConditions: conditions } = usePublishedDealerConditions();
+  const { slug: routeSlug } = useParams();
+  const { dealerId: subdomainDealerId, isSubdomain } = useDealerSubdomain();
+  const dealerId = useMemo(
+    () => subdomainDealerId || routeSlug || DEFAULT_DEALER_ID,
+    [subdomainDealerId, routeSlug],
+  );
+  const { publishedConditions: conditions } = usePublishedDealerConditions(dealerId);
   const configuratorRef = useRef(null);
   const location = useLocation();
+  const homeUrl = isSubdomain ? getMainSiteUrl('/') : '/';
 
   useEffect(() => {
     if (location.hash === '#sportage-konfigurator') {
@@ -31,7 +40,7 @@ export default function DealerPage() {
   }
 
   return (
-    <PageShell className="dealer-shell">
+    <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
       <div className="dealer-page page">
         {/* Händler-Header */}
         <header className="dealer-header">
@@ -43,7 +52,7 @@ export default function DealerPage() {
                 {conditions.plz} {conditions.city}
               </p>
             </div>
-            <Link to="/" className="dealer-header-back">← Zur Suche</Link>
+            <a href={homeUrl} className="dealer-header-back">← clever-neuwagen.de</a>
           </div>
         </header>
 
@@ -121,7 +130,7 @@ export default function DealerPage() {
 
             <VehicleDataReadonlyBanner />
 
-            <SportageConfigurator dealerName={conditions.dealerName} />
+            <SportageConfigurator dealerName={conditions.dealerName} dealerId={dealerId} />
           </section>
         </div>
       </div>

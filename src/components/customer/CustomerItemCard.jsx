@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { CUSTOMER_STATUS, getVehicleLabel } from '../../data/customerDemoData.js';
+import { buildOfferPath } from '../../logic/offerService.js';
 import { stashConfigForRestore } from '../configurator/ConfigCustomerSheet.jsx';
 import LegalDisclaimer from '../legal/LegalDisclaimer.jsx';
 import './CustomerItemCard.css';
@@ -25,7 +26,7 @@ function formatDate(iso) {
 export default function CustomerItemCard({ item, type }) {
   const navigate = useNavigate();
   const statusConfig = CUSTOMER_STATUS[item.status] ?? CUSTOMER_STATUS.gespeichert;
-  const offerLink = item.offerCode ? `/offer/${item.offerCode}` : null;
+  const offerLink = item.offerCode ? buildOfferPath(item.offerCode) : null;
 
   function openConfiguration() {
     stashConfigForRestore(item);

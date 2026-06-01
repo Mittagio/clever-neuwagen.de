@@ -1,10 +1,10 @@
 import Header from './Header';
 import './PageShell.css';
 
-export default function PageShell({ children, className = '' }) {
+export default function PageShell({ children, className = '', hideMarketingHeader = false }) {
   return (
     <div className="shell">
-      <Header />
+      {!hideMarketingHeader && <Header />}
       <main className={`shell-main ${className}`}>{children}</main>
     </div>
   );

@@ -5,6 +5,10 @@
 
 import { sportage } from './kiaSportage.js';
 import { brands, kiaModels } from './adminCatalog.js';
+import {
+  getExtendedChangeCenter,
+  getCatalogAdminMeta,
+} from './vehicleCatalogStore.js';
 
 export const HEALTH_STATUS = {
   current: { emoji: '🟢', label: 'Aktuell', className: 'health-current' },
@@ -123,16 +127,18 @@ export function getModelDataStatus(modelId = 'sportage') {
     };
   }
 
+  const overlayAdmin = getCatalogAdminMeta('kia', 'sportage');
   const { admin, changeLog } = sportage;
+  const meta = overlayAdmin ?? admin;
   return {
     modelId: 'sportage',
     modelName: sportage.model,
-    lastUpdated: admin.lastUpdated,
-    updatedBy: admin.updatedBy,
-    dataStand: admin.priceListDate,
-    changeCount: changeLog.length,
-    health: getModelHealth(admin.status),
-    healthLabel: HEALTH_STATUS[getModelHealth(admin.status)].label,
+    lastUpdated: meta.lastUpdated,
+    updatedBy: meta.updatedBy,
+    dataStand: meta.priceListDate,
+    changeCount: changeLog.length + getExtendedChangeCenter().filter((c) => c.model === 'sportage').length,
+    health: getModelHealth(meta.status ?? admin.status),
+    healthLabel: HEALTH_STATUS[getModelHealth(meta.status ?? admin.status)].label,
   };
 }
 
@@ -170,7 +176,7 @@ export function getBrandDashboard() {
 }
 
 export function getChangeCenter(filters = {}) {
-  let items = [...changeCenter];
+  let items = [...changeCenter, ...getExtendedChangeCenter()];
 
   if (filters.brand) {
     items = items.filter((i) => i.brand === filters.brand);

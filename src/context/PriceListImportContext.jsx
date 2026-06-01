@@ -5,6 +5,7 @@ import {
   createImportRecord,
 } from '../data/priceListImport.js';
 import { analyzePriceList } from '../logic/analyzePriceList.js';
+import { applyApprovedPriceListImport } from '../logic/applyPriceListImport.js';
 
 const PriceListImportContext = createContext(null);
 
@@ -38,6 +39,7 @@ export function PriceListImportProvider({ children }) {
   const [reviewImport, setReviewImport] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const [lastApplyResult, setLastApplyResult] = useState(null);
 
   useEffect(() => {
     saveImports(imports);
@@ -48,6 +50,7 @@ export function PriceListImportProvider({ children }) {
     reviewImport,
     analyzing,
     analyzeError,
+    lastApplyResult,
 
     async uploadAndAnalyze(meta, file) {
       setAnalyzeError(null);
@@ -79,12 +82,17 @@ export function PriceListImportProvider({ children }) {
         approvedAt: new Date().toISOString(),
       };
 
+      const withChanges = { ...approved, changes: approved.changes ?? target.changes };
+
       setImports((prev) => {
         const without = prev.filter((i) => i.id !== id);
-        return [approved, ...without];
+        return [{ ...withChanges, changes: withChanges.changes }, ...without];
       });
       setReviewImport(null);
-      return approved;
+
+      const applyResult = applyApprovedPriceListImport(withChanges);
+      setLastApplyResult(applyResult);
+      return { ...withChanges, applyResult };
     },
 
     rejectImport(id) {
@@ -141,7 +149,7 @@ export function PriceListImportProvider({ children }) {
         lastUpdate: lastApproved?.approvedAt ?? lastApproved?.uploadedAt ?? null,
       };
     },
-  }), [imports, reviewImport, analyzing, analyzeError]);
+  }), [imports, reviewImport, analyzing, analyzeError, lastApplyResult]);
 
   return (
     <PriceListImportContext.Provider value={api}>

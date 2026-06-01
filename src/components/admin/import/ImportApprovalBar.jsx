@@ -4,7 +4,7 @@ export default function ImportApprovalBar({ onApprove, onReject, disabled }) {
   return (
     <section className="import-approval" aria-label="Freigabe">
       <p className="import-approval__hint">
-        Fahrzeugdaten werden erst nach Ihrer Freigabe zentral aktualisiert.
+        Nach Freigabe: zentraler Katalog wird aktualisiert – alle Händler erhalten den neuen Datenstand automatisch.
       </p>
       <div className="import-approval__actions">
         <button

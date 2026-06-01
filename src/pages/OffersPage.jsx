@@ -11,6 +11,7 @@ import {
   getPaymentLabel,
   getSourceLabel,
   printOfferPdf,
+  buildOfferPath,
 } from '../logic/offerService.js';
 import OfferStatusChip from '../components/offers/OfferStatusChip.jsx';
 import OfferCreateSheet from '../components/offers/OfferCreateSheet.jsx';
@@ -275,7 +276,7 @@ export default function OffersPage() {
               <button
                 type="button"
                 className="btn btn-primary offers-detail__action"
-                onClick={() => navigate(`/offer/${selected.code}`)}
+                onClick={() => navigate(buildOfferPath(selected.code))}
               >
                 Kundenansicht öffnen
               </button>
@@ -283,7 +284,7 @@ export default function OffersPage() {
                 type="button"
                 className="btn btn-secondary offers-detail__action"
                 onClick={() => {
-                  navigate(`/offer/${selected.code}`);
+                  navigate(buildOfferPath(selected.code));
                   setTimeout(printOfferPdf, 400);
                 }}
               >

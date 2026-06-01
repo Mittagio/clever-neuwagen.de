@@ -11,12 +11,12 @@ import {
   getVariant,
   getWltp,
 } from '../../data/kiaSportage.js';
-import { usePublishedDealerConditions } from '../../context/DealerConditionsContext.jsx';
+import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../../context/DealerConditionsContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { useCustomerAuth } from '../../context/CustomerAuthContext.jsx';
 import { calculatePrice } from '../../logic/priceCalculator.js';
-import { createOfferFromConfig } from '../../logic/offerService.js';
+import { createOfferFromConfig, buildOfferPath } from '../../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../../logic/offerLeadService.js';
 import ConfigCustomerSheet, { CONFIG_RESTORE_KEY } from './ConfigCustomerSheet.jsx';
 import PriceSummary from './PriceSummary.jsx';
@@ -91,8 +91,8 @@ const INITIAL_CONFIG = {
 
 
 
-export default function SportageConfigurator({ dealerName }) {
-  const { publishedConditions, getConditionsForModel } = usePublishedDealerConditions();
+export default function SportageConfigurator({ dealerName, dealerId = DEFAULT_DEALER_ID }) {
+  const { publishedConditions, getConditionsForModel } = usePublishedDealerConditions(dealerId);
   const { addLead, leads, updateLead } = useLeads();
   const { addOffer, getExistingCodes, offers, linkLead } = useOffers();
   const {
@@ -288,7 +288,7 @@ export default function SportageConfigurator({ dealerName }) {
     }
 
     setSheetMode(null);
-    navigate(`/offer/${offer.code}`);
+    navigate(buildOfferPath(offer.code));
   }
 
 
