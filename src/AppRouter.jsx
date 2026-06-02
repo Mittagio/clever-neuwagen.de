@@ -25,6 +25,8 @@ import PartnerOnboardingPage from './pages/PartnerOnboardingPage';
 import PartnerRegisterPage from './pages/sprint6/PartnerRegisterPage.jsx';
 import DeliveryConfirmPage from './pages/DeliveryConfirmPage';
 import RecommendationPage from './pages/RecommendationPage';
+import FahrzeugePage from './pages/FahrzeugePage.jsx';
+import FahrzeugDetailPage from './pages/FahrzeugDetailPage.jsx';
 import TrendIndexPage from './pages/TrendIndexPage';
 import TrendArticlePage from './pages/TrendArticlePage';
 import GuideIndexPage from './pages/GuideIndexPage';
@@ -124,6 +126,8 @@ export default function AppRouter() {
         <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/dealer-ai" element={<DealerAIPage />} />
         <Route path="/empfehlung" element={<RecommendationPage />} />
+        <Route path="/fahrzeuge" element={<FahrzeugePage />} />
+        <Route path="/fahrzeug/:slug" element={<FahrzeugDetailPage />} />
         <Route path="/insert-generator" element={<InsertGeneratorPage />} />
         <Route path="/ratgeber" element={<GuideIndexPage />} />
         <Route path="/ratgeber/:slug" element={<GuideArticlePage />} />

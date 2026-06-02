@@ -85,6 +85,41 @@
   color: #64748b;
 }
 
+.lp-entry-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.lp-entry-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fff;
+}
+
+.lp-entry-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.lp-entry-card p {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.lp-market-form {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 960px) {
+  .lp-entry-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .lp-hero__form {
   margin-bottom: 8px;
 }

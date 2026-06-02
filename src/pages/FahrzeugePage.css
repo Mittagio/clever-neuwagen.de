@@ -1,0 +1,156 @@
+.marketplace-page {
+  padding: 28px 16px 96px;
+}
+
+.marketplace-page__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.marketplace-head h1 {
+  margin: 0 0 6px;
+}
+
+.marketplace-head p {
+  margin: 0;
+  color: #64748b;
+}
+
+.marketplace-filters {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.marketplace-seo p {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.marketplace-seo__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.marketplace-seo__links a {
+  font-size: 0.8125rem;
+}
+
+.marketplace-results {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.market-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.market-card__image {
+  min-height: 180px;
+  border-radius: 0;
+}
+
+.market-card__body {
+  padding: 12px;
+}
+
+.market-card__body h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.market-card__body p {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.market-card__rate {
+  font-size: 1.1rem !important;
+  font-weight: 700;
+}
+
+.market-card__availability {
+  font-weight: 600;
+}
+
+.market-card__availability--green {
+  color: #15803d;
+}
+
+.market-card__availability--yellow {
+  color: #a16207;
+}
+
+.market-card__availability--blue {
+  color: #1d4ed8;
+}
+
+.market-card__availability--red {
+  color: #b91c1c;
+}
+
+.market-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.marketplace-empty {
+  margin: 0;
+}
+
+.marketplace-compare {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.35);
+  max-width: 95vw;
+}
+
+.marketplace-compare p {
+  margin: 0 0 6px;
+}
+
+.marketplace-compare__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marketplace-compare__list a {
+  color: #bfdbfe;
+  font-size: 0.8rem;
+}
+
+@media (min-width: 760px) {
+  .marketplace-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .marketplace-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .marketplace-filters {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .marketplace-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
