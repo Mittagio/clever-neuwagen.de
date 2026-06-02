@@ -2,6 +2,36 @@
   padding: 28px 16px 96px;
 }
 
+.marketplace-page--results-v2 {
+  padding: 12px 16px 80px;
+}
+
+.marketplace-page--magic-lens {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .marketplace-page--magic-lens {
+    padding-bottom: 80px;
+  }
+
+  .marketplace-page--results-v2 {
+    padding-bottom: 48px;
+  }
+}
+
+.marketplace-page--results-v2 .marketplace-page__container {
+  gap: 16px;
+}
+
+.marketplace-page--sprint20 {
+  padding-top: 20px;
+}
+
+.marketplace-page--sprint20 .marketplace-page__container {
+  gap: 28px;
+}
+
 .marketplace-page__container {
   max-width: 1200px;
   margin: 0 auto;

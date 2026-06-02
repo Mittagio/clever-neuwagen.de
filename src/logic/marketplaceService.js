@@ -1,7 +1,23 @@
 import { AVAILABILITY_LABELS, MARKETPLACE_SEO_LANDING_PAGES } from '../data/marketplaceVehicles.js';
+import { getFeatureById } from '../data/features/featureCatalog.js';
 
 function norm(value) {
   return String(value ?? '').toLowerCase();
+}
+
+function vehicleMatchesFeature(vehicle, featureId) {
+  const hay = `${vehicle.title} ${vehicle.equipment?.join(' ')} ${vehicle.bodyType} ${vehicle.powertrain}`;
+  const lower = hay.toLowerCase();
+
+  if (featureId === 'family_suv') return vehicle.bodyType === 'suv';
+  if (featureId === 'elektro') return vehicle.powertrain === 'elektro';
+  if (featureId === 'benzin') return vehicle.powertrain === 'verbrenner';
+  if (featureId === 'automatic') return /automatik|dsg/i.test(lower);
+
+  const feature = getFeatureById(featureId);
+  if (!feature) return true;
+  const patterns = [feature.label.toLowerCase(), ...(feature.aliases ?? [])];
+  return patterns.some((p) => lower.includes(p));
 }
 
 function mapTypeForVehicle(vehicle) {
@@ -64,10 +80,16 @@ export function filterMarketplaceVehicles(vehicles, initialFilters) {
     }
     if (filters.model && !norm(vehicle.model).includes(norm(filters.model))) return false;
     if (filters.trim && !norm(vehicle.title).includes(norm(filters.trim))) return false;
-    const locationQ = filters.city || filters.plz || filters.q;
-    if (locationQ) {
+    if (filters.brand && norm(vehicle.brand) !== norm(filters.brand)) return false;
+    if (filters.availability && vehicle.availability !== filters.availability) return false;
+    if (filters.features?.length) {
+      const missing = filters.features.filter((fid) => !vehicleMatchesFeature(vehicle, fid));
+      if (missing.length) return false;
+    }
+    const textQ = filters.q || filters.query;
+    if (textQ) {
       const hay = `${vehicle.title} ${vehicle.dealerName} ${vehicle.city} ${vehicle.plz} ${vehicle.model}`;
-      if (!norm(hay).includes(norm(locationQ))) return false;
+      if (!norm(hay).includes(norm(textQ))) return false;
     }
     return true;
   });

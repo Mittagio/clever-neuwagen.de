@@ -4,7 +4,11 @@
 }
 
 .lp-page {
-  padding-bottom: 56px;
+  padding-bottom: 0;
+}
+
+.lp-page--one-search {
+  min-height: calc(100dvh - 64px);
 }
 
 .lp-page__container {
@@ -143,6 +147,152 @@
 .lp-btn--primary {
   background: #0b2559;
   color: #fff;
+}
+
+.lp-input--search {
+  min-height: 120px;
+  padding: 18px 22px;
+  padding-right: 22px;
+}
+
+.lp-search-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.lp-search-examples {
+  margin-top: 22px;
+}
+
+.lp-search-examples__label {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lp-search-examples__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lp-search-example-chip {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 999px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lp-search-example-chip:hover {
+  border-color: #0b2559;
+  background: #eff6ff;
+}
+
+/* Landing V4 – KI-Suche, minimalistisch */
+.lp-hero--v4 {
+  padding: clamp(48px, 10vh, 88px) 20px clamp(40px, 8vh, 64px);
+  min-height: calc(100dvh - 64px);
+  display: flex;
+  align-items: center;
+  background: #fff;
+}
+
+.lp-hero--v4 .lp-hero__container {
+  width: 100%;
+}
+
+.lp-hero--v4 .lp-hero__title {
+  font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+  max-width: 680px;
+}
+
+.lp-hero--v4 .lp-hero__sub {
+  margin-top: 14px;
+  max-width: 520px;
+  font-size: clamp(1rem, 2vw, 1.125rem);
+  line-height: 1.55;
+}
+
+.lp-hero-focus--v4 {
+  max-width: 720px;
+  margin-top: 40px;
+  border: 1px solid #e8edf3;
+  border-radius: 24px;
+  background: #fff;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+}
+
+.lp-input--v4 {
+  min-height: 180px;
+  padding: 22px 72px 22px 22px;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  border-radius: 18px;
+  border-color: #e2e8f0;
+  resize: none;
+}
+
+.lp-hero--v4 .lp-mic-inline {
+  right: 16px;
+  bottom: 16px;
+  width: 52px;
+  height: 52px;
+}
+
+.lp-hero--v4 .lp-btn {
+  min-width: 260px;
+  min-height: 56px;
+  font-size: 1rem;
+}
+
+.lp-popular-searches {
+  margin-top: 20px;
+  padding-top: 4px;
+}
+
+.lp-popular-searches__label {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.lp-popular-searches__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lp-popular-chip {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.lp-popular-chip:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .lp-rotating-example {

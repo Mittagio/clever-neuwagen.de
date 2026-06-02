@@ -31,6 +31,7 @@ import DeliveryConfirmPage from './pages/DeliveryConfirmPage';
 import RecommendationPage from './pages/RecommendationPage';
 import FahrzeugePage from './pages/FahrzeugePage.jsx';
 import FahrzeugDetailPage from './pages/FahrzeugDetailPage.jsx';
+import ComparePage from './pages/ComparePage.jsx';
 import TrendIndexPage from './pages/TrendIndexPage';
 import TrendArticlePage from './pages/TrendArticlePage';
 import GuideIndexPage from './pages/GuideIndexPage';
@@ -132,6 +133,7 @@ export default function AppRouter() {
         <Route path="/empfehlung" element={<RecommendationPage />} />
         <Route path="/fahrzeuge" element={<FahrzeugePage />} />
         <Route path="/fahrzeug/:slug" element={<FahrzeugDetailPage />} />
+        <Route path="/compare" element={<ComparePage />} />
         <Route path="/insert-generator" element={<InsertGeneratorPage />} />
         <Route path="/ratgeber" element={<GuideIndexPage />} />
         <Route path="/ratgeber/:slug" element={<GuideArticlePage />} />

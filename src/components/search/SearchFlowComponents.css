@@ -1,36 +1,57 @@
-.search-understood {
-  padding: 16px;
+/* Sprint 20 – KI-Empfehlung statt Filter-Suchmaschine */
+
+.ki-summary-hero {
+  padding: 8px 4px 20px;
+  text-align: center;
 }
 
-.search-understood__title {
-  margin: 0 0 10px;
-  font-size: 0.8125rem;
-  font-weight: 700;
+.ki-summary-hero__headline {
+  margin: 0 0 8px;
+  font-size: clamp(1.625rem, 5vw, 2.125rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.ki-summary-hero__sub {
+  margin: 0 0 18px;
+  font-size: 1rem;
   color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
-.search-understood__chips {
+.ki-summary-hero__chips {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
-.search-chip {
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+.ki-lifestyle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   min-height: 44px;
   font-size: 0.875rem;
   font-weight: 600;
+  color: #334155;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.search-chip:hover {
+.ki-lifestyle-chip:hover {
   border-color: #10b981;
-  background: #ecfdf5;
+  background: #f0fdf4;
+}
+
+.ki-lifestyle-chip__emoji {
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .search-loc-dialog {
@@ -105,54 +126,523 @@
   cursor: pointer;
 }
 
-.top-rec {
-  padding: 24px;
-  border: 2px solid #10b981;
-  background: linear-gradient(180deg, #ecfdf5 0%, #fff 55%);
+/* Inline-Standort-Hinweis – freiwillig, kein Overlay */
+.loc-hint {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
-.top-rec__badge {
-  margin: 0 0 8px;
-  font-size: 0.75rem;
+.loc-hint--active {
+  padding: 12px 16px;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.loc-hint__title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: #0f172a;
+}
+
+.loc-hint__text {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.loc-hint__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.loc-hint__primary {
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loc-hint__plz-form {
+  display: flex;
+  flex: 1;
+  min-width: min(100%, 220px);
+  gap: 8px;
+}
+
+.loc-hint__plz-input {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.loc-hint__plz-submit {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.loc-hint__active-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.loc-hint__active-label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
   color: #047857;
 }
 
-.top-rec h2 {
-  margin: 0 0 8px;
-  font-size: 1.5rem;
+.loc-hint__link-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #047857;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
-.top-rec__rate {
-  margin: 0 0 12px;
-  font-size: 2rem;
+.loc-hint__radius-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #a7f3d0;
+}
+
+.loc-hint__radius-chip {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loc-hint__radius-chip.is-active {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+/* Sprint 15 – Kompakte Suchzusammenfassung (eine Zeile) */
+.search-summary-compact {
+  margin: 0;
+}
+
+.search-summary-compact__row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.search-summary-compact__row::-webkit-scrollbar {
+  display: none;
+}
+
+.search-summary-compact__chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 10px 4px 6px;
+  min-height: 28px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.search-summary-compact__emoji {
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.search-summary-compact__chip:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* Bester Treffer – neutral mit gezielten Akzenten */
+.top-rec-hero {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #f1f5f9;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  background: #fff;
+}
+
+.top-rec-hero__badge {
+  margin: 0;
+  padding: 12px 18px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #94a3b8;
+  text-transform: none;
+}
+
+.top-rec-hero__image-wrap {
+  margin: 10px 14px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.top-rec-hero__image {
+  width: 100%;
+  min-height: 160px;
+  max-height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.top-rec-hero__body {
+  padding: 16px 18px 20px;
+}
+
+.top-rec-hero__title {
+  margin: 0 0 6px;
+  font-size: clamp(1.375rem, 4vw, 1.75rem);
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.top-rec-hero__rate {
+  margin: 0 0 14px;
+  font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 800;
   color: #047857;
+  line-height: 1;
 }
 
-.top-rec__meta {
-  margin: 0 0 20px;
-  padding-left: 18px;
-  color: #475569;
-  line-height: 1.6;
+.top-rec-hero__highlights {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #64748b;
 }
 
-.top-rec__cta {
+.top-rec-hero__avail--accent {
+  font-weight: 600;
+  color: #059669;
+}
+
+.top-rec-hero__cta {
   width: 100%;
   min-height: 56px;
   border: none;
   border-radius: 14px;
-  background: #10b981;
+  background: #059669;
   color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.top-rec-hero__cta:active {
+  transform: scale(0.98);
+}
+
+/* Fahrzeug-Grid – weitere Angebote */
+.vehicle-grid {
+  margin-top: 4px;
+}
+
+.vehicle-grid__title {
+  margin: 0 0 12px;
   font-size: 1.0625rem;
   font-weight: 700;
+  color: #0f172a;
+}
+
+.vehicle-grid__list {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+.vehicle-grid-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #f1f5f9;
+  box-shadow: none;
+}
+
+.vehicle-grid-card__image {
+  width: 100%;
+  min-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.vehicle-grid-card__body {
+  padding: 14px 16px 16px;
+}
+
+.vehicle-grid-card__body h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vehicle-grid-card__rate {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vehicle-grid-card__meta {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.vehicle-grid-card__cta {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
 }
 
-.offer-chips {
+.vehicle-grid-card__cta:hover {
+  background: #f8fafc;
+}
+
+/* Horizontale Karten (Legacy) */
+.vehicle-strip {
+  margin-top: 8px;
+}
+
+.vehicle-strip__title {
+  margin: 0 0 14px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vehicle-strip__scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 4px 16px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.vehicle-strip__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.vehicle-strip-card {
+  flex: 0 0 min(280px, 78vw);
+  scroll-snap-align: start;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid #f1f5f9;
+}
+
+.vehicle-strip-card__image {
+  width: 100%;
+  min-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.vehicle-strip-card__body {
+  padding: 14px 16px 16px;
+}
+
+.vehicle-strip-card__body h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vehicle-strip-card__rate {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #047857;
+}
+
+.vehicle-strip-card__meta {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.vehicle-strip-card__cta {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  background: #fff;
+  color: #047857;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+/* Suche verfeinern – Airbnb/Trade-Republic-Stil */
+.refine-search {
+  margin-top: 32px;
+  padding: 0;
+  border: none;
+}
+
+.refine-search__summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  padding: 8px 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.refine-search__summary::-webkit-details-marker {
+  display: none;
+}
+
+.refine-search[open] .refine-search__summary {
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.refine-search__body {
+  padding: 0 0 8px;
+}
+
+.offer-chips__inner--refine {
+  display: grid;
+  gap: 20px;
+}
+
+.offer-chips__inner--refine .offer-chips__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.offer-chips__inner--refine .offer-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.offer-chips__inner--refine .offer-chip.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+/* Legacy: Ergebnisse anpassen */
+.adjust-results {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.adjust-results__summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 12px 4px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adjust-results__summary::-webkit-details-marker {
+  display: none;
+}
+
+.adjust-results__summary::before {
+  content: '⚙';
+  font-size: 1rem;
+}
+
+.adjust-results[open] .adjust-results__summary {
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.adjust-results__body {
   padding: 16px;
+}
+
+.offer-chips__inner {
   display: grid;
   gap: 14px;
 }
@@ -178,6 +668,11 @@
   overflow-x: auto;
   padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.offer-chips__row--scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .offer-chip {
@@ -195,52 +690,6 @@
 .offer-chip.is-active {
   background: #10b981;
   border-color: #10b981;
-  color: #fff;
-}
-
-.market-list-section h2 {
-  margin: 0 0 12px;
-  font-size: 1.125rem;
-}
-
-.market-list-card {
-  display: grid;
-  gap: 0;
-  overflow: hidden;
-  padding: 0;
-}
-
-.market-list-card__body {
-  padding: 14px;
-}
-
-.market-list-card__rate {
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin: 0 0 6px;
-}
-
-.market-list-card__actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.market-list-card__actions a,
-.market-list-card__actions button {
-  min-height: 48px;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-.market-list-card__actions a {
-  background: #10b981;
   color: #fff;
 }
 
@@ -273,6 +722,17 @@
   margin: 12px 0;
 }
 
+.chip-edit-sheet__geo {
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .chip-edit-sheet button {
   width: 100%;
   min-height: 52px;
@@ -282,4 +742,96 @@
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+}
+
+.no-exact-match {
+  padding: 24px 20px;
+  text-align: center;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.no-exact-match__title {
+  margin: 0 0 8px;
+  font-size: clamp(1.25rem, 4vw, 1.5rem);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.no-exact-match__sub {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.no-exact-match__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.no-exact-match__chip {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.no-exact-match__chip:hover {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.results-question-link-wrap {
+  margin: 8px 0 0;
+  text-align: center;
+}
+
+.results-question-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.results-question-link:hover {
+  color: #0f172a;
+}
+
+@media (min-width: 760px) {
+  .ki-summary-hero {
+    padding: 16px 0 28px;
+  }
+
+  .top-rec-hero__image {
+    min-height: 200px;
+    max-height: 260px;
+  }
+
+  .vehicle-grid__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vehicle-strip-card {
+    flex: 0 0 300px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vehicle-grid__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

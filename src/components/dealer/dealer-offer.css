@@ -1,0 +1,475 @@
+/* Sprint 24 – Händler statt Preiskampf */
+
+.recommended-dealer {
+  padding: 20px 16px;
+  border-radius: 20px;
+  background: linear-gradient(165deg, #f8fafc 0%, #fff 55%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+}
+
+.recommended-dealer__eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recommended-dealer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.recommended-dealer__head h2 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.recommended-dealer__meta {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.recommended-dealer__score {
+  flex-shrink: 0;
+  text-align: center;
+  min-width: 56px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #fff;
+}
+
+.recommended-dealer__score-value {
+  display: block;
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.recommended-dealer__score-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.recommended-dealer__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.recommended-dealer__fact {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.recommended-dealer__fact--rate {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.recommended-dealer__reasons,
+.recommended-dealer__trust {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.recommended-dealer__reasons li {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.recommended-dealer__trust li {
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.recommended-dealer__trust li::before {
+  content: '✓ ';
+  color: #059669;
+}
+
+.recommended-dealer__contact {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.recommended-dealer__contact a {
+  color: #0f172a;
+}
+
+.recommended-dealer__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.recommended-dealer__cta {
+  min-height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: #059669;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.recommended-dealer__secondary {
+  min-height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.recommended-dealer__link {
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.dealer-compare {
+  margin-top: 8px;
+}
+
+.dealer-compare__title {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.dealer-compare__sub {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.dealer-compare__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.dealer-compare-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.dealer-compare-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.dealer-compare-card__top h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.dealer-compare-card__score {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.dealer-compare-card__rate {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dealer-compare-card__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: #64748b;
+  display: grid;
+  gap: 4px;
+}
+
+.dealer-inventory {
+  margin-top: 8px;
+}
+
+.dealer-inventory__title {
+  margin: 0 0 12px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.dealer-inventory__scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.dealer-inventory__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.dealer-inventory-card {
+  flex: 0 0 200px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.dealer-inventory-card__image {
+  width: 100%;
+  min-height: 110px;
+  object-fit: cover;
+}
+
+.dealer-inventory-card__body {
+  padding: 12px;
+}
+
+.dealer-inventory-card__body h3 {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.dealer-inventory-card__rate {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dealer-inventory-card__cta {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.similar-nearby {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.similar-nearby__title {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.similar-nearby__sub {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.similar-nearby__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.similar-nearby-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.similar-nearby-card__image {
+  width: 100px;
+  min-height: 72px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.similar-nearby-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.similar-nearby-card__body h3 {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+}
+
+.similar-nearby-card__meta {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.similar-nearby-card__cta {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.offer-detail-stack {
+  display: grid;
+  gap: 20px;
+}
+
+/* Google Bewertungen */
+.google-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.google-rating--live {
+  background: #fff;
+  border-color: #dbeafe;
+}
+
+.google-rating__brand {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.google-rating__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.google-rating__value {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.google-rating--sm .google-rating__value {
+  font-size: 0.9375rem;
+}
+
+.google-rating__stars {
+  color: #f59e0b;
+  font-size: 0.8125rem;
+  letter-spacing: -1px;
+}
+
+.google-rating__meta {
+  font-size: 0.75rem;
+  color: #64748b;
+  width: 100%;
+}
+
+.google-rating--sm .google-rating__meta {
+  width: auto;
+}
+
+.google-rating__link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4285f4;
+  text-decoration: none;
+  margin-left: auto;
+}
+
+.google-rating__live {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.google-review-snippet {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border-left: 3px solid #4285f4;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.google-review-snippet p {
+  margin: 0 0 6px;
+  font-style: italic;
+}
+
+.google-review-snippet footer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+@media (min-width: 640px) {
+  .dealer-compare__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .similar-nearby__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .similar-nearby__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

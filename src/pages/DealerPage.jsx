@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
+import GoogleRatingBadge, { GoogleReviewSnippet } from '../components/dealer/GoogleRatingBadge.jsx';
+import { useDealerGoogleReviewsBatch } from '../hooks/useDealerGoogleReviews.js';
+import { mergeDealerProfileWithGoogle, getDealerProfile } from '../data/dealers/dealerProfiles.js';
 import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
 import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
 import { getMainSiteUrl } from '../logic/dealerSubdomain.js';
@@ -25,10 +28,34 @@ const ACTION_BANNERS = [
   { id: 'fast', title: '🔥 Sofort verfügbare Fahrzeuge', text: 'Direkt aus Lager & Vorlauf' },
 ];
 
-const REVIEW_SEED = [
-  { id: 'g', source: 'Google', value: '4.8/5', text: '132 Bewertungen' },
-  { id: 't', source: 'Trustpilot', value: '4.6/5', text: 'Optional aktivierbar' },
-];
+
+function DealerReviewsSection({ dealerSlug }) {
+  const { reviewsBySlug, loading } = useDealerGoogleReviewsBatch([dealerSlug]);
+  const google = reviewsBySlug[dealerSlug];
+  const profile = mergeDealerProfileWithGoogle(getDealerProfile(dealerSlug), google);
+
+  if (loading && !google) {
+    return <p className="dealer-reviews-loading">Google-Bewertungen werden geladen…</p>;
+  }
+
+  return (
+    <div className="dealer-reviews-live">
+      <GoogleRatingBadge
+        rating={profile.rating}
+        reviewCount={profile.reviewCount}
+        googleMapsUri={profile.googleMapsUri ?? google?.googleMapsUri}
+        ratingSource={profile.ratingSource}
+        size="lg"
+      />
+      <GoogleReviewSnippet reviews={profile.googleReviews ?? google?.reviews} />
+      {profile.ratingSource !== 'google' && (
+        <p className="dealer-reviews-fallback">
+          Live-Google-Daten: API-Key in <code>GOOGLE_PLACES_API_KEY</code> setzen.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function DealerPage() {
   const { slug: routeSlug } = useParams();
@@ -194,17 +221,9 @@ export default function DealerPage() {
           <section className="dealer-section">
             <div className="dealer-section__head">
               <h3>Bewertungen</h3>
-              <p>Vertrauen durch sichtbare Rezensionen und transparente Kennzahlen.</p>
+              <p>Echte Google-Bewertungen — aktualisiert über Google Places.</p>
             </div>
-            <div className="dealer-reviews-grid">
-              {REVIEW_SEED.map((review) => (
-                <article key={review.id} className="dealer-review card">
-                  <strong>{review.source}</strong>
-                  <span>{review.value}</span>
-                  <p>{review.text}</p>
-                </article>
-              ))}
-            </div>
+            <DealerReviewsSection dealerSlug={dealerId} />
           </section>
 
           <section className="dealer-contact-grid">

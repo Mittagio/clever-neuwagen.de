@@ -1,0 +1,41 @@
+.desktop-search-refine {
+  display: none;
+  border-radius: 12px;
+  border: 1px solid #e8edf2;
+  background: #fff;
+  overflow: hidden;
+}
+
+.desktop-search-refine__summary {
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.desktop-search-refine__summary::-webkit-details-marker {
+  display: none;
+}
+
+.desktop-search-refine__summary::before {
+  content: '▸ ';
+  color: #94a3b8;
+}
+
+.desktop-search-refine[open] .desktop-search-refine__summary::before {
+  content: '▾ ';
+}
+
+.desktop-search-refine__body {
+  padding: 0 16px 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+@media (min-width: 768px) {
+  .desktop-search-refine {
+    display: block;
+  }
+}

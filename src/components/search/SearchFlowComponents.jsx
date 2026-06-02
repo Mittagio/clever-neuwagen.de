@@ -1,27 +1,66 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import VehicleImage from '../shared/VehicleImage.jsx';
+import { formatCurrency } from '../../logic/marketplaceService.js';
 import './SearchFlowComponents.css';
 
-export function SearchUnderstandingChips({ chips, onEditChip }) {
+export function CompactSearchSummary({ chips, onEditChip }) {
   if (!chips.length) return null;
 
   return (
-    <section className="search-understood card" aria-label="KI hat verstanden">
-      <p className="search-understood__title">KI hat verstanden</p>
-      <div className="search-understood__chips">
+    <div className="search-summary-compact" aria-label="Suchzusammenfassung">
+      <div className="search-summary-compact__row">
         {chips.map((chip) => (
           <button
             key={chip.id}
             type="button"
-            className="search-chip"
+            className="search-summary-compact__chip"
             onClick={() => onEditChip?.(chip)}
             title="Tippen zum Ändern"
           >
-            🏷 {chip.label}
+            {chip.emoji && (
+              <span className="search-summary-compact__emoji" aria-hidden="true">{chip.emoji}</span>
+            )}
+            {chip.label}
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function KiSummaryHero({ chips, onEditChip }) {
+  return (
+    <section className="ki-summary-hero" aria-label="Ihre Suche">
+      <h1 className="ki-summary-hero__headline">Das könnte zu Ihnen passen.</h1>
+      <p className="ki-summary-hero__sub">Basierend auf Ihrer Beschreibung</p>
+      {chips.length > 0 && (
+        <div className="ki-summary-hero__chips">
+          {chips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className="ki-lifestyle-chip"
+              onClick={() => onEditChip?.(chip)}
+              title="Tippen zum Ändern"
+            >
+              <span className="ki-lifestyle-chip__emoji" aria-hidden="true">{chip.emoji}</span>
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
+}
+
+/** @deprecated Nutze KiSummaryHero auf der Ergebnisseite */
+export function SearchUnderstandingChips({ chips, onEditChip }) {
+  const mapped = chips.map((c) => ({
+    ...c,
+    emoji: c.emoji ?? '🏷',
+  }));
+  return <KiSummaryHero chips={mapped} onEditChip={onEditChip} />;
 }
 
 export function LocationPromptDialog({ open, onAllowLocation, onManualSubmit, onDismiss }) {
@@ -60,31 +99,205 @@ export function LocationPromptDialog({ open, onAllowLocation, onManualSubmit, on
   );
 }
 
-export function TopRecommendationCard({ vehicle, termMonths, onViewOffer }) {
-  if (!vehicle) return null;
+/** Inline-Hinweis – kein Overlay, kein Blocking (Sprint Standort entschärfen) */
+export function LocationHintCard({
+  filters,
+  localized,
+  locationLabel,
+  radiusOptions,
+  onAllowLocation,
+  onManualSubmit,
+  onChangeRadius,
+}) {
+  const [manual, setManual] = useState('');
+  const [radiusOpen, setRadiusOpen] = useState(false);
 
-  const availability = vehicle.availability === 'sofort'
-    ? '🟢 Sofort verfügbar'
-    : vehicle.availability === 'vorlauf'
-      ? '🟡 Im Vorlauf'
-      : '🔵 Bestellfahrzeug';
+  if (localized) {
+    const radiusLabel = filters.radius == null
+      ? 'Deutschlandweit'
+      : `${filters.radius} km Radius`;
+
+    return (
+      <section className="loc-hint loc-hint--active" aria-label="Standort">
+        <div className="loc-hint__active-row">
+          <p className="loc-hint__active-label">
+            📍 {locationLabel} · {radiusLabel}
+          </p>
+          <button
+            type="button"
+            className="loc-hint__link-btn"
+            onClick={() => setRadiusOpen((v) => !v)}
+            aria-expanded={radiusOpen}
+          >
+            Radius ändern
+          </button>
+        </div>
+        {radiusOpen && (
+          <div className="loc-hint__radius-row">
+            {radiusOptions.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                className={`loc-hint__radius-chip${filters.radius === opt.value ? ' is-active' : ''}`}
+                onClick={() => {
+                  onChangeRadius?.(opt.value);
+                  setRadiusOpen(false);
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
-    <article className="top-rec card">
-      <p className="top-rec__badge">Beste Empfehlung</p>
-      <h2>{vehicle.title}</h2>
-      <p className="top-rec__rate">{vehicle.displayRate ?? vehicle.monthlyRate} €/Monat</p>
-      <ul className="top-rec__meta">
-        <li>{vehicle.distanceKm} km entfernt</li>
-        <li>{vehicle.discountPercent} % Rabatt</li>
-        <li>{availability}</li>
-        <li>{vehicle.deliveryTime}</li>
-        {termMonths ? <li>{termMonths} Monate Laufzeit</li> : null}
-      </ul>
-      <button type="button" className="top-rec__cta" onClick={() => onViewOffer?.(vehicle)}>
-        Angebot ansehen
-      </button>
+    <section className="loc-hint" aria-label="Lokale Händler finden">
+      <h2 className="loc-hint__title">📍 Lokale Händler finden</h2>
+      <p className="loc-hint__text">Aktuell werden deutschlandweite Angebote angezeigt.</p>
+      <div className="loc-hint__actions">
+        <button type="button" className="loc-hint__primary" onClick={onAllowLocation}>
+          Standort freigeben
+        </button>
+        <form
+          className="loc-hint__plz-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!manual.trim()) return;
+            onManualSubmit?.(manual);
+            setManual('');
+          }}
+        >
+          <input
+            type="text"
+            className="loc-hint__plz-input"
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            placeholder="PLZ eingeben"
+            aria-label="PLZ eingeben"
+            inputMode="numeric"
+          />
+          <button type="submit" className="loc-hint__plz-submit">Übernehmen</button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function availabilityText(availability) {
+  if (availability === 'sofort') return 'Sofort verfügbar';
+  if (availability === 'vorlauf') return 'Im Vorlauf';
+  return 'Bestellfahrzeug';
+}
+
+export function TopRecommendationCard({ vehicle, onViewOffer }) {
+  if (!vehicle) return null;
+
+  const rate = vehicle.displayRate ?? vehicle.monthlyRate;
+  const isAvailable = vehicle.availability === 'sofort';
+
+  return (
+    <article className="top-rec-hero">
+      <p className="top-rec-hero__badge">Bester Treffer</p>
+      <div className="top-rec-hero__image-wrap">
+        <VehicleImage
+          brand={vehicle.brand}
+          model={vehicle.imageModel}
+          className="top-rec-hero__image"
+        />
+      </div>
+      <div className="top-rec-hero__body">
+        <h2 className="top-rec-hero__title">{vehicle.title}</h2>
+        <p className="top-rec-hero__rate">{formatCurrency(rate)}/Monat</p>
+        <ul className="top-rec-hero__highlights">
+          <li>{vehicle.discountPercent} % Rabatt</li>
+          <li>{vehicle.deliveryTime}</li>
+          <li>{vehicle.distanceKm} km · {vehicle.dealerName}</li>
+          <li className={isAvailable ? 'top-rec-hero__avail--accent' : ''}>
+            {availabilityText(vehicle.availability)}
+          </li>
+        </ul>
+        <button type="button" className="top-rec-hero__cta" onClick={() => onViewOffer?.(vehicle)}>
+          Angebot ansehen
+        </button>
+      </div>
     </article>
+  );
+}
+
+export function VehicleResultsGrid({ vehicles, onViewOffer }) {
+  if (!vehicles.length) return null;
+
+  return (
+    <section className="vehicle-grid" aria-label="Weitere passende Angebote">
+      <h2 className="vehicle-grid__title">Weitere passende Angebote</h2>
+      <div className="vehicle-grid__list">
+        {vehicles.map((vehicle) => (
+          <article key={vehicle.id} className="vehicle-grid-card">
+            <VehicleImage
+              brand={vehicle.brand}
+              model={vehicle.imageModel}
+              className="vehicle-grid-card__image"
+            />
+            <div className="vehicle-grid-card__body">
+              <h3>{vehicle.title}</h3>
+              <p className="vehicle-grid-card__rate">
+                {formatCurrency(vehicle.displayRate ?? vehicle.monthlyRate)}/Monat
+              </p>
+              <p className="vehicle-grid-card__meta">
+                {vehicle.distanceKm} km · {vehicle.discountPercent} % Rabatt
+              </p>
+              <button
+                type="button"
+                className="vehicle-grid-card__cta"
+                onClick={() => onViewOffer?.(vehicle)}
+              >
+                Angebot ansehen
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function HorizontalVehicleStrip({ vehicles, onViewOffer }) {
+  if (!vehicles.length) return null;
+
+  return (
+    <section className="vehicle-strip" aria-label="Weitere passende Fahrzeuge">
+      <h2 className="vehicle-strip__title">Weitere passende Fahrzeuge</h2>
+      <div className="vehicle-strip__scroll">
+        {vehicles.map((vehicle) => (
+          <article key={vehicle.id} className="vehicle-strip-card">
+            <VehicleImage
+              brand={vehicle.brand}
+              model={vehicle.imageModel}
+              className="vehicle-strip-card__image"
+            />
+            <div className="vehicle-strip-card__body">
+              <h3>{vehicle.title}</h3>
+              <p className="vehicle-strip-card__rate">
+                {formatCurrency(vehicle.displayRate ?? vehicle.monthlyRate)}/Monat
+              </p>
+              <p className="vehicle-strip-card__meta">
+                📍 {vehicle.distanceKm} km · 🏷 {vehicle.discountPercent} %
+              </p>
+              <button
+                type="button"
+                className="vehicle-strip-card__cta"
+                onClick={() => onViewOffer?.(vehicle)}
+              >
+                Angebot ansehen
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -98,9 +311,10 @@ export function OfferFilterChips({
   mileageOptions,
   radiusOptions,
   sortOptions,
+  variant = 'default',
 }) {
   return (
-    <section className="offer-chips card" aria-label="Angebots-Filter">
+    <div className={`offer-chips__inner${variant === 'refine' ? ' offer-chips__inner--refine' : ''}`}>
       <div className="offer-chips__group">
         <span className="offer-chips__label">Laufzeit</span>
         <div className="offer-chips__row">
@@ -161,6 +375,58 @@ export function OfferFilterChips({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+export function RefineSearchPanel(props) {
+  return (
+    <details className="refine-search">
+      <summary className="refine-search__summary">⚙ Suche verfeinern</summary>
+      <div className="refine-search__body">
+        <OfferFilterChips {...props} variant="refine" />
+      </div>
+    </details>
+  );
+}
+
+/** @deprecated Nutze RefineSearchPanel */
+export function AdjustResultsPanel(props) {
+  return <RefineSearchPanel {...props} />;
+}
+
+export function NoExactMatchPanel({ suggestions, onSelectSuggestion }) {
+  if (!suggestions.length) return null;
+
+  return (
+    <section className="no-exact-match card" aria-label="Alternative Vorschläge">
+      <h2 className="no-exact-match__title">Keine exakten Treffer gefunden.</h2>
+      <p className="no-exact-match__sub">Ähnliche Möglichkeiten:</p>
+      <div className="no-exact-match__chips">
+        {suggestions.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="no-exact-match__chip"
+            onClick={() => onSelectSuggestion?.(item)}
+          >
+            {item.emoji ? `${item.emoji} ` : ''}{item.label}
+          </button>
+        ))}
+      </div>
     </section>
+  );
+}
+
+export function ResultsQuestionLink({ searchQuery }) {
+  const params = new URLSearchParams({ from: 'results' });
+  if (searchQuery) params.set('q', searchQuery.slice(0, 200));
+
+  return (
+    <p className="results-question-link-wrap">
+      <Link to={`/assistant?${params.toString()}`} className="results-question-link">
+        💬 Frage zu den Ergebnissen?
+      </Link>
+    </p>
   );
 }

@@ -10,7 +10,7 @@ export default function Footer() {
       <div className="site-footer__inner">
         <div className="site-footer__brand-block">
           <p className="site-footer__brand">Clever-Neuwagen</p>
-          <p className="site-footer__tagline">KI-Fahrzeugberater · Echte Händlerangebote</p>
+          <p className="site-footer__tagline">Fahrzeuge finden · Echte Händlerangebote in Ihrer Nähe</p>
         </div>
 
         <nav className="site-footer__nav" aria-label="Rechtliches und Service">

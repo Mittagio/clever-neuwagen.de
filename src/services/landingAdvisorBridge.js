@@ -122,6 +122,12 @@ function parseRate(text) {
   return m ? Number(m[1]) : null;
 }
 
+function parseMaxPrice(text) {
+  const m = text.match(/(?:bis|unter)\s*(\d{1,3}(?:\.\d{3})+|\d{4,6})\s*€/i);
+  if (!m) return null;
+  return Number(m[1].replace(/\./g, ''));
+}
+
 function parseMileageId(text) {
   if (/20\.?000|20000/.test(text)) return '15k-20k';
   if (/15\.?000|15000/.test(text)) return '10k-15k';
@@ -143,6 +149,7 @@ export function parseLandingQuery(text) {
   const lower = t.toLowerCase();
   const profile = {
     desiredRate: parseRate(t) ?? undefined,
+    maxPrice: parseMaxPrice(t) ?? undefined,
     mileage: parseMileageId(t) || undefined,
     household: undefined,
     fuelPreference: undefined,
@@ -159,12 +166,13 @@ export function parseLandingQuery(text) {
   else if (/hybrid|plug-in|phev/i.test(lower)) profile.fuelPreference = 'hybrid';
   else if (/diesel|benzin|verbrenner/i.test(lower)) profile.fuelPreference = 'verbrenner';
 
-  if (/suv/i.test(lower)) profile.bodyType = 'suv';
+  if (/suv|familien/i.test(lower)) profile.bodyType = 'suv';
   else if (/kombi/i.test(lower)) profile.bodyType = 'kombi';
   else if (/limousine/i.test(lower)) profile.bodyType = 'limousine';
+  else if (/kleinwagen|mini|city/i.test(lower)) profile.bodyType = 'kleinwagen';
 
-  if (/anhänger|anhaenger|kupplung/i.test(lower)) profile.wishes.push('anhaenger');
-  if (/reichweite|weit fahren/i.test(lower)) profile.wishes.push('reichweite');
+  if (/anhänger|anhaenger|kupplung|anhängelast|anhaengelast/i.test(lower)) profile.wishes.push('anhaenger');
+  if (/reichweite|weit fahren|\d+\s*km/i.test(lower)) profile.wishes.push('reichweite');
   if (/lieferung|schnell|sofort|lager/i.test(lower)) profile.wishes.push('schnelle-lieferung');
   if (/platz|groß|gross/i.test(lower)) profile.wishes.push('viel-platz');
   if (/firmen|gewerb|dienstwagen|company/i.test(lower)) profile.wishes.push('gewerblich');
