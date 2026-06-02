@@ -295,6 +295,23 @@
   gap: 8px;
 }
 
+.sc-dossier__wishes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-dossier__wishes li {
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  background: #ecfdf5;
+  border-radius: 8px;
+  color: #065f46;
+}
+
 .sc-dossier__docs li {
   display: grid;
   grid-template-columns: 1fr auto auto;

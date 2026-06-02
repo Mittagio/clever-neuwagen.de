@@ -17,6 +17,13 @@ import {
 } from '../../data/salesChanceTypes.js';
 import LeadVehicleImage from '../leads/LeadVehicleImage.jsx';
 import SalesChanceQuickActions from './SalesChanceQuickActions.jsx';
+import CounterOfferPanel from './CounterOfferPanel.jsx';
+import DocumentRequestPanel from './DocumentRequestPanel.jsx';
+import { formatSonderwuenscheSummary } from '../../logic/offerDialogService.js';
+import {
+  getDocumentRequestsForLead,
+  requestSlotsToLeadDocuments,
+} from '../../logic/documentRequestService.js';
 
 function Field({ label, children }) {
   return (
@@ -40,6 +47,8 @@ export default function SalesChanceDossier({
     updateRateForLead,
     getPricingPreview,
     sendOffer,
+    sendCounterOffer,
+    requestDocuments,
     updateLeadStatus,
   } = useCommunication();
   const { offers } = useOffers();
@@ -52,9 +61,19 @@ export default function SalesChanceDossier({
     return offers.find((o) => o.code.toUpperCase() === lead.offerCode.toUpperCase()) ?? null;
   }, [lead?.offerCode, offers]);
 
-  const documents = useMemo(
-    () => (lead ? getDocumentsForLead(lead) : []),
-    [lead],
+  const documents = useMemo(() => {
+    if (!lead) return [];
+    const fromLead = lead.documents ?? [];
+    if (fromLead.length) return fromLead;
+    const requests = getDocumentRequestsForLead(lead.id);
+    const fromRequests = requests.flatMap(requestSlotsToLeadDocuments);
+    if (fromRequests.length) return fromRequests;
+    return getDocumentsForLead(lead);
+  }, [lead]);
+
+  const sonderSummary = useMemo(
+    () => formatSonderwuenscheSummary(lead?.sonderwuensche),
+    [lead?.sonderwuensche],
   );
 
   useEffect(() => {
@@ -87,6 +106,14 @@ export default function SalesChanceDossier({
   async function handleCreateOffer() {
     const res = sendOffer(lead.id);
     onToast?.(res.ok ? `Angebot ${res.offer?.code}` : 'Fehler beim Angebot');
+  }
+
+  function handleSendCounterOffer(payload) {
+    return sendCounterOffer(lead.id, payload);
+  }
+
+  function handleRequestDocuments(payload) {
+    return requestDocuments(lead.id, payload);
   }
 
   function patchWish(patch) {
@@ -243,6 +270,32 @@ export default function SalesChanceDossier({
           </div>
         )}
       </section>
+
+      {sonderSummary.length > 0 && (
+        <section className="sc-dossier__section">
+          <h3>Sonderwünsche (Angebotsdialog)</h3>
+          <ul className="sc-dossier__wishes">
+            {sonderSummary.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <CounterOfferPanel
+        lead={lead}
+        offer={offer}
+        pricing={pricing}
+        onSend={handleSendCounterOffer}
+        onToast={onToast}
+      />
+
+      <DocumentRequestPanel
+        lead={lead}
+        offer={offer}
+        onRequest={handleRequestDocuments}
+        onToast={onToast}
+      />
 
       <section className="sc-dossier__section">
         <h3>Angebot</h3>

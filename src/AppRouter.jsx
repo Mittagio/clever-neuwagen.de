@@ -9,6 +9,8 @@ import AdminPage from './pages/AdminPage';
 import SalesPage from './pages/SalesPage';
 import AccountPage from './pages/sprint7/AccountPage.jsx';
 import MeinBereichPage from './pages/MeinBereichPage.jsx';
+import MeinBereichOfferPage from './pages/MeinBereichOfferPage.jsx';
+import UnterlagenChecklistPage from './pages/UnterlagenChecklistPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AngebotPage from './pages/sprint7/AngebotPage.jsx';
 import InsertGeneratorPage from './pages/InsertGeneratorPage';
@@ -144,6 +146,8 @@ export default function AppRouter() {
         <Route path="/leads" element={<Navigate to="/communication" replace />} />
         <Route path="/leads/classic" element={<LeadsPage />} />
         <Route path="/mein-bereich" element={<MeinBereichPage />} />
+        <Route path="/mein-bereich/angebote/:code" element={<MeinBereichOfferPage />} />
+        <Route path="/mein-bereich/unterlagen/:requestId" element={<UnterlagenChecklistPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/account" element={<Navigate to="/mein-bereich" replace />} />
         <Route path="/offers" element={<OffersPage />} />

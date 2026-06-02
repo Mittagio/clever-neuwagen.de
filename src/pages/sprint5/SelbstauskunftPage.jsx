@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import PageShell from '../../components/layout/PageShell';
 import usePageSeo from '../../hooks/usePageSeo';
 import { submitSelbstauskunft } from '../../services/documentVaultApi.js';
 import { auditSelbstauskunftCreated } from '../../services/sprint5Audit.js';
+import { useLeads } from '../../context/LeadsContext.jsx';
+import {
+  markRequestSlotCompleted,
+} from '../../logic/documentRequestService.js';
+import { findLeadForOffer } from '../../logic/offerDialogService.js';
+import { buildOfferPath } from '../../logic/offerService.js';
+import { OFFER_DIALOG_EVENTS } from '../../data/offerDialogTypes.js';
 import './Sprint5Shared.css';
 import './SelbstauskunftPage.css';
 
@@ -37,6 +44,10 @@ const INITIAL = {
 };
 
 export default function SelbstauskunftPage() {
+  const [searchParams] = useSearchParams();
+  const offerCode = searchParams.get('offer') ?? '';
+  const requestId = searchParams.get('request') ?? '';
+  const { leads, addHistory, updateLead } = useLeads();
   const [form, setForm] = useState(INITIAL);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
@@ -64,8 +75,49 @@ export default function SelbstauskunftPage() {
     setLoading(true);
     setError(null);
     try {
-      const { item } = await submitSelbstauskunft(form);
+      const { item } = await submitSelbstauskunft({
+        ...form,
+        offerCode: offerCode || undefined,
+        requestId: requestId || undefined,
+      });
       auditSelbstauskunftCreated(item);
+
+      const customerName = `${form.personal.firstName} ${form.personal.lastName}`.trim();
+      if (requestId) {
+        markRequestSlotCompleted(requestId, 'selbstauskunft', {
+          fileName: `Selbstauskunft – ${customerName}`,
+        });
+      }
+
+      if (offerCode) {
+        const offer = { code: offerCode, customer: { name: customerName } };
+        const lead = findLeadForOffer(leads, offer);
+        if (lead) {
+          addHistory(
+            lead.id,
+            `${OFFER_DIALOG_EVENTS.selbstauskunft_completed.label}: ${customerName}`,
+            'offer_dialog',
+            {
+              channel: 'offer',
+              direction: 'inbound',
+              offerCode,
+              eventId: 'selbstauskunft_completed',
+            },
+          );
+          updateLead(lead.id, {
+            documents: [
+              {
+                id: `sa-${item.id ?? Date.now()}`,
+                type: 'selbstauskunft',
+                fileName: 'Selbstauskunft (digital)',
+                uploadedAt: new Date().toISOString(),
+              },
+              ...(lead.documents ?? []),
+            ],
+          });
+        }
+      }
+
       setSubmitted(true);
     } catch (err) {
       setError(err.message);
@@ -81,7 +133,19 @@ export default function SelbstauskunftPage() {
           <div className="s5-card sa-success">
             <h1 className="s5-header__title">Vielen Dank!</h1>
             <p>Ihre Selbstauskunft wurde übermittelt. Der Verkäufer erhält strukturierte Daten – kein PDF-Parsing nötig.</p>
-            <Link to="/" className="s5-btn s5-btn--primary">Zur Startseite</Link>
+            {offerCode && (
+              <Link to={buildOfferPath(offerCode)} className="s5-btn s5-btn--primary">
+                Zurück zum Angebot
+              </Link>
+            )}
+            {requestId && (
+              <Link to={`/mein-bereich/unterlagen/${requestId}`} className="s5-btn s5-btn--secondary">
+                Zur Checkliste
+              </Link>
+            )}
+            {!offerCode && !requestId && (
+              <Link to="/" className="s5-btn s5-btn--primary">Zur Startseite</Link>
+            )}
           </div>
         </div>
       </PageShell>
@@ -94,6 +158,12 @@ export default function SelbstauskunftPage() {
         <p className="s5-header__kicker">Finanzierung</p>
         <h1 className="s5-header__title">Digitale Selbstauskunft</h1>
         <p className="s5-header__sub">PDF ersetzen – alle Angaben strukturiert an Ihren Ansprechpartner.</p>
+        {offerCode && (
+          <p className="sa-offer-link">
+            Verknüpft mit Angebot{' '}
+            <Link to={buildOfferPath(offerCode)}>{offerCode}</Link>
+          </p>
+        )}
 
         {error && <div className="s5-banner s5-banner--warn">{error}</div>}
 

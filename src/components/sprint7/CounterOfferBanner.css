@@ -1,0 +1,82 @@
+.counter-offer-banner {
+  border: 2px solid #10b981;
+  background: linear-gradient(180deg, #ecfdf5 0%, #fff 48%);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.counter-offer-banner__badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #047857;
+  background: #d1fae5;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+.counter-offer-banner h2 {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.counter-offer-banner__message {
+  margin: 0 0 14px;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.counter-offer-banner__rate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.counter-offer-banner__rate-label {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.counter-offer-banner__rate strong {
+  font-size: 2rem;
+  color: #047857;
+  line-height: 1.1;
+}
+
+.counter-offer-banner__rate strong span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.counter-offer-banner__details {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 0.9375rem;
+}
+
+.counter-offer-banner__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.counter-offer-banner__actions .angebot-btn {
+  min-height: 52px;
+}
+
+.counter-offer-banner__auth {
+  margin: 0;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #64748b;
+}

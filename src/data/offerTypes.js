@@ -36,5 +36,6 @@ export const CUSTOMER_OFFER_ACTIONS = {
   testdrive: { id: 'testdrive', label: 'Probefahrt anfragen' },
   callback: { id: 'callback', label: 'Händler kontaktieren' },
   question: { id: 'question', label: 'Frage stellen' },
+  special_request: { id: 'special_request', label: 'Sonderwunsch angeben' },
   accept: { id: 'accept', label: 'Anfrage starten' },
 };

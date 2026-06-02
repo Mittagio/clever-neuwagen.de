@@ -1,0 +1,108 @@
+.sc-counter {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.sc-counter h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.sc-counter__hint {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.sc-counter__preview {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.sc-counter__preview > div {
+  font-size: 0.8125rem;
+}
+
+.sc-counter__preview dt {
+  color: #64748b;
+  margin: 0;
+}
+
+.sc-counter__preview dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sc-counter__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 12px;
+}
+
+.sc-counter__field textarea {
+  font-weight: 400;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.sc-counter__send {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.sc-counter__send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sc-counter__status {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.sc-counter__note {
+  margin: 6px 0 0;
+  color: #334155;
+}
+
+.sc-counter__copy {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px dashed #818cf8;
+  background: #fff;
+  color: #4338ca;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}

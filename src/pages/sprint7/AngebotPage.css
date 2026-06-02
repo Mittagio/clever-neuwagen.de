@@ -461,6 +461,29 @@
   z-index: 100;
 }
 
+.angebot-docreq {
+  border: 2px solid #059669;
+  background: linear-gradient(180deg, #ecfdf5 0%, #fff 60%);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.angebot-docreq h2 {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.angebot-docreq p {
+  margin: 0 0 16px;
+  color: #475569;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.angebot-docreq .angebot-btn {
+  min-height: 52px;
+}
+
 @media print {
   .no-print {
     display: none !important;

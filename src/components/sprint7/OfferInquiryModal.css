@@ -1,0 +1,156 @@
+.offer-inquiry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .offer-inquiry-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.offer-inquiry-modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 20px;
+  box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.18);
+}
+
+@media (min-width: 640px) {
+  .offer-inquiry-modal {
+    border-radius: 20px;
+  }
+}
+
+.offer-inquiry-modal h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.offer-inquiry-modal__sub {
+  margin: 0 0 20px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.offer-inquiry-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.offer-inquiry-modal__section {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.offer-inquiry-modal__section legend {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 4px;
+}
+
+.offer-inquiry-modal__section label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.offer-inquiry-modal__section input,
+.offer-inquiry-modal__section textarea {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.offer-inquiry-modal__section textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.offer-inquiry-modal__toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.offer-inquiry-modal__toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px !important;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-weight: 500 !important;
+  cursor: pointer;
+}
+
+.offer-inquiry-modal__toggle input {
+  min-height: auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+.offer-inquiry-modal__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .offer-inquiry-modal__row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.offer-inquiry-modal__submit {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 4px;
+}
+
+.offer-inquiry-modal__success {
+  padding: 16px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #047857;
+  font-weight: 600;
+}
+
+.offer-inquiry-modal__close {
+  margin-top: 16px;
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}

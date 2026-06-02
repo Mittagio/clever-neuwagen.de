@@ -1,16 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../../context/CustomerAuthContext.jsx';
 import { formatPrice } from '../../data/kiaSportage.js';
 import { CUSTOMER_OFFER_ACTIONS } from '../../data/offerTypes.js';
-import { createLeadFromOffer } from '../../logic/offerLeadService.js';
 import {
   getPaymentLabel,
   printOfferPdf,
   buildOfferPath,
 } from '../../logic/offerService.js';
+import {
+  getOfferDialogHistory,
+  rememberOfferLeadId,
+  recallOfferLeadId,
+  findLeadForOffer,
+  getActiveCounterOffer,
+  canCustomerRespondToCounterOffer,
+} from '../../logic/offerDialogService.js';
+import { COUNTER_OFFER_STATUS } from '../../data/offerDialogTypes.js';
 import OfferCompare from '../offers/OfferCompare.jsx';
 import CustomerSaveOfferModal from '../customer/CustomerSaveOfferModal.jsx';
 import { CUSTOMER_LABELS } from '../../data/customerFlow.js';
@@ -20,6 +28,10 @@ import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
 import { validateVehicleCompliance } from '../../logic/complianceShield.js';
 import BrandLogo from '../layout/BrandLogo.jsx';
 import OfferDocumentUpload from './OfferDocumentUpload.jsx';
+import OfferInquiryModal from './OfferInquiryModal.jsx';
+import OfferDialogThread from './OfferDialogThread.jsx';
+import CounterOfferBanner from './CounterOfferBanner.jsx';
+import { getOpenRequestForOffer, buildUnterlagenPath } from '../../logic/documentRequestService.js';
 import '../../pages/sprint7/AngebotPage.css';
 
 function mapOfferStatusToStage(status) {
@@ -28,84 +40,13 @@ function mapOfferStatusToStage(status) {
   return 'angebot';
 }
 
-function ActionModal({ title, offer, onClose, onSubmit, requireMessage = false }) {
-  const [contact, setContact] = useState({
-    name: offer.customer?.name ?? '',
-    email: offer.customer?.email ?? '',
-    phone: offer.customer?.phone ?? '',
-  });
-  const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    onSubmit(contact, message);
-    setSent(true);
-    setTimeout(onClose, 1800);
-  }
-
-  return (
-    <div className="angebot-modal-overlay" onClick={onClose} role="presentation">
-      <div className="angebot-modal" onClick={(e) => e.stopPropagation()} role="dialog">
-        <h2>{title}</h2>
-        {sent ? (
-          <p className="angebot-modal__success">✓ Anfrage wurde gesendet. Wir melden uns bei Ihnen.</p>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <label>
-              Name
-              <input
-                type="text"
-                value={contact.name}
-                onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              E-Mail
-              <input
-                type="email"
-                value={contact.email}
-                onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Telefon
-              <input
-                type="tel"
-                value={contact.phone}
-                onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}
-              />
-            </label>
-            {requireMessage && (
-              <label>
-                Ihre Frage
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  required
-                  placeholder="Was möchten Sie wissen?"
-                />
-              </label>
-            )}
-            <button type="submit" className="angebot-btn angebot-btn--primary">
-              Absenden
-            </button>
-          </form>
-        )}
-        <button type="button" className="angebot-modal__close" onClick={onClose}>Schließen</button>
-      </div>
-    </div>
-  );
-}
-
 export default function OfferMiniSite() {
   const { code } = useParams();
+  const [searchParams] = useSearchParams();
+  const accessToken = searchParams.get('token') ?? '';
   const navigate = useNavigate();
-  const { getOfferByCode, recordOpen, updateOfferStatus, getOffersForCustomer } = useOffers();
-  const { addLead } = useLeads();
+  const { getOfferByCode, recordOpen, updateOfferStatus, getOffersForCustomer, linkLead, resolveCounterOffer } = useOffers();
+  const { leads, upsertLeadFromOfferAction } = useLeads();
   const {
     isLoggedIn,
     email,
@@ -118,9 +59,44 @@ export default function OfferMiniSite() {
   const [toast, setToast] = useState('');
   const [paymentView, setPaymentView] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [counterBusy, setCounterBusy] = useState(false);
 
   const offer = getOfferByCode(code);
   const customerOffers = offer ? getOffersForCustomer(offer.customer) : [];
+
+  const linkedLead = useMemo(() => {
+    if (!offer) return null;
+    const remembered = recallOfferLeadId(offer.code);
+    if (remembered) {
+      const bySession = leads.find((l) => l.id === remembered);
+      if (bySession) return bySession;
+    }
+    return findLeadForOffer(leads, offer);
+  }, [offer, leads]);
+
+  const dialogHistory = useMemo(
+    () => (linkedLead ? getOfferDialogHistory(linkedLead, offer?.code) : []),
+    [linkedLead, offer?.code],
+  );
+
+  const activeCounterOffer = useMemo(
+    () => (offer ? getActiveCounterOffer(offer) : null),
+    [offer],
+  );
+
+  const counterAccess = useMemo(() => {
+    if (!offer) return { canRespond: false };
+    return canCustomerRespondToCounterOffer(offer, {
+      token: accessToken,
+      email: isLoggedIn ? email : '',
+      hasLinkedLead: !!linkedLead,
+    });
+  }, [offer, accessToken, isLoggedIn, email, linkedLead]);
+
+  const openDocRequest = useMemo(
+    () => (offer ? getOpenRequestForOffer(offer.code) : null),
+    [offer],
+  );
 
   useEffect(() => {
     if (code) recordOpen(code);
@@ -147,25 +123,30 @@ export default function OfferMiniSite() {
     setTimeout(() => setToast(''), 2500);
   }
 
-  function handleAction(action, contact, message = '') {
+  function handleDialogAction(action, { contact, message = '', sonderwuensche = {} }) {
     if (!offer) return;
-    const lead = createLeadFromOffer(offer, action, contact);
-    if (message) {
-      lead.notes = `${lead.notes}\n\nNachricht: ${message}`;
-      lead.history.push({
-        id: `hist-${Date.now()}`,
-        at: new Date().toISOString(),
-        type: 'note',
-        text: message,
-      });
+
+    const result = upsertLeadFromOfferAction({
+      offer,
+      action,
+      contact,
+      message,
+      sonderwuensche,
+    });
+
+    if (result?.leadId) {
+      linkLead(offer.code, result.leadId);
+      rememberOfferLeadId(offer.code, result.leadId);
     }
-    addLead(lead);
 
     const statusMap = {
       accept: 'interessiert',
       callback: 'interessiert',
       testdrive: 'interessiert',
       question: 'geoeffnet',
+      inquiry: 'geoeffnet',
+      special_request: 'geoeffnet',
+      decline: 'verloren',
     };
     if (statusMap[action]) {
       updateOfferStatus(offer.code, statusMap[action]);
@@ -173,6 +154,13 @@ export default function OfferMiniSite() {
     if (action === 'accept') {
       updateOfferStatus(offer.code, 'bestellung');
       advanceVehicleStatus(offer.code, 'bestellung');
+      if (activeCounterOffer) {
+        resolveCounterOffer(offer.code, activeCounterOffer.id, COUNTER_OFFER_STATUS.accepted.id);
+      }
+    }
+    if (action === 'decline' && activeCounterOffer) {
+      resolveCounterOffer(offer.code, activeCounterOffer.id, COUNTER_OFFER_STATUS.declined.id);
+      updateOfferStatus(offer.code, 'verloren');
     }
     if (action === 'testdrive') {
       advanceVehicleStatus(offer.code, 'interessiert');
@@ -186,6 +174,44 @@ export default function OfferMiniSite() {
         customerEmail,
       );
     }
+
+    showToast(
+      result?.isNew
+        ? 'Anfrage gesendet – Ihre Verkaufschance wurde angelegt'
+        : 'Anfrage gesendet – Dialog aktualisiert',
+    );
+    setModal(null);
+  }
+
+  function defaultContactFromOffer() {
+    return {
+      name: linkedLead?.contact?.name ?? offer?.customer?.name ?? '',
+      email: linkedLead?.contact?.email ?? offer?.customer?.email ?? email ?? '',
+      phone: linkedLead?.contact?.phone ?? offer?.customer?.phone ?? '',
+    };
+  }
+
+  async function handleCounterAccept() {
+    if (!offer || counterBusy) return;
+    setCounterBusy(true);
+    handleDialogAction('accept', { contact: defaultContactFromOffer() });
+    showToast('Angebot angenommen – vielen Dank!');
+    setCounterBusy(false);
+  }
+
+  function handleCounterDecline() {
+    if (!offer || counterBusy) return;
+    setCounterBusy(true);
+    handleDialogAction('decline', {
+      contact: defaultContactFromOffer(),
+      message: 'Angebot abgelehnt',
+    });
+    showToast('Angebot abgelehnt');
+    setCounterBusy(false);
+  }
+
+  function handleCounterQuestion() {
+    setModal('question');
   }
 
   if (!offer) {
@@ -201,7 +227,7 @@ export default function OfferMiniSite() {
   }
 
   const contact = offer.dealer.contact ?? {};
-  const pricing = offer.pricing;
+  const pricing = activeCounterOffer?.pricing ?? offer.pricing;
   const offerCompliance = validateVehicleCompliance({
     engineId: offer.vehicle?.engineId,
     trimId: offer.vehicle?.trimId,
@@ -260,6 +286,38 @@ export default function OfferMiniSite() {
                 onSelect={(c) => navigate(buildOfferPath(c))}
               />
             </div>
+          )}
+
+          {activeCounterOffer && (
+            <CounterOfferBanner
+              counterOffer={activeCounterOffer}
+              offer={offer}
+              canRespond={counterAccess.canRespond}
+              authHint={
+                counterAccess.reason === 'EXPIRED_TOKEN'
+                  ? 'Der Link ist abgelaufen. Bitte kontaktieren Sie Ihren Verkäufer.'
+                  : 'Bitte öffnen Sie den Link aus Ihrer E-Mail oder melden Sie sich in Mein Bereich an.'
+              }
+              onAccept={handleCounterAccept}
+              onDecline={handleCounterDecline}
+              onQuestion={handleCounterQuestion}
+              busy={counterBusy}
+            />
+          )}
+
+          {openDocRequest && (
+            <section className="angebot-docreq card no-print">
+              <h2>Unterlagen benötigt</h2>
+              <p>
+                Ihr Verkäufer hat Unterlagen angefordert. Bitte reichen Sie diese innerhalb von 48 Stunden ein.
+              </p>
+              <Link
+                to={buildUnterlagenPath(openDocRequest.id, openDocRequest.accessToken)}
+                className="angebot-btn angebot-btn--primary"
+              >
+                Zur Upload-Checkliste
+              </Link>
+            </section>
           )}
 
           <section className="angebot-gallery card">
@@ -347,6 +405,11 @@ export default function OfferMiniSite() {
 
           <OfferDocumentUpload offer={offer} />
 
+          <OfferDialogThread
+            history={dialogHistory}
+            sonderwuensche={linkedLead?.sonderwuensche}
+          />
+
           <section className="angebot-contact card" id="kontakt">
             <h2>Ansprechpartner</h2>
             <div className="angebot-contact__card">
@@ -421,6 +484,13 @@ export default function OfferMiniSite() {
               </button>
               <button
                 type="button"
+                className="angebot-btn angebot-btn--outline"
+                onClick={() => setModal('special_request')}
+              >
+                {CUSTOMER_OFFER_ACTIONS.special_request.label}
+              </button>
+              <button
+                type="button"
                 className="angebot-btn angebot-btn--ghost"
                 onClick={() => {
                   printOfferPdf();
@@ -447,37 +517,13 @@ export default function OfferMiniSite() {
       {saveOpen && (
         <CustomerSaveOfferModal offer={offer} onClose={() => setSaveOpen(false)} />
       )}
-      {modal === 'inquiry' && (
-        <ActionModal
-          title={CUSTOMER_OFFER_ACTIONS.inquiry.label}
+      {modal && (
+        <OfferInquiryModal
           offer={offer}
+          mode={modal}
+          title={CUSTOMER_OFFER_ACTIONS[modal]?.label ?? 'Anfrage'}
           onClose={() => setModal(null)}
-          onSubmit={(c) => handleAction('inquiry', c)}
-        />
-      )}
-      {modal === 'callback' && (
-        <ActionModal
-          title={CUSTOMER_OFFER_ACTIONS.callback.label}
-          offer={offer}
-          onClose={() => setModal(null)}
-          onSubmit={(c) => handleAction('callback', c)}
-        />
-      )}
-      {modal === 'testdrive' && (
-        <ActionModal
-          title={CUSTOMER_OFFER_ACTIONS.testdrive.label}
-          offer={offer}
-          onClose={() => setModal(null)}
-          onSubmit={(c) => handleAction('testdrive', c)}
-        />
-      )}
-      {modal === 'question' && (
-        <ActionModal
-          title={CUSTOMER_OFFER_ACTIONS.question.label}
-          offer={offer}
-          requireMessage
-          onClose={() => setModal(null)}
-          onSubmit={(c, msg) => handleAction('question', c, msg)}
+          onSubmit={(payload) => handleDialogAction(modal, payload)}
         />
       )}
 

@@ -17,6 +17,16 @@ import {
 } from '../logic/communicationService.js';
 import { linkOfferToLead } from '../logic/offerLeadService.js';
 import { calculateRateForLead as computeLeadPricing } from '../logic/salesChancePricing.js';
+import {
+  prepareCounterOfferSend,
+} from '../logic/offerDialogService.js';
+import { buildCounterOfferMailto } from '../logic/offerAccessToken.js';
+import {
+  createDocumentRequest,
+  buildUnterlagenUrl,
+  buildDocumentRequestMailto,
+} from '../logic/documentRequestService.js';
+import { OFFER_DIALOG_EVENTS } from '../data/offerDialogTypes.js';
 import { sendMockEmail } from '../services/mockMailService.js';
 import {
   CURRENT_SELLER_STORAGE_KEY,
@@ -52,7 +62,7 @@ function saveJson(key, data) {
 
 export function CommunicationProvider({ children }) {
   const leadsApi = useLeads();
-  const { offers, addOffer, markSent } = useOffers();
+  const { offers, addOffer, markSent, applyOfferPatch } = useOffers();
   const { conditions } = useDealerConditions();
   const [reminders, setReminders] = useState(() => loadJson(REMINDERS_KEY, []));
   const [auditLog, setAuditLog] = useState(() => loadJson(AUDIT_KEY, []));
@@ -244,6 +254,118 @@ export function CommunicationProvider({ children }) {
         return { ok: true, offer, url };
       },
 
+      sendCounterOffer(leadId, { accessoriesNote = '', dealerMessage = '' } = {}) {
+        const lead = leadsApi.getLead(leadId);
+        if (!lead) return { ok: false, code: 'NOT_FOUND' };
+
+        let offer = lead.offerCode
+          ? offers.find((o) => o.code.toUpperCase() === lead.offerCode.toUpperCase())
+          : null;
+
+        if (!offer) {
+          offer = createOfferFromLead(lead, conditions, offers);
+          addOffer(offer);
+          const linked = linkOfferToLead(offer, { ...lead, offerCode: offer.code });
+          leadsApi.updateLead(leadId, {
+            offerCode: offer.code,
+            status: linked.status,
+            currentRate: linked.currentRate ?? lead.currentRate,
+          });
+        }
+
+        const pricingPreview = computeLeadPricing(lead, conditions);
+        const prepared = prepareCounterOfferSend({
+          offer,
+          lead,
+          pricingPreview,
+          accessoriesNote,
+          dealerMessage,
+        });
+
+        applyOfferPatch(offer.code, prepared.offerPatch);
+
+        leadsApi.addHistory(leadId, prepared.historyText, 'offer_dialog', {
+          channel: 'offer',
+          direction: 'outbound',
+          offerCode: offer.code,
+          type: 'offer_dialog',
+          eventId: 'dealer_counter_offer',
+        });
+
+        leadsApi.applyPricingResult(leadId, pricingPreview);
+        leadsApi.updateLead(leadId, {
+          currentRate: pricingPreview.leasingRate ?? lead.currentRate,
+        });
+
+        if (lead.status === 'neu' || lead.status === 'inBearbeitung' || lead.status === 'rueckfrageOffen') {
+          leadsApi.updateStatus(leadId, 'angebotVersendet');
+        }
+
+        const mailto = buildCounterOfferMailto(
+          { ...offer, pricing: prepared.offerPatch.pricing },
+          prepared.magicUrl,
+          prepared.counterOffer,
+        );
+        if (lead.contact?.email) {
+          window.location.href = mailto;
+        }
+
+        markSent(offer.code);
+        recordAudit(AUDIT_ACTIONS.OFFER_SENT, leadId, `${offer.code} (Gegenangebot)`);
+        return {
+          ok: true,
+          offer: { ...offer, ...prepared.offerPatch },
+          url: prepared.magicUrl,
+          counterOffer: prepared.counterOffer,
+        };
+      },
+
+      requestDocuments(leadId, { slotTypes = [], message = '' } = {}) {
+        const lead = leadsApi.getLead(leadId);
+        if (!lead) return { ok: false, code: 'NOT_FOUND' };
+        if (!slotTypes.length) return { ok: false, code: 'NO_SLOTS' };
+
+        let offerCode = lead.offerCode;
+        if (!offerCode) {
+          const created = createOfferFromLead(lead, conditions, offers);
+          addOffer(created);
+          offerCode = created.code;
+          leadsApi.updateLead(leadId, { offerCode });
+        }
+
+        const request = createDocumentRequest({
+          leadId,
+          offerCode,
+          customerEmail: lead.contact?.email,
+          customerName: lead.contact?.name,
+          slotTypes,
+          dealerMessage: message,
+        });
+
+        const url = buildUnterlagenUrl(request.id, request.accessToken);
+        const slotLabels = request.slots.map((s) => s.label).join(', ');
+        const historyText = `${OFFER_DIALOG_EVENTS.documents_requested.label}: ${slotLabels}`;
+
+        leadsApi.addHistory(leadId, historyText, 'offer_dialog', {
+          channel: 'offer',
+          direction: 'outbound',
+          offerCode,
+          eventId: 'documents_requested',
+          requestId: request.id,
+        });
+
+        leadsApi.updateLead(leadId, {
+          activeDocumentRequestId: request.id,
+        });
+
+        if (lead.contact?.email) {
+          window.location.href = buildDocumentRequestMailto(request, url);
+        }
+
+        recordAudit(AUDIT_ACTIONS.DOCUMENT_SENT, leadId, request.id);
+        return { ok: true, request, url };
+      },
+
       sendDocument(leadId, documentType) {
         const lead = leadsApi.getLead(leadId);
         if (!lead) return { ok: false, code: 'NOT_FOUND' };
@@ -352,7 +474,7 @@ export function CommunicationProvider({ children }) {
       updateContact: leadsApi.updateContact,
       addHistory: leadsApi.addHistory,
     };
-  }, [leadsApi, offers, conditions, reminders, auditLog, addOffer, markSent, currentSellerId]);
+  }, [leadsApi, offers, conditions, reminders, auditLog, addOffer, markSent, applyOfferPatch, currentSellerId]);
 
   return (
     <CommunicationContext.Provider value={api}>

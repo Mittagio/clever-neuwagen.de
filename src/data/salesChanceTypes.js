@@ -60,6 +60,8 @@ export const MILEAGE_OPTIONS = [10000, 15000, 20000, 25000, 30000];
 
 export const DOCUMENT_SLOT_LABELS = {
   selbstauskunft: 'Selbstauskunft',
+  personalausweis: 'Personalausweis',
+  gehaltsnachweise: 'Gehaltsnachweise',
   ausweis: 'Ausweis',
   fuehrerschein: 'Führerschein',
   voucher: 'Voucher',

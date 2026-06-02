@@ -1,0 +1,82 @@
+.offer-dialog-thread {
+  padding: 20px;
+}
+
+.offer-dialog-thread h2 {
+  margin: 0 0 16px;
+  font-size: 1.0625rem;
+  font-weight: 800;
+}
+
+.offer-dialog-thread__wishes {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+  border: 1px solid #e0e7ff;
+}
+
+.offer-dialog-thread__wishes-title {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6366f1;
+}
+
+.offer-dialog-thread__wishes ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.offer-dialog-thread__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.offer-dialog-thread__item {
+  display: flex;
+}
+
+.offer-dialog-thread__item--inbound {
+  justify-content: flex-start;
+}
+
+.offer-dialog-thread__item--outbound {
+  justify-content: flex-end;
+}
+
+.offer-dialog-thread__bubble {
+  max-width: 92%;
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.offer-dialog-thread__item--inbound .offer-dialog-thread__bubble {
+  background: #f1f5f9;
+  border-bottom-left-radius: 4px;
+}
+
+.offer-dialog-thread__item--outbound .offer-dialog-thread__bubble {
+  background: #dbeafe;
+  border-bottom-right-radius: 4px;
+}
+
+.offer-dialog-thread__text {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+.offer-dialog-thread__time {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+}

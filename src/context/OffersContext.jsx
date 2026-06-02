@@ -10,6 +10,7 @@ import {
   recordIntelligenceOfferCreated,
   recordIntelligenceOfferViewed,
 } from '../services/intelligenceAnalytics.js';
+import { buildCounterOfferResolutionPatch } from '../logic/offerDialogService.js';
 
 const STORAGE_KEY = 'clever-neuwagen-offers';
 
@@ -27,6 +28,9 @@ function migrateOffer(offer) {
   }
   if (offer.status === 'active') offer.status = 'versendet';
   if (offer.status === 'reserved') offer.status = 'bestellung';
+  if (!offer.dialog) {
+    offer.dialog = { counterOffers: [] };
+  }
   return offer;
 }
 
@@ -122,6 +126,24 @@ export function OffersProvider({ children }) {
 
     linkLead(code, leadId) {
       api.updateOffer(code, { leadId });
+    },
+
+    applyOfferPatch(code, patch) {
+      setOffers((prev) =>
+        prev.map((o) =>
+          o.code.toUpperCase() === code.toUpperCase()
+            ? migrateOffer({ ...o, ...patch, updatedAt: new Date().toISOString() })
+            : o,
+        ),
+      );
+    },
+
+    resolveCounterOffer(code, counterOfferId, resolution) {
+      const offer = api.getOfferByCode(code);
+      if (!offer) return { ok: false, code: 'NOT_FOUND' };
+      const patch = buildCounterOfferResolutionPatch(offer, counterOfferId, resolution);
+      api.applyOfferPatch(code, patch);
+      return { ok: true, patch };
     },
 
     getOffersForCustomer(customer) {

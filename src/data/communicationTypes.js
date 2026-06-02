@@ -3,7 +3,7 @@
 export const COMMUNICATION_CHANNELS = {
   email: { id: 'email', label: 'E-Mail', icon: '📧' },
   whatsapp: { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-  offer: { id: 'offer', label: 'Angebot', icon: '📄' },
+  offer: { id: 'offer', label: 'Angebotsdialog', icon: '💬' },
   document: { id: 'document', label: 'Dokument', icon: '📎' },
   ai: { id: 'ai', label: 'KI-Antwort', icon: '🤖' },
   system: { id: 'system', label: 'System', icon: '⚙️' },

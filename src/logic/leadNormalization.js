@@ -27,6 +27,9 @@ export function normalizeLead(lead) {
     listPrice: lead.listPrice ?? null,
     deliveryTime: lead.deliveryTime ?? null,
     complianceStatus: lead.complianceStatus ?? 'ok',
+    sonderwuensche: {
+      ...lead.sonderwuensche,
+    },
     documents: lead.documents ?? [],
   };
 }

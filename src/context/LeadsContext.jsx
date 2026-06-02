@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEMO_LEADS, PILOT_DEMO_LEAD, PILOT_LEAD_ID } from '../data/demoLeads.js';
 import { LEAD_STATUS } from '../data/leadTypes.js';
 import { normalizeLead, normalizeLeads } from '../logic/leadNormalization.js';
+import { upsertLeadFromOfferAction as buildUpsertFromOffer } from '../logic/offerDialogService.js';
 import { DEALER_SELLERS } from '../data/salesChanceTypes.js';
 import { loadPartnersFromStorage } from './VoucherPartnersContext.jsx';
 import { recordIntelligenceSale } from '../services/intelligenceAnalytics.js';
@@ -57,6 +58,7 @@ function historyEntry(text, type = 'system', meta = {}) {
     offerCode: meta.offerCode ?? null,
     documentType: meta.documentType ?? null,
     subject: meta.subject ?? null,
+    eventId: meta.eventId ?? null,
   };
 }
 
@@ -356,6 +358,18 @@ export function LeadsProvider({ children }) {
 
     getLead(id) {
       return leads.find((l) => l.id === id) ?? null;
+    },
+
+    upsertLeadFromOfferAction(params) {
+      let result = null;
+      setLeads((prev) => {
+        result = buildUpsertFromOffer({ ...params, leads: prev });
+        if (result.isNew) {
+          return [result.lead, ...prev];
+        }
+        return prev.map((lead) => (lead.id === result.leadId ? result.lead : lead));
+      });
+      return result;
     },
 
     countByStatus(status) {
