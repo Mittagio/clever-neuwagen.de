@@ -1,0 +1,75 @@
+.cust-inq-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.cust-inq-modal {
+  width: min(480px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.cust-inq-modal h2 {
+  margin: 0 0 16px;
+  font-size: 1.2rem;
+}
+
+.cust-inq-form {
+  display: grid;
+  gap: 12px;
+}
+
+.cust-inq-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.cust-inq-form input,
+.cust-inq-form textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.cust-inq-btn {
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cust-inq-btn--primary {
+  background: #0b2559;
+  color: #fff;
+}
+
+.cust-inq-ghost {
+  margin-top: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.cust-inq-error {
+  color: #b91c1c;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.cust-inq-success {
+  color: #0f766e;
+  margin: 0 0 12px;
+}

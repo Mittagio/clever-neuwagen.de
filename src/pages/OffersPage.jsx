@@ -94,8 +94,16 @@ export default function OffersPage() {
     showToast(`Status: ${OFFER_STATUS[status]?.label ?? status}`);
   }
 
+  const isDealerRoute = location.pathname.startsWith('/backend');
+
   return (
     <div className="offers-page">
+      {!isDealerRoute && (
+        <div className="offers-page__dealer-banner" role="note">
+          Dieser Bereich ist für Händler. Als Kunde finden Sie Angebote unter{' '}
+          <Link to="/fahrzeuge">Fahrzeuge</Link> oder in <Link to="/mein-bereich">Mein Bereich</Link>.
+        </div>
+      )}
       <aside className={`offers-page__list${selected ? ' offers-page__list--hidden-mobile' : ''}`}>
         <header className="offers-page__header">
           <div className="offers-page__header-top">

@@ -14,7 +14,7 @@ const TODAY_TILES = [
     key: 'newLeads',
     label: 'Neue Verkaufschancen',
     hint: 'Noch nicht bearbeitet',
-    href: '/communication',
+    href: '/backend/verkaufschancen',
     filter: 'neu',
     accent: '#2563eb',
   },
@@ -22,14 +22,14 @@ const TODAY_TILES = [
     key: 'openOffers',
     label: 'Offene Angebote',
     hint: 'Entwurf & versendet',
-    href: '/offers',
+    href: '/backend/angebote',
     accent: '#7c3aed',
   },
   {
     key: 'testDrives',
     label: 'Probefahrten',
     hint: 'Termine & Anfragen',
-    href: '/communication',
+    href: '/backend/verkaufschancen',
     filter: 'probefahrt',
     accent: '#0d9488',
   },
@@ -37,7 +37,7 @@ const TODAY_TILES = [
     key: 'deliveries',
     label: 'Auslieferungen',
     hint: 'Bestellung & Übergabe',
-    href: '/communication',
+    href: '/backend/verkaufschancen',
     filter: 'bestellung',
     accent: '#16a34a',
   },
@@ -45,7 +45,7 @@ const TODAY_TILES = [
 
 const QUICK_ACTIONS = [
   { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kunde erfassen' },
-  { label: 'Neues Angebot', icon: '📄', href: '/offers', state: { openCreate: true }, desc: 'Angebot erstellen' },
+  { label: 'Neues Angebot', icon: '📄', href: '/backend/angebote', state: { openCreate: true }, desc: 'Angebot erstellen' },
   { label: 'Fahrzeug veröffentlichen', icon: '📢', href: '/backend/publishing', desc: 'Marketing & Inserate' },
   { label: 'Dealer AI', icon: '🤖', href: '/dealer-ai', desc: 'KI-Verkaufsassistent', primary: true },
 ];

@@ -8,6 +8,8 @@ import BackendPage from './pages/BackendPage';
 import AdminPage from './pages/AdminPage';
 import SalesPage from './pages/SalesPage';
 import AccountPage from './pages/sprint7/AccountPage.jsx';
+import MeinBereichPage from './pages/MeinBereichPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import AngebotPage from './pages/sprint7/AngebotPage.jsx';
 import InsertGeneratorPage from './pages/InsertGeneratorPage';
 import EquipmentAdvisorPage from './pages/EquipmentAdvisorPage';
@@ -141,7 +143,13 @@ export default function AppRouter() {
         <Route path="/communication/templates" element={<CommunicationTemplatesPage />} />
         <Route path="/leads" element={<Navigate to="/communication" replace />} />
         <Route path="/leads/classic" element={<LeadsPage />} />
+        <Route path="/mein-bereich" element={<MeinBereichPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/account" element={<Navigate to="/mein-bereich" replace />} />
         <Route path="/offers" element={<OffersPage />} />
+        <Route path="/backend/verkaufschancen" element={<CommunicationCenterPage />} />
+        <Route path="/backend/angebote" element={<OffersPage />} />
+        <Route path="/backend/fahrzeuge" element={<BackendPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/angebot/:code" element={<AngebotPage />} />
         <Route path="/offer/:code" element={<OfferPage />} />

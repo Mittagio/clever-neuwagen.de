@@ -12,6 +12,8 @@ import {
   buildOfferPath,
 } from '../../logic/offerService.js';
 import OfferCompare from '../offers/OfferCompare.jsx';
+import CustomerSaveOfferModal from '../customer/CustomerSaveOfferModal.jsx';
+import { CUSTOMER_LABELS } from '../../data/customerFlow.js';
 import OfferVehicleImage from '../shared/OfferVehicleImage.jsx';
 import LegalDisclaimer from '../legal/LegalDisclaimer.jsx';
 import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
@@ -112,6 +114,7 @@ export default function OfferMiniSite() {
     advanceVehicleStatus,
   } = useCustomerAuth();
   const [modal, setModal] = useState(null);
+  const [saveOpen, setSaveOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [paymentView, setPaymentView] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
@@ -229,7 +232,7 @@ export default function OfferMiniSite() {
           <BrandLogo />
         </Link>
         <div className="angebot-page__topbar-actions">
-          <Link to="/account" className="angebot-page__account-link">Mein Konto</Link>
+          <Link to="/mein-bereich" className="angebot-page__account-link">{CUSTOMER_LABELS.myArea}</Link>
         </div>
       </header>
 
@@ -383,10 +386,17 @@ export default function OfferMiniSite() {
             <div className="angebot-sidebar__actions">
               <button
                 type="button"
-                className="angebot-btn angebot-btn--primary"
-                onClick={() => setModal('accept')}
+                className="angebot-btn angebot-btn--outline"
+                onClick={() => setSaveOpen(true)}
               >
-                {CUSTOMER_OFFER_ACTIONS.accept.label}
+                {CUSTOMER_LABELS.saveOffer}
+              </button>
+              <button
+                type="button"
+                className="angebot-btn angebot-btn--primary"
+                onClick={() => setModal('inquiry')}
+              >
+                {CUSTOMER_OFFER_ACTIONS.inquiry.label}
               </button>
               <button
                 type="button"
@@ -434,12 +444,15 @@ export default function OfferMiniSite() {
         </button>
       </div>
 
-      {modal === 'accept' && (
+      {saveOpen && (
+        <CustomerSaveOfferModal offer={offer} onClose={() => setSaveOpen(false)} />
+      )}
+      {modal === 'inquiry' && (
         <ActionModal
-          title={CUSTOMER_OFFER_ACTIONS.accept.label}
+          title={CUSTOMER_OFFER_ACTIONS.inquiry.label}
           offer={offer}
           onClose={() => setModal(null)}
-          onSubmit={(c) => handleAction('accept', c)}
+          onSubmit={(c) => handleAction('inquiry', c)}
         />
       )}
       {modal === 'callback' && (

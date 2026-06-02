@@ -26,7 +26,11 @@ function formatDate(iso) {
 export default function CustomerItemCard({ item, type }) {
   const navigate = useNavigate();
   const statusConfig = CUSTOMER_STATUS[item.status] ?? CUSTOMER_STATUS.gespeichert;
-  const offerLink = item.offerCode ? buildOfferPath(item.offerCode) : null;
+  const offerLink = item.offerCode
+    ? buildOfferPath(item.offerCode)
+    : item.marketplaceSlug
+      ? `/fahrzeug/${item.marketplaceSlug}`
+      : null;
 
   function openConfiguration() {
     stashConfigForRestore(item);
@@ -69,7 +73,7 @@ export default function CustomerItemCard({ item, type }) {
         </span>
         {offerLink && (
           <Link to={offerLink} className="cust-item-link">
-            Angebot öffnen
+            {item.marketplaceSlug ? 'Fahrzeug ansehen' : 'Angebot öffnen'}
           </Link>
         )}
         {type === 'configurations' && item.config && (

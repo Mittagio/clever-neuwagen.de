@@ -6,6 +6,9 @@ import {
   addComparisonToAccount,
   addTestDriveToAccount,
   addFavoriteToAccount,
+  addMarketplaceSavedToAccount,
+  addInquiryToAccount,
+  buildMarketplaceInquiryEntry,
   updateProfile,
   buildComparisonEntry,
   buildTestDriveEntry,
@@ -160,6 +163,23 @@ export function CustomerAuthProvider({ children }) {
       if (!targetEmail) return null;
       const current = loadCustomerData(targetEmail);
       const next = addOfferToAccount(current, offer);
+      return persistData(targetEmail.trim().toLowerCase(), next);
+    },
+
+    saveMarketplaceVehicle(vehicle, emailOverride) {
+      const targetEmail = emailOverride ?? session?.email;
+      if (!targetEmail || !vehicle) return null;
+      const current = loadCustomerData(targetEmail);
+      const next = addMarketplaceSavedToAccount(current, vehicle);
+      return persistData(targetEmail.trim().toLowerCase(), next);
+    },
+
+    registerMarketplaceInquiry(vehicle, contact, kind = 'inquiry', emailOverride) {
+      const targetEmail = emailOverride ?? contact.email ?? session?.email;
+      if (!targetEmail || !vehicle) return null;
+      const entry = buildMarketplaceInquiryEntry(vehicle, contact, kind);
+      const current = loadCustomerData(targetEmail);
+      const next = addInquiryToAccount(current, entry);
       return persistData(targetEmail.trim().toLowerCase(), next);
     },
 

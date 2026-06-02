@@ -1,0 +1,57 @@
+.cust-save-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.cust-save-modal {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  position: relative;
+}
+
+.cust-save-modal--wide {
+  width: min(480px, 100%);
+}
+
+.cust-save-modal h2 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+}
+
+.cust-save-sub {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.cust-save-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.cust-save-btn {
+  margin-top: 12px;
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 18px;
+  background: #0b2559;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}

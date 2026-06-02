@@ -142,7 +142,7 @@ export default function AccountDashboard() {
     <div className="account-dashboard">
       <header className="account-dashboard-header">
         <div>
-          <p className="account-dashboard-greeting">Mein Konto</p>
+          <p className="account-dashboard-greeting">Mein Bereich</p>
           <p className="account-dashboard-email">{email}</p>
         </div>
         <button type="button" className="account-dashboard-logout" onClick={logout}>

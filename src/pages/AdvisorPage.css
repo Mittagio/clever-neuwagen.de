@@ -1,3 +1,163 @@
-.adv-disclaimer {
-  margin-top: var(--space-lg);
+.ai-offers-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px 56px;
+}
+
+.ai-offers-header__back {
+  font-size: 0.9rem;
+}
+
+.ai-offers-header h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+}
+
+.ai-offers-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.ai-offers-main {
+  margin-top: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.ai-understood h2,
+.ai-filters h2,
+.ai-local-block h2,
+.ai-best h2,
+.ai-list h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.ai-chip-row,
+.ai-chip-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-chip {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+.ai-chip--muted {
+  color: #64748b;
+  border-style: dashed;
+}
+
+.ai-add-location {
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: #0b2559;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ai-filter-block {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ai-filter-block > span {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.ai-chip-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 12px;
+  background: #fff;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.ai-chip-btn.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+.ai-toggle-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.ai-local-block p {
+  margin: 0;
+  color: #64748b;
+}
+
+.ai-offer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.ai-offer-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ai-offer-card.is-highlight {
+  border-color: #0f172a;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+}
+
+.ai-offer-card__img {
+  min-height: 190px;
+  border-radius: 0;
+}
+
+.ai-offer-card__body {
+  padding: 12px;
+  display: grid;
+  gap: 5px;
+}
+
+.ai-offer-card__body h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.ai-offer-card__body p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.ai-offer-card__rate {
+  color: #0f172a !important;
+  font-size: 1.2rem !important;
+  font-weight: 700;
+}
+
+.ai-offer-card__cta {
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 900px) {
+  .ai-offer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

@@ -1,618 +1,364 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
-import { useLeads } from '../context/LeadsContext.jsx';
-import { useOffers } from '../context/OffersContext.jsx';
-import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import {
-  ADVISOR_BODY_OPTIONS,
-  ADVISOR_DEFAULTS,
-  ADVISOR_FUEL_OPTIONS,
-  ADVISOR_HOUSEHOLD_OPTIONS,
   ADVISOR_MILEAGE_OPTIONS,
+  ADVISOR_HOUSEHOLD_OPTIONS,
   ADVISOR_WISHES,
 } from '../data/advisorCatalog.js';
 import { getAdvisorRecommendations, formatAdvisorRate } from '../services/advisorEngine.js';
-import { recordAdvisorSession } from '../services/advisorAnalytics.js';
 import {
-  recordIntelligenceAdvisorSession,
-  recordIntelligenceComparison,
-  recordIntelligenceSearch,
-} from '../services/intelligenceAnalytics.js';
-import { parseAdvisorUrlProfile } from '../services/landingAdvisorBridge.js';
-import { createOfferFromAdvisor, buildOfferUrl, buildOfferPath } from '../logic/offerService.js';
-import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
-import AdvisorResultCard from '../components/advisor/AdvisorResultCard.jsx';
-import AdvisorPodium from '../components/advisor/AdvisorPodium.jsx';
-import AdvisorCompareView from '../components/advisor/AdvisorCompareView.jsx';
-import AdvisorOfferStep from '../components/advisor/AdvisorOfferStep.jsx';
-import AdvisorContactStep, { AdvisorSuccessStep } from '../components/advisor/AdvisorContactStep.jsx';
-import CustomerFlowProgress from '../components/advisor/CustomerFlowProgress.jsx';
-import LegalDisclaimer from '../components/legal/LegalDisclaimer.jsx';
+  buildAdvisorUrl,
+  parseAdvisorUrlProfile,
+  parseAdvisorLocationFromParams,
+  DEFAULT_LOCATION_RADIUS_KM,
+} from '../services/landingAdvisorBridge.js';
+import {
+  hasAdvisorLocation,
+  formatLocationChip,
+  getLocationDisplayLabel,
+} from '../logic/advisorLocation.js';
+import { enrichLocationWithGeocoding } from '../services/geocodingService.js';
+import AdvisorLocationStep from '../components/advisor/AdvisorLocationStep.jsx';
+import VehicleImage from '../components/shared/VehicleImage.jsx';
+import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
+import { CUSTOMER_ROUTES } from '../data/customerFlow.js';
 import './AdvisorPage.css';
 
-const TOTAL_STEPS = 6;
-
-const INITIAL_PROFILE = {
-  mileage: '',
-  household: '',
-  desiredRate: ADVISOR_DEFAULTS.desiredRate,
-  fuelPreference: '',
-  bodyType: '',
-  wishes: [],
-};
-
-function getMileagePerYear(profile) {
-  const opt = ADVISOR_MILEAGE_OPTIONS.find((o) => o.id === profile.mileage);
-  return opt?.value ?? ADVISOR_DEFAULTS.mileagePerYear;
+function findMarketplaceSlug(rec) {
+  const match = MARKETPLACE_VEHICLES.find(
+    (v) => v.brand === rec.brand && v.model?.toLowerCase() === rec.model?.toLowerCase(),
+  );
+  return match?.slug ?? MARKETPLACE_VEHICLES[0]?.slug;
 }
 
-function mergeLandingProfile(searchParams) {
-  const partial = parseAdvisorUrlProfile(searchParams);
+const TERM_CHIPS = [36, 48, 60];
+const MILEAGE_CHIPS = [10000, 15000, 20000, 25000, 30000];
+const RADIUS_CHIPS = [25, 50, 100, null];
+const PAYMENT_LABELS = {
+  leasing: '📄 Leasing',
+  finance: '📄 Finanzierung',
+  cash: '💵 Kauf',
+};
+
+const DEALERS = [
+  { id: 'trinkle', name: 'Autohaus Trinkle', distanceKm: 18, rating: 5 },
+  { id: 'mueller', name: 'Autohaus Müller', distanceKm: 33, rating: 5 },
+  { id: 'esslingen', name: 'Autohaus Esslingen', distanceKm: 42, rating: 4 },
+  { id: 'ulm', name: 'Autohaus Ulm', distanceKm: 67, rating: 4 },
+];
+
+function normalizeProfile(parsed = {}) {
   return {
-    ...INITIAL_PROFILE,
-    ...partial,
-    desiredRate: partial.desiredRate ?? INITIAL_PROFILE.desiredRate,
-    wishes: partial.wishes ?? INITIAL_PROFILE.wishes,
+    desiredRate: parsed.desiredRate ?? 400,
+    mileage: parsed.mileage || '15k-20k',
+    household: parsed.household || 'family',
+    fuelPreference: parsed.fuelPreference || 'egal',
+    bodyType: parsed.bodyType || 'suv',
+    paymentType: parsed.paymentType,
+    wishes: parsed.wishes ?? [],
   };
 }
 
-function firstIncompleteStep(profile) {
-  if (!profile.mileage) return 1;
-  if (!profile.household) return 2;
-  if (profile.desiredRate < 150) return 3;
-  if (!profile.fuelPreference) return 4;
-  if (!profile.bodyType) return 5;
-  return 6;
+function getMileageIdByValue(value) {
+  if (value <= 10000) return 'under-10k';
+  if (value <= 15000) return '10k-15k';
+  if (value <= 20000) return '15k-20k';
+  return 'over-20k';
 }
 
-function isProfileCompleteForResults(profile) {
-  return !!profile.mileage
-    && !!profile.household
-    && profile.desiredRate >= 150
-    && !!profile.fuelPreference
-    && !!profile.bodyType;
+function buildUnderstoodChips(profile, location, radiusKm) {
+  const chips = [];
+
+  if (profile.desiredRate) chips.push(`💰 bis ${profile.desiredRate} €`);
+  if (profile.paymentType && PAYMENT_LABELS[profile.paymentType]) {
+    chips.push(PAYMENT_LABELS[profile.paymentType]);
+  }
+
+  const household = ADVISOR_HOUSEHOLD_OPTIONS.find((o) => o.id === profile.household)?.label;
+  if (household) chips.push(`👨‍👩‍👧‍👦 ${household}`);
+  if (profile.household?.includes('dog')) chips.push('🐶 Hund');
+
+  const mileage = ADVISOR_MILEAGE_OPTIONS.find((o) => o.id === profile.mileage)?.value;
+  if (mileage) chips.push(`📏 ${mileage.toLocaleString('de-DE')} km/Jahr`);
+
+  const locChip = hasAdvisorLocation(location) ? formatLocationChip(location, radiusKm) : null;
+  if (locChip) chips.push(locChip);
+
+  for (const wish of profile.wishes ?? []) {
+    const label = ADVISOR_WISHES.find((w) => w.id === wish)?.label;
+    if (label) chips.push(`✓ ${label}`);
+  }
+
+  return chips.slice(0, 10);
+}
+
+function stars(count) {
+  return '★★★★★'.slice(0, count) + '☆☆☆☆☆'.slice(0, Math.max(0, 5 - count));
+}
+
+function toOfferRows(recommendations, termMonths, mileagePerYear) {
+  const termFactor = termMonths === 36 ? 1.06 : termMonths === 60 ? 0.94 : 1;
+  const mileageFactor = mileagePerYear <= 10000 ? 0.95 : mileagePerYear >= 30000 ? 1.14 : 1 + ((mileagePerYear - 15000) / 15000) * 0.09;
+
+  return recommendations.flatMap((rec) =>
+    DEALERS.map((dealer, dealerIdx) => {
+      const dealerFactor = 1 + (dealerIdx - 1.2) * 0.03;
+      const monthlyRate = Math.round(rec.monthlyRate * termFactor * mileageFactor * dealerFactor);
+      return {
+        id: `${rec.id}-${dealer.id}`,
+        recommendation: rec,
+        dealer,
+        monthlyRate,
+        termMonths,
+        mileagePerYear,
+      };
+    }),
+  ).sort((a, b) => a.monthlyRate - b.monthlyRate);
+}
+
+function resolveInitialView(searchParams, locationState) {
+  if (locationState.skipped) return 'results';
+  if (hasAdvisorLocation(locationState.location)) return 'results';
+  if (searchParams.get('start') === '1') return 'location';
+  return 'results';
 }
 
 export default function AdvisorPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
-  const { leads, addLead, updateLead } = useLeads();
-  const { offers, addOffer, linkLead } = useOffers();
-  const {
-    isLoggedIn,
-    email: sessionEmail,
-    customerData,
-    registerOffer,
-    saveComparison,
-    addFavorite,
-    saveProfile,
-    registerTestDrive,
-    loginWithEmail,
-  } = useCustomerAuth();
 
-  const autoStart = searchParams.get('start') === '1';
-  const landingQuery = searchParams.get('q') ?? '';
-  const landingProfile = useMemo(
-    () => (autoStart ? mergeLandingProfile(searchParams) : INITIAL_PROFILE),
-    [autoStart, searchParams],
+  const locationState = useMemo(() => parseAdvisorLocationFromParams(searchParams), [searchParams]);
+  const parsedProfile = useMemo(() => parseAdvisorUrlProfile(searchParams), [searchParams]);
+  const queryText = searchParams.get('q') ?? '';
+
+  const [view, setView] = useState(() => resolveInitialView(searchParams, locationState));
+  const [profile, setProfile] = useState(() => normalizeProfile(parsedProfile));
+  const [location, setLocation] = useState(locationState.location);
+  const [locationSkipped, setLocationSkipped] = useState(locationState.skipped);
+
+  const initialRadius = useMemo(() => {
+    if (locationState.skipped || !hasAdvisorLocation(locationState.location)) return null;
+    const r = searchParams.get('radius');
+    if (r) {
+      const n = Number(r);
+      if (!Number.isNaN(n)) return n;
+    }
+    return DEFAULT_LOCATION_RADIUS_KM;
+  }, [searchParams, locationState]);
+
+  const [termMonths, setTermMonths] = useState(48);
+  const [mileagePerYear, setMileagePerYear] = useState(
+    ADVISOR_MILEAGE_OPTIONS.find((m) => m.id === profile.mileage)?.value ?? 17500,
   );
+  const [radiusKm, setRadiusKm] = useState(initialRadius);
+  const [nearbyOnly, setNearbyOnly] = useState(false);
 
-  const [phase, setPhase] = useState(autoStart ? 'wizard' : 'intro');
-  const [flowStep, setFlowStep] = useState(autoStart ? 'beratung' : null);
-  const [step, setStep] = useState(() => (autoStart ? firstIncompleteStep(landingProfile) : 1));
-  const [profile, setProfile] = useState(landingProfile);
-  const autoResultsRan = useRef(false);
-  const [recommendations, setRecommendations] = useState(null);
-  const [compareIds, setCompareIds] = useState([]);
-  const [activeRecId, setActiveRecId] = useState(null);
-  const [selectedRec, setSelectedRec] = useState(null);
-  const [createdOffer, setCreatedOffer] = useState(null);
-  const [wantTestDrive, setWantTestDrive] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState('');
-
-  const dealerContact = conditions.contact ?? {};
-  const termMonths = ADVISOR_DEFAULTS.termMonths;
-  const mileagePerYear = getMileagePerYear(profile);
-
-  const compareItems = useMemo(
-    () => recommendations?.filter((r) => compareIds.includes(r.id)) ?? [],
-    [recommendations, compareIds],
-  );
+  const hasLocation = hasAdvisorLocation(location) && !locationSkipped;
 
   useEffect(() => {
-    if (!autoStart || autoResultsRan.current) return;
-    if (!isProfileCompleteForResults(landingProfile)) return;
-
-    autoResultsRan.current = true;
-    const results = getAdvisorRecommendations(landingProfile, conditions);
-    const topThree = results.slice(0, 3).map((r) => r.id);
-    setRecommendations(results);
-    setCompareIds(topThree);
-    setActiveRecId(results[0]?.id ?? null);
-    recordAdvisorSession(landingProfile, results);
-    recordIntelligenceAdvisorSession(landingProfile, results, {
-      termMonths: ADVISOR_DEFAULTS.termMonths,
+    if (!location?.plz || location.city || location.label || locationSkipped) return;
+    let cancelled = false;
+    enrichLocationWithGeocoding(location).then((enriched) => {
+      if (cancelled || !enriched?.city) return;
+      setLocation(enriched);
+      const url = buildAdvisorUrl(profile, queryText, {
+        location: enriched,
+        radiusKm: radiusKm ?? DEFAULT_LOCATION_RADIUS_KM,
+      });
+      navigate(url, { replace: true });
     });
-    if (landingQuery) {
-      recordIntelligenceSearch(landingQuery, { source: 'landing' });
-    }
-    setFlowStep('beratung');
-    setPhase('results');
-  }, [autoStart, landingProfile, conditions, landingQuery]);
-
-  const initialContact = useMemo(() => ({
-    name: customerData?.profile?.name ?? '',
-    email: sessionEmail ?? '',
-    phone: customerData?.profile?.phone ?? dealerContact.phone ?? '',
-  }), [customerData, sessionEmail, dealerContact.phone]);
-
-  function update(field, value) {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function toggleWish(id) {
-    setProfile((prev) => ({
-      ...prev,
-      wishes: prev.wishes.includes(id)
-        ? prev.wishes.filter((w) => w !== id)
-        : [...prev.wishes, id],
-    }));
-  }
-
-  function showToast(msg) {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2800);
-  }
-
-  function canProceed() {
-    if (step === 1) return !!profile.mileage;
-    if (step === 2) return !!profile.household;
-    if (step === 3) return profile.desiredRate >= 150;
-    if (step === 4) return !!profile.fuelPreference;
-    if (step === 5) return !!profile.bodyType;
-    return true;
-  }
-
-  function handleNext() {
-    if (step < TOTAL_STEPS) {
-      setStep((s) => s + 1);
-      if (!flowStep) setFlowStep('beratung');
-      return;
-    }
-    const results = getAdvisorRecommendations(profile, conditions);
-    const topThree = results.slice(0, 3).map((r) => r.id);
-    setRecommendations(results);
-    setCompareIds(topThree);
-    setActiveRecId(results[0]?.id ?? null);
-    recordAdvisorSession(profile, results);
-    recordIntelligenceAdvisorSession(profile, results, { termMonths: ADVISOR_DEFAULTS.termMonths });
-    setFlowStep('beratung');
-    setPhase('results');
-  }
-
-  function handleBack() {
-    if (step > 1) setStep((s) => s - 1);
-    else {
-      setPhase('intro');
-      setFlowStep(null);
-    }
-  }
-
-  function selectPodiumRec(id) {
-    setActiveRecId(id);
-    requestAnimationFrame(() => {
-      document.getElementById(`adv-result-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-
-  function toggleCompare(id) {
-    setCompareIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
-
-  function handleCompareRemove(id) {
-    setCompareIds((prev) => {
-      const next = prev.filter((x) => x !== id);
-      if (next.length < 2) {
-        setFlowStep('beratung');
-        setPhase('results');
-      }
-      return next;
-    });
-  }
-
-  function startCompare() {
-    const ids = compareIds.length < 2 && recommendations?.length >= 2
-      ? recommendations.slice(0, 3).map((r) => r.id)
-      : compareIds;
-    if (compareIds.length < 2 && recommendations?.length >= 2) {
-      setCompareIds(ids);
-    }
-    const items = recommendations?.filter((r) => ids.includes(r.id)) ?? [];
-    if (items.length >= 2) {
-      recordIntelligenceComparison(items, { source: 'advisor' });
-    }
-    setFlowStep('vergleich');
-    setPhase('compare');
-    if (isLoggedIn) {
-      saveComparison(recommendations, profile);
-      const top = recommendations?.[0];
-      if (top) addFavorite(top);
-    }
-  }
-
-  function selectForOffer(rec) {
-    setSelectedRec(rec);
-    setFlowStep('angebot');
-    setPhase('offer');
-  }
-
-  function goToContact() {
-    setFlowStep('kontakt');
-    setPhase('contact');
-  }
-
-  function backFromOffer() {
-    if (compareItems.length >= 2) {
-      setFlowStep('vergleich');
-      setPhase('compare');
-    } else {
-      setFlowStep('beratung');
-      setPhase('results');
-    }
-  }
-
-  function handleQuickOffer(rec) {
-    selectForOffer(rec);
-  }
-
-  async function handleFinalize({ name, email, phone, wantTestDrive: testDrive }) {
-    if (!selectedRec || isSubmitting) return;
-    setIsSubmitting(true);
-    setWantTestDrive(testDrive);
-
-    const customerPayload = {
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      termMonths,
-      mileagePerYear,
-      downPayment: ADVISOR_DEFAULTS.downPayment,
-      desiredRate: profile.desiredRate,
+    return () => {
+      cancelled = true;
     };
+  }, [location, locationSkipped, profile, queryText, radiusKm, navigate]);
 
-    if (!isLoggedIn && email) {
-      loginWithEmail(email);
-    }
-
-    saveProfile({ name: customerPayload.name, phone: customerPayload.phone }, customerPayload.email);
-
-    const offer = createOfferFromAdvisor(
-      customerPayload,
-      selectedRec,
-      conditions,
-      offers,
-    );
-    offer.status = 'versendet';
-
-    addOffer(offer);
-
-    const { lead, leadId, isNew } = createOrLinkLeadForOffer(offer, leads);
-    if (isNew) addLead({ ...lead, source: 'advisor' });
-    else updateLead(leadId, { ...lead, source: 'advisor' });
-    linkLead(offer.code, leadId);
-
-    registerOffer(offer, customerPayload.email);
-
-    if (testDrive) {
-      registerTestDrive(selectedRec, customerPayload, conditions.dealerName, customerPayload.email);
-    }
-
-    setCreatedOffer(offer);
-    setFlowStep('kontakt');
-    setPhase('success');
-    setIsSubmitting(false);
-    showToast(`Angebot ${offer.code} erstellt`);
+  function goToResults(nextLocation, { skip = false, radius = DEFAULT_LOCATION_RADIUS_KM } = {}) {
+    const url = buildAdvisorUrl(profile, queryText, {
+      location: skip ? null : nextLocation,
+      locSkip: skip,
+      radiusKm: skip ? undefined : radius,
+    });
+    navigate(url, { replace: true });
+    setLocation(skip ? null : nextLocation);
+    setLocationSkipped(skip);
+    setRadiusKm(skip ? null : radius);
+    setView('results');
   }
 
-  const showFlowProgress = flowStep && phase !== 'intro';
+  const recommendations = useMemo(
+    () => getAdvisorRecommendations(profile, conditions),
+    [profile, conditions],
+  );
+
+  const offerRows = useMemo(() => {
+    const base = toOfferRows(recommendations, termMonths, mileagePerYear);
+    return base.filter((row) => {
+      if (hasLocation && radiusKm != null && row.dealer.distanceKm > radiusKm) return false;
+      if (hasLocation && nearbyOnly && row.dealer.distanceKm > 50) return false;
+      return true;
+    });
+  }, [recommendations, termMonths, mileagePerYear, radiusKm, nearbyOnly, hasLocation]);
+
+  const bestRow = offerRows[0] ?? null;
+  const additionalRows = offerRows.slice(1, 10);
+  const understoodChips = buildUnderstoodChips(profile, location, radiusKm);
+  const uniqueDealerCount = new Set(offerRows.map((row) => row.dealer.id)).size;
+  const locationLabel = getLocationDisplayLabel(location);
+
+  if (view === 'location') {
+    return (
+      <div className="ai-offers-page">
+        <header className="ai-offers-header">
+          <Link to="/" className="ai-offers-header__back">← Zurück</Link>
+          <h1>Ihr Wunsch wurde verstanden</h1>
+          <p>Optional: Standort für Angebote in Ihrer Nähe festlegen.</p>
+        </header>
+        <main className="ai-offers-main">
+          <AdvisorLocationStep
+            onUseLocation={(loc) => goToResults(loc, { radius: DEFAULT_LOCATION_RADIUS_KM })}
+            onSkip={() => goToResults(null, { skip: true })}
+          />
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="adv-page">
-      <header className="adv-header">
-        <Link to="/" className="adv-header__back">← Zurück</Link>
-        <p className="adv-header__kicker">KI-Kaufberater</p>
-        <h1 className="adv-header__title">Welches Auto passt zu mir?</h1>
-        <p className="adv-header__sub">
-          Von der Beratung bis zum Angebot – alles in einem Flow, ohne doppelte Eingaben.
-        </p>
-        {phase === 'intro' && (
-          <button
-            type="button"
-            className="adv-intro-btn"
-            onClick={() => { setPhase('wizard'); setFlowStep('beratung'); }}
-          >
-            KI-Beratung starten
-          </button>
-        )}
+    <div className="ai-offers-page">
+      <header className="ai-offers-header">
+        <Link to="/" className="ai-offers-header__back">← Zurück</Link>
+        <h1>Passende Fahrzeuge für Sie</h1>
+        <p>Basierend auf Ihrer Beschreibung hat unsere KI folgende Fahrzeuge gefunden.</p>
       </header>
 
-      {showFlowProgress && (
-        <CustomerFlowProgress currentStep={flowStep} completed={phase === 'success'} />
-      )}
-
-      <main className="adv-main">
-        {phase === 'wizard' && (
-          <>
-            <div className="adv-progress" aria-hidden="true">
-              {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-                <div
-                  key={i}
-                  className={`adv-progress__dot${i + 1 === step ? ' is-active' : ''}${i + 1 < step ? ' is-done' : ''}`}
-                />
-              ))}
-            </div>
-
-            <div className="adv-step">
-              {step === 1 && (
-                <>
-                  <p className="adv-step__title">Schritt 1 · Fahrprofil</p>
-                  <h2 className="adv-step__question">Wie viele Kilometer fahren Sie pro Jahr?</h2>
-                  <div className="adv-options">
-                    {ADVISOR_MILEAGE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`adv-option${profile.mileage === opt.id ? ' is-active' : ''}`}
-                        onClick={() => update('mileage', opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <p className="adv-step__title">Schritt 2 · Haushalt</p>
-                  <h2 className="adv-step__question">Wer fährt das Fahrzeug?</h2>
-                  <div className="adv-options adv-options--grid">
-                    {ADVISOR_HOUSEHOLD_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`adv-option${profile.household === opt.id ? ' is-active' : ''}`}
-                        onClick={() => update('household', opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {step === 3 && (
-                <>
-                  <p className="adv-step__title">Schritt 3 · Budget</p>
-                  <h2 className="adv-step__question">Monatliche Wunschrate</h2>
-                  <div className="adv-budget">
-                    <p className="adv-budget__value">{formatAdvisorRate(profile.desiredRate)}</p>
-                    <div className="adv-budget__range-labels">
-                      <span>150 €</span>
-                      <span>1.000 €</span>
-                    </div>
-                    <input
-                      type="range"
-                      className="adv-budget__slider"
-                      min={150}
-                      max={1000}
-                      step={10}
-                      value={profile.desiredRate}
-                      onChange={(e) => update('desiredRate', Number(e.target.value))}
-                    />
-                    <input
-                      type="number"
-                      className="adv-budget__input"
-                      min={150}
-                      max={1000}
-                      step={10}
-                      value={profile.desiredRate}
-                      onChange={(e) => update('desiredRate', Number(e.target.value) || 150)}
-                      aria-label="Wunschrate frei eingeben"
-                    />
-                  </div>
-                </>
-              )}
-
-              {step === 4 && (
-                <>
-                  <p className="adv-step__title">Schritt 4 · Antrieb</p>
-                  <h2 className="adv-step__question">Welcher Antrieb interessiert Sie?</h2>
-                  <div className="adv-options adv-options--grid">
-                    {ADVISOR_FUEL_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`adv-option${profile.fuelPreference === opt.id ? ' is-active' : ''}`}
-                        onClick={() => update('fuelPreference', opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {step === 5 && (
-                <>
-                  <p className="adv-step__title">Schritt 5 · Fahrzeugart</p>
-                  <h2 className="adv-step__question">Welche Fahrzeugart suchen Sie?</h2>
-                  <div className="adv-options adv-options--grid">
-                    {ADVISOR_BODY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`adv-option${profile.bodyType === opt.id ? ' is-active' : ''}`}
-                        onClick={() => update('bodyType', opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {step === 6 && (
-                <>
-                  <p className="adv-step__title">Schritt 6 · Weitere Wünsche</p>
-                  <h2 className="adv-step__question">Was ist Ihnen wichtig?</h2>
-                  <div className="adv-wishes">
-                    {ADVISOR_WISHES.map((wish) => {
-                      const isOn = profile.wishes.includes(wish.id);
-                      return (
-                        <button
-                          key={wish.id}
-                          type="button"
-                          className={`adv-wish${isOn ? ' is-active' : ''}`}
-                          onClick={() => toggleWish(wish.id)}
-                        >
-                          <span className="adv-wish__box">{isOn ? '✓' : ''}</span>
-                          {wish.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-
-              <nav className="adv-nav">
-                <button type="button" className="adv-nav__btn adv-nav__btn--back" onClick={handleBack}>
-                  Zurück
-                </button>
-                <button
-                  type="button"
-                  className="adv-nav__btn adv-nav__btn--next"
-                  onClick={handleNext}
-                  disabled={!canProceed()}
-                >
-                  {step === TOTAL_STEPS ? 'Empfehlungen anzeigen' : 'Weiter'}
-                </button>
-              </nav>
-            </div>
-          </>
-        )}
-
-        {phase === 'results' && recommendations && (
-          <section className="adv-results">
-            <AdvisorPodium
-              items={recommendations}
-              dealerId={conditions.dealerId}
-              activeId={activeRecId}
-              onSelect={selectPodiumRec}
-              onCompareAll={startCompare}
-            />
-
-            <header className="adv-results-head">
-              <h2>Alle Empfehlungen im Detail</h2>
-              <p>
-                Basierend auf {formatAdvisorRate(profile.desiredRate)}/Monat · {conditions.dealerName}
-              </p>
-            </header>
-
-            <div className="adv-results-list">
-              {recommendations.map((rec) => (
-                <AdvisorResultCard
-                  key={rec.id}
-                  rec={rec}
-                  dealerId={conditions.dealerId}
-                  dealerName={conditions.dealerName}
-                  dealerEmail={dealerContact.email}
-                  dealerPhone={dealerContact.phone}
-                  inCompare={compareIds.includes(rec.id)}
-                  onToggleCompare={toggleCompare}
-                  onRequestOffer={handleQuickOffer}
-                  onRequestTestDrive={handleQuickOffer}
-                  flowMode
-                />
-              ))}
-            </div>
-
-            <LegalDisclaimer className="adv-disclaimer" />
-
-            <button
-              type="button"
-              className="adv-nav__btn adv-nav__btn--back"
-              style={{ marginTop: 'var(--space-lg)', width: '100%' }}
-              onClick={() => { setPhase('wizard'); setStep(1); setFlowStep('beratung'); }}
-            >
-              Beratung wiederholen
+      <main className="ai-offers-main">
+        <section className="ai-understood card">
+          <h2>1. KI hat Ihre Suche verstanden</h2>
+          <div className="ai-chip-row">
+            {understoodChips.map((chip) => (
+              <span key={chip} className="ai-chip">{chip}</span>
+            ))}
+            {!hasLocation && (
+              <span className="ai-chip ai-chip--muted">Standort nicht angegeben</span>
+            )}
+          </div>
+          {!hasLocation && (
+            <button type="button" className="ai-add-location" onClick={() => setView('location')}>
+              Standort hinzufügen
             </button>
+          )}
+        </section>
+
+        <section className="ai-filters card">
+          <h2>2. Angebots-Chips</h2>
+          <div className="ai-filter-block">
+            <span>Laufzeit</span>
+            <div className="ai-chip-controls">
+              {TERM_CHIPS.map((term) => (
+                <button key={term} type="button" className={`ai-chip-btn${termMonths === term ? ' is-active' : ''}`} onClick={() => setTermMonths(term)}>
+                  {term} Monate
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="ai-filter-block">
+            <span>Kilometer</span>
+            <div className="ai-chip-controls">
+              {MILEAGE_CHIPS.map((km) => (
+                <button
+                  key={km}
+                  type="button"
+                  className={`ai-chip-btn${mileagePerYear === km ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setMileagePerYear(km);
+                    setProfile((prev) => ({ ...prev, mileage: getMileageIdByValue(km) }));
+                  }}
+                >
+                  {km.toLocaleString('de-DE')} km
+                </button>
+              ))}
+            </div>
+          </div>
+          {hasLocation && (
+            <div className="ai-filter-block">
+              <span>Umkreis</span>
+              <div className="ai-chip-controls">
+                {RADIUS_CHIPS.map((radius) => (
+                  <button
+                    key={String(radius)}
+                    type="button"
+                    className={`ai-chip-btn${radiusKm === radius ? ' is-active' : ''}`}
+                    onClick={() => setRadiusKm(radius)}
+                  >
+                    {radius == null ? 'Deutschlandweit' : `${radius} km`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {hasLocation && (
+            <div className="ai-toggle-row">
+              <button type="button" className={`ai-chip-btn${!nearbyOnly ? ' is-active' : ''}`} onClick={() => setNearbyOnly(false)}>Beste Angebote</button>
+              <button type="button" className={`ai-chip-btn${nearbyOnly ? ' is-active' : ''}`} onClick={() => setNearbyOnly(true)}>Nur in meiner Nähe</button>
+            </div>
+          )}
+        </section>
+
+        <section className="ai-local-block card">
+          <h2>📍 Angebote in Ihrer Nähe</h2>
+          {hasLocation ? (
+            <p>
+              {uniqueDealerCount} Händler · {offerRows.length} Fahrzeuge
+              {locationLabel ? ` · ${locationLabel}` : ''}
+              {' · Umkreis '}
+              {radiusKm == null ? 'Deutschlandweit' : `${radiusKm} km`}
+            </p>
+          ) : (
+            <>
+              <p>Standort nicht angegeben · deutschlandweite Auswahl</p>
+              <button type="button" className="ai-add-location" onClick={() => setView('location')}>
+                Standort hinzufügen
+              </button>
+            </>
+          )}
+        </section>
+
+        {bestRow && (
+          <section className="ai-best card">
+            <h2>3. Beste Empfehlung</h2>
+            <OfferCard row={bestRow} highlight showDistance={hasLocation} />
           </section>
         )}
 
-        {phase === 'compare' && recommendations && compareItems.length >= 2 && (
-          <>
-            <AdvisorCompareView
-              items={compareItems}
-              dealerId={conditions.dealerId}
-              dealerName={conditions.dealerName}
-              dealerPhone={dealerContact.phone}
-              onBack={() => { setFlowStep('beratung'); setPhase('results'); }}
-              onRemove={handleCompareRemove}
-              onSelectForOffer={selectForOffer}
-            />
-            <LegalDisclaimer className="adv-disclaimer" />
-          </>
-        )}
-
-        {phase === 'offer' && selectedRec && (
-          <AdvisorOfferStep
-            rec={selectedRec}
-            dealerId={conditions.dealerId}
-            dealerName={conditions.dealerName}
-            termMonths={termMonths}
-            mileagePerYear={mileagePerYear}
-            onBack={backFromOffer}
-            onContinue={goToContact}
-          />
-        )}
-
-        {phase === 'contact' && selectedRec && (
-          <AdvisorContactStep
-            rec={{ ...selectedRec, dealerName: conditions.dealerName }}
-            initialContact={initialContact}
-            onBack={() => { setFlowStep('angebot'); setPhase('offer'); }}
-            onSubmit={handleFinalize}
-            isSubmitting={isSubmitting}
-          />
-        )}
-
-        {phase === 'success' && createdOffer && (
-          <AdvisorSuccessStep
-            offer={createdOffer}
-            offerUrl={buildOfferUrl(createdOffer.code)}
-            wantTestDrive={wantTestDrive}
-            onGoOffer={() => navigate(buildOfferPath(createdOffer.code))}
-            onGoAccount={() => navigate('/kunde')}
-          />
-        )}
+        <section className="ai-list">
+          <h2>4. Weitere passende Angebote</h2>
+          <div className="ai-offer-grid">
+            {additionalRows.map((row) => (
+              <OfferCard key={row.id} row={row} showDistance={hasLocation} />
+            ))}
+          </div>
+        </section>
       </main>
-
-      {phase === 'results' && compareIds.length >= 2 && (
-        <footer className="adv-compare-bar">
-          <p>{compareIds.length} im Vergleich</p>
-          <button type="button" onClick={startCompare}>
-            Vergleich starten
-          </button>
-        </footer>
-      )}
-
-      {toast && <p className="adv-toast" role="status">{toast}</p>}
     </div>
+  );
+}
+
+function OfferCard({ row, highlight = false, showDistance = true }) {
+  const rec = row.recommendation;
+  return (
+    <article className={`ai-offer-card${highlight ? ' is-highlight' : ''}`}>
+      <VehicleImage brand={rec.brand} model={rec.model} className="ai-offer-card__img" />
+      <div className="ai-offer-card__body">
+        <h3>{rec.fullLabel ?? `${rec.brand} ${rec.model}`}</h3>
+        <p className="ai-offer-card__rate">{formatAdvisorRate(row.monthlyRate)}/Monat</p>
+        <p>{row.termMonths} Monate · {row.mileagePerYear.toLocaleString('de-DE')} km/Jahr</p>
+        <p>{rec.deliveryTime}</p>
+        <p>{row.dealer.name}{showDistance ? ` · ${row.dealer.distanceKm} km entfernt` : ''}</p>
+        <p>{stars(row.dealer.rating)}</p>
+        <Link to={CUSTOMER_ROUTES.vehicle(findMarketplaceSlug(rec))} className="ai-offer-card__cta">Angebot ansehen</Link>
+      </div>
+    </article>
   );
 }

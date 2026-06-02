@@ -150,6 +150,48 @@ export function linkConfigurationOffer(data, configId, offerCode) {
   };
 }
 
+export function buildMarketplaceSavedEntry(vehicle) {
+  return {
+    id: uid('cust-off'),
+    offerCode: null,
+    marketplaceSlug: vehicle.slug,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    label: vehicle.title,
+    monthlyRate: vehicle.monthlyRate,
+    dealer: vehicle.dealerName ?? '',
+    date: new Date().toISOString(),
+    status: 'gemerkt',
+    source: 'marketplace',
+  };
+}
+
+export function addMarketplaceSavedToAccount(data, vehicle) {
+  const entry = buildMarketplaceSavedEntry(vehicle);
+  const exists = data.offers.some((o) => o.marketplaceSlug === vehicle.slug);
+  if (exists) return data;
+  return { ...data, offers: [entry, ...data.offers] };
+}
+
+export function buildMarketplaceInquiryEntry(vehicle, contact, kind = 'inquiry') {
+  return {
+    id: uid('inq'),
+    brand: vehicle.brand,
+    model: vehicle.model,
+    label: vehicle.title,
+    monthlyRate: vehicle.monthlyRate,
+    dealer: vehicle.dealerName,
+    marketplaceSlug: vehicle.slug,
+    date: new Date().toISOString(),
+    status: kind === 'testdrive' ? 'Probefahrt angefragt' : 'Anfrage gesendet',
+    contact: { ...contact },
+  };
+}
+
+export function addInquiryToAccount(data, entry) {
+  return { ...data, testDrives: [entry, ...data.testDrives] };
+}
+
 export function addOfferToAccount(data, offer) {
   const entry = buildOfferAccountEntry(offer);
   const exists = data.offers.some((o) => o.offerCode === offer.code);

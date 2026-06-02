@@ -1,0 +1,79 @@
+.ai-loc-step {
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ai-loc-step h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  line-height: 1.2;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.ai-loc-step__sub {
+  margin: 0 0 24px;
+  color: #64748b;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.ai-loc-step__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-loc-step__btn {
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  min-height: 48px;
+  padding: 0 16px;
+  background: #fff;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.ai-loc-step__btn--primary {
+  background: #0b2559;
+  border-color: #0b2559;
+  color: #fff;
+}
+
+.ai-loc-step__btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ai-loc-step__manual {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.ai-loc-step__manual label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.ai-loc-step__manual input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  min-height: 46px;
+  padding: 0 14px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.ai-loc-step__error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.88rem;
+  text-align: left;
+}

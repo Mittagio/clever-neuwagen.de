@@ -9,8 +9,76 @@
   gap: 14px;
 }
 
-.vehicle-detail__back {
+.vehicle-detail__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.vehicle-detail__back,
+.vehicle-detail__account {
   font-size: 0.9rem;
+}
+
+.vehicle-detail__dealer {
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.vehicle-detail__payment-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.vehicle-detail__tab {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.vehicle-detail__tab.is-active {
+  background: #0b2559;
+  border-color: #0b2559;
+  color: #fff;
+}
+
+.vehicle-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.vehicle-detail__equipment {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.vehicle-detail__legal {
+  margin-top: 12px;
+}
+
+.vehicle-detail__hint {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.vehicle-detail__toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  z-index: 150;
 }
 
 .vehicle-detail__hero {

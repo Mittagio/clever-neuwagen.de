@@ -3,6 +3,13 @@
  * Später: LLM / Speech-to-Text Anbindung
  */
 
+import {
+  DEFAULT_LOCATION_RADIUS_KM,
+  parseLocationFromText,
+  parseAdvisorLocationFromParams,
+  appendLocationToSearchParams,
+} from '../logic/advisorLocation.js';
+
 export const LANDING_EXAMPLE_CHIPS = [
   {
     id: 'family',
@@ -123,6 +130,14 @@ function parseMileageId(text) {
   return '';
 }
 
+function parsePaymentType(text) {
+  const lower = text.toLowerCase();
+  if (/leasing/i.test(lower)) return 'leasing';
+  if (/finanzier/i.test(lower)) return 'finance';
+  if (/bar|kauf|sofort/i.test(lower)) return 'cash';
+  return undefined;
+}
+
 export function parseLandingQuery(text) {
   const t = text.trim();
   const lower = t.toLowerCase();
@@ -132,6 +147,7 @@ export function parseLandingQuery(text) {
     household: undefined,
     fuelPreference: undefined,
     bodyType: undefined,
+    paymentType: parsePaymentType(t),
     wishes: [],
   };
 
@@ -161,10 +177,13 @@ export function parseLandingQuery(text) {
   if (!profile.desiredRate && /350/.test(t)) profile.desiredRate = 350;
   if (!profile.desiredRate && /400/.test(t)) profile.desiredRate = 400;
 
-  return { profile, query: t };
+  const location = parseLocationFromText(t);
+
+  return { profile, query: t, location };
 }
 
-export function buildAdvisorUrl(profile = {}, query = '') {
+export function buildAdvisorUrl(profile = {}, query = '', options = {}) {
+  const { location = null, locSkip = false, radiusKm } = options;
   const params = new URLSearchParams({ start: '1' });
 
   if (profile.desiredRate) params.set('rate', String(profile.desiredRate));
@@ -172,8 +191,16 @@ export function buildAdvisorUrl(profile = {}, query = '') {
   if (profile.household) params.set('household', profile.household);
   if (profile.fuelPreference) params.set('fuel', profile.fuelPreference);
   if (profile.bodyType) params.set('body', profile.bodyType);
+  if (profile.paymentType) params.set('payment', profile.paymentType);
   if (profile.wishes?.length) params.set('wishes', profile.wishes.join(','));
   if (query) params.set('q', query.slice(0, 200));
+
+  if (locSkip) {
+    params.set('locSkip', '1');
+  } else if (location) {
+    const radius = radiusKm ?? location.radiusKm ?? DEFAULT_LOCATION_RADIUS_KM;
+    appendLocationToSearchParams(params, location, { radiusKm: radius });
+  }
 
   return `/berater?${params.toString()}`;
 }
@@ -205,5 +232,9 @@ export function parseAdvisorUrlProfile(searchParams) {
   if (wishes) {
     profile.wishes = wishes.split(',').map((s) => s.trim()).filter(Boolean);
   }
+  const payment = searchParams.get('payment');
+  if (payment) profile.paymentType = payment;
   return profile;
 }
+
+export { parseAdvisorLocationFromParams, DEFAULT_LOCATION_RADIUS_KM };

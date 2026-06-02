@@ -32,8 +32,9 @@ export const OFFER_SOURCES = {
 };
 
 export const CUSTOMER_OFFER_ACTIONS = {
-  accept: { id: 'accept', label: 'Angebot annehmen' },
-  callback: { id: 'callback', label: 'Rückruf anfordern' },
+  inquiry: { id: 'inquiry', label: 'Anfrage starten' },
   testdrive: { id: 'testdrive', label: 'Probefahrt anfragen' },
+  callback: { id: 'callback', label: 'Händler kontaktieren' },
   question: { id: 'question', label: 'Frage stellen' },
+  accept: { id: 'accept', label: 'Anfrage starten' },
 };

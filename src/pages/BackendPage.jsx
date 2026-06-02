@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import { useDraftDealerConditions } from '../context/DealerConditionsContext';
 import VehicleDataReadonlyBanner from '../components/shared/VehicleDataReadonlyBanner.jsx';
@@ -22,8 +22,16 @@ const CONDITION_SECTIONS = new Set([
 ]);
 
 export default function BackendPage() {
+  const location = useLocation();
   const [activeArea, setActiveArea] = useState('verkaufen');
   const [activeSection, setActiveSection] = useState('home');
+
+  useEffect(() => {
+    if (location.pathname === '/backend/fahrzeuge') {
+      setActiveArea('fahrzeuge');
+      setActiveSection('overview');
+    }
+  }, [location.pathname]);
   const {
     conditions: draftConditions,
     publishedConditions,
