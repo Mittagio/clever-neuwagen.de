@@ -12,10 +12,7 @@ export const BACKEND_AREA_SECTIONS = {
     { id: 'home', label: 'Start' },
   ],
   fahrzeuge: [
-    { id: 'overview', label: 'Übersicht' },
-    { id: 'models', label: 'Modelle', icon: '🚗' },
-    { id: 'inventory', label: 'Lager', icon: '📦' },
-    { id: 'publish', label: 'Online schalten', icon: '🌐' },
+    { id: 'overview', label: 'Showroom' },
   ],
   marketing: [
     { id: 'hub', label: 'Übersicht' },
