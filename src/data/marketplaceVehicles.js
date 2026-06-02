@@ -68,6 +68,7 @@ export const MARKETPLACE_VEHICLES = [
     contactName: 'Mike Quach',
     contactPhone: '+49 7131 12345',
     imageModel: 'Sportage',
+    offerCode: 'CN-2026-00001',
   },
   {
     id: 'mkt-2',

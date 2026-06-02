@@ -1,0 +1,285 @@
+.search-understood {
+  padding: 16px;
+}
+
+.search-understood__title {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-understood__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-chip {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-chip:hover {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.search-loc-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.search-loc-dialog__card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+}
+
+.search-loc-dialog__card h2 {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+}
+
+.search-loc-dialog__primary {
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  background: #10b981;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.search-loc-dialog__manual {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.search-loc-dialog__manual input {
+  flex: 1;
+  min-height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+.search-loc-dialog__manual button {
+  min-height: 48px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-loc-dialog__skip {
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.top-rec {
+  padding: 24px;
+  border: 2px solid #10b981;
+  background: linear-gradient(180deg, #ecfdf5 0%, #fff 55%);
+}
+
+.top-rec__badge {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #047857;
+}
+
+.top-rec h2 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+
+.top-rec__rate {
+  margin: 0 0 12px;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #047857;
+}
+
+.top-rec__meta {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.top-rec__cta {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  background: #10b981;
+  color: #fff;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.offer-chips {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.offer-chips__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.offer-chips__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.offer-chips__row--scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.offer-chip {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.offer-chip.is-active {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+.market-list-section h2 {
+  margin: 0 0 12px;
+  font-size: 1.125rem;
+}
+
+.market-list-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.market-list-card__body {
+  padding: 14px;
+}
+
+.market-list-card__rate {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.market-list-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.market-list-card__actions a,
+.market-list-card__actions button {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.market-list-card__actions a {
+  background: #10b981;
+  color: #fff;
+}
+
+.chip-edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 150;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+
+.chip-edit-sheet {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.chip-edit-sheet input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 1rem;
+  margin: 12px 0;
+}
+
+.chip-edit-sheet button {
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  background: #1e293b;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

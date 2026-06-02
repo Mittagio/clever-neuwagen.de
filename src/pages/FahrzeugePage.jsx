@@ -1,123 +1,216 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import {
-  MARKETPLACE_VEHICLES,
-  MARKETPLACE_SEO_LANDING_PAGES,
-  MARKETPLACE_RADIUS_OPTIONS,
-  MARKETPLACE_RATE_OPTIONS,
-  MARKETPLACE_PRICE_OPTIONS,
-  MARKETPLACE_TYPE_OPTIONS,
-} from '../data/marketplaceVehicles.js';
+  SearchUnderstandingChips,
+  LocationPromptDialog,
+  TopRecommendationCard,
+  OfferFilterChips,
+} from '../components/search/SearchFlowComponents.jsx';
+import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import {
-  parseMarketplaceQuery,
-  buildMarketplaceSearch,
   filterMarketplaceVehicles,
   getAvailabilityMeta,
   formatCurrency,
 } from '../logic/marketplaceService.js';
+import {
+  filtersFromSearchParams,
+  buildFahrzeugeSearchUrl,
+  buildUnderstandingChips,
+  needsLocationPrompt,
+  sortMarketplaceVehicles,
+  adjustRateForTerm,
+  getVehicleOfferPath,
+  TERM_CHIP_OPTIONS,
+  MILEAGE_CHIP_OPTIONS,
+  RADIUS_CHIP_OPTIONS,
+  SORT_CHIP_OPTIONS,
+} from '../logic/oneSearchService.js';
+import { parseManualLocationInput } from '../logic/advisorLocation.js';
 import './FahrzeugePage.css';
 
 export default function FahrzeugePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [compareIds, setCompareIds] = useState([]);
-  const filters = parseMarketplaceQuery(new URLSearchParams(location.search));
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
+  const [editChip, setEditChip] = useState(null);
+  const [editValue, setEditValue] = useState('');
 
-  const results = useMemo(
-    () => filterMarketplaceVehicles(MARKETPLACE_VEHICLES, filters),
-    [filters],
+  const filters = useMemo(
+    () => filtersFromSearchParams(new URLSearchParams(location.search)),
+    [location.search],
   );
 
-  function updateFilter(field, value) {
-    const next = { ...filters, [field]: value, seo: '' };
-    const query = buildMarketplaceSearch(next);
-    navigate(`/fahrzeuge${query ? `?${query}` : ''}`);
+  useEffect(() => {
+    if (needsLocationPrompt(filters)) {
+      setLocDialogOpen(true);
+    }
+  }, [filters.city, filters.plz, filters.locSkip, filters.locLabel]);
+
+  const chips = useMemo(() => buildUnderstandingChips(filters), [filters]);
+
+  const filtered = useMemo(() => {
+    const base = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, {
+      ...filters,
+      q: filters.city || filters.plz || '',
+    });
+    return sortMarketplaceVehicles(base, filters.sort).map((vehicle) => ({
+      ...vehicle,
+      displayRate: adjustRateForTerm(vehicle.monthlyRate, filters.termMonths),
+    }));
+  }, [filters]);
+
+  const topPick = filtered[0] ?? null;
+  const rest = filtered.slice(1);
+
+  function pushFilters(next) {
+    navigate(buildFahrzeugeSearchUrl(next));
   }
 
-  function toggleCompare(id) {
-    setCompareIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id].slice(0, 3)));
+  function patchFilters(patch) {
+    pushFilters({ ...filters, ...patch });
   }
 
-  const compareVehicles = MARKETPLACE_VEHICLES.filter((vehicle) => compareIds.includes(vehicle.id));
+  function handleAllowLocation() {
+    if (!navigator.geolocation) {
+      setLocDialogOpen(true);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        patchFilters({ city: 'Göppingen', plz: '73033', radius: 25, locSkip: false });
+        setLocDialogOpen(false);
+      },
+      () => setLocDialogOpen(true),
+      { timeout: 8000 },
+    );
+  }
+
+  function handleManualLocation(value) {
+    const loc = parseManualLocationInput(value);
+    if (!loc) return;
+    patchFilters({
+      city: loc.city ?? '',
+      plz: loc.plz ?? '',
+      radius: filters.radius ?? 25,
+      locSkip: false,
+    });
+    setLocDialogOpen(false);
+  }
+
+  function handleEditChip(chip) {
+    setEditChip(chip);
+    setEditValue(chip.label.replace(/^bis\s/, '').replace(/\s€.*$/, '').replace(/\skm$/, ''));
+  }
+
+  function saveChipEdit() {
+    if (!editChip) return;
+    const val = editValue.trim();
+    if (editChip.field === 'model') patchFilters({ model: val });
+    else if (editChip.field === 'trim') patchFilters({ trim: val });
+    else if (editChip.field === 'maxRate') patchFilters({ maxRate: Number(val) || null });
+    else if (editChip.field === 'location') {
+      const loc = parseManualLocationInput(val);
+      if (loc) patchFilters({ city: loc.city ?? '', plz: loc.plz ?? '' });
+    }
+    setEditChip(null);
+  }
+
+  function viewOffer(vehicle) {
+    navigate(getVehicleOfferPath(vehicle));
+  }
 
   return (
     <PageShell>
-      <div className="marketplace-page">
+      <div className="marketplace-page marketplace-page--one-search">
         <div className="marketplace-page__container">
           <header className="marketplace-head">
-            <h1>Fahrzeuge in Ihrer Nähe</h1>
-            <p>ImmoScout-Gefühl für Neuwagen: vergleichen, filtern, direkt anfragen.</p>
+            <h1>Passende Fahrzeuge</h1>
+            <p>Echte Angebote von Händlern in Ihrer Nähe – basierend auf Ihrer Beschreibung.</p>
           </header>
 
-          <section className="marketplace-filters card">
-            <input
-              type="search"
-              value={filters.q}
-              onChange={(event) => updateFilter('q', event.target.value)}
-              placeholder="PLZ oder Ort"
-              className="form-input"
+          <SearchUnderstandingChips chips={chips} onEditChip={handleEditChip} />
+
+          <OfferFilterChips
+            filters={filters}
+            termOptions={TERM_CHIP_OPTIONS}
+            mileageOptions={MILEAGE_CHIP_OPTIONS}
+            radiusOptions={RADIUS_CHIP_OPTIONS}
+            sortOptions={SORT_CHIP_OPTIONS}
+            onChangeTerm={(termMonths) => patchFilters({ termMonths })}
+            onChangeMileage={(mileagePerYear) => patchFilters({ mileagePerYear })}
+            onChangeRadius={(radius) => patchFilters({ radius })}
+            onChangeSort={(sort) => patchFilters({ sort })}
+          />
+
+          {topPick && (
+            <TopRecommendationCard
+              vehicle={topPick}
+              termMonths={filters.termMonths}
+              onViewOffer={viewOffer}
             />
-            <select className="form-select" value={filters.radius ?? ''} onChange={(event) => updateFilter('radius', event.target.value ? Number(event.target.value) : null)}>
-              <option value="">Radius wählen</option>
-              {MARKETPLACE_RADIUS_OPTIONS.map((item) => <option key={item.id} value={item.value ?? ''}>{item.label}</option>)}
-            </select>
-            <select className="form-select" value={filters.maxRate ?? ''} onChange={(event) => updateFilter('maxRate', event.target.value ? Number(event.target.value) : null)}>
-              <option value="">Rate</option>
-              {MARKETPLACE_RATE_OPTIONS.map((item) => <option key={item.id} value={item.value ?? ''}>{item.label}</option>)}
-            </select>
-            <select className="form-select" value={filters.maxPrice ?? ''} onChange={(event) => updateFilter('maxPrice', event.target.value ? Number(event.target.value) : null)}>
-              <option value="">Kaufpreis</option>
-              {MARKETPLACE_PRICE_OPTIONS.map((item) => <option key={item.id} value={item.value ?? ''}>{item.label}</option>)}
-            </select>
-            <select className="form-select" value={filters.type} onChange={(event) => updateFilter('type', event.target.value)}>
-              {MARKETPLACE_TYPE_OPTIONS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
-          </section>
+          )}
 
-          <section className="marketplace-seo card">
-            <p>SEO-Landingpages</p>
-            <div className="marketplace-seo__links">
-              {MARKETPLACE_SEO_LANDING_PAGES.map((item) => (
-                <Link key={item.slug} to={`/fahrzeuge?seo=${item.slug}`}>{item.label}</Link>
-              ))}
-            </div>
-          </section>
+          {rest.length > 0 && (
+            <section className="market-list-section">
+              <h2>Weitere passende Fahrzeuge</h2>
+              <div className="marketplace-results">
+                {rest.map((vehicle) => {
+                  const availability = getAvailabilityMeta(vehicle.availability);
+                  return (
+                    <article key={vehicle.id} className="market-list-card card">
+                      <VehicleImage brand={vehicle.brand} model={vehicle.imageModel} className="market-card__image" />
+                      <div className="market-list-card__body">
+                        <h3>{vehicle.title}</h3>
+                        <p className="market-list-card__rate">
+                          {formatCurrency(vehicle.displayRate)}/Monat
+                        </p>
+                        <p>{vehicle.discountPercent}% Rabatt · {vehicle.deliveryTime}</p>
+                        <p>{vehicle.dealerName} · {vehicle.distanceKm} km</p>
+                        <p className={`market-card__availability market-card__availability--${availability.color}`}>
+                          {availability.label}
+                        </p>
+                        <div className="market-list-card__actions">
+                          <Link to={getVehicleOfferPath(vehicle)}>Angebot ansehen</Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-          <section className="marketplace-results">
-            {results.map((vehicle) => {
-              const availability = getAvailabilityMeta(vehicle.availability);
-              return (
-                <article key={vehicle.id} className="market-card card">
-                  <VehicleImage brand={vehicle.brand} model={vehicle.imageModel} className="market-card__image" />
-                  <div className="market-card__body">
-                    <h2>{vehicle.title}</h2>
-                    <p className="market-card__rate">{formatCurrency(vehicle.monthlyRate)}/Monat</p>
-                    <p>{vehicle.discountPercent}% Rabatt · {vehicle.deliveryTime}</p>
-                    <p>{vehicle.dealerName} · {vehicle.distanceKm} km entfernt</p>
-                    <p className={`market-card__availability market-card__availability--${availability.color}`}>{availability.label}</p>
-                    <div className="market-card__actions">
-                      <Link className="btn btn-primary btn-sm" to={`/fahrzeug/${vehicle.slug}`}>Angebot ansehen</Link>
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleCompare(vehicle.id)}>Vergleichen</button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-            {results.length === 0 && <p className="marketplace-empty card">Keine Treffer. Filter erweitern oder Radius erhöhen.</p>}
-          </section>
+          {filtered.length === 0 && (
+            <p className="marketplace-empty card">
+              Keine Treffer. Chips anpassen oder Radius erweitern.
+            </p>
+          )}
         </div>
 
-        {compareVehicles.length > 0 && (
-          <aside className="marketplace-compare">
-            <p>{compareVehicles.length} Fahrzeug{compareVehicles.length !== 1 ? 'e' : ''} im Vergleich</p>
-            <div className="marketplace-compare__list">
-              {compareVehicles.map((vehicle) => (
-                <Link key={vehicle.id} to={`/fahrzeug/${vehicle.slug}`}>{vehicle.title}</Link>
-              ))}
+        <LocationPromptDialog
+          open={locDialogOpen}
+          onAllowLocation={handleAllowLocation}
+          onManualSubmit={handleManualLocation}
+          onDismiss={() => {
+            patchFilters({ locSkip: true });
+            setLocDialogOpen(false);
+          }}
+        />
+
+        {editChip && (
+          <div className="chip-edit-overlay" onClick={() => setEditChip(null)} role="presentation">
+            <div className="chip-edit-sheet" onClick={(e) => e.stopPropagation()}>
+              <strong>{editChip.label} ändern</strong>
+              <input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                autoFocus
+              />
+              <button type="button" onClick={saveChipEdit}>Übernehmen</button>
             </div>
-          </aside>
+          </div>
         )}
       </div>
     </PageShell>

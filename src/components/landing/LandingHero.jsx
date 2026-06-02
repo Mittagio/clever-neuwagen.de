@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { parseLandingQuery, buildAdvisorUrl } from '../../services/landingAdvisorBridge.js';
+import { buildFahrzeugeUrlFromText } from '../../logic/oneSearchService.js';
 
 const ROTATING_EXAMPLES = [
-  'Suche Leasingangebot bis 300 € im Umkreis von Stuttgart.',
-  'Ich suche einen Porsche bis 1.000 € im Monat.',
-  'SUV mit Anhängerkupplung unter 400 €.',
-  'Familienauto für zwei Kinder und Hund.',
-  'Welches Elektroauto passt zu 30.000 km/Jahr?',
-  'Nachfolger für meinen Tiguan.',
+  'Sportage Vision Benziner im Umkreis von 50 km',
+  'Leasing bis 300 €',
+  'Familien-SUV mit Hund',
+  'Auto mit 2 Tonnen Anhängelast',
+  'Elektroauto unter 30.000 €',
 ];
 
 export default function LandingHero() {
@@ -34,9 +33,11 @@ export default function LandingHero() {
 
   function handleAdvisorSubmit(event) {
     event.preventDefault();
-    if (!advisorText.trim()) return;
-    const parsed = parseLandingQuery(advisorText);
-    navigate(buildAdvisorUrl(parsed.profile, parsed.query, { location: parsed.location ?? null }));
+    if (!advisorText.trim()) {
+      navigate('/fahrzeuge');
+      return;
+    }
+    navigate(buildFahrzeugeUrlFromText(advisorText));
   }
 
   function startSpeechInput() {
@@ -61,7 +62,7 @@ export default function LandingHero() {
     <section className="lp-hero" aria-labelledby="lp-hero-title">
       <div className="lp-hero__container">
         <h1 id="lp-hero-title" className="lp-hero__title">Nicht suchen. Einfach beschreiben.</h1>
-        <p className="lp-hero__sub">Die KI findet passende Fahrzeuge zu Ihrem Budget und Einsatz.</p>
+        <p className="lp-hero__sub">Passende Fahrzeuge, echte Angebote und Händler in Ihrer Nähe.</p>
 
         <article className="lp-hero-focus">
           <form onSubmit={handleAdvisorSubmit} className="lp-hero-card__form">
@@ -81,7 +82,7 @@ export default function LandingHero() {
               </button>
             </div>
             <div className="lp-hero-main-actions">
-              <button type="submit" className="lp-btn lp-btn--primary">✨ Empfehlung erhalten</button>
+              <button type="submit" className="lp-btn lp-btn--primary">✨ Fahrzeuge finden</button>
             </div>
           </form>
           <div className="lp-rotating-example" aria-live="polite">💬 {ROTATING_EXAMPLES[exampleIdx]}</div>

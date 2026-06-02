@@ -27,8 +27,7 @@ export default function Header() {
 
         {isPublicMarketing && (
           <nav className="header-nav header-nav--marketing" aria-label="Hauptnavigation">
-            <Link to="/fahrzeuge" className="header-link">Fahrzeuge</Link>
-            <Link to="/mein-bereich" className="header-link">Mein Bereich</Link>
+            <Link to="/fahrzeuge" className="header-link header-link--primary">Fahrzeuge finden</Link>
             <Link to="/partner/register" className="header-link">Für Händler</Link>
           </nav>
         )}

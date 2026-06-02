@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import LegalDisclaimer from '../components/legal/LegalDisclaimer.jsx';
@@ -8,6 +8,8 @@ import CustomerInquiryModal from '../components/customer/CustomerInquiryModal.js
 import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import { CUSTOMER_LABELS } from '../data/customerFlow.js';
 import { formatCurrency, getAvailabilityMeta } from '../logic/marketplaceService.js';
+import { getVehicleOfferPath } from '../logic/oneSearchService.js';
+import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
 import { toggleCompareSlug, isInCompare, loadCompareSlugs } from '../services/customerCompareService.js';
 import { useLeads } from '../context/LeadsContext.jsx';
@@ -23,6 +25,10 @@ export default function FahrzeugDetailPage() {
   const { addLead } = useLeads();
   const { registerMarketplaceInquiry, isLoggedIn } = useCustomerAuth();
   const vehicle = MARKETPLACE_VEHICLES.find((item) => item.slug === slug);
+
+  if (vehicle?.offerCode) {
+    return <Navigate to={buildOfferPath(vehicle.offerCode)} replace />;
+  }
 
   const [paymentView, setPaymentView] = useState('leasing');
   const [saveOpen, setSaveOpen] = useState(false);

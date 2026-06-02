@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
 import {
   ADVISOR_MILEAGE_OPTIONS,
@@ -23,6 +23,7 @@ import AdvisorLocationStep from '../components/advisor/AdvisorLocationStep.jsx';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import { CUSTOMER_ROUTES } from '../data/customerFlow.js';
+import { advisorParamsToFahrzeugeUrl } from '../logic/oneSearchService.js';
 import './AdvisorPage.css';
 
 function findMarketplaceSlug(rec) {
@@ -125,6 +126,14 @@ function resolveInitialView(searchParams, locationState) {
 }
 
 export default function AdvisorPage() {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get('start') === '1') {
+    return <Navigate to={advisorParamsToFahrzeugeUrl(searchParams)} replace />;
+  }
+  return <AdvisorPageLegacy />;
+}
+
+function AdvisorPageLegacy() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { publishedConditions: conditions } = usePublishedDealerConditions();

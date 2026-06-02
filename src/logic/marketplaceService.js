@@ -54,14 +54,20 @@ export function filterMarketplaceVehicles(vehicles, initialFilters) {
     if (filters.radius != null && vehicle.distanceKm > filters.radius) return false;
     if (filters.maxRate != null && vehicle.monthlyRate > filters.maxRate) return false;
     if (filters.maxPrice != null && vehicle.cashPrice > filters.maxPrice) return false;
+    if (filters.fuel) {
+      const mapped = mapTypeForVehicle(vehicle);
+      if (mapped !== filters.fuel && vehicle.powertrain !== filters.fuel) return false;
+    }
     if (filters.type && filters.type !== 'all') {
       const mapped = mapTypeForVehicle(vehicle);
       if (mapped !== filters.type && vehicle.bodyType !== filters.type) return false;
     }
     if (filters.model && !norm(vehicle.model).includes(norm(filters.model))) return false;
-    if (filters.q) {
+    if (filters.trim && !norm(vehicle.title).includes(norm(filters.trim))) return false;
+    const locationQ = filters.city || filters.plz || filters.q;
+    if (locationQ) {
       const hay = `${vehicle.title} ${vehicle.dealerName} ${vehicle.city} ${vehicle.plz} ${vehicle.model}`;
-      if (!norm(hay).includes(norm(filters.q))) return false;
+      if (!norm(hay).includes(norm(locationQ))) return false;
     }
     return true;
   });

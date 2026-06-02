@@ -66,9 +66,9 @@
   gap: 24px;
 }
 
-.header-nav--marketing {
-  flex: 1;
-  justify-content: center;
+.header-link--primary {
+  color: #059669;
+  font-weight: 700;
 }
 
 @media (min-width: 900px) {
