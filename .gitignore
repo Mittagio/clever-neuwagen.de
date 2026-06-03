@@ -33,3 +33,7 @@ data/published-trends.json
 server/data/documents/
 server/data/documents-meta.json
 server/data/selbstauskunft.json
+
+__pycache__/
+*.pyc
+
