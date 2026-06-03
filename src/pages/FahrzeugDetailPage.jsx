@@ -309,6 +309,30 @@ export default function FahrzeugDetailPage() {
     return colors.find((c) => c.id === effectiveColorId)?.name ?? null;
   }, [vehicle, effectiveColorId, trimId]);
 
+  const baselineEnginePricing = useMemo(() => {
+    if (!manufacturer || !vehicle) return null;
+    return priceConfiguration({
+      brand: vehicle.brand,
+      model: vehicle.model,
+      trimId,
+      wishFeatureIds: [],
+      packageIds: [],
+      accessoryIds: [],
+      colorId: pricingColorId,
+      paymentType: paymentView,
+      termMonths,
+      mileagePerYear,
+    });
+  }, [
+    manufacturer,
+    vehicle,
+    trimId,
+    pricingColorId,
+    paymentView,
+    termMonths,
+    mileagePerYear,
+  ]);
+
   const wishInsight = useMemo(() => {
     if (!manufacturer || !vehicle || !effectiveWishIds.length) return null;
     return buildWishInsight({
@@ -319,8 +343,24 @@ export default function FahrzeugDetailPage() {
       paymentType: paymentView,
       termMonths,
       mileagePerYear,
+      downPayment,
+      financeDown,
+      financeBalloon,
+      baselineEnginePricing,
     });
-  }, [manufacturer, vehicle, trimId, effectiveWishIds, paymentView, termMonths, mileagePerYear]);
+  }, [
+    manufacturer,
+    vehicle,
+    trimId,
+    effectiveWishIds,
+    paymentView,
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+    baselineEnginePricing,
+  ]);
 
   const packageLabels = useMemo(() => {
     if (wishInsight?.inquiryMeta?.packageLabels?.length) {
@@ -568,6 +608,10 @@ export default function FahrzeugDetailPage() {
                   paymentType={paymentView}
                   termMonths={termMonths}
                   mileagePerYear={mileagePerYear}
+                  downPayment={downPayment}
+                  financeDown={financeDown}
+                  financeBalloon={financeBalloon}
+                  baselineEnginePricing={baselineEnginePricing}
                   currentRateLabel={pricing?.priceLabel}
                   activeSection={customizeSection}
                   onActiveSectionChange={setCustomizeSection}

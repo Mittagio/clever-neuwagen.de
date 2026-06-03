@@ -59,8 +59,8 @@ export default function VehicleDetailNextSteps({
   }
 
   const compareSubtitle = hasCompare
-    ? `${offerCount} passende Angebote für ${vehicleModel ?? 'dieses Fahrzeug'}`
-    : 'Ihr bestes lokales Angebot';
+    ? `${offerCount} passende Angebote – was passt besser zu Ihren Wünschen?`
+    : 'Ihr bestes lokales Angebot vor Ort';
   const compareDetail = best
     ? `Bestes Angebot: ${best.dealerName} · ${rateForOffer(best)}`
     : null;
@@ -118,8 +118,8 @@ export default function VehicleDetailNextSteps({
           title="Händler vergleichen"
           subtitle={compareSubtitle}
           detail={compareDetail}
-          hint={compareHint}
-          ctaLabel={hasCompare ? 'Vergleichen' : 'Angebot ansehen'}
+          hint={compareHint ?? 'Alternative mit ähnlicher Ausstattung'}
+          ctaLabel={hasCompare ? 'Angebote vergleichen' : 'Angebot ansehen'}
           onClick={hasCompare ? onCompareOpen : onViewDealer}
           active={compareOpen}
         />

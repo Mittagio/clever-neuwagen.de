@@ -8,6 +8,103 @@ const PAYMENT_LABELS = {
   cash: 'Kaufpreis',
 };
 
+/** Einheitliche Zahlungsart (leasing | finance | cash) */
+export function normalizePaymentMode(payment) {
+  if (payment === 'financing') return 'finance';
+  if (payment === 'kaufpreis') return 'cash';
+  return payment ?? 'leasing';
+}
+
+/** Betrag aus priceConfiguration-Ergebnis passend zur Zahlungsart */
+export function getAmountFromEnginePricing(enginePricing, payment) {
+  if (!enginePricing) return 0;
+  const mode = normalizePaymentMode(payment);
+  if (mode === 'cash') return enginePricing.cashPrice ?? 0;
+  if (mode === 'finance') {
+    return enginePricing.financeRate ?? enginePricing.primaryRate ?? 0;
+  }
+  return enginePricing.leasingRate ?? enginePricing.primaryRate ?? 0;
+}
+
+/** Primäre Anzeige: 318 €/Monat oder 38.065 € */
+export function formatDisplayPrice(amount, payment) {
+  const mode = normalizePaymentMode(payment);
+  if (mode === 'cash') return formatCurrency(amount);
+  return `${formatCurrency(amount)}/Monat`;
+}
+
+export function buildDisplayPriceFromEngine(enginePricing, payment) {
+  const amount = getAmountFromEnginePricing(enginePricing, payment);
+  return {
+    payment: normalizePaymentMode(payment),
+    amount,
+    priceLabel: formatDisplayPrice(amount, payment),
+  };
+}
+
+export function buildPaymentSubtitleFull({
+  payment,
+  termMonths = 48,
+  mileagePerYear = 10000,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
+}) {
+  const mode = normalizePaymentMode(payment);
+  if (mode === 'cash') return 'Kaufpreis';
+  if (mode === 'finance') {
+    const down = financeDown > 0
+      ? `${formatCurrency(financeDown)} Anzahlung`
+      : '0 € Anzahlung';
+    const balloon = financeBalloon > 0
+      ? ` · Schlussrate ${formatCurrency(financeBalloon)}`
+      : '';
+    return `Finanzierung · ${termMonths} Monate · ${down}${balloon}`;
+  }
+  const km = Number(mileagePerYear).toLocaleString('de-DE');
+  const down = downPayment > 0
+    ? `${formatCurrency(downPayment)} Anzahlung`
+    : '0 € Anzahlung';
+  return `Leasing · ${termMonths} Monate · ${km} km · ${down}`;
+}
+
+/** Delta passend zur Zahlungsart */
+export function getPriceDeltaLabel({
+  payment,
+  previousAmount,
+  newAmount,
+  reason,
+}) {
+  const mode = normalizePaymentMode(payment);
+  const prev = Number(previousAmount) || 0;
+  const next = Number(newAmount) || 0;
+  const delta = next - prev;
+  if (!delta) return null;
+  const sign = delta > 0 ? '+' : '−';
+  const suffix = reason ? ` ${reason}` : '';
+  if (mode === 'cash') {
+    return `${sign}${formatCurrency(Math.abs(delta))}${suffix}`;
+  }
+  return `${sign}${formatCurrency(Math.abs(delta))}/Monat${suffix}`;
+}
+
+export function getPackagePriceImpactLabel({
+  payment,
+  rateDelta = 0,
+  priceGross = 0,
+  packageName,
+}) {
+  const mode = normalizePaymentMode(payment);
+  const ctx = packageName ? `durch ${packageName}` : '';
+  if (mode === 'cash' && priceGross > 0) {
+    return `+${formatCurrency(priceGross)}${ctx ? ` ${ctx}` : ''}`;
+  }
+  if (rateDelta > 0) {
+    return `+${formatCurrency(rateDelta)}/Monat${ctx ? ` ${ctx}` : ''}`;
+  }
+  return null;
+}
+
 /**
  * Zentraler Anzeige-Preis für Hero, Sticky, Rechner und Anfrage
  * @param {object} params
@@ -43,15 +140,21 @@ export function computeDetailPricing({
       ? financeRate
       : leasingRate;
 
-  const paymentLabel = PAYMENT_LABELS[payment] ?? payment;
-  const priceLabel = payment === 'cash'
-    ? formatCurrency(amount)
-    : `${formatCurrency(amount)}/Monat`;
+  const mode = normalizePaymentMode(payment);
+  const paymentLabel = PAYMENT_LABELS[mode] ?? mode;
+  const priceLabel = formatDisplayPrice(amount, mode);
 
-  const subtitle = buildPriceSubtitle({ payment, termMonths, mileagePerYear });
+  const subtitle = buildPaymentSubtitleFull({
+    payment: mode,
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+  });
 
   return {
-    payment,
+    payment: mode,
     amount,
     priceLabel,
     paymentLabel,

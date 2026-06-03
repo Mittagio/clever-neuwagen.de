@@ -4,6 +4,9 @@ import {
   buildPriceSubtitle,
   buildInquirySummary,
   buildPaymentTeaserLine,
+  formatDisplayPrice,
+  getAmountFromEnginePricing,
+  getPriceDeltaLabel,
 } from './vehicleDetailPricing.js';
 
 const vehicle = { monthlyRate: 239, cashPrice: 27990 };
@@ -44,5 +47,18 @@ const summary = buildInquirySummary({
   pricing: leasing,
 });
 assert.ok(summary.lines.some((l) => l.includes('Ceed')));
+
+const cashPricing = computeDetailPricing({
+  payment: 'cash',
+  vehicle,
+  basePricing: { leasingRate: 239, cashPrice: 27990 },
+});
+assert.ok(!cashPricing.priceLabel.includes('/Monat'));
+assert.equal(formatDisplayPrice(27990, 'cash'), cashPricing.priceLabel);
+
+const engine = { leasingRate: 300, financeRate: 320, cashPrice: 35000 };
+assert.equal(getAmountFromEnginePricing(engine, 'cash'), 35000);
+assert.equal(getAmountFromEnginePricing(engine, 'leasing'), 300);
+assert.match(getPriceDeltaLabel({ payment: 'cash', previousAmount: 35000, newAmount: 36290 }), /\+1\.290/);
 
 console.log('✓ vehicleDetailPricing Tests bestanden.');

@@ -1,5 +1,10 @@
 import { calculatePrice } from '../../logic/priceCalculator.js';
 import { getManufacturerModel } from '../../data/manufacturer/manufacturerRegistry.js';
+import {
+  buildDisplayPriceFromEngine,
+  getAmountFromEnginePricing,
+  normalizePaymentMode,
+} from '../../logic/vehicleDetailPricing.js';
 import { resolveWishConfiguration, compareTrimsForWish } from '../configurator/wishPackageResolver.js';
 import { getDealerSeed } from '../../data/dealers/index.js';
 
@@ -206,6 +211,10 @@ export function priceAllTrimsForWish({
       mileagePerYear,
     });
 
+    const mode = normalizePaymentMode(paymentType);
+    const displayAmount = getAmountFromEnginePricing(pricing, mode);
+    const { priceLabel: displayPriceLabel } = buildDisplayPriceFromEngine(pricing, mode);
+
     return {
       trimId: trimConfig.trimId,
       trimName: trimConfig.trimName,
@@ -215,6 +224,8 @@ export function priceAllTrimsForWish({
       requiredPackages: trimConfig.requiredPackages,
       monthlyRate: pricing?.leasingRate ?? pricing?.primaryRate ?? null,
       cashPrice: pricing?.cashPrice ?? null,
+      displayAmount,
+      displayPriceLabel,
       isRecommended: index === 0 && trimConfig.wishesMatched > 0,
       pricing,
     };

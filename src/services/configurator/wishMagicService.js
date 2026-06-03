@@ -3,8 +3,30 @@ import { getDetailWishChips, WISH_UNAVAILABLE_ALTERNATIVES } from '../../data/fe
 import { getManufacturerModel } from '../../data/manufacturer/manufacturerRegistry.js';
 import { customerFeatureFromManufacturerId } from '../../data/manufacturer/featureBridge.js';
 import { formatCurrency } from '../../logic/marketplaceService.js';
+import {
+  computeDetailPricing,
+  formatDisplayPrice,
+  getAmountFromEnginePricing,
+  getPackagePriceImpactLabel,
+  getPriceDeltaLabel,
+  normalizePaymentMode,
+} from '../../logic/vehicleDetailPricing.js';
 import { priceConfiguration, priceAllTrimsForWish } from '../pricing/pricingEngine.js';
 import { resolveWishConfiguration } from './wishPackageResolver.js';
+
+function toDisplayFromEngine(enginePricing, payment, pricingOptions = {}) {
+  if (!enginePricing) return { amount: null, priceLabel: null };
+  const display = computeDetailPricing({
+    payment: normalizePaymentMode(payment),
+    basePricing: enginePricing,
+    termMonths: pricingOptions.termMonths,
+    mileagePerYear: pricingOptions.mileagePerYear,
+    downPayment: pricingOptions.downPayment,
+    financeDown: pricingOptions.financeDown,
+    financeBalloon: pricingOptions.financeBalloon,
+  });
+  return { amount: display.amount, priceLabel: display.priceLabel, subtitle: display.subtitle };
+}
 
 /** Chip-/Tag-Darstellung: wish | standard | bonus | unavailable | idle */
 export function mapWishToChipVariant(analysis) {
@@ -72,7 +94,10 @@ function findFulfillmentOnOtherTrims({ brand, model, trimId, wishId, paymentType
       termMonths,
       mileagePerYear,
     });
-    const rate = pricing?.leasingRate ?? pricing?.primaryRate ?? null;
+    const { amount, priceLabel } = toDisplayFromEngine(pricing, paymentType, {
+      termMonths,
+      mileagePerYear,
+    });
 
     if (!alt.requiredPackages.length && !alt.requiredAccessories.length) {
       return {
@@ -80,7 +105,8 @@ function findFulfillmentOnOtherTrims({ brand, model, trimId, wishId, paymentType
         trimId: trim.id,
         trimName: trim.name,
         resolution: alt,
-        rate,
+        amount,
+        priceLabel,
       };
     }
 
@@ -95,9 +121,10 @@ function findFulfillmentOnOtherTrims({ brand, model, trimId, wishId, paymentType
       accessoryId: acc?.id,
       accessoryName: acc?.name,
       resolution: alt,
-      rate,
+      amount,
+      priceLabel,
     };
-    if (!best || (rate != null && (best.rate == null || rate < best.rate))) {
+    if (!best || (amount != null && (best.amount == null || amount < best.amount))) {
       best = candidate;
     }
   }
@@ -145,7 +172,10 @@ export function analyzeSingleWish({
       termMonths,
       mileagePerYear,
     });
-    const rate = pricing?.leasingRate ?? pricing?.primaryRate;
+    const { priceLabel: newRateLabel } = toDisplayFromEngine(pricing, paymentType, {
+      termMonths,
+      mileagePerYear,
+    });
     return {
       wishId,
       status: pkg ? 'package' : 'accessory',
@@ -156,7 +186,7 @@ export function analyzeSingleWish({
       featureLabels: packageMeta?.featureLabels ?? [],
       accessoryId: acc?.id,
       accessoryName: acc?.name,
-      newRateLabel: rate != null ? `${formatCurrency(rate)}/Monat` : null,
+      newRateLabel,
       resolution,
     };
   }
@@ -185,7 +215,7 @@ export function analyzeSingleWish({
       suggestedTrimId: otherTrim.trimId,
       suggestedTrimName: otherTrim.trimName,
       availableTrimLabel: packageMeta?.trimNames?.join(', ') ?? otherTrim.trimName,
-      newRateLabel: otherTrim.rate != null ? `${formatCurrency(otherTrim.rate)}/Monat` : null,
+      newRateLabel: otherTrim.priceLabel ?? null,
       resolution: otherTrim.resolution,
     };
   }
@@ -197,7 +227,7 @@ export function analyzeSingleWish({
       label: getFeatureLabel(wishId),
       suggestedTrimId: otherTrim.trimId,
       suggestedTrimName: otherTrim.trimName,
-      newRateLabel: otherTrim.rate != null ? `${formatCurrency(otherTrim.rate)}/Monat` : null,
+      newRateLabel: otherTrim.priceLabel ?? null,
       resolution: otherTrim.resolution,
     };
   }
@@ -211,12 +241,18 @@ export function analyzeSingleWish({
   };
 }
 
-export function buildPackageInsight(brand, model, packageId, wishFeatureIds = []) {
+export function buildPackageInsight(brand, model, packageId, wishFeatureIds = [], payment = 'leasing') {
   const meta = getPackageMeta(brand, model, packageId);
   if (!meta) return null;
   const mfg = getManufacturerModel(brand, model);
   const equipment = mfg?.data?.equipment ?? [];
   const pkg = mfg?.data?.packages?.find((p) => p.id === packageId);
+  const priceImpactLabel = getPackagePriceImpactLabel({
+    payment,
+    rateDelta: pkg?.rateDelta ?? 0,
+    priceGross: pkg?.priceGross ?? 0,
+    packageName: meta.name,
+  });
 
   const items = (pkg?.features ?? []).map((eqId) => {
     const eq = equipment.find((e) => e.id === eqId);
@@ -238,10 +274,64 @@ export function buildPackageInsight(brand, model, packageId, wishFeatureIds = []
     packageName: meta.name,
     description: meta.description,
     featureLabels: meta.featureLabels,
+    priceImpactLabel,
     items,
     wishItems: items.filter((i) => i.role === 'wish'),
     bonusItems: items.filter((i) => i.role === 'bonus'),
   };
+}
+
+export function buildMagicSummary({
+  wishStatuses = [],
+  packageInsights = [],
+  payment = 'leasing',
+  baselineAmount = null,
+  newAmount = null,
+}) {
+  const serial = wishStatuses.filter((w) => w.variant === 'standard');
+  const needsPkg = wishStatuses.filter((w) => w.variant === 'wish');
+  const parts = [];
+
+  if (serial.length) {
+    parts.push(
+      `${serial.length} Wunsch${serial.length > 1 ? 'e sind' : ' ist'} bereits serienmäßig enthalten`,
+    );
+  }
+
+  if (packageInsights.length === 1) {
+    const pkg = packageInsights[0];
+    const wishLabels = pkg.wishItems?.map((i) => i.label).join(' und ') ?? '';
+    parts.push(
+      wishLabels
+        ? `Für ${wishLabels} empfehlen wir das ${pkg.packageName}`
+        : `Wir empfehlen das ${pkg.packageName}`,
+    );
+  } else if (packageInsights.length > 1) {
+    parts.push(`Wir empfehlen ${packageInsights.map((p) => p.packageName).join(' und ')}`);
+  }
+
+  const deltaLabel = baselineAmount != null && newAmount != null
+    ? getPriceDeltaLabel({
+      payment,
+      previousAmount: baselineAmount,
+      newAmount,
+      reason: 'mit Ihren Wünschen',
+    })
+    : null;
+
+  if (deltaLabel) {
+    const mode = normalizePaymentMode(payment);
+    if (mode === 'cash') {
+      parts.push(`Das erhöht Ihren Kaufpreis um ${deltaLabel.replace(/^\+/, '')}`);
+    } else {
+      parts.push(`Das erhöht Ihre Rate um ${deltaLabel.replace(/^\+/, '')}`);
+    }
+  } else if (packageInsights[0]?.priceImpactLabel) {
+    parts.push(`Preiswirkung: ${packageInsights[0].priceImpactLabel}`);
+  }
+
+  if (!parts.length) return null;
+  return parts.join('. ') + '.';
 }
 
 export function buildWishInsight({
@@ -252,16 +342,26 @@ export function buildWishInsight({
   paymentType = 'leasing',
   termMonths = 48,
   mileagePerYear = 10000,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
   dealerConditions,
+  baselineEnginePricing = null,
 }) {
+  const payment = normalizePaymentMode(paymentType);
+  const pricingOptions = { termMonths, mileagePerYear, downPayment, financeDown, financeBalloon };
+
   const recommendation = buildWishRecommendation({
     brand,
     model,
     trimId,
     wishFeatureIds,
-    paymentType,
+    paymentType: payment,
     termMonths,
     mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
     dealerConditions,
   });
 
@@ -285,7 +385,7 @@ export function buildWishInsight({
   });
 
   const packageInsights = (recommendation.resolution?.requiredPackages ?? [])
-    .map((p) => buildPackageInsight(brand, model, p.id, wishFeatureIds))
+    .map((p) => buildPackageInsight(brand, model, p.id, wishFeatureIds, payment))
     .filter(Boolean);
 
   const accessoryInsights = (recommendation.resolution?.requiredAccessories ?? []).map((a) => ({
@@ -325,7 +425,7 @@ export function buildWishInsight({
       wishFeatureIds,
     });
     const altPackages = (altResolution?.requiredPackages ?? [])
-      .map((p) => buildPackageInsight(brand, model, p.id, wishFeatureIds))
+      .map((p) => buildPackageInsight(brand, model, p.id, wishFeatureIds, payment))
       .filter(Boolean);
 
     betterTrimInsight = {
@@ -336,6 +436,21 @@ export function buildWishInsight({
     };
   }
 
+  const baselineAmount = baselineEnginePricing
+    ? getAmountFromEnginePricing(baselineEnginePricing, payment)
+    : null;
+  const newAmount = recommendation.pricing
+    ? getAmountFromEnginePricing(recommendation.pricing, payment)
+    : null;
+
+  const magicSummary = buildMagicSummary({
+    wishStatuses,
+    packageInsights,
+    payment,
+    baselineAmount,
+    newAmount,
+  });
+
   const inquiryMeta = {
     wishedLabels: wishStatuses.map((w) => w.label),
     packageLabels: packageInsights.map((p) => p.packageName),
@@ -345,11 +460,20 @@ export function buildWishInsight({
 
   return {
     ...recommendation,
+    payment,
     wishStatuses,
     packageInsights,
     accessoryInsights,
     betterTrimInsight,
     inquiryMeta,
+    magicSummary,
+    baselineAmount,
+    newAmount,
+    priceDeltaLabel: getPriceDeltaLabel({
+      payment,
+      previousAmount: baselineAmount,
+      newAmount,
+    }),
   };
 }
 
@@ -375,8 +499,12 @@ export function buildWishRecommendation({
   paymentType = 'leasing',
   termMonths = 48,
   mileagePerYear = 10000,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
   dealerConditions,
 }) {
+  const payment = normalizePaymentMode(paymentType);
   const mfg = getManufacturerModel(brand, model);
   if (!mfg || !wishFeatureIds.length) {
     return {
@@ -404,13 +532,18 @@ export function buildWishRecommendation({
     trimId,
     wishFeatureIds,
     dealerConditions,
-    paymentType,
+    paymentType: payment,
     termMonths,
     mileagePerYear,
   });
 
-  const rate = pricing?.leasingRate ?? pricing?.primaryRate ?? null;
-  const newRateLabel = rate != null ? `${formatCurrency(rate)}/Monat` : null;
+  const { amount, priceLabel: newRateLabel } = toDisplayFromEngine(pricing, payment, {
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+  });
 
   const wishItems = wishFeatureIds.map((id) => {
     const single = analyzeSingleWish({
@@ -437,17 +570,21 @@ export function buildWishRecommendation({
     model,
     currentTrimId: trimId,
     wishFeatureIds,
-    paymentType,
+    paymentType: payment,
     termMonths,
     mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
     dealerConditions,
-    currentRate: rate,
+    currentAmount: amount,
   });
 
   return {
     wishFeatureIds,
     resolution,
     pricing,
+    newAmount: amount,
     newRateLabel,
     wishItems,
     packages,
@@ -465,43 +602,52 @@ export function findBetterTrimAlternative({
   paymentType = 'leasing',
   termMonths = 48,
   mileagePerYear = 10000,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
   dealerConditions,
-  currentRate,
+  currentAmount,
 }) {
   if (!wishFeatureIds.length) return null;
+
+  const payment = normalizePaymentMode(paymentType);
 
   const compared = priceAllTrimsForWish({
     brand,
     model,
     wishFeatureIds,
     dealerConditions,
-    paymentType,
+    paymentType: payment,
     termMonths,
     mileagePerYear,
   });
 
   const current = compared.find((t) => t.trimId === currentTrimId);
-  const currentMonthly = currentRate ?? current?.monthlyRate;
-  if (currentMonthly == null) return null;
+  const currentPrice = currentAmount ?? current?.displayAmount;
+  if (currentPrice == null) return null;
 
   const better = compared
-    .filter((t) => t.trimId !== currentTrimId && t.monthlyRate != null && t.missingFeatures.length === 0)
-    .sort((a, b) => a.monthlyRate - b.monthlyRate)[0];
+    .filter((t) => t.trimId !== currentTrimId && t.displayAmount != null && t.missingFeatures.length === 0)
+    .sort((a, b) => a.displayAmount - b.displayAmount)[0];
 
-  if (!better || better.monthlyRate >= currentMonthly) return null;
+  if (!better || better.displayAmount >= currentPrice) return null;
 
   const currentTrim = compared.find((t) => t.trimId === currentTrimId);
   const currentPackages = currentTrim?.requiredPackages?.map((p) => p.name).join(' + ') || 'Basis';
+  const savings = currentPrice - better.displayAmount;
 
   return {
     trimId: better.trimId,
     trimName: better.trimName,
-    monthlyRate: better.monthlyRate,
-    monthlyRateLabel: `${formatCurrency(better.monthlyRate)}/Monat`,
+    displayAmount: better.displayAmount,
+    displayPriceLabel: better.displayPriceLabel,
     currentTrimName: currentTrim?.trimName ?? currentTrimId,
-    currentMonthlyRateLabel: `${formatCurrency(currentMonthly)}/Monat`,
+    currentPriceLabel: formatDisplayPrice(currentPrice, payment),
     currentPackagesLabel: currentPackages,
-    savingsPerMonth: currentMonthly - better.monthlyRate,
+    savingsLabel: normalizePaymentMode(payment) === 'cash'
+      ? `${formatCurrency(savings)} günstiger`
+      : `${formatCurrency(savings)}/Monat günstiger`,
+    savingsAmount: savings,
   };
 }
 

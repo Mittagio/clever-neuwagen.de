@@ -89,4 +89,18 @@ function testWishInsightStatuses() {
 testTechnikPackageBonusItems();
 testWishInsightStatuses();
 
+function testCashModeNoMonthlySuffix() {
+  const insight = buildWishInsight({
+    brand: 'Kia',
+    model: 'EV3',
+    trimId: 'earth',
+    wishFeatureIds: ['camera_360'],
+    paymentType: 'cash',
+  });
+  assert.ok(insight.newRateLabel);
+  assert.ok(!insight.newRateLabel.includes('/Monat'));
+}
+
+testCashModeNoMonthlySuffix();
+
 console.log('✓ wishMagicService Tests bestanden.');

@@ -6,10 +6,13 @@ import {
   buildPackageInsight,
   buildWishInsight,
   getDetailWishChips,
-  mapWishToBadge,
-  mapWishToChipVariant,
 } from '../../services/configurator/wishMagicService.js';
-import { PackageInsightBlock, WishFeatureTag, WishFeatureTagList } from './WishFeatureTag.jsx';
+import {
+  PackageInsightCard,
+  TrimCompareCards,
+  WishFeatureTag,
+  WishFeatureTagList,
+} from './WishFeatureTag.jsx';
 import './vehicle-detail.css';
 
 function WishChip({ id, label, variant, badge, exploring, onClick }) {
@@ -20,7 +23,7 @@ function WishChip({ id, label, variant, badge, exploring, onClick }) {
       className={`vd-wish-chip vd-wish-chip--${chipVariant}`}
       onClick={() => onClick(id)}
     >
-      {(variant === 'standard' || variant === 'wish') && (
+      {(variant === 'standard' || variant === 'wish' || variant === 'pending') && (
         <span className="vd-wish-chip__check" aria-hidden>✓</span>
       )}
       <span className="vd-wish-chip__text">{label}</span>
@@ -42,7 +45,10 @@ export default function VehicleWishPanel({
   paymentType = 'leasing',
   termMonths = 48,
   mileagePerYear = 10000,
-  currentRateLabel,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
+  baselineEnginePricing = null,
   showMoreLink = true,
   embedded = false,
 }) {
@@ -76,8 +82,23 @@ export default function VehicleWishPanel({
       paymentType,
       termMonths,
       mileagePerYear,
+      downPayment,
+      financeDown,
+      financeBalloon,
+      baselineEnginePricing,
     });
-  }, [vehicle, trimId, previewWishIds, paymentType, termMonths, mileagePerYear]);
+  }, [
+    vehicle,
+    trimId,
+    previewWishIds,
+    paymentType,
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+    baselineEnginePricing,
+  ]);
 
   const singleExplore = useMemo(() => {
     if (!exploreWishId || wishIds.includes(exploreWishId)) return null;
@@ -99,14 +120,18 @@ export default function VehicleWishPanel({
       vehicle.model,
       singleExplore.packageId,
       previewWishIds,
+      paymentType,
     );
-  }, [singleExplore, vehicle, previewWishIds]);
+  }, [singleExplore, vehicle, previewWishIds, paymentType]);
 
   const statusById = useMemo(() => {
     const map = new Map();
     insight?.wishStatuses?.forEach((s) => map.set(s.id, s));
     return map;
   }, [insight]);
+
+  const serialWishes = insight?.wishStatuses?.filter((w) => w.variant === 'standard') ?? [];
+  const pendingWishes = insight?.wishStatuses?.filter((w) => w.variant === 'wish') ?? [];
 
   function handleChipClick(id) {
     if (wishIds.includes(id)) {
@@ -130,6 +155,10 @@ export default function VehicleWishPanel({
           paymentType,
           termMonths,
           mileagePerYear,
+          downPayment,
+          financeDown,
+          financeBalloon,
+          baselineEnginePricing,
         }).resolution
         : insight?.resolution);
 
@@ -145,20 +174,21 @@ export default function VehicleWishPanel({
     onExploreWishChange?.(null);
   }
 
-  function handleSkipExplore() {
-    onExploreWishChange?.(null);
-  }
-
   function chipState(id) {
     const inPreview = previewWishIds.includes(id);
     if (!inPreview) return { variant: 'idle', badge: null };
     const st = statusById.get(id);
-    if (st) return { variant: st.variant, badge: st.badge };
-    return { variant: 'wish', badge: 'Ihr Wunsch' };
+    if (st) {
+      const badge = st.badge === 'Ihr Wunsch' && !wishIds.includes(id) ? 'noch offen' : st.badge;
+      const variant = badge === 'noch offen' ? 'pending' : st.variant;
+      return { variant, badge };
+    }
+    return { variant: 'pending', badge: 'noch offen' };
   }
 
   const exploreLabel = exploreWishId ? getFeatureLabel(exploreWishId) : null;
-  const exploreRateLabel = singleExplore?.newRateLabel ?? insight?.newRateLabel;
+  const explorePriceLabel = singleExplore?.newRateLabel ?? insight?.newRateLabel;
+  const priceDeltaLabel = insight?.priceDeltaLabel;
 
   return (
     <div className={`vd-wish${embedded ? ' vd-wish--embedded' : ''}`}>
@@ -167,129 +197,122 @@ export default function VehicleWishPanel({
         {trimName && (
           <p className="vd-wish__trim">
             {vehicle.brand} {vehicle.model} {trimName}
-            {currentRateLabel && <span> · {currentRateLabel}</span>}
           </p>
         )}
       </div>
 
-      <div className="vd-wish__chips">
-        {chipIds.map((id) => {
-          const { variant, badge } = chipState(id);
-          return (
-            <WishChip
-              key={id}
-              id={id}
-              label={getFeatureLabel(id)}
-              variant={variant}
-              badge={badge}
-              exploring={exploreWishId === id}
-              onClick={handleChipClick}
-            />
-          );
-        })}
-      </div>
-
-      {showMoreLink && !showAllWishes && (
-        <button type="button" className="vd-wish__more" onClick={() => setShowAllWishes(true)}>
-          Weitere Wünsche hinzufügen
-        </button>
+      {insight?.magicSummary && !singleExplore && (
+        <div className="vd-wish-magic">
+          <p className="vd-wish-magic__eyebrow">Clever-Neuwagen denkt mit</p>
+          <p className="vd-wish-magic__text">{insight.magicSummary}</p>
+          {priceDeltaLabel && (
+            <p className="vd-wish-magic__delta">{priceDeltaLabel}</p>
+          )}
+        </div>
       )}
+
+      <section className="vd-wish-section" aria-label="Ihre Wünsche">
+        <h3 className="vd-wish-section__title">Ihre Wünsche</h3>
+        <div className="vd-wish__chips">
+          {chipIds.map((id) => {
+            const { variant, badge } = chipState(id);
+            return (
+              <WishChip
+                key={id}
+                id={id}
+                label={getFeatureLabel(id)}
+                variant={variant}
+                badge={badge}
+                exploring={exploreWishId === id}
+                onClick={handleChipClick}
+              />
+            );
+          })}
+        </div>
+        {showMoreLink && !showAllWishes && (
+          <button type="button" className="vd-wish__more" onClick={() => setShowAllWishes(true)}>
+            Weitere Wünsche hinzufügen
+          </button>
+        )}
+      </section>
 
       {singleExplore && singleExplore.status === 'missing' && (
         <div className="vd-wish-rec vd-wish-rec--missing">
-          <p className="vd-wish-rec__title">Dieses Fahrzeug erfüllt den Wunsch nicht</p>
           <WishFeatureTag label={exploreLabel} variant="unavailable" badge="Nicht verfügbar" />
           <p className="vd-wish-rec__text">
             Der {vehicle.model} kann „{exploreLabel}“ in der Ausstattung {trimName} nicht bieten.
           </p>
           {singleExplore.alternatives?.length > 0 && (
-            <>
-              <p className="vd-wish-rec__sub">Passende Alternativen:</p>
-              <ul className="vd-wish-rec__alt-list">
-                {singleExplore.alternatives.map((alt) => (
-                  <li key={alt.label}>
-                    <Link to={`/fahrzeuge?q=${encodeURIComponent(alt.model)}`}>{alt.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <ul className="vd-wish-rec__alt-list">
+              {singleExplore.alternatives.map((alt) => (
+                <li key={alt.label}>
+                  <Link to={`/fahrzeuge?q=${encodeURIComponent(alt.model)}`}>{alt.label}</Link>
+                </li>
+              ))}
+            </ul>
           )}
-          <button type="button" className="vd-btn vd-btn--ghost vd-btn--sm" onClick={handleSkipExplore}>
+          <button type="button" className="vd-btn vd-btn--ghost vd-btn--sm" onClick={() => onExploreWishChange?.(null)}>
             Ohne {exploreLabel} weiter
           </button>
         </div>
       )}
 
       {singleExplore && singleExplore.status === 'standard' && (
-        <div className="vd-wish-rec vd-wish-rec--standard vd-wish-rec--glow">
-          <p className="vd-wish-rec__title">Bereits enthalten</p>
+        <section className="vd-wish-section vd-wish-section--glow">
+          <h3 className="vd-wish-section__title">Bereits enthalten</h3>
           <WishFeatureTag label={exploreLabel} variant="standard" badge="Serienmäßig" />
           <p className="vd-wish-rec__text">
-            {exploreLabel} ist beim {vehicle.model} {trimName} serienmäßig dabei.
+            Gute Nachricht: {exploreLabel} ist beim {vehicle.model} {trimName} serienmäßig dabei.
           </p>
-          <button type="button" className="vd-btn vd-btn--primary vd-btn--sm" onClick={() => handleApply()}>
-            Übernehmen
+          <button type="button" className="vd-btn vd-btn--primary" onClick={() => handleApply()}>
+            Passt bereits
           </button>
-          <button type="button" className="vd-btn vd-btn--ghost vd-btn--sm" onClick={handleSkipExplore}>
-            Schließen
-          </button>
-        </div>
+        </section>
       )}
 
       {singleExplore && (singleExplore.status === 'package' || singleExplore.status === 'accessory') && (
-        <div className="vd-wish-rec vd-wish-rec--package vd-wish-rec--glow">
-          <p className="vd-wish-rec__title">{exploreLabel}</p>
-          <PackageInsightBlock
+        <section className="vd-wish-section vd-wish-section--glow">
+          <PackageInsightCard
             packageInsight={explorePackageInsight}
-            rateLabel={exploreRateLabel}
+            priceLabel={explorePriceLabel}
+            priceImpactLabel={explorePackageInsight?.priceImpactLabel}
             onApply={() => handleApply()}
             applyLabel={singleExplore.packageName ? `${singleExplore.packageName} übernehmen` : 'Übernehmen'}
           />
-          <button type="button" className="vd-btn vd-btn--ghost" onClick={handleSkipExplore}>
+          <button type="button" className="vd-btn vd-btn--ghost" onClick={() => onExploreWishChange?.(null)}>
             Ohne {exploreLabel} weiter
           </button>
-        </div>
+        </section>
       )}
 
       {singleExplore && singleExplore.status === 'package_other_trim' && (
-        <div className="vd-wish-rec vd-wish-rec--package vd-wish-rec--other-trim vd-wish-rec--glow">
-          <p className="vd-wish-rec__title">{exploreLabel}</p>
+        <section className="vd-wish-section vd-wish-section--glow">
           <WishFeatureTag label={exploreLabel} variant="wish" badge="Ihr Wunsch" />
-          <p className="vd-wish-rec__text">
-            Verfügbar mit {singleExplore.suggestedTrimName}
-            {singleExplore.packageName ? ` und ${singleExplore.packageName}` : ''}
-          </p>
-          {explorePackageInsight && (
-            <PackageInsightBlock packageInsight={explorePackageInsight} rateLabel={exploreRateLabel} />
-          )}
-          <div className="vd-wish-rec__actions">
-            <button
-              type="button"
-              className="vd-btn vd-btn--primary"
-              onClick={() => handleApply({
-                trimId: singleExplore.suggestedTrimId,
-                resolution: singleExplore.resolution,
-              })}
-            >
-              {singleExplore.suggestedTrimName} mit {singleExplore.packageName} anzeigen
-            </button>
-            <button type="button" className="vd-btn vd-btn--ghost" onClick={handleSkipExplore}>
-              Ohne {exploreLabel} weiter
-            </button>
-          </div>
-        </div>
+          <PackageInsightCard
+            packageInsight={explorePackageInsight}
+            priceLabel={explorePriceLabel}
+            priceImpactLabel={explorePackageInsight?.priceImpactLabel}
+          />
+          <button
+            type="button"
+            className="vd-btn vd-btn--primary vd-btn--block"
+            onClick={() => handleApply({
+              trimId: singleExplore.suggestedTrimId,
+              resolution: singleExplore.resolution,
+            })}
+          >
+            {singleExplore.suggestedTrimName} mit {singleExplore.packageName} anzeigen
+          </button>
+        </section>
       )}
 
       {singleExplore && singleExplore.status === 'standard_other_trim' && (
-        <div className="vd-wish-rec vd-wish-rec--standard vd-wish-rec--glow">
+        <section className="vd-wish-section vd-wish-section--glow">
+          <h3 className="vd-wish-section__title">Bereits enthalten</h3>
           <WishFeatureTag label={exploreLabel} variant="standard" badge="Serienmäßig" />
-          <p className="vd-wish-rec__text">
-            In der Ausstattung {singleExplore.suggestedTrimName} bereits serienmäßig enthalten.
-          </p>
-          {exploreRateLabel && (
-            <p className="vd-wish-rec__rate">
-              Ab {singleExplore.suggestedTrimName}: <strong>{exploreRateLabel}</strong>
-            </p>
+          <p className="vd-wish-rec__text">In der {singleExplore.suggestedTrimName} serienmäßig enthalten.</p>
+          {explorePriceLabel && (
+            <p className="vd-wish-rec__rate">Ab <strong>{explorePriceLabel}</strong></p>
           )}
           <button
             type="button"
@@ -298,97 +321,68 @@ export default function VehicleWishPanel({
           >
             {singleExplore.suggestedTrimName} anzeigen
           </button>
-        </div>
+        </section>
       )}
 
       {!singleExplore && wishIds.length > 0 && insight && (
-        <div className="vd-wish-rec vd-wish-rec--summary vd-wish-rec--glow">
-          <p className="vd-wish-rec__title">Ihre Wünsche</p>
-          <WishFeatureTagList
-            items={insight.wishStatuses.map((w) => ({
-              id: w.id,
-              label: w.label,
-              variant: w.variant,
-              badge: w.badge,
-            }))}
-          />
+        <>
+          {serialWishes.length > 0 && (
+            <section className="vd-wish-section vd-wish-section--glow">
+              <h3 className="vd-wish-section__title">Bereits enthalten</h3>
+              <p className="vd-wish-section__lead">
+                {serialWishes.length} Ihrer Wünsche sind in der {trimName} serienmäßig dabei.
+              </p>
+              <WishFeatureTagList
+                items={serialWishes.map((w) => ({
+                  id: w.id,
+                  label: w.label,
+                  variant: 'standard',
+                  badge: 'Serienmäßig',
+                }))}
+              />
+            </section>
+          )}
 
-          {insight.packageInsights.map((pkg) => (
-            <PackageInsightBlock
-              key={pkg.packageId}
-              packageInsight={pkg}
-              rateLabel={insight.packageInsights.length === 1 ? insight.newRateLabel : null}
-            />
-          ))}
+          {insight.packageInsights.length > 0 && (
+            <section className="vd-wish-section vd-wish-section--glow">
+              <h3 className="vd-wish-section__title">Empfohlene Ergänzung</h3>
+              {insight.packageInsights.map((pkg) => (
+                <PackageInsightCard
+                  key={pkg.packageId}
+                  packageInsight={pkg}
+                  priceImpactLabel={pkg.priceImpactLabel}
+                  priceLabel={insight.packageInsights.length === 1 ? insight.newRateLabel : null}
+                />
+              ))}
+              {insight.newRateLabel && (
+                <p className="vd-wish-rec__rate">
+                  Neue Empfehlung: <strong>{insight.newRateLabel}</strong>
+                  {priceDeltaLabel && <span className="vd-wish-rec__delta"> ({priceDeltaLabel})</span>}
+                </p>
+              )}
+              <button type="button" className="vd-btn vd-btn--primary vd-btn--block" onClick={() => handleApply()}>
+                Mit Wunsch-Ausstattung weiter
+              </button>
+            </section>
+          )}
 
-          {insight.packageInsights.length > 1 && insight.newRateLabel && (
+          {!insight.packageInsights.length && pendingWishes.length > 0 && insight.newRateLabel && (
             <p className="vd-wish-rec__rate">
-              Neue Rate: <strong>{insight.newRateLabel}</strong>
+              Ihre Auswahl: <strong>{insight.newRateLabel}</strong>
             </p>
           )}
-
-          {(insight.packageInsights.length > 0 || insight.accessoryInsights.length > 0) && (
-            <button type="button" className="vd-btn vd-btn--primary vd-btn--block" onClick={() => handleApply()}>
-              Pakete übernehmen
-            </button>
-          )}
-        </div>
+        </>
       )}
 
-      {insight?.betterTrimInsight && (
-        <div className="vd-wish-rec vd-wish-rec--alt-trim vd-wish-rec--glow">
-          <p className="vd-wish-rec__title">Bessere Ausstattung gefunden</p>
-          <p className="vd-wish-rec__text">
-            Mit Ihren Wünschen ist der {vehicle.model} {insight.betterTrimInsight.trimName} sinnvoller.
-          </p>
-          <div className="vd-wish-rec__compare">
-            <p>
-              <span>{vehicle.model} {insight.betterTrimInsight.currentTrimName}</span>
-              <strong>{insight.betterTrimInsight.currentMonthlyRateLabel}</strong>
-            </p>
-            <p className="vd-wish-rec__compare-best">
-              <span>{vehicle.model} {insight.betterTrimInsight.trimName}</span>
-              <strong>{insight.betterTrimInsight.monthlyRateLabel}</strong>
-            </p>
-          </div>
-
-          {insight.betterTrimInsight.serialOnTrim?.length > 0 && (
-            <>
-              <p className="vd-wish-rec__sub">Bereits enthalten im {insight.betterTrimInsight.trimName}</p>
-              <WishFeatureTagList items={insight.betterTrimInsight.serialOnTrim} />
-            </>
-          )}
-
-          {insight.betterTrimInsight.stillNeedsPackage?.length > 0 && (
-            <>
-              <p className="vd-wish-rec__sub">Noch als Paket nötig</p>
-              <WishFeatureTagList items={insight.betterTrimInsight.stillNeedsPackage} />
-            </>
-          )}
-
-          {insight.betterTrimInsight.packages?.map((pkg) => (
-            <PackageInsightBlock key={pkg.packageId} packageInsight={pkg} />
-          ))}
-
-          <div className="vd-wish-rec__actions">
-            <button
-              type="button"
-              className="vd-btn vd-btn--primary vd-btn--block"
-              onClick={() => handleApply({ trimId: insight.betterTrimInsight.trimId })}
-            >
-              {insight.betterTrimInsight.trimName} übernehmen
-            </button>
-            <button type="button" className="vd-btn vd-btn--ghost" onClick={() => handleApply()}>
-              {insight.betterTrimInsight.currentTrimName} mit Paketen behalten
-            </button>
-          </div>
-        </div>
-      )}
-
-      {wishIds.length > 0 && insight?.packageInsights?.length > 0 && !exploreWishId && (
-        <p className="vd-wish__applied">
-          {insight.packageInsights.map((p) => p.packageName).join(' · ')} empfohlen
-        </p>
+      {!singleExplore && insight?.betterTrimInsight && (
+        <section className="vd-wish-section vd-wish-section--glow">
+          <TrimCompareCards
+            betterTrimInsight={insight.betterTrimInsight}
+            vehicleModel={vehicle.model}
+            onApplyBetter={() => handleApply({ trimId: insight.betterTrimInsight.trimId })}
+            onKeepCurrent={() => handleApply()}
+          />
+        </section>
       )}
     </div>
   );
