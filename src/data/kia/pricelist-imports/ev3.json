@@ -1,0 +1,135 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev3",
+  "model": "EV3",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV3-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV3-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 35990,
+  "trims": [
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 30243,
+      "priceGross": 35990,
+      "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,8 (19\")/",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 32176,
+      "priceGross": 38290,
+      "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,8 (19\")/",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 34781,
+      "priceGross": 41390,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 36714,
+      "priceGross": 43690,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 40915,
+      "priceGross": 48690,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 39394,
+      "priceGross": 46880,
+      "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 15,8 (19\") 572 (19\")",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 43016,
+      "priceGross": 51190,
+      "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 15,8 (19\") 572 (19\")",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Air",
+      "priceFromGross": 35990
+    },
+    {
+      "trim": "Earth",
+      "priceFromGross": 38290
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV3 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 16,2 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km. CO 2-Klasse A.",
+    "Kia EV3 Air (150 kW/204 PS): Stromverbrauch kombiniert 14,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO 2-Klasse A.",
+    "Kia EV3 Earth (150 kW/204 PS): Stromverbrauch kombiniert 14,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV3 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 16,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+  ],
+  "variantCount": 7
+}

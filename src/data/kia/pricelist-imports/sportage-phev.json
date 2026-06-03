@@ -1,0 +1,139 @@
+{
+  "brand": "Kia",
+  "modelKey": "sportage-phev",
+  "model": "Sportage Plug-in Hybrid",
+  "powertrainVariant": "phev",
+  "sourceFile": "Kia-Germany-Sportage-PHEV-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sportage-PHEV-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 43100,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 36218.49,
+      "priceGross": 43100,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 37899.16,
+      "priceGross": 45100,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 41428.57,
+      "priceGross": 49300,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 44117.65,
+      "priceGross": 52500,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 40000,
+      "priceGross": 47600,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 43529.41,
+      "priceGross": 51800,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 46218.49,
+      "priceGross": 55000,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Core",
+      "priceFromGross": 43100
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 45100
+    }
+  ],
+  "wltpNotes": [
+    "Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km. Stromverbrauch",
+    "Kia Sportage Plug-in Hybrid 2WD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 2,9 l/100 km.",
+    "Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km."
+  ],
+  "variantCount": 7,
+  "manualSupplement": true
+}

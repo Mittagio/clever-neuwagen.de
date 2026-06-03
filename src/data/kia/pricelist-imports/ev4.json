@@ -1,0 +1,92 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev4",
+  "model": "EV4",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV4-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV4-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 31588,
+  "trims": [
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": null,
+      "priceGross": 31588,
+      "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,3 (19\") /",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 33521,
+      "priceGross": 39890,
+      "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,3 (19\") /",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 36336,
+      "priceGross": 43240,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 38268,
+      "priceGross": 45540,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Air",
+      "priceFromGross": 49440
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV4 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 15,8 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km.",
+    "Kia EV4 Air (150 kW/204 PS): Stromverbrauch kombiniert 14,6 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV4 Earth (150 kW/204 PS): Stromverbrauch kombiniert 15,5 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV4 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 15,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2- K l a s s e  A ."
+  ],
+  "variantCount": 4
+}

@@ -1,0 +1,128 @@
+{
+  "brand": "Kia",
+  "modelKey": "stonic",
+  "model": "Stonic",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-Stonic-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Stonic-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 23790,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 19991,
+      "priceGross": 23790,
+      "engine": "1.0 T-GDI*",
+      "transmission": "Schaltgetriebe (MT6)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 21420,
+      "priceGross": 25490,
+      "engine": "1.0 T-GDI*",
+      "transmission": "Schaltgetriebe (MT6)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 23605,
+      "priceGross": 28090,
+      "engine": "1.0 T-GDI",
+      "transmission": "Schaltgetriebe (MT6)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 24445,
+      "priceGross": 29090,
+      "engine": "1.0 T-GDI",
+      "transmission": "Schaltgetriebe (MT6)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit 2 5 .",
+      "trimId": "spirit-2-5-",
+      "priceNet": 117,
+      "priceGross": 29890,
+      "engine": "1.0 T-GDI",
+      "transmission": "getriebe (DCT7) 5,6 126",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 26294,
+      "priceGross": 31290,
+      "engine": "1.0 T-GDI",
+      "transmission": "getriebe (DCT7) 5,6 126",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Core",
+      "priceFromGross": 23790
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 25490
+    },
+    {
+      "trim": "Spirit",
+      "priceFromGross": 29090
+    }
+  ],
+  "wltpNotes": [
+    "Kia Stonic 1.0 T-GDI 48V MT (84,6 kW/115 PS): Kraftstoffverbrauch kombiniert 5,7 l/100 km. CO2-Emissionen kombiniert 128 g/km.",
+    "Kia Stonic 1.0 T-GDI MT (74 kW/100 PS): Kraftstoffverbrauch kombiniert 5,7 l/100 km. CO2-Emissionen kombiniert 128 g/km."
+  ],
+  "variantCount": 6
+}

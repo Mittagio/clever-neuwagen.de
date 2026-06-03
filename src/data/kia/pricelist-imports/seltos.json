@@ -1,0 +1,125 @@
+{
+  "brand": "Kia",
+  "modelKey": "seltos",
+  "model": "Seltos",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-Seltos-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Seltos-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 36190,
+  "trims": [
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 30411,
+      "priceGross": 36190,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 32932,
+      "priceGross": 39190,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 35579,
+      "priceGross": 42340,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 32092,
+      "priceGross": 38190,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 34613,
+      "priceGross": 41190,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line 37. 260, 50",
+      "trimId": "gt-line-37-260-50",
+      "priceNet": null,
+      "priceGross": 44340,
+      "engine": "1.6 T-GDI",
+      "transmission": "getriebe (DCT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Spirit",
+      "priceFromGross": 34190
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 42340
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 43340
+    }
+  ],
+  "wltpNotes": [
+    "Kia Seltos 1.6 T-GDI AWD (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,5 l/100 km. CO 2-Emissionen kombiniert 169 g/km.",
+    "Kia Seltos 1.6 T-GDI 2WD MT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO 2-Emissionen kombiniert",
+    "Kia Seltos 1.6 T-GDI 2WD DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,0 l/100 km. CO 2-Emissionen kombiniert"
+  ],
+  "variantCount": 6
+}

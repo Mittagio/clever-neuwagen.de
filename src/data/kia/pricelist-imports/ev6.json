@@ -1,0 +1,137 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev6",
+  "model": "EV6",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV6_Pricelist.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV6_Pricelist.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 44990,
+  "trims": [
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 37806.72,
+      "priceGross": 44990,
+      "engine": "63-kWh-Batterie",
+      "transmission": "",
+      "drive": "RWD",
+      "power": "125 kW (170 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 39655.46,
+      "priceGross": 47190,
+      "engine": "63-kWh-Batterie",
+      "transmission": "",
+      "drive": "RWD",
+      "power": "125 kW (170 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 42008.4,
+      "priceGross": 49990,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "RWD",
+      "power": "168 kW (229 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 43857.14,
+      "priceGross": 52190,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "RWD",
+      "power": "168 kW (229 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 48647.06,
+      "priceGross": 57890,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "RWD",
+      "power": "168 kW (229 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 45369.75,
+      "priceGross": 53990,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "239 kW (325 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 47218.49,
+      "priceGross": 56190,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "239 kW (325 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 52008.4,
+      "priceGross": 61890,
+      "engine": "84-kWh-Batterie",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "239 kW (325 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia EV6 Air (239 kW/325 PS): Stromverbrauch kombiniert 17,0 kWh/100 km. CO2-Emissionen kombiniert 0 g/km."
+  ],
+  "variantCount": 8,
+  "manualSupplement": true
+}

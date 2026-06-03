@@ -7,7 +7,16 @@ export const kiaEv3 = {
   model: 'EV3',
   modelKey: 'ev3',
   modelYear: '2026',
+  priceListDate: '2026-05-29',
   tagline: 'Der kompakte Elektro-SUV',
+
+  admin: {
+    status: 'review',
+    priceListDate: '2026-05-29',
+    priceListSource: 'Kia-Germany-EV3-Preisliste.pdf',
+    lastUpdated: '2026-05-29',
+    updatedBy: 'Clever-Neuwagen Import',
+  },
 
   trims: [
     {
@@ -107,14 +116,19 @@ export const kiaEv3 = {
   ],
 
   variants: [
-    { id: 'ev3-air', trimId: 'air', engineId: 'ev-std', priceGross: 32990, baseLeasingRate: 279 },
-    { id: 'ev3-earth', trimId: 'earth', engineId: 'ev-long', priceGross: 36990, baseLeasingRate: 309 },
-    { id: 'ev3-gt-line', trimId: 'gt-line', engineId: 'ev-long', priceGross: 39990, baseLeasingRate: 329 },
+    { id: 'ev3-air-58', trimId: 'air', engineId: 'ev-std', priceGross: 35990, baseLeasingRate: 299 },
+    { id: 'ev3-earth-58', trimId: 'earth', engineId: 'ev-std', priceGross: 38290, baseLeasingRate: 318 },
+    { id: 'ev3-air-81', trimId: 'air', engineId: 'ev-long', priceGross: 41390, baseLeasingRate: 329 },
+    { id: 'ev3-earth-81', trimId: 'earth', engineId: 'ev-long', priceGross: 43690, baseLeasingRate: 349 },
+    { id: 'ev3-gt-line-81', trimId: 'gt-line', engineId: 'ev-long', priceGross: 48690, baseLeasingRate: 379 },
+    { id: 'ev3-earth-81-awd', trimId: 'earth', engineId: 'ev-long-awd', priceGross: 46880, baseLeasingRate: 369 },
+    { id: 'ev3-gt-line-81-awd', trimId: 'gt-line', engineId: 'ev-long-awd', priceGross: 51190, baseLeasingRate: 399 },
   ],
 
   engines: [
-    { id: 'ev-std', name: 'Standard Range', powerKw: 150, rangeKm: 436 },
-    { id: 'ev-long', name: 'Long Range', powerKw: 150, rangeKm: 605 },
+    { id: 'ev-std', name: 'Standard Range 58,3 kWh', powerKw: 150, rangeKm: 436 },
+    { id: 'ev-long', name: 'Long Range 81,4 kWh', powerKw: 150, rangeKm: 605 },
+    { id: 'ev-long-awd', name: 'Long Range 81,4 kWh AWD', powerKw: 195, rangeKm: 572 },
   ],
 };
 

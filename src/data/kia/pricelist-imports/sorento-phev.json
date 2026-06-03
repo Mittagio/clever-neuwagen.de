@@ -1,0 +1,74 @@
+{
+  "brand": "Kia",
+  "modelKey": "sorento-phev",
+  "model": "Sorento Plug-in Hybrid",
+  "powertrainVariant": "phev",
+  "sourceFile": "Kia-Germany-Sorento-PHEV-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-PHEV-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 61140,
+  "trims": [
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 51378.15,
+      "priceGross": 61140,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 55579.83,
+      "priceGross": 66140,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Platinum",
+      "trimId": "platinum",
+      "priceNet": 58521.01,
+      "priceGross": 69640,
+      "engine": "1.6 T-GDI Plug-in Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "212 kW (288 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+  ],
+  "variantCount": 3,
+  "manualSupplement": true
+}

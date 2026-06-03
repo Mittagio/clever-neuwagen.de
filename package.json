@@ -25,6 +25,13 @@
     "test:wish-magic": "node src/services/configurator/wishMagicService.test.js",
     "test:clever-quote": "node src/services/cleverQuote/cleverQuoteService.test.js",
     "test:smart-sales": "node src/services/sales/salesAdvisorService.test.js",
+    "test:kia-partner": "node src/data/kia/kiaPartnerHub.test.js",
+    "test:kia-pricelist": "node src/data/kia/kiaOfficialPriceList.test.js",
+    "test:kia-pdf": "node src/data/kia/kiaPriceListRegistry.test.js",
+    "test:kia-sportage": "node src/data/kia/sportagePdfCanonical.test.js",
+    "test:kia-ocr": "node src/data/kia/ocrPdfCanonical.test.js",
+    "parse:kia-pdf": "python scripts/parse-kia-pricelists.py",
+    "extract:kia-images": "python scripts/extract-kia-pdf-images.py",
     "test:conversation": "node src/services/sales/conversationMode.test.js",
     "preview": "vite preview"
   },
@@ -49,6 +56,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "pdf-parse": "^2.4.5",
     "vite": "^8.0.12",
     "wait-on": "^9.0.10"
   }

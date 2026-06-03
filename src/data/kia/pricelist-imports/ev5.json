@@ -1,0 +1,70 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev5",
+  "model": "EV5",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV5-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV5-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 52990,
+  "trims": [
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 44529,
+      "priceGross": 52990,
+      "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 18,1 491",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line 47 .",
+      "trimId": "gt-line-47-",
+      "priceNet": 50,
+      "priceGross": 55990,
+      "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 18,1 491",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Air",
+      "priceFromGross": 45990
+    },
+    {
+      "trim": "Earth",
+      "priceFromGross": 51990
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV5 GT-Line (195 kW/265 PS): Stromverbrauch kombiniert 18,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV5 Air (160 kW/218 PS): Stromverbrauch kombiniert 16,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV5 Earth (160 kW/218 PS): Stromverbrauch kombiniert 17,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV5 GT-Line (160 kW/218 PS): Stromverbrauch kombiniert 17,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+  ],
+  "variantCount": 2
+}

@@ -1,0 +1,35 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev5-gt",
+  "model": "EV5 GT",
+  "powertrainVariant": "elektro-gt",
+  "sourceFile": "Kia-Germany-EV5-GT-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV5-GT-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 59990,
+  "trims": [
+    {
+      "id": "gt",
+      "name": "GT"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "GT",
+      "trimId": "gt",
+      "priceNet": 50411,
+      "priceGross": 59990,
+      "engine": "81,4-kWh-Batterie, 225 kW (306 PS), Allradantrieb",
+      "consumption": "18,6",
+      "co2": "0",
+      "co2Class": "A"
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia EV5 GT (225 kW/306 PS): Stromverbrauch kombiniert 18,6 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+  ],
+  "variantCount": 1,
+  "manualSupplement": true
+}

@@ -1,0 +1,327 @@
+{
+  "brand": "Kia",
+  "modelKey": "sportage",
+  "model": "Sportage",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-Sportage-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sportage-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 33990,
+  "trims": [
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "black-edition",
+      "name": "Black Edition"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 28563,
+      "priceGross": 33990,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "Schaltgetriebe (MT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 29949,
+      "priceGross": 35640,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "Schaltgetriebe (MT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 33142,
+      "priceGross": 39440,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "Schaltgetriebe (MT)",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 35159,
+      "priceGross": 41840,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) 7, 3 165 F",
+      "drive": "",
+      "power": "",
+      "consumption": "7,3",
+      "co2": "165",
+      "co2Class": "F"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 35756,
+      "priceGross": 42550,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) 7, 3 165 F",
+      "drive": "",
+      "power": "",
+      "consumption": "7,3",
+      "co2": "165",
+      "co2Class": "F"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 38100,
+      "priceGross": 45340,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) 7, 3 165 F",
+      "drive": "",
+      "power": "",
+      "consumption": "7,3",
+      "co2": "165",
+      "co2Class": "F"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 34067,
+      "priceGross": 40540,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Spirit 37. 596 ,6 4",
+      "trimId": "spirit-37-596-6-4",
+      "priceNet": null,
+      "priceGross": 44740,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 38193,
+      "priceGross": 45450,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "GT-Line 4 0. 537, 82",
+      "trimId": "gt-line-4-0-537-82",
+      "priceNet": null,
+      "priceGross": 48240,
+      "engine": "Benzin 1.6 T-GDI",
+      "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 32764,
+      "priceGross": 38990,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 34445,
+      "priceGross": 40990,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Spirit 37.",
+      "trimId": "spirit-37",
+      "priceNet": 974,
+      "priceGross": 45190,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 38571,
+      "priceGross": 45900,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 40915,
+      "priceGross": 48690,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 36546,
+      "priceGross": 43490,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": null,
+      "priceGross": 40075,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 40672,
+      "priceGross": 48400,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 43016,
+      "priceGross": 51190,
+      "engine": "Hybrid 1.6 T-GDI",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "7,8",
+      "co2": "177",
+      "co2Class": "G"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 33478,
+      "priceGross": 39840,
+      "engine": "1.6 CRDi",
+      "transmission": "getriebe (DCT) 5,5 145 E",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "5,5",
+      "co2": "145",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Spirit 37 .",
+      "trimId": "spirit-37-",
+      "priceNet": 8,
+      "priceGross": 44040,
+      "engine": "1.6 CRDi",
+      "transmission": "getriebe (DCT) 5,5 145 E",
+      "drive": "AWD",
+      "power": "132 kW (180 PS)",
+      "consumption": "5,5",
+      "co2": "145",
+      "co2Class": "E"
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Vision",
+      "priceFromGross": 33990
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 45340
+    },
+    {
+      "trim": "Black Edition",
+      "priceFromGross": 42550
+    }
+  ],
+  "wltpNotes": [
+    "Kia Sportage 1.6 T-GDI MT 2WD (110 kW/150 PS): Kraftstoffverbrauch kombiniert 7,2 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sportage 1.6 T-GDI DCT AWD (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,8 l/100 km. CO2-Emissionen kombiniert"
+  ],
+  "variantCount": 21
+}

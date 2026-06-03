@@ -1,4 +1,7 @@
-import { MARKETPLACE_VEHICLES } from '../../data/marketplaceVehicles.js';
+import {
+  getKiaSalesVehiclePool,
+  enrichMatchWithKiaMeta,
+} from '../../data/kia/kiaPartnerHub.js';
 import { filterMarketplaceVehicles } from '../../logic/marketplaceService.js';
 import { adjustRateForTerm } from '../../logic/oneSearchService.js';
 import { matchVehiclesToWish } from '../wish/wishMatchEngine.js';
@@ -126,11 +129,18 @@ function applySalesFilters(vehicles, wishes) {
   });
 }
 
-export function findSalesAdvisorMatches(chipIds = [], { limit = 5, termMonths = DEFAULT_TERM, mileagePerYear = null } = {}) {
+export function findSalesAdvisorMatches(chipIds = [], {
+  limit = 5,
+  termMonths = DEFAULT_TERM,
+  mileagePerYear = null,
+  activeKiaModelIds = null,
+} = {}) {
   const wishes = buildWishesFromChipIds(chipIds);
   const effectiveMileage = mileagePerYear ?? wishes.mileagePerYear;
   const mileageFactor = mileageRateFactor(effectiveMileage);
   const hasAnySelection = chipIds.length > 0;
+
+  const kiaPool = getKiaSalesVehiclePool({ activeModelIds: activeKiaModelIds });
 
   const filters = {
     maxRate: wishes.budget?.maxMonthlyRate ?? null,
@@ -140,11 +150,11 @@ export function findSalesAdvisorMatches(chipIds = [], { limit = 5, termMonths = 
     features: wishes.features.filter((f) => !['elektro', 'benzin', 'family_suv'].includes(f)),
   };
 
-  let vehicles = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, filters);
+  let vehicles = filterMarketplaceVehicles(kiaPool, filters);
   vehicles = applySalesFilters(vehicles, wishes);
 
-  if (!vehicles.length && hasAnySelection) {
-    vehicles = [...MARKETPLACE_VEHICLES];
+  if (!vehicles.length) {
+    vehicles = hasAnySelection ? [...kiaPool] : kiaPool;
   }
 
   const enriched = vehicles.map((v) => ({
@@ -158,15 +168,18 @@ export function findSalesAdvisorMatches(chipIds = [], { limit = 5, termMonths = 
     getDisplayRate: (v) => v.displayRate,
   });
 
-  return ranked.slice(0, limit).map((match) => ({
-    ...match,
-    cleverQuote: match.cleverQuote ?? computeCleverQuote({
-      vehicle: match.vehicle,
-      wishes,
-      match,
-      trimId: match.bestTrimId,
-    }),
-  }));
+  return ranked.slice(0, limit).map((match) => {
+    const withQuote = {
+      ...match,
+      cleverQuote: match.cleverQuote ?? computeCleverQuote({
+        vehicle: match.vehicle,
+        wishes,
+        match,
+        trimId: match.bestTrimId,
+      }),
+    };
+    return enrichMatchWithKiaMeta(withQuote);
+  });
 }
 
 export function buildSalesCompareRows(matches = []) {

@@ -1,0 +1,154 @@
+{
+  "brand": "Kia",
+  "modelKey": "k4",
+  "model": "K4",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-K4-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-K4-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 28890,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "premium",
+      "name": "Premium"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core 24 . 27 7, 31",
+      "trimId": "core-24--27-7-31",
+      "priceNet": null,
+      "priceGross": 28890,
+      "engine": "",
+      "transmission": "1.0 T- G DI * Schaltgetriebe    85 (115) 6,0 135 D",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,0",
+      "co2": "135",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 25873,
+      "priceGross": 30790,
+      "engine": "",
+      "transmission": "1.0 T- G DI * Schaltgetriebe    85 (115) 6,0 135 D",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,0",
+      "co2": "135",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Core 25.957 ,98",
+      "trimId": "core-25957-98",
+      "priceNet": null,
+      "priceGross": 30890,
+      "engine": "",
+      "transmission": "(DCT7) 85 (115) 5,8 132 D",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision 27.7 2 2 ,69",
+      "trimId": "vision-277-2-2-69",
+      "priceNet": null,
+      "priceGross": 32990,
+      "engine": "",
+      "transmission": "(DCT7) 85 (115) 5,8 132 D",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 28815,
+      "priceGross": 34290,
+      "engine": "",
+      "transmission": "(DCT7) 110 (150) 6,9 155 E",
+      "drive": "",
+      "power": "110 kW (150 PS)",
+      "consumption": "6,9",
+      "co2": "155",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 30159,
+      "priceGross": 35890,
+      "engine": "",
+      "transmission": "(DCT7) 110 (150) 6,9 155 E",
+      "drive": "",
+      "power": "110 kW (150 PS)",
+      "consumption": "6,9",
+      "co2": "155",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 31000,
+      "priceGross": 36890,
+      "engine": "",
+      "transmission": "(DCT7) 132 (180) 6,9 155 E",
+      "drive": "",
+      "power": "132 kW (180 PS)",
+      "consumption": "6,9",
+      "co2": "155",
+      "co2Class": "E"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 32176,
+      "priceGross": 38290,
+      "engine": "",
+      "transmission": "(DCT7) 132 (180) 6,9 155 E",
+      "drive": "",
+      "power": "132 kW (180 PS)",
+      "consumption": "6,9",
+      "co2": "155",
+      "co2Class": "E"
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Core",
+      "priceFromGross": 35890
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 30790
+    }
+  ],
+  "wltpNotes": [
+    "Kia K4 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO 2-Emissionen kombiniert 155 g/km.",
+    "Kia K4 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO2-Emissionen kombiniert 155 g/km."
+  ],
+  "variantCount": 8
+}

@@ -1,0 +1,140 @@
+{
+  "importedAt": "2026-05-29",
+  "sourceDirectory": "Desktop/clever-neuwagen.de",
+  "modelCount": 19,
+  "models": [
+    {
+      "modelKey": "picanto",
+      "model": "Picanto",
+      "variantCount": 6,
+      "priceFromGross": 18550,
+      "file": "picanto.json"
+    },
+    {
+      "modelKey": "stonic",
+      "model": "Stonic",
+      "variantCount": 6,
+      "priceFromGross": 23790,
+      "file": "stonic.json"
+    },
+    {
+      "modelKey": "xceed",
+      "model": "XCeed",
+      "variantCount": 9,
+      "priceFromGross": 26990,
+      "file": "xceed.json"
+    },
+    {
+      "modelKey": "k4",
+      "model": "K4",
+      "variantCount": 8,
+      "priceFromGross": 28890,
+      "file": "k4.json"
+    },
+    {
+      "modelKey": "k4-sportswagon",
+      "model": "K4 Sportswagon",
+      "variantCount": 9,
+      "priceFromGross": 29890,
+      "file": "k4-sportswagon.json"
+    },
+    {
+      "modelKey": "seltos",
+      "model": "Seltos",
+      "variantCount": 6,
+      "priceFromGross": 36190,
+      "file": "seltos.json"
+    },
+    {
+      "modelKey": "sportage",
+      "model": "Sportage",
+      "variantCount": 21,
+      "priceFromGross": 33990,
+      "file": "sportage.json"
+    },
+    {
+      "modelKey": "sportage-phev",
+      "model": "Sportage Plug-in Hybrid",
+      "variantCount": 7,
+      "priceFromGross": 43100,
+      "file": "sportage-phev.json"
+    },
+    {
+      "modelKey": "sorento",
+      "model": "Sorento",
+      "variantCount": 3,
+      "priceFromGross": 56690,
+      "file": "sorento.json"
+    },
+    {
+      "modelKey": "sorento-hybrid",
+      "model": "Sorento Hybrid",
+      "variantCount": 5,
+      "priceFromGross": 55190,
+      "file": "sorento-hybrid.json"
+    },
+    {
+      "modelKey": "sorento-phev",
+      "model": "Sorento Plug-in Hybrid",
+      "variantCount": 3,
+      "priceFromGross": 61140,
+      "file": "sorento-phev.json"
+    },
+    {
+      "modelKey": "ev2",
+      "model": "EV2",
+      "variantCount": 2,
+      "priceFromGross": 26600,
+      "file": "ev2.json"
+    },
+    {
+      "modelKey": "ev3",
+      "model": "EV3",
+      "variantCount": 7,
+      "priceFromGross": 35990,
+      "file": "ev3.json"
+    },
+    {
+      "modelKey": "ev4",
+      "model": "EV4",
+      "variantCount": 4,
+      "priceFromGross": 31588,
+      "file": "ev4.json"
+    },
+    {
+      "modelKey": "ev5",
+      "model": "EV5",
+      "variantCount": 2,
+      "priceFromGross": 52990,
+      "file": "ev5.json"
+    },
+    {
+      "modelKey": "ev5-gt",
+      "model": "EV5 GT",
+      "variantCount": 1,
+      "priceFromGross": 59990,
+      "file": "ev5-gt.json"
+    },
+    {
+      "modelKey": "ev6",
+      "model": "EV6",
+      "variantCount": 8,
+      "priceFromGross": 44990,
+      "file": "ev6.json"
+    },
+    {
+      "modelKey": "ev9",
+      "model": "EV9",
+      "variantCount": 6,
+      "priceFromGross": 63690,
+      "file": "ev9.json"
+    },
+    {
+      "modelKey": "pv5-passenger",
+      "model": "PV5 Passenger",
+      "variantCount": 2,
+      "priceFromGross": 39540,
+      "file": "pv5-passenger.json"
+    }
+  ]
+}

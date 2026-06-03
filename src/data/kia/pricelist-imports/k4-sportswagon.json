@@ -1,0 +1,155 @@
+{
+  "brand": "Kia",
+  "modelKey": "k4-sportswagon",
+  "model": "K4 Sportswagon",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-K4-Sportswagon-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-K4-Sportswagon-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 29890,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 25117.65,
+      "priceGross": 29890,
+      "engine": "1.0 T-GDI",
+      "transmission": "Schaltgetriebe",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 26798.32,
+      "priceGross": 31890,
+      "engine": "1.0 T-GDI",
+      "transmission": "Schaltgetriebe",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 26798.32,
+      "priceGross": 31890,
+      "engine": "1.0 T-GDI 48V",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 28647.06,
+      "priceGross": 34090,
+      "engine": "1.0 T-GDI 48V",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 29739.5,
+      "priceGross": 35390,
+      "engine": "1.6 T-GDI",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "110 kW (150 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 31504.2,
+      "priceGross": 37490,
+      "engine": "1.6 T-GDI",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "110 kW (150 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 32680.67,
+      "priceGross": 38890,
+      "engine": "1.6 T-GDI",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "110 kW (150 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 32344.54,
+      "priceGross": 38490,
+      "engine": "1.6 T-GDI",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "132 kW (180 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 33521.01,
+      "priceGross": 39890,
+      "engine": "1.6 T-GDI",
+      "transmission": "DCT7",
+      "drive": "",
+      "power": "132 kW (180 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia K4 Sportswagon 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,1 l/100 km. CO 2-Emissionen kombiniert",
+    "Kia K4 Sportswagon 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,1 l/100 km. CO 2-Emissionen"
+  ],
+  "variantCount": 9,
+  "manualSupplement": true
+}

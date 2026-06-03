@@ -16,6 +16,11 @@ import { findSalesAdvisorMatches } from '../services/sales/salesAdvisorService.j
 import { createSalesShareSession } from '../services/sales/salesShareService.js';
 import { recordSmartSalesAdvised, recordCompareOpened } from '../services/sales/salesAdvisorStats.js';
 import {
+  getActiveKiaModelIdsFromConditions,
+  KIA_REGISTRY_MODEL_KEYS,
+} from '../data/kia/kiaPartnerHub.js';
+import KiaPartnerBar from '../components/sales-advisor/KiaPartnerBar.jsx';
+import {
   saveCustomerRecord,
   buildCustomerRecordPayload,
 } from '../services/sales/customerRecordService.js';
@@ -50,6 +55,11 @@ export default function SmartSalesPage() {
   const sellerName = seller?.name ?? conditions.contact?.name ?? 'Verkaufsberater';
   const dealerName = conditions.dealerName ?? 'Autohaus';
   const dealerPhone = conditions.contact?.phone ?? '';
+  const activeKiaModelIds = useMemo(
+    () => getActiveKiaModelIdsFromConditions(conditions),
+    [conditions],
+  );
+  const activeKiaCount = conditions.activeModels?.filter((m) => m.active && m.brand === 'Kia').length ?? 0;
 
   const wishLabels = useMemo(() => getWishLabelsFromChipIds(selectedChipIds), [selectedChipIds]);
 
@@ -103,6 +113,7 @@ export default function SmartSalesPage() {
     const results = findSalesAdvisorMatches(selectedChipIds, {
       limit: 5,
       mileagePerYear,
+      activeKiaModelIds,
     });
     const defaultCompare = results.slice(0, 3).map((m) => m.slug);
     setMatches(results);
@@ -165,14 +176,19 @@ export default function SmartSalesPage() {
       <header className="ss-page__header">
         <Link to="/backend" className="ss-page__back" aria-label="Zurück zum Backend">←</Link>
         <div className="ss-page__header-text">
-          <p className="ss-page__kicker">Gesprächsmodus</p>
-          <h1 className="ss-page__title">Kundenberatung</h1>
+          <p className="ss-page__kicker">Gesprächsmodus · Kia Partner</p>
+          <h1 className="ss-page__title">Kia-Kundenberatung</h1>
           <p className="ss-page__dealer">{dealerName}</p>
         </div>
         <Link to="/sales" className="ss-page__alt-link">Klassisch</Link>
       </header>
 
       <SalesAdvisorStatsBar />
+
+      <KiaPartnerBar
+        activeModelCount={activeKiaCount}
+        registryCount={KIA_REGISTRY_MODEL_KEYS.length}
+      />
 
       <SalesLiveChips
         chipIds={selectedChipIds}

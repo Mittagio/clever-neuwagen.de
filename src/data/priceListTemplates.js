@@ -3,6 +3,16 @@ import { change } from './priceListImport.js';
 /** Beispiel-Preislisten (Download-Hinweise im Admin) */
 export const PRICE_LIST_EXAMPLES = [
   {
+    id: 'kia-all',
+    brand: 'Kia',
+    brandId: 'kia',
+    model: 'Alle Modelle',
+    fileName: 'kia.com/de/broschuere/',
+    format: 'Web',
+    description: 'Offizielle Kia Preislisten – UPE ab & Raten bis 30.06.2026',
+    sourceUrl: 'https://www.kia.com/de/broschuere/',
+  },
+  {
     id: 'kia-sportage',
     brand: 'Kia',
     brandId: 'kia',

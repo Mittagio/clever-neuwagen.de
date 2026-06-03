@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { buildWishesFromChipIds } from './salesAdvisorService.js';
+import { buildWishesFromChipIds, findSalesAdvisorMatches } from './salesAdvisorService.js';
 import { buildSalesWhatsAppMessage } from './salesShareService.js';
+import { getKiaSalesVehiclePool } from '../../data/kia/kiaPartnerHub.js';
 
 const wishes = buildWishesFromChipIds([
   'fuel_elektro',
@@ -27,5 +28,26 @@ const message = buildSalesWhatsAppMessage({
 assert.ok(message.includes('Herr Müller'));
 assert.ok(message.includes('CleverQuote 97 %'));
 assert.ok(message.includes('Autohaus Trinkle'));
+
+const kiaPool = getKiaSalesVehiclePool();
+assert.ok(kiaPool.every((v) => v.brand === 'Kia'), 'Verkaufs-Pool nur Kia');
+
+const matches = findSalesAdvisorMatches([
+  'fuel_elektro',
+  'heated_seats',
+  'camera_360',
+  'budget_400',
+  'type_suv',
+], { limit: 10 });
+assert.ok(matches.length > 0, 'Kia-Matches bei Elektro-SUV-Wunsch');
+assert.ok(
+  matches.every((m) => m.vehicle?.brand === 'Kia'),
+  'findSalesAdvisorMatches liefert nur Kia',
+);
+assert.ok(
+  !matches.some((m) => ['Ford', 'Hyundai', 'MG', 'VW'].includes(m.vehicle?.brand)),
+  'Kein Multi-Brand-Fallback',
+);
+assert.ok(matches[0].kiaMeta, 'Kia-Meta angereichert');
 
 console.log('salesAdvisorService tests OK');

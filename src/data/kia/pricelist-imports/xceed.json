@@ -1,0 +1,171 @@
+{
+  "brand": "Kia",
+  "modelKey": "xceed",
+  "model": "XCeed",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-XCeed_Pricelist.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-XCeed_Pricelist.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 26990,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-line"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 22680,
+      "priceGross": 26990,
+      "engine": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+      "transmission": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 23605,
+      "priceGross": 28090,
+      "engine": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+      "transmission": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 24361,
+      "priceGross": 28990,
+      "engine": "1.0 T-GDI",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 25285,
+      "priceGross": 30090,
+      "engine": "1.0 T-GDI",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 26378,
+      "priceGross": 31390,
+      "engine": "1.6 T-GDI*",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Spirit 27.",
+      "trimId": "spirit-27",
+      "priceNet": 974,
+      "priceGross": 33290,
+      "engine": "1.6 T-GDI*",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "GT-line",
+      "trimId": "gt-line",
+      "priceNet": 30495,
+      "priceGross": 36290,
+      "engine": "1.6 T-GDI*",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "GT-line",
+      "trimId": "gt-line",
+      "priceNet": 31336,
+      "priceGross": 37290,
+      "engine": "1.6 T-GDI*",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Platinum",
+      "trimId": "platinum",
+      "priceNet": 32344,
+      "priceGross": 38490,
+      "engine": "1.6 T-GDI*",
+      "transmission": "(DCT7)",
+      "drive": "",
+      "power": "85 kW (115 PS)",
+      "consumption": "6,4",
+      "co2": "144",
+      "co2Class": "E"
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Core",
+      "priceFromGross": 28090
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 29990
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 26990
+    },
+    {
+      "trim": "GT-line",
+      "priceFromGross": 33290
+    }
+  ],
+  "wltpNotes": [
+    "Kia XCeed 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,8 l/100 km. CO 2-Emissionen kombiniert 155 g/km.",
+    "Kia XCeed 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,8 l/100 km. CO2-Emissionen kombiniert 155 g/km."
+  ],
+  "variantCount": 9
+}

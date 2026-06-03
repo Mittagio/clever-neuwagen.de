@@ -1,0 +1,125 @@
+{
+  "brand": "Kia",
+  "modelKey": "picanto",
+  "model": "Picanto",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-Picanto_Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Picanto_Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 18550,
+  "trims": [
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 15588,
+      "priceGross": 18550,
+      "engine": "",
+      "transmission": "Schaltgetriebe (MT5) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit 17 .",
+      "trimId": "spirit-17-",
+      "priceNet": 436,
+      "priceGross": 20750,
+      "engine": "",
+      "transmission": "Schaltgetriebe (MT5) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line 18.277 ,31",
+      "trimId": "gt-line-18277-31",
+      "priceNet": null,
+      "priceGross": 21750,
+      "engine": "",
+      "transmission": "Schaltgetriebe (MT5) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 16428,
+      "priceGross": 19550,
+      "engine": "",
+      "transmission": "Autom. Schaltgetriebe (AMT) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit 18.277 ,31",
+      "trimId": "spirit-18277-31",
+      "priceNet": null,
+      "priceGross": 21750,
+      "engine": "",
+      "transmission": "Autom. Schaltgetriebe (AMT) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line 19.117 ,65",
+      "trimId": "gt-line-19117-65",
+      "priceNet": null,
+      "priceGross": 22750,
+      "engine": "",
+      "transmission": "Autom. Schaltgetriebe (AMT) –",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Vision",
+      "priceFromGross": 20750
+    },
+    {
+      "trim": "Spirit",
+      "priceFromGross": 21750
+    }
+  ],
+  "wltpNotes": [
+    "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO2-Emissionen kombiniert 134 g/km. CO2-Klasse D.",
+    "Kia Picanto 1.0 MT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,5 l/100 km. CO 2-Emissionen kombiniert 126 g/km.",
+    "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO 2-Emissionen kombiniert 134 g/km."
+  ],
+  "variantCount": 6
+}

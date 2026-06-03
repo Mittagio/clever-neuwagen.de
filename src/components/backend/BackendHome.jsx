@@ -7,6 +7,7 @@ import {
   countMissingLeasingFactors,
   formatPublishedAt,
 } from '../../data/dealerConditionsSchema.js';
+import { getKiaModelOverview, KIA_PARTNER } from '../../data/kia/kiaPartnerHub.js';
 import './BackendHome.css';
 
 const TODAY_TILES = [
@@ -44,9 +45,9 @@ const TODAY_TILES = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Sprache & Wünsche – ein Flow', primary: true },
-  { label: 'Verkaufsberater', icon: '🧠', href: '/sales/smart', desc: 'Smart Sales – Bedarfsanalyse' },
-  { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kunde erfassen' },
+  { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Kia – Wünsche in 60 Sek.', primary: true },
+  { label: 'Verkaufsberater', icon: '🧠', href: '/sales/smart', desc: 'Kia Smart Sales & CleverQuote' },
+  { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kia-Katalog & Kunde erfassen' },
   { label: 'Neues Angebot', icon: '📄', href: '/backend/angebote', state: { openCreate: true }, desc: 'Angebot erstellen' },
   { label: 'Fahrzeug veröffentlichen', icon: '📢', href: '/backend/publishing', desc: 'Marketing & Inserate' },
   { label: 'Dealer AI', icon: '🤖', href: '/dealer-ai', desc: 'KI-Verkaufsassistent', primary: true },
@@ -62,6 +63,7 @@ export default function BackendHome({ conditions, onNavigate }) {
   const dueToday = getDueToday();
 
   const activeModels = conditions.activeModels?.filter((m) => m.active) ?? [];
+  const kiaOverview = getKiaModelOverview();
   const missingLf = activeModels.reduce(
     (sum, m) => sum + countMissingLeasingFactors(conditions, m.id),
     0,
@@ -83,6 +85,24 @@ export default function BackendHome({ conditions, onNavigate }) {
           Hier sehen Sie auf einen Blick, was heute ansteht.
         </p>
       </header>
+
+      <section className="backend-home__kia-partner" aria-labelledby="kia-partner-heading">
+        <div className="backend-home__kia-partner-card">
+          <span className="backend-home__kia-badge" aria-hidden="true">Kia</span>
+          <div className="backend-home__kia-copy">
+            <h3 id="kia-partner-heading">{KIA_PARTNER.tagline}</h3>
+            <p>
+              Verkaufsmodus, Gesprächsmodus und CleverQuote: nur Kia.
+              {kiaOverview.registry.length} Registry-Modelle mit Paketen ·{' '}
+              {kiaOverview.meta?.modelCount ?? kiaOverview.officialOnly?.length ?? 0} offizielle Modelllinien ·{' '}
+              {activeModels.filter((m) => m.brand === 'Kia').length} aktiv im Händlerkatalog.
+            </p>
+            <Link to="/gespraech" className="backend-home__kia-cta">
+              Gesprächsmodus starten →
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <section className="backend-home__section" aria-labelledby="today-heading">
         <h3 id="today-heading" className="backend-home__section-title">

@@ -127,7 +127,7 @@ export function refineConversationText(currentText, instruction = '', context = 
   }
 
   if (/anhängelast|kuga/i.test(lower)) {
-    return `${currentText}\n\nDer Ford Kuga Hybrid bietet dabei eine besonders hohe Anhängelast für Ihre Anforderungen.`.trim();
+    return `${currentText}\n\nDer Kia Sportage bietet dabei eine besonders hohe Anhängelast für Ihre Anforderungen.`.trim();
   }
 
   if (/ev3|günstiger|unterhalt/i.test(lower)) {

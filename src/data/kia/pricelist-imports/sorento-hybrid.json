@@ -1,0 +1,100 @@
+{
+  "brand": "Kia",
+  "modelKey": "sorento-hybrid",
+  "model": "Sorento Hybrid",
+  "powertrainVariant": "hybrid",
+  "sourceFile": "Kia-Germany-Sorento-Hybrid-pricelist.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-Hybrid-pricelist.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 55190,
+  "trims": [
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 46378.15,
+      "priceGross": 55190,
+      "engine": "1.6 T-GDI Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 50579.83,
+      "priceGross": 60190,
+      "engine": "1.6 T-GDI Hybrid",
+      "transmission": "Automatik",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 48058.82,
+      "priceGross": 57190,
+      "engine": "1.6 T-GDI Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 52260.5,
+      "priceGross": 62190,
+      "engine": "1.6 T-GDI Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Platinum",
+      "trimId": "platinum",
+      "priceNet": 55201.68,
+      "priceGross": 65690,
+      "engine": "1.6 T-GDI Hybrid",
+      "transmission": "Automatik",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+  ],
+  "variantCount": 5,
+  "manualSupplement": true
+}

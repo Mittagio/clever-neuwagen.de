@@ -1,0 +1,74 @@
+{
+  "brand": "Kia",
+  "modelKey": "sorento",
+  "model": "Sorento",
+  "powertrainVariant": "verbrenner",
+  "sourceFile": "Kia-Germany-Sorento-pricelist.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-pricelist.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 56690,
+  "trims": [
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 47638.66,
+      "priceGross": 56690,
+      "engine": "2.2 CRDi Diesel DCT8",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "142 kW (194 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 51840.34,
+      "priceGross": 61690,
+      "engine": "2.2 CRDi Diesel DCT8",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "142 kW (194 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Platinum",
+      "trimId": "platinum",
+      "priceNet": 55201.68,
+      "priceGross": 65690,
+      "engine": "2.2 CRDi Diesel DCT8",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "142 kW (194 PS)",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+    "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+  ],
+  "variantCount": 3,
+  "manualSupplement": true
+}

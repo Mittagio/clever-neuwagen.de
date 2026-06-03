@@ -1,6 +1,7 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
 import { formatCurrency } from '../../logic/marketplaceService.js';
+import { buildKiaSellerHeadline } from '../../data/kia/kiaPartnerHub.js';
 import { getFulfilledLabels } from '../../services/sales/salesAdvisorService.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -24,7 +25,7 @@ export default function SalesResultsPodium({
   if (!matches.length) {
     return (
       <div className="ss-empty">
-        <p>Keine passenden Fahrzeuge gefunden. Bitte Wünsche anpassen.</p>
+        <p>Keine passenden Kia-Modelle gefunden. Bitte Wünsche anpassen.</p>
       </div>
     );
   }
@@ -32,8 +33,8 @@ export default function SalesResultsPodium({
   return (
     <div className="ss-results">
       <header className="ss-results__head">
-        <h1>Beste Fahrzeuge{customerName ? ` für ${customerName}` : ' für Ihren Kunden'}</h1>
-        <p>Sortiert nach CleverQuote™ – Passung vor Preis und Händler</p>
+        <h1>{buildKiaSellerHeadline(customerName)}</h1>
+        <p>Sortiert nach CleverQuote™ – nur Kia, Passung vor Preis</p>
       </header>
 
       <div className="ss-podium">

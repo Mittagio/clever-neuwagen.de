@@ -43,6 +43,46 @@
   color: #cbd5e1;
 }
 
+.ss-kia-partner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.ss-kia-partner__badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.ss-kia-partner__copy strong {
+  display: block;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.ss-kia-partner__copy p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .ss-page__step-back {
   margin: 16px 16px 0;
   border: none;

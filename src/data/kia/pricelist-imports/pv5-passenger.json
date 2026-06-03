@@ -1,0 +1,60 @@
+{
+  "brand": "Kia",
+  "modelKey": "pv5-passenger",
+  "model": "PV5 Passenger",
+  "powertrainVariant": "nutzfahrzeug",
+  "sourceFile": "Kia-Germany-PV5-Passenger-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-PV5-Passenger-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 39540,
+  "trims": [
+    {
+      "id": "plus",
+      "name": "Plus"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Plus",
+      "trimId": "plus",
+      "priceNet": 33226,
+      "priceGross": 39540,
+      "engine": "51,5-kWh-Batterie, 89 kW (122 PS), Frontantrieb 19,2 0 A 295",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Plus",
+      "trimId": "plus",
+      "priceNet": 36588,
+      "priceGross": 43540,
+      "engine": "71,2-kWh-Batterie, 120 kW (163 PS), Frontantrieb 19,3 0 A 412",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Plus",
+      "priceFromGross": 39540
+    },
+    {
+      "trim": "Plus",
+      "priceFromGross": 41340
+    }
+  ],
+  "wltpNotes": [
+    "Kia PV5 Passenger (120 kW/163 PS): Stromverbrauch kombiniert 19,3 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia PV5 Passenger (120 kW/163 PS): Stromverbrauch kombiniert 19,3 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km."
+  ],
+  "variantCount": 2
+}

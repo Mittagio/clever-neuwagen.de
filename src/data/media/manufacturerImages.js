@@ -1,9 +1,8 @@
 /**
  * ManufacturerMediaSystem – zentrale Hersteller-Bild-Registry
- *
- * Demo-Fotos: public/images/manufacturers/ → public/images/demo/{brand}/{model}.jpg
- * (freie Stock-Fotos / Picsum – optisch passend zum Fahrzeugtyp, nicht exakte Modellfotos)
+ * Kia: echte Fotos aus offiziellen Preislisten-PDFs (public/images/manufacturers/kia/)
  */
+import { getKiaModelMediaEntry, resolveKiaModelImageKey } from '../kia/kiaModelImages.js';
 
 const DEMO = '/images/demo';
 
@@ -12,18 +11,29 @@ function demo(brand, model) {
   return { default: url, hero: url, card: url, side: url };
 }
 
+function buildKiaMedia() {
+  /** @type {Record<string, {default:string,hero:string,card:string,side:string}>} */
+  const out = {};
+  const keys = [
+    'picanto', 'stonic', 'xceed', 'k4', 'k4-sportswagon', 'seltos', 'sportage',
+    'sorento', 'ev2', 'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'pv5-passenger',
+  ];
+  for (const key of keys) {
+    const entry = getKiaModelMediaEntry(key);
+    if (entry) out[key] = entry;
+  }
+  out['sportage-phev'] = out.sportage;
+  out['sorento-hybrid'] = out.sorento;
+  out['sorento-phev'] = out.sorento;
+  out.niro = out.sportage ?? demo('kia', 'niro');
+  out['niro-ev'] = out.niro;
+  out.ceed = out.xceed ?? demo('kia', 'ceed');
+  out['ceed-sw'] = out['k4-sportswagon'] ?? out.xceed ?? demo('kia', 'ceed');
+  return out;
+}
+
 export const MANUFACTURER_MEDIA = {
-  kia: {
-    sportage: demo('kia', 'sportage'),
-    ev3: demo('kia', 'ev3'),
-    ev4: demo('kia', 'ev3'),
-    niro: demo('kia', 'niro'),
-    'niro-ev': demo('kia', 'niro'),
-    ceed: demo('kia', 'ceed'),
-    'ceed-sw': demo('kia', 'ceed'),
-    picanto: demo('kia', 'picanto'),
-    sorento: demo('kia', 'sportage'),
-  },
+  kia: buildKiaMedia(),
   ford: {
     kuga: demo('ford', 'kuga'),
   },
@@ -56,7 +66,13 @@ export const MANUFACTURER_MEDIA = {
 };
 
 /** Unterstützte Kia-Modelle (ManufacturerMediaSystem) */
-export const KIA_MEDIA_MODELS = ['ev3', 'ev4', 'sportage', 'niro', 'sorento', 'ceed', 'picanto'];
+export const KIA_MEDIA_MODELS = [
+  'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'ev2', 'sportage', 'sportage-phev',
+  'niro', 'sorento', 'sorento-hybrid', 'sorento-phev', 'ceed', 'picanto', 'stonic',
+  'seltos', 'k4', 'k4-sportswagon', 'xceed', 'pv5-passenger',
+];
+
+export { resolveKiaModelImageKey };
 
 export const MANUFACTURER_DEFAULT_ASSET = 'default.jpg';
 

@@ -35,6 +35,30 @@
   cursor: not-allowed;
 }
 
+.model-card-leading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.model-card-thumb {
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background: var(--color-bg-subtle, #f1f5f9);
+}
+
+@media (min-width: 640px) {
+  .model-card-thumb {
+    width: 120px;
+    height: 72px;
+  }
+}
+
 .model-card-main {
   display: flex;
   flex-direction: column;
@@ -49,6 +73,25 @@
 .model-card-segment {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
+}
+
+.model-card-price {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: 4px;
+}
+
+.model-card-pdf {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  margin-top: 2px;
+}
+
+.model-card-note {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 
 .model-card-footer {

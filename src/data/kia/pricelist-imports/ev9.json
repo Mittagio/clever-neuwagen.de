@@ -1,0 +1,121 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev9",
+  "model": "EV9",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV9-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV9-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 63690,
+  "trims": [
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 53521,
+      "priceGross": 63690,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 56042,
+      "priceGross": 66690,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 62344,
+      "priceGross": 74190,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 59403,
+      "priceGross": 70690,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 65705,
+      "priceGross": 78190,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 70655,
+      "priceGross": 84080,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Air",
+      "priceFromGross": 63690
+    },
+    {
+      "trim": "Earth",
+      "priceFromGross": 74190
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 84080
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV9 GT-Line (283 kW/385 PS): Stromverbrauch kombiniert 22,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV9 Air (160 kW/218 PS): Stromverbrauch kombiniert 19,5 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV9 Earth (150 kW/204 PS): Stromverbrauch kombiniert 20,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+  ],
+  "variantCount": 6
+}

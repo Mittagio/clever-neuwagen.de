@@ -1,0 +1,80 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev2",
+  "model": "EV2",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV2-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV2-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-05-29",
+  "priceFromGross": 26600,
+  "trims": [
+    {
+      "id": "light",
+      "name": "Light"
+    },
+    {
+      "id": "air",
+      "name": "Air"
+    },
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Light",
+      "trimId": "light",
+      "priceNet": 22352,
+      "priceGross": 26600,
+      "engine": "42,2-kWh-Batterie; 108 kW (146 PS) 15,5 (18\")",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Air",
+      "trimId": "air",
+      "priceNet": 24361,
+      "priceGross": 28990,
+      "engine": "42,2-kWh-Batterie; 108 kW (146 PS) 15,5 (18\")",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Light",
+      "priceFromGross": 26600
+    },
+    {
+      "trim": "Air",
+      "priceFromGross": 33490
+    },
+    {
+      "trim": "Earth",
+      "priceFromGross": 36890
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV2 Earth (99,5 kW/135 PS): Stromverbrauch kombiniert 15,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV2 Light/Air (108 kW/146 PS): Stromverbrauch kombiniert 15,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV2 Air (99,5 kW/135 PS): Stromverbrauch kombiniert 15,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV2 Earth (108 kW/146 PS): Stromverbrauch kombiniert 15,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV2 Earth (99,5 kW/135 PS): Stromverbrauch kombiniert 15,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+    "Kia EV2 GT-Line (99,5 kW/135 PS): Stromverbrauch kombiniert 16,3 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+  ],
+  "variantCount": 2
+}

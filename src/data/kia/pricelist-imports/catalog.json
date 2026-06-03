@@ -1,0 +1,2304 @@
+{
+  "picanto": {
+    "brand": "Kia",
+    "modelKey": "picanto",
+    "model": "Picanto",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-Picanto_Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Picanto_Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 18550,
+    "trims": [
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 15588,
+        "priceGross": 18550,
+        "engine": "",
+        "transmission": "Schaltgetriebe (MT5) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit 17 .",
+        "trimId": "spirit-17-",
+        "priceNet": 436,
+        "priceGross": 20750,
+        "engine": "",
+        "transmission": "Schaltgetriebe (MT5) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line 18.277 ,31",
+        "trimId": "gt-line-18277-31",
+        "priceNet": null,
+        "priceGross": 21750,
+        "engine": "",
+        "transmission": "Schaltgetriebe (MT5) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 16428,
+        "priceGross": 19550,
+        "engine": "",
+        "transmission": "Autom. Schaltgetriebe (AMT) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit 18.277 ,31",
+        "trimId": "spirit-18277-31",
+        "priceNet": null,
+        "priceGross": 21750,
+        "engine": "",
+        "transmission": "Autom. Schaltgetriebe (AMT) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line 19.117 ,65",
+        "trimId": "gt-line-19117-65",
+        "priceNet": null,
+        "priceGross": 22750,
+        "engine": "",
+        "transmission": "Autom. Schaltgetriebe (AMT) –",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Vision",
+        "priceFromGross": 20750
+      },
+      {
+        "trim": "Spirit",
+        "priceFromGross": 21750
+      }
+    ],
+    "wltpNotes": [
+      "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO2-Emissionen kombiniert 134 g/km. CO2-Klasse D.",
+      "Kia Picanto 1.0 MT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,5 l/100 km. CO 2-Emissionen kombiniert 126 g/km.",
+      "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO 2-Emissionen kombiniert 134 g/km."
+    ],
+    "variantCount": 6
+  },
+  "stonic": {
+    "brand": "Kia",
+    "modelKey": "stonic",
+    "model": "Stonic",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-Stonic-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Stonic-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 23790,
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 19991,
+        "priceGross": 23790,
+        "engine": "1.0 T-GDI*",
+        "transmission": "Schaltgetriebe (MT6)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 21420,
+        "priceGross": 25490,
+        "engine": "1.0 T-GDI*",
+        "transmission": "Schaltgetriebe (MT6)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 23605,
+        "priceGross": 28090,
+        "engine": "1.0 T-GDI",
+        "transmission": "Schaltgetriebe (MT6)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 24445,
+        "priceGross": 29090,
+        "engine": "1.0 T-GDI",
+        "transmission": "Schaltgetriebe (MT6)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit 2 5 .",
+        "trimId": "spirit-2-5-",
+        "priceNet": 117,
+        "priceGross": 29890,
+        "engine": "1.0 T-GDI",
+        "transmission": "getriebe (DCT7) 5,6 126",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 26294,
+        "priceGross": 31290,
+        "engine": "1.0 T-GDI",
+        "transmission": "getriebe (DCT7) 5,6 126",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Core",
+        "priceFromGross": 23790
+      },
+      {
+        "trim": "Vision",
+        "priceFromGross": 25490
+      },
+      {
+        "trim": "Spirit",
+        "priceFromGross": 29090
+      }
+    ],
+    "wltpNotes": [
+      "Kia Stonic 1.0 T-GDI 48V MT (84,6 kW/115 PS): Kraftstoffverbrauch kombiniert 5,7 l/100 km. CO2-Emissionen kombiniert 128 g/km.",
+      "Kia Stonic 1.0 T-GDI MT (74 kW/100 PS): Kraftstoffverbrauch kombiniert 5,7 l/100 km. CO2-Emissionen kombiniert 128 g/km."
+    ],
+    "variantCount": 6
+  },
+  "xceed": {
+    "brand": "Kia",
+    "modelKey": "xceed",
+    "model": "XCeed",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-XCeed_Pricelist.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-XCeed_Pricelist.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 26990,
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-line"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 22680,
+        "priceGross": 26990,
+        "engine": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+        "transmission": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 23605,
+        "priceGross": 28090,
+        "engine": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+        "transmission": "1.0 T-GDI*  Schaltgetriebe   85 (115) 6,4 144 E",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 24361,
+        "priceGross": 28990,
+        "engine": "1.0 T-GDI",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 25285,
+        "priceGross": 30090,
+        "engine": "1.0 T-GDI",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 26378,
+        "priceGross": 31390,
+        "engine": "1.6 T-GDI*",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Spirit 27.",
+        "trimId": "spirit-27",
+        "priceNet": 974,
+        "priceGross": 33290,
+        "engine": "1.6 T-GDI*",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "GT-line",
+        "trimId": "gt-line",
+        "priceNet": 30495,
+        "priceGross": 36290,
+        "engine": "1.6 T-GDI*",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "GT-line",
+        "trimId": "gt-line",
+        "priceNet": 31336,
+        "priceGross": 37290,
+        "engine": "1.6 T-GDI*",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Platinum",
+        "trimId": "platinum",
+        "priceNet": 32344,
+        "priceGross": 38490,
+        "engine": "1.6 T-GDI*",
+        "transmission": "(DCT7)",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,4",
+        "co2": "144",
+        "co2Class": "E"
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Core",
+        "priceFromGross": 28090
+      },
+      {
+        "trim": "Vision",
+        "priceFromGross": 29990
+      },
+      {
+        "trim": "Vision",
+        "priceFromGross": 26990
+      },
+      {
+        "trim": "GT-line",
+        "priceFromGross": 33290
+      }
+    ],
+    "wltpNotes": [
+      "Kia XCeed 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,8 l/100 km. CO 2-Emissionen kombiniert 155 g/km.",
+      "Kia XCeed 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,8 l/100 km. CO2-Emissionen kombiniert 155 g/km."
+    ],
+    "variantCount": 9
+  },
+  "k4": {
+    "brand": "Kia",
+    "modelKey": "k4",
+    "model": "K4",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-K4-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-K4-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 28890,
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "premium",
+        "name": "Premium"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core 24 . 27 7, 31",
+        "trimId": "core-24--27-7-31",
+        "priceNet": null,
+        "priceGross": 28890,
+        "engine": "",
+        "transmission": "1.0 T- G DI * Schaltgetriebe    85 (115) 6,0 135 D",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,0",
+        "co2": "135",
+        "co2Class": "D"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 25873,
+        "priceGross": 30790,
+        "engine": "",
+        "transmission": "1.0 T- G DI * Schaltgetriebe    85 (115) 6,0 135 D",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "6,0",
+        "co2": "135",
+        "co2Class": "D"
+      },
+      {
+        "trim": "Core 25.957 ,98",
+        "trimId": "core-25957-98",
+        "priceNet": null,
+        "priceGross": 30890,
+        "engine": "",
+        "transmission": "(DCT7) 85 (115) 5,8 132 D",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "5,8",
+        "co2": "132",
+        "co2Class": "D"
+      },
+      {
+        "trim": "Vision 27.7 2 2 ,69",
+        "trimId": "vision-277-2-2-69",
+        "priceNet": null,
+        "priceGross": 32990,
+        "engine": "",
+        "transmission": "(DCT7) 85 (115) 5,8 132 D",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "5,8",
+        "co2": "132",
+        "co2Class": "D"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 28815,
+        "priceGross": 34290,
+        "engine": "",
+        "transmission": "(DCT7) 110 (150) 6,9 155 E",
+        "drive": "",
+        "power": "110 kW (150 PS)",
+        "consumption": "6,9",
+        "co2": "155",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 30159,
+        "priceGross": 35890,
+        "engine": "",
+        "transmission": "(DCT7) 110 (150) 6,9 155 E",
+        "drive": "",
+        "power": "110 kW (150 PS)",
+        "consumption": "6,9",
+        "co2": "155",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 31000,
+        "priceGross": 36890,
+        "engine": "",
+        "transmission": "(DCT7) 132 (180) 6,9 155 E",
+        "drive": "",
+        "power": "132 kW (180 PS)",
+        "consumption": "6,9",
+        "co2": "155",
+        "co2Class": "E"
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 32176,
+        "priceGross": 38290,
+        "engine": "",
+        "transmission": "(DCT7) 132 (180) 6,9 155 E",
+        "drive": "",
+        "power": "132 kW (180 PS)",
+        "consumption": "6,9",
+        "co2": "155",
+        "co2Class": "E"
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Core",
+        "priceFromGross": 35890
+      },
+      {
+        "trim": "Vision",
+        "priceFromGross": 30790
+      }
+    ],
+    "wltpNotes": [
+      "Kia K4 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO 2-Emissionen kombiniert 155 g/km.",
+      "Kia K4 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO2-Emissionen kombiniert 155 g/km."
+    ],
+    "variantCount": 8
+  },
+  "k4-sportswagon": {
+    "brand": "Kia",
+    "modelKey": "k4-sportswagon",
+    "model": "K4 Sportswagon",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-K4-Sportswagon-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-K4-Sportswagon-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 29890,
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 25117.65,
+        "priceGross": 29890,
+        "engine": "1.0 T-GDI",
+        "transmission": "Schaltgetriebe",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 26798.32,
+        "priceGross": 31890,
+        "engine": "1.0 T-GDI",
+        "transmission": "Schaltgetriebe",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 26798.32,
+        "priceGross": 31890,
+        "engine": "1.0 T-GDI 48V",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 28647.06,
+        "priceGross": 34090,
+        "engine": "1.0 T-GDI 48V",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "85 kW (115 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 29739.5,
+        "priceGross": 35390,
+        "engine": "1.6 T-GDI",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "110 kW (150 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 31504.2,
+        "priceGross": 37490,
+        "engine": "1.6 T-GDI",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "110 kW (150 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 32680.67,
+        "priceGross": 38890,
+        "engine": "1.6 T-GDI",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "110 kW (150 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 32344.54,
+        "priceGross": 38490,
+        "engine": "1.6 T-GDI",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "132 kW (180 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 33521.01,
+        "priceGross": 39890,
+        "engine": "1.6 T-GDI",
+        "transmission": "DCT7",
+        "drive": "",
+        "power": "132 kW (180 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia K4 Sportswagon 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,1 l/100 km. CO 2-Emissionen kombiniert",
+      "Kia K4 Sportswagon 1.6 T-GDI DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,1 l/100 km. CO 2-Emissionen"
+    ],
+    "variantCount": 9,
+    "manualSupplement": true
+  },
+  "seltos": {
+    "brand": "Kia",
+    "modelKey": "seltos",
+    "model": "Seltos",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-Seltos-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Seltos-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 36190,
+    "trims": [
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 30411,
+        "priceGross": 36190,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 32932,
+        "priceGross": 39190,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 35579,
+        "priceGross": 42340,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 32092,
+        "priceGross": 38190,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 34613,
+        "priceGross": 41190,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line 37. 260, 50",
+        "trimId": "gt-line-37-260-50",
+        "priceNet": null,
+        "priceGross": 44340,
+        "engine": "1.6 T-GDI",
+        "transmission": "getriebe (DCT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Spirit",
+        "priceFromGross": 34190
+      },
+      {
+        "trim": "Vision",
+        "priceFromGross": 42340
+      },
+      {
+        "trim": "GT-Line",
+        "priceFromGross": 43340
+      }
+    ],
+    "wltpNotes": [
+      "Kia Seltos 1.6 T-GDI AWD (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,5 l/100 km. CO 2-Emissionen kombiniert 169 g/km.",
+      "Kia Seltos 1.6 T-GDI 2WD MT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 6,9 l/100 km. CO 2-Emissionen kombiniert",
+      "Kia Seltos 1.6 T-GDI 2WD DCT (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,0 l/100 km. CO 2-Emissionen kombiniert"
+    ],
+    "variantCount": 6
+  },
+  "sportage": {
+    "brand": "Kia",
+    "modelKey": "sportage",
+    "model": "Sportage",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-Sportage-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Sportage-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 33990,
+    "trims": [
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "black-edition",
+        "name": "Black Edition"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 28563,
+        "priceGross": 33990,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "Schaltgetriebe (MT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 29949,
+        "priceGross": 35640,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "Schaltgetriebe (MT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 33142,
+        "priceGross": 39440,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "Schaltgetriebe (MT)",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 35159,
+        "priceGross": 41840,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) 7, 3 165 F",
+        "drive": "",
+        "power": "",
+        "consumption": "7,3",
+        "co2": "165",
+        "co2Class": "F"
+      },
+      {
+        "trim": "Black Edition",
+        "trimId": "black-edition",
+        "priceNet": 35756,
+        "priceGross": 42550,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) 7, 3 165 F",
+        "drive": "",
+        "power": "",
+        "consumption": "7,3",
+        "co2": "165",
+        "co2Class": "F"
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 38100,
+        "priceGross": 45340,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) 7, 3 165 F",
+        "drive": "",
+        "power": "",
+        "consumption": "7,3",
+        "co2": "165",
+        "co2Class": "F"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 34067,
+        "priceGross": 40540,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Spirit 37. 596 ,6 4",
+        "trimId": "spirit-37-596-6-4",
+        "priceNet": null,
+        "priceGross": 44740,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Black Edition",
+        "trimId": "black-edition",
+        "priceNet": 38193,
+        "priceGross": 45450,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "GT-Line 4 0. 537, 82",
+        "trimId": "gt-line-4-0-537-82",
+        "priceNet": null,
+        "priceGross": 48240,
+        "engine": "Benzin 1.6 T-GDI",
+        "transmission": "getriebe (DCT) AWD 132 (180) 7, 8 177 G",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 32764,
+        "priceGross": 38990,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 34445,
+        "priceGross": 40990,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Spirit 37.",
+        "trimId": "spirit-37",
+        "priceNet": 974,
+        "priceGross": 45190,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Black Edition",
+        "trimId": "black-edition",
+        "priceNet": 38571,
+        "priceGross": 45900,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 40915,
+        "priceGross": 48690,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 36546,
+        "priceGross": 43490,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": null,
+        "priceGross": 40075,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Black Edition",
+        "trimId": "black-edition",
+        "priceNet": 40672,
+        "priceGross": 48400,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 43016,
+        "priceGross": 51190,
+        "engine": "Hybrid 1.6 T-GDI",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "7,8",
+        "co2": "177",
+        "co2Class": "G"
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 33478,
+        "priceGross": 39840,
+        "engine": "1.6 CRDi",
+        "transmission": "getriebe (DCT) 5,5 145 E",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "5,5",
+        "co2": "145",
+        "co2Class": "E"
+      },
+      {
+        "trim": "Spirit 37 .",
+        "trimId": "spirit-37-",
+        "priceNet": 8,
+        "priceGross": 44040,
+        "engine": "1.6 CRDi",
+        "transmission": "getriebe (DCT) 5,5 145 E",
+        "drive": "AWD",
+        "power": "132 kW (180 PS)",
+        "consumption": "5,5",
+        "co2": "145",
+        "co2Class": "E"
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Vision",
+        "priceFromGross": 33990
+      },
+      {
+        "trim": "GT-Line",
+        "priceFromGross": 45340
+      },
+      {
+        "trim": "Black Edition",
+        "priceFromGross": 42550
+      }
+    ],
+    "wltpNotes": [
+      "Kia Sportage 1.6 T-GDI MT 2WD (110 kW/150 PS): Kraftstoffverbrauch kombiniert 7,2 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sportage 1.6 T-GDI DCT AWD (132 kW/180 PS): Kraftstoffverbrauch kombiniert 7,8 l/100 km. CO2-Emissionen kombiniert"
+    ],
+    "variantCount": 21
+  },
+  "sportage-phev": {
+    "brand": "Kia",
+    "modelKey": "sportage-phev",
+    "model": "Sportage Plug-in Hybrid",
+    "powertrainVariant": "phev",
+    "sourceFile": "Kia-Germany-Sportage-PHEV-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Sportage-PHEV-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 43100,
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 36218.49,
+        "priceGross": 43100,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 37899.16,
+        "priceGross": 45100,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 41428.57,
+        "priceGross": 49300,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 44117.65,
+        "priceGross": 52500,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 40000,
+        "priceGross": 47600,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 43529.41,
+        "priceGross": 51800,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 46218.49,
+        "priceGross": 55000,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Core",
+        "priceFromGross": 43100
+      },
+      {
+        "trim": "GT-Line",
+        "priceFromGross": 45100
+      }
+    ],
+    "wltpNotes": [
+      "Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km. Stromverbrauch",
+      "Kia Sportage Plug-in Hybrid 2WD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 2,9 l/100 km.",
+      "Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km."
+    ],
+    "variantCount": 7,
+    "manualSupplement": true
+  },
+  "sorento": {
+    "brand": "Kia",
+    "modelKey": "sorento",
+    "model": "Sorento",
+    "powertrainVariant": "verbrenner",
+    "sourceFile": "Kia-Germany-Sorento-pricelist.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-pricelist.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 56690,
+    "trims": [
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "platinum",
+        "name": "Platinum"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 47638.66,
+        "priceGross": 56690,
+        "engine": "2.2 CRDi Diesel DCT8",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "142 kW (194 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 51840.34,
+        "priceGross": 61690,
+        "engine": "2.2 CRDi Diesel DCT8",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "142 kW (194 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Platinum",
+        "trimId": "platinum",
+        "priceNet": 55201.68,
+        "priceGross": 65690,
+        "engine": "2.2 CRDi Diesel DCT8",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "142 kW (194 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+    ],
+    "variantCount": 3,
+    "manualSupplement": true
+  },
+  "sorento-hybrid": {
+    "brand": "Kia",
+    "modelKey": "sorento-hybrid",
+    "model": "Sorento Hybrid",
+    "powertrainVariant": "hybrid",
+    "sourceFile": "Kia-Germany-Sorento-Hybrid-pricelist.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-Hybrid-pricelist.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 55190,
+    "trims": [
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "platinum",
+        "name": "Platinum"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 46378.15,
+        "priceGross": 55190,
+        "engine": "1.6 T-GDI Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "176 kW (239 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 50579.83,
+        "priceGross": 60190,
+        "engine": "1.6 T-GDI Hybrid",
+        "transmission": "Automatik",
+        "drive": "2WD",
+        "power": "176 kW (239 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 48058.82,
+        "priceGross": 57190,
+        "engine": "1.6 T-GDI Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "176 kW (239 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 52260.5,
+        "priceGross": 62190,
+        "engine": "1.6 T-GDI Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "176 kW (239 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Platinum",
+        "trimId": "platinum",
+        "priceNet": 55201.68,
+        "priceGross": 65690,
+        "engine": "1.6 T-GDI Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "176 kW (239 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+    ],
+    "variantCount": 5,
+    "manualSupplement": true
+  },
+  "sorento-phev": {
+    "brand": "Kia",
+    "modelKey": "sorento-phev",
+    "model": "Sorento Plug-in Hybrid",
+    "powertrainVariant": "phev",
+    "sourceFile": "Kia-Germany-Sorento-PHEV-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-Sorento-PHEV-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 61140,
+    "trims": [
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "platinum",
+        "name": "Platinum"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 51378.15,
+        "priceGross": 61140,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 55579.83,
+        "priceGross": 66140,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Platinum",
+        "trimId": "platinum",
+        "priceNet": 58521.01,
+        "priceGross": 69640,
+        "engine": "1.6 T-GDI Plug-in Hybrid",
+        "transmission": "Automatik",
+        "drive": "AWD",
+        "power": "212 kW (288 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia Sorento 2.2 CRDi DCT AWD (142 kW/194 PS): Kraftstoffverbrauch kombiniert 6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Hybrid AWD/2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 7,0/6,6 l/100 km. CO2-Emissionen kombiniert",
+      "Kia Sorento Plug-in Hybrid (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,9 l/100 km; Stromverbrauch gewichtet"
+    ],
+    "variantCount": 3,
+    "manualSupplement": true
+  },
+  "ev2": {
+    "brand": "Kia",
+    "modelKey": "ev2",
+    "model": "EV2",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV2-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV2-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 26600,
+    "trims": [
+      {
+        "id": "light",
+        "name": "Light"
+      },
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "earth",
+        "name": "Earth"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Light",
+        "trimId": "light",
+        "priceNet": 22352,
+        "priceGross": 26600,
+        "engine": "42,2-kWh-Batterie; 108 kW (146 PS) 15,5 (18\")",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 24361,
+        "priceGross": 28990,
+        "engine": "42,2-kWh-Batterie; 108 kW (146 PS) 15,5 (18\")",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Light",
+        "priceFromGross": 26600
+      },
+      {
+        "trim": "Air",
+        "priceFromGross": 33490
+      },
+      {
+        "trim": "Earth",
+        "priceFromGross": 36890
+      }
+    ],
+    "wltpNotes": [
+      "Kia EV2 Earth (99,5 kW/135 PS): Stromverbrauch kombiniert 15,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV2 Light/Air (108 kW/146 PS): Stromverbrauch kombiniert 15,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV2 Air (99,5 kW/135 PS): Stromverbrauch kombiniert 15,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV2 Earth (108 kW/146 PS): Stromverbrauch kombiniert 15,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV2 Earth (99,5 kW/135 PS): Stromverbrauch kombiniert 15,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV2 GT-Line (99,5 kW/135 PS): Stromverbrauch kombiniert 16,3 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+    ],
+    "variantCount": 2
+  },
+  "ev3": {
+    "brand": "Kia",
+    "modelKey": "ev3",
+    "model": "EV3",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV3-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV3-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 35990,
+    "trims": [
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "earth",
+        "name": "Earth"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 30243,
+        "priceGross": 35990,
+        "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,8 (19\")/",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 32176,
+        "priceGross": 38290,
+        "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,8 (19\")/",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 34781,
+        "priceGross": 41390,
+        "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 36714,
+        "priceGross": 43690,
+        "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 40915,
+        "priceGross": 48690,
+        "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb 16,2 (19\")/",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 39394,
+        "priceGross": 46880,
+        "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 15,8 (19\") 572 (19\")",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 43016,
+        "priceGross": 51190,
+        "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 15,8 (19\") 572 (19\")",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Air",
+        "priceFromGross": 35990
+      },
+      {
+        "trim": "Earth",
+        "priceFromGross": 38290
+      }
+    ],
+    "wltpNotes": [
+      "Kia EV3 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 16,2 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km. CO 2-Klasse A.",
+      "Kia EV3 Air (150 kW/204 PS): Stromverbrauch kombiniert 14,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO 2-Klasse A.",
+      "Kia EV3 Earth (150 kW/204 PS): Stromverbrauch kombiniert 14,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV3 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 16,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+    ],
+    "variantCount": 7
+  },
+  "ev4": {
+    "brand": "Kia",
+    "modelKey": "ev4",
+    "model": "EV4",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV4-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV4-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 31588,
+    "trims": [
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "earth",
+        "name": "Earth"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": null,
+        "priceGross": 31588,
+        "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,3 (19\") /",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 33521,
+        "priceGross": 39890,
+        "engine": "58,3-kWh-Batterie, 150 kW (204 PS), Frontantrieb 15,3 (19\") /",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 36336,
+        "priceGross": 43240,
+        "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 38268,
+        "priceGross": 45540,
+        "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Air",
+        "priceFromGross": 49440
+      }
+    ],
+    "wltpNotes": [
+      "Kia EV4 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 15,8 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km.",
+      "Kia EV4 Air (150 kW/204 PS): Stromverbrauch kombiniert 14,6 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV4 Earth (150 kW/204 PS): Stromverbrauch kombiniert 15,5 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV4 GT-Line (150 kW/204 PS): Stromverbrauch kombiniert 15,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2- K l a s s e  A ."
+    ],
+    "variantCount": 4
+  },
+  "ev5": {
+    "brand": "Kia",
+    "modelKey": "ev5",
+    "model": "EV5",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV5-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV5-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 52990,
+    "trims": [
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "earth",
+        "name": "Earth"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 44529,
+        "priceGross": 52990,
+        "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 18,1 491",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line 47 .",
+        "trimId": "gt-line-47-",
+        "priceNet": 50,
+        "priceGross": 55990,
+        "engine": "81,4-kWh-Batterie, 195 kW (265 PS), Allradantrieb 18,1 491",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Air",
+        "priceFromGross": 45990
+      },
+      {
+        "trim": "Earth",
+        "priceFromGross": 51990
+      }
+    ],
+    "wltpNotes": [
+      "Kia EV5 GT-Line (195 kW/265 PS): Stromverbrauch kombiniert 18,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV5 Air (160 kW/218 PS): Stromverbrauch kombiniert 16,9 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV5 Earth (160 kW/218 PS): Stromverbrauch kombiniert 17,1 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV5 GT-Line (160 kW/218 PS): Stromverbrauch kombiniert 17,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+    ],
+    "variantCount": 2
+  },
+  "ev5-gt": {
+    "brand": "Kia",
+    "modelKey": "ev5-gt",
+    "model": "EV5 GT",
+    "powertrainVariant": "elektro-gt",
+    "sourceFile": "Kia-Germany-EV5-GT-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV5-GT-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 59990,
+    "trims": [
+      {
+        "id": "gt",
+        "name": "GT"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "GT",
+        "trimId": "gt",
+        "priceNet": 50411,
+        "priceGross": 59990,
+        "engine": "81,4-kWh-Batterie, 225 kW (306 PS), Allradantrieb",
+        "consumption": "18,6",
+        "co2": "0",
+        "co2Class": "A"
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia EV5 GT (225 kW/306 PS): Stromverbrauch kombiniert 18,6 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+    ],
+    "variantCount": 1,
+    "manualSupplement": true
+  },
+  "ev6": {
+    "brand": "Kia",
+    "modelKey": "ev6",
+    "model": "EV6",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV6_Pricelist.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV6_Pricelist.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 44990,
+    "trims": [
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "earth",
+        "name": "Earth"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 37806.72,
+        "priceGross": 44990,
+        "engine": "63-kWh-Batterie",
+        "transmission": "",
+        "drive": "RWD",
+        "power": "125 kW (170 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 39655.46,
+        "priceGross": 47190,
+        "engine": "63-kWh-Batterie",
+        "transmission": "",
+        "drive": "RWD",
+        "power": "125 kW (170 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 42008.4,
+        "priceGross": 49990,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "RWD",
+        "power": "168 kW (229 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 43857.14,
+        "priceGross": 52190,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "RWD",
+        "power": "168 kW (229 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 48647.06,
+        "priceGross": 57890,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "RWD",
+        "power": "168 kW (229 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 45369.75,
+        "priceGross": 53990,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "239 kW (325 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 47218.49,
+        "priceGross": 56190,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "239 kW (325 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 52008.4,
+        "priceGross": 61890,
+        "engine": "84-kWh-Batterie",
+        "transmission": "",
+        "drive": "AWD",
+        "power": "239 kW (325 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [],
+    "wltpNotes": [
+      "Kia EV6 Air (239 kW/325 PS): Stromverbrauch kombiniert 17,0 kWh/100 km. CO2-Emissionen kombiniert 0 g/km."
+    ],
+    "variantCount": 8,
+    "manualSupplement": true
+  },
+  "ev9": {
+    "brand": "Kia",
+    "modelKey": "ev9",
+    "model": "EV9",
+    "powertrainVariant": "elektro",
+    "sourceFile": "Kia-Germany-EV9-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-EV9-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 63690,
+    "trims": [
+      {
+        "id": "air",
+        "name": "Air"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 53521,
+        "priceGross": 63690,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 56042,
+        "priceGross": 66690,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 62344,
+        "priceGross": 74190,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Air",
+        "trimId": "air",
+        "priceNet": 59403,
+        "priceGross": 70690,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Earth",
+        "trimId": "earth",
+        "priceNet": 65705,
+        "priceGross": 78190,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 70655,
+        "priceGross": 84080,
+        "engine": "",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Air",
+        "priceFromGross": 63690
+      },
+      {
+        "trim": "Earth",
+        "priceFromGross": 74190
+      },
+      {
+        "trim": "GT-Line",
+        "priceFromGross": 84080
+      }
+    ],
+    "wltpNotes": [
+      "Kia EV9 GT-Line (283 kW/385 PS): Stromverbrauch kombiniert 22,8 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV9 Air (160 kW/218 PS): Stromverbrauch kombiniert 19,5 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia EV9 Earth (150 kW/204 PS): Stromverbrauch kombiniert 20,2 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A."
+    ],
+    "variantCount": 6
+  },
+  "pv5-passenger": {
+    "brand": "Kia",
+    "modelKey": "pv5-passenger",
+    "model": "PV5 Passenger",
+    "powertrainVariant": "nutzfahrzeug",
+    "sourceFile": "Kia-Germany-PV5-Passenger-Preisliste.pdf",
+    "sourcePdfPath": "Kia-Germany/Kia-Germany-PV5-Passenger-Preisliste.pdf",
+    "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+    "importedAt": "2026-05-29",
+    "priceFromGross": 39540,
+    "trims": [
+      {
+        "id": "plus",
+        "name": "Plus"
+      }
+    ],
+    "variants": [
+      {
+        "trim": "Plus",
+        "trimId": "plus",
+        "priceNet": 33226,
+        "priceGross": 39540,
+        "engine": "51,5-kWh-Batterie, 89 kW (122 PS), Frontantrieb 19,2 0 A 295",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Plus",
+        "trimId": "plus",
+        "priceNet": 36588,
+        "priceGross": 43540,
+        "engine": "71,2-kWh-Batterie, 120 kW (163 PS), Frontantrieb 19,3 0 A 412",
+        "transmission": "",
+        "drive": "",
+        "power": "",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trimPricesFrom": [
+      {
+        "trim": "Plus",
+        "priceFromGross": 39540
+      },
+      {
+        "trim": "Plus",
+        "priceFromGross": 41340
+      }
+    ],
+    "wltpNotes": [
+      "Kia PV5 Passenger (120 kW/163 PS): Stromverbrauch kombiniert 19,3 kWh/100 km. CO2-Emissionen kombiniert 0 g/km. CO2-Klasse A.",
+      "Kia PV5 Passenger (120 kW/163 PS): Stromverbrauch kombiniert 19,3 kWh/100 km. CO 2-Emissionen kombiniert 0 g/km."
+    ],
+    "variantCount": 2
+  }
+}
