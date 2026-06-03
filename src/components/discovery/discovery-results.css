@@ -1101,3 +1101,229 @@
 .disc-loc-slot--bottom {
   margin-top: 1.25rem;
 }
+
+/* ── MF-2: Mobile Hub (Suchergebnisse) ── */
+
+.disc-desktop-only {
+  display: none;
+}
+
+.disc-hero__mobile {
+  display: flex;
+  flex-direction: column;
+}
+
+.disc-hero__desktop {
+  display: none;
+}
+
+.disc-hero--mobile-first {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff;
+}
+
+.disc-hero--mobile-first .disc-hero__mobile {
+  min-height: calc(100dvh - 132px);
+}
+
+.disc-hero--mobile-first .disc-hero__mobile-scroll .disc-hero__visual {
+  padding: 0;
+  min-height: auto;
+  max-height: none;
+  background: #f8fafc;
+}
+
+.disc-hero--mobile-first .disc-hero__image-wrap,
+.disc-hero--mobile-first .disc-hero__image,
+.disc-hero--mobile-first .disc-hero__image-wrap .vehicle-image__img {
+  min-height: 180px;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.disc-hero__badge--mobile {
+  display: inline-block;
+  top: 12px;
+  left: 12px;
+  font-size: 0.6875rem;
+}
+
+.disc-hero__mobile-content {
+  padding: 14px 16px 8px;
+}
+
+.disc-hero__mobile-content .disc-hero__title {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+}
+
+.disc-hero__mobile-content .cq-recommend-panel {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+}
+
+.disc-hero__mobile-content .cq-recommend-panel__list {
+  font-size: 0.8125rem;
+}
+
+.disc-hero__mobile-dock {
+  margin-top: auto;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+  border-top: 1px solid #e8e6e3;
+  background: #fff;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.disc-hero__price-block--dock {
+  margin-bottom: 10px;
+}
+
+.disc-hero__price-block--dock .disc-hero__rate {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.disc-hero__price-block--dock .disc-hero__discount {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+}
+
+.disc-hero__cta--dock {
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+}
+
+.disc-hero__mobile-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.disc-mobile-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 60px;
+  padding: 8px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.disc-mobile-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.disc-mobile-action.is-active {
+  border-color: #0f172a;
+  background: #f1f5f9;
+}
+
+.disc-mobile-action__emoji {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.disc-mobile-more {
+  padding: 8px 0 16px;
+}
+
+.disc-mobile-more__toggle {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.booking-selection-card--hub {
+  margin-bottom: 0;
+  padding: 10px 14px;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
+.north-star-results--mf2 {
+  max-width: 100%;
+  gap: 0;
+  padding-bottom: 16px;
+}
+
+.north-star-results--mf2 .disc-section--hit {
+  gap: 0;
+}
+
+@media (max-width: 1023px) {
+  .north-star-results--mf2 {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .north-star-results--mf2 .results-headline,
+  .north-star-results--mf2 .search-plausibility-banner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .north-star-results--mf2 .north-star-results__more {
+    padding: 16px;
+  }
+
+  .north-star-results--mf2 .disc-mobile-more {
+    padding: 12px 16px 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .disc-desktop-only {
+    display: block;
+  }
+
+  .disc-hero__mobile {
+    display: none;
+  }
+
+  .disc-hero__desktop {
+    display: contents;
+  }
+
+  .disc-hero--mobile-first {
+    border: none;
+    border-radius: 22px;
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    display: grid;
+  }
+
+  .disc-mobile-more {
+    display: none;
+  }
+
+  .booking-selection-card--hub {
+    border-radius: 14px;
+    margin-bottom: 1rem;
+  }
+
+  .north-star-results--mf2 {
+    max-width: 720px;
+    gap: 28px;
+    padding-bottom: 32px;
+  }
+}

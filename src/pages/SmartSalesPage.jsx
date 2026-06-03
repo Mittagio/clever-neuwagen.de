@@ -12,6 +12,7 @@ import SalesCommunicationCenter from '../components/sales-advisor/SalesCommunica
 import SalesAdvisorStatsBar from '../components/sales-advisor/SalesAdvisorStatsBar.jsx';
 import SalesSelectedOffers, { getWishLabelsFromChipIds } from '../components/sales-advisor/SalesSelectedOffers.jsx';
 import SalesCustomerRecordPanel from '../components/sales-advisor/SalesCustomerRecordPanel.jsx';
+import MobileBottomSheet from '../components/shared/MobileBottomSheet.jsx';
 import { findSalesAdvisorMatches, buildWishesFromChipIds } from '../services/sales/salesAdvisorService.js';
 import { createSalesShareSession } from '../services/sales/salesShareService.js';
 import { recordSmartSalesAdvised, recordCompareOpened } from '../services/sales/salesAdvisorStats.js';
@@ -51,6 +52,7 @@ export default function SmartSalesPage() {
   const [shareSession, setShareSession] = useState(null);
   const [sentVia, setSentVia] = useState([]);
   const [savedRecord, setSavedRecord] = useState(null);
+  const [commSheetOpen, setCommSheetOpen] = useState(false);
 
   const sellerName = seller?.name ?? conditions.contact?.name ?? 'Verkaufsberater';
   const dealerName = conditions.dealerName ?? 'Autohaus';
@@ -169,9 +171,42 @@ export default function SmartSalesPage() {
 
   const showComm = shareSession && (step === STEPS.RESULTS || step === STEPS.COMPARE || step === STEPS.DETAIL);
   const showCustomerBar = step !== STEPS.WISHES;
+  const showMobileCommDock = step === STEPS.RESULTS || step === STEPS.DETAIL || step === STEPS.COMPARE;
+
+  function renderSidePanel() {
+    return (
+      <>
+        <SalesSelectedOffers
+          matches={matches}
+          compareSlugs={compareSlugs}
+          onRemove={handleToggleCompare}
+        />
+        {showComm && (
+          <SalesCommunicationCenter
+            matches={compareMatches.length >= 2 ? compareMatches : matches.slice(0, 4)}
+            shareUrl={shareSession.url}
+            customer={customer}
+            sellerName={sellerName}
+            dealerName={dealerName}
+            dealerPhone={dealerPhone}
+            wishLabels={wishLabels}
+            onSent={handleSentVia}
+          />
+        )}
+        {savedRecord && (
+          <SalesCustomerRecordPanel record={savedRecord} onClose={() => setSavedRecord(null)} />
+        )}
+        {(step === STEPS.RESULTS || step === STEPS.DETAIL) && !savedRecord && (
+          <button type="button" className="ss-btn ss-btn--secondary ss-btn--block" onClick={handleSaveRecord}>
+            Kundenakte speichern
+          </button>
+        )}
+      </>
+    );
+  }
 
   return (
-    <div className="ss-page ss-page--conversation">
+    <div className={`ss-page ss-page--conversation ss-page--mf4 ss-page--${step}${showMobileCommDock ? ' ss-page--has-dock' : ''}`}>
       <header className="ss-page__header">
         <Link to="/backend" className="ss-page__back" aria-label="Zurück zum Backend">←</Link>
         <div className="ss-page__header-text">
@@ -295,32 +330,32 @@ export default function SmartSalesPage() {
           )}
         </div>
 
-        <aside className="ss-conversation-layout__side">
-          <SalesSelectedOffers
-            matches={matches}
-            compareSlugs={compareSlugs}
-            onRemove={handleToggleCompare}
-          />
-          {showComm && (
-            <SalesCommunicationCenter
-              matches={compareMatches.length >= 2 ? compareMatches : matches.slice(0, 4)}
-              shareUrl={shareSession.url}
-              customer={customer}
-              sellerName={sellerName}
-              dealerName={dealerName}
-              dealerPhone={dealerPhone}
-              wishLabels={wishLabels}
-              onSent={handleSentVia}
-            />
-          )}
-          {savedRecord && <SalesCustomerRecordPanel record={savedRecord} onClose={() => setSavedRecord(null)} />}
-          {(step === STEPS.RESULTS || step === STEPS.DETAIL) && !savedRecord && (
-            <button type="button" className="ss-btn ss-btn--secondary ss-btn--block" onClick={handleSaveRecord}>
-              Kundenakte speichern
-            </button>
-          )}
+        <aside className="ss-conversation-layout__side ss-desktop-only">
+          {renderSidePanel()}
         </aside>
       </div>
+
+      {showMobileCommDock && (
+        <>
+          <button
+            type="button"
+            className="ss-mobile-comm-dock"
+            onClick={() => setCommSheetOpen(true)}
+          >
+            An Kunden senden
+          </button>
+          <MobileBottomSheet
+            open={commSheetOpen}
+            onClose={() => setCommSheetOpen(false)}
+            title="An Kunden senden"
+            titleId="ss-comm-sheet-title"
+            className="ss-comm-sheet"
+            priority="high"
+          >
+            {renderSidePanel()}
+          </MobileBottomSheet>
+        </>
+      )}
     </div>
   );
 }

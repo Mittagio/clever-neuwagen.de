@@ -1,0 +1,62 @@
+/* MF-5: Händlerseite – Tablet-Touch */
+
+@media (max-width: 1023px) {
+  .dealer-page--mf5 .dealer-section__head p {
+    display: none;
+  }
+
+  .dealer-page--mf5 .dealer-hero__actions {
+    flex-direction: column;
+  }
+
+  .dealer-page--mf5 .dealer-hero__actions .btn {
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+  }
+
+  .dealer-page--mf5 .dealer-model-card .btn {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .dealer-page--mf5 .dealer-ai__form textarea {
+    min-height: 96px;
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .dealer-page--mf5 .dealer-ai__form .btn {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .dealer-page--mf5 .dealer-actions-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .dealer-page--mf5 .dealer-actions-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dealer-page--mf5 .dealer-action-banner {
+    flex: 0 0 min(78vw, 280px);
+    scroll-snap-align: start;
+  }
+
+  .dealer-page--mf5 .dealer-footer-cta__actions {
+    flex-direction: column;
+  }
+
+  .dealer-page--mf5 .dealer-footer-cta__actions .btn {
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+  }
+}

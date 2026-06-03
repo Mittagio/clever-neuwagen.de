@@ -10,6 +10,7 @@ import { getMainSiteUrl } from '../logic/dealerSubdomain.js';
 import { buildMarketplaceSearch } from '../logic/marketplaceService.js';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import './DealerPage.css';
+import './dealer-mobile.css';
 
 const KIA_MODELS = [
   { id: 'picanto', name: 'Picanto', rateFrom: 149, type: 'kleinwagen', imageModel: 'Picanto' },
@@ -93,7 +94,7 @@ export default function DealerPage() {
 
   return (
     <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
-      <div className="dealer-page page">
+      <div className="dealer-page page dealer-page--mf5">
         <header className="dealer-header">
           <div className="container dealer-header-inner">
             <div className="dealer-header-brand">

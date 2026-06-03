@@ -1082,3 +1082,91 @@
 .ss-compare-create {
   margin-top: 16px;
 }
+
+/* ── MF-4: Gesprächsmodus – Sidebar nur Desktop, Sheet auf Mobile ── */
+
+.ss-desktop-only {
+  display: none;
+}
+
+.ss-mobile-comm-dock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  z-index: 120;
+  min-height: 52px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.28);
+  cursor: pointer;
+}
+
+.ss-page--has-dock {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0));
+}
+
+.ss-comm-sheet .ss-comm,
+.ss-comm-sheet .ss-selected {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 1023px) {
+  .ss-page--mf4.ss-page--results .ss-stats,
+  .ss-page--mf4.ss-page--detail .ss-stats,
+  .ss-page--mf4.ss-page--compare .ss-stats {
+    display: none;
+  }
+
+  .ss-page--mf4.ss-page--results .ss-page__kicker,
+  .ss-page--mf4.ss-page--detail .ss-page__kicker,
+  .ss-page--mf4.ss-page--compare .ss-page__kicker,
+  .ss-page--mf4.ss-page--results .ss-page__dealer,
+  .ss-page--mf4.ss-page--detail .ss-page__dealer,
+  .ss-page--mf4.ss-page--compare .ss-page__dealer {
+    display: none;
+  }
+
+  .ss-page--mf4.ss-page--results .ss-page__title,
+  .ss-page--mf4.ss-page--detail .ss-page__title,
+  .ss-page--mf4.ss-page--compare .ss-page__title {
+    font-size: 1.0625rem;
+  }
+
+  .ss-conversation-layout {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .ss-page--mf4.ss-page--results .ss-customer-bar--compact,
+  .ss-page--mf4.ss-page--detail .ss-customer-bar--compact {
+    padding: 8px 16px;
+  }
+
+  .ss-page--mf4 .ss-results,
+  .ss-page--mf4 .ss-detail,
+  .ss-page--mf4 .ss-compare {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ss-desktop-only {
+    display: grid;
+  }
+
+  .ss-mobile-comm-dock {
+    display: none;
+  }
+}

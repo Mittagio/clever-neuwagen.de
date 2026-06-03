@@ -29,6 +29,17 @@
   max-width: 1100px;
 }
 
+@media (max-width: 1023px) {
+  .marketplace-page--discovery.marketplace-page--results-v2 {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .marketplace-page--discovery .marketplace-page__container {
+    gap: 0;
+  }
+}
+
 .marketplace-page--sprint20 {
   padding-top: 20px;
 }

@@ -827,6 +827,8 @@ export default function FahrzeugePage() {
 
             onDealerProfile={handleMoreFromDealer}
 
+            onEditSearch={handleOpenSearchFromChip}
+
             refineSlot={(
 
               <>

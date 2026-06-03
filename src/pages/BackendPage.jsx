@@ -16,6 +16,7 @@ import BackendDelivery from '../components/backend/BackendDelivery.jsx';
 import { getDefaultSection } from '../components/backend/backendAreas.js';
 import './BackendPage.css';
 import '../components/backend/BackendSyncStatus.css';
+import '../components/backend/backend-mobile.css';
 
 const CONDITION_SECTIONS = new Set([
   'discounts', 'leasing', 'finance', 'delivery',
@@ -69,6 +70,8 @@ export default function BackendPage() {
     && activeArea !== 'marketing';
 
   const showSyncBar = activeArea === 'verwaltung' && activeSection === 'hub';
+
+  const showPublishDock = hasDraftChanges() && activeArea === 'verwaltung';
 
   function renderContent() {
     if (activeArea === 'verkaufen' && activeSection === 'home') {
@@ -146,7 +149,7 @@ export default function BackendPage() {
 
   return (
     <PageShell>
-      <div className="backend page backend--v2">
+      <div className={`backend page backend--v2 backend--mf5${showPublishDock ? ' backend--has-publish-dock' : ''}`}>
         <div className="container">
           <header className="backend-header backend-header--slim">
             <div>
@@ -198,6 +201,25 @@ export default function BackendPage() {
 
           {publishToast && (
             <div className="backend-toast" role="status">{publishToast}</div>
+          )}
+
+          {showPublishDock && (
+            <div className="backend-publish-dock" role="region" aria-label="Veröffentlichen">
+              <button
+                type="button"
+                className="backend-publish-dock__primary"
+                onClick={() => publishDealerChanges()}
+              >
+                Änderungen veröffentlichen
+              </button>
+              <button
+                type="button"
+                className="backend-publish-dock__discard"
+                onClick={() => discardDraft()}
+              >
+                Verwerfen
+              </button>
+            </div>
           )}
         </div>
       </div>

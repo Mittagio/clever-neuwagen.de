@@ -23,15 +23,49 @@ export default function InquirySummaryModal({
     displayPrice,
     dealer,
   });
+  const compact = buildCompactSummary({
+    displayTitle,
+    detailSelection,
+    recommendationResult,
+    displayPrice,
+    dealer,
+  });
 
   return (
     <CustomerInquiryModal
       title={title}
-      inquirySummary={{ lines, pricing: displayPrice?.raw }}
+      inquirySummary={{ lines, compact, pricing: displayPrice?.raw }}
       onClose={onClose}
       onSubmit={onSubmit}
     />
   );
+}
+
+export function buildCompactSummary({
+  displayTitle,
+  detailSelection,
+  recommendationResult,
+  displayPrice,
+  dealer,
+}) {
+  const wishLabels = detailSelection.selectedFeatures?.map((id) =>
+    recommendationResult?.includedFeatures?.find((f) => f.id === id)?.label
+    ?? recommendationResult?.requestedFeatures?.find((f) => f.id === id)?.label
+    ?? id,
+  ) ?? [];
+
+  const bullets = [];
+  wishLabels.slice(0, 2).forEach((w) => bullets.push(w));
+  if (dealer?.name) {
+    bullets.push(`${dealer.name}${dealer.distanceKm != null ? ` · ${dealer.distanceKm} km` : ''}`);
+  }
+
+  return {
+    vehicleTitle: displayTitle,
+    priceLabel: displayPrice?.label ?? '',
+    priceSubtitle: displayPrice?.subtitle ?? '',
+    bullets: bullets.filter(Boolean).slice(0, 3),
+  };
 }
 
 function buildStructuredSummary({

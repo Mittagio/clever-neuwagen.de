@@ -16,6 +16,7 @@ import CleverAnalysisPanel from '../components/advisor/CleverAnalysisPanel.jsx';
 import WishBasedAlternatives from '../components/advisor/WishBasedAlternatives.jsx';
 import DealerCompareCard, { DealerTrustCard } from '../components/dealer/DealerCompareCard.jsx';
 import InquirySummaryModal from '../components/inquiry/InquirySummaryModal.jsx';
+import MobileBottomSheet from '../components/shared/MobileBottomSheet.jsx';
 import DealerOffersTable from '../components/vehicle-detail/DealerOffersTable.jsx';
 import SimilarVehiclesNearby from '../components/dealer/SimilarVehiclesNearby.jsx';
 import { CUSTOMER_LABELS } from '../data/customerFlow.js';
@@ -23,6 +24,7 @@ import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
+import { buildRecommendReasons } from '../services/cleverQuote/cleverQuoteRecommendation.js';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import '../components/vehicle-detail/vehicle-detail.css';
@@ -38,6 +40,8 @@ export default function VehicleDetailPage() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [inquiryModal, setInquiryModal] = useState(null);
   const [wishSectionActive, setWishSectionActive] = useState(false);
+  const [wishSheetOpen, setWishSheetOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
 
@@ -77,26 +81,34 @@ export default function VehicleDetailPage() {
     recommendationResult,
     cleverQuote,
     cleverQuoteAfterPackage,
+    wishes,
   } = ctrl;
-
-  const hideMobileBar = priceDrawerOpen || compareOpen;
 
   const openWishes = useCallback(() => {
     setWishSectionActive(true);
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      setWishSheetOpen(true);
+      return;
+    }
     requestAnimationFrame(() => {
       document.getElementById('vd-wish-builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, []);
 
   const scrollToDealer = useCallback(() => {
-    document.getElementById('vd-dealer-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMobileMoreOpen(true);
+    requestAnimationFrame(() => {
+      document.getElementById('vd-dealer-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }, []);
 
   const openCompare = useCallback(() => {
     setCompareOpen(true);
-    requestAnimationFrame(() => {
-      document.getElementById('vd-offers-compare')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
+    if (typeof window !== 'undefined' && !window.matchMedia('(max-width: 1023px)').matches) {
+      requestAnimationFrame(() => {
+        document.getElementById('vd-offers-compare')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
   }, [setCompareOpen]);
 
   function showToast(msg) {
@@ -140,6 +152,10 @@ export default function VehicleDetailPage() {
 
   const primaryPackage = recommendationResult?.requiredPackages?.[0];
   const wishCount = detailSelection.selectedFeatures?.length ?? 0;
+  const recommendReasons = buildRecommendReasons(
+    { vehicle, cleverQuote, bestOffer: activeDealer, displayRate: displayPrice?.amount },
+    { wishes, maxReasons: 3 },
+  );
 
   return (
     <PageShell>
@@ -162,9 +178,14 @@ export default function VehicleDetailPage() {
                 discountPercent={discountPercent}
                 colorId={effectiveColorId}
                 cleverQuote={cleverQuote}
+                recommendReasons={recommendReasons}
+                wishesActive={wishSectionActive}
+                compareActive={compareOpen}
                 onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
                 onStartInquiry={() => setInquiryModal('inquiry')}
                 onOpenPricing={() => setPriceDrawerOpen(true)}
+                onOpenWishes={openWishes}
+                onOpenCompare={openCompare}
               />
 
               <CleverQuoteBreakdown
@@ -175,6 +196,7 @@ export default function VehicleDetailPage() {
                 paymentMode={detailSelection.paymentMode}
               />
 
+              <div className="vd-desktop-only">
               <AdvisorNextSteps
                 displayPrice={displayPrice}
                 paymentMode={detailSelection.paymentMode}
@@ -186,8 +208,9 @@ export default function VehicleDetailPage() {
                 wishesActive={wishSectionActive}
                 compareActive={compareOpen}
               />
+              </div>
 
-              <div className="vd-tools-flow">
+              <div className="vd-tools-flow vd-desktop-only">
                 <PriceToolCard
                   price={displayPrice}
                   open={priceDrawerOpen}
@@ -272,6 +295,38 @@ export default function VehicleDetailPage() {
                 />
               </div>
 
+              <div className="vd-mobile-more">
+                {!mobileMoreOpen ? (
+                  <button
+                    type="button"
+                    className="vd-btn vd-btn--ghost vd-btn--block vd-mobile-more__toggle"
+                    onClick={() => setMobileMoreOpen(true)}
+                  >
+                    Mehr zum Händler & ähnliche Fahrzeuge
+                  </button>
+                ) : (
+                  <>
+                    <div className="vd-trust" id="vd-dealer-block">
+                      <DealerTrustCard
+                        offer={{ ...activeDealer, brand: vehicle.brand }}
+                        inventory={dealerInventory}
+                        configuredOffer={detailSelection.selectedFeatures.length > 0}
+                        onInquiry={() => setInquiryModal('inquiry')}
+                        onTestDrive={() => setInquiryModal('testdrive')}
+                      />
+                    </div>
+                    <div className="vd-similar vd-inspire">
+                      <SimilarVehiclesNearby
+                        vehicles={similarVehicles}
+                        currentSlug={vehicle.slug}
+                        paymentMode={detailSelection.paymentMode}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="vd-desktop-only vd-trust-block">
               <div className="vd-trust" id="vd-dealer-block">
                 <DealerTrustCard
                   offer={{ ...activeDealer, brand: vehicle.brand }}
@@ -289,8 +344,9 @@ export default function VehicleDetailPage() {
                   paymentMode={detailSelection.paymentMode}
                 />
               </div>
+              </div>
 
-              <LegalDisclaimer compact className="vd-page__legal" />
+              <LegalDisclaimer compact className="vd-page__legal vd-desktop-only" />
             </div>
 
             <StickyOfferBox
@@ -305,10 +361,95 @@ export default function VehicleDetailPage() {
 
       <MobileStickyBar
         price={displayPrice}
-        visible={!hideMobileBar}
+        visible={false}
         onStartInquiry={() => setInquiryModal('inquiry')}
         onSaveOffer={() => setSaveOpen(true)}
       />
+
+      <MobileBottomSheet
+        open={wishSheetOpen}
+        onClose={() => setWishSheetOpen(false)}
+        title="Wunschauto bauen"
+        titleId="vd-wish-sheet-title"
+      >
+        {showCustomize && (
+          <>
+            <WishBuilderCard
+              vehicle={vehicle}
+              selection={detailSelection}
+              recommendationResult={recommendationResult}
+              fulfillment={wishFulfillment}
+              onToggleFeature={handleToggleFeature}
+            />
+            <CleverAnalysisPanel fulfillment={wishFulfillment} />
+            <WishResultPanel
+              recommendationResult={recommendationResult}
+              displayPrice={displayPrice}
+              paymentMode={detailSelection.paymentMode}
+            />
+            {primaryPackage && (
+              <PackageRecommendationCard
+                package={primaryPackage}
+                paymentMode={detailSelection.paymentMode}
+                displayPrice={displayPrice}
+                baselinePriceLabel={recommendationResult?.baselinePriceLabel}
+                cleverQuote={cleverQuote}
+                cleverQuoteAfter={cleverQuoteAfterPackage}
+                onAccept={handleAcceptPackage}
+              />
+            )}
+            {recommendationResult?.betterTrim?.exists && (
+              <CleverRecommendationCard
+                betterTrim={recommendationResult.betterTrim}
+                vehicle={{ ...vehicle, trimName: detailSelection.trimName }}
+                fulfillment={wishFulfillment}
+                onAccept={handleAcceptBetterTrim}
+              />
+            )}
+          </>
+        )}
+      </MobileBottomSheet>
+
+      <MobileBottomSheet
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        title="Angebote vergleichen"
+        titleId="vd-compare-sheet-title"
+      >
+        <DealerOffersTable
+          embedded
+          compareOpen
+          onCompareOpenChange={setCompareOpen}
+          offers={rankedDealerOffers}
+          payment={detailSelection.paymentMode}
+          onSelectDealer={(offer) => {
+            setSelectedDealerSlug(offer.dealerSlug);
+            setCompareOpen(false);
+          }}
+          onViewOffer={scrollToDealer}
+          onExpandRadius={() => showToast('Weitere Händler werden geladen …')}
+        />
+      </MobileBottomSheet>
+
+      <div className="vd-mobile-only">
+        <PriceDrawer
+          open={priceDrawerOpen}
+          onOpenChange={setPriceDrawerOpen}
+          paymentMode={detailSelection.paymentMode}
+          paymentView={detailSelection.paymentMode}
+          termMonths={detailSelection.termMonths}
+          mileagePerYear={detailSelection.mileagePerYear}
+          downPayment={detailSelection.downPayment}
+          financeDown={detailSelection.financeDown}
+          financeBalloon={detailSelection.financeBalloon}
+          pricing={displayPrice.raw}
+          discountPercent={discountPercent}
+          basePricing={basePricing}
+          activeDealer={activeDealer}
+          vehicle={vehicle}
+          onApply={handlePaymentApply}
+        />
+      </div>
 
       {saveOpen && (
         <CustomerSaveOfferModal vehicle={vehicle} onClose={() => setSaveOpen(false)} />

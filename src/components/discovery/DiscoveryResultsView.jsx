@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CompactSearchSummary } from '../search/SearchFlowComponents.jsx';
 import SearchPlausibilityBanner from '../search/SearchPlausibilityBanner.jsx';
 import ResultsBrandModelFilter from './ResultsBrandModelFilter.jsx';
@@ -13,12 +13,14 @@ import DiscoveryAlternativesStrip from './DiscoveryAlternativesStrip.jsx';
 import PopularOffersStrip from './PopularOffersStrip.jsx';
 import DiscoveryDealerTrust from './DiscoveryDealerTrust.jsx';
 import { WishVehicleGridCard } from '../wish/WishVehicleCards.jsx';
+import { CleverQuoteBreakdown } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { buildCompactSearchChips } from '../../logic/northStarPresentation.js';
 import { pickDiscoveryAlternatives } from '../../logic/discoveryResultsPresentation.js';
 import { hasLocalizedSearch } from '../../logic/oneSearchService.js';
 import { getSimilarVehiclesNearby } from '../../services/pricing/dealerOfferPricing.js';
 import { matchVehiclesToWish } from '../../services/wish/wishMatchEngine.js';
 import { hasCleverQuoteWishes } from '../../services/cleverQuote/cleverQuoteService.js';
+import { buildRecommendReasons } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 import { RESULT_STATES } from '../../logic/neverEmptyResultsService.js';
 import { isAllBrandsExcluded } from '../../logic/brandResultsFilter.js';
 import '../search/locationPromptBanner.css';
@@ -68,8 +70,12 @@ export default function DiscoveryResultsView({
   onShowAllBrands,
   onResetSearch,
   onDealerProfile,
+  onEditSearch,
   refineSlot = null,
 }) {
+  const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+
   const {
     state,
     headline,
@@ -121,11 +127,19 @@ export default function DiscoveryResultsView({
 
   const showVehicles = !allBrandsHidden;
 
+  const recommendReasons = useMemo(() => {
+    if (!topMatch) return [];
+    return buildRecommendReasons(topMatch, { wishes, maxReasons: 3 });
+  }, [topMatch, wishes]);
+
+  const showCompareAction = dealerCount > 1 && state === RESULT_STATES.EXACT && Boolean(onCompare);
+
   return (
-    <div className="discovery-results north-star-results north-star-results--v26 north-star-results--booking">
-      <div className="booking-selection-card">
+    <div className="discovery-results north-star-results north-star-results--v26 north-star-results--booking north-star-results--mf2">
+      <div className="booking-selection-card booking-selection-card--hub">
         <CompactSearchSummary chips={compactChips} onEditChip={onEditChip} title="Ihre Suche" />
 
+        <div className="disc-desktop-only">
         <ResultsBrandModelFilter
           catalog={resultCatalog}
           excludedBrands={excludedBrands}
@@ -137,6 +151,7 @@ export default function DiscoveryResultsView({
         />
 
         <ResultsOfferCount stats={offerStats} cleverQuoteMode={hasCleverQuoteWishes(wishes)} />
+        </div>
 
         {allBrandsHidden && (
           <AllBrandsHiddenCard
@@ -175,17 +190,30 @@ export default function DiscoveryResultsView({
                   match={topMatch}
                   onViewOffer={onViewOffer}
                   onCustomize={onCustomize}
+                  onCompare={onCompare}
+                  onEditSearch={onEditSearch}
+                  onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
+                  recommendReasons={recommendReasons}
+                  showCompare={showCompareAction}
                   heroBadge={heroBadge}
                 />
               )}
 
+              <CleverQuoteBreakdown
+                cleverQuote={topMatch?.cleverQuote}
+                open={cleverQuoteOpen}
+                onClose={() => setCleverQuoteOpen(false)}
+              />
+
+              <div className="disc-desktop-only">
               <DiscoveryCompareSection
                 dealerCount={dealerCount}
                 radiusKm={radiusKm}
                 localized={localized}
-                onCompare={dealerCount > 1 && state === RESULT_STATES.EXACT ? onCompare : undefined}
+                onCompare={showCompareAction ? onCompare : undefined}
                 onExpandRadius={dealerCount <= 1 ? onExpandRadius : undefined}
               />
+              </div>
 
               {restMatches.length > 0 && !showAlternativeSection && (
                 <div className="north-star-results__more">
@@ -217,6 +245,46 @@ export default function DiscoveryResultsView({
             <DiscoveryAlternativesStrip matches={stripAlternatives} max={5} />
           )}
 
+          <div className="disc-mobile-more">
+            {!mobileMoreOpen ? (
+              <button
+                type="button"
+                className="disc-mobile-more__toggle"
+                onClick={() => setMobileMoreOpen(true)}
+              >
+                Mehr: Händler, Inspiration & Standort
+              </button>
+            ) : (
+              <>
+                {showVehicles && (
+                  <DiscoveryDealerTrust match={topMatch} onMoreFromDealer={onDealerProfile} />
+                )}
+
+                {showVehicles && (
+                  <PopularOffersStrip
+                    matches={popularMatches}
+                    title={popularTitle}
+                    subtitle={localized ? 'Gerade oft angesehen.' : 'Aktuell deutschlandweit – mit Standort sehen Sie Händler in Ihrer Nähe.'}
+                  />
+                )}
+
+                {showLocation && !allBrandsHidden && (
+                  <div className="disc-loc-slot disc-loc-slot--bottom">
+                    <LocationBlock
+                      localized={localized}
+                      filters={filters}
+                      variant="compact"
+                      onAllowLocation={onAllowLocation}
+                      onLocationSubmit={onLocationSubmit}
+                      onPatchFilters={onPatchFilters}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="disc-desktop-only">
           {showVehicles && (
             <DiscoveryDealerTrust match={topMatch} onMoreFromDealer={onDealerProfile} />
           )}
@@ -228,11 +296,12 @@ export default function DiscoveryResultsView({
               subtitle={localized ? 'Gerade oft angesehen.' : 'Aktuell deutschlandweit – mit Standort sehen Sie Händler in Ihrer Nähe.'}
             />
           )}
+          </div>
         </>
       )}
 
       {showLocation && !allBrandsHidden && (
-        <div className="disc-loc-slot disc-loc-slot--bottom">
+        <div className="disc-loc-slot disc-loc-slot--bottom disc-desktop-only">
           <LocationBlock
             localized={localized}
             filters={filters}
@@ -245,7 +314,7 @@ export default function DiscoveryResultsView({
       )}
 
       {refineSlot && (
-        <div className="north-star-results__refine-slot">{refineSlot}</div>
+        <div className="north-star-results__refine-slot disc-desktop-only">{refineSlot}</div>
       )}
     </div>
   );

@@ -221,7 +221,7 @@ export default function VehiclePriceCalculator({
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.body.style.overflow;
-    const mq = window.matchMedia('(max-width: 767px)');
+    const mq = window.matchMedia('(max-width: 1023px)');
     const lock = () => {
       if (mq.matches) document.body.style.overflow = 'hidden';
     };

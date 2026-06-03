@@ -137,7 +137,7 @@ export function CleverQuoteBreakdown({
   );
 }
 
-export function CleverQuoteCompareCards({ matches = [], paymentMode = 'leasing' }) {
+export function CleverQuoteCompareCards({ matches = [], paymentMode = 'leasing', onViewVehicle }) {
   if (!matches.length) return null;
 
   return (
@@ -158,6 +158,15 @@ export function CleverQuoteCompareCards({ matches = [], paymentMode = 'leasing' 
                   ? `${m.vehicle.cashPrice.toLocaleString('de-DE')} €`
                   : ''}
             </p>
+            {onViewVehicle && (
+              <button
+                type="button"
+                className="clever-quote-compare-card__cta"
+                onClick={() => onViewVehicle(m)}
+              >
+                Angebot ansehen
+              </button>
+            )}
           </article>
         ))}
       </div>
