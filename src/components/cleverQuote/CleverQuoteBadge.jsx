@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { getCleverQuoteTier } from '../../services/cleverQuote/cleverQuoteService.js';
+import {
+  getCleverQuoteTier,
+  partitionCleverQuoteItems,
+  CLEVER_QUOTE_UNCERTAIN_LABEL,
+} from '../../services/cleverQuote/cleverQuoteService.js';
 import './cleverQuote.css';
 
 export default function CleverQuoteBadge({
@@ -11,12 +15,15 @@ export default function CleverQuoteBadge({
   if (!cleverQuote) return null;
 
   const tier = cleverQuote.tier ?? getCleverQuoteTier(cleverQuote.percent);
+  const percentLabel = cleverQuote.percent != null
+    ? `${cleverQuote.percent} %`
+    : CLEVER_QUOTE_UNCERTAIN_LABEL;
 
   return (
     <div className={`clever-quote clever-quote--${size} clever-quote--${tier.dot}`}>
       <span className="clever-quote__dot" aria-hidden />
       <div className="clever-quote__text">
-        <strong className="clever-quote__brand">CleverQuote {cleverQuote.percent} %</strong>
+        <strong className="clever-quote__brand">CleverQuote {percentLabel}</strong>
         {showTier && (
           <span className="clever-quote__tier">{cleverQuote.tierLabel ?? tier.label}</span>
         )}
@@ -26,7 +33,7 @@ export default function CleverQuoteBadge({
       </div>
       {onWhyClick && (
         <button type="button" className="clever-quote__why" onClick={onWhyClick}>
-          Warum {cleverQuote.percent} %?
+          {cleverQuote.percent != null ? `Warum ${cleverQuote.percent} %?` : 'Details anzeigen'}
         </button>
       )}
     </div>
@@ -43,6 +50,33 @@ export function CleverQuoteBreakdown({
   if (!open || !cleverQuote) return null;
 
   const upgrade = cleverQuote.upgrade;
+  const { fulfilled, packageNeeded, missing, uncertain } = partitionCleverQuoteItems(cleverQuote);
+
+  function renderGroup(title, items, icon, className) {
+    if (!items.length) return null;
+    return (
+      <div className={`clever-quote-breakdown__group ${className}`}>
+        <p className="clever-quote-breakdown__group-title">{title}</p>
+        <ul className="clever-quote-breakdown__list">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className={`clever-quote-breakdown__item clever-quote-breakdown__item--${item.status}`}
+            >
+              <span className="clever-quote-breakdown__icon" aria-hidden>{icon}</span>
+              <span>{item.label}</span>
+              <span className="clever-quote-breakdown__status">
+                {item.status === 'fulfilled' && (item.via === 'package' ? 'Im Paket' : 'vorhanden')}
+                {item.status === 'package' && 'Paket nötig'}
+                {item.status === 'missing' && 'fehlt'}
+                {item.status === 'uncertain' && 'unsicher'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <div className="clever-quote-breakdown-backdrop" role="presentation" onClick={onClose}>
@@ -53,34 +87,30 @@ export function CleverQuoteBreakdown({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="clever-quote-breakdown__head">
-          <h2 id="cq-breakdown-title">Warum {cleverQuote.percent} %?</h2>
+          <h2 id="cq-breakdown-title">
+            {cleverQuote.percent != null
+              ? `Warum ${cleverQuote.percent} %?`
+              : 'CleverQuote – Einschätzung'}
+          </h2>
           <button type="button" className="clever-quote-breakdown__close" onClick={onClose} aria-label="Schließen">×</button>
         </header>
         <p className="clever-quote-breakdown__lead">
           CleverQuote™ bewertet, wie gut dieses Fahrzeug zu Ihren Wünschen passt.
+          Unklare Ausstattungen werden nicht geraten.
         </p>
-        <ul className="clever-quote-breakdown__list">
-          {cleverQuote.items.map((item) => (
-            <li
-              key={item.id}
-              className={`clever-quote-breakdown__item clever-quote-breakdown__item--${item.status}`}
-            >
-              <span className="clever-quote-breakdown__icon" aria-hidden>
-                {item.fulfilled ? '✓' : '✗'}
-              </span>
-              <span>{item.label}</span>
-              <span className="clever-quote-breakdown__status">
-                {item.fulfilled
-                  ? (item.via === 'package' ? 'Im Paket' : 'vorhanden')
-                  : item.status === 'package' ? 'Paket nötig' : 'fehlt'}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {cleverQuote.trustNote && (
+          <p className="clever-quote-breakdown__trust">{cleverQuote.trustNote}</p>
+        )}
+        {renderGroup('Erfüllt', fulfilled, '✓', 'clever-quote-breakdown__group--ok')}
+        {renderGroup('Mit Paket möglich', packageNeeded, '○', 'clever-quote-breakdown__group--pkg')}
+        {renderGroup('Nicht erfüllt', missing, '✗', 'clever-quote-breakdown__group--no')}
+        {renderGroup(CLEVER_QUOTE_UNCERTAIN_LABEL, uncertain, '?', 'clever-quote-breakdown__group--uncertain')}
         {upgrade && (
           <div className="clever-quote-breakdown__upgrade">
             <p className="clever-quote-breakdown__upgrade-title">
-              Für {upgrade.targetPercent ?? Math.min(100, cleverQuote.percent + upgrade.potentialPercentGain)} % CleverQuote empfehlen wir:
+              {upgrade.targetPercent != null
+                ? `Für ${upgrade.targetPercent} % CleverQuote empfehlen wir:`
+                : 'Für mehr CleverQuote empfehlen wir:'}
             </p>
             <p className="clever-quote-breakdown__upgrade-pkg">{upgrade.packageName}</p>
             {upgrade.impactLabel && (

@@ -24,6 +24,14 @@ export const CLEVER_QUOTE_FEATURE_WEIGHTS = {
   benzin: 10,
 };
 
+export const CLEVER_QUOTE_UNCERTAIN_TIER = {
+  id: 'uncertain',
+  label: 'Nicht sicher prüfbar',
+  dot: 'gray',
+};
+
+export const CLEVER_QUOTE_UNCERTAIN_LABEL = 'Derzeit nicht sicher verfügbar';
+
 export const CLEVER_QUOTE_TIERS = [
   { min: 95, id: 'perfect', label: 'Perfekter Treffer', dot: 'green' },
   { min: 85, id: 'very_good', label: 'Sehr guter Treffer', dot: 'green' },
@@ -33,7 +41,10 @@ export const CLEVER_QUOTE_TIERS = [
 ];
 
 export function getCleverQuoteTier(percent) {
-  const p = Math.round(percent ?? 0);
+  if (percent == null || Number.isNaN(percent)) {
+    return CLEVER_QUOTE_UNCERTAIN_TIER;
+  }
+  const p = Math.round(percent);
   return CLEVER_QUOTE_TIERS.find((t) => p >= t.min) ?? CLEVER_QUOTE_TIERS[CLEVER_QUOTE_TIERS.length - 1];
 }
 

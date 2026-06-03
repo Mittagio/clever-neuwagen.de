@@ -142,9 +142,18 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
+.ss-customer-bar--compact {
+  padding: 8px 16px;
+}
+
 @media (min-width: 640px) {
   .ss-customer-bar {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ss-customer-bar--compact {
+    grid-template-columns: 1fr;
+    max-width: 320px;
   }
 }
 
@@ -296,9 +305,41 @@
   color: #64748b;
 }
 
+.ss-results__head-note {
+  color: #94a3b8;
+}
+
+.ss-results__subline {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.ss-podium__section-label {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
 .ss-podium {
   display: grid;
   gap: 14px;
+}
+
+.ss-podium--rest {
+  margin-top: 4px;
+}
+
+.ss-podium__more-wrap {
+  margin-top: 16px;
+}
+
+.ss-podium__expand,
+.ss-podium__collapse {
+  min-height: 52px;
 }
 
 .ss-podium-card {
@@ -312,8 +353,18 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
+.ss-podium-card--top {
+  border-color: #cbd5e1;
+}
+
+.ss-podium-card--alt {
+  grid-template-columns: 120px 1fr;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
 @media (max-width: 639px) {
-  .ss-podium-card {
+  .ss-podium-card,
+  .ss-podium-card--alt {
     grid-template-columns: 1fr;
   }
 }
@@ -329,13 +380,17 @@
   overflow: hidden;
 }
 
-.ss-podium-card__body h2 {
+.ss-podium-card__vehicle h2 {
   margin: 0 0 8px;
   font-size: 1.125rem;
 }
 
+.ss-podium-card__quote {
+  margin-bottom: 8px;
+}
+
 .ss-podium-card__rate {
-  margin: 8px 0;
+  margin: 10px 0 4px;
   font-size: 1.25rem;
   font-weight: 800;
 }
@@ -347,9 +402,15 @@
 }
 
 .ss-podium-card__delivery {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: #475569;
   font-size: 0.875rem;
+}
+
+.ss-podium-card__dealer {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
 }
 
 .ss-podium-card__fulfilled {
@@ -402,6 +463,20 @@
   margin: 16px 0;
 }
 
+.ss-detail__pricing--single {
+  grid-template-columns: 1fr;
+  max-width: 280px;
+}
+
+.ss-price-tile--primary {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.ss-price-tile--primary .ss-price-tile__value {
+  font-size: 1.25rem;
+}
+
 .ss-price-tile {
   padding: 12px;
   border-radius: 14px;
@@ -430,6 +505,11 @@
 
 .ss-detail__meta p {
   margin: 0 0 6px;
+}
+
+.ss-detail__dealer {
+  color: #64748b;
+  font-size: 0.875rem;
 }
 
 .ss-detail__wishes h3 {

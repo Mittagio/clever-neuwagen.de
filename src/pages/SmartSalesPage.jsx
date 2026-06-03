@@ -12,7 +12,7 @@ import SalesCommunicationCenter from '../components/sales-advisor/SalesCommunica
 import SalesAdvisorStatsBar from '../components/sales-advisor/SalesAdvisorStatsBar.jsx';
 import SalesSelectedOffers, { getWishLabelsFromChipIds } from '../components/sales-advisor/SalesSelectedOffers.jsx';
 import SalesCustomerRecordPanel from '../components/sales-advisor/SalesCustomerRecordPanel.jsx';
-import { findSalesAdvisorMatches } from '../services/sales/salesAdvisorService.js';
+import { findSalesAdvisorMatches, buildWishesFromChipIds } from '../services/sales/salesAdvisorService.js';
 import { createSalesShareSession } from '../services/sales/salesShareService.js';
 import { recordSmartSalesAdvised, recordCompareOpened } from '../services/sales/salesAdvisorStats.js';
 import {
@@ -62,6 +62,10 @@ export default function SmartSalesPage() {
   const activeKiaCount = conditions.activeModels?.filter((m) => m.active && m.brand === 'Kia').length ?? 0;
 
   const wishLabels = useMemo(() => getWishLabelsFromChipIds(selectedChipIds), [selectedChipIds]);
+  const salesWishes = useMemo(
+    () => buildWishesFromChipIds(selectedChipIds),
+    [selectedChipIds],
+  );
 
   const compareMatches = useMemo(
     () => matches.filter((m) => compareSlugs.includes(m.slug)),
@@ -111,7 +115,7 @@ export default function SmartSalesPage() {
 
   function handleFindVehicles() {
     const results = findSalesAdvisorMatches(selectedChipIds, {
-      limit: 5,
+      limit: 12,
       mileagePerYear,
       activeKiaModelIds,
     });
@@ -142,11 +146,6 @@ export default function SmartSalesPage() {
       setStep(STEPS.COMPARE);
       recordCompareOpened();
     }
-  }
-
-  function handleShowCustomer(match) {
-    setActiveMatch(match);
-    setStep(STEPS.DETAIL);
   }
 
   function handleSentVia(channel) {
@@ -185,10 +184,12 @@ export default function SmartSalesPage() {
 
       <SalesAdvisorStatsBar />
 
-      <KiaPartnerBar
-        activeModelCount={activeKiaCount}
-        registryCount={KIA_REGISTRY_MODEL_KEYS.length}
-      />
+      {step !== STEPS.RESULTS && step !== STEPS.DETAIL && (
+        <KiaPartnerBar
+          activeModelCount={activeKiaCount}
+          registryCount={KIA_REGISTRY_MODEL_KEYS.length}
+        />
+      )}
 
       <SalesLiveChips
         chipIds={selectedChipIds}
@@ -197,7 +198,7 @@ export default function SmartSalesPage() {
       />
 
       {showCustomerBar && (
-        <section className="ss-customer-bar">
+        <section className={`ss-customer-bar${step === STEPS.RESULTS || step === STEPS.DETAIL ? ' ss-customer-bar--compact' : ''}`}>
           <label className="ss-customer-field">
             <span>Kundenname</span>
             <input
@@ -207,24 +208,28 @@ export default function SmartSalesPage() {
               placeholder="z. B. Herr Müller"
             />
           </label>
-          <label className="ss-customer-field">
-            <span>Telefon</span>
-            <input
-              type="tel"
-              value={customer.phone}
-              onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))}
-              placeholder="WhatsApp"
-            />
-          </label>
-          <label className="ss-customer-field">
-            <span>E-Mail</span>
-            <input
-              type="email"
-              value={customer.email}
-              onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))}
-              placeholder="optional"
-            />
-          </label>
+          {step !== STEPS.RESULTS && step !== STEPS.DETAIL && (
+            <>
+              <label className="ss-customer-field">
+                <span>Telefon</span>
+                <input
+                  type="tel"
+                  value={customer.phone}
+                  onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))}
+                  placeholder="WhatsApp"
+                />
+              </label>
+              <label className="ss-customer-field">
+                <span>E-Mail</span>
+                <input
+                  type="email"
+                  value={customer.email}
+                  onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))}
+                  placeholder="optional"
+                />
+              </label>
+            </>
+          )}
         </section>
       )}
 
@@ -257,10 +262,11 @@ export default function SmartSalesPage() {
               <SalesResultsPodium
                 matches={matches}
                 customerName={customer.name}
+                wishes={salesWishes}
+                dealerName={dealerName}
                 onSelect={handleSelectMatch}
                 onToggleCompare={handleToggleCompare}
                 onOpenCompare={handleOpenCompare}
-                onShowCustomer={handleShowCustomer}
                 compareSlugs={compareSlugs}
               />
             </>
@@ -270,6 +276,8 @@ export default function SmartSalesPage() {
             <SalesVehicleDetail
               match={activeMatch}
               dealerName={dealerName}
+              wishes={salesWishes}
+              paymentMode={salesWishes?.budget?.type ?? 'leasing'}
               onBack={() => setStep(STEPS.RESULTS)}
             />
           )}

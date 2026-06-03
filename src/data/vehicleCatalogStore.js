@@ -3,7 +3,7 @@
  * Single Source of Truth für Import-Updates (localStorage)
  */
 
-import { kiaSportage } from './kiaSportage.js';
+import { kiaSportage } from './models/kia/sportage.js';
 
 export const CATALOG_STORAGE_KEY = 'clever-neuwagen-vehicle-catalog';
 export const DEALER_SYNC_KEY = 'clever-neuwagen-catalog-dealer-sync';

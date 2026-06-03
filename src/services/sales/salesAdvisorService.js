@@ -213,7 +213,9 @@ export function getFulfilledLabels(match) {
 
 export function getMissingLabels(match) {
   if (match?.cleverQuote?.items?.length) {
-    return match.cleverQuote.items.filter((i) => !i.fulfilled).map((i) => i.label);
+    return match.cleverQuote.items
+      .filter((i) => i.status === 'missing')
+      .map((i) => i.label);
   }
   return match?.missingFeatures ?? [];
 }

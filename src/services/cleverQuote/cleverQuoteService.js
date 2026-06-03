@@ -3,6 +3,7 @@ import { resolveWishConfiguration } from '../configurator/wishPackageResolver.js
 import { buildPackageInsight } from '../configurator/wishMagicService.js';
 import {
   CLEVER_QUOTE_FEATURE_WEIGHTS,
+  CLEVER_QUOTE_UNCERTAIN_LABEL,
   getCleverQuoteTier,
   sortByCleverQuote,
   buildCleverQuoteResultsHeadline,
@@ -13,6 +14,7 @@ import {
 export {
   CLEVER_QUOTE_FEATURE_WEIGHTS,
   CLEVER_QUOTE_TIERS,
+  CLEVER_QUOTE_UNCERTAIN_LABEL,
   getCleverQuoteTier,
   sortByCleverQuote,
   buildCleverQuoteResultsHeadline,
@@ -48,9 +50,12 @@ function checkMetaWish(wishId, vehicle) {
     return vehicle.bodyType === 'suv';
   }
   if (wishId === 'range_400') {
-    if (vehicle.powertrain === 'elektro' || vehicle.powertrain === 'plugin-hybrid') return true;
+    const range = Number(vehicle.rangeKm ?? vehicle.wltpRange);
+    if (Number.isFinite(range) && range > 0) return range >= 400;
+    if (vehicle.powertrain === 'elektro' || vehicle.powertrain === 'plugin-hybrid') return null;
     const eq = (vehicle.equipment ?? []).join(' ').toLowerCase();
-    return /400\s*km|reichweite|long range/i.test(eq);
+    if (/400\s*km|reichweite|long range/i.test(eq)) return true;
+    return null;
   }
   if (wishId === 'benzin') {
     return ['verbrenner', 'hybrid'].includes(vehicle.powertrain);
@@ -59,6 +64,10 @@ function checkMetaWish(wishId, vehicle) {
 }
 
 function resolveWishItem(wishId, match, resolution, selectedPackages) {
+  if (resolution?.uncertainFeatures?.includes(wishId)) {
+    return { status: 'uncertain', via: null };
+  }
+
   const matched = resolution?.matchedFeatures ?? match?.matchedFeatures ?? [];
   const missing = resolution?.missingFeatures ?? match?.missingFeatures ?? [];
   const viaPackage = match?.availableWithPackage ?? [];
@@ -87,7 +96,19 @@ function resolveWishItem(wishId, match, resolution, selectedPackages) {
 function scoreFromStatus(status) {
   if (status === 'fulfilled') return 1;
   if (status === 'package') return 0.75;
+  if (status === 'uncertain') return null;
   return 0;
+}
+
+/** @param {{ items?: Array<{ status: string, fulfilled?: boolean, label: string }> }} cleverQuote */
+export function partitionCleverQuoteItems(cleverQuote) {
+  const items = cleverQuote?.items ?? [];
+  return {
+    fulfilled: items.filter((i) => i.status === 'fulfilled'),
+    packageNeeded: items.filter((i) => i.status === 'package'),
+    missing: items.filter((i) => i.status === 'missing'),
+    uncertain: items.filter((i) => i.status === 'uncertain'),
+  };
 }
 
 /**
@@ -103,7 +124,6 @@ export function computeCleverQuote({
   const wishIds = getActiveWishIds(wishes);
   if (!wishIds.length || !vehicle) return null;
 
-  const weights = normalizeWeights(wishIds);
   const resolution = match?.resolution ?? resolveWishConfiguration({
     brand: vehicle.brand,
     model: vehicle.model,
@@ -111,18 +131,23 @@ export function computeCleverQuote({
     wishFeatureIds: wishIds.filter((id) => !['elektro', 'benzin', 'family_suv'].includes(id)),
   });
 
-  const items = wishIds.map((id) => {
+  const statusRows = wishIds.map((id) => {
     const meta = checkMetaWish(id, vehicle);
-    let statusResult;
-    if (meta === true) {
-      statusResult = { status: 'fulfilled', via: 'standard' };
-    } else if (meta === false) {
-      statusResult = { status: 'missing', via: null };
-    } else {
-      statusResult = resolveWishItem(id, match, resolution, selectedPackages);
-    }
+    if (meta === true) return { id, statusResult: { status: 'fulfilled', via: 'standard' } };
+    if (meta === false) return { id, statusResult: { status: 'missing', via: null } };
+    if (meta === null) return { id, statusResult: { status: 'uncertain', via: null } };
+    return { id, statusResult: resolveWishItem(id, match, resolution, selectedPackages) };
+  });
+
+  const scorableIds = statusRows
+    .filter((row) => row.statusResult.status !== 'uncertain')
+    .map((row) => row.id);
+  const weights = normalizeWeights(scorableIds.length ? scorableIds : []);
+
+  const items = statusRows.map(({ id, statusResult }) => {
     const weight = weights[id] ?? 0;
-    const earned = scoreFromStatus(statusResult.status) * weight;
+    const score = scoreFromStatus(statusResult.status);
+    const earned = score == null ? 0 : score * weight;
     return {
       id,
       label: getFeatureLabel(id),
@@ -130,11 +155,18 @@ export function computeCleverQuote({
       via: statusResult.via,
       weight,
       earned,
+      scorable: statusResult.status !== 'uncertain',
       fulfilled: statusResult.status === 'fulfilled',
     };
   });
 
-  const percent = Math.round(items.reduce((s, i) => s + i.earned, 0) * 100);
+  const scorableItems = items.filter((i) => i.scorable);
+  const totalWeight = scorableItems.reduce((s, i) => s + i.weight, 0);
+  const earnedSum = scorableItems.reduce((s, i) => s + i.earned, 0);
+  const uncertainCount = items.filter((i) => i.status === 'uncertain').length;
+  const percent = totalWeight > 0
+    ? Math.round((earnedSum / totalWeight) * 100)
+    : null;
   const matched = items.filter((i) => i.fulfilled).length;
   const tier = getCleverQuoteTier(percent);
   const upgrade = buildQuoteUpgrade({
@@ -147,16 +179,25 @@ export function computeCleverQuote({
   });
 
   return {
-    percent: Math.min(100, Math.max(0, percent)),
+    percent: percent == null ? null : Math.min(100, Math.max(0, percent)),
     tier,
     matched,
     total: wishIds.length,
-    label: `CleverQuote ${Math.min(100, Math.max(0, percent))} %`,
+    scorableTotal: scorableItems.length,
+    uncertainCount,
+    label: percent == null
+      ? CLEVER_QUOTE_UNCERTAIN_LABEL
+      : `CleverQuote ${Math.min(100, Math.max(0, percent))} %`,
     tierLabel: tier.label,
     dot: tier.dot,
     items,
     upgrade,
-    fulfillmentLabel: `${matched} von ${wishIds.length} Wünschen`,
+    trustNote: uncertainCount > 0
+      ? `${uncertainCount} Wunsch${uncertainCount === 1 ? '' : 'wünsche'} derzeit nicht sicher prüfbar`
+      : null,
+    fulfillmentLabel: percent == null
+      ? `${uncertainCount} nicht sicher prüfbar`
+      : `${matched} von ${scorableItems.length} Wünschen`,
   };
 }
 
@@ -185,7 +226,9 @@ function buildQuoteUpgrade({ vehicle, wishes, items, resolution, selectedPackage
     packageName: pkg.name ?? insight?.packageName,
     missingLabels: missingViaPackage.map((m) => m.label),
     potentialPercentGain: Math.round(potentialGain),
-    targetPercent: Math.min(100, percent + Math.round(potentialGain)),
+    targetPercent: percent != null
+      ? Math.min(100, percent + Math.round(potentialGain))
+      : null,
     impactLabel: insight?.priceImpactLabel,
     bonusLabels: insight?.bonusItems?.map((b) => b.label) ?? [],
   };

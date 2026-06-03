@@ -50,4 +50,10 @@ assert.ok(
 );
 assert.ok(matches[0].kiaMeta, 'Kia-Meta angereichert');
 
+if (matches.length >= 2 && matches[0].cleverQuote && matches[1].cleverQuote) {
+  const p0 = matches[0].cleverQuote.percent ?? 0;
+  const p1 = matches[1].cleverQuote.percent ?? 0;
+  assert.ok(p0 >= p1, 'Matches nach CleverQuote sortiert');
+}
+
 console.log('salesAdvisorService tests OK');

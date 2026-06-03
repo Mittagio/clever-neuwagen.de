@@ -29,6 +29,11 @@
   border-color: #fecaca;
 }
 
+.clever-quote--gray {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 .clever-quote__dot {
   flex: 0 0 auto;
   width: 10px;
@@ -41,6 +46,7 @@
 .clever-quote--yellow .clever-quote__dot { background: #eab308; }
 .clever-quote--orange .clever-quote__dot { background: #f97316; }
 .clever-quote--red .clever-quote__dot { background: #ef4444; }
+.clever-quote--gray .clever-quote__dot { background: #94a3b8; }
 
 .clever-quote__text {
   flex: 1;
@@ -154,6 +160,127 @@
   margin: 0 0 16px;
   color: #64748b;
   font-size: 0.875rem;
+}
+
+.clever-quote-breakdown__trust {
+  margin: -8px 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.8125rem;
+}
+
+.clever-quote-breakdown__group {
+  margin-bottom: 14px;
+}
+
+.clever-quote-breakdown__group-title {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.clever-quote-breakdown__item--package .clever-quote-breakdown__icon {
+  color: #0284c7;
+}
+
+.clever-quote-breakdown__item--uncertain .clever-quote-breakdown__icon {
+  color: #94a3b8;
+}
+
+.cq-why-panel {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cq-why-panel--compact {
+  padding: 8px 10px;
+}
+
+.cq-why-panel__heading {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cq-why-panel__trust {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cq-why-group {
+  margin-bottom: 6px;
+}
+
+.cq-why-group__title {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cq-why-group__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: #334155;
+}
+
+.cq-why-group__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.cq-why-group--ok .cq-why-group__icon { color: #059669; }
+.cq-why-group--pkg .cq-why-group__icon { color: #0284c7; }
+.cq-why-group--no .cq-why-group__icon { color: #ef4444; }
+.cq-why-group--uncertain .cq-why-group__icon { color: #94a3b8; }
+
+.cq-why-group__hint {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.cq-recommend-panel {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.cq-recommend-panel__title {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cq-recommend-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: #166534;
+}
+
+.cq-recommend-panel__list li {
+  margin-bottom: 2px;
 }
 
 .clever-quote-breakdown__list {

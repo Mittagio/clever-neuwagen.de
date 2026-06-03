@@ -5,7 +5,7 @@ import { getPackageAvailability } from '../../data/models/kia/sportageAdapter.js
 function resolveFeatureInTrim(modelKey, trimId, mfgFeatureId, data) {
   const equipment = data.equipment ?? [];
   const eq = equipment.find((e) => e.id === mfgFeatureId);
-  if (!eq) return { status: 'missing' };
+  if (!eq) return { status: 'uncertain' };
 
   if (eq.standardInTrims?.includes(trimId)) {
     return { status: 'standard', equipment: eq };
@@ -54,7 +54,25 @@ function resolveSportagePackages(trimId, engineId, packageIds, data) {
  */
 export function resolveWishConfiguration({ brand, model, trimId, wishFeatureIds = [], engineId }) {
   const mfg = getManufacturerModel(brand, model);
-  if (!mfg) return null;
+  if (!mfg) {
+    return {
+      modelKey: null,
+      trimId: null,
+      trimName: null,
+      engineId: null,
+      uncertain: true,
+      matchedFeatures: [],
+      missingFeatures: [],
+      uncertainFeatures: [...new Set(wishFeatureIds)],
+      requiredPackages: [],
+      requiredAccessories: [],
+      packageIds: [],
+      accessoryIds: [],
+      viaPackageFeatures: [],
+      wishesTotal: wishFeatureIds.length,
+      wishesMatched: 0,
+    };
+  }
 
   const data = mfg.data;
   const trim = getManufacturerTrims(mfg.key).find((t) => t.id === trimId)
@@ -64,6 +82,7 @@ export function resolveWishConfiguration({ brand, model, trimId, wishFeatureIds 
   const resolvedEngineId = engineId ?? mfg.defaultEngineId;
   const matchedFeatures = [];
   const missingFeatures = [];
+  const uncertainFeatures = [];
   const requiredPackages = new Map();
   const requiredAccessories = new Map();
   const viaPackageFeatures = [];
@@ -71,11 +90,13 @@ export function resolveWishConfiguration({ brand, model, trimId, wishFeatureIds 
   for (const wishId of wishFeatureIds) {
     const mfgIds = getManufacturerFeatureIds(wishId);
     if (!mfgIds.length) {
-      missingFeatures.push(wishId);
+      uncertainFeatures.push(wishId);
       continue;
     }
 
     let fulfilled = false;
+    let sawUncertain = false;
+    let sawDefinitiveMissing = false;
     for (const mfgId of mfgIds) {
       const result = resolveFeatureInTrim(mfg.key, trim.id, mfgId, data);
       if (result.status === 'standard') {
@@ -104,8 +125,22 @@ export function resolveWishConfiguration({ brand, model, trimId, wishFeatureIds 
         fulfilled = true;
         break;
       }
+      if (result.status === 'missing') {
+        sawDefinitiveMissing = true;
+      }
+      if (result.status === 'uncertain') {
+        sawUncertain = true;
+      }
     }
-    if (!fulfilled) missingFeatures.push(wishId);
+    if (!fulfilled) {
+      if (sawDefinitiveMissing) {
+        missingFeatures.push(wishId);
+      } else if (sawUncertain) {
+        uncertainFeatures.push(wishId);
+      } else {
+        missingFeatures.push(wishId);
+      }
+    }
   }
 
   const packageIds = [...requiredPackages.keys()];
@@ -127,6 +162,7 @@ export function resolveWishConfiguration({ brand, model, trimId, wishFeatureIds 
     engineId: resolvedEngineId,
     matchedFeatures: [...new Set(matchedFeatures)],
     missingFeatures: [...new Set(missingFeatures)],
+    uncertainFeatures: [...new Set(uncertainFeatures)],
     requiredPackages: [...requiredPackages.values()],
     requiredAccessories: [...requiredAccessories.values()],
     packageIds: packageValidation.packages.map((p) => p.id),
