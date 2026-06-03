@@ -1,6 +1,7 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import { formatCurrency, getAvailabilityMeta } from '../../logic/marketplaceService.js';
 import { formatDealerDistanceLine } from '../../logic/localOfferPresentation.js';
+import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
 import './discovery-results.css';
 
 function formatDeliveryShort(vehicle, match) {
@@ -17,7 +18,7 @@ export default function DiscoveryHeroCard({
   if (!match) return null;
 
   const v = match.vehicle;
-  const title = `${match.model}${match.bestTrim ? ` ${match.bestTrim}` : ''}`;
+  const title = match.model ?? `${v.brand} ${v.model}`;
   const rate = match.bestOffer.monthlyRate ?? v.monthlyRate;
   const availability = getAvailabilityMeta(v.availability);
   const delivery = formatDeliveryShort(v, match);
@@ -43,6 +44,11 @@ export default function DiscoveryHeroCard({
       </div>
       <div className="disc-hero__body">
         <h2 className="disc-hero__title">{title}</h2>
+        {match.cleverQuote && (
+          <div className="disc-hero__clever-quote">
+            <CleverQuoteBadge cleverQuote={match.cleverQuote} size="md" />
+          </div>
+        )}
         <ul className="disc-hero__facts">
           <li className="disc-hero__fact--dealer">{dealerLine}</li>
           <li>{availability.label}</li>

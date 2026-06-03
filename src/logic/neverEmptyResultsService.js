@@ -166,17 +166,21 @@ function buildStatus(state, matchCount, localized) {
   };
 }
 
+import { buildCleverQuoteResultsHeadline, hasCleverQuoteWishes } from '../services/cleverQuote/cleverQuoteService.js';
+
 function buildHeadline(state, filters, wishes, topMatch) {
   const model = wishes.model ?? filters.model ?? topMatch?.vehicle?.model;
+  const cleverHeadline = hasCleverQuoteWishes(wishes) ? buildCleverQuoteResultsHeadline() : null;
 
   if (state === RESULT_STATES.EXACT) {
+    if (cleverHeadline && !model) return cleverHeadline;
     if (model) {
       return {
         title: `Wir haben Ihren ${model} gefunden`,
-        subtitle: null,
+        subtitle: cleverHeadline?.subtitle ?? null,
       };
     }
-    return {
+    return cleverHeadline ?? {
       title: 'Ihre passenden Angebote',
       subtitle: 'Wir haben passende Fahrzeuge für Ihre Suche gefunden',
     };

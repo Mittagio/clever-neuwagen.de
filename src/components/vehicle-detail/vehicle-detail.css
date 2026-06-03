@@ -1698,3 +1698,462 @@
   font-weight: 600;
   color: #0b2559;
 }
+
+/* Sprint: Detail-State Komponenten */
+.vd-wish__title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-wish__group {
+  margin-top: 14px;
+}
+
+.vd-wish__group-label {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.vd-wish__more {
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.vd-wish-magic {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e8edf2;
+  background: #f8fafb;
+}
+
+.vd-wish-magic__kicker {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vd-wish-magic__line,
+.vd-wish-magic__price,
+.vd-wish-magic__delta {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.vd-wish-magic__price {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-pkg-card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.vd-pkg-card__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.vd-pkg-card__title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.vd-pkg-card__section-label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.vd-pkg-card__impact {
+  margin: 10px 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-trim-compare {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #f0f9ff;
+}
+
+.vd-trim-compare__title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.vd-trim-compare__lead {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 0.9375rem;
+}
+
+.vd-trim-compare__cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.vd-trim-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.vd-trim-card--recommended {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.15);
+}
+
+.vd-trim-card__label {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.vd-trim-card__name {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.vd-trim-card__price {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* Sprint 29 – Digitaler Verkaufsberater */
+.vd-advisor-steps {
+  margin: 20px 0 8px;
+}
+
+.vd-advisor-steps__title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.vd-advisor-steps__lead {
+  margin: 0 0 14px;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.vd-advisor-steps__grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .vd-advisor-steps__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.vd-advisor-step {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e8edf2;
+  background: #fff;
+}
+
+.vd-advisor-step.is-active {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.12);
+}
+
+.vd-advisor-step__emoji {
+  font-size: 1.25rem;
+}
+
+.vd-advisor-step__title {
+  margin: 8px 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.vd-advisor-step__subtitle {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vd-advisor-step__detail {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.vd-wish__sparkle {
+  margin-right: 4px;
+}
+
+.vd-wish__checklist {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.vd-wish-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+}
+
+.vd-wish-check--standard .vd-wish-check__mark {
+  color: #059669;
+}
+
+.vd-wish-check__badge {
+  margin-left: auto;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #059669;
+}
+
+.vd-wish-check__remove {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.vd-clever-analysis {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e8edf2;
+  background: linear-gradient(180deg, #f8fafb 0%, #fff 100%);
+}
+
+.vd-clever-analysis__kicker {
+  margin: 0 0 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.vd-clever-analysis__score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.vd-clever-analysis__score {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.vd-clever-analysis__ring {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 3px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.vd-clever-analysis__ring.is-complete {
+  border-color: #059669;
+  color: #059669;
+  background: #f0fdf4;
+}
+
+.vd-clever-analysis__lead {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 0.875rem;
+}
+
+.vd-clever-analysis__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.vd-clever-analysis__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.vd-clever-analysis__item--standard .vd-clever-analysis__check {
+  color: #059669;
+}
+
+.vd-clever-analysis__status {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.vd-clever-analysis__item--standard .vd-clever-analysis__status {
+  color: #059669;
+}
+
+.vd-pkg-card__wish {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.vd-pkg-card__explain {
+  margin: 0 0 4px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.vd-pkg-card__bonus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vd-pkg-card__bonus-list li {
+  margin-bottom: 4px;
+  color: #334155;
+}
+
+.vd-pkg-card__price-compare {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 1rem;
+}
+
+.vd-pkg-card__arrow {
+  color: #94a3b8;
+}
+
+.vd-trim-compare__kicker {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.vd-trim-compare__savings {
+  margin: 0 0 12px;
+  color: #059669;
+  font-weight: 600;
+}
+
+.vd-trim-compare__fulfilled ul {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.vd-trim-compare__fulfilled li {
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+}
+
+.vd-wish-alternatives {
+  margin-top: 20px;
+}
+
+.vd-wish-alternatives__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.vd-wish-alternatives__sub {
+  margin: 0 0 12px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.vd-wish-alternatives__grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .vd-wish-alternatives__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.vd-wish-alt-card {
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.vd-wish-alt-card__image {
+  min-height: 120px;
+}
+
+.vd-wish-alt-card__body {
+  padding: 12px;
+}
+
+.vd-wish-alt-card__fulfillment {
+  margin: 4px 0;
+  font-size: 0.8125rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.vd-wish-alt-card__price {
+  margin: 0 0 10px;
+  font-weight: 700;
+}

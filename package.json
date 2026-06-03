@@ -21,7 +21,11 @@
     "test:search-conflict": "node src/services/search/searchConflictHint.test.js",
     "test:brand-exclusion": "node src/logic/brandExclusionConflictView.test.js",
     "test:vehicle-detail-pricing": "node src/logic/vehicleDetailPricing.test.js",
+    "test:pricing-resolver": "node src/services/pricing/pricingResolver.test.js",
     "test:wish-magic": "node src/services/configurator/wishMagicService.test.js",
+    "test:clever-quote": "node src/services/cleverQuote/cleverQuoteService.test.js",
+    "test:smart-sales": "node src/services/sales/salesAdvisorService.test.js",
+    "test:conversation": "node src/services/sales/conversationMode.test.js",
     "preview": "vite preview"
   },
   "engines": {

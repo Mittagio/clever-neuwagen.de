@@ -1,0 +1,285 @@
+.clever-quote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafb;
+  border: 1px solid #e8edf2;
+}
+
+.clever-quote--green {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.clever-quote--yellow {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.clever-quote--orange {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.clever-quote--red {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.clever-quote__dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.clever-quote--yellow .clever-quote__dot { background: #eab308; }
+.clever-quote--orange .clever-quote__dot { background: #f97316; }
+.clever-quote--red .clever-quote__dot { background: #ef4444; }
+
+.clever-quote__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clever-quote__brand {
+  font-size: 0.9375rem;
+  color: #0f172a;
+}
+
+.clever-quote__tier {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.clever-quote__fulfillment {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.clever-quote__why {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.clever-quote--sm {
+  padding: 8px 10px;
+}
+
+.clever-quote--sm .clever-quote__brand {
+  font-size: 0.8125rem;
+}
+
+.clever-quote--lg {
+  padding: 16px;
+}
+
+.clever-quote--lg .clever-quote__brand {
+  font-size: 1.125rem;
+}
+
+.clever-quote-breakdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .clever-quote-breakdown-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.clever-quote-breakdown {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+}
+
+@media (min-width: 640px) {
+  .clever-quote-breakdown {
+    border-radius: 20px;
+  }
+}
+
+.clever-quote-breakdown__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.clever-quote-breakdown__head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.clever-quote-breakdown__close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.clever-quote-breakdown__lead {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.clever-quote-breakdown__list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.clever-quote-breakdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+}
+
+.clever-quote-breakdown__item--fulfilled .clever-quote-breakdown__icon {
+  color: #059669;
+}
+
+.clever-quote-breakdown__item--missing .clever-quote-breakdown__icon {
+  color: #ef4444;
+}
+
+.clever-quote-breakdown__status {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.clever-quote-breakdown__upgrade {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.clever-quote-breakdown__upgrade-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.clever-quote-breakdown__upgrade-pkg {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.clever-quote-breakdown__bonus {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.clever-quote-compare__title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+.clever-quote-compare__grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .clever-quote-compare__grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+.clever-quote-compare-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.clever-quote-compare-card h3 {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+
+.clever-quote-compare-card__price {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.results-clever-quote-line {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.results-clever-quote-line span {
+  font-weight: 400;
+  color: #64748b;
+}
+
+.disc-hero__clever-quote {
+  margin-bottom: 10px;
+}
+
+.local-offer-card__clever-quote {
+  margin-bottom: 8px;
+}
+
+.vd-hero__clever-quote {
+  margin: 8px 0 12px;
+}
+
+.clever-quote-pkg-delta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.clever-quote-pkg-delta__arrow {
+  color: #94a3b8;
+}

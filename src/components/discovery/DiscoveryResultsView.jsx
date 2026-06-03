@@ -18,6 +18,7 @@ import { pickDiscoveryAlternatives } from '../../logic/discoveryResultsPresentat
 import { hasLocalizedSearch } from '../../logic/oneSearchService.js';
 import { getSimilarVehiclesNearby } from '../../services/pricing/dealerOfferPricing.js';
 import { matchVehiclesToWish } from '../../services/wish/wishMatchEngine.js';
+import { hasCleverQuoteWishes } from '../../services/cleverQuote/cleverQuoteService.js';
 import { RESULT_STATES } from '../../logic/neverEmptyResultsService.js';
 import { isAllBrandsExcluded } from '../../logic/brandResultsFilter.js';
 import '../search/locationPromptBanner.css';
@@ -135,7 +136,7 @@ export default function DiscoveryResultsView({
           visibleCount={offerStats?.visible ?? 0}
         />
 
-        <ResultsOfferCount stats={offerStats} />
+        <ResultsOfferCount stats={offerStats} cleverQuoteMode={hasCleverQuoteWishes(wishes)} />
 
         {allBrandsHidden && (
           <AllBrandsHiddenCard

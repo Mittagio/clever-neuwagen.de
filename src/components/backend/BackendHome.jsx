@@ -44,6 +44,8 @@ const TODAY_TILES = [
 ];
 
 const QUICK_ACTIONS = [
+  { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Sprache & Wünsche – ein Flow', primary: true },
+  { label: 'Verkaufsberater', icon: '🧠', href: '/sales/smart', desc: 'Smart Sales – Bedarfsanalyse' },
   { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kunde erfassen' },
   { label: 'Neues Angebot', icon: '📄', href: '/backend/angebote', state: { openCreate: true }, desc: 'Angebot erstellen' },
   { label: 'Fahrzeug veröffentlichen', icon: '📢', href: '/backend/publishing', desc: 'Marketing & Inserate' },

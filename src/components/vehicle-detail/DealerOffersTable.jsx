@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatCurrency, getAvailabilityPlainLabel } from '../../logic/marketplaceService.js';
+import { normalizePaymentModeInput } from '../../services/pricing/pricingResolver.js';
 import './vehicle-detail.css';
 
 export default function DealerOffersTable({
@@ -20,8 +21,9 @@ export default function DealerOffersTable({
   if (embedded && !compareOpen) return null;
 
   function rateForOffer(offer) {
-    if (payment === 'cash') return formatCurrency(offer.cashPrice);
-    if (payment === 'finance') {
+    const mode = normalizePaymentModeInput(payment);
+    if (mode === 'cash') return formatCurrency(offer.cashPrice);
+    if (mode === 'finance') {
       return `${formatCurrency(offer.financeRate ?? offer.monthlyRate)}/Monat`;
     }
     return `${formatCurrency(offer.monthlyRate)}/Monat`;

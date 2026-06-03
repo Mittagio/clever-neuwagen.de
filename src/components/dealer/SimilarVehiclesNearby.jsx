@@ -2,9 +2,19 @@ import { useNavigate } from 'react-router-dom';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import { formatCurrency } from '../../logic/marketplaceService.js';
 import { getVehicleOfferPath } from '../../logic/oneSearchService.js';
+import { normalizePaymentModeInput } from '../../services/pricing/pricingResolver.js';
 import './dealer-offer.css';
 
-export default function SimilarVehiclesNearby({ vehicles = [], currentSlug }) {
+function priceLabelForVehicle(v, paymentMode) {
+  const mode = normalizePaymentModeInput(paymentMode);
+  if (mode === 'cash') return formatCurrency(v.cashPrice);
+  if (mode === 'finance') {
+    return `${formatCurrency(v.financeRate ?? Math.round(v.monthlyRate * 1.08))}/Monat`;
+  }
+  return `${formatCurrency(v.monthlyRate)}/Monat`;
+}
+
+export default function SimilarVehiclesNearby({ vehicles = [], currentSlug, paymentMode = 'leasing' }) {
   const navigate = useNavigate();
   const items = vehicles.filter((v) => v.slug !== currentSlug);
 
@@ -21,7 +31,7 @@ export default function SimilarVehiclesNearby({ vehicles = [], currentSlug }) {
             <div className="similar-nearby-card__body">
               <h3>{v.title}</h3>
               <p className="similar-nearby-card__meta">
-                {v.distanceKm} km · {formatCurrency(v.monthlyRate)}/Monat
+                {v.distanceKm} km · {priceLabelForVehicle(v, paymentMode)}
               </p>
               <button
                 type="button"

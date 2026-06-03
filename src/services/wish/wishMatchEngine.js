@@ -1,4 +1,5 @@
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
+import { computeCleverQuote, hasCleverQuoteWishes, sortByCleverQuote } from '../cleverQuote/cleverQuoteService.js';
 import {
   getModelTrims,
   getTrimConfig,
@@ -243,12 +244,20 @@ export function scoreVehicleAgainstWish(vehicle, wishes, displayRate) {
 }
 
 export function matchVehiclesToWish({ wishes, vehicles, getDisplayRate }) {
-  return vehicles
-    .map((vehicle) => {
-      const displayRate = getDisplayRate?.(vehicle) ?? vehicle.displayRate ?? vehicle.monthlyRate;
-      return scoreVehicleAgainstWish(vehicle, wishes, displayRate);
-    })
-    .sort((a, b) => b.score - a.score);
+  const useCleverQuote = hasCleverQuoteWishes(wishes);
+  const matches = vehicles.map((vehicle) => {
+    const displayRate = getDisplayRate?.(vehicle) ?? vehicle.displayRate ?? vehicle.monthlyRate;
+    const match = scoreVehicleAgainstWish(vehicle, wishes, displayRate);
+    if (!useCleverQuote) return match;
+    const cleverQuote = computeCleverQuote({
+      vehicle,
+      wishes,
+      match,
+      trimId: match.bestTrimId,
+    });
+    return { ...match, cleverQuote };
+  });
+  return useCleverQuote ? sortByCleverQuote(matches) : matches.sort((a, b) => b.score - a.score);
 }
 
 export function matchTrimsToWish(modelKey, wishes) {

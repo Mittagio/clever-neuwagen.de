@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import LocalVehicleOfferCard from '../search/LocalVehicleOfferCard.jsx';
-import WishMatchScore from './WishMatchScore.jsx';
+import CleverQuoteBadge, { CleverQuoteBreakdown } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { WishFulfillmentList, WishMissingHint } from './WishFulfillmentList.jsx';
 import './wish.css';
 import '../search/localVehicleOfferCard.css';
@@ -19,10 +20,11 @@ function toOfferVehicle(match) {
 }
 
 export function WishTopMatchCard({ match, onViewOffer, onAdjustWishes, onCompare }) {
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   if (!match) return null;
   const v = match.vehicle;
   const offerVehicle = toOfferVehicle(match);
-  const title = `${match.model}${match.bestTrim && match.bestTrim !== v.title ? ` ${match.bestTrim}` : ''}`;
+  const title = match.model ?? `${v.brand} ${v.model}`;
 
   return (
     <div className="wish-top-card-wrap">
@@ -35,13 +37,25 @@ export function WishTopMatchCard({ match, onViewOffer, onAdjustWishes, onCompare
         onViewOffer={() => onViewOffer?.(v)}
         className="wish-top-card"
       >
-        <WishMatchScore matched={match.wishesMatched} total={match.wishesTotal} score={match.score} />
-        <WishFulfillmentList
-          matched={match.matchedFeatures}
-          missing={match.missingFeatures}
-          viaPackage={match.availableWithPackage}
-        />
+        {match.cleverQuote ? (
+          <CleverQuoteBadge
+            cleverQuote={match.cleverQuote}
+            size="lg"
+            onWhyClick={() => setBreakdownOpen(true)}
+          />
+        ) : (
+          <WishFulfillmentList
+            matched={match.matchedFeatures}
+            missing={match.missingFeatures}
+            viaPackage={match.availableWithPackage}
+          />
+        )}
       </LocalVehicleOfferCard>
+      <CleverQuoteBreakdown
+        cleverQuote={match.cleverQuote}
+        open={breakdownOpen}
+        onClose={() => setBreakdownOpen(false)}
+      />
       <div className="wish-top-card__secondary-actions">
         <button type="button" className="wish-top-card__secondary" onClick={onAdjustWishes}>
           Wünsche anpassen
@@ -55,17 +69,37 @@ export function WishTopMatchCard({ match, onViewOffer, onAdjustWishes, onCompare
 }
 
 export function WishVehicleGridCard({ match, onViewOffer }) {
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const offerVehicle = toOfferVehicle(match);
+  const title = match.model ?? offerVehicle.title;
 
   return (
-    <LocalVehicleOfferCard
-      vehicle={offerVehicle}
-      showImage
-      onViewOffer={() => onViewOffer?.(match.vehicle)}
-      className="wish-grid-card"
-    >
-      <WishMatchScore matched={match.wishesMatched} total={match.wishesTotal} size="sm" />
-      <WishMissingHint missing={match.missingFeatures.slice(0, 2)} />
-    </LocalVehicleOfferCard>
+    <>
+      <LocalVehicleOfferCard
+        vehicle={offerVehicle}
+        title={title}
+        showImage
+        onViewOffer={() => onViewOffer?.(match.vehicle)}
+        className="wish-grid-card"
+      >
+        {match.cleverQuote ? (
+          <div className="local-offer-card__clever-quote">
+            <CleverQuoteBadge
+              cleverQuote={match.cleverQuote}
+              size="sm"
+              showTier={false}
+              onWhyClick={() => setBreakdownOpen(true)}
+            />
+          </div>
+        ) : (
+          <WishMissingHint missing={match.missingFeatures.slice(0, 2)} />
+        )}
+      </LocalVehicleOfferCard>
+      <CleverQuoteBreakdown
+        cleverQuote={match.cleverQuote}
+        open={breakdownOpen}
+        onClose={() => setBreakdownOpen(false)}
+      />
+    </>
   );
 }

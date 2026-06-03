@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
-import WishCompareTable from '../components/wish/WishCompareTable.jsx';
+import { CleverQuoteCompareCards } from '../components/cleverQuote/CleverQuoteBadge.jsx';
 import { WishSummaryBar } from '../components/wish/WishChips.jsx';
 import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import { filterMarketplaceVehicles } from '../logic/marketplaceService.js';
@@ -12,6 +12,7 @@ import {
 } from '../logic/oneSearchService.js';
 import { parseCustomerWish, wishesToSummaryChips } from '../services/wish/wishParser.js';
 import { matchVehiclesToWish } from '../services/wish/wishMatchEngine.js';
+import { hasCleverQuoteWishes } from '../services/cleverQuote/cleverQuoteService.js';
 import { loadCompareSlugs } from '../services/customerCompareService.js';
 import '../components/wish/wish.css';
 
@@ -44,6 +45,8 @@ export default function ComparePage() {
     [wishes],
   );
 
+  const paymentMode = filters.payment ?? 'leasing';
+
   const matches = useMemo(() => {
     const vehicles = MARKETPLACE_VEHICLES.filter((v) => slugs.includes(v.slug));
     const filtered = filterMarketplaceVehicles(vehicles, filters).map((vehicle) => ({
@@ -55,14 +58,10 @@ export default function ComparePage() {
       vehicles: filtered,
       getDisplayRate: (v) => v.displayRate,
     });
-    return slugs
-      .map((slug) => ranked.find((m) => m.slug === slug))
-      .filter(Boolean);
+    return ranked.filter((m) => slugs.includes(m.slug));
   }, [slugs, filters, wishes]);
 
-  const wishFeatureIds = wishes.features.filter(
-    (f) => !['family_suv', 'elektro', 'benzin'].includes(f),
-  );
+  const useCleverQuote = hasCleverQuoteWishes(wishes);
 
   return (
     <PageShell>
@@ -71,8 +70,12 @@ export default function ComparePage() {
           <Link to={buildFahrzeugeSearchUrl(filters)} className="wish-compare-page__back">
             ← Zurück zu den Ergebnissen
           </Link>
-          <h1>Wunschvergleich</h1>
-          <p>Vergleichen Sie Fahrzeuge nach Ihren Wünschen – nicht nur nach technischen Daten.</p>
+          <h1>{useCleverQuote ? 'Welches Fahrzeug passt am besten?' : 'Wunschvergleich'}</h1>
+          <p>
+            {useCleverQuote
+              ? 'Vergleichen Sie Fahrzeuge nach CleverQuote™ – Passung vor Ausstattungscodes.'
+              : 'Vergleichen Sie Fahrzeuge nach Ihren Wünschen – nicht nur nach technischen Daten.'}
+          </p>
         </header>
 
         {summaryChips.length > 0 && (
@@ -80,7 +83,7 @@ export default function ComparePage() {
         )}
 
         {matches.length >= 2 ? (
-          <WishCompareTable matches={matches} wishFeatureIds={wishFeatureIds} />
+          <CleverQuoteCompareCards matches={matches} paymentMode={paymentMode} />
         ) : (
           <div className="wish-compare-page__empty">
             <p>Wählen Sie mindestens zwei Fahrzeuge auf der Ergebnisseite aus.</p>

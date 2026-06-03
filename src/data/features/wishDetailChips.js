@@ -1,6 +1,29 @@
 /**
  * Quick-Wunsch-Chips auf der Fahrzeugdetailseite (modellspezifisch)
  */
+export const WISH_BUILDER_GROUPS = [
+  {
+    id: 'comfort',
+    label: 'Komfort',
+    featureIds: ['heated_seats', 'steering_heat', 'power_tailgate', 'ventilated_seats', 'panorama_roof'],
+  },
+  {
+    id: 'parking',
+    label: 'Parken & Sicherheit',
+    featureIds: ['camera_360', 'rear_camera', 'parking_rear', 'parking_front', 'blind_spot'],
+  },
+  {
+    id: 'electro',
+    label: 'Elektro & Alltag',
+    featureIds: ['heat_pump', 'fast_charge', 'range_400'],
+  },
+  {
+    id: 'extras',
+    label: 'Extras',
+    featureIds: ['towbar', 'harman_kardon', 'head_up_display'],
+  },
+];
+
 export const EV3_DETAIL_WISH_CHIPS = [
   'heated_seats',
   'rear_camera',

@@ -117,7 +117,10 @@ export default function SalesPage() {
           <p className="sales-header-kicker">Verkäufermodus</p>
           <h1 className="sales-header-title">{conditions.dealerName}</h1>
         </div>
-        <Link to="/assistant" className="sales-header-timer sales-header-link">
+        <Link to="/sales/smart" className="sales-header-link">
+          Smart Sales
+        </Link>
+        <Link to="/assistant" className="sales-header-link sales-header-link--secondary">
           Assistent
         </Link>
         <Link to="/offers" className="sales-header-link sales-header-link--secondary">

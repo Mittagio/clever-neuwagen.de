@@ -6,7 +6,9 @@ import LandingPage from './pages/LandingPage';
 import DealerPage from './pages/DealerPage';
 import BackendPage from './pages/BackendPage';
 import AdminPage from './pages/AdminPage';
+import SmartSalesPage from './pages/SmartSalesPage';
 import SalesPage from './pages/SalesPage';
+import SalesCompareSharePage from './pages/SalesCompareSharePage';
 import AccountPage from './pages/sprint7/AccountPage.jsx';
 import MeinBereichPage from './pages/MeinBereichPage.jsx';
 import MeinBereichOfferPage from './pages/MeinBereichOfferPage.jsx';
@@ -128,6 +130,9 @@ export default function AppRouter() {
         <Route path="/selbstauskunft" element={<SelbstauskunftPage />} />
         <Route path="/admin/compliance" element={<AdminCompliancePage />} />
         <Route path="/sales" element={<SalesPage />} />
+        <Route path="/sales/smart" element={<SmartSalesPage />} />
+        <Route path="/gespraech" element={<SmartSalesPage />} />
+        <Route path="/vergleich/:token" element={<SalesCompareSharePage />} />
         <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/dealer-ai" element={<DealerAIPage />} />
         <Route path="/empfehlung" element={<RecommendationPage />} />

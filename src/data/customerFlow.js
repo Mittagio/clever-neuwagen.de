@@ -14,6 +14,8 @@ export const DEALER_ROUTES = {
   salesOpportunities: '/backend/verkaufschancen',
   offers: '/backend/angebote',
   vehicles: '/backend/fahrzeuge',
+  smartSales: '/sales/smart',
+  conversation: '/gespraech',
 };
 
 export const CUSTOMER_LABELS = {
@@ -35,6 +37,7 @@ export function isCustomerPublicPath(pathname = '') {
   if (pathname.startsWith('/fahrzeug')) return true;
   if (pathname.startsWith('/mein-bereich') || pathname.startsWith('/login')) return true;
   if (pathname === '/' || pathname.startsWith('/fahrzeuge') || pathname.startsWith('/berater')) return true;
+  if (pathname.startsWith('/vergleich')) return true;
   return false;
 }
 
