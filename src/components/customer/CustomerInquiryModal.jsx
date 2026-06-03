@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './CustomerInquiryModal.css';
 
-export default function CustomerInquiryModal({ title, onClose, onSubmit }) {
+export default function CustomerInquiryModal({ title, inquirySummary, onClose, onSubmit }) {
   const [contact, setContact] = useState({ name: '', email: '', phone: '', message: '' });
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +25,17 @@ export default function CustomerInquiryModal({ title, onClose, onSubmit }) {
         {sent ? (
           <p className="cust-inq-success">✓ Ihre Anfrage wurde gesendet. Der Händler meldet sich bei Ihnen.</p>
         ) : (
+          <>
+            {inquirySummary?.lines?.length > 0 && (
+              <div className="cust-inq-summary" aria-label="Anfrage-Zusammenfassung">
+                <p className="cust-inq-summary__title">Sie fragen an:</p>
+                <ul className="cust-inq-summary__list">
+                  {inquirySummary.lines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           <form onSubmit={handleSubmit} className="cust-inq-form">
             <label>
               Name *
@@ -62,8 +73,9 @@ export default function CustomerInquiryModal({ title, onClose, onSubmit }) {
               />
             </label>
             {error && <p className="cust-inq-error" role="alert">{error}</p>}
-            <button type="submit" className="cust-inq-btn cust-inq-btn--primary">Absenden</button>
+            <button type="submit" className="cust-inq-btn cust-inq-btn--primary">Anfrage absenden</button>
           </form>
+          </>
         )}
         <button type="button" className="cust-inq-ghost" onClick={onClose}>Schließen</button>
       </div>

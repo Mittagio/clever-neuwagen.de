@@ -1,14 +1,25 @@
 import { parseLandingQuery, parseAdvisorUrlProfile } from '../services/landingAdvisorBridge.js';
+import { parseSearchIntent } from '../services/search/searchIntentParser.js';
+import { intentToMarketplaceFilters } from '../services/search/intentToFilters.js';
+import { mergeUrlFiltersWithPipeline } from '../services/search/searchPipeline.js';
 import {
   DEFAULT_LOCATION_RADIUS_KM,
   getLocationDisplayLabel,
   parseAdvisorLocationFromParams,
 } from './advisorLocation.js';
 import { buildOfferPath } from './offerService.js';
+import { scoreLocalOffer } from './localOfferPresentation.js';
 
-export const TERM_CHIP_OPTIONS = [36, 48, 60];
-export const MILEAGE_CHIP_OPTIONS = [10000, 15000, 20000, 25000, 30000];
-export const REFINE_MILEAGE_OPTIONS = [10000, 15000, 20000, 25000];
+import {
+  buildTermMonthValues,
+  buildMileageKmValues,
+} from '../services/search/leasingRangeOptions.js';
+import { parseExcludedBrandsParam, parseExcludedModelsParam } from './brandResultsFilter.js';
+import { normalizeCustomerTermMonths } from '../services/search/leasingRangeOptions.js';
+
+export const TERM_CHIP_OPTIONS = buildTermMonthValues();
+export const MILEAGE_CHIP_OPTIONS = buildMileageKmValues();
+export const REFINE_MILEAGE_OPTIONS = buildMileageKmValues();
 export const RADIUS_CHIP_OPTIONS = [
   { value: 25, label: '25 km' },
   { value: 50, label: '50 km' },
@@ -21,13 +32,13 @@ export const REFINE_RADIUS_OPTIONS = [
   { value: 100, label: '100 km' },
 ];
 export const SORT_CHIP_OPTIONS = [
-  { id: 'best', label: 'Beste Angebote' },
+  { id: 'best', label: 'Empfehlung in der Nähe' },
   { id: 'nearest', label: 'Nächste Händler' },
   { id: 'available', label: 'Sofort verfügbar' },
-  { id: 'discount', label: 'Höchster Rabatt' },
+  { id: 'discount', label: 'Rabatt (optional)' },
 ];
 export const REFINE_SORT_OPTIONS = [
-  { id: 'best', label: 'Beste Angebote' },
+  { id: 'best', label: 'Empfehlung in der Nähe' },
   { id: 'nearest', label: 'Nächste Händler' },
   { id: 'available', label: 'Sofort verfügbar' },
 ];
@@ -70,12 +81,18 @@ function parseModelTrim(text) {
 }
 
 export function parseNaturalLanguageSearch(text) {
+  const intent = parseSearchIntent(text);
+  const filters = intentToMarketplaceFilters(intent);
   const parsed = parseLandingQuery(text);
-  const { model, trim } = parseModelTrim(text);
   return {
     ...parsed,
-    model: model || undefined,
-    trim: trim || undefined,
+    intent,
+    filters,
+    model: filters.model || undefined,
+    trim: filters.trim || undefined,
+    location: filters.city || filters.plz
+      ? { city: filters.city, plz: filters.plz, radiusKm: filters.radius }
+      : parsed.location,
   };
 }
 
@@ -96,19 +113,29 @@ export function filtersFromSearchParams(searchParams) {
     radius: radius ? Number(radius) : (location ? DEFAULT_LOCATION_RADIUS_KM : null),
     maxRate: maxRate ? Number(maxRate) : null,
     maxPrice: maxPrice ? Number(maxPrice) : null,
-    type: searchParams.get('type') ?? searchParams.get('fuel') ?? 'all',
+    type: searchParams.get('type') ?? 'all',
     fuel: searchParams.get('fuel') ?? '',
     payment: searchParams.get('payment') ?? '',
     model: searchParams.get('model') ?? '',
     trim: searchParams.get('trim') ?? '',
     household: searchParams.get('household') ?? '',
-    termMonths: termMonths ? Number(termMonths) : 48,
+    termMonths: normalizeCustomerTermMonths(termMonths ? Number(termMonths) : 48),
     mileagePerYear: mileagePerYear ? Number(mileagePerYear) : 10000,
     sort: searchParams.get('sort') ?? 'best',
     seo: searchParams.get('seo') ?? '',
     brand: searchParams.get('brand') ?? '',
     availability: searchParams.get('availability') ?? '',
     features: (searchParams.get('features') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+    rangeKmMin: searchParams.get('rangeKm') ? Number(searchParams.get('rangeKm')) : null,
+    towCapacityKg: searchParams.get('towKg') ? Number(searchParams.get('towKg')) : null,
+    transmission: searchParams.get('transmission') ?? '',
+    intentStructured: searchParams.get('structured') === '1',
+    powerPsTarget: searchParams.get('powerPs') ? Number(searchParams.get('powerPs')) : null,
+    powerPsMin: searchParams.get('powerPsMin') ? Number(searchParams.get('powerPsMin')) : null,
+    powerPsMax: searchParams.get('powerPsMax') ? Number(searchParams.get('powerPsMax')) : null,
+    modelExplicit: Boolean(searchParams.get('model')?.trim()),
+    excludedBrands: parseExcludedBrandsParam(searchParams.get('excludeBrand')),
+    excludedModels: parseExcludedModelsParam(searchParams.get('excludeModel')),
   };
 }
 
@@ -137,31 +164,37 @@ export function buildFahrzeugeSearchUrl(filters) {
   if (filters.brand) params.set('brand', filters.brand);
   if (filters.availability) params.set('availability', filters.availability);
   if (filters.features?.length) params.set('features', filters.features.join(','));
+  if (filters.rangeKmMin != null) params.set('rangeKm', String(filters.rangeKmMin));
+  if (filters.towCapacityKg != null) params.set('towKg', String(filters.towCapacityKg));
+  if (filters.transmission) params.set('transmission', filters.transmission);
+  if (filters.intentStructured) params.set('structured', '1');
+  if (filters.powerPsTarget != null) {
+    params.set('powerPs', String(filters.powerPsTarget));
+    if (filters.powerPsMin != null) params.set('powerPsMin', String(filters.powerPsMin));
+    if (filters.powerPsMax != null) params.set('powerPsMax', String(filters.powerPsMax));
+  }
+  if (filters.excludedBrands?.length) {
+    params.set('excludeBrand', filters.excludedBrands.join(','));
+  }
+  if (filters.excludedModels?.length) {
+    params.set('excludeModel', filters.excludedModels.join(','));
+  }
   const qs = params.toString();
   return `/fahrzeuge${qs ? `?${qs}` : ''}`;
 }
 
 export function buildFahrzeugeUrlFromText(text) {
-  const parsed = parseNaturalLanguageSearch(text);
-  const filters = {
-    query: parsed.query,
-    maxRate: parsed.profile.desiredRate ?? null,
-    maxPrice: parsed.profile.maxPrice ?? null,
-    type: parsed.profile.bodyType ?? parsed.profile.fuelPreference ?? 'all',
-    fuel: parsed.profile.fuelPreference ?? '',
-    payment: parsed.profile.paymentType ?? '',
-    model: parsed.model ?? '',
-    trim: parsed.trim ?? '',
-    city: parsed.location?.city ?? '',
-    plz: parsed.location?.plz ?? '',
-    radius: parsed.location?.radiusKm ?? (parsed.location ? DEFAULT_LOCATION_RADIUS_KM : null),
-    household: parsed.profile.household ?? inferHouseholdFromQuery(text),
-    termMonths: 48,
-    mileagePerYear: mileageFromProfile(parsed.profile.mileage),
-    sort: 'best',
-    locSkip: false,
-  };
+  const intent = parseSearchIntent(text);
+  const filters = intentToMarketplaceFilters(intent, {
+    household: inferHouseholdFromQuery(text),
+  });
   return buildFahrzeugeSearchUrl(filters);
+}
+
+/** Intent aus URL-Filtern + Query rehydrieren (URL-Parameter gewinnen) */
+export function resolveFiltersWithIntent(urlFilters) {
+  if (!urlFilters.query?.trim()) return urlFilters;
+  return mergeUrlFiltersWithPipeline(urlFilters);
 }
 
 function mileageFromProfile(mileageId) {
@@ -343,11 +376,7 @@ export function sortMarketplaceVehicles(vehicles, sortId) {
   if (sortId === 'discount') {
     return list.sort((a, b) => b.discountPercent - a.discountPercent);
   }
-  return list.sort((a, b) => {
-    const scoreA = a.discountPercent * 2 - a.distanceKm * 0.05 - a.monthlyRate * 0.01;
-    const scoreB = b.discountPercent * 2 - b.distanceKm * 0.05 - b.monthlyRate * 0.01;
-    return scoreB - scoreA;
-  });
+  return list.sort((a, b) => scoreLocalOffer(b) - scoreLocalOffer(a));
 }
 
 export function adjustRateForTerm(monthlyRate, termMonths = 48) {

@@ -78,6 +78,12 @@
   color: #475569;
 }
 
+.recommended-dealer__fact--muted {
+  font-size: 0.78rem !important;
+  font-weight: 400 !important;
+  color: #94a3b8 !important;
+}
+
 .recommended-dealer__fact--rate {
   background: #ecfdf5;
   color: #047857;

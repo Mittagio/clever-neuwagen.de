@@ -26,6 +26,17 @@
   color: #0f172a;
 }
 
+.config-wish-panel__usp {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .config-wish-panel__from {
   margin: 0;
   font-size: 1.5rem;

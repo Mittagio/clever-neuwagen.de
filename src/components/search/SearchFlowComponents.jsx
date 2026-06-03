@@ -1,28 +1,21 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import EditableSearchChip from './EditableSearchChip.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import { formatCurrency } from '../../logic/marketplaceService.js';
+import LocalVehicleOfferCard from './LocalVehicleOfferCard.jsx';
 import './SearchFlowComponents.css';
+import './localVehicleOfferCard.css';
 
-export function CompactSearchSummary({ chips, onEditChip }) {
+export function CompactSearchSummary({ chips, onEditChip, title = 'Ihre Suche' }) {
   if (!chips.length) return null;
 
   return (
     <div className="search-summary-compact" aria-label="Suchzusammenfassung">
+      {title && <p className="search-summary-compact__title">{title}</p>}
       <div className="search-summary-compact__row">
         {chips.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            className="search-summary-compact__chip"
-            onClick={() => onEditChip?.(chip)}
-            title="Tippen zum Ändern"
-          >
-            {chip.emoji && (
-              <span className="search-summary-compact__emoji" aria-hidden="true">{chip.emoji}</span>
-            )}
-            {chip.label}
-          </button>
+          <EditableSearchChip key={chip.id} chip={chip} onEdit={onEditChip} />
         ))}
       </div>
     </div>
@@ -42,7 +35,6 @@ export function KiSummaryHero({ chips, onEditChip }) {
               type="button"
               className="ki-lifestyle-chip"
               onClick={() => onEditChip?.(chip)}
-              title="Tippen zum Ändern"
             >
               <span className="ki-lifestyle-chip__emoji" aria-hidden="true">{chip.emoji}</span>
               {chip.label}
@@ -195,35 +187,13 @@ function availabilityText(availability) {
 export function TopRecommendationCard({ vehicle, onViewOffer }) {
   if (!vehicle) return null;
 
-  const rate = vehicle.displayRate ?? vehicle.monthlyRate;
-  const isAvailable = vehicle.availability === 'sofort';
-
   return (
-    <article className="top-rec-hero">
-      <p className="top-rec-hero__badge">Bester Treffer</p>
-      <div className="top-rec-hero__image-wrap">
-        <VehicleImage
-          brand={vehicle.brand}
-          model={vehicle.imageModel}
-          className="top-rec-hero__image"
-        />
-      </div>
-      <div className="top-rec-hero__body">
-        <h2 className="top-rec-hero__title">{vehicle.title}</h2>
-        <p className="top-rec-hero__rate">{formatCurrency(rate)}/Monat</p>
-        <ul className="top-rec-hero__highlights">
-          <li>{vehicle.discountPercent} % Rabatt</li>
-          <li>{vehicle.deliveryTime}</li>
-          <li>{vehicle.distanceKm} km · {vehicle.dealerName}</li>
-          <li className={isAvailable ? 'top-rec-hero__avail--accent' : ''}>
-            {availabilityText(vehicle.availability)}
-          </li>
-        </ul>
-        <button type="button" className="top-rec-hero__cta" onClick={() => onViewOffer?.(vehicle)}>
-          Angebot ansehen
-        </button>
-      </div>
-    </article>
+    <LocalVehicleOfferCard
+      vehicle={vehicle}
+      isTopPick
+      onViewOffer={onViewOffer}
+      className="top-rec-hero"
+    />
   );
 }
 
@@ -231,33 +201,16 @@ export function VehicleResultsGrid({ vehicles, onViewOffer }) {
   if (!vehicles.length) return null;
 
   return (
-    <section className="vehicle-grid" aria-label="Weitere passende Angebote">
-      <h2 className="vehicle-grid__title">Weitere passende Angebote</h2>
+    <section className="vehicle-grid" aria-label="Weitere Angebote in Ihrer Nähe">
+      <h2 className="vehicle-grid__title">Weitere Angebote in Ihrer Nähe</h2>
       <div className="vehicle-grid__list">
         {vehicles.map((vehicle) => (
-          <article key={vehicle.id} className="vehicle-grid-card">
-            <VehicleImage
-              brand={vehicle.brand}
-              model={vehicle.imageModel}
-              className="vehicle-grid-card__image"
-            />
-            <div className="vehicle-grid-card__body">
-              <h3>{vehicle.title}</h3>
-              <p className="vehicle-grid-card__rate">
-                {formatCurrency(vehicle.displayRate ?? vehicle.monthlyRate)}/Monat
-              </p>
-              <p className="vehicle-grid-card__meta">
-                {vehicle.distanceKm} km · {vehicle.discountPercent} % Rabatt
-              </p>
-              <button
-                type="button"
-                className="vehicle-grid-card__cta"
-                onClick={() => onViewOffer?.(vehicle)}
-              >
-                Angebot ansehen
-              </button>
-            </div>
-          </article>
+          <LocalVehicleOfferCard
+            key={vehicle.id}
+            vehicle={vehicle}
+            onViewOffer={onViewOffer}
+            className="vehicle-grid-card"
+          />
         ))}
       </div>
     </section>
@@ -268,33 +221,17 @@ export function HorizontalVehicleStrip({ vehicles, onViewOffer }) {
   if (!vehicles.length) return null;
 
   return (
-    <section className="vehicle-strip" aria-label="Weitere passende Fahrzeuge">
-      <h2 className="vehicle-strip__title">Weitere passende Fahrzeuge</h2>
+    <section className="vehicle-strip" aria-label="Weitere Fahrzeuge in der Nähe">
+      <h2 className="vehicle-strip__title">Weitere Fahrzeuge in der Nähe</h2>
       <div className="vehicle-strip__scroll">
         {vehicles.map((vehicle) => (
-          <article key={vehicle.id} className="vehicle-strip-card">
-            <VehicleImage
-              brand={vehicle.brand}
-              model={vehicle.imageModel}
-              className="vehicle-strip-card__image"
-            />
-            <div className="vehicle-strip-card__body">
-              <h3>{vehicle.title}</h3>
-              <p className="vehicle-strip-card__rate">
-                {formatCurrency(vehicle.displayRate ?? vehicle.monthlyRate)}/Monat
-              </p>
-              <p className="vehicle-strip-card__meta">
-                📍 {vehicle.distanceKm} km · 🏷 {vehicle.discountPercent} %
-              </p>
-              <button
-                type="button"
-                className="vehicle-strip-card__cta"
-                onClick={() => onViewOffer?.(vehicle)}
-              >
-                Angebot ansehen
-              </button>
-            </div>
-          </article>
+          <LocalVehicleOfferCard
+            key={vehicle.id}
+            vehicle={vehicle}
+            onViewOffer={onViewOffer}
+            showImage
+            className="vehicle-strip-card"
+          />
         ))}
       </div>
     </section>

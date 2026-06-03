@@ -200,7 +200,8 @@
   background: #eff6ff;
 }
 
-/* Landing V4 – KI-Suche, minimalistisch */
+/* Landing – lokale Neuwagen-Suchmaschine */
+.lp-hero--search,
 .lp-hero--v4 {
   padding: clamp(48px, 10vh, 88px) 20px clamp(40px, 8vh, 64px);
   min-height: calc(100dvh - 64px);
@@ -209,15 +210,18 @@
   background: #fff;
 }
 
+.lp-hero--search .lp-hero__container,
 .lp-hero--v4 .lp-hero__container {
   width: 100%;
 }
 
+.lp-hero--search .lp-hero__title,
 .lp-hero--v4 .lp-hero__title {
   font-size: clamp(2.25rem, 5.5vw, 3.5rem);
   max-width: 680px;
 }
 
+.lp-hero--search .lp-hero__sub,
 .lp-hero--v4 .lp-hero__sub {
   margin-top: 14px;
   max-width: 520px;
@@ -225,6 +229,7 @@
   line-height: 1.55;
 }
 
+.lp-hero-focus--search,
 .lp-hero-focus--v4 {
   max-width: 720px;
   margin-top: 40px;
@@ -235,6 +240,7 @@
   box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
 }
 
+.lp-input--search,
 .lp-input--v4 {
   min-height: 180px;
   padding: 22px 72px 22px 22px;
@@ -245,6 +251,7 @@
   resize: none;
 }
 
+.lp-hero--search .lp-mic-inline,
 .lp-hero--v4 .lp-mic-inline {
   right: 16px;
   bottom: 16px;
@@ -252,6 +259,7 @@
   height: 52px;
 }
 
+.lp-hero--search .lp-btn,
 .lp-hero--v4 .lp-btn {
   min-width: 260px;
   min-height: 56px;

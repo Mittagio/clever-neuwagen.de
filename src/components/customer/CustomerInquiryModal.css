@@ -21,6 +21,36 @@
   font-size: 1.2rem;
 }
 
+.cust-inq-summary {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cust-inq-summary__title {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.cust-inq-summary__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.cust-inq-summary__list li + li {
+  margin-top: 4px;
+}
+
 .cust-inq-form {
   display: grid;
   gap: 12px;

@@ -1,14 +1,14 @@
 import { getDealerProfile, mergeDealerProfileWithGoogle } from '../../data/dealers/dealerProfiles.js';
 
 const WEIGHTS = {
-  distance: 0.2,
-  availability: 0.2,
+  distance: 0.28,
+  availability: 0.22,
   delivery: 0.15,
   rating: 0.15,
   partner: 0.1,
-  discount: 0.1,
-  price: 0.05,
-  service: 0.05,
+  discount: 0.03,
+  price: 0.04,
+  service: 0.03,
 };
 
 function scoreDistance(km) {

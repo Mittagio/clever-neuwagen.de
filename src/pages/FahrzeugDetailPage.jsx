@@ -1,29 +1,33 @@
-import { useMemo, useState, useCallback } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
-import VehicleImage from '../components/shared/VehicleImage.jsx';
 import LegalDisclaimer from '../components/legal/LegalDisclaimer.jsx';
 import CustomerSaveOfferModal from '../components/customer/CustomerSaveOfferModal.jsx';
 import CustomerInquiryModal from '../components/customer/CustomerInquiryModal.jsx';
-import ConfigurationWishPanel from '../components/configurator/ConfigurationWishPanel.jsx';
-import RecommendedDealerCard from '../components/dealer/RecommendedDealerCard.jsx';
-import DealerCompareCards from '../components/dealer/DealerCompareCards.jsx';
-import DealerInventoryCarousel from '../components/dealer/DealerInventoryCarousel.jsx';
+import VehicleDetailHero from '../components/vehicle-detail/VehicleDetailHero.jsx';
+import VehicleDetailNextSteps from '../components/vehicle-detail/VehicleDetailNextSteps.jsx';
+import VehiclePriceCalculator from '../components/vehicle-detail/VehiclePriceCalculator.jsx';
+import VehicleCustomizePanel from '../components/vehicle-detail/VehicleCustomizePanel.jsx';
+import VehicleSummaryCard from '../components/vehicle-detail/VehicleSummaryCard.jsx';
+import VehicleDetailMobileBar from '../components/vehicle-detail/VehicleDetailMobileBar.jsx';
+import DealerOffersTable from '../components/vehicle-detail/DealerOffersTable.jsx';
+import VehicleDetailDealerBlock from '../components/vehicle-detail/VehicleDetailDealerBlock.jsx';
 import SimilarVehiclesNearby from '../components/dealer/SimilarVehiclesNearby.jsx';
 import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import { CUSTOMER_LABELS } from '../data/customerFlow.js';
-import { CONFIGURATOR_FEATURE_IDS } from '../data/features/featureCatalog.js';
+import { CONFIGURATOR_FEATURE_IDS, getFeatureLabel } from '../data/features/featureCatalog.js';
+import { getDetailWishChips } from '../data/features/wishDetailChips.js';
 import { getManufacturerModel } from '../data/manufacturer/manufacturerRegistry.js';
-import { formatCurrency, getAvailabilityMeta } from '../logic/marketplaceService.js';
 import {
   filtersFromSearchParams,
   buildFahrzeugeSearchUrl,
 } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
-import { toggleCompareSlug, isInCompare, loadCompareSlugs } from '../services/customerCompareService.js';
 import { parseCustomerWish } from '../services/wish/wishParser.js';
 import { priceConfiguration } from '../services/pricing/pricingEngine.js';
+import { findBestTrimForWish } from '../services/configurator/wishPackageResolver.js';
+import { buildWishInsight, trimIdFromVehicle } from '../services/configurator/wishMagicService.js';
 import {
   getDealerOffersForConfiguration,
   getDealerInventory,
@@ -34,29 +38,51 @@ import {
   useDealerGoogleReviewsBatch,
   enrichOffersWithGoogle,
 } from '../hooks/useDealerGoogleReviews.js';
+import {
+  getVehicleColors,
+  getConfigurablePackages,
+  resolveColorIdForPricing,
+} from '../logic/vehicleDetailConfig.js';
+import {
+  computeDetailPricing,
+  buildInquirySummary,
+  getDetailSelectionState,
+  wishIdsToLabels,
+} from '../logic/vehicleDetailPricing.js';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
-import '../components/configurator/configurationWish.css';
+import '../components/vehicle-detail/vehicle-detail.css';
 import '../components/dealer/dealer-offer.css';
 import './FahrzeugDetailPage.css';
 
-const TERM_MONTHS = 48;
-const MILEAGE_YEAR = 10000;
-const DOWN_PAYMENT = 0;
+const DEFAULT_TERM = 48;
+const DEFAULT_MILEAGE = 10000;
 
 export default function FahrzeugDetailPage() {
   const { slug } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const { addLead } = useLeads();
   const { registerMarketplaceInquiry } = useCustomerAuth();
 
   const [paymentView, setPaymentView] = useState('leasing');
+  const [termMonths, setTermMonths] = useState(DEFAULT_TERM);
+  const [mileagePerYear, setMileagePerYear] = useState(DEFAULT_MILEAGE);
+  const [downPayment, setDownPayment] = useState(0);
+  const [financeDown, setFinanceDown] = useState(0);
+  const [financeBalloon, setFinanceBalloon] = useState(0);
   const [saveOpen, setSaveOpen] = useState(false);
   const [inquiryModal, setInquiryModal] = useState(null);
-  const [compareSlugs, setCompareSlugs] = useState(() => loadCompareSlugs());
   const [toast, setToast] = useState('');
-  const [configState, setConfigState] = useState(null);
+  const [wishIds, setWishIds] = useState([]);
+  const [packageIds, setPackageIds] = useState([]);
+  const [accessoryIds, setAccessoryIds] = useState([]);
+  const [colorId, setColorId] = useState(null);
+  const [selectedDealerSlug, setSelectedDealerSlug] = useState(null);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [customizeSection, setCustomizeSection] = useState(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [trimOverride, setTrimOverride] = useState(null);
+  const [exploreWishId, setExploreWishId] = useState(null);
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
@@ -64,7 +90,7 @@ export default function FahrzeugDetailPage() {
 
   const vehicle = MARKETPLACE_VEHICLES.find((item) => item.slug === slug);
   const manufacturer = vehicle ? getManufacturerModel(vehicle.brand, vehicle.model) : null;
-  const showConfigurator = !!manufacturer;
+  const showCustomize = !!manufacturer || configMode;
 
   const wishes = useMemo(
     () => parseCustomerWish(filters.query, filters.features),
@@ -76,8 +102,38 @@ export default function FahrzeugDetailPage() {
     [wishes.features],
   );
 
-  const wishIds = configState?.wishIds ?? initialWishIds;
-  const trimId = configState?.trimId;
+  const effectiveWishIds = wishIds.length ? wishIds : initialWishIds;
+
+  const bestConfig = useMemo(() => {
+    if (!manufacturer || !vehicle) return null;
+    return findBestTrimForWish({
+      brand: vehicle.brand,
+      model: vehicle.model,
+      wishFeatureIds: effectiveWishIds,
+    });
+  }, [manufacturer, vehicle, effectiveWishIds]);
+
+  const listingTrimId = useMemo(
+    () => (vehicle ? trimIdFromVehicle(vehicle) : null) ?? manufacturer?.defaultTrimId,
+    [vehicle, manufacturer],
+  );
+  const trimId = trimOverride ?? listingTrimId ?? bestConfig?.trimId ?? manufacturer?.defaultTrimId;
+  const trimName = useMemo(() => {
+    if (!manufacturer) return bestConfig?.trimName;
+    const trim = manufacturer.data.trims?.find((t) => t.id === trimId);
+    return trim?.name ?? bestConfig?.trimName;
+  }, [manufacturer, trimId, bestConfig?.trimName]);
+
+  const defaultColor = useMemo(() => {
+    if (!vehicle) return null;
+    const colors = getVehicleColors(vehicle.brand, vehicle.model, trimId);
+    return colors[0]?.id ?? null;
+  }, [vehicle, trimId]);
+
+  const effectiveColorId = colorId ?? defaultColor;
+  const pricingColorId = vehicle
+    ? resolveColorIdForPricing(vehicle.brand, vehicle.model, effectiveColorId)
+    : null;
 
   const basePricing = useMemo(() => {
     if (!manufacturer || !vehicle) return null;
@@ -85,24 +141,54 @@ export default function FahrzeugDetailPage() {
       brand: vehicle.brand,
       model: vehicle.model,
       trimId,
-      wishFeatureIds: wishIds,
+      wishFeatureIds: effectiveWishIds,
+      packageIds,
+      accessoryIds,
+      colorId: pricingColorId,
       paymentType: paymentView,
-      termMonths: TERM_MONTHS,
-      mileagePerYear: MILEAGE_YEAR,
+      termMonths,
+      mileagePerYear,
     });
-  }, [manufacturer, vehicle, trimId, wishIds, paymentView]);
+  }, [
+    manufacturer,
+    vehicle,
+    trimId,
+    effectiveWishIds,
+    packageIds,
+    accessoryIds,
+    pricingColorId,
+    paymentView,
+    termMonths,
+    mileagePerYear,
+  ]);
 
   const baseRankedOffers = useMemo(() => {
     if (!vehicle || !manufacturer) return [];
     return getDealerOffersForConfiguration({
       brand: vehicle.brand,
       model: vehicle.model,
-      trimId: trimId ?? manufacturer.defaultTrimId,
-      wishFeatureIds: wishIds,
+      trimId,
+      wishFeatureIds: effectiveWishIds,
+      packageIds,
+      accessoryIds,
+      colorId: pricingColorId,
       paymentType: paymentView,
+      termMonths,
+      mileagePerYear,
       preferredDealerSlug: vehicle.dealerSlug,
     });
-  }, [vehicle, manufacturer, trimId, wishIds, paymentView]);
+  }, [
+    vehicle,
+    manufacturer,
+    trimId,
+    effectiveWishIds,
+    packageIds,
+    accessoryIds,
+    pricingColorId,
+    paymentView,
+    termMonths,
+    mileagePerYear,
+  ]);
 
   const dealerSlugs = useMemo(
     () => baseRankedOffers.map((o) => o.dealerSlug),
@@ -112,35 +198,241 @@ export default function FahrzeugDetailPage() {
   const { reviewsBySlug } = useDealerGoogleReviewsBatch(dealerSlugs);
 
   const rankedDealerOffers = useMemo(() => {
-    if (!baseRankedOffers.length) return [];
-    const enriched = enrichOffersWithGoogle(baseRankedOffers, reviewsBySlug);
-    return rankDealerOffers(enriched);
-  }, [baseRankedOffers, reviewsBySlug]);
+    if (baseRankedOffers.length) {
+      const enriched = enrichOffersWithGoogle(baseRankedOffers, reviewsBySlug);
+      return rankDealerOffers(enriched);
+    }
+    if (!vehicle) return [];
+    return [{
+      dealerName: vehicle.dealerName,
+      dealerSlug: vehicle.dealerSlug,
+      city: vehicle.city,
+      plz: vehicle.plz,
+      distanceKm: vehicle.distanceKm,
+      monthlyRate: vehicle.monthlyRate,
+      financeRate: Math.round(vehicle.monthlyRate * 1.08),
+      cashPrice: vehicle.cashPrice,
+      availability: vehicle.availability,
+      deliveryTime: vehicle.deliveryTime,
+      discountPercent: vehicle.discountPercent,
+      score: 85,
+      profile: {},
+    }];
+  }, [baseRankedOffers, reviewsBySlug, vehicle]);
 
-  const recommendedDealer = rankedDealerOffers[0] ?? null;
+  const activeDealer = useMemo(() => {
+    if (selectedDealerSlug) {
+      return rankedDealerOffers.find((o) => o.dealerSlug === selectedDealerSlug) ?? rankedDealerOffers[0];
+    }
+    return rankedDealerOffers[0] ?? null;
+  }, [rankedDealerOffers, selectedDealerSlug]);
+
   const dealerInventory = useMemo(() => {
-    if (!recommendedDealer) return [];
-    return getDealerInventory(recommendedDealer.dealerSlug, vehicle?.slug);
-  }, [recommendedDealer, vehicle?.slug]);
+    if (!activeDealer) return [];
+    return getDealerInventory(activeDealer.dealerSlug, vehicle?.slug);
+  }, [activeDealer, vehicle?.slug]);
 
   const similarVehicles = useMemo(() => {
     if (!vehicle) return [];
-    return getSimilarVehiclesNearby(vehicle, 4);
+    return getSimilarVehiclesNearby(vehicle, 5);
   }, [vehicle]);
 
-  const handleConfigChange = useCallback((next) => {
-    setConfigState(next);
+  const applyWishConfiguration = useCallback(({ wishIds: nextWishIds, packageIds: pkg, accessoryIds: acc }) => {
+    if (nextWishIds) setWishIds(nextWishIds);
+    setPackageIds(pkg);
+    setAccessoryIds(acc);
   }, []);
 
-  if (vehicle?.offerCode && !configMode && !showConfigurator) {
+  useEffect(() => {
+    if (!manufacturer || !effectiveWishIds.length) {
+      if (!effectiveWishIds.length) {
+        setPackageIds([]);
+        setAccessoryIds([]);
+      }
+      return;
+    }
+    const wr = basePricing?.wishResolution;
+    if (!wr) return;
+    setPackageIds(wr.packageIds);
+    setAccessoryIds(wr.accessoryIds);
+  }, [
+    manufacturer,
+    effectiveWishIds,
+    trimId,
+    basePricing?.wishResolution?.packageIds?.join(','),
+    basePricing?.wishResolution?.accessoryIds?.join(','),
+  ]);
+
+  const togglePackage = useCallback((id) => {
+    setPackageIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }, []);
+
+  const toggleAccessory = useCallback((id) => {
+    setAccessoryIds((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
+  }, []);
+
+  const displayTitle = useMemo(() => {
+    if (!vehicle) return '';
+    return trimName
+      ? `${vehicle.brand} ${vehicle.model} ${trimName}`
+      : vehicle.title;
+  }, [vehicle, trimName]);
+
+  const pricing = useMemo(() => {
+    if (!vehicle) return null;
+    return computeDetailPricing({
+      payment: paymentView,
+      termMonths,
+      mileagePerYear,
+      downPayment,
+      financeDown,
+      financeBalloon,
+      basePricing,
+      activeDealer,
+      vehicle,
+    });
+  }, [
+    vehicle,
+    paymentView,
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+    basePricing,
+    activeDealer,
+  ]);
+
+  const colorName = useMemo(() => {
+    if (!vehicle || !effectiveColorId) return null;
+    const colors = getVehicleColors(vehicle.brand, vehicle.model, trimId);
+    return colors.find((c) => c.id === effectiveColorId)?.name ?? null;
+  }, [vehicle, effectiveColorId, trimId]);
+
+  const wishInsight = useMemo(() => {
+    if (!manufacturer || !vehicle || !effectiveWishIds.length) return null;
+    return buildWishInsight({
+      brand: vehicle.brand,
+      model: vehicle.model,
+      trimId,
+      wishFeatureIds: effectiveWishIds,
+      paymentType: paymentView,
+      termMonths,
+      mileagePerYear,
+    });
+  }, [manufacturer, vehicle, trimId, effectiveWishIds, paymentView, termMonths, mileagePerYear]);
+
+  const packageLabels = useMemo(() => {
+    if (wishInsight?.inquiryMeta?.packageLabels?.length) {
+      return wishInsight.inquiryMeta.packageLabels;
+    }
+    const pkgs = basePricing?.selectedPackages ?? basePricing?.breakdown?.packages ?? [];
+    return pkgs.map((p) => p.name ?? p.id).filter(Boolean);
+  }, [wishInsight, basePricing]);
+
+  const inquirySummary = useMemo(() => {
+    if (!vehicle || !pricing) return null;
+    const meta = wishInsight?.inquiryMeta;
+    return buildInquirySummary({
+      displayTitle,
+      dealerName: activeDealer?.dealerName ?? vehicle.dealerName,
+      distanceKm: activeDealer?.distanceKm ?? vehicle.distanceKm,
+      pricing,
+      colorName,
+      wishLabels: meta?.wishedLabels ?? wishIdsToLabels(effectiveWishIds),
+      packageLabels,
+      serialLabels: meta?.serialLabels ?? [],
+      bonusLabels: meta?.bonusLabels ?? [],
+    });
+  }, [vehicle, pricing, displayTitle, activeDealer, colorName, effectiveWishIds, packageLabels, wishInsight]);
+
+  const detailSelection = useMemo(
+    () => getDetailSelectionState({
+      payment: paymentView,
+      termMonths,
+      mileagePerYear,
+      downPayment,
+      financeDown,
+      financeBalloon,
+      colorId: effectiveColorId,
+      trimId,
+      trimName,
+      packageIds,
+      accessoryIds,
+      wishIds: effectiveWishIds,
+    }),
+    [
+      paymentView,
+      termMonths,
+      mileagePerYear,
+      downPayment,
+      financeDown,
+      financeBalloon,
+      effectiveColorId,
+      trimId,
+      trimName,
+      packageIds,
+      accessoryIds,
+      effectiveWishIds,
+    ],
+  );
+
+  const discountPercent = basePricing?.discountPercent ?? vehicle?.discountPercent ?? 0;
+  const deliveryTime = activeDealer?.deliveryTime ?? vehicle?.deliveryTime;
+  const heroDealer = activeDealer?.dealerName ?? vehicle?.dealerName;
+  const heroDistance = activeDealer?.distanceKm ?? vehicle?.distanceKm;
+  const heroAvailability = activeDealer?.availability ?? vehicle?.availability;
+  const wishQuickChips = useMemo(() => {
+    if (!showCustomize || !vehicle) return [];
+    return getDetailWishChips(vehicle.brand, vehicle.model)
+      .slice(0, 4)
+      .map((id) => ({
+        id,
+        label: getFeatureLabel(id).replace(' vorne', '').replace(' hinten', ''),
+        active: effectiveWishIds.includes(id) || exploreWishId === id,
+      }));
+  }, [showCustomize, vehicle, effectiveWishIds, exploreWishId]);
+
+  const hideMobileBar = calcOpen || Boolean(customizeSection) || compareOpen || Boolean(exploreWishId);
+
+  const openRateAdjust = useCallback(() => {
+    setCalcOpen(true);
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      requestAnimationFrame(() => {
+        document.getElementById('vd-price-calc')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }, []);
+
+  const openCustomize = useCallback(() => {
+    setCustomizeSection((prev) => prev ?? 'wishes');
+  }, []);
+
+  const openWishChip = useCallback((wishId) => {
+    setCustomizeSection('wishes');
+    setExploreWishId(wishId);
+  }, []);
+
+  const openCompare = useCallback(() => {
+    setCompareOpen(true);
+    requestAnimationFrame(() => {
+      document.getElementById('vd-offers-compare')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }, []);
+
+  const scrollToDealer = useCallback(() => {
+    document.getElementById('vd-dealer-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  if (vehicle?.offerCode && !configMode && !showCustomize) {
     return <Navigate to={buildOfferPath(vehicle.offerCode)} replace />;
   }
 
   if (!vehicle) {
     return (
       <PageShell>
-        <div className="vehicle-detail">
-          <div className="vehicle-detail__container">
+        <div className="vd-page">
+          <div className="vd-page__container">
             <p>Fahrzeug nicht gefunden.</p>
             <Link to="/fahrzeuge">Zur Suche</Link>
           </div>
@@ -149,22 +441,17 @@ export default function FahrzeugDetailPage() {
     );
   }
 
-  const availability = getAvailabilityMeta(vehicle.availability);
-  const mapsQuery = encodeURIComponent(`${vehicle.dealerName}, ${vehicle.plz} ${vehicle.city}`);
-  const inCompare = isInCompare(vehicle.slug);
-
-  const leasingRate = basePricing?.leasingRate ?? recommendedDealer?.monthlyRate ?? vehicle.monthlyRate;
-  const financeRate = basePricing?.financeRate ?? Math.round(leasingRate * 1.08);
-  const cashPrice = basePricing?.cashPrice ?? vehicle.cashPrice;
-  const discountPercent = basePricing?.discountPercent ?? vehicle.discountPercent;
-
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
   }
 
   function submitInquiry(action, contact) {
-    const lead = createLeadFromMarketplaceVehicle(vehicle, action, contact);
+    const lead = createLeadFromMarketplaceVehicle(vehicle, action, contact, {
+      pricing,
+      detailSelection,
+      inquirySummary,
+    });
     addLead(lead);
     if (contact.email) {
       registerMarketplaceInquiry(
@@ -177,146 +464,162 @@ export default function FahrzeugDetailPage() {
     showToast('Ihre Anfrage wurde gesendet.');
   }
 
-  function handleCompare() {
-    const { added } = toggleCompareSlug(vehicle.slug);
-    setCompareSlugs(loadCompareSlugs());
-    showToast(added ? 'Zum Vergleich hinzugefügt.' : 'Aus Vergleich entfernt.');
+  function openPriceCalc() {
+    setCalcOpen(true);
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      requestAnimationFrame(() => {
+        document.getElementById('vd-price-calc')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
   }
-
-  const paymentOptions = [
-    { id: 'leasing', label: 'Leasing', value: leasingRate },
-    { id: 'finance', label: 'Finanzierung', value: financeRate },
-    { id: 'cash', label: 'Kauf', value: cashPrice },
-  ];
 
   return (
     <PageShell>
-      <div className={`vehicle-detail${showConfigurator ? ' vehicle-detail--config' : ''}`}>
-        <div className="vehicle-detail__container offer-detail-stack">
-          <header className="vehicle-detail__top">
-            <Link to={buildFahrzeugeSearchUrl(filters)} className="vehicle-detail__back">
+      <div className="vd-page">
+        <div className="vd-page__container">
+          <header className="vd-page__top">
+            <Link to={buildFahrzeugeSearchUrl(filters)} className="vd-page__back">
               ← Zur Fahrzeugsuche
             </Link>
-            <Link to="/mein-bereich" className="vehicle-detail__account">{CUSTOMER_LABELS.myArea}</Link>
+            <Link to="/mein-bereich" className="vd-page__account">{CUSTOMER_LABELS.myArea}</Link>
           </header>
 
-          {/* 1. Fahrzeug + Konfiguration */}
-          {showConfigurator && (
-            <>
-              <VehicleImage
-                brand={vehicle.brand}
-                model={vehicle.imageModel}
-                className="vehicle-detail__config-image"
-              />
-              <ConfigurationWishPanel
+          <div className="vd-layout">
+            <div className="vd-layout__main">
+              <VehicleDetailHero
                 vehicle={vehicle}
-                initialWishIds={initialWishIds}
-                paymentType={paymentView}
-                onConfigChange={handleConfigChange}
+                displayTitle={displayTitle}
+                dealerName={heroDealer}
+                distanceKm={heroDistance}
+                availability={heroAvailability}
+                deliveryTime={deliveryTime}
+                discountPercent={discountPercent}
+                pricing={pricing}
+                colorId={effectiveColorId}
+                onInquiry={() => setInquiryModal('inquiry')}
+                onPriceCalc={openPriceCalc}
+                onRateAdjust={openRateAdjust}
               />
-            </>
-          )}
 
-          {!showConfigurator && (
-            <article className="vehicle-detail__hero card">
-              <VehicleImage brand={vehicle.brand} model={vehicle.imageModel} className="vehicle-detail__image" />
-              <div className="vehicle-detail__facts">
-                <h1>{vehicle.title}</h1>
-                <p className="vehicle-detail__rate">{formatCurrency(leasingRate)}/Monat</p>
+              <VehicleDetailNextSteps
+                pricing={pricing}
+                vehicleModel={vehicle.model}
+                showCustomize={showCustomize}
+                onRateAdjust={openRateAdjust}
+                onCustomizeOpen={openCustomize}
+                onWishChipClick={openWishChip}
+                customizeActive={customizeSection}
+                wishQuickChips={wishQuickChips}
+                offers={rankedDealerOffers}
+                payment={paymentView}
+                compareOpen={compareOpen}
+                onCompareOpen={openCompare}
+                onViewDealer={scrollToDealer}
+              />
+
+              <div className="vd-tools-flow">
+              <VehiclePriceCalculator
+                embedded
+                paymentView={paymentView}
+                termMonths={termMonths}
+                mileagePerYear={mileagePerYear}
+                downPayment={downPayment}
+                financeDown={financeDown}
+                financeBalloon={financeBalloon}
+                pricing={pricing}
+                discountPercent={discountPercent}
+                basePricing={basePricing}
+                activeDealer={activeDealer}
+                vehicle={vehicle}
+                open={calcOpen}
+                onOpenChange={setCalcOpen}
+                onApply={(draft) => {
+                  setPaymentView(draft.paymentView);
+                  setTermMonths(draft.termMonths);
+                  setMileagePerYear(draft.mileagePerYear);
+                  setDownPayment(draft.downPayment);
+                  setFinanceDown(draft.financeDown);
+                  setFinanceBalloon(draft.financeBalloon);
+                }}
+              />
+
+              {showCustomize && (
+                <VehicleCustomizePanel
+                  embedded
+                  vehicle={vehicle}
+                  configMode={configMode}
+                  trimId={trimId}
+                  trimName={trimName}
+                  colorId={effectiveColorId}
+                  onColorChange={setColorId}
+                  packageIds={packageIds}
+                  accessoryIds={accessoryIds}
+                  onPackageToggle={togglePackage}
+                  onAccessoryToggle={toggleAccessory}
+                  wishIds={effectiveWishIds}
+                  onWishIdsChange={setWishIds}
+                  exploreWishId={exploreWishId}
+                  onExploreWishChange={setExploreWishId}
+                  onApplyWishConfiguration={applyWishConfiguration}
+                  onTrimUpgrade={(id) => {
+                    setTrimOverride(id);
+                    setExploreWishId(null);
+                  }}
+                  paymentType={paymentView}
+                  termMonths={termMonths}
+                  mileagePerYear={mileagePerYear}
+                  currentRateLabel={pricing?.priceLabel}
+                  activeSection={customizeSection}
+                  onActiveSectionChange={setCustomizeSection}
+                />
+              )}
+
+              <DealerOffersTable
+                embedded
+                compareOpen={compareOpen}
+                onCompareOpenChange={setCompareOpen}
+                offers={rankedDealerOffers}
+                payment={paymentView}
+                onSelectDealer={(offer) => setSelectedDealerSlug(offer.dealerSlug)}
+                onViewOffer={scrollToDealer}
+                onExpandRadius={() => showToast('Weitere Händler werden geladen …')}
+              />
               </div>
-            </article>
-          )}
 
-          {/* 2. Empfohlener Händler */}
-          {recommendedDealer && (
-            <RecommendedDealerCard
-              offer={recommendedDealer}
-              onInquiry={() => setInquiryModal('inquiry')}
-              onTestDrive={() => setInquiryModal('testdrive')}
-            />
-          )}
-
-          {/* Weitere Händler – Karten, nicht Tabelle */}
-          {rankedDealerOffers.length > 1 && (
-            <DealerCompareCards
-              offers={rankedDealerOffers}
-              excludeSlug={recommendedDealer?.dealerSlug}
-            />
-          )}
-
-          {/* 3. Weitere Fahrzeuge dieses Händlers */}
-          {recommendedDealer && (
-            <DealerInventoryCarousel
-              dealerName={recommendedDealer.dealerName}
-              vehicles={dealerInventory}
-            />
-          )}
-
-          {/* 4. Wettbewerber – erst unter dem Händlerbereich */}
-          <SimilarVehiclesNearby vehicles={similarVehicles} currentSlug={vehicle.slug} />
-
-          {/* 5. Anfrage + Details */}
-          <article className="vehicle-detail__hero card">
-            <div className="vehicle-detail__facts">
-              <h2>Ihr Angebot im Detail</h2>
-              <p className="vehicle-detail__dealer">{vehicle.title}</p>
-
-              <div className="vehicle-detail__payment-tabs">
-                {paymentOptions.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`vehicle-detail__tab${paymentView === opt.id ? ' is-active' : ''}`}
-                    onClick={() => setPaymentView(opt.id)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              <div className="vd-trust">
+              <VehicleDetailDealerBlock
+                offer={{ ...activeDealer, brand: vehicle.brand }}
+                inventory={dealerInventory}
+                configuredOffer={packageLabels.length > 0 || effectiveWishIds.length > 0}
+                onInquiry={() => setInquiryModal('inquiry')}
+                onTestDrive={() => setInquiryModal('testdrive')}
+              />
               </div>
 
-              <p className="vehicle-detail__rate">
-                {paymentView === 'cash'
-                  ? formatCurrency(paymentOptions.find((p) => p.id === 'cash').value)
-                  : `${formatCurrency(paymentOptions.find((p) => p.id === paymentView).value)}/Monat`}
-              </p>
-              <p className="vehicle-detail__meta">
-                Kaufpreis {formatCurrency(cashPrice)} · Rabatt {discountPercent}%
-              </p>
-              <p>Laufzeit {TERM_MONTHS} Monate · {MILEAGE_YEAR.toLocaleString('de-DE')} km/Jahr · Anzahlung {formatCurrency(DOWN_PAYMENT)}</p>
-              <p>Lieferzeit: {vehicle.deliveryTime}</p>
-              <p>{availability.label}</p>
-
-              <div className="vehicle-detail__actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSaveOpen(true)}>
-                  {CUSTOMER_LABELS.saveOffer}
-                </button>
-                <button type="button" className={`btn btn-secondary btn-sm${inCompare ? ' is-active' : ''}`} onClick={handleCompare}>
-                  {CUSTOMER_LABELS.compare}{compareSlugs.length > 0 ? ` (${compareSlugs.length})` : ''}
-                </button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => setInquiryModal('inquiry')}>
-                  {CUSTOMER_LABELS.startInquiry}
-                </button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setInquiryModal('testdrive')}>
-                  {CUSTOMER_LABELS.testDrive}
-                </button>
+              <div className="vd-similar vd-inspire">
+                <SimilarVehiclesNearby vehicles={similarVehicles} currentSlug={vehicle.slug} />
               </div>
 
-              <LegalDisclaimer compact className="vehicle-detail__legal" />
+              <LegalDisclaimer compact className="vd-page__legal" />
             </div>
-          </article>
 
-          <section className="vehicle-detail__map card">
-            <h2>Standort</h2>
-            <p>📍 {recommendedDealer?.dealerName ?? vehicle.dealerName}, {vehicle.plz} {vehicle.city}</p>
-            <iframe
-              title="Händlerstandort"
-              src={`https://maps.google.com/maps?q=${mapsQuery}&z=11&output=embed`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+            <VehicleSummaryCard
+              dealerName={heroDealer}
+              distanceKm={heroDistance}
+              pricing={pricing}
+              onSave={() => setSaveOpen(true)}
+              onInquiry={() => setInquiryModal('inquiry')}
             />
-          </section>
+          </div>
         </div>
       </div>
+
+      <VehicleDetailMobileBar
+        pricing={pricing}
+        visible={!hideMobileBar}
+        onInquiry={() => setInquiryModal('inquiry')}
+        onSave={() => setSaveOpen(true)}
+      />
 
       {saveOpen && (
         <CustomerSaveOfferModal vehicle={vehicle} onClose={() => setSaveOpen(false)} />
@@ -325,6 +628,7 @@ export default function FahrzeugDetailPage() {
       {inquiryModal === 'inquiry' && (
         <CustomerInquiryModal
           title={CUSTOMER_LABELS.startInquiry}
+          inquirySummary={inquirySummary}
           onClose={() => setInquiryModal(null)}
           onSubmit={(contact) => submitInquiry('inquiry', contact)}
         />
@@ -332,12 +636,13 @@ export default function FahrzeugDetailPage() {
       {inquiryModal === 'testdrive' && (
         <CustomerInquiryModal
           title={CUSTOMER_LABELS.testDrive}
+          inquirySummary={inquirySummary}
           onClose={() => setInquiryModal(null)}
           onSubmit={(contact) => submitInquiry('testdrive', contact)}
         />
       )}
 
-      {toast && <div className="vehicle-detail__toast">{toast}</div>}
+      {toast && <div className="vd-page__toast">{toast}</div>}
     </PageShell>
   );
 }

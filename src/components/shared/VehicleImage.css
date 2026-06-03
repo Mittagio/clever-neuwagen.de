@@ -38,6 +38,12 @@
   max-width: 220px;
 }
 
+.vehicle-image__placeholder--hero .vehicle-image__placeholder-svg {
+  max-width: 300px;
+  width: 82%;
+  opacity: 0.92;
+}
+
 .vehicle-image__badge {
   position: absolute;
   left: 8px;

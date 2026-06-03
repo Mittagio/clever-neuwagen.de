@@ -162,7 +162,7 @@ export function parseLandingQuery(text) {
   else if (/familie|kinder|kind/i.test(t)) profile.household = 'family';
   else if (/paar|zu zweit/i.test(t)) profile.household = 'couple';
 
-  if (/elektro|ev\b|strom/i.test(lower)) profile.fuelPreference = 'elektro';
+  if (/elektro|e-auto|ev\b|strom/i.test(lower)) profile.fuelPreference = 'elektro';
   else if (/hybrid|plug-in|phev/i.test(lower)) profile.fuelPreference = 'hybrid';
   else if (/diesel|benzin|verbrenner/i.test(lower)) profile.fuelPreference = 'verbrenner';
 

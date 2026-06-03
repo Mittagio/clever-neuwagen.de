@@ -25,10 +25,10 @@ export function getVehicleLabel(item) {
 
 export function getEmptyTabMessage(tabId) {
   const messages = {
-    offers: 'Noch keine Angebote. Starten Sie die KI-Beratung und lassen Sie sich ein Angebot erstellen.',
-    comparisons: 'Noch keine Vergleiche. Nach der Beratung können Sie bis zu 3 Fahrzeuge vergleichen.',
+    offers: 'Noch keine Angebote. Starten Sie eine Suche und speichern Sie passende Händlerangebote.',
+    comparisons: 'Noch keine Vergleiche. Sie können bis zu 3 Fahrzeuge vergleichen.',
     configurations: 'Noch keine gespeicherten Konfigurationen.',
-    favorites: 'Noch keine Favoriten. Markieren Sie Fahrzeuge in der Beratung.',
+    favorites: 'Noch keine Favoriten. Markieren Sie Fahrzeuge in den Suchergebnissen.',
     testDrives: 'Noch keine Probefahrten angefragt.',
   };
   return messages[tabId] ?? 'Noch keine Einträge.';

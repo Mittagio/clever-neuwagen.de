@@ -31,14 +31,17 @@ export default function RecommendedDealerCard({
       </div>
 
       <div className="recommended-dealer__facts">
-        {offer.discountPercent != null && (
-          <span className="recommended-dealer__fact">{offer.discountPercent} % Rabatt</span>
-        )}
-        <span className="recommended-dealer__fact">{offer.deliveryTime}</span>
-        <span className="recommended-dealer__fact">{availability.label.replace(/^.\s*/, '')}</span>
+        <span className="recommended-dealer__fact">📍 {offer.distanceKm} km entfernt</span>
+        <span className="recommended-dealer__fact">{availability.label}</span>
+        <span className="recommended-dealer__fact">🚚 Lieferzeit {offer.deliveryTime}</span>
         <span className="recommended-dealer__fact recommended-dealer__fact--rate">
           {formatCurrency(offer.monthlyRate)}/Monat
         </span>
+        {offer.discountPercent != null && (
+          <span className="recommended-dealer__fact recommended-dealer__fact--muted">
+            {offer.discountPercent} % Rabatt gegenüber Listenpreis
+          </span>
+        )}
       </div>
 
       {offer.reasons?.length > 0 && (

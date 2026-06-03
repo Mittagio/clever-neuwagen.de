@@ -12,8 +12,8 @@ export default function SimilarVehiclesNearby({ vehicles = [], currentSlug }) {
 
   return (
     <section className="similar-nearby" aria-label="Ähnliche Fahrzeuge in Ihrer Nähe">
-      <h2 className="similar-nearby__title">Ähnliche Fahrzeuge in Ihrer Nähe</h2>
-      <p className="similar-nearby__sub">Andere Modelle – erst nach Ihrem Händler-Vergleich.</p>
+      <h2 className="similar-nearby__title">Ähnliche Fahrzeuge</h2>
+      <p className="similar-nearby__sub">Inspiration – andere Modelle in Ihrer Nähe.</p>
       <div className="similar-nearby__grid">
         {items.map((v) => (
           <article key={v.id} className="similar-nearby-card">

@@ -73,10 +73,10 @@ export default function CustomerDashboard() {
             <p>{getEmptyTabMessage(activeTab)}</p>
             {(activeTab === 'offers' || activeTab === 'comparisons' || activeTab === 'configurations') && (
               <Link
-                to={activeTab === 'configurations' ? '/haendler/autohaus-trinkle#sportage-konfigurator' : '/berater?start=1'}
+                to={activeTab === 'configurations' ? '/haendler/autohaus-trinkle#sportage-konfigurator' : '/'}
                 className="cust-empty-cta"
               >
-                {activeTab === 'configurations' ? 'Sportage konfigurieren' : 'KI-Beratung starten'}
+                {activeTab === 'configurations' ? 'Sportage konfigurieren' : 'Fahrzeuge finden'}
               </Link>
             )}
           </div>

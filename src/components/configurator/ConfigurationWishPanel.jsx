@@ -78,11 +78,15 @@ export default function ConfigurationWishPanel({
   const requiredAccessories = livePricing?.wishResolution?.requiredAccessories ?? [];
 
   return (
-    <section className="config-wish-panel card" aria-label="Konfiguration und Wünsche">
+    <section className="config-wish-panel card" aria-label="Konfiguration und Händlerangebote">
       <VehicleHeader vehicle={vehicle} trimName={bestConfig?.trimName} rate={displayRate} />
+      <p className="config-wish-panel__usp">
+        Konfigurieren Sie Ihr Wunschauto – Farbe, Ausstattung und Pakete. Die Händlerangebote
+        darunter passen sich sofort an.
+      </p>
 
       <div className="config-wish-panel__section">
-        <h2>Wünsche auswählen</h2>
+        <h2>Ausstattung &amp; Wünsche</h2>
         <div className="config-wish-panel__chips">
           {CONFIGURATOR_FEATURE_IDS.map((id) => (
             <ConfigWishChip
@@ -161,7 +165,7 @@ function VehicleHeader({ vehicle, trimName, rate }) {
   return (
     <header className="config-wish-panel__hero">
       <div>
-        <p className="config-wish-panel__eyebrow">Konfiguration & Wünsche</p>
+        <p className="config-wish-panel__eyebrow">Wunschauto konfigurieren</p>
         <h1>{vehicle.brand} {vehicle.model}{trimName ? ` ${trimName}` : ''}</h1>
         <p className="config-wish-panel__from">ab {formatCurrency(rate)}/Monat</p>
       </div>

@@ -206,6 +206,16 @@ export function scoreVehicleAgainstWish(vehicle, wishes, displayRate) {
   if (!vehicleTypeMatch(vehicle, wishes)) score = Math.round(score * 0.5);
   if (!powertrainMatch(vehicle, wishes)) score = Math.round(score * 0.4);
 
+  if (wishes.model) {
+    const target = String(wishes.model).toLowerCase();
+    const vModel = String(vehicle.model ?? '').toLowerCase();
+    if (vModel.includes(target) || target.includes(vModel)) {
+      score = Math.min(100, score + 18);
+    } else {
+      score = Math.round(score * 0.88);
+    }
+  }
+
   const modelMeta = TRIM_FEATURE_MAP[modelKey];
 
   return {

@@ -256,6 +256,15 @@
 }
 
 /* Sprint 15 – Kompakte Suchzusammenfassung (eine Zeile) */
+.search-summary-compact__title {
+  margin: 0 0 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
 .search-summary-compact {
   margin: 0;
 }
@@ -279,21 +288,34 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: none;
-  background: transparent;
+  border: 1px solid #f1f5f9;
+  background: #fff;
   border-radius: 999px;
-  padding: 4px 10px 4px 6px;
+  padding: 5px 12px;
   min-height: 28px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #64748b;
+  color: #475569;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .search-summary-compact__emoji {
   font-size: 0.8125rem;
   line-height: 1;
+}
+
+.search-summary-compact__chip--add {
+  border-style: dashed;
+  border-color: #cbd5e1;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.search-summary-compact__chip--readonly {
+  cursor: default;
+  opacity: 0.92;
 }
 
 .search-summary-compact__chip:hover {

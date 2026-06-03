@@ -1,5 +1,5 @@
 /**
- * Kia EV3 – zentrales Herstellerdatenmodell (Demo / Sprint 23)
+ * Kia EV3 – zentrales Herstellerdatenmodell (Demo / Sprint 23+)
  * Händler pflegen nur Rabatte, LF, Bestand – nicht Stammdaten.
  */
 export const kiaEv3 = {
@@ -13,13 +13,19 @@ export const kiaEv3 = {
     {
       id: 'air',
       name: 'Air',
-      baseEquipment: ['ev3-navigation', 'ev3-rueckfahrkamera'],
+      baseEquipment: ['ev3-navigation', 'ev3-rueckfahrkamera', 'ev3-parksensoren-hinten'],
       availablePackages: ['ev3-komfort'],
     },
     {
       id: 'earth',
       name: 'Earth',
-      baseEquipment: ['ev3-sitzheizung', 'ev3-totwinkel', 'ev3-navigation', 'ev3-waermepumpe'],
+      baseEquipment: [
+        'ev3-sitzheizung',
+        'ev3-rueckfahrkamera',
+        'ev3-parksensoren-vorn',
+        'ev3-parksensoren-hinten',
+        'ev3-waermepumpe',
+      ],
       availablePackages: ['ev3-technik', 'ev3-komfort'],
     },
     {
@@ -31,6 +37,9 @@ export const kiaEv3 = {
         'ev3-totwinkel',
         'ev3-navigation',
         'ev3-lenkradheizung',
+        'ev3-rueckfahrkamera',
+        'ev3-parksensoren-vorn',
+        'ev3-parksensoren-hinten',
       ],
       availablePackages: ['ev3-premium', 'ev3-technik', 'ev3-komfort'],
     },
@@ -49,19 +58,19 @@ export const kiaEv3 = {
     {
       id: 'ev3-technik',
       name: 'Technik Paket',
-      priceGross: 990,
-      rateDelta: 9,
-      description: 'Remote Parken, 360° Kamera, erweiterte Assistenten',
-      features: ['ev3-remote-parken', 'ev3-360-kamera'],
+      priceGross: 1800,
+      rateDelta: 19,
+      description: '360° Kamera, Totwinkelassistent, Parkassistent',
+      features: ['ev3-360-kamera', 'ev3-totwinkel', 'ev3-remote-parken'],
       availableTrims: ['earth', 'gt-line'],
     },
     {
       id: 'ev3-komfort',
       name: 'Komfort Paket',
-      priceGross: 1290,
+      priceGross: 1200,
       rateDelta: 12,
-      description: 'Relaxsitze, Sitzbelüftung',
-      features: ['ev3-sitzbelueftung'],
+      description: 'Elektrische Heckklappe, Sitzheizung hinten',
+      features: ['ev3-heckklappe', 'ev3-sitzheizung-hinten'],
       availableTrims: ['air', 'earth', 'gt-line'],
     },
   ],
@@ -70,8 +79,8 @@ export const kiaEv3 = {
     {
       id: 'ev3-anhaenger',
       name: 'Anhängerkupplung',
-      priceGross: 890,
-      rateDelta: 6,
+      priceGross: 990,
+      rateDelta: 7,
       features: ['ev3-anhaenger'],
       availableTrims: ['earth', 'gt-line'],
     },
@@ -79,16 +88,20 @@ export const kiaEv3 = {
 
   equipment: [
     { id: 'ev3-waermepumpe', name: 'Wärmepumpe', standardInTrims: ['earth', 'gt-line'], availableViaPackages: [] },
-    { id: 'ev3-sitzheizung', name: 'Sitzheizung', standardInTrims: ['earth', 'gt-line'], availableViaPackages: [] },
-    { id: 'ev3-totwinkel', name: 'Totwinkelassistent', standardInTrims: ['earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev3-sitzheizung', name: 'Sitzheizung vorne', standardInTrims: ['earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev3-sitzheizung-hinten', name: 'Sitzheizung hinten', standardInTrims: [], availableViaPackages: ['ev3-komfort'] },
+    { id: 'ev3-totwinkel', name: 'Totwinkelassistent', standardInTrims: ['gt-line'], availableViaPackages: ['ev3-technik'] },
     { id: 'ev3-navigation', name: 'Navigation', standardInTrims: ['air', 'earth', 'gt-line'], availableViaPackages: [] },
     { id: 'ev3-lenkradheizung', name: 'Lenkradheizung', standardInTrims: ['gt-line'], availableViaPackages: [] },
+    { id: 'ev3-rueckfahrkamera', name: 'Rückfahrkamera', standardInTrims: ['air', 'earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev3-parksensoren-vorn', name: 'Parksensoren vorne', standardInTrims: ['earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev3-parksensoren-hinten', name: 'Parksensoren hinten', standardInTrims: ['air', 'earth', 'gt-line'], availableViaPackages: [] },
     { id: 'ev3-360-kamera', name: '360° Kamera', standardInTrims: [], availableViaPackages: ['ev3-technik'] },
     { id: 'ev3-hud', name: 'Head-Up Display', standardInTrims: [], availableViaPackages: ['ev3-premium'] },
     { id: 'ev3-harman', name: 'Harman Kardon', standardInTrims: [], availableViaPackages: ['ev3-premium'] },
-    { id: 'ev3-heckklappe', name: 'Elektrische Heckklappe', standardInTrims: [], availableViaPackages: ['ev3-premium'] },
-    { id: 'ev3-remote-parken', name: 'Remote Parken', standardInTrims: [], availableViaPackages: ['ev3-technik'] },
-    { id: 'ev3-sitzbelueftung', name: 'Sitzbelüftung', standardInTrims: [], availableViaPackages: ['ev3-komfort'] },
+    { id: 'ev3-heckklappe', name: 'Elektrische Heckklappe', standardInTrims: [], availableViaPackages: ['ev3-komfort', 'ev3-premium'] },
+    { id: 'ev3-remote-parken', name: 'Parkassistent', standardInTrims: [], availableViaPackages: ['ev3-technik'] },
+    { id: 'ev3-sitzbelueftung', name: 'Sitzbelüftung', standardInTrims: [], availableViaPackages: [] },
     { id: 'ev3-panorama', name: 'Panoramadach', standardInTrims: [], availableViaPackages: [] },
     { id: 'ev3-anhaenger', name: 'Anhängerkupplung', standardInTrims: [], availableViaPackages: [], availableViaAccessories: ['ev3-anhaenger'] },
   ],

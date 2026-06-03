@@ -2,7 +2,7 @@ import { parseLandingQuery } from '../landingAdvisorBridge.js';
 import { parseLocationFromText } from '../../logic/advisorLocation.js';
 import { FEATURE_CATALOG } from '../../data/features/featureCatalog.js';
 
-function matchFeaturesFromText(text) {
+export function matchFeaturesFromText(text) {
   const lower = text.toLowerCase();
   const found = new Set();
 

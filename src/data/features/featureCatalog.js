@@ -17,9 +17,15 @@ export const FEATURE_CATALOG = [
     category: 'assistenz',
   },
   {
+    id: 'rear_camera',
+    label: 'Rückfahrkamera',
+    aliases: ['rückfahrkamera', 'heckkamera', 'kamera hinten', 'rückkamera'],
+    category: 'assistenz',
+  },
+  {
     id: 'parking_rear',
     label: 'Parksensoren hinten',
-    aliases: ['parksensor hinten', 'pdc hinten', 'rückfahrkamera'],
+    aliases: ['parksensor hinten', 'pdc hinten'],
     category: 'assistenz',
   },
   {
@@ -30,8 +36,14 @@ export const FEATURE_CATALOG = [
   },
   {
     id: 'heated_seats',
-    label: 'Sitzheizung',
-    aliases: ['sitzheizung', 'sitzheizung vorne', 'warme sitze', 'sitzklima'],
+    label: 'Sitzheizung vorne',
+    aliases: ['sitzheizung', 'sitzheizung vorne', 'warme sitze', 'sitzklima', 'beheizbare vordersitze'],
+    category: 'komfort',
+  },
+  {
+    id: 'heated_rear_seats',
+    label: 'Sitzheizung hinten',
+    aliases: ['sitzheizung hinten', 'beheizbare rücksitze', 'warme rücksitze'],
     category: 'komfort',
   },
   {
@@ -124,6 +136,18 @@ export const FEATURE_CATALOG = [
     aliases: ['familien-suv', 'familien suv', 'familienauto', 'suv'],
     category: 'nutzung',
   },
+  {
+    id: 'seats_7',
+    label: '7 Sitze',
+    aliases: ['7 sitze', 'sieben sitze', '7-sitzer', '7 sitzer'],
+    category: 'praktisch',
+  },
+  {
+    id: 'range_400',
+    label: 'über 400 km Reichweite',
+    aliases: ['400 km reichweite', 'über 400 km', 'mindestens 400 km', '400 km'],
+    category: 'technik',
+  },
 ];
 
 export const CONFIGURATOR_FEATURE_IDS = [
@@ -135,10 +159,14 @@ export const CONFIGURATOR_FEATURE_IDS = [
   'towbar',
   'head_up_display',
   'heated_seats',
+  'heated_rear_seats',
   'steering_heat',
   'remote_parking',
   'ventilated_seats',
   'power_tailgate',
+  'parking_front',
+  'parking_rear',
+  'rear_camera',
 ];
 
 export function getFeatureById(id) {

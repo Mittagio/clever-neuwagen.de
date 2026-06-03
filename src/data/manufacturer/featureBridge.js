@@ -4,9 +4,11 @@
 export const CUSTOMER_TO_MANUFACTURER = {
   camera_360: ['feat-rundumsichtkamera', 'ev3-360-kamera'],
   parking_front: ['feat-parksensoren-vorn-hinten', 'ev3-parksensoren-vorn'],
-  parking_rear: ['feat-parksensoren-hinten', 'feat-rueckfahrkamera', 'ev3-rueckfahrkamera'],
+  parking_rear: ['feat-parksensoren-hinten', 'ev3-parksensoren-hinten'],
+  rear_camera: ['feat-rueckfahrkamera', 'ev3-rueckfahrkamera'],
   blind_spot: ['feat-totwinkelassistent', 'ev3-totwinkel'],
   heated_seats: ['feat-sitzheizung-vorn', 'ev3-sitzheizung'],
+  heated_rear_seats: ['feat-sitzheizung-hinten', 'ev3-sitzheizung-hinten'],
   steering_heat: ['feat-lenkradheizung', 'ev3-lenkradheizung'],
   head_up_display: ['feat-head-up-display', 'ev3-hud'],
   harman_kardon: ['feat-harman-kardon', 'ev3-harman'],
@@ -16,7 +18,6 @@ export const CUSTOMER_TO_MANUFACTURER = {
   panorama_roof: ['feat-panoramadach', 'ev3-panorama'],
   power_tailgate: ['feat-elektrische-heckklappe', 'ev3-heckklappe'],
   heat_pump: ['ev3-waermepumpe'],
-  automatic: ['ev3-automatik'],
 };
 
 export function getManufacturerFeatureIds(customerFeatureId) {

@@ -1,0 +1,48 @@
+.search-plausibility {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: var(--color-surface-muted, #f4f6f8);
+  border: 1px solid var(--color-border, #e2e6ea);
+}
+
+.search-plausibility__lead {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #5c6570);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.search-plausibility__text {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.search-plausibility__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.search-plausibility__btn {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.search-plausibility__btn--primary {
+  background: var(--color-primary, #1a5f4a);
+  color: #fff;
+}
+
+.search-plausibility__btn--ghost {
+  background: transparent;
+  border-color: var(--color-border, #d0d5dc);
+  color: inherit;
+}

@@ -1,5 +1,5 @@
-import { DEALER_PROFILES } from '../../src/data/dealers/dealerProfiles.js';
-import { getDealerGoogleConfig } from '../../src/data/dealers/dealerGooglePlaces.js';
+import { DEALER_PROFILES } from '../src/data/dealers/dealerProfiles.js';
+import { getDealerGoogleConfig } from '../src/data/dealers/dealerGooglePlaces.js';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const cache = new Map();

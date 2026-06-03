@@ -12,6 +12,16 @@
     "start:prod": "cross-env NODE_ENV=production node server/index.js",
     "deploy:check": "npm run build && node --check server/index.js",
     "lint": "eslint .",
+    "test:intent": "node src/services/search/searchIntentParser.test.js",
+    "test:typo": "node src/services/search/typoTolerant.test.js",
+    "test:sprint27": "node src/services/search/sprint27.test.js",
+    "test:chips": "node src/services/search/chipConfig.test.js",
+    "test:model-intent": "node src/services/search/modelIntent.test.js",
+    "test:brand-filter": "node src/logic/brandResultsFilter.test.js",
+    "test:search-conflict": "node src/services/search/searchConflictHint.test.js",
+    "test:brand-exclusion": "node src/logic/brandExclusionConflictView.test.js",
+    "test:vehicle-detail-pricing": "node src/logic/vehicleDetailPricing.test.js",
+    "test:wish-magic": "node src/services/configurator/wishMagicService.test.js",
     "preview": "vite preview"
   },
   "engines": {

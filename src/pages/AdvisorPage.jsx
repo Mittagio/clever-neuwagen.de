@@ -23,6 +23,13 @@ import AdvisorLocationStep from '../components/advisor/AdvisorLocationStep.jsx';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
 import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
 import { CUSTOMER_ROUTES } from '../data/customerFlow.js';
+import {
+  formatDealerDistanceLine,
+  formatDeliveryLine,
+  formatDiscountFootnote,
+  getAvailabilityLabel,
+  getTopRecommendationBadge,
+} from '../logic/localOfferPresentation.js';
 import { advisorParamsToFahrzeugeUrl } from '../logic/oneSearchService.js';
 import './AdvisorPage.css';
 
@@ -238,8 +245,12 @@ function AdvisorPageLegacy() {
     <div className="ai-offers-page">
       <header className="ai-offers-header">
         <Link to="/" className="ai-offers-header__back">← Zurück</Link>
-        <h1>Passende Fahrzeuge für Sie</h1>
-        <p>Basierend auf Ihrer Beschreibung hat unsere KI folgende Fahrzeuge gefunden.</p>
+        <h1>{hasLocation ? 'Fahrzeuge in Ihrer Nähe' : 'Ihre lokalen Angebote'}</h1>
+        <p>
+          {hasLocation
+            ? `${offerRows.length} Angebote im Umkreis von ${radiusKm ?? 25} km`
+            : `${offerRows.length} Angebote in Ihrer Region`}
+        </p>
       </header>
 
       <main className="ai-offers-main">
@@ -309,7 +320,7 @@ function AdvisorPageLegacy() {
           )}
           {hasLocation && (
             <div className="ai-toggle-row">
-              <button type="button" className={`ai-chip-btn${!nearbyOnly ? ' is-active' : ''}`} onClick={() => setNearbyOnly(false)}>Beste Angebote</button>
+              <button type="button" className={`ai-chip-btn${!nearbyOnly ? ' is-active' : ''}`} onClick={() => setNearbyOnly(false)}>Empfehlung in der Nähe</button>
               <button type="button" className={`ai-chip-btn${nearbyOnly ? ' is-active' : ''}`} onClick={() => setNearbyOnly(true)}>Nur in meiner Nähe</button>
             </div>
           )}
@@ -336,7 +347,7 @@ function AdvisorPageLegacy() {
 
         {bestRow && (
           <section className="ai-best card">
-            <h2>3. Beste Empfehlung</h2>
+            <h2>3. Empfehlung in Ihrer Nähe</h2>
             <OfferCard row={bestRow} highlight showDistance={hasLocation} />
           </section>
         )}
@@ -356,17 +367,40 @@ function AdvisorPageLegacy() {
 
 function OfferCard({ row, highlight = false, showDistance = true }) {
   const rec = row.recommendation;
+  const vehicle = {
+    title: rec.fullLabel ?? `${rec.brand} ${rec.model}`,
+    brand: rec.brand,
+    model: rec.model,
+    imageModel: rec.model,
+    dealerName: row.dealer.name,
+    distanceKm: showDistance ? row.dealer.distanceKm : undefined,
+    deliveryTime: rec.deliveryTime,
+    monthlyRate: row.monthlyRate,
+    availability: rec.deliveryTime?.toLowerCase().includes('sofort') ? 'sofort' : 'vorlauf',
+    discountPercent: rec.discountPercent,
+  };
+  const badge = highlight ? getTopRecommendationBadge(vehicle, { isTopPick: true }) : null;
+
   return (
-    <article className={`ai-offer-card${highlight ? ' is-highlight' : ''}`}>
-      <VehicleImage brand={rec.brand} model={rec.model} className="ai-offer-card__img" />
-      <div className="ai-offer-card__body">
-        <h3>{rec.fullLabel ?? `${rec.brand} ${rec.model}`}</h3>
-        <p className="ai-offer-card__rate">{formatAdvisorRate(row.monthlyRate)}/Monat</p>
-        <p>{row.termMonths} Monate · {row.mileagePerYear.toLocaleString('de-DE')} km/Jahr</p>
-        <p>{rec.deliveryTime}</p>
-        <p>{row.dealer.name}{showDistance ? ` · ${row.dealer.distanceKm} km entfernt` : ''}</p>
-        <p>{stars(row.dealer.rating)}</p>
-        <Link to={CUSTOMER_ROUTES.vehicle(findMarketplaceSlug(rec))} className="ai-offer-card__cta">Angebot ansehen</Link>
+    <article className={`ai-offer-card local-offer-card${highlight ? ' is-highlight local-offer-card--top' : ''}`}>
+      {badge && <p className="local-offer-card__badge">{badge}</p>}
+      <VehicleImage brand={rec.brand} model={rec.model} className="ai-offer-card__img local-offer-card__image" />
+      <div className="ai-offer-card__body local-offer-card__body">
+        <h3 className="local-offer-card__title">{vehicle.title}</h3>
+        <p className="local-offer-card__dealer">{formatDealerDistanceLine(vehicle)}</p>
+        <p className="local-offer-card__availability">{getAvailabilityLabel(vehicle)}</p>
+        {formatDeliveryLine(vehicle) && (
+          <p className="local-offer-card__delivery">{formatDeliveryLine(vehicle)}</p>
+        )}
+        <p className="local-offer-card__rate ai-offer-card__rate">{formatAdvisorRate(row.monthlyRate)}/Monat</p>
+        {formatDiscountFootnote(vehicle) && (
+          <p className="local-offer-card__discount">{formatDiscountFootnote(vehicle)}</p>
+        )}
+        <p className="ai-offer-card__terms">{row.termMonths} Monate · {row.mileagePerYear.toLocaleString('de-DE')} km/Jahr</p>
+        <p className="ai-offer-card__rating">{stars(row.dealer.rating)}</p>
+        <Link to={CUSTOMER_ROUTES.vehicle(findMarketplaceSlug(rec))} className="ai-offer-card__cta local-offer-card__cta">
+          Angebot ansehen
+        </Link>
       </div>
     </article>
   );

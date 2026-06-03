@@ -1,0 +1,148 @@
+.local-offer-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.local-offer-card--top {
+  border-color: #c7d7eb;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.local-offer-card__badge {
+  margin: 0;
+  padding: 10px 14px 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0b2559;
+}
+
+.local-offer-card__image {
+  min-height: 160px;
+  border-radius: 0;
+}
+
+.local-offer-card__body {
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.local-offer-card__title {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.local-offer-card__dealer {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.local-offer-card__availability {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.local-offer-card__delivery {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.local-offer-card__rate {
+  margin: 8px 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.local-offer-card__discount {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.local-offer-card__cta {
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: #0b2559;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.local-results-head {
+  margin: 0 0 4px;
+}
+
+.local-results-head h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.local-results-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.vehicle-detail__savings {
+  padding: 16px;
+}
+
+.vehicle-detail__savings h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.vehicle-detail__savings dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.vehicle-detail__savings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+}
+
+.vehicle-detail__savings-row dt {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.vehicle-detail__savings-row dd {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vehicle-detail__savings-row--highlight dd {
+  color: #15803d;
+}
+
+.vehicle-detail__savings-footnote {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}

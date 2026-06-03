@@ -115,6 +115,14 @@ function buildCandidateSuggestions(filters) {
     }
   }
 
+  if (filters.radius != null && filters.radius <= 25) {
+    suggestions.push({
+      id: 'radius-50',
+      label: 'Radius auf 50 km erweitern',
+      patch: { radius: 50 },
+    });
+  }
+
   if (filters.radius != null && filters.radius < 100) {
     suggestions.push({
       id: 'radius-100',
@@ -135,7 +143,7 @@ function buildCandidateSuggestions(filters) {
     suggestions.push(
       { id: 'suv-all', label: 'SUV-Angebote anzeigen', patch: { type: 'suv', maxRate: null, fuel: '' } },
       { id: 'elektro-all', label: 'Elektroautos anzeigen', emoji: '⚡', patch: { fuel: 'elektro', type: 'elektro', maxRate: null } },
-      { id: 'sort-best', label: 'Beste Angebote anzeigen', patch: { sort: 'best', maxRate: null, maxPrice: null, type: 'all', fuel: '' } },
+      { id: 'sort-best', label: 'Empfehlung in der Nähe', patch: { sort: 'best', maxRate: null, maxPrice: null, type: 'all', fuel: '' } },
     );
   }
 

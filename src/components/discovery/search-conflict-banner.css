@@ -1,0 +1,36 @@
+.search-conflict-banner {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.search-conflict-banner__title {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.search-conflict-banner__text {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+.search-conflict-banner__btn {
+  display: inline-flex;
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}

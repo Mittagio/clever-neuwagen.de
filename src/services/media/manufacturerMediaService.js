@@ -18,7 +18,12 @@ export function getManufacturerMediaEntry(brand, model) {
   const brandKey = slug(brand) || 'kia';
   const modelKey = slug(model);
   if (!modelKey) return null;
-  return MANUFACTURER_MEDIA[brandKey]?.[modelKey] ?? null;
+  const brandSet = MANUFACTURER_MEDIA[brandKey];
+  if (!brandSet) return null;
+  if (brandSet[modelKey]) return brandSet[modelKey];
+  // z. B. „Sportage“ aus imageModel bei Modell „Tucson“ – erstes Wort des Modells
+  const first = modelKey.split('-')[0];
+  return brandSet[first] ?? null;
 }
 
 /**

@@ -1,62 +1,71 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
-import { formatCurrency } from '../../logic/marketplaceService.js';
+import LocalVehicleOfferCard from '../search/LocalVehicleOfferCard.jsx';
 import WishMatchScore from './WishMatchScore.jsx';
 import { WishFulfillmentList, WishMissingHint } from './WishFulfillmentList.jsx';
 import './wish.css';
+import '../search/localVehicleOfferCard.css';
+
+function toOfferVehicle(match) {
+  const v = match.vehicle;
+  return {
+    ...v,
+    dealerName: match.bestOffer.dealer,
+    distanceKm: match.bestOffer.distanceKm,
+    deliveryTime: match.bestOffer.deliveryTime,
+    monthlyRate: match.bestOffer.monthlyRate,
+    discountPercent: v.discountPercent,
+    availability: v.availability,
+  };
+}
 
 export function WishTopMatchCard({ match, onViewOffer, onAdjustWishes, onCompare }) {
   if (!match) return null;
   const v = match.vehicle;
+  const offerVehicle = toOfferVehicle(match);
+  const title = `${match.model}${match.bestTrim && match.bestTrim !== v.title ? ` ${match.bestTrim}` : ''}`;
 
   return (
-    <article className="wish-top-card">
-      <p className="wish-top-card__badge">⭐ Beste Empfehlung</p>
-      <div className="wish-top-card__image-wrap">
-        <VehicleImage brand={v.brand} model={v.imageModel} className="wish-top-card__image" />
-      </div>
-      <div className="wish-top-card__body">
-        <h2>{match.model} {match.bestTrim !== v.title ? match.bestTrim : ''}</h2>
+    <div className="wish-top-card-wrap">
+      <LocalVehicleOfferCard
+        vehicle={offerVehicle}
+        title={title}
+        monthlyRate={match.bestOffer.monthlyRate}
+        isTopPick
+        showImage
+        onViewOffer={() => onViewOffer?.(v)}
+        className="wish-top-card"
+      >
         <WishMatchScore matched={match.wishesMatched} total={match.wishesTotal} score={match.score} />
-        <p className="wish-top-card__rate">{formatCurrency(match.bestOffer.monthlyRate)}/Monat</p>
-        <p className="wish-top-card__dealer">
-          {match.bestOffer.dealer} · {match.bestOffer.distanceKm} km · {match.bestOffer.deliveryTime}
-        </p>
         <WishFulfillmentList
           matched={match.matchedFeatures}
           missing={match.missingFeatures}
           viaPackage={match.availableWithPackage}
         />
-        <div className="wish-top-card__actions">
-          <button type="button" className="wish-top-card__cta" onClick={() => onViewOffer?.(v)}>
-            Angebot ansehen
-          </button>
-          <button type="button" className="wish-top-card__secondary" onClick={onAdjustWishes}>
-            Wünsche anpassen
-          </button>
-          <button type="button" className="wish-top-card__secondary" onClick={onCompare}>
-            Vergleichen
-          </button>
-        </div>
+      </LocalVehicleOfferCard>
+      <div className="wish-top-card__secondary-actions">
+        <button type="button" className="wish-top-card__secondary" onClick={onAdjustWishes}>
+          Wünsche anpassen
+        </button>
+        <button type="button" className="wish-top-card__secondary" onClick={onCompare}>
+          Vergleichen
+        </button>
       </div>
-    </article>
+    </div>
   );
 }
 
 export function WishVehicleGridCard({ match, onViewOffer }) {
-  const v = match.vehicle;
+  const offerVehicle = toOfferVehicle(match);
+
   return (
-    <article className="wish-grid-card">
-      <VehicleImage brand={v.brand} model={v.imageModel} className="wish-grid-card__image" />
-      <div className="wish-grid-card__body">
-        <h3>{v.title}</h3>
-        <WishMatchScore matched={match.wishesMatched} total={match.wishesTotal} size="sm" />
-        <p className="wish-grid-card__rate">{formatCurrency(match.bestOffer.monthlyRate)}/Monat</p>
-        <p className="wish-grid-card__meta">{match.bestOffer.distanceKm} km entfernt</p>
-        <WishMissingHint missing={match.missingFeatures.slice(0, 2)} />
-        <button type="button" className="wish-grid-card__cta" onClick={() => onViewOffer?.(v)}>
-          Angebot ansehen
-        </button>
-      </div>
-    </article>
+    <LocalVehicleOfferCard
+      vehicle={offerVehicle}
+      showImage
+      onViewOffer={() => onViewOffer?.(match.vehicle)}
+      className="wish-grid-card"
+    >
+      <WishMatchScore matched={match.wishesMatched} total={match.wishesTotal} size="sm" />
+      <WishMissingHint missing={match.missingFeatures.slice(0, 2)} />
+    </LocalVehicleOfferCard>
   );
 }

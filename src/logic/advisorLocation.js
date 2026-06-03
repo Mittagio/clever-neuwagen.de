@@ -36,6 +36,13 @@ export function parseLocationFromText(text) {
     };
   }
 
+  const wohneIn = t.match(/\bwohne?\s+in\s+([a-zäöüß\-]+)/i);
+  if (wohneIn?.[1]) {
+    const raw = wohneIn[1].trim();
+    const matched = matchCityInText(raw) || raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+    return { city: matched, radiusKm: radiusKm ?? DEFAULT_LOCATION_RADIUS_KM, source: 'text' };
+  }
+
   for (const { city, re } of GERMAN_CITY_PATTERNS) {
     if (re.test(t)) {
       return { city, radiusKm: radiusKm ?? undefined, source: 'text' };

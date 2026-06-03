@@ -1,5 +1,9 @@
 import { MARKETPLACE_TYPE_OPTIONS } from './marketplaceVehicles.js';
 import { FEATURE_CATALOG } from './features/featureCatalog.js';
+import {
+  buildTermMonthValues,
+  buildMileageKmValues,
+} from '../services/search/leasingRangeOptions.js';
 
 export const MAGIC_LENS_PAYMENT_OPTIONS = [
   { id: 'leasing', label: 'Leasing' },
@@ -48,13 +52,13 @@ export const MAGIC_LENS_MODELS_BY_BRAND = {
   Hyundai: ['Tucson'],
 };
 
-export const MAGIC_LENS_TERM_OPTIONS = [36, 48, 60];
-export const MAGIC_LENS_MILEAGE_OPTIONS = [10000, 15000, 20000, 25000];
+export const MAGIC_LENS_TERM_OPTIONS = buildTermMonthValues();
+export const MAGIC_LENS_MILEAGE_OPTIONS = buildMileageKmValues();
 export const MAGIC_LENS_SORT_OPTIONS = [
-  { id: 'best', label: 'Beste Angebote' },
+  { id: 'best', label: 'Empfehlung in der Nähe' },
   { id: 'nearest', label: 'Nächste Händler' },
   { id: 'available', label: 'Sofort verfügbar' },
-  { id: 'discount', label: 'Höchster Rabatt' },
+  { id: 'discount', label: 'Rabatt (optional)' },
 ];
 
 export function countMagicLensActiveFilters(filters) {
