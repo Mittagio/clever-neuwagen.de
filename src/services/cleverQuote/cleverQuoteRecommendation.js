@@ -1,6 +1,21 @@
 /**
- * Sprint 34 Phase A – „Warum empfehlen wir …?“
+ * Sprint 34/36 – „Warum passt er?“ / Wunsch-Bullets (Ebene 1)
  */
+export function buildWishMatchBullets(match, { maxReasons = 4 } = {}) {
+  const bullets = [];
+  const items = match?.cleverQuote?.items ?? [];
+  items
+    .filter((i) => i.status === 'fulfilled' && i.label)
+    .forEach((i) => bullets.push(i.label));
+  if (!bullets.length && match?.matchedFeatures?.length) {
+    match.matchedFeatures.forEach((f) => {
+      bullets.push(typeof f === 'string' ? f : f.label ?? f.id);
+    });
+  }
+  if (bullets.length) return bullets.slice(0, maxReasons);
+  return buildRecommendReasons(match, { maxReasons }).slice(0, maxReasons);
+}
+
 export function buildRecommendReasons(match, { wishes, maxReasons = 5 } = {}) {
   const reasons = [];
   const cq = match?.cleverQuote;

@@ -182,12 +182,17 @@ export function computeOfferStats(poolVehicles = [], excludedBrands = [], exclud
 }
 
 /** Kurze Ergebniszeile unter der Auswahlkarte */
-export function buildOfferCountLine({ visible, hidden }) {
-  if (visible === 0) return 'Keine Angebote sichtbar';
+export function buildOfferCountLine({ visible, hidden, total = null }) {
+  if (visible === 0) return total != null ? `${total} geprüft · keine sichtbar` : 'Keine Angebote sichtbar';
   if (hidden === 0) {
-    return visible === 1 ? '1 Angebot' : `${visible} Angebote`;
+    if (total != null && total > visible) {
+      return `${total} Fahrzeuge geprüft · ${visible} passen`;
+    }
+    return visible === 1 ? '1 Fahrzeug geprüft' : `${visible} Fahrzeuge geprüft`;
   }
-  const main = visible === 1 ? '1 Angebot' : `${visible} Angebote`;
+  const main = total != null
+    ? `${total} geprüft · ${visible} passen`
+    : (visible === 1 ? '1 Angebot' : `${visible} Angebote`);
   return `${main} · ${hidden} ausgeblendet`;
 }
 

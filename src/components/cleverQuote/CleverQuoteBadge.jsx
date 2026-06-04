@@ -101,17 +101,13 @@ export function CleverQuoteBreakdown({
         {cleverQuote.trustNote && (
           <p className="clever-quote-breakdown__trust">{cleverQuote.trustNote}</p>
         )}
-        {renderGroup('Erfüllt', fulfilled, '✓', 'clever-quote-breakdown__group--ok')}
+        {renderGroup('Bereits enthalten', fulfilled, '✓', 'clever-quote-breakdown__group--ok')}
+        {renderGroup('Fehlt', missing, '✗', 'clever-quote-breakdown__group--no')}
         {renderGroup('Mit Paket möglich', packageNeeded, '○', 'clever-quote-breakdown__group--pkg')}
-        {renderGroup('Nicht erfüllt', missing, '✗', 'clever-quote-breakdown__group--no')}
         {renderGroup(CLEVER_QUOTE_UNCERTAIN_LABEL, uncertain, '?', 'clever-quote-breakdown__group--uncertain')}
         {upgrade && (
           <div className="clever-quote-breakdown__upgrade">
-            <p className="clever-quote-breakdown__upgrade-title">
-              {upgrade.targetPercent != null
-                ? `Für ${upgrade.targetPercent} % CleverQuote empfehlen wir:`
-                : 'Für mehr CleverQuote empfehlen wir:'}
-            </p>
+            <p className="clever-quote-breakdown__upgrade-title">Lösung</p>
             <p className="clever-quote-breakdown__upgrade-pkg">{upgrade.packageName}</p>
             {upgrade.impactLabel && (
               <p className="clever-quote-breakdown__upgrade-impact">{upgrade.impactLabel}</p>

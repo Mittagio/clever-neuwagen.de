@@ -37,7 +37,8 @@ const sorted = sortByCleverQuote([
 assert.equal(sorted[0].cleverQuote.percent, 96);
 assert.equal(sorted[0].score, 90);
 
-assert.equal(buildCleverQuoteCountLine(3), '3 Fahrzeuge für Ihre Wünsche · sortiert nach CleverQuote™');
+assert.equal(buildCleverQuoteCountLine(3), '3 Fahrzeuge geprüft · sortiert nach CleverQuote™');
+assert.equal(buildCleverQuoteCountLine(3, 225), '225 Fahrzeuge geprüft · 3 passen zu Ihren Wünschen');
 assert.equal(hasCleverQuoteWishes({ features: ['camera_360'] }), true);
 assert.equal(hasCleverQuoteWishes({ features: [] }), false);
 

@@ -64,10 +64,22 @@ export function buildCleverQuoteResultsHeadline() {
   };
 }
 
-export function buildCleverQuoteCountLine(count = 0) {
-  if (count === 0) return 'Keine passenden Fahrzeuge';
-  if (count === 1) return '1 Fahrzeug für Ihre Wünsche';
-  return `${count} Fahrzeuge für Ihre Wünsche · sortiert nach CleverQuote™`;
+export function buildCleverQuoteCountLine(count = 0, total = null) {
+  if (count === 0) return 'Keine Fahrzeuge geprüft';
+  if (total != null && total > count) {
+    return `${total} Fahrzeuge geprüft · ${count} passen zu Ihren Wünschen`;
+  }
+  if (count === 1) return '1 Fahrzeug geprüft · passt zu Ihren Wünschen';
+  return `${count} Fahrzeuge geprüft · sortiert nach CleverQuote™`;
+}
+
+export function buildCuratedResultsLine(total, shown = 5) {
+  if (total === 0) return 'Keine Fahrzeuge geprüft';
+  if (total <= shown) {
+    if (total === 1) return '1 Fahrzeug geprüft – hier der beste Treffer';
+    return `${total} Fahrzeuge geprüft – hier die besten Treffer`;
+  }
+  return `${total} Fahrzeuge geprüft – hier die besten ${shown}`;
 }
 
 export function hasCleverQuoteWishes(wishes) {

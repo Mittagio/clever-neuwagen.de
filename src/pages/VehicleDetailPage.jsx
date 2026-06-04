@@ -24,7 +24,7 @@ import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
-import { buildRecommendReasons } from '../services/cleverQuote/cleverQuoteRecommendation.js';
+import { buildWishMatchBullets } from '../services/cleverQuote/cleverQuoteRecommendation.js';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import '../components/vehicle-detail/vehicle-detail.css';
@@ -152,9 +152,9 @@ export default function VehicleDetailPage() {
 
   const primaryPackage = recommendationResult?.requiredPackages?.[0];
   const wishCount = detailSelection.selectedFeatures?.length ?? 0;
-  const recommendReasons = buildRecommendReasons(
+  const recommendReasons = buildWishMatchBullets(
     { vehicle, cleverQuote, bestOffer: activeDealer, displayRate: displayPrice?.amount },
-    { wishes, maxReasons: 3 },
+    { maxReasons: 4 },
   );
 
   return (

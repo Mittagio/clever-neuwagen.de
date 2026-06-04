@@ -8,6 +8,7 @@ import {
   sortByCleverQuote,
   buildCleverQuoteResultsHeadline,
   buildCleverQuoteCountLine,
+  buildCuratedResultsLine,
   hasCleverQuoteWishes,
 } from './cleverQuoteConstants.js';
 
@@ -19,6 +20,7 @@ export {
   sortByCleverQuote,
   buildCleverQuoteResultsHeadline,
   buildCleverQuoteCountLine,
+  buildCuratedResultsLine,
   hasCleverQuoteWishes,
 } from './cleverQuoteConstants.js';
 

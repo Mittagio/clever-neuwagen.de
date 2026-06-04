@@ -67,7 +67,7 @@ export default function HeroOffer({
                 />
               </div>
             )}
-            <RecommendReasonsPanel reasons={recommendReasons} title="Warum?" />
+            <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt er zu Ihnen?" />
           </div>
         </div>
         <div className="vd-hero__mobile-dock">

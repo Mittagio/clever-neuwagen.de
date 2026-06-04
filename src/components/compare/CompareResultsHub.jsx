@@ -3,8 +3,7 @@ import VehicleImage from '../shared/VehicleImage.jsx';
 import MobileBottomSheet from '../shared/MobileBottomSheet.jsx';
 import CleverQuoteBadge, { CleverQuoteCompareCards } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
-import { formatCurrency } from '../../logic/marketplaceService.js';
-import { buildRecommendReasons } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
+import { getMatchDisplayTitle, formatMatchPrimaryPrice } from '../../logic/discoveryDisplay.js';
 import './compare-mobile.css';
 
 function formatMatchPrice(match, paymentMode) {
@@ -25,7 +24,7 @@ function CompareDuelCard({
   onView,
 }) {
   const v = match.vehicle;
-  const title = `${match.model}${match.bestTrim ? ` ${match.bestTrim}` : ''}`;
+  const title = getMatchDisplayTitle(match);
   const reasons = buildRecommendReasons(match, { wishes, maxReasons: 2 });
 
   return (
@@ -56,7 +55,7 @@ function CompareDuelCard({
 }
 
 function CompareExtraRow({ match, paymentMode, onView }) {
-  const title = `${match.model}${match.bestTrim ? ` ${match.bestTrim}` : ''}`;
+  const title = getMatchDisplayTitle(match);
   return (
     <button type="button" className="compare-extra-row" onClick={() => onView?.(match)}>
       <div className="compare-extra-row__main">

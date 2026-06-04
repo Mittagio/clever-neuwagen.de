@@ -38,8 +38,9 @@ assert.equal(stats.total, 4);
 assert.equal(stats.visible, 2);
 assert.equal(stats.hidden, 2);
 assert.equal(buildOfferCountLine({ visible: 0, hidden: 2 }), 'Keine Angebote sichtbar');
-assert.equal(buildOfferCountLine({ visible: 3, hidden: 0 }), '3 Angebote');
+assert.equal(buildOfferCountLine({ visible: 3, hidden: 0 }), '3 Fahrzeuge geprüft');
 assert.equal(buildOfferCountLine({ visible: 5, hidden: 2 }), '5 Angebote · 2 ausgeblendet');
+assert.equal(buildOfferCountLine({ visible: 3, hidden: 0, total: 225 }), '225 Fahrzeuge geprüft · 3 passen');
 assert.ok(isAllBrandsExcluded(catalog, ['kia', 'mg', 'dacia']));
 
 console.log('✓ Marken-/Modell-Katalog-Tests bestanden.');

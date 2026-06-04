@@ -1327,3 +1327,234 @@
     padding-bottom: 32px;
   }
 }
+
+/* ── Sprint 36: Carwow-Reduktion ── */
+
+.disc-curated-line {
+  margin: 0 0 10px;
+  padding: 0 2px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.disc-section__label--s36 {
+  display: block;
+  padding: 0 16px;
+  font-size: 0.6875rem;
+}
+
+.disc-hero--s36 {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff;
+}
+
+.disc-hero__s36 {
+  display: flex;
+  flex-direction: column;
+}
+
+.disc-hero__visual--s36 {
+  padding: 0;
+  min-height: auto;
+  background: #f8fafc;
+}
+
+.disc-hero--s36 .disc-hero__image-wrap,
+.disc-hero--s36 .disc-hero__image {
+  min-height: 200px;
+  max-height: 240px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.disc-hero__s36-body {
+  padding: 16px 16px 20px;
+}
+
+.disc-hero__badge--s36 {
+  position: static;
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+}
+
+.disc-hero__rate--hero {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0b2559;
+}
+
+.disc-hero__rate--hero span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.disc-hero__rate-alt {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.disc-hero__price-hero {
+  margin: 12px 0 14px;
+}
+
+.disc-hero__cta--hero {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.0625rem;
+  border-radius: 14px;
+}
+
+.disc-hero__understand {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.disc-curated-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 0;
+}
+
+.disc-curated-card {
+  border-radius: 16px;
+  border: 1px solid #e8edf3;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.disc-curated-card__main {
+  display: grid;
+  grid-template-columns: 112px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.disc-curated-card__media {
+  position: relative;
+}
+
+.disc-curated-card__rank {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.disc-curated-card__image-wrap,
+.disc-curated-card__image {
+  width: 100%;
+  min-height: 72px;
+  max-height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.disc-curated-card__title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.disc-curated-card__price {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0b2559;
+}
+
+.disc-curated-card__price span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.disc-curated-card__arrow {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #fff;
+  font-size: 1.125rem;
+}
+
+.disc-overflow {
+  padding: 12px 16px 0;
+}
+
+.disc-overflow__toggle {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.disc-overflow__grid {
+  padding-top: 12px;
+}
+
+@media (min-width: 1024px) {
+  .disc-hero--s36 {
+    border-radius: 22px;
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  .disc-hero__s36 {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+  }
+
+  .disc-hero__visual--s36 {
+    min-height: 280px;
+  }
+
+  .disc-curated-list {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .disc-section__label--s36 {
+    padding: 0;
+  }
+}
