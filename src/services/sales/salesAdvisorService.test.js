@@ -26,7 +26,8 @@ const message = buildSalesWhatsAppMessage({
 });
 
 assert.ok(message.includes('Herr Müller'));
-assert.ok(message.includes('CleverQuote 97 %'));
+assert.ok(message.includes('97 % CleverQuote'));
+assert.ok(message.includes('geprüft'));
 assert.ok(message.includes('Autohaus Trinkle'));
 
 const kiaPool = getKiaSalesVehiclePool();

@@ -2,6 +2,8 @@
  * KI-Textassistent (regelbasiert) – WhatsApp & E-Mail im Gesprächsmodus
  */
 
+import { buildSalesAdvisorWhatsAppMessage } from '../../logic/whatsappBriefMessages.js';
+
 function numberedVehicles(matches = []) {
   return matches.map((m, i) => {
     const title = m.model ?? m.title ?? 'Fahrzeug';
@@ -17,22 +19,17 @@ export function buildDefaultWhatsAppMessage({
   matches = [],
   shareUrl = '',
   wishLabels = [],
+  budgetMax = null,
 }) {
-  const lines = numberedVehicles(matches);
-  return [
-    `Hallo ${customerName},`,
-    '',
-    `wie besprochen habe ich Ihnen ${matches.length} passende Fahrzeuge zusammengestellt.`,
-    '',
-    ...lines,
-    '',
-    'Hier können Sie die Fahrzeuge direkt vergleichen:',
-    shareUrl,
-    '',
-    'Viele Grüße',
+  return buildSalesAdvisorWhatsAppMessage({
+    customerName,
     sellerName,
     dealerName,
-  ].join('\n');
+    matches,
+    shareUrl,
+    wishLabels,
+    budgetMax,
+  });
 }
 
 export function buildDefaultEmailMessage({

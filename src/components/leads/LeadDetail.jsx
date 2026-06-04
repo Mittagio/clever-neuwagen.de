@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { LEAD_STATUS, LEAD_STATUS_ORDER, PAYMENT_TYPES } from '../../data/leadTypes.js';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { formatLeadTime, formatRate, buildWhatsAppLink } from '../../logic/leadService.js';
+import { buildInquiryBriefWhatsAppMessage } from '../../logic/whatsappBriefMessages.js';
 import { buildDeliveryConfirmUrl } from '../../logic/deliveryConfirmation.js';
 import DeliveryFlowSteps from '../delivery/DeliveryFlowSteps.jsx';
 import LeadVehicleImage from './LeadVehicleImage.jsx';
@@ -37,7 +38,13 @@ export default function LeadDetail({ lead, onBack }) {
 
   function handleWhatsApp() {
     if (!lead.contact.phone) return;
-    const msg = `Hallo ${lead.contact.name || ''}, hier ist ${lead.vehicle?.label ?? 'Ihr Fahrzeug'} – wie besprochen.`;
+    const msg = lead.inquiryBrief
+      ? buildInquiryBriefWhatsAppMessage({
+        brief: lead.inquiryBrief,
+        sellerName: 'Ihr Ansprechpartner',
+        dealerName: lead.inquiryBrief.dealer?.name ?? '',
+      })
+      : `Hallo ${lead.contact.name || ''}, hier ist ${lead.vehicle?.label ?? 'Ihr Fahrzeug'} – wie besprochen.`;
     window.open(buildWhatsAppLink(msg, lead.contact.phone), '_blank', 'noopener');
   }
 

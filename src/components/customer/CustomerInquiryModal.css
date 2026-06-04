@@ -190,10 +190,22 @@
   cursor: pointer;
 }
 
-.cust-inq-error {
-  color: #b91c1c;
-  font-size: 0.88rem;
-  margin: 0;
+.cust-inq-summary--brief {
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1023px) {
+  .cust-inq-summary--brief .dealer-inq-brief {
+    margin-bottom: 0;
+    padding: 12px 14px;
+  }
+
+  .cust-inq-summary--brief .dealer-inq-brief__customer {
+    font-size: 1rem;
+  }
 }
 
 .cust-inq-success {

@@ -27,6 +27,7 @@ export default function SalesCommunicationCenter({
   dealerName = '',
   dealerPhone = '',
   wishLabels = [],
+  budgetMax = null,
   onSent,
 }) {
   const [channel, setChannel] = useState('whatsapp');
@@ -44,13 +45,14 @@ export default function SalesCommunicationCenter({
     matches,
     shareUrl,
     wishLabels,
+    budgetMax,
   };
 
   useEffect(() => {
     setWhatsappText(buildDefaultWhatsAppMessage(ctx));
     setEmailText(buildDefaultEmailMessage(ctx));
     setEmailSubject(buildEmailSubject(dealerName));
-  }, [matches, shareUrl, customer.name, sellerName, dealerName, wishLabels]);
+  }, [matches, shareUrl, customer.name, sellerName, dealerName, wishLabels, budgetMax]);
 
   function showToast(msg) {
     setToast(msg);

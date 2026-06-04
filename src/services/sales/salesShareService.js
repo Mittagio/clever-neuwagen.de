@@ -1,5 +1,6 @@
 import { generateOfferAccessToken } from '../../logic/offerAccessToken.js';
 import { buildSalesCompareRows } from './salesAdvisorService.js';
+import { buildSalesAdvisorWhatsAppMessage } from '../../logic/whatsappBriefMessages.js';
 
 const SESSIONS_KEY = 'cn-smart-sales-sessions';
 const SESSION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
@@ -74,28 +75,18 @@ export function buildSalesWhatsAppMessage({
   dealerName = 'Autohaus',
   matches = [],
   shareUrl,
+  wishLabels = [],
+  budgetMax = null,
 }) {
-  const medals = ['🥇', '🥈', '🥉'];
-  const top = matches.slice(0, 3).map((m, i) => {
-    const pct = m.cleverQuote?.percent ?? m.score ?? '—';
-    const title = m.model ?? m.title ?? 'Fahrzeug';
-    return `${medals[i] ?? '•'} ${title} – CleverQuote ${pct} %`;
-  });
-
-  return [
-    `Hallo ${customerName},`,
-    '',
-    'wie besprochen finden Sie hier die besten Fahrzeuge passend zu Ihren Wünschen.',
-    '',
-    ...top,
-    '',
-    'Link:',
-    shareUrl,
-    '',
-    'Viele Grüße',
+  return buildSalesAdvisorWhatsAppMessage({
+    customerName,
     sellerName,
     dealerName,
-  ].join('\n');
+    matches,
+    shareUrl,
+    wishLabels,
+    budgetMax,
+  });
 }
 
 export function buildSalesWhatsAppUrl({ phone, message }) {

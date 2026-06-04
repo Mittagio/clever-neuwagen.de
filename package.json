@@ -36,6 +36,10 @@
     "parse:kia-pdf": "python scripts/parse-kia-pricelists.py",
     "extract:kia-images": "python scripts/extract-kia-pdf-images.py",
     "test:conversation": "node src/services/sales/conversationMode.test.js",
+    "test:dealer-brief": "node src/logic/dealerInquiryBrief.test.js",
+    "test:whatsapp-brief": "node src/logic/whatsappBriefMessages.test.js",
+    "test:feinschliff50": "node src/services/search/feinschliff50Search.test.js",
+    "test:feinschliff": "npm run test:dealer-brief && npm run test:whatsapp-brief && npm run test:feinschliff50 && npm run test:conversation && npm run test:smart-sales",
     "preview": "vite preview"
   },
   "engines": {

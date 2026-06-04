@@ -214,6 +214,7 @@ export default function SmartSalesPage() {
             dealerName={dealerName}
             dealerPhone={dealerPhone}
             wishLabels={wishLabels}
+            budgetMax={salesWishes?.budget?.maxMonthlyRate ?? null}
             onSent={handleSentVia}
           />
         )}
