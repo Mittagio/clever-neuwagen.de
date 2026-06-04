@@ -42,6 +42,7 @@
     "test:kia-mvp": "node src/logic/kiaEv3SportageMvp.test.js",
     "test:vd-stream": "node src/logic/vehicleDetailStream.test.js",
     "test:feature-resolver": "node src/services/configuration/featureResolver.test.js",
+    "test:inquiry-flow": "node src/logic/inquiryFlowMvp.test.js",
     "test:whatsapp-brief": "node src/logic/whatsappBriefMessages.test.js",
     "test:feinschliff50": "node src/services/search/feinschliff50Search.test.js",
     "test:feinschliff": "npm run test:dealer-brief && npm run test:whatsapp-brief && npm run test:feinschliff50 && npm run test:conversation && npm run test:smart-sales",

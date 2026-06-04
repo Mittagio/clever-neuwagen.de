@@ -51,6 +51,17 @@
   color: #15803d;
 }
 
+.vd-stream-why__package-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(250, 204, 21, 0.12);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-brand);
+  line-height: 1.35;
+}
+
 .vd-stream-why__list {
   list-style: none;
   margin: 0;

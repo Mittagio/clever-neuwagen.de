@@ -1,4 +1,5 @@
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
+import { partitionCleverQuoteItems } from '../../services/cleverQuote/cleverQuoteService.js';
 import './vehicle-detail-stream.css';
 
 export default function VehicleDetailWhySection({
@@ -8,6 +9,10 @@ export default function VehicleDetailWhySection({
   onCleverQuoteWhy,
 }) {
   if (!cleverQuote && !reasons.length) return null;
+
+  const packageNeeded = cleverQuote
+    ? partitionCleverQuoteItems(cleverQuote).packageNeeded
+    : [];
 
   return (
     <section className="vd-stream-block vd-stream-why" aria-labelledby="vd-stream-why-title">
@@ -24,6 +29,11 @@ export default function VehicleDetailWhySection({
             <p className="vd-stream-why__score">{fulfillment.scoreLabel} erfüllt</p>
           )}
         </div>
+      )}
+      {packageNeeded.length > 0 && (
+        <p className="vd-stream-why__package-hint">
+          Noch per Paket: {packageNeeded.map((i) => i.label).join(', ')}
+        </p>
       )}
       {reasons.length > 0 && (
         <ul className="vd-stream-why__list">
