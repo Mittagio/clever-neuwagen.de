@@ -192,7 +192,7 @@
   padding: 10px 16px;
   border: none;
   border-radius: 10px;
-  background: #0b2559;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 600;
   font-size: 0.88rem;
@@ -262,8 +262,8 @@
 }
 
 .loc-radius-chips__chip.is-active {
-  background: #0b2559;
-  border-color: #0b2559;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 

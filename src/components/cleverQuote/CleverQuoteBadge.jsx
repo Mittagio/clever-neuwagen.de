@@ -6,6 +6,23 @@ import {
 } from '../../services/cleverQuote/cleverQuoteService.js';
 import './cleverQuote.css';
 
+function CleverQuoteMark({ percent, size = 'md', uncertain = false }) {
+  if (uncertain || percent == null) {
+    return (
+      <div className={`clever-quote-mark clever-quote-mark--uncertain clever-quote-mark--${size}`}>
+        <span className="clever-quote-mark__percent">?</span>
+        <span className="clever-quote-mark__label">CLEVERQUOTE</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`clever-quote-mark clever-quote-mark--${size}`}>
+      <span className="clever-quote-mark__percent">{percent} %</span>
+      <span className="clever-quote-mark__label">CLEVERQUOTE</span>
+    </div>
+  );
+}
+
 export default function CleverQuoteBadge({
   cleverQuote,
   size = 'md',
@@ -15,17 +32,21 @@ export default function CleverQuoteBadge({
   if (!cleverQuote) return null;
 
   const tier = cleverQuote.tier ?? getCleverQuoteTier(cleverQuote.percent);
-  const percentLabel = cleverQuote.percent != null
-    ? `${cleverQuote.percent} %`
-    : CLEVER_QUOTE_UNCERTAIN_LABEL;
+  const uncertain = cleverQuote.percent == null;
 
   return (
     <div className={`clever-quote clever-quote--${size} clever-quote--${tier.dot}`}>
-      <span className="clever-quote__dot" aria-hidden />
+      <CleverQuoteMark
+        percent={cleverQuote.percent}
+        size={size === 'lg' ? 'md' : 'sm'}
+        uncertain={uncertain}
+      />
       <div className="clever-quote__text">
-        <strong className="clever-quote__brand">CleverQuote {percentLabel}</strong>
-        {showTier && (
+        {!uncertain && showTier && (
           <span className="clever-quote__tier">{cleverQuote.tierLabel ?? tier.label}</span>
+        )}
+        {uncertain && (
+          <span className="clever-quote__tier">{CLEVER_QUOTE_UNCERTAIN_LABEL}</span>
         )}
         {cleverQuote.fulfillmentLabel && size !== 'sm' && (
           <span className="clever-quote__fulfillment">Erfüllt {cleverQuote.fulfillmentLabel}</span>
@@ -97,7 +118,10 @@ export function CleverQuoteBreakdown({
           <button type="button" className="clever-quote-breakdown__close" onClick={onClose} aria-label="Schließen">×</button>
         </header>
         {cleverQuote.percent != null && (
-          <p className="clever-quote-breakdown__score">{cleverQuote.percent} % Passung zu Ihren Wünschen</p>
+          <div className="clever-quote-breakdown__score-row">
+            <CleverQuoteMark percent={cleverQuote.percent} size="md" />
+            <p className="clever-quote-breakdown__score">Passung zu Ihren Wünschen</p>
+          </div>
         )}
         <p className="clever-quote-breakdown__lead">
           So bewertet CleverQuote™, wie gut dieses Fahrzeug zu Ihnen passt.

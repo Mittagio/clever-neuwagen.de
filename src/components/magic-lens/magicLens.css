@@ -241,7 +241,7 @@
 .magic-lens__field select:focus {
   outline: 2px solid #059669;
   outline-offset: 0;
-  border-color: #059669;
+  border-color: var(--color-clever);
   background: #fff;
 }
 
@@ -261,7 +261,7 @@
   min-height: 52px;
   border: none;
   border-radius: 14px;
-  background: #059669;
+  background: var(--color-brand);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;

@@ -13,7 +13,7 @@
 .intel-api-back {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -110,7 +110,7 @@
   padding: 0 14px;
   border: none;
   border-radius: 10px;
-  background: #0071e3;
+  background: var(--color-brand);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;

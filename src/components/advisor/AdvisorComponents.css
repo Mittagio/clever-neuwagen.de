@@ -157,7 +157,7 @@
 }
 
 .adv-wish.is-active {
-  border-color: var(--color-accent, #2563eb);
+  border-color: var(--color-accent, var(--color-brand));
   background: rgba(37, 99, 235, 0.08);
 }
 
@@ -174,8 +174,8 @@
 }
 
 .adv-wish.is-active .adv-wish__box {
-  background: var(--color-accent, #2563eb);
-  border-color: var(--color-accent, #2563eb);
+  background: var(--color-accent, var(--color-brand));
+  border-color: var(--color-accent, var(--color-brand));
   color: #fff;
 }
 
@@ -494,8 +494,8 @@
 }
 
 .adv-btn--compare.is-active {
-  border-color: var(--color-accent, #2563eb);
-  color: var(--color-accent, #2563eb);
+  border-color: var(--color-accent, var(--color-brand));
+  color: var(--color-accent, var(--color-brand));
   background: rgba(37, 99, 235, 0.08);
 }
 
@@ -671,7 +671,7 @@
 }
 
 .adv-podium-card.is-active {
-  border-color: var(--color-primary, #2563eb);
+  border-color: var(--color-primary, var(--color-brand));
   box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
 }
 
@@ -691,7 +691,7 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 800;
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, var(--color-brand));
 }
 
 .adv-podium-card__meta {
@@ -798,7 +798,7 @@
   margin: 0 0 var(--space-md);
   font-size: 1.75rem;
   font-weight: 800;
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, var(--color-brand));
 }
 
 .adv-compare-view__rate span {
@@ -941,7 +941,7 @@
 }
 
 .adv-flow-progress__step.is-active {
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, var(--color-brand));
 }
 
 .adv-flow-progress__step.is-done {
@@ -962,8 +962,8 @@
 }
 
 .adv-flow-progress__step.is-active .adv-flow-progress__dot {
-  border-color: var(--color-primary, #2563eb);
-  background: var(--color-primary, #2563eb);
+  border-color: var(--color-primary, var(--color-brand));
+  background: var(--color-primary, var(--color-brand));
   color: #fff;
 }
 
@@ -989,7 +989,7 @@
   display: block;
   height: 100%;
   width: var(--progress, 0%);
-  background: var(--color-primary, #2563eb);
+  background: var(--color-primary, var(--color-brand));
   border-radius: 999px;
   transition: width 0.25s ease;
 }
@@ -1025,7 +1025,7 @@
 .adv-offer-step__rate {
   font-size: 2rem;
   font-weight: 800;
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, var(--color-brand));
   margin: var(--space-md) 0;
 }
 

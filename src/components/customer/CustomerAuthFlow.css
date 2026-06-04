@@ -41,7 +41,7 @@
   text-align: center;
   font-size: 0.8125rem;
   padding: var(--space-md);
-  background: rgba(0, 113, 227, 0.06);
+  background: rgba(11, 23, 54, 0.06);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-lg);
   color: var(--color-text-secondary);
@@ -72,7 +72,7 @@
 .cust-auth-input:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.12);
 }
 
 .cust-auth-input--code {

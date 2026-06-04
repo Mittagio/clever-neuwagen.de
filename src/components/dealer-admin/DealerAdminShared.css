@@ -20,7 +20,7 @@
 .dop-header__back {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-accent, #0071e3);
+  color: var(--color-accent, var(--color-brand));
   text-decoration: none;
 }
 
@@ -137,7 +137,7 @@
 .dop-bell__mark {
   border: none;
   background: none;
-  color: #0071e3;
+  color: var(--color-brand);
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -171,7 +171,7 @@
   margin-top: 8px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -228,7 +228,7 @@
   font-weight: 600;
 }
 
-.dop-status--success { background: #ecfdf5; color: #047857; }
+.dop-status--success { background: #ecfdf5; color: #15803d; }
 .dop-status--warning { background: #fefce8; color: #a16207; }
 .dop-status--danger { background: #fef2f2; color: #b91c1c; }
 .dop-status--muted { background: #f5f5f5; color: #737373; }
@@ -406,7 +406,7 @@
 
 .dop-btn--approve {
   background: #ecfdf5;
-  color: #047857;
+  color: #15803d;
   border: 1px solid #a7f3d0;
 }
 
@@ -447,7 +447,7 @@
 
 .dop-onboarding-step.is-done {
   background: #ecfdf5;
-  color: #047857;
+  color: #15803d;
 }
 
 .dop-onboarding-step.is-current {

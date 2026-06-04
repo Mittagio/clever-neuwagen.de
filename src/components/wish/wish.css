@@ -60,8 +60,8 @@
 }
 
 .wish-chip.is-active {
-  background: #0f172a;
-  border-color: #0f172a;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 
@@ -116,7 +116,7 @@
 }
 
 .wish-fulfillment__item--ok {
-  color: #047857;
+  color: #15803d;
 }
 
 .wish-fulfillment__item--warn {
@@ -174,7 +174,7 @@
   margin: 0 0 6px;
   font-size: 2rem;
   font-weight: 800;
-  color: #059669;
+  color: var(--color-clever);
   line-height: 1;
 }
 
@@ -195,7 +195,7 @@
   min-height: 52px;
   border: none;
   border-radius: 14px;
-  background: #059669;
+  background: var(--color-brand);
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
@@ -328,7 +328,7 @@
   padding: 0 20px;
   border: none;
   border-radius: 10px;
-  background: #059669;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -360,7 +360,7 @@
   padding: 12px 14px;
   border-radius: 12px;
   background: #f0fdf4;
-  color: #047857;
+  color: #15803d;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -385,15 +385,15 @@
 }
 
 .trim-wish-card--best {
-  border-color: #059669;
-  box-shadow: 0 0 0 1px #059669;
+  border-color: var(--color-clever);
+  box-shadow: 0 0 0 1px var(--color-clever);
 }
 
 .trim-wish-card__badge {
   margin: 0 0 6px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .trim-wish-card h3 {

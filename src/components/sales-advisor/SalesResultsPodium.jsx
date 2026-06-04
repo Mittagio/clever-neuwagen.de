@@ -2,9 +2,8 @@ import { useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge, { CleverQuoteBreakdown } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
-import { formatCurrency } from '../../logic/marketplaceService.js';
+import { formatMatchPrimaryPrice, getMatchDisplayTitle } from '../../logic/discoveryDisplay.js';
 import { buildKiaSellerHeadline } from '../../data/kia/kiaPartnerHub.js';
-import { getMatchDisplayTitle } from '../../logic/discoveryDisplay.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 
 const TOP_N = 3;
@@ -22,6 +21,7 @@ function PodiumMatchCard({
   match,
   rank,
   wishes,
+  paymentMode = 'leasing',
   inCompare,
   showReasons = true,
   compactEbene1 = false,
@@ -31,7 +31,7 @@ function PodiumMatchCard({
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
-  const rate = match.bestOffer?.monthlyRate ?? v.monthlyRate;
+  const price = formatMatchPrimaryPrice(match, paymentMode);
   const recommendReasons = buildWishMatchBullets(match, { wishes, maxReasons: PODIUM_MAX_REASONS });
   const isTop = rank != null && rank < TOP_N;
 
@@ -70,8 +70,8 @@ function PodiumMatchCard({
         )}
 
         <p className="ss-podium-card__rate">
-          {formatCurrency(rate)}
-          <span>/Monat</span>
+          {price.label}
+          {price.suffix && <span>{price.suffix}</span>}
         </p>
 
         {!compactEbene1 && formatDelivery(match) && (
@@ -105,6 +105,7 @@ export default function SalesResultsPodium({
   matches = [],
   customerName = '',
   wishes = null,
+  paymentMode = 'leasing',
   onSelect,
   onToggleCompare,
   onOpenCompare,
@@ -141,6 +142,7 @@ export default function SalesResultsPodium({
             match={match}
             rank={index}
             wishes={wishes}
+            paymentMode={paymentMode}
             inCompare={compareSlugs.includes(match.slug)}
             showReasons
             compactEbene1
@@ -170,6 +172,7 @@ export default function SalesResultsPodium({
                   key={match.slug}
                   match={match}
                   wishes={wishes}
+                  paymentMode={paymentMode}
                   inCompare={compareSlugs.includes(match.slug)}
                   showReasons={false}
                   onSelect={onSelect}

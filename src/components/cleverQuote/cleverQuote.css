@@ -1,52 +1,26 @@
 .clever-quote {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px 12px;
   padding: 12px 14px;
-  border-radius: 12px;
-  background: #f8fafb;
-  border: 1px solid #e8edf2;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
 }
 
-.clever-quote--green {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
-.clever-quote--yellow {
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-
-.clever-quote--orange {
-  background: #fff7ed;
-  border-color: #fed7aa;
-}
-
-.clever-quote--red {
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
+.clever-quote--green,
+.clever-quote--yellow,
+.clever-quote--orange,
+.clever-quote--red,
 .clever-quote--gray {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
 }
 
 .clever-quote__dot {
-  flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  margin-top: 5px;
-  border-radius: 999px;
-  background: #22c55e;
+  display: none;
 }
-
-.clever-quote--yellow .clever-quote__dot { background: #eab308; }
-.clever-quote--orange .clever-quote__dot { background: #f97316; }
-.clever-quote--red .clever-quote__dot { background: #ef4444; }
-.clever-quote--gray .clever-quote__dot { background: #94a3b8; }
 
 .clever-quote__text {
   flex: 1;
@@ -99,11 +73,18 @@
   line-height: 1;
 }
 
+.clever-quote-breakdown__score-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
 .clever-quote-breakdown__score {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
 }
 
 .clever-quote--sm {
@@ -267,7 +248,7 @@
   margin-bottom: 2px;
 }
 
-.cq-why-group--ok .cq-why-group__icon { color: #059669; }
+.cq-why-group--ok .cq-why-group__icon { color: var(--color-clever); }
 .cq-why-group--pkg .cq-why-group__icon { color: #0284c7; }
 .cq-why-group--no .cq-why-group__icon { color: #ef4444; }
 .cq-why-group--uncertain .cq-why-group__icon { color: #94a3b8; }
@@ -320,7 +301,7 @@
 }
 
 .clever-quote-breakdown__item--fulfilled .clever-quote-breakdown__icon {
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .clever-quote-breakdown__item--missing .clever-quote-breakdown__icon {

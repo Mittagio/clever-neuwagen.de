@@ -31,7 +31,7 @@
 }
 
 .disc-understood__check {
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 700;
   font-size: 0.75rem;
 }
@@ -84,10 +84,21 @@
   border: 1px solid #e8edf3;
   background: #fff;
   box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* S36 / Mobile-first: immer eine Spalte – sonst sitzt der Inhalt in Spalte 1 (~55 % Breite) */
+.disc-hero--s36,
+.disc-hero--mobile-first {
+  grid-template-columns: 1fr !important;
+  width: 100%;
+  max-width: 100%;
 }
 
 @media (min-width: 640px) {
-  .disc-hero {
+  .disc-hero:not(.disc-hero--s36):not(.disc-hero--mobile-first) {
     grid-template-columns: 1.05fr 1fr;
   }
 }
@@ -128,7 +139,7 @@
 }
 
 .disc-hero__fact--savings {
-  color: #047857;
+  color: #15803d;
   font-weight: 600;
 }
 
@@ -136,7 +147,7 @@
   margin: 0 0 16px;
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .disc-hero__cta {
@@ -144,7 +155,7 @@
   padding: 14px 20px;
   border: none;
   border-radius: 12px;
-  background: #0b2559;
+  background: var(--color-brand);
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
@@ -278,7 +289,7 @@
 .disc-summary__rate dd {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .disc-summary__note {
@@ -304,7 +315,7 @@
 .disc-compare__best {
   margin: 0;
   font-weight: 600;
-  color: #047857;
+  color: #15803d;
   font-size: 0.95rem;
 }
 
@@ -330,7 +341,7 @@
   padding: 12px 20px;
   border: none;
   border-radius: 10px;
-  background: #0b2559;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -589,7 +600,7 @@
 }
 
 @media (min-width: 640px) {
-  .disc-hero--premium {
+  .disc-hero--premium:not(.disc-hero--s36):not(.disc-hero--mobile-first) {
     grid-template-columns: 1.15fr 1fr;
   }
 }
@@ -903,6 +914,12 @@
     padding-right: 0;
   }
 
+  .marketplace-page--discovery .marketplace-page__container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
   .north-star-results--v26 .search-summary-compact__row {
     flex-wrap: wrap;
     overflow-x: visible;
@@ -937,12 +954,12 @@
     display: none;
   }
 
-  .disc-hero--premium {
+  .disc-hero--premium:not(.disc-hero--s36):not(.disc-hero--mobile-first) {
     border-radius: 18px;
     box-shadow: 0 2px 16px rgba(15, 23, 42, 0.06);
   }
 
-  .disc-hero--premium {
+  .disc-hero--premium:not(.disc-hero--s36):not(.disc-hero--mobile-first) {
     grid-template-columns: 1fr;
   }
 
@@ -1272,6 +1289,46 @@
 }
 
 @media (max-width: 1023px) {
+  .north-star-results--mf2,
+  .north-star-results--s36,
+  .north-star-results--v26 {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .north-star-results--mf2 .disc-section--hit,
+  .north-star-results--s36 .disc-hero--s36 {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .disc-hero--premium.disc-hero--s36,
+  .disc-hero--premium.disc-hero--mobile-first {
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    grid-template-columns: 1fr !important;
+  }
+
+  .disc-hero__s36,
+  .disc-hero__s36-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .disc-hero__cta--hero,
+  .disc-hero__understand,
+  .disc-hero__price-hero--sheet {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 1023px) {
   .north-star-results--mf2 {
     padding-left: 0;
     padding-right: 0;
@@ -1388,7 +1445,7 @@
   margin: 0;
   font-size: 1.75rem;
   font-weight: 800;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .disc-hero__rate--hero span {
@@ -1447,9 +1504,18 @@
   display: grid;
   grid-template-columns: 112px 1fr auto;
   gap: 12px;
-  align-items: center;
+  align-items: start;
   padding: 10px 12px;
   cursor: pointer;
+}
+
+.disc-curated-card__body {
+  min-width: 0;
+}
+
+.disc-curated-card .cq-why-panel--compact {
+  margin: 6px 0 4px;
+  font-size: 0.75rem;
 }
 
 .disc-curated-card__media {
@@ -1492,7 +1558,7 @@
   margin: 6px 0 0;
   font-size: 1rem;
   font-weight: 800;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .disc-curated-card__price span {
@@ -1607,9 +1673,9 @@
 }
 
 .disc-price-sheet__option.is-active {
-  border-color: #0b2559;
+  border-color: var(--color-brand);
   background: #f8fafc;
-  box-shadow: 0 0 0 1px #0b2559;
+  box-shadow: 0 0 0 1px var(--color-brand);
 }
 
 .disc-price-sheet__option-head {
@@ -1657,6 +1723,6 @@
   background: #fff;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #0b2559;
+  color: var(--color-brand);
   cursor: pointer;
 }

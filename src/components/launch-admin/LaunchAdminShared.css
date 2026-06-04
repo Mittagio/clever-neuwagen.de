@@ -20,7 +20,7 @@
 .launch-header__back {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -153,7 +153,7 @@
   font-weight: 600;
 }
 
-.launch-chip--success { background: #ecfdf5; color: #047857; }
+.launch-chip--success { background: #ecfdf5; color: #15803d; }
 .launch-chip--warning { background: #fefce8; color: #a16207; }
 .launch-chip--danger { background: #fef2f2; color: #b91c1c; }
 .launch-chip--muted { background: #f5f5f5; color: #737373; }
@@ -264,7 +264,7 @@
 
 .launch-flow__step.is-done .launch-flow__label {
   background: #ecfdf5;
-  color: #047857;
+  color: #15803d;
   border-color: #a7f3d0;
 }
 

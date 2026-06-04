@@ -21,7 +21,7 @@
   margin: 0 0 6px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -70,7 +70,7 @@
 }
 
 .eq-advisor__wish--on {
-  border-color: #10b981;
+  border-color: var(--color-clever);
   background: #ecfdf5;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
 }
@@ -94,7 +94,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--color-brand);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 700;
@@ -185,7 +185,7 @@
 
 .eq-advisor__pkg-price {
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .eq-advisor__fulfilled {
@@ -227,7 +227,7 @@
   margin: 0 0 4px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -253,7 +253,7 @@
   background: #ecfdf5;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #047857;
+  color: #15803d;
   display: inline-block;
 }
 
@@ -296,7 +296,7 @@
 .eq-advisor__call {
   display: inline-block;
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
   text-decoration: none;
 }
 
@@ -305,7 +305,7 @@
   margin-top: 12px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
   text-decoration: none;
 }
 
@@ -336,7 +336,7 @@
 }
 
 .eq-flow-progress__step.is-active {
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .eq-flow-progress__step.is-done {
@@ -356,8 +356,8 @@
 }
 
 .eq-flow-progress__step.is-active .eq-flow-progress__dot {
-  border-color: #059669;
-  background: #059669;
+  border-color: var(--color-clever);
+  background: var(--color-brand);
   color: #fff;
 }
 

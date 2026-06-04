@@ -26,17 +26,17 @@
 .intel-header__api {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
   padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(0, 113, 227, 0.08);
+  background: rgba(11, 23, 54, 0.08);
 }
 
 .intel-header__back {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 

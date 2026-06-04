@@ -65,7 +65,7 @@
 }
 
 .account-tab.is-active {
-  background: #5e46e8;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -110,7 +110,7 @@
   display: inline-flex;
   padding: 12px 20px;
   border-radius: 999px;
-  background: #5e46e8;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 600;
   text-decoration: none;
@@ -156,7 +156,7 @@
 .account-doc-item__link {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #5e46e8;
+  color: var(--color-brand);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -210,7 +210,7 @@
   margin-top: 10px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #5e46e8;
+  color: var(--color-brand);
   text-decoration: none;
 }
 

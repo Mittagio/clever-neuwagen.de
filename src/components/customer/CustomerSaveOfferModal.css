@@ -50,7 +50,7 @@
   border-radius: 12px;
   min-height: 44px;
   padding: 0 18px;
-  background: #0b2559;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 600;
   cursor: pointer;

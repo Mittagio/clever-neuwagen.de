@@ -15,19 +15,32 @@ function wishLabelsFromSelection(detailSelection, recommendationResult) {
 
 function buildVariantBlock(detailSelection, displayPrice, pricing) {
   const payment = pricing?.payment ?? detailSelection?.paymentMode ?? 'leasing';
+  const normalized = payment === 'financing' ? 'finance' : payment;
   const termMonths = detailSelection?.termMonths ?? pricing?.termMonths ?? 48;
   const mileagePerYear = detailSelection?.mileagePerYear ?? pricing?.mileagePerYear ?? 10000;
   const downPayment = detailSelection?.downPayment ?? pricing?.downPayment ?? 0;
 
   const lines = [];
-  if (payment === 'leasing') {
-    lines.push(`${termMonths} Monate`);
-    lines.push(`${Number(mileagePerYear).toLocaleString('de-DE')} km`);
+  const paymentLabels = {
+    leasing: 'Leasing',
+    finance: 'Finanzierung',
+    cash: 'Kauf',
+  };
+
+  if (normalized === 'leasing') {
+    lines.push(`Leasing · ${termMonths} Monate`);
+    lines.push(`${Number(mileagePerYear).toLocaleString('de-DE')} km/Jahr`);
     lines.push(downPayment > 0 ? `${formatCurrency(downPayment)} Anzahlung` : '0 € Anzahlung');
+  } else if (normalized === 'finance') {
+    lines.push(`Finanzierung · ${termMonths} Monate`);
+    if (downPayment > 0) lines.push(`${formatCurrency(downPayment)} Anzahlung`);
+  } else if (normalized === 'cash') {
+    lines.push('Kaufpreis');
   }
 
   return {
-    payment,
+    payment: normalized,
+    paymentLabel: paymentLabels[normalized] ?? paymentLabels.leasing,
     termMonths,
     mileagePerYear,
     downPayment,
@@ -127,8 +140,21 @@ export function formatDealerInquiryBriefLines(brief) {
     brief.wishes.fulfilled.forEach((w) => lines.push(`✓ ${w}`));
   }
   if (brief.wishes?.optional?.length) {
-    lines.push('Optional:');
+    lines.push('Optional / Paket:');
     brief.wishes.optional.forEach((w) => lines.push(`+ ${w}`));
+  }
+  if (brief.cleverQuoteSnapshot?.missing?.length) {
+    lines.push('Nicht erfüllt:');
+    brief.cleverQuoteSnapshot.missing.forEach((i) => lines.push(`✗ ${i.label}`));
+  }
+  if (brief.cleverQuoteSnapshot?.uncertain?.length) {
+    lines.push('Unklar:');
+    brief.cleverQuoteSnapshot.uncertain.forEach((i) => lines.push(`? ${i.label}`));
+  }
+  if (brief.packageRecommendation) lines.push(`Paket: ${brief.packageRecommendation}`);
+  if (brief.dealer?.name) {
+    const dist = brief.dealer.distanceKm != null ? ` (${brief.dealer.distanceKm} km)` : '';
+    lines.push(`Händler: ${brief.dealer.name}${dist}`);
   }
   if (brief.recommended?.title) lines.push(`Empfohlen: ${brief.recommended.title}`);
   if (brief.alternatives?.length) {
@@ -139,8 +165,10 @@ export function formatDealerInquiryBriefLines(brief) {
     });
   }
   if (brief.variant?.lines?.length) {
-    lines.push('Gewählte Variante:');
+    lines.push('Gewählte Zahlungsart:');
     brief.variant.lines.forEach((l) => lines.push(l));
+  } else if (brief.variant?.paymentLabel) {
+    lines.push(`Gewählte Zahlungsart: ${brief.variant.paymentLabel}`);
   }
   if (brief.variant?.priceLabel) lines.push(brief.variant.priceLabel);
   if (brief.deliveryLabel) lines.push(brief.deliveryLabel);

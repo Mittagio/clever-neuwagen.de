@@ -1,0 +1,229 @@
+/* Mobile Stream – 5 Blöcke, eine Entscheidung pro Schritt */
+
+.vd-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.vd-stream .vd-hero__mobile,
+.vd-stream .vd-hero__mobile-dock,
+.vd-stream .vd-hero__mobile-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vd-stream-block {
+  padding: 20px 16px;
+  border-top: 1px solid var(--color-border-strong);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.vd-stream-block__title {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.vd-stream-block__sub {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+/* Block 2 – Warum */
+.vd-stream-why__cq {
+  margin-bottom: 12px;
+}
+
+.vd-stream-why__score {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.vd-stream-why__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.vd-stream-why__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.vd-stream-why__list li span {
+  color: var(--color-clever);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Block 3 – Upgrade */
+.vd-stream-upgrade__kicker {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.vd-stream-upgrade__card {
+  padding: 14px;
+  margin-top: 8px;
+}
+
+.vd-stream-upgrade__badge,
+.vd-stream-upgrade__name {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.vd-stream-upgrade__delta,
+.vd-stream-upgrade__meta {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.vd-stream-upgrade__price {
+  margin: 0 0 10px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+.vd-stream-upgrade__gains,
+.vd-stream-upgrade__losses {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+.vd-stream-upgrade__gains li {
+  color: #15803d;
+  margin-bottom: 4px;
+}
+
+.vd-stream-upgrade__losses li {
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+/* Block 4 – Horizontaler Slider */
+.vd-stream-alts__track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.vd-stream-alts__track::-webkit-scrollbar {
+  display: none;
+}
+
+.vd-stream-alt-card {
+  flex: 0 0 min(78vw, 260px);
+  scroll-snap-align: start;
+  padding: 12px;
+  min-width: 0;
+}
+
+.vd-stream-alt-card__rank {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.vd-stream-alt-card__image {
+  margin: 8px 0;
+  min-height: 88px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.vd-stream-alt-card__title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand);
+  overflow-wrap: anywhere;
+}
+
+.vd-stream-alt-card__meta {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: #15803d;
+  font-weight: 600;
+}
+
+.vd-stream-alt-card__price {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+/* Block 5 – Händler */
+.vd-stream-dealer__card {
+  padding: 14px;
+  margin-top: 8px;
+}
+
+.vd-stream-dealer__name {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.vd-stream-dealer__facts {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  display: grid;
+  gap: 4px;
+}
+
+/* Hero im Stream: nur Fahrzeug + Preis + CTA */
+.vd-stream .vd-hero__mobile-content .vd-hero__clever-quote {
+  display: none;
+}
+
+.vd-stream .vd-hero__mobile-dock .cq-recommend-panel {
+  display: none;
+}
+
+.vd-stream .vd-hero__understand {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .vd-stream {
+    display: none;
+  }
+}

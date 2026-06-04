@@ -65,7 +65,7 @@
 .backend-preview {
   margin-bottom: var(--space-xl);
   background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-  border-color: rgba(0, 113, 227, 0.15);
+  border-color: rgba(11, 23, 54, 0.15);
 }
 
 .backend-scope {

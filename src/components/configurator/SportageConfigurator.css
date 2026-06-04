@@ -65,7 +65,7 @@
 
 .option-card.is-active {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.12);
 }
 
 .option-card.is-disabled {
@@ -111,7 +111,7 @@
 
 .color-swatch.is-active {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.12);
 }
 
 .color-swatch-circle {
@@ -155,7 +155,7 @@
 
 .package-item.is-active {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.12);
 }
 
 .package-item input {

@@ -16,7 +16,7 @@
 .reg-header__back {
   margin-top: 6px;
   font-size: 1.25rem;
-  color: #5e46e8;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -99,7 +99,7 @@
 }
 
 .reg-step.is-active .reg-step__num {
-  background: #5e46e8;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -180,7 +180,7 @@
 
 .reg-field input:focus {
   outline: none;
-  border-color: #5e46e8;
+  border-color: var(--color-brand);
   box-shadow: 0 0 0 3px rgba(94, 70, 232, 0.15);
 }
 
@@ -198,7 +198,7 @@
 
 .reg-slug-preview code {
   font-size: 0.8125rem;
-  color: #5e46e8;
+  color: var(--color-brand);
 }
 
 .reg-brand-list {
@@ -225,7 +225,7 @@
 }
 
 .reg-brand.is-selected {
-  border-color: #5e46e8;
+  border-color: var(--color-brand);
   background: #f5f3ff;
 }
 
@@ -242,7 +242,7 @@
 }
 
 .reg-brand__check {
-  color: #5e46e8;
+  color: var(--color-brand);
 }
 
 .reg-packages {
@@ -268,7 +268,7 @@
 }
 
 .reg-package.is-selected {
-  border-color: #5e46e8;
+  border-color: var(--color-brand);
   box-shadow: 0 4px 20px rgba(94, 70, 232, 0.12);
 }
 
@@ -281,7 +281,7 @@
   text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #5e46e8;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -313,7 +313,7 @@
 .reg-package__provision {
   margin: 4px 0 12px;
   font-size: 0.8125rem;
-  color: #5e46e8;
+  color: var(--color-brand);
 }
 
 .reg-package__features {
@@ -335,7 +335,7 @@
 }
 
 .reg-legal-box a {
-  color: #5e46e8;
+  color: var(--color-brand);
   font-weight: 600;
 }
 
@@ -351,7 +351,7 @@
   margin-top: 3px;
   width: 18px;
   height: 18px;
-  accent-color: #5e46e8;
+  accent-color: var(--color-brand);
 }
 
 .reg-summary {
@@ -397,7 +397,7 @@
 }
 
 .reg-btn--primary {
-  background: #5e46e8;
+  background: var(--color-brand);
   color: #fff;
 }
 

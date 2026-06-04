@@ -10,7 +10,7 @@
 
 .asst-rec-card.is-expanded,
 .asst-rec-card.has-offer {
-  border-color: var(--color-accent, #2563eb);
+  border-color: var(--color-accent, var(--color-brand));
   box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
 }
 
@@ -141,7 +141,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--color-accent, #2563eb);
+  color: var(--color-accent, var(--color-brand));
 }
 
 .asst-rec-btn {
@@ -166,8 +166,8 @@
 
 .asst-rec-btn--compare.is-active {
   background: rgba(37, 99, 235, 0.1);
-  border-color: var(--color-accent, #2563eb);
-  color: var(--color-accent, #2563eb);
+  border-color: var(--color-accent, var(--color-brand));
+  color: var(--color-accent, var(--color-brand));
 }
 
 .asst-rec-btn--ghost {

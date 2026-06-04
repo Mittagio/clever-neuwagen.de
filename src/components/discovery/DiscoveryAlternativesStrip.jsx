@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import VehicleImage from '../shared/VehicleImage.jsx';
-import { formatCurrency } from '../../logic/marketplaceService.js';
 import { getVehicleOfferPath } from '../../logic/oneSearchService.js';
+import { formatMatchPrimaryPrice } from '../../logic/discoveryDisplay.js';
 import './discovery-results.css';
 
 export default function DiscoveryAlternativesStrip({
   matches = [],
-  max = 5,
+  max = 3,
+  paymentMode = 'leasing',
   title = 'Vielleicht auch interessant',
   subtitle = 'Falls Sie noch vergleichen möchten.',
 }) {
@@ -24,6 +25,7 @@ export default function DiscoveryAlternativesStrip({
         {items.map((match) => {
           const v = match.vehicle;
           const label = match.model || v.title;
+          const price = formatMatchPrimaryPrice(match, paymentMode);
           return (
             <article key={v.id} className="disc-alt-card" role="listitem">
               <VehicleImage
@@ -35,7 +37,9 @@ export default function DiscoveryAlternativesStrip({
               />
               <div className="disc-alt-card__body">
                 <h3>{label}</h3>
-                <p className="disc-alt-card__rate">{formatCurrency(match.bestOffer.monthlyRate)}/Monat</p>
+                <p className="disc-alt-card__rate">
+                  {price.label}{price.suffix}
+                </p>
                 <p className="disc-alt-card__meta">{v.distanceKm} km</p>
                 <button
                   type="button"

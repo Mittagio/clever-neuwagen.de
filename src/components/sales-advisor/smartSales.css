@@ -418,7 +418,7 @@
   margin: 0 0 12px;
   padding: 0;
   font-size: 0.8125rem;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .ss-podium-card__actions {
@@ -523,7 +523,7 @@
   padding: 0;
 }
 
-.ss-wish-list--ok li { color: #059669; }
+.ss-wish-list--ok li { color: var(--color-clever); }
 .ss-wish-list--miss li { color: #ef4444; }
 
 .ss-detail__upgrade {
@@ -565,7 +565,7 @@
 
 .ss-compare-card__quote {
   font-weight: 700;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .ss-compare-card__rate {
@@ -651,7 +651,7 @@
 
 .ss-share__toast {
   margin: 8px 0 0;
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 600;
 }
 
@@ -899,7 +899,7 @@
 
 .ss-needs__list li {
   padding: 6px 0;
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 600;
 }
 
@@ -1103,7 +1103,7 @@
   padding: 12px;
   border-radius: 12px;
   background: #ecfdf5;
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 600;
 }
 

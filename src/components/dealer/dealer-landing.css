@@ -1,0 +1,346 @@
+/* Clever Händler-Landing – Markensystem */
+
+.dl-hero {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dl-hero__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.dl-hero__title {
+  margin: 0 0 6px;
+  font-size: clamp(1.35rem, 5vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-brand);
+}
+
+.dl-hero__sub {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.dl-hero__form {
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+  background: var(--color-surface);
+}
+
+.dl-hero__input-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.dl-hero__input {
+  width: 100%;
+  min-height: 88px;
+  padding: 14px 52px 14px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  line-height: 1.45;
+  resize: vertical;
+  background: var(--color-bg);
+}
+
+.dl-hero__input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-ring);
+  background: var(--color-surface);
+}
+
+.dl-hero__mic {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.dl-hero__mic.is-active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-muted);
+}
+
+.dl-hero__voice-error {
+  margin: -6px 0 10px;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.dl-hero__cta {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+}
+
+.dl-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dl-chip {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.dl-chip:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* Clever-Moment – ruhig, weiß */
+.dl-clever {
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+}
+
+.dl-clever__welcome {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-clever__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dl-clever__stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  min-width: 0;
+}
+
+.dl-clever__icon {
+  grid-row: 1 / 3;
+  font-size: 1.25rem;
+  align-self: center;
+}
+
+.dl-clever__value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-brand);
+  line-height: 1.1;
+}
+
+.dl-clever__value--clever {
+  color: #15803d;
+}
+
+.dl-clever__label {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  line-height: 1.25;
+}
+
+.dl-section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dl-section__title {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-section__sub {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.dl-curated {
+  display: grid;
+  gap: 10px;
+}
+
+.dl-curated__group {
+  padding: 14px;
+  min-width: 0;
+}
+
+.dl-curated__label {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-curated__picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dl-curated__pick {
+  border: 1px solid var(--color-clever-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #15803d;
+  cursor: pointer;
+}
+
+.dl-curated__pick:hover {
+  background: var(--color-clever-soft);
+}
+
+.dl-stock-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dl-stock {
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0;
+  min-width: 0;
+}
+
+.dl-stock__badge {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-clever-soft);
+  color: #15803d;
+  border-bottom: 1px solid var(--color-clever-border);
+}
+
+.dl-stock__image {
+  min-height: 100px;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dl-stock__image .vehicle-image {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+}
+
+.dl-stock__body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dl-stock__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  color: var(--color-brand);
+}
+
+.dl-stock__rate {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+.dl-stock__delivery {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.dl-stock__cta {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .dl-clever__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .dl-curated {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dl-stock-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dl-stock {
+    grid-template-columns: 1fr;
+  }
+
+  .dl-stock__image {
+    min-height: 140px;
+  }
+}
+
+@media (min-width: 960px) {
+  .dl-stock-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

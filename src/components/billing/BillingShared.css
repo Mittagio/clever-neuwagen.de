@@ -21,7 +21,7 @@
 .bill-header__link {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-accent, #0071e3);
+  color: var(--color-accent, var(--color-brand));
   text-decoration: none;
 }
 
@@ -222,7 +222,7 @@
   white-space: nowrap;
 }
 
-.bill-status--success { background: #ecfdf5; color: #047857; }
+.bill-status--success { background: #ecfdf5; color: #15803d; }
 .bill-status--warning { background: #fefce8; color: #a16207; }
 .bill-status--reminder { background: #fff7ed; color: #c2410c; }
 .bill-status--danger { background: #fef2f2; color: #b91c1c; }
@@ -459,5 +459,5 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: #ecfdf5;
-  color: #047857;
+  color: #15803d;
 }

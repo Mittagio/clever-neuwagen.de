@@ -54,3 +54,22 @@ assert.ok(preview.includes('96 %'));
 assert.ok(preview.includes('350'));
 
 console.log('dealerInquiryBrief.test.js: ok');
+
+const cashBrief = buildDealerInquiryBrief({
+  displayTitle: 'Kia EV3 Earth',
+  displayPrice: { label: '38.065 €', subtitle: 'Kaufpreis' },
+  detailSelection: { paymentMode: 'cash', selectedFeatures: [] },
+  cleverQuote: { percent: 92, matched: 3, scorableTotal: 4, items: [] },
+  vehicle: { slug: 'kia-ev3-earth' },
+  pricing: { payment: 'cash', amount: 38065 },
+});
+
+assert.equal(cashBrief.variant.payment, 'cash');
+assert.ok(cashBrief.variant.lines.some((l) => /Kaufpreis/.test(l)));
+assert.equal(cashBrief.variant.priceLabel, '38.065 €');
+assert.ok(!cashBrief.variant.priceLabel.includes('/Monat'));
+
+const cashLines = formatDealerInquiryBriefLines(cashBrief);
+assert.ok(cashLines.some((l) => l.includes('Kaufpreis')));
+
+console.log('dealerInquiryBrief.test.js cash: ok');

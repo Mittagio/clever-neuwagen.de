@@ -6,7 +6,7 @@ export const FEATURE_CATALOG = [
   {
     id: 'camera_360',
     label: '360° Kamera',
-    aliases: ['360 kamera', '360° kamera', 'rundumsichtkamera', 'surround view', '360-grad'],
+    aliases: ['360 kamera', '360° kamera', '360-grad-kamera', 'rundumsichtkamera', 'surround view', '360-grad', 'around view'],
     category: 'assistenz',
     customerBenefit: 'Bessere Übersicht beim Parken',
   },
@@ -37,7 +37,7 @@ export const FEATURE_CATALOG = [
   {
     id: 'heated_seats',
     label: 'Sitzheizung vorne',
-    aliases: ['sitzheizung', 'sitzheizung vorne', 'warme sitze', 'sitzklima', 'beheizbare vordersitze'],
+    aliases: ['sitzheizung', 'sitzheizung vorne', 'warme sitze', 'sitzklima', 'beheizbare vordersitze', 'beheizbare sitze', 'heated front seats', 'heated_front_seats'],
     category: 'komfort',
   },
   {
@@ -91,7 +91,7 @@ export const FEATURE_CATALOG = [
   {
     id: 'power_tailgate',
     label: 'Elektrische Heckklappe',
-    aliases: ['elektrische heckklappe', 'elektr. heckklappe', 'power tailgate'],
+    aliases: ['elektrische heckklappe', 'elektr. heckklappe', 'power tailgate', 'automatische heckklappe', 'electric_tailgate'],
     category: 'komfort',
   },
   {

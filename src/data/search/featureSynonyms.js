@@ -176,6 +176,7 @@ export const MODEL_CATALOG = [
   { brand: 'Kia', model: 'EV3', patterns: ['ev3', 'ev 3'] },
   { brand: 'Kia', model: 'EV4', patterns: ['ev4', 'ev 4'] },
   { brand: 'Kia', model: 'EV5', patterns: ['ev5', 'ev 5'] },
+  { brand: 'Kia', model: 'EV6', patterns: ['ev6', 'ev 6'] },
   { brand: 'Kia', model: 'Niro EV', patterns: ['niro ev', 'niro'] },
   { brand: 'Kia', model: 'Ceed SW', patterns: ['ceed sw', 'ceed'] },
   { brand: 'Kia', model: 'Picanto', patterns: ['picanto'] },

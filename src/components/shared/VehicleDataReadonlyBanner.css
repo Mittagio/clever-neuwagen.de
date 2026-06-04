@@ -4,8 +4,8 @@
   gap: var(--space-md);
   padding: var(--space-lg);
   margin-bottom: var(--space-xl);
-  background: rgba(0, 113, 227, 0.04);
-  border: 1px solid rgba(0, 113, 227, 0.12);
+  background: rgba(11, 23, 54, 0.04);
+  border: 1px solid rgba(11, 23, 54, 0.12);
   border-radius: var(--radius-xl);
 }
 

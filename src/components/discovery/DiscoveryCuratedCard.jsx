@@ -1,18 +1,21 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
+import CleverQuoteWhyPanel, { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
 import {
   getMatchDisplayTitle,
   formatMatchPrimaryPrice,
 } from '../../logic/discoveryDisplay.js';
+import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 import './discovery-results.css';
 
 /**
- * Carwow-Reduktion Ebene 1 – Treffer #2–5
+ * Carwow-Reduktion – Treffer #2–3 (max. 2 kuratierte Karten neben Hero)
  */
 export default function DiscoveryCuratedCard({
   match,
   rank,
   paymentMode = 'leasing',
+  wishes = null,
   onViewOffer,
   onCleverQuoteWhy,
 }) {
@@ -21,6 +24,7 @@ export default function DiscoveryCuratedCard({
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
+  const recommendReasons = buildWishMatchBullets(match, { wishes, maxReasons: 3 });
 
   return (
     <article className="disc-curated-card">
@@ -65,8 +69,13 @@ export default function DiscoveryCuratedCard({
               />
             </div>
           )}
+          {match.cleverQuote ? (
+            <CleverQuoteWhyPanel cleverQuote={match.cleverQuote} compact />
+          ) : (
+            <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt es?" />
+          )}
           <p className="disc-curated-card__price">
-            Ab {price.label}
+            {paymentMode === 'cash' ? '' : 'Ab '}{price.label}
             {price.suffix && <span>{price.suffix}</span>}
           </p>
         </div>

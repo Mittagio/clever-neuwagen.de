@@ -145,7 +145,7 @@
 }
 
 .lp-btn--primary {
-  background: #0b2559;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -196,7 +196,7 @@
 }
 
 .lp-search-example-chip:hover {
-  border-color: #0b2559;
+  border-color: var(--color-brand);
   background: #eff6ff;
 }
 

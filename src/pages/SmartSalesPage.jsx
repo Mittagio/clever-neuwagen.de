@@ -326,7 +326,7 @@ export default function SmartSalesPage() {
                 matches={matches}
                 customerName={customer.name}
                 wishes={salesWishes}
-                dealerName={dealerName}
+                paymentMode={salesWishes?.budget?.type ?? 'leasing'}
                 onSelect={handleSelectMatch}
                 onToggleCompare={handleToggleCompare}
                 onOpenCompare={handleOpenCompare}

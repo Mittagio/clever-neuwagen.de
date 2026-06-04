@@ -73,13 +73,13 @@ export function buildCleverQuoteCountLine(count = 0, total = null) {
   return `${count} Fahrzeuge geprüft · sortiert nach CleverQuote™`;
 }
 
-export function buildCuratedResultsLine(total, shown = 5) {
-  if (total === 0) return 'Keine Fahrzeuge geprüft';
+export function buildCuratedResultsLine(total, shown = 3) {
+  if (total === 0) return 'Keine Kia-Modelle geprüft';
   if (total <= shown) {
-    if (total === 1) return '1 Fahrzeug geprüft – hier der beste Treffer';
-    return `${total} Fahrzeuge geprüft – hier die besten Treffer`;
+    if (total === 1) return 'Wir haben passende Kia-Modelle geprüft – hier der beste Treffer';
+    return 'Wir haben passende Kia-Modelle geprüft – hier die besten Treffer';
   }
-  return `${total} Fahrzeuge geprüft – hier die besten ${shown}`;
+  return `${total} Kia-Modelle geprüft – hier die besten ${shown} Treffer`;
 }
 
 export function hasCleverQuoteWishes(wishes) {

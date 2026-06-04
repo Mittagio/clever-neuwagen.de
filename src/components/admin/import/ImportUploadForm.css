@@ -57,7 +57,7 @@
 .import-upload__drop.is-dragover,
 .import-upload__drop.has-file {
   border-color: var(--color-accent);
-  background: rgba(0, 113, 227, 0.04);
+  background: rgba(11, 23, 54, 0.04);
 }
 
 .import-upload__input {

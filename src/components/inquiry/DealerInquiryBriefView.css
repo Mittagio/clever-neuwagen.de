@@ -131,5 +131,5 @@
 }
 
 .lead-detail__brief-card {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--color-clever);
 }

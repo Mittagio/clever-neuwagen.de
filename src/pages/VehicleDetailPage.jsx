@@ -32,7 +32,12 @@ import { buildWishMatchBullets } from '../services/cleverQuote/cleverQuoteRecomm
 import { formatDealerDeliveryLabel } from '../logic/discoveryDisplay.js';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
-import '../components/vehicle-detail/vehicle-detail.css';
+import { pickStreamAlternatives, pickStreamUpgrade } from '../logic/vehicleDetailStream.js';
+import VehicleDetailWhySection from '../components/vehicle-detail/VehicleDetailWhySection.jsx';
+import VehicleDetailUpgradeSection from '../components/vehicle-detail/VehicleDetailUpgradeSection.jsx';
+import VehicleDetailAltSlider from '../components/vehicle-detail/VehicleDetailAltSlider.jsx';
+import VehicleDetailDealerCompact from '../components/vehicle-detail/VehicleDetailDealerCompact.jsx';
+import '../components/vehicle-detail/vehicle-detail-stream.css';
 import '../components/dealer/dealer-offer.css';
 import './FahrzeugDetailPage.css';
 
@@ -47,7 +52,6 @@ export default function VehicleDetailPage() {
   const [inquiryModal, setInquiryModal] = useState(null);
   const [wishSectionActive, setWishSectionActive] = useState(false);
   const [wishSheetOpen, setWishSheetOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
   const [altCompareOpen, setAltCompareOpen] = useState(false);
@@ -103,7 +107,6 @@ export default function VehicleDetailPage() {
   }, []);
 
   const scrollToDealer = useCallback(() => {
-    setMobileMoreOpen(true);
     requestAnimationFrame(() => {
       document.getElementById('vd-dealer-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -185,6 +188,14 @@ export default function VehicleDetailPage() {
     priceLabel: displayPrice?.label,
   };
 
+  const streamUpgrade = pickStreamUpgrade(recommendationResult);
+  const streamAlternatives = pickStreamAlternatives(wishAlternatives, 3, vehicle.slug);
+  const dealerMatchingCount = Math.max(
+    dealerInventory?.length ?? 0,
+    rankedDealerOffers?.length ?? 0,
+    1,
+  );
+
   return (
     <PageShell>
       <div className="vd-page">
@@ -198,6 +209,44 @@ export default function VehicleDetailPage() {
 
           <div className="vd-layout">
             <div className="vd-layout__main">
+              <div className="vd-stream vd-mobile-only">
+                <HeroOffer
+                  vehicle={vehicle}
+                  price={displayPrice}
+                  displayTitle={displayTitle}
+                  colorId={effectiveColorId}
+                  cleverQuote={cleverQuote}
+                  recommendReasons={[]}
+                  deliveryLabel={deliveryLabel}
+                  onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
+                  onStartInquiry={() => setInquiryModal('inquiry')}
+                  onOpenPricing={() => setPriceDrawerOpen(true)}
+                />
+
+                <VehicleDetailWhySection
+                  cleverQuote={cleverQuote}
+                  reasons={recommendReasons}
+                  fulfillment={wishFulfillment}
+                  onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
+                />
+
+                <VehicleDetailUpgradeSection
+                  upgrade={streamUpgrade}
+                  vehicleModel={vehicle.model}
+                  onAcceptTrim={(trim) => handleAcceptBetterTrim(trim.trimId, trim.resolution)}
+                />
+
+                <VehicleDetailAltSlider alternatives={streamAlternatives} />
+
+                <VehicleDetailDealerCompact
+                  dealerName={dealer?.name ?? activeDealer?.dealerName}
+                  distanceKm={dealer?.distanceKm ?? activeDealer?.distanceKm}
+                  matchingCount={dealerMatchingCount}
+                  onInquiry={() => setInquiryModal('inquiry')}
+                />
+              </div>
+
+              <div className="vd-desktop-only">
               <HeroOffer
                 vehicle={vehicle}
                 price={displayPrice}
@@ -211,14 +260,18 @@ export default function VehicleDetailPage() {
                 onStartInquiry={() => setInquiryModal('inquiry')}
                 onOpenPricing={() => setPriceDrawerOpen(true)}
               />
+              </div>
 
+              <div className="vd-desktop-only">
               <DealerPartnerTeaser
                 dealerName={dealer?.name}
                 distanceKm={dealer?.distanceKm}
                 brand={vehicle.brand}
                 onExpand={scrollToDealer}
               />
+              </div>
 
+              <div className="vd-desktop-only">
               {(recommendationResult?.betterTrim?.exists || recommendationResult?.premiumTrim?.exists) && (
                 <CleverTrimAdvisorCard
                   vehicleModel={vehicle.model}
@@ -229,7 +282,9 @@ export default function VehicleDetailPage() {
                   onAcceptPremiumTrim={(t) => handleAcceptBetterTrim(t.trimId, t.resolution)}
                 />
               )}
+              </div>
 
+              <div className="vd-desktop-only">
               {wishAlternatives.length > 0 && (
                 <button
                   type="button"
@@ -239,6 +294,7 @@ export default function VehicleDetailPage() {
                   Mit Alternativen vergleichen
                 </button>
               )}
+              </div>
 
               <AlternativesCompareSheet
                 open={altCompareOpen}
@@ -358,37 +414,6 @@ export default function VehicleDetailPage() {
                   onViewOffer={scrollToDealer}
                   onExpandRadius={() => showToast('Weitere Händler werden geladen …')}
                 />
-              </div>
-
-              <div className="vd-mobile-more">
-                {!mobileMoreOpen ? (
-                  <button
-                    type="button"
-                    className="vd-btn vd-btn--ghost vd-btn--block vd-mobile-more__toggle"
-                    onClick={() => setMobileMoreOpen(true)}
-                  >
-                    Mehr zum Händler & ähnliche Fahrzeuge
-                  </button>
-                ) : (
-                  <>
-                    <div className="vd-trust" id="vd-dealer-block">
-                      <DealerTrustCard
-                        offer={{ ...activeDealer, brand: vehicle.brand }}
-                        inventory={dealerInventory}
-                        configuredOffer={detailSelection.selectedFeatures.length > 0}
-                        onInquiry={() => setInquiryModal('inquiry')}
-                        onTestDrive={() => setInquiryModal('testdrive')}
-                      />
-                    </div>
-                    <div className="vd-similar vd-inspire">
-                      <SimilarVehiclesNearby
-                        vehicles={similarVehicles}
-                        currentSlug={vehicle.slug}
-                        paymentMode={detailSelection.paymentMode}
-                      />
-                    </div>
-                  </>
-                )}
               </div>
 
               <div className="vd-desktop-only vd-trust-block">

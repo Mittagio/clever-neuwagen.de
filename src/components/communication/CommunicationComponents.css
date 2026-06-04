@@ -62,7 +62,7 @@
 }
 
 .comm-timeline__item--outbound {
-  border-left: 3px solid #2563eb;
+  border-left: 3px solid var(--color-brand);
 }
 
 .comm-composer {

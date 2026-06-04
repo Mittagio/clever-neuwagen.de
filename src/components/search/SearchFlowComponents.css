@@ -45,7 +45,7 @@
 }
 
 .ki-lifestyle-chip:hover {
-  border-color: #10b981;
+  border-color: var(--color-clever);
   background: #f0fdf4;
 }
 
@@ -84,7 +84,7 @@
   min-height: 52px;
   border: none;
   border-radius: 12px;
-  background: #10b981;
+  background: var(--color-brand);
   color: #fff;
   font-weight: 700;
   font-size: 1rem;
@@ -166,7 +166,7 @@
   padding: 0 16px;
   border: none;
   border-radius: 12px;
-  background: #0f172a;
+  background: var(--color-brand);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
@@ -214,7 +214,7 @@
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #047857;
+  color: #15803d;
 }
 
 .loc-hint__link-btn {
@@ -224,7 +224,7 @@
   background: none;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #047857;
+  color: #15803d;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -250,8 +250,8 @@
 }
 
 .loc-hint__radius-chip.is-active {
-  background: #10b981;
-  border-color: #10b981;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 
@@ -374,7 +374,7 @@
   margin: 0 0 14px;
   font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 800;
-  color: #047857;
+  color: #15803d;
   line-height: 1;
 }
 
@@ -391,7 +391,7 @@
 
 .top-rec-hero__avail--accent {
   font-weight: 600;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .top-rec-hero__cta {
@@ -399,7 +399,7 @@
   min-height: 56px;
   border: none;
   border-radius: 14px;
-  background: #059669;
+  background: var(--color-brand);
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
@@ -542,7 +542,7 @@
   margin: 0 0 6px;
   font-size: 1.25rem;
   font-weight: 800;
-  color: #047857;
+  color: #15803d;
 }
 
 .vehicle-strip-card__meta {
@@ -557,7 +557,7 @@
   border: 2px solid #10b981;
   border-radius: 12px;
   background: #fff;
-  color: #047857;
+  color: #15803d;
   font-weight: 700;
   font-size: 0.875rem;
   cursor: pointer;
@@ -621,8 +621,8 @@
 }
 
 .offer-chips__inner--refine .offer-chip.is-active {
-  background: #0f172a;
-  border-color: #0f172a;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 
@@ -710,8 +710,8 @@
 }
 
 .offer-chip.is-active {
-  background: #10b981;
-  border-color: #10b981;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 
@@ -808,9 +808,9 @@
 }
 
 .no-exact-match__chip:hover {
-  border-color: #10b981;
+  border-color: var(--color-clever);
   background: #ecfdf5;
-  color: #047857;
+  color: #15803d;
 }
 
 .results-question-link-wrap {

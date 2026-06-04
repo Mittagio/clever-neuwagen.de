@@ -28,8 +28,8 @@
 }
 
 .header--landing .header-btn--login {
-  background: #0b2559;
-  border: 1px solid #0b2559;
+  background: var(--color-brand);
+  border: 1px solid var(--color-brand);
 }
 
 @media (min-width: 900px) {
@@ -67,7 +67,7 @@
 }
 
 .header-link--primary {
-  color: #059669;
+  color: var(--color-brand);
   font-weight: 700;
 }
 
@@ -91,12 +91,33 @@
 
   .header-inner {
     gap: 10px;
+    min-width: 0;
   }
 
   .header-btn {
     min-height: 34px;
     padding: 0 14px;
     font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .header--marketing .brand-logo--compact {
+    gap: 0.5rem;
+  }
+
+  .header--marketing .brand-logo--compact .brand-logo__icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .header--marketing .brand-logo--compact .brand-logo__wordmark {
+    font-size: 0.95rem;
+  }
+
+  .header-btn {
+    padding: 0 12px;
+    font-size: 0.72rem;
   }
 }
 
@@ -156,9 +177,9 @@
 }
 
 .header-btn--login {
-  background: #0f172a;
+  background: var(--color-brand);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+  box-shadow: var(--shadow-sm);
 }
 
 .header-btn--login:hover {
@@ -170,7 +191,7 @@
 
 .header-action {
   font-size: 0.8125rem;
-  color: var(--color-accent, #0071e3);
+  color: var(--color-accent, var(--color-brand));
   padding: 6px 12px;
   border-radius: var(--radius-full, 999px);
   text-decoration: none;
@@ -178,7 +199,7 @@
 }
 
 .header-action:hover {
-  background: rgba(0, 113, 227, 0.08);
+  background: rgba(11, 23, 54, 0.08);
   text-decoration: none;
 }
 

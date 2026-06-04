@@ -13,11 +13,18 @@
     width: 100%;
     min-height: 52px;
     justify-content: center;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .dealer-page--mf5 .dealer-model-card .btn {
     width: 100%;
     min-height: 48px;
+    white-space: normal;
+    text-align: center;
   }
 
   .dealer-page--mf5 .dealer-ai__form textarea {
@@ -39,6 +46,9 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-bottom: 4px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .dealer-page--mf5 .dealer-actions-grid::-webkit-scrollbar {
@@ -58,5 +68,69 @@
     width: 100%;
     min-height: 52px;
     justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .dealer-page--mf5 .card {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* MF-5: schmale Phones (320–479px) */
+@media (max-width: 479px) {
+  .dealer-page--mf5 {
+    padding-bottom: 40px;
+  }
+
+  .dealer-page--mf5 .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .dealer-page--mf5 .dealer-header {
+    padding: 12px 0;
+  }
+
+  .dealer-page--mf5 .dealer-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dealer-page--mf5 .dealer-header-back {
+    order: -1;
+    font-size: 0.75rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 4px;
+  }
+
+  .dealer-page--mf5 .dealer-header-name {
+    font-size: 1.15rem;
+  }
+
+  .dealer-page--mf5 .dealer-hero.card {
+    padding: 14px;
+  }
+
+  .dealer-page--mf5 .dealer-hero__image {
+    min-height: 160px;
+  }
+
+  .dealer-page--mf5 .dealer-models {
+    grid-auto-columns: minmax(78vw, 240px);
+    margin-left: -2px;
+    margin-right: -2px;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .dealer-page--mf5 .dealer-action-banner {
+    flex: 0 0 84vw;
+  }
+
+  .dealer-page--mf5 .dealer-location iframe {
+    min-height: 220px;
   }
 }

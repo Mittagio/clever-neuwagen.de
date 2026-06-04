@@ -60,6 +60,6 @@
 .pub-copied {
   margin: 8px 0 0;
   font-size: 0.8125rem;
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 600;
 }

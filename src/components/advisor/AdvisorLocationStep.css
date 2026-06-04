@@ -37,8 +37,8 @@
 }
 
 .ai-loc-step__btn--primary {
-  background: #0b2559;
-  border-color: #0b2559;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 

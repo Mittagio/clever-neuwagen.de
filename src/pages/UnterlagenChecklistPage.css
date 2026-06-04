@@ -144,7 +144,7 @@
 }
 
 .unterlagen-checklist__item.is-done .unterlagen-checklist__status {
-  background: #10b981;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -170,7 +170,7 @@
 }
 
 .unterlagen-checklist__action {
-  background: #10b981;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -189,7 +189,7 @@
   padding: 14px;
   background: #ecfdf5;
   border-radius: 10px;
-  color: #047857;
+  color: #15803d;
   font-weight: 600;
 }
 

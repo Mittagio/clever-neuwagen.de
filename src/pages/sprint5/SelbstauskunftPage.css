@@ -34,6 +34,6 @@
 }
 
 .sa-offer-link a {
-  color: #059669;
+  color: var(--color-clever);
   font-weight: 600;
 }

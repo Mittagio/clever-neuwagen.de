@@ -42,7 +42,7 @@
 }
 
 .copy-block__btn--done {
-  background: #10b981;
+  background: var(--color-brand);
 }
 
 .copy-block__btn--disabled,

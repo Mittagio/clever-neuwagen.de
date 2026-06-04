@@ -101,7 +101,7 @@
 }
 
 .delivery-btn--yes {
-  background: #34c759;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -147,7 +147,7 @@
 
 .delivery-reward__code {
   font-weight: 600;
-  color: #0071e3;
+  color: var(--color-brand);
 }
 
 .delivery-drive {

@@ -83,7 +83,7 @@
   color: #86868b;
 }
 
-.intel-kpi--blue .intel-kpi__value { color: #0071e3; }
+.intel-kpi--blue .intel-kpi__value { color: var(--color-brand); }
 .intel-kpi--purple .intel-kpi__value { color: #5856d6; }
 .intel-kpi--teal .intel-kpi__value { color: #32ade6; }
 .intel-kpi--green .intel-kpi__value { color: #34c759; }
@@ -146,7 +146,7 @@
 
 .intel-ranking__fill {
   height: 100%;
-  background: linear-gradient(90deg, #0071e3, #5856d6);
+  background: linear-gradient(90deg, var(--color-brand), #5856d6);
   border-radius: 999px;
 }
 
@@ -266,11 +266,11 @@
 }
 
 .intel-sync__dot--synced {
-  background: #10b981;
+  background: var(--color-brand);
 }
 
 .intel-sync__dot--syncing {
-  background: #0071e3;
+  background: var(--color-brand);
   animation: intel-sync-pulse 1s ease-in-out infinite;
 }
 
@@ -444,7 +444,7 @@
 
 .intel-trend-publish {
   border: none;
-  background: #10b981;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -461,7 +461,7 @@
 }
 
 .intel-trend-item__link {
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 

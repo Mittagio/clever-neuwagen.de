@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  color: var(--color-accent, #0071e3);
+  color: var(--color-accent, var(--color-brand));
   text-decoration: none;
   border-radius: 50%;
 }
@@ -61,8 +61,8 @@
   font-weight: 600;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(0, 113, 227, 0.1);
-  color: var(--color-accent, #0071e3);
+  background: rgba(11, 23, 54, 0.1);
+  color: var(--color-accent, var(--color-brand));
   text-decoration: none;
   white-space: nowrap;
 }
@@ -244,8 +244,8 @@
 }
 
 .rec-card.is-selected {
-  border-color: #0071e3;
-  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.12);
+  border-color: var(--color-brand);
+  box-shadow: 0 4px 16px rgba(11, 23, 54, 0.12);
 }
 
 .rec-card-rank {
@@ -263,7 +263,7 @@
 }
 
 .rec-card.is-selected .rec-card-rank {
-  background: #0071e3;
+  background: var(--color-brand);
   color: #fff;
 }
 
@@ -327,8 +327,8 @@
 }
 
 .rec-action--primary {
-  background: #0071e3;
-  border-color: #0071e3;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #fff;
 }
 

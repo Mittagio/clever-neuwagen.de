@@ -32,7 +32,7 @@
 }
 
 .compare-duel-card--winner {
-  border-color: #059669;
+  border-color: var(--color-clever);
   box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.35);
 }
 
@@ -42,7 +42,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #059669;
+  color: var(--color-clever);
 }
 
 .compare-duel-card__media {
@@ -103,7 +103,7 @@
   margin: auto 0 8px;
   font-size: 0.9375rem;
   font-weight: 800;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .compare-duel-card__cta {
@@ -163,7 +163,7 @@
   flex-shrink: 0;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #0b2559;
+  color: var(--color-brand);
 }
 
 .clever-quote-compare-card__cta {
@@ -244,7 +244,7 @@
 }
 
 .alt-compare-row--current {
-  border-color: #0b2559;
+  border-color: var(--color-brand);
   background: #f8fafc;
   cursor: default;
 }

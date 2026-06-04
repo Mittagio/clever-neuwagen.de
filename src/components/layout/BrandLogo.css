@@ -33,7 +33,7 @@
 }
 
 .brand-logo__clever {
-  color: #5e46e8;
+  color: var(--color-brand);
 }
 
 .brand-logo__domain {

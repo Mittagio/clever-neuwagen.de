@@ -18,7 +18,7 @@
 
 .dash-header__back {
   font-size: 1.25rem;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
   padding: 4px;
 }
@@ -31,7 +31,7 @@
 .dash-header__nav a {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -93,7 +93,7 @@
   color: #86868b;
 }
 
-.dash-kpi--blue .dash-kpi__value { color: #0071e3; }
+.dash-kpi--blue .dash-kpi__value { color: var(--color-brand); }
 .dash-kpi--purple .dash-kpi__value { color: #5856d6; }
 .dash-kpi--teal .dash-kpi__value { color: #32ade6; }
 .dash-kpi--green .dash-kpi__value { color: #34c759; }
@@ -252,7 +252,7 @@
 .dash-bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #0071e3, #5856d6);
+  background: linear-gradient(90deg, var(--color-brand), #5856d6);
   transition: width 0.5s ease;
 }
 

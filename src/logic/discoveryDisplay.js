@@ -10,9 +10,18 @@ export function getMatchDisplayTitle(match) {
 
 export function formatMatchPrimaryPrice(match, paymentMode = 'leasing') {
   const v = match?.vehicle ?? {};
-  if (paymentMode === 'cash' && v.cashPrice != null) {
+  const mode = paymentMode === 'financing' ? 'finance' : paymentMode;
+
+  if (mode === 'cash' && v.cashPrice != null) {
     return { label: formatCurrency(v.cashPrice), suffix: '' };
   }
+
+  if (mode === 'finance') {
+    const rate = match?.bestOffer?.financeRate ?? v.financeRate ?? v.monthlyRate;
+    if (rate == null) return { label: '—', suffix: '' };
+    return { label: formatCurrency(rate), suffix: '/Monat' };
+  }
+
   const rate = match?.bestOffer?.monthlyRate ?? v.monthlyRate;
   if (rate == null) return { label: '—', suffix: '' };
   return { label: formatCurrency(rate), suffix: '/Monat' };

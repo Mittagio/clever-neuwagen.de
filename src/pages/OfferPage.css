@@ -190,7 +190,7 @@
   margin-bottom: 4px;
   font-size: 1rem;
   font-weight: 600;
-  color: #2563eb;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -224,7 +224,7 @@
 }
 
 .offer-btn--primary {
-  background: #2563eb;
+  background: var(--color-brand);
   color: #fff;
 }
 

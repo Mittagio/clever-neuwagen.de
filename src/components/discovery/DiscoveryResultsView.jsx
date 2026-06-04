@@ -56,7 +56,7 @@ import './discovery-results.css';
 
 
 
-const CURATED_MAX = 5;
+const CURATED_MAX = 3;
 
 
 
@@ -444,19 +444,13 @@ export default function DiscoveryResultsView({
                   {secondaryHits.map((match, index) => (
 
                     <DiscoveryCuratedCard
-
                       key={match.vehicleId ?? match.slug}
-
                       match={match}
-
                       rank={index + 2}
-
                       paymentMode={paymentMode}
-
+                      wishes={wishes}
                       onViewOffer={onViewOffer}
-
                       onCleverQuoteWhy={openCleverQuoteBreakdown}
-
                     />
 
                   ))}
@@ -533,7 +527,7 @@ export default function DiscoveryResultsView({
 
                     >
 
-                      Weitere {overflowMatches.length} geprüfte Alternativen
+                      Weitere passende Fahrzeuge anzeigen ({overflowMatches.length})
 
                     </button>
 
@@ -589,7 +583,12 @@ export default function DiscoveryResultsView({
 
           {showVehicles && state === RESULT_STATES.EXACT && stripAlternatives.length > 0 && !showAlternativeSection && (
 
-            <DiscoveryAlternativesStrip matches={stripAlternatives} max={5} title="Weitere geprüfte Alternativen" />
+            <DiscoveryAlternativesStrip
+              matches={stripAlternatives}
+              max={3}
+              paymentMode={paymentMode}
+              title="Weitere passende Fahrzeuge"
+            />
 
           )}
 
@@ -628,13 +627,10 @@ export default function DiscoveryResultsView({
                 {showVehicles && (
 
                   <PopularOffersStrip
-
                     matches={popularMatches}
-
+                    paymentMode={paymentMode}
                     title={popularTitle}
-
                     subtitle={localized ? 'Gerade oft angesehen.' : 'Aktuell deutschlandweit – mit Standort sehen Sie Händler in Ihrer Nähe.'}
-
                   />
 
                 )}
@@ -686,13 +682,10 @@ export default function DiscoveryResultsView({
           {showVehicles && (
 
             <PopularOffersStrip
-
               matches={popularMatches}
-
+              paymentMode={paymentMode}
               title={popularTitle}
-
               subtitle={localized ? 'Gerade oft angesehen.' : 'Aktuell deutschlandweit – mit Standort sehen Sie Händler in Ihrer Nähe.'}
-
             />
 
           )}
