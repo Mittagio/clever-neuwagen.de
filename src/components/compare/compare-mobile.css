@@ -189,6 +189,8 @@
 @media (max-width: 1023px) {
   .wish-compare-page--mf3 {
     padding: 12px 12px 72px;
+    width: 100%;
+    max-width: 100%;
   }
 
   .wish-compare-page--mf3 .wish-compare-page__head {
@@ -198,6 +200,47 @@
   .wish-compare-page--mf3 .wish-compare-page__head h1 {
     font-size: 1.25rem;
     margin: 0;
+  }
+
+  .compare-results-hub__mobile {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Schmale Displays: Duel-Karten untereinander statt gequetscht nebeneinander */
+@media (max-width: 540px) {
+  .compare-mobile-hub__duel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .compare-duel-card {
+    padding: 14px;
+  }
+
+  .compare-duel-card__title {
+    font-size: 0.9375rem;
+  }
+
+  .compare-duel-card__cta {
+    min-height: 60px;
+    font-size: 0.875rem;
+    border-radius: 12px;
+  }
+
+  .compare-mobile-hub__more {
+    min-height: 60px;
+  }
+
+  .compare-extra-row {
+    min-height: 60px;
+  }
+
+  .wish-compare-page__empty button {
+    min-height: 60px;
+    width: 100%;
   }
 }
 

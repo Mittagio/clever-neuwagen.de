@@ -3,18 +3,13 @@ import VehicleImage from '../shared/VehicleImage.jsx';
 import MobileBottomSheet from '../shared/MobileBottomSheet.jsx';
 import CleverQuoteBadge, { CleverQuoteCompareCards } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
-import { formatCurrency } from '../../logic/marketplaceService.js';
+import { formatMatchPrimaryPrice } from '../../logic/discoveryDisplay.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 import './compare-mobile.css';
 
 function formatMatchPrice(match, paymentMode) {
-  if (match.bestOffer?.monthlyRate != null && paymentMode !== 'cash') {
-    return `${formatCurrency(match.bestOffer.monthlyRate)}/Monat`;
-  }
-  if (match.vehicle?.cashPrice != null) {
-    return formatCurrency(match.vehicle.cashPrice);
-  }
-  return '';
+  const { label, suffix } = formatMatchPrimaryPrice(match, paymentMode);
+  return suffix ? `${label}${suffix}` : label;
 }
 
 function CompareDuelCard({

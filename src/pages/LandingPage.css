@@ -9,6 +9,16 @@
 
 .lp-page--one-search {
   min-height: calc(100dvh - 64px);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.landing-shell,
+.shell-main.landing-shell {
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .lp-page__container {
@@ -480,6 +490,25 @@
     min-width: 100%;
     font-size: 0.93rem;
     border-radius: 14px;
+  }
+
+  .lp-hero--search .lp-input--search,
+  .lp-input.lp-input--search {
+    min-height: 132px;
+    padding: 16px 64px 16px 16px;
+  }
+
+  .lp-hero--search .lp-btn {
+    min-height: 60px;
+    width: 100%;
+  }
+
+  .lp-popular-chip {
+    min-height: 48px;
+  }
+
+  .lp-popular-searches__chips {
+    gap: 10px;
   }
 
   .lp-rotating-example {
