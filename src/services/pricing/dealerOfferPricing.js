@@ -1,4 +1,6 @@
-import { MARKETPLACE_VEHICLES } from '../../data/marketplaceVehicles.js';
+import { getMarketplaceVehiclePool } from '../../data/marketplacePool.js';
+
+const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 import { listDealerRegistry } from '../../data/dealers/index.js';
 import { priceConfiguration } from '../pricing/pricingEngine.js';
 import { rankDealerOffers } from '../dealer/dealerScoreService.js';

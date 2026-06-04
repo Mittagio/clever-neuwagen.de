@@ -21,7 +21,9 @@ import {
 import { enrichLocationWithGeocoding } from '../services/geocodingService.js';
 import AdvisorLocationStep from '../components/advisor/AdvisorLocationStep.jsx';
 import VehicleImage from '../components/shared/VehicleImage.jsx';
-import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
+import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
+
+const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 import { CUSTOMER_ROUTES } from '../data/customerFlow.js';
 import {
   formatDealerDistanceLine,

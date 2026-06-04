@@ -8,6 +8,8 @@ import {
   formatPublishedAt,
 } from '../../data/dealerConditionsSchema.js';
 import { getKiaModelOverview, KIA_PARTNER } from '../../data/kia/kiaPartnerHub.js';
+import { PILOT_LIVE } from '../../config/pilotLive.js';
+import PilotLiveBanner from '../pilot/PilotLiveBanner.jsx';
 import './BackendHome.css';
 
 const TODAY_TILES = [
@@ -78,6 +80,7 @@ export default function BackendHome({ conditions, onNavigate }) {
 
   return (
     <div className="backend-home">
+      {PILOT_LIVE && <PilotLiveBanner />}
       <header className="backend-home__hero">
         <p className="backend-home__eyebrow">Guten Tag</p>
         <h2 className="backend-home__title">{conditions.dealerName}</h2>

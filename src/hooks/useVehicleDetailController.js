@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
+import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
+
+const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 import { CONFIGURATOR_FEATURE_IDS } from '../data/features/featureCatalog.js';
 import { getManufacturerModel } from '../data/manufacturer/manufacturerRegistry.js';
 import { filtersFromSearchParams } from '../logic/oneSearchService.js';

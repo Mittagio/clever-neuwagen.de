@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEMO_LEADS, PILOT_DEMO_LEAD, PILOT_LEAD_ID } from '../data/demoLeads.js';
+import { PILOT_DEALER_ID, PILOT_LIVE } from '../config/pilotLive.js';
 import { LEAD_STATUS } from '../data/leadTypes.js';
 import { normalizeLead, normalizeLeads } from '../logic/leadNormalization.js';
 import { upsertLeadFromOfferAction as buildUpsertFromOffer } from '../logic/offerDialogService.js';
@@ -16,6 +17,11 @@ import {
 
 const STORAGE_KEY = 'clever-neuwagen-leads';
 
+const DEMO_LEAD_IDS = new Set([
+  ...DEMO_LEADS.map((l) => l.id),
+  PILOT_LEAD_ID,
+]);
+
 const LeadsContext = createContext(null);
 
 function clonePilotLead() {
@@ -27,7 +33,28 @@ function ensurePilotLead(leads) {
   return [clonePilotLead(), ...leads];
 }
 
+function stripDemoLeads(leads) {
+  return leads.filter((l) => !DEMO_LEAD_IDS.has(l.id));
+}
+
+function loadPilotLeads() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return normalizeLeads(stripDemoLeads(parsed));
+      }
+    }
+  } catch {
+    /* leer starten */
+  }
+  return [];
+}
+
 function loadLeads() {
+  if (PILOT_LIVE) return loadPilotLeads();
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {

@@ -1,0 +1,66 @@
+.pilot-live-banner {
+  margin: 0 0 1.25rem;
+  padding: 0;
+}
+
+.pilot-live-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #6ee7b7;
+}
+
+.pilot-live-banner__badge {
+  flex-shrink: 0;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #059669;
+  color: #fff;
+}
+
+.pilot-live-banner__copy {
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #064e3b;
+}
+
+.pilot-live-banner__copy strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.pilot-live-banner__copy p {
+  margin: 0;
+}
+
+.pilot-live-banner__copy a {
+  color: #047857;
+  font-weight: 600;
+}
+
+.pilot-live-banner__cta {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: #fff;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+
+.pilot-live-banner__cta:hover {
+  background: #ecfdf5;
+}

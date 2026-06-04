@@ -1,5 +1,7 @@
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
-import { MARKETPLACE_VEHICLES } from '../../data/marketplaceVehicles.js';
+import { getMarketplaceVehiclePool } from '../../data/marketplacePool.js';
+
+const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 import { getManufacturerModel } from '../../data/manufacturer/manufacturerRegistry.js';
 import { trimIdFromVehicle } from '../configurator/wishMagicService.js';
 import { findBestTrimForWish } from '../configurator/wishPackageResolver.js';

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDealerSubdomain } from './context/DealerSubdomainContext.jsx';
+import { PILOT_DEALER_ID, PILOT_LIVE } from './config/pilotLive.js';
 import AppLayout from './components/layout/AppLayout';
 import PartnerVerwaltungPage from './pages/PartnerVerwaltungPage';
 import LandingPage from './pages/LandingPage';
@@ -92,7 +93,14 @@ export default function AppRouter() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            PILOT_LIVE
+              ? <Navigate to={`/haendler/${PILOT_DEALER_ID}`} replace />
+              : <LandingPage />
+          }
+        />
         <Route path="/partner" element={<PartnerOnboardingPage />} />
         <Route path="/partner/register" element={<PartnerRegisterPage />} />
         <Route path="/haendler/autohaus-trinkle" element={<DealerPage />} />

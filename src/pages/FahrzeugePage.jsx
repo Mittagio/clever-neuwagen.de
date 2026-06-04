@@ -26,7 +26,9 @@ import DiscoveryResultsView from '../components/discovery/DiscoveryResultsView.j
 
 
 
-import { MARKETPLACE_VEHICLES } from '../data/marketplaceVehicles.js';
+import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
+
+const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 
 
 
