@@ -82,6 +82,13 @@
   font-weight: 600;
 }
 
+.lead-item__rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .lead-item__rate {
   flex-shrink: 0;
   font-size: 0.75rem;

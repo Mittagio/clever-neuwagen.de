@@ -1,5 +1,6 @@
 import { sportage } from '../data/kiaSportage.js';
 import { LEAD_SOURCES } from '../data/leadTypes.js';
+import { getLeadBriefPreview } from './dealerInquiryBrief.js';
 
 function uid(prefix = 'lead') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -121,6 +122,8 @@ export function formatRate(value) {
 }
 
 export function getLeadPreview(lead) {
+  const briefPreview = lead.inquiryBrief ? getLeadBriefPreview(lead.inquiryBrief) : null;
+  if (briefPreview) return briefPreview;
   const last = lead.history?.[lead.history.length - 1];
   return last?.text ?? lead.vehicle?.label ?? 'Neue Anfrage';
 }

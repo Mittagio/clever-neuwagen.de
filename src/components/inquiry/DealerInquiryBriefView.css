@@ -1,0 +1,135 @@
+.dealer-inq-brief {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dealer-inq-brief__note {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.dealer-inq-brief__customer {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dealer-inq-brief__cq {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  color: #334155;
+}
+
+.dealer-inq-brief__cq strong {
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.dealer-inq-brief__block {
+  margin-bottom: 12px;
+}
+
+.dealer-inq-brief__label {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.dealer-inq-brief__highlight {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dealer-inq-brief__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.dealer-inq-brief__list li {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.dealer-inq-brief__list--plain li {
+  display: list-item;
+  list-style: disc;
+  margin-left: 18px;
+}
+
+.dealer-inq-brief__optional {
+  color: #64748b;
+}
+
+.dealer-inq-brief__alt-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.dealer-inq-brief__alt-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dealer-inq-brief__alt-list li:last-child {
+  border-bottom: none;
+}
+
+.dealer-inq-brief__alt-pct {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dealer-inq-brief__price {
+  margin: 6px 0 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dealer-inq-brief__delivery {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.dealer-inq-brief__explain {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.lead-item__cq {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.lead-item__budget {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.lead-detail__brief-card {
+  border-left: 4px solid #10b981;
+}

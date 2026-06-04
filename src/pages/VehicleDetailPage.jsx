@@ -23,6 +23,7 @@ import { CUSTOMER_LABELS } from '../data/customerFlow.js';
 import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
+import { buildDealerInquiryBrief } from '../logic/dealerInquiryBrief.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
 import AlternativesCompareSheet from '../components/compare/AlternativesCompareSheet.jsx';
 import CleverTrimAdvisorCard from '../components/advisor/CleverTrimAdvisorCard.jsx';
@@ -123,9 +124,23 @@ export default function VehicleDetailPage() {
   }
 
   function submitInquiry(action, contact) {
+    const inquiryBrief = buildDealerInquiryBrief({
+      contactName: contact.name,
+      displayTitle,
+      displayPrice,
+      detailSelection,
+      recommendationResult,
+      cleverQuote,
+      wishes,
+      wishAlternatives,
+      dealer,
+      vehicle,
+      pricing: displayPrice?.raw,
+    });
     const lead = createLeadFromMarketplaceVehicle(vehicle, action, contact, {
       pricing: displayPrice?.raw,
       detailSelection,
+      inquiryBrief,
     });
     addLead(lead);
     if (contact.email) {
@@ -513,6 +528,10 @@ export default function VehicleDetailPage() {
         displayPrice={displayPrice}
         displayTitle={displayTitle}
         dealer={dealer}
+        cleverQuote={cleverQuote}
+        wishes={wishes}
+        wishAlternatives={wishAlternatives}
+        vehicle={vehicle}
         onClose={() => setInquiryModal(null)}
         onSubmit={(contact) => submitInquiry('inquiry', contact)}
       />
@@ -524,6 +543,10 @@ export default function VehicleDetailPage() {
         displayPrice={displayPrice}
         displayTitle={displayTitle}
         dealer={dealer}
+        cleverQuote={cleverQuote}
+        wishes={wishes}
+        wishAlternatives={wishAlternatives}
+        vehicle={vehicle}
         onClose={() => setInquiryModal(null)}
         onSubmit={(contact) => submitInquiry('testdrive', contact)}
       />

@@ -19,7 +19,15 @@ function useInquiryLayout() {
   return mobile;
 }
 
-function InquirySummaryBlock({ inquirySummary, compact = false }) {
+function InquirySummaryBlock({ inquirySummary, briefPreview, compact = false }) {
+  if (briefPreview) {
+    return (
+      <div className="cust-inq-summary cust-inq-summary--brief" aria-label="Anfrage an Händler">
+        {briefPreview}
+      </div>
+    );
+  }
+
   if (compact && inquirySummary?.compact) {
     const { vehicleTitle, priceLabel, priceSubtitle, checklist, bullets } = inquirySummary.compact;
     return (
@@ -118,7 +126,7 @@ function InquiryContactForm({ contact, setContact, error, onSubmit, hideSubmit =
   );
 }
 
-export default function CustomerInquiryModal({ title, inquirySummary, onClose, onSubmit }) {
+export default function CustomerInquiryModal({ title, inquirySummary, briefPreview, onClose, onSubmit }) {
   const isMobile = useInquiryLayout();
   const [contact, setContact] = useState({ name: '', email: '', phone: '', message: '' });
   const [sent, setSent] = useState(false);
@@ -178,7 +186,7 @@ export default function CustomerInquiryModal({ title, inquirySummary, onClose, o
           </button>
         )}
       >
-        <InquirySummaryBlock inquirySummary={inquirySummary} compact />
+        <InquirySummaryBlock inquirySummary={inquirySummary} briefPreview={briefPreview} compact />
         <InquiryContactForm
           formId={formId}
           contact={contact}
@@ -195,7 +203,7 @@ export default function CustomerInquiryModal({ title, inquirySummary, onClose, o
     <div className="cust-inq-overlay" onClick={onClose} role="presentation">
       <div className="cust-inq-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="cust-inq-title">
         <h2 id="cust-inq-title">{title}</h2>
-        <InquirySummaryBlock inquirySummary={inquirySummary} />
+        <InquirySummaryBlock inquirySummary={inquirySummary} briefPreview={briefPreview} />
         <InquiryContactForm
           contact={contact}
           setContact={setContact}

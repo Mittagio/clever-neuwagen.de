@@ -6,8 +6,8 @@ import { formatLeadTime, formatRate, buildWhatsAppLink } from '../../logic/leadS
 import { buildDeliveryConfirmUrl } from '../../logic/deliveryConfirmation.js';
 import DeliveryFlowSteps from '../delivery/DeliveryFlowSteps.jsx';
 import LeadVehicleImage from './LeadVehicleImage.jsx';
-import ReplySheet from './ReplySheet.jsx';
-import './LeadDetail.css';
+import DealerInquiryBriefView from '../inquiry/DealerInquiryBriefView.jsx';
+import '../inquiry/DealerInquiryBriefView.css';
 
 export default function LeadDetail({ lead, onBack }) {
   const {
@@ -182,6 +182,13 @@ export default function LeadDetail({ lead, onBack }) {
             <p className="lead-detail__vehicle-meta">{lead.vehicle.engine}</p>
           )}
         </section>
+
+        {lead.inquiryBrief && (
+          <section className="lead-detail__card lead-detail__brief-card">
+            <h3 className="lead-detail__card-title">Anfrage – Clever-Zusammenfassung</h3>
+            <DealerInquiryBriefView brief={lead.inquiryBrief} showDealerNote={false} />
+          </section>
+        )}
 
         <section className="lead-detail__card">
           <h3 className="lead-detail__card-title">Zahlungsart</h3>

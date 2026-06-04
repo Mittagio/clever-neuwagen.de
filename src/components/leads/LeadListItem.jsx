@@ -1,4 +1,5 @@
 import { LEAD_STATUS } from '../../data/leadTypes.js';
+import { getLeadBriefPreview } from '../../logic/dealerInquiryBrief.js';
 import {
   formatLeadTime,
   formatRate,
@@ -9,8 +10,10 @@ import './LeadListItem.css';
 
 export default function LeadListItem({ lead, isActive, onClick }) {
   const status = LEAD_STATUS[lead.status] ?? LEAD_STATUS.neu;
-  const preview = getLeadPreview(lead);
-  const displayName = lead.contact.name?.trim() || 'Unbekannt';
+  const preview = getLeadBriefPreview(lead.inquiryBrief) ?? getLeadPreview(lead);
+  const displayName = lead.contact.name?.trim() || 'Neue Anfrage';
+  const cq = lead.cleverQuotePercent ?? lead.inquiryBrief?.cleverQuotePercent;
+  const budget = lead.budgetMax ?? lead.inquiryBrief?.budget?.maxMonthly;
 
   return (
     <button
@@ -36,10 +39,16 @@ export default function LeadListItem({ lead, isActive, onClick }) {
         </span>
         <span className="lead-item__row">
           <span className="lead-item__vehicle">{lead.vehicle?.label ?? 'Fahrzeug offen'}</span>
-          {lead.desiredRate != null && (
-            <span className="lead-item__rate">{formatRate(lead.desiredRate)}/M</span>
-          )}
+          <span className="lead-item__rate-row">
+            {cq != null && <span className="lead-item__cq">{cq} %</span>}
+            {lead.desiredRate != null && (
+              <span className="lead-item__rate">{formatRate(lead.desiredRate)}/M</span>
+            )}
+          </span>
         </span>
+        {budget != null && (
+          <span className="lead-item__budget">Budget bis {budget} €/Monat</span>
+        )}
         <span className="lead-item__preview">{preview}</span>
       </span>
 

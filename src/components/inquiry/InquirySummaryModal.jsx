@@ -1,7 +1,9 @@
 import CustomerInquiryModal from '../customer/CustomerInquiryModal.jsx';
+import DealerInquiryBriefView from './DealerInquiryBriefView.jsx';
+import { buildDealerInquiryBrief } from '../../logic/dealerInquiryBrief.js';
 
 /**
- * Anfrage-Modal mit strukturierter Zusammenfassung aus detailSelection + recommendationResult.
+ * Anfrage-Modal – Kunde und Händler sehen dieselbe Brief-Struktur (Sprint 40).
  */
 export default function InquirySummaryModal({
   open,
@@ -11,109 +13,35 @@ export default function InquirySummaryModal({
   displayPrice,
   displayTitle,
   dealer,
+  cleverQuote,
+  wishes,
+  wishAlternatives = [],
+  vehicle,
   onClose,
   onSubmit,
 }) {
   if (!open) return null;
 
-  const lines = buildStructuredSummary({
+  const brief = buildDealerInquiryBrief({
     displayTitle,
+    displayPrice,
     detailSelection,
     recommendationResult,
-    displayPrice,
+    cleverQuote,
+    wishes,
+    wishAlternatives,
     dealer,
-  });
-  const compact = buildCompactSummary({
-    displayTitle,
-    detailSelection,
-    recommendationResult,
-    displayPrice,
-    dealer,
+    vehicle,
+    pricing: displayPrice?.raw,
   });
 
   return (
     <CustomerInquiryModal
       title={title}
-      inquirySummary={{ lines, compact, pricing: displayPrice?.raw }}
+      inquirySummary={{ brief, pricing: displayPrice?.raw }}
+      briefPreview={<DealerInquiryBriefView brief={brief} />}
       onClose={onClose}
       onSubmit={onSubmit}
     />
   );
-}
-
-export function buildInquiryChecklist({
-  displayTitle,
-  detailSelection,
-  displayPrice,
-  dealer,
-}) {
-  const wishCount = detailSelection?.selectedFeatures?.length ?? 0;
-  const termLabel = displayPrice?.subtitle
-    ?? (detailSelection?.termMonths
-      ? `${detailSelection.termMonths} Monate`
-      : null);
-
-  return [
-    { label: 'Fahrzeug', value: displayTitle, done: Boolean(displayTitle) },
-    { label: 'Ausstattung', value: wishCount ? `${wishCount} Wünsche` : 'Serienausstattung', done: true },
-    { label: 'Preis', value: displayPrice?.label ?? '', done: Boolean(displayPrice?.label) },
-    { label: 'Laufzeit', value: termLabel ?? 'Standard', done: true },
-    { label: 'Ihre Wünsche', value: wishCount ? 'übermittelt' : 'optional', done: wishCount > 0 },
-    { label: 'Händler', value: dealer?.name ?? '', done: Boolean(dealer?.name) },
-  ].filter((item) => item.done || item.label === 'Ihre Wünsche');
-}
-
-export function buildCompactSummary({
-  displayTitle,
-  detailSelection,
-  recommendationResult,
-  displayPrice,
-  dealer,
-}) {
-  const checklist = buildInquiryChecklist({
-    displayTitle,
-    detailSelection,
-    displayPrice,
-    dealer,
-  });
-
-  return {
-    vehicleTitle: displayTitle,
-    priceLabel: displayPrice?.label ?? '',
-    priceSubtitle: displayPrice?.subtitle ?? '',
-    checklist,
-    bullets: checklist.map((c) => `${c.label}: ${c.value}`).slice(0, 5),
-  };
-}
-
-function buildStructuredSummary({
-  displayTitle,
-  detailSelection,
-  recommendationResult,
-  displayPrice,
-  dealer,
-}) {
-  const lines = ['Der Händler erhält folgende Informationen:'];
-
-  buildInquiryChecklist({ displayTitle, detailSelection, displayPrice, dealer }).forEach((item) => {
-    if (item.value) lines.push(`✓ ${item.label}: ${item.value}`);
-  });
-
-  const wishes = detailSelection.selectedFeatures?.map((id) =>
-    recommendationResult?.includedFeatures?.find((f) => f.id === id)?.label
-    ?? recommendationResult?.requestedFeatures?.find((f) => f.id === id)?.label
-    ?? id,
-  ) ?? [];
-
-  if (wishes.length) {
-    lines.push('Ausstattungswünsche im Detail:');
-    wishes.forEach((w) => lines.push(`· ${w}`));
-  }
-
-  const pkg = recommendationResult?.requiredPackages?.[0];
-  if (pkg) {
-    lines.push(`Empfohlenes Paket: ${pkg.name}`);
-  }
-
-  return lines;
 }
