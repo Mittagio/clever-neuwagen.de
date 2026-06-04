@@ -3,9 +3,11 @@ import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
 import DiscoveryPriceSheet from './DiscoveryPriceSheet.jsx';
+import DeliveryTimePill from '../shared/DeliveryTimePill.jsx';
 import {
   getMatchDisplayTitle,
   formatMatchPrimaryPrice,
+  formatMatchDeliveryLabel,
 } from '../../logic/discoveryDisplay.js';
 import './discovery-results.css';
 
@@ -27,6 +29,7 @@ export default function DiscoveryHeroCard({
   const title = getMatchDisplayTitle(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
   const paymentHint = paymentMode === 'cash' ? 'Kaufpreis' : 'Leasing';
+  const deliveryLabel = formatMatchDeliveryLabel(match);
 
   return (
     <article className="disc-hero disc-hero--premium disc-hero--mobile-first disc-hero--s36">
@@ -55,10 +58,6 @@ export default function DiscoveryHeroCard({
               />
             </div>
           )}
-          <RecommendReasonsPanel
-            reasons={recommendReasons}
-            title="Warum passt er zu Ihnen?"
-          />
           <button
             type="button"
             className="disc-hero__price-hero disc-hero__price-hero--sheet"
@@ -74,6 +73,8 @@ export default function DiscoveryHeroCard({
               <p className="disc-hero__discount">{v.discountPercent} % Ersparnis</p>
             )}
           </button>
+          <DeliveryTimePill label={deliveryLabel} className="disc-hero__delivery" />
+          <RecommendReasonsPanel reasons={recommendReasons} />
           <button
             type="button"
             className="disc-hero__cta disc-hero__cta--hero"

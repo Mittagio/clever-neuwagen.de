@@ -55,14 +55,14 @@ export default function CleverQuoteWhyPanel({ cleverQuote, compact = false }) {
   );
 }
 
-export function RecommendReasonsPanel({ reasons = [], title = 'Warum passt er zu Ihnen?' }) {
+export function RecommendReasonsPanel({ reasons = [], title = 'Warum passt dieses Fahrzeug?' }) {
   if (!reasons.length) return null;
   return (
     <div className="cq-recommend-panel">
       <p className="cq-recommend-panel__title">{title}</p>
       <ul className="cq-recommend-panel__list">
         {reasons.map((reason) => (
-          <li key={reason}><span aria-hidden>✓</span> {reason}</li>
+          <li key={reason}><span aria-hidden>✅</span> {reason}</li>
         ))}
       </ul>
     </div>

@@ -3,7 +3,8 @@ import VehicleImage from '../shared/VehicleImage.jsx';
 import MobileBottomSheet from '../shared/MobileBottomSheet.jsx';
 import CleverQuoteBadge, { CleverQuoteCompareCards } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
-import { getMatchDisplayTitle, formatMatchPrimaryPrice } from '../../logic/discoveryDisplay.js';
+import { formatCurrency } from '../../logic/marketplaceService.js';
+import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 import './compare-mobile.css';
 
 function formatMatchPrice(match, paymentMode) {
@@ -25,7 +26,7 @@ function CompareDuelCard({
 }) {
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
-  const reasons = buildRecommendReasons(match, { wishes, maxReasons: 2 });
+  const reasons = buildWishMatchBullets(match, { wishes, maxReasons: 2 });
 
   return (
     <article className={`compare-duel-card${isWinner ? ' compare-duel-card--winner' : ''}`}>

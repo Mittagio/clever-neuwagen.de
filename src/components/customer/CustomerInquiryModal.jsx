@@ -21,7 +21,7 @@ function useInquiryLayout() {
 
 function InquirySummaryBlock({ inquirySummary, compact = false }) {
   if (compact && inquirySummary?.compact) {
-    const { vehicleTitle, priceLabel, priceSubtitle, bullets } = inquirySummary.compact;
+    const { vehicleTitle, priceLabel, priceSubtitle, checklist, bullets } = inquirySummary.compact;
     return (
       <div className="cust-inq-summary cust-inq-summary--compact" aria-label="Anfrage-Kurzüberblick">
         <p className="cust-inq-summary__vehicle">{vehicleTitle}</p>
@@ -31,7 +31,18 @@ function InquirySummaryBlock({ inquirySummary, compact = false }) {
             {priceSubtitle && <span className="cust-inq-summary__price-sub">{priceSubtitle}</span>}
           </p>
         )}
-        {bullets.length > 0 && (
+        {checklist?.length > 0 && (
+          <ul className="cust-inq-checklist">
+            {checklist.map((item) => (
+              <li key={item.label} className="cust-inq-checklist__item">
+                <span aria-hidden>✓</span>
+                <span>{item.label}</span>
+                {item.value && <span className="cust-inq-checklist__value">{item.value}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {!checklist?.length && bullets?.length > 0 && (
           <ul className="cust-inq-summary__bullets">
             {bullets.map((line) => (
               <li key={line}>{line}</li>
@@ -163,7 +174,7 @@ export default function CustomerInquiryModal({ title, inquirySummary, onClose, o
             form={formId}
             className="cust-inq-btn cust-inq-btn--primary cust-inq-btn--block"
           >
-            Anfrage absenden
+            Anfrage senden
           </button>
         )}
       >

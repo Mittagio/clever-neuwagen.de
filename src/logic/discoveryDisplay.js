@@ -23,3 +23,26 @@ export function formatMatchCashAlt(match) {
   if (v.cashPrice == null) return null;
   return formatCurrency(v.cashPrice);
 }
+
+/** Prominente Lieferzeit für Ebene 1 (Sprint 37). */
+export function formatMatchDeliveryLabel(match) {
+  const v = match?.vehicle ?? {};
+  const t = match?.bestOffer?.deliveryTime ?? v.deliveryTime ?? '';
+  const availability = match?.bestOffer?.availability ?? v.availability;
+  if (availability === 'sofort' || /sofort/i.test(t)) return 'Sofort verfügbar';
+  if (!t) return null;
+  const cleaned = t.replace(/^Lieferzeit\s*/i, '').trim();
+  if (/^\d/.test(cleaned)) return `Lieferbar in ${cleaned}`;
+  if (/woche|tag|monat/i.test(cleaned)) return `Lieferbar in ${cleaned}`;
+  return cleaned || t;
+}
+
+export function formatDealerDeliveryLabel(dealer, vehicle) {
+  const t = dealer?.deliveryTime ?? vehicle?.deliveryTime ?? '';
+  const availability = dealer?.availability ?? vehicle?.availability;
+  if (availability === 'sofort' || /sofort/i.test(t)) return 'Sofort verfügbar';
+  if (!t) return null;
+  const cleaned = t.replace(/^Lieferzeit\s*/i, '').trim();
+  if (/^\d/.test(cleaned) || /woche|tag|monat/i.test(cleaned)) return `Lieferbar in ${cleaned}`;
+  return cleaned;
+}

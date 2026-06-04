@@ -21,7 +21,7 @@ export const DEALER_ROUTES = {
 export const CUSTOMER_LABELS = {
   saveOffer: 'Angebot merken',
   compare: 'Vergleichen',
-  startInquiry: 'Anfrage starten',
+  startInquiry: 'Anfrage senden',
   testDrive: 'Probefahrt anfragen',
   contactDealer: 'Händler kontaktieren',
   viewOffer: 'Angebot ansehen',

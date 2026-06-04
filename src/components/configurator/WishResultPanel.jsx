@@ -47,18 +47,20 @@ export function PackageRecommendationCard({
     packageName: pkg.name,
   });
 
+  const requiredFeatures = pkg.features.filter((f) => f.reason !== 'bonus');
   const bonusFeatures = pkg.features.filter((f) => f.reason === 'bonus');
+  const containsFeatures = [...requiredFeatures, ...bonusFeatures];
 
   return (
     <article className="vd-pkg-card vd-pkg-card--advisor">
-      <p className="vd-pkg-card__eyebrow">Clever-Neuwagen Analyse</p>
-      <p className="vd-pkg-card__wish">Für Ihren Wunsch benötigen Sie:</p>
+      <p className="vd-pkg-card__eyebrow">Clever-Neuwagen berät</p>
+      <p className="vd-pkg-card__wish">Für Ihre Wünsche benötigen Sie:</p>
       <h3 className="vd-pkg-card__title">{pkg.name}</h3>
-      {bonusFeatures.length > 0 && (
+      {containsFeatures.length > 0 && (
         <div className="vd-pkg-card__section">
-          <p className="vd-pkg-card__section-label">Zusätzlich enthalten</p>
+          <p className="vd-pkg-card__section-label">Enthält:</p>
           <ul className="vd-pkg-card__bonus-list">
-            {bonusFeatures.map((f) => (
+            {containsFeatures.map((f) => (
               <li key={f.id}><span aria-hidden>✓</span> {f.label}</li>
             ))}
           </ul>

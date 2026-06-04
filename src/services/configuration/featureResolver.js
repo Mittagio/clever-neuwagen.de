@@ -211,15 +211,31 @@ export function buildRecommendation(selection, vehicleCatalog, pricingContext = 
 
   let betterTrim = null;
   if (raw.betterTrim?.trimId && raw.betterTrim.trimId !== selection.trim) {
+    const loseLabels = (raw.wishItems ?? [])
+      .filter((w) => w.status === 'standard' || w.status === 'fulfilled')
+      .map((w) => w.label)
+      .slice(0, 3);
     betterTrim = {
       exists: true,
       trim: raw.betterTrim.trimName,
       trimId: raw.betterTrim.trimId,
-      reason: raw.betterTrim.savingsLabel ?? 'Erfüllt Ihre Wünsche günstiger',
+      reason: raw.betterTrim.savingsLabel ?? 'Günstigere Rate',
       oldPrice: { label: raw.betterTrim.currentPriceLabel },
       newPrice: { label: raw.betterTrim.displayPriceLabel },
-      serialLabels: [],
-      packageNeeded: [],
+      keepLabels: [],
+      loseLabels,
+      resolution: raw.resolution,
+    };
+  }
+
+  let premiumTrim = null;
+  if (raw.premiumTrim?.trimId && raw.premiumTrim.trimId !== selection.trim) {
+    premiumTrim = {
+      exists: true,
+      trim: raw.premiumTrim.trimName,
+      trimId: raw.premiumTrim.trimId,
+      reason: raw.premiumTrim.extraLabel ?? 'Mehr Ausstattung',
+      gainLabels: raw.premiumTrim.bonusLabels ?? [],
       resolution: raw.resolution,
     };
   }
@@ -244,6 +260,7 @@ export function buildRecommendation(selection, vehicleCatalog, pricingContext = 
     requestedFeatures,
     requiredPackages,
     betterTrim,
+    premiumTrim,
     resolution: raw.resolution,
     magicSummary: buildMagicSummaryText(includedFeatures, requiredPackages, delta, payment),
     priceDeltaLabel: delta?.deltaLabel ?? null,
@@ -260,6 +277,7 @@ function emptyRecommendation() {
     requestedFeatures: [],
     requiredPackages: [],
     betterTrim: null,
+    premiumTrim: null,
     resolution: null,
     magicSummary: null,
     priceDeltaLabel: null,

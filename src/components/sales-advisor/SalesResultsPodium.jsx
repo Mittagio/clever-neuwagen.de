@@ -66,7 +66,7 @@ function PodiumMatchCard({
         )}
 
         {showReasons && (
-          <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt er zu Ihnen?" />
+          <RecommendReasonsPanel reasons={recommendReasons} />
         )}
 
         <p className="ss-podium-card__rate">

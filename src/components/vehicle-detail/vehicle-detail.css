@@ -2293,6 +2293,130 @@
   cursor: pointer;
 }
 
+.delivery-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.vd-partner-teaser {
+  margin: 12px 16px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.vd-partner-teaser__kicker {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.vd-partner-teaser__name {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-partner-teaser__facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.vd-partner-teaser__more {
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #0b2559;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.vd-trim-advisor {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #dbeafe;
+  background: #f0f9ff;
+}
+
+.vd-trim-advisor__kicker {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: #0b2559;
+}
+
+.vd-trim-advisor__lead {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.vd-trim-advisor__grid {
+  display: grid;
+  gap: 10px;
+}
+
+.vd-trim-advisor__option {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.vd-trim-advisor__option-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.vd-trim-advisor__delta {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-trim-advisor__delta--save {
+  color: #15803d;
+}
+
+.vd-trim-advisor__list {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+
+.vd-trim-advisor__list li {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vd-alt-compare-cta {
+  margin: 12px 16px 0;
+}
+
 .vd-mobile-more {
   padding: 8px 0 24px;
 }

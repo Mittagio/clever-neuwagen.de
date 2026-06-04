@@ -1,19 +1,55 @@
+import { formatMatchDeliveryLabel } from '../../logic/discoveryDisplay.js';
+
 /**
- * Sprint 34/36 – „Warum passt er?“ / Wunsch-Bullets (Ebene 1)
+ * Sprint 37 – „Warum passt dieses Fahrzeug?“ (Ebene 1, unter Preis)
  */
-export function buildWishMatchBullets(match, { maxReasons = 4 } = {}) {
+export function buildWishMatchBullets(match, { wishes, maxReasons = 5 } = {}) {
   const bullets = [];
-  const items = match?.cleverQuote?.items ?? [];
+  const seen = new Set();
+  const vehicle = match?.vehicle ?? {};
+  const cq = match?.cleverQuote;
+  const budgetMax = wishes?.budget?.maxMonthlyRate;
+  const rate = match?.displayRate ?? match?.bestOffer?.monthlyRate ?? vehicle.monthlyRate;
+
+  function push(text) {
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    bullets.push(text);
+  }
+
+  const items = cq?.items ?? [];
   items
     .filter((i) => i.status === 'fulfilled' && i.label)
-    .forEach((i) => bullets.push(i.label));
-  if (!bullets.length && match?.matchedFeatures?.length) {
+    .forEach((i) => push(`${i.label} bereits enthalten`));
+
+  if (!items.length && match?.matchedFeatures?.length) {
     match.matchedFeatures.forEach((f) => {
-      bullets.push(typeof f === 'string' ? f : f.label ?? f.id);
+      const label = typeof f === 'string' ? f : f.label ?? f.id;
+      push(`${label} bereits enthalten`);
     });
   }
-  if (bullets.length) return bullets.slice(0, maxReasons);
-  return buildRecommendReasons(match, { maxReasons }).slice(0, maxReasons);
+
+  const range = Number(vehicle.rangeKm ?? vehicle.wltpRange);
+  if (Number.isFinite(range) && range > 0) {
+    push(`${range} km Reichweite`);
+  }
+
+  if (budgetMax && rate != null && rate <= budgetMax) {
+    push(`Unter Ihrem Budget von ${budgetMax} €`);
+  }
+
+  const delivery = formatMatchDeliveryLabel(match);
+  if (delivery) push(delivery);
+
+  if (bullets.length >= maxReasons) return bullets.slice(0, maxReasons);
+
+  const fallback = buildRecommendReasons(match, { wishes, maxReasons });
+  fallback.forEach((r) => {
+    if (bullets.length < maxReasons) push(r);
+  });
+
+  return bullets.slice(0, maxReasons);
 }
 
 export function buildRecommendReasons(match, { wishes, maxReasons = 5 } = {}) {
@@ -21,7 +57,7 @@ export function buildRecommendReasons(match, { wishes, maxReasons = 5 } = {}) {
   const cq = match?.cleverQuote;
   const vehicle = match?.vehicle ?? {};
 
-  if (cq?.percent != null && cq.scorableTotal > 0) {
+  if (cq?.percent != null && cq.scorableTotal > 0 && !reasons.length) {
     reasons.push(`Erfüllt ${cq.matched} von ${cq.scorableTotal} prüfbaren Wünschen`);
   }
 

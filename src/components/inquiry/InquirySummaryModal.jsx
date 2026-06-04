@@ -41,6 +41,28 @@ export default function InquirySummaryModal({
   );
 }
 
+export function buildInquiryChecklist({
+  displayTitle,
+  detailSelection,
+  displayPrice,
+  dealer,
+}) {
+  const wishCount = detailSelection?.selectedFeatures?.length ?? 0;
+  const termLabel = displayPrice?.subtitle
+    ?? (detailSelection?.termMonths
+      ? `${detailSelection.termMonths} Monate`
+      : null);
+
+  return [
+    { label: 'Fahrzeug', value: displayTitle, done: Boolean(displayTitle) },
+    { label: 'Ausstattung', value: wishCount ? `${wishCount} Wünsche` : 'Serienausstattung', done: true },
+    { label: 'Preis', value: displayPrice?.label ?? '', done: Boolean(displayPrice?.label) },
+    { label: 'Laufzeit', value: termLabel ?? 'Standard', done: true },
+    { label: 'Ihre Wünsche', value: wishCount ? 'übermittelt' : 'optional', done: wishCount > 0 },
+    { label: 'Händler', value: dealer?.name ?? '', done: Boolean(dealer?.name) },
+  ].filter((item) => item.done || item.label === 'Ihre Wünsche');
+}
+
 export function buildCompactSummary({
   displayTitle,
   detailSelection,
@@ -48,23 +70,19 @@ export function buildCompactSummary({
   displayPrice,
   dealer,
 }) {
-  const wishLabels = detailSelection.selectedFeatures?.map((id) =>
-    recommendationResult?.includedFeatures?.find((f) => f.id === id)?.label
-    ?? recommendationResult?.requestedFeatures?.find((f) => f.id === id)?.label
-    ?? id,
-  ) ?? [];
-
-  const bullets = [];
-  wishLabels.slice(0, 2).forEach((w) => bullets.push(w));
-  if (dealer?.name) {
-    bullets.push(`${dealer.name}${dealer.distanceKm != null ? ` · ${dealer.distanceKm} km` : ''}`);
-  }
+  const checklist = buildInquiryChecklist({
+    displayTitle,
+    detailSelection,
+    displayPrice,
+    dealer,
+  });
 
   return {
     vehicleTitle: displayTitle,
     priceLabel: displayPrice?.label ?? '',
     priceSubtitle: displayPrice?.subtitle ?? '',
-    bullets: bullets.filter(Boolean).slice(0, 3),
+    checklist,
+    bullets: checklist.map((c) => `${c.label}: ${c.value}`).slice(0, 5),
   };
 }
 
@@ -75,12 +93,11 @@ function buildStructuredSummary({
   displayPrice,
   dealer,
 }) {
-  const lines = [`Sie fragen an:`, displayTitle];
+  const lines = ['Der Händler erhält folgende Informationen:'];
 
-  if (displayPrice?.subtitle) {
-    lines.push(displayPrice.subtitle);
-  }
-  lines.push(displayPrice?.label ?? '');
+  buildInquiryChecklist({ displayTitle, detailSelection, displayPrice, dealer }).forEach((item) => {
+    if (item.value) lines.push(`✓ ${item.label}: ${item.value}`);
+  });
 
   const wishes = detailSelection.selectedFeatures?.map((id) =>
     recommendationResult?.includedFeatures?.find((f) => f.id === id)?.label
@@ -89,29 +106,13 @@ function buildStructuredSummary({
   ) ?? [];
 
   if (wishes.length) {
-    lines.push('Ihre Wünsche:');
+    lines.push('Ausstattungswünsche im Detail:');
     wishes.forEach((w) => lines.push(`· ${w}`));
-  }
-
-  const serial = recommendationResult?.includedFeatures ?? [];
-  if (serial.length) {
-    lines.push('Bereits enthalten:');
-    serial.forEach((f) => lines.push(`· ${f.label}`));
   }
 
   const pkg = recommendationResult?.requiredPackages?.[0];
   if (pkg) {
-    lines.push('Empfohlenes Paket:');
-    lines.push(`· ${pkg.name}`);
-    const bonus = pkg.features.filter((f) => f.reason === 'bonus');
-    if (bonus.length) {
-      lines.push('Zusätzlich enthalten:');
-      bonus.forEach((f) => lines.push(`· ${f.label}`));
-    }
-  }
-
-  if (dealer?.name) {
-    lines.push(`Händler: ${dealer.name} · ${dealer.distanceKm} km`);
+    lines.push(`Empfohlenes Paket: ${pkg.name}`);
   }
 
   return lines;

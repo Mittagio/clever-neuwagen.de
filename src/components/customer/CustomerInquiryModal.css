@@ -158,6 +158,30 @@
   margin-top: 4px;
 }
 
+.cust-inq-checklist {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cust-inq-checklist__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.cust-inq-checklist__value {
+  font-weight: 600;
+  color: #0f172a;
+  text-align: right;
+}
+
 .cust-inq-ghost {
   margin-top: 10px;
   border: none;

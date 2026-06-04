@@ -32,8 +32,13 @@ export default function CleverQuoteBadge({
         )}
       </div>
       {onWhyClick && (
-        <button type="button" className="clever-quote__why" onClick={onWhyClick}>
-          {cleverQuote.percent != null ? `Warum ${cleverQuote.percent} %?` : 'Details anzeigen'}
+        <button
+          type="button"
+          className="clever-quote__info"
+          onClick={onWhyClick}
+          aria-label="CleverQuote erklären"
+        >
+          ⓘ
         </button>
       )}
     </div>
@@ -51,6 +56,7 @@ export function CleverQuoteBreakdown({
 
   const upgrade = cleverQuote.upgrade;
   const { fulfilled, packageNeeded, missing, uncertain } = partitionCleverQuoteItems(cleverQuote);
+  const allWishes = [...fulfilled, ...packageNeeded, ...missing, ...uncertain];
 
   function renderGroup(title, items, icon, className) {
     if (!items.length) return null;
@@ -87,23 +93,22 @@ export function CleverQuoteBreakdown({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="clever-quote-breakdown__head">
-          <h2 id="cq-breakdown-title">
-            {cleverQuote.percent != null
-              ? `Warum ${cleverQuote.percent} %?`
-              : 'CleverQuote – Einschätzung'}
-          </h2>
+          <h2 id="cq-breakdown-title">CleverQuote erklärt</h2>
           <button type="button" className="clever-quote-breakdown__close" onClick={onClose} aria-label="Schließen">×</button>
         </header>
+        {cleverQuote.percent != null && (
+          <p className="clever-quote-breakdown__score">{cleverQuote.percent} % Passung zu Ihren Wünschen</p>
+        )}
         <p className="clever-quote-breakdown__lead">
-          CleverQuote™ bewertet, wie gut dieses Fahrzeug zu Ihren Wünschen passt.
-          Unklare Ausstattungen werden nicht geraten.
+          So bewertet CleverQuote™, wie gut dieses Fahrzeug zu Ihnen passt.
         </p>
         {cleverQuote.trustNote && (
           <p className="clever-quote-breakdown__trust">{cleverQuote.trustNote}</p>
         )}
-        {renderGroup('Bereits enthalten', fulfilled, '✓', 'clever-quote-breakdown__group--ok')}
+        {renderGroup('Ihre Wünsche', allWishes, '·', 'clever-quote-breakdown__group--wishes')}
+        {renderGroup('Erfüllt', fulfilled, '✓', 'clever-quote-breakdown__group--ok')}
+        {renderGroup('Optional', packageNeeded, '+', 'clever-quote-breakdown__group--pkg')}
         {renderGroup('Fehlt', missing, '✗', 'clever-quote-breakdown__group--no')}
-        {renderGroup('Mit Paket möglich', packageNeeded, '○', 'clever-quote-breakdown__group--pkg')}
         {renderGroup(CLEVER_QUOTE_UNCERTAIN_LABEL, uncertain, '?', 'clever-quote-breakdown__group--uncertain')}
         {upgrade && (
           <div className="clever-quote-breakdown__upgrade">

@@ -827,6 +827,34 @@
   margin-bottom: 20px;
 }
 
+.ss-voice-wow {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.ss-voice-wow__title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ss-voice-wow__sub {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.ss-voice-wow__quote {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-style: italic;
+}
+
 .ss-voice__btn {
   width: 100%;
   min-height: 60px;

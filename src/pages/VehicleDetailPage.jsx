@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import LegalDisclaimer from '../components/legal/LegalDisclaimer.jsx';
 import CustomerSaveOfferModal from '../components/customer/CustomerSaveOfferModal.jsx';
@@ -24,7 +24,11 @@ import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
+import AlternativesCompareSheet from '../components/compare/AlternativesCompareSheet.jsx';
+import CleverTrimAdvisorCard from '../components/advisor/CleverTrimAdvisorCard.jsx';
+import DealerPartnerTeaser from '../components/dealer/DealerPartnerTeaser.jsx';
 import { buildWishMatchBullets } from '../services/cleverQuote/cleverQuoteRecommendation.js';
+import { formatDealerDeliveryLabel } from '../logic/discoveryDisplay.js';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import '../components/vehicle-detail/vehicle-detail.css';
@@ -34,6 +38,7 @@ import './FahrzeugDetailPage.css';
 export default function VehicleDetailPage() {
   const { slug } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { addLead } = useLeads();
   const { registerMarketplaceInquiry } = useCustomerAuth();
 
@@ -44,6 +49,7 @@ export default function VehicleDetailPage() {
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
+  const [altCompareOpen, setAltCompareOpen] = useState(false);
 
   const ctrl = useVehicleDetailController({
     slug,
@@ -154,8 +160,15 @@ export default function VehicleDetailPage() {
   const wishCount = detailSelection.selectedFeatures?.length ?? 0;
   const recommendReasons = buildWishMatchBullets(
     { vehicle, cleverQuote, bestOffer: activeDealer, displayRate: displayPrice?.amount },
-    { maxReasons: 4 },
+    { wishes, maxReasons: 5 },
   );
+  const deliveryLabel = formatDealerDeliveryLabel(dealer, vehicle);
+  const currentCompareRow = {
+    slug: vehicle.slug,
+    title: displayTitle,
+    cleverQuote,
+    priceLabel: displayPrice?.label,
+  };
 
   return (
     <PageShell>
@@ -172,17 +185,57 @@ export default function VehicleDetailPage() {
             <div className="vd-layout__main">
               <HeroOffer
                 vehicle={vehicle}
-                dealer={dealer}
                 price={displayPrice}
                 displayTitle={displayTitle}
-                discountPercent={discountPercent}
                 colorId={effectiveColorId}
                 cleverQuote={cleverQuote}
                 recommendReasons={recommendReasons}
+                deliveryLabel={deliveryLabel}
                 onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
                 onUnderstandEquipment={() => setCleverQuoteOpen(true)}
                 onStartInquiry={() => setInquiryModal('inquiry')}
                 onOpenPricing={() => setPriceDrawerOpen(true)}
+              />
+
+              <DealerPartnerTeaser
+                dealerName={dealer?.name}
+                distanceKm={dealer?.distanceKm}
+                brand={vehicle.brand}
+                onExpand={scrollToDealer}
+              />
+
+              {(recommendationResult?.betterTrim?.exists || recommendationResult?.premiumTrim?.exists) && (
+                <CleverTrimAdvisorCard
+                  vehicleModel={vehicle.model}
+                  currentTrimName={detailSelection.trimName ?? vehicle.trimName}
+                  betterTrim={recommendationResult.betterTrim}
+                  premiumTrim={recommendationResult.premiumTrim}
+                  onAcceptBetterTrim={(t) => handleAcceptBetterTrim(t.trimId, t.resolution)}
+                  onAcceptPremiumTrim={(t) => handleAcceptBetterTrim(t.trimId, t.resolution)}
+                />
+              )}
+
+              {wishAlternatives.length > 0 && (
+                <button
+                  type="button"
+                  className="vd-btn vd-btn--secondary vd-btn--block vd-alt-compare-cta"
+                  onClick={() => setAltCompareOpen(true)}
+                >
+                  Mit Alternativen vergleichen
+                </button>
+              )}
+
+              <AlternativesCompareSheet
+                open={altCompareOpen}
+                onClose={() => setAltCompareOpen(false)}
+                currentTitle={displayTitle}
+                currentRow={currentCompareRow}
+                alternatives={wishAlternatives}
+                paymentMode={detailSelection.paymentMode}
+                onSelectAlternative={(alt) => {
+                  setAltCompareOpen(false);
+                  navigate(`${alt.path}?wunsch=1`);
+                }}
               />
 
               <CleverQuoteBreakdown

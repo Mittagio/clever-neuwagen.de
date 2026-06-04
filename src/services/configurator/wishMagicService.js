@@ -580,6 +580,21 @@ export function buildWishRecommendation({
     currentAmount: amount,
   });
 
+  const premiumTrim = findPremiumTrimAlternative({
+    brand,
+    model,
+    currentTrimId: trimId,
+    wishFeatureIds,
+    paymentType: payment,
+    termMonths,
+    mileagePerYear,
+    downPayment,
+    financeDown,
+    financeBalloon,
+    dealerConditions,
+    currentAmount: amount,
+  });
+
   return {
     wishFeatureIds,
     resolution,
@@ -590,6 +605,7 @@ export function buildWishRecommendation({
     packages,
     accessories: resolution?.requiredAccessories ?? [],
     betterTrim,
+    premiumTrim,
     unavailable,
   };
 }
@@ -648,6 +664,65 @@ export function findBetterTrimAlternative({
       ? `${formatCurrency(savings)} günstiger`
       : `${formatCurrency(savings)}/Monat günstiger`,
     savingsAmount: savings,
+  };
+}
+
+export function findPremiumTrimAlternative({
+  brand,
+  model,
+  currentTrimId,
+  wishFeatureIds = [],
+  paymentType = 'leasing',
+  termMonths = 48,
+  mileagePerYear = 10000,
+  downPayment = 0,
+  financeDown = 0,
+  financeBalloon = 0,
+  dealerConditions,
+  currentAmount,
+}) {
+  if (!wishFeatureIds.length) return null;
+
+  const payment = normalizePaymentMode(paymentType);
+  const compared = priceAllTrimsForWish({
+    brand,
+    model,
+    wishFeatureIds,
+    dealerConditions,
+    paymentType: payment,
+    termMonths,
+    mileagePerYear,
+  });
+
+  const current = compared.find((t) => t.trimId === currentTrimId);
+  const currentPrice = currentAmount ?? current?.displayAmount;
+  if (currentPrice == null) return null;
+
+  const premium = compared
+    .filter((t) => t.trimId !== currentTrimId
+      && t.displayAmount != null
+      && t.displayAmount > currentPrice
+      && t.missingFeatures.length === 0)
+    .sort((a, b) => a.displayAmount - b.displayAmount)[0];
+
+  if (!premium) return null;
+
+  const extra = premium.displayAmount - currentPrice;
+  const bonusLabels = (premium.serialFeatures ?? [])
+    .slice(0, 4)
+    .map((id) => getFeatureLabel(id));
+
+  return {
+    trimId: premium.trimId,
+    trimName: premium.trimName,
+    displayAmount: premium.displayAmount,
+    displayPriceLabel: premium.displayPriceLabel,
+    currentTrimName: current?.trimName ?? currentTrimId,
+    currentPriceLabel: formatDisplayPrice(currentPrice, payment),
+    extraLabel: normalizePaymentMode(payment) === 'cash'
+      ? `+${formatCurrency(extra)}`
+      : `+${formatCurrency(extra)}/Monat`,
+    bonusLabels,
   };
 }
 

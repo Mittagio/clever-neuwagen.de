@@ -214,3 +214,63 @@
     display: block;
   }
 }
+
+.alt-compare-sheet__intro {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.alt-compare-sheet__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alt-compare-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alt-compare-row--current {
+  border-color: #0b2559;
+  background: #f8fafc;
+  cursor: default;
+}
+
+.alt-compare-row__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.alt-compare-row__title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.alt-compare-row__price {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.alt-compare-row__badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}

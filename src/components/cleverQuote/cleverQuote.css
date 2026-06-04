@@ -85,6 +85,27 @@
   padding: 0;
 }
 
+.clever-quote__info {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.clever-quote-breakdown__score {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .clever-quote--sm {
   padding: 8px 10px;
 }

@@ -20,7 +20,7 @@ import {
   getActiveKiaModelIdsFromConditions,
   KIA_REGISTRY_MODEL_KEYS,
 } from '../data/kia/kiaPartnerHub.js';
-import KiaPartnerBar from '../components/sales-advisor/KiaPartnerBar.jsx';
+import SalesVoiceWowBanner from '../components/sales-advisor/SalesVoiceWowBanner.jsx';
 import {
   saveCustomerRecord,
   buildCustomerRecordPayload,
@@ -53,6 +53,7 @@ export default function SmartSalesPage() {
   const [sentVia, setSentVia] = useState([]);
   const [savedRecord, setSavedRecord] = useState(null);
   const [commSheetOpen, setCommSheetOpen] = useState(false);
+  const [voiceWow, setVoiceWow] = useState(false);
 
   const sellerName = seller?.name ?? conditions.contact?.name ?? 'Verkaufsberater';
   const dealerName = conditions.dealerName ?? 'Autohaus';
@@ -84,16 +85,38 @@ export default function SmartSalesPage() {
     setSelectedChipIds((prev) => prev.filter((id) => id !== chipId));
   }, []);
 
+  function runVoiceSearch(chipIds) {
+    const results = findSalesAdvisorMatches(chipIds, {
+      limit: 12,
+      mileagePerYear,
+      activeKiaModelIds,
+    });
+    const defaultCompare = results.slice(0, 3).map((m) => m.slug);
+    setMatches(results);
+    setCompareSlugs(defaultCompare);
+    setActiveMatch(null);
+    setVoiceWow(true);
+    setStep(STEPS.RESULTS);
+    recordSmartSalesAdvised();
+    refreshShareSession(results, defaultCompare, chipIds);
+  }
+
   function handleVoiceParsed(parsed) {
     setVoiceTranscript(parsed.transcript ?? '');
     if (parsed.customerName) {
       setCustomer((c) => ({ ...c, name: parsed.customerName }));
     }
     if (parsed.mileagePerYear) setMileagePerYear(parsed.mileagePerYear);
-    setSelectedChipIds((prev) => mergeChipIds(prev, parsed.chipIds));
+    setSelectedChipIds((prev) => {
+      const next = mergeChipIds(prev, parsed.chipIds ?? []);
+      if (next.length >= 2 && (parsed.chipIds?.length ?? 0) > 0) {
+        setTimeout(() => runVoiceSearch(next), 0);
+      }
+      return next;
+    });
   }
 
-  function refreshShareSession(nextMatches, nextCompareSlugs) {
+  function refreshShareSession(nextMatches, nextCompareSlugs, chipIdsOverride) {
     const pool = nextCompareSlugs.length >= 2
       ? nextMatches.filter((m) => nextCompareSlugs.includes(m.slug))
       : nextMatches.slice(0, Math.max(3, nextCompareSlugs.length));
@@ -103,7 +126,7 @@ export default function SmartSalesPage() {
     }
     setShareSession(createSalesShareSession({
       matches: pool,
-      chipIds: selectedChipIds,
+      chipIds: chipIdsOverride ?? selectedChipIds,
       customer,
       sellerName,
       dealerName,
@@ -116,6 +139,7 @@ export default function SmartSalesPage() {
   }
 
   function handleFindVehicles() {
+    setVoiceWow(false);
     const results = findSalesAdvisorMatches(selectedChipIds, {
       limit: 12,
       mileagePerYear,
@@ -294,6 +318,9 @@ export default function SmartSalesPage() {
               <button type="button" className="ss-page__step-back" onClick={() => setStep(STEPS.UNDERSTOOD)}>
                 ← Bedarfsanalyse
               </button>
+              {voiceWow && (
+                <SalesVoiceWowBanner matchCount={matches.length} transcript={voiceTranscript} />
+              )}
               <SalesResultsPodium
                 matches={matches}
                 customerName={customer.name}

@@ -1,32 +1,23 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
-import { getAvailabilityPlainLabel } from '../../logic/marketplaceService.js';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
+import DeliveryTimePill from '../shared/DeliveryTimePill.jsx';
 import { CUSTOMER_LABELS } from '../../data/customerFlow.js';
 import '../vehicle-detail/vehicle-detail.css';
 
 export default function HeroOffer({
   vehicle,
-  dealer,
   price,
   onStartInquiry,
   onOpenPricing,
-  onOpenWishes,
-  onOpenCompare,
   displayTitle,
-  discountPercent = 0,
   colorId,
   cleverQuote,
   onCleverQuoteWhy,
   onUnderstandEquipment,
   recommendReasons = [],
-  wishesActive = false,
-  compareActive = false,
+  deliveryLabel = null,
 }) {
-  const availabilityLabel = getAvailabilityPlainLabel(dealer?.availability ?? vehicle?.availability);
-  const statusLine = dealer?.deliveryTime
-    ? `${availabilityLabel} · ${dealer.deliveryTime}`
-    : availabilityLabel;
   const title = displayTitle ?? vehicle?.title ?? '';
   const pricingLabel = price?.label ?? '';
   const pricingSubtitle = price?.subtitle ?? '';
@@ -34,7 +25,7 @@ export default function HeroOffer({
   const paymentHint = price?.type === 'cash' ? 'Kaufpreis' : 'Leasing';
 
   return (
-    <section className="vd-hero vd-hero--stage vd-hero--mobile-first vd-hero--s36" aria-label="Fahrzeugangebot">
+    <section className="vd-hero vd-hero--stage vd-hero--mobile-first vd-hero--s36 vd-hero--advisor" aria-label="Fahrzeugangebot">
       <div className="vd-hero__mobile">
         <div className="vd-hero__mobile-scroll">
           <div className="vd-hero__media">
@@ -56,7 +47,6 @@ export default function HeroOffer({
                 />
               </div>
             )}
-            <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt er zu Ihnen?" />
           </div>
         </div>
         <div className="vd-hero__mobile-dock">
@@ -69,6 +59,8 @@ export default function HeroOffer({
             <p className="vd-hero__price">{pricingLabel}</p>
             <p className="vd-hero__price-type">{pricingSubtitle || `${paymentHint} · ändern`}</p>
           </button>
+          <DeliveryTimePill label={deliveryLabel} className="vd-hero__delivery" />
+          <RecommendReasonsPanel reasons={recommendReasons} />
           <button type="button" className="vd-btn vd-btn--primary vd-btn--block vd-hero__cta" onClick={onStartInquiry}>
             {CUSTOMER_LABELS.startInquiry}
           </button>
@@ -99,25 +91,15 @@ export default function HeroOffer({
               />
             </div>
           )}
-          <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt er zu Ihnen?" />
-          <div className="vd-hero__meta vd-hero__meta--ebene2">
-            <p className="vd-hero__meta-line">
-              {dealer?.name ?? vehicle.dealerName} · {dealer?.distanceKm ?? vehicle.distanceKm} km
-            </p>
-            <p className="vd-hero__meta-line">{statusLine}</p>
-            {discountPercent > 0 && (
-              <p className="vd-hero__meta-line vd-hero__meta-line--accent">
-                {discountPercent} % Preisvorteil
-              </p>
-            )}
-          </div>
           <div className="vd-hero__price-block">
             <p className="vd-hero__price">{pricingLabel}</p>
             <p className="vd-hero__price-type">{pricingSubtitle}</p>
+            <DeliveryTimePill label={deliveryLabel} className="vd-hero__delivery" />
             <button type="button" className="vd-hero__rate-link" onClick={onOpenPricing}>
               {price?.type === 'cash' ? 'Zahlungsart ändern' : 'Rate anpassen'}
             </button>
           </div>
+          <RecommendReasonsPanel reasons={recommendReasons} />
           <div className="vd-hero__actions vd-hero__actions--desktop">
             <button type="button" className="vd-btn vd-btn--primary" onClick={onStartInquiry}>
               {CUSTOMER_LABELS.startInquiry}

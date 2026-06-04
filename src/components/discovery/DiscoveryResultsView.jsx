@@ -284,13 +284,17 @@ export default function DiscoveryResultsView({
 
     if (!topMatch) return [];
 
-    return buildWishMatchBullets(topMatch, { maxReasons: 4 });
+    return buildWishMatchBullets(topMatch, { wishes, maxReasons: 5 });
 
-  }, [topMatch]);
+  }, [topMatch, wishes]);
 
 
 
-  const showCompareAction = dealerCount > 1 && state === RESULT_STATES.EXACT && Boolean(onCompare);
+  const showCompareAction = (
+    (secondaryHits.length >= 2 || dealerCount > 1)
+    && state === RESULT_STATES.EXACT
+    && Boolean(onCompare)
+  );
 
 
 
@@ -459,6 +463,16 @@ export default function DiscoveryResultsView({
 
                 </div>
 
+              )}
+
+              {secondaryHits.length >= 1 && onCompare && (
+                <button
+                  type="button"
+                  className="disc-alt-compare-cta"
+                  onClick={onCompare}
+                >
+                  Mit Alternativen vergleichen
+                </button>
               )}
 
 
