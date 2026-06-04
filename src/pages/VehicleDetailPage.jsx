@@ -188,7 +188,9 @@ export default function VehicleDetailPage() {
     priceLabel: displayPrice?.label,
   };
 
-  const streamUpgrade = pickStreamUpgrade(recommendationResult);
+  const streamUpgrade = pickStreamUpgrade(recommendationResult, {
+    selectedPackageIds: detailSelection.selectedPackages ?? [],
+  });
   const streamAlternatives = pickStreamAlternatives(wishAlternatives, 3, vehicle.slug);
   const dealerMatchingCount = Math.max(
     dealerInventory?.length ?? 0,
@@ -233,7 +235,11 @@ export default function VehicleDetailPage() {
                 <VehicleDetailUpgradeSection
                   upgrade={streamUpgrade}
                   vehicleModel={vehicle.model}
+                  paymentMode={detailSelection.paymentMode}
+                  cleverQuote={cleverQuote}
+                  cleverQuoteAfter={cleverQuoteAfterPackage}
                   onAcceptTrim={(trim) => handleAcceptBetterTrim(trim.trimId, trim.resolution)}
+                  onAcceptPackage={handleAcceptPackage}
                 />
 
                 <VehicleDetailAltSlider alternatives={streamAlternatives} />

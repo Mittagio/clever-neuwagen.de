@@ -65,6 +65,18 @@ function checkMetaWish(wishId, vehicle) {
   return null;
 }
 
+const META_WISH_IDS = new Set(['elektro', 'benzin', 'family_suv', 'range_400']);
+
+function resolveWishStatusRow(wishId, vehicle, match, resolution, selectedPackages) {
+  if (META_WISH_IDS.has(wishId)) {
+    const meta = checkMetaWish(wishId, vehicle);
+    if (meta === true) return { status: 'fulfilled', via: 'standard' };
+    if (meta === false) return { status: 'missing', via: null };
+    return { status: 'uncertain', via: null };
+  }
+  return resolveWishItem(wishId, match, resolution, selectedPackages);
+}
+
 function resolveWishItem(wishId, match, resolution, selectedPackages) {
   if (resolution?.uncertainFeatures?.includes(wishId)) {
     return { status: 'uncertain', via: null };
@@ -133,13 +145,10 @@ export function computeCleverQuote({
     wishFeatureIds: wishIds.filter((id) => !['elektro', 'benzin', 'family_suv'].includes(id)),
   });
 
-  const statusRows = wishIds.map((id) => {
-    const meta = checkMetaWish(id, vehicle);
-    if (meta === true) return { id, statusResult: { status: 'fulfilled', via: 'standard' } };
-    if (meta === false) return { id, statusResult: { status: 'missing', via: null } };
-    if (meta === null) return { id, statusResult: { status: 'uncertain', via: null } };
-    return { id, statusResult: resolveWishItem(id, match, resolution, selectedPackages) };
-  });
+  const statusRows = wishIds.map((id) => ({
+    id,
+    statusResult: resolveWishStatusRow(id, vehicle, match, resolution, selectedPackages),
+  }));
 
   const scorableIds = statusRows
     .filter((row) => row.statusResult.status !== 'uncertain')

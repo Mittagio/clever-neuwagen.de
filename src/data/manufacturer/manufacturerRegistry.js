@@ -20,7 +20,7 @@ export const MANUFACTURER_MODELS = {
     label: 'Kia EV3',
     data: kiaEv3,
     engine: 'ev3',
-    defaultTrimId: 'gt-line',
+    defaultTrimId: 'earth',
     defaultEngineId: 'ev-long',
   },
 };

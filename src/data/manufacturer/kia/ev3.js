@@ -110,9 +110,9 @@ export const kiaEv3 = {
     { id: 'ev3-harman', name: 'Harman Kardon', standardInTrims: [], availableViaPackages: ['ev3-premium'] },
     { id: 'ev3-heckklappe', name: 'Elektrische Heckklappe', standardInTrims: [], availableViaPackages: ['ev3-komfort', 'ev3-premium'] },
     { id: 'ev3-remote-parken', name: 'Parkassistent', standardInTrims: [], availableViaPackages: ['ev3-technik'] },
-    { id: 'ev3-sitzbelueftung', name: 'Sitzbelüftung', standardInTrims: [], availableViaPackages: [] },
-    { id: 'ev3-panorama', name: 'Panoramadach', standardInTrims: [], availableViaPackages: [] },
-    { id: 'ev3-anhaenger', name: 'Anhängerkupplung', standardInTrims: [], availableViaPackages: [], availableViaAccessories: ['ev3-anhaenger'] },
+    { id: 'ev3-sitzbelueftung', name: 'Sitzbelüftung', standardInTrims: [], availableViaPackages: [], notAvailableInTrims: ['air', 'earth', 'gt-line'] },
+    { id: 'ev3-panorama', name: 'Panoramadach', standardInTrims: [], availableViaPackages: [], notAvailableInTrims: ['air', 'earth', 'gt-line'] },
+    { id: 'ev3-anhaenger', name: 'Anhängerkupplung', standardInTrims: [], availableViaPackages: [], availableViaAccessories: ['ev3-anhaenger'], notAvailableInTrims: ['air'] },
   ],
 
   variants: [

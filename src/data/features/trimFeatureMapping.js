@@ -1,29 +1,70 @@
-/** Trim → Feature-Zuordnung pro Modell */
+/** Trim → Feature-Zuordnung pro Modell (Marktplatz-Heuristik, sync mit Kia-Registry) */
 export const TRIM_FEATURE_MAP = {
   sportage: {
     modelLabel: 'Kia Sportage',
-    baseRate: { vision: 299, spirit: 349, 'gt-line': 389 },
+    baseRate: { core: 279, vision: 299, spirit: 349, 'black-edition': 369, 'gt-line': 389 },
     trims: [
+      {
+        id: 'core',
+        name: 'Core',
+        standardFeatures: ['rear_camera', 'parking_rear', 'large_trunk', 'family_suv'],
+        availableViaPackage: ['heated_seats', 'parking_front'],
+        notAvailable: ['camera_360', 'blind_spot', 'panorama_roof', 'head_up_display'],
+      },
       {
         id: 'vision',
         name: 'Vision',
-        standardFeatures: ['parking_rear', 'heated_seats', 'large_trunk', 'family_suv'],
-        availableViaPackage: ['parking_front', 'blind_spot', 'towbar'],
-        notAvailable: ['camera_360', 'tow_capacity_2000'],
+        standardFeatures: ['heated_seats', 'rear_camera', 'parking_rear', 'large_trunk', 'family_suv'],
+        availableViaPackage: ['parking_front', 'blind_spot', 'camera_360', 'panorama_roof', 'harman_kardon'],
+        notAvailable: ['head_up_display'],
       },
       {
         id: 'spirit',
         name: 'Spirit',
-        standardFeatures: ['parking_front', 'parking_rear', 'blind_spot', 'heated_seats', 'towbar', 'large_trunk', 'family_suv'],
-        availableViaPackage: ['camera_360'],
+        standardFeatures: ['parking_front', 'parking_rear', 'blind_spot', 'heated_seats', 'rear_camera', 'large_trunk', 'family_suv'],
+        availableViaPackage: ['camera_360', 'panorama_roof', 'harman_kardon', 'towbar'],
+        notAvailable: ['head_up_display', 'tow_capacity_2000'],
+      },
+      {
+        id: 'black-edition',
+        name: 'Black Edition',
+        standardFeatures: ['camera_360', 'panorama_roof', 'harman_kardon', 'heated_seats', 'heated_rear_seats', 'large_trunk', 'family_suv'],
+        availableViaPackage: ['blind_spot'],
         notAvailable: ['tow_capacity_2000'],
       },
       {
         id: 'gt-line',
         name: 'GT-Line',
-        standardFeatures: ['camera_360', 'blind_spot', 'heated_seats', 'parking_front', 'parking_rear', 'towbar', 'large_trunk', 'family_suv', 'automatic'],
-        availableViaPackage: [],
+        standardFeatures: ['camera_360', 'blind_spot', 'heated_seats', 'parking_front', 'parking_rear', 'rear_camera', 'power_tailgate', 'head_up_display', 'harman_kardon', 'ventilated_seats', 'large_trunk', 'family_suv', 'automatic'],
+        availableViaPackage: ['towbar'],
         notAvailable: [],
+      },
+    ],
+  },
+  ev3: {
+    modelLabel: 'Kia EV3',
+    baseRate: { air: 299, earth: 318, 'gt-line': 379 },
+    trims: [
+      {
+        id: 'air',
+        name: 'Air',
+        standardFeatures: ['rear_camera', 'parking_rear', 'elektro', 'family_suv'],
+        availableViaPackage: ['heated_seats', 'power_tailgate'],
+        notAvailable: ['camera_360', 'heat_pump', 'blind_spot', 'towbar', 'panorama_roof'],
+      },
+      {
+        id: 'earth',
+        name: 'Earth',
+        standardFeatures: ['heated_seats', 'heat_pump', 'rear_camera', 'parking_front', 'parking_rear', 'elektro', 'family_suv', 'range_400'],
+        availableViaPackage: ['camera_360', 'blind_spot', 'power_tailgate', 'remote_parking'],
+        notAvailable: ['panorama_roof', 'head_up_display', 'harman_kardon'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'heat_pump', 'blind_spot', 'rear_camera', 'parking_front', 'parking_rear', 'steering_heat', 'elektro', 'family_suv', 'range_400'],
+        availableViaPackage: ['camera_360', 'power_tailgate', 'harman_kardon', 'head_up_display'],
+        notAvailable: ['panorama_roof'],
       },
     ],
   },
@@ -37,19 +78,6 @@ export const TRIM_FEATURE_MAP = {
         standardFeatures: ['blind_spot', 'parking_rear', 'heated_seats', 'towbar', 'large_trunk', 'family_suv'],
         availableViaPackage: ['camera_360', 'parking_front'],
         notAvailable: ['tow_capacity_2000'],
-      },
-    ],
-  },
-  ev3: {
-    modelLabel: 'Kia EV3',
-    baseRate: { 'gt-line': 349 },
-    trims: [
-      {
-        id: 'gt-line',
-        name: 'GT-line',
-        standardFeatures: ['camera_360', 'heated_seats', 'blind_spot', 'elektro', 'family_suv'],
-        availableViaPackage: [],
-        notAvailable: ['towbar', 'tow_capacity_2000'],
       },
     ],
   },
@@ -94,9 +122,13 @@ export function normalizeModelKey(brand, model) {
 
 export function inferTrimFromTitle(title) {
   const t = (title ?? '').toLowerCase();
+  if (t.includes('black edition') || t.includes('black-edition')) return 'black-edition';
   if (t.includes('gt-line') || t.includes('gt line')) return 'gt-line';
+  if (t.includes('earth')) return 'earth';
+  if (t.includes('air')) return 'air';
   if (t.includes('spirit')) return 'spirit';
   if (t.includes('vision')) return 'vision';
+  if (t.includes('core')) return 'core';
   if (t.includes('st-line') || t.includes('st line')) return 'st-line';
   if (t.includes('inspiration')) return 'inspiration';
   return '';
@@ -108,5 +140,5 @@ export function getModelTrims(modelKey) {
 
 export function getTrimConfig(modelKey, trimId) {
   const trims = getModelTrims(modelKey);
-  return trims.find((t) => t.id === trimId) ?? trims[0] ?? null;
+  return trims.find((tr) => tr.id === trimId) ?? trims[0] ?? null;
 }

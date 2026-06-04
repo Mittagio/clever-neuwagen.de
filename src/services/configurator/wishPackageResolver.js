@@ -5,7 +5,14 @@ import { getPackageAvailability } from '../../data/models/kia/sportageAdapter.js
 function resolveFeatureInTrim(modelKey, trimId, mfgFeatureId, data) {
   const equipment = data.equipment ?? [];
   const eq = equipment.find((e) => e.id === mfgFeatureId);
-  if (!eq) return { status: 'uncertain' };
+
+  if (!eq) {
+    const acc = (data.accessories ?? []).find((a) => a.id === mfgFeatureId);
+    if (acc?.availableTrims?.includes(trimId)) {
+      return { status: 'accessory', accessoryId: acc.id, accessoryName: acc.name };
+    }
+    return { status: 'uncertain' };
+  }
 
   if (eq.standardInTrims?.includes(trimId)) {
     return { status: 'standard', equipment: eq };

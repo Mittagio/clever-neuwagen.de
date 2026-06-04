@@ -336,6 +336,7 @@ export const kiaSportage = {
     { id: 'feat-felgen-17', name: '17 Zoll Felgen', category: 'Exterieur', standardInTrims: ['core'], availableViaPackages: [], notAvailableInTrims: [] },
     { id: 'feat-felgen-18', name: '18 Zoll Felgen', category: 'Exterieur', standardInTrims: ['vision', 'spirit'], availableViaPackages: [], notAvailableInTrims: [] },
     { id: 'feat-felgen-19', name: '19 Zoll Felgen', category: 'Exterieur', standardInTrims: ['black-edition', 'gt-line'], availableViaPackages: [], notAvailableInTrims: [] },
+    { id: 'acc-anhaenger', name: 'Anhängerkupplung abnehmbar', category: 'Zubehör', standardInTrims: [], availableViaPackages: [], availableViaAccessories: ['acc-anhaenger'], notAvailableInTrims: [] },
   ],
 
   wltp: [
