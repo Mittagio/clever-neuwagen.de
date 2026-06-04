@@ -2263,6 +2263,36 @@
   font-size: 0.8125rem;
 }
 
+/* Sprint 36 – Ebene 1: Händler/Lieferzeit erst in Ebene 2 */
+.vd-hero--s36 .vd-hero__meta--ebene2 {
+  display: none;
+}
+
+.vd-hero--s36 .vd-hero__price-block--tap {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vd-hero--s36 .vd-hero__understand {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .vd-mobile-more {
   padding: 8px 0 24px;
 }

@@ -4,7 +4,8 @@ import CleverQuoteBadge, { CleverQuoteBreakdown } from '../cleverQuote/CleverQuo
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
 import { formatCurrency } from '../../logic/marketplaceService.js';
 import { buildKiaSellerHeadline } from '../../data/kia/kiaPartnerHub.js';
-import { buildRecommendReasons } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
+import { getMatchDisplayTitle } from '../../logic/discoveryDisplay.js';
+import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 
 const TOP_N = 3;
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -17,39 +18,26 @@ function formatDelivery(match) {
   return t.replace(/^Lieferzeit\s*/i, '').trim() || t;
 }
 
-function formatDealerLabel(match, fallbackDealerName) {
-  const dealer = match?.bestOffer?.dealer ?? match?.vehicle?.dealerName ?? fallbackDealerName;
-  if (!dealer) return null;
-  const distance = match?.bestOffer?.distanceKm ?? match?.vehicle?.distanceKm;
-  if (Number.isFinite(distance)) {
-    return `${dealer} · ${Math.round(distance)} km`;
-  }
-  return dealer;
-}
-
 function PodiumMatchCard({
   match,
   rank,
   wishes,
-  dealerName,
   inCompare,
   showReasons = true,
+  compactEbene1 = false,
   onSelect,
   onToggleCompare,
 }) {
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const v = match.vehicle;
-  const title = match.model ?? `${v.brand} ${v.model}`;
-  const trimLabel = match.bestTrim ? ` ${match.bestTrim}` : '';
+  const title = getMatchDisplayTitle(match);
   const rate = match.bestOffer?.monthlyRate ?? v.monthlyRate;
-  const delivery = formatDelivery(match);
-  const dealerLabel = formatDealerLabel(match, dealerName);
-  const recommendReasons = buildRecommendReasons(match, { wishes, maxReasons: PODIUM_MAX_REASONS });
+  const recommendReasons = buildWishMatchBullets(match, { wishes, maxReasons: PODIUM_MAX_REASONS });
   const isTop = rank != null && rank < TOP_N;
 
   return (
     <article
-      className={`ss-podium-card${isTop ? ` ss-podium-card--top ss-podium-card--rank-${rank + 1}` : ' ss-podium-card--alt'}`}
+      className={`ss-podium-card ss-podium-card--s36${isTop ? ` ss-podium-card--top ss-podium-card--rank-${rank + 1}` : ' ss-podium-card--alt'}`}
     >
       {isTop && (
         <div className="ss-podium-card__rank" aria-hidden>
@@ -63,7 +51,7 @@ function PodiumMatchCard({
       />
       <div className="ss-podium-card__body">
         <header className="ss-podium-card__vehicle">
-          <h2>{title}{trimLabel}</h2>
+          <h2>{title}</h2>
         </header>
 
         {match.cleverQuote && (
@@ -78,7 +66,7 @@ function PodiumMatchCard({
         )}
 
         {showReasons && (
-          <RecommendReasonsPanel reasons={recommendReasons} title="Warum?" />
+          <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt er zu Ihnen?" />
         )}
 
         <p className="ss-podium-card__rate">
@@ -86,12 +74,8 @@ function PodiumMatchCard({
           <span>/Monat</span>
         </p>
 
-        {delivery && (
-          <p className="ss-podium-card__delivery">{delivery}</p>
-        )}
-
-        {dealerLabel && (
-          <p className="ss-podium-card__dealer">{dealerLabel}</p>
+        {!compactEbene1 && formatDelivery(match) && (
+          <p className="ss-podium-card__delivery">{formatDelivery(match)}</p>
         )}
 
         <div className="ss-podium-card__actions">
@@ -121,7 +105,6 @@ export default function SalesResultsPodium({
   matches = [],
   customerName = '',
   wishes = null,
-  dealerName = '',
   onSelect,
   onToggleCompare,
   onOpenCompare,
@@ -158,9 +141,9 @@ export default function SalesResultsPodium({
             match={match}
             rank={index}
             wishes={wishes}
-            dealerName={dealerName}
             inCompare={compareSlugs.includes(match.slug)}
             showReasons
+            compactEbene1
             onSelect={onSelect}
             onToggleCompare={onToggleCompare}
           />
@@ -187,7 +170,6 @@ export default function SalesResultsPodium({
                   key={match.slug}
                   match={match}
                   wishes={wishes}
-                  dealerName={dealerName}
                   inCompare={compareSlugs.includes(match.slug)}
                   showReasons={false}
                   onSelect={onSelect}

@@ -1,28 +1,32 @@
+import { useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
+import DiscoveryPriceSheet from './DiscoveryPriceSheet.jsx';
 import {
   getMatchDisplayTitle,
   formatMatchPrimaryPrice,
-  formatMatchCashAlt,
 } from '../../logic/discoveryDisplay.js';
 import './discovery-results.css';
 
 export default function DiscoveryHeroCard({
   match,
   paymentMode = 'leasing',
+  onChangePaymentMode,
   onViewOffer,
   onUnderstandEquipment,
   onCleverQuoteWhy,
   recommendReasons = [],
   heroBadge = 'Empfohlen für Ihre Suche',
 }) {
+  const [priceSheetOpen, setPriceSheetOpen] = useState(false);
+
   if (!match) return null;
 
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
-  const cashAlt = paymentMode !== 'cash' ? formatMatchCashAlt(match) : null;
+  const paymentHint = paymentMode === 'cash' ? 'Kaufpreis' : 'Leasing';
 
   return (
     <article className="disc-hero disc-hero--premium disc-hero--mobile-first disc-hero--s36">
@@ -55,18 +59,21 @@ export default function DiscoveryHeroCard({
             reasons={recommendReasons}
             title="Warum passt er zu Ihnen?"
           />
-          <div className="disc-hero__price-hero">
+          <button
+            type="button"
+            className="disc-hero__price-hero disc-hero__price-hero--sheet"
+            onClick={() => setPriceSheetOpen(true)}
+            aria-label={`Preis anzeigen: ${paymentHint}`}
+          >
             <p className="disc-hero__rate disc-hero__rate--hero">
               Ab {price.label}
               {price.suffix && <span>{price.suffix}</span>}
             </p>
-            {cashAlt && (
-              <p className="disc-hero__rate-alt">oder ab {cashAlt}</p>
-            )}
+            <p className="disc-hero__rate-mode">{paymentHint} · ändern</p>
             {v.discountPercent > 0 && (
               <p className="disc-hero__discount">{v.discountPercent} % Ersparnis</p>
             )}
-          </div>
+          </button>
           <button
             type="button"
             className="disc-hero__cta disc-hero__cta--hero"
@@ -85,6 +92,14 @@ export default function DiscoveryHeroCard({
           )}
         </div>
       </div>
+
+      <DiscoveryPriceSheet
+        open={priceSheetOpen}
+        onClose={() => setPriceSheetOpen(false)}
+        match={match}
+        paymentMode={paymentMode}
+        onSelectMode={onChangePaymentMode}
+      />
     </article>
   );
 }

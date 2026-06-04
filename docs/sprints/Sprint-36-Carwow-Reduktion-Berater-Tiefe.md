@@ -58,6 +58,9 @@ CleverQuote-Breakdown in Berater-Sprache:
 | `cleverQuoteRecommendation.js` | `buildWishMatchBullets` |
 | `CompareResultsHub.jsx` | Titel ohne Trim |
 | `VehicleDetailPage.jsx` | Wunsch-Bullets Ebene 1 |
+| `DiscoveryPriceSheet.jsx` | Leasing/Kauf-Umschalter (Sheet) |
+| `HeroOffer.jsx` | Ebene 1 ohne Händler-Dock, Ausstattung verstehen |
+| `SalesResultsPodium.jsx` | Wunsch-Bullets, kein Trim/Händler Ebene 1 |
 
 ---
 
@@ -76,3 +79,8 @@ CleverQuote-Breakdown in Berater-Sprache:
 - [x] Top-5-Kuration
 - [x] Wunsch-Bullets Ebene 1
 - [x] Breakdown Ebene 2 Berater-Sprache
+- [x] Preis-Sheet Leasing/Kauf (Hero Ergebnisse)
+- [x] Detail-Hero Ebene 1 ohne Händler-Dock
+- [x] Smart-Sales-Podium Wunsch-Sprache
+
+**Sprint 36 abgeschlossen.**

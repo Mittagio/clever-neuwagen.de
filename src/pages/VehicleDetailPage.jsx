@@ -179,13 +179,10 @@ export default function VehicleDetailPage() {
                 colorId={effectiveColorId}
                 cleverQuote={cleverQuote}
                 recommendReasons={recommendReasons}
-                wishesActive={wishSectionActive}
-                compareActive={compareOpen}
                 onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
+                onUnderstandEquipment={() => setCleverQuoteOpen(true)}
                 onStartInquiry={() => setInquiryModal('inquiry')}
                 onOpenPricing={() => setPriceDrawerOpen(true)}
-                onOpenWishes={openWishes}
-                onOpenCompare={openCompare}
               />
 
               <CleverQuoteBreakdown

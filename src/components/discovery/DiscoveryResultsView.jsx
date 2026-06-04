@@ -192,6 +192,10 @@ export default function DiscoveryResultsView({
 
   const paymentMode = filters?.payment ?? 'leasing';
 
+  const handleChangePaymentMode = (mode) => {
+    onPatchFilters?.({ payment: mode });
+  };
+
 
 
   const compactChips = useMemo(
@@ -418,6 +422,7 @@ export default function DiscoveryResultsView({
                 <DiscoveryHeroCard
                   match={topMatch}
                   paymentMode={paymentMode}
+                  onChangePaymentMode={handleChangePaymentMode}
                   onViewOffer={onViewOffer}
                   onCleverQuoteWhy={() => openCleverQuoteBreakdown(topMatch)}
                   onUnderstandEquipment={() => openCleverQuoteBreakdown(topMatch)}
