@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "test:intent": "node src/services/search/searchIntentParser.test.js",
     "test:feature-rules": "node src/services/search/vehicleFeatureRuleEngine.test.js",
+    "test:advisor-alternatives": "node src/services/search/advisorSearchAlternatives.test.js",
     "test:typo": "node src/services/search/typoTolerant.test.js",
     "test:sprint27": "node src/services/search/sprint27.test.js",
     "test:chips": "node src/services/search/chipConfig.test.js",

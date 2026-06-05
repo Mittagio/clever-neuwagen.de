@@ -66,6 +66,28 @@ export function evaluateHardRules(vehicle, profile) {
     }
   }
 
+  if (profile.maxPrice != null) {
+    const price = v.cashPrice ?? v.price ?? null;
+    if (price != null && price > profile.maxPrice) {
+      reasons.push({
+        code: 'budget_exceeded',
+        message: `${facts.label} liegt über ${profile.maxPrice.toLocaleString('de-DE')} € (${price.toLocaleString('de-DE')} €)`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.maxMonthlyRate != null) {
+    const rate = v.displayRate ?? v.monthlyRate ?? null;
+    if (rate != null && rate > profile.maxMonthlyRate) {
+      reasons.push({
+        code: 'budget_exceeded',
+        message: `${facts.label} liegt über ${profile.maxMonthlyRate} €/Monat (${rate} €/Monat)`,
+        hard: true,
+      });
+    }
+  }
+
   if (profile.bodyType === 'kleinwagen' || profile.bodyClass === 'kleinwagen') {
     const rank = BODY_CLASS_RANK[facts.bodyClass] ?? 3;
     if (rank >= BODY_CLASS_RANK.family_suv) {
@@ -170,6 +192,12 @@ export function buildExclusionHint(profile, excluded = []) {
 
 export function buildNoExactMatchMessage(profile, excluded = []) {
   if (profile.fuel === 'electric' && profile.seatsMin >= 7) {
+    const overBudget = excluded.some((e) =>
+      e.reasons.some((r) => r.code === 'budget_exceeded') && e.modelLine === 'ev9',
+    );
+    if (overBudget) {
+      return 'Kein Elektro-7-Sitzer in Ihrer Preisklasse. Der Kia EV9 startet darüber – Alternativen: Sorento Plug-in Hybrid oder Elektro-5-Sitzer.';
+    }
     const hasEv9 = excluded.some((e) => e.modelLine === 'ev9');
     if (!hasEv9) {
       return 'Kein exakter Kia-Treffer für Elektro mit 7 Sitzen. Alternative: Sorento Plug-in Hybrid oder EV9 prüfen.';

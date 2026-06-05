@@ -12,6 +12,8 @@ export default function DealerSearchResults({
   city = '',
   source = 'local',
   onShowAll,
+  hideHeader = false,
+  alternativeTier = false,
 }) {
   const navigate = useNavigate();
 
@@ -36,16 +38,21 @@ export default function DealerSearchResults({
   }
 
   return (
-    <section className="dl-search-results" aria-labelledby="dl-search-results-heading">
-      <div className="dl-search-results__head">
-        <h2 id="dl-search-results-heading" className="dl-section__title">
-          Passende Modelle
-        </h2>
-        <p className="dl-search-results__meta">
-          {modelLineGroups.length} Modelllinien
-          {source === 'server' && <span className="dl-search-results__sync"> · Berater-Sync</span>}
-        </p>
-      </div>
+    <section
+      className={`dl-search-results${alternativeTier ? ' dl-search-results--tier' : ''}`}
+      aria-labelledby={hideHeader ? undefined : 'dl-search-results-heading'}
+    >
+      {!hideHeader && (
+        <div className="dl-search-results__head">
+          <h2 id="dl-search-results-heading" className="dl-section__title">
+            Passende Modelle
+          </h2>
+          <p className="dl-search-results__meta">
+            {modelLineGroups.length} Modelllinien
+            {source === 'server' && <span className="dl-search-results__sync"> · Berater-Sync</span>}
+          </p>
+        </div>
+      )}
 
       <div className="dl-search-results__list">
         {modelLineGroups.slice(0, 5).map((group) => (
@@ -61,9 +68,11 @@ export default function DealerSearchResults({
         ))}
       </div>
 
-      <button type="button" className="btn btn-secondary dl-search-results__all" onClick={handleShowAll}>
-        Alle Ergebnisse anzeigen
-      </button>
+      {!hideHeader && (
+        <button type="button" className="btn btn-secondary dl-search-results__all" onClick={handleShowAll}>
+          Alle Ergebnisse anzeigen
+        </button>
+      )}
     </section>
   );
 }

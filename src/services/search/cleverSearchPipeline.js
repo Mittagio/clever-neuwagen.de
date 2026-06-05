@@ -34,8 +34,9 @@ export function runCleverSearch({
   vehicles = [],
   getDisplayRate,
   limit = 30,
+  profileOverride = null,
 }) {
-  const profile = buildSearchProfile({ query, intent, filters, wishes, chipIds });
+  const profile = profileOverride ?? buildSearchProfile({ query, intent, filters, wishes, chipIds });
 
   const enrichedPool = vehicles.map(enrichVehicleWithModelAttributes);
   const { eligible, excluded } = partitionByHardRules(enrichedPool, profile);

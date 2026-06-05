@@ -397,6 +397,65 @@
   border-top: none;
 }
 
+/* Alternativ-Stufen bei keinem exakten Treffer */
+.dl-search-alternatives {
+  margin-bottom: 28px;
+}
+
+.dl-search-alternatives__banner {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fef9e7 0%, #f0f9ff 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.dl-search-alternatives__lead {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--color-text, #1e293b);
+}
+
+.dl-search-alternatives__hint {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.45;
+}
+
+.dl-search-alternatives__tier {
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.dl-search-alternatives__tier:last-child {
+  border-bottom: none;
+}
+
+.dl-search-alternatives__tier-head {
+  margin-bottom: 12px;
+}
+
+.dl-search-alternatives__tier-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-brand, #0f2744);
+}
+
+.dl-search-alternatives__tier-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.45;
+}
+
+.dl-search-results--tier {
+  margin-bottom: 0;
+}
+
 /* Warum kaufen */
 .dl-section__title {
   margin: 0 0 14px;
