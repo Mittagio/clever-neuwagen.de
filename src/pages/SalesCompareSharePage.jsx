@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import CleverQuoteBadge from '../components/cleverQuote/CleverQuoteBadge.jsx';
+import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import {
   loadSalesShareSession,
   confirmSalesShareInquiry,
@@ -69,6 +70,7 @@ function ShareModelLineCard({ group, onOpenVehicle }) {
 
 export default function SalesCompareSharePage() {
   const { token } = useParams();
+  const { isLoggedIn, email, registerShareSession } = useCustomerAuth();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inquirySent, setInquirySent] = useState(false);
@@ -91,11 +93,21 @@ export default function SalesCompareSharePage() {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (!session || !isLoggedIn) return;
+    registerShareSession(session);
+  }, [session, isLoggedIn, registerShareSession]);
+
   async function handleConfirmInquiry() {
-    const updated = await confirmSalesShareInquiry(token);
+    const customerPatch = {
+      ...(session?.customer ?? {}),
+      ...(email ? { email } : {}),
+    };
+    const updated = await confirmSalesShareInquiry(token, customerPatch);
     if (updated) {
       setSession(updated);
       setInquirySent(true);
+      if (isLoggedIn) registerShareSession(updated);
     } else {
       setInquirySent(true);
     }
@@ -193,7 +205,14 @@ export default function SalesCompareSharePage() {
         </div>
 
         {inquirySent && (
-          <p className="ss-share-page__confirm">Vielen Dank – {session.dealerName} meldet sich bei Ihnen.</p>
+          <p className="ss-share-page__confirm">
+            Vielen Dank – {session.dealerName} meldet sich bei Ihnen.
+            {isLoggedIn && (
+              <> {' '}
+                <Link to="/mein-bereich">Im Kundenbereich ansehen</Link>
+              </>
+            )}
+          </p>
         )}
 
         {session.sellerName && (

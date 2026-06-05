@@ -260,6 +260,55 @@
   font-weight: 600;
 }
 
+.dl-modellwelt__head {
+  margin-bottom: 2px;
+}
+
+.dl-modellwelt__variants {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Inline-Berater-Ergebnisse auf Händlerseite */
+.dl-search-results {
+  min-width: 0;
+  margin-bottom: 28px;
+}
+
+.dl-search-results__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dl-search-results__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.dl-search-results__sync {
+  color: #059669;
+  font-weight: 600;
+}
+
+.dl-search-results__list {
+  display: grid;
+  gap: 14px;
+}
+
+.dl-search-results__all {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+
 /* Warum kaufen */
 .dl-section__title {
   margin: 0 0 14px;

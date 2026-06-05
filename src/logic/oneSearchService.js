@@ -1,4 +1,4 @@
-import { parseLandingQuery, parseAdvisorUrlProfile } from '../services/landingAdvisorBridge.js';
+import { parseLandingQuery } from '../services/landingAdvisorBridge.js';
 import { parseSearchIntent } from '../services/search/searchIntentParser.js';
 import { intentToMarketplaceFilters } from '../services/search/intentToFilters.js';
 import { mergeUrlFiltersWithPipeline } from '../services/search/searchPipeline.js';
@@ -16,6 +16,9 @@ import {
 } from '../services/search/leasingRangeOptions.js';
 import { parseExcludedBrandsParam, parseExcludedModelsParam } from './brandResultsFilter.js';
 import { normalizeCustomerTermMonths } from '../services/search/leasingRangeOptions.js';
+import { buildFahrzeugeSearchUrl } from './fahrzeugeSearchUrl.js';
+
+export { buildFahrzeugeSearchUrl };
 
 export const TERM_CHIP_OPTIONS = buildTermMonthValues();
 export const MILEAGE_CHIP_OPTIONS = buildMileageKmValues();
@@ -137,54 +140,10 @@ export function filtersFromSearchParams(searchParams) {
     excludedBrands: parseExcludedBrandsParam(searchParams.get('excludeBrand')),
     excludedModels: parseExcludedModelsParam(searchParams.get('excludeModel')),
     useCase: searchParams.get('useCase') ?? '',
+    dealer: searchParams.get('dealer') ?? '',
     termMonthsExplicit: searchParams.has('term'),
     mileagePerYearExplicit: searchParams.has('mileageYear'),
   };
-}
-
-export function buildFahrzeugeSearchUrl(filters) {
-  const params = new URLSearchParams();
-  if (filters.query) params.set('query', filters.query);
-  if (filters.city) params.set('city', filters.city);
-  if (filters.plz) params.set('plz', filters.plz);
-  if (filters.locLabel) params.set('locLabel', filters.locLabel);
-  if (filters.locSkip) params.set('locSkip', '1');
-  if (filters.radius != null) params.set('radius', String(filters.radius));
-  if (filters.maxRate != null) params.set('maxRate', String(filters.maxRate));
-  if (filters.maxPrice != null) params.set('maxPrice', String(filters.maxPrice));
-  if (filters.type && filters.type !== 'all') params.set('type', filters.type);
-  if (filters.fuel) params.set('fuel', filters.fuel);
-  if (filters.payment) params.set('payment', filters.payment);
-  if (filters.model) params.set('model', filters.model);
-  if (filters.trim) params.set('trim', filters.trim);
-  if (filters.household) params.set('household', filters.household);
-  if (filters.termMonths && filters.termMonths !== 48) params.set('term', String(filters.termMonths));
-  if (filters.mileagePerYear && filters.mileagePerYear !== 10000) {
-    params.set('mileageYear', String(filters.mileagePerYear));
-  }
-  if (filters.sort && filters.sort !== 'best') params.set('sort', filters.sort);
-  if (filters.seo) params.set('seo', filters.seo);
-  if (filters.brand) params.set('brand', filters.brand);
-  if (filters.availability) params.set('availability', filters.availability);
-  if (filters.features?.length) params.set('features', filters.features.join(','));
-  if (filters.rangeKmMin != null) params.set('rangeKm', String(filters.rangeKmMin));
-  if (filters.towCapacityKg != null) params.set('towKg', String(filters.towCapacityKg));
-  if (filters.transmission) params.set('transmission', filters.transmission);
-  if (filters.intentStructured) params.set('structured', '1');
-  if (filters.powerPsTarget != null) {
-    params.set('powerPs', String(filters.powerPsTarget));
-    if (filters.powerPsMin != null) params.set('powerPsMin', String(filters.powerPsMin));
-    if (filters.powerPsMax != null) params.set('powerPsMax', String(filters.powerPsMax));
-  }
-  if (filters.excludedBrands?.length) {
-    params.set('excludeBrand', filters.excludedBrands.join(','));
-  }
-  if (filters.excludedModels?.length) {
-    params.set('excludeModel', filters.excludedModels.join(','));
-  }
-  if (filters.useCase) params.set('useCase', filters.useCase);
-  const qs = params.toString();
-  return `/fahrzeuge${qs ? `?${qs}` : ''}`;
 }
 
 export function buildFahrzeugeUrlFromText(text) {
@@ -391,28 +350,4 @@ export function adjustRateForTerm(monthlyRate, termMonths = 48) {
 export function getVehicleOfferPath(vehicle) {
   if (vehicle.offerCode) return buildOfferPath(vehicle.offerCode);
   return `/fahrzeug/${vehicle.slug}`;
-}
-
-export function advisorParamsToFahrzeugeUrl(searchParams) {
-  const profile = parseAdvisorUrlProfile(searchParams);
-  const { location, skipped } = parseAdvisorLocationFromParams(searchParams);
-  const q = searchParams.get('q') ?? '';
-
-  return buildFahrzeugeSearchUrl({
-    query: q,
-    maxRate: profile.desiredRate ?? null,
-    fuel: profile.fuelPreference ?? '',
-    type: profile.bodyType ?? 'all',
-    payment: profile.paymentType ?? '',
-    city: location?.city ?? searchParams.get('city') ?? '',
-    plz: location?.plz ?? searchParams.get('plz') ?? '',
-    locLabel: location?.label ?? searchParams.get('locLabel') ?? '',
-    locSkip: skipped || searchParams.get('locSkip') === '1',
-    radius: searchParams.get('radius')
-      ? Number(searchParams.get('radius'))
-      : (location ? DEFAULT_LOCATION_RADIUS_KM : null),
-    termMonths: 48,
-    mileagePerYear: mileageFromProfile(profile.mileage),
-    sort: 'best',
-  });
 }

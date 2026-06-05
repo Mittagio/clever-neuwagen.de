@@ -7,6 +7,7 @@ import { getKiaTrinklePilotStock } from '../src/data/kia/kiaTrinkleStock.js';
 import { filterMarketplaceVehicles } from '../src/logic/marketplaceService.js';
 import { adjustRateForTerm } from '../src/logic/oneSearchService.js';
 import { parseSearchIntent } from '../src/services/search/searchIntentParser.js';
+import { parseCustomerSearchProfile } from '../src/services/search/openAiIntentParser.js';
 import { intentToMarketplaceFilters } from '../src/services/search/intentToFilters.js';
 import { parseCustomerWish } from '../src/services/wish/wishParser.js';
 import { runCleverSearch } from '../src/services/search/cleverSearchPipeline.js';
@@ -54,7 +55,7 @@ function buildWishesFromPayload({ query = '', filters = {}, wishes: wishOverride
   return w;
 }
 
-export function runServerDiscoverySearch(payload = {}) {
+function runDiscoveryCore(payload = {}, intent) {
   const {
     query = '',
     filters: rawFilters = {},
@@ -63,7 +64,6 @@ export function runServerDiscoverySearch(payload = {}) {
     limit = 30,
   } = payload;
 
-  const intent = parseSearchIntent(query);
   const filters = { ...intentToMarketplaceFilters(intent), ...rawFilters };
   const wishes = buildWishesFromPayload({ query, filters: rawFilters, wishes: payload.wishes });
   const chipIds = payload.chipIds ?? deriveAdvisorChipIds(filters, wishes);
@@ -79,7 +79,7 @@ export function runServerDiscoverySearch(payload = {}) {
     displayRate: adjustRateForTerm(vehicle.monthlyRate, termMonths),
   }));
 
-  const result = runCleverSearch({
+  return runCleverSearch({
     query,
     intent,
     filters,
@@ -89,8 +89,26 @@ export function runServerDiscoverySearch(payload = {}) {
     getDisplayRate: (v) => v.displayRate,
     limit,
   });
+}
 
-  return snapshotDiscoveryResult(result);
+/** Synchron – lokaler Intent-Parser (Tests, Fallback). */
+export function runServerDiscoverySearch(payload = {}) {
+  const query = payload.query ?? '';
+  const intent = parseSearchIntent(query);
+  const result = runDiscoveryCore(payload, intent);
+  return snapshotDiscoveryResult(result, { profileSource: 'local' });
+}
+
+/**
+ * Async – optional OpenAI für Suchprofil (nur Profil, keine Fahrzeugauswahl).
+ * Aktivierung: payload.useOpenAi oder env ADVISOR_USE_OPENAI=true + OPENAI_API_KEY.
+ */
+export async function runServerDiscoverySearchAsync(payload = {}) {
+  const query = payload.query ?? '';
+  const useOpenAi = payload.useOpenAi ?? process.env.ADVISOR_USE_OPENAI === 'true';
+  const parsed = await parseCustomerSearchProfile(query, { useOpenAi });
+  const result = runDiscoveryCore(payload, parsed.intent);
+  return snapshotDiscoveryResult(result, { profileSource: parsed.source });
 }
 
 export function runServerSalesSearch(payload = {}) {

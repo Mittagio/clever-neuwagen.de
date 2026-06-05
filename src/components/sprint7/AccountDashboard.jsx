@@ -4,6 +4,11 @@ import { useCustomerAuth } from '../../context/CustomerAuthContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { ACCOUNT_TABS, getAccountEmptyMessage, VEHICLE_STATUS_STAGES } from '../../data/accountTabs.js';
 import { mergeLiveOffers } from '../../services/customerAccountService.js';
+import {
+  mergeShareSessionsIntoComparisons,
+  mergeShareSessionsIntoInquiries,
+} from '../../services/customer/customerShareAccountService.js';
+import { useCustomerShareSessions } from '../../hooks/useCustomerShareSessions.js';
 import { buildOfferPath } from '../../logic/offerService.js';
 import CustomerItemCard from '../customer/CustomerItemCard.jsx';
 import './AccountDashboard.css';
@@ -22,20 +27,33 @@ export default function AccountDashboard() {
   const { offers: globalOffers } = useOffers();
   const [activeTab, setActiveTab] = useState('offers');
 
+  const { sessions: shareSessions } = useCustomerShareSessions(
+    email,
+    customerData?.linkedShareTokens ?? [],
+  );
+
   const mergedData = useMemo(() => {
     if (!customerData) return null;
     return {
       ...customerData,
       offers: mergeLiveOffers(customerData.offers ?? [], globalOffers, email),
+      comparisons: mergeShareSessionsIntoComparisons(
+        customerData.comparisons ?? [],
+        shareSessions,
+      ),
+      testDrives: mergeShareSessionsIntoInquiries(
+        customerData.testDrives ?? [],
+        shareSessions,
+      ),
     };
-  }, [customerData, globalOffers, email]);
+  }, [customerData, globalOffers, email, shareSessions]);
 
   const currentTab = ACCOUNT_TABS.find((t) => t.id === activeTab);
 
   const counts = ACCOUNT_TABS.reduce((acc, tab) => {
     const list = tab.key === 'offers'
-      ? mergeLiveOffers(customerData?.offers ?? [], globalOffers, email)
-      : customerData?.[tab.key] ?? [];
+      ? mergedData?.offers ?? []
+      : mergedData?.[tab.key] ?? [];
     acc[tab.id] = list.length;
     return acc;
   }, {});
@@ -121,8 +139,8 @@ export default function AccountDashboard() {
         <div className="account-empty">
           <p>{getAccountEmptyMessage(activeTab)}</p>
           {(activeTab === 'offers' || activeTab === 'comparisons' || activeTab === 'favorites') && (
-            <Link to="/berater?start=1" className="account-empty-cta">
-              KI-Beratung starten
+            <Link to="/fahrzeuge" className="account-empty-cta">
+              Fahrzeuge finden
             </Link>
           )}
         </div>
@@ -132,7 +150,7 @@ export default function AccountDashboard() {
     return (
       <div className="account-list">
         {items.map((item) => (
-          <CustomerItemCard key={item.id ?? item.offerCode} item={item} type={activeTab} />
+          <CustomerItemCard key={item.id ?? item.offerCode ?? item.shareToken} item={item} type={activeTab} />
         ))}
       </div>
     );

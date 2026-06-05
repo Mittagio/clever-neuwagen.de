@@ -79,18 +79,49 @@ export function getAdvisorShareSession(token) {
   return store.sessions[key];
 }
 
-export function confirmAdvisorShareInquiry(token) {
+export function confirmAdvisorShareInquiry(token, patch = {}) {
   const store = loadAdvisorShareStore();
   const key = Object.keys(store.sessions).find(
     (k) => k.toUpperCase() === String(token).toUpperCase(),
   );
   if (!key) return null;
 
+  const existing = store.sessions[key];
   store.sessions[key] = {
-    ...store.sessions[key],
+    ...existing,
+    customer: { ...(existing.customer ?? {}), ...(patch.customer ?? {}) },
     inquiryConfirmed: true,
     inquiryConfirmedAt: Date.now(),
   };
   saveStore(store.sessions);
   return store.sessions[key];
+}
+
+/** Sessions eines Kunden per E-Mail (read-only, ohne View-Counter). */
+export function listAdvisorShareSessionsByEmail(email) {
+  const normalized = String(email ?? '').trim().toLowerCase();
+  if (!normalized) return [];
+
+  const store = loadAdvisorShareStore();
+  const now = Date.now();
+
+  return Object.values(store.sessions)
+    .filter((session) => {
+      if (session.expiresAt && now > session.expiresAt) return false;
+      const sessionEmail = session.customer?.email?.trim().toLowerCase();
+      return sessionEmail === normalized;
+    })
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+}
+
+export function findAdvisorShareSession(token) {
+  if (!token) return null;
+  const store = loadAdvisorShareStore();
+  const key = Object.keys(store.sessions).find(
+    (k) => k.toUpperCase() === String(token).toUpperCase(),
+  );
+  if (!key) return null;
+  const session = store.sessions[key];
+  if (session.expiresAt && Date.now() > session.expiresAt) return null;
+  return session;
 }

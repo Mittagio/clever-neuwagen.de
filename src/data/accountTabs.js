@@ -20,8 +20,8 @@ export const VEHICLE_STATUS_STAGES = {
 export function getAccountEmptyMessage(tabId) {
   const messages = {
     offers: 'Noch keine gemerkten Angebote. Speichern Sie Fahrzeuge mit „Angebot merken“.',
-    comparisons: 'Noch keine Vergleiche. Sie können bis zu 3 Fahrzeuge vergleichen.',
-    testDrives: 'Noch keine Anfragen. Starten Sie eine Anfrage auf einer Fahrzeug- oder Angebotsseite.',
+    comparisons: 'Noch keine Vergleiche. Öffnen Sie einen Berater-Link oder vergleichen Sie Fahrzeuge in der Suche.',
+    testDrives: 'Noch keine Anfragen. Bestätigen Sie eine Empfehlung auf Ihrem Vergleichslink.',
     documents: 'Noch keine Dokumente. Laden Sie Unterlagen auf Ihrer Angebotsseite hoch.',
     vehicleStatus: 'Noch kein Auslieferungsstatus. Nach Bestellung sehen Sie hier den Fortschritt.',
   };

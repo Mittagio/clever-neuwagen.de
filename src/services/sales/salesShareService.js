@@ -129,6 +129,16 @@ export async function createSalesShareSession({
   }
 }
 
+export function readCachedShareSession(token) {
+  if (!token) return null;
+  const sessions = readSessions();
+  const key = Object.keys(sessions).find((k) => k.toUpperCase() === token.toUpperCase());
+  const session = key ? sessions[key] : null;
+  if (!session) return null;
+  if (session.expiresAt && Date.now() > session.expiresAt) return null;
+  return session;
+}
+
 export async function loadSalesShareSession(token) {
   if (!token) return null;
 
@@ -160,9 +170,9 @@ export async function loadSalesShareSession(token) {
   return { ...session, source: session.source ?? 'local' };
 }
 
-export async function confirmSalesShareInquiry(token) {
+export async function confirmSalesShareInquiry(token, customerPatch = {}) {
   try {
-    const remote = await confirmAdvisorShareInquiryOnServer(token);
+    const remote = await confirmAdvisorShareInquiryOnServer(token, customerPatch);
     if (remote?.session) {
       cacheLocalSession(remote.session.token, remote.session);
       await patchCustomerRecordByShareToken(remote.session.token, {

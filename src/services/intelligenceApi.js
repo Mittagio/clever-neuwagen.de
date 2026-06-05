@@ -130,7 +130,7 @@ function apiEnvelope(resource, period, data, extra = {}) {
       dashboard: `${getBaseUrl()}/intelligence`,
       trends: `${getBaseUrl()}/trends`,
       ratgeber: `${getBaseUrl()}/ratgeber`,
-      advisor: `${getBaseUrl()}/berater?start=1`,
+      advisor: `${getBaseUrl()}/fahrzeuge`,
       apiDocs: `${getBaseUrl()}/intelligence/api`,
       ...extra.links,
     },

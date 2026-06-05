@@ -86,13 +86,14 @@ export function snapshotModelLineGroup(group) {
   };
 }
 
-export function snapshotDiscoveryResult(result) {
+export function snapshotDiscoveryResult(result, meta = {}) {
   return {
     matches: (result.matches ?? []).map(snapshotMatch),
     modelLineGroups: (result.modelLineGroups ?? []).map(snapshotModelLineGroup),
     exclusionHint: result.exclusionHint ?? null,
     noExactMatchMessage: result.noExactMatchMessage ?? null,
     eligibleCount: result.eligibleCount ?? 0,
+    profileSource: meta.profileSource ?? null,
   };
 }
 

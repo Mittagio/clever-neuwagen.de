@@ -58,13 +58,20 @@ export async function loadAdvisorShareFromServer(token) {
   return parseJson(res);
 }
 
-export async function confirmAdvisorShareInquiryOnServer(token) {
+export async function confirmAdvisorShareInquiryOnServer(token, customer = {}) {
   const res = await fetch(`${API_BASE}/advisor/share/${encodeURIComponent(token)}/inquiry`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ customer }),
   });
   return parseJson(res);
+}
+
+export async function fetchCustomerShareSessions(email) {
+  const qs = new URLSearchParams({ email: email.trim().toLowerCase() });
+  const res = await fetch(`${API_BASE}/advisor/customer-shares?${qs.toString()}`);
+  const data = await parseJson(res);
+  return data.sessions ?? [];
 }
 
 export async function isAdvisorServerAvailable() {

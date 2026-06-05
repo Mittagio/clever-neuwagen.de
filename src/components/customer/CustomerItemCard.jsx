@@ -31,6 +31,7 @@ export default function CustomerItemCard({ item, type }) {
     : item.marketplaceSlug
       ? `/fahrzeug/${item.marketplaceSlug}`
       : null;
+  const shareLink = item.shareUrl ?? (item.shareToken ? `/vergleich/${encodeURIComponent(item.shareToken)}` : null);
 
   function openConfiguration() {
     stashConfigForRestore(item);
@@ -57,6 +58,9 @@ export default function CustomerItemCard({ item, type }) {
             ))}
           </ul>
         )}
+        {type === 'comparisons' && item.sellerName && (
+          <p className="cust-item-meta">Berater: {item.sellerName}</p>
+        )}
         {item.validUntil && (
           <p className="cust-item-valid">Gültig bis {formatDate(item.validUntil)}</p>
         )}
@@ -71,6 +75,11 @@ export default function CustomerItemCard({ item, type }) {
         <span className={`cust-item-status ${statusConfig.className}`}>
           {statusConfig.label}
         </span>
+        {shareLink && (
+          <Link to={shareLink} className="cust-item-link">
+            Vergleich öffnen
+          </Link>
+        )}
         {offerLink && (
           <Link to={offerLink} className="cust-item-link">
             {item.marketplaceSlug ? 'Fahrzeug ansehen' : 'Angebot öffnen'}

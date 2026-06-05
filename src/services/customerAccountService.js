@@ -11,6 +11,7 @@ export const EMPTY_CUSTOMER_DATA = {
   testDrives: [],
   documents: [],
   vehicleStatus: [],
+  linkedShareTokens: [],
 };
 
 function uid(prefix) {
@@ -28,6 +29,7 @@ export function normalizeCustomerData(raw) {
     testDrives: Array.isArray(raw.testDrives) ? raw.testDrives : [],
     documents: Array.isArray(raw.documents) ? raw.documents : [],
     vehicleStatus: Array.isArray(raw.vehicleStatus) ? raw.vehicleStatus : [],
+    linkedShareTokens: Array.isArray(raw.linkedShareTokens) ? raw.linkedShareTokens : [],
     // Legacy keys migrieren
     ...(raw.watchlist && !raw.favorites?.length
       ? { favorites: raw.watchlist.map((w) => ({ ...w, id: w.id ?? uid('fav') })) }

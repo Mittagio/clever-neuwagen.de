@@ -2,6 +2,7 @@
  * Trendseiten – Artikel aus Intelligence + KI-Berater generieren
  */
 import { getAdvisorRecommendations, formatAdvisorRate } from './advisorEngine.js';
+import { buildFahrzeugeUrlFromAdvisorProfile } from './advisor/advisorRouteBridge.js';
 import { getTrendTemplate, TREND_TEMPLATES } from '../data/trendCatalog.js';
 import { generateGuideArticle } from './guideArticleService.js';
 import { getGuideArticle } from '../data/guideCatalog.js';
@@ -371,11 +372,7 @@ export function listPublicTrendPages(period = DEFAULT_PERIOD) {
 }
 
 export function buildTrendAdvisorLink(article) {
-  const params = new URLSearchParams({ start: '1' });
-  if (article?.profile?.desiredRate) {
-    params.set('rate', String(article.profile.desiredRate));
-  }
-  return `/berater?${params.toString()}`;
+  return buildFahrzeugeUrlFromAdvisorProfile(article?.profile ?? {}, article?.title ?? '');
 }
 
 export { calculateCleverScore };

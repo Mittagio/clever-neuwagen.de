@@ -250,6 +250,8 @@ export default function FahrzeugePage() {
     return f;
   }, [location.search]);
 
+  const dealerSlug = filters.dealer || PILOT_DEALER_ID;
+
   const localized = hasLocalizedSearch(filters);
 
   const wishes = useMemo(() => {
@@ -408,7 +410,7 @@ export default function FahrzeugePage() {
     vehicles: filtered,
     getDisplayRate: (v) => v.displayRate,
     limit: 30,
-    dealerSlug: PILOT_DEALER_ID,
+    dealerSlug,
     enabled: true,
   });
 

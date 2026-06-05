@@ -8,6 +8,9 @@ export const CUSTOMER_STATUS = {
   angebot: { label: 'Angebot erhalten', className: 'cust-status-offer' },
   gespeichert: { label: 'Gespeichert', className: 'cust-status-saved' },
   geplant: { label: 'Geplant', className: 'cust-status-planned' },
+  berater_empfehlung: { label: 'Berater-Empfehlung', className: 'cust-status-compared' },
+  anfrage_bestaetigt: { label: 'Anfrage bestätigt', className: 'cust-status-requested' },
+  'Anfrage bestätigt': { label: 'Anfrage bestätigt', className: 'cust-status-requested' },
 };
 
 export const CUSTOMER_TABS = [

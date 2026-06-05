@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildWishSearchUrl } from '../../services/wish/wishUrlService.js';
+import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { isSpeechRecognitionSupported, startSpeechRecognition } from '../../services/sales/conversationVoiceParser.js';
 import {
   DEALER_SEARCH_CHIPS,
@@ -9,7 +9,13 @@ import {
 import AiAssistantIcon from './AiAssistantIcon.jsx';
 import './dealer-landing.css';
 
-export default function DealerSearchHero({ dealerName, city, brand = 'Kia' }) {
+export default function DealerSearchHero({
+  dealerName,
+  city,
+  brand = 'Kia',
+  dealerSlug = '',
+  onSearch,
+}) {
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const [searchText, setSearchText] = useState('');
@@ -31,12 +37,15 @@ export default function DealerSearchHero({ dealerName, city, brand = 'Kia' }) {
 
   function submitSearch(text) {
     const value = (text ?? searchText).trim();
-    if (!value) {
-      navigate(`/fahrzeuge?q=${encodeURIComponent(city)}&brand=${encodeURIComponent(brand.toLowerCase())}`);
+    if (onSearch) {
+      onSearch(value);
       return;
     }
-    const url = buildWishSearchUrl(`${value} ${city}`.trim());
-    navigate(url);
+    if (!value) {
+      navigate(buildDealerWishSearchUrl('', { city, dealerSlug, brand: brand.toLowerCase() }));
+      return;
+    }
+    navigate(buildDealerWishSearchUrl(value, { city, dealerSlug }));
   }
 
   function handleSubmit(event) {

@@ -18,7 +18,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import AngebotPage from './pages/sprint7/AngebotPage.jsx';
 import InsertGeneratorPage from './pages/InsertGeneratorPage';
 import EquipmentAdvisorPage from './pages/EquipmentAdvisorPage';
-import AdvisorPage from './pages/AdvisorPage';
+import AdvisorPage from './pages/AdvisorPage.jsx';
 import LeadsPage from './pages/LeadsPage';
 import CommunicationCenterPage from './pages/communication/CommunicationCenterPage.jsx';
 import CommunicationEmailPage from './pages/communication/CommunicationEmailPage.jsx';
@@ -153,6 +153,7 @@ export default function AppRouter() {
         <Route path="/trends" element={<TrendIndexPage />} />
         <Route path="/trends/:slug" element={<TrendArticlePage />} />
         <Route path="/berater" element={<AdvisorPage />} />
+        <Route path="/advisor" element={<AdvisorPage />} />
         <Route path="/berater/ausstattung" element={<EquipmentAdvisorPage />} />
         <Route path="/communication" element={<CommunicationCenterPage />} />
         <Route path="/communication/email" element={<CommunicationEmailPage />} />

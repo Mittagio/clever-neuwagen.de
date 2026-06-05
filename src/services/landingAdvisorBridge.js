@@ -4,11 +4,10 @@
  */
 
 import {
-  DEFAULT_LOCATION_RADIUS_KM,
   parseLocationFromText,
   parseAdvisorLocationFromParams,
-  appendLocationToSearchParams,
 } from '../logic/advisorLocation.js';
+import { buildFahrzeugeUrlFromAdvisorProfile } from './advisor/advisorRouteBridge.js';
 
 export const LANDING_EXAMPLE_CHIPS = [
   {
@@ -191,26 +190,7 @@ export function parseLandingQuery(text) {
 }
 
 export function buildAdvisorUrl(profile = {}, query = '', options = {}) {
-  const { location = null, locSkip = false, radiusKm } = options;
-  const params = new URLSearchParams({ start: '1' });
-
-  if (profile.desiredRate) params.set('rate', String(profile.desiredRate));
-  if (profile.mileage) params.set('mileage', profile.mileage);
-  if (profile.household) params.set('household', profile.household);
-  if (profile.fuelPreference) params.set('fuel', profile.fuelPreference);
-  if (profile.bodyType) params.set('body', profile.bodyType);
-  if (profile.paymentType) params.set('payment', profile.paymentType);
-  if (profile.wishes?.length) params.set('wishes', profile.wishes.join(','));
-  if (query) params.set('q', query.slice(0, 200));
-
-  if (locSkip) {
-    params.set('locSkip', '1');
-  } else if (location) {
-    const radius = radiusKm ?? location.radiusKm ?? DEFAULT_LOCATION_RADIUS_KM;
-    appendLocationToSearchParams(params, location, { radiusKm: radius });
-  }
-
-  return `/berater?${params.toString()}`;
+  return buildFahrzeugeUrlFromAdvisorProfile(profile, query, options);
 }
 
 export function profileFromChip(chip) {
@@ -221,28 +201,6 @@ export function profileFromChip(chip) {
 }
 
 /** URL-Parameter von Landing → Berater-Profil */
-export function parseAdvisorUrlProfile(searchParams) {
-  const profile = {};
-  const rate = searchParams.get('rate');
-  if (rate) {
-    const n = Number(rate);
-    if (!Number.isNaN(n)) profile.desiredRate = n;
-  }
-  const mileage = searchParams.get('mileage');
-  if (mileage) profile.mileage = mileage;
-  const household = searchParams.get('household');
-  if (household) profile.household = household;
-  const fuel = searchParams.get('fuel');
-  if (fuel) profile.fuelPreference = fuel;
-  const body = searchParams.get('body');
-  if (body) profile.bodyType = body;
-  const wishes = searchParams.get('wishes');
-  if (wishes) {
-    profile.wishes = wishes.split(',').map((s) => s.trim()).filter(Boolean);
-  }
-  const payment = searchParams.get('payment');
-  if (payment) profile.paymentType = payment;
-  return profile;
-}
+export { parseAdvisorUrlProfile } from './advisor/advisorRouteBridge.js';
 
-export { parseAdvisorLocationFromParams, DEFAULT_LOCATION_RADIUS_KM };
+export { parseAdvisorLocationFromParams, DEFAULT_LOCATION_RADIUS_KM } from '../logic/advisorLocation.js';

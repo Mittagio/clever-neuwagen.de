@@ -22,6 +22,11 @@ import {
   upsertVehicleStatus,
   updateVehicleStatusStage,
 } from '../services/customerAccountService.js';
+import {
+  addLinkedShareToken,
+  mergeShareSessionsIntoComparisons,
+  mergeShareSessionsIntoInquiries,
+} from '../services/customer/customerShareAccountService.js';
 
 const SESSION_KEY = 'clever-neuwagen-customer-session';
 const DATA_PREFIX = 'clever-neuwagen-customer-data-';
@@ -256,6 +261,38 @@ export function CustomerAuthProvider({ children }) {
       const current = loadCustomerData(targetEmail);
       const next = updateVehicleStatusStage(current, offerCode, stage);
       return persistData(targetEmail, next);
+    },
+
+    linkShareSession(token, emailOverride) {
+      const targetEmail = emailOverride ?? session?.email;
+      if (!targetEmail || !token) return null;
+      const current = loadCustomerData(targetEmail);
+      const next = addLinkedShareToken(current, token);
+      return persistData(targetEmail.trim().toLowerCase(), next);
+    },
+
+    registerShareSession(shareSession, emailOverride) {
+      const targetEmail = emailOverride
+        ?? shareSession?.customer?.email
+        ?? session?.email;
+      if (!targetEmail || !shareSession?.token) return null;
+
+      let current = loadCustomerData(targetEmail.trim().toLowerCase());
+      current = addLinkedShareToken(current, shareSession.token);
+
+      const comparisons = mergeShareSessionsIntoComparisons(current.comparisons ?? [], [shareSession]);
+
+      let testDrives = current.testDrives ?? [];
+      if (shareSession.inquiryConfirmed) {
+        testDrives = mergeShareSessionsIntoInquiries(testDrives, [shareSession]);
+      }
+
+      const next = {
+        ...current,
+        comparisons,
+        testDrives,
+      };
+      return persistData(targetEmail.trim().toLowerCase(), next);
     },
   }), [session, customerData, pendingEmail, demoCode]);
 

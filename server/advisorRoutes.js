@@ -5,7 +5,7 @@ import {
   snapshotModelLineGroup,
 } from '../src/services/advisor/advisorSnapshot.js';
 import {
-  runServerDiscoverySearch,
+  runServerDiscoverySearchAsync,
   runServerSalesSearch,
   getServerVehicleBySlug,
 } from './advisorEngine.js';
@@ -15,6 +15,7 @@ import {
   createAdvisorShareSession,
   getAdvisorShareSession,
   confirmAdvisorShareInquiry,
+  listAdvisorShareSessionsByEmail,
 } from './advisorShareStore.js';
 import { syncShareSessionToPilotLead } from './sharePilotLeadSync.js';
 import { patchCustomerRecord, upsertCustomerRecord } from './customerRecordsStore.js';
@@ -26,9 +27,9 @@ router.get('/advisor/health', (_req, res) => {
   res.json({ ok: true, service: 'advisor', ts: new Date().toISOString() });
 });
 
-router.post('/advisor/search', express.json({ limit: '512kb' }), (req, res) => {
+router.post('/advisor/search', express.json({ limit: '512kb' }), async (req, res) => {
   try {
-    const data = runServerDiscoverySearch(req.body ?? {});
+    const data = await runServerDiscoverySearchAsync(req.body ?? {});
     res.json({ ok: true, ...data });
   } catch (err) {
     console.error('[advisor/search]', err);
@@ -136,6 +137,12 @@ router.post('/advisor/share', express.json({ limit: '512kb' }), (req, res) => {
   });
 });
 
+router.get('/advisor/customer-shares', (req, res) => {
+  const email = req.query.email ?? '';
+  const sessions = listAdvisorShareSessionsByEmail(email);
+  res.json({ ok: true, sessions });
+});
+
 router.get('/advisor/share/:token', (req, res) => {
   const session = getAdvisorShareSession(req.params.token);
   if (!session) {
@@ -145,7 +152,8 @@ router.get('/advisor/share/:token', (req, res) => {
 });
 
 router.post('/advisor/share/:token/inquiry', express.json({ limit: '32kb' }), (req, res) => {
-  const session = confirmAdvisorShareInquiry(req.params.token);
+  const customerPatch = req.body?.customer ?? {};
+  const session = confirmAdvisorShareInquiry(req.params.token, { customer: customerPatch });
   if (!session) {
     return res.status(404).json({ ok: false, message: 'share session not found or expired' });
   }

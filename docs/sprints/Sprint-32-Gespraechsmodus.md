@@ -10,8 +10,43 @@ Der Verkäufer führt das Gespräch – Clever-Neuwagen erkennt Wünsche, findet
 |-------|--------|
 | `/gespraech` | Gesprächsmodus (primär) |
 | `/sales/smart` | Smart Sales / Kundenberatung |
+| `/fahrzeuge` | Discovery-Suche (Backend-sync) |
+| `/fahrzeug/:slug` | Fahrzeugdetail via Backend-Slug |
+| `/vergleich/:token` | Kunden-Vergleichslink |
 
 Backend-Schnellaktion: **Gesprächsmodus**
+
+## Berater-Pipeline (3 Schichten)
+
+1. **Intent Parser** – regelbasiert (`searchIntentParser.js`); optional OpenAI (`openAiIntentParser.js`, nur Suchprofil, keine Fahrzeugauswahl)
+2. **Vehicle Facts + harte Ausschlussregeln** – `hardExclusionRules.js`, `kiaModelAttributes.js`
+3. **CleverQuote-Ranking + Erklärung** – `advisorRanking.js`, Spread ca. 68–96 %
+
+Zentral: `cleverSearchPipeline.js` → Modelllinien via `modelLineGroups.js` (Trim-Deduplizierung: Air, Earth, GT-Line pro Modellkarte).
+
+## Backend-API (`/api/v1/advisor/*`)
+
+| Endpoint | Zweck |
+|----------|--------|
+| `POST /advisor/search` | Discovery-Suche (Clever-Search-Pipeline) |
+| `POST /advisor/sales` | Gesprächsmodus (Chips → Ergebnisse) |
+| `GET /advisor/vehicles/:slug` | Fahrzeugdetail inkl. CleverQuote |
+| `POST /advisor/share` | Vergleichslink anlegen |
+| `GET /advisor/share/:token` | Kunden-Vergleich laden |
+| `POST /advisor/share/:token/inquiry` | Kundenanfrage bestätigen |
+| `GET/POST/PATCH /advisor/customer-records` | Kundenakten (serverseitig) |
+| `GET /advisor/customer-shares?email=` | Share-Sessions pro Kunden-E-Mail |
+| `GET/POST/PATCH /pilot/leads` | Pilot-Leads |
+
+Server: `advisorEngine.js`, `advisorRoutes.js`, `advisorShareStore.js`, `sharePilotLeadSync.js`, `customerRecordsStore.js`.
+
+Client-Services: `src/services/advisor/` (API, Discovery-Hook, Vehicle-Client, Share→Lead-Sync).
+
+### OpenAI (optional)
+
+- Env: `OPENAI_API_KEY`, `ADVISOR_USE_OPENAI=true`
+- Request-Body: `{ "useOpenAi": true, "query": "..." }`
+- Response-Feld: `profileSource` (`local` | `openai` | `local_fallback`)
 
 ## Features
 
@@ -19,13 +54,17 @@ Backend-Schnellaktion: **Gesprächsmodus**
 - **Spracheingabe** – „Gespräch aufnehmen“ erkennt Kunde, SUV, Budget, km/Jahr, Features
 - **Chip-Auswahl** – Fahrzeugtyp, Antrieb, Budget, Kilometer, Ausstattung, Alltag
 - **Live-Chips** – editierbar oben, während Sprechen/Klicken
+- **Keine Default-Chips** – 10.000 km / 48 Monate nur bei explizitem Kundenwunsch
 
 ### Bedarfsanalyse
 - „Wir haben verstanden“ mit empfohlener Fahrzeugklasse
+- Bei nur „Elektro“: Nachfrage (Stadt / Familie / Langstrecke / Gewerbe) vor Ergebnissen
 - Button „Fahrzeuge finden“
 
 ### Ergebnisse & Vergleich
+- Modelllinien-Karten mit aufklappbaren Varianten (Trim)
 - Top 5 mit CleverQuote, Podium, „Zum Vergleich hinzufügen“
+- Vergleichende „Warum?“-Begründungen (nicht generisch)
 - Schnellvergleich (relevante Daten only)
 - Desktop: 3-Spalten (Wünsche | Fahrzeuge | Auswahl + Kommunikation)
 
@@ -36,22 +75,47 @@ Backend-Schnellaktion: **Gesprächsmodus**
 - PDF, Link, QR-Code
 
 ### Kundenakte
-- Automatisches Speichern: Wünsche, Fahrzeuge, Versandkanäle, nächster Schritt
-- localStorage (`cn-conversation-records`)
+- Serverseitig: `/advisor/customer-records` (JSON-Store, später DB)
+- Share erstellen → Pilot-Lead (Status „Angebot versendet“) + Akten-Entwurf
+- Kundenanfrage bestätigt → Lead „Neu“, Akte `inquiryConfirmed`
+- localStorage weiterhin als Offline-Fallback
 
 ### Kunden-Vergleichslink
-- `/vergleich/:token` – Fahrzeuge, CleverQuote, Anfrage bestätigen, Rückfrage
+- `/vergleich/:token` – lädt vom Server, Modelllinien mit Ausstattungen, CleverQuote, Anfrage bestätigen, Rückfrage
 
 ### KPIs (heute)
 - Beraten, Angebote versendet, QR-Codes, Vergleich geöffnet, Angebot angesehen, Rückmeldungen offen
 
+## Erwartetes Verhalten (Elektro + Familie)
+
+- Chips: Elektro (+ Familie), **ohne** km/Laufzeit-Defaults
+- Liste: EV2, EV3, EV4, EV5, EV6, EV9 – je eine Modellkarte
+- EV3: Air, Earth, GT-Line aufklappbar
+- CleverQuote: differenziert (68–96 %)
+- 7-Sitzer: kein EV2/EV3/EV4; Sorento/EV9
+
 ## Tests
 
 ```bash
-npm run test:conversation
+npm run test:advisor-api
+npm run test:share-lead
+npm run test:vehicle-detail-api
+npm run test:customer-records
 npm run test:smart-sales
+node src/services/search/cleverSearchPipeline.test.js
+node src/services/search/modelLineGroups.test.js
+npm run test:conversation
 npm run deploy:check
 ```
+
+Pilot lokal: `npm run dev:pilot`
+
+## Offen / nächste Schritte
+
+- ~~Legacy `/berater` und `/advisor` → Redirect auf `/fahrzeuge`~~ ✓
+- ~~DealerPage an Modelllinien + Backend anbinden~~ ✓
+- ~~Kundenkonto `/account` mit Share-Sessions verknüpfen~~ ✓
+- JSON-Stores → Produktions-DB (Pilot: JSON reicht vorerst)
 
 ## Begriffe
 

@@ -2,6 +2,7 @@
  * Ratgeber – Artikel aus KI-Berater-Ergebnissen generieren
  */
 import { getAdvisorRecommendations, formatAdvisorRate } from './advisorEngine.js';
+import { buildFahrzeugeUrlFromAdvisorProfile } from './advisor/advisorRouteBridge.js';
 import { getGuideArticle } from '../data/guideCatalog.js';
 
 function enrichMockForGuide(mock, profile) {
@@ -116,11 +117,7 @@ function resolveMileageLabel(mileageId) {
 }
 
 export function buildAdvisorDeepLink(articleDef) {
-  const params = new URLSearchParams({ start: '1' });
-  if (articleDef?.profile?.desiredRate) {
-    params.set('rate', String(articleDef.profile.desiredRate));
-  }
-  return `/berater?${params.toString()}`;
+  return buildFahrzeugeUrlFromAdvisorProfile(articleDef?.profile ?? {}, articleDef?.title ?? '');
 }
 
 export function buildConfiguratorLink(rec) {
