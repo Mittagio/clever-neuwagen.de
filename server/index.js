@@ -10,6 +10,7 @@ import pilotLeadsRoutes from './pilotLeadsRoutes.js';
 import advisorRoutes from './advisorRoutes.js';
 import customerRecordsRoutes from './customerRecordsRoutes.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
+import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -46,6 +47,7 @@ app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
 
 startDocumentCleanupInterval();
+ensureDataDir();
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'clever-neuwagen', ts: new Date().toISOString() });
@@ -60,6 +62,7 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST_DIR)) {
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Clever-Neuwagen Server: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  console.log(`Pilot-Daten (JSON): ${resolvePilotDataDir()}`);
   console.log(`Intelligence API: http://localhost:${PORT}/api/v1/intelligence/overview?period=7d`);
 });
 

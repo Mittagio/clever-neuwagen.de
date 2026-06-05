@@ -30,6 +30,7 @@
     "test:share-lead": "node src/services/advisor/sharePilotLead.test.js",
     "test:vehicle-detail-api": "node src/services/advisor/advisorVehicleClient.test.js",
     "test:customer-records": "node server/customerRecordsStore.test.js",
+    "test:json-store": "node server/jsonStore.test.js",
     "test:sprint34-chips": "node src/services/sales/sprint34WishChipMatrix.test.js",
     "test:sprint34-perf": "node src/services/sales/smartSalesPerformance.test.js",
     "test:sprint34": "npm run test:sprint34-chips && npm run test:sprint34-perf",

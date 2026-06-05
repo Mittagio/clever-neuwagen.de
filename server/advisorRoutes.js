@@ -20,11 +20,16 @@ import {
 import { syncShareSessionToPilotLead } from './sharePilotLeadSync.js';
 import { patchCustomerRecord, upsertCustomerRecord } from './customerRecordsStore.js';
 import { customerRecordIdForShareToken } from '../src/services/sales/customerRecordModel.js';
+import { getAdvisorStorageStatus } from './jsonStore.js';
 
 const router = express.Router();
 
 router.get('/advisor/health', (_req, res) => {
   res.json({ ok: true, service: 'advisor', ts: new Date().toISOString() });
+});
+
+router.get('/advisor/storage', (_req, res) => {
+  res.json({ ok: true, ...getAdvisorStorageStatus() });
 });
 
 router.post('/advisor/search', express.json({ limit: '512kb' }), async (req, res) => {

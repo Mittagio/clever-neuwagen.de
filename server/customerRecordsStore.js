@@ -1,35 +1,16 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createJsonStore } from './jsonStore.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'customer-records.json');
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
-function emptyStore() {
-  return { records: [], lastUpdated: null };
-}
+const store = createJsonStore({
+  fileName: 'customer-records.json',
+  createEmpty: () => ({ records: [], lastUpdated: null }),
+  logTag: 'customer-records',
+});
 
 export function loadCustomerRecordsStore() {
-  ensureDataDir();
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    }
-  } catch (err) {
-    console.warn('[customer-records] load failed:', err.message);
-  }
-  return emptyStore();
+  return store.load();
 }
 
 function saveStore(records) {
-  ensureDataDir();
   const sorted = [...records].sort(
     (a, b) => (b.savedAt ?? b.updatedAt ?? 0) - (a.savedAt ?? a.updatedAt ?? 0),
   );
@@ -37,7 +18,7 @@ function saveStore(records) {
     records: sorted.slice(0, 200),
     lastUpdated: new Date().toISOString(),
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  store.save(data);
   return data;
 }
 
@@ -87,4 +68,8 @@ export function patchCustomerRecord(id, partial = {}) {
   const existing = getCustomerRecordById(id);
   if (!existing) return null;
   return upsertCustomerRecord({ ...existing, ...partial, id });
+}
+
+export function getCustomerRecordsStoreStat() {
+  return store.stat();
 }

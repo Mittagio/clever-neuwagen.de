@@ -1,40 +1,21 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createJsonStore } from './jsonStore.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'pilot-leads.json');
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
-function emptyStore() {
-  return { leads: [], lastUpdated: null };
-}
+const store = createJsonStore({
+  fileName: 'pilot-leads.json',
+  createEmpty: () => ({ leads: [], lastUpdated: null }),
+  logTag: 'pilot-leads',
+});
 
 export function loadPilotLeads() {
-  ensureDataDir();
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    }
-  } catch (err) {
-    console.warn('[pilot-leads] load failed:', err.message);
-  }
-  return emptyStore();
+  return store.load();
 }
 
 export function savePilotLeads(leads) {
-  ensureDataDir();
   const data = {
     leads: Array.isArray(leads) ? leads : [],
     lastUpdated: new Date().toISOString(),
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  store.save(data);
   return data;
 }
 
@@ -56,4 +37,8 @@ export function listPilotLeads(dealerId = null) {
     ...data,
     leads: data.leads.filter((l) => !dealerId || l.dealerId === dealerId),
   };
+}
+
+export function getPilotLeadsStoreStat() {
+  return store.stat();
 }

@@ -110,12 +110,29 @@ npm run deploy:check
 
 Pilot lokal: `npm run dev:pilot`
 
+## JSON-Stores (Pilot-Persistenz)
+
+Berater-Daten liegen serverseitig in JSON-Dateien unter `data/` (gitignored). Einheitliche Schicht: `server/jsonStore.js`.
+
+| Datei | Inhalt |
+|-------|--------|
+| `advisor-share-sessions.json` | Vergleichslinks, TTL 14 Tage |
+| `pilot-leads.json` | Pilot-Leads aus Share/Gespräch |
+| `customer-records.json` | Kundenakten (max. 200) |
+
+**VPS:** Persistenz außerhalb des Deploy-Verzeichnisses:
+
+```bash
+export PILOT_DATA_DIR=/var/lib/clever-neuwagen/data
+```
+
+Diagnose: `GET /api/v1/advisor/storage` (Pfad, Dateigrößen).
+
+Schreibvorgänge atomar (tmp + rename). Spätere DB-Migration ersetzt nur `jsonStore.js` – Stores bleiben API-kompatibel.
+
 ## Offen / nächste Schritte
 
-- ~~Legacy `/berater` und `/advisor` → Redirect auf `/fahrzeuge`~~ ✓
-- ~~DealerPage an Modelllinien + Backend anbinden~~ ✓
-- ~~Kundenkonto `/account` mit Share-Sessions verknüpfen~~ ✓
-- JSON-Stores → Produktions-DB (Pilot: JSON reicht vorerst)
+- Optional: SQLite/Postgres hinter `createJsonStore` (gleiche Store-APIs)
 
 ## Begriffe
 
