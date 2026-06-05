@@ -80,7 +80,7 @@ Test: `npm run test:kia-pricelist`
 | Status | Modelle |
 |--------|---------|
 | ✅ Vollständig | Picanto, Stonic, XCeed, K4, Seltos, Sportage, Sportage PHEV, EV2–EV5, EV5 GT, EV9, PV5 Passenger |
-| ⚠️ OCR offen | Sorento (3×), K4 Sportswagon, EV6 |
+| ✅ OCR ergänzt | Sorento (3×), K4 Sportswagon, EV6, Picanto (manual-supplements) |
 
 **EV3 Registry** synchronisiert: 7 UPE-Kombinationen aus PDF (58,3 / 81,4 kWh, FWD/AWD).
 

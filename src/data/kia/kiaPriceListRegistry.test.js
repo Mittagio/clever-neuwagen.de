@@ -11,6 +11,11 @@ assert.equal(stats.total, 19, '19 PDF-Dateien importiert');
 assert.ok(stats.withVariants >= 14, 'Mindestens 14 Modelle mit Varianten');
 assert.ok(stats.totalVariants >= 80, 'Mindestens 80 UPE-Kombinationen');
 
+const picanto = getKiaPdfPriceList('picanto');
+assert.equal(picanto.priceFromGross, 17590);
+assert.equal(picanto.variantCount, 7);
+assert.ok(!picanto.importNote);
+
 const ev3 = getKiaPdfPriceList('ev3');
 assert.equal(ev3.priceFromGross, 35990);
 assert.equal(ev3.variantCount, 7);

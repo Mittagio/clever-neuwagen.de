@@ -7,119 +7,115 @@
   "sourcePdfPath": "Kia-Germany/Kia-Germany-Picanto_Preisliste.pdf",
   "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
   "importedAt": "2026-05-29",
-  "priceFromGross": 18550,
+  "priceFromGross": 17590,
   "trims": [
-    {
-      "id": "vision",
-      "name": "Vision"
-    },
-    {
-      "id": "core",
-      "name": "Core"
-    },
-    {
-      "id": "spirit",
-      "name": "Spirit"
-    },
-    {
-      "id": "gt-line",
-      "name": "GT-Line"
-    }
+    { "id": "core", "name": "Core" },
+    { "id": "vision", "name": "Vision" },
+    { "id": "spirit", "name": "Spirit" },
+    { "id": "gt-line", "name": "GT-Line" }
   ],
   "variants": [
     {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 14781.51,
+      "priceGross": 17590,
+      "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze",
+      "transmission": "MT5",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,5",
+      "co2": "126",
+      "co2Class": "D"
+    },
+    {
       "trim": "Vision",
       "trimId": "vision",
-      "priceNet": 15588,
+      "priceNet": 15588.24,
       "priceGross": 18550,
-      "engine": "",
-      "transmission": "Schaltgetriebe (MT5) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    },
-    {
-      "trim": "Spirit 17 .",
-      "trimId": "spirit-17-",
-      "priceNet": 436,
-      "priceGross": 20750,
-      "engine": "",
-      "transmission": "Schaltgetriebe (MT5) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    },
-    {
-      "trim": "GT-Line 18.277 ,31",
-      "trimId": "gt-line-18277-31",
-      "priceNet": null,
-      "priceGross": 21750,
-      "engine": "",
-      "transmission": "Schaltgetriebe (MT5) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    },
-    {
-      "trim": "Vision",
-      "trimId": "vision",
-      "priceNet": 16428,
-      "priceGross": 19550,
-      "engine": "",
-      "transmission": "Autom. Schaltgetriebe (AMT) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    },
-    {
-      "trim": "Spirit 18.277 ,31",
-      "trimId": "spirit-18277-31",
-      "priceNet": null,
-      "priceGross": 21750,
-      "engine": "",
-      "transmission": "Autom. Schaltgetriebe (AMT) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    },
-    {
-      "trim": "GT-Line 19.117 ,65",
-      "trimId": "gt-line-19117-65",
-      "priceNet": null,
-      "priceGross": 22750,
-      "engine": "",
-      "transmission": "Autom. Schaltgetriebe (AMT) –",
-      "drive": "",
-      "power": "",
-      "consumption": "",
-      "co2": "",
-      "co2Class": ""
-    }
-  ],
-  "trimPricesFrom": [
-    {
-      "trim": "Vision",
-      "priceFromGross": 20750
+      "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze",
+      "transmission": "MT5",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,5",
+      "co2": "126",
+      "co2Class": "D"
     },
     {
       "trim": "Spirit",
-      "priceFromGross": 21750
+      "trimId": "spirit",
+      "priceNet": 17436.97,
+      "priceGross": 20750,
+      "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze",
+      "transmission": "MT5",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,8",
+      "co2": "131",
+      "co2Class": "D"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 18277.31,
+      "priceGross": 21750,
+      "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze",
+      "transmission": "MT5",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,8",
+      "co2": "131",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 16428.57,
+      "priceGross": 19550,
+      "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 4 Sitze",
+      "transmission": "AMT",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,9",
+      "co2": "134",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 18277.31,
+      "priceGross": 21750,
+      "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze",
+      "transmission": "AMT",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,9",
+      "co2": "134",
+      "co2Class": "D"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 19117.65,
+      "priceGross": 22750,
+      "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze",
+      "transmission": "AMT",
+      "drive": "2WD",
+      "power": "50 kW (68 PS)",
+      "consumption": "5,9",
+      "co2": "134",
+      "co2Class": "D"
     }
   ],
-  "wltpNotes": [
-    "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO2-Emissionen kombiniert 134 g/km. CO2-Klasse D.",
-    "Kia Picanto 1.0 MT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,5 l/100 km. CO 2-Emissionen kombiniert 126 g/km.",
-    "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO 2-Emissionen kombiniert 134 g/km."
+  "trimPricesFrom": [
+    { "trim": "Core", "priceFromGross": 17590 },
+    { "trim": "Vision", "priceFromGross": 18550 },
+    { "trim": "Spirit", "priceFromGross": 20750 },
+    { "trim": "GT-Line", "priceFromGross": 21750 }
   ],
-  "variantCount": 6
+  "wltpNotes": [
+    "Kia Picanto 1.0 MT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,5 l/100 km. CO₂-Emissionen kombiniert 126 g/km. CO₂-Klasse D.",
+    "Kia Picanto 1.0 AMT (50 kW/68 PS): Kraftstoffverbrauch kombiniert 5,9 l/100 km. CO₂-Emissionen kombiniert 134 g/km. CO₂-Klasse D."
+  ],
+  "variantCount": 7
 }

@@ -34,17 +34,17 @@ export const brands = [
   { id: 'mercedes', name: 'Mercedes-Benz', status: 'planned', modelCount: 0 },
 ];
 
-const REGISTRY_DETAIL_IDS = new Set(['sportage', 'ev3']);
+const REGISTRY_DETAIL_IDS = new Set(['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed']);
 
 const REGISTRY_STATUS = {
   sportage: 'complete',
   ev3: 'review',
-  ev4: 'draft',
+  ev4: 'review',
   ev5: 'draft',
   sorento: 'draft',
-  niro: 'review',
-  ceed: 'review',
-  picanto: 'outdated',
+  picanto: 'review',
+  niro: 'draft',
+  ceed: 'draft',
 };
 
 function mapOfficialToAdminModel(entry) {

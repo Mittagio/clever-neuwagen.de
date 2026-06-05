@@ -11,6 +11,7 @@ import {
   K4_SPORTSWAGON_VARIANTS,
   EV6_VARIANTS,
   SPORTAGE_PHEV_IMPORT_VARIANTS,
+  PICANTO_VARIANTS,
 } from './ocrPdfCanonical.js';
 
 function assertPdfMatches(modelKey, expectedVariants, priceFrom) {
@@ -25,6 +26,7 @@ function assertPdfMatches(modelKey, expectedVariants, priceFrom) {
   }
 }
 
+assertPdfMatches('picanto', PICANTO_VARIANTS, 17590);
 assertPdfMatches('sportage-phev', SPORTAGE_PHEV_IMPORT_VARIANTS, 43100);
 assertPdfMatches('sorento', SORENTO_DIESEL_VARIANTS, 56690);
 assertPdfMatches('sorento-hybrid', SORENTO_HYBRID_VARIANTS, 55190);

@@ -590,5 +590,119 @@
         "name": "GT-Line"
       }
     ]
+  },
+  "picanto": {
+    "replace": true,
+    "variants": [
+      {
+        "trim": "Core",
+        "trimId": "core",
+        "priceNet": 14781.51,
+        "priceGross": 17590,
+        "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze",
+        "transmission": "MT5",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 15588.24,
+        "priceGross": 18550,
+        "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze",
+        "transmission": "MT5",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 17436.97,
+        "priceGross": 20750,
+        "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze",
+        "transmission": "MT5",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 18277.31,
+        "priceGross": 21750,
+        "engine": "1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze",
+        "transmission": "MT5",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Vision",
+        "trimId": "vision",
+        "priceNet": 16428.57,
+        "priceGross": 19550,
+        "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 4 Sitze",
+        "transmission": "AMT",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "Spirit",
+        "trimId": "spirit",
+        "priceNet": 18277.31,
+        "priceGross": 21750,
+        "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze",
+        "transmission": "AMT",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      },
+      {
+        "trim": "GT-Line",
+        "trimId": "gt-line",
+        "priceNet": 19117.65,
+        "priceGross": 22750,
+        "engine": "1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze",
+        "transmission": "AMT",
+        "drive": "",
+        "power": "50 kW (68 PS)",
+        "consumption": "",
+        "co2": "",
+        "co2Class": ""
+      }
+    ],
+    "trims": [
+      {
+        "id": "core",
+        "name": "Core"
+      },
+      {
+        "id": "vision",
+        "name": "Vision"
+      },
+      {
+        "id": "spirit",
+        "name": "Spirit"
+      },
+      {
+        "id": "gt-line",
+        "name": "GT-Line"
+      }
+    ]
   }
 }

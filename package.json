@@ -40,6 +40,9 @@
     "test:dealer-brief": "node src/logic/dealerInquiryBrief.test.js",
     "test:mvp-discovery": "node src/logic/mvpDiscoveryPricing.test.js",
     "test:kia-mvp": "node src/logic/kiaEv3SportageMvp.test.js",
+    "test:kia-ev4": "node src/logic/kiaEv4Registry.test.js",
+    "test:kia-picanto": "node src/logic/kiaPicantoRegistry.test.js",
+    "test:kia-registry": "npm run test:kia-mvp && npm run test:kia-ev4 && npm run test:kia-picanto && npm run test:kia-partner && npm run test:kia-pdf && npm run test:kia-ocr",
     "test:vd-stream": "node src/logic/vehicleDetailStream.test.js",
     "test:feature-resolver": "node src/services/configuration/featureResolver.test.js",
     "test:inquiry-flow": "node src/logic/inquiryFlowMvp.test.js",
@@ -52,6 +55,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "clever-neuwagen": "file:",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "react": "^19.2.6",

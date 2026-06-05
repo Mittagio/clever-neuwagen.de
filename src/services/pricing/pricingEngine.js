@@ -11,8 +11,10 @@ import { getDealerSeed } from '../../data/dealers/index.js';
 const DEFAULT_TERM = 48;
 const DEFAULT_MILEAGE = 10000;
 
-function priceEv3Configuration({
+function priceRegistryEvConfiguration({
+  mfg,
   trimId,
+  engineId,
   packageIds = [],
   accessoryIds = [],
   dealerConditions,
@@ -20,9 +22,11 @@ function priceEv3Configuration({
   mileagePerYear = DEFAULT_MILEAGE,
   paymentType = 'leasing',
 }) {
-  const mfg = getManufacturerModel('Kia', 'EV3');
   const data = mfg.data;
-  const variant = data.variants.find((v) => v.trimId === trimId) ?? data.variants[data.variants.length - 1];
+  const variant = data.variants.find((v) =>
+    v.trimId === trimId && (!engineId || v.engineId === engineId),
+  ) ?? data.variants.find((v) => v.trimId === trimId)
+    ?? data.variants[data.variants.length - 1];
   const discount = dealerConditions.discounts?.standard ?? 12;
 
   let configurationPrice = variant.priceGross;
@@ -152,9 +156,11 @@ export function priceConfiguration({
       colorId,
       dealerConditions,
     });
-  } else if (mfg.engine === 'ev3') {
-    pricing = priceEv3Configuration({
+  } else if (['ev3', 'ev4', 'picanto', 'niro', 'ceed'].includes(mfg.engine)) {
+    pricing = priceRegistryEvConfiguration({
+      mfg,
       trimId: trimId ?? mfg.defaultTrimId,
+      engineId: engineId ?? mfg.defaultEngineId,
       packageIds: resolvedPackages,
       accessoryIds: resolvedAccessories,
       dealerConditions,

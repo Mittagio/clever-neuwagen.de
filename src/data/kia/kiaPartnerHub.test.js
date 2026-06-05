@@ -33,6 +33,9 @@ assert.ok(sportageTrims.length >= 3, 'Sportage Ausstattungslinien');
 const ev3Packages = getKiaPackages('ev3');
 assert.ok(ev3Packages.length >= 1, 'EV3 Pakete aus Registry');
 
+const ev4Packages = getKiaPackages('ev4');
+assert.ok(ev4Packages.length >= 3, 'EV4 Pakete aus Registry');
+
 const library = getKiaFeatureLibrary();
 assert.ok(library.catalog.length > 0);
 assert.ok(library.registryFeatures.length > 0);
@@ -40,6 +43,7 @@ assert.ok(library.registryFeatures.length > 0);
 const overview = getKiaModelOverview();
 assert.ok(overview.registry.some((m) => m.key === 'sportage'));
 assert.ok(overview.registry.some((m) => m.key === 'ev3'));
+assert.ok(overview.registry.some((m) => m.key === 'ev4'));
 assert.ok(overview.meta?.sourceUrl?.includes('kia.com/de/broschuere'));
 
 const sportageVehicle = kiaOnly.find((v) => v.model.includes('Sportage'));

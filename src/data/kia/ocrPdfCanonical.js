@@ -68,6 +68,16 @@ export const EV6_VARIANTS = mapVariants([
   { trimId: 'gt-line', trim: 'GT-Line', priceGross: 61890, engine: '84-kWh-Batterie', drive: 'AWD', power: '239 kW (325 PS)' },
 ]);
 
+export const PICANTO_VARIANTS = mapVariants([
+  { trimId: 'core', trim: 'Core', priceGross: 17590, engine: '1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze', transmission: 'MT5', power: '50 kW (68 PS)' },
+  { trimId: 'vision', trim: 'Vision', priceGross: 18550, engine: '1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 4 Sitze', transmission: 'MT5', power: '50 kW (68 PS)' },
+  { trimId: 'spirit', trim: 'Spirit', priceGross: 20750, engine: '1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze', transmission: 'MT5', power: '50 kW (68 PS)' },
+  { trimId: 'gt-line', trim: 'GT-Line', priceGross: 21750, engine: '1.0 MPI (50 kW/68 PS), Schaltgetriebe MT5, 5 Sitze', transmission: 'MT5', power: '50 kW (68 PS)' },
+  { trimId: 'vision', trim: 'Vision', priceGross: 19550, engine: '1.0 MPI (50 kW/68 PS), Automatik AMT, 4 Sitze', transmission: 'AMT', power: '50 kW (68 PS)' },
+  { trimId: 'spirit', trim: 'Spirit', priceGross: 21750, engine: '1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze', transmission: 'AMT', power: '50 kW (68 PS)' },
+  { trimId: 'gt-line', trim: 'GT-Line', priceGross: 22750, engine: '1.0 MPI (50 kW/68 PS), Automatik AMT, 5 Sitze', transmission: 'AMT', power: '50 kW (68 PS)' },
+]);
+
 export const SPORTAGE_PHEV_IMPORT_VARIANTS = mapVariants([
   { trimId: 'core', trim: 'Core', priceGross: 43100, engine: '1.6 T-GDI Plug-in Hybrid', transmission: 'Automatik', drive: '2WD', power: '212 kW (288 PS)' },
   { trimId: 'vision', trim: 'Vision', priceGross: 45100, engine: '1.6 T-GDI Plug-in Hybrid', transmission: 'Automatik', drive: '2WD', power: '212 kW (288 PS)' },
@@ -80,6 +90,16 @@ export const SPORTAGE_PHEV_IMPORT_VARIANTS = mapVariants([
 
 /** Für scripts/parse-kia-pricelists.py → manual-supplements.json */
 export const OCR_PDF_SUPPLEMENTS = {
+  picanto: {
+    replace: true,
+    variants: PICANTO_VARIANTS,
+    trims: [
+      { id: 'core', name: 'Core' },
+      { id: 'vision', name: 'Vision' },
+      { id: 'spirit', name: 'Spirit' },
+      { id: 'gt-line', name: 'GT-Line' },
+    ],
+  },
   'sportage-phev': {
     replace: true,
     variants: SPORTAGE_PHEV_IMPORT_VARIANTS,

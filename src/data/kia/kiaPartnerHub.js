@@ -35,7 +35,7 @@ export const KIA_PARTNER = {
 };
 
 /** Registry-Modelle mit voller Paket-/CleverQuote-Auflösung */
-export const KIA_REGISTRY_MODEL_KEYS = ['sportage', 'ev3'];
+export const KIA_REGISTRY_MODEL_KEYS = ['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed'];
 
 /** Alle Kia-Modell-IDs im Händlerkatalog */
 export const KIA_DEALER_MODEL_IDS = ['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed'];
@@ -94,6 +94,10 @@ export function hasRegistryCleverQuote(vehicle) {
   const key = normalizeModelToken(vehicle?.model);
   if (key.includes('sportage')) return !!MANUFACTURER_MODELS.sportage;
   if (key.includes('ev3')) return !!MANUFACTURER_MODELS.ev3;
+  if (key.includes('ev4')) return !!MANUFACTURER_MODELS.ev4;
+  if (key.includes('picanto')) return !!MANUFACTURER_MODELS.picanto;
+  if (key.includes('niro')) return !!MANUFACTURER_MODELS.niro;
+  if (key.includes('ceed')) return !!MANUFACTURER_MODELS.ceed;
   return false;
 }
 
@@ -204,9 +208,20 @@ export function buildKiaSellerHeadline(customerName) {
 export function enrichMatchWithKiaMeta(match) {
   const v = match?.vehicle;
   if (!v || !isKiaVehicle(v)) return match;
-  const registryKey = normalizeModelToken(v.model).includes('sportage')
+  const modelToken = normalizeModelToken(v.model);
+  const registryKey = modelToken.includes('sportage')
     ? 'sportage'
-    : normalizeModelToken(v.model).includes('ev3') ? 'ev3' : null;
+    : modelToken.includes('ev3')
+      ? 'ev3'
+      : modelToken.includes('ev4')
+        ? 'ev4'
+        : modelToken.includes('picanto')
+          ? 'picanto'
+          : modelToken.includes('niro')
+            ? 'niro'
+            : modelToken.includes('ceed')
+              ? 'ceed'
+              : null;
   return {
     ...match,
     kiaMeta: {

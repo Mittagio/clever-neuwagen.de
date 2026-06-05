@@ -241,7 +241,7 @@ Die Plattform ist **technisch responsive**, aber **konzeptionell desktop-zentrie
 - [x] **MF-3** – Vergleich Top-2 + Sheet
 - [x] **MF-4** – Verkäufermodus: Sidebar → Sheet
 - [x] **MF-5** – Backend/Dealer Tablet-Touch
-- [ ] Audit committen (dieses Dokument)
+- [x] Audit committen (dieses Dokument)
 
 ---
 

@@ -68,7 +68,7 @@ export const KIA_OFFICIAL_MODELS = [
     priceListAvailable: true,
     orderable: true,
     orderNote: null,
-    registryKey: null,
+    registryKey: 'picanto',
     sortOrder: 10,
   },
   {
