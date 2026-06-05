@@ -100,6 +100,11 @@ npm run build
 cp .env.example .env
 nano .env   # PUBLIC_URL prüfen: https://www.clever-neuwagen.de
 
+# Berater-Persistenz (Share-Links, Leads, Kundenakten) – überlebt git pull
+sudo mkdir -p /var/lib/clever-neuwagen/data
+sudo chown -R www-data:www-data /var/lib/clever-neuwagen/data
+# In .env: PILOT_DATA_DIR=/var/lib/clever-neuwagen/data (steht auch in ecosystem.config.cjs)
+
 # Prozess-Manager
 pm2 start ecosystem.config.cjs --env production
 pm2 save
@@ -111,6 +116,9 @@ pm2 startup   # ausgegebenen Befehl einmal kopieren und ausführen
 ```bash
 curl -s http://127.0.0.1:3001/health
 # Erwartung: {"ok":true,"service":"clever-neuwagen",...}
+
+curl -s http://127.0.0.1:3001/api/v1/advisor/storage
+# Erwartung: dataDir=/var/lib/clever-neuwagen/data, customDir=true
 ```
 
 ---

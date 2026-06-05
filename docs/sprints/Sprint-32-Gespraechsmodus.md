@@ -132,6 +132,7 @@ Schreibvorgänge atomar (tmp + rename). Spätere DB-Migration ersetzt nur `jsonS
 
 ## Offen / nächste Schritte
 
+- VPS: nach `git pull` → `bash deploy/update-app.sh` (legt `PILOT_DATA_DIR` an)
 - Optional: SQLite/Postgres hinter `createJsonStore` (gleiche Store-APIs)
 
 ## Begriffe

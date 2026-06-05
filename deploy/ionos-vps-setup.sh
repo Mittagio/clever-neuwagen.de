@@ -5,6 +5,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/clever-neuwagen}"
 APP_USER="${APP_USER:-www-data}"
+PILOT_DATA_DIR="${PILOT_DATA_DIR:-/var/lib/clever-neuwagen/data}"
 
 echo "==> System aktualisieren & Basis-Pakete"
 export DEBIAN_FRONTEND=noninteractive
@@ -31,6 +32,10 @@ ufw --force enable
 echo "==> App-Verzeichnis"
 mkdir -p "$APP_DIR"
 chown -R "$APP_USER:$APP_USER" "$(dirname "$APP_DIR")" 2>/dev/null || true
+
+echo "==> Pilot-Daten (Berater JSON-Stores)"
+mkdir -p "$PILOT_DATA_DIR"
+chown -R "$APP_USER:$APP_USER" "$PILOT_DATA_DIR" 2>/dev/null || true
 
 echo ""
 echo "✓ Basis-Installation abgeschlossen."

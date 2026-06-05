@@ -13,6 +13,8 @@ module.exports = {
         PORT: 3001,
         HOST: '127.0.0.1',
         PUBLIC_URL: 'https://www.clever-neuwagen.de',
+        // Berater-Persistenz außerhalb von dist/ (deploy/update-app.sh legt Verzeichnis an)
+        PILOT_DATA_DIR: '/var/lib/clever-neuwagen/data',
       },
     },
   ],
