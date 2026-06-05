@@ -153,6 +153,7 @@ export default function AppRouter() {
         <Route path="/trends" element={<TrendIndexPage />} />
         <Route path="/trends/:slug" element={<TrendArticlePage />} />
         <Route path="/berater" element={<AdvisorPage />} />
+        <Route path="/berater/:slug" element={<DealerPage />} />
         <Route path="/advisor" element={<AdvisorPage />} />
         <Route path="/berater/ausstattung" element={<EquipmentAdvisorPage />} />
         <Route path="/communication" element={<CommunicationCenterPage />} />

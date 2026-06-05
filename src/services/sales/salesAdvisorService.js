@@ -167,7 +167,6 @@ export function computeSalesAdvisorResults(chipIds = [], options = {}) {
     availability: wishes.availability ?? null,
     type: wishes.bodyType ?? 'all',
     fuel: wishes.powertrain === 'elektro' ? 'elektro' : wishes.powertrain ?? null,
-    features: wishes.features.filter((f) => !['elektro', 'benzin', 'family_suv'].includes(f)),
   };
 
   let vehicles = filterMarketplaceVehicles(kiaPool, filters);

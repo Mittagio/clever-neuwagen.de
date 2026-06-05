@@ -62,9 +62,44 @@ export const TRIM_FEATURE_MAP = {
       {
         id: 'gt-line',
         name: 'GT-Line',
-        standardFeatures: ['heated_seats', 'heat_pump', 'blind_spot', 'rear_camera', 'parking_front', 'parking_rear', 'steering_heat', 'elektro', 'family_suv', 'range_400'],
-        availableViaPackage: ['camera_360', 'power_tailgate', 'harman_kardon', 'head_up_display'],
+        standardFeatures: [
+          'heated_seats', 'heat_pump', 'camera_360', 'power_tailgate',
+          'blind_spot', 'rear_camera', 'parking_front', 'parking_rear',
+          'steering_heat', 'elektro', 'family_suv', 'range_400',
+        ],
+        availableViaPackage: ['harman_kardon', 'head_up_display', 'panorama_roof'],
+        notAvailable: [],
+      },
+    ],
+  },
+  ev4: {
+    modelLabel: 'Kia EV4',
+    baseRate: { air: 319, earth: 339, 'gt-line': 399 },
+    trims: [
+      {
+        id: 'air',
+        name: 'Air',
+        standardFeatures: ['rear_camera', 'parking_rear', 'elektro', 'range_400'],
+        availableViaPackage: ['heated_seats', 'heat_pump'],
+        notAvailable: ['camera_360', 'power_tailgate'],
+      },
+      {
+        id: 'earth',
+        name: 'Earth',
+        standardFeatures: ['heated_seats', 'heat_pump', 'rear_camera', 'parking_front', 'parking_rear', 'elektro', 'range_400'],
+        availableViaPackage: ['camera_360', 'power_tailgate', 'blind_spot'],
         notAvailable: ['panorama_roof'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: [
+          'heated_seats', 'heat_pump', 'camera_360', 'power_tailgate',
+          'blind_spot', 'rear_camera', 'parking_front', 'parking_rear',
+          'steering_heat', 'elektro', 'range_400',
+        ],
+        availableViaPackage: ['harman_kardon', 'head_up_display'],
+        notAvailable: [],
       },
     ],
   },
@@ -114,6 +149,7 @@ export function normalizeModelKey(brand, model) {
   if (m.includes('sportage')) return 'sportage';
   if (m.includes('kuga')) return 'kuga';
   if (m.includes('ev3')) return 'ev3';
+  if (m.includes('ev4')) return 'ev4';
   if (m.includes('tucson')) return 'tucson';
   if (m.includes('niro')) return 'niro';
   if (m.includes('ceed')) return 'ceed';

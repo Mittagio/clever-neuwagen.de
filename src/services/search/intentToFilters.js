@@ -62,7 +62,7 @@ export function intentToMarketplaceFilters(intent, overrides = {}) {
     query: intent.rawQuery,
     maxRate: intent.maxRate ?? null,
     maxPrice: intent.maxPrice ?? null,
-    type: intent.bodyType ?? intent.fuel === 'elektro' ? 'elektro' : (overrides.type ?? 'all'),
+    type: intent.bodyType ?? (intent.fuel === 'elektro' ? 'elektro' : (overrides.type ?? 'all')),
     fuel: FUEL_TO_FILTER[intent.fuel] ?? '',
     payment: PAYMENT_TO_FILTER[intent.payment] ?? '',
     model: intent.modelExplicit ? (intent.model ?? '') : '',
@@ -101,6 +101,36 @@ export function intentToMarketplaceFilters(intent, overrides = {}) {
   }
 
   return filters;
+}
+
+/** Meta-Features – nicht als harte Marketplace-Filter (werden über CleverQuote/Wish-Match bewertet). */
+const SOFT_MARKETPLACE_FEATURES = new Set([
+  'camera_360', 'heated_seats', 'heat_pump', 'blind_spot', 'towbar', 'parking_front',
+  'parking_rear', 'rear_camera', 'panorama_roof', 'harman_kardon', 'head_up_display',
+  'power_tailgate', 'ventilated_seats', 'steering_heat', 'automatic', 'reichweite',
+  'fast_charge', 'remote_parking', 'seats_7',
+]);
+
+/**
+ * Berater/KI-Suche: Budget, Antrieb und Karosserie hart filtern;
+ * Ausstattungswünsche nur scoren (Never-Empty).
+ */
+export function toAdvisorMarketplaceFilters(filters = {}) {
+  const hardFeatures = (filters.features ?? []).filter((f) => !SOFT_MARKETPLACE_FEATURES.has(f));
+  const next = {
+    ...filters,
+    features: hardFeatures,
+  };
+  const hasElektroWish = (filters.features ?? []).includes('elektro')
+    || filters.fuel === 'elektro'
+    || next.type === 'elektro';
+  if (hasElektroWish && !next.fuel && next.type === 'all') {
+    next.type = 'elektro';
+  }
+  if (hasElektroWish && !next.fuel) {
+    next.fuel = 'elektro';
+  }
+  return next;
 }
 
 import { createEditableChips } from './chipConfig.js';

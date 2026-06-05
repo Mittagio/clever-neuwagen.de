@@ -6,6 +6,7 @@ import './dealer-landing.css';
 
 export default function DealerSearchResults({
   query,
+  searchProfile = null,
   modelLineGroups = [],
   dealerSlug,
   city = '',
@@ -53,6 +54,7 @@ export default function DealerSearchResults({
             group={group}
             rank={group.rank ?? 1}
             paymentMode="leasing"
+            searchProfile={searchProfile}
             onViewOffer={handleViewOffer}
             defaultVariantsOpen={group.rank <= 2}
           />

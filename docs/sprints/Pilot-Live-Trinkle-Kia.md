@@ -29,12 +29,15 @@ Lokal zusätzlich: `localStorage` (`clever-neuwagen-leads`) als Cache.
 ## Test-Checkliste (mit echtem Kunden)
 
 1. `npm run dev:pilot` starten (oder normal `npm run dev` mit `.env.local`)
-2. **Backend prüfen:** `/backend` → Banner sichtbar, **0 Demo-Leads**
-3. **Kunden-Landing:** `/haendler/autohaus-trinkle` oder `/` (Redirect)
-4. Kia-Fahrzeug wählen → Detailseite → **Anfrage senden** (Name, E-Mail, ggf. Telefon)
-5. **Lead prüfen:** `/backend/verkaufschancen` → nach max. 5 s neuer Lead mit Brief, CQ %, Budget
-6. **Kunde am Handy:** PC-IP im WLAN nutzen, z. B. `http://192.168.x.x:5173/haendler/autohaus-trinkle` (nicht `localhost`)
-6. Optional: WhatsApp-Text aus Lead-Detail testen
+2. **API-Smoke:** `npm run test:pilot-flow` (Gespräch → Share → Anfrage → Kundenkonto)
+3. **Backend prüfen:** `/backend` → Banner sichtbar, **0 Demo-Leads**
+4. **Gesprächsmodus:** `/gespraech` → Chips „Elektro“ + „Familie“ → Fahrzeuge finden → Top 3 zum Vergleich → Link/WhatsApp senden
+5. **Kunden-Vergleich:** Link `/vergleich/:token` → Fahrzeuge prüfen → **Anfrage bestätigen**
+6. **Verkäufer-Inbox:** `/backend/verkaufschancen` → Lead-Status wechselt von „Angebot versendet“ → „Neu“
+7. **Kundenkonto:** `/mein-bereich` mit derselben E-Mail → Vergleich unter „Vergleiche“
+8. **Kunden-Landing (klassisch):** `/haendler/autohaus-trinkle` → Fahrzeug → Detail → Anfrage senden
+9. **Kunde am Handy:** PC-IP im WLAN, z. B. `http://192.168.x.x:5173/gespraech` (nicht `localhost`)
+10. Optional: WhatsApp-Text aus Lead-Detail testen
 
 ## Hinweise
 

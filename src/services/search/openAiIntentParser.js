@@ -5,6 +5,26 @@
 
 import { buildSearchProfile, SEARCH_PROFILE_JSON_SCHEMA } from './searchProfile.js';
 import { parseSearchIntent } from './searchIntentParser.js';
+import { normalizeFeatureIdsToInternal } from './canonicalFeatureIds.js';
+
+function mergeRemoteProfile(localProfile, remote) {
+  const budget = remote.budget ?? null;
+  return {
+    ...localProfile,
+    fuel: remote.fuel ?? localProfile.fuel,
+    minRangeKm: remote.minRangeKm ?? localProfile.minRangeKm,
+    rangeKmMin: remote.minRangeKm ?? localProfile.rangeKmMin,
+    seatsMin: remote.seatsMin ?? localProfile.seatsMin,
+    requiredFeatures: normalizeFeatureIdsToInternal(
+      remote.requiredFeatures?.length ? remote.requiredFeatures : localProfile.requiredFeatures,
+    ),
+    softPreferences: remote.softPreferences ?? localProfile.softPreferences,
+    maxMonthlyRate: budget?.maxMonthlyRate ?? localProfile.maxMonthlyRate,
+    maxPrice: budget?.maxPrice ?? localProfile.maxPrice,
+    payment: budget?.type ?? localProfile.payment,
+    confidence: remote.confidence ?? localProfile.confidence,
+  };
+}
 
 /**
  * Parst Kundenwunsch → SearchProfile.
@@ -32,8 +52,9 @@ export async function parseCustomerSearchProfile(query, options = {}) {
 
   try {
     const remote = await fetchOpenAiStructuredProfile(query, apiKey);
+    const merged = mergeRemoteProfile(localProfile, remote);
     return {
-      profile: { ...localProfile, ...remote, confidence: remote.confidence ?? localProfile.confidence },
+      profile: merged,
       source: 'openai',
       intent: localIntent,
     };
@@ -68,7 +89,9 @@ async function fetchOpenAiStructuredProfile(query, apiKey) {
       messages: [
         {
           role: 'system',
-          content: 'Du übersetzt Autokundenwünsche in ein strukturiertes Suchprofil. Du wählst KEINE Fahrzeuge aus.',
+          content: 'Du übersetzt Autokundenwünsche in ein strukturiertes Suchprofil (SearchProfile JSON). '
+            + 'Du wählst KEINE Fahrzeuge aus, berechnest KEINE CleverQuote und erfindest KEINE Ausstattung. '
+            + 'Mappe Kundenbegriffe auf interne Feature-IDs: camera_360, heat_pump, heated_front_seats, electric_tailgate.',
         },
         { role: 'user', content: query },
       ],

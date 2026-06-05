@@ -159,8 +159,8 @@ function hasPriceContext(text) {
   return /kauf|bar|unter|preis|einmal|neupreis/i.test(text);
 }
 
-function hasRangeContext(text, nearIndex) {
-  const window = text.slice(Math.max(0, nearIndex - 20), nearIndex + 25);
+function hasRangeContext(text, nearIndex, matchLen = 3) {
+  const window = text.slice(Math.max(0, nearIndex - 20), nearIndex + matchLen + 30);
   return /\b(km|kilometer|reichweite|range)\b/i.test(window);
 }
 
@@ -186,15 +186,8 @@ function extractMoneyAndRange(text, spans) {
   const kmRe = /(\d{2,4})\s*km\b/gi;
   while ((rm = kmRe.exec(text)) !== null) {
     if (isSpanConsumed(spans, rm.index)) continue;
-    if (hasRangeContext(text, rm.index)) {
-      const val = Number(rm[1]);
-      const before = text.slice(Math.max(0, rm.index - 20), rm.index);
-      if (
-        /über|ueber|ab|mindestens|mehr/.test(before)
-        || /\be-?auto|elektro|reichweite\b/i.test(text.slice(Math.max(0, rm.index - 35), rm.index))
-      ) {
-        rangeKmMin = val;
-      }
+    if (hasRangeContext(text, rm.index, rm[0].length)) {
+      rangeKmMin = Number(rm[1]);
       markSpan(spans, rm.index, rm.index + rm[0].length);
     }
   }
@@ -353,6 +346,8 @@ function extractBrandModelTrim(text, spans, features) {
   if (/\bsuv\b|geländewagen|gelaendewagen/i.test(text)) bodyType = 'suv';
   if (/\bkombi\b/i.test(text)) bodyType = 'kombi';
   if (/\bkleinwagen\b/i.test(text)) bodyType = 'kleinwagen';
+  if (!bodyType && /\bkleines?\s+auto\b/i.test(text)) bodyType = 'kleinwagen';
+  if (!bodyType && /\b(kompakt|city\s*auto|stadtauto)\b/i.test(text)) bodyType = 'kleinwagen';
 
   return { brand, model, trim, bodyType };
 }
@@ -419,6 +414,10 @@ export function parseSearchIntent(input) {
   if (towCapacityKg && !features.includes('towbar')) features.push('towbar');
 
   const fuel = extractFuel(text, spans);
+  let resolvedFuel = fuel;
+  if (!resolvedFuel && /\belektro\b/i.test(text)) resolvedFuel = 'elektro';
+  if (!resolvedFuel && features.includes('elektro')) resolvedFuel = 'elektro';
+  if (!resolvedFuel && features.includes('benzin')) resolvedFuel = 'verbrenner';
   const payment = extractPayment(text, spans);
   const availability = extractAvailability(text, spans);
   const { maxRate, maxPrice, rangeKmMin } = extractMoneyAndRange(text, spans);
@@ -455,7 +454,7 @@ export function parseSearchIntent(input) {
     payment: payment ?? (maxRate && !maxPrice ? 'leasing' : null),
     maxRate,
     maxPrice,
-    fuel,
+    fuel: resolvedFuel,
     brand,
     model,
     modelExplicit,

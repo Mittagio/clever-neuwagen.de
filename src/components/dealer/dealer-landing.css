@@ -309,6 +309,94 @@
   font-weight: 600;
 }
 
+.dl-search-results--empty {
+  margin-bottom: 28px;
+}
+
+.dl-search-results__empty {
+  margin: 0 0 14px;
+  color: var(--color-text-muted, #5c6470);
+  line-height: 1.5;
+}
+
+/* Rule-Engine: Wunsch-Checkliste (✓ / Paket / ✗) */
+.dl-wish-checklist {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-surface-muted, #f4f6f9);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.dl-wish-checklist__title {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-brand, #0f2744);
+}
+
+.dl-wish-checklist__trim {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+}
+
+.dl-wish-checklist__pct {
+  margin-left: 8px;
+  font-weight: 700;
+  color: var(--color-clever, #059669);
+}
+
+.dl-wish-checklist__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.dl-wish-checklist__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.dl-wish-checklist__icon {
+  flex-shrink: 0;
+  width: 1.1em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dl-wish-checklist__item--ok .dl-wish-checklist__icon { color: var(--color-clever, #059669); }
+.dl-wish-checklist__item--pkg .dl-wish-checklist__icon { color: #0284c7; }
+.dl-wish-checklist__item--no .dl-wish-checklist__icon { color: #ef4444; }
+
+.dl-wish-checklist__label { flex: 1; }
+
+.dl-wish-checklist__hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.disc-variant-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.disc-variant-row-wrap .dl-wish-checklist {
+  margin-top: 0;
+  margin-bottom: 8px;
+  border-radius: 0 0 10px 10px;
+  border-top: none;
+}
+
 /* Warum kaufen */
 .dl-section__title {
   margin: 0 0 14px;

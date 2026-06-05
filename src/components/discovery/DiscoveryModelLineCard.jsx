@@ -10,39 +10,47 @@ import {
   formatMatchDeliveryLabel,
 } from '../../logic/discoveryDisplay.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
+import WishFeatureChecklist from '../dealer/WishFeatureChecklist.jsx';
 import './discovery-results.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-function VariantRow({ match, paymentMode, onViewOffer, isRecommended = false }) {
+function VariantRow({ match, paymentMode, onViewOffer, isRecommended = false, searchProfile = null }) {
   const v = match.vehicle;
   const variantLabel = getMatchVariantLabel(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
   const delivery = formatMatchDeliveryLabel(match);
 
   return (
-    <button
-      type="button"
-      className={`disc-variant-row${isRecommended ? ' disc-variant-row--recommended' : ''}`}
-      onClick={() => onViewOffer?.(v)}
-    >
-      <div className="disc-variant-row__main">
-        <span className="disc-variant-row__trim">
-          {variantLabel}
-          {isRecommended && <span className="disc-variant-row__badge">Empfohlen</span>}
-        </span>
-        {delivery && <span className="disc-variant-row__delivery">{delivery}</span>}
-      </div>
-      <div className="disc-variant-row__meta">
-        <span className="disc-variant-row__price">
-          ab {price.label}{price.suffix}
-        </span>
-        {match.cleverQuote && (
-          <CleverQuoteBadge cleverQuote={match.cleverQuote} size="sm" showTier={false} />
-        )}
-        <span className="disc-variant-row__arrow" aria-hidden>→</span>
-      </div>
-    </button>
+    <div className="disc-variant-row-wrap" role="listitem">
+      <button
+        type="button"
+        className={`disc-variant-row${isRecommended ? ' disc-variant-row--recommended' : ''}`}
+        onClick={() => onViewOffer?.(v)}
+      >
+        <div className="disc-variant-row__main">
+          <span className="disc-variant-row__trim">
+            {variantLabel}
+            {isRecommended && <span className="disc-variant-row__badge">Empfohlen</span>}
+          </span>
+          {delivery && <span className="disc-variant-row__delivery">{delivery}</span>}
+        </div>
+        <div className="disc-variant-row__meta">
+          <span className="disc-variant-row__price">
+            ab {price.label}{price.suffix}
+          </span>
+          {match.cleverQuote && (
+            <CleverQuoteBadge cleverQuote={match.cleverQuote} size="sm" showTier={false} />
+          )}
+          <span className="disc-variant-row__arrow" aria-hidden>→</span>
+        </div>
+      </button>
+      <WishFeatureChecklist
+        profile={searchProfile}
+        match={match}
+        title="Wünsche in dieser Ausstattung"
+      />
+    </div>
   );
 }
 
@@ -59,6 +67,7 @@ export default function DiscoveryModelLineCard({
   onViewOffer,
   onCleverQuoteWhy,
   onChangePaymentMode,
+  searchProfile = null,
   heroBadge,
   recommendReasons = [],
   whyTitle,
@@ -160,6 +169,8 @@ export default function DiscoveryModelLineCard({
         </div>
       )}
 
+      <WishFeatureChecklist profile={searchProfile} match={primaryMatch} />
+
       {hasMultipleVariants && (
         <div className="disc-model-line__variants">
           <button
@@ -181,6 +192,7 @@ export default function DiscoveryModelLineCard({
                   paymentMode={paymentMode}
                   onViewOffer={onViewOffer}
                   isRecommended={entry.isPrimary}
+                  searchProfile={searchProfile}
                 />
               ))}
             </div>

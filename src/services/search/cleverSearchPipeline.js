@@ -59,7 +59,29 @@ export function runCleverSearch({
   });
 
   const ranked = rankAdvisorDiscoveryMatches(raw, { wishes, filters, chipIds, limit });
-  const modelLineGroups = buildModelLineGroups(raw, ranked, { wishes, chipIds });
+  let modelLineGroups = buildModelLineGroups(raw, ranked, { wishes, chipIds });
+
+  if (!ranked.length && enrichedPool.length) {
+    const fallbackRaw = matchVehiclesToWish({
+      wishes,
+      vehicles: enrichedPool,
+      getDisplayRate: getDisplayRate ?? ((v) => v.displayRate ?? v.monthlyRate),
+    });
+    const fallbackRanked = rankAdvisorDiscoveryMatches(fallbackRaw, { wishes, filters, chipIds, limit });
+    if (fallbackRanked.length) {
+      modelLineGroups = buildModelLineGroups(fallbackRaw, fallbackRanked, { wishes, chipIds });
+      return {
+        profile,
+        matches: fallbackRanked,
+        modelLineGroups,
+        excluded,
+        exclusionHint: buildExclusionHint(profile, excluded),
+        noExactMatchMessage: 'Wir zeigen die bestpassenden Modelle – nicht alle Wünsche sind in jeder Ausstattung serienmäßig enthalten.',
+        eligibleCount: enrichedPool.length,
+        partialMatch: true,
+      };
+    }
+  }
 
   return {
     profile,

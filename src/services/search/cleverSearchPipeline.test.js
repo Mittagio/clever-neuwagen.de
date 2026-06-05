@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { getKiaSalesVehiclePool } from '../../data/kia/kiaPartnerHub.js';
 import { filterMarketplaceVehicles } from '../../logic/marketplaceService.js';
 import { parseSearchIntent } from './searchIntentParser.js';
-import { intentToMarketplaceFilters } from './intentToFilters.js';
+import { intentToMarketplaceFilters, toAdvisorMarketplaceFilters } from './intentToFilters.js';
 import { parseCustomerWish } from '../wish/wishParser.js';
 import { runCleverSearch } from './cleverSearchPipeline.js';
 import { buildSearchProfile } from './searchProfile.js';
@@ -23,7 +23,7 @@ function runQuery(query, extra = {}) {
     wishes.features.push('elektro');
   }
   const pool = getKiaSalesVehiclePool({ dealerSlug: 'autohaus-trinkle' });
-  const prepared = filterMarketplaceVehicles(pool, filters).map((v) => ({
+  const prepared = filterMarketplaceVehicles(pool, toAdvisorMarketplaceFilters(filters)).map((v) => ({
     ...v,
     displayRate: adjustRateForTerm(v.monthlyRate, 48),
   }));
@@ -93,5 +93,15 @@ const prof = buildSearchProfile({
 });
 assert.equal(prof.fuel, 'electric');
 assert.equal(prof.seatsMin, 7);
+
+const ausstattung = runQuery('elektro sitzheizung wärmepumpe 360 kamera');
+assert.ok(ausstattung.matches.length >= 3, 'Ausstattungswünsche: Ergebnisse statt leer');
+const topLine = getModelLineKey(ausstattung.matches[0].vehicle);
+assert.ok(['ev3', 'ev4'].includes(topLine), `EV3/EV4 top bei Elektro+Ausstattung: ${topLine}`);
+const ev3Top = ausstattung.matches[0];
+assert.ok(
+  (ev3Top.matchedFeatures ?? []).includes('heated_seats') || ev3Top.cleverQuote?.percent >= 80,
+  'Top-Treffer deckt Wünsche ab',
+);
 
 console.log('cleverSearchPipeline tests OK');

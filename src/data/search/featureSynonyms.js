@@ -2,27 +2,12 @@
  * Feature-Synonyme für Intent-Parsing (längere Phrasen zuerst matchen)
  */
 
+import { buildFeatureSynonymGroupsFromDictionary } from './customerFeatureDictionary.js';
+
+const DICTIONARY_GROUPS = buildFeatureSynonymGroupsFromDictionary();
+
 export const FEATURE_SYNONYM_GROUPS = [
-  {
-    id: 'camera_360',
-    patterns: [
-      '360 grad kamera',
-      '360° kamera',
-      '360-grad-kamera',
-      '360 grad',
-      '360°',
-      'rundumsichtkamera',
-      'rundumsicht',
-      'rundum kamera',
-      'kameras rundum',
-      'surround view',
-      'around view',
-      'bird view',
-      'kamera rundum',
-      '360 kamera',
-    ],
-    contextWords: ['grad', 'kamera', 'cam', 'rundum', 'view', 'sensor', 'park', 'surround', 'bird'],
-  },
+  ...DICTIONARY_GROUPS,
   {
     id: 'parking_front',
     patterns: [
@@ -67,32 +52,9 @@ export const FEATURE_SYNONYM_GROUPS = [
   {
     id: 'towbar',
     patterns: [
-      'anhängerkupplung',
-      'anhaengerkupplung',
       'anhänger ziehen',
       'anhaenger ziehen',
-      'ahk',
-      'anhängelast',
-      'anhaengelast',
       'abschleppkupplung',
-    ],
-  },
-  {
-    id: 'heat_pump',
-    patterns: ['wärmepumpe', 'waermepumpe', 'wp'],
-  },
-  {
-    id: 'heated_seats',
-    patterns: [
-      'sitzheizung',
-      'sitzheizungen',
-      'sitzheizugn',
-      'sitzhiezug',
-      'sitzheizug',
-      'beheizbare sitze',
-      'warme sitze',
-      'beheizte sitze',
-      'sitzklima',
     ],
   },
   {
@@ -137,6 +99,7 @@ export const PROTECTED_NUMBER_CONTEXTS = [
 
 export const FUEL_SYNONYMS = {
   elektro: [
+    'elektro',
     'elektroauto',
     'e-auto',
     'e auto',

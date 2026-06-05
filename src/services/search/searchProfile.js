@@ -4,6 +4,7 @@
  */
 
 import { parseSearchIntent } from './searchIntentParser.js';
+import { normalizeFeatureIdsToInternal } from './canonicalFeatureIds.js';
 
 const META_FEATURES = new Set(['elektro', 'benzin', 'reichweite', 'family_suv']);
 
@@ -75,18 +76,24 @@ export function buildSearchProfile({
   if (chipIds.includes('type_kleinwagen')) bodyType = 'kleinwagen';
   if (chipIds.includes('type_suv')) bodyType = 'suv';
 
-  const requiredFeatures = features.filter((f) => !META_FEATURES.has(f));
+  const requiredFeatures = normalizeFeatureIdsToInternal(
+    features.filter((f) => !META_FEATURES.has(f)),
+  );
 
   if (chipIds.includes('fuel_elektro')) fuel = 'electric';
   if (chipIds.includes('heated_seats') && !requiredFeatures.includes('heated_seats')) {
     requiredFeatures.push('heated_seats');
   }
+  if (!fuel && requiredFeatures.includes('heat_pump')) fuel = 'electric';
+
+  const rangeKmMin = parsed.rangeKmMin ?? filters.rangeKmMin ?? null;
 
   return {
     fuel,
     seatsMin,
     maxMonthlyRate: parsed.maxRate ?? filters.maxRate ?? wishes.budget?.maxMonthlyRate ?? null,
     maxPrice: parsed.maxPrice ?? filters.maxPrice ?? wishes.budget?.maxPrice ?? null,
+    minRangeKm: rangeKmMin,
     bodyType,
     bodyClass: bodyType === 'kleinwagen' ? 'kleinwagen' : null,
     transmission: parsed.transmission ?? filters.transmission ?? null,
@@ -99,23 +106,40 @@ export function buildSearchProfile({
     confidence: parsed.confidence ?? 0.5,
     rawQuery: parsed.rawQuery ?? query,
     availability: parsed.availability ?? filters.availability ?? null,
-    rangeKmMin: parsed.rangeKmMin ?? filters.rangeKmMin ?? null,
+    rangeKmMin,
     payment: parsed.payment ?? filters.payment ?? wishes.budget?.type ?? 'leasing',
   };
 }
 
-/** Für spätere OpenAI Structured Outputs – gleiches Schema. */
+/** Für OpenAI Structured Outputs – nur Suchprofil, keine Fahrzeugauswahl. */
 export const SEARCH_PROFILE_JSON_SCHEMA = {
   name: 'customer_search_profile',
   schema: {
     type: 'object',
     properties: {
       fuel: { type: ['string', 'null'], enum: ['electric', 'hybrid', 'plugin_hybrid', 'combustion', null] },
+      minRangeKm: { type: ['integer', 'null'] },
       seatsMin: { type: ['integer', 'null'] },
-      maxMonthlyRate: { type: ['number', 'null'] },
-      bodyType: { type: ['string', 'null'] },
-      requiredFeatures: { type: 'array', items: { type: 'string' } },
+      requiredFeatures: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: [
+            'camera_360', 'heat_pump', 'heated_front_seats', 'electric_tailgate',
+            'blind_spot', 'towbar', 'panorama_roof', 'rear_camera', 'steering_heat',
+          ],
+        },
+      },
       softPreferences: { type: 'array', items: { type: 'string' } },
+      budget: {
+        type: ['object', 'null'],
+        properties: {
+          type: { type: 'string', enum: ['leasing', 'cash', 'finance'] },
+          maxMonthlyRate: { type: ['number', 'null'] },
+          maxPrice: { type: ['number', 'null'] },
+        },
+        additionalProperties: false,
+      },
       confidence: { type: 'number' },
     },
     required: ['requiredFeatures', 'softPreferences', 'confidence'],

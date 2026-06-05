@@ -8,7 +8,7 @@ import { filterMarketplaceVehicles } from '../src/logic/marketplaceService.js';
 import { adjustRateForTerm } from '../src/logic/oneSearchService.js';
 import { parseSearchIntent } from '../src/services/search/searchIntentParser.js';
 import { parseCustomerSearchProfile } from '../src/services/search/openAiIntentParser.js';
-import { intentToMarketplaceFilters } from '../src/services/search/intentToFilters.js';
+import { intentToMarketplaceFilters, toAdvisorMarketplaceFilters } from '../src/services/search/intentToFilters.js';
 import { parseCustomerWish } from '../src/services/wish/wishParser.js';
 import { runCleverSearch } from '../src/services/search/cleverSearchPipeline.js';
 import { computeSalesAdvisorResults } from '../src/services/sales/salesAdvisorService.js';
@@ -70,11 +70,11 @@ function runDiscoveryCore(payload = {}, intent) {
   const termMonths = filters.termMonths ?? DEFAULT_TERM;
 
   const pool = prepareVehiclePool(dealerSlug, activeModelIds);
-  const filtered = filterMarketplaceVehicles(pool, {
+  const filtered = filterMarketplaceVehicles(pool, toAdvisorMarketplaceFilters({
     ...filters,
     excludedBrands: [],
     excludedModels: [],
-  }).map((vehicle) => ({
+  })).map((vehicle) => ({
     ...vehicle,
     displayRate: adjustRateForTerm(vehicle.monthlyRate, termMonths),
   }));

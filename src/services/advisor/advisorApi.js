@@ -3,7 +3,10 @@
  * Backend ist Single Source of Truth; lokale Berechnung nur als Fallback.
  */
 
+import { fetchWithTimeout } from './fetchWithTimeout.js';
+
 const API_BASE = '/api/v1';
+const API_TIMEOUT_MS = 8000;
 
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
@@ -13,22 +16,25 @@ async function parseJson(res) {
   return data;
 }
 
-export async function fetchAdvisorDiscoverySearch(payload) {
-  const res = await fetch(`${API_BASE}/advisor/search`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+async function apiFetch(url, options = {}) {
+  const res = await fetchWithTimeout(url, options, API_TIMEOUT_MS);
   return parseJson(res);
 }
 
-export async function fetchSalesAdvisorSearch(payload) {
-  const res = await fetch(`${API_BASE}/advisor/sales`, {
+export async function fetchAdvisorDiscoverySearch(payload) {
+  return apiFetch(`${API_BASE}/advisor/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return parseJson(res);
+}
+
+export async function fetchSalesAdvisorSearch(payload) {
+  return apiFetch(`${API_BASE}/advisor/sales`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function fetchAdvisorVehicle(slug, dealerSlug, context = {}) {
@@ -40,8 +46,7 @@ export async function fetchAdvisorVehicle(slug, dealerSlug, context = {}) {
   if (context.useCase) qs.set('useCase', context.useCase);
   if (context.type) qs.set('type', context.type);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  const res = await fetch(`${API_BASE}/advisor/vehicles/${encodeURIComponent(slug)}${suffix}`);
-  return parseJson(res);
+  return apiFetch(`${API_BASE}/advisor/vehicles/${encodeURIComponent(slug)}${suffix}`);
 }
 
 export async function createAdvisorShareOnServer(payload) {
@@ -76,7 +81,7 @@ export async function fetchCustomerShareSessions(email) {
 
 export async function isAdvisorServerAvailable() {
   try {
-    const res = await fetch(`${API_BASE}/advisor/health`, { method: 'GET' });
+    const res = await fetchWithTimeout(`${API_BASE}/advisor/health`, { method: 'GET' }, 3000);
     return res.ok;
   } catch {
     return false;

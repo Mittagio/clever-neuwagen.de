@@ -14,8 +14,9 @@ import { filterMarketplaceVehicles } from '../logic/marketplaceService.js';
 import { adjustRateForTerm } from '../logic/oneSearchService.js';
 import { parseCustomerWish } from '../services/wish/wishParser.js';
 import { parseSearchIntent } from '../services/search/searchIntentParser.js';
-import { intentToMarketplaceFilters } from '../services/search/intentToFilters.js';
+import { intentToMarketplaceFilters, toAdvisorMarketplaceFilters } from '../services/search/intentToFilters.js';
 import { deriveAdvisorChipIds } from '../services/sales/advisorRanking.js';
+import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
@@ -76,7 +77,7 @@ export default function DealerPage() {
     );
     const termMonths = searchFilters?.termMonths ?? 48;
     const filtered = searchFilters
-      ? filterMarketplaceVehicles(pool, searchFilters)
+      ? filterMarketplaceVehicles(pool, toAdvisorMarketplaceFilters(searchFilters))
       : pool;
     return filtered.map((vehicle) => ({
       ...vehicle,
@@ -94,6 +95,18 @@ export default function DealerPage() {
     dealerSlug: dealerId,
     enabled: Boolean(activeQuery.trim()),
   });
+
+  const searchProfile = useMemo(() => {
+    if (!activeQuery.trim() || !searchFilters) return null;
+    const intent = parseSearchIntent(activeQuery);
+    return buildSearchProfile({
+      query: activeQuery,
+      intent,
+      filters: searchFilters,
+      wishes: searchWishes ?? {},
+      chipIds: searchChipIds,
+    });
+  }, [activeQuery, searchFilters, searchWishes, searchChipIds]);
 
   const handleSearch = useCallback((text) => {
     const value = text.trim();
@@ -120,12 +133,26 @@ export default function DealerPage() {
           {activeQuery && discoverySearch.modelLineGroups?.length > 0 && (
             <DealerSearchResults
               query={activeQuery}
+              searchProfile={searchProfile}
               modelLineGroups={discoverySearch.modelLineGroups}
               dealerSlug={dealerId}
               city={city}
               source={searchSource}
               onShowAll={handleShowAllResults}
             />
+          )}
+
+          {activeQuery && !discoverySearch.modelLineGroups?.length && (
+            <section className="dl-search-results dl-search-results--empty" aria-live="polite">
+              <h2 className="dl-section__title">Passende Modelle</h2>
+              <p className="dl-search-results__empty">
+                Für „{activeQuery}“ haben wir aktuell keinen passenden Kia im Bestand.
+                Probieren Sie weniger Ausstattungswünsche auf einmal – oder alle Modelle ansehen.
+              </p>
+              <button type="button" className="btn btn-secondary" onClick={handleShowAllResults}>
+                Alle Fahrzeuge anzeigen
+              </button>
+            </section>
           )}
 
           <DealerModelWorld

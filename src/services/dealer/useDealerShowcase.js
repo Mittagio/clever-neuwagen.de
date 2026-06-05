@@ -4,6 +4,7 @@ import { resolveSalesAdvisorSearch } from '../advisor/advisorSearchClient.js';
 
 /**
  * Händler-Showcase: Modelllinien aus Berater-Backend (Single Source of Truth).
+ * Zeigt lokale Ergebnisse sofort; Server-Sync im Hintergrund.
  */
 export function useDealerShowcase({ dealerSlug, limit = 12, chipIds = [] } = {}) {
   const localResult = useMemo(
@@ -13,11 +14,11 @@ export function useDealerShowcase({ dealerSlug, limit = 12, chipIds = [] } = {})
 
   const [remoteResult, setRemoteResult] = useState(null);
   const [source, setSource] = useState('local');
-  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    setSyncing(true);
 
     resolveSalesAdvisorSearch(
       { chipIds, options: { limit, dealerSlug } },
@@ -26,12 +27,12 @@ export function useDealerShowcase({ dealerSlug, limit = 12, chipIds = [] } = {})
       if (cancelled) return;
       setRemoteResult(result);
       setSource(result.source ?? 'server');
-      setLoading(false);
     }).catch(() => {
       if (cancelled) return;
       setRemoteResult(null);
       setSource('local');
-      setLoading(false);
+    }).finally(() => {
+      if (!cancelled) setSyncing(false);
     });
 
     return () => {
@@ -45,6 +46,6 @@ export function useDealerShowcase({ dealerSlug, limit = 12, chipIds = [] } = {})
     modelLineGroups: result.modelLineGroups ?? [],
     matches: result.matches ?? [],
     source,
-    loading,
+    loading: syncing && !remoteResult,
   };
 }

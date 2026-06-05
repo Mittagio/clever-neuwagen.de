@@ -18,9 +18,24 @@ Backend-Schnellaktion: **Gesprächsmodus**
 
 ## Berater-Pipeline (3 Schichten)
 
-1. **Intent Parser** – regelbasiert (`searchIntentParser.js`); optional OpenAI (`openAiIntentParser.js`, nur Suchprofil, keine Fahrzeugauswahl)
+**Prinzip:** OpenAI ist nicht die Wahrheit – die Fahrzeugdatenbank ist die Wahrheit. OpenAI übersetzt nur Sprache in Suchparameter.
+
+```
+Kunde schreibt → SearchProfile JSON → Rule Engine (Trim-DB) → CleverQuote → Erklärung
+```
+
+| Schicht | Datei | Aufgabe |
+|---------|-------|---------|
+| 1 Parser | `searchIntentParser.js`, `openAiIntentParser.js` | Kundentext → `SearchProfile` (Structured Output) |
+| 2 Wörterbuch | `customerFeatureDictionary.js`, `canonicalFeatureIds.js` | Kundenbegriff → Feature-ID |
+| 3 Rule Engine | `vehicleFeatureRuleEngine.js`, `trimFeatureMapping.js`, `kiaModelAttributes.js` | Jedes Trim prüfen (✓/✗ pro Merkmal) |
+| 4 Ranking | `cleverSearchPipeline.js`, `cleverQuoteService.js` | CleverQuote % + Modelllinien |
+
+Test: `npm run test:feature-rules` (Beispiel: EV3 GT-Line 100 %, EV3 Earth ~60 %)
+
+1. **Intent Parser** – regelbasiert; optional OpenAI (nur Profil, keine Fahrzeugauswahl)
 2. **Vehicle Facts + harte Ausschlussregeln** – `hardExclusionRules.js`, `kiaModelAttributes.js`
-3. **CleverQuote-Ranking + Erklärung** – `advisorRanking.js`, Spread ca. 68–96 %
+3. **CleverQuote-Ranking + Erklärung** – `advisorRanking.js`, Spread ca. 68–100 %
 
 Zentral: `cleverSearchPipeline.js` → Modelllinien via `modelLineGroups.js` (Trim-Deduplizierung: Air, Earth, GT-Line pro Modellkarte).
 
@@ -109,6 +124,8 @@ npm run deploy:check
 ```
 
 Pilot lokal: `npm run dev:pilot`
+
+Pilot-Flow Smoke (API): `npm run test:pilot-flow`
 
 ## JSON-Stores (Pilot-Persistenz)
 
