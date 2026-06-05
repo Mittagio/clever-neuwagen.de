@@ -136,6 +136,9 @@ export function filtersFromSearchParams(searchParams) {
     modelExplicit: Boolean(searchParams.get('model')?.trim()),
     excludedBrands: parseExcludedBrandsParam(searchParams.get('excludeBrand')),
     excludedModels: parseExcludedModelsParam(searchParams.get('excludeModel')),
+    useCase: searchParams.get('useCase') ?? '',
+    termMonthsExplicit: searchParams.has('term'),
+    mileagePerYearExplicit: searchParams.has('mileageYear'),
   };
 }
 
@@ -179,6 +182,7 @@ export function buildFahrzeugeSearchUrl(filters) {
   if (filters.excludedModels?.length) {
     params.set('excludeModel', filters.excludedModels.join(','));
   }
+  if (filters.useCase) params.set('useCase', filters.useCase);
   const qs = params.toString();
   return `/fahrzeuge${qs ? `?${qs}` : ''}`;
 }

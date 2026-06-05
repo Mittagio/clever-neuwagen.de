@@ -11,29 +11,30 @@ export default function DealerCuratedSuggestions() {
   }
 
   return (
-    <section className="dl-section" aria-labelledby="dl-curated-heading">
+    <section className="dl-section dl-curated-section" aria-labelledby="dl-curated-heading">
       <h3 id="dl-curated-heading" className="dl-section__title">
-        Clever-Empfehlungen
+        Kunden mit ähnlichen Wünschen wählen
       </h3>
-      <p className="dl-section__sub">Was Kunden mit ähnlichen Wünschen wählen</p>
-      <div className="dl-curated">
+      <div className="dl-curated-rows">
         {DEALER_CURATED_GROUPS.map((group) => (
-          <article key={group.id} className="dl-curated__group card">
-            <h4 className="dl-curated__label">{group.label}</h4>
-            <ul className="dl-curated__picks">
+          <div key={group.id} className="dl-curated-row">
+            <p className="dl-curated-row__label">
+              <span aria-hidden>{group.icon}</span>
+              {group.label}
+            </p>
+            <div className="dl-curated-row__chips">
               {group.picks.map((pick) => (
-                <li key={pick.label}>
-                  <button
-                    type="button"
-                    className="dl-curated__pick"
-                    onClick={() => go(pick.query)}
-                  >
-                    {pick.label}
-                  </button>
-                </li>
+                <button
+                  key={pick.label}
+                  type="button"
+                  className="dl-curated-chip"
+                  onClick={() => go(pick.query)}
+                >
+                  {pick.label}
+                </button>
               ))}
-            </ul>
-          </article>
+            </div>
+          </div>
         ))}
       </div>
     </section>

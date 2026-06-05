@@ -60,6 +60,7 @@ export const SALES_ADVISOR_CHIP_GROUPS = [
       { id: 'daily_family', label: 'Familie', emoji: '👨‍👩‍👧‍👦', features: ['family_suv'] },
       { id: 'daily_city', label: 'Viel Stadtverkehr', emoji: '🏙', features: [] },
       { id: 'daily_long', label: 'Lange Strecken', emoji: '🛣', features: ['range_400'] },
+      { id: 'daily_gewerbe', label: 'Gewerbe', emoji: '🏢', features: [] },
     ],
   },
   {

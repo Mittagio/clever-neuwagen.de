@@ -3,7 +3,7 @@
  */
 
 import { RADIUS_CHIP_OPTIONS } from '../../logic/oneSearchService.js';
-import { getLocationDisplayLabel } from '../../logic/advisorLocation.js';
+import { getLocationDisplayLabel, parseLocationFromText } from '../../logic/advisorLocation.js';
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
 import {
   buildMileageSelectOptions,
@@ -378,6 +378,27 @@ function makeChip({
  * @param {object} intent
  * @param {object} [filters]
  */
+function userAskedForMileage(intent, filters = {}) {
+  if (intent.mileagePerYear != null) return true;
+  if (filters.mileagePerYearExplicit) return true;
+  const q = (intent.rawQuery ?? filters.query ?? '').toLowerCase();
+  return /\d[\d.\s]*\s*(000\s*)?km|\bkm\/jahr\b|kilometer\s*pro\s*jahr/i.test(q);
+}
+
+function userAskedForTerm(intent, filters = {}) {
+  if (intent.durationMonths != null) return true;
+  if (filters.termMonthsExplicit) return true;
+  const q = (intent.rawQuery ?? filters.query ?? '').toLowerCase();
+  return /\d+\s*monate|laufzeit|\bmon\.\b/i.test(q);
+}
+
+function userAskedForLocation(intent, filters = {}) {
+  if (intent.location) return true;
+  const q = filters.query ?? intent.rawQuery ?? '';
+  if (q.trim() && parseLocationFromText(q)) return true;
+  return false;
+}
+
 export function createEditableChips(intent, filters = {}) {
   const chips = [];
   const payment = intent.payment ?? filters.payment ?? 'leasing';
@@ -426,6 +447,22 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
+  const USE_CASE_LABELS = {
+    city: 'Stadt',
+    family: 'Familie',
+    long: 'Langstrecke',
+    gewerbe: 'Gewerbe',
+  };
+  if (filters.useCase && USE_CASE_LABELS[filters.useCase]) {
+    chips.push(makeChip({
+      id: 'useCase',
+      type: CHIP_TYPES.FEATURE,
+      label: USE_CASE_LABELS[filters.useCase],
+      value: filters.useCase,
+      editable: false,
+    }));
+  }
+
   if (intent.maxRate != null && payment !== 'cash') {
     chips.push(makeChip({
       id: 'maxRate',
@@ -469,7 +506,7 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   const mileage = intent.mileagePerYear ?? filters.mileagePerYear;
-  if (mileage) {
+  if (mileage && userAskedForMileage(intent, filters)) {
     chips.push(makeChip({
       id: 'mileagePerYear',
       type: CHIP_TYPES.MILEAGE,
@@ -480,7 +517,7 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   const term = normalizeCustomerTermMonths(intent.durationMonths ?? filters.termMonths);
-  if (shouldShowTermChip(term)) {
+  if (shouldShowTermChip(term) && userAskedForTerm(intent, filters)) {
     chips.push(makeChip({
       id: 'termMonths',
       type: CHIP_TYPES.DURATION,
@@ -537,28 +574,30 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
-  const locLabel = getLocationDisplayLabel({
-    city: filters.city,
-    plz: filters.plz,
-    label: filters.locLabel ?? intent.location,
-  });
-  if (locLabel) {
-    const radius = filters.radius ?? 25;
-    chips.push(makeChip({
-      id: 'location',
-      type: CHIP_TYPES.LOCATION,
-      label: filters.radius != null ? `${locLabel} · ${radius} km` : locLabel,
-      value: locLabel,
-      configKey: 'location',
-    }));
-  } else if (intent.location) {
-    chips.push(makeChip({
-      id: 'location',
-      type: CHIP_TYPES.LOCATION,
-      label: intent.location,
-      value: intent.location,
-      configKey: 'location',
-    }));
+  if (userAskedForLocation(intent, filters)) {
+    const locLabel = getLocationDisplayLabel({
+      city: filters.city,
+      plz: filters.plz,
+      label: filters.locLabel ?? intent.location,
+    });
+    if (locLabel) {
+      const radius = filters.radius ?? 25;
+      chips.push(makeChip({
+        id: 'location',
+        type: CHIP_TYPES.LOCATION,
+        label: filters.radius != null ? `${locLabel} · ${radius} km` : locLabel,
+        value: locLabel,
+        configKey: 'location',
+      }));
+    } else if (intent.location) {
+      chips.push(makeChip({
+        id: 'location',
+        type: CHIP_TYPES.LOCATION,
+        label: intent.location,
+        value: intent.location,
+        configKey: 'location',
+      }));
+    }
   }
 
   return chips.slice(0, 12);

@@ -14,6 +14,12 @@ import {
   retryDeliveryConfirmationEmail,
   retryVoucherEmail,
 } from '../services/delivery/deliveryWorkflow.js';
+import {
+  fetchPilotLeadsFromServer,
+  isPilotLeadsSyncEnabled,
+  patchPilotLeadOnServer,
+  pushPilotLeadToServer,
+} from '../services/pilot/pilotLeadsApi.js';
 
 const STORAGE_KEY = 'clever-neuwagen-leads';
 
@@ -110,12 +116,49 @@ function applyLeadPatch(prev, id, patch, historyText, historyType = 'system') {
   });
 }
 
+function mergeLeadsById(localLeads, remoteLeads) {
+  const map = new Map();
+  for (const lead of localLeads) map.set(lead.id, lead);
+  for (const lead of remoteLeads) {
+    const prev = map.get(lead.id);
+    if (!prev) {
+      map.set(lead.id, lead);
+      continue;
+    }
+    const prevAt = new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime();
+    const nextAt = new Date(lead.updatedAt ?? lead.createdAt ?? 0).getTime();
+    map.set(lead.id, nextAt >= prevAt ? lead : prev);
+  }
+  return normalizeLeads([...map.values()].sort(
+    (a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0),
+  ));
+}
+
 export function LeadsProvider({ children }) {
   const [leads, setLeads] = useState(loadLeads);
 
   useEffect(() => {
     saveLeads(leads);
   }, [leads]);
+
+  useEffect(() => {
+    if (!isPilotLeadsSyncEnabled()) return undefined;
+
+    let cancelled = false;
+
+    async function syncFromServer() {
+      const remote = await fetchPilotLeadsFromServer(PILOT_DEALER_ID);
+      if (cancelled || !remote.length) return;
+      setLeads((prev) => mergeLeadsById(prev, remote));
+    }
+
+    syncFromServer();
+    const timer = setInterval(syncFromServer, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     function onStorage(event) {
@@ -136,17 +179,24 @@ export function LeadsProvider({ children }) {
 
     addLead(lead) {
       setLeads((prev) => [lead, ...prev]);
+      if (isPilotLeadsSyncEnabled()) {
+        pushPilotLeadToServer(lead);
+      }
       return lead;
     },
 
     updateLead(id, partial) {
+      const updatedAt = new Date().toISOString();
       setLeads((prev) =>
         prev.map((lead) =>
           lead.id === id
-            ? { ...lead, ...partial, updatedAt: new Date().toISOString() }
+            ? { ...lead, ...partial, updatedAt }
             : lead,
         ),
       );
+      if (isPilotLeadsSyncEnabled()) {
+        patchPilotLeadOnServer(id, { ...partial, updatedAt });
+      }
     },
 
     updateContact(id, contact) {

@@ -3,47 +3,42 @@
  * Fahrzeugstammdaten bleiben read-only (src/data/models/).
  */
 
+function kiaCatalogEntry(id, name, { ev = false, pbv = false } = {}) {
+  return {
+    id,
+    brand: 'Kia',
+    name,
+    status: 'active',
+    active: true,
+    showOnDealerPage: true,
+    syncToLanding: true,
+    defaultDeliveryTime: pbv ? '8–12 Wochen' : ev ? '6–8 Wochen' : '4–6 Wochen',
+  };
+}
+
+/** Alle Kia-Modelllinien für Pilot-LIVE (PDF + Registry) */
 export const DEALER_MODEL_CATALOG = [
-  {
-    id: 'sportage',
-    brand: 'Kia',
-    name: 'Sportage',
-    status: 'active',
-    active: true,
-    showOnDealerPage: true,
-    syncToLanding: true,
-    defaultDeliveryTime: '4–6 Wochen',
-  },
-  {
-    id: 'ev3',
-    brand: 'Kia',
-    name: 'EV3',
-    status: 'active',
-    active: true,
-    showOnDealerPage: true,
-    syncToLanding: true,
-    defaultDeliveryTime: '6–8 Wochen',
-  },
-  {
-    id: 'ev4',
-    brand: 'Kia',
-    name: 'EV4',
-    status: 'preparing',
-    active: false,
-    showOnDealerPage: false,
-    syncToLanding: false,
-    defaultDeliveryTime: '8–12 Wochen',
-  },
-  {
-    id: 'picanto',
-    brand: 'Kia',
-    name: 'Picanto',
-    status: 'preparing',
-    active: false,
-    showOnDealerPage: false,
-    syncToLanding: false,
-    defaultDeliveryTime: '4–6 Wochen',
-  },
+  kiaCatalogEntry('picanto', 'Picanto'),
+  kiaCatalogEntry('stonic', 'Stonic'),
+  kiaCatalogEntry('xceed', 'XCeed'),
+  kiaCatalogEntry('k4', 'K4'),
+  kiaCatalogEntry('k4-sportswagon', 'K4 Sportswagon'),
+  kiaCatalogEntry('ceed', 'Ceed'),
+  kiaCatalogEntry('niro', 'Niro Hybrid'),
+  kiaCatalogEntry('seltos', 'Seltos'),
+  kiaCatalogEntry('sportage', 'Sportage'),
+  kiaCatalogEntry('sportage-phev', 'Sportage Plug-in Hybrid'),
+  kiaCatalogEntry('sorento', 'Sorento'),
+  kiaCatalogEntry('sorento-hybrid', 'Sorento Hybrid'),
+  kiaCatalogEntry('sorento-phev', 'Sorento Plug-in Hybrid'),
+  kiaCatalogEntry('ev2', 'EV2', { ev: true }),
+  kiaCatalogEntry('ev3', 'EV3', { ev: true }),
+  kiaCatalogEntry('ev4', 'EV4', { ev: true }),
+  kiaCatalogEntry('ev5', 'EV5', { ev: true }),
+  kiaCatalogEntry('ev5-gt', 'EV5 GT', { ev: true }),
+  kiaCatalogEntry('ev6', 'EV6', { ev: true }),
+  kiaCatalogEntry('ev9', 'EV9', { ev: true }),
+  kiaCatalogEntry('pv5-passenger', 'PV5 Passenger', { ev: true, pbv: true }),
 ];
 
 export const LEASING_TERM_OPTIONS = [12, 18, 24, 30, 36, 42, 48, 54, 60];

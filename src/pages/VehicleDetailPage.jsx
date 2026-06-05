@@ -63,6 +63,7 @@ export default function VehicleDetailPage() {
 
   const {
     vehicle,
+    vehicleLoading,
     showCustomize,
     configMode,
     filters,
@@ -159,6 +160,18 @@ export default function VehicleDetailPage() {
 
   if (vehicle?.offerCode && !configMode && !showCustomize) {
     return <Navigate to={buildOfferPath(vehicle.offerCode)} replace />;
+  }
+
+  if (vehicleLoading) {
+    return (
+      <PageShell>
+        <div className="vd-page">
+          <div className="vd-page__container">
+            <p>Fahrzeug wird geladen …</p>
+          </div>
+        </div>
+      </PageShell>
+    );
   }
 
   if (!vehicle || !displayPrice) {

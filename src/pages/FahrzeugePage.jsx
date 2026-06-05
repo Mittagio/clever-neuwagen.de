@@ -71,9 +71,11 @@ import {
 import { parseCustomerWish } from '../services/wish/wishParser.js';
 import { applyPlausibilityCorrection } from '../services/search/plausibilityChecker.js';
 
-
-
-import { matchVehiclesToWish } from '../services/wish/wishMatchEngine.js';
+import { matchAndRankDiscovery } from '../services/search/discoveryAdvisorSearch.js';
+import { useAdvisorDiscoverySearch } from '../services/advisor/useAdvisorDiscoverySearch.js';
+import { PILOT_DEALER_ID } from '../config/pilotLive.js';
+import { needsDiscoveryClarification, shouldApplyAdvisorRanking } from '../services/sales/advisorRanking.js';
+import SalesWishClarification from '../components/sales-advisor/SalesWishClarification.jsx';
 
 
 
@@ -205,6 +207,8 @@ const DEFAULT_FILTERS = {
 
   excludedModels: [],
 
+  useCase: '',
+
 };
 
 
@@ -281,12 +285,14 @@ export default function FahrzeugePage() {
   }, [filters]);
 
   const matchesForCatalog = useMemo(
-    () => matchVehiclesToWish({
+    () => matchAndRankDiscovery({
       wishes,
       vehicles: vehiclesForCatalogPool,
+      filters,
       getDisplayRate: (v) => v.displayRate,
+      limit: 30,
     }),
-    [wishes, vehiclesForCatalogPool],
+    [wishes, vehiclesForCatalogPool, filters],
   );
 
   const neverEmptyForCatalog = useMemo(
@@ -305,10 +311,13 @@ export default function FahrzeugePage() {
     return vehiclesForCatalogPool;
   }, [neverEmptyForCatalog, vehiclesForCatalogPool]);
 
-  const resultCatalog = useMemo(
-    () => extractResultCatalogFromVehicles(catalogPoolVehicles),
-    [catalogPoolVehicles],
-  );
+  const resultCatalog = useMemo(() => {
+    if (shouldApplyAdvisorRanking(filters, wishes)) {
+      const vehicles = matchesForCatalog.map((m) => m.vehicle).filter(Boolean);
+      if (vehicles.length) return extractResultCatalogFromVehicles(vehicles);
+    }
+    return extractResultCatalogFromVehicles(catalogPoolVehicles);
+  }, [matchesForCatalog, catalogPoolVehicles, filters, wishes]);
 
   const searchConflict = useMemo(
     () => mergeSearchConflicts(
@@ -336,6 +345,20 @@ export default function FahrzeugePage() {
 
   function handleShowAllBrands() {
     patchFilters({ excludedBrands: [], excludedModels: filters.excludedModels });
+  }
+
+  function handleDiscoveryClarify(useCaseChipId) {
+    const useCaseMap = {
+      daily_city: 'city',
+      daily_family: 'family',
+      daily_long: 'long',
+      daily_gewerbe: 'gewerbe',
+    };
+    navigate(buildFahrzeugeSearchUrl({
+      ...filters,
+      useCase: useCaseMap[useCaseChipId] ?? '',
+      intentStructured: true,
+    }));
   }
 
   function handleResetSearch() {
@@ -379,34 +402,21 @@ export default function FahrzeugePage() {
 
 
 
-  const exactMatches = useMemo(
+  const { discoverySearch } = useAdvisorDiscoverySearch({
+    wishes,
+    filters,
+    vehicles: filtered,
+    getDisplayRate: (v) => v.displayRate,
+    limit: 30,
+    dealerSlug: PILOT_DEALER_ID,
+    enabled: true,
+  });
 
+  const exactMatches = discoverySearch.matches;
 
-
-    () => matchVehiclesToWish({
-
-
-
-      wishes,
-
-
-
-      vehicles: filtered,
-
-
-
-      getDisplayRate: (v) => v.displayRate,
-
-
-
-    }),
-
-
-
-    [wishes, filtered],
-
-
-
+  const needsClarification = useMemo(
+    () => needsDiscoveryClarification(filters, wishes),
+    [filters, wishes],
   );
 
 
@@ -782,6 +792,13 @@ export default function FahrzeugePage() {
 
 
 
+          {needsClarification ? (
+            <SalesWishClarification
+              chipIds={['fuel_elektro']}
+              onSelectUseCase={handleDiscoveryClarify}
+              onBack={handleResetSearch}
+            />
+          ) : (
           <DiscoveryResultsView
 
             filters={filters}
@@ -790,6 +807,9 @@ export default function FahrzeugePage() {
 
             results={displayResults}
             offerStats={offerStats}
+            exclusionHint={discoverySearch.exclusionHint}
+            noExactMatchMessage={discoverySearch.noExactMatchMessage}
+            modelLineGroups={discoverySearch.modelLineGroups}
 
             onEditChip={handleEditChip}
 
@@ -862,6 +882,8 @@ export default function FahrzeugePage() {
             )}
 
           />
+
+          )}
 
 
 

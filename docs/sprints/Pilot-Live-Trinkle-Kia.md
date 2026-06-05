@@ -21,7 +21,10 @@ Variablen (`.env.example`):
 3. **Leads** → keine Demo-/Pilot-Leads; nur echte Anfragen aus dem Flow
 4. **Backend** → grünes „Pilot LIVE“-Banner mit Link zur Kunden-Landing
 
-Leads liegen weiter in `localStorage` (`clever-neuwagen-leads`) – gleicher Browser = Lead sichtbar unter `/backend/verkaufschancen`.
+Leads werden im Pilot-Modus zusätzlich auf dem **Server** gespeichert (`data/pilot-leads.json`, gitignored).
+Das Backend pollt alle 5 Sekunden – **Kunde am Handy, du am PC** funktioniert im gleichen WLAN.
+
+Lokal zusätzlich: `localStorage` (`clever-neuwagen-leads`) als Cache.
 
 ## Test-Checkliste (mit echtem Kunden)
 
@@ -29,7 +32,8 @@ Leads liegen weiter in `localStorage` (`clever-neuwagen-leads`) – gleicher Bro
 2. **Backend prüfen:** `/backend` → Banner sichtbar, **0 Demo-Leads**
 3. **Kunden-Landing:** `/haendler/autohaus-trinkle` oder `/` (Redirect)
 4. Kia-Fahrzeug wählen → Detailseite → **Anfrage senden** (Name, E-Mail, ggf. Telefon)
-5. **Lead prüfen:** `/backend/verkaufschancen` oder `/communication` → neuer Lead mit Brief, CQ %, Budget
+5. **Lead prüfen:** `/backend/verkaufschancen` → nach max. 5 s neuer Lead mit Brief, CQ %, Budget
+6. **Kunde am Handy:** PC-IP im WLAN nutzen, z. B. `http://192.168.x.x:5173/haendler/autohaus-trinkle` (nicht `localhost`)
 6. Optional: WhatsApp-Text aus Lead-Detail testen
 
 ## Hinweise

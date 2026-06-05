@@ -35,5 +35,6 @@ export const LEAD_SOURCES = {
   advisor: 'KI-Kaufberater',
   landing: 'Landingpage',
   pilot: 'Pilot Trinkle',
+  gespraech: 'Gesprächsmodus',
   manual: 'Manuell',
 };

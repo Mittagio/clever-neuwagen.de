@@ -1,7 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
-
-const MARKETPLACE_VEHICLES = getMarketplaceVehiclePool();
 import { CONFIGURATOR_FEATURE_IDS } from '../data/features/featureCatalog.js';
 import { getManufacturerModel } from '../data/manufacturer/manufacturerRegistry.js';
 import { filtersFromSearchParams } from '../logic/oneSearchService.js';
@@ -31,6 +28,8 @@ import { computeCleverQuote, computeCleverQuoteAfterPackage } from '../services/
 import { scoreVehicleAgainstWish } from '../services/wish/wishMatchEngine.js';
 import { getDisplayPrice } from '../services/pricing/pricingResolver.js';
 import { useDealerGoogleReviewsBatch, enrichOffersWithGoogle } from './useDealerGoogleReviews.js';
+import { resolveVehicleBySlug } from '../services/advisor/advisorVehicleClient.js';
+import { PILOT_DEALER_ID } from '../config/pilotLive.js';
 
 const DEFAULT_TERM = 48;
 const DEFAULT_MILEAGE = 10000;
@@ -39,9 +38,10 @@ export function useVehicleDetailController({ slug, searchParams }) {
   const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
   const configMode = searchParams.get('wunsch') === '1' || filters.features.length > 0 || !!filters.query;
 
-  const vehicle = MARKETPLACE_VEHICLES.find((item) => item.slug === slug);
-  const manufacturer = vehicle ? getManufacturerModel(vehicle.brand, vehicle.model) : null;
-  const showCustomize = !!manufacturer || configMode;
+  const [vehicle, setVehicle] = useState(null);
+  const [advisorMatch, setAdvisorMatch] = useState(null);
+  const [vehicleLoading, setVehicleLoading] = useState(true);
+  const [vehicleSource, setVehicleSource] = useState(null);
 
   const wishes = useMemo(
     () => parseCustomerWish(filters.query, filters.features),
@@ -53,19 +53,61 @@ export function useVehicleDetailController({ slug, searchParams }) {
     [wishes.features],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    setVehicleLoading(true);
+
+    resolveVehicleBySlug(slug, PILOT_DEALER_ID, {
+      query: filters.query ?? '',
+      features: filters.features ?? [],
+      fuel: filters.fuel ?? null,
+      useCase: filters.useCase ?? null,
+      type: filters.type ?? null,
+    }).then((result) => {
+      if (cancelled) return;
+      setVehicle(result.vehicle);
+      setAdvisorMatch(result.match);
+      setVehicleSource(result.source);
+      setVehicleLoading(false);
+    }).catch(() => {
+      if (!cancelled) {
+        setVehicle(null);
+        setAdvisorMatch(null);
+        setVehicleSource('none');
+        setVehicleLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, filters.query, filters.features?.join(','), filters.fuel, filters.useCase, filters.type]);
+
+  const manufacturer = vehicle ? getManufacturerModel(vehicle.brand, vehicle.model) : null;
+  const showCustomize = !!manufacturer || configMode;
+
   const listingTrimId = useMemo(
     () => (vehicle ? trimIdFromVehicle(vehicle) : null) ?? manufacturer?.defaultTrimId,
     [vehicle, manufacturer],
   );
 
   const [detailSelection, setDetailSelection] = useState(() =>
-    createInitialDetailSelection(vehicle, {
-      trim: listingTrimId,
-      selectedFeatures: initialWishIds,
+    createInitialDetailSelection(null, {
+      trim: null,
+      selectedFeatures: [],
     }),
   );
 
   const [trimOverride, setTrimOverride] = useState(null);
+
+  useEffect(() => {
+    if (!vehicle) return;
+    setTrimOverride(null);
+    setDetailSelection(createInitialDetailSelection(vehicle, {
+      trim: listingTrimId,
+      selectedFeatures: initialWishIds,
+    }));
+  }, [vehicle?.slug, listingTrimId, initialWishIds.join(',')]);
   const [selectedDealerSlug, setSelectedDealerSlug] = useState(null);
   const [priceDrawerOpen, setPriceDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -319,7 +361,11 @@ export function useVehicleDetailController({ slug, searchParams }) {
   }, [manufacturer, vehicle, effectiveWishIds]);
 
   const cleverQuote = useMemo(() => {
-    if (!vehicle || !effectiveWishIds.length) return null;
+    if (!vehicle) return null;
+    if (advisorMatch?.cleverQuote) {
+      return advisorMatch.cleverQuote;
+    }
+    if (!effectiveWishIds.length) return null;
     const match = scoreVehicleAgainstWish(vehicle, wishes, activeDealer?.monthlyRate ?? vehicle.monthlyRate);
     return computeCleverQuote({
       vehicle,
@@ -328,7 +374,7 @@ export function useVehicleDetailController({ slug, searchParams }) {
       trimId,
       selectedPackages: detailSelection.selectedPackages,
     });
-  }, [vehicle, wishes, effectiveWishIds, trimId, detailSelection.selectedPackages, activeDealer?.monthlyRate]);
+  }, [vehicle, advisorMatch?.cleverQuote, wishes, effectiveWishIds, trimId, detailSelection.selectedPackages, activeDealer?.monthlyRate]);
 
   const cleverQuoteAfterPackage = useMemo(() => {
     if (!cleverQuote?.upgrade) return null;
@@ -337,6 +383,9 @@ export function useVehicleDetailController({ slug, searchParams }) {
 
   return {
     vehicle,
+    advisorMatch,
+    vehicleLoading,
+    vehicleSource,
     manufacturer,
     showCustomize,
     configMode,

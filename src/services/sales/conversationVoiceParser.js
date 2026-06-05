@@ -154,6 +154,19 @@ export function isSpeechRecognitionSupported() {
     && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+/** Web Speech API liefert englische error-Codes – für Verkäufer verständlich machen */
+export function mapSpeechRecognitionError(code) {
+  const messages = {
+    network: 'Spracheingabe braucht Internet (Chrome nutzt Google-Server). Bitte Chips nutzen oder Gespräch eintippen.',
+    'not-allowed': 'Mikrofon-Zugriff verweigert. Bitte in den Browser-Einstellungen erlauben.',
+    'service-not-allowed': 'Spracheingabe ist hier nicht erlaubt (HTTPS oder Firmen-Netz). Bitte eintippen oder Chips nutzen.',
+    'audio-capture': 'Kein Mikrofon gefunden. Bitte Headset prüfen oder eintippen.',
+    'no-speech': 'Nichts gehört – bitte nochmal sprechen oder eintippen.',
+    aborted: 'Aufnahme abgebrochen.',
+  };
+  return messages[code] ?? `Spracheingabe fehlgeschlagen (${code}). Bitte eintippen oder Chips nutzen.`;
+}
+
 export function startSpeechRecognition({ onResult, onError, onEnd, interim = true }) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -175,7 +188,7 @@ export function startSpeechRecognition({ onResult, onError, onEnd, interim = tru
     }
     onResult?.({ finalText: finalText.trim(), interimText: interimText.trim(), raw: event });
   };
-  recognition.onerror = (e) => onError?.(e.error ?? 'Fehler bei Spracheingabe');
+  recognition.onerror = (e) => onError?.(mapSpeechRecognitionError(e.error ?? 'unknown'));
   recognition.onend = () => onEnd?.();
   recognition.start();
   return recognition;

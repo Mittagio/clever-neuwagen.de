@@ -82,6 +82,12 @@ export function buildCuratedResultsLine(total, shown = 3) {
   return `${total} Kia-Modelle geprüft – hier die besten ${shown} Treffer`;
 }
 
+export function buildAdvisorDiscoveryResultsLine(count) {
+  if (count === 0) return 'Keine Elektro-Modelle gefunden';
+  if (count === 1) return '1 Elektro-Modelllinie – sortiert nach CleverQuote™';
+  return `${count} Elektro-Modelllinien – sortiert nach CleverQuote™`;
+}
+
 export function hasCleverQuoteWishes(wishes) {
   const ids = [...(wishes?.features ?? [])];
   if (wishes?.vehicleType === 'SUV' && !ids.includes('family_suv')) {

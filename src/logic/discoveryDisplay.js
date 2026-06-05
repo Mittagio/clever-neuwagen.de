@@ -34,6 +34,33 @@ export function formatMatchCashAlt(match) {
 }
 
 /** Prominente Lieferzeit für Ebene 1 (Sprint 37). */
+export function getMatchVariantLabel(match) {
+  const v = match?.vehicle ?? {};
+  if (v.trim?.trim()) return v.trim.trim();
+  if (match.bestTrim?.trim()) return match.bestTrim.trim();
+  const title = v.title ?? match.model ?? '';
+  const known = title.match(
+    /\b(Earth|Air|Vision|GT-Line|GT Line|Style|Design|Premium|Spirit|Gravity|Long Range|Standard Range)\b/i,
+  );
+  if (known) return known[1].replace(/\s+/g, ' ');
+  if (v.trimId) {
+    return String(v.trimId)
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return 'Ausstattung';
+}
+
+/** Stabile Trim-ID pro Modelllinie (Air, Earth, GT-Line …). */
+export function getTrimGroupKey(match) {
+  const v = match?.vehicle ?? {};
+  if (v.trimId) return String(v.trimId).toLowerCase();
+  return getMatchVariantLabel(match)
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
 export function formatMatchDeliveryLabel(match) {
   const v = match?.vehicle ?? {};
   const t = match?.bestOffer?.deliveryTime ?? v.deliveryTime ?? '';

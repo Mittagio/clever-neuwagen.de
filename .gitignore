@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 .tools/
+data/pilot-leads.json
+data/advisor-share-sessions.json
+data/customer-records.json
 dist
 dist-ssr
 .env

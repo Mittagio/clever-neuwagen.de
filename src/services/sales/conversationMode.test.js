@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
-import { parseConversationSpeech } from './conversationVoiceParser.js';
+import { mapSpeechRecognitionError, parseConversationSpeech } from './conversationVoiceParser.js';
 import { refineConversationText, buildDefaultWhatsAppMessage } from './conversationTextAssistant.js';
 import { buildNeedsSummary } from './salesAdvisorService.js';
+
+assert.ok(mapSpeechRecognitionError('network').includes('Internet'));
+assert.ok(mapSpeechRecognitionError('not-allowed').includes('Mikrofon'));
 
 const sample = 'Herr Müller sucht einen SUV, fährt 15.000 Kilometer im Jahr, möchte maximal 400 Euro zahlen, Sitzheizung ist wichtig und eine Anhängerkupplung wäre schön.';
 

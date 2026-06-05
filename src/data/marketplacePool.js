@@ -1,11 +1,16 @@
 import { MARKETPLACE_VEHICLES } from './marketplaceVehicles.js';
 import { getKiaMarketplaceVehicles } from './kia/kiaPartnerHub.js';
+import { getKiaTrinklePilotStock } from './kia/kiaTrinkleStock.js';
 import { PILOT_DEALER_ID, PILOT_KIA_ONLY, PILOT_LIVE } from '../config/pilotLive.js';
 
 /**
- * Kunden-Marktplatz-Pool: im Pilot nur Kia @ Autohaus Trinkle.
+ * Kunden-Marktplatz-Pool: im Pilot nur Kia @ Autohaus Trinkle (Registry-Bestand).
  */
 export function getMarketplaceVehiclePool(source = MARKETPLACE_VEHICLES) {
+  if (PILOT_LIVE && PILOT_DEALER_ID === 'autohaus-trinkle') {
+    return getKiaTrinklePilotStock();
+  }
+
   if (!PILOT_LIVE) return source;
 
   let pool = source;

@@ -121,4 +121,21 @@ assert.ok(!sportageChips.some((c) => c.label === '8 Monate'));
 assert.ok(sportageChips.some((c) => c.label === '48 Monate'));
 assert.ok(sportageChips.some((c) => c.label === 'Sportage'));
 
+const bareElektroChips = createEditableChips(
+  { fuel: 'elektro', rawQuery: 'elektro' },
+  {
+    fuel: 'elektro',
+    query: 'elektro',
+    mileagePerYear: 10000,
+    termMonths: 48,
+    city: 'Heilbronn',
+    radius: 25,
+    locLabel: 'Heilbronn',
+  },
+);
+assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.MILEAGE), 'Kein km-Chip ohne Kundenwunsch');
+assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.DURATION), 'Kein Laufzeit-Chip ohne Kundenwunsch');
+assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.LOCATION), 'Kein Standort-Chip ohne Kundenwunsch');
+assert.ok(bareElektroChips.some((c) => c.type === CHIP_TYPES.FUEL), 'Elektro-Chip bleibt');
+
 console.log('✓ Alle Chip-Config-Tests bestanden.');

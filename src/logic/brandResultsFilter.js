@@ -2,6 +2,8 @@
  * Marken & Modelle aus aktuellen Suchergebnissen – kein fester Katalog
  */
 
+import { getModelLineKey, getModelLineLabel } from '../services/sales/advisorRanking.js';
+
 export function brandToFilterId(brand) {
   return String(brand ?? '')
     .toLowerCase()
@@ -10,8 +12,13 @@ export function brandToFilterId(brand) {
     .replace(/[^a-z0-9-]/g, '');
 }
 
-/** Stabile Modell-ID für URL/State (Slug bevorzugt) */
+/** Stabile Modell-ID für URL/State – eine ID pro Modelllinie (nicht pro Variante) */
 export function vehicleToModelFilterId(vehicle) {
+  const lineKey = getModelLineKey(vehicle);
+  if (lineKey && lineKey !== 'unknown') {
+    const brand = brandToFilterId(vehicle?.brand);
+    return brand ? `${brand}-${lineKey}` : lineKey;
+  }
   if (vehicle?.slug) return String(vehicle.slug);
   const brand = brandToFilterId(vehicle?.brand);
   const model = String(vehicle?.model ?? '')
@@ -72,7 +79,7 @@ export function extractResultCatalogFromVehicles(vehicles = []) {
     if (!entry.models.has(modelId)) {
       entry.models.set(modelId, {
         id: modelId,
-        label: v.model,
+        label: getModelLineLabel(v) || v.model,
         slug: v.slug,
         count: 0,
       });

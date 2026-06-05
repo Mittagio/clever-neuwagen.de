@@ -1,4 +1,5 @@
 import { MANUFACTURER_MEDIA } from '../../data/media/manufacturerImages.js';
+import { resolveKiaModelImageKey } from '../../data/kia/kiaModelImages.js';
 
 function slug(value) {
   return (value ?? '')
@@ -16,8 +17,11 @@ function slug(value) {
  */
 export function getManufacturerMediaEntry(brand, model) {
   const brandKey = slug(brand) || 'kia';
-  const modelKey = slug(model);
+  let modelKey = slug(model);
   if (!modelKey) return null;
+  if (brandKey === 'kia') {
+    modelKey = resolveKiaModelImageKey(modelKey);
+  }
   const brandSet = MANUFACTURER_MEDIA[brandKey];
   if (!brandSet) return null;
   if (brandSet[modelKey]) return brandSet[modelKey];

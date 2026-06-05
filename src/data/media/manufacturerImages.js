@@ -2,7 +2,11 @@
  * ManufacturerMediaSystem – zentrale Hersteller-Bild-Registry
  * Kia: echte Fotos aus offiziellen Preislisten-PDFs (public/images/manufacturers/kia/)
  */
-import { getKiaModelMediaEntry, resolveKiaModelImageKey } from '../kia/kiaModelImages.js';
+import {
+  KIA_MODEL_IMAGES,
+  getKiaModelMediaEntry,
+  resolveKiaModelImageKey,
+} from '../kia/kiaModelImages.js';
 
 const DEMO = '/images/demo';
 
@@ -14,21 +18,17 @@ function demo(brand, model) {
 function buildKiaMedia() {
   /** @type {Record<string, {default:string,hero:string,card:string,side:string}>} */
   const out = {};
-  const keys = [
-    'picanto', 'stonic', 'xceed', 'k4', 'k4-sportswagon', 'seltos', 'sportage',
-    'sorento', 'ev2', 'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'pv5-passenger',
-  ];
-  for (const key of keys) {
+  for (const key of Object.keys(KIA_MODEL_IMAGES)) {
     const entry = getKiaModelMediaEntry(key);
     if (entry) out[key] = entry;
   }
-  out['sportage-phev'] = out.sportage;
-  out['sorento-hybrid'] = out.sorento;
-  out['sorento-phev'] = out.sorento;
-  out.niro = out.sportage ?? demo('kia', 'niro');
+  if (!out['sportage-phev'] && out.sportage) out['sportage-phev'] = out.sportage;
+  if (!out['sorento-hybrid'] && out.sorento) out['sorento-hybrid'] = out.sorento;
+  if (!out['sorento-phev'] && out.sorento) out['sorento-phev'] = out.sorento;
+  if (!out.niro && out.sportage) out.niro = out.sportage;
+  if (!out.ceed && out.xceed) out.ceed = out.xceed;
   out['niro-ev'] = out.niro;
-  out.ceed = out.xceed ?? demo('kia', 'ceed');
-  out['ceed-sw'] = out['k4-sportswagon'] ?? out.xceed ?? demo('kia', 'ceed');
+  out['ceed-sw'] = out['k4-sportswagon'] ?? out.ceed ?? out.xceed;
   return out;
 }
 

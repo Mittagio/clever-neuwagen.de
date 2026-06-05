@@ -6,10 +6,20 @@ import {
 } from '../../services/sales/conversationVoiceParser.js';
 import './smartSales.css';
 
+const TEXT_PLACEHOLDER = 'z. B. Herr Müller sucht einen SUV, maximal 400 Euro, Sitzheizung und Anhängerkupplung';
+
 export default function SalesVoiceInput({ onParsed, disabled = false }) {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [error, setError] = useState('');
+  const [typedText, setTypedText] = useState('');
+  const [showTextFallback, setShowTextFallback] = useState(false);
+
+  const applyParsed = useCallback((parsed) => {
+    if (parsed?.chipIds?.length || parsed?.customerName || parsed?.transcript) {
+      onParsed?.(parsed);
+    }
+  }, [onParsed]);
 
   const handleStart = useCallback(() => {
     setError('');
@@ -19,18 +29,26 @@ export default function SalesVoiceInput({ onParsed, disabled = false }) {
       onResult: ({ finalText, interimText }) => {
         if (interimText) setInterim(interimText);
         if (finalText) {
-          const parsed = parseConversationSpeech(finalText);
-          onParsed?.(parsed);
+          applyParsed(parseConversationSpeech(finalText));
           setInterim('');
         }
       },
       onError: (msg) => {
         setError(msg);
         setListening(false);
+        setShowTextFallback(true);
       },
       onEnd: () => setListening(false),
     });
-  }, [onParsed]);
+  }, [applyParsed]);
+
+  const handleTypedSubmit = useCallback(() => {
+    const text = typedText.trim();
+    if (!text) return;
+    setError('');
+    applyParsed(parseConversationSpeech(text));
+    setTypedText('');
+  }, [typedText, applyParsed]);
 
   const supported = isSpeechRecognitionSupported();
 
@@ -45,11 +63,44 @@ export default function SalesVoiceInput({ onParsed, disabled = false }) {
         <span aria-hidden>🎤</span>
         {listening ? 'Aufnahme …' : 'Gespräch aufnehmen'}
       </button>
+
       {!supported && (
-        <p className="ss-voice__hint">Spracheingabe in diesem Browser nicht verfügbar – bitte Chips nutzen.</p>
+        <p className="ss-voice__hint">
+          Spracheingabe in diesem Browser nicht verfügbar – bitte Gespräch eintippen oder Chips nutzen.
+        </p>
       )}
+
+      {supported && !showTextFallback && (
+        <p className="ss-voice__hint">
+          Mikrofon nutzt Chrome/Google – bei Firmen-WLAN ggf. nicht verfügbar. Alternativ eintippen.
+        </p>
+      )}
+
       {interim && <p className="ss-voice__interim">{interim}</p>}
-      {error && <p className="ss-voice__error">{error}</p>}
+      {error && <p className="ss-voice__error" role="alert">{error}</p>}
+
+      <div className="ss-voice__text-fallback">
+        <label className="ss-voice__text-label" htmlFor="ss-voice-text">
+          {showTextFallback ? 'Gespräch eintippen (empfohlen)' : 'Oder Kundengespräch eintippen'}
+        </label>
+        <textarea
+          id="ss-voice-text"
+          className="ss-voice__text-input"
+          rows={3}
+          value={typedText}
+          onChange={(e) => setTypedText(e.target.value)}
+          placeholder={TEXT_PLACEHOLDER}
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          className="ss-btn ss-btn--secondary ss-voice__text-submit"
+          onClick={handleTypedSubmit}
+          disabled={disabled || !typedText.trim()}
+        >
+          Aus Gesprächstext auswerten
+        </button>
+      </div>
     </div>
   );
 }

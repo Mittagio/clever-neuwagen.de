@@ -3,12 +3,19 @@ import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
 import { formatCurrency } from '../../logic/marketplaceService.js';
 import { getAvailabilityPlainLabel } from '../../logic/marketplaceService.js';
 import { buildRecommendReasons } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
+import {
+  getMatchDisplayTitle,
+  getMatchVariantLabel,
+  formatMatchPrimaryPrice,
+} from '../../logic/discoveryDisplay.js';
 import { useState } from 'react';
 
 export default function SalesVehicleDetail({
   match,
+  trimVariants = [],
   dealerName,
   onBack,
+  onSelectTrim,
   shareSlot,
   wishes = null,
   paymentMode = 'leasing',
@@ -17,7 +24,8 @@ export default function SalesVehicleDetail({
   if (!match) return null;
 
   const v = match.vehicle;
-  const title = match.model ?? `${v.brand} ${v.model}`;
+  const title = getMatchDisplayTitle(match);
+  const trimLabel = getMatchVariantLabel(match);
   const rate = match.bestOffer?.monthlyRate ?? v.monthlyRate;
   const recommendReasons = buildRecommendReasons(match, { wishes, maxReasons: 5 });
   const availability = getAvailabilityPlainLabel(v.availability);
@@ -28,13 +36,15 @@ export default function SalesVehicleDetail({
     ? `${v.cashPrice?.toLocaleString('de-DE')} €`
     : `${formatCurrency(rate)}/Monat`;
   const priceCaption = paymentMode === 'cash' ? 'Kaufpreis' : 'Leasing';
+  const hasTrimPicker = trimVariants.length > 1;
 
   return (
     <div className="ss-detail">
       <button type="button" className="ss-detail__back" onClick={onBack}>← Zurück zu den Ergebnissen</button>
 
       <header className="ss-detail__head">
-        <h1>{title}{match.bestTrim ? ` ${match.bestTrim}` : ''}</h1>
+        <h1>{title}</h1>
+        <p className="ss-detail__trim">{trimLabel}</p>
         {match.cleverQuote && (
           <CleverQuoteBadge
             cleverQuote={match.cleverQuote}
@@ -44,6 +54,34 @@ export default function SalesVehicleDetail({
           />
         )}
       </header>
+
+      {hasTrimPicker && (
+        <section className="ss-detail__trims" aria-label="Ausstattungen">
+          <h2 className="ss-detail__trims-title">Ausstattungen im Modell</h2>
+          <div className="ss-detail__trims-list">
+            {trimVariants.map((entry) => {
+              const price = formatMatchPrimaryPrice(entry.match, paymentMode);
+              const isActive = entry.match.slug === match.slug;
+              return (
+                <button
+                  key={entry.trimKey}
+                  type="button"
+                  className={`ss-detail__trim-btn${isActive ? ' ss-detail__trim-btn--active' : ''}`}
+                  onClick={() => onSelectTrim?.(entry.match)}
+                >
+                  <span className="ss-detail__trim-name">
+                    {entry.trimLabel}
+                    {entry.isPrimary && ' · Empfohlen'}
+                  </span>
+                  <span className="ss-detail__trim-price">
+                    ab {price.label}{price.suffix}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <RecommendReasonsPanel reasons={recommendReasons} title="Warum empfehlen wir dieses Fahrzeug?" />
 

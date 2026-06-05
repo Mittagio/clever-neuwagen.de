@@ -1,40 +1,64 @@
-/* Clever Händler-Landing – Markensystem */
+/* Händler-Landing – KI-Berater, Carwow-Stil */
 
 .dl-hero {
   min-width: 0;
-  max-width: 100%;
 }
 
-.dl-hero__eyebrow {
-  margin: 0 0 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
+.dl-hero__intro {
+  margin-bottom: 28px;
 }
 
 .dl-hero__title {
-  margin: 0 0 6px;
-  font-size: clamp(1.35rem, 5vw, 1.85rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  margin: 0 0 12px;
+  font-size: clamp(1.65rem, 6vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
   color: var(--color-brand);
 }
 
 .dl-hero__sub {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--color-text);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  max-width: 28rem;
+}
+
+.dl-hero__search-block {
+  display: grid;
+  gap: 12px;
+}
+
+.dl-hero__search-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-hero__ai-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ecfeff 100%);
+  border: 1px solid #e0e7ff;
+  flex-shrink: 0;
 }
 
 .dl-hero__form {
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-sm);
+  border-radius: 20px;
   background: var(--color-surface);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
 }
 
 .dl-hero__input-wrap {
@@ -44,303 +68,292 @@
 
 .dl-hero__input {
   width: 100%;
-  min-height: 88px;
-  padding: 14px 52px 14px 14px;
+  min-height: 112px;
+  padding: 16px 56px 16px 16px;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
-  font-size: 16px;
-  line-height: 1.45;
-  resize: vertical;
-  background: var(--color-bg);
+  border-radius: 16px;
+  font-size: 17px;
+  line-height: 1.5;
+  resize: none;
+  background: #fafbfc;
 }
 
 .dl-hero__input:focus {
   outline: none;
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px var(--color-brand-ring);
-  background: var(--color-surface);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+  background: #fff;
 }
 
 .dl-hero__mic {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 12px;
+  bottom: 12px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
 }
 
 .dl-hero__mic.is-active {
-  border-color: var(--color-brand);
-  background: var(--color-brand-muted);
+  border-color: #8b5cf6;
+  background: #f5f3ff;
 }
 
 .dl-hero__voice-error {
-  margin: -6px 0 10px;
+  margin: -4px 0 10px;
   font-size: 0.8125rem;
   color: var(--color-error);
 }
 
 .dl-hero__cta {
   width: 100%;
-  min-height: 56px;
+  min-height: 54px;
   font-size: 1rem;
-  font-weight: 600;
-  border-radius: var(--radius-lg);
+  font-weight: 700;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .dl-hero__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  max-height: 88px;
+  overflow: hidden;
 }
 
 .dl-chip {
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   border-radius: var(--radius-full);
-  padding: 10px 14px;
-  min-height: 44px;
+  padding: 8px 14px;
+  min-height: 36px;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-text);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .dl-chip:hover {
   border-color: var(--color-brand);
   color: var(--color-brand);
+  background: #f8fafc;
 }
 
-/* Clever-Moment – ruhig, weiß */
-.dl-clever {
-  padding: 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-}
-
-.dl-clever__welcome {
-  margin: 0 0 12px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-brand);
-}
-
-.dl-clever__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.dl-clever__stat {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  gap: 2px 8px;
-  padding: 10px;
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
+/* Kia Modellwelt */
+.dl-modellwelt {
   min-width: 0;
 }
 
-.dl-clever__icon {
-  grid-row: 1 / 3;
-  font-size: 1.25rem;
-  align-self: center;
-}
-
-.dl-clever__value {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--color-brand);
-  line-height: 1.1;
-}
-
-.dl-clever__value--clever {
-  color: #15803d;
-}
-
-.dl-clever__label {
-  font-size: 0.72rem;
-  color: var(--color-text-secondary);
-  line-height: 1.25;
-}
-
-.dl-section {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.dl-section__title {
+.dl-modellwelt__title {
   margin: 0 0 4px;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--color-brand);
 }
 
-.dl-section__sub {
-  margin: 0 0 12px;
+.dl-modellwelt__sub {
+  margin: 0 0 14px;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
 }
 
-.dl-curated {
+.dl-modellwelt__track {
   display: grid;
-  gap: 10px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 78vw);
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 16px;
+  margin: 0 -2px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
 }
 
-.dl-curated__group {
-  padding: 14px;
-  min-width: 0;
+.dl-modellwelt__track::-webkit-scrollbar {
+  display: none;
 }
 
-.dl-curated__label {
-  margin: 0 0 10px;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--color-brand);
-}
-
-.dl-curated__picks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.dl-curated__pick {
-  border: 1px solid var(--color-clever-border);
-  background: var(--color-surface);
-  border-radius: var(--radius-full);
-  padding: 10px 16px;
-  min-height: 44px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #15803d;
-  cursor: pointer;
-}
-
-.dl-curated__pick:hover {
-  background: var(--color-clever-soft);
-}
-
-.dl-stock-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.dl-stock {
-  padding: 0;
+.dl-modellwelt__card {
+  scroll-snap-align: start;
+  border-radius: 20px;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 0;
-  min-width: 0;
-}
-
-.dl-stock__badge {
-  grid-column: 1 / -1;
-  padding: 8px 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: var(--color-clever-soft);
-  color: #15803d;
-  border-bottom: 1px solid var(--color-clever-border);
-}
-
-.dl-stock__image {
-  min-height: 100px;
-  background: var(--color-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dl-stock__image .vehicle-image {
-  width: 100%;
-  height: 100%;
-  min-height: 100px;
-}
-
-.dl-stock__body {
-  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
 }
 
-.dl-stock__title {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-  color: var(--color-brand);
+.dl-modellwelt__image {
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+  overflow: hidden;
 }
 
-.dl-stock__rate {
+.dl-modellwelt__vehicle-image {
+  width: 100%;
+  height: 100%;
+}
+
+.dl-modellwelt__vehicle-image .vehicle-image__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+}
+
+.dl-modellwelt__body {
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.dl-modellwelt__name {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--color-brand);
 }
 
-.dl-stock__delivery {
+.dl-modellwelt__tagline {
   margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
+.dl-modellwelt__price {
+  margin: 4px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-modellwelt__upe {
+  font-weight: 500;
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
 
-.dl-stock__cta {
+.dl-modellwelt__cta {
   margin-top: 8px;
   width: 100%;
-  min-height: 48px;
-  border-radius: var(--radius-md);
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Warum kaufen */
+.dl-section__title {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-brand);
+  letter-spacing: -0.02em;
+}
+
+.dl-why__layout {
+  display: grid;
+  gap: 14px;
+}
+
+.dl-why__benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.dl-why__benefit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 14px;
+  background: var(--color-surface);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-brand);
+}
+
+.dl-why__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.dl-why__contact {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.dl-why__contact-kicker {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.dl-why__contact-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+.dl-why__contact-role {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.dl-why__contact p {
+  margin: 4px 0;
   font-size: 0.875rem;
 }
 
-@media (min-width: 640px) {
-  .dl-clever__stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .dl-curated {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .dl-stock-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dl-stock {
-    grid-template-columns: 1fr;
-  }
-
-  .dl-stock__image {
-    min-height: 140px;
-  }
+.dl-why__contact a {
+  color: var(--color-brand);
+  text-decoration: none;
+  font-weight: 600;
 }
 
-@media (min-width: 960px) {
-  .dl-stock-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.dl-why__whatsapp {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+@media (min-width: 720px) {
+  .dl-modellwelt__track {
+    grid-auto-columns: minmax(280px, 300px);
+  }
+
+  .dl-why__layout {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
   }
 }

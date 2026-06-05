@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import intelligenceRoutes from './intelligenceRoutes.js';
 import sprint5Routes from './sprint5Routes.js';
 import googlePlacesRoutes from './googlePlacesRoutes.js';
+import pilotLeadsRoutes from './pilotLeadsRoutes.js';
+import advisorRoutes from './advisorRoutes.js';
+import customerRecordsRoutes from './customerRecordsRoutes.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +39,9 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1', sprint5Routes);
+app.use('/api/v1', pilotLeadsRoutes);
+app.use('/api/v1', advisorRoutes);
+app.use('/api/v1', customerRecordsRoutes);
 app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
 

@@ -440,6 +440,12 @@ export function parseSearchIntent(input) {
   const location = locParsed?.city ?? locParsed?.plz ?? locParsed?.label ?? null;
 
   let seatsMin = null;
+  if (/7\s*-?\s*sitzer|sieben\s*sitz|7\s*pl[aä]tze|7\s*personen/i.test(text)) {
+    seatsMin = 7;
+    if (!features.includes('seats_7')) features.push('seats_7');
+    const span = findPhrase(text, '7-sitzer') ?? findPhrase(text, '7 sitzer') ?? findPhrase(text, 'siebensitzer');
+    if (span) markSpan(spans, span.start, span.end);
+  }
   const seats = text.match(/(\d)\s*-?\s*sitz/i);
   if (seats) seatsMin = Number(seats[1]);
 

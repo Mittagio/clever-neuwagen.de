@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { buildWishesFromChipIds, findSalesAdvisorMatches } from './salesAdvisorService.js';
+import { buildWishesFromChipIds, findSalesAdvisorMatches, needsWishClarification } from './salesAdvisorService.js';
 import { buildSalesWhatsAppMessage } from './salesShareService.js';
 import { getKiaSalesVehiclePool } from '../../data/kia/kiaPartnerHub.js';
+import { getModelLineKey } from './advisorRanking.js';
 
 const wishes = buildWishesFromChipIds([
   'fuel_elektro',
@@ -55,6 +56,54 @@ if (matches.length >= 2 && matches[0].cleverQuote && matches[1].cleverQuote) {
   const p0 = matches[0].cleverQuote.percent ?? 0;
   const p1 = matches[1].cleverQuote.percent ?? 0;
   assert.ok(p0 >= p1, 'Matches nach CleverQuote sortiert');
+}
+
+const elektroBudgetTight = findSalesAdvisorMatches(
+  ['fuel_elektro', 'budget_250'],
+  { limit: 5, activeKiaModelIds: ['sportage', 'ev3', 'ev4'] },
+);
+assert.ok(elektroBudgetTight.length > 0, 'Elektro auch bei engem Budget');
+assert.ok(
+  elektroBudgetTight.every((m) => m.vehicle?.powertrain === 'elektro'),
+  'Enges Budget: niemals Sportage bei Elektro-Wunsch',
+);
+
+const elektroSportageOnly = findSalesAdvisorMatches(
+  ['fuel_elektro'],
+  { limit: 5, activeKiaModelIds: ['sportage'] },
+);
+assert.equal(elektroSportageOnly.length, 0, 'Ohne EV im Katalog: kein falscher Sportage-Fallback');
+
+assert.ok(needsWishClarification(['fuel_elektro']), 'Nur Elektro → Nachfrage nötig');
+assert.ok(!needsWishClarification(['fuel_elektro', 'daily_family']), 'Elektro + Familie → direkt weiter');
+assert.ok(!needsWishClarification(['fuel_elektro', 'budget_400']), 'Elektro + Budget → direkt weiter');
+
+const elektroOnly = findSalesAdvisorMatches(['fuel_elektro', 'daily_family'], {
+  limit: 12,
+  dealerSlug: 'autohaus-trinkle',
+});
+assert.ok(elektroOnly.length >= 3, 'Elektro: mehrere Modelllinien');
+const modelLines = new Set(elektroOnly.map((m) => getModelLineKey(m.vehicle)));
+assert.ok(modelLines.size >= 3, 'Kein EV3-Spam: mindestens 3 verschiedene Modelllinien');
+const ev3Count = elektroOnly.filter((m) => getModelLineKey(m.vehicle) === 'ev3').length;
+assert.equal(ev3Count, 1, 'Pro Modelllinie maximal ein Treffer');
+
+const percents = elektroOnly.map((m) => m.cleverQuote?.percent).filter((p) => p != null);
+const uniquePercents = new Set(percents);
+assert.ok(uniquePercents.size >= 2, 'CleverQuote differenziert (nicht alle gleich)');
+assert.ok(percents[0] >= (percents[1] ?? 0), 'Absteigend nach CleverQuote');
+assert.ok(percents.every((p) => p >= 68 && p <= 96), 'CleverQuote im Berater-Spread 68–96 %');
+assert.ok(elektroOnly[0].cleverQuote?.advisorMode, 'Beratermodus aktiv');
+
+const elektroBudgetFamily = findSalesAdvisorMatches(
+  ['fuel_elektro', 'budget_400', 'daily_family'],
+  { limit: 8, dealerSlug: 'autohaus-trinkle' },
+);
+if (elektroBudgetFamily.length >= 2) {
+  const pA = elektroBudgetFamily[0].cleverQuote?.percent ?? 0;
+  const pB = elektroBudgetFamily[1].cleverQuote?.percent ?? 0;
+  assert.ok(pA > pB, 'Budget+Familie: Top-Modell höher bewertet');
+  assert.ok(pA - pB >= 3, 'Sichtbarer Score-Abstand zwischen Platz 1 und 2');
 }
 
 console.log('salesAdvisorService tests OK');

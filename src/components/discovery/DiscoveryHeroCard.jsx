@@ -19,7 +19,9 @@ export default function DiscoveryHeroCard({
   onUnderstandEquipment,
   onCleverQuoteWhy,
   recommendReasons = [],
+  whyTitle,
   heroBadge = 'Empfohlen für Ihre Suche',
+  variantLabel = null,
 }) {
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
 
@@ -48,6 +50,9 @@ export default function DiscoveryHeroCard({
         <div className="disc-hero__s36-body">
           <span className="disc-hero__badge disc-hero__badge--s36">{heroBadge}</span>
           <h2 className="disc-hero__title">{title}</h2>
+          {variantLabel && (
+            <p className="disc-hero__variant-label">Ausstattung: {variantLabel}</p>
+          )}
           {match.cleverQuote && (
             <div className="disc-hero__clever-quote">
               <CleverQuoteBadge
@@ -74,7 +79,7 @@ export default function DiscoveryHeroCard({
             )}
           </button>
           <DeliveryTimePill label={deliveryLabel} className="disc-hero__delivery" />
-          <RecommendReasonsPanel reasons={recommendReasons} />
+          <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />
           <button
             type="button"
             className="disc-hero__cta disc-hero__cta--hero"

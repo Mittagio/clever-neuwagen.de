@@ -12,24 +12,33 @@ import SalesCommunicationCenter from '../components/sales-advisor/SalesCommunica
 import SalesAdvisorStatsBar from '../components/sales-advisor/SalesAdvisorStatsBar.jsx';
 import SalesSelectedOffers, { getWishLabelsFromChipIds } from '../components/sales-advisor/SalesSelectedOffers.jsx';
 import SalesCustomerRecordPanel from '../components/sales-advisor/SalesCustomerRecordPanel.jsx';
+import SalesCustomerRecordsList from '../components/sales-advisor/SalesCustomerRecordsList.jsx';
 import MobileBottomSheet from '../components/shared/MobileBottomSheet.jsx';
-import { findSalesAdvisorMatches, buildWishesFromChipIds } from '../services/sales/salesAdvisorService.js';
+import SalesWishClarification from '../components/sales-advisor/SalesWishClarification.jsx';
+import { buildWishesFromChipIds, needsWishClarification } from '../services/sales/salesAdvisorService.js';
+import { resolveSalesAdvisorSearch } from '../services/advisor/advisorSearchClient.js';
+import { findModelLineGroup } from '../services/search/modelLineGroups.js';
 import { createSalesShareSession } from '../services/sales/salesShareService.js';
 import { recordSmartSalesAdvised, recordCompareOpened } from '../services/sales/salesAdvisorStats.js';
 import {
   getActiveKiaModelIdsFromConditions,
   KIA_REGISTRY_MODEL_KEYS,
 } from '../data/kia/kiaPartnerHub.js';
+import { PILOT_DEALER_ID } from '../config/pilotLive.js';
 import SalesVoiceWowBanner from '../components/sales-advisor/SalesVoiceWowBanner.jsx';
+import KiaPartnerBar from '../components/sales-advisor/KiaPartnerBar.jsx';
 import {
   saveCustomerRecord,
   buildCustomerRecordPayload,
+  patchCustomerRecordByShareToken,
 } from '../services/sales/customerRecordService.js';
+import { useCustomerRecordsSync } from '../services/sales/useCustomerRecordsSync.js';
 import { mergeChipIds } from '../services/sales/conversationVoiceParser.js';
 import '../components/sales-advisor/smartSales.css';
 
 const STEPS = {
   WISHES: 'wishes',
+  CLARIFY: 'clarify',
   UNDERSTOOD: 'understood',
   RESULTS: 'results',
   DETAIL: 'detail',
@@ -46,12 +55,14 @@ export default function SmartSalesPage() {
   const [mileagePerYear, setMileagePerYear] = useState(null);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [matches, setMatches] = useState([]);
+  const [modelLineGroups, setModelLineGroups] = useState([]);
   const [activeMatch, setActiveMatch] = useState(null);
   const [compareSlugs, setCompareSlugs] = useState([]);
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '' });
   const [shareSession, setShareSession] = useState(null);
   const [sentVia, setSentVia] = useState([]);
   const [savedRecord, setSavedRecord] = useState(null);
+  const [savingRecord, setSavingRecord] = useState(false);
   const [commSheetOpen, setCommSheetOpen] = useState(false);
   const [voiceWow, setVoiceWow] = useState(false);
 
@@ -85,20 +96,41 @@ export default function SmartSalesPage() {
     setSelectedChipIds((prev) => prev.filter((id) => id !== chipId));
   }, []);
 
-  function runVoiceSearch(chipIds) {
-    const results = findSalesAdvisorMatches(chipIds, {
-      limit: 12,
-      mileagePerYear,
-      activeKiaModelIds,
-    });
-    const defaultCompare = results.slice(0, 3).map((m) => m.slug);
-    setMatches(results);
+  const dealerSlug = conditions.dealerId ?? PILOT_DEALER_ID;
+  const { records: syncedRecords, loading: recordsLoading } = useCustomerRecordsSync(
+    dealerSlug,
+    step !== STEPS.WISHES,
+  );
+
+  const salesSearchOptions = useMemo(() => ({
+    limit: 12,
+    mileagePerYear,
+    activeKiaModelIds,
+    dealerSlug,
+  }), [mileagePerYear, activeKiaModelIds, dealerSlug]);
+
+  function applyAdvisorResults(result) {
+    setMatches(result.matches ?? []);
+    setModelLineGroups(result.modelLineGroups ?? []);
+  }
+
+  async function runAdvisorSearch(chipIds) {
+    return resolveSalesAdvisorSearch(
+      { chipIds, options: salesSearchOptions },
+      { chipIds, ...salesSearchOptions },
+    );
+  }
+
+  async function runVoiceSearch(chipIds) {
+    const result = await runAdvisorSearch(chipIds);
+    const defaultCompare = result.matches.slice(0, 3).map((m) => m.slug);
+    applyAdvisorResults(result);
     setCompareSlugs(defaultCompare);
     setActiveMatch(null);
     setVoiceWow(true);
     setStep(STEPS.RESULTS);
     recordSmartSalesAdvised();
-    refreshShareSession(results, defaultCompare, chipIds);
+    refreshShareSession(result.matches, result.modelLineGroups, defaultCompare, chipIds);
   }
 
   function handleVoiceParsed(parsed) {
@@ -109,14 +141,19 @@ export default function SmartSalesPage() {
     if (parsed.mileagePerYear) setMileagePerYear(parsed.mileagePerYear);
     setSelectedChipIds((prev) => {
       const next = mergeChipIds(prev, parsed.chipIds ?? []);
-      if (next.length >= 2 && (parsed.chipIds?.length ?? 0) > 0) {
+      if (next.length >= 2 && (parsed.chipIds?.length ?? 0) > 0 && !needsWishClarification(next)) {
         setTimeout(() => runVoiceSearch(next), 0);
       }
       return next;
     });
   }
 
-  function refreshShareSession(nextMatches, nextCompareSlugs, chipIdsOverride) {
+  async function refreshShareSession(
+    nextMatches,
+    nextModelLineGroups,
+    nextCompareSlugs,
+    chipIdsOverride,
+  ) {
     const pool = nextCompareSlugs.length >= 2
       ? nextMatches.filter((m) => nextCompareSlugs.includes(m.slug))
       : nextMatches.slice(0, Math.max(3, nextCompareSlugs.length));
@@ -124,34 +161,45 @@ export default function SmartSalesPage() {
       setShareSession(null);
       return;
     }
-    setShareSession(createSalesShareSession({
+    const session = await createSalesShareSession({
       matches: pool,
+      modelLineGroups: nextModelLineGroups ?? modelLineGroups,
       chipIds: chipIdsOverride ?? selectedChipIds,
       customer,
       sellerName,
       dealerName,
-    }));
+      dealerSlug,
+      wishLabels,
+    });
+    setShareSession(session);
   }
 
   function handleProceedToSummary() {
     if (selectedChipIds.length === 0) return;
+    if (needsWishClarification(selectedChipIds)) {
+      setStep(STEPS.CLARIFY);
+      return;
+    }
     setStep(STEPS.UNDERSTOOD);
   }
 
-  function handleFindVehicles() {
+  function handleClarificationSelect(useCaseChipId) {
+    setSelectedChipIds((prev) => (
+      prev.includes(useCaseChipId) ? prev : [...prev, useCaseChipId]
+    ));
+    setStep(STEPS.UNDERSTOOD);
+  }
+
+  async function handleFindVehicles() {
     setVoiceWow(false);
-    const results = findSalesAdvisorMatches(selectedChipIds, {
-      limit: 12,
-      mileagePerYear,
-      activeKiaModelIds,
-    });
-    const defaultCompare = results.slice(0, 3).map((m) => m.slug);
-    setMatches(results);
+    const result = await runAdvisorSearch(selectedChipIds);
+    const defaultCompare = result.matches.slice(0, 3).map((m) => m.slug);
+    applyAdvisorResults(result);
     setCompareSlugs(defaultCompare);
     setActiveMatch(null);
     setStep(STEPS.RESULTS);
     recordSmartSalesAdvised();
-    refreshShareSession(results, defaultCompare);
+    refreshShareSession(result.matches, result.modelLineGroups, defaultCompare);
   }
 
   function handleSelectMatch(match) {
@@ -162,7 +210,7 @@ export default function SmartSalesPage() {
   function handleToggleCompare(slug) {
     setCompareSlugs((prev) => {
       const next = prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug];
-      refreshShareSession(matches, next);
+      refreshShareSession(matches, modelLineGroups, next);
       return next;
     });
   }
@@ -175,22 +223,43 @@ export default function SmartSalesPage() {
   }
 
   function handleSentVia(channel) {
-    setSentVia((prev) => (prev.includes(channel) ? prev : [...prev, channel]));
+    setSentVia((prev) => {
+      const next = prev.includes(channel) ? prev : [...prev, channel];
+      if (shareSession?.token) {
+        void patchCustomerRecordByShareToken(shareSession.token, {
+          sentVia: next,
+          nextStep: 'Rückmeldung abwarten',
+          customer,
+          sellerName,
+          dealerName,
+          dealerSlug,
+        });
+      }
+      return next;
+    });
   }
 
-  function handleSaveRecord() {
-    const record = saveCustomerRecord(buildCustomerRecordPayload({
-      customer,
-      chipIds: selectedChipIds,
-      wishLabels,
-      selectedMatches: compareMatches.length ? compareMatches : matches.slice(0, 3),
-      sentVia,
-      shareUrl: shareSession?.url ?? '',
-      sellerName,
-      dealerName,
-      nextStep: sentVia.length ? 'Rückmeldung abwarten' : 'Angebot versenden',
-    }));
-    setSavedRecord(record);
+  async function handleSaveRecord() {
+    setSavingRecord(true);
+    try {
+      const record = await saveCustomerRecord(buildCustomerRecordPayload({
+        customer,
+        chipIds: selectedChipIds,
+        wishLabels,
+        selectedMatches: compareMatches.length ? compareMatches : matches.slice(0, 3),
+        sentVia,
+        shareUrl: shareSession?.url ?? '',
+        shareToken: shareSession?.token ?? null,
+        sellerName,
+        dealerName,
+        dealerSlug,
+        modelLineGroups,
+        nextStep: sentVia.length ? 'Rückmeldung abwarten' : 'Angebot versenden',
+      }));
+      setSavedRecord(record);
+    } finally {
+      setSavingRecord(false);
+    }
   }
 
   const showComm = shareSession && (step === STEPS.RESULTS || step === STEPS.COMPARE || step === STEPS.DETAIL);
@@ -221,9 +290,20 @@ export default function SmartSalesPage() {
         {savedRecord && (
           <SalesCustomerRecordPanel record={savedRecord} onClose={() => setSavedRecord(null)} />
         )}
+        <SalesCustomerRecordsList
+          records={syncedRecords}
+          loading={recordsLoading}
+          activeId={savedRecord?.id}
+          onSelect={setSavedRecord}
+        />
         {(step === STEPS.RESULTS || step === STEPS.DETAIL) && !savedRecord && (
-          <button type="button" className="ss-btn ss-btn--secondary ss-btn--block" onClick={handleSaveRecord}>
-            Kundenakte speichern
+          <button
+            type="button"
+            className="ss-btn ss-btn--secondary ss-btn--block"
+            onClick={handleSaveRecord}
+            disabled={savingRecord}
+          >
+            {savingRecord ? 'Speichern …' : 'Kundenakte speichern'}
           </button>
         )}
       </>
@@ -304,6 +384,14 @@ export default function SmartSalesPage() {
             />
           )}
 
+          {step === STEPS.CLARIFY && (
+            <SalesWishClarification
+              chipIds={selectedChipIds}
+              onSelectUseCase={handleClarificationSelect}
+              onBack={() => setStep(STEPS.WISHES)}
+            />
+          )}
+
           {step === STEPS.UNDERSTOOD && (
             <SalesNeedsSummary
               chipIds={selectedChipIds}
@@ -324,8 +412,10 @@ export default function SmartSalesPage() {
               )}
               <SalesResultsPodium
                 matches={matches}
+                modelLineGroups={modelLineGroups}
                 customerName={customer.name}
                 wishes={salesWishes}
+                chipIds={selectedChipIds}
                 paymentMode={salesWishes?.budget?.type ?? 'leasing'}
                 onSelect={handleSelectMatch}
                 onToggleCompare={handleToggleCompare}
@@ -338,10 +428,12 @@ export default function SmartSalesPage() {
           {step === STEPS.DETAIL && activeMatch && (
             <SalesVehicleDetail
               match={activeMatch}
+              trimVariants={findModelLineGroup(modelLineGroups, activeMatch)?.trimVariants ?? []}
               dealerName={dealerName}
               wishes={salesWishes}
               paymentMode={salesWishes?.budget?.type ?? 'leasing'}
               onBack={() => setStep(STEPS.RESULTS)}
+              onSelectTrim={handleSelectMatch}
             />
           )}
 

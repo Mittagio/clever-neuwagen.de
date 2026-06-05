@@ -28,8 +28,13 @@ Bis `hero.jpg` fehlt, lädt die App Pressebilder aus `src/data/landingHeroVehicl
 
 ## Demo
 
-Bis echte JPGs hinterlegt sind, liegen SVG-Platzhalter als `default.svg` vor.
-`hero`/`card` in `manufacturerImages.js` verweisen bereits auf `hero.jpg`.
+Alle JPGs werden aus den offiziellen Kia-Preislisten extrahiert (Titelseite, wie Sorento):
+
+```bash
+npm run extract:kia-images
+```
+
+Quelle: `scripts/extract-kia-pdf-images.mjs` · Registry: `src/data/kia/kiaModelImages.json`
 
 ## Priorität (VehicleImage)
 

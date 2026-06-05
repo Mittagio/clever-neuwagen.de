@@ -1,51 +1,88 @@
-export const DEALER_SEARCH_EXAMPLES = [
-  'SUV · Familie · unter 400 €',
-  'Elektro bis 400 €',
-  'Sofort verfügbar',
-  'Sportage Hybrid',
-  '7-Sitzer',
-  'Anhängerkupplung',
+export const DEALER_SEARCH_PLACEHOLDERS = [
+  'Elektroauto über 400 km Reichweite für Familie unter 400 €',
+  '7-Sitzer mit Anhängerkupplung',
+  'Sofort verfügbares Elektroauto',
 ];
 
-export const DEALER_CURATED_GROUPS = [
+export const DEALER_SEARCH_CHIPS = [
+  { label: 'SUV Familie', query: 'SUV Familie unter 400 Euro' },
+  { label: 'Elektro bis 400 €', query: 'Elektro bis 400 Euro' },
+  { label: 'Sofort verfügbar', query: 'Sofort verfügbar' },
+  { label: 'Sportage Hybrid', query: 'Sportage Hybrid' },
+  { label: '7-Sitzer', query: '7-Sitzer SUV' },
+  { label: 'Anhängerkupplung', query: 'Anhängerkupplung SUV' },
+];
+
+/** Kia Modellwelt – Swipe-Karten nach der Suche */
+export const KIA_MODEL_WORLD = [
   {
-    id: 'families',
-    label: 'Beliebt bei Familien',
-    picks: [
-      { label: 'EV3 Earth', query: 'Kia EV3 Earth Familie' },
-      { label: 'Sportage Vision', query: 'Sportage Vision Familie SUV' },
-    ],
+    id: 'ev2',
+    name: 'EV2',
+    tagline: 'Der kompakte City-Stromer',
+    modelKey: 'ev2',
+    rateFrom: 239,
+    priceFrom: 26600,
+    searchQuery: 'Kia EV2',
   },
   {
-    id: 'commuters',
-    label: 'Beliebt bei Vielfahrern',
-    picks: [
-      { label: 'EV3 Long Range', query: 'EV3 Long Range Reichweite' },
-      { label: 'EV6', query: 'Kia EV6 Vielfahrer' },
-    ],
+    id: 'ev3',
+    name: 'EV3',
+    tagline: 'Der Allrounder für Familien',
+    modelKey: 'ev3',
+    rateFrom: 299,
+    priceFrom: 35990,
+    searchQuery: 'Kia EV3',
   },
   {
-    id: 'budget',
-    label: 'Unter 350 €/Monat',
-    picks: [
-      { label: 'EV3 Air', query: 'EV3 Air unter 350 Euro' },
-      { label: 'Ceed SW', query: 'Ceed SW Leasing unter 350' },
-    ],
+    id: 'ev4',
+    name: 'EV4',
+    tagline: 'Die elektrische Limousine',
+    modelKey: 'ev4',
+    rateFrom: 269,
+    priceFrom: 37590,
+    searchQuery: 'Kia EV4',
+  },
+  {
+    id: 'ev5',
+    name: 'EV5',
+    tagline: 'Das Familien-SUV',
+    modelKey: 'ev5',
+    rateFrom: 419,
+    priceFrom: 45990,
+    searchQuery: 'Kia EV5',
+  },
+  {
+    id: 'ev6',
+    name: 'EV6',
+    tagline: 'Das Premium-Elektrofahrzeug',
+    modelKey: 'ev6',
+    rateFrom: 399,
+    priceFrom: 44990,
+    searchQuery: 'Kia EV6',
+  },
+  {
+    id: 'sportage',
+    name: 'Sportage',
+    tagline: 'Das beliebte Familien-SUV',
+    modelKey: 'sportage',
+    rateFrom: 199,
+    priceFrom: 33990,
+    searchQuery: 'Kia Sportage',
+  },
+  {
+    id: 'sorento',
+    name: 'Sorento',
+    tagline: 'Der geräumige 7-Sitzer',
+    modelKey: 'sorento',
+    rateFrom: 499,
+    priceFrom: 56690,
+    searchQuery: 'Kia Sorento',
   },
 ];
 
-export const DEALER_ACTION_BANNERS = [
-  { id: 'stock-sale', title: '🔥 Lagerabverkauf', text: 'Nur solange Bestand vorhanden' },
-  { id: 'black-edition', title: '🔥 Black Edition', text: 'Top-Ausstattung zu Aktionsraten' },
-  { id: 'corporate', title: '🔥 Corporate Benefits', text: 'Exklusive Konditionen für Mitarbeiterprogramme' },
-  { id: 'daily', title: '🔥 Tageszulassungen', text: 'Sofort verfügbar mit Preisvorteil' },
-];
-
-export const KIA_DEALER_MODELS = [
-  { id: 'picanto', name: 'Picanto', rateFrom: 149, type: 'kleinwagen', imageModel: 'Picanto' },
-  { id: 'ev2', name: 'EV2', rateFrom: 199, type: 'elektro', imageModel: 'EV2' },
-  { id: 'ev3', name: 'EV3', rateFrom: 299, type: 'elektro', imageModel: 'EV3' },
-  { id: 'ev4', name: 'EV4', rateFrom: 349, type: 'elektro', imageModel: 'EV4' },
-  { id: 'sportage', name: 'Sportage', rateFrom: 255, type: 'suv', imageModel: 'Sportage' },
-  { id: 'sorento', name: 'Sorento', rateFrom: 499, type: 'suv', imageModel: 'Sorento' },
+export const DEALER_WHY_BENEFITS = [
+  { id: 'beratung', icon: '👤', title: 'Persönliche Beratung' },
+  { id: 'werkstatt', icon: '🛠️', title: 'Eigene Werkstatt' },
+  { id: 'elektro', icon: '⚡', title: 'Elektrofahrzeug-Kompetenz' },
+  { id: 'probefahrt', icon: '🚗', title: 'Probefahrt vor Ort' },
 ];

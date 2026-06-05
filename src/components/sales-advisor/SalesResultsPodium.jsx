@@ -2,8 +2,9 @@ import { useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge, { CleverQuoteBreakdown } from '../cleverQuote/CleverQuoteBadge.jsx';
 import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
-import { formatMatchPrimaryPrice, getMatchDisplayTitle } from '../../logic/discoveryDisplay.js';
+import { formatMatchPrimaryPrice, getMatchDisplayTitle, getMatchVariantLabel } from '../../logic/discoveryDisplay.js';
 import { buildKiaSellerHeadline } from '../../data/kia/kiaPartnerHub.js';
+import { findModelLineGroup } from '../../services/search/modelLineGroups.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 
 const TOP_N = 3;
@@ -21,18 +22,32 @@ function PodiumMatchCard({
   match,
   rank,
   wishes,
+  chipIds = [],
+  allMatches = [],
   paymentMode = 'leasing',
   inCompare,
   showReasons = true,
   compactEbene1 = false,
   onSelect,
   onToggleCompare,
+  variants = [],
+  trimVariants = [],
 }) {
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [variantsOpen, setVariantsOpen] = useState(variants.length > 0 && rank != null && rank < 2);
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
+  const trimLabel = getMatchVariantLabel(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
-  const recommendReasons = buildWishMatchBullets(match, { wishes, maxReasons: PODIUM_MAX_REASONS });
+  const recommendReasons = buildWishMatchBullets(match, {
+    wishes,
+    maxReasons: PODIUM_MAX_REASONS,
+    allMatches,
+    chipIds,
+  });
+  const whyTitle = match.cleverQuote?.advisorMode
+    ? `Warum empfehlen wir den ${title}?`
+    : undefined;
   const isTop = rank != null && rank < TOP_N;
 
   return (
@@ -46,12 +61,14 @@ function PodiumMatchCard({
       )}
       <VehicleImage
         brand={v.brand}
-        model={v.imageModel ?? v.model}
+        model={v.modelKey ?? v.imageModel ?? v.model}
+        dealerImageUrl={v.heroImage ?? v.defaultImage}
         className="ss-podium-card__image"
       />
       <div className="ss-podium-card__body">
         <header className="ss-podium-card__vehicle">
           <h2>{title}</h2>
+          <p className="ss-podium-card__trim">{trimLabel}</p>
         </header>
 
         {match.cleverQuote && (
@@ -66,7 +83,7 @@ function PodiumMatchCard({
         )}
 
         {showReasons && (
-          <RecommendReasonsPanel reasons={recommendReasons} />
+          <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />
         )}
 
         <p className="ss-podium-card__rate">
@@ -90,6 +107,51 @@ function PodiumMatchCard({
             {inCompare ? 'Im Vergleich' : 'Zum Vergleich'}
           </button>
         </div>
+
+        {variants.length > 0 && (
+          <div className="ss-podium-variants">
+            <button
+              type="button"
+              className="ss-podium-variants__toggle"
+              aria-expanded={variantsOpen}
+              onClick={() => setVariantsOpen((o) => !o)}
+            >
+              {variantsOpen
+                ? 'Ausstattungen ausblenden'
+                : `${trimVariants.length || variants.length + 1} Ausstattungen`}
+            </button>
+            {variantsOpen && (
+              <ul className="ss-podium-variants__list">
+                {(trimVariants.length > 1 ? trimVariants : [
+                  { trimKey: 'primary', trimLabel, match, isPrimary: true },
+                  ...variants.map((alt) => ({
+                    trimKey: alt.slug,
+                    trimLabel: getMatchVariantLabel(alt),
+                    match: alt,
+                    isPrimary: false,
+                  })),
+                ]).map((entry) => (
+                  <li key={entry.trimKey}>
+                    <button
+                      type="button"
+                      className={entry.isPrimary ? 'ss-podium-variants__item--recommended' : undefined}
+                      onClick={() => onSelect(entry.match)}
+                    >
+                      <span>
+                        {entry.trimLabel}
+                        {entry.isPrimary && ' · Empfohlen'}
+                      </span>
+                      <span>
+                        ab {formatMatchPrimaryPrice(entry.match, paymentMode).label}
+                        {formatMatchPrimaryPrice(entry.match, paymentMode).suffix}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <CleverQuoteBreakdown
@@ -103,8 +165,10 @@ function PodiumMatchCard({
 
 export default function SalesResultsPodium({
   matches = [],
+  modelLineGroups = [],
   customerName = '',
   wishes = null,
+  chipIds = [],
   paymentMode = 'leasing',
   onSelect,
   onToggleCompare,
@@ -125,6 +189,14 @@ export default function SalesResultsPodium({
   const restMatches = matches.slice(TOP_N);
   const hasMore = restMatches.length > 0;
 
+  function variantsForMatch(match) {
+    const group = findModelLineGroup(modelLineGroups, match);
+    return {
+      variants: group?.variants ?? [],
+      trimVariants: group?.trimVariants ?? [],
+    };
+  }
+
   return (
     <div className="ss-results">
       <header className="ss-results__head">
@@ -136,20 +208,27 @@ export default function SalesResultsPodium({
 
       <section className="ss-podium" aria-labelledby="ss-podium-top-title">
         <h2 id="ss-podium-top-title" className="ss-podium__section-label">Beste Treffer</h2>
-        {topMatches.map((match, index) => (
+        {topMatches.map((match, index) => {
+          const { variants, trimVariants } = variantsForMatch(match);
+          return (
           <PodiumMatchCard
             key={match.slug}
             match={match}
             rank={index}
             wishes={wishes}
+            chipIds={chipIds}
+            allMatches={matches}
             paymentMode={paymentMode}
             inCompare={compareSlugs.includes(match.slug)}
             showReasons
             compactEbene1
             onSelect={onSelect}
             onToggleCompare={onToggleCompare}
+            variants={variants}
+            trimVariants={trimVariants}
           />
-        ))}
+          );
+        })}
       </section>
 
       {hasMore && (
@@ -167,18 +246,25 @@ export default function SalesResultsPodium({
               <h2 id="ss-podium-rest-title" className="ss-podium__section-label">
                 Weitere passende Fahrzeuge
               </h2>
-              {restMatches.map((match) => (
+              {restMatches.map((match) => {
+                const { variants, trimVariants } = variantsForMatch(match);
+                return (
                 <PodiumMatchCard
                   key={match.slug}
                   match={match}
                   wishes={wishes}
+                  chipIds={chipIds}
+                  allMatches={matches}
                   paymentMode={paymentMode}
                   inCompare={compareSlugs.includes(match.slug)}
                   showReasons={false}
                   onSelect={onSelect}
                   onToggleCompare={onToggleCompare}
+                  variants={variants}
+                  trimVariants={trimVariants}
                 />
-              ))}
+                );
+              })}
               <button
                 type="button"
                 className="ss-btn ss-btn--ghost ss-btn--block ss-podium__collapse"

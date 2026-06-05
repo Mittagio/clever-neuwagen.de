@@ -1,9 +1,19 @@
 import { formatMatchDeliveryLabel } from '../../logic/discoveryDisplay.js';
+import { buildAdvisorWhyBullets } from '../sales/advisorRanking.js';
 
 /**
- * Sprint 37 – „Warum passt dieses Fahrzeug?“ (Ebene 1, unter Preis)
+ * Sprint 37 – „Warum empfehlen wir dieses Fahrzeug?“ (vergleichend im Beratermodus)
  */
-export function buildWishMatchBullets(match, { wishes, maxReasons = 5 } = {}) {
+export function buildWishMatchBullets(match, { wishes, maxReasons = 5, allMatches, chipIds } = {}) {
+  if (match?.cleverQuote?.advisorMode || (allMatches?.length ?? 0) > 1) {
+    const advisorBullets = buildAdvisorWhyBullets(match, {
+      wishes,
+      allMatches: allMatches ?? [],
+      maxReasons,
+      chipIds: chipIds ?? [],
+    });
+    if (advisorBullets.length) return advisorBullets;
+  }
   const bullets = [];
   const seen = new Set();
   const vehicle = match?.vehicle ?? {};

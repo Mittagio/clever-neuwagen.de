@@ -18,6 +18,7 @@ import ResultsPageHeadline from './ResultsPageHeadline.jsx';
 
 import DiscoveryHeroCard from './DiscoveryHeroCard.jsx';
 
+import DiscoveryModelLineCard from './DiscoveryModelLineCard.jsx';
 import DiscoveryCuratedCard from './DiscoveryCuratedCard.jsx';
 
 import DiscoveryCompareSection from './DiscoveryCompareSection.jsx';
@@ -43,7 +44,8 @@ import { getSimilarVehiclesNearby } from '../../services/pricing/dealerOfferPric
 import { matchVehiclesToWish } from '../../services/wish/wishMatchEngine.js';
 
 import { hasCleverQuoteWishes, buildCuratedResultsLine } from '../../services/cleverQuote/cleverQuoteService.js';
-
+import { buildAdvisorDiscoveryResultsLine } from '../../services/cleverQuote/cleverQuoteConstants.js';
+import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 
 import { RESULT_STATES } from '../../logic/neverEmptyResultsService.js';
@@ -152,6 +154,12 @@ export default function DiscoveryResultsView({
 
   refineSlot = null,
 
+  exclusionHint = null,
+
+  noExactMatchMessage = null,
+
+  modelLineGroups = null,
+
 }) {
 
   const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
@@ -252,26 +260,29 @@ export default function DiscoveryResultsView({
 
   const radiusKm = filters.radius ?? 25;
 
-  const curatedLine = buildCuratedResultsLine(offerStats?.total ?? offerStats?.visible ?? 0, CURATED_MAX);
+  const isAdvisorResults = Boolean(topMatch?.cleverQuote?.advisorMode);
+  const advisorGroups = (modelLineGroups?.length ? modelLineGroups : null);
+  const allRankedMatchesEarly = useMemo(
+    () => [topMatch, ...restMatches].filter(Boolean),
+    [topMatch, restMatches],
+  );
+
+  const curatedLine = isAdvisorResults
+    ? buildAdvisorDiscoveryResultsLine(allRankedMatchesEarly.length)
+    : buildCuratedResultsLine(offerStats?.total ?? offerStats?.visible ?? 0, CURATED_MAX);
 
   const popularTitle = localized
     ? 'Beliebte Angebote in Ihrer Nähe'
     : 'Beliebte Angebote – zur Inspiration';
 
   const secondaryHits = useMemo(
-
-    () => restMatches.slice(0, CURATED_MAX - 1),
-
-    [restMatches],
-
+    () => (isAdvisorResults ? restMatches : restMatches.slice(0, CURATED_MAX - 1)),
+    [restMatches, isAdvisorResults],
   );
 
   const overflowMatches = useMemo(
-
-    () => restMatches.slice(CURATED_MAX - 1),
-
-    [restMatches],
-
+    () => (isAdvisorResults ? [] : restMatches.slice(CURATED_MAX - 1)),
+    [restMatches, isAdvisorResults],
   );
 
 
@@ -280,13 +291,25 @@ export default function DiscoveryResultsView({
 
 
 
+  const advisorChipIds = useMemo(
+    () => deriveAdvisorChipIds(filters, wishes),
+    [filters, wishes],
+  );
+
+  const allRankedMatches = allRankedMatchesEarly;
+
   const wishBullets = useMemo(() => {
 
     if (!topMatch) return [];
 
-    return buildWishMatchBullets(topMatch, { wishes, maxReasons: 5 });
+    return buildWishMatchBullets(topMatch, {
+      wishes,
+      maxReasons: 5,
+      allMatches: allRankedMatches,
+      chipIds: advisorChipIds,
+    });
 
-  }, [topMatch, wishes]);
+  }, [topMatch, allRankedMatches, wishes, advisorChipIds]);
 
 
 
@@ -384,6 +407,12 @@ export default function DiscoveryResultsView({
 
       )}
 
+      {(exclusionHint || noExactMatchMessage) && (
+        <p className="disc-rule-hint" role="status">
+          {noExactMatchMessage ?? exclusionHint}
+        </p>
+      )}
+
 
 
       {!allBrandsHidden && (
@@ -411,17 +440,44 @@ export default function DiscoveryResultsView({
 
 
           {showVehicles && (
-
             <section className="disc-section disc-section--hit" aria-labelledby="disc-hit-title">
-
               <h2 id="disc-hit-title" className="disc-section__label disc-section__label--s36">
-
-                {isFallbackHero ? 'Beste Alternative' : 'Bester Treffer'}
-
+                {isFallbackHero
+                  ? 'Beste Alternative'
+                  : (isAdvisorResults && advisorGroups?.length > 1
+                    ? 'Ihre Kia-Empfehlungen'
+                    : 'Bester Treffer')}
               </h2>
 
-
-
+              {isAdvisorResults && advisorGroups?.length > 0 ? (
+                <div className="disc-model-line-list">
+                  {advisorGroups.map((group) => (
+                    <DiscoveryModelLineCard
+                      key={group.modelLineKey}
+                      group={group}
+                      rank={group.rank}
+                      paymentMode={paymentMode}
+                      wishes={wishes}
+                      chipIds={advisorChipIds}
+                      allMatches={allRankedMatches}
+                      onViewOffer={onViewOffer}
+                      onCleverQuoteWhy={openCleverQuoteBreakdown}
+                      onChangePaymentMode={handleChangePaymentMode}
+                      heroBadge={heroBadge}
+                      whyTitle={
+                        group.primaryMatch?.cleverQuote?.advisorMode
+                          ? `Warum empfehlen wir den ${group.label}?`
+                          : undefined
+                      }
+                      recommendReasons={
+                        group.rank === 1 ? wishBullets : undefined
+                      }
+                      defaultVariantsOpen={group.rank <= 2}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
               {topMatch && (
                 <DiscoveryHeroCard
                   match={topMatch}
@@ -431,6 +487,11 @@ export default function DiscoveryResultsView({
                   onCleverQuoteWhy={() => openCleverQuoteBreakdown(topMatch)}
                   onUnderstandEquipment={() => openCleverQuoteBreakdown(topMatch)}
                   recommendReasons={wishBullets}
+                  whyTitle={
+                    topMatch?.cleverQuote?.advisorMode
+                      ? `Warum empfehlen wir den ${topMatch.model ?? topMatch.vehicle?.model}?`
+                      : undefined
+                  }
                   heroBadge={heroBadge}
                 />
               )}
@@ -449,6 +510,8 @@ export default function DiscoveryResultsView({
                       rank={index + 2}
                       paymentMode={paymentMode}
                       wishes={wishes}
+                      chipIds={advisorChipIds}
+                      allMatches={allRankedMatches}
                       onViewOffer={onViewOffer}
                       onCleverQuoteWhy={openCleverQuoteBreakdown}
                     />
@@ -468,8 +531,8 @@ export default function DiscoveryResultsView({
                   Mit Alternativen vergleichen
                 </button>
               )}
-
-
+                </>
+              )}
 
               <CleverQuoteBreakdown
 
@@ -581,7 +644,7 @@ export default function DiscoveryResultsView({
 
 
 
-          {showVehicles && state === RESULT_STATES.EXACT && stripAlternatives.length > 0 && !showAlternativeSection && (
+          {showVehicles && state === RESULT_STATES.EXACT && stripAlternatives.length > 0 && !showAlternativeSection && !isAdvisorResults && (
 
             <DiscoveryAlternativesStrip
               matches={stripAlternatives}
@@ -624,18 +687,14 @@ export default function DiscoveryResultsView({
 
 
 
-                {showVehicles && (
-
+                {showVehicles && !isAdvisorResults && (
                   <PopularOffersStrip
                     matches={popularMatches}
                     paymentMode={paymentMode}
                     title={popularTitle}
                     subtitle={localized ? 'Gerade oft angesehen.' : 'Aktuell deutschlandweit – mit Standort sehen Sie Händler in Ihrer Nähe.'}
                   />
-
                 )}
-
-
 
                 {showLocation && !allBrandsHidden && (
 
@@ -679,7 +738,7 @@ export default function DiscoveryResultsView({
 
 
 
-          {showVehicles && (
+          {showVehicles && !isAdvisorResults && (
 
             <PopularOffersStrip
               matches={popularMatches}

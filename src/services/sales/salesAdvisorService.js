@@ -5,8 +5,15 @@ import {
 import { filterMarketplaceVehicles } from '../../logic/marketplaceService.js';
 import { adjustRateForTerm } from '../../logic/oneSearchService.js';
 import { matchVehiclesToWish } from '../wish/wishMatchEngine.js';
-import { computeCleverQuote } from '../cleverQuote/cleverQuoteService.js';
 import { getSalesChipById } from '../../data/salesAdvisorChips.js';
+import { finalizeAdvisorMatches, needsWishClarification } from './advisorRanking.js';
+import { buildSearchProfile } from '../search/searchProfile.js';
+import { passesHardRules } from '../search/hardExclusionRules.js';
+import { enrichVehicleWithModelAttributes } from '../../data/kia/kiaModelAttributes.js';
+import { buildModelLineGroups } from '../search/modelLineGroups.js';
+import { buildShareCompareRows } from '../advisor/advisorSnapshot.js';
+
+export { needsWishClarification } from './advisorRanking.js';
 
 const DEFAULT_TERM = 48;
 
@@ -119,28 +126,41 @@ function vehicleMatchesBodyType(vehicle, bodyType) {
   return vehicle.bodyType === bodyType;
 }
 
-function applySalesFilters(vehicles, wishes) {
-  return vehicles.filter((v) => {
-    if (wishes.budget?.maxMonthlyRate && v.monthlyRate > wishes.budget.maxMonthlyRate) return false;
-    if (wishes.availability && v.availability !== wishes.availability) return false;
-    if (!vehicleMatchesPowertrain(v, wishes.powertrain)) return false;
-    if (!vehicleMatchesBodyType(v, wishes.bodyType)) return false;
-    return true;
-  });
+function applyHardRuleFilters(vehicles, chipIds, wishes) {
+  const profile = buildSearchProfile({ chipIds, wishes });
+  return vehicles
+    .map(enrichVehicleWithModelAttributes)
+    .filter((v) => passesHardRules(v, profile));
 }
 
-export function findSalesAdvisorMatches(chipIds = [], {
-  limit = 5,
-  termMonths = DEFAULT_TERM,
-  mileagePerYear = null,
-  activeKiaModelIds = null,
-} = {}) {
+function applySalesFilters(vehicles, wishes, chipIds = []) {
+  return applyHardRuleFilters(
+    vehicles.filter((v) => {
+      if (wishes.budget?.maxMonthlyRate && v.monthlyRate > wishes.budget.maxMonthlyRate) return false;
+      if (wishes.availability && v.availability !== wishes.availability) return false;
+      if (!vehicleMatchesPowertrain(v, wishes.powertrain)) return false;
+      if (!vehicleMatchesBodyType(v, wishes.bodyType)) return false;
+      return true;
+    }),
+    chipIds,
+    wishes,
+  );
+}
+
+export function computeSalesAdvisorResults(chipIds = [], options = {}) {
+  const {
+    limit = 5,
+    termMonths = DEFAULT_TERM,
+    mileagePerYear = null,
+    activeKiaModelIds = null,
+    dealerSlug = null,
+  } = options;
+
   const wishes = buildWishesFromChipIds(chipIds);
   const effectiveMileage = mileagePerYear ?? wishes.mileagePerYear;
   const mileageFactor = mileageRateFactor(effectiveMileage);
-  const hasAnySelection = chipIds.length > 0;
 
-  const kiaPool = getKiaSalesVehiclePool({ activeModelIds: activeKiaModelIds });
+  const kiaPool = getKiaSalesVehiclePool({ activeModelIds: activeKiaModelIds, dealerSlug });
 
   const filters = {
     maxRate: wishes.budget?.maxMonthlyRate ?? null,
@@ -151,10 +171,15 @@ export function findSalesAdvisorMatches(chipIds = [], {
   };
 
   let vehicles = filterMarketplaceVehicles(kiaPool, filters);
-  vehicles = applySalesFilters(vehicles, wishes);
+  vehicles = applySalesFilters(vehicles, wishes, chipIds);
 
-  if (!vehicles.length) {
-    vehicles = hasAnySelection ? [...kiaPool] : kiaPool;
+  if (!vehicles.length && wishes.budget?.maxMonthlyRate) {
+    const relaxedWishes = { ...wishes, budget: { ...wishes.budget, maxMonthlyRate: null } };
+    vehicles = applySalesFilters(
+      filterMarketplaceVehicles(kiaPool, { ...filters, maxRate: null }),
+      relaxedWishes,
+      chipIds,
+    ).map((v) => ({ ...v, budgetRelaxed: true }));
   }
 
   const enriched = vehicles.map((v) => ({
@@ -168,40 +193,19 @@ export function findSalesAdvisorMatches(chipIds = [], {
     getDisplayRate: (v) => v.displayRate,
   });
 
-  return ranked.slice(0, limit).map((match) => {
-    const withQuote = {
-      ...match,
-      cleverQuote: match.cleverQuote ?? computeCleverQuote({
-        vehicle: match.vehicle,
-        wishes,
-        match,
-        trimId: match.bestTrimId,
-      }),
-    };
-    return enrichMatchWithKiaMeta(withQuote);
-  });
+  const finalized = finalizeAdvisorMatches(ranked, { wishes, chipIds, limit });
+  const matches = finalized.map((match) => enrichMatchWithKiaMeta(match));
+  const modelLineGroups = buildModelLineGroups(ranked, finalized, { wishes, chipIds });
+
+  return { matches, modelLineGroups, wishes };
+}
+
+export function findSalesAdvisorMatches(chipIds = [], options = {}) {
+  return computeSalesAdvisorResults(chipIds, options).matches;
 }
 
 export function buildSalesCompareRows(matches = []) {
-  return matches.map((m) => {
-    const v = m.vehicle;
-    return {
-      slug: m.slug,
-      title: m.model ?? `${v.brand} ${v.model}`,
-      cleverQuote: m.cleverQuote,
-      monthlyRate: m.bestOffer?.monthlyRate ?? v.monthlyRate,
-      financeRate: v.financeRate ?? Math.round(v.monthlyRate * 1.08),
-      cashPrice: v.cashPrice,
-      rangeKm: v.rangeKm ?? v.wltpRange ?? '—',
-      trunkLiters: v.trunkLiters ?? '—',
-      towCapacityKg: v.towCapacityKg ?? '—',
-      deliveryTime: m.bestOffer?.deliveryTime ?? v.deliveryTime ?? '—',
-      availability: v.availability,
-      discountPercent: v.discountPercent ?? 0,
-      matchedFeatures: m.matchedFeatures ?? [],
-      missingFeatures: m.missingFeatures ?? [],
-    };
-  });
+  return buildShareCompareRows(matches);
 }
 
 export function getFulfilledLabels(match) {

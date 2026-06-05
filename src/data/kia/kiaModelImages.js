@@ -1,6 +1,6 @@
 /**
  * Kia Modellbilder – aus offiziellen Preislisten-PDFs extrahiert
- * Generiert via: npm run extract:kia-images
+ * Generiert via: npm run extract:kia-images (Titelseite der Kia-Preisliste, Sorento-Stil)
  */
 import raw from './kiaModelImages.json' with { type: 'json' };
 
@@ -24,7 +24,9 @@ export function resolveKiaModelImageKey(modelKey = '') {
   if (key.includes('picanto')) return 'picanto';
   if (key.includes('stonic')) return 'stonic';
   if (key.includes('seltos')) return 'seltos';
-  if (key.includes('xceed') || key.includes('ceed')) return 'xceed';
+  if (key.includes('xceed')) return 'xceed';
+  if (key === 'ceed') return 'ceed';
+  if (key.includes('niro')) return 'niro';
   if (key.includes('pv5')) return 'pv5-passenger';
   return key;
 }

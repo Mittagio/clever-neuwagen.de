@@ -16,15 +16,25 @@ export default function DiscoveryCuratedCard({
   rank,
   paymentMode = 'leasing',
   wishes = null,
+  chipIds = [],
+  allMatches = [],
   onViewOffer,
   onCleverQuoteWhy,
 }) {
   if (!match) return null;
 
   const v = match.vehicle;
-  const title = getMatchDisplayTitle(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
-  const recommendReasons = buildWishMatchBullets(match, { wishes, maxReasons: 3 });
+  const recommendReasons = buildWishMatchBullets(match, {
+    wishes,
+    maxReasons: 3,
+    allMatches,
+    chipIds,
+  });
+  const title = getMatchDisplayTitle(match);
+  const whyTitle = match.cleverQuote?.advisorMode
+    ? `Warum empfehlen wir den ${title}?`
+    : 'Warum passt es?';
 
   return (
     <article className="disc-curated-card">
@@ -72,7 +82,7 @@ export default function DiscoveryCuratedCard({
           {match.cleverQuote ? (
             <CleverQuoteWhyPanel cleverQuote={match.cleverQuote} compact />
           ) : (
-            <RecommendReasonsPanel reasons={recommendReasons} title="Warum passt es?" />
+            <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />
           )}
           <p className="disc-curated-card__price">
             {paymentMode === 'cash' ? '' : 'Ab '}{price.label}

@@ -24,6 +24,8 @@ import {
   getKiaPdfImportStats,
   listKiaPdfPriceLists,
 } from './kiaPriceListRegistry.js';
+import { getKiaTrinklePilotStock } from './kiaTrinkleStock.js';
+import { isPilotLiveMode, PILOT_DEALER_ID } from '../../config/pilotLive.js';
 
 export const KIA_PARTNER = {
   brand: 'Kia',
@@ -37,8 +39,12 @@ export const KIA_PARTNER = {
 /** Registry-Modelle mit voller Paket-/CleverQuote-Auflösung */
 export const KIA_REGISTRY_MODEL_KEYS = ['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed'];
 
-/** Alle Kia-Modell-IDs im Händlerkatalog */
-export const KIA_DEALER_MODEL_IDS = ['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed'];
+/** Alle Kia-Modell-IDs im Händlerkatalog (synchron mit DEALER_MODEL_CATALOG) */
+export const KIA_DEALER_MODEL_IDS = [
+  'picanto', 'stonic', 'xceed', 'k4', 'k4-sportswagon', 'ceed', 'niro',
+  'seltos', 'sportage', 'sportage-phev', 'sorento', 'sorento-hybrid', 'sorento-phev',
+  'ev2', 'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'pv5-passenger',
+];
 
 function normalizeModelToken(model = '') {
   return String(model).toLowerCase().replace(/\s+/g, '-');
@@ -50,8 +56,9 @@ export function isKiaVehicle(vehicle) {
 
 export function vehicleMatchesKiaModelId(vehicle, modelId) {
   if (!vehicle || !modelId) return false;
-  const m = normalizeModelToken(vehicle.model);
   const id = normalizeModelToken(modelId);
+  if (vehicle.modelKey && normalizeModelToken(vehicle.modelKey) === id) return true;
+  const m = normalizeModelToken(vehicle.model);
   if (id === 'sportage') return m.includes('sportage');
   if (id === 'ev3') return m.includes('ev3');
   if (id === 'ev4') return m.includes('ev4');
@@ -80,8 +87,19 @@ export function getKiaMarketplaceVehicles(source = MARKETPLACE_VEHICLES) {
 export function getKiaSalesVehiclePool({
   source = MARKETPLACE_VEHICLES,
   activeModelIds = null,
+  dealerSlug = null,
 } = {}) {
-  let pool = getKiaMarketplaceVehicles(source);
+  const trinkleDealer = dealerSlug === 'autohaus-trinkle'
+    || (isPilotLiveMode() && (dealerSlug ?? PILOT_DEALER_ID) === 'autohaus-trinkle');
+
+  let pool = trinkleDealer
+    ? getKiaTrinklePilotStock()
+    : getKiaMarketplaceVehicles(source);
+
+  if (dealerSlug && !trinkleDealer) {
+    pool = pool.filter((v) => (v.dealerSlug ?? PILOT_DEALER_ID) === dealerSlug);
+  }
+
   if (Array.isArray(activeModelIds) && activeModelIds.length > 0) {
     pool = pool.filter((v) =>
       activeModelIds.some((id) => vehicleMatchesKiaModelId(v, id)),

@@ -9,6 +9,8 @@ import {
   vehiclePassesBrandExclusion,
   vehiclePassesModelExclusion,
 } from './brandResultsFilter.js';
+import { enrichVehicleWithModelAttributes } from '../data/kia/kiaModelAttributes.js';
+import { passesHardRules } from '../services/search/hardExclusionRules.js';
 
 function norm(value) {
   return String(value ?? '').toLowerCase();
@@ -21,6 +23,10 @@ function vehicleMatchesFeature(vehicle, featureId) {
   if (featureId === 'family_suv') return vehicle.bodyType === 'suv';
   if (featureId === 'elektro') return vehicle.powertrain === 'elektro';
   if (featureId === 'benzin') return vehicle.powertrain === 'verbrenner';
+  if (featureId === 'seats_7') {
+    const v = enrichVehicleWithModelAttributes(vehicle);
+    return v.isSevenSeater || (v.seats ?? 0) >= 7;
+  }
   if (featureId === 'automatic') return /automatik|dsg/i.test(lower);
   if (featureId === 'rear_camera' || featureId === 'parking_rear') {
     return /rückfahr|rückkamera|heckkamera|kamera hinten|rear camera|rückfahrkamera/i.test(lower);
@@ -228,6 +234,17 @@ export function filterMarketplaceVehicles(vehicles, initialFilters) {
     if (!vehicleMeetsTransmission(vehicle, filters.transmission)) return false;
     if (!vehicleMeetsPowerPs(vehicle, filters.powerPsTarget, filters.powerPsMin, filters.powerPsMax)) {
       return false;
+    }
+
+    if (filters.seatsMin != null) {
+      const v = enrichVehicleWithModelAttributes(vehicle);
+      const seats = v.seats ?? v.modelFacts?.seats ?? 5;
+      if (seats < filters.seatsMin && !v.isSevenSeater) return false;
+    }
+
+    if (filters.hardRulesProfile) {
+      const v = enrichVehicleWithModelAttributes(vehicle);
+      if (!passesHardRules(v, filters.hardRulesProfile)) return false;
     }
 
     const textQ = filters.q || filters.query;
