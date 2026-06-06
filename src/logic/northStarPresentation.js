@@ -3,8 +3,7 @@
  */
 
 import { hasLocalizedSearch } from './oneSearchService.js';
-import { parseSearchIntent } from '../services/search/searchIntentParser.js';
-import { createEditableChips, WISH_ADD_CHIP } from '../services/search/chipConfig.js';
+import { buildCustomerStatedChips } from '../services/search/chipConfig.js';
 
 const FUEL_LABELS = {
   elektro: 'E-Auto',
@@ -54,67 +53,9 @@ function enrichIntentFromFilters(intent, filters, wishes) {
   };
 }
 
-/** Kompakte Chips – klein, elegant, keine Filteroptik */
+/** Kompakte Chips – nur Kundenwünsche (Bereich 1), keine System-Defaults. */
 export function buildCompactSearchChips(filters, wishes) {
-  const intent = enrichIntentFromFilters(parseSearchIntent(filters.query ?? ''), filters, wishes);
-  const structuredChips = createEditableChips(intent, filters);
-  if (structuredChips.length > 0) {
-    return [...structuredChips, WISH_ADD_CHIP];
-  }
-
-  const chips = [];
-  const q = (filters.query ?? '').toLowerCase();
-
-  if (filters.modelExplicit && (filters.trim || wishes.trim)) {
-    const trim = wishes.trim ?? filters.trim;
-    chips.push({ id: 'trim', label: trim, type: 'trim', field: 'trim' });
-  }
-
-  if (filters.fuel && FUEL_LABELS[filters.fuel]) {
-    chips.push({ id: 'fuel', label: FUEL_LABELS[filters.fuel], type: 'fuel', field: 'fuel' });
-  } else if (wishes.features.includes('elektro') || /elektro|e-auto|ev\b/.test(q)) {
-    chips.push({ id: 'fuel', label: 'E-Auto', type: 'fuel', field: 'fuel' });
-  } else if (wishes.features.includes('benzin') || /benzin|benziner/.test(q)) {
-    chips.push({ id: 'fuel', label: 'Benziner', type: 'fuel', field: 'fuel' });
-  }
-
-  const payment = filters.payment || wishes.budget?.type || 'leasing';
-  if (payment && PAYMENT_LABELS[payment]) {
-    chips.push({ id: 'payment', label: PAYMENT_LABELS[payment], type: 'payment', field: 'payment' });
-  }
-
-  if (filters.maxRate) {
-    chips.push({
-      id: 'maxRate',
-      label: `bis ${filters.maxRate} €`,
-      type: 'budget',
-      field: 'maxRate',
-    });
-  }
-
-  if (hasLocalizedSearch(filters)) {
-    const loc = filters.locLabel || filters.city || filters.plz;
-    if (loc) {
-      chips.push({ id: 'location', label: loc, type: 'location', field: 'location' });
-    }
-    if (filters.radius != null) {
-      chips.push({ id: 'radius', label: `${filters.radius} km`, type: 'radius', field: 'radius' });
-    }
-  }
-
-  if (/automatik/.test(q)) {
-    chips.push({ id: 'automatic', label: 'Automatik', type: 'feature', field: 'feature' });
-  }
-  if (filters.availability === 'sofort' || /sofort/.test(q)) {
-    chips.push({
-      id: 'availability',
-      label: 'Sofort verfügbar',
-      type: 'availability',
-      field: 'availability',
-    });
-  }
-
-  return [...chips.slice(0, 8), WISH_ADD_CHIP];
+  return buildCustomerStatedChips(filters, wishes);
 }
 
 function formatPriceShort(n) {

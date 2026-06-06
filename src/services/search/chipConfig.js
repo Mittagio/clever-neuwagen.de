@@ -16,6 +16,7 @@ import {
 } from './leasingRangeOptions.js';
 import { buildFeaturesFilterPatch } from './featureFilterSync.js';
 import { customerFuelLabel } from './customerFuelLabels.js';
+import { parseSearchIntent } from './searchIntentParser.js';
 
 export {
   TERM_MONTHS_MIN,
@@ -379,17 +380,22 @@ function makeChip({
  * @param {object} [filters]
  */
 function userAskedForMileage(intent, filters = {}) {
-  if (intent.mileagePerYear != null) return true;
   if (filters.mileagePerYearExplicit) return true;
   const q = (intent.rawQuery ?? filters.query ?? '').toLowerCase();
   return /\d[\d.\s]*\s*(000\s*)?km|\bkm\/jahr\b|kilometer\s*pro\s*jahr/i.test(q);
 }
 
 function userAskedForTerm(intent, filters = {}) {
-  if (intent.durationMonths != null) return true;
   if (filters.termMonthsExplicit) return true;
   const q = (intent.rawQuery ?? filters.query ?? '').toLowerCase();
   return /\d+\s*monate|laufzeit|\bmon\.\b/i.test(q);
+}
+
+export function userAskedForPayment(intent, filters = {}) {
+  if (filters.paymentExplicit) return true;
+  if (intent.paymentExplicit) return true;
+  const q = (intent.rawQuery ?? filters.query ?? '').toLowerCase();
+  return /\bleasing\b|\bfinanzier|\bkauf\b|\bbar\b|\bmonat|\brate\b/i.test(q);
 }
 
 function userAskedForLocation(intent, filters = {}) {
@@ -437,7 +443,7 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
-  if (intent.payment) {
+  if (intent.payment && userAskedForPayment(intent, filters)) {
     chips.push(makeChip({
       id: 'payment',
       type: CHIP_TYPES.PAYMENT,
@@ -473,7 +479,7 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
-  if (intent.maxPrice != null || (filters.maxPrice && payment === 'cash')) {
+  if (intent.maxPrice != null || filters.maxPrice != null) {
     const price = intent.maxPrice ?? filters.maxPrice;
     chips.push(makeChip({
       id: 'maxPrice',
@@ -601,6 +607,119 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   return chips.slice(0, 12);
+}
+
+const STATED_CHIP_EMOJI = {
+  fuel: '⚡',
+  seats_7: '👨‍👩‍👧‍👦',
+  maxPrice: '💰',
+  maxRate: '💰',
+};
+
+const STATED_CHIP_ORDER = [
+  'fuel',
+  'seats_7',
+  'bodyType',
+  'model',
+  'trim',
+  'maxRate',
+  'maxPrice',
+  'payment',
+  'mileagePerYear',
+  'termMonths',
+  'availability',
+  'useCase',
+  'location',
+];
+
+function statedChipSortIndex(chip) {
+  const index = STATED_CHIP_ORDER.indexOf(chip.id);
+  return index === -1 ? STATED_CHIP_ORDER.length : index;
+}
+
+/** Bereich 1: Nur was der Kunde wirklich gesagt hat – keine Defaults, kein inferiertes Leasing/Kauf. */
+export function buildCustomerStatedChips(filters = {}, wishes = {}) {
+  const intent = parseSearchIntent(filters.query ?? wishes.rawQuery ?? '');
+  const chips = createEditableChips(intent, filters);
+  return chips
+    .map((chip) => ({
+      ...chip,
+      emoji: STATED_CHIP_EMOJI[chip.id]
+        ?? (chip.type === CHIP_TYPES.FUEL ? STATED_CHIP_EMOJI.fuel : null),
+      readOnly: true,
+    }))
+    .sort((a, b) => statedChipSortIndex(a) - statedChipSortIndex(b));
+}
+
+/** Bereich 2: Freiwillige Verfeinerung – Zahlungsart, Ausstattung, Verfügbarkeit. */
+export function buildSearchRefineChips(filters = {}, statedChips = []) {
+  const statedTypes = new Set(statedChips.map((c) => c.type));
+  const activeFeatures = new Set(filters.features ?? []);
+  const options = [];
+
+  if (!filters.payment && !statedTypes.has(CHIP_TYPES.PAYMENT)) {
+    options.push(
+      { id: 'refine_cash', label: '+ Kauf', patch: { payment: 'cash', paymentExplicit: true } },
+      { id: 'refine_finance', label: '+ Finanzierung', patch: { payment: 'finance', paymentExplicit: true } },
+      { id: 'refine_leasing', label: '+ Leasing', patch: { payment: 'leasing', paymentExplicit: true } },
+    );
+  }
+
+  if (!activeFeatures.has('range_400') && filters.rangeKmMin == null) {
+    options.push({
+      id: 'refine_range',
+      label: '+ Reichweite',
+      patch: buildFeaturesFilterPatch(filters, [...(filters.features ?? []), 'range_400']),
+    });
+  }
+  if (!activeFeatures.has('towbar')) {
+    options.push({
+      id: 'refine_towbar',
+      label: '+ Anhängerkupplung',
+      patch: buildFeaturesFilterPatch(filters, [...(filters.features ?? []), 'towbar']),
+    });
+  }
+  if (!activeFeatures.has('heat_pump')) {
+    options.push({
+      id: 'refine_heat_pump',
+      label: '+ Wärmepumpe',
+      patch: buildFeaturesFilterPatch(filters, [...(filters.features ?? []), 'heat_pump']),
+    });
+  }
+  if (filters.availability !== 'sofort') {
+    options.push({
+      id: 'refine_sofort',
+      label: '+ Sofort verfügbar',
+      patch: { availability: 'sofort' },
+    });
+  }
+
+  return options;
+}
+
+/** Bereich 3: Clever fragt nach – nur bei echter Unschärfe, kein Hyperchat. */
+export function getCleverAskQuestions(filters = {}, wishes = {}) {
+  const intent = parseSearchIntent(filters.query ?? wishes.rawQuery ?? '');
+  const questions = [];
+
+  const hasBudget = intent.maxPrice != null || filters.maxPrice != null
+    || intent.maxRate != null || filters.maxRate != null;
+
+  if (hasBudget && !userAskedForPayment(intent, filters) && !filters.payment) {
+    questions.push({
+      id: 'payment',
+      kicker: 'Damit ich besser helfen kann',
+      title: 'Welche Zahlungsart bevorzugen Sie?',
+      options: [
+        { id: 'payment_any', label: 'Egal', patch: {} },
+        { id: 'payment_cash', label: 'Kauf', patch: { payment: 'cash', paymentExplicit: true } },
+        { id: 'payment_finance', label: 'Finanzierung', patch: { payment: 'finance', paymentExplicit: true } },
+        { id: 'payment_leasing', label: 'Leasing', patch: { payment: 'leasing', paymentExplicit: true } },
+      ],
+    });
+  }
+
+  return questions;
 }
 
 function getConfigForChip(chip) {
@@ -796,12 +915,12 @@ export function buildChipFilterPatch(type, value, filters) {
       return { fuel: value, type: value === 'elektro' ? 'elektro' : filters.type, query: rebuildQuery(filters, { fuel: value }) };
     case CHIP_TYPES.PAYMENT:
       if (value === 'cash') {
-        return { payment: 'cash', maxRate: null, query: rebuildQuery(filters, { payment: value }) };
+        return { payment: 'cash', paymentExplicit: true, maxRate: null, query: rebuildQuery(filters, { payment: value }) };
       }
       if (value === 'leasing' || value === 'finance') {
-        return { payment: value, maxPrice: null, query: rebuildQuery(filters, { payment: value }) };
+        return { payment: value, paymentExplicit: true, maxPrice: null, query: rebuildQuery(filters, { payment: value }) };
       }
-      return { payment: value, query: rebuildQuery(filters, { payment: value }) };
+      return { payment: value, paymentExplicit: true, query: rebuildQuery(filters, { payment: value }) };
     case CHIP_TYPES.MODEL_REFINE:
       if (value === 'open_brands' || value === 'similar') {
         return { model: '', brand: '', trim: '', modelExplicit: false };

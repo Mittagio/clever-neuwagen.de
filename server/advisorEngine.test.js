@@ -28,6 +28,15 @@ const ev3 = discovery.modelLineGroups.find((g) => g.modelLineKey === 'ev3');
 assert.ok(ev3, 'EV3 Gruppe');
 assert.equal(ev3.variantCount, 3, 'EV3: drei Ausstattungen');
 
+const noExact = runServerDiscoverySearch({
+  query: 'Elektro 7-Sitzer bis 50.000 €',
+  filters: { payment: 'cash', maxPrice: 50000 },
+  dealerSlug: 'autohaus-trinkle',
+});
+assert.equal(noExact.hasExactMatch, false, 'Kein exakter Elektro-7-Sitzer im Budget');
+assert.ok(noExact.alternatives.length >= 2, 'Alternativ-Stufen vom Server');
+assert.ok(noExact.guidanceMessage, 'Erklärungstext');
+
 const sales = runServerSalesSearch({
   chipIds: ['fuel_elektro', 'daily_family'],
   dealerSlug: 'autohaus-trinkle',

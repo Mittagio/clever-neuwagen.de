@@ -86,12 +86,26 @@ export function snapshotModelLineGroup(group) {
   };
 }
 
+export function snapshotAlternativeTier(tier) {
+  if (!tier) return null;
+  return {
+    id: tier.id,
+    title: tier.title,
+    explanation: tier.explanation,
+    modelLineGroups: (tier.modelLineGroups ?? []).map(snapshotModelLineGroup),
+  };
+}
+
 export function snapshotDiscoveryResult(result, meta = {}) {
+  const hasExactMatch = result.hasExactMatch ?? (result.modelLineGroups?.length > 0);
   return {
     matches: (result.matches ?? []).map(snapshotMatch),
     modelLineGroups: (result.modelLineGroups ?? []).map(snapshotModelLineGroup),
     exclusionHint: result.exclusionHint ?? null,
     noExactMatchMessage: result.noExactMatchMessage ?? null,
+    guidanceMessage: result.guidanceMessage ?? result.noExactMatchMessage ?? null,
+    hasExactMatch,
+    alternatives: (result.alternatives ?? []).map(snapshotAlternativeTier),
     eligibleCount: result.eligibleCount ?? 0,
     profileSource: meta.profileSource ?? null,
   };

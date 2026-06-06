@@ -273,9 +273,18 @@ export const KIA_MODEL_ATTRIBUTES = {
 };
 
 export function resolveModelAttributeKey(vehicle = {}) {
-  const key = String(vehicle.modelKey ?? vehicle.imageModel ?? '').toLowerCase();
-  if (key.startsWith('ev5')) return key.includes('gt') ? 'ev5-gt' : 'ev5';
+  let key = String(vehicle.modelKey ?? vehicle.imageModel ?? '').toLowerCase();
+  if (!key && vehicle.model) {
+    const fromModel = String(vehicle.model).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (KIA_MODEL_ATTRIBUTES[fromModel]) return fromModel;
+    key = fromModel;
+  }
+  if (key.startsWith('ev9')) return 'ev9';
+  if (key.startsWith('ev3')) return 'ev3';
+  if (key.startsWith('ev2')) return 'ev2';
   if (key.startsWith('ev4')) return 'ev4';
+  if (key.startsWith('ev5')) return key.includes('gt') ? 'ev5-gt' : 'ev5';
+  if (key.startsWith('ev6')) return 'ev6';
   if (key.startsWith('sportage')) {
     if (vehicle.powertrain === 'plugin-hybrid') return 'sportage-phev';
     if (vehicle.powertrain === 'hybrid') return 'sportage-hybrid';

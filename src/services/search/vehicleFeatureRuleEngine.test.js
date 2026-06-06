@@ -11,6 +11,7 @@ import {
   searchProfileToApiJson,
 } from './vehicleFeatureRuleEngine.js';
 import { toCanonicalFeatureId } from './canonicalFeatureIds.js';
+import { getKiaSalesVehiclePool } from '../../data/kia/kiaPartnerHub.js';
 
 const QUERY = 'Auto 350 km Reichweite, Wärmepumpe, 360-Grad-Kamera, Sitzheizung, elektrische Heckklappe';
 
@@ -54,6 +55,21 @@ const ev4Gt = evaluateVehicleAgainstProfile(profile, {
   electricRangeKm: 490,
 });
 assert.equal(ev4Gt.cleverQuotePercent, 100, 'EV4 GT-Line 100%');
+
+const sevenIntent = parseSearchIntent('Elektro 7-Sitzer bis 50.000 €');
+const sevenProfile = buildSearchProfile({ query: 'Elektro 7-Sitzer bis 50.000 €', intent: sevenIntent });
+assert.equal(sevenProfile.seatsMin, 7);
+assert.ok(!sevenProfile.requiredFeatures.includes('seats_7'), 'seats_7 nicht doppelt zu seatsMin');
+
+const ev9 = getKiaSalesVehiclePool({ dealerSlug: 'autohaus-trinkle' }).find((v) => v.modelKey === 'ev9');
+assert.ok(ev9, 'EV9 im Pool');
+const ev9Eval = evaluateVehicleAgainstProfile(sevenProfile, ev9);
+assert.equal(ev9Eval.cleverQuotePercent, 100, 'EV9 100% bei Elektro + 7 Sitze');
+assert.equal(
+  ev9Eval.checks.filter((c) => c.label.includes('Sitze')).length,
+  1,
+  '7 Sitze nur einmal in der Checkliste',
+);
 
 console.log('vehicleFeatureRuleEngine tests OK');
 console.log('API-Profil:', JSON.stringify(apiJson, null, 2));

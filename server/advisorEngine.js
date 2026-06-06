@@ -8,9 +8,10 @@ import { filterMarketplaceVehicles } from '../src/logic/marketplaceService.js';
 import { adjustRateForTerm } from '../src/logic/oneSearchService.js';
 import { parseSearchIntent } from '../src/services/search/searchIntentParser.js';
 import { parseCustomerSearchProfile } from '../src/services/search/openAiIntentParser.js';
-import { intentToMarketplaceFilters, toAdvisorMarketplaceFilters } from '../src/services/search/intentToFilters.js';
+import { intentToMarketplaceFilters } from '../src/services/search/intentToFilters.js';
 import { parseCustomerWish } from '../src/services/wish/wishParser.js';
-import { runCleverSearch } from '../src/services/search/cleverSearchPipeline.js';
+import { buildSearchProfile } from '../src/services/search/searchProfile.js';
+import { runAdvisorSearchWithAlternatives } from '../src/services/search/advisorSearchAlternatives.js';
 import { computeSalesAdvisorResults } from '../src/services/sales/salesAdvisorService.js';
 import { deriveAdvisorChipIds, finalizeAdvisorMatches } from '../src/services/sales/advisorRanking.js';
 import { matchVehiclesToWish } from '../src/services/wish/wishMatchEngine.js';
@@ -49,6 +50,13 @@ function buildWishesFromPayload({ query = '', filters = {}, wishes: wishOverride
   if (filters.maxRate) {
     w.budget = { ...w.budget, maxMonthlyRate: filters.maxRate, type: filters.payment || 'leasing' };
   }
+  if (filters.maxPrice) {
+    w.budget = {
+      ...w.budget,
+      maxPrice: filters.maxPrice,
+      ...(filters.payment ? { type: filters.payment } : {}),
+    };
+  }
   if (filters.fuel === 'elektro' && !w.features.includes('elektro')) {
     w.features = [...w.features, 'elektro'];
   }
@@ -70,25 +78,46 @@ function runDiscoveryCore(payload = {}, intent) {
   const termMonths = filters.termMonths ?? DEFAULT_TERM;
 
   const pool = prepareVehiclePool(dealerSlug, activeModelIds);
-  const filtered = filterMarketplaceVehicles(pool, toAdvisorMarketplaceFilters({
-    ...filters,
-    excludedBrands: [],
-    excludedModels: [],
-  })).map((vehicle) => ({
+  const advisorPool = filterMarketplaceVehicles(pool, {
+    excludedBrands: filters.excludedBrands ?? [],
+    excludedModels: filters.excludedModels ?? [],
+    dealer: filters.dealer,
+  }).map((vehicle) => ({
     ...vehicle,
     displayRate: adjustRateForTerm(vehicle.monthlyRate, termMonths),
   }));
 
-  return runCleverSearch({
+  const profile = buildSearchProfile({ query, intent, filters, wishes, chipIds });
+  const bundle = runAdvisorSearchWithAlternatives({
     query,
     intent,
+    profile,
     filters,
     wishes,
     chipIds,
-    vehicles: filtered,
+    vehicles: advisorPool,
     getDisplayRate: (v) => v.displayRate,
     limit,
   });
+
+  if (bundle.hasExactMatch) {
+    return {
+      ...bundle.exact,
+      hasExactMatch: true,
+      alternatives: [],
+      guidanceMessage: null,
+    };
+  }
+
+  return {
+    ...bundle.exact,
+    matches: [],
+    modelLineGroups: [],
+    hasExactMatch: false,
+    alternatives: bundle.alternatives,
+    guidanceMessage: bundle.guidanceMessage,
+    exclusionHint: bundle.exclusionHint ?? bundle.exact.exclusionHint,
+  };
 }
 
 /** Synchron – lokaler Intent-Parser (Tests, Fallback). */

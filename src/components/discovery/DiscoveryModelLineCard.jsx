@@ -60,7 +60,8 @@ function VariantRow({ match, paymentMode, onViewOffer, isRecommended = false, se
 export default function DiscoveryModelLineCard({
   group,
   rank = 1,
-  paymentMode = 'leasing',
+  paymentMode = 'cash',
+  paymentNeutral = false,
   wishes = null,
   chipIds = [],
   allMatches = [],
@@ -132,6 +133,7 @@ export default function DiscoveryModelLineCard({
         <DiscoveryHeroCard
           match={primaryMatch}
           paymentMode={paymentMode}
+          paymentNeutral={paymentNeutral}
           onChangePaymentMode={onChangePaymentMode}
           onViewOffer={onViewOffer}
           onCleverQuoteWhy={onCleverQuoteWhy}

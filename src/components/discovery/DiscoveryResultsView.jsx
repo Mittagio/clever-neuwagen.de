@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import { CompactSearchSummary } from '../search/SearchFlowComponents.jsx';
+import CustomerSearchHub from '../search/CustomerSearchHub.jsx';
 
 import SearchPlausibilityBanner from '../search/SearchPlausibilityBanner.jsx';
 
@@ -24,6 +24,7 @@ import DiscoveryCuratedCard from './DiscoveryCuratedCard.jsx';
 import DiscoveryCompareSection from './DiscoveryCompareSection.jsx';
 
 import DiscoveryAlternativesStrip from './DiscoveryAlternativesStrip.jsx';
+import DiscoverySearchAlternatives from './DiscoverySearchAlternatives.jsx';
 
 import PopularOffersStrip from './PopularOffersStrip.jsx';
 
@@ -32,8 +33,6 @@ import DiscoveryDealerTrust from './DiscoveryDealerTrust.jsx';
 import { WishVehicleGridCard } from '../wish/WishVehicleCards.jsx';
 
 import { CleverQuoteBreakdown } from '../cleverQuote/CleverQuoteBadge.jsx';
-
-import { buildCompactSearchChips } from '../../logic/northStarPresentation.js';
 
 import { pickDiscoveryAlternatives } from '../../logic/discoveryResultsPresentation.js';
 
@@ -160,6 +159,12 @@ export default function DiscoveryResultsView({
 
   modelLineGroups = null,
 
+  searchAlternatives = null,
+
+  guidanceMessage = null,
+
+  searchProfile = null,
+
 }) {
 
   const [cleverQuoteOpen, setCleverQuoteOpen] = useState(false);
@@ -198,33 +203,20 @@ export default function DiscoveryResultsView({
 
 
 
-  const paymentMode = filters?.payment ?? 'leasing';
+  const paymentChosen = Boolean(filters?.payment);
+  const paymentMode = filters?.payment || 'cash';
 
   const handleChangePaymentMode = (mode) => {
-    onPatchFilters?.({ payment: mode });
+    onPatchFilters?.({ payment: mode, paymentExplicit: true });
   };
-
-
-
-  const compactChips = useMemo(
-
-    () => buildCompactSearchChips(filters, wishes),
-
-    [filters, wishes],
-
-  );
 
 
 
   const allBrandsHidden = isAllBrandsExcluded(resultCatalog, excludedBrands);
 
-
-
   const localized = hasLocalizedSearch(filters);
 
   const showLocation = localized ? Boolean(onPatchFilters) : true;
-
-  const hideHeadlineSub = compactChips.length > 0;
 
 
 
@@ -260,8 +252,9 @@ export default function DiscoveryResultsView({
 
   const radiusKm = filters.radius ?? 25;
 
-  const isAdvisorResults = Boolean(topMatch?.cleverQuote?.advisorMode);
+  const isAdvisorResults = Boolean(topMatch?.cleverQuote?.advisorMode) || Boolean(modelLineGroups?.length);
   const advisorGroups = (modelLineGroups?.length ? modelLineGroups : null);
+  const hasSearchAlternatives = (searchAlternatives?.length ?? 0) > 0;
   const allRankedMatchesEarly = useMemo(
     () => [topMatch, ...restMatches].filter(Boolean),
     [topMatch, restMatches],
@@ -337,61 +330,14 @@ export default function DiscoveryResultsView({
 
       <div className="booking-selection-card booking-selection-card--hub">
 
-        <CompactSearchSummary chips={compactChips} onEditChip={onEditChip} title="Ihre Suche" />
-
-
-
-        {showVehicles && offerStats && (
-
-          <p className="disc-curated-line" role="status">{curatedLine}</p>
-
-        )}
-
-
-
-        <div className="disc-desktop-only">
-
-        <ResultsBrandModelFilter
-
-          catalog={resultCatalog}
-
-          excludedBrands={excludedBrands}
-
-          excludedModels={excludedModels}
-
-          onToggleBrand={onToggleBrand}
-
-          onToggleModel={onToggleModel}
-
-          showSection={resultCatalog.brands?.length > 0}
-
-          visibleCount={offerStats?.visible ?? 0}
-
+        <CustomerSearchHub
+          filters={filters}
+          wishes={wishes}
+          onEditSearch={onEditSearch}
+          onEditChip={onEditChip}
+          onPatchFilters={onPatchFilters}
         />
-
-
-
-        <ResultsOfferCount stats={offerStats} cleverQuoteMode={hasCleverQuoteWishes(wishes)} />
-
-        </div>
-
-
-
-        {allBrandsHidden && (
-
-          <AllBrandsHiddenCard
-
-            onShowAllBrands={onShowAllBrands}
-
-            onResetSearch={onResetSearch}
-
-          />
-
-        )}
-
       </div>
-
-
 
       {(filters.searchWarnings?.length > 0 || filters.searchCorrections?.some((c) => c.requiresChoice)) && (
 
@@ -407,10 +353,27 @@ export default function DiscoveryResultsView({
 
       )}
 
-      {(exclusionHint || noExactMatchMessage) && (
+      {(exclusionHint || noExactMatchMessage) && !hasSearchAlternatives && (
         <p className="disc-rule-hint" role="status">
           {noExactMatchMessage ?? exclusionHint}
         </p>
+      )}
+
+
+
+      {!allBrandsHidden && hasSearchAlternatives && (
+        <DiscoverySearchAlternatives
+          guidanceMessage={guidanceMessage ?? noExactMatchMessage}
+          alternatives={searchAlternatives}
+          filters={filters}
+          wishes={wishes}
+          searchProfile={searchProfile}
+          paymentMode={paymentMode}
+          paymentNeutral={!paymentChosen}
+          onViewOffer={onViewOffer}
+          onCleverQuoteWhy={openCleverQuoteBreakdown}
+          onChangePaymentMode={handleChangePaymentMode}
+        />
       )}
 
 
@@ -419,7 +382,7 @@ export default function DiscoveryResultsView({
 
         <>
 
-          {headline?.title && !hideHeadlineSub && (
+          {headline?.title && !filters.query?.trim() && (
 
             <ResultsPageHeadline
 
@@ -427,7 +390,7 @@ export default function DiscoveryResultsView({
 
               subtitle={headline.subtitle}
 
-              hideSubtitle={Boolean(hideHeadlineSub)}
+              hideSubtitle={Boolean(filters.query?.trim())}
 
             />
 
@@ -439,15 +402,13 @@ export default function DiscoveryResultsView({
 
 
 
-          {showVehicles && (
+          {showVehicles && !hasSearchAlternatives && (
             <section className="disc-section disc-section--hit" aria-labelledby="disc-hit-title">
+              {!isAdvisorResults && (
               <h2 id="disc-hit-title" className="disc-section__label disc-section__label--s36">
-                {isFallbackHero
-                  ? 'Beste Alternative'
-                  : (isAdvisorResults && advisorGroups?.length > 1
-                    ? 'Ihre Kia-Empfehlungen'
-                    : 'Bester Treffer')}
+                {isFallbackHero ? 'Beste Alternative' : 'Bester Treffer'}
               </h2>
+              )}
 
               {isAdvisorResults && advisorGroups?.length > 0 ? (
                 <div className="disc-model-line-list">
@@ -457,6 +418,7 @@ export default function DiscoveryResultsView({
                       group={group}
                       rank={group.rank}
                       paymentMode={paymentMode}
+                      paymentNeutral={!paymentChosen}
                       wishes={wishes}
                       chipIds={advisorChipIds}
                       allMatches={allRankedMatches}
@@ -482,6 +444,7 @@ export default function DiscoveryResultsView({
                 <DiscoveryHeroCard
                   match={topMatch}
                   paymentMode={paymentMode}
+                  paymentNeutral={!paymentChosen}
                   onChangePaymentMode={handleChangePaymentMode}
                   onViewOffer={onViewOffer}
                   onCleverQuoteWhy={() => openCleverQuoteBreakdown(topMatch)}
@@ -509,6 +472,7 @@ export default function DiscoveryResultsView({
                       match={match}
                       rank={index + 2}
                       paymentMode={paymentMode}
+                      paymentNeutral={!paymentChosen}
                       wishes={wishes}
                       chipIds={advisorChipIds}
                       allMatches={allRankedMatches}

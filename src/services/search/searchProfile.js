@@ -80,6 +80,12 @@ export function buildSearchProfile({
     features.filter((f) => !META_FEATURES.has(f)),
   );
 
+  // Sitzanzahl wird über seatsMin + Modell-Fakten geprüft – nicht als Trim-Paket
+  if (seatsMin != null && seatsMin >= 7) {
+    const seatIdx = requiredFeatures.indexOf('seats_7');
+    if (seatIdx !== -1) requiredFeatures.splice(seatIdx, 1);
+  }
+
   if (chipIds.includes('fuel_elektro')) fuel = 'electric';
   if (chipIds.includes('heated_seats') && !requiredFeatures.includes('heated_seats')) {
     requiredFeatures.push('heated_seats');
@@ -107,7 +113,9 @@ export function buildSearchProfile({
     rawQuery: parsed.rawQuery ?? query,
     availability: parsed.availability ?? filters.availability ?? null,
     rangeKmMin,
-    payment: parsed.payment ?? filters.payment ?? wishes.budget?.type ?? 'leasing',
+    payment: (parsed.paymentExplicit && parsed.payment)
+      ? parsed.payment
+      : (filters.payment || wishes.budget?.type || null),
   };
 }
 

@@ -5,8 +5,9 @@ export default function DealerSearchAlternatives({
   query,
   searchProfile,
   guidanceMessage,
-  exclusionHint,
   alternatives = [],
+  filters = null,
+  wishes = null,
   dealerSlug,
   city = '',
   source = 'local',
@@ -16,17 +17,11 @@ export default function DealerSearchAlternatives({
 
   return (
     <section className="dl-search-alternatives" aria-labelledby="dl-alternatives-heading">
-      <div className="dl-search-alternatives__banner" role="status">
-        <h2 id="dl-alternatives-heading" className="dl-section__title">
-          Exakt passend: nicht im Bestand
-        </h2>
-        <p className="dl-search-alternatives__lead">
+      {guidanceMessage && (
+        <p id="dl-alternatives-heading" className="dl-search-alternatives__note" role="status">
           {guidanceMessage}
         </p>
-        {exclusionHint && exclusionHint !== guidanceMessage && (
-          <p className="dl-search-alternatives__hint">{exclusionHint}</p>
-        )}
-      </div>
+      )}
 
       {alternatives.map((tier) => (
         <div key={tier.id} className="dl-search-alternatives__tier">
@@ -38,6 +33,8 @@ export default function DealerSearchAlternatives({
             query={query}
             searchProfile={searchProfile}
             modelLineGroups={tier.modelLineGroups}
+            filters={filters}
+            wishes={wishes}
             dealerSlug={dealerSlug}
             city={city}
             source={source}

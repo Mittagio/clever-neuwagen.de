@@ -402,6 +402,17 @@
   margin-bottom: 28px;
 }
 
+.dl-search-alternatives__note {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
 .dl-search-alternatives__banner {
   margin-bottom: 20px;
   padding: 16px 18px;

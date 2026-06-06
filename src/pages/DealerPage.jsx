@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
@@ -6,6 +6,7 @@ import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
 import DealerSearchResults from '../components/dealer/DealerSearchResults.jsx';
 import DealerSearchAlternatives from '../components/dealer/DealerSearchAlternatives.jsx';
 import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
+import CustomerSearchHub from '../components/search/CustomerSearchHub.jsx';
 import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
 import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
 import { useDealerShowcase } from '../services/dealer/useDealerShowcase.js';
@@ -21,6 +22,7 @@ import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
+import '../components/search/CustomerSearchHub.css';
 
 export default function DealerPage() {
   const navigate = useNavigate();
@@ -35,6 +37,8 @@ export default function DealerPage() {
   const city = conditions.city ?? '';
 
   const [activeQuery, setActiveQuery] = useState('');
+  const [searchRefinements, setSearchRefinements] = useState({});
+  const searchInputRef = useRef(null);
 
   const {
     modelLineGroups: showcaseGroups,
@@ -51,11 +55,12 @@ export default function DealerPage() {
     if (!searchIntent) return null;
     return {
       ...intentToMarketplaceFilters(searchIntent),
+      ...searchRefinements,
       query: activeQuery,
       city,
       dealer: dealerId,
     };
-  }, [searchIntent, activeQuery, city, dealerId]);
+  }, [searchIntent, activeQuery, city, dealerId, searchRefinements]);
 
   const searchWishes = useMemo(() => {
     if (!searchFilters) return null;
@@ -67,7 +72,11 @@ export default function DealerPage() {
       w.budget = { ...w.budget, maxMonthlyRate: searchFilters.maxRate, type: searchFilters.payment || 'leasing' };
     }
     if (searchFilters.maxPrice) {
-      w.budget = { ...w.budget, maxPrice: searchFilters.maxPrice, type: searchFilters.payment || 'cash' };
+      w.budget = {
+        ...w.budget,
+        maxPrice: searchFilters.maxPrice,
+        ...(searchFilters.payment ? { type: searchFilters.payment } : {}),
+      };
     }
     return w;
   }, [searchFilters]);
@@ -125,7 +134,17 @@ export default function DealerPage() {
   const handleSearch = useCallback((text) => {
     const value = text.trim();
     if (!value) return;
+    setSearchRefinements({});
     setActiveQuery(value);
+  }, []);
+
+  const handlePatchSearchFilters = useCallback((patch) => {
+    setSearchRefinements((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const handleEditSearch = useCallback(() => {
+    searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    searchInputRef.current?.focus();
   }, []);
 
   const handleShowAllResults = useCallback(() => {
@@ -146,17 +165,31 @@ export default function DealerPage() {
             brand="Kia"
             dealerSlug={dealerId}
             onSearch={handleSearch}
+            inputRef={searchInputRef}
+            queryValue={activeQuery}
           />
+
+          {activeQuery.trim() && searchFilters && searchWishes && (
+            <CustomerSearchHub
+              filters={searchFilters}
+              wishes={searchWishes}
+              onEditSearch={handleEditSearch}
+              onPatchFilters={handlePatchSearchFilters}
+            />
+          )}
 
           {hasExact && (
             <DealerSearchResults
               query={activeQuery}
               searchProfile={searchProfile}
               modelLineGroups={searchBundle.exact.modelLineGroups}
+              filters={searchFilters}
+              wishes={searchWishes}
               dealerSlug={dealerId}
               city={city}
               source="local"
               onShowAll={handleShowAllResults}
+              hideHeader
             />
           )}
 
@@ -165,8 +198,9 @@ export default function DealerPage() {
               query={activeQuery}
               searchProfile={searchProfile}
               guidanceMessage={searchBundle.guidanceMessage}
-              exclusionHint={searchBundle.exclusionHint}
               alternatives={searchBundle.alternatives}
+              filters={searchFilters}
+              wishes={searchWishes}
               dealerSlug={dealerId}
               city={city}
               source="local"

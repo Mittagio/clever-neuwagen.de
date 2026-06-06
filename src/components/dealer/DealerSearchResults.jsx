@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import DiscoveryModelLineCard from '../discovery/DiscoveryModelLineCard.jsx';
 import { buildFahrzeugeSearchUrl } from '../../logic/oneSearchService.js';
+import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
+import { enrichModelLineGroupWithProfileQuote } from '../../services/cleverQuote/cleverQuoteService.js';
 import '../discovery/discovery-results.css';
 import './dealer-landing.css';
 
@@ -8,6 +10,8 @@ export default function DealerSearchResults({
   query,
   searchProfile = null,
   modelLineGroups = [],
+  filters = null,
+  wishes = null,
   dealerSlug,
   city = '',
   source = 'local',
@@ -16,6 +20,9 @@ export default function DealerSearchResults({
   alternativeTier = false,
 }) {
   const navigate = useNavigate();
+  const paymentMode = filters?.payment || 'cash';
+  const paymentNeutral = !filters?.payment;
+  const chipIds = filters && wishes ? deriveAdvisorChipIds(filters, wishes) : [];
 
   if (!modelLineGroups.length) return null;
 
@@ -37,6 +44,10 @@ export default function DealerSearchResults({
     }));
   }
 
+  const groups = searchProfile
+    ? modelLineGroups.map((group) => enrichModelLineGroupWithProfileQuote(group, searchProfile))
+    : modelLineGroups;
+
   return (
     <section
       className={`dl-search-results${alternativeTier ? ' dl-search-results--tier' : ''}`}
@@ -55,12 +66,15 @@ export default function DealerSearchResults({
       )}
 
       <div className="dl-search-results__list">
-        {modelLineGroups.slice(0, 5).map((group) => (
+        {groups.slice(0, 5).map((group) => (
           <DiscoveryModelLineCard
             key={group.modelLineKey ?? group.label}
             group={group}
             rank={group.rank ?? 1}
-            paymentMode="leasing"
+            paymentMode={paymentMode}
+            paymentNeutral={paymentNeutral}
+            wishes={wishes}
+            chipIds={chipIds}
             searchProfile={searchProfile}
             onViewOffer={handleViewOffer}
             defaultVariantsOpen={group.rank <= 2}

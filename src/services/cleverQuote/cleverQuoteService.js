@@ -11,6 +11,7 @@ import {
   buildCuratedResultsLine,
   hasCleverQuoteWishes,
 } from './cleverQuoteConstants.js';
+import { evaluateVehicleAgainstProfile } from '../search/vehicleFeatureRuleEngine.js';
 
 export {
   CLEVER_QUOTE_FEATURE_WEIGHTS,
@@ -46,7 +47,7 @@ function normalizeWeights(wishIds) {
 
 function checkMetaWish(wishId, vehicle) {
   if (wishId === 'elektro') {
-    return ['elektro', 'plugin-hybrid'].includes(vehicle.powertrain);
+    return vehicle.powertrain === 'elektro';
   }
   if (wishId === 'family_suv') {
     return vehicle.bodyType === 'suv';
@@ -112,6 +113,63 @@ function scoreFromStatus(status) {
   if (status === 'package') return 0.75;
   if (status === 'uncertain') return null;
   return 0;
+}
+
+/** CleverQuote aus Rule Engine (Kunden-Suchprofil = Wahrheit). */
+export function buildProfileCleverQuote(match, profile, { preserveAdvisorMode = false } = {}) {
+  if (!profile || !match?.vehicle) return match?.cleverQuote ?? null;
+
+  const evaluation = evaluateVehicleAgainstProfile(profile, match.vehicle);
+  const tier = getCleverQuoteTier(evaluation.cleverQuotePercent);
+  const base = match.cleverQuote ?? {};
+  const total = evaluation.totalChecks;
+
+  return {
+    ...base,
+    percent: evaluation.cleverQuotePercent,
+    tier,
+    tierLabel: tier.label,
+    dot: tier.dot,
+    matched: evaluation.fulfilledCount,
+    scorableTotal: total,
+    total,
+    fulfillmentLabel: total
+      ? `${evaluation.fulfilledCount} von ${total} Wünschen`
+      : null,
+    profileTruth: true,
+    ...(preserveAdvisorMode && base.advisorMode ? { advisorMode: true } : {}),
+    items: evaluation.checks.map((check) => ({
+      id: check.id,
+      label: check.label,
+      status: check.status,
+      fulfilled: check.status === 'fulfilled',
+      scorable: true,
+      weight: total > 0 ? 1 / total : 0,
+      earned: check.status === 'fulfilled' && total > 0 ? 1 / total : 0,
+    })),
+    trustNote: base.trustNote,
+  };
+}
+
+/** Modelllinien-Gruppe mit Rule-Engine-CleverQuote anreichern (Alternativ-Stufen). */
+export function enrichModelLineGroupWithProfileQuote(group, searchProfile) {
+  if (!searchProfile || !group?.primaryMatch) return group;
+
+  const primaryMatch = {
+    ...group.primaryMatch,
+    cleverQuote: buildProfileCleverQuote(group.primaryMatch, searchProfile, {
+      preserveAdvisorMode: true,
+    }),
+  };
+
+  const variants = (group.variants ?? []).map((match) => ({
+    ...match,
+    cleverQuote: buildProfileCleverQuote(match, searchProfile, {
+      preserveAdvisorMode: true,
+    }),
+  }));
+
+  return { ...group, primaryMatch, variants };
 }
 
 /** @param {{ items?: Array<{ status: string, fulfilled?: boolean, label: string }> }} cleverQuote */

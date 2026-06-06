@@ -22,6 +22,7 @@ const EMPTY_INTENT = () => ({
   rawQuery: '',
   normalizedQuery: '',
   payment: null,
+  paymentExplicit: false,
   maxRate: null,
   maxPrice: null,
   fuel: null,
@@ -451,7 +452,7 @@ export function parseSearchIntent(input) {
   const intent = {
     rawQuery,
     normalizedQuery: text,
-    payment: payment ?? (maxRate && !maxPrice ? 'leasing' : null),
+    payment: payment ?? (maxRate && hasRateContext(text) ? 'leasing' : null),
     maxRate,
     maxPrice,
     fuel: resolvedFuel,
@@ -482,11 +483,14 @@ export function parseSearchIntent(input) {
     consumedSpans: spans,
   };
 
-  if (!intent.payment && intent.maxPrice && !intent.maxRate) {
-    intent.payment = 'cash';
-  }
-  if (!intent.payment && intent.maxRate) {
+  if (payment) {
+    intent.paymentExplicit = true;
+  } else if (intent.maxRate && hasRateContext(text)) {
     intent.payment = 'leasing';
+    intent.paymentExplicit = true;
+  } else if (intent.maxPrice && hasPriceContext(text)) {
+    intent.payment = 'cash';
+    intent.paymentExplicit = true;
   }
 
   intent.confidence = computeConfidence(intent);

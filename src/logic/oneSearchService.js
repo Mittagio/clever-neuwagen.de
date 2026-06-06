@@ -141,6 +141,7 @@ export function filtersFromSearchParams(searchParams) {
     excludedModels: parseExcludedModelsParam(searchParams.get('excludeModel')),
     useCase: searchParams.get('useCase') ?? '',
     dealer: searchParams.get('dealer') ?? '',
+    paymentExplicit: searchParams.has('payment'),
     termMonthsExplicit: searchParams.has('term'),
     mileagePerYearExplicit: searchParams.has('mileageYear'),
   };

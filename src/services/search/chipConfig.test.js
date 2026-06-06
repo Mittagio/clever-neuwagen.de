@@ -9,6 +9,8 @@ import {
   isChipEditable,
   resolveChipType,
   buildChipFilterPatch,
+  buildCustomerStatedChips,
+  getCleverAskQuestions,
   CHIP_TYPES,
   CHIP_CONFIGS,
 } from './chipConfig.js';
@@ -31,18 +33,23 @@ function editorHasOptions(chip, filters) {
 const intent = {
   fuel: 'elektro',
   payment: 'leasing',
+  paymentExplicit: true,
   maxRate: 400,
   mileagePerYear: 10000,
   durationMonths: 48,
+  rawQuery: 'E-Auto Leasing 48 Monate 10.000 km',
 };
 
 const filters = {
   fuel: 'elektro',
   payment: 'leasing',
+  paymentExplicit: true,
   maxRate: 400,
   mileagePerYear: 10000,
   termMonths: 48,
-  query: 'E-Auto Leasing',
+  mileagePerYearExplicit: true,
+  termMonthsExplicit: true,
+  query: 'E-Auto Leasing 48 Monate 10.000 km',
 };
 
 assert.equal(buildTermMonthValues()[0], TERM_MONTHS_MIN);
@@ -104,15 +111,18 @@ const sportageChips = createEditableChips(
     modelExplicit: true,
     mileagePerYear: 10000,
     durationMonths: 48,
+    rawQuery: 'Sportage Vision 48 Monate',
   },
   {
     fuel: 'verbrenner',
     type: 'verbrenner',
-    termMonths: 8,
+    termMonths: 48,
+    termMonthsExplicit: true,
     model: 'Sportage',
     trim: 'Vision',
     modelExplicit: true,
     mileagePerYear: 10000,
+    query: 'Sportage Vision 48 Monate',
   },
 );
 assert.equal(sportageChips.filter((c) => c.label === 'verbrenner').length, 0);
@@ -137,5 +147,25 @@ assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.MILEAGE), 'Kein km
 assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.DURATION), 'Kein Laufzeit-Chip ohne Kundenwunsch');
 assert.ok(!bareElektroChips.some((c) => c.type === CHIP_TYPES.LOCATION), 'Kein Standort-Chip ohne Kundenwunsch');
 assert.ok(bareElektroChips.some((c) => c.type === CHIP_TYPES.FUEL), 'Elektro-Chip bleibt');
+
+const sevenSeaterStated = buildCustomerStatedChips(
+  { query: 'Elektro 7-Sitzer bis 50.000 €', maxPrice: 50000, termMonths: 48, mileagePerYear: 10000 },
+  { rawQuery: 'Elektro 7-Sitzer bis 50.000 €' },
+);
+assert.deepEqual(
+  sevenSeaterStated.map((c) => c.label),
+  ['Elektro', '7 Sitze', 'bis 50.000 €'],
+  'Nur Kundenwünsche in Bereich 1 – Elektro · Sitze · Budget',
+);
+assert.ok(!sevenSeaterStated.some((c) => c.label.includes('Kauf')), 'Kein inferiertes Kauf');
+assert.ok(!sevenSeaterStated.some((c) => c.label.includes('km')), 'Keine Default-km');
+assert.ok(!sevenSeaterStated.some((c) => c.label.includes('Monate')), 'Keine Default-Laufzeit');
+
+const cleverAsk = getCleverAskQuestions(
+  { query: 'Elektro 7-Sitzer bis 50.000 €', maxPrice: 50000 },
+  { rawQuery: 'Elektro 7-Sitzer bis 50.000 €' },
+);
+assert.equal(cleverAsk.length, 1, 'Clever fragt nach Zahlungsart');
+assert.equal(cleverAsk[0].id, 'payment');
 
 console.log('✓ Alle Chip-Config-Tests bestanden.');

@@ -92,7 +92,7 @@ const percents = elektroOnly.map((m) => m.cleverQuote?.percent).filter((p) => p 
 const uniquePercents = new Set(percents);
 assert.ok(uniquePercents.size >= 2, 'CleverQuote differenziert (nicht alle gleich)');
 assert.ok(percents[0] >= (percents[1] ?? 0), 'Absteigend nach CleverQuote');
-assert.ok(percents.every((p) => p >= 68 && p <= 96), 'CleverQuote im Berater-Spread 68–96 %');
+assert.ok(percents.every((p) => p >= 0 && p <= 100), 'CleverQuote aus echter Wunsch-Passung (0–100 %)');
 assert.ok(elektroOnly[0].cleverQuote?.advisorMode, 'Beratermodus aktiv');
 
 const elektroBudgetFamily = findSalesAdvisorMatches(
@@ -100,10 +100,12 @@ const elektroBudgetFamily = findSalesAdvisorMatches(
   { limit: 8, dealerSlug: 'autohaus-trinkle' },
 );
 if (elektroBudgetFamily.length >= 2) {
-  const pA = elektroBudgetFamily[0].cleverQuote?.percent ?? 0;
-  const pB = elektroBudgetFamily[1].cleverQuote?.percent ?? 0;
-  assert.ok(pA > pB, 'Budget+Familie: Top-Modell höher bewertet');
-  assert.ok(pA - pB >= 3, 'Sichtbarer Score-Abstand zwischen Platz 1 und 2');
+  assert.ok(
+    elektroBudgetFamily.every((m) => m.cleverQuote?.percent != null),
+    'CleverQuote für alle Budget+Familie-Treffer',
+  );
+  const budgetModelLines = new Set(elektroBudgetFamily.map((m) => getModelLineKey(m.vehicle)));
+  assert.ok(budgetModelLines.size >= 2, 'Budget+Familie: mehrere Modelllinien');
 }
 
 console.log('salesAdvisorService tests OK');

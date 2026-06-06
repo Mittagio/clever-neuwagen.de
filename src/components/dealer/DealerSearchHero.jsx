@@ -15,10 +15,13 @@ export default function DealerSearchHero({
   brand = 'Kia',
   dealerSlug = '',
   onSearch,
+  inputRef: externalInputRef,
+  queryValue = '',
 }) {
   const navigate = useNavigate();
-  const inputRef = useRef(null);
-  const [searchText, setSearchText] = useState('');
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef ?? internalInputRef;
+  const [searchText, setSearchText] = useState(queryValue);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
@@ -34,6 +37,10 @@ export default function DealerSearchHero({
     }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setSearchText(queryValue);
+  }, [queryValue]);
 
   function submitSearch(text) {
     const value = (text ?? searchText).trim();

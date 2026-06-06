@@ -1934,9 +1934,87 @@
   vertical-align: middle;
 }
 
+.disc-hero__alt-payments {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .disc-hero__variant-label {
   margin: 0 0 10px;
   font-size: 0.875rem;
   font-weight: 600;
   color: #64748b;
+}
+
+/* Alternativ-Stufen bei keinem exakten Treffer */
+.disc-search-alternatives {
+  margin-bottom: 28px;
+}
+
+.disc-search-alternatives__note {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.disc-search-alternatives__banner {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fef9e7 0%, #f0f9ff 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.disc-search-alternatives__lead {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #1e293b;
+}
+
+.disc-search-alternatives__hint {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.disc-search-alternatives__tier {
+  margin-bottom: 28px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.disc-search-alternatives__tier:last-child {
+  border-bottom: none;
+}
+
+.disc-search-alternatives__tier-head {
+  margin-bottom: 14px;
+}
+
+.disc-search-alternatives__tier-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f2744;
+}
+
+.disc-search-alternatives__tier-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.disc-model-line-list--tier {
+  gap: 12px;
 }

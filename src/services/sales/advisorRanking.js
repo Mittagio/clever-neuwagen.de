@@ -1,4 +1,3 @@
-import { getCleverQuoteTier } from '../cleverQuote/cleverQuoteConstants.js';
 import { computeCleverQuote } from '../cleverQuote/cleverQuoteService.js';
 import { getSalesChipById } from '../../data/salesAdvisorChips.js';
 import { formatMatchDeliveryLabel } from '../../logic/discoveryDisplay.js';
@@ -143,23 +142,17 @@ export function computeAdvisorRawScore(match, { wishes, chipIds = [] } = {}) {
 function spreadAdvisorCleverQuotes(matches = []) {
   if (!matches.length) return [];
   const sorted = [...matches].sort((a, b) => (b._advisorRaw ?? 0) - (a._advisorRaw ?? 0));
-  const top = 96;
-  const bottom = 68;
-  const n = sorted.length;
 
-  return sorted.map((match, index) => {
-    const percent = n === 1 ? 92 : Math.round(top - (index * (top - bottom)) / (n - 1));
-    const tier = getCleverQuoteTier(percent);
-    return {
-      ...match,
-      cleverQuote: {
-        ...(match.cleverQuote ?? {}),
-        percent,
-        tier,
-        advisorMode: true,
-      },
-    };
-  });
+  return sorted.map((match, index) => ({
+    ...match,
+    cleverQuote: {
+      ...(match.cleverQuote ?? {}),
+      advisorMode: true,
+      trustNote: index === 0 && sorted.length > 1
+        ? 'Beste CleverQuote aller geprüften Modelllinien'
+        : match.cleverQuote?.trustNote,
+    },
+  }));
 }
 
 /**
@@ -347,8 +340,11 @@ export function buildAdvisorWhyBullets(match, {
   if (delivery) {
     if (/sofort/i.test(delivery)) {
       push('Sofort verfügbar');
+    } else if (/^Lieferbar/i.test(delivery)) {
+      push(delivery);
     } else if (/\d+\s*Woche/i.test(delivery)) {
-      push(`In ${delivery.replace(/^Lieferzeit\s*/i, '').trim()} lieferbar`);
+      const cleaned = delivery.replace(/^Lieferzeit\s*/i, '').trim();
+      push(`Lieferbar in ${cleaned}`);
     } else {
       push(delivery);
     }

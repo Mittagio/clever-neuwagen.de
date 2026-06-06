@@ -13,7 +13,8 @@ import './discovery-results.css';
 
 export default function DiscoveryHeroCard({
   match,
-  paymentMode = 'leasing',
+  paymentMode = 'cash',
+  paymentNeutral = false,
   onChangePaymentMode,
   onViewOffer,
   onUnderstandEquipment,
@@ -30,7 +31,7 @@ export default function DiscoveryHeroCard({
   const v = match.vehicle;
   const title = getMatchDisplayTitle(match);
   const price = formatMatchPrimaryPrice(match, paymentMode);
-  const paymentHint = paymentMode === 'cash' ? 'Kaufpreis' : 'Leasing';
+  const paymentHint = paymentNeutral || paymentMode === 'cash' ? 'Kaufpreis' : (paymentMode === 'finance' ? 'Finanzierung' : 'Leasing');
   const deliveryLabel = formatMatchDeliveryLabel(match);
 
   return (
@@ -73,7 +74,12 @@ export default function DiscoveryHeroCard({
               Ab {price.label}
               {price.suffix && <span>{price.suffix}</span>}
             </p>
-            <p className="disc-hero__rate-mode">{paymentHint} · ändern</p>
+            <p className="disc-hero__rate-mode">
+              {paymentNeutral ? 'Kaufpreis' : `${paymentHint} · ändern`}
+            </p>
+            {paymentNeutral && (
+              <p className="disc-hero__alt-payments">Auch als Leasing oder Finanzierung verfügbar</p>
+            )}
             {v.discountPercent > 0 && (
               <p className="disc-hero__discount">{v.discountPercent} % Ersparnis</p>
             )}

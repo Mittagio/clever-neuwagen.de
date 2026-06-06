@@ -72,6 +72,8 @@ import { parseCustomerWish } from '../services/wish/wishParser.js';
 import { applyPlausibilityCorrection } from '../services/search/plausibilityChecker.js';
 
 import { matchAndRankDiscovery } from '../services/search/discoveryAdvisorSearch.js';
+import { parseSearchIntent } from '../services/search/searchIntentParser.js';
+import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { useAdvisorDiscoverySearch } from '../services/advisor/useAdvisorDiscoverySearch.js';
 import { PILOT_DEALER_ID } from '../config/pilotLive.js';
 import { needsDiscoveryClarification, shouldApplyAdvisorRanking } from '../services/sales/advisorRanking.js';
@@ -81,7 +83,7 @@ import SalesWishClarification from '../components/sales-advisor/SalesWishClarifi
 
 import { toggleCompareSlug } from '../services/customerCompareService.js';
 
-import { buildNeverEmptyResults } from '../logic/neverEmptyResultsService.js';
+import { buildNeverEmptyResults, RESULT_STATES } from '../logic/neverEmptyResultsService.js';
 import {
   extractResultCatalogFromVehicles,
   toggleExcludedBrand,
@@ -268,11 +270,25 @@ export default function FahrzeugePage() {
     if (filters.maxRate) {
       w.budget = { ...w.budget, maxMonthlyRate: filters.maxRate, type: filters.payment || 'leasing' };
     }
+    if (filters.maxPrice) {
+      w.budget = {
+        ...w.budget,
+        maxPrice: filters.maxPrice,
+        ...(filters.payment ? { type: filters.payment } : {}),
+      };
+    }
     if (filters.fuel === 'elektro' && !w.features.includes('elektro')) {
       w.features = [...w.features, 'elektro'];
     }
     return w;
   }, [filters]);
+
+  const searchProfile = useMemo(() => {
+    const query = filters.query ?? wishes.rawQuery ?? '';
+    if (!query.trim()) return null;
+    const intent = parseSearchIntent(query);
+    return buildSearchProfile({ query, intent, filters, wishes, chipIds: [] });
+  }, [filters, wishes]);
 
   const vehiclesForCatalogPool = useMemo(() => {
     const base = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, {
@@ -367,54 +383,32 @@ export default function FahrzeugePage() {
     navigate('/fahrzeuge');
   }
 
-
-
-
-
-
-  const filtered = useMemo(() => {
-
-
-
-    const base = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, filters);
-
-
-
+  const advisorSearchPool = useMemo(() => {
+    const base = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, {
+      excludedBrands: filters.excludedBrands ?? [],
+      excludedModels: filters.excludedModels ?? [],
+      radius: filters.radius,
+      dealer: filters.dealer,
+    });
     return base.map((vehicle) => ({
-
-
-
       ...vehicle,
-
-
-
       displayRate: adjustRateForTerm(vehicle.monthlyRate, filters.termMonths),
-
-
-
     }));
-
-
-
   }, [filters]);
-
-
-
-
-
-
 
   const { discoverySearch } = useAdvisorDiscoverySearch({
     wishes,
     filters,
-    vehicles: filtered,
+    vehicles: advisorSearchPool,
     getDisplayRate: (v) => v.displayRate,
     limit: 30,
     dealerSlug,
     enabled: true,
   });
 
-  const exactMatches = discoverySearch.matches;
+  const hasSearchAlternatives = discoverySearch.hasExactMatch === false
+    && (discoverySearch.alternatives?.length ?? 0) > 0;
+  const exactMatches = hasSearchAlternatives ? [] : discoverySearch.matches;
 
   const needsClarification = useMemo(
     () => needsDiscoveryClarification(filters, wishes),
@@ -428,13 +422,29 @@ export default function FahrzeugePage() {
 
 
   const neverEmptyResults = useMemo(
-    () => buildNeverEmptyResults({
-      filters,
-      wishes,
-      exactMatches,
-      allVehicles: MARKETPLACE_VEHICLES,
-    }),
-    [filters, wishes, exactMatches],
+    () => {
+      if (hasSearchAlternatives) {
+        return {
+          state: RESULT_STATES.ALTERNATIVES,
+          headline: null,
+          topMatch: null,
+          restMatches: [],
+          alternativeMatches: [],
+          popularMatches: [],
+          showAlternativeSection: false,
+          isFallbackHero: false,
+          heroBadge: null,
+          dealerCount: 1,
+        };
+      }
+      return buildNeverEmptyResults({
+        filters,
+        wishes,
+        exactMatches,
+        allVehicles: MARKETPLACE_VEHICLES,
+      });
+    },
+    [filters, wishes, exactMatches, hasSearchAlternatives],
   );
 
   const offerStats = useMemo(
@@ -811,7 +821,10 @@ export default function FahrzeugePage() {
             offerStats={offerStats}
             exclusionHint={discoverySearch.exclusionHint}
             noExactMatchMessage={discoverySearch.noExactMatchMessage}
-            modelLineGroups={discoverySearch.modelLineGroups}
+            guidanceMessage={discoverySearch.guidanceMessage}
+            searchAlternatives={hasSearchAlternatives ? discoverySearch.alternatives : null}
+            searchProfile={searchProfile}
+            modelLineGroups={hasSearchAlternatives ? null : discoverySearch.modelLineGroups}
 
             onEditChip={handleEditChip}
 

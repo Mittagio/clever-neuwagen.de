@@ -95,6 +95,22 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
 
   for (const featureId of profile.requiredFeatures ?? []) {
     const internal = toInternalFeatureId(featureId);
+
+    // Strukturelles Merkmal (Modell-Fakten), kein Trim-Paket
+    if (internal === 'seats_7') {
+      const seats = facts.seats ?? v.seats ?? 5;
+      const ok = seats >= 7 || facts.isSevenSeater;
+      checks.push({
+        id: internal,
+        canonicalId: 'seats_7',
+        label: '7 Sitze',
+        status: ok ? 'fulfilled' : 'missing',
+      });
+      scoreMax += 1;
+      if (ok) scoreSum += 1;
+      continue;
+    }
+
     const result = evaluateTrimFeature(trim, internal);
     const label = getFeatureLabel(internal) ?? toCanonicalFeatureId(internal);
     checks.push({
