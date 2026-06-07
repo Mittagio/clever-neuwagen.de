@@ -70,6 +70,13 @@ export const KIA_TECHNICAL_SPECS = {
     trunkL: 527,
     electricRangeKm: 67,
   },
+  'sportage-hybrid': {
+    lengthMm: 4515,
+    widthMm: 1865,
+    heightMm: 1645,
+    wheelbaseMm: 2680,
+    trunkL: 587,
+  },
   sorento: {
     lengthMm: 4815,
     widthMm: 1900,
@@ -130,6 +137,14 @@ export const KIA_TECHNICAL_SPECS = {
     trunkL: 490,
     electricRangeKm: 594,
   },
+  'ev4-fastback': {
+    lengthMm: 4730,
+    widthMm: 1820,
+    heightMm: 1480,
+    wheelbaseMm: 2820,
+    trunkL: 435,
+    electricRangeKm: 610,
+  },
   ev5: {
     lengthMm: 4695,
     widthMm: 1890,
@@ -154,6 +169,14 @@ export const KIA_TECHNICAL_SPECS = {
     trunkL: 490,
     electricRangeKm: 528,
   },
+  'ev6-gt': {
+    lengthMm: 4695,
+    widthMm: 1895,
+    heightMm: 1550,
+    wheelbaseMm: 2900,
+    trunkL: 490,
+    electricRangeKm: 450,
+  },
   ev9: {
     lengthMm: 5010,
     widthMm: 1980,
@@ -161,6 +184,14 @@ export const KIA_TECHNICAL_SPECS = {
     wheelbaseMm: 3100,
     trunkL: 571,
     electricRangeKm: 541,
+  },
+  'ev9-gt': {
+    lengthMm: 5010,
+    widthMm: 1980,
+    heightMm: 1755,
+    wheelbaseMm: 3100,
+    trunkL: 571,
+    electricRangeKm: 505,
   },
   'pv5-passenger': {
     lengthMm: 4695,
@@ -170,16 +201,50 @@ export const KIA_TECHNICAL_SPECS = {
     trunkL: 1200,
     electricRangeKm: 412,
   },
+  'pv5-cargo': {
+    lengthMm: 4695,
+    widthMm: 1895,
+    heightMm: 1895,
+    wheelbaseMm: 2995,
+    trunkL: 4200,
+    electricRangeKm: 420,
+  },
+  'pv5-chassis-cab': {
+    lengthMm: 4695,
+    widthMm: 1895,
+    heightMm: 1895,
+    wheelbaseMm: 2995,
+    electricRangeKm: 400,
+  },
+  'pv5-crew': {
+    lengthMm: 4695,
+    widthMm: 1895,
+    heightMm: 1895,
+    wheelbaseMm: 2995,
+    trunkL: 900,
+    electricRangeKm: 400,
+  },
 };
 
 /** @param {string} modelKey */
 export function getKiaTechnicalSpec(modelKey = '') {
   const key = String(modelKey).toLowerCase();
   if (KIA_TECHNICAL_SPECS[key]) return KIA_TECHNICAL_SPECS[key];
-  if (key.startsWith('ev4')) return KIA_TECHNICAL_SPECS.ev4;
-  if (key.startsWith('ev5')) return KIA_TECHNICAL_SPECS.ev5;
-  if (key.startsWith('ev6')) return KIA_TECHNICAL_SPECS.ev6;
+  if (key.startsWith('ev4')) return key.includes('fastback') ? KIA_TECHNICAL_SPECS['ev4-fastback'] : KIA_TECHNICAL_SPECS.ev4;
+  if (key.startsWith('ev5')) return KIA_TECHNICAL_SPECS[key.includes('gt') ? 'ev5-gt' : 'ev5'];
+  if (key.startsWith('ev6')) return KIA_TECHNICAL_SPECS[key.includes('gt') ? 'ev6-gt' : 'ev6'];
+  if (key.startsWith('ev9')) return KIA_TECHNICAL_SPECS[key.includes('gt') ? 'ev9-gt' : 'ev9'];
   if (key.startsWith('sorento')) return KIA_TECHNICAL_SPECS.sorento;
-  if (key.includes('sportage')) return KIA_TECHNICAL_SPECS.sportage;
+  if (key.includes('sportage')) {
+    if (key.includes('phev')) return KIA_TECHNICAL_SPECS['sportage-phev'];
+    if (key.includes('hybrid')) return KIA_TECHNICAL_SPECS['sportage-hybrid'];
+    return KIA_TECHNICAL_SPECS.sportage;
+  }
+  if (key.startsWith('pv5')) {
+    if (key.includes('cargo')) return KIA_TECHNICAL_SPECS['pv5-cargo'];
+    if (key.includes('chassis')) return KIA_TECHNICAL_SPECS['pv5-chassis-cab'];
+    if (key.includes('crew')) return KIA_TECHNICAL_SPECS['pv5-crew'];
+    return KIA_TECHNICAL_SPECS['pv5-passenger'];
+  }
   return null;
 }

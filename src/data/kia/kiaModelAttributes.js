@@ -29,6 +29,7 @@ export const FUEL_TRUTH = {
  *   bodyType: string,
  *   availableAsElectric: boolean,
  *   typicalRangeKm?: number,
+ *   towCapacityKg?: number,
  * }>}
  */
 export const KIA_MODEL_ATTRIBUTES = {
@@ -79,6 +80,18 @@ export const KIA_MODEL_ATTRIBUTES = {
     availableAsElectric: true,
     typicalRangeKm: 490,
   },
+  'ev4-fastback': {
+    modelKey: 'ev4-fastback',
+    label: 'EV4 Fastback',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 5,
+    isSevenSeater: false,
+    bodyClass: 'limousine',
+    bodyType: 'limousine',
+    availableAsElectric: true,
+    typicalRangeKm: 580,
+  },
   ev5: {
     modelKey: 'ev5',
     label: 'EV5',
@@ -114,6 +127,20 @@ export const KIA_MODEL_ATTRIBUTES = {
     bodyType: 'suv',
     availableAsElectric: true,
     typicalRangeKm: 528,
+    towCapacityKg: 1600,
+  },
+  'ev6-gt': {
+    modelKey: 'ev6-gt',
+    label: 'EV6 GT',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 5,
+    isSevenSeater: false,
+    bodyClass: 'family_suv',
+    bodyType: 'suv',
+    availableAsElectric: true,
+    typicalRangeKm: 450,
+    towCapacityKg: 1600,
   },
   ev9: {
     modelKey: 'ev9',
@@ -126,10 +153,35 @@ export const KIA_MODEL_ATTRIBUTES = {
     bodyType: 'suv',
     availableAsElectric: true,
     typicalRangeKm: 512,
+    towCapacityKg: 2500,
+  },
+  'ev9-gt': {
+    modelKey: 'ev9-gt',
+    label: 'EV9 GT',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 7,
+    isSevenSeater: true,
+    bodyClass: 'large_suv',
+    bodyType: 'suv',
+    availableAsElectric: true,
+    typicalRangeKm: 480,
+    towCapacityKg: 2500,
   },
   niro: {
     modelKey: 'niro',
     label: 'Niro',
+    fuel: 'hybrid',
+    powertrains: ['hybrid'],
+    seats: 5,
+    isSevenSeater: false,
+    bodyClass: 'compact_suv',
+    bodyType: 'suv',
+    availableAsElectric: false,
+  },
+  'niro-hybrid': {
+    modelKey: 'niro-hybrid',
+    label: 'Niro Hybrid',
     fuel: 'hybrid',
     powertrains: ['hybrid'],
     seats: 5,
@@ -203,6 +255,7 @@ export const KIA_MODEL_ATTRIBUTES = {
     bodyClass: 'large_suv',
     bodyType: 'suv',
     availableAsElectric: false,
+    towCapacityKg: 2500,
   },
   stonic: {
     modelKey: 'stonic',
@@ -261,7 +314,7 @@ export const KIA_MODEL_ATTRIBUTES = {
   },
   'pv5-passenger': {
     modelKey: 'pv5-passenger',
-    label: 'PV5',
+    label: 'PV5 Passenger',
     fuel: 'electric',
     powertrains: ['elektro'],
     seats: 5,
@@ -269,6 +322,52 @@ export const KIA_MODEL_ATTRIBUTES = {
     bodyClass: 'commercial',
     bodyType: 'nutzfahrzeug',
     availableAsElectric: true,
+    typicalRangeKm: 412,
+  },
+  'pv5-cargo': {
+    modelKey: 'pv5-cargo',
+    label: 'PV5 Cargo',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 2,
+    isSevenSeater: false,
+    bodyClass: 'commercial',
+    bodyType: 'nutzfahrzeug',
+    availableAsElectric: true,
+    typicalRangeKm: 420,
+  },
+  'pv5-chassis-cab': {
+    modelKey: 'pv5-chassis-cab',
+    label: 'PV5 Chassis Cab',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 2,
+    isSevenSeater: false,
+    bodyClass: 'commercial',
+    bodyType: 'nutzfahrzeug',
+    availableAsElectric: true,
+  },
+  'pv5-crew': {
+    modelKey: 'pv5-crew',
+    label: 'PV5 Crew',
+    fuel: 'electric',
+    powertrains: ['elektro'],
+    seats: 5,
+    isSevenSeater: false,
+    bodyClass: 'commercial',
+    bodyType: 'nutzfahrzeug',
+    availableAsElectric: true,
+  },
+  'k4-sportswagon': {
+    modelKey: 'k4-sportswagon',
+    label: 'K4 Sportswagon',
+    fuel: 'combustion',
+    powertrains: ['verbrenner'],
+    seats: 5,
+    isSevenSeater: false,
+    bodyClass: 'kombi',
+    bodyType: 'kombi',
+    availableAsElectric: false,
   },
 };
 
@@ -279,12 +378,13 @@ export function resolveModelAttributeKey(vehicle = {}) {
     if (KIA_MODEL_ATTRIBUTES[fromModel]) return fromModel;
     key = fromModel;
   }
-  if (key.startsWith('ev9')) return 'ev9';
   if (key.startsWith('ev3')) return 'ev3';
   if (key.startsWith('ev2')) return 'ev2';
-  if (key.startsWith('ev4')) return 'ev4';
+  if (key.startsWith('ev4')) return key.includes('fastback') ? 'ev4-fastback' : 'ev4';
   if (key.startsWith('ev5')) return key.includes('gt') ? 'ev5-gt' : 'ev5';
-  if (key.startsWith('ev6')) return 'ev6';
+  if (key.startsWith('ev6')) return key.includes('gt') ? 'ev6-gt' : 'ev6';
+  if (key.startsWith('ev9')) return key.includes('gt') ? 'ev9-gt' : 'ev9';
+  if (key.startsWith('niro')) return key.includes('hybrid') ? 'niro-hybrid' : 'niro';
   if (key.startsWith('sportage')) {
     if (vehicle.powertrain === 'plugin-hybrid') return 'sportage-phev';
     if (vehicle.powertrain === 'hybrid') return 'sportage-hybrid';
@@ -295,7 +395,12 @@ export function resolveModelAttributeKey(vehicle = {}) {
     if (vehicle.powertrain === 'hybrid') return 'sorento-hybrid';
     return 'sorento';
   }
-  if (key.startsWith('pv5')) return 'pv5-passenger';
+  if (key.startsWith('pv5')) {
+    if (key.includes('cargo')) return 'pv5-cargo';
+    if (key.includes('chassis')) return 'pv5-chassis-cab';
+    if (key.includes('crew')) return 'pv5-crew';
+    return 'pv5-passenger';
+  }
   return key || null;
 }
 

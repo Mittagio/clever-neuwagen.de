@@ -113,6 +113,7 @@ export function buildSearchProfile({
     rawQuery: parsed.rawQuery ?? query,
     availability: parsed.availability ?? filters.availability ?? null,
     rangeKmMin,
+    towCapacityKg: parsed.towCapacityKg ?? filters.towCapacityKg ?? null,
     payment: (parsed.paymentExplicit && parsed.payment)
       ? parsed.payment
       : (filters.payment || wishes.budget?.type || null),

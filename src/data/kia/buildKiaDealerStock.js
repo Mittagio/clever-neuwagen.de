@@ -6,6 +6,7 @@ import { getKiaOfficialModel } from './kiaOfficialPriceList.js';
 import { getKiaTechnicalSpec } from './kiaTechnicalSpecs.js';
 import { getKiaModelMediaEntry } from './kiaModelImages.js';
 import { enrichVehicleWithModelAttributes } from './kiaModelAttributes.js';
+import { enrichVehicleWithCleverRecord } from '../clever/cleverDataRegistry.js';
 import { kiaNiro } from '../manufacturer/kia/niro.js';
 import { kiaCeed } from '../manufacturer/kia/ceed.js';
 
@@ -302,7 +303,7 @@ export function buildKiaDealerStock(options = {}) {
     }
   }
 
-  return entries;
+  return entries.map((entry) => enrichVehicleWithCleverRecord(enrichVehicleWithModelAttributes(entry)));
 }
 
 export function getKiaDealerStockStats(stock = buildKiaDealerStock()) {

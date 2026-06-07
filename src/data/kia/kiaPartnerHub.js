@@ -39,11 +39,15 @@ export const KIA_PARTNER = {
 /** Registry-Modelle mit voller Paket-/CleverQuote-Auflösung */
 export const KIA_REGISTRY_MODEL_KEYS = ['sportage', 'ev3', 'ev4', 'picanto', 'niro', 'ceed'];
 
-/** Alle Kia-Modell-IDs im Händlerkatalog (synchron mit DEALER_MODEL_CATALOG) */
+/** Alle Kia-Modell-IDs im Händlerkatalog (synchron mit KIA_OFFICIAL_MODELS + Ceed) */
 export const KIA_DEALER_MODEL_IDS = [
-  'picanto', 'stonic', 'xceed', 'k4', 'k4-sportswagon', 'ceed', 'niro',
-  'seltos', 'sportage', 'sportage-phev', 'sorento', 'sorento-hybrid', 'sorento-phev',
-  'ev2', 'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'pv5-passenger',
+  'picanto', 'stonic', 'xceed', 'k4', 'k4-sportswagon', 'ceed',
+  'ev2', 'niro-hybrid', 'seltos',
+  'sportage', 'sportage-hybrid', 'sportage-phev',
+  'ev3', 'ev4', 'ev4-fastback', 'ev5', 'ev5-gt', 'ev6', 'ev6-gt',
+  'sorento', 'sorento-hybrid', 'sorento-phev',
+  'ev9', 'ev9-gt',
+  'pv5-passenger', 'pv5-cargo-l2h1', 'pv5-chassis-cab', 'pv5-crew',
 ];
 
 function normalizeModelToken(model = '') {

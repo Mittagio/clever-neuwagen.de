@@ -9,6 +9,7 @@ import {
   formatMatchPrimaryPrice,
   formatMatchDeliveryLabel,
 } from '../../logic/discoveryDisplay.js';
+import DiscoveryTechnicalSpecs from './DiscoveryTechnicalSpecs.jsx';
 import './discovery-results.css';
 
 export default function DiscoveryHeroCard({
@@ -54,6 +55,7 @@ export default function DiscoveryHeroCard({
           {variantLabel && (
             <p className="disc-hero__variant-label">Ausstattung: {variantLabel}</p>
           )}
+          <DiscoveryTechnicalSpecs vehicle={v} className="disc-hero__tech" />
           {match.cleverQuote && (
             <div className="disc-hero__clever-quote">
               <CleverQuoteBadge

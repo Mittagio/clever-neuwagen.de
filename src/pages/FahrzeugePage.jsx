@@ -97,7 +97,6 @@ import {
   mergeSearchConflicts,
   resolveSearchConflict,
 } from '../services/search/searchConflictHint.js';
-import { parseSearchIntent } from '../services/search/searchIntentParser.js';
 
 import SearchChipEditor from '../components/search/SearchChipEditor.jsx';
 

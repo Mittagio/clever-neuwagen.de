@@ -1949,6 +1949,37 @@
   color: #64748b;
 }
 
+.disc-tech-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.disc-tech-specs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.disc-tech-specs__icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.disc-hero__tech {
+  width: 100%;
+}
+
 /* Alternativ-Stufen bei keinem exakten Treffer */
 .disc-search-alternatives {
   margin-bottom: 28px;

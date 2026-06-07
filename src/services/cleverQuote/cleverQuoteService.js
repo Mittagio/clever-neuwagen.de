@@ -12,6 +12,9 @@ import {
   hasCleverQuoteWishes,
 } from './cleverQuoteConstants.js';
 import { evaluateVehicleAgainstProfile } from '../search/vehicleFeatureRuleEngine.js';
+import { computeCleverQuoteV2 } from './cleverQuoteV2.js';
+import { resolveCleverRecord } from '../../data/clever/cleverDataRegistry.js';
+import { evaluateVehicleForProfile } from '../cleverData/cleverDataEngine.js';
 
 export {
   CLEVER_QUOTE_FEATURE_WEIGHTS,
@@ -115,11 +118,19 @@ function scoreFromStatus(status) {
   return 0;
 }
 
-/** CleverQuote aus Rule Engine (Kunden-Suchprofil = Wahrheit). */
+/** CleverQuote aus Clever Data Engine (v2) oder Rule Engine (Fallback). */
 export function buildProfileCleverQuote(match, profile, { preserveAdvisorMode = false } = {}) {
   if (!profile || !match?.vehicle) return match?.cleverQuote ?? null;
 
-  const evaluation = evaluateVehicleAgainstProfile(profile, match.vehicle);
+  if (resolveCleverRecord(match.vehicle)) {
+    const v2 = computeCleverQuoteV2(match, profile);
+    if (v2 && preserveAdvisorMode && match.cleverQuote?.advisorMode) {
+      return { ...v2, advisorMode: true };
+    }
+    return v2;
+  }
+
+  const evaluation = evaluateVehicleForProfile(profile, match.vehicle);
   const tier = getCleverQuoteTier(evaluation.cleverQuotePercent);
   const base = match.cleverQuote ?? {};
   const total = evaluation.totalChecks;
