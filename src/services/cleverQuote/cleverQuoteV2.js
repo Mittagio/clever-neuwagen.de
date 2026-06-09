@@ -4,6 +4,7 @@
 import { getCleverQuoteTier } from './cleverQuoteConstants.js';
 import { evaluateVehicleForProfile } from '../cleverData/cleverDataEngine.js';
 import { resolveCleverRecord } from '../../data/clever/cleverDataRegistry.js';
+import { buildFulfillmentLabel } from '../search/wishMatchRanking.js';
 
 export const CLEVER_QUOTE_V2_WEIGHTS = {
   wish: 0.50,
@@ -68,9 +69,13 @@ export function computeCleverQuoteV2(match, profile) {
   const record = resolveCleverRecord(vehicle);
   const evaluation = evaluateVehicleForProfile(profile, vehicle);
   const wishScore = evaluation.cleverQuotePercent ?? evaluation.recordEval?.wishPercent ?? 0;
+  const unknownPenalty = (evaluation.unknownCount ?? 0) > 0
+    ? Math.min(20, (evaluation.unknownCount ?? 0) * 8)
+    : 0;
+  const adjustedWishScore = Math.max(0, wishScore - unknownPenalty);
 
   const components = {
-    wish: Math.round(wishScore * CLEVER_QUOTE_V2_WEIGHTS.wish),
+    wish: Math.round(adjustedWishScore * CLEVER_QUOTE_V2_WEIGHTS.wish),
     budget: Math.round(scoreBudget(profile, vehicle, record) * CLEVER_QUOTE_V2_WEIGHTS.budget),
     availability: Math.round(scoreAvailability(vehicle, record) * CLEVER_QUOTE_V2_WEIGHTS.availability),
     category: Math.round(scoreCategory(profile, record) * CLEVER_QUOTE_V2_WEIGHTS.category),
@@ -91,9 +96,8 @@ export function computeCleverQuoteV2(match, profile) {
     matched: evaluation.fulfilledCount,
     scorableTotal: evaluation.totalChecks,
     total: evaluation.totalChecks,
-    fulfillmentLabel: evaluation.totalChecks
-      ? `${evaluation.fulfilledCount} von ${evaluation.totalChecks} Wünschen`
-      : null,
+    fulfillmentLabel: buildFulfillmentLabel(evaluation),
+    unknownCount: evaluation.unknownCount ?? 0,
     profileTruth: true,
     engineVersion: 2,
     components,

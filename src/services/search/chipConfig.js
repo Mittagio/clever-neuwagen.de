@@ -438,13 +438,15 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   const fuelFeatures = intent.features ?? filters.features ?? [];
-  const fuelLabel = customerFuelLabel(intent.fuel, fuelFeatures);
+  const resolvedFuel = intent.fuel
+    ?? (filters.fuel === 'elektro' ? 'elektro' : filters.fuel === 'hybrid' ? 'hybrid' : filters.fuel === 'plugin-hybrid' ? 'plugin-hybrid' : filters.fuel || null);
+  const fuelLabel = customerFuelLabel(resolvedFuel, fuelFeatures);
   if (fuelLabel && !chips.some((c) => c.type === CHIP_TYPES.FUEL)) {
     chips.push(makeChip({
       id: 'fuel',
       type: CHIP_TYPES.FUEL,
       label: fuelLabel,
-      value: intent.fuel === 'verbrenner' ? 'verbrenner' : intent.fuel,
+      value: resolvedFuel === 'verbrenner' ? 'verbrenner' : resolvedFuel,
       configKey: 'fuel',
     }));
   }
@@ -475,12 +477,13 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
-  if (intent.maxRate != null && payment !== 'cash') {
+  const maxRate = intent.maxRate ?? filters.maxRate;
+  if (maxRate != null && payment !== 'cash') {
     chips.push(makeChip({
       id: 'maxRate',
       type: CHIP_TYPES.BUDGET,
-      label: `bis ${intent.maxRate} €/Monat`,
-      value: intent.maxRate,
+      label: `bis ${maxRate} €/Monat`,
+      value: maxRate,
       configKey: 'budget',
     }));
   }
@@ -497,12 +500,31 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   const seatsMin = intent.seatsMin ?? filters.seatsMin;
-  if (seatsMin != null && seatsMin < 7 && !chips.some((c) => c.id === 'seatsMin' || c.id === 'seats_7')) {
+  if (seatsMin != null && seatsMin >= 7 && !chips.some((c) => c.id === 'seats_7')) {
+    chips.push(makeChip({
+      id: 'seats_7',
+      type: CHIP_TYPES.FEATURE,
+      label: '7-Sitzer',
+      value: seatsMin,
+      editable: false,
+    }));
+  } else if (seatsMin != null && seatsMin < 7 && !chips.some((c) => c.id === 'seatsMin')) {
     chips.push(makeChip({
       id: 'seatsMin',
       type: CHIP_TYPES.FEATURE,
       label: `${seatsMin} Sitze`,
       value: seatsMin,
+      editable: false,
+    }));
+  }
+
+  const rangeKmMin = intent.rangeKmMin ?? filters.rangeKmMin;
+  if (rangeKmMin != null && !chips.some((c) => c.id === 'rangeKmMin')) {
+    chips.push(makeChip({
+      id: 'rangeKmMin',
+      type: CHIP_TYPES.FEATURE,
+      label: `≥ ${rangeKmMin} km Reichweite`,
+      value: rangeKmMin,
       editable: false,
     }));
   }
@@ -624,8 +646,10 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
-  for (const fid of intent.features ?? []) {
+  const statedFeatures = [...new Set([...(intent.features ?? []), ...(filters.features ?? [])])];
+  for (const fid of statedFeatures) {
     if (['reichweite', 'automatic', 'benzin', 'elektro'].includes(fid)) continue;
+    if (fid === 'seats_7' && seatsMin != null && seatsMin >= 7) continue;
     if (intent.fuel === 'verbrenner' && fid === 'benzin') continue;
     if (intent.fuel === 'elektro' && fid === 'elektro') continue;
     if (!getFeatureLabel(fid)) continue;
@@ -678,6 +702,7 @@ const STATED_CHIP_EMOJI = {
   maxHeightMm: '🏠',
   trunkLMin: '🧳',
   isofixRearMin: '👶',
+  rangeKmMin: '⚡',
   maxPrice: '💰',
   maxRate: '💰',
 };

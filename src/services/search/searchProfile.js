@@ -114,15 +114,19 @@ export function buildSearchProfile({
     bodyType,
     bodyClass: bodyType === 'kleinwagen' ? 'kleinwagen' : null,
     transmission: parsed.transmission ?? filters.transmission ?? null,
-    model: parsed.modelExplicit ? (parsed.model ?? filters.model) : null,
-    trim: parsed.modelExplicit ? (parsed.trim ?? filters.trim) : null,
-    brand: parsed.modelExplicit ? (parsed.brand ?? filters.brand) : null,
+    model: parsed.modelExplicit ? (parsed.model ?? filters.model) : (parsed.model ?? null),
+    trim: parsed.trim ?? filters.trim ?? null,
+    brand: parsed.modelExplicit ? (parsed.brand ?? filters.brand) : (parsed.brand ?? filters.brand ?? null),
     modelExplicit: Boolean(parsed.modelExplicit ?? filters.modelExplicit),
     requiredFeatures,
     softPreferences: [],
     confidence: parsed.confidence ?? 0.5,
     rawQuery: parsed.rawQuery ?? query,
-    availability: parsed.availability ?? filters.availability ?? null,
+    availability: (() => {
+      const raw = parsed.availability ?? filters.availability ?? null;
+      if (raw === 'sofort_verfuegbar') return 'sofort';
+      return raw;
+    })(),
     rangeKmMin,
     towCapacityKg: parsed.towCapacityKg ?? filters.towCapacityKg ?? null,
     maxLengthMm: parsed.maxLengthMm ?? filters.maxLengthMm ?? null,
@@ -132,6 +136,9 @@ export function buildSearchProfile({
     payment: (parsed.paymentExplicit && parsed.payment)
       ? parsed.payment
       : (filters.payment || wishes.budget?.type || null),
+    mileagePerYear: parsed.mileagePerYear ?? filters.mileagePerYear ?? null,
+    termMonths: parsed.durationMonths ?? filters.termMonths ?? null,
+    location: parsed.location ?? filters.city ?? filters.location ?? null,
   };
 }
 

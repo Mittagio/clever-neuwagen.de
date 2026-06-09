@@ -1,5 +1,7 @@
 /** Tier-Labels und Hilfsfunktionen ohne Manufacturer-Imports */
 
+import { compareWishTruthMatches } from '../search/wishMatchRanking.js';
+
 export const CLEVER_QUOTE_FEATURE_WEIGHTS = {
   range_400: 40,
   camera_360: 20,
@@ -50,9 +52,15 @@ export function getCleverQuoteTier(percent) {
 
 export function sortByCleverQuote(matches) {
   return [...matches].sort((a, b) => {
+    if (a.evaluation || b.evaluation || a.profileEvaluation || b.profileEvaluation) {
+      return compareWishTruthMatches(a, b);
+    }
     const qa = a.cleverQuote?.percent ?? a.score ?? 0;
     const qb = b.cleverQuote?.percent ?? b.score ?? 0;
     if (qb !== qa) return qb - qa;
+    const unknownA = a.cleverQuote?.unknownCount ?? 0;
+    const unknownB = b.cleverQuote?.unknownCount ?? 0;
+    if (unknownA !== unknownB) return unknownA - unknownB;
     return (b.score ?? 0) - (a.score ?? 0);
   });
 }

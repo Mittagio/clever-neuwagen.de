@@ -13,6 +13,7 @@ import {
 } from './hardExclusionRules.js';
 import { enrichVehicleWithModelAttributes } from '../../data/kia/kiaModelAttributes.js';
 import { buildModelLineGroups } from './modelLineGroups.js';
+import { rankMatchesByProfileTruth } from './wishMatchRanking.js';
 
 /**
  * @param {object} params
@@ -59,7 +60,8 @@ export function runCleverSearch({
     getDisplayRate: getDisplayRate ?? ((v) => v.displayRate ?? v.monthlyRate),
   });
 
-  const ranked = rankAdvisorDiscoveryMatches(raw, { wishes, filters, chipIds, limit });
+  let ranked = rankAdvisorDiscoveryMatches(raw, { wishes, filters, chipIds, limit });
+  ranked = rankMatchesByProfileTruth(ranked, profile);
   let modelLineGroups = buildModelLineGroups(raw, ranked, { wishes, chipIds });
 
   if (!ranked.length && enrichedPool.length) {
@@ -68,7 +70,8 @@ export function runCleverSearch({
       vehicles: enrichedPool,
       getDisplayRate: getDisplayRate ?? ((v) => v.displayRate ?? v.monthlyRate),
     });
-    const fallbackRanked = rankAdvisorDiscoveryMatches(fallbackRaw, { wishes, filters, chipIds, limit });
+    let fallbackRanked = rankAdvisorDiscoveryMatches(fallbackRaw, { wishes, filters, chipIds, limit });
+    fallbackRanked = rankMatchesByProfileTruth(fallbackRanked, profile);
     if (fallbackRanked.length) {
       modelLineGroups = buildModelLineGroups(fallbackRaw, fallbackRanked, { wishes, chipIds });
       return {

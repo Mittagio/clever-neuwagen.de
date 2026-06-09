@@ -8,22 +8,8 @@ export const DEALER_SEARCH_PLACEHOLDERS = [
   '5 Sitze bis 4 Meter Länge',
 ];
 
-/** Demo-Chips aus Online-Recherche + Tagung (customerQuestionCatalog TOP_DEMO_SEARCH_QUERIES). */
-export const DEALER_SEARCH_CHIPS = [
-  { label: 'Elektro bis 300 €', query: 'Elektroauto bis 300 Euro' },
-  { label: 'Reichweite 300 km', query: 'Elektro mindestens 300 km Reichweite' },
-  { label: 'Anhängerkupplung', query: 'Hybrid mit Anhängerkupplung' },
-  { label: '7-Sitzer', query: '7-Sitzer Familienauto' },
-  { label: '3 Isofix', query: 'Familienauto mit 3 Isofix' },
-  { label: '2 t Anhängelast', query: 'Hybrid 2 Tonnen Anhängelast' },
-  { label: 'Bis 4 m lang', query: '5 Sitze bis 4 Meter Länge' },
-  { label: 'Garage 2 m', query: 'Garage Höhe 2 Meter' },
-  { label: 'Großer Kofferraum', query: 'SUV großer Kofferraum bis 45.000 €' },
-  { label: 'Wärmepumpe', query: 'Elektro mit Wärmepumpe unter 400 €' },
-  { label: 'Sofort verfügbar', query: 'Sofort verfügbar Elektro' },
-  { label: 'EV3 GT-Line', query: 'Kia EV3 GT-Line' },
-  { label: 'E-7-Sitzer + 2 t', query: 'Elektro 7 Sitze Anhängelast 2 Tonnen' },
-];
+/** Strukturierte Mehrfach-Chips – siehe dealerWishChips.js */
+export { DEALER_WISH_CHIPS as DEALER_SEARCH_CHIPS } from '../services/dealer/dealerWishChips.js';
 
 /** Kia Modellwelt – große Swipe-Karten direkt unter der Suche */
 export const KIA_MODEL_WORLD = [

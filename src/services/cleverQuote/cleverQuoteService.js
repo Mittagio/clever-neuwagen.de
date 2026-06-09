@@ -15,6 +15,7 @@ import { evaluateVehicleAgainstProfile } from '../search/vehicleFeatureRuleEngin
 import { computeCleverQuoteV2 } from './cleverQuoteV2.js';
 import { resolveCleverRecord } from '../../data/clever/cleverDataRegistry.js';
 import { evaluateVehicleForProfile } from '../cleverData/cleverDataEngine.js';
+import { buildFulfillmentLabel } from '../search/wishMatchRanking.js';
 
 export {
   CLEVER_QUOTE_FEATURE_WEIGHTS,
@@ -144,9 +145,8 @@ export function buildProfileCleverQuote(match, profile, { preserveAdvisorMode = 
     matched: evaluation.fulfilledCount,
     scorableTotal: total,
     total,
-    fulfillmentLabel: total
-      ? `${evaluation.fulfilledCount} von ${total} Wünschen`
-      : null,
+    fulfillmentLabel: buildFulfillmentLabel(evaluation),
+    unknownCount: evaluation.unknownCount ?? 0,
     profileTruth: true,
     ...(preserveAdvisorMode && base.advisorMode ? { advisorMode: true } : {}),
     items: evaluation.checks.map((check) => ({

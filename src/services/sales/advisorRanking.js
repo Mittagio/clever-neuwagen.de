@@ -1,4 +1,5 @@
 import { computeCleverQuote } from '../cleverQuote/cleverQuoteService.js';
+import { compareWishTruthMatches } from '../search/wishMatchRanking.js';
 import { getSalesChipById } from '../../data/salesAdvisorChips.js';
 import { formatMatchDeliveryLabel } from '../../logic/discoveryDisplay.js';
 
@@ -141,7 +142,12 @@ export function computeAdvisorRawScore(match, { wishes, chipIds = [] } = {}) {
 
 function spreadAdvisorCleverQuotes(matches = []) {
   if (!matches.length) return [];
-  const sorted = [...matches].sort((a, b) => (b._advisorRaw ?? 0) - (a._advisorRaw ?? 0));
+  const sorted = [...matches].sort((a, b) => {
+    if (a.evaluation || b.evaluation || a.cleverQuote?.unknownCount != null) {
+      return compareWishTruthMatches(a, b);
+    }
+    return (b._advisorRaw ?? 0) - (a._advisorRaw ?? 0);
+  });
 
   return sorted.map((match, index) => ({
     ...match,

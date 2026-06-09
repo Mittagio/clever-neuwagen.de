@@ -391,11 +391,17 @@ function extractMileageAndTerm(text, spans) {
   let durationMonths = null;
 
   const my = text.match(/(\d{1,2})\.?\s*000\s*km\s*(?:\/|pro)?\s*(?:jahr|j\.?)/i)
-    ?? text.match(/(\d{4,5})\s*km\s*(?:\/|pro)?\s*jahr/i);
+    ?? text.match(/(\d{4,5})\s*km\s*(?:\/|pro)?\s*jahr/i)
+    ?? text.match(/(\d{1,2})\.(\d{3})\s*km\b/i)
+    ?? (/\blaufleistung\b/i.test(text) ? text.match(/(\d{4,5})\s*km\b/i) : null);
   if (my) {
-    mileagePerYear = Number(my[1].replace('.', '')) >= 100
-      ? Number(my[1].replace('.', ''))
-      : Number(my[1]) * 1000;
+    if (my[2] != null && my[2].length === 3) {
+      mileagePerYear = Number(my[1]) * 1000 + Number(my[2]);
+    } else {
+      mileagePerYear = Number(my[1].replace('.', '')) >= 100
+        ? Number(my[1].replace('.', ''))
+        : Number(my[1]) * 1000;
+    }
     markSpan(spans, my.index, my.index + my[0].length);
   }
 
@@ -403,6 +409,19 @@ function extractMileageAndTerm(text, spans) {
   if (term) {
     durationMonths = Number(term[1]);
     markSpan(spans, term.index, term.index + term[0].length);
+  }
+
+  if (!mileagePerYear) {
+    const annual = text.match(/\b(\d{4,5})\s*km\b/i);
+    if (annual && !isSpanConsumed(spans, annual.index)) {
+      const val = Number(annual[1]);
+      const rangeCtx = /\b(über|ueber|ab|mindestens|mehr als|reichweite|wlpt|range)\b/i.test(text);
+      const mileageCtx = /\b(laufleistung|jahr|leasing|kilometer\s*pro)\b/i.test(text);
+      if (mileageCtx || (!rangeCtx && val >= 5000 && val <= 50000)) {
+        mileagePerYear = val;
+        markSpan(spans, annual.index, annual.index + annual[0].length);
+      }
+    }
   }
 
   return { mileagePerYear, durationMonths };

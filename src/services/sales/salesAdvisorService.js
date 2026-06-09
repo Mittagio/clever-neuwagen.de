@@ -137,7 +137,6 @@ function applySalesFilters(vehicles, wishes, chipIds = []) {
   return applyHardRuleFilters(
     vehicles.filter((v) => {
       if (wishes.budget?.maxMonthlyRate && v.monthlyRate > wishes.budget.maxMonthlyRate) return false;
-      if (wishes.availability && v.availability !== wishes.availability) return false;
       if (!vehicleMatchesPowertrain(v, wishes.powertrain)) return false;
       if (!vehicleMatchesBodyType(v, wishes.bodyType)) return false;
       return true;
@@ -169,7 +168,7 @@ export function computeSalesAdvisorResults(chipIds = [], options = {}) {
     fuel: wishes.powertrain === 'elektro' ? 'elektro' : wishes.powertrain ?? null,
   };
 
-  let vehicles = filterMarketplaceVehicles(kiaPool, filters);
+  let vehicles = filterMarketplaceVehicles(kiaPool, { ...filters, softAvailability: true });
   vehicles = applySalesFilters(vehicles, wishes, chipIds);
 
   if (!vehicles.length && wishes.budget?.maxMonthlyRate) {

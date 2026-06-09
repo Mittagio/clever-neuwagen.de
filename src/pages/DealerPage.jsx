@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
@@ -17,8 +17,18 @@ import { intentToMarketplaceFilters } from '../services/search/intentToFilters.j
 import { deriveAdvisorChipIds } from '../services/sales/advisorRanking.js';
 import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { runAdvisorSearchWithAlternatives } from '../services/search/advisorSearchAlternatives.js';
+import SearchConflictBanner from '../components/discovery/SearchConflictBanner.jsx';
+import { detectSearchConflict } from '../services/search/searchConflictHint.js';
+import { detectProfileConflict } from '../services/search/profileConflictHint.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
+import {
+  mergeDealerChipFilters,
+  mergeDealerSearchFilters,
+  buildDealerSearchSummary,
+  toggleDealerChipId,
+  matchDealerChipsFromFilters,
+} from '../services/dealer/dealerWishChips.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
@@ -36,25 +46,36 @@ export default function DealerPage() {
   const contact = conditions.contact ?? {};
   const city = conditions.city ?? '';
 
-  const [activeQuery, setActiveQuery] = useState('');
+  const [freeText, setFreeText] = useState('');
+  const [selectedChipIds, setSelectedChipIds] = useState([]);
   const [searchRefinements, setSearchRefinements] = useState({});
   const searchInputRef = useRef(null);
 
-  const searchIntent = useMemo(
-    () => (activeQuery.trim() ? parseSearchIntent(activeQuery) : null),
-    [activeQuery],
+  const hasSearch = Boolean(freeText.trim() || selectedChipIds.length > 0);
+  const searchSummary = useMemo(
+    () => buildDealerSearchSummary(selectedChipIds, freeText),
+    [selectedChipIds, freeText],
   );
 
+  const searchIntent = useMemo(() => {
+    if (freeText.trim()) return parseSearchIntent(freeText);
+    if (!selectedChipIds.length) return null;
+    return parseSearchIntent('');
+  }, [freeText, selectedChipIds]);
+
   const searchFilters = useMemo(() => {
-    if (!searchIntent) return null;
-    return {
-      ...intentToMarketplaceFilters(searchIntent),
+    if (!hasSearch) return null;
+    const textFilters = freeText.trim()
+      ? intentToMarketplaceFilters(parseSearchIntent(freeText))
+      : {};
+    const chipFilters = mergeDealerChipFilters(selectedChipIds);
+    return mergeDealerSearchFilters(textFilters, chipFilters, {
       ...searchRefinements,
-      query: activeQuery,
+      query: freeText.trim(),
       city,
       dealer: dealerId,
-    };
-  }, [searchIntent, activeQuery, city, dealerId, searchRefinements]);
+    });
+  }, [hasSearch, freeText, selectedChipIds, searchSummary, city, dealerId, searchRefinements]);
 
   const searchWishes = useMemo(() => {
     if (!searchFilters) return null;
@@ -81,15 +102,15 @@ export default function DealerPage() {
   }, [searchFilters, searchWishes]);
 
   const searchProfile = useMemo(() => {
-    if (!searchIntent || !searchFilters) return null;
+    if (!searchFilters) return null;
     return buildSearchProfile({
-      query: activeQuery,
+      query: freeText,
       intent: searchIntent,
       filters: searchFilters,
       wishes: searchWishes ?? {},
-      chipIds: searchChipIds,
+      chipIds: [...searchChipIds, ...selectedChipIds],
     });
-  }, [activeQuery, searchIntent, searchFilters, searchWishes, searchChipIds]);
+  }, [freeText, searchIntent, searchFilters, searchWishes, searchChipIds, selectedChipIds]);
 
   const dealerSearchPool = useMemo(() => {
     const pool = getMarketplaceVehiclePool().filter(
@@ -103,38 +124,54 @@ export default function DealerPage() {
   }, [dealerId, searchFilters?.termMonths]);
 
   const searchBundle = useMemo(() => {
-    if (!activeQuery.trim() || !searchProfile || !searchFilters) return null;
+    if (!hasSearch || !searchProfile || !searchFilters) return null;
     return runAdvisorSearchWithAlternatives({
-      query: activeQuery,
+      query: searchSummary,
       intent: searchIntent,
       profile: searchProfile,
       filters: searchFilters,
       wishes: searchWishes ?? {},
       vehicles: dealerSearchPool,
-      chipIds: searchChipIds,
+      chipIds: [...searchChipIds, ...selectedChipIds],
       getDisplayRate: (v) => v.displayRate,
       limit: DEALER_MAX_RECOMMENDATIONS + 3,
     });
   }, [
-    activeQuery,
+    hasSearch,
+    searchSummary,
     searchIntent,
     searchProfile,
     searchFilters,
     searchWishes,
     dealerSearchPool,
     searchChipIds,
+    selectedChipIds,
   ]);
 
   const handleSearch = useCallback((text) => {
-    const value = text.trim();
-    if (!value) return;
+    setFreeText(text.trim());
     setSearchRefinements({});
-    setActiveQuery(value);
+  }, []);
+
+  const handleChipToggle = useCallback((chipId) => {
+    setSelectedChipIds((prev) => toggleDealerChipId(prev, chipId));
+    setSearchRefinements({});
   }, []);
 
   const handlePatchSearchFilters = useCallback((patch) => {
     setSearchRefinements((prev) => ({ ...prev, ...patch }));
   }, []);
+
+  useEffect(() => {
+    if (!hasSearch || !Object.keys(searchRefinements).length || !searchFilters) return;
+    const matched = matchDealerChipsFromFilters(searchFilters);
+    setSelectedChipIds((prev) => {
+      if (prev.length === matched.length && prev.every((id, i) => id === matched[i])) {
+        return prev;
+      }
+      return matched;
+    });
+  }, [searchRefinements, searchFilters, hasSearch]);
 
   const handleEditSearch = useCallback(() => {
     searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -142,12 +179,18 @@ export default function DealerPage() {
   }, []);
 
   const handleShowAllResults = useCallback(() => {
-    navigate(buildDealerWishSearchUrl(activeQuery, { city, dealerSlug: dealerId }));
-  }, [navigate, activeQuery, city, dealerId]);
+    navigate(buildDealerWishSearchUrl(searchSummary || freeText, { city, dealerSlug: dealerId }));
+  }, [navigate, searchSummary, freeText, city, dealerId]);
+
+  const searchConflict = useMemo(() => {
+    if (!hasSearch || !searchProfile) return null;
+    return detectSearchConflict(searchIntent ?? parseSearchIntent(''))
+      ?? detectProfileConflict(searchProfile, { intent: searchIntent, filters: searchFilters });
+  }, [hasSearch, searchProfile, searchIntent, searchFilters]);
 
   const hasExact = searchBundle?.hasExactMatch && searchBundle.exact.modelLineGroups?.length > 0;
   const hasAlternatives = !hasExact && (searchBundle?.alternatives?.length ?? 0) > 0;
-  const showEmpty = activeQuery && searchBundle && !hasExact && !hasAlternatives;
+  const showEmpty = hasSearch && searchBundle && !hasExact && !hasAlternatives;
   const hasSearchResults = hasExact || hasAlternatives;
 
   return (
@@ -160,11 +203,13 @@ export default function DealerPage() {
             brand="Kia"
             dealerSlug={dealerId}
             onSearch={handleSearch}
+            onChipToggle={handleChipToggle}
+            selectedChipIds={selectedChipIds}
             inputRef={searchInputRef}
-            queryValue={activeQuery}
+            queryValue={freeText}
           />
 
-          {!activeQuery.trim() && (
+          {!hasSearch && (
             <DealerModelWorld
               city={city}
               dealerSlug={dealerId}
@@ -172,20 +217,24 @@ export default function DealerPage() {
             />
           )}
 
-          {activeQuery.trim() && searchFilters && searchWishes && (
+          {searchConflict && (
+            <SearchConflictBanner conflict={searchConflict} />
+          )}
+
+          {hasSearch && searchFilters && searchWishes && (
             <CustomerSearchHub
               filters={searchFilters}
               wishes={searchWishes}
               onEditSearch={handleEditSearch}
               onPatchFilters={handlePatchSearchFilters}
-              sticky={Boolean(activeQuery.trim())}
+              sticky={hasSearch}
               refineLabel="Verfeinern"
             />
           )}
 
           {hasExact && (
             <DealerSearchResults
-              query={activeQuery}
+              query={searchSummary}
               searchProfile={searchProfile}
               modelLineGroups={searchBundle.exact.modelLineGroups}
               filters={searchFilters}
@@ -200,7 +249,7 @@ export default function DealerPage() {
 
           {hasAlternatives && (
             <DealerSearchAlternatives
-              query={activeQuery}
+              query={searchSummary}
               searchProfile={searchProfile}
               guidanceMessage={searchBundle.guidanceMessage}
               alternatives={searchBundle.alternatives.slice(0, 1)}
@@ -217,7 +266,7 @@ export default function DealerPage() {
             <section className="dl-search-results dl-search-results--empty" aria-live="polite">
               <p className="dl-search-results__empty">
                 {searchBundle.guidanceMessage ?? (
-                  <>Für „{activeQuery}“ haben wir aktuell keinen passenden Kia im Bestand.</>
+                  <>Für „{searchSummary}“ haben wir aktuell keinen passenden Kia im Bestand.</>
                 )}
               </p>
               <button type="button" className="btn btn-secondary" onClick={handleShowAllResults}>
@@ -236,7 +285,7 @@ export default function DealerPage() {
             </button>
           )}
 
-          {activeQuery.trim() && (
+          {hasSearch && (
             <DealerModelWorld
               city={city}
               dealerSlug={dealerId}

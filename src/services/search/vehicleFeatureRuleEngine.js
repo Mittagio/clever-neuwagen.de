@@ -80,15 +80,23 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
   const minRange = profile.minRangeKm ?? profile.rangeKmMin ?? null;
   if (minRange != null) {
     const range = v.electricRangeKm ?? v.rangeKm ?? facts.typicalRangeKm ?? null;
-    const ok = range != null && range >= minRange;
-    checks.push({
-      id: 'range_km',
-      label: `Reichweite ≥ ${minRange} km`,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: range != null ? `${range} km` : null,
-    });
+    if (range == null) {
+      checks.push({
+        id: 'range_km',
+        label: `Reichweite ≥ ${minRange} km`,
+        status: 'unknown',
+      });
+    } else {
+      const ok = range >= minRange;
+      checks.push({
+        id: 'range_km',
+        label: `Reichweite ≥ ${minRange} km`,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${range} km`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   if (profile.seatsMin != null) {
@@ -107,72 +115,92 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     const len = resolveVehicleLengthMm(v);
     const maxM = profile.maxLengthMm / 1000;
     const label = `bis ${Number.isInteger(maxM) ? maxM : maxM.toFixed(1).replace('.', ',')} m Länge`;
-    const ok = len != null && len <= profile.maxLengthMm;
-    checks.push({
-      id: 'length_mm',
-      label,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: len != null ? `${(len / 1000).toFixed(2).replace('.', ',')} m` : null,
-    });
+    if (len == null) {
+      checks.push({ id: 'length_mm', label, status: 'unknown' });
+    } else {
+      const ok = len <= profile.maxLengthMm;
+      checks.push({
+        id: 'length_mm',
+        label,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${(len / 1000).toFixed(2).replace('.', ',')} m`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   if (profile.maxHeightMm != null) {
     const height = resolveVehicleHeightMm(v);
     const label = formatHeightLimitLabel(profile.maxHeightMm);
-    const ok = height != null && height <= profile.maxHeightMm;
-    checks.push({
-      id: 'height_mm',
-      label,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: height != null ? `${(height / 1000).toFixed(2).replace('.', ',')} m` : null,
-    });
+    if (height == null) {
+      checks.push({ id: 'height_mm', label, status: 'unknown' });
+    } else {
+      const ok = height <= profile.maxHeightMm;
+      checks.push({
+        id: 'height_mm',
+        label,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${(height / 1000).toFixed(2).replace('.', ',')} m`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   if (profile.trunkLMin != null) {
     const trunk = resolveVehicleTrunkL(v);
     const label = formatTrunkMinLabel(profile.trunkLMin);
-    const ok = trunk != null && trunk >= profile.trunkLMin;
-    checks.push({
-      id: 'trunk_l',
-      label,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: trunk != null ? `${trunk} l` : null,
-    });
+    if (trunk == null) {
+      checks.push({ id: 'trunk_l', label, status: 'unknown' });
+    } else {
+      const ok = trunk >= profile.trunkLMin;
+      checks.push({
+        id: 'trunk_l',
+        label,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${trunk} l`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   if (profile.isofixRearMin != null) {
     const count = resolveIsofixRearCount(v);
     const label = formatIsofixRearLabel(profile.isofixRearMin);
-    const ok = count != null && count >= profile.isofixRearMin;
-    checks.push({
-      id: 'isofix_rear',
-      label,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: count != null ? `${count}× hinten` : null,
-    });
+    if (count == null) {
+      checks.push({ id: 'isofix_rear', label, status: 'unknown' });
+    } else {
+      const ok = count >= profile.isofixRearMin;
+      checks.push({
+        id: 'isofix_rear',
+        label,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${count}× hinten`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   if (profile.towCapacityKg != null) {
     const braked = resolveTowBrakedKg(v);
     const wantT = Math.round(profile.towCapacityKg / 100) / 10;
     const label = `Anhängelast ≥ ${wantT} t`;
-    const ok = braked != null && braked >= profile.towCapacityKg;
-    checks.push({
-      id: 'tow_braked',
-      label,
-      status: ok ? 'fulfilled' : 'missing',
-      detail: braked != null ? `${braked} kg` : null,
-    });
+    if (braked == null) {
+      checks.push({ id: 'tow_braked', label, status: 'unknown' });
+    } else {
+      const ok = braked >= profile.towCapacityKg;
+      checks.push({
+        id: 'tow_braked',
+        label,
+        status: ok ? 'fulfilled' : 'missing',
+        detail: `${braked} kg`,
+      });
+      if (ok) scoreSum += 1;
+    }
     scoreMax += 1;
-    if (ok) scoreSum += 1;
   }
 
   for (const featureId of profile.requiredFeatures ?? []) {
@@ -207,7 +235,9 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     // Paket-Features zählen nicht als 100 %-Treffer (Kunde erwartet Serienausstattung)
   }
 
-  const percent = scoreMax > 0 ? Math.round((scoreSum / scoreMax) * 100) : 100;
+  const fulfilledCount = checks.filter((c) => c.status === 'fulfilled').length;
+  const unknownCount = checks.filter((c) => c.status === 'unknown').length;
+  const percent = checks.length > 0 ? Math.round((fulfilledCount / checks.length) * 100) : 100;
 
   return {
     model: facts.label ?? v.model,
@@ -217,8 +247,10 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     rangeKm: v.electricRangeKm ?? v.rangeKm ?? facts.typicalRangeKm ?? null,
     checks,
     cleverQuotePercent: percent,
-    fulfilledCount: checks.filter((c) => c.status === 'fulfilled').length,
+    fulfilledCount,
     totalChecks: checks.length,
+    scorableCount: checks.length,
+    unknownCount,
   };
 }
 

@@ -19,6 +19,7 @@ export function filterVehiclesStructured(vehicles, filters) {
   const prepared = prepareVehiclesForSearch(vehicles, filters);
   return filterMarketplaceVehicles(prepared, {
     ...filters,
+    softAvailability: true,
     intentStructured: hasStructuredSearchFilters(filters) || filters.intentStructured,
   });
 }

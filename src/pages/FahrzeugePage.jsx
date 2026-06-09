@@ -292,6 +292,7 @@ export default function FahrzeugePage() {
   const vehiclesForCatalogPool = useMemo(() => {
     const base = filterMarketplaceVehicles(MARKETPLACE_VEHICLES, {
       ...filters,
+      softAvailability: true,
       excludedBrands: [],
       excludedModels: [],
     });

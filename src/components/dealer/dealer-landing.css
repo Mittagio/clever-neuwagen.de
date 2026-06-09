@@ -123,12 +123,18 @@
   gap: 8px;
 }
 
+.dl-hero__chips-hint {
+  margin: 10px 0 8px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #64748b);
+}
+
 .dl-hero__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-height: 88px;
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .dl-chip {
@@ -142,6 +148,17 @@
   color: var(--color-text);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.dl-chip--active {
+  background: var(--color-brand, #1a2b4a);
+  border-color: var(--color-brand, #1a2b4a);
+  color: #fff;
+}
+
+.dl-chip--active:hover {
+  background: var(--color-brand, #1a2b4a);
+  color: #fff;
 }
 
 .dl-chip:hover {

@@ -2,10 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { isSpeechRecognitionSupported, startSpeechRecognition } from '../../services/sales/conversationVoiceParser.js';
-import {
-  DEALER_SEARCH_CHIPS,
-  DEALER_SEARCH_PLACEHOLDERS,
-} from '../../data/dealerLandingContent.js';
+import { DEALER_WISH_CHIPS } from '../../services/dealer/dealerWishChips.js';
+import { DEALER_SEARCH_PLACEHOLDERS } from '../../data/dealerLandingContent.js';
 import AiAssistantIcon from './AiAssistantIcon.jsx';
 import './dealer-landing.css';
 
@@ -15,6 +13,8 @@ export default function DealerSearchHero({
   brand = 'Kia',
   dealerSlug = '',
   onSearch,
+  onChipToggle,
+  selectedChipIds = [],
   inputRef: externalInputRef,
   queryValue = '',
 }) {
@@ -48,7 +48,7 @@ export default function DealerSearchHero({
       onSearch(value);
       return;
     }
-    if (!value) {
+    if (!value && !selectedChipIds.length) {
       navigate(buildDealerWishSearchUrl('', { city, dealerSlug, brand: brand.toLowerCase() }));
       return;
     }
@@ -60,8 +60,8 @@ export default function DealerSearchHero({
     submitSearch();
   }
 
-  function handleChipClick(query) {
-    submitSearch(query);
+  function handleChipClick(chipId) {
+    onChipToggle?.(chipId);
   }
 
   function startVoice() {
@@ -85,6 +85,8 @@ export default function DealerSearchHero({
       onEnd: () => setListening(false),
     });
   }
+
+  const hasSelection = selectedChipIds.length > 0 || searchText.trim();
 
   return (
     <section className="dl-hero" aria-labelledby="dl-hero-title">
@@ -129,23 +131,32 @@ export default function DealerSearchHero({
             </button>
           </div>
           {voiceError && <p className="dl-hero__voice-error" role="alert">{voiceError}</p>}
-          <button type="submit" className="btn btn-primary dl-hero__cta">
+          <button
+            type="submit"
+            className="btn btn-primary dl-hero__cta"
+            disabled={!hasSelection}
+          >
             <AiAssistantIcon size={16} />
             ✨ Fahrzeug finden
           </button>
         </form>
 
-        <div className="dl-hero__chips" aria-label="Schnellvorschläge">
-          {DEALER_SEARCH_CHIPS.map((chip) => (
-            <button
-              key={chip.label}
-              type="button"
-              className="dl-chip"
-              onClick={() => handleChipClick(chip.query)}
-            >
-              {chip.label}
-            </button>
-          ))}
+        <p className="dl-hero__chips-hint">Stichwörter anklicken – Mehrfachauswahl möglich</p>
+        <div className="dl-hero__chips" aria-label="Stichwörter">
+          {DEALER_WISH_CHIPS.map((chip) => {
+            const active = selectedChipIds.includes(chip.id);
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                className={`dl-chip${active ? ' dl-chip--active' : ''}`}
+                aria-pressed={active}
+                onClick={() => handleChipClick(chip.id)}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>

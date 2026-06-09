@@ -224,7 +224,11 @@ export function filterMarketplaceVehicles(vehicles, initialFilters) {
     }
     if (!vehiclePassesBrandExclusion(vehicle, filters.excludedBrands)) return false;
     if (!vehiclePassesModelExclusion(vehicle, filters.excludedModels)) return false;
-    if (filters.availability && vehicle.availability !== filters.availability) return false;
+    if (
+      filters.availability
+      && !filters.softAvailability
+      && vehicle.availability !== filters.availability
+    ) return false;
     if (filters.features?.length) {
       const missing = filters.features.filter((fid) => !vehicleMatchesFeature(vehicle, fid));
       if (missing.length) return false;

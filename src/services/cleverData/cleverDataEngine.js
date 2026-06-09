@@ -11,6 +11,7 @@ import {
   formatTrunkMinLabel,
   formatIsofixRearLabel,
 } from './vehicleDimensions.js';
+import { buildRecordFeatureChecks, mergeProfileChecks, summarizeChecks } from './recordFeatureEvaluation.js';
 
 export {
   resolveVehicleLengthMm,
@@ -37,10 +38,8 @@ export function evaluateProfileAgainstRecord(profile, record) {
 
   const add = (id, label, status, detail = null) => {
     checks.push({ id, label, status, detail, scorable: status !== 'unknown' });
-    if (status !== 'unknown') {
-      scoreMax += 1;
-      if (status === 'fulfilled') scoreSum += 1;
-    }
+    scoreMax += 1;
+    if (status === 'fulfilled') scoreSum += 1;
   };
 
   if (profile.fuel) {
@@ -141,16 +140,14 @@ export function evaluateProfileAgainstRecord(profile, record) {
     }
   }
 
-  const wishPercent = scoreMax > 0 ? Math.round((scoreSum / scoreMax) * 100) : 100;
-  const unknownCount = checks.filter((c) => c.status === 'unknown').length;
+  for (const featureCheck of buildRecordFeatureChecks(profile, record)) {
+    if (checks.some((c) => c.id === featureCheck.id)) continue;
+    checks.push(featureCheck);
+  }
 
   return {
     recordId: record.id,
-    checks,
-    wishPercent,
-    fulfilledCount: checks.filter((c) => c.status === 'fulfilled').length,
-    scorableCount: scoreMax,
-    unknownCount,
+    ...summarizeChecks(checks),
   };
 }
 
@@ -164,19 +161,19 @@ export function evaluateVehicleForProfile(profile, vehicle) {
   if (record) {
     const recordEval = evaluateProfileAgainstRecord(profile, record);
     const legacy = evaluateVehicleAgainstProfile(profile, enriched);
-    const mergedChecks = recordEval.checks.length >= legacy.checks.length
-      ? recordEval.checks
-      : [...recordEval.checks, ...legacy.checks.filter((c) => !recordEval.checks.some((r) => r.id === c.id))];
+    const mergedChecks = mergeProfileChecks(recordEval.checks, legacy.checks);
+    const mergedSummary = summarizeChecks(mergedChecks);
 
     return {
       ...legacy,
       cleverRecordId: record.id,
-      checks: mergedChecks,
-      cleverQuotePercent: recordEval.wishPercent,
-      fulfilledCount: recordEval.fulfilledCount,
-      totalChecks: recordEval.scorableCount,
-      unknownCount: recordEval.unknownCount,
-      recordEval,
+      checks: mergedSummary.checks,
+      cleverQuotePercent: mergedSummary.wishPercent,
+      fulfilledCount: mergedSummary.fulfilledCount,
+      totalChecks: mergedSummary.totalChecks,
+      scorableCount: mergedSummary.scorableCount,
+      unknownCount: mergedSummary.unknownCount,
+      recordEval: { ...recordEval, ...mergedSummary, checks: mergedSummary.checks },
     };
   }
 

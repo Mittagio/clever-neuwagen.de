@@ -7,6 +7,7 @@ import { KIA_MODEL_ATTRIBUTES } from '../kia/kiaModelAttributes.js';
 import { getKiaTechnicalSpec } from '../kia/kiaTechnicalSpecs.js';
 import { CLEVER_FEATURE_STATUS as S } from './cleverVehicleRecord.js';
 import { KIA_CLEVER_RECORD_OVERRIDES } from './kiaCleverRecordOverrides.js';
+import { getKiaFamilySpec } from '../kia/kiaFamilySpecs.js';
 
 /** Offizielle ID → Attribut-/Spec-Key */
 const MODEL_KEY_ALIASES = {
@@ -100,12 +101,27 @@ function inferCleverScores(attrs, official, towingKg, rangeKm) {
   };
 }
 
+/** Wärmepumpe – Kia EV ab Earth/GT und PHEV Sorento/Sportage typisch serienmäßig. */
+function inferHeatPumpDefault(officialId, powertrain) {
+  if (powertrain === 'plugin-hybrid') {
+    return ['sorento-phev', 'sportage-phev'].includes(officialId) ? true : null;
+  }
+  if (powertrain !== 'elektro' && powertrain !== 'nutzfahrzeug') return null;
+  const withHeatPump = new Set([
+    'ev2', 'ev3', 'ev4', 'ev4-fastback', 'ev5', 'ev5-gt', 'ev6', 'ev6-gt', 'ev9', 'ev9-gt',
+    'niro', 'pv5-passenger', 'pv5-cargo', 'pv5-crew', 'pv5-chassis-cab',
+  ]);
+  return withHeatPump.has(officialId) ? true : null;
+}
+
 function buildElectricBlock(official, attrs, spec) {
   const pt = official.powertrain;
   if (pt !== 'elektro' && pt !== 'plugin-hybrid' && pt !== 'nutzfahrzeug') return undefined;
 
   const rangeKm = spec?.electricRangeKm ?? attrs?.typicalRangeKm ?? null;
   const is800V = ['ev6', 'ev6-gt', 'ev9', 'ev9-gt'].includes(official.id);
+
+  const heatPump = inferHeatPumpDefault(official.id, pt);
 
   return {
     batteryGrossKwh: null,
@@ -116,10 +132,24 @@ function buildElectricBlock(official, attrs, spec) {
     acKw: pt === 'plugin-hybrid' ? 3.6 : 11,
     dcKw: pt === 'elektro' || pt === 'nutzfahrzeug' ? null : null,
     has800V: is800V,
-    heatPump: null,
+    heatPump,
     v2l: pt === 'elektro' ? null : false,
     v2h: false,
     v2g: false,
+  };
+}
+
+function buildFamilyBlock(modelKey, attrs, spec) {
+  const familySpec = getKiaFamilySpec(modelKey);
+  const isofixRearCount = familySpec?.isofixRearCount ?? null;
+  return {
+    seats: familySpec?.seats ?? attrs?.seats ?? 5,
+    isofixRearCount,
+    isofixRear: familySpec?.isofixRear ?? (isofixRearCount != null ? isofixRearCount >= 1 : null),
+    isofixPassenger: familySpec?.isofixPassenger ?? null,
+    trunkL: spec?.trunkL ?? null,
+    frunkL: familySpec?.frunkL ?? null,
+    slidingDoors: false,
   };
 }
 
@@ -145,7 +175,12 @@ export function buildCleverRecordFromOfficial(official) {
   const modelKey = resolveModelKey(official.id);
   const attrs = getAttributes(modelKey);
   const spec = getKiaTechnicalSpec(modelKey) ?? getKiaTechnicalSpec(official.id);
-  const towingKg = attrs?.towCapacityKg ?? TOWING_BRAKED_KG[modelKey] ?? TOWING_BRAKED_KG[official.id] ?? null;
+  const familySpec = getKiaFamilySpec(modelKey);
+  const towingKg = familySpec?.towCapacityKg
+    ?? attrs?.towCapacityKg
+    ?? TOWING_BRAKED_KG[modelKey]
+    ?? TOWING_BRAKED_KG[official.id]
+    ?? null;
   const rangeKm = spec?.electricRangeKm ?? attrs?.typicalRangeKm ?? null;
 
   return {
@@ -162,14 +197,7 @@ export function buildCleverRecordFromOfficial(official) {
       inStock: false,
     },
     electric: buildElectricBlock(official, attrs, spec),
-    family: {
-      seats: attrs?.seats ?? 5,
-      isofixRear: null,
-      isofixPassenger: null,
-      trunkL: spec?.trunkL ?? null,
-      frunkL: null,
-      slidingDoors: false,
-    },
+    family: buildFamilyBlock(modelKey, attrs, spec),
     towing: towingKg != null ? {
       brakedKg: towingKg,
       unbrakedKg: towingKg >= 2000 ? 750 : 500,
