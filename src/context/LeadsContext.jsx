@@ -16,8 +16,7 @@ import {
 } from '../services/delivery/deliveryWorkflow.js';
 import {
   fetchPilotLeadsFromServer,
-  isPilotLeadsSyncEnabled,
-  patchPilotLeadOnServer,
+  isPersistablePilotLead,
   pushPilotLeadToServer,
 } from '../services/pilot/pilotLeadsApi.js';
 
@@ -95,6 +94,11 @@ function historyEntry(text, type = 'system', meta = {}) {
   };
 }
 
+function persistLeadSnapshot(lead) {
+  if (!isPersistablePilotLead(lead)) return;
+  pushPilotLeadToServer(lead);
+}
+
 function applyLeadPatch(prev, id, patch, historyText, historyType = 'system') {
   return prev.map((lead) => {
     if (lead.id !== id) return lead;
@@ -142,14 +146,15 @@ export function LeadsProvider({ children }) {
   }, [leads]);
 
   useEffect(() => {
-    if (!isPilotLeadsSyncEnabled()) return undefined;
-
     let cancelled = false;
 
     async function syncFromServer() {
       const remote = await fetchPilotLeadsFromServer(PILOT_DEALER_ID);
       if (cancelled || !remote.length) return;
-      setLeads((prev) => mergeLeadsById(prev, remote));
+      setLeads((prev) => mergeLeadsById(
+        PILOT_LIVE ? prev : stripDemoLeads(prev),
+        remote,
+      ));
     }
 
     syncFromServer();
@@ -179,29 +184,27 @@ export function LeadsProvider({ children }) {
 
     addLead(lead) {
       setLeads((prev) => [lead, ...prev]);
-      if (isPilotLeadsSyncEnabled()) {
-        pushPilotLeadToServer(lead);
-      }
+      persistLeadSnapshot(lead);
       return lead;
     },
 
     updateLead(id, partial) {
       const updatedAt = new Date().toISOString();
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? { ...lead, ...partial, updatedAt }
             : lead,
-        ),
-      );
-      if (isPilotLeadsSyncEnabled()) {
-        patchPilotLeadOnServer(id, { ...partial, updatedAt });
-      }
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     updateContact(id, contact) {
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? normalizeLead({
                 ...lead,
@@ -209,13 +212,16 @@ export function LeadsProvider({ children }) {
                 updatedAt: new Date().toISOString(),
               })
             : lead,
-        ),
-      );
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     updateWish(id, wish) {
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? normalizeLead({
                 ...lead,
@@ -224,15 +230,18 @@ export function LeadsProvider({ children }) {
                 updatedAt: new Date().toISOString(),
               })
             : lead,
-        ),
-      );
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     assignOwner(id, ownerId) {
       const seller = DEALER_SELLERS.find((s) => s.id === ownerId);
       const now = new Date().toISOString();
-      setLeads((prev) =>
-        prev.map((lead) => {
+      setLeads((prev) => {
+        const next = prev.map((lead) => {
           if (lead.id !== id) return lead;
           const patch = {
             ...lead,
@@ -241,9 +250,9 @@ export function LeadsProvider({ children }) {
             assignedAt: ownerId ? now : null,
             updatedAt: now,
           };
-          const next = normalizeLead(patch);
+          const normalized = normalizeLead(patch);
           return {
-            ...next,
+            ...normalized,
             history: [
               ...(lead.history ?? []),
               historyEntry(
@@ -254,13 +263,16 @@ export function LeadsProvider({ children }) {
               ),
             ],
           };
-        }),
-      );
+        });
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     applyPricingResult(id, { leasingRate, financeRate, cashPrice, listPrice, deliveryTime, complianceStatus }) {
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? normalizeLead({
                 ...lead,
@@ -271,18 +283,24 @@ export function LeadsProvider({ children }) {
                 updatedAt: new Date().toISOString(),
               })
             : lead,
-        ),
-      );
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     updateNotes(id, notes) {
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? { ...lead, notes, updatedAt: new Date().toISOString() }
             : lead,
-        ),
-      );
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     async updateStatus(id, status) {
@@ -299,6 +317,9 @@ export function LeadsProvider({ children }) {
           const updatedLead = next.find((l) => l.id === id);
           recordIntelligenceSale(updatedLead);
         }
+
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
 
         return next;
       });
@@ -420,8 +441,8 @@ export function LeadsProvider({ children }) {
     },
 
     addHistory(id, text, type = 'note', meta = {}) {
-      setLeads((prev) =>
-        prev.map((lead) =>
+      setLeads((prev) => {
+        const next = prev.map((lead) =>
           lead.id === id
             ? {
                 ...lead,
@@ -429,8 +450,11 @@ export function LeadsProvider({ children }) {
                 history: [...(lead.history ?? []), historyEntry(text, type, meta)],
               }
             : lead,
-        ),
-      );
+        );
+        const updated = next.find((l) => l.id === id);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
     },
 
     getLead(id) {
@@ -442,9 +466,12 @@ export function LeadsProvider({ children }) {
       setLeads((prev) => {
         result = buildUpsertFromOffer({ ...params, leads: prev });
         if (result.isNew) {
+          persistLeadSnapshot(result.lead);
           return [result.lead, ...prev];
         }
-        return prev.map((lead) => (lead.id === result.leadId ? result.lead : lead));
+        const next = prev.map((lead) => (lead.id === result.leadId ? result.lead : lead));
+        persistLeadSnapshot(result.lead);
+        return next;
       });
       return result;
     },

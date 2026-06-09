@@ -77,9 +77,9 @@ export default function CommunicationCenterPage() {
     if (q) {
       list = list.filter(
         (l) =>
-          l.contact.name?.toLowerCase().includes(q)
-          || l.contact.email?.toLowerCase().includes(q)
-          || l.contact.phone?.includes(q)
+          l.contact?.name?.toLowerCase().includes(q)
+          || l.contact?.email?.toLowerCase().includes(q)
+          || l.contact?.phone?.includes(q)
           || l.vehicle?.label?.toLowerCase().includes(q)
           || l.ownerName?.toLowerCase().includes(q),
       );
