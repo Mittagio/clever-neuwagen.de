@@ -8,6 +8,13 @@ import {
   vehicleFuelTruth,
 } from '../../data/kia/kiaModelAttributes.js';
 import { getModelLineKey } from '../sales/advisorRanking.js';
+import {
+  resolveVehicleLengthMm,
+  resolveVehicleHeightMm,
+  resolveVehicleTrunkL,
+  resolveTowBrakedKg,
+  resolveIsofixRearCount,
+} from '../cleverData/vehicleDimensions.js';
 
 const BODY_CLASS_RANK = {
   kleinwagen: 1,
@@ -61,6 +68,67 @@ export function evaluateHardRules(vehicle, profile) {
       reasons.push({
         code: 'seats_insufficient',
         message: `${facts.label} ist kein 7-Sitzer (${facts.seats} Sitze)`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.maxLengthMm != null) {
+    const len = resolveVehicleLengthMm(v);
+    if (len != null && len > profile.maxLengthMm) {
+      const maxM = profile.maxLengthMm / 1000;
+      const lenM = (len / 1000).toFixed(2).replace('.', ',');
+      reasons.push({
+        code: 'length_exceeded',
+        message: `${facts.label} ist ${lenM} m lang – gewünscht max. ${String(maxM).replace('.', ',')} m`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.maxHeightMm != null) {
+    const height = resolveVehicleHeightMm(v);
+    if (height != null && height > profile.maxHeightMm) {
+      const maxM = profile.maxHeightMm / 1000;
+      const hM = (height / 1000).toFixed(2).replace('.', ',');
+      reasons.push({
+        code: 'height_exceeded',
+        message: `${facts.label} ist ${hM} m hoch – Garage max. ${String(maxM).replace('.', ',')} m`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.trunkLMin != null) {
+    const trunk = resolveVehicleTrunkL(v);
+    if (trunk != null && trunk < profile.trunkLMin) {
+      reasons.push({
+        code: 'trunk_too_small',
+        message: `${facts.label}: Kofferraum ${trunk} l – gewünscht min. ${profile.trunkLMin} l`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.isofixRearMin != null) {
+    const isofixCount = resolveIsofixRearCount(v);
+    if (isofixCount != null && isofixCount < profile.isofixRearMin) {
+      reasons.push({
+        code: 'isofix_insufficient',
+        message: `${facts.label}: ${isofixCount} Isofix hinten – gewünscht ${profile.isofixRearMin}`,
+        hard: true,
+      });
+    }
+  }
+
+  if (profile.towCapacityKg != null) {
+    const braked = resolveTowBrakedKg(v);
+    if (braked != null && braked < profile.towCapacityKg) {
+      const wantT = Math.round(profile.towCapacityKg / 100) / 10;
+      const haveT = Math.round(braked / 100) / 10;
+      reasons.push({
+        code: 'tow_insufficient',
+        message: `${facts.label}: Anhängelast ${haveT} t – gewünscht min. ${wantT} t`,
         hard: true,
       });
     }

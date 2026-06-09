@@ -336,6 +336,8 @@ export default function DiscoveryResultsView({
           onEditSearch={onEditSearch}
           onEditChip={onEditChip}
           onPatchFilters={onPatchFilters}
+          sticky={Boolean(filters.query?.trim())}
+          refineLabel="Verfeinern"
         />
       </div>
 

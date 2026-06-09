@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DiscoveryModelLineCard from '../discovery/DiscoveryModelLineCard.jsx';
 import { buildFahrzeugeSearchUrl } from '../../logic/oneSearchService.js';
 import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
 import { enrichModelLineGroupWithProfileQuote } from '../../services/cleverQuote/cleverQuoteService.js';
+import { DEALER_MAX_RECOMMENDATIONS } from '../../data/dealerLandingContent.js';
 import '../discovery/discovery-results.css';
 import './dealer-landing.css';
 
@@ -18,8 +20,10 @@ export default function DealerSearchResults({
   onShowAll,
   hideHeader = false,
   alternativeTier = false,
+  maxRecommendations = DEALER_MAX_RECOMMENDATIONS,
 }) {
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
   const paymentMode = filters?.payment || 'cash';
   const paymentNeutral = !filters?.payment;
   const chipIds = filters && wishes ? deriveAdvisorChipIds(filters, wishes) : [];
@@ -48,6 +52,9 @@ export default function DealerSearchResults({
     ? modelLineGroups.map((group) => enrichModelLineGroupWithProfileQuote(group, searchProfile))
     : modelLineGroups;
 
+  const hasMore = groups.length > maxRecommendations;
+  const visibleGroups = expanded ? groups : groups.slice(0, maxRecommendations);
+
   return (
     <section
       className={`dl-search-results${alternativeTier ? ' dl-search-results--tier' : ''}`}
@@ -56,35 +63,45 @@ export default function DealerSearchResults({
       {!hideHeader && (
         <div className="dl-search-results__head">
           <h2 id="dl-search-results-heading" className="dl-section__title">
-            Passende Modelle
+            Unsere Empfehlungen
           </h2>
           <p className="dl-search-results__meta">
-            {modelLineGroups.length} Modelllinien
+            {Math.min(groups.length, maxRecommendations)} von {groups.length} Modelllinien
             {source === 'server' && <span className="dl-search-results__sync"> · Berater-Sync</span>}
           </p>
         </div>
       )}
 
       <div className="dl-search-results__list">
-        {groups.slice(0, 5).map((group) => (
+        {visibleGroups.map((group, index) => (
           <DiscoveryModelLineCard
             key={group.modelLineKey ?? group.label}
-            group={group}
-            rank={group.rank ?? 1}
+            group={{ ...group, rank: index + 1 }}
+            rank={index + 1}
             paymentMode={paymentMode}
             paymentNeutral={paymentNeutral}
             wishes={wishes}
             chipIds={chipIds}
             searchProfile={searchProfile}
             onViewOffer={handleViewOffer}
-            defaultVariantsOpen={group.rank <= 2}
+            defaultVariantsOpen={index === 0}
           />
         ))}
       </div>
 
+      {hasMore && !expanded && (
+        <button
+          type="button"
+          className="btn btn-secondary dl-search-results__more"
+          onClick={() => setExpanded(true)}
+        >
+          Weitere Modelle anzeigen ({groups.length - maxRecommendations})
+        </button>
+      )}
+
       {!hideHeader && (
         <button type="button" className="btn btn-secondary dl-search-results__all" onClick={handleShowAll}>
-          Alle Ergebnisse anzeigen
+          Alle Ergebnisse auf clever-neuwagen.de
         </button>
       )}
     </section>

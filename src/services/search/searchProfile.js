@@ -5,6 +5,7 @@
 
 import { parseSearchIntent } from './searchIntentParser.js';
 import { normalizeFeatureIdsToInternal } from './canonicalFeatureIds.js';
+import { LARGE_TRUNK_MIN_L } from '../cleverData/vehicleDimensions.js';
 
 const META_FEATURES = new Set(['elektro', 'benzin', 'reichweite', 'family_suv']);
 
@@ -94,6 +95,16 @@ export function buildSearchProfile({
 
   const rangeKmMin = parsed.rangeKmMin ?? filters.rangeKmMin ?? null;
 
+  let trunkLMin = parsed.trunkLMin ?? filters.trunkLMin ?? null;
+  if (trunkLMin == null && features.includes('large_trunk')) {
+    trunkLMin = LARGE_TRUNK_MIN_L;
+  }
+
+  let isofixRearMin = parsed.isofixRearMin ?? filters.isofixRearMin ?? null;
+  if (isofixRearMin == null && features.includes('isofix_3')) {
+    isofixRearMin = 3;
+  }
+
   return {
     fuel,
     seatsMin,
@@ -114,6 +125,10 @@ export function buildSearchProfile({
     availability: parsed.availability ?? filters.availability ?? null,
     rangeKmMin,
     towCapacityKg: parsed.towCapacityKg ?? filters.towCapacityKg ?? null,
+    maxLengthMm: parsed.maxLengthMm ?? filters.maxLengthMm ?? null,
+    maxHeightMm: parsed.maxHeightMm ?? filters.maxHeightMm ?? null,
+    trunkLMin,
+    isofixRearMin,
     payment: (parsed.paymentExplicit && parsed.payment)
       ? parsed.payment
       : (filters.payment || wishes.budget?.type || null),

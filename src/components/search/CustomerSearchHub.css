@@ -65,3 +65,42 @@
   font-size: 1rem;
   line-height: 1;
 }
+
+/* Sticky Suchleiste auf Ergebnisseite (Händler + Fahrzeuge) */
+.csh--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  margin: 0 -4px 14px;
+  padding: 10px 4px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+.csh--sticky .csh-block--stated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.csh--sticky .csh-block__head {
+  display: contents;
+}
+
+.csh--sticky .csh-block__title {
+  display: none;
+}
+
+.csh--sticky .csh-stated-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.csh--sticky .csh-refine-trigger {
+  flex-shrink: 0;
+  margin-left: auto;
+}

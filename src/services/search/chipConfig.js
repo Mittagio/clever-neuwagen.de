@@ -17,6 +17,12 @@ import {
 import { buildFeaturesFilterPatch } from './featureFilterSync.js';
 import { customerFuelLabel } from './customerFuelLabels.js';
 import { parseSearchIntent } from './searchIntentParser.js';
+import {
+  formatLengthLimitLabel,
+  formatHeightLimitLabel,
+  formatTrunkMinLabel,
+  formatIsofixRearLabel,
+} from '../cleverData/vehicleDimensions.js';
 
 export {
   TERM_MONTHS_MIN,
@@ -490,6 +496,61 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
+  const seatsMin = intent.seatsMin ?? filters.seatsMin;
+  if (seatsMin != null && seatsMin < 7 && !chips.some((c) => c.id === 'seatsMin' || c.id === 'seats_7')) {
+    chips.push(makeChip({
+      id: 'seatsMin',
+      type: CHIP_TYPES.FEATURE,
+      label: `${seatsMin} Sitze`,
+      value: seatsMin,
+      editable: false,
+    }));
+  }
+
+  const maxLengthMm = intent.maxLengthMm ?? filters.maxLengthMm;
+  if (maxLengthMm != null) {
+    chips.push(makeChip({
+      id: 'maxLengthMm',
+      type: CHIP_TYPES.FEATURE,
+      label: formatLengthLimitLabel(maxLengthMm),
+      value: maxLengthMm,
+      editable: false,
+    }));
+  }
+
+  const maxHeightMm = intent.maxHeightMm ?? filters.maxHeightMm;
+  if (maxHeightMm != null) {
+    chips.push(makeChip({
+      id: 'maxHeightMm',
+      type: CHIP_TYPES.FEATURE,
+      label: formatHeightLimitLabel(maxHeightMm),
+      value: maxHeightMm,
+      editable: false,
+    }));
+  }
+
+  const trunkLMin = intent.trunkLMin ?? filters.trunkLMin;
+  if (trunkLMin != null) {
+    chips.push(makeChip({
+      id: 'trunkLMin',
+      type: CHIP_TYPES.FEATURE,
+      label: formatTrunkMinLabel(trunkLMin),
+      value: trunkLMin,
+      editable: false,
+    }));
+  }
+
+  const isofixRearMin = intent.isofixRearMin ?? filters.isofixRearMin;
+  if (isofixRearMin != null) {
+    chips.push(makeChip({
+      id: 'isofixRearMin',
+      type: CHIP_TYPES.FEATURE,
+      label: formatIsofixRearLabel(isofixRearMin),
+      value: isofixRearMin,
+      editable: false,
+    }));
+  }
+
   const modelExplicit = intent.modelExplicit ?? filters.modelExplicit;
   if (modelExplicit && intent.model) {
     chips.push(makeChip({
@@ -612,6 +673,11 @@ export function createEditableChips(intent, filters = {}) {
 const STATED_CHIP_EMOJI = {
   fuel: '⚡',
   seats_7: '👨‍👩‍👧‍👦',
+  seatsMin: '👥',
+  maxLengthMm: '📏',
+  maxHeightMm: '🏠',
+  trunkLMin: '🧳',
+  isofixRearMin: '👶',
   maxPrice: '💰',
   maxRate: '💰',
 };
@@ -619,6 +685,11 @@ const STATED_CHIP_EMOJI = {
 const STATED_CHIP_ORDER = [
   'fuel',
   'seats_7',
+  'seatsMin',
+  'maxLengthMm',
+  'maxHeightMm',
+  'trunkLMin',
+  'isofixRearMin',
   'bodyType',
   'model',
   'trim',

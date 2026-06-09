@@ -9,6 +9,7 @@ import {
   buildTechnicalHighlights,
   queryCleverDatabase,
 } from './cleverDataEngine.js';
+import { passesHardRules } from '../search/hardExclusionRules.js';
 import { computeCleverQuoteV2 } from '../cleverQuote/cleverQuoteV2.js';
 import { KIA_CLEVER_RECORDS } from '../../data/clever/kiaCleverRecords.js';
 import { enrichVehicleWithCleverRecord } from '../../data/clever/cleverDataRegistry.js';
@@ -67,5 +68,64 @@ assert.ok(sorentoQuote.percent < ev9Quote.percent, 'EV9 schlägt Sorento PHEV');
 
 const query = queryCleverDatabase(profile, [ev9Vehicle, sorentoVehicle]);
 assert.equal(query.length, 2);
+
+const lengthIntent = parseSearchIntent('5 sitze bis 4 Meter länge');
+const lengthProfile = buildSearchProfile({ intent: lengthIntent });
+assert.equal(lengthProfile.seatsMin, 5);
+assert.equal(lengthProfile.maxLengthMm, 4000);
+
+const sportageVehicle = enrichVehicleWithCleverRecord({
+  brand: 'Kia',
+  model: 'Sportage',
+  modelKey: 'sportage-hybrid',
+  title: 'Kia Sportage Spirit',
+  powertrain: 'hybrid',
+  seats: 5,
+  monthlyRate: 299,
+});
+assert.equal(passesHardRules(sportageVehicle, lengthProfile), false, 'Sportage > 4 m ausgeschlossen');
+
+const picantoVehicle = enrichVehicleWithCleverRecord({
+  brand: 'Kia',
+  model: 'Picanto',
+  modelKey: 'picanto',
+  title: 'Kia Picanto',
+  powertrain: 'verbrenner',
+  seats: 5,
+});
+assert.equal(passesHardRules(picantoVehicle, lengthProfile), true, 'Picanto < 4 m erlaubt');
+
+const sportageQuote = computeCleverQuoteV2({ vehicle: sportageVehicle }, lengthProfile);
+assert.equal(sportageQuote.fulfillmentLabel, '1 von 2 Wünschen', 'Länge fehlt bei Sportage');
+
+const isofixIntent = parseSearchIntent('Familienauto mit 3 Isofix');
+const isofixProfile = buildSearchProfile({ intent: isofixIntent });
+assert.equal(isofixProfile.isofixRearMin, 3);
+assert.equal(passesHardRules(sorentoVehicle, isofixProfile), true, 'Sorento 3 Isofix');
+assert.equal(passesHardRules(ev9Vehicle, isofixProfile), false, 'EV9 nur 2 Isofix hinten');
+
+const garageIntent = parseSearchIntent('Garage Höhe 2 Meter');
+const garageProfile = buildSearchProfile({ intent: garageIntent });
+assert.equal(garageProfile.maxHeightMm, 2000);
+assert.equal(passesHardRules(ev9Vehicle, garageProfile), true, 'EV9 1,755 m passt in 2 m');
+assert.equal(passesHardRules(sportageVehicle, garageProfile), true, 'Sportage passt in 2 m Garage');
+
+const trunkIntent = parseSearchIntent('SUV großer Kofferraum');
+const trunkProfile = buildSearchProfile({ intent: trunkIntent });
+assert.equal(trunkProfile.trunkLMin, 500);
+assert.equal(passesHardRules(sportageVehicle, trunkProfile), true, 'Sportage 587 l');
+assert.equal(passesHardRules(picantoVehicle, trunkProfile), false, 'Picanto zu klein');
+
+const towIntent = parseSearchIntent('Hybrid 2 Tonnen Anhängelast');
+const towProfile = buildSearchProfile({ intent: towIntent });
+const ev6Vehicle = enrichVehicleWithCleverRecord({
+  brand: 'Kia',
+  model: 'EV6',
+  modelKey: 'ev6',
+  title: 'Kia EV6',
+  powertrain: 'elektro',
+});
+assert.equal(passesHardRules(ev6Vehicle, towProfile), false, 'EV6 nur 1,6 t');
+assert.equal(passesHardRules(sorentoVehicle, towProfile), true, 'Sorento 2,5 t');
 
 console.log('cleverDataEngine.test.js: ok');

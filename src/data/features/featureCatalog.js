@@ -115,7 +115,7 @@ export const FEATURE_CATALOG = [
   {
     id: 'large_trunk',
     label: 'großer Kofferraum',
-    aliases: ['großer kofferraum', 'viel platz', 'kofferraum', 'familienauto'],
+    aliases: ['großer kofferraum', 'grosser kofferraum', 'viel platz', 'kofferraum', 'familienauto'],
     category: 'praktisch',
   },
   {

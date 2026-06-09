@@ -40,6 +40,10 @@ const EMPTY_INTENT = () => ({
   features: [],
   towCapacityKg: null,
   rangeKmMin: null,
+  maxLengthMm: null,
+  maxHeightMm: null,
+  trunkLMin: null,
+  isofixRearMin: null,
   seatsMin: null,
   powerPsTarget: null,
   powerPsMin: null,
@@ -260,6 +264,113 @@ function extractTowCapacity(text, spans) {
   return null;
 }
 
+/** Max. Fahrzeuglänge in mm – „bis 4 Meter Länge“, nicht Reichweite in km. */
+function extractMaxLengthMm(text, spans) {
+  const patterns = [
+    /\bbis\s*(\d(?:[.,]\d+)?)\s*m(?:eter)?(?:\s*l[aä]nge)?/i,
+    /\bmax(?:imal)?\.?\s*(\d(?:[.,]\d+)?)\s*m(?:eter)?(?:\s*l[aä]nge)?/i,
+    /\bunter\s*(\d(?:[.,]\d+)?)\s*m(?:eter)?(?:\s*l[aä]nge)?/i,
+    /\bhöchstens\s*(\d(?:[.,]\d+)?)\s*m(?:eter)?(?:\s*l[aä]nge)?/i,
+    /\b(\d(?:[.,]\d+)?)\s*m(?:eter)?\s*l[aä]nge\b/i,
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m || isSpanConsumed(spans, m.index)) continue;
+
+    const window = text.slice(Math.max(0, m.index - 20), m.index + m[0].length + 20);
+    if (/\b(km|reichweite|wlpt)\b/i.test(window) && !/\bl[aä]nge\b|\blang\b/i.test(window)) {
+      continue;
+    }
+
+    const meters = parseFloat(m[1].replace(',', '.'));
+    if (!Number.isFinite(meters) || meters <= 0 || meters >= 20) continue;
+
+    markSpan(spans, m.index, m.index + m[0].length);
+    return Math.round(meters * 1000);
+  }
+
+  return null;
+}
+
+/** Max. Fahrzeughöhe in mm – Garage, Tiefgarage, Carport. */
+function extractMaxHeightMm(text, spans) {
+  const heightWord = 'h(?:oe|o)he';
+  const patterns = [
+    new RegExp(`\\b(?:garage|tiefgarage|carport|stellplatz)\\s*(?:${heightWord})?\\s*(?:bis|max(?:imal)?\\.?|unter)?\\s*(\\d(?:[.,]\\d+)?)\\s*m(?:eter)?`, 'i'),
+    new RegExp(`\\b(?:bis|max(?:imal)?\\.?|unter|hoechstens)\\s*(\\d(?:[.,]\\d+)?)\\s*m(?:eter)?\\s*${heightWord}`, 'i'),
+    new RegExp(`\\b(\\d(?:[.,]\\d+)?)\\s*m(?:eter)?\\s*(?:fahrzeug)?${heightWord}\\b`, 'i'),
+    new RegExp(`\\b${heightWord}\\s*(?:bis|max(?:imal)?\\.?|unter)?\\s*(\\d(?:[.,]\\d+)?)\\s*m(?:eter)?`, 'i'),
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m || isSpanConsumed(spans, m.index)) continue;
+
+    const meters = parseFloat(m[1].replace(',', '.'));
+    if (!Number.isFinite(meters) || meters <= 0 || meters >= 5) continue;
+
+    markSpan(spans, m.index, m.index + m[0].length);
+    return Math.round(meters * 1000);
+  }
+
+  if (/\btiefgarage\b/i.test(text) && !/\b\d\s*m\b/i.test(text)) {
+    const m = text.match(/\btiefgarage\b/i);
+    if (m && !isSpanConsumed(spans, m.index)) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 2000;
+    }
+  }
+
+  return null;
+}
+
+const ISOFIX_WORDS = { ein: 1, eine: 1, zwei: 2, drei: 3, vier: 4 };
+
+function extractIsofixRearMin(text, spans) {
+  const numWord = text.match(/\b(ein|eine|zwei|drei|vier|\d)\s*isofix\b/i);
+  if (numWord && !isSpanConsumed(spans, numWord.index)) {
+    const raw = numWord[1].toLowerCase();
+    const count = ISOFIX_WORDS[raw] ?? Number(raw);
+    if (count >= 1 && count <= 4) {
+      markSpan(spans, numWord.index, numWord.index + numWord[0].length);
+      return count;
+    }
+  }
+
+  if (/\b3\s*kindersitze\b|\bdrei\s*kindersitze\b|\b3\s*isofix\b/i.test(text)) {
+    const m = text.match(/\b(3\s*kindersitze|drei\s*kindersitze|3\s*isofix)\b/i);
+    if (m && !isSpanConsumed(spans, m.index)) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 3;
+    }
+  }
+
+  if (/\bisofix\b/i.test(text) && !isSpanConsumed(spans, text.search(/\bisofix\b/i))) {
+    const m = text.match(/\bisofix\b/i);
+    if (m) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 1;
+    }
+  }
+
+  return null;
+}
+
+/** Mindest-Kofferraumvolumen in Liter. */
+function extractTrunkLMin(text, spans) {
+  const explicit = text.match(/(?:mindestens|mind\.|ab|über|ueber)\s*(\d{3,4})\s*l(?:iter)?(?:\s*kofferraum)?/i)
+    ?? text.match(/(\d{3,4})\s*l(?:iter)?\s*kofferraum/i);
+  if (explicit && !isSpanConsumed(spans, explicit.index)) {
+    const liters = Number(explicit[1]);
+    if (liters >= 200 && liters <= 3000) {
+      markSpan(spans, explicit.index, explicit.index + explicit[0].length);
+      return liters;
+    }
+  }
+  return null;
+}
+
 function extractTransmission(text, spans) {
   if (/\bautomatik\b|\bdsg\b|\bautom\.?\b/i.test(text)) {
     const m = text.match(/\b(automatik|dsg)\b/i);
@@ -387,6 +498,9 @@ function computeConfidence(intent) {
   if (intent.features.length) score += 0.08 * intent.features.length;
   if (intent.rangeKmMin) score += 0.1;
   if (intent.towCapacityKg) score += 0.1;
+  if (intent.maxHeightMm) score += 0.08;
+  if (intent.isofixRearMin) score += 0.08;
+  if (intent.trunkLMin) score += 0.06;
   if (intent.location) score += 0.08;
   if (intent.powerPsTarget) score += 0.08;
   return Math.min(1, score);
@@ -449,6 +563,11 @@ export function parseSearchIntent(input) {
   const seats = text.match(/(\d)\s*-?\s*sitz/i);
   if (seats) seatsMin = Number(seats[1]);
 
+  const maxLengthMm = extractMaxLengthMm(text, spans);
+  const maxHeightMm = extractMaxHeightMm(text, spans);
+  const isofixRearMin = extractIsofixRearMin(text, spans);
+  let trunkLMin = extractTrunkLMin(text, spans);
+
   const intent = {
     rawQuery,
     normalizedQuery: text,
@@ -470,6 +589,10 @@ export function parseSearchIntent(input) {
     features: [...new Set(features)],
     towCapacityKg,
     rangeKmMin,
+    maxLengthMm,
+    maxHeightMm,
+    trunkLMin,
+    isofixRearMin,
     seatsMin,
     powerPsTarget: power?.powerPsTarget ?? null,
     powerPsMin: power?.powerPsMin ?? null,

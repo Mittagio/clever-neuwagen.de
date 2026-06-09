@@ -38,6 +38,7 @@ export const KIA_CLEVER_RECORD_OVERRIDES = [
     family: {
       seats: 7,
       isofixRear: true,
+      isofixRearCount: 2,
       isofixPassenger: false,
       trunkL: 571,
       frunkL: 52,
@@ -112,6 +113,7 @@ export const KIA_CLEVER_RECORD_OVERRIDES = [
     family: {
       seats: 7,
       isofixRear: true,
+      isofixRearCount: 3,
       isofixPassenger: true,
       trunkL: 616,
       frunkL: null,

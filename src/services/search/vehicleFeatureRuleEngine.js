@@ -16,6 +16,16 @@ import {
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
 import { toCanonicalFeatureId, toInternalFeatureId } from './canonicalFeatureIds.js';
 import { mapIntentFuel } from './searchProfile.js';
+import {
+  resolveVehicleLengthMm,
+  resolveVehicleHeightMm,
+  resolveVehicleTrunkL,
+  resolveIsofixRearCount,
+  resolveTowBrakedKg,
+  formatHeightLimitLabel,
+  formatTrunkMinLabel,
+  formatIsofixRearLabel,
+} from '../cleverData/vehicleDimensions.js';
 
 /**
  * @typedef {'fulfilled'|'package'|'missing'} FeatureStatus
@@ -88,6 +98,78 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
       id: 'seats',
       label: `${profile.seatsMin} Sitze`,
       status: ok ? 'fulfilled' : 'missing',
+    });
+    scoreMax += 1;
+    if (ok) scoreSum += 1;
+  }
+
+  if (profile.maxLengthMm != null) {
+    const len = resolveVehicleLengthMm(v);
+    const maxM = profile.maxLengthMm / 1000;
+    const label = `bis ${Number.isInteger(maxM) ? maxM : maxM.toFixed(1).replace('.', ',')} m Länge`;
+    const ok = len != null && len <= profile.maxLengthMm;
+    checks.push({
+      id: 'length_mm',
+      label,
+      status: ok ? 'fulfilled' : 'missing',
+      detail: len != null ? `${(len / 1000).toFixed(2).replace('.', ',')} m` : null,
+    });
+    scoreMax += 1;
+    if (ok) scoreSum += 1;
+  }
+
+  if (profile.maxHeightMm != null) {
+    const height = resolveVehicleHeightMm(v);
+    const label = formatHeightLimitLabel(profile.maxHeightMm);
+    const ok = height != null && height <= profile.maxHeightMm;
+    checks.push({
+      id: 'height_mm',
+      label,
+      status: ok ? 'fulfilled' : 'missing',
+      detail: height != null ? `${(height / 1000).toFixed(2).replace('.', ',')} m` : null,
+    });
+    scoreMax += 1;
+    if (ok) scoreSum += 1;
+  }
+
+  if (profile.trunkLMin != null) {
+    const trunk = resolveVehicleTrunkL(v);
+    const label = formatTrunkMinLabel(profile.trunkLMin);
+    const ok = trunk != null && trunk >= profile.trunkLMin;
+    checks.push({
+      id: 'trunk_l',
+      label,
+      status: ok ? 'fulfilled' : 'missing',
+      detail: trunk != null ? `${trunk} l` : null,
+    });
+    scoreMax += 1;
+    if (ok) scoreSum += 1;
+  }
+
+  if (profile.isofixRearMin != null) {
+    const count = resolveIsofixRearCount(v);
+    const label = formatIsofixRearLabel(profile.isofixRearMin);
+    const ok = count != null && count >= profile.isofixRearMin;
+    checks.push({
+      id: 'isofix_rear',
+      label,
+      status: ok ? 'fulfilled' : 'missing',
+      detail: count != null ? `${count}× hinten` : null,
+    });
+    scoreMax += 1;
+    if (ok) scoreSum += 1;
+  }
+
+  if (profile.towCapacityKg != null) {
+    const braked = resolveTowBrakedKg(v);
+    const wantT = Math.round(profile.towCapacityKg / 100) / 10;
+    const label = `Anhängelast ≥ ${wantT} t`;
+    const ok = braked != null && braked >= profile.towCapacityKg;
+    checks.push({
+      id: 'tow_braked',
+      label,
+      status: ok ? 'fulfilled' : 'missing',
+      detail: braked != null ? `${braked} kg` : null,
     });
     scoreMax += 1;
     if (ok) scoreSum += 1;

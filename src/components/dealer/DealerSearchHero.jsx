@@ -131,7 +131,7 @@ export default function DealerSearchHero({
           {voiceError && <p className="dl-hero__voice-error" role="alert">{voiceError}</p>}
           <button type="submit" className="btn btn-primary dl-hero__cta">
             <AiAssistantIcon size={16} />
-            Fahrzeug finden
+            ✨ Fahrzeug finden
           </button>
         </form>
 

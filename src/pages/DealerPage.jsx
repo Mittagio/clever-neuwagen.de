@@ -9,7 +9,6 @@ import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
 import CustomerSearchHub from '../components/search/CustomerSearchHub.jsx';
 import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
 import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
-import { useDealerShowcase } from '../services/dealer/useDealerShowcase.js';
 import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
 import { adjustRateForTerm } from '../logic/oneSearchService.js';
 import { parseCustomerWish } from '../services/wish/wishParser.js';
@@ -19,6 +18,7 @@ import { deriveAdvisorChipIds } from '../services/sales/advisorRanking.js';
 import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { runAdvisorSearchWithAlternatives } from '../services/search/advisorSearchAlternatives.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
+import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
@@ -39,12 +39,6 @@ export default function DealerPage() {
   const [activeQuery, setActiveQuery] = useState('');
   const [searchRefinements, setSearchRefinements] = useState({});
   const searchInputRef = useRef(null);
-
-  const {
-    modelLineGroups: showcaseGroups,
-    loading: showcaseLoading,
-    source: showcaseSource,
-  } = useDealerShowcase({ dealerSlug: dealerId, limit: 14 });
 
   const searchIntent = useMemo(
     () => (activeQuery.trim() ? parseSearchIntent(activeQuery) : null),
@@ -119,7 +113,7 @@ export default function DealerPage() {
       vehicles: dealerSearchPool,
       chipIds: searchChipIds,
       getDisplayRate: (v) => v.displayRate,
-      limit: 12,
+      limit: DEALER_MAX_RECOMMENDATIONS + 3,
     });
   }, [
     activeQuery,
@@ -154,6 +148,7 @@ export default function DealerPage() {
   const hasExact = searchBundle?.hasExactMatch && searchBundle.exact.modelLineGroups?.length > 0;
   const hasAlternatives = !hasExact && (searchBundle?.alternatives?.length ?? 0) > 0;
   const showEmpty = activeQuery && searchBundle && !hasExact && !hasAlternatives;
+  const hasSearchResults = hasExact || hasAlternatives;
 
   return (
     <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
@@ -169,12 +164,22 @@ export default function DealerPage() {
             queryValue={activeQuery}
           />
 
+          {!activeQuery.trim() && (
+            <DealerModelWorld
+              city={city}
+              dealerSlug={dealerId}
+              onSearch={handleSearch}
+            />
+          )}
+
           {activeQuery.trim() && searchFilters && searchWishes && (
             <CustomerSearchHub
               filters={searchFilters}
               wishes={searchWishes}
               onEditSearch={handleEditSearch}
               onPatchFilters={handlePatchSearchFilters}
+              sticky={Boolean(activeQuery.trim())}
+              refineLabel="Verfeinern"
             />
           )}
 
@@ -198,7 +203,7 @@ export default function DealerPage() {
               query={activeQuery}
               searchProfile={searchProfile}
               guidanceMessage={searchBundle.guidanceMessage}
-              alternatives={searchBundle.alternatives}
+              alternatives={searchBundle.alternatives.slice(0, 1)}
               filters={searchFilters}
               wishes={searchWishes}
               dealerSlug={dealerId}
@@ -210,7 +215,6 @@ export default function DealerPage() {
 
           {showEmpty && (
             <section className="dl-search-results dl-search-results--empty" aria-live="polite">
-              <h2 className="dl-section__title">Passende Modelle</h2>
               <p className="dl-search-results__empty">
                 {searchBundle.guidanceMessage ?? (
                   <>Für „{activeQuery}“ haben wir aktuell keinen passenden Kia im Bestand.</>
@@ -222,13 +226,24 @@ export default function DealerPage() {
             </section>
           )}
 
-          <DealerModelWorld
-            city={city}
-            dealerSlug={dealerId}
-            modelLineGroups={showcaseGroups}
-            loading={showcaseLoading}
-            source={showcaseSource}
-          />
+          {hasSearchResults && (
+            <button
+              type="button"
+              className="btn btn-secondary dl-search-results__all dl-search-results__all--inline"
+              onClick={handleShowAllResults}
+            >
+              Weitere Modelle auf clever-neuwagen.de
+            </button>
+          )}
+
+          {activeQuery.trim() && (
+            <DealerModelWorld
+              city={city}
+              dealerSlug={dealerId}
+              onSearch={handleSearch}
+              compact
+            />
+          )}
 
           <DealerWhySection
             dealerName={conditions.dealerName}

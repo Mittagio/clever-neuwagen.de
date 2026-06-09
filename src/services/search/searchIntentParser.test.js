@@ -51,7 +51,7 @@ test('Test 5: Kia EV3 sofort', 'Kia EV3 sofort verfügbar', {
 test('Test 6: E-Auto Schorndorf', 'E-Auto bis 400 € in Schorndorf', {
   fuel: 'elektro',
   maxRate: 400,
-  payment: 'leasing',
+  payment: null,
   location: 'Schorndorf',
 });
 
@@ -59,6 +59,24 @@ test('Test 7: Kauf unter 20.000', 'Kauf unter 20.000 €', {
   payment: 'cash',
   maxPrice: 20000,
   maxRate: null,
+});
+
+test('Länge: 5 Sitze bis 4 Meter', '5 sitze bis 4 Meter länge', {
+  seatsMin: 5,
+  maxLengthMm: 4000,
+});
+
+test('Isofix: 3 Kindersitze', 'Familienauto mit 3 Isofix', {
+  isofixRearMin: 3,
+});
+
+test('Garage: 2 Meter Höhe', 'Garage Höhe 2 Meter', {
+  maxHeightMm: 2000,
+});
+
+test('Kofferraum: groß', 'SUV großer Kofferraum bis 45.000 €', {
+  maxPrice: 45000,
+  features: ['large_trunk'],
 });
 
 console.log('\nAlle Intent-Tests bestanden.');

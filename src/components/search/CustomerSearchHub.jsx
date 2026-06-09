@@ -18,6 +18,8 @@ export default function CustomerSearchHub({
   onEditSearch,
   onEditChip,
   onPatchFilters,
+  sticky = false,
+  refineLabel = 'Verfeinern',
 }) {
   const [refineOpen, setRefineOpen] = useState(false);
 
@@ -30,7 +32,10 @@ export default function CustomerSearchHub({
 
   return (
     <>
-      <section className="csh csh--minimal" aria-label="Ihre Suche">
+      <section
+        className={`csh csh--minimal${sticky ? ' csh--sticky' : ''}`}
+        aria-label="Ihre Suche"
+      >
         <div className="csh-block csh-block--stated">
           <div className="csh-block__head">
             <h2 className="csh-block__title">Ihre Suche</h2>
@@ -39,7 +44,7 @@ export default function CustomerSearchHub({
               className="csh-refine-trigger"
               onClick={() => setRefineOpen(true)}
             >
-              <span aria-hidden>✨</span> Suche verfeinern
+              <span aria-hidden>✨</span> {refineLabel}
             </button>
           </div>
           <div className="csh-stated-row">

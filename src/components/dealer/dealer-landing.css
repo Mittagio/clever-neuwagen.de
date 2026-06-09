@@ -172,8 +172,8 @@
 .dl-modellwelt__track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(260px, 78vw);
-  gap: 14px;
+  grid-auto-columns: minmax(300px, 88vw);
+  gap: 16px;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 4px 2px 16px;
@@ -191,19 +191,43 @@
 
 .dl-modellwelt__card {
   scroll-snap-align: start;
-  border-radius: 20px;
+  border-radius: 22px;
   overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;
 }
 
+.dl-modellwelt__card-btn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.dl-modellwelt__card-btn:hover .dl-modellwelt__image {
+  transform: scale(1.02);
+}
+
+.dl-modellwelt__card-btn:focus-visible {
+  outline: 2px solid var(--color-accent, #4338ca);
+  outline-offset: 2px;
+}
+
 .dl-modellwelt__image {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
   overflow: hidden;
+  transition: transform 0.25s ease;
 }
 
 .dl-modellwelt__vehicle-image {
@@ -219,14 +243,14 @@
 }
 
 .dl-modellwelt__body {
-  padding: 14px 16px 16px;
+  padding: 16px 18px 18px;
   display: grid;
   gap: 6px;
 }
 
 .dl-modellwelt__name {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--color-brand);
@@ -268,6 +292,38 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+
+.dl-modellwelt--compact {
+  margin-top: 8px;
+  opacity: 0.92;
+}
+
+.dl-modellwelt--compact .dl-modellwelt__title {
+  font-size: 1.05rem;
+}
+
+.dl-modellwelt--compact .dl-modellwelt__sub {
+  display: none;
+}
+
+.dl-modellwelt--compact .dl-modellwelt__track {
+  grid-auto-columns: minmax(240px, 72vw);
+}
+
+.dl-search-results__more {
+  width: 100%;
+  margin-top: 4px;
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.dl-search-results__all--inline {
+  width: 100%;
+  margin: 0 0 24px;
+  min-height: 48px;
+  border-radius: 14px;
 }
 
 /* Inline-Berater-Ergebnisse auf Händlerseite */
@@ -556,7 +612,11 @@
 
 @media (min-width: 720px) {
   .dl-modellwelt__track {
-    grid-auto-columns: minmax(280px, 300px);
+    grid-auto-columns: minmax(320px, 340px);
+  }
+
+  .dl-modellwelt--compact .dl-modellwelt__track {
+    grid-auto-columns: minmax(260px, 280px);
   }
 
   .dl-why__layout {

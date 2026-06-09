@@ -5,6 +5,21 @@ import { mapIntentFuel } from '../search/searchProfile.js';
 import { enrichVehicleWithCleverRecord, resolveCleverRecord } from '../../data/clever/cleverDataRegistry.js';
 import { CLEVER_FIELD_UNKNOWN } from '../../data/clever/cleverVehicleRecord.js';
 import { evaluateVehicleAgainstProfile } from '../search/vehicleFeatureRuleEngine.js';
+import {
+  formatLengthLimitLabel,
+  formatHeightLimitLabel,
+  formatTrunkMinLabel,
+  formatIsofixRearLabel,
+} from './vehicleDimensions.js';
+
+export {
+  resolveVehicleLengthMm,
+  formatLengthLimitLabel,
+  formatHeightLimitLabel,
+  formatTrunkMinLabel,
+  formatIsofixRearLabel,
+  LARGE_TRUNK_MIN_L,
+} from './vehicleDimensions.js';
 
 /**
  * @typedef {'fulfilled'|'missing'|'unknown'|'package'} CleverCheckStatus
@@ -46,6 +61,57 @@ export function evaluateProfileAgainstRecord(profile, record) {
       add('seats', `${profile.seatsMin} Sitze`, 'unknown');
     } else {
       add('seats', `${profile.seatsMin} Sitze`, seats >= profile.seatsMin ? 'fulfilled' : 'missing', `${seats} Sitze`);
+    }
+  }
+
+  if (profile.maxLengthMm != null) {
+    const len = record.dimensions?.lengthMm;
+    const label = formatLengthLimitLabel(profile.maxLengthMm);
+    if (len == null) {
+      add('length_mm', label, 'unknown');
+    } else {
+      add(
+        'length_mm',
+        label,
+        len <= profile.maxLengthMm ? 'fulfilled' : 'missing',
+        `${(len / 1000).toFixed(2).replace('.', ',')} m`,
+      );
+    }
+  }
+
+  if (profile.maxHeightMm != null) {
+    const height = record.dimensions?.heightMm;
+    const label = formatHeightLimitLabel(profile.maxHeightMm);
+    if (height == null) {
+      add('height_mm', label, 'unknown');
+    } else {
+      add(
+        'height_mm',
+        label,
+        height <= profile.maxHeightMm ? 'fulfilled' : 'missing',
+        `${(height / 1000).toFixed(2).replace('.', ',')} m`,
+      );
+    }
+  }
+
+  if (profile.trunkLMin != null) {
+    const trunk = record.family?.trunkL;
+    const label = formatTrunkMinLabel(profile.trunkLMin);
+    if (trunk == null) {
+      add('trunk_l', label, 'unknown');
+    } else {
+      add('trunk_l', label, trunk >= profile.trunkLMin ? 'fulfilled' : 'missing', `${trunk} l`);
+    }
+  }
+
+  if (profile.isofixRearMin != null) {
+    const count = record.family?.isofixRearCount
+      ?? (record.family?.isofixRear === true ? 2 : null);
+    const label = formatIsofixRearLabel(profile.isofixRearMin);
+    if (count == null) {
+      add('isofix_rear', label, 'unknown');
+    } else {
+      add('isofix_rear', label, count >= profile.isofixRearMin ? 'fulfilled' : 'missing', `${count}× hinten`);
     }
   }
 

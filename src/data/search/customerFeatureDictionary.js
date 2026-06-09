@@ -90,6 +90,15 @@ export const CUSTOMER_FEATURE_DICTIONARY = {
     'parksensoren hinten',
     'pdc hinten',
   ],
+  large_trunk: [
+    'grosser kofferraum',
+    'großer kofferraum',
+    'grosser stauraum',
+    'viel platz',
+    'viel gepaeck',
+    'viel gepäck',
+    'grosses gepaeck',
+  ],
 };
 
 /** Für Intent-Parser: längere Phrasen zuerst */
