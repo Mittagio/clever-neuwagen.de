@@ -24,6 +24,9 @@ export default function DiscoveryHeroCard({
   whyTitle,
   heroBadge = 'Empfohlen für Ihre Suche',
   variantLabel = null,
+  modelFirst = false,
+  onExploreTrims = null,
+  exploreTrimsLabel = null,
 }) {
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
 
@@ -87,15 +90,25 @@ export default function DiscoveryHeroCard({
             )}
           </button>
           <DeliveryTimePill label={deliveryLabel} className="disc-hero__delivery" />
-          <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />
-          <button
-            type="button"
-            className="disc-hero__cta disc-hero__cta--hero"
-            onClick={() => onViewOffer?.(v)}
-          >
-            Angebot ansehen
-          </button>
-          {(onUnderstandEquipment || onCleverQuoteWhy) && match.cleverQuote && (
+          {!modelFirst && <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />}
+          {modelFirst && onExploreTrims ? (
+            <button
+              type="button"
+              className="disc-hero__cta disc-hero__cta--hero"
+              onClick={onExploreTrims}
+            >
+              {exploreTrimsLabel ?? 'Ausstattungen ansehen'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="disc-hero__cta disc-hero__cta--hero"
+              onClick={() => onViewOffer?.(v)}
+            >
+              Angebot ansehen
+            </button>
+          )}
+          {!modelFirst && (onUnderstandEquipment || onCleverQuoteWhy) && match.cleverQuote && (
             <button
               type="button"
               className="disc-hero__understand"

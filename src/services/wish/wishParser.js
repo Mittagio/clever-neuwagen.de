@@ -1,8 +1,15 @@
 import { parseLandingQuery } from '../landingAdvisorBridge.js';
 import { parseLocationFromText } from '../../logic/advisorLocation.js';
 import { FEATURE_CATALOG } from '../../data/features/featureCatalog.js';
+import { parseSearchIntent } from '../search/searchIntentParser.js';
+import { filterWishFeatures } from '../search/profileCriteriaCanonical.js';
 
-export function matchFeaturesFromText(text) {
+const META_FEATURES = new Set(['elektro', 'benzin', 'reichweite', 'range_400', 'seats_7', 'family_suv']);
+
+/**
+ * Legacy-Katalog-Matching – nur Ergänzungen, die der Intent-Parser nicht strukturiert liefert.
+ */
+export function matchFeaturesFromText(text, intent = null) {
   const lower = text.toLowerCase();
   const found = new Set();
 
@@ -18,7 +25,22 @@ export function matchFeaturesFromText(text) {
   }
   if (/hund|dog/i.test(text)) found.add('large_trunk');
 
-  return [...found];
+  const parsedIntent = intent ?? parseSearchIntent(text);
+  return filterWishFeatures([...found], parsedIntent);
+}
+
+/**
+ * Wunsch-Features: Intent-Parser = Wahrheit, URL-Chips + Katalog gefiltert.
+ */
+export function resolveWishFeatures(text = '', urlFeatures = []) {
+  const intent = parseSearchIntent(text);
+  const fromCatalog = matchFeaturesFromText(text, intent);
+  const merged = [...new Set([
+    ...(intent.features ?? []),
+    ...urlFeatures,
+    ...fromCatalog,
+  ])];
+  return filterWishFeatures(merged, intent);
 }
 
 function parseModelFromText(text) {
@@ -44,11 +66,11 @@ function parseTrimFromText(text) {
 
 export function parseCustomerWish(inputText = '', urlFeatures = []) {
   const text = (inputText ?? '').trim();
+  const intent = parseSearchIntent(text);
   const landing = parseLandingQuery(text);
   const location = parseLocationFromText(text) ?? null;
 
-  const featuresFromText = matchFeaturesFromText(text);
-  const features = [...new Set([...urlFeatures, ...featuresFromText])];
+  const features = resolveWishFeatures(text, urlFeatures).filter((id) => !META_FEATURES.has(id));
 
   const budget = {
     type: landing.profile.paymentType ?? 'leasing',
@@ -84,6 +106,7 @@ export function parseCustomerWish(inputText = '', urlFeatures = []) {
     model: parseModelFromText(text),
     trim: parseTrimFromText(text),
     rawQuery: text,
+    intent,
   };
 }
 

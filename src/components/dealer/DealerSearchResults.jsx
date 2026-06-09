@@ -84,7 +84,7 @@ export default function DealerSearchResults({
             chipIds={chipIds}
             searchProfile={searchProfile}
             onViewOffer={handleViewOffer}
-            defaultVariantsOpen={index === 0}
+            defaultVariantsOpen={false}
           />
         ))}
       </div>

@@ -412,6 +412,94 @@ export const TRIM_FEATURE_MAP = {
       },
     ],
   },
+  ceed: {
+    modelLabel: 'Kia Ceed',
+    baseRate: { vision: 239, spirit: 259, 'gt-line': 279 },
+    trims: [
+      {
+        id: 'vision',
+        name: 'Vision',
+        standardFeatures: ['rear_camera', 'parking_rear'],
+        availableViaPackage: ['heated_seats'],
+        notAvailable: ['camera_360', 'towbar'],
+      },
+      {
+        id: 'spirit',
+        name: 'Spirit',
+        standardFeatures: ['heated_seats', 'steering_heat', 'rear_camera', 'parking_rear'],
+        availableViaPackage: ['blind_spot', 'camera_360'],
+        notAvailable: ['towbar'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'steering_heat', 'rear_camera', 'parking_rear', 'blind_spot'],
+        availableViaPackage: ['camera_360', 'harman_kardon'],
+        notAvailable: ['towbar'],
+      },
+    ],
+  },
+  stonic: {
+    modelLabel: 'Kia Stonic',
+    baseRate: { vision: 219, spirit: 249, 'gt-line': 269 },
+    trims: [
+      {
+        id: 'vision',
+        name: 'Vision',
+        standardFeatures: ['rear_camera', 'parking_rear'],
+        availableViaPackage: ['heated_seats'],
+        notAvailable: ['camera_360', 'towbar'],
+      },
+      {
+        id: 'spirit',
+        name: 'Spirit',
+        standardFeatures: ['heated_seats', 'rear_camera', 'parking_rear'],
+        availableViaPackage: ['blind_spot', 'camera_360'],
+        notAvailable: ['towbar'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'rear_camera', 'parking_rear', 'blind_spot'],
+        availableViaPackage: ['camera_360'],
+        notAvailable: ['towbar'],
+      },
+    ],
+  },
+  picanto: {
+    modelLabel: 'Kia Picanto',
+    baseRate: { core: 139, vision: 149, spirit: 169, 'gt-line': 179 },
+    trims: [
+      {
+        id: 'core',
+        name: 'Core',
+        standardFeatures: ['rear_camera', 'parking_rear'],
+        availableViaPackage: [],
+        notAvailable: ['heated_seats', 'camera_360', 'towbar', 'heat_pump'],
+      },
+      {
+        id: 'vision',
+        name: 'Vision',
+        standardFeatures: ['heated_seats', 'steering_heat', 'rear_camera', 'parking_rear'],
+        availableViaPackage: [],
+        notAvailable: ['camera_360', 'towbar', 'heat_pump'],
+      },
+      {
+        id: 'spirit',
+        name: 'Spirit',
+        standardFeatures: ['heated_seats', 'steering_heat', 'rear_camera', 'parking_rear'],
+        availableViaPackage: ['blind_spot'],
+        notAvailable: ['camera_360', 'towbar'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'steering_heat', 'rear_camera', 'parking_rear'],
+        availableViaPackage: ['blind_spot'],
+        notAvailable: ['camera_360', 'towbar'],
+      },
+    ],
+  },
 };
 
 export function normalizeModelKey(brand, model) {
@@ -432,6 +520,8 @@ export function normalizeModelKey(brand, model) {
   if (m.includes('tucson')) return 'tucson';
   if (m.includes('niro')) return 'niro';
   if (m.includes('ceed')) return 'ceed';
+  if (m.includes('picanto')) return 'picanto';
+  if (m.includes('stonic')) return 'stonic';
   return m.replace(/\s+/g, '-');
 }
 

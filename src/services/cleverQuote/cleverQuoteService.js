@@ -13,6 +13,11 @@ import {
 } from './cleverQuoteConstants.js';
 import { evaluateVehicleAgainstProfile } from '../search/vehicleFeatureRuleEngine.js';
 import { computeCleverQuoteV2 } from './cleverQuoteV2.js';
+import {
+  buildModelLineWishAnalysis,
+  enrichMatchWithWeightedWishQuote,
+  profileHasWishCriteria,
+} from '../search/profileWishScore.js';
 import { resolveCleverRecord } from '../../data/clever/cleverDataRegistry.js';
 import { evaluateVehicleForProfile } from '../cleverData/cleverDataEngine.js';
 import { buildFulfillmentLabel } from '../search/wishMatchRanking.js';
@@ -123,6 +128,11 @@ function scoreFromStatus(status) {
 export function buildProfileCleverQuote(match, profile, { preserveAdvisorMode = false } = {}) {
   if (!profile || !match?.vehicle) return match?.cleverQuote ?? null;
 
+  if (profileHasWishCriteria(profile)) {
+    const enriched = enrichMatchWithWeightedWishQuote(match, profile);
+    return enriched.cleverQuote;
+  }
+
   if (resolveCleverRecord(match.vehicle)) {
     const v2 = computeCleverQuoteV2(match, profile);
     if (v2 && preserveAdvisorMode && match.cleverQuote?.advisorMode) {
@@ -162,25 +172,41 @@ export function buildProfileCleverQuote(match, profile, { preserveAdvisorMode = 
   };
 }
 
-/** Modelllinien-Gruppe mit Rule-Engine-CleverQuote anreichern (Alternativ-Stufen). */
+/** Alle Modelllinien mit Modell-first-Quote anreichern. */
+export function enrichModelLineGroupsWithProfileQuote(groups = [], searchProfile) {
+  if (!searchProfile || !groups.length) return groups;
+  return groups.map((group) => enrichModelLineGroupWithProfileQuote(group, searchProfile));
+}
+
+/** Modelllinien-Gruppe: Modell-Quote + sortierte Ausstattungen (Verkäufer-Ebene). */
 export function enrichModelLineGroupWithProfileQuote(group, searchProfile) {
   if (!searchProfile || !group?.primaryMatch) return group;
 
-  const primaryMatch = {
-    ...group.primaryMatch,
-    cleverQuote: buildProfileCleverQuote(group.primaryMatch, searchProfile, {
-      preserveAdvisorMode: true,
-    }),
+  const analysis = buildModelLineWishAnalysis(searchProfile, group);
+  if (!analysis) {
+    const primaryMatch = {
+      ...group.primaryMatch,
+      cleverQuote: buildProfileCleverQuote(group.primaryMatch, searchProfile, {
+        preserveAdvisorMode: true,
+      }),
+    };
+    return { ...group, primaryMatch };
+  }
+
+  const variants = analysis.trimVariants.filter((t) => !t.isPrimary).map((t) => t.match);
+
+  return {
+    ...group,
+    modelQuote: analysis.modelQuote,
+    modelChecks: analysis.modelChecks,
+    modelWeightedPercent: analysis.modelWeightedPercent,
+    primaryMatch: analysis.primaryMatch,
+    trimVariants: analysis.trimVariants,
+    variants,
+    variantCount: analysis.trimVariants.length,
+    hasMultipleVariants: analysis.trimVariants.length > 1,
+    recommendedTrimLabel: analysis.recommendedTrim?.trimLabel ?? null,
   };
-
-  const variants = (group.variants ?? []).map((match) => ({
-    ...match,
-    cleverQuote: buildProfileCleverQuote(match, searchProfile, {
-      preserveAdvisorMode: true,
-    }),
-  }));
-
-  return { ...group, primaryMatch, variants };
 }
 
 /** @param {{ items?: Array<{ status: string, fulfilled?: boolean, label: string }> }} cleverQuote */

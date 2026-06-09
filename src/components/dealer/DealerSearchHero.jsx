@@ -13,6 +13,7 @@ export default function DealerSearchHero({
   brand = 'Kia',
   dealerSlug = '',
   onSearch,
+  onQueryChange,
   onChipToggle,
   selectedChipIds = [],
   inputRef: externalInputRef,
@@ -48,11 +49,13 @@ export default function DealerSearchHero({
       onSearch(value);
       return;
     }
-    if (!value && !selectedChipIds.length) {
-      navigate(buildDealerWishSearchUrl('', { city, dealerSlug, brand: brand.toLowerCase() }));
-      return;
-    }
+    if (!value) return;
     navigate(buildDealerWishSearchUrl(value, { city, dealerSlug }));
+  }
+
+  function handleQueryInput(nextValue) {
+    setSearchText(nextValue);
+    onQueryChange?.(nextValue);
   }
 
   function handleSubmit(event) {
@@ -74,7 +77,7 @@ export default function DealerSearchHero({
     setListening(true);
     startSpeechRecognition({
       onResult: ({ finalText }) => {
-        if (finalText) setSearchText(finalText);
+        if (finalText) handleQueryInput(finalText);
         setListening(false);
         inputRef.current?.focus();
       },
@@ -86,7 +89,7 @@ export default function DealerSearchHero({
     });
   }
 
-  const hasSelection = selectedChipIds.length > 0 || searchText.trim();
+  const hasSelection = Boolean(searchText.trim());
 
   return (
     <section className="dl-hero" aria-labelledby="dl-hero-title">
@@ -116,8 +119,8 @@ export default function DealerSearchHero({
               className="dl-hero__input"
               rows={3}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder={dynamicPlaceholder}
+              onChange={(e) => handleQueryInput(e.target.value)}
+              placeholder={dynamicPlaceholder || 'Beschreiben Sie Ihr Wunschauto…'}
               aria-label="Fahrzeugwunsch beschreiben"
             />
             <button
@@ -141,7 +144,7 @@ export default function DealerSearchHero({
           </button>
         </form>
 
-        <p className="dl-hero__chips-hint">Stichwörter anklicken – Mehrfachauswahl möglich</p>
+        <p className="dl-hero__chips-hint">Stichwörter anklicken – Ihre Anfrage erscheint im Suchfeld</p>
         <div className="dl-hero__chips" aria-label="Stichwörter">
           {DEALER_WISH_CHIPS.map((chip) => {
             const active = selectedChipIds.includes(chip.id);

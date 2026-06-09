@@ -1,5 +1,6 @@
 /**
- * Händler-Schnellchips – strukturierte Filter, Mehrfachauswahl (kein Freitext-Anhängen).
+ * Händler-Schnellchips – klicken baut die Anfrage im Suchfeld (ChatGPT-Stil).
+ * Strukturierte Filter bleiben für Parser + Ranking.
  */
 
 import { LARGE_TRUNK_MIN_L } from '../cleverData/vehicleDimensions.js';
@@ -7,6 +8,7 @@ import { LARGE_TRUNK_MIN_L } from '../cleverData/vehicleDimensions.js';
 /** @typedef {object} DealerWishChip
  * @property {string} id
  * @property {string} label
+ * @property {string} queryFragment – Textbaustein im Suchfeld
  * @property {object} filters – Marketplace-Filter-Patch
  */
 
@@ -15,69 +17,86 @@ export const DEALER_WISH_CHIPS = [
   {
     id: 'fuel_elektro_300',
     label: 'Elektro bis 300 €',
+    queryFragment: 'Elektro bis 300 €',
     filters: { fuel: 'elektro', type: 'elektro', maxRate: 300, features: ['elektro'] },
   },
   {
     id: 'range_400',
     label: 'Reichweite über 400 km',
-    filters: { fuel: 'elektro', type: 'elektro', rangeKmMin: 400, features: ['reichweite', 'elektro'] },
+    queryFragment: 'Reichweite über 400 km',
+    filters: { rangeKmMin: 400 },
   },
   {
     id: 'towbar',
     label: 'Anhängerkupplung',
+    queryFragment: 'Anhängerkupplung',
     filters: { features: ['towbar'] },
   },
   {
     id: 'seats_7',
     label: '7-Sitzer',
+    queryFragment: '7-Sitzer',
     filters: { seatsMin: 7, features: ['seats_7'] },
   },
   {
     id: 'isofix_3',
     label: '3 Isofix',
+    queryFragment: '3 Isofix',
     filters: { isofixRearMin: 3 },
   },
   {
     id: 'tow_2000',
     label: '2 t Anhängelast',
+    queryFragment: '2 Tonnen Anhängelast',
     filters: { towCapacityKg: 2000, features: ['towbar'] },
   },
   {
     id: 'length_4m',
     label: 'Bis 4 m lang',
+    queryFragment: 'bis 4 m Länge',
     filters: { maxLengthMm: 4000, seatsMin: 5 },
   },
   {
     id: 'garage_2m',
     label: 'Garage 2 m',
+    queryFragment: 'Garage 2 m Höhe',
     filters: { maxHeightMm: 2000 },
   },
   {
     id: 'large_trunk',
     label: 'Großer Kofferraum',
+    queryFragment: 'großer Kofferraum',
     filters: { trunkLMin: LARGE_TRUNK_MIN_L, features: ['large_trunk'] },
   },
   {
     id: 'heat_pump',
     label: 'Wärmepumpe',
+    queryFragment: 'Wärmepumpe',
     filters: { fuel: 'elektro', type: 'elektro', features: ['heat_pump', 'elektro'] },
+  },
+  {
+    id: 'camera_360',
+    label: '360° Kamera',
+    queryFragment: '360° Kamera',
+    filters: { features: ['camera_360'] },
+  },
+  {
+    id: 'heated_seats',
+    label: 'Sitzheizung',
+    queryFragment: 'Sitzheizung',
+    filters: { features: ['heated_seats'] },
+  },
+  {
+    id: 'rear_camera',
+    label: 'Rückfahrkamera',
+    queryFragment: 'Rückfahrkamera',
+    filters: { features: ['rear_camera'] },
   },
   {
     id: 'availability_sofort',
     label: 'Sofort verfügbar',
+    queryFragment: 'sofort verfügbar',
     filters: { availability: 'sofort', fuel: 'elektro', type: 'elektro', features: ['elektro'] },
-  },
-  {
-    id: 'model_ev3_gt',
-    label: 'EV3 GT-Line',
-    filters: {
-      brand: 'Kia',
-      model: 'EV3',
-      trim: 'GT-Line',
-      modelExplicit: true,
-      fuel: 'elektro',
-      type: 'elektro',
-    },
   },
 ];
 
@@ -137,16 +156,55 @@ export function mergeDealerChipFilters(chipIds = []) {
   return merged;
 }
 
-export function buildDealerSearchSummary(chipIds = [], freeText = '') {
-  const labels = chipIds
-    .map((id) => getDealerWishChip(id)?.label)
-    .filter(Boolean);
-  const text = freeText.trim();
-  if (text && labels.length) return `${text} · ${labels.join(' · ')}`;
-  if (text) return text;
-  return labels.join(' · ');
+function escapeRegex(value = '') {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+export function getChipQueryFragment(chipId) {
+  const chip = getDealerWishChip(chipId);
+  return chip?.queryFragment ?? chip?.label ?? '';
+}
+
+/** Chip-Fragment im Suchfeld? */
+export function queryIncludesChip(text = '', chipId) {
+  const fragment = getChipQueryFragment(chipId);
+  if (!fragment) return false;
+  return new RegExp(`(?:^|\\s)${escapeRegex(fragment)}(?:\\s|$)`, 'i').test(text.trim());
+}
+
+/** Aktive Chips aus dem Suchfeld ableiten. */
+export function matchDealerChipIdsFromQuery(text = '') {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  return DEALER_WISH_CHIPS
+    .filter((chip) => queryIncludesChip(trimmed, chip.id))
+    .map((chip) => chip.id);
+}
+
+/**
+ * Chip an-/abwählen → Text im Suchfeld aufbauen (eine Anfrage, ChatGPT-Stil).
+ * @returns {string}
+ */
+export function toggleChipInQueryText(text = '', chipId) {
+  const fragment = getChipQueryFragment(chipId);
+  if (!fragment) return text.trim();
+
+  const trimmed = text.trim();
+  if (queryIncludesChip(trimmed, chipId)) {
+    const pattern = new RegExp(`\\s*${escapeRegex(fragment)}`, 'gi');
+    return trimmed.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
+  }
+  return trimmed ? `${trimmed} ${fragment}` : fragment;
+}
+
+/** @deprecated Nur noch für Tests – bevorzugt matchDealerChipIdsFromQuery */
+export function buildDealerSearchSummary(chipIds = [], freeText = '') {
+  const text = freeText.trim();
+  if (text) return text;
+  return chipIds.map((id) => getChipQueryFragment(id)).filter(Boolean).join(' ');
+}
+
+/** @deprecated Nur noch für Tests */
 export function toggleDealerChipId(chipIds = [], chipId) {
   if (chipIds.includes(chipId)) {
     return chipIds.filter((id) => id !== chipId);
@@ -209,7 +267,9 @@ export function dealerChipIdForStatedChip(statedChip = {}) {
     rangeKmMin: 'range_400',
     maxRate: 'fuel_elektro_300',
     availability: 'availability_sofort',
-    model: 'model_ev3_gt',
+    camera_360: 'camera_360',
+    heated_seats: 'heated_seats',
+    rear_camera: 'rear_camera',
   };
   if (statedChip.id === 'maxRate' && statedChip.value === 300) return 'fuel_elektro_300';
   if (statedChip.id === 'rangeKmMin' && statedChip.value >= 400) return 'range_400';

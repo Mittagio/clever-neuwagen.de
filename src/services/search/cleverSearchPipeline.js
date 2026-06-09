@@ -12,8 +12,10 @@ import {
   buildNoExactMatchMessage,
 } from './hardExclusionRules.js';
 import { enrichVehicleWithModelAttributes } from '../../data/kia/kiaModelAttributes.js';
-import { buildModelLineGroups } from './modelLineGroups.js';
+import { buildModelLineGroups, dedupeMatchesByModelLine } from './modelLineGroups.js';
 import { rankMatchesByProfileTruth } from './wishMatchRanking.js';
+import { filterModelLineGroupsByWishFit } from './profileWishScore.js';
+import { enrichModelLineGroupsWithProfileQuote } from '../cleverQuote/cleverQuoteService.js';
 
 /**
  * @param {object} params
@@ -62,7 +64,14 @@ export function runCleverSearch({
 
   let ranked = rankAdvisorDiscoveryMatches(raw, { wishes, filters, chipIds, limit });
   ranked = rankMatchesByProfileTruth(ranked, profile);
-  let modelLineGroups = buildModelLineGroups(raw, ranked, { wishes, chipIds });
+  const lineMatches = dedupeMatchesByModelLine(ranked);
+  let modelLineGroups = enrichModelLineGroupsWithProfileQuote(
+    filterModelLineGroupsByWishFit(
+      buildModelLineGroups(raw, lineMatches, { wishes, chipIds }),
+      profile,
+    ),
+    profile,
+  );
 
   if (!ranked.length && enrichedPool.length) {
     const fallbackRaw = matchVehiclesToWish({
@@ -73,10 +82,17 @@ export function runCleverSearch({
     let fallbackRanked = rankAdvisorDiscoveryMatches(fallbackRaw, { wishes, filters, chipIds, limit });
     fallbackRanked = rankMatchesByProfileTruth(fallbackRanked, profile);
     if (fallbackRanked.length) {
-      modelLineGroups = buildModelLineGroups(fallbackRaw, fallbackRanked, { wishes, chipIds });
+      const fallbackLineMatches = dedupeMatchesByModelLine(fallbackRanked);
+      modelLineGroups = enrichModelLineGroupsWithProfileQuote(
+        filterModelLineGroupsByWishFit(
+          buildModelLineGroups(fallbackRaw, fallbackLineMatches, { wishes, chipIds }),
+          profile,
+        ),
+        profile,
+      );
       return {
         profile,
-        matches: fallbackRanked,
+        matches: fallbackLineMatches,
         modelLineGroups,
         excluded,
         exclusionHint: buildExclusionHint(profile, excluded),
@@ -89,7 +105,7 @@ export function runCleverSearch({
 
   return {
     profile,
-    matches: ranked,
+    matches: lineMatches,
     modelLineGroups,
     excluded,
     exclusionHint: buildExclusionHint(profile, excluded),

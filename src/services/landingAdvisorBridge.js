@@ -115,10 +115,27 @@ export const LANDING_TRENDING = [
   },
 ];
 
+function hasKmContextNear(text, nearIndex, matchLen = 3) {
+  const window = text.slice(Math.max(0, nearIndex - 20), nearIndex + matchLen + 30);
+  return /\b(km|kilometer|reichweite|range)\b/i.test(window) || /\d\s*km\b/i.test(window);
+}
+
 function parseRate(text) {
-  const m = text.match(/(?:maximal|max\.?|unter|bis)\s*(\d{2,4})\s*€/i)
-    ?? text.match(/(\d{2,4})\s*€?\s*(?:\/|pro\s*)?(?:monat|mt)/i);
-  return m ? Number(m[1]) : null;
+  const euroBis = text.match(/(?:maximal|max\.?|unter|bis)\s*(\d{2,4})\s*€/i);
+  if (euroBis) return Number(euroBis[1]);
+
+  const euroMonth = text.match(/(\d{2,4})\s*€\s*(?:\/|pro\s*)?(?:monat|mt)/i);
+  if (euroMonth) return Number(euroMonth[1]);
+
+  const bisRe = /\bbis\s+(\d{2,4})\b/gi;
+  let match;
+  while ((match = bisRe.exec(text)) !== null) {
+    if (hasKmContextNear(text, match.index, match[0].length)) continue;
+    const val = Number(match[1]);
+    if (val <= 800) return val;
+  }
+
+  return null;
 }
 
 function parseMaxPrice(text) {
@@ -180,9 +197,6 @@ export function parseLandingQuery(text) {
     profile.fuelPreference = 'elektro';
     profile.bodyType = profile.bodyType ?? 'suv';
   }
-
-  if (!profile.desiredRate && /350/.test(t)) profile.desiredRate = 350;
-  if (!profile.desiredRate && /400/.test(t)) profile.desiredRate = 400;
 
   const location = parseLocationFromText(t);
 

@@ -4,7 +4,12 @@
  */
 
 import assert from 'node:assert/strict';
-import { buildModelLineGroups, flattenModelLineGroups, findModelLineGroup } from './modelLineGroups.js';
+import {
+  buildModelLineGroups,
+  dedupeMatchesByModelLine,
+  flattenModelLineGroups,
+  findModelLineGroup,
+} from './modelLineGroups.js';
 
 function makeMatch(modelKey, trimId, slug, score = 80) {
   return {
@@ -54,5 +59,18 @@ assert.equal(!ev2Group.hasMultipleVariants, true, 'Kein Multi-Variant-Flag');
 
 assert.equal(flattenModelLineGroups(groups).length, 2, 'Flatten liefert Primary-Matches');
 assert.equal(findModelLineGroup(groups, ev3Gt)?.modelLineKey, 'ev3');
+
+const picantoCore = makeMatch('picanto', 'core', 'picanto-core', 70);
+const picantoVision = makeMatch('picanto', 'vision', 'picanto-vision', 90);
+const picantoSpirit = makeMatch('picanto', 'spirit', 'picanto-spirit', 85);
+const duplicatedPrimaries = [picantoCore, picantoVision, picantoSpirit, ev2];
+const deduped = dedupeMatchesByModelLine(duplicatedPrimaries);
+assert.equal(deduped.length, 2, 'Nur ein Picanto in der Modellliste');
+assert.equal(deduped[0].slug, 'picanto-vision', 'Bester Picanto an erster Listenposition');
+const picantoGroups = buildModelLineGroups(
+  [picantoCore, picantoVision, picantoSpirit],
+  duplicatedPrimaries,
+);
+assert.equal(picantoGroups.filter((g) => g.modelLineKey === 'picanto').length, 1, 'Picanto nur einmal gruppiert');
 
 console.log('modelLineGroups tests OK');

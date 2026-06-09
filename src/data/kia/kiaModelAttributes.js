@@ -392,14 +392,16 @@ export function resolveModelAttributeKey(vehicle = {}) {
   if (key.startsWith('ev6')) return key.includes('gt') ? 'ev6-gt' : 'ev6';
   if (key.startsWith('ev9')) return key.includes('gt') ? 'ev9-gt' : 'ev9';
   if (key.startsWith('niro')) return key.includes('hybrid') ? 'niro-hybrid' : 'niro';
-  if (key.startsWith('sportage')) {
-    if (vehicle.powertrain === 'plugin-hybrid') return 'sportage-phev';
-    if (vehicle.powertrain === 'hybrid') return 'sportage-hybrid';
+  if (key.startsWith('sportage') || key.includes('sportage')) {
+    const hint = `${vehicle.title ?? ''} ${vehicle.model ?? ''} ${key}`.toLowerCase();
+    if (vehicle.powertrain === 'plugin-hybrid' || /plug-?in|phev/.test(hint)) return 'sportage-phev';
+    if (vehicle.powertrain === 'hybrid' || /\bhybrid\b/.test(hint)) return 'sportage-hybrid';
     return 'sportage';
   }
-  if (key.startsWith('sorento')) {
-    if (vehicle.powertrain === 'plugin-hybrid') return 'sorento-phev';
-    if (vehicle.powertrain === 'hybrid') return 'sorento-hybrid';
+  if (key.startsWith('sorento') || key.includes('sorento')) {
+    const hint = `${vehicle.title ?? ''} ${vehicle.model ?? ''} ${key}`.toLowerCase();
+    if (vehicle.powertrain === 'plugin-hybrid' || /plug-?in|phev/.test(hint)) return 'sorento-phev';
+    if (vehicle.powertrain === 'hybrid' || /\bhybrid\b/.test(hint)) return 'sorento-hybrid';
     return 'sorento';
   }
   if (key.startsWith('pv5')) {

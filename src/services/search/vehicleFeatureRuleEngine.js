@@ -12,10 +12,15 @@ import {
 import {
   enrichVehicleWithModelAttributes,
   getKiaModelAttributes,
+  vehicleFuelTruth,
 } from '../../data/kia/kiaModelAttributes.js';
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
 import { toCanonicalFeatureId, toInternalFeatureId } from './canonicalFeatureIds.js';
 import { mapIntentFuel } from './searchProfile.js';
+import {
+  prepareProfileForEvaluation,
+  isFeatureCoveredByStructuralProfile,
+} from './profileCriteriaCanonical.js';
 import {
   resolveVehicleLengthMm,
   resolveVehicleHeightMm,
@@ -35,6 +40,16 @@ import {
  * @param {object} trim
  * @param {string} featureId – interne ID
  */
+function profileFuelMatchesVehicle(want, vehicle, facts) {
+  const have = vehicleFuelTruth(vehicle);
+  if (want === have) return true;
+  if (want === 'electric' && have === 'electric') return true;
+  if (want === 'hybrid' && (have === 'hybrid' || have === 'plugin_hybrid')) return true;
+  if (want === 'plugin_hybrid' && have === 'plugin_hybrid') return true;
+  if (facts?.fuel && facts.fuel !== 'multi' && want === facts.fuel) return true;
+  return false;
+}
+
 export function evaluateTrimFeature(trim, featureId) {
   if (!trim) return { status: 'missing', via: null };
   const internal = toInternalFeatureId(featureId);
@@ -52,6 +67,11 @@ export function evaluateTrimFeature(trim, featureId) {
  * @param {object} vehicle
  */
 export function evaluateVehicleAgainstProfile(profile, vehicle) {
+  const { profile: canonicalProfile, valid, errors } = prepareProfileForEvaluation(profile);
+  if (!valid && process.env.NODE_ENV !== 'production') {
+    console.warn('[profileCriteria]', errors.join('; '));
+  }
+
   const v = enrichVehicleWithModelAttributes(vehicle);
   const facts = v.modelFacts ?? getKiaModelAttributes(v);
   const modelKey = normalizeModelKey(v.brand, v.model);
@@ -59,17 +79,23 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
   const trim = getTrimConfig(modelKey, trimId);
 
   const checks = [];
+  const p = canonicalProfile;
   let scoreSum = 0;
   let scoreMax = 0;
 
-  if (profile.fuel) {
-    const want = mapIntentFuel(profile.fuel) ?? profile.fuel;
-    const vehicleFuel = facts.fuel ?? (v.powertrain === 'elektro' ? 'electric' : v.powertrain);
-    const ok = want === vehicleFuel
-      || (want === 'electric' && vehicleFuel === 'electric');
+  if (p.fuel) {
+    const want = mapIntentFuel(p.fuel) ?? p.fuel;
+    const ok = profileFuelMatchesVehicle(want, v, facts);
+    const fuelLabel = want === 'electric'
+      ? 'Elektro'
+      : want === 'hybrid'
+        ? 'Hybrid'
+        : want === 'plugin_hybrid'
+          ? 'Plug-in Hybrid'
+          : 'Antrieb';
     checks.push({
       id: 'fuel',
-      label: want === 'electric' ? 'Elektro' : 'Antrieb',
+      label: fuelLabel,
       status: ok ? 'fulfilled' : 'missing',
       canonicalId: 'fuel',
     });
@@ -77,7 +103,7 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     if (ok) scoreSum += 1;
   }
 
-  const minRange = profile.minRangeKm ?? profile.rangeKmMin ?? null;
+  const minRange = p.minRangeKm ?? p.rangeKmMin ?? null;
   if (minRange != null) {
     const range = v.electricRangeKm ?? v.rangeKm ?? facts.typicalRangeKm ?? null;
     if (range == null) {
@@ -99,26 +125,26 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  if (profile.seatsMin != null) {
+  if (p.seatsMin != null) {
     const seats = facts.seats ?? v.seats ?? 5;
-    const ok = seats >= profile.seatsMin || facts.isSevenSeater;
+    const ok = seats >= p.seatsMin || facts.isSevenSeater;
     checks.push({
       id: 'seats',
-      label: `${profile.seatsMin} Sitze`,
+      label: `${p.seatsMin} Sitze`,
       status: ok ? 'fulfilled' : 'missing',
     });
     scoreMax += 1;
     if (ok) scoreSum += 1;
   }
 
-  if (profile.maxLengthMm != null) {
+  if (p.maxLengthMm != null) {
     const len = resolveVehicleLengthMm(v);
-    const maxM = profile.maxLengthMm / 1000;
+    const maxM = p.maxLengthMm / 1000;
     const label = `bis ${Number.isInteger(maxM) ? maxM : maxM.toFixed(1).replace('.', ',')} m Länge`;
     if (len == null) {
       checks.push({ id: 'length_mm', label, status: 'unknown' });
     } else {
-      const ok = len <= profile.maxLengthMm;
+      const ok = len <= p.maxLengthMm;
       checks.push({
         id: 'length_mm',
         label,
@@ -130,13 +156,13 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  if (profile.maxHeightMm != null) {
+  if (p.maxHeightMm != null) {
     const height = resolveVehicleHeightMm(v);
-    const label = formatHeightLimitLabel(profile.maxHeightMm);
+    const label = formatHeightLimitLabel(p.maxHeightMm);
     if (height == null) {
       checks.push({ id: 'height_mm', label, status: 'unknown' });
     } else {
-      const ok = height <= profile.maxHeightMm;
+      const ok = height <= p.maxHeightMm;
       checks.push({
         id: 'height_mm',
         label,
@@ -148,13 +174,13 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  if (profile.trunkLMin != null) {
+  if (p.trunkLMin != null) {
     const trunk = resolveVehicleTrunkL(v);
-    const label = formatTrunkMinLabel(profile.trunkLMin);
+    const label = formatTrunkMinLabel(p.trunkLMin);
     if (trunk == null) {
       checks.push({ id: 'trunk_l', label, status: 'unknown' });
     } else {
-      const ok = trunk >= profile.trunkLMin;
+      const ok = trunk >= p.trunkLMin;
       checks.push({
         id: 'trunk_l',
         label,
@@ -166,13 +192,13 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  if (profile.isofixRearMin != null) {
+  if (p.isofixRearMin != null) {
     const count = resolveIsofixRearCount(v);
-    const label = formatIsofixRearLabel(profile.isofixRearMin);
+    const label = formatIsofixRearLabel(p.isofixRearMin);
     if (count == null) {
       checks.push({ id: 'isofix_rear', label, status: 'unknown' });
     } else {
-      const ok = count >= profile.isofixRearMin;
+      const ok = count >= p.isofixRearMin;
       checks.push({
         id: 'isofix_rear',
         label,
@@ -184,14 +210,14 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  if (profile.towCapacityKg != null) {
+  if (p.towCapacityKg != null) {
     const braked = resolveTowBrakedKg(v);
-    const wantT = Math.round(profile.towCapacityKg / 100) / 10;
+    const wantT = Math.round(p.towCapacityKg / 100) / 10;
     const label = `Anhängelast ≥ ${wantT} t`;
     if (braked == null) {
       checks.push({ id: 'tow_braked', label, status: 'unknown' });
     } else {
-      const ok = braked >= profile.towCapacityKg;
+      const ok = braked >= p.towCapacityKg;
       checks.push({
         id: 'tow_braked',
         label,
@@ -203,21 +229,10 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
     scoreMax += 1;
   }
 
-  for (const featureId of profile.requiredFeatures ?? []) {
+  for (const featureId of p.requiredFeatures ?? []) {
     const internal = toInternalFeatureId(featureId);
 
-    // Strukturelles Merkmal (Modell-Fakten), kein Trim-Paket
-    if (internal === 'seats_7') {
-      const seats = facts.seats ?? v.seats ?? 5;
-      const ok = seats >= 7 || facts.isSevenSeater;
-      checks.push({
-        id: internal,
-        canonicalId: 'seats_7',
-        label: '7 Sitze',
-        status: ok ? 'fulfilled' : 'missing',
-      });
-      scoreMax += 1;
-      if (ok) scoreSum += 1;
+    if (isFeatureCoveredByStructuralProfile(internal, p)) {
       continue;
     }
 
@@ -259,12 +274,20 @@ export function evaluateVehicleAgainstProfile(profile, vehicle) {
  */
 export function evaluateModelTrimsAgainstProfile(profile, modelKey) {
   const trims = getModelTrims(modelKey);
+  if (!trims.length) return [];
+
+  const facts = getKiaModelAttributes({ brand: 'Kia', model: modelKey, modelKey });
+  const powertrain = facts?.powertrains?.[0] ?? facts?.fuel ?? null;
+  const modelLabel = facts?.label ?? modelKey.toUpperCase();
+
   return trims.map((trim) => {
     const vehicle = {
       brand: 'Kia',
-      model: getModelTrims(modelKey)[0] ? modelKey : modelKey,
-      title: `Kia ${modelKey.toUpperCase()} ${trim.name}`,
-      powertrain: 'elektro',
+      model: modelLabel,
+      modelKey,
+      title: `Kia ${modelLabel} ${trim.name}`,
+      trimId: trim.id,
+      powertrain: powertrain ?? undefined,
     };
     return evaluateVehicleAgainstProfile(profile, vehicle);
   }).sort((a, b) => b.cleverQuotePercent - a.cleverQuotePercent);

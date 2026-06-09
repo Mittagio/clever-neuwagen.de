@@ -6,8 +6,9 @@
 import { parseSearchIntent } from './searchIntentParser.js';
 import { normalizeFeatureIdsToInternal } from './canonicalFeatureIds.js';
 import { LARGE_TRUNK_MIN_L } from '../cleverData/vehicleDimensions.js';
+import { canonicalizeSearchProfile } from './profileCriteriaCanonical.js';
 
-const META_FEATURES = new Set(['elektro', 'benzin', 'reichweite', 'family_suv']);
+const META_FEATURES = new Set(['elektro', 'benzin', 'reichweite', 'range_400', 'seats_7', 'family_suv']);
 
 const FUEL_MAP = {
   elektro: 'electric',
@@ -81,11 +82,7 @@ export function buildSearchProfile({
     features.filter((f) => !META_FEATURES.has(f)),
   );
 
-  // Sitzanzahl wird über seatsMin + Modell-Fakten geprüft – nicht als Trim-Paket
-  if (seatsMin != null && seatsMin >= 7) {
-    const seatIdx = requiredFeatures.indexOf('seats_7');
-    if (seatIdx !== -1) requiredFeatures.splice(seatIdx, 1);
-  }
+  const towKg = parsed.towCapacityKg ?? filters.towCapacityKg ?? null;
 
   if (chipIds.includes('fuel_elektro')) fuel = 'electric';
   if (chipIds.includes('heated_seats') && !requiredFeatures.includes('heated_seats')) {
@@ -105,7 +102,7 @@ export function buildSearchProfile({
     isofixRearMin = 3;
   }
 
-  return {
+  return canonicalizeSearchProfile({
     fuel,
     seatsMin,
     maxMonthlyRate: parsed.maxRate ?? filters.maxRate ?? wishes.budget?.maxMonthlyRate ?? null,
@@ -128,7 +125,7 @@ export function buildSearchProfile({
       return raw;
     })(),
     rangeKmMin,
-    towCapacityKg: parsed.towCapacityKg ?? filters.towCapacityKg ?? null,
+    towCapacityKg: towKg,
     maxLengthMm: parsed.maxLengthMm ?? filters.maxLengthMm ?? null,
     maxHeightMm: parsed.maxHeightMm ?? filters.maxHeightMm ?? null,
     trunkLMin,
@@ -139,7 +136,7 @@ export function buildSearchProfile({
     mileagePerYear: parsed.mileagePerYear ?? filters.mileagePerYear ?? null,
     termMonths: parsed.durationMonths ?? filters.termMonths ?? null,
     location: parsed.location ?? filters.city ?? filters.location ?? null,
-  };
+  });
 }
 
 /** Für OpenAI Structured Outputs – nur Suchprofil, keine Fahrzeugauswahl. */

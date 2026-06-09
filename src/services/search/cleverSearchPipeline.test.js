@@ -67,6 +67,7 @@ assert.equal(
 const ev3Group = elektro.modelLineGroups.find((g) => g.modelLineKey === 'ev3');
 assert.ok(ev3Group, 'EV3 Modelllinien-Gruppe');
 assert.equal(ev3Group.variantCount, 3, 'EV3: Air, Earth, GT-Line');
+assert.ok(ev3Group.modelQuote, 'EV3: Modell-Quote in Pipeline');
 assert.equal(ev3Group.variants.length, 2, 'Zwei Alternativen zum Primary-Trim');
 
 const seven = runQuery('7-Sitzer');
@@ -80,6 +81,10 @@ for (const m of elektroSeven.matches) {
   assert.equal(m.vehicle.powertrain, 'elektro', 'Nur Elektro');
 }
 assert.ok(!new Set(modelLines(elektroSeven)).has('ev3'), 'EV3 ausgeschlossen');
+
+const picantoWish = runQuery('Sitzheizung Rückfahrkamera bis 4 m Länge');
+const picantoLineCount = picantoWish.modelLineGroups.filter((g) => g.modelLineKey === 'picanto').length;
+assert.equal(picantoLineCount, 1, 'Picanto nur einmal in den Modell-Ergebnissen');
 
 const klein = runQuery('Kleinwagen Automatik Sitzheizung');
 if (klein.matches.length) {
@@ -97,7 +102,14 @@ assert.equal(prof.seatsMin, 7);
 const ausstattung = runQuery('elektro sitzheizung wärmepumpe 360 kamera');
 assert.ok(ausstattung.matches.length >= 3, 'Ausstattungswünsche: Ergebnisse statt leer');
 const topLine = getModelLineKey(ausstattung.matches[0].vehicle);
-assert.ok(['ev3', 'ev4'].includes(topLine), `EV3/EV4 top bei Elektro+Ausstattung: ${topLine}`);
+assert.ok(
+  ['ev3', 'ev4', 'ev5'].includes(topLine),
+  `Elektro-Top bei Ausstattungswünschen: ${topLine}`,
+);
+for (const group of ausstattung.modelLineGroups.slice(0, 5)) {
+  assert.ok(group.modelQuote, `Modell-first Quote: ${group.modelLineKey}`);
+  assert.ok(group.modelChecks?.length, `Modell-Checks: ${group.modelLineKey}`);
+}
 const ev3Top = ausstattung.matches[0];
 assert.ok(
   (ev3Top.matchedFeatures ?? []).includes('heated_seats') || ev3Top.cleverQuote?.percent >= 80,

@@ -1839,6 +1839,36 @@
   color: #64748b;
 }
 
+.disc-search-results__intro {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.disc-model-line--model-first .disc-model-line__trim-hint {
+  display: none;
+}
+
+.disc-model-line__view-btn {
+  width: 100%;
+  margin: 12px 0 0;
+  min-height: 48px;
+  border-radius: 14px;
+}
+
+.disc-model-line__variants-lead {
+  margin: 14px 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.disc-variant-row__medal {
+  margin-right: 2px;
+}
+
 .disc-model-line__variants {
   border-top: 1px solid #f1f5f9;
   padding: 0 16px 12px;

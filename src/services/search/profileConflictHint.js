@@ -7,6 +7,22 @@ import { mapIntentFuel } from './searchProfile.js';
 /** Untere Rate für 7-Sitzer-Elektro im Kia-Angebot (EV9 Air). */
 const MIN_SEVEN_ELECTRIC_MONTHLY_RATE = 500;
 
+function queryHasRangeKm(text = '') {
+  return /\d+\s*km\b/i.test(text) || /\breichweite\b/i.test(text);
+}
+
+/** Budget nur warnen, wenn Rate/€ im Text oder in Filtern explizit steht – nicht aus „400 km“. */
+function hasExplicitBudgetSignal(intent, filters, profile) {
+  if (intent?.maxRate != null || filters?.maxRate != null) return true;
+  const q = intent?.rawQuery ?? profile?.rawQuery ?? filters?.query ?? '';
+  if (/(?:bis|unter|max\.?|maximal)\s*\d+\s*€/i.test(q)) return true;
+  if (/\d+\s*€\s*(?:\/|pro\s*)?(?:monat|mt)\b/i.test(q)) return true;
+  if (/\b(leasing|finanzier|rate|monat)\b/i.test(q) && /\bbis\s+\d{2,4}\b/i.test(q) && !queryHasRangeKm(q)) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * @param {import('./searchProfile.js').SearchProfile|null} profile
  * @param {{ intent?: object, filters?: object }} [ctx]
@@ -51,7 +67,13 @@ export function detectProfileConflict(profile, { intent = null, filters = {} } =
   const electric = profileFuel === 'electric';
   const budgetRate = profile.maxMonthlyRate;
 
-  if (electric && sevenSeater && budgetRate != null && budgetRate < MIN_SEVEN_ELECTRIC_MONTHLY_RATE) {
+  if (
+    electric
+    && sevenSeater
+    && budgetRate != null
+    && budgetRate < MIN_SEVEN_ELECTRIC_MONTHLY_RATE
+    && hasExplicitBudgetSignal(intent, filters, profile)
+  ) {
     return {
       type: 'budget_seven_electric',
       title: 'Anspruchsvolle Kombination',
@@ -67,6 +89,7 @@ export function detectProfileConflict(profile, { intent = null, filters = {} } =
     && budgetRate <= 300
     && (profile.minRangeKm ?? profile.rangeKmMin ?? 0) >= 400
     && sevenSeater
+    && hasExplicitBudgetSignal(intent, filters, profile)
   ) {
     return {
       type: 'budget_range_seven',

@@ -46,7 +46,7 @@ export default function DiscoverySearchAlternatives({
                 onViewOffer={onViewOffer}
                 onCleverQuoteWhy={onCleverQuoteWhy}
                 onChangePaymentMode={onChangePaymentMode}
-                defaultVariantsOpen={group.rank <= 2}
+                defaultVariantsOpen={false}
               />
             ))}
           </div>

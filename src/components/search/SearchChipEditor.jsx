@@ -6,7 +6,7 @@ import {
   CHIP_TYPES,
 } from '../../services/search/chipConfig.js';
 import { buildFeaturesFilterPatch } from '../../services/search/featureFilterSync.js';
-import { matchFeaturesFromText } from '../../services/wish/wishParser.js';
+import { resolveWishFeatures } from '../../services/wish/wishParser.js';
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
 import { parseManualLocationInput } from '../../logic/advisorLocation.js';
 import './smartChipEditor.css';
@@ -103,22 +103,13 @@ export default function SearchChipEditor({
   }
 
   function applyFeatures() {
-    let next = [...draftFeatures];
     const text = customValue.trim();
-    if (text) {
-      const fromText = matchFeaturesFromText(text);
-      if (fromText.length) {
-        next = [...new Set([...next, ...fromText])];
-        applyPatch(buildFeaturesFilterPatch(filters, next));
-        return;
-      }
-      applyPatch({
-        ...buildFeaturesFilterPatch(filters, next),
-        query: `${filters.query ?? ''} ${text}`.trim(),
-      });
-      return;
-    }
-    applyPatch(buildFeaturesFilterPatch(filters, next));
+    const query = text ? `${filters.query ?? ''} ${text}`.trim() : (filters.query ?? '');
+    const next = resolveWishFeatures(query, draftFeatures);
+    applyPatch({
+      ...buildFeaturesFilterPatch(filters, next),
+      ...(text ? { query } : {}),
+    });
   }
 
   function submitCustom(e) {
@@ -127,12 +118,15 @@ export default function SearchChipEditor({
     if (!val) return;
 
     if (isFeatureEditor) {
-      const fromText = matchFeaturesFromText(val);
-      const merged = [...new Set([...draftFeatures, ...fromText])];
+      const query = `${filters.query ?? ''} ${val}`.trim();
+      const merged = resolveWishFeatures(query, draftFeatures);
       setDraftFeatures(merged);
       setCustomValue('');
       if (!isMobile) {
-        applyPatch(buildFeaturesFilterPatch(filters, merged));
+        applyPatch({
+          ...buildFeaturesFilterPatch(filters, merged),
+          query,
+        });
       }
       return;
     }

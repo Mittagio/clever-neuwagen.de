@@ -2,10 +2,10 @@
 export const DEALER_MAX_RECOMMENDATIONS = 3;
 
 export const DEALER_SEARCH_PLACEHOLDERS = [
+  'Beschreiben Sie Ihr Wunschauto…',
   'Elektroauto bis 300 €',
   'Hybrid mit Anhängerkupplung',
   'Familienauto mit 3 Isofix',
-  '5 Sitze bis 4 Meter Länge',
 ];
 
 /** Strukturierte Mehrfach-Chips – siehe dealerWishChips.js */

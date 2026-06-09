@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
 
-import CustomerSearchHub from '../search/CustomerSearchHub.jsx';
-
 import SearchPlausibilityBanner from '../search/SearchPlausibilityBanner.jsx';
 
 import ResultsBrandModelFilter from './ResultsBrandModelFilter.jsx';
@@ -42,7 +40,12 @@ import { getSimilarVehiclesNearby } from '../../services/pricing/dealerOfferPric
 
 import { matchVehiclesToWish } from '../../services/wish/wishMatchEngine.js';
 
-import { hasCleverQuoteWishes, buildCuratedResultsLine } from '../../services/cleverQuote/cleverQuoteService.js';
+import {
+  hasCleverQuoteWishes,
+  buildCuratedResultsLine,
+  enrichModelLineGroupWithProfileQuote,
+} from '../../services/cleverQuote/cleverQuoteService.js';
+import { profileHasWishCriteria } from '../../services/search/profileWishScore.js';
 import { buildAdvisorDiscoveryResultsLine } from '../../services/cleverQuote/cleverQuoteConstants.js';
 import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
@@ -253,8 +256,13 @@ export default function DiscoveryResultsView({
   const radiusKm = filters.radius ?? 25;
 
   const isAdvisorResults = Boolean(topMatch?.cleverQuote?.advisorMode) || Boolean(modelLineGroups?.length);
-  const advisorGroups = (modelLineGroups?.length ? modelLineGroups : null);
   const hasSearchAlternatives = (searchAlternatives?.length ?? 0) > 0;
+
+  const advisorGroups = useMemo(() => {
+    if (!modelLineGroups?.length) return null;
+    if (!searchProfile) return modelLineGroups;
+    return modelLineGroups.map((group) => enrichModelLineGroupWithProfileQuote(group, searchProfile));
+  }, [modelLineGroups, searchProfile]);
   const allRankedMatchesEarly = useMemo(
     () => [topMatch, ...restMatches].filter(Boolean),
     [topMatch, restMatches],
@@ -328,19 +336,6 @@ export default function DiscoveryResultsView({
 
     <div className="discovery-results north-star-results north-star-results--v26 north-star-results--booking north-star-results--mf2 north-star-results--s36">
 
-      <div className="booking-selection-card booking-selection-card--hub">
-
-        <CustomerSearchHub
-          filters={filters}
-          wishes={wishes}
-          onEditSearch={onEditSearch}
-          onEditChip={onEditChip}
-          onPatchFilters={onPatchFilters}
-          sticky={Boolean(filters.query?.trim())}
-          refineLabel="Verfeinern"
-        />
-      </div>
-
       {(filters.searchWarnings?.length > 0 || filters.searchCorrections?.some((c) => c.requiresChoice)) && (
 
         <SearchPlausibilityBanner
@@ -412,6 +407,14 @@ export default function DiscoveryResultsView({
               </h2>
               )}
 
+              {isAdvisorResults && advisorGroups?.length > 0 && searchProfile && profileHasWishCriteria(searchProfile) && (
+                <p className="disc-search-results__intro" aria-live="polite">
+                  Wir haben {offerStats?.total ?? allRankedMatches.length} Modelle geprüft.
+                  {' '}
+                  Diese {advisorGroups.length} passen am besten zu Ihrer Anfrage.
+                </p>
+              )}
+
               {isAdvisorResults && advisorGroups?.length > 0 ? (
                 <div className="disc-model-line-list">
                   {advisorGroups.map((group) => (
@@ -424,19 +427,22 @@ export default function DiscoveryResultsView({
                       wishes={wishes}
                       chipIds={advisorChipIds}
                       allMatches={allRankedMatches}
+                      searchProfile={searchProfile}
                       onViewOffer={onViewOffer}
                       onCleverQuoteWhy={openCleverQuoteBreakdown}
                       onChangePaymentMode={handleChangePaymentMode}
                       heroBadge={heroBadge}
                       whyTitle={
-                        group.primaryMatch?.cleverQuote?.advisorMode
-                          ? `Warum empfehlen wir den ${group.label}?`
-                          : undefined
+                        group.modelQuote
+                          ? `Warum ${group.label}?`
+                          : group.primaryMatch?.cleverQuote?.advisorMode
+                            ? `Warum empfehlen wir den ${group.label}?`
+                            : undefined
                       }
                       recommendReasons={
-                        group.rank === 1 ? wishBullets : undefined
+                        group.rank === 1 && !group.modelQuote ? wishBullets : undefined
                       }
-                      defaultVariantsOpen={group.rank <= 2}
+                      defaultVariantsOpen={false}
                     />
                   ))}
                 </div>
