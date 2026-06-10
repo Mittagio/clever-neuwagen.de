@@ -1,5 +1,5 @@
 import { MANUFACTURER_MEDIA } from '../../data/media/manufacturerImages.js';
-import { resolveKiaModelImageKey } from '../../data/kia/kiaModelImages.js';
+import { resolveKiaColorImageUrl, resolveKiaModelImageKey } from '../../data/kia/kiaModelImages.js';
 
 function slug(value) {
   return (value ?? '')
@@ -36,6 +36,12 @@ export function getManufacturerMediaEntry(brand, model) {
 export function resolveManufacturerImageUrl(brand, model, options = {}) {
   const entry = getManufacturerMediaEntry(brand, model);
   if (!entry) return null;
+
+  const brandKey = slug(brand) || 'kia';
+  if (brandKey === 'kia' && options.color) {
+    const colorUrl = resolveKiaColorImageUrl(model, options.color);
+    if (colorUrl) return colorUrl;
+  }
 
   const view = options.view ?? options.variant ?? 'default';
   const normalized = ['hero', 'card', 'side', 'interior'].includes(view) ? view : 'default';

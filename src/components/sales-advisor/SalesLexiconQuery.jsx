@@ -42,7 +42,7 @@ export default function SalesLexiconQuery({ dealerSlug = '' }) {
       <header className="ss-lexicon__head">
         <h2 id="ss-lexicon-title" className="ss-lexicon__title">Fahrzeug-Lexikon</h2>
         <p className="ss-lexicon__lead">
-          Kundenfrage eingeben – Clever antwortet mit Kia-Stammdaten (Maße, Kofferraum, Reichweite …).
+          Nur für Sie als Berater: Kundenfrage eingeben – Clever antwortet mit Kia-Stammdaten (Maße, Kofferraum, Reichweite …).
         </p>
       </header>
 

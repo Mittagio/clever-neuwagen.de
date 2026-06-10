@@ -3,8 +3,37 @@
  * Generiert via: npm run extract:kia-images (Titelseite der Kia-Preisliste, Sorento-Stil)
  */
 import raw from './kiaModelImages.json' with { type: 'json' };
+import { canonicalizeKiaColorSlug } from './kiaColorSlugAliases.js';
 
 export const KIA_MODEL_IMAGES = raw;
+
+/** @param {string} color */
+export function slugKiaColorId(color) {
+  return String(color ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+/** @param {string} modelKey @param {string} [colorId] */
+export function resolveKiaColorImageUrl(modelKey, colorId) {
+  if (!colorId) return null;
+  const resolved = resolveKiaModelImageKey(modelKey);
+  const colors = KIA_MODEL_IMAGES[resolved]?.colors;
+  if (!colors) return null;
+  const slug = slugKiaColorId(colorId);
+  if (colors[slug]) return colors[slug];
+  const canonical = canonicalizeKiaColorSlug(slug);
+  if (canonical && colors[canonical]) return colors[canonical];
+  return colors[colorId] ?? null;
+}
 
 /** @param {string} modelKey */
 export function resolveKiaModelImageKey(modelKey = '') {
@@ -38,8 +67,11 @@ export function getKiaModelMediaEntry(modelKey, view = 'default') {
   if (!meta) return null;
   const hero = meta.hero;
   const fallback = meta.default ?? hero;
-  if (view === 'hero' || view === 'card') return { default: fallback, hero, card: hero, side: fallback };
-  return { default: fallback, hero, card: hero, side: fallback };
+  const colors = meta.colors ?? null;
+  if (view === 'hero' || view === 'card') {
+    return { default: fallback, hero, card: hero, side: fallback, colors };
+  }
+  return { default: fallback, hero, card: hero, side: fallback, colors };
 }
 
 export function listKiaModelImageKeys() {

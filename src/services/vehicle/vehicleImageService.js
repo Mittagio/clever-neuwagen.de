@@ -71,6 +71,7 @@ export function resolveVehicleImage(options = {}) {
     dealerImageUrl,
     allowAiRender = false,
     vehicleId,
+    color,
   } = options;
 
   const { base, full } = buildModelKeys(brand, model, trim);
@@ -79,7 +80,7 @@ export function resolveVehicleImage(options = {}) {
   const dealerImg = lookupDealerImage(dealerId, base, full, variant);
   if (dealerImg) return result(dealerImg, 'dealer');
 
-  const oemImg = resolveManufacturerImageUrl(brand, model, { variant });
+  const oemImg = resolveManufacturerImageUrl(brand, model, { variant, color });
   if (oemImg) return result(oemImg, 'manufacturer');
 
   if (allowAiRender) {

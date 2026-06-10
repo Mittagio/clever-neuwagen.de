@@ -12,6 +12,7 @@ export default function VehicleImage({
   variant = 'card',
   dealerImageUrl,
   vehicleId,
+  color,
   allowAiRender = false,
   alt,
   className = '',
@@ -33,8 +34,9 @@ export default function VehicleImage({
       dealerImageUrl,
       allowAiRender,
       vehicleId,
+      color,
     }),
-    [brand, model, trim, dealerId, bodyType, variant, dealerImageUrl, allowAiRender, vehicleId],
+    [brand, model, trim, dealerId, bodyType, variant, dealerImageUrl, allowAiRender, vehicleId, color],
   );
 
   const label = alt ?? ([brand, model, trim].filter(Boolean).join(' ') || 'Fahrzeug');

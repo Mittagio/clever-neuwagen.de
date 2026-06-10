@@ -26,7 +26,24 @@ ev4/hero.jpg
 
 Bis `hero.jpg` fehlt, lädt die App Pressebilder aus `src/data/landingHeroVehicles.js` (Fallback).
 
-## Demo
+## OEM-Fotos (alle Farben)
+
+Neue Pressefotos von Kia ablegen:
+
+```
+public/images/manufacturers/kia/_incoming/ev2/hero.jpg
+public/images/manufacturers/kia/_incoming/ev2/colors/snow-white-pearl.jpg
+```
+
+Dann:
+
+```bash
+npm run import:kia-photos
+```
+
+Details: `_incoming/README.md`
+
+## Demo (PDF-Fallback)
 
 Alle JPGs werden aus den offiziellen Kia-Preislisten extrahiert (Titelseite, wie Sorento):
 

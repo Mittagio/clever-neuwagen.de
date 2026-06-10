@@ -417,6 +417,7 @@ export default function SmartSalesPage() {
               {voiceWow && (
                 <SalesVoiceWowBanner matchCount={matches.length} transcript={voiceTranscript} />
               )}
+              <SalesLexiconQuery dealerSlug={dealerSlug} />
               <SalesResultsPodium
                 matches={matches}
                 modelLineGroups={modelLineGroups}

@@ -19,7 +19,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/stonic/hero.jpg",
-    "default": "/images/manufacturers/kia/stonic/default.jpg"
+    "default": "/images/manufacturers/kia/stonic/default.jpg",
+    "colors": {
+      "adventurousgreen": "/images/manufacturers/kia/stonic/colors/adventurousgreen.jpg",
+      "astrogray": "/images/manufacturers/kia/stonic/colors/astrogray.jpg",
+      "aurorablackpearl": "/images/manufacturers/kia/stonic/colors/aurorablackpearl.jpg",
+      "clearwhite": "/images/manufacturers/kia/stonic/colors/clearwhite.jpg",
+      "signalred": "/images/manufacturers/kia/stonic/colors/signalred.jpg",
+      "smokeblue": "/images/manufacturers/kia/stonic/colors/smokeblue.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/stonic/colors/snowwhitepearl.jpg",
+      "sparklingsilver": "/images/manufacturers/kia/stonic/colors/sparklingsilver.jpg",
+      "yachtblue": "/images/manufacturers/kia/stonic/colors/yachtblue.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "xceed": {
     "sourcePdf": "Kia-Germany-XCeed_Pricelist.pdf",
@@ -30,7 +43,11 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/xceed/hero.jpg",
-    "default": "/images/manufacturers/kia/xceed/default.jpg"
+    "default": "/images/manufacturers/kia/xceed/default.jpg",
+    "colors": {},
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press",
+    "colorsCleanedAt": "2026-06-10"
   },
   "ceed": {
     "sourcePdf": "Kia-Germany-Ceed-Preisliste.pdf",
@@ -52,7 +69,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/k4/hero.jpg",
-    "default": "/images/manufacturers/kia/k4/default.jpg"
+    "default": "/images/manufacturers/kia/k4/default.jpg",
+    "colors": {
+      "aurorablack": "/images/manufacturers/kia/k4/colors/aurorablack.jpg",
+      "azureblue": "/images/manufacturers/kia/k4/colors/azureblue.jpg",
+      "clearwhite": "/images/manufacturers/kia/k4/colors/clearwhite.jpg",
+      "fieryred": "/images/manufacturers/kia/k4/colors/fieryred.jpg",
+      "interstellargrey": "/images/manufacturers/kia/k4/colors/interstellargrey.jpg",
+      "morninghaze": "/images/manufacturers/kia/k4/colors/morninghaze.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/k4/colors/snowwhitepearl.jpg",
+      "sparklingyellow": "/images/manufacturers/kia/k4/colors/sparklingyellow.jpg",
+      "steelgrey": "/images/manufacturers/kia/k4/colors/steelgrey.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "k4-sportswagon": {
     "sourcePdf": "Kia-Germany-K4-Sportswagon-Preisliste.pdf",
@@ -63,7 +93,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/k4-sportswagon/hero.jpg",
-    "default": "/images/manufacturers/kia/k4-sportswagon/default.jpg"
+    "default": "/images/manufacturers/kia/k4-sportswagon/default.jpg",
+    "colors": {
+      "aurorablack": "/images/manufacturers/kia/k4-sportswagon/colors/aurorablack.jpg",
+      "azureblue": "/images/manufacturers/kia/k4-sportswagon/colors/azureblue.jpg",
+      "clearwhite": "/images/manufacturers/kia/k4-sportswagon/colors/clearwhite.jpg",
+      "fieryred": "/images/manufacturers/kia/k4-sportswagon/colors/fieryred.jpg",
+      "interstellargrey": "/images/manufacturers/kia/k4-sportswagon/colors/interstellargrey.jpg",
+      "morninghaze": "/images/manufacturers/kia/k4-sportswagon/colors/morninghaze.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/k4-sportswagon/colors/snowwhitepearl.jpg",
+      "sparklingyellow": "/images/manufacturers/kia/k4-sportswagon/colors/sparklingyellow.jpg",
+      "steelgrey": "/images/manufacturers/kia/k4-sportswagon/colors/steelgrey.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "seltos": {
     "sourcePdf": "Kia-Germany-Seltos-Preisliste.pdf",
@@ -96,7 +139,29 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/sportage-phev/hero.jpg",
-    "default": "/images/manufacturers/kia/sportage-phev/default.jpg"
+    "default": "/images/manufacturers/kia/sportage-phev/default.jpg",
+    "colors": {
+      "1kblackpearl": "/images/manufacturers/kia/sportage-phev/colors/1kblackpearl.jpg",
+      "ardmagmared": "/images/manufacturers/kia/sportage-phev/colors/ardmagmared.jpg",
+      "b3lblueflame": "/images/manufacturers/kia/sportage-phev/colors/b3lblueflame.jpg",
+      "csslunarsilver": "/images/manufacturers/kia/sportage-phev/colors/csslunarsilver.jpg",
+      "exgexperiencegreen": "/images/manufacturers/kia/sportage-phev/colors/exgexperiencegreen.jpg",
+      "h8gpentametal": "/images/manufacturers/kia/sportage-phev/colors/h8gpentametal.jpg",
+      "ha2deluxewhiteblack": "/images/manufacturers/kia/sportage-phev/colors/ha2deluxewhiteblack.jpg",
+      "ha3casawhiteblack": "/images/manufacturers/kia/sportage-phev/colors/ha3casawhiteblack.jpg",
+      "ha5lunarsilverblack": "/images/manufacturers/kia/sportage-phev/colors/ha5lunarsilverblack.jpg",
+      "ha6pentametalblack": "/images/manufacturers/kia/sportage-phev/colors/ha6pentametalblack.jpg",
+      "ha8blueflameblack": "/images/manufacturers/kia/sportage-phev/colors/ha8blueflameblack.jpg",
+      "hbcexperiencegreenblack": "/images/manufacturers/kia/sportage-phev/colors/hbcexperiencegreenblack.jpg",
+      "hbmwolfgrayblack": "/images/manufacturers/kia/sportage-phev/colors/hbmwolfgrayblack.jpg",
+      "hbrmagmaredblack": "/images/manufacturers/kia/sportage-phev/colors/hbrmagmaredblack.jpg",
+      "hw2deluxewhite": "/images/manufacturers/kia/sportage-phev/colors/hw2deluxewhite.jpg",
+      "ismivorysilvermatt": "/images/manufacturers/kia/sportage-phev/colors/ismivorysilvermatt.jpg",
+      "wafwolfgray": "/images/manufacturers/kia/sportage-phev/colors/wafwolfgray.jpg",
+      "wdcasawhite": "/images/manufacturers/kia/sportage-phev/colors/wdcasawhite.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "sorento": {
     "sourcePdf": "Kia-Germany-Sorento-pricelist.pdf",
@@ -129,7 +194,21 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/sorento-phev/hero.jpg",
-    "default": "/images/manufacturers/kia/sorento-phev/default.jpg"
+    "default": "/images/manufacturers/kia/sorento-phev/default.jpg",
+    "colors": {
+      "4sssilkysilver": "/images/manufacturers/kia/sorento-phev/colors/4sssilkysilver.jpg",
+      "abpaurorablackpearl": "/images/manufacturers/kia/sorento-phev/colors/abpaurorablackpearl.jpg",
+      "b4ugravityblue": "/images/manufacturers/kia/sorento-phev/colors/b4ugravityblue.jpg",
+      "cityscapegreen": "/images/manufacturers/kia/sorento-phev/colors/cityscapegreen.jpg",
+      "interstellargrey": "/images/manufacturers/kia/sorento-phev/colors/interstellargrey.jpg",
+      "klgsteelgrey": "/images/manufacturers/kia/sorento-phev/colors/klgsteelgrey.jpg",
+      "m4bmineralblue": "/images/manufacturers/kia/sorento-phev/colors/m4bmineralblue.jpg",
+      "swpsnowwhitepearl": "/images/manufacturers/kia/sorento-phev/colors/swpsnowwhitepearl.jpg",
+      "udclearwhite": "/images/manufacturers/kia/sorento-phev/colors/udclearwhite.jpg",
+      "volcanicsand": "/images/manufacturers/kia/sorento-phev/colors/volcanicsand.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "niro": {
     "sourcePdf": "Kia-Germany-Niro-HEV-Preisliste.pdf",
@@ -151,7 +230,21 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev2/hero.jpg",
-    "default": "/images/manufacturers/kia/ev2/default.jpg"
+    "default": "/images/manufacturers/kia/ev2/default.jpg",
+    "colors": {
+      "blackpearl": "/images/manufacturers/kia/ev2/colors/blackpearl.jpg",
+      "cassawhite": "/images/manufacturers/kia/ev2/colors/cassawhite.jpg",
+      "deluxewhite": "/images/manufacturers/kia/ev2/colors/deluxewhite.jpg",
+      "frostblue": "/images/manufacturers/kia/ev2/colors/frostblue.jpg",
+      "ivorysilvermatte": "/images/manufacturers/kia/ev2/colors/ivorysilvermatte.jpg",
+      "magmared": "/images/manufacturers/kia/ev2/colors/magmared.jpg",
+      "morninghaze": "/images/manufacturers/kia/ev2/colors/morninghaze.jpg",
+      "pentametal": "/images/manufacturers/kia/ev2/colors/pentametal.jpg",
+      "vanillablossom": "/images/manufacturers/kia/ev2/colors/vanillablossom.jpg",
+      "wolfgray": "/images/manufacturers/kia/ev2/colors/wolfgray.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev3": {
     "sourcePdf": "Kia-Germany-EV3-Preisliste.pdf",
@@ -162,7 +255,19 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev3/hero.jpg",
-    "default": "/images/manufacturers/kia/ev3/default.jpg"
+    "default": "/images/manufacturers/kia/ev3/default.jpg",
+    "colors": {
+      "aurorablackpearl": "/images/manufacturers/kia/ev3/colors/aurorablackpearl.jpg",
+      "aventurinegreen": "/images/manufacturers/kia/ev3/colors/aventurinegreen.jpg",
+      "clearwhite": "/images/manufacturers/kia/ev3/colors/clearwhite.jpg",
+      "frostblue": "/images/manufacturers/kia/ev3/colors/frostblue.jpg",
+      "ivorysilver": "/images/manufacturers/kia/ev3/colors/ivorysilver.jpg",
+      "shalegrey": "/images/manufacturers/kia/ev3/colors/shalegrey.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev3/colors/snowwhitepearl.jpg",
+      "terracotta": "/images/manufacturers/kia/ev3/colors/terracotta.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev4": {
     "sourcePdf": "Kia-Germany-EV4-Preisliste.pdf",
@@ -173,7 +278,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev4/hero.jpg",
-    "default": "/images/manufacturers/kia/ev4/default.jpg"
+    "default": "/images/manufacturers/kia/ev4/default.jpg",
+    "colors": {
+      "blackpearl": "/images/manufacturers/kia/ev4/colors/blackpearl.jpg",
+      "blueflame": "/images/manufacturers/kia/ev4/colors/blueflame.jpg",
+      "cassawhite": "/images/manufacturers/kia/ev4/colors/cassawhite.jpg",
+      "deluxewhite": "/images/manufacturers/kia/ev4/colors/deluxewhite.jpg",
+      "ivorysilver": "/images/manufacturers/kia/ev4/colors/ivorysilver.jpg",
+      "magmared": "/images/manufacturers/kia/ev4/colors/magmared.jpg",
+      "morninghaze": "/images/manufacturers/kia/ev4/colors/morninghaze.jpg",
+      "pentametal": "/images/manufacturers/kia/ev4/colors/pentametal.jpg",
+      "wolfgrey": "/images/manufacturers/kia/ev4/colors/wolfgrey.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev5": {
     "sourcePdf": "Kia-Germany-EV5-Preisliste.pdf",
@@ -184,7 +302,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev5/hero.jpg",
-    "default": "/images/manufacturers/kia/ev5/default.jpg"
+    "default": "/images/manufacturers/kia/ev5/default.jpg",
+    "colors": {
+      "darkoceanblue": "/images/manufacturers/kia/ev5/colors/darkoceanblue.jpg",
+      "frostblue": "/images/manufacturers/kia/ev5/colors/frostblue.jpg",
+      "fusionblack": "/images/manufacturers/kia/ev5/colors/fusionblack.jpg",
+      "gravitygrey": "/images/manufacturers/kia/ev5/colors/gravitygrey.jpg",
+      "iceberggreengloss": "/images/manufacturers/kia/ev5/colors/iceberggreengloss.jpg",
+      "iceberggreenmatt": "/images/manufacturers/kia/ev5/colors/iceberggreenmatt.jpg",
+      "ivorysilver": "/images/manufacturers/kia/ev5/colors/ivorysilver.jpg",
+      "magmared": "/images/manufacturers/kia/ev5/colors/magmared.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev5/colors/snowwhitepearl.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev5-gt": {
     "sourcePdf": "Kia-Germany-EV5-GT-Preisliste.pdf",
@@ -195,7 +326,21 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev5-gt/hero.jpg",
-    "default": "/images/manufacturers/kia/ev5-gt/default.jpg"
+    "default": "/images/manufacturers/kia/ev5-gt/default.jpg",
+    "colors": {
+      "blackroof": "/images/manufacturers/kia/ev5-gt/colors/blackroof.jpg",
+      "darkoceanblue": "/images/manufacturers/kia/ev5-gt/colors/darkoceanblue.jpg",
+      "frostblue": "/images/manufacturers/kia/ev5-gt/colors/frostblue.jpg",
+      "fusionblack": "/images/manufacturers/kia/ev5-gt/colors/fusionblack.jpg",
+      "gravitygrey": "/images/manufacturers/kia/ev5-gt/colors/gravitygrey.jpg",
+      "iceberggreengloss": "/images/manufacturers/kia/ev5-gt/colors/iceberggreengloss.jpg",
+      "iceberggreenmatt": "/images/manufacturers/kia/ev5-gt/colors/iceberggreenmatt.jpg",
+      "ivorysilver": "/images/manufacturers/kia/ev5-gt/colors/ivorysilver.jpg",
+      "magmared": "/images/manufacturers/kia/ev5-gt/colors/magmared.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev5-gt/colors/snowwhitepearl.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev6": {
     "sourcePdf": "Kia-Germany-EV6_Pricelist.pdf",
@@ -206,7 +351,20 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev6/hero.jpg",
-    "default": "/images/manufacturers/kia/ev6/default.jpg"
+    "default": "/images/manufacturers/kia/ev6/default.jpg",
+    "colors": {
+      "aurorablackpearl": "/images/manufacturers/kia/ev6/colors/aurorablackpearl.jpg",
+      "glacier": "/images/manufacturers/kia/ev6/colors/glacier.jpg",
+      "interstellargrey": "/images/manufacturers/kia/ev6/colors/interstellargrey.jpg",
+      "ivorysilvermatt": "/images/manufacturers/kia/ev6/colors/ivorysilvermatt.jpg",
+      "runwayred": "/images/manufacturers/kia/ev6/colors/runwayred.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev6/colors/snowwhitepearl.jpg",
+      "wolfgray": "/images/manufacturers/kia/ev6/colors/wolfgray.jpg",
+      "yachtblue": "/images/manufacturers/kia/ev6/colors/yachtblue.jpg",
+      "yachtbluematt": "/images/manufacturers/kia/ev6/colors/yachtbluematt.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "ev9": {
     "sourcePdf": "Kia-Germany-EV9-Preisliste.pdf",
@@ -217,7 +375,25 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/ev9/hero.jpg",
-    "default": "/images/manufacturers/kia/ev9/default.jpg"
+    "default": "/images/manufacturers/kia/ev9/default.jpg",
+    "colors": {
+      "abpaurorablackpearl": "/images/manufacturers/kia/ev9/colors/abpaurorablackpearl.jpg",
+      "c7rflarered": "/images/manufacturers/kia/ev9/colors/c7rflarered.jpg",
+      "dfgpebblegray": "/images/manufacturers/kia/ev9/colors/dfgpebblegray.jpg",
+      "gloss": "/images/manufacturers/kia/ev9/colors/gloss.jpg",
+      "iebiceberggreen-matt": "/images/manufacturers/kia/ev9/colors/iebiceberggreen-matt.jpg",
+      "iegiceberggreen-gloss": "/images/manufacturers/kia/ev9/colors/iegiceberggreen-gloss.jpg",
+      "iegiceberggreen-matt": "/images/manufacturers/kia/ev9/colors/iegiceberggreen-matt.jpg",
+      "iegiceberggreen": "/images/manufacturers/kia/ev9/colors/iegiceberggreen.jpg",
+      "isgivorysilver-gloss": "/images/manufacturers/kia/ev9/colors/isgivorysilver-gloss.jpg",
+      "isgivorysilver": "/images/manufacturers/kia/ev9/colors/isgivorysilver.jpg",
+      "ismivorysilver-matt": "/images/manufacturers/kia/ev9/colors/ismivorysilver-matt.jpg",
+      "matt": "/images/manufacturers/kia/ev9/colors/matt.jpg",
+      "obgoceanblue": "/images/manufacturers/kia/ev9/colors/obgoceanblue.jpg",
+      "swpsnowwhitepearl": "/images/manufacturers/kia/ev9/colors/swpsnowwhitepearl.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   },
   "pv5-passenger": {
     "sourcePdf": "Kia-Germany-PV5-Passenger-Preisliste.pdf",
@@ -228,6 +404,89 @@
     "extractedAt": "2026-06-05",
     "extractMode": "embedded-cover",
     "hero": "/images/manufacturers/kia/pv5-passenger/hero.jpg",
-    "default": "/images/manufacturers/kia/pv5-passenger/default.jpg"
+    "default": "/images/manufacturers/kia/pv5-passenger/default.jpg",
+    "colors": {
+      "aurorablackpearl": "/images/manufacturers/kia/pv5-passenger/colors/aurorablackpearl.jpg",
+      "cityscapegreen": "/images/manufacturers/kia/pv5-passenger/colors/cityscapegreen.jpg",
+      "clearwhite": "/images/manufacturers/kia/pv5-passenger/colors/clearwhite.jpg",
+      "frostblue": "/images/manufacturers/kia/pv5-passenger/colors/frostblue.jpg",
+      "lakehousegrey": "/images/manufacturers/kia/pv5-passenger/colors/lakehousegrey.jpg",
+      "runwayred": "/images/manufacturers/kia/pv5-passenger/colors/runwayred.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/pv5-passenger/colors/snowwhitepearl.jpg",
+      "softmint": "/images/manufacturers/kia/pv5-passenger/colors/softmint.jpg",
+      "steelgrey": "/images/manufacturers/kia/pv5-passenger/colors/steelgrey.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
+  },
+  "ev4-fastback": {
+    "hero": "/images/manufacturers/kia/ev4-fastback/hero.jpg",
+    "default": "/images/manufacturers/kia/ev4-fastback/default.jpg",
+    "colors": {
+      "aurorablackpearl": "/images/manufacturers/kia/ev4-fastback/colors/aurorablackpearl.jpg",
+      "clearwhite": "/images/manufacturers/kia/ev4-fastback/colors/clearwhite.jpg",
+      "ivorysilver": "/images/manufacturers/kia/ev4-fastback/colors/ivorysilver.jpg",
+      "ivorysilvermatte": "/images/manufacturers/kia/ev4-fastback/colors/ivorysilvermatte.jpg",
+      "magmared": "/images/manufacturers/kia/ev4-fastback/colors/magmared.jpg",
+      "morninghaze": "/images/manufacturers/kia/ev4-fastback/colors/morninghaze.jpg",
+      "shalegrey": "/images/manufacturers/kia/ev4-fastback/colors/shalegrey.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev4-fastback/colors/snowwhitepearl.jpg",
+      "yachtblue": "/images/manufacturers/kia/ev4-fastback/colors/yachtblue.jpg",
+      "yachtbluematte": "/images/manufacturers/kia/ev4-fastback/colors/yachtbluematte.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
+  },
+  "ev6-gt": {
+    "hero": "/images/manufacturers/kia/ev6-gt/hero.jpg",
+    "default": "/images/manufacturers/kia/ev6-gt/default.jpg",
+    "colors": {
+      "aurorablackpearl": "/images/manufacturers/kia/ev6-gt/colors/aurorablackpearl.jpg",
+      "runwayred": "/images/manufacturers/kia/ev6-gt/colors/runwayred.jpg",
+      "snowwhitepearl": "/images/manufacturers/kia/ev6-gt/colors/snowwhitepearl.jpg",
+      "wolfgray": "/images/manufacturers/kia/ev6-gt/colors/wolfgray.jpg",
+      "yachtbluematt": "/images/manufacturers/kia/ev6-gt/colors/yachtbluematt.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
+  },
+  "ev9-gt": {
+    "hero": "/images/manufacturers/kia/ev9-gt/hero.jpg",
+    "default": "/images/manufacturers/kia/ev9-gt/default.jpg",
+    "colors": {
+      "abpaurorablackpearl": "/images/manufacturers/kia/ev9-gt/colors/abpaurorablackpearl.jpg",
+      "c7rflarered": "/images/manufacturers/kia/ev9-gt/colors/c7rflarered.jpg",
+      "dfgpebblegray": "/images/manufacturers/kia/ev9-gt/colors/dfgpebblegray.jpg",
+      "gloss": "/images/manufacturers/kia/ev9-gt/colors/gloss.jpg",
+      "isgivorysilver": "/images/manufacturers/kia/ev9-gt/colors/isgivorysilver.jpg",
+      "swpsnowwhitepearl": "/images/manufacturers/kia/ev9-gt/colors/swpsnowwhitepearl.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
+  },
+  "sportage-hybrid": {
+    "hero": "/images/manufacturers/kia/sportage-hybrid/hero.jpg",
+    "default": "/images/manufacturers/kia/sportage-hybrid/default.jpg",
+    "colors": {
+      "1kblackpearl": "/images/manufacturers/kia/sportage-hybrid/colors/1kblackpearl.jpg",
+      "ardmagmared": "/images/manufacturers/kia/sportage-hybrid/colors/ardmagmared.jpg",
+      "ardmagmaredblack": "/images/manufacturers/kia/sportage-hybrid/colors/ardmagmaredblack.jpg",
+      "b3lblueflame": "/images/manufacturers/kia/sportage-hybrid/colors/b3lblueflame.jpg",
+      "b3lblueflameblack": "/images/manufacturers/kia/sportage-hybrid/colors/b3lblueflameblack.jpg",
+      "csslunarsilver": "/images/manufacturers/kia/sportage-hybrid/colors/csslunarsilver.jpg",
+      "csslunarsilverblack": "/images/manufacturers/kia/sportage-hybrid/colors/csslunarsilverblack.jpg",
+      "exgexperiencegreen": "/images/manufacturers/kia/sportage-hybrid/colors/exgexperiencegreen.jpg",
+      "exgexperiencegreenblack": "/images/manufacturers/kia/sportage-hybrid/colors/exgexperiencegreenblack.jpg",
+      "h8gpentametal": "/images/manufacturers/kia/sportage-hybrid/colors/h8gpentametal.jpg",
+      "h8gpentametalblack": "/images/manufacturers/kia/sportage-hybrid/colors/h8gpentametalblack.jpg",
+      "hw2deluxewhite": "/images/manufacturers/kia/sportage-hybrid/colors/hw2deluxewhite.jpg",
+      "hw2deluxewhiteblack": "/images/manufacturers/kia/sportage-hybrid/colors/hw2deluxewhiteblack.jpg",
+      "wafwolfgray": "/images/manufacturers/kia/sportage-hybrid/colors/wafwolfgray.jpg",
+      "wafwolfgrayblack": "/images/manufacturers/kia/sportage-hybrid/colors/wafwolfgrayblack.jpg",
+      "wdcasawhite": "/images/manufacturers/kia/sportage-hybrid/colors/wdcasawhite.jpg",
+      "wdcasawhiteblack": "/images/manufacturers/kia/sportage-hybrid/colors/wdcasawhiteblack.jpg"
+    },
+    "colorsImportedAt": "2026-06-10",
+    "oemPhotoSource": "kia-press"
   }
 }

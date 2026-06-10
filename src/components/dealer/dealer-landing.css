@@ -635,7 +635,427 @@
   font-weight: 700;
 }
 
-/* Fahrzeug-Lexikon (faktenbasiert) */
+/* Smart-Answer – Carwow-inspiriert, Verkäufer-Sprache */
+.dl-smart-answer {
+  margin: 20px 0 28px;
+  padding: 22px 20px 20px;
+  border: 1px solid #e8eaed;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.07);
+}
+
+.dl-smart-answer__hero {
+  margin-bottom: 16px;
+}
+
+.dl-smart-answer__hero--with-image {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 560px) {
+  .dl-smart-answer__hero--with-image {
+    grid-template-columns: minmax(140px, 200px) 1fr;
+    align-items: start;
+    gap: 20px;
+  }
+}
+
+.dl-smart-answer__visual {
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(165deg, #f8fafc 0%, #eef2ff 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.dl-smart-answer__image-wrap {
+  aspect-ratio: 4 / 3;
+}
+
+.dl-smart-answer__image-wrap .vehicle-image__img {
+  object-fit: contain;
+  padding: 8px;
+}
+
+.dl-smart-answer__model-label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.dl-smart-answer__lead {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dl-smart-answer__key-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.dl-smart-answer__key-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 88px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dl-smart-answer__key-fact-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.dl-smart-answer__key-fact-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dl-smart-answer__related {
+  margin: 4px 0 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.dl-smart-answer__related-label {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dl-smart-answer__related-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dl-smart-answer__related-chip {
+  padding: 8px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dl-smart-answer__related-chip:hover {
+  border-color: #059669;
+  background: #f0fdf4;
+  color: #065f46;
+}
+
+.dl-smart-answer__fit-cta {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dl-smart-answer__head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.dl-smart-answer__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dl-smart-answer__kicker {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.dl-smart-answer__title {
+  margin: 0;
+  font-size: clamp(1.2rem, 4.5vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.dl-smart-answer__story {
+  margin-bottom: 16px;
+}
+
+.dl-smart-answer__story-p {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.dl-smart-answer__story-p:last-child {
+  margin-bottom: 0;
+}
+
+.dl-smart-answer__models {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 540px) {
+  .dl-smart-answer__models {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dl-smart-answer__model-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dl-smart-answer__model-name {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dl-smart-answer__model-bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.dl-smart-answer__model-bullets li {
+  position: relative;
+  padding-left: 1.35rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.dl-smart-answer__model-bullets li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #059669;
+  font-weight: 800;
+}
+
+.dl-smart-answer__highlights {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.dl-smart-answer__highlight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dl-smart-answer__model {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dl-smart-answer__detail {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.dl-smart-answer__tip {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #713f12;
+}
+
+.dl-smart-answer__details {
+  margin-bottom: 16px;
+}
+
+.dl-smart-answer__details-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.dl-smart-answer__details-toggle:hover {
+  color: #0f172a;
+}
+
+.dl-smart-answer__facts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.dl-smart-answer__fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+.dl-smart-answer__fact dt {
+  margin: 0;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.dl-smart-answer__fact dd {
+  margin: 0;
+  font-weight: 600;
+  color: #475569;
+  text-align: right;
+}
+
+/* Phase 3 – Fit-Check ohne Preis */
+.dl-fit-card {
+  margin: 0 0 24px;
+  padding: 20px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.dl-fit-card__title {
+  margin: 0 0 6px;
+  font-size: clamp(1.1rem, 4vw, 1.3rem);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dl-fit-card__subtitle {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.dl-fit-card__models {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dl-fit-card__models--compare {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .dl-fit-card__models--compare {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dl-fit-card__model {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.dl-fit-card__image-wrap {
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.dl-fit-card__image-wrap .vehicle-image__img {
+  object-fit: contain;
+  padding: 4px;
+}
+
+.dl-fit-card__summary {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  font-weight: 500;
+  color: #334155;
+}
+
+.dl-fit-card__model-name {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dl-fit-card__recommendation {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.dl-fit-card__cta {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Fahrzeug-Lexikon (Berater) */
 .dl-lexicon {
   margin: 20px 0 24px;
   padding: 18px 20px;

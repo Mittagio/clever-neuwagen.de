@@ -1,10 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
 import DealerSearchResults from '../components/dealer/DealerSearchResults.jsx';
 import DealerSearchAlternatives from '../components/dealer/DealerSearchAlternatives.jsx';
 import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
+import DealerSmartAnswerCard from '../components/dealer/DealerSmartAnswerCard.jsx';
+import DealerModelFitCard from '../components/dealer/DealerModelFitCard.jsx';
+import {
+  buildFitPreviewGroups,
+  filterSearchBundleToModels,
+} from '../services/dealer/smartAnswerJourney.js';
+import { classifyCustomerQueryIntent } from '../services/search/customerQueryIntent.js';
+import { analyzeVehicleQuery } from '../services/search/vehicleQueryIntent.js';
+import { buildDealerSmartAnswer } from '../services/dealer/dealerSmartAnswerService.js';
 import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
 import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
 import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
@@ -16,11 +25,8 @@ import { deriveAdvisorChipIds } from '../services/sales/advisorRanking.js';
 import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { runAdvisorSearchWithAlternatives } from '../services/search/advisorSearchAlternatives.js';
 import SearchConflictBanner from '../components/discovery/SearchConflictBanner.jsx';
-import DealerLexiconPanel from '../components/dealer/DealerLexiconPanel.jsx';
 import { detectSearchConflict } from '../services/search/searchConflictHint.js';
 import { detectProfileConflict } from '../services/search/profileConflictHint.js';
-import { answerVehicleLexiconQuery } from '../services/lexicon/vehicleLexiconService.js';
-import { shouldShowDealerLexiconPanel } from '../services/lexicon/shouldShowLexiconPanel.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
 import {
@@ -47,7 +53,10 @@ export default function DealerPage() {
 
   const [queryDraft, setQueryDraft] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
+  const [fitRevealed, setFitRevealed] = useState(false);
+  const [offersRevealed, setOffersRevealed] = useState(false);
   const searchInputRef = useRef(null);
+  const offersSectionRef = useRef(null);
 
   const draftChipIds = useMemo(
     () => matchDealerChipIdsFromQuery(queryDraft),
@@ -172,17 +181,71 @@ export default function DealerPage() {
       ?? detectProfileConflict(searchProfile, { intent: searchIntent, filters: searchFilters });
   }, [hasSearch, searchProfile, searchIntent, searchFilters]);
 
-  const lexiconAnswer = useMemo(() => {
-    if (!hasSearch) return null;
-    return answerVehicleLexiconQuery(submittedQuery, dealerSearchPool);
-  }, [hasSearch, submittedQuery, dealerSearchPool]);
+  const vehicleQueryAnalysis = useMemo(() => {
+    if (!hasSearch || !searchIntent || !searchProfile) return null;
+    return analyzeVehicleQuery(submittedQuery, searchIntent, searchProfile);
+  }, [hasSearch, submittedQuery, searchIntent, searchProfile]);
 
-  const hasExact = searchBundle?.hasExactMatch && searchBundle.exact.modelLineGroups?.length > 0;
-  const hasAlternatives = !hasExact && (searchBundle?.alternatives?.length ?? 0) > 0;
-  const showEmpty = hasSearch && searchBundle && !hasExact && !hasAlternatives;
+  const customerQueryMode = useMemo(() => {
+    if (!vehicleQueryAnalysis) return 'search';
+    return classifyCustomerQueryIntent(submittedQuery, searchIntent, searchProfile);
+  }, [vehicleQueryAnalysis, submittedQuery, searchIntent, searchProfile]);
+
+  const smartAnswer = useMemo(() => {
+    if (!hasSearch || customerQueryMode !== 'info') return null;
+    return buildDealerSmartAnswer(submittedQuery, dealerSearchPool);
+  }, [hasSearch, customerQueryMode, submittedQuery, dealerSearchPool]);
+
+  useEffect(() => {
+    setFitRevealed(false);
+    setOffersRevealed(false);
+  }, [submittedQuery]);
+
+  const infoModelKeys = useMemo(() => {
+    if (!smartAnswer || customerQueryMode !== 'info') return [];
+    if (smartAnswer.compareModelKeys?.length) return smartAnswer.compareModelKeys;
+    if (smartAnswer.primaryModelKey) return [smartAnswer.primaryModelKey];
+    return [];
+  }, [smartAnswer, customerQueryMode]);
+
+  const activeSearchBundle = useMemo(() => {
+    if (!searchBundle) return null;
+    if (customerQueryMode !== 'info' || infoModelKeys.length === 0) return searchBundle;
+    return filterSearchBundleToModels(searchBundle, infoModelKeys);
+  }, [searchBundle, customerQueryMode, infoModelKeys]);
+
+  const fitGroups = useMemo(() => {
+    if (!fitRevealed || !activeSearchBundle || !searchProfile) return [];
+    return buildFitPreviewGroups(activeSearchBundle, infoModelKeys, searchProfile, smartAnswer);
+  }, [fitRevealed, activeSearchBundle, infoModelKeys, searchProfile, smartAnswer]);
+
+  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
+  const showFitCard = showSmartAnswer && fitRevealed && !offersRevealed && fitGroups.length > 0;
+  const showVehicleOffers = hasSearch && (customerQueryMode === 'search' || offersRevealed);
+
+  const handleFollowUpQuery = useCallback((text) => {
+    handleSearch(text);
+  }, [handleSearch]);
+
+  const handleRevealFit = useCallback(() => {
+    setFitRevealed(true);
+    requestAnimationFrame(() => {
+      offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  const handleRevealOffers = useCallback(() => {
+    setOffersRevealed(true);
+    requestAnimationFrame(() => {
+      offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  const hasExact = activeSearchBundle?.hasExactMatch && activeSearchBundle.exact.modelLineGroups?.length > 0;
+  const hasAlternatives = !hasExact && (activeSearchBundle?.alternatives?.length ?? 0) > 0;
+  const showEmpty = hasSearch && activeSearchBundle && !hasExact && !hasAlternatives;
   const hasSearchResults = hasExact || hasAlternatives;
   const modelsChecked = dealerSearchPool.length;
-  const showLexicon = shouldShowDealerLexiconPanel(lexiconAnswer, searchProfile, { showEmpty });
 
   return (
     <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
@@ -205,17 +268,32 @@ export default function DealerPage() {
             <SearchConflictBanner conflict={searchConflict} />
           )}
 
-          {showLexicon && (
-            <DealerLexiconPanel answer={lexiconAnswer} query={submittedQuery} />
+          {showSmartAnswer && (
+            <DealerSmartAnswerCard
+              answer={smartAnswer}
+              dealerId={dealerId}
+              onFollowUpQuery={handleFollowUpQuery}
+              onShowFit={handleRevealFit}
+              fitRevealed={fitRevealed}
+            />
           )}
 
-          {hasSearch && (hasSearchResults || showEmpty) && (
+          <div ref={offersSectionRef}>
+          {showFitCard && (
+            <DealerModelFitCard
+              fitPrompt={smartAnswer.fitPrompt}
+              groups={fitGroups}
+              smartAnswer={smartAnswer}
+              onShowOffers={handleRevealOffers}
+            />
+          )}
+          {showVehicleOffers && hasSearch && (hasSearchResults || showEmpty) && (
             <p className="dl-search-results__intro" aria-live="polite">
               Wir haben {modelsChecked} Modelle geprüft.
               {hasExact && (
                 <>
                   {' '}
-                  Diese {Math.min(DEALER_MAX_RECOMMENDATIONS, searchBundle.exact.modelLineGroups.length)}
+                  Diese {Math.min(DEALER_MAX_RECOMMENDATIONS, activeSearchBundle.exact.modelLineGroups.length)}
                   {' '}
                   passen am besten zu Ihrer Anfrage.
                 </>
@@ -229,11 +307,11 @@ export default function DealerPage() {
             </p>
           )}
 
-          {hasExact && (
+          {showVehicleOffers && hasExact && (
             <DealerSearchResults
               query={submittedQuery}
               searchProfile={searchProfile}
-              modelLineGroups={searchBundle.exact.modelLineGroups}
+              modelLineGroups={activeSearchBundle.exact.modelLineGroups}
               filters={searchFilters}
               wishes={searchWishes}
               dealerSlug={dealerId}
@@ -244,12 +322,12 @@ export default function DealerPage() {
             />
           )}
 
-          {hasAlternatives && (
+          {showVehicleOffers && hasAlternatives && (
             <DealerSearchAlternatives
               query={submittedQuery}
               searchProfile={searchProfile}
-              guidanceMessage={searchBundle.guidanceMessage}
-              alternatives={searchBundle.alternatives.slice(0, 1)}
+              guidanceMessage={activeSearchBundle.guidanceMessage}
+              alternatives={activeSearchBundle.alternatives.slice(0, 1)}
               filters={searchFilters}
               wishes={searchWishes}
               dealerSlug={dealerId}
@@ -259,10 +337,10 @@ export default function DealerPage() {
             />
           )}
 
-          {showEmpty && (
+          {showVehicleOffers && showEmpty && (
             <section className="dl-search-results dl-search-results--empty" aria-live="polite">
               <p className="dl-search-results__empty">
-                {searchBundle.guidanceMessage ?? (
+                {activeSearchBundle.guidanceMessage ?? (
                   <>Für „{submittedQuery}“ haben wir aktuell keinen passenden Kia im Bestand.</>
                 )}
               </p>
@@ -272,7 +350,7 @@ export default function DealerPage() {
             </section>
           )}
 
-          {hasSearchResults && (
+          {showVehicleOffers && hasSearchResults && (
             <button
               type="button"
               className="btn btn-secondary dl-search-results__all dl-search-results__all--inline"
@@ -281,6 +359,7 @@ export default function DealerPage() {
               Weitere Modelle auf clever-neuwagen.de
             </button>
           )}
+          </div>
 
           <DealerWhySection
             dealerName={conditions.dealerName}

@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.tmp-kia*
 .tools/
 data/pilot-leads.json
 data/advisor-share-sessions.json
@@ -40,4 +41,7 @@ server/data/selbstauskunft.json
 
 __pycache__/
 *.pyc
+
+# Kia OEM-Import Staging (npm run import:kia-photos)
+public/images/manufacturers/kia/_incoming/
 
