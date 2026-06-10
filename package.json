@@ -43,6 +43,7 @@
     "test:kia-sportage": "node src/data/kia/sportagePdfCanonical.test.js",
     "test:kia-ocr": "node src/data/kia/ocrPdfCanonical.test.js",
     "parse:kia-pdf": "python scripts/parse-kia-pricelists.py",
+    "import:kia-pdf": "node scripts/import-kia-pricelist-pdfs.mjs",
     "extract:kia-images": "node scripts/extract-kia-pdf-images.mjs",
     "extract:kia-images:py": "python scripts/extract-kia-pdf-images.py",
     "test:conversation": "node src/services/sales/conversationMode.test.js",

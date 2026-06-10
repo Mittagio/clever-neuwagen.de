@@ -1,0 +1,37 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev9-gt",
+  "model": "EV9 GT",
+  "powertrainVariant": "elektro-gt",
+  "sourceFile": "Kia-Germany-EV9-GT-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV9-GT-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-06-10",
+  "priceFromGross": 90490,
+  "trims": [
+    {
+      "id": "gt",
+      "name": "GT"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "GT",
+      "trimId": "gt",
+      "priceNet": 76042,
+      "priceGross": 90490,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia EV9 GT (374 kW/508 PS): Stromverbrauch kombiniert 21,7 kWh/100 km. CO2"
+  ],
+  "variantCount": 1
+}

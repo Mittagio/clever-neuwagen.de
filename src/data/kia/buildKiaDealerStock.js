@@ -2,7 +2,7 @@
  * Baut Händler-Bestand aus PDF-Preislisten + Registry + technischen Stammdaten.
  */
 import { listKiaPdfPriceLists, resolveRegistryKey } from './kiaPriceListRegistry.js';
-import { getKiaOfficialModel } from './kiaOfficialPriceList.js';
+import { getKiaOfficialModel, listKiaOfficialModels } from './kiaOfficialPriceList.js';
 import { getKiaTechnicalSpec } from './kiaTechnicalSpecs.js';
 import { getKiaModelMediaEntry } from './kiaModelImages.js';
 import { enrichVehicleWithModelAttributes } from './kiaModelAttributes.js';
@@ -53,8 +53,8 @@ function inferPowertrain(modelKey, variant, importData) {
   ) {
     return 'elektro';
   }
-  if (importData?.powertrainVariant === 'nutzfahrzeug' || modelKey.startsWith('pv5')) {
-    return 'nutzfahrzeug';
+  if (importData?.powertrainVariant === 'nutzfahrzeug') {
+    return modelKey.startsWith('pv5') ? 'elektro' : 'nutzfahrzeug';
   }
   const official = getKiaOfficialModel(modelKey);
   return official?.powertrain ?? 'verbrenner';
@@ -222,10 +222,10 @@ function stockFromPdfVariant(modelKey, importData, variant, index) {
     listPriceGross: priceGross,
     discountPercent,
     deliveryTime: official?.id?.startsWith('ev') ? '6–8 Wochen' : '4–6 Wochen',
-    availability: modelKey === 'sportage' && variant.trimId === 'spirit' && powertrain === 'hybrid'
+    availability: modelKey === 'sportage-hybrid' && variant.trimId === 'spirit'
       ? 'sofort'
       : 'vorlauf',
-    stockStatus: modelKey === 'sportage' && variant.trimId === 'spirit' && powertrain === 'hybrid'
+    stockStatus: modelKey === 'sportage-hybrid' && variant.trimId === 'spirit'
       ? 'lager'
       : 'vorlauf',
     equipment: buildEquipment(trimLabel, engineLabel, registryKey),
@@ -234,6 +234,93 @@ function stockFromPdfVariant(modelKey, importData, variant, index) {
     technicalSpecs,
     priceListSource: importData.priceListSource,
     ...TRINKLE_DEALER,
+  }, modelKey));
+}
+
+function officialToStockPowertrain(official) {
+  if (official.powertrain === 'elektro') return 'elektro';
+  if (official.powertrain === 'nutzfahrzeug' && official.id?.startsWith('pv5')) return 'elektro';
+  if (official.powertrain === 'hybrid') return 'hybrid';
+  if (official.powertrain === 'plugin-hybrid') return 'plugin-hybrid';
+  if (official.powertrain === 'nutzfahrzeug') return 'nutzfahrzeug';
+  return 'verbrenner';
+}
+
+function defaultTrimForOfficial(official) {
+  if (official.id.startsWith('pv5')) return { trimId: 'plus', trimLabel: 'Plus' };
+  if (official.id.includes('-gt')) return { trimId: 'gt', trimLabel: 'GT' };
+  if (official.id.includes('fastback')) return { trimId: 'earth', trimLabel: 'Earth' };
+  if (official.powertrain === 'hybrid' || official.powertrain === 'plugin-hybrid') {
+    return { trimId: 'spirit', trimLabel: 'Spirit' };
+  }
+  if (official.powertrain === 'elektro' || official.id.startsWith('ev')) {
+    return { trimId: 'earth', trimLabel: 'Earth' };
+  }
+  return { trimId: 'vision', trimLabel: 'Vision' };
+}
+
+function resolveOfficialStockPrice(official) {
+  if (official.priceFromGross > 0) return official.priceFromGross;
+  if (official.id === 'pv5-crew') {
+    return getKiaOfficialModel('pv5-chassis-cab')?.priceFromGross ?? 38390;
+  }
+  return null;
+}
+
+function listOfficialModelsMissingStock(stock = []) {
+  const covered = new Set(stock.map((v) => v.modelKey));
+  return listKiaOfficialModels().filter((official) => {
+    if (covered.has(official.id)) return false;
+    if (official.id === 'niro-hybrid' && covered.has('niro')) return false;
+    if (official.id === 'sportage-hybrid' && covered.has('sportage-hybrid')) return false;
+    return true;
+  });
+}
+
+function stockFromOfficialModel(official, dealer) {
+  const modelKey = official.id;
+  const { trimId, trimLabel } = defaultTrimForOfficial(official);
+  const powertrain = officialToStockPowertrain(official);
+  const registryKey = resolveRegistryKey(modelKey);
+  const priceGross = resolveOfficialStockPrice(official);
+  const monthlyRate = estimateMonthlyRate(priceGross, official);
+  const discountPercent = defaultDiscount(modelKey, trimId);
+  const technicalSpecs = buildTechnicalSpecs(
+    modelKey,
+    { trim: trimLabel, trimId, engine: official.wltpText?.split(';')[0] ?? '' },
+    {},
+    official,
+  );
+  const priceOnRequest = !official.priceFromGross && official.orderNote;
+
+  return enrichVehicleWithModelAttributes(attachPricelistImages({
+    id: `trinkle-${slugify(modelKey, trimId, 'official')}`,
+    slug: slugify('kia', modelKey, trimId, 'official'),
+    title: `Kia ${official.name} ${trimLabel}`.trim(),
+    brand: 'Kia',
+    model: official.name,
+    modelKey,
+    registryKey,
+    bodyType: inferBodyType(modelKey, official),
+    powertrain,
+    trim: trimLabel,
+    trimId,
+    monthlyRate,
+    financeRate: Math.round(monthlyRate * 1.08),
+    cashPrice: Math.round(priceGross * (1 - discountPercent / 100)),
+    listPriceGross: priceGross,
+    discountPercent,
+    deliveryTime: official.categories?.includes('pbv') ? '8–12 Wochen' : powertrain === 'elektro' ? '6–8 Wochen' : '4–6 Wochen',
+    availability: priceOnRequest ? 'bestellbar' : 'vorlauf',
+    stockStatus: priceOnRequest ? 'bestellbar' : 'vorlauf',
+    equipment: buildEquipment(trimLabel, '', registryKey),
+    electricRangeKm: technicalSpecs.electricRangeKm,
+    rangeKm: technicalSpecs.electricRangeKm,
+    technicalSpecs,
+    priceListSource: 'Kia Deutschland GmbH – offizielle Modellübersicht',
+    orderNote: official.orderNote ?? null,
+    priceOnRequest,
+    ...dealer,
   }, modelKey));
 }
 
@@ -301,6 +388,13 @@ export function buildKiaDealerStock(options = {}) {
         ...dealer,
       });
     }
+  }
+
+  for (const official of listOfficialModelsMissingStock(entries)) {
+    entries.push({
+      ...stockFromOfficialModel(official, dealer),
+      ...dealer,
+    });
   }
 
   return entries.map((entry) => enrichVehicleWithCleverRecord(enrichVehicleWithModelAttributes(entry)));

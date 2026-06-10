@@ -1,0 +1,74 @@
+{
+  "brand": "Kia",
+  "modelKey": "pv5-cargo-l2h1",
+  "model": "PV5 Cargo L2H1",
+  "powertrainVariant": "nutzfahrzeug",
+  "sourceFile": "Kia-Germany-PV5-Cargo-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-PV5-Cargo-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-06-10",
+  "priceFromGross": 38990,
+  "trims": [
+    {
+      "id": "plus",
+      "name": "Plus"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Plus",
+      "trimId": "plus",
+      "priceNet": 33449,
+      "priceGross": 39805,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Plus",
+      "trimId": "plus",
+      "priceNet": 36810,
+      "priceGross": 43805,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "Plus",
+      "trimId": "plus",
+      "priceNet": 32764,
+      "priceGross": 38990,
+      "engine": "",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Plus",
+      "priceFromGross": 39805
+    },
+    {
+      "trim": "Plus",
+      "priceFromGross": 41400
+    },
+    {
+      "trim": "Plus",
+      "priceFromGross": 38390
+    }
+  ],
+  "wltpNotes": [],
+  "variantCount": 3
+}

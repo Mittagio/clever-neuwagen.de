@@ -375,6 +375,22 @@ export const CUSTOMER_QUESTIONS = [
     priority: 'high',
   },
   {
+    id: 'trunk_depth_cm',
+    category: 'masse',
+    label: 'Kofferraum-Laderaumlänge (cm)',
+    exampleQueries: [
+      'Kofferraum Länge über 100 cm',
+      'Ladefläche mindestens 90 cm tief',
+      'Kofferraumtiefe in cm',
+    ],
+    scope: 'match',
+    status: 'partial',
+    profileField: 'trunkDepthCmMin',
+    dataField: null,
+    source: 'Kundenanfrage – Kia-Preislisten liefern Volumen (l), keine Laderaumlänge (cm)',
+    priority: 'medium',
+  },
+  {
     id: 'trunk_7_seats',
     category: 'masse',
     label: 'Kofferraum bei 7 Sitzen',

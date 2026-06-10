@@ -73,6 +73,9 @@ export function vehicleMatchesKiaModelId(vehicle, modelId) {
   if (id === 'ev5') return m.includes('ev5') && !m.includes('ev50');
   if (id === 'ev6') return m.includes('ev6') && !m.includes('ev60');
   if (id === 'ev9') return m.includes('ev9');
+  if (id === 'pv5' || id.startsWith('pv5-')) {
+    return m.includes('pv5') || vehicle.modelKey?.toLowerCase().includes('pv5');
+  }
   const official = getKiaOfficialModel(id);
   if (official) {
     return m.includes(official.name.toLowerCase().replace(/\s+/g, '-'))

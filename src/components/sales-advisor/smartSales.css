@@ -289,6 +289,78 @@
   cursor: not-allowed;
 }
 
+.ss-lexicon {
+  margin: 20px 16px 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.ss-lexicon__head {
+  margin-bottom: 12px;
+}
+
+.ss-lexicon__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ss-lexicon__lead {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.ss-lexicon__form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ss-lexicon__input {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.ss-lexicon__form .ss-btn {
+  min-height: 48px;
+  min-width: 96px;
+}
+
+.ss-lexicon__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ss-lexicon__example {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.75rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+.ss-lexicon__example:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.ss-lexicon__panel {
+  margin-top: 12px;
+}
+
 .ss-results {
   padding: 16px;
   max-width: 960px;

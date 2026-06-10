@@ -1,0 +1,63 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev4-fastback",
+  "model": "EV4 Fastback",
+  "powertrainVariant": "elektro",
+  "sourceFile": "Kia-Germany-EV4-Fastback-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV4-Fastback-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-06-10",
+  "priceFromGross": 47140,
+  "trims": [
+    {
+      "id": "earth",
+      "name": "Earth"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Earth",
+      "trimId": "earth",
+      "priceNet": 39613,
+      "priceGross": 47140,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb  14,9 (19\") /",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 42890,
+      "priceGross": 51040,
+      "engine": "81,4-kWh-Batterie, 150 kW (204 PS), Frontantrieb  14,9 (19\") /",
+      "transmission": "",
+      "drive": "",
+      "power": "",
+      "consumption": "",
+      "co2": "",
+      "co2Class": ""
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Earth",
+      "priceFromGross": 41490
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 51040
+    }
+  ],
+  "wltpNotes": [
+    "Kia EV4 Fastback (150 kW/204 PS): Stromverbrauch kombiniert 14,9 kWh/100 km. CO 2 -Emissionen kombiniert 0 g/km."
+  ],
+  "variantCount": 2
+}

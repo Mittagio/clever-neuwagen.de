@@ -1,770 +1,841 @@
-Der Kia Sportage  
+Der Kia Sportage
 Plug-in Hybrid.
- Preise / Daten 
-Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km. Stromverbrauch 
-gewichtet kombiniert 11,2 kWh/100 km. CO 2-Emissionen gewichtet kombiniert 75 g/km. CO 2-Klasse B. Kraftstoffverbrauch bei 
-entladener Batterie kombiniert 6,7 l/100 km. CO 2-Klasse bei entladener Batterie E.
+Preise / Daten
+Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km. Stromverbrauch
+gewichtet kombiniert 11,2 kWh/100 km. CO2 -Emissionen gewichtet kombiniert 75 g/km. CO2 -Klasse B. Kraftstoffverbrauch bei
+entladener Batterie kombiniert 6,7 l/100 km. CO2 -Klasse bei entladener Batterie E.
+
+-- 1 of 16 --
+
 2
 Core
-Ausstattungshighlights 
-•	 17-Zoll-Leichtmetallfelgen
-•	 Apple	CarPlayTM	und	Android	AutoTM	(kabellos)
-•	 Außenspiegel	elektrisch	einstell-	und	beheizbar	
-•	 Außenspiegel	elektrisch	anklappbar	
-•	 Dachhimmel	und	Säulenverkleidung	in	Grau
-•	 Dachreling
-•	 Digitaler	Radioempfang	(DAB+)
-•	 Digitales	Kombiinstrument	mit	LCD-Supervisionanzeige		
-(10,7	cm	Bildschirmdiagonale;	4,2	Zoll)
-•	 Elektrische	Fensterheber	vorn	und	hinten
-•	 Elektronische	Parkbremse
-•	 Fahrersitz	höhenverstellbar	
-•	 Fernlichtassistent	(High	Beam	Assist,	HBA)
-•	 Frontkollisionswarner	(Forward	Collision-Avoidance	Assist,	
-FCA)A	mit	Fußgänger-	und	Radfahrererkennung
-•	 Geschwindigkeitsregelanlage,	adaptiv	und	
-navigationsbasiert,	inkl.	Stop&Go-Funktion	(Smart	Cruise	
-Control,	SCC	2.0	mit	S&G)A
-•	 Insassenalarm	(Rear	Occupant	Alert,	ROA)A
-•	 Intelligenter	Geschwindigkeitsassistent	(Intelligent	Speed	
-Limit	Assist,	ISLA) A
-•	 Isolierverglasung	für	die	Frontscheibe	zur	verbesserten	
+Ausstattungshighlights
+• 17-Zoll-Leichtmetallfelgen
+• Apple CarPlayTM und Android AutoTM (kabellos)
+• Außenspiegel elektrisch einstell- und beheizbar
+• Außenspiegel elektrisch anklappbar
+• Dachhimmel und Säulenverkleidung in Grau
+• Dachreling
+• Digitaler Radioempfang (DAB+)
+• Digitales Kombiinstrument mit LCD-Supervisionanzeige
+(10,7 cm Bildschirmdiagonale; 4,2 Zoll)
+• Elektrische Fensterheber vorn und hinten
+• Elektronische Parkbremse
+• Fahrersitz höhenverstellbar
+• Fernlichtassistent (High Beam Assist, HBA)
+• Frontkollisionswarner (Forward Collision-Avoidance Assist,
+FCA)A mit Fußgänger- und Radfahrererkennung
+• Geschwindigkeitsregelanlage, adaptiv und
+navigationsbasiert, inkl. Stop&Go-Funktion (Smart Cruise
+Control, SCC 2.0 mit S&G)A
+• Insassenalarm (Rear Occupant Alert, ROA)A
+• Intelligenter Geschwindigkeitsassistent (Intelligent Speed
+Limit Assist, ISLA)A
+• Isolierverglasung für die Frontscheibe zur verbesserten
 Außengeräuschdämmung
-•	 Kia-Kartennavigation	mit	31,2	cm	(12,3	Zoll)	
-Bildschirmdiagonale,	Kartenmaterial	Europa
-•	 Klimaautomatik,	2	Zonen,	mit	Antibeschlagsystem
-•	 Lederlenkrad	
-•	 Mittelarmlehne	hinten	(mit	Getränkehalter)
-•	 Mittelarmlehne	vorn	mit	Staufach
+• Kia-Kartennavigation mit 31,2 cm (12,3 Zoll)
+Bildschirmdiagonale, Kartenmaterial Europa
+• Klimaautomatik, 2 Zonen, mit Antibeschlagsystem
+• Lederlenkrad
+• Mittelarmlehne hinten (mit Getränkehalter)
+• Mittelarmlehne vorn mit Staufach
 Kia Sportage Plug-in Hybrid Ausstattungslinien
-	•	Notruf-Service	e-Call
-•	 Parksensoren	vorn	und	hintenA
-•	 Regensensor	
-•	 RückfahrkameraA
-•	 Rücksitzlehne	umklappbar	im	Verhältnis	40:20:40
-•	 Scheinwerfer	LED	(Abblend-	und	Fernlicht)
-•	 Smart-Key	und	Startknopf		
-•	 Spurfolgeassistent	2.0	(Lane	Following	Assist,	LFA	2.0)A
-•	 Aktiver	Spurhalteassistent	mit	korrigierendem	Lenkeingriff	
-(Lane	Keeping	Assist,	LKA) A,	inkl.	Müdigkeitswarner		
-(Driver	Attention	Warning,	DAW)A	und	kapazitiver	Hands-on-
-Erkennung	(Hands-on-Detection,	HOD) A	im	Lenkradkranz
-•	 Tagfahrlicht	LED
-•	 USB-Ladebuchse1	in	der	Zentralkonsole
-•	 Wärmeschutzverglasung
-A	Der	Einsatz	von	Assistenz-	oder	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
-1	 Nur	mit	kompatiblen	Geräten.	Weitere	Informationen	sind	beim	Kia-Partner	erhältlich.	
-Kia Sportage Plug-in Hybrid 2WD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 2,9 l/100 km. 
- Stromverbrauch gewichtet kombiniert 10,9 kWh/100 km. CO 2-Emissionen gewichtet kombiniert 67 g/km. CO 2-Klasse B. 
-Kraftstoffverbrauch bei entladener Batterie kombiniert 6,1 l/100 km. CO 2-Klasse bei entladener Batterie E.
-ab	
-€	43.100,00
-32
+• Notruf-Service e-Call
+• Parksensoren vorn und hinten A
+• Regensensor
+• Rückfahrkamera A
+• Rücksitzlehne umklappbar im Verhältnis 40:20:40
+• Scheinwerfer LED (Abblend- und Fernlicht)
+• Smart-Key und Startknopf
+• Spurfolgeassistent 2.0 (Lane Following Assist, LFA 2.0)A
+• Aktiver Spurhalteassistent mit korrigierendem Lenkeingriff
+(Lane Keeping Assist, LKA)A , inkl. Müdigkeitswarner
+(Driver Attention Warning, DAW)A und kapazitiver Hands-on-
+Erkennung (Hands-on-Detection, HOD)A im Lenkradkranz
+• Tagfahrlicht LED
+• USB-Ladebuchse1 in der Zentralkonsole
+• Wärmeschutzverglasung
+A Der Einsatz von Assistenz- oder Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle.
+1 Nur mit kompatiblen Geräten. Weitere Informationen sind beim Kia-Partner erhältlich.
+Kia Sportage Plug-in Hybrid 2WD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 2,9 l/100 km.
+Stromverbrauch gewichtet kombiniert 10,9 kWh/100 km. CO2
+-Emissionen gewichtet kombiniert 67 g/km. CO2
+-Klasse B.
+Kraftstoffverbrauch bei entladener Batterie kombiniert 6,1 l/100 km. CO2
+-Klasse bei entladener Batterie E.
+ab
+€ 43.100,00
+
+-- 2 of 16 --
+
+3
 GT-Line
-Ausstattungshighlights  
+Ausstattungshighlights
 im Vergleich zu Spirit
-•	 19-Zoll-Leichtmetallfelgen	„GT-Line“
-•	 Aktiver	Totwinkelassistent	mit	Lenk-	
-und	Bremseingriff	(Blind	Spot	Collision	
-Avoidance	Assist,	BCA)A
-•	 Aluminium-Sportpedale	
-•	 Außenspiegel	in	Hochglanzschwarz
-•	 Dachhimmel	und	Säulenverkleidung	in	
+• 19-Zoll-Leichtmetallfelgen „GT-Line“
+• Aktiver Totwinkelassistent mit Lenk-
+und Bremseingriff (Blind Spot Collision
+Avoidance Assist, BCA)A
+• Aluminium-Sportpedale
+• Außenspiegel in Hochglanzschwarz
+• Dachhimmel und Säulenverkleidung in
 Schwarz
-•	 Einstiegsleisten	mit	Aluminium	
-•	 Elektronische	Dämpferkontrolle	
-(Electronic	Control	Suspension,	ECS)
-•	 Elektrische	Sitzverstellung	mit	
-Memory-Funktion	(Fahrersitz)
-•	 Klimaautomatik,	3	Zonen,		
-mit	Antibeschlagsystem
-•	 Lederlenkrad	„GT-Line“	(zweifarbig)
-•	 Nebelscheinwerfer	LED
-•	 Sitzbezüge:	Kombination	Ledernach-
-bildung/Veloursledernachbildung	
-(Schwarz-Weiß),	Nähte	in	Kontrastfarbe
-•	 Sitzheizung	hinten	(Sitzfläche,		
-äußere	Sitze)
-•	 Sitzventilation	vorn
+• Einstiegsleisten mit Aluminium
+• Elektronische Dämpferkontrolle
+(Electronic Control Suspension, ECS)
+• Elektrische Sitzverstellung mit
+Memory-Funktion (Fahrersitz)
+• Klimaautomatik, 3 Zonen,
+mit Antibeschlagsystem
+• Lederlenkrad „GT-Line“ (zweifarbig)
+• Nebelscheinwerfer LED
+• Sitzbezüge: Kombination Ledernach-
+bildung/Veloursledernachbildung
+(Schwarz-Weiß), Nähte in Kontrastfarbe
+• Sitzheizung hinten (Sitzfläche,
+äußere Sitze)
+• Sitzventilation vorn
 Vision
-Ausstattungshighlights  
+Ausstattungshighlights
 im Vergleich zu Core
-•	 Befestigungshaken	an	Rückenlehne	
-und	Kopfstützen	der	Vordersitze
-•	 Fahrersitz	mit	Lendenwirbelstütze
-•	 Innenrückspiegel	selbstabblendend	
+• Befestigungshaken an Rückenlehne
+und Kopfstützen der Vordersitze
+• Fahrersitz mit Lendenwirbelstütze
+• Innenrückspiegel selbstabblendend
 (elektrochromatisch)
-•	 Lenkrad	beheizbar
-•	 Sitzheizung	vorn	(Sitzfläche	und	
+• Lenkrad beheizbar
+• Sitzheizung vorn (Sitzfläche und
 Lehne)
-•	 USB-Ladebuchsen1	an	den	Seiten	der	
-Vordersitze	(je	eine)
+• USB-Ladebuchsen1 an den Seiten der
+Vordersitze (je eine)
 Spirit
-Ausstattungshighlights 
+Ausstattungshighlights
 im Vergleich zu Vision
-•	 19-Zoll-Leichtmetallfelgen
-•	 Adaptive	Dual-Scheinwerfer	LED	
-(Intelligent	Front-Lighting	System,	IFS)
-•	 Ambiente-Beleuchtung
-•	 Beifahrersitz	höhenverstellbar
-•	 Elektrische	Heckklappe,	
+• 19-Zoll-Leichtmetallfelgen
+• Adaptive Dual-Scheinwerfer LED
+(Intelligent Front-Lighting System, IFS)
+• Ambiente-Beleuchtung
+• Beifahrersitz höhenverstellbar
+• Elektrische Heckklappe,
 sensorgesteuert
-•	 Elektrische	Sitzverstellung:	Fahrersitz	
-10-fach,	Beifahrersitz	8-fach
-•	 Induktive	Ladestation	für	Smartphones1
-•	 Integriertes	Panoramadisplay,	gewölbt,	
-mit	volldigitalem	Kombiinstrument;		
-31,2	cm	(12,3	Zoll)	Bildschirmdiagonale
-•	 Kühlergrill	in	Klavierlackschwarz
-•	 Privacy-Verglasung	(dunkel	getönte	
-Scheiben	ab	B-Säule)
-•	 Rückleuchten	LED
-•	 Sitzbezüge:	Stoff	mit	
+• Elektrische Sitzverstellung: Fahrersitz
+10-fach, Beifahrersitz 8-fach
+• Induktive Ladestation für Smartphones1
+• Integriertes Panoramadisplay, gewölbt,
+mit volldigitalem Kombiinstrument;
+31,2 cm (12,3 Zoll) Bildschirmdiagonale
+• Kühlergrill in Klavierlackschwarz
+• Privacy-Verglasung (dunkel getönte
+Scheiben ab B-Säule)
+• Rückleuchten LED
+• Sitzbezüge: Stoff mit
 Kunstlederapplikationen
-1	 Nur	mit	kompatiblen	Geräten.	Weitere	Informationen	sind	beim	Kia-Partner	erhältlich.	
+1 Nur mit kompatiblen Geräten. Weitere Informationen sind beim Kia-Partner erhältlich.
 Kia Sportage Plug-in Hybrid Ausstattungslinien
-ab	
-€	45.100,00
-ab	
-€	52.500,00
-ab	
-€	49.300,00
-Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km. 
-Stromverbrauch gewichtet kombiniert 11,2 kWh/100 km. CO 2-Emissionen gewichtet kombiniert 75 g/km. CO 2-Klasse B. 
-Kraftstoffverbrauch bei entladener Batterie kombiniert 6,7 l/100 km. CO 2-Klasse bei entladener Batterie E.
+ab
+€ 45.100,00 ab
+€ 52.500,00
+ab
+€ 49.300,00
+Kia Sportage Plug-in Hybrid AWD (212 kW/288 PS): Kraftstoffverbrauch gewichtet kombiniert 3,3 l/100 km.
+Stromverbrauch gewichtet kombiniert 11,2 kWh/100 km. CO2
+-Emissionen gewichtet kombiniert 75 g/km. CO2
+-Klasse B.
+Kraftstoffverbrauch bei entladener Batterie kombiniert 6,7 l/100 km. CO2
+-Klasse bei entladener Batterie E.
+
+-- 3 of 16 --
+
 4
-Sicherheitsausstattung  
-7	Airbags	(2	Frontairbags,	2	Seitenairbags,	2	Vorhangairbags,	Mittenairbag) ● ● ● ●
-Aktiver	Spurhalteassistent	mit	korrigierendem	Lenkeingriff	(Lane	Keeping	Assist,	LKA)A,	inkl.	Müdigkeitswarner	(Driver	
-Attention	Warning,	DAW)A	und	kapazitiver	Hands-on-Erkennung	(Hands-on-Detection,	HOD)A	im	Lenkradkranz ● ● ● ●
-Aktiver	Totwinkelassistent	mit	Lenk-	und	Bremseingriff	(Blind	Spot	Collision	Avoidance	Assist,	BCA)A – – – ●
-Aktiver	Totwinkelassistent	mit	Lenk-	und	Bremseingriff	(Blind	Spot	Collision	Avoidance	Assist,	BCA)A		
-mit	Monitoranzeige – – P5 P5
-Aktives	Bremslicht	(Emergency	Stop	Signal,	ESS) ● ● ● ●
-Antiblockiersystem	(ABS)	mit	elektronischer	Bremskraftverteilung ● ● ● ●
-Auspark-Kollisionsvermeidungsassistent	(Parking	Collision-Avoidance	Assist,	PCA)A – – P5 P5
-Ausstiegswarner	(Safe	Exit	Warning,	SEW)A – – P5 P5
-Autobahnassistent	2.0	(Highway	Driving	Assist,	HDA	2.0)A – – P5 P5
-Beifahrerairbag	abschaltbar ● ● ● ●
-Bergabfahrhilfe	(Downhill	Brake	Control,	DBC) ● ● ● ●
-Berganfahrhilfe	(Hill-Start	Assist	Control,	HAC) ● ● ● ●
-Dreipunkt-Sicherheitsgurte	an	allen	Sitzplätzen ● ● ● ●
-Elektronisches	Stabilitätsprogramm	(ESC)	mit	Traktionskontrolle	(TCS)	und	Gespannstabilisierung ● ● ● ●
-Fahreraufmerksamkeitsassistent,	kamerabasiert	(ICC)A ● ● ● ●
-Frontkollisionswarner	(Forward	Collision-Avoidance	Assist,	FCA)A	mit	Fußgänger-	und	Radfahrererkennung ● ● ● ●
-Frontkollisionswarner	2.0	(Forward	Collision	Avoidance	Assist,	FCA	2.0)A:	Fahrzeuge,	Fußgänger,	Fahrradfahrer,		
-inkl.	Abbiegefunktion	und	Querverkehr – – P5 P5
-Gegenlenkunterstützung	(Vehicle	Stability	Management,	VSM) ● ● ● ●
+Sicherheitsausstattung
+7 Airbags (2 Frontairbags, 2 Seitenairbags, 2 Vorhangairbags, Mittenairbag) 	● 	● 	● 	●
+Aktiver Spurhalteassistent mit korrigierendem Lenkeingriff (Lane Keeping Assist, LKA) A , inkl. Müdigkeitswarner (Driver
+Attention Warning, DAW)A und kapazitiver Hands-on-Erkennung (Hands-on-Detection, HOD)A im Lenkradkranz 	● 	● 	● 	●
+Aktiver Totwinkelassistent mit Lenk- und Bremseingriff (Blind Spot Collision Avoidance Assist, BCA) A 	– 	– 	– 	●
+Aktiver Totwinkelassistent mit Lenk- und Bremseingriff (Blind Spot Collision Avoidance Assist, BCA) A
+mit Monitoranzeige 	– 	– 	P5 	P5
+Aktives Bremslicht (Emergency Stop Signal, ESS) 	● 	● 	● 	●
+Antiblockiersystem (ABS) mit elektronischer Bremskraftverteilung 	● 	● 	● 	●
+Auspark-Kollisionsvermeidungsassistent (Parking Collision-Avoidance Assist, PCA) A 	– 	– 	P5 	P5
+Ausstiegswarner (Safe Exit Warning, SEW)A 	– 	– 	P5 	P5
+Autobahnassistent 2.0 (Highway Driving Assist, HDA 2.0)A 	– 	– 	P5 	P5
+Beifahrerairbag abschaltbar 	● 	● 	● 	●
+Bergabfahrhilfe (Downhill Brake Control, DBC) 	● 	● 	● 	●
+Berganfahrhilfe (Hill-Start Assist Control, HAC) 	● 	● 	● 	●
+Dreipunkt-Sicherheitsgurte an allen Sitzplätzen 	● 	● 	● 	●
+Elektronisches Stabilitätsprogramm (ESC) mit Traktionskontrolle (TCS) und Gespannstabilisierung 	● 	● 	● 	●
+Fahreraufmerksamkeitsassistent, kamerabasiert (ICC) A 	● 	● 	● 	●
+Frontkollisionswarner (Forward Collision-Avoidance Assist, FCA) A mit Fußgänger- und Radfahrererkennung 	● 	● 	● 	●
+Frontkollisionswarner 2.0 (Forward Collision Avoidance Assist, FCA 2.0) A
+: Fahrzeuge, Fußgänger, Fahrradfahrer,
+inkl. Abbiegefunktion und Querverkehr 	– 	– 	P5 	P5
+Gegenlenkunterstützung (Vehicle Stability Management, VSM) 	● 	● 	● 	●
 Preise
 Core
-Vision
-Spirit
-GT-Line
+	Vision
+	Spirit
+	GT-Line
 Ausstattung
-●	=	Serienausstattung	/	–	=	nicht	verfügbar	/	P	=	Paket	(siehe	Sonderausstattungen	auf	Seite	8)
-A	Der	Einsatz	von	Assistenz-	und	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
-2	 Kraftstoffverbrauch	gewichtet	kombiniert	in	l/100	km	bzw.	Kraftstoffverbrauch	bei	entladener	Batterie	kombiniert	in	l/100	km.	
-3	Stromverbrauch	gewichtet	kombiniert	in	kWh/100	km.
-4	CO2-Emissionen	gewichtet	kombiniert	in	g/km.
-5		C O2-Klasse	bzw.	CO 2-Klasse 	bei	entladener 	Batterie.
-	Die	angegebenen	Werte	wurden	nach	dem	vorgeschriebenen	Messverfahren	ermittelt.
-6	Unverbindliche	Preisempfehlung	der	Kia	Deutschland	GmbH.
-Motor Getriebe Antrieb Leistung  
+● = Serienausstattung / – = nicht verfügbar / P = Paket (siehe Sonderausstattungen auf Seite 8)
+A Der Einsatz von Assistenz- und Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle.
+2 Kraftstoffverbrauch gewichtet kombiniert in l/100 km bzw. Kraftstoffverbrauch bei entladener Batterie kombiniert in l/100 km.
+3 Stromverbrauch gewichtet kombiniert in kWh/100 km.
+4 CO 2 -Emissionen gewichtet kombiniert in g/km.
+5 CO 2 -Klasse bzw. CO 2 -Klasse bei entladener Batterie.
+Die angegebenen Werte wurden nach dem vorgeschriebenen Messverfahren ermittelt.
+6 Unverbindliche Preisempfehlung der Kia Deutschland GmbH.
+Motor 	Getriebe Antrieb Leistung
 kW (PS)
-Kraftstoffverbrauch  
+Kraftstoffverbrauch
 (l/100 km)2
-Stromverbrauch  
-(kWh/100 km)3
-CO2-Emissionen 
-(g/km)4
-CO2-
-Klasse5 Ausstattung  EUR exkl. 
-MwSt.6
-EUR inkl.  
-19 % MwSt.6
-Benzin 1.6	T-GDI		
-Plug-in	Hybrid
-Automatik		
-(6	Stufen)
+Stromverbrauch
+(kWh/100 km) 3
+CO2
+-Emissionen
+(g/km) 4
+CO2
+-
+Klasse 5 	Ausstattung 	EUR exkl.
+MwSt. 6
+EUR inkl.
+19 % MwSt. 6
+Benzin 	1.6 T-GDI
+Plug-in Hybrid
+Automatik
+(6 Stufen)
 2WD
-212	(288)
-2,9/6,1 10,9 67 B/E
-Core 36.218,49 43.100,00
-Vision 37 .899,16 45.100,00
-Spirit 41.428,57 49.300,00
-GT-Line 44.117 ,65 52.500,00
-AWD 3,3/6,7 11,2 75 B/E
-Vision 40.000,00 47 .600,00
-Spirit 43.529,41 51.800,00
-GT-Line 46.218,49 55.000,00
-54
-Sicherheitsausstattung  
-Gurtwarnsystem	vorn	und	hinten		 ● ● ● ●
-Insassenalarm	(Rear	Occupant	Alert,	ROA)A ● ● ● ●
-Intelligenter	Geschwindigkeitsassistent	(Intelligent	Speed	Limit	Assist;	ISLA)A ● ● ● ●
-ISOFIX-Halterungen	an	äußeren	Rücksitzen		 ● ● ● ●
-Kindersicherung	in	den	hinteren	Türen		 ● ● ● ●
-Kopfstützen	an	allen	Sitzplätzen	höhenverstellbar ● ● ● ●
-Notruf-Service	e-Call ● ● ● ●
-Querverkehrwarner	zur	Erkennung	von	Fahrzeugen	im	toten	Winkel	beim	Querausparken,		
-mit	Notbremsfunktion	(Rear	Cross-Traffic	Collision-Avoidance	Assist,	RCCA)A – – P5 P5
-Reifendruckkontrollsystem	mit	Druckanzeige	für	jedes	Rad	im	Display	des	Bordcomputers ● ● ● ●
-Sicherheitsgurte	vorn	höhenverstellbar ● ● ● ●
-Spurfolgeassistent	2.0	(Lane	Following	Assist,	LFA	2.0)A ● ● ● ●
-Wegfahrsperre		 ● ● ● ●
+212 (288)
+2,9/6,1 	10,9 	67 	B/E
+Core 	36.218,49 	43.100,00
+Vision 	37.899,16 	45.100,00
+Spirit 	41.428,57 	49.300,00
+GT-Line 	44.117,65 	52.500,00
+AWD 	3,3/6,7 	11,2 	75 	B/E
+Vision 	40.000,00 47.600,00
+Spirit 	43.529,41 	51.800,00
+GT-Line 	46.218,49 	55.000,00
+
+-- 4 of 16 --
+
+5
+Sicherheitsausstattung
+Gurtwarnsystem vorn und hinten 	● 	● 	● 	●
+Insassenalarm (Rear Occupant Alert, ROA) A 	● 	● 	● 	●
+Intelligenter Geschwindigkeitsassistent (Intelligent Speed Limit Assist; ISLA) A 	● 	● 	● 	●
+ISOFIX-Halterungen an äußeren Rücksitzen 	● 	● 	● 	●
+Kindersicherung in den hinteren Türen 	● 	● 	● 	●
+Kopfstützen an allen Sitzplätzen höhenverstellbar 	● 	● 	● 	●
+Notruf-Service e-Call 	● 	● 	● 	●
+Querverkehrwarner zur Erkennung von Fahrzeugen im toten Winkel beim Querausparken,
+mit Notbremsfunktion (Rear Cross-Traffic Collision-Avoidance Assist, RCCA) A 	– 	– 	P5 	P5
+Reifendruckkontrollsystem mit Druckanzeige für jedes Rad im Display des Bordcomputers 	● 	● 	● 	●
+Sicherheitsgurte vorn höhenverstellbar 	● 	● 	● 	●
+Spurfolgeassistent 2.0 (Lane Following Assist, LFA 2.0) A 	● 	● 	● 	●
+Wegfahrsperre 	● 	● 	● 	●
 Antrieb/Fahrwerk/Umwelt
-17-Zoll-Leichtmetallfelgen ● ● – –
-19-Zoll-Leichtmetallfelgen – – ● ●
-Drive	Mode	Select:	Fahrmodus-Taste ● ● ● ●
-Drive-	und	Terrain-Mode-Drehregler	(nur	für	AWD) – ● ● ●
-Elektronische	Dämpferkontrolle	(Electronic	Control	Suspension,	ECS) – – – ●
-Energie-Regenerationssystem	(Alternator	Management	System,	AMS) ● ● ● ●
-Gangwahl-Drehschalter ● ● ● ●
-Ladekabel	mit	Schukostecker	(zur	Standardladung	an	einer	230-V-Haushaltssteckdose) ● ● ● ●
-Reifenreparaturset		 ● ● ● ●
+17-Zoll-Leichtmetallfelgen 	● 	● 	– 	–
+19-Zoll-Leichtmetallfelgen 	– 	– 	● 	●
+Drive Mode Select: Fahrmodus-Taste 	● 	● 	● 	●
+Drive- und Terrain-Mode-Drehregler (nur für AWD) 	– 	● 	● 	●
+Elektronische Dämpferkontrolle (Electronic Control Suspension, ECS) 	– 	– 	– 	●
+Energie-Regenerationssystem (Alternator Management System, AMS) 	● 	● 	● 	●
+Gangwahl-Drehschalter 	● 	● 	● 	●
+Ladekabel mit Schukostecker (zur Standardladung an einer 230-V-Haushaltssteckdose) 	● 	● 	● 	●
+Reifenreparaturset 	● 	● 	● 	●
 Außenausstattung
-Außenspiegel	in	Hochglanzschwarz – – – ●
-Außenspiegel	mit	integrierten	Blinkleuchten		 ● ● ● ●
-Dachantenne	(Shark-Design) ● ● ● ●
-Dachreling	(Schwarz	i.	V .	mit	Spirit	und	P5	oder	GT-Line,	Silber	für	alle	anderen	Varianten) ● ● ● ●
-Isolierverglasung	für	die	Frontscheibe	zur	verbesserten	Außengeräuschdämmung ● ● ● ●
-Kühlergrill	in	Klavierlackschwarz – – ● ●
-Privacy-Verglasung	(dunkel	getönte	Scheiben	ab	B-Säule) – P1 ● ●
-Rückleuchten	LED – – ● ●
-Unterfahrschutz	vorn	und	hinten ● ● ● ●
-Wärmeschutzverglasung		 ● ● ● ●
+Außenspiegel in Hochglanzschwarz 	– 	– 	– 	●
+Außenspiegel mit integrierten Blinkleuchten 	● 	● 	● 	●
+Dachantenne (Shark-Design) 	● 	● 	● 	●
+Dachreling (Schwarz i. V. mit Spirit und P5 oder GT-Line, Silber für alle anderen Varianten) 	● 	● 	● 	●
+Isolierverglasung für die Frontscheibe zur verbesserten Außengeräuschdämmung 	● 	● 	● 	●
+Kühlergrill in Klavierlackschwarz 	– 	– 	● 	●
+Privacy-Verglasung (dunkel getönte Scheiben ab B-Säule) 	– 	P1 	● 	●
+Rückleuchten LED 	– 	– 	● 	●
+Unterfahrschutz vorn und hinten 	● 	● 	● 	●
+Wärmeschutzverglasung 	● 	● 	● 	●
 Core
-Vision
-Spirit
-GT-Line
+	Vision
+	Spirit
+	GT-Line
 Ausstattung
-●	=	Serienausstattung	/	–	=	nicht	verfügbar	/	P	=	Paket	(siehe	Sonderausstattungen	auf	Seite	8)
-A	Der	Einsatz	von	Assistenz-	und	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
+● = Serienausstattung / – = nicht verfügbar / P = Paket (siehe Sonderausstattungen auf Seite 8)
+A Der Einsatz von Assistenz- und Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle.
+
+-- 5 of 16 --
+
 6
 Innenausstattung
-Aluminium-Sportpedale		 – – – ●
-Ambiente-Beleuchtung – – ● ●
-Dachhimmel	und	Säulenverkleidung	in	Grau ● ● ● –
-Dachhimmel	und	Säulenverkleidung	in	Schwarz – – – ●
-Dachkonsole	vorn	mit	Lesespots	 ● ● ● ●
-Dachkonsole	vorn	mit	LED-Lesespots – – P4 P4
-Einstiegsleisten	mit	Aluminium		 – – – ●
-Fußmattenset ● ● ● ●
-Gepäcknetzösen	im	Gepäckraum ● ● ● ●
-Gepäckraumabdeckung		 ● ● ● ●
-Gepäckraumbeleuchtung		 ● ● ● ●
-Gepäckraumbeleuchtung	LED – – P4 P4
-Innenraumbeleuchtung		 ● ● ● ●
-Innenraumbeleuchtung		LED – – P4 P4
-Lederlenkrad		 ● ● ● –
-Lederlenkrad	„GT-Line“	(zweifarbig) – – – ●
-Lenkrad	beheizbar		 – ● ● ●
-Lenkrad	höhen-/tiefenverstellbar ● ● ● ●
+Aluminium-Sportpedale 	– 	– 	– 	●
+Ambiente-Beleuchtung 	– 	– 	● 	●
+Dachhimmel und Säulenverkleidung in Grau 	● 	● 	● 	–
+Dachhimmel und Säulenverkleidung in Schwarz 	– 	– 	– 	●
+Dachkonsole vorn mit Lesespots 	● 	● 	● 	●
+Dachkonsole vorn mit LED-Lesespots 	– 	– 	P4 	P4
+Einstiegsleisten mit Aluminium 	– 	– 	– 	●
+Fußmattenset 	● 	● 	● 	●
+Gepäcknetzösen im Gepäckraum 	● 	● 	● 	●
+Gepäckraumabdeckung 	● 	● 	● 	●
+Gepäckraumbeleuchtung 	● 	● 	● 	●
+Gepäckraumbeleuchtung LED 	– 	– 	P4 	P4
+Innenraumbeleuchtung 	● 	● 	● 	●
+Innenraumbeleuchtung LED 	– 	– 	P4 	P4
+Lederlenkrad 	● 	● 	● 	–
+Lederlenkrad „GT-Line“ (zweifarbig) 	– 	– 	– 	●
+Lenkrad beheizbar 	– 	● 	● 	●
+Lenkrad höhen-/tiefenverstellbar 	● 	● 	● 	●
 Sitze
-Befestigungshaken	an	Rückenlehne	und	Kopfstützen	der	Vordersitze – ● ● ●
-Beifahrersitz	höhenverstellbar – P1 ● ●
-Elektrische	Sitzverstellung:	Fahrersitz	10-fach,	Beifahrersitz	8-fach – P1 ● ●
-Elektrische	Sitzverstellung	mit	Memory-Funktion	(Fahrersitz) – – – ●
-Fahrersitz	höhenverstellbar		 ● ● ● ●
-Fahrersitz	mit	Lendenwirbelstütze – ● ● ●
-Mittelarmlehne	vorn	mit	Staufach		 ● ● ● ●
-Mittelarmlehne	hinten	(mit	Getränkehalter) ● ● ● ●
-Rücksitzlehne	umklappbar	im	Verhältnis	40:20:40 ● ● ● ●
-Rücksitzlehne	in	der	Neigung	verstellbar ● ● ● ●
-Sitzbezüge:	Stoff ● ● – –
-Sitzbezüge:	Stoff	mit	Kunstlederapplikationen – P1 ● –
-Sitzbezüge:	Sitzkontaktflächen	in	Leder	(schwarz),	oberer	Teil	der	Rückenlehne	in	Veloursleder,		
-Nähte	in	Kontrastfarbe – – P2 –
-Sitzbezüge:	Kombination	Ledernachbildung/Veloursleder	(Schwarz-Weiß),	Nähte	in	Kontrastfarbe – – – ●
-Sitzheizung	vorn	(Sitzfläche	und	Lehne) – ● ● ●
-Sitzheizung	hinten	(Sitzfläche,	äußere	Sitze) – – P2 ●
-Sitzventilation	vorn – – P2 ●
-Taschen	in	den	Rückenlehnen	der	Vordersitze ● ● ● ●
+Befestigungshaken an Rückenlehne und Kopfstützen der Vordersitze 	– 	● 	● 	●
+Beifahrersitz höhenverstellbar 	– 	P1 	● 	●
+Elektrische Sitzverstellung: Fahrersitz 10-fach, Beifahrersitz 8-fach 	– 	P1 	● 	●
+Elektrische Sitzverstellung mit Memory-Funktion (Fahrersitz) 	– 	– 	– 	●
+Fahrersitz höhenverstellbar 	● 	● 	● 	●
+Fahrersitz mit Lendenwirbelstütze 	– 	● 	● 	●
+Mittelarmlehne vorn mit Staufach 	● 	● 	● 	●
+Mittelarmlehne hinten (mit Getränkehalter) 	● 	● 	● 	●
+Rücksitzlehne umklappbar im Verhältnis 40:20:40 	● 	● 	● 	●
+Rücksitzlehne in der Neigung verstellbar 	● 	● 	● 	●
+Sitzbezüge: Stoff 	● 	● 	– 	–
+Sitzbezüge: Stoff mit Kunstlederapplikationen 	– 	P1 	● 	–
+Sitzbezüge: Sitzkontaktflächen in Leder (schwarz), oberer Teil der Rückenlehne in Veloursleder,
+Nähte in Kontrastfarbe 	– 	– 	P2 	–
+Sitzbezüge: Kombination Ledernachbildung/Veloursleder (Schwarz-Weiß), Nähte in Kontrastfarbe 	– 	– 	– 	●
+Sitzheizung vorn (Sitzfläche und Lehne) 	– 	● 	● 	●
+Sitzheizung hinten (Sitzfläche, äußere Sitze) 	– 	– 	P2 	●
+Sitzventilation vorn 	– 	– 	P2 	●
+Taschen in den Rückenlehnen der Vordersitze 	● 	● 	● 	●
 Core
-Vision
-Spirit
-GT-Line
+	Vision
+	Spirit
+	GT-Line
 Ausstattung
-●	=	Serienausstattung	/	–	=	nicht	verfügbar	/	P	=	Paket	(siehe	Sonderausstattungen	auf	Seite	8)
-76
+● = Serienausstattung / – = nicht verfügbar / P = Paket (siehe Sonderausstattungen auf Seite 8)
+
+-- 6 of 16 --
+
+7
 Audio/Navigation
-6	Lautsprecher	(2	Front-,	2	Hecklautsprecher,	2	Hochtöner	vorn) ● ● ● ●
-Apple	CarPlayTM	und	Android	AutoTM	(kabellos) ● ● ● ●
-Bluetooth®	mit	Spracherkennung1 ● ● ● ●
-Digitaler	Radioempfang	(DAB+) ● ● ● ●
-Harman/Kardon	Premium	Soundsystem	mit	insgesamt	8	Lautsprechern	(Zentrallautsprecher,	Subwoofer),		
-externer	Endstufe – – P3 P3
-Kia	Connect7	„Standard“	–	kostenfrei	für	7	Jahre8:
-–	Remote-Funktionen	zur	Steuerung	von	Fahrzeugfunktionen	und	Abruf	von	Fahrzeuginformationen	via	Kia	App
-–	Over-the-Air-Updates	für	Fahrzeug-	und	Infotainmentsoftware	(kein	Kartenmaterial)
-–	Online	Sprachsteuerung
-–	In-Car	Payment
-● ● ● ●
-Kia	Connect7	„Premium“	–	kostenfrei	für	1	Jahr8:
-–	Online	Navigation:	Navigation	basierend	auf	stets	aktuellen	Online-Karten.	Keine	Kartenupdates	mehr	nötig.
-–	KI-basierter	Sprachassistent
-–	Kia	Live	Services	(u.	a.	Verkehrsinformationen	in	Echtzeit,	Wettervorhersage,	lokale	Suche,	Parkmöglichkeiten)
-● ● ● ●
-Kia-Kartennavigation	mit	31,2	cm	(12,3	Zoll)	Bildschirmdiagonale,	Kartenmaterial	Europa ● ● ● ●
-USB-Anschluss1 ● ● ● ●
+6 Lautsprecher (2 Front-, 2 Hecklautsprecher, 2 Hochtöner vorn) 	● 	● 	● 	●
+Apple CarPlayTM und Android AutoTM (kabellos) 	● 	● 	● 	●
+Bluetooth ® mit Spracherkennung1 	● 	● 	● 	●
+Digitaler Radioempfang (DAB+) 	● 	● 	● 	●
+Harman/Kardon Premium Soundsystem mit insgesamt 8 Lautsprechern (Zentrallautsprecher, Subwoofer),
+externer Endstufe 	– 	– 	P3 	P3
+Kia Connect7 „Standard“ – kostenfrei für 7 Jahre8
+:
+– Remote-Funktionen zur Steuerung von Fahrzeugfunktionen und Abruf von Fahrzeuginformationen via Kia App
+– Over-the-Air-Updates für Fahrzeug- und Infotainmentsoftware (kein Kartenmaterial)
+– Online Sprachsteuerung
+– In-Car Payment
+● 	● 	● 	●
+Kia Connect 7 „Premium“ – kostenfrei für 1 Jahr8
+:
+– Online Navigation: Navigation basierend auf stets aktuellen Online-Karten. Keine Kartenupdates mehr nötig.
+– KI-basierter Sprachassistent
+– Kia Live Services (u. a. Verkehrsinformationen in Echtzeit, Wettervorhersage, lokale Suche, Parkmöglichkeiten)
+● 	● 	● 	●
+Kia-Kartennavigation mit 31,2 cm (12,3 Zoll) Bildschirmdiagonale, Kartenmaterial Europa 	● 	● 	● 	●
+USB-Anschluss 1 	● 	● 	● 	●
 Funktions- und Komfortausstattung
-12V-Steckdose	in	der	Mittelkonsole ● ● ● ●
-12V-Steckdose	im	Gepäckraum ● ● ● ●
-Außenspiegel	elektrisch	einstellbar	und	beheizbar ● ● ● ●
-Außenspiegel	elektrisch	anklappbar ● ● ● ●
-Dämmerungssensor ● ● ● ●
-Digital	Key	2.0	(Verwenden	des	eigenen	Smartphones	als	Fahrzeugschlüssel)1 – – – P5
-Digitales	Kombiinstrument	mit	LCD-Supervisionanzeige	(10,7	cm	Bildschirmdiagonale;	4,2	Zoll) ● ● – –
-Elektrische	Fensterheber	vorn	und	hinten ● ● ● ●
-Elektrische	Heckklappe,	sensorgesteuert – – ● ●
-Elektronische	Parkbremse ● ● ● ●
-Fernlichtassistent	(High	Beam	Assist,	HBA) ● ● – –
-GeschwindigkeitsregelanlageA,	adaptiv	und	navigationsbasiert,	inkl.	Stopp&Go-Funktion		
-(Smart	Cruise	Control,	SCC	2.0	mit	S&G)A ● ● ● ●
-Geschwindigkeitsbegrenzer ● ● ● ●
-Head-Up	Display	(HUD) – – P5 P5
-Induktive	Ladestation	für	Smartphones1 – – ● ●
-Innenrückspiegel	selbstabblendend	(elektrochromatisch)		 – ● ● ●
-Integriertes	Panoramadisplay,	gewölbt,	mit	volldigitalem	Kombiinstrument;	31,2	cm	(12,3	Zoll)	Bildschirmdiagonale – – ● ●
-Klimaautomatik,	2	Zonen,	mit	Antibeschlagsystem ● ● ● –
-Klimaautomatik,	3	Zonen,	mit	Antibeschlagsystem – – – ●
-Komfortblinker	(Antippfunktion)		 ● ● ● ●
-Nebelscheinwerfer	LED – – – ●
-Panoramadach	mit	elektrischem	Glasschiebedach,	ausstellbar – – P4 P4
-Parksensoren	vorn	und	hintenA ● ● ● ●
-Regensensor		 ● ● ● ●
-Remote-Parkassistent	(Remote	Smart	Parking	Assist,	RSPA)A – – P5 P5
-RückfahrkameraA ● ● ● ●
-Rundumsichtkamera	(Surround	View	Monitor,	SVM)A – – P5 P5
-Schaltwippen	am	Lenkrad ● ● ● ●
-Scheinwerfer	LED	(Abblend-	und	Fernlicht) ● ● – –
-Dual-LED-Scheinwerfer,	adaptiv	(Intelligent	Front-Lighting	System,	IFS) – – ● ●
-Scheinwerfer	mit	Escort-Funktion		 ● ● ● ●
-Servolenkung,	elektronisch	unterstützt		 ● ● ● ●
-Smart-Key	und	Startknopf ● ● ● ●
-Tagfahrlicht	LED ● ● ● ●
-USB-Ladebuchse	in	der	Zentralkonsole1 ● ● ● ●
-USB-Ladebuchsen	an	den	Seiten	der	Vordersitze1	(je	eine) – ● ● ●
-Zentralverriegelung	mit	Funkfernbedienung		 ● ● ● ●
-●	=	Serienausstattung	/	–	=	nicht	verfügbar	/	P	=	Paket	(siehe	Sonderausstattungen	auf	Seite	8)
-1	 Nur	mit	kompatiblen	Geräten.	Weitere	Informationen	sind	beim	Kia-Partner	erhältlich.	
-7		 	Ein	Service	der	Kia	Connect	GmbH.	Informations-	und	Steuerungs-Dienst	für	deinen	Kia;	Smartphone	mit	iOS-	oder	Android-Betriebssystem	und	Mobilfunkvertrag	mit	Datenoption,		
-durch	den	zusätzliche	Kosten	entstehen,	erforderlich.	Einzelheiten	zu	Funktionsweise	und	Nutzungsbedingungen	sind	beim	Kia-Partner	und	auf	kia.com	zu	finden.		
-Die	Dienste	können	während	der	Laufzeit	inhaltlichen	Änderungen	unterliegen.
-8	Nach	Ablauf	des	kostenfreien	Testzeitraums	können	die	Services	über	den	Kia	Connect	Store	kostenpflichtig	verlängert	werden.	Weitere	Informationen	sind	bei	deinem	Kia-Partner	erhältlich.
-A	Der	Einsatz	von	Assistenz-	oder	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
+12V-Steckdose in der Mittelkonsole 	● 	● 	● 	●
+12V-Steckdose im Gepäckraum 	● 	● 	● 	●
+Außenspiegel elektrisch einstellbar und beheizbar 	● 	● 	● 	●
+Außenspiegel elektrisch anklappbar 	● 	● 	● 	●
+Dämmerungssensor 	● 	● 	● 	●
+Digital Key 2.0 (Verwenden des eigenen Smartphones als Fahrzeugschlüssel) 1 	– 	– 	– 	P5
+Digitales Kombiinstrument mit LCD-Supervisionanzeige (10,7 cm Bildschirmdiagonale; 4,2 Zoll) 	● 	● 	– 	–
+Elektrische Fensterheber vorn und hinten 	● 	● 	● 	●
+Elektrische Heckklappe, sensorgesteuert 	– 	– 	● 	●
+Elektronische Parkbremse 	● 	● 	● 	●
+Fernlichtassistent (High Beam Assist, HBA) 	● 	● 	– 	–
+Geschwindigkeitsregelanlage A , adaptiv und navigationsbasiert, inkl. Stopp&Go-Funktion
+(Smart Cruise Control, SCC 2.0 mit S&G) A 	● 	● 	● 	●
+Geschwindigkeitsbegrenzer 	● 	● 	● 	●
+Head-Up Display (HUD) 	– 	– 	P5 	P5
+Induktive Ladestation für Smartphones 1 	– 	– 	● 	●
+Innenrückspiegel selbstabblendend (elektrochromatisch) 	– 	● 	● 	●
+Integriertes Panoramadisplay, gewölbt, mit volldigitalem Kombiinstrument; 31,2 cm (12,3 Zoll) Bildschirmdiagonale 	– 	– 	● 	●
+Klimaautomatik, 2 Zonen, mit Antibeschlagsystem 	● 	● 	● 	–
+Klimaautomatik, 3 Zonen, mit Antibeschlagsystem 	– 	– 	– 	●
+Komfortblinker (Antippfunktion) 	● 	● 	● 	●
+Nebelscheinwerfer LED 	– 	– 	– 	●
+Panoramadach mit elektrischem Glasschiebedach, ausstellbar 	– 	– 	P4 	P4
+Parksensoren vorn und hinten A 	● 	● 	● 	●
+Regensensor 	● 	● 	● 	●
+Remote-Parkassistent (Remote Smart Parking Assist, RSPA) A 	– 	– 	P5 	P5
+RückfahrkameraA 	● 	● 	● 	●
+Rundumsichtkamera (Surround View Monitor, SVM) A 	– 	– 	P5 	P5
+Schaltwippen am Lenkrad 	● 	● 	● 	●
+Scheinwerfer LED (Abblend- und Fernlicht) 	● 	● 	– 	–
+Dual-LED-Scheinwerfer, adaptiv (Intelligent Front-Lighting System, IFS) 	– 	– 	● 	●
+Scheinwerfer mit Escort-Funktion 	● 	● 	● 	●
+Servolenkung, elektronisch unterstützt 	● 	● 	● 	●
+Smart-Key und Startknopf 	● 	● 	● 	●
+Tagfahrlicht LED 	● 	● 	● 	●
+USB-Ladebuchse in der Zentralkonsole 1 	● 	● 	● 	●
+USB-Ladebuchsen an den Seiten der Vordersitze 1 (je eine) 	– 	● 	● 	●
+Zentralverriegelung mit Funkfernbedienung 	● 	● 	● 	●
+● = Serienausstattung / – = nicht verfügbar / P = Paket (siehe Sonderausstattungen auf Seite 8)
+1 Nur mit kompatiblen Geräten. Weitere Informationen sind beim Kia-Partner erhältlich.
+7 Ein Service der Kia Connect GmbH. Informations- und Steuerungs-Dienst für deinen Kia; Smartphone mit iOS- oder Android-Betriebssystem und Mobilfunkvertrag mit Datenoption,
+durch den zusätzliche Kosten entstehen, erforderlich. Einzelheiten zu Funktionsweise und Nutzungsbedingungen sind beim Kia-Partner und auf kia.com zu finden.
+Die Dienste können während der Laufzeit inhaltlichen Änderungen unterliegen.
+8 Nach Ablauf des kostenfreien Testzeitraums können die Services über den Kia Connect Store kostenpflichtig verlängert werden. Weitere Informationen sind bei deinem Kia-Partner erhältlich.
+A Der Einsatz von Assistenz- oder Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle. 
 Core
-Vision
-Spirit
-GT-Line
+	Vision
+	Spirit
+	GT-Line
 Ausstattung
+
+-- 7 of 16 --
+
 8
 Sonderausstattung (alle Preise in Euro, UVP)
-P1 – Komfort-Paket: 
-Sitzbezüge	aus	Stoff	mit	Kunstlederapplikationen,	Fahrer-	und	Beifahrersitz	elektrisch	einstellbar,		
-Beifahrersitz	höhenverstellbar,	Mittelkonsole	mit	Applikationen	in	Hochglanzschwarz,	Privacy-Verglasung
-– 990,00 –
-P2 – Leder-Paket (nur i. V. mit P5 DriveWise-Paket): 
-Sitzbezüge:	Sitzkontaktflächen	in	Leder	(schwarz),	oberer	Teil	der	Rückenlehne	in	Veloursleder,	Nähte	in	
-	Kontrastfarbe,	Sitzheizung	hinten	(äußere	Sitze),	Sitzventilation	vorn
-– 1.390,00 –
-P3 – Sound-Paket (für Spirit nur i. V. mit P5 DriveWise-Paket): 
-Harman/Kardon	Premium	Soundsystem	mit	insgesamt	8	Lautsprechern	(Zentrallautsprecher,	Subwoofer),		
-externer	Endstufe
-– 690,00 690,00
-P4 – Panorama-Glasschiebedach: 
-Panoramadach	mit	elektrischem	Glasschiebedach	(ausstellbar),	Dachkonsole	mit	LED-Lesespots	vorn,	
-	Gepäckraumbeleuchtung	LED,	Innenraumbeleuchtung	LED
-– 1.200,00 1.200,00
-P5 – DriveWise-Paket (für GT-Line nur i. V. mit P3 Sound-Paket): 
-Aktiver	Totwinkelassistent	mit	Lenk-	und	Bremseingriff	sowie	Monitoranzeige	(Blind	Spot	View	Monitor,	BVM)A,	
-Querverkehrwarner	hinten,	inkl.	Notbremsfunktion	(Rear	Cross-Traffic	Collision-Avoidance	Assist,	RCCA)A,		
-Ausstiegs	assistent	(Safe	Exit	Warning,	SEW)A,	Autobahnassistent	(Highway	Drive	Assist,	HDA)A,	erweiterter	Front-
-kollisionswarner:	Abbiegefunktion	und	Querverkehrerkennung	(Forward	Collision-Avoidance	Assist,	Junction	and	
-Cross,	FCA-JX)A,		Rundumsichtkamera	(Surround	View	Monitor,	SVM)A,	Auspark-Kollisionsvermeidungsassistent	
-	(Parking	Collision-Avoidance	Assist,	PCA)A,	Head-up-Display	(HUD),	Remote-Parkassistent	(Remote	Smart	Parking	
-Assist,	RSPA)A;	nur	für	GT-Line:	Digital	Key	2.0	(Verwenden	des	eigenen	Smartphones	als	Fahrzeugschlüssel)1
-– 2.090,00
-Anhängerkupplung9,	abnehmbar 860,00
-Standheizung9,	mit	Funkfernbedienung,	inkl.	Einbau 2.350,00
-Induktive Ladestation 15 W für Smartphones1, 9	mit	Ladeanzeige 175,00 –
-Kofferraum-/Heckprojektoren LED-Kofferraum-/Heckausleuchtung9,	eingelassen	in	der	Heckklappenverkleidung 155,00
-LED-Türprojektoren9	mit	Kia-Logo – 140,00
-LED-Türprojektoren9	mit	GT-Line-Logo – 165,00
-Motorhauben-Lifter9	(Teleskopdämpfer) 95,00
-Kia Protection Plus9	hochwertige	Zusatzkonservierung	für	Motorraum	und	Fahrzeugunterboden		 160,00
-Ladeadapter9	Schutzkontaktstecker	auf	Typ-2	(10	A)	 259,00
-Ladekabel9	Typ 2,	einphasig,	32	A,	7 ,4	kW 235,00
+P1 – Komfort-Paket:
+Sitzbezüge aus Stoff mit Kunstlederapplikationen, Fahrer- und Beifahrersitz elektrisch einstellbar,
+Beifahrersitz höhenverstellbar, Mittelkonsole mit Applikationen in Hochglanzschwarz, Privacy-Verglasung
+– 	990,00 	–
+P2 – Leder-Paket (nur i. V. mit P5 DriveWise-Paket):
+Sitzbezüge: Sitzkontaktflächen in Leder (schwarz), oberer Teil der Rückenlehne in Veloursleder, Nähte in
+Kontrastfarbe, Sitzheizung hinten (äußere Sitze), Sitzventilation vorn
+– 	1.390,00 	–
+P3 – Sound-Paket (für Spirit nur i. V. mit P5 DriveWise-Paket):
+Harman/Kardon Premium Soundsystem mit insgesamt 8 Lautsprechern (Zentrallautsprecher, Subwoofer),
+externer Endstufe
+– 	690,00 	690,00
+P4 – Panorama-Glasschiebedach:
+Panoramadach mit elektrischem Glasschiebedach (ausstellbar), Dachkonsole mit LED-Lesespots vorn,
+Gepäckraumbeleuchtung LED, Innenraumbeleuchtung LED
+– 	1.200,00 	1.200,00
+P5 – DriveWise-Paket (für GT-Line nur i. V. mit P3 Sound-Paket):
+Aktiver Totwinkelassistent mit Lenk- und Bremseingriff sowie Monitoranzeige (Blind Spot View Monitor, BVM) A ,
+Querverkehrwarner hinten, inkl. Notbremsfunktion (Rear Cross-Traffic Collision-Avoidance Assist, RCCA)A ,
+Ausstiegs assistent (Safe Exit Warning, SEW)A , Autobahnassistent (Highway Drive Assist, HDA)A , erweiterter Front-
+kollisionswarner: Abbiegefunktion und Querverkehrerkennung (Forward Collision-Avoidance Assist, Junction and
+Cross, FCA-JX)A , Rundumsichtkamera (Surround View Monitor, SVM)A , Auspark-Kollisionsvermeidungsassistent
+(Parking Collision-Avoidance Assist, PCA)A , Head-up-Display (HUD), Remote-Parkassistent (Remote Smart Parking
+Assist, RSPA) A
+; nur für GT-Line: Digital Key 2.0 (Verwenden des eigenen Smartphones als Fahrzeugschlüssel)1
+– 	2.090,00
+Anhängerkupplung9
+, abnehmbar 	860,00
+Standheizung 9
+, mit Funkfernbedienung, inkl. Einbau 	2.350,00
+Induktive Ladestation 15 W für Smartphones1, 9 mit Ladeanzeige 	175,00 	–
+Kofferraum-/Heckprojektoren LED-Kofferraum-/Heckausleuchtung9
+, eingelassen in der Heckklappenverkleidung 	155,00
+LED-Türprojektoren 9 mit Kia-Logo 	– 	140,00
+LED-Türprojektoren 9 mit GT-Line-Logo 	– 	165,00
+Motorhauben-Lifter 9 (Teleskopdämpfer) 	95,00
+Kia Protection Plus9 hochwertige Zusatzkonservierung für Motorraum und Fahrzeugunterboden 	160,00
+Ladeadapter 9 Schutzkontaktstecker auf Typ-2 (10 A) 	259,00
+Ladekabel 9 Typ 2, einphasig, 32 A, 7,4 kW 	235,00
 Außenfarben (nur eine Farbe wählbar)
 Einfarbig
-Carraraweiß	(WD) 0,00
-Blueflame	Met.	(B3L) 790,00
-Experience	Green	Met.	(EXG) 790,00
-Lunarsilber	Met.	(CSS) 790,00
-Magmarot	Met.	(ARD) 790,00
-Pentametal	Met.	(H8G) 790,00
-Wolfgrau	Met.	(WAF) 790,00
-Zilinaschwarz	Met.	(1K) 790,00
-Deluxeweiß	Met.	(HW2) – 990,00
+Carraraweiß (WD) 	0,00
+Blueflame Met. (B3L) 	790,00
+Experience Green Met. (EXG) 	790,00
+Lunarsilber Met. (CSS) 	790,00
+Magmarot Met. (ARD) 	790,00
+Pentametal Met. (H8G) 	790,00
+Wolfgrau Met. (WAF) 	790,00
+Zilinaschwarz Met. (1K) 	790,00
+Deluxeweiß Met. (HW2) 	– 	990,00
 Zweifarbig
-Carraraweiß	mit	Kontrastfarbe	Schwarz	(HA3) – 500,00
-Blueflame	Met.	mit	Kontrastfarbe	Schwarz	(HA8) – 1.290,00
-Experience	Green	Met.	mit	Kontrastfarbe	Schwarz	(HBC) – 1.290,00
-Lunarsilber	Met.	mit	Kontrastfarbe	Schwarz	(HA5) – 1.290,00
-Magmarot	Met.	mit	Kontrastfarbe	Schwarz	(HBR) – 1.290,00
-Pentametal	Met.	mit	Kontrastfarbe	Schwarz	(HA6) – 1.290,00
-Wolfgrau	Met.	mit	Kontrastfarbe	Schwarz	(HBM) – 1.290,00
-Deluxeweiß	Met.	mit	Kontrastfarbe	Schwarz	(HA2) – 1.490,00
-●	=	Serienausstattung	/	–	=	nicht	verfügbar	/	P	=	Paket	(siehe	Sonderausstattungen	auf	Seite	8)
-1	 Nur	mit	kompatiblen	Geräten.	Weitere	Informationen	sind	beim	Kia-Partner	erhältlich.
-9	Abweichende	Garantielaufzeit.	Weitere	Informationen	sind	beim	Kia-Partner	erhältlich.
-A	Der	Einsatz	von	Assistenz-	und	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
+Carraraweiß mit Kontrastfarbe Schwarz (HA3) 	– 	500,00
+Blueflame Met. mit Kontrastfarbe Schwarz (HA8) 	– 	1.290,00
+Experience Green Met. mit Kontrastfarbe Schwarz (HBC) 	– 	1.290,00
+Lunarsilber Met. mit Kontrastfarbe Schwarz (HA5) 	– 	1.290,00
+Magmarot Met. mit Kontrastfarbe Schwarz (HBR) 	– 	1.290,00
+Pentametal Met. mit Kontrastfarbe Schwarz (HA6) 	– 	1.290,00
+Wolfgrau Met. mit Kontrastfarbe Schwarz (HBM) 	– 	1.290,00
+Deluxeweiß Met. mit Kontrastfarbe Schwarz (HA2) 	– 	1.490,00
+● = Serienausstattung / – = nicht verfügbar / P = Paket (siehe Sonderausstattungen auf Seite 8)
+1 Nur mit kompatiblen Geräten. Weitere Informationen sind beim Kia-Partner erhältlich.
+9 Abweichende Garantielaufzeit. Weitere Informationen sind beim Kia-Partner erhältlich.
+A Der Einsatz von Assistenz- und Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle. 
 Core
-Vision
-Spirit
-GT-Line
+	Vision
+	Spirit
+	GT-Line
 Ausstattung
-98
-19-Zoll-Leichtmetallfelgen 		
+
+-- 8 of 16 --
+
+9
+19-Zoll-Leichtmetallfelgen
 (GT-Line)
-19-Zoll-Leichtmetallfelgen 		
+19-Zoll-Leichtmetallfelgen
 (Spirit)
-Bei	einigen	unserer	modernen	Metallicfarben	werden	bewusst	unter 	schiedliche	Farbpig	mente	
-verwendet.	Dadurch	können		unter	bestimmten	Lichtver 	hältnissen,	z.	B.	direktes	Sonnenlicht,	
-attraktive	Farbeffekte	erzielt	werden.	Zum	Teil	kann	die	Farbe	changieren,	z.	B.	von	Schwarz	zu	
-Dunkelblau.	Bei	den	hier	abgebildeten	Farbdarstellungen	kann	es	aufgrund	der		Drucktechnik		
-zu	Abweichungen	zu	den	Originalfarben	kommen.	Weitere	Informationen	zu	den	Farbeffekten	
-und	Grund	farben	erhältst	du	bei	deinem	Kia-Partner.	Metalliclackierungen	sind	aufpreispflichtig.	
-17-Zoll-Leichtmetallfelgen 		
-(Core	und	Vision)
+Bei einigen unserer modernen Metallicfarben werden bewusst unterschiedliche Farbpigmente
+verwendet. Dadurch können unter bestimmten Lichtverhältnissen, z. B. direktes Sonnenlicht,
+attraktive Farbeffekte erzielt werden. Zum Teil kann die Farbe changieren, z. B. von Schwarz zu
+Dunkelblau. Bei den hier abgebildeten Farbdarstellungen kann es aufgrund der Drucktechnik
+zu Abweichungen zu den Originalfarben kommen. Weitere Informationen zu den Farbeffekten
+und Grundfarben erhältst du bei deinem Kia-Partner. Metalliclackierungen sind aufpreispflichtig.
+17-Zoll-Leichtmetallfelgen
+(Core und Vision)
 Außenfarben und Felgen
 Einfarbig
-Deluxeweiß		
-Metallic	(HW2)
-Blueflame		
-Metallic	(B3L)
-Magmarot		
-Metallic	(ARD)
-Carraraweiß		
+Deluxeweiß
+Metallic (HW2)
+Blueflame
+Metallic (B3L)
+Magmarot
+Metallic (ARD)
+Carraraweiß
 (WD)
-Pentametal		
-Metallic	(H8G)
-Lunarsilber		
-Metallic	(CSS)
-Wolfgrau		
-Metallic	(WAF)
-Experience	Green		
-Metallic	(EXG)
-Zilinaschwarz		
-Metallic	(1K)
-Abbildungen	zeigen	kostenpflichtige	Sonderausstattung.
+Pentametal
+Metallic (H8G)
+Lunarsilber
+Metallic (CSS)
+Wolfgrau
+Metallic (WAF)
+Experience Green
+Metallic (EXG)
+Zilinaschwarz
+Metallic (1K)
+Abbildungen zeigen kostenpflichtige Sonderausstattung.
 Zweifarbig
-Deluxeweiß	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HA2)
-Blueflame	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HA8)
-Carraraweiß		
-mit	Kontrastfarbe		
-Schwarz	(HA3)
-Pentametal	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HA6)
-Lunarsilber	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HA5)
-Wolfgrau	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HBM)
-Experience	Green		
-Metallic	mit	Kontrastfarbe	Schwarz	
+Deluxeweiß Metallic
+mit Kontrastfarbe
+Schwarz (HA2)
+Blueflame Metallic
+mit Kontrastfarbe
+Schwarz (HA8)
+Carraraweiß
+mit Kontrastfarbe
+Schwarz (HA3)
+Pentametal Metallic
+mit Kontrastfarbe
+Schwarz (HA6)
+Lunarsilber Metallic
+mit Kontrastfarbe
+Schwarz (HA5)
+Wolfgrau Metallic
+mit Kontrastfarbe
+Schwarz (HBM)
+Experience Green
+Metallic mit Kontrastfarbe Schwarz
 (HBC)
-Magmarot	Metallic		
-mit	Kontrastfarbe		
-Schwarz	(HBR)
+Magmarot Metallic
+mit Kontrastfarbe
+Schwarz (HBR)
+
+-- 9 of 16 --
+
 10
 Innenraumvarianten
-Der Innenraum des Kia Sportage Plug-in Hybrid besticht durch stilvolle Gestaltung sowie hochwertige Materialien und wurde 
+Der Innenraum des Kia Sportage Plug-in Hybrid besticht durch stilvolle Gestaltung sowie hochwertige Materialien und wurde
 genau auf deine Bedürfnisse ausgerichtet. Steig ein und überzeuge dich selbst.
 Core
 Vision mit Komfort-Paket und Spirit
 GT-Line
-Abbildungen	zeigen	kostenpflichtige	Sonderausstattung.
+Abbildungen zeigen kostenpflichtige Sonderausstattung.
 Vision
 Spirit mit Leder-Paket
-1110
+
+-- 10 of 16 --
+
+11
 Assistenzsysteme
-Mit einem breiten Spektrum an aktiven Sicherheitssystemen A unterstützt dich der Kia Sportage Plug-in Hybrid dabei,  
+Mit einem breiten Spektrum an aktiven Sicherheitssystemen A unterstützt dich der Kia Sportage Plug-in Hybrid dabei,
 in Gefahrensituationen schnell und angemessen zu reagieren.
-Aktiver Totwinkelassistent mit Lenk- und 
+Aktiver Totwinkelassistent mit Lenk- und
 Bremseingriff und MonitoranzeigeA+
-Wenn	du	den	Blinker	setzt,	um	die	Fahrspur	zu	wechseln,		
-und	sich	im	toten	Winkel	ein	Fahrzeug	befindet,	dann	macht	
-dich	der	aktive	Totwinkelassistent	mit	Lenk-	und	Bremseingriff	
-(Blind-Spot	Collision	Avoidance	Assist,	BCA)	durch	ein	Warn-
-symbol	im	Außenspiegel	darauf	aufmerksam.	Solltest	du	
-dennoch	versuchen,	die	Spur	zu	wechseln,	erfolgt	zur	Vermei -
-dung	einer	Kollision	automatisch	ein	Bremseingriff	und	das	
-Fahrzeug	lenkt	geringfügig	gegen.	Außerdem	ertönt	ein	
-Alarmsignal	und	das	Warnsymbol	beginnt	zu	blinken.	
-Der	aktive	Totwinkelassistent	mit	Monitoranzeige	(Blind-Spot	
-View	Monitor,	BVM)	gewährt	dir	darüber	hinaus	direkten	
-Einblick	in	die	toten	Winkel.	Je	nachdem,	ob	du	den	linken	oder	
-rechten	Blinker	setzt,	erscheint	im	volldigitalen	Kombi-
-instrument	das	Bild	der	linken	oder	rechten	Seitenkamera.
+Wenn du den Blinker setzt, um die Fahrspur zu wechseln,
+und sich im toten Winkel ein Fahrzeug befindet, dann macht
+dich der aktive Totwinkelassistent mit Lenk- und Bremseingriff
+(Blind-Spot Collision Avoidance Assist, BCA) durch ein Warn-
+symbol im Außenspiegel darauf aufmerksam. Solltest du
+dennoch versuchen, die Spur zu wechseln, erfolgt zur Vermei-
+dung einer Kollision automatisch ein Bremseingriff und das
+Fahrzeug lenkt geringfügig gegen. Außerdem ertönt ein
+Alarmsignal und das Warnsymbol beginnt zu blinken.
+Der aktive Totwinkelassistent mit Monitoranzeige (Blind-Spot
+View Monitor, BVM) gewährt dir darüber hinaus direkten
+Einblick in die toten Winkel. Je nachdem, ob du den linken oder
+rechten Blinker setzt, erscheint im volldigitalen Kombi-
+instrument das Bild der linken oder rechten Seitenkamera.
 AutobahnassistentA+
-Zum	entspannten	Fahren	auf	langen	Strecken	trägt	der	Auto-
-bahn	assistent	(Highway	Driving	Assist,	HDA)	bei.	Er	unterstützt	
-dich	beim	Lenken	–	wobei	deine	Hände	am	Lenkrad	bleiben	
-müssen	–	und	übernimmt	das	Beschleunigen	und	Bremsen,	
-während	du	das	Fahrumfeld	überwachst.	Das	System	hält	
-deinen	Kia	mit	der	einge	stellten	Geschwindigkeit	mittig	in	der	
-Fahrspur	und	gewährleistet	einen	Sicherheitsabstand	zum	
-vorausfahrenden	Fahrzeug.	Es	kann	Informationen	zu	Tempo-
-limits,	die	das	Navigationssystem	liefert,	automatisch	mit	
-ein	beziehen.
-FrontkollisionswarnerA 
-Der	serienmäßige	Frontkollisionswarner	(Forward	Collision-
-Avoidance	Assist,	FCA)	erkennt	Fahrzeuge,	Fußgänger	und	
-Radfahrer	auf	der	Fahrbahn.	Das	System	ermittelt	per	Kamera	
-und	Radarsensoren	die	Entfernung	und	Geschwindigkeit	der	
-Objekte.	Droht	eine	Kollision,	warnt	es	dich,	auch	durch	Lenk-	
-	radvibration.	Falls	du	nicht	reagierst,	löst	der	Frontkollisions-
-warner	eigenständig	eine	Notbremsung	aus.
-MüdigkeitswarnerA 
-Der	serienmäßige	Müdigkeitswarner	(Driver	Attention	Warning,	
-DAW)	analysiert	ständig	verschiedene	Fahrzeugparameter	wie	
-die	Betätigung	von	Lenkrad	und	Blinker,	die	Beschleunigungs-
-muster	und	die	Gesamt	dauer	der	Fahrzeit.	Erkennt	das	System	
-bei	dir	Zeichen	von	Erschöpfung,	weist	es	dich	durch	einen	
-Warnton	und	eine	Anzeige	in	der	Instrumenten	einheit	darauf	
-hin.	Es	beinhaltet	zudem	einen	Ablenkungs 	warner	bei	stehen-
-dem	Verkehr:	Wenn	sich	das	vorausfahrende	Fahrzeug	in	
-Bewegung	setzt,	du	aber	nicht	anfährst,	wirst	du	durch	einen	
-Warnhinweis	darauf	aufmerksam	gemacht.
-Navigationsbasierte 
-GeschwindigkeitsregelanlageA 
-Dieses	System,	kurz	NSCC	(Navigation-based	Smart	Cruise	
-Control),	übernimmt	das	Beschleunigen	und	Bremsen	anhand	
-der	definierten	Geschwindigkeit	und	des	vorausfahrenden	
-Fahrzeugs.	Auf	Basis	von	Navigationsdaten	kann	es	vor	einer	
-Kurve	die	Geschwindigkeit	frühzeitig	anpassen	und	sie	
-	anschließend	wieder	auf	das	vorein	gestellte	Niveau	erhöhen,	
-sofern	die	Bedingungen	es	zulassen.
-Querverkehrwarner hinten,  
-inklusive NotbremsfunktionA+ 
-Beim	Zurücksetzen	aus	Einfahrten	oder	quer	zur	Fahrbahn	
-liegenden	Parklücken	überwacht	der	Querverkehrwarner	(Rear	
-CrossTraffic	CollisionAvoidance	Assist,	RCCA)	die	toten	Winkel.	
-Falls	ein	Fahrzeug	den	Weg	deines	Kia	kreuzt,	warnt	dich	das	
-System	akustisch	und	optisch.	Wenn	die	Notbremsfunktion	
-aktiviert	ist,	erfolgt	außerdem	automatisch	ein	Bremseingriff.
-SpurfolgeassistentA und  
-aktiver SpurhalteassistentA 
-Der	serienmäßige	Spurfolgeassistent	(Lane	Follow	Assist,	LFA)	
-hält	deinen	Kia	mittig	in	der	Fahrspur,	wobei	die	Hände	am	
-Lenkrad	bleiben	müssen,	und	orientiert	sich	mithilfe	von	
-Sensoren	am	voraus	fahrenden	Verkehr.	Aktiv	ist	das	System	
-von	0	bis	130	km/h.	Lenkunterstützung	bietet	auch	der	
-ebenfalls	serienmäßige	Spurhalteassistent	mit	korri	gie	rendem	
-Lenk	eingriff	(Lane	Keeping	Assist,	LKA).	Er	weist	dich	visuell	
-und	akustisch	darauf	hin,	wenn	dein	Kia	seine	Fahrspur	
-unbeabsichtigt	verlässt,	und	lenkt	gleichzeitig	geringfügig	
-gegen,	um	ihn	in	der	Spur	zu	halten.
-A	Der	Einsatz	von	Assistenz-	oder	Sicherheitssystemen	entbindet	nicht	von	der	Pflicht	zur	ständigen	Verkehrsbeobachtung	und	Fahrzeugkontrolle.
-+
-	Je	nach	gewählter	Ausstattungslinie	teilweise	nicht	verfügbar,	gegen	Aufpreis	erhältlich	oder	serienmäßig.
+Zum entspannten Fahren auf langen Strecken trägt der Auto-
+bahnassistent (Highway Driving Assist, HDA) bei. Er unterstützt
+dich beim Lenken – wobei deine Hände am Lenkrad bleiben
+müssen – und übernimmt das Beschleunigen und Bremsen,
+während du das Fahrumfeld überwachst. Das System hält
+deinen Kia mit der eingestellten Geschwindigkeit mittig in der
+Fahrspur und gewährleistet einen Sicherheitsabstand zum
+vorausfahrenden Fahrzeug. Es kann Informationen zu Tempo-
+limits, die das Navigationssystem liefert, automatisch mit
+einbeziehen.
+FrontkollisionswarnerA
+Der serienmäßige Frontkollisionswarner (Forward Collision-
+Avoidance Assist, FCA) erkennt Fahrzeuge, Fußgänger und
+Radfahrer auf der Fahrbahn. Das System ermittelt per Kamera
+und Radarsensoren die Entfernung und Geschwindigkeit der
+Objekte. Droht eine Kollision, warnt es dich, auch durch Lenk-
+radvibration. Falls du nicht reagierst, löst der Frontkollisions-
+warner eigenständig eine Notbremsung aus.
+MüdigkeitswarnerA
+Der serienmäßige Müdigkeitswarner (Driver Attention Warning,
+DAW) analysiert ständig verschiedene Fahrzeugparameter wie
+die Betätigung von Lenkrad und Blinker, die Beschleunigungs-
+muster und die Gesamtdauer der Fahrzeit. Erkennt das System
+bei dir Zeichen von Erschöpfung, weist es dich durch einen
+Warnton und eine Anzeige in der Instrumenteneinheit darauf
+hin. Es beinhaltet zudem einen Ablenkungswarner bei stehen-
+dem Verkehr: Wenn sich das vorausfahrende Fahrzeug in
+Bewegung setzt, du aber nicht anfährst, wirst du durch einen
+Warnhinweis darauf aufmerksam gemacht.
+Navigationsbasierte
+GeschwindigkeitsregelanlageA
+Dieses System, kurz NSCC (Navigation-based Smart Cruise
+Control), übernimmt das Beschleunigen und Bremsen anhand
+der definierten Geschwindigkeit und des vorausfahrenden
+Fahrzeugs. Auf Basis von Navigationsdaten kann es vor einer
+Kurve die Geschwindigkeit frühzeitig anpassen und sie
+anschließend wieder auf das voreingestellte Niveau erhöhen,
+sofern die Bedingungen es zulassen.
+Querverkehrwarner hinten,
+inklusive Notbremsfunktion A+
+Beim Zurücksetzen aus Einfahrten oder quer zur Fahrbahn
+liegenden Parklücken überwacht der Querverkehrwarner (Rear
+CrossTraffic CollisionAvoidance Assist, RCCA) die toten Winkel.
+Falls ein Fahrzeug den Weg deines Kia kreuzt, warnt dich das
+System akustisch und optisch. Wenn die Notbremsfunktion
+aktiviert ist, erfolgt außerdem automatisch ein Bremseingriff.
+SpurfolgeassistentA und
+aktiver SpurhalteassistentA
+Der serienmäßige Spurfolgeassistent (Lane Follow Assist, LFA)
+hält deinen Kia mittig in der Fahrspur, wobei die Hände am
+Lenkrad bleiben müssen, und orientiert sich mithilfe von
+Sensoren am vorausfahrenden Verkehr. Aktiv ist das System
+von 0 bis 130 km/h. Lenkunterstützung bietet auch der
+ebenfalls serienmäßige Spurhalteassistent mit korrigierendem
+Lenkeingriff (Lane Keeping Assist, LKA). Er weist dich visuell
+und akustisch darauf hin, wenn dein Kia seine Fahrspur
+unbeabsichtigt verlässt, und lenkt gleichzeitig geringfügig
+gegen, um ihn in der Spur zu halten.
+A Der Einsatz von Assistenz- oder Sicherheitssystemen entbindet nicht von der Pflicht zur ständigen Verkehrsbeobachtung und Fahrzeugkontrolle.
+	+
+Je nach gewählter Ausstattungslinie teilweise nicht verfügbar, gegen Aufpreis erhältlich oder serienmäßig.
+
+-- 11 of 16 --
+
 12
 Kia Charge Advanced
 Monatliche Grundgebühr 4,99 EUR
-Ladestation (AC/DC) Preis pro kWh1 Blockiergebühr ab
-AC-Ladestation 0,55 EUR + 0,10 EUR EnBW2 210 Min.
-DC-Ladestation 0,69 EUR + 0,10 EUR EnBW2 90 Min.
+Ladestation (AC/DC) 	Preis pro kWh1 	Blockiergebühr ab
+AC-Ladestation 	0,55 EUR + 0,10 EUR EnBW 2 	210 Min.
+DC-Ladestation 	0,69 EUR + 0,10 EUR EnBW 2 	90 Min.
 Mit dem Kia Charge Advanced Tarif profitierst du von fixen Preisen – ohne versteckte Kosten, monatlich kündbar.
 Kia Charge Pakete für Vielfahrer bei unseren exklusiven Partnern
-Exklusive  
+Exklusive
 Partner-Pakete
-Monatliche  
+Monatliche
 Grundgebühr Rabatt auf den individuellen Ladepreis 3
-Aral Pulse Light 4,99 EUR – 35 %/kWh
-Aral Pulse Premium 9,99 EUR – 50 %/kWh
-Ionity Power 7,49 EUR – 0,25 EUR/kWh
-Ionity Ultra 11,99 EUR – 0,35 EUR/kWh
-Lade dir hier die Kia App herunter oder scanne den Code. 
-In der App kannst du dich bei Kia Charge anmelden, 
- Ladestationen finden und vieles mehr.
+Aral Pulse Light 	4,99 EUR 	– 35 %/kWh
+Aral Pulse Premium 	9,99 EUR 	– 50 %/kWh
+Ionity Power 	7,49 EUR 	– 0,25 EUR/kWh
+Ionity Ultra 	11,99 EUR 	– 0,35 EUR/kWh
+Lade dir hier die Kia App herunter oder scanne den Code.
+In der App kannst du dich bei Kia Charge anmelden,
+Ladestationen finden und vieles mehr.
 Die Kia App.
 Kia Charge.
-1  Die Ladepreise im Ausland können abweichen und bestimmen sich nach den jeweils zum Ladezeitpunkt geltenden Preisen, die du in der App einsehen kannst.
-2  Endpreise EnBW: AC 0,65 EUR; DC 0,79 EUR.
-3  Im Vergleich zum regulären Preis des Kia Charge Easy Tarifs, die Ladevorgangsgebühr entfällt.
+1 Die Ladepreise im Ausland können abweichen und bestimmen sich nach den jeweils zum Ladezeitpunkt geltenden Preisen, die du in der App einsehen kannst.
+2 Endpreise EnBW: AC 0,65 EUR; DC 0,79 EUR.
+3 Im Vergleich zum regulären Preis des Kia Charge Easy Tarifs, die Ladevorgangsgebühr entfällt.
 Stand: 25.11.2025
 Elektromobilität für deinen Kia.
- Kia Charge.
-Ob Ladekarte, Wallbox oder Abrechnung fürs Unternehmen – 
-hier findest du alles für deinen Umstieg. Scanne den QR-Code 
+Kia Charge.
+Ob Ladekarte, Wallbox oder Abrechnung fürs Unternehmen –
+hier findest du alles für deinen Umstieg. Scanne den QR-Code
 oder klicke hier.
-Die Preise des Betreibers IONITY können im Lauf der Zeit und je nach Standort variieren. 
+Die Preise des Betreibers IONITY können im Lauf der Zeit und je nach Standort variieren.
 Die aktuellen Preise können vor dem Laden auf der Karte, in der App oder auf der Kia Charge Website eingesehen werden.
+
+-- 12 of 16 --
+
 13
 Technische Daten
-10	Die	angegebenen	Werte	wurden	nach	dem	vorgeschriebenen	Messverfahren	ermittelt.
-11	Die	tatsächliche	Ladegeschwindigkeit	und	Ladezeit	kann	von	der	Batterietemperatur	und	den	äußeren	Witterungsbedingungen	beeinflusst	werden.
-Motor 1.6 T-GDI Plug-in Hybrid 2WD 1.6 T-GDI Plug-in Hybrid AWD
-Getriebe Automatik 
+10 Die angegebenen Werte wurden nach dem vorgeschriebenen Messverfahren ermittelt.
+11 Die tatsächliche Ladegeschwindigkeit und Ladezeit kann von der Batterietemperatur und den äußeren Witterungsbedingungen beeinflusst werden.
+Motor 	1.6 T-GDI Plug-in Hybrid 2WD 	1.6 T-GDI Plug-in Hybrid AWD
+Getriebe 	Automatik
 Verbrauch und Emissionen gemäß WLTP 10
-Kraftstoffverbrauch gewichtet kombiniert (l/100 km): 2,9 3,3
-Stromverbrauch gewichtet kombiniert (kWh/100 km): 10,9 11,2
-CO2-Emissionen gewichtet kombiniert (g/km): 67 75
-CO2-Klasse: B
-Kraftstoffverbrauch bei entladener Batterie kombiniert (l/100 km): 6,1 6,7
-CO2-Klasse bei entladener Batterie: E
+Kraftstoffverbrauch gewichtet kombiniert (l/100 km): 	2,9 	3,3
+Stromverbrauch gewichtet kombiniert (kWh/100 km): 	10,9 	11,2
+CO 2 -Emissionen gewichtet kombiniert (g/km): 	67 	75
+CO 2 -Klasse: 	B
+Kraftstoffverbrauch bei entladener Batterie kombiniert (l/100 km): 	6,1 	6,7
+CO 2 -Klasse bei entladener Batterie: 	E
 Motordaten
-Anzahl Zylinder, Anordnung: 4	in	Reihe,	quer
-Verdichtungsverhältnis: 11	:	1
-Anzahl der Ventile pro Zylinder: 4
-Bohrung x Hub (in mm): 75,6	x	89
-Hubraum (cm3): 1.598
-Max. Leistung (kW/PS bei min –1): 132	(180)/6.000
-Max. Drehmoment (Nm bei min –1): 265	bei	1.500 –4.500
-Kraftstoffart: Benzin
-Tankvolumen (Füllmenge in Liter): 42
-Motoraufladung: Turbolader
-Einspritzung: Direkteinspritzung
-Abgasreinigung: geregelter	3-Wege-Katalysator	+	Ottopartikelfilter	(OPF)
-Schadstoffklasse: Euro	6e	bis
+Anzahl Zylinder, Anordnung: 	4 in Reihe, quer
+Verdichtungsverhältnis: 	11 : 1
+Anzahl der Ventile pro Zylinder: 	4
+Bohrung x Hub (in mm): 	75,6 x 89
+Hubraum (cm 3
+): 	1.598
+Max. Leistung (kW/PS bei min–1
+): 	132 (180)/6.000
+Max. Drehmoment (Nm bei min–1
+): 	265 bei 1.500–4.500
+Kraftstoffart: 	Benzin
+Tankvolumen (Füllmenge in Liter): 	42
+Motoraufladung: 	Turbolader
+Einspritzung: 	Direkteinspritzung
+Abgasreinigung: 	geregelter 3-Wege-Katalysator + Ottopartikelfilter (OPF)
+Schadstoffklasse: 	Euro 6e bis
 Elektromotor
-Typ: Permanentmagnet-Synchronmaschine
-Max. Leistung (kW/PS bei min –1): 79/107	bei	2.300 –3.500
-Max. Drehmoment (Nm bei min –1): 334	/	0–2.200
-Batterietyp: Lithium-Ion-Polymer
-Batterieleistung: 360	Volt	/	38,3	Ah
-Batterieenergiegehalt in kWh: 13,8
+Typ: 	Permanentmagnet-Synchronmaschine
+Max. Leistung (kW/PS bei min–1
+): 	79/107 bei 2.300–3.500
+Max. Drehmoment (Nm bei min–1
+): 	334 / 0–2.200
+Batterietyp: 	Lithium-Ion-Polymer
+Batterieleistung: 	360 Volt / 38,3 Ah
+Batterieenergiegehalt in kWh: 	13,8
 Batteriegewicht in kg: 	140
-Ladedauer 11 10 auf 100 % an einer Ladestation mit mindestens  
-7,2 kW Leistung bei 400 V/32 A: ca.	1	Std.	45	Min.
-Ladedauer 11 10 auf 100 % an einer Ladestation mit mindestens  
-4,6 kW Leistung bei 230 V/20 A: ca.	2	Std.	44	Min.
-Ladedauer 11 10 auf 100 % an einer Haushaltssteckdose  
-mit 2,3 kW Leistung bei 230 V/10 A: ca.	5	Std.	27	Min.
+Ladedauer 11 10 auf 100 % an einer Ladestation mit mindestens
+7,2 kW Leistung bei 400 V/32 A: 	ca. 1 Std. 45 Min.
+Ladedauer 11 10 auf 100 % an einer Ladestation mit mindestens
+4,6 kW Leistung bei 230 V/20 A: 	ca. 2 Std. 44 Min.
+Ladedauer 11 10 auf 100 % an einer Haushaltssteckdose
+mit 2,3 kW Leistung bei 230 V/10 A: 	ca. 5 Std. 27 Min.
 Hybridsystem
-Typ: TMED
-Max. Leistung (kW/PS bei min –1): 212	(288)/6.000
-Max. Drehmoment (Nm bei min –1): 380/1.500 –4.500
+Typ: 	TMED
+Max. Leistung (kW/PS bei min–1
+): 	212 (288)/6.000
+Max. Drehmoment (Nm bei min–1
+): 	380/1.500–4.500
 Getriebe
-Antriebsart:  Frontantrieb El.	geregelter	Allradantrieb		
-mit	automatischer	Kraftverteilung
-Getriebeart: 6-Stufen-Automatikgetriebe
-Kupplung:  hydraulisch,	mit	Überbrückungskupplung		
-1413
+Antriebsart: 	Frontantrieb 	El. geregelter Allradantrieb
+mit automatischer Kraftverteilung
+Getriebeart: 	6-Stufen-Automatikgetriebe
+Kupplung: 	hydraulisch, mit Überbrückungskupplung
+
+-- 13 of 16 --
+
+14
 Technische Daten
-12	Alle	Informationen	zum	Reifenlabel	findest	du	unter	https:/ /www.kia.com/de/angebote/reifenlabel	oder	beim	Kia-Partner.	
-13	Das	EG-Leergewicht	berücksichtigt	ein	Fahrergewicht	von	75	kg,	eine	90	%-ige	Füllung	des	Tanks	sowie	sämtliche	erforderlichen	Flüssigkeiten.
-Motor 1.6 T-GDI Plug-in Hybrid 2WD 1.6 T-GDI Plug-in Hybrid AWD
-Getriebe Automatik 
+12 Alle Informationen zum Reifenlabel findest du unter https://www.kia.com/de/angebote/reifenlabel oder beim Kia-Partner.
+13 Das EG-Leergewicht berücksichtigt ein Fahrergewicht von 75 kg, eine 90 %-ige Füllung des Tanks sowie sämtliche erforderlichen Flüssigkeiten.
+Motor 	1.6 T-GDI Plug-in Hybrid 2WD 	1.6 T-GDI Plug-in Hybrid AWD
+Getriebe 	Automatik
 Getriebeübersetzung
-1. Gang: 5,227
-2. Gang: 3,091
-3. Gang: 1,943
-4. Gang: 1,402
-5. Gang: 1,000
-6. Gang: 0,783
-7. Gang: –
-8. Gang: –
-Rückwärtsgang: 5,227
-Achsantrieb: 3,648
+1. Gang: 	5,227
+2. Gang: 	3,091
+3. Gang: 	1,943
+4. Gang: 	1,402
+5. Gang: 	1,000
+6. Gang: 	0,783
+7. Gang: 	–
+8. Gang: 	–
+Rückwärtsgang: 	5,227
+Achsantrieb: 	3,648
 Räder
-Felgengröße: 7,0J	x	17,	ET	43,5	oder	7,5J	x	19	ET	51
+Felgengröße: 	7,0J x 17, ET 43,5 oder 7,5J x 19 ET 51
 Bereifung 12
-Reifengröße: 215/65	R17	103V	oder	235/50	R19	103V
+Reifengröße: 	215/65 R17 103V oder 235/50 R19 103V
 Lenkanlage
-Lenkung: elektrisch 	unterstützte 	Lenkung, 	geschwindigkeitsabhängig
-Lenkgetriebe: Zahnstangenlenkung
-Lenkradumdrehungen (Anschlag bis Anschlag): 2,41
-Wendekreis (in m): 10,92	(+/– 0,2)
+Lenkung: 	elektrisch unterstützte Lenkung, geschwindigkeitsabhängig
+Lenkgetriebe: 	Zahnstangenlenkung
+Lenkradumdrehungen (Anschlag bis Anschlag): 	2,41
+Wendekreis (in m): 	10,92 (+/– 0,2)
 Fahrwerk
-Vorn: Einzelradaufhängung, 	Dreiecksquerlenker, 		
-MacPherson-Federbeine	mit	Gasdruckstoßdämpfern,	Stabilisator		
-Hinten: Mehrlenkerachse,	Federbeine	mit	Gasdruckstoßdämpfern,	Stabilisator	
+Vorn: 	Einzelradaufhängung, Dreiecksquerlenker,
+MacPherson-Federbeine mit Gasdruckstoßdämpfern, Stabilisator
+Hinten: 	Mehrlenkerachse, Federbeine mit Gasdruckstoßdämpfern, Stabilisator
 Bremsen
-Bremssystem: 2-Kreisbremsanlage, 	servounterstützt 	
-Bremsunterstützung: 4-Kanal-,	4-Sensoren-ABS	mit	elektronischer	Bremskraftverteilung	und	ESC
-Vorn: Scheibenbremsen, 	innenbelüftet 	
-Durchmesser (in mm): 320
-Hinten: Scheibenbremsen 	
-Durchmesser (in mm): 300
+Bremssystem: 	2-Kreisbremsanlage, servounterstützt
+Bremsunterstützung: 	4-Kanal-, 4-Sensoren-ABS mit elektronischer Bremskraftverteilung und ESC
+Vorn: 	Scheibenbremsen, innenbelüftet
+Durchmesser (in mm): 	320
+Hinten: 	Scheibenbremsen
+Durchmesser (in mm): 	300
 Karosseriemaße
-Bauart: Pkw
-Anzahl der Sitze: 5
-Anzahl der Türen: 5
-Länge; Breite (ohne/mit Außenspiegel); Höhe (in mm): 4.540;	1.865/2.080;	1.650
-Radstand (in mm): 2.680
-Spurweite, vorn/hinten (in mm): 1.630/1.637	mit	17-Zoll-Felgen;	1.615/1.622	mit	19-Zoll-Felgen
-Überhang, vorn/hinten (in mm): 930/	930
+Bauart: 	Pkw
+Anzahl der Sitze: 	5
+Anzahl der Türen: 	5
+Länge; Breite (ohne/mit Außenspiegel); Höhe (in mm): 	4.540; 1.865/2.080; 1.650
+Radstand (in mm): 	2.680
+Spurweite, vorn/hinten (in mm): 	1.630/1.637 mit 17-Zoll-Felgen; 1.615/1.622 mit 19-Zoll-Felgen
+Überhang, vorn/hinten (in mm): 	930/ 930
 Gewichte (ausstattungsabhängig, in kg)
-EG-Leergewicht13: Minimum/Maximum 1.842/1.956 1.896/2.010
-Zulässiges Gesamtgewicht: 2.375 2.430
-Zuladung maximal: 533 534
-Achslast maximal vorn/hinten: 1.260/1.200
-Dachlast: 100
+EG-Leergewicht13
+: 	Minimum/Maximum 	1.842/1.956 	1.896/2.010
+Zulässiges Gesamtgewicht: 	2.375 	2.430
+Zuladung maximal: 	533 	534
+Achslast maximal vorn/hinten: 	1.260/1.200
+Dachlast: 	100
+
+-- 14 of 16 --
+
 15
 Abmessungen (in mm)
-Motor 1.6 T-GDI Plug-in Hybrid 2WD 1.6 T-GDI Plug-in Hybrid AWD
-Getriebe Automatik 
+Motor 	1.6 T-GDI Plug-in Hybrid 2WD 	1.6 T-GDI Plug-in Hybrid AWD
+Getriebe 	Automatik
 Karosseriemaße
-Bauart: Pkw
-Anzahl der Sitze: 5
-Anzahl der Türen: 5
-Länge; Breite (ohne/mit Außenspiegel); Höhe (in mm): 4.540;	1.865/2.080;	1.650
-Radstand (in mm): 2.680
-Spurweite, vorn/hinten (in mm): 1.630/1.637	mit	17-Zoll-Felgen;	1.615/1.622	mit	19-Zoll-Felgen
-Überhang, vorn/hinten (in mm): 930/930
+Bauart: 	Pkw
+Anzahl der Sitze: 	5
+Anzahl der Türen: 	5
+Länge; Breite (ohne/mit Außenspiegel); Höhe (in mm): 	4.540; 1.865/2.080; 1.650
+Radstand (in mm): 	2.680
+Spurweite, vorn/hinten (in mm): 	1.630/1.637 mit 17-Zoll-Felgen; 1.615/1.622 mit 19-Zoll-Felgen
+Überhang, vorn/hinten (in mm): 	930/930
 Zulässige Anhängelast (in kg bei 12 % Steigung)
-Gebremst: 1.210
-Ungebremst: 750
-Zulässige Stützlast: 100
+Gebremst: 	1.210
+Ungebremst: 	750
+Zulässige Stützlast: 	100
 Laderaumvolumen (in Liter nach VDA)
-Fensterhöhe: 540
-Dachhöhe bei umgeklappter  Rücksitzbank: 1.715
+Fensterhöhe: 	540
+Dachhöhe bei umgeklappter Rücksitzbank: 	1.715
 Kofferraummaße
-Laderaumlänge (in mm) min. – max.: 750	–	1.695
-Laderaumbreite (in mm) min. – max.: 1.040	–	1.414
-Laderaumhöhe (in mm) min. – max.: 798	–	829
-Durchladebreite Heckklappe (in mm): 1.091
-Durchladehöhe Heckklappe (in mm): 744
+Laderaumlänge (in mm) min. – max.: 	750 – 1.695
+Laderaumbreite (in mm) min. – max.: 	1.040 – 1.414
+Laderaumhöhe (in mm) min. – max.: 	798 – 829
+Durchladebreite Heckklappe (in mm): 	1.091
+Durchladehöhe Heckklappe (in mm): 	744
 Innenraummaße
-Beinfreiheit (in mm; 1./2. Sitzreihe) max.: 1.052	/	955
-Sitzhöhe (in mm; 1./2. Sitzreihe) max.: 1.008	/	998
-Fahrzeuginnenbreite (in mm; 1./2. Sitzreihe): 1.392	/	1.366
+Beinfreiheit (in mm; 1./2. Sitzreihe) max.: 	1.052 / 955
+Sitzhöhe (in mm; 1./2. Sitzreihe) max.: 	1.008 / 998
+Fahrzeuginnenbreite (in mm; 1./2. Sitzreihe): 	1.392 / 1.366
 Geländetauglichkeit
-Bodenfreiheit minimum (in mm):  170
-Böschungswinkel vorn (in °): 17 ,9
-Böschungswinkel hinten (in °):  26,2
-Rampenwinkel (in °): 16,7
+Bodenfreiheit minimum (in mm): 	170
+Böschungswinkel vorn (in °): 	17,9
+Böschungswinkel hinten (in °): 	26,2
+Rampenwinkel (in °): 	16,7
 Fahrleistungen
-Höchstgeschwindigkeit (km/h): 206
-Höchstgeschwindigkeit (km/h) im reinen EV-Betrieb: 140
-Beschleunigung (0–100 km/h in Sek.):  7, 5 7, 8
-Vorbeifahrgeräusch (dbA): 65
-Elektrische Reichweite (EAER)14 (km): 66 63	(Vision:	66)
-Elektrische Reichweite14, Innenstadt (km): 85 76	(Vision:	81)
+Höchstgeschwindigkeit (km/h): 	206
+Höchstgeschwindigkeit (km/h) im reinen EV-Betrieb: 	140
+Beschleunigung (0–100 km/h in Sek.): 	7,5 	7,8
+Vorbeifahrgeräusch (dbA): 	65
+Elektrische Reichweite (EAER)14 (km): 	66 	63 (Vision: 66)
+Elektrische Reichweite14
+, Innenstadt (km): 	85 	76 (Vision: 81)
 Technische Daten
-14	 	 	Die	individuelle	Fahrweise,	Geschwindigkeit,	Außentemperatur,	Topografie	und	Nutzung	elektrischer	Verbraucher	haben	Einfluss	auf	die	tatsächliche	Reichweite	und	können	diese	u.	U.		reduzieren	
-bzw.	sogar	erhöhen.	Die	Werte	wurden	nach	dem	vorgeschriebenen	EU-Messverfahren	ermittelt.	
-Die Angaben in diesem Katalog entsprechen dem Stand der Drucklegung. Irrtümer 
-vorbehalten. Kia entwickelt seine Produkte ständig weiter und behält sich das Recht vor, 
-Spezifikationen, Farben und Preise der hier abgebildeten und beschriebenen Artikel 
-jederzeit zu ändern. Abbildungen können Sonder   aus stattungen enthalten.
-Hinweis: Die Bluetooth-Wortmarke und -Logos sind eingetragene Marken der Bluetooth  
-SIG Inc. Die Wortmarke Apple CarPlay ist Eigentum der Apple Inc. Die Wort   marke Android 
-Auto ist Eigentum der Google Inc. Die Nutzung dieser Marken durch die Kia Deutschland 
-GmbH oder zugehörige Unter  nehmen erfolgt auf Grundlage einer Lizenz. Andere Marken 
+14 Die individuelle Fahrweise, Geschwindigkeit, Außentemperatur, Topografie und Nutzung elektrischer Verbraucher haben Einfluss auf die tatsächliche Reichweite und können diese u. U. reduzieren
+bzw. sogar erhöhen. Die Werte wurden nach dem vorgeschriebenen EU-Messverfahren ermittelt.
+
+-- 15 of 16 --
+
+Die Angaben in diesem Katalog entsprechen dem Stand der Drucklegung. Irrtümer
+vorbehalten. Kia entwickelt seine Produkte ständig weiter und behält sich das Recht vor,
+Spezifikationen, Farben und Preise der hier abgebildeten und beschriebenen Artikel
+jederzeit zu ändern. Abbildungen können Sonderausstattungen enthalten.
+Hinweis: Die Bluetooth-Wortmarke und -Logos sind eingetragene Marken der Bluetooth
+SIG Inc. Die Wortmarke Apple CarPlay ist Eigentum der Apple Inc. Die Wortmarke Android
+Auto ist Eigentum der Google Inc. Die Nutzung dieser Marken durch die Kia Deutschland
+GmbH oder zugehörige Unternehmen erfolgt auf Grundlage einer Lizenz. Andere Marken
 sind Eigentum der jeweiligen Inhaber.
 Kia Deutschland GmbH
 Düsseldorfer Straße 36
 65760 Eschborn
 www.kia.com
 Infoline: 0800 777 30 44
-Modelljahr	2027
-Stand:	4.	Mai	2026
+Modelljahr 2027
+Stand: 4. Mai 2026
+
+-- 16 of 16 --
+

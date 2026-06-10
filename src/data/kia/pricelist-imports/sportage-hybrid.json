@@ -1,0 +1,180 @@
+{
+  "brand": "Kia",
+  "modelKey": "sportage-hybrid",
+  "model": "Sportage Hybrid",
+  "powertrainVariant": "hybrid",
+  "sourceFile": "Kia-Germany-Sportage-Preisliste.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-Sportage-Preisliste.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-06-10",
+  "priceFromGross": 38990,
+  "trims": [
+    {
+      "id": "core",
+      "name": "Core"
+    },
+    {
+      "id": "vision",
+      "name": "Vision"
+    },
+    {
+      "id": "spirit",
+      "name": "Spirit"
+    },
+    {
+      "id": "black-edition",
+      "name": "Black Edition"
+    },
+    {
+      "id": "gt-line",
+      "name": "GT-Line"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "Core",
+      "trimId": "core",
+      "priceNet": 32764,
+      "priceGross": 38990,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 34445,
+      "priceGross": 40990,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 37974,
+      "priceGross": 45190,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 38571,
+      "priceGross": 45900,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 40915,
+      "priceGross": 48690,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "2WD",
+      "power": "176 kW (239 PS)",
+      "consumption": "5,8",
+      "co2": "132",
+      "co2Class": "D"
+    },
+    {
+      "trim": "Vision",
+      "trimId": "vision",
+      "priceNet": 36546,
+      "priceGross": 43490,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "6,5",
+      "co2": "147",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Spirit",
+      "trimId": "spirit",
+      "priceNet": 40075,
+      "priceGross": 47690,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "6,5",
+      "co2": "147",
+      "co2Class": "E"
+    },
+    {
+      "trim": "Black Edition",
+      "trimId": "black-edition",
+      "priceNet": 40672,
+      "priceGross": 48400,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "6,5",
+      "co2": "147",
+      "co2Class": "E"
+    },
+    {
+      "trim": "GT-Line",
+      "trimId": "gt-line",
+      "priceNet": 43016,
+      "priceGross": 51190,
+      "engine": "Benzin, Hybrid 1.6 T-GDI",
+      "transmission": "Automatik (6 Stufen)",
+      "drive": "AWD",
+      "power": "176 kW (239 PS)",
+      "consumption": "6,5",
+      "co2": "147",
+      "co2Class": "E"
+    }
+  ],
+  "trimPricesFrom": [
+    {
+      "trim": "Core",
+      "priceFromGross": 38990
+    },
+    {
+      "trim": "Vision",
+      "priceFromGross": 40990
+    },
+    {
+      "trim": "Spirit",
+      "priceFromGross": 45190
+    },
+    {
+      "trim": "Black Edition",
+      "priceFromGross": 45900
+    },
+    {
+      "trim": "GT-Line",
+      "priceFromGross": 48690
+    }
+  ],
+  "wltpNotes": [
+    "Kia Sportage Hybrid 1.6 T-GDI 2WD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 5,8 l/100 km. CO₂-Emissionen kombiniert 132 g/km. CO₂-Klasse D.",
+    "Kia Sportage Hybrid 1.6 T-GDI AWD (176 kW/239 PS): Kraftstoffverbrauch kombiniert 6,5 l/100 km. CO₂-Emissionen kombiniert 147 g/km. CO₂-Klasse E."
+  ],
+  "variantCount": 9,
+  "derivedFrom": "sportage"
+}

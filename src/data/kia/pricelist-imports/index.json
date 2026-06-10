@@ -1,85 +1,8 @@
 {
-  "importedAt": "2026-05-29",
-  "sourceDirectory": "Desktop/clever-neuwagen.de",
-  "modelCount": 19,
+  "importedAt": "2026-06-10",
+  "sourceDirectory": "scripts/import-kia-pricelist-pdfs.mjs",
+  "modelCount": 24,
   "models": [
-    {
-      "modelKey": "picanto",
-      "model": "Picanto",
-      "variantCount": 6,
-      "priceFromGross": 18550,
-      "file": "picanto.json"
-    },
-    {
-      "modelKey": "stonic",
-      "model": "Stonic",
-      "variantCount": 6,
-      "priceFromGross": 23790,
-      "file": "stonic.json"
-    },
-    {
-      "modelKey": "xceed",
-      "model": "XCeed",
-      "variantCount": 9,
-      "priceFromGross": 26990,
-      "file": "xceed.json"
-    },
-    {
-      "modelKey": "k4",
-      "model": "K4",
-      "variantCount": 8,
-      "priceFromGross": 28890,
-      "file": "k4.json"
-    },
-    {
-      "modelKey": "k4-sportswagon",
-      "model": "K4 Sportswagon",
-      "variantCount": 9,
-      "priceFromGross": 29890,
-      "file": "k4-sportswagon.json"
-    },
-    {
-      "modelKey": "seltos",
-      "model": "Seltos",
-      "variantCount": 6,
-      "priceFromGross": 36190,
-      "file": "seltos.json"
-    },
-    {
-      "modelKey": "sportage",
-      "model": "Sportage",
-      "variantCount": 21,
-      "priceFromGross": 33990,
-      "file": "sportage.json"
-    },
-    {
-      "modelKey": "sportage-phev",
-      "model": "Sportage Plug-in Hybrid",
-      "variantCount": 7,
-      "priceFromGross": 43100,
-      "file": "sportage-phev.json"
-    },
-    {
-      "modelKey": "sorento",
-      "model": "Sorento",
-      "variantCount": 3,
-      "priceFromGross": 56690,
-      "file": "sorento.json"
-    },
-    {
-      "modelKey": "sorento-hybrid",
-      "model": "Sorento Hybrid",
-      "variantCount": 5,
-      "priceFromGross": 55190,
-      "file": "sorento-hybrid.json"
-    },
-    {
-      "modelKey": "sorento-phev",
-      "model": "Sorento Plug-in Hybrid",
-      "variantCount": 3,
-      "priceFromGross": 61140,
-      "file": "sorento-phev.json"
-    },
     {
       "modelKey": "ev2",
       "model": "EV2",
@@ -100,6 +23,13 @@
       "variantCount": 4,
       "priceFromGross": 31588,
       "file": "ev4.json"
+    },
+    {
+      "modelKey": "ev4-fastback",
+      "model": "EV4 Fastback",
+      "variantCount": 2,
+      "priceFromGross": 47140,
+      "file": "ev4-fastback.json"
     },
     {
       "modelKey": "ev5",
@@ -123,6 +53,13 @@
       "file": "ev6.json"
     },
     {
+      "modelKey": "ev6-gt",
+      "model": "EV6 GT",
+      "variantCount": 1,
+      "priceFromGross": 69990,
+      "file": "ev6-gt.json"
+    },
+    {
       "modelKey": "ev9",
       "model": "EV9",
       "variantCount": 6,
@@ -130,11 +67,109 @@
       "file": "ev9.json"
     },
     {
+      "modelKey": "ev9-gt",
+      "model": "EV9 GT",
+      "variantCount": 1,
+      "priceFromGross": 90490,
+      "file": "ev9-gt.json"
+    },
+    {
+      "modelKey": "k4",
+      "model": "K4",
+      "variantCount": 8,
+      "priceFromGross": 28890,
+      "file": "k4.json"
+    },
+    {
+      "modelKey": "k4-sportswagon",
+      "model": "K4 Sportswagon",
+      "variantCount": 9,
+      "priceFromGross": 29890,
+      "file": "k4-sportswagon.json"
+    },
+    {
+      "modelKey": "picanto",
+      "model": "Picanto",
+      "variantCount": 7,
+      "priceFromGross": 17590,
+      "file": "picanto.json"
+    },
+    {
+      "modelKey": "pv5-cargo-l2h1",
+      "model": "PV5 Cargo L2H1",
+      "variantCount": 3,
+      "priceFromGross": 38990,
+      "file": "pv5-cargo-l2h1.json"
+    },
+    {
       "modelKey": "pv5-passenger",
       "model": "PV5 Passenger",
       "variantCount": 2,
       "priceFromGross": 39540,
       "file": "pv5-passenger.json"
+    },
+    {
+      "modelKey": "seltos",
+      "model": "Seltos",
+      "variantCount": 6,
+      "priceFromGross": 36190,
+      "file": "seltos.json"
+    },
+    {
+      "modelKey": "sorento",
+      "model": "Sorento",
+      "variantCount": 3,
+      "priceFromGross": 56690,
+      "file": "sorento.json"
+    },
+    {
+      "modelKey": "sorento-hybrid",
+      "model": "Sorento Hybrid",
+      "variantCount": 5,
+      "priceFromGross": 55190,
+      "file": "sorento-hybrid.json"
+    },
+    {
+      "modelKey": "sorento-phev",
+      "model": "Sorento Plug-in Hybrid",
+      "variantCount": 3,
+      "priceFromGross": 61140,
+      "file": "sorento-phev.json"
+    },
+    {
+      "modelKey": "sportage",
+      "model": "Sportage",
+      "variantCount": 14,
+      "priceFromGross": 33990,
+      "file": "sportage.json"
+    },
+    {
+      "modelKey": "sportage-hybrid",
+      "model": "Sportage Hybrid",
+      "variantCount": 9,
+      "priceFromGross": 38990,
+      "file": "sportage-hybrid.json"
+    },
+    {
+      "modelKey": "sportage-phev",
+      "model": "Sportage Plug-in Hybrid",
+      "variantCount": 7,
+      "priceFromGross": 43100,
+      "file": "sportage-phev.json"
+    },
+    {
+      "modelKey": "stonic",
+      "model": "Stonic",
+      "variantCount": 6,
+      "priceFromGross": 23790,
+      "file": "stonic.json"
+    },
+    {
+      "modelKey": "xceed",
+      "model": "XCeed",
+      "variantCount": 9,
+      "priceFromGross": 26990,
+      "file": "xceed.json"
     }
   ]
 }

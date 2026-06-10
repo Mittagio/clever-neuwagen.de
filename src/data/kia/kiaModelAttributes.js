@@ -448,7 +448,7 @@ export function enrichVehicleWithModelAttributes(vehicle = {}) {
 
 export function vehicleFuelTruth(vehicle = {}) {
   const pt = vehicle.powertrain ?? vehicle.modelFacts?.powertrains?.[0];
-  if (pt === 'elektro') return FUEL_TRUTH.electric;
+  if (pt === 'elektro' || vehicle.modelFacts?.fuel === 'electric') return FUEL_TRUTH.electric;
   if (pt === 'hybrid') return FUEL_TRUTH.hybrid;
   if (pt === 'plugin-hybrid') return FUEL_TRUTH.plugin_hybrid;
   return FUEL_TRUTH.combustion;

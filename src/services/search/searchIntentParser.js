@@ -40,9 +40,11 @@ const EMPTY_INTENT = () => ({
   features: [],
   towCapacityKg: null,
   rangeKmMin: null,
+  rangeRanking: null,
   maxLengthMm: null,
   maxHeightMm: null,
   trunkLMin: null,
+  trunkDepthCmMin: null,
   isofixRearMin: null,
   seatsMin: null,
   powerPsTarget: null,
@@ -244,6 +246,27 @@ function extractMoneyAndRange(text, spans) {
   return { maxRate, maxPrice, rangeKmMin };
 }
 
+/** Superlativ: „meiste/höchste Reichweite“ – Ranking, kein km-Schwellwert. */
+function extractRangeRanking(text, spans) {
+  const patterns = [
+    /\b(meiste[nr]?|maximal[e]?|höchste[nr]?|hoechste[nr]?|größte[nr]?|groesste[nr]?|längste[nr]?|laengste[nr]?|beste[nr]?)\s+(?:wltp[-\s]*)?reichweite\b/i,
+    /\b(?:reichweite|wltp)\s+(?:am\s+)?(?:meisten|höchsten|hoechsten|größten|groessten|längsten|laengsten)\b/i,
+    /\bmit\s+(?:der\s+)?(?:meisten|höchsten|hoechsten|maximalen|längsten|laengsten)\s+reichweite\b/i,
+    /\bmeister\s+reichweite\b/i,
+    /\bwelche[rs]?\s+(?:e-?auto|elektroauto|auto|fahrzeug).{0,50}(?:meiste|höchste|maximale|längste)\s+reichweite\b/i,
+    /\b(?:e-?auto|elektroauto|fahrzeug).{0,30}(?:meiste|höchste|maximale|längste)\s+reichweite\b/i,
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 'max';
+    }
+  }
+  return null;
+}
+
 function extractTowCapacity(text, spans) {
   const ton = text.match(/(\d+(?:[.,]\d+)?)\s*tonnen?\b/i);
   if (ton && !isSpanConsumed(spans, ton.index)) {
@@ -367,6 +390,23 @@ function extractTrunkLMin(text, spans) {
       markSpan(spans, explicit.index, explicit.index + explicit[0].length);
       return liters;
     }
+  }
+  return null;
+}
+
+/** Kofferraum-Laderaumlänge in cm (in Stammdaten meist nicht verfügbar – Lexikon-Hinweis). */
+function extractTrunkDepthCmMin(text, spans) {
+  const patterns = [
+    /(?:kofferraum|laderaum|ladefläche|ladeflaeche)[^\d]{0,40}(?:länge|laenge|tiefe)[^\d]{0,20}(?:über|ueber|mind\.|mindestens|ab|>)?\s*(\d{2,3})\s*cm/i,
+    /(?:länge|laenge|tiefe)[^\d]{0,20}(?:über|ueber|mind\.|mindestens|ab|>)?\s*(\d{2,3})\s*cm[^\n]{0,40}(?:kofferraum|laderaum)/i,
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m || isSpanConsumed(spans, m.index)) continue;
+    const cm = Number(m[1]);
+    if (cm < 50 || cm > 300) continue;
+    markSpan(spans, m.index, m.index + m[0].length);
+    return cm;
   }
   return null;
 }
@@ -547,11 +587,18 @@ export function parseSearchIntent(input) {
   const towCapacityKg = extractTowCapacity(text, spans);
   if (towCapacityKg && !features.includes('towbar')) features.push('towbar');
 
+  const rangeRanking = extractRangeRanking(text, spans);
+  if (rangeRanking === 'max') {
+    if (!features.includes('reichweite')) features.push('reichweite');
+    if (!features.includes('elektro')) features.push('elektro');
+  }
+
   const fuel = extractFuel(text, spans);
   let resolvedFuel = fuel;
   if (!resolvedFuel && /\belektro\b/i.test(text)) resolvedFuel = 'elektro';
   if (!resolvedFuel && features.includes('elektro')) resolvedFuel = 'elektro';
   if (!resolvedFuel && features.includes('benzin')) resolvedFuel = 'verbrenner';
+  if (!resolvedFuel && rangeRanking === 'max') resolvedFuel = 'elektro';
   const payment = extractPayment(text, spans);
   const availability = extractAvailability(text, spans);
   const { maxRate, maxPrice, rangeKmMin } = extractMoneyAndRange(text, spans);
@@ -586,6 +633,7 @@ export function parseSearchIntent(input) {
   const maxHeightMm = extractMaxHeightMm(text, spans);
   const isofixRearMin = extractIsofixRearMin(text, spans);
   let trunkLMin = extractTrunkLMin(text, spans);
+  const trunkDepthCmMin = extractTrunkDepthCmMin(text, spans);
 
   const intent = {
     rawQuery,
@@ -608,9 +656,11 @@ export function parseSearchIntent(input) {
     features: [...new Set(features)],
     towCapacityKg,
     rangeKmMin,
+    rangeRanking,
     maxLengthMm,
     maxHeightMm,
     trunkLMin,
+    trunkDepthCmMin,
     isofixRearMin,
     seatsMin,
     powerPsTarget: power?.powerPsTarget ?? null,

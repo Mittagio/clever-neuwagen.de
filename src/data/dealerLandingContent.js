@@ -95,10 +95,10 @@ export const KIA_MODEL_WORLD = [
     searchQuery: 'Kia Sorento 7-Sitzer',
   },
   {
-    id: 'pv5',
+    id: 'pv5-passenger',
     name: 'PV5',
     tagline: 'Elektro für Gewerbe und Familie',
-    modelKey: 'pv5',
+    modelKey: 'pv5-passenger',
     rateFrom: 339,
     priceFrom: 38290,
     searchQuery: 'Kia PV5 Elektro',

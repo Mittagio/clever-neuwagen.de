@@ -69,7 +69,8 @@ export const MANUFACTURER_MEDIA = {
 export const KIA_MEDIA_MODELS = [
   'ev3', 'ev4', 'ev5', 'ev5-gt', 'ev6', 'ev9', 'ev2', 'sportage', 'sportage-phev',
   'niro', 'sorento', 'sorento-hybrid', 'sorento-phev', 'ceed', 'picanto', 'stonic',
-  'seltos', 'k4', 'k4-sportswagon', 'xceed', 'pv5-passenger',
+  'seltos', 'k4', 'k4-sportswagon', 'xceed',
+  'pv5-passenger', 'pv5-cargo-l2h1', 'pv5-chassis-cab', 'pv5-crew',
 ];
 
 export { resolveKiaModelImageKey };

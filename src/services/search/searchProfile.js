@@ -125,10 +125,12 @@ export function buildSearchProfile({
       return raw;
     })(),
     rangeKmMin,
+    rangeRanking: parsed.rangeRanking ?? filters.rangeRanking ?? null,
     towCapacityKg: towKg,
     maxLengthMm: parsed.maxLengthMm ?? filters.maxLengthMm ?? null,
     maxHeightMm: parsed.maxHeightMm ?? filters.maxHeightMm ?? null,
     trunkLMin,
+    trunkDepthCmMin: parsed.trunkDepthCmMin ?? null,
     isofixRearMin,
     payment: (parsed.paymentExplicit && parsed.payment)
       ? parsed.payment

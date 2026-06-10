@@ -1,0 +1,37 @@
+{
+  "brand": "Kia",
+  "modelKey": "ev6-gt",
+  "model": "EV6 GT",
+  "powertrainVariant": "elektro-gt",
+  "sourceFile": "Kia-Germany-EV6-GT-Pricelist.pdf",
+  "sourcePdfPath": "Kia-Germany/Kia-Germany-EV6-GT-Pricelist.pdf",
+  "priceListSource": "Kia Deutschland GmbH – offizielle Preisliste PDF",
+  "importedAt": "2026-06-10",
+  "priceFromGross": 69990,
+  "trims": [
+    {
+      "id": "gt",
+      "name": "GT"
+    }
+  ],
+  "variants": [
+    {
+      "trim": "GT",
+      "trimId": "gt",
+      "priceNet": 58815,
+      "priceGross": 69990,
+      "engine": "84-kWh-Batterie, 448 kW (609 PS), Allradantrieb",
+      "transmission": "",
+      "drive": "AWD",
+      "power": "448 kW (609 PS)",
+      "consumption": "20,9",
+      "co2": "0",
+      "co2Class": "A"
+    }
+  ],
+  "trimPricesFrom": [],
+  "wltpNotes": [
+    "Kia EV6 GT (448 kW/609 PS): Stromverbrauch kombiniert 20,9 kWh/100 km. CO2 -Emissionen kombiniert 0 g/km. CO2 -Klasse A."
+  ],
+  "variantCount": 1
+}

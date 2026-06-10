@@ -16,8 +16,11 @@ import { deriveAdvisorChipIds } from '../services/sales/advisorRanking.js';
 import { buildSearchProfile } from '../services/search/searchProfile.js';
 import { runAdvisorSearchWithAlternatives } from '../services/search/advisorSearchAlternatives.js';
 import SearchConflictBanner from '../components/discovery/SearchConflictBanner.jsx';
+import DealerLexiconPanel from '../components/dealer/DealerLexiconPanel.jsx';
 import { detectSearchConflict } from '../services/search/searchConflictHint.js';
 import { detectProfileConflict } from '../services/search/profileConflictHint.js';
+import { answerVehicleLexiconQuery } from '../services/lexicon/vehicleLexiconService.js';
+import { shouldShowDealerLexiconPanel } from '../services/lexicon/shouldShowLexiconPanel.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
 import {
@@ -169,11 +172,17 @@ export default function DealerPage() {
       ?? detectProfileConflict(searchProfile, { intent: searchIntent, filters: searchFilters });
   }, [hasSearch, searchProfile, searchIntent, searchFilters]);
 
+  const lexiconAnswer = useMemo(() => {
+    if (!hasSearch) return null;
+    return answerVehicleLexiconQuery(submittedQuery, dealerSearchPool);
+  }, [hasSearch, submittedQuery, dealerSearchPool]);
+
   const hasExact = searchBundle?.hasExactMatch && searchBundle.exact.modelLineGroups?.length > 0;
   const hasAlternatives = !hasExact && (searchBundle?.alternatives?.length ?? 0) > 0;
   const showEmpty = hasSearch && searchBundle && !hasExact && !hasAlternatives;
   const hasSearchResults = hasExact || hasAlternatives;
   const modelsChecked = dealerSearchPool.length;
+  const showLexicon = shouldShowDealerLexiconPanel(lexiconAnswer, searchProfile, { showEmpty });
 
   return (
     <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
@@ -194,6 +203,10 @@ export default function DealerPage() {
 
           {searchConflict && (
             <SearchConflictBanner conflict={searchConflict} />
+          )}
+
+          {showLexicon && (
+            <DealerLexiconPanel answer={lexiconAnswer} query={submittedQuery} />
           )}
 
           {hasSearch && (hasSearchResults || showEmpty) && (

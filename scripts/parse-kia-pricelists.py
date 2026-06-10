@@ -26,11 +26,15 @@ FILE_META = {
     'Kia-Germany-EV2-Preisliste': {'modelKey': 'ev2', 'model': 'EV2', 'variant': 'elektro'},
     'Kia-Germany-EV3-Preisliste': {'modelKey': 'ev3', 'model': 'EV3', 'variant': 'elektro'},
     'Kia-Germany-EV4-Preisliste': {'modelKey': 'ev4', 'model': 'EV4', 'variant': 'elektro'},
+    'Kia-Germany-EV4-Fastback-Preisliste': {'modelKey': 'ev4-fastback', 'model': 'EV4 Fastback', 'variant': 'elektro'},
     'Kia-Germany-EV5-Preisliste': {'modelKey': 'ev5', 'model': 'EV5', 'variant': 'elektro'},
     'Kia-Germany-EV5-GT-Preisliste': {'modelKey': 'ev5-gt', 'model': 'EV5 GT', 'variant': 'elektro-gt'},
     'Kia-Germany-EV6_Pricelist': {'modelKey': 'ev6', 'model': 'EV6', 'variant': 'elektro'},
+    'Kia-Germany-EV6-GT-Pricelist': {'modelKey': 'ev6-gt', 'model': 'EV6 GT', 'variant': 'elektro-gt'},
     'Kia-Germany-EV9-Preisliste': {'modelKey': 'ev9', 'model': 'EV9', 'variant': 'elektro'},
+    'Kia-Germany-EV9-GT-Preisliste': {'modelKey': 'ev9-gt', 'model': 'EV9 GT', 'variant': 'elektro-gt'},
     'Kia-Germany-PV5-Passenger-Preisliste': {'modelKey': 'pv5-passenger', 'model': 'PV5 Passenger', 'variant': 'nutzfahrzeug'},
+    'Kia-Germany-PV5-Cargo-Preisliste': {'modelKey': 'pv5-cargo-l2h1', 'model': 'PV5 Cargo L2H1', 'variant': 'nutzfahrzeug'},
 }
 
 TRIM_NAMES = {

@@ -79,4 +79,10 @@ test('Kofferraum: groß', 'SUV großer Kofferraum bis 45.000 €', {
   features: ['large_trunk'],
 });
 
+test('Reichweite: meiste (Superlativ)', 'Fahrzeug mit meister Reichweite', {
+  fuel: 'elektro',
+  rangeRanking: 'max',
+  features: ['reichweite', 'elektro'],
+});
+
 console.log('\nAlle Intent-Tests bestanden.');

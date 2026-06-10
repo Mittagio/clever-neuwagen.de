@@ -27,6 +27,7 @@ export const DEALER_MODEL_CATALOG = [
   kiaCatalogEntry('niro', 'Niro Hybrid'),
   kiaCatalogEntry('seltos', 'Seltos'),
   kiaCatalogEntry('sportage', 'Sportage'),
+  kiaCatalogEntry('sportage-hybrid', 'Sportage Hybrid'),
   kiaCatalogEntry('sportage-phev', 'Sportage Plug-in Hybrid'),
   kiaCatalogEntry('sorento', 'Sorento'),
   kiaCatalogEntry('sorento-hybrid', 'Sorento Hybrid'),
@@ -34,11 +35,17 @@ export const DEALER_MODEL_CATALOG = [
   kiaCatalogEntry('ev2', 'EV2', { ev: true }),
   kiaCatalogEntry('ev3', 'EV3', { ev: true }),
   kiaCatalogEntry('ev4', 'EV4', { ev: true }),
+  kiaCatalogEntry('ev4-fastback', 'EV4 Fastback', { ev: true }),
   kiaCatalogEntry('ev5', 'EV5', { ev: true }),
   kiaCatalogEntry('ev5-gt', 'EV5 GT', { ev: true }),
   kiaCatalogEntry('ev6', 'EV6', { ev: true }),
+  kiaCatalogEntry('ev6-gt', 'EV6 GT', { ev: true }),
   kiaCatalogEntry('ev9', 'EV9', { ev: true }),
+  kiaCatalogEntry('ev9-gt', 'EV9 GT', { ev: true }),
   kiaCatalogEntry('pv5-passenger', 'PV5 Passenger', { ev: true, pbv: true }),
+  kiaCatalogEntry('pv5-cargo-l2h1', 'PV5 Cargo L2H1', { ev: true, pbv: true }),
+  kiaCatalogEntry('pv5-chassis-cab', 'PV5 Chassis Cab', { ev: true, pbv: true }),
+  kiaCatalogEntry('pv5-crew', 'PV5 Crew', { ev: true, pbv: true }),
 ];
 
 export const LEASING_TERM_OPTIONS = [12, 18, 24, 30, 36, 42, 48, 54, 60];

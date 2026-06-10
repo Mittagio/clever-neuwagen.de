@@ -27,6 +27,7 @@ import {
 import { PILOT_DEALER_ID } from '../config/pilotLive.js';
 import SalesVoiceWowBanner from '../components/sales-advisor/SalesVoiceWowBanner.jsx';
 import KiaPartnerBar from '../components/sales-advisor/KiaPartnerBar.jsx';
+import SalesLexiconQuery from '../components/sales-advisor/SalesLexiconQuery.jsx';
 import {
   saveCustomerRecord,
   buildCustomerRecordPayload,
@@ -376,12 +377,15 @@ export default function SmartSalesPage() {
       <div className="ss-conversation-layout">
         <div className="ss-conversation-layout__main">
           {step === STEPS.WISHES && (
-            <SalesWishPicker
-              selectedIds={selectedChipIds}
-              onToggle={toggleChip}
-              onFind={handleProceedToSummary}
-              onVoiceParsed={handleVoiceParsed}
-            />
+            <>
+              <SalesWishPicker
+                selectedIds={selectedChipIds}
+                onToggle={toggleChip}
+                onFind={handleProceedToSummary}
+                onVoiceParsed={handleVoiceParsed}
+              />
+              <SalesLexiconQuery dealerSlug={dealerSlug} />
+            </>
           )}
 
           {step === STEPS.CLARIFY && (
@@ -393,13 +397,16 @@ export default function SmartSalesPage() {
           )}
 
           {step === STEPS.UNDERSTOOD && (
-            <SalesNeedsSummary
-              chipIds={selectedChipIds}
-              customer={customer}
-              mileagePerYear={mileagePerYear}
-              onConfirm={handleFindVehicles}
-              onBack={() => setStep(STEPS.WISHES)}
-            />
+            <>
+              <SalesNeedsSummary
+                chipIds={selectedChipIds}
+                customer={customer}
+                mileagePerYear={mileagePerYear}
+                onConfirm={handleFindVehicles}
+                onBack={() => setStep(STEPS.WISHES)}
+              />
+              <SalesLexiconQuery dealerSlug={dealerSlug} />
+            </>
           )}
 
           {step === STEPS.RESULTS && (

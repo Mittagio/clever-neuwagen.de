@@ -16,9 +16,9 @@ const stats = getKiaTrinkleStockStats();
 
 
 
-assert.ok(stock.length >= 100, `Mindestens 100 Varianten, aktuell: ${stock.length}`);
+assert.ok(stock.length >= 120, `Mindestens 120 Varianten, aktuell: ${stock.length}`);
 
-assert.equal(stats.modelLineCount, 21, '19 PDF-Modelllinien + Niro + Ceed');
+assert.equal(stats.modelLineCount, 28, '19 PDF + Niro + Ceed + 7 offizielle Lücken');
 
 
 
@@ -60,6 +60,20 @@ const elektro = stock.filter((v) => v.powertrain === 'elektro');
 assert.ok(elektro.length >= 20, 'Ausreichend Elektro-Varianten im Bestand');
 
 assert.ok(elektro.every((v) => v.modelKey.startsWith('ev') || v.modelKey.startsWith('pv5')));
+
+const pv5Lines = ['pv5-passenger', 'pv5-cargo-l2h1', 'pv5-chassis-cab', 'pv5-crew'];
+for (const modelKey of pv5Lines) {
+  assert.ok(
+    stock.some((v) => v.modelKey === modelKey),
+    `PV5-Variante fehlt im Bestand: ${modelKey}`,
+  );
+}
+
+assert.ok(stock.filter((v) => v.modelKey === 'sportage-hybrid').length >= 9, 'Sportage Hybrid aus Preisliste');
+assert.ok(
+  stock.some((v) => v.modelKey === 'sportage-hybrid' && v.trimId === 'spirit' && v.powertrain === 'hybrid'),
+  'Sportage Hybrid Spirit im Bestand',
+);
 
 
 

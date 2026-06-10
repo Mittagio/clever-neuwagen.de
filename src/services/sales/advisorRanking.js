@@ -18,8 +18,11 @@ const MODEL_LINE_LABELS = {
   ev6: 'EV6',
   ev9: 'EV9',
   niro: 'Niro EV',
-  'pv5-passenger': 'PV5',
+  'pv5-passenger': 'PV5 Passenger',
   'pv5-cargo': 'PV5 Cargo',
+  'pv5-cargo-l2h1': 'PV5 Cargo',
+  'pv5-chassis-cab': 'PV5 Chassis Cab',
+  'pv5-crew': 'PV5 Crew',
 };
 
 const PERIPHERAL_CHIP_PREFIXES = ['fuel_', 'km_', 'avail_'];
@@ -54,7 +57,12 @@ export function getModelLineKey(vehicle = {}) {
   const key = String(vehicle.modelKey ?? vehicle.imageModel ?? '').toLowerCase();
   if (key.startsWith('ev5')) return 'ev5';
   if (key.startsWith('ev4')) return 'ev4';
-  if (key.startsWith('pv5')) return key.includes('cargo') ? 'pv5-cargo' : 'pv5-passenger';
+  if (key.startsWith('pv5')) {
+    if (key.includes('cargo')) return 'pv5-cargo-l2h1';
+    if (key.includes('chassis')) return 'pv5-chassis-cab';
+    if (key.includes('crew')) return 'pv5-crew';
+    return 'pv5-passenger';
+  }
   return key || String(vehicle.model ?? 'unknown').toLowerCase();
 }
 

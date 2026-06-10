@@ -466,6 +466,124 @@ export const TRIM_FEATURE_MAP = {
       },
     ],
   },
+  'pv5-passenger': {
+    modelLabel: 'Kia PV5 Passenger',
+    baseRate: { plus: 339 },
+    trims: [
+      {
+        id: 'plus',
+        name: 'Plus',
+        standardFeatures: ['rear_camera', 'large_trunk'],
+        availableViaPackage: ['towbar'],
+        notAvailable: ['heat_pump', 'camera_360', 'seats_7'],
+      },
+    ],
+  },
+  'pv5-cargo-l2h1': {
+    modelLabel: 'Kia PV5 Cargo',
+    baseRate: { plus: 387 },
+    trims: [
+      {
+        id: 'plus',
+        name: 'Plus',
+        standardFeatures: ['rear_camera', 'large_trunk'],
+        availableViaPackage: ['towbar'],
+        notAvailable: ['heat_pump', 'camera_360', 'seats_7', 'heated_seats'],
+      },
+    ],
+  },
+  'pv5-chassis-cab': {
+    modelLabel: 'Kia PV5 Chassis Cab',
+    baseRate: { plus: 339 },
+    trims: [
+      {
+        id: 'plus',
+        name: 'Plus',
+        standardFeatures: ['rear_camera'],
+        availableViaPackage: ['towbar'],
+        notAvailable: ['heat_pump', 'camera_360', 'seats_7', 'heated_seats', 'large_trunk'],
+      },
+    ],
+  },
+  'pv5-crew': {
+    modelLabel: 'Kia PV5 Crew',
+    baseRate: { plus: 339 },
+    trims: [
+      {
+        id: 'plus',
+        name: 'Plus',
+        standardFeatures: ['rear_camera', 'large_trunk'],
+        availableViaPackage: ['towbar'],
+        notAvailable: ['heat_pump', 'camera_360', 'seats_7'],
+      },
+    ],
+  },
+  'ev6-gt': {
+    modelLabel: 'Kia EV6 GT',
+    baseRate: { gt: 693 },
+    trims: [
+      {
+        id: 'gt',
+        name: 'GT',
+        standardFeatures: ['heated_seats', 'heat_pump', 'camera_360', 'blind_spot', 'rear_camera', 'large_trunk', 'towbar'],
+        availableViaPackage: ['panorama_roof', 'harman_kardon'],
+        notAvailable: [],
+      },
+    ],
+  },
+  'ev9-gt': {
+    modelLabel: 'Kia EV9 GT',
+    baseRate: { gt: 1082 },
+    trims: [
+      {
+        id: 'gt',
+        name: 'GT',
+        standardFeatures: ['heated_seats', 'heat_pump', 'camera_360', 'blind_spot', 'rear_camera', 'large_trunk', 'seats_7', 'towbar'],
+        availableViaPackage: ['panorama_roof'],
+        notAvailable: [],
+      },
+    ],
+  },
+  'ev4-fastback': {
+    modelLabel: 'Kia EV4 Fastback',
+    baseRate: { earth: 425, 'gt-line': 455 },
+    trims: [
+      {
+        id: 'earth',
+        name: 'Earth',
+        standardFeatures: ['heated_seats', 'heat_pump', 'rear_camera', 'large_trunk'],
+        availableViaPackage: ['camera_360', 'blind_spot', 'towbar'],
+        notAvailable: [],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'heat_pump', 'camera_360', 'blind_spot', 'rear_camera', 'large_trunk'],
+        availableViaPackage: ['towbar', 'panorama_roof'],
+        notAvailable: [],
+      },
+    ],
+  },
+  'sportage-hybrid': {
+    modelLabel: 'Kia Sportage Hybrid',
+    baseRate: { spirit: 245, 'gt-line': 285 },
+    trims: [
+      {
+        id: 'spirit',
+        name: 'Spirit',
+        standardFeatures: ['heated_seats', 'rear_camera', 'large_trunk', 'family_suv', 'towbar'],
+        availableViaPackage: ['camera_360', 'blind_spot'],
+        notAvailable: ['heat_pump'],
+      },
+      {
+        id: 'gt-line',
+        name: 'GT-Line',
+        standardFeatures: ['heated_seats', 'rear_camera', 'parking_rear', 'blind_spot', 'large_trunk', 'family_suv', 'towbar'],
+        availableViaPackage: ['camera_360', 'panorama_roof'],
+        notAvailable: ['heat_pump'],
+      },
+    ],
+  },
   picanto: {
     modelLabel: 'Kia Picanto',
     baseRate: { core: 139, vision: 149, spirit: 169, 'gt-line': 179 },
@@ -509,9 +627,12 @@ export function normalizeModelKey(brand, model) {
   if (m.includes('sportage')) return 'sportage';
   if (m.includes('kuga')) return 'kuga';
   if (m.includes('ev3')) return 'ev3';
+  if (m.includes('ev4') && m.includes('fastback')) return 'ev4-fastback';
   if (m.includes('ev4')) return 'ev4';
   if (m.includes('ev5')) return 'ev5';
+  if (m.includes('ev6') && m.includes('gt')) return 'ev6-gt';
   if (m.includes('ev6')) return 'ev6';
+  if (m.includes('ev9') && m.includes('gt')) return 'ev9-gt';
   if (m.includes('ev9')) return 'ev9';
   if (m.includes('ev2')) return 'ev2';
   if (m.includes('sorento') && (m.includes('phev') || m.includes('plug-in'))) return 'sorento-phev';
@@ -522,6 +643,12 @@ export function normalizeModelKey(brand, model) {
   if (m.includes('ceed')) return 'ceed';
   if (m.includes('picanto')) return 'picanto';
   if (m.includes('stonic')) return 'stonic';
+  if (m.includes('pv5')) {
+    if (m.includes('cargo')) return 'pv5-cargo-l2h1';
+    if (m.includes('chassis')) return 'pv5-chassis-cab';
+    if (m.includes('crew')) return 'pv5-crew';
+    return 'pv5-passenger';
+  }
   return m.replace(/\s+/g, '-');
 }
 
@@ -536,6 +663,7 @@ export function inferTrimFromTitle(title) {
   if (t.includes('core')) return 'core';
   if (t.includes('st-line') || t.includes('st line')) return 'st-line';
   if (t.includes('inspiration')) return 'inspiration';
+  if (t.includes('plus')) return 'plus';
   return '';
 }
 
