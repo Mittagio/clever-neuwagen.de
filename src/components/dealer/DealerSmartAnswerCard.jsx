@@ -10,7 +10,9 @@ export default function DealerSmartAnswerCard({
   dealerId,
   onFollowUpQuery,
   onShowFit,
+  onSelectModel,
   fitRevealed = false,
+  configuratorRevealed = false,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -93,6 +95,24 @@ export default function DealerSmartAnswerCard({
         </div>
       )}
 
+      {answer.interestOptions?.length > 1 && !configuratorRevealed && (
+        <div className="dl-smart-answer__interest">
+          <p className="dl-smart-answer__interest-label">Wofür interessieren Sie sich?</p>
+          <div className="dl-smart-answer__interest-chips">
+            {answer.interestOptions.map((option) => (
+              <button
+                key={option.modelKey}
+                type="button"
+                className="dl-smart-answer__interest-chip"
+                onClick={() => onSelectModel?.(option.modelKey)}
+              >
+                {option.cta}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!answer.modelCards?.length && answer.highlights?.length > 0 && (
         <ul className="dl-smart-answer__highlights">
           {answer.highlights.map((item) => (
@@ -155,7 +175,17 @@ export default function DealerSmartAnswerCard({
         </div>
       )}
 
-      {answer.showFitCheck && answer.fitPrompt && !fitRevealed && (
+      {answer.showConfiguratorCta && answer.configuratorCta && !configuratorRevealed && (
+        <button
+          type="button"
+          className="btn btn-primary dl-smart-answer__fit-cta"
+          onClick={() => onSelectModel?.(answer.primaryModelKey)}
+        >
+          {answer.configuratorCta}
+        </button>
+      )}
+
+      {answer.showFitCheck && answer.fitPrompt && !fitRevealed && !configuratorRevealed && (
         <button
           type="button"
           className="btn btn-secondary dl-smart-answer__fit-cta"

@@ -6,14 +6,44 @@ import DealerSearchResults from '../components/dealer/DealerSearchResults.jsx';
 import DealerSearchAlternatives from '../components/dealer/DealerSearchAlternatives.jsx';
 import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
 import DealerSmartAnswerCard from '../components/dealer/DealerSmartAnswerCard.jsx';
-import DealerModelFitCard from '../components/dealer/DealerModelFitCard.jsx';
+import DealerJourneyProgress from '../components/dealer/DealerJourneyProgress.jsx';
+import DealerVehicleRecommendCard from '../components/dealer/DealerVehicleRecommendCard.jsx';
+import DealerVehicleUnderstandCard from '../components/dealer/DealerVehicleUnderstandCard.jsx';
+import DealerTrimRecommendCard from '../components/dealer/DealerTrimRecommendCard.jsx';
+import DealerPurchaseTypeCard from '../components/dealer/DealerPurchaseTypeCard.jsx';
+import DealerSpecialConditionsCard from '../components/dealer/DealerSpecialConditionsCard.jsx';
+import DealerJourneySummary from '../components/dealer/DealerJourneySummary.jsx';
+import DealerJourneyOfferPanel from '../components/dealer/DealerJourneyOfferPanel.jsx';
+import DealerJourneyLeadSheet from '../components/dealer/DealerJourneyLeadSheet.jsx';
+import DealerJourneyLeadSuccess from '../components/dealer/DealerJourneyLeadSuccess.jsx';
+import { buildDealerJourneySnapshot } from '../services/dealer/purchaseTypeOptions.js';
+import { buildJourneyOffers } from '../services/dealer/journeyOfferService.js';
 import {
-  buildFitPreviewGroups,
+  createLeadFromJourney,
+  prepareJourneyLeadContext,
+} from '../services/dealer/journeyLeadService.js';
+import {
+  toggleWishChipIds,
+  resolveWishFeaturesFromChips,
+} from '../data/dealer/dealerWishCatalog.js';
+import {
+  buildConfigSummaryFromTrim,
+  buildConfigurationFromTrim,
+  recommendTrimForWishes,
+} from '../services/dealer/vehicleSalesJourney.js';
+import {
   filterSearchBundleToModels,
+  findModelLineGroup,
 } from '../services/dealer/smartAnswerJourney.js';
+import {
+  buildProfileCleverQuote,
+  enrichModelLineGroupWithProfileQuote,
+} from '../services/cleverQuote/cleverQuoteService.js';
+import { useLeads } from '../context/LeadsContext.jsx';
 import { classifyCustomerQueryIntent } from '../services/search/customerQueryIntent.js';
 import { analyzeVehicleQuery } from '../services/search/vehicleQueryIntent.js';
 import { buildDealerSmartAnswer } from '../services/dealer/dealerSmartAnswerService.js';
+import { resolveModelConditions } from '../data/dealerConditionsSchema.js';
 import { usePublishedDealerConditions, DEFAULT_DEALER_ID } from '../context/DealerConditionsContext.jsx';
 import { useDealerSubdomain } from '../context/DealerSubdomainContext.jsx';
 import { getMarketplaceVehiclePool } from '../data/marketplacePool.js';
@@ -35,6 +65,7 @@ import {
   matchDealerChipIdsFromQuery,
   toggleChipInQueryText,
 } from '../services/dealer/dealerWishChips.js';
+import { inferWishChipsFromSearch } from '../services/dealer/dealerWishCatalogService.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
@@ -53,10 +84,24 @@ export default function DealerPage() {
 
   const [queryDraft, setQueryDraft] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
-  const [fitRevealed, setFitRevealed] = useState(false);
+  const [salesStep, setSalesStep] = useState(null);
+  const [selectedModelKey, setSelectedModelKey] = useState(null);
+  const [wishChipIds, setWishChipIds] = useState([]);
+  const [prefilledWishCount, setPrefilledWishCount] = useState(0);
+  const [trimRecommendation, setTrimRecommendation] = useState(null);
+  const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
+  const [configSummary, setConfigSummary] = useState(null);
+  const [purchaseType, setPurchaseType] = useState(null);
+  const [purchaseTypeComplete, setPurchaseTypeComplete] = useState(false);
+  const [specialConditions, setSpecialConditions] = useState([]);
+  const [specialConditionsComplete, setSpecialConditionsComplete] = useState(false);
   const [offersRevealed, setOffersRevealed] = useState(false);
+  const [leadSheetOpen, setLeadSheetOpen] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(null);
+  const { addLead } = useLeads();
   const searchInputRef = useRef(null);
   const offersSectionRef = useRef(null);
+  const configuratorSectionRef = useRef(null);
 
   const draftChipIds = useMemo(
     () => matchDealerChipIdsFromQuery(queryDraft),
@@ -197,16 +242,30 @@ export default function DealerPage() {
   }, [hasSearch, customerQueryMode, submittedQuery, dealerSearchPool]);
 
   useEffect(() => {
-    setFitRevealed(false);
+    setSalesStep(null);
+    setSelectedModelKey(null);
+    setWishChipIds([]);
+    setPrefilledWishCount(0);
+    setTrimRecommendation(null);
+    setVehicleConfiguration(null);
+    setConfigSummary(null);
+    setPurchaseType(null);
+    setPurchaseTypeComplete(false);
+    setSpecialConditions([]);
+    setSpecialConditionsComplete(false);
     setOffersRevealed(false);
+    setLeadSheetOpen(false);
+    setLeadSubmitted(null);
   }, [submittedQuery]);
 
   const infoModelKeys = useMemo(() => {
     if (!smartAnswer || customerQueryMode !== 'info') return [];
+    if (configSummary?.modelKey) return [configSummary.modelKey];
+    if (selectedModelKey) return [selectedModelKey];
     if (smartAnswer.compareModelKeys?.length) return smartAnswer.compareModelKeys;
     if (smartAnswer.primaryModelKey) return [smartAnswer.primaryModelKey];
     return [];
-  }, [smartAnswer, customerQueryMode]);
+  }, [smartAnswer, customerQueryMode, selectedModelKey, configSummary]);
 
   const activeSearchBundle = useMemo(() => {
     if (!searchBundle) return null;
@@ -214,34 +273,200 @@ export default function DealerPage() {
     return filterSearchBundleToModels(searchBundle, infoModelKeys);
   }, [searchBundle, customerQueryMode, infoModelKeys]);
 
-  const fitGroups = useMemo(() => {
-    if (!fitRevealed || !activeSearchBundle || !searchProfile) return [];
-    return buildFitPreviewGroups(activeSearchBundle, infoModelKeys, searchProfile, smartAnswer);
-  }, [fitRevealed, activeSearchBundle, infoModelKeys, searchProfile, smartAnswer]);
+  const isFactOnly = customerQueryMode === 'info' && smartAnswer?.journeyKind === 'fact';
+  const hasExact = activeSearchBundle?.hasExactMatch && activeSearchBundle.exact.modelLineGroups?.length > 0;
 
-  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
-  const showFitCard = showSmartAnswer && fitRevealed && !offersRevealed && fitGroups.length > 0;
-  const showVehicleOffers = hasSearch && (customerQueryMode === 'search' || offersRevealed);
+  const primaryRecommendGroup = useMemo(() => {
+    const exactGroups = activeSearchBundle?.exact?.modelLineGroups ?? [];
+    const altGroups = activeSearchBundle?.alternatives?.[0]?.modelLineGroups ?? [];
+    const first = exactGroups[0] ?? altGroups[0] ?? null;
+    if (!first) return null;
+    return searchProfile ? enrichModelLineGroupWithProfileQuote(first, searchProfile) : first;
+  }, [activeSearchBundle, searchProfile]);
+
+  const useSalesJourney = hasSearch && Boolean(primaryRecommendGroup) && !isFactOnly;
+
+  const effectiveSalesStep = useMemo(() => {
+    if (!useSalesJourney) return null;
+    if (salesStep) return salesStep;
+    return 'recommend';
+  }, [useSalesJourney, salesStep]);
+
+  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer)
+    && (isFactOnly || !useSalesJourney);
+  const showSalesRecommend = useSalesJourney && effectiveSalesStep === 'recommend' && primaryRecommendGroup;
+  const showSalesUnderstand = useSalesJourney && effectiveSalesStep === 'understand' && selectedModelKey;
+  const showSalesTrim = useSalesJourney && effectiveSalesStep === 'trim' && trimRecommendation;
+  const showSpecialConditions = useSalesJourney && effectiveSalesStep === 'special' && Boolean(configSummary);
+  const showPurchaseType = useSalesJourney && effectiveSalesStep === 'purchase' && specialConditionsComplete;
+  const showJourneySummary = useSalesJourney && effectiveSalesStep === 'summary' && purchaseTypeComplete;
+
+  const journeySnapshot = useMemo(
+    () => buildDealerJourneySnapshot({
+      configSummary,
+      purchaseType,
+      specialConditions,
+      configuration: vehicleConfiguration,
+    }),
+    [configSummary, purchaseType, specialConditions, vehicleConfiguration],
+  );
+  const journeyOfferBundle = useMemo(() => {
+    if (!journeySnapshot?.configuration || !specialConditionsComplete) return null;
+    return buildJourneyOffers(journeySnapshot, conditions);
+  }, [journeySnapshot, conditions, specialConditionsComplete]);
+
+  const journeyCleverQuote = useMemo(() => {
+    const modelKey = journeySnapshot?.vehicle?.modelKey ?? configSummary?.modelKey;
+    if (!modelKey || !activeSearchBundle) return null;
+    const group = findModelLineGroup(activeSearchBundle, modelKey);
+    if (!group) return null;
+    if (group.modelQuote) return group.modelQuote;
+    if (group.primaryMatch?.cleverQuote) return group.primaryMatch.cleverQuote;
+    if (searchProfile && group.primaryMatch) {
+      return buildProfileCleverQuote(group.primaryMatch, searchProfile, { preserveAdvisorMode: true });
+    }
+    return null;
+  }, [journeySnapshot, configSummary, activeSearchBundle, searchProfile]);
+
+  const showJourneyOffer = useSalesJourney
+    && effectiveSalesStep === 'offer'
+    && Boolean(configSummary)
+    && specialConditionsComplete
+    && purchaseTypeComplete
+    && !leadSubmitted;
+  const showJourneyLeadSuccess = Boolean(leadSubmitted);
+  const showVehicleOffers = hasSearch && !useSalesJourney;
+  const showLegacySearchResults = showVehicleOffers && !useSalesJourney;
 
   const handleFollowUpQuery = useCallback((text) => {
     handleSearch(text);
   }, [handleSearch]);
 
-  const handleRevealFit = useCallback(() => {
-    setFitRevealed(true);
+  const scrollToJourney = useCallback(() => {
     requestAnimationFrame(() => {
-      offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      configuratorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, []);
+
+  const activeSearchChipIds = useMemo(
+    () => [...searchChipIds, ...submittedChipIds],
+    [searchChipIds, submittedChipIds],
+  );
+
+  const selectedModelDelivery = useMemo(() => {
+    if (!selectedModelKey) return null;
+    const resolved = resolveModelConditions(conditions, selectedModelKey);
+    return resolved.deliveryTime ?? null;
+  }, [conditions, selectedModelKey]);
+
+  const handleViewVehicle = useCallback((modelKey) => {
+    const prefilled = inferWishChipsFromSearch(modelKey, {
+      searchProfile,
+      searchFilters,
+      searchChipIds: activeSearchChipIds,
+    });
+    setSelectedModelKey(modelKey);
+    setWishChipIds(prefilled);
+    setPrefilledWishCount(prefilled.length);
+    setTrimRecommendation(null);
+    setConfigSummary(null);
+    setVehicleConfiguration(null);
+    setSalesStep('understand');
+    scrollToJourney();
+  }, [searchProfile, searchFilters, activeSearchChipIds, scrollToJourney]);
+
+  const wishFeatures = useMemo(
+    () => resolveWishFeaturesFromChips(wishChipIds),
+    [wishChipIds],
+  );
+
+  const handleToggleWish = useCallback((chipId) => {
+    setWishChipIds((prev) => toggleWishChipIds(prev, chipId));
+  }, []);
+
+  const handleUnderstandContinue = useCallback(() => {
+    const modelKey = selectedModelKey;
+    if (!modelKey) return;
+    const rec = recommendTrimForWishes(modelKey, wishFeatures, searchProfile, searchFilters);
+    setTrimRecommendation(rec);
+    setSalesStep('trim');
+    scrollToJourney();
+  }, [selectedModelKey, wishFeatures, searchProfile, searchFilters, scrollToJourney]);
+
+  const handleTrimConfirm = useCallback((recommendation) => {
+    const modelKey = selectedModelKey ?? recommendation?.modelKey;
+    if (!modelKey) return;
+    setTrimRecommendation(recommendation);
+    setConfigSummary(buildConfigSummaryFromTrim(modelKey, recommendation, wishFeatures, wishChipIds));
+    setVehicleConfiguration(buildConfigurationFromTrim(modelKey, recommendation));
+    setSpecialConditions([]);
+    setSpecialConditionsComplete(false);
+    setPurchaseType(null);
+    setPurchaseTypeComplete(false);
+    setSalesStep('special');
+    scrollToJourney();
+  }, [selectedModelKey, wishFeatures, wishChipIds, scrollToJourney]);
+
+  const handleTrimBack = useCallback(() => {
+    setSalesStep('understand');
+    scrollToJourney();
+  }, [scrollToJourney]);
+
+  const handleSpecialConditionsContinue = useCallback((nextConditions) => {
+    setSpecialConditions(nextConditions);
+    setSpecialConditionsComplete(true);
+    setPurchaseType(null);
+    setPurchaseTypeComplete(false);
+    setSalesStep('purchase');
+    scrollToJourney();
+  }, [scrollToJourney]);
+
+  const handlePurchaseTypeContinue = useCallback((type) => {
+    setPurchaseType(type);
+    setPurchaseTypeComplete(true);
+    setSalesStep('summary');
+    scrollToJourney();
+  }, [scrollToJourney]);
 
   const handleRevealOffers = useCallback(() => {
     setOffersRevealed(true);
+    setSalesStep('offer');
     requestAnimationFrame(() => {
       offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, []);
 
-  const hasExact = activeSearchBundle?.hasExactMatch && activeSearchBundle.exact.modelLineGroups?.length > 0;
+  const handleRequestLead = useCallback(() => {
+    setLeadSheetOpen(true);
+  }, []);
+
+  const handleLeadSheetClose = useCallback(() => {
+    setLeadSheetOpen(false);
+  }, []);
+
+  const handleLeadSubmit = useCallback((contact) => {
+    const { offerBundle } = prepareJourneyLeadContext(journeySnapshot, conditions);
+    const lead = createLeadFromJourney({
+      contact,
+      journeySnapshot,
+      offerBundle,
+      cleverQuote: journeyCleverQuote,
+      searchQuery: submittedQuery,
+      dealerConditions: conditions,
+      message: contact.message,
+    });
+    addLead(lead);
+    setLeadSheetOpen(false);
+    setLeadSubmitted({
+      contactName: contact.name,
+      inquiryBrief: lead.inquiryBrief,
+      cleverQuotePercent: lead.cleverQuotePercent,
+    });
+    requestAnimationFrame(() => {
+      offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [journeySnapshot, conditions, journeyCleverQuote, submittedQuery, addLead]);
+
   const hasAlternatives = !hasExact && (activeSearchBundle?.alternatives?.length ?? 0) > 0;
   const showEmpty = hasSearch && activeSearchBundle && !hasExact && !hasAlternatives;
   const hasSearchResults = hasExact || hasAlternatives;
@@ -273,21 +498,89 @@ export default function DealerPage() {
               answer={smartAnswer}
               dealerId={dealerId}
               onFollowUpQuery={handleFollowUpQuery}
-              onShowFit={handleRevealFit}
-              fitRevealed={fitRevealed}
             />
           )}
 
-          <div ref={offersSectionRef}>
-          {showFitCard && (
-            <DealerModelFitCard
-              fitPrompt={smartAnswer.fitPrompt}
-              groups={fitGroups}
-              smartAnswer={smartAnswer}
+          <div ref={configuratorSectionRef} className="dl-sales-journey">
+          {useSalesJourney && effectiveSalesStep && (
+            <DealerJourneyProgress salesStep={effectiveSalesStep} />
+          )}
+          {showSalesRecommend && (
+            <DealerVehicleRecommendCard
+              group={primaryRecommendGroup}
+              dealerId={dealerId}
+              searchProfile={searchProfile}
+              searchFilters={searchFilters}
+              searchWishes={searchWishes}
+              chipIds={activeSearchChipIds}
+              onViewVehicle={handleViewVehicle}
+            />
+          )}
+          {showSalesUnderstand && (
+            <DealerVehicleUnderstandCard
+              modelKey={selectedModelKey}
+              dealerId={dealerId}
+              wishChipIds={wishChipIds}
+              searchProfile={searchProfile}
+              searchFilters={searchFilters}
+              searchChipIds={activeSearchChipIds}
+              deliveryLabel={selectedModelDelivery}
+              prefilledWishCount={prefilledWishCount}
+              onToggleWish={handleToggleWish}
+              onContinue={handleUnderstandContinue}
+            />
+          )}
+          {showSalesTrim && (
+            <DealerTrimRecommendCard
+              recommendation={trimRecommendation}
+              modelKey={selectedModelKey}
+              dealerId={dealerId}
+              onConfirm={handleTrimConfirm}
+              onBack={handleTrimBack}
+            />
+          )}
+          {showSpecialConditions && (
+            <DealerSpecialConditionsCard
+              configSummary={configSummary}
+              value={specialConditions}
+              onContinue={handleSpecialConditionsContinue}
+            />
+          )}
+          {showPurchaseType && (
+            <DealerPurchaseTypeCard
+              configSummary={configSummary}
+              value={purchaseType}
+              onContinue={handlePurchaseTypeContinue}
+            />
+          )}
+          {showJourneySummary && (
+            <DealerJourneySummary
+              configSummary={configSummary}
+              purchaseType={purchaseType}
+              specialConditions={specialConditions}
               onShowOffers={handleRevealOffers}
             />
           )}
-          {showVehicleOffers && hasSearch && (hasSearchResults || showEmpty) && (
+          </div>
+
+          <div ref={offersSectionRef}>
+          {showJourneyOffer && (
+            <DealerJourneyOfferPanel
+              journeySnapshot={journeySnapshot}
+              dealerConditions={conditions}
+              dealerName={conditions.dealerName}
+              onRequestLead={handleRequestLead}
+            />
+          )}
+          {showJourneyLeadSuccess && (
+            <DealerJourneyLeadSuccess
+              contactName={leadSubmitted.contactName}
+              dealerName={conditions.dealerName}
+              inquiryBrief={leadSubmitted.inquiryBrief}
+              cleverQuotePercent={leadSubmitted.cleverQuotePercent}
+            />
+          )}
+          {showLegacySearchResults && hasSearch && (hasSearchResults || showEmpty) && (
             <p className="dl-search-results__intro" aria-live="polite">
               Wir haben {modelsChecked} Modelle geprüft.
               {hasExact && (
@@ -307,7 +600,7 @@ export default function DealerPage() {
             </p>
           )}
 
-          {showVehicleOffers && hasExact && (
+          {showLegacySearchResults && hasExact && (
             <DealerSearchResults
               query={submittedQuery}
               searchProfile={searchProfile}
@@ -322,7 +615,7 @@ export default function DealerPage() {
             />
           )}
 
-          {showVehicleOffers && hasAlternatives && (
+          {showLegacySearchResults && hasAlternatives && (
             <DealerSearchAlternatives
               query={submittedQuery}
               searchProfile={searchProfile}
@@ -337,7 +630,7 @@ export default function DealerPage() {
             />
           )}
 
-          {showVehicleOffers && showEmpty && (
+          {showLegacySearchResults && showEmpty && (
             <section className="dl-search-results dl-search-results--empty" aria-live="polite">
               <p className="dl-search-results__empty">
                 {activeSearchBundle.guidanceMessage ?? (
@@ -350,7 +643,7 @@ export default function DealerPage() {
             </section>
           )}
 
-          {showVehicleOffers && hasSearchResults && (
+          {showLegacySearchResults && hasSearchResults && (
             <button
               type="button"
               className="btn btn-secondary dl-search-results__all dl-search-results__all--inline"
@@ -367,6 +660,20 @@ export default function DealerPage() {
           />
         </div>
       </div>
+
+      {leadSheetOpen && (
+        <DealerJourneyLeadSheet
+          dealerName={conditions.dealerName}
+          vehicleTitle={
+            journeyOfferBundle?.vehicleTitle
+            ?? (configSummary
+              ? `${configSummary.modelLabel ?? ''} ${configSummary.trimLabel ?? ''}`.trim()
+              : undefined)
+          }
+          onClose={handleLeadSheetClose}
+          onSubmit={handleLeadSubmit}
+        />
+      )}
     </PageShell>
   );
 }

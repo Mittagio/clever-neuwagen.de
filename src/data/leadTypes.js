@@ -37,4 +37,5 @@ export const LEAD_SOURCES = {
   pilot: 'Pilot Trinkle',
   gespraech: 'Gesprächsmodus',
   manual: 'Manuell',
+  dealerJourney: 'Clever Journey',
 };

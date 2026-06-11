@@ -3,6 +3,7 @@
  */
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { enrichModelLineGroupWithProfileQuote } from '../cleverQuote/cleverQuoteService.js';
+import { buildInterestOptions, hasConfigurator } from './modelConfiguratorCatalog.js';
 import { enrichFitGroups } from './modelFitRecommendation.js';
 
 /** @typedef {{ id: string, label: string, query: string }} RelatedTopic */
@@ -119,6 +120,14 @@ export function enrichSmartAnswerJourney(answer, analysis) {
     ? KIA_MODEL_ATTRIBUTES[primaryModelKey]?.bodyType ?? 'suv'
     : null;
 
+  const interestOptions = buildInterestOptions({
+    ...answer,
+    compareModelKeys,
+    primaryModelKey,
+  });
+
+  const primaryHasConfigurator = primaryModelKey ? hasConfigurator(primaryModelKey) : false;
+
   return {
     ...answer,
     journeyKind,
@@ -126,9 +135,14 @@ export function enrichSmartAnswerJourney(answer, analysis) {
     primaryModelLabel: primaryLabel,
     compareModelKeys,
     relatedTopics,
+    interestOptions,
     fitPrompt,
     bodyType,
-    showFitCheck: journeyKind === 'compare' || Boolean(primaryModelKey),
+    showFitCheck: (journeyKind === 'compare' || Boolean(primaryModelKey)) && !primaryHasConfigurator,
+    showConfiguratorCta: primaryHasConfigurator && journeyKind !== 'compare',
+    configuratorCta: primaryHasConfigurator && primaryLabel
+      ? `${primaryLabel} konfigurieren`
+      : null,
     showOffersCta: false,
   };
 }
