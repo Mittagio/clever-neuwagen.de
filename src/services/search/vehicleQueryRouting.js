@@ -49,6 +49,7 @@ export function resolveQueryRoutingLayer(analysis, answer = null) {
 
   if (analysis.intent === 'vehicle_search') return 'vehicle_search';
   if (analysis.estimate) return 'structured_estimate';
+  if (analysis.lineup === 'electric') return 'structured_fact';
 
   if (analysis.intent === 'vehicle_compare_question') return 'advisory';
 

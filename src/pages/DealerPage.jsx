@@ -44,7 +44,11 @@ import {
   enrichModelLineGroupWithProfileQuote,
 } from '../services/cleverQuote/cleverQuoteService.js';
 import { useLeads } from '../context/LeadsContext.jsx';
-import { classifyCustomerQueryIntent } from '../services/search/customerQueryIntent.js';
+import {
+  classifyCustomerQueryIntent,
+  getCustomerQueryType,
+} from '../services/search/customerQueryIntent.js';
+import { detectModelKeyInQuery } from '../services/search/modelAttributeQuestion.js';
 import { analyzeVehicleQuery } from '../services/search/vehicleQueryIntent.js';
 import { buildDealerSmartAnswer } from '../services/dealer/dealerSmartAnswerService.js';
 import { resolveModelConditions } from '../data/dealerConditionsSchema.js';
@@ -246,10 +250,15 @@ export default function DealerPage() {
     return analyzeVehicleQuery(submittedQuery, searchIntent, searchProfile);
   }, [hasSearch, submittedQuery, searchIntent, searchProfile]);
 
+  const customerQueryType = useMemo(() => {
+    if (!hasSearch || !searchIntent || !searchProfile) return 'search';
+    return getCustomerQueryType(submittedQuery, searchIntent, searchProfile);
+  }, [hasSearch, submittedQuery, searchIntent, searchProfile]);
+
   const customerQueryMode = useMemo(() => {
-    if (!vehicleQueryAnalysis) return 'search';
+    if (!hasSearch || !searchIntent || !searchProfile) return 'search';
     return classifyCustomerQueryIntent(submittedQuery, searchIntent, searchProfile);
-  }, [vehicleQueryAnalysis, submittedQuery, searchIntent, searchProfile]);
+  }, [hasSearch, submittedQuery, searchIntent, searchProfile]);
 
   const smartAnswer = useMemo(() => {
     if (!hasSearch || customerQueryMode !== 'info') return null;
@@ -320,7 +329,11 @@ export default function DealerPage() {
     return filterSearchBundleToModels(searchBundle, infoModelKeys);
   }, [searchBundle, customerQueryMode, infoModelKeys]);
 
-  const isFactOnly = customerQueryMode === 'info' && smartAnswer?.journeyKind === 'fact';
+  const isFactOnly = customerQueryMode === 'info' && (
+    smartAnswer?.journeyKind === 'fact'
+    || smartAnswer?.journeyKind === 'lineup'
+    || customerQueryType === 'knowledge'
+  );
   const hasExact = activeSearchBundle?.hasExactMatch && activeSearchBundle.exact.modelLineGroups?.length > 0;
 
   const primaryRecommendGroup = useMemo(() => {
@@ -332,14 +345,33 @@ export default function DealerPage() {
   }, [activeSearchBundle, searchProfile]);
 
   const journeyCompareGroups = useMemo(() => {
+    if (customerQueryType !== 'compare') return null;
+
+    const compareKeys = vehicleQueryAnalysis?.compare
+      ? [vehicleQueryAnalysis.compare.modelKeyA, vehicleQueryAnalysis.compare.modelKeyB]
+      : smartAnswer?.compareModelKeys;
+
+    if (compareKeys?.length >= 2 && activeSearchBundle) {
+      const groups = compareKeys
+        .map((modelKey) => findModelLineGroup(activeSearchBundle, modelKey))
+        .filter(Boolean);
+      if (groups.length >= 2) {
+        return groups.map((group) => (
+          searchProfile ? enrichModelLineGroupWithProfileQuote(group, searchProfile) : group
+        ));
+      }
+    }
+
     const raw = resolveJourneyCompareModelGroups(activeSearchBundle, 2);
     if (raw.length < 2) return null;
     return raw.map((group) => (
       searchProfile ? enrichModelLineGroupWithProfileQuote(group, searchProfile) : group
     ));
-  }, [activeSearchBundle, searchProfile]);
+  }, [customerQueryType, vehicleQueryAnalysis, smartAnswer, activeSearchBundle, searchProfile]);
 
-  const useSalesJourney = hasSearch && Boolean(primaryRecommendGroup) && !isFactOnly;
+  const useSalesJourney = hasSearch
+    && customerQueryType === 'purchase'
+    && Boolean(primaryRecommendGroup);
 
   useEffect(() => {
     if (!useSalesJourney || !salesStep || !submittedQuery.trim()) return;
@@ -386,9 +418,12 @@ export default function DealerPage() {
     return 'recommend';
   }, [useSalesJourney, salesStep]);
 
-  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer)
-    && (isFactOnly || !useSalesJourney);
-  const showSalesCompare = useSalesJourney && effectiveSalesStep === 'recommend' && journeyCompareGroups;
+  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
+  const showStandaloneCompare = customerQueryType === 'compare'
+    && Boolean(journeyCompareGroups)
+    && !useSalesJourney;
+  const showSalesCompare = (useSalesJourney && effectiveSalesStep === 'recommend' && journeyCompareGroups)
+    || (showStandaloneCompare && !showSmartAnswer);
   const showSalesRecommend = useSalesJourney && effectiveSalesStep === 'recommend' && primaryRecommendGroup && !showSalesCompare;
   const showSalesUnderstand = useSalesJourney && effectiveSalesStep === 'understand' && selectedModelKey;
   const showSalesTrim = useSalesJourney && effectiveSalesStep === 'trim' && trimRecommendation;
@@ -433,8 +468,8 @@ export default function DealerPage() {
     && budgetComplete
     && !leadSubmitted;
   const showJourneyLeadSuccess = Boolean(leadSubmitted);
-  const showVehicleOffers = hasSearch && !useSalesJourney;
-  const showLegacySearchResults = showVehicleOffers && !useSalesJourney;
+  const showVehicleOffers = hasSearch && customerQueryType === 'search';
+  const showLegacySearchResults = showVehicleOffers;
 
   const handleFollowUpQuery = useCallback((text) => {
     handleSearch(text);
@@ -474,13 +509,24 @@ export default function DealerPage() {
   }, [searchProfile, searchFilters, activeSearchChipIds, scrollToJourney]);
 
   const handleSmartAnswerSelectModel = useCallback((modelKey) => {
-    if (useSalesJourney) {
+    if (modelKey === 'unsure') {
+      handleSearch('Elektro – beraten Sie mich');
+      return;
+    }
+    if (customerQueryType === 'purchase' || smartAnswer?.journeyKind === 'lineup') {
       handleViewVehicle(modelKey);
       return;
     }
     const label = KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey;
-    handleSearch(`Kia ${label}`);
-  }, [useSalesJourney, handleViewVehicle, handleSearch]);
+    handleSearch(`Zeig mir den ${label}`);
+  }, [customerQueryType, smartAnswer, handleViewVehicle, handleSearch]);
+
+  useEffect(() => {
+    if (customerQueryType !== 'purchase' || !hasSearch) return;
+    const modelKey = detectModelKeyInQuery(submittedQuery);
+    if (!modelKey || salesStep) return;
+    handleViewVehicle(modelKey);
+  }, [customerQueryType, hasSearch, submittedQuery, salesStep, handleViewVehicle]);
 
   const wishFeatures = useMemo(
     () => resolveWishFeaturesFromChips(wishChipIds),
@@ -635,7 +681,7 @@ export default function DealerPage() {
           {useSalesJourney && effectiveSalesStep && (
             <DealerJourneyProgress salesStep={effectiveSalesStep} />
           )}
-          {showSalesCompare && (
+          {(showSalesCompare || showStandaloneCompare) && journeyCompareGroups && (
             <DealerJourneyCompareCard
               groups={journeyCompareGroups}
               dealerId={dealerId}

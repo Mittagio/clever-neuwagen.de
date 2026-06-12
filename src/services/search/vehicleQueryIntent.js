@@ -7,6 +7,7 @@
  */
 import { matchEstimateQuestion } from '../dealer/vehicleEstimateMatcher.js';
 import { matchVehicleQuestion } from '../dealer/vehicleQuestionMatcher.js';
+import { matchElectricLineupQuestion } from './electricLineupQuestion.js';
 import { parseAdvisoryQuestion } from './advisoryQuestionParser.js';
 import { parseModelAttributeQuestion } from './modelAttributeQuestion.js';
 import {
@@ -72,6 +73,14 @@ export function analyzeVehicleQuery(query, intent = {}, profile = {}) {
   const text = String(query ?? '').trim();
   if (!text) {
     return { intent: 'vehicle_search', query: text };
+  }
+
+  if (matchElectricLineupQuestion(text)) {
+    return {
+      intent: 'vehicle_fact_question',
+      query: text,
+      lineup: 'electric',
+    };
   }
 
   const estimateMatch = matchEstimateQuestion(text);

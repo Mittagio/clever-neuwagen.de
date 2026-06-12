@@ -92,11 +92,13 @@ export function resolveCompareModelKeys(analysis) {
 export function enrichSmartAnswerJourney(answer, analysis) {
   if (!answer) return null;
 
-  const journeyKind = analysis?.intent === 'vehicle_compare_question'
-    ? 'compare'
-    : answer.highlights?.length > 1 && !analysis?.fact?.modelKey
-      ? 'ranking'
-      : 'fact';
+  const journeyKind = analysis?.lineup === 'electric' || answer.journeyKind === 'lineup'
+    ? 'lineup'
+    : analysis?.intent === 'vehicle_compare_question'
+      ? 'compare'
+      : answer.highlights?.length > 1 && !analysis?.fact?.modelKey
+        ? 'ranking'
+        : answer.journeyKind ?? 'fact';
 
   const primaryModelKey = resolvePrimaryModelKey(answer, analysis);
   const compareModelKeys = journeyKind === 'compare' ? resolveCompareModelKeys(analysis) : [];
@@ -109,9 +111,13 @@ export function enrichSmartAnswerJourney(answer, analysis) {
     : [];
 
   let fitPrompt = null;
-  if (journeyKind === 'compare') {
+  if (answer.fitPrompt) {
+    fitPrompt = answer.fitPrompt;
+  } else if (journeyKind === 'compare') {
     const names = compareModelKeys.map((k) => KIA_MODEL_ATTRIBUTES[k]?.label ?? k).join(' oder ');
     fitPrompt = names ? `Welches Modell passt besser zu Ihnen – ${names}?` : 'Welches Modell passt besser zu Ihnen?';
+  } else if (journeyKind === 'lineup') {
+    fitPrompt = 'Welches Fahrzeug interessiert Sie am meisten?';
   } else if (primaryLabel) {
     fitPrompt = `Passt der ${primaryLabel} zu Ihnen?`;
   }
@@ -120,11 +126,13 @@ export function enrichSmartAnswerJourney(answer, analysis) {
     ? KIA_MODEL_ATTRIBUTES[primaryModelKey]?.bodyType ?? 'suv'
     : null;
 
-  const interestOptions = buildInterestOptions({
-    ...answer,
-    compareModelKeys,
-    primaryModelKey,
-  });
+  const interestOptions = answer.interestOptions?.length
+    ? answer.interestOptions
+    : buildInterestOptions({
+      ...answer,
+      compareModelKeys,
+      primaryModelKey,
+    });
 
   const primaryHasConfigurator = primaryModelKey ? hasConfigurator(primaryModelKey) : false;
 

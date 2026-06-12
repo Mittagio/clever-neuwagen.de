@@ -112,7 +112,9 @@ export default function DealerSmartAnswerCard({
 
       {answer.interestOptions?.length > 1 && !configuratorRevealed && (
         <div className="dl-smart-answer__interest">
-          <p className="dl-smart-answer__interest-label">Wofür interessieren Sie sich?</p>
+          <p className="dl-smart-answer__interest-label">
+            {answer.fitPrompt ?? 'Wofür interessieren Sie sich?'}
+          </p>
           <div className="dl-smart-answer__interest-chips">
             {answer.interestOptions.map((option) => (
               <button

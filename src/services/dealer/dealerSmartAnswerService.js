@@ -12,6 +12,7 @@ import {
   buildVehicleCompareAnswer,
   buildVehicleFactAnswer,
 } from './vehicleFactAnswerService.js';
+import { buildElectricLineupAnswer } from './buildElectricLineupAnswer.js';
 import { buildVehicleEstimateAnswer } from './vehicleEstimateAnswerService.js';
 import { enrichSmartAnswerJourney } from './smartAnswerJourney.js';
 import { resolveQueryRoutingLayer } from '../search/vehicleQueryRouting.js';
@@ -104,7 +105,9 @@ export function buildDealerSmartAnswer(query, vehicles = []) {
   if (analysis.intent === 'vehicle_compare_question' && analysis.compare) {
     answer = buildVehicleCompareAnswer(analysis.compare, trimmed, vehicles);
   } else if (analysis.intent === 'vehicle_fact_question') {
-    if (analysis.estimate) {
+    if (analysis.lineup === 'electric') {
+      answer = buildElectricLineupAnswer(trimmed);
+    } else if (analysis.estimate) {
       answer = buildVehicleEstimateAnswer(analysis.estimate, trimmed);
     } else if (analysis.fact?.field) {
       answer = buildVehicleFactAnswer(analysis.fact, trimmed, analysis.catalog ?? null);
