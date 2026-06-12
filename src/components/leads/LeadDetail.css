@@ -73,6 +73,32 @@
   margin: 2px 0 0;
   font-size: 0.8125rem;
   opacity: 0.85;
+}
+
+.lead-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.lead-detail__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lead-detail__badge--journey {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.lead-detail__badge--testdrive {
+  background: #ccfbf1;
+  color: #0f766e;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

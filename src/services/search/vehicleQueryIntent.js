@@ -5,6 +5,7 @@
  * vehicle_compare_question – zwei Modelle vergleichen (z. B. „EV3 oder EV4“)
  * vehicle_search          – normale CleverQuote-Suche
  */
+import { matchVehicleQuestion } from '../dealer/vehicleQuestionMatcher.js';
 import { parseAdvisoryQuestion } from './advisoryQuestionParser.js';
 import { parseModelAttributeQuestion } from './modelAttributeQuestion.js';
 import {
@@ -15,7 +16,7 @@ import {
 
 /** @typedef {'vehicle_fact_question'|'vehicle_compare_question'|'vehicle_search'} VehicleQueryIntent */
 
-/** @typedef {'batteryKwh'|'length'|'height'|'width'|'towingCapacity'|'wltpRange'|'trunkVolume'|'seats'|'price'|'dimensionsOverview'} VehicleFactField */
+/** @typedef {'batteryKwh'|'length'|'height'|'width'|'towingCapacity'|'wltpRange'|'trunkVolume'|'seats'|'price'|'dimensionsOverview'|'charging'|'roofLoad'|'isofix'|'heatPump'|'v2l'|'voltage800v'|'camera360'|'hud'|'matrixLed'|'panoramaRoof'|'leather'|'warranty'|'deliveryTime'|'consumption'|'powerHp'|'acceleration'|'driveType'|'leasingRate'|'finance'} VehicleFactField */
 
 const ATTRIBUTE_TO_FIELD = /** @type {Record<string, VehicleFactField>} */ ({
   battery: 'batteryKwh',
@@ -70,6 +71,16 @@ export function analyzeVehicleQuery(query, intent = {}, profile = {}) {
   const text = String(query ?? '').trim();
   if (!text) {
     return { intent: 'vehicle_search', query: text };
+  }
+
+  const catalogMatch = matchVehicleQuestion(text);
+  if (catalogMatch?.factField && catalogMatch.intentId !== 'unspecified') {
+    return {
+      intent: 'vehicle_fact_question',
+      query: text,
+      fact: { modelKey: catalogMatch.modelKey, field: catalogMatch.factField },
+      catalog: catalogMatch,
+    };
   }
 
   const advisory = parseAdvisoryQuestion(text);

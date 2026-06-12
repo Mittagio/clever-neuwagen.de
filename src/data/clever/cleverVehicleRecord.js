@@ -23,6 +23,7 @@ export const CLEVER_FEATURE_STATUS = {
  * @property {string} [trimId]
  * @property {string} [trimLabel]
  * @property {object} basis
+ * @property {object} [performance]
  * @property {object} [electric]
  * @property {object} [family]
  * @property {object} [towing]

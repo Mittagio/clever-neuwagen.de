@@ -103,7 +103,7 @@ export function buildDealerSmartAnswer(query, vehicles = []) {
     answer = buildVehicleCompareAnswer(analysis.compare, trimmed, vehicles);
   } else if (analysis.intent === 'vehicle_fact_question') {
     if (analysis.fact?.field) {
-      answer = buildVehicleFactAnswer(analysis.fact, trimmed);
+      answer = buildVehicleFactAnswer(analysis.fact, trimmed, analysis.catalog ?? null);
     } else if (analysis.advisory) {
       answer = { ...buildAdvisoryAnswer(analysis.advisory, vehicles), intent: 'vehicle_fact_question' };
     } else if (analysis.lexiconRanking) {

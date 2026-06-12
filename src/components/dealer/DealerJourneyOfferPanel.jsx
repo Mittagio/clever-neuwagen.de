@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { buildJourneyOffers } from '../../services/dealer/journeyOfferService.js';
+import { evaluateJourneyBudgetFit } from '../../services/dealer/journeyBudgetFit.js';
 import './dealer-landing.css';
 
 function OfferCard({ offer, highlighted }) {
@@ -35,6 +36,11 @@ export default function DealerJourneyOfferPanel({
   const offerBundle = useMemo(
     () => buildJourneyOffers(journeySnapshot, dealerConditions),
     [journeySnapshot, dealerConditions],
+  );
+
+  const budgetFit = useMemo(
+    () => evaluateJourneyBudgetFit(journeySnapshot, offerBundle),
+    [journeySnapshot, offerBundle],
   );
 
   if (!offerBundle) {
@@ -88,6 +94,15 @@ export default function DealerJourneyOfferPanel({
           </p>
         )}
       </header>
+
+      {budgetFit && (
+        <p className={`dl-offer-panel__budget${budgetFit.fits === false ? ' dl-offer-panel__budget--warn' : ''}`}>
+          {budgetFit.fits === false
+            ? `Die Beispielrate liegt ca. ${budgetFit.delta} € über Ihrem Budget (${budgetFit.label}). Ihr Händler findet passende Konditionen.`
+            : budgetFit.note
+              ?? `Passt zu Ihrem Budget (${budgetFit.label}).`}
+        </p>
+      )}
 
       <div className={`dl-offer-panel__grid dl-offer-panel__grid--${offerBundle.offers.length}`}>
         {offerBundle.offers.map((offer) => (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
+import { submitOpenCustomerQuestion } from '../../services/admin/openCustomerQuestionsService.js';
 import './dealer-landing.css';
 
 /**
@@ -15,8 +16,21 @@ export default function DealerSmartAnswerCard({
   configuratorRevealed = false,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [notifySent, setNotifySent] = useState(false);
 
   if (!answer) return null;
+
+  function handleNotify() {
+    const oq = answer.openQuestion;
+    if (!oq?.query) return;
+    submitOpenCustomerQuestion({
+      query: oq.query,
+      modelKey: oq.modelKey,
+      intentId: oq.intentId,
+      category: oq.category,
+    });
+    setNotifySent(true);
+  }
 
   const hasDetails = (answer.facts?.length ?? 0) > 0;
   const showImage = Boolean(answer.primaryModelKey);
@@ -173,6 +187,34 @@ export default function DealerSmartAnswerCard({
             </dl>
           )}
         </div>
+      )}
+
+      {answer.dataGap && answer.showNotifyCta && (
+        <div className="dl-smart-answer__data-gap">
+          {notifySent ? (
+            <p className="dl-smart-answer__data-gap-ok">
+              Danke – wir melden uns, sobald die Antwort verfügbar ist.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary dl-smart-answer__notify-cta"
+              onClick={handleNotify}
+            >
+              {answer.notifyCta ?? 'Benachrichtigen, sobald die Antwort verfügbar ist'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {answer.showViewModelCta && answer.viewModelCta && answer.primaryModelKey && (
+        <button
+          type="button"
+          className="btn btn-primary dl-smart-answer__fit-cta"
+          onClick={() => onSelectModel?.(answer.primaryModelKey)}
+        >
+          {answer.viewModelCta}
+        </button>
       )}
 
       {answer.showConfiguratorCta && answer.configuratorCta && !configuratorRevealed && (

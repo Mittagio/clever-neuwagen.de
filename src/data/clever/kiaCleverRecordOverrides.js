@@ -29,6 +29,7 @@ export const KIA_CLEVER_RECORD_OVERRIDES = [
       realRangeWinterKm: 380,
       acKw: 11,
       dcKw: 233,
+      dcCharge10_80Min: 24,
       has800V: true,
       heatPump: true,
       v2l: true,

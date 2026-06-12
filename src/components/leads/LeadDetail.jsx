@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LEAD_STATUS, LEAD_STATUS_ORDER, PAYMENT_TYPES } from '../../data/leadTypes.js';
+import { LEAD_STATUS, LEAD_STATUS_ORDER, LEAD_SOURCES, PAYMENT_TYPES } from '../../data/leadTypes.js';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { formatLeadTime, formatRate, buildWhatsAppLink } from '../../logic/leadService.js';
 import { buildInquiryBriefWhatsAppMessage } from '../../logic/whatsappBriefMessages.js';
@@ -9,6 +9,7 @@ import DeliveryFlowSteps from '../delivery/DeliveryFlowSteps.jsx';
 import LeadVehicleImage from './LeadVehicleImage.jsx';
 import DealerInquiryBriefView from '../inquiry/DealerInquiryBriefView.jsx';
 import '../inquiry/DealerInquiryBriefView.css';
+import './LeadDetail.css';
 
 export default function LeadDetail({ lead, onBack }) {
   const {
@@ -41,7 +42,7 @@ export default function LeadDetail({ lead, onBack }) {
     const msg = lead.inquiryBrief
       ? buildInquiryBriefWhatsAppMessage({
         brief: lead.inquiryBrief,
-        sellerName: 'Ihr Ansprechpartner',
+        sellerName: lead.inquiryBrief?.dealer?.contactName ?? 'Ihr Ansprechpartner',
         dealerName: lead.inquiryBrief.dealer?.name ?? '',
       })
       : `Hallo ${lead.contact.name || ''}, hier ist ${lead.vehicle?.label ?? 'Ihr Fahrzeug'} – wie besprochen.`;
@@ -124,6 +125,20 @@ export default function LeadDetail({ lead, onBack }) {
         <div className="lead-detail__header-info">
           <h2 className="lead-detail__name">{lead.contact.name?.trim() || 'Unbekannt'}</h2>
           <p className="lead-detail__sub">{lead.vehicle?.label}</p>
+          {(lead.source === 'dealerJourney' || lead.wantTestDrive) && (
+            <div className="lead-detail__badges">
+              {lead.source === 'dealerJourney' && (
+                <span className="lead-detail__badge lead-detail__badge--journey">
+                  {LEAD_SOURCES.dealerJourney}
+                </span>
+              )}
+              {lead.wantTestDrive && (
+                <span className="lead-detail__badge lead-detail__badge--testdrive">
+                  Probefahrt gewünscht
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {lead.contact.phone && (
           <button type="button" className="lead-detail__wa" onClick={handleWhatsApp} aria-label="WhatsApp">

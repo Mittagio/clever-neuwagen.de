@@ -7,6 +7,7 @@ import ModelOverview from '../components/admin/ModelOverview';
 import SportageDetail from '../components/admin/SportageDetail';
 import OperatorDashboard from '../components/dealer-admin/OperatorDashboard.jsx';
 import AdminSearchTermsPanel from '../components/admin/AdminSearchTermsPanel.jsx';
+import AdminOpenQuestionsPanel from '../components/admin/AdminOpenQuestionsPanel.jsx';
 import { AdminOperatorNav, AdminNotificationBell } from '../components/dealer-admin/DealerAdminShared.jsx';
 import { getChangeCenter } from '../data/vehicleDataService.js';
 import '../components/dealer-admin/DealerAdminShared.css';
@@ -77,6 +78,7 @@ export default function AdminPage() {
                 title="Änderungscenter"
                 showFilters
               />
+              <AdminOpenQuestionsPanel />
               <AdminSearchTermsPanel />
             </>
           )}

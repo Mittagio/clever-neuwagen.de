@@ -8,6 +8,7 @@ import { getKiaTechnicalSpec } from '../kia/kiaTechnicalSpecs.js';
 import { CLEVER_FEATURE_STATUS as S } from './cleverVehicleRecord.js';
 import { KIA_CLEVER_RECORD_OVERRIDES } from './kiaCleverRecordOverrides.js';
 import { getKiaFamilySpec } from '../kia/kiaFamilySpecs.js';
+import { getKiaPerformanceSpec, KIA_WARRANTY_DEFAULT } from '../kia/kiaPerformanceSpecs.js';
 
 /** Offizielle ID → Attribut-/Spec-Key */
 const MODEL_KEY_ALIASES = {
@@ -182,6 +183,9 @@ export function buildCleverRecordFromOfficial(official) {
     ?? TOWING_BRAKED_KG[official.id]
     ?? null;
   const rangeKm = spec?.electricRangeKm ?? attrs?.typicalRangeKm ?? null;
+  const pt = official.powertrain === 'nutzfahrzeug' ? 'elektro' : official.powertrain;
+  const isElectric = pt === 'elektro' || pt === 'plugin-hybrid';
+  const performance = getKiaPerformanceSpec(modelKey) ?? getKiaPerformanceSpec(official.id);
 
   return {
     id: `kia-${official.id}`,
@@ -189,13 +193,17 @@ export function buildCleverRecordFromOfficial(official) {
     model: official.name,
     modelKey,
     basis: {
-      powertrain: official.powertrain === 'nutzfahrzeug' ? 'elektro' : official.powertrain,
+      powertrain: pt,
       listPriceGross: official.priceFromGross,
       leasingRate: official.monthlyRateFrom,
       financeRate: official.monthlyRateAvailable ? official.monthlyRateFrom : null,
       deliveryWeeks: null,
       inStock: false,
+      warrantyYears: KIA_WARRANTY_DEFAULT.vehicleYears,
+      warrantyKm: KIA_WARRANTY_DEFAULT.vehicleKm,
+      batteryWarrantyYears: isElectric ? KIA_WARRANTY_DEFAULT.batteryYears : undefined,
     },
+    performance: performance ?? undefined,
     electric: buildElectricBlock(official, attrs, spec),
     family: buildFamilyBlock(modelKey, attrs, spec),
     towing: towingKg != null ? {
@@ -222,6 +230,9 @@ function deepMergeRecord(base, override) {
     ...base,
     ...override,
     basis: { ...base.basis, ...override.basis },
+    performance: override.performance
+      ? { ...(base.performance ?? {}), ...override.performance }
+      : base.performance,
     electric: override.electric
       ? { ...(base.electric ?? {}), ...override.electric }
       : base.electric,

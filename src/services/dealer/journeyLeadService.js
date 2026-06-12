@@ -88,6 +88,12 @@ export function buildJourneyInquiryBrief({
     },
     specialConditions: conditionLabels,
     budgetLabel: journeySnapshot?.budget?.label ?? null,
+    budget: journeySnapshot?.budget?.maxMonthlyRate != null
+      ? {
+          label: journeySnapshot.budget.label ?? `bis ${journeySnapshot.budget.maxMonthlyRate} €`,
+          maxMonthly: journeySnapshot.budget.maxMonthlyRate,
+        }
+      : null,
     dealer: dealer?.dealerName
       ? {
           name: dealer.dealerName,

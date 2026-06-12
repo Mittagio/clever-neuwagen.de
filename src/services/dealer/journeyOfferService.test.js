@@ -75,4 +75,26 @@ assert.ok(ev4Bundle.offers.length >= 1);
 
 assert.ok(resolveTrimListPrice('ev4', 'earth') > 30000);
 
+const ev9Snapshot = buildDealerJourneySnapshot({
+  configSummary: {
+    modelKey: 'ev9',
+    modelLabel: 'EV9',
+    trimLabel: 'Earth',
+    powertrainLabel: 'Elektro',
+    packageLabels: [],
+  },
+  purchaseType: 'leasing',
+  configuration: {
+    catalogId: 'ev9',
+    modelKey: 'ev9',
+    trimId: 'earth',
+    packageIds: [],
+  },
+});
+
+const ev9Bundle = buildJourneyOffers(ev9Snapshot, autohausTrinkleSeed);
+assert.ok(ev9Bundle);
+assert.equal(ev9Bundle.modelKey, 'ev9');
+assert.ok(ev9Bundle.pricing.listPrice > 50000);
+
 console.log('journeyOfferService.test.js: ok');

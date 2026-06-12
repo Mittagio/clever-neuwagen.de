@@ -9,6 +9,7 @@ export default function DealerJourneySummary({
   configSummary,
   purchaseType,
   specialConditions = [],
+  budget = null,
   onShowOffers,
 }) {
   if (!configSummary || !purchaseType) return null;
@@ -56,6 +57,12 @@ export default function DealerJourneySummary({
           <div>
             <dt>Sonderkondition</dt>
             <dd>{conditionLabels.join(' · ')}</dd>
+          </div>
+        )}
+        {budget?.label && (
+          <div>
+            <dt>Budget</dt>
+            <dd>{budget.label} / Monat</dd>
           </div>
         )}
       </dl>

@@ -767,6 +767,23 @@
   color: #065f46;
 }
 
+.dl-smart-answer__data-gap {
+  margin-top: 16px;
+}
+
+.dl-smart-answer__data-gap-ok {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  font-size: 0.9375rem;
+}
+
+.dl-smart-answer__notify-cta {
+  width: 100%;
+}
+
 .dl-smart-answer__fit-cta {
   width: 100%;
   min-height: 48px;
@@ -1735,6 +1752,22 @@
   color: var(--color-text-secondary);
 }
 
+.dl-offer-panel__budget {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.dl-offer-panel__budget--warn {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
 .dl-offer-panel__grid {
   display: grid;
   gap: 14px;
@@ -1829,6 +1862,33 @@
 .dl-sales-journey {
   display: grid;
   gap: 20px;
+}
+
+.dl-journey-resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.dl-journey-resume__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.dl-journey-resume__dismiss {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #93c5fd;
+  background: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
 }
 
 .dl-journey-progress {

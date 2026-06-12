@@ -7,6 +7,7 @@ import DealerSearchAlternatives from '../components/dealer/DealerSearchAlternati
 import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
 import DealerSmartAnswerCard from '../components/dealer/DealerSmartAnswerCard.jsx';
 import DealerJourneyProgress from '../components/dealer/DealerJourneyProgress.jsx';
+import DealerJourneyResumeBanner from '../components/dealer/DealerJourneyResumeBanner.jsx';
 import DealerJourneyCompareCard from '../components/dealer/DealerJourneyCompareCard.jsx';
 import DealerBudgetCard from '../components/dealer/DealerBudgetCard.jsx';
 import DealerVehicleRecommendCard from '../components/dealer/DealerVehicleRecommendCard.jsx';
@@ -62,6 +63,7 @@ import { detectSearchConflict } from '../services/search/searchConflictHint.js';
 import { detectProfileConflict } from '../services/search/profileConflictHint.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
+import { KIA_MODEL_ATTRIBUTES } from '../data/kia/kiaModelAttributes.js';
 import {
   mergeDealerChipFilters,
   mergeDealerSearchFilters,
@@ -96,6 +98,8 @@ export default function DealerPage() {
   const [selectedModelKey, setSelectedModelKey] = useState(null);
   const [wishChipIds, setWishChipIds] = useState([]);
   const [prefilledWishCount, setPrefilledWishCount] = useState(0);
+  const [journeyWasRestored, setJourneyWasRestored] = useState(false);
+  const [resumeBannerDismissed, setResumeBannerDismissed] = useState(false);
   const [trimRecommendation, setTrimRecommendation] = useState(null);
   const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configSummary, setConfigSummary] = useState(null);
@@ -268,12 +272,18 @@ export default function DealerPage() {
     setOffersRevealed(false);
     setLeadSheetOpen(false);
     setLeadSubmitted(null);
+    setJourneyWasRestored(false);
+    setResumeBannerDismissed(false);
   }, [submittedQuery]);
 
   useEffect(() => {
     if (!hasSearch || !submittedQuery.trim()) return;
     const saved = loadJourneyState(dealerId, submittedQuery);
     if (!saved?.salesStep) return;
+    if (saved.salesStep !== 'recommend') {
+      setJourneyWasRestored(true);
+      setResumeBannerDismissed(false);
+    }
     setSalesStep(saved.salesStep);
     if (saved.selectedModelKey) setSelectedModelKey(saved.selectedModelKey);
     if (saved.wishChipIds) setWishChipIds(saved.wishChipIds);
@@ -458,6 +468,15 @@ export default function DealerPage() {
     scrollToJourney();
   }, [searchProfile, searchFilters, activeSearchChipIds, scrollToJourney]);
 
+  const handleSmartAnswerSelectModel = useCallback((modelKey) => {
+    if (useSalesJourney) {
+      handleViewVehicle(modelKey);
+      return;
+    }
+    const label = KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey;
+    handleSearch(`Kia ${label}`);
+  }, [useSalesJourney, handleViewVehicle, handleSearch]);
+
   const wishFeatures = useMemo(
     () => resolveWishFeaturesFromChips(wishChipIds),
     [wishChipIds],
@@ -597,10 +616,17 @@ export default function DealerPage() {
               answer={smartAnswer}
               dealerId={dealerId}
               onFollowUpQuery={handleFollowUpQuery}
+              onSelectModel={handleSmartAnswerSelectModel}
             />
           )}
 
           <div ref={configuratorSectionRef} className="dl-sales-journey">
+          {useSalesJourney && journeyWasRestored && !resumeBannerDismissed && (
+            <DealerJourneyResumeBanner
+              salesStep={effectiveSalesStep}
+              onDismiss={() => setResumeBannerDismissed(true)}
+            />
+          )}
           {useSalesJourney && effectiveSalesStep && (
             <DealerJourneyProgress salesStep={effectiveSalesStep} />
           )}
@@ -674,6 +700,7 @@ export default function DealerPage() {
               configSummary={configSummary}
               purchaseType={purchaseType}
               specialConditions={specialConditions}
+              budget={journeyBudget}
               onShowOffers={handleRevealOffers}
             />
           )}
