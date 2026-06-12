@@ -76,6 +76,7 @@ import {
   loadJourneyState,
   saveJourneyState,
 } from '../services/dealer/journeyPersistenceService.js';
+import { hydrateStammdatenFromServer } from '../services/admin/stammdatenHydration.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
@@ -254,6 +255,10 @@ export default function DealerPage() {
     if (!hasSearch || customerQueryMode !== 'info') return null;
     return buildDealerSmartAnswer(submittedQuery, dealerSearchPool);
   }, [hasSearch, customerQueryMode, submittedQuery, dealerSearchPool]);
+
+  useEffect(() => {
+    hydrateStammdatenFromServer();
+  }, []);
 
   useEffect(() => {
     setSalesStep(null);

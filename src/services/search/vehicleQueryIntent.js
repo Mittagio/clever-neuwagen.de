@@ -5,6 +5,7 @@
  * vehicle_compare_question – zwei Modelle vergleichen (z. B. „EV3 oder EV4“)
  * vehicle_search          – normale CleverQuote-Suche
  */
+import { matchEstimateQuestion } from '../dealer/vehicleEstimateMatcher.js';
 import { matchVehicleQuestion } from '../dealer/vehicleQuestionMatcher.js';
 import { parseAdvisoryQuestion } from './advisoryQuestionParser.js';
 import { parseModelAttributeQuestion } from './modelAttributeQuestion.js';
@@ -71,6 +72,15 @@ export function analyzeVehicleQuery(query, intent = {}, profile = {}) {
   const text = String(query ?? '').trim();
   if (!text) {
     return { intent: 'vehicle_search', query: text };
+  }
+
+  const estimateMatch = matchEstimateQuestion(text);
+  if (estimateMatch) {
+    return {
+      intent: 'vehicle_fact_question',
+      query: text,
+      estimate: estimateMatch,
+    };
   }
 
   const catalogMatch = matchVehicleQuestion(text);

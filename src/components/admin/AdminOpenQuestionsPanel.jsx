@@ -6,6 +6,7 @@ import {
   countOpenCustomerQuestions,
   loadOpenCustomerQuestions,
 } from '../../services/admin/openCustomerQuestionsService.js';
+import { hydrateStammdatenFromServer } from '../../services/admin/stammdatenHydration.js';
 import { getStammdatenFieldSpec } from '../../services/admin/stammdatenFieldSpec.js';
 import './AdminOpenQuestionsPanel.css';
 
@@ -119,10 +120,14 @@ export default function AdminOpenQuestionsPanel() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    hydrateStammdatenFromServer().finally(refresh);
     const onChange = () => refresh();
     window.addEventListener('clever-open-questions-changed', onChange);
-    return () => window.removeEventListener('clever-open-questions-changed', onChange);
+    window.addEventListener('clever-stammdaten-overrides-changed', onChange);
+    return () => {
+      window.removeEventListener('clever-open-questions-changed', onChange);
+      window.removeEventListener('clever-stammdaten-overrides-changed', onChange);
+    };
   }, [refresh]);
 
   const openCount = countOpenCustomerQuestions();

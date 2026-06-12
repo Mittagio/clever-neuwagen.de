@@ -1,7 +1,8 @@
 /**
- * Runtime-Stammdaten-Overrides (localStorage) – Admin beantwortet offene Fragen.
+ * Stammdaten-Overrides – Server (primär) + localStorage (Offline-Cache).
  */
 import { KIA_CLEVER_RECORDS } from '../../data/clever/kiaCleverRecords.js';
+import { patchStammdatenOverrideApi } from './stammdatenApi.js';
 import { getStammdatenFieldSpec } from './stammdatenFieldSpec.js';
 
 const STORAGE_KEY = 'clever-vehicle-stammdaten-overrides';
@@ -9,8 +10,10 @@ const STORAGE_KEY = 'clever-vehicle-stammdaten-overrides';
 /** @type {Record<string, object> | null} */
 let memoryOverrides = null;
 
-function readAll() {
-  if (memoryOverrides) return { ...memoryOverrides };
+/** @type {Record<string, object> | null} */
+let serverCache = null;
+
+function readLocalStorage() {
   if (typeof window === 'undefined') return {};
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -20,8 +23,14 @@ function readAll() {
   }
 }
 
+function readAll() {
+  if (memoryOverrides) return { ...memoryOverrides };
+  if (serverCache) return { ...serverCache };
+  return readLocalStorage();
+}
+
 /** @param {Record<string, object>} data */
-function writeAll(data) {
+function writeLocalCache(data) {
   if (typeof window === 'undefined') {
     memoryOverrides = { ...data };
     return;
@@ -34,6 +43,12 @@ function writeAll(data) {
   }
 }
 
+/** @param {Record<string, object>} overrides */
+export function setStammdatenOverridesCache(overrides) {
+  serverCache = { ...overrides };
+  writeLocalCache(overrides);
+}
+
 function deepMerge(base, patch) {
   const out = { ...base };
   for (const [key, val] of Object.entries(patch)) {
@@ -44,6 +59,13 @@ function deepMerge(base, patch) {
     }
   }
   return out;
+}
+
+function syncPatchToServer(modelKey, patch) {
+  if (typeof window === 'undefined') return;
+  patchStammdatenOverrideApi(modelKey, patch).catch((err) => {
+    console.warn('[stammdaten] Server-Sync fehlgeschlagen:', err.message);
+  });
 }
 
 /**
@@ -82,7 +104,9 @@ export function loadStammdatenOverrides() {
 export function saveStammdatenOverride(modelKey, patch) {
   const all = readAll();
   all[modelKey] = deepMerge(all[modelKey] ?? {}, patch);
-  writeAll(all);
+  serverCache = { ...all };
+  writeLocalCache(all);
+  syncPatchToServer(modelKey, patch);
   return all[modelKey];
 }
 
@@ -104,4 +128,5 @@ export function applyFieldAnswer({ modelKey, field, value }) {
 /** Nur für Tests */
 export function __resetStammdatenOverridesForTest(data = {}) {
   memoryOverrides = { ...data };
+  serverCache = null;
 }

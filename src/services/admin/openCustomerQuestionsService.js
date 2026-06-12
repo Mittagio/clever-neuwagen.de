@@ -1,17 +1,23 @@
 /**
- * Offene Kundenfragen – wenn Stammdaten fehlen.
- * Persistenz lokal (Admin); später Server-API.
+ * Offene Kundenfragen – Server (primär) + localStorage (Offline-Cache).
  */
 import { VEHICLE_QUESTION_INTENT_BY_ID } from '../../data/vehicleQuestionCatalog.js';
+import {
+  patchOpenCustomerQuestionApi,
+  postOpenCustomerQuestionApi,
+} from './stammdatenApi.js';
 import { applyFieldAnswer } from './vehicleStammdatenOverrideService.js';
 
 const STORAGE_KEY = 'clever-open-customer-questions';
+
+/** @type {object[] | null} */
+let serverCache = null;
 
 function uid() {
   return `ocq-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function readAll() {
+function readLocalStorage() {
   if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -21,7 +27,12 @@ function readAll() {
   }
 }
 
-function writeAll(items) {
+function readAll() {
+  if (serverCache) return [...serverCache];
+  return readLocalStorage();
+}
+
+function writeLocalCache(items) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
@@ -29,6 +40,26 @@ function writeAll(items) {
   } catch {
     // ignore quota
   }
+}
+
+/** @param {object[]} items */
+export function setOpenQuestionsCache(items) {
+  serverCache = [...items];
+  writeLocalCache(items);
+}
+
+function syncQuestionToServer(entry) {
+  if (typeof window === 'undefined') return;
+  postOpenCustomerQuestionApi(entry).catch((err) => {
+    console.warn('[open-questions] Server-Sync fehlgeschlagen:', err.message);
+  });
+}
+
+function syncQuestionUpdateToServer(id, updates) {
+  if (typeof window === 'undefined') return;
+  patchOpenCustomerQuestionApi(id, updates).catch((err) => {
+    console.warn('[open-questions] Server-Update fehlgeschlagen:', err.message);
+  });
 }
 
 /**
@@ -67,7 +98,10 @@ export function submitOpenCustomerQuestion({
     adminAnswer: null,
   };
 
-  writeAll([entry, ...items]);
+  const next = [entry, ...items];
+  serverCache = next;
+  writeLocalCache(next);
+  syncQuestionToServer(entry);
   return entry;
 }
 
@@ -82,12 +116,13 @@ export function loadOpenCustomerQuestions({ status = 'open' } = {}) {
  */
 export function resolveOpenCustomerQuestion(id) {
   const items = readAll();
+  const updates = { status: 'resolved', resolvedAt: new Date().toISOString() };
   const next = items.map((item) => (
-    item.id === id
-      ? { ...item, status: 'resolved', resolvedAt: new Date().toISOString() }
-      : item
+    item.id === id ? { ...item, ...updates } : item
   ));
-  writeAll(next);
+  serverCache = next;
+  writeLocalCache(next);
+  syncQuestionUpdateToServer(id, updates);
   return next.find((item) => item.id === id) ?? null;
 }
 
@@ -113,23 +148,28 @@ export function answerAndResolveOpenCustomerQuestion(id, answerValue) {
     applied = Boolean(patch);
   }
 
-  const next = items.map((entry) => (
-    entry.id === id
-      ? {
-        ...entry,
-        status: 'resolved',
-        resolvedAt: new Date().toISOString(),
-        adminAnswer: answerValue,
-        field,
-      }
-      : entry
-  ));
-  writeAll(next);
+  const resolvedItem = {
+    ...item,
+    status: 'resolved',
+    resolvedAt: new Date().toISOString(),
+    adminAnswer: answerValue,
+    field,
+  };
+
+  const next = items.map((entry) => (entry.id === id ? resolvedItem : entry));
+  serverCache = next;
+  writeLocalCache(next);
+  syncQuestionUpdateToServer(id, {
+    status: 'resolved',
+    resolvedAt: resolvedItem.resolvedAt,
+    adminAnswer: answerValue,
+    field,
+  });
 
   return {
     ok: true,
     applied,
-    item: next.find((entry) => entry.id === id) ?? null,
+    item: resolvedItem,
   };
 }
 

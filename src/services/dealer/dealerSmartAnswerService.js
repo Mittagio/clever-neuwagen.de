@@ -12,7 +12,9 @@ import {
   buildVehicleCompareAnswer,
   buildVehicleFactAnswer,
 } from './vehicleFactAnswerService.js';
+import { buildVehicleEstimateAnswer } from './vehicleEstimateAnswerService.js';
 import { enrichSmartAnswerJourney } from './smartAnswerJourney.js';
+import { resolveQueryRoutingLayer } from '../search/vehicleQueryRouting.js';
 
 const MAX_HIGHLIGHTS = 3;
 
@@ -102,13 +104,19 @@ export function buildDealerSmartAnswer(query, vehicles = []) {
   if (analysis.intent === 'vehicle_compare_question' && analysis.compare) {
     answer = buildVehicleCompareAnswer(analysis.compare, trimmed, vehicles);
   } else if (analysis.intent === 'vehicle_fact_question') {
-    if (analysis.fact?.field) {
+    if (analysis.estimate) {
+      answer = buildVehicleEstimateAnswer(analysis.estimate, trimmed);
+    } else if (analysis.fact?.field) {
       answer = buildVehicleFactAnswer(analysis.fact, trimmed, analysis.catalog ?? null);
     } else if (analysis.advisory) {
       answer = { ...buildAdvisoryAnswer(analysis.advisory, vehicles), intent: 'vehicle_fact_question' };
     } else if (analysis.lexiconRanking) {
       answer = buildLexiconSmartAnswer(trimmed, vehicles);
     }
+  }
+
+  if (answer) {
+    answer.routingLayer = resolveQueryRoutingLayer(analysis, answer);
   }
 
   return enrichSmartAnswerJourney(answer, analysis);

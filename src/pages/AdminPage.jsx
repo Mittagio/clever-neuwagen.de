@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { hydrateStammdatenFromServer } from '../services/admin/stammdatenHydration.js';
 import PageShell from '../components/layout/PageShell';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import ChangeCenter from '../components/admin/ChangeCenter';
@@ -18,6 +19,10 @@ export default function AdminPage() {
   const [selectedModel, setSelectedModel] = useState(null);
 
   const globalChanges = getChangeCenter();
+
+  useEffect(() => {
+    hydrateStammdatenFromServer();
+  }, []);
 
   function handleSelectBrand(brandId) {
     setSelectedBrand(brandId);

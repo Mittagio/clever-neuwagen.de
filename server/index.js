@@ -9,6 +9,7 @@ import googlePlacesRoutes from './googlePlacesRoutes.js';
 import pilotLeadsRoutes from './pilotLeadsRoutes.js';
 import advisorRoutes from './advisorRoutes.js';
 import customerRecordsRoutes from './customerRecordsRoutes.js';
+import stammdatenRoutes from './stammdatenRoutes.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
 import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
 
@@ -26,7 +27,7 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use(cors({
   origin: true,
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Accept',
@@ -43,6 +44,7 @@ app.use('/api/v1', sprint5Routes);
 app.use('/api/v1', pilotLeadsRoutes);
 app.use('/api/v1', advisorRoutes);
 app.use('/api/v1', customerRecordsRoutes);
+app.use('/api/v1', stammdatenRoutes);
 app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
 
