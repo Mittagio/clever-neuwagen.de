@@ -28,6 +28,7 @@ export default function DealerSmartAnswerCard({
       modelKey: oq.modelKey,
       intentId: oq.intentId,
       category: oq.category,
+      field: oq.field,
     });
     setNotifySent(true);
   }

@@ -1,5 +1,6 @@
 import { resolveModelAttributeKey } from '../kia/kiaModelAttributes.js';
 import { inferTrimFromTitle } from '../features/trimFeatureMapping.js';
+import { mergeCleverRecordWithOverrides } from '../../services/admin/vehicleStammdatenOverrideService.js';
 import { KIA_CLEVER_RECORDS } from './kiaCleverRecords.js';
 
 function normalizeTrimId(vehicle = {}) {
@@ -25,12 +26,16 @@ export function resolveCleverRecord(vehicle = {}) {
   const candidates = KIA_CLEVER_RECORDS.filter((r) => r.modelKey === modelKey);
   if (!candidates.length) return null;
 
+  let record;
   if (trimId) {
     const trimMatch = candidates.find((r) => r.trimId === trimId);
-    if (trimMatch) return trimMatch;
+    if (trimMatch) record = trimMatch;
+  }
+  if (!record) {
+    record = candidates.find((r) => !r.trimId) ?? candidates[0];
   }
 
-  return candidates.find((r) => !r.trimId) ?? candidates[0];
+  return record ? mergeCleverRecordWithOverrides(record, modelKey) : null;
 }
 
 /** Fahrzeug mit Clever Record anreichern (ohne KI). */

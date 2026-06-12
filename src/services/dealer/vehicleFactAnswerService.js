@@ -2,20 +2,12 @@
  * Kompakte Clever-Antworten aus der Fahrzeug-Stammdatenbank.
  * Keine erfundenen Werte – fehlende Felder werden ehrlich benannt.
  */
-import { KIA_CLEVER_RECORDS } from '../../data/clever/kiaCleverRecords.js';
+import { getCleverRecordForModelKey } from '../admin/vehicleStammdatenOverrideService.js';
 import { resolveElectricSpecs } from '../../data/kia/pricelistBatteryLookup.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { buildAdvisoryAnswer } from './dealerAdvisoryAnswerService.js';
 import { formatDriveTypeLabel } from '../../data/kia/kiaPerformanceSpecs.js';
 import { shortModelName, withNarrativeDefaults } from './smartAnswerNarrative.js';
-
-function getCleverRecord(modelKey) {
-  const records = KIA_CLEVER_RECORDS.filter((r) => r.modelKey === modelKey);
-  return records.find((r) => !r.trimId)
-    ?? records.find((r) => r.electric?.batteryGrossKwh || r.electric?.wltpRangeKm)
-    ?? records[0]
-    ?? null;
-}
 
 function modelLabel(modelKey) {
   const label = KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? String(modelKey).toUpperCase();
@@ -508,7 +500,7 @@ export function buildVehicleDataGapAnswer({
  * @param {string} query
  */
 export function buildVehicleFactAnswer(fact, query, catalog = null) {
-  const record = getCleverRecord(fact.modelKey);
+  const record = getCleverRecordForModelKey(fact.modelKey);
 
   if (!record) {
     return buildVehicleDataGapAnswer({

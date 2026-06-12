@@ -1,14 +1,118 @@
 import { useCallback, useEffect, useState } from 'react';
+import { VEHICLE_QUESTION_INTENT_BY_ID } from '../../data/vehicleQuestionCatalog.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import {
+  answerAndResolveOpenCustomerQuestion,
   countOpenCustomerQuestions,
   loadOpenCustomerQuestions,
-  resolveOpenCustomerQuestion,
 } from '../../services/admin/openCustomerQuestionsService.js';
+import { getStammdatenFieldSpec } from '../../services/admin/stammdatenFieldSpec.js';
 import './AdminOpenQuestionsPanel.css';
+
+function resolveItemField(item) {
+  return item.field ?? VEHICLE_QUESTION_INTENT_BY_ID[item.intentId ?? '']?.factField ?? null;
+}
+
+function QuestionAnswerForm({ item, onSaved }) {
+  const field = resolveItemField(item);
+  const spec = getStammdatenFieldSpec(field);
+  const [value, setValue] = useState(spec?.inputType === 'boolean' ? 'true' : '');
+  const [feedback, setFeedback] = useState('');
+
+  function submit() {
+    const answerValue = spec?.inputType === 'boolean'
+      ? value === 'true'
+      : value;
+    const result = answerAndResolveOpenCustomerQuestion(item.id, answerValue);
+    if (!result.ok) return;
+
+    setFeedback(
+      result.applied
+        ? 'Stammdaten gespeichert – Clever-Antworten nutzen den Wert ab sofort.'
+        : 'Als erledigt markiert (kein Stammdaten-Feld zugeordnet).',
+    );
+    onSaved();
+  }
+
+  const fieldLabel = spec?.label ?? field ?? 'Antwort';
+
+  return (
+    <div className="admin-open-questions__form">
+      {spec ? (
+        <label className="admin-open-questions__label">
+          <span>{fieldLabel}{spec.unit ? ` (${spec.unit})` : ''}</span>
+          {spec.inputType === 'select' && (
+            <select
+              className="admin-open-questions__input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            >
+              <option value="">Bitte wählen …</option>
+              {(spec.options ?? []).map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
+          {spec.inputType === 'boolean' && (
+            <select
+              className="admin-open-questions__input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            >
+              <option value="true">Ja</option>
+              <option value="false">Nein</option>
+            </select>
+          )}
+          {spec.inputType === 'number' && (
+            <input
+              type="number"
+              className="admin-open-questions__input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={spec.placeholder}
+              step="any"
+            />
+          )}
+          {spec.inputType === 'text' && (
+            <input
+              type="text"
+              className="admin-open-questions__input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={spec.placeholder}
+            />
+          )}
+        </label>
+      ) : (
+        <label className="admin-open-questions__label">
+          <span>Notiz / Antwort</span>
+          <input
+            type="text"
+            className="admin-open-questions__input"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Interne Notiz"
+          />
+        </label>
+      )}
+
+      <button
+        type="button"
+        className="admin-open-questions__save"
+        onClick={submit}
+        disabled={spec && spec.inputType !== 'boolean' && !String(value).trim()}
+      >
+        Speichern & erledigt
+      </button>
+
+      {feedback && <p className="admin-open-questions__feedback">{feedback}</p>}
+    </div>
+  );
+}
 
 export default function AdminOpenQuestionsPanel() {
   const [items, setItems] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
 
   const refresh = useCallback(() => {
     setItems(loadOpenCustomerQuestions({ status: 'open' }));
@@ -16,12 +120,10 @@ export default function AdminOpenQuestionsPanel() {
 
   useEffect(() => {
     refresh();
+    const onChange = () => refresh();
+    window.addEventListener('clever-open-questions-changed', onChange);
+    return () => window.removeEventListener('clever-open-questions-changed', onChange);
   }, [refresh]);
-
-  function handleResolve(id) {
-    resolveOpenCustomerQuestion(id);
-    refresh();
-  }
 
   const openCount = countOpenCustomerQuestions();
 
@@ -45,24 +147,42 @@ export default function AdminOpenQuestionsPanel() {
             const modelLabel = item.modelKey
               ? KIA_MODEL_ATTRIBUTES[item.modelKey]?.label ?? item.modelKey
               : 'Allgemein';
+            const field = resolveItemField(item);
+            const spec = getStammdatenFieldSpec(field);
+            const isOpen = expandedId === item.id;
+
             return (
               <li key={item.id} className="admin-open-questions__item">
-                <div>
-                  <p className="admin-open-questions__query">{item.query}</p>
-                  <p className="admin-open-questions__meta">
-                    {modelLabel}
-                    {item.category ? ` · ${item.category}` : ''}
-                    {' · '}
-                    {new Date(item.createdAt).toLocaleString('de-DE')}
-                  </p>
+                <div className="admin-open-questions__item-main">
+                  <div>
+                    <p className="admin-open-questions__query">{item.query}</p>
+                    <p className="admin-open-questions__meta">
+                      {modelLabel}
+                      {item.category ? ` · ${item.category}` : ''}
+                      {spec ? ` · Feld: ${spec.label}` : field ? ` · ${field}` : ''}
+                      {' · '}
+                      {new Date(item.createdAt).toLocaleString('de-DE')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-open-questions__toggle"
+                    onClick={() => setExpandedId(isOpen ? null : item.id)}
+                    aria-expanded={isOpen}
+                  >
+                    {isOpen ? 'Schließen' : 'Beantworten'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="admin-open-questions__resolve"
-                  onClick={() => handleResolve(item.id)}
-                >
-                  Erledigt
-                </button>
+
+                {isOpen && (
+                  <QuestionAnswerForm
+                    item={item}
+                    onSaved={() => {
+                      setExpandedId(null);
+                      refresh();
+                    }}
+                  />
+                )}
               </li>
             );
           })}

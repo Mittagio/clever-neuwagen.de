@@ -2,6 +2,9 @@
  * Offene Kundenfragen – wenn Stammdaten fehlen.
  * Persistenz lokal (Admin); später Server-API.
  */
+import { VEHICLE_QUESTION_INTENT_BY_ID } from '../../data/vehicleQuestionCatalog.js';
+import { applyFieldAnswer } from './vehicleStammdatenOverrideService.js';
+
 const STORAGE_KEY = 'clever-open-customer-questions';
 
 function uid() {
@@ -22,6 +25,7 @@ function writeAll(items) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent('clever-open-questions-changed'));
   } catch {
     // ignore quota
   }
@@ -35,6 +39,7 @@ export function submitOpenCustomerQuestion({
   modelKey,
   intentId = null,
   category = null,
+  field = null,
 }) {
   const normalizedQuery = String(query ?? '').trim();
   if (!normalizedQuery) return null;
@@ -47,15 +52,19 @@ export function submitOpenCustomerQuestion({
   );
   if (duplicate) return duplicate;
 
+  const resolvedField = field ?? VEHICLE_QUESTION_INTENT_BY_ID[intentId ?? '']?.factField ?? null;
+
   const entry = {
     id: uid(),
     query: normalizedQuery,
     modelKey: modelKey ?? null,
     intentId,
     category,
+    field: resolvedField,
     status: 'open',
     createdAt: new Date().toISOString(),
     resolvedAt: null,
+    adminAnswer: null,
   };
 
   writeAll([entry, ...items]);
@@ -80,6 +89,48 @@ export function resolveOpenCustomerQuestion(id) {
   ));
   writeAll(next);
   return next.find((item) => item.id === id) ?? null;
+}
+
+/**
+ * Antwort in Stammdaten schreiben und Frage erledigen.
+ * @param {string} id
+ * @param {unknown} answerValue
+ */
+export function answerAndResolveOpenCustomerQuestion(id, answerValue) {
+  const items = readAll();
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return { ok: false, reason: 'not_found' };
+
+  const field = item.field ?? VEHICLE_QUESTION_INTENT_BY_ID[item.intentId ?? '']?.factField ?? null;
+  let applied = false;
+
+  if (item.modelKey && field && answerValue !== '' && answerValue != null) {
+    const patch = applyFieldAnswer({
+      modelKey: item.modelKey,
+      field,
+      value: answerValue,
+    });
+    applied = Boolean(patch);
+  }
+
+  const next = items.map((entry) => (
+    entry.id === id
+      ? {
+        ...entry,
+        status: 'resolved',
+        resolvedAt: new Date().toISOString(),
+        adminAnswer: answerValue,
+        field,
+      }
+      : entry
+  ));
+  writeAll(next);
+
+  return {
+    ok: true,
+    applied,
+    item: next.find((entry) => entry.id === id) ?? null,
+  };
 }
 
 export function countOpenCustomerQuestions() {
