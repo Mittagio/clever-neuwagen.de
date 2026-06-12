@@ -4,6 +4,8 @@
 import sorentoVerbrenner from '../../data/kia/pricelist-imports/sorento.json' with { type: 'json' };
 import sorentoHybrid from '../../data/kia/pricelist-imports/sorento-hybrid.json' with { type: 'json' };
 import sorentoPhev from '../../data/kia/pricelist-imports/sorento-phev.json' with { type: 'json' };
+import ev4Pricelist from '../../data/kia/pricelist-imports/ev4.json' with { type: 'json' };
+import ev4FastbackPricelist from '../../data/kia/pricelist-imports/ev4-fastback.json' with { type: 'json' };
 import { sorentoConfigurator } from '../../data/models/kia/sorentoConfigurator.js';
 import { resolveModelConditions } from '../../data/dealerConditionsSchema.js';
 import { shouldShowAllPaymentVariants } from './purchaseTypeOptions.js';
@@ -12,7 +14,11 @@ const PRICELISTS = {
   sorento: sorentoVerbrenner,
   'sorento-hybrid': sorentoHybrid,
   'sorento-phev': sorentoPhev,
+  ev4: ev4Pricelist,
+  'ev4-fastback': ev4FastbackPricelist,
 };
+
+const SORENTO_CATALOG_IDS = new Set(['sorento', 'sorento-hybrid', 'sorento-phev']);
 
 const DEFAULT_LEASING_TERM = 48;
 const DEFAULT_LEASING_KM = 15000;
@@ -42,8 +48,21 @@ export function resolveTrimListPrice(modelKey, trimId) {
  * @param {object} configuration
  */
 export function resolveConfigurationModelKey(configuration) {
+  const catalogId = configuration?.catalogId ?? configuration?.modelKey;
+  if (catalogId && !SORENTO_CATALOG_IDS.has(catalogId) && PRICELISTS[catalogId]) {
+    return catalogId;
+  }
   const pt = sorentoConfigurator.powertrains.find((p) => p.id === configuration?.powertrainId);
   return pt?.modelKey ?? sorentoConfigurator.modelKey;
+}
+
+function isJourneyOfferSupported(configuration) {
+  if (!configuration) return false;
+  const modelKey = configuration.modelKey ?? resolveConfigurationModelKey(configuration);
+  if (SORENTO_CATALOG_IDS.has(configuration.catalogId) || String(modelKey).startsWith('sorento')) {
+    return configuration.catalogId === 'sorento' || SORENTO_CATALOG_IDS.has(modelKey);
+  }
+  return Boolean(PRICELISTS[modelKey]);
 }
 
 function resolvePackagesPrice(packageIds = []) {
@@ -196,9 +215,10 @@ export function resolveOfferPaymentModes(purchaseType) {
  */
 export function buildJourneyOffers(snapshot, dealerConditions) {
   const configuration = snapshot?.configuration;
-  if (!configuration || configuration.catalogId !== 'sorento') return null;
+  if (!isJourneyOfferSupported(configuration)) return null;
 
   const modelKey = resolveConfigurationModelKey(configuration);
+  const isSorento = configuration.catalogId === 'sorento' || SORENTO_CATALOG_IDS.has(modelKey);
   let conditions = resolveModelConditions(dealerConditions, modelKey);
 
   if (!Object.keys(conditions.leasingFactors ?? {}).length) {
@@ -210,8 +230,8 @@ export function buildJourneyOffers(snapshot, dealerConditions) {
   }
 
   const listPrice = resolveTrimListPrice(modelKey, configuration.trimId);
-  const packagesPrice = resolvePackagesPrice(configuration.packageIds);
-  const colorSurcharge = resolveColorSurcharge(configuration.colorId);
+  const packagesPrice = isSorento ? resolvePackagesPrice(configuration.packageIds) : 0;
+  const colorSurcharge = isSorento ? resolveColorSurcharge(configuration.colorId) : 0;
   const preparationFee = Number(conditions.preparationFee ?? 0);
   const configurationPrice = listPrice + packagesPrice + colorSurcharge + preparationFee;
 
@@ -255,7 +275,7 @@ export function buildJourneyOffers(snapshot, dealerConditions) {
   const offers = modes.map((mode) => buildOfferCard(mode, pricing));
 
   return {
-    catalogId: 'sorento',
+    catalogId: isSorento ? 'sorento' : modelKey,
     modelKey,
     vehicleTitle: `${snapshot.vehicle?.modelLabel ?? 'Sorento'} ${snapshot.vehicle?.trimLabel ?? ''}`.trim(),
     discountPercent,

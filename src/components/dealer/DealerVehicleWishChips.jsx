@@ -5,17 +5,24 @@ import {
 } from '../../services/dealer/dealerWishCatalogService.js';
 import './dealer-landing.css';
 
-function WishChipButton({ chip, active, onToggle }) {
+function WishChipButton({ chip, active, hint, onToggle }) {
   return (
-    <button
-      type="button"
-      className={`dl-wish-chips__chip${active ? ' dl-wish-chips__chip--active' : ''}`}
-      aria-pressed={active}
-      onClick={() => onToggle?.(chip.id)}
-    >
-      {active && <span className="dl-wish-chips__check" aria-hidden>☑ </span>}
-      {chip.label}
-    </button>
+    <span className="dl-wish-chips__chip-wrap">
+      <button
+        type="button"
+        className={`dl-wish-chips__chip${active ? ' dl-wish-chips__chip--active' : ''}${hint?.severity === 'warning' ? ' dl-wish-chips__chip--warn' : ''}`}
+        aria-pressed={active}
+        onClick={() => onToggle?.(chip.id)}
+      >
+        {active && <span className="dl-wish-chips__check" aria-hidden>☑ </span>}
+        {chip.label}
+      </button>
+      {active && hint?.message && (
+        <span className={`dl-wish-chips__hint dl-wish-chips__hint--${hint.severity}`}>
+          {hint.message}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -28,6 +35,7 @@ export default function DealerVehicleWishChips({
   searchProfile = null,
   searchFilters = null,
   searchChipIds = [],
+  chipHints = {},
   onToggle,
 }) {
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
@@ -78,6 +86,7 @@ export default function DealerVehicleWishChips({
                 key={chip.id}
                 chip={chip}
                 active={selectedChipIds.includes(chip.id)}
+                hint={chipHints[chip.id]}
                 onToggle={onToggle}
               />
             ))}
@@ -131,6 +140,7 @@ export default function DealerVehicleWishChips({
                       key={chip.id}
                       chip={chip}
                       active={selectedChipIds.includes(chip.id)}
+                      hint={chipHints[chip.id]}
                       onToggle={onToggle}
                     />
                   ))}

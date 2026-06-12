@@ -87,8 +87,14 @@ export function buildJourneyInquiryBrief({
       lines: primaryOffer?.lines?.map((l) => `${l.label}: ${l.value}`) ?? [],
     },
     specialConditions: conditionLabels,
+    budgetLabel: journeySnapshot?.budget?.label ?? null,
     dealer: dealer?.dealerName
-      ? { name: dealer.dealerName, city: dealer.city ?? null }
+      ? {
+          name: dealer.dealerName,
+          city: dealer.city ?? null,
+          contactName: dealer.contact?.name ?? null,
+          contactRole: dealer.contact?.role ?? null,
+        }
       : null,
     deliveryLabel: offerBundle?.pricing?.deliveryTime
       ? `Lieferzeit: ${offerBundle.pricing.deliveryTime}`
@@ -117,6 +123,9 @@ export function formatJourneyLeadDossierLines(brief) {
   if (brief.specialConditions?.length) {
     lines.push(`Sonderkondition: ${brief.specialConditions.join(', ')}`);
   }
+  if (brief.budgetLabel) {
+    lines.push(`Budget: ${brief.budgetLabel} / Monat`);
+  }
   if (brief.cleverQuotePercent != null) {
     lines.push(`CleverQuote: ${brief.cleverQuotePercent} %`);
   }
@@ -136,6 +145,7 @@ export function createLeadFromJourney({
   searchQuery = '',
   dealerConditions,
   message = '',
+  wantTestDrive = false,
 }) {
   const vehicle = journeySnapshot?.vehicle ?? {};
   const paymentType = resolvePaymentTypeForLead(journeySnapshot?.purchaseType);
@@ -156,7 +166,7 @@ export function createLeadFromJourney({
     id: uid(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    status: 'neu',
+    status: wantTestDrive ? 'probefahrt' : 'neu',
     source: 'dealerJourney',
     dealerId: dealerConditions?.dealerId ?? dealerConditions?.slug ?? 'autohaus-trinkle',
     contact: {
@@ -188,9 +198,11 @@ export function createLeadFromJourney({
       configuration: inquiryBrief.configuration,
     },
     notes: dossierLines.join('\n'),
+    wantTestDrive: Boolean(wantTestDrive),
     history: [
       historyEntry(`Anfrage über ${LEAD_SOURCES.dealerJourney}`),
       historyEntry('Journey: Beratung → Konfiguration → Kaufart → Sonderkonditionen → Angebot'),
+      ...(wantTestDrive ? [historyEntry('Probefahrt gewünscht', 'note')] : []),
       ...dossierLines.map((line) => historyEntry(line, 'note')),
       ...(message ? [historyEntry(`Nachricht: ${message}`, 'note')] : []),
     ],

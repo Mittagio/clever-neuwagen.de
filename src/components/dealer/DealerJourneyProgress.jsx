@@ -15,6 +15,7 @@ function resolveActiveIndex(salesStep) {
     case 'trim': return 2;
     case 'special':
     case 'purchase':
+    case 'budget':
     case 'summary': return 3;
     case 'offer': return 4;
     default: return 0;

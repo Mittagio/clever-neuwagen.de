@@ -46,6 +46,7 @@ export function buildDealerJourneySnapshot({
   purchaseType,
   specialConditions = null,
   configuration = null,
+  budget = null,
 }) {
   if (!configSummary) return null;
 
@@ -68,5 +69,8 @@ export function buildDealerJourneySnapshot({
     specialConditions: conditionIds,
     specialConditionLabels: getSpecialConditionLabels(conditionIds),
     discountGroup,
+    budget: budget?.maxMonthlyRate != null
+      ? { maxMonthlyRate: budget.maxMonthlyRate, label: budget.label ?? `bis ${budget.maxMonthlyRate} €` }
+      : null,
   };
 }

@@ -3,6 +3,7 @@ import VehicleImage from '../shared/VehicleImage.jsx';
 import { buildVehicleBrief, buildVehicleContextLine } from '../../services/dealer/vehicleSalesJourney.js';
 import { recommendTrimForWishes } from '../../services/dealer/trimWishRecommendation.js';
 import { resolveWishFeaturesFromChips } from '../../data/dealer/dealerWishCatalog.js';
+import { resolveWishChipConflictHints } from '../../services/dealer/wishChipConflictHint.js';
 import DealerVehicleWishChips from './DealerVehicleWishChips.jsx';
 import DealerWishTrimPreview from './DealerWishTrimPreview.jsx';
 import './dealer-landing.css';
@@ -33,6 +34,11 @@ export default function DealerVehicleUnderstandCard({
   const wishFeatures = useMemo(
     () => resolveWishFeaturesFromChips(wishChipIds),
     [wishChipIds],
+  );
+
+  const chipHints = useMemo(
+    () => resolveWishChipConflictHints(modelKey, wishChipIds),
+    [modelKey, wishChipIds],
   );
 
   const liveRecommendation = useMemo(() => {
@@ -101,6 +107,7 @@ export default function DealerVehicleUnderstandCard({
           searchProfile={searchProfile}
           searchFilters={searchFilters}
           searchChipIds={searchChipIds}
+          chipHints={chipHints}
           onToggle={onToggleWish}
         />
       </div>

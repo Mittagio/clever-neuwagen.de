@@ -161,6 +161,31 @@ export function findModelLineGroup(bundle, modelKey) {
 }
 
 /**
+ * Top-N unterschiedliche Modellgruppen für Journey-Vergleich.
+ * @param {object} bundle
+ * @param {number} [limit]
+ */
+export function resolveJourneyCompareModelGroups(bundle, limit = 2) {
+  const tiers = [
+    ...(bundle?.exact?.modelLineGroups ?? []),
+    ...(bundle?.alternatives ?? []).flatMap((tier) => tier.modelLineGroups ?? []),
+  ];
+
+  const seen = new Set();
+  const groups = [];
+
+  for (const group of tiers) {
+    const modelKey = group.primaryMatch?.vehicle?.modelKey ?? group.modelLineKey;
+    if (!modelKey || seen.has(modelKey)) continue;
+    seen.add(modelKey);
+    groups.push(group);
+    if (groups.length >= limit) break;
+  }
+
+  return groups;
+}
+
+/**
  * @param {object} bundle
  * @param {string[]} modelKeys
  * @param {object} [searchProfile]

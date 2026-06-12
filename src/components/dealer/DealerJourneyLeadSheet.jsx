@@ -12,6 +12,7 @@ export default function DealerJourneyLeadSheet({
 }) {
   const [contact, setContact] = useState({ name: '', email: '', phone: '' });
   const [message, setMessage] = useState('');
+  const [wantTestDrive, setWantTestDrive] = useState(false);
   const [error, setError] = useState('');
 
   function handleSubmit(event) {
@@ -27,7 +28,13 @@ export default function DealerJourneyLeadSheet({
       return;
     }
     setError('');
-    onSubmit?.({ ...contact, name, email, message: message.trim() });
+    onSubmit?.({
+      ...contact,
+      name,
+      email,
+      message: message.trim(),
+      wantTestDrive,
+    });
   }
 
   return (
@@ -94,9 +101,17 @@ export default function DealerJourneyLeadSheet({
               placeholder="z. B. Wohnwagen-Anhängerkupplung, Terminwunsch …"
             />
           </label>
+          <label className="dl-lead-sheet__checkbox">
+            <input
+              type="checkbox"
+              checked={wantTestDrive}
+              onChange={(e) => setWantTestDrive(e.target.checked)}
+            />
+            <span>Ich möchte eine Probefahrt vereinbaren</span>
+          </label>
           {error && <p className="dl-lead-sheet__error" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary dl-lead-sheet__cta">
-            Anfrage an Händler senden
+            {wantTestDrive ? 'Anfrage & Probefahrt senden' : 'Anfrage an Händler senden'}
           </button>
         </form>
       </div>

@@ -1,4 +1,5 @@
 import { formatJourneyLeadDossierLines } from '../../services/dealer/journeyLeadService.js';
+import { getInitials } from '../../logic/leadService.js';
 import './dealer-landing.css';
 
 /**
@@ -7,11 +8,15 @@ import './dealer-landing.css';
 export default function DealerJourneyLeadSuccess({
   contactName,
   dealerName,
+  dealerContact,
   inquiryBrief,
   cleverQuotePercent,
+  wantTestDrive = false,
 }) {
   const lines = formatJourneyLeadDossierLines(inquiryBrief);
   const cq = cleverQuotePercent ?? inquiryBrief?.cleverQuotePercent;
+  const advisorName = dealerContact?.name ?? inquiryBrief?.dealer?.contactName;
+  const advisorRole = dealerContact?.role ?? inquiryBrief?.dealer?.contactRole;
 
   return (
     <section className="dl-lead-success" aria-live="polite">
@@ -25,7 +30,22 @@ export default function DealerJourneyLeadSuccess({
         {dealerName ?? 'Ihr Händler'}
         {' '}
         erhält Ihr Dossier mit Konfiguration, Kaufart und Sonderkonditionen.
+        {wantTestDrive && ' Eine Probefahrt ist gewünscht.'}
       </p>
+
+      {advisorName && (
+        <div className="dl-lead-success__advisor">
+          <span className="dl-lead-success__advisor-avatar" aria-hidden>
+            {getInitials(advisorName)}
+          </span>
+          <div>
+            <p className="dl-lead-success__advisor-name">{advisorName}</p>
+            {advisorRole && (
+              <p className="dl-lead-success__advisor-role">{advisorRole}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="dl-lead-success__dossier">
         <p className="dl-lead-success__dossier-label">Das sieht der Händler</p>
