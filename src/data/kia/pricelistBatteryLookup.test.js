@@ -8,6 +8,12 @@ import { KIA_CLEVER_RECORDS } from '../clever/kiaCleverRecords.js';
 
 assert.equal(parseBatteryKwhFromEngine('42,2-kWh-Batterie; 108 kW'), 42.2);
 assert.equal(parseBatteryKwhFromEngine('81,4-kWh-Batterie, 150 kW'), 81.4);
+assert.equal(parseBatteryKwhFromEngine('63-kWh-Batterie'), 63);
+assert.equal(parseBatteryKwhFromEngine('84-kWh-Batterie'), 84);
+
+const ev6 = getPricelistBatteryKwh('ev6');
+assert.equal(ev6?.batteryGrossKwh, 63);
+assert.deepEqual(ev6?.batteryOptionsKwh, [63, 84]);
 
 const ev2 = getPricelistBatteryKwh('ev2');
 assert.equal(ev2?.batteryGrossKwh, 42.2);

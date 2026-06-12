@@ -81,12 +81,13 @@ function buildFieldAnswer(label, record, field, modelKey) {
         narrative.push(`🚗 DC-Schnellladen von 10–80 % in ca. ${electric.dcCharge10_80Min} Minuten.`);
       }
 
+      const hasBattery = kwh != null || (options?.length > 0);
       return {
-        hasData: narrative.length > 0,
+        hasData: hasBattery,
         title: `Wie groß ist die Batterie beim ${name}?`,
         lead: narrative[0] ?? null,
-        narrative: narrative.slice(1),
-        facts,
+        narrative: hasBattery ? narrative.slice(1) : [],
+        facts: hasBattery ? facts : [],
       };
     }
     case 'length': {

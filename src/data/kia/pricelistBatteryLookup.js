@@ -8,7 +8,7 @@ import PRICELIST_CATALOG from './pricelist-imports/catalog.js';
  * @returns {number|null}
  */
 export function parseBatteryKwhFromEngine(engine) {
-  const m = String(engine ?? '').match(/(\d+[,.]\d+)-kWh-Batterie/i);
+  const m = String(engine ?? '').match(/(\d+(?:[,.]\d+)?)-kWh-Batterie/i);
   if (!m) return null;
   return parseFloat(m[1].replace(',', '.'));
 }

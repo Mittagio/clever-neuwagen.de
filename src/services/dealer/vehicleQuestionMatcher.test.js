@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { matchVehicleQuestion } from './vehicleQuestionMatcher.js';
 import { buildDealerSmartAnswer } from './dealerSmartAnswerService.js';
 
+const ev6Battery = buildDealerSmartAnswer('akkugröße ev6', []);
+assert.ok(ev6Battery);
+assert.ok(!ev6Battery.dataGap);
+assert.ok(
+  ev6Battery.lead?.includes('63') || ev6Battery.lead?.includes('84')
+    || ev6Battery.facts?.some((f) => f.label === 'Batterie'),
+);
+
 const battery = matchVehicleQuestion('Wie groß ist die Batterie vom EV9?');
 assert.ok(battery);
 assert.equal(battery.intentId, 'battery_size');

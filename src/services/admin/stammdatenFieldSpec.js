@@ -16,6 +16,19 @@
  * @property {(value: unknown) => object} buildPatch
  */
 
+const COMFORT_OPTIONS = ['standard', 'package', 'accessory', 'missing', 'unknown'];
+
+/** @param {string} label @param {string} comfortKey */
+function comfortSelectSpec(label, comfortKey) {
+  return {
+    label,
+    inputType: 'select',
+    options: COMFORT_OPTIONS,
+    parse: (v) => String(v),
+    buildPatch: (v) => ({ comfort: { [comfortKey]: v } }),
+  };
+}
+
 /** @type {Record<VehicleFactField, StammdatenFieldSpec>} */
 export const STAMMDATEN_FIELD_SPECS = {
   batteryKwh: {
@@ -189,19 +202,6 @@ export const STAMMDATEN_FIELD_SPECS = {
     buildPatch: (v) => ({ dimensions: { lengthMm: v } }),
   },
 };
-
-const COMFORT_OPTIONS = ['standard', 'package', 'accessory', 'missing', 'unknown'];
-
-/** @param {string} label @param {string} comfortKey */
-function comfortSelectSpec(label, comfortKey) {
-  return {
-    label,
-    inputType: 'select',
-    options: COMFORT_OPTIONS,
-    parse: (v) => String(v),
-    buildPatch: (v) => ({ comfort: { [comfortKey]: v } }),
-  };
-}
 
 /**
  * @param {VehicleFactField | null | undefined} field
