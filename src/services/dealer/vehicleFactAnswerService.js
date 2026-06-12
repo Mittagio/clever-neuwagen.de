@@ -41,6 +41,7 @@ function comfortStatusLine(name, featureLabel, status) {
   if (status === 'standard') return `✅ ${featureLabel} ist beim ${name} serienmäßig enthalten.`;
   if (status === 'package') return `📦 ${featureLabel} ist beim ${name} optional als Paket erhältlich.`;
   if (status === 'accessory') return `🛒 ${featureLabel} ist beim ${name} als Zubehör erhältlich.`;
+  if (status === 'missing') return `ℹ️ ${featureLabel} ist beim ${name} nicht erhältlich.`;
   return null;
 }
 
@@ -334,7 +335,14 @@ function buildFieldAnswer(label, record, field, modelKey) {
       };
     }
     case 'leather': {
-      return { hasData: false, title: `Leder beim ${name}`, lead: null, narrative: [], facts: [] };
+      const line = comfortStatusLine(name, 'Lederausstattung', record.comfort?.leather);
+      return {
+        hasData: Boolean(line),
+        title: `Hat der ${name} Leder?`,
+        lead: line,
+        narrative: [],
+        facts: [],
+      };
     }
     case 'deliveryTime': {
       const weeks = record.basis?.deliveryWeeks;

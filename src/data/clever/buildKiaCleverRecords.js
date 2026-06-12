@@ -8,6 +8,7 @@ import { getKiaTechnicalSpec } from '../kia/kiaTechnicalSpecs.js';
 import { CLEVER_FEATURE_STATUS as S } from './cleverVehicleRecord.js';
 import { KIA_CLEVER_RECORD_OVERRIDES } from './kiaCleverRecordOverrides.js';
 import { getKiaFamilySpec } from '../kia/kiaFamilySpecs.js';
+import { getKiaDeliveryWeeks, getKiaLeatherStatus } from '../kia/kiaModelMarketSpecs.js';
 import { getKiaPerformanceSpec, KIA_WARRANTY_DEFAULT } from '../kia/kiaPerformanceSpecs.js';
 
 /** Offizielle ID → Attribut-/Spec-Key */
@@ -154,7 +155,7 @@ function buildFamilyBlock(modelKey, attrs, spec) {
   };
 }
 
-function buildComfortDefaults() {
+function buildComfortDefaults(modelKey) {
   return {
     heatedSeats: S.UNKNOWN,
     steeringHeat: S.UNKNOWN,
@@ -165,6 +166,7 @@ function buildComfortDefaults() {
     matrixLed: S.UNKNOWN,
     panoramaRoof: S.UNKNOWN,
     memorySeats: S.UNKNOWN,
+    leather: getKiaLeatherStatus(modelKey),
   };
 }
 
@@ -197,7 +199,7 @@ export function buildCleverRecordFromOfficial(official) {
       listPriceGross: official.priceFromGross,
       leasingRate: official.monthlyRateFrom,
       financeRate: official.monthlyRateAvailable ? official.monthlyRateFrom : null,
-      deliveryWeeks: null,
+      deliveryWeeks: getKiaDeliveryWeeks(modelKey) ?? getKiaDeliveryWeeks(official.id),
       inStock: false,
       warrantyYears: KIA_WARRANTY_DEFAULT.vehicleYears,
       warrantyKm: KIA_WARRANTY_DEFAULT.vehicleKm,
@@ -219,7 +221,7 @@ export function buildCleverRecordFromOfficial(official) {
       wheelbaseMm: spec.wheelbaseMm,
       turningCircleM: null,
     } : undefined,
-    comfort: buildComfortDefaults(),
+    comfort: buildComfortDefaults(modelKey),
     cleverScores: inferCleverScores(attrs, official, towingKg, rangeKm),
     popularityScore: official.sortOrder <= 120 ? 7 : 6,
   };

@@ -30,4 +30,14 @@ assert.ok(warranty);
 assert.ok(!warranty.dataGap);
 assert.ok(warranty.lead?.includes('7') || warranty.narrative?.some((n) => n.includes('7')));
 
+const leather = buildDealerSmartAnswer('Leder EV9', []);
+assert.ok(leather);
+assert.ok(!leather.dataGap);
+assert.ok(leather.lead?.includes('Paket') || leather.lead?.includes('serien'));
+
+const delivery = buildDealerSmartAnswer('Lieferzeit EV4', []);
+assert.ok(delivery);
+assert.ok(!delivery.dataGap);
+assert.ok(delivery.lead?.includes('Woche') || delivery.facts?.length);
+
 console.log('vehicleQuestionMatcher.test.js: ok');
