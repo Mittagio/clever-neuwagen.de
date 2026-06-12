@@ -13,6 +13,7 @@ import {
   buildVehicleFactAnswer,
 } from './vehicleFactAnswerService.js';
 import { buildElectricLineupAnswer } from './buildElectricLineupAnswer.js';
+import { buildFeatureLineupAnswer } from './buildFeatureLineupAnswer.js';
 import { buildVehicleEstimateAnswer } from './vehicleEstimateAnswerService.js';
 import { enrichSmartAnswerJourney } from './smartAnswerJourney.js';
 import { resolveQueryRoutingLayer } from '../search/vehicleQueryRouting.js';
@@ -107,6 +108,8 @@ export function buildDealerSmartAnswer(query, vehicles = []) {
   } else if (analysis.intent === 'vehicle_fact_question') {
     if (analysis.lineup === 'electric') {
       answer = buildElectricLineupAnswer(trimmed);
+    } else if (analysis.featureLineup) {
+      answer = buildFeatureLineupAnswer(analysis.featureLineup, trimmed);
     } else if (analysis.estimate) {
       answer = buildVehicleEstimateAnswer(analysis.estimate, trimmed);
     } else if (analysis.fact?.field) {

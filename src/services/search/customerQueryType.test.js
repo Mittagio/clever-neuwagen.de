@@ -7,6 +7,7 @@ import {
   matchElectricLineupQuestion,
   matchPurchaseIntent,
 } from './customerQueryType.js';
+import { matchFeatureLineupQuestion } from './featureLineupQuestion.js';
 
 assert.ok(matchElectricLineupQuestion('welche e autos gibt es bei kia'));
 assert.ok(matchElectricLineupQuestion('Welche Elektroautos bietet Kia?'));
@@ -28,6 +29,18 @@ assert.equal(typeOf('EV3 oder EV4'), 'compare');
 assert.equal(typeOf('Wie groß ist die Batterie vom EV9?'), 'knowledge');
 assert.equal(typeOf('Zeig mir den EV3'), 'purchase');
 assert.equal(typeOf('7 Sitzer mit Anhängerkupplung'), 'search');
+
+assert.ok(matchFeatureLineupQuestion('Bei welchem Kia kann ich die Anhängerkupplung monitoren'));
+assert.ok(matchFeatureLineupQuestion('Bei welchem Kia kann ich die Anhängerkupllung moniteren'));
+assert.equal(matchFeatureLineupQuestion('EV9 Anhängerkupplung'), null);
+assert.equal(typeOf('Bei welchem Kia kann ich die Anhängerkupplung monitoren'), 'knowledge');
+
+const towbarAnswer = buildDealerSmartAnswer('Bei welchem Kia kann ich die Anhängerkupplung monitoren', []);
+assert.ok(towbarAnswer);
+assert.equal(towbarAnswer.journeyKind, 'lineup');
+assert.match(towbarAnswer.title ?? '', /Anhängerkupplung/i);
+assert.ok(towbarAnswer.modelCards?.some((c) => c.modelKey === 'ev9'));
+assert.ok(towbarAnswer.interestOptions?.some((o) => o.modelKey === 'ev3'));
 
 const lineupAnswer = buildDealerSmartAnswer('welche e autos gibt es bei kia', []);
 assert.ok(lineupAnswer);
