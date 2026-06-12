@@ -8,6 +8,7 @@ import { getKiaTechnicalSpec } from '../kia/kiaTechnicalSpecs.js';
 import { CLEVER_FEATURE_STATUS as S } from './cleverVehicleRecord.js';
 import { KIA_CLEVER_RECORD_OVERRIDES } from './kiaCleverRecordOverrides.js';
 import { getKiaFamilySpec } from '../kia/kiaFamilySpecs.js';
+import { resolveBatteryForModelKey } from '../kia/pricelistBatteryLookup.js';
 import { getKiaDeliveryWeeks, getKiaLeatherStatus } from '../kia/kiaModelMarketSpecs.js';
 import { getKiaPerformanceSpec, KIA_WARRANTY_DEFAULT } from '../kia/kiaPerformanceSpecs.js';
 
@@ -116,7 +117,7 @@ function inferHeatPumpDefault(officialId, powertrain) {
   return withHeatPump.has(officialId) ? true : null;
 }
 
-function buildElectricBlock(official, attrs, spec) {
+function buildElectricBlock(official, attrs, spec, modelKey) {
   const pt = official.powertrain;
   if (pt !== 'elektro' && pt !== 'plugin-hybrid' && pt !== 'nutzfahrzeug') return undefined;
 
@@ -124,10 +125,12 @@ function buildElectricBlock(official, attrs, spec) {
   const is800V = ['ev6', 'ev6-gt', 'ev9', 'ev9-gt'].includes(official.id);
 
   const heatPump = inferHeatPumpDefault(official.id, pt);
+  const battery = resolveBatteryForModelKey(modelKey);
 
   return {
-    batteryGrossKwh: null,
-    batteryNetKwh: null,
+    batteryGrossKwh: battery?.batteryGrossKwh ?? null,
+    batteryNetKwh: battery?.batteryNetKwh ?? null,
+    batteryOptionsKwh: battery?.batteryOptionsKwh,
     wltpRangeKm: rangeKm,
     realRangeSummerKm: rangeKm ? Math.round(rangeKm * 0.88) : null,
     realRangeWinterKm: rangeKm ? Math.round(rangeKm * 0.72) : null,
@@ -206,7 +209,7 @@ export function buildCleverRecordFromOfficial(official) {
       batteryWarrantyYears: isElectric ? KIA_WARRANTY_DEFAULT.batteryYears : undefined,
     },
     performance: performance ?? undefined,
-    electric: buildElectricBlock(official, attrs, spec),
+    electric: buildElectricBlock(official, attrs, spec, modelKey),
     family: buildFamilyBlock(modelKey, attrs, spec),
     towing: towingKg != null ? {
       brakedKg: towingKg,

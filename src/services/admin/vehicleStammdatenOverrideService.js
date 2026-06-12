@@ -85,8 +85,10 @@ export function mergeCleverRecordWithOverrides(record, modelKey) {
  */
 export function getCleverRecordForModelKey(modelKey) {
   const records = KIA_CLEVER_RECORDS.filter((r) => r.modelKey === modelKey);
-  const base = records.find((r) => !r.trimId)
-    ?? records.find((r) => r.electric?.batteryGrossKwh || r.electric?.wltpRangeKm)
+  const base = records.find((r) => r.electric?.batteryGrossKwh || r.electric?.batteryNetKwh)
+    ?? records.find((r) => r.electric?.batteryOptionsKwh?.length)
+    ?? records.find((r) => !r.trimId)
+    ?? records.find((r) => r.electric?.wltpRangeKm)
     ?? records[0]
     ?? null;
   if (!base) return null;

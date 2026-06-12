@@ -57,6 +57,7 @@
     "test:clever-data": "node src/services/cleverData/cleverDataEngine.test.js",
     "test:kia-clever-records": "node src/data/clever/kiaCleverRecords.test.js",
     "test:stammdaten": "node server/stammdatenStore.test.js && node src/services/admin/vehicleStammdatenOverrideService.test.js && node src/services/dealer/vehicleEstimateAnswerService.test.js && node src/services/search/vehicleQueryRouting.test.js",
+    "test:kia-battery": "node src/data/kia/pricelistBatteryLookup.test.js && node src/data/kia/kiaBatteryCoverage.test.js",
     "test:kia-ev4": "node src/logic/kiaEv4Registry.test.js",
     "test:kia-picanto": "node src/logic/kiaPicantoRegistry.test.js",
     "test:kia-trinkle-stock": "node src/data/kia/kiaTrinkleStock.test.js",

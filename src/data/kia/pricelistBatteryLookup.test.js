@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   getPricelistBatteryKwh,
   parseBatteryKwhFromEngine,
+  resolveBatteryForModelKey,
   resolveElectricSpecs,
 } from './pricelistBatteryLookup.js';
 import { KIA_CLEVER_RECORDS } from '../clever/kiaCleverRecords.js';
@@ -29,5 +30,11 @@ assert.equal(resolved.batteryGrossKwh, 42.2);
 const ev9Air = KIA_CLEVER_RECORDS.find((r) => r.modelKey === 'ev9' && r.trimId === 'air');
 const ev9Resolved = resolveElectricSpecs(ev9Air);
 assert.equal(ev9Resolved.batteryNetKwh, 96);
+
+const ev9Base = KIA_CLEVER_RECORDS.find((r) => r.modelKey === 'ev9' && !r.trimId);
+assert.ok(ev9Base?.electric?.batteryOptionsKwh?.length >= 2);
+
+const pv5Cargo = resolveBatteryForModelKey('pv5-cargo');
+assert.deepEqual(pv5Cargo?.batteryOptionsKwh, [51.5, 71.2]);
 
 console.log('pricelistBatteryLookup.test.js: ok');
