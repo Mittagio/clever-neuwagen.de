@@ -1,16 +1,16 @@
 import { useState } from 'react';
-import VehicleImage from '../shared/VehicleImage.jsx';
 import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
-import { RecommendReasonsPanel } from '../cleverQuote/CleverQuoteWhyPanel.jsx';
 import DiscoveryHeroCard from './DiscoveryHeroCard.jsx';
 import {
   getMatchDisplayTitle,
   getMatchVariantLabel,
   formatMatchPrimaryPrice,
+  formatMatchPriceFallback,
   formatMatchDeliveryLabel,
 } from '../../logic/discoveryDisplay.js';
 import { buildWishMatchBullets } from '../../services/cleverQuote/cleverQuoteRecommendation.js';
 import WishFeatureChecklist from '../dealer/WishFeatureChecklist.jsx';
+import DealerAdvisorHeroCard from '../dealer/DealerAdvisorHeroCard.jsx';
 import './discovery-results.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -38,7 +38,9 @@ function VariantRow({ match, paymentMode, onViewOffer, rank = 0, searchProfile =
         </div>
         <div className="disc-variant-row__meta">
           <span className="disc-variant-row__price">
-            ab {price.label}{price.suffix}
+            {price.missing
+              ? formatMatchPriceFallback(paymentMode)
+              : `ab ${price.label}${price.suffix}`}
           </span>
           {match.cleverQuote && (
             <CleverQuoteBadge cleverQuote={match.cleverQuote} size="sm" showTier={false} />
@@ -75,6 +77,8 @@ export default function DiscoveryModelLineCard({
   recommendReasons = [],
   whyTitle,
   defaultVariantsOpen = null,
+  dealerAdvisor = false,
+  allGroups = [],
 }) {
   const {
     primaryMatch,
@@ -93,8 +97,8 @@ export default function DiscoveryModelLineCard({
   );
 
   if (!primaryMatch) return null;
+  if (dealerAdvisor && rank > 1) return null;
 
-  const isHero = rank === 1;
   const medal = rank <= 3 ? MEDALS[rank - 1] : null;
   const displayLabel = label ?? getMatchDisplayTitle(primaryMatch);
   const headlineQuote = modelQuote ?? primaryMatch.cleverQuote;
@@ -115,76 +119,77 @@ export default function DiscoveryModelLineCard({
     ? { ...primaryMatch, cleverQuote: headlineQuote }
     : primaryMatch;
 
-  return (
-    <article className={`disc-model-line${isHero ? ' disc-model-line--hero' : ''}${modelFirst ? ' disc-model-line--model-first' : ''}`}>
-      {!isHero && (
-        <header className="disc-model-line__head">
-          {medal && <span className="disc-model-line__rank" aria-hidden>{medal}</span>}
-          <div className="disc-model-line__head-text">
-            <h3 className="disc-model-line__title">{displayLabel}</h3>
-            {!modelFirst && recommendedTrimLabel && (
-              <p className="disc-model-line__trim-hint">Empfohlen: {recommendedTrimLabel}</p>
-            )}
-          </div>
-          {headlineQuote && (
-            <CleverQuoteBadge
-              cleverQuote={headlineQuote}
-              size="sm"
-              showTier={false}
-              onWhyClick={() => onCleverQuoteWhy?.(primaryMatch)}
-            />
-          )}
-        </header>
-      )}
+  const heroBadgeLabel = rank === 1
+    ? (heroBadge ?? 'Empfohlen für Ihre Suche')
+    : `${medal ? `${medal} ` : ''}Weitere Empfehlung`;
 
-      {isHero ? (
-        <DiscoveryHeroCard
-          match={heroMatch}
-          paymentMode={paymentMode}
-          paymentNeutral={paymentNeutral}
-          onChangePaymentMode={onChangePaymentMode}
+  if (dealerAdvisor) {
+    return (
+      <article className="disc-model-line disc-model-line--advisor">
+        <DealerAdvisorHeroCard
+          group={group}
+          allGroups={allGroups.length ? allGroups : [group]}
           onViewOffer={onViewOffer}
-          onCleverQuoteWhy={onCleverQuoteWhy}
-          recommendReasons={modelFirst ? [] : bullets}
-          whyTitle={whyTitle}
-          heroBadge={heroBadge}
-          variantLabel={modelFirst ? null : getMatchVariantLabel(primaryMatch)}
-          modelFirst={modelFirst}
           exploreTrimsLabel={modelFirst && hasMultipleVariants ? `${displayLabel} ansehen` : null}
           onExploreTrims={
             modelFirst && hasMultipleVariants ? () => setVariantsOpen(true) : undefined
           }
         />
-      ) : (
-        <div className="disc-model-line__primary">
-          <button
-            type="button"
-            className="disc-model-line__primary-btn"
-            onClick={() => (modelFirst ? setVariantsOpen(true) : onViewOffer?.(primaryMatch.vehicle))}
-          >
-            <VehicleImage
-              brand={primaryMatch.vehicle.brand}
-              model={primaryMatch.vehicle.imageModel ?? primaryMatch.vehicle.model}
-              bodyType={primaryMatch.vehicle.bodyType}
-              className="disc-model-line__thumb-wrap"
-              imageClassName="disc-model-line__thumb"
-            />
-            <div className="disc-model-line__primary-body">
-              <p className="disc-model-line__variant-label">{displayLabel}</p>
-              <p className="disc-model-line__price">
-                ab {formatMatchPrimaryPrice(primaryMatch, paymentMode).label}
-                <span>/Monat</span>
-              </p>
-              {!modelFirst && (
-                <RecommendReasonsPanel
-                  reasons={bullets.slice(0, 2)}
-                  title={whyTitle ?? `Warum ${displayLabel}?`}
-                />
-              )}
-            </div>
-          </button>
-        </div>
-      )}
+
+        {modelFirst && hasMultipleVariants && (
+          <div className="disc-model-line__variants">
+            {variantsOpen && (
+              <button
+                type="button"
+                className="disc-model-line__variants-collapse"
+                onClick={() => setVariantsOpen(false)}
+              >
+                Ausstattungen ausblenden
+              </button>
+            )}
+            {variantsOpen && (
+              <>
+                <p className="disc-model-line__variants-lead">Welche Ausstattung passt am besten?</p>
+                <div className="disc-model-line__variants-list" role="list">
+                  {displayTrimVariants.map((entry, index) => (
+                    <VariantRow
+                      key={entry.trimKey}
+                      match={entry.match}
+                      paymentMode={paymentMode}
+                      onViewOffer={onViewOffer}
+                      rank={index + 1}
+                      searchProfile={searchProfile}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </article>
+    );
+  }
+
+  return (
+    <article className={`disc-model-line disc-model-line--hero${modelFirst ? ' disc-model-line--model-first' : ''}${rank > 1 ? ' disc-model-line--secondary' : ''}`}>
+      <DiscoveryHeroCard
+        match={heroMatch}
+        paymentMode={paymentMode}
+        paymentNeutral={paymentNeutral}
+        onChangePaymentMode={onChangePaymentMode}
+        onViewOffer={onViewOffer}
+        onCleverQuoteWhy={onCleverQuoteWhy}
+        recommendReasons={modelFirst ? [] : bullets}
+        whyTitle={whyTitle ?? (rank > 1 ? `Warum ${displayLabel}?` : undefined)}
+        heroBadge={heroBadgeLabel}
+        variantLabel={modelFirst ? null : getMatchVariantLabel(primaryMatch)}
+        modelFirst={modelFirst}
+        exploreTrimsLabel={modelFirst && hasMultipleVariants ? `${displayLabel} ansehen` : null}
+        onExploreTrims={
+          modelFirst && hasMultipleVariants ? () => setVariantsOpen(true) : undefined
+        }
+        className={rank > 1 ? 'disc-hero--secondary' : ''}
+      />
 
       {modelFirst ? (
         <WishFeatureChecklist
@@ -200,7 +205,7 @@ export default function DiscoveryModelLineCard({
 
       {modelFirst && hasMultipleVariants && (
         <div className="disc-model-line__variants">
-          {!isHero && (
+          {rank > 1 && (
             <button
               type="button"
               className="btn btn-secondary disc-model-line__view-btn"
@@ -210,7 +215,7 @@ export default function DiscoveryModelLineCard({
               {variantsOpen ? 'Ausstattungen ausblenden' : `${displayLabel} ansehen`}
             </button>
           )}
-          {isHero && variantsOpen && (
+          {rank === 1 && variantsOpen && (
             <button
               type="button"
               className="disc-model-line__variants-collapse"

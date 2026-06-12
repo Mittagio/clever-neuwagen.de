@@ -95,6 +95,12 @@ export const FEATURE_CATALOG = [
     category: 'komfort',
   },
   {
+    id: 'power_sliding_doors',
+    label: 'Elektrische Schiebetüren',
+    aliases: ['elektrische schiebetüren', 'schiebetüren', 'power sliding doors', 'sliding doors'],
+    category: 'komfort',
+  },
+  {
     id: 'tow_capacity_2000',
     label: 'mind. 2 Tonnen Anhängelast',
     aliases: ['2 tonnen anhängelast', '2000 kg ziehen', '2 t anhängelast'],

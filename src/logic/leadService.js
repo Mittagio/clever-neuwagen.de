@@ -124,6 +124,13 @@ export function formatRate(value) {
 export function getLeadPreview(lead) {
   const briefPreview = lead.inquiryBrief ? getLeadBriefPreview(lead.inquiryBrief) : null;
   if (briefPreview) return briefPreview;
+  if (lead.wishLabels?.length) {
+    return lead.wishLabels.slice(0, 3).join(' · ');
+  }
+  if (lead.inquiryContext?.searchQuery) {
+    const q = String(lead.inquiryContext.searchQuery);
+    return q.length > 96 ? `${q.slice(0, 93)}…` : q;
+  }
   const last = lead.history?.[lead.history.length - 1];
   return last?.text ?? lead.vehicle?.label ?? 'Neue Anfrage';
 }

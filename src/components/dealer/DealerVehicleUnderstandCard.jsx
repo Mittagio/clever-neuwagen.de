@@ -1,15 +1,16 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import { buildVehicleBrief, buildVehicleContextLine } from '../../services/dealer/vehicleSalesJourney.js';
 import { recommendTrimForWishes } from '../../services/dealer/trimWishRecommendation.js';
 import { resolveWishFeaturesFromChips } from '../../data/dealer/dealerWishCatalog.js';
 import { resolveWishChipConflictHints } from '../../services/dealer/wishChipConflictHint.js';
 import DealerVehicleWishChips from './DealerVehicleWishChips.jsx';
-import DealerWishTrimPreview from './DealerWishTrimPreview.jsx';
+import DealerCleverRecommendationHeader from './DealerCleverRecommendationHeader.jsx';
+import DealerTrimSwipeCarousel from './DealerTrimSwipeCarousel.jsx';
 import './dealer-landing.css';
 
 /**
- * Schritt 2 – Fahrzeug verstehen + strukturierte Wünsche.
+ * Fahrzeug verstehen – Clever-Empfehlung, Varianten-Swipe, Wunsch-Chips live.
  */
 export default function DealerVehicleUnderstandCard({
   modelKey,
@@ -25,6 +26,7 @@ export default function DealerVehicleUnderstandCard({
 }) {
   const brief = buildVehicleBrief(modelKey);
   const hasWishes = wishChipIds.length > 0;
+  const [selectedTrimId, setSelectedTrimId] = useState(null);
 
   const contextLine = useMemo(
     () => buildVehicleContextLine(modelKey, { searchProfile, searchFilters, searchChipIds }),
@@ -41,10 +43,28 @@ export default function DealerVehicleUnderstandCard({
     [modelKey, wishChipIds],
   );
 
-  const liveRecommendation = useMemo(() => {
-    if (!hasWishes) return null;
-    return recommendTrimForWishes(modelKey, wishFeatures, searchProfile, searchFilters);
-  }, [modelKey, wishFeatures, searchProfile, searchFilters, hasWishes]);
+  const liveRecommendation = useMemo(
+    () => recommendTrimForWishes(
+      modelKey,
+      wishFeatures,
+      searchProfile,
+      searchFilters,
+      wishChipIds,
+    ),
+    [modelKey, wishFeatures, searchProfile, searchFilters, wishChipIds],
+  );
+
+  useEffect(() => {
+    setSelectedTrimId(liveRecommendation?.primary?.trimId ?? null);
+  }, [liveRecommendation?.primary?.trimId, modelKey]);
+
+  const selectedTrim = liveRecommendation?.allTrims?.find(
+    (trim) => trim.trimId === (selectedTrimId ?? liveRecommendation?.primary?.trimId),
+  ) ?? liveRecommendation?.primary;
+
+  function handleContinue() {
+    onContinue?.(selectedTrimId ?? liveRecommendation?.primary?.trimId ?? null);
+  }
 
   return (
     <section className="dl-sales-understand" aria-labelledby="dl-sales-understand-title">
@@ -76,25 +96,25 @@ export default function DealerVehicleUnderstandCard({
         </div>
       </div>
 
-      {brief.specRows.length > 0 && (
-        <ul className="dl-sales-understand__specs">
-          {brief.specRows.map((row) => (
-            <li key={row.label}>
-              <span className="dl-sales-understand__spec-icon" aria-hidden>{row.icon}</span>
-              <span className="dl-sales-understand__spec-label">{row.label}</span>
-              <strong className="dl-sales-understand__spec-value">{row.value}</strong>
-            </li>
-          ))}
-        </ul>
+      {liveRecommendation?.primary && (
+        <DealerCleverRecommendationHeader recommendation={liveRecommendation} />
+      )}
+
+      {liveRecommendation?.allTrims?.length > 1 && (
+        <DealerTrimSwipeCarousel
+          recommendation={liveRecommendation}
+          wishChipIds={wishChipIds}
+          selectedTrimId={selectedTrimId}
+          onSelectTrim={setSelectedTrimId}
+        />
       )}
 
       <div className="dl-sales-understand__wishes">
         <h3 className="dl-sales-understand__wishes-title">
-          Welche Ausstattung ist Ihnen wichtig?
+          Was ist Ihnen wichtig?
         </h3>
         <p className="dl-sales-understand__wishes-sub">
-          Wählen Sie einfach die Punkte aus, die Ihnen wichtig sind.
-          Clever empfiehlt anschließend automatisch die passende Ausstattung.
+          Wählen Sie Ihre Wünsche – Clever zeigt sofort, welche Ausstattung am besten passt.
         </p>
         {prefilledWishCount > 0 && (
           <p className="dl-sales-understand__prefill-hint">
@@ -112,18 +132,14 @@ export default function DealerVehicleUnderstandCard({
         />
       </div>
 
-      {liveRecommendation && (
-        <DealerWishTrimPreview recommendation={liveRecommendation} />
-      )}
-
       <button
         type="button"
         className="btn btn-primary dl-sales-understand__cta"
-        onClick={onContinue}
+        onClick={handleContinue}
       >
         {hasWishes
-          ? `Mit ${liveRecommendation?.primary?.trimLabel ?? 'passender Ausstattung'} weiter`
-          : 'Weiter ohne Extra-Wünsche'}
+          ? `Mit ${selectedTrim?.trimLabel ?? 'passender Ausstattung'} weiter`
+          : 'Weiter zur Kondition'}
       </button>
     </section>
   );

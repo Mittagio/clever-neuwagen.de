@@ -99,6 +99,14 @@ export const CUSTOMER_FEATURE_DICTIONARY = {
     'viel gepäck',
     'grosses gepaeck',
   ],
+  isofix: [
+    'isofix',
+    'i-size',
+    'i size',
+    'kindersitz isofix',
+    'isofix kindersitz',
+    'isofix hinten',
+  ],
 };
 
 /** Für Intent-Parser: längere Phrasen zuerst */

@@ -63,7 +63,8 @@ export function intentToMarketplaceFilters(intent, overrides = {}) {
     maxRate: intent.maxRate ?? null,
     maxPrice: intent.maxPrice ?? null,
     type: intent.bodyType ?? (intent.fuel === 'elektro' ? 'elektro' : (overrides.type ?? 'all')),
-    fuel: FUEL_TO_FILTER[intent.fuel] ?? '',
+    fuel: intent.fuelAlternatives?.length >= 2 ? '' : (FUEL_TO_FILTER[intent.fuel] ?? ''),
+    fuelAlternatives: intent.fuelAlternatives?.length >= 2 ? intent.fuelAlternatives : null,
     payment: PAYMENT_TO_FILTER[intent.payment] ?? '',
     model: intent.modelExplicit ? (intent.model ?? '') : '',
     trim: intent.modelExplicit ? (intent.trim ?? '') : '',
@@ -100,7 +101,10 @@ export function intentToMarketplaceFilters(intent, overrides = {}) {
     ...overrides,
   };
 
-  if (intent.fuel === 'elektro' && filters.type === 'all') {
+  if (intent.fuelAlternatives?.length >= 2) {
+    filters.type = 'all';
+    filters.fuel = '';
+  } else if (intent.fuel === 'elektro' && filters.type === 'all') {
     filters.type = 'elektro';
   }
 
@@ -125,6 +129,11 @@ export function toAdvisorMarketplaceFilters(filters = {}) {
     ...filters,
     features: hardFeatures,
   };
+  if (filters.fuelAlternatives?.length >= 2) {
+    next.fuel = '';
+    next.type = 'all';
+    return next;
+  }
   const hasElektroWish = (filters.features ?? []).includes('elektro')
     || filters.fuel === 'elektro'
     || next.type === 'elektro';

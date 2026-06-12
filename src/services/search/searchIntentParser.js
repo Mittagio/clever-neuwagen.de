@@ -39,6 +39,12 @@ const EMPTY_INTENT = () => ({
   durationMonths: null,
   features: [],
   towCapacityKg: null,
+  fuelAlternatives: null,
+  existingLead: false,
+  familyHint: null,
+  dogBoxHint: null,
+  chargingHomeHint: null,
+  financeZeroPercent: false,
   rangeKmMin: null,
   rangeRanking: null,
   maxLengthMm: null,
@@ -121,17 +127,74 @@ function protectAmbiguousNumbers(text, spans, features, ambiguous) {
   }
 }
 
-function extractFuel(text, spans) {
+function normalizeFuelKey(fuel) {
+  if (fuel === 'plugin_hybrid') return 'plugin-hybrid';
+  if (fuel === 'verbrenner') return 'verbrenner';
+  return fuel;
+}
+
+function refineFuelAlternatives(keys = []) {
+  const unique = [...new Set(keys)];
+  if (unique.includes('plugin-hybrid') && unique.includes('hybrid')) {
+    return unique.filter((key) => key !== 'hybrid');
+  }
+  return unique;
+}
+
+function extractMentionedFuels(text) {
+  const hits = [];
   for (const [fuel, phrases] of Object.entries(FUEL_SYNONYMS)) {
     for (const phrase of [...phrases].sort((a, b) => b.length - a.length)) {
       const span = findPhrase(text, phrase);
-      if (span && !isSpanConsumed(spans, span.start)) {
-        markSpan(spans, span.start, span.end);
-        return fuel === 'plugin_hybrid' ? 'plugin-hybrid' : fuel === 'verbrenner' ? 'verbrenner' : fuel;
-      }
+      if (!span) continue;
+      hits.push({ key: normalizeFuelKey(fuel), span });
+      break;
     }
   }
-  return null;
+  hits.sort((a, b) => a.span.start - b.span.start);
+  const mentioned = [];
+  for (const hit of hits) {
+    if (!mentioned.some((entry) => entry.key === hit.key)) mentioned.push(hit);
+  }
+  return mentioned;
+}
+
+function extractFuelPreference(text, spans) {
+  const mentioned = extractMentionedFuels(text);
+  if (!mentioned.length) return { fuel: null, fuelAlternatives: null };
+
+  const keys = mentioned.map((entry) => entry.key);
+  const hasChoice = /\b(oder|\/|beides?\s+egal|egal\s+ob|sowohl)\b/i.test(text);
+  const hybridAndElectric = keys.includes('hybrid') && keys.includes('elektro');
+
+  if ((keys.length >= 2 && hasChoice) || hybridAndElectric) {
+    for (const entry of mentioned) markSpan(spans, entry.span.start, entry.span.end);
+    return {
+      fuel: null,
+      fuelAlternatives: refineFuelAlternatives(keys),
+    };
+  }
+
+  const primary = mentioned[0];
+  markSpan(spans, primary.span.start, primary.span.end);
+  return { fuel: primary.key, fuelAlternatives: null };
+}
+
+function extractFinanceZeroPercent(text, spans) {
+  const m = text.match(
+    /\b0\s*(?:%|prozent)\s*(?:finanzierung|finanzierungszins(?:en)?|zins(?:en)?|effektivzins)?\b/i,
+  )
+    ?? text.match(
+      /\b(?:finanzierung|finanzierungszins(?:en)?|zins(?:en)?|effektivzins)\s*(?:mit\s+|zu\s+|ab\s+)?0\s*(?:%|prozent)\b/i,
+    )
+    ?? text.match(/\bfinanzierung\s+0\s*(?:%|prozent)\b/i)
+    ?? text.match(/\b0\s+finanzierung\b/i)
+    ?? text.match(/\b0\s*%\s*finanzierung\b/i)
+    ?? text.match(/\bzinsfrei(?:e)?\s+finanzierung\b/i)
+    ?? text.match(/\bfinanzierung\s+zinsfrei\b/i);
+  if (!m || isSpanConsumed(spans, m.index)) return false;
+  markSpan(spans, m.index, m.index + m[0].length);
+  return true;
 }
 
 function extractPayment(text, spans) {
@@ -158,8 +221,10 @@ function extractAvailability(text, spans) {
   return null;
 }
 
+const EURO_AMOUNT = '(?:€|euro)';
+
 function hasRateContext(text) {
-  return /leasing|finanzier|monat|rate|mtl|\/\s*monat|pro monat/i.test(text);
+  return /leasing|finanzier|monat|rate|mtl|\/\s*monat|pro monat|budget/i.test(text);
 }
 
 function hasPriceContext(text) {
@@ -199,14 +264,23 @@ function extractMoneyAndRange(text, spans) {
     }
   }
 
-  const bisEuroRe = /\bbis\s+(\d{2,4})\s*€/gi;
+  const maxRatePhrase = text.match(new RegExp(`\\bmaximal\\s+(\\d{2,4})\\s*${EURO_AMOUNT}\\s*(?:monats)?rate\\b`, 'i'))
+    ?? text.match(new RegExp(`\\b(?:monats)?rate\\s+(?:bis\\s+|maximal\\s+|unter\\s+|von\\s+)?(\\d{2,4})\\s*${EURO_AMOUNT}\\b`, 'i'))
+    ?? text.match(new RegExp(`\\bbudget\\s+(\\d{2,4})\\s*${EURO_AMOUNT}\\b`, 'i'))
+    ?? text.match(new RegExp(`\\bunter\\s+(\\d{2,4})\\s*${EURO_AMOUNT}\\s*(?:pro\\s+)?(?:monat|mtl)\\b`, 'i'));
+  if (maxRatePhrase && !isSpanConsumed(spans, maxRatePhrase.index)) {
+    maxRate = Number(maxRatePhrase[1]);
+    markSpan(spans, maxRatePhrase.index, maxRatePhrase.index + maxRatePhrase[0].length);
+  }
+
+  const bisEuroRe = new RegExp(`\\bbis\\s+(\\d{2,4})\\s*${EURO_AMOUNT}`, 'gi');
   while ((rm = bisEuroRe.exec(text)) !== null) {
     if (isSpanConsumed(spans, rm.index)) continue;
     maxRate = Number(rm[1]);
     markSpan(spans, rm.index, rm.index + rm[0].length);
   }
 
-  const euroRe = /(?:bis|unter|max\.?|maximal)?\s*(\d{1,3}(?:\.\d{3})*|\d{2,6})\s*€/gi;
+  const euroRe = new RegExp(`(?:bis|unter|max\\.?|maximal)?\\s*(\\d{1,3}(?:\\.\\d{3})*|\\d{2,6})\\s*${EURO_AMOUNT}`, 'gi');
   while ((rm = euroRe.exec(text)) !== null) {
     if (isSpanConsumed(spans, rm.index)) continue;
     const raw = rm[1].replace(/\./g, '');
@@ -274,17 +348,128 @@ function extractTowCapacity(text, spans) {
     markSpan(spans, ton.index, ton.index + ton[0].length);
     return Math.round(t * 1000);
   }
+  const ahead = text.match(/anhängelast|anhaengelast/i);
+  const kgAfter = text.match(/anhängelast|anhaengelast\s*(?:von|ab|mindestens|mind\.|≥|>=)?\s*(\d{3,5})\s*(?:kg)?/i);
+  if (kgAfter && !isSpanConsumed(spans, kgAfter.index)) {
+    markSpan(spans, kgAfter.index, kgAfter.index + kgAfter[0].length);
+    return Number(kgAfter[1]);
+  }
   const kg = text.match(/(\d{3,5})\s*kg\s*(?:anhängelast|anhaengelast|ziehen)?/i);
   if (kg && !isSpanConsumed(spans, kg.index)) {
     markSpan(spans, kg.index, kg.index + kg[0].length);
     return Number(kg[1]);
+  }
+  if (ahead) {
+    const num = text.match(/anhängelast|anhaengelast[^\d]{0,12}(\d{3,5})/i);
+    if (num && !isSpanConsumed(spans, num.index)) {
+      markSpan(spans, num.index, num.index + num[0].length);
+      return Number(num[1]);
+    }
   }
   const twoTon = text.match(/\b2\s*tonnen?\b/i);
   if (twoTon && !isSpanConsumed(spans, twoTon.index)) {
     markSpan(spans, twoTon.index, twoTon.index + twoTon[0].length);
     return 2000;
   }
+  const oneFiveTon = text.match(/\b1[,.]5\s*tonnen?\b/i);
+  if (oneFiveTon && !isSpanConsumed(spans, oneFiveTon.index)) {
+    markSpan(spans, oneFiveTon.index, oneFiveTon.index + oneFiveTon[0].length);
+    return 1500;
+  }
+  const oneEightTon = text.match(/\b1[,.]8\s*tonnen?\b/i);
+  if (oneEightTon && !isSpanConsumed(spans, oneEightTon.index)) {
+    markSpan(spans, oneEightTon.index, oneEightTon.index + oneEightTon[0].length);
+    return 1800;
+  }
+  const caravanTon = text.match(
+    /(?:wohnwagen|wohnanhänger|wohnanhaenger|caravan|anhänger|anhaenger)[^\d]{0,20}(\d{1,2}[.,]\d?)\s*(?:t|tonnen?)\b/i,
+  ) ?? text.match(
+    /\b(\d{1,2}[.,]\d?)\s*(?:t|tonnen?)\s*(?:wohnwagen|wohnanhänger|wohnanhaenger|caravan)\b/i,
+  );
+  if (caravanTon && !isSpanConsumed(spans, caravanTon.index)) {
+    const t = Number(caravanTon[1].replace(',', '.'));
+    markSpan(spans, caravanTon.index, caravanTon.index + caravanTon[0].length);
+    return Math.round(t * 1000);
+  }
+  const caravanKg = text.match(
+    /(?:wohnwagen|wohnanhänger|wohnanhaenger|caravan)[^\d]{0,20}(\d{3,4})\s*kg\b/i,
+  );
+  if (caravanKg && !isSpanConsumed(spans, caravanKg.index)) {
+    markSpan(spans, caravanKg.index, caravanKg.index + caravanKg[0].length);
+    return Number(caravanKg[1]);
+  }
+  if (/(?:wohnwagen|wohnanhänger|wohnanhaenger|caravan)/i.test(text) && !ahead) {
+    const m = text.match(/(?:wohnwagen|wohnanhänger|wohnanhaenger|caravan)/i);
+    if (m && !isSpanConsumed(spans, m.index)) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 1800;
+    }
+  }
   return null;
+}
+
+function extractCustomerSignals(text, spans) {
+  let existingLead = false;
+  let familyHint = null;
+  let dogBoxHint = null;
+
+  if (
+    /\b(bereits|schon|vorher|nochmal|erneut)\b.{0,60}\b(e-?mail|mail|anfrage|konfigurator|angebot|nachricht)\b/i.test(text)
+    || /\b(e-?mail|anfrage|konfigurator|angebot).{0,50}\b(geschickt|gesendet|gestellt|erhalten|abgegeben|übermittelt|uebermittelt)\b/i.test(text)
+    || /\bbereits\s+(?:eine\s+)?anfrage\b/i.test(text)
+    || /\bhabe\s+(?:schon|bereits)\s+(?:geschrieben|kontaktiert|angerufen)\b/i.test(text)
+    || /\bwar\s+schon\s+in\s+kontakt\b/i.test(text)
+  ) {
+    existingLead = true;
+    const m = text.match(/\b(bereits|schon)\b.{0,50}\b(e-?mail|mail|anfrage|konfigurator)\b/i)
+      ?? text.match(/\b(e-?mail|anfrage).{0,40}\b(geschickt|gesendet|gestellt)\b/i)
+      ?? text.match(/\bhabe\s+(?:schon|bereits)\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  }
+
+  if (/\b(drei|3)\s*kinder\b/i.test(text)) {
+    familyHint = 'Drei Kinder';
+    const m = text.match(/\b(drei|3)\s*kinder\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  } else if (/\b(zwei|2)\s*kinder\b/i.test(text)) {
+    familyHint = 'Zwei Kinder';
+    const m = text.match(/\b(zwei|2)\s*kinder\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  } else if (/\bgroße\s+familie|grosse\s+familie\b/i.test(text)) {
+    familyHint = 'Große Familie';
+    const m = text.match(/\bgroße\s+familie|grosse\s+familie\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  } else if (/\b(kinder|kind)\b/i.test(text) && /\b(drei|vier|fünf|3|4|5)\b/i.test(text)) {
+    familyHint = 'Familie mit Kindern';
+  } else if (/\bkinderwagen\b/i.test(text)) {
+    familyHint = 'Kinderwagen geeignet';
+    const m = text.match(/\bkinderwagen\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  }
+
+  if (/\bhundebox\b/i.test(text)) {
+    dogBoxHint = 'Hundebox muss reinpassen';
+    const m = text.match(/\bhundebox\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  } else if (/\bhund(?:e)?\b/i.test(text) && /\b(platz|reinpassen|kofferraum|transport|box)\b/i.test(text)) {
+    dogBoxHint = 'Platz für den Hund';
+  }
+
+  let chargingHomeHint = null;
+  if (
+    /\bwallbox\b/i.test(text)
+    || /\bwall\s*box\b/i.test(text)
+    || /\bladen\s+zu\s+hause\b/i.test(text)
+    || /\bzuhause\s+laden\b/i.test(text)
+    || /\b11\s*kw\b/i.test(text)
+    || /\bgarage\s+strom\b/i.test(text)
+  ) {
+    chargingHomeHint = 'Wallbox / Laden zu Hause';
+    const m = text.match(/\bwallbox\b|\bwall\s*box\b|\bladen\s+zu\s+hause\b|\bzuhause\s+laden\b|\b11\s*kw\b|\bgarage\s+strom\b/i);
+    if (m) markSpan(spans, m.index, m.index + m[0].length);
+  }
+
+  return { existingLead, familyHint, dogBoxHint, chargingHomeHint };
 }
 
 /** Max. Fahrzeuglänge in mm – „bis 4 Meter Länge“, nicht Reichweite in km. */
@@ -366,6 +551,24 @@ function extractIsofixRearMin(text, spans) {
     if (m && !isSpanConsumed(spans, m.index)) {
       markSpan(spans, m.index, m.index + m[0].length);
       return 3;
+    }
+  }
+
+  const rearSeats = text.match(/\b(ein|eine|zwei|drei|vier|1|2|3|4)\s*kindersitze?\s+hinten\b/i);
+  if (rearSeats && !isSpanConsumed(spans, rearSeats.index)) {
+    const raw = rearSeats[1].toLowerCase();
+    const count = ISOFIX_WORDS[raw] ?? Number(raw);
+    if (count >= 1 && count <= 4) {
+      markSpan(spans, rearSeats.index, rearSeats.index + rearSeats[0].length);
+      return count;
+    }
+  }
+
+  if (/\b(zwei|2)\s*kindersitze\b/i.test(text)) {
+    const m = text.match(/\b(zwei|2)\s*kindersitze\b/i);
+    if (m && !isSpanConsumed(spans, m.index)) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 2;
     }
   }
 
@@ -557,6 +760,11 @@ function computeConfidence(intent) {
   if (intent.features.length) score += 0.08 * intent.features.length;
   if (intent.rangeKmMin) score += 0.1;
   if (intent.towCapacityKg) score += 0.1;
+  if (intent.fuelAlternatives?.length) score += 0.08;
+  if (intent.existingLead) score += 0.05;
+  if (intent.chargingHomeHint) score += 0.05;
+  if (intent.financeZeroPercent) score += 0.06;
+  if (intent.features.includes('fast_charge')) score += 0.06;
   if (intent.maxHeightMm) score += 0.08;
   if (intent.isofixRearMin) score += 0.08;
   if (intent.trunkLMin) score += 0.06;
@@ -593,13 +801,17 @@ export function parseSearchIntent(input) {
     if (!features.includes('elektro')) features.push('elektro');
   }
 
-  const fuel = extractFuel(text, spans);
-  let resolvedFuel = fuel;
-  if (!resolvedFuel && /\belektro\b/i.test(text)) resolvedFuel = 'elektro';
-  if (!resolvedFuel && features.includes('elektro')) resolvedFuel = 'elektro';
-  if (!resolvedFuel && features.includes('benzin')) resolvedFuel = 'verbrenner';
-  if (!resolvedFuel && rangeRanking === 'max') resolvedFuel = 'elektro';
-  const payment = extractPayment(text, spans);
+  const fuelPreference = extractFuelPreference(text, spans);
+  let resolvedFuel = fuelPreference.fuel;
+  let fuelAlternatives = fuelPreference.fuelAlternatives;
+  if (!resolvedFuel && !fuelAlternatives?.length && /\belektro\b/i.test(text)) resolvedFuel = 'elektro';
+  if (!resolvedFuel && !fuelAlternatives?.length && features.includes('elektro')) resolvedFuel = 'elektro';
+  if (!resolvedFuel && !fuelAlternatives?.length && features.includes('benzin')) resolvedFuel = 'verbrenner';
+  if (!resolvedFuel && !fuelAlternatives?.length && rangeRanking === 'max') resolvedFuel = 'elektro';
+  const customerSignals = extractCustomerSignals(text, spans);
+  const financeZeroPercent = extractFinanceZeroPercent(text, spans);
+  let payment = extractPayment(text, spans);
+  if (financeZeroPercent && !payment) payment = 'finance';
   const availability = extractAvailability(text, spans);
   const { maxRate, maxPrice, rangeKmMin } = extractMoneyAndRange(text, spans);
   const transmission = extractTransmission(text, spans);
@@ -629,11 +841,33 @@ export function parseSearchIntent(input) {
   const seats = text.match(/(\d)\s*-?\s*sitz/i);
   if (seats) seatsMin = Number(seats[1]);
 
+  if (customerSignals.familyHint === 'Große Familie') {
+    seatsMin = 7;
+    if (!features.includes('seats_7')) features.push('seats_7');
+  } else if (customerSignals.familyHint === 'Drei Kinder') {
+    seatsMin = Math.max(seatsMin ?? 0, 5);
+  } else if (customerSignals.familyHint === 'Zwei Kinder') {
+    seatsMin = Math.max(seatsMin ?? 0, 5);
+  }
+  if (customerSignals.familyHint === 'Kinderwagen geeignet' && !features.includes('large_trunk')) {
+    features.push('large_trunk');
+  }
+
   const maxLengthMm = extractMaxLengthMm(text, spans);
   const maxHeightMm = extractMaxHeightMm(text, spans);
-  const isofixRearMin = extractIsofixRearMin(text, spans);
+  let isofixRearMin = extractIsofixRearMin(text, spans);
+  if (features.includes('isofix') && isofixRearMin == null) {
+    isofixRearMin = 1;
+  }
+  if (isofixRearMin != null && !features.includes('isofix')) {
+    features.push('isofix');
+  }
   let trunkLMin = extractTrunkLMin(text, spans);
   const trunkDepthCmMin = extractTrunkDepthCmMin(text, spans);
+  if (customerSignals.dogBoxHint && trunkLMin == null) {
+    trunkLMin = 500;
+    if (!features.includes('large_trunk')) features.push('large_trunk');
+  }
 
   const intent = {
     rawQuery,
@@ -642,6 +876,12 @@ export function parseSearchIntent(input) {
     maxRate,
     maxPrice,
     fuel: resolvedFuel,
+    fuelAlternatives,
+    existingLead: customerSignals.existingLead,
+    familyHint: customerSignals.familyHint,
+    dogBoxHint: customerSignals.dogBoxHint,
+    chargingHomeHint: customerSignals.chargingHomeHint,
+    financeZeroPercent,
     brand,
     model,
     modelExplicit,
@@ -676,6 +916,9 @@ export function parseSearchIntent(input) {
   };
 
   if (payment) {
+    intent.paymentExplicit = true;
+  } else if (financeZeroPercent) {
+    intent.payment = 'finance';
     intent.paymentExplicit = true;
   } else if (intent.maxRate && hasRateContext(text)) {
     intent.payment = 'leasing';

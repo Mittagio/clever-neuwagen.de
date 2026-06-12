@@ -2,28 +2,29 @@ import './dealer-landing.css';
 
 const JOURNEY_STEPS = [
   { id: 'vehicle', label: 'Fahrzeug' },
-  { id: 'wishes', label: 'Wünsche' },
   { id: 'trim', label: 'Ausstattung' },
+  { id: 'wishes', label: 'Wünsche' },
   { id: 'conditions', label: 'Konditionen' },
-  { id: 'offer', label: 'Angebot' },
+  { id: 'special', label: 'Sonderrabatte' },
+  { id: 'inquiry', label: 'Anfrage' },
 ];
 
 function resolveActiveIndex(salesStep) {
   switch (salesStep) {
     case 'recommend': return 0;
-    case 'understand': return 1;
+    case 'understand': return 2;
     case 'trim': return 2;
-    case 'special':
     case 'purchase':
-    case 'budget':
-    case 'summary': return 3;
-    case 'offer': return 4;
+    case 'budget': return 3;
+    case 'special': return 4;
+    case 'summary':
+    case 'offer': return 5;
     default: return 0;
   }
 }
 
 /**
- * Fortschrittsleiste – Fahrzeug → Wünsche → Ausstattung → Konditionen → Angebot.
+ * Fortschrittsleiste – Fahrzeug → Ausstattung → Wünsche → Konditionen → Sonderrabatte → Anfrage.
  */
 export default function DealerJourneyProgress({ salesStep }) {
   const activeIndex = resolveActiveIndex(salesStep);

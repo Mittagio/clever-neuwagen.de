@@ -16,11 +16,11 @@ function FitModelRow({ group }) {
     <article className="dl-fit-card__model">
       <VehicleImage
         brand={v.brand ?? 'Kia'}
-        model={v.imageModel ?? v.modelKey ?? v.model}
+        model={v.modelKey ?? v.imageModel ?? v.model}
         bodyType={v.bodyType ?? KIA_MODEL_ATTRIBUTES[v.modelKey]?.bodyType}
-        className="dl-fit-card__image-wrap"
+        className="dl-fit-card__image-wrap vehicle-image--oem-hero"
         imageClassName="dl-fit-card__image"
-        variant="card"
+        variant="hero"
         glow
       />
       <div className="dl-fit-card__model-body">

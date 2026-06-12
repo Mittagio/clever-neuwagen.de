@@ -85,4 +85,64 @@ test('Reichweite: meiste (Superlativ)', 'Fahrzeug mit meister Reichweite', {
   features: ['reichweite', 'elektro'],
 });
 
+test('Antrieb: Diesel oder Benzin', 'Diesel oder Benzin SUV', {
+  fuel: null,
+  fuelAlternatives: ['diesel', 'verbrenner'],
+  bodyType: 'suv',
+});
+
+test('Budget: Euro statt €', 'Budget 400 Euro leasing 48 monate', {
+  payment: 'leasing',
+  maxRate: 400,
+});
+
+test('Rate: maximal Euro', 'maximal 400 Euro Rate', {
+  maxRate: 400,
+  payment: 'leasing',
+});
+
+test('Wallbox: Laden zu Hause', 'Elektro mit Wallbox zu Hause', {
+  fuel: 'elektro',
+  chargingHomeHint: 'Wallbox / Laden zu Hause',
+});
+
+test('Isofix: zwei Kindersitze hinten', 'Isofix hinten für zwei Kindersitze', {
+  isofixRearMin: 2,
+});
+
+test('Isofix: Kindersitz Feature', 'Kindersitz ISOFIX', {
+  isofixRearMin: 1,
+  features: ['isofix'],
+});
+
+test('Antrieb: Plug-in oder Diesel', 'Plug-in oder Diesel', {
+  fuel: null,
+  fuelAlternatives: ['plugin-hybrid', 'diesel'],
+});
+
+test('Laden: Schnellladen CCS', 'Elektro mit Schnellladen und CCS', {
+  fuel: 'elektro',
+  features: ['fast_charge'],
+});
+
+test('Laden: 800V DC', 'EV6 DC-Laden 800V', {
+  features: ['fast_charge', 'charge_800v'],
+});
+
+test('Finanzierung: 0 Prozent', 'Finanzierung 0 Prozent', {
+  payment: 'finance',
+  financeZeroPercent: true,
+});
+
+test('Finanzierung: 0% Zeichen', '0% Finanzierung', {
+  payment: 'finance',
+  financeZeroPercent: true,
+});
+
+test('Finanzierung: zinsfrei', 'zinsfreie Finanzierung bis 40.000 Euro', {
+  payment: 'finance',
+  financeZeroPercent: true,
+  maxPrice: 40000,
+});
+
 console.log('\nAlle Intent-Tests bestanden.');

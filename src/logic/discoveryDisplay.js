@@ -13,18 +13,23 @@ export function formatMatchPrimaryPrice(match, paymentMode = 'leasing') {
   const mode = paymentMode === 'financing' ? 'finance' : paymentMode;
 
   if (mode === 'cash' && v.cashPrice != null) {
-    return { label: formatCurrency(v.cashPrice), suffix: '' };
+    return { label: formatCurrency(v.cashPrice), suffix: '', missing: false };
   }
 
   if (mode === 'finance') {
     const rate = match?.bestOffer?.financeRate ?? v.financeRate ?? v.monthlyRate;
-    if (rate == null) return { label: '—', suffix: '' };
-    return { label: formatCurrency(rate), suffix: '/Monat' };
+    if (rate == null) return { label: null, suffix: '', missing: true };
+    return { label: formatCurrency(rate), suffix: '/Monat', missing: false };
   }
 
   const rate = match?.bestOffer?.monthlyRate ?? v.monthlyRate;
-  if (rate == null) return { label: '—', suffix: '' };
-  return { label: formatCurrency(rate), suffix: '/Monat' };
+  if (rate == null) return { label: null, suffix: '', missing: true };
+  return { label: formatCurrency(rate), suffix: '/Monat', missing: false };
+}
+
+/** Anzeige-Text wenn kein Preis hinterlegt ist – nie „Ab —“. */
+export function formatMatchPriceFallback(paymentMode = 'leasing') {
+  return paymentMode === 'cash' ? 'Preis auf Anfrage' : 'Leasing verfügbar';
 }
 
 export function formatMatchCashAlt(match) {

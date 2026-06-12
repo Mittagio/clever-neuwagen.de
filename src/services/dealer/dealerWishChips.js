@@ -45,10 +45,28 @@ export const DEALER_WISH_CHIPS = [
     filters: { isofixRearMin: 3 },
   },
   {
+    id: 'tow_1500',
+    label: '1,5 t Anhängelast',
+    queryFragment: '1,5 Tonnen Anhängelast',
+    filters: { towCapacityKg: 1500, features: ['towbar'] },
+  },
+  {
+    id: 'tow_1800',
+    label: '1,8 t Anhängelast',
+    queryFragment: 'Wohnwagen 1,8 Tonnen',
+    filters: { towCapacityKg: 1800, features: ['towbar'] },
+  },
+  {
     id: 'tow_2000',
     label: '2 t Anhängelast',
     queryFragment: '2 Tonnen Anhängelast',
     filters: { towCapacityKg: 2000, features: ['towbar'] },
+  },
+  {
+    id: 'fuel_hybrid',
+    label: 'Hybrid',
+    queryFragment: 'Hybrid',
+    filters: { fuel: 'hybrid', type: 'hybrid' },
   },
   {
     id: 'length_4m',
@@ -96,7 +114,7 @@ export const DEALER_WISH_CHIPS = [
     id: 'availability_sofort',
     label: 'Sofort verfügbar',
     queryFragment: 'sofort verfügbar',
-    filters: { availability: 'sofort', fuel: 'elektro', type: 'elektro', features: ['elektro'] },
+    filters: { availability: 'sofort' },
   },
 ];
 
@@ -182,6 +200,21 @@ export function matchDealerChipIdsFromQuery(text = '') {
 }
 
 /**
+ * Chips aus Freitext + erkannten Filtern (z. B. „7 Sitze Anhängerkupplung“).
+ * @param {string} text
+ * @param {object} [textFilters] – intentToMarketplaceFilters(parseSearchIntent(text))
+ */
+export function matchDealerChipIdsFromDraft(text = '', textFilters = null) {
+  const fromQuery = matchDealerChipIdsFromQuery(text);
+  if (!textFilters) return fromQuery;
+  const merged = mergeDealerSearchFilters(textFilters, mergeDealerChipFilters(fromQuery), {
+    query: text.trim(),
+  });
+  const fromFilters = matchDealerChipsFromFilters(merged);
+  return [...new Set([...fromQuery, ...fromFilters])];
+}
+
+/**
  * Chip an-/abwählen → Text im Suchfeld aufbauen (eine Anfrage, ChatGPT-Stil).
  * @returns {string}
  */
@@ -264,6 +297,7 @@ export function dealerChipIdForStatedChip(statedChip = {}) {
     maxHeightMm: 'garage_2m',
     trunkLMin: 'large_trunk',
     tow_braked: 'tow_2000',
+    towCapacityKg: 'tow_2000',
     rangeKmMin: 'range_400',
     maxRate: 'fuel_elektro_300',
     availability: 'availability_sofort',
@@ -273,6 +307,12 @@ export function dealerChipIdForStatedChip(statedChip = {}) {
   };
   if (statedChip.id === 'maxRate' && statedChip.value === 300) return 'fuel_elektro_300';
   if (statedChip.id === 'rangeKmMin' && statedChip.value >= 400) return 'range_400';
+  if (statedChip.id === 'tow_braked' || statedChip.id === 'towCapacityKg') {
+    const kg = statedChip.value ?? 0;
+    if (kg >= 2000) return 'tow_2000';
+    if (kg >= 1800) return 'tow_1800';
+    if (kg >= 1500) return 'tow_1500';
+  }
   return map[statedChip.id] ?? null;
 }
 
@@ -299,6 +339,7 @@ export function mergeDealerSearchFilters(textFilters = {}, chipFilters = {}, ref
     trim: chipFilters.trim ?? textFilters.trim ?? '',
     modelExplicit: Boolean(chipFilters.modelExplicit || textFilters.modelExplicit),
     availability: chipFilters.availability ?? textFilters.availability ?? '',
+    fuelAlternatives: textFilters.fuelAlternatives ?? chipFilters.fuelAlternatives ?? null,
     intentStructured: true,
   };
 }

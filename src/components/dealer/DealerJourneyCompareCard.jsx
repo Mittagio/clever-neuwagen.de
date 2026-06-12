@@ -24,11 +24,10 @@ function CompareModelColumn({
       <VehicleImage
         brand="Kia"
         model={modelKey}
-        dealerId={dealerId}
         bodyType={v?.bodyType ?? KIA_MODEL_ATTRIBUTES[modelKey]?.bodyType}
-        className="dl-sales-compare__image-wrap"
+        className="dl-sales-compare__image-wrap vehicle-image--oem-hero"
         imageClassName="dl-sales-compare__image"
-        variant="card"
+        variant="hero"
         glow
       />
       <h3 className="dl-sales-compare__name">

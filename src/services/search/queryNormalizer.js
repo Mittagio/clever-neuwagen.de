@@ -39,8 +39,10 @@ export function applyFuelSynonymReplacements(text) {
     [/e auto/g, 'elektroauto'],
     [/stromer/g, 'elektroauto'],
     [/bev\b/g, 'elektroauto'],
-    [/plugin-hybrid/g, 'plugin hybrid'],
-    [/plug-in/g, 'plugin hybrid'],
+    [/plug-in hybrid/g, 'plugin-hybrid'],
+    [/plugin hybrid/g, 'plugin-hybrid'],
+    [/plugin-hybrid/g, 'plugin-hybrid'],
+    [/plug-in/g, 'plugin-hybrid'],
   ];
   for (const [re, rep] of replacements) {
     t = t.replace(re, rep);

@@ -38,4 +38,5 @@ export const LEAD_SOURCES = {
   gespraech: 'Gesprächsmodus',
   manual: 'Manuell',
   dealerJourney: 'Clever Journey',
+  dealerSearch: 'Händler-Suche',
 };

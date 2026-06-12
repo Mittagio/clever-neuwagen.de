@@ -125,11 +125,17 @@ export default function LeadDetail({ lead, onBack }) {
         <div className="lead-detail__header-info">
           <h2 className="lead-detail__name">{lead.contact.name?.trim() || 'Unbekannt'}</h2>
           <p className="lead-detail__sub">{lead.vehicle?.label}</p>
-          {(lead.source === 'dealerJourney' || lead.wantTestDrive) && (
+          {(lead.source === 'dealerJourney' || lead.source === 'dealerSearch' || lead.wantTestDrive
+            || lead.inquiryContext?.existingLeadMentioned) && (
             <div className="lead-detail__badges">
               {lead.source === 'dealerJourney' && (
                 <span className="lead-detail__badge lead-detail__badge--journey">
                   {LEAD_SOURCES.dealerJourney}
+                </span>
+              )}
+              {(lead.source === 'dealerSearch' || lead.inquiryContext?.existingLeadMentioned) && (
+                <span className="lead-detail__badge lead-detail__badge--website">
+                  {LEAD_SOURCES.dealerSearch ?? 'Händler-Suche'}
                 </span>
               )}
               {lead.wantTestDrive && (
@@ -204,6 +210,24 @@ export default function LeadDetail({ lead, onBack }) {
             <p className="lead-detail__vehicle-meta">{lead.vehicle.engine}</p>
           )}
         </section>
+
+        {(lead.wishLabels?.length > 0 || lead.inquiryContext?.searchQuery) && (
+          <section className="lead-detail__card lead-detail__website-card">
+            <h3 className="lead-detail__card-title">Erkannte Kundenwünsche</h3>
+            {lead.inquiryContext?.searchQuery && (
+              <p className="lead-detail__website-query">
+                „{lead.inquiryContext.searchQuery}“
+              </p>
+            )}
+            {lead.wishLabels?.length > 0 && (
+              <ul className="lead-detail__wish-tags">
+                {lead.wishLabels.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {lead.inquiryBrief && (
           <section className="lead-detail__card lead-detail__brief-card">

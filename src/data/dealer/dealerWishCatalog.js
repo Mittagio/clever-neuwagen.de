@@ -50,6 +50,7 @@ export const DEALER_WISH_GROUPS = [
     label: 'Familie',
     emoji: '👨‍👩‍👧‍👦',
     chips: [
+      { id: 'sliding_doors', label: 'Elektrische Schiebetüren', features: ['power_sliding_doors'] },
       { id: 'isofix_3', label: '3 Isofix', features: ['family_suv', 'seats_7'] },
       { id: 'seats_7', label: '7 Sitze', features: ['seats_7'] },
       { id: 'large_trunk', label: 'Großer Kofferraum', features: ['large_trunk'] },

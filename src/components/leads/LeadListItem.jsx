@@ -1,4 +1,4 @@
-import { LEAD_STATUS } from '../../data/leadTypes.js';
+import { LEAD_STATUS, LEAD_SOURCES } from '../../data/leadTypes.js';
 import { getLeadBriefPreview } from '../../logic/dealerInquiryBrief.js';
 import {
   formatLeadTime,
@@ -34,6 +34,9 @@ export default function LeadListItem({ lead, isActive, onClick }) {
           <span className="lead-item__name">
             {displayName}
             {lead.pilot && <span className="lead-item__pilot">Pilot</span>}
+            {lead.source === 'dealerSearch' && (
+              <span className="lead-item__website">{LEAD_SOURCES.dealerSearch}</span>
+            )}
           </span>
           <span className="lead-item__time">{formatLeadTime(lead.updatedAt)}</span>
         </span>

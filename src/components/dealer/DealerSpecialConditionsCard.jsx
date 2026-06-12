@@ -6,7 +6,7 @@ import {
 import './dealer-landing.css';
 
 /**
- * Sonderkonditionen – vor Kaufart & Preisen.
+ * Sonderrabatte – letzter Schritt vor der Anfrage.
  */
 export default function DealerSpecialConditionsCard({
   configSummary,
@@ -14,6 +14,7 @@ export default function DealerSpecialConditionsCard({
   onContinue,
 }) {
   const [selected, setSelected] = useState(value?.[0] ?? 'privat');
+  const showImprovement = selected && selected !== 'privat';
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -39,7 +40,7 @@ export default function DealerSpecialConditionsCard({
       )}
 
       <h2 id="dl-special-title" className="dl-special__title">
-        Haben Sie Anspruch auf Sonderkonditionen?
+        Gehören Sie zu einer dieser Gruppen?
       </h2>
 
       <form className="dl-special__form" onSubmit={handleSubmit}>
@@ -62,8 +63,14 @@ export default function DealerSpecialConditionsCard({
           ))}
         </fieldset>
 
+        {showImprovement && (
+          <p className="dl-special__improved" aria-live="polite">
+            Ihre Kondition wurde verbessert.
+          </p>
+        )}
+
         <button type="submit" className="btn btn-primary dl-special__cta">
-          Weiter
+          Weiter zur Anfrage
         </button>
       </form>
     </section>

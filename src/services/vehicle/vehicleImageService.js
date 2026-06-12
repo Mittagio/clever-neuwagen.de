@@ -16,6 +16,11 @@ function slug(value) {
     .replace(/[^a-z0-9|-]/g, '');
 }
 
+/** @param {object} [vehicle] */
+export function resolveVehicleImageModel(vehicle = {}) {
+  return vehicle.modelKey ?? vehicle.imageModel ?? vehicle.model ?? null;
+}
+
 export function buildModelKeys(brand, model, trim) {
   const b = slug(brand) || 'kia';
   const m = slug(model) || 'fahrzeug';

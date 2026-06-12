@@ -106,6 +106,11 @@ function matchesPowertrainFilter(vehicle, filterType) {
   return vehicle.powertrain === filterType;
 }
 
+function matchesPowertrainAlternatives(vehicle, alternatives = []) {
+  if (!alternatives?.length) return true;
+  return alternatives.some((fuel) => matchesPowertrainFilter(vehicle, fuel));
+}
+
 function matchesBodyOrTypeFilter(vehicle, filterType) {
   if (!filterType || filterType === 'all') return true;
   if (POWERTRAIN_FILTER_TYPES.has(filterType)) {
@@ -209,7 +214,9 @@ export function filterMarketplaceVehicles(vehicles, initialFilters) {
     if (filters.radius != null && vehicle.distanceKm > filters.radius) return false;
     if (filters.maxRate != null && vehicle.monthlyRate > filters.maxRate) return false;
     if (filters.maxPrice != null && vehicle.cashPrice > filters.maxPrice) return false;
-    if (filters.fuel && !matchesPowertrainFilter(vehicle, filters.fuel)) return false;
+    if (filters.fuelAlternatives?.length >= 2) {
+      if (!matchesPowertrainAlternatives(vehicle, filters.fuelAlternatives)) return false;
+    } else if (filters.fuel && !matchesPowertrainFilter(vehicle, filters.fuel)) return false;
     if (filters.type && filters.type !== 'all' && !matchesBodyOrTypeFilter(vehicle, filters.type)) {
       return false;
     }

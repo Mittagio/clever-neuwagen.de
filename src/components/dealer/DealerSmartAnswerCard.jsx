@@ -48,11 +48,10 @@ export default function DealerSmartAnswerCard({
             <VehicleImage
               brand="Kia"
               model={answer.primaryModelKey}
-              dealerId={dealerId}
               bodyType={answer.bodyType ?? 'suv'}
-              className="dl-smart-answer__image-wrap"
+              className="dl-smart-answer__image-wrap vehicle-image--oem-hero"
               imageClassName="dl-smart-answer__image"
-              variant="card"
+              variant="hero"
               glow
             />
           </div>

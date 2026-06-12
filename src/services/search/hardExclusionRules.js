@@ -36,7 +36,25 @@ export function evaluateHardRules(vehicle, profile) {
   const facts = v.modelFacts ?? getKiaModelAttributes(v);
   const reasons = [];
 
-  if (profile.fuel === 'electric') {
+  if (profile.fuelAlternatives?.length >= 2) {
+    const pt = v.powertrain ?? vehicleFuelTruth(v);
+    const ok = profile.fuelAlternatives.some((fuel) => {
+      if (fuel === 'electric' || fuel === 'elektro') return vehicleFuelTruth(v) === 'electric';
+      if (fuel === 'hybrid') return ['hybrid', 'plugin-hybrid'].includes(pt);
+      if (fuel === 'plugin_hybrid' || fuel === 'plugin-hybrid') return pt === 'plugin-hybrid';
+      if (fuel === 'diesel') return pt === 'diesel';
+      if (fuel === 'verbrenner' || fuel === 'benzin') return pt === 'verbrenner';
+      if (fuel === 'combustion') return vehicleFuelTruth(v) !== 'electric';
+      return false;
+    });
+    if (!ok) {
+      reasons.push({
+        code: 'fuel_mismatch',
+        message: `${facts.label} passt nicht zu den gewünschten Antriebsarten`,
+        hard: true,
+      });
+    }
+  } else if (profile.fuel === 'electric') {
     if (vehicleFuelTruth(v) !== 'electric') {
       reasons.push({
         code: 'fuel_mismatch',

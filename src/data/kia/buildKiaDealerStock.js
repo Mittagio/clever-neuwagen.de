@@ -247,7 +247,7 @@ function officialToStockPowertrain(official) {
 }
 
 function defaultTrimForOfficial(official) {
-  if (official.id.startsWith('pv5')) return { trimId: 'plus', trimLabel: 'Plus' };
+  if (official.id.startsWith('pv5')) return { trimId: 'earth', trimLabel: 'Earth' };
   if (official.id.includes('-gt')) return { trimId: 'gt', trimLabel: 'GT' };
   if (official.id.includes('fastback')) return { trimId: 'earth', trimLabel: 'Earth' };
   if (official.powertrain === 'hybrid' || official.powertrain === 'plugin-hybrid') {

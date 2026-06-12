@@ -5,6 +5,7 @@ import { isSpeechRecognitionSupported, startSpeechRecognition } from '../../serv
 import { DEALER_WISH_CHIPS } from '../../services/dealer/dealerWishChips.js';
 import { DEALER_SEARCH_PLACEHOLDERS } from '../../data/dealerLandingContent.js';
 import AiAssistantIcon from './AiAssistantIcon.jsx';
+import DealerRecognizedWishes from './DealerRecognizedWishes.jsx';
 import './dealer-landing.css';
 
 export default function DealerSearchHero({
@@ -16,6 +17,7 @@ export default function DealerSearchHero({
   onQueryChange,
   onChipToggle,
   selectedChipIds = [],
+  recognizedWishes = [],
   inputRef: externalInputRef,
   queryValue = '',
 }) {
@@ -134,6 +136,7 @@ export default function DealerSearchHero({
             </button>
           </div>
           {voiceError && <p className="dl-hero__voice-error" role="alert">{voiceError}</p>}
+          <DealerRecognizedWishes wishes={recognizedWishes} compact />
           <button
             type="submit"
             className="btn btn-primary dl-hero__cta"
@@ -144,8 +147,12 @@ export default function DealerSearchHero({
           </button>
         </form>
 
-        <p className="dl-hero__chips-hint">Stichwörter anklicken – Ihre Anfrage erscheint im Suchfeld</p>
-        <div className="dl-hero__chips" aria-label="Stichwörter">
+        <p className="dl-hero__chips-hint">
+          {selectedChipIds.length > 0
+            ? 'Ihre aktiven Wünsche – ✕ zum Entfernen'
+            : 'Stichwörter anklicken – Ihre Anfrage erscheint im Suchfeld'}
+        </p>
+        <div className="dl-hero__chips" aria-label="Wunschfilter">
           {DEALER_WISH_CHIPS.map((chip) => {
             const active = selectedChipIds.includes(chip.id);
             return (
@@ -154,9 +161,12 @@ export default function DealerSearchHero({
                 type="button"
                 className={`dl-chip${active ? ' dl-chip--active' : ''}`}
                 aria-pressed={active}
+                aria-label={active ? `${chip.label} entfernen` : chip.label}
                 onClick={() => handleChipClick(chip.id)}
               >
-                {chip.label}
+                {active && <span className="dl-chip__bullet" aria-hidden>●</span>}
+                <span className="dl-chip__label">{chip.label}</span>
+                {active && <span className="dl-chip__remove" aria-hidden>✕</span>}
               </button>
             );
           })}

@@ -104,6 +104,37 @@
   text-overflow: ellipsis;
 }
 
+.lead-detail__badge--website {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.lead-detail__website-query {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #334155;
+  font-style: italic;
+}
+
+.lead-detail__wish-tags {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lead-detail__wish-tags li {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
 .lead-detail__wa {
   width: 44px;
   height: 44px;

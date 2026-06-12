@@ -5,6 +5,7 @@ import { buildFahrzeugeSearchUrl } from '../../logic/oneSearchService.js';
 import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
 import { enrichModelLineGroupWithProfileQuote } from '../../services/cleverQuote/cleverQuoteService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../../data/dealerLandingContent.js';
+import DealerAdvisorAlternatives from './DealerAdvisorAlternatives.jsx';
 import '../discovery/discovery-results.css';
 import './dealer-landing.css';
 
@@ -21,6 +22,7 @@ export default function DealerSearchResults({
   hideHeader = false,
   alternativeTier = false,
   maxRecommendations = DEALER_MAX_RECOMMENDATIONS,
+  dealerAdvisor = true,
 }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -54,6 +56,8 @@ export default function DealerSearchResults({
 
   const hasMore = groups.length > maxRecommendations;
   const visibleGroups = expanded ? groups : groups.slice(0, maxRecommendations);
+  const primaryGroup = visibleGroups[0] ?? null;
+  const alternateGroups = visibleGroups.slice(1);
 
   return (
     <section
@@ -73,11 +77,27 @@ export default function DealerSearchResults({
       )}
 
       <div className="dl-search-results__list">
-        {visibleGroups.map((group, index) => (
+        {primaryGroup && (
+          <DiscoveryModelLineCard
+            key={primaryGroup.modelLineKey ?? primaryGroup.label}
+            group={{ ...primaryGroup, rank: 1 }}
+            rank={1}
+            paymentMode={paymentMode}
+            paymentNeutral={paymentNeutral}
+            wishes={wishes}
+            chipIds={chipIds}
+            searchProfile={searchProfile}
+            onViewOffer={handleViewOffer}
+            defaultVariantsOpen={false}
+            dealerAdvisor={dealerAdvisor}
+            allGroups={visibleGroups}
+          />
+        )}
+        {!dealerAdvisor && alternateGroups.map((group, index) => (
           <DiscoveryModelLineCard
             key={group.modelLineKey ?? group.label}
-            group={{ ...group, rank: index + 1 }}
-            rank={index + 1}
+            group={{ ...group, rank: index + 2 }}
+            rank={index + 2}
             paymentMode={paymentMode}
             paymentNeutral={paymentNeutral}
             wishes={wishes}
@@ -88,6 +108,13 @@ export default function DealerSearchResults({
           />
         ))}
       </div>
+
+      {dealerAdvisor && alternateGroups.length > 0 && (
+        <DealerAdvisorAlternatives
+          groups={alternateGroups}
+          onViewOffer={handleViewOffer}
+        />
+      )}
 
       {hasMore && !expanded && (
         <button

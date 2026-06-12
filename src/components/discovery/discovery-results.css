@@ -1431,13 +1431,20 @@
   background: #f8fafc;
 }
 
-.disc-hero--s36 .disc-hero__image-wrap,
-.disc-hero--s36 .disc-hero__image {
-  min-height: 200px;
-  max-height: 240px;
+.disc-hero--s36 .disc-hero__image-wrap {
   width: 100%;
-  object-fit: cover;
   border-radius: 0;
+}
+
+.disc-hero--secondary.disc-hero--s36 {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+.disc-model-line--secondary {
+  margin-top: 4px;
 }
 
 .disc-hero__s36-body {
@@ -1634,6 +1641,13 @@
   .disc-section__label--s36 {
     padding: 0;
   }
+}
+
+.disc-hero__price-fallback {
+  margin: 12px 0 14px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .disc-hero__price-hero--sheet {

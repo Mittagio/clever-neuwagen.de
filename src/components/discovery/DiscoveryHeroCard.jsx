@@ -7,9 +7,11 @@ import DeliveryTimePill from '../shared/DeliveryTimePill.jsx';
 import {
   getMatchDisplayTitle,
   formatMatchPrimaryPrice,
+  formatMatchPriceFallback,
   formatMatchDeliveryLabel,
 } from '../../logic/discoveryDisplay.js';
 import DiscoveryTechnicalSpecs from './DiscoveryTechnicalSpecs.jsx';
+import { resolveVehicleImageModel } from '../../services/vehicle/vehicleImageService.js';
 import './discovery-results.css';
 
 export default function DiscoveryHeroCard({
@@ -27,6 +29,7 @@ export default function DiscoveryHeroCard({
   modelFirst = false,
   onExploreTrims = null,
   exploreTrimsLabel = null,
+  className = '',
 }) {
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
 
@@ -39,15 +42,16 @@ export default function DiscoveryHeroCard({
   const deliveryLabel = formatMatchDeliveryLabel(match);
 
   return (
-    <article className="disc-hero disc-hero--premium disc-hero--mobile-first disc-hero--s36">
+    <article className={`disc-hero disc-hero--premium disc-hero--mobile-first disc-hero--s36${className ? ` ${className}` : ''}`.trim()}>
       <div className="disc-hero__s36">
         <div className="disc-hero__visual disc-hero__visual--s36">
           <VehicleImage
-            brand={v.brand}
-            model={v.imageModel ?? v.model}
+            brand={v.brand ?? 'Kia'}
+            model={resolveVehicleImageModel(v)}
             bodyType={v.bodyType}
-            className="disc-hero__image-wrap"
+            className="disc-hero__image-wrap vehicle-image--oem-hero"
             imageClassName="disc-hero__image"
+            variant="hero"
             placeholderVariant="hero"
             glow
           />
@@ -69,26 +73,32 @@ export default function DiscoveryHeroCard({
               />
             </div>
           )}
-          <button
-            type="button"
-            className="disc-hero__price-hero disc-hero__price-hero--sheet"
-            onClick={() => setPriceSheetOpen(true)}
-            aria-label={`Preis anzeigen: ${paymentHint}`}
-          >
-            <p className="disc-hero__rate disc-hero__rate--hero">
-              Ab {price.label}
-              {price.suffix && <span>{price.suffix}</span>}
+          {price.missing ? (
+            <p className="disc-hero__price-fallback">
+              {formatMatchPriceFallback(paymentMode)}
             </p>
-            <p className="disc-hero__rate-mode">
-              {paymentNeutral ? 'Kaufpreis' : `${paymentHint} · ändern`}
-            </p>
-            {paymentNeutral && (
-              <p className="disc-hero__alt-payments">Auch als Leasing oder Finanzierung verfügbar</p>
-            )}
-            {v.discountPercent > 0 && (
-              <p className="disc-hero__discount">{v.discountPercent} % Ersparnis</p>
-            )}
-          </button>
+          ) : (
+            <button
+              type="button"
+              className="disc-hero__price-hero disc-hero__price-hero--sheet"
+              onClick={() => setPriceSheetOpen(true)}
+              aria-label={`Preis anzeigen: ${paymentHint}`}
+            >
+              <p className="disc-hero__rate disc-hero__rate--hero">
+                Ab {price.label}
+                {price.suffix && <span>{price.suffix}</span>}
+              </p>
+              <p className="disc-hero__rate-mode">
+                {paymentNeutral ? 'Kaufpreis' : `${paymentHint} · ändern`}
+              </p>
+              {paymentNeutral && (
+                <p className="disc-hero__alt-payments">Auch als Leasing oder Finanzierung verfügbar</p>
+              )}
+              {v.discountPercent > 0 && (
+                <p className="disc-hero__discount">{v.discountPercent} % Ersparnis</p>
+              )}
+            </button>
+          )}
           <DeliveryTimePill label={deliveryLabel} className="disc-hero__delivery" />
           {!modelFirst && <RecommendReasonsPanel reasons={recommendReasons} title={whyTitle} />}
           {modelFirst && onExploreTrims ? (

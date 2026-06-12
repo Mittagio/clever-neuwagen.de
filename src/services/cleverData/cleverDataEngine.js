@@ -217,6 +217,15 @@ export function buildTechnicalHighlights(vehicle = {}) {
   return items.slice(0, 6);
 }
 
+/** Nur die 3 Kernwerte für die Berater-Ergebnisseite. */
+export function buildAdvisorCoreHighlights(vehicle = {}) {
+  const order = ['range', 'seats', 'trunk'];
+  const items = buildTechnicalHighlights(vehicle);
+  return order
+    .map((id) => items.find((item) => item.id === id))
+    .filter(Boolean);
+}
+
 /** Datenbank-Query: Profile gegen Fahrzeugliste (keine Freitextlogik). */
 export function queryCleverDatabase(profile, vehicles = []) {
   return vehicles

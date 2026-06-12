@@ -65,11 +65,21 @@ export function buildSearchProfile({
     seatsMin = 7;
   }
 
+  const rawFuelAlternatives = parsed.fuelAlternatives ?? filters.fuelAlternatives ?? null;
+  const fuelAlternatives = rawFuelAlternatives?.length
+    ? [...new Set(rawFuelAlternatives)]
+    : null;
+
   let fuel = mapIntentFuel(parsed.fuel ?? filters.fuel ?? null);
-  if (!fuel && (features.includes('elektro') || wishes.powertrain === 'elektro')) {
+  if (fuelAlternatives?.length >= 2) {
+    fuel = null;
+  } else if (!fuel && fuelAlternatives?.length === 1) {
+    fuel = fuelAlternatives[0];
+  }
+  if (!fuel && !fuelAlternatives?.length && (features.includes('elektro') || wishes.powertrain === 'elektro')) {
     fuel = 'electric';
   }
-  if (!fuel && features.includes('benzin')) fuel = 'combustion';
+  if (!fuel && !fuelAlternatives?.length && features.includes('benzin')) fuel = 'combustion';
 
   let bodyType = parsed.bodyType ?? null;
   if (!bodyType && filters.type && !['all', 'elektro', 'verbrenner', 'hybrid', 'plugin-hybrid'].includes(filters.type)) {
@@ -104,6 +114,7 @@ export function buildSearchProfile({
 
   return canonicalizeSearchProfile({
     fuel,
+    fuelAlternatives: fuelAlternatives?.length >= 2 ? fuelAlternatives : null,
     seatsMin,
     maxMonthlyRate: parsed.maxRate ?? filters.maxRate ?? wishes.budget?.maxMonthlyRate ?? null,
     maxPrice: parsed.maxPrice ?? filters.maxPrice ?? wishes.budget?.maxPrice ?? null,

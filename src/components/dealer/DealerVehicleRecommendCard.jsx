@@ -38,11 +38,10 @@ export default function DealerVehicleRecommendCard({
           <VehicleImage
             brand="Kia"
             model={modelKey}
-            dealerId={dealerId}
             bodyType={v?.bodyType ?? KIA_MODEL_ATTRIBUTES[modelKey]?.bodyType}
-            className="dl-sales-rec__image-wrap"
+            className="dl-sales-rec__image-wrap vehicle-image--oem-hero"
             imageClassName="dl-sales-rec__image"
-            variant="card"
+            variant="hero"
             glow
           />
         </div>

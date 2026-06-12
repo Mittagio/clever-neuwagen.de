@@ -441,7 +441,7 @@ export function createEditableChips(intent, filters = {}) {
   const resolvedFuel = intent.fuel
     ?? (filters.fuel === 'elektro' ? 'elektro' : filters.fuel === 'hybrid' ? 'hybrid' : filters.fuel === 'plugin-hybrid' ? 'plugin-hybrid' : filters.fuel || null);
   const fuelLabel = customerFuelLabel(resolvedFuel, fuelFeatures);
-  if (fuelLabel && !chips.some((c) => c.type === CHIP_TYPES.FUEL)) {
+  if (fuelLabel && !chips.some((c) => c.type === CHIP_TYPES.FUEL) && !(intent.fuelAlternatives?.length >= 2)) {
     chips.push(makeChip({
       id: 'fuel',
       type: CHIP_TYPES.FUEL,
@@ -573,6 +573,47 @@ export function createEditableChips(intent, filters = {}) {
     }));
   }
 
+  const towCapacityKg = intent.towCapacityKg ?? filters.towCapacityKg;
+  if (towCapacityKg != null && !chips.some((c) => c.id === 'tow_braked')) {
+    const tons = towCapacityKg / 1000;
+    const tonsLabel = Number.isInteger(tons) ? String(tons) : tons.toFixed(1).replace('.', ',');
+    chips.push(makeChip({
+      id: 'tow_braked',
+      type: CHIP_TYPES.FEATURE,
+      label: `Anhängelast ≥ ${tonsLabel} t`,
+      value: towCapacityKg,
+      editable: false,
+    }));
+  }
+
+  if (intent.fuelAlternatives?.length >= 2) {
+    const labels = intent.fuelAlternatives.map((fuel) => {
+      if (fuel === 'elektro') return 'Elektro';
+      if (fuel === 'hybrid') return 'Hybrid';
+      if (fuel === 'plugin-hybrid') return 'Plug-in-Hybrid';
+      if (fuel === 'diesel') return 'Diesel';
+      if (fuel === 'verbrenner') return 'Benzin';
+      return fuel;
+    });
+    chips.push(makeChip({
+      id: 'fuel_alternatives',
+      type: CHIP_TYPES.FUEL,
+      label: labels.join(' oder '),
+      value: intent.fuelAlternatives,
+      editable: false,
+    }));
+  }
+
+  if (intent.existingLead) {
+    chips.push(makeChip({
+      id: 'existing_lead',
+      type: CHIP_TYPES.FEATURE,
+      label: 'Bereits Anfrage gestellt',
+      value: true,
+      editable: false,
+    }));
+  }
+
   const modelExplicit = intent.modelExplicit ?? filters.modelExplicit;
   if (modelExplicit && intent.model) {
     chips.push(makeChip({
@@ -617,10 +658,12 @@ export function createEditableChips(intent, filters = {}) {
   }
 
   if (intent.availability === 'sofort_verfuegbar' || filters.availability === 'sofort') {
+    const queryText = intent.rawQuery ?? filters.query ?? '';
+    const zeitnah = /zeitnah/i.test(queryText);
     chips.push(makeChip({
       id: 'availability',
       type: CHIP_TYPES.AVAILABILITY,
-      label: 'Sofort verfügbar',
+      label: zeitnah ? 'Zeitnahe Verfügbarkeit' : 'Sofort verfügbar',
       value: 'sofort',
       configKey: 'availability',
     }));
@@ -649,6 +692,7 @@ export function createEditableChips(intent, filters = {}) {
   const statedFeatures = [...new Set([...(intent.features ?? []), ...(filters.features ?? [])])];
   for (const fid of statedFeatures) {
     if (['reichweite', 'automatic', 'benzin', 'elektro'].includes(fid)) continue;
+    if (fid === 'towbar' && towCapacityKg != null) continue;
     if (fid === 'seats_7' && seatsMin != null && seatsMin >= 7) continue;
     if (intent.fuel === 'verbrenner' && fid === 'benzin') continue;
     if (intent.fuel === 'elektro' && fid === 'elektro') continue;
@@ -709,6 +753,10 @@ const STATED_CHIP_EMOJI = {
 
 const STATED_CHIP_ORDER = [
   'fuel',
+  'fuel_alternatives',
+  'tow_braked',
+  'availability',
+  'existing_lead',
   'seats_7',
   'seatsMin',
   'maxLengthMm',
@@ -800,6 +848,19 @@ export function getCleverAskQuestions(filters = {}, wishes = {}) {
 
   const hasBudget = intent.maxPrice != null || filters.maxPrice != null
     || intent.maxRate != null || filters.maxRate != null;
+
+  if (intent.fuelAlternatives?.length >= 2 && !filters.fuel) {
+    questions.push({
+      id: 'fuel_choice',
+      kicker: 'Damit ich genauer empfehlen kann',
+      title: 'Welche Antriebsart bevorzugen Sie?',
+      options: [
+        { id: 'fuel_hybrid', label: 'Hybrid', patch: { fuel: 'hybrid', type: 'hybrid', fuelAlternatives: null } },
+        { id: 'fuel_elektro', label: 'Elektro', patch: { fuel: 'elektro', type: 'elektro', fuelAlternatives: null } },
+        { id: 'fuel_any', label: 'Beides egal', patch: {} },
+      ],
+    });
+  }
 
   if (hasBudget && !userAskedForPayment(intent, filters) && !filters.payment) {
     questions.push({

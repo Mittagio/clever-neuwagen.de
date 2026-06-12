@@ -73,6 +73,29 @@ export const FEATURE_SYNONYM_GROUPS = [
     id: 'remote_parking',
     patterns: ['remote park', 'fernparken', 'remote parking'],
   },
+  {
+    id: 'fast_charge',
+    patterns: [
+      'schnellladen',
+      'schnell laden',
+      'dc schnellladen',
+      'dc-laden',
+      'dc laden',
+      'ccs lader',
+      'ccs lade',
+      'ccs',
+      'ionity',
+      'schnelllader',
+      'ultraschnell laden',
+      'fast charge',
+      'ladesaeule schnell',
+      'ladesäule schnell',
+    ],
+  },
+  {
+    id: 'charge_800v',
+    patterns: ['800v technik', '800-volt', '800 volt', '800 v', '800v'],
+  },
 ];
 
 /** Geschützte Zahlen-Kontexte – „360“ nicht als Modell */
@@ -109,7 +132,7 @@ export const FUEL_SYNONYMS = {
     'vollelektrisch',
   ],
   hybrid: ['vollhybrid', 'hybrid', 'hev'],
-  plugin_hybrid: ['plug-in', 'plugin', 'phev', 'steckerhybrid', 'plug in hybrid'],
+  plugin_hybrid: ['plugin-hybrid', 'plugin hybrid', 'plug-in', 'plugin', 'phev', 'steckerhybrid', 'plug in hybrid'],
   verbrenner: ['benziner', 'benzin', 'verbrenner', 'otto'],
   diesel: ['diesel', 'crdi', 'tdi'],
 };
@@ -130,7 +153,22 @@ export const AVAILABILITY_SYNONYMS = {
     'steht da',
     'kurzfristig',
     'direkt verfügbar',
+    'zeitnahe verfügbarkeit',
+    'zeitnahe verfuegbarkeit',
+    'zeitnahe lieferung',
+    'zeitnah verfügbar',
+    'zeitnah verfuegbar',
+    'zeitnah',
+    'schnell verfügbar',
+    'schnell verfuegbar',
     'sofort',
+    'lagerfahrzeug',
+    'lagerwagen',
+    'vom hof',
+    'vorführwagen',
+    'vorfuehrwagen',
+    'bestandsfahrzeug',
+    'bestandswagen',
   ],
 };
 

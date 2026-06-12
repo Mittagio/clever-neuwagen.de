@@ -468,14 +468,31 @@ export const TRIM_FEATURE_MAP = {
   },
   'pv5-passenger': {
     modelLabel: 'Kia PV5 Passenger',
-    baseRate: { plus: 339 },
+    baseRate: { r: 339, earth: 368, elite: 397 },
     trims: [
       {
-        id: 'plus',
-        name: 'Plus',
-        standardFeatures: ['rear_camera', 'large_trunk'],
-        availableViaPackage: ['towbar'],
-        notAvailable: ['heat_pump', 'camera_360', 'seats_7'],
+        id: 'r',
+        name: 'R',
+        standardFeatures: ['heated_seats', 'rear_camera', 'elektro', 'large_trunk'],
+        availableViaPackage: [],
+        notAvailable: ['power_sliding_doors', 'heat_pump', 'power_tailgate', 'camera_360'],
+      },
+      {
+        id: 'earth',
+        name: 'Earth',
+        standardFeatures: ['heated_seats', 'heat_pump', 'rear_camera', 'elektro', 'large_trunk'],
+        availableViaPackage: ['camera_360'],
+        notAvailable: ['power_sliding_doors', 'power_tailgate'],
+      },
+      {
+        id: 'elite',
+        name: 'Elite',
+        standardFeatures: [
+          'heated_seats', 'heat_pump', 'camera_360', 'power_sliding_doors',
+          'power_tailgate', 'rear_camera', 'elektro', 'large_trunk',
+        ],
+        availableViaPackage: [],
+        notAvailable: [],
       },
     ],
   },

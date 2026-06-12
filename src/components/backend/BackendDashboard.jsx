@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
+import { listWebsiteInquiryLeads } from '../../services/dealer/dealerInquiryLeadService.js';
+import { formatLeadTime } from '../../logic/leadService.js';
 import {
   countMissingLeasingFactors,
   formatPublishedAt,
@@ -27,7 +29,9 @@ export default function BackendDashboard({ conditions }) {
       0,
     );
 
-    return { openLeads, todayLeads, activeModels, missingLf };
+    const websiteInquiries = listWebsiteInquiryLeads(leads, conditions.dealerId ?? null, 5);
+
+    return { openLeads, todayLeads, activeModels, missingLf, websiteInquiries };
   }, [leads, conditions]);
 
   return (
@@ -53,6 +57,38 @@ export default function BackendDashboard({ conditions }) {
           </div>
         </div>
       </section>
+
+      {stats.websiteInquiries.length > 0 && (
+        <section className="backend-card">
+          <h2 className="backend-card-title">Website-Anfragen mit erkannten Wünschen</h2>
+          <p className="backend-card-lead">
+            Kunden haben auf der Händlerseite geschrieben – Clever hat die Wünsche verstanden.
+          </p>
+          <ul className="backend-website-inquiries">
+            {stats.websiteInquiries.map((lead) => (
+              <li key={lead.id} className="backend-website-inquiries__item">
+                <div className="backend-website-inquiries__head">
+                  <strong>{lead.contact?.name?.trim() || 'Website-Anfrage'}</strong>
+                  <span>{formatLeadTime(lead.updatedAt ?? lead.createdAt)}</span>
+                </div>
+                {lead.wishLabels?.length > 0 && (
+                  <p className="backend-website-inquiries__wishes">
+                    {lead.wishLabels.slice(0, 4).join(' · ')}
+                  </p>
+                )}
+                {lead.inquiryContext?.searchQuery && (
+                  <p className="backend-website-inquiries__query">
+                    „{lead.inquiryContext.searchQuery}“
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          <Link to="/leads/classic" className="btn btn-secondary backend-card-link">
+            Alle Verkaufschancen öffnen
+          </Link>
+        </section>
+      )}
 
       <section className="backend-card">
         <h2 className="backend-card-title">Modelle</h2>
