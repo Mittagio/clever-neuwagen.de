@@ -48,6 +48,34 @@ export function buildDealerFulfillmentHeadline(quote, checks = []) {
 }
 
 /**
+ * Kurztext unter dem CleverQuote-Score (kundenverständlich).
+ * @param {object} [quote]
+ * @param {object[]} [checks]
+ */
+export function buildCleverQuoteSubline(quote, checks = []) {
+  const headline = buildDealerFulfillmentHeadline(quote, checks);
+  if (!headline) return null;
+  if (headline.startsWith('Erfüllt alle')) return 'Erfüllt alle erkannten Wünsche';
+  return headline;
+}
+
+/**
+ * ✓-Zeilen für CleverQuote – aus Quote-Items, Checks oder Fallback-Lines.
+ * @param {object} [quote]
+ * @param {object[]} [checks]
+ * @param {string[]} [fallbackLines]
+ * @param {number} [max]
+ */
+export function buildCleverQuoteWishLines(quote, checks = [], fallbackLines = [], max = 6) {
+  const fromQuote = (quote?.items ?? [])
+    .filter((item) => item.status === 'fulfilled' && item.label)
+    .map((item) => item.label);
+  const fromChecks = buildDealerWishCheckLines(checks);
+  const merged = [...new Set([...fromQuote, ...fromChecks, ...fallbackLines])];
+  return merged.slice(0, max);
+}
+
+/**
  * @param {object} check
  */
 function benefitLineForCheck(check) {
@@ -102,6 +130,48 @@ export function buildDealerBenefitBullets(checks = [], max = 6) {
     .filter((c) => c.status === 'fulfilled' || c.status === 'package')
     .slice(0, max)
     .map((check) => benefitLineForCheck(check));
+}
+
+/**
+ * Verständliche „Warum empfiehlt Clever …?“-Zeilen mit konkreten Werten.
+ * @param {object[]} checks
+ */
+export function buildDealerWhyReasonLines(checks = []) {
+  return checks
+    .filter((c) => c.status === 'fulfilled' || c.status === 'package')
+    .map((check) => {
+      const id = check.canonicalId ?? check.id;
+
+      if (id === 'seats' || id === 'seats_7') {
+        const n = check.detail?.match(/\d+/)?.[0]
+          ?? check.label?.match(/\d+/)?.[0]
+          ?? '7';
+        return `${n} Sitze vorhanden`;
+      }
+      if (id === 'range_km') {
+        const km = check.detail?.replace(/\s*km/i, '').trim()
+          ?? check.label?.match(/\d+/)?.[0];
+        return km ? `Reichweite ${km} km` : 'Hohe Reichweite';
+      }
+      if (id === 'tow_braked' || id === 'towbar' || id === 'tow_capacity_2000') {
+        if (check.detail) {
+          const kg = Number.parseInt(check.detail, 10);
+          if (Number.isFinite(kg) && kg >= 1000) {
+            const t = Math.round(kg / 100) / 10;
+            return `Anhängelast bis ${String(t).replace('.', ',')} t`;
+          }
+        }
+        return 'Anhängerkupplung verfügbar';
+      }
+      if (id === 'trunk_l' || id === 'large_trunk') {
+        return check.detail ? `Kofferraum ${check.detail}` : 'Großer Kofferraum';
+      }
+      if (id === 'heat_pump') return 'Wärmepumpe verfügbar';
+      if (id === 'camera_360') return '360° Kamera verfügbar';
+      if (id === 'heated_seats') return 'Sitzheizung verfügbar';
+      if (check.detail) return `${check.label}: ${check.detail}`;
+      return `${check.label} vorhanden`;
+    });
 }
 
 /**

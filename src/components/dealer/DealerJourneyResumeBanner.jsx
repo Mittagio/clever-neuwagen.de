@@ -2,10 +2,10 @@ import './dealer-landing.css';
 
 const STEP_LABELS = {
   recommend: 'Fahrzeug',
-  understand: 'Wünsche',
+  understand: 'Ausstattung',
   trim: 'Ausstattung',
-  special: 'Sonderkonditionen',
-  purchase: 'Kaufart',
+  special: 'Nutzung',
+  purchase: 'Zahlungsart',
   budget: 'Budget',
   summary: 'Zusammenfassung',
   offer: 'Angebot',

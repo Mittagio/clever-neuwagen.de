@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {
   resolveDealerModelTitle,
   buildDealerFulfillmentHeadline,
+  buildCleverQuoteSubline,
+  buildCleverQuoteWishLines,
   buildDealerBenefitBullets,
   buildDealerWishCheckLines,
   buildDealerRecommendationLead,
@@ -22,6 +24,19 @@ assert.equal(
   buildDealerFulfillmentHeadline({ matched: 4, scorableTotal: 5, total: 5 }),
   '4 von 5 Wünschen erfüllt',
 );
+
+assert.equal(
+  buildCleverQuoteSubline({ matched: 5, scorableTotal: 5, total: 5 }),
+  'Erfüllt alle erkannten Wünsche',
+);
+
+const cqLines = buildCleverQuoteWishLines(
+  { items: [{ status: 'fulfilled', label: 'Elektro' }] },
+  [{ id: 'budget', status: 'fulfilled', label: 'bis 300 €' }],
+  ['sofort verfügbar'],
+);
+assert.ok(cqLines.includes('Elektro'));
+assert.ok(cqLines.includes('bis 300 €'));
 
 const bullets = buildDealerBenefitBullets([
   { id: 'seats', status: 'fulfilled', label: '7 Sitze' },

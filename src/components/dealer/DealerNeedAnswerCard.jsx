@@ -1,13 +1,18 @@
 import DealerInquiryLeadNotice from './DealerInquiryLeadNotice.jsx';
+import DealerModelSwipeCarousel from './DealerModelSwipeCarousel.jsx';
 import './dealer-landing.css';
 
 /**
- * Clever-Antwort bei Bedürfnis-Anfragen – Wünsche + Top-Modelle.
+ * Clever-Antwort bei Bedürfnis-Anfragen – Wünsche + Swipe-Empfehlungen (kein Modell-Katalog).
  */
 export default function DealerNeedAnswerCard({
   recognizedWishes = [],
   answer,
   inquiryLeadSync = null,
+  dealerId,
+  activeModelKey = null,
+  onActivePickChange,
+  onSelectModel,
   onClarify,
 }) {
   if (!answer || !recognizedWishes.length) return null;
@@ -27,7 +32,7 @@ export default function DealerNeedAnswerCard({
         </h2>
         <ul className="dl-need-answer__wishes">
           {recognizedWishes.map((wish) => (
-            <li key={wish.id}>
+            <li key={wish.id} className="dl-need-answer__wish-tag">
               <span aria-hidden>✓</span>
               {' '}
               {wish.label}
@@ -42,7 +47,7 @@ export default function DealerNeedAnswerCard({
           <h3 className="dl-need-answer__results-title">
             Clever hat
             {' '}
-            {modelCount}
+            {Math.min(modelCount, picks.length || modelCount)}
             {' '}
             passende
             {' '}
@@ -50,24 +55,13 @@ export default function DealerNeedAnswerCard({
             {' '}
             gefunden
           </h3>
-          <ol className="dl-need-answer__picks">
-            {picks.map((pick) => (
-              <li key={pick.modelKey ?? pick.title} className="dl-need-answer__pick">
-                <p className="dl-need-answer__pick-title">
-                  <span aria-hidden>{pick.medal}</span>
-                  {' '}
-                  {pick.title}
-                </p>
-                {pick.lines?.length > 0 && (
-                  <ul className="dl-need-answer__pick-lines">
-                    {pick.lines.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ol>
+          <DealerModelSwipeCarousel
+            picks={picks}
+            dealerId={dealerId}
+            activeModelKey={activeModelKey}
+            onActiveChange={onActivePickChange}
+            onSelectModel={onSelectModel}
+          />
         </div>
       )}
 

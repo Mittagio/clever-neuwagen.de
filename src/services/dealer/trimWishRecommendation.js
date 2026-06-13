@@ -188,7 +188,7 @@ function buildTrimIncludedLines(trim, wishIds) {
   return lines.slice(0, 4);
 }
 
-function scoreTrim(trim, wishIds, wishChipIds = []) {
+export function scoreTrim(trim, wishIds, wishChipIds = []) {
   let score = trimTierBonus(trim.id);
   const reasons = [];
   const packagesNeeded = new Set();

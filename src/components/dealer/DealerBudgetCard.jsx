@@ -17,6 +17,7 @@ export default function DealerBudgetCard({
   configSummary,
   initialMaxMonthlyRate = null,
   onContinue,
+  formId = 'dl-advisor-budget-form',
 }) {
   const [selectedId, setSelectedId] = useState(() => {
     if (initialMaxMonthlyRate == null) return 'budget_open';
@@ -50,7 +51,7 @@ export default function DealerBudgetCard({
         Damit kann der Händler passende Leasing- oder Finanzierungsbeispiele vorbereiten.
       </p>
 
-      <form className="dl-budget__form" onSubmit={handleSubmit}>
+      <form id={formId} className="dl-budget__form" onSubmit={handleSubmit}>
         <div className="dl-budget__chips" role="group" aria-label="Monatliches Budget">
           {BUDGET_OPTIONS.map((option) => (
             <button

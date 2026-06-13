@@ -168,4 +168,11 @@ const cleverAsk = getCleverAskQuestions(
 assert.equal(cleverAsk.length, 1, 'Clever fragt nach Zahlungsart');
 assert.equal(cleverAsk[0].id, 'payment');
 
+const advisorAsk = getCleverAskQuestions(
+  { query: 'Elektro bis 300 €', maxRate: 300 },
+  { rawQuery: 'Elektro bis 300 €' },
+  { excludePayment: true },
+);
+assert.equal(advisorAsk.length, 0, 'Berater-Journey fragt nicht nach Zahlungsart');
+
 console.log('✓ Alle Chip-Config-Tests bestanden.');

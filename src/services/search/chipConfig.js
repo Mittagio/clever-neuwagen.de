@@ -842,7 +842,8 @@ export function buildSearchRefineChips(filters = {}, statedChips = []) {
 }
 
 /** Bereich 3: Clever fragt nach – nur bei echter Unschärfe, kein Hyperchat. */
-export function getCleverAskQuestions(filters = {}, wishes = {}) {
+export function getCleverAskQuestions(filters = {}, wishes = {}, options = {}) {
+  const { excludePayment = false } = options;
   const intent = parseSearchIntent(filters.query ?? wishes.rawQuery ?? '');
   const questions = [];
 
@@ -862,7 +863,7 @@ export function getCleverAskQuestions(filters = {}, wishes = {}) {
     });
   }
 
-  if (hasBudget && !userAskedForPayment(intent, filters) && !filters.payment) {
+  if (!excludePayment && hasBudget && !userAskedForPayment(intent, filters) && !filters.payment) {
     questions.push({
       id: 'payment',
       kicker: 'Damit ich besser helfen kann',

@@ -2,16 +2,37 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { isSpeechRecognitionSupported, startSpeechRecognition } from '../../services/sales/conversationVoiceParser.js';
-import { DEALER_WISH_CHIPS } from '../../services/dealer/dealerWishChips.js';
+import {
+  getDealerWishChipDisplay,
+  getExtraDealerChips,
+  getPrimaryDealerChips,
+} from '../../services/dealer/dealerWishChips.js';
 import { DEALER_SEARCH_PLACEHOLDERS } from '../../data/dealerLandingContent.js';
-import AiAssistantIcon from './AiAssistantIcon.jsx';
 import DealerRecognizedWishes from './DealerRecognizedWishes.jsx';
 import './dealer-landing.css';
+
+function ChipButton({ chip, active, onToggle }) {
+  const display = getDealerWishChipDisplay(chip);
+  return (
+    <button
+      type="button"
+      className={`dl-chip${active ? ' dl-chip--active' : ''}`}
+      aria-pressed={active}
+      aria-label={active ? `${chip.label} entfernen` : chip.label}
+      onClick={() => onToggle?.(chip.id)}
+    >
+      {display.emoji && (
+        <span className="dl-chip__emoji" aria-hidden>{display.emoji}</span>
+      )}
+      <span className="dl-chip__label">{display.label}</span>
+      {active && <span className="dl-chip__remove" aria-hidden>✕</span>}
+    </button>
+  );
+}
 
 export default function DealerSearchHero({
   dealerName,
   city,
-  brand = 'Kia',
   dealerSlug = '',
   onSearch,
   onQueryChange,
@@ -26,8 +47,13 @@ export default function DealerSearchHero({
   const inputRef = externalInputRef ?? internalInputRef;
   const [searchText, setSearchText] = useState(queryValue);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [placeholderVisible, setPlaceholderVisible] = useState(true);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [showMoreChips, setShowMoreChips] = useState(false);
+
+  const primaryChips = useMemo(() => getPrimaryDealerChips(), []);
+  const extraChips = useMemo(() => getExtraDealerChips(), []);
 
   const dynamicPlaceholder = useMemo(
     () => (searchText ? '' : DEALER_SEARCH_PLACEHOLDERS[placeholderIdx]),
@@ -35,11 +61,16 @@ export default function DealerSearchHero({
   );
 
   useEffect(() => {
+    if (searchText) return undefined;
     const timer = setInterval(() => {
-      setPlaceholderIdx((prev) => (prev + 1) % DEALER_SEARCH_PLACEHOLDERS.length);
-    }, 5000);
+      setPlaceholderVisible(false);
+      setTimeout(() => {
+        setPlaceholderIdx((prev) => (prev + 1) % DEALER_SEARCH_PLACEHOLDERS.length);
+        setPlaceholderVisible(true);
+      }, 180);
+    }, 2600);
     return () => clearInterval(timer);
-  }, []);
+  }, [searchText]);
 
   useEffect(() => {
     setSearchText(queryValue);
@@ -65,8 +96,11 @@ export default function DealerSearchHero({
     submitSearch();
   }
 
-  function handleChipClick(chipId) {
-    onChipToggle?.(chipId);
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      submitSearch();
+    }
   }
 
   function startVoice() {
@@ -94,37 +128,34 @@ export default function DealerSearchHero({
   const hasSelection = Boolean(searchText.trim());
 
   return (
-    <section className="dl-hero" aria-labelledby="dl-hero-title">
-      <header className="dl-hero__intro">
-        <h1 id="dl-hero-title" className="dl-hero__title">
-          KI-Berater von {dealerName}
+    <section className="dl-hero dl-hero--chat" aria-labelledby="dl-hero-title">
+      <header className="dl-hero__head">
+        <h1 id="dl-hero-title" className="dl-hero__prompt">
+          Wonach suchen Sie?
         </h1>
-        <p className="dl-hero__sub">
-          Beschreiben Sie einfach Ihr Wunschfahrzeug.
-          <br />
-          Wir finden das passende {brand}-Modell für Sie.
-        </p>
+        <p className="dl-hero__dealer">{dealerName}</p>
       </header>
 
-      <div className="dl-hero__search-block">
-        <h2 className="dl-hero__search-label">
-          <span className="dl-hero__ai-badge" aria-hidden>
-            <AiAssistantIcon size={18} />
-          </span>
-          Fahrzeug finden
-        </h2>
-
-        <form className="dl-hero__form" onSubmit={handleSubmit}>
-          <div className="dl-hero__input-wrap">
-            <textarea
-              ref={inputRef}
-              className="dl-hero__input"
-              rows={3}
-              value={searchText}
-              onChange={(e) => handleQueryInput(e.target.value)}
-              placeholder={dynamicPlaceholder || 'Beschreiben Sie Ihr Wunschauto…'}
-              aria-label="Fahrzeugwunsch beschreiben"
-            />
+      <form className="dl-hero__composer" onSubmit={handleSubmit}>
+        <div className={`dl-hero__composer-box${hasSelection ? ' dl-hero__composer-box--filled' : ''}`}>
+          {!searchText && dynamicPlaceholder && (
+            <span
+              className={`dl-hero__placeholder${placeholderVisible ? ' dl-hero__placeholder--visible' : ''}`}
+              aria-hidden
+            >
+              {dynamicPlaceholder}
+            </span>
+          )}
+          <textarea
+            ref={inputRef}
+            className="dl-hero__composer-input"
+            rows={3}
+            value={searchText}
+            onChange={(e) => handleQueryInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            aria-label="Fahrzeugwunsch beschreiben"
+          />
+          <div className="dl-hero__composer-actions">
             <button
               type="button"
               className={`dl-hero__mic${listening ? ' is-active' : ''}`}
@@ -134,43 +165,48 @@ export default function DealerSearchHero({
             >
               🎤
             </button>
+            <button
+              type="submit"
+              className="dl-hero__send"
+              disabled={!hasSelection}
+              aria-label="Suche starten"
+            >
+              ↑
+            </button>
           </div>
-          {voiceError && <p className="dl-hero__voice-error" role="alert">{voiceError}</p>}
-          <DealerRecognizedWishes wishes={recognizedWishes} compact />
-          <button
-            type="submit"
-            className="btn btn-primary dl-hero__cta"
-            disabled={!hasSelection}
-          >
-            <AiAssistantIcon size={16} />
-            ✨ Fahrzeug finden
-          </button>
-        </form>
-
-        <p className="dl-hero__chips-hint">
-          {selectedChipIds.length > 0
-            ? 'Ihre aktiven Wünsche – ✕ zum Entfernen'
-            : 'Stichwörter anklicken – Ihre Anfrage erscheint im Suchfeld'}
-        </p>
-        <div className="dl-hero__chips" aria-label="Wunschfilter">
-          {DEALER_WISH_CHIPS.map((chip) => {
-            const active = selectedChipIds.includes(chip.id);
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                className={`dl-chip${active ? ' dl-chip--active' : ''}`}
-                aria-pressed={active}
-                aria-label={active ? `${chip.label} entfernen` : chip.label}
-                onClick={() => handleChipClick(chip.id)}
-              >
-                {active && <span className="dl-chip__bullet" aria-hidden>●</span>}
-                <span className="dl-chip__label">{chip.label}</span>
-                {active && <span className="dl-chip__remove" aria-hidden>✕</span>}
-              </button>
-            );
-          })}
         </div>
+        {voiceError && (
+          <p className="dl-hero__voice-error" role="alert">{voiceError}</p>
+        )}
+        <DealerRecognizedWishes wishes={recognizedWishes} compact />
+      </form>
+
+      <div className="dl-hero__chips" aria-label="Schnellauswahl">
+        {primaryChips.map((chip) => (
+          <ChipButton
+            key={chip.id}
+            chip={chip}
+            active={selectedChipIds.includes(chip.id)}
+            onToggle={onChipToggle}
+          />
+        ))}
+        {showMoreChips && extraChips.map((chip) => (
+          <ChipButton
+            key={chip.id}
+            chip={chip}
+            active={selectedChipIds.includes(chip.id)}
+            onToggle={onChipToggle}
+          />
+        ))}
+        {!showMoreChips && extraChips.length > 0 && (
+          <button
+            type="button"
+            className="dl-chip dl-chip--more"
+            onClick={() => setShowMoreChips(true)}
+          >
+            Mehr
+          </button>
+        )}
       </div>
     </section>
   );

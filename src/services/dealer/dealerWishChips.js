@@ -8,120 +8,185 @@ import { LARGE_TRUNK_MIN_L } from '../cleverData/vehicleDimensions.js';
 /** @typedef {object} DealerWishChip
  * @property {string} id
  * @property {string} label
- * @property {string} queryFragment – Textbaustein im Suchfeld
- * @property {object} filters – Marketplace-Filter-Patch
+ * @property {string} [shortLabel] – kompakte Mobile-Anzeige
+ * @property {string} [emoji]
+ * @property {string} queryFragment
+ * @property {object} filters
  */
 
+/** Wichtigste Chips zuerst (Mobile: tippen statt tippen). */
 /** @type {DealerWishChip[]} */
 export const DEALER_WISH_CHIPS = [
   {
     id: 'fuel_elektro_300',
     label: 'Elektro bis 300 €',
+    shortLabel: 'Elektro',
+    emoji: '⚡',
     queryFragment: 'Elektro bis 300 €',
     filters: { fuel: 'elektro', type: 'elektro', maxRate: 300, features: ['elektro'] },
   },
   {
-    id: 'range_400',
-    label: 'Reichweite über 400 km',
-    queryFragment: 'Reichweite über 400 km',
-    filters: { rangeKmMin: 400 },
-  },
-  {
-    id: 'towbar',
-    label: 'Anhängerkupplung',
-    queryFragment: 'Anhängerkupplung',
-    filters: { features: ['towbar'] },
-  },
-  {
     id: 'seats_7',
     label: '7-Sitzer',
+    shortLabel: 'Familienauto',
+    emoji: '👨‍👩‍👧‍👦',
     queryFragment: '7-Sitzer',
     filters: { seatsMin: 7, features: ['seats_7'] },
   },
   {
-    id: 'isofix_3',
-    label: '3 Isofix',
-    queryFragment: '3 Isofix',
-    filters: { isofixRearMin: 3 },
+    id: 'large_trunk',
+    label: 'Großer Kofferraum',
+    shortLabel: 'Großer Kofferraum',
+    emoji: '📦',
+    queryFragment: 'großer Kofferraum',
+    filters: { trunkLMin: LARGE_TRUNK_MIN_L, features: ['large_trunk'] },
+  },
+  {
+    id: 'tow_2000',
+    label: '2 t Anhängelast',
+    shortLabel: '2 t Anhängelast',
+    emoji: '🚛',
+    queryFragment: '2 Tonnen Anhängelast',
+    filters: { towCapacityKg: 2000, features: ['towbar'] },
+  },
+  {
+    id: 'camera_360',
+    label: '360° Kamera',
+    shortLabel: '360° Kamera',
+    emoji: '📷',
+    queryFragment: '360° Kamera',
+    filters: { features: ['camera_360'] },
+  },
+  {
+    id: 'range_400',
+    label: 'Reichweite über 400 km',
+    shortLabel: '400+ km',
+    emoji: '🔋',
+    queryFragment: 'Reichweite über 400 km',
+    filters: { rangeKmMin: 400 },
   },
   {
     id: 'tow_1500',
     label: '1,5 t Anhängelast',
+    shortLabel: 'ab 1,5 t Anhängelast',
+    emoji: '🚛',
     queryFragment: '1,5 Tonnen Anhängelast',
     filters: { towCapacityKg: 1500, features: ['towbar'] },
   },
   {
     id: 'tow_1800',
     label: '1,8 t Anhängelast',
+    shortLabel: '1,8 t Anhängelast',
+    emoji: '🚛',
     queryFragment: 'Wohnwagen 1,8 Tonnen',
     filters: { towCapacityKg: 1800, features: ['towbar'] },
   },
   {
-    id: 'tow_2000',
-    label: '2 t Anhängelast',
-    queryFragment: '2 Tonnen Anhängelast',
-    filters: { towCapacityKg: 2000, features: ['towbar'] },
+    id: 'towbar',
+    label: 'Anhängerkupplung',
+    shortLabel: 'Anhängerkupplung',
+    emoji: '🔗',
+    queryFragment: 'Anhängerkupplung',
+    filters: { features: ['towbar'] },
   },
   {
     id: 'fuel_hybrid',
     label: 'Hybrid',
+    shortLabel: 'Hybrid',
+    emoji: '🔀',
     queryFragment: 'Hybrid',
     filters: { fuel: 'hybrid', type: 'hybrid' },
   },
   {
+    id: 'heat_pump',
+    label: 'Wärmepumpe',
+    shortLabel: 'Wärmepumpe',
+    emoji: '♨️',
+    queryFragment: 'Wärmepumpe',
+    filters: { fuel: 'elektro', type: 'elektro', features: ['heat_pump', 'elektro'] },
+  },
+  {
+    id: 'heated_seats',
+    label: 'Sitzheizung',
+    shortLabel: 'Sitzheizung',
+    emoji: '🔥',
+    queryFragment: 'Sitzheizung',
+    filters: { features: ['heated_seats'] },
+  },
+  {
+    id: 'isofix_3',
+    label: '3 Isofix',
+    shortLabel: '3 Isofix',
+    emoji: '👶',
+    queryFragment: '3 Isofix',
+    filters: { isofixRearMin: 3 },
+  },
+  {
     id: 'length_4m',
     label: 'Bis 4 m lang',
+    shortLabel: 'Kleinwagen',
+    emoji: '🚗',
     queryFragment: 'bis 4 m Länge',
     filters: { maxLengthMm: 4000, seatsMin: 5 },
   },
   {
     id: 'garage_2m',
     label: 'Garage 2 m',
+    shortLabel: 'Garage 2 m',
+    emoji: '🏠',
     queryFragment: 'Garage 2 m Höhe',
     filters: { maxHeightMm: 2000 },
   },
   {
-    id: 'large_trunk',
-    label: 'Großer Kofferraum',
-    queryFragment: 'großer Kofferraum',
-    filters: { trunkLMin: LARGE_TRUNK_MIN_L, features: ['large_trunk'] },
-  },
-  {
-    id: 'heat_pump',
-    label: 'Wärmepumpe',
-    queryFragment: 'Wärmepumpe',
-    filters: { fuel: 'elektro', type: 'elektro', features: ['heat_pump', 'elektro'] },
-  },
-  {
-    id: 'camera_360',
-    label: '360° Kamera',
-    queryFragment: '360° Kamera',
-    filters: { features: ['camera_360'] },
-  },
-  {
-    id: 'heated_seats',
-    label: 'Sitzheizung',
-    queryFragment: 'Sitzheizung',
-    filters: { features: ['heated_seats'] },
-  },
-  {
     id: 'rear_camera',
     label: 'Rückfahrkamera',
+    shortLabel: 'Rückfahrkamera',
+    emoji: '📷',
     queryFragment: 'Rückfahrkamera',
     filters: { features: ['rear_camera'] },
   },
   {
     id: 'availability_sofort',
     label: 'Sofort verfügbar',
+    shortLabel: 'Sofort verfügbar',
+    emoji: '⚡',
     queryFragment: 'sofort verfügbar',
     filters: { availability: 'sofort' },
   },
+];
+
+/** Schnellchips in der Hero-Section (Rest unter „Mehr“). */
+export const PRIMARY_DEALER_CHIP_IDS = [
+  'fuel_elektro_300',
+  'seats_7',
+  'tow_1500',
+  'length_4m',
+  'large_trunk',
 ];
 
 const CHIP_BY_ID = Object.fromEntries(DEALER_WISH_CHIPS.map((c) => [c.id, c]));
 
 export function getDealerWishChip(chipId) {
   return CHIP_BY_ID[chipId] ?? null;
+}
+
+export function getDealerWishChipDisplay(chip) {
+  if (!chip) return { emoji: '', label: '' };
+  return {
+    emoji: chip.emoji ?? '',
+    label: chip.shortLabel ?? chip.label ?? '',
+  };
+}
+
+export function getPrimaryDealerChips() {
+  return PRIMARY_DEALER_CHIP_IDS
+    .map((id) => CHIP_BY_ID[id])
+    .filter(Boolean);
+}
+
+export function getExtraDealerChips() {
+  const primary = new Set(PRIMARY_DEALER_CHIP_IDS);
+  return DEALER_WISH_CHIPS.filter((chip) => !primary.has(chip.id));
 }
 
 function unionFeatures(a = [], b = []) {

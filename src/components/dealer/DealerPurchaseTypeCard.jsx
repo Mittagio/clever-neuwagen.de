@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PURCHASE_TYPE_OPTIONS } from '../../services/dealer/purchaseTypeOptions.js';
 import './dealer-landing.css';
 
@@ -36,14 +36,25 @@ function ConfigRecap({ summary }) {
 }
 
 /**
- * Kaufart – erst nach Sonderkonditionen, vor Preisen.
+ * Kaufart – erst nach Fahrzeug, Ausstattung und Kundengruppe.
  */
 export default function DealerPurchaseTypeCard({
   configSummary,
   value = null,
   onContinue,
+  onSelectionChange,
+  formId = 'dl-advisor-purchase-form',
 }) {
   const [selected, setSelected] = useState(value);
+
+  useEffect(() => {
+    setSelected(value);
+  }, [value]);
+
+  function handleSelect(optionId) {
+    setSelected(optionId);
+    onSelectionChange?.(optionId);
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -58,7 +69,7 @@ export default function DealerPurchaseTypeCard({
         Leasing, Finanzierung oder Kauf?
       </h2>
 
-      <form className="dl-purchase__form" onSubmit={handleSubmit}>
+      <form id={formId} className="dl-purchase__form" onSubmit={handleSubmit}>
         <fieldset className="dl-purchase__options">
           <legend className="sr-only">Kaufart</legend>
           {PURCHASE_TYPE_OPTIONS.map((option) => {
@@ -73,7 +84,7 @@ export default function DealerPurchaseTypeCard({
                   name="purchase-type"
                   value={option.id}
                   checked={active}
-                  onChange={() => setSelected(option.id)}
+                  onChange={() => handleSelect(option.id)}
                 />
                 <span className="dl-purchase__option-body">
                   <span className="dl-purchase__option-label">{option.label}</span>

@@ -5,6 +5,7 @@ import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { KIA_TECHNICAL_SPECS } from '../../data/kia/kiaTechnicalSpecs.js';
 import { normalizeModelKey } from '../../data/features/trimFeatureMapping.js';
 import { buildWishMatchBullets } from '../cleverQuote/cleverQuoteRecommendation.js';
+import { getPackagesForTrim } from '../../data/dealer/dealerTrimPackages.js';
 import { createDefaultConfiguration } from './modelConfiguratorCatalog.js';
 import { recommendTrimForWishes, resolveTrimPick } from './trimWishRecommendation.js';
 
@@ -172,11 +173,15 @@ export function buildConfigSummaryFromTrim(
   wishFeatureIds = [],
   wishChipIds = [],
   selectedTrimId = null,
+  packageIds = [],
 ) {
   const key = String(modelKey ?? '').toLowerCase();
   const attrs = KIA_MODEL_ATTRIBUTES[key];
   const pick = trimPick?.selectedPick
     ?? resolveTrimPick(trimPick, selectedTrimId ?? trimPick?.selectedTrimId);
+  const packages = getPackagesForTrim(key, pick?.trimId ?? '').filter(
+    (pkg) => packageIds.includes(pkg.id),
+  );
 
   return {
     modelKey: key,
@@ -185,9 +190,11 @@ export function buildConfigSummaryFromTrim(
     trimId: pick?.trimId ?? null,
     colorLabel: null,
     powertrainLabel: attrs?.fuel === 'electric' ? 'Elektro' : null,
-    packageLabels: [],
+    packageLabels: packages.map((pkg) => pkg.label),
+    packageIds,
     wishFeatureIds,
     wishChipIds,
+    cleverQuotePercent: pick?.cleverQuotePercent ?? null,
     imageSlug: key,
   };
 }
@@ -196,18 +203,22 @@ export function buildConfigSummaryFromTrim(
  * @param {string} modelKey
  * @param {object} trimPick
  */
-export function buildConfigurationFromTrim(modelKey, trimPick, selectedTrimId = null) {
+export function buildConfigurationFromTrim(modelKey, trimPick, selectedTrimId = null, packageIds = []) {
   const pick = trimPick?.selectedPick
     ?? resolveTrimPick(trimPick, selectedTrimId ?? trimPick?.selectedTrimId);
   const trimId = pick?.trimId;
   if (!trimId) return null;
+
+  const mergedPackageIds = [
+    ...new Set([...(pick.packagesNeeded ?? []), ...packageIds]),
+  ];
 
   const defaultConfig = createDefaultConfiguration(modelKey);
   if (defaultConfig) {
     return {
       ...defaultConfig,
       trimId,
-      packageIds: pick.packagesNeeded ?? [],
+      packageIds: mergedPackageIds,
     };
   }
 
@@ -215,7 +226,7 @@ export function buildConfigurationFromTrim(modelKey, trimPick, selectedTrimId = 
     catalogId: modelKey,
     modelKey,
     trimId,
-    packageIds: pick.packagesNeeded ?? [],
+    packageIds: mergedPackageIds,
     colorId: null,
     powertrainId: null,
   };

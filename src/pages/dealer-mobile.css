@@ -28,7 +28,7 @@
   }
 
   .dealer-page--mf5 .dealer-ai__form textarea {
-    min-height: 96px;
+    min-height: 72px;
     font-size: 16px;
     padding: 12px;
   }
@@ -132,5 +132,228 @@
 
   .dealer-page--mf5 .dealer-location iframe {
     min-height: 220px;
+  }
+}
+
+/* Berater-Flow: Swipe statt Katalog, sticky Footer */
+@media (max-width: 767px) {
+  .dealer-page--clever .dl-search-results__intro,
+  .dealer-page--clever .dl-search-results__head {
+    display: none;
+  }
+
+  .dealer-page--clever .dl-advisor-rec__kicker {
+    font-size: 0.875rem;
+  }
+
+  .dealer-page--clever .dl-advisor-hero__title {
+    font-size: 1.5rem;
+  }
+
+  .dealer-page--clever .dl-advisor-cq--hero .dl-advisor-cq__score {
+    font-size: 1.25rem;
+  }
+
+  .dealer-page--clever .dl-advisor-why__title {
+    font-size: 1rem;
+  }
+
+  .dealer-page--advisor-flow {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dealer-page--clever .dl-hero--chat {
+    padding-top: 4px;
+  }
+
+  .dealer-page--clever .dl-hero__head {
+    margin-bottom: 16px;
+    text-align: left;
+  }
+
+  .dealer-page--clever .dl-hero__prompt {
+    font-size: 1.625rem;
+  }
+
+  .dealer-page--clever .dl-hero__composer-box {
+    min-height: 140px;
+    padding: 16px 16px 52px;
+    border-radius: 22px;
+  }
+
+  .dealer-page--clever .dl-hero__composer-input {
+    min-height: 88px;
+    font-size: 16px;
+  }
+
+  .dealer-page--clever .dl-hero__placeholder {
+    font-size: 16px;
+    top: 16px;
+    left: 16px;
+    right: 64px;
+  }
+
+  .dealer-page--clever .dl-hero__chips {
+    justify-content: flex-start;
+    margin-top: 16px;
+  }
+
+  .dealer-page--clever .dl-chip {
+    min-height: 44px;
+    font-size: 0.8125rem;
+  }
+
+  .dealer-page--advisor-flow .dl-journey-footer {
+    display: block;
+  }
+
+  .dealer-page--advisor-flow .dl-journey-progress {
+    display: none;
+  }
+
+  .dealer-page--advisor-flow .dl-sales-understand__cta,
+  .dealer-page--advisor-flow .dl-purchase__cta,
+  .dealer-page--advisor-flow .dl-budget__cta,
+  .dealer-page--advisor-flow .dl-special__cta,
+  .dealer-page--advisor-flow .dl-journey-summary__cta,
+  .dealer-page--advisor-flow .dl-model-swipe__learn {
+    display: none;
+  }
+
+  .dealer-page--advisor-flow .dl-search-results__all--inline {
+    display: none;
+  }
+
+  .dealer-page--advisor-flow .dl-need-answer__pick-lines,
+  .dealer-page--advisor-flow .dl-need-answer__picks {
+    display: none;
+  }
+
+  .dealer-page--advisor-flow .dl-sales-journey--advisor {
+    margin-left: -4px;
+    margin-right: -4px;
+    width: calc(100% + 8px);
+  }
+
+  .dealer-page--advisor-flow .dl-need-answer,
+  .dealer-page--advisor-flow .dl-sales-understand {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .dealer-page--advisor-flow .dl-model-swipe__track,
+  .dealer-page--advisor-flow .dl-trim-swipe--slides-only .dl-trim-swipe__track {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    scroll-padding: 0 16px;
+  }
+
+  .dealer-page--advisor-flow .dl-model-swipe__tabs,
+  .dealer-page--advisor-flow .dl-trim-swipe--tabs-only .dl-trim-swipe__tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .dealer-page--advisor-flow .dl-trim-swipe--tabs-only .dl-trim-swipe__tab {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dealer-page--advisor-flow .dl-model-swipe__tab {
+    min-width: 0;
+  }
+
+  .dealer-page--advisor-flow .dl-model-swipe__head-main .dl-model-swipe__medal,
+  .dealer-page--advisor-flow .dl-model-swipe__head-main .dl-model-swipe__badge {
+    display: none;
+  }
+
+  .dealer-page--advisor-flow .dl-clever-trim-rec {
+    padding: 16px 14px;
+  }
+
+  .dealer-page--advisor-flow .dl-clever-trim-rec__title {
+    font-size: 1.25rem;
+  }
+
+  .dealer-page--advisor-flow .dl-trim-packages__head {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .dealer-page--advisor-flow .dl-trim-packages__price {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 4px;
+    font-size: 0.9375rem;
+  }
+
+  .dealer-page--advisor-flow .dl-trim-packages__btn {
+    min-height: 48px;
+  }
+
+  .dealer-page--advisor-flow .dl-serial-equip__toggle {
+    font-size: 0.9375rem;
+  }
+
+  .dealer-page--advisor-flow .dl-sales-understand__hero--compact {
+    grid-template-columns: 88px 1fr;
+    gap: 12px;
+  }
+
+  .dealer-page--advisor-flow .dl-sales-understand__hero--compact .dl-sales-understand__title {
+    font-size: 1.375rem;
+  }
+
+  .dealer-page--advisor-flow .dl-sales-understand__wishes-panel {
+    padding: 14px;
+  }
+
+  .dealer-page--advisor-flow .dl-advisor-block {
+    margin-top: 16px;
+  }
+
+  .dealer-page--advisor-flow .dl-purchase__option,
+  .dealer-page--advisor-flow .dl-special__option {
+    min-height: 52px;
+  }
+
+  .dealer-page--advisor-flow .dl-budget__chip {
+    min-height: 44px;
+  }
+
+  .dealer-page--advisor-flow .dl-journey-footer__cta {
+    min-width: 120px;
+  }
+
+  .dealer-page--advisor-flow .dl-journey-footer__title {
+    font-size: 0.9375rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .dealer-page--advisor-flow .dl-trim-swipe__nav-label {
+    font-size: 0.6875rem;
+    padding: 8px 4px;
+  }
+
+  .dealer-page--advisor-flow .dl-clever-trim-rec__checks {
+    gap: 4px;
+  }
+
+  .dealer-page--advisor-flow .dl-clever-trim-rec__check {
+    font-size: 0.875rem;
+  }
+
+  .dealer-page--advisor-flow .dl-need-answer__wish-tag {
+    font-size: 0.8125rem;
+    padding: 5px 10px;
+  }
+
+  .dealer-page--advisor-flow .dl-model-swipe__title {
+    font-size: 1.125rem;
   }
 }

@@ -2,10 +2,16 @@
 export const DEALER_MAX_RECOMMENDATIONS = 3;
 
 export const DEALER_SEARCH_PLACEHOLDERS = [
-  'Beschreiben Sie Ihr Wunschauto…',
-  'Elektroauto bis 300 €',
-  'Hybrid mit Anhängerkupplung',
-  'Familienauto mit 3 Isofix',
+  'Suche Elektroauto unter 300 € Leasing …',
+  'Suche 7-Sitzer mit großer Reichweite …',
+  'Suche Auto für Wohnwagen …',
+  'Suche Fahrzeug bis 4 m Länge …',
+  'Suche Auto mit 3 Isofix …',
+  'Suche Hybrid mit 2 t Anhängelast …',
+  'Suche Familienauto bis 35.000 € …',
+  'Suche Elektroauto für 7000 km pro Jahr …',
+  'Suche Auto für Garage mit 2 m Höhe …',
+  'Suche Fahrzeug mit großem Kofferraum …',
 ];
 
 /** Strukturierte Mehrfach-Chips – siehe dealerWishChips.js */

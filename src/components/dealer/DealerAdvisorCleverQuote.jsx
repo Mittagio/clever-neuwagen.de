@@ -1,25 +1,52 @@
-import { buildDealerFulfillmentHeadline } from '../../services/dealer/dealerAdvisorPresentation.js';
+import {
+  buildCleverQuoteSubline,
+  buildCleverQuoteWishLines,
+} from '../../services/dealer/dealerAdvisorPresentation.js';
 import './dealer-landing.css';
 
-export default function DealerAdvisorCleverQuote({ cleverQuote, checks = [] }) {
-  if (cleverQuote?.percent == null && !checks.length) return null;
+export default function DealerAdvisorCleverQuote({
+  cleverQuote,
+  checks = [],
+  wishLines = [],
+  variant = 'default',
+}) {
+  const percent = cleverQuote?.percent;
+  if (percent == null && !checks.length && !wishLines.length) return null;
 
-  const percent = cleverQuote?.percent ?? 0;
-  const headline = buildDealerFulfillmentHeadline(cleverQuote, checks);
-  const perfect = percent >= 100;
+  const score = percent ?? 0;
+  const subline = buildCleverQuoteSubline(cleverQuote, checks);
+  const fulfilledLines = buildCleverQuoteWishLines(cleverQuote, checks, wishLines);
+  const perfect = score >= 100;
+  const isHero = variant === 'hero';
+  const isCompact = variant === 'compact';
 
   return (
-    <div className={`dl-advisor-cq${perfect ? ' dl-advisor-cq--perfect' : ''}`} aria-label="CleverQuote Passung">
-      <p className="dl-advisor-cq__score">
-        <span className="dl-advisor-cq__dot" aria-hidden>🟢</span>
-        {percent}
+    <div
+      className={`dl-advisor-cq${perfect ? ' dl-advisor-cq--perfect' : ''}${isHero ? ' dl-advisor-cq--hero' : ''}${isCompact ? ' dl-advisor-cq--compact' : ''}`}
+      aria-label={`CleverQuote ${score}`}
+    >
+      <p className="dl-advisor-cq__brand-line">
+        <span className="dl-advisor-cq__trophy" aria-hidden>🏆</span>
         {' '}
-        % passend
+        <span className="dl-advisor-cq__brand-name">CleverQuote</span>
+        {' '}
+        <strong className="dl-advisor-cq__score">{score}</strong>
       </p>
-      {headline && (
-        <p className="dl-advisor-cq__headline">{headline}</p>
+
+      {!isCompact && subline && (
+        <p className="dl-advisor-cq__headline">{subline}</p>
       )}
-      <p className="dl-advisor-cq__brand">CleverQuote</p>
+
+      {!isCompact && fulfilledLines.length > 0 && (
+        <ul className="dl-advisor-cq__wishes">
+          {fulfilledLines.map((line) => (
+            <li key={line} className="dl-advisor-cq__wish">
+              <span className="dl-advisor-cq__wish-icon" aria-hidden>✓</span>
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

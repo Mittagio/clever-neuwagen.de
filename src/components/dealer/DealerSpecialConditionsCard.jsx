@@ -12,6 +12,7 @@ export default function DealerSpecialConditionsCard({
   configSummary,
   value = [],
   onContinue,
+  formId = 'dl-advisor-special-form',
 }) {
   const [selected, setSelected] = useState(value?.[0] ?? 'privat');
   const showImprovement = selected && selected !== 'privat';
@@ -40,10 +41,10 @@ export default function DealerSpecialConditionsCard({
       )}
 
       <h2 id="dl-special-title" className="dl-special__title">
-        Gehören Sie zu einer dieser Gruppen?
+        Wie möchten Sie das Fahrzeug nutzen?
       </h2>
 
-      <form className="dl-special__form" onSubmit={handleSubmit}>
+      <form id={formId} className="dl-special__form" onSubmit={handleSubmit}>
         <fieldset className="dl-special__options dl-special__options--radio">
           <legend className="sr-only">Kundengruppe</legend>
           {SPECIAL_CONDITION_OPTIONS.map((option) => (
@@ -70,7 +71,7 @@ export default function DealerSpecialConditionsCard({
         )}
 
         <button type="submit" className="btn btn-primary dl-special__cta">
-          Weiter zur Anfrage
+          Weiter
         </button>
       </form>
     </section>

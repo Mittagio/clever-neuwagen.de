@@ -2,9 +2,31 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { buildUpgradePitch } from '../../services/dealer/trimWishRecommendation.js';
 import './dealer-landing.css';
 
-function TrimSlide({ trim, isActive }) {
+function TrimSlide({ trim, isActive, compact = false }) {
   const fulfilled = trim.wishChipLines?.fulfilled ?? [];
   const missing = trim.wishChipLines?.missing ?? [];
+
+  if (compact) {
+    return (
+      <article
+        className={`dl-trim-swipe__slide dl-trim-swipe__slide--compact${isActive ? ' dl-trim-swipe__slide--active' : ''}${trim.recommended ? ' dl-trim-swipe__slide--recommended' : ''}`}
+        aria-hidden={!isActive}
+      >
+        <div className="dl-trim-swipe__slide-head dl-trim-swipe__slide-head--compact">
+          {trim.medal && (
+            <span className="dl-trim-swipe__medal" aria-hidden>{trim.medal}</span>
+          )}
+          <p className="dl-trim-swipe__trim-name">{trim.trimLabel}</p>
+          {trim.cleverQuotePercent != null && (
+            <p className="dl-trim-swipe__percent" aria-label={`${trim.cleverQuotePercent} Prozent Passung`}>
+              {trim.cleverQuotePercent}
+              %
+            </p>
+          )}
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -71,6 +93,8 @@ export default function DealerTrimSwipeCarousel({
   wishChipIds = [],
   selectedTrimId = null,
   onSelectTrim,
+  tabsOnly = false,
+  slidesOnly = false,
 }) {
   const allTrims = recommendation?.allTrims ?? [];
   const trackRef = useRef(null);
@@ -109,7 +133,14 @@ export default function DealerTrimSwipeCarousel({
   function handleTabClick(index, trimId) {
     setActiveIndex(index);
     onSelectTrim?.(trimId);
-    scrollToIndex(index);
+    if (!tabsOnly) scrollToIndex(index);
+  }
+
+  function handleStep(delta) {
+    const next = Math.min(allTrims.length - 1, Math.max(0, activeIndex + delta));
+    const trim = allTrims[next];
+    if (!trim) return;
+    handleTabClick(next, trim.trimId);
   }
 
   function handleScroll() {
@@ -135,7 +166,8 @@ export default function DealerTrimSwipeCarousel({
   }
 
   return (
-    <div className="dl-trim-swipe" aria-live="polite">
+    <div className={`dl-trim-swipe${tabsOnly ? ' dl-trim-swipe--tabs-only' : ''}${slidesOnly ? ' dl-trim-swipe--slides-only' : ''}`} aria-live="polite">
+      {!slidesOnly && (
       <div className="dl-trim-swipe__tabs" role="tablist" aria-label="Ausstattungsvarianten">
         {allTrims.map((trim, index) => (
           <button
@@ -156,18 +188,67 @@ export default function DealerTrimSwipeCarousel({
           </button>
         ))}
       </div>
+      )}
 
+      {!tabsOnly && slidesOnly && (
+        <div className="dl-trim-swipe__compact-nav" aria-label="Ausstattung vergleichen">
+          <button
+            type="button"
+            className="dl-trim-swipe__nav-btn"
+            disabled={activeIndex <= 0}
+            aria-label="Vorherige Variante"
+            onClick={() => handleStep(-1)}
+          >
+            ←
+          </button>
+          <div className="dl-trim-swipe__nav-labels" role="tablist">
+            {allTrims.map((trim, index) => (
+              <button
+                key={trim.trimId}
+                type="button"
+                role="tab"
+                aria-selected={index === activeIndex}
+                className={`dl-trim-swipe__nav-label${index === activeIndex ? ' dl-trim-swipe__nav-label--active' : ''}`}
+                onClick={() => handleTabClick(index, trim.trimId)}
+              >
+                {trim.trimLabel}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="dl-trim-swipe__nav-btn"
+            disabled={activeIndex >= allTrims.length - 1}
+            aria-label="Nächste Variante"
+            onClick={() => handleStep(1)}
+          >
+            →
+          </button>
+        </div>
+      )}
+
+      {!tabsOnly && (
       <div
         ref={trackRef}
         className="dl-trim-swipe__track"
         onScroll={handleScroll}
       >
         {allTrims.map((trim, index) => (
-          <TrimSlide key={trim.trimId} trim={trim} isActive={index === activeIndex} />
+          <TrimSlide
+            key={trim.trimId}
+            trim={trim}
+            isActive={index === activeIndex}
+            compact={slidesOnly}
+          />
         ))}
       </div>
+      )}
 
-      {upgrade && (
+      {slidesOnly && (
+        <p className="dl-trim-swipe__hint">Wischen oder tippen zum Vergleichen</p>
+      )}
+
+      {!tabsOnly && upgrade && (
         <aside className="dl-trim-swipe__upgrade">
           <p className="dl-trim-swipe__upgrade-kicker">
             Warum upgraden?

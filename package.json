@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n server,vite -c blue,green \"npm run dev:server\" \"wait-on http-get://127.0.0.1:3001/health && npm run dev:client\"",
     "dev:win": "powershell -ExecutionPolicy Bypass -File scripts/dev-win.ps1",
+    "dev:mobile": "powershell -ExecutionPolicy Bypass -File scripts/dev-mobile.ps1",
     "dev:pilot": "cross-env VITE_PILOT_LIVE=true VITE_PILOT_DEALER_ID=autohaus-trinkle VITE_PILOT_KIA_ONLY=true concurrently -k -n server,vite -c blue,green \"npm run dev:server\" \"wait-on http-get://127.0.0.1:3001/health && npm run dev:client\"",
     "dev:client": "vite",
     "dev:server": "node server/index.js",
@@ -78,9 +79,11 @@
     "clever-neuwagen": "file:",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-router-dom": "^7.16.0"
+    "mime-db": "^1.54.0",
+    "mime-types": "^3.0.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.17.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
