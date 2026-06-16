@@ -325,39 +325,51 @@
   opacity: 0.85;
 }
 
-/* Kia Modellwelt */
+/* Kia Modellkacheln – Inspiration unter der Suche */
 .dl-modellwelt {
   min-width: 0;
 }
 
+.dl-modellwelt--inspire {
+  margin-top: 4px;
+}
+
 .dl-modellwelt__title {
-  margin: 0 0 4px;
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-brand);
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #334155;
 }
 
 .dl-modellwelt__sub {
-  margin: 0 0 14px;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  display: none;
+}
+
+.dl-modellwelt__head {
+  margin-bottom: 12px;
 }
 
 .dl-modellwelt__track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(300px, 88vw);
-  gap: 16px;
+  grid-auto-columns: minmax(260px, 78vw);
+  gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 4px 2px 16px;
-  margin: 0 -2px;
+  padding: 2px 0 8px;
+  margin: 0;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   touch-action: pan-x;
+}
+
+.dl-modellwelt--inspire .dl-modellwelt__track {
+  margin-inline: -16px;
+  padding-inline: 16px;
+  scroll-padding-inline: 16px;
 }
 
 .dl-modellwelt__track::-webkit-scrollbar {
@@ -366,11 +378,12 @@
 
 .dl-modellwelt__card {
   scroll-snap-align: start;
-  border-radius: 22px;
+  scroll-snap-stop: always;
+  border-radius: 18px;
   overflow: hidden;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
 }
@@ -389,8 +402,8 @@
   color: inherit;
 }
 
-.dl-modellwelt__card-btn:hover .dl-modellwelt__image {
-  transform: scale(1.02);
+.dl-modellwelt__card-btn:active .dl-modellwelt__image {
+  transform: scale(0.99);
 }
 
 .dl-modellwelt__card-btn:focus-visible {
@@ -399,10 +412,10 @@
 }
 
 .dl-modellwelt__image {
-  aspect-ratio: 4 / 3;
-  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
   overflow: hidden;
-  transition: transform 0.25s ease;
+  transition: transform 0.2s ease;
 }
 
 .dl-modellwelt__vehicle-image {
@@ -414,35 +427,38 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 40%;
+  object-position: center 42%;
 }
 
 .dl-modellwelt__body {
-  padding: 16px 18px 18px;
+  padding: 14px 16px 16px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .dl-modellwelt__name {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--color-brand);
+  color: #0f172a;
 }
 
 .dl-modellwelt__tagline {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: #64748b;
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dl-modellwelt__price {
-  margin: 4px 0 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--color-brand);
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #94a3b8;
 }
 
 .dl-modellwelt__upe {
@@ -3078,11 +3094,12 @@
 
 @media (min-width: 720px) {
   .dl-modellwelt__track {
-    grid-auto-columns: minmax(320px, 340px);
+    grid-auto-columns: minmax(280px, 300px);
   }
 
-  .dl-modellwelt--compact .dl-modellwelt__track {
-    grid-auto-columns: minmax(260px, 280px);
+  .dl-modellwelt--inspire .dl-modellwelt__track {
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
   .dl-why__layout {

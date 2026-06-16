@@ -104,6 +104,18 @@ function extractDaily(text) {
   if (/sofort|lager/i.test(text)) ids.push('avail_sofort');
   if (/stadtverkehr|pendeln/i.test(text)) ids.push('daily_city');
   if (/lange\s*strecke|autobahn/i.test(text)) ids.push('daily_long');
+  if (/gewerbe|einzelunternehmen|gewerbliches/i.test(text)) ids.push('daily_gewerbe');
+  return ids;
+}
+
+function extractModelHints(text) {
+  const ids = [];
+  const lower = text.toLowerCase();
+  if (/sportage/i.test(lower)) {
+    ids.push('type_suv');
+    if (!/elektro|e-auto|\bev\d/i.test(lower)) ids.push('fuel_hybrid');
+  }
+  if (/\bev[23459]\b/i.test(lower) || /ev6/i.test(lower)) ids.push('fuel_elektro');
   return ids;
 }
 
@@ -127,6 +139,7 @@ export function parseConversationSpeech(transcript = '') {
   if (fuel) chipIds.add(fuel);
 
   extractDaily(text).forEach((id) => chipIds.add(id));
+  extractModelHints(text).forEach((id) => chipIds.add(id));
 
   const features = matchFeaturesFromText(text);
   for (const fid of features) {

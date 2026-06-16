@@ -3,6 +3,7 @@
  */
 import { sportage } from '../data/kiaSportage.js';
 import { resolveTrimId, resolveEngineId, resolveColorId } from '../data/models/kia/sportageAdapter.js';
+import { matchSuggestedModels } from './dealerAiModelMatcher.js';
 
 export const DEALER_AI_ACTIONS = {
   create_offer: {
@@ -12,8 +13,48 @@ export const DEALER_AI_ACTIONS = {
   },
   create_customer_offer: {
     id: 'create_customer_offer',
-    label: 'Kundenangebot erstellen',
+    label: 'Kundenangebot vorbereiten',
     description: 'Personalisiertes Angebot mit Verkaufschancen-Verknüpfung',
+  },
+  show_suggestions: {
+    id: 'show_suggestions',
+    label: 'Fahrzeugvorschläge anzeigen',
+    description: 'Passende Modelle prüfen und mit dem Kunden besprechen',
+  },
+  calculate_rate: {
+    id: 'calculate_rate',
+    label: 'Leasingrate berechnen',
+    description: 'Grobe Rate auf Basis der erkannten Konditionen prüfen',
+  },
+  draft_reply: {
+    id: 'draft_reply',
+    label: 'Rückfrage an Kunden formulieren',
+    description: 'Kurze Rückfrage als Entwurf vorbereiten',
+  },
+  create_cash_offer: {
+    id: 'create_cash_offer',
+    label: 'Barangebot erstellen',
+    description: 'Kaufangebot mit Barpreis vorbereiten',
+  },
+  create_leasing_offer: {
+    id: 'create_leasing_offer',
+    label: 'Leasingangebot erstellen',
+    description: 'Leasingangebot mit Laufzeit und Kilometer',
+  },
+  create_financing_offer: {
+    id: 'create_financing_offer',
+    label: 'Finanzierungsangebot erstellen',
+    description: 'Finanzierung mit Rate und Anzahlung',
+  },
+  create_three_way_offer: {
+    id: 'create_three_way_offer',
+    label: '3-Wege-Finanzierung erstellen',
+    description: 'Finanzierung mit Schlussrate und Rückgabeoption',
+  },
+  create_sales_opportunity: {
+    id: 'create_sales_opportunity',
+    label: 'Verkaufschance erstellen',
+    description: 'Kundenwunsch als Verkaufschance im System anlegen',
   },
   publish_online: {
     id: 'publish_online',
@@ -31,6 +72,57 @@ export const DEALER_AI_ACTIONS = {
     description: 'mobile.de, Leasingmarkt, WhatsApp & E-Mail Texte',
   },
 };
+
+/** Standard-Leasinglaufzeiten (Monate) – immer Laufzeit, nie Monatsrate */
+export const LEASE_TERM_MONTHS = [12, 24, 36, 42, 48, 60];
+
+/** Verkäufer-Dropdown Laufzeit */
+export const DEALER_AI_TERM_OPTIONS = [24, 36, 42, 48, 60];
+
+/** Verkäufer-Dropdown Kilometer/Jahr */
+export const DEALER_AI_MILEAGE_OPTIONS = [5000, 10000, 15000, 20000, 25000, 30000];
+
+/** Verkäufer-Budget-Chips (€/Monat) */
+export const DEALER_AI_BUDGET_OPTIONS = [200, 250, 300, 350, 400, 450, 500];
+
+/** Wunschpreis-Chips für Kauf (€) */
+export const DEALER_AI_CASH_PRICE_OPTIONS = [25000, 30000, 35000, 40000, 45000, 50000];
+
+export const PAYMENT_TYPE_LABELS = {
+  leasing: 'Leasing',
+  cash: 'Kauf / Barzahlung',
+  financing: 'Finanzierung',
+  threeWayFinancing: '3-Wege-Finanzierung',
+  unknown: 'Noch unklar',
+};
+
+export const DEALER_AI_PAYMENT_OPTIONS = [
+  'leasing',
+  'cash',
+  'financing',
+  'threeWayFinancing',
+  'unknown',
+];
+
+export const DEALER_AI_DELIVERY_DATE_OPTIONS = [
+  'sofort',
+  'diese Woche',
+  'nächste Woche',
+  'diesen Monat',
+  'nächsten Monat',
+];
+
+/** Verkäufer-Aktionen (Dropdown) */
+export const DEALER_AI_SELLER_ACTIONS = [
+  'create_sales_opportunity',
+  'create_offer',
+  'create_cash_offer',
+  'create_leasing_offer',
+  'create_financing_offer',
+  'create_three_way_offer',
+  'show_suggestions',
+  'draft_reply',
+];
 
 export const DEALER_AI_EXAMPLES = [
   {
@@ -74,7 +166,7 @@ const MOTOR_ALIASES = [
   { re: /\bhybrid\b/i, id: 'tgi-hybrid-2wd', label: 'Hybrid' },
   { re: /\bplug[\s-]?in|phev\b/i, id: 'tgi-hybrid-awd', label: 'Plug-in Hybrid' },
   { re: /\bdiesel\b/i, id: 'crdi-dct-2wd', label: 'Diesel' },
-  { re: /\bbenzin|t-gdi|tgi\b/i, id: 'tgi-dct-2wd', label: 'Benzin T-GDI' },
+  { re: /\bbenzin|benziner|t-gdi|tgi\b/i, id: 'tgi-dct-2wd', label: 'Benzin' },
   { re: /\belektro|ev\b/i, id: null, label: 'Elektro' },
 ];
 
@@ -120,23 +212,167 @@ function parseMileage(text) {
   return parseNumber(m[1].replace(/\s/g, ''));
 }
 
+function isLeaseTermMonth(value) {
+  return LEASE_TERM_MONTHS.includes(Number(value));
+}
+
 function parseTermMonths(text) {
-  const m = text.match(/(\d+)\s*monat/i);
-  return m ? Number(m[1]) : null;
+  const yearWord = text.match(/\b(ein|zwei|drei|vier|fünf|sechs)\s*jahr(?:e|en)?\b/i);
+  if (yearWord) {
+    const map = { ein: 12, zwei: 24, drei: 36, vier: 48, fünf: 60, sechs: 72 };
+    const months = map[yearWord[1].toLowerCase()];
+    if (months) return months;
+  }
+
+  const explicit = text.match(/(\d+)\s*monat/i);
+  if (explicit) return Number(explicit[1]);
+
+  const afterKm = text.match(
+    /(?:\d{1,3}(?:[.\s]\d{3})*|\d+)\s*km(?:\s*\/\s*(?:jahr|a))?[^0-9]{0,12}(12|24|36|48|60)\b/i,
+  );
+  if (afterKm) return Number(afterKm[1]);
+
+  const trailing = text.match(/(?:^|\s)(12|24|36|48|60)\s*$/i);
+  if (trailing) return Number(trailing[1]);
+
+  if (/leasing|finanzier/i.test(text)) {
+    const inLeasingContext = text.match(/\b(12|24|36|48|60)\b(?!\s*€)/i);
+    if (inLeasingContext) return Number(inLeasingContext[1]);
+  }
+
+  return null;
 }
 
 function parseDownPayment(text) {
-  const m = text.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?\s*anzahlung/i)
-    ?? text.match(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i);
+  const m = text.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?\s*anzahlung/i)
+    ?? text.match(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i);
   if (!m) return null;
   return parseNumber(m[1].replace(/\s/g, ''));
 }
 
-function parseDesiredRate(text) {
-  const m = text.match(/(?:wunschrate|leasing\s*ab|rate)\s*(?:ab\s*)?(\d{2,4})\s*€?/i)
-    ?? text.match(/(\d{2,4})\s*€?\s*(?:monat|mt|\/mt)/i);
+function parseDesiredRate(text, termMonths = null, paymentType = null) {
+  const isFinancing = paymentType === 'financing' || paymentType === 'threeWayFinancing';
+
+  const labeled = text.match(/(?:wunschrate|leasing\s*ab)\s*(?:ab\s*)?(\d{2,4})\s*€/i);
+  if (labeled) return parseNumber(labeled[1]);
+
+  const financingRate = text.match(/(?:ca\.?|ungefähr|unfähr)\s*(\d{2,4})\s*(?:€|euro)(?:\s*rate)?/i)
+    ?? text.match(/(\d{2,4})\s*(?:€|euro)\s*rate/i);
+  if (financingRate) return parseNumber(financingRate[1]);
+
+  const rateWord = text.match(/\brate\s*(?:ab\s*)?(\d{2,4})\s*€/i);
+  if (rateWord) return parseNumber(rateWord[1]);
+
+  const aroundEuro = text.match(/(?:um\s*(?:die|ca\.?)?\s*)?(\d{2,4})\s*(?:€|euro)(?:\s*im\s*monat|\s*\/\s*monat)?/i);
+  if (aroundEuro) {
+    const val = parseNumber(aroundEuro[1]);
+    if (val != null && (isFinancing || !(termMonths === val && isLeaseTermMonth(val)))) return val;
+  }
+
+  const euroMonth = text.match(/(\d{2,4})\s*€\s*(?:\/|pro\s*)?(?:monat|mt)/i);
+  if (euroMonth) {
+    const val = parseNumber(euroMonth[1]);
+    if (val != null && (isFinancing || !(termMonths === val && isLeaseTermMonth(val)))) return val;
+  }
+
+  return null;
+}
+
+function parseDesiredPrice(text) {
+  const labeled = text.match(/(?:barpreis|kaufpreis|wunschpreis|budget)\s*(?:bis|von|ca\.?|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i);
+  if (labeled) return parseNumber(labeled[1].replace(/\s/g, ''));
+  const unter = text.match(/unter\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€/i);
+  if (unter) return parseNumber(unter[1].replace(/\s/g, ''));
+  return null;
+}
+
+function parseBalloonPayment(text) {
+  const m = text.match(/schlussrate\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i);
   if (!m) return null;
-  return parseNumber(m[1]);
+  return parseNumber(m[1].replace(/\s/g, ''));
+}
+
+const MONTH_NAMES = [
+  'januar', 'februar', 'märz', 'maerz', 'april', 'mai', 'juni',
+  'juli', 'august', 'september', 'oktober', 'november', 'dezember',
+];
+
+function monthPattern() {
+  return MONTH_NAMES.join('|');
+}
+
+function parseDesiredDeliveryDate(text) {
+  if (/sofort\s*(?:verfügbar|lieferbar|da|möglich)?/i.test(text)
+    || /fahrzeug\s+soll\s+sofort/i.test(text)) {
+    return 'sofort';
+  }
+  if (/nächste\s*woche|naechste\s*woche|übergabe[^\n.]{0,30}nächste\s*woche/i.test(text)) {
+    return 'nächste Woche';
+  }
+  if (/diese\s*woche/i.test(text)) return 'diese Woche';
+  if (/diesen\s*monat|ende\s+des\s+monats/i.test(text)) return 'diesen Monat';
+  if (/nächsten\s*monat/i.test(text)) return 'nächsten Monat';
+
+  const months = monthPattern();
+  const beginning = text.match(new RegExp(`anfang\\s+(${months})`, 'i'));
+  if (beginning) {
+    const label = beginning[1].replace(/^maerz$/i, 'März');
+    return `Anfang ${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+  }
+
+  const endOf = text.match(new RegExp(`(?:bis\\s+)?ende\\s+(${months})`, 'i'));
+  if (endOf) {
+    const label = endOf[1].replace(/^maerz$/i, 'März');
+    return `Ende ${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+  }
+
+  const buyIn = text.match(new RegExp(`(?:kaufen|kaufdatum|zulassung|lieferung|übergabe|abholung)[^\\n.]{0,40}(?:im|in|bis)\\s+(${months})`, 'i'));
+  if (buyIn) {
+    const label = buyIn[1].replace(/^maerz$/i, 'März');
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  const latest = text.match(new RegExp(`lieferung\\s+spätestens\\s+im\\s+(${months})`, 'i'));
+  if (latest) {
+    const label = latest[1].replace(/^maerz$/i, 'März');
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  return null;
+}
+
+function parsePaymentType(text, fields) {
+  const lower = text.toLowerCase();
+
+  if (/3[\s-]?wege|drei[\s-]?wege|schlussrate|rückgabeoption|rueckgabeoption|ähnlich\s+leasing\s+mit\s+rückgabe/i.test(lower)) {
+    return 'threeWayFinancing';
+  }
+  if (/\bfinanzier(?:ung|en|ungsangebot)?\b/i.test(lower) && !/\bleasing\b/i.test(lower)) {
+    return 'financing';
+  }
+  if (/\b(kauf|kaufen|bar\s*kaufen|barpreis|kaufangebot|barzahlung|bar\s*zahlen)\b/i.test(lower)) {
+    return 'cash';
+  }
+  if (/\bleasing\b/i.test(lower)) {
+    return 'leasing';
+  }
+  if (fields.termMonths || fields.mileagePerYear) {
+    return 'leasing';
+  }
+  if (fields.desiredRate && !fields.desiredPrice) {
+    return fields.balloonPayment ? 'threeWayFinancing' : 'financing';
+  }
+  return 'unknown';
+}
+
+export function suggestActionForPaymentType(paymentType) {
+  switch (paymentType) {
+    case 'cash': return 'create_cash_offer';
+    case 'leasing': return 'create_leasing_offer';
+    case 'financing': return 'create_financing_offer';
+    case 'threeWayFinancing': return 'create_three_way_offer';
+    default: return 'create_sales_opportunity';
+  }
 }
 
 function parseQuantity(text) {
@@ -150,6 +386,38 @@ function parseCustomerName(text) {
   const m = text.match(/(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
     ?? text.match(/(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i);
   return m ? m[1].trim() : null;
+}
+
+function parseBodyType(text) {
+  if (/\bsuv\b/i.test(text)) return 'SUV';
+  if (/crossover/i.test(text)) return 'Crossover';
+  if (/kombi|tourer/i.test(text)) return 'Kombi';
+  if (/limousine|sedan/i.test(text)) return 'Limousine';
+  return null;
+}
+
+function parseTransmission(text) {
+  if (/automatik|automat/i.test(text)) return 'Automatik';
+  if (/schalt/i.test(text)) return 'Schaltgetriebe';
+  return null;
+}
+
+function parseMaxLengthMm(text) {
+  const labeled = text.match(/(?:größe|groesse|länge|laenge|bis)[^\d]{0,24}(\d+[,.]\d+)\s*m/i);
+  const plain = text.match(/(\d+[,.]\d+)\s*m(?:\s*(?:länge|laenge|fahrzeug))?/i);
+  const raw = labeled?.[1] ?? plain?.[1];
+  if (!raw) return null;
+  const meters = Number(raw.replace(',', '.'));
+  return Number.isFinite(meters) ? Math.round(meters * 1000) : null;
+}
+
+function parseRequiredEquipment(text) {
+  const items = [];
+  if (/rückfahrkamera|rueckfahrkamera|rearview/i.test(text)) items.push('Rückfahrkamera');
+  if (/sitzheizung/i.test(text)) items.push('Sitzheizung');
+  if (/panorama|glasdach/i.test(text)) items.push('Panoramadach');
+  if (/navi|navigation/i.test(text)) items.push('Navigation');
+  return items;
 }
 
 function parseDeliveryTime(text) {
@@ -183,14 +451,35 @@ function matchAlias(list, text) {
 
 function detectBrandModel(text) {
   const lower = text.toLowerCase();
+  if (/ev\s*2|ev2/.test(lower)) {
+    return { brand: 'Kia', model: 'EV2', modelId: 'ev2' };
+  }
   if (/ev\s*3|ev3/.test(lower)) {
     return { brand: 'Kia', model: 'EV3', modelId: 'ev3' };
   }
   if (/ev\s*4|ev4/.test(lower)) {
     return { brand: 'Kia', model: 'EV4', modelId: 'ev4' };
   }
+  if (/ev\s*5|ev5/.test(lower)) {
+    return { brand: 'Kia', model: 'EV5', modelId: 'ev5' };
+  }
+  if (/ev\s*6|ev6/.test(lower)) {
+    return { brand: 'Kia', model: 'EV6', modelId: 'ev6' };
+  }
+  if (/ev\s*9|ev9/.test(lower)) {
+    return { brand: 'Kia', model: 'EV9', modelId: 'ev9' };
+  }
   if (/sportage/.test(lower)) {
     return { brand: 'Kia', model: 'Sportage', modelId: 'sportage' };
+  }
+  if (/\bniro\b/.test(lower)) {
+    return { brand: 'Kia', model: 'Niro', modelId: 'niro' };
+  }
+  if (/\bxceed\b/.test(lower)) {
+    return { brand: 'Kia', model: 'XCeed', modelId: 'xceed' };
+  }
+  if (/\bstonic\b/.test(lower)) {
+    return { brand: 'Kia', model: 'Stonic', modelId: 'stonic' };
   }
   if (/kia/.test(lower)) {
     return { brand: 'Kia', model: 'Sportage', modelId: 'sportage' };
@@ -207,8 +496,17 @@ function detectAction(text, fields) {
   if (/\b(lager|auf lager|bestand)\b/.test(lower) && (fields.quantity > 1 || /lagerfahrzeug|anlegen/.test(lower))) {
     return 'create_inventory';
   }
-  if (/sofort verfügbar|auf lager/.test(lower) && !fields.customerName) {
+  if (/sofort verfügbar|auf lager/.test(lower) && !fields.customerName && fields.paymentType !== 'cash') {
     return 'create_inventory';
+  }
+  if (/fahrzeugvorschläge|fahrzeugvorschlaege|passende modelle/i.test(lower)) {
+    return 'show_suggestions';
+  }
+  if (/rückfrage|rueckfrage/i.test(lower)) {
+    return 'draft_reply';
+  }
+  if (fields.paymentType && fields.paymentType !== 'unknown') {
+    return suggestActionForPaymentType(fields.paymentType);
   }
   if (fields.customerName || /für herrn|für frau|kundenangebot/.test(lower)) {
     return 'create_customer_offer';
@@ -281,6 +579,7 @@ export function parseDealerAiInput(rawText) {
   const customerGroupHit = matchAlias(CUSTOMER_GROUP_ALIASES, text);
   const delivery = parseDeliveryTime(text);
   const quantity = parseQuantity(text) ?? 1;
+  const termMonths = parseTermMonths(text);
 
   let fields = {
     brand: brandModel.brand,
@@ -298,16 +597,27 @@ export function parseDealerAiInput(rawText) {
     stockStatusLabel: delivery?.type === 'lager' ? 'Lager' : delivery?.type === 'vorlauf' ? 'Vorlauf' : null,
     deliveryTime: delivery?.label ?? null,
     deliveryEta: delivery?.eta ?? null,
-    termMonths: parseTermMonths(text),
+    termMonths,
     mileagePerYear: parseMileage(text),
     downPayment: parseDownPayment(text),
+    balloonPayment: parseBalloonPayment(text),
     customerGroup: customerGroupHit?.id ?? null,
     customerGroupLabel: customerGroupHit?.label ?? null,
-    desiredRate: parseDesiredRate(text),
+    desiredRate: null,
+    desiredPrice: parseDesiredPrice(text),
+    desiredDeliveryDate: parseDesiredDeliveryDate(text),
     customerName: parseCustomerName(text),
+    bodyType: parseBodyType(text),
+    transmission: parseTransmission(text),
+    maxLengthMm: parseMaxLengthMm(text),
+    requiredEquipment: parseRequiredEquipment(text),
     quantity,
     rawText: text,
+    paymentType: 'unknown',
   };
+
+  fields.paymentType = parsePaymentType(text, fields);
+  fields.desiredRate = parseDesiredRate(text, termMonths, fields.paymentType);
 
   if (fields.modelId === 'sportage' || fields.model === 'Sportage') {
     fields = resolveSportageConfig(fields);
@@ -317,6 +627,9 @@ export function parseDealerAiInput(rawText) {
   const actionMeta = DEALER_AI_ACTIONS[action];
 
   const displayFields = buildDisplayFields(fields, actionMeta);
+  const customerWishSummary = buildCustomerWishSummary(fields);
+  const shortForm = buildCustomerWishShortForm(fields);
+  const suggestedModels = matchSuggestedModels(fields);
 
   return {
     ok: true,
@@ -325,6 +638,9 @@ export function parseDealerAiInput(rawText) {
     actionLabel: actionMeta?.label ?? action,
     actionDescription: actionMeta?.description ?? '',
     displayFields,
+    customerWishSummary,
+    shortForm,
+    suggestedModels,
     confidence: estimateConfidence(fields, action),
   };
 }
@@ -357,17 +673,230 @@ function buildDisplayFields(fields, actionMeta) {
   return rows;
 }
 
+function formatLengthLabel(maxLengthMm) {
+  if (!maxLengthMm) return null;
+  const meters = (maxLengthMm / 1000).toFixed(2).replace('.', ',');
+  return `maximal ca. ${meters} m Fahrzeuglänge`;
+}
+
+export function formatPaymentDisplay(fields = {}) {
+  const pt = fields.paymentType ?? 'unknown';
+  if (pt === 'unknown') return 'Noch unklar';
+  return PAYMENT_TYPE_LABELS[pt] ?? 'Noch unklar';
+}
+
+export function formatBudgetDisplay(fields = {}) {
+  const pt = fields.paymentType ?? 'unknown';
+  if (pt === 'cash') {
+    if (fields.desiredPrice) return `ca. ${fields.desiredPrice.toLocaleString('de-DE')} €`;
+    return 'offen';
+  }
+  if (fields.desiredRate) return `bis ${fields.desiredRate} €`;
+  return 'offen';
+}
+
+export function formatDeliveryDisplay(fields = {}) {
+  const v = fields.desiredDeliveryDate;
+  if (v == null || v === '') return 'offen';
+  return String(v);
+}
+
+export function buildCompactWishSummary(fields = {}) {
+  const parts = [];
+
+  if (fields.model) {
+    parts.push(String(fields.model).replace(/^Kia\s+/i, ''));
+  } else if (fields.bodyType) {
+    parts.push(fields.bodyType);
+  }
+
+  if (fields.motorLabel && !fields.model) {
+    parts.push(fields.motorLabel);
+  }
+
+  const pt = fields.paymentType ?? 'unknown';
+  if (pt !== 'unknown') {
+    const label = PAYMENT_TYPE_LABELS[pt];
+    parts.push(label?.replace(' / Barzahlung', '').replace('Kauf / Barzahlung', 'Kauf') ?? label);
+  }
+
+  if (fields.mileagePerYear) {
+    parts.push(`${fields.mileagePerYear.toLocaleString('de-DE')} km`);
+  } else {
+    const budget = formatBudgetDisplay(fields);
+    if (budget !== 'offen') parts.push(budget);
+  }
+
+  if (pt === 'unknown') {
+    parts.push('Angebotsart offen');
+  }
+
+  const delivery = formatDeliveryDisplay(fields);
+  if (delivery === 'offen') {
+    parts.push('Übergabe offen');
+  } else {
+    parts.push(delivery);
+  }
+
+  return parts.join(' · ') || 'Noch offen';
+}
+
+export function buildCustomerWishSummary(fields) {
+  const rows = [];
+  const add = (label, value) => {
+    if (value != null && value !== '' && value !== false) {
+      rows.push({ label, value });
+    }
+  };
+
+  add('Fahrzeugart', fields.bodyType);
+  add('Motor', fields.motorLabel);
+  add('Getriebe', fields.transmission);
+  add('Größe', formatLengthLabel(fields.maxLengthMm));
+  if (fields.requiredEquipment?.length) {
+    add('Pflichtausstattung', fields.requiredEquipment.join(', '));
+  }
+  add('Marke', fields.brand);
+  add('Modell', fields.model);
+  add('Ausstattung', fields.trimLabel);
+  add('Farbe', fields.colorLabel);
+  if (fields.packageLabels?.length) add('Pakete', fields.packageLabels.join(', '));
+  add('Kundengruppe', fields.customerGroupLabel);
+  add('Kunde', fields.customerName);
+
+  return rows;
+}
+
+export function buildCustomerWishShortForm(fields) {
+  const parts = [];
+  const vehicle = [
+    fields.brand && fields.model ? `${fields.brand} ${fields.model}` : fields.model,
+    fields.motorLabel,
+    fields.bodyType,
+    fields.transmission ? `mit ${fields.transmission}` : null,
+    formatLengthLabel(fields.maxLengthMm),
+  ].filter(Boolean).join(', ');
+
+  if (vehicle) parts.push(`Anfrage: ${vehicle}`);
+
+  const paymentLabel = PAYMENT_TYPE_LABELS[fields.paymentType];
+  if (paymentLabel && fields.paymentType !== 'unknown') {
+    parts.push(`Angebotsart: ${paymentLabel}`);
+  }
+
+  if (fields.paymentType === 'cash') {
+    if (fields.desiredPrice) parts.push(`Wunschpreis ca. ${fields.desiredPrice.toLocaleString('de-DE')} €`);
+  } else if (fields.paymentType === 'leasing' || fields.paymentType === 'threeWayFinancing') {
+    const leasing = [];
+    if (fields.desiredRate) leasing.push(`Rate um ${fields.desiredRate} € monatlich`);
+    if (fields.termMonths) leasing.push(`bei ${fields.termMonths} Monaten`);
+    if (fields.mileagePerYear) leasing.push(`${fields.mileagePerYear.toLocaleString('de-DE')} km/Jahr`);
+    if (leasing.length) parts.push(leasing.join(', '));
+  } else if (fields.paymentType === 'financing') {
+    const fin = [];
+    if (fields.desiredRate) fin.push(`ca. ${fields.desiredRate} €/Monat`);
+    if (fields.downPayment) fin.push(`mit ${fields.downPayment.toLocaleString('de-DE')} € Anzahlung`);
+    if (fields.termMonths) fin.push(`${fields.termMonths} Monate`);
+    if (fin.length) parts.push(`Finanzierung: ${fin.join(', ')}`);
+  }
+
+  if (fields.desiredDeliveryDate) {
+    parts.push(`Übergabe: ${fields.desiredDeliveryDate}`);
+  }
+
+  if (fields.requiredEquipment?.length) {
+    parts.push(`Ausstattung: ${fields.requiredEquipment.join(', ')}`);
+  }
+
+  return parts.join('. ').trim() || fields.rawText?.slice(0, 280) || '';
+}
+
+function rebuildParsed(parsed, fields, action) {
+  const actionMeta = DEALER_AI_ACTIONS[action] ?? DEALER_AI_ACTIONS.create_offer;
+  return {
+    ...parsed,
+    action,
+    actionLabel: actionMeta.label,
+    actionDescription: actionMeta.description,
+    fields,
+    displayFields: buildDisplayFields(fields, actionMeta),
+    customerWishSummary: buildCustomerWishSummary(fields),
+    shortForm: buildCustomerWishShortForm(fields),
+    suggestedModels: matchSuggestedModels(fields),
+    confidence: estimateConfidence(fields, action),
+  };
+}
+
 function estimateConfidence(fields, action) {
   let score = 0.35;
   if (fields.brand && fields.model) score += 0.2;
-  if (fields.trimLabel || fields.trimId) score += 0.15;
+  if (fields.trimLabel || fields.trimId) score += 0.1;
   if (fields.motorLabel || fields.engineId) score += 0.1;
-  if (fields.termMonths || fields.mileagePerYear || fields.desiredRate) score += 0.1;
-  if (action) score += 0.1;
+  if (fields.paymentType && fields.paymentType !== 'unknown') score += 0.15;
+  if (fields.paymentType === 'cash') {
+    if (fields.desiredPrice) score += 0.05;
+  } else if (fields.paymentType === 'leasing' || fields.paymentType === 'threeWayFinancing') {
+    if (fields.termMonths || fields.mileagePerYear || fields.desiredRate) score += 0.1;
+  } else if (fields.paymentType === 'financing') {
+    if (fields.desiredRate || fields.downPayment) score += 0.1;
+  }
+  if (fields.desiredDeliveryDate) score += 0.05;
+  if (action) score += 0.05;
   return Math.min(0.98, Math.round(score * 100) / 100);
+}
+
+export function getActionsForPaymentType(paymentType) {
+  const base = ['create_sales_opportunity', 'show_suggestions', 'draft_reply'];
+  switch (paymentType) {
+    case 'cash':
+      return ['create_sales_opportunity', 'create_cash_offer', 'create_offer', ...base.slice(1)];
+    case 'leasing':
+      return ['create_sales_opportunity', 'create_leasing_offer', 'create_offer', ...base.slice(1)];
+    case 'financing':
+      return ['create_sales_opportunity', 'create_financing_offer', 'create_offer', ...base.slice(1)];
+    case 'threeWayFinancing':
+      return ['create_sales_opportunity', 'create_three_way_offer', 'create_offer', ...base.slice(1)];
+    default:
+      return DEALER_AI_SELLER_ACTIONS;
+  }
 }
 
 export function getRecognizedSummary(parsed) {
   if (!parsed?.ok) return null;
   return parsed.displayFields;
+}
+
+/**
+ * Erkannte Felder manuell anpassen (Dropdowns/Chips) und Anzeige aktualisieren.
+ * @param {object} parsed
+ * @param {object} patch
+ */
+export function applyDealerAiFields(parsed, patch) {
+  if (!parsed?.ok) return parsed;
+
+  let action = patch.action ?? parsed.action;
+  const fields = {
+    ...parsed.fields,
+    ...patch,
+  };
+  delete fields.action;
+
+  if (patch.paymentType && !patch.action) {
+    action = suggestActionForPaymentType(patch.paymentType);
+  }
+
+  if (fields.desiredRate != null && fields.desiredRate === fields.termMonths && isLeaseTermMonth(fields.termMonths)) {
+    fields.desiredRate = null;
+  }
+
+  return rebuildParsed(parsed, fields, action);
+}
+
+/**
+ * Laufzeit manuell setzen (Verkäufer-Dropdown) und Anzeige aktualisieren.
+ * @param {object} parsed
+ * @param {number|null} termMonths
+ */
+export function applyDealerAiTermMonths(parsed, termMonths) {
+  return applyDealerAiFields(parsed, { termMonths: termMonths ? Number(termMonths) : null });
 }

@@ -3,6 +3,8 @@
  */
 import { createOfferFromSales, buildOfferUrl } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
+import { normalizeLead } from '../logic/leadNormalization.js';
+import { buildDefaultCrm, buildLeadSubline } from './dealerAiLeadCrm.js';
 import { generateListingBlocks } from '../logic/listingGenerator.js';
 import { getTrimName, getEngineName, getColorName, normalizeInventoryItem } from '../logic/inventoryService.js';
 
@@ -22,15 +24,20 @@ function buildSalesPayload(fields) {
 }
 
 function buildCustomerPayload(fields) {
+  const paymentType = fields.paymentType ?? 'leasing';
   return {
     name: fields.customerName ?? '',
     phone: '',
     email: '',
-    desiredRate: fields.desiredRate ?? 399,
+    desiredRate: fields.desiredRate ?? (paymentType === 'cash' ? null : 399),
     mileagePerYear: fields.mileagePerYear ?? 15000,
     termMonths: fields.termMonths ?? 48,
     downPayment: fields.downPayment ?? 0,
     customerGroup: fields.customerGroup ?? 'standard',
+    paymentType,
+    desiredPrice: fields.desiredPrice ?? null,
+    desiredDeliveryDate: fields.desiredDeliveryDate ?? null,
+    balloonPayment: fields.balloonPayment ?? null,
   };
 }
 
@@ -127,7 +134,16 @@ export function executeDealerAiAction(action, parsed, deps) {
   switch (action) {
     case 'create_offer':
     case 'create_customer_offer':
-      return executeCreateOffer(fields, deps, action === 'create_customer_offer');
+    case 'create_cash_offer':
+    case 'create_leasing_offer':
+    case 'create_financing_offer':
+    case 'create_three_way_offer':
+      return executeCreateOffer(fields, deps, action === 'create_customer_offer', action);
+
+    case 'create_sales_opportunity':
+      return executeCreateSalesOpportunity(fields, parsed, deps, {
+        selectedModelId: deps.selectedModelId ?? null,
+      });
 
     case 'create_inventory': {
       const items = [];
@@ -180,12 +196,113 @@ export function executeDealerAiAction(action, parsed, deps) {
       };
     }
 
+    case 'show_suggestions':
+      return {
+        type: 'suggestions',
+        suggestedModels: parsed.suggestedModels ?? [],
+        message: 'Fahrzeugvorschläge notiert – bitte mit dem Kunden besprechen',
+      };
+
+    case 'calculate_rate': {
+      const rate = fields.desiredRate ?? 299;
+      const term = fields.termMonths ?? 48;
+      const km = fields.mileagePerYear ?? 10000;
+      return {
+        type: 'rate_estimate',
+        estimate: { rate, termMonths: term, mileagePerYear: km },
+        message: `Grobe Orientierung: ca. ${rate} €/Monat bei ${term} Monaten und ${km.toLocaleString('de-DE')} km/Jahr – bitte im System prüfen`,
+      };
+    }
+
+    case 'draft_reply': {
+      const vehicle = fields.model ? `Kia ${fields.model}` : 'ein passendes Fahrzeug';
+      const draft = [
+        `Guten Tag${fields.customerName ? ` ${fields.customerName}` : ''},`,
+        '',
+        `vielen Dank für Ihre Anfrage zu ${vehicle}.`,
+        fields.desiredRate ? `Ihr Wunschbudget von ca. ${fields.desiredRate} €/Monat haben wir notiert.` : '',
+        fields.termMonths && fields.mileagePerYear
+          ? `Laufzeit ${fields.termMonths} Monate und ${fields.mileagePerYear.toLocaleString('de-DE')} km/Jahr sind für uns eine gute Basis.`
+          : '',
+        '',
+        'Darf ich noch kurz Rückfragen zu Ausstattung oder Liefertermin stellen?',
+        '',
+        'Freundliche Grüße',
+        conditions.dealerName,
+      ].filter(Boolean).join('\n');
+      return {
+        type: 'draft_reply',
+        draftText: draft,
+        message: 'Rückfrage-Entwurf erstellt',
+      };
+    }
+
     default:
       return executeCreateOffer(fields, deps, false);
   }
 }
 
-function executeCreateOffer(fields, deps, withCustomer) {
+function buildLeadFromDealerAi(fields, parsed, conditions, options = {}) {
+  const vehicleLabel = [fields.brand, fields.model, fields.trimLabel].filter(Boolean).join(' ').trim();
+  const leadId = `lead-ai-${Date.now()}`;
+  const now = new Date().toISOString();
+  const crm = buildDefaultCrm(parsed, options.selectedModelId ?? null);
+
+  return normalizeLead({
+    id: leadId,
+    createdAt: now,
+    updatedAt: now,
+    status: 'neu',
+    source: 'dealerAi',
+    dealerId: conditions.dealerId ?? 'autohaus-trinkle',
+    contact: {
+      name: fields.customerName || 'Kunde (offen)',
+      preferredContact: crm.preferredContact,
+    },
+    vehicle: {
+      brand: fields.brand ?? 'Kia',
+      model: fields.model ?? '',
+      trim: fields.trimLabel ?? '',
+      engine: fields.motorLabel ?? '',
+      label: vehicleLabel || 'Kia – Modell offen',
+    },
+    paymentType: fields.paymentType ?? 'unknown',
+    desiredRate: fields.desiredRate ?? null,
+    wish: {
+      termMonths: fields.termMonths ?? null,
+      mileagePerYear: fields.mileagePerYear ?? null,
+      downPayment: fields.downPayment ?? 0,
+      paymentType: fields.paymentType ?? 'unknown',
+      desiredPrice: fields.desiredPrice ?? null,
+    },
+    deliveryTime: fields.desiredDeliveryDate ?? fields.deliveryTime ?? null,
+    notes: parsed?.shortForm ?? fields.rawText?.slice(0, 500) ?? '',
+    crm,
+    history: [{
+      id: `h-${Date.now()}`,
+      at: now,
+      type: 'system',
+      text: 'Verkaufschance erstellt',
+    }],
+  });
+}
+
+function executeCreateSalesOpportunity(fields, parsed, deps, options = {}) {
+  const { addLead, conditions } = deps;
+  const lead = buildLeadFromDealerAi(fields, parsed, conditions, options);
+  addLead(lead);
+
+  return {
+    type: 'lead',
+    leadId: lead.id,
+    leadName: lead.contact?.name,
+    leadSubline: buildLeadSubline(fields),
+    message: 'Verkaufschance erstellt',
+    syncStatus: 'created',
+  };
+}
+
+function executeCreateOffer(fields, deps, withCustomer, actionId = 'create_offer') {
   const {
     conditions,
     addOffer,
@@ -202,6 +319,8 @@ function executeCreateOffer(fields, deps, withCustomer) {
   offer = {
     ...offer,
     source: 'dealerAi',
+    paymentType: fields.paymentType ?? 'leasing',
+    dealerAiAction: actionId,
   };
 
   if (withCustomer && fields.customerName) {

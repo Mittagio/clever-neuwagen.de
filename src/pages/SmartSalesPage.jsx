@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
 import { useCommunication } from '../context/CommunicationContext.jsx';
 import SalesWishPicker from '../components/sales-advisor/SalesWishPicker.jsx';
@@ -35,6 +35,7 @@ import {
 } from '../services/sales/customerRecordService.js';
 import { useCustomerRecordsSync } from '../services/sales/useCustomerRecordsSync.js';
 import { mergeChipIds } from '../services/sales/conversationVoiceParser.js';
+import { buildDealerAiTextFromWishes } from '../services/dealerAiFromWishes.js';
 import '../components/sales-advisor/smartSales.css';
 
 const STEPS = {
@@ -47,6 +48,7 @@ const STEPS = {
 };
 
 export default function SmartSalesPage() {
+  const navigate = useNavigate();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
   const { getCurrentSeller } = useCommunication();
   const seller = getCurrentSeller?.() ?? null;
@@ -263,6 +265,15 @@ export default function SmartSalesPage() {
     }
   }
 
+  function handleEvaluateToDealerAi() {
+    const text = buildDealerAiTextFromWishes({
+      chipIds: selectedChipIds,
+      mileagePerYear,
+      transcript: voiceTranscript,
+    });
+    navigate('/verkaufsassistent', { state: { wishText: text } });
+  }
+
   const showComm = shareSession && (step === STEPS.RESULTS || step === STEPS.COMPARE || step === STEPS.DETAIL);
   const showCustomerBar = step !== STEPS.WISHES;
   const showMobileCommDock = step === STEPS.RESULTS || step === STEPS.DETAIL || step === STEPS.COMPARE;
@@ -316,8 +327,8 @@ export default function SmartSalesPage() {
       <header className="ss-page__header">
         <Link to="/backend" className="ss-page__back" aria-label="Zurück zum Backend">←</Link>
         <div className="ss-page__header-text">
-          <p className="ss-page__kicker">Gesprächsmodus · Kia Partner</p>
-          <h1 className="ss-page__title">Kia-Kundenberatung</h1>
+          <p className="ss-page__kicker">Verkaufsberater-Modus · Kia Partner</p>
+          <h1 className="ss-page__title">Was sucht Ihr Kunde?</h1>
           <p className="ss-page__dealer">{dealerName}</p>
         </div>
         <Link to="/sales" className="ss-page__alt-link">Klassisch</Link>
@@ -382,7 +393,9 @@ export default function SmartSalesPage() {
                 selectedIds={selectedChipIds}
                 onToggle={toggleChip}
                 onFind={handleProceedToSummary}
+                onEvaluate={handleEvaluateToDealerAi}
                 onVoiceParsed={handleVoiceParsed}
+                hasTranscript={Boolean(voiceTranscript?.trim())}
               />
               <SalesLexiconQuery dealerSlug={dealerSlug} />
             </>

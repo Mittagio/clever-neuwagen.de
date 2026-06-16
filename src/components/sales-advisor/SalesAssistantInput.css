@@ -1,0 +1,68 @@
+.sa-input {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sa-input__text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sa-input__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text, #1d1d1f);
+}
+
+.sa-input__textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fff;
+}
+
+.sa-input__textarea:focus {
+  outline: 2px solid var(--color-brand, #0b1736);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.sa-input__analysis-block {
+  padding: 14px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.sa-input__wish-picker .ss-wish-picker__head h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.sa-input__wish-picker .ss-wish-picker__head p {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+}
+
+.sa-input__cta {
+  position: sticky;
+  bottom: 0;
+  padding: 16px 0 8px;
+  background: linear-gradient(transparent, #f4f6f8 30%);
+}
+
+.sa-input__help {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  text-align: center;
+}

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { KIA_MODEL_WORLD } from '../../data/dealerLandingContent.js';
 import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
+import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import './dealer-landing.css';
 
@@ -14,11 +15,19 @@ function formatPrice(value) {
   }).format(value);
 }
 
+function resolveDisplayName(card) {
+  if (card.kiaPrefix === false) return card.name;
+  return `Kia ${card.name}`;
+}
+
+function resolveBodyType(modelKey) {
+  return KIA_MODEL_ATTRIBUTES[modelKey]?.bodyType ?? 'suv';
+}
+
 export default function DealerModelWorld({
   city = '',
   dealerSlug = '',
   onSearch,
-  compact = false,
 }) {
   const navigate = useNavigate();
 
@@ -32,50 +41,53 @@ export default function DealerModelWorld({
 
   return (
     <section
-      className={`dl-modellwelt${compact ? ' dl-modellwelt--compact' : ''}`}
+      className="dl-modellwelt dl-modellwelt--inspire"
       aria-labelledby="dl-modellwelt-heading"
     >
       <div className="dl-modellwelt__head">
         <h2 id="dl-modellwelt-heading" className="dl-modellwelt__title">
-          Kia Modellwelt
+          Unsere Modelle
         </h2>
-        <p className="dl-modellwelt__sub">Nach links und rechts wischen</p>
       </div>
 
-      <div className="dl-modellwelt__track" role="list">
+      <div
+        className="dl-modellwelt__track"
+        role="list"
+        aria-label="Fahrzeugmodelle entdecken"
+      >
         {KIA_MODEL_WORLD.map((card) => {
           const media = getKiaModelMediaEntry(card.modelKey, 'hero');
+          const displayName = resolveDisplayName(card);
           return (
             <article key={card.id} className="dl-modellwelt__card" role="listitem">
               <button
                 type="button"
                 className="dl-modellwelt__card-btn"
                 onClick={() => exploreCard(card)}
-                aria-label={`${card.name}: ${card.tagline}`}
+                aria-label={`${displayName}: ${card.tagline}`}
               >
                 <div className="dl-modellwelt__image">
                   <VehicleImage
                     brand="Kia"
                     model={card.modelKey}
                     variant="hero"
-                    bodyType="suv"
+                    bodyType={resolveBodyType(card.modelKey)}
                     dealerImageUrl={media?.hero ?? media?.default}
                     className="dl-modellwelt__vehicle-image"
                   />
                 </div>
                 <div className="dl-modellwelt__body">
-                  <h3 className="dl-modellwelt__name">Kia {card.name}</h3>
+                  <h3 className="dl-modellwelt__name">{displayName}</h3>
                   <p className="dl-modellwelt__tagline">{card.tagline}</p>
-                  <p className="dl-modellwelt__price">
-                    {card.rateFrom != null ? (
-                      <>ab {Math.round(card.rateFrom)} €/Monat</>
-                    ) : (
-                      'Preis auf Anfrage'
-                    )}
-                    {card.priceFrom != null && (
-                      <span className="dl-modellwelt__upe"> · ab {formatPrice(card.priceFrom)}</span>
-                    )}
-                  </p>
+                  {(card.rateFrom != null || card.priceFrom != null) && (
+                    <p className="dl-modellwelt__price">
+                      {card.rateFrom != null ? (
+                        <>ab {Math.round(card.rateFrom)} € Leasing</>
+                      ) : (
+                        <>ab {formatPrice(card.priceFrom)}</>
+                      )}
+                    </p>
+                  )}
                 </div>
               </button>
             </article>

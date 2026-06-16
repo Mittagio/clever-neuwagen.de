@@ -7,7 +7,6 @@ import {
   countMissingLeasingFactors,
   formatPublishedAt,
 } from '../../data/dealerConditionsSchema.js';
-import { getKiaModelOverview, KIA_PARTNER } from '../../data/kia/kiaPartnerHub.js';
 import { PILOT_LIVE } from '../../config/pilotLive.js';
 import PilotLiveBanner from '../pilot/PilotLiveBanner.jsx';
 import './BackendHome.css';
@@ -47,13 +46,14 @@ const TODAY_TILES = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Kia – Wünsche in 60 Sek.', primary: true },
-  { label: 'Verkaufsberater', icon: '🧠', href: '/sales/smart', desc: 'Kia Smart Sales & CleverQuote' },
+  { label: 'Verkaufsassistent', icon: '✨', href: '/verkaufsassistent', desc: 'Kundenwunsch erfassen & auswerten' },
   { label: 'Neue Verkaufschance', icon: '👤', href: '/sales', desc: 'Kia-Katalog & Kunde erfassen' },
   { label: 'Neues Angebot', icon: '📄', href: '/backend/angebote', state: { openCreate: true }, desc: 'Angebot erstellen' },
   { label: 'Fahrzeug veröffentlichen', icon: '📢', href: '/backend/publishing', desc: 'Marketing & Inserate' },
-  { label: 'Dealer AI', icon: '🤖', href: '/dealer-ai', desc: 'KI-Verkaufsassistent', primary: true },
+  { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Live mit Kundenwünschen' },
 ];
+
+const ASSISTANT_HINTS = ['Sprache', 'Text & E-Mail', 'WhatsApp', 'Chips im Gespräch', 'Showroom'];
 
 export default function BackendHome({ conditions, onNavigate }) {
   const { leads } = useLeads();
@@ -65,7 +65,6 @@ export default function BackendHome({ conditions, onNavigate }) {
   const dueToday = getDueToday();
 
   const activeModels = conditions.activeModels?.filter((m) => m.active) ?? [];
-  const kiaOverview = getKiaModelOverview();
   const missingLf = activeModels.reduce(
     (sum, m) => sum + countMissingLeasingFactors(conditions, m.id),
     0,
@@ -81,31 +80,54 @@ export default function BackendHome({ conditions, onNavigate }) {
   return (
     <div className="backend-home">
       {PILOT_LIVE && <PilotLiveBanner />}
-      <header className="backend-home__hero">
+
+      <section className="backend-home__advisor-hero" aria-labelledby="advisor-hero-title">
+        <div className="backend-home__advisor-hero-inner">
+          <p className="backend-home__advisor-badge">NEU · Digitaler Verkaufsberater</p>
+          <h2 id="advisor-hero-title" className="backend-home__advisor-title">
+            Unser digitaler Verkaufsberater
+          </h2>
+          <p className="backend-home__advisor-subline">
+            Kundenwünsche per Sprache, Text oder Klick erfassen –
+            und in Sekunden zur Verkaufschance machen.
+          </p>
+          <div className="backend-home__advisor-actions">
+            <Link to="/verkaufsassistent" className="backend-home__advisor-btn backend-home__advisor-btn--primary">
+              Verkaufsassistent öffnen
+            </Link>
+            <Link
+              to="/verkaufsassistent"
+              state={{ focusText: true }}
+              className="backend-home__advisor-btn backend-home__advisor-btn--secondary"
+            >
+              Text / E-Mail einfügen
+            </Link>
+          </div>
+          <p className="backend-home__advisor-trust">
+            Ideal für Kundengespräch, E-Mail, WhatsApp, Telefonnotiz und Showroom-Beratung.
+          </p>
+        </div>
+        <span className="backend-home__advisor-visual" aria-hidden="true">✨</span>
+      </section>
+
+      <section className="backend-home__hints" aria-label="Eingabewege">
+        <p className="backend-home__hints-text">
+          Ein Assistent, drei Wege – sprechen, Text einfügen oder Wünsche anklicken.
+        </p>
+        <div className="backend-home__hints-chips">
+          {ASSISTANT_HINTS.map((hint) => (
+            <span key={hint} className="backend-home__hints-chip">{hint}</span>
+          ))}
+        </div>
+      </section>
+
+      <header className="backend-home__hero backend-home__hero--compact">
         <p className="backend-home__eyebrow">Guten Tag</p>
         <h2 className="backend-home__title">{conditions.dealerName}</h2>
         <p className="backend-home__subtitle">
           Hier sehen Sie auf einen Blick, was heute ansteht.
         </p>
       </header>
-
-      <section className="backend-home__kia-partner" aria-labelledby="kia-partner-heading">
-        <div className="backend-home__kia-partner-card">
-          <span className="backend-home__kia-badge" aria-hidden="true">Kia</span>
-          <div className="backend-home__kia-copy">
-            <h3 id="kia-partner-heading">{KIA_PARTNER.tagline}</h3>
-            <p>
-              Verkaufsmodus, Gesprächsmodus und CleverQuote: nur Kia.
-              {kiaOverview.registry.length} Registry-Modelle mit Paketen ·{' '}
-              {kiaOverview.meta?.modelCount ?? kiaOverview.officialOnly?.length ?? 0} offizielle Modelllinien ·{' '}
-              {activeModels.filter((m) => m.brand === 'Kia').length} aktiv im Händlerkatalog.
-            </p>
-            <Link to="/gespraech" className="backend-home__kia-cta">
-              Gesprächsmodus starten →
-            </Link>
-          </div>
-        </div>
-      </section>
 
       <section className="backend-home__section" aria-labelledby="today-heading">
         <h3 id="today-heading" className="backend-home__section-title">
@@ -134,47 +156,23 @@ export default function BackendHome({ conditions, onNavigate }) {
         )}
       </section>
 
-      <section className="backend-home__section" aria-labelledby="quick-heading">
-        <h3 id="quick-heading" className="backend-home__section-title">
+      <section className="backend-home__section backend-home__section--muted" aria-labelledby="quick-heading">
+        <h3 id="quick-heading" className="backend-home__section-title backend-home__section-title--muted">
           Schnellaktionen
         </h3>
-        <div className="backend-home__quick-grid">
+        <div className="backend-home__quick-grid backend-home__quick-grid--compact">
           {QUICK_ACTIONS.map((action) => (
             <Link
               key={action.label}
               to={action.href}
               state={action.state}
-              className={`backend-home__quick${action.primary ? ' backend-home__quick--primary' : ''}`}
+              className="backend-home__quick"
             >
               <span className="backend-home__quick-icon" aria-hidden="true">{action.icon}</span>
               <span className="backend-home__quick-label">{action.label}</span>
               <span className="backend-home__quick-desc">{action.desc}</span>
             </Link>
           ))}
-        </div>
-      </section>
-
-      <section className="backend-home__ai" aria-labelledby="ai-heading">
-        <div className="backend-home__ai-card">
-          <div className="backend-home__ai-copy">
-            <p id="ai-heading" className="backend-home__ai-eyebrow">Dealer AI</p>
-            <h3 className="backend-home__ai-title">
-              Angebot, Text & nächster Schritt – in Sekunden
-            </h3>
-            <p className="backend-home__ai-desc">
-              Die KI kennt Ihre Konditionen, Verkaufschancen und Fahrzeuge. Ideal für Erstkontakt,
-              Angebotsmail und Nachfassen.
-            </p>
-            <div className="backend-home__ai-actions">
-              <Link to="/dealer-ai" className="backend-home__ai-cta">
-                Dealer AI öffnen
-              </Link>
-              <Link to="/communication" className="backend-home__ai-secondary">
-                Kommunikation
-              </Link>
-            </div>
-          </div>
-          <span className="backend-home__ai-visual" aria-hidden="true">🤖</span>
         </div>
       </section>
 

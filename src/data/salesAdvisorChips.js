@@ -112,6 +112,40 @@ export const SALES_ADVISOR_CHIP_GROUPS = [
     ],
   },
   {
+    id: 'paymentType',
+    label: 'Angebotsart',
+    chips: [
+      { id: 'pay_leasing', label: 'Leasing', emoji: '📋', paymentPhrase: 'Leasing' },
+      { id: 'pay_cash', label: 'Kauf / Barzahlung', emoji: '💶', paymentPhrase: 'Kauf Barzahlung' },
+      { id: 'pay_financing', label: 'Finanzierung', emoji: '🏦', paymentPhrase: 'Finanzierung' },
+      { id: 'pay_three_way', label: '3-Wege-Finanzierung', emoji: '🔀', paymentPhrase: '3-Wege-Finanzierung' },
+      { id: 'pay_open', label: 'Noch offen', emoji: '❓', paymentPhrase: 'Angebotsart noch offen' },
+    ],
+  },
+  {
+    id: 'term',
+    label: 'Laufzeit',
+    chips: [
+      { id: 'term_24', label: '24 Monate', emoji: '📅', termMonths: 24 },
+      { id: 'term_36', label: '36 Monate', emoji: '📅', termMonths: 36 },
+      { id: 'term_42', label: '42 Monate', emoji: '📅', termMonths: 42 },
+      { id: 'term_48', label: '48 Monate', emoji: '📅', termMonths: 48 },
+      { id: 'term_60', label: '60 Monate', emoji: '📅', termMonths: 60 },
+    ],
+  },
+  {
+    id: 'delivery',
+    label: 'Wunschkaufdatum / Übergabe',
+    chips: [
+      { id: 'del_sofort', label: 'sofort', emoji: '🟢', deliveryPhrase: 'sofort verfügbar' },
+      { id: 'del_this_week', label: 'diese Woche', emoji: '📅', deliveryPhrase: 'Übergabe diese Woche' },
+      { id: 'del_next_week', label: 'nächste Woche', emoji: '📅', deliveryPhrase: 'Übergabe nächste Woche' },
+      { id: 'del_this_month', label: 'diesen Monat', emoji: '📅', deliveryPhrase: 'Übergabe diesen Monat' },
+      { id: 'del_next_month', label: 'nächsten Monat', emoji: '📅', deliveryPhrase: 'Übergabe nächsten Monat' },
+      { id: 'del_custom', label: 'bestimmtes Datum', emoji: '🗓', deliveryPhrase: 'bestimmtes Übergabedatum' },
+    ],
+  },
+  {
     id: 'availability',
     label: 'Verfügbarkeit',
     chips: [
@@ -124,16 +158,21 @@ export const SALES_ADVISOR_CHIP_GROUPS = [
 
 export const ALL_SALES_ADVISOR_CHIPS = SALES_ADVISOR_CHIP_GROUPS.flatMap((g) => g.chips);
 
-/** Gesprächsmodus – kompakte Chip-Gruppen */
-export const CONVERSATION_CHIP_GROUPS = [
+/** Verkaufsassistent – alle Eingabewege auf einer Seite */
+export const ASSISTANT_CHIP_GROUPS = [
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'vehicleType'),
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'powertrain'),
+  SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'paymentType'),
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'budget'),
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'mileage'),
+  SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'term'),
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'equipment'),
   SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'daily'),
-  SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'availability'),
+  SALES_ADVISOR_CHIP_GROUPS.find((g) => g.id === 'delivery'),
 ].filter(Boolean);
+
+/** Gesprächsmodus – kompakte Chip-Gruppen */
+export const CONVERSATION_CHIP_GROUPS = ASSISTANT_CHIP_GROUPS;
 
 export function getSalesChipById(chipId) {
   return ALL_SALES_ADVISOR_CHIPS.find((c) => c.id === chipId) ?? null;

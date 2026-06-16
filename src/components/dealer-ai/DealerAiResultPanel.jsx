@@ -30,6 +30,17 @@ export default function DealerAiResultPanel({ result, vehicleCard }) {
         <span className="dai-result-badge">{result.message}</span>
       </header>
 
+      {result.leadId && (
+        <div className="dai-result-block">
+          <p className="dai-result-kpi">Verkaufschance angelegt</p>
+          <p className="dai-result-sub">{result.leadName ?? 'Kunde'}</p>
+          <div className="dai-result-links">
+            <Link to="/backend/verkaufschancen" className="dai-link">Verkaufschancen öffnen</Link>
+            <Link to="/communication" className="dai-link">Kommunikation</Link>
+          </div>
+        </div>
+      )}
+
       {result.offerCode && (
         <div className="dai-result-block">
           <p className="dai-result-kpi">{result.offerCode}</p>
@@ -60,6 +71,31 @@ export default function DealerAiResultPanel({ result, vehicleCard }) {
         <div className="dai-result-block">
           <p className="dai-result-sub">{result.inventoryIds.length} Lagerfahrzeug(e)</p>
           <Link to="/backend" className="dai-link">Im Backend prüfen → Lager</Link>
+        </div>
+      )}
+
+      {result.draftText && (
+        <CopyBlock label="Rückfrage-Entwurf" text={result.draftText} />
+      )}
+
+      {result.estimate && (
+        <div className="dai-result-block">
+          <p className="dai-result-kpi">{result.estimate.rate} €/Monat</p>
+          <p className="dai-result-sub">
+            Grobe Orientierung bei {result.estimate.termMonths} Monaten und{' '}
+            {result.estimate.mileagePerYear.toLocaleString('de-DE')} km/Jahr – bitte im System prüfen
+          </p>
+        </div>
+      )}
+
+      {result.suggestedModels?.length > 0 && result.type === 'suggestions' && (
+        <div className="dai-result-block">
+          <p className="dai-result-sub">Vorgeschlagene Modelle zur Besprechung:</p>
+          <ul className="dai-result-model-list">
+            {result.suggestedModels.map((m) => (
+              <li key={m.id}>{m.name} – {m.badge}</li>
+            ))}
+          </ul>
         </div>
       )}
 

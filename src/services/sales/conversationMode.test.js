@@ -37,4 +37,15 @@ const shorter = refineConversationText(wa, 'mach es kürzer', {
 });
 assert.ok(shorter.length < wa.length);
 
+const sportageGewerbe = `KIA SPORTAGE
+Gewerbeleasing für Einzelunternehmen
+Laufzeit 24 oder 36 Monate
+10.000 km oder 15.000 km
+Ohne Anzahlung`;
+const sg = parseConversationSpeech(sportageGewerbe);
+assert.ok(sg.chipIds.includes('daily_gewerbe'), 'Gewerbe erkannt');
+assert.ok(sg.chipIds.includes('type_suv'), 'Sportage → SUV');
+assert.ok(sg.chipIds.includes('fuel_hybrid'), 'Sportage → Hybrid');
+assert.ok(sg.chipIds.includes('km_10000'), '10.000 km erkannt');
+
 console.log('conversation mode tests OK');

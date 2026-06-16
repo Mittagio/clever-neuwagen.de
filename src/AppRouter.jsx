@@ -143,6 +143,7 @@ export default function AppRouter() {
         <Route path="/vergleich/:token" element={<SalesCompareSharePage />} />
         <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/dealer-ai" element={<DealerAIPage />} />
+        <Route path="/verkaufsassistent" element={<DealerAIPage />} />
         <Route path="/empfehlung" element={<RecommendationPage />} />
         <Route path="/fahrzeuge" element={<FahrzeugePage />} />
         <Route path="/fahrzeug/:slug" element={<FahrzeugDetailPage />} />

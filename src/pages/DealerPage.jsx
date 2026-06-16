@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
+import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
 import DealerNeedAnswerCard from '../components/dealer/DealerNeedAnswerCard.jsx';
 import DealerJourneyMobileFooter from '../components/dealer/DealerJourneyMobileFooter.jsx';
 import { buildRecognizedCustomerWishes, shouldShowNeedAnswer } from '../services/dealer/customerWishRecognition.js';
@@ -993,6 +994,14 @@ export default function DealerPage() {
             inputRef={searchInputRef}
             queryValue={queryDraft}
           />
+
+          {!hasSearch && (
+            <DealerModelWorld
+              city={city}
+              dealerSlug={dealerId}
+              onSearch={handleSearch}
+            />
+          )}
 
           {searchConflict && (
             <SearchConflictBanner conflict={searchConflict} />

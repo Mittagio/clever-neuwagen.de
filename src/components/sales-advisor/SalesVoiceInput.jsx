@@ -8,7 +8,7 @@ import './smartSales.css';
 
 const TEXT_PLACEHOLDER = 'z. B. Herr Müller sucht einen SUV, maximal 400 Euro, Sitzheizung und Anhängerkupplung';
 
-export default function SalesVoiceInput({ onParsed, disabled = false }) {
+export default function SalesVoiceInput({ onParsed, disabled = false, variant = 'full' }) {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [error, setError] = useState('');
@@ -52,6 +52,8 @@ export default function SalesVoiceInput({ onParsed, disabled = false }) {
 
   const supported = isSpeechRecognitionSupported();
 
+  const isAssistant = variant === 'assistant';
+
   return (
     <div className="ss-voice">
       <button
@@ -66,41 +68,45 @@ export default function SalesVoiceInput({ onParsed, disabled = false }) {
 
       {!supported && (
         <p className="ss-voice__hint">
-          Spracheingabe in diesem Browser nicht verfügbar – bitte Gespräch eintippen oder Chips nutzen.
+          Spracheingabe in diesem Browser nicht verfügbar – bitte Wunsch eintippen oder Chips nutzen.
         </p>
       )}
 
-      {supported && !showTextFallback && (
+      {supported && (
         <p className="ss-voice__hint">
-          Mikrofon nutzt Chrome/Google – bei Firmen-WLAN ggf. nicht verfügbar. Alternativ eintippen.
+          {isAssistant
+            ? 'Ideal im Kundengespräch. Alternativ können Sie den Wunsch eintippen oder anklicken.'
+            : 'Mikrofon nutzt Chrome/Google – bei Firmen-WLAN ggf. nicht verfügbar. Alternativ eintippen.'}
         </p>
       )}
 
       {interim && <p className="ss-voice__interim">{interim}</p>}
       {error && <p className="ss-voice__error" role="alert">{error}</p>}
 
-      <div className="ss-voice__text-fallback">
-        <label className="ss-voice__text-label" htmlFor="ss-voice-text">
-          {showTextFallback ? 'Gespräch eintippen (empfohlen)' : 'Oder Kundengespräch eintippen'}
-        </label>
-        <textarea
-          id="ss-voice-text"
-          className="ss-voice__text-input"
-          rows={3}
-          value={typedText}
-          onChange={(e) => setTypedText(e.target.value)}
-          placeholder={TEXT_PLACEHOLDER}
-          disabled={disabled}
-        />
-        <button
-          type="button"
-          className="ss-btn ss-btn--secondary ss-voice__text-submit"
-          onClick={handleTypedSubmit}
-          disabled={disabled || !typedText.trim()}
-        >
-          Aus Gesprächstext auswerten
-        </button>
-      </div>
+      {!isAssistant && (
+        <div className="ss-voice__text-fallback">
+          <label className="ss-voice__text-label" htmlFor="ss-voice-text">
+            {showTextFallback ? 'Gespräch eintippen (empfohlen)' : 'Oder Kundengespräch eintippen'}
+          </label>
+          <textarea
+            id="ss-voice-text"
+            className="ss-voice__text-input"
+            rows={3}
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value)}
+            placeholder={TEXT_PLACEHOLDER}
+            disabled={disabled}
+          />
+          <button
+            type="button"
+            className="ss-btn ss-btn--secondary ss-voice__text-submit"
+            onClick={handleTypedSubmit}
+            disabled={disabled || !typedText.trim()}
+          >
+            Aus Gesprächstext auswerten
+          </button>
+        </div>
+      )}
     </div>
   );
 }

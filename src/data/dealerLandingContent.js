@@ -17,12 +17,12 @@ export const DEALER_SEARCH_PLACEHOLDERS = [
 /** Strukturierte Mehrfach-Chips – siehe dealerWishChips.js */
 export { DEALER_WISH_CHIPS as DEALER_SEARCH_CHIPS } from '../services/dealer/dealerWishChips.js';
 
-/** Kia Modellwelt – große Swipe-Karten direkt unter der Suche */
+/** Kia Modellkacheln – Inspiration direkt unter der Suchmaske (swipebar). */
 export const KIA_MODEL_WORLD = [
   {
     id: 'ev2',
     name: 'EV2',
-    tagline: 'Der kompakte City-Stromer',
+    tagline: 'Kompakt für Stadt und Alltag',
     modelKey: 'ev2',
     rateFrom: 239,
     priceFrom: 26600,
@@ -31,7 +31,7 @@ export const KIA_MODEL_WORLD = [
   {
     id: 'ev3',
     name: 'EV3',
-    tagline: 'Der Allrounder für Familien',
+    tagline: 'Der Reichweiten-Champion',
     modelKey: 'ev3',
     rateFrom: 299,
     priceFrom: 35990,
@@ -40,7 +40,7 @@ export const KIA_MODEL_WORLD = [
   {
     id: 'ev4',
     name: 'EV4',
-    tagline: 'Die elektrische Limousine',
+    tagline: 'Moderne Elektro-Limousine',
     modelKey: 'ev4',
     rateFrom: 269,
     priceFrom: 37590,
@@ -49,65 +49,30 @@ export const KIA_MODEL_WORLD = [
   {
     id: 'ev5',
     name: 'EV5',
-    tagline: 'Das Familien-SUV',
+    tagline: 'Großes Elektro-SUV für die Familie',
     modelKey: 'ev5',
     rateFrom: 419,
     priceFrom: 45990,
     searchQuery: 'Kia EV5 Elektro',
   },
   {
-    id: 'ev6',
-    name: 'EV6',
-    tagline: 'Das Premium-Elektrofahrzeug',
-    modelKey: 'ev6',
-    rateFrom: 399,
-    priceFrom: 44990,
-    searchQuery: 'Kia EV6 Elektro',
-  },
-  {
-    id: 'ev9',
-    name: 'EV9',
-    tagline: 'Der Elektro-Großraum mit 7 Sitzen',
-    modelKey: 'ev9',
-    rateFrom: 759,
-    priceFrom: 63690,
-    searchQuery: 'Kia EV9 7-Sitzer Elektro',
-  },
-  {
-    id: 'niro',
-    name: 'Niro EV',
-    tagline: 'Kompakt, elektrisch, alltagstauglich',
-    modelKey: 'niro',
-    rateFrom: 349,
-    priceFrom: 39990,
-    searchQuery: 'Kia Niro Elektro',
-  },
-  {
     id: 'sportage',
     name: 'Sportage',
-    tagline: 'Das beliebte Familien-SUV',
+    tagline: 'Familien-SUV mit viel Platz',
     modelKey: 'sportage',
     rateFrom: 199,
     priceFrom: 33990,
     searchQuery: 'Kia Sportage Hybrid',
   },
   {
-    id: 'sorento',
-    name: 'Sorento',
-    tagline: 'Der geräumige 7-Sitzer',
-    modelKey: 'sorento',
-    rateFrom: 499,
-    priceFrom: 56690,
-    searchQuery: 'Kia Sorento 7-Sitzer',
-  },
-  {
     id: 'pv5-passenger',
     name: 'PV5',
-    tagline: 'Elektro für Gewerbe und Familie',
+    tagline: 'Flexible Mobilität für Familie und Gewerbe',
     modelKey: 'pv5-passenger',
     rateFrom: 339,
     priceFrom: 38290,
     searchQuery: 'Kia PV5 Elektro',
+    kiaPrefix: false,
   },
 ];
 

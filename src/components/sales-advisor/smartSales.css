@@ -242,6 +242,9 @@
   bottom: 0;
   padding: 16px 0 8px;
   background: linear-gradient(transparent, #f4f6f8 30%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .ss-btn {

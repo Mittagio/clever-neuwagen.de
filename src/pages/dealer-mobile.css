@@ -196,6 +196,20 @@
   .dealer-page--clever .dl-hero__chips {
     justify-content: flex-start;
     margin-top: 16px;
+    margin-bottom: 0;
+  }
+
+  .dealer-page--clever .dl-modellwelt--inspire {
+    margin-top: 20px;
+  }
+
+  .dealer-page--clever .dl-modellwelt--inspire .dl-modellwelt__track {
+    grid-auto-columns: minmax(272px, 82vw);
+    gap: 10px;
+  }
+
+  .dealer-page--clever .dl-modellwelt__image {
+    aspect-ratio: 16 / 11;
   }
 
   .dealer-page--clever .dl-chip {
