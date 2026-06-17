@@ -1,23 +1,27 @@
 import { formatDeliveryDisplay } from './dealerAiParser.js';
 
 export const KUNDENHELFER_CHIPS = [
+  'verheiratet',
+  '2 Kinder',
+  'Eigenheim',
   'Hund',
-  'Familie',
-  'Kinder',
+  'Einkommen ca. 3.000 €',
   'Kaffee schwarz',
-  'Kaffee mit Milch',
   'mag rote Autos',
-  'mag dunkle Autos',
-  'entscheidet mit Partner',
+  'Kofferraum wichtig',
   'braucht Auto sofort',
   'Unfall / Ersatzfahrzeug',
   'Leasing läuft aus',
+  'entscheidet mit Partner',
+  'Gewerbekunde',
   'bevorzugt WhatsApp',
+  'Finanzierung offen',
+  'Inzahlungnahme vorhanden',
+  'Kaffee mit Milch',
+  'mag dunkle Autos',
   'lieber E-Mail',
   'Preis sehr wichtig',
   'will Probefahrt',
-  'Gewerbekunde',
-  'Inzahlungnahme vorhanden',
 ];
 
 export function parseKundenhelferNotes(notes = '') {

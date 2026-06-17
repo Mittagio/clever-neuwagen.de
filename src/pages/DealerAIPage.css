@@ -6,6 +6,15 @@
   flex-direction: column;
 }
 
+.dealer-ai-page:has(.dealer-ai-main--akte) {
+  background: #fff;
+}
+
+.dealer-ai-main--akte {
+  max-width: none;
+  padding: 0;
+}
+
 .dealer-ai-header {
   position: sticky;
   top: 0;
@@ -1205,6 +1214,11 @@
   max-width: 520px;
   margin: 0 auto;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.cust-akte.dai-lead-followup {
+  max-width: 720px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 .dai-lead-created-flash {

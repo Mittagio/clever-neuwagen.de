@@ -1,0 +1,731 @@
+/* Kundenakte – Mockup UI (Mobile First) */
+
+.cust-akte {
+  --cust-blue: #2563eb;
+  --cust-blue-dark: #1d4ed8;
+  --cust-text: #0f172a;
+  --cust-muted: #64748b;
+  --cust-border: #e2e8f0;
+  --cust-bg: #f8fafc;
+  background: #fff;
+  min-height: 100%;
+}
+
+.cust-akte.dai-lead-followup {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 16px calc(88px + env(safe-area-inset-bottom, 0px));
+  gap: 20px;
+}
+
+/* Toolbar */
+.cust-akte-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -4px 8px;
+  padding: 4px 0 8px;
+}
+
+.cust-akte-toolbar__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 1.25rem;
+  color: var(--cust-text);
+  cursor: pointer;
+}
+
+.cust-akte-toolbar__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.cust-akte-toolbar__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cust-muted);
+  cursor: pointer;
+}
+
+.cust-akte-toolbar__icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Profil */
+.cust-akte-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--cust-border);
+}
+
+.cust-akte-profile__row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.cust-akte-profile__avatar {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1e293b;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+}
+
+.cust-akte-profile__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cust-akte-profile__name-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-profile__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--cust-text);
+}
+
+.cust-akte-profile__star {
+  color: var(--cust-blue);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.cust-akte-profile__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cust-muted);
+}
+
+.cust-akte-profile__sep {
+  opacity: 0.6;
+}
+
+.cust-akte-profile__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  font-size: 0.625rem;
+  color: #475569;
+  cursor: help;
+}
+
+.cust-akte-profile__tier {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cust-akte-profile__vehicle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cust-akte-profile__ref {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: var(--cust-muted);
+}
+
+.cust-akte-profile__contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cust-akte-profile__contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.cust-akte-profile__contact-icon {
+  font-size: 0.875rem;
+  opacity: 0.7;
+}
+
+.cust-akte-profile__quick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cust-akte-profile__quick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--cust-border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cust-akte-profile__quick-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Sektionen */
+.cust-akte-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cust-akte-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cust-akte-section__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--cust-text);
+}
+
+.cust-akte-section__link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--cust-blue);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Kundenhelfer */
+.cust-akte-kh__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cust-akte-kh__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--cust-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.cust-akte-kh__chip-icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.cust-akte-kh__chip--more {
+  min-width: 36px;
+  justify-content: center;
+  color: var(--cust-muted);
+}
+
+.cust-akte-kh__empty {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: var(--cust-bg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-kh__empty-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.cust-akte-kh__empty-sub {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--cust-muted);
+}
+
+/* Nächster guter Schritt */
+.cust-akte-nbs__box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.cust-akte-nbs__star {
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  color: #d97706;
+  line-height: 1.2;
+}
+
+.cust-akte-nbs__text {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+.cust-akte-nbs__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cust-blue-dark);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
+}
+
+/* Auf dem Tisch */
+.cust-akte-board__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cust-akte-board__count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cust-akte-board__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cust-akte-board__empty {
+  padding: 24px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: var(--cust-bg);
+  text-align: center;
+}
+
+.cust-akte-board__empty-title {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.cust-akte-board__empty-cta {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--cust-border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--cust-blue);
+  cursor: pointer;
+}
+
+/* Fahrzeugkarte – Mockup */
+.cust-akte-vcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cust-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.cust-akte-vcard--animate {
+  animation: cust-akte-card-land 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 0.1s);
+}
+
+@keyframes cust-akte-card-land {
+  0% { opacity: 0; transform: translateY(-12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.cust-akte-vcard__status {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cust-akte-vcard__status--opened {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.cust-akte-vcard__status--sent {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.cust-akte-vcard__status--ready {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.cust-akte-vcard__status--idea {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.cust-akte-vcard__main {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  margin: 0;
+  padding: 14px 12px 10px;
+  padding-top: 36px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-vcard__visual {
+  flex: 0 0 108px;
+  width: 108px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.cust-akte-vcard__image-wrap,
+.cust-akte-vcard__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cust-akte-vcard__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.cust-akte-vcard__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--cust-text);
+  line-height: 1.2;
+}
+
+.cust-akte-vcard__payment-row {
+  margin: 2px 0 0;
+}
+
+.cust-akte-vcard__payment {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.cust-akte-vcard__payment--lease {
+  color: var(--cust-blue);
+}
+
+.cust-akte-vcard__payment--buy {
+  color: #15803d;
+}
+
+.cust-akte-vcard__payment--neutral {
+  color: var(--cust-muted);
+}
+
+.cust-akte-vcard__conditions {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--cust-muted);
+}
+
+.cust-akte-vcard__price {
+  margin: 4px 0 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--cust-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.cust-akte-vcard__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 2px 0;
+}
+
+.cust-akte-vcard__menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 1.125rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.cust-akte-vcard__chev {
+  font-size: 1.25rem;
+  color: #cbd5e1;
+  line-height: 1;
+}
+
+.cust-akte-vcard__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-top: 1px solid var(--cust-border);
+}
+
+.cust-akte-vcard__footer--seen {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.cust-akte-vcard__footer--favorite {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.cust-akte-vcard__footer--alt {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.cust-akte-vcard__footer-icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Dealer Bottom Nav */
+.cust-akte-dealer-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  align-items: end;
+  gap: 0;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid var(--cust-border);
+  backdrop-filter: blur(12px);
+}
+
+.cust-akte-dealer-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.cust-akte-dealer-nav__item--active {
+  color: var(--cust-blue);
+}
+
+.cust-akte-dealer-nav__icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.cust-akte-dealer-nav__fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: -20px auto 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--cust-blue);
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: 300;
+  line-height: 1;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+}
+
+.cust-akte-dealer-nav__dot {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 18px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #fff;
+}
+
+/* Mehr-Sheet */
+.cust-akte-more__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cust-akte-more__btn {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 4px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-vehicle-sheet__meta {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: var(--cust-muted);
+  line-height: 1.45;
+}
+
+.cust-akte-vehicle-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .cust-akte.dai-lead-followup {
+    max-width: 480px;
+  }
+
+  .cust-akte-board__stack {
+    gap: 16px;
+  }
+}

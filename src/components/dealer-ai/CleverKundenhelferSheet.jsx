@@ -314,11 +314,11 @@ export default function CleverKundenhelferSheet({
         <p className="dai-kh-sheet__subline">Kleine Details fürs nächste Gespräch.</p>
 
         <Field
-          label="Bemerkung"
+          label="Weitere Info"
           id="kundenhelfer-notes"
           value={notes}
           onChange={onNotesChange}
-          placeholder="z. B. Kunde hat Hund, mag rote Autos, Kaffee schwarz"
+          placeholder="z. B. Kunde hat Hund, Kaffee schwarz, mag rote Autos"
         />
 
         <div className="dai-kh-chips" role="group" aria-label="Schnell-Bemerkungen">

@@ -25,7 +25,21 @@ import DealerAiSuggestedModels from '../components/dealer-ai/DealerAiSuggestedMo
 import DealerAiReviewBar from '../components/dealer-ai/DealerAiReviewBar.jsx';
 import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
 import DealerAiLeadFollowUp from '../components/dealer-ai/DealerAiLeadFollowUp.jsx';
+import CustomerOfferEditView from '../components/dealer-ai/CustomerOfferEditView.jsx';
 import DealerAiResultPanel from '../components/dealer-ai/DealerAiResultPanel.jsx';
+import {
+  attachPdfToOffer,
+  createOnlineLinkForOffer,
+  createVehicleOfferFromCard,
+  getVehicleOffer,
+  markOfferSent,
+  mergeVehicleOffersPatch,
+  recordOfferOpened,
+  VEHICLE_OFFER_HISTORY,
+  VEHICLE_OFFER_STATUS,
+} from '../services/vehicleOffer.js';
+import { formatVehicleCardTitle } from '../services/customerAkte.js';
+import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
 import './DealerAIPage.css';
 
 export default function DealerAIPage() {
@@ -51,6 +65,7 @@ export default function DealerAIPage() {
   const [isReturningWish, setIsReturningWish] = useState(false);
   const [carryCustomer, setCarryCustomer] = useState(null);
   const [toast, setToast] = useState('');
+  const [offerEditCard, setOfferEditCard] = useState(null);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -145,6 +160,7 @@ export default function DealerAIPage() {
     setCarryCustomer(null);
     setIsFreshLead(false);
     setIsReturningWish(false);
+    setOfferEditCard(null);
     setPhase('input');
   }
 
@@ -391,15 +407,122 @@ export default function DealerAIPage() {
     setIsFreshLead(false);
   }
 
+  function handleOpenOfferEdit(card) {
+    setOfferEditCard(card);
+    setPhase('offer-edit');
+  }
+
+  function handleBackFromOffer() {
+    setOfferEditCard(null);
+    setPhase('followup');
+  }
+
+  function persistVehicleOffer(cardId, nextOffer, historyMeta = null) {
+    if (!result?.leadId || !cardId) return;
+    const vehicleOffers = mergeVehicleOffersPatch(activeLead ?? {}, cardId, nextOffer);
+    updateLead(result.leadId, {
+      crm: {
+        ...(activeLead?.crm ?? {}),
+        vehicleOffers,
+      },
+    });
+    if (historyMeta?.text) {
+      addHistory(result.leadId, historyMeta.text, historyMeta.type ?? 'note');
+    }
+  }
+
+  async function handleOfferUploadPdf(file) {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const next = await attachPdfToOffer(base, file);
+    persistVehicleOffer(offerEditCard.id, next, {
+      text: VEHICLE_OFFER_HISTORY.pdf_uploaded,
+      type: 'offer_pdf',
+    });
+    showToast('Angebot hinterlegt');
+  }
+
+  function handleOfferCreateLink() {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const title = formatVehicleCardTitle(offerEditCard);
+    const next = createOnlineLinkForOffer(base, {
+      modelName: title,
+      customerName: activeLead?.contact?.name ?? '',
+    });
+    persistVehicleOffer(offerEditCard.id, next, {
+      text: VEHICLE_OFFER_HISTORY.link_created,
+      type: 'offer_link',
+    });
+    showToast('Link bereit');
+  }
+
+  function handleOfferDeletePdf() {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const next = {
+      ...base,
+      status: VEHICLE_OFFER_STATUS.DRAFT,
+      pdf: null,
+      onlineLink: null,
+      sentVia: null,
+      sentAt: null,
+    };
+    persistVehicleOffer(offerEditCard.id, next);
+    showToast('PDF entfernt');
+  }
+
+  function handleOfferMarkSent(via) {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    if (!base.onlineLink?.url) return;
+    const next = markOfferSent(base, via);
+    const historyMap = {
+      email: { text: VEHICLE_OFFER_HISTORY.sent_email, type: 'offer_sent_email' },
+      whatsapp: { text: VEHICLE_OFFER_HISTORY.sent_whatsapp, type: 'offer_sent_whatsapp' },
+      copy: { text: 'Link kopiert – bereit zum Teilen', type: 'offer_sent' },
+    };
+    const meta = historyMap[via] ?? null;
+    persistVehicleOffer(offerEditCard.id, next, meta);
+    if (via !== 'copy') showToast('Angebot gesendet');
+  }
+
+  function handleOfferStatusChange(statusId) {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    let next = { ...base, status: statusId };
+    if (statusId === VEHICLE_OFFER_STATUS.OPENED) {
+      next = recordOfferOpened(base);
+    }
+    const historyMap = {
+      [VEHICLE_OFFER_STATUS.ACCEPTED]: { text: VEHICLE_OFFER_HISTORY.accepted, type: 'offer_accepted' },
+      [VEHICLE_OFFER_STATUS.REJECTED]: { text: VEHICLE_OFFER_HISTORY.rejected, type: 'offer_rejected' },
+      [VEHICLE_OFFER_STATUS.OPENED]: { text: VEHICLE_OFFER_HISTORY.opened, type: 'offer_opened' },
+    };
+    persistVehicleOffer(offerEditCard.id, next, historyMap[statusId] ?? null);
+    showToast('Status aktualisiert');
+  }
+
+  function handleOfferSave() {
+    if (!offerEditCard) return;
+    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    persistVehicleOffer(offerEditCard.id, base);
+    showToast('Gespeichert');
+  }
+
+  const activeOfferEdit = offerEditCard
+    ? getVehicleOffer(activeLead ?? {}, offerEditCard)
+    : null;
+
   const pageKicker = 'Digitaler Verkaufsassistent';
-  const pageTitle = phase === 'followup' || phase === 'capture'
+  const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit'
     ? ''
     : phase === 'review'
       ? 'Kundenwunsch'
       : phase === 'done' && result?.type !== 'lead'
         ? 'Ich habe erkannt'
         : 'Was sucht Ihr Kunde?';
-  const pageTagline = phase === 'followup' || phase === 'capture'
+  const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit'
     ? ''
     : phase === 'review'
       ? `${Math.round((parsed?.confidence ?? 0) * 100)} % sicher · bitte kurz prüfen`
@@ -409,6 +532,7 @@ export default function DealerAIPage() {
 
   const showMainHero = phase !== 'followup'
     && phase !== 'capture'
+    && phase !== 'offer-edit'
     && !(phase === 'input' && startView !== 'home');
 
   const vehicleCard = parsed?.ok && result
@@ -421,7 +545,7 @@ export default function DealerAIPage() {
 
   return (
     <div className="dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'followup' || phase === 'offer-edit' ? ' dealer-ai-main--akte' : ''}`}>
         {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
@@ -508,9 +632,32 @@ export default function DealerAIPage() {
             onStartNewWish={handleStartNewWish}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
+            onOpenOfferEdit={handleOpenOfferEdit}
             onReturnToReview={handleReturnToReview}
             onDiscard={handleDiscard}
             onAddHistory={handleLeadHistory}
+            isSaving={isSavingLead}
+          />
+        )}
+
+        {phase === 'offer-edit' && result?.type === 'lead' && offerEditCard && (
+          <CustomerOfferEditView
+            card={offerEditCard}
+            customerName={activeLead?.contact?.name ?? ''}
+            phone={activeLead?.contact?.phone ?? ''}
+            email={activeLead?.contact?.email ?? ''}
+            referenceCode={activeLead?.referenceCode ?? activeLead?.offerCode ?? null}
+            deliveryNote={activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? ''}
+            offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
+            history={activeLead?.history ?? []}
+            telHref={phoneTelHref(activeLead?.contact?.phone ?? '')}
+            onBack={handleBackFromOffer}
+            onSave={handleOfferSave}
+            onUploadPdf={handleOfferUploadPdf}
+            onCreateLink={handleOfferCreateLink}
+            onDeletePdf={handleOfferDeletePdf}
+            onMarkSent={handleOfferMarkSent}
+            onStatusChange={handleOfferStatusChange}
             isSaving={isSavingLead}
           />
         )}
