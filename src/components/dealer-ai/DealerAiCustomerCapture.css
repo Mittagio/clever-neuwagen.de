@@ -1,0 +1,661 @@
+.dai-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 4px 24px;
+}
+
+/* ── Clever-Stärke Header ── */
+.dai-capture-staerke {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.dai-capture-staerke__wish {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dai-capture-staerke__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.dai-capture-staerke__pct {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.dai-capture-staerke__race {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dai-capture-staerke__pin {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.45;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.dai-capture-staerke__pin--start {
+  font-size: 0.875rem;
+}
+
+.dai-capture-staerke__pin--goal.is-near {
+  opacity: 0.75;
+  transform: scale(1.05);
+}
+
+.dai-capture-staerke__pin--goal.is-reached {
+  opacity: 1;
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.45));
+}
+
+.dai-capture-staerke__bar {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: visible;
+}
+
+.dai-capture-staerke__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #64748b, #1e293b);
+  transition: width 0.55s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.dai-capture-staerke__car {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.125rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.12));
+  transition: left 0.55s cubic-bezier(0.34, 1.2, 0.64, 1);
+  z-index: 1;
+}
+
+.dai-capture-staerke__car.is-launch-ready {
+  animation: dai-car-bar-launch 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+@keyframes dai-car-bar-launch {
+  0% {
+    transform: translateY(-50%) scale(1);
+  }
+  40% {
+    transform: translateY(-58%) scale(1.12) rotate(-4deg);
+  }
+  100% {
+    transform: translateY(-72%) scale(0.9) rotate(0deg);
+    opacity: 0.85;
+  }
+}
+
+.dai-capture-staerke__tier {
+  margin: 10px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-capture-staerke__text {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+/* ── Reward / Auto hebt ab ── */
+.dai-capture-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.dai-capture-reward__glow {
+  position: absolute;
+  inset: 20% 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.25) 0%, transparent 70%);
+  animation: dai-reward-glow 2s ease-out forwards;
+}
+
+.dai-capture-reward__track {
+  position: relative;
+  height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.dai-capture-reward__car {
+  font-size: 3.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 8px 16px rgba(15, 23, 42, 0.15));
+  animation: dai-car-liftoff 1.8s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.dai-capture-reward__spark {
+  position: absolute;
+  font-size: 0.875rem;
+  color: #fbbf24;
+  opacity: 0;
+  animation: dai-spark-float 1.6s ease-out forwards;
+}
+
+.dai-capture-reward__spark--1 {
+  left: 28%;
+  bottom: 30%;
+  animation-delay: 0.3s;
+}
+
+.dai-capture-reward__spark--2 {
+  right: 26%;
+  bottom: 40%;
+  animation-delay: 0.5s;
+}
+
+.dai-capture-reward__spark--3 {
+  left: 50%;
+  bottom: 20%;
+  animation-delay: 0.7s;
+}
+
+.dai-capture-reward__title {
+  margin: 16px 0 4px;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  animation: dai-reward-fade-in 0.6s ease 0.8s both;
+}
+
+.dai-capture-reward__sub {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #64748b;
+  animation: dai-reward-fade-in 0.6s ease 1s both;
+}
+
+@keyframes dai-car-liftoff {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(-12px) scale(1.08) rotate(-2deg);
+  }
+  70% {
+    transform: translateY(-56px) scale(0.95) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-72px) scale(0.88) rotate(0deg);
+    opacity: 0.85;
+  }
+}
+
+@keyframes dai-spark-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(1.2);
+  }
+}
+
+@keyframes dai-reward-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes dai-reward-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Eingabe-Karte ── */
+.dai-capture-card {
+  padding: 20px 18px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  animation: dai-card-enter 0.3s ease;
+}
+
+@keyframes dai-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dai-capture-card__title {
+  margin: 0 0 6px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.dai-capture-card__subline {
+  margin: 0 0 18px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.dai-capture-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.dai-capture-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dai-capture-field__input {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1.0625rem;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dai-capture-field__input:focus {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+  background: #fff;
+}
+
+.dai-capture-field__input--area {
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.dai-capture-field__hint {
+  margin: -6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #94a3b8;
+}
+
+.dai-capture-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dai-capture-chips--phone .dai-capture-chip {
+  min-width: 52px;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+}
+
+.dai-capture-chips--notes .dai-capture-chip {
+  font-size: 0.75rem;
+  padding: 8px 12px;
+}
+
+.dai-capture-chips--type {
+  margin-bottom: 14px;
+}
+
+.dai-capture-chips--type .dai-capture-chip {
+  padding: 8px 13px;
+  font-size: 0.8125rem;
+}
+
+.dai-capture-chip {
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dai-capture-chip:active,
+.dai-capture-chip.is-active {
+  border-color: #334155;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.dai-capture-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.dai-capture-skip {
+  align-self: center;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.dai-known-customer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dai-known-customer__name {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-known-customer__line {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.dai-known-customer__hints {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+/* ── Kundenvorschläge / Dublettenprüfung ── */
+.dai-customer-matches {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  background: linear-gradient(180deg, #fafbfc 0%, #f8fafc 100%);
+}
+
+.dai-customer-matches--strong {
+  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.dai-customer-matches__title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.dai-customer-matches__sub {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.dai-customer-matches__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dai-customer-match {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.dai-customer-match--strong {
+  border-color: #94a3b8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.dai-customer-match__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-customer-match__line {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.dai-customer-match__line--muted {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.dai-customer-match__hint {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.dai-customer-match__hint--seller {
+  color: #475569;
+  font-weight: 500;
+}
+
+.dai-customer-match__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.dai-cta--compact,
+.dai-btn--compact {
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  min-height: auto;
+}
+
+.dai-capture-skip--inline {
+  margin-left: auto;
+}
+
+.dai-capture-skip--block {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* ── Abschluss ── */
+.dai-capture-done {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+}
+
+.dai-capture-done__kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.dai-capture-done__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 6px;
+}
+
+.dai-capture-done__customer {
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.dai-capture-done__vehicle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #334155;
+}
+
+.dai-capture-done__ref {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+}
+
+.dai-capture-done__badge {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.dai-capture-done__message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.dai-capture-done__message-line {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #0f172a;
+}
+
+.dai-capture-done__message-line--sub {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.dai-capture-done__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dai-capture-reward__car,
+  .dai-capture-reward__spark,
+  .dai-capture-reward__glow,
+  .dai-capture-reward__title,
+  .dai-capture-reward__sub,
+  .dai-capture-card,
+  .dai-capture-staerke__fill,
+  .dai-capture-staerke__car,
+  .dai-capture-staerke__pin {
+    animation: none !important;
+    transition: none !important;
+  }
+}

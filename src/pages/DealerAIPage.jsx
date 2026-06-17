@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { usePublishedDealerConditions, useDraftDealerConditions } from '../context/DealerConditionsContext.jsx';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useOffers } from '../context/OffersContext.jsx';
@@ -13,10 +13,17 @@ import { resolveDealerAiVehicleSuggestions } from '../services/dealerAiVehicleSu
 import { pipelineToLeadStatus } from '../services/dealerAiLeadCrm.js';
 import { mergeChipIds } from '../services/sales/conversationVoiceParser.js';
 import { executeDealerAiAction, formatDealerAiVehicleCard } from '../services/dealerAiActions.js';
-import SalesAssistantInput from '../components/sales-advisor/SalesAssistantInput.jsx';
+import {
+  extractCarryCustomerFromLead,
+  hasKnownCustomerContact,
+} from '../services/dealerAiCustomer.js';
+import DealerAiStartScreen from '../components/dealer-ai/DealerAiStartScreen.jsx';
+import DealerAiCleverBeratung from '../components/dealer-ai/DealerAiCleverBeratung.jsx';
+import DealerAiModelFlow from '../components/dealer-ai/DealerAiModelFlow.jsx';
 import DealerAiAnalysisCard from '../components/dealer-ai/DealerAiAnalysisCard.jsx';
 import DealerAiSuggestedModels from '../components/dealer-ai/DealerAiSuggestedModels.jsx';
 import DealerAiReviewBar from '../components/dealer-ai/DealerAiReviewBar.jsx';
+import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
 import DealerAiLeadFollowUp from '../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import DealerAiResultPanel from '../components/dealer-ai/DealerAiResultPanel.jsx';
 import './DealerAIPage.css';
@@ -33,12 +40,16 @@ export default function DealerAIPage() {
   const [selectedChipIds, setSelectedChipIds] = useState([]);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [parsed, setParsed] = useState(null);
-  const [selectedModelId, setSelectedModelId] = useState(null);
+  const [selectedModelIds, setSelectedModelIds] = useState([]);
   const [result, setResult] = useState(null);
   const [phase, setPhase] = useState('input');
+  const [startView, setStartView] = useState('home');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isSavingLead, setIsSavingLead] = useState(false);
+  const [isFreshLead, setIsFreshLead] = useState(false);
+  const [isReturningWish, setIsReturningWish] = useState(false);
+  const [carryCustomer, setCarryCustomer] = useState(null);
   const [toast, setToast] = useState('');
 
   const showToast = useCallback((msg) => {
@@ -54,26 +65,23 @@ export default function DealerAIPage() {
     };
   }, [conditions, selectedChipIds]);
 
-  const toggleChip = useCallback((chipId) => {
-    setSelectedChipIds((prev) =>
-      prev.includes(chipId) ? prev.filter((id) => id !== chipId) : [...prev, chipId],
-    );
-  }, []);
-
-  const buildCombinedText = useCallback(() => {
+  const buildCombinedText = useCallback((extra = {}) => {
+    const extraChips = extra.chipIds ?? [];
+    const allChipIds = [...new Set([...selectedChipIds, ...extraChips])];
     const textParts = [];
+    if (extra.modelName) textParts.push(`Kia ${extra.modelName}`);
     if (voiceTranscript?.trim()) textParts.push(voiceTranscript.trim());
     if (input?.trim() && input.trim() !== voiceTranscript?.trim()) {
       textParts.push(input.trim());
     }
     return buildDealerAiTextFromWishes({
-      chipIds: selectedChipIds,
+      chipIds: allChipIds,
       transcript: textParts.join('. '),
     });
   }, [selectedChipIds, voiceTranscript, input]);
 
-  function runAnalysis() {
-    const combined = buildCombinedText();
+  function runAnalysis(extra = {}) {
+    const combined = buildCombinedText(extra);
     setIsAnalyzing(true);
     setResult(null);
     const next = parseDealerAiInput(combined);
@@ -84,8 +92,17 @@ export default function DealerAIPage() {
       return;
     }
 
-    setParsed(enrichWithSuggestions(next));
-    setSelectedModelId(null);
+    const extraChips = extra.chipIds ?? [];
+    if (extraChips.length) {
+      setSelectedChipIds((prev) => [...new Set([...prev, ...extraChips])]);
+    }
+    if (extra.modelName && !input.trim()) {
+      setInput(`Kia ${extra.modelName}`);
+    }
+
+    setParsed(enrichWithSuggestions(next, [...selectedChipIds, ...extraChips]));
+    setSelectedModelIds([]);
+    setStartView('home');
     setPhase('review');
   }
 
@@ -104,21 +121,39 @@ export default function DealerAIPage() {
     }
   }
 
+  function resetWishInput() {
+    setInput('');
+    setSelectedChipIds([]);
+    setVoiceTranscript('');
+    setParsed(null);
+    setSelectedModelIds([]);
+    setResult(null);
+    setStartView('home');
+  }
+
   function handleEdit() {
     setPhase('input');
+    setStartView('home');
     setParsed(null);
-    setSelectedModelId(null);
+    setSelectedModelIds([]);
     setResult(null);
     inputRef.current?.focus();
   }
 
   function handleDiscard() {
-    setInput('');
-    setSelectedChipIds([]);
-    setVoiceTranscript('');
-    setParsed(null);
-    setSelectedModelId(null);
-    setResult(null);
+    resetWishInput();
+    setCarryCustomer(null);
+    setIsFreshLead(false);
+    setIsReturningWish(false);
+    setPhase('input');
+  }
+
+  function handleStartNewWish(sourceLead) {
+    const carry = extractCarryCustomerFromLead(sourceLead);
+    resetWishInput();
+    setCarryCustomer(carry);
+    setIsReturningWish(Boolean(carry));
+    setIsFreshLead(false);
     setPhase('input');
   }
 
@@ -126,16 +161,22 @@ export default function DealerAIPage() {
     setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, patch)));
   }
 
-  function handleReserveModel(model) {
-    setSelectedModelId(model.id);
-    const vehicle = model.primaryMatch?.vehicle;
-    setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, {
-      model: vehicle?.model ?? model.name.replace(/^Kia\s+/i, ''),
-      brand: vehicle?.brand ?? 'Kia',
-      modelId: model.modelKey ?? model.id,
-      trimLabel: vehicle?.trim ?? prev?.fields?.trimLabel,
-      trimId: vehicle?.trimId ?? prev?.fields?.trimId,
-    })));
+  function handleToggleReserveModel(model) {
+    setSelectedModelIds((prev) => {
+      const isSelected = prev.includes(model.id);
+      const next = isSelected ? prev.filter((id) => id !== model.id) : [...prev, model.id];
+      if (!isSelected && next.length === 1) {
+        const vehicle = model.primaryMatch?.vehicle;
+        setParsed((p) => enrichWithSuggestions(applyDealerAiFields(p, {
+          model: vehicle?.model ?? model.name.replace(/^Kia\s+/i, ''),
+          brand: vehicle?.brand ?? 'Kia',
+          modelId: model.modelKey ?? model.id,
+          trimLabel: vehicle?.trim ?? p?.fields?.trimLabel,
+          trimId: vehicle?.trimId ?? p?.fields?.trimId,
+        })));
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -145,10 +186,24 @@ export default function DealerAIPage() {
     const next = parseDealerAiInput(wishText);
     if (next.ok) {
       setParsed(enrichWithSuggestions(next));
-      setSelectedModelId(null);
+      setSelectedModelIds([]);
       setPhase('review');
     }
-  }, [location.state]);
+  }, [location.state?.wishText, enrichWithSuggestions]);
+
+  useEffect(() => {
+    const leadId = location.state?.leadId;
+    if (!leadId) return;
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    setResult({ type: 'lead', leadId });
+    setIsFreshLead(Boolean(location.state?.fresh));
+    setPhase('followup');
+    if (lead.notes) {
+      const next = parseDealerAiInput(lead.notes);
+      if (next.ok) setParsed(enrichWithSuggestions(next));
+    }
+  }, [location.state?.leadId, leads, enrichWithSuggestions]);
 
   useEffect(() => {
     if (!location.state?.focusText || phase !== 'input') return;
@@ -171,12 +226,22 @@ export default function DealerAIPage() {
         linkLead,
         addInventoryItem,
         publishChanges,
-        selectedModelId,
+        selectedModelIds,
+        carryCustomer,
       });
 
       setResult(actionResult);
-      setPhase(actionResult.type === 'lead' ? 'followup' : 'done');
-      showToast(actionResult.message);
+      if (actionResult.type === 'lead') {
+        setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
+        setPhase('capture');
+      } else if (actionResult.type === 'offer' && actionResult.leadId) {
+        setPhase('followup');
+        setIsFreshLead(false);
+        showToast('Angebot vorbereitet');
+      } else {
+        setPhase('done');
+        showToast(actionResult.message);
+      }
     } catch (err) {
       showToast(err.message ?? 'Aktion fehlgeschlagen');
     } finally {
@@ -188,8 +253,28 @@ export default function DealerAIPage() {
     runAction('create_sales_opportunity');
   }
 
-  function handlePrepareOffer() {
+  function handlePrepareOffer(reservedModel) {
     if (!parsed?.ok) return;
+    if (reservedModel) {
+      const full = parsed.suggestedModels?.find((m) => m.id === reservedModel.id);
+      const vehicle = full?.primaryMatch?.vehicle;
+      if (vehicle) {
+        setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, {
+          model: vehicle.model ?? reservedModel.name?.replace(/^Kia\s+/i, ''),
+          brand: vehicle.brand ?? 'Kia',
+          modelId: reservedModel.modelKey ?? reservedModel.id,
+          trimLabel: vehicle.trim ?? reservedModel.trimLabel ?? prev?.fields?.trimLabel,
+          trimId: vehicle.trimId ?? prev?.fields?.trimId,
+        })));
+      } else {
+        setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, {
+          model: reservedModel.name?.replace(/^Kia\s+/i, '') ?? prev?.fields?.model,
+          brand: 'Kia',
+          modelId: reservedModel.modelKey ?? reservedModel.id,
+          trimLabel: reservedModel.trimLabel ?? prev?.fields?.trimLabel,
+        })));
+      }
+    }
     const actionId = suggestActionForPaymentType(parsed.fields.paymentType ?? 'unknown');
     if (actionId === 'create_sales_opportunity') {
       runAction('create_offer');
@@ -198,8 +283,10 @@ export default function DealerAIPage() {
     runAction(actionId);
   }
 
-  function handleDraftReply() {
-    runAction('draft_reply');
+  function handleReturnToReview() {
+    const ids = activeLead?.crm?.reservedModels?.map((m) => m.id) ?? selectedModelIds;
+    setSelectedModelIds(ids);
+    setPhase('review');
   }
 
   const activeLead = result?.leadId
@@ -221,7 +308,7 @@ export default function DealerAIPage() {
       );
     }
     setIsSavingLead(false);
-    showToast('Gespeichert');
+    if (!meta.silent) showToast('Gespeichert');
   }
 
   function handleLeadHistory(text, type = 'note', options = {}) {
@@ -240,60 +327,138 @@ export default function DealerAIPage() {
     showToast('Eintrag in Historie gespeichert');
   }
 
+  function handleCaptureSave(patch, meta = {}) {
+    if (!result?.leadId) return;
+    const current = activeLead;
+    updateLead(result.leadId, {
+      ...(patch.customerId ? { customerId: patch.customerId } : {}),
+      contact: {
+        ...(current?.contact ?? {}),
+        ...patch.contact,
+      },
+      notes: patch.notes ?? current?.notes ?? '',
+    });
+    if (!meta.silent && meta.historyText) {
+      addHistory(result.leadId, meta.historyText, 'note');
+    }
+  }
+
+  function handleAdoptCustomer(adoption = {}) {
+    if (!result?.leadId) return;
+    const current = activeLead;
+    if (adoption.forceNew) {
+      updateLead(result.leadId, {
+        customerId: adoption.customerId,
+      });
+      return;
+    }
+    const profile = adoption.profile;
+    if (!profile) return;
+    updateLead(result.leadId, {
+      customerId: profile.customerId,
+      contact: {
+        ...(current?.contact ?? {}),
+        name: profile.contact.name,
+        phone: profile.contact.phone ?? '',
+        email: profile.contact.email ?? '',
+      },
+      ...(profile.kundenhelfer
+        ? { crm: { ...(current?.crm ?? {}), kundenhelfer: profile.kundenhelfer } }
+        : {}),
+    });
+  }
+
+  function handleOpenCustomerLead(leadId) {
+    const target = leads.find((l) => l.id === leadId);
+    if (!target) return;
+    setResult({ type: 'lead', leadId });
+    setPhase('followup');
+    setIsFreshLead(false);
+    setIsReturningWish(false);
+    if (target.notes) {
+      const next = parseDealerAiInput(target.notes);
+      if (next.ok) setParsed(enrichWithSuggestions(next));
+    }
+  }
+
+  function handleCaptureComplete() {
+    setCarryCustomer(null);
+    setPhase('followup');
+    setIsFreshLead(true);
+  }
+
+  function handleEnterLeadDetail() {
+    setIsFreshLead(false);
+  }
+
   const pageKicker = 'Digitaler Verkaufsassistent';
-  const pageTitle = phase === 'followup' || (phase === 'done' && result?.type === 'lead')
-    ? 'Verkaufschance angelegt'
-    : phase === 'review' || (phase === 'done' && result?.type !== 'lead')
-      ? 'Ich habe erkannt'
-      : 'Was sucht Ihr Kunde?';
-  const pageTagline = phase === 'followup' || (phase === 'done' && result?.type === 'lead')
-    ? 'Ergänzen Sie Kundendaten und planen Sie den nächsten Schritt.'
+  const pageTitle = phase === 'followup' || phase === 'capture'
+    ? ''
+    : phase === 'review'
+      ? 'Kundenwunsch'
+      : phase === 'done' && result?.type !== 'lead'
+        ? 'Ich habe erkannt'
+        : 'Was sucht Ihr Kunde?';
+  const pageTagline = phase === 'followup' || phase === 'capture'
+    ? ''
     : phase === 'review'
       ? `${Math.round((parsed?.confidence ?? 0) * 100)} % sicher · bitte kurz prüfen`
       : phase === 'input'
-        ? 'Sprechen, schreiben oder anklicken – aus jedem Kundenwunsch wird eine Verkaufschance.'
+        ? ''
         : 'Bitte kurz prüfen.';
+
+  const showMainHero = phase !== 'followup'
+    && phase !== 'capture'
+    && !(phase === 'input' && startView !== 'home');
 
   const vehicleCard = parsed?.ok && result
     ? formatDealerAiVehicleCard(parsed.fields, conditions)
     : null;
 
-  const hasVoiceTranscript = Boolean(voiceTranscript?.trim());
+  const captureKnownCustomer = activeLead
+    ? hasKnownCustomerContact(activeLead.contact)
+    : Boolean(carryCustomer);
 
   return (
     <div className="dealer-ai-page">
-      <header className="dealer-ai-header">
-        <div className="dealer-ai-header__row">
-          <Link to="/backend" className="dealer-ai-back">← Backend</Link>
-          <div className="dealer-ai-header__links">
-            <Link to="/offers">Angebote</Link>
-            <Link to="/communication">Verkaufschancen</Link>
-          </div>
-        </div>
-      </header>
-
       <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}`}>
-        {phase !== 'followup' && (
+        {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
               <p className="dealer-ai-kicker">{pageKicker}</p>
             )}
             <h1 className="dealer-ai-title">{pageTitle}</h1>
-            <p className="dealer-ai-tagline">{pageTagline}</p>
+            {pageTagline && <p className="dealer-ai-tagline">{pageTagline}</p>}
           </div>
         )}
 
-        {phase === 'input' && (
-          <SalesAssistantInput
+        {phase === 'input' && startView === 'home' && (
+          <DealerAiStartScreen
             text={input}
             onTextChange={setInput}
-            selectedChipIds={selectedChipIds}
-            onToggleChip={toggleChip}
             onVoiceParsed={handleVoiceParsed}
-            onEvaluate={runAnalysis}
+            onEvaluate={() => runAnalysis()}
+            onStartAdvice={() => setStartView('advice')}
+            onStartModel={() => setStartView('model')}
             isAnalyzing={isAnalyzing}
             inputRef={inputRef}
-            hasVoiceTranscript={hasVoiceTranscript}
+            carryCustomer={carryCustomer}
+          />
+        )}
+
+        {phase === 'input' && startView === 'advice' && (
+          <DealerAiCleverBeratung
+            onBack={() => setStartView('home')}
+            onEvaluate={(chipIds) => runAnalysis({ chipIds })}
+            isAnalyzing={isAnalyzing}
+          />
+        )}
+
+        {phase === 'input' && startView === 'model' && (
+          <DealerAiModelFlow
+            onBack={() => setStartView('home')}
+            onEvaluate={({ model, chipIds }) => runAnalysis({ modelName: model.name, chipIds })}
+            isAnalyzing={isAnalyzing}
           />
         )}
 
@@ -305,19 +470,29 @@ export default function DealerAIPage() {
             />
             <DealerAiSuggestedModels
               models={parsed.suggestedModels}
-              selectedModelId={selectedModelId}
-              onReserve={handleReserveModel}
+              selectedModelIds={selectedModelIds}
+              onToggleReserve={handleToggleReserveModel}
             />
             <DealerAiReviewBar
-              reservedModel={parsed.suggestedModels?.find((m) => m.id === selectedModelId)}
+              reservedCount={selectedModelIds.length}
               onCreateLead={handleCreateLead}
-              onPrepareOffer={handlePrepareOffer}
-              onDraftReply={handleDraftReply}
               onEdit={handleEdit}
-              onDiscard={handleDiscard}
               isExecuting={isExecuting}
             />
           </>
+        )}
+
+        {phase === 'capture' && result?.type === 'lead' && parsed?.ok && (
+          <DealerAiCustomerCapture
+            parsed={parsed}
+            lead={activeLead}
+            leads={leads}
+            knownCustomer={captureKnownCustomer}
+            onSave={handleCaptureSave}
+            onComplete={handleCaptureComplete}
+            onAdoptCustomer={handleAdoptCustomer}
+            onOpenLead={handleOpenCustomerLead}
+          />
         )}
 
         {phase === 'followup' && result?.type === 'lead' && (
@@ -325,8 +500,15 @@ export default function DealerAIPage() {
             result={result}
             parsed={parsed}
             lead={activeLead}
+            leads={leads}
+            isFresh={isFreshLead}
+            isReturningWish={isReturningWish}
+            onEnterDetail={handleEnterLeadDetail}
+            onNewWish={handleDiscard}
+            onStartNewWish={handleStartNewWish}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
+            onReturnToReview={handleReturnToReview}
             onDiscard={handleDiscard}
             onAddHistory={handleLeadHistory}
             isSaving={isSavingLead}

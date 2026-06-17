@@ -1,0 +1,830 @@
+/* ── Verkaufsassistent Start & Flows (Navy / Weiß, App-like) ── */
+
+.dai-start,
+.dai-advice,
+.dai-model-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dai-start__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dai-start__carry {
+  margin: 0 0 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.dai-start__carry strong {
+  color: #0f172a;
+}
+
+/* Entry cards */
+.dai-entry {
+  border: 1px solid #e8edf3;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(11, 23, 54, 0.06);
+}
+
+.dai-entry--hero {
+  padding: 18px 18px 16px;
+}
+
+.dai-entry__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.dai-entry--link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dai-entry--link:hover:not(:disabled) {
+  border-color: #c7d2e0;
+  box-shadow: 0 6px 28px rgba(11, 23, 54, 0.09);
+}
+
+.dai-entry--link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dai-entry__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.dai-entry__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.dai-entry__icon--blue { background: #e8f0fe; }
+.dai-entry__icon--green { background: #e8f8ef; }
+.dai-entry__icon--purple { background: #f0ecfc; }
+
+.dai-entry__step {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #0b1736;
+  color: #fff;
+}
+
+.dai-entry__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dai-entry__title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0b1736;
+}
+
+.dai-entry__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.dai-entry__chev {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+/* Mode tabs */
+.dai-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 14px 0 10px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #f1f5f9;
+}
+
+.dai-mode-tab {
+  min-height: 40px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.dai-mode-tab.is-active {
+  background: #fff;
+  color: #0b1736;
+  box-shadow: 0 1px 4px rgba(11, 23, 54, 0.08);
+}
+
+/* Capture textarea */
+.dai-capture {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.dai-capture__field {
+  width: 100%;
+  min-height: 120px;
+  padding: 14px 52px 14px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  resize: vertical;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.dai-capture__field:focus {
+  outline: none;
+  border-color: #0b1736;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.1);
+}
+
+.dai-inline-mic--fab {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+}
+
+.dai-inline-mic--fab .dai-inline-mic__btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(11, 23, 54, 0.12);
+  font-size: 1.125rem;
+}
+
+.dai-inline-mic__btn--active {
+  background: #fee2e2 !important;
+  border-color: #f87171 !important;
+}
+
+/* Primary CTA */
+.dai-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.dai-cta--primary {
+  width: 100%;
+  background: #0b1736;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(11, 23, 54, 0.22);
+}
+
+.dai-cta--primary:hover:not(:disabled) {
+  background: #152347;
+}
+
+.dai-cta--primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.dai-cta--block {
+  margin-top: 4px;
+}
+
+.dai-cta__spark {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.dai-cta__arrow {
+  font-size: 1.125rem;
+  margin-left: 2px;
+}
+
+/* ── Clever-Beratung ── */
+
+.dai-advice-hero,
+.dai-model-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dai-advice-hero__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dai-advice-hero__title,
+.dai-model-hero__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0b1736;
+  line-height: 1.1;
+}
+
+.dai-advice-hero__sub,
+.dai-model-hero__sub {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.dai-advice-hero__art {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #e8f0fe, #f0f4ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.dai-flow__back {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0b1736;
+  cursor: pointer;
+}
+
+.dai-advice-card {
+  padding: 18px 16px 16px;
+  border: 1px solid #e8edf3;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(11, 23, 54, 0.07);
+}
+
+.dai-advice-step__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dai-advice-step__num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e8f0fe;
+  color: #0b1736;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dai-advice-step__labels {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dai-advice-step__section {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dai-advice-step__progress {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: #0b1736;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.dai-advice-step__title {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0b1736;
+  line-height: 1.2;
+}
+
+.dai-advice-step__hint {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+/* Vehicle type cards */
+.dai-vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.dai-vehicle-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px 14px;
+  border: 2px solid #e8edf3;
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dai-vehicle-card.is-active {
+  border-color: #3b82f6;
+  background: #f0f7ff;
+}
+
+.dai-vehicle-card__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0b1736;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dai-vehicle-card__img {
+  width: 100%;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.dai-vehicle-card__emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.dai-vehicle-card__label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0b1736;
+  text-align: center;
+}
+
+/* Powertrain row */
+.dai-powertrain-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dai-powertrain {
+  flex: 1 1 calc(33% - 8px);
+  min-width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 2px solid #e8edf3;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dai-powertrain.is-active {
+  border-color: #3b82f6;
+  background: #f0f7ff;
+}
+
+.dai-powertrain__icon {
+  font-size: 1.25rem;
+}
+
+.dai-powertrain__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0b1736;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Chips */
+.dai-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dai-chip-grid--compact {
+  padding: 10px 0 4px;
+}
+
+.dai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.dai-chip.is-active {
+  border-color: #0b1736;
+  background: #0b1736;
+  color: #fff;
+}
+
+.dai-chip__emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dai-advice-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.dai-advice-skip {
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dai-advice-skip:hover:not(:disabled) {
+  color: #0b1736;
+}
+
+/* ── Modell wählen ── */
+
+.dai-model-search-row {
+  margin-top: -4px;
+}
+
+.dai-model-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  min-height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.dai-model-search-wrap:focus-within {
+  border-color: #0b1736;
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.1);
+}
+
+.dai-model-search__icon {
+  font-size: 1rem;
+  opacity: 0.5;
+}
+
+.dai-model-search {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: #0f172a;
+}
+
+.dai-model-search:focus {
+  outline: none;
+}
+
+.dai-model-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.dai-model-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px 10px 12px;
+  border: 2px solid #e8edf3;
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  box-shadow: 0 2px 8px rgba(11, 23, 54, 0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dai-model-tile.is-active {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+}
+
+.dai-model-tile__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0b1736;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dai-model-tile__img {
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
+
+.dai-model-tile__placeholder {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 6px;
+}
+
+.dai-model-tile__name {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #0b1736;
+  letter-spacing: -0.02em;
+}
+
+.dai-model-tile__tagline {
+  margin-top: 2px;
+  font-size: 0.625rem;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.dai-model-tile__badge {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dai-model-tile__badge--neu,
+.dai-model-tile__badge--elektro {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.dai-model-tile__badge--bestseller {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.dai-model-tile__badge--hybrid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.dai-model-options {
+  padding: 16px;
+  border: 1px solid #e8edf3;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(11, 23, 54, 0.05);
+}
+
+.dai-model-options__title {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.dai-model-option__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dai-model-option:last-child .dai-model-option__row {
+  border-bottom: none;
+}
+
+.dai-model-option__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.dai-model-option__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.dai-model-option__value {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.dai-model-option__chev {
+  color: #94a3b8;
+  font-size: 1.25rem;
+  font-weight: 300;
+}
+
+.dai-model-options__note {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.45;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* Footer */
+.dai-flow-footer {
+  margin-top: 8px;
+  padding: 16px 0 8px;
+  text-align: center;
+}
+
+.dai-flow-footer__brand {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.dai-flow-footer__mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0b1736;
+  color: #fff;
+  font-size: 0.625rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dai-flow-footer__tag {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .dai-model-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .dai-vehicle-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dai-start__stack {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+
+  .dai-entry--hero {
+    grid-row: span 2;
+  }
+}

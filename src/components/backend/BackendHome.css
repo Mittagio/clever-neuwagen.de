@@ -1,8 +1,122 @@
 .backend-home {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   max-width: 960px;
+}
+
+.backend-home__today-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.backend-home__today-motivation {
+  margin: 4px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.backend-home__today-greeting {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.backend-home__daily-goal {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.backend-home__daily-goal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.backend-home__daily-goal-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.backend-home__daily-goal-pct {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.backend-home__daily-goal-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.backend-home__daily-goal-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #64748b, #334155);
+}
+
+.backend-home__daily-goal-text {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.backend-home__daily-goal-sub {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.backend-home__coach-card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #fed7aa;
+  background: linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%);
+}
+
+.backend-home__coach-title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.backend-home__coach-text {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.backend-home__coach-cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.backend-home__reminder {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
 }
 
 .backend-home__hero {
@@ -34,7 +148,7 @@
 }
 
 .backend-home__section-title {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -94,12 +208,6 @@
 .backend-home__today-hint {
   font-size: 0.6875rem;
   color: var(--color-text-muted);
-}
-
-.backend-home__reminder {
-  margin: 12px 0 0;
-  font-size: 0.8125rem;
-  color: #c2410c;
 }
 
 .backend-home__reminder a {
@@ -621,7 +729,24 @@
 
 @media (max-width: 640px) {
   .backend-home__advisor-hero {
-    padding: 18px 14px;
+    padding: 16px 14px;
+    border-radius: 18px;
+    box-shadow: 0 10px 32px rgba(11, 23, 54, 0.22);
+  }
+
+  .backend-home__advisor-badge {
+    margin-bottom: 6px;
+    font-size: 0.625rem;
+  }
+
+  .backend-home__advisor-title {
+    font-size: 1.375rem;
+  }
+
+  .backend-home__advisor-subline {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    line-height: 1.4;
   }
 
   .backend-home__advisor-visual {
@@ -630,10 +755,255 @@
 
   .backend-home__advisor-actions {
     flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
   }
 
-  .backend-home__advisor-btn {
+  .backend-home__advisor-btn--primary {
     width: 100%;
+  }
+
+  .backend-home__advisor-btn--secondary {
+    width: auto;
+    min-height: auto;
+    align-self: center;
+    padding: 6px 4px;
+    border: none;
+    background: transparent;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    opacity: 0.88;
+  }
+
+  .backend-home__advisor-trust {
+    display: none;
+  }
+}
+
+/* Clever-Lexikon */
+.backend-home__lexikon {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+.backend-home__lexikon-head {
+  margin-bottom: 14px;
+}
+
+.backend-home__lexikon-subline {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.backend-home__lexikon-search {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backend-home__lexikon-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.backend-home__lexikon-field-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 1rem;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.backend-home__lexikon-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px 12px 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.backend-home__lexikon-input:focus {
+  outline: none;
+  border-color: var(--color-brand, #0b1736);
+  box-shadow: 0 0 0 2px rgba(11, 23, 54, 0.1);
+}
+
+.backend-home__lexikon-submit {
+  min-height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: var(--color-brand, #0b1736);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backend-home__lexikon-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.backend-home__lexikon-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.backend-home__lexikon-chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backend-home__lexikon-chip.is-active,
+.backend-home__lexikon-chip:active {
+  border-color: var(--color-brand, #0b1736);
+  background: #eef2ff;
+}
+
+.backend-home__lexikon-result {
+  margin-top: 14px;
+}
+
+.backend-home__lexikon-empty {
+  margin: 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.backend-home__lexikon-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.backend-home__lexikon-card--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.backend-home__lexikon-question {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.backend-home__lexikon-model {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.backend-home__lexikon-field-label {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__lexikon-answer {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.backend-home__lexikon-source {
+  margin: 10px 0 0;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.backend-home__lexikon-more {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent, #2563eb);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.backend-home__lexikon-extras {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backend-home__lexikon-extras li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8125rem;
+}
+
+.backend-home__lexikon-extras li span {
+  color: #64748b;
+}
+
+.backend-home__lexikon-extras li strong {
+  text-align: right;
+  color: #0f172a;
+}
+
+@media (min-width: 640px) {
+  .backend-home__lexikon-search {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .backend-home__lexikon-field {
+    flex: 1;
+  }
+
+  .backend-home__lexikon-submit {
+    flex-shrink: 0;
+    padding: 0 24px;
+  }
+
+  .backend-home__lexikon-chips {
+    flex-wrap: wrap;
+    overflow: visible;
   }
 }
 

@@ -14,6 +14,7 @@ import {
   formatPaymentDisplay,
   getActionsForPaymentType,
 } from '../../services/dealerAiParser.js';
+import { getBudgetFieldLabel } from '../../services/dealerAiBudget.js';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 
 const SHEETS = {
@@ -84,7 +85,6 @@ export default function DealerAiAnalysisCard({
   onFieldsChange,
 }) {
   const [activeSheet, setActiveSheet] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
 
   if (!parsed?.ok) return null;
 
@@ -115,7 +115,7 @@ export default function DealerAiAnalysisCard({
           onClick={() => openSheet(SHEETS.payment)}
         />
         <ReviewRow
-          label="Budget"
+          label={getBudgetFieldLabel(paymentType)}
           value={formatBudgetDisplay(fields)}
           onClick={() => openSheet(SHEETS.budget)}
         />
@@ -131,17 +131,6 @@ export default function DealerAiAnalysisCard({
         />
       </div>
 
-      {parsed.shortForm && (
-        <details
-          className="dai-shortform-details"
-          open={showDetails}
-          onToggle={(e) => setShowDetails(e.target.open)}
-        >
-          <summary>Details anzeigen</summary>
-          <p className="dai-shortform__text">{parsed.shortForm}</p>
-        </details>
-      )}
-
       <LeadDetailPanel
         open={activeSheet === SHEETS.payment}
         onClose={closeSheet}
@@ -152,7 +141,10 @@ export default function DealerAiAnalysisCard({
           value={paymentType}
           formatLabel={(id) => PAYMENT_TYPE_LABELS[id] ?? id}
           onSelect={(id) => {
-            onFieldsChange?.({ paymentType: id ?? 'unknown' });
+            const patch = { paymentType: id ?? 'unknown' };
+            if (id === 'cash') patch.desiredRate = null;
+            else if (id && id !== 'unknown') patch.desiredPrice = null;
+            onFieldsChange?.(patch);
             closeSheet();
           }}
         />
@@ -161,11 +153,11 @@ export default function DealerAiAnalysisCard({
       <LeadDetailPanel
         open={activeSheet === SHEETS.budget}
         onClose={closeSheet}
-        title="Budget"
+        title={getBudgetFieldLabel(paymentType)}
       >
         {(paymentType === 'leasing' || paymentType === 'financing' || paymentType === 'threeWayFinancing') && (
           <BudgetChips
-            label="Wunschrate"
+            label="Monatsrate"
             options={DEALER_AI_BUDGET_OPTIONS}
             suffix="€/Monat"
             value={fields.desiredRate}
@@ -174,7 +166,7 @@ export default function DealerAiAnalysisCard({
         )}
         {paymentType === 'cash' && (
           <BudgetChips
-            label="Wunschpreis"
+            label="Kaufpreis"
             options={DEALER_AI_CASH_PRICE_OPTIONS}
             suffix="€"
             value={fields.desiredPrice}
@@ -182,7 +174,7 @@ export default function DealerAiAnalysisCard({
           />
         )}
         {paymentType === 'unknown' && (
-          <p className="dai-sheet-hint">Bitte zuerst Angebotsart wählen.</p>
+          <p className="dai-sheet-hint">Angebotsart wählen – dann passt sich das Budget an.</p>
         )}
         {(paymentType === 'leasing' || paymentType === 'threeWayFinancing' || paymentType === 'financing') && (
           <>

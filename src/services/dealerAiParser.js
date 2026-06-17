@@ -4,6 +4,13 @@
 import { sportage } from '../data/kiaSportage.js';
 import { resolveTrimId, resolveEngineId, resolveColorId } from '../data/models/kia/sportageAdapter.js';
 import { matchSuggestedModels } from './dealerAiModelMatcher.js';
+import {
+  DEALER_AI_MONTHLY_BUDGET_VALUES,
+  DEALER_AI_PURCHASE_BUDGET_VALUES,
+  formatBudgetDisplay,
+} from './dealerAiBudget.js';
+
+export { formatBudgetDisplay };
 
 export const DEALER_AI_ACTIONS = {
   create_offer: {
@@ -83,10 +90,10 @@ export const DEALER_AI_TERM_OPTIONS = [24, 36, 42, 48, 60];
 export const DEALER_AI_MILEAGE_OPTIONS = [5000, 10000, 15000, 20000, 25000, 30000];
 
 /** Verkäufer-Budget-Chips (€/Monat) */
-export const DEALER_AI_BUDGET_OPTIONS = [200, 250, 300, 350, 400, 450, 500];
+export const DEALER_AI_BUDGET_OPTIONS = DEALER_AI_MONTHLY_BUDGET_VALUES;
 
 /** Wunschpreis-Chips für Kauf (€) */
-export const DEALER_AI_CASH_PRICE_OPTIONS = [25000, 30000, 35000, 40000, 45000, 50000];
+export const DEALER_AI_CASH_PRICE_OPTIONS = DEALER_AI_PURCHASE_BUDGET_VALUES;
 
 export const PAYMENT_TYPE_LABELS = {
   leasing: 'Leasing',
@@ -251,6 +258,11 @@ function parseDownPayment(text) {
 }
 
 function parseDesiredRate(text, termMonths = null, paymentType = null) {
+  const lower = text.toLowerCase();
+  const isCashContext = paymentType === 'cash'
+    || /\b(kauf|barkauf|barzahlung|bar(?:\s|-)?preis|kaufpreis)\b/i.test(lower);
+  if (isCashContext) return null;
+
   const isFinancing = paymentType === 'financing' || paymentType === 'threeWayFinancing';
 
   const labeled = text.match(/(?:wunschrate|leasing\s*ab)\s*(?:ab\s*)?(\d{2,4})\s*€/i);
@@ -279,10 +291,15 @@ function parseDesiredRate(text, termMonths = null, paymentType = null) {
 }
 
 function parseDesiredPrice(text) {
-  const labeled = text.match(/(?:barpreis|kaufpreis|wunschpreis|budget)\s*(?:bis|von|ca\.?|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i);
-  if (labeled) return parseNumber(labeled[1].replace(/\s/g, ''));
-  const unter = text.match(/unter\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€/i);
-  if (unter) return parseNumber(unter[1].replace(/\s/g, ''));
+  const patterns = [
+    /(?:kauf|barkauf|barzahlung|bar(?:\s|-)?preis|kaufpreis)\s*(?:bis|bis\s+zu|max\.?|ca\.?|ungefähr|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i,
+    /(?:barpreis|kaufpreis|wunschpreis|budget)\s*(?:bis|von|ca\.?|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i,
+    /unter\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€/i,
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m) return parseNumber(m[1].replace(/\s/g, ''));
+  }
   return null;
 }
 
@@ -350,7 +367,7 @@ function parsePaymentType(text, fields) {
   if (/\bfinanzier(?:ung|en|ungsangebot)?\b/i.test(lower) && !/\bleasing\b/i.test(lower)) {
     return 'financing';
   }
-  if (/\b(kauf|kaufen|bar\s*kaufen|barpreis|kaufangebot|barzahlung|bar\s*zahlen)\b/i.test(lower)) {
+  if (/\b(kauf|kaufen|barkauf|bar\s*kaufen|barpreis|kaufangebot|barzahlung|bar\s*zahlen)\b/i.test(lower)) {
     return 'cash';
   }
   if (/\bleasing\b/i.test(lower)) {
@@ -617,7 +634,24 @@ export function parseDealerAiInput(rawText) {
   };
 
   fields.paymentType = parsePaymentType(text, fields);
-  fields.desiredRate = parseDesiredRate(text, termMonths, fields.paymentType);
+
+  const lower = text.toLowerCase();
+  const hasRateKeyword = /\b(rate|monat|monatlich|leasing|finanzierung|im\s+monat|monatsrate)\b/i.test(lower);
+  const hasCashKeyword = /\b(kauf|barkauf|barzahlung|bar(?:\s|-)?preis|kaufpreis)\b/i.test(lower);
+
+  if (fields.paymentType === 'cash') {
+    fields.desiredPrice = fields.desiredPrice ?? parseDesiredPrice(text);
+    fields.desiredRate = null;
+  } else if (fields.paymentType !== 'unknown') {
+    fields.desiredRate = parseDesiredRate(text, termMonths, fields.paymentType);
+    fields.desiredPrice = null;
+  } else if (hasCashKeyword && !hasRateKeyword) {
+    fields.desiredPrice = fields.desiredPrice ?? parseDesiredPrice(text);
+    fields.desiredRate = null;
+  } else {
+    fields.desiredRate = parseDesiredRate(text, termMonths, fields.paymentType);
+    if (fields.desiredRate) fields.desiredPrice = null;
+  }
 
   if (fields.modelId === 'sportage' || fields.model === 'Sportage') {
     fields = resolveSportageConfig(fields);
@@ -685,20 +719,26 @@ export function formatPaymentDisplay(fields = {}) {
   return PAYMENT_TYPE_LABELS[pt] ?? 'Noch unklar';
 }
 
-export function formatBudgetDisplay(fields = {}) {
-  const pt = fields.paymentType ?? 'unknown';
-  if (pt === 'cash') {
-    if (fields.desiredPrice) return `ca. ${fields.desiredPrice.toLocaleString('de-DE')} €`;
-    return 'offen';
-  }
-  if (fields.desiredRate) return `bis ${fields.desiredRate} €`;
-  return 'offen';
-}
-
 export function formatDeliveryDisplay(fields = {}) {
   const v = fields.desiredDeliveryDate;
   if (v == null || v === '') return 'offen';
   return String(v);
+}
+
+export function formatCustomerDisplayName(name) {
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed || trimmed === 'Kunde (offen)') return null;
+  return trimmed;
+}
+
+export function buildSalesDoneVehicleLine(fields = {}) {
+  const brand = fields.brand ?? 'Kia';
+  const model = String(fields.model ?? '').replace(/^Kia\s+/i, '').trim();
+  const vehicle = model ? `${brand} ${model}` : brand;
+  const payment = formatPaymentDisplay(fields);
+  if (payment === 'Noch unklar') return vehicle;
+  const paymentShort = payment.replace(' / Barzahlung', '');
+  return `${vehicle} · ${paymentShort}`;
 }
 
 export function buildCompactWishSummary(fields = {}) {
@@ -720,12 +760,12 @@ export function buildCompactWishSummary(fields = {}) {
     parts.push(label?.replace(' / Barzahlung', '').replace('Kauf / Barzahlung', 'Kauf') ?? label);
   }
 
-  if (fields.mileagePerYear) {
+  if (fields.mileagePerYear && (pt === 'leasing' || pt === 'threeWayFinancing')) {
     parts.push(`${fields.mileagePerYear.toLocaleString('de-DE')} km`);
-  } else {
-    const budget = formatBudgetDisplay(fields);
-    if (budget !== 'offen') parts.push(budget);
   }
+
+  const budget = formatBudgetDisplay(fields);
+  if (budget !== 'offen') parts.push(budget);
 
   if (pt === 'unknown') {
     parts.push('Angebotsart offen');
@@ -883,6 +923,12 @@ export function applyDealerAiFields(parsed, patch) {
 
   if (patch.paymentType && !patch.action) {
     action = suggestActionForPaymentType(patch.paymentType);
+  }
+
+  if (patch.paymentType === 'cash') {
+    fields.desiredRate = null;
+  } else if (patch.paymentType && patch.paymentType !== 'unknown') {
+    fields.desiredPrice = null;
   }
 
   if (fields.desiredRate != null && fields.desiredRate === fields.termMonths && isLeaseTermMonth(fields.termMonths)) {

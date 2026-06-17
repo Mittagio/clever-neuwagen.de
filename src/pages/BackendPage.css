@@ -240,8 +240,18 @@
   color: var(--color-text-secondary);
 }
 
+.backend--home .backend-main {
+  padding-top: 0;
+}
+
 .backend-main {
   min-height: 40vh;
+}
+
+@media (max-width: 1023px) {
+  .backend--home .backend-nav-wrap {
+    padding-top: 4px;
+  }
 }
 
 .backend-save-note {

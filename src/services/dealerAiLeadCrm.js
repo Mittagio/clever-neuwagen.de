@@ -1,4 +1,40 @@
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
+import { formatBudgetSummaryForWish } from './dealerAiBudget.js';
+import { getMatchVariantLabel } from '../logic/discoveryDisplay.js';
+
+export function mapSuggestedModelToReserved(model, index = 0) {
+  const trimLabel = model.primaryMatch ? getMatchVariantLabel(model.primaryMatch) : model.trimLabel ?? null;
+  return {
+    id: model.id,
+    name: model.name,
+    modelKey: model.modelKey ?? model.id,
+    bodyType: model.bodyType ?? 'suv',
+    badge: model.badge ?? null,
+    trimLabel,
+    priceHint: model.priceHint ?? null,
+    reason: model.reason ?? null,
+    isPrimary: index === 0,
+  };
+}
+
+export function formatReservedModelBadge(model, index = 0) {
+  if (model?.isPrimary || index === 0) return 'Empfehlung';
+  const raw = model?.badge;
+  if (!raw) return 'Alternative';
+  const labels = {
+    'Clever Empfehlung': 'Empfehlung',
+    'passt sehr gut': 'Preislich passend',
+    'gute Alternative': 'Alternative',
+    'beliebte Alternative': 'Alternative',
+  };
+  return labels[raw] ?? raw;
+}
+
+export function formatReservedModelName(name = '') {
+  const trimmed = name.trim();
+  if (!trimmed) return 'Kia';
+  return /^kia\b/i.test(trimmed) ? trimmed.replace(/^kia\s*/i, 'Kia ') : `Kia ${trimmed}`;
+}
 
 export const CRM_PIPELINE_STATUS = [
   { id: 'neu', label: 'Neu', leadStatus: 'neu' },
@@ -13,16 +49,16 @@ export const CRM_PIPELINE_STATUS = [
 ];
 
 export const FOLLOW_UP_CHIPS = [
-  { id: 'call_today', label: 'Heute anrufen' },
+  { id: 'call_today', label: 'Heute anrufen', coachTitle: 'Heute heiß 🔥' },
   { id: 'call_tomorrow', label: 'Morgen anrufen', default: true },
   { id: 'call_3days', label: 'In 3 Tagen' },
   { id: 'send_offer', label: 'Angebot senden' },
   { id: 'test_drive', label: 'Probefahrt anbieten' },
-  { id: 'reminder', label: 'Wiedervorlage' },
+  { id: 'reminder', label: 'Nachfassen planen' },
 ];
 
 export const OFFER_STATUS_LABELS = {
-  draft: 'Entwurf',
+  draft: 'Angebot steht',
   sent: 'Gesendet',
   opened: 'Geöffnet',
   accepted: 'Angenommen',
@@ -135,12 +171,17 @@ export function mailtoHref(email, subject = '') {
   return `mailto:${email.trim()}${q}`;
 }
 
-export function buildDefaultCrm(parsed, selectedModelId = null) {
+export function buildDefaultCrm(parsed, selectedModelIds = null) {
   const chipId = getDefaultFollowUpChipId();
   const chip = FOLLOW_UP_CHIPS.find((c) => c.id === chipId);
+  const ids = Array.isArray(selectedModelIds)
+    ? selectedModelIds
+    : selectedModelIds
+      ? [selectedModelIds]
+      : [];
   const reserved = (parsed?.suggestedModels ?? [])
-    .filter((m) => m.id === selectedModelId)
-    .map((m) => ({ id: m.id, name: m.name, modelKey: m.modelKey }));
+    .filter((m) => ids.includes(m.id))
+    .map((m, index) => mapSuggestedModelToReserved(m, index));
 
   return {
     pipelineStatusId: 'neu',
@@ -170,18 +211,15 @@ export function buildWishCardSummary(fields = {}) {
   if (payment && fields.paymentType !== 'unknown') {
     parts.push(payment.replace(' / Barzahlung', '').replace('Kauf / Barzahlung', 'Kauf'));
   }
-  if (fields.paymentType === 'cash' && fields.desiredPrice) {
-    parts.push(`ca. ${fields.desiredPrice.toLocaleString('de-DE')} €`);
-  } else if (fields.desiredRate) {
-    parts.push(`bis ${fields.desiredRate} €`);
-  }
-  return parts.join(' · ') || 'Offen';
+  const budget = formatBudgetSummaryForWish(fields);
+  if (budget) parts.push(budget);
+  return parts.join(' · ') || 'Wunsch starten';
 }
 
 export function buildCustomerCardSummary(name, phone) {
   const trimmedName = name?.trim();
   const open = !trimmedName || trimmedName === 'Kunde (offen)';
-  if (open && !phone?.trim()) return 'Noch offen';
+  if (open && !phone?.trim()) return 'Kontakt macht die Chance stärker';
   if (open) return phone.trim();
   if (phone?.trim()) return `${trimmedName} · ${phone.trim()}`;
   return trimmedName;
@@ -189,18 +227,47 @@ export function buildCustomerCardSummary(name, phone) {
 
 export function buildOfferCardSummary(offers = []) {
   if (!offers.length) return 'Noch kein Angebot';
+  if (offers.length > 1) return `${offers.length} Angebote`;
   const offer = offers[0];
-  return [offer.name, offer.status].filter(Boolean).join(' · ');
+  const statusRaw = OFFER_STATUS_LABELS[offer.status] ?? offer.status;
+  const status = statusRaw === 'Angebot steht' ? 'Entwurf' : statusRaw;
+  const paymentLabel = PAYMENT_TYPE_LABELS[offer.paymentType]
+    ?? (typeof offer.paymentType === 'string' ? offer.paymentType : null);
+  const payment = paymentLabel?.replace(' / Barzahlung', '') ?? null;
+  const vehicle = offer.vehicle ?? offer.name;
+  const detail = [vehicle, payment, status].filter(Boolean).join(' · ');
+  return detail || '1 Angebot';
+}
+
+export function buildOfferCardSubline(offers = []) {
+  if (!offers.length) return 'Ein Angebot macht es konkret';
+  return null;
 }
 
 export function buildOutcomeCardSummary(crm = {}) {
-  return crm.lastOutcomeLabel ?? 'Noch offen';
+  return crm.lastOutcomeLabel ?? 'Noch kein Ergebnis';
 }
 
 export function buildHistoryCardSummary(count = 0) {
-  if (count <= 0) return '0 Einträge';
-  if (count === 1) return '1 Eintrag';
-  return `${count} Einträge`;
+  if (count <= 0) return 'Verlauf starten';
+  if (count === 1) return '1 Moment';
+  return `${count} Momente`;
+}
+
+export function buildReservedModelsCardSummary(models = []) {
+  if (!models.length) return 'Noch keine Modelle vorgemerkt';
+  if (models.length === 1) {
+    return formatReservedModelName(models[0].name);
+  }
+  if (models.length === 2) {
+    return models.map((m) => formatReservedModelName(m.name)).join(', ');
+  }
+  return `${models.length} Modelle vorgemerkt`;
+}
+
+export function buildReservedModelsCardSubline(models = []) {
+  if (!models.length) return 'Ein Modell bringt die Chance in Fahrt';
+  return null;
 }
 
 export function buildShortSubline(fields = {}) {
@@ -211,6 +278,24 @@ export function buildShortSubline(fields = {}) {
     : null;
   if (vehicle && paymentShort) return `${vehicle.replace(/^Kia\s+/i, '')} · ${paymentShort}`;
   return vehicle || paymentShort || 'Neu';
+}
+
+export function buildLeadHeadSubline(name, options = {}) {
+  const { brand = 'Kia', model = '' } = options;
+  const trimmed = name?.trim();
+  const hasCustomer = trimmed && trimmed !== 'Kunde (offen)';
+  const vehicleLabel = model
+    ? `${brand} ${model}`.replace(/^Kia\s+Kia/i, 'Kia').trim()
+    : brand;
+
+  if (hasCustomer) {
+    return `${trimmed} · ${brand}`;
+  }
+  return vehicleLabel || brand;
+}
+
+export function getLeadStatusBadgeLabel(pipelineStatusId) {
+  return CRM_PIPELINE_STATUS.find((s) => s.id === pipelineStatusId)?.label ?? 'Neu';
 }
 
 export function pipelineToLeadStatus(pipelineStatusId) {

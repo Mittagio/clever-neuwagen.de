@@ -67,6 +67,7 @@ export default function BackendPage() {
   const showSyncBar = activeArea === 'verwaltung' && activeSection === 'hub';
 
   const showPublishDock = hasDraftChanges() && activeArea === 'verwaltung';
+  const isHome = activeArea === 'verkaufen' && activeSection === 'home';
 
   function renderContent() {
     if (activeArea === 'verkaufen' && activeSection === 'home') {
@@ -143,16 +144,19 @@ export default function BackendPage() {
 
   return (
     <PageShell>
-      <div className={`backend page backend--v2 backend--mf5${showPublishDock ? ' backend--has-publish-dock' : ''}`}>
+      <div className={`backend page backend--v2 backend--mf5${showPublishDock ? ' backend--has-publish-dock' : ''}${isHome ? ' backend--home' : ''}`}>
         <div className="container">
-          <header className="backend-header backend-header--slim">
-            <div>
-              <p className="backend-header-eyebrow">Händler-Backend</p>
-              <h1 className="page-title backend-header-title">{draftConditions.dealerName}</h1>
-            </div>
-          </header>
+          {!isHome && (
+            <header className="backend-header backend-header--slim">
+              <div>
+                <p className="backend-header-eyebrow">Händler-Backend</p>
+                <h1 className="page-title backend-header-title">{draftConditions.dealerName}</h1>
+              </div>
+            </header>
+          )}
 
           <BackendNav
+            compact={isHome}
             activeArea={activeArea}
             activeSection={activeSection}
             onAreaChange={handleAreaChange}

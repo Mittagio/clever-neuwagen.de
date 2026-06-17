@@ -139,7 +139,7 @@ export default function CommunicationCenterPage() {
 
         {dueToday.length > 0 && (
           <div className="comm-center__due">
-            <strong>Heute fällig ({dueToday.length})</strong>
+            <strong>Heute heiß ({dueToday.length})</strong>
             <ul>
               {dueToday.slice(0, 3).map((r) => (
                 <li key={r.id}>

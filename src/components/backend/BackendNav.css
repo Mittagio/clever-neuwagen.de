@@ -12,6 +12,24 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.backend-nav-wrap--compact {
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
+}
+
+.backend-nav-wrap--compact .backend-area-nav {
+  margin-bottom: 0;
+}
+
+.backend-nav-wrap--compact .backend-area-nav__item {
+  min-height: 56px;
+  padding: 8px 6px;
+}
+
+.backend-nav-wrap--compact .backend-area-nav__icon {
+  font-size: 1.125rem;
+}
+
 .backend-area-nav {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

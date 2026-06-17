@@ -1,10 +1,11 @@
 /**
  * Dealer AI – Aktionen über bestehende Module ausführen
  */
-import { createOfferFromSales, buildOfferUrl } from '../logic/offerService.js';
+import { createOfferFromSales, buildOfferUrl, generateOfferNumber } from '../logic/offerService.js';
 import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import { normalizeLead } from '../logic/leadNormalization.js';
 import { buildDefaultCrm, buildLeadSubline } from './dealerAiLeadCrm.js';
+import { createCustomerId } from './dealerAiCustomer.js';
 import { generateListingBlocks } from '../logic/listingGenerator.js';
 import { getTrimName, getEngineName, getColorName, normalizeInventoryItem } from '../logic/inventoryService.js';
 
@@ -142,7 +143,7 @@ export function executeDealerAiAction(action, parsed, deps) {
 
     case 'create_sales_opportunity':
       return executeCreateSalesOpportunity(fields, parsed, deps, {
-        selectedModelId: deps.selectedModelId ?? null,
+        selectedModelIds: deps.selectedModelIds ?? [],
       });
 
     case 'create_inventory': {
@@ -242,23 +243,52 @@ export function executeDealerAiAction(action, parsed, deps) {
   }
 }
 
+function collectReferenceCodes(getExistingCodes, leads = []) {
+  const codes = [];
+  const existing = getExistingCodes?.();
+  if (existing) {
+    for (const code of existing) codes.push({ code });
+  }
+  for (const lead of leads) {
+    if (lead.referenceCode) codes.push({ code: lead.referenceCode });
+    if (lead.offerCode) codes.push({ code: lead.offerCode });
+  }
+  return codes;
+}
+
 function buildLeadFromDealerAi(fields, parsed, conditions, options = {}) {
   const vehicleLabel = [fields.brand, fields.model, fields.trimLabel].filter(Boolean).join(' ').trim();
   const leadId = `lead-ai-${Date.now()}`;
   const now = new Date().toISOString();
-  const crm = buildDefaultCrm(parsed, options.selectedModelId ?? null);
+  const carry = options.carryCustomer ?? null;
+  const crmBase = buildDefaultCrm(parsed, options.selectedModelIds ?? null);
+  const crm = carry?.kundenhelfer
+    ? { ...crmBase, kundenhelfer: carry.kundenhelfer }
+    : crmBase;
+
+  const customerId = carry?.customerId ?? createCustomerId();
+  const contact = carry?.contact
+    ? {
+        name: carry.contact.name,
+        phone: carry.contact.phone ?? '',
+        email: carry.contact.email ?? '',
+        preferredContact: crm.preferredContact,
+      }
+    : {
+        name: fields.customerName || 'Kunde (offen)',
+        preferredContact: crm.preferredContact,
+      };
 
   return normalizeLead({
     id: leadId,
+    customerId,
+    referenceCode: options.referenceCode ?? null,
     createdAt: now,
     updatedAt: now,
     status: 'neu',
     source: 'dealerAi',
     dealerId: conditions.dealerId ?? 'autohaus-trinkle',
-    contact: {
-      name: fields.customerName || 'Kunde (offen)',
-      preferredContact: crm.preferredContact,
-    },
+    contact,
     vehicle: {
       brand: fields.brand ?? 'Kia',
       model: fields.model ?? '',
@@ -288,8 +318,13 @@ function buildLeadFromDealerAi(fields, parsed, conditions, options = {}) {
 }
 
 function executeCreateSalesOpportunity(fields, parsed, deps, options = {}) {
-  const { addLead, conditions } = deps;
-  const lead = buildLeadFromDealerAi(fields, parsed, conditions, options);
+  const { addLead, conditions, getExistingCodes, leads = [], carryCustomer } = deps;
+  const referenceCode = generateOfferNumber(collectReferenceCodes(getExistingCodes, leads));
+  const lead = buildLeadFromDealerAi(fields, parsed, conditions, {
+    ...options,
+    referenceCode,
+    carryCustomer,
+  });
   addLead(lead);
 
   return {
@@ -297,7 +332,10 @@ function executeCreateSalesOpportunity(fields, parsed, deps, options = {}) {
     leadId: lead.id,
     leadName: lead.contact?.name,
     leadSubline: buildLeadSubline(fields),
-    message: 'Verkaufschance erstellt',
+    referenceCode,
+    customerId: lead.customerId,
+    isReturningWish: Boolean(carryCustomer),
+    message: carryCustomer ? 'Neuer Kundenwunsch angelegt' : 'Verkaufschance erstellt',
     syncStatus: 'created',
   };
 }

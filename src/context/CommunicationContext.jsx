@@ -398,7 +398,7 @@ export function CommunicationProvider({ children }) {
           type: 'other',
         };
         setReminders((prev) => [reminder, ...prev]);
-        appendHistory(leadId, `Wiedervorlage: ${preset.label}`, {
+        appendHistory(leadId, `Nachfassen geplant: ${preset.label}`, {
           channel: 'system',
           type: 'system',
         });
@@ -420,7 +420,7 @@ export function CommunicationProvider({ children }) {
           done: false,
         };
         setReminders((prev) => [reminder, ...prev]);
-        appendHistory(leadId, `Wiedervorlage: ${reminder.label}`, {
+        appendHistory(leadId, `Nachfassen geplant: ${reminder.label}`, {
           channel: 'system',
           type: 'system',
         });

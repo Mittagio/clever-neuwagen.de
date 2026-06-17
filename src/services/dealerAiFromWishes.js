@@ -4,6 +4,10 @@
 import { ALL_SALES_ADVISOR_CHIPS } from '../data/salesAdvisorChips.js';
 
 function chipLabel(chipId) {
+  if (chipId.startsWith('price_')) {
+    const amount = Number(chipId.replace('price_', ''));
+    if (amount) return `bis ${amount.toLocaleString('de-DE')} €`;
+  }
   return ALL_SALES_ADVISOR_CHIPS.find((c) => c.id === chipId)?.label ?? chipId;
 }
 
@@ -22,6 +26,11 @@ export function buildDealerAiTextFromWishes({ chipIds = [], mileagePerYear = nul
   }
 
   for (const chipId of chipIds) {
+    if (chipId.startsWith('price_')) {
+      const amount = Number(chipId.replace('price_', ''));
+      if (amount) parts.push(`Kauf bis ${amount.toLocaleString('de-DE')} €`);
+      continue;
+    }
     const chip = ALL_SALES_ADVISOR_CHIPS.find((c) => c.id === chipId);
     if (!chip) continue;
     if (chip.paymentPhrase) {
@@ -38,6 +47,9 @@ export function buildDealerAiTextFromWishes({ chipIds = [], mileagePerYear = nul
     }
     if (chip.budgetMax) {
       parts.push(`Budget bis ${chip.budgetMax} €/Monat`);
+    }
+    if (chip.purchaseMax) {
+      parts.push(`Kauf bis ${chip.purchaseMax.toLocaleString('de-DE')} €`);
     }
     if (chip.availability === 'sofort') {
       parts.push('sofort verfügbar');

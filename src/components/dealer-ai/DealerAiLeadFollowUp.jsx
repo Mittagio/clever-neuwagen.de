@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   buildCustomerCardSummary,
   buildHistoryCardSummary,
+  buildOfferCardSubline,
   buildOfferCardSummary,
   buildOutcomeCardSummary,
-  buildShortSubline,
+  buildReservedModelsCardSubline,
+  buildReservedModelsCardSummary,
   buildWishCardSummary,
+  formatReservedModelBadge,
+  formatReservedModelName,
   CALL_OUTCOME_CHIPS,
   computeFollowUpAt,
   FOLLOW_UP_CHIPS,
@@ -21,7 +25,31 @@ import {
   DEALER_AI_DELIVERY_DATE_OPTIONS,
   DEALER_AI_PAYMENT_OPTIONS,
   PAYMENT_TYPE_LABELS,
+  buildSalesDoneVehicleLine,
+  formatCustomerDisplayName,
 } from '../../services/dealerAiParser.js';
+import { getBudgetFieldLabel } from '../../services/dealerAiBudget.js';
+import {
+  computeCleverStaerke,
+  computeCustomerCleverStaerke,
+  computeOfferCleverStaerke,
+  computeWishCleverStaerke,
+  getCleverStaerkeTier,
+} from '../../services/cleverStaerke.js';
+import {
+  getOfferMicroFeedback,
+  polishHistoryText,
+} from '../../services/cleverSalesCoach.js';
+import {
+  buildKundenhelferCardSummary,
+  buildWishDetailSubline,
+} from '../../services/cleverKundenhelfer.js';
+import {
+  formatRelatedWishLine,
+  getRelatedLeadsByCustomer,
+} from '../../services/dealerAiCustomer.js';
+import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
+import VehicleImage from '../shared/VehicleImage.jsx';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 
 const SHEETS = {
@@ -29,8 +57,10 @@ const SHEETS = {
   wish: 'wish',
   next: 'next',
   offer: 'offer',
+  models: 'models',
   outcome: 'outcome',
   history: 'history',
+  kundenhelfer: 'kundenhelfer',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -61,15 +91,62 @@ function Field({ label, id, type = 'text', value, onChange, placeholder, inputMo
   );
 }
 
-function SummaryCard({ title, summary, onClick }) {
+function CleverStaerkeBadge({ score, compact = false }) {
+  const tier = getCleverStaerkeTier(score);
+  return (
+    <span
+      className={`dai-clever-staerke-badge${compact ? ' dai-clever-staerke-badge--compact' : ''}`}
+      aria-label={`Clever-Stärke ${score} Prozent – ${tier.label}`}
+    >
+      <span className="dai-clever-staerke-badge__pct">{score} %</span>
+      {!compact && (
+        <span className="dai-clever-staerke-badge__label">Clever-Stärke</span>
+      )}
+    </span>
+  );
+}
+
+function SummaryCard({ title, summary, subline, cleverScore, onClick }) {
+  const tier = cleverScore != null ? getCleverStaerkeTier(cleverScore) : null;
   return (
     <button type="button" className="dai-vc-card" onClick={onClick}>
       <div className="dai-vc-card__main">
-        <span className="dai-vc-card__title">{title}</span>
+        <div className="dai-vc-card__title-row">
+          <span className="dai-vc-card__title">{title}</span>
+          {cleverScore != null && (
+            <span className="dai-clever-staerke-badge dai-clever-staerke-badge--card" aria-hidden>
+              {cleverScore} %
+            </span>
+          )}
+        </div>
         <span className="dai-vc-card__summary">{summary}</span>
+        {subline && <span className="dai-vc-card__subline">{subline}</span>}
+        {tier && cleverScore < 91 && !subline && (
+          <span className="dai-vc-card__tier">{tier.shortLabel}</span>
+        )}
       </div>
       <span className="dai-vc-card__chev" aria-hidden>›</span>
     </button>
+  );
+}
+
+function LeadSummaryHeader({ customerName, vehicleLine, wishDetailLine, referenceCode }) {
+  return (
+    <header className="dai-lead-summary">
+      <p className="dai-lead-summary__kicker">Digitaler Verkaufsassistent</p>
+      <p className="dai-lead-summary__customer">
+        {customerName || 'Kunde noch offen'}
+      </p>
+      {vehicleLine && (
+        <p className="dai-lead-summary__vehicle">{vehicleLine}</p>
+      )}
+      {wishDetailLine && (
+        <p className="dai-lead-summary__wish-detail">{wishDetailLine}</p>
+      )}
+      {referenceCode && (
+        <p className="dai-lead-summary__ref">{referenceCode}</p>
+      )}
+    </header>
   );
 }
 
@@ -88,12 +165,75 @@ function SheetFooter({ onCancel, onSave, saving, saveLabel = 'Speichern' }) {
   );
 }
 
+function ReservedModelDetailCard({
+  model,
+  index,
+  onOffer,
+  onRemove,
+  disabled = false,
+}) {
+  const badge = formatReservedModelBadge(model, index);
+  const hint = model.priceHint ?? model.reason ?? null;
+
+  return (
+    <article className="dai-reserved-model">
+      <div className="dai-reserved-model__visual">
+        <VehicleImage
+          brand="Kia"
+          model={model.modelKey ?? model.id}
+          bodyType={model.bodyType ?? 'suv'}
+          variant="card"
+          className="dai-reserved-model__image-wrap"
+          imageClassName="dai-reserved-model__image"
+        />
+      </div>
+      <div className="dai-reserved-model__body">
+        <div className="dai-reserved-model__head">
+          <div>
+            <h3 className="dai-reserved-model__name">{formatReservedModelName(model.name)}</h3>
+            {model.trimLabel && (
+              <p className="dai-reserved-model__trim">{model.trimLabel}</p>
+            )}
+          </div>
+          <span className="dai-reserved-model__badge">{badge}</span>
+        </div>
+        {hint && <p className="dai-reserved-model__hint">{hint}</p>}
+        <div className="dai-reserved-model__actions">
+          <button
+            type="button"
+            className="dai-btn dai-btn--secondary dai-reserved-model__btn"
+            onClick={() => onOffer?.(model)}
+            disabled={disabled}
+          >
+            Angebot erstellen
+          </button>
+          <button
+            type="button"
+            className="dai-btn dai-btn--ghost dai-reserved-model__btn"
+            onClick={() => onRemove?.(model)}
+            disabled={disabled}
+          >
+            Entfernen
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function DealerAiLeadFollowUp({
   result,
   parsed,
   lead,
+  leads = [],
+  isFresh = false,
+  isReturningWish = false,
+  onEnterDetail,
+  onNewWish,
+  onStartNewWish,
   onSave,
   onPrepareOffer,
+  onReturnToReview,
   onDiscard,
   onAddHistory,
   isSaving = false,
@@ -102,13 +242,11 @@ export default function DealerAiLeadFollowUp({
   const crm = lead?.crm ?? {};
 
   const [activeSheet, setActiveSheet] = useState(null);
-  const [createdFlash, setCreatedFlash] = useState(true);
+  const [reservedModels, setReservedModels] = useState(crm.reservedModels ?? []);
 
   useEffect(() => {
-    if (!createdFlash) return undefined;
-    const timer = setTimeout(() => setCreatedFlash(false), 3200);
-    return () => clearTimeout(timer);
-  }, [createdFlash]);
+    setReservedModels(lead?.crm?.reservedModels ?? []);
+  }, [lead?.crm?.reservedModels]);
 
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
@@ -141,13 +279,39 @@ export default function DealerAiLeadFollowUp({
   const [outcomeId, setOutcomeId] = useState(crm.lastOutcomeId ?? null);
   const [outcomeNote, setOutcomeNote] = useState('');
 
+  const [kundenhelferNotes, setKundenhelferNotes] = useState(crm.kundenhelfer?.notes ?? '');
+  const [kundenhelferMemos, setKundenhelferMemos] = useState(crm.kundenhelfer?.voiceMemos ?? []);
+
+  useEffect(() => {
+    setKundenhelferNotes(lead?.crm?.kundenhelfer?.notes ?? '');
+    setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
+  }, [lead?.crm?.kundenhelfer?.notes, lead?.crm?.kundenhelfer?.voiceMemos]);
+
   const history = useMemo(
     () => [...(lead?.history ?? [])].sort((a, b) => new Date(b.at) - new Date(a.at)),
     [lead?.history],
   );
 
   const telHref = phoneTelHref(phone);
-  const offers = crm.offers ?? [];
+
+  const resolvedOffers = useMemo(() => {
+    const crmOffers = crm.offers ?? [];
+    if (crmOffers.length) return crmOffers;
+    if (lead?.offerCode) {
+      const paymentLabel = PAYMENT_TYPE_LABELS[wishPaymentType]
+        ?.replace(' / Barzahlung', '')
+        ?.replace('Kauf / Barzahlung', 'Kauf');
+      return [{
+        id: lead.offerCode,
+        code: lead.offerCode,
+        name: lead.vehicle?.label,
+        vehicle: lead.vehicle?.model ?? wishModel,
+        paymentType: paymentLabel ?? wishPaymentType,
+        status: 'draft',
+      }];
+    }
+    return [];
+  }, [crm.offers, lead?.offerCode, lead?.vehicle, wishModel, wishPaymentType]);
 
   const wishSummaryFields = useMemo(() => ({
     brand: fields.brand ?? 'Kia',
@@ -156,16 +320,75 @@ export default function DealerAiLeadFollowUp({
     paymentType: wishPaymentType,
     desiredPrice: wishDesiredPrice ? Number(wishDesiredPrice) : null,
     desiredRate: wishDesiredRate ? Number(wishDesiredRate) : null,
-  }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate]);
+    termMonths: wishTermMonths ? Number(wishTermMonths) : null,
+    mileagePerYear: wishMileage ? Number(wishMileage) : null,
+    desiredDeliveryDate: wishDelivery,
+    deliveryTime: wishDelivery,
+  }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, wishDelivery]);
 
-  const subline = buildShortSubline({
+  const wishDetailLine = buildWishDetailSubline(wishSummaryFields);
+
+  const headSubline = buildSalesDoneVehicleLine({
     brand: fields.brand ?? 'Kia',
     model: wishModel,
-    trimLabel: wishTrim,
     paymentType: wishPaymentType,
   });
+  const customerDisplayName = formatCustomerDisplayName(name);
+  const referenceCode = lead?.referenceCode ?? lead?.offerCode ?? null;
+  const vehicleLine = headSubline;
+
+  const relatedWishes = useMemo(
+    () => getRelatedLeadsByCustomer(leads, lead).filter((l) => l.id !== lead?.id),
+    [leads, lead],
+  );
 
   const nextStepLabel = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label ?? 'Morgen anrufen';
+
+  const hasWish = Boolean(
+    wishModel?.trim()
+    || wishPaymentType !== 'unknown'
+    || wishDesiredPrice
+    || wishDesiredRate,
+  );
+
+  const leadCleverScore = useMemo(() => computeCleverStaerke({
+    hasWish,
+    reservedModelsCount: reservedModels.length,
+    name,
+    phone,
+    email,
+    hasNextStep: Boolean(nextStepId),
+    offersCount: resolvedOffers.length,
+  }), [hasWish, reservedModels.length, name, phone, email, nextStepId, resolvedOffers.length]);
+
+  const leadCleverTier = getCleverStaerkeTier(leadCleverScore);
+
+  const customerCleverScore = useMemo(() => computeCustomerCleverStaerke({
+    name, phone, email, note,
+  }), [name, phone, email, note]);
+
+  const wishCleverScore = useMemo(() => computeWishCleverStaerke({
+    model: wishModel,
+    paymentType: wishPaymentType,
+    desiredRate: wishDesiredRate ? Number(wishDesiredRate) : null,
+    desiredPrice: wishDesiredPrice ? Number(wishDesiredPrice) : null,
+    delivery: wishDelivery,
+  }), [wishModel, wishPaymentType, wishDesiredRate, wishDesiredPrice, wishDelivery]);
+
+  const primaryOffer = resolvedOffers[0];
+  const offerCleverScore = useMemo(() => computeOfferCleverStaerke({
+    offersCount: resolvedOffers.length,
+    model: primaryOffer?.vehicle ?? wishModel,
+    paymentType: primaryOffer?.paymentType ?? wishPaymentType,
+    priceOrRate: wishDesiredPrice || wishDesiredRate || primaryOffer?.price,
+    hasConditions: Boolean(wishTermMonths || wishMileage),
+    hasCustomer: Boolean(name?.trim() && name.trim() !== 'Kunde (offen)'),
+    hasContact: Boolean(phone?.trim() || email?.trim()),
+    delivery: wishDelivery,
+    note,
+  }), [resolvedOffers.length, primaryOffer, wishModel, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, name, phone, email, wishDelivery, note]);
+
+  const offerFeedback = primaryOffer ? getOfferMicroFeedback(primaryOffer.status) : null;
 
   const outcomeSummaryCrm = useMemo(() => ({
     lastOutcomeLabel: crm.lastOutcomeLabel
@@ -220,8 +443,12 @@ export default function DealerAiLeadFollowUp({
         nextStepId,
         nextStepLabel: nextLabel,
         followUpAt,
-        reservedModels: crm.reservedModels ?? [],
+        reservedModels,
         offers: crm.offers ?? [],
+        kundenhelfer: {
+          notes: kundenhelferNotes.trim(),
+          voiceMemos: kundenhelferMemos,
+        },
         lastOutcomeId: outcomeId ?? crm.lastOutcomeId,
         lastOutcomeLabel: outcomeChip?.label ?? crm.lastOutcomeLabel,
         ...extraCrm,
@@ -231,18 +458,48 @@ export default function DealerAiLeadFollowUp({
 
   function save(meta = {}) {
     onSave?.(buildSavePayload(), meta);
-    if (meta.flash !== false) {
-      setCreatedFlash(false);
+  }
+
+  function handlePrimaryAction() {
+    if (resolvedOffers.length > 0) {
+      const offer = resolvedOffers[0];
+      const linkReady = offer.status === 'sent' || pipelineStatusId === 'angebot_gesendet';
+      if (linkReady) {
+        openSheet(SHEETS.offer);
+        return;
+      }
+      if (offer.code) {
+        window.location.assign(`/angebot/${encodeURIComponent(offer.code)}`);
+        return;
+      }
     }
+    onPrepareOffer?.();
+  }
+
+  const primaryCtaLabel = resolvedOffers.length > 0
+    ? (primaryOffer?.status === 'sent' || pipelineStatusId === 'angebot_gesendet'
+      ? 'Link senden'
+      : 'Angebot öffnen')
+    : 'Angebot vorbereiten';
+
+  const hasOfferLink = resolvedOffers.length > 0
+    && (primaryOffer?.status === 'sent' || pipelineStatusId === 'angebot_gesendet');
+
+  function saveKundenhelferSheet() {
+    save({
+      historyText: 'Clever Kundenhelfer aktualisiert',
+      addFollowupHistory: false,
+    });
+    closeSheet();
   }
 
   function saveCustomerSheet() {
-    save({ historyText: 'Kunde gespeichert', addFollowupHistory: false });
+    save({ historyText: 'Kundendaten ergänzt', addFollowupHistory: false });
     closeSheet();
   }
 
   function saveWishSheet() {
-    save({ historyText: 'Wunsch gespeichert', addFollowupHistory: false });
+    save({ historyText: 'Kundenwunsch festgehalten', addFollowupHistory: false });
     closeSheet();
   }
 
@@ -253,6 +510,21 @@ export default function DealerAiLeadFollowUp({
       addFollowupHistory: false,
     });
     closeSheet();
+  }
+
+  function removeReservedModel(model) {
+    const next = reservedModels.filter((m) => m.id !== model.id);
+    const reindexed = next.map((m, index) => ({ ...m, isPrimary: index === 0 }));
+    setReservedModels(reindexed);
+    onSave?.(buildSavePayload({ reservedModels: reindexed }), {
+      historyText: `${formatReservedModelName(model.name)} entfernt`,
+      addFollowupHistory: false,
+    });
+  }
+
+  function createOfferForModel(model) {
+    closeSheet();
+    onPrepareOffer?.(model);
   }
 
   function saveOutcomeSheet() {
@@ -274,87 +546,185 @@ export default function DealerAiLeadFollowUp({
   }
 
   function saveAll() {
-    save({ historyText: 'Gespeichert', addFollowupHistory: false });
+    save({ historyText: 'Chance aktualisiert', addFollowupHistory: false });
   }
 
   return (
     <section className="dai-lead-followup" aria-labelledby="dai-lead-followup-title">
-      {createdFlash && (
-        <p className="dai-lead-created-flash" role="status">
-          Verkaufschance angelegt
-        </p>
-      )}
+      <LeadSummaryHeader
+        customerName={customerDisplayName}
+        vehicleLine={vehicleLine}
+        wishDetailLine={wishDetailLine}
+        referenceCode={referenceCode}
+      />
 
-      <header className="dai-lead-head">
-        <h2 id="dai-lead-followup-title" className="dai-lead-head__title">Verkaufschance</h2>
-        <p className="dai-lead-head__subline">{subline}</p>
-        <span className="dai-lead-head__badge">Neu</span>
-        {result?.leadId && (
-          <Link to="/backend/verkaufschancen" className="dai-link dai-lead-head__link">
-            In Verkaufschancen öffnen
-          </Link>
-        )}
-      </header>
+      {isFresh ? (
+        <div className="dai-lead-fresh">
+          <span className="dai-lead-fresh__badge">Verkaufschance angelegt</span>
+          <p className="dai-lead-fresh__subline">
+            {isReturningWish
+              ? 'Neuer Wunsch gespeichert. Jetzt kann daraus ein Angebot entstehen.'
+              : 'Interesse gespeichert. Jetzt kann daraus ein Angebot entstehen.'}
+          </p>
+          <p className="dai-lead-fresh__motivation">Jetzt wird&apos;s konkret.</p>
+          <div className="dai-lead-fresh__actions">
+            <button
+              type="button"
+              className="dai-cta dai-cta--primary dai-cta--block"
+              onClick={() => onPrepareOffer?.()}
+            >
+              Angebot vorbereiten
+            </button>
+            {customerDisplayName ? (
+              <button
+                type="button"
+                className="dai-btn dai-btn--secondary dai-btn--block"
+                onClick={() => onEnterDetail?.()}
+              >
+                Verkaufschance öffnen
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="dai-btn dai-btn--secondary dai-btn--block"
+                onClick={() => openSheet(SHEETS.customer)}
+              >
+                Kunde ergänzen
+              </button>
+            )}
+            <button type="button" className="dai-lead-fresh__link" onClick={onNewWish ?? onDiscard}>
+              Neuen Kundenwunsch erfassen
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <header className="dai-lead-head">
+            <div className="dai-lead-head__row">
+              <h2 id="dai-lead-followup-title" className="dai-lead-head__title">Verkaufschance</h2>
+              <CleverStaerkeBadge score={leadCleverScore} compact />
+            </div>
+            <p className="dai-lead-head__tier">
+              Clever-Stärke {leadCleverScore} % · {leadCleverTier.label}
+            </p>
+          </header>
 
-      <div className="dai-vc-cards">
-        <SummaryCard
-          title="Kunde"
-          summary={buildCustomerCardSummary(name, phone)}
-          onClick={() => openSheet(SHEETS.customer)}
-        />
-        <SummaryCard
-          title="Wunsch"
-          summary={buildWishCardSummary(wishSummaryFields)}
-          onClick={() => openSheet(SHEETS.wish)}
-        />
-        <SummaryCard
-          title="Nächster Schritt"
-          summary={nextStepLabel}
-          onClick={() => openSheet(SHEETS.next)}
-        />
-        <SummaryCard
-          title="Angebot"
-          summary={buildOfferCardSummary(offers)}
-          onClick={() => openSheet(SHEETS.offer)}
-        />
-        <SummaryCard
-          title="Ergebnis"
-          summary={buildOutcomeCardSummary(outcomeSummaryCrm)}
-          onClick={() => openSheet(SHEETS.outcome)}
-        />
-        <SummaryCard
-          title="Verlauf"
-          summary={buildHistoryCardSummary(history.length)}
-          onClick={() => openSheet(SHEETS.history)}
-        />
-      </div>
-
-      <div className="dai-vc-bar" role="toolbar" aria-label="Schnellaktionen">
-        {telHref ? (
-          <a href={telHref} className="dai-vc-bar__btn dai-vc-bar__btn--call">
-            Anrufen
-          </a>
-        ) : (
-          <button type="button" className="dai-vc-bar__btn" onClick={() => openSheet(SHEETS.customer)}>
-            Kunde
+          <button
+            type="button"
+            className="dai-cta dai-cta--primary dai-cta--block dai-lead-primary-cta"
+            onClick={handlePrimaryAction}
+          >
+            {primaryCtaLabel}
           </button>
-        )}
-        <button type="button" className="dai-vc-bar__btn" onClick={() => openSheet(SHEETS.offer)}>
-          Angebot
-        </button>
-        <button
-          type="button"
-          className="dai-vc-bar__btn dai-vc-bar__btn--primary"
-          onClick={saveAll}
-          disabled={isSaving}
-        >
-          {isSaving ? '…' : 'Speichern'}
-        </button>
-      </div>
 
-      <button type="button" className="dai-lead-later" onClick={onDiscard}>
-        Später
-      </button>
+          <div className="dai-vc-cards">
+            <SummaryCard
+              title="Kunde"
+              summary={buildCustomerCardSummary(name, phone)}
+              cleverScore={customerCleverScore}
+              onClick={() => openSheet(SHEETS.customer)}
+            />
+            <SummaryCard
+              title="Wunsch"
+              summary={buildWishCardSummary(wishSummaryFields)}
+              subline={wishDetailLine}
+              cleverScore={wishCleverScore}
+              onClick={() => openSheet(SHEETS.wish)}
+            />
+            <SummaryCard
+              title="Clever Kundenhelfer"
+              summary={buildKundenhelferCardSummary(kundenhelferNotes, kundenhelferMemos.length)}
+              onClick={() => openSheet(SHEETS.kundenhelfer)}
+            />
+            <SummaryCard
+              title="Passende Modelle"
+              summary={buildReservedModelsCardSummary(reservedModels)}
+              subline={buildReservedModelsCardSubline(reservedModels)}
+              onClick={() => openSheet(SHEETS.models)}
+            />
+            <SummaryCard
+              title="Angebot"
+              summary={buildOfferCardSummary(resolvedOffers)}
+              subline={buildOfferCardSubline(resolvedOffers)}
+              cleverScore={offerCleverScore}
+              onClick={() => openSheet(SHEETS.offer)}
+            />
+            <SummaryCard
+              title="Ergebnis"
+              summary={buildOutcomeCardSummary(outcomeSummaryCrm)}
+              onClick={() => openSheet(SHEETS.outcome)}
+            />
+            <SummaryCard
+              title="Verlauf"
+              summary={buildHistoryCardSummary(history.length)}
+              onClick={() => openSheet(SHEETS.history)}
+            />
+          </div>
+
+          <div className="dai-vc-bar" role="toolbar" aria-label="Schnellaktionen">
+            {telHref ? (
+              <a href={telHref} className="dai-vc-bar__btn dai-vc-bar__btn--call" aria-label="Kunde anrufen">
+                Anrufen
+              </a>
+            ) : (
+              <button type="button" className="dai-vc-bar__btn" onClick={() => openSheet(SHEETS.customer)}>
+                Kunde
+              </button>
+            )}
+            {hasOfferLink ? (
+              <button type="button" className="dai-vc-bar__btn" onClick={() => openSheet(SHEETS.offer)}>
+                Link senden
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="dai-vc-bar__btn"
+                onClick={() => (resolvedOffers.length ? openSheet(SHEETS.offer) : onPrepareOffer?.())}
+              >
+                Angebot
+              </button>
+            )}
+            <button
+              type="button"
+              className="dai-vc-bar__btn dai-vc-bar__btn--primary"
+              onClick={saveAll}
+              disabled={isSaving}
+            >
+              {isSaving ? '…' : 'Speichern'}
+            </button>
+          </div>
+
+          <button type="button" className="dai-lead-later" onClick={onDiscard}>
+            Später
+          </button>
+
+          {customerDisplayName && (
+            <div className="dai-related-wishes">
+              <div className="dai-related-wishes__head">
+                <p className="dai-related-wishes__title">Weitere Wünsche</p>
+                <button
+                  type="button"
+                  className="dai-related-wishes__new"
+                  onClick={() => onStartNewWish?.(lead)}
+                >
+                  Neuer Wunsch
+                </button>
+              </div>
+              {relatedWishes.length > 0 ? (
+                <ul className="dai-related-wishes__list">
+                  {relatedWishes.slice(0, 4).map((item) => (
+                    <li key={item.id} className="dai-related-wishes__item">
+                      {formatRelatedWishLine(item)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dai-related-wishes__empty">Noch keine weiteren Wünsche.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {/* ── Kunde ── */}
       <LeadDetailPanel
@@ -392,6 +762,21 @@ export default function DealerAiLeadFollowUp({
             onChange={setNote}
             placeholder="Kurz notieren"
           />
+          {!email.trim() && (
+            <p className="dai-lead-tip">
+              Mit E-Mail ist das Angebot später in Sekunden raus.
+            </p>
+          )}
+          {!phone.trim() && (
+            <p className="dai-lead-tip">
+              Telefon ergänzt? Dann ist der Rückruf nur ein Klick.
+            </p>
+          )}
+          {!name.trim() && (
+            <p className="dai-lead-tip">
+              Mit Namen wirkt die Chance persönlicher.
+            </p>
+          )}
           {telHref && (
             <a href={telHref} className="dai-btn dai-btn--call dai-btn--block">
               Anrufen
@@ -421,7 +806,12 @@ export default function DealerAiLeadFollowUp({
               id="lead-wish-payment"
               className="dai-lead-field__input"
               value={wishPaymentType}
-              onChange={(e) => setWishPaymentType(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setWishPaymentType(next);
+                if (next === 'cash') setWishDesiredRate('');
+                else if (next !== 'unknown') setWishDesiredPrice('');
+              }}
             >
               {DEALER_AI_PAYMENT_OPTIONS.map((id) => (
                 <option key={id} value={id}>{PAYMENT_TYPE_LABELS[id]}</option>
@@ -430,17 +820,17 @@ export default function DealerAiLeadFollowUp({
           </label>
           {wishPaymentType === 'cash' ? (
             <Field
-              label="Budget"
+              label={getBudgetFieldLabel('cash')}
               id="lead-wish-price"
               type="number"
               inputMode="numeric"
               value={wishDesiredPrice}
               onChange={setWishDesiredPrice}
-              placeholder="40000"
+              placeholder="30000"
             />
           ) : (
             <Field
-              label="Rate"
+              label={getBudgetFieldLabel(wishPaymentType)}
               id="lead-wish-rate"
               type="number"
               inputMode="numeric"
@@ -498,6 +888,7 @@ export default function DealerAiLeadFollowUp({
         title="Nächster Schritt"
         footer={<SheetFooter onCancel={closeSheet} onSave={saveNextSheet} saving={isSaving} />}
       >
+        <p className="dai-lead-tip">Ein nächster Schritt hält die Chance warm.</p>
         <div className="dai-lead-chips dai-lead-chips--large" role="group" aria-label="Nächster Schritt">
           {FOLLOW_UP_CHIPS.map((chip) => (
             <button
@@ -523,26 +914,63 @@ export default function DealerAiLeadFollowUp({
         </label>
       </LeadDetailPanel>
 
+      {/* ── Passende Modelle ── */}
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.models}
+        onClose={closeSheet}
+        title="Passende Modelle"
+        footer={(
+          <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
+            Schließen
+          </button>
+        )}
+      >
+        {reservedModels.length === 0 ? (
+          <div className="dai-lead-empty">
+            <p>Ein passendes Modell bringt die Chance in Fahrt.</p>
+            {onReturnToReview && (
+              <button
+                type="button"
+                className="dai-btn dai-btn--secondary"
+                onClick={() => { closeSheet(); onReturnToReview?.(); }}
+              >
+                Modelle hinzufügen
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="dai-reserved-models">
+            {reservedModels.map((model, index) => (
+              <ReservedModelDetailCard
+                key={model.id}
+                model={model}
+                index={index}
+                onOffer={createOfferForModel}
+                onRemove={removeReservedModel}
+                disabled={isSaving}
+              />
+            ))}
+          </div>
+        )}
+      </LeadDetailPanel>
+
       {/* ── Angebot ── */}
       <LeadDetailPanel
         open={activeSheet === SHEETS.offer}
         onClose={closeSheet}
         title="Angebot"
-        footer={offers.length === 0 ? (
+        footer={resolvedOffers.length === 0 ? (
           <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
             Schließen
           </button>
         ) : null}
       >
-        {offers.length === 0 ? (
+        {resolvedOffers.length === 0 ? (
           <div className="dai-lead-empty">
-            <p>Noch kein Angebot</p>
+            <p>Ein Angebot macht es konkret.</p>
             <div className="dai-lead-empty__actions">
               <button type="button" className="dai-btn dai-btn--primary" onClick={() => { closeSheet(); onPrepareOffer?.(); }}>
-                Angebot erstellen
-              </button>
-              <button type="button" className="dai-btn dai-btn--secondary" disabled title="Bald verfügbar">
-                Angebot hochladen
+                Angebot vorbereiten
               </button>
               <button type="button" className="dai-btn dai-btn--ghost" disabled title="Bald verfügbar">
                 Link vorbereiten
@@ -550,8 +978,15 @@ export default function DealerAiLeadFollowUp({
             </div>
           </div>
         ) : (
-          <ul className="dai-lead-offers">
-            {offers.map((offer) => (
+          <>
+            {offerFeedback && (
+              <div className="dai-offer-feedback">
+                <p className="dai-offer-feedback__headline">{offerFeedback.headline}</p>
+                <p className="dai-offer-feedback__subline">{offerFeedback.subline}</p>
+              </div>
+            )}
+            <ul className="dai-lead-offers">
+            {resolvedOffers.map((offer) => (
               <li key={offer.id} className="dai-lead-offer-card">
                 <p className="dai-lead-offer-card__name">{offer.name}</p>
                 <p className="dai-lead-offer-card__meta">
@@ -560,13 +995,18 @@ export default function DealerAiLeadFollowUp({
                     .join(' · ')}
                 </p>
                 <div className="dai-lead-offer-card__actions">
-                  <button type="button" className="dai-btn dai-btn--secondary">Öffnen</button>
-                  <button type="button" className="dai-btn dai-btn--ghost">Link kopieren</button>
-                  <button type="button" className="dai-btn dai-btn--ghost">Senden</button>
+                  {offer.code && (
+                    <Link to={`/angebot/${offer.code}`} className="dai-btn dai-btn--secondary">
+                      Angebot öffnen
+                    </Link>
+                  )}
+                  <button type="button" className="dai-btn dai-btn--ghost">Link vorbereiten</button>
+                  <button type="button" className="dai-btn dai-btn--ghost">Link senden</button>
                 </div>
               </li>
             ))}
           </ul>
+          </>
         )}
       </LeadDetailPanel>
 
@@ -618,12 +1058,23 @@ export default function DealerAiLeadFollowUp({
             {history.map((entry) => (
               <li key={entry.id} className="dai-lead-history__item">
                 <span className="dai-lead-history__when">{formatHistoryWhen(entry.at)}</span>
-                <span className="dai-lead-history__text">{entry.text}</span>
+                <span className="dai-lead-history__text">{polishHistoryText(entry.text)}</span>
               </li>
             ))}
           </ul>
         )}
       </LeadDetailPanel>
+
+      <CleverKundenhelferSheet
+        open={activeSheet === SHEETS.kundenhelfer}
+        onClose={closeSheet}
+        notes={kundenhelferNotes}
+        onNotesChange={setKundenhelferNotes}
+        voiceMemos={kundenhelferMemos}
+        onVoiceMemosChange={setKundenhelferMemos}
+        onSave={saveKundenhelferSheet}
+        isSaving={isSaving}
+      />
     </section>
   );
 }

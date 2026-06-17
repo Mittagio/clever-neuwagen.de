@@ -1,0 +1,240 @@
+.dai-kh-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dai-kh-sheet__subline {
+  margin: -4px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.dai-kh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dai-kh-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dai-kh-field__input {
+  width: 100%;
+  min-height: 88px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: #0f172a;
+  background: #f8fafc;
+  resize: vertical;
+}
+
+.dai-kh-field__input:focus {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+  background: #fff;
+}
+
+.dai-kh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dai-kh-chip {
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dai-kh-chip.is-active {
+  border-color: #334155;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.dai-kh-memo {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dai-kh-memo__head {
+  margin-bottom: 12px;
+}
+
+.dai-kh-memo__title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-kh-memo__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.dai-kh-memo__error {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: #b91c1c;
+}
+
+.dai-kh-memo__record-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dai-kh-memo__mic {
+  font-size: 1.25rem;
+}
+
+.dai-kh-memo__recording {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.dai-kh-memo__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: dai-kh-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes dai-kh-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+.dai-kh-memo__time {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.dai-kh-memo__preview-meta {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dai-kh-memo__preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dai-kh-memo__audio {
+  display: none;
+}
+
+.dai-kh-memo-empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.dai-kh-memo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dai-kh-memo-list__title {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.dai-kh-memo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.dai-kh-memo-item__label {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dai-kh-memo-item__play {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.dai-kh-memo-item__transcribe {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: not-allowed;
+}
+
+.dai-kh-memo-item__transcript {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dai-kh-memo__dot {
+    animation: none;
+  }
+}

@@ -6,12 +6,13 @@ export default function BackendNav({
   activeSection,
   onAreaChange,
   onSectionChange,
+  compact = false,
 }) {
   const sections = BACKEND_AREA_SECTIONS[activeArea] ?? [];
   const showSubNav = areaHasSubNav(activeArea);
 
   return (
-    <div className="backend-nav-wrap">
+    <div className={`backend-nav-wrap${compact ? ' backend-nav-wrap--compact' : ''}`}>
       <nav className="backend-area-nav" aria-label="Hauptnavigation">
         {BACKEND_AREAS.map((area) => (
           <button
