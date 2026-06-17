@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import { useDraftDealerConditions } from '../context/DealerConditionsContext';
 import VehicleDataReadonlyBanner from '../components/shared/VehicleDataReadonlyBanner.jsx';
@@ -60,11 +60,6 @@ export default function BackendPage() {
     setActiveSection(sectionId);
   }, []);
 
-  const handleNavigate = useCallback((areaId, sectionId) => {
-    setActiveArea(areaId);
-    setActiveSection(sectionId ?? getDefaultSection(areaId));
-  }, []);
-
   const showConditionTools = CONDITION_SECTIONS.has(activeSection)
     && activeArea !== 'verkaufen'
     && activeArea !== 'marketing';
@@ -78,7 +73,6 @@ export default function BackendPage() {
       return (
         <BackendHome
           conditions={draftConditions}
-          onNavigate={handleNavigate}
         />
       );
     }
@@ -155,14 +149,6 @@ export default function BackendPage() {
             <div>
               <p className="backend-header-eyebrow">Händler-Backend</p>
               <h1 className="page-title backend-header-title">{draftConditions.dealerName}</h1>
-            </div>
-            <div className="backend-header-actions">
-              <Link to="/haendler/autohaus-trinkle" className="btn btn-secondary btn-sm">
-                Händlerseite
-              </Link>
-              <Link to="/dealer-ai" className="btn btn-primary btn-sm">
-                🤖 Dealer AI
-              </Link>
             </div>
           </header>
 

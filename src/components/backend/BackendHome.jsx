@@ -3,12 +3,6 @@ import { useLeads } from '../../context/LeadsContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { useCommunication } from '../../context/CommunicationContext.jsx';
 import { computeBackendTodayStats } from '../../logic/backendTodayStats.js';
-import {
-  countMissingLeasingFactors,
-  formatPublishedAt,
-} from '../../data/dealerConditionsSchema.js';
-import { PILOT_LIVE } from '../../config/pilotLive.js';
-import PilotLiveBanner from '../pilot/PilotLiveBanner.jsx';
 import './BackendHome.css';
 
 const TODAY_TILES = [
@@ -53,22 +47,13 @@ const QUICK_ACTIONS = [
   { label: 'Gesprächsmodus', icon: '🎤', href: '/gespraech', desc: 'Live mit Kundenwünschen' },
 ];
 
-const ASSISTANT_HINTS = ['Sprache', 'Text & E-Mail', 'WhatsApp', 'Chips im Gespräch', 'Showroom'];
-
-export default function BackendHome({ conditions, onNavigate }) {
+export default function BackendHome({ conditions }) {
   const { leads } = useLeads();
   const { offers } = useOffers();
-  const { getKpis, getDueToday } = useCommunication();
+  const { getDueToday } = useCommunication();
 
   const today = computeBackendTodayStats(leads, offers);
-  const kpis = getKpis();
   const dueToday = getDueToday();
-
-  const activeModels = conditions.activeModels?.filter((m) => m.active) ?? [];
-  const missingLf = activeModels.reduce(
-    (sum, m) => sum + countMissingLeasingFactors(conditions, m.id),
-    0,
-  );
 
   const counts = {
     newLeads: today.newLeads,
@@ -79,48 +64,6 @@ export default function BackendHome({ conditions, onNavigate }) {
 
   return (
     <div className="backend-home">
-      {PILOT_LIVE && <PilotLiveBanner />}
-
-      <section className="backend-home__advisor-hero" aria-labelledby="advisor-hero-title">
-        <div className="backend-home__advisor-hero-inner">
-          <p className="backend-home__advisor-badge">NEU · Digitaler Verkaufsberater</p>
-          <h2 id="advisor-hero-title" className="backend-home__advisor-title">
-            Unser digitaler Verkaufsberater
-          </h2>
-          <p className="backend-home__advisor-subline">
-            Kundenwünsche per Sprache, Text oder Klick erfassen –
-            und in Sekunden zur Verkaufschance machen.
-          </p>
-          <div className="backend-home__advisor-actions">
-            <Link to="/verkaufsassistent" className="backend-home__advisor-btn backend-home__advisor-btn--primary">
-              Verkaufsassistent öffnen
-            </Link>
-            <Link
-              to="/verkaufsassistent"
-              state={{ focusText: true }}
-              className="backend-home__advisor-btn backend-home__advisor-btn--secondary"
-            >
-              Text / E-Mail einfügen
-            </Link>
-          </div>
-          <p className="backend-home__advisor-trust">
-            Ideal für Kundengespräch, E-Mail, WhatsApp, Telefonnotiz und Showroom-Beratung.
-          </p>
-        </div>
-        <span className="backend-home__advisor-visual" aria-hidden="true">✨</span>
-      </section>
-
-      <section className="backend-home__hints" aria-label="Eingabewege">
-        <p className="backend-home__hints-text">
-          Ein Assistent, drei Wege – sprechen, Text einfügen oder Wünsche anklicken.
-        </p>
-        <div className="backend-home__hints-chips">
-          {ASSISTANT_HINTS.map((hint) => (
-            <span key={hint} className="backend-home__hints-chip">{hint}</span>
-          ))}
-        </div>
-      </section>
-
       <header className="backend-home__hero backend-home__hero--compact">
         <p className="backend-home__eyebrow">Guten Tag</p>
         <h2 className="backend-home__title">{conditions.dealerName}</h2>
@@ -156,6 +99,35 @@ export default function BackendHome({ conditions, onNavigate }) {
         )}
       </section>
 
+      <section className="backend-home__advisor-hero" aria-labelledby="advisor-hero-title">
+        <div className="backend-home__advisor-hero-inner">
+          <p className="backend-home__advisor-badge">NEU · DIGITALER VERKAUFSBERATER</p>
+          <h2 id="advisor-hero-title" className="backend-home__advisor-title">
+            Unser digitaler Verkaufsberater
+          </h2>
+          <p className="backend-home__advisor-subline">
+            Kundenwünsche per Sprache, Text oder Klick erfassen –
+            und in Sekunden zur Verkaufschance machen.
+          </p>
+          <div className="backend-home__advisor-actions">
+            <Link to="/verkaufsassistent" className="backend-home__advisor-btn backend-home__advisor-btn--primary">
+              Verkaufsassistent öffnen
+            </Link>
+            <Link
+              to="/verkaufsassistent"
+              state={{ focusText: true }}
+              className="backend-home__advisor-btn backend-home__advisor-btn--secondary"
+            >
+              Text / E-Mail einfügen
+            </Link>
+          </div>
+          <p className="backend-home__advisor-trust">
+            Ideal für Kundengespräch, E-Mail, WhatsApp, Telefonnotiz und Showroom-Beratung.
+          </p>
+        </div>
+        <span className="backend-home__advisor-visual" aria-hidden="true">✨</span>
+      </section>
+
       <section className="backend-home__section backend-home__section--muted" aria-labelledby="quick-heading">
         <h3 id="quick-heading" className="backend-home__section-title backend-home__section-title--muted">
           Schnellaktionen
@@ -174,45 +146,6 @@ export default function BackendHome({ conditions, onNavigate }) {
             </Link>
           ))}
         </div>
-      </section>
-
-      <section className="backend-home__section backend-home__kpis" aria-labelledby="kpi-heading">
-        <h3 id="kpi-heading" className="backend-home__section-title backend-home__section-title--muted">
-          Kennzahlen
-        </h3>
-        <div className="backend-home__kpi-grid">
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{today.inProgress}</span>
-            <span className="backend-home__kpi-label">Verkaufschancen in Bearbeitung</span>
-          </div>
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{kpis.emailsSent}</span>
-            <span className="backend-home__kpi-label">E-Mails (Session)</span>
-          </div>
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{kpis.offersSent}</span>
-            <span className="backend-home__kpi-label">Angebote versendet</span>
-          </div>
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{activeModels.length}</span>
-            <span className="backend-home__kpi-label">Aktive Modelle</span>
-          </div>
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{missingLf}</span>
-            <span className="backend-home__kpi-label">Fehlende LF-Zellen</span>
-          </div>
-          <div className="backend-home__kpi">
-            <span className="backend-home__kpi-value">{kpis.conversionRate}%</span>
-            <span className="backend-home__kpi-label">Conversion</span>
-          </div>
-        </div>
-        <p className="backend-home__kpi-meta">
-          Zuletzt veröffentlicht: {formatPublishedAt(conditions.lastPublishedAt)}
-          {' · '}
-          <button type="button" className="backend-home__kpi-link" onClick={() => onNavigate?.('fahrzeuge', 'publish')}>
-            Konditionen online schalten
-          </button>
-        </p>
       </section>
     </div>
   );
