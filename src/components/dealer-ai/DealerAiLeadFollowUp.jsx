@@ -35,7 +35,12 @@ import {
   hasVehicleOffer,
 } from '../../services/customerAkte.js';
 import { shouldElevateUnterlagen } from '../../services/cleverUnterlagen.js';
+import {
+  buildCleverAntwortenContext,
+  suggestCleverAntwortType,
+} from '../../services/cleverAntworten.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
+import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
@@ -59,6 +64,7 @@ const SHEETS = {
   history: 'history',
   kundenhelfer: 'kundenhelfer',
   unterlagen: 'unterlagen',
+  antworten: 'antworten',
   vehicle: 'vehicle',
   more: 'more',
 };
@@ -184,6 +190,7 @@ export default function DealerAiLeadFollowUp({
   const crm = lead?.crm ?? {};
 
   const [activeSheet, setActiveSheet] = useState(initialSheet);
+  const [antwortenPreset, setAntwortenPreset] = useState(null);
 
   useEffect(() => {
     if (initialSheet) setActiveSheet(initialSheet);
@@ -321,6 +328,16 @@ export default function DealerAiLeadFollowUp({
     lead,
   }), [name, vehicleCards, telHref, lead]);
 
+  const cleverAntwortenContext = useMemo(() => buildCleverAntwortenContext({
+    lead,
+    customerName: name,
+    phone,
+    email,
+    vehicleCards,
+    kundenhelferNotes,
+    wishPaymentType,
+  }), [lead, name, phone, email, vehicleCards, kundenhelferNotes, wishPaymentType]);
+
   const elevateUnterlagen = useMemo(
     () => shouldElevateUnterlagen(vehicleCards),
     [vehicleCards],
@@ -406,6 +423,7 @@ export default function DealerAiLeadFollowUp({
 
   function closeSheet() {
     setActiveSheet(null);
+    setAntwortenPreset(null);
     if (activeSheet === SHEETS.vehicle) {
       setSelectedVehicleCard(null);
     }
@@ -413,6 +431,11 @@ export default function DealerAiLeadFollowUp({
 
   function openSheet(id) {
     setActiveSheet(id);
+  }
+
+  function openCleverAntworten(presetType = null) {
+    setAntwortenPreset(presetType);
+    openSheet(SHEETS.antworten);
   }
 
   function selectFollowUp(chip) {
@@ -564,6 +587,7 @@ export default function DealerAiLeadFollowUp({
         hasNextStep={Boolean(nextStepId)}
         telHref={telHref}
         onEditCustomer={() => openSheet(SHEETS.customer)}
+        onCleverAntwort={() => openCleverAntworten()}
       />
 
       <CustomerAkteKundenhelfer
@@ -576,6 +600,7 @@ export default function DealerAiLeadFollowUp({
         telHref={telHref}
         onFallback={() => openSheet(SHEETS.customer)}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
+        onCleverAntwort={() => openCleverAntworten(suggestCleverAntwortType(cleverAntwortenContext))}
       />
 
       {elevateUnterlagen && unterlagenBlock}
@@ -1055,6 +1080,26 @@ export default function DealerAiLeadFollowUp({
           embedded
           onClose={closeSheet}
           onSave={saveUnterlagen}
+        />
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.antworten}
+        onClose={closeSheet}
+        title="Clever Antworten"
+      >
+        <CleverAntwortenSheet
+          key={antwortenPreset ?? 'pick'}
+          lead={lead}
+          customerName={name}
+          phone={phone}
+          email={email}
+          vehicleCards={vehicleCards}
+          kundenhelferNotes={kundenhelferNotes}
+          wishPaymentType={wishPaymentType}
+          initialTypeId={antwortenPreset}
+          embedded
+          onAddHistory={(text, type) => onAddHistory?.(text, type)}
         />
       </LeadDetailPanel>
 

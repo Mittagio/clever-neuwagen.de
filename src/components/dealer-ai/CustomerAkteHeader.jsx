@@ -22,6 +22,7 @@ export default function CustomerAkteHeader({
   hasNextStep = true,
   isStarred = false,
   onEditCustomer,
+  onCleverAntwort,
   telHref,
 }) {
   const displayName = formatCustomerDisplayName(customerName) || 'Kunde noch offen';
@@ -124,6 +125,14 @@ export default function CustomerAkteHeader({
             E-Mail
           </button>
         )}
+        <button
+          type="button"
+          className="cust-akte-profile__quick-btn cust-akte-profile__quick-btn--clever"
+          onClick={onCleverAntwort}
+          disabled={!onCleverAntwort}
+        >
+          Clever Antwort
+        </button>
       </div>
     </header>
   );

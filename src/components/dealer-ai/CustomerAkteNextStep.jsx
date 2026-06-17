@@ -1,6 +1,12 @@
 import './CustomerAkte.css';
 
-export default function CustomerAkteNextStep({ hint, telHref, onFallback, onUnterlagen }) {
+export default function CustomerAkteNextStep({
+  hint,
+  telHref,
+  onFallback,
+  onUnterlagen,
+  onCleverAntwort,
+}) {
   if (!hint?.text) return null;
 
   const isUnterlagen = hint.action === 'unterlagen';
@@ -24,6 +30,15 @@ export default function CustomerAkteNextStep({ hint, telHref, onFallback, onUnte
       ) : (
         <button type="button" className="cust-akte-nbs__cta" onClick={onFallback}>
           {hint.cta}
+        </button>
+      )}
+      {onCleverAntwort && (
+        <button
+          type="button"
+          className="cust-akte-nbs__cta cust-akte-nbs__cta--secondary"
+          onClick={onCleverAntwort}
+        >
+          Clever Antwort erstellen
         </button>
       )}
     </section>

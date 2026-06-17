@@ -201,8 +201,14 @@
 
 .cust-akte-profile__quick {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+
+@media (min-width: 400px) {
+  .cust-akte-profile__quick {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .cust-akte-profile__quick-btn {
@@ -224,6 +230,12 @@
 .cust-akte-profile__quick-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.cust-akte-profile__quick-btn--clever {
+  border-color: #10b981;
+  color: #047857;
+  background: #ecfdf5;
 }
 
 /* Sektionen */
@@ -361,6 +373,13 @@
   text-decoration: none;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
+}
+
+.cust-akte-nbs__cta--secondary {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  color: #047857;
+  box-shadow: none;
 }
 
 /* Auf dem Tisch */

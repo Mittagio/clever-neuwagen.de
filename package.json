@@ -61,6 +61,8 @@
     "test:customer-akte": "node src/services/customerAkte.test.js",
     "test:clever-unterlagen": "node src/services/cleverUnterlagen.test.js",
     "test:clever-selbstauskunft": "node src/services/cleverSelbstauskunft.test.js",
+    "test:clever-antworten": "node src/services/cleverAntworten.test.js",
+    "test:clever-diktat": "node src/services/cleverDiktat.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",
     "test:backend-kpi": "node src/logic/backendKpiNavigation.test.js",
     "test:dealer-app-routes": "node src/logic/dealerAppRoutes.test.js",
