@@ -349,7 +349,7 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 52px;
+  min-height: 60px;
   margin-top: 10px;
   padding: 0 16px;
   border: none;
@@ -727,6 +727,7 @@
 .cust-akte-unterlagen__card {
   display: block;
   width: 100%;
+  min-height: 60px;
   padding: 14px 16px;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
@@ -734,6 +735,12 @@
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   text-align: left;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cust-akte-unterlagen__card:active {
+  background: #f8fafc;
 }
 
 .cust-akte-unterlagen__head {

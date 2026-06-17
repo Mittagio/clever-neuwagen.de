@@ -568,8 +568,17 @@
 }
 
 .cust-offer-sheet--unterlagen {
-  max-height: 92vh;
+  max-height: min(92dvh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cust-offer-sheet--unterlagen .clever-unterlagen-sheet {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .cust-offer-sheet__title {

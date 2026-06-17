@@ -1,9 +1,19 @@
+/* Kundenseite Selbstauskunft – Mobile First */
 .csd-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
-  padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
   background: #f8fafc;
+}
+
+.csd-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 16px 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .csd-header {
@@ -22,6 +32,7 @@
   font-size: 1.375rem;
   font-weight: 800;
   color: #0f172a;
+  line-height: 1.2;
 }
 
 .csd-header__sub {
@@ -55,7 +66,7 @@
 .csd-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .csd-section {
@@ -79,6 +90,10 @@
   margin-bottom: 10px;
 }
 
+.csd-field:last-child {
+  margin-bottom: 0;
+}
+
 .csd-field__label {
   font-size: 0.75rem;
   font-weight: 700;
@@ -86,12 +101,14 @@
 }
 
 .csd-field__input {
-  min-height: 48px;
-  padding: 0 12px;
+  min-height: 52px;
+  padding: 0 14px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  font-size: 1rem;
+  font-size: 16px;
   background: #fff;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .csd-offer-confirm {
@@ -110,16 +127,18 @@
 .csd-check {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  min-height: 48px;
+  gap: 12px;
+  min-height: 52px;
   font-size: 0.875rem;
   color: #334155;
+  line-height: 1.4;
 }
 
 .csd-check input {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .csd-upload-list {
@@ -132,9 +151,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  min-height: 56px;
+  min-height: 60px;
   padding: 12px 0;
   border: none;
   border-bottom: 1px solid #f1f5f9;
@@ -144,9 +163,22 @@
   font-weight: 600;
   color: #1e293b;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.csd-upload-row:active {
+  opacity: 0.85;
+}
+
+.csd-upload-row > span:first-child {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
 }
 
 .csd-upload-row__status {
+  flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 700;
   color: #94a3b8;
@@ -169,6 +201,7 @@
 .csd-upload-panel__title {
   margin: 0;
   font-weight: 700;
+  font-size: 0.9375rem;
 }
 
 .csd-file-input {
@@ -176,7 +209,7 @@
 }
 
 .csd-btn {
-  min-height: 52px;
+  min-height: 60px;
   padding: 0 16px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
@@ -185,6 +218,8 @@
   font-weight: 700;
   color: #334155;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .csd-btn--ghost {
@@ -202,11 +237,19 @@
 }
 
 .csd-privacy {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 0.6875rem;
   color: #94a3b8;
   line-height: 1.45;
   text-align: center;
+}
+
+.csd-footer {
+  flex-shrink: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
 }
 
 .csd-empty,
@@ -224,11 +267,12 @@
 .csd-success__hint {
   margin-top: 12px;
   font-size: 0.875rem;
+  line-height: 1.45;
 }
 
 .csd-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -238,4 +282,6 @@
   color: #fff;
   font-size: 0.8125rem;
   z-index: 50;
+  max-width: calc(100vw - 32px);
+  text-align: center;
 }

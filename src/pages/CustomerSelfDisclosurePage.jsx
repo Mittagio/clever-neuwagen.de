@@ -55,6 +55,7 @@ export default function CustomerSelfDisclosurePage() {
   const [toast, setToast] = useState('');
   const [activeUpload, setActiveUpload] = useState(null);
   const fileRef = useRef(null);
+  const cameraRef = useRef(null);
 
   usePageSeo({
     title: 'Selbstauskunft & Unterlagen',
@@ -80,6 +81,15 @@ export default function CustomerSelfDisclosurePage() {
   useEffect(() => {
     if (session?.formData) {
       setForm({ ...EMPTY_SELBSTAUSKUNFT_FORM, ...session.formData });
+    } else if (session) {
+      setForm((prev) => ({
+        ...prev,
+        personal: {
+          ...prev.personal,
+          name: prev.personal.name || session.customerName || '',
+          email: prev.personal.email || session.customerEmail || '',
+        },
+      }));
     }
     if (session?.status === 'completed') setSubmitted(true);
   }, [session]);
@@ -193,7 +203,8 @@ export default function CustomerSelfDisclosurePage() {
 
   return (
     <div className="csd-page">
-      <header className="csd-header">
+      <div className="csd-scroll">
+        <header className="csd-header">
         <p className="csd-header__dealer">{session.dealerName}</p>
         <h1 className="csd-header__title">Selbstauskunft & Unterlagen</h1>
         <p className="csd-header__sub">
@@ -207,7 +218,7 @@ export default function CustomerSelfDisclosurePage() {
         </div>
       </header>
 
-      <form className="csd-form" onSubmit={handleSubmit}>
+        <form id="csd-form" className="csd-form" onSubmit={handleSubmit}>
         <section className="csd-section">
           <h2 className="csd-section__title">Persönliche Daten</h2>
           <Field label="Name" id="name" value={form.personal.name} onChange={(v) => updateForm('personal', 'name', v)} />
@@ -300,24 +311,35 @@ export default function CustomerSelfDisclosurePage() {
                 className="csd-file-input"
                 onChange={(e) => handleUpload(e.target.files?.[0])}
               />
-              <button type="button" className="csd-btn" onClick={() => fileRef.current?.click()}>
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="csd-file-input"
+                onChange={(e) => handleUpload(e.target.files?.[0])}
+              />
+              <button type="button" className="csd-btn csd-btn--block" onClick={() => fileRef.current?.click()}>
                 Datei auswählen
               </button>
-              <button type="button" className="csd-btn csd-btn--ghost" onClick={() => fileRef.current?.click()}>
+              <button type="button" className="csd-btn csd-btn--ghost csd-btn--block" onClick={() => cameraRef.current?.click()}>
                 Foto aufnehmen
               </button>
             </div>
           )}
         </section>
 
-        <p className="csd-privacy">
-          Ihre Angaben werden nur für Angebot, Bankprüfung und Vertragsabwicklung verwendet.
-        </p>
+          <p className="csd-privacy">
+            Ihre Angaben werden nur für Angebot, Bankprüfung und Vertragsabwicklung verwendet.
+          </p>
+        </form>
+      </div>
 
-        <button type="submit" className="csd-btn csd-btn--primary csd-btn--block">
+      <footer className="csd-footer">
+        <button type="submit" form="csd-form" className="csd-btn csd-btn--primary csd-btn--block">
           Absenden
         </button>
-      </form>
+      </footer>
 
       {toast && <p className="csd-toast" role="status">{toast}</p>}
     </div>

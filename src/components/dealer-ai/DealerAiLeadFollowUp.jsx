@@ -1050,6 +1050,7 @@ export default function DealerAiLeadFollowUp({
           vehicleTitle={vehicleTitleForUnterlagen}
           vehicleConditions={vehicleConditionsForUnterlagen}
           isGewerbe={lead?.wish?.customerGroup === 'gewerbe' || lead?.crm?.customerGroup === 'gewerbe'}
+          embedded
           onClose={closeSheet}
           onSave={saveUnterlagen}
         />

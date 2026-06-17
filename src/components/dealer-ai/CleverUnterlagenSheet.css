@@ -1,8 +1,19 @@
+/* Clever Unterlagen Sheet – Mobile First */
 .clever-unterlagen-sheet {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding-bottom: 24px;
+  gap: 14px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+.clever-unterlagen-sheet--embedded {
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+.clever-unterlagen-sheet__intro {
+  padding: 0 2px 4px;
 }
 
 .clever-unterlagen-sheet__head {
@@ -13,8 +24,8 @@
 
 .clever-unterlagen-sheet__close {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: #f1f5f9;
@@ -22,6 +33,7 @@
   line-height: 1;
   color: #64748b;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .clever-unterlagen-sheet__title {
@@ -60,13 +72,19 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 60px;
-  padding: 12px 14px;
+  min-height: 64px;
+  padding: 14px;
   border: none;
   border-bottom: 1px solid #f1f5f9;
   background: none;
   text-align: left;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clever-unterlagen-sheet__row:active {
+  background: #f8fafc;
 }
 
 .clever-unterlagen-sheet__row:last-child {
@@ -75,18 +93,26 @@
 
 .clever-unterlagen-sheet__row-label {
   flex: 1;
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .clever-unterlagen-sheet__row-status {
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  max-width: 46%;
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 999px;
   background: #f1f5f9;
   color: #64748b;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .clever-unterlagen-sheet__row-status--uploaded,
@@ -106,6 +132,7 @@
 }
 
 .clever-unterlagen-sheet__row-chev {
+  flex-shrink: 0;
   color: #cbd5e1;
   font-size: 1.125rem;
 }
@@ -128,6 +155,7 @@
   margin: 0 0 12px;
   font-size: 0.8125rem;
   color: #64748b;
+  word-break: break-word;
 }
 
 .clever-unterlagen-sheet__upload {
@@ -159,18 +187,18 @@
 
 .clever-unterlagen-sheet__detail-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   margin-top: 12px;
 }
 
 .clever-unterlagen-sheet__btn {
-  min-height: 48px;
+  min-height: 60px;
   padding: 0 16px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #fff;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: #334155;
   cursor: pointer;
@@ -178,6 +206,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clever-unterlagen-sheet__btn--block {
+  width: 100%;
 }
 
 .clever-unterlagen-sheet__btn--primary {
@@ -212,6 +246,7 @@
 }
 
 .clever-unterlagen-sheet__link-url {
+  display: none;
   margin: 0 0 10px;
   font-size: 0.75rem;
   color: #64748b;
@@ -220,8 +255,12 @@
 
 .clever-unterlagen-sheet__link-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
+}
+
+.clever-unterlagen-sheet__link-actions .clever-unterlagen-sheet__btn {
+  width: 100%;
 }
 
 .clever-unterlagen-sheet__privacy {
@@ -234,7 +273,7 @@
 
 .clever-unterlagen-sheet__toast {
   position: fixed;
-  bottom: 88px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -245,12 +284,8 @@
   font-size: 0.8125rem;
   font-weight: 600;
   z-index: 200;
-}
-
-@media (min-width: 720px) {
-  .clever-unterlagen-sheet__upload-hint--desktop {
-    display: block;
-  }
+  max-width: calc(100vw - 32px);
+  text-align: center;
 }
 
 /* Angebotsansicht – Abschluss vorbereiten */
@@ -277,26 +312,31 @@
 }
 
 .cust-offer-unterlagen__status {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 0.875rem;
   font-weight: 700;
   color: #2563eb;
 }
 
 .cust-offer-unterlagen__sa {
-  margin: -6px 0 12px;
+  margin: 0 0 12px;
   font-size: 0.8125rem;
   font-weight: 600;
   color: #334155;
+  line-height: 1.4;
 }
 
 .cust-offer-unterlagen__actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
-/* Clever Selbstauskunft Karte im Sheet */
+.cust-offer-unterlagen__actions .cust-offer-btn {
+  min-height: 60px;
+}
+
+/* Clever Selbstauskunft Karte */
 .clever-sa-card {
   padding: 14px;
   border-radius: 16px;
@@ -306,8 +346,8 @@
 
 .clever-sa-card__head {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
 }
@@ -320,13 +360,13 @@
 }
 
 .clever-sa-card__status {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: #f1f5f9;
   color: #64748b;
-  white-space: nowrap;
+  line-height: 1.3;
 }
 
 .clever-sa-card__status--uploaded,
@@ -358,26 +398,28 @@
   margin: 8px 0 0;
   font-size: 0.75rem;
   color: #94a3b8;
+  line-height: 1.4;
 }
 
 .clever-sa-card__modes {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 12px;
-  flex-wrap: wrap;
 }
 
 .clever-sa-card__mode {
-  flex: 1;
-  min-height: 44px;
-  padding: 0 10px;
+  min-height: 52px;
+  padding: 8px 10px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
   font-size: 0.75rem;
   font-weight: 700;
   color: #475569;
   cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1.25;
 }
 
 .clever-sa-card__pdf-hint {
@@ -385,4 +427,44 @@
   font-size: 0.8125rem;
   color: #64748b;
   line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  .clever-unterlagen-sheet__upload-hint--desktop {
+    display: block;
+  }
+
+  .clever-unterlagen-sheet__link-url {
+    display: block;
+  }
+
+  .clever-unterlagen-sheet__link-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .clever-unterlagen-sheet__link-actions .clever-unterlagen-sheet__btn {
+    width: auto;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .clever-unterlagen-sheet__detail-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .clever-unterlagen-sheet__detail-actions .clever-unterlagen-sheet__btn {
+    width: auto;
+  }
+
+  .clever-sa-card__head {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .clever-sa-card__status {
+    white-space: nowrap;
+  }
 }

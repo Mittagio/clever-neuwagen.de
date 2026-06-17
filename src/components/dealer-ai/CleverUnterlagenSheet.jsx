@@ -40,10 +40,12 @@ export default function CleverUnterlagenSheet({
   vehicleTitle = '',
   vehicleConditions = '',
   isGewerbe = false,
+  embedded = false,
   onClose,
   onSave,
 }) {
   const fileRef = useRef(null);
+  const cameraRef = useRef(null);
   const pdfRef = useRef(null);
   const [activeSlot, setActiveSlot] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -171,17 +173,24 @@ export default function CleverUnterlagenSheet({
   const isSelbstauskunftSlot = activeSlot === 'selbstauskunft';
 
   return (
-    <div className="clever-unterlagen-sheet">
-      <header className="clever-unterlagen-sheet__head">
-        <button type="button" className="clever-unterlagen-sheet__close" onClick={onClose} aria-label="Schließen">
-          ×
-        </button>
-        <div>
-          <h2 className="clever-unterlagen-sheet__title">Clever Unterlagen</h2>
+    <div className={`clever-unterlagen-sheet${embedded ? ' clever-unterlagen-sheet--embedded' : ''}`}>
+      {!embedded ? (
+        <header className="clever-unterlagen-sheet__head">
+          <button type="button" className="clever-unterlagen-sheet__close" onClick={onClose} aria-label="Schließen">
+            ×
+          </button>
+          <div>
+            <h2 className="clever-unterlagen-sheet__title">Clever Unterlagen</h2>
+            <p className="clever-unterlagen-sheet__sub">{summary.headline}</p>
+            <p className="clever-unterlagen-sheet__hint">{getUnterlagenSubline(pt)}</p>
+          </div>
+        </header>
+      ) : (
+        <div className="clever-unterlagen-sheet__intro">
           <p className="clever-unterlagen-sheet__sub">{summary.headline}</p>
           <p className="clever-unterlagen-sheet__hint">{getUnterlagenSubline(pt)}</p>
         </div>
-      </header>
+      )}
 
       {showSelbstauskunft && (
         <section className="clever-sa-card">
@@ -195,7 +204,7 @@ export default function CleverUnterlagenSheet({
           {!selbstauskunft.link?.url ? (
             <button
               type="button"
-              className="clever-unterlagen-sheet__btn clever-unterlagen-sheet__btn--primary"
+              className="clever-unterlagen-sheet__btn clever-unterlagen-sheet__btn--primary clever-unterlagen-sheet__btn--block"
               onClick={handleCreateSelbstauskunftLink}
             >
               Selbstauskunft-Link senden
@@ -295,9 +304,19 @@ export default function CleverUnterlagenSheet({
               className="clever-unterlagen-sheet__file-input"
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
+            {!isSelbstauskunftSlot && (
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="clever-unterlagen-sheet__file-input"
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+            )}
             <button
               type="button"
-              className="clever-unterlagen-sheet__btn"
+              className="clever-unterlagen-sheet__btn clever-unterlagen-sheet__btn--block"
               onClick={() => (isSelbstauskunftSlot ? pdfRef : fileRef).current?.click()}
             >
               {isSelbstauskunftSlot ? 'PDF hochladen' : 'Datei auswählen'}
@@ -305,8 +324,8 @@ export default function CleverUnterlagenSheet({
             {!isSelbstauskunftSlot && (
               <button
                 type="button"
-                className="clever-unterlagen-sheet__btn clever-unterlagen-sheet__btn--ghost"
-                onClick={() => fileRef.current?.click()}
+                className="clever-unterlagen-sheet__btn clever-unterlagen-sheet__btn--ghost clever-unterlagen-sheet__btn--block"
+                onClick={() => cameraRef.current?.click()}
               >
                 Foto aufnehmen
               </button>
