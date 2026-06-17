@@ -75,21 +75,22 @@ function mergeSonderwuensche(existing = {}, incoming = {}) {
   return next;
 }
 
-function formatSonderwuenscheSummary(sonderwuensche) {
+function formatSonderwuenscheSummary(sonderwuensche = {}) {
+  const sw = sonderwuensche ?? {};
   const parts = [];
-  if (sonderwuensche.wunschfarbe) parts.push(`Farbe: ${sonderwuensche.wunschfarbe}`);
+  if (sw.wunschfarbe) parts.push(`Farbe: ${sw.wunschfarbe}`);
   for (const [key, label] of [
     ['anhaengerkupplung', 'Anhängerkupplung'],
     ['gummifussmatten', 'Gummifußmatten'],
     ['winterraeder', 'Winterräder'],
     ['glasdach', 'Glasdach'],
   ]) {
-    if (sonderwuensche[key]) parts.push(label);
+    if (sw[key]) parts.push(label);
   }
-  if (sonderwuensche.andereLaufzeit) parts.push(`Laufzeit: ${sonderwuensche.andereLaufzeit} Monate`);
-  if (sonderwuensche.andereKilometer) parts.push(`Kilometer: ${sonderwuensche.andereKilometer} km/J`);
-  if (sonderwuensche.andereAnzahlung) parts.push(`Anzahlung: ${sonderwuensche.andereAnzahlung} €`);
-  if (sonderwuensche.sonstigerWunsch) parts.push(sonderwuensche.sonstigerWunsch);
+  if (sw.andereLaufzeit) parts.push(`Laufzeit: ${sw.andereLaufzeit} Monate`);
+  if (sw.andereKilometer) parts.push(`Kilometer: ${sw.andereKilometer} km/J`);
+  if (sw.andereAnzahlung) parts.push(`Anzahlung: ${sw.andereAnzahlung} €`);
+  if (sw.sonstigerWunsch) parts.push(sw.sonstigerWunsch);
   return parts;
 }
 

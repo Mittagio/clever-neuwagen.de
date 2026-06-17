@@ -31,8 +31,10 @@ import {
   computeAkteCleverStaerke,
   formatVehicleCardConditions,
   formatVehicleCardPrice,
+  formatVehicleCardTitle,
   hasVehicleOffer,
 } from '../../services/customerAkte.js';
+import { shouldElevateUnterlagen } from '../../services/cleverUnterlagen.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
@@ -40,6 +42,8 @@ import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteDealerNav from './CustomerAkteDealerNav.jsx';
+import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
+import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 import './CustomerAkte.css';
@@ -53,6 +57,7 @@ const SHEETS = {
   outcome: 'outcome',
   history: 'history',
   kundenhelfer: 'kundenhelfer',
+  unterlagen: 'unterlagen',
   vehicle: 'vehicle',
   more: 'more',
 };
@@ -171,12 +176,17 @@ export default function DealerAiLeadFollowUp({
   onReturnToReview,
   onDiscard,
   onAddHistory,
+  initialSheet = null,
   isSaving = false,
 }) {
   const fields = parsed?.fields ?? {};
   const crm = lead?.crm ?? {};
 
-  const [activeSheet, setActiveSheet] = useState(null);
+  const [activeSheet, setActiveSheet] = useState(initialSheet);
+
+  useEffect(() => {
+    if (initialSheet) setActiveSheet(initialSheet);
+  }, [initialSheet]);
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [showCardAnimation, setShowCardAnimation] = useState(isFresh);
   const [reservedModels, setReservedModels] = useState(crm.reservedModels ?? []);
@@ -307,7 +317,29 @@ export default function DealerAiLeadFollowUp({
     customerName: name,
     vehicleCards,
     telHref,
-  }), [name, vehicleCards, telHref]);
+    lead,
+  }), [name, vehicleCards, telHref, lead]);
+
+  const elevateUnterlagen = useMemo(
+    () => shouldElevateUnterlagen(vehicleCards),
+    [vehicleCards],
+  );
+
+  const unterlagenBlock = (
+    <CustomerAkteUnterlagen
+      lead={lead}
+      paymentType={wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType}
+      onOpen={() => openSheet(SHEETS.unterlagen)}
+    />
+  );
+
+  const primaryVehicleCard = vehicleCards[0];
+  const vehicleTitleForUnterlagen = primaryVehicleCard
+    ? formatVehicleCardTitle(primaryVehicleCard)
+    : headSubline;
+  const vehicleConditionsForUnterlagen = primaryVehicleCard
+    ? formatVehicleCardConditions(primaryVehicleCard)
+    : '';
 
   const nextStepLabel = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label ?? 'Morgen anrufen';
 
@@ -438,6 +470,15 @@ export default function DealerAiLeadFollowUp({
     onSave?.(buildSavePayload(), meta);
   }
 
+  function saveUnterlagen(unterlagenData, historyText, historyType = 'unterlagen') {
+    onSave?.(buildSavePayload({ cleverUnterlagen: unterlagenData }), {
+      historyText,
+      historyType,
+      addFollowupHistory: false,
+      silent: !historyText,
+    });
+  }
+
   function saveKundenhelferSheet() {
     save({
       historyText: 'Clever Kundenhelfer aktualisiert',
@@ -533,7 +574,10 @@ export default function DealerAiLeadFollowUp({
         hint={nextBestStep}
         telHref={telHref}
         onFallback={() => openSheet(SHEETS.customer)}
+        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
       />
+
+      {elevateUnterlagen && unterlagenBlock}
 
       <CustomerAkteBoard
         cards={vehicleCards}
@@ -542,6 +586,8 @@ export default function DealerAiLeadFollowUp({
         onCardMenu={openVehicleCard}
         onAddVehicle={handleAddVehicle}
       />
+
+      {!elevateUnterlagen && unterlagenBlock}
 
       <CustomerAkteDealerNav onNewWish={handleAddVehicle} />
 
@@ -988,6 +1034,25 @@ export default function DealerAiLeadFollowUp({
             ))}
           </ul>
         )}
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.unterlagen}
+        onClose={closeSheet}
+        title="Clever Unterlagen"
+      >
+        <CleverUnterlagenSheet
+          lead={lead}
+          paymentType={wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType}
+          customerName={name}
+          phone={phone}
+          email={email}
+          vehicleTitle={vehicleTitleForUnterlagen}
+          vehicleConditions={vehicleConditionsForUnterlagen}
+          isGewerbe={lead?.wish?.customerGroup === 'gewerbe' || lead?.crm?.customerGroup === 'gewerbe'}
+          onClose={closeSheet}
+          onSave={saveUnterlagen}
+        />
       </LeadDetailPanel>
 
       <CleverKundenhelferSheet

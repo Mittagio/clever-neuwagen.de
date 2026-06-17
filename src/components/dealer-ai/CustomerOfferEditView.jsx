@@ -22,7 +22,18 @@ import {
   buildOfferWhatsappHref,
   buildOfferMailtoHref,
 } from '../../services/vehicleOffer.js';
+import {
+  computeUnterlagenSummary,
+  getUnterlagenSubline,
+} from '../../services/cleverUnterlagen.js';
+import {
+  formatSelbstauskunftSummary,
+  getSelbstauskunft,
+  needsSelbstauskunft,
+} from '../../services/cleverSelbstauskunft.js';
+import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import './CustomerOfferEdit.css';
+import './CleverUnterlagenSheet.css';
 
 function buildOfferTimeline(offer = {}, history = []) {
   const items = [];
@@ -74,9 +85,11 @@ export default function CustomerOfferEditView({
   deliveryNote = '',
   offer,
   history = [],
+  lead = null,
   telHref = null,
   onBack,
   onSave,
+  onSaveUnterlagen,
   onUploadPdf,
   onCreateLink,
   onReplacePdf,
@@ -88,6 +101,7 @@ export default function CustomerOfferEditView({
   const fileInputRef = useRef(null);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
+  const [unterlagenOpen, setUnterlagenOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -110,6 +124,14 @@ export default function CustomerOfferEditView({
   const timeline = buildOfferTimeline(offer, history);
   const opened = (offer?.tracking?.openCount ?? 0) > 0;
   const showSmartAction = offer?.status === VEHICLE_OFFER_STATUS.OPENED && telHref;
+  const unterlagenSummary = lead ? computeUnterlagenSummary(lead, card.paymentType) : null;
+  const unterlagenSubline = getUnterlagenSubline(card.paymentType);
+  const conditionsLine = formatVehicleCardConditionsDot(card);
+  const showSelbstauskunft = needsSelbstauskunft(card.paymentType);
+  const selbstauskunft = lead ? getSelbstauskunft(lead?.crm?.cleverUnterlagen) : null;
+  const selbstauskunftLine = selbstauskunft
+    ? formatSelbstauskunftSummary(selbstauskunft, selbstauskunft.uploadCount ?? 0)
+    : null;
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -481,6 +503,37 @@ export default function CustomerOfferEditView({
         </section>
       )}
 
+      {lead && (
+        <section className="cust-offer-unterlagen" aria-labelledby="cust-offer-unterlagen-title">
+          <h2 id="cust-offer-unterlagen-title" className="cust-offer-unterlagen__title">
+            Abschluss vorbereiten
+          </h2>
+          <p className="cust-offer-unterlagen__sub">{unterlagenSubline}</p>
+          {unterlagenSummary && (
+            <p className="cust-offer-unterlagen__status">{unterlagenSummary.headline}</p>
+          )}
+          {showSelbstauskunft && selbstauskunftLine && (
+            <p className="cust-offer-unterlagen__sa">Selbstauskunft · {selbstauskunftLine}</p>
+          )}
+          <div className="cust-offer-unterlagen__actions">
+            <button
+              type="button"
+              className="cust-offer-btn cust-offer-btn--primary cust-offer-btn--block"
+              onClick={() => setUnterlagenOpen(true)}
+            >
+              {showSelbstauskunft ? 'Selbstauskunft-Link senden' : 'Unterlagen öffnen'}
+            </button>
+            <button
+              type="button"
+              className="cust-offer-btn cust-offer-btn--secondary cust-offer-btn--block"
+              onClick={() => setUnterlagenOpen(true)}
+            >
+              Unterlagen öffnen
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="cust-offer-section">
         <h2 className="cust-offer-section__title">Verlauf</h2>
         <ul className="cust-offer-timeline">
@@ -553,6 +606,30 @@ export default function CustomerOfferEditView({
       )}
 
       {toast && <p className="cust-offer-toast" role="status">{toast}</p>}
+
+      {unterlagenOpen && lead && (
+        <div
+          className="cust-offer-sheet-backdrop"
+          role="dialog"
+          aria-label="Clever Unterlagen"
+          onClick={() => setUnterlagenOpen(false)}
+        >
+          <div className="cust-offer-sheet cust-offer-sheet--unterlagen" onClick={(e) => e.stopPropagation()}>
+            <CleverUnterlagenSheet
+              lead={lead}
+              paymentType={card.paymentType}
+              customerName={customerName}
+              phone={phone}
+              email={email}
+              vehicleTitle={title}
+              vehicleConditions={conditionsLine}
+              isGewerbe={lead?.wish?.customerGroup === 'gewerbe' || lead?.crm?.customerGroup === 'gewerbe'}
+              onClose={() => setUnterlagenOpen(false)}
+              onSave={onSaveUnterlagen}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

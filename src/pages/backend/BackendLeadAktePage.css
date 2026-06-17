@@ -1,0 +1,17 @@
+.backend-lead-akte {
+  min-height: 100dvh;
+  background: #fff;
+}
+
+.backend-lead-akte--empty {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 48px 20px;
+  text-align: center;
+  color: #475569;
+}
+
+.backend-lead-akte--empty a {
+  color: #2563eb;
+  font-weight: 600;
+}

@@ -567,6 +567,11 @@
   background: #fff;
 }
 
+.cust-offer-sheet--unterlagen {
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
 .cust-offer-sheet__title {
   margin: 0 0 12px;
   font-size: 1rem;

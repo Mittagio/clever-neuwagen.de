@@ -39,6 +39,27 @@
   gap: var(--space-sm);
 }
 
+.offers-page__view-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-size: 0.8125rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.offers-page__view-clear {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .offers-page__back,
 .offers-page__sales {
   width: 44px;

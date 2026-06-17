@@ -1,7 +1,9 @@
 import './CustomerAkte.css';
 
-export default function CustomerAkteNextStep({ hint, telHref, onFallback }) {
+export default function CustomerAkteNextStep({ hint, telHref, onFallback, onUnterlagen }) {
   if (!hint?.text) return null;
+
+  const isUnterlagen = hint.action === 'unterlagen';
 
   return (
     <section className="cust-akte-nbs" aria-labelledby="cust-akte-nbs-title">
@@ -10,7 +12,11 @@ export default function CustomerAkteNextStep({ hint, telHref, onFallback }) {
         <span className="cust-akte-nbs__star" aria-hidden>★</span>
         <p className="cust-akte-nbs__text">{hint.text}</p>
       </div>
-      {hint.canCall && telHref ? (
+      {isUnterlagen ? (
+        <button type="button" className="cust-akte-nbs__cta" onClick={onUnterlagen}>
+          {hint.cta}
+        </button>
+      ) : hint.canCall && telHref ? (
         <a href={telHref} className="cust-akte-nbs__cta">
           <span aria-hidden>📞</span>
           {hint.cta}

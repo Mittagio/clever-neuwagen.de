@@ -14,6 +14,7 @@ import AccountPage from './pages/sprint7/AccountPage.jsx';
 import MeinBereichPage from './pages/MeinBereichPage.jsx';
 import MeinBereichOfferPage from './pages/MeinBereichOfferPage.jsx';
 import UnterlagenChecklistPage from './pages/UnterlagenChecklistPage.jsx';
+import CustomerSelfDisclosurePage from './pages/CustomerSelfDisclosurePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AngebotPage from './pages/sprint7/AngebotPage.jsx';
 import InsertGeneratorPage from './pages/InsertGeneratorPage';
@@ -73,6 +74,9 @@ import BackendDocumentsPage from './pages/sprint5/BackendDocumentsPage.jsx';
 import BackendPublishingPage from './pages/sprint5/BackendPublishingPage.jsx';
 import SelbstauskunftPage from './pages/sprint5/SelbstauskunftPage.jsx';
 import AdminCompliancePage from './pages/sprint5/AdminCompliancePage.jsx';
+import NewInquiriesQueuePage from './pages/backend/NewInquiriesQueuePage.jsx';
+import PrepareOfferQueuePage from './pages/backend/PrepareOfferQueuePage.jsx';
+import BackendLeadAktePage from './pages/backend/BackendLeadAktePage.jsx';
 export default function AppRouter() {
   const { isSubdomain, dealerId } = useDealerSubdomain();
 
@@ -166,10 +170,14 @@ export default function AppRouter() {
         <Route path="/mein-bereich" element={<MeinBereichPage />} />
         <Route path="/mein-bereich/angebote/:code" element={<MeinBereichOfferPage />} />
         <Route path="/mein-bereich/unterlagen/:requestId" element={<UnterlagenChecklistPage />} />
+        <Route path="/customer/self-disclosure/:token" element={<CustomerSelfDisclosurePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/account" element={<Navigate to="/mein-bereich" replace />} />
         <Route path="/offers" element={<OffersPage />} />
         <Route path="/backend/verkaufschancen" element={<CommunicationCenterPage />} />
+        <Route path="/backend/neue-anfragen" element={<NewInquiriesQueuePage />} />
+        <Route path="/backend/angebot-vorbereiten" element={<PrepareOfferQueuePage />} />
+        <Route path="/backend/kundenakte/:leadId" element={<BackendLeadAktePage />} />
         <Route path="/backend/angebote" element={<OffersPage />} />
         <Route path="/backend/fahrzeuge" element={<BackendPage />} />
         <Route path="/templates" element={<TemplatesPage />} />

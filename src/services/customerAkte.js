@@ -9,6 +9,12 @@ import {
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
 import { getCleverStaerkeTier } from './cleverStaerke.js';
 import { VEHICLE_OFFER_STATUS_UI, enrichCardWithVehicleOffer, VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
+import { computeUnterlagenSummary } from './cleverUnterlagen.js';
+import {
+  getSelbstauskunft,
+  needsSelbstauskunft,
+  SELBSTAUSKUNFT_STATUS,
+} from './cleverSelbstauskunft.js';
 
 function hasCustomerName(name) {
   const trimmed = name?.trim();
@@ -362,15 +368,52 @@ export function buildNextBestStepHint({
   customerName = '',
   vehicleCards = [],
   telHref = null,
+  lead = null,
 } = {}) {
   const firstName = getCustomerFirstName(customerName);
-  const withOffer = vehicleCards.find((c) => c.offer?.status === 'opened' || c.offer?.status === 'sent');
-  if (withOffer) {
-    const title = formatVehicleCardTitle(withOffer).replace(/^Kia\s*/i, '');
+  const withOpened = vehicleCards.find((c) => c.offer?.status === 'opened');
+  const withSent = vehicleCards.find((c) => c.offer?.status === 'sent');
+  const primaryCard = withOpened ?? withSent ?? vehicleCards[0];
+  const paymentType = primaryCard?.paymentType ?? lead?.paymentType;
+  const unterlagenSummary = lead ? computeUnterlagenSummary(lead, paymentType) : null;
+  const selbstauskunft = lead ? getSelbstauskunft(lead?.crm?.cleverUnterlagen) : null;
+  const saComplete = selbstauskunft?.status === SELBSTAUSKUNFT_STATUS.completed.id
+    || selbstauskunft?.status === SELBSTAUSKUNFT_STATUS.checked.id;
+
+  if (withOpened || withSent) {
+    if (saComplete && (selbstauskunft.uploadCount ?? 0) > 0) {
+      return {
+        text: 'Unterlagen sind da. Bankanfrage kann vorbereitet werden.',
+        cta: 'Unterlagen öffnen',
+        action: 'unterlagen',
+      };
+    }
+    if (unterlagenSummary && unterlagenSummary.doneCount >= Math.max(2, unterlagenSummary.totalCount - 1)) {
+      return {
+        text: 'Unterlagen sehen gut aus. Bankanfrage kann vorbereitet werden.',
+        cta: 'Unterlagen öffnen',
+        action: 'unterlagen',
+      };
+    }
+    if (withOpened) {
+      const title = formatVehicleCardTitle(withOpened).replace(/^Kia\s*/i, '');
+      return {
+        text: `${firstName} hat das ${title}-Angebot kürzlich geöffnet. Ein kurzer Anruf erhöht die Chance deutlich.`,
+        cta: 'Jetzt anrufen',
+        canCall: Boolean(telHref),
+      };
+    }
+    if (needsSelbstauskunft(paymentType)) {
+      return {
+        text: 'Bereit für den nächsten Schritt? Selbstauskunft-Link senden und Abschluss vorbereiten.',
+        cta: 'Selbstauskunft-Link senden',
+        action: 'unterlagen',
+      };
+    }
     return {
-      text: `${firstName} hat das ${title}-Angebot kürzlich geöffnet. Ein kurzer Anruf erhöht die Chance deutlich.`,
-      cta: 'Jetzt anrufen',
-      canCall: Boolean(telHref),
+      text: 'Bereit für den nächsten Schritt? Unterlagen-Link senden und Abschluss vorbereiten.',
+      cta: 'Unterlagen-Link senden',
+      action: 'unterlagen',
     };
   }
   if (vehicleCards.length > 0) {

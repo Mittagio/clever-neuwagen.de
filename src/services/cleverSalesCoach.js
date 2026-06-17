@@ -189,18 +189,20 @@ export function getDailyGoalProgress({
   const remaining = Math.max(0, callbacksGoal - callbacksDone);
   const pct = Math.min(100, Math.round((callbacksDone / callbacksGoal) * 100));
 
-  let label;
+  const label = 'Heute liegen Chancen bereit.';
+
+  let progress;
   if (callbacksDone >= callbacksGoal) {
-    label = 'Tagesziel erreicht – stark im Flow.';
+    progress = 'Tagesziel erreicht – stark im Flow.';
   } else if (remaining === 1) {
-    label = 'Noch 1 Kontakt und dein Tagesziel ist rund.';
+    progress = 'Noch 1 Kontakt und dein Tagesziel ist rund.';
   } else {
-    label = `Noch ${remaining} Kontakte und dein Tagesziel ist rund.`;
+    progress = `Noch ${remaining} Kontakte und dein Tagesziel ist rund.`;
   }
 
   return {
     label,
-    progress: `${callbacksDone} von ${callbacksGoal} Rückrufen`,
+    progress,
     offersSentToday,
     pct,
   };

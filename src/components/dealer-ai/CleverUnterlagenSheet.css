@@ -1,0 +1,388 @@
+.clever-unterlagen-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 24px;
+}
+
+.clever-unterlagen-sheet__head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.clever-unterlagen-sheet__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.clever-unterlagen-sheet__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.clever-unterlagen-sheet__sub {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.clever-unterlagen-sheet__hint {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.clever-unterlagen-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.clever-unterlagen-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clever-unterlagen-sheet__row:last-child {
+  border-bottom: none;
+}
+
+.clever-unterlagen-sheet__row-label {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.clever-unterlagen-sheet__row-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.clever-unterlagen-sheet__row-status--uploaded,
+.clever-unterlagen-sheet__row-status--checked {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.clever-unterlagen-sheet__row-status--replaced {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.clever-unterlagen-sheet__row-status--muted {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.clever-unterlagen-sheet__row-chev {
+  color: #cbd5e1;
+  font-size: 1.125rem;
+}
+
+.clever-unterlagen-sheet__detail {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.clever-unterlagen-sheet__detail-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clever-unterlagen-sheet__detail-meta {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.clever-unterlagen-sheet__upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+.clever-unterlagen-sheet__upload--drag {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.clever-unterlagen-sheet__upload-hint--desktop {
+  display: none;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.clever-unterlagen-sheet__file-input {
+  display: none;
+}
+
+.clever-unterlagen-sheet__detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clever-unterlagen-sheet__btn {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clever-unterlagen-sheet__btn--primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.clever-unterlagen-sheet__btn--ghost {
+  background: transparent;
+}
+
+.clever-unterlagen-sheet__link {
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.clever-unterlagen-sheet__link-title {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clever-unterlagen-sheet__link-status {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.clever-unterlagen-sheet__link-url {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: #64748b;
+  word-break: break-all;
+}
+
+.clever-unterlagen-sheet__link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clever-unterlagen-sheet__privacy {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.clever-unterlagen-sheet__toast {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  z-index: 200;
+}
+
+@media (min-width: 720px) {
+  .clever-unterlagen-sheet__upload-hint--desktop {
+    display: block;
+  }
+}
+
+/* Angebotsansicht – Abschluss vorbereiten */
+.cust-offer-unterlagen {
+  margin: 0 0 20px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.cust-offer-unterlagen__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cust-offer-unterlagen__sub {
+  margin: 6px 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.cust-offer-unterlagen__status {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.cust-offer-unterlagen__sa {
+  margin: -6px 0 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cust-offer-unterlagen__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Clever Selbstauskunft Karte im Sheet */
+.clever-sa-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 100%);
+  border: 1px solid #bfdbfe;
+}
+
+.clever-sa-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.clever-sa-card__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.clever-sa-card__status {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.clever-sa-card__status--uploaded,
+.clever-sa-card__status--checked {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.clever-sa-card__status--progress {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.clever-sa-card__hint {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.clever-sa-card__link-status {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.clever-sa-card__contact-hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.clever-sa-card__modes {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.clever-sa-card__mode {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+
+.clever-sa-card__pdf-hint {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}

@@ -7,7 +7,7 @@ export const TERMS = {
   salesChances: 'Verkaufschancen',
   salesChancesCenter: 'Verkaufschancen',
   salesChancesClassic: 'Verkaufschancen (klassisch)',
-  newSalesChances: 'Neue Verkaufschancen',
+  newSalesChances: 'Neue Anfragen',
   openSalesChances: 'Offene Verkaufschancen',
   newSalesChance: 'Neue Verkaufschance',
   seller: 'Verkäufer',

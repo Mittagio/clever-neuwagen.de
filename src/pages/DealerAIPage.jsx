@@ -510,6 +510,19 @@ export default function DealerAIPage() {
     showToast('Gespeichert');
   }
 
+  function handleUnterlagenSave(unterlagen, historyText, historyType = 'unterlagen') {
+    if (!result?.leadId) return;
+    updateLead(result.leadId, {
+      crm: {
+        ...(activeLead?.crm ?? {}),
+        cleverUnterlagen: unterlagen,
+      },
+    });
+    if (historyText) {
+      addHistory(result.leadId, historyText, historyType);
+    }
+  }
+
   const activeOfferEdit = offerEditCard
     ? getVehicleOffer(activeLead ?? {}, offerEditCard)
     : null;
@@ -650,9 +663,11 @@ export default function DealerAIPage() {
             deliveryNote={activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? ''}
             offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
             history={activeLead?.history ?? []}
+            lead={activeLead}
             telHref={phoneTelHref(activeLead?.contact?.phone ?? '')}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
+            onSaveUnterlagen={handleUnterlagenSave}
             onUploadPdf={handleOfferUploadPdf}
             onCreateLink={handleOfferCreateLink}
             onDeletePdf={handleOfferDeletePdf}

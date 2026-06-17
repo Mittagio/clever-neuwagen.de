@@ -51,6 +51,34 @@
   border-radius: 999px;
 }
 
+.comm-center__view-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.comm-center__view-clear {
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.comm-center__empty {
+  padding: 20px 16px;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+  list-style: none;
+}
+
 .comm-center__search {
   width: 100%;
   border: none;

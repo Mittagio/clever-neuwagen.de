@@ -1,4 +1,5 @@
 import { DEALER_SELLERS } from '../data/salesChanceTypes.js';
+import { EMPTY_SONDERWUESNCHE } from '../data/offerDialogTypes.js';
 
 export function normalizeLead(lead) {
   if (!lead) return lead;
@@ -28,7 +29,8 @@ export function normalizeLead(lead) {
     deliveryTime: lead.deliveryTime ?? null,
     complianceStatus: lead.complianceStatus ?? 'ok',
     sonderwuensche: {
-      ...lead.sonderwuensche,
+      ...EMPTY_SONDERWUESNCHE,
+      ...(lead.sonderwuensche ?? {}),
     },
     documents: lead.documents ?? [],
   };

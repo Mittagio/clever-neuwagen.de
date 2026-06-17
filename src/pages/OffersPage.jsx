@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useOffers } from '../context/OffersContext.jsx';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
@@ -18,11 +18,19 @@ import OfferCreateSheet from '../components/offers/OfferCreateSheet.jsx';
 import OfferQuickSend from '../components/offers/OfferQuickSend.jsx';
 import OfferTracking from '../components/offers/OfferTracking.jsx';
 import OfferVehicleImage from '../components/shared/OfferVehicleImage.jsx';
+import {
+  filterOffersList,
+  getOffersViewMeta,
+} from '../logic/backendKpiNavigation.js';
 import './OffersPage.css';
 
 export default function OffersPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const kpiViewFilter = searchParams.get('filter');
+  const kpiSort = searchParams.get('sort');
+  const viewMeta = getOffersViewMeta(kpiViewFilter);
   const { offers, addOffer, updateOfferStatus, markSent, linkLead, getOfferUrl } = useOffers();
   const { leads, addLead, updateLead } = useLeads();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
@@ -42,14 +50,19 @@ export default function OffersPage() {
     if (location.state?.openCreate) {
       setShowCreate(true);
     }
+    if (location.state?.filter) {
+      setFilter(location.state.filter);
+    }
   }, [location.state]);
 
   const filtered = useMemo(() => {
-    let list = [...offers].sort(
-      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
-    );
+    let list = kpiViewFilter
+      ? filterOffersList(offers, kpiViewFilter, kpiSort)
+      : [...offers].sort(
+        (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
+      );
 
-    if (filter !== 'all') {
+    if (!kpiViewFilter && filter !== 'all') {
       list = list.filter((o) => o.status === filter);
     }
 
@@ -65,7 +78,7 @@ export default function OffersPage() {
     }
 
     return list;
-  }, [offers, filter, search]);
+  }, [offers, filter, kpiViewFilter, kpiSort, search]);
 
   const selected = offers.find((o) => o.code === selectedCode) ?? filtered[0] ?? null;
   const offerUrl = selected ? getOfferUrl(selected.code) : '';
@@ -108,9 +121,19 @@ export default function OffersPage() {
         <header className="offers-page__header">
           <div className="offers-page__header-top">
             <Link to="/backend" className="offers-page__back">←</Link>
-            <h1 className="offers-page__title">Angebote</h1>
+            <h1 className="offers-page__title">
+              {viewMeta?.title ?? 'Angebote'}
+            </h1>
             <Link to="/sales" className="offers-page__sales" title="Verkäufermodus">⚡</Link>
           </div>
+          {viewMeta && (
+            <p className="offers-page__view-banner">
+              <span>{viewMeta.subtitle}</span>
+              <Link to="/backend/angebote" className="offers-page__view-clear">
+                Alle anzeigen
+              </Link>
+            </p>
+          )}
           <input
             type="search"
             className="offers-page__search"
@@ -175,7 +198,13 @@ export default function OffersPage() {
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="offers-page__empty">Keine Angebote gefunden</li>
+            <li className="offers-page__empty">
+              {kpiViewFilter === 'opened'
+                ? 'Noch keine geöffneten Angebote – Link senden und warten.'
+                : kpiViewFilter === 'open'
+                  ? 'Keine offenen Angebote – Zeit für neue Anfragen.'
+                  : 'Keine Angebote gefunden'}
+            </li>
           )}
         </ul>
       </aside>

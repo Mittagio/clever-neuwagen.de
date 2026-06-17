@@ -720,6 +720,88 @@
   gap: 8px;
 }
 
+.cust-akte-unterlagen {
+  margin: 0 16px 12px;
+}
+
+.cust-akte-unterlagen__card {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-unterlagen__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cust-akte-unterlagen__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cust-akte-unterlagen__sub {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.cust-akte-unterlagen__chev {
+  font-size: 1.25rem;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.cust-akte-unterlagen__status {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.cust-akte-unterlagen__sa {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cust-akte-unterlagen__hint {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.cust-akte-unterlagen__link-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cust-akte-unterlagen__privacy {
+  margin: 8px 4px 0;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
 @media (min-width: 720px) {
   .cust-akte.dai-lead-followup {
     max-width: 480px;

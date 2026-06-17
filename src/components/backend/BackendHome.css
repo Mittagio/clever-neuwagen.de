@@ -173,17 +173,26 @@
 }
 
 .backend-home__today-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px 12px;
+  min-height: 88px;
+  padding: 14px 28px 14px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backend-home__today-tile:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .backend-home__today-tile:hover {
@@ -208,6 +217,18 @@
 .backend-home__today-hint {
   font-size: 0.6875rem;
   color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.backend-home__today-chevron {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--tile-accent, var(--color-text-muted));
+  opacity: 0.55;
+  line-height: 1;
 }
 
 .backend-home__reminder a {

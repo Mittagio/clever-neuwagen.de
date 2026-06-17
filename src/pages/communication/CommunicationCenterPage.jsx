@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useCommunication } from '../../context/CommunicationContext.jsx';
+import { useOffers } from '../../context/OffersContext.jsx';
 import { PILOT_LEAD_ID } from '../../data/demoLeads.js';
 import { PILOT_LIVE } from '../../config/pilotLive.js';
 import {
@@ -8,6 +9,11 @@ import {
   ASSIGNMENT_FILTERS,
   DEALER_SELLERS,
 } from '../../data/salesChanceTypes.js';
+import {
+  filterSalesChances,
+  getSalesChanceViewMeta,
+  normalizeSalesChanceViewFilter,
+} from '../../logic/backendKpiNavigation.js';
 import SalesChanceListItem from '../../components/sales-chance/SalesChanceListItem.jsx';
 import SalesChanceDossier from '../../components/sales-chance/SalesChanceDossier.jsx';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline.jsx';
@@ -30,8 +36,11 @@ export default function CommunicationCenterPage() {
     currentSellerId,
     setCurrentSellerId,
   } = useCommunication();
+  const { offers } = useOffers();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const kpiViewFilter = normalizeSalesChanceViewFilter(searchParams.get('filter'));
+  const viewMeta = getSalesChanceViewMeta(kpiViewFilter);
   const [filter, setFilter] = useState('all');
   const [assignmentFilter, setAssignmentFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -49,8 +58,11 @@ export default function CommunicationCenterPage() {
     } else if (location.state?.openPilot && !PILOT_LIVE) {
       setSelectedId(PILOT_LEAD_ID);
     }
-    if (location.state?.filter) {
-      setFilter(location.state.filter);
+    const stateFilter = location.state?.filter;
+    if (stateFilter === 'neu' || stateFilter === 'new') {
+      setFilter('neu');
+    } else if (stateFilter && stateFilter !== 'followup') {
+      setFilter(stateFilter);
     }
   }, [location.state]);
 
@@ -67,7 +79,13 @@ export default function CommunicationCenterPage() {
 
   const filtered = useMemo(() => {
     let list = [...leads].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-    if (filter !== 'all') list = list.filter((l) => l.status === filter);
+
+    if (kpiViewFilter) {
+      list = filterSalesChances(list, kpiViewFilter, dueToday, offers);
+    } else if (filter !== 'all') {
+      list = list.filter((l) => l.status === filter);
+    }
+
     if (assignmentFilter === 'mine') {
       list = list.filter((l) => l.ownerId === currentSellerId);
     } else if (assignmentFilter === 'unassigned') {
@@ -85,7 +103,7 @@ export default function CommunicationCenterPage() {
       );
     }
     return list;
-  }, [leads, filter, assignmentFilter, search, currentSellerId]);
+  }, [leads, filter, kpiViewFilter, dueToday, offers, assignmentFilter, search, currentSellerId]);
 
   const selectedLead = leads.find((l) => l.id === selectedId) ?? null;
   const neuCount = leads.filter((l) => l.status === 'neu').length;
@@ -111,9 +129,19 @@ export default function CommunicationCenterPage() {
         <header className="comm-center__header">
           <div className="comm-center__header-top">
             <Link to="/backend" className="comm-center__back">←</Link>
-            <h1 className="comm-center__title">Verkaufschancen</h1>
-            {neuCount > 0 && <span className="comm-center__badge">{neuCount}</span>}
+            <h1 className="comm-center__title">
+              {viewMeta?.title ?? 'Verkaufschancen'}
+            </h1>
+            {neuCount > 0 && !viewMeta && <span className="comm-center__badge">{neuCount}</span>}
           </div>
+          {viewMeta && (
+            <p className="comm-center__view-banner">
+              <span>{viewMeta.subtitle}</span>
+              <Link to="/backend/verkaufschancen" className="comm-center__view-clear">
+                Alle anzeigen
+              </Link>
+            </p>
+          )}
           <input
             type="search"
             className="comm-center__search"
@@ -179,6 +207,17 @@ export default function CommunicationCenterPage() {
         </div>
 
         <ul className="comm-center__leads">
+          {filtered.length === 0 && (
+            <li className="comm-center__empty">
+              {kpiViewFilter === 'followup'
+                ? 'Aktuell nichts zum Nachfassen – guter Moment für neue Anfragen.'
+                : kpiViewFilter === 'needs-offer'
+                  ? 'Alle Chancen mit Fahrzeug haben bereits ein Angebot – stark.'
+                  : kpiViewFilter === 'new' || kpiViewFilter === 'new-requests'
+                  ? 'Keine neuen Anfragen – alles bearbeitet.'
+                  : 'Keine Verkaufschancen gefunden.'}
+            </li>
+          )}
           {filtered.map((lead) => (
             <li key={lead.id}>
               <SalesChanceListItem

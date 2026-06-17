@@ -10,41 +10,8 @@ import {
   getFollowUpCoachCard,
 } from '../../services/cleverSalesCoach.js';
 import CleverLexikon from './CleverLexikon.jsx';
+import { KPI_TILES } from '../../logic/backendKpiNavigation.js';
 import './BackendHome.css';
-
-const TODAY_TILES = [
-  {
-    key: 'newLeads',
-    label: 'Neue Verkaufschancen',
-    hint: 'Noch nicht bearbeitet',
-    href: '/backend/verkaufschancen',
-    filter: 'neu',
-    accent: '#2563eb',
-  },
-  {
-    key: 'openOffers',
-    label: 'Offene Angebote',
-    hint: 'Entwurf & versendet',
-    href: '/backend/angebote',
-    accent: '#7c3aed',
-  },
-  {
-    key: 'testDrives',
-    label: 'Probefahrten',
-    hint: 'Termine & Anfragen',
-    href: '/backend/verkaufschancen',
-    filter: 'probefahrt',
-    accent: '#0d9488',
-  },
-  {
-    key: 'deliveries',
-    label: 'Auslieferungen',
-    hint: 'Bestellung & Übergabe',
-    href: '/backend/verkaufschancen',
-    filter: 'bestellung',
-    accent: '#16a34a',
-  },
-];
 
 export default function BackendHome({ conditions }) {
   const { leads } = useLeads();
@@ -75,9 +42,9 @@ export default function BackendHome({ conditions }) {
 
   const counts = {
     newLeads: today.newLeads,
-    openOffers: today.openOffers,
-    testDrives: today.testDrives,
-    deliveries: today.deliveries,
+    needsOffer: today.needsOffer,
+    followUp: dueToday.length,
+    openedOffers: today.openedOffers,
   };
 
   return (
@@ -142,20 +109,21 @@ export default function BackendHome({ conditions }) {
           <article className="backend-home__coach-card">
             <h4 className="backend-home__coach-title">{hotFollowUp.title}</h4>
             <p className="backend-home__coach-text">{hotFollowUp.text}</p>
-            <Link to="/communication" className="backend-home__coach-cta">
+            <Link to="/backend/verkaufschancen?filter=followup" className="backend-home__coach-cta">
               {hotFollowUp.cta}
             </Link>
           </article>
         )}
         <div className="backend-home__today-grid">
-          {TODAY_TILES.map((tile) => (
+          {KPI_TILES.map((tile) => (
             <Link
               key={tile.key}
-              to={tile.href}
-              state={tile.filter ? { filter: tile.filter } : undefined}
+              to={tile.to}
+              aria-label={tile.ariaLabel}
               className="backend-home__today-tile"
               style={{ '--tile-accent': tile.accent }}
             >
+              <span className="backend-home__today-chevron" aria-hidden>›</span>
               <span className="backend-home__today-value">{counts[tile.key]}</span>
               <span className="backend-home__today-label">{tile.label}</span>
               <span className="backend-home__today-hint">{tile.hint}</span>
@@ -165,7 +133,7 @@ export default function BackendHome({ conditions }) {
         {dueToday.length > 0 && (
           <p className="backend-home__reminder">
             🔥 {dueToday.length} Chance{dueToday.length !== 1 ? 'n' : ''} heute heiß –{' '}
-            <Link to="/communication">Nachfassen</Link>
+            <Link to="/backend/verkaufschancen?filter=followup">Nachfassen</Link>
           </p>
         )}
       </section>
