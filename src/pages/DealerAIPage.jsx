@@ -40,6 +40,7 @@ import {
 } from '../services/vehicleOffer.js';
 import { formatVehicleCardTitle } from '../services/customerAkte.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
+import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
 
 export default function DealerAIPage() {
@@ -686,6 +687,10 @@ export default function DealerAIPage() {
           </>
         )}
       </main>
+
+      {phase !== 'followup' && phase !== 'offer-edit' && (
+        <DealerAppLegalMenu compact className="dealer-ai-legal" />
+      )}
 
       {toast && <p className="dealer-ai-toast" role="status">{toast}</p>}
     </div>

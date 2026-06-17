@@ -44,6 +44,7 @@ import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteDealerNav from './CustomerAkteDealerNav.jsx';
 import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
+import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 import './CustomerAkte.css';
@@ -622,6 +623,7 @@ export default function DealerAiLeadFollowUp({
             Verkaufschance im CRM
           </button>
         </div>
+        <DealerAppLegalMenu />
       </LeadDetailPanel>
 
       {/* ── Fahrzeugkarte Aktionen ── */}

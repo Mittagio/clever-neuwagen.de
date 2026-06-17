@@ -1079,3 +1079,8 @@
 .backend-home__kia-cta:hover {
   text-decoration: underline;
 }
+
+.backend-home__legal {
+  margin-top: 24px;
+  padding: 0 4px 8px;
+}

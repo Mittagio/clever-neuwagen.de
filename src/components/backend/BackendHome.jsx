@@ -10,6 +10,7 @@ import {
   getFollowUpCoachCard,
 } from '../../services/cleverSalesCoach.js';
 import CleverLexikon from './CleverLexikon.jsx';
+import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import { KPI_TILES } from '../../logic/backendKpiNavigation.js';
 import './BackendHome.css';
 
@@ -139,6 +140,8 @@ export default function BackendHome({ conditions }) {
       </section>
 
       <CleverLexikon />
+
+      <DealerAppLegalMenu compact className="backend-home__legal" />
     </div>
   );
 }

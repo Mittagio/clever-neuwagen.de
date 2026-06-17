@@ -54,6 +54,30 @@
   color: var(--color-text-muted);
 }
 
+.site-footer--minimal {
+  margin-top: 0;
+  padding: 10px 16px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  border-top: none;
+  background: transparent;
+}
+
+.site-footer__copy--minimal {
+  text-align: center;
+  font-size: 0.6875rem;
+  opacity: 0.45;
+}
+
+.app-layout--dealer-app .site-footer--minimal {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .app-layout--dealer-app .site-footer--minimal {
+    display: block;
+  }
+}
+
 @media (min-width: 640px) {
   .site-footer__inner {
     flex-direction: row;

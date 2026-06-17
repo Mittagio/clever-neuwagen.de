@@ -18,6 +18,7 @@ import SalesChanceListItem from '../../components/sales-chance/SalesChanceListIt
 import SalesChanceDossier from '../../components/sales-chance/SalesChanceDossier.jsx';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline.jsx';
 import CommunicationComposer from '../../components/communication/CommunicationComposer.jsx';
+import DealerAppLegalMenu from '../../components/dealer/DealerAppLegalMenu.jsx';
 import './CommunicationCenterPage.css';
 
 const TABS = [
@@ -289,6 +290,8 @@ export default function CommunicationCenterPage() {
       </section>
 
       {toast && <p className="comm-center__toast" role="status">{toast}</p>}
+
+      <DealerAppLegalMenu compact className="comm-center__legal" />
     </div>
   );
 }

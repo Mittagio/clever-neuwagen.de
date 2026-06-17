@@ -1,0 +1,54 @@
+.dealer-legal-menu {
+  margin-top: 8px;
+}
+
+.dealer-legal-menu__title {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.dealer-legal-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dealer-legal-menu__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.dealer-legal-menu__link:hover {
+  color: #2563eb;
+}
+
+.dealer-legal-menu--compact {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.dealer-legal-menu--compact .dealer-legal-menu__list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.dealer-legal-menu--compact .dealer-legal-menu__link {
+  min-height: 36px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}

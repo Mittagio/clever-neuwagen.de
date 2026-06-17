@@ -18,3 +18,7 @@
 .app-layout__main > * {
   flex: 1;
 }
+
+.app-layout--dealer-app .app-layout__main {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

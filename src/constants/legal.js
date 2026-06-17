@@ -40,6 +40,12 @@ export const LEGAL_NAV = [
   { to: '/legal/haendler-agb', label: 'Händler-AGB' },
 ];
 
+/** Rechtliches im Verkäufer-App-Flow (Menü „Mehr“) */
+export const DEALER_APP_LEGAL_LINKS = [
+  ...LEGAL_NAV,
+  { to: 'mailto:info@clever-neuwagen.de', label: 'Kontakt', external: true },
+];
+
 export const LEGAL_SEO = {
   impressum: {
     title: 'Impressum',

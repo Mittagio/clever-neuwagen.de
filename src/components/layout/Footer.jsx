@@ -2,8 +2,18 @@ import { Link } from 'react-router-dom';
 import { LEGAL_FOOTER_LINKS } from '../../constants/legal.js';
 import './Footer.css';
 
-export default function Footer() {
+export default function Footer({ variant = 'full' }) {
   const year = new Date().getFullYear();
+
+  if (variant === 'minimal') {
+    return (
+      <footer className="site-footer site-footer--minimal" aria-hidden="true">
+        <p className="site-footer__copy site-footer__copy--minimal">
+          © {year} Clever-Neuwagen
+        </p>
+      </footer>
+    );
+  }
 
   return (
     <footer className="site-footer">

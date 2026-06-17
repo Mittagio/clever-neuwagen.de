@@ -283,3 +283,7 @@
     font-size: 0.9rem;
   }
 }
+
+.comm-center__legal {
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}

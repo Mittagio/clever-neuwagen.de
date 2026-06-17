@@ -63,6 +63,7 @@
     "test:clever-selbstauskunft": "node src/services/cleverSelbstauskunft.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",
     "test:backend-kpi": "node src/logic/backendKpiNavigation.test.js",
+    "test:dealer-app-routes": "node src/logic/dealerAppRoutes.test.js",
     "test:lead-akte-entry": "node src/services/leadAkteEntry.test.js",
     "test:stammdaten": "node server/stammdatenStore.test.js && node src/services/admin/vehicleStammdatenOverrideService.test.js && node src/services/dealer/vehicleEstimateAnswerService.test.js && node src/services/search/vehicleQueryRouting.test.js",
     "test:kia-battery": "node src/data/kia/pricelistBatteryLookup.test.js && node src/data/kia/kiaBatteryCoverage.test.js",
