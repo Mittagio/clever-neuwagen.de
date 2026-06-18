@@ -1,0 +1,147 @@
+/**
+ * Neutrale Darstellung im Ausstattungsschritt (ohne feste Kaufart).
+ */
+
+/** @typedef {'cash'|'finance'|'leasing'} PurchaseType */
+
+/**
+ * @param {PurchaseType|null|undefined} knownPurchaseType
+ * @param {boolean} hasWishes
+ */
+export function getEquipmentStepCta(knownPurchaseType, hasWishes = false) {
+  if (!knownPurchaseType) {
+    return {
+      actionLabel: hasWishes ? 'Mit dieser Ausstattung weiter' : 'Clever-Empfehlung anzeigen',
+      actionHint: 'Im nächsten Schritt wählen Sie Leasing, Finanzierung oder Barzahlung.',
+    };
+  }
+
+  if (knownPurchaseType === 'leasing') {
+    return {
+      actionLabel: hasWishes
+        ? 'Leasingrate für diese Ausstattung anzeigen'
+        : 'Clever-Leasingempfehlung anzeigen',
+      actionHint: null,
+    };
+  }
+
+  if (knownPurchaseType === 'finance') {
+    return {
+      actionLabel: hasWishes
+        ? 'Finanzierung für diese Ausstattung anzeigen'
+        : 'Clever-Finanzierungsempfehlung anzeigen',
+      actionHint: null,
+    };
+  }
+
+  return {
+    actionLabel: hasWishes
+      ? 'Kaufangebot für diese Ausstattung anfragen'
+      : 'Kaufangebot anfragen',
+    actionHint: null,
+  };
+}
+
+/**
+ * @param {number} index
+ * @param {number} total
+ */
+export function getNeutralPriceTierLabel(index, total) {
+  if (total <= 1) return 'Preis wird im nächsten Schritt berechnet.';
+  if (index === 0) return 'günstigste Variante';
+  if (index === total - 1) return 'höchste Ausstattung';
+  return 'mittleres Preisniveau';
+}
+
+/**
+ * @param {object} params
+ * @param {string} params.trimName
+ * @param {number|null|undefined} params.cashDelta
+ * @param {number|null|undefined} params.rateDelta
+ * @param {(n: number) => string} params.formatCurrency
+ */
+export function formatTrimSurchargeLabel({
+  trimName,
+  cashDelta,
+  rateDelta,
+  formatCurrency,
+}) {
+  const parts = [];
+  if (cashDelta != null && cashDelta > 0) {
+    parts.push(formatCurrency(cashDelta));
+  }
+  if (rateDelta != null && rateDelta > 0) {
+    parts.push(`(+${formatCurrency(rateDelta)} Rate)`);
+  }
+  if (!parts.length) return null;
+  return `+ ${trimName} + ${parts.join(' ')}`;
+}
+
+/**
+ * @param {object} params
+ * @param {PurchaseType|null|undefined} params.knownPurchaseType
+ * @param {number|null|undefined} params.rate
+ * @param {number|null|undefined} params.rateDelta
+ * @param {number|null|undefined} params.cashPrice
+ * @param {number|null|undefined} params.cashDelta
+ * @param {string} params.trimName
+ * @param {number} params.index
+ * @param {number} params.total
+ * @param {(n: number) => string} params.formatCurrency
+ */
+export function resolveTrimPriceDisplay({
+  knownPurchaseType,
+  rate,
+  rateDelta,
+  cashPrice,
+  cashDelta,
+  trimName,
+  index,
+  total,
+  formatCurrency,
+}) {
+  if (!knownPurchaseType) {
+    return {
+      primary: getNeutralPriceTierLabel(index, total),
+      secondary: null,
+      neutral: true,
+    };
+  }
+
+  if (index > 0 && (cashDelta > 0 || rateDelta > 0)) {
+    const surcharge = formatTrimSurchargeLabel({
+      trimName,
+      cashDelta,
+      rateDelta,
+      formatCurrency,
+    });
+    if (surcharge) {
+      return {
+        primary: surcharge,
+        secondary: rate != null && knownPurchaseType !== 'cash'
+          ? `${formatCurrency(rate)}/Monat`
+          : (cashPrice != null && knownPurchaseType === 'cash' ? formatCurrency(cashPrice) : null),
+        neutral: false,
+      };
+    }
+  }
+
+  if (knownPurchaseType === 'cash') {
+    return {
+      primary: cashPrice != null ? formatCurrency(cashPrice) : 'Preis im Angebot',
+      secondary: cashDelta != null && cashDelta > 0 ? `+${formatCurrency(cashDelta)}` : null,
+      neutral: false,
+    };
+  }
+
+  const primary = rate != null ? `${formatCurrency(rate)}/Monat` : null;
+  const secondary = rateDelta != null && rateDelta > 0 && index === 0
+    ? `+${formatCurrency(rateDelta)}/Monat`
+    : null;
+
+  return {
+    primary: primary ?? getNeutralPriceTierLabel(index, total),
+    secondary,
+    neutral: primary == null,
+  };
+}

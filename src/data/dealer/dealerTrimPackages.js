@@ -5,6 +5,26 @@
 
 /** @type {Record<string, DealerTrimPackage[]>} */
 export const DEALER_TRIM_PACKAGES = {
+  ev2: [
+    {
+      id: 'ev2-komfort',
+      label: 'Komfort-Paket',
+      emoji: '📦',
+      priceGross: 890,
+      trimIds: ['air'],
+      highlights: ['Sitzheizung', 'Wärmepumpe'],
+      features: ['heated_seats', 'heat_pump'],
+    },
+    {
+      id: 'ev2-tech',
+      label: 'Technik-Paket',
+      emoji: '📦',
+      priceGross: 1190,
+      trimIds: ['earth'],
+      highlights: ['360° Kamera', 'Totwinkelassistent'],
+      features: ['camera_360', 'blind_spot'],
+    },
+  ],
   ev5: [
     {
       id: 'ev5-komfort',

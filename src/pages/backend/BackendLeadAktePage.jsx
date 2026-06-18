@@ -12,7 +12,8 @@ import { pipelineToLeadStatus } from '../../services/dealerAiLeadCrm.js';
 import { executeDealerAiAction } from '../../services/dealerAiActions.js';
 import DealerAiLeadFollowUp from '../../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../../components/dealer-ai/CustomerOfferEditView.jsx';
-import { buildParsedFromLead } from '../../services/leadAkteEntry.js';
+import { buildKundenaktePath, buildParsedFromLead } from '../../services/leadAkteEntry.js';
+import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import {
   attachPdfToOffer,
   createOnlineLinkForOffer,
@@ -61,6 +62,7 @@ export default function BackendLeadAktePage() {
       setParsed(null);
       return;
     }
+    setActiveSalesChanceId(lead.id);
     setParsed(buildParsedFromLead(lead, enrichWithSuggestions));
   }, [lead, enrichWithSuggestions]);
 

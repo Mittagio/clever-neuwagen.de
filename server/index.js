@@ -9,6 +9,7 @@ import googlePlacesRoutes from './googlePlacesRoutes.js';
 import pilotLeadsRoutes from './pilotLeadsRoutes.js';
 import advisorRoutes from './advisorRoutes.js';
 import customerRecordsRoutes from './customerRecordsRoutes.js';
+import customerInquiryRoutes from './customerInquiryRoutes.js';
 import stammdatenRoutes from './stammdatenRoutes.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
 import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
@@ -44,6 +45,7 @@ app.use('/api/v1', sprint5Routes);
 app.use('/api/v1', pilotLeadsRoutes);
 app.use('/api/v1', advisorRoutes);
 app.use('/api/v1', customerRecordsRoutes);
+app.use('/api/v1', customerInquiryRoutes);
 app.use('/api/v1', stammdatenRoutes);
 app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
@@ -56,8 +58,15 @@ app.get('/health', (_req, res) => {
 });
 
 if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST_DIR)) {
-  app.use(express.static(DIST_DIR));
+  app.use(express.static(DIST_DIR, {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith(`${path.sep}index.html`)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    },
+  }));
   app.get(/^(?!\/api).*/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(DIST_DIR, 'index.html'));
   });
 }

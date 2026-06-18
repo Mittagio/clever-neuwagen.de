@@ -7,6 +7,8 @@ import BackendNav from '../components/backend/BackendNav.jsx';
 import BackendSyncStatus from '../components/backend/BackendSyncStatus.jsx';
 import BackendHome from '../components/backend/BackendHome.jsx';
 import BackendVehicleShowroom from '../components/backend/BackendVehicleShowroom.jsx';
+import EquipmentDataInspector from '../components/admin/EquipmentDataInspector.jsx';
+import EquipmentSalesSearch from '../components/admin/EquipmentSalesSearch.jsx';
 import BackendMarketingHub from '../components/backend/BackendMarketingHub.jsx';
 import BackendVerwaltungHub from '../components/backend/BackendVerwaltungHub.jsx';
 import BackendDiscounts from '../components/backend/BackendDiscounts.jsx';
@@ -79,6 +81,12 @@ export default function BackendPage() {
     }
 
     if (activeArea === 'fahrzeuge') {
+      if (activeSection === 'equipment-sales-search') {
+        return <EquipmentSalesSearch />;
+      }
+      if (activeSection === 'equipment-inspector') {
+        return <EquipmentDataInspector />;
+      }
       return (
         <BackendVehicleShowroom
           conditions={draftConditions}

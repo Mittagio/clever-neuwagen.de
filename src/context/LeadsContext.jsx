@@ -19,6 +19,19 @@ import {
   isPersistablePilotLead,
   pushPilotLeadToServer,
 } from '../services/pilot/pilotLeadsApi.js';
+import { syncCustomerInquiryToBackend } from '../services/customer/customerInquiryApi.js';
+import { transferEquipmentWishToLead } from '../services/sales/equipmentOfferTransferService.js';
+
+const CUSTOMER_INQUIRY_SOURCES = new Set([
+  'marketplace',
+  'offer',
+  'berater',
+  'equipment',
+  'configurator',
+  'dealerJourney',
+  'dealerSearch',
+  'landing',
+]);
 
 const STORAGE_KEY = 'clever-neuwagen-leads';
 
@@ -94,9 +107,12 @@ function historyEntry(text, type = 'system', meta = {}) {
   };
 }
 
-function persistLeadSnapshot(lead) {
+function persistLeadSnapshot(lead, meta = {}) {
   if (!isPersistablePilotLead(lead)) return;
   pushPilotLeadToServer(lead);
+  if (CUSTOMER_INQUIRY_SOURCES.has(lead.source) || meta.fromCustomer) {
+    syncCustomerInquiryToBackend({ type: 'lead', lead });
+  }
 }
 
 function applyLeadPatch(prev, id, patch, historyText, historyType = 'system') {
@@ -461,6 +477,36 @@ export function LeadsProvider({ children }) {
       return leads.find((l) => l.id === id) ?? null;
     },
 
+    transferEquipmentWish(leadId, salesResult, options = {}) {
+      const lead = leads.find((l) => l.id === leadId) ?? null;
+      const result = transferEquipmentWishToLead(lead, salesResult, options);
+      if (!result.ok) return result;
+
+      setLeads((prev) => {
+        const next = prev.map((item) => (
+          item.id === leadId
+            ? normalizeLead({
+              ...item,
+              equipmentWishes: result.equipmentWishes,
+              updatedAt: new Date().toISOString(),
+              history: [
+                ...(item.history ?? []),
+                historyEntry(
+                  `Ausstattungswunsch: ${result.wish.featureLabel} (${result.wish.modelLabel})`,
+                  'note',
+                ),
+              ],
+            })
+            : item
+        ));
+        const updated = next.find((l) => l.id === leadId);
+        if (updated) persistLeadSnapshot(updated);
+        return next;
+      });
+
+      return result;
+    },
+
     upsertLeadFromOfferAction(params) {
       let result = null;
       setLeads((prev) => {
@@ -473,6 +519,17 @@ export function LeadsProvider({ children }) {
         persistLeadSnapshot(result.lead);
         return next;
       });
+      if (params.offer && result?.lead) {
+        syncCustomerInquiryToBackend({
+          type: 'offer_action',
+          offer: params.offer,
+          action: params.action ?? 'inquiry',
+          contact: params.contact ?? {},
+          message: params.message ?? '',
+          sonderwuensche: params.sonderwuensche ?? {},
+          lead: result.lead,
+        });
+      }
       return result;
     },
 

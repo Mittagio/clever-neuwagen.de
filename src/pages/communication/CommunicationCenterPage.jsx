@@ -16,6 +16,7 @@ import {
 } from '../../logic/backendKpiNavigation.js';
 import SalesChanceListItem from '../../components/sales-chance/SalesChanceListItem.jsx';
 import SalesChanceDossier from '../../components/sales-chance/SalesChanceDossier.jsx';
+import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline.jsx';
 import CommunicationComposer from '../../components/communication/CommunicationComposer.jsx';
 import DealerAppLegalMenu from '../../components/dealer/DealerAppLegalMenu.jsx';
@@ -75,6 +76,7 @@ export default function CommunicationCenterPage() {
   useEffect(() => {
     if (selectedId) {
       setSearchParams({ leadId: selectedId }, { replace: true });
+      setActiveSalesChanceId(selectedId);
     }
   }, [selectedId, setSearchParams]);
 

@@ -22,12 +22,18 @@ export const kiaEv3 = {
     {
       id: 'air',
       name: 'Air',
+      tags: ['basis', 'günstig'],
+      badge: 'Günstigste Rate',
+      description: 'Für alle, die möglichst preiswert fahren möchten.',
       baseEquipment: ['ev3-navigation', 'ev3-rueckfahrkamera', 'ev3-parksensoren-hinten'],
       availablePackages: ['ev3-komfort'],
     },
     {
       id: 'earth',
       name: 'Earth',
+      tags: ['komfort', 'preis_leistung', 'alltag'],
+      badge: 'Clever Empfehlung',
+      description: 'Gute Mischung aus Komfort, Alltag und Preis.',
       baseEquipment: [
         'ev3-sitzheizung',
         'ev3-rueckfahrkamera',
@@ -40,6 +46,9 @@ export const kiaEv3 = {
     {
       id: 'gt-line',
       name: 'GT-Line',
+      tags: ['premium', 'design', 'sportlich', 'assistenz'],
+      badge: 'Premium',
+      description: 'Mehr Design, Technik und Assistenz.',
       baseEquipment: [
         'ev3-waermepumpe',
         'ev3-sitzheizung',

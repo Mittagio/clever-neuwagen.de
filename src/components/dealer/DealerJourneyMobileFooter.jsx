@@ -4,7 +4,7 @@ const STEP_LABELS = {
   recommend: 'Passendes Modell wählen',
   understand: 'Ausstattung wählen',
   special: 'Nutzung wählen',
-  purchase: 'Leasing / Kauf',
+  purchase: 'Zahlungsart wählen',
   budget: 'Budget festlegen',
   summary: 'Zusammenfassung',
   offer: 'Anfrage absenden',
@@ -19,6 +19,7 @@ export default function DealerJourneyMobileFooter({
   subtitle,
   stepLabel,
   actionLabel = 'Weiter',
+  actionHint = null,
   onAction,
   disabled = false,
 }) {
@@ -46,6 +47,9 @@ export default function DealerJourneyMobileFooter({
         >
           {actionLabel}
         </button>
+        {actionHint && (
+          <p className="dl-journey-footer__hint">{actionHint}</p>
+        )}
       </div>
     </footer>
   );

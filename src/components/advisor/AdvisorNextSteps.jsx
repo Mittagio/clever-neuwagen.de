@@ -51,7 +51,7 @@ export default function AdvisorNextSteps({
         />
         <StepCard
           emoji="✨"
-          title="Wunschauto bauen"
+          title="Ausstattung finden"
           subtitle="Wünsche auswählen – nicht Pakete konfigurieren"
           detail={wishCount > 0
             ? `${wishCount} Wunsch${wishCount > 1 ? 'e' : ''} aktiv · System ergänzt Pakete automatisch`

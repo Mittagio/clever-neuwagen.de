@@ -11,6 +11,11 @@ const SOURCE_ALIASES = {
   landing: 'Landingpage',
   dealerJourney: 'Landingpage',
   dealerSearch: 'Landingpage',
+  marketplace: 'Fahrzeugseite',
+  offer: 'Angebotslink',
+  equipment: 'Ausstattungsberater',
+  berater: 'Ausstattungsberater',
+  configurator: 'Konfigurator',
 };
 
 export function getNewInquiryLeads(leads = []) {

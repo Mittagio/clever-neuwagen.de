@@ -33,6 +33,7 @@ export function normalizeLead(lead) {
       ...(lead.sonderwuensche ?? {}),
     },
     documents: lead.documents ?? [],
+    equipmentWishes: lead.equipmentWishes ?? [],
   };
 }
 

@@ -19,6 +19,7 @@ import LeadVehicleImage from '../leads/LeadVehicleImage.jsx';
 import SalesChanceQuickActions from './SalesChanceQuickActions.jsx';
 import CounterOfferPanel from './CounterOfferPanel.jsx';
 import DocumentRequestPanel from './DocumentRequestPanel.jsx';
+import CustomerAkteEquipmentWishes from '../dealer-ai/CustomerAkteEquipmentWishes.jsx';
 import { formatSonderwuenscheSummary } from '../../logic/offerDialogService.js';
 import {
   getDocumentRequestsForLead,
@@ -281,6 +282,8 @@ export default function SalesChanceDossier({
           </ul>
         </section>
       )}
+
+      <CustomerAkteEquipmentWishes wishes={lead.equipmentWishes ?? []} />
 
       <CounterOfferPanel
         lead={lead}

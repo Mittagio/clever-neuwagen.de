@@ -18,6 +18,7 @@ export const CUSTOMER_TO_MANUFACTURER = {
   panorama_roof: ['feat-panoramadach', 'ev3-panorama', 'ev4-panorama'],
   power_tailgate: ['feat-elektrische-heckklappe', 'ev3-heckklappe', 'ev4-heckklappe'],
   heat_pump: ['ev3-waermepumpe', 'ev4-waermepumpe', 'niro-waermepumpe', 'picanto-waermepumpe'],
+  navigation: ['ev3-navigation', 'ev4-navigation', 'feat-navigation', 'niro-navigation', 'ceed-navigation'],
 };
 
 export function getManufacturerFeatureIds(customerFeatureId) {

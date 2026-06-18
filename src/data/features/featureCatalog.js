@@ -59,6 +59,12 @@ export const FEATURE_CATALOG = [
     category: 'komfort',
   },
   {
+    id: 'navigation',
+    label: 'Navigation',
+    aliases: ['navigation', 'navi', 'navigationssystem', 'infotainment'],
+    category: 'komfort',
+  },
+  {
     id: 'harman_kardon',
     label: 'Harman Kardon',
     aliases: ['harman', 'harman/kardon', 'premium sound', 'soundsystem'],
@@ -173,6 +179,7 @@ export const CONFIGURATOR_FEATURE_IDS = [
   'parking_front',
   'parking_rear',
   'rear_camera',
+  'navigation',
 ];
 
 export function getFeatureById(id) {

@@ -3,8 +3,8 @@ import './dealer-landing.css';
 const JOURNEY_STEPS = [
   { id: 'vehicle', label: 'Fahrzeug' },
   { id: 'trim', label: 'Ausstattung' },
-  { id: 'usage', label: 'Nutzung' },
   { id: 'payment', label: 'Zahlungsart' },
+  { id: 'usage', label: 'Nutzung' },
   { id: 'offer', label: 'Angebot' },
   { id: 'inquiry', label: 'Anfrage' },
 ];
@@ -14,9 +14,9 @@ function resolveActiveIndex(salesStep) {
     case 'recommend': return 0;
     case 'understand':
     case 'trim': return 1;
-    case 'special': return 2;
     case 'purchase':
-    case 'budget': return 3;
+    case 'budget': return 2;
+    case 'special': return 3;
     case 'summary': return 4;
     case 'offer': return 5;
     default: return 0;

@@ -1,0 +1,112 @@
+{
+  "brand": "Kia",
+  "model": "EV2",
+  "modelKey": "ev2",
+  "modelYear": "2026",
+  "source": {
+    "type": "pricelist",
+    "documentName": "Kia EV2 Ausstattungsübersicht",
+    "validFrom": "2026-03-01",
+    "confidence": "medium"
+  },
+  "trims": [
+    { "id": "air", "label": "Air" },
+    { "id": "earth", "label": "Earth" }
+  ],
+  "packages": [
+    { "id": "design_paket", "label": "Design Paket", "trimIds": ["earth"] }
+  ],
+  "featureAvailability": [
+    {
+      "featureId": "waermepumpe",
+      "trimId": "air",
+      "status": "standard",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 2,
+        "section": "Elektro",
+        "rawText": "Wärmepumpe Serie",
+        "url": null
+      }
+    },
+    {
+      "featureId": "waermepumpe",
+      "trimId": "earth",
+      "status": "standard",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 2,
+        "section": "Elektro",
+        "rawText": "Wärmepumpe Serie",
+        "url": null
+      }
+    },
+    {
+      "featureId": "led_scheinwerfer",
+      "trimId": "air",
+      "status": "available",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 3,
+        "section": "Licht",
+        "rawText": "LED-Scheinwerfer",
+        "url": null
+      }
+    },
+    {
+      "featureId": "led_scheinwerfer",
+      "trimId": "earth",
+      "status": "available",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 3,
+        "section": "Licht",
+        "rawText": "LED-Scheinwerfer",
+        "url": null
+      }
+    },
+    {
+      "featureId": "v2l",
+      "trimId": "air",
+      "status": "available",
+      "confidence": "low",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 4,
+        "section": "Laden",
+        "rawText": "V2L",
+        "url": null
+      }
+    },
+    {
+      "featureId": "v2l",
+      "trimId": "earth",
+      "status": "available",
+      "confidence": "low",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 4,
+        "section": "Laden",
+        "rawText": "V2L",
+        "url": null
+      }
+    },
+    {
+      "featureId": "panoramadach",
+      "trimId": "air",
+      "status": "unknown",
+      "confidence": "low",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": null,
+        "section": "Unklar",
+        "rawText": "Panoramadach – Datenlage offen",
+        "url": null
+      }
+    }
+  ]
+}

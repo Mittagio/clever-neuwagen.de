@@ -19,6 +19,8 @@ import {
   acceptBetterTrim,
   buildRecommendation,
 } from '../services/configuration/featureResolver.js';
+import { toggleEquipmentChip } from '../services/configuration/equipmentWishAdvisor.js';
+import { resolveWishConfiguration } from '../services/configurator/wishPackageResolver.js';
 import {
   buildWishFulfillment,
   buildWishBasedAlternatives,
@@ -315,6 +317,42 @@ export function useVehicleDetailController({ slug, searchParams }) {
     });
   }, [initialWishIds, trimId, vehicleCatalog, baselineEnginePricing]);
 
+  const handleToggleEquipmentChip = useCallback((chipId) => {
+    setDetailSelection((prev) => {
+      const current = prev.selectedFeatures.length ? prev.selectedFeatures : initialWishIds;
+      const nextFeatures = toggleEquipmentChip(current, chipId);
+      const next = { ...prev, selectedFeatures: nextFeatures };
+      const rec = buildRecommendation(
+        { ...next, trim: trimId },
+        vehicleCatalog,
+        { baselineEnginePricing },
+      );
+      return { ...next, recommendationResult: rec };
+    });
+  }, [initialWishIds, trimId, vehicleCatalog, baselineEnginePricing]);
+
+  const handleApplyEquipmentRecommendation = useCallback((rec) => {
+    if (!rec || !vehicle) return;
+    const resolution = resolveWishConfiguration({
+      brand: vehicle.brand,
+      model: vehicle.model,
+      trimId: rec.trimId,
+      wishFeatureIds: effectiveWishIds,
+    });
+    const packageIds = [...new Set([
+      ...(resolution?.packageIds ?? []),
+      ...(rec.packageIds ?? []),
+    ])];
+    setTrimOverride(rec.trimId);
+    setDetailSelection((prev) => acceptBetterTrim(
+      prev,
+      rec.trimId,
+      packageIds,
+      resolution?.accessoryIds ?? [],
+    ));
+    setPriceDrawerOpen(true);
+  }, [vehicle, effectiveWishIds]);
+
   const handleAcceptPackage = useCallback((packageId) => {
     setDetailSelection((prev) => acceptPackage(prev, packageId));
   }, []);
@@ -413,6 +451,8 @@ export function useVehicleDetailController({ slug, searchParams }) {
     setSelectedDealerSlug,
     patchSelection,
     handleToggleFeature,
+    handleToggleEquipmentChip,
+    handleApplyEquipmentRecommendation,
     handleAcceptPackage,
     handleAcceptBetterTrim,
     handlePaymentApply,

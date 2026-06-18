@@ -1,0 +1,63 @@
+{
+  "brand": "Demo",
+  "model": "Model X",
+  "modelKey": "demo-model-x",
+  "modelYear": "2025",
+  "source": {
+    "type": "equipment_table",
+    "documentName": "Demo Händler Ausstattungstabelle",
+    "validFrom": "2025-06-01",
+    "confidence": "low"
+  },
+  "trims": [
+    { "id": "base", "label": "Base" },
+    { "id": "comfort", "label": "Comfort" },
+    { "id": "premium", "label": "Premium" }
+  ],
+  "packages": [
+    { "id": "winter_paket", "label": "Winter Paket", "trimIds": ["comfort", "premium"] },
+    { "id": "connect_paket", "label": "Connect Paket", "trimIds": ["premium"] }
+  ],
+  "featureAvailability": [
+    {
+      "featureId": "sitzheizung_vorne",
+      "trimId": "comfort",
+      "status": "standard",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Demo Händler Ausstattungstabelle",
+        "page": 1,
+        "section": "Komfort",
+        "rawText": "Sitzheizung vorn",
+        "url": null
+      }
+    },
+    {
+      "featureId": "head_up_display",
+      "trimId": "premium",
+      "status": "package_required",
+      "packageId": "connect_paket",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Demo Händler Ausstattungstabelle",
+        "page": 2,
+        "section": "Pakete",
+        "rawText": "HUD im Connect Paket",
+        "url": null
+      }
+    },
+    {
+      "rawLabel": "Akustikverglasung vorne",
+      "trimId": "premium",
+      "status": "optional",
+      "confidence": "low",
+      "sourceRef": {
+        "document": "Demo Händler Ausstattungstabelle",
+        "page": 3,
+        "section": "Einzeloptionen",
+        "rawText": "Akustikverglasung vorne",
+        "url": null
+      }
+    }
+  ]
+}

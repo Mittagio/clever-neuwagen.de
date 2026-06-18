@@ -13,6 +13,8 @@ export const BACKEND_AREA_SECTIONS = {
   ],
   fahrzeuge: [
     { id: 'overview', label: 'Showroom' },
+    { id: 'equipment-sales-search', label: 'Ausstattung prüfen', icon: '✓' },
+    { id: 'equipment-inspector', label: 'Ausstattung (Debug)', icon: '🔍' },
   ],
   marketing: [
     { id: 'hub', label: 'Übersicht' },

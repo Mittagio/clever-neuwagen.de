@@ -1,0 +1,103 @@
+.cust-eq-wishes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+
+.cust-eq-wishes__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cust-text, #0f172a);
+}
+
+.cust-eq-wishes__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cust-eq-wish {
+  padding: 12px 14px;
+  border: 1px solid var(--cust-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--cust-bg, #f8fafc);
+}
+
+.cust-eq-wish__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cust-eq-wish__title {
+  margin: 0 0 2px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cust-text, #0f172a);
+}
+
+.cust-eq-wish__model {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-eq-wish__hint {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--cust-text, #0f172a);
+}
+
+.cust-eq-wish__badge {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cust-eq-wish__badge--standard { background: #dcfce7; color: #15803d; }
+.cust-eq-wish__badge--available { background: #dbeafe; color: #1d4ed8; }
+.cust-eq-wish__badge--optional { background: #e0e7ff; color: #4338ca; }
+.cust-eq-wish__badge--package { background: #fef3c7; color: #b45309; }
+.cust-eq-wish__badge--unavailable { background: #f1f5f9; color: #64748b; }
+.cust-eq-wish__badge--pending { background: #ffedd5; color: #c2410c; }
+
+.cust-eq-wish__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cust-eq-wish__btn {
+  padding: 6px 10px;
+  border: 1px solid var(--cust-border, #e2e8f0);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cust-text, #0f172a);
+  cursor: pointer;
+}
+
+.cust-eq-wish__btn--ghost {
+  background: transparent;
+}
+
+.cust-eq-wish__muted {
+  font-size: 0.75rem;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-eq-wish__copy-hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted, #64748b);
+}

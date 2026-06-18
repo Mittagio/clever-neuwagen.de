@@ -1,0 +1,131 @@
+{
+  "brand": "Kia",
+  "model": "EV3",
+  "modelKey": "kia-ev3",
+  "modelYear": "2026",
+  "source": {
+    "type": "pricelist",
+    "documentName": "Kia EV3 Preisliste MJ26",
+    "validFrom": "2026-01-01",
+    "confidence": "high"
+  },
+  "trims": [
+    { "id": "air", "label": "Air" },
+    { "id": "earth", "label": "Earth" },
+    { "id": "gt_line", "label": "GT-Line" }
+  ],
+  "packages": [
+    { "id": "premium_paket", "label": "Premium Paket", "trimIds": ["gt_line"] },
+    { "id": "technik_paket", "label": "Technik Paket", "trimIds": ["earth", "gt_line"] },
+    { "id": "komfort_paket", "label": "Komfort Paket", "trimIds": ["air", "earth", "gt_line"] }
+  ],
+  "featureAvailability": [
+    {
+      "featureId": "navigation",
+      "trimId": "air",
+      "status": "standard",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 4,
+        "section": "Serienausstattung Air",
+        "rawText": "Navigationssystem",
+        "url": null
+      }
+    },
+    {
+      "featureId": "waermepumpe",
+      "trimId": "earth",
+      "status": "standard",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 5,
+        "section": "Serienausstattung Earth",
+        "rawText": "Wärmepumpe",
+        "url": null
+      }
+    },
+    {
+      "featureId": "head_up_display",
+      "trimId": "air",
+      "status": "not_available",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 8,
+        "section": "Sonderausstattung",
+        "rawText": null,
+        "url": null
+      }
+    },
+    {
+      "featureId": "head_up_display",
+      "trimId": "earth",
+      "status": "package_required",
+      "packageId": "premium_paket",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 8,
+        "section": "Sonderausstattung",
+        "rawText": "Head-Up Display im Premium Paket",
+        "url": null
+      }
+    },
+    {
+      "featureId": "head_up_display",
+      "trimId": "gt_line",
+      "status": "package_required",
+      "packageId": "premium_paket",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 8,
+        "section": "Sonderausstattung",
+        "rawText": "Head-Up Display im Premium Paket",
+        "url": null
+      }
+    },
+    {
+      "featureId": "surround_view_camera",
+      "trimId": "earth",
+      "status": "package_required",
+      "packageId": "technik_paket",
+      "confidence": "high",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 9,
+        "section": "Pakete",
+        "rawText": "360° Kamera im Technik Paket",
+        "url": null
+      }
+    },
+    {
+      "featureId": "totwinkelassistent",
+      "trimId": "gt_line",
+      "status": "standard",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 6,
+        "section": "Assistenz GT-Line",
+        "rawText": "Blind-Spot Collision-Avoidance Assist",
+        "url": null
+      }
+    },
+    {
+      "rawLabel": "Akustikverglasung vorne",
+      "trimId": "gt_line",
+      "status": "optional",
+      "confidence": "low",
+      "sourceRef": {
+        "document": "Kia EV3 Preisliste MJ26",
+        "page": 10,
+        "section": "Einzeloptionen",
+        "rawText": "Akustikverglasung Windschutzscheibe",
+        "url": null
+      }
+    }
+  ]
+}

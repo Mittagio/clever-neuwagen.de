@@ -9,16 +9,14 @@ import StickyOfferBox from '../components/vehicle/StickyOfferBox.jsx';
 import MobileStickyBar from '../components/vehicle/MobileStickyBar.jsx';
 import PriceToolCard from '../components/pricing/PriceToolCard.jsx';
 import PriceDrawer from '../components/pricing/PriceDrawer.jsx';
-import WishBuilderCard from '../components/configurator/WishBuilderCard.jsx';
-import WishResultPanel, { PackageRecommendationCard, CleverRecommendationCard } from '../components/configurator/WishResultPanel.jsx';
+import EquipmentWishAdvisor from '../components/vehicle-detail/EquipmentWishAdvisor.jsx';
 import AdvisorNextSteps from '../components/advisor/AdvisorNextSteps.jsx';
-import CleverAnalysisPanel from '../components/advisor/CleverAnalysisPanel.jsx';
-import WishBasedAlternatives from '../components/advisor/WishBasedAlternatives.jsx';
 import DealerCompareCard, { DealerTrustCard } from '../components/dealer/DealerCompareCard.jsx';
 import InquirySummaryModal from '../components/inquiry/InquirySummaryModal.jsx';
 import MobileBottomSheet from '../components/shared/MobileBottomSheet.jsx';
 import DealerOffersTable from '../components/vehicle-detail/DealerOffersTable.jsx';
 import SimilarVehiclesNearby from '../components/dealer/SimilarVehiclesNearby.jsx';
+import { normalizeModelKey } from '../data/features/trimFeatureMapping.js';
 import { CUSTOMER_LABELS } from '../data/customerFlow.js';
 import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
@@ -84,7 +82,8 @@ export default function VehicleDetailPage() {
     compareOpen,
     setCompareOpen,
     setSelectedDealerSlug,
-    handleToggleFeature,
+    handleToggleEquipmentChip,
+    handleApplyEquipmentRecommendation,
     handleAcceptPackage,
     handleAcceptBetterTrim,
     handlePaymentApply,
@@ -94,7 +93,12 @@ export default function VehicleDetailPage() {
     cleverQuote,
     cleverQuoteAfterPackage,
     wishes,
+    trimId,
   } = ctrl;
+
+  const vehicleModelKey = vehicle
+    ? normalizeModelKey(vehicle.brand, vehicle.model)
+    : null;
 
   const openWishes = useCallback(() => {
     setWishSectionActive(true);
@@ -155,7 +159,7 @@ export default function VehicleDetailPage() {
         contact.email,
       );
     }
-    showToast('Ihre Anfrage wurde gesendet.');
+    showToast('Ihre Anfrage wurde gesendet – der Verkäufer wurde informiert.');
   }
 
   if (vehicle?.offerCode && !configMode && !showCustomize) {
@@ -187,7 +191,6 @@ export default function VehicleDetailPage() {
     );
   }
 
-  const primaryPackage = recommendationResult?.requiredPackages?.[0];
   const wishCount = detailSelection.selectedFeatures?.length ?? 0;
   const recommendReasons = buildWishMatchBullets(
     { vehicle, cleverQuote, bestOffer: activeDealer, displayRate: displayPrice?.amount },
@@ -244,6 +247,19 @@ export default function VehicleDetailPage() {
                   fulfillment={wishFulfillment}
                   onCleverQuoteWhy={() => setCleverQuoteOpen(true)}
                 />
+
+                {showCustomize && (
+                  <EquipmentWishAdvisor
+                    modelKey={vehicleModelKey}
+                    vehicle={vehicle}
+                    selectedFeatures={detailSelection.selectedFeatures}
+                    trimId={trimId}
+                    paymentMode={detailSelection.paymentMode}
+                    onToggleChip={handleToggleEquipmentChip}
+                    onApplyRecommendation={handleApplyEquipmentRecommendation}
+                    onInquiry={() => setInquiryModal('inquiry')}
+                  />
+                )}
 
                 <VehicleDetailUpgradeSection
                   upgrade={streamUpgrade}
@@ -376,44 +392,16 @@ export default function VehicleDetailPage() {
                 />
 
                 {showCustomize && (
-                  <>
-                    <WishBuilderCard
-                      vehicle={vehicle}
-                      selection={detailSelection}
-                      recommendationResult={recommendationResult}
-                      fulfillment={wishFulfillment}
-                      onToggleFeature={handleToggleFeature}
-                    />
-                    <CleverAnalysisPanel fulfillment={wishFulfillment} />
-                    <WishResultPanel
-                      recommendationResult={recommendationResult}
-                      displayPrice={displayPrice}
-                      paymentMode={detailSelection.paymentMode}
-                    />
-                    {primaryPackage && (
-                      <PackageRecommendationCard
-                        package={primaryPackage}
-                        paymentMode={detailSelection.paymentMode}
-                        displayPrice={displayPrice}
-                        baselinePriceLabel={recommendationResult?.baselinePriceLabel}
-                        cleverQuote={cleverQuote}
-                        cleverQuoteAfter={cleverQuoteAfterPackage}
-                        onAccept={handleAcceptPackage}
-                      />
-                    )}
-                    {recommendationResult?.betterTrim?.exists && (
-                      <CleverRecommendationCard
-                        betterTrim={recommendationResult.betterTrim}
-                        vehicle={{ ...vehicle, trimName: detailSelection.trimName }}
-                        fulfillment={wishFulfillment}
-                        onAccept={handleAcceptBetterTrim}
-                      />
-                    )}
-                    <WishBasedAlternatives
-                      alternatives={wishAlternatives}
-                      currentTitle={displayTitle}
-                    />
-                  </>
+                  <EquipmentWishAdvisor
+                    modelKey={vehicleModelKey}
+                    vehicle={vehicle}
+                    selectedFeatures={detailSelection.selectedFeatures}
+                    trimId={trimId}
+                    paymentMode={detailSelection.paymentMode}
+                    onToggleChip={handleToggleEquipmentChip}
+                    onApplyRecommendation={handleApplyEquipmentRecommendation}
+                    onInquiry={() => setInquiryModal('inquiry')}
+                  />
                 )}
 
                 <DealerCompareCard
@@ -478,44 +466,26 @@ export default function VehicleDetailPage() {
       <MobileBottomSheet
         open={wishSheetOpen}
         onClose={() => setWishSheetOpen(false)}
-        title="Wunschauto bauen"
+        title="Ausstattung finden"
         titleId="vd-wish-sheet-title"
       >
         {showCustomize && (
-          <>
-            <WishBuilderCard
-              vehicle={vehicle}
-              selection={detailSelection}
-              recommendationResult={recommendationResult}
-              fulfillment={wishFulfillment}
-              onToggleFeature={handleToggleFeature}
-            />
-            <CleverAnalysisPanel fulfillment={wishFulfillment} />
-            <WishResultPanel
-              recommendationResult={recommendationResult}
-              displayPrice={displayPrice}
-              paymentMode={detailSelection.paymentMode}
-            />
-            {primaryPackage && (
-              <PackageRecommendationCard
-                package={primaryPackage}
-                paymentMode={detailSelection.paymentMode}
-                displayPrice={displayPrice}
-                baselinePriceLabel={recommendationResult?.baselinePriceLabel}
-                cleverQuote={cleverQuote}
-                cleverQuoteAfter={cleverQuoteAfterPackage}
-                onAccept={handleAcceptPackage}
-              />
-            )}
-            {recommendationResult?.betterTrim?.exists && (
-              <CleverRecommendationCard
-                betterTrim={recommendationResult.betterTrim}
-                vehicle={{ ...vehicle, trimName: detailSelection.trimName }}
-                fulfillment={wishFulfillment}
-                onAccept={handleAcceptBetterTrim}
-              />
-            )}
-          </>
+          <EquipmentWishAdvisor
+            modelKey={vehicleModelKey}
+            vehicle={vehicle}
+            selectedFeatures={detailSelection.selectedFeatures}
+            trimId={trimId}
+            paymentMode={detailSelection.paymentMode}
+            onToggleChip={handleToggleEquipmentChip}
+            onApplyRecommendation={(rec) => {
+              handleApplyEquipmentRecommendation(rec);
+              setWishSheetOpen(false);
+            }}
+            onInquiry={() => {
+              setInquiryModal('inquiry');
+              setWishSheetOpen(false);
+            }}
+          />
         )}
       </MobileBottomSheet>
 

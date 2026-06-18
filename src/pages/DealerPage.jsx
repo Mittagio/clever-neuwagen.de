@@ -27,15 +27,18 @@ import DealerJourneyOfferPanel from '../components/dealer/DealerJourneyOfferPane
 import DealerJourneyLeadSheet from '../components/dealer/DealerJourneyLeadSheet.jsx';
 import DealerJourneyLeadSuccess from '../components/dealer/DealerJourneyLeadSuccess.jsx';
 import { buildDealerJourneySnapshot } from '../services/dealer/purchaseTypeOptions.js';
+import { inferKnownPurchaseType } from '../services/dealer/inferPurchaseTypeFromSearch.js';
+import { detectModelKeyInQuery } from '../services/search/modelAttributeQuestion.js';
+import { resolvePowertrainOptionsForModel } from '../services/dealer/modelPowertrainFamily.js';
+import { getEquipmentStepCta } from '../services/dealer/equipmentStepPresentation.js';
+import { mapPurchaseDetailsToBudget, getPaymentStepCta } from '../services/dealer/purchaseTypeFormOptions.js';
 import { buildJourneyOffers } from '../services/dealer/journeyOfferService.js';
 import {
   createLeadFromJourney,
   prepareJourneyLeadContext,
 } from '../services/dealer/journeyLeadService.js';
-import {
-  toggleWishChipIds,
-  resolveWishFeaturesFromChips,
-} from '../data/dealer/dealerWishCatalog.js';
+import { chipToFeatureIds, getEquipmentWishChip } from '../data/features/equipmentWishChips.js';
+import { findDealerWishChip, toggleWishChipIds } from '../data/dealer/dealerWishCatalog.js';
 import {
   buildConfigSummaryFromTrim,
   buildConfigurationFromTrim,
@@ -58,7 +61,6 @@ import {
   classifyCustomerQueryIntent,
   getCustomerQueryType,
 } from '../services/search/customerQueryIntent.js';
-import { detectModelKeyInQuery } from '../services/search/modelAttributeQuestion.js';
 import { analyzeVehicleQuery } from '../services/search/vehicleQueryIntent.js';
 import { buildDealerSmartAnswer } from '../services/dealer/dealerSmartAnswerService.js';
 import { resolveModelConditions } from '../data/dealerConditionsSchema.js';
@@ -95,6 +97,21 @@ import './DealerPage.css';
 import './dealer-mobile.css';
 import '../components/discovery/discovery-results.css';
 
+function resolveJourneyWishFeatures(chipIds = []) {
+  const features = new Set();
+  for (const chipId of chipIds) {
+    if (getEquipmentWishChip(chipId)) {
+      chipToFeatureIds(chipId).forEach((featureId) => features.add(featureId));
+      continue;
+    }
+    const dealerChip = findDealerWishChip(chipId);
+    if (dealerChip?.features?.length) {
+      dealerChip.features.forEach((featureId) => features.add(featureId));
+    }
+  }
+  return [...features];
+}
+
 export default function DealerPage() {
   const navigate = useNavigate();
   const { slug: routeSlug } = useParams();
@@ -121,6 +138,7 @@ export default function DealerPage() {
   const [purchaseType, setPurchaseType] = useState(null);
   const [purchaseTypeDraft, setPurchaseTypeDraft] = useState(null);
   const [purchaseTypeComplete, setPurchaseTypeComplete] = useState(false);
+  const [purchaseDetails, setPurchaseDetails] = useState(null);
   const [journeyBudget, setJourneyBudget] = useState(null);
   const [budgetComplete, setBudgetComplete] = useState(false);
   const [specialConditions, setSpecialConditions] = useState([]);
@@ -132,6 +150,7 @@ export default function DealerPage() {
   const [inquiryLeadSync, setInquiryLeadSync] = useState(null);
   const [activeRecommendPick, setActiveRecommendPick] = useState(null);
   const [liveUnderstandTrim, setLiveUnderstandTrim] = useState(null);
+  const [equipmentSearchWishes, setEquipmentSearchWishes] = useState([]);
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
   const offersSectionRef = useRef(null);
@@ -476,8 +495,10 @@ export default function DealerPage() {
     })
     && hasExact;
 
+  const hasModelFocusedSearch = Boolean(hasSearch && detectModelKeyInQuery(submittedQuery));
+
   const useSalesJourney = hasSearch
-    && (customerQueryType === 'purchase' || isNeedBasedAdvisor)
+    && (customerQueryType === 'purchase' || isNeedBasedAdvisor || hasModelFocusedSearch)
     && Boolean(primaryRecommendGroup || hasExact);
 
   const needSearchAnswer = useMemo(() => {
@@ -568,12 +589,21 @@ export default function DealerPage() {
     && primaryRecommendGroup
     && !showSalesCompare
     && !showNeedAdvisorRecommend;
+  const knownPurchaseType = useMemo(() => {
+    if (purchaseTypeComplete && purchaseType) return purchaseType;
+    return inferKnownPurchaseType({
+      submittedQuery,
+      searchProfile,
+      searchFilters,
+    });
+  }, [purchaseTypeComplete, purchaseType, submittedQuery, searchProfile, searchFilters]);
+
   const showSalesUnderstand = useSalesJourney && effectiveSalesStep === 'understand' && selectedModelKey;
   const showSalesTrim = useSalesJourney && effectiveSalesStep === 'trim' && trimRecommendation;
-  const showPurchaseType = useSalesJourney && effectiveSalesStep === 'purchase' && specialConditionsComplete;
-  const showBudget = useSalesJourney && effectiveSalesStep === 'budget' && purchaseTypeComplete;
-  const showSpecialConditions = useSalesJourney && effectiveSalesStep === 'special' && Boolean(configSummary);
-  const showJourneySummary = useSalesJourney && effectiveSalesStep === 'summary' && budgetComplete;
+  const showPurchaseType = useSalesJourney && effectiveSalesStep === 'purchase' && Boolean(configSummary);
+  const showSpecialConditions = useSalesJourney && effectiveSalesStep === 'special' && purchaseTypeComplete;
+  const showBudget = false;
+  const showJourneySummary = useSalesJourney && effectiveSalesStep === 'summary' && specialConditionsComplete;
 
   const journeySnapshot = useMemo(
     () => buildDealerJourneySnapshot({
@@ -608,7 +638,6 @@ export default function DealerPage() {
     && Boolean(configSummary)
     && specialConditionsComplete
     && purchaseTypeComplete
-    && budgetComplete
     && !leadSubmitted;
   const showJourneyLeadSuccess = Boolean(leadSubmitted);
   const showVehicleOffers = hasSearch && customerQueryType === 'search' && !useSalesJourney;
@@ -645,12 +674,22 @@ export default function DealerPage() {
     setWishChipIds(prefilled);
     setPrefilledWishCount(prefilled.length);
     setLiveUnderstandTrim(null);
+    setEquipmentSearchWishes([]);
     setTrimRecommendation(null);
     setConfigSummary(null);
     setVehicleConfiguration(null);
+    const inferredPayment = inferKnownPurchaseType({
+      submittedQuery,
+      searchProfile,
+      searchFilters,
+    });
+    setPurchaseTypeDraft(inferredPayment);
+    setPurchaseType(inferredPayment);
+    setPurchaseDetails(null);
+    setPurchaseTypeComplete(false);
     setSalesStep('understand');
     scrollToJourney();
-  }, [searchProfile, searchFilters, activeSearchChipIds, scrollToJourney]);
+  }, [searchProfile, searchFilters, activeSearchChipIds, scrollToJourney, submittedQuery]);
 
   const handleSmartAnswerSelectModel = useCallback((modelKey) => {
     if (modelKey === 'unsure') {
@@ -672,10 +711,29 @@ export default function DealerPage() {
     handleViewVehicle(modelKey);
   }, [customerQueryType, hasSearch, submittedQuery, salesStep, handleViewVehicle]);
 
+  useEffect(() => {
+    if (!hasModelFocusedSearch || !hasSearch) return;
+    const modelKey = detectModelKeyInQuery(submittedQuery);
+    if (!modelKey || salesStep) return;
+    handleViewVehicle(modelKey);
+  }, [hasModelFocusedSearch, hasSearch, submittedQuery, salesStep, handleViewVehicle]);
+
   const wishFeatures = useMemo(
-    () => resolveWishFeaturesFromChips(wishChipIds),
+    () => resolveJourneyWishFeatures(wishChipIds),
     [wishChipIds],
   );
+
+  const powertrainOptions = useMemo(
+    () => (selectedModelKey
+      ? resolvePowertrainOptionsForModel(activeSearchBundle, selectedModelKey)
+      : []),
+    [activeSearchBundle, selectedModelKey],
+  );
+
+  const handlePowertrainChange = useCallback((nextModelKey) => {
+    if (!nextModelKey || nextModelKey === selectedModelKey) return;
+    handleViewVehicle(nextModelKey);
+  }, [selectedModelKey, handleViewVehicle]);
 
   const handleToggleWish = useCallback((chipId) => {
     setWishChipIds((prev) => toggleWishChipIds(prev, chipId));
@@ -721,12 +779,9 @@ export default function DealerPage() {
     setVehicleConfiguration(buildConfigurationFromTrim(modelKey, finalRec, selectedTrimId, selectedPackageIds));
     setSpecialConditions([]);
     setSpecialConditionsComplete(false);
-    setPurchaseType(null);
-    setPurchaseTypeComplete(false);
     setJourneyBudget(null);
     setBudgetComplete(false);
-    setSalesStep('special');
-    setPurchaseTypeDraft(purchaseType);
+    setSalesStep('purchase');
     scrollToJourney();
   }, [
     selectedModelKey,
@@ -737,6 +792,10 @@ export default function DealerPage() {
     scrollToJourney,
   ]);
 
+  const handleEquipmentJourneyContinue = useCallback(({ trimId, packageIds = [] }) => {
+    handleUnderstandContinue(trimId, packageIds);
+  }, [handleUnderstandContinue]);
+
   const handleTrimConfirm = useCallback((recommendation) => {
     const modelKey = selectedModelKey ?? recommendation?.modelKey;
     if (!modelKey) return;
@@ -745,12 +804,8 @@ export default function DealerPage() {
     setVehicleConfiguration(buildConfigurationFromTrim(modelKey, recommendation));
     setSpecialConditions([]);
     setSpecialConditionsComplete(false);
-    setPurchaseType(null);
-    setPurchaseTypeComplete(false);
-    setJourneyBudget(null);
     setBudgetComplete(false);
-    setSalesStep('special');
-    setPurchaseTypeDraft(purchaseType);
+    setSalesStep('purchase');
     scrollToJourney();
   }, [selectedModelKey, wishFeatures, wishChipIds, scrollToJourney]);
 
@@ -762,16 +817,19 @@ export default function DealerPage() {
   const handleSpecialConditionsContinue = useCallback((nextConditions) => {
     setSpecialConditions(nextConditions);
     setSpecialConditionsComplete(true);
-    setSalesStep('purchase');
+    setBudgetComplete(true);
+    setSalesStep('summary');
     scrollToJourney();
   }, [scrollToJourney]);
 
-  const handlePurchaseTypeContinue = useCallback((type) => {
+  const handlePurchaseTypeContinue = useCallback((type, details = {}) => {
     setPurchaseType(type);
+    setPurchaseTypeDraft(type);
+    setPurchaseDetails(details);
     setPurchaseTypeComplete(true);
-    setJourneyBudget(null);
-    setBudgetComplete(false);
-    setSalesStep('budget');
+    setJourneyBudget(mapPurchaseDetailsToBudget(type, details));
+    setBudgetComplete(true);
+    setSalesStep('special');
     scrollToJourney();
   }, [scrollToJourney]);
 
@@ -867,28 +925,46 @@ export default function DealerPage() {
       const modelLabel = configSummary?.modelLabel
         ?? KIA_MODEL_ATTRIBUTES[selectedModelKey]?.label
         ?? 'Kia';
-      const hasWishes = wishChipIds.length > 0;
+      const hasWishes = wishChipIds.length > 0 || equipmentSearchWishes.length > 0;
+      const equipmentCta = getEquipmentStepCta(knownPurchaseType, hasWishes);
       const trimLabel = liveUnderstandTrim?.trimLabel;
+      const recommendationLabel = liveUnderstandTrim?.recommendationLabel;
       const percent = liveUnderstandTrim?.cleverQuotePercent;
       const packageCount = liveUnderstandTrim?.packageIds?.length ?? 0;
+      const canContinue = true;
 
       return {
         salesStep: effectiveSalesStep,
-        title: trimLabel
-          ? `${modelLabel} ${trimLabel}`.trim()
-          : modelLabel,
-        subtitle: !hasWishes
-          ? 'Bitte mindestens einen Wunsch wählen'
-          : percent != null
-            ? `🏆 CleverQuote ${percent}${packageCount ? ' · mit Paketen' : ''}`
-            : 'Ausstattung wählen',
+        title: recommendationLabel ?? (trimLabel ? `${modelLabel} ${trimLabel}`.trim() : modelLabel),
+        subtitle: hasWishes
+          ? (knownPurchaseType === 'cash'
+            ? 'Clever hat eine passende Ausstattung gefunden'
+            : (percent != null && knownPurchaseType
+              ? `Passt zu ${percent} % Ihrer Wünsche${packageCount ? ' · mit Paketen' : ''}`
+              : (percent != null
+                ? `Passt zu ${percent} % Ihrer Wünsche${packageCount ? ' · mit Paketen' : ''}`
+                : 'Clever hat eine passende Ausstattung gefunden')))
+          : 'Clever empfiehlt eine sinnvolle Ausstattung',
         stepLabel: 'Ausstattung',
-        actionLabel: trimLabel ? `Mit ${trimLabel} weiter` : 'Weiter',
-        disabled: !hasWishes || !liveUnderstandTrim?.trimId,
+        actionLabel: equipmentCta.actionLabel,
+        actionHint: equipmentCta.actionHint,
+        disabled: !canContinue,
         onAction: () => handleUnderstandContinue(
-          liveUnderstandTrim.trimId,
-          liveUnderstandTrim.packageIds ?? [],
+          liveUnderstandTrim?.trimId,
+          liveUnderstandTrim?.packageIds ?? [],
         ),
+      };
+    }
+
+    if (effectiveSalesStep === 'purchase' && configSummary) {
+      return {
+        salesStep: effectiveSalesStep,
+        title: `Kia ${configSummary.modelLabel}`,
+        subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : 'Zahlungsart wählen',
+        stepLabel: 'Zahlungsart',
+        actionLabel: purchaseTypeDraft ? getPaymentStepCta(purchaseTypeDraft) : 'Zahlungsart wählen',
+        disabled: !purchaseTypeDraft,
+        onAction: () => submitAdvisorForm('dl-advisor-purchase-form'),
       };
     }
 
@@ -900,33 +976,6 @@ export default function DealerPage() {
         stepLabel: 'Nutzung',
         actionLabel: 'Weiter',
         onAction: () => submitAdvisorForm('dl-advisor-special-form'),
-      };
-    }
-
-    if (effectiveSalesStep === 'purchase' && configSummary) {
-      return {
-        salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.trimLabel
-          ? `Ausstattung ${configSummary.trimLabel}`
-          : null,
-        stepLabel: 'Leasing / Kauf',
-        actionLabel: 'Weiter',
-        disabled: !purchaseTypeDraft,
-        onAction: () => {
-          if (purchaseTypeDraft) handlePurchaseTypeContinue(purchaseTypeDraft);
-        },
-      };
-    }
-
-    if (effectiveSalesStep === 'budget' && configSummary) {
-      return {
-        salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : null,
-        stepLabel: 'Budget',
-        actionLabel: 'Weiter',
-        onAction: () => submitAdvisorForm('dl-advisor-budget-form'),
       };
     }
 
@@ -961,8 +1010,10 @@ export default function DealerPage() {
     activeRecommendPick,
     liveUnderstandTrim,
     wishChipIds.length,
+    equipmentSearchWishes.length,
     configSummary,
     selectedModelKey,
+    knownPurchaseType,
     purchaseTypeDraft,
     handleViewVehicle,
     handleUnderstandContinue,
@@ -1061,6 +1112,7 @@ export default function DealerPage() {
           )}
           {showSalesUnderstand && (
             <DealerVehicleUnderstandCard
+              key={selectedModelKey}
               modelKey={selectedModelKey}
               dealerId={dealerId}
               wishChipIds={wishChipIds}
@@ -1069,9 +1121,13 @@ export default function DealerPage() {
               searchChipIds={activeSearchChipIds}
               deliveryLabel={selectedModelDelivery}
               prefilledWishCount={prefilledWishCount}
+              knownPurchaseType={knownPurchaseType}
+              powertrainOptions={powertrainOptions}
+              onPowertrainChange={handlePowertrainChange}
               onToggleWish={handleToggleWish}
-              onContinue={handleUnderstandContinue}
               onTrimChange={setLiveUnderstandTrim}
+              onSearchWishesChange={setEquipmentSearchWishes}
+              onJourneyContinue={handleEquipmentJourneyContinue}
             />
           )}
           {showSalesTrim && (
@@ -1083,19 +1139,20 @@ export default function DealerPage() {
               onBack={handleTrimBack}
             />
           )}
+          {showPurchaseType && (
+            <DealerPurchaseTypeCard
+              configSummary={configSummary}
+              value={purchaseTypeDraft ?? purchaseType}
+              initialDetails={purchaseDetails}
+              onSelectionChange={setPurchaseTypeDraft}
+              onContinue={handlePurchaseTypeContinue}
+            />
+          )}
           {showSpecialConditions && (
             <DealerSpecialConditionsCard
               configSummary={configSummary}
               value={specialConditions}
               onContinue={handleSpecialConditionsContinue}
-            />
-          )}
-          {showPurchaseType && (
-            <DealerPurchaseTypeCard
-              configSummary={configSummary}
-              value={purchaseTypeDraft ?? purchaseType}
-              onSelectionChange={setPurchaseTypeDraft}
-              onContinue={handlePurchaseTypeContinue}
             />
           )}
           {showBudget && (
@@ -1234,6 +1291,7 @@ export default function DealerPage() {
           subtitle={mobileFooter.subtitle}
           stepLabel={mobileFooter.stepLabel}
           actionLabel={mobileFooter.actionLabel}
+          actionHint={mobileFooter.actionHint}
           disabled={mobileFooter.disabled}
           onAction={mobileFooter.onAction}
         />

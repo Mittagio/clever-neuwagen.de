@@ -39,4 +39,7 @@ export const LEAD_SOURCES = {
   manual: 'Manuell',
   dealerJourney: 'Clever Journey',
   dealerSearch: 'Händler-Suche',
+  marketplace: 'Fahrzeugseite',
+  offer: 'Angebotslink',
+  equipment: 'Ausstattungsberater',
 };

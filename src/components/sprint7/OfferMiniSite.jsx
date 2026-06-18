@@ -177,8 +177,8 @@ export default function OfferMiniSite() {
 
     showToast(
       result?.isNew
-        ? 'Anfrage gesendet – Ihre Verkaufschance wurde angelegt'
-        : 'Anfrage gesendet – Dialog aktualisiert',
+        ? 'Anfrage gesendet – neue Verkaufschance angelegt'
+        : 'Anfrage gesendet – Verkaufschance aktualisiert',
     );
     setModal(null);
   }

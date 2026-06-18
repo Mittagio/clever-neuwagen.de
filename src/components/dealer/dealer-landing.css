@@ -1719,6 +1719,114 @@
   cursor: not-allowed;
 }
 
+.dl-purchase__type-cards {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.dl-purchase__type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dl-purchase__type-card--active {
+  border-color: #0369a1;
+  background: #f0f9ff;
+  box-shadow: 0 0 0 1px #0369a1;
+}
+
+.dl-purchase__type-card-label {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-brand);
+}
+
+.dl-purchase__type-card-sub {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.dl-purchase__details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+}
+
+.dl-purchase__field {
+  margin: 0;
+}
+
+.dl-purchase__field-label {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.dl-purchase__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dl-purchase__chip {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.dl-purchase__chip--active {
+  border-color: #0369a1;
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+.dl-purchase__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.dl-purchase__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #334155;
+  margin-top: 6px;
+}
+
+.dl-purchase__extras {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .dl-journey-summary {
   margin-top: 20px;
   padding: 22px 20px;
@@ -2313,6 +2421,18 @@
   border-radius: 16px;
   background: var(--color-bg-subtle, #f8fafc);
   border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.dl-sales-understand__equipment .vd-wish--equipment {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.dl-sales-understand__equipment .vd-wish__intro {
+  margin-bottom: 16px;
 }
 
 .dl-wish-chips__check {
@@ -4084,6 +4204,14 @@
   background: #0f172a;
 }
 
+.dealer-page--advisor-flow .dl-journey-footer {
+  display: block;
+}
+
+.dealer-page--advisor-flow.dealer-page {
+  padding-bottom: 88px;
+}
+
 .dl-journey-footer {
   display: none;
   position: fixed;
@@ -4139,6 +4267,15 @@
   flex-shrink: 0;
   min-width: 108px;
   min-height: 48px;
+}
+
+.dl-journey-footer__hint {
+  margin: 8px 0 0;
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #64748b;
+  text-align: center;
 }
 
 .dl-sales-understand__hero--compact {
