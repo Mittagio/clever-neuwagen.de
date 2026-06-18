@@ -7,6 +7,7 @@ import {
   getPaymentLabel,
   markOfferSent,
 } from '../../logic/offerService.js';
+import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
 import './OfferComponents.css';
 
 export default function OfferQuickSend({ offer, url, onSent, onMarkSent }) {
@@ -42,6 +43,7 @@ export default function OfferQuickSend({ offer, url, onSent, onMarkSent }) {
 
   return (
     <div className="offer-quick-send">
+      <InternalTestCustomerShareWarning />
       <p className="offer-quick-send-preview">
         {getPaymentLabel(offer.pricing.paymentType)}: <strong>{formatOfferRate(offer.pricing)}</strong>
       </p>

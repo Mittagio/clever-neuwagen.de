@@ -5,6 +5,7 @@ import {
   DOCUMENT_REQUEST_STATUS,
 } from '../../data/documentRequestTypes.js';
 import { copyOfferLink } from '../../logic/offerService.js';
+import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
 import {
   getDocumentRequestsForLead,
   buildUnterlagenPath,
@@ -67,6 +68,7 @@ export default function DocumentRequestPanel({
   return (
     <section className="sc-docreq card">
       <h3>Unterlagen anfordern</h3>
+      <InternalTestCustomerShareWarning />
       <p className="sc-docreq__hint">
         Kunde erhält eine Checkliste mit 48h-Upload-Frist und Link zur digitalen Selbstauskunft.
       </p>

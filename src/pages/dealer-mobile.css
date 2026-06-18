@@ -217,22 +217,36 @@
     font-size: 0.8125rem;
   }
 
-  .dealer-page--advisor-flow .dl-journey-footer {
-    display: block;
+  .dealer-page--advisor-flow .dl-journey-footer,
+  .dealer-page--advisor-flow ~ .dl-journey-footer,
+  .dealer-shell--advisor-flow .dl-journey-footer {
+    display: flex !important;
   }
 
   .dealer-page--advisor-flow .dl-journey-progress {
     display: none;
   }
 
-  .dealer-page--advisor-flow .dl-sales-understand__cta,
-.dealer-page--advisor-flow .vd-eq-journey-cta,
   .dealer-page--advisor-flow .dl-purchase__cta,
   .dealer-page--advisor-flow .dl-budget__cta,
   .dealer-page--advisor-flow .dl-special__cta,
   .dealer-page--advisor-flow .dl-journey-summary__cta,
   .dealer-page--advisor-flow .dl-model-swipe__learn {
     display: none;
+  }
+
+  .dealer-page--advisor-flow .vd-eq-rec__actions,
+  .dealer-page--advisor-flow .vd-eq-rec__cta,
+  .dealer-page--advisor-flow .vd-eq-journey-cta,
+  .dealer-page--advisor-flow .vd-eq-trim__cta {
+    display: flex !important;
+  }
+
+  .dealer-page--advisor-flow .vd-eq-rec__cta,
+  .dealer-page--advisor-flow .vd-eq-trim__cta,
+  .dealer-page--advisor-flow .vd-eq-journey-cta .vd-btn {
+    display: inline-flex !important;
+    width: 100%;
   }
 
   .dealer-page--advisor-flow .dl-search-results__all--inline {

@@ -76,6 +76,28 @@ const airLine = advisor.trimLines.find((line) => line.trimName === 'Air');
 assert.ok(airLine?.fulfilled?.includes('LED-Scheinwerfer'));
 assert.ok(airLine?.fulfilled?.includes('V2L / Vehicle-to-Load'));
 
+// Totwinkelassistent – EV2 Air Serie (kein „wird geprüft“)
+const blindSpotChip = analyzeEquipmentWishSelection(BRAND, MODEL, ['blind_spot'], {
+  modelKey: MODEL_KEY,
+});
+const airBlindSpot = blindSpotChip.trimLines.find((line) => line.trimName === 'Air');
+assert.ok(airBlindSpot?.fulfilled?.includes('Totwinkelassistent'));
+assert.equal(airBlindSpot?.uncertain?.length ?? 0, 0);
+assert.equal(airBlindSpot?.matchPercent, 100);
+
+const blindSpotSearch = search('Totwinkelassistent');
+assert.equal(blindSpotSearch.type, 'match');
+assert.equal(blindSpotSearch.item?.modelStatus, 'standard');
+assert.ok(blindSpotSearch.item?.availableTrims?.some((trim) => trim.trimId === 'air'));
+
+const blindSpotAdvisor = analyzeEquipmentWishSelection(BRAND, MODEL, [], {
+  modelKey: MODEL_KEY,
+  searchedFeatures: [blindSpotSearch.item],
+});
+const airBlindSpotSearch = blindSpotAdvisor.trimLines.find((line) => line.trimName === 'Air');
+assert.ok(airBlindSpotSearch?.fulfilled?.includes('Totwinkelassistent'));
+assert.equal(airBlindSpotSearch?.uncertain?.length ?? 0, 0);
+
 // xyz abc – nicht im globalen Katalog
 const unknown = search('xyz abc');
 assert.equal(unknown.type, 'not_found');
@@ -91,10 +113,10 @@ assert.equal(passengerSeat.type, 'unconfirmed');
 assert.equal(passengerSeat.feature?.id, 'elektrische_sitzverstellung_beifahrer');
 assert.equal(passengerSeat.message, 'Für dieses Modell aktuell nicht eindeutig gefunden.');
 
-// Head Up – global erkannt
+// Head Up – global erkannt, auf EV2 aktuell nicht eindeutig im Modellindex
 const hud = search('Head Up');
-assert.equal(hud.type, 'match');
-assert.equal(hud.item?.globalFeatureId, 'head_up_display');
+assert.equal(hud.type, 'unconfirmed');
+assert.equal(hud.feature?.id, 'head_up_display');
 assert.equal(hud.item?.label, 'Head-up-Display');
 
 console.log('equipmentFeatureSearch.test.js: ok (3-layer, EV2)');

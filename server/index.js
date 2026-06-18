@@ -20,6 +20,14 @@ const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST
   || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
 
+const ROBOTS_PUBLIC = 'User-agent: *\nAllow: /\n';
+const ROBOTS_TEST = 'User-agent: *\nDisallow: /\n';
+
+function isInternalTestEnv() {
+  return process.env.VITE_INTERNAL_TEST_ENV === 'true'
+    || process.env.INTERNAL_TEST_ENV === 'true';
+}
+
 const app = express();
 
 if (process.env.NODE_ENV === 'production') {
@@ -55,6 +63,18 @@ ensureDataDir();
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'clever-neuwagen', ts: new Date().toISOString() });
+});
+
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain').send(isInternalTestEnv() ? ROBOTS_TEST : ROBOTS_PUBLIC);
+});
+
+app.get('/sitemap.xml', (_req, res) => {
+  if (isInternalTestEnv()) {
+    res.status(404).type('text/plain').send('Not found');
+    return;
+  }
+  res.status(404).type('text/plain').send('Not found');
 });
 
 if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST_DIR)) {

@@ -2,7 +2,8 @@
  * Ausstattungsberatung – dynamisch aus Herstellerdaten (markenübergreifend).
  */
 import { getFeatureLabel } from '../../data/features/featureCatalog.js';
-import { getGlobalFeatureById } from '../../data/features/globalFeatureCatalog.js';
+import { getGlobalFeatureById, GLOBAL_FEATURE_CATALOG } from '../../data/features/globalFeatureCatalog.js';
+import { FEATURE_AVAILABILITY_STATUS as S } from '../../data/features/modelEquipmentSchema.js';
 import { getEquipmentWishChip } from '../../data/features/equipmentWishChips.js';
 import { getPackagesForTrim } from '../../data/dealer/dealerTrimPackages.js';
 import { getModelTrims, normalizeModelKey, TRIM_FEATURE_MAP } from '../../data/features/trimFeatureMapping.js';
@@ -12,9 +13,130 @@ import {
   getManufacturerTrims,
 } from '../../data/manufacturer/manufacturerRegistry.js';
 import { resolveWishConfiguration } from '../configurator/wishPackageResolver.js';
-import { mergeSearchedIntoFeatureIds } from './equipmentFeatureSearch.js';
+import { mergeSearchedIntoFeatureIds, searchedFeatureToWishFeature } from './equipmentFeatureSearch.js';
+import { resolveModelFeatureAvailability } from './modelEquipmentData.js';
 import { buildEquipmentChipsForModel, resolveChipToScoringFeatureIds } from './equipmentChipBuilder.js';
 import { priceConfiguration } from '../pricing/pricingEngine.js';
+
+function getGlobalFeatureByLegacyId(legacyId) {
+  if (!legacyId) return null;
+  return GLOBAL_FEATURE_CATALOG.find((feature) => feature.legacyFeatureId === legacyId) ?? null;
+}
+
+function resolveMappingTrimFeatureStatus(trim, legacyFeatureId) {
+  if (!trim || !legacyFeatureId) return S.UNKNOWN;
+  if (trim.standardFeatures?.includes(legacyFeatureId)) return S.STANDARD;
+  if (trim.availableViaPackage?.includes(legacyFeatureId)) return S.PACKAGE_REQUIRED;
+  if (trim.notAvailable?.includes(legacyFeatureId)) return S.NOT_AVAILABLE;
+  return S.UNKNOWN;
+}
+
+/** @returns {'fulfilled' | 'missing' | 'uncertain'} */
+export function resolveWishOnTrim({
+  featureId = null,
+  catalogId = null,
+  trimId,
+  brand = 'Kia',
+  model,
+  modelKey,
+}) {
+  const globalFeature = catalogId
+    ? getGlobalFeatureById(catalogId)
+    : getGlobalFeatureByLegacyId(featureId);
+  const globalId = globalFeature?.id ?? catalogId;
+  const legacyId = featureId ?? globalFeature?.legacyFeatureId ?? null;
+
+  if (globalId) {
+    const availability = resolveModelFeatureAvailability(brand, model, modelKey, globalId);
+    const entry = availability?.entries?.find((item) => item.trimId === trimId);
+    if (entry) {
+      if ([S.STANDARD, S.AVAILABLE, S.OPTIONAL, S.PACKAGE_REQUIRED].includes(entry.status)) {
+        return 'fulfilled';
+      }
+      if (entry.status === S.NOT_AVAILABLE) return 'missing';
+    } else if (availability?.entries?.length) {
+      return 'missing';
+    }
+  }
+
+  if (legacyId && modelKey) {
+    const trim = getModelTrims(modelKey).find((item) => item.id === trimId);
+    const mapped = resolveMappingTrimFeatureStatus(trim, legacyId);
+    if ([S.STANDARD, S.AVAILABLE, S.PACKAGE_REQUIRED].includes(mapped)) return 'fulfilled';
+    if (mapped === S.NOT_AVAILABLE) return 'missing';
+  }
+
+  return 'uncertain';
+}
+
+function applyCatalogWishesForTrim({
+  trimId,
+  brand,
+  model,
+  modelKey,
+  confirmedCatalogWishes = [],
+  fulfilled,
+  missing,
+  uncertain,
+}) {
+  let matchedDelta = 0;
+  for (const wish of confirmedCatalogWishes) {
+    const result = resolveWishOnTrim({
+      featureId: null,
+      catalogId: wish.catalogId,
+      trimId,
+      brand,
+      model,
+      modelKey,
+    });
+    if (result === 'fulfilled' && !fulfilled.includes(wish.label)) {
+      fulfilled.push(wish.label);
+      matchedDelta += 1;
+    } else if (result === 'missing' && !missing.includes(wish.label)) {
+      missing.push(wish.label);
+    } else if (result === 'uncertain' && !uncertain.includes(wish.label)) {
+      uncertain.push(wish.label);
+      matchedDelta += 0.5;
+    }
+  }
+  return matchedDelta;
+}
+
+function applyPendingSearchedWishesForTrim({
+  trimId,
+  brand,
+  model,
+  modelKey,
+  searchedFeatures = [],
+  fulfilled,
+  missing,
+  uncertain,
+}) {
+  let matchedDelta = 0;
+  for (const item of searchedFeatures) {
+    const wish = searchedFeatureToWishFeature(item);
+    if (!wish?.advisorRelevant || wish.missing) continue;
+    if (wish.catalogOnly) continue;
+    const result = resolveWishOnTrim({
+      featureId: wish.featureId,
+      catalogId: wish.globalFeatureId ?? wish.catalogId,
+      trimId,
+      brand,
+      model,
+      modelKey,
+    });
+    if (result === 'fulfilled' && !fulfilled.includes(wish.label)) {
+      fulfilled.push(wish.label);
+      matchedDelta += 1;
+    } else if (result === 'missing' && !missing.includes(wish.label)) {
+      missing.push(wish.label);
+    } else if (result === 'uncertain' && !uncertain.includes(wish.label)) {
+      uncertain.push(wish.label);
+      matchedDelta += 0.5;
+    }
+  }
+  return matchedDelta;
+}
 
 const BADGE_LABELS = {
   basis: 'Günstigste Rate',
@@ -184,7 +306,14 @@ function analyzeMappingSelection(modelKey, selectedChipIds, featureIds, options 
       trim,
       featureIds,
       pendingLabels,
-      { missingLabels, confirmedCatalogWishes },
+      {
+        missingLabels,
+        confirmedCatalogWishes,
+        searchedFeatures: options.searchedFeatures ?? [],
+        brand: 'Kia',
+        model: mapping.modelLabel?.replace(/^Kia\s+/i, '') ?? modelKey,
+        modelKey,
+      },
     );
     const prices = getTrimPrices('Kia', mapping.modelLabel?.replace('Kia ', '') ?? modelKey, trim.id, modelKey);
     return { ...score, trim, index, rate: prices.rate, cashPrice: prices.cashPrice };
@@ -262,9 +391,17 @@ function analyzeMappingSelection(modelKey, selectedChipIds, featureIds, options 
 function scoreTrimForWishesMapping(trim, featureIds, pendingLabels = [], extras = {}) {
   const missingLabels = extras.missingLabels ?? [];
   const confirmedCatalogWishes = extras.confirmedCatalogWishes ?? [];
+  const searchedFeatures = extras.searchedFeatures ?? [];
+  const brand = extras.brand ?? 'Kia';
+  const model = extras.model ?? '';
+  const modelKey = extras.modelKey ?? '';
   const catalogWishCount = confirmedCatalogWishes.length + missingLabels.length;
+  const pendingSearchCount = searchedFeatures.filter((item) => {
+    const wish = searchedFeatureToWishFeature(item);
+    return wish?.advisorRelevant && !wish.missing && !wish.catalogOnly;
+  }).length;
 
-  if (!featureIds.length && !pendingLabels.length && !catalogWishCount) {
+  if (!featureIds.length && !pendingLabels.length && !catalogWishCount && !pendingSearchCount) {
     return {
       trimId: trim.id,
       matchPercent: 0,
@@ -277,13 +414,19 @@ function scoreTrimForWishesMapping(trim, featureIds, pendingLabels = [], extras 
 
   const fulfilled = [];
   const missing = [...missingLabels];
-  const uncertain = [...pendingLabels];
+  const uncertain = [];
   let matched = 0;
 
-  for (const wish of confirmedCatalogWishes) {
-    fulfilled.push(wish.label);
-    matched += 1;
-  }
+  matched += applyCatalogWishesForTrim({
+    trimId: trim.id,
+    brand,
+    model,
+    modelKey,
+    confirmedCatalogWishes,
+    fulfilled,
+    missing,
+    uncertain,
+  });
 
   for (const fid of featureIds) {
     const label = getFeatureLabel(fid);
@@ -294,14 +437,45 @@ function scoreTrimForWishesMapping(trim, featureIds, pendingLabels = [], extras 
       fulfilled.push(label);
       matched += 1;
     } else if (trim.notAvailable?.includes(fid)) {
-      missing.push(label);
+      if (!missing.includes(label)) missing.push(label);
     } else {
-      uncertain.push(label);
-      matched += 0.5;
+      const result = resolveWishOnTrim({
+        featureId: fid,
+        trimId: trim.id,
+        brand,
+        model,
+        modelKey,
+      });
+      if (result === 'fulfilled' && !fulfilled.includes(label)) {
+        fulfilled.push(label);
+        matched += 1;
+      } else if (result === 'missing' && !missing.includes(label)) {
+        missing.push(label);
+      } else if (!uncertain.includes(label)) {
+        uncertain.push(label);
+        matched += 0.5;
+      }
     }
   }
 
-  const total = featureIds.length + pendingLabels.length + catalogWishCount;
+  matched += applyPendingSearchedWishesForTrim({
+    trimId: trim.id,
+    brand,
+    model,
+    modelKey,
+    searchedFeatures,
+    fulfilled,
+    missing,
+    uncertain,
+  });
+
+  for (const label of pendingLabels) {
+    if (fulfilled.includes(label) || missing.includes(label) || uncertain.includes(label)) continue;
+    uncertain.push(label);
+    matched += 0.5;
+  }
+
+  const total = featureIds.length + pendingLabels.length + catalogWishCount + pendingSearchCount;
 
   return {
     trimId: trim.id,
@@ -316,9 +490,14 @@ function scoreTrimForWishesMapping(trim, featureIds, pendingLabels = [], extras 
 function scoreTrimForWishes(brand, model, trimId, featureIds, modelKey, pendingLabels = [], extras = {}) {
   const missingLabels = extras.missingLabels ?? [];
   const confirmedCatalogWishes = extras.confirmedCatalogWishes ?? [];
+  const searchedFeatures = extras.searchedFeatures ?? [];
   const catalogWishCount = confirmedCatalogWishes.length + missingLabels.length;
+  const pendingSearchCount = searchedFeatures.filter((item) => {
+    const wish = searchedFeatureToWishFeature(item);
+    return wish?.advisorRelevant && !wish.missing && !wish.catalogOnly;
+  }).length;
 
-  if (!featureIds.length && !pendingLabels.length && !catalogWishCount) {
+  if (!featureIds.length && !pendingLabels.length && !catalogWishCount && !pendingSearchCount) {
     return {
       trimId,
       matchPercent: 0,
@@ -332,7 +511,13 @@ function scoreTrimForWishes(brand, model, trimId, featureIds, modelKey, pendingL
   const ctx = resolveAdvisorContext(brand, model, modelKey);
   if (ctx?.type === 'mapping') {
     const trim = getModelTrims(ctx.modelKey).find((entry) => entry.id === trimId);
-    return scoreTrimForWishesMapping(trim ?? { id: trimId }, featureIds, pendingLabels, extras);
+    return scoreTrimForWishesMapping(trim ?? { id: trimId }, featureIds, pendingLabels, {
+      ...extras,
+      brand,
+      model,
+      modelKey,
+      searchedFeatures,
+    });
   }
 
   const res = resolveWishConfiguration({
@@ -342,21 +527,45 @@ function scoreTrimForWishes(brand, model, trimId, featureIds, modelKey, pendingL
     wishFeatureIds: featureIds,
   });
 
-  const fulfilled = confirmedCatalogWishes.map((wish) => wish.label);
+  const fulfilled = [];
   const missing = [...missingLabels];
-  const uncertain = [...pendingLabels];
+  const uncertain = [];
   const packageNeeded = [];
-  let matched = confirmedCatalogWishes.length;
+  let matched = 0;
+
+  matched += applyCatalogWishesForTrim({
+    trimId,
+    brand,
+    model,
+    modelKey,
+    confirmedCatalogWishes,
+    fulfilled,
+    missing,
+    uncertain,
+  });
 
   if (!res) {
+    for (const fid of featureIds) {
+      const label = getFeatureLabel(fid);
+      if (!missing.includes(label)) missing.push(label);
+    }
+    matched += applyPendingSearchedWishesForTrim({
+      trimId,
+      brand,
+      model,
+      modelKey,
+      searchedFeatures,
+      fulfilled,
+      missing,
+      uncertain,
+    });
+    const total = featureIds.length + pendingLabels.length + catalogWishCount + pendingSearchCount;
     return {
       trimId,
-      matchPercent: catalogWishCount
-        ? Math.round((matched / catalogWishCount) * 100)
-        : 0,
+      matchPercent: total ? Math.round((matched / total) * 100) : 0,
       fulfilled,
-      missing: [...missing, ...featureIds.map(getFeatureLabel)],
-      uncertain,
+      missing,
+      uncertain: [...new Set(uncertain)],
       packageNeeded: [],
     };
   }
@@ -370,18 +579,35 @@ function scoreTrimForWishes(brand, model, trimId, featureIds, modelKey, pendingL
       uncertain.push(label);
       matched += 0.5;
     } else if (res.missingFeatures.includes(fid)) {
-      missing.push(label);
+      if (!missing.includes(label)) missing.push(label);
     } else if (res.viaPackageFeatures?.some((v) => v.wishId === fid)) {
       const pkg = res.viaPackageFeatures.find((v) => v.wishId === fid);
       packageNeeded.push(pkg?.label ?? label);
       fulfilled.push(label);
       matched += 1;
     } else {
-      missing.push(label);
+      if (!missing.includes(label)) missing.push(label);
     }
   }
 
-  const total = featureIds.length + pendingLabels.length + catalogWishCount;
+  matched += applyPendingSearchedWishesForTrim({
+    trimId,
+    brand,
+    model,
+    modelKey,
+    searchedFeatures,
+    fulfilled,
+    missing,
+    uncertain,
+  });
+
+  for (const label of pendingLabels) {
+    if (fulfilled.includes(label) || missing.includes(label) || uncertain.includes(label)) continue;
+    uncertain.push(label);
+    matched += 0.5;
+  }
+
+  const total = featureIds.length + pendingLabels.length + catalogWishCount + pendingSearchCount;
   const matchPercent = total ? Math.round((matched / total) * 100) : 0;
 
   return {
@@ -588,7 +814,7 @@ export function analyzeEquipmentWishSelection(brand, model, selectedChipIds = []
       featureIds,
       modelKey,
       pendingLabels,
-      { missingLabels, confirmedCatalogWishes },
+      { missingLabels, confirmedCatalogWishes, searchedFeatures },
     );
     const prices = getTrimPrices(brand, model, trim.id, modelKey);
     return {

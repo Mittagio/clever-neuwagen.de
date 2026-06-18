@@ -96,6 +96,33 @@
       }
     },
     {
+      "featureId": "totwinkelassistent",
+      "trimId": "air",
+      "status": "standard",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 5,
+        "section": "Assistenz Air",
+        "rawText": "Blind-Spot Collision-Avoidance Assist (BCA)",
+        "url": null
+      }
+    },
+    {
+      "featureId": "totwinkelassistent",
+      "trimId": "earth",
+      "status": "package",
+      "packageId": "design_paket",
+      "confidence": "medium",
+      "sourceRef": {
+        "document": "Kia EV2 Ausstattungsübersicht",
+        "page": 5,
+        "section": "Assistenz Earth",
+        "rawText": "Totwinkelassistent im Design Paket",
+        "url": null
+      }
+    },
+    {
       "featureId": "panoramadach",
       "trimId": "air",
       "status": "unknown",

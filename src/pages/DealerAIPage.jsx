@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePublishedDealerConditions, useDraftDealerConditions } from '../context/DealerConditionsContext.jsx';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useOffers } from '../context/OffersContext.jsx';
@@ -23,6 +23,7 @@ import DealerAiModelFlow from '../components/dealer-ai/DealerAiModelFlow.jsx';
 import DealerAiAnalysisCard from '../components/dealer-ai/DealerAiAnalysisCard.jsx';
 import DealerAiSuggestedModels from '../components/dealer-ai/DealerAiSuggestedModels.jsx';
 import DealerAiReviewBar from '../components/dealer-ai/DealerAiReviewBar.jsx';
+import CustomerAddVehicleDuplicatePrompt from '../components/dealer-ai/CustomerAddVehicleDuplicatePrompt.jsx';
 import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
 import DealerAiLeadFollowUp from '../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../components/dealer-ai/CustomerOfferEditView.jsx';
@@ -39,12 +40,19 @@ import {
   VEHICLE_OFFER_STATUS,
 } from '../services/vehicleOffer.js';
 import { formatVehicleCardTitle } from '../services/customerAkte.js';
+import {
+  buildAddVehicleContextFromLead,
+  getContextBannerLabel,
+  getReviewBarButtonLabel,
+  isCustomerRecordAddVehicleContext,
+} from '../services/customerAddVehicleFlow.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
 
 export default function DealerAIPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
   const { addInventoryItem, publishChanges } = useDraftDealerConditions();
   const { addLead, leads, updateLead, addHistory } = useLeads();
@@ -65,6 +73,8 @@ export default function DealerAIPage() {
   const [isFreshLead, setIsFreshLead] = useState(false);
   const [isReturningWish, setIsReturningWish] = useState(false);
   const [carryCustomer, setCarryCustomer] = useState(null);
+  const [addVehicleContext, setAddVehicleContext] = useState(null);
+  const [duplicatePrompt, setDuplicatePrompt] = useState(null);
   const [toast, setToast] = useState('');
   const [offerEditCard, setOfferEditCard] = useState(null);
 
@@ -145,6 +155,12 @@ export default function DealerAIPage() {
     setSelectedModelIds([]);
     setResult(null);
     setStartView('home');
+    setDuplicatePrompt(null);
+  }
+
+  function clearAddVehicleFlow() {
+    setAddVehicleContext(null);
+    setDuplicatePrompt(null);
   }
 
   function handleEdit() {
@@ -159,6 +175,7 @@ export default function DealerAIPage() {
   function handleDiscard() {
     resetWishInput();
     setCarryCustomer(null);
+    clearAddVehicleFlow();
     setIsFreshLead(false);
     setIsReturningWish(false);
     setOfferEditCard(null);
@@ -166,8 +183,10 @@ export default function DealerAIPage() {
   }
 
   function handleStartNewWish(sourceLead) {
+    const ctx = buildAddVehicleContextFromLead(sourceLead);
     const carry = extractCarryCustomerFromLead(sourceLead);
     resetWishInput();
+    setAddVehicleContext(ctx);
     setCarryCustomer(carry);
     setIsReturningWish(Boolean(carry));
     setIsFreshLead(false);
@@ -195,6 +214,24 @@ export default function DealerAIPage() {
       return next;
     });
   }
+
+  useEffect(() => {
+    const ctx = location.state?.addVehicleContext;
+    if (!ctx?.customerId) return;
+    const lead = ctx.opportunityId
+      ? leads.find((l) => l.id === ctx.opportunityId)
+      : null;
+    const carry = lead
+      ? extractCarryCustomerFromLead(lead)
+      : {
+          customerId: ctx.customerId,
+          contact: { name: ctx.customerName ?? '', phone: '', email: '' },
+        };
+    setAddVehicleContext(ctx);
+    setCarryCustomer(carry);
+    setIsReturningWish(true);
+    setIsFreshLead(false);
+  }, [location.state?.addVehicleContext, leads]);
 
   useEffect(() => {
     const wishText = location.state?.wishText;
@@ -228,7 +265,7 @@ export default function DealerAIPage() {
     return () => clearTimeout(timer);
   }, [location.state, phase]);
 
-  function runAction(actionId) {
+  function runAction(actionId, extraDeps = {}) {
     if (!parsed?.ok) return;
     setIsExecuting(true);
 
@@ -245,29 +282,111 @@ export default function DealerAIPage() {
         publishChanges,
         selectedModelIds,
         carryCustomer,
+        addVehicleContext,
+        ...extraDeps,
       });
 
-      setResult(actionResult);
-      if (actionResult.type === 'lead') {
-        setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
-        setPhase('capture');
-      } else if (actionResult.type === 'offer' && actionResult.leadId) {
-        setPhase('followup');
-        setIsFreshLead(false);
-        showToast('Angebot vorbereitet');
-      } else {
-        setPhase('done');
-        showToast(actionResult.message);
-      }
+      return actionResult;
     } catch (err) {
       showToast(err.message ?? 'Aktion fehlgeschlagen');
+      return null;
     } finally {
       setIsExecuting(false);
     }
   }
 
-  function handleCreateLead() {
-    runAction('create_sales_opportunity');
+  function finishAddVehicleAction(actionResult) {
+    if (!actionResult) return;
+    if (actionResult.type === 'duplicate') {
+      setDuplicatePrompt(actionResult);
+      return;
+    }
+    if (actionResult.type !== 'vehicle_added') return;
+
+    const targetPath = actionResult.returnPath
+      ?? (actionResult.leadId ? `/backend/kundenakte/${encodeURIComponent(actionResult.leadId)}` : null);
+
+    if (actionResult.configs?.length) {
+      for (const config of actionResult.configs) {
+        const label = [config.brand, config.model, config.trimLabel].filter(Boolean).join(' ');
+        addHistory(
+          actionResult.leadId,
+          label ? `Fahrzeugwunsch hinzugefügt: ${label}` : 'Fahrzeugwunsch hinzugefügt',
+          'system',
+        );
+      }
+    }
+
+    showToast(actionResult.message);
+    clearAddVehicleFlow();
+    resetWishInput();
+    setCarryCustomer(null);
+    setIsReturningWish(false);
+
+    if (targetPath) {
+      navigate(targetPath, {
+        state: {
+          vehicleAdded: true,
+          toast: actionResult.message,
+          highlightConfigurationId: actionResult.configs?.[0]?.id ?? null,
+        },
+      });
+      return;
+    }
+
+    setResult({ type: 'lead', leadId: actionResult.leadId });
+    setPhase('followup');
+  }
+
+  function applyActionResult(actionResult) {
+    if (!actionResult) return;
+    setResult(actionResult);
+    if (actionResult.type === 'lead') {
+      setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
+      setPhase('capture');
+    } else if (actionResult.type === 'offer' && actionResult.leadId) {
+      setPhase('followup');
+      setIsFreshLead(false);
+      showToast('Angebot vorbereitet');
+    } else if (actionResult.type === 'vehicle_added') {
+      finishAddVehicleAction(actionResult);
+    } else {
+      setPhase('done');
+      showToast(actionResult.message);
+    }
+  }
+
+  function runActionAndApply(actionId, extraDeps = {}) {
+    const actionResult = runAction(actionId, extraDeps);
+    applyActionResult(actionResult);
+  }
+
+  function handleCreateLead(forceDuplicate = false) {
+    if (isCustomerRecordAddVehicleContext(addVehicleContext)) {
+      runActionAndApply('add_vehicle_to_customer_record', { forceDuplicate });
+      return;
+    }
+    runActionAndApply('create_sales_opportunity');
+  }
+
+  function handleDuplicateAddAnyway() {
+    runActionAndApply('add_vehicle_to_customer_record', { forceDuplicate: true });
+    setDuplicatePrompt(null);
+  }
+
+  function handleDuplicateEditExisting() {
+    const leadId = duplicatePrompt?.leadId ?? addVehicleContext?.opportunityId;
+    setDuplicatePrompt(null);
+    clearAddVehicleFlow();
+    resetWishInput();
+    if (leadId) {
+      navigate(`/backend/kundenakte/${encodeURIComponent(leadId)}`, {
+        state: {
+          highlightConfigurationId: duplicatePrompt?.duplicate?.id ?? null,
+          editVehicleWish: true,
+        },
+      });
+    }
   }
 
   function handlePrepareOffer(reservedModel) {
@@ -294,10 +413,10 @@ export default function DealerAIPage() {
     }
     const actionId = suggestActionForPaymentType(parsed.fields.paymentType ?? 'unknown');
     if (actionId === 'create_sales_opportunity') {
-      runAction('create_offer');
+      runActionAndApply('create_offer');
       return;
     }
-    runAction(actionId);
+    runActionAndApply(actionId);
   }
 
   function handleReturnToReview() {
@@ -557,6 +676,9 @@ export default function DealerAIPage() {
     ? hasKnownCustomerContact(activeLead.contact)
     : Boolean(carryCustomer);
 
+  const contextBannerLabel = getContextBannerLabel(addVehicleContext);
+  const reviewCreateLabel = getReviewBarButtonLabel(addVehicleContext);
+
   return (
     <div className="dealer-ai-page">
       <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'followup' || phase === 'offer-edit' ? ' dealer-ai-main--akte' : ''}`}>
@@ -600,6 +722,12 @@ export default function DealerAIPage() {
           />
         )}
 
+        {contextBannerLabel && (phase === 'review' || (phase === 'input' && startView === 'home')) && (
+          <p className="dai-add-vehicle-context" role="status">
+            {contextBannerLabel}
+          </p>
+        )}
+
         {phase === 'review' && parsed?.ok && (
           <>
             <DealerAiAnalysisCard
@@ -616,6 +744,7 @@ export default function DealerAIPage() {
               onCreateLead={handleCreateLead}
               onEdit={handleEdit}
               isExecuting={isExecuting}
+              createLabel={reviewCreateLabel}
             />
           </>
         )}
@@ -690,6 +819,16 @@ export default function DealerAIPage() {
 
       {phase !== 'followup' && phase !== 'offer-edit' && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
+      )}
+
+      {duplicatePrompt && (
+        <CustomerAddVehicleDuplicatePrompt
+          duplicate={duplicatePrompt.duplicate}
+          onAddAnyway={handleDuplicateAddAnyway}
+          onEditExisting={handleDuplicateEditExisting}
+          onCancel={() => setDuplicatePrompt(null)}
+          isExecuting={isExecuting}
+        />
       )}
 
       {toast && <p className="dealer-ai-toast" role="status">{toast}</p>}

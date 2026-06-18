@@ -1,0 +1,54 @@
+.internal-test-env-badge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 28px;
+  padding: 4px 12px;
+  background: #7c2d12;
+  color: #fff7ed;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.internal-test-env-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fdba74;
+  flex-shrink: 0;
+}
+
+body.internal-test-env-active {
+  --internal-test-env-offset: 28px;
+}
+
+body.internal-test-env-active .app-layout__main {
+  padding-top: var(--internal-test-env-offset);
+}
+
+body.internal-test-env-active .dealer-page--advisor-flow,
+body.internal-test-env-active .dealer-ai-page {
+  padding-top: var(--internal-test-env-offset);
+}
+
+.internal-test-share-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}

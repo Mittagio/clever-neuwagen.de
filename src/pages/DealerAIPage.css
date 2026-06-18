@@ -1180,6 +1180,79 @@
   cursor: not-allowed;
 }
 
+.dai-add-vehicle-context {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.dai-add-vehicle-dup {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.dai-add-vehicle-dup__panel {
+  width: min(100%, 420px);
+  padding: 20px;
+  border-radius: 20px 20px 16px 16px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+}
+
+.dai-add-vehicle-dup__title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.dai-add-vehicle-dup__text {
+  margin: 0 0 16px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.dai-add-vehicle-dup__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dai-add-vehicle-dup__primary,
+.dai-add-vehicle-dup__secondary,
+.dai-add-vehicle-dup__ghost {
+  min-height: 48px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dai-add-vehicle-dup__primary {
+  border: none;
+  background: #10b981;
+  color: #fff;
+}
+
+.dai-add-vehicle-dup__secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.dai-add-vehicle-dup__ghost {
+  border: none;
+  background: transparent;
+  color: #64748b;
+}
+
 @media (min-width: 768px) {
   .dai-card__subline--desktop-only {
     display: block;

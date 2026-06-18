@@ -1,4 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
+import InternalTestEnvHead from './components/shared/InternalTestEnvHead.jsx';
 import { DealerConditionsProvider } from './context/DealerConditionsContext';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { LeadsProvider } from './context/LeadsContext';
@@ -17,7 +18,9 @@ import AppRouter from './AppRouter.jsx';
 
 export default function App() {
   return (
-    <DealerConditionsProvider>
+    <>
+      <InternalTestEnvHead />
+      <DealerConditionsProvider>
       <CustomerAuthProvider>
         <LeadsProvider>
           <VoucherPartnersProvider>
@@ -48,5 +51,6 @@ export default function App() {
         </LeadsProvider>
       </CustomerAuthProvider>
     </DealerConditionsProvider>
+    </>
   );
 }

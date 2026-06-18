@@ -2986,6 +2986,15 @@
 .vd-eq-journey-cta {
   margin-top: 16px;
   padding-top: 4px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.vd-eq-journey-cta .vd-btn {
+  min-height: 52px;
+}
+
+.vd-eq-trim__cta {
+  min-height: 52px;
 }
 
 .vd-eq-trim__rate--neutral {
@@ -2997,7 +3006,16 @@
 .vd-eq-rec__actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.vd-eq-rec__cta {
+  min-height: 52px;
+}
+
+.vd-eq-rec--journey {
+  margin-bottom: 8px;
 }
 
 .vd-eq-empty {

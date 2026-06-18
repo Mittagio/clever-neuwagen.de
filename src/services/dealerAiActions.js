@@ -6,6 +6,7 @@ import { createOrLinkLeadForOffer } from '../logic/offerLeadService.js';
 import { normalizeLead } from '../logic/leadNormalization.js';
 import { buildDefaultCrm, buildLeadSubline } from './dealerAiLeadCrm.js';
 import { createCustomerId } from './dealerAiCustomer.js';
+import { executeAddVehicleToCustomerRecord } from './customerAddVehicleFlow.js';
 import { generateListingBlocks } from '../logic/listingGenerator.js';
 import { getTrimName, getEngineName, getColorName, normalizeInventoryItem } from '../logic/inventoryService.js';
 
@@ -144,6 +145,14 @@ export function executeDealerAiAction(action, parsed, deps) {
     case 'create_sales_opportunity':
       return executeCreateSalesOpportunity(fields, parsed, deps, {
         selectedModelIds: deps.selectedModelIds ?? [],
+      });
+
+    case 'add_vehicle_to_customer_record':
+      return executeAddVehicleToCustomerRecord(fields, parsed, deps, {
+        selectedModelIds: deps.selectedModelIds ?? [],
+        addVehicleContext: deps.addVehicleContext,
+        carryCustomer: deps.carryCustomer,
+        forceDuplicate: deps.forceDuplicate ?? false,
       });
 
     case 'create_inventory': {

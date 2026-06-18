@@ -107,6 +107,15 @@ function TrimLineCard({
           {ctaLabel}
         </button>
       )}
+      {!selected && isJourney && isLeading && ctaLabel && onContinue && (
+        <button
+          type="button"
+          className="vd-eq-trim__cta vd-btn vd-btn--primary vd-btn--block"
+          onClick={() => onContinue(line.trimId)}
+        >
+          {ctaLabel}
+        </button>
+      )}
     </article>
   );
 }
@@ -185,6 +194,11 @@ export default function EquipmentWishAdvisor({
   const topMatchPercent = hasSelection
     ? Math.max(0, ...(analysis.trimLines?.map((line) => line.matchPercent) ?? []))
     : 0;
+
+  useEffect(() => {
+    if (!isJourney || previewTrimId || !analysis.recommendation?.trimId) return;
+    setPreviewTrimId(analysis.recommendation.trimId);
+  }, [isJourney, previewTrimId, analysis.recommendation?.trimId]);
 
   useEffect(() => {
     if (!activeRecommendation) return;
@@ -299,8 +313,11 @@ export default function EquipmentWishAdvisor({
         </div>
       )}
 
-      {activeRecommendation && !isJourney && (
-        <aside className="vd-eq-rec vd-eq-rec--highlight" aria-label="Unsere Empfehlung">
+      {activeRecommendation && (
+        <aside
+          className={`vd-eq-rec vd-eq-rec--highlight${isJourney ? ' vd-eq-rec--journey' : ''}`}
+          aria-label="Unsere Empfehlung"
+        >
           <h3 className="vd-eq-rec__title">Unsere Empfehlung</h3>
           <p className="vd-eq-rec__label">{activeRecommendation.label}</p>
           {activeRecommendation.reasons?.length > 0 && (
@@ -313,45 +330,28 @@ export default function EquipmentWishAdvisor({
           {activeRecommendation.uncertainNote && (
             <p className="vd-eq-rec__uncertain">{activeRecommendation.uncertainNote}</p>
           )}
-          {!isJourney && (
-            <div className="vd-eq-rec__actions">
+          <div className="vd-eq-rec__actions">
+            <button
+              type="button"
+              className="vd-btn vd-btn--primary vd-btn--block vd-eq-rec__cta"
+              onClick={() => handleTrimContinue(activeTrimId)}
+            >
+              {equipmentCta.actionLabel}
+            </button>
+            {equipmentCta.actionHint && (
+              <p className="vd-eq-rec__hint">{equipmentCta.actionHint}</p>
+            )}
+            {!isJourney && hasSelection && knownPurchaseType !== 'cash' && (
               <button
                 type="button"
-                className="vd-btn vd-btn--primary vd-btn--block"
-                onClick={() => onApplyRecommendation?.(activeRecommendation)}
+                className="vd-btn vd-btn--secondary vd-btn--block"
+                onClick={() => onInquiry?.(activeRecommendation)}
               >
-                {equipmentCta.actionLabel}
+                Angebot mit dieser Ausstattung anfragen
               </button>
-              {equipmentCta.actionHint && (
-                <p className="vd-eq-rec__hint">{equipmentCta.actionHint}</p>
-              )}
-              {hasSelection && knownPurchaseType !== 'cash' && (
-                <button
-                  type="button"
-                  className="vd-btn vd-btn--secondary vd-btn--block"
-                  onClick={() => onInquiry?.(activeRecommendation)}
-                >
-                  Angebot mit dieser Ausstattung anfragen
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </aside>
-      )}
-
-      {isJourney && activeRecommendation && (
-        <div className="vd-eq-journey-cta">
-          <button
-            type="button"
-            className="vd-btn vd-btn--primary vd-btn--block"
-            onClick={() => handleTrimContinue(activeTrimId)}
-          >
-            {equipmentCta.actionLabel}
-          </button>
-          {equipmentCta.actionHint && (
-            <p className="vd-eq-rec__hint">{equipmentCta.actionHint}</p>
-          )}
-        </div>
       )}
     </section>
   );

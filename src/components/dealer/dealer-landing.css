@@ -4204,12 +4204,15 @@
   background: #0f172a;
 }
 
-.dealer-page--advisor-flow .dl-journey-footer {
-  display: block;
+.dealer-page--advisor-flow .dl-journey-footer,
+.dealer-page--advisor-flow ~ .dl-journey-footer,
+.dealer-shell--advisor-flow .dl-journey-footer {
+  display: flex !important;
 }
 
-.dealer-page--advisor-flow.dealer-page {
-  padding-bottom: 88px;
+.dealer-page--advisor-flow.dealer-page,
+.dealer-shell--advisor-flow .dealer-page--advisor-flow {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 .dl-journey-footer {
@@ -4218,7 +4221,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 200;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid #e2e8f0;

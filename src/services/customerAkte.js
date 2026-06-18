@@ -148,8 +148,45 @@ export function buildVehicleOpportunityCards({
   offers = [],
 } = {}) {
   const cards = [];
+  const vehicleConfigurations = lead?.crm?.vehicleConfigurations ?? [];
 
-  if (reservedModels.length > 0) {
+  if (vehicleConfigurations.length > 0) {
+    vehicleConfigurations.forEach((vc, index) => {
+      const modelName = /^kia\b/i.test(vc.model ?? '')
+        ? vc.model
+        : `Kia ${vc.model ?? ''}`.trim();
+      const paymentType = vc.paymentType ?? wishFields.paymentType ?? 'unknown';
+      const termMonths = vc.leasingData?.termMonths
+        ?? vc.financingData?.termMonths
+        ?? wishFields.termMonths
+        ?? null;
+      const mileagePerYear = vc.leasingData?.mileagePerYear ?? wishFields.mileagePerYear ?? null;
+      const desiredRate = vc.leasingData?.desiredRate
+        ?? vc.financingData?.desiredRate
+        ?? wishFields.desiredRate
+        ?? null;
+      const desiredPrice = vc.cashPurchaseData?.desiredPrice ?? wishFields.desiredPrice ?? null;
+      cards.push({
+        id: vc.id ?? `vc-${index}`,
+        leadId: lead?.id,
+        modelKey: vc.modelKey ?? inferModelKey(vc.model),
+        modelName: modelName || 'Kia',
+        trimLabel: vc.trimLabel ?? wishFields.trimLabel ?? null,
+        bodyType: 'suv',
+        paymentType,
+        termMonths,
+        mileagePerYear,
+        desiredRate,
+        desiredPrice,
+        offer: findOfferForVehicle(offers, { modelName, name: modelName }),
+        isPrimary: index === 0,
+        isFavorite: false,
+        badge: index === 0 ? 'Empfehlung' : 'Weiterer Wunsch',
+        source: 'configuration',
+        configurationId: vc.id,
+      });
+    });
+  } else if (reservedModels.length > 0) {
     reservedModels.forEach((model, index) => {
       const modelName = formatReservedModelName(model.name);
       cards.push({

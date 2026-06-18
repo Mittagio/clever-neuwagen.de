@@ -149,7 +149,7 @@ export const TRIM_FEATURE_MAP = {
       {
         id: 'air',
         name: 'Air',
-        standardFeatures: ['rear_camera', 'parking_rear', 'elektro', 'family_suv'],
+        standardFeatures: ['rear_camera', 'parking_rear', 'blind_spot', 'elektro', 'family_suv'],
         availableViaPackage: ['heated_seats', 'heat_pump'],
         notAvailable: ['camera_360', 'towbar'],
       },

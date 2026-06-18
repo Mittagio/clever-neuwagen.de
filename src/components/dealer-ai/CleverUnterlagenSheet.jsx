@@ -23,6 +23,7 @@ import {
   needsSelbstauskunft,
 } from '../../services/cleverSelbstauskunft.js';
 import { copyOfferLink } from '../../services/vehicleOffer.js';
+import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
 import './CleverUnterlagenSheet.css';
 
 function formatUploadWhen(iso) {
@@ -191,6 +192,8 @@ export default function CleverUnterlagenSheet({
           <p className="clever-unterlagen-sheet__hint">{getUnterlagenSubline(pt)}</p>
         </div>
       )}
+
+      <InternalTestCustomerShareWarning />
 
       {showSelbstauskunft && (
         <section className="clever-sa-card">

@@ -32,6 +32,7 @@ import {
   needsSelbstauskunft,
 } from '../../services/cleverSelbstauskunft.js';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
+import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
 import './CustomerOfferEdit.css';
 import './CleverUnterlagenSheet.css';
 
@@ -337,6 +338,7 @@ export default function CustomerOfferEditView({
 
       <section className="cust-offer-section">
         <h2 className="cust-offer-section__title">Online-Angebot</h2>
+        <InternalTestCustomerShareWarning />
 
         {!offer?.pdf ? (
           <div

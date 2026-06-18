@@ -309,8 +309,11 @@ export function mergeSearchedIntoFeatureIds(chipFeatureIds = [], searchedItems =
         label: wish.label,
         modelStatus: wish.modelStatus,
       });
-    } else if (wish.featureId && !wish.uncertain) {
+    } else if (wish.featureId) {
       ids.add(wish.featureId);
+      if (wish.pending || wish.uncertain) {
+        uncertainLabels.push(wish.label);
+      }
     } else if (wish.pending) {
       uncertainLabels.push(wish.label);
     }

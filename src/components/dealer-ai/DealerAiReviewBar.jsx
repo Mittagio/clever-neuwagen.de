@@ -3,6 +3,7 @@ export default function DealerAiReviewBar({
   onCreateLead,
   onEdit,
   isExecuting,
+  createLabel = 'Verkaufschance erstellen',
 }) {
   const countLabel = reservedCount === 1
     ? '1 Modell vorgemerkt'
@@ -21,7 +22,7 @@ export default function DealerAiReviewBar({
         onClick={onCreateLead}
         disabled={isExecuting}
       >
-        {isExecuting ? 'Wird erstellt …' : 'Verkaufschance erstellen'}
+        {isExecuting ? 'Wird erstellt …' : createLabel}
       </button>
       <button
         type="button"

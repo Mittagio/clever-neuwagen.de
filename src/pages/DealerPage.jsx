@@ -957,13 +957,14 @@ export default function DealerPage() {
     }
 
     if (effectiveSalesStep === 'purchase' && configSummary) {
+      const activePurchaseType = purchaseTypeDraft ?? purchaseType;
       return {
         salesStep: effectiveSalesStep,
         title: `Kia ${configSummary.modelLabel}`,
         subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : 'Zahlungsart wählen',
         stepLabel: 'Zahlungsart',
-        actionLabel: purchaseTypeDraft ? getPaymentStepCta(purchaseTypeDraft) : 'Zahlungsart wählen',
-        disabled: !purchaseTypeDraft,
+        actionLabel: activePurchaseType ? getPaymentStepCta(activePurchaseType) : 'Zahlungsart wählen',
+        disabled: !activePurchaseType,
         onAction: () => submitAdvisorForm('dl-advisor-purchase-form'),
       };
     }
@@ -1015,6 +1016,7 @@ export default function DealerPage() {
     selectedModelKey,
     knownPurchaseType,
     purchaseTypeDraft,
+    purchaseType,
     handleViewVehicle,
     handleUnderstandContinue,
     handlePurchaseTypeContinue,
@@ -1029,7 +1031,7 @@ export default function DealerPage() {
   const modelsChecked = dealerSearchPool.length;
 
   return (
-    <PageShell className="dealer-shell" hideMarketingHeader={isSubdomain}>
+    <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader={isSubdomain}>
       <div className={`dealer-page page dealer-page--mf5 dealer-page--clever${useSalesJourney ? ' dealer-page--advisor-flow' : ''}`}>
         <div className="container dealer-layout">
           <DealerSearchHero

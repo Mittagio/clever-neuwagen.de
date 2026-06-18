@@ -221,8 +221,10 @@ export default function DealerPurchaseTypeCard({
   }));
 
   useEffect(() => {
-    if (value) setSelected(value);
-  }, [value]);
+    if (!value) return;
+    setSelected(value);
+    onSelectionChange?.(value);
+  }, [value, onSelectionChange]);
 
   const details = selected ? detailsByType[selected] ?? DEFAULT_DETAILS[selected] : null;
 

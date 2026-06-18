@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../../context/DealerConditionsContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
@@ -13,6 +13,7 @@ import { executeDealerAiAction } from '../../services/dealerAiActions.js';
 import DealerAiLeadFollowUp from '../../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../../components/dealer-ai/CustomerOfferEditView.jsx';
 import { buildKundenaktePath, buildParsedFromLead } from '../../services/leadAkteEntry.js';
+import { buildAddVehicleContextFromLead } from '../../services/customerAddVehicleFlow.js';
 import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import {
   attachPdfToOffer,
@@ -33,6 +34,7 @@ import './BackendLeadAktePage.css';
 export default function BackendLeadAktePage() {
   const { leadId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
   const { leads, updateLead, addHistory } = useLeads();
   const { addOffer, getExistingCodes, linkLead } = useOffers();
@@ -48,6 +50,24 @@ export default function BackendLeadAktePage() {
     setToast(msg);
     setTimeout(() => setToast(''), 3200);
   }, []);
+
+  function navigateToAddVehicle(sourceLead = lead) {
+    if (!sourceLead) return;
+    navigate('/verkaufsassistent', {
+      state: {
+        addVehicleContext: buildAddVehicleContextFromLead(sourceLead, {
+          returnPath: buildKundenaktePath(sourceLead.id),
+        }),
+      },
+    });
+  }
+
+  useEffect(() => {
+    const msg = location.state?.toast;
+    if (!msg) return;
+    showToast(msg);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state?.toast, location.pathname, navigate, showToast]);
 
   const enrichWithSuggestions = useCallback((nextParsed) => {
     if (!nextParsed?.ok) return nextParsed;
@@ -267,8 +287,8 @@ export default function BackendLeadAktePage() {
             leads={leads}
             isFresh={false}
             onEnterDetail={() => navigate(`/backend/verkaufschancen?leadId=${encodeURIComponent(leadId)}`)}
-            onNewWish={() => navigate('/verkaufsassistent')}
-            onStartNewWish={() => navigate('/verkaufsassistent')}
+            onNewWish={() => navigateToAddVehicle(lead)}
+            onStartNewWish={() => navigateToAddVehicle(lead)}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
             onOpenOfferEdit={handleOpenOfferEdit}
