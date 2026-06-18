@@ -18,7 +18,7 @@ git pull --ff-only
 
 echo "==> Dependencies & Build"
 npm ci
-npm run build
+npm run build:test
 
 echo "==> PM2 restart"
 pm2 restart "${APP_NAME}" --update-env
