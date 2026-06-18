@@ -667,6 +667,45 @@ export function analyzeEquipmentWishSelection(brand, model, selectedChipIds = []
   };
 }
 
+function buildFallbackReasons(trimLine, hasWishes = false) {
+  const reasons = [];
+  if (trimLine?.badge) {
+    reasons.push(`${trimLine.badge} – ${trimLine.trimName}`);
+  }
+  if (hasWishes && trimLine?.matchPercent > 0) {
+    reasons.push(`Passt zu ${trimLine.matchPercent} % Ihrer gewählten Wünsche`);
+  } else if (trimLine?.description) {
+    reasons.push(trimLine.description);
+  } else {
+    reasons.push('Passende Ausstattungslinie für Ihren Wunsch');
+  }
+  return reasons.slice(0, 3);
+}
+
+/**
+ * Aktive Empfehlung für gewählte Ausstattungslinie (Core, Vision, GT-Line …).
+ */
+export function resolveActiveEquipmentRecommendation(analysis = {}, activeTrimId = null) {
+  const rec = analysis.recommendation;
+  const trimLine = analysis.trimLines?.find((line) => line.trimId === activeTrimId)
+    ?? analysis.trimLines?.[0];
+  if (!trimLine) return rec ?? null;
+
+  const sameAsRecommended = rec?.trimId === trimLine.trimId;
+  return {
+    trimId: trimLine.trimId,
+    trimName: trimLine.trimName,
+    packageIds: sameAsRecommended ? (rec?.packageIds ?? []) : [],
+    packageNames: sameAsRecommended ? (rec?.packageNames ?? []) : [],
+    label: sameAsRecommended && rec?.label ? rec.label : trimLine.trimName,
+    reasons: sameAsRecommended && rec?.reasons?.length
+      ? rec.reasons
+      : buildFallbackReasons(trimLine, analysis.hasWishes),
+    uncertainNote: rec?.uncertainNote ?? null,
+    matchPercent: trimLine.matchPercent ?? null,
+  };
+}
+
 export function toggleEquipmentChip(currentFeatureIds, chipId) {
   const chip = getEquipmentWishChip(chipId);
   const globalId = chip?.globalFeatureId ?? chip?.id ?? chipId;

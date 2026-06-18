@@ -5,6 +5,7 @@ import { getEquipmentStepCta, resolveTrimPriceDisplay } from '../../services/dea
 import {
   analyzeEquipmentWishSelection,
   getEquipmentWishChipGroups,
+  resolveActiveEquipmentRecommendation,
 } from '../../services/configuration/equipmentWishAdvisor.js';
 import EquipmentFeatureSearch from './EquipmentFeatureSearch.jsx';
 import { useTrimCardShuffle } from './useTrimCardShuffle.js';
@@ -22,7 +23,19 @@ function MatchBar({ percent }) {
   );
 }
 
-function TrimLineCard({ line, knownPurchaseType, selected, hasWishes, onSelect, index, total, isLeading }) {
+function TrimLineCard({
+  line,
+  knownPurchaseType,
+  selected,
+  hasWishes,
+  onSelect,
+  index,
+  total,
+  isLeading,
+  isJourney = false,
+  ctaLabel = '',
+  onContinue,
+}) {
   const price = resolveTrimPriceDisplay({
     knownPurchaseType,
     rate: line.rate,
@@ -84,6 +97,15 @@ function TrimLineCard({ line, knownPurchaseType, selected, hasWishes, onSelect, 
             </ul>
           )}
         </div>
+      )}
+      {selected && isJourney && ctaLabel && onContinue && (
+        <button
+          type="button"
+          className="vd-eq-trim__cta vd-btn vd-btn--primary vd-btn--block"
+          onClick={() => onContinue(line.trimId)}
+        >
+          {ctaLabel}
+        </button>
       )}
     </article>
   );
@@ -154,7 +176,10 @@ export default function EquipmentWishAdvisor({
   const hasSelection = analysis.hasWishes ?? (selectedChipIds.length > 0 || searchedFeatures.length > 0);
   const equipmentCta = getEquipmentStepCta(knownPurchaseType, hasSelection);
   const activeTrimId = previewTrimId ?? analysis.recommendation?.trimId ?? trimId;
-  const activeRecommendation = analysis.recommendation;
+  const activeRecommendation = useMemo(
+    () => resolveActiveEquipmentRecommendation(analysis, activeTrimId),
+    [analysis, activeTrimId],
+  );
   const trimOrderKey = analysis.trimLines?.map((line) => line.trimId) ?? [];
   const trimListRef = useTrimCardShuffle(trimOrderKey);
   const topMatchPercent = hasSelection
@@ -163,12 +188,18 @@ export default function EquipmentWishAdvisor({
 
   useEffect(() => {
     if (!activeRecommendation) return;
-    const trimLine = analysis.trimLines?.find((line) => line.trimId === activeRecommendation.trimId);
-    onRecommendationChange?.({
-      ...activeRecommendation,
-      matchPercent: trimLine?.matchPercent ?? null,
-    });
-  }, [activeRecommendation, analysis.trimLines, onRecommendationChange]);
+    onRecommendationChange?.(activeRecommendation);
+  }, [activeRecommendation, onRecommendationChange]);
+
+  function handleTrimContinue(trimIdForContinue) {
+    const rec = resolveActiveEquipmentRecommendation(analysis, trimIdForContinue);
+    if (!rec) return;
+    if (isJourney) {
+      onJourneyContinue?.(rec);
+      return;
+    }
+    onApplyRecommendation?.(rec);
+  }
 
   return (
     <section
@@ -243,6 +274,9 @@ export default function EquipmentWishAdvisor({
                 index={index}
                 total={analysis.trimLines.length}
                 isLeading={hasSelection && index === 0 && line.matchPercent === topMatchPercent && topMatchPercent > 0}
+                isJourney={isJourney}
+                ctaLabel={equipmentCta.actionLabel}
+                onContinue={handleTrimContinue}
               />
             ))}
           </div>
@@ -265,7 +299,7 @@ export default function EquipmentWishAdvisor({
         </div>
       )}
 
-      {activeRecommendation && (
+      {activeRecommendation && !isJourney && (
         <aside className="vd-eq-rec vd-eq-rec--highlight" aria-label="Unsere Empfehlung">
           <h3 className="vd-eq-rec__title">Unsere Empfehlung</h3>
           <p className="vd-eq-rec__label">{activeRecommendation.label}</p>
@@ -310,7 +344,7 @@ export default function EquipmentWishAdvisor({
           <button
             type="button"
             className="vd-btn vd-btn--primary vd-btn--block"
-            onClick={() => onJourneyContinue?.(activeRecommendation)}
+            onClick={() => handleTrimContinue(activeTrimId)}
           >
             {equipmentCta.actionLabel}
           </button>

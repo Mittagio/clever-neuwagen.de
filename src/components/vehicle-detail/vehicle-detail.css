@@ -2873,6 +2873,11 @@
   margin-right: 4px;
 }
 
+.vd-eq-trim__cta {
+  margin: 0 12px 12px;
+  min-height: 52px;
+}
+
 .vd-eq-match {
   display: flex;
   align-items: center;
