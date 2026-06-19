@@ -42,7 +42,6 @@ export default function CustomerAkteHeader({
   const sinceLine = formatCustomerSince(customerSince);
   const initials = getCustomerInitials(customerName);
   const whatsappHref = formatWhatsappHref(phone);
-  const showStar = isStarred || score >= 70;
 
   return (
     <header className="cust-akte-profile">
@@ -54,21 +53,14 @@ export default function CustomerAkteHeader({
             className="cust-akte-profile__name-btn"
             onClick={onEditCustomer}
           >
-            <h1 className="cust-akte-profile__name">
-              {displayName}
-              {showStar && hasNamedCustomer && (
-                <span className="cust-akte-profile__star" aria-label="Wichtiger Kunde">★</span>
-              )}
-            </h1>
+            <h1 className="cust-akte-profile__name">{displayName}</h1>
           </button>
 
           {hasNamedCustomer ? (
             <>
-              <p className="cust-akte-profile__meta">
-                {sinceLine && <span>{sinceLine}</span>}
-                {sinceLine && <span className="cust-akte-profile__sep">·</span>}
-                <span>Clever-Stärke {score} %</span>
-                <span className="cust-akte-profile__info" title={tier.label} aria-label={tier.label}>ⓘ</span>
+              {sinceLine && <p className="cust-akte-profile__since">{sinceLine}</p>}
+              <p className="cust-akte-profile__score">
+                Clever-Stärke {score} %
               </p>
               <p className="cust-akte-profile__tier">{tier.shortLabel}</p>
             </>
@@ -76,9 +68,7 @@ export default function CustomerAkteHeader({
             <>
               {vehicleLine && <p className="cust-akte-profile__vehicle">{vehicleLine}</p>}
               {referenceCode && <p className="cust-akte-profile__ref">{referenceCode}</p>}
-              <p className="cust-akte-profile__meta">
-                <span>Clever-Stärke {score} %</span>
-              </p>
+              <p className="cust-akte-profile__score">Clever-Stärke {score} %</p>
             </>
           )}
         </div>
@@ -94,45 +84,33 @@ export default function CustomerAkteHeader({
           )}
           {email && (
             <p className="cust-akte-profile__contact">
-              <span className="cust-akte-profile__contact-icon" aria-hidden>✉</span>
+              <span className="cust-akte-profile__contact-icon" aria-hidden>✉️</span>
               {email}
             </p>
           )}
         </div>
       )}
 
-      <div className="cust-akte-profile__quick">
-        {telHref ? (
-          <a href={telHref} className="cust-akte-profile__quick-btn">Anrufen</a>
-        ) : (
-          <button type="button" className="cust-akte-profile__quick-btn" onClick={onEditCustomer}>
-            Anrufen
-          </button>
-        )}
+      <div className="cust-akte-profile__secondary">
         {whatsappHref ? (
-          <a href={whatsappHref} className="cust-akte-profile__quick-btn" target="_blank" rel="noopener noreferrer">
+          <a href={whatsappHref} className="cust-akte-profile__secondary-link" target="_blank" rel="noopener noreferrer">
             WhatsApp
           </a>
         ) : (
-          <button type="button" className="cust-akte-profile__quick-btn" disabled>
-            WhatsApp
-          </button>
+          <span className="cust-akte-profile__secondary-link cust-akte-profile__secondary-link--muted">WhatsApp</span>
         )}
         {email ? (
-          <a href={`mailto:${email}`} className="cust-akte-profile__quick-btn">E-Mail</a>
+          <a href={`mailto:${email}`} className="cust-akte-profile__secondary-link">E-Mail</a>
         ) : (
-          <button type="button" className="cust-akte-profile__quick-btn" onClick={onEditCustomer}>
+          <button type="button" className="cust-akte-profile__secondary-link" onClick={onEditCustomer}>
             E-Mail
           </button>
         )}
-        <button
-          type="button"
-          className="cust-akte-profile__quick-btn cust-akte-profile__quick-btn--clever"
-          onClick={onCleverAntwort}
-          disabled={!onCleverAntwort}
-        >
-          Clever Antwort
-        </button>
+        {onCleverAntwort && (
+          <button type="button" className="cust-akte-profile__secondary-link" onClick={onCleverAntwort}>
+            Clever Antwort
+          </button>
+        )}
       </div>
     </header>
   );

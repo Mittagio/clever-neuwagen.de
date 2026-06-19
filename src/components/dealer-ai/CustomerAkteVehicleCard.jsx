@@ -4,16 +4,9 @@ import {
   formatVehicleCardConditionsDot,
   formatVehicleCardPrice,
   formatVehicleCardTitle,
-  resolveVehicleFooter,
   resolveVehicleStatus,
 } from '../../services/customerAkte.js';
 import './CustomerAkte.css';
-
-const FOOTER_ICONS = {
-  eye: '👁',
-  bulb: '💡',
-  clock: '🕐',
-};
 
 export default function CustomerAkteVehicleCard({
   card,
@@ -26,18 +19,13 @@ export default function CustomerAkteVehicleCard({
   const conditions = formatVehicleCardConditionsDot(card);
   const price = formatVehicleCardPrice(card);
   const status = resolveVehicleStatus(card);
-  const footer = resolveVehicleFooter(card, index);
   const payment = formatPaymentBadge(card.paymentType);
 
   return (
     <article
-      className={`cust-akte-vcard${animateIn ? ' cust-akte-vcard--animate' : ''}`}
+      className={`cust-akte-vcard cust-akte-vcard--compact${animateIn ? ' cust-akte-vcard--animate' : ''}`}
       style={{ '--card-index': index }}
     >
-      <span className={`cust-akte-vcard__status cust-akte-vcard__status--${status.tone}`}>
-        {status.label}
-      </span>
-
       <button
         type="button"
         className="cust-akte-vcard__main"
@@ -57,38 +45,27 @@ export default function CustomerAkteVehicleCard({
 
         <div className="cust-akte-vcard__body">
           <p className="cust-akte-vcard__title">{title}</p>
-          <p className="cust-akte-vcard__payment-row">
-            <span className={`cust-akte-vcard__payment cust-akte-vcard__payment--${payment.tone}`}>
-              {payment.label}
-            </span>
-          </p>
+          {price && <p className="cust-akte-vcard__price">{price}</p>}
           {conditions && (
             <p className="cust-akte-vcard__conditions">{conditions}</p>
           )}
-          {price && (
-            <p className="cust-akte-vcard__price">{price}</p>
+          {!price && payment?.label && (
+            <p className="cust-akte-vcard__conditions">{payment.label}</p>
           )}
-        </div>
-
-        <div className="cust-akte-vcard__aside">
-          <button
-            type="button"
-            className="cust-akte-vcard__menu"
-            onClick={(e) => { e.stopPropagation(); onMenu?.(card); }}
-            aria-label="Mehr Optionen"
-          >
-            ⋯
-          </button>
-          <span className="cust-akte-vcard__chev" aria-hidden>›</span>
+          <p className={`cust-akte-vcard__status-line cust-akte-vcard__status-line--${status.tone}`}>
+            {status.label}
+          </p>
         </div>
       </button>
 
-      <div className={`cust-akte-vcard__footer cust-akte-vcard__footer--${footer.tone}`}>
-        <span className="cust-akte-vcard__footer-icon" aria-hidden>
-          {FOOTER_ICONS[footer.icon] ?? '•'}
-        </span>
-        <span>{footer.label}</span>
-      </div>
+      <button
+        type="button"
+        className="cust-akte-vcard__menu"
+        onClick={(e) => { e.stopPropagation(); onMenu?.(card); }}
+        aria-label="Mehr Optionen"
+      >
+        ⋯
+      </button>
     </article>
   );
 }

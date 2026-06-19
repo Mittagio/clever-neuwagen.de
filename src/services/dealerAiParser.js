@@ -5,6 +5,10 @@ import { sportage } from '../data/kiaSportage.js';
 import { resolveTrimId, resolveEngineId, resolveColorId } from '../data/models/kia/sportageAdapter.js';
 import { matchSuggestedModels } from './dealerAiModelMatcher.js';
 import {
+  enrichFieldsFromCustomerMail,
+  preprocessCustomerMail,
+} from './dealerAiMailExtractor.js';
+import {
   DEALER_AI_MONTHLY_BUDGET_VALUES,
   DEALER_AI_PURCHASE_BUDGET_VALUES,
   formatBudgetDisplay,
@@ -257,6 +261,43 @@ function parseDownPayment(text) {
   return parseNumber(m[1].replace(/\s/g, ''));
 }
 
+export function parseBatteryKwhFromText(text) {
+  const m = String(text ?? '').match(/\b(\d+(?:[,.]\d+)?)\s*kwh\b/i);
+  if (!m) return null;
+  const value = parseFloat(m[1].replace(',', '.'));
+  return Number.isFinite(value) ? Math.round(value) : null;
+}
+
+export function batteryLabelFromKwh(kwh) {
+  if (kwh == null) return null;
+  if (kwh >= 75) return '81 kWh';
+  if (kwh >= 55 && kwh < 75) return '58 kWh';
+  return `${kwh} kWh`;
+}
+
+export function parseAllDownPaymentsFromText(text) {
+  const values = [];
+  const raw = String(text ?? '');
+  for (const m of raw.matchAll(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?\s*anzahlung/gi)) {
+    const n = parseNumber(m[1].replace(/\s/g, ''));
+    if (n != null) values.push(n);
+  }
+  for (const m of raw.matchAll(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/gi)) {
+    const n = parseNumber(m[1].replace(/\s/g, ''));
+    if (n != null) values.push(n);
+  }
+  return [...new Set(values)];
+}
+
+export function parseAllMileagesFromText(text) {
+  const values = [];
+  for (const m of String(text ?? '').matchAll(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:km|kilometer)/gi)) {
+    const n = parseNumber(m[1].replace(/\s/g, ''));
+    if (n != null && n >= 5000 && n <= 50000) values.push(n);
+  }
+  return [...new Set(values)];
+}
+
 function parseDesiredRate(text, termMonths = null, paymentType = null) {
   const lower = text.toLowerCase();
   const isCashContext = paymentType === 'cash'
@@ -264,6 +305,9 @@ function parseDesiredRate(text, termMonths = null, paymentType = null) {
   if (isCashContext) return null;
 
   const isFinancing = paymentType === 'financing' || paymentType === 'threeWayFinancing';
+
+  const budgetBis = text.match(/budget\s*(?:bis|bis\s+zu|max\.?|höchstens|ca\.?)?\s*(\d{2,4})\s*€/i);
+  if (budgetBis) return parseNumber(budgetBis[1]);
 
   const labeled = text.match(/(?:wunschrate|leasing\s*ab)\s*(?:ab\s*)?(\d{2,4})\s*€/i);
   if (labeled) return parseNumber(labeled[1]);
@@ -401,8 +445,72 @@ function parseQuantity(text) {
 
 function parseCustomerName(text) {
   const m = text.match(/(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
-    ?? text.match(/(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i);
+    ?? text.match(/(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i)
+    ?? text.match(/(?:kunde|name|von|absender)[:\s]+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i)
+    ?? text.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\s*(?:<|$|\n)/m);
   return m ? m[1].trim() : null;
+}
+
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/[^\d+]/g, '');
+  if (cleaned.length < 8) return null;
+  if (cleaned.startsWith('0049')) return `+49 ${cleaned.slice(4)}`;
+  if (cleaned.startsWith('49') && cleaned.length > 10) return `+49 ${cleaned.slice(2)}`;
+  if (cleaned.startsWith('0')) {
+    const spaced = cleaned.replace(/^0(\d{2,4})(\d+)/, '0$1 $2');
+    return spaced.length > 6 ? spaced : cleaned;
+  }
+  return cleaned;
+}
+
+export function parseCustomerPhone(text) {
+  const labeled = text.match(/(?:tel(?:efon)?|mobil|handy|fon|📞)\s*[:\-]?\s*([+]?\d[\d\s\-/().]{7,}\d)/i);
+  if (labeled) return normalizePhone(labeled[1]);
+
+  const inline = text.match(/\b(0\s*1[567]\d[\s\-/]?\d{3,4}[\s\-/]?\d{4,6})\b/)
+    ?? text.match(/\b(\+49\s*1[567]\d[\s\-/]?\d{3,4}[\s\-/]?\d{4,6})\b/);
+  return inline ? normalizePhone(inline[1]) : null;
+}
+
+export function parseCustomerEmail(text) {
+  const labeled = text.match(/(?:e-?mail|mail|✉)\s*[:\-]?\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+  if (labeled) return labeled[1].toLowerCase();
+
+  const inline = text.match(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
+  return inline ? inline[1].toLowerCase() : null;
+}
+
+export function parseLeasingEndDate(text) {
+  const months = monthPattern();
+  const patterns = [
+    new RegExp(`leasing(?:ende|vertrag| läuft| endet)[^\\n.]{0,50}(?:im|in|bis)\\s+(${months})(?:\\s+(20\\d{2}))?`, 'i'),
+    new RegExp(`leasingende\\s*(?:im|in)?\\s*(${months})(?:\\s+(20\\d{2}))?`, 'i'),
+    new RegExp(`vertrag\\s+endet\\s+(?:im|in)\\s+(${months})(?:\\s+(20\\d{2}))?`, 'i'),
+    /leasingende\s*(20\d{2})/i,
+    new RegExp(`(?:bis\\s+)?ende\\s+(${months})\\s+(20\\d{2})`, 'i'),
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m) continue;
+    const month = m[1]?.replace(/^maerz$/i, 'März');
+    const year = m[2] ?? null;
+    if (month && /^\d{4}$/.test(month)) return month;
+    if (month) {
+      const label = month.charAt(0).toUpperCase() + month.slice(1);
+      return year ? `${label} ${year}` : label;
+    }
+  }
+  return null;
+}
+
+export function parseVehicleChangeIntent(text) {
+  return /fahrzeugwechsel|neues\s+auto|leasingerneuerung|leasing[\s-]?erneuerung|auto\s+wechseln|fahrzeug\s+erneuern/i.test(text);
+}
+
+export function parseImmediateAvailability(text) {
+  return /sofort\s+verfügbar|sofort\s+lieferbar|sofort\s+da|auf\s+lager|lagerwagen|sofort\s+möglich/i.test(text);
 }
 
 function parseBodyType(text) {
@@ -583,7 +691,9 @@ function resolveSportageConfig(fields) {
 }
 
 export function parseDealerAiInput(rawText) {
-  const text = normalizeText(rawText);
+  const mailCtx = preprocessCustomerMail(rawText);
+  const inquirySource = mailCtx.inquiryText?.trim() || mailCtx.cleaned?.trim() || String(rawText ?? '').trim();
+  const text = normalizeText(inquirySource.length >= 8 ? inquirySource : rawText);
   if (!text || text.length < 8) {
     return { ok: false, error: 'Bitte beschreiben Sie Fahrzeug, Konditionen oder gewünschte Aktion.' };
   }
@@ -624,6 +734,11 @@ export function parseDealerAiInput(rawText) {
     desiredPrice: parseDesiredPrice(text),
     desiredDeliveryDate: parseDesiredDeliveryDate(text),
     customerName: parseCustomerName(text),
+    customerPhone: parseCustomerPhone(text),
+    customerEmail: parseCustomerEmail(text),
+    leasingEndDate: parseLeasingEndDate(text),
+    vehicleChangeIntent: parseVehicleChangeIntent(text),
+    immediateAvailability: parseImmediateAvailability(text),
     bodyType: parseBodyType(text),
     transmission: parseTransmission(text),
     maxLengthMm: parseMaxLengthMm(text),
@@ -631,7 +746,15 @@ export function parseDealerAiInput(rawText) {
     quantity,
     rawText: text,
     paymentType: 'unknown',
+    batteryKwh: parseBatteryKwhFromText(text),
+    batteryLabel: null,
   };
+
+  if (fields.batteryKwh != null) {
+    fields.batteryLabel = batteryLabelFromKwh(fields.batteryKwh);
+    if (fields.batteryKwh >= 75) fields.engineId = fields.engineId ?? 'ev-long';
+    else if (fields.batteryKwh <= 60) fields.engineId = fields.engineId ?? 'ev-std';
+  }
 
   fields.paymentType = parsePaymentType(text, fields);
 
@@ -656,6 +779,8 @@ export function parseDealerAiInput(rawText) {
   if (fields.modelId === 'sportage' || fields.model === 'Sportage') {
     fields = resolveSportageConfig(fields);
   }
+
+  fields = enrichFieldsFromCustomerMail(rawText, fields, mailCtx);
 
   const action = detectAction(text, fields);
   const actionMeta = DEALER_AI_ACTIONS[action];
@@ -690,6 +815,7 @@ function buildDisplayFields(fields, actionMeta) {
   add('Marke', fields.brand);
   add('Modell', fields.model);
   add('Ausstattung', fields.trimLabel);
+  add('Batterie', fields.batteryLabel);
   add('Antrieb', fields.motorLabel);
   add('Farbe', fields.colorLabel);
   if (fields.packageLabels?.length) add('Pakete', fields.packageLabels.join(', '));
@@ -699,8 +825,14 @@ function buildDisplayFields(fields, actionMeta) {
   if (fields.mileagePerYear) add('Kilometer', `${fields.mileagePerYear.toLocaleString('de-DE')} km/Jahr`);
   add('Kundengruppe', fields.customerGroupLabel);
   if (fields.downPayment) add('Anzahlung', `${fields.downPayment.toLocaleString('de-DE')} €`);
-  if (fields.desiredRate) add('Wunschrate', `${fields.desiredRate} €/Monat`);
+  if (fields.desiredRate) add('Budget / Rate', `bis ${fields.desiredRate} €/Monat`);
+  else if (fields.desiredPrice) add('Budget / Kaufpreis', `bis ${fields.desiredPrice.toLocaleString('de-DE')} €`);
   add('Kunde', fields.customerName);
+  add('Telefon', fields.customerPhone);
+  add('E-Mail', fields.customerEmail);
+  if (fields.leasingEndDate) add('Leasingende', fields.leasingEndDate);
+  if (fields.vehicleChangeIntent) add('Fahrzeugwechsel', 'ja');
+  if (fields.immediateAvailability) add('Verfügbarkeit', 'Sofort verfügbar');
   if (fields.quantity > 1) add('Anzahl', `${fields.quantity} Fahrzeuge`);
   add('Aktion', actionMeta?.label);
 

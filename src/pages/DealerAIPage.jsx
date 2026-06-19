@@ -23,6 +23,8 @@ import DealerAiModelFlow from '../components/dealer-ai/DealerAiModelFlow.jsx';
 import DealerAiAnalysisCard from '../components/dealer-ai/DealerAiAnalysisCard.jsx';
 import DealerAiSuggestedModels from '../components/dealer-ai/DealerAiSuggestedModels.jsx';
 import DealerAiReviewBar from '../components/dealer-ai/DealerAiReviewBar.jsx';
+import DealerAiVehicleConfigure from '../components/dealer-ai/DealerAiVehicleConfigure.jsx';
+import DealerAiOfferPreview from '../components/dealer-ai/DealerAiOfferPreview.jsx';
 import CustomerAddVehicleDuplicatePrompt from '../components/dealer-ai/CustomerAddVehicleDuplicatePrompt.jsx';
 import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
 import DealerAiLeadFollowUp from '../components/dealer-ai/DealerAiLeadFollowUp.jsx';
@@ -41,11 +43,26 @@ import {
 } from '../services/vehicleOffer.js';
 import { formatVehicleCardTitle } from '../services/customerAkte.js';
 import {
+  applyCustomerContextToFields,
+  mergeConfigureCustomerContext,
+} from '../services/dealerAiCustomerContext.js';
+import {
+  buildConfigureDraft,
+  fieldsFromConfigureDraft,
+  resolvePhaseAfterAnalysis,
+  resolvePrimarySuggestedModel,
+} from '../services/dealerAiVehicleConfigureFlow.js';
+import {
   buildAddVehicleContextFromLead,
   getContextBannerLabel,
   getReviewBarButtonLabel,
   isCustomerRecordAddVehicleContext,
 } from '../services/customerAddVehicleFlow.js';
+import {
+  buildOfferDraft,
+  executeSaveOfferDraft,
+  offerDraftToParserFields,
+} from '../services/dealerAiOfferCreate.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
@@ -77,6 +94,8 @@ export default function DealerAIPage() {
   const [duplicatePrompt, setDuplicatePrompt] = useState(null);
   const [toast, setToast] = useState('');
   const [offerEditCard, setOfferEditCard] = useState(null);
+  const [configureDraft, setConfigureDraft] = useState(null);
+  const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -90,6 +109,46 @@ export default function DealerAIPage() {
       suggestedModels: resolveDealerAiVehicleSuggestions(nextParsed.fields, conditions, chipIds),
     };
   }, [conditions, selectedChipIds]);
+
+  const bootstrapConfigureState = useCallback((nextParsed) => {
+    const primaryModel = resolvePrimarySuggestedModel(nextParsed);
+    let draft = buildConfigureDraft(nextParsed, conditions, primaryModel);
+    const crmCustomer = mergeConfigureCustomerContext({ parsedFields: nextParsed.fields });
+    if (crmCustomer.hasContact || draft.customer?.mailNote) {
+      draft = {
+        ...draft,
+        customer: {
+          ...draft.customer,
+          name: crmCustomer.name ?? draft.customer?.name,
+          firstName: crmCustomer.firstName ?? draft.customer?.firstName,
+          lastName: crmCustomer.lastName ?? draft.customer?.lastName,
+          salutation: crmCustomer.salutation ?? draft.customer?.salutation,
+          phone: crmCustomer.phone ?? draft.customer?.phone,
+          email: crmCustomer.email ?? draft.customer?.email,
+          mailNote: draft.customer?.mailNote ?? crmCustomer.mailNote ?? null,
+          interestedPartyName: draft.customer?.interestedPartyName ?? null,
+        },
+      };
+    }
+    setConfigureDraft(draft);
+    if (primaryModel?.id) {
+      setSelectedModelIds([primaryModel.id]);
+    }
+  }, [conditions]);
+
+  const applyParsedWithPhase = useCallback((nextParsed, chipIds = selectedChipIds) => {
+    const enriched = enrichWithSuggestions(nextParsed, chipIds);
+    setParsed(enriched);
+    const nextPhase = resolvePhaseAfterAnalysis(enriched);
+    if (nextPhase === 'configure') {
+      bootstrapConfigureState(enriched);
+    } else {
+      setConfigureDraft(null);
+      setSelectedModelIds([]);
+    }
+    setStartView('home');
+    setPhase(nextPhase);
+  }, [bootstrapConfigureState, enrichWithSuggestions, selectedChipIds]);
 
   const buildCombinedText = useCallback((extra = {}) => {
     const extraChips = extra.chipIds ?? [];
@@ -126,10 +185,7 @@ export default function DealerAIPage() {
       setInput(`Kia ${extra.modelName}`);
     }
 
-    setParsed(enrichWithSuggestions(next, [...selectedChipIds, ...extraChips]));
-    setSelectedModelIds([]);
-    setStartView('home');
-    setPhase('review');
+    applyParsedWithPhase(next, [...selectedChipIds, ...extraChips]);
   }
 
   function handleVoiceParsed(parsedVoice) {
@@ -156,6 +212,8 @@ export default function DealerAIPage() {
     setResult(null);
     setStartView('home');
     setDuplicatePrompt(null);
+    setConfigureDraft(null);
+    setConfigureOfferDraft(null);
   }
 
   function clearAddVehicleFlow() {
@@ -163,11 +221,116 @@ export default function DealerAIPage() {
     setDuplicatePrompt(null);
   }
 
+  function handleConfigureDraftChange(nextDraft) {
+    setConfigureDraft(nextDraft);
+    setParsed((prev) => enrichWithSuggestions(
+      applyDealerAiFields(prev, fieldsFromConfigureDraft(nextDraft, prev?.fields)),
+    ));
+  }
+
+  function handleConfigureCreateOffer() {
+    if (!parsed?.ok || !configureDraft) return;
+
+    const mergedFields = fieldsFromConfigureDraft(configureDraft, parsed.fields);
+    const updatedParsed = enrichWithSuggestions(applyDealerAiFields(parsed, mergedFields));
+    setParsed(updatedParsed);
+
+    const contextLead = addVehicleContext?.opportunityId
+      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+      : null;
+
+    const offerDraft = buildOfferDraft({
+      configureDraft,
+      parsed: updatedParsed,
+      conditions,
+      carryCustomer,
+      addVehicleContext,
+      lead: contextLead,
+    });
+
+    setConfigureOfferDraft(offerDraft);
+    setPhase('offer-preview');
+  }
+
+  function handleOfferPreviewBack() {
+    setConfigureOfferDraft(null);
+    setPhase('configure');
+  }
+
+  function handleOfferPreviewPreparePdf() {
+    showToast('PDF / Kundenlink – Vorbereitung folgt in Kürze');
+  }
+
+  function handleOfferPreviewSave() {
+    if (!configureOfferDraft) return;
+    setIsExecuting(true);
+
+    try {
+      const saveResult = executeSaveOfferDraft(configureOfferDraft, {
+        parsed,
+        conditions,
+        leads,
+        addLead,
+        updateLead,
+        getExistingCodes,
+        selectedModelIds,
+      });
+
+      setResult({ type: 'lead', leadId: saveResult.leadId, customerId: saveResult.customerId });
+      setOfferEditCard(saveResult.card);
+      setConfigureOfferDraft(null);
+      setConfigureDraft(null);
+      showToast(saveResult.message);
+
+      if (saveResult.offerDraft) {
+        setParsed((prev) => enrichWithSuggestions(
+          applyDealerAiFields(prev, offerDraftToParserFields(saveResult.offerDraft)),
+        ));
+      }
+
+      if (saveResult.activityText) {
+        addHistory(saveResult.leadId, saveResult.activityText, 'offer');
+      }
+
+      if (saveResult.needsCapture) {
+        setPhase('capture');
+        setIsFreshLead(true);
+        setIsReturningWish(Boolean(carryCustomer));
+      } else {
+        setPhase('followup');
+        setIsFreshLead(saveResult.mode !== 'attached_to_opportunity');
+        setIsReturningWish(Boolean(saveResult.customerId && carryCustomer));
+        clearAddVehicleFlow();
+      }
+    } catch (err) {
+      showToast(err.message ?? 'Angebot konnte nicht gespeichert werden');
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  function handleConfigureBack() {
+    if (addVehicleContext?.returnPath) {
+      navigate(addVehicleContext.returnPath);
+      return;
+    }
+    setPhase('input');
+    setStartView('home');
+  }
+
+  function handleSwitchToSearch() {
+    setPhase('review');
+    setConfigureDraft(null);
+    setConfigureOfferDraft(null);
+  }
+
   function handleEdit() {
     setPhase('input');
     setStartView('home');
     setParsed(null);
     setSelectedModelIds([]);
+    setConfigureDraft(null);
+    setConfigureOfferDraft(null);
     setResult(null);
     inputRef.current?.focus();
   }
@@ -239,11 +402,9 @@ export default function DealerAIPage() {
     setInput(wishText);
     const next = parseDealerAiInput(wishText);
     if (next.ok) {
-      setParsed(enrichWithSuggestions(next));
-      setSelectedModelIds([]);
-      setPhase('review');
+      applyParsedWithPhase(next);
     }
-  }, [location.state?.wishText, enrichWithSuggestions]);
+  }, [location.state?.wishText, applyParsedWithPhase]);
 
   useEffect(() => {
     const leadId = location.state?.leadId;
@@ -648,15 +809,19 @@ export default function DealerAIPage() {
     : null;
 
   const pageKicker = 'Digitaler Verkaufsassistent';
-  const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit'
+  const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
     ? ''
+    : phase === 'configure'
+      ? ''
     : phase === 'review'
       ? 'Kundenwunsch'
       : phase === 'done' && result?.type !== 'lead'
         ? 'Ich habe erkannt'
         : 'Was sucht Ihr Kunde?';
-  const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit'
+  const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
     ? ''
+    : phase === 'configure'
+      ? ''
     : phase === 'review'
       ? `${Math.round((parsed?.confidence ?? 0) * 100)} % sicher · bitte kurz prüfen`
       : phase === 'input'
@@ -666,6 +831,8 @@ export default function DealerAIPage() {
   const showMainHero = phase !== 'followup'
     && phase !== 'capture'
     && phase !== 'offer-edit'
+    && phase !== 'offer-preview'
+    && phase !== 'configure'
     && !(phase === 'input' && startView !== 'home');
 
   const vehicleCard = parsed?.ok && result
@@ -679,9 +846,16 @@ export default function DealerAIPage() {
   const contextBannerLabel = getContextBannerLabel(addVehicleContext);
   const reviewCreateLabel = getReviewBarButtonLabel(addVehicleContext);
 
+  const configureCustomerContact = mergeConfigureCustomerContext({
+    parsedFields: parsed?.fields,
+    carryCustomer,
+    addVehicleContext,
+    lead: activeLead,
+  });
+
   return (
     <div className="dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'followup' || phase === 'offer-edit' ? ' dealer-ai-main--akte' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'offer-preview' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' || phase === 'offer-edit' ? ' dealer-ai-main--akte' : ''}`}>
         {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
@@ -726,6 +900,31 @@ export default function DealerAIPage() {
           <p className="dai-add-vehicle-context" role="status">
             {contextBannerLabel}
           </p>
+        )}
+
+        {phase === 'configure' && parsed?.ok && configureDraft && (
+          <DealerAiVehicleConfigure
+            draft={configureDraft}
+            parsed={parsed}
+            conditions={conditions}
+            customerContact={configureCustomerContact}
+            contextBanner={contextBannerLabel}
+            onDraftChange={handleConfigureDraftChange}
+            onCreateOffer={handleConfigureCreateOffer}
+            onBack={handleConfigureBack}
+            onSwitchToSearch={handleSwitchToSearch}
+            isExecuting={isExecuting}
+          />
+        )}
+
+        {phase === 'offer-preview' && configureOfferDraft && (
+          <DealerAiOfferPreview
+            offerDraft={configureOfferDraft}
+            onBack={handleOfferPreviewBack}
+            onSave={handleOfferPreviewSave}
+            onPreparePdfLink={handleOfferPreviewPreparePdf}
+            isSaving={isExecuting}
+          />
         )}
 
         {phase === 'review' && parsed?.ok && (
@@ -817,7 +1016,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

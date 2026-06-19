@@ -34,20 +34,16 @@ import {
   formatVehicleCardTitle,
   hasVehicleOffer,
 } from '../../services/customerAkte.js';
-import { shouldElevateUnterlagen } from '../../services/cleverUnterlagen.js';
-import {
-  buildCleverAntwortenContext,
-  suggestCleverAntwortType,
-} from '../../services/cleverAntworten.js';
+import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
+import CustomerAkteCommunication from './CustomerAkteCommunication.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
-import CustomerAkteDealerNav from './CustomerAkteDealerNav.jsx';
 import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
@@ -339,11 +335,6 @@ export default function DealerAiLeadFollowUp({
     wishPaymentType,
   }), [lead, name, phone, email, vehicleCards, kundenhelferNotes, wishPaymentType]);
 
-  const elevateUnterlagen = useMemo(
-    () => shouldElevateUnterlagen(vehicleCards),
-    [vehicleCards],
-  );
-
   const unterlagenBlock = (
     <CustomerAkteUnterlagen
       lead={lead}
@@ -591,22 +582,17 @@ export default function DealerAiLeadFollowUp({
         onCleverAntwort={() => openCleverAntworten()}
       />
 
-      <CustomerAkteKundenhelfer
-        notes={kundenhelferNotes}
-        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
-      />
-
-      <CustomerAkteEquipmentWishes wishes={lead?.equipmentWishes ?? []} />
-
       <CustomerAkteNextStep
         hint={nextBestStep}
         telHref={telHref}
         onFallback={() => openSheet(SHEETS.customer)}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-        onCleverAntwort={() => openCleverAntworten(suggestCleverAntwortType(cleverAntwortenContext))}
       />
 
-      {elevateUnterlagen && unterlagenBlock}
+      <CustomerAkteKundenhelfer
+        notes={kundenhelferNotes}
+        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
+      />
 
       <CustomerAkteBoard
         cards={vehicleCards}
@@ -616,9 +602,18 @@ export default function DealerAiLeadFollowUp({
         onAddVehicle={handleAddVehicle}
       />
 
-      {!elevateUnterlagen && unterlagenBlock}
+      {(lead?.equipmentWishes?.length ?? 0) > 0 && (
+        <div className="cust-akte-section cust-akte-section--subtle">
+          <CustomerAkteEquipmentWishes wishes={lead.equipmentWishes} />
+        </div>
+      )}
 
-      <CustomerAkteDealerNav onNewWish={handleAddVehicle} />
+      {unterlagenBlock}
+
+      <CustomerAkteCommunication
+        history={history}
+        onOpenHistory={() => openSheet(SHEETS.history)}
+      />
 
       {/* ── Mehr ── */}
       <LeadDetailPanel

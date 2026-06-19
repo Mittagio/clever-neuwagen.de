@@ -206,7 +206,7 @@ function collectReferenceCodes(getExistingCodes, leads = []) {
   return codes;
 }
 
-function buildLeadForExistingCustomer(fields, parsed, conditions, options = {}) {
+export function buildLeadForExistingCustomer(fields, parsed, conditions, options = {}) {
   const vehicleLabel = [fields.brand, fields.model, fields.trimLabel].filter(Boolean).join(' ').trim();
   const leadId = `lead-ai-${Date.now()}`;
   const now = new Date().toISOString();

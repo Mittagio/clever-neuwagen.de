@@ -1,0 +1,149 @@
+.dai-offer-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 36rem;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.dai-offer-preview__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dai-offer-preview__back {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--color-primary, #1a5cff);
+  font-size: 0.9rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dai-offer-preview__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.dai-offer-preview__subtitle {
+  margin: 0;
+  color: var(--text-muted, #5c6470);
+  font-size: 0.92rem;
+}
+
+.dai-offer-preview__card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.dai-offer-preview__card--highlight {
+  background: linear-gradient(135deg, #eef6ff 0%, #fff 55%);
+  border-color: rgba(26, 92, 255, 0.2);
+}
+
+.dai-offer-preview__card h3 {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #5c6470);
+}
+
+.dai-offer-preview__value {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dai-offer-preview__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted, #5c6470);
+}
+
+.dai-offer-preview__dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dai-offer-preview__dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+}
+
+.dai-offer-preview__dl dt {
+  color: var(--text-muted, #5c6470);
+}
+
+.dai-offer-preview__dl dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.dai-offer-preview__rate {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dai-offer-preview__budget {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.dai-offer-preview__budget.is-ok {
+  color: #1a7f37;
+}
+
+.dai-offer-preview__budget.is-over {
+  color: #9a6700;
+}
+
+.dai-offer-preview__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(transparent, #fff 20%);
+  padding-top: 0.5rem;
+}
+
+.dai-offer-preview__primary {
+  border: none;
+  border-radius: 12px;
+  background: var(--color-primary, #1a5cff);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+}
+
+.dai-offer-preview__primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dai-offer-preview__secondary {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}

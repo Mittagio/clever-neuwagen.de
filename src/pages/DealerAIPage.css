@@ -113,6 +113,11 @@
   font-size: 0.875rem;
 }
 
+.dealer-ai-main--configure {
+  gap: 16px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+}
+
 .dealer-ai-main--review {
   gap: 16px;
   padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
@@ -1293,12 +1298,12 @@
   gap: 12px;
   max-width: 520px;
   margin: 0 auto;
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
 .cust-akte.dai-lead-followup {
   max-width: 720px;
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
 .dai-lead-created-flash {
