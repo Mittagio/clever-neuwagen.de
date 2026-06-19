@@ -168,8 +168,9 @@ const TRIM_ALIASES = [
   { re: /\bvision\b/i, id: 'vision', label: 'Vision' },
   { re: /\bspirit\b/i, id: 'spirit', label: 'Spirit' },
   { re: /\bcore\b/i, id: 'core', label: 'Core' },
-  { re: /\bearth\b/i, id: null, label: 'Earth' },
-  { re: /\bair\b/i, id: null, label: 'Air' },
+  { re: /\bearth\b/i, id: 'earth', label: 'Earth' },
+  { re: /\bair\b/i, id: 'air', label: 'Air' },
+  { re: /\blight\b/i, id: 'light', label: 'Light' },
   { re: /\blong[\s-]?range\b/i, id: null, label: 'Long Range' },
 ];
 
@@ -191,6 +192,7 @@ const COLOR_ALIASES = [
 ];
 
 const PACKAGE_ALIASES = [
+  { re: /\bwinter[\s-]?connect\b/i, id: 'winter-connect', label: 'Winter-Connect-Paket' },
   { re: /\bglasdach|panorama\b/i, id: 'p4-panorama', label: 'Panorama-Glasschiebedach' },
   { re: /\bwärmepumpe|waermepumpe\b/i, id: null, label: 'Wärmepumpe' },
   { re: /\bdrivewise|assist\b/i, id: 'p5-drivewise', label: 'DriveWise Paket' },
@@ -694,7 +696,8 @@ export function parseDealerAiInput(rawText) {
   const mailCtx = preprocessCustomerMail(rawText);
   const inquirySource = mailCtx.inquiryText?.trim() || mailCtx.cleaned?.trim() || String(rawText ?? '').trim();
   const text = normalizeText(inquirySource.length >= 8 ? inquirySource : rawText);
-  if (!text || text.length < 8) {
+  const modelOnlySelection = Boolean(detectBrandModel(text ?? '').modelId) && (text?.length ?? 0) >= 4;
+  if (!text || (text.length < 8 && !modelOnlySelection)) {
     return { ok: false, error: 'Bitte beschreiben Sie Fahrzeug, Konditionen oder gewünschte Aktion.' };
   }
 

@@ -1,6 +1,8 @@
 import { kiaSportage } from '../models/kia/sportage.js';
+import { kiaEv2 } from './kia/ev2.js';
 import { kiaEv3 } from './kia/ev3.js';
 import { kiaEv4 } from './kia/ev4.js';
+import { kiaEv5 } from './kia/ev5.js';
 import { kiaPicanto } from './kia/picanto.js';
 import { kiaNiro } from './kia/niro.js';
 import { kiaCeed } from './kia/ceed.js';
@@ -16,6 +18,16 @@ export const MANUFACTURER_MODELS = {
     engine: 'sportage',
     defaultTrimId: 'spirit',
     defaultEngineId: 'tgi-hybrid-2wd',
+  },
+  ev2: {
+    key: 'ev2',
+    brand: 'Kia',
+    model: 'EV2',
+    label: 'Kia EV2',
+    data: kiaEv2,
+    engine: 'ev2',
+    defaultTrimId: 'earth',
+    defaultEngineId: 'ev-long',
   },
   ev3: {
     key: 'ev3',
@@ -34,6 +46,16 @@ export const MANUFACTURER_MODELS = {
     label: 'Kia EV4',
     data: kiaEv4,
     engine: 'ev4',
+    defaultTrimId: 'earth',
+    defaultEngineId: 'ev-long',
+  },
+  ev5: {
+    key: 'ev5',
+    brand: 'Kia',
+    model: 'EV5',
+    label: 'Kia EV5',
+    data: kiaEv5,
+    engine: 'ev5',
     defaultTrimId: 'earth',
     defaultEngineId: 'ev-long',
   },
@@ -71,12 +93,31 @@ export const MANUFACTURER_MODELS = {
 
 export function normalizeManufacturerKey(brand, model) {
   const m = (model ?? '').toLowerCase();
+  if (m.includes('sportage') && (m.includes('phev') || m.includes('plug-in'))) return 'sportage-phev';
+  if (m.includes('sportage') && m.includes('hybrid')) return 'sportage-hybrid';
   if (m.includes('sportage')) return 'sportage';
+  if (m.includes('ev2')) return 'ev2';
   if (m.includes('ev3')) return 'ev3';
+  if (m.includes('ev4') && m.includes('fastback')) return 'ev4-fastback';
   if (m.includes('ev4')) return 'ev4';
+  if (m.includes('ev5') && m.includes('gt')) return 'ev5-gt';
+  if (m.includes('ev5')) return 'ev5';
+  if (m.includes('ev6') && m.includes('gt')) return 'ev6-gt';
+  if (m.includes('ev6')) return 'ev6';
+  if (m.includes('ev9') && m.includes('gt')) return 'ev9-gt';
+  if (m.includes('ev9')) return 'ev9';
+  if (m.includes('sorento') && (m.includes('phev') || m.includes('plug-in'))) return 'sorento-phev';
+  if (m.includes('sorento') && m.includes('hybrid')) return 'sorento-hybrid';
+  if (m.includes('sorento')) return 'sorento';
   if (m.includes('picanto')) return 'picanto';
   if (m.includes('niro')) return 'niro';
   if (m.includes('ceed')) return 'ceed';
+  if (m.includes('stonic')) return 'stonic';
+  if (m.includes('seltos')) return 'seltos';
+  if (m.includes('xceed')) return 'xceed';
+  if (m.includes('k4') && m.includes('sportswagon')) return 'k4-sportswagon';
+  if (m.includes('k4')) return 'k4';
+  if (MANUFACTURER_MODELS[m]) return m;
   return null;
 }
 

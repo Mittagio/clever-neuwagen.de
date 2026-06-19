@@ -1,10 +1,7 @@
 /**
  * Verkaufsassistent – Fahrzeug konfigurieren (nach eindeutiger KI-Erkennung)
  */
-import {
-  MANUFACTURER_MODELS,
-  getManufacturerModel,
-} from '../data/manufacturer/manufacturerRegistry.js';
+import { resolveConfigureModel } from './configuration/configureModelBridge.js';
 import {
   DEALER_AI_MILEAGE_OPTIONS,
   DEALER_AI_TERM_OPTIONS,
@@ -41,14 +38,17 @@ function normalizePaymentMode(paymentType) {
   return 'leasing';
 }
 
-function resolveTrimId(trimLabel, mfg) {
-  if (!mfg?.data?.trims?.length) return mfg?.defaultTrimId ?? null;
-  if (!trimLabel) return mfg.defaultTrimId ?? mfg.data.trims[0]?.id ?? null;
+function resolveTrimId(trimLabel, mfg, trimOptions = []) {
+  const trims = mfg?.data?.trims?.length
+    ? mfg.data.trims
+    : trimOptions.map((t) => ({ id: t.id, name: t.label ?? t.name }));
+  if (!trims.length) return mfg?.defaultTrimId ?? null;
+  if (!trimLabel) return mfg?.defaultTrimId ?? trims[0]?.id ?? null;
   const lower = trimLabel.toLowerCase();
-  const hit = mfg.data.trims.find(
-    (t) => t.id === lower || t.name.toLowerCase() === lower,
+  const hit = trims.find(
+    (t) => t.id === lower || String(t.name).toLowerCase() === lower,
   );
-  return hit?.id ?? mfg.defaultTrimId ?? mfg.data.trims[0]?.id ?? null;
+  return hit?.id ?? mfg?.defaultTrimId ?? trims[0]?.id ?? null;
 }
 
 function resolveEngineId(fields, mfg) {
@@ -71,19 +71,68 @@ function resolveEngineLabel(engineId, mfg) {
   return null;
 }
 
-function resolveColorId(colorLabel) {
-  if (!colorLabel) return DEFAULT_EV_COLORS[0].id;
+function resolveColorId(colorLabel, colorIdHint, colors = DEFAULT_EV_COLORS) {
+  if (colorIdHint && colors.some((c) => c.id === colorIdHint)) return colorIdHint;
+  if (!colorLabel) return colors[0]?.id ?? DEFAULT_EV_COLORS[0].id;
+
+  const normalized = String(colorLabel).toLowerCase();
+  const aliasMap = {
+    schwarz: ['zilinaschwarz', 'aurora-black'],
+    weiß: ['carraraweiss', 'snow-white', 'deluxeweiß'],
+    weiss: ['carraraweiss', 'snow-white', 'deluxeweiß'],
+    grau: ['wolfgrau', 'wolf-gray'],
+    blau: ['frostblau', 'ocean-blue'],
+    rot: ['magma-red', 'runway-red'],
+  };
+  for (const [alias, ids] of Object.entries(aliasMap)) {
+    if (normalized.includes(alias)) {
+      const hit = colors.find((c) => ids.includes(c.id));
+      if (hit) return hit.id;
+    }
+  }
+
   const mapped = COLOR_LABEL_ALIASES[colorLabel] ?? colorLabel;
-  const hit = DEFAULT_EV_COLORS.find((c) => c.label === mapped || c.label.includes(colorLabel));
-  return hit?.id ?? DEFAULT_EV_COLORS[0].id;
+  const hit = colors.find((c) => c.label === mapped || c.label.toLowerCase().includes(normalized));
+  return hit?.id ?? colors[0]?.id ?? DEFAULT_EV_COLORS[0].id;
 }
 
-function resolveColorLabel(colorId, colorLabel) {
+function resolveColorLabel(colorId, colorLabel, colors = DEFAULT_EV_COLORS) {
+  const hit = colors.find((c) => c.id === colorId);
+  if (hit?.label) return hit.label;
   if (colorLabel && COLOR_LABEL_ALIASES[colorLabel]) {
     return COLOR_LABEL_ALIASES[colorLabel];
   }
-  const hit = DEFAULT_EV_COLORS.find((c) => c.id === colorId);
-  return hit?.label ?? colorLabel ?? DEFAULT_EV_COLORS[0].label;
+  return colorLabel ?? colors[0]?.label ?? DEFAULT_EV_COLORS[0].label;
+}
+
+function getModelColors(mfg) {
+  const source = mfg?.data?.colors?.length ? mfg.data.colors : DEFAULT_EV_COLORS;
+  return source.map((c) => ({ id: c.id, label: c.label ?? c.name }));
+}
+
+function resolveModelPackageIds(modelKey, packageIds = [], rawText = '') {
+  const mfg = resolveConfigureModel(modelKey);
+  const packages = mfg?.data?.packages ?? [];
+  if (!packages.length) return packageIds.filter(Boolean);
+  const resolved = new Set();
+
+  for (const pkgId of packageIds) {
+    if (packages.some((p) => p.id === pkgId)) {
+      resolved.add(pkgId);
+      continue;
+    }
+    if (pkgId === 'winter-connect') {
+      const hit = packages.find((p) => /winter.?connect/i.test(p.name));
+      if (hit) resolved.add(hit.id);
+    }
+  }
+
+  if (/winter[\s-]?connect/i.test(rawText ?? '')) {
+    const hit = packages.find((p) => /winter.?connect/i.test(p.name));
+    if (hit) resolved.add(hit.id);
+  }
+
+  return [...resolved];
 }
 
 function detectExtrasFromText(rawText = '', fields = {}) {
@@ -101,6 +150,14 @@ function detectExtrasFromText(rawText = '', fields = {}) {
 function vehicleImagePath(modelKey) {
   if (!modelKey) return null;
   return `/images/manufacturers/kia/${modelKey}/default.svg`;
+}
+
+/**
+ * Modell im Parser-Kontext erkannt (modelKey vorhanden) → direkt konfigurieren.
+ */
+export function hasRecognizedModelKey(parsed) {
+  const fields = parsed?.fields;
+  return Boolean(parsed?.ok && fields?.modelId && fields?.model);
 }
 
 /**
@@ -135,13 +192,15 @@ export function resolvePrimarySuggestedModel(parsed) {
   return match ?? suggestions[0] ?? null;
 }
 
-export function buildConfigureOptions(modelKey) {
-  const mfg = MANUFACTURER_MODELS[modelKey];
+export function buildConfigureOptions(modelKey, trimId = null) {
+  const mfg = resolveConfigureModel(modelKey);
   if (!mfg) {
     return {
       trims: [],
       engines: [],
       colors: DEFAULT_EV_COLORS,
+      packages: [],
+      accessories: [],
     };
   }
 
@@ -152,22 +211,34 @@ export function buildConfigureOptions(modelKey) {
       : e.name,
   }));
 
+  const packages = (mfg.data.packages ?? [])
+    .filter((pkg) => !trimId || !pkg.availableTrims?.length || pkg.availableTrims.includes(trimId))
+    .map((pkg) => ({ id: pkg.id, label: pkg.name }));
+
+  const accessories = (mfg.data.accessories ?? [])
+    .filter((acc) => !trimId || !acc.availableTrims?.length || acc.availableTrims.includes(trimId))
+    .map((acc) => ({ id: acc.id, label: acc.name }));
+
   return {
     trims: (mfg.data.trims ?? []).map((t) => ({ id: t.id, label: t.name })),
     engines: engines.length
       ? engines
       : [{ id: mfg.defaultEngineId, label: 'Standard' }].filter((e) => e.id),
-    colors: DEFAULT_EV_COLORS,
+    colors: getModelColors(mfg),
+    packages,
+    accessories,
   };
 }
 
 export function buildConfigureDraft(parsed, conditions = null, primaryModel = null) {
   const fields = parsed?.fields ?? {};
   const modelKey = fields.modelId ?? primaryModel?.modelKey ?? primaryModel?.id;
-  const mfg = getManufacturerModel(fields.brand ?? 'Kia', fields.model ?? modelKey);
-  const options = buildConfigureOptions(modelKey);
+  const mfg = resolveConfigureModel(modelKey);
+  const options = buildConfigureOptions(modelKey, null);
+  const modelColors = options.colors;
 
-  const trimId = resolveTrimId(fields.trimLabel, mfg)
+  const trimId = resolveTrimId(fields.trimLabel, mfg, options.trims)
+    ?? (fields.trimId && options.trims.some((t) => t.id === fields.trimId) ? fields.trimId : null)
     ?? primaryModel?.primaryMatch?.vehicle?.trimId
     ?? options.trims[0]?.id
     ?? null;
@@ -179,8 +250,14 @@ export function buildConfigureDraft(parsed, conditions = null, primaryModel = nu
   const engineId = resolveEngineId(fields, mfg);
   const batteryLabel = fields.batteryLabel ?? resolveEngineLabel(engineId, mfg);
 
-  const colorId = fields.colorId ?? resolveColorId(fields.colorLabel);
-  const colorLabel = resolveColorLabel(colorId, fields.colorLabel);
+  const colorId = resolveColorId(fields.colorLabel, fields.colorId, modelColors);
+  const colorLabel = resolveColorLabel(colorId, fields.colorLabel, modelColors);
+
+  const packageIds = resolveModelPackageIds(
+    modelKey,
+    fields.packageIds ?? [],
+    fields.rawText,
+  );
 
   const accessoryIds = [];
   const extras = detectExtrasFromText(fields.rawText, fields);
@@ -228,10 +305,10 @@ export function buildConfigureDraft(parsed, conditions = null, primaryModel = nu
     },
     preparationFee,
     accessoryIds,
-    packageIds: fields.packageIds ?? [],
+    packageIds,
     extras,
     imageUrl: vehicleImagePath(modelKey),
-    options,
+    options: buildConfigureOptions(modelKey, trimId),
     primaryModelId: primaryModel?.id ?? modelKey,
   };
 }
@@ -292,6 +369,7 @@ export function computeVariantMonthlyRate(draft, variant, conditions) {
   const pricing = priceConfiguration({
     brand: draft.brand,
     model: draft.model,
+    modelKey: draft.modelKey,
     trimId: draft.trimId,
     engineId: draft.engineId,
     packageIds: draft.packageIds ?? [],
@@ -633,11 +711,37 @@ export function fieldsFromConfigureDraft(draft, fields = {}) {
   };
 }
 
+export function computeVehicleListPrice(draft, conditions) {
+  const pricing = priceConfiguration({
+    brand: draft.brand,
+    model: draft.model,
+    modelKey: draft.modelKey,
+    trimId: draft.trimId,
+    engineId: draft.engineId,
+    packageIds: draft.packageIds ?? [],
+    accessoryIds: draft.accessoryIds ?? [],
+    dealerConditions: conditions,
+    paymentType: 'cash',
+  });
+  if (!pricing) return null;
+  return pricing.housePrice ?? pricing.cashPrice ?? pricing.configurationPrice ?? null;
+}
+
+export function buildConfigureVehicleSummary(draft, conditions) {
+  const vehicleTitle = [draft.model, draft.trimLabel, draft.batteryLabel].filter(Boolean).join(' ');
+  return {
+    vehicleTitle,
+    colorLabel: draft.colorLabel ?? null,
+    listPrice: computeVehicleListPrice(draft, conditions),
+  };
+}
+
 export function computeLiveRateForDraft(draft, conditions) {
   const paymentMode = normalizePaymentMode(draft.paymentType);
   const pricing = priceConfiguration({
     brand: draft.brand,
     model: draft.model,
+    modelKey: draft.modelKey,
     trimId: draft.trimId,
     engineId: draft.engineId,
     packageIds: draft.packageIds ?? [],
@@ -659,6 +763,19 @@ export function computeLiveRateForDraft(draft, conditions) {
   });
 }
 
+export function buildSelectedModelFieldPatch(model = {}, fields = {}) {
+  const vehicle = model.primaryMatch?.vehicle;
+  return {
+    model: vehicle?.model
+      ?? model.name?.replace(/^Kia\s+/i, '')
+      ?? fields.model,
+    brand: vehicle?.brand ?? fields.brand ?? 'Kia',
+    modelId: model.modelKey ?? model.id ?? fields.modelId,
+    trimLabel: vehicle?.trim ?? model.trimLabel ?? fields.trimLabel,
+    trimId: vehicle?.trimId ?? fields.trimId,
+  };
+}
+
 export function resolvePhaseAfterAnalysis(parsed) {
-  return isVehicleUniquelyRecognized(parsed) ? 'configure' : 'review';
+  return hasRecognizedModelKey(parsed) ? 'configure' : 'review';
 }

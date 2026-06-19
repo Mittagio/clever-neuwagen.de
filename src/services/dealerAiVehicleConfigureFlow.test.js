@@ -13,6 +13,7 @@ import {
   enrichVariantsWithRates,
   extractOfferVariants,
   fieldsFromConfigureDraft,
+  hasRecognizedModelKey,
   isVehicleUniquelyRecognized,
   pickRecommendedVariantIndex,
   resolvePhaseAfterAnalysis,
@@ -55,7 +56,7 @@ const crmContext = mergeConfigureCustomerContext({
 assert.equal(crmContext.name, 'Michael Kübler');
 assert.equal(crmContext.phone, '0173 1855152');
 
-assert.ok(isVehicleUniquelyRecognized(parsed), 'EV4 sollte eindeutig erkannt sein');
+assert.ok(hasRecognizedModelKey(parsed), 'EV4 sollte modelKey haben');
 assert.equal(resolvePhaseAfterAnalysis(parsed), 'configure');
 
 const ambiguous = parseDealerAiInput('Elektro SUV, Leasing, 48 Monate, 15.000 km');
@@ -134,5 +135,27 @@ assert.equal(buildBudgetComparison(700, null, 'leasing').status, 'open');
 assert.equal(buildBudgetComparison(700, 790, 'leasing').status, 'ok');
 assert.equal(buildBudgetComparison(819, 790, 'leasing').status, 'over');
 assert.ok(buildBudgetComparison(819, 790, 'leasing').label.includes('29'));
+
+const ev5Text = 'Kia EV5 Earth 81 kWh, Leasing, 48 Monate, 15.000 km';
+const ev5Parsed = parseDealerAiInput(ev5Text);
+assert.ok(ev5Parsed.ok, 'Parser soll EV5-Wunsch erkennen');
+assert.equal(ev5Parsed.fields.modelId, 'ev5');
+assert.equal(resolvePhaseAfterAnalysis(ev5Parsed), 'configure');
+const ev5Draft = buildConfigureDraft(ev5Parsed, conditions);
+assert.equal(ev5Draft.modelKey, 'ev5');
+assert.equal(ev5Draft.trimId, 'earth');
+assert.equal(ev5Draft.engineId, 'ev-long');
+assert.ok(ev5Draft.options.trims.length >= 3, 'EV5 soll Air/Earth/GT-Line anbieten');
+assert.ok(ev5Draft.options.engines.length >= 2, 'EV5 soll Batterie-Optionen anbieten');
+assert.ok(ev5Draft.options.packages.length >= 1, 'EV5 soll Pakete anbieten');
+const ev5Preview = buildOfferPreview(ev5Draft, conditions, ev5Parsed.fields);
+assert.ok(ev5Preview.monthlyRate != null, 'EV5 Rate soll berechnet werden');
+
+const ev3ModelPick = parseDealerAiInput('Kia EV3');
+assert.ok(ev3ModelPick.ok, 'Kurze Modellwahl „Kia EV3“ soll parsen');
+assert.equal(ev3ModelPick.fields.modelId, 'ev3');
+assert.equal(resolvePhaseAfterAnalysis(ev3ModelPick), 'configure');
+const ev3Draft = buildConfigureDraft(ev3ModelPick, null);
+assert.equal(ev3Draft.modelKey, 'ev3');
 
 console.log('dealerAiVehicleConfigureFlow tests OK');

@@ -1,6 +1,10 @@
 import { calculatePrice } from '../../logic/priceCalculator.js';
 import { getManufacturerModel } from '../../data/manufacturer/manufacturerRegistry.js';
 import {
+  resolveConfigureModel,
+  resolveConfigureModelKey,
+} from '../configuration/configureModelBridge.js';
+import {
   buildDisplayPriceFromEngine,
   getAmountFromEnginePricing,
   normalizePaymentMode,
@@ -105,6 +109,7 @@ function priceRegistryEvConfiguration({
 export function priceConfiguration({
   brand,
   model,
+  modelKey,
   trimId,
   engineId,
   packageIds = [],
@@ -117,7 +122,8 @@ export function priceConfiguration({
   paymentType = 'leasing',
   colorId,
 }) {
-  const mfg = getManufacturerModel(brand, model);
+  const key = modelKey ?? resolveConfigureModelKey(brand, model);
+  const mfg = key ? resolveConfigureModel(key) : getManufacturerModel(brand, model);
   if (!mfg) return null;
 
   const dealerConditions = conditionsArg ?? getDealerSeed(dealerId);
@@ -143,7 +149,7 @@ export function priceConfiguration({
   }
 
   let pricing;
-  if (mfg.engine === 'sportage') {
+  if (mfg.engine === 'sportage' && !mfg._fallback) {
     pricing = calculatePrice({
       model: mfg.model,
       trimId: trimId ?? mfg.defaultTrimId,
@@ -156,7 +162,7 @@ export function priceConfiguration({
       colorId,
       dealerConditions,
     });
-  } else if (['ev3', 'ev4', 'picanto', 'niro', 'ceed'].includes(mfg.engine)) {
+  } else if (mfg.data?.variants?.length) {
     pricing = priceRegistryEvConfiguration({
       mfg,
       trimId: trimId ?? mfg.defaultTrimId,

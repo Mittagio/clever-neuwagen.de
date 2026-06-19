@@ -694,6 +694,21 @@
   color: #92400e;
 }
 
+.dai-model-selected {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #f0f6ff;
+  border: 1px solid rgba(26, 92, 255, 0.15);
+  text-align: center;
+}
+
+.dai-model-selected__label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a5cff;
+}
+
 .dai-model-options {
   padding: 16px;
   border: 1px solid #e8edf3;

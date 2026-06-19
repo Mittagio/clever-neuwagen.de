@@ -1,0 +1,207 @@
+/**
+ * Kia EV2 – Herstellerdatenmodell
+ * Quelle: Kia-Germany-EV2-Preisliste.pdf (2026-05-29)
+ */
+export const kiaEv2 = {
+  brand: 'Kia',
+  model: 'EV2',
+  modelKey: 'ev2',
+  modelYear: '2026',
+  priceListDate: '2026-05-29',
+  tagline: 'Der kompakte Elektro-Stadtflitzer',
+
+  admin: {
+    status: 'review',
+    priceListDate: '2026-05-29',
+    priceListSource: 'Kia-Germany-EV2-Preisliste.pdf',
+    lastUpdated: '2026-05-29',
+    updatedBy: 'Clever-Neuwagen Import',
+  },
+
+  colors: [
+    { id: 'magma-red', label: 'Magma-Rot Metallic', priceGross: 0 },
+    { id: 'carraraweiss', label: 'Carraraweiß', priceGross: 390 },
+    { id: 'frostblau', label: 'Frostblau', priceGross: 390 },
+    { id: 'wolfgrau', label: 'Wolfgrau Metallic', priceGross: 790 },
+    { id: 'zilinaschwarz', label: 'Zilinaschwarz Metallic', priceGross: 790 },
+    { id: 'pentametal', label: 'Pentametal Metallic', priceGross: 790 },
+    { id: 'deluxeweiß', label: 'Deluxeweiß Pearl Metallic', priceGross: 990 },
+  ],
+
+  trims: [
+    {
+      id: 'light',
+      name: 'Light',
+      baseEquipment: ['ev2-rueckfahrkamera', 'ev2-parksensoren'],
+      availablePackages: [],
+    },
+    {
+      id: 'air',
+      name: 'Air',
+      baseEquipment: ['ev2-rueckfahrkamera', 'ev2-parksensoren', 'ev2-totwinkel'],
+      availablePackages: ['ev2-winter', 'ev2-sitz'],
+    },
+    {
+      id: 'earth',
+      name: 'Earth',
+      baseEquipment: [
+        'ev2-sitzheizung',
+        'ev2-waermepumpe',
+        'ev2-rueckfahrkamera',
+        'ev2-parksensoren',
+      ],
+      availablePackages: [
+        'ev2-winter-connect',
+        'ev2-22kw-ac',
+        'ev2-technology',
+        'ev2-drivewise-park',
+        'ev2-design',
+        'ev2-comfort',
+        'ev2-glasdach',
+        'ev2-sitz',
+      ],
+    },
+    {
+      id: 'gt-line',
+      name: 'GT-Line',
+      baseEquipment: [
+        'ev2-waermepumpe',
+        'ev2-sitzheizung',
+        'ev2-rueckfahrkamera',
+        'ev2-parksensoren',
+      ],
+      includedPackages: ['ev2-drivewise-park'],
+      availablePackages: [
+        'ev2-winter-connect',
+        'ev2-22kw-ac',
+        'ev2-technology',
+        'ev2-drivewise-park',
+        'ev2-comfort',
+        'ev2-glasdach',
+      ],
+    },
+  ],
+
+  packages: [
+    {
+      id: 'ev2-winter',
+      name: 'Winter-Paket',
+      priceGross: 300,
+      rateDelta: 3,
+      description: 'Sitzheizung vorn, Lenkradheizung',
+      features: ['ev2-sitzheizung', 'ev2-lenkradheizung'],
+      availableTrims: ['air'],
+    },
+    {
+      id: 'ev2-winter-connect',
+      name: 'Winter-Connect-Paket',
+      priceGross: 1390,
+      rateDelta: 14,
+      description: 'V2L, Wärmepumpe, 230-V-Steckdose hinten',
+      features: ['ev2-v2l', 'ev2-waermepumpe'],
+      availableTrims: ['earth', 'gt-line'],
+    },
+    {
+      id: 'ev2-sitz',
+      name: 'Sitz-Paket',
+      priceGross: 300,
+      rateDelta: 3,
+      description: '4-Sitz-Konfiguration, umklappbare Rücksitze',
+      features: ['ev2-sitzpaket'],
+      availableTrims: ['air', 'earth'],
+    },
+    {
+      id: 'ev2-22kw-ac',
+      name: '22-kW-AC-Paket',
+      priceGross: 990,
+      rateDelta: 10,
+      description: 'On-Board-Charger 22 kW (nur mit Winter-Connect)',
+      features: ['ev2-22kw'],
+      availableTrims: ['earth', 'gt-line'],
+      requiresPackages: ['ev2-winter-connect'],
+    },
+    {
+      id: 'ev2-technology',
+      name: 'Technology-Paket',
+      priceGross: 1190,
+      rateDelta: 12,
+      description: 'Navigation ccNC, Harman Kardon, HDA 2.0',
+      features: ['ev2-navigation', 'ev2-harman'],
+      availableTrims: ['earth', 'gt-line'],
+      requiresPackages: ['ev2-winter-connect'],
+    },
+    {
+      id: 'ev2-drivewise-park',
+      name: 'DriveWise Park-Paket',
+      priceGross: 990,
+      rateDelta: 10,
+      description: '360° Kamera, Remote Park Assist, Totwinkel-Monitor',
+      features: ['ev2-360-kamera', 'ev2-remote-parken', 'ev2-totwinkel-monitor'],
+      availableTrims: ['earth', 'gt-line'],
+      requiresPackages: ['ev2-winter-connect', 'ev2-technology'],
+    },
+    {
+      id: 'ev2-design',
+      name: 'Design-Paket',
+      priceGross: 990,
+      rateDelta: 10,
+      description: '18-Zoll-Felgen, Privacy-Verglasung, Ambiente-Beleuchtung',
+      features: ['ev2-design'],
+      availableTrims: ['earth'],
+      requiresPackages: ['ev2-winter-connect', 'ev2-technology', 'ev2-drivewise-park'],
+    },
+    {
+      id: 'ev2-comfort',
+      name: 'Comfort-Paket',
+      priceGross: 1090,
+      rateDelta: 11,
+      description: 'Memory-Funktion, Sitzventilation, Digital Key 2.0',
+      features: ['ev2-sitzbelueftung'],
+      availableTrims: ['earth', 'gt-line'],
+      requiresPackages: ['ev2-technology', 'ev2-drivewise-park'],
+    },
+    {
+      id: 'ev2-glasdach',
+      name: 'Glasdach-Paket',
+      priceGross: 990,
+      rateDelta: 10,
+      description: 'Elektrisches Panorama-Glasdach',
+      features: ['ev2-glasdach'],
+      availableTrims: ['earth', 'gt-line'],
+      requiresPackages: ['ev2-technology', 'ev2-drivewise-park', 'ev2-comfort'],
+    },
+  ],
+
+  accessories: [],
+
+  equipment: [
+    { id: 'ev2-waermepumpe', name: 'Wärmepumpe', standardInTrims: ['earth', 'gt-line'], availableViaPackages: ['ev2-winter-connect'] },
+    { id: 'ev2-sitzheizung', name: 'Sitzheizung vorne', standardInTrims: ['earth', 'gt-line'], availableViaPackages: ['ev2-winter'] },
+    { id: 'ev2-lenkradheizung', name: 'Lenkradheizung', standardInTrims: [], availableViaPackages: ['ev2-winter'] },
+    { id: 'ev2-v2l', name: 'V2L (Vehicle-to-Load)', standardInTrims: [], availableViaPackages: ['ev2-winter-connect'] },
+    { id: 'ev2-rueckfahrkamera', name: 'Rückfahrkamera', standardInTrims: ['light', 'air', 'earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev2-parksensoren', name: 'Parksensoren vorn und hinten', standardInTrims: ['light', 'air', 'earth', 'gt-line'], availableViaPackages: [] },
+    { id: 'ev2-totwinkel', name: 'Totwinkelassistent', standardInTrims: ['air'], availableViaPackages: [] },
+    { id: 'ev2-360-kamera', name: '360° Kamera', standardInTrims: [], availableViaPackages: ['ev2-drivewise-park'] },
+    { id: 'ev2-remote-parken', name: 'Remote Park Assist', standardInTrims: [], availableViaPackages: ['ev2-drivewise-park'] },
+    { id: 'ev2-totwinkel-monitor', name: 'Totwinkel-Monitor', standardInTrims: [], availableViaPackages: ['ev2-drivewise-park'] },
+    { id: 'ev2-harman', name: 'Harman Kardon', standardInTrims: [], availableViaPackages: ['ev2-technology'] },
+    { id: 'ev2-glasdach', name: 'Panorama-Glasdach', standardInTrims: [], availableViaPackages: ['ev2-glasdach'] },
+  ],
+
+  variants: [
+    { id: 'ev2-light-42', trimId: 'light', engineId: 'ev-std', priceGross: 26600, baseLeasingRate: 219 },
+    { id: 'ev2-air-42', trimId: 'air', engineId: 'ev-std', priceGross: 28990, baseLeasingRate: 239 },
+    { id: 'ev2-earth-42', trimId: 'earth', engineId: 'ev-std', priceGross: 31290, baseLeasingRate: 249 },
+    { id: 'ev2-air-61', trimId: 'air', engineId: 'ev-long', priceGross: 33490, baseLeasingRate: 239 },
+    { id: 'ev2-earth-61', trimId: 'earth', engineId: 'ev-long', priceGross: 35790, baseLeasingRate: 259 },
+    { id: 'ev2-gt-line-61', trimId: 'gt-line', engineId: 'ev-long', priceGross: 36890, baseLeasingRate: 279 },
+  ],
+
+  engines: [
+    { id: 'ev-std', name: 'Standard Range 42,2 kWh', powerKw: 108, rangeKm: 317 },
+    { id: 'ev-long', name: 'Long Range 61,0 kWh', powerKw: 99.5, rangeKm: 453 },
+  ],
+};
+
+export default kiaEv2;

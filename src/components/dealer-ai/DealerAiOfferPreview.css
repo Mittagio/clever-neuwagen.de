@@ -1,3 +1,109 @@
+.dai-offer-preview--calm {
+  gap: 0.65rem;
+}
+
+.dai-offer-preview--calm .dai-offer-preview__subtitle {
+  display: none;
+}
+
+.dai-offer-preview__hero-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dai-offer-preview__hero-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.dai-offer-preview__hero-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.dai-offer-preview__hero-budget {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dai-offer-preview__hero-budget.is-ok {
+  color: #1a7f37;
+}
+
+.dai-offer-preview__hero-budget.is-over {
+  color: #9a6700;
+}
+
+.dai-offer-preview__block {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.dai-offer-preview__block h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.dai-offer-preview__line {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dai-offer-preview__muted {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.dai-offer-preview__rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dai-offer-preview__rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.88rem;
+}
+
+.dai-offer-preview__rows dt {
+  color: #64748b;
+}
+
+.dai-offer-preview__rows dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.dai-offer-preview__list {
+  margin: 0 0 0.35rem;
+  padding: 0 0 0 1rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
 .dai-offer-preview {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,192 @@
+.dai-configure--seller {
+  gap: 0.75rem;
+}
+
+.dai-configure--studio {
+  max-width: 40rem;
+}
+
+.dai-config-sticky-price {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -0.25rem;
+  padding: 0.25rem 0 0.5rem;
+  background: linear-gradient(#fff 70%, rgba(255, 255, 255, 0));
+}
+
+.dai-config-sticky-price__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+.dai-config-sticky-price__info {
+  min-width: 0;
+}
+
+.dai-config-sticky-price__vehicle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.92;
+}
+
+.dai-config-sticky-price__meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.65;
+}
+
+.dai-config-sticky-price__amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.dai-config-sticky-price__value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.dai-config-sticky-price__unit {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.dai-config-sticky-price__budget {
+  margin: 0.35rem 0 0;
+  padding: 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dai-config-sticky-price__budget.is-ok {
+  color: #1a7f37;
+}
+
+.dai-config-sticky-price__budget.is-over {
+  color: #9a6700;
+}
+
+.dai-config-studio {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 1rem 1.05rem 1.15rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dai-config-customer-fold {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
+  background: #fafbfc;
+  font-size: 0.88rem;
+}
+
+.dai-config-customer-fold summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dai-config-customer-fold__body {
+  margin-top: 0.45rem;
+  color: #334155;
+}
+
+.dai-config-customer-fold__body p {
+  margin: 0.15rem 0;
+}
+
+.dai-config-live-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: #f0f6ff;
+  border: 1px solid rgba(26, 92, 255, 0.15);
+}
+
+.dai-config-live-rate__main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dai-config-live-rate__vehicle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.dai-config-live-rate__price {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary, #1a5cff);
+  white-space: nowrap;
+}
+
+.dai-config-live-rate__budget {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dai-config-live-rate__budget.is-ok {
+  color: #1a7f37;
+}
+
+.dai-config-live-rate__budget.is-over {
+  color: #9a6700;
+}
+
+.dai-config-card--vehicle {
+  padding: 0.85rem 0.95rem;
+}
+
+.dai-config-card--conditions {
+  padding: 0.75rem 0.95rem;
+}
+
+.dai-config-conditions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.65rem;
+}
+
+.dai-config-freetext--inline {
+  margin-top: 0.55rem;
+}
+
+.dai-config-freetext--inline .dai-config-field__input {
+  width: 100%;
+}
+
+.dai-config-card--customer {
+  padding: 0.75rem 0.95rem;
+}
+
+.dai-config-card--customer .dai-config-grid {
+  gap: 0.5rem;
+}
+
 .dai-configure {
   display: flex;
   flex-direction: column;
@@ -434,6 +623,14 @@
 
 .dai-config-recommendation-checks .is-warn {
   color: #9a6700;
+}
+
+.dai-config-card--equipment {
+  padding-bottom: 8px;
+}
+
+.dai-config-card--equipment .vd-wish {
+  margin: 0;
 }
 
 .dai-config-actions {
