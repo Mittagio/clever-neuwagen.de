@@ -130,6 +130,50 @@ export function shouldElevateUnterlagen(vehicleCards = []) {
   return vehicleCards.some((c) => ['sent', 'opened', 'accepted'].includes(c.offer?.status));
 }
 
+const UNTERLAGEN_DONE_STATUSES = new Set(['uploaded', 'checked', 'replaced', 'not_needed']);
+const FINANCE_PAYMENT_TYPES = new Set(['leasing', 'financing', 'threeWayFinancing']);
+
+function needsSelbstauskunftForPayment(paymentType = '') {
+  return FINANCE_PAYMENT_TYPES.has(paymentType);
+}
+
+function getSelbstauskunftFromData(unterlagen = {}) {
+  return unterlagen?.selbstauskunft ?? { status: 'not_started' };
+}
+
+function isSelbstauskunftComplete(selbstauskunft = {}) {
+  return selbstauskunft.status === 'completed' || selbstauskunft.status === 'checked';
+}
+
+export function countUnterlagenOpenTasks(lead = {}, paymentType = null) {
+  const summary = computeUnterlagenSummary(lead, paymentType);
+  const pt = paymentType ?? lead?.paymentType ?? 'leasing';
+  const showSa = needsSelbstauskunftForPayment(pt);
+  const selbstauskunft = getSelbstauskunftFromData(summary.data);
+  const saComplete = isSelbstauskunftComplete(selbstauskunft);
+
+  const openCount = summary.slots.filter((slot) => {
+    if (slot.id === 'selbstauskunft' && showSa) return !saComplete;
+    return !UNTERLAGEN_DONE_STATUSES.has(summary.items[slot.id]?.status);
+  }).length;
+
+  return { openCount, summary, showSa, selbstauskunft, saComplete };
+}
+
+export function buildUnterlagenHintText(lead = {}, paymentType = null) {
+  const { openCount, showSa, saComplete } = countUnterlagenOpenTasks(lead, paymentType);
+  if (openCount <= 0) return null;
+  if (openCount === 1 && showSa && !saComplete) return 'Selbstauskunft fehlt';
+  if (openCount === 1) return '1 Unterlage fehlt';
+  return `${openCount} Unterlagen fehlen`;
+}
+
+export function formatUnterlagenOpenLabel(openCount, { showSa = false, saComplete = true } = {}) {
+  if (openCount <= 0) return 'Alles erledigt';
+  if (openCount === 1 && showSa && !saComplete) return '1 Aufgabe offen';
+  return `${openCount} Aufgaben offen`;
+}
+
 export function attachFileToUnterlageSlot(unterlagen, slotId, file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

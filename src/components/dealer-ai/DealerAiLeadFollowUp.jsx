@@ -36,8 +36,10 @@ import {
 import {
   buildCleverActionRecommendation,
   cleverActionToHint,
+  CLEVER_ACTION_IDS,
   formatCleverActionFollowedHistoryText,
 } from '../../services/crm/cleverActionEngine.js';
+import { buildUnterlagenHintText } from '../../services/cleverUnterlagen.js';
 import {
   buildOfferMailtoHref,
   buildOfferShareMessage,
@@ -50,6 +52,7 @@ import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteCommunication from './CustomerAkteCommunication.jsx';
+import CustomerAkteActivities from './CustomerAkteActivities.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
@@ -337,6 +340,13 @@ export default function DealerAiLeadFollowUp({
     () => cleverActionToHint(cleverRecommendation, { telHref }),
     [cleverRecommendation, telHref],
   );
+
+  const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
+  const documentsHint = useMemo(() => {
+    if (!lead) return null;
+    if (cleverRecommendation?.actionId === CLEVER_ACTION_IDS.DOCUMENTS_MISSING) return null;
+    return buildUnterlagenHintText(lead, unterlagenPaymentType);
+  }, [lead, unterlagenPaymentType, cleverRecommendation?.actionId]);
 
   const lastLoggedCleverActionRef = useRef(null);
 
@@ -675,14 +685,10 @@ export default function DealerAiLeadFollowUp({
         telHref={telHref}
         whatsappHref={cleverWhatsappHref}
         mailHref={cleverMailHref}
+        documentsHint={documentsHint}
         onAction={handleCleverAction}
         onFallback={() => openSheet(SHEETS.customer)}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-      />
-
-      <CustomerAkteKundenhelfer
-        notes={kundenhelferNotes}
-        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
       />
 
       <CustomerAkteBoard
@@ -699,12 +705,22 @@ export default function DealerAiLeadFollowUp({
         </div>
       )}
 
-      {unterlagenBlock}
+      <CustomerAkteKundenhelfer
+        notes={kundenhelferNotes}
+        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
+      />
 
       <CustomerAkteCommunication
         history={history}
         onOpenHistory={() => openSheet(SHEETS.history)}
       />
+
+      <CustomerAkteActivities
+        history={history}
+        onOpenHistory={() => openSheet(SHEETS.history)}
+      />
+
+      {unterlagenBlock}
 
       {/* ── Mehr ── */}
       <LeadDetailPanel
@@ -1155,7 +1171,7 @@ export default function DealerAiLeadFollowUp({
       <LeadDetailPanel
         open={activeSheet === SHEETS.unterlagen}
         onClose={closeSheet}
-        title="Clever Unterlagen"
+        title="Abschluss & Unterlagen"
       >
         <CleverUnterlagenSheet
           lead={lead}

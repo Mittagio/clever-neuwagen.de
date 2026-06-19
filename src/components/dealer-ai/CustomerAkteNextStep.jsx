@@ -10,6 +10,7 @@ export default function CustomerAkteNextStep({
   onAction,
   onFallback,
   onUnterlagen,
+  documentsHint,
 }) {
   const data = recommendation ?? hint;
   if (!data?.title && !data?.text) return null;
@@ -80,6 +81,11 @@ export default function CustomerAkteNextStep({
             </button>
             {showWhy && <p className="cust-akte-nbs__why-text">{reason}</p>}
           </div>
+        )}
+        {documentsHint && (
+          <p className="cust-akte-nbs__docs-hint" role="status">
+            <span aria-hidden>⚠</span> {documentsHint}
+          </p>
         )}
       </div>
     </section>

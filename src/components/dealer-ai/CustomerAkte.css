@@ -466,6 +466,61 @@
   color: var(--cust-muted);
 }
 
+.cust-akte-nbs__docs-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #92400e;
+  line-height: 1.35;
+}
+
+.cust-akte-activities {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cust-akte-activities__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--cust-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cust-akte-activities__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cust-akte-activities__item:last-child {
+  border-bottom: none;
+}
+
+.cust-akte-activities__when {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cust-muted);
+}
+
+.cust-akte-activities__text {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--cust-text);
+}
+
 .cust-akte-nbs__label {
   margin: 0;
   font-size: 0.8125rem;
@@ -867,6 +922,66 @@
   margin: 0;
 }
 
+.cust-akte-unterlagen--compact {
+  border: 1px solid var(--cust-border);
+  border-radius: 12px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+
+.cust-akte-unterlagen__toggle {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-unterlagen__toggle-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--cust-muted);
+}
+
+.cust-akte-unterlagen__toggle-meta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cust-muted);
+  white-space: nowrap;
+}
+
+.cust-akte-unterlagen__toggle-meta--open {
+  color: #b45309;
+}
+
+.cust-akte-unterlagen__chevron {
+  font-size: 0.75rem;
+  color: var(--cust-muted);
+}
+
+.cust-akte-unterlagen__panel {
+  padding: 0 14px 12px;
+  border-top: 1px solid #eef2f7;
+}
+
+.cust-akte-unterlagen__open {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 40px;
+  border: 1px solid var(--cust-border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cust-text);
+  cursor: pointer;
+}
+
 .cust-akte-unterlagen__list {
   display: flex;
   flex-direction: column;
@@ -874,10 +989,7 @@
   width: 100%;
   margin: 0;
   padding: 0;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
+  list-style: none;
 }
 
 .cust-akte-unterlagen__row {
@@ -885,7 +997,7 @@
   grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #f1f5f9;
 }
 

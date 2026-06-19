@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import {
-  computeUnterlagenSummary,
+  countUnterlagenOpenTasks,
+  formatUnterlagenOpenLabel,
   UNTERLAGEN_STATUS,
 } from '../../services/cleverUnterlagen.js';
 import {
@@ -35,43 +37,56 @@ export default function CustomerAkteUnterlagen({
   paymentType,
   onOpen,
 }) {
+  const [expanded, setExpanded] = useState(false);
   const pt = paymentType ?? lead?.paymentType ?? 'leasing';
-  const summary = computeUnterlagenSummary(lead, pt);
-  const showSa = needsSelbstauskunft(pt);
+  const { openCount, summary, saComplete } = countUnterlagenOpenTasks(lead, pt);
+  const showSaSlot = needsSelbstauskunft(pt);
   const selbstauskunft = getSelbstauskunft(summary.data);
-  const previewSlots = summary.slots.filter((slot) => (
-    ['selbstauskunft', 'ausweis', 'gehaltsnachweis'].includes(slot.id)
-    || (!showSa && slot.id === 'ausweis')
-  )).slice(0, 4);
+  const statusLabel = formatUnterlagenOpenLabel(openCount, { showSa: showSaSlot, saComplete });
 
-  const rows = previewSlots.length > 0
-    ? previewSlots
-    : summary.slots.slice(0, 3);
+  function toggleExpanded() {
+    setExpanded((v) => !v);
+  }
 
   return (
-    <section className="cust-akte-unterlagen" aria-labelledby="cust-akte-unterlagen-title">
-      <div className="cust-akte-section__head">
-        <h2 id="cust-akte-unterlagen-title" className="cust-akte-section__title">Clever Unterlagen</h2>
-        <button type="button" className="cust-akte-section__link" onClick={onOpen}>
-          Öffnen
-        </button>
-      </div>
-
-      <button type="button" className="cust-akte-unterlagen__list" onClick={onOpen}>
-        {rows.map((slot) => {
-          const item = summary.items[slot.id];
-          const line = formatSlotLine(slot.id, item, selbstauskunft, showSa);
-          return (
-            <div key={slot.id} className="cust-akte-unterlagen__row">
-              <span className="cust-akte-unterlagen__icon" aria-hidden>
-                {SLOT_ICONS[slot.id] ?? '📎'}
-              </span>
-              <span className="cust-akte-unterlagen__name">{slot.label}</span>
-              <span className="cust-akte-unterlagen__state">{line}</span>
-            </div>
-          );
-        })}
+    <section className="cust-akte-unterlagen cust-akte-unterlagen--compact" aria-labelledby="cust-akte-unterlagen-title">
+      <button
+        type="button"
+        className="cust-akte-unterlagen__toggle"
+        onClick={toggleExpanded}
+        aria-expanded={expanded}
+      >
+        <span id="cust-akte-unterlagen-title" className="cust-akte-unterlagen__toggle-title">
+          <span aria-hidden>📂</span> Abschluss & Unterlagen
+        </span>
+        <span className={`cust-akte-unterlagen__toggle-meta${openCount > 0 ? ' cust-akte-unterlagen__toggle-meta--open' : ''}`}>
+          {statusLabel}
+        </span>
+        <span className="cust-akte-unterlagen__chevron" aria-hidden>{expanded ? '▾' : '▸'}</span>
       </button>
+
+      {expanded && (
+        <div className="cust-akte-unterlagen__panel">
+          <ul className="cust-akte-unterlagen__list">
+            {summary.slots.map((slot) => {
+              const item = summary.items[slot.id];
+              const line = formatSlotLine(slot.id, item, selbstauskunft, showSaSlot);
+              return (
+                <li key={slot.id} className="cust-akte-unterlagen__row">
+                  <span className="cust-akte-unterlagen__icon" aria-hidden>
+                    {SLOT_ICONS[slot.id] ?? '📎'}
+                  </span>
+                  <span className="cust-akte-unterlagen__name">{slot.label}</span>
+                  <span className="cust-akte-unterlagen__state">{line}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <button type="button" className="cust-akte-unterlagen__open" onClick={onOpen}>
+            Unterlagen verwalten
+          </button>
+        </div>
+      )}
     </section>
   );
 }
