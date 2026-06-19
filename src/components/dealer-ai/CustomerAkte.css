@@ -401,6 +401,69 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin: 4px 0 8px;
+}
+
+.cust-akte-nbs__card--primary {
+  background: linear-gradient(135deg, #eef6ff 0%, #fff 58%);
+  border: 1px solid rgba(26, 92, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  padding: 22px 20px;
+}
+
+.cust-akte-nbs__headline {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--cust-text);
+}
+
+.cust-akte-nbs__secondary-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cust-akte-nbs__secondary {
+  flex: 1;
+  min-width: 120px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: var(--cust-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cust-akte-nbs__why {
+  margin-top: 2px;
+}
+
+.cust-akte-nbs__why-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-primary, #1a5cff);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cust-akte-nbs__why-text {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--cust-muted);
 }
 
 .cust-akte-nbs__label {

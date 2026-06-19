@@ -621,7 +621,7 @@ export default function DealerAIPage() {
         },
       });
     }
-    showToast('Eintrag in Historie gespeichert');
+    if (!options.silent) showToast('Eintrag in Historie gespeichert');
   }
 
   function handleCaptureSave(patch, meta = {}) {

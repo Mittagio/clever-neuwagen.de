@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   formatReservedModelBadge,
@@ -27,13 +27,22 @@ import {
 import { getRelatedLeadsByCustomer } from '../../services/dealerAiCustomer.js';
 import {
   buildVehicleOpportunityCards,
-  buildNextBestStepHint,
   computeAkteCleverStaerke,
   formatVehicleCardConditions,
   formatVehicleCardPrice,
   formatVehicleCardTitle,
   hasVehicleOffer,
 } from '../../services/customerAkte.js';
+import {
+  buildCleverActionRecommendation,
+  cleverActionToHint,
+  formatCleverActionFollowedHistoryText,
+} from '../../services/crm/cleverActionEngine.js';
+import {
+  buildOfferMailtoHref,
+  buildOfferShareMessage,
+  buildOfferWhatsappHref,
+} from '../../services/vehicleOffer.js';
 import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
@@ -318,12 +327,26 @@ export default function DealerAiLeadFollowUp({
     hasNextStep: Boolean(nextStepId),
   }), [name, phone, email, kundenhelferNotes, vehicleCards.length, resolvedOffers.length, nextStepId]);
 
-  const nextBestStep = useMemo(() => buildNextBestStepHint({
-    customerName: name,
-    vehicleCards,
-    telHref,
+  const cleverRecommendation = useMemo(() => buildCleverActionRecommendation({
     lead,
-  }), [name, vehicleCards, telHref, lead]);
+    vehicleCards,
+    customerName: name,
+  }), [lead, vehicleCards, name]);
+
+  const nextBestStep = useMemo(
+    () => cleverActionToHint(cleverRecommendation, { telHref }),
+    [cleverRecommendation, telHref],
+  );
+
+  const lastLoggedCleverActionRef = useRef(null);
+
+  useEffect(() => {
+    if (!cleverRecommendation?.actionId || !lead?.id) return;
+    const logKey = `${lead.id}:${cleverRecommendation.actionId}`;
+    if (lastLoggedCleverActionRef.current === logKey) return;
+    lastLoggedCleverActionRef.current = logKey;
+    onAddHistory?.(cleverRecommendation.analyticsText, 'clever_action', { silent: true });
+  }, [cleverRecommendation, lead?.id, onAddHistory]);
 
   const cleverAntwortenContext = useMemo(() => buildCleverAntwortenContext({
     lead,
@@ -344,6 +367,29 @@ export default function DealerAiLeadFollowUp({
   );
 
   const primaryVehicleCard = vehicleCards[0];
+  const cleverOfferShareMessage = useMemo(() => {
+    if (!primaryVehicleCard) return '';
+    const offer = primaryVehicleCard.vehicleOffer ?? {};
+    return buildOfferShareMessage({
+      customerName: name,
+      vehicleTitle: formatVehicleCardTitle(primaryVehicleCard),
+      url: offer.onlineLink?.url ?? '',
+    });
+  }, [primaryVehicleCard, name]);
+
+  const cleverWhatsappHref = useMemo(
+    () => buildOfferWhatsappHref(phone, cleverOfferShareMessage),
+    [phone, cleverOfferShareMessage],
+  );
+
+  const cleverMailHref = useMemo(() => {
+    if (!primaryVehicleCard) return null;
+    return buildOfferMailtoHref(
+      email,
+      `Ihr Angebot: ${formatVehicleCardTitle(primaryVehicleCard)}`,
+      cleverOfferShareMessage,
+    );
+  }, [email, primaryVehicleCard, cleverOfferShareMessage]);
   const vehicleTitleForUnterlagen = primaryVehicleCard
     ? formatVehicleCardTitle(primaryVehicleCard)
     : headSubline;
@@ -537,6 +583,47 @@ export default function DealerAiLeadFollowUp({
     onPrepareOffer?.(model);
   }
 
+  function trackCleverActionFollowed(actionHint) {
+    if (!actionHint?.title) return;
+    onAddHistory?.(
+      formatCleverActionFollowedHistoryText(actionHint),
+      'clever_action',
+      { silent: true },
+    );
+  }
+
+  function handleCleverAction(actionHint) {
+    trackCleverActionFollowed(actionHint);
+    const handler = actionHint?.handlerType ?? actionHint?.action;
+    if (handler === 'offer_send') {
+      const cardId = actionHint?.meta?.cardId;
+      const card = cardId
+        ? vehicleCards.find((c) => c.id === cardId)
+        : vehicleCards[0];
+      if (card) {
+        handleVehicleOffer(card);
+      } else {
+        onPrepareOffer?.();
+      }
+      return;
+    }
+    if (handler === 'documents' || handler === 'leasing_submit' || handler === 'unterlagen') {
+      openSheet(SHEETS.unterlagen);
+      return;
+    }
+    if (handler === 'delivery_handover' || handler === 'delivery_plan') {
+      openCleverAntworten('delivery');
+      return;
+    }
+    if (handler === 'order') {
+      openSheet(SHEETS.more);
+      return;
+    }
+    if (handler !== 'call') {
+      openSheet(SHEETS.customer);
+    }
+  }
+
   function saveOutcomeSheet() {
     const chip = CALL_OUTCOME_CHIPS.find((c) => c.id === outcomeId);
     if (chip) {
@@ -584,7 +671,11 @@ export default function DealerAiLeadFollowUp({
 
       <CustomerAkteNextStep
         hint={nextBestStep}
+        recommendation={nextBestStep}
         telHref={telHref}
+        whatsappHref={cleverWhatsappHref}
+        mailHref={cleverMailHref}
+        onAction={handleCleverAction}
         onFallback={() => openSheet(SHEETS.customer)}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
       />

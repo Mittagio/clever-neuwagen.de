@@ -112,7 +112,7 @@ export default function BackendLeadAktePage() {
         },
       });
     }
-    showToast('Eintrag in Historie gespeichert');
+    if (!options.silent) showToast('Eintrag in Historie gespeichert');
   }
 
   function handlePrepareOffer(reservedModel) {
