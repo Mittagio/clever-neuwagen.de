@@ -34,6 +34,8 @@ export function computeOfferCalculation(vehicleConfiguration, offerConditions, d
     termMonths: offerConditions.termMonths,
     mileagePerYear: offerConditions.mileagePerYear,
     paymentType: paymentMode === 'finance' ? 'finance' : paymentMode === 'cash' ? 'cash' : 'leasing',
+    customerGroup: offerConditions.customerGroup ?? 'standard',
+    customDiscountPercent: offerConditions.customDiscountPercent,
   });
 
   if (!pricing) return null;
@@ -49,7 +51,7 @@ export function computeOfferCalculation(vehicleConfiguration, offerConditions, d
   const monthlyRate = detail?.amount ?? pricing.primaryRate ?? null;
 
   return {
-    configurationPrice: pricing.configurationPrice ?? null,
+    configurationPrice: pricing.configurationPrice ?? vehicleConfiguration.uvpConfigurationPrice ?? null,
     discountPercent: pricing.discountPercent ?? null,
     discountAmount: pricing.discountAmount ?? null,
     housePrice: pricing.housePrice ?? null,
@@ -57,10 +59,12 @@ export function computeOfferCalculation(vehicleConfiguration, offerConditions, d
     monthlyRate,
     leasingRate: pricing.leasingRate ?? null,
     financeRate: pricing.financeRate ?? null,
+    finalPayment: pricing.finalPayment ?? null,
     preparationFee: offerConditions.preparationFee,
     paymentType: offerConditions.paymentType,
     termMonths: offerConditions.termMonths,
     mileagePerYear: offerConditions.mileagePerYear,
     downPayment: offerConditions.downPayment,
+    customerGroup: offerConditions.customerGroup ?? 'standard',
   };
 }

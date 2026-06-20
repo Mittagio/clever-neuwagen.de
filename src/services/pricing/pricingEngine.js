@@ -25,13 +25,17 @@ function priceRegistryEvConfiguration({
   termMonths = DEFAULT_TERM,
   mileagePerYear = DEFAULT_MILEAGE,
   paymentType = 'leasing',
+  customerGroup = 'standard',
+  customDiscountPercent = null,
 }) {
   const data = mfg.data;
   const variant = data.variants.find((v) =>
     v.trimId === trimId && (!engineId || v.engineId === engineId),
   ) ?? data.variants.find((v) => v.trimId === trimId)
     ?? data.variants[data.variants.length - 1];
-  const discount = dealerConditions.discounts?.standard ?? 12;
+  const discount = customerGroup === 'custom' && customDiscountPercent != null
+    ? Number(customDiscountPercent)
+    : (dealerConditions.discounts?.[customerGroup] ?? dealerConditions.discounts?.standard ?? 12);
 
   let configurationPrice = variant.priceGross;
   let rateDelta = 0;
@@ -121,6 +125,8 @@ export function priceConfiguration({
   mileagePerYear = DEFAULT_MILEAGE,
   paymentType = 'leasing',
   colorId,
+  customerGroup = 'standard',
+  customDiscountPercent = null,
 }) {
   const key = modelKey ?? resolveConfigureModelKey(brand, model);
   const mfg = key ? resolveConfigureModel(key) : getManufacturerModel(brand, model);
@@ -161,6 +167,8 @@ export function priceConfiguration({
       paymentType,
       colorId,
       dealerConditions,
+      customerGroup,
+      customDiscountPercent,
     });
   } else if (mfg.data?.variants?.length) {
     pricing = priceRegistryEvConfiguration({
@@ -173,6 +181,8 @@ export function priceConfiguration({
       termMonths,
       mileagePerYear,
       paymentType,
+      customerGroup,
+      customDiscountPercent,
     });
   }
 

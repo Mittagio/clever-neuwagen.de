@@ -39,9 +39,18 @@
   color: #0f172a;
 }
 
+.dai-cond-hero__uvp-label {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
 .dai-cond-hero__uvp {
-  margin: 0.15rem 0 0;
-  font-size: 1.35rem;
+  margin: 0.1rem 0 0;
+  font-size: 1.65rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -203,6 +212,157 @@
   border-color: var(--color-primary, #1a5cff);
   background: var(--color-primary, #1a5cff);
   color: #fff;
+}
+
+/* ── Eingeklappte Konfiguration ── */
+
+.dai-cond-config-fold {
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
+  background: #fafbfc;
+  font-size: 0.84rem;
+}
+
+.dai-cond-config-fold summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #64748b;
+  list-style: none;
+}
+
+.dai-cond-config-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.dai-cond-config-fold__body {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+/* ── Step-Slider ── */
+
+.dai-cond-step {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  padding: 0.85rem 0.9rem;
+}
+
+.dai-cond-step__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.dai-cond-step__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.dai-cond-step__value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dai-cond-step__range {
+  width: 100%;
+  accent-color: var(--color-primary, #1a5cff);
+}
+
+.dai-cond-step__ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.dai-cond-chips--discount {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dai-cond-static-value {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-cond-custom-input--percent {
+  margin-top: 0.55rem;
+  max-width: 8rem;
+}
+
+.dai-cond-custom-input__suffix {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* ── Angebots-Live / Pending ── */
+
+.dai-cond-offer-live {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f0f6ff;
+  border: 1px solid rgba(26, 92, 255, 0.15);
+}
+
+.dai-cond-offer-live__label {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.dai-cond-offer-live__value {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-primary, #1a5cff);
+}
+
+.dai-cond-offer-live__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.76rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.dai-cond-offer-pending {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.dai-cond-offer-pending__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dai-cond-offer-pending__text {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
 }
 
 /* ── Aufklappbare Chip-Bereiche ── */
@@ -378,15 +538,25 @@
   color: #64748b;
 }
 
+.dai-cond-sticky-foot--single {
+  gap: 0.35rem;
+}
+
+.dai-cond-sticky-foot__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
 .dai-cond-sticky-foot__cta {
   width: 100%;
   border: none;
   border-radius: 14px;
   background: var(--color-primary, #1a5cff);
   color: #fff;
-  font-size: 1rem;
   font-weight: 700;
-  padding: 0.95rem 1rem;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(26, 92, 255, 0.28);
 }

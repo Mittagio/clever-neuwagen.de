@@ -986,7 +986,6 @@ export default function DealerAIPage() {
           <DealerAiConditionsStep
             draft={configureDraft}
             vehicleConfiguration={vehicleConfiguration}
-            parsed={parsed}
             conditions={conditions}
             onDraftChange={handleConfigureDraftChange}
             onContinue={handleConditionsToPreview}

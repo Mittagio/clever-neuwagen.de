@@ -135,9 +135,11 @@ function normalizeInput(input = {}, conditions = dealerConditionsTrinkle) {
   const color = resolveColor(input.colorId, trimId);
 
   const customerGroup =
-    input.customerGroup && conditions.discounts?.[input.customerGroup] != null
-      ? input.customerGroup
-      : DEFAULT_CUSTOMER_GROUP;
+    input.customerGroup === 'custom'
+      ? 'custom'
+      : input.customerGroup && conditions.discounts?.[input.customerGroup] != null
+        ? input.customerGroup
+        : DEFAULT_CUSTOMER_GROUP;
 
   const paymentType = ['leasing', 'finance', 'cash'].includes(input.paymentType)
     ? input.paymentType
@@ -170,6 +172,7 @@ function normalizeInput(input = {}, conditions = dealerConditionsTrinkle) {
     mileagePerYear,
     downPayment,
     customerGroupRequested: input.customerGroup,
+    customDiscountPercent: input.customDiscountPercent ?? null,
     variant,
     color,
   };
@@ -333,7 +336,9 @@ export function calculatePrice(input = {}, conditionsArg) {
 
   const configurationPrice = variantPrice + selectedColor.priceGross + packagesPrice + accessoriesPrice;
 
-  const discountPercent = resolveDiscountPercent(config.customerGroup, conditions);
+  const discountPercent = config.customerGroup === 'custom' && config.customDiscountPercent != null
+    ? Number(config.customDiscountPercent)
+    : resolveDiscountPercent(config.customerGroup, conditions);
   const discountAmount = Math.round(configurationPrice * (discountPercent / 100));
   const housePrice = configurationPrice - discountAmount;
   const preparationFee = conditions.preparationFee ?? 0;

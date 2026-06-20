@@ -29,6 +29,11 @@ export {
 export { computeOfferCalculation } from './configuration/offerCalculation.js';
 export { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
 export { computeUvpPricing, formatUvpLineAmount } from './configuration/uvpPricing.js';
+export {
+  computeConditionsStepPreview,
+  buildConditionsFooterAction,
+  DISCOUNT_GROUP_OPTIONS,
+} from './configuration/conditionsStepPreview.js';
 
 export { CONFIGURATOR_AUDIENCE } from './vehicleConfigurationModes.js';
 

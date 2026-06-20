@@ -17,6 +17,8 @@ export function buildOfferConditionsFromDraft(draft, dealerConditions = null) {
     desiredRate: draft?.desiredRate ?? null,
     desiredPrice: draft?.desiredPrice ?? null,
     desiredDeliveryDate: draft?.desiredDeliveryDate ?? null,
+    customerGroup: draft?.customerGroup ?? 'standard',
+    customDiscountPercent: draft?.customDiscountPercent ?? null,
     extras: { ...(draft?.extras ?? {}) },
   };
 }
@@ -33,6 +35,8 @@ export function applyOfferConditionsToDraft(draft, offerConditions) {
     desiredRate: offerConditions.desiredRate,
     desiredPrice: offerConditions.desiredPrice,
     desiredDeliveryDate: offerConditions.desiredDeliveryDate,
+    customerGroup: offerConditions.customerGroup,
+    customDiscountPercent: offerConditions.customDiscountPercent,
     extras: { ...offerConditions.extras },
   };
 }

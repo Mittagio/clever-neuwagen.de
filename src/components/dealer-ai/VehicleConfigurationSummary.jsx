@@ -14,6 +14,7 @@ export default function VehicleConfigurationSummary({
   summary,
   compact = false,
   showSelections = true,
+  hidePrice = false,
 }) {
   const uvp = configuration ?? null;
   const lineItems = uvp?.uvpLineItems ?? summary?.uvpLineItems ?? [];
@@ -23,6 +24,10 @@ export default function VehicleConfigurationSummary({
   const includedPackages = uvp?.includedPackages ?? [];
   const dealerExtras = uvp?.dealerExtras ?? [];
   const accessories = uvp?.accessories ?? [];
+
+  if (compact && hidePrice) {
+    return null;
+  }
 
   if (compact) {
     return (
@@ -35,7 +40,7 @@ export default function VehicleConfigurationSummary({
 
   return (
     <section className="vcfg-summary" aria-label="UVP-Konfiguration">
-      {lineItems.length > 0 && (
+      {!hidePrice && lineItems.length > 0 && (
         <dl className="vcfg-summary__lines">
           {lineItems.map((item) => (
             <div key={`${item.type}-${item.id}`} className="vcfg-summary__line">
@@ -46,10 +51,12 @@ export default function VehicleConfigurationSummary({
         </dl>
       )}
 
-      <div className="vcfg-summary__total">
-        <span>Konfigurationspreis (UVP)</span>
-        <strong>{formatCurrency(total)}</strong>
-      </div>
+      {!hidePrice && (
+        <div className="vcfg-summary__total">
+          <span>Konfigurationspreis (UVP)</span>
+          <strong>{formatCurrency(total)}</strong>
+        </div>
+      )}
 
       {showSelections && (selectedPackages.length > 0 || includedPackages.length > 0 || accessories.length > 0 || dealerExtras.length > 0) && (
         <ul className="vcfg-summary__selections">

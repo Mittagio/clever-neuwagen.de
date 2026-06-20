@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
-  buildBudgetPriceOptions,
-  buildBudgetRateOptions,
-} from '../../services/dealerAiMailExtractor.js';
-import { LEASING_MILEAGE_OPTIONS, LEASING_TERM_OPTIONS } from '../../data/dealerConditionsSchema.js';
+  buildConditionsFooterAction,
+  computeConditionsStepPreview,
+  DISCOUNT_GROUP_OPTIONS,
+  LEASING_MILEAGE_OPTIONS,
+  LEASING_TERM_OPTIONS,
+} from '../../services/configuration/conditionsStepPreview.js';
 import { vehicleConfigurationTitle } from '../../services/configuration/vehicleConfigurationModel.js';
 import VehicleConfigurationSummary from './VehicleConfigurationSummary.jsx';
 import './DealerAiConditionsStep.css';
@@ -15,14 +17,7 @@ const PAYMENT_CARDS = [
   { id: 'cash', label: 'Kauf', labelAlt: 'Barzahlung', hint: 'Einmalzahlung' },
 ];
 
-const TERM_PRIMARY = [24, 36, 48, 60];
-const MILEAGE_PRIMARY = [10000, 15000, 20000];
-const DOWN_PRIMARY = [0, 3000, 6000];
-
-const TERM_EXTENDED = LEASING_TERM_OPTIONS.filter((m) => !TERM_PRIMARY.includes(m));
-const MILEAGE_EXTENDED = LEASING_MILEAGE_OPTIONS.filter(
-  (km) => !MILEAGE_PRIMARY.includes(km) && km <= 30000,
-);
+const DOWN_CHIPS = [0, 3000, 6000];
 
 const DELIVERY_CHIPS = [
   { id: 'sofort', label: 'Sofort' },
@@ -37,15 +32,25 @@ function formatCurrency(amount) {
 }
 
 function formatMileage(km) {
-  return `${(km / 1000).toLocaleString('de-DE')}.000`;
+  return `${(km / 1000).toLocaleString('de-DE')}.000 km`;
 }
 
 function formatDownPayment(value) {
   return value === 0 ? '0 €' : `${value.toLocaleString('de-DE')} €`;
 }
 
-function formatTermChip(months, compact = false) {
-  return compact ? String(months) : `${months} Monate`;
+function nearestStepIndex(steps, value) {
+  if (!steps.length) return 0;
+  let bestIndex = 0;
+  let bestDiff = Math.abs(steps[0] - value);
+  steps.forEach((step, index) => {
+    const diff = Math.abs(step - value);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
 }
 
 function ChoiceChip({ label, selected, onClick, className = '' }) {
@@ -87,69 +92,51 @@ function SectionBlock({ title, children }) {
   );
 }
 
-function ExpandableChipSection({
-  title,
-  primaryValues,
-  extendedValues,
-  current,
-  onSelect,
-  formatPrimary,
-  formatExtended,
-  expandLabel,
-  extraContent = null,
-}) {
-  const inPrimary = primaryValues.includes(current);
-  const inExtended = extendedValues.includes(current);
-  const showCustomSelected = current != null && !inPrimary && !inExtended;
+function StepSlider({ label, steps, value, onChange, formatValue }) {
+  const index = nearestStepIndex(steps, value ?? steps[0]);
+  const current = steps[index];
 
   return (
-    <SectionBlock title={title}>
-      <div className="dai-cond-chips">
-        {primaryValues.map((value) => (
-          <ChoiceChip
-            key={value}
-            label={formatPrimary(value)}
-            selected={current === value}
-            onClick={() => onSelect(value)}
-          />
-        ))}
-        {showCustomSelected && (
-          <ChoiceChip
-            label={formatExtended?.(current) ?? String(current)}
-            selected
-            onClick={() => onSelect(current)}
-          />
-        )}
+    <div className="dai-cond-step">
+      <div className="dai-cond-step__head">
+        <span className="dai-cond-step__label">{label}</span>
+        <strong className="dai-cond-step__value">{formatValue(current)}</strong>
       </div>
-      {(extendedValues.length > 0 || extraContent) && (
-        <details className="dai-cond-more">
-          <summary>{expandLabel}</summary>
-          <div className="dai-cond-more__body">
-            {extendedValues.length > 0 && (
-              <div className="dai-cond-chips dai-cond-chips--extended">
-                {extendedValues.map((value) => (
-                  <ChoiceChip
-                    key={value}
-                    label={formatExtended?.(value) ?? String(value)}
-                    selected={current === value}
-                    onClick={() => onSelect(value)}
-                  />
-                ))}
-              </div>
-            )}
-            {extraContent}
-          </div>
-        </details>
-      )}
-    </SectionBlock>
+      <input
+        type="range"
+        className="dai-cond-step__range"
+        min={0}
+        max={Math.max(0, steps.length - 1)}
+        step={1}
+        value={index}
+        onChange={(event) => onChange(steps[Number(event.target.value)])}
+        aria-valuemin={steps[0]}
+        aria-valuemax={steps[steps.length - 1]}
+        aria-valuenow={current}
+        aria-label={label}
+      />
+      <div className="dai-cond-step__ends">
+        <span>{formatValue(steps[0])}</span>
+        <span>{formatValue(steps[steps.length - 1])}</span>
+      </div>
+    </div>
   );
 }
 
-/** Schritt 2 – Konditionen (Händlerwelt, keine Live-Rate) */
+function buildConfigFoldSummary(vehicleConfiguration) {
+  const parts = [];
+  if (vehicleConfiguration?.colorLabel) parts.push(vehicleConfiguration.colorLabel);
+  const pkgCount = vehicleConfiguration?.selectedPackages?.length ?? 0;
+  if (pkgCount > 0) parts.push(`${pkgCount} Paket${pkgCount > 1 ? 'e' : ''}`);
+  const accCount = vehicleConfiguration?.accessories?.length ?? 0;
+  if (accCount > 0) parts.push(`${accCount} Extra${accCount > 1 ? 's' : ''}`);
+  return parts.length ? parts.join(' · ') : 'Details anzeigen';
+}
+
+/** Schritt 2 – Konditionen */
 export default function DealerAiConditionsStep({
   draft,
   vehicleConfiguration,
-  parsed,
   conditions,
   onDraftChange,
   onContinue,
@@ -167,20 +154,14 @@ export default function DealerAiConditionsStep({
   const isThreeWay = paymentType === 'threeWayFinancing';
   const preparationFee = draft.preparationFee ?? conditions?.preparationFee ?? 1290;
 
-  const budgetRateOptions = useMemo(
-    () => buildBudgetRateOptions(draft.desiredRate).map((amount) => ({
-      id: String(amount),
-      label: `${amount.toLocaleString('de-DE')} €`,
-    })),
-    [draft.desiredRate],
+  const preview = useMemo(
+    () => computeConditionsStepPreview(vehicleConfiguration, draft, conditions),
+    [vehicleConfiguration, draft, conditions],
   );
 
-  const budgetPriceOptions = useMemo(
-    () => buildBudgetPriceOptions(draft.desiredPrice).map((amount) => ({
-      id: String(amount),
-      label: `${amount.toLocaleString('de-DE')} €`,
-    })),
-    [draft.desiredPrice],
+  const footerAction = useMemo(
+    () => buildConditionsFooterAction(preview),
+    [preview],
   );
 
   function patch(partial) {
@@ -196,16 +177,6 @@ export default function DealerAiConditionsStep({
     patch(next);
   }
 
-  function patchBudgetRate(value) {
-    if (!value) patch({ desiredRate: null });
-    else patch({ desiredRate: Number(value), desiredPrice: null });
-  }
-
-  function patchBudgetPrice(value) {
-    if (!value) patch({ desiredPrice: null });
-    else patch({ desiredPrice: Number(value), desiredRate: null });
-  }
-
   function applyCustomDownPayment() {
     const parsedAmount = Number(String(customDownPayment).replace(/\./g, '').replace(',', '.').trim());
     if (!Number.isFinite(parsedAmount) || parsedAmount < 0) return;
@@ -214,16 +185,8 @@ export default function DealerAiConditionsStep({
   }
 
   const vehicleTitle = vehicleConfigurationTitle(vehicleConfiguration);
-
-  const subtitleParts = [];
-  if (!isCash && draft.termMonths) subtitleParts.push(`${draft.termMonths} Monate`);
-  if (isLeasing && draft.mileagePerYear) {
-    subtitleParts.push(`${formatMileage(draft.mileagePerYear)} km`);
-  }
-  if (!isCash && draft.downPayment != null) {
-    subtitleParts.push(`${formatDownPayment(draft.downPayment)} Anzahlung`);
-  }
-  const subtitle = subtitleParts.join(' · ');
+  const uvpTotal = vehicleConfiguration.uvpConfigurationPrice;
+  const configFoldSummary = buildConfigFoldSummary(vehicleConfiguration);
 
   const activePaymentCard = isCash
     ? 'cash'
@@ -231,10 +194,10 @@ export default function DealerAiConditionsStep({
       ? 'financing'
       : 'leasing';
 
-  const uvpTotal = vehicleConfiguration.uvpConfigurationPrice;
   const termValue = draft.termMonths ?? 48;
   const mileageValue = draft.mileagePerYear ?? 15000;
   const downValue = draft.downPayment ?? 0;
+  const customerGroup = draft.customerGroup ?? 'standard';
 
   return (
     <div className="dai-conditions dai-conditions--sales">
@@ -245,18 +208,20 @@ export default function DealerAiConditionsStep({
           </button>
         )}
         <h2 className="dai-cond-hero__vehicle">{vehicleTitle || draft.model}</h2>
+        <p className="dai-cond-hero__uvp-label">UVP</p>
         <p className="dai-cond-hero__uvp">{formatCurrency(uvpTotal)}</p>
-        <p className="dai-cond-hero__meta">
-          UVP Konfiguration
-          {subtitle ? ` · ${subtitle}` : ''}
-        </p>
       </header>
 
-      <div className="dai-cond-config-handover">
-        <p className="dai-cond-config-handover__label">Konfiguration übernommen</p>
-        <p className="dai-cond-config-handover__title">{vehicleTitle}</p>
-        <VehicleConfigurationSummary configuration={vehicleConfiguration} compact showSelections={false} />
-      </div>
+      <details className="dai-cond-config-fold">
+        <summary>Konfiguration · {configFoldSummary}</summary>
+        <div className="dai-cond-config-fold__body">
+          <VehicleConfigurationSummary
+            configuration={vehicleConfiguration}
+            showSelections
+            hidePrice
+          />
+        </div>
+      </details>
 
       <SectionBlock title="Angebotsart">
         <div className="dai-cond-pay-row">
@@ -271,170 +236,249 @@ export default function DealerAiConditionsStep({
         </div>
       </SectionBlock>
 
-      {!isCash && (
-        <ExpandableChipSection
-          title="Laufzeit"
-          primaryValues={TERM_PRIMARY}
-          extendedValues={TERM_EXTENDED}
-          current={termValue}
-          onSelect={(months) => patch({ termMonths: months })}
-          formatPrimary={(months) => formatTermChip(months, true)}
-          formatExtended={(months) => formatTermChip(months, false)}
-          expandLabel="Weitere Laufzeiten"
-        />
+      {isCash && (
+        <>
+          <SectionBlock title="Rabatt">
+            <div className="dai-cond-chips dai-cond-chips--discount">
+              {DISCOUNT_GROUP_OPTIONS.map((opt) => (
+                <ChoiceChip
+                  key={opt.id}
+                  label={opt.label}
+                  selected={customerGroup === opt.id}
+                  onClick={() => patch({ customerGroup: opt.id })}
+                />
+              ))}
+            </div>
+            {customerGroup === 'custom' && (
+              <div className="dai-cond-custom-input dai-cond-custom-input--percent">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  className="dai-cond-custom-input__field"
+                  placeholder="Rabatt in %"
+                  value={draft.customDiscountPercent ?? ''}
+                  onChange={(event) => patch({
+                    customDiscountPercent: event.target.value === ''
+                      ? null
+                      : Number(event.target.value),
+                  })}
+                />
+                <span className="dai-cond-custom-input__suffix">%</span>
+              </div>
+            )}
+          </SectionBlock>
+
+          <SectionBlock title="Überführung">
+            <p className="dai-cond-static-value">{formatCurrency(preparationFee)}</p>
+          </SectionBlock>
+
+          {preview?.cashOfferPrice != null && (
+            <div className="dai-cond-offer-live">
+              <p className="dai-cond-offer-live__label">Angebotspreis aktuell</p>
+              <p className="dai-cond-offer-live__value">{formatCurrency(preview.cashOfferPrice)}</p>
+              {preview.discountPercent != null && (
+                <p className="dai-cond-offer-live__meta">
+                  UVP {formatCurrency(preview.uvpTotal)}
+                  {' · '}
+                  Rabatt {preview.discountPercent} %
+                  {' · '}
+                  Überführung {formatCurrency(preparationFee)}
+                </p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {isLeasing && (
-        <ExpandableChipSection
-          title="Kilometer"
-          primaryValues={MILEAGE_PRIMARY}
-          extendedValues={MILEAGE_EXTENDED}
-          current={mileageValue}
-          onSelect={(km) => patch({ mileagePerYear: km })}
-          formatPrimary={(km) => formatMileage(km)}
-          formatExtended={(km) => `${formatMileage(km)} km/Jahr`}
-          expandLabel="Weitere Kilometer"
-        />
-      )}
+        <>
+          <StepSlider
+            label="Laufzeit"
+            steps={LEASING_TERM_OPTIONS}
+            value={termValue}
+            onChange={(months) => patch({ termMonths: months })}
+            formatValue={(months) => `${months} Monate`}
+          />
+          <StepSlider
+            label="Kilometer pro Jahr"
+            steps={LEASING_MILEAGE_OPTIONS}
+            value={mileageValue}
+            onChange={(km) => patch({ mileagePerYear: km })}
+            formatValue={formatMileage}
+          />
+          <SectionBlock title="Anzahlung">
+            <div className="dai-cond-chips">
+              {DOWN_CHIPS.map((amount) => (
+                <ChoiceChip
+                  key={amount}
+                  label={formatDownPayment(amount)}
+                  selected={downValue === amount}
+                  onClick={() => patch({ downPayment: amount })}
+                />
+              ))}
+            </div>
+            <details className="dai-cond-more">
+              <summary>Eigene Anzahlung</summary>
+              <div className="dai-cond-more__body">
+                <div className="dai-cond-custom-input">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="dai-cond-custom-input__field"
+                    placeholder="Betrag in €"
+                    value={customDownPayment}
+                    onChange={(event) => setCustomDownPayment(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') applyCustomDownPayment();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="dai-cond-custom-input__btn"
+                    onClick={applyCustomDownPayment}
+                  >
+                    Übernehmen
+                  </button>
+                </div>
+              </div>
+            </details>
+          </SectionBlock>
 
-      {!isCash && (
-        <ExpandableChipSection
-          title="Anzahlung"
-          primaryValues={DOWN_PRIMARY}
-          extendedValues={[9000, 12000, 15000]}
-          current={downValue}
-          onSelect={(amount) => patch({ downPayment: amount })}
-          formatPrimary={formatDownPayment}
-          formatExtended={formatDownPayment}
-          expandLabel="Eigene Anzahlung"
-          extraContent={(
-            <div className="dai-cond-custom-input">
-              <input
-                type="text"
-                inputMode="numeric"
-                className="dai-cond-custom-input__field"
-                placeholder="Betrag in €"
-                value={customDownPayment}
-                onChange={(event) => setCustomDownPayment(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') applyCustomDownPayment();
-                }}
-              />
-              <button
-                type="button"
-                className="dai-cond-custom-input__btn"
-                onClick={applyCustomDownPayment}
-              >
-                Übernehmen
-              </button>
+          {preview?.canShowLiveLeasingRate && preview.monthlyRate != null ? (
+            <div className="dai-cond-offer-live">
+              <p className="dai-cond-offer-live__label">Rate aktuell</p>
+              <p className="dai-cond-offer-live__value">
+                {preview.monthlyRate.toLocaleString('de-DE')} €/Monat
+              </p>
+              <p className="dai-cond-offer-live__meta">
+                {termValue} Monate · {formatMileage(mileageValue)} · {formatDownPayment(downValue)} Anzahlung
+              </p>
+            </div>
+          ) : (
+            <div className="dai-cond-offer-pending">
+              <p className="dai-cond-offer-pending__title">Leasingangebot vorbereiten</p>
+              <p className="dai-cond-offer-pending__text">Rate wird im Bankangebot bestätigt.</p>
             </div>
           )}
-        />
+        </>
       )}
 
       {isFinance && (
-        <SectionBlock title="Finanzierungsart">
-          <div className="dai-cond-chips">
-            <ChoiceChip
-              label="Klassisch"
-              selected={!isThreeWay}
-              onClick={() => patch({ paymentType: 'financing' })}
-            />
-            <ChoiceChip
-              label="3-Wege-Finanzierung"
-              selected={isThreeWay}
-              onClick={() => patch({ paymentType: 'threeWayFinancing' })}
-            />
-          </div>
-        </SectionBlock>
-      )}
-
-      {(isLeasing || isCash) && (
-        <SectionBlock title="Überführung">
-          <div className="dai-cond-chips">
-            <ChoiceChip
-              label={formatCurrency(preparationFee)}
-              selected
-              onClick={() => {}}
-              className="is-selected is-static"
-            />
-          </div>
-        </SectionBlock>
-      )}
-
-      <SectionBlock title="Wunschlieferdatum">
-        <div className="dai-cond-chips dai-cond-chips--delivery">
-          {DELIVERY_CHIPS.map((chip) => (
-            <ChoiceChip
-              key={chip.id}
-              label={chip.label}
-              selected={(draft.desiredDeliveryDate ?? '') === chip.id}
-              onClick={() => patch({
-                desiredDeliveryDate: draft.desiredDeliveryDate === chip.id ? null : chip.id,
-              })}
-            />
-          ))}
-        </div>
-      </SectionBlock>
-
-      <p className="dai-cond-preview-hint">
-        Rate, Rabatt und Angebot werden erst in der Angebotsvorschau berechnet.
-      </p>
-
-      <details className="dai-cond-wish-fold">
-        <summary>Kundenwunsch</summary>
-        <div className="dai-cond-wish-fold__body">
-          <p className="dai-cond-wish-fold__hint">
-            Optional – nur wenn der Kunde eine Wunschrate oder einen Wunschpreis genannt hat.
-          </p>
-          {!isCash ? (
-            <div className="dai-cond-chips dai-cond-chips--budget">
-              <ChoiceChip
-                label="Offen"
-                selected={draft.desiredRate == null}
-                onClick={() => patchBudgetRate(null)}
-              />
-              {budgetRateOptions.map((opt) => (
+        <>
+          <StepSlider
+            label="Laufzeit"
+            steps={LEASING_TERM_OPTIONS}
+            value={termValue}
+            onChange={(months) => patch({ termMonths: months })}
+            formatValue={(months) => `${months} Monate`}
+          />
+          <SectionBlock title="Anzahlung">
+            <div className="dai-cond-chips">
+              {DOWN_CHIPS.map((amount) => (
                 <ChoiceChip
-                  key={opt.id}
-                  label={opt.label}
-                  selected={String(draft.desiredRate) === opt.id}
-                  onClick={() => patchBudgetRate(opt.id)}
+                  key={amount}
+                  label={formatDownPayment(amount)}
+                  selected={downValue === amount}
+                  onClick={() => patch({ downPayment: amount })}
                 />
               ))}
+            </div>
+            <details className="dai-cond-more">
+              <summary>Eigene Anzahlung</summary>
+              <div className="dai-cond-more__body">
+                <div className="dai-cond-custom-input">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="dai-cond-custom-input__field"
+                    placeholder="Betrag in €"
+                    value={customDownPayment}
+                    onChange={(event) => setCustomDownPayment(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') applyCustomDownPayment();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="dai-cond-custom-input__btn"
+                    onClick={applyCustomDownPayment}
+                  >
+                    Übernehmen
+                  </button>
+                </div>
+              </div>
+            </details>
+          </SectionBlock>
+
+          <SectionBlock title="Finanzierungsart">
+            <div className="dai-cond-chips">
+              <ChoiceChip
+                label="Klassisch"
+                selected={!isThreeWay}
+                onClick={() => patch({ paymentType: 'financing' })}
+              />
+              <ChoiceChip
+                label="3-Wege-Finanzierung"
+                selected={isThreeWay}
+                onClick={() => patch({ paymentType: 'threeWayFinancing' })}
+              />
+            </div>
+          </SectionBlock>
+
+          {isThreeWay && preview?.finalPayment != null && (
+            <SectionBlock title="Schlussrate">
+              <p className="dai-cond-static-value">{formatCurrency(preview.finalPayment)}</p>
+            </SectionBlock>
+          )}
+
+          {preview?.canShowLiveFinanceRate && preview.monthlyRate != null ? (
+            <div className="dai-cond-offer-live">
+              <p className="dai-cond-offer-live__label">Rate aktuell</p>
+              <p className="dai-cond-offer-live__value">
+                {preview.monthlyRate.toLocaleString('de-DE')} €/Monat
+              </p>
             </div>
           ) : (
-            <div className="dai-cond-chips dai-cond-chips--budget">
-              <ChoiceChip
-                label="Offen"
-                selected={draft.desiredPrice == null}
-                onClick={() => patchBudgetPrice(null)}
-              />
-              {budgetPriceOptions.map((opt) => (
-                <ChoiceChip
-                  key={opt.id}
-                  label={opt.label}
-                  selected={String(draft.desiredPrice) === opt.id}
-                  onClick={() => patchBudgetPrice(opt.id)}
-                />
-              ))}
+            <div className="dai-cond-offer-pending">
+              <p className="dai-cond-offer-pending__title">Finanzierungsangebot vorbereiten</p>
+              <p className="dai-cond-offer-pending__text">Rate wird im Bankangebot bestätigt.</p>
             </div>
           )}
+        </>
+      )}
+
+      <details className="dai-cond-wish-fold">
+        <summary>Weitere Optionen</summary>
+        <div className="dai-cond-wish-fold__body">
+          <p className="dai-cond-block__title">Wunschlieferdatum</p>
+          <div className="dai-cond-chips dai-cond-chips--delivery">
+            {DELIVERY_CHIPS.map((chip) => (
+              <ChoiceChip
+                key={chip.id}
+                label={chip.label}
+                selected={(draft.desiredDeliveryDate ?? '') === chip.id}
+                onClick={() => patch({
+                  desiredDeliveryDate: draft.desiredDeliveryDate === chip.id ? null : chip.id,
+                })}
+              />
+            ))}
+          </div>
         </div>
       </details>
 
-      <footer className="dai-cond-sticky-foot">
-        <p className="dai-cond-sticky-foot__summary">
-          <span className="dai-cond-sticky-foot__uvp">{formatCurrency(uvpTotal)}</span>
-          <span className="dai-cond-sticky-foot__label"> UVP · Angebot in Vorschau</span>
-        </p>
+      <footer className="dai-cond-sticky-foot dai-cond-sticky-foot--single">
+        {footerAction.hint && (
+          <p className="dai-cond-sticky-foot__hint">{footerAction.hint}</p>
+        )}
         <button
           type="button"
           className="dai-cond-sticky-foot__cta"
           onClick={onContinue}
           disabled={isExecuting}
         >
-          {isExecuting ? 'Wird geladen …' : 'Angebotsvorschau anzeigen'}
+          {isExecuting ? 'Wird geladen …' : footerAction.label}
         </button>
       </footer>
     </div>
