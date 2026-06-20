@@ -1,6 +1,6 @@
 /**
- * Kia Niro Hybrid – Minimal-Registry (offizielle UPE, Paketdetails folgen mit PDF)
- * Quelle: kiaOfficialPriceList.js · WLTP laut kia.com
+ * Kia Niro Hybrid – Herstellerdatenmodell
+ * Quelle: Kia-Germany-Niro-HEV-Preisliste.pdf (2026-05-29)
  */
 export const kiaNiro = {
   brand: 'Kia',
@@ -11,43 +11,87 @@ export const kiaNiro = {
   tagline: 'Der effiziente Hybrid-SUV',
 
   admin: {
-    status: 'draft',
-    priceListSource: 'kia.com/de/broschuere – PDF-Import folgt',
+    status: 'review',
+    priceListSource: 'Kia-Germany-Niro-HEV-Preisliste.pdf',
     lastUpdated: '2026-05-29',
-    updatedBy: 'Clever-Neuwagen Minimal-Registry',
+    updatedBy: 'Clever-Neuwagen Import',
   },
+
+  colors: [
+    { id: 'clearwhite', label: 'Clear White', priceGross: 0 },
+    { id: 'aurorablackpearl', label: 'Aurora Black Pearl', priceGross: 790 },
+    { id: 'wolfgray', label: 'Wolf Gray', priceGross: 790 },
+    { id: 'runwayred', label: 'Runway Red', priceGross: 790 },
+    { id: 'snowwhitepearl', label: 'Snow White Pearl', priceGross: 990 },
+  ],
 
   trims: [
     {
       id: 'vision',
       name: 'Vision',
-      baseEquipment: ['niro-rueckfahrkamera'],
-      availablePackages: [],
+      baseEquipment: ['niro-rueckfahrkamera', 'niro-parksensoren-hinten'],
+      availablePackages: ['niro-komfort'],
     },
     {
       id: 'spirit',
       name: 'Spirit',
-      baseEquipment: ['niro-rueckfahrkamera', 'niro-sitzheizung'],
-      availablePackages: [],
+      baseEquipment: ['niro-rueckfahrkamera', 'niro-sitzheizung', 'niro-parksensoren-hinten'],
+      availablePackages: ['niro-komfort', 'niro-tech'],
     },
     {
       id: 'gt-line',
       name: 'GT-Line',
-      baseEquipment: ['niro-rueckfahrkamera', 'niro-sitzheizung', 'niro-lenkradheizung'],
-      availablePackages: [],
+      baseEquipment: [
+        'niro-rueckfahrkamera',
+        'niro-sitzheizung',
+        'niro-lenkradheizung',
+        'niro-parksensoren-hinten',
+      ],
+      availablePackages: ['niro-tech', 'niro-drivewise'],
     },
   ],
 
-  packages: [],
+  packages: [
+    {
+      id: 'niro-komfort',
+      name: 'Komfort-Paket',
+      priceGross: 690,
+      rateDelta: 7,
+      description: 'Sitzheizung, Lenkradheizung',
+      features: ['niro-sitzheizung', 'niro-lenkradheizung'],
+      availableTrims: ['vision'],
+    },
+    {
+      id: 'niro-tech',
+      name: 'Technik-Paket',
+      priceGross: 990,
+      rateDelta: 10,
+      description: 'Navigation, Smart-Key, Totwinkelassistent',
+      features: ['niro-navigation', 'niro-totwinkel'],
+      availableTrims: ['spirit', 'gt-line'],
+    },
+    {
+      id: 'niro-drivewise',
+      name: 'DriveWise-Paket',
+      priceGross: 1290,
+      rateDelta: 13,
+      description: '360° Kamera, Parkassistent',
+      features: ['niro-360-kamera'],
+      availableTrims: ['gt-line'],
+      requiresPackages: ['niro-tech'],
+    },
+  ],
 
   accessories: [],
 
   equipment: [
-    { id: 'niro-sitzheizung', name: 'Sitzheizung vorne', standardInTrims: ['spirit', 'gt-line'], availableViaPackages: [] },
+    { id: 'niro-sitzheizung', name: 'Sitzheizung vorne', standardInTrims: ['spirit', 'gt-line'], availableViaPackages: ['niro-komfort'] },
     { id: 'niro-lenkradheizung', name: 'Lenkradheizung', standardInTrims: ['gt-line'], availableViaPackages: [] },
     { id: 'niro-rueckfahrkamera', name: 'Rückfahrkamera', standardInTrims: ['vision', 'spirit', 'gt-line'], availableViaPackages: [] },
-    { id: 'niro-360-kamera', name: '360° Kamera', standardInTrims: [], availableViaPackages: [] },
-    { id: 'niro-waermepumpe', name: 'Wärmepumpe', standardInTrims: [], availableViaPackages: [], notAvailableInTrims: ['vision', 'spirit', 'gt-line'] },
+    { id: 'niro-parksensoren-hinten', name: 'Parksensoren hinten', standardInTrims: ['vision', 'spirit', 'gt-line'], availableViaPackages: [] },
+    { id: 'niro-navigation', name: 'Navigation', standardInTrims: [], availableViaPackages: ['niro-tech'] },
+    { id: 'niro-totwinkel', name: 'Totwinkelassistent', standardInTrims: [], availableViaPackages: ['niro-tech'] },
+    { id: 'niro-360-kamera', name: '360° Kamera', standardInTrims: [], availableViaPackages: ['niro-drivewise'] },
   ],
 
   variants: [
@@ -57,7 +101,7 @@ export const kiaNiro = {
   ],
 
   engines: [
-    { id: 'hybrid', name: '1.6 T-GDI Hybrid', powerKw: 104 },
+    { id: 'hybrid', name: '1.6 T-GDI Hybrid', powerKw: 104, powerPs: 141 },
   ],
 };
 

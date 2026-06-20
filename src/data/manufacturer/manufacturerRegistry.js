@@ -3,9 +3,13 @@ import { kiaEv2 } from './kia/ev2.js';
 import { kiaEv3 } from './kia/ev3.js';
 import { kiaEv4 } from './kia/ev4.js';
 import { kiaEv5 } from './kia/ev5.js';
+import { kiaEv6 } from './kia/ev6.js';
+import { kiaEv9 } from './kia/ev9.js';
 import { kiaPicanto } from './kia/picanto.js';
 import { kiaNiro } from './kia/niro.js';
 import { kiaCeed } from './kia/ceed.js';
+import { kiaStonic } from './kia/stonic.js';
+import { kiaXceed } from './kia/xceed.js';
 
 /** Zentrale Herstellerdatenbank – von Platform Admin gepflegt */
 export const MANUFACTURER_MODELS = {
@@ -58,6 +62,46 @@ export const MANUFACTURER_MODELS = {
     engine: 'ev5',
     defaultTrimId: 'earth',
     defaultEngineId: 'ev-long',
+  },
+  ev6: {
+    key: 'ev6',
+    brand: 'Kia',
+    model: 'EV6',
+    label: 'Kia EV6',
+    data: kiaEv6,
+    engine: 'ev6',
+    defaultTrimId: 'earth',
+    defaultEngineId: 'ev-long',
+  },
+  ev9: {
+    key: 'ev9',
+    brand: 'Kia',
+    model: 'EV9',
+    label: 'Kia EV9',
+    data: kiaEv9,
+    engine: 'ev9',
+    defaultTrimId: 'earth',
+    defaultEngineId: 'ev-long-rwd',
+  },
+  stonic: {
+    key: 'stonic',
+    brand: 'Kia',
+    model: 'Stonic',
+    label: 'Kia Stonic',
+    data: kiaStonic,
+    engine: 'stonic',
+    defaultTrimId: 'spirit',
+    defaultEngineId: 'tgi-dct',
+  },
+  xceed: {
+    key: 'xceed',
+    brand: 'Kia',
+    model: 'XCeed',
+    label: 'Kia XCeed',
+    data: kiaXceed,
+    engine: 'xceed',
+    defaultTrimId: 'spirit',
+    defaultEngineId: 'tgi-dct-150',
   },
   picanto: {
     key: 'picanto',

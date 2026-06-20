@@ -64,9 +64,18 @@ export function resolveKiaModelImageKey(modelKey = '') {
 export function getKiaModelMediaEntry(modelKey, view = 'default') {
   const resolved = resolveKiaModelImageKey(modelKey);
   const meta = KIA_MODEL_IMAGES[resolved];
-  if (!meta) return null;
-  const hero = meta.hero;
-  const fallback = meta.default ?? hero;
+  const svgFallback = `/images/manufacturers/kia/${resolved}/default.svg`;
+  if (!meta) {
+    return {
+      default: svgFallback,
+      hero: svgFallback,
+      card: svgFallback,
+      side: svgFallback,
+      colors: null,
+    };
+  }
+  const hero = meta.hero ?? meta.default ?? svgFallback;
+  const fallback = meta.default ?? hero ?? svgFallback;
   const colors = meta.colors ?? null;
   if (view === 'hero' || view === 'card') {
     return { default: fallback, hero, card: hero, side: fallback, colors };

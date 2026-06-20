@@ -10,7 +10,9 @@ import {
 } from '../../data/features/trimFeatureMapping.js';
 import { DEALER_TRIM_PACKAGES } from '../../data/dealer/dealerTrimPackages.js';
 import { MANUFACTURER_MODELS } from '../../data/manufacturer/manufacturerRegistry.js';
+import { getModelColorCatalog } from '../../data/manufacturer/configureModelColorCatalog.js';
 import { parseBatteryKwhFromEngine } from '../../data/kia/pricelistBatteryLookup.js';
+import { resolveFoundationLegacyEntry } from '../foundation/configuratorFoundationRegistry.js';
 
 const TRIM_MAP_ALIASES = {
   'sportage-hybrid': 'sportage',
@@ -96,9 +98,14 @@ function engineIdForKwh(engines, kwh) {
 function buildVariants(modelKey, pricelist, engines, baseRates) {
   const variants = [];
   const seen = new Set();
+  const allowedTrimIds = new Set([
+    ...(pricelist?.trims ?? []).map((t) => t.id),
+    ...(TRIM_FEATURE_MAP[trimMapKey(modelKey)]?.trims ?? []).map((t) => t.id),
+  ]);
 
   function pushVariant(trimId, engineId, priceGross, baseLeasingRate) {
-    if (!trimId || !priceGross) return;
+    if (!trimId || !priceGross || priceGross < 8000) return;
+    if (allowedTrimIds.size && !allowedTrimIds.has(trimId)) return;
     const sig = `${trimId}|${engineId ?? ''}|${priceGross}`;
     if (seen.has(sig)) return;
     seen.add(sig);
@@ -133,6 +140,23 @@ function buildVariants(modelKey, pricelist, engines, baseRates) {
   }
 
   return variants;
+}
+
+function resolveModelColors(modelKey, dataColors) {
+  if (dataColors?.length) return dataColors;
+  return getModelColorCatalog(modelKey) ?? [];
+}
+
+function enrichManufacturerEntry(entry) {
+  if (!entry?.data) return entry;
+  const colors = resolveModelColors(entry.key ?? entry.data.modelKey, entry.data.colors);
+  if (colors.length && !entry.data.colors?.length) {
+    return {
+      ...entry,
+      data: { ...entry.data, colors },
+    };
+  }
+  return entry;
 }
 
 function buildPackages(modelKey) {
@@ -192,6 +216,7 @@ function buildFallbackManufacturerModel(modelKey) {
     brand: pricelist?.brand ?? 'Kia',
     model: modelLabel,
     modelKey,
+    colors: resolveModelColors(modelKey, null),
     trims: trims.map((trim) => ({
       ...trim,
       availablePackages: packages
@@ -224,7 +249,11 @@ function buildFallbackManufacturerModel(modelKey) {
 export function resolveConfigureModel(modelKey) {
   const key = normalizeKey(modelKey);
   if (!key) return null;
-  if (MANUFACTURER_MODELS[key]) return MANUFACTURER_MODELS[key];
+
+  const foundationEntry = resolveFoundationLegacyEntry(key);
+  if (foundationEntry) return foundationEntry;
+
+  if (MANUFACTURER_MODELS[key]) return enrichManufacturerEntry(MANUFACTURER_MODELS[key]);
   if (FALLBACK_CACHE.has(key)) return FALLBACK_CACHE.get(key);
 
   const built = buildFallbackManufacturerModel(key);

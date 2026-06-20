@@ -15,6 +15,21 @@ export {
   hasRecognizedModelKey,
 } from './dealerAiVehicleConfigureFlow.js';
 
+export {
+  buildVehicleConfiguration,
+  vehicleConfigurationTitle,
+  vehicleConfigurationSubtitle,
+} from './configuration/vehicleConfigurationModel.js';
+
+export {
+  buildOfferConditionsFromDraft,
+  applyOfferConditionsToDraft,
+} from './configuration/offerConditionsModel.js';
+
+export { computeOfferCalculation } from './configuration/offerCalculation.js';
+export { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
+export { computeUvpPricing, formatUvpLineAmount } from './configuration/uvpPricing.js';
+
 export { CONFIGURATOR_AUDIENCE } from './vehicleConfigurationModes.js';
 
 import { resolveConfigureModel } from './configuration/configureModelBridge.js';

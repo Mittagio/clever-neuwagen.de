@@ -10,6 +10,17 @@ export const kiaEv3 = {
   priceListDate: '2026-05-29',
   tagline: 'Der kompakte Elektro-SUV',
 
+  colors: [
+    { id: 'clearwhite', label: 'Clear White', priceGross: 0 },
+    { id: 'snowwhitepearl', label: 'Snow White Pearl', priceGross: 790 },
+    { id: 'aurorablackpearl', label: 'Aurora Black Pearl', priceGross: 790 },
+    { id: 'shalegrey', label: 'Shale Grey', priceGross: 790 },
+    { id: 'frostblue', label: 'Frost Blue', priceGross: 790 },
+    { id: 'ivorysilver', label: 'Ivory Silver', priceGross: 790 },
+    { id: 'aventurinegreen', label: 'Aventurine Green', priceGross: 790 },
+    { id: 'terracotta', label: 'Terracotta', priceGross: 790 },
+  ],
+
   admin: {
     status: 'review',
     priceListDate: '2026-05-29',

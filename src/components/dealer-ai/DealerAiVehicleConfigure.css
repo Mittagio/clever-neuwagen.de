@@ -1,11 +1,71 @@
 .dai-configure--seller {
-  gap: 0.75rem;
+  gap: 0.65rem;
+}
+
+.dai-configure--mobile {
+  max-width: 32rem;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .dai-configure--studio {
   max-width: 40rem;
 }
 
+.dai-configure-header--compact {
+  margin-bottom: 0;
+}
+
+/* ── Sticky Kopf ── */
+
+.dai-config-sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 -0.15rem;
+  padding: 0.15rem 0 0.45rem;
+  background: linear-gradient(#fff 75%, rgba(255, 255, 255, 0));
+}
+
+.dai-config-sticky-head__main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.16);
+}
+
+.dai-config-sticky-head__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.dai-config-sticky-head__price {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dai-config-sticky-head__meta {
+  margin: 0.35rem 0 0;
+  padding: 0 0.2rem;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+/* Legacy sticky price (fallback) */
 .dai-config-sticky-price {
   position: sticky;
   top: 0;
@@ -86,6 +146,88 @@
   border-radius: 16px;
   padding: 1rem 1.05rem 1.15rem;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dai-config-studio--mobile {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* ── Sticky Footer ── */
+
+.dai-config-sticky-foot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, #fff 18%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.dai-config-sticky-foot__price {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.dai-config-sticky-foot__price-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.dai-config-sticky-foot__price-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dai-config-sticky-foot__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.dai-config-sticky-foot__actions .dai-config-actions__primary {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  font-size: 1rem;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(26, 92, 255, 0.28);
+}
+
+.dai-config-sticky-foot__actions .dai-config-actions__secondary {
+  width: 100%;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .dai-config-sticky-foot {
+    position: sticky;
+    max-width: 40rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .dai-configure--mobile {
+    max-width: 40rem;
+    padding-bottom: 1rem;
+  }
 }
 
 .dai-config-customer-fold {
@@ -637,6 +779,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.dai-config-actions:not(.dai-config-sticky-foot__actions) {
   position: sticky;
   bottom: 0;
   background: linear-gradient(transparent, #fff 20%);

@@ -74,6 +74,7 @@ import BackendDocumentsPage from './pages/sprint5/BackendDocumentsPage.jsx';
 import BackendPublishingPage from './pages/sprint5/BackendPublishingPage.jsx';
 import SelbstauskunftPage from './pages/sprint5/SelbstauskunftPage.jsx';
 import AdminCompliancePage from './pages/sprint5/AdminCompliancePage.jsx';
+import ConfiguratorFoundationAdminPage from './pages/ConfiguratorFoundationAdminPage.jsx';
 import NewInquiriesQueuePage from './pages/backend/NewInquiriesQueuePage.jsx';
 import PrepareOfferQueuePage from './pages/backend/PrepareOfferQueuePage.jsx';
 import BackendLeadAktePage from './pages/backend/BackendLeadAktePage.jsx';
@@ -141,6 +142,7 @@ export default function AppRouter() {
         <Route path="/backend/publishing" element={<BackendPublishingPage />} />
         <Route path="/selbstauskunft" element={<SelbstauskunftPage />} />
         <Route path="/admin/compliance" element={<AdminCompliancePage />} />
+        <Route path="/admin/foundation" element={<ConfiguratorFoundationAdminPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/smart" element={<SmartSalesPage />} />
         <Route path="/gespraech" element={<SmartSalesPage />} />

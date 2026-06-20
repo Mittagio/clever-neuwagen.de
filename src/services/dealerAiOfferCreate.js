@@ -19,6 +19,9 @@ import {
   buildOfferPreview,
   fieldsFromConfigureDraft,
 } from './dealerAiVehicleConfigureFlow.js';
+import { buildVehicleConfiguration } from './configuration/vehicleConfigurationModel.js';
+import { buildOfferConditionsFromDraft } from './configuration/offerConditionsModel.js';
+import { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
 import {
   customerContextFromDraft,
   mergeConfigureCustomerContext,
@@ -86,6 +89,7 @@ function buildPaymentSideData(payment = {}) {
 
 export function buildOfferDraft({
   configureDraft,
+  vehicleConfiguration: vehicleConfigurationInput = null,
   parsed,
   conditions,
   carryCustomer = null,
@@ -96,7 +100,12 @@ export function buildOfferDraft({
 
   const parsedFields = parsed?.fields ?? {};
   const mergedFields = fieldsFromConfigureDraft(configureDraft, parsedFields);
-  const preview = buildOfferPreview(configureDraft, conditions, mergedFields);
+  const vehicleConfiguration = vehicleConfigurationInput
+    ?? buildVehicleConfiguration(configureDraft);
+  const offerConditions = buildOfferConditionsFromDraft(configureDraft, conditions);
+  const preview = vehicleConfiguration
+    ? buildOfferPreviewResult(vehicleConfiguration, offerConditions, conditions, mergedFields)
+    : buildOfferPreview(configureDraft, conditions, mergedFields);
   const crmContext = mergeConfigureCustomerContext({
     parsedFields: mergedFields,
     carryCustomer,
@@ -111,7 +120,22 @@ export function buildOfferDraft({
     ? (configureDraft.desiredPrice ?? mergedFields.desiredPrice ?? null)
     : (configureDraft.desiredRate ?? mergedFields.desiredRate ?? null);
 
+  const resolvedVehicleConfiguration = preview.vehicleConfiguration ?? vehicleConfiguration;
+
   return {
+    vehicleConfiguration: resolvedVehicleConfiguration,
+    offerConditions: preview.offerConditions ?? offerConditions,
+    offerCalculation: preview.offerCalculation ?? null,
+    offerPreview: {
+      vehicleTitle: preview.vehicleTitle ?? null,
+      uvpConfigurationPrice: preview.uvpConfigurationPrice ?? resolvedVehicleConfiguration?.uvpConfigurationPrice ?? null,
+      monthlyRate: preview.monthlyRate ?? null,
+      discountPercent: preview.discountPercent ?? null,
+      discountAmount: preview.discountAmount ?? null,
+      housePrice: preview.housePrice ?? null,
+      budget: preview.budget ?? { status: 'open' },
+      paymentType: preview.paymentType ?? paymentType,
+    },
     customerId: customerCtx.customerId,
     opportunityId: customerCtx.opportunityId,
     customer: {
@@ -124,17 +148,18 @@ export function buildOfferDraft({
       mailNote: configureDraft.customer?.mailNote ?? mergedFields.customerMailNote ?? null,
     },
     vehicle: {
-      brand: configureDraft.brand ?? mergedFields.brand ?? 'Kia',
-      model: configureDraft.model ?? mergedFields.model ?? '',
-      modelKey: configureDraft.modelKey ?? mergedFields.modelId ?? '',
-      trimId: configureDraft.trimId ?? mergedFields.trimId ?? null,
-      trimLabel: configureDraft.trimLabel ?? mergedFields.trimLabel ?? null,
-      battery: configureDraft.batteryLabel ?? mergedFields.batteryLabel ?? null,
-      engineId: configureDraft.engineId ?? mergedFields.engineId ?? null,
-      color: configureDraft.colorLabel ?? mergedFields.colorLabel ?? null,
-      colorId: configureDraft.colorId ?? mergedFields.colorId ?? null,
-      selectedPackages: configureDraft.packageIds ?? mergedFields.packageIds ?? [],
+      brand: resolvedVehicleConfiguration?.brand ?? configureDraft.brand ?? mergedFields.brand ?? 'Kia',
+      model: resolvedVehicleConfiguration?.model ?? configureDraft.model ?? mergedFields.model ?? '',
+      modelKey: resolvedVehicleConfiguration?.modelKey ?? configureDraft.modelKey ?? mergedFields.modelId ?? '',
+      trimId: resolvedVehicleConfiguration?.trimId ?? configureDraft.trimId ?? mergedFields.trimId ?? null,
+      trimLabel: resolvedVehicleConfiguration?.trimLabel ?? configureDraft.trimLabel ?? mergedFields.trimLabel ?? null,
+      battery: resolvedVehicleConfiguration?.batteryLabel ?? configureDraft.batteryLabel ?? mergedFields.batteryLabel ?? null,
+      engineId: resolvedVehicleConfiguration?.engineId ?? configureDraft.engineId ?? mergedFields.engineId ?? null,
+      color: resolvedVehicleConfiguration?.colorLabel ?? configureDraft.colorLabel ?? mergedFields.colorLabel ?? null,
+      colorId: resolvedVehicleConfiguration?.colorId ?? configureDraft.colorId ?? mergedFields.colorId ?? null,
+      selectedPackages: resolvedVehicleConfiguration?.packageIds ?? configureDraft.packageIds ?? mergedFields.packageIds ?? [],
       selectedEquipmentFeatures: configureDraft.specialEquipment ?? mergedFields.specialEquipment ?? [],
+      uvpConfigurationPrice: resolvedVehicleConfiguration?.uvpConfigurationPrice ?? preview.uvpConfigurationPrice ?? null,
     },
     payment: {
       type: paymentType,

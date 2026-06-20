@@ -7,6 +7,7 @@ import {
   buildBudgetComparison,
   buildConfigureDraft,
   buildOfferPreview,
+  buildParsedFromAssistantModel,
   buildRecognizedWishFramework,
   buildRecognizedWishLines,
   buildSensibleAlternatives,
@@ -157,5 +158,13 @@ assert.equal(ev3ModelPick.fields.modelId, 'ev3');
 assert.equal(resolvePhaseAfterAnalysis(ev3ModelPick), 'configure');
 const ev3Draft = buildConfigureDraft(ev3ModelPick, null);
 assert.equal(ev3Draft.modelKey, 'ev3');
+
+const ev2TilePick = buildParsedFromAssistantModel({ id: 'ev2', name: 'EV2' });
+assert.ok(ev2TilePick.ok, 'Modell-Kachel EV2 soll direkt konfigurierbar sein');
+assert.equal(ev2TilePick.fields.modelId, 'ev2');
+assert.equal(resolvePhaseAfterAnalysis(ev2TilePick), 'configure');
+const ev2TileDraft = buildConfigureDraft(ev2TilePick, null);
+assert.equal(ev2TileDraft.modelKey, 'ev2');
+assert.ok(ev2TileDraft.options.trims.length >= 3, 'EV2 soll Trim-Optionen haben');
 
 console.log('dealerAiVehicleConfigureFlow tests OK');

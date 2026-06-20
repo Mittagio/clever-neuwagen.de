@@ -9,6 +9,14 @@ export const kiaPicanto = {
   priceListDate: '2026-05-29',
   tagline: 'Der urbane Kleinwagen',
 
+  colors: [
+    { id: 'clearwhite', label: 'Clear White', priceGross: 0 },
+    { id: 'aurorablackpearl', label: 'Aurora Black Pearl', priceGross: 790 },
+    { id: 'signalred', label: 'Signal Red', priceGross: 790 },
+    { id: 'sparklingsilver', label: 'Sparkling Silver', priceGross: 790 },
+    { id: 'astrogray', label: 'Astro Gray', priceGross: 790 },
+  ],
+
   admin: {
     status: 'review',
     priceListSource: 'Kia-Germany-Picanto_Preisliste.pdf',

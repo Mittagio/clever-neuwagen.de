@@ -55,6 +55,14 @@ const altOfferDraft = buildOfferDraft({
   parsed,
   conditions,
 });
+assert.ok(altOfferDraft.vehicleConfiguration, 'vehicleConfiguration getrennt im Offer-Draft');
+assert.ok(altOfferDraft.offerPreview, 'offerPreview getrennt im Offer-Draft');
+assert.ok(altOfferDraft.offerCalculation != null || altOfferDraft.offerPreview.monthlyRate != null, 'Berechnung in offerPreview');
+assert.equal(
+  altOfferDraft.vehicle.uvpConfigurationPrice,
+  altOfferDraft.vehicleConfiguration.uvpConfigurationPrice,
+  'UVP aus Konfiguration im Fahrzeug-Block',
+);
 assert.equal(altOfferDraft.payment.mileagePerYear, 20000);
 assert.equal(altOfferDraft.payment.downPayment, 3000);
 assert.equal(altOfferDraft.payment.termMonths, 36, 'Alternative-Werte werden übernommen');

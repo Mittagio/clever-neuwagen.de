@@ -55,6 +55,7 @@ import {
   resolvePhaseAfterAnalysis,
   resolvePrimarySuggestedModel,
 } from '../services/dealerAiVehicleConfigureFlow.js';
+import { buildVehicleConfiguration } from '../services/configuration/vehicleConfigurationModel.js';
 import {
   buildAddVehicleContextFromLead,
   getContextBannerLabel,
@@ -98,6 +99,7 @@ export default function DealerAIPage() {
   const [toast, setToast] = useState('');
   const [offerEditCard, setOfferEditCard] = useState(null);
   const [configureDraft, setConfigureDraft] = useState(null);
+  const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
 
   const showToast = useCallback((msg) => {
@@ -134,6 +136,8 @@ export default function DealerAIPage() {
       };
     }
     setConfigureDraft(draft);
+    setVehicleConfiguration(null);
+    setConfigureOfferDraft(null);
     if (primaryModel?.id) {
       setSelectedModelIds([primaryModel.id]);
     }
@@ -147,6 +151,8 @@ export default function DealerAIPage() {
       bootstrapConfigureState(enriched);
     } else {
       setConfigureDraft(null);
+      setVehicleConfiguration(null);
+      setConfigureOfferDraft(null);
       setSelectedModelIds([]);
     }
     setStartView('home');
@@ -193,6 +199,7 @@ export default function DealerAIPage() {
 
   function handleModelConfigure({ model, parsed: modelParsed }) {
     setInput(`Kia ${model.name}`);
+    setSelectedModelIds(model?.id ? [model.id] : []);
     applyParsedWithPhase(modelParsed, []);
   }
 
@@ -221,6 +228,7 @@ export default function DealerAIPage() {
     setStartView('home');
     setDuplicatePrompt(null);
     setConfigureDraft(null);
+    setVehicleConfiguration(null);
     setConfigureOfferDraft(null);
   }
 
@@ -237,6 +245,7 @@ export default function DealerAIPage() {
   }
 
   function handleConfigureContinueToConditions() {
+    setVehicleConfiguration(buildVehicleConfiguration(configureDraft));
     setPhase('conditions');
   }
 
@@ -245,7 +254,7 @@ export default function DealerAIPage() {
   }
 
   function handleConditionsToPreview() {
-    if (!parsed?.ok || !configureDraft) return;
+    if (!parsed?.ok || !configureDraft || !vehicleConfiguration) return;
 
     const mergedFields = fieldsFromConfigureDraft(configureDraft, parsed.fields);
     const updatedParsed = enrichWithSuggestions(applyDealerAiFields(parsed, mergedFields));
@@ -257,6 +266,7 @@ export default function DealerAIPage() {
 
     const offerDraft = buildOfferDraft({
       configureDraft,
+      vehicleConfiguration,
       parsed: updatedParsed,
       conditions,
       carryCustomer,
@@ -296,6 +306,7 @@ export default function DealerAIPage() {
       setOfferEditCard(saveResult.card);
       setConfigureOfferDraft(null);
       setConfigureDraft(null);
+      setVehicleConfiguration(null);
       showToast(saveResult.message);
 
       if (saveResult.offerDraft) {
@@ -337,6 +348,7 @@ export default function DealerAIPage() {
   function handleSwitchToSearch() {
     setPhase('review');
     setConfigureDraft(null);
+    setVehicleConfiguration(null);
     setConfigureOfferDraft(null);
   }
 
@@ -346,6 +358,7 @@ export default function DealerAIPage() {
     setParsed(null);
     setSelectedModelIds([]);
     setConfigureDraft(null);
+    setVehicleConfiguration(null);
     setConfigureOfferDraft(null);
     setResult(null);
     inputRef.current?.focus();
@@ -959,7 +972,6 @@ export default function DealerAIPage() {
         {phase === 'configure' && parsed?.ok && configureDraft && (
           <DealerAiVehicleConfigure
             draft={configureDraft}
-            conditions={conditions}
             customerContact={configureCustomerContact}
             contextBanner={contextBannerLabel}
             onDraftChange={handleConfigureDraftChange}
@@ -970,9 +982,10 @@ export default function DealerAIPage() {
           />
         )}
 
-        {phase === 'conditions' && parsed?.ok && configureDraft && (
+        {phase === 'conditions' && parsed?.ok && configureDraft && vehicleConfiguration && (
           <DealerAiConditionsStep
             draft={configureDraft}
+            vehicleConfiguration={vehicleConfiguration}
             parsed={parsed}
             conditions={conditions}
             onDraftChange={handleConfigureDraftChange}

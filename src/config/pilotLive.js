@@ -4,14 +4,22 @@
  * Aktivieren: VITE_PILOT_LIVE=true in .env.local
  * Dev: npm run dev:pilot
  *
- * Hinweis: Direkt import.meta.env nutzen, damit Vite Flags beim Build einbettet.
+ * Vite (Browser): import.meta.env · Node (Server): process.env
  */
 
-export const PILOT_LIVE = import.meta.env.VITE_PILOT_LIVE === 'true';
+const viteEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
 
-export const PILOT_DEALER_ID = import.meta.env.VITE_PILOT_DEALER_ID || 'autohaus-trinkle';
+function readFlag(name, fallback = undefined) {
+  if (viteEnv[name] != null && viteEnv[name] !== '') return viteEnv[name];
+  if (typeof process !== 'undefined' && process.env?.[name] != null) return process.env[name];
+  return fallback;
+}
 
-export const PILOT_KIA_ONLY = import.meta.env.VITE_PILOT_KIA_ONLY !== 'false';
+export const PILOT_LIVE = readFlag('VITE_PILOT_LIVE') === 'true';
+
+export const PILOT_DEALER_ID = readFlag('VITE_PILOT_DEALER_ID', 'autohaus-trinkle');
+
+export const PILOT_KIA_ONLY = readFlag('VITE_PILOT_KIA_ONLY', 'true') !== 'false';
 
 export function isPilotLiveMode() {
   return PILOT_LIVE;

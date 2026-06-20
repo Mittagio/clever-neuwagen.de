@@ -3,8 +3,31 @@ import {
   filterAssistantModels,
   getAssistantModelImage,
 } from '../../data/dealerAiStartFlows.js';
-import { parseDealerAiInput } from '../../services/dealerAiParser.js';
+import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
+import { buildParsedFromAssistantModel } from '../../services/dealerAiVehicleConfigureFlow.js';
 import './DealerAiStart.css';
+
+function ModelTileImage({ modelId, className }) {
+  const primary = getAssistantModelImage(modelId);
+  const fallback = getKiaModelMediaEntry(modelId).default;
+  const [src, setSrc] = useState(primary ?? fallback);
+
+  if (!src) {
+    return <span className="dai-model-tile__placeholder" aria-hidden>🚗</span>;
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={() => {
+        if (fallback && src !== fallback) setSrc(fallback);
+      }}
+    />
+  );
+}
 
 export default function DealerAiModelFlow({ onBack, onConfigureModel, onError, isAnalyzing = false }) {
   const [search, setSearch] = useState('');
@@ -14,7 +37,7 @@ export default function DealerAiModelFlow({ onBack, onConfigureModel, onError, i
 
   function handleContinue() {
     if (!selectedModel) return;
-    const parsed = parseDealerAiInput(`Kia ${selectedModel.name}`);
+    const parsed = buildParsedFromAssistantModel(selectedModel);
     if (!parsed.ok) {
       onError?.(parsed.error ?? 'Modell konnte nicht geladen werden.');
       return;
@@ -52,7 +75,6 @@ export default function DealerAiModelFlow({ onBack, onConfigureModel, onError, i
       <div className="dai-model-grid">
         {models.map((model) => {
           const active = selectedModel?.id === model.id;
-          const imageUrl = getAssistantModelImage(model.id);
           return (
             <button
               key={model.id}
@@ -62,11 +84,7 @@ export default function DealerAiModelFlow({ onBack, onConfigureModel, onError, i
               aria-pressed={active}
             >
               {active && <span className="dai-model-tile__check" aria-hidden>✓</span>}
-              {imageUrl ? (
-                <img src={imageUrl} alt="" className="dai-model-tile__img" loading="lazy" />
-              ) : (
-                <span className="dai-model-tile__placeholder" aria-hidden>🚗</span>
-              )}
+              <ModelTileImage modelId={model.id} className="dai-model-tile__img" />
               <span className="dai-model-tile__name">{model.name}</span>
               <span className="dai-model-tile__tagline">{model.tagline}</span>
               {model.badge && (

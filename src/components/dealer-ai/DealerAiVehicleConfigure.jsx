@@ -1,19 +1,22 @@
+import { useMemo } from 'react';
 import {
   buildConfigureVehicleSummary,
   hasRecognizedModelKey,
 } from '../../services/dealerAiVehicleConfigureFlow.js';
+import { buildVehicleConfiguration } from '../../services/configuration/vehicleConfigurationModel.js';
 import SellerVehicleConfigurator from './SellerVehicleConfigurator.jsx';
+import VehicleConfigurationSummary from './VehicleConfigurationSummary.jsx';
 import './DealerAiVehicleConfigure.css';
+import './VehicleConfigurationSummary.css';
 
 function formatCurrency(amount) {
   if (amount == null) return '–';
   return `${Number(amount).toLocaleString('de-DE')} €`;
 }
 
-/** Schritt 2 – Fahrzeug konfigurieren (ohne Konditionen) */
+/** Schritt 1 – Fahrzeug konfigurieren (nur UVP, keine Konditionen) */
 export default function DealerAiVehicleConfigure({
   draft,
-  conditions,
   customerContact,
   contextBanner,
   onDraftChange,
@@ -29,7 +32,8 @@ export default function DealerAiVehicleConfigure({
     fields: { modelId: draft.modelKey, model: draft.model },
   }) && Boolean(onSwitchToSearch);
 
-  const summary = buildConfigureVehicleSummary(draft, conditions);
+  const summary = useMemo(() => buildConfigureVehicleSummary(draft), [draft]);
+  const vehicleConfiguration = useMemo(() => buildVehicleConfiguration(draft), [draft]);
   const customer = draft.customer ?? {};
 
   const showCustomer = customerContact?.hasContact
@@ -39,35 +43,35 @@ export default function DealerAiVehicleConfigure({
     || customer.email
     || customer.mailNote;
 
-  const vehicleLine = summary.vehicleTitle
-    || [draft.model, draft.trimLabel, draft.batteryLabel].filter(Boolean).join(' ');
+  const headline = summary.vehicleTitle || draft.model;
 
-  const colorSuffix = summary.colorLabel ? ` · ${summary.colorLabel}` : '';
+  const detailLine = [draft.trimLabel, draft.batteryLabel || draft.motorLabel, draft.colorLabel]
+    .filter(Boolean)
+    .join(' · ');
+
+  const uvpTotal = summary.uvpConfigurationPrice;
 
   return (
-    <div className="dai-configure dai-configure--seller dai-configure--studio">
-      <header className="dai-configure-header">
+    <div className="dai-configure dai-configure--seller dai-configure--mobile">
+      <header className="dai-configure-header dai-configure-header--compact">
         {onBack && (
           <button type="button" className="dai-configure-back" onClick={onBack}>
             ← {contextBanner ? 'Zur Kundenakte' : 'Zurück'}
           </button>
         )}
-        <h2 className="dai-configure-header__title">Fahrzeug konfigurieren</h2>
       </header>
 
-      <aside className="dai-config-sticky-price" aria-live="polite">
-        <div className="dai-config-sticky-price__inner">
-          <div className="dai-config-sticky-price__info">
-            <p className="dai-config-sticky-price__vehicle">
-              {vehicleLine}{colorSuffix}
-            </p>
-          </div>
-          <div className="dai-config-sticky-price__amount">
-            <span className="dai-config-sticky-price__value">
-              {formatCurrency(summary.listPrice)}
-            </span>
+      <aside className="dai-config-sticky-head" aria-live="polite">
+        <div className="dai-config-sticky-head__main">
+          <p className="dai-config-sticky-head__title">{headline}</p>
+          <div className="dai-config-sticky-head__amount">
+            <span className="dai-config-sticky-head__price-label">Konfigurationspreis (UVP)</span>
+            <p className="dai-config-sticky-head__price">{formatCurrency(uvpTotal)}</p>
           </div>
         </div>
+        {detailLine && (
+          <p className="dai-config-sticky-head__meta">{detailLine}</p>
+        )}
       </aside>
 
       {showCustomer && (
@@ -87,30 +91,42 @@ export default function DealerAiVehicleConfigure({
         </details>
       )}
 
-      <section className="dai-config-studio">
+      <section className="dai-config-studio dai-config-studio--mobile">
         <SellerVehicleConfigurator draft={draft} onChange={onDraftChange} />
       </section>
 
-      <div className="dai-config-actions">
-        {showVehicleSearch && (
+      <VehicleConfigurationSummary
+        configuration={vehicleConfiguration}
+        summary={summary}
+      />
+
+      <footer className="dai-config-sticky-foot">
+        <p className="dai-config-sticky-foot__price">
+          <span className="vcfg-config-total-label">Konfigurationspreis (UVP)</span>
+          <span className="vcfg-config-total-value">{formatCurrency(uvpTotal)}</span>
+        </p>
+        <p className="vcfg-config-total-hint">Leasing & Rabatte folgen im nächsten Schritt</p>
+        <div className="dai-config-sticky-foot__actions">
+          {showVehicleSearch && (
+            <button
+              type="button"
+              className="dai-config-actions__secondary"
+              onClick={onSwitchToSearch}
+              disabled={isExecuting}
+            >
+              Fahrzeugsuche
+            </button>
+          )}
           <button
             type="button"
-            className="dai-config-actions__secondary"
-            onClick={onSwitchToSearch}
+            className="dai-config-actions__primary"
+            onClick={onContinueToConditions}
             disabled={isExecuting}
           >
-            Fahrzeugsuche öffnen
+            Weiter zu Konditionen
           </button>
-        )}
-        <button
-          type="button"
-          className="dai-config-actions__primary"
-          onClick={onContinueToConditions}
-          disabled={isExecuting}
-        >
-          Weiter zu Konditionen
-        </button>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 }

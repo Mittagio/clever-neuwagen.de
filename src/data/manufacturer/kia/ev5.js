@@ -10,6 +10,14 @@ export const kiaEv5 = {
   priceListDate: '2026-05-29',
   tagline: 'Der mittelgroße Elektro-SUV',
 
+  colors: [
+    { id: 'clearwhite', label: 'Clear White', priceGross: 0 },
+    { id: 'aurorablackpearl', label: 'Aurora Black Pearl', priceGross: 790 },
+    { id: 'wolfgray', label: 'Wolf Gray', priceGross: 790 },
+    { id: 'oceanblue', label: 'Ocean Blue', priceGross: 790 },
+    { id: 'snowwhitepearl', label: 'Snow White Pearl', priceGross: 990 },
+  ],
+
   admin: {
     status: 'review',
     priceListDate: '2026-05-29',

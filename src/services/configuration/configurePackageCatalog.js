@@ -3,6 +3,8 @@
  * Verfügbarkeit, Gruppen und Inhalte kommen aus den Modell-/Paketdaten.
  */
 import { resolveConfigureModel } from './configureModelBridge.js';
+import { hasFoundationModel } from '../foundation/configuratorFoundationRegistry.js';
+import { buildFoundationPackageCatalog } from '../foundation/foundationPackageCatalogAdapter.js';
 
 /** @typedef {'available' | 'selected' | 'included' | 'blocked' | 'hidden'} PackageStatus */
 
@@ -78,7 +80,11 @@ function buildHighlights(pkg, equipment) {
  * @param {string} trimId
  * @param {string[]} selectedPackageIds
  */
-export function buildPackageCatalog(modelKey, trimId, selectedPackageIds = []) {
+export function buildPackageCatalog(modelKey, trimId, selectedPackageIds = [], options = {}) {
+  if (hasFoundationModel(modelKey)) {
+    return buildFoundationPackageCatalog(modelKey, trimId, selectedPackageIds, options);
+  }
+
   const mfg = resolveConfigureModel(modelKey);
   if (!mfg?.data || !trimId) {
     return { groups: [], packages: [] };

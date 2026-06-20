@@ -14,6 +14,7 @@
     "dev:client": "vite",
     "dev:server": "node server/index.js",
     "build": "vite build",
+    "build:mobile": "vite build",
     "build:test": "cross-env VITE_INTERNAL_TEST_ENV=true VITE_PILOT_LIVE=true VITE_PILOT_DEALER_ID=autohaus-trinkle VITE_PILOT_KIA_ONLY=true npm run build",
     "start": "node server/index.js",
     "start:prod": "cross-env NODE_ENV=production node server/index.js",
@@ -67,6 +68,7 @@
     "test:customer-add-vehicle-flow": "node src/services/customerAddVehicleFlow.test.js",
     "test:dealer-ai-configure": "node src/services/dealerAiVehicleConfigureFlow.test.js",
     "test:dealer-ai-offer-create": "node src/services/dealerAiOfferCreate.test.js",
+    "test:uvp-pricing": "node src/services/configuration/uvpPricing.test.js",
     "test:dealer-ai-mail": "node src/services/dealerAiMailExtractor.test.js",
     "test:clever-unterlagen": "node src/services/cleverUnterlagen.test.js",
     "test:clever-selbstauskunft": "node src/services/cleverSelbstauskunft.test.js",
@@ -101,6 +103,9 @@
     "test:whatsapp-brief": "node src/logic/whatsappBriefMessages.test.js",
     "test:feinschliff50": "node src/services/search/feinschliff50Search.test.js",
     "test:feinschliff": "npm run test:dealer-brief && npm run test:whatsapp-brief && npm run test:feinschliff50 && npm run test:conversation && npm run test:smart-sales",
+    "test:foundation": "node src/services/foundation/configuratorRuleEngine.test.js && node src/services/foundation/configuratorValidation.test.js && node src/services/foundation/foundationIntegration.test.js",
+    "test:configure-bridge": "node src/services/configuration/configureModelBridge.test.js",
+    "test:configure-packages": "node src/services/configuration/configurePackageCatalog.test.js",
     "preview": "vite preview"
   },
   "engines": {

@@ -2,6 +2,7 @@
  * Verkaufsassistent – Fahrzeug konfigurieren (nach eindeutiger KI-Erkennung)
  */
 import { resolveConfigureModel } from './configuration/configureModelBridge.js';
+import { getModelColorCatalog } from '../data/manufacturer/configureModelColorCatalog.js';
 import {
   DEALER_AI_MILEAGE_OPTIONS,
   DEALER_AI_TERM_OPTIONS,
@@ -14,6 +15,10 @@ import {
 import { priceConfiguration } from './pricing/pricingEngine.js';
 import { adjustRateForDownPayment } from '../logic/vehicleDetailConfig.js';
 import { computeDetailPricing } from '../logic/vehicleDetailPricing.js';
+import { buildVehicleConfiguration } from './configuration/vehicleConfigurationModel.js';
+import { buildOfferConditionsFromDraft } from './configuration/offerConditionsModel.js';
+import { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
+import { computeUvpPricing } from './configuration/uvpPricing.js';
 
 const DEFAULT_EV_COLORS = [
   { id: 'snow-white', label: 'Snow White Pearl' },
@@ -106,8 +111,34 @@ function resolveColorLabel(colorId, colorLabel, colors = DEFAULT_EV_COLORS) {
 }
 
 function getModelColors(mfg) {
-  const source = mfg?.data?.colors?.length ? mfg.data.colors : DEFAULT_EV_COLORS;
-  return source.map((c) => ({ id: c.id, label: c.label ?? c.name }));
+  const modelKey = mfg?.key ?? mfg?.data?.modelKey;
+  const source = mfg?.data?.colors?.length
+    ? mfg.data.colors
+    : (getModelColorCatalog(modelKey) ?? DEFAULT_EV_COLORS);
+  return source.map((c) => ({
+    id: c.id,
+    label: c.label ?? c.name,
+    priceGross: c.priceGross ?? 0,
+    hexPreview: c.hexPreview ?? null,
+  }));
+}
+
+function inferEngineFuelGroup(engine) {
+  if (engine.fuelType) return engine.fuelType;
+  const name = String(engine.name ?? engine.label ?? '').toLowerCase();
+  if (/plug.?in|phev/i.test(name)) return 'Plug-in Hybrid';
+  if (/hybrid/i.test(name)) return 'Hybrid';
+  if (/diesel|crdi/i.test(name)) return 'Diesel';
+  if (/kwh|elektro|\bev\b/i.test(name)) return 'Elektro';
+  return 'Standard';
+}
+
+function formatEngineShortLabel(engine) {
+  const name = engine.name ?? engine.label ?? '';
+  if (name.includes('kWh')) {
+    return name.match(/\d+(?:[,.]\d+)?\s*kWh/i)?.[0]?.replace(',', '.') ?? name;
+  }
+  return name;
 }
 
 function resolveModelPackageIds(modelKey, packageIds = [], rawText = '') {
@@ -206,9 +237,12 @@ export function buildConfigureOptions(modelKey, trimId = null) {
 
   const engines = (mfg.data.engines ?? []).map((e) => ({
     id: e.id,
-    label: e.name?.includes('kWh')
-      ? e.name.match(/\d+(?:[,.]\d+)?\s*kWh/i)?.[0]?.replace(',', '.') ?? e.name
-      : e.name,
+    label: formatEngineShortLabel(e),
+    fullName: e.name ?? formatEngineShortLabel(e),
+    fuelType: inferEngineFuelGroup(e),
+    transmission: e.transmission ?? null,
+    drive: e.drive ?? null,
+    batteryKwh: e.batteryKwh ?? null,
   }));
 
   const packages = (mfg.data.packages ?? [])
@@ -444,32 +478,38 @@ export function buildBudgetComparison(monthlyRate, budgetLimit, paymentType = 'l
 }
 
 export function buildOfferPreview(draft, conditions, fields = {}) {
-  const livePricing = computeLiveRateForDraft(draft, conditions);
-  const monthlyRate = livePricing?.amount ?? computeVariantMonthlyRate(
-    draft,
-    {
-      termMonths: draft.termMonths,
-      mileagePerYear: draft.mileagePerYear,
-      downPayment: draft.downPayment ?? 0,
-    },
-    conditions,
-  );
+  const vehicleConfiguration = buildVehicleConfiguration(draft);
+  if (!vehicleConfiguration) return { monthlyRate: null, budget: { status: 'open' } };
 
-  const budgetLimit = draft.desiredRate ?? fields.desiredRate ?? null;
-  const budget = buildBudgetComparison(monthlyRate, budgetLimit, draft.paymentType);
+  const offerConditions = buildOfferConditionsFromDraft(draft, conditions);
+  const preview = buildOfferPreviewResult(
+    vehicleConfiguration,
+    offerConditions,
+    conditions,
+    fields,
+  );
 
   return {
     model: draft.model,
     trimLabel: draft.trimLabel,
     batteryLabel: draft.batteryLabel,
-    vehicleTitle: [draft.model, draft.trimLabel, draft.batteryLabel].filter(Boolean).join(' '),
-    termMonths: draft.termMonths,
-    mileagePerYear: draft.mileagePerYear,
-    downPayment: draft.downPayment ?? 0,
-    monthlyRate,
-    budget,
-    paymentType: draft.paymentType,
-    livePricing,
+    vehicleTitle: preview.vehicleTitle,
+    termMonths: offerConditions.termMonths,
+    mileagePerYear: offerConditions.mileagePerYear,
+    downPayment: offerConditions.downPayment,
+    monthlyRate: preview.monthlyRate,
+    budget: preview.budget,
+    paymentType: offerConditions.paymentType,
+    vehicleConfiguration: preview.vehicleConfiguration,
+    offerConditions: preview.offerConditions,
+    offerCalculation: preview.offerCalculation,
+    uvpConfigurationPrice: preview.uvpConfigurationPrice,
+    discountPercent: preview.discountPercent,
+    discountAmount: preview.discountAmount,
+    housePrice: preview.housePrice,
+    livePricing: preview.offerCalculation
+      ? { amount: preview.monthlyRate }
+      : null,
   };
 }
 
@@ -711,28 +751,22 @@ export function fieldsFromConfigureDraft(draft, fields = {}) {
   };
 }
 
-export function computeVehicleListPrice(draft, conditions) {
-  const pricing = priceConfiguration({
-    brand: draft.brand,
-    model: draft.model,
-    modelKey: draft.modelKey,
-    trimId: draft.trimId,
-    engineId: draft.engineId,
-    packageIds: draft.packageIds ?? [],
-    accessoryIds: draft.accessoryIds ?? [],
-    dealerConditions: conditions,
-    paymentType: 'cash',
-  });
-  if (!pricing) return null;
-  return pricing.housePrice ?? pricing.cashPrice ?? pricing.configurationPrice ?? null;
+export function computeVehicleListPrice(draft, _conditions) {
+  return computeUvpPricing(draft)?.uvpConfigurationPrice ?? null;
 }
 
-export function buildConfigureVehicleSummary(draft, conditions) {
-  const vehicleTitle = [draft.model, draft.trimLabel, draft.batteryLabel].filter(Boolean).join(' ');
+export function buildConfigureVehicleSummary(draft, _conditions) {
+  const uvp = computeUvpPricing(draft);
+  const vehicleTitle = [draft.model, draft.trimLabel, draft.batteryLabel || draft.motorLabel]
+    .filter(Boolean)
+    .join(' ');
   return {
     vehicleTitle,
     colorLabel: draft.colorLabel ?? null,
-    listPrice: computeVehicleListPrice(draft, conditions),
+    listPrice: uvp?.uvpConfigurationPrice ?? null,
+    uvpBasePrice: uvp?.uvpBasePrice ?? null,
+    uvpConfigurationPrice: uvp?.uvpConfigurationPrice ?? null,
+    uvpLineItems: uvp?.lineItems ?? [],
   };
 }
 
@@ -761,6 +795,46 @@ export function computeLiveRateForDraft(draft, conditions) {
     downPayment: draft.downPayment ?? 0,
     basePricing: pricing,
   });
+}
+
+/**
+ * Parsed-Objekt direkt aus der Modell-Kachel (ohne Freitext-Parser).
+ * Zuverlässig für kurze Modellnamen wie EV2, EV3, K4.
+ */
+export function buildParsedFromAssistantModel(model = {}) {
+  const modelId = model.id ?? model.modelKey;
+  const name = model.name ?? String(modelId ?? '').toUpperCase();
+  if (!modelId || !name) {
+    return { ok: false, error: 'Modell konnte nicht geladen werden.' };
+  }
+
+  return {
+    ok: true,
+    fields: {
+      brand: 'Kia',
+      model: name,
+      modelId,
+      rawText: `Kia ${name}`,
+      paymentType: 'unknown',
+      termMonths: 48,
+      mileagePerYear: 15000,
+      packageIds: [],
+      packageLabels: [],
+      quantity: 1,
+    },
+    action: 'create_offer',
+    actionLabel: 'Angebot erstellen',
+    actionDescription: '',
+    displayFields: [],
+    customerWishSummary: '',
+    shortForm: '',
+    suggestedModels: [{
+      id: modelId,
+      modelKey: modelId,
+      name: `Kia ${name}`,
+    }],
+    confidence: 'high',
+  };
 }
 
 export function buildSelectedModelFieldPatch(model = {}, fields = {}) {
