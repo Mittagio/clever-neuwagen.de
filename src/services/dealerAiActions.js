@@ -296,6 +296,8 @@ function buildLeadFromDealerAi(fields, parsed, conditions, options = {}) {
       }
     : {
         name: fields.customerName || 'Kunde (offen)',
+        phone: fields.customerPhone ?? carry?.contact?.phone ?? '',
+        email: fields.customerEmail ?? carry?.contact?.email ?? '',
         preferredContact: crm.preferredContact,
       };
 

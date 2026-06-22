@@ -15,6 +15,7 @@ const BUCKET_LABELS = {
   vehicleWish: 'Fahrzeugwunsch',
   paymentWish: 'Konditionen',
   recommendation: 'Clever Empfehlung',
+  board: 'Auf dem Tisch',
 };
 
 export default function DealerAiRecognitionAnimation({

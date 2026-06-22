@@ -337,6 +337,11 @@ function parseDesiredRate(text, termMonths = null, paymentType = null) {
 }
 
 function parseDesiredPrice(text) {
+  const bis = text.match(/\bbis\s*(?:zu\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)/i);
+  if (bis) {
+    const value = parseNumber(bis[1].replace(/\s/g, ''));
+    if (value != null) return value;
+  }
   const patterns = [
     /(?:kauf|barkauf|barzahlung|bar(?:\s|-)?preis|kaufpreis)\s*(?:bis|bis\s+zu|max\.?|ca\.?|ungefähr|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i,
     /(?:barpreis|kaufpreis|wunschpreis|budget)\s*(?:bis|von|ca\.?|ab)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?/i,
@@ -445,15 +450,192 @@ function parseQuantity(text) {
   return num ? Number(num[1]) : null;
 }
 
-export function parseCustomerName(text) {
-  const kundeMatch = text.match(/\bkunde\s+([A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+)?)/i);
-  if (kundeMatch) return kundeMatch[1].trim();
+const CUSTOMER_NAME_BLOCKLIST = new Set([
+  'keine förderung',
+  'förderung',
+  'wohnmobil',
+  'gebrauchtwagen',
+  'budget',
+  'farbe blau',
+  'farbe schwarz',
+  'farbe weiß',
+  'farbe rot',
+  'farbe grau',
+  'kunde noch offen',
+  'kunde offen',
+]);
 
-  const m = text.match(/(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
-    ?? text.match(/(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i)
-    ?? text.match(/(?:kunde|name|von|absender)[:\s]+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
-    ?? text.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s*(?:<|$|\n)/m);
-  return m ? m[1].trim() : null;
+const CUSTOMER_NAME_BLOCK_WORDS = new Set([
+  'keine',
+  'förderung',
+  'foerderung',
+  'wohnmobil',
+  'gebrauchtwagen',
+  'budget',
+  'farbe',
+  'batterie',
+  'leasing',
+  'finanzierung',
+  'hybrid',
+  'elektro',
+  'sportage',
+  'sorento',
+  'soul',
+  'golf',
+  'kia',
+  'vw',
+]);
+
+function splitTextLines(text = '') {
+  return String(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function isBlockedCustomerName(fullName = '') {
+  const normalized = String(fullName).trim().toLowerCase();
+  if (!normalized) return true;
+  if (CUSTOMER_NAME_BLOCKLIST.has(normalized)) return true;
+  const parts = normalized.split(/\s+/);
+  if (parts.some((part) => CUSTOMER_NAME_BLOCK_WORDS.has(part))) return true;
+  if (/\d|@|€|\.de\b|0\d{2,}/.test(normalized)) return true;
+  return false;
+}
+
+function looksLikePersonNameLine(line = '') {
+  const trimmed = String(line).trim();
+  if (!trimmed || trimmed.length > 48) return false;
+  if (isBlockedCustomerName(trimmed)) return false;
+  if (/^\+?\d[\d\s\-/().]{6,}\d$/.test(trimmed.replace(/\s/g, ''))) return false;
+  if (/@/.test(trimmed)) return false;
+  if (/€|\bbis\s+\d|farbe\b|batterie|förderung|wohnmobil|gw\b|e-?soul/i.test(trimmed)) return false;
+  return /^[A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+){0,2}$/.test(trimmed);
+}
+
+export function parseNameFromEmail(email = '') {
+  const local = String(email).split('@')[0]?.trim();
+  if (!local || local.length < 4) return null;
+  const cleaned = local.replace(/[._-]+/g, ' ').trim();
+  if (!/^[a-zäöüß]+(?:\s+[a-zäöüß]+)?$/i.test(cleaned)) return null;
+  const parts = cleaned.split(/\s+/).map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
+  if (isBlockedCustomerName(parts.join(' '))) return null;
+  return {
+    firstName: parts[0] ?? null,
+    lastName: parts.slice(1).join(' ') || null,
+    fullName: parts.join(' '),
+    confidence: 0.45,
+  };
+}
+
+export function parseStructuredCustomerName(text = '') {
+  const lines = splitTextLines(text);
+  const phone = parseCustomerPhone(text);
+  const email = parseCustomerEmail(text);
+  const phoneDigits = phone?.replace(/\D/g, '') ?? '';
+
+  for (let index = 0; index < Math.min(lines.length, 4); index += 1) {
+    const line = lines[index];
+    if (email && line.toLowerCase() === email.toLowerCase()) continue;
+    if (phoneDigits && line.replace(/\D/g, '').includes(phoneDigits.slice(-8))) continue;
+    if (!looksLikePersonNameLine(line)) continue;
+    const parts = line.split(/\s+/);
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(' ') || null,
+      fullName: line,
+      confidence: index === 0 ? 0.95 : 0.8,
+    };
+  }
+
+  if (email) {
+    const derived = parseNameFromEmail(email);
+    if (derived) return derived;
+  }
+
+  return null;
+}
+
+export function parseWishDateFromText(text = '') {
+  const match = String(text).match(/\b(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})\b/);
+  if (!match) return null;
+  const day = match[1].padStart(2, '0');
+  const month = match[2].padStart(2, '0');
+  const year = match[3];
+  return {
+    iso: `${year}-${month}-${day}`,
+    label: `${day}.${month}.${year}`,
+  };
+}
+
+export function parseBatteryPowerFromText(text = '') {
+  const match = String(text).match(/\b(\d+(?:[,.]\d+)?)\s*k(?:w|wh)\b/i);
+  if (!match) return null;
+  const value = parseFloat(match[1].replace(',', '.'));
+  return Number.isFinite(value) ? value : null;
+}
+
+export function parseColorPreferenceFromText(text = '') {
+  const labeled = String(text).match(/\bfarbe\s+(blau|schwarz|weiß|weiss|grau|rot|grün|gruen)/i);
+  if (labeled) return labeled[1].toLowerCase().replace('weiss', 'weiß').replace('gruen', 'grün');
+  if (/schwarz(?:es)?\s+auto|auto\s+schwarz/i.test(text)) return 'schwarz';
+  if (/weiß(?:es)?\s+auto|auto\s+weiß/i.test(text)) return 'weiß';
+  if (/grau(?:es)?\s+auto/i.test(text)) return 'grau';
+  if (/rot(?:es)?\s+auto/i.test(text)) return 'rot';
+  if (/blau(?:es)?\s+auto|auto\s+blau/i.test(text)) return 'blau';
+  return null;
+}
+
+export function parseBudgetMaxFromText(text = '') {
+  const patterns = [
+    /\bbis\s*(?:zu\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)/i,
+    /(?:budget|preis|kaufpreis|wunschpreis)\s*(?:bis|max\.?|ca\.?)?\s*(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i,
+  ];
+  for (const re of patterns) {
+    const match = String(text).match(re);
+    if (!match) continue;
+    const value = parseNumber(match[1].replace(/\s/g, ''));
+    if (value != null) return value;
+  }
+  return null;
+}
+
+export function parseUsedVehicleHint(text = '') {
+  return /\b(?:gw|gebrauchtwagen|used)\b/i.test(text);
+}
+
+export function parseModelHintFromText(text = '') {
+  const lower = String(text).toLowerCase();
+  if (/e[\s-]?soul/.test(lower)) return { brand: 'Kia', model: 'e-Soul', modelKey: 'esoul', used: /\bgw\b|gebrauchtwagen/i.test(lower) };
+  if (/ev\s*2|ev2/.test(lower)) return { brand: 'Kia', model: 'EV2', modelKey: 'ev2', used: false };
+  if (/ev\s*3|ev3/.test(lower)) return { brand: 'Kia', model: 'EV3', modelKey: 'ev3', used: false };
+  if (/sportage/.test(lower)) return { brand: 'Kia', model: 'Sportage', modelKey: 'sportage', used: /\bgw\b|gebrauchtwagen/i.test(lower) };
+  if (/\bniro\b/.test(lower)) return { brand: 'Kia', model: 'Niro', modelKey: 'niro', used: false };
+  return null;
+}
+
+export function parseCustomerName(text) {
+  const structured = parseStructuredCustomerName(text);
+  if (structured?.fullName) return structured.fullName;
+
+  const kundeMatch = text.match(/\bkunde\s+([A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+)?)/i);
+  if (kundeMatch && !isBlockedCustomerName(kundeMatch[1].trim())) return kundeMatch[1].trim();
+
+  const patterns = [
+    /(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i,
+    /(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i,
+    /(?:kunde|name|von|absender)[:\s]+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i,
+    /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s*(?:<|$|\n)/m,
+  ];
+
+  for (const re of patterns) {
+    const match = text.match(re);
+    if (!match) continue;
+    const candidate = match[1].trim();
+    if (!isBlockedCustomerName(candidate)) return candidate;
+  }
+
+  return null;
 }
 
 function normalizePhone(raw) {
@@ -472,6 +654,9 @@ function normalizePhone(raw) {
 export function parseCustomerPhone(text) {
   const labeled = text.match(/(?:tel(?:efon)?|mobil|handy|fon|📞)\s*[:\-]?\s*([+]?\d[\d\s\-/().]{7,}\d)/i);
   if (labeled) return normalizePhone(labeled[1]);
+
+  const linePhone = text.match(/(?:^|\n)\s*(0\d{2,5}[\s\-/]?\d{4,10})\s*(?:\n|$)/m);
+  if (linePhone) return normalizePhone(linePhone[1]);
 
   const inline = text.match(/\b(0\s*1[567]\d[\s\-/]?\d{3,4}[\s\-/]?\d{4,6})\b/)
     ?? text.match(/\b(\+49\s*1[567]\d[\s\-/]?\d{3,4}[\s\-/]?\d{4,6})\b/);
@@ -598,6 +783,9 @@ function detectBrandModel(text) {
   }
   if (/ev\s*9|ev9/.test(lower)) {
     return { brand: 'Kia', model: 'EV9', modelId: 'ev9' };
+  }
+  if (/e[\s-]?soul/.test(lower)) {
+    return { brand: 'Kia', model: 'e-Soul', modelId: 'esoul' };
   }
   if (/sportage/.test(lower)) {
     return { brand: 'Kia', model: 'Sportage', modelId: 'sportage' };

@@ -83,7 +83,8 @@ const pageSource = readFileSync(
   'utf8',
 );
 assert.ok(pageSource.includes('recognition-animate'), 'KI-Check nutzt Analyse-Animation');
-assert.ok(pageSource.includes('recognition-review'), 'KI-Check nutzt Bestätigungsseite');
-assert.ok(pageSource.includes('setPhase(\'recognition-animate\')'), 'runAnalysis startet Analyse-Animation');
+assert.ok(pageSource.includes('handleApplyDirectCustomerAkte'), 'KI-Check öffnet direkt Kundenakte');
+assert.ok(pageSource.includes("setPhase('followup')"), 'Nach KI-Check Phase followup');
+assert.ok(!pageSource.includes("setPhase('recognition-review')"), 'Kein Pflicht-Zwischenschritt recognition-review');
 
 console.log('dealerAiRecognitionReview.test.js: ok');

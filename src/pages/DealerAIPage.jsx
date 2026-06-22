@@ -70,12 +70,11 @@ import {
 } from '../services/dealerAiOfferCreate.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
 import DealerAiRecognitionAnimation from '../components/dealer-ai/DealerAiRecognitionAnimation.jsx';
-import DealerAiRecognitionReview from '../components/dealer-ai/DealerAiRecognitionReview.jsx';
 import {
   applyRecognitionInsightToParsed,
   buildCustomerRecognitionInsight,
-  resolvePhaseAfterRecognitionConfirm,
 } from '../services/dealerAiRecognitionInsight.js';
+import { applyDirectCustomerAkteFromRecognition } from '../services/dealerAiDirectCustomerAkte.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
 
@@ -200,45 +199,19 @@ export default function DealerAIPage() {
   }
 
   function handleRecognitionAnimationComplete() {
-    setPhase('recognition-review');
+    handleApplyDirectCustomerAkte();
   }
 
-  function handleRecognitionInsightChange(nextInsight) {
-    setRecognitionInsight(nextInsight);
-  }
+  function handleApplyDirectCustomerAkte() {
+    if (!parsed?.ok || !recognitionInsight) return;
 
-  function handleRecognitionConfirm(confirmedInsight) {
-    if (!parsed?.ok || !confirmedInsight) return;
-
-    const merged = applyRecognitionInsightToParsed(parsed, confirmedInsight);
+    const merged = applyRecognitionInsightToParsed(parsed, recognitionInsight);
     const enriched = enrichWithSuggestions(merged);
     setParsed(enriched);
-    setRecognitionInsight(confirmedInsight);
-
-    const nextPhase = resolvePhaseAfterRecognitionConfirm(confirmedInsight, enriched);
-
-    if (nextPhase === 'configure') {
-      bootstrapConfigureState(enriched);
-      setPhase('configure');
-      return;
-    }
-
-    if (nextPhase === 'advice') {
-      setStartView('advice');
-      setPhase('input');
-      showToast('Clever hat den Bedarf erkannt – Beratung starten.');
-      return;
-    }
-
-    handleCreateLeadFromRecognition(enriched);
-  }
-
-  function handleCreateLeadFromRecognition(enrichedParsed) {
-    if (!enrichedParsed?.ok) return;
-    setParsed(enrichedParsed);
     setIsExecuting(true);
+
     try {
-      const actionResult = executeDealerAiAction('create_sales_opportunity', enrichedParsed, {
+      const actionResult = applyDirectCustomerAkteFromRecognition(enriched, recognitionInsight, {
         conditions,
         addOffer,
         getExistingCodes,
@@ -251,18 +224,16 @@ export default function DealerAIPage() {
         selectedModelIds,
         carryCustomer,
         addVehicleContext,
+        result,
       });
-      if (actionResult?.type === 'lead') {
-        setResult(actionResult);
-        setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
-        setPhase('followup');
-        setIsFreshLead(true);
-        showToast('Kundenakte erstellt – Kundeninfos übernommen.');
-      } else {
-        applyActionResult(actionResult);
-      }
+
+      setResult(actionResult);
+      setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
+      setPhase('followup');
+      setIsFreshLead(true);
+      showToast(actionResult.message ?? 'Kundenakte vorbereitet.');
     } catch (err) {
-      showToast(err.message ?? 'Aktion fehlgeschlagen');
+      showToast(err.message ?? 'Kundenakte konnte nicht vorbereitet werden');
     } finally {
       setIsExecuting(false);
     }
@@ -816,17 +787,6 @@ export default function DealerAIPage() {
     }
   }
 
-  function handleStartNewWishWithQuery(query) {
-    const q = String(query ?? '').trim();
-    if (!q) return;
-    setInput(q);
-    setStartView('home');
-    window.setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    }, 50);
-  }
-
   function handleCaptureComplete() {
     setCarryCustomer(null);
     setPhase('followup');
@@ -962,7 +922,7 @@ export default function DealerAIPage() {
     ? ''
     : phase === 'configure' || phase === 'conditions'
       ? ''
-    : phase === 'review' || phase === 'recognition-review'
+    : phase === 'review'
       ? 'Clever hat erkannt'
       : phase === 'recognition-animate'
         ? 'Clever analysiert …'
@@ -973,12 +933,12 @@ export default function DealerAIPage() {
     ? ''
     : phase === 'configure' || phase === 'conditions'
       ? ''
-    : phase === 'review' || phase === 'recognition-review'
+    : phase === 'review'
       ? 'Bitte kurz bestätigen, bevor es weitergeht.'
       : phase === 'recognition-animate'
         ? 'Kundenwunsch wird sortiert …'
       : phase === 'input' && startView === 'home'
-        ? 'Kundenakte finden oder neuen Wunsch erfassen.'
+        ? 'Kundenwunsch erfassen – Clever sortiert den Rest.'
       : phase === 'input'
         ? ''
         : 'Bitte kurz prüfen.';
@@ -990,7 +950,6 @@ export default function DealerAIPage() {
     && phase !== 'configure'
     && phase !== 'conditions'
     && phase !== 'recognition-animate'
-    && !(phase === 'recognition-review')
     && !(phase === 'input' && startView !== 'home');
 
   const vehicleCard = parsed?.ok && result
@@ -1071,9 +1030,6 @@ export default function DealerAIPage() {
             isAnalyzing={isAnalyzing}
             inputRef={inputRef}
             carryCustomer={carryCustomer}
-            leads={leads}
-            onOpenCustomerRecord={handleOpenCustomerLead}
-            onStartNewWishWithQuery={handleStartNewWishWithQuery}
           />
         )}
 
@@ -1101,16 +1057,7 @@ export default function DealerAIPage() {
           />
         )}
 
-        {phase === 'recognition-review' && recognitionInsight && (
-          <DealerAiRecognitionReview
-            insight={recognitionInsight}
-            onChange={handleRecognitionInsightChange}
-            onConfirm={handleRecognitionConfirm}
-            isExecuting={isExecuting}
-          />
-        )}
-
-        {contextBannerLabel && (phase === 'review' || phase === 'recognition-review' || (phase === 'input' && startView === 'home')) && (
+        {contextBannerLabel && (phase === 'review' || (phase === 'input' && startView === 'home')) && (
           <p className="dai-add-vehicle-context" role="status">
             {contextBannerLabel}
           </p>
@@ -1242,7 +1189,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && phase !== 'recognition-review' && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

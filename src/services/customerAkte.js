@@ -93,6 +93,7 @@ function inferModelKey(modelName = '', fallback = 'suv') {
   if (slug.includes('ev4')) return 'ev4';
   if (slug.includes('ev3')) return 'ev3';
   if (slug.includes('ev2')) return 'ev2';
+  if (slug.includes('esoul')) return 'esoul';
   if (slug.includes('sportage')) return 'sportage';
   if (slug.includes('sorento')) return 'sorento';
   if (slug.includes('stonic')) return 'stonic';

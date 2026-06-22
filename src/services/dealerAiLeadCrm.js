@@ -18,14 +18,16 @@ export function mapSuggestedModelToReserved(model, index = 0) {
 }
 
 export function formatReservedModelBadge(model, index = 0) {
-  if (model?.isPrimary || index === 0) return 'Empfehlung';
   const raw = model?.badge;
+  if (raw === 'Vorschlag / prüfen') return 'Vorschlag / prüfen';
+  if (model?.isPrimary || index === 0) return 'Empfehlung';
   if (!raw) return 'Alternative';
   const labels = {
     'Clever Empfehlung': 'Empfehlung',
     'passt sehr gut': 'Preislich passend',
     'gute Alternative': 'Alternative',
     'beliebte Alternative': 'Alternative',
+    'Vorschlag / prüfen': 'Vorschlag / prüfen',
   };
   return labels[raw] ?? raw;
 }

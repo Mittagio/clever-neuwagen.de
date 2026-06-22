@@ -7,6 +7,7 @@ import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 import { getCustomerFirstName } from '../customerAkte.js';
 
 export const CLEVER_ACTION_IDS = {
+  VEHICLE_SUGGESTION_REVIEW: 'vehicle_suggestion_review',
   DELIVERY_READY: 'delivery_ready',
   VEHICLE_ARRIVING: 'vehicle_arriving',
   LEASING_APPROVED: 'leasing_approved',
@@ -20,6 +21,7 @@ export const CLEVER_ACTION_IDS = {
 
 /** Niedrigere Zahl = höhere Priorität */
 export const CLEVER_ACTION_PRIORITY = {
+  [CLEVER_ACTION_IDS.VEHICLE_SUGGESTION_REVIEW]: 55,
   [CLEVER_ACTION_IDS.DELIVERY_READY]: 10,
   [CLEVER_ACTION_IDS.VEHICLE_ARRIVING]: 20,
   [CLEVER_ACTION_IDS.LEASING_APPROVED]: 30,
@@ -32,6 +34,11 @@ export const CLEVER_ACTION_PRIORITY = {
 };
 
 const ACTION_DEFINITIONS = {
+  [CLEVER_ACTION_IDS.VEHICLE_SUGGESTION_REVIEW]: {
+    title: 'Fahrzeugvorschlag prüfen',
+    ctaLabel: 'Fahrzeug prüfen',
+    handlerType: 'vehicle_review',
+  },
   [CLEVER_ACTION_IDS.DELIVERY_READY]: {
     title: 'Fahrzeug übergeben',
     ctaLabel: 'Übergabetermin bestätigen',
@@ -217,6 +224,17 @@ export function evaluateCleverActions(context) {
     paymentType,
     primaryCard,
   } = context;
+
+  const suggestionCard = vehicleCards.find((card) => card.badge === 'Vorschlag / prüfen')
+    ?? context.lead?.crm?.reservedModels?.find((model) => model.badge === 'Vorschlag / prüfen');
+
+  if (suggestionCard && !['sent', 'opened', 'accepted', 'draft'].includes(offerStatus)) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.VEHICLE_SUGGESTION_REVIEW, {
+      reason: 'KI-Fahrzeugwunsch erkannt',
+      explanation: 'Clever hat einen möglichen Fahrzeugwunsch erkannt. Bitte prüfen oder konfigurieren.',
+      meta: { cardId: suggestionCard.id },
+    }));
+  }
 
   if (vehicleFulfillmentStatus === 'delivery_ready' || vehicleFulfillmentStatus === 'ready_for_handover') {
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.DELIVERY_READY, {
