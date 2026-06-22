@@ -6,6 +6,7 @@ import {
   getCustomerInitials,
 } from '../../services/customerAkte.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
+import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import './CustomerAkte.css';
 
 export default function CustomerAkteHeader({
@@ -23,6 +24,7 @@ export default function CustomerAkteHeader({
   isStarred = false,
   onEditCustomer,
   onCleverAntwort,
+  onOpenKundenhelfer,
   telHref,
 }) {
   const displayName = formatCustomerDisplayName(customerName) || 'Kunde noch offen';
@@ -112,6 +114,14 @@ export default function CustomerAkteHeader({
           </button>
         )}
       </div>
+
+      {onOpenKundenhelfer && (
+        <CustomerAkteKundenhelfer
+          notes={kundenhelferNotes}
+          onOpenSheet={onOpenKundenhelfer}
+          variant="profile"
+        />
+      )}
     </header>
   );
 }

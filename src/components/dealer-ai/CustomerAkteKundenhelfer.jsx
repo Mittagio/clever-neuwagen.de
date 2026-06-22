@@ -1,46 +1,62 @@
-import { parseKundenhelferNotes } from '../../services/cleverKundenhelfer.js';
+import {
+  getProfileKundenhelferChips,
+  parseKundenhelferNotes,
+} from '../../services/cleverKundenhelfer.js';
 import { getKundenhelferChipIcon } from '../../services/customerAkte.js';
 import './CustomerAkte.css';
 
+/**
+ * Clever-Kundenhelfer-Chips im Profilkopf (kompakt, max. 6 + „+ X mehr“).
+ */
 export default function CustomerAkteKundenhelfer({
   notes = '',
   onOpenSheet,
+  variant = 'profile',
 }) {
   const chips = parseKundenhelferNotes(notes);
+  const { visible, moreCount } = getProfileKundenhelferChips(notes);
+
+  if (variant !== 'profile') {
+    return null;
+  }
 
   if (!chips.length) {
     return (
-      <section className="cust-akte-kh cust-akte-kh--empty" aria-label="Clever Kundenhelfer">
-        <button type="button" className="cust-akte-kh__add-link" onClick={onOpenSheet}>
+      <div className="cust-akte-kh cust-akte-kh--profile cust-akte-kh--profile-empty" aria-label="Clever Kundenhelfer">
+        <button type="button" className="cust-akte-kh__add-link cust-akte-kh__add-link--profile" onClick={onOpenSheet}>
           + Kundeninfo hinzufügen
         </button>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className="cust-akte-kh" aria-label="Clever Kundenhelfer">
-      <div className="cust-akte-kh__grid">
-        {chips.slice(0, 12).map((chip) => (
+    <div className="cust-akte-kh cust-akte-kh--profile" aria-label="Clever Kundenhelfer">
+      <div className="cust-akte-kh__grid cust-akte-kh__grid--profile">
+        {visible.map((chip) => (
           <button
             key={chip}
             type="button"
-            className="cust-akte-kh__chip"
+            className="cust-akte-kh__chip cust-akte-kh__chip--profile"
             onClick={onOpenSheet}
           >
             <span className="cust-akte-kh__chip-icon" aria-hidden>{getKundenhelferChipIcon(chip)}</span>
-            {chip}
+            <span className="cust-akte-kh__chip-label">{chip}</span>
           </button>
         ))}
-        {chips.length > 12 && (
-          <button type="button" className="cust-akte-kh__chip cust-akte-kh__chip--more" onClick={onOpenSheet}>
-            …
+        {moreCount > 0 && (
+          <button
+            type="button"
+            className="cust-akte-kh__chip cust-akte-kh__chip--profile cust-akte-kh__chip--more"
+            onClick={onOpenSheet}
+          >
+            + {moreCount} mehr
           </button>
         )}
       </div>
-      <button type="button" className="cust-akte-kh__add-link" onClick={onOpenSheet}>
-        Bearbeiten
+      <button type="button" className="cust-akte-kh__add-link cust-akte-kh__add-link--profile" onClick={onOpenSheet}>
+        + Info hinzufügen
       </button>
-    </section>
+    </div>
   );
 }

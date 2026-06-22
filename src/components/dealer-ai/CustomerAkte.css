@@ -316,12 +316,85 @@
   white-space: nowrap;
 }
 
-/* Kundenhelfer */
 /* Kundenhelfer – Chips */
 .cust-akte-kh {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.cust-akte-kh--profile {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 6px;
+}
+
+.cust-akte-kh--profile-empty {
+  padding-top: 8px;
+  border-top: none;
+  margin-top: 4px;
+}
+
+.cust-akte-kh__grid--profile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (min-width: 400px) {
+  .cust-akte-kh__grid--profile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .cust-akte-kh__chip--profile {
+    flex: 0 1 auto;
+    max-width: calc(50% - 3px);
+  }
+}
+
+.cust-akte-kh__chip--profile {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #e8edf3;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #475569;
+  max-width: 100%;
+}
+
+.cust-akte-kh__chip--profile .cust-akte-kh__chip-icon {
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.cust-akte-kh__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cust-akte-kh__chip--profile.cust-akte-kh__chip--more {
+  background: #eef5ff;
+  border-color: #c7d9ff;
+  color: #145cff;
+  justify-content: center;
+}
+
+.cust-akte-kh__add-link--profile {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.cust-akte-kh__add-link--profile:hover {
+  color: var(--cust-blue);
 }
 
 .cust-akte-kh--empty {

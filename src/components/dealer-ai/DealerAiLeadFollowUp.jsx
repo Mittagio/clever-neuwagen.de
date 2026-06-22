@@ -50,7 +50,6 @@ import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
-import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteCommunication from './CustomerAkteCommunication.jsx';
 import CustomerAkteActivities from './CustomerAkteActivities.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
@@ -677,6 +676,7 @@ export default function DealerAiLeadFollowUp({
         telHref={telHref}
         onEditCustomer={() => openSheet(SHEETS.customer)}
         onCleverAntwort={() => openCleverAntworten()}
+        onOpenKundenhelfer={() => openSheet(SHEETS.kundenhelfer)}
       />
 
       <CustomerAkteNextStep
@@ -704,11 +704,6 @@ export default function DealerAiLeadFollowUp({
           <CustomerAkteEquipmentWishes wishes={lead.equipmentWishes} />
         </div>
       )}
-
-      <CustomerAkteKundenhelfer
-        notes={kundenhelferNotes}
-        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
-      />
 
       <CustomerAkteCommunication
         history={history}

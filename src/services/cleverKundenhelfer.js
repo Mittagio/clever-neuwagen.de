@@ -31,6 +31,21 @@ export function parseKundenhelferNotes(notes = '') {
     .filter(Boolean);
 }
 
+/** Max. Chips im Profilkopf der Kundenakte */
+export const PROFILE_KUNDENHELFER_CHIP_LIMIT = 6;
+
+/**
+ * Sichtbare Chips für den kompakten Profilbereich.
+ * @returns {{ visible: string[], moreCount: number }}
+ */
+export function getProfileKundenhelferChips(notes = '', limit = PROFILE_KUNDENHELFER_CHIP_LIMIT) {
+  const all = parseKundenhelferNotes(notes);
+  return {
+    visible: all.slice(0, limit),
+    moreCount: Math.max(0, all.length - limit),
+  };
+}
+
 export function joinKundenhelferNotes(parts = []) {
   const unique = [];
   for (const part of parts) {

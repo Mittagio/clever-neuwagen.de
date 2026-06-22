@@ -13,6 +13,7 @@ import { executeDealerAiAction } from '../../services/dealerAiActions.js';
 import DealerAiLeadFollowUp from '../../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../../components/dealer-ai/CustomerOfferEditView.jsx';
 import { buildKundenaktePath, buildParsedFromLead } from '../../services/leadAkteEntry.js';
+import { recordRecentCustomerOpen } from '../../services/crm/customerSearchService.js';
 import { buildAddVehicleContextFromLead } from '../../services/customerAddVehicleFlow.js';
 import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import {
@@ -83,6 +84,7 @@ export default function BackendLeadAktePage() {
       return;
     }
     setActiveSalesChanceId(lead.id);
+    recordRecentCustomerOpen(lead);
     setParsed(buildParsedFromLead(lead, enrichWithSuggestions));
   }, [lead, enrichWithSuggestions]);
 

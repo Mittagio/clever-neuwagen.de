@@ -62,6 +62,8 @@ import {
   getReviewBarButtonLabel,
   isCustomerRecordAddVehicleContext,
 } from '../services/customerAddVehicleFlow.js';
+import { buildParsedFromLead } from '../services/leadAkteEntry.js';
+import { recordRecentCustomerOpen } from '../services/crm/customerSearchService.js';
 import {
   buildOfferDraft,
   executeSaveOfferDraft,
@@ -460,12 +462,16 @@ export default function DealerAIPage() {
     if (!leadId) return;
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
+    recordRecentCustomerOpen(lead);
     setResult({ type: 'lead', leadId });
     setIsFreshLead(Boolean(location.state?.fresh));
     setPhase('followup');
     if (lead.notes) {
       const next = parseDealerAiInput(lead.notes);
       if (next.ok) setParsed(enrichWithSuggestions(next));
+      else setParsed(enrichWithSuggestions(buildParsedFromLead(lead)));
+    } else {
+      setParsed(enrichWithSuggestions(buildParsedFromLead(lead)));
     }
   }, [location.state?.leadId, leads, enrichWithSuggestions]);
 
@@ -717,6 +723,7 @@ export default function DealerAIPage() {
   function handleOpenCustomerLead(leadId) {
     const target = leads.find((l) => l.id === leadId);
     if (!target) return;
+    recordRecentCustomerOpen(target);
     setResult({ type: 'lead', leadId });
     setPhase('followup');
     setIsFreshLead(false);
@@ -724,7 +731,21 @@ export default function DealerAIPage() {
     if (target.notes) {
       const next = parseDealerAiInput(target.notes);
       if (next.ok) setParsed(enrichWithSuggestions(next));
+      else setParsed(enrichWithSuggestions(buildParsedFromLead(target)));
+    } else {
+      setParsed(enrichWithSuggestions(buildParsedFromLead(target)));
     }
+  }
+
+  function handleStartNewWishWithQuery(query) {
+    const q = String(query ?? '').trim();
+    if (!q) return;
+    setInput(q);
+    setStartView('home');
+    window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }, 50);
   }
 
   function handleCaptureComplete() {
@@ -873,6 +894,8 @@ export default function DealerAIPage() {
       ? ''
     : phase === 'review'
       ? `${Math.round((parsed?.confidence ?? 0) * 100)} % sicher · bitte kurz prüfen`
+      : phase === 'input' && startView === 'home'
+        ? 'Kundenakte finden oder neuen Wunsch erfassen.'
       : phase === 'input'
         ? ''
         : 'Bitte kurz prüfen.';
@@ -963,6 +986,9 @@ export default function DealerAIPage() {
             isAnalyzing={isAnalyzing}
             inputRef={inputRef}
             carryCustomer={carryCustomer}
+            leads={leads}
+            onOpenCustomerRecord={handleOpenCustomerLead}
+            onStartNewWishWithQuery={handleStartNewWishWithQuery}
           />
         )}
 

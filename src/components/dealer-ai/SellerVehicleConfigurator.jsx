@@ -331,7 +331,7 @@ export default function SellerVehicleConfigurator({ draft, onChange }) {
               {options.trims.length > 0 && (
                 <div className="vc-field-block">
                   <p className="vc-field-block__label">Linie</p>
-                  <div className={`vc-trim-grid${options.trims.length >= 5 ? ' vc-trim-grid--scroll' : ''}`}>
+                  <div className="vc-trim-grid">
                     {options.trims.map((trim) => (
                       <TrimPill
                         key={trim.id}
