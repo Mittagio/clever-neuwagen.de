@@ -55,6 +55,17 @@ function missingRequiredPackages(pkg, selectedPackageIds) {
   return required.filter((id) => !selectedPackageIds.includes(id));
 }
 
+function buildRequiredPackages(pkg, data, selectedPackageIds) {
+  return (pkg.requiresPackages ?? []).map((id) => {
+    const req = data.packages?.find((p) => p.id === id);
+    return {
+      id,
+      label: req?.name ?? id,
+      satisfied: selectedPackageIds.includes(id),
+    };
+  });
+}
+
 function buildHighlights(pkg, equipment) {
   if (pkg.highlights?.length) return pkg.highlights.slice(0, 5);
 
@@ -121,6 +132,7 @@ export function buildPackageCatalog(modelKey, trimId, selectedPackageIds = [], o
         const req = data.packages?.find((p) => p.id === id);
         return req?.name ?? id;
       }),
+      requiredPackages: buildRequiredPackages(pkg, data, selectedPackageIds),
     });
   }
 

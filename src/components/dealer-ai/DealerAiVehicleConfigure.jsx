@@ -2,12 +2,10 @@ import { useMemo } from 'react';
 import {
   buildConfigureVehicleSummary,
   hasRecognizedModelKey,
+  resolveConfigureHeroImage,
 } from '../../services/dealerAiVehicleConfigureFlow.js';
-import { buildVehicleConfiguration } from '../../services/configuration/vehicleConfigurationModel.js';
 import SellerVehicleConfigurator from './SellerVehicleConfigurator.jsx';
-import VehicleConfigurationSummary from './VehicleConfigurationSummary.jsx';
 import './DealerAiVehicleConfigure.css';
-import './VehicleConfigurationSummary.css';
 
 function formatCurrency(amount) {
   if (amount == null) return '–';
@@ -33,7 +31,7 @@ export default function DealerAiVehicleConfigure({
   }) && Boolean(onSwitchToSearch);
 
   const summary = useMemo(() => buildConfigureVehicleSummary(draft), [draft]);
-  const vehicleConfiguration = useMemo(() => buildVehicleConfiguration(draft), [draft]);
+  const heroImage = useMemo(() => resolveConfigureHeroImage(draft), [draft]);
   const customer = draft.customer ?? {};
 
   const showCustomer = customerContact?.hasContact
@@ -43,12 +41,12 @@ export default function DealerAiVehicleConfigure({
     || customer.email
     || customer.mailNote;
 
-  const headline = summary.vehicleTitle || draft.model;
-
-  const detailLine = [draft.trimLabel, draft.batteryLabel || draft.motorLabel, draft.colorLabel]
+  const vehicleLine = [draft.model, draft.trimLabel, draft.batteryLabel || draft.motorLabel]
     .filter(Boolean)
-    .join(' · ');
-
+    .join(' ');
+  const trimLine = [draft.trimLabel, draft.batteryLabel || draft.motorLabel]
+    .filter(Boolean)
+    .join(' ');
   const uvpTotal = summary.uvpConfigurationPrice;
 
   return (
@@ -62,16 +60,30 @@ export default function DealerAiVehicleConfigure({
       </header>
 
       <aside className="dai-config-sticky-head" aria-live="polite">
-        <div className="dai-config-sticky-head__main">
-          <p className="dai-config-sticky-head__title">{headline}</p>
-          <div className="dai-config-sticky-head__amount">
-            <span className="dai-config-sticky-head__price-label">Konfigurationspreis (UVP)</span>
-            <p className="dai-config-sticky-head__price">{formatCurrency(uvpTotal)}</p>
-          </div>
+        <div className="dai-config-sticky-head__pricebox">
+          <p className="dai-config-sticky-head__title">{vehicleLine || draft.model}</p>
+          {draft.colorLabel && (
+            <p className="dai-config-sticky-head__color">{draft.colorLabel}</p>
+          )}
+          <p className="dai-config-sticky-head__price">{formatCurrency(uvpTotal)}</p>
         </div>
-        {detailLine && (
-          <p className="dai-config-sticky-head__meta">{detailLine}</p>
+
+        {heroImage && (
+          <div className="dai-config-hero-image">
+            <img
+              src={heroImage}
+              alt={vehicleLine || draft.model}
+              className="dai-config-hero-image__img"
+            />
+          </div>
         )}
+
+        <div className="dai-config-hero-caption">
+          <p className="dai-config-hero-caption__trim">{trimLine || draft.model}</p>
+          {draft.colorLabel && (
+            <p className="dai-config-hero-caption__color">{draft.colorLabel}</p>
+          )}
+        </div>
       </aside>
 
       {showCustomer && (
@@ -95,17 +107,8 @@ export default function DealerAiVehicleConfigure({
         <SellerVehicleConfigurator draft={draft} onChange={onDraftChange} />
       </section>
 
-      <VehicleConfigurationSummary
-        configuration={vehicleConfiguration}
-        summary={summary}
-      />
-
-      <footer className="dai-config-sticky-foot">
-        <p className="dai-config-sticky-foot__price">
-          <span className="vcfg-config-total-label">Konfigurationspreis (UVP)</span>
-          <span className="vcfg-config-total-value">{formatCurrency(uvpTotal)}</span>
-        </p>
-        <p className="vcfg-config-total-hint">Leasing & Rabatte folgen im nächsten Schritt</p>
+      <footer className="dai-config-sticky-foot dai-config-sticky-foot--cta-only">
+        <p className="dai-config-sticky-foot__hint">Konditionen & Angebot im nächsten Schritt</p>
         <div className="dai-config-sticky-foot__actions">
           {showVehicleSearch && (
             <button

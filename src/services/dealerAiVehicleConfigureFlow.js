@@ -19,6 +19,7 @@ import { buildVehicleConfiguration } from './configuration/vehicleConfigurationM
 import { buildOfferConditionsFromDraft } from './configuration/offerConditionsModel.js';
 import { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
 import { computeUvpPricing } from './configuration/uvpPricing.js';
+import { getKiaModelMediaEntry, resolveKiaColorImageUrl } from '../data/kia/kiaModelImages.js';
 
 const DEFAULT_EV_COLORS = [
   { id: 'snow-white', label: 'Snow White Pearl' },
@@ -180,7 +181,19 @@ function detectExtrasFromText(rawText = '', fields = {}) {
 
 function vehicleImagePath(modelKey) {
   if (!modelKey) return null;
-  return `/images/manufacturers/kia/${modelKey}/default.svg`;
+  const media = getKiaModelMediaEntry(modelKey, 'hero');
+  return media?.hero ?? media?.default ?? `/images/manufacturers/kia/${modelKey}/default.svg`;
+}
+
+/** Hero-Bild für Konfigurator – reagiert auf Modell, Linie und Farbe */
+export function resolveConfigureHeroImage(draft) {
+  if (!draft?.modelKey) return null;
+  if (draft.colorId) {
+    const colorUrl = resolveKiaColorImageUrl(draft.modelKey, draft.colorId);
+    if (colorUrl) return colorUrl;
+  }
+  const media = getKiaModelMediaEntry(draft.modelKey, 'hero');
+  return media?.hero ?? media?.default ?? vehicleImagePath(draft.modelKey);
 }
 
 /**

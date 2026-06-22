@@ -54,6 +54,7 @@ export function buildFoundationPackageCatalog(modelKey, trimId, selectedPackageI
       status: mapStatus(p.status),
       includedInTrimLabel: p.includedInTrimLabel,
       missingRequiredLabels: p.missingRequiredLabels ?? [],
+      requiredPackages: p.requiredPackages ?? [],
       dependencyHints: p.dependencyHints ?? [],
       excludedByLabels: p.excludedByLabels ?? [],
     }));

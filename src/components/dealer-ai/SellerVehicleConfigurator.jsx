@@ -66,7 +66,10 @@ function PackageCard({ pkg, onToggle }) {
   const isBlocked = pkg.status === 'blocked';
   const isSelected = pkg.status === 'selected';
   const clickable = !isIncluded && !isBlocked;
-  const highlights = (pkg.highlights ?? []).slice(0, 4);
+  const highlights = (pkg.highlights ?? []).slice(0, 6);
+  const requiredPackages = pkg.requiredPackages?.length
+    ? pkg.requiredPackages
+    : (pkg.missingRequiredLabels ?? []).map((label) => ({ label, satisfied: false }));
 
   return (
     <div
@@ -80,37 +83,40 @@ function PackageCard({ pkg, onToggle }) {
         aria-pressed={isSelected}
       >
         <div className="vc-package-card__head">
-          <div className="vc-package-card__title-row">
-            {(isSelected || isIncluded) && (
-              <span className="vc-package-card__check" aria-hidden="true">
-                {isIncluded ? '✓' : '✓'}
-              </span>
-            )}
-            <span className="vc-package-card__name">{pkg.name}</span>
-          </div>
+          <span className="vc-package-card__name">{pkg.name}</span>
           <span className="vc-package-card__price">
             {isIncluded ? 'Serie' : formatPackagePrice(pkg.priceGross)}
           </span>
         </div>
         {highlights.length > 0 && (
-          <p className="vc-package-card__highlights-inline">
-            {highlights.join(' · ')}
-          </p>
+          <ul className="vc-package-card__features">
+            {highlights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
         )}
       </button>
+
+      {requiredPackages.length > 0 && (
+        <div className="vc-package-card__requires">
+          <p className="vc-package-card__requires-label">Benötigt:</p>
+          <ul className="vc-package-card__requires-list">
+            {requiredPackages.map((req) => (
+              <li
+                key={req.id ?? req.label}
+                className={req.satisfied ? 'is-satisfied' : 'is-missing'}
+              >
+                {req.satisfied ? '✓ ' : ''}
+                {req.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {isIncluded && (
         <p className="vc-package-card__status vc-package-card__status--included">
           Bereits in {pkg.includedInTrimLabel} enthalten
-        </p>
-      )}
-      {isBlocked && pkg.missingRequiredLabels?.length > 0 && (
-        <p className="vc-package-card__status vc-package-card__status--blocked">
-          Benötigt {pkg.missingRequiredLabels.join(', ')}
-        </p>
-      )}
-      {pkg.dependencyHints?.length > 0 && !isBlocked && !isIncluded && (
-        <p className="vc-package-card__status vc-package-card__status--hint">
-          {pkg.dependencyHints[0]}
         </p>
       )}
     </div>
@@ -140,7 +146,7 @@ function StepAccordionItem({
   children,
 }) {
   return (
-    <section className={`vc-step${isOpen ? ' is-open' : ''}${isComplete ? ' is-complete' : ''}`}>
+    <section className={`vc-step${isOpen ? ' is-open' : ''}${isComplete ? ' is-complete' : ''}${isComplete && !isOpen ? ' is-compact' : ''}`}>
       <button
         type="button"
         className="vc-step__trigger"
@@ -148,7 +154,7 @@ function StepAccordionItem({
         aria-expanded={isOpen}
       >
         <span className="vc-step__indicator">
-          {isComplete && !isOpen ? (
+          {isComplete ? (
             <span className="vc-step__done" aria-hidden="true">✓</span>
           ) : (
             <span className="vc-step__num">{step.number}</span>
@@ -156,7 +162,7 @@ function StepAccordionItem({
         </span>
         <span className="vc-step__text">
           <span className="vc-step__title">{step.title}</span>
-          {!isOpen && summary && (
+          {summary && (
             <span className="vc-step__summary">{summary}</span>
           )}
         </span>
@@ -218,10 +224,10 @@ export default function SellerVehicleConfigurator({ draft, onChange }) {
   const engineLabel = activeEngine?.fullName ?? activeEngine?.label ?? draft.batteryLabel ?? null;
 
   const stepSummaries = {
-    vehicle: [draft.model, draft.trimLabel, engineLabel].filter(Boolean).join(' · '),
-    color: draft.colorLabel ?? '–',
+    vehicle: [draft.trimLabel, engineLabel].filter(Boolean).join(' · ') || 'Auswahl offen',
+    color: draft.colorLabel ?? 'Auswahl offen',
     packages: selectedPackageCount === 0 ? 'Keine gewählt' : `${selectedPackageCount} gewählt`,
-    extras: extrasCount === 0 ? '0 gewählt' : `${extrasCount} gewählt`,
+    extras: extrasCount === 0 ? 'Keine gewählt' : `${extrasCount} gewählt`,
   };
 
   function patch(partial) {
@@ -283,10 +289,11 @@ export default function SellerVehicleConfigurator({ draft, onChange }) {
   }
 
   const dealerExtras = [
+    { id: 'ahk', label: 'Anhängerkupplung' },
     { id: 'winterraeder', label: 'Winterräder' },
     { id: 'wartung', label: 'Wartung' },
     { id: 'versicherung', label: 'Versicherung' },
-    { id: 'ahk', label: 'AHK' },
+    { id: 'standheizung', label: 'Standheizung' },
   ];
 
   const hasPackages = packageCatalog.groups.length > 0;
@@ -321,14 +328,6 @@ export default function SellerVehicleConfigurator({ draft, onChange }) {
         >
           {step.id === 'vehicle' && (
             <>
-              <div className="vc-field-block">
-                <p className="vc-field-block__label">Modell</p>
-                <div className="vc-model-badge">
-                  <span className="vc-model-badge__brand">Kia</span>
-                  <span className="vc-model-badge__name">{draft.model}</span>
-                </div>
-              </div>
-
               {options.trims.length > 0 && (
                 <div className="vc-field-block">
                   <p className="vc-field-block__label">Linie</p>
@@ -413,48 +412,33 @@ export default function SellerVehicleConfigurator({ draft, onChange }) {
 
           {step.id === 'packages' && (
             <div className="vc-packages-flow">
-              {packageCatalog.groups.map((group) => (
-                <div key={group.id} className="vc-package-group">
-                  <h4 className="vc-package-group__title">{group.label}</h4>
-                  <div className="vc-package-cards">
-                    {group.packages.map((pkg) => (
-                      <PackageCard key={pkg.id} pkg={pkg} onToggle={togglePackage} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {packageCatalog.packages
+                .filter((pkg) => pkg.status !== 'hidden')
+                .map((pkg) => (
+                  <PackageCard key={pkg.id} pkg={pkg} onToggle={togglePackage} />
+                ))}
             </div>
           )}
 
           {step.id === 'extras' && (
             <div className="vc-extras-flow">
-              {options.accessories.length > 0 && (
-                <div className="vc-extra-section">
-                  <p className="vc-extra-section__label">Zubehör</p>
-                  <div className="vc-extra-chips">
-                    {options.accessories.map((acc) => (
-                      <ExtraChip
-                        key={acc.id}
-                        label={acc.label}
-                        selected={(draft.accessoryIds ?? []).includes(acc.id)}
-                        onChange={(active) => toggleAccessory(acc.id, active)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="vc-extra-section">
-                <p className="vc-extra-section__label">Weitere Extras</p>
-                <div className="vc-extra-chips">
-                  {dealerExtras.map((extra) => (
-                    <ExtraChip
-                      key={extra.id}
-                      label={extra.label}
-                      selected={Boolean(draft.extras?.[extra.id])}
-                      onChange={(active) => toggleExtra(extra.id, active)}
-                    />
-                  ))}
-                </div>
+              <div className="vc-extra-chips">
+                {options.accessories.map((acc) => (
+                  <ExtraChip
+                    key={acc.id}
+                    label={acc.label}
+                    selected={(draft.accessoryIds ?? []).includes(acc.id)}
+                    onChange={(active) => toggleAccessory(acc.id, active)}
+                  />
+                ))}
+                {dealerExtras.map((extra) => (
+                  <ExtraChip
+                    key={extra.id}
+                    label={extra.label}
+                    selected={Boolean(draft.extras?.[extra.id])}
+                    onChange={(active) => toggleExtra(extra.id, active)}
+                  />
+                ))}
               </div>
             </div>
           )}

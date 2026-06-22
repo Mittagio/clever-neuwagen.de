@@ -104,43 +104,9 @@ export function computeConditionsStepPreview(vehicleConfiguration, draft, dealer
   };
 }
 
-export function buildConditionsFooterAction(preview) {
-  if (!preview) {
-    return { label: 'Vorschau anzeigen', hint: null };
-  }
-
-  if (preview.isCash && preview.cashOfferPrice != null) {
-    return {
-      label: `Angebotspreis ${Number(preview.cashOfferPrice).toLocaleString('de-DE')} € · Vorschau anzeigen`,
-      hint: null,
-    };
-  }
-
-  if (preview.isLeasing) {
-    if (preview.canShowLiveLeasingRate && preview.monthlyRate != null) {
-      return {
-        label: `Rate ${Number(preview.monthlyRate).toLocaleString('de-DE')} €/Monat · Vorschau anzeigen`,
-        hint: null,
-      };
-    }
-    return {
-      label: 'Leasingangebot vorbereiten',
-      hint: 'Rate wird im Bankangebot bestätigt.',
-    };
-  }
-
-  if (preview.isFinance) {
-    if (preview.canShowLiveFinanceRate && preview.monthlyRate != null) {
-      return {
-        label: `Rate ${Number(preview.monthlyRate).toLocaleString('de-DE')} €/Monat · Vorschau anzeigen`,
-        hint: null,
-      };
-    }
-    return {
-      label: 'Finanzierungsangebot vorbereiten',
-      hint: 'Rate wird im Bankangebot bestätigt.',
-    };
-  }
-
-  return { label: 'Vorschau anzeigen', hint: null };
+export function buildConditionsFooterAction() {
+  return {
+    label: 'Angebotsvorschau anzeigen',
+    hint: 'Rate oder Angebotspreis werden in der Vorschau berechnet.',
+  };
 }

@@ -111,6 +111,19 @@ function missingDependencies(rules, packageId, selectedPackageIds) {
   return [...new Set(missing)];
 }
 
+function allPackageDependencies(rules, packageId) {
+  const deps = rules.filter(
+    (r) => r.packageId === packageId && r.ruleType === RULE_TYPE.PACKAGE_DEPENDENCY,
+  );
+  const ids = [];
+  for (const dep of deps) {
+    for (const reqId of dep.value?.requiredPackageIds ?? []) {
+      ids.push(reqId);
+    }
+  }
+  return [...new Set(ids)];
+}
+
 function exclusionConflicts(rules, packageId, selectedPackageIds) {
   const conflicts = [];
   for (const rule of rules) {
@@ -157,6 +170,7 @@ export function evaluateConfiguratorState(bundle, selection, audience = CONFIGUR
     const included = isPackageIncluded(bundle, activeRules, pkg.id, selection);
     const selected = selectedPackageIds.includes(pkg.id);
     const missingReqIds = missingDependencies(activeRules, pkg.id, selectedPackageIds);
+    const allReqIds = allPackageDependencies(activeRules, pkg.id);
     const excludedBy = exclusionConflicts(activeRules, pkg.id, selectedPackageIds);
     const priceGross = packagePriceFromRules(activeRules, pkg.id);
 
@@ -188,6 +202,11 @@ export function evaluateConfiguratorState(bundle, selection, audience = CONFIGUR
       highlights: equipmentHighlights(bundle, pkg.id),
       includedInTrimLabel: included ? (trim?.name ?? selection.trimId) : null,
       missingRequiredLabels: missingReqIds.map((id) => packageLabel(bundle, id)),
+      requiredPackages: allReqIds.map((id) => ({
+        id,
+        label: packageLabel(bundle, id),
+        satisfied: selectedPackageIds.includes(id),
+      })),
       excludedByLabels: excludedBy.map((id) => packageLabel(bundle, id)),
       dependencyHints,
       usesDraftRules: usesDraftRules && allRules.some(
