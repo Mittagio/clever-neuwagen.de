@@ -278,7 +278,7 @@ export default function BackendLeadAktePage() {
 
   return (
     <div className="backend-lead-akte dealer-ai-page">
-      <main className={`dealer-ai-main dealer-ai-main--akte${phase === 'offer-edit' ? '' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'offer-edit' ? ' dealer-ai-main--configure' : ' dealer-ai-main--akte'}`}>
         {phase === 'followup' && parsed && (
           <DealerAiLeadFollowUp
             result={{ type: 'lead', leadId }}

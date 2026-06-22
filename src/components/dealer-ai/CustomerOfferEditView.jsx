@@ -1,15 +1,15 @@
-import { useCallback, useRef, useState } from 'react';
-import VehicleImage from '../shared/VehicleImage.jsx';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   formatPaymentBadge,
   formatVehicleCardConditionsDot,
   formatVehicleCardPrice,
   formatVehicleCardTitle,
   getCustomerFirstName,
-  getCustomerInitials,
 } from '../../services/customerAkte.js';
 import { formatHistoryWhen } from '../../services/dealerAiLeadCrm.js';
 import { polishHistoryText } from '../../services/cleverSalesCoach.js';
+import { PAYMENT_TYPE_LABELS } from '../../services/dealerAiParser.js';
+import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
 import {
   VEHICLE_OFFER_STATUS,
   VEHICLE_OFFER_STATUS_UI,
@@ -33,6 +33,19 @@ import {
 } from '../../services/cleverSelbstauskunft.js';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
+import {
+  FlowCard,
+  FlowChip,
+  FlowGhostButton,
+  FlowPriceDetails,
+  FlowPrimaryButton,
+  FlowSecondaryButton,
+  FlowSectionHeader,
+  FlowStatusBadge,
+  FlowStickyFooter,
+  OfferFlowLayout,
+  VehicleOfferHero,
+} from './flow/OfferFlowComponents.jsx';
 import './CustomerOfferEdit.css';
 import './CleverUnterlagenSheet.css';
 
@@ -77,6 +90,56 @@ function buildOfferTimeline(offer = {}, history = []) {
   return items.slice(0, 6);
 }
 
+function formatCurrency(amount) {
+  if (amount == null) return '–';
+  return `${Number(amount).toLocaleString('de-DE')} €`;
+}
+
+function mapOfferStatusTone(statusUi = {}) {
+  const map = {
+    draft: 'draft',
+    ready: 'ready',
+    sent: 'sent',
+    opened: 'opened',
+    accepted: 'sent',
+    rejected: 'neutral',
+  };
+  return map[statusUi.tone] ?? 'neutral';
+}
+
+function getMissingConditionFields(card = {}) {
+  const missing = [];
+  const pt = card.paymentType ?? 'unknown';
+  if (!pt || pt === 'unknown') missing.push('Zahlungsart');
+  const isLeasing = pt === 'leasing';
+  const isFinance = pt === 'financing' || pt === 'finance' || pt === 'threeWayFinancing';
+  const isCash = pt === 'cash';
+  if (isLeasing || isFinance) {
+    if (!card.termMonths) missing.push('Laufzeit');
+    if (isLeasing && !card.mileagePerYear) missing.push('Kilometer');
+    if (!card.desiredRate) missing.push('Rate');
+  }
+  if (isCash && !card.desiredPrice) missing.push('Angebotspreis');
+  return missing;
+}
+
+function resolveCardConfiguration(lead, card) {
+  const configs = lead?.crm?.vehicleConfigurations ?? [];
+  if (!configs.length) return null;
+  if (card.configurationId) {
+    return configs.find((vc) => vc.id === card.configurationId) ?? null;
+  }
+  return configs.find((vc) => (vc.modelKey ?? '') === (card.modelKey ?? '')) ?? configs[0];
+}
+
+function resolvePaymentLabel(paymentType) {
+  const raw = PAYMENT_TYPE_LABELS[paymentType] ?? paymentType;
+  return String(raw)
+    .replace(' / Barzahlung', '')
+    .replace('Kauf / Barzahlung', 'Kauf')
+    .trim();
+}
+
 export default function CustomerOfferEditView({
   card,
   customerName = '',
@@ -97,10 +160,10 @@ export default function CustomerOfferEditView({
   onDeletePdf,
   onMarkSent,
   onStatusChange,
+  onEditConditions,
   isSaving = false,
 }) {
   const fileInputRef = useRef(null);
-  const [conditionsOpen, setConditionsOpen] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [unterlagenOpen, setUnterlagenOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -109,7 +172,6 @@ export default function CustomerOfferEditView({
   const title = formatVehicleCardTitle(card);
   const payment = formatPaymentBadge(card.paymentType);
   const statusUi = VEHICLE_OFFER_STATUS_UI[offer?.status] ?? VEHICLE_OFFER_STATUS_UI.draft;
-  const isCollapsed = ['sent', 'opened', 'accepted'].includes(offer?.status);
   const firstName = getCustomerFirstName(customerName);
   const shareMessage = buildOfferShareMessage({
     customerName,
@@ -133,6 +195,41 @@ export default function CustomerOfferEditView({
   const selbstauskunftLine = selbstauskunft
     ? formatSelbstauskunftSummary(selbstauskunft, selbstauskunft.uploadCount ?? 0)
     : null;
+
+  const configuration = useMemo(
+    () => resolveCardConfiguration(lead, card),
+    [lead, card],
+  );
+
+  const heroImage = useMemo(() => resolveConfigureHeroImage({
+    modelKey: card.modelKey ?? configuration?.modelKey,
+    colorId: configuration?.colorId,
+    trimId: configuration?.trimId,
+  }), [card.modelKey, configuration?.colorId, configuration?.trimId]);
+
+  const colorLabel = configuration?.colorLabel ?? null;
+  const missingFields = useMemo(() => getMissingConditionFields(card), [card]);
+  const isIncomplete = missingFields.length > 0;
+
+  const pt = card.paymentType ?? 'unknown';
+  const isCash = pt === 'cash';
+  const isLeasing = pt === 'leasing';
+  const isFinance = pt === 'financing' || pt === 'finance' || pt === 'threeWayFinancing';
+  const transferCost = offer?.deliveryFee ?? 990;
+  const downPayment = offer?.downPayment ?? 0;
+  const paymentLabel = resolvePaymentLabel(pt);
+
+  const heroPrice = formatVehicleCardPrice(card);
+  const priceMain = heroPrice
+    ?? (isIncomplete ? 'Noch unklar' : '–');
+  const priceLabel = isCash
+    ? 'Angebotspreis'
+    : (isLeasing || isFinance ? 'Monatliche Rate' : null);
+  const priceSuffix = !isCash && card.desiredRate != null ? '/ Monat' : null;
+
+  const offerPrice = isCash && card.desiredPrice != null
+    ? card.desiredPrice + transferCost
+    : card.desiredRate;
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -179,165 +276,131 @@ export default function CustomerOfferEditView({
     onMarkSent?.('email');
   }
 
+  function handleEditConditionsClick() {
+    if (onEditConditions) {
+      onEditConditions(card);
+      return;
+    }
+    showToast('Konditionen können im Angebotsflow ergänzt werden');
+  }
+
   const statusOptions = Object.entries(VEHICLE_OFFER_STATUS_UI).map(([id, ui]) => ({
     id,
     label: ui.badge,
   }));
 
+  const hasCustomer = Boolean(customerName || phone || email);
+  const hasDeliveryNote = Boolean(deliveryNote?.trim());
+  const hasNote = Boolean(offer?.note?.trim());
+
   return (
-    <div className="cust-offer-edit">
-      <div className="cust-offer-toolbar">
-        <button type="button" className="cust-offer-toolbar__back" onClick={onBack} aria-label="Zurück">
-          ←
-        </button>
-        <h1 className="cust-offer-toolbar__title">Angebot bearbeiten</h1>
-        <button type="button" className="cust-offer-toolbar__more" aria-label="Mehr">
-          ⋯
-        </button>
-      </div>
-
-      <div className="cust-offer-customer">
-        <div className="cust-offer-customer__avatar" aria-hidden>
-          {getCustomerInitials(customerName)}
-        </div>
-        <div>
-          <p className="cust-offer-customer__name">
-            {customerName || 'Kunde noch offen'}
-            <span className="cust-offer-customer__tag">Kunde</span>
-          </p>
-          <div className="cust-offer-customer__icons">
-            {telHref && <a href={telHref} aria-label="Anrufen">📞</a>}
-            {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">💬</a>}
-            {email && <a href={`mailto:${email}`} aria-label="E-Mail">✉</a>}
-          </div>
-        </div>
-      </div>
-
-      <article className="cust-offer-hero-card">
-        <div className="cust-offer-hero-card__image">
-          <VehicleImage
-            brand="Kia"
-            model={card.modelKey}
-            bodyType={card.bodyType ?? 'suv'}
-            variant="card"
-            className="cust-offer-hero-card__img-wrap"
-            imageClassName="cust-offer-hero-card__img"
-          />
-        </div>
-        <div>
-          <span className={`cust-offer-hero-card__payment cust-offer-hero-card__payment--${payment.tone}`}>
-            {payment.label}
-          </span>
-          <p className="cust-offer-hero-card__title">{title}</p>
-          {formatVehicleCardConditionsDot(card) && (
-            <p className="cust-offer-hero-card__terms">{formatVehicleCardConditionsDot(card)}</p>
-          )}
-          {formatVehicleCardPrice(card) && (
-            <p className="cust-offer-hero-card__price">{formatVehicleCardPrice(card)}</p>
-          )}
-        </div>
-      </article>
-
-      <div className={`cust-offer-status-banner cust-offer-status-banner--${statusUi.bannerTone}`}>
-        <div>
-          <p className="cust-offer-status-banner__badge">{statusUi.badge}</p>
-          <p className="cust-offer-status-banner__text">{statusUi.banner}</p>
-        </div>
-        <button
-          type="button"
-          className="cust-offer-status-banner__change"
-          onClick={() => setStatusSheetOpen(true)}
-        >
-          Status ändern
-        </button>
-      </div>
+    <OfferFlowLayout
+      backLabel="← Zur Kundenakte"
+      onBack={onBack}
+      title="Gespeichertes Angebot"
+      subtitle={customerName ? `Für ${customerName}` : 'Angebot in der Kundenakte'}
+    >
+      <VehicleOfferHero
+        modelLine={title}
+        colorLabel={colorLabel}
+        imageSrc={heroImage}
+        imageAlt={title}
+        priceMain={priceMain}
+        priceLabel={priceLabel}
+        priceSuffix={priceSuffix}
+        statusBadge={(
+          <>
+            <FlowStatusBadge label={statusUi.badge} tone={mapOfferStatusTone(statusUi)} />
+            {pt !== 'unknown' && (
+              <span className="cn-badge cn-badge--payment">{payment.label}</span>
+            )}
+            <button
+              type="button"
+              className="cn-flow-status-edit"
+              onClick={() => setStatusSheetOpen(true)}
+            >
+              Status ändern
+            </button>
+          </>
+        )}
+      />
 
       {referenceCode && (
-        <p className="cust-offer-ref">Ref. {referenceCode}</p>
+        <p className="cn-flow-meta">Ref. {referenceCode}</p>
       )}
 
-      <section className="cust-offer-section">
-        <h2 className="cust-offer-section__title">Konditionen</h2>
-        {isCollapsed && !conditionsOpen ? (
-          <button
-            type="button"
-            className="cust-offer-conditions-collapsed"
-            onClick={() => setConditionsOpen(true)}
-          >
-            <span>
-              {formatVehicleCardConditionsDot(card) || payment.label}
-            </span>
-            <span className="cust-offer-conditions-collapsed__price">
-              {formatVehicleCardPrice(card)}
-            </span>
-            <span className="cust-offer-conditions-collapsed__chev" aria-hidden>›</span>
-          </button>
-        ) : (
-          <div className="cust-offer-data">
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Laufzeit</span>
-              <span className="cust-offer-data__value">
-                {card.termMonths ? `${card.termMonths} Monate` : '—'}
-              </span>
-            </div>
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Kilometerleistung</span>
-              <span className="cust-offer-data__value">
-                {card.mileagePerYear
-                  ? `${Number(card.mileagePerYear).toLocaleString('de-DE')} km / Jahr`
-                  : '—'}
-              </span>
-            </div>
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Rate</span>
-              <span className="cust-offer-data__value">{formatVehicleCardPrice(card) ?? '—'}</span>
-            </div>
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Anzahlung</span>
-              <span className="cust-offer-data__value">
-                {offer?.downPayment != null ? `${offer.downPayment} €` : '0 €'}
-              </span>
-            </div>
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Überführung</span>
-              <span className="cust-offer-data__value">
-                {offer?.deliveryFee != null ? `${offer.deliveryFee} €` : '990 €'}
-              </span>
-            </div>
-            <div className="cust-offer-data__row">
-              <span className="cust-offer-data__label">Zahlungsart</span>
-              <span className="cust-offer-data__value">{payment.label}</span>
-            </div>
+      {hasCustomer && (
+        <details className="cn-customer-fold">
+          <summary>
+            <span className="cn-customer-fold__label">Kunde</span>
+            <span className="cn-customer-fold__name">{customerName || '–'}</span>
+          </summary>
+          <div className="cn-customer-fold__body">
+            {phone && <p>{phone}</p>}
+            {email && <p>{email}</p>}
+            {(telHref || whatsappHref || email) && (
+              <div className="cust-offer-contact-links">
+                {telHref && <a href={telHref}>Anrufen</a>}
+                {whatsappHref && (
+                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                )}
+                {email && <a href={`mailto:${email}`}>E-Mail</a>}
+              </div>
+            )}
           </div>
-        )}
-      </section>
+        </details>
+      )}
 
-      <section className="cust-offer-section">
-        <h2 className="cust-offer-section__title">Angebotsdaten</h2>
-        <div className="cust-offer-data">
-          {[
-            ['Fahrzeug', title],
-            ['Konditionen', formatVehicleCardConditionsDot(card)?.replace(/ • /g, ' · ') ?? '—'],
-            ['Preis / Rate', formatVehicleCardPrice(card) ?? '—'],
-            ['Kunde', customerName || '—'],
-            ['Übergabe', deliveryNote || '—'],
-            ['Notiz', offer?.note || '—'],
-          ].map(([label, value]) => (
-            <button
-              key={label}
-              type="button"
-              className="cust-offer-data__row cust-offer-data__row--btn"
-              onClick={() => showToast('Bearbeitung folgt bald')}
-            >
-              <span className="cust-offer-data__label">{label}</span>
-              <span className="cust-offer-data__value">{value}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {isIncomplete ? (
+        <FlowCard variant="warn">
+          <p className="cn-flow-card__title-text">Angebot noch nicht vollständig</p>
+          <p className="cn-flow-card__subtext">Fehlende Angaben:</p>
+          <ul className="cn-missing-list">
+            {missingFields.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </ul>
+          <FlowPrimaryButton type="button" onClick={handleEditConditionsClick}>
+            Konditionen ergänzen
+          </FlowPrimaryButton>
+        </FlowCard>
+      ) : (
+        <FlowCard>
+          <FlowSectionHeader title="Preisdetails" />
+          <FlowPriceDetails
+            paymentLabel={paymentLabel}
+            isCash={isCash}
+            isLeasing={isLeasing}
+            isFinance={isFinance}
+            housePrice={card.desiredPrice}
+            transferCost={transferCost}
+            offerPrice={offerPrice}
+            termMonths={card.termMonths}
+            mileagePerYear={card.mileagePerYear}
+            downPayment={downPayment}
+            formatCurrency={formatCurrency}
+          />
+        </FlowCard>
+      )}
 
-      <section className="cust-offer-section">
-        <h2 className="cust-offer-section__title">Online-Angebot</h2>
+      {(hasDeliveryNote || hasNote) && (
+        <FlowCard variant="flat">
+          <FlowSectionHeader title="Weitere Angaben" />
+          {hasDeliveryNote && (
+            <p className="cn-flow-hint">
+              <strong>Übergabe:</strong> {deliveryNote}
+            </p>
+          )}
+          {hasNote && (
+            <p className="cn-flow-hint">
+              <strong>Notiz:</strong> {offer.note}
+            </p>
+          )}
+        </FlowCard>
+      )}
+
+      <FlowCard>
+        <FlowSectionHeader title="Online-Angebot" />
         <InternalTestCustomerShareWarning />
 
         {!offer?.pdf ? (
@@ -358,54 +421,40 @@ export default function CustomerOfferEditView({
               className="cust-offer-upload__input"
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
-            <button
-              type="button"
-              className="cust-offer-btn cust-offer-btn--primary"
-              onClick={() => fileInputRef.current?.click()}
-            >
+            <FlowPrimaryButton type="button" onClick={() => fileInputRef.current?.click()}>
               PDF hochladen
-            </button>
-            <button
+            </FlowPrimaryButton>
+            <FlowSecondaryButton
               type="button"
-              className="cust-offer-btn cust-offer-btn--secondary cust-offer-upload__mobile"
+              className="cust-offer-upload__mobile"
               onClick={() => fileInputRef.current?.click()}
             >
               Datei auswählen
-            </button>
+            </FlowSecondaryButton>
           </div>
         ) : (
-          <div className="cust-offer-pdf">
-            <p className="cust-offer-pdf__name">{offer.pdf.fileName}</p>
-            <p className="cust-offer-pdf__meta">
+          <>
+            <p className="cn-vehicle-line">{offer.pdf.fileName}</p>
+            <p className="cn-flow-hint">
               {formatUploadWhen(offer.pdf.uploadedAt)}
               {offer.pdf.sizeBytes ? ` · ${formatFileSize(offer.pdf.sizeBytes)}` : ''}
               {' · '}Angebot hinterlegt
             </p>
-            <div className="cust-offer-pdf__actions">
+            <div className="cn-flow-card__actions">
               {offer.pdf.dataUrl && (
-                <a
-                  href={offer.pdf.dataUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="cust-offer-btn cust-offer-btn--secondary"
+                <FlowSecondaryButton
+                  type="button"
+                  onClick={() => window.open(offer.pdf.dataUrl, '_blank', 'noopener')}
                 >
                   PDF öffnen
-                </a>
+                </FlowSecondaryButton>
               )}
-              <button
-                type="button"
-                className="cust-offer-btn cust-offer-btn--secondary"
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <FlowSecondaryButton type="button" onClick={() => fileInputRef.current?.click()}>
                 PDF ersetzen
-              </button>
-              <button
-                type="button"
-                className="cust-offer-btn cust-offer-btn--ghost"
-                onClick={onDeletePdf}
-              >
+              </FlowSecondaryButton>
+              <FlowGhostButton type="button" onClick={onDeletePdf}>
                 Löschen
-              </button>
+              </FlowGhostButton>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -417,160 +466,135 @@ export default function CustomerOfferEditView({
                 }}
               />
             </div>
-          </div>
+          </>
         )}
 
         {offer?.pdf && !offer?.onlineLink && (
           <div className="cust-offer-link-create">
-            <p className="cust-offer-link-create__title">Noch kein Online-Link</p>
-            <p className="cust-offer-link-create__sub">Erstelle einen Link für deinen Kunden – ohne Dateianhang.</p>
-            <button
-              type="button"
-              className="cust-offer-btn cust-offer-btn--primary cust-offer-btn--block"
-              onClick={onCreateLink}
-            >
+            <p className="cn-flow-card__title-text">Noch kein Online-Link</p>
+            <p className="cn-flow-card__subtext">
+              Erstelle einen Link für deinen Kunden – ohne Dateianhang.
+            </p>
+            <FlowPrimaryButton type="button" onClick={onCreateLink}>
               Online-Link erstellen
-            </button>
+            </FlowPrimaryButton>
           </div>
         )}
 
         {offer?.onlineLink && (
           <div className="cust-offer-link-ready">
-            <p className="cust-offer-link-ready__status">Link bereit</p>
+            <FlowStatusBadge label="Link bereit" tone="ready" />
             <p className="cust-offer-link-ready__url">{offer.onlineLink.url}</p>
-            <div className="cust-offer-link-actions">
-              <button type="button" className="cust-offer-btn cust-offer-btn--secondary" onClick={handleCopyLink}>
+            <div className="cn-flow-inline-actions">
+              <FlowSecondaryButton type="button" onClick={handleCopyLink}>
                 Link kopieren
-              </button>
-              <button type="button" className="cust-offer-btn cust-offer-btn--secondary" onClick={handleWhatsapp}>
+              </FlowSecondaryButton>
+              <FlowSecondaryButton type="button" onClick={handleWhatsapp}>
                 WhatsApp
-              </button>
-              <button type="button" className="cust-offer-btn cust-offer-btn--secondary" onClick={handleEmail}>
+              </FlowSecondaryButton>
+              <FlowSecondaryButton type="button" onClick={handleEmail}>
                 E-Mail
-              </button>
+              </FlowSecondaryButton>
             </div>
-            <button
+            <FlowGhostButton
               type="button"
-              className="cust-offer-link-btn"
               onClick={() => window.open(offer.onlineLink.url, '_blank', 'noopener')}
             >
               Vorschau öffnen
-            </button>
+            </FlowGhostButton>
             {!email && (
-              <p className="cust-offer-hint">Mit E-Mail ist der Link schneller raus.</p>
+              <p className="cn-flow-hint">Mit E-Mail ist der Link schneller raus.</p>
             )}
             {!phone && (
-              <p className="cust-offer-hint">Mit Telefonnummer geht WhatsApp schneller.</p>
+              <p className="cn-flow-hint">Mit Telefonnummer geht WhatsApp schneller.</p>
             )}
           </div>
         )}
-      </section>
+      </FlowCard>
 
       {offer?.onlineLink && (
-        <section className="cust-offer-section">
-          <h2 className="cust-offer-section__title">Öffnungsstatus</h2>
+        <FlowCard>
+          <FlowSectionHeader title="Öffnungsstatus" />
           {!opened ? (
-            <p className="cust-offer-muted">{formatOpenedTracking(offer.tracking)}</p>
+            <p className="cn-flow-hint">{formatOpenedTracking(offer.tracking)}</p>
           ) : (
-            <div className="cust-offer-opened-card">
-              <span className="cust-offer-opened-card__icon" aria-hidden>👁</span>
-              <div>
-                <p className="cust-offer-opened-card__title">Geöffnet</p>
-                <p className="cust-offer-opened-card__text">
-                  {firstName} hat das Angebot {formatUploadWhen(offer.tracking.lastOpenedAt).toLowerCase()} geöffnet.
-                </p>
-                <p className="cust-offer-opened-card__text">
-                  {formatOpenedTracking(offer.tracking)}
-                </p>
-              </div>
-            </div>
+            <>
+              <FlowStatusBadge label="Geöffnet" tone="opened" />
+              <p className="cn-flow-hint">
+                {firstName} hat das Angebot {formatUploadWhen(offer.tracking.lastOpenedAt).toLowerCase()} geöffnet.
+              </p>
+              <p className="cn-flow-hint">{formatOpenedTracking(offer.tracking)}</p>
+            </>
           )}
-        </section>
+        </FlowCard>
       )}
 
       {showSmartAction && (
-        <section className="cust-offer-section cust-offer-nbs">
-          <div className="cust-offer-nbs__box">
-            <span className="cust-offer-nbs__star" aria-hidden>★</span>
+        <FlowCard variant="warn">
+          <div className="cn-flow-nbs">
+            <span aria-hidden>★</span>
             <div>
-              <p className="cust-offer-nbs__title">Guter Moment</p>
-              <p className="cust-offer-nbs__text">
+              <p className="cn-flow-nbs__title">Guter Moment</p>
+              <p className="cn-flow-nbs__text">
                 {firstName} hat das Angebot geöffnet. Ein kurzer Anruf kann jetzt den Unterschied machen.
               </p>
             </div>
           </div>
-          <a href={telHref} className="cust-offer-nbs__cta">
+          <FlowPrimaryButton type="button" onClick={() => { window.location.href = telHref; }}>
             Jetzt anrufen
-          </a>
-        </section>
+          </FlowPrimaryButton>
+        </FlowCard>
       )}
 
       {lead && (
-        <section className="cust-offer-unterlagen" aria-labelledby="cust-offer-unterlagen-title">
-          <h2 id="cust-offer-unterlagen-title" className="cust-offer-unterlagen__title">
-            Abschluss vorbereiten
-          </h2>
-          <p className="cust-offer-unterlagen__sub">{unterlagenSubline}</p>
+        <FlowCard>
+          <FlowSectionHeader title="Abschluss vorbereiten" />
+          <p className="cn-flow-hint">{unterlagenSubline}</p>
           {unterlagenSummary && (
-            <p className="cust-offer-unterlagen__status">{unterlagenSummary.headline}</p>
+            <p className="cn-vehicle-line" style={{ fontSize: '0.9rem' }}>
+              {unterlagenSummary.headline}
+            </p>
           )}
           {showSelbstauskunft && selbstauskunftLine && (
-            <p className="cust-offer-unterlagen__sa">Selbstauskunft · {selbstauskunftLine}</p>
+            <p className="cn-flow-hint">Selbstauskunft · {selbstauskunftLine}</p>
           )}
-          <div className="cust-offer-unterlagen__actions">
-            <button
-              type="button"
-              className="cust-offer-btn cust-offer-btn--primary cust-offer-btn--block"
-              onClick={() => setUnterlagenOpen(true)}
-            >
+          <div className="cn-flow-card__actions">
+            <FlowPrimaryButton type="button" onClick={() => setUnterlagenOpen(true)}>
               {showSelbstauskunft ? 'Selbstauskunft-Link senden' : 'Unterlagen öffnen'}
-            </button>
-            <button
-              type="button"
-              className="cust-offer-btn cust-offer-btn--secondary cust-offer-btn--block"
-              onClick={() => setUnterlagenOpen(true)}
-            >
+            </FlowPrimaryButton>
+            <FlowSecondaryButton type="button" onClick={() => setUnterlagenOpen(true)}>
               Unterlagen öffnen
-            </button>
+            </FlowSecondaryButton>
           </div>
-        </section>
+        </FlowCard>
       )}
 
-      <section className="cust-offer-section">
-        <h2 className="cust-offer-section__title">Verlauf</h2>
-        <ul className="cust-offer-timeline">
+      <FlowCard>
+        <FlowSectionHeader title="Verlauf" />
+        <ul className="cn-timeline">
           {timeline.map((item, i) => (
             <li
               key={`${item.text}-${i}`}
-              className={`cust-offer-timeline__item${item.muted ? ' cust-offer-timeline__item--muted' : ''}`}
+              className={`cn-timeline__item${item.muted ? ' cn-timeline__item--muted' : ''}`}
             >
               <span aria-hidden>{item.icon}</span>
               <span>
                 {item.text}
-                {item.when && <span className="cust-offer-timeline__when">{item.when}</span>}
+                {item.when && <span className="cn-timeline__when">{item.when}</span>}
               </span>
             </li>
           ))}
         </ul>
-      </section>
+      </FlowCard>
 
-      <footer className="cust-offer-footer">
-        <button
-          type="button"
-          className="cust-offer-btn cust-offer-btn--primary cust-offer-btn--block"
-          disabled={isSaving}
-          onClick={() => onSave?.()}
-        >
+      <FlowStickyFooter>
+        <FlowPrimaryButton type="button" disabled={isSaving} onClick={() => onSave?.()}>
           {isSaving ? 'Speichert…' : 'Speichern'}
-        </button>
-        <button
-          type="button"
-          className="cust-offer-btn cust-offer-btn--secondary cust-offer-btn--block"
-          onClick={onBack}
-        >
+        </FlowPrimaryButton>
+        <FlowSecondaryButton type="button" onClick={onBack}>
           Zur Kundenakte
-        </button>
-      </footer>
+        </FlowSecondaryButton>
+      </FlowStickyFooter>
 
       {statusSheetOpen && (
         <div
@@ -583,26 +607,20 @@ export default function CustomerOfferEditView({
             <h3 className="cust-offer-sheet__title">Status ändern</h3>
             <div className="cust-offer-sheet__chips">
               {statusOptions.map((opt) => (
-                <button
+                <FlowChip
                   key={opt.id}
-                  type="button"
-                  className={`cust-offer-sheet__chip${offer?.status === opt.id ? ' is-active' : ''}`}
+                  label={opt.label}
+                  selected={offer?.status === opt.id}
                   onClick={() => {
                     onStatusChange?.(opt.id);
                     setStatusSheetOpen(false);
                   }}
-                >
-                  {opt.label}
-                </button>
+                />
               ))}
             </div>
-            <button
-              type="button"
-              className="cust-offer-btn cust-offer-btn--ghost cust-offer-btn--block"
-              onClick={() => setStatusSheetOpen(false)}
-            >
+            <FlowGhostButton type="button" onClick={() => setStatusSheetOpen(false)}>
               Schließen
-            </button>
+            </FlowGhostButton>
           </div>
         </div>
       )}
@@ -632,6 +650,6 @@ export default function CustomerOfferEditView({
           </div>
         </div>
       )}
-    </div>
+    </OfferFlowLayout>
   );
 }

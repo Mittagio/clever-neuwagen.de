@@ -1,56 +1,137 @@
+import { useState } from 'react';
+
 /**
- * Kompakte Fahrzeug-Zusammenfassung ohne Preise.
+ * Einträge für die kompakte Hero-Zeile (Farbe + Pakete).
  */
-export function buildConfigurationItems(vehicleConfiguration) {
-  if (!vehicleConfiguration) return [];
-
+export function buildConfigLineItems(vehicleConfiguration) {
   const items = [];
-  if (vehicleConfiguration.model) items.push(vehicleConfiguration.model);
-  if (vehicleConfiguration.trimLabel) items.push(vehicleConfiguration.trimLabel);
-  const motor = vehicleConfiguration.motorLabel ?? vehicleConfiguration.batteryLabel;
-  if (motor) items.push(motor);
-  if (vehicleConfiguration.colorLabel) items.push(vehicleConfiguration.colorLabel);
-
-  for (const pkg of vehicleConfiguration.selectedPackages ?? []) {
+  if (vehicleConfiguration?.colorLabel) items.push(vehicleConfiguration.colorLabel);
+  for (const pkg of vehicleConfiguration?.selectedPackages ?? []) {
     items.push(pkg.name);
   }
-  for (const acc of vehicleConfiguration.accessories ?? []) {
-    items.push(acc.name);
-  }
-  for (const extra of vehicleConfiguration.dealerExtras ?? []) {
-    items.push(extra.name);
-  }
-
   return items;
 }
 
-export function buildHeroSubtitle(vehicleConfiguration) {
-  const parts = [];
-  if (vehicleConfiguration?.colorLabel) parts.push(vehicleConfiguration.colorLabel);
-  for (const pkg of vehicleConfiguration?.selectedPackages ?? []) {
-    parts.push(pkg.name);
-  }
-  for (const acc of vehicleConfiguration?.accessories ?? []) {
-    parts.push(acc.name);
-  }
-  return parts.join(' · ');
+export function buildHeroSubtitle(vehicleConfiguration, maxVisible = 4) {
+  const items = buildConfigLineItems(vehicleConfiguration);
+  if (!items.length) return '';
+  if (items.length <= maxVisible) return items.join(' · ');
+  return items.slice(0, maxVisible).join(' · ');
 }
 
-export default function ConfigurationChecklist({ vehicleConfiguration }) {
-  const items = buildConfigurationItems(vehicleConfiguration);
+export function ConfigurationHeroLine({ vehicleConfiguration, maxVisible = 4 }) {
+  const [expanded, setExpanded] = useState(false);
+  const items = buildConfigLineItems(vehicleConfiguration);
   if (!items.length) return null;
 
+  const hasMore = items.length > maxVisible;
+  const visibleItems = expanded ? items : items.slice(0, maxVisible);
+  const hiddenCount = items.length - maxVisible;
+
   return (
-    <section className="dai-cond-config-list" aria-label="Konfiguration">
-      <h3 className="dai-cond-config-list__title">Konfiguration</h3>
-      <ul className="dai-cond-config-list__items">
-        {items.map((item) => (
-          <li key={item} className="dai-cond-config-list__item">
-            <span className="dai-cond-config-list__check" aria-hidden="true">✓</span>
-            {item}
-          </li>
-        ))}
-      </ul>
+    <div className="dai-cond-hero__config-line">
+      <p className="dai-cond-hero__config-text">
+        {visibleItems.join(' · ')}
+      </p>
+      {hasMore && !expanded && (
+        <button
+          type="button"
+          className="dai-cond-hero__config-more"
+          onClick={() => setExpanded(true)}
+        >
+          + {hiddenCount} weitere ∨
+        </button>
+      )}
+      {hasMore && expanded && (
+        <button
+          type="button"
+          className="dai-cond-hero__config-more"
+          onClick={() => setExpanded(false)}
+        >
+          Weniger anzeigen ∧
+        </button>
+      )}
+    </div>
+  );
+}
+
+function OverviewTile({ icon, title, lines, badge, complete = true, showCheck = true }) {
+  return (
+    <div className={`cn-config-tile${complete ? ' is-complete' : ''}`}>
+      <div className="cn-config-tile__head">
+        <span className="cn-config-tile__icon" aria-hidden="true">{icon}</span>
+        {showCheck && complete && (
+          <span className="cn-config-tile__check" aria-hidden="true">✓</span>
+        )}
+        {badge != null && badge > 0 && (
+          <span className="cn-config-tile__badge">{badge}</span>
+        )}
+      </div>
+      <p className="cn-config-tile__title">{title}</p>
+      {lines.map((line) => (
+        <p key={line} className="cn-config-tile__line">{line}</p>
+      ))}
+    </div>
+  );
+}
+
+export function ConfigurationOverviewTiles({ vehicleConfiguration, onEdit }) {
+  if (!vehicleConfiguration) return null;
+
+  const motor = vehicleConfiguration.motorLabel ?? vehicleConfiguration.batteryLabel;
+  const vehicleLines = [
+    [vehicleConfiguration.model, vehicleConfiguration.trimLabel].filter(Boolean).join(' '),
+    motor,
+  ].filter(Boolean);
+
+  const packageCount = vehicleConfiguration.selectedPackages?.length ?? 0;
+  const extrasCount = (vehicleConfiguration.accessories?.length ?? 0)
+    + (vehicleConfiguration.dealerExtras?.length ?? 0);
+
+  return (
+    <section className="cn-config-overview" aria-label="Konfigurationsübersicht">
+      <div className="cn-config-overview__head">
+        {onEdit && (
+          <button type="button" className="cn-section-head__edit" onClick={onEdit}>
+            <span aria-hidden="true">✎</span> Bearbeiten
+          </button>
+        )}
+      </div>
+      <div className="cn-config-overview__tiles">
+        <OverviewTile
+          icon="🚗"
+          title="Fahrzeug"
+          lines={vehicleLines.length ? vehicleLines : ['Auswahl offen']}
+          complete={Boolean(vehicleConfiguration.trimId)}
+        />
+        <OverviewTile
+          icon="🎨"
+          title="Farbe"
+          lines={[vehicleConfiguration.colorLabel ?? 'Auswahl offen']}
+          complete={Boolean(vehicleConfiguration.colorId)}
+        />
+        <OverviewTile
+          icon="📦"
+          title="Pakete"
+          lines={[packageCount === 0 ? 'Keine gewählt' : `${packageCount} ausgewählt`]}
+          badge={packageCount > 0 ? packageCount : null}
+          showCheck={false}
+          complete
+        />
+        <OverviewTile
+          icon="⭐"
+          title="Extras"
+          lines={[extrasCount === 0 ? 'Keine gewählt' : `${extrasCount} ausgewählt`]}
+          badge={extrasCount > 0 ? extrasCount : null}
+          showCheck={false}
+          complete
+        />
+      </div>
     </section>
   );
+}
+
+/** @deprecated Nutze ConfigurationOverviewTiles */
+export default function ConfigurationChecklist(props) {
+  return <ConfigurationOverviewTiles {...props} />;
 }

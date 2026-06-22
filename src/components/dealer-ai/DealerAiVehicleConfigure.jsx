@@ -4,6 +4,13 @@ import {
   hasRecognizedModelKey,
   resolveConfigureHeroImage,
 } from '../../services/dealerAiVehicleConfigureFlow.js';
+import {
+  FlowPrimaryButton,
+  FlowSecondaryButton,
+  FlowStickyFooter,
+  OfferFlowLayout,
+  VehicleOfferHero,
+} from './flow/OfferFlowComponents.jsx';
 import SellerVehicleConfigurator from './SellerVehicleConfigurator.jsx';
 import './DealerAiVehicleConfigure.css';
 
@@ -41,58 +48,36 @@ export default function DealerAiVehicleConfigure({
     || customer.email
     || customer.mailNote;
 
-  const vehicleLine = [draft.model, draft.trimLabel, draft.batteryLabel || draft.motorLabel]
-    .filter(Boolean)
-    .join(' ');
-  const trimLine = [draft.trimLabel, draft.batteryLabel || draft.motorLabel]
-    .filter(Boolean)
-    .join(' ');
+  const vehicleLine = [draft.model, draft.trimLabel].filter(Boolean).join(' ');
+  const motorLine = draft.batteryLabel || draft.motorLabel || null;
   const uvpTotal = summary.uvpConfigurationPrice;
 
   return (
-    <div className="dai-configure dai-configure--seller dai-configure--mobile">
-      <header className="dai-configure-header dai-configure-header--compact">
-        {onBack && (
-          <button type="button" className="dai-configure-back" onClick={onBack}>
-            ← {contextBanner ? 'Zur Kundenakte' : 'Zurück'}
-          </button>
-        )}
-      </header>
-
-      <aside className="dai-config-sticky-head" aria-live="polite">
-        <div className="dai-config-sticky-head__pricebox">
-          <p className="dai-config-sticky-head__title">{vehicleLine || draft.model}</p>
-          {draft.colorLabel && (
-            <p className="dai-config-sticky-head__color">{draft.colorLabel}</p>
-          )}
-          <p className="dai-config-sticky-head__price">{formatCurrency(uvpTotal)}</p>
-        </div>
-
-        {heroImage && (
-          <div className="dai-config-hero-image">
-            <img
-              src={heroImage}
-              alt={vehicleLine || draft.model}
-              className="dai-config-hero-image__img"
-            />
-          </div>
-        )}
-
-        <div className="dai-config-hero-caption">
-          <p className="dai-config-hero-caption__trim">{trimLine || draft.model}</p>
-          {draft.colorLabel && (
-            <p className="dai-config-hero-caption__color">{draft.colorLabel}</p>
-          )}
-        </div>
-      </aside>
+    <OfferFlowLayout
+      backLabel={onBack ? `← ${contextBanner ? 'Zur Kundenakte' : 'Zurück'}` : null}
+      onBack={onBack}
+      title="Fahrzeug konfigurieren"
+      subtitle="Stellen Sie das Fahrzeug zusammen – Preis ist die UVP."
+    >
+      <VehicleOfferHero
+        modelLine={vehicleLine || draft.model}
+        motorLine={motorLine}
+        colorLabel={draft.colorLabel}
+        imageSrc={heroImage}
+        imageAlt={vehicleLine || draft.model}
+        priceMain={formatCurrency(uvpTotal)}
+        priceLabel="UVP Konfiguration"
+      />
 
       {showCustomer && (
-        <details className="dai-config-customer-fold">
-          <summary>Kundendaten</summary>
-          <div className="dai-config-customer-fold__body">
-            {(customer.firstName || customer.lastName || customerContact?.firstName) && (
-              <p>{[customer.firstName ?? customerContact?.firstName, customer.lastName ?? customerContact?.lastName].filter(Boolean).join(' ')}</p>
-            )}
+        <details className="cn-customer-fold">
+          <summary>
+            <span className="cn-customer-fold__label">Kunde</span>
+            <span className="cn-customer-fold__name">
+              {[customer.firstName ?? customerContact?.firstName, customer.lastName ?? customerContact?.lastName].filter(Boolean).join(' ') || 'Kontakt'}
+            </span>
+          </summary>
+          <div className="cn-customer-fold__body">
             {(customer.phone || customerContact?.phone) && (
               <p>{customer.phone ?? customerContact?.phone}</p>
             )}
@@ -103,33 +88,18 @@ export default function DealerAiVehicleConfigure({
         </details>
       )}
 
-      <section className="dai-config-studio dai-config-studio--mobile">
-        <SellerVehicleConfigurator draft={draft} onChange={onDraftChange} />
-      </section>
+      <SellerVehicleConfigurator draft={draft} onChange={onDraftChange} />
 
-      <footer className="dai-config-sticky-foot dai-config-sticky-foot--cta-only">
-        <p className="dai-config-sticky-foot__hint">Konditionen & Angebot im nächsten Schritt</p>
-        <div className="dai-config-sticky-foot__actions">
-          {showVehicleSearch && (
-            <button
-              type="button"
-              className="dai-config-actions__secondary"
-              onClick={onSwitchToSearch}
-              disabled={isExecuting}
-            >
-              Fahrzeugsuche
-            </button>
-          )}
-          <button
-            type="button"
-            className="dai-config-actions__primary"
-            onClick={onContinueToConditions}
-            disabled={isExecuting}
-          >
-            Weiter zu Konditionen
-          </button>
-        </div>
-      </footer>
-    </div>
+      <FlowStickyFooter hint="Konditionen & Angebot im nächsten Schritt">
+        {showVehicleSearch && (
+          <FlowSecondaryButton onClick={onSwitchToSearch} disabled={isExecuting}>
+            Fahrzeugsuche
+          </FlowSecondaryButton>
+        )}
+        <FlowPrimaryButton onClick={onContinueToConditions} disabled={isExecuting}>
+          Weiter zu Konditionen
+        </FlowPrimaryButton>
+      </FlowStickyFooter>
+    </OfferFlowLayout>
   );
 }

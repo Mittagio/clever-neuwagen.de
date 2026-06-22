@@ -51,7 +51,9 @@ export function buildVehicleConfiguration(draft) {
       name: key === 'winterraeder' ? 'Winterräder'
         : key === 'wartung' ? 'Wartung'
         : key === 'versicherung' ? 'Versicherung'
-        : key === 'ahk' ? 'AHK' : key,
+        : key === 'ahk' ? 'Anhängerkupplung'
+        : key === 'standheizung' ? 'Standheizung'
+        : key,
     }));
 
   return {

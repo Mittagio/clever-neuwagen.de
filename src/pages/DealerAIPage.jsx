@@ -101,6 +101,8 @@ export default function DealerAIPage() {
   const [configureDraft, setConfigureDraft] = useState(null);
   const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
+  const [offerPreviewSaved, setOfferPreviewSaved] = useState(false);
+  const [offerPreviewSaveResult, setOfferPreviewSaveResult] = useState(null);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -275,11 +277,15 @@ export default function DealerAIPage() {
     });
 
     setConfigureOfferDraft(offerDraft);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
     setPhase('offer-preview');
   }
 
   function handleOfferPreviewBack() {
     setConfigureOfferDraft(null);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
     setPhase('conditions');
   }
 
@@ -288,7 +294,8 @@ export default function DealerAIPage() {
   }
 
   function handleOfferPreviewSave() {
-    if (!configureOfferDraft) return;
+    if (!configureOfferDraft || offerPreviewSaved) return false;
+
     setIsExecuting(true);
 
     try {
@@ -302,11 +309,8 @@ export default function DealerAIPage() {
         selectedModelIds,
       });
 
-      setResult({ type: 'lead', leadId: saveResult.leadId, customerId: saveResult.customerId });
-      setOfferEditCard(saveResult.card);
-      setConfigureOfferDraft(null);
-      setConfigureDraft(null);
-      setVehicleConfiguration(null);
+      setOfferPreviewSaved(true);
+      setOfferPreviewSaveResult(saveResult);
       showToast(saveResult.message);
 
       if (saveResult.offerDraft) {
@@ -315,24 +319,40 @@ export default function DealerAIPage() {
         ));
       }
 
-      if (saveResult.activityText) {
+      if (saveResult.activityText && saveResult.leadId) {
         addHistory(saveResult.leadId, saveResult.activityText, 'offer');
       }
 
-      if (saveResult.needsCapture) {
-        setPhase('capture');
-        setIsFreshLead(true);
-        setIsReturningWish(Boolean(carryCustomer));
-      } else {
-        setPhase('followup');
-        setIsFreshLead(saveResult.mode !== 'attached_to_opportunity');
-        setIsReturningWish(Boolean(saveResult.customerId && carryCustomer));
-        clearAddVehicleFlow();
-      }
+      return true;
     } catch (err) {
       showToast(err.message ?? 'Angebot konnte nicht gespeichert werden');
+      return false;
     } finally {
       setIsExecuting(false);
+    }
+  }
+
+  function handleOfferPreviewFinish() {
+    const saveResult = offerPreviewSaveResult;
+    if (!saveResult) return;
+
+    setResult({ type: 'lead', leadId: saveResult.leadId, customerId: saveResult.customerId });
+    setOfferEditCard(saveResult.card);
+    setConfigureOfferDraft(null);
+    setConfigureDraft(null);
+    setVehicleConfiguration(null);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
+
+    if (saveResult.needsCapture) {
+      setPhase('capture');
+      setIsFreshLead(true);
+      setIsReturningWish(Boolean(carryCustomer));
+    } else {
+      setPhase('followup');
+      setIsFreshLead(saveResult.mode !== 'attached_to_opportunity');
+      setIsReturningWish(Boolean(saveResult.customerId && carryCustomer));
+      clearAddVehicleFlow();
     }
   }
 
@@ -921,7 +941,7 @@ export default function DealerAIPage() {
 
   return (
     <div className="dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-preview' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' || phase === 'offer-edit' ? ' dealer-ai-main--akte' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-preview' || phase === 'offer-edit' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' ? ' dealer-ai-main--akte' : ''}`}>
         {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
@@ -1000,6 +1020,8 @@ export default function DealerAIPage() {
             onBack={handleOfferPreviewBack}
             onSave={handleOfferPreviewSave}
             onPreparePdfLink={handleOfferPreviewPreparePdf}
+            onFinish={handleOfferPreviewFinish}
+            isSaved={offerPreviewSaved}
             isSaving={isExecuting}
           />
         )}

@@ -13,6 +13,8 @@ export const DISCOUNT_GROUP_OPTIONS = [
   { id: 'custom', label: 'Eigener Rabatt' },
 ];
 
+export const DOWN_PAYMENT_OPTIONS = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7500, 10000, 12500, 15000];
+
 export { LEASING_TERM_OPTIONS, LEASING_MILEAGE_OPTIONS };
 
 export function resolveDiscountPercentForDraft(draft, dealerConditions) {

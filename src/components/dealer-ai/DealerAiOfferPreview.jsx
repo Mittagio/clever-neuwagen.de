@@ -1,40 +1,59 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PAYMENT_TYPE_LABELS } from '../../services/dealerAiParser.js';
-import { resolveConfigureModel } from '../../services/configuration/configureModelBridge.js';
-import { vehicleConfigurationTitle } from '../../services/configuration/vehicleConfigurationModel.js';
-import VehicleConfigurationSummary from './VehicleConfigurationSummary.jsx';
-import './DealerAiOfferPreview.css';
-import './VehicleConfigurationSummary.css';
+import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
+import {
+  FlowCard,
+  FlowGhostButton,
+  FlowPriceDetails,
+  FlowPrimaryButton,
+  FlowSecondaryButton,
+  FlowSectionHeader,
+  FlowStickyFooter,
+  OfferFlowLayout,
+  VehicleOfferHero,
+} from './flow/OfferFlowComponents.jsx';
 
 function formatCurrency(amount) {
   if (amount == null) return '–';
   return `${Number(amount).toLocaleString('de-DE')} €`;
 }
 
-function formatExtras(payment = {}) {
+function collectPackagesAndExtras(vehicleConfiguration, payment) {
   const items = [];
-  if (payment.towBar) items.push('AHK');
-  if (payment.winterWheels) items.push('Winterräder');
-  if (payment.maintenance) items.push('Wartung');
-  if (payment.insurance) items.push('Versicherung');
-  return items.length ? items.join(' · ') : 'Keine';
+  for (const pkg of vehicleConfiguration?.selectedPackages ?? []) {
+    items.push(pkg.name);
+  }
+  for (const acc of vehicleConfiguration?.accessories ?? []) {
+    items.push(acc.name);
+  }
+  for (const extra of vehicleConfiguration?.dealerExtras ?? []) {
+    items.push(extra.name);
+  }
+  if (payment?.towBar) items.push('Anhängerkupplung');
+  if (payment?.winterWheels) items.push('Winterräder');
+  if (payment?.maintenance) items.push('Wartung');
+  if (payment?.insurance) items.push('Versicherung');
+  return [...new Set(items)];
 }
 
-/** Schritt 3 – Angebotsvorschau: Konfiguration + Konditionen + Berechnung */
+/** Schritt 3 – Angebotsvorschau (einheitlicher Flow) */
 export default function DealerAiOfferPreview({
   offerDraft,
   onBack,
   onSave,
   onPreparePdfLink,
+  onFinish,
   isSaving = false,
+  isSaved = false,
 }) {
+  const [savePending, setSavePending] = useState(false);
+
   if (!offerDraft) return null;
 
   const {
     customer,
     vehicle,
     payment,
-    timing,
     vehicleConfiguration,
     offerCalculation,
     offerPreview,
@@ -42,9 +61,15 @@ export default function DealerAiOfferPreview({
 
   const preview = offerPreview ?? {};
   const calculation = offerCalculation ?? {};
-  const vehicleTitle = preview.vehicleTitle
-    ?? vehicleConfigurationTitle(vehicleConfiguration)
-    ?? [vehicle.model, vehicle.trimLabel, vehicle.battery].filter(Boolean).join(' ');
+
+  const vehicleMainLine = [vehicleConfiguration?.model ?? vehicle.model, vehicleConfiguration?.trimLabel ?? vehicle.trimLabel]
+    .filter(Boolean)
+    .join(' ');
+  const vehicleMotorLine = vehicleConfiguration?.motorLabel
+    ?? vehicleConfiguration?.batteryLabel
+    ?? vehicle.battery
+    ?? null;
+  const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle.color ?? null;
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
@@ -54,153 +79,144 @@ export default function DealerAiOfferPreview({
   const discountPercent = preview.discountPercent ?? calculation.discountPercent ?? null;
   const discountAmount = preview.discountAmount ?? calculation.discountAmount ?? null;
   const housePrice = preview.housePrice ?? calculation.housePrice ?? null;
+  const transferCost = payment.transferCost ?? calculation.preparationFee ?? null;
+
+  const isCash = payment.type === 'cash';
+  const isLeasing = payment.type === 'leasing';
+  const isFinance = payment.type === 'financing' || payment.type === 'threeWayFinancing';
+
   const calculatedRate = payment.calculatedRate ?? preview.monthlyRate ?? calculation.monthlyRate ?? null;
+  const offerPrice = isCash
+    ? (calculatedRate ?? (housePrice != null && transferCost != null ? housePrice + transferCost : null))
+    : calculatedRate;
 
-  const paymentLabel = PAYMENT_TYPE_LABELS[payment.type === 'financing' ? 'financing' : payment.type]
-    ?? payment.type;
+  const savings = discountAmount
+    ?? (uvpTotal != null && housePrice != null ? uvpTotal - housePrice : null);
 
-  const budgetStatus = preview.budget;
+  const paymentLabel = PAYMENT_TYPE_LABELS[payment.type] ?? payment.type;
 
-  const packageLabels = useMemo(() => {
-    const mfg = resolveConfigureModel(vehicle.modelKey);
-    const ids = vehicle.selectedPackages ?? [];
-    return ids.map((id) => mfg?.data?.packages?.find((p) => p.id === id)?.name ?? id);
-  }, [vehicle.modelKey, vehicle.selectedPackages]);
+  const heroImage = useMemo(() => resolveConfigureHeroImage({
+    modelKey: vehicle.modelKey,
+    colorId: vehicle.colorId ?? vehicleConfiguration?.colorId,
+    trimId: vehicle.trimId ?? vehicleConfiguration?.trimId,
+  }), [vehicle.modelKey, vehicle.colorId, vehicle.trimId, vehicleConfiguration?.colorId, vehicleConfiguration?.trimId]);
+
+  const packageItems = collectPackagesAndExtras(vehicleConfiguration, payment);
+  const showPackages = packageItems.length > 0;
+  const hasCustomer = Boolean(customer.name || customer.phone || customer.email);
+  const saved = isSaved;
+
+  const heroBadges = [];
+  if (isCash && discountPercent != null) {
+    heroBadges.push({ label: `${discountPercent} % Rabatt`, tone: 'discount' });
+  }
+  if (isCash && savings != null && savings > 0) {
+    heroBadges.push({ label: `${formatCurrency(savings)} Ersparnis`, tone: 'savings' });
+  }
+
+  async function handleSaveClick() {
+    if (saved || savePending || isSaving) return;
+    setSavePending(true);
+    try {
+      const ok = await onSave?.();
+      if (ok === false) return;
+    } finally {
+      setSavePending(false);
+    }
+  }
 
   return (
-    <div className="dai-offer-preview dai-offer-preview--calm">
-      <header className="dai-offer-preview__header">
-        {onBack && (
-          <button type="button" className="dai-offer-preview__back" onClick={onBack}>
-            ← Zu Konditionen
-          </button>
+    <OfferFlowLayout
+      backLabel={!saved ? '← Zu Konditionen' : null}
+      onBack={!saved ? onBack : null}
+      title="Angebotsvorschau"
+      subtitle="Prüfen und Angebot speichern."
+    >
+      <VehicleOfferHero
+        modelLine={vehicleMainLine || '–'}
+        motorLine={vehicleMotorLine}
+        colorLabel={colorLabel}
+        imageSrc={heroImage}
+        imageAlt={vehicleMainLine}
+        priceMain={isCash
+          ? formatCurrency(offerPrice)
+          : offerPrice != null
+            ? `${offerPrice.toLocaleString('de-DE')} €`
+            : '–'}
+        priceLabel={isCash ? 'Angebotspreis' : 'Monatliche Rate'}
+        priceSuffix={!isCash && offerPrice != null ? '/ Monat' : null}
+        badges={heroBadges}
+        footerMeta={isCash && uvpTotal != null ? `UVP ${formatCurrency(uvpTotal)}` : undefined}
+      />
+
+      <FlowCard>
+        <FlowSectionHeader title="Fahrzeug" onEdit={!saved ? onBack : null} />
+        <p className="cn-vehicle-line">{vehicleMainLine || '–'}</p>
+        {vehicleMotorLine && <p className="cn-vehicle-sub">{vehicleMotorLine}</p>}
+        {colorLabel && <p className="cn-vehicle-color">{colorLabel}</p>}
+        {showPackages && (
+          <ul className="cn-package-list">
+            {packageItems.map((label) => (
+              <li key={label}>{label}</li>
+            ))}
+          </ul>
         )}
-        <h2 className="dai-offer-preview__title">Angebotsvorschau</h2>
-      </header>
+      </FlowCard>
 
-      <section className="dai-offer-preview__block dai-offer-preview__block--pricing">
-        <h3>Angebot</h3>
-        <p className="dai-offer-preview__line">{vehicleTitle || '–'}</p>
+      <FlowCard>
+        <FlowSectionHeader title="Preisdetails" />
+        <FlowPriceDetails
+          paymentLabel={paymentLabel}
+          isCash={isCash}
+          isLeasing={isLeasing}
+          isFinance={isFinance}
+          uvpTotal={uvpTotal}
+          discountPercent={discountPercent}
+          discountAmount={discountAmount}
+          housePrice={housePrice}
+          transferCost={transferCost}
+          offerPrice={offerPrice}
+          termMonths={payment.termMonths}
+          mileagePerYear={payment.mileagePerYear}
+          downPayment={payment.downPayment}
+          formatCurrency={formatCurrency}
+        />
+      </FlowCard>
 
-        {vehicleConfiguration && (
-          <VehicleConfigurationSummary
-            configuration={vehicleConfiguration}
-            compact
-            showSelections={false}
-          />
-        )}
-
-        <dl className="dai-offer-preview__rows dai-offer-preview__rows--pricing">
-          {!vehicleConfiguration && uvpTotal != null && (
-            <div><dt>UVP Konfiguration</dt><dd>{formatCurrency(uvpTotal)}</dd></div>
+      {hasCustomer && (
+        <details className="cn-customer-fold">
+          <summary>
+            <span className="cn-customer-fold__label">Kunde</span>
+            <span className="cn-customer-fold__name">{customer.name ?? '–'}</span>
+          </summary>
+          {(customer.phone || customer.email) && (
+            <div className="cn-customer-fold__body">
+              {customer.phone && <p>{customer.phone}</p>}
+              {customer.email && <p>{customer.email}</p>}
+            </div>
           )}
-          {discountPercent != null && (
-            <div><dt>Rabatt</dt><dd>{discountPercent} %</dd></div>
-          )}
-          {discountAmount != null && (
-            <div><dt>Rabattbetrag</dt><dd>− {formatCurrency(discountAmount)}</dd></div>
-          )}
-          {housePrice != null && (
-            <div><dt>Händlerpreis</dt><dd>{formatCurrency(housePrice)}</dd></div>
-          )}
-        </dl>
-
-        <dl className="dai-offer-preview__rows">
-          <div><dt>Angebotsart</dt><dd>{paymentLabel}</dd></div>
-          {payment.type !== 'cash' && (
-            <>
-              <div><dt>Laufzeit</dt><dd>{payment.termMonths ? `${payment.termMonths} Monate` : '–'}</dd></div>
-              {payment.type === 'leasing' && (
-                <div><dt>Kilometer</dt><dd>{payment.mileagePerYear?.toLocaleString('de-DE') ?? '–'} km/Jahr</dd></div>
-              )}
-              <div><dt>Anzahlung</dt><dd>{formatCurrency(payment.downPayment ?? 0)}</dd></div>
-            </>
-          )}
-          <div><dt>Überführung</dt><dd>{formatCurrency(payment.transferCost)}</dd></div>
-        </dl>
-      </section>
-
-      {calculatedRate != null && (
-        <div className="dai-offer-preview__hero-rate">
-          <span className="dai-offer-preview__hero-label">
-            {payment.type === 'cash' ? 'Kaufpreis' : 'Rate'}
-          </span>
-          <span className="dai-offer-preview__hero-value">
-            {payment.type === 'cash'
-              ? formatCurrency(calculatedRate)
-              : `${calculatedRate.toLocaleString('de-DE')} € / Monat`}
-          </span>
-          {payment.budget != null && calculatedRate != null && budgetStatus?.status !== 'open' && (
-            <span className={`dai-offer-preview__hero-budget${budgetStatus?.status === 'ok' ? ' is-ok' : ' is-over'}`}>
-              {budgetStatus?.status === 'ok'
-                ? '✓ Budget erfüllt'
-                : `⚠ Budget überschritten um ${(calculatedRate - payment.budget).toLocaleString('de-DE')} €`}
-            </span>
-          )}
-        </div>
+        </details>
       )}
 
-      <section className="dai-offer-preview__block">
-        <h3>Kunde</h3>
-        <p className="dai-offer-preview__line">{customer.name ?? 'Noch offen'}</p>
-        {customer.phone && <p className="dai-offer-preview__muted">{customer.phone}</p>}
-        {customer.email && <p className="dai-offer-preview__muted">{customer.email}</p>}
-      </section>
-
-      <section className="dai-offer-preview__block">
-        <h3>Fahrzeug</h3>
-        <p className="dai-offer-preview__line">{vehicleTitle || '–'}</p>
-        <dl className="dai-offer-preview__rows">
-          <div><dt>Farbe</dt><dd>{vehicle.color ?? '–'}</dd></div>
-        </dl>
-      </section>
-
-      <section className="dai-offer-preview__block">
-        <h3>Pakete & Extras</h3>
-        {packageLabels.length > 0 ? (
-          <ul className="dai-offer-preview__list">
-            {packageLabels.map((label) => <li key={label}>{label}</li>)}
-          </ul>
+      <FlowStickyFooter saved={saved ? '✓ Angebot gespeichert' : null}>
+        {saved ? (
+          <>
+            <FlowPrimaryButton onClick={onFinish}>Zur Kundenakte</FlowPrimaryButton>
+            {onPreparePdfLink && (
+              <FlowGhostButton onClick={onPreparePdfLink}>
+                PDF / Kundenlink vorbereiten
+              </FlowGhostButton>
+            )}
+          </>
         ) : (
-          <p className="dai-offer-preview__muted">Keine Pakete gewählt</p>
+          <FlowPrimaryButton
+            onClick={handleSaveClick}
+            disabled={isSaving || savePending}
+          >
+            {isSaving || savePending ? 'Wird gespeichert …' : 'Angebot speichern'}
+          </FlowPrimaryButton>
         )}
-        <p className="dai-offer-preview__muted">Extras: {formatExtras(payment)}</p>
-      </section>
-
-      <section className="dai-offer-preview__block">
-        <h3>Timing</h3>
-        <dl className="dai-offer-preview__rows">
-          <div>
-            <dt>Wunschlieferdatum</dt>
-            <dd>{timing.desiredDeliveryDate ?? 'offen'}</dd>
-          </div>
-          {timing.leasingEnd && (
-            <div><dt>Leasingende</dt><dd>{timing.leasingEnd}</dd></div>
-          )}
-          {timing.vehicleChangePlanned && (
-            <div><dt>Fahrzeugwechsel</dt><dd>Ja</dd></div>
-          )}
-        </dl>
-      </section>
-
-      <div className="dai-offer-preview__actions">
-        <button
-          type="button"
-          className="dai-offer-preview__primary"
-          onClick={onSave}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Wird gespeichert …' : 'Angebot speichern'}
-        </button>
-        <button
-          type="button"
-          className="dai-offer-preview__secondary"
-          onClick={onPreparePdfLink}
-          disabled={isSaving}
-        >
-          PDF / Kundenlink vorbereiten
-        </button>
-      </div>
-    </div>
+      </FlowStickyFooter>
+    </OfferFlowLayout>
   );
 }
