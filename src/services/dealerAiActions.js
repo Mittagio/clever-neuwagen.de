@@ -7,6 +7,7 @@ import { normalizeLead } from '../logic/leadNormalization.js';
 import { buildDefaultCrm, buildLeadSubline } from './dealerAiLeadCrm.js';
 import { createCustomerId } from './dealerAiCustomer.js';
 import { executeAddVehicleToCustomerRecord } from './customerAddVehicleFlow.js';
+import { joinKundenhelferNotes } from './cleverKundenhelfer.js';
 import { generateListingBlocks } from '../logic/listingGenerator.js';
 import { getTrimName, getEngineName, getColorName, normalizeInventoryItem } from '../logic/inventoryService.js';
 
@@ -271,9 +272,19 @@ function buildLeadFromDealerAi(fields, parsed, conditions, options = {}) {
   const now = new Date().toISOString();
   const carry = options.carryCustomer ?? null;
   const crmBase = buildDefaultCrm(parsed, options.selectedModelIds ?? null);
-  const crm = carry?.kundenhelfer
-    ? { ...crmBase, kundenhelfer: carry.kundenhelfer }
+  const helperNotes = parsed?.customerHelperNotes ?? [];
+  const crmWithHelper = helperNotes.length
+    ? {
+        ...crmBase,
+        kundenhelfer: {
+          notes: joinKundenhelferNotes(helperNotes),
+          voiceMemos: carry?.kundenhelfer?.voiceMemos ?? [],
+        },
+      }
     : crmBase;
+  const crm = carry?.kundenhelfer
+    ? { ...crmWithHelper, kundenhelfer: carry.kundenhelfer }
+    : crmWithHelper;
 
   const customerId = carry?.customerId ?? createCustomerId();
   const contact = carry?.contact

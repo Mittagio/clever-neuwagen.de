@@ -705,17 +705,19 @@ export default function DealerAiLeadFollowUp({
         </div>
       )}
 
-      <CustomerAkteCommunication
-        history={history}
-        onOpenHistory={() => openSheet(SHEETS.history)}
-      />
+      <div className="cust-akte-tail">
+        <CustomerAkteCommunication
+          history={history}
+          onOpenHistory={() => openSheet(SHEETS.history)}
+        />
 
-      <CustomerAkteActivities
-        history={history}
-        onOpenHistory={() => openSheet(SHEETS.history)}
-      />
+        {unterlagenBlock}
 
-      {unterlagenBlock}
+        <CustomerAkteActivities
+          history={history}
+          onOpenHistory={() => openSheet(SHEETS.history)}
+        />
+      </div>
 
       {/* ── Mehr ── */}
       <LeadDetailPanel

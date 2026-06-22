@@ -1,0 +1,304 @@
+.dai-recognition-anim {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 16px 22px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  border: 1px solid #e3e8f1;
+  box-shadow: 0 8px 28px rgba(11, 23, 54, 0.06);
+}
+
+.dai-recognition-anim__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dai-recognition-anim__spark {
+  font-size: 1.1rem;
+  color: #145cff;
+}
+
+.dai-recognition-anim__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0b1736;
+}
+
+.dai-recognition-anim__step {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dai-recognition-anim__progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.dai-recognition-anim__progress-bar {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #145cff, #60a5fa);
+  animation: dai-recognition-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes dai-recognition-progress {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+.dai-recognition-anim__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dai-recognition-anim__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 34px;
+}
+
+.dai-recognition-anim__chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef5ff;
+  border: 1px solid #c7d9ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0b1736;
+  animation: dai-recognition-chip-in 0.35s ease-out both;
+}
+
+@keyframes dai-recognition-chip-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dai-recognition-anim__buckets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dai-recognition-anim__bucket {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px dashed #d7e3f4;
+  background: #fbfdff;
+  min-height: 58px;
+}
+
+.dai-recognition-anim__bucket-label {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.dai-recognition-anim__bucket-slot {
+  min-height: 18px;
+  border-radius: 8px;
+  background: rgba(20, 92, 255, 0.06);
+}
+
+.dai-recognition-anim__reduced {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.dai-recognition-review {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dai-recognition-review__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dai-recognition-review__kicker {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dai-recognition-review__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0b1736;
+}
+
+.dai-recognition-review__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dai-recognition-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e8edf3;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(11, 23, 54, 0.03);
+}
+
+.dai-recognition-card__title {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.dai-recognition-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dai-recognition-field__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.dai-recognition-field__input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #0b1736;
+  background: #f8fafc;
+}
+
+.dai-recognition-field__input:focus {
+  outline: none;
+  border-color: #145cff;
+  background: #fff;
+}
+
+.dai-recognition-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dai-recognition-chips__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #c7d9ff;
+  border-radius: 999px;
+  background: #eef5ff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0b1736;
+  cursor: pointer;
+}
+
+.dai-recognition-chips__chip-x {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.dai-recognition-chips__add {
+  padding: 7px 10px;
+  border: 1px dashed #94a3b8;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #145cff;
+  cursor: pointer;
+}
+
+.dai-recognition-chips__empty {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.dai-recognition-inline-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dai-recognition-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: #0f172a;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.dai-recognition-list--bullets {
+  margin-top: 8px;
+  color: #475569;
+}
+
+.dai-recognition-review__line {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0b1736;
+}
+
+.dai-recognition-review__model {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0b1736;
+}
+
+.dai-recognition-review__sub {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.dai-recognition-review__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.dai-recognition-review__actions {
+  padding-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dai-recognition-anim__progress-bar,
+  .dai-recognition-anim__chip {
+    animation: none;
+  }
+}

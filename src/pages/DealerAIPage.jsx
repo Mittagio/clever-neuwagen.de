@@ -52,7 +52,6 @@ import {
   buildSelectedModelFieldPatch,
   fieldsFromConfigureDraft,
   hasRecognizedModelKey,
-  resolvePhaseAfterAnalysis,
   resolvePrimarySuggestedModel,
 } from '../services/dealerAiVehicleConfigureFlow.js';
 import { buildVehicleConfiguration } from '../services/configuration/vehicleConfigurationModel.js';
@@ -70,6 +69,13 @@ import {
   offerDraftToParserFields,
 } from '../services/dealerAiOfferCreate.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
+import DealerAiRecognitionAnimation from '../components/dealer-ai/DealerAiRecognitionAnimation.jsx';
+import DealerAiRecognitionReview from '../components/dealer-ai/DealerAiRecognitionReview.jsx';
+import {
+  applyRecognitionInsightToParsed,
+  buildCustomerRecognitionInsight,
+  resolvePhaseAfterRecognitionConfirm,
+} from '../services/dealerAiRecognitionInsight.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
 
@@ -105,6 +111,8 @@ export default function DealerAIPage() {
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
   const [offerPreviewSaved, setOfferPreviewSaved] = useState(false);
   const [offerPreviewSaveResult, setOfferPreviewSaveResult] = useState(null);
+  const [recognitionInsight, setRecognitionInsight] = useState(null);
+  const [sourceText, setSourceText] = useState('');
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -147,22 +155,6 @@ export default function DealerAIPage() {
     }
   }, [conditions]);
 
-  const applyParsedWithPhase = useCallback((nextParsed, chipIds = selectedChipIds) => {
-    const enriched = enrichWithSuggestions(nextParsed, chipIds);
-    setParsed(enriched);
-    const nextPhase = resolvePhaseAfterAnalysis(enriched);
-    if (nextPhase === 'configure') {
-      bootstrapConfigureState(enriched);
-    } else {
-      setConfigureDraft(null);
-      setVehicleConfiguration(null);
-      setConfigureOfferDraft(null);
-      setSelectedModelIds([]);
-    }
-    setStartView('home');
-    setPhase(nextPhase);
-  }, [bootstrapConfigureState, enrichWithSuggestions, selectedChipIds]);
-
   const buildCombinedText = useCallback((extra = {}) => {
     const extraChips = extra.chipIds ?? [];
     const allChipIds = [...new Set([...selectedChipIds, ...extraChips])];
@@ -198,13 +190,94 @@ export default function DealerAIPage() {
       setInput(`Kia ${extra.modelName}`);
     }
 
-    applyParsedWithPhase(next, [...selectedChipIds, ...extraChips]);
+    const chipIds = [...selectedChipIds, ...extraChips];
+    const enriched = enrichWithSuggestions(next, chipIds);
+    setParsed(enriched);
+    setSourceText(combined);
+    setRecognitionInsight(buildCustomerRecognitionInsight(combined, enriched));
+    setStartView('home');
+    setPhase('recognition-animate');
+  }
+
+  function handleRecognitionAnimationComplete() {
+    setPhase('recognition-review');
+  }
+
+  function handleRecognitionInsightChange(nextInsight) {
+    setRecognitionInsight(nextInsight);
+  }
+
+  function handleRecognitionConfirm(confirmedInsight) {
+    if (!parsed?.ok || !confirmedInsight) return;
+
+    const merged = applyRecognitionInsightToParsed(parsed, confirmedInsight);
+    const enriched = enrichWithSuggestions(merged);
+    setParsed(enriched);
+    setRecognitionInsight(confirmedInsight);
+
+    const nextPhase = resolvePhaseAfterRecognitionConfirm(confirmedInsight, enriched);
+
+    if (nextPhase === 'configure') {
+      bootstrapConfigureState(enriched);
+      setPhase('configure');
+      return;
+    }
+
+    if (nextPhase === 'advice') {
+      setStartView('advice');
+      setPhase('input');
+      showToast('Clever hat den Bedarf erkannt – Beratung starten.');
+      return;
+    }
+
+    handleCreateLeadFromRecognition(enriched);
+  }
+
+  function handleCreateLeadFromRecognition(enrichedParsed) {
+    if (!enrichedParsed?.ok) return;
+    setParsed(enrichedParsed);
+    setIsExecuting(true);
+    try {
+      const actionResult = executeDealerAiAction('create_sales_opportunity', enrichedParsed, {
+        conditions,
+        addOffer,
+        getExistingCodes,
+        leads,
+        addLead,
+        updateLead,
+        linkLead,
+        addInventoryItem,
+        publishChanges,
+        selectedModelIds,
+        carryCustomer,
+        addVehicleContext,
+      });
+      if (actionResult?.type === 'lead') {
+        setResult(actionResult);
+        setIsReturningWish(Boolean(actionResult.isReturningWish ?? carryCustomer));
+        setPhase('followup');
+        setIsFreshLead(true);
+        showToast('Kundenakte erstellt – Kundeninfos übernommen.');
+      } else {
+        applyActionResult(actionResult);
+      }
+    } catch (err) {
+      showToast(err.message ?? 'Aktion fehlgeschlagen');
+    } finally {
+      setIsExecuting(false);
+    }
   }
 
   function handleModelConfigure({ model, parsed: modelParsed }) {
-    setInput(`Kia ${model.name}`);
+    const text = `Kia ${model.name}`;
+    setInput(text);
     setSelectedModelIds(model?.id ? [model.id] : []);
-    applyParsedWithPhase(modelParsed, []);
+    const enriched = enrichWithSuggestions(modelParsed);
+    setParsed(enriched);
+    setSourceText(text);
+    setRecognitionInsight(buildCustomerRecognitionInsight(text, enriched));
+    setStartView('home');
+    setPhase('recognition-animate');
   }
 
   function handleVoiceParsed(parsedVoice) {
@@ -234,6 +307,8 @@ export default function DealerAIPage() {
     setConfigureDraft(null);
     setVehicleConfiguration(null);
     setConfigureOfferDraft(null);
+    setRecognitionInsight(null);
+    setSourceText('');
   }
 
   function clearAddVehicleFlow() {
@@ -452,10 +527,14 @@ export default function DealerAIPage() {
     if (!wishText) return;
     setInput(wishText);
     const next = parseDealerAiInput(wishText);
-    if (next.ok) {
-      applyParsedWithPhase(next);
-    }
-  }, [location.state?.wishText, applyParsedWithPhase]);
+    if (!next.ok) return;
+    const enriched = enrichWithSuggestions(next);
+    setParsed(enriched);
+    setSourceText(wishText);
+    setRecognitionInsight(buildCustomerRecognitionInsight(wishText, enriched));
+    setStartView('home');
+    setPhase('recognition-animate');
+  }, [location.state?.wishText, enrichWithSuggestions]);
 
   useEffect(() => {
     const leadId = location.state?.leadId;
@@ -883,8 +962,10 @@ export default function DealerAIPage() {
     ? ''
     : phase === 'configure' || phase === 'conditions'
       ? ''
-    : phase === 'review'
-      ? 'Kundenwunsch'
+    : phase === 'review' || phase === 'recognition-review'
+      ? 'Clever hat erkannt'
+      : phase === 'recognition-animate'
+        ? 'Clever analysiert …'
       : phase === 'done' && result?.type !== 'lead'
         ? 'Ich habe erkannt'
         : 'Was sucht Ihr Kunde?';
@@ -892,8 +973,10 @@ export default function DealerAIPage() {
     ? ''
     : phase === 'configure' || phase === 'conditions'
       ? ''
-    : phase === 'review'
-      ? `${Math.round((parsed?.confidence ?? 0) * 100)} % sicher · bitte kurz prüfen`
+    : phase === 'review' || phase === 'recognition-review'
+      ? 'Bitte kurz bestätigen, bevor es weitergeht.'
+      : phase === 'recognition-animate'
+        ? 'Kundenwunsch wird sortiert …'
       : phase === 'input' && startView === 'home'
         ? 'Kundenakte finden oder neuen Wunsch erfassen.'
       : phase === 'input'
@@ -906,6 +989,8 @@ export default function DealerAIPage() {
     && phase !== 'offer-preview'
     && phase !== 'configure'
     && phase !== 'conditions'
+    && phase !== 'recognition-animate'
+    && !(phase === 'recognition-review')
     && !(phase === 'input' && startView !== 'home');
 
   const vehicleCard = parsed?.ok && result
@@ -1009,7 +1094,23 @@ export default function DealerAIPage() {
           />
         )}
 
-        {contextBannerLabel && (phase === 'review' || (phase === 'input' && startView === 'home')) && (
+        {phase === 'recognition-animate' && recognitionInsight && (
+          <DealerAiRecognitionAnimation
+            insight={recognitionInsight}
+            onComplete={handleRecognitionAnimationComplete}
+          />
+        )}
+
+        {phase === 'recognition-review' && recognitionInsight && (
+          <DealerAiRecognitionReview
+            insight={recognitionInsight}
+            onChange={handleRecognitionInsightChange}
+            onConfirm={handleRecognitionConfirm}
+            isExecuting={isExecuting}
+          />
+        )}
+
+        {contextBannerLabel && (phase === 'review' || phase === 'recognition-review' || (phase === 'input' && startView === 'home')) && (
           <p className="dai-add-vehicle-context" role="status">
             {contextBannerLabel}
           </p>
@@ -1141,7 +1242,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && phase !== 'recognition-review' && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

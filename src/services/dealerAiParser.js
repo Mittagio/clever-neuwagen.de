@@ -445,11 +445,14 @@ function parseQuantity(text) {
   return num ? Number(num[1]) : null;
 }
 
-function parseCustomerName(text) {
+export function parseCustomerName(text) {
+  const kundeMatch = text.match(/\bkunde\s+([A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+)?)/i);
+  if (kundeMatch) return kundeMatch[1].trim();
+
   const m = text.match(/(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
     ?? text.match(/(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s+(?:ein|eine|einen)/i)
-    ?? text.match(/(?:kunde|name|von|absender)[:\s]+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i)
-    ?? text.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\s*(?:<|$|\n)/m);
+    ?? text.match(/(?:kunde|name|von|absender)[:\s]+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)/i)
+    ?? text.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\s*(?:<|$|\n)/m);
   return m ? m[1].trim() : null;
 }
 
