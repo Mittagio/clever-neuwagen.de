@@ -64,6 +64,31 @@ export function toggleKundenhelferChip(notes, chip) {
   return joinKundenhelferNotes([...parts, chip]);
 }
 
+/** Eigene Chips, die nicht in der Vorlagenliste stehen */
+export function getCustomKundenhelferChips(notes = '') {
+  const predefined = new Set(KUNDENHELFER_CHIPS);
+  return parseKundenhelferNotes(notes).filter((chip) => !predefined.has(chip));
+}
+
+export function addCustomKundenhelferChip(notes = '', text = '') {
+  const trimmed = String(text).trim();
+  if (!trimmed) return String(notes ?? '');
+  const parts = parseKundenhelferNotes(notes);
+  if (parts.includes(trimmed)) return joinKundenhelferNotes(parts);
+  return joinKundenhelferNotes([...parts, trimmed]);
+}
+
+export function replaceKundenhelferChip(notes = '', oldChip = '', newChip = '') {
+  const parts = parseKundenhelferNotes(notes);
+  const trimmed = String(newChip).trim();
+  if (!trimmed) {
+    return joinKundenhelferNotes(parts.filter((part) => part !== oldChip));
+  }
+  return joinKundenhelferNotes(
+    parts.map((part) => (part === oldChip ? trimmed : part)),
+  );
+}
+
 export function buildKundenhelferCardSummary(notes = '', voiceMemoCount = 0) {
   const parts = parseKundenhelferNotes(notes);
   if (!parts.length) {

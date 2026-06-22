@@ -2,30 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 import {
   KUNDENHELFER_CHIPS,
+  addCustomKundenhelferChip,
   blobToDataUrl,
   createVoiceMemoId,
   formatMemoDuration,
   formatMemoLine,
+  getCustomKundenhelferChips,
   parseKundenhelferNotes,
+  replaceKundenhelferChip,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
 import './CleverKundenhelferSheet.css';
-
-function Field({ label, id, value, onChange, placeholder }) {
-  return (
-    <label className="dai-kh-field" htmlFor={id}>
-      <span className="dai-kh-field__label">{label}</span>
-      <textarea
-        id={id}
-        className="dai-kh-field__input"
-        rows={3}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </label>
-  );
-}
 
 function VoiceMemoRecorder({ onSave, disabled }) {
   const [phase, setPhase] = useState('idle');
@@ -254,19 +241,85 @@ export default function CleverKundenhelferSheet({
   isSaving = false,
 }) {
   const [playingId, setPlayingId] = useState(null);
+  const [customEditMode, setCustomEditMode] = useState(null);
+  const [customDraft, setCustomDraft] = useState('');
+  const [editingChip, setEditingChip] = useState(null);
   const playerRef = useRef(null);
+  const customInputRef = useRef(null);
 
   const activeChips = parseKundenhelferNotes(notes);
+  const customChips = getCustomKundenhelferChips(notes);
+  const isAddingCustom = customEditMode === 'add';
+  const isEditingCustom = customEditMode === 'edit';
+
+  const resetCustomEdit = useCallback(() => {
+    setCustomEditMode(null);
+    setCustomDraft('');
+    setEditingChip(null);
+  }, []);
 
   useEffect(() => {
     if (!open) {
       playerRef.current?.pause();
       setPlayingId(null);
+      resetCustomEdit();
     }
-  }, [open]);
+  }, [open, resetCustomEdit]);
+
+  useEffect(() => {
+    if (open && customEditMode && customInputRef.current) {
+      customInputRef.current.focus();
+    }
+  }, [open, customEditMode, customDraft]);
 
   function toggleChip(chip) {
+    resetCustomEdit();
     onNotesChange?.(toggleKundenhelferChip(notes, chip));
+  }
+
+  function startAddCustom() {
+    if (isAddingCustom) {
+      resetCustomEdit();
+      return;
+    }
+    setCustomEditMode('add');
+    setCustomDraft('');
+    setEditingChip(null);
+  }
+
+  function startEditCustom(chip) {
+    setCustomEditMode('edit');
+    setCustomDraft(chip);
+    setEditingChip(chip);
+  }
+
+  function commitCustomChip() {
+    const trimmed = customDraft.trim();
+    if (!trimmed) {
+      if (isEditingCustom && editingChip) {
+        onNotesChange?.(toggleKundenhelferChip(notes, editingChip));
+      }
+      resetCustomEdit();
+      return;
+    }
+
+    if (isEditingCustom && editingChip) {
+      onNotesChange?.(replaceKundenhelferChip(notes, editingChip, trimmed));
+    } else {
+      onNotesChange?.(addCustomKundenhelferChip(notes, trimmed));
+    }
+    resetCustomEdit();
+  }
+
+  function handleCustomKeyDown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitCustomChip();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      resetCustomEdit();
+    }
   }
 
   function handlePlayMemo(memo) {
@@ -313,29 +366,81 @@ export default function CleverKundenhelferSheet({
       <div className="dai-kh-sheet">
         <p className="dai-kh-sheet__subline">Kleine Details fürs nächste Gespräch.</p>
 
-        <Field
-          label="Weitere Info"
-          id="kundenhelfer-notes"
-          value={notes}
-          onChange={onNotesChange}
-          placeholder="z. B. Kunde hat Hund, Kaffee schwarz, mag rote Autos"
-        />
+        <div className="dai-kh-chips-wrap">
+          <div className="dai-kh-chips" role="group" aria-label="Schnell-Bemerkungen">
+            <button
+              type="button"
+              className={`dai-kh-chip dai-kh-chip--add${isAddingCustom ? ' is-active' : ''}`}
+              onClick={startAddCustom}
+              aria-pressed={isAddingCustom}
+            >
+              + Weitere Info
+            </button>
 
-        <div className="dai-kh-chips" role="group" aria-label="Schnell-Bemerkungen">
-          {KUNDENHELFER_CHIPS.map((chip) => {
-            const active = activeChips.includes(chip);
-            return (
-              <button
-                key={chip}
-                type="button"
-                className={`dai-kh-chip${active ? ' is-active' : ''}`}
-                onClick={() => toggleChip(chip)}
-                aria-pressed={active}
-              >
-                {chip}
-              </button>
-            );
-          })}
+            {customChips.map((chip) => {
+              const isEditing = isEditingCustom && editingChip === chip;
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  className={`dai-kh-chip dai-kh-chip--custom is-active${isEditing ? ' is-editing' : ''}`}
+                  onClick={() => startEditCustom(chip)}
+                  aria-pressed
+                >
+                  {chip}
+                </button>
+              );
+            })}
+
+            {KUNDENHELFER_CHIPS.map((chip) => {
+              const active = activeChips.includes(chip);
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  className={`dai-kh-chip${active ? ' is-active' : ''}`}
+                  onClick={() => toggleChip(chip)}
+                  aria-pressed={active}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+
+          {customEditMode && (
+            <div className="dai-kh-custom-edit">
+              <input
+                ref={customInputRef}
+                type="text"
+                className="dai-kh-custom-edit__input"
+                value={customDraft}
+                onChange={(e) => setCustomDraft(e.target.value)}
+                onKeyDown={handleCustomKeyDown}
+                placeholder="z. B. Gebrauchtwagen BMW"
+                aria-label={isEditingCustom ? 'Eigene Info bearbeiten' : 'Neue Info eingeben'}
+              />
+              <div className="dai-kh-custom-edit__actions">
+                <button
+                  type="button"
+                  className="dai-btn dai-btn--primary dai-kh-custom-edit__confirm"
+                  onClick={commitCustomChip}
+                >
+                  Übernehmen
+                </button>
+                <button
+                  type="button"
+                  className="dai-btn dai-btn--ghost"
+                  onClick={resetCustomEdit}
+                >
+                  Abbrechen
+                </button>
+              </div>
+              <p className="dai-kh-custom-edit__hint">
+                Enter zum Übernehmen · Leer lassen und übernehmen entfernt den Chip
+              </p>
+            </div>
+          )}
         </div>
 
         <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
