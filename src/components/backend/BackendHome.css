@@ -550,6 +550,204 @@
   text-transform: uppercase;
 }
 
+/* Kundensuche im Hero */
+.backend-home__customer-search {
+  margin-top: 16px;
+}
+
+.backend-home__customer-search--hero {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.backend-home__customer-search-label {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.backend-home__search-field-wrap {
+  display: block;
+}
+
+.backend-home__search-field {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #0b1736;
+  background: #fff;
+}
+
+.backend-home__search-field::placeholder {
+  color: #94a3b8;
+}
+
+.backend-home__search-field:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
+}
+
+.backend-home__search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.backend-home__search-hit {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: #0f172a;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.backend-home__search-hit:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.backend-home__search-hit-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.backend-home__search-hit-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.backend-home__search-hit-vehicle {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__search-hit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.backend-home__search-hit-status {
+  color: #145cff;
+}
+
+.backend-home__search-hit-activity {
+  color: #64748b;
+}
+
+.backend-home__search-hit-warning {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9a6700;
+}
+
+.backend-home__search-hit-action {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #145cff;
+  line-height: 1;
+}
+
+.backend-home__search-empty {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+}
+
+/* Zuletzt geöffnet */
+.backend-home__recent {
+  margin-top: -2px;
+}
+
+.backend-home__recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backend-home__recent-card {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.backend-home__recent-card:hover {
+  border-color: #c7d7f5;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
+}
+
+.backend-home__recent-name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.backend-home__recent-vehicle {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__recent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.backend-home__recent-status {
+  color: #145cff;
+}
+
+.backend-home__recent-activity {
+  color: #64748b;
+}
+
 .backend-home__advisor-title {
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2.125rem);
@@ -775,8 +973,6 @@
   }
 
   .backend-home__advisor-actions {
-    flex-direction: column;
-    gap: 8px;
     margin-top: 12px;
   }
 
@@ -784,18 +980,8 @@
     width: 100%;
   }
 
-  .backend-home__advisor-btn--secondary {
-    width: auto;
-    min-height: auto;
-    align-self: center;
-    padding: 6px 4px;
-    border: none;
-    background: transparent;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    opacity: 0.88;
+  .backend-home__customer-search {
+    margin-top: 14px;
   }
 
   .backend-home__advisor-trust {

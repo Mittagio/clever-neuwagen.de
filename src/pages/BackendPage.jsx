@@ -74,9 +74,7 @@ export default function BackendPage() {
   function renderContent() {
     if (activeArea === 'verkaufen' && activeSection === 'home') {
       return (
-        <BackendHome
-          conditions={draftConditions}
-        />
+        <BackendHome />
       );
     }
 

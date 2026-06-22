@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { useCommunication } from '../../context/CommunicationContext.jsx';
@@ -9,12 +9,20 @@ import {
   getDailyMotivation,
   getFollowUpCoachCard,
 } from '../../services/cleverSalesCoach.js';
+import {
+  recordRecentCustomerOpen,
+  resolveCustomerOpenAction,
+} from '../../services/crm/customerSearchService.js';
+import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import CleverLexikon from './CleverLexikon.jsx';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
+import BackendCustomerSearch from './BackendCustomerSearch.jsx';
+import BackendRecentCustomers from './BackendRecentCustomers.jsx';
 import { KPI_TILES } from '../../logic/backendKpiNavigation.js';
 import './BackendHome.css';
 
-export default function BackendHome({ conditions }) {
+export default function BackendHome() {
+  const navigate = useNavigate();
   const { leads } = useLeads();
   const { offers } = useOffers();
   const { getDueToday } = useCommunication();
@@ -48,36 +56,44 @@ export default function BackendHome({ conditions }) {
     openedOffers: today.openedOffers,
   };
 
+  function handleOpenCustomerRecord(leadId) {
+    const { action, leadId: resolvedId } = resolveCustomerOpenAction(leadId, leads);
+    if (action !== 'open' || !resolvedId) return;
+    const lead = leads.find((item) => item.id === resolvedId);
+    if (lead) recordRecentCustomerOpen(lead);
+    navigate(buildKundenaktePath(resolvedId));
+  }
+
   return (
     <div className="backend-home">
       <section className="backend-home__advisor-hero" aria-labelledby="advisor-hero-title">
         <div className="backend-home__advisor-hero-inner">
-          <p className="backend-home__advisor-badge">NEU · DIGITALER VERKAUFSBERATER</p>
           <h2 id="advisor-hero-title" className="backend-home__advisor-title">
             Unser digitaler Verkaufsberater
           </h2>
           <p className="backend-home__advisor-subline">
-            Kundenwünsche per Sprache, Text oder Klick erfassen –
-            und in Sekunden zur Verkaufschance machen.
+            Kundenwünsche erfassen, Kundenakten finden und Chancen weiterbearbeiten.
           </p>
+
           <div className="backend-home__advisor-actions">
             <Link to="/verkaufsassistent" className="backend-home__advisor-btn backend-home__advisor-btn--primary">
               Verkaufsassistent öffnen
             </Link>
-            <Link
-              to="/verkaufsassistent"
-              state={{ focusText: true }}
-              className="backend-home__advisor-btn backend-home__advisor-btn--secondary"
-            >
-              Text / E-Mail einfügen
-            </Link>
           </div>
-          <p className="backend-home__advisor-trust">
-            Ideal für Kundengespräch, E-Mail, WhatsApp, Telefonnotiz und Showroom-Beratung.
-          </p>
+
+          <BackendCustomerSearch
+            leads={leads}
+            onOpenCustomerRecord={handleOpenCustomerRecord}
+            variant="hero"
+          />
         </div>
         <span className="backend-home__advisor-visual" aria-hidden="true">✨</span>
       </section>
+
+      <BackendRecentCustomers
+        leads={leads}
+        onOpenCustomerRecord={handleOpenCustomerRecord}
+      />
 
       <section className="backend-home__section" aria-labelledby="today-heading">
         <div className="backend-home__today-head">
@@ -126,7 +142,7 @@ export default function BackendHome({ conditions }) {
             >
               <span className="backend-home__today-chevron" aria-hidden>›</span>
               <span className="backend-home__today-value">{counts[tile.key]}</span>
-              <span className="backend-home__today-label">{tile.label}</span>
+              <span className="backend-home__today-label">{tile.dashboardLabel ?? tile.label}</span>
               <span className="backend-home__today-hint">{tile.hint}</span>
             </Link>
           ))}

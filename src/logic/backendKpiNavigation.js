@@ -31,21 +31,12 @@ const ACTIVE_LINKED_OFFER_STATUSES = new Set([
 
 export const KPI_TILES = [
   {
-    key: 'newLeads',
-    label: 'Neue Anfragen',
-    hint: 'Von Landingpage & Assistent',
-    to: '/backend/neue-anfragen',
-    ariaLabel: 'Neue Anfragen öffnen',
-    accent: '#2563eb',
-    listTitle: 'Neue Anfragen',
-    listSubtitle: 'Von Landingpage & Assistent',
-  },
-  {
     key: 'needsOffer',
     label: 'Angebot vorbereiten',
+    dashboardLabel: 'Angebote heiß',
     hint: 'Chancen ohne Angebot',
     to: '/backend/angebot-vorbereiten',
-    ariaLabel: 'Angebot vorbereiten öffnen',
+    ariaLabel: 'Angebote heiß öffnen',
     accent: '#7c3aed',
     listTitle: 'Angebot vorbereiten',
     listSubtitle: 'Diese Chancen warten auf ein Angebot.',
@@ -69,6 +60,16 @@ export const KPI_TILES = [
     accent: '#16a34a',
     listTitle: 'Angebote geöffnet',
     listSubtitle: 'Kunden haben reingeschaut',
+  },
+  {
+    key: 'newLeads',
+    label: 'Neue Anfragen',
+    hint: 'Von Landingpage & Assistent',
+    to: '/backend/neue-anfragen',
+    ariaLabel: 'Neue Anfragen öffnen',
+    accent: '#2563eb',
+    listTitle: 'Neue Anfragen',
+    listSubtitle: 'Von Landingpage & Assistent',
   },
 ];
 

@@ -68,6 +68,7 @@
     "test:customer-akte-kundenhelfer": "node src/components/dealer-ai/CustomerAkteKundenhelfer.test.js",
     "test:customer-add-vehicle-flow": "node src/services/customerAddVehicleFlow.test.js",
     "test:customer-search": "node src/services/crm/customerSearchService.test.js",
+    "test:backend-home": "node src/components/backend/BackendHome.test.js",
     "test:dealer-ai-configure": "node src/services/dealerAiVehicleConfigureFlow.test.js",
     "test:dealer-ai-offer-create": "node src/services/dealerAiOfferCreate.test.js",
     "test:uvp-pricing": "node src/services/configuration/uvpPricing.test.js",
