@@ -81,6 +81,14 @@ export function computeAkteCleverStaerke({
   return Math.min(100, score);
 }
 
+export function getCleverScoreRingVariant(score = 0) {
+  const pct = Math.max(0, Math.min(100, Math.round(score)));
+  if (pct <= 40) return 'low';
+  if (pct <= 70) return 'mid';
+  if (pct <= 90) return 'high';
+  return 'max';
+}
+
 export function getAkteCleverLabel(score) {
   return getCleverStaerkeTier(score);
 }
@@ -107,6 +115,75 @@ function paymentLabel(paymentType) {
     .replace('Kauf / Barzahlung', 'Kauf')
     .replace('Leasing', 'Leasing')
     .trim();
+}
+
+function formatWishEuro(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n.toLocaleString('de-DE')} €`;
+}
+
+function formatWishKm(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n.toLocaleString('de-DE')} km`;
+}
+
+/**
+ * Kompakte Chips für Wunschkonditionen auf Kundenakte-Ebene (Kundenwunsch, nicht Fahrzeug).
+ */
+export function buildWishConditionChips({
+  paymentType = 'unknown',
+  termMonths = null,
+  mileagePerYear = null,
+  desiredRate = null,
+  desiredPrice = null,
+  downPayment = null,
+  delivery = '',
+} = {}) {
+  const pt = paymentType ?? 'unknown';
+  const hasTerm = Number(termMonths) > 0;
+  const hasMileage = Number(mileagePerYear) > 0;
+  const hasRate = Number(desiredRate) > 0;
+  const hasPrice = Number(desiredPrice) > 0;
+  const hasDown = Number(downPayment) > 0;
+  const hasDelivery = Boolean(String(delivery ?? '').trim());
+
+  if (pt === 'unknown' && !hasTerm && !hasMileage && !hasRate && !hasPrice && !hasDown && !hasDelivery) {
+    return [];
+  }
+
+  const chips = [];
+
+  if (pt === 'leasing') chips.push('Leasing');
+  else if (pt === 'cash') chips.push('Kauf');
+  else if (pt === 'financing' || pt === 'threeWayFinancing') chips.push('Finanzierung');
+  else if (pt !== 'unknown') chips.push(paymentLabel(pt));
+  else chips.push('Angebotsart offen');
+
+  if (pt === 'cash') {
+    const price = formatWishEuro(desiredPrice);
+    chips.push(price ? `bis ${price}` : 'Budget offen');
+  } else if (pt !== 'unknown') {
+    chips.push(hasTerm ? `${Number(termMonths)} Monate` : 'Laufzeit offen');
+    if (pt === 'leasing') {
+      const km = formatWishKm(mileagePerYear);
+      chips.push(km ? `${km}/Jahr` : 'Kilometer offen');
+    }
+    if (hasDown) {
+      const down = formatWishEuro(downPayment);
+      if (down) chips.push(`${down} Anzahlung`);
+    }
+    const rate = formatWishEuro(desiredRate);
+    chips.push(rate ? `bis ${rate}/Monat` : 'Budget offen');
+  }
+
+  if (hasDelivery) {
+    const label = String(delivery).trim();
+    chips.push(label.length > 18 ? `Lieferung: ${label.slice(0, 16)}…` : label);
+  }
+
+  return chips;
 }
 
 function findOfferForVehicle(offers = [], model = {}) {

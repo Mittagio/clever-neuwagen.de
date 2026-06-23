@@ -59,7 +59,7 @@ export default function CustomerAkteActionBar({
           <span
             key={action.id}
             className="cust-akte-actions__item cust-akte-actions__item--disabled"
-            aria-hidden
+            aria-label={`${action.label} (nicht verfügbar)`}
           >
             <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
             <span className="cust-akte-actions__label">{action.label}</span>
@@ -82,13 +82,15 @@ export default function CustomerAkteActionBar({
     }
 
     if (action.id === 'email') {
-      const href = mailHref ?? (email ? `mailto:${email}` : null);
+      const href = email?.trim()
+        ? (mailHref ?? `mailto:${email}`)
+        : null;
       if (!href) {
         return (
           <span
             key={action.id}
             className="cust-akte-actions__item cust-akte-actions__item--disabled"
-            aria-hidden
+            aria-label={`${action.label} (nicht verfügbar)`}
           >
             <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
             <span className="cust-akte-actions__label">{action.label}</span>

@@ -28,6 +28,7 @@ import {
 import { getRelatedLeadsByCustomer } from '../../services/dealerAiCustomer.js';
 import {
   buildVehicleOpportunityCards,
+  buildWishConditionChips,
   computeAkteCleverStaerke,
   formatVehicleCardConditions,
   formatVehicleCardPrice,
@@ -53,6 +54,7 @@ import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
+import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
@@ -223,6 +225,7 @@ export default function DealerAiLeadFollowUp({
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
   const [email, setEmail] = useState(lead?.contact?.email ?? '');
+  const [address, setAddress] = useState(lead?.crm?.address ?? lead?.contact?.address ?? '');
   const [note, setNote] = useState(lead?.notes ?? parsed?.shortForm ?? '');
 
   const [wishModel, setWishModel] = useState(lead?.vehicle?.model ?? fields.model ?? '');
@@ -297,6 +300,16 @@ export default function DealerAiLeadFollowUp({
     desiredDeliveryDate: wishDelivery,
     deliveryTime: wishDelivery,
   }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, wishDelivery]);
+
+  const wishConditionChips = useMemo(() => buildWishConditionChips({
+    paymentType: wishPaymentType,
+    termMonths: wishSummaryFields.termMonths,
+    mileagePerYear: wishSummaryFields.mileagePerYear,
+    desiredRate: wishSummaryFields.desiredRate,
+    desiredPrice: wishSummaryFields.desiredPrice,
+    downPayment: lead?.wish?.downPayment ?? fields.downPayment ?? null,
+    delivery: wishDelivery,
+  }), [wishPaymentType, wishSummaryFields, lead?.wish?.downPayment, fields.downPayment, wishDelivery]);
 
   const headSubline = buildSalesDoneVehicleLine({
     brand: fields.brand ?? 'Kia',
@@ -493,6 +506,7 @@ export default function DealerAiLeadFollowUp({
         name: name.trim() || 'Kunde (offen)',
         phone: phone.trim(),
         email: email.trim(),
+        address: address.trim(),
       },
       notes: note.trim(),
       status: pipelineToLeadStatus(pipelineStatusId),
@@ -523,6 +537,7 @@ export default function DealerAiLeadFollowUp({
           notes: kundenhelferNotes.trim(),
           voiceMemos: kundenhelferMemos,
         },
+        address: address.trim(),
         lastOutcomeId: outcomeId ?? crm.lastOutcomeId,
         lastOutcomeLabel: outcomeChip?.label ?? crm.lastOutcomeLabel,
         ...extraCrm,
@@ -652,7 +667,7 @@ export default function DealerAiLeadFollowUp({
         customerName={name}
         phone={phone}
         email={email}
-        address={lead?.crm?.address ?? lead?.contact?.address ?? ''}
+        address={address}
         customerSince={lead?.createdAt}
         cleverScore={akteCleverScore}
         kundenhelferNotes={kundenhelferNotes}
@@ -681,6 +696,11 @@ export default function DealerAiLeadFollowUp({
         notes={kundenhelferNotes}
         onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
         variant="profile"
+      />
+
+      <CustomerAkteWishConditions
+        chips={wishConditionChips}
+        onOpenWish={() => openSheet(SHEETS.wish)}
       />
 
       <CustomerAkteNextStep
@@ -840,6 +860,13 @@ export default function DealerAiLeadFollowUp({
             value={email}
             onChange={setEmail}
             placeholder="kunde@beispiel.de"
+          />
+          <Field
+            label="Adresse"
+            id="lead-address"
+            value={address}
+            onChange={setAddress}
+            placeholder="Waldheimer Straße 12 · 73614 Schorndorf"
           />
           <Field
             label="Notiz"

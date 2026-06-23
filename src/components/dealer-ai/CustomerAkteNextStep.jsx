@@ -9,16 +9,19 @@ export default function CustomerAkteNextStep({
   onUnterlagen,
 }) {
   const data = recommendation ?? hint;
-  if (!data?.title && !data?.text) return null;
+  if (!data?.title && !data?.text && !data?.cta && !data?.ctaLabel) return null;
 
-  const title = data.title ?? 'Nächster Schritt';
   const explanation = data.text ?? data.explanation ?? '';
-  const cta = data.cta ?? data.ctaLabel ?? 'Weiter';
+  const reason = data.whyClever ?? data.reason ?? '';
+  const cta = data.cta ?? data.ctaLabel ?? data.title ?? 'Weiter';
   const handlerType = data.handlerType ?? data.action;
   const isCall = handlerType === 'call' && data.canCall !== false && telHref;
   const isUnterlagen = handlerType === 'documents'
     || handlerType === 'leasing_submit'
     || data.action === 'unterlagen';
+
+  const note = explanation || reason;
+  const showNote = Boolean(note) && (isUnterlagen || !/unterlagen fehlen/i.test(note));
 
   function handleClick() {
     if (onAction) {
@@ -33,11 +36,9 @@ export default function CustomerAkteNextStep({
   }
 
   return (
-    <section className="cust-akte-nbs cust-akte-nbs--compact" aria-labelledby="cust-akte-nbs-title">
+    <section className="cust-akte-nbs cust-akte-nbs--focus" aria-labelledby="cust-akte-nbs-title">
       <h2 id="cust-akte-nbs-title" className="cust-akte-nbs__label">Nächster guter Schritt</h2>
       <div className="cust-akte-nbs__card">
-        <p className="cust-akte-nbs__headline">{title}</p>
-        {explanation && <p className="cust-akte-nbs__text">{explanation}</p>}
         {isCall ? (
           <a href={telHref} className="cust-akte-nbs__cta" onClick={() => onAction?.(data)}>
             {cta}
@@ -46,6 +47,9 @@ export default function CustomerAkteNextStep({
           <button type="button" className="cust-akte-nbs__cta" onClick={handleClick}>
             {cta}
           </button>
+        )}
+        {showNote && (
+          <p className="cust-akte-nbs__note">{note}</p>
         )}
       </div>
     </section>

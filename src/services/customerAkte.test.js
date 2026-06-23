@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   buildVehicleOpportunityCards,
+  buildWishConditionChips,
   computeAkteCleverStaerke,
   formatCustomerSince,
   formatVehicleCardConditions,
@@ -57,5 +58,21 @@ assert.equal(formatVehicleCardConditions(cashCard), 'Kauf');
 assert.equal(formatVehicleCardPrice(cashCard), '29.000 € inkl. MwSt.');
 
 assert.equal(formatVehicleCardsReadyMessage(3, 'Max Müller'), '3 Fahrzeuge für Max Müller vorgemerkt.');
+
+const leasingChips = buildWishConditionChips({
+  paymentType: 'leasing',
+  termMonths: 48,
+  mileagePerYear: 10000,
+  desiredRate: 350,
+});
+assert.deepEqual(leasingChips, ['Leasing', '48 Monate', '10.000 km/Jahr', 'bis 350 €/Monat']);
+
+const cashChips = buildWishConditionChips({
+  paymentType: 'cash',
+  desiredPrice: 50000,
+  delivery: 'flexibel',
+});
+assert.ok(cashChips.includes('Kauf'));
+assert.ok(cashChips.some((c) => c.includes('50.000')));
 
 console.log('customerAkte.test.js: ok');
