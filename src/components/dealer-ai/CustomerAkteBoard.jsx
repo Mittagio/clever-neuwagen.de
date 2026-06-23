@@ -1,13 +1,20 @@
 import CustomerAkteVehicleCard from './CustomerAkteVehicleCard.jsx';
+import CustomerAkteSelectionGroupCard from './CustomerAkteSelectionGroupCard.jsx';
 import './CustomerAkte.css';
 
 export default function CustomerAkteBoard({
+  items = [],
   cards = [],
   animateNew = false,
   onCardClick,
   onCardMenu,
+  onSelectionGroupClick,
   onAddVehicle,
 }) {
+  const boardItems = items.length > 0
+    ? items
+    : cards.map((card) => ({ type: 'vehicle', id: card.id, card }));
+
   return (
     <section className="cust-akte-section cust-akte-board" aria-labelledby="cust-akte-board-title">
       <div className="cust-akte-section__head">
@@ -17,21 +24,31 @@ export default function CustomerAkteBoard({
         </button>
       </div>
 
-      {cards.length === 0 ? (
+      {boardItems.length === 0 ? (
         <button type="button" className="cust-akte-board__empty" onClick={onAddVehicle}>
           Noch kein Fahrzeug – Auto hinzufügen
         </button>
       ) : (
         <div className="cust-akte-board__stack">
-          {cards.map((card, index) => (
-            <CustomerAkteVehicleCard
-              key={card.id}
-              card={card}
-              index={index}
-              animateIn={animateNew}
-              onClick={onCardClick}
-              onMenu={onCardMenu}
-            />
+          {boardItems.map((item, index) => (
+            item.type === 'selection_group' ? (
+              <CustomerAkteSelectionGroupCard
+                key={item.id}
+                group={item.group}
+                index={index}
+                animateIn={animateNew}
+                onClick={onSelectionGroupClick}
+              />
+            ) : (
+              <CustomerAkteVehicleCard
+                key={item.id}
+                card={item.card}
+                index={index}
+                animateIn={animateNew}
+                onClick={onCardClick}
+                onMenu={onCardMenu}
+              />
+            )
           ))}
         </div>
       )}

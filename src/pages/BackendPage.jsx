@@ -7,8 +7,10 @@ import BackendNav from '../components/backend/BackendNav.jsx';
 import BackendSyncStatus from '../components/backend/BackendSyncStatus.jsx';
 import BackendHome from '../components/backend/BackendHome.jsx';
 import BackendVehicleShowroom from '../components/backend/BackendVehicleShowroom.jsx';
+import DealerVehicleManagement from '../components/backend/DealerVehicleManagement.jsx';
 import EquipmentDataInspector from '../components/admin/EquipmentDataInspector.jsx';
 import EquipmentSalesSearch from '../components/admin/EquipmentSalesSearch.jsx';
+import CleverLearningRequestsAdmin from '../components/admin/CleverLearningRequestsAdmin.jsx';
 import BackendMarketingHub from '../components/backend/BackendMarketingHub.jsx';
 import BackendVerwaltungHub from '../components/backend/BackendVerwaltungHub.jsx';
 import BackendDiscounts from '../components/backend/BackendDiscounts.jsx';
@@ -48,6 +50,10 @@ export default function BackendPage() {
     updateDelivery,
     updatePreparationFee,
     updateModel,
+    updateModelSettings,
+    addModelPromotion,
+    updateModelPromotion,
+    removeModelPromotion,
     publishDealerChanges,
     discardDraft,
     resetToDefaults,
@@ -85,12 +91,28 @@ export default function BackendPage() {
       if (activeSection === 'equipment-inspector') {
         return <EquipmentDataInspector />;
       }
+      if (activeSection === 'clever-learning-requests') {
+        return <CleverLearningRequestsAdmin />;
+      }
+      if (activeSection === 'showroom') {
+        return (
+          <BackendVehicleShowroom
+            conditions={draftConditions}
+            onUpdateModel={updateModel}
+            onUpdateDelivery={updateDelivery}
+            onUpdateDiscount={updateDiscount}
+          />
+        );
+      }
       return (
-        <BackendVehicleShowroom
+        <DealerVehicleManagement
           conditions={draftConditions}
           onUpdateModel={updateModel}
-          onUpdateDelivery={updateDelivery}
+          onUpdateModelSettings={updateModelSettings}
           onUpdateDiscount={updateDiscount}
+          onAddPromotion={addModelPromotion}
+          onUpdatePromotion={updateModelPromotion}
+          onRemovePromotion={removeModelPromotion}
         />
       );
     }

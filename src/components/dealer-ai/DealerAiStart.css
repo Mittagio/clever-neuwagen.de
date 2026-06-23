@@ -14,6 +14,26 @@
   gap: 12px;
 }
 
+.dai-start__lexikon {
+  margin-top: 4px;
+  border-color: #e8edf3;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(11, 23, 54, 0.06);
+}
+
+.dai-start__lexikon .backend-home__section-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0b1736;
+}
+
+.dai-start__lexikon .backend-home__lexikon-subline {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
 .dai-start__carry {
   margin: 0 0 4px;
   padding: 12px 14px;

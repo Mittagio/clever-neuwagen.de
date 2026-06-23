@@ -7,6 +7,10 @@ import {
   markSalesEquipmentReviewCase,
   searchSalesEquipment,
 } from '../../services/admin/equipmentSalesSearchService.js';
+import {
+  LEARNING_SOURCE_AREAS,
+} from '../../services/admin/cleverLearningRequestService.js';
+import CleverLearningRequestCard from '../shared/CleverLearningRequestCard.jsx';
 import { getActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import {
@@ -163,6 +167,17 @@ function SalesResultCard({
         )}
       </div>
 
+      {isPending && (
+        <CleverLearningRequestCard
+          query={result.featureQuery}
+          modelKey={result.modelEntry?.modelKey}
+          modelLabel={`${result.modelEntry.brand} ${result.modelEntry.model}`}
+          sourceArea={LEARNING_SOURCE_AREAS.DEALER_EQUIPMENT_SEARCH}
+          pageContext="Ausstattung prüfen"
+          detectedFeatureId={result.feature?.id ?? null}
+        />
+      )}
+
       {!activeLeadId && (
         <div className="eq-sales-no-lead">
           <p className="eq-sales-no-lead__message">Keine Verkaufschance ausgewählt.</p>
@@ -307,14 +322,28 @@ export default function EquipmentSalesSearch() {
       )}
 
       {result?.type === 'not_recognized' && (
-        <p className="eq-sales-empty" role="status">
-          Keine passende Ausstattung erkannt. Bitte Begriff anpassen oder Modell ergänzen.
-        </p>
+        <div className="eq-sales-panel">
+          <CleverLearningRequestCard
+            query={query.trim()}
+            modelKey={result.modelEntry?.modelKey ?? selectedModelKey}
+            modelLabel={result.modelEntry ? `${result.modelEntry.brand} ${result.modelEntry.model}` : null}
+            sourceArea={LEARNING_SOURCE_AREAS.DEALER_EQUIPMENT_SEARCH}
+            pageContext="Ausstattung prüfen"
+            detectedFeatureId={result.feature?.id ?? null}
+          />
+        </div>
       )}
 
       {result?.type === 'needs_model' && (
         <div className="eq-sales-panel">
-          <p className="eq-sales-panel__message">{result.message}</p>
+          <CleverLearningRequestCard
+            query={query.trim()}
+            modelKey={null}
+            modelLabel={result.feature?.label ?? null}
+            sourceArea={LEARNING_SOURCE_AREAS.DEALER_EQUIPMENT_SEARCH}
+            pageContext="Ausstattung prüfen"
+            detectedFeatureId={result.feature?.id ?? null}
+          />
           {result.feature && (
             <p className="eq-sales-muted">
               Erkanntes Feature: <strong>{result.feature.label}</strong>

@@ -73,6 +73,18 @@
   font-weight: 400;
 }
 
+.local-offer-card__prep,
+.local-offer-card__legal {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.local-offer-card__badges {
+  margin-top: 4px;
+}
+
 .local-offer-card__cta {
   margin-top: 10px;
   border: none;

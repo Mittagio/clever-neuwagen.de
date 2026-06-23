@@ -292,7 +292,6 @@ export default function CleverAntwortenSheet({
       setDraft(text);
       setPhase('edit');
       setDiktatRecording('idle');
-      onAddHistory?.(CLEVER_DIKTAT_HISTORY.created, 'note');
     }, 350);
   }
 

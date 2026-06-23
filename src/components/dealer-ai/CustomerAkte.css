@@ -1767,3 +1767,222 @@
     max-width: 480px;
   }
 }
+
+/* Clever Auswahl – kompakte Gruppenkachel */
+.cust-akte-sgroup {
+  position: relative;
+  border-bottom: 1px solid var(--cust-border);
+}
+
+.cust-akte-sgroup:last-child {
+  border-bottom: none;
+}
+
+.cust-akte-sgroup__main {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0 6px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-sgroup__visual {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 54px;
+}
+
+.cust-akte-sgroup__image-wrap,
+.cust-akte-sgroup__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cust-akte-sgroup__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cust-akte-sgroup__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cust-text);
+}
+
+.cust-akte-sgroup__count {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.cust-akte-sgroup__trims {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted);
+}
+
+.cust-akte-sgroup__conditions,
+.cust-akte-sgroup__budget {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted);
+}
+
+.cust-akte-sgroup__status {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cust-akte-sgroup__status--ready { color: #7c3aed; }
+.cust-akte-sgroup__status--sent { color: #2563eb; }
+.cust-akte-sgroup__status--opened { color: #059669; }
+.cust-akte-sgroup__status--idea { color: #64748b; }
+
+.cust-akte-sgroup__cta-wrap {
+  padding: 0 0 10px 84px;
+}
+
+.cust-akte-sgroup__cta {
+  padding: 6px 12px;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Clever Auswahl – Detail-Sheet */
+.cust-akte-auswahl__head {
+  margin-bottom: 16px;
+}
+
+.cust-akte-auswahl__eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7c3aed;
+}
+
+.cust-akte-auswahl__model {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cust-text);
+}
+
+.cust-akte-auswahl__wish,
+.cust-akte-auswahl__status {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--cust-muted);
+  line-height: 1.45;
+}
+
+.cust-akte-auswahl__variants-title {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cust-text);
+}
+
+.cust-akte-auswahl__variant {
+  padding: 12px 0;
+  border-top: 1px solid var(--cust-border);
+}
+
+.cust-akte-auswahl__variant-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.cust-akte-auswahl__variant-num {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--cust-muted);
+}
+
+.cust-akte-auswahl__variant-trim {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cust-text);
+}
+
+.cust-akte-auswahl__variant-label {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.cust-akte-auswahl__variant-price {
+  margin: 6px 0 0 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cust-text);
+}
+
+.cust-akte-auswahl__variant-desc {
+  margin: 4px 0 0 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--cust-muted);
+  line-height: 1.4;
+}
+
+.cust-akte-auswahl__variant-edit {
+  margin: 8px 0 0 1.25rem;
+  padding: 6px 10px;
+  border: 1px solid var(--cust-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cust-text);
+  cursor: pointer;
+}
+
+.cust-akte-auswahl__link-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cust-akte-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.8125rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+  animation: cust-akte-toast-in 0.2s ease;
+}
+
+@keyframes cust-akte-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

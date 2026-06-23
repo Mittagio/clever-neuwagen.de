@@ -48,6 +48,14 @@ export function calcVehiclePricing(vehicle, customer, conditions) {
     hauspreis: price.hauspreis ?? price.housePrice,
     deliveryTime: price.deliveryTime ?? conditions.deliveryTime,
     availability: price.availability,
+    preparationFeeLine: price.preparationFeeLine,
+    preparationFeeSeparate: price.preparationFeeSeparate,
+    priceFootnotes: price.priceFootnotes,
+    customerBadges: price.customerBadges,
+    discountPercent: price.discountPercent,
+    extraDiscountPercent: price.extraDiscountPercent,
+    dealerModelPricing: price.dealerModelPricing,
+    configurationPrice: price.configurationPrice,
   };
 }
 

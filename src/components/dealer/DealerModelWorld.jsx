@@ -1,9 +1,14 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KIA_MODEL_WORLD } from '../../data/dealerLandingContent.js';
+import { buildCustomerModelBadges } from '../../services/dealer/dealerVehicleManagement.js';
+import { buildCustomerPricePresentation } from '../../services/dealer/dealerModelPricing.js';
+import { priceConfiguration } from '../../services/pricing/pricingEngine.js';
 import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import VehicleImage from '../shared/VehicleImage.jsx';
+import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
 import './dealer-landing.css';
 
 function formatPrice(value) {
@@ -27,9 +32,57 @@ function resolveBodyType(modelKey) {
 export default function DealerModelWorld({
   city = '',
   dealerSlug = '',
+  conditions = null,
   onSearch,
 }) {
   const navigate = useNavigate();
+
+  const modelCards = useMemo(() => {
+    return KIA_MODEL_WORLD.map((card) => {
+      let rateFrom = card.rateFrom;
+      let priceFrom = card.priceFrom;
+      let promoBadges = conditions
+        ? buildCustomerModelBadges(conditions, card.modelKey)
+        : [];
+      let preparationFeeLine = null;
+      let priceFootnotes = [];
+
+      if (conditions) {
+        const pricing = priceConfiguration({
+          brand: 'Kia',
+          model: card.name,
+          modelKey: card.modelKey,
+          dealerConditions: conditions,
+          paymentType: 'leasing',
+        });
+        if (pricing) {
+          const presentation = buildCustomerPricePresentation(
+            conditions,
+            card.modelKey,
+            pricing,
+            'leasing',
+          );
+          if (presentation.amount != null) {
+            rateFrom = presentation.amount;
+          }
+          preparationFeeLine = presentation.preparationFeeLine;
+          priceFootnotes = presentation.footnotes ?? [];
+          if (presentation.badges?.length) {
+            promoBadges = presentation.badges;
+          }
+        }
+      }
+
+      return {
+        ...card,
+        rateFrom,
+        priceFrom,
+        promoBadges,
+        preparationFeeLine,
+        priceFootnotes,
+      };
+    });
+  }, [conditions]);
 
   function exploreCard(card) {
     if (onSearch) {
@@ -55,7 +108,7 @@ export default function DealerModelWorld({
         role="list"
         aria-label="Fahrzeugmodelle entdecken"
       >
-        {KIA_MODEL_WORLD.map((card) => {
+        {modelCards.map((card) => {
           const media = getKiaModelMediaEntry(card.modelKey, 'hero');
           const displayName = resolveDisplayName(card);
           return (
@@ -88,6 +141,15 @@ export default function DealerModelWorld({
                       )}
                     </p>
                   )}
+                  {card.preparationFeeLine && (
+                    <p className="dl-modellwelt__prep">{card.preparationFeeLine}</p>
+                  )}
+                  {card.promoBadges.length > 0 && (
+                    <DealerModelPromotionBadges badges={card.promoBadges} className="dl-modellwelt__badges" />
+                  )}
+                  {card.priceFootnotes?.slice(0, 1).map((line) => (
+                    <p key={line} className="dl-modellwelt__legal">{line}</p>
+                  ))}
                 </div>
               </button>
             </article>

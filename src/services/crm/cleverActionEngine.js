@@ -5,6 +5,10 @@ import { computeUnterlagenSummary } from '../cleverUnterlagen.js';
 import { needsSelbstauskunft, getSelbstauskunft, SELBSTAUSKUNFT_STATUS } from '../cleverSelbstauskunft.js';
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 import { getCustomerFirstName } from '../customerAkte.js';
+import {
+  findPreparedSelectionGroup,
+  findReactedSelectionGroup,
+} from '../sales/offerSelectionGroup.js';
 
 export const CLEVER_ACTION_IDS = {
   VEHICLE_SUGGESTION_REVIEW: 'vehicle_suggestion_review',
@@ -16,6 +20,8 @@ export const CLEVER_ACTION_IDS = {
   OFFER_OPENED_CALL: 'offer_opened_call',
   OFFER_SEND: 'offer_send',
   OFFER_FOLLOWUP: 'offer_followup',
+  SELECTION_SEND: 'selection_send',
+  SELECTION_FOLLOWUP: 'selection_followup',
   GENERAL_REMINDER: 'general_reminder',
 };
 
@@ -28,6 +34,8 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.LEASING_READY]: 40,
   [CLEVER_ACTION_IDS.OFFER_OPENED_CALL]: 60,
   [CLEVER_ACTION_IDS.OFFER_SEND]: 70,
+  [CLEVER_ACTION_IDS.SELECTION_FOLLOWUP]: 57,
+  [CLEVER_ACTION_IDS.SELECTION_SEND]: 68,
   [CLEVER_ACTION_IDS.OFFER_FOLLOWUP]: 80,
   [CLEVER_ACTION_IDS.DOCUMENTS_MISSING]: 85,
   [CLEVER_ACTION_IDS.GENERAL_REMINDER]: 90,
@@ -76,6 +84,16 @@ const ACTION_DEFINITIONS = {
   },
   [CLEVER_ACTION_IDS.OFFER_FOLLOWUP]: {
     title: 'Nachfassen',
+    ctaLabel: 'Kunde kontaktieren',
+    handlerType: 'call',
+  },
+  [CLEVER_ACTION_IDS.SELECTION_SEND]: {
+    title: 'Auswahl senden',
+    ctaLabel: 'Auswahl senden',
+    handlerType: 'selection_send',
+  },
+  [CLEVER_ACTION_IDS.SELECTION_FOLLOWUP]: {
+    title: 'Variante nachfassen',
     ctaLabel: 'Kunde kontaktieren',
     handlerType: 'call',
   },
@@ -165,9 +183,13 @@ function buildActionCandidate(actionId, { reason, explanation, meta = {} }) {
 export function buildCleverActionContext({
   lead = null,
   vehicleCards = [],
+  offerSelectionGroups = [],
   customerName = '',
 } = {}) {
   const crm = lead?.crm ?? {};
+  const groups = offerSelectionGroups.length
+    ? offerSelectionGroups
+    : (crm.offerSelectionGroups ?? []);
   const paymentType = vehicleCards[0]?.paymentType ?? lead?.paymentType ?? lead?.wish?.paymentType ?? 'leasing';
   const primaryCard = getPrimaryOfferCard(vehicleCards);
   const offerStatus = normalizeOfferStatus(primaryCard);
@@ -189,6 +211,9 @@ export function buildCleverActionContext({
     lead,
     crm,
     vehicleCards,
+    offerSelectionGroups: groups,
+    preparedSelectionGroup: findPreparedSelectionGroup(groups),
+    reactedSelectionGroup: findReactedSelectionGroup(groups),
     primaryCard,
     paymentType,
     offerStatus,
@@ -223,7 +248,31 @@ export function evaluateCleverActions(context) {
     vehicleCards,
     paymentType,
     primaryCard,
+    preparedSelectionGroup,
+    reactedSelectionGroup,
   } = context;
+
+  if (reactedSelectionGroup) {
+    const variantCount = reactedSelectionGroup.variants?.length ?? 0;
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELECTION_FOLLOWUP, {
+      reason: 'Kunde hat auf eine Variante reagiert',
+      explanation: firstName
+        ? `${firstName} hat eine Variante der Clever Auswahl markiert. Jetzt persönlich nachfassen.`
+        : 'Der Kunde hat eine Variante der Clever Auswahl markiert. Jetzt persönlich nachfassen.',
+      meta: { groupId: reactedSelectionGroup.id, variantCount },
+    }));
+  }
+
+  if (preparedSelectionGroup && !reactedSelectionGroup) {
+    const variantCount = preparedSelectionGroup.variants?.length ?? 0;
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELECTION_SEND, {
+      reason: 'Clever Auswahl vorbereitet',
+      explanation: variantCount > 1
+        ? `${variantCount} passende Varianten sind vorbereitet.`
+        : 'Eine passende Variante ist vorbereitet.',
+      meta: { groupId: preparedSelectionGroup.id, variantCount },
+    }));
+  }
 
   const suggestionCard = vehicleCards.find((card) => card.badge === 'Vorschlag / prüfen')
     ?? context.lead?.crm?.reservedModels?.find((model) => model.badge === 'Vorschlag / prüfen');
@@ -376,6 +425,7 @@ export function cleverActionToHint(recommendation, { telHref = null } = {}) {
 function mapHandlerToLegacyAction(handlerType) {
   if (handlerType === 'documents' || handlerType === 'leasing_submit') return 'unterlagen';
   if (handlerType === 'offer_send') return 'offer_send';
+  if (handlerType === 'selection_send') return 'selection_send';
   if (handlerType === 'call') return 'call';
   return handlerType;
 }

@@ -1,0 +1,128 @@
+.clr-admin {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.clr-admin__kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.clr-admin__title {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.clr-admin__lead {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.clr-admin__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.clr-admin__filter {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clr-admin__filter--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.clr-admin__empty {
+  padding: 20px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+}
+
+.clr-admin__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.clr-admin__item {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+@media (min-width: 720px) {
+  .clr-admin__item {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+}
+
+.clr-admin__query {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.clr-admin__meta,
+.clr-admin__counts,
+.clr-admin__candidates {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.clr-admin__status--open { color: #1d4ed8; }
+.clr-admin__status--in_review { color: #b45309; }
+.clr-admin__status--resolved { color: #15803d; }
+.clr-admin__status--ignored { color: #94a3b8; }
+
+.clr-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clr-admin__btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clr-admin__btn--ok {
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.clr-admin__btn--muted {
+  color: #64748b;
+}

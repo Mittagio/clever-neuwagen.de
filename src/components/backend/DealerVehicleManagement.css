@@ -1,0 +1,643 @@
+/* Dealer Vehicle Management – mobil-first, Wallet-Stil */
+
+.dvm {
+  padding-bottom: 24px;
+}
+
+.dvm-header__title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dvm-header__sub {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.dvm-toolbar {
+  margin: 16px 0 12px;
+}
+
+.dvm-search {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dvm-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dvm-filter {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dvm-filter.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+.dvm-grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .dvm-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Modellkarte */
+.dvm-model-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e8edf3;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+}
+
+.dvm-model-card__visual {
+  position: relative;
+  flex: 0 0 88px;
+  width: 88px;
+  height: 66px;
+}
+
+.dvm-model-card__image-wrap,
+.dvm-model-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dvm-model-card__highlight {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fbbf24;
+  color: #78350f;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.dvm-model-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dvm-model-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dvm-model-card__brand {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.dvm-model-card__name {
+  margin: 2px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dvm-model-card__status {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.dvm-model-card__status--active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dvm-model-card__status--inactive {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.dvm-model-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dvm-model-card__chip {
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dvm-model-card__chip--action {
+  background: #f3e8ff;
+  color: #6d28d9;
+}
+
+.dvm-model-card__chip--muted {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+}
+
+.dvm-model-card__actions {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.dvm-model-card__cta {
+  margin-top: auto;
+  padding-top: 10px;
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Editor */
+.dvm-editor {
+  padding-bottom: 88px;
+}
+
+.dvm-back {
+  margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dvm-editor__hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
+}
+
+.dvm-editor__hero-visual {
+  flex: 0 0 100px;
+  width: 100px;
+  height: 72px;
+}
+
+.dvm-editor__hero-image-wrap,
+.dvm-editor__hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dvm-editor__brand {
+  margin: 0;
+  font-size: 0.6875rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dvm-editor__title {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.dvm-editor__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.dvm-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e8edf3;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+.dvm-section--prep {
+  background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+}
+
+.dvm-section__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dvm-section__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dvm-section__head-row .dvm-section__title {
+  margin: 0;
+}
+
+.dvm-section__hint {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.dvm-field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.dvm-field--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.dvm-field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dvm-field__input,
+.dvm-field__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  background: #fff;
+}
+
+.dvm-field-grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .dvm-field-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dvm-action-card__row {
+  display: flex;
+  gap: 10px;
+}
+
+.dvm-inline-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Rabatt-Karten */
+.dvm-discount-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.dvm-discount-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+}
+
+.dvm-discount-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dvm-discount-card__icon {
+  font-size: 1.125rem;
+}
+
+.dvm-discount-card__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dvm-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dvm-stepper__btn {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.dvm-stepper__value {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dvm-stepper__range {
+  width: 100%;
+  accent-color: #0f172a;
+}
+
+.dvm-stepper__percent {
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dvm-quick-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.dvm-quick-btn {
+  flex: 1;
+  min-width: 56px;
+  padding: 8px 4px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dvm-quick-btn.is-active {
+  border-style: solid;
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+}
+
+/* Chips & Toggles */
+.dvm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dvm-chips--wrap .dvm-chip {
+  flex: 1 1 100%;
+  text-align: left;
+}
+
+.dvm-chip {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dvm-chip.is-active {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+}
+
+.dvm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+}
+
+.dvm-toggle--large {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+}
+
+.dvm-toggle-stack {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dvm-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.dvm-priority-range {
+  width: 100%;
+  accent-color: #6d28d9;
+}
+
+/* Aktionen */
+.dvm-action-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.dvm-action-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid #e8edf3;
+}
+
+.dvm-action-card__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dvm-action-card__title-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 2px solid #e2e8f0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dvm-action-card__remove {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.dvm-action-card__hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.dvm-add-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: #f3e8ff;
+  color: #6d28d9;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dvm-preview {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.dvm-preview__label {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dvm-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.dvm-footer-hint {
+  margin: 20px 0 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* Sticky Save */
+.dvm-save-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.95) 30%);
+  pointer-events: none;
+}
+
+.dvm-save-btn {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+}
+
+.dvm-save-btn.is-saved {
+  background: #15803d;
+}
+
+@media (min-width: 720px) {
+  .dvm-save-dock {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 480px;
+  }
+}

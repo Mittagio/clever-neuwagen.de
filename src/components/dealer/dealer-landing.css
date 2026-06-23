@@ -461,6 +461,18 @@
   color: #94a3b8;
 }
 
+.dl-modellwelt__badges {
+  margin-top: 8px;
+}
+
+.dl-modellwelt__prep,
+.dl-modellwelt__legal {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+
 .dl-modellwelt__upe {
   font-weight: 500;
   font-size: 0.8125rem;

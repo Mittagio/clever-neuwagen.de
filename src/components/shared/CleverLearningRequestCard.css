@@ -1,0 +1,69 @@
+.clever-learn-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: linear-gradient(180deg, #f8fbff 0%, #f0f7ff 100%);
+  color: #1e3a5f;
+}
+
+.clever-learn-card__headline {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.clever-learn-card__text {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.clever-learn-card__hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.clever-learn-card__btn {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 650;
+  cursor: pointer;
+  width: 100%;
+}
+
+.clever-learn-card__btn:hover {
+  background: #1d4ed8;
+}
+
+.clever-learn-card__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.clever-learn-card__success {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.clever-learn-card__done-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #15803d;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

@@ -12,6 +12,10 @@ import {
   isSearchItemUnavailable,
   searchEquipmentFeature,
 } from '../../services/configuration/equipmentFeatureSearch.js';
+import {
+  LEARNING_SOURCE_AREAS,
+} from '../../services/admin/cleverLearningRequestService.js';
+import CleverLearningRequestCard from '../shared/CleverLearningRequestCard.jsx';
 
 function PickedFeatureItem({ item, onRemove }) {
   const pending = isSearchItemPending(item);
@@ -224,10 +228,14 @@ export default function EquipmentFeatureSearch({
 
       {searchState?.type === 'not_found' && (
         <div className="vd-eq-search__not-found">
-          <p className="vd-eq-search__not-found-text">{searchState.message}</p>
-          {searchState.hint && (
-            <p className="vd-eq-search__not-found-hint">{searchState.hint}</p>
-          )}
+          <CleverLearningRequestCard
+            query={searchState.query}
+            modelKey={modelKey}
+            modelLabel={`${brand} ${model}`}
+            sourceArea={LEARNING_SOURCE_AREAS.CUSTOMER_EQUIPMENT_SEARCH}
+            pageContext="Ausstattungssuche"
+            detectedFeatureId={searchState.feature?.id ?? null}
+          />
           <button
             type="button"
             className="vd-eq-search__reserve-btn"
@@ -240,13 +248,14 @@ export default function EquipmentFeatureSearch({
 
       {searchState?.type === 'unconfirmed' && (
         <div className="vd-eq-search__not-found">
-          <p className="vd-eq-search__not-found-text">
-            {searchState.feature?.label ? `${searchState.feature.label}: ` : ''}
-            {searchState.message}
-          </p>
-          {searchState.hint && (
-            <p className="vd-eq-search__not-found-hint">{searchState.hint}</p>
-          )}
+          <CleverLearningRequestCard
+            query={searchState.query}
+            modelKey={modelKey}
+            modelLabel={`${brand} ${model}`}
+            sourceArea={LEARNING_SOURCE_AREAS.CUSTOMER_EQUIPMENT_SEARCH}
+            pageContext="Ausstattungssuche"
+            detectedFeatureId={searchState.feature?.id ?? null}
+          />
           <button
             type="button"
             className="vd-eq-search__reserve-btn"

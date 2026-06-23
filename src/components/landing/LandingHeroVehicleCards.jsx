@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { usePublishedDealerConditions } from '../../context/DealerConditionsContext.jsx';
+import { buildCustomerModelBadges } from '../../services/dealer/dealerVehicleManagement.js';
+import { buildCustomerPricePresentation } from '../../services/dealer/dealerModelPricing.js';
 import { getAdvisorRecommendations, formatAdvisorRate } from '../../services/advisorEngine.js';
 import { buildAdvisorUrl } from '../../services/landingAdvisorBridge.js';
 import { LANDING_HERO_VEHICLES } from '../../data/landingHeroVehicles.js';
@@ -25,12 +27,24 @@ export default function LandingHeroVehicleCards() {
         (r) => r.model?.toLowerCase() === vehicle.model.toLowerCase(),
       ) ?? recs[0];
 
+      const presentation = buildCustomerPricePresentation(
+        conditions,
+        vehicle.imageKey,
+        modelMatch?.pricing ?? { leasingRate: modelMatch?.monthlyRate, configurationPrice: 0 },
+        'leasing',
+      );
+
       return {
         vehicle,
         href: buildAdvisorUrl(vehicle.profile),
+        promotionBadges: presentation.badges?.length
+          ? presentation.badges
+          : buildCustomerModelBadges(conditions, vehicle.imageKey),
         rate: modelMatch
-          ? formatAdvisorRate(modelMatch.monthlyRate)
+          ? formatAdvisorRate(presentation.amount ?? modelMatch.monthlyRate)
           : vehicle.mockRate,
+        preparationFeeLine: presentation.preparationFeeLine,
+        priceFootnotes: presentation.footnotes,
         delivery: modelMatch?.deliveryTime ?? vehicle.mockDelivery,
         availability: {
           type: modelMatch?.availabilityType ?? vehicle.mockAvailability.type,
@@ -51,6 +65,9 @@ export default function LandingHeroVehicleCards() {
             rate={card.rate}
             delivery={card.delivery}
             availability={card.availability}
+            promotionBadges={card.promotionBadges}
+            preparationFeeLine={card.preparationFeeLine}
+            priceFootnotes={card.priceFootnotes}
           />
         ))}
       </div>

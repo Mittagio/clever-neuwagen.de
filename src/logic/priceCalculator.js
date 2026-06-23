@@ -13,6 +13,10 @@ import { resolveModelConditions } from '../data/dealerConditionsSchema.js';
 import { dealerConditionsTrinkle } from '../data/kiaSportage.js';
 import { resolveAvailability } from './inventoryService.js';
 import { RATE_DISCLAIMER } from '../constants/legal.js';
+import {
+  applyDealerModelPricing,
+  mergeDealerPricingIntoResult,
+} from '../services/dealer/dealerModelPricing.js';
 
 const DEFAULT_VARIANT_ID = 'sportage-hybrid-2wd-vision';
 const DEFAULT_COLOR_ID = 'carraraweiss';
@@ -312,9 +316,11 @@ function calcFinanceRate(housePrice, downPayment, termMonths, conditions) {
  * @param {Object} [conditionsArg] – Händlerkonditionen (2. Parameter, Abwärtskompatibilität)
  */
 export function calculatePrice(input = {}, conditionsArg) {
+  const rawDealerConditions = input.dealerConditions ?? conditionsArg ?? dealerConditionsTrinkle;
   const conditions = resolveConditions(input, conditionsArg);
   const config = normalizeInput(input, conditions);
   const warnings = [];
+  const modelId = normalizeModelId(config.model);
 
   const selectedVariant = config.variant ?? getVariant(config.trimId, config.engineId);
   const variantPrice = selectedVariant?.priceGross ?? 0;
@@ -336,13 +342,50 @@ export function calculatePrice(input = {}, conditionsArg) {
 
   const configurationPrice = variantPrice + selectedColor.priceGross + packagesPrice + accessoriesPrice;
 
-  const discountPercent = config.customerGroup === 'custom' && config.customDiscountPercent != null
-    ? Number(config.customDiscountPercent)
-    : resolveDiscountPercent(config.customerGroup, conditions);
-  const discountAmount = Math.round(configurationPrice * (discountPercent / 100));
-  const housePrice = configurationPrice - discountAmount;
-  const preparationFee = conditions.preparationFee ?? 0;
-  const cashPrice = housePrice + preparationFee;
+  const leasingMeta = resolveLeasingFactor(
+    config.termMonths,
+    config.mileagePerYear,
+    conditions,
+  );
+
+  const dealerPricing = applyDealerModelPricing({
+    conditions: rawDealerConditions,
+    modelId,
+    paymentType: config.paymentType,
+    customerGroup: config.customerGroup,
+    customDiscountPercent: config.customDiscountPercent,
+    configurationPrice,
+    leasingFactor: leasingMeta.factor,
+    termMonths: leasingMeta.termMonths,
+    mileagePerYear: leasingMeta.mileagePerYear,
+    downPayment: config.downPayment,
+  });
+
+  const finance = calcFinanceRate(
+    dealerPricing.housePrice,
+    config.downPayment,
+    config.termMonths,
+    conditions,
+  );
+
+  const dealerPricingFinal = {
+    ...dealerPricing,
+    financeRate: finance.financeRate,
+    displayRate: config.paymentType === 'finance'
+      ? (finance.financeRate ?? dealerPricing.cashPrice)
+      : dealerPricing.displayRate,
+  };
+
+  const discountPercent = dealerPricingFinal.discountPercent;
+  const discountAmount = dealerPricingFinal.discountAmount;
+  const housePrice = dealerPricingFinal.housePrice;
+  const preparationFee = dealerPricingFinal.preparationFee;
+  const cashPrice = dealerPricingFinal.cashPrice;
+  let leasingRate = dealerPricingFinal.leasingRate;
+  const financeWithDealer = {
+    ...finance,
+    financeRate: dealerPricingFinal.financeRate ?? finance.financeRate,
+  };
 
   if (
     config.customerGroupRequested
@@ -353,19 +396,6 @@ export function calculatePrice(input = {}, conditionsArg) {
       message: 'Kundengruppe ohne Sonderrabatt – Standardrabatt angewendet',
     });
   }
-
-  const leasingMeta = resolveLeasingFactor(
-    config.termMonths,
-    config.mileagePerYear,
-    conditions,
-  );
-
-  let leasingRate = calcLeasingRate(
-    configurationPrice,
-    leasingMeta.factor,
-    config.downPayment,
-    leasingMeta.termMonths,
-  );
 
   if (leasingMeta.factor == null) {
     leasingRate = null;
@@ -380,14 +410,7 @@ export function calculatePrice(input = {}, conditionsArg) {
     });
   }
 
-  const finance = calcFinanceRate(
-    housePrice,
-    config.downPayment,
-    config.termMonths,
-    conditions,
-  );
-
-  if (config.paymentType === 'finance' && finance.finalPaymentPercent == null) {
+  if (config.paymentType === 'finance' && financeWithDealer.finalPaymentPercent == null) {
     warnings.push({
       type: 'finance-balloon-missing',
       message: 'Finanzierungsschlussrate für diese Laufzeit nicht gepflegt',
@@ -424,14 +447,14 @@ export function calculatePrice(input = {}, conditionsArg) {
   if (config.paymentType === 'cash') {
     primaryRate = cashPrice;
   } else if (config.paymentType === 'finance') {
-    primaryRate = finance.financeRate ?? cashPrice;
-    if (finance.financeRate == null) displayPaymentType = 'cash';
+    primaryRate = financeWithDealer.financeRate ?? cashPrice;
+    if (financeWithDealer.financeRate == null) displayPaymentType = 'cash';
   } else {
     primaryRate = leasingRate ?? cashPrice;
     if (leasingRate == null) displayPaymentType = 'cash';
   }
 
-  return {
+  return mergeDealerPricingIntoResult({
     configurationPrice,
     discountPercent,
     discountAmount,
@@ -440,8 +463,8 @@ export function calculatePrice(input = {}, conditionsArg) {
     preparationFee,
     cashPrice,
     leasingRate,
-    financeRate: finance.financeRate,
-    finalPayment: finance.finalPayment,
+    financeRate: financeWithDealer.financeRate,
+    finalPayment: financeWithDealer.finalPayment,
     deliveryTime,
     warnings,
     selectedVariant,
@@ -482,27 +505,28 @@ export function calculatePrice(input = {}, conditionsArg) {
     },
 
     finance: {
-      interestRate: finance.interestRate,
-      finalPaymentPercent: finance.finalPaymentPercent,
-      finalPayment: finance.finalPayment,
-      available: finance.financeRate != null,
+      interestRate: financeWithDealer.interestRate,
+      finalPaymentPercent: financeWithDealer.finalPaymentPercent,
+      finalPayment: financeWithDealer.finalPayment,
+      available: financeWithDealer.financeRate != null,
     },
 
     meta: {
       model: config.model,
+      modelId,
       variantId: selectedVariant?.id ?? config.variantId,
       engineId: config.engineId,
       trimId: config.trimId,
       colorId: config.colorId,
       customerGroup: config.customerGroup,
     },
-  };
+  }, dealerPricingFinal);
 }
 
 /**
  * Günstigste Leasingrate über alle verfügbaren Varianten (Landingpage / Händlerkarte).
  */
-export function getLowestSportageLeasingRate(conditions = dealerConditionsTrinkle, options = {}) {
+export function getLowestSportageLeasingResult(conditions = dealerConditionsTrinkle, options = {}) {
   const {
     customerGroup = 'standard',
     termMonths = DEFAULT_TERM_MONTHS,
@@ -511,7 +535,7 @@ export function getLowestSportageLeasingRate(conditions = dealerConditionsTrinkl
     colorId = DEFAULT_COLOR_ID,
   } = options;
 
-  let min = Infinity;
+  let best = null;
 
   for (const variant of kiaSportage.variants.filter((v) => v.available)) {
     const result = calculatePrice(
@@ -531,12 +555,17 @@ export function getLowestSportageLeasingRate(conditions = dealerConditionsTrinkl
       conditions,
     );
 
-    if (result.leasingRate != null) {
-      min = Math.min(min, result.leasingRate);
+    if (result.leasingRate != null && (best == null || result.leasingRate < best.leasingRate)) {
+      best = result;
     }
   }
 
-  return min === Infinity ? null : min;
+  return best;
+}
+
+export function getLowestSportageLeasingRate(conditions = dealerConditionsTrinkle, options = {}) {
+  const result = getLowestSportageLeasingResult(conditions, options);
+  return result?.leasingRate ?? null;
 }
 
 export default calculatePrice;

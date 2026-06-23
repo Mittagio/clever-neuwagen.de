@@ -1,0 +1,294 @@
+/* Clever-Lexikon – shared (Backend-Home & Verkaufsassistent) */
+.backend-home__lexikon {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+.backend-home__lexikon-head {
+  margin-bottom: 14px;
+}
+
+.backend-home__section-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.backend-home__lexikon-subline {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.backend-home__lexikon-search {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backend-home__lexikon-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.backend-home__lexikon-field-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 1rem;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.backend-home__lexikon-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px 12px 42px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.backend-home__lexikon-input:focus {
+  outline: none;
+  border-color: #0b1736;
+  box-shadow: 0 0 0 2px rgba(11, 23, 54, 0.1);
+}
+
+.backend-home__lexikon-submit {
+  min-height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: #0b1736;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backend-home__lexikon-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.backend-home__lexikon-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.backend-home__lexikon-chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backend-home__lexikon-result {
+  margin-top: 14px;
+}
+
+.backend-home__lexikon-empty {
+  margin: 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.backend-home__lexikon-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.backend-home__lexikon-card--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.backend-home__lexikon-card--soft {
+  border-color: #dbeafe;
+  background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+}
+
+.backend-home__lexikon-soft-hint {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.backend-home__lexikon-question {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__lexikon-model {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.backend-home__lexikon-field-label {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__lexikon-answer {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.backend-home__lexikon-source {
+  margin: 10px 0 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.backend-home__lexikon-more {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.backend-home__lexikon-extras {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backend-home__lexikon-extras li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8125rem;
+}
+
+.backend-home__lexikon-primary {
+  margin: 10px 0 0;
+  display: grid;
+  gap: 4px;
+}
+
+.backend-home__lexikon-primary-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__lexikon-primary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+  white-space: pre-line;
+}
+
+.backend-home__lexikon-primary-value--solo {
+  margin: 8px 0 0;
+  display: block;
+}
+
+.backend-home__lexikon-short {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.backend-home__lexikon-short-label {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.backend-home__lexikon-trims {
+  margin-top: 12px;
+}
+
+.backend-home__lexikon-trims-title {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.backend-home__lexikon-trim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.backend-home__lexikon-trim-table th,
+.backend-home__lexikon-trim-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.backend-home__lexikon-trim-table th {
+  font-weight: 600;
+  color: #0f172a;
+  width: 38%;
+}
+
+.backend-home__lexikon-trim-table td {
+  color: #334155;
+}
+
+.backend-home__lexikon-warnings {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.75rem;
+  color: #b45309;
+  line-height: 1.4;
+}
+
+.backend-home__lexikon-suggestions {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}

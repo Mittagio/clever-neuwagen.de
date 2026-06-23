@@ -342,6 +342,50 @@ export function DealerConditionsProvider({ children }) {
       }));
     },
 
+    updateModelSettings(modelId, partial) {
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
+        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+          ...current,
+          ...partial,
+          paymentDiscounts: partial.paymentDiscounts
+            ? { ...(current.paymentDiscounts ?? {}), ...partial.paymentDiscounts }
+            : current.paymentDiscounts,
+          preparationFee: partial.preparationFee
+            ? { ...(current.preparationFee ?? {}), ...partial.preparationFee }
+            : current.preparationFee,
+        })),
+      );
+    },
+
+    addModelPromotion(modelId, promotion) {
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
+        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+          ...current,
+          promotions: [...(current.promotions ?? []), promotion],
+        })),
+      );
+    },
+
+    updateModelPromotion(modelId, promotionId, partial) {
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
+        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+          ...current,
+          promotions: (current.promotions ?? []).map((p) => (
+            p.id === promotionId ? { ...p, ...partial } : p
+          )),
+        })),
+      );
+    },
+
+    removeModelPromotion(modelId, promotionId) {
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
+        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+          ...current,
+          promotions: (current.promotions ?? []).filter((p) => p.id !== promotionId),
+        })),
+      );
+    },
+
     addInventoryItem(item = createEmptyInventoryItem()) {
       updateDealerConditions(DEFAULT_DEALER_ID, (prev) => ({
         ...prev,

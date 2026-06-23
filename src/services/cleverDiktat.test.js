@@ -72,5 +72,17 @@ assert.match(custom, /heute Nachmittag/i);
 
 assert.equal(detectDiktatIntent('Selbstauskunft Link schicken'), 'unterlagen');
 assert.equal(detectDiktatIntent('Angebot geöffnet nachfragen'), 'nachfassen');
+assert.notEqual(detectDiktatIntent('weil Sie Fragen haben geben Sie Bescheid'), 'rueckfrage');
+
+const schlayerDiktat = generateCleverDiktatText(
+  'und da Geschrei ein Angebot für den ev4 die Lieferzeiten für 6 Monate sein weil Sie Fragen haben geben Sie mir gerne Bescheid Farbe weiß würde 8 € mehr kosten',
+  buildCleverAntwortenContext({ customerName: 'Alexander Schlayer' }),
+  { tone: 'freundlich', channel: 'email' },
+);
+assert.match(schlayerDiktat, /EV4/i);
+assert.match(schlayerDiktat, /6 Monat/i);
+assert.match(schlayerDiktat, /weiß/i);
+assert.match(schlayerDiktat, /8/);
+assert.doesNotMatch(schlayerDiktat, /10\.000 km oder 15\.000 km/);
 
 console.log('cleverDiktat.test.js: ok');

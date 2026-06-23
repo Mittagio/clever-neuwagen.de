@@ -1,0 +1,55 @@
+.dmp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dmp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dmp-badge--purple {
+  background: #f3e8ff;
+  color: #6d28d9;
+}
+
+.dmp-badge--green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dmp-badge--blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.dmp-badge--neutral {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.dmp-badge--muted {
+  background: transparent;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+.lp-hero-card__promos {
+  margin-top: 8px;
+  padding-top: 6px;
+}
+
+.lp-hero-card__prep,
+.lp-hero-card__legal {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #94a3b8;
+}

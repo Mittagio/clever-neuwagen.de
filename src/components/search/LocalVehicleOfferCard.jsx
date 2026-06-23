@@ -4,9 +4,12 @@ import {
   formatDealerDistanceLine,
   formatDeliveryLine,
   formatDiscountFootnote,
+  formatPreparationFeeFootnote,
+  formatPriceFootnoteLines,
   getAvailabilityLabel,
   getTopRecommendationBadge,
 } from '../../logic/localOfferPresentation.js';
+import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
 import './localVehicleOfferCard.css';
 
 /**
@@ -29,6 +32,12 @@ export default function LocalVehicleOfferCard({
   const rate = monthlyRate ?? vehicle.displayRate ?? vehicle.monthlyRate;
   const badge = getTopRecommendationBadge(vehicle, { isTopPick });
   const discountNote = formatDiscountFootnote(vehicle);
+  const prepNote = formatPreparationFeeFootnote(vehicle);
+  const footnotes = formatPriceFootnoteLines(vehicle);
+  const promoBadges = vehicle?.customerBadges
+    ?? vehicle?.pricing?.customerBadges
+    ?? vehicle?.dealerModelPricing?.badges
+    ?? [];
   const delivery = formatDeliveryLine(vehicle);
 
   return (
@@ -47,7 +56,14 @@ export default function LocalVehicleOfferCard({
         <p className="local-offer-card__availability">{getAvailabilityLabel(vehicle)}</p>
         {delivery && <p className="local-offer-card__delivery">{delivery}</p>}
         <p className="local-offer-card__rate">{formatCurrency(rate)}/Monat</p>
+        {prepNote && <p className="local-offer-card__prep">{prepNote}</p>}
+        {promoBadges.length > 0 && (
+          <DealerModelPromotionBadges badges={promoBadges} className="local-offer-card__badges" />
+        )}
         {discountNote && <p className="local-offer-card__discount">{discountNote}</p>}
+        {footnotes.slice(0, 2).map((line) => (
+          <p key={line} className="local-offer-card__legal">{line}</p>
+        ))}
         {children}
         {onViewOffer && (
           <button type="button" className="local-offer-card__cta" onClick={() => onViewOffer(vehicle)}>

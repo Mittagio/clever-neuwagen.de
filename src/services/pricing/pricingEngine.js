@@ -11,6 +11,7 @@ import {
 } from '../../logic/vehicleDetailPricing.js';
 import { resolveWishConfiguration, compareTrimsForWish } from '../configurator/wishPackageResolver.js';
 import { getDealerSeed } from '../../data/dealers/index.js';
+import { applyDealerModelPricing, mergeDealerPricingIntoResult } from '../dealer/dealerModelPricing.js';
 
 const DEFAULT_TERM = 48;
 const DEFAULT_MILEAGE = 10000;
@@ -33,9 +34,6 @@ function priceRegistryEvConfiguration({
     v.trimId === trimId && (!engineId || v.engineId === engineId),
   ) ?? data.variants.find((v) => v.trimId === trimId)
     ?? data.variants[data.variants.length - 1];
-  const discount = customerGroup === 'custom' && customDiscountPercent != null
-    ? Number(customDiscountPercent)
-    : (dealerConditions.discounts?.[customerGroup] ?? dealerConditions.discounts?.standard ?? 12);
 
   let configurationPrice = variant.priceGross;
   let rateDelta = 0;
@@ -60,31 +58,42 @@ function priceRegistryEvConfiguration({
     }
   }
 
-  const discountAmount = Math.round(configurationPrice * (discount / 100));
-  const housePrice = configurationPrice - discountAmount;
-  const preparationFee = dealerConditions.preparationFee ?? 0;
-  const cashPrice = housePrice + preparationFee;
-
   const baseRate = variant.baseLeasingRate ?? 329;
-  const leasingRate = Math.round(baseRate + rateDelta);
+  const leasingRateBefore = Math.round(baseRate + rateDelta);
 
   const lf = dealerConditions.leasingFactors?.[termMonths]?.[mileagePerYear]
     ?? dealerConditions.leasingFactors?.[48]?.[10000]
     ?? 0.64;
 
-  const adjustedLeasing = Math.round(leasingRate * (lf / 0.64));
-  const financeRate = Math.round(adjustedLeasing * 1.08);
+  const adjustedLeasingBefore = Math.round(leasingRateBefore * (lf / 0.64));
+  const financeRateBefore = Math.round(adjustedLeasingBefore * 1.08);
+
+  const dealerPricing = applyDealerModelPricing({
+    conditions: dealerConditions,
+    modelId: mfg.key,
+    paymentType,
+    customerGroup,
+    customDiscountPercent,
+    configurationPrice,
+    baseLeasingRate: adjustedLeasingBefore,
+    financeRate: financeRateBefore,
+    termMonths,
+    mileagePerYear,
+  });
+
+  const adjustedLeasing = dealerPricing.leasingRate ?? adjustedLeasingBefore;
+  const financeRate = dealerPricing.financeRate ?? financeRateBefore;
 
   let primaryRate = adjustedLeasing;
   if (paymentType === 'finance') primaryRate = financeRate;
-  if (paymentType === 'cash') primaryRate = cashPrice;
+  if (paymentType === 'cash') primaryRate = dealerPricing.cashPrice;
 
-  return {
+  return mergeDealerPricingIntoResult({
     configurationPrice,
-    discountPercent: discount,
-    discountAmount,
-    housePrice,
-    cashPrice,
+    discountPercent: dealerPricing.discountPercent,
+    discountAmount: dealerPricing.discountAmount,
+    housePrice: dealerPricing.housePrice,
+    cashPrice: dealerPricing.cashPrice,
     leasingRate: adjustedLeasing,
     financeRate,
     primaryRate,
@@ -94,7 +103,7 @@ function priceRegistryEvConfiguration({
     selectedAccessories,
     selectedVariant: variant,
     breakdown: {
-      baseRate,
+      baseRate: variant.baseLeasingRate ?? 329,
       rateDelta,
       packages: selectedPackages.map((p) => ({
         id: p.id,
@@ -104,7 +113,7 @@ function priceRegistryEvConfiguration({
       })),
     },
     warnings: [],
-  };
+  }, dealerPricing);
 }
 
 /**

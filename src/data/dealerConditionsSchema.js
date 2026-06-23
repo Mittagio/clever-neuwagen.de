@@ -185,6 +185,8 @@ export function buildDealerConditionsFromLegacy(legacy = {}) {
 
     inventoryVehicles: legacy.inventoryVehicles ?? legacy.inventory ?? [],
 
+    modelSettingsByModel: legacy.modelSettingsByModel ?? {},
+
     lastPublishedAt: legacy.lastPublishedAt ?? legacy.publishedAt ?? null,
     dealerPageOnline: legacy.dealerPageOnline ?? legacy.published ?? true,
     syncStatus: legacy.syncStatus ?? 'synchronized',
@@ -217,6 +219,8 @@ export function normalizeDealerConditions(raw = {}) {
     packageIds: item.packageIds ?? [],
     ...item,
   }));
+
+  merged.modelSettingsByModel = merged.modelSettingsByModel ?? {};
 
   return merged;
 }

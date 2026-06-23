@@ -1,4 +1,5 @@
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
+import CleverLexikon from '../backend/CleverLexikon.jsx';
 import './DealerAiStart.css';
 
 const PLACEHOLDER = 'z. B. SUV, Benziner, Automatik, ca. 250 €, Rückfahrkamera';
@@ -36,7 +37,7 @@ export default function DealerAiStartScreen({
             <div className="dai-entry__body">
               <h2 className="dai-entry__title">Clever KI-Check</h2>
               <p className="dai-entry__text">
-                Kundenwunsch eintippen, sprechen oder Nachricht einfügen.
+                Kundendaten, Wunsch oder Nachricht eingeben.
               </p>
             </div>
           </div>
@@ -67,7 +68,7 @@ export default function DealerAiStartScreen({
             disabled={!canEvaluate || isAnalyzing}
           >
             <span className="dai-cta__spark" aria-hidden>✦</span>
-            {isAnalyzing ? 'Wird ausgewertet …' : 'Kundenwunsch auswerten'}
+            {isAnalyzing ? 'Wird ausgewertet …' : 'Clever starten'}
           </button>
         </article>
 
@@ -103,6 +104,13 @@ export default function DealerAiStartScreen({
           <span className="dai-entry__chev" aria-hidden>›</span>
         </button>
       </div>
+
+      <CleverLexikon
+        className="dai-start__lexikon"
+        subline="Fahrzeugwissen schnell nachschlagen."
+        placeholder="z. B. EV4 Länge, EV5 Kofferraum, Sportage Batterie"
+        showChips={false}
+      />
     </section>
   );
 }

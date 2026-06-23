@@ -12,9 +12,11 @@ export const BACKEND_AREA_SECTIONS = {
     { id: 'home', label: 'Start' },
   ],
   fahrzeuge: [
-    { id: 'overview', label: 'Showroom' },
+    { id: 'overview', label: 'Modelle' },
+    { id: 'showroom', label: 'Showroom' },
     { id: 'equipment-sales-search', label: 'Ausstattung prüfen', icon: '✓' },
     { id: 'equipment-inspector', label: 'Ausstattung (Debug)', icon: '🔍' },
+    { id: 'clever-learning-requests', label: 'Clever Lernfragen', icon: '💡' },
   ],
   marketing: [
     { id: 'hub', label: 'Übersicht' },

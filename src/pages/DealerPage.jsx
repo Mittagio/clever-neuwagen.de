@@ -1052,6 +1052,7 @@ export default function DealerPage() {
             <DealerModelWorld
               city={city}
               dealerSlug={dealerId}
+              conditions={conditions}
               onSearch={handleSearch}
             />
           )}

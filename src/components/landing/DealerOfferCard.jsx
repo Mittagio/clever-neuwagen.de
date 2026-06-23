@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { SYNC_LABELS } from '../../data/dealerListings.js';
 import AvailabilityBadge from '../shared/AvailabilityBadge.jsx';
+import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
 import LegalDisclaimer from '../legal/LegalDisclaimer.jsx';
 import './DealerOfferCard.css';
 
@@ -26,6 +27,9 @@ export default function DealerOfferCard({ offer }) {
     showRate,
     showPriceOnRequest,
     availability,
+    preparationFeeLine,
+    priceFootnotes = [],
+    customerBadges = [],
   } = offer;
 
   const primaryAvail = availability?.primary;
@@ -61,6 +65,14 @@ export default function DealerOfferCard({ offer }) {
           )}
         </div>
 
+        {preparationFeeLine && (
+          <p className="offer-card-prep">{preparationFeeLine}</p>
+        )}
+
+        {customerBadges.length > 0 && (
+          <DealerModelPromotionBadges badges={customerBadges} className="offer-card-badges" />
+        )}
+
         {availability?.highlights?.length > 0 && (
           <ul className="offer-inventory-list">
             {availability.highlights.map((item) => (
@@ -76,6 +88,9 @@ export default function DealerOfferCard({ offer }) {
         )}
 
         <p className="offer-card-distance">{distanceKm} km entfernt · {city}</p>
+        {priceFootnotes.slice(0, 1).map((line) => (
+          <p key={line} className="offer-card-legal">{line}</p>
+        ))}
         {showRate && <LegalDisclaimer compact className="offer-card-disclaimer" />}
       </div>
 

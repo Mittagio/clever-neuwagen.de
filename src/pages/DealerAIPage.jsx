@@ -938,7 +938,7 @@ export default function DealerAIPage() {
       : phase === 'recognition-animate'
         ? 'Kundenwunsch wird sortiert …'
       : phase === 'input' && startView === 'home'
-        ? 'Kundenwunsch erfassen – Clever sortiert den Rest.'
+        ? ''
       : phase === 'input'
         ? ''
         : 'Bitte kurz prüfen.';
@@ -1189,7 +1189,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && !(phase === 'input' && startView === 'home') && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AvailabilityBadge from '../shared/AvailabilityBadge.jsx';
+import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
 import { resolveManufacturerImageUrl } from '../../services/media/manufacturerMediaService.js';
 import { getHeroVehicleLocalImage } from '../../data/landingHeroVehicles.js';
 
@@ -9,6 +10,9 @@ export default function LandingHeroVehicleCard({
   rate,
   delivery,
   availability,
+  promotionBadges = [],
+  preparationFeeLine = null,
+  priceFootnotes = [],
   href,
   className = '',
 }) {
@@ -72,6 +76,20 @@ export default function LandingHeroVehicleCard({
         <div className="lp-hero-card__meta">
           <span className="lp-hero-card__meta-chip">⏱ {delivery}</span>
         </div>
+
+        {promotionBadges.length > 0 && (
+          <div className="lp-hero-card__promos">
+            <DealerModelPromotionBadges badges={promotionBadges} />
+          </div>
+        )}
+
+        {preparationFeeLine && (
+          <p className="lp-hero-card__prep">{preparationFeeLine}</p>
+        )}
+
+        {priceFootnotes?.slice(0, 1).map((line) => (
+          <p key={line} className="lp-hero-card__legal">{line}</p>
+        ))}
       </div>
     </Link>
   );

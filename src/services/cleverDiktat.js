@@ -48,12 +48,13 @@ const INTENT_RULES = [
   { id: 'unterlagen', score: 10, patterns: [/selbstauskunft/i, /unterlagen/i, /hochladen/i, /link.*unterlagen/i] },
   { id: 'nachfassen', score: 9, patterns: [/geöffnet/i, /angeschaut/i, /reingeschaut/i, /nachfass/i, /passt.*(oder|anpass)/i] },
   { id: 'angebot_angepasst', score: 8, patterns: [/angepasst/i, /neue variante/i, /aktualisiert/i] },
-  { id: 'rueckfrage', score: 7, patterns: [/frag.*(ihn|sie|ob)/i, /rückfrage/i, /leasing.*kauf/i, /kauf.*leasing/i, /kilometer|km pro jahr/i, /reichen/i] },
-  { id: 'angebot_senden', score: 6, patterns: [/angebot.*(schick|send|kommt)/i, /schick.*angebot/i, /heute nachmittag/i] },
+  { id: 'rueckfrage', score: 7, patterns: [/frag\s+(ihn|sie|mal|ob)\b/i, /rückfrage/i, /leasing.*kauf/i, /kauf.*leasing/i, /soll ich.*(km|kilometer|rechnen)/i] },
+  { id: 'angebot_senden', score: 8, patterns: [/angebot.*(schick|send|kommt|für)/i, /schick.*angebot/i, /angebot für/i, /heute nachmittag/i] },
   { id: 'probefahrt', score: 5, patterns: [/probefahrt/i, /probe fahrt/i] },
   { id: 'termin', score: 5, patterns: [/termin/i, /treffen/i, /vormittag|nachmittag/i] },
   { id: 'nicht_erreicht', score: 5, patterns: [/nicht erreicht/i, /nicht rangekommen/i] },
   { id: 'danke', score: 3, patterns: [/danke.*anfrage/i, /melde mich/i] },
+  { id: 'angebot_details', score: 9, patterns: [/lieferzeit/i, /farbe/i, /aufpreis|mehr kosten/i] },
 ];
 
 export function supportsBrowserSpeechRecognition() {
@@ -124,7 +125,9 @@ export function detectDiktatIntent(transcript = '', context = {}) {
     return 'nachfassen';
   }
   if (/selbstauskunft|unterlagen/i.test(t)) return 'unterlagen';
-  if (/leasing|kauf|finanzierung/i.test(t) && /frag|reichen|kilometer|km/i.test(t)) return 'rueckfrage';
+  if (/leasing|kauf|finanzierung/i.test(t) && /frag\s+(ihn|sie|mal|ob)\b|soll ich.*(km|kilometer|rechnen)/i.test(t)) {
+    return 'rueckfrage';
+  }
 
   let best = { id: 'frei', score: 0 };
 
@@ -140,7 +143,7 @@ export function detectDiktatIntent(transcript = '', context = {}) {
     return 'nachfassen';
   }
   if (/selbstauskunft|unterlagen/i.test(t)) return 'unterlagen';
-  if (/leasing|kauf|kilometer|km|reichen|frag/i.test(t)) return 'rueckfrage';
+  if (shouldUseFreeformDiktat(transcript)) return 'angebot_details';
 
   return best.id;
 }
@@ -174,6 +177,90 @@ function extractKmFromTranscript(transcript = '') {
   const generic = transcript.match(/(\d{1,2})\.?\s*000\s*(?:km|kilometer)/i);
   if (generic) return `${generic[1]}.000`;
   return null;
+}
+
+function extractDeliveryMonths(transcript = '') {
+  const m = transcript.match(/(\d+)\s*monat/i);
+  return m ? Number(m[1]) : null;
+}
+
+function extractColorSurcharge(transcript = '') {
+  const colorMatch = transcript.match(/farbe\s+([\wäöüß-]+)/i);
+  const euroMatch = transcript.match(/(\d+)\s*(?:€|euro)/i);
+  if (!colorMatch && !euroMatch) return null;
+  return {
+    color: colorMatch?.[1] ? capitalizeWord(colorMatch[1]) : null,
+    amount: euroMatch ? Number(euroMatch[1]) : null,
+  };
+}
+
+export function shouldUseFreeformDiktat(transcript = '') {
+  const t = String(transcript).toLowerCase();
+  const signals = [
+    /angebot/i.test(t),
+    /lieferzeit|lieferzeiten/i.test(t) || /\d+\s*monat/i.test(t),
+    /farbe/i.test(t),
+    /€|euro|kosten/i.test(t),
+    extractMentionedModels(transcript).length > 0,
+    /bescheid|rückmeldung/i.test(t),
+  ];
+  return signals.filter(Boolean).length >= 2;
+}
+
+function buildFreeformDiktatText(transcript = '', context = {}) {
+  if (!shouldUseFreeformDiktat(transcript)) return null;
+
+  const t = transcript.toLowerCase();
+  const models = extractMentionedModels(transcript);
+  const model = models[0]
+    ?? context.vehicleTitle?.replace(/^Kia\s+/i, '').trim()
+    ?? null;
+  const paragraphs = [];
+
+  if (/angebot/i.test(t)) {
+    paragraphs.push(
+      model
+        ? `ich bereite Ihnen gerne ein Angebot für den ${model} vor.`
+        : 'ich bereite Ihnen gerne das passende Angebot für Sie vor.',
+    );
+  }
+
+  const deliveryMonths = extractDeliveryMonths(transcript);
+  if (deliveryMonths) {
+    paragraphs.push(
+      `Die voraussichtliche Lieferzeit liegt bei etwa ${deliveryMonths} Monaten.`,
+    );
+  } else if (/lieferzeit/i.test(t)) {
+    paragraphs.push('Zur Lieferzeit gebe ich Ihnen gleich eine konkrete Rückmeldung.');
+  }
+
+  const colorInfo = extractColorSurcharge(transcript);
+  if (colorInfo?.color && colorInfo.amount != null) {
+    paragraphs.push(
+      `Die Farbe ${colorInfo.color} würde ${colorInfo.amount.toLocaleString('de-DE')} € Aufpreis bedeuten.`,
+    );
+  } else if (colorInfo?.color) {
+    paragraphs.push(`Zur Wunschfarbe ${colorInfo.color} rechne ich den Aufpreis gerne konkret durch.`);
+  } else if (colorInfo?.amount != null) {
+    paragraphs.push(`Der genannte Aufpreis beträgt ${colorInfo.amount.toLocaleString('de-DE')} €.`);
+  }
+
+  if (/fragen haben|bei fragen|bescheid|rückmeldung/i.test(t)) {
+    paragraphs.push('Wenn Sie noch Fragen haben, melden Sie sich gerne jederzeit bei mir.');
+  }
+
+  if (!paragraphs.length) return null;
+
+  return [
+    buildCleverGreeting(context.customerName, context.salutation),
+    '',
+    ...paragraphs,
+    buildClosingLines(context, 'email'),
+  ].join('\n').trim();
+}
+
+function buildOfferDetailsFromDiktat(transcript, context) {
+  return buildFreeformDiktatText(transcript, context);
 }
 
 function buildClosingLines(context = {}, channel = 'whatsapp') {
@@ -346,24 +433,31 @@ export function generateCleverDiktatText(
   const intent = detectDiktatIntent(raw, context);
   let text;
 
-  const customRueckfrage = intent === 'rueckfrage' ? buildRueckfrageFromDiktat(raw, context) : null;
-  if (customRueckfrage) {
-    text = customRueckfrage;
-  } else if (intent === 'unterlagen' && context.unterlagenUrl) {
-    text = [
-      buildCleverGreeting(context.customerName, context.salutation),
-      '',
-      'wenn das Angebot für Sie passt, können Sie die Selbstauskunft und die Unterlagen bequem über diesen Link ausfüllen und hochladen:',
-      '',
-      context.unterlagenUrl,
-      '',
-      'Danach kann ich alles für die weitere Bearbeitung vorbereiten.',
-      buildClosingLines(context, channel),
-    ].join('\n').trim();
+  const freeform = buildFreeformDiktatText(raw, context);
+  if (freeform) {
+    text = freeform;
   } else {
-    text = generateCleverAntwortText(intent, context);
-    const extras = buildCustomDiktatParagraphs(raw, context);
-    text = injectExtras(text, extras);
+    const customRueckfrage = intent === 'rueckfrage' ? buildRueckfrageFromDiktat(raw, context) : null;
+    if (customRueckfrage) {
+      text = customRueckfrage;
+    } else if (intent === 'angebot_details') {
+      text = buildOfferDetailsFromDiktat(raw, context) ?? generateCleverAntwortText('angebot_senden', context);
+    } else if (intent === 'unterlagen' && context.unterlagenUrl) {
+      text = [
+        buildCleverGreeting(context.customerName, context.salutation),
+        '',
+        'wenn das Angebot für Sie passt, können Sie die Selbstauskunft und die Unterlagen bequem über diesen Link ausfüllen und hochladen:',
+        '',
+        context.unterlagenUrl,
+        '',
+        'Danach kann ich alles für die weitere Bearbeitung vorbereiten.',
+        buildClosingLines(context, channel),
+      ].join('\n').trim();
+    } else {
+      text = generateCleverAntwortText(intent, context);
+      const extras = buildCustomDiktatParagraphs(raw, context);
+      text = injectExtras(text, extras);
+    }
   }
 
   text = applyToneFormat(text, tone, context, intent);

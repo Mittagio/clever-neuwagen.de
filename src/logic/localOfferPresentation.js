@@ -25,9 +25,28 @@ export function formatDeliveryLine(vehicle) {
 }
 
 export function formatDiscountFootnote(vehicle) {
-  const pct = vehicle?.discountPercent;
+  const pct = vehicle?.discountPercent ?? vehicle?.pricing?.discountPercent;
   if (pct == null || pct <= 0) return null;
+  const extra = vehicle?.extraDiscountPercent ?? vehicle?.pricing?.extraDiscountPercent;
+  if (extra > 0) {
+    return `${pct} % Rabatt inkl. ${extra} % Aktion`;
+  }
   return `${pct} % Rabatt gegenüber Listenpreis`;
+}
+
+export function formatPreparationFeeFootnote(vehicle) {
+  const line = vehicle?.preparationFeeLine
+    ?? vehicle?.pricing?.preparationFeeLine
+    ?? vehicle?.dealerModelPricing?.preparationFeeLine;
+  return line || null;
+}
+
+export function formatPriceFootnoteLines(vehicle) {
+  const lines = vehicle?.priceFootnotes
+    ?? vehicle?.pricing?.priceFootnotes
+    ?? vehicle?.dealerModelPricing?.priceFootnotes
+    ?? [];
+  return Array.isArray(lines) ? lines : [];
 }
 
 export function estimateListPrice(cashPrice, discountPercent) {

@@ -64,6 +64,10 @@ import {
   buildOfferWhatsappHref,
 } from '../../services/vehicleOffer.js';
 import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
+import {
+  buildBoardItems,
+  resolveOfferSelectionGroups,
+} from '../../services/sales/offerSelectionGroup.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
@@ -73,6 +77,7 @@ import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
+import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
@@ -93,6 +98,7 @@ const SHEETS = {
   unterlagen: 'unterlagen',
   antworten: 'antworten',
   vehicle: 'vehicle',
+  cleverAuswahl: 'clever_auswahl',
   more: 'more',
 };
 
@@ -223,8 +229,13 @@ export default function DealerAiLeadFollowUp({
     if (initialSheet) setActiveSheet(initialSheet);
   }, [initialSheet]);
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
+  const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
+  const [toast, setToast] = useState('');
   const [showCardAnimation, setShowCardAnimation] = useState(isFresh);
   const [reservedModels, setReservedModels] = useState(crm.reservedModels ?? []);
+  const [offerSelectionGroups, setOfferSelectionGroups] = useState(
+    () => crm.offerSelectionGroups ?? [],
+  );
 
   useEffect(() => {
     if (isFresh) {
@@ -238,6 +249,12 @@ export default function DealerAiLeadFollowUp({
   useEffect(() => {
     setReservedModels(lead?.crm?.reservedModels ?? []);
   }, [lead?.crm?.reservedModels]);
+
+  useEffect(() => {
+    if (lead?.crm?.offerSelectionGroups?.length) {
+      setOfferSelectionGroups(lead.crm.offerSelectionGroups);
+    }
+  }, [lead?.crm?.offerSelectionGroups]);
 
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
@@ -404,6 +421,23 @@ export default function DealerAiLeadFollowUp({
     offers: resolvedOffers,
   }), [lead, wishSummaryFields, reservedModels, relatedWishes, resolvedOffers]);
 
+  const resolvedSelectionGroups = useMemo(() => resolveOfferSelectionGroups({
+    lead,
+    wishFields: wishSummaryFields,
+    storedGroups: offerSelectionGroups.length ? offerSelectionGroups : null,
+  }), [lead, wishSummaryFields, offerSelectionGroups]);
+
+  useEffect(() => {
+    if (offerSelectionGroups.length > 0) return;
+    if (!resolvedSelectionGroups.length) return;
+    setOfferSelectionGroups(resolvedSelectionGroups);
+  }, [offerSelectionGroups.length, resolvedSelectionGroups]);
+
+  const boardItems = useMemo(() => buildBoardItems({
+    vehicleCards,
+    offerSelectionGroups: resolvedSelectionGroups,
+  }), [vehicleCards, resolvedSelectionGroups]);
+
   const akteCleverScore = useMemo(() => computeAkteCleverStaerke({
     name,
     phone,
@@ -417,8 +451,9 @@ export default function DealerAiLeadFollowUp({
   const cleverRecommendation = useMemo(() => buildCleverActionRecommendation({
     lead,
     vehicleCards,
+    offerSelectionGroups: resolvedSelectionGroups,
     customerName: name,
-  }), [lead, vehicleCards, name]);
+  }), [lead, vehicleCards, resolvedSelectionGroups, name]);
 
   const nextBestStep = useMemo(
     () => cleverActionToHint(cleverRecommendation, { telHref }),
@@ -497,6 +532,28 @@ export default function DealerAiLeadFollowUp({
     onNewWish?.();
   }
 
+  function openSelectionGroup(group) {
+    setSelectedSelectionGroup(group);
+    openSheet(SHEETS.cleverAuswahl);
+  }
+
+  function handlePrepareCustomerLink(group) {
+    setToast('Kundenlink wird in einer späteren Version verfügbar sein.');
+    setTimeout(() => setToast(''), 3500);
+    onAddHistory?.(
+      `Clever Auswahl für ${group.modelLabel} als Kundenlink vorbereitet`,
+      'clever_auswahl',
+      { silent: true },
+    );
+  }
+
+  function handleEditSelectionVariant(group, variant) {
+    setToast(`${variant.trimLabel} – Bearbeitung folgt in Kürze.`);
+    setTimeout(() => setToast(''), 3000);
+    closeSheet();
+    openSheet(SHEETS.wish);
+  }
+
   function openVehicleCard(card) {
     if (onOpenOfferEdit) {
       onOpenOfferEdit(card);
@@ -552,6 +609,9 @@ export default function DealerAiLeadFollowUp({
     if (activeSheet === SHEETS.vehicle) {
       setSelectedVehicleCard(null);
     }
+    if (activeSheet === SHEETS.cleverAuswahl) {
+      setSelectedSelectionGroup(null);
+    }
   }
 
   function openSheet(id) {
@@ -606,6 +666,7 @@ export default function DealerAiLeadFollowUp({
         nextStepLabel: nextLabel,
         followUpAt,
         reservedModels,
+        offerSelectionGroups: extraCrm.offerSelectionGroups ?? resolvedSelectionGroups,
         offers: crm.offers ?? [],
         kundenhelfer: {
           notes: kundenhelferNotes.trim(),
@@ -709,6 +770,16 @@ export default function DealerAiLeadFollowUp({
   function handleCleverAction(actionHint) {
     trackCleverActionFollowed(actionHint);
     const handler = actionHint?.handlerType ?? actionHint?.action;
+    if (handler === 'selection_send') {
+      const groupId = actionHint?.meta?.groupId;
+      const group = groupId
+        ? resolvedSelectionGroups.find((entry) => entry.id === groupId)
+        : resolvedSelectionGroups[0];
+      if (group) {
+        openSelectionGroup(group);
+      }
+      return;
+    }
     if (handler === 'offer_send') {
       const cardId = actionHint?.meta?.cardId;
       const card = cardId
@@ -813,10 +884,11 @@ export default function DealerAiLeadFollowUp({
       />
 
       <CustomerAkteBoard
-        cards={vehicleCards}
-        animateNew={showCardAnimation && vehicleCards.length > 0}
+        items={boardItems}
+        animateNew={showCardAnimation && boardItems.length > 0}
         onCardClick={openVehicleCard}
         onCardMenu={openVehicleCard}
+        onSelectionGroupClick={openSelectionGroup}
         onAddVehicle={handleAddVehicle}
       />
 
@@ -1333,8 +1405,27 @@ export default function DealerAiLeadFollowUp({
           wishPaymentType={wishPaymentType}
           initialTypeId={antwortenPreset}
           embedded
-          onAddHistory={(text, type) => onAddHistory?.(text, type)}
+          onAddHistory={(text, type, options) => onAddHistory?.(text, type, options)}
         />
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup)}
+        onClose={closeSheet}
+        title="Clever Auswahl"
+        footer={(
+          <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
+            Schließen
+          </button>
+        )}
+      >
+        {selectedSelectionGroup && (
+          <CustomerAkteCleverAuswahlSheet
+            group={selectedSelectionGroup}
+            onEditVariant={handleEditSelectionVariant}
+            onPrepareCustomerLink={handlePrepareCustomerLink}
+          />
+        )}
       </LeadDetailPanel>
 
       <CleverKundenhelferSheet
@@ -1347,6 +1438,12 @@ export default function DealerAiLeadFollowUp({
         onSave={saveKundenhelferSheet}
         isSaving={isSaving}
       />
+
+      {toast && (
+        <div className="cust-akte-toast" role="status">
+          {toast}
+        </div>
+      )}
     </section>
   );
 }
