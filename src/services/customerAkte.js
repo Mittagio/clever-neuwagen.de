@@ -175,12 +175,17 @@ export function buildWishConditionChips({
       if (down) chips.push(`${down} Anzahlung`);
     }
     const rate = formatWishEuro(desiredRate);
-    chips.push(rate ? `bis ${rate}/Monat` : 'Budget offen');
+    if (rate) chips.push(`bis ${rate}/Monat`);
+    else if (!hasDown) chips.push('Budget offen');
   }
 
   if (hasDelivery) {
     const label = String(delivery).trim();
-    chips.push(label.length > 18 ? `Lieferung: ${label.slice(0, 16)}…` : label);
+    const deliveryChip = /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(label)
+      || /^(sofort|diese Woche|nächste Woche|diesen Monat|nächsten Monat)$/i.test(label)
+      ? label
+      : `Wunschlieferdatum ${label}`;
+    chips.push(deliveryChip.length > 42 ? `${deliveryChip.slice(0, 40)}…` : deliveryChip);
   }
 
   return chips;

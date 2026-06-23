@@ -8,12 +8,6 @@ import {
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 import './CustomerAkte.css';
 
-function buildMapsHref(address = '') {
-  const trimmed = String(address).trim();
-  if (!trimmed) return null;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`;
-}
-
 async function copyToClipboard(text) {
   const value = String(text ?? '').trim();
   if (!value || !navigator.clipboard?.writeText) return false;
@@ -58,12 +52,14 @@ function ContactIconButton({
 function ContactRow({
   value,
   emptyLabel,
+  subline,
   href,
   onAdd,
   onCopy,
   copied,
-  showMap = false,
-  mapsHref,
+  copyFeedback,
+  showRoute = false,
+  routeHref,
 }) {
   const hasValue = Boolean(value?.trim());
 
@@ -71,13 +67,21 @@ function ContactRow({
     <div className={`cust-akte-contact-row${hasValue ? '' : ' cust-akte-contact-row--empty'}`}>
       <div className="cust-akte-contact-row__main">
         {hasValue ? (
-          href ? (
-            <a href={href} className="cust-akte-contact-row__link">
-              {value}
-            </a>
-          ) : (
-            <span className="cust-akte-contact-row__text">{value}</span>
-          )
+          <>
+            {href ? (
+              <a href={href} className="cust-akte-contact-row__link">
+                {value}
+              </a>
+            ) : (
+              <span className="cust-akte-contact-row__text">{value}</span>
+            )}
+            {subline && (
+              <span className="cust-akte-contact-row__subline">{subline}</span>
+            )}
+            {copied && copyFeedback && (
+              <span className="cust-akte-contact-row__feedback" role="status">{copyFeedback}</span>
+            )}
+          </>
         ) : (
           <button type="button" className="cust-akte-contact-row__placeholder" onClick={onAdd}>
             {emptyLabel}
@@ -86,9 +90,9 @@ function ContactRow({
       </div>
       {hasValue && (
         <div className="cust-akte-contact-row__actions">
-          {showMap && mapsHref && (
-            <ContactIconButton label="Route / Karte" href={mapsHref}>
-              📍
+          {showRoute && routeHref && (
+            <ContactIconButton label="Route öffnen" href={routeHref}>
+              🗺
             </ContactIconButton>
           )}
           {onCopy && (
@@ -111,6 +115,8 @@ export default function CustomerAkteHeader({
   phone = '',
   email = '',
   address = '',
+  distanceSummary = '',
+  routeHref = null,
   customerSince,
   cleverScore,
   kundenhelferNotes = '',
@@ -120,11 +126,13 @@ export default function CustomerAkteHeader({
   pipelineStatusLabel = '',
   onBack,
   onEditCustomer,
+  onEditAddress,
   telHref,
 }) {
   const [copiedField, setCopiedField] = useState(null);
 
   const displayName = formatCustomerDisplayName(customerName) || 'Kunde noch offen';
+  const openAddressSheet = onEditAddress ?? onEditCustomer;
 
   const score = cleverScore ?? computeAkteCleverStaerke({
     name: customerName,
@@ -140,7 +148,7 @@ export default function CustomerAkteHeader({
   const scoreVariant = getCleverScoreRingVariant(score);
   const sinceLine = formatCustomerSince(customerSince);
   const addressLine = String(address ?? '').trim();
-  const mapsHref = buildMapsHref(addressLine);
+  const distanceLine = String(distanceSummary ?? '').trim();
 
   const metaParts = [
     sinceLine,
@@ -207,12 +215,14 @@ export default function CustomerAkteHeader({
 
             <ContactRow
               value={addressLine}
-              emptyLabel="Adresse hinzufügen"
-              onAdd={onEditCustomer}
+              emptyLabel="+ Adresse hinzufügen"
+              subline={distanceLine || null}
+              onAdd={openAddressSheet}
               onCopy={addressLine ? () => handleCopy('address', addressLine) : null}
               copied={copiedField === 'address'}
-              showMap={Boolean(addressLine)}
-              mapsHref={mapsHref}
+              copyFeedback="Adresse kopiert"
+              showRoute={Boolean(addressLine)}
+              routeHref={routeHref}
             />
           </div>
 

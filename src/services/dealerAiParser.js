@@ -248,6 +248,9 @@ function parseTermMonths(text) {
   const trailing = text.match(/(?:^|\s)(12|24|36|48|60)\s*$/i);
   if (trailing) return Number(trailing[1]);
 
+  const leaseBundle = text.match(/\b(12|24|36|48|60)\s+(?:\d{1,3}(?:[.\s]\d{3})*|\d+)\s*km/i);
+  if (leaseBundle) return Number(leaseBundle[1]);
+
   if (/leasing|finanzier/i.test(text)) {
     const inLeasingContext = text.match(/\b(12|24|36|48|60)\b(?!\s*€)/i);
     if (inLeasingContext) return Number(inLeasingContext[1]);
@@ -300,34 +303,58 @@ export function parseAllMileagesFromText(text) {
   return [...new Set(values)];
 }
 
+function stripAnzahlungForRateParsing(text = '') {
+  return String(text)
+    .replace(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?\s*anzahlung/gi, ' ')
+    .replace(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/gi, ' ');
+}
+
+function euroAmountIsAnzahlung(text = '', matchIndex = 0, matchLength = 0) {
+  const slice = text.slice(Math.max(0, matchIndex - 18), matchIndex + matchLength + 18).toLowerCase();
+  return /anzahlung/.test(slice);
+}
+
+function hasRateBudgetKeyword(snippet = '') {
+  return /\b(budget|rate|monat|monatlich|mtl|wunschrate|leasing\s*ab|max\.?|bis\s+\d{2,4}\s*€|€\s*\/\s*monat|pro\s+monat)\b/i.test(snippet);
+}
+
 function parseDesiredRate(text, termMonths = null, paymentType = null) {
-  const lower = text.toLowerCase();
+  const source = stripAnzahlungForRateParsing(text);
+  const lower = source.toLowerCase();
   const isCashContext = paymentType === 'cash'
     || /\b(kauf|barkauf|barzahlung|bar(?:\s|-)?preis|kaufpreis)\b/i.test(lower);
   if (isCashContext) return null;
 
   const isFinancing = paymentType === 'financing' || paymentType === 'threeWayFinancing';
 
-  const budgetBis = text.match(/budget\s*(?:bis|bis\s+zu|max\.?|höchstens|ca\.?)?\s*(\d{2,4})\s*€/i);
+  const budgetBis = source.match(/budget\s*(?:bis|bis\s+zu|max\.?|höchstens|ca\.?)?\s*(\d{2,4})\s*€/i);
   if (budgetBis) return parseNumber(budgetBis[1]);
 
-  const labeled = text.match(/(?:wunschrate|leasing\s*ab)\s*(?:ab\s*)?(\d{2,4})\s*€/i);
+  const labeled = source.match(/(?:wunschrate|leasing\s*ab)\s*(?:ab\s*)?(\d{2,4})\s*€/i);
   if (labeled) return parseNumber(labeled[1]);
 
-  const financingRate = text.match(/(?:ca\.?|ungefähr|unfähr)\s*(\d{2,4})\s*(?:€|euro)(?:\s*rate)?/i)
-    ?? text.match(/(\d{2,4})\s*(?:€|euro)\s*rate/i);
+  const financingRate = source.match(/(?:ca\.?|ungefähr|unfähr)\s*(\d{2,4})\s*(?:€|euro)(?:\s*rate)?/i)
+    ?? source.match(/(\d{2,4})\s*(?:€|euro)\s*rate/i);
   if (financingRate) return parseNumber(financingRate[1]);
 
-  const rateWord = text.match(/\brate\s*(?:ab\s*)?(\d{2,4})\s*€/i);
+  const rateWord = source.match(/\brate\s*(?:ab\s*)?(\d{2,4})\s*€/i);
   if (rateWord) return parseNumber(rateWord[1]);
 
-  const aroundEuro = text.match(/(?:um\s*(?:die|ca\.?)?\s*)?(\d{2,4})\s*(?:€|euro)(?:\s*im\s*monat|\s*\/\s*monat)?/i);
+  const aroundEuro = source.match(/(?:um\s*(?:die|ca\.?)?\s*)?(\d{2,4})\s*(?:€|euro)(?:\s*im\s*monat|\s*\/\s*monat)?/i);
   if (aroundEuro) {
-    const val = parseNumber(aroundEuro[1]);
-    if (val != null && (isFinancing || !(termMonths === val && isLeaseTermMonth(val)))) return val;
+    const absoluteIndex = source.indexOf(aroundEuro[0]);
+    if (!euroAmountIsAnzahlung(text, absoluteIndex, aroundEuro[0].length)) {
+      const val = parseNumber(aroundEuro[1]);
+      const snippet = source.slice(Math.max(0, absoluteIndex - 24), absoluteIndex + aroundEuro[0].length + 24);
+      if (val != null && val >= 500 && !hasRateBudgetKeyword(snippet)) {
+        /* große Beträge ohne Rate-Kontext sind keine Monatsrate */
+      } else if (val != null && (isFinancing || !(termMonths === val && isLeaseTermMonth(val)))) {
+        return val;
+      }
+    }
   }
 
-  const euroMonth = text.match(/(\d{2,4})\s*€\s*(?:\/|pro\s*)?(?:monat|mt)/i);
+  const euroMonth = source.match(/(\d{2,4})\s*€\s*(?:\/|pro\s*)?(?:monat|mt)/i);
   if (euroMonth) {
     const val = parseNumber(euroMonth[1]);
     if (val != null && (isFinancing || !(termMonths === val && isLeaseTermMonth(val)))) return val;
@@ -404,6 +431,12 @@ function parseDesiredDeliveryDate(text) {
   if (latest) {
     const label = latest[1].replace(/^maerz$/i, 'März');
     return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  const monthYear = text.match(new RegExp(`\\b(${months})\\s+(20\\d{2})\\b`, 'i'));
+  if (monthYear) {
+    const label = monthYear[1].replace(/^maerz$/i, 'März');
+    return `${label.charAt(0).toUpperCase()}${label.slice(1)} ${monthYear[2]}`;
   }
 
   return null;
@@ -484,7 +517,42 @@ const CUSTOMER_NAME_BLOCK_WORDS = new Set([
   'golf',
   'kia',
   'vw',
+  'audi',
+  'bmw',
+  'ledig',
+  'kinder',
+  'corporate',
+  'benefits',
 ]);
+
+/** Häufige deutsche Orte – nicht als Personenname verwenden */
+const GERMAN_CITY_NAMES = new Set([
+  'aalen', 'schorndorf', 'stuttgart', 'hamburg', 'berlin', 'münchen', 'munich',
+  'köln', 'koln', 'frankfurt', 'düsseldorf', 'dusseldorf', 'nürnberg', 'nurnberg',
+  'leipzig', 'dresden', 'hannover', 'bremen', 'essen', 'dortmund', 'duisburg',
+  'bochum', 'wuppertal', 'bielefeld', 'bonn', 'münster', 'munster', 'karlsruhe',
+  'mannheim', 'augsburg', 'wiesbaden', 'freiburg', 'heidelberg', 'ulm', 'ulm',
+  'heilbronn', 'pforzheim', 'reutlingen', 'esslingen', 'ludwigsburg', 'göppingen',
+  'goeppingen', 'waiblingen', 'fellbach', 'leonberg', 'sindelfingen', 'böblingen',
+]);
+
+function isLikelyCityName(value = '') {
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return false;
+  return GERMAN_CITY_NAMES.has(normalized);
+}
+
+const STREET_LINE_RE = /^(.+?\s)(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/;
+const PLZ_LINE_RE = /^(\d{5})$/;
+
+function isMonthYearLine(line = '') {
+  const months = monthPattern();
+  return new RegExp(`^(${months})\\s+(20\\d{2})$`, 'i').test(String(line).trim());
+}
+
+function looksLikeGermanStreetName(street = '') {
+  return /straße|str\.|strasse|weg|allee|platz|ring|gasse|damm|ufer|steig|chaussee|markt|hof/i.test(String(street));
+}
 
 function splitTextLines(text = '') {
   return String(text)
@@ -508,9 +576,99 @@ function looksLikePersonNameLine(line = '') {
   if (!trimmed || trimmed.length > 48) return false;
   if (isBlockedCustomerName(trimmed)) return false;
   if (/^\+?\d[\d\s\-/().]{6,}\d$/.test(trimmed.replace(/\s/g, ''))) return false;
-  if (/@/.test(trimmed)) return false;
-  if (/€|\bbis\s+\d|farbe\b|batterie|förderung|wohnmobil|gw\b|e-?soul/i.test(trimmed)) return false;
-  return /^[A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+){0,2}$/.test(trimmed);
+  if (/@|<|>/.test(trimmed)) return false;
+  if (/€|\bbis\s+\d|farbe\b|batterie|förderung|wohnmobil|gw\b|e-?soul|leasing|corporate/i.test(trimmed)) return false;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1 && isLikelyCityName(parts[0])) return false;
+  if (parts.length < 2) return false;
+  if (parts.some((part) => isLikelyCityName(part))) return false;
+  return /^[A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+){1,2}$/.test(trimmed);
+}
+
+function parseQuotedCustomerName(text = '') {
+  const match = String(text).match(/['"]([A-ZÄÖÜa-zäöüß][^'"]{2,48})['"]/);
+  if (!match) return null;
+  const fullName = match[1].trim();
+  if (isBlockedCustomerName(fullName)) return null;
+  const parts = fullName.split(/\s+/);
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ') || null,
+    fullName,
+    confidence: 0.98,
+  };
+}
+
+export function formatCustomerAddressLine({
+  street = '',
+  houseNumber = '',
+  postalCode = '',
+  city = '',
+} = {}) {
+  const line1 = [street, houseNumber].filter(Boolean).join(' ');
+  const line2 = [postalCode, city].filter(Boolean).join(' ');
+  if (line1 && line2) return `${line1} · ${line2}`;
+  return line1 || line2 || '';
+}
+
+export function parseCustomerAddressFromText(text = '') {
+  const lines = splitTextLines(text);
+  let postalCode = null;
+  let city = null;
+  let street = null;
+  let houseNumber = null;
+
+  const skipLine = (line) => /@|<|>|leasing|corporate|ledig|kinder|audi\s|bmw\s|ev\d/i.test(line)
+    || isMonthYearLine(line);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (skipLine(line)) continue;
+
+    const plzOnly = line.match(PLZ_LINE_RE);
+    if (plzOnly) {
+      postalCode = plzOnly[1];
+      const prev = lines[index - 1];
+      const next = lines[index + 1];
+      if (prev && !skipLine(prev) && !STREET_LINE_RE.test(prev) && !PLZ_LINE_RE.test(prev)) {
+        if (isLikelyCityName(prev) || /^[A-ZÄÖÜ]/.test(prev)) city = city ?? prev;
+      }
+      if (next && !skipLine(next) && !STREET_LINE_RE.test(next) && !PLZ_LINE_RE.test(next)) {
+        if (isLikelyCityName(next) || /^[A-ZÄÖÜ]/.test(next)) city = city ?? next;
+      }
+      continue;
+    }
+
+    const streetMatch = line.match(STREET_LINE_RE);
+    if (streetMatch && !/\d{5}/.test(line) && !isMonthYearLine(line)) {
+      const nextStreet = streetMatch[1].trim();
+      const nextHouse = streetMatch[2];
+      const shouldReplace = !street
+        || (looksLikeGermanStreetName(nextStreet) && !looksLikeGermanStreetName(street));
+      if (shouldReplace) {
+        street = nextStreet;
+        houseNumber = nextHouse;
+      }
+      continue;
+    }
+
+    if (!city && (isLikelyCityName(line) || (/^[A-ZÄÖÜ][a-zäöüß-]+$/.test(line) && line.length < 24))) {
+      const neighborIsAddress = [lines[index - 1], lines[index + 1]].some((neighbor) => (
+        neighbor && (PLZ_LINE_RE.test(neighbor) || STREET_LINE_RE.test(neighbor))
+      ));
+      if (neighborIsAddress) city = line;
+    }
+  }
+
+  if (!street && !postalCode && !city) return null;
+
+  return {
+    street,
+    houseNumber,
+    postalCode,
+    city,
+    formatted: formatCustomerAddressLine({ street, houseNumber, postalCode, city }),
+  };
 }
 
 export function parseNameFromEmail(email = '') {
@@ -529,6 +687,9 @@ export function parseNameFromEmail(email = '') {
 }
 
 export function parseStructuredCustomerName(text = '') {
+  const quoted = parseQuotedCustomerName(text);
+  if (quoted) return quoted;
+
   const lines = splitTextLines(text);
   const phone = parseCustomerPhone(text);
   const email = parseCustomerEmail(text);
@@ -558,14 +719,29 @@ export function parseStructuredCustomerName(text = '') {
 
 export function parseWishDateFromText(text = '') {
   const match = String(text).match(/\b(\d{1,2})[.\-/](\d{1,2})[.\-/](20\d{2})\b/);
-  if (!match) return null;
-  const day = match[1].padStart(2, '0');
-  const month = match[2].padStart(2, '0');
-  const year = match[3];
-  return {
-    iso: `${year}-${month}-${day}`,
-    label: `${day}.${month}.${year}`,
-  };
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    return {
+      iso: `${year}-${month}-${day}`,
+      label: `${day}.${month}.${year}`,
+      precision: 'day',
+    };
+  }
+
+  const monthYear = String(text).match(new RegExp(`\\b(${monthPattern()})\\s+(20\\d{2})\\b`, 'i'));
+  if (monthYear) {
+    const label = monthYear[1].replace(/^maerz$/i, 'März');
+    const pretty = `${label.charAt(0).toUpperCase()}${label.slice(1)} ${monthYear[2]}`;
+    return {
+      iso: null,
+      label: pretty,
+      precision: 'month',
+    };
+  }
+
+  return null;
 }
 
 export function parseBatteryPowerFromText(text = '') {
@@ -887,6 +1063,7 @@ export function parseDealerAiInput(rawText) {
   const mailCtx = preprocessCustomerMail(rawText);
   const inquirySource = mailCtx.inquiryText?.trim() || mailCtx.cleaned?.trim() || String(rawText ?? '').trim();
   const text = normalizeText(inquirySource.length >= 8 ? inquirySource : rawText);
+  const addressSource = inquirySource.length >= 8 ? inquirySource : String(rawText ?? '').trim();
   const modelOnlySelection = Boolean(detectBrandModel(text ?? '').modelId) && (text?.length ?? 0) >= 4;
   if (!text || (text.length < 8 && !modelOnlySelection)) {
     return { ok: false, error: 'Bitte beschreiben Sie Fahrzeug, Konditionen oder gewünschte Aktion.' };
@@ -901,6 +1078,7 @@ export function parseDealerAiInput(rawText) {
   const delivery = parseDeliveryTime(text);
   const quantity = parseQuantity(text) ?? 1;
   const termMonths = parseTermMonths(text);
+  const customerAddress = parseCustomerAddressFromText(addressSource);
 
   let fields = {
     brand: brandModel.brand,
@@ -930,6 +1108,11 @@ export function parseDealerAiInput(rawText) {
     customerName: parseCustomerName(text),
     customerPhone: parseCustomerPhone(text),
     customerEmail: parseCustomerEmail(text),
+    customerAddress: customerAddress?.formatted ?? null,
+    addressStreet: customerAddress?.street ?? null,
+    addressHouseNumber: customerAddress?.houseNumber ?? null,
+    addressPostalCode: customerAddress?.postalCode ?? null,
+    addressCity: customerAddress?.city ?? null,
     leasingEndDate: parseLeasingEndDate(text),
     vehicleChangeIntent: parseVehicleChangeIntent(text),
     immediateAvailability: parseImmediateAvailability(text),

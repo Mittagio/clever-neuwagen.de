@@ -359,6 +359,68 @@
   font-weight: 800;
 }
 
+.cust-akte-contact-row__subline {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--cust-muted);
+  font-weight: 500;
+}
+
+.cust-akte-contact-row__feedback {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.cust-akte-address-sheet__hint {
+  margin: -0.25rem 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cust-muted);
+}
+
+.cust-akte-address-sheet__suggestions {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: 1px solid var(--cust-border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cust-akte-address-sheet__suggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--cust-border, #e5e7eb);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--cust-text);
+}
+
+.cust-akte-address-sheet__suggestion:last-child {
+  border-bottom: 0;
+}
+
+.cust-akte-address-sheet__suggestion:hover {
+  background: #f8fafc;
+}
+
+.cust-akte-address-sheet__suggestion small {
+  color: var(--cust-muted);
+  font-size: 0.75rem;
+}
+
 .cust-akte-profile__contact {
   margin: 0;
   font-size: 0.875rem;

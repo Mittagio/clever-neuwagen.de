@@ -4,15 +4,17 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseDealerAiInput } from './dealerAiParser.js';
 import { buildCustomerRecognitionInsight, applyRecognitionInsightToParsed } from './dealerAiRecognitionInsight.js';
-import { buildVehicleOpportunityCards } from './customerAkte.js';
+import { buildVehicleOpportunityCards, formatVehicleCardTitle } from './customerAkte.js';
 import { joinKundenhelferNotes } from './cleverKundenhelfer.js';
 import {
   DIRECT_AKTE_SAMPLE_TEXT,
+  SCHLAYER_SAMPLE_TEXT,
   applyDirectCustomerAkteFromRecognition,
   buildReservedModelFromInsight,
   mergeKundenhelferChipLists,
   mergeReservedModels,
 } from './dealerAiDirectCustomerAkte.js';
+import { buildWishConditionChips } from './customerAkte.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE = DIRECT_AKTE_SAMPLE_TEXT;
@@ -110,5 +112,68 @@ const pageSource = readFileSync(join(__dirname, '../pages/DealerAIPage.jsx'), 'u
 assert.ok(pageSource.includes('handleApplyDirectCustomerAkte'), 'Direkt-Flow in DealerAIPage');
 assert.ok(pageSource.includes("setPhase('followup')"), 'Nach KI-Check direkt Kundenakte');
 assert.ok(!pageSource.includes("setPhase('recognition-review')"), 'Kein Pflicht-Zwischenschritt mehr');
+
+// --- Schlayer Alexander (strukturierte Verkäufernotizen) ---
+const schlayerParsed = parseDealerAiInput(SCHLAYER_SAMPLE_TEXT);
+assert.equal(schlayerParsed.ok, true, 'Schlayer-Beispiel wird geparst');
+const schlayerInsight = buildCustomerRecognitionInsight(SCHLAYER_SAMPLE_TEXT, schlayerParsed);
+const schlayerEnriched = applyRecognitionInsightToParsed(schlayerParsed, schlayerInsight);
+
+assert.equal(schlayerInsight.customer.firstName, 'Alexander', 'Header: Vorname Alexander');
+assert.equal(schlayerInsight.customer.lastName, 'Schlayer', 'Header: Nachname Schlayer');
+assert.notEqual(schlayerInsight.customer.lastName, 'Aalen', 'Aalen wird nicht als Nachname erkannt');
+assert.equal(schlayerInsight.customer.address?.street, 'Buchsweg', 'Straße Buchsweg erkannt');
+assert.equal(schlayerInsight.customer.address?.houseNumber, '38', 'Hausnummer 38 erkannt');
+assert.equal(schlayerInsight.customer.address?.postalCode, '73547', 'PLZ 73547 erkannt');
+assert.equal(schlayerInsight.customer.address?.city, 'Aalen', 'Ort Aalen erkannt');
+assert.equal(schlayerParsed.fields.trimLabel, 'Air', 'EV3 AIR: Linie Air erkannt');
+assert.equal(schlayerParsed.fields.model, 'EV3', 'EV3 AIR: Modell EV3 erkannt');
+assert.equal(schlayerParsed.fields.desiredDeliveryDate, 'November 2026', 'November 2026 als Wunschlieferdatum');
+assert.equal(schlayerParsed.fields.paymentType, 'leasing', 'LEASING erkennt paymentType leasing');
+assert.equal(schlayerParsed.fields.termMonths, 48, '48 Monate Laufzeit erkannt');
+assert.equal(schlayerParsed.fields.mileagePerYear, 10000, '10.000 km/Jahr erkannt');
+assert.equal(schlayerParsed.fields.downPayment, 2000, '2.000 € Anzahlung erkannt');
+assert.equal(schlayerParsed.fields.desiredRate, null, '2.000 € Anzahlung nicht als Rate/Budget');
+assert.ok(schlayerInsight.customerHelperNotes.includes('Corporate Benefits'), 'Corporate Benefits als Kundeninfo');
+assert.equal(schlayerInsight.paymentWish.specialCondition, 'corporate_benefits', 'Corporate Benefits Sonderkondition');
+assert.ok(schlayerInsight.customerHelperNotes.includes('ledig'), 'ledig als Kundeninfo');
+assert.ok(schlayerInsight.customerHelperNotes.includes('keine Kinder'), 'keine Kinder als Kundeninfo');
+assert.equal(schlayerInsight.vehicleWish.currentVehicle, 'Audi A4', 'Audi A4 als aktuelles Fahrzeug');
+assert.ok(schlayerInsight.customerHelperNotes.some((n) => /fährt aktuell audi a4/i.test(n)), 'Chip fährt aktuell Audi A4');
+
+const schlayerLeads = [];
+const schlayerCreated = applyDirectCustomerAkteFromRecognition(schlayerEnriched, schlayerInsight, {
+  conditions: { dealerId: 'autohaus-trinkle' },
+  leads: schlayerLeads,
+  addLead: (lead) => schlayerLeads.push(lead),
+  updateLead: () => {},
+  getExistingCodes: () => [],
+});
+const schlayerLead = schlayerLeads.find((item) => item.id === schlayerCreated.leadId);
+assert.ok(schlayerLead?.contact?.address?.includes('Buchsweg'), 'Kundenakte zeigt Adresse im Header');
+assert.ok(schlayerLead?.crm?.address?.includes('73547'), 'Adresse in CRM gespeichert');
+
+const wishChips = buildWishConditionChips({
+  paymentType: schlayerParsed.fields.paymentType,
+  termMonths: schlayerParsed.fields.termMonths,
+  mileagePerYear: schlayerParsed.fields.mileagePerYear,
+  downPayment: schlayerParsed.fields.downPayment,
+  desiredRate: schlayerParsed.fields.desiredRate,
+  delivery: schlayerParsed.fields.desiredDeliveryDate,
+});
+assert.ok(wishChips.includes('Leasing'), 'Wunschkonditionen: Leasing');
+assert.ok(wishChips.some((c) => /48\s*Monate/.test(c)), 'Wunschkonditionen: 48 Monate');
+assert.ok(wishChips.some((c) => /10\.000\s*km\/Jahr/.test(c)), 'Wunschkonditionen: 10.000 km/Jahr');
+assert.ok(wishChips.some((c) => /2\.000\s*€\s*Anzahlung/.test(c)), 'Wunschkonditionen: 2.000 € Anzahlung');
+assert.ok(wishChips.some((c) => /Wunschlieferdatum November 2026/.test(c)), 'Wunschlieferdatum November 2026');
+assert.ok(!wishChips.includes('Budget offen'), 'Kein Budget offen bei Anzahlung ohne Rate');
+
+const schlayerCards = buildVehicleOpportunityCards({
+  lead: schlayerLead,
+  wishFields: schlayerEnriched.fields,
+  reservedModels: schlayerLead.crm?.reservedModels ?? [],
+});
+assert.ok(schlayerCards.some((card) => /kia ev3 air/i.test(formatVehicleCardTitle(card))), 'Auf dem Tisch: Kia EV3 Air');
+assert.ok(schlayerCards.some((card) => card.badge === 'Vorschlag / prüfen'), 'Status Idee / Fahrzeugvorschlag');
 
 console.log('dealerAiDirectCustomerAkte.test.js: ok');

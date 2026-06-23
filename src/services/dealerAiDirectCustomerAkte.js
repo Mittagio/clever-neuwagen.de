@@ -104,14 +104,41 @@ export function resolveTargetLeadForDirectAkte(deps = {}) {
   return null;
 }
 
+import {
+  addressToStorageFields,
+  normalizeAddressResult,
+} from './location/customerAddressModel.js';
+
 function buildContactFromFields(fields = {}, existing = {}, carryCustomer = null) {
   const carryContact = carryCustomer?.contact ?? {};
+  const addressStorage = fields.customerAddress
+    ? addressToStorageFields(normalizeAddressResult({
+      street: fields.addressStreet,
+      houseNumber: fields.addressHouseNumber,
+      postalCode: fields.addressPostalCode,
+      city: fields.addressCity,
+      formattedAddress: fields.customerAddress,
+    }))
+    : addressToStorageFields({ formattedAddress: fields.customerAddress ?? existing.address ?? carryContact.address ?? '' });
+  const address = addressStorage.address;
   return {
     name: fields.customerName || existing.name || carryContact.name || 'Kunde (offen)',
     phone: fields.customerPhone || existing.phone || carryContact.phone || '',
     email: fields.customerEmail || existing.email || carryContact.email || '',
+    address,
     preferredContact: existing.preferredContact ?? 'phone',
   };
+}
+
+function buildAddressCrmFields(fields = {}) {
+  if (!fields.customerAddress && !fields.addressStreet) return {};
+  return addressToStorageFields(normalizeAddressResult({
+    street: fields.addressStreet,
+    houseNumber: fields.addressHouseNumber,
+    postalCode: fields.addressPostalCode,
+    city: fields.addressCity,
+    formattedAddress: fields.customerAddress,
+  }));
 }
 
 function appendSourceTextNote(existingNotes = '', sourceText = '') {
@@ -136,6 +163,7 @@ export function buildLeadPatchFromDirectAkte(existingLead, enriched, insight) {
   );
 
   const vehicleLabel = [fields.brand, fields.model, fields.trimLabel].filter(Boolean).join(' ').trim();
+  const addressFields = buildAddressCrmFields(fields);
 
   return {
     contact: buildContactFromFields(fields, existingLead?.contact ?? {}),
@@ -164,6 +192,8 @@ export function buildLeadPatchFromDirectAkte(existingLead, enriched, insight) {
     notes: appendSourceTextNote(existingLead?.notes ?? '', insight?.sourceText),
     crm: {
       ...(existingLead?.crm ?? {}),
+      ...addressFields,
+      address: addressFields.address ?? existingLead?.crm?.address ?? existingLead?.contact?.address ?? '',
       kundenhelfer: {
         notes: helperNotes,
         voiceMemos: existingLead?.crm?.kundenhelfer?.voiceMemos ?? [],
@@ -194,8 +224,11 @@ function buildNewLeadFromDirectAkte(enriched, insight, deps) {
   const helperNotes = enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [];
   const reservedModels = buildReservedModelFromInsight(insight, enriched);
   const crmBase = buildDefaultCrm(enriched, []);
+  const addressFields = buildAddressCrmFields(fields);
   const crm = {
     ...crmBase,
+    ...addressFields,
+    address: addressFields.address ?? fields.customerAddress ?? '',
     reservedModels,
     recognitionStatus: 'applied',
     sourceText: insight?.sourceText ?? null,
@@ -297,6 +330,22 @@ export function prepareDirectCustomerAkteFromSource(sourceText = '', parsed = {}
   const enriched = enrichFn(merged);
   return { insight, enriched };
 }
+
+export const SCHLAYER_SAMPLE_TEXT = `Schlayer Alexander Aalen 'Alexander Schlayer' <S_Alexander1@hotmail.de>
+0174 5848458
+
+Aalen
+Buchsweg 38
+73547
+
+EV3 AIR
+November 2026
+LEASING
+Corporate Benefits
+ledig
+keine Kinder
+Audi A4
+48 10.000 km 2000 € Anzahlung`;
 
 export const DIRECT_AKTE_SAMPLE_TEXT = `Peter Schwan
 01755 5484877

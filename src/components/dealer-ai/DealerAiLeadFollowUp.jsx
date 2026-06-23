@@ -44,6 +44,21 @@ import {
 import { countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
 import { getHistoryEntryCount } from '../../services/customerAkteHistory.js';
 import {
+  addressFromLead,
+  addressToStorageFields,
+  buildAddressCacheKey,
+  isAddressComplete,
+  normalizeAddressResult,
+} from '../../services/location/customerAddressModel.js';
+import { getDealerLocation } from '../../services/location/dealerLocationService.js';
+import {
+  calculateCustomerDistance,
+  formatDistanceSummary,
+  getCachedDistanceInfo,
+  shouldRecalculateDistance,
+} from '../../services/location/customerDistanceService.js';
+import { buildDealerToCustomerRouteUrl } from '../../services/location/mapsRouteService.js';
+import {
   buildOfferMailtoHref,
   buildOfferShareMessage,
   buildOfferWhatsappHref,
@@ -58,6 +73,7 @@ import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
+import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
@@ -66,6 +82,7 @@ import './CustomerAkte.css';
 
 const SHEETS = {
   customer: 'customer',
+  address: 'address',
   wish: 'wish',
   next: 'next',
   offer: 'offer',
@@ -225,7 +242,8 @@ export default function DealerAiLeadFollowUp({
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
   const [email, setEmail] = useState(lead?.contact?.email ?? '');
-  const [address, setAddress] = useState(lead?.crm?.address ?? lead?.contact?.address ?? '');
+  const [customerAddress, setCustomerAddress] = useState(() => addressFromLead(lead));
+  const [distanceInfo, setDistanceInfo] = useState(() => lead?.crm?.distanceInfo ?? null);
   const [note, setNote] = useState(lead?.notes ?? parsed?.shortForm ?? '');
 
   const [wishModel, setWishModel] = useState(lead?.vehicle?.model ?? fields.model ?? '');
@@ -261,6 +279,60 @@ export default function DealerAiLeadFollowUp({
     setKundenhelferNotes(lead?.crm?.kundenhelfer?.notes ?? '');
     setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
   }, [lead?.crm?.kundenhelfer?.notes, lead?.crm?.kundenhelfer?.voiceMemos]);
+
+  useEffect(() => {
+    setCustomerAddress(addressFromLead(lead));
+    setDistanceInfo(lead?.crm?.distanceInfo ?? null);
+  }, [
+    lead?.id,
+    lead?.crm?.address,
+    lead?.crm?.customerAddress,
+    lead?.crm?.distanceInfo,
+    lead?.contact?.address,
+  ]);
+
+  const dealerLocation = useMemo(
+    () => getDealerLocation(lead?.dealerId),
+    [lead?.dealerId],
+  );
+
+  const addressLine = customerAddress?.formattedAddress ?? '';
+  const addressCacheKey = buildAddressCacheKey(customerAddress);
+
+  const distanceSummary = useMemo(() => {
+    const cached = getCachedDistanceInfo({
+      distanceInfo,
+      customerAddress,
+      dealerLocation,
+    });
+    return formatDistanceSummary(cached) ?? '';
+  }, [distanceInfo, customerAddress, dealerLocation, addressCacheKey]);
+
+  const routeHref = useMemo(
+    () => buildDealerToCustomerRouteUrl(customerAddress, dealerLocation),
+    [customerAddress, dealerLocation, addressCacheKey],
+  );
+
+  useEffect(() => {
+    if (!isAddressComplete(customerAddress)) return undefined;
+    if (!shouldRecalculateDistance({ distanceInfo, customerAddress, dealerLocation })) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    calculateCustomerDistance(customerAddress, dealerLocation).then((result) => {
+      if (cancelled || !result) return;
+      setDistanceInfo(result);
+      onSave?.(buildSavePayload({ distanceInfo: result }), {
+        silent: true,
+        addFollowupHistory: false,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addressCacheKey, dealerLocation.dealerId]);
 
   const history = useMemo(
     () => [...(lead?.history ?? [])].sort((a, b) => new Date(b.at) - new Date(a.at)),
@@ -496,17 +568,19 @@ export default function DealerAiLeadFollowUp({
     setFollowUpAt(computeFollowUpAt(chip.id));
   }
 
-  function buildSavePayload(extraCrm = {}) {
+  function buildSavePayload(extraCrm = {}, addressOverride = null) {
     const nextLabel = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label ?? nextStepLabel;
     const outcomeChip = CALL_OUTCOME_CHIPS.find((c) => c.id === outcomeId);
     const vehicleLabel = [fields.brand ?? 'Kia', wishModel, wishTrim].filter(Boolean).join(' ').trim();
+    const addressStorage = addressToStorageFields(addressOverride ?? customerAddress);
+    const nextDistanceInfo = extraCrm.distanceInfo ?? distanceInfo ?? null;
 
     return {
       contact: {
         name: name.trim() || 'Kunde (offen)',
         phone: phone.trim(),
         email: email.trim(),
-        address: address.trim(),
+        address: addressStorage.address,
       },
       notes: note.trim(),
       status: pipelineToLeadStatus(pipelineStatusId),
@@ -537,7 +611,9 @@ export default function DealerAiLeadFollowUp({
           notes: kundenhelferNotes.trim(),
           voiceMemos: kundenhelferMemos,
         },
-        address: address.trim(),
+        address: addressStorage.address,
+        customerAddress: addressStorage.customerAddress,
+        distanceInfo: nextDistanceInfo,
         lastOutcomeId: outcomeId ?? crm.lastOutcomeId,
         lastOutcomeLabel: outcomeChip?.label ?? crm.lastOutcomeLabel,
         ...extraCrm,
@@ -568,6 +644,27 @@ export default function DealerAiLeadFollowUp({
 
   function saveCustomerSheet() {
     save({ historyText: 'Kundendaten ergänzt', addFollowupHistory: false });
+    closeSheet();
+  }
+
+  async function saveAddressSheet() {
+    const normalized = normalizeAddressResult(customerAddress);
+    setCustomerAddress(normalized);
+
+    let nextDistance = distanceInfo;
+    if (shouldRecalculateDistance({
+      distanceInfo,
+      customerAddress: normalized,
+      dealerLocation,
+    })) {
+      nextDistance = await calculateCustomerDistance(normalized, dealerLocation);
+      setDistanceInfo(nextDistance);
+    }
+
+    onSave?.(buildSavePayload({ distanceInfo: nextDistance }, normalized), {
+      historyText: 'Adresse ergänzt',
+      addFollowupHistory: false,
+    });
     closeSheet();
   }
 
@@ -667,7 +764,9 @@ export default function DealerAiLeadFollowUp({
         customerName={name}
         phone={phone}
         email={email}
-        address={address}
+        address={addressLine}
+        distanceSummary={distanceSummary}
+        routeHref={routeHref}
         customerSince={lead?.createdAt}
         cleverScore={akteCleverScore}
         kundenhelferNotes={kundenhelferNotes}
@@ -677,6 +776,7 @@ export default function DealerAiLeadFollowUp({
         pipelineStatusLabel={pipelineStatusLabel}
         onBack={onDiscard}
         onEditCustomer={() => openSheet(SHEETS.customer)}
+        onEditAddress={() => openSheet(SHEETS.address)}
         telHref={telHref}
       />
 
@@ -861,13 +961,16 @@ export default function DealerAiLeadFollowUp({
             onChange={setEmail}
             placeholder="kunde@beispiel.de"
           />
-          <Field
-            label="Adresse"
-            id="lead-address"
-            value={address}
-            onChange={setAddress}
-            placeholder="Waldheimer Straße 12 · 73614 Schorndorf"
-          />
+          <button
+            type="button"
+            className="dai-btn dai-btn--ghost dai-btn--block"
+            onClick={() => {
+              closeSheet();
+              openSheet(SHEETS.address);
+            }}
+          >
+            {addressLine ? 'Adresse bearbeiten' : '+ Adresse hinzufügen'}
+          </button>
           <Field
             label="Notiz"
             id="lead-note"
@@ -897,6 +1000,21 @@ export default function DealerAiLeadFollowUp({
             </a>
           )}
         </div>
+      </LeadDetailPanel>
+
+      {/* ── Adresse ── */}
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.address}
+        onClose={closeSheet}
+        title="Adresse"
+        footer={(
+          <SheetFooter onCancel={closeSheet} onSave={saveAddressSheet} saving={isSaving} />
+        )}
+      >
+        <CustomerAddressSheet
+          address={customerAddress}
+          onChange={setCustomerAddress}
+        />
       </LeadDetailPanel>
 
       {/* ── Wunsch ── */}

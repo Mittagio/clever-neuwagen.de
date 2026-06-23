@@ -7,6 +7,7 @@ import {
   parseBatteryPowerFromText,
   parseBudgetMaxFromText,
   parseColorPreferenceFromText,
+  parseCustomerAddressFromText,
   parseCustomerEmail,
   parseCustomerName,
   parseCustomerPhone,
@@ -57,11 +58,22 @@ function parseCurrentVehicle(text = '') {
   const match = String(text).match(
     /(?:fährt|faehrt)\s+aktuell\s+(?:einen?\s+)?(?:(\d+)\s+jahre?\s+alten?\s+)?((?:vw\s+)?golf|[a-zäöüß]+\s+[a-zäöüß0-9]+)/i,
   );
-  if (!match) return { label: null, ageYears: null };
-  const ageYears = match[1] ? Number(match[1]) : null;
-  let label = match[2]?.trim() ?? null;
-  if (label && !/^vw/i.test(label) && /golf/i.test(label)) label = `VW ${label}`;
-  return { label, ageYears };
+  if (match) {
+    const ageYears = match[1] ? Number(match[1]) : null;
+    let label = match[2]?.trim() ?? null;
+    if (label && !/^vw/i.test(label) && /golf/i.test(label)) label = `VW ${label}`;
+    return { label, ageYears };
+  }
+
+  for (const line of splitLines(text)) {
+    const brandLine = line.match(/^(audi|bmw|mercedes|vw|volkswagen|opel|ford|skoda|seat|porsche|toyota|hyundai)\s+([a-z0-9][a-z0-9\s-]*)/i);
+    if (brandLine && !/ev\d|leasing|kia/i.test(line)) {
+      const label = `${brandLine[1]} ${brandLine[2]}`.trim().replace(/\s+/g, ' ');
+      return { label, ageYears: null };
+    }
+  }
+
+  return { label: null, ageYears: null };
 }
 
 function uniquePush(list, value) {
@@ -144,6 +156,22 @@ export function extractStructuredHelperNotes(text = '', fields = {}) {
       uniquePush(notes, line);
       continue;
     }
+    if (/^ledig$/i.test(line)) {
+      uniquePush(notes, 'ledig');
+      continue;
+    }
+    if (/^keine\s+kinder$/i.test(line)) {
+      uniquePush(notes, 'keine Kinder');
+      continue;
+    }
+    if (/corporate\s*benefits?/i.test(line)) {
+      uniquePush(notes, 'Corporate Benefits');
+      continue;
+    }
+    if (/^(audi|bmw|mercedes|vw|volkswagen|opel|ford|skoda|seat|porsche)\s+[a-z0-9][a-z0-9\s-]*$/i.test(line)) {
+      uniquePush(notes, `fährt aktuell ${line}`);
+      continue;
+    }
   }
 
   return notes;
@@ -188,6 +216,13 @@ function buildRecommendation(parsed, vehicleWish = {}, text = '') {
     };
   }
 
+  if (!primary && modelHint === 'ev3') {
+    primary = {
+      modelKey: 'ev3',
+      name: vehicleWish.trimLabel ? `Kia EV3 ${vehicleWish.trimLabel}` : 'Kia EV3',
+    };
+  }
+
   if (!primary && wantsHybrid) {
     primary = {
       modelKey: 'sportage',
@@ -217,9 +252,14 @@ function buildRecommendation(parsed, vehicleWish = {}, text = '') {
     alternatives.push({ modelKey: 'sorento', modelLabel: 'Kia Sorento Plug-in-Hybrid' });
   }
 
+  let modelLabel = primary.name ?? 'Kia Sportage Hybrid / Plug-in-Hybrid';
+  if (vehicleWish.trimLabel && !modelLabel.toLowerCase().includes(String(vehicleWish.trimLabel).toLowerCase())) {
+    modelLabel = `${modelLabel} ${vehicleWish.trimLabel}`;
+  }
+
   return {
     modelKey: primary.modelKey ?? primary.id ?? null,
-    modelLabel: primary.name ?? 'Kia Sportage Hybrid / Plug-in-Hybrid',
+    modelLabel,
     reasonBullets,
     alternatives,
     status: 'prüfen',
@@ -251,12 +291,13 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
   const lastName = structuredName?.lastName ?? splitCustomerName(fullName).lastName;
   const phone = parseCustomerPhone(text) ?? fields.customerPhone ?? null;
   const email = parseCustomerEmail(text) ?? fields.customerEmail ?? null;
+  const address = parseCustomerAddressFromText(text)
+    ?? (fields.customerAddress ? { formatted: fields.customerAddress } : null);
 
   const modelHint = parseModelHintFromText(text);
   const wishDate = parseWishDateFromText(text);
   const budget = parseBudgetMaxFromText(text)
-    || (Number(fields.desiredPrice) > 0 ? Number(fields.desiredPrice) : null)
-    || (Number(fields.desiredRate) > 0 ? Number(fields.desiredRate) : null);
+    || (Number(fields.desiredPrice) > 0 ? Number(fields.desiredPrice) : null);
   const batteryPower = parseBatteryPowerFromText(text) ?? fields.batteryKwh ?? null;
   const batteryLabel = batteryPower != null ? `${batteryPower} kW Batterie` : fields.batteryLabel ?? null;
   const usedVehicle = parseUsedVehicleHint(text) || Boolean(modelHint?.used);
@@ -281,7 +322,11 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
     familyNeeds: Boolean(hasKids || /familienauto|familie/i.test(text)),
     modelHint: modelHint?.model ?? fields.model ?? null,
     modelKey: modelHint?.modelKey ?? fields.modelId ?? null,
-    modelLabel: modelHint ? `Kia ${modelHint.model}` : (fields.model ? `Kia ${fields.model}` : null),
+    modelLabel: modelHint
+      ? `Kia ${modelHint.model}${fields.trimLabel ? ` ${fields.trimLabel}` : ''}`
+      : (fields.model ? `Kia ${fields.model}${fields.trimLabel ? ` ${fields.trimLabel}` : ''}` : null),
+    trimLabel: fields.trimLabel ?? null,
+    trimId: fields.trimId ?? null,
     vehicleType: usedVehicle ? 'Gebrauchtwagen' : null,
     battery: batteryPower,
     batteryLabel,
@@ -292,7 +337,13 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
   };
   vehicleWish.labels = buildVehicleWishLabels(vehicleWish);
 
-  const paymentType = fields.paymentType ?? (budget ? 'cash' : 'unknown');
+  const paymentType = fields.paymentType && fields.paymentType !== 'unknown'
+    ? fields.paymentType
+    : (budget ? 'cash' : 'unknown');
+  const deliveryLabel = fields.desiredDeliveryDate
+    ?? wishDate?.label
+    ?? fields.deliveryTime
+    ?? null;
   const paymentWish = {
     paymentType,
     paymentLabel: PAYMENT_TYPE_LABELS[paymentType] ?? 'noch offen',
@@ -300,7 +351,8 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
     termMonths: fields.termMonths ?? null,
     mileagePerYear: fields.mileagePerYear ?? null,
     downPayment: fields.downPayment ?? null,
-    desiredDeliveryDate: wishDate?.label ?? fields.desiredDeliveryDate ?? fields.deliveryTime ?? null,
+    desiredDeliveryDate: deliveryLabel,
+    specialCondition: /corporate\s*benefits?/i.test(text) ? 'corporate_benefits' : null,
   };
 
   const narrativeNotes = extractCustomerHelperNotes(text, fields);
@@ -322,6 +374,8 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
       phone,
       email,
       displayName: fullName,
+      address,
+      addressFormatted: address?.formatted ?? fields.customerAddress ?? null,
     },
     customerHelperNotes,
     vehicleWish,
@@ -398,6 +452,11 @@ export function applyRecognitionInsightToParsed(parsed, insight) {
     customerName: displayName || parsed.fields?.customerName || null,
     customerPhone: insight.customer?.phone ?? parsed.fields?.customerPhone ?? null,
     customerEmail: insight.customer?.email ?? parsed.fields?.customerEmail ?? null,
+    customerAddress: insight.customer?.addressFormatted ?? parsed.fields?.customerAddress ?? null,
+    addressStreet: insight.customer?.address?.street ?? parsed.fields?.addressStreet ?? null,
+    addressHouseNumber: insight.customer?.address?.houseNumber ?? parsed.fields?.addressHouseNumber ?? null,
+    addressPostalCode: insight.customer?.address?.postalCode ?? parsed.fields?.addressPostalCode ?? null,
+    addressCity: insight.customer?.address?.city ?? parsed.fields?.addressCity ?? null,
     bodyType: insight.vehicleWish?.bodyType ?? parsed.fields?.bodyType,
     colorLabel: insight.vehicleWish?.colorPreference ?? parsed.fields?.colorLabel,
     paymentType: insight.paymentWish?.paymentType ?? parsed.fields?.paymentType,
@@ -405,7 +464,7 @@ export function applyRecognitionInsightToParsed(parsed, insight) {
     mileagePerYear: insight.paymentWish?.mileagePerYear ?? parsed.fields?.mileagePerYear,
     downPayment: insight.paymentWish?.downPayment ?? parsed.fields?.downPayment,
     desiredRate: insight.paymentWish?.paymentType !== 'cash'
-      ? insight.paymentWish?.budget ?? parsed.fields?.desiredRate
+      ? parsed.fields?.desiredRate ?? null
       : parsed.fields?.desiredRate,
     desiredPrice: insight.paymentWish?.paymentType === 'cash'
       ? insight.paymentWish?.budget ?? parsed.fields?.desiredPrice
@@ -413,6 +472,8 @@ export function applyRecognitionInsightToParsed(parsed, insight) {
     desiredDeliveryDate: insight.paymentWish?.desiredDeliveryDate
       ?? insight.vehicleWish?.desiredDateLabel
       ?? parsed.fields?.desiredDeliveryDate,
+    trimLabel: parsed.fields?.trimLabel ?? insight.vehicleWish?.trimLabel ?? null,
+    trimId: parsed.fields?.trimId ?? insight.vehicleWish?.trimId ?? null,
     rawText: insight.sourceText ?? parsed.fields?.rawText,
   };
 
@@ -421,7 +482,8 @@ export function applyRecognitionInsightToParsed(parsed, insight) {
     const modelName = modelKey === 'sportage' ? 'Sportage'
       : modelKey === 'sorento' ? 'Sorento'
         : modelKey === 'esoul' ? 'e-Soul'
-          : insight.vehicleWish?.modelHint ?? modelKey;
+          : modelKey === 'ev3' ? 'EV3'
+            : insight.vehicleWish?.modelHint ?? modelKey;
     fieldPatch.modelId = modelKey;
     fieldPatch.model = modelName;
     fieldPatch.brand = 'Kia';
