@@ -63,6 +63,22 @@
   color: var(--cn-text);
 }
 
+.cn-flow-header__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cn-flow-header__aside {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--cn-muted);
+  white-space: nowrap;
+}
+
 .cn-flow-header__subtitle {
   margin: 0.3rem 0 0;
   font-size: 0.84rem;

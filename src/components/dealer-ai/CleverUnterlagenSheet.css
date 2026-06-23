@@ -57,6 +57,53 @@
   line-height: 1.45;
 }
 
+.clever-unterlagen-offer-pick {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.clever-unterlagen-offer-pick__title {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.clever-unterlagen-offer-pick__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clever-unterlagen-offer-pick__option {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.clever-unterlagen-offer-pick__option--general {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.clever-unterlagen-offer-pick__option--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .clever-unterlagen-sheet__list {
   list-style: none;
   margin: 0;

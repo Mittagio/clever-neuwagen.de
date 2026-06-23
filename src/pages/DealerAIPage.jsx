@@ -1164,12 +1164,9 @@ export default function DealerAIPage() {
             referenceCode={activeLead?.referenceCode ?? activeLead?.offerCode ?? null}
             deliveryNote={activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? ''}
             offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
-            history={activeLead?.history ?? []}
             lead={activeLead}
-            telHref={phoneTelHref(activeLead?.contact?.phone ?? '')}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
-            onSaveUnterlagen={handleUnterlagenSave}
             onUploadPdf={handleOfferUploadPdf}
             onCreateLink={handleOfferCreateLink}
             onDeletePdf={handleOfferDeletePdf}

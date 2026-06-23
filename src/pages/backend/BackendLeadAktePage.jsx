@@ -310,12 +310,9 @@ export default function BackendLeadAktePage() {
             referenceCode={lead?.referenceCode ?? lead?.offerCode ?? null}
             deliveryNote={lead?.deliveryTime ?? lead?.wish?.desiredDeliveryDate ?? ''}
             offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
-            history={lead?.history ?? []}
             lead={lead}
-            telHref={phoneTelHref(lead?.contact?.phone ?? '')}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
-            onSaveUnterlagen={handleUnterlagenSave}
             onUploadPdf={handleOfferUploadPdf}
             onCreateLink={handleOfferCreateLink}
             onDeletePdf={handleOfferDeletePdf}

@@ -5,6 +5,7 @@ export function OfferFlowLayout({
   onBack,
   title,
   subtitle,
+  titleAside,
   children,
   className = '',
 }) {
@@ -16,7 +17,14 @@ export function OfferFlowLayout({
             {backLabel}
           </button>
         )}
-        {title && <h1 className="cn-flow-header__title">{title}</h1>}
+        {title && (
+          <div className="cn-flow-header__title-row">
+            <h1 className="cn-flow-header__title">{title}</h1>
+            {titleAside && (
+              <span className="cn-flow-header__aside">{titleAside}</span>
+            )}
+          </div>
+        )}
         {subtitle && <p className="cn-flow-header__subtitle">{subtitle}</p>}
       </header>
       {children}

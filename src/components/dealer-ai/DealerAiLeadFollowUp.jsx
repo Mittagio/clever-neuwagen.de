@@ -1382,6 +1382,7 @@ export default function DealerAiLeadFollowUp({
           email={email}
           vehicleTitle={vehicleTitleForUnterlagen}
           vehicleConditions={vehicleConditionsForUnterlagen}
+          vehicleCards={vehicleCards}
           isGewerbe={lead?.wish?.customerGroup === 'gewerbe' || lead?.crm?.customerGroup === 'gewerbe'}
           embedded
           onClose={closeSheet}

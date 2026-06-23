@@ -1,4 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  formatVehicleCardTitle,
+  formatVehicleCardConditions,
+} from '../../services/customerAkte.js';
 import {
   UNTERLAGEN_STATUS,
   UNTERLAGEN_HISTORY,
@@ -40,6 +44,7 @@ export default function CleverUnterlagenSheet({
   email = '',
   vehicleTitle = '',
   vehicleConditions = '',
+  vehicleCards = [],
   isGewerbe = false,
   embedded = false,
   onClose,
@@ -51,8 +56,24 @@ export default function CleverUnterlagenSheet({
   const [activeSlot, setActiveSlot] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState('');
+  const [offerScope, setOfferScope] = useState(() => {
+    if (vehicleCards.length === 1) return vehicleCards[0].id;
+    if (vehicleCards.length > 1) return null;
+    return 'general';
+  });
 
-  const pt = paymentType ?? lead?.paymentType ?? 'leasing';
+  const scopedCard = useMemo(() => {
+    if (!offerScope || offerScope === 'general') return null;
+    return vehicleCards.find((card) => card.id === offerScope) ?? null;
+  }, [offerScope, vehicleCards]);
+
+  const pt = scopedCard?.paymentType ?? paymentType ?? lead?.paymentType ?? 'leasing';
+  const effectiveVehicleTitle = scopedCard
+    ? formatVehicleCardTitle(scopedCard)
+    : vehicleTitle;
+  const effectiveVehicleConditions = scopedCard
+    ? formatVehicleCardConditions(scopedCard)
+    : vehicleConditions;
   const summary = computeUnterlagenSummary(lead, pt);
   const unterlagen = summary.data;
   const showSelbstauskunft = needsSelbstauskunft(pt);
@@ -94,8 +115,8 @@ export default function CleverUnterlagenSheet({
       paymentType: pt,
       customerName,
       email,
-      vehicleTitle,
-      vehicleConditions,
+      vehicleTitle: effectiveVehicleTitle,
+      vehicleConditions: effectiveVehicleConditions,
       isGewerbe,
     });
     persist(next, SELBSTAUSKUNFT_HISTORY.link_created, 'selbstauskunft_link');
@@ -191,6 +212,33 @@ export default function CleverUnterlagenSheet({
           <p className="clever-unterlagen-sheet__sub">{summary.headline}</p>
           <p className="clever-unterlagen-sheet__hint">{getUnterlagenSubline(pt)}</p>
         </div>
+      )}
+
+      {vehicleCards.length > 1 && (
+        <section className="clever-unterlagen-offer-pick" aria-label="Angebot wählen">
+          <h3 className="clever-unterlagen-offer-pick__title">
+            Für welches Angebot sollen Unterlagen angefordert werden?
+          </h3>
+          <div className="clever-unterlagen-offer-pick__options">
+            {vehicleCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className={`clever-unterlagen-offer-pick__option${offerScope === card.id ? ' clever-unterlagen-offer-pick__option--active' : ''}`}
+                onClick={() => setOfferScope(card.id)}
+              >
+                {formatVehicleCardTitle(card)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`clever-unterlagen-offer-pick__option clever-unterlagen-offer-pick__option--general${offerScope === 'general' ? ' clever-unterlagen-offer-pick__option--active' : ''}`}
+              onClick={() => setOfferScope('general')}
+            >
+              allgemein / noch offen
+            </button>
+          </div>
+        </section>
       )}
 
       <InternalTestCustomerShareWarning />
