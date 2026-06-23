@@ -14,70 +14,58 @@
 .cust-akte.dai-lead-followup {
   max-width: 430px;
   margin: 0 auto;
-  padding: 0 20px calc(28px + env(safe-area-inset-bottom, 0px));
-  gap: 28px;
-}
-
-/* Toolbar */
-.cust-akte-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 -4px 8px;
-  padding: 4px 0 8px;
-}
-
-.cust-akte-toolbar__back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 12px;
-  background: transparent;
-  font-size: 1.25rem;
-  color: var(--cust-text);
-  cursor: pointer;
-}
-
-.cust-akte-toolbar__actions {
-  display: flex;
-  gap: 4px;
-}
-
-.cust-akte-toolbar__action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--cust-muted);
-  cursor: pointer;
-}
-
-.cust-akte-toolbar__icon {
-  font-size: 0.875rem;
-  line-height: 1;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  gap: 14px;
 }
 
 /* Profil */
 .cust-akte-profile {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-bottom: 8px;
+  gap: 8px;
+  padding-bottom: 0;
+}
+
+.cust-akte-profile__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin: 0 -4px;
+}
+
+.cust-akte-profile__back,
+.cust-akte-profile__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 1.1rem;
+  color: var(--cust-muted);
+  cursor: pointer;
+}
+
+.cust-akte-profile__edit {
+  margin-left: auto;
+  font-size: 0.95rem;
 }
 
 .cust-akte-profile__since {
   margin: 2px 0 0;
   font-size: 0.875rem;
   color: var(--cust-muted);
+}
+
+.cust-akte-profile__meta-line {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cust-muted);
+  line-height: 1.35;
 }
 
 .cust-akte-profile__score {
@@ -136,6 +124,15 @@
   min-width: 0;
 }
 
+.cust-akte-profile__name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--cust-text);
+}
+
 .cust-akte-profile__name-btn {
   display: block;
   width: 100%;
@@ -145,15 +142,6 @@
   background: none;
   text-align: left;
   cursor: pointer;
-}
-
-.cust-akte-profile__name {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  color: var(--cust-text);
 }
 
 .cust-akte-profile__star {
@@ -213,17 +201,98 @@
 .cust-akte-profile__contacts {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+  margin-top: 6px;
 }
 
 .cust-akte-profile__contact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin: 0;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: #475569;
+  line-height: 1.4;
+  color: var(--cust-text);
+}
+
+.cust-akte-profile__contact--link {
+  text-decoration: none;
+  color: var(--cust-blue);
+  font-weight: 600;
+}
+
+.cust-akte-profile__contact--link:hover {
+  text-decoration: underline;
+}
+
+.cust-akte-profile__contact--muted {
+  color: var(--cust-muted);
+  font-size: 0.8125rem;
+}
+
+.cust-akte-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding: 2px 0 4px;
+}
+
+.cust-akte-actions__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 58px;
+  padding: 6px 2px 4px;
+  border: none;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-decoration: none;
+  font: inherit;
+  color: var(--cust-text);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.cust-akte-actions__item:hover:not(.cust-akte-actions__item--disabled) {
+  background: #f1f5f9;
+}
+
+.cust-akte-actions__item--disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cust-akte-actions__icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.cust-akte-actions__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.cust-akte-actions__label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--cust-muted);
+}
+
+.cust-akte-actions__badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--cust-blue);
+  color: #fff;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
 }
 
 .cust-akte-profile__contact-icon {
@@ -470,6 +539,44 @@
 }
 
 /* Nächster guter Schritt */
+.cust-akte-kh--profile {
+  margin-top: -2px;
+  padding: 0;
+}
+
+.cust-akte-nbs--compact {
+  margin-top: 0;
+}
+
+.cust-akte-nbs--compact .cust-akte-nbs__label {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+}
+
+.cust-akte-nbs--compact .cust-akte-nbs__card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  box-shadow: none;
+  border: 1px solid var(--cust-border);
+  background: #fafbfc;
+}
+
+.cust-akte-nbs--compact .cust-akte-nbs__headline {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.cust-akte-nbs--compact .cust-akte-nbs__text {
+  font-size: 0.8125rem;
+  margin-bottom: 10px;
+}
+
+.cust-akte-nbs--compact .cust-akte-nbs__cta {
+  min-height: 40px;
+  font-size: 0.875rem;
+  border-radius: 10px;
+}
+
 .cust-akte-nbs--hero {
   display: flex;
   flex-direction: column;
@@ -1292,6 +1399,17 @@
 
 .cust-akte-dealer-nav {
   display: none !important;
+}
+
+@media (max-width: 360px) {
+  .cust-akte-actions__label {
+    font-size: 0.52rem;
+  }
+
+  .cust-akte-actions__item {
+    min-height: 52px;
+    padding: 5px 1px 3px;
+  }
 }
 
 @media (min-width: 720px) {

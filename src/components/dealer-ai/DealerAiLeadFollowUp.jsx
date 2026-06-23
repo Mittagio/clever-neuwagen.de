@@ -8,6 +8,7 @@ import {
   FOLLOW_UP_CHIPS,
   formatHistoryWhen,
   getDefaultFollowUpChipId,
+  getLeadStatusBadgeLabel,
   OFFER_STATUS_LABELS,
   phoneTelHref,
   pipelineToLeadStatus,
@@ -39,7 +40,8 @@ import {
   CLEVER_ACTION_IDS,
   formatCleverActionFollowedHistoryText,
 } from '../../services/crm/cleverActionEngine.js';
-import { buildUnterlagenHintText } from '../../services/cleverUnterlagen.js';
+import { countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
+import { getHistoryEntryCount } from '../../services/customerAkteHistory.js';
 import {
   buildOfferMailtoHref,
   buildOfferShareMessage,
@@ -49,13 +51,11 @@ import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
-import CustomerAkteToolbar from './CustomerAkteToolbar.jsx';
-import CustomerAkteCommunication from './CustomerAkteCommunication.jsx';
-import CustomerAkteActivities from './CustomerAkteActivities.jsx';
+import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
+import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
-import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
@@ -341,11 +341,12 @@ export default function DealerAiLeadFollowUp({
   );
 
   const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
-  const documentsHint = useMemo(() => {
-    if (!lead) return null;
-    if (cleverRecommendation?.actionId === CLEVER_ACTION_IDS.DOCUMENTS_MISSING) return null;
-    return buildUnterlagenHintText(lead, unterlagenPaymentType);
-  }, [lead, unterlagenPaymentType, cleverRecommendation?.actionId]);
+  const unterlagenOpenCount = useMemo(
+    () => countUnterlagenOpenTasks(lead, unterlagenPaymentType),
+    [lead, unterlagenPaymentType],
+  );
+  const activitiesCount = useMemo(() => getHistoryEntryCount(history), [history]);
+  const pipelineStatusLabel = getLeadStatusBadgeLabel(pipelineStatusId);
 
   const lastLoggedCleverActionRef = useRef(null);
 
@@ -366,14 +367,6 @@ export default function DealerAiLeadFollowUp({
     kundenhelferNotes,
     wishPaymentType,
   }), [lead, name, phone, email, vehicleCards, kundenhelferNotes, wishPaymentType]);
-
-  const unterlagenBlock = (
-    <CustomerAkteUnterlagen
-      lead={lead}
-      paymentType={wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType}
-      onOpen={() => openSheet(SHEETS.unterlagen)}
-    />
-  );
 
   const primaryVehicleCard = vehicleCards[0];
   const cleverOfferShareMessage = useMemo(() => {
@@ -655,37 +648,45 @@ export default function DealerAiLeadFollowUp({
     <section className="dai-lead-followup cust-akte" aria-labelledby="dai-lead-followup-title">
       <h2 id="dai-lead-followup-title" className="visually-hidden">Kundenakte</h2>
 
-      <CustomerAkteToolbar
-        onBack={onDiscard}
-        onEdit={() => openSheet(SHEETS.customer)}
-        onMore={() => openSheet(SHEETS.more)}
-      />
-
       <CustomerAkteHeader
         customerName={name}
         phone={phone}
         email={email}
+        address={lead?.crm?.address ?? lead?.contact?.address ?? ''}
         customerSince={lead?.createdAt}
         cleverScore={akteCleverScore}
-        vehicleLine={vehicleLine}
-        referenceCode={referenceCode}
         kundenhelferNotes={kundenhelferNotes}
         vehicleCardCount={vehicleCards.length}
         offersCount={resolvedOffers.length}
         hasNextStep={Boolean(nextStepId)}
-        telHref={telHref}
+        pipelineStatusLabel={pipelineStatusLabel}
+        onBack={onDiscard}
         onEditCustomer={() => openSheet(SHEETS.customer)}
+        telHref={telHref}
+      />
+
+      <CustomerAkteActionBar
+        telHref={telHref}
+        whatsappHref={cleverWhatsappHref}
+        mailHref={cleverMailHref}
+        email={email}
         onCleverAntwort={() => openCleverAntworten()}
-        onOpenKundenhelfer={() => openSheet(SHEETS.kundenhelfer)}
+        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
+        onActivities={() => openSheet(SHEETS.history)}
+        unterlagenBadge={unterlagenOpenCount}
+        activitiesBadge={activitiesCount}
+      />
+
+      <CustomerAkteKundenhelfer
+        notes={kundenhelferNotes}
+        onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
+        variant="profile"
       />
 
       <CustomerAkteNextStep
         hint={nextBestStep}
         recommendation={nextBestStep}
         telHref={telHref}
-        whatsappHref={cleverWhatsappHref}
-        mailHref={cleverMailHref}
-        documentsHint={documentsHint}
         onAction={handleCleverAction}
         onFallback={() => openSheet(SHEETS.customer)}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
@@ -704,20 +705,6 @@ export default function DealerAiLeadFollowUp({
           <CustomerAkteEquipmentWishes wishes={lead.equipmentWishes} />
         </div>
       )}
-
-      <div className="cust-akte-tail">
-        <CustomerAkteCommunication
-          history={history}
-          onOpenHistory={() => openSheet(SHEETS.history)}
-        />
-
-        {unterlagenBlock}
-
-        <CustomerAkteActivities
-          history={history}
-          onOpenHistory={() => openSheet(SHEETS.history)}
-        />
-      </div>
 
       {/* ── Mehr ── */}
       <LeadDetailPanel
