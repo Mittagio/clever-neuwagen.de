@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   LEXICON_EXAMPLE_CHIPS,
   searchCleverLexicon,
+  buildLexiconAkteChip,
 } from '../../services/lexicon/cleverLexiconSearchService.js';
 import {
   LEARNING_SOURCE_AREAS,
@@ -15,6 +16,7 @@ export default function CleverLexikon({
   subline = 'Fahrzeugwissen in Sekunden. Technische Daten, Ausstattung und Paketverfügbarkeit – aus Konfigurator- und Importdaten.',
   placeholder = 'z. B. EV4 Wärmepumpe, Sportage Anhängelast, EV3 V2L …',
   showChips = true,
+  onAdoptToAkte = null,
 }) {
   const [query, setQuery] = useState('');
   const [searchState, setSearchState] = useState(null);
@@ -39,6 +41,12 @@ export default function CleverLexikon({
 
   const result = searchState?.result;
   const showLearning = searchState && lexiconNeedsLearningFeedback(searchState);
+  const adoptChip = searchState?.ok && onAdoptToAkte ? buildLexiconAkteChip(searchState) : null;
+
+  function handleAdopt() {
+    if (!onAdoptToAkte || !searchState) return;
+    onAdoptToAkte(searchState);
+  }
 
   return (
     <section className={`backend-home__lexikon${className ? ` ${className}` : ''}`} aria-labelledby="lexikon-heading">
@@ -207,6 +215,16 @@ export default function CleverLexikon({
                 detectedIntent={result.intentType ?? null}
                 detectedFeatureId={result.featureId ?? null}
               />
+            )}
+
+            {adoptChip && (
+              <button
+                type="button"
+                className="backend-home__lexikon-adopt"
+                onClick={handleAdopt}
+              >
+                In Kundenakte übernehmen
+              </button>
             )}
           </article>
         )}

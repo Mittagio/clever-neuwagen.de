@@ -223,6 +223,13 @@ export default function EquipmentFeatureSearch({
               </button>
             ))}
           </div>
+          <CleverLearningRequestCard
+            query={searchState.query}
+            modelKey={modelKey}
+            modelLabel={`${brand} ${model}`}
+            sourceArea={LEARNING_SOURCE_AREAS.CUSTOMER_EQUIPMENT_SEARCH}
+            pageContext="Ausstattungssuche"
+          />
         </div>
       )}
 

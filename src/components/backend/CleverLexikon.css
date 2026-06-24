@@ -73,6 +73,28 @@
   cursor: pointer;
 }
 
+.backend-home__lexikon-adopt {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.backend-home__lexikon-adopt:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .backend-home__lexikon-chips {
   display: flex;
   gap: 8px;

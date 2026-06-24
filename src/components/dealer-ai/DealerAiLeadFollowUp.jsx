@@ -80,6 +80,9 @@ import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
+import CleverLexikon from '../backend/CleverLexikon.jsx';
+import { addCustomKundenhelferChip } from '../../services/cleverKundenhelfer.js';
+import { buildLexiconAkteChip } from '../../services/lexicon/cleverLexiconSearchService.js';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
@@ -100,6 +103,7 @@ const SHEETS = {
   vehicle: 'vehicle',
   cleverAuswahl: 'clever_auswahl',
   more: 'more',
+  lexikon: 'lexikon',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -274,6 +278,9 @@ export default function DealerAiLeadFollowUp({
   );
   const [wishTermMonths, setWishTermMonths] = useState(lead?.wish?.termMonths ?? fields.termMonths ?? '');
   const [wishMileage, setWishMileage] = useState(lead?.wish?.mileagePerYear ?? fields.mileagePerYear ?? '');
+  const [wishDownPayment, setWishDownPayment] = useState(
+    lead?.wish?.downPayment ?? fields.downPayment ?? '',
+  );
   const [wishDelivery, setWishDelivery] = useState(
     lead?.deliveryTime ?? fields.desiredDeliveryDate ?? fields.deliveryTime ?? '',
   );
@@ -396,9 +403,27 @@ export default function DealerAiLeadFollowUp({
     mileagePerYear: wishSummaryFields.mileagePerYear,
     desiredRate: wishSummaryFields.desiredRate,
     desiredPrice: wishSummaryFields.desiredPrice,
-    downPayment: lead?.wish?.downPayment ?? fields.downPayment ?? null,
+    downPayment: lead?.wish?.downPayment ?? fields.downPayment ?? wishDownPayment ?? null,
     delivery: wishDelivery,
-  }), [wishPaymentType, wishSummaryFields, lead?.wish?.downPayment, fields.downPayment, wishDelivery]);
+  }), [wishPaymentType, wishSummaryFields, lead?.wish?.downPayment, fields.downPayment, wishDownPayment, wishDelivery]);
+
+  const wishEditValues = useMemo(() => ({
+    paymentType: wishPaymentType,
+    termMonths: wishTermMonths,
+    mileagePerYear: wishMileage,
+    downPayment: wishDownPayment,
+    desiredRate: wishDesiredRate,
+    desiredPrice: wishDesiredPrice,
+    delivery: wishDelivery,
+  }), [
+    wishPaymentType,
+    wishTermMonths,
+    wishMileage,
+    wishDownPayment,
+    wishDesiredRate,
+    wishDesiredPrice,
+    wishDelivery,
+  ]);
 
   const headSubline = buildSalesDoneVehicleLine({
     brand: fields.brand ?? 'Kia',
@@ -657,6 +682,7 @@ export default function DealerAiLeadFollowUp({
         termMonths: wishTermMonths ? Number(wishTermMonths) : null,
         mileagePerYear: wishMileage ? Number(wishMileage) : null,
         desiredPrice: wishDesiredPrice ? Number(wishDesiredPrice) : null,
+        downPayment: wishDownPayment ? Number(wishDownPayment) : null,
         equipment: wishEquipment.trim(),
       },
       crm: {
@@ -732,6 +758,53 @@ export default function DealerAiLeadFollowUp({
   function saveWishSheet() {
     save({ historyText: 'Kundenwunsch festgehalten', addFollowupHistory: false });
     closeSheet();
+  }
+
+  function saveWishInline(patch) {
+    const pt = patch.paymentType ?? wishPaymentType;
+    setWishPaymentType(pt);
+    if (patch.termMonths != null) setWishTermMonths(String(patch.termMonths));
+    if (patch.mileagePerYear != null) setWishMileage(String(patch.mileagePerYear));
+    if (patch.downPayment != null) setWishDownPayment(String(patch.downPayment));
+    if (patch.desiredRate != null) setWishDesiredRate(String(patch.desiredRate));
+    if (patch.desiredPrice != null) setWishDesiredPrice(String(patch.desiredPrice));
+    if (patch.delivery != null) setWishDelivery(patch.delivery);
+
+    const payload = buildSavePayload();
+    onSave?.({
+      ...payload,
+      paymentType: pt,
+      desiredRate: patch.desiredRate ? Number(patch.desiredRate) : null,
+      deliveryTime: patch.delivery ?? payload.deliveryTime,
+      wish: {
+        ...payload.wish,
+        termMonths: patch.termMonths ? Number(patch.termMonths) : null,
+        mileagePerYear: patch.mileagePerYear ? Number(patch.mileagePerYear) : null,
+        desiredPrice: patch.desiredPrice ? Number(patch.desiredPrice) : null,
+        downPayment: patch.downPayment ? Number(patch.downPayment) : null,
+      },
+    }, {
+      historyText: 'Wunschkonditionen aktualisiert',
+      addFollowupHistory: false,
+    });
+  }
+
+  function handleAdoptLexiconChip(searchState) {
+    const chip = buildLexiconAkteChip(searchState);
+    if (!chip) return;
+    const nextNotes = addCustomKundenhelferChip(kundenhelferNotes, chip);
+    setKundenhelferNotes(nextNotes);
+    onSave?.(buildSavePayload({
+      kundenhelfer: {
+        notes: nextNotes.trim(),
+        voiceMemos: kundenhelferMemos,
+      },
+    }), {
+      historyText: `Lexikon übernommen: ${chip}`,
+      addFollowupHistory: false,
+    });
+    setToast('In Kundenakte übernommen');
+    setTimeout(() => setToast(''), 2800);
   }
 
   function saveNextSheet() {
@@ -871,7 +944,11 @@ export default function DealerAiLeadFollowUp({
 
       <CustomerAkteWishConditions
         chips={wishConditionChips}
-        onOpenWish={() => openSheet(SHEETS.wish)}
+        values={wishEditValues}
+        onSave={saveWishInline}
+        paymentOptions={DEALER_AI_PAYMENT_OPTIONS}
+        deliveryOptions={DEALER_AI_DELIVERY_DATE_OPTIONS}
+        getBudgetFieldLabel={getBudgetFieldLabel}
       />
 
       <CustomerAkteNextStep
@@ -885,6 +962,7 @@ export default function DealerAiLeadFollowUp({
 
       <CustomerAkteBoard
         items={boardItems}
+        lead={lead}
         animateNew={showCardAnimation && boardItems.length > 0}
         onCardClick={openVehicleCard}
         onCardMenu={openVehicleCard}
@@ -910,6 +988,9 @@ export default function DealerAiLeadFollowUp({
         )}
       >
         <div className="cust-akte-more__actions">
+          <button type="button" className="cust-akte-more__btn" onClick={() => { closeSheet(); openSheet(SHEETS.lexikon); }}>
+            Clever-Lexikon
+          </button>
           <button type="button" className="cust-akte-more__btn" onClick={() => { closeSheet(); openSheet(SHEETS.wish); }}>
             Wunsch bearbeiten
           </button>
@@ -1160,6 +1241,15 @@ export default function DealerAiLeadFollowUp({
             value={wishMileage}
             onChange={setWishMileage}
             placeholder="15000 / Jahr"
+          />
+          <Field
+            label="Anzahlung"
+            id="lead-wish-down"
+            type="number"
+            inputMode="numeric"
+            value={wishDownPayment}
+            onChange={setWishDownPayment}
+            placeholder="2000"
           />
           <label className="dai-lead-field" htmlFor="lead-wish-delivery">
             <span className="dai-lead-field__label">Übergabe</span>
@@ -1439,6 +1529,19 @@ export default function DealerAiLeadFollowUp({
         onSave={saveKundenhelferSheet}
         isSaving={isSaving}
       />
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.lexikon}
+        onClose={closeSheet}
+        title="Clever-Lexikon"
+      >
+        <CleverLexikon
+          className="cust-akte-lexikon"
+          subline="Technische Daten und Ausstattung – optional in die Kundenakte übernehmen."
+          showChips
+          onAdoptToAkte={handleAdoptLexiconChip}
+        />
+      </LeadDetailPanel>
 
       {toast && (
         <div className="cust-akte-toast" role="status">

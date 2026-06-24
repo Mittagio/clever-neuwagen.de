@@ -220,9 +220,14 @@ function parseNumber(raw) {
 }
 
 function parseMileage(text) {
+  const fromBundle = parseAllMileagesFromText(text);
+  if (fromBundle.length) return fromBundle[0];
+
   const m = text.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:km|kilometer)/i);
   if (!m) return null;
-  return parseNumber(m[1].replace(/\s/g, ''));
+  const value = parseNumber(m[1].replace(/\s/g, ''));
+  if (value == null || value < 5000 || value > 50000) return null;
+  return value;
 }
 
 function isLeaseTermMonth(value) {
@@ -261,7 +266,8 @@ function parseTermMonths(text) {
 
 function parseDownPayment(text) {
   const m = text.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?\s*anzahlung/i)
-    ?? text.match(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i);
+    ?? text.match(/anzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*(?:€|euro)?/i)
+    ?? text.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€\s*anzahlung/i);
   if (!m) return null;
   return parseNumber(m[1].replace(/\s/g, ''));
 }
@@ -1155,6 +1161,18 @@ export function parseDealerAiInput(rawText) {
 
   if (fields.modelId === 'sportage' || fields.model === 'Sportage') {
     fields = resolveSportageConfig(fields);
+  }
+
+  if (fields.downPayment != null) {
+    if (fields.desiredRate === fields.downPayment) fields.desiredRate = null;
+    if (fields.desiredPrice === fields.downPayment) fields.desiredPrice = null;
+  }
+  if (
+    fields.desiredRate != null
+    && fields.termMonths === fields.desiredRate
+    && isLeaseTermMonth(fields.desiredRate)
+  ) {
+    fields.desiredRate = null;
   }
 
   fields = enrichFieldsFromCustomerMail(rawText, fields, mailCtx);

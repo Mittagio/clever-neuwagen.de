@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
 import { PAYMENT_TYPE_LABELS } from '../../services/dealerAiParser.js';
+import {
+  LEARNING_SOURCE_AREAS,
+  dealerAiRecognitionNeedsLearningFeedback,
+} from '../../services/admin/cleverLearningRequestService.js';
+import CleverLearningRequestCard from '../shared/CleverLearningRequestCard.jsx';
 import './DealerAiRecognition.css';
 
 function ChipList({
@@ -219,6 +224,16 @@ export default function DealerAiRecognitionReview({
           </RecognitionCard>
         )}
       </div>
+
+      {dealerAiRecognitionNeedsLearningFeedback(insight) && (
+        <CleverLearningRequestCard
+          query={insight.sourceText ?? 'KI-Erkennung'}
+          modelKey={insight.recommendation?.modelKey ?? null}
+          modelLabel={insight.recommendation?.modelLabel ?? insight.vehicleWish?.modelLabel ?? null}
+          sourceArea={LEARNING_SOURCE_AREAS.CUSTOMER_AKTE}
+          pageContext="KI-Erkennung"
+        />
+      )}
 
       <div className="dai-recognition-review__actions">
         <button

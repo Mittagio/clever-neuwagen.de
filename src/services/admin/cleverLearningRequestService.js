@@ -278,6 +278,30 @@ export function countOpenLearningRequests() {
   ).length;
 }
 
+/** KI-Erkennung: unsichere Felder vor Bestätigung */
+export function dealerAiRecognitionNeedsLearningFeedback(insight) {
+  if (!insight) return false;
+  const conf = insight.confidence ?? {};
+  if ((conf.payment ?? 1) < 0.35) return true;
+  if ((conf.vehicle ?? 1) < 0.35 && !(insight.vehicleWish?.labels?.length)) return true;
+  if ((conf.recommendation ?? 1) < 0.25 && !insight.recommendation) return true;
+  if ((insight.recommendation?.alternatives?.length ?? 0) > 2) return true;
+  return false;
+}
+
+/** Parser: keine sichere Erkennung */
+export function dealerAiParseNeedsLearningFeedback(parsed) {
+  if (!parsed) return true;
+  if (!parsed.ok) return true;
+  const fields = parsed.fields ?? {};
+  if (!fields.model && !fields.modelId) return true;
+  if ((parsed.suggestedModels?.length ?? 0) > 1) return true;
+  if (fields.paymentType === 'unknown' && /\b(leasing|finanz|kauf|bar)\b/i.test(fields.rawText ?? '')) {
+    return true;
+  }
+  return false;
+}
+
 /** Lexikon: unsichere oder fehlende Antwort */
 export function lexiconNeedsLearningFeedback(searchState) {
   if (!searchState) return false;

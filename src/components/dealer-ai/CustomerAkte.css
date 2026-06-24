@@ -834,6 +834,68 @@
   line-height: 1.2;
 }
 
+.cust-akte-wish__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #e8edf3;
+  background: #fff;
+}
+
+.cust-akte-wish__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cust-akte-wish__field-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cust-akte-wish__field-input {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #0f172a;
+  background: #fff;
+}
+
+.cust-akte-wish__form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cust-akte-wish__save,
+.cust-akte-wish__cancel {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cust-akte-wish__save {
+  border: none;
+  background: #0b1736;
+  color: #fff;
+}
+
+.cust-akte-wish__cancel {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+}
+
 /* Nächster guter Schritt */
 .cust-akte-kh--profile {
   margin-top: -2px;

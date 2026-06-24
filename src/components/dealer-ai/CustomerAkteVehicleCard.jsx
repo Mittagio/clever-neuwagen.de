@@ -1,6 +1,5 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import {
-  formatPaymentBadge,
   formatVehicleCardConditionsDot,
   formatVehicleCardPrice,
   formatVehicleCardTitle,
@@ -10,6 +9,7 @@ import './CustomerAkte.css';
 
 export default function CustomerAkteVehicleCard({
   card,
+  lead = null,
   index = 0,
   animateIn = false,
   onClick,
@@ -18,8 +18,7 @@ export default function CustomerAkteVehicleCard({
   const title = formatVehicleCardTitle(card);
   const conditions = formatVehicleCardConditionsDot(card);
   const price = formatVehicleCardPrice(card);
-  const status = resolveVehicleStatus(card);
-  const payment = formatPaymentBadge(card.paymentType);
+  const status = resolveVehicleStatus(card, { lead });
 
   return (
     <article
@@ -48,9 +47,6 @@ export default function CustomerAkteVehicleCard({
           {price && <p className="cust-akte-vcard__price">{price}</p>}
           {conditions && (
             <p className="cust-akte-vcard__conditions">{conditions}</p>
-          )}
-          {!price && payment?.label && (
-            <p className="cust-akte-vcard__conditions">{payment.label}</p>
           )}
           <p className={`cust-akte-vcard__status-line cust-akte-vcard__status-line--${status.tone}`}>
             {status.label}

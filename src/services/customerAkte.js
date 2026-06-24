@@ -398,6 +398,90 @@ export function formatVehicleCardTitle(card = {}) {
   return card.modelName;
 }
 
+/** Kurzlabel für CTAs, z. B. „EV4-Angebot senden“. */
+export function formatVehicleActionPrefix(card = {}) {
+  const title = formatVehicleCardTitle(card).replace(/^Kia\s+/i, '').trim();
+  if (!title) return null;
+  const parts = title.split(/\s+/);
+  if (parts.length >= 2 && /^(Air|Earth|GT-Line|GT|Vision|Style|Winter|Connect)$/i.test(parts[1])) {
+    return parts[0];
+  }
+  return parts.slice(0, 2).join(' ');
+}
+
+export function formatSelectionActionPrefix(group = {}) {
+  const label = String(group?.modelLabel ?? group?.modelKey ?? '').replace(/^Kia\s+/i, '').trim();
+  if (!label) return 'Auswahl';
+  return label.split(/\s+/)[0];
+}
+
+/** Feste Status für „Auf dem Tisch“ – keine losen Technik-Texte. */
+export const TABLE_VEHICLE_STATUS = {
+  idea: { label: 'Idee', tone: 'idea' },
+  suggestion: { label: 'Vorschlag', tone: 'idea' },
+  configured: { label: 'Konfiguriert', tone: 'ready' },
+  offer_prepared: { label: 'Angebot vorbereitet', tone: 'ready' },
+  sent: { label: 'Gesendet', tone: 'sent' },
+  opened: { label: 'Geöffnet', tone: 'opened' },
+  interested: { label: 'Interessiert', tone: 'sent' },
+  rejected: { label: 'Abgelehnt', tone: 'idea' },
+  closing_ready: { label: 'Abschlussbereit', tone: 'ready' },
+};
+
+function isCardClosingReady(card = {}, lead = null) {
+  if (!lead) return false;
+  const voStatus = card.vehicleOffer?.status ?? card.offer?.status;
+  const pastOffer = [
+    VEHICLE_OFFER_STATUS.SENT,
+    VEHICLE_OFFER_STATUS.OPENED,
+    VEHICLE_OFFER_STATUS.ACCEPTED,
+  ].includes(voStatus);
+  if (!pastOffer) return false;
+  const pt = card.paymentType ?? lead?.paymentType ?? 'leasing';
+  const summary = computeUnterlagenSummary(lead, pt);
+  if (!summary?.totalCount) return false;
+  const selbstauskunft = getSelbstauskunft(lead?.crm?.cleverUnterlagen);
+  const saOk = selbstauskunft?.status === SELBSTAUSKUNFT_STATUS.completed.id
+    || selbstauskunft?.status === SELBSTAUSKUNFT_STATUS.checked.id;
+  return summary.doneCount >= Math.max(1, summary.totalCount - 1) || saOk;
+}
+
+export function resolveVehicleStatus(card = {}, { lead = null } = {}) {
+  const voStatus = card.vehicleOffer?.status ?? card.offer?.status;
+
+  if (isCardClosingReady(card, lead)) {
+    return TABLE_VEHICLE_STATUS.closing_ready;
+  }
+  if (voStatus === VEHICLE_OFFER_STATUS.REJECTED) {
+    return TABLE_VEHICLE_STATUS.rejected;
+  }
+  if (voStatus === VEHICLE_OFFER_STATUS.ACCEPTED) {
+    return TABLE_VEHICLE_STATUS.interested;
+  }
+  if (voStatus === VEHICLE_OFFER_STATUS.OPENED) {
+    return TABLE_VEHICLE_STATUS.opened;
+  }
+  if (voStatus === VEHICLE_OFFER_STATUS.SENT) {
+    return TABLE_VEHICLE_STATUS.sent;
+  }
+  if (
+    voStatus === VEHICLE_OFFER_STATUS.DRAFT
+    || voStatus === VEHICLE_OFFER_STATUS.PDF_UPLOADED
+    || voStatus === VEHICLE_OFFER_STATUS.LINK_READY
+    || hasVehicleOffer(card)
+    || voStatus === 'draft'
+  ) {
+    return TABLE_VEHICLE_STATUS.offer_prepared;
+  }
+  if (card.source === 'configuration') {
+    return TABLE_VEHICLE_STATUS.configured;
+  }
+  if (card.badge === 'Vorschlag / prüfen' || /vorschlag/i.test(card.badge ?? '')) {
+    return TABLE_VEHICLE_STATUS.suggestion;
+  }
+  return TABLE_VEHICLE_STATUS.idea;
+}
+
 export function formatPaymentBadge(paymentType = 'unknown') {
   const pt = paymentType ?? 'unknown';
   if (pt === 'cash') return { label: 'Kauf', tone: 'buy' };
@@ -405,27 +489,6 @@ export function formatPaymentBadge(paymentType = 'unknown') {
   if (pt === 'finance') return { label: 'Finanzierung', tone: 'lease' };
   if (pt === 'plugin-hybrid' || pt === 'hybrid') return { label: 'Hybrid', tone: 'lease' };
   return { label: paymentLabel(pt), tone: 'neutral' };
-}
-
-export function resolveVehicleStatus(card = {}) {
-  const voStatus = card.vehicleOffer?.status ?? card.offer?.status;
-  if (voStatus && VEHICLE_OFFER_STATUS_UI[voStatus]) {
-    const ui = VEHICLE_OFFER_STATUS_UI[voStatus];
-    const toneMap = {
-      draft: 'ready',
-      pdf_uploaded: 'ready',
-      link_ready: 'ready',
-      sent: 'sent',
-      opened: 'opened',
-      accepted: 'sent',
-      rejected: 'idea',
-    };
-    return { label: ui.badge, tone: toneMap[voStatus] ?? 'ready' };
-  }
-  if (hasVehicleOffer(card) || voStatus === 'draft') {
-    return { label: 'Angebot vorbereitet', tone: 'ready' };
-  }
-  return { label: 'Idee', tone: 'idea' };
 }
 
 export function resolveVehicleFooter(card = {}, index = 0) {

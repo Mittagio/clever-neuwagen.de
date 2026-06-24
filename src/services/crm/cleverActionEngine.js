@@ -4,7 +4,7 @@
 import { computeUnterlagenSummary } from '../cleverUnterlagen.js';
 import { needsSelbstauskunft, getSelbstauskunft, SELBSTAUSKUNFT_STATUS } from '../cleverSelbstauskunft.js';
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
-import { getCustomerFirstName } from '../customerAkte.js';
+import { getCustomerFirstName, formatVehicleActionPrefix, formatSelectionActionPrefix } from '../customerAkte.js';
 import {
   findPreparedSelectionGroup,
   findReactedSelectionGroup,
@@ -164,16 +164,54 @@ function isUnterlagenMissing(summary) {
   return summary.doneCount < Math.max(1, summary.totalCount - 1);
 }
 
-function buildActionCandidate(actionId, { reason, explanation, meta = {} }) {
+function buildActionCandidate(actionId, {
+  reason,
+  explanation,
+  meta = {},
+  vehicleCard = null,
+  selectionGroup = null,
+}) {
   const def = ACTION_DEFINITIONS[actionId];
   if (!def) return null;
+
+  let title = def.title;
+  let ctaLabel = def.ctaLabel;
+
+  const vehiclePrefix = formatVehicleActionPrefix(vehicleCard);
+  if (vehiclePrefix) {
+    if (actionId === CLEVER_ACTION_IDS.OFFER_SEND) {
+      title = `${vehiclePrefix}-Angebot senden`;
+      ctaLabel = title;
+    } else if (actionId === CLEVER_ACTION_IDS.VEHICLE_SUGGESTION_REVIEW) {
+      title = `${vehiclePrefix}-Vorschlag prüfen`;
+      ctaLabel = title;
+    } else if (actionId === CLEVER_ACTION_IDS.OFFER_OPENED_CALL) {
+      title = `${vehiclePrefix}: Jetzt anrufen`;
+      ctaLabel = 'Anrufen';
+    } else if (actionId === CLEVER_ACTION_IDS.OFFER_FOLLOWUP) {
+      title = `${vehiclePrefix}: Nachfassen`;
+      ctaLabel = 'Kunde kontaktieren';
+    }
+  }
+
+  const selectionPrefix = formatSelectionActionPrefix(selectionGroup);
+  if (selectionGroup) {
+    if (actionId === CLEVER_ACTION_IDS.SELECTION_SEND) {
+      title = `${selectionPrefix}-Auswahl senden`;
+      ctaLabel = title;
+    } else if (actionId === CLEVER_ACTION_IDS.SELECTION_FOLLOWUP) {
+      title = `${selectionPrefix}-Variante nachfassen`;
+      ctaLabel = 'Kunde kontaktieren';
+    }
+  }
+
   return {
     actionId,
-    title: def.title,
+    title,
     reason,
     explanation,
     priority: CLEVER_ACTION_PRIORITY[actionId] ?? 99,
-    ctaLabel: def.ctaLabel,
+    ctaLabel,
     handlerType: def.handlerType,
     whyClever: reason,
     meta,
@@ -260,6 +298,7 @@ export function evaluateCleverActions(context) {
         ? `${firstName} hat eine Variante der Clever Auswahl markiert. Jetzt persönlich nachfassen.`
         : 'Der Kunde hat eine Variante der Clever Auswahl markiert. Jetzt persönlich nachfassen.',
       meta: { groupId: reactedSelectionGroup.id, variantCount },
+      selectionGroup: reactedSelectionGroup,
     }));
   }
 
@@ -271,17 +310,19 @@ export function evaluateCleverActions(context) {
         ? `${variantCount} passende Varianten sind vorbereitet.`
         : 'Eine passende Variante ist vorbereitet.',
       meta: { groupId: preparedSelectionGroup.id, variantCount },
+      selectionGroup: preparedSelectionGroup,
     }));
   }
 
   const suggestionCard = vehicleCards.find((card) => card.badge === 'Vorschlag / prüfen')
-    ?? context.lead?.crm?.reservedModels?.find((model) => model.badge === 'Vorschlag / prüfen');
+    ?? vehicleCards.find((card) => /vorschlag/i.test(card.badge ?? ''));
 
   if (suggestionCard && !['sent', 'opened', 'accepted', 'draft'].includes(offerStatus)) {
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.VEHICLE_SUGGESTION_REVIEW, {
       reason: 'KI-Fahrzeugwunsch erkannt',
       explanation: 'Clever hat einen möglichen Fahrzeugwunsch erkannt. Bitte prüfen oder konfigurieren.',
       meta: { cardId: suggestionCard.id },
+      vehicleCard: suggestionCard,
     }));
   }
 
@@ -336,7 +377,8 @@ export function evaluateCleverActions(context) {
       explanation: firstName
         ? `${firstName} hat das Angebot ${when} geöffnet. Die Abschlusswahrscheinlichkeit ist aktuell erhöht.`
         : `Der Kunde hat das Angebot ${when} geöffnet. Die Abschlusswahrscheinlichkeit ist aktuell erhöht.`,
-      meta: { daysSinceOpened },
+      meta: { daysSinceOpened, cardId: primaryCard?.id },
+      vehicleCard: primaryCard,
     }));
   }
 
@@ -350,6 +392,7 @@ export function evaluateCleverActions(context) {
       reason: 'Angebot erstellt, aber noch nicht versendet',
       explanation: 'Dieses Angebot wurde erstellt, aber noch nicht an den Kunden verschickt.',
       meta: { cardId: primaryCard.id },
+      vehicleCard: primaryCard,
     }));
   }
 
@@ -360,7 +403,8 @@ export function evaluateCleverActions(context) {
       explanation: firstName
         ? `${firstName} hat seit ${daysSinceSent} Tagen nicht reagiert.`
         : `Der Kunde hat seit ${daysSinceSent} Tagen nicht reagiert.`,
-      meta: { daysSinceSent },
+      meta: { daysSinceSent, cardId: primaryCard?.id },
+      vehicleCard: primaryCard,
     }));
   }
 

@@ -87,4 +87,11 @@ assert.equal(test5.action, 'create_cash_offer');
 const manualTerm = applyDealerAiTermMonths(ev5Km48, 36);
 assert.equal(manualTerm.fields.termMonths, 36);
 
+const leaseBundle = parseDealerAiInput('Kia EV4 Air Leasing 48 10.000 km 2000 € Anzahlung');
+assert.equal(leaseBundle.ok, true);
+assert.equal(leaseBundle.fields.termMonths, 48);
+assert.equal(leaseBundle.fields.mileagePerYear, 10000);
+assert.equal(leaseBundle.fields.downPayment, 2000);
+assert.equal(leaseBundle.fields.desiredRate, null, 'Anzahlung ist kein Budget');
+
 console.log('dealerAiParser.test.js: ok');

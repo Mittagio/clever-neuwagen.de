@@ -5,6 +5,7 @@ import './CustomerAkte.css';
 export default function CustomerAkteBoard({
   items = [],
   cards = [],
+  lead = null,
   animateNew = false,
   onCardClick,
   onCardMenu,
@@ -43,6 +44,7 @@ export default function CustomerAkteBoard({
               <CustomerAkteVehicleCard
                 key={item.id}
                 card={item.card}
+                lead={lead}
                 index={index}
                 animateIn={animateNew}
                 onClick={onCardClick}

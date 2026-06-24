@@ -613,6 +613,25 @@ export function getLexiconModelSuggestions(limit = 6) {
   return LEXICON_MODEL_ENTRIES.slice(0, limit).map((m) => m.model);
 }
 
+/** Chip-Text für Übernahme in die Kundenakte (Kundenhelfer). */
+export function buildLexiconAkteChip(searchState) {
+  if (!searchState?.ok) return null;
+  const result = searchState.result ?? {};
+  const query = String(searchState.question ?? '').trim();
+  const primary = result.primaryFacts?.[0];
+  if (primary?.value && /\d/.test(String(primary.value))) {
+    const label = primary.label ? `${primary.label} ${primary.value}` : primary.value;
+    return String(label).trim().slice(0, 80);
+  }
+  if (result.shortAnswer && /\d/.test(result.shortAnswer)) {
+    return String(result.shortAnswer).trim().slice(0, 80);
+  }
+  const model = String(result.title ?? result.modelTitle ?? '').replace(/^Kia\s+/i, '').trim();
+  const topic = query.replace(new RegExp(model, 'i'), '').trim() || query;
+  const chip = model ? `${model} ${topic} geprüft` : `${topic} geprüft`;
+  return chip.replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
 export function getLexiconFeatureSuggestions(limit = 6) {
   return getSearchableGlobalFeatures().slice(0, limit).map((f) => f.label);
 }

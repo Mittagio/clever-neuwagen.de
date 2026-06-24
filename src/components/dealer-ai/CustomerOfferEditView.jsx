@@ -173,9 +173,6 @@ export default function CustomerOfferEditView({
     label: ui.badge,
   }));
 
-  const hasDeliveryNote = Boolean(deliveryNote?.trim());
-  const hasNote = Boolean(offer?.note?.trim());
-
   return (
     <OfferFlowLayout
       backLabel="← Zur Kundenakte"
@@ -255,22 +252,6 @@ export default function CustomerOfferEditView({
           </div>
         )}
       </FlowCard>
-
-      {(hasDeliveryNote || hasNote) && (
-        <FlowCard variant="flat">
-          <FlowSectionHeader title="Weitere Angaben" />
-          {hasDeliveryNote && (
-            <p className="cn-flow-hint">
-              <strong>Übergabe:</strong> {deliveryNote}
-            </p>
-          )}
-          {hasNote && (
-            <p className="cn-flow-hint">
-              <strong>Notiz:</strong> {offer.note}
-            </p>
-          )}
-        </FlowCard>
-      )}
 
       <FlowCard variant="flat">
         <FlowSectionHeader title="Online-Angebot" />
