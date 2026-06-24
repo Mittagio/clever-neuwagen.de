@@ -71,6 +71,117 @@
   margin-top: 0.65rem;
 }
 
+.cn-summary-row--pending dd {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.cn-summary-rows--pending {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--cn-border, #e3e8f1);
+}
+
+.cn-summary-rows--compact {
+  margin-bottom: 0.35rem;
+}
+
+.cn-offer-feature-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-offer-feature-chips__chip {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.cn-clever-transfer {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(180deg, #f8faff 0%, #fff 100%);
+}
+
+.cn-clever-transfer__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--cn-text, #07132b);
+}
+
+.cn-clever-transfer__hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--cn-muted, #66748a);
+}
+
+.cn-clever-transfer__body {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.cn-clever-transfer__label {
+  margin: 0 0 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cn-muted, #66748a);
+}
+
+.cn-clever-transfer__text,
+.cn-clever-transfer__rec {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--cn-text, #07132b);
+}
+
+.cn-clever-transfer__rec {
+  font-weight: 700;
+}
+
+.cn-clever-transfer__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-clever-transfer__chip {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.cn-clever-transfer__open {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.8rem;
+  color: #b45309;
+  line-height: 1.35;
+}
+
+.cn-clever-transfer__block--open .cn-clever-transfer__label {
+  color: #b45309;
+}
+
 .cust-offer-upload {
   display: flex;
   flex-direction: column;

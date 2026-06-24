@@ -29,6 +29,10 @@ import {
 } from '../../services/vehicleOffer.js';
 import { formatVehicleCardTitle } from '../../services/customerAkte.js';
 import { phoneTelHref } from '../../services/dealerAiLeadCrm.js';
+import {
+  buildCleverConsultationOfferPrefill,
+  buildLeadPatchFromCleverPrefill,
+} from '../../services/dealer/cleverConsultationOfferPrefill.js';
 import '../DealerAIPage.css';
 import './BackendLeadAktePage.css';
 
@@ -44,6 +48,8 @@ export default function BackendLeadAktePage() {
   const [parsed, setParsed] = useState(null);
   const [phase, setPhase] = useState('followup');
   const [offerEditCard, setOfferEditCard] = useState(null);
+  const [cleverOfferTransfer, setCleverOfferTransfer] = useState(null);
+  const [offerPendingFields, setOfferPendingFields] = useState([]);
   const [isSavingLead, setIsSavingLead] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -117,6 +123,28 @@ export default function BackendLeadAktePage() {
     if (!options.silent) showToast('Eintrag in Historie gespeichert');
   }
 
+  function handlePrepareOfferFromClever() {
+    if (!leadId || !lead) return;
+    const prefill = buildCleverConsultationOfferPrefill(lead);
+    if (!prefill) {
+      handlePrepareOffer();
+      return;
+    }
+
+    const leadPatch = buildLeadPatchFromCleverPrefill(prefill, lead);
+    updateLead(leadId, leadPatch);
+    addHistory(leadId, 'Angebot aus Clever-Beratung vorbereitet', 'note');
+
+    if (parsed?.ok) {
+      setParsed(enrichWithSuggestions(applyDealerAiFields(parsed, prefill.parsedFieldPatches)));
+    }
+
+    setCleverOfferTransfer(prefill.cleverTransfer);
+    setOfferPendingFields(prefill.pendingFields);
+    setOfferEditCard(prefill.card);
+    setPhase('offer-edit');
+  }
+
   function handlePrepareOffer(reservedModel) {
     if (!parsed?.ok || !leadId) return;
     let nextParsed = parsed;
@@ -154,11 +182,15 @@ export default function BackendLeadAktePage() {
 
   function handleOpenOfferEdit(card) {
     setOfferEditCard(card);
+    setCleverOfferTransfer(lead?.crm?.cleverOfferTransfer ?? null);
+    setOfferPendingFields([]);
     setPhase('offer-edit');
   }
 
   function handleBackFromOffer() {
     setOfferEditCard(null);
+    setCleverOfferTransfer(null);
+    setOfferPendingFields([]);
     setPhase('followup');
   }
 
@@ -293,6 +325,7 @@ export default function BackendLeadAktePage() {
             onStartNewWish={() => navigateToAddVehicle(lead)}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
+            onPrepareOfferFromClever={handlePrepareOfferFromClever}
             onOpenOfferEdit={handleOpenOfferEdit}
             onReturnToReview={() => navigate('/verkaufsassistent')}
             onDiscard={handleBack}
@@ -311,6 +344,8 @@ export default function BackendLeadAktePage() {
             deliveryNote={lead?.deliveryTime ?? lead?.wish?.desiredDeliveryDate ?? ''}
             offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
             lead={lead}
+            cleverTransfer={cleverOfferTransfer ?? lead?.crm?.cleverOfferTransfer ?? null}
+            pendingFields={offerPendingFields}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
             onUploadPdf={handleOfferUploadPdf}

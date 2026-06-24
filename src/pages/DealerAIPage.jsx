@@ -69,6 +69,10 @@ import {
   offerDraftToParserFields,
 } from '../services/dealerAiOfferCreate.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
+import {
+  buildCleverConsultationOfferPrefill,
+  buildLeadPatchFromCleverPrefill,
+} from '../services/dealer/cleverConsultationOfferPrefill.js';
 import DealerAiRecognitionAnimation from '../components/dealer-ai/DealerAiRecognitionAnimation.jsx';
 import {
   applyRecognitionInsightToParsed,
@@ -105,6 +109,8 @@ export default function DealerAIPage() {
   const [duplicatePrompt, setDuplicatePrompt] = useState(null);
   const [toast, setToast] = useState('');
   const [offerEditCard, setOfferEditCard] = useState(null);
+  const [cleverOfferTransfer, setCleverOfferTransfer] = useState(null);
+  const [offerPendingFields, setOfferPendingFields] = useState([]);
   const [configureDraft, setConfigureDraft] = useState(null);
   const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
@@ -655,6 +661,30 @@ export default function DealerAIPage() {
     }
   }
 
+  function handlePrepareOfferFromClever() {
+    if (!result?.leadId) return;
+    const lead = leads.find((l) => l.id === result.leadId);
+    if (!lead) return;
+    const prefill = buildCleverConsultationOfferPrefill(lead);
+    if (!prefill) {
+      handlePrepareOffer();
+      return;
+    }
+
+    const leadPatch = buildLeadPatchFromCleverPrefill(prefill, lead);
+    updateLead(result.leadId, leadPatch);
+    addHistory(result.leadId, 'Angebot aus Clever-Beratung vorbereitet', 'note');
+
+    if (parsed?.ok) {
+      setParsed(enrichWithSuggestions(applyDealerAiFields(parsed, prefill.parsedFieldPatches)));
+    }
+
+    setCleverOfferTransfer(prefill.cleverTransfer);
+    setOfferPendingFields(prefill.pendingFields);
+    setOfferEditCard(prefill.card);
+    setPhase('offer-edit');
+  }
+
   function handlePrepareOffer(reservedModel) {
     if (!parsed?.ok) return;
     if (reservedModel) {
@@ -799,11 +829,15 @@ export default function DealerAIPage() {
 
   function handleOpenOfferEdit(card) {
     setOfferEditCard(card);
+    setCleverOfferTransfer(activeLead?.crm?.cleverOfferTransfer ?? null);
+    setOfferPendingFields([]);
     setPhase('offer-edit');
   }
 
   function handleBackFromOffer() {
     setOfferEditCard(null);
+    setCleverOfferTransfer(null);
+    setOfferPendingFields([]);
     setPhase('followup');
   }
 
@@ -1147,6 +1181,7 @@ export default function DealerAIPage() {
             onStartNewWish={handleStartNewWish}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
+            onPrepareOfferFromClever={handlePrepareOfferFromClever}
             onOpenOfferEdit={handleOpenOfferEdit}
             onReturnToReview={handleReturnToReview}
             onDiscard={handleDiscard}
@@ -1165,6 +1200,8 @@ export default function DealerAIPage() {
             deliveryNote={activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? ''}
             offer={activeOfferEdit ?? createVehicleOfferFromCard(offerEditCard)}
             lead={activeLead}
+            cleverTransfer={cleverOfferTransfer ?? activeLead?.crm?.cleverOfferTransfer ?? null}
+            pendingFields={offerPendingFields}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
             onUploadPdf={handleOfferUploadPdf}

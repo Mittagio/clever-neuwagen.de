@@ -14,12 +14,17 @@ const FILTERS = [
 
 export default function DealerVehicleManagement({
   conditions,
+  userRole = 'dealerAdmin',
   onUpdateModel,
   onUpdateModelSettings,
   onUpdateDiscount,
+  onUpdateLeasingFactor,
+  onUpdateFinanceCondition,
   onAddPromotion,
   onUpdatePromotion,
   onRemovePromotion,
+  onAddCustomTargetGroup,
+  onPublish,
 }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -35,13 +40,18 @@ export default function DealerVehicleManagement({
       <DealerVehicleModelEditor
         model={selectedModel}
         conditions={conditions}
+        userRole={userRole}
         onBack={() => setSelectedModel(null)}
         onUpdateModel={onUpdateModel}
         onUpdateModelSettings={onUpdateModelSettings}
         onUpdateDiscount={onUpdateDiscount}
+        onUpdateLeasingFactor={onUpdateLeasingFactor}
+        onUpdateFinanceCondition={onUpdateFinanceCondition}
         onAddPromotion={onAddPromotion}
         onUpdatePromotion={onUpdatePromotion}
         onRemovePromotion={onRemovePromotion}
+        onAddCustomTargetGroup={onAddCustomTargetGroup}
+        onPublish={onPublish}
       />
     );
   }
@@ -97,7 +107,11 @@ export default function DealerVehicleManagement({
       </div>
 
       <p className="dvm-footer-hint">
-        Änderungen werden als Entwurf gespeichert. Unter Verwaltung veröffentlichen, damit Kunden sie sehen.
+        Änderungen werden als Entwurf gespeichert. Vor Veröffentlichung immer die Kundenvorschau prüfen.
+      </p>
+
+      <p className="dvm-footer-hint dvm-footer-hint--muted">
+        Optional: Excel- oder PDF-Import als Hilfsfunktion – die Hauptpflege erfolgt hier in der Fahrzeugverwaltung.
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
 import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
@@ -26,6 +26,10 @@ import DealerJourneySummary from '../components/dealer/DealerJourneySummary.jsx'
 import DealerJourneyOfferPanel from '../components/dealer/DealerJourneyOfferPanel.jsx';
 import DealerJourneyLeadSheet from '../components/dealer/DealerJourneyLeadSheet.jsx';
 import DealerJourneyLeadSuccess from '../components/dealer/DealerJourneyLeadSuccess.jsx';
+import CleverConsultationWizard from '../components/dealer/CleverConsultationWizard.jsx';
+import CleverRecommendationCard from '../components/dealer/CleverRecommendationCard.jsx';
+import SellerHandoffPanel from '../components/dealer/SellerHandoffPanel.jsx';
+import '../components/dealer/clever-consultation.css';
 import { buildDealerJourneySnapshot } from '../services/dealer/purchaseTypeOptions.js';
 import { inferKnownPurchaseType } from '../services/dealer/inferPurchaseTypeFromSearch.js';
 import { detectModelKeyInQuery } from '../services/search/modelAttributeQuestion.js';
@@ -79,6 +83,7 @@ import { detectSearchConflict } from '../services/search/searchConflictHint.js';
 import { detectProfileConflict } from '../services/search/profileConflictHint.js';
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
+import { KIA_MODEL_WORLD } from '../data/dealerLandingContent.js';
 import { KIA_MODEL_ATTRIBUTES } from '../data/kia/kiaModelAttributes.js';
 import {
   mergeDealerChipFilters,
@@ -92,6 +97,12 @@ import {
   loadJourneyState,
   saveJourneyState,
 } from '../services/dealer/journeyPersistenceService.js';
+import {
+  buildCleverRecommendation,
+  buildConsultationHandoffSummary,
+  createConsultationLeadExtras,
+  createConsultationProfile,
+} from '../services/dealer/cleverSalesAdvisor.js';
 import { hydrateStammdatenFromServer } from '../services/admin/stammdatenHydration.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
@@ -115,6 +126,7 @@ function resolveJourneyWishFeatures(chipIds = []) {
 export default function DealerPage() {
   const navigate = useNavigate();
   const { slug: routeSlug } = useParams();
+  const [searchParams] = useSearchParams();
   const { dealerId: subdomainDealerId, isSubdomain } = useDealerSubdomain();
   const dealerId = useMemo(
     () => subdomainDealerId || routeSlug || DEFAULT_DEALER_ID,
@@ -151,11 +163,16 @@ export default function DealerPage() {
   const [activeRecommendPick, setActiveRecommendPick] = useState(null);
   const [liveUnderstandTrim, setLiveUnderstandTrim] = useState(null);
   const [equipmentSearchWishes, setEquipmentSearchWishes] = useState([]);
+  const [entryMode, setEntryMode] = useState(null);
+  const [consultationProfile, setConsultationProfile] = useState(null);
+  const [cleverRecommendation, setCleverRecommendation] = useState(null);
+  const [consultationHandoff, setConsultationHandoff] = useState(null);
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
   const offersSectionRef = useRef(null);
   const configuratorSectionRef = useRef(null);
   const lastInquirySyncKeyRef = useRef(null);
+  const skipQueryResetRef = useRef(false);
 
   const buildRecognizedWishesForText = useCallback((text) => {
     const trimmed = text.trim();
@@ -233,6 +250,11 @@ export default function DealerPage() {
     return deriveAdvisorChipIds(searchFilters, searchWishes);
   }, [searchFilters, searchWishes]);
 
+  const activeSearchChipIds = useMemo(
+    () => [...searchChipIds, ...submittedChipIds],
+    [searchChipIds, submittedChipIds],
+  );
+
   const searchProfile = useMemo(() => {
     if (!searchFilters) return null;
     return buildSearchProfile({
@@ -291,6 +313,29 @@ export default function DealerPage() {
     setSubmittedQuery(value);
   }, []);
 
+  const handleCleverSearch = useCallback((text) => {
+    const value = text.trim();
+    if (!value) return;
+    skipQueryResetRef.current = true;
+    setEntryMode('clever');
+    setConsultationProfile(createConsultationProfile(value));
+    setCleverRecommendation(null);
+    setConsultationHandoff(null);
+    setSalesStep(null);
+    setSelectedModelKey(null);
+    setTrimRecommendation(null);
+    setVehicleConfiguration(null);
+    setConfigSummary(null);
+    setPurchaseType(null);
+    setPurchaseTypeComplete(false);
+    setSpecialConditions([]);
+    setSpecialConditionsComplete(false);
+    setOffersRevealed(false);
+    setLeadSubmitted(null);
+    setQueryDraft(value);
+    setSubmittedQuery(value);
+  }, []);
+
   useEffect(() => {
     if (!submittedQuery.trim()) return;
     requestAnimationFrame(() => {
@@ -314,6 +359,12 @@ export default function DealerPage() {
   const handleChipToggle = useCallback((chipId) => {
     setQueryDraft((prev) => toggleChipInQueryText(prev, chipId));
     searchInputRef.current?.focus();
+  }, []);
+
+  const scrollToJourney = useCallback(() => {
+    requestAnimationFrame(() => {
+      configuratorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }, []);
 
   const handleShowAllResults = useCallback(() => {
@@ -386,6 +437,10 @@ export default function DealerPage() {
   ]);
 
   useEffect(() => {
+    if (skipQueryResetRef.current) {
+      skipQueryResetRef.current = false;
+      return;
+    }
     setSalesStep(null);
     setSelectedModelKey(null);
     setWishChipIds([]);
@@ -408,6 +463,9 @@ export default function DealerPage() {
     setLiveUnderstandTrim(null);
     setJourneyWasRestored(false);
     setResumeBannerDismissed(false);
+    setConsultationProfile(null);
+    setCleverRecommendation(null);
+    setConsultationHandoff(null);
   }, [submittedQuery]);
 
   useEffect(() => {
@@ -497,9 +555,16 @@ export default function DealerPage() {
 
   const hasModelFocusedSearch = Boolean(hasSearch && detectModelKeyInQuery(submittedQuery));
 
-  const useSalesJourney = hasSearch
-    && (customerQueryType === 'purchase' || isNeedBasedAdvisor || hasModelFocusedSearch)
-    && Boolean(primaryRecommendGroup || hasExact);
+  const isCleverEntry = entryMode === 'clever' && hasSearch;
+  const isClassicEntry = entryMode === 'classic' && hasSearch;
+
+  const useSalesJourney = isCleverEntry
+    || isClassicEntry
+    || (hasSearch
+      && !isCleverEntry
+      && !isClassicEntry
+      && (customerQueryType === 'purchase' || isNeedBasedAdvisor || hasModelFocusedSearch)
+      && Boolean(primaryRecommendGroup || hasExact));
 
   const needSearchAnswer = useMemo(() => {
     if (!hasSearch || !shouldShowNeedAnswer(recognizedWishes, {
@@ -570,25 +635,29 @@ export default function DealerPage() {
   const effectiveSalesStep = useMemo(() => {
     if (!useSalesJourney) return null;
     if (salesStep) return salesStep;
+    if (isCleverEntry) return 'consult';
     return 'recommend';
-  }, [useSalesJourney, salesStep]);
+  }, [useSalesJourney, salesStep, isCleverEntry]);
 
   const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
   const showStandaloneCompare = customerQueryType === 'compare'
     && Boolean(journeyCompareGroups)
     && !useSalesJourney;
-  const showSalesCompare = (useSalesJourney && effectiveSalesStep === 'recommend' && journeyCompareGroups)
-    || (showStandaloneCompare && !showSmartAnswer);
+  const showSalesCompare = ((useSalesJourney && effectiveSalesStep === 'recommend' && journeyCompareGroups)
+    || (showStandaloneCompare && !showSmartAnswer))
+    && !isCleverEntry;
   const showNeedAdvisorRecommend = useSalesJourney
     && isNeedBasedAdvisor
     && effectiveSalesStep === 'recommend'
     && Boolean(needSearchAnswer)
-    && !showSalesCompare;
+    && !showSalesCompare
+    && !isCleverEntry;
   const showSalesRecommend = useSalesJourney
     && effectiveSalesStep === 'recommend'
     && primaryRecommendGroup
     && !showSalesCompare
-    && !showNeedAdvisorRecommend;
+    && !showNeedAdvisorRecommend
+    && !isCleverEntry;
   const knownPurchaseType = useMemo(() => {
     if (purchaseTypeComplete && purchaseType) return purchaseType;
     return inferKnownPurchaseType({
@@ -600,6 +669,9 @@ export default function DealerPage() {
 
   const showSalesUnderstand = useSalesJourney && effectiveSalesStep === 'understand' && selectedModelKey;
   const showSalesTrim = useSalesJourney && effectiveSalesStep === 'trim' && trimRecommendation;
+  const showCleverConsult = isCleverEntry && effectiveSalesStep === 'consult' && consultationProfile;
+  const showCleverRecommendation = isCleverEntry && effectiveSalesStep === 'recommendation' && cleverRecommendation;
+  const showSellerHandoff = isCleverEntry && effectiveSalesStep === 'handoff' && consultationHandoff;
   const showPurchaseType = useSalesJourney && effectiveSalesStep === 'purchase' && Boolean(configSummary);
   const showSpecialConditions = useSalesJourney && effectiveSalesStep === 'special' && purchaseTypeComplete;
   const showBudget = false;
@@ -641,22 +713,66 @@ export default function DealerPage() {
     && !leadSubmitted;
   const showJourneyLeadSuccess = Boolean(leadSubmitted);
   const showVehicleOffers = hasSearch && customerQueryType === 'search' && !useSalesJourney;
-  const showLegacySearchResults = showVehicleOffers;
+  const showLegacySearchResults = showVehicleOffers && !isCleverEntry && !isClassicEntry;
+
+  useEffect(() => {
+    if (!isCleverEntry || salesStep) return;
+    setSalesStep('consult');
+    setConsultationProfile((prev) => prev ?? createConsultationProfile(submittedQuery));
+  }, [isCleverEntry, salesStep, submittedQuery]);
 
   const handleFollowUpQuery = useCallback((text) => {
-    handleSearch(text);
-  }, [handleSearch]);
+    handleCleverSearch(text);
+  }, [handleCleverSearch]);
 
-  const scrollToJourney = useCallback(() => {
+  const handleClassicConfigure = useCallback((card) => {
+    if (!card?.modelKey) return;
+    const value = (card.searchQuery ?? `Kia ${card.name}`).trim();
+    skipQueryResetRef.current = true;
+    setEntryMode('classic');
+    setConsultationProfile(null);
+    setCleverRecommendation(null);
+    setConsultationHandoff(null);
+    setQueryDraft(value);
+    setSubmittedQuery(value);
+    const prefilled = inferWishChipsFromSearch(card.modelKey, {
+      searchProfile,
+      searchFilters,
+      searchChipIds: activeSearchChipIds,
+    });
+    setSelectedModelKey(card.modelKey);
+    setWishChipIds(prefilled);
+    setPrefilledWishCount(prefilled.length);
+    setTrimRecommendation(null);
+    setConfigSummary(null);
+    setVehicleConfiguration(null);
+    setPurchaseTypeDraft(inferKnownPurchaseType({
+      submittedQuery: value,
+      searchProfile,
+      searchFilters,
+    }));
+    setSalesStep('understand');
     requestAnimationFrame(() => {
       configuratorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, []);
+  }, [searchProfile, searchFilters, activeSearchChipIds]);
 
-  const activeSearchChipIds = useMemo(
-    () => [...searchChipIds, ...submittedChipIds],
-    [searchChipIds, submittedChipIds],
-  );
+  useEffect(() => {
+    const entry = searchParams.get('entry');
+    const q = searchParams.get('q')?.trim();
+    const model = searchParams.get('model')?.trim();
+    if (!entry) return;
+
+    if (entry === 'clever' && q) {
+      handleCleverSearch(q);
+      return;
+    }
+    if (entry === 'classic' && model) {
+      const card = KIA_MODEL_WORLD.find((c) => c.modelKey === model);
+      if (card) handleClassicConfigure(card);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- einmaliger Deep-Link-Einstieg
+  }, []);
 
   const selectedModelDelivery = useMemo(() => {
     if (!selectedModelKey) return null;
@@ -705,23 +821,110 @@ export default function DealerPage() {
   }, [customerQueryType, smartAnswer, handleViewVehicle, handleSearch]);
 
   useEffect(() => {
-    if (customerQueryType !== 'purchase' || !hasSearch) return;
+    if (customerQueryType !== 'purchase' || !hasSearch || isCleverEntry || isClassicEntry) return;
     const modelKey = detectModelKeyInQuery(submittedQuery);
     if (!modelKey || salesStep) return;
     handleViewVehicle(modelKey);
-  }, [customerQueryType, hasSearch, submittedQuery, salesStep, handleViewVehicle]);
+  }, [customerQueryType, hasSearch, submittedQuery, salesStep, handleViewVehicle, isCleverEntry, isClassicEntry]);
 
   useEffect(() => {
-    if (!hasModelFocusedSearch || !hasSearch) return;
+    if (!hasModelFocusedSearch || !hasSearch || isCleverEntry || isClassicEntry) return;
     const modelKey = detectModelKeyInQuery(submittedQuery);
     if (!modelKey || salesStep) return;
     handleViewVehicle(modelKey);
-  }, [hasModelFocusedSearch, hasSearch, submittedQuery, salesStep, handleViewVehicle]);
+  }, [hasModelFocusedSearch, hasSearch, submittedQuery, salesStep, handleViewVehicle, isCleverEntry, isClassicEntry]);
 
   const wishFeatures = useMemo(
     () => resolveJourneyWishFeatures(wishChipIds),
     [wishChipIds],
   );
+
+  const applyCleverRecommendation = useCallback((profile) => {
+    const rec = buildCleverRecommendation({
+      profile,
+      searchBundle: activeSearchBundle,
+      searchProfile,
+      searchFilters,
+      searchWishes,
+      chipIds: activeSearchChipIds,
+    });
+    setCleverRecommendation(rec);
+    setConsultationHandoff(buildConsultationHandoffSummary(profile, rec));
+    if (rec?.modelKey) {
+      setSelectedModelKey(rec.modelKey);
+      setWishChipIds(rec.wishChipIds ?? []);
+      setTrimRecommendation(rec.trimRecommendation ?? null);
+      if (rec.trimRecommendation) {
+        setConfigSummary(buildConfigSummaryFromTrim(
+          rec.modelKey,
+          rec.trimRecommendation,
+          rec.wishFeatures ?? [],
+          rec.wishChipIds ?? [],
+        ));
+      }
+    }
+    setSalesStep('recommendation');
+    scrollToJourney();
+  }, [
+    activeSearchBundle,
+    searchProfile,
+    searchFilters,
+    searchWishes,
+    activeSearchChipIds,
+    scrollToJourney,
+  ]);
+
+  const handleConsultationComplete = useCallback((profile) => {
+    setConsultationProfile(profile);
+    applyCleverRecommendation(profile);
+  }, [applyCleverRecommendation]);
+
+  const handleTalkToSeller = useCallback(() => {
+    setSalesStep('handoff');
+    scrollToJourney();
+  }, [scrollToJourney]);
+
+  const handleCleverConfigureClassic = useCallback((rec) => {
+    const modelKey = rec?.modelKey ?? cleverRecommendation?.modelKey ?? selectedModelKey;
+    if (!modelKey) return;
+    setEntryMode('classic');
+    if (rec?.trimRecommendation) {
+      setTrimRecommendation(rec.trimRecommendation);
+      setConfigSummary(buildConfigSummaryFromTrim(
+        modelKey,
+        rec.trimRecommendation,
+        rec.wishFeatures ?? wishFeatures,
+        rec.wishChipIds ?? wishChipIds,
+      ));
+      setVehicleConfiguration(buildConfigurationFromTrim(modelKey, rec.trimRecommendation));
+    }
+    setSelectedModelKey(modelKey);
+    setSalesStep('understand');
+    scrollToJourney();
+  }, [cleverRecommendation, selectedModelKey, wishFeatures, wishChipIds, scrollToJourney]);
+
+  const handleSelectCleverAlternative = useCallback((trimId) => {
+    if (!cleverRecommendation?.trimRecommendation || !cleverRecommendation.modelKey) return;
+    const rec = cleverRecommendation.trimRecommendation;
+    const pick = resolveTrimPick(rec, trimId);
+    const updated = {
+      ...cleverRecommendation,
+      trimId: pick?.trimId,
+      trimLabel: pick?.trimLabel,
+      vehicleTitle: `Kia ${cleverRecommendation.modelLabel} ${pick?.trimLabel ?? ''}`.trim(),
+      trimRecommendation: { ...rec, selectedTrimId: trimId, selectedPick: pick },
+    };
+    setCleverRecommendation(updated);
+    setConsultationHandoff(buildConsultationHandoffSummary(consultationProfile, updated));
+    setTrimRecommendation(updated.trimRecommendation);
+    setConfigSummary(buildConfigSummaryFromTrim(
+      cleverRecommendation.modelKey,
+      updated.trimRecommendation,
+      cleverRecommendation.wishFeatures ?? [],
+      cleverRecommendation.wishChipIds ?? [],
+      trimId,
+    ));
+  }, [cleverRecommendation, consultationProfile]);
 
   const powertrainOptions = useMemo(
     () => (selectedModelKey
@@ -867,6 +1070,13 @@ export default function DealerPage() {
       dealerConditions: conditions,
       message: contact.message,
       wantTestDrive: contact.wantTestDrive,
+      consultationExtras: consultationProfile
+        ? createConsultationLeadExtras({
+          profile: consultationProfile,
+          recommendation: cleverRecommendation,
+          handoffSummary: consultationHandoff,
+        })
+        : null,
     });
     addLead(lead);
     clearJourneyState(dealerId);
@@ -880,12 +1090,12 @@ export default function DealerPage() {
     requestAnimationFrame(() => {
       offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [journeySnapshot, conditions, journeyCleverQuote, submittedQuery, addLead]);
+  }, [journeySnapshot, conditions, journeyCleverQuote, submittedQuery, addLead, dealerId, consultationProfile, cleverRecommendation, consultationHandoff]);
 
   useEffect(() => {
-    if (!isNeedBasedAdvisor || salesStep) return;
+    if (!isNeedBasedAdvisor || salesStep || isCleverEntry) return;
     setSalesStep('recommend');
-  }, [isNeedBasedAdvisor, salesStep]);
+  }, [isNeedBasedAdvisor, salesStep, isCleverEntry]);
 
   useEffect(() => {
     if (!needSearchAnswer?.picks?.length) {
@@ -906,6 +1116,39 @@ export default function DealerPage() {
 
   const mobileFooter = useMemo(() => {
     if (!useSalesJourney || !effectiveSalesStep) return null;
+
+    if (effectiveSalesStep === 'consult' && isCleverEntry) {
+      return {
+        salesStep: effectiveSalesStep,
+        title: 'Frag Clever',
+        subtitle: 'Clever stellt die wichtigsten Fragen',
+        stepLabel: 'Beratung',
+        actionLabel: 'Empfehlung anzeigen',
+        onAction: () => handleConsultationComplete(consultationProfile),
+      };
+    }
+
+    if (effectiveSalesStep === 'recommendation' && cleverRecommendation?.ready) {
+      return {
+        salesStep: effectiveSalesStep,
+        title: cleverRecommendation.vehicleTitle,
+        subtitle: 'Clever Empfehlung',
+        stepLabel: 'Empfehlung',
+        actionLabel: 'Mit Verkaufsberater besprechen',
+        onAction: handleTalkToSeller,
+      };
+    }
+
+    if (effectiveSalesStep === 'handoff' && consultationHandoff) {
+      return {
+        salesStep: effectiveSalesStep,
+        title: cleverRecommendation?.vehicleTitle ?? 'Beratung',
+        subtitle: 'Für den Verkäufer vorbereitet',
+        stepLabel: 'Verkäufer',
+        actionLabel: 'Kontakt aufnehmen',
+        onAction: handleRequestLead,
+      };
+    }
 
     if (effectiveSalesStep === 'recommend' && activeRecommendPick) {
       const shortTitle = activeRecommendPick.shortTitle ?? activeRecommendPick.title;
@@ -1008,6 +1251,12 @@ export default function DealerPage() {
   }, [
     useSalesJourney,
     effectiveSalesStep,
+    isCleverEntry,
+    consultationProfile,
+    cleverRecommendation,
+    consultationHandoff,
+    handleConsultationComplete,
+    handleTalkToSeller,
     activeRecommendPick,
     liveUnderstandTrim,
     wishChipIds.length,
@@ -1039,6 +1288,7 @@ export default function DealerPage() {
             city={city}
             brand="Kia"
             dealerSlug={dealerId}
+            onCleverSearch={handleCleverSearch}
             onSearch={handleSearch}
             onQueryChange={handleQueryChange}
             onChipToggle={handleChipToggle}
@@ -1046,6 +1296,7 @@ export default function DealerPage() {
             recognizedWishes={draftRecognizedWishes}
             inputRef={searchInputRef}
             queryValue={queryDraft}
+            variant="clever"
           />
 
           {!hasSearch && (
@@ -1053,7 +1304,8 @@ export default function DealerPage() {
               city={city}
               dealerSlug={dealerId}
               conditions={conditions}
-              onSearch={handleSearch}
+              onConfigureModel={handleClassicConfigure}
+              variant="classic"
             />
           )}
 
@@ -1078,7 +1330,39 @@ export default function DealerPage() {
             />
           )}
           {useSalesJourney && effectiveSalesStep && (
-            <DealerJourneyProgress salesStep={effectiveSalesStep} />
+            <DealerJourneyProgress
+              salesStep={effectiveSalesStep}
+              flowKind={isCleverEntry ? 'clever' : 'classic'}
+            />
+          )}
+          {showCleverConsult && (
+            <CleverConsultationWizard
+              profile={consultationProfile}
+              searchProfile={searchProfile}
+              searchFilters={searchFilters}
+              primaryModelKey={primaryRecommendGroup?.modelLineKey ?? null}
+              onProfileChange={setConsultationProfile}
+              onComplete={handleConsultationComplete}
+            />
+          )}
+          {showCleverRecommendation && (
+            <CleverRecommendationCard
+              recommendation={cleverRecommendation}
+              dealerId={dealerId}
+              onTalkToSeller={handleTalkToSeller}
+              onConfigureClassic={handleCleverConfigureClassic}
+              onSelectAlternative={handleSelectCleverAlternative}
+            />
+          )}
+          {showSellerHandoff && (
+            <SellerHandoffPanel
+              handoffSummary={consultationHandoff}
+              vehicleTitle={cleverRecommendation?.vehicleTitle}
+              dealerName={conditions.dealerName}
+              onRequestContact={handleRequestLead}
+              onConfigureClassic={() => handleCleverConfigureClassic(cleverRecommendation)}
+              onBack={() => setSalesStep('recommendation')}
+            />
           )}
           {(showSalesCompare || showStandaloneCompare) && journeyCompareGroups && (
             <DealerJourneyCompareCard

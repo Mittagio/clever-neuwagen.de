@@ -65,6 +65,15 @@ export const KIA_MODEL_WORLD = [
     searchQuery: 'Kia Sportage Hybrid',
   },
   {
+    id: 'ceed',
+    name: 'Ceed',
+    tagline: 'Kompakter Allrounder für Stadt und Land',
+    modelKey: 'ceed',
+    rateFrom: 179,
+    priceFrom: 24990,
+    searchQuery: 'Kia Ceed',
+  },
+  {
     id: 'pv5-passenger',
     name: 'PV5',
     tagline: 'Flexible Mobilität für Familie und Gewerbe',

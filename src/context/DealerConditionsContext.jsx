@@ -11,6 +11,9 @@ import {
   createEmptyInventoryItem,
   normalizeInventoryItem,
 } from '../logic/inventoryService.js';
+import { appendChangeHistory } from '../services/dealer/dealerChangeHistory.js';
+import { archiveModelSettingsForMonth } from '../services/dealer/dealerCopyConditions.js';
+import { resolveModelSettings } from '../services/dealer/dealerVehicleManagement.js';
 
 const STORAGE_KEY = 'clever-neuwagen-dealer-store-v2';
 const STORE_VERSION = 2;
@@ -86,6 +89,19 @@ function updateModelMap(prev, mapKey, modelId, updater) {
       ...prev[mapKey],
       [modelId]: typeof updater === 'function' ? updater(current) : updater,
     },
+  };
+}
+
+function withModelHistory(prev, modelId, summary, field = null) {
+  return {
+    ...prev,
+    ...appendChangeHistory(prev, {
+      modelId,
+      summary,
+      field,
+      actor: 'Händler',
+      actorRole: 'dealerAdmin',
+    }),
   };
 }
 
@@ -165,13 +181,31 @@ export function DealerConditionsProvider({ children }) {
     const now = new Date().toISOString();
     setStore((prev) => {
       const pair = getDealerPair(prev, dealerId);
-      const published = deepClone(pair.draftConditions);
+      let draft = deepClone(pair.draftConditions);
+
+      for (const model of draft.activeModels ?? []) {
+        const settings = resolveModelSettings(draft, model.id);
+        draft = {
+          ...draft,
+          ...archiveModelSettingsForMonth(draft, model.id, settings),
+        };
+      }
+
+      const published = deepClone(draft);
       published.lastPublishedAt = now;
       published.syncStatus = 'synchronized';
       published.dealerPageOnline = true;
 
-      const draft = deepClone(published);
+      draft = deepClone(published);
       draft.syncStatus = 'synchronized';
+      draft = {
+        ...draft,
+        ...appendChangeHistory(draft, {
+          summary: 'Konditionen veröffentlicht',
+          actor: 'Händler',
+          actorRole: 'dealerAdmin',
+        }),
+      };
 
       return {
         ...prev,
@@ -257,7 +291,7 @@ export function DealerConditionsProvider({ children }) {
       );
     },
 
-    updateLeasingFactor(modelId, termMonths, kmPerYear, value) {
+    updateLeasingFactor(modelId, termMonths, kmPerYear, value, trimId = null) {
       const factor = value === '' || value == null
         ? null
         : Math.max(0.01, Math.min(2, Number(value) || 0));
@@ -265,16 +299,43 @@ export function DealerConditionsProvider({ children }) {
         const term = Number(termMonths);
         const km = Number(kmPerYear);
         const modelFactors = { ...(prev.leasingFactorsByModel?.[modelId] ?? {}) };
-        const termFactors = { ...(modelFactors[term] ?? {}) };
-        if (factor == null) {
-          delete termFactors[km];
+
+        let updated;
+        if (trimId) {
+          const trimFactors = { ...(modelFactors[trimId] ?? {}) };
+          const termFactors = { ...(trimFactors[term] ?? {}) };
+          if (factor == null) {
+            delete termFactors[km];
+          } else {
+            termFactors[km] = factor;
+          }
+          updated = updateModelMap(prev, 'leasingFactorsByModel', modelId, {
+            ...modelFactors,
+            [trimId]: {
+              ...trimFactors,
+              [term]: termFactors,
+            },
+          });
         } else {
-          termFactors[km] = factor;
+          const termFactors = { ...(modelFactors[term] ?? {}) };
+          if (factor == null) {
+            delete termFactors[km];
+          } else {
+            termFactors[km] = factor;
+          }
+          updated = updateModelMap(prev, 'leasingFactorsByModel', modelId, {
+            ...modelFactors,
+            [term]: termFactors,
+          });
         }
-        return updateModelMap(prev, 'leasingFactorsByModel', modelId, {
-          ...modelFactors,
-          [term]: termFactors,
-        });
+
+        const trimLabel = trimId ? ` (${trimId})` : '';
+        return withModelHistory(
+          updated,
+          modelId,
+          `Leasingfaktor ${term}/${km}${trimLabel} geändert`,
+          'leasingFactor',
+        );
       });
     },
 
@@ -304,6 +365,43 @@ export function DealerConditionsProvider({ children }) {
           return { ...current, finalPaymentPercent };
         }),
       );
+    },
+
+    updateFinanceCondition(modelId, trimId, termMonths, downPayment, value) {
+      const term = Number(termMonths);
+      const down = Number(downPayment);
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const modelStore = { ...(prev.financeConditionsByModel?.[modelId] ?? {}) };
+        const trimStore = { ...(modelStore[trimId] ?? {}) };
+        const termStore = { ...(trimStore[term] ?? {}) };
+
+        if (value == null) {
+          delete termStore[down];
+        } else {
+          termStore[down] = value;
+        }
+
+        const updated = {
+          ...prev,
+          financeConditionsByModel: {
+            ...(prev.financeConditionsByModel ?? {}),
+            [modelId]: {
+              ...modelStore,
+              [trimId]: {
+                ...trimStore,
+                [term]: termStore,
+              },
+            },
+          },
+        };
+
+        return withModelHistory(
+          updated,
+          modelId,
+          `Finanzierung ${term}/${down}${trimId ? ` (${trimId})` : ''} geändert`,
+          'financeCondition',
+        );
+      });
     },
 
     updateDelivery(modelId, field, value) {
@@ -343,8 +441,8 @@ export function DealerConditionsProvider({ children }) {
     },
 
     updateModelSettings(modelId, partial) {
-      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
-        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const updated = updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
           ...current,
           ...partial,
           paymentDiscounts: partial.paymentDiscounts
@@ -353,37 +451,51 @@ export function DealerConditionsProvider({ children }) {
           preparationFee: partial.preparationFee
             ? { ...(current.preparationFee ?? {}), ...partial.preparationFee }
             : current.preparationFee,
-        })),
-      );
+          trimConditions: partial.trimConditions
+            ? { ...(current.trimConditions ?? {}), ...partial.trimConditions }
+            : current.trimConditions,
+        }));
+        return withModelHistory(updated, modelId, 'Konditionen geändert', Object.keys(partial).join(', '));
+      });
+    },
+
+    addCustomTargetGroup(group) {
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => ({
+        ...prev,
+        customTargetGroups: [...(prev.customTargetGroups ?? []), group],
+      }));
     },
 
     addModelPromotion(modelId, promotion) {
-      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
-        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const updated = updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
           ...current,
           promotions: [...(current.promotions ?? []), promotion],
-        })),
-      );
+        }));
+        return withModelHistory(updated, modelId, `Aktion angelegt: ${promotion.title}`, 'promotion');
+      });
     },
 
     updateModelPromotion(modelId, promotionId, partial) {
-      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
-        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const updated = updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
           ...current,
           promotions: (current.promotions ?? []).map((p) => (
             p.id === promotionId ? { ...p, ...partial } : p
           )),
-        })),
-      );
+        }));
+        return withModelHistory(updated, modelId, 'Aktion bearbeitet', promotionId);
+      });
     },
 
     removeModelPromotion(modelId, promotionId) {
-      updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
-        updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const updated = updateModelMap(prev, 'modelSettingsByModel', modelId, (current) => ({
           ...current,
           promotions: (current.promotions ?? []).filter((p) => p.id !== promotionId),
-        })),
-      );
+        }));
+        return withModelHistory(updated, modelId, 'Aktion entfernt', promotionId);
+      });
     },
 
     addInventoryItem(item = createEmptyInventoryItem()) {

@@ -35,12 +35,14 @@ export default function DealerSearchHero({
   city,
   dealerSlug = '',
   onSearch,
+  onCleverSearch,
   onQueryChange,
   onChipToggle,
   selectedChipIds = [],
   recognizedWishes = [],
   inputRef: externalInputRef,
   queryValue = '',
+  variant = 'clever',
 }) {
   const navigate = useNavigate();
   const internalInputRef = useRef(null);
@@ -78,11 +80,15 @@ export default function DealerSearchHero({
 
   function submitSearch(text) {
     const value = (text ?? searchText).trim();
+    if (!value) return;
+    if (onCleverSearch) {
+      onCleverSearch(value);
+      return;
+    }
     if (onSearch) {
       onSearch(value);
       return;
     }
-    if (!value) return;
     navigate(buildDealerWishSearchUrl(value, { city, dealerSlug }));
   }
 
@@ -127,11 +133,21 @@ export default function DealerSearchHero({
 
   const hasSelection = Boolean(searchText.trim());
 
+  const isCleverVariant = variant === 'clever';
+
   return (
-    <section className="dl-hero dl-hero--chat" aria-labelledby="dl-hero-title">
+    <section
+      className={`dl-hero dl-hero--chat${isCleverVariant ? ' dl-hero--clever' : ''}`}
+      aria-labelledby="dl-hero-title"
+    >
       <header className="dl-hero__head">
+        {isCleverVariant && (
+          <p className="dl-hero__clever-badge">🚀 Frag Clever</p>
+        )}
         <h1 id="dl-hero-title" className="dl-hero__prompt">
-          Wonach suchen Sie?
+          {isCleverVariant
+            ? 'Beschreiben Sie Ihren Wunsch – Clever berät Sie Schritt für Schritt'
+            : 'Wonach suchen Sie?'}
         </h1>
         <p className="dl-hero__dealer">{dealerName}</p>
       </header>
@@ -167,11 +183,16 @@ export default function DealerSearchHero({
             </button>
             <button
               type="submit"
-              className="dl-hero__send"
+              className={`dl-hero__send${isCleverVariant ? ' dl-hero__send--clever' : ''}`}
               disabled={!hasSelection}
-              aria-label="Suche starten"
+              aria-label={isCleverVariant ? 'Clever fragen' : 'Suche starten'}
             >
-              ↑
+              {isCleverVariant ? (
+                <>
+                  <span aria-hidden>↑</span>
+                  <span className="dl-hero__send-label">Frag Clever</span>
+                </>
+              ) : '↑'}
             </button>
           </div>
         </div>

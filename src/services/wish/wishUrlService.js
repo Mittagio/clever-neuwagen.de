@@ -18,6 +18,18 @@ export function buildDealerWishSearchUrl(text, { city = '', dealerSlug = '', bra
   return buildFahrzeugeSearchUrl(filters);
 }
 
+export function buildDealerCleverEntryUrl(text, { dealerSlug = 'autohaus-trinkle', city = '' } = {}) {
+  const q = encodeURIComponent(text.trim());
+  const params = new URLSearchParams({ entry: 'clever', q });
+  if (city) params.set('city', city);
+  return `/haendler/${dealerSlug}?${params.toString()}`;
+}
+
+export function buildDealerClassicModelUrl(modelKey, { dealerSlug = 'autohaus-trinkle' } = {}) {
+  const params = new URLSearchParams({ entry: 'classic', model: modelKey });
+  return `/haendler/${dealerSlug}?${params.toString()}`;
+}
+
 export function parseFeaturesParam(searchParams) {
   const raw = searchParams.get('features') ?? '';
   return raw.split(',').map((s) => s.trim()).filter(Boolean);

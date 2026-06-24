@@ -152,6 +152,7 @@ export function createLeadFromJourney({
   dealerConditions,
   message = '',
   wantTestDrive = false,
+  consultationExtras = null,
 }) {
   const vehicle = journeySnapshot?.vehicle ?? {};
   const paymentType = resolvePaymentTypeForLead(journeySnapshot?.purchaseType);
@@ -167,6 +168,16 @@ export function createLeadFromJourney({
   });
 
   const dossierLines = formatJourneyLeadDossierLines(inquiryBrief);
+
+  if (consultationExtras?.consultationHandoff?.lines?.length) {
+    dossierLines.push('--- Clever Beratung ---');
+    for (const row of consultationExtras.consultationHandoff.lines) {
+      dossierLines.push(`${row.label}: ${row.value}`);
+    }
+    if (consultationExtras.consultationHandoff.openQuestions?.length) {
+      dossierLines.push(`Offene Fragen: ${consultationExtras.consultationHandoff.openQuestions.join('; ')}`);
+    }
+  }
 
   return {
     id: uid(),
@@ -202,12 +213,17 @@ export function createLeadFromJourney({
     sonderwuensche: {
       specialConditions: journeySnapshot?.specialConditions ?? [],
       configuration: inquiryBrief.configuration,
+      consultation: consultationExtras,
     },
     notes: dossierLines.join('\n'),
     wantTestDrive: Boolean(wantTestDrive),
     history: [
       historyEntry(`Anfrage über ${LEAD_SOURCES.dealerJourney}`),
-      historyEntry('Journey: Beratung → Konfiguration → Kaufart → Sonderkonditionen → Angebot'),
+      historyEntry(
+        consultationExtras?.entryMode === 'clever'
+          ? 'Journey: Frag Clever → Beratung → Empfehlung → Verkäufer'
+          : 'Journey: Beratung → Konfiguration → Kaufart → Sonderkonditionen → Angebot',
+      ),
       ...(wantTestDrive ? [historyEntry('Probefahrt gewünscht', 'note')] : []),
       ...dossierLines.map((line) => historyEntry(line, 'note')),
       ...(message ? [historyEntry(`Nachricht: ${message}`, 'note')] : []),

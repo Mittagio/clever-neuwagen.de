@@ -44,7 +44,7 @@ assert.equal(card.discountPercent, 10);
 assert.equal(card.activeActionCount, 1);
 
 const badges = buildCustomerModelBadges(conditions, 'sportage');
-assert.ok(badges.some((b) => /10 % Händleraktion/.test(b.label)));
+assert.ok(badges.some((b) => /10 % Rabatt/.test(b.label)));
 assert.ok(badges.some((b) => /Studentenbonus/.test(b.label)));
 assert.ok(badges.some((b) => /gültig bis/.test(b.label)));
 

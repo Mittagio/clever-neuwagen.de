@@ -461,6 +461,26 @@
   color: #94a3b8;
 }
 
+.dl-modellwelt__trim-rates {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.dl-modellwelt__trim-rates li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: #64748b;
+  padding: 3px 0;
+}
+
+.dl-modellwelt__trim-rates li span:last-child {
+  font-weight: 700;
+  color: #334155;
+}
+
 .dl-modellwelt__badges {
   margin-top: 8px;
 }

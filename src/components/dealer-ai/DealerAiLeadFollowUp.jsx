@@ -75,6 +75,8 @@ import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
+import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
+import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
@@ -216,6 +218,7 @@ export default function DealerAiLeadFollowUp({
   onStartNewWish,
   onSave,
   onPrepareOffer,
+  onPrepareOfferFromClever,
   onOpenOfferEdit,
   onReturnToReview,
   onDiscard,
@@ -364,6 +367,11 @@ export default function DealerAiLeadFollowUp({
   );
 
   const telHref = phoneTelHref(phone);
+
+  const cleverBeratungView = useMemo(
+    () => (lead ? buildCleverBeratungAkteView(lead) : null),
+    [lead],
+  );
 
   const resolvedOffers = useMemo(() => {
     const crmOffers = crm.offers ?? [];
@@ -646,6 +654,36 @@ export default function DealerAiLeadFollowUp({
   function openCleverAntworten(presetType = null) {
     setAntwortenPreset(presetType);
     openSheet(SHEETS.antworten);
+  }
+
+  function handleCleverBeratungPrepareOffer() {
+    if (onPrepareOfferFromClever) {
+      onPrepareOfferFromClever();
+      return;
+    }
+    const rec = cleverBeratungView?.recommendation;
+    if (rec?.modelKey) {
+      onPrepareOffer?.({
+        id: rec.modelKey,
+        modelKey: rec.modelKey,
+        name: rec.vehicleTitle ?? `Kia ${rec.modelLabel ?? ''}`.trim(),
+        trimLabel: rec.trimLabel ?? undefined,
+      });
+      return;
+    }
+    onPrepareOffer?.();
+  }
+
+  function handleCleverBeratungChangeRecommendation() {
+    if (reservedModels.length > 0) {
+      openSheet(SHEETS.models);
+      return;
+    }
+    if (onReturnToReview) {
+      onReturnToReview();
+      return;
+    }
+    handleAddVehicle();
   }
 
   function selectFollowUp(chip) {
@@ -935,6 +973,16 @@ export default function DealerAiLeadFollowUp({
         unterlagenBadge={unterlagenOpenCount}
         activitiesBadge={activitiesCount}
       />
+
+      {cleverBeratungView && (
+        <CustomerAkteCleverBeratung
+          view={cleverBeratungView}
+          telHref={telHref}
+          onPrepareOffer={handleCleverBeratungPrepareOffer}
+          onCreateMessage={() => openCleverAntworten()}
+          onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+        />
+      )}
 
       <CustomerAkteKundenhelfer
         notes={kundenhelferNotes}

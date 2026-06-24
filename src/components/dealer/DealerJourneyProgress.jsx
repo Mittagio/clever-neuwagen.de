@@ -1,6 +1,6 @@
 import './dealer-landing.css';
 
-const JOURNEY_STEPS = [
+const CLASSIC_STEPS = [
   { id: 'vehicle', label: 'Fahrzeug' },
   { id: 'trim', label: 'Ausstattung' },
   { id: 'payment', label: 'Zahlungsart' },
@@ -9,7 +9,14 @@ const JOURNEY_STEPS = [
   { id: 'inquiry', label: 'Anfrage' },
 ];
 
-function resolveActiveIndex(salesStep) {
+const CLEVER_STEPS = [
+  { id: 'consult', label: 'Beratung' },
+  { id: 'recommendation', label: 'Empfehlung' },
+  { id: 'handoff', label: 'Verkäufer' },
+  { id: 'inquiry', label: 'Anfrage' },
+];
+
+function resolveClassicIndex(salesStep) {
   switch (salesStep) {
     case 'recommend': return 0;
     case 'understand':
@@ -23,16 +30,35 @@ function resolveActiveIndex(salesStep) {
   }
 }
 
+function resolveCleverIndex(salesStep) {
+  switch (salesStep) {
+    case 'consult': return 0;
+    case 'recommendation': return 1;
+    case 'handoff': return 2;
+    case 'understand':
+    case 'trim':
+    case 'purchase':
+    case 'special':
+    case 'summary':
+    case 'offer': return 3;
+    default: return 0;
+  }
+}
+
 /**
- * Fortschrittsleiste – Fahrzeug → Ausstattung → Wünsche → Konditionen → Sonderrabatte → Anfrage.
+ * Fortschrittsleiste – klassischer Konfigurator oder Frag-Clever-Beratung.
  */
-export default function DealerJourneyProgress({ salesStep }) {
-  const activeIndex = resolveActiveIndex(salesStep);
+export default function DealerJourneyProgress({ salesStep, flowKind = 'classic' }) {
+  const isClever = flowKind === 'clever';
+  const steps = isClever ? CLEVER_STEPS : CLASSIC_STEPS;
+  const activeIndex = isClever
+    ? resolveCleverIndex(salesStep)
+    : resolveClassicIndex(salesStep);
 
   return (
     <nav className="dl-journey-progress" aria-label="Beratungsfortschritt">
       <ol className="dl-journey-progress__list">
-        {JOURNEY_STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isComplete = index < activeIndex;
           const isActive = index === activeIndex;
           const state = isComplete ? 'complete' : isActive ? 'active' : 'upcoming';

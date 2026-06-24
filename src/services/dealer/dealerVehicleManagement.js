@@ -5,16 +5,20 @@ import {
   DEALER_MODEL_CATALOG,
   resolveDiscountsForModel,
 } from '../../data/dealerConditionsSchema.js';
+import {
+  DEFAULT_TARGET_GROUPS,
+  normalizePromotionScope,
+  PROMOTION_SCOPE_TYPES,
+} from './dealerPromotionEngine.js';
+import { resolveTrimSettings } from './dealerTrimConditions.js';
 
 export const PAYMENT_DISCOUNT_QUICK_VALUES = [8, 10, 12, 15];
 
+/** @deprecated Nutze resolveTargetGroups – Legacy-Alias */
 export const ACTION_TARGET_GROUPS = [
-  { id: 'all', label: 'Alle Kunden' },
+  ...DEFAULT_TARGET_GROUPS,
   { id: 'studenten', label: 'Studenten' },
-  { id: 'gewerbe', label: 'Gewerbe' },
-  { id: 'schwerbehindert', label: 'Schwerbehinderung' },
-  { id: 'corporate', label: 'Corporate Benefits' },
-  { id: 'oeffentlicherDienst', label: 'Öffentlicher Dienst' },
+  { id: 'all', label: 'Alle Kunden' },
 ];
 
 export const CASH_PREPARATION_MODES = [
@@ -59,6 +63,8 @@ export function buildDefaultModelSettings(modelId, conditions = {}) {
     },
     promotions: [],
     deliveryTime: delivery.defaultDeliveryTime ?? catalog?.defaultDeliveryTime ?? '4–6 Wochen',
+    leasingFactorSkipped: {},
+    financeWizardSkipped: {},
   };
 }
 
@@ -76,33 +82,41 @@ export function resolveModelSettings(conditions = {}, modelId = '') {
       ...defaults.preparationFee,
       ...(stored.preparationFee ?? {}),
     },
-    promotions: (stored.promotions ?? []).map(normalizePromotion),
+    promotions: (stored.promotions ?? []).map((p) => normalizePromotion(p, modelId)),
   };
 }
 
-export function normalizePromotion(raw = {}) {
+export function normalizePromotion(raw = {}, modelId = '') {
   return {
     id: raw.id ?? nextPromotionId(),
     title: raw.title ?? '',
     description: raw.description ?? '',
     bonusAmount: raw.bonusAmount ?? null,
     extraDiscountPercent: raw.extraDiscountPercent ?? null,
-    targetGroup: raw.targetGroup ?? 'all',
+    targetGroup: raw.targetGroup ?? 'privat',
+    scope: normalizePromotionScope(raw.scope, modelId),
+    combinable: raw.combinable !== false,
+    exclusiveWith: raw.exclusiveWith ?? [],
     validFrom: raw.validFrom ?? '',
     validUntil: raw.validUntil ?? '',
     showOnCustomerSite: raw.showOnCustomerSite !== false,
     badgeText: raw.badgeText ?? '',
+    highlight: raw.highlight === true,
+    badgePriority: raw.badgePriority ?? 50,
     active: raw.active !== false,
   };
 }
 
-export function createEmptyPromotion() {
+export function createEmptyPromotion(modelId = '') {
   return normalizePromotion({
     title: 'Neue Aktion',
     badgeText: 'Händleraktion',
+    targetGroup: 'privat',
+    scope: { type: PROMOTION_SCOPE_TYPES.MODEL, modelIds: [modelId] },
     showOnCustomerSite: true,
     active: true,
-  });
+    combinable: true,
+  }, modelId);
 }
 
 function isPromotionActive(promo, now = new Date()) {
@@ -154,19 +168,51 @@ export function formatValidUntilShort(iso = '') {
 }
 
 /**
- * Badges für Kunden-Landingpage
+ * Badges für Kunden-Landingpage – mit Priorität und Overflow
  */
-export function buildCustomerModelBadges(conditions = {}, modelId = '') {
+export function prioritizeCustomerBadges(badges = [], maxVisible = 2) {
+  const sorted = [...badges].sort((a, b) => {
+    if (a.highlight && !b.highlight) return -1;
+    if (!a.highlight && b.highlight) return 1;
+    return (a.priority ?? 50) - (b.priority ?? 50);
+  });
+  const visible = sorted.slice(0, maxVisible);
+  const hiddenCount = Math.max(0, sorted.length - visible.length);
+  return {
+    badges: visible,
+    allBadges: sorted,
+    hiddenCount,
+    overflowLabel: hiddenCount > 0 ? `+ ${hiddenCount} weitere Vorteile` : null,
+  };
+}
+
+export function buildCustomerModelBadges(
+  conditions = {},
+  modelId = '',
+  { trimId = null, maxVisible = 5 } = {},
+) {
+  const presentation = buildCustomerModelBadgePresentation(conditions, modelId, { trimId, maxVisible });
+  return presentation.allBadges ?? presentation.badges;
+}
+
+export function buildCustomerModelBadgePresentation(
+  conditions = {},
+  modelId = '',
+  { trimId = null, maxVisible = 2 } = {},
+) {
   const badges = [];
   const settings = resolveModelSettings(conditions, modelId);
+  const trimSettings = trimId ? resolveTrimSettings(settings, trimId) : settings;
   const { resolved } = resolveDiscountsForModel(conditions.discountsByModel, modelId);
-  const leasingDiscount = settings.paymentDiscounts?.leasing ?? resolved.standard;
+  const leasingDiscount = trimSettings.paymentDiscounts?.leasing ?? settings.paymentDiscounts?.leasing ?? resolved.standard;
 
   if (leasingDiscount > 0) {
     badges.push({
       id: 'dealer-discount',
-      label: `${leasingDiscount} % Händleraktion`,
+      label: `${leasingDiscount} % Rabatt`,
       tone: 'purple',
+      priority: 10,
+      highlight: true,
     });
   }
 
@@ -176,18 +222,24 @@ export function buildCustomerModelBadges(conditions = {}, modelId = '') {
         id: `bonus-${promo.id}`,
         label: promo.badgeText?.trim() || `${promo.bonusAmount.toLocaleString('de-DE')} € ${ACTION_TARGET_GROUPS.find((g) => g.id === promo.targetGroup)?.label ?? 'Bonus'}`,
         tone: 'green',
+        priority: promo.highlight ? 5 : (promo.badgePriority ?? 30),
+        highlight: promo.highlight === true,
       });
     } else if (promo.extraDiscountPercent > 0) {
       badges.push({
         id: `extra-${promo.id}`,
         label: promo.badgeText?.trim() || `${promo.extraDiscountPercent} % extra`,
         tone: 'blue',
+        priority: promo.highlight ? 5 : (promo.badgePriority ?? 40),
+        highlight: promo.highlight === true,
       });
     } else if (promo.badgeText?.trim()) {
       badges.push({
         id: `badge-${promo.id}`,
         label: promo.badgeText.trim(),
         tone: 'neutral',
+        priority: promo.highlight ? 5 : (promo.badgePriority ?? 60),
+        highlight: promo.highlight === true,
       });
     }
 
@@ -197,11 +249,12 @@ export function buildCustomerModelBadges(conditions = {}, modelId = '') {
         id: `until-${promo.id}`,
         label: `gültig bis ${untilLabel.replace(/\.\d{4}$/, '.')}`,
         tone: 'muted',
+        priority: 90,
       });
     }
   }
 
-  return badges.slice(0, 5);
+  return prioritizeCustomerBadges(badges, maxVisible);
 }
 
 export function buildModelManagementCard(conditions = {}, model = {}) {

@@ -11,6 +11,8 @@ export default function LandingHeroVehicleCard({
   delivery,
   availability,
   promotionBadges = [],
+  promotionOverflow = null,
+  trimLines = [],
   preparationFeeLine = null,
   priceFootnotes = [],
   href,
@@ -77,9 +79,27 @@ export default function LandingHeroVehicleCard({
           <span className="lp-hero-card__meta-chip">⏱ {delivery}</span>
         </div>
 
+        {trimLines.length > 1 && (
+          <ul className="lp-hero-card__trim-rates">
+            {trimLines.map((line) => (
+              <li key={line.trimId}>
+                <span>{line.trimName}</span>
+                <span>
+                  {line.displayRate != null
+                    ? `ab ${Math.round(line.displayRate)} €`
+                    : '–'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {promotionBadges.length > 0 && (
           <div className="lp-hero-card__promos">
-            <DealerModelPromotionBadges badges={promotionBadges} />
+            <DealerModelPromotionBadges
+              badges={promotionBadges}
+              overflowLabel={promotionOverflow}
+            />
           </div>
         )}
 

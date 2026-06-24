@@ -44,6 +44,7 @@ export default function BackendPage() {
     hasDraftChanges,
     updateDiscount,
     updateLeasingFactor,
+    updateFinanceCondition,
     saveLeasingTerm,
     updateFinance,
     updateFinanceFinalPayment,
@@ -54,6 +55,7 @@ export default function BackendPage() {
     addModelPromotion,
     updateModelPromotion,
     removeModelPromotion,
+    addCustomTargetGroup,
     publishDealerChanges,
     discardDraft,
     resetToDefaults,
@@ -107,12 +109,17 @@ export default function BackendPage() {
       return (
         <DealerVehicleManagement
           conditions={draftConditions}
+          userRole="dealerAdmin"
           onUpdateModel={updateModel}
           onUpdateModelSettings={updateModelSettings}
           onUpdateDiscount={updateDiscount}
+          onUpdateLeasingFactor={updateLeasingFactor}
+          onUpdateFinanceCondition={updateFinanceCondition}
           onAddPromotion={addModelPromotion}
           onUpdatePromotion={updateModelPromotion}
           onRemovePromotion={removeModelPromotion}
+          onAddCustomTargetGroup={addCustomTargetGroup}
+          onPublish={() => publishDealerChanges()}
         />
       );
     }

@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KIA_MODEL_WORLD } from '../../data/dealerLandingContent.js';
-import { buildCustomerModelBadges } from '../../services/dealer/dealerVehicleManagement.js';
-import { buildCustomerPricePresentation } from '../../services/dealer/dealerModelPricing.js';
-import { priceConfiguration } from '../../services/pricing/pricingEngine.js';
+import {
+  buildModelTrimPricePresentation,
+  pickPresentationForLanding,
+} from '../../services/dealer/dealerTrimPricing.js';
 import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js';
 import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
@@ -34,6 +35,8 @@ export default function DealerModelWorld({
   dealerSlug = '',
   conditions = null,
   onSearch,
+  onConfigureModel,
+  variant = 'classic',
 }) {
   const navigate = useNavigate();
 
@@ -41,36 +44,25 @@ export default function DealerModelWorld({
     return KIA_MODEL_WORLD.map((card) => {
       let rateFrom = card.rateFrom;
       let priceFrom = card.priceFrom;
-      let promoBadges = conditions
-        ? buildCustomerModelBadges(conditions, card.modelKey)
-        : [];
+      let promoBadges = [];
+      let overflowLabel = null;
+      let trimLines = [];
       let preparationFeeLine = null;
       let priceFootnotes = [];
 
       if (conditions) {
-        const pricing = priceConfiguration({
-          brand: 'Kia',
-          model: card.name,
-          modelKey: card.modelKey,
-          dealerConditions: conditions,
-          paymentType: 'leasing',
-        });
-        if (pricing) {
-          const presentation = buildCustomerPricePresentation(
-            conditions,
-            card.modelKey,
-            pricing,
-            'leasing',
-          );
-          if (presentation.amount != null) {
-            rateFrom = presentation.amount;
-          }
-          preparationFeeLine = presentation.preparationFeeLine;
-          priceFootnotes = presentation.footnotes ?? [];
-          if (presentation.badges?.length) {
-            promoBadges = presentation.badges;
-          }
-        }
+        const presentation = buildModelTrimPricePresentation(
+          conditions,
+          { id: card.modelKey, brand: 'Kia', name: card.name },
+          { paymentType: 'leasing' },
+        );
+        const landing = pickPresentationForLanding(presentation);
+        if (landing.rate != null) rateFrom = landing.rate;
+        trimLines = landing.trimLines;
+        preparationFeeLine = landing.preparationFeeLine;
+        priceFootnotes = landing.footnotes ?? [];
+        promoBadges = landing.badges ?? [];
+        overflowLabel = landing.overflowLabel;
       }
 
       return {
@@ -78,6 +70,8 @@ export default function DealerModelWorld({
         rateFrom,
         priceFrom,
         promoBadges,
+        overflowLabel,
+        trimLines,
         preparationFeeLine,
         priceFootnotes,
       };
@@ -85,6 +79,10 @@ export default function DealerModelWorld({
   }, [conditions]);
 
   function exploreCard(card) {
+    if (onConfigureModel) {
+      onConfigureModel(card);
+      return;
+    }
     if (onSearch) {
       onSearch(card.searchQuery);
       return;
@@ -92,15 +90,25 @@ export default function DealerModelWorld({
     navigate(buildDealerWishSearchUrl(card.searchQuery, { city, dealerSlug }));
   }
 
+  const isClassicVariant = variant === 'classic';
+
   return (
     <section
-      className="dl-modellwelt dl-modellwelt--inspire"
+      className={`dl-modellwelt dl-modellwelt--inspire${isClassicVariant ? ' dl-modellwelt--classic' : ''}`}
       aria-labelledby="dl-modellwelt-heading"
     >
       <div className="dl-modellwelt__head">
+        {isClassicVariant && (
+          <p className="dl-modellwelt__classic-label">⚙️ Klassisch konfigurieren</p>
+        )}
         <h2 id="dl-modellwelt-heading" className="dl-modellwelt__title">
-          Unsere Modelle
+          {isClassicVariant ? 'Modell wählen und konfigurieren' : 'Unsere Modelle'}
         </h2>
+        {isClassicVariant && (
+          <p className="dl-modellwelt__classic-hint">
+            Sie kennen Ihr Wunschfahrzeug? Starten Sie direkt mit Ausstattung, Motor und Farbe.
+          </p>
+        )}
       </div>
 
       <div
@@ -115,7 +123,7 @@ export default function DealerModelWorld({
             <article key={card.id} className="dl-modellwelt__card" role="listitem">
               <button
                 type="button"
-                className="dl-modellwelt__card-btn"
+                className={`dl-modellwelt__card-btn${isClassicVariant ? ' dl-modellwelt__card-btn--classic' : ''}`}
                 onClick={() => exploreCard(card)}
                 aria-label={`${displayName}: ${card.tagline}`}
               >
@@ -141,15 +149,36 @@ export default function DealerModelWorld({
                       )}
                     </p>
                   )}
+                  {card.trimLines?.length > 1 && (
+                    <ul className="dl-modellwelt__trim-rates">
+                      {card.trimLines.map((line) => (
+                        <li key={line.trimId}>
+                          <span>{line.trimName}</span>
+                          <span>
+                            {line.displayRate != null
+                              ? `ab ${Math.round(line.displayRate)} €`
+                              : '–'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {card.preparationFeeLine && (
                     <p className="dl-modellwelt__prep">{card.preparationFeeLine}</p>
                   )}
                   {card.promoBadges.length > 0 && (
-                    <DealerModelPromotionBadges badges={card.promoBadges} className="dl-modellwelt__badges" />
+                    <DealerModelPromotionBadges
+                      badges={card.promoBadges}
+                      overflowLabel={card.overflowLabel}
+                      className="dl-modellwelt__badges"
+                    />
                   )}
                   {card.priceFootnotes?.slice(0, 1).map((line) => (
                     <p key={line} className="dl-modellwelt__legal">{line}</p>
                   ))}
+                  {isClassicVariant && (
+                    <span className="dl-modellwelt__configure">Konfigurieren →</span>
+                  )}
                 </div>
               </button>
             </article>

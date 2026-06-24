@@ -28,6 +28,7 @@ import {
   OfferFlowLayout,
   VehicleOfferHero,
 } from './flow/OfferFlowComponents.jsx';
+import CleverOfferTransferCard from './CleverOfferTransferCard.jsx';
 import './CustomerOfferEdit.css';
 
 function mapOfferStatusTone(statusUi = {}) {
@@ -83,6 +84,8 @@ export default function CustomerOfferEditView({
   onMarkSent,
   onStatusChange,
   onEditConditions,
+  cleverTransfer = null,
+  pendingFields = [],
   isSaving = false,
   hasChanges = true,
 }) {
@@ -173,6 +176,18 @@ export default function CustomerOfferEditView({
     label: ui.badge,
   }));
 
+  const isPending = (id) => pendingFields?.some((f) => f.id === id);
+
+  const pendingLabel = (id, fallback = 'bitte klären') => {
+    const field = pendingFields?.find((f) => f.id === id);
+    return field?.hint ?? fallback;
+  };
+
+  const displayTermMonths = card.termMonths ?? (isPending('termMonths') ? null : null);
+  const displayMileage = card.mileagePerYear ?? null;
+  const displayRate = card.desiredRate;
+  const displayDownPayment = downPayment ?? (isPending('downPayment') ? null : 0);
+
   return (
     <OfferFlowLayout
       backLabel="← Zur Kundenakte"
@@ -180,9 +195,13 @@ export default function CustomerOfferEditView({
       title="Gespeichertes Angebot"
       titleAside={referenceCode ?? null}
     >
+      {cleverTransfer && (
+        <CleverOfferTransferCard transfer={cleverTransfer} />
+      )}
+
       <VehicleOfferHero
         modelLine={title}
-        motorLine={pt !== 'unknown' ? paymentLabel : null}
+        motorLine={card.motorLabel ?? (pt !== 'unknown' ? paymentLabel : null)}
         colorLabel={colorLabel}
         imageSrc={heroImage}
         imageAlt={title}
@@ -219,7 +238,32 @@ export default function CustomerOfferEditView({
         {paymentLabel && pt !== 'unknown' && (
           <p className="cn-pricing-type">{paymentLabel}</p>
         )}
-        {rateDisplay === 'offen' && (
+        {isPending('paymentType') && (
+          <dl className="cn-summary-rows">
+            <FlowSummaryRow label="Zahlungsart" value={pendingLabel('paymentType')} variant="pending" />
+          </dl>
+        )}
+        {card.specialConditionLabels?.length > 0 && (
+          <dl className="cn-summary-rows cn-summary-rows--compact">
+            <FlowSummaryRow
+              label="Zielgruppe / Aktionen"
+              value={card.specialConditionLabels.join(', ')}
+            />
+          </dl>
+        )}
+        {isPending('specialConditions') && !card.specialConditionLabels?.length && (
+          <dl className="cn-summary-rows">
+            <FlowSummaryRow label="Zielgruppe / Aktionen" value={pendingLabel('specialConditions')} variant="pending" />
+          </dl>
+        )}
+        {card.featureLabels?.length > 0 && (
+          <ul className="cn-offer-feature-chips">
+            {card.featureLabels.map((label) => (
+              <li key={label} className="cn-offer-feature-chips__chip">{label}</li>
+            ))}
+          </ul>
+        )}
+        {rateDisplay === 'offen' && !isPending('desiredRate') && !isPending('desiredPrice') && (
           <dl className="cn-summary-rows">
             <FlowSummaryRow label="Rate" value="offen" variant="muted" />
           </dl>
@@ -233,18 +277,40 @@ export default function CustomerOfferEditView({
             housePrice={card.desiredPrice}
             transferCost={transferCost}
             offerPrice={rateDisplay === 'offen' ? null : offerPrice}
-            termMonths={card.termMonths}
-            mileagePerYear={card.mileagePerYear}
-            downPayment={downPayment}
+            termMonths={displayTermMonths}
+            mileagePerYear={displayMileage}
+            downPayment={displayDownPayment}
             formatCurrency={formatCurrency}
           />
         )}
-        {pt === 'unknown' && rateDisplay === 'offen' && (
+        {pendingFields?.length > 0 && (
+          <dl className="cn-summary-rows cn-summary-rows--pending">
+            {isPending('desiredRate') && (
+              <FlowSummaryRow label="Monatsrate / Budget" value={pendingLabel('desiredRate')} variant="pending" />
+            )}
+            {isPending('desiredPrice') && (
+              <FlowSummaryRow label="Kaufpreis" value={pendingLabel('desiredPrice')} variant="pending" />
+            )}
+            {isPending('termMonths') && (
+              <FlowSummaryRow label="Laufzeit" value={pendingLabel('termMonths')} variant="pending" />
+            )}
+            {isPending('mileagePerYear') && (
+              <FlowSummaryRow label="Kilometer / Jahr" value={pendingLabel('mileagePerYear')} variant="pending" />
+            )}
+            {isPending('downPayment') && (
+              <FlowSummaryRow label="Anzahlung" value={pendingLabel('downPayment')} variant="pending" />
+            )}
+            {isPending('delivery') && (
+              <FlowSummaryRow label="Lieferzeit" value={pendingLabel('delivery')} variant="pending" />
+            )}
+          </dl>
+        )}
+        {pt === 'unknown' && !isPending('paymentType') && rateDisplay === 'offen' && (
           <dl className="cn-summary-rows">
             <FlowSummaryRow label="Rate" value="offen" variant="muted" />
           </dl>
         )}
-        {rateDisplay === 'offen' && (
+        {(rateDisplay === 'offen' || pendingFields?.length > 0) && (
           <div className="cn-offer-conditions-action">
             <FlowSecondaryButton type="button" onClick={handleEditConditionsClick}>
               Konditionen ergänzen

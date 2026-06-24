@@ -41,9 +41,43 @@
   border: 1px dashed #cbd5e1;
 }
 
+.dmp-badge--highlight {
+  box-shadow: 0 0 0 1px rgba(109, 40, 217, 0.15);
+}
+
+.dmp-badge--overflow {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.dmp-badge__star {
+  font-size: 0.62rem;
+}
+
 .lp-hero-card__promos {
   margin-top: 8px;
   padding-top: 6px;
+}
+
+.lp-hero-card__trim-rates {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.lp-hero-card__trim-rates li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: #64748b;
+  padding: 2px 0;
+}
+
+.lp-hero-card__trim-rates li span:last-child {
+  font-weight: 700;
+  color: #334155;
 }
 
 .lp-hero-card__prep,

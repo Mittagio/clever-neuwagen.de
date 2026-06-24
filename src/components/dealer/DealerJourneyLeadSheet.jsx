@@ -53,7 +53,7 @@ export default function DealerJourneyLeadSheet({
         <p className="dl-lead-sheet__sub">
           {dealerName ?? 'Ihr Händler'}
           {' '}
-          erhält Ihre vollständige Konfiguration – fast wie ein fertiger Auftrag.
+          erhält Ihre Beratung und Wunschkonfiguration – der Verkäufer kann direkt einsteigen.
         </p>
         {vehicleTitle && (
           <p className="dl-lead-sheet__vehicle">{vehicleTitle}</p>

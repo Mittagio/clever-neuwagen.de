@@ -15,6 +15,23 @@
   overflow-x: clip;
 }
 
+.lp-hero--clever-entry .lp-hero__clever-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #3730a3;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.lp-classic-entry {
+  padding-bottom: 48px;
+}
+
 .landing-shell,
 .shell-main.landing-shell {
   overflow-x: clip;

@@ -1,80 +1,67 @@
 import { useMemo, useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import DealerVehicleActionCard from './DealerVehicleActionCard.jsx';
+import DealerModelConditionsHub from './DealerModelConditionsHub.jsx';
+import DealerModelPaymentConditions from './DealerModelPaymentConditions.jsx';
+import DealerModelLeasingWizard from './DealerModelLeasingWizard.jsx';
+import DealerModelFinancingWizard from './DealerModelFinancingWizard.jsx';
+import DealerModelTrimPicker from './DealerModelTrimPicker.jsx';
+import DealerModelCustomerPreview from './DealerModelCustomerPreview.jsx';
+import DealerModelPublishFlow from './DealerModelPublishFlow.jsx';
+import DealerModelChangeHistory from './DealerModelChangeHistory.jsx';
+import DealerCopyConditionsPanel from './DealerCopyConditionsPanel.jsx';
+import DealerConditionStatusBadge from './DealerConditionStatusBadge.jsx';
 import {
   buildCustomerModelBadges,
   CASH_PREPARATION_MODES,
-  clampDiscount,
   createEmptyPromotion,
-  PAYMENT_DISCOUNT_QUICK_VALUES,
   resolveModelSettings,
 } from '../../services/dealer/dealerVehicleManagement.js';
+import {
+  getLeasingWizardProgress,
+  resolveSkippedMap,
+} from '../../services/dealer/dealerLeasingWizard.js';
+import {
+  getModelTrimLines,
+  shouldShowTrimPicker,
+} from '../../services/dealer/dealerTrimConditions.js';
+import { validateModelForPublish } from '../../services/dealer/dealerPublishValidation.js';
+import { canPublishConditions } from '../../services/dealer/dealerConditionPermissions.js';
 import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
 import './DealerVehicleManagement.css';
 
-const PAYMENT_TYPES = [
-  { key: 'cash', label: 'Barzahlung', icon: '💶' },
-  { key: 'leasing', label: 'Leasing', icon: '📋' },
-  { key: 'financing', label: 'Finanzierung', icon: '🏦' },
-];
-
-function DiscountCard({ label, icon, value, onChange, min, max }) {
-  function adjust(delta) {
-    onChange(clampDiscount((Number(value) || 0) + delta, min, max));
-  }
-
-  return (
-    <div className="dvm-discount-card">
-      <div className="dvm-discount-card__head">
-        <span className="dvm-discount-card__icon" aria-hidden>{icon}</span>
-        <span className="dvm-discount-card__label">{label}</span>
-      </div>
-
-      <div className="dvm-stepper">
-        <button type="button" className="dvm-stepper__btn" onClick={() => adjust(-1)} aria-label="Weniger">−</button>
-        <div className="dvm-stepper__value">
-          <input
-            type="range"
-            className="dvm-stepper__range"
-            min={min}
-            max={max}
-            value={Number(value) || 0}
-            onChange={(e) => onChange(clampDiscount(e.target.value, min, max))}
-          />
-          <span className="dvm-stepper__percent">{Number(value) || 0} %</span>
-        </div>
-        <button type="button" className="dvm-stepper__btn" onClick={() => adjust(1)} aria-label="Mehr">+</button>
-      </div>
-
-      <div className="dvm-quick-btns">
-        {PAYMENT_DISCOUNT_QUICK_VALUES.map((pct) => (
-          <button
-            key={pct}
-            type="button"
-            className={`dvm-quick-btn${Number(value) === pct ? ' is-active' : ''}`}
-            onClick={() => onChange(pct)}
-          >
-            {pct} %
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+const VIEWS = {
+  MAIN: 'main',
+  CONDITIONS: 'conditions',
+  TRIM_PICKER: 'trim-picker',
+  CASH: 'cash',
+  LEASING: 'leasing',
+  FINANCING: 'financing',
+  PUBLISH: 'publish',
+};
 
 export default function DealerVehicleModelEditor({
   model,
   conditions,
+  userRole = 'dealerAdmin',
   onBack,
   onUpdateModel,
   onUpdateModelSettings,
   onUpdateDiscount,
+  onUpdateLeasingFactor,
+  onUpdateFinanceCondition,
   onAddPromotion,
   onUpdatePromotion,
   onRemovePromotion,
+  onAddCustomTargetGroup,
+  onPublish,
   onSaved,
 }) {
+  const [view, setView] = useState(VIEWS.MAIN);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [pendingPaymentType, setPendingPaymentType] = useState(null);
+  const [trimScope, setTrimScope] = useState(null);
+  const trims = useMemo(() => getModelTrimLines(model), [model]);
   const settings = useMemo(
     () => resolveModelSettings(conditions, model.id),
     [conditions, model.id],
@@ -83,16 +70,18 @@ export default function DealerVehicleModelEditor({
     () => buildCustomerModelBadges(conditions, model.id),
     [conditions, model.id],
   );
+  const leasingProgress = useMemo(
+    () => getLeasingWizardProgress(conditions, model.id, resolveSkippedMap(settings)),
+    [conditions, model.id, settings],
+  );
+  const publishCheck = useMemo(
+    () => validateModelForPublish(conditions, model),
+    [conditions, model],
+  );
+  const mayPublish = canPublishConditions(userRole);
 
   function patchSettings(partial) {
     onUpdateModelSettings?.(model.id, partial);
-  }
-
-  function patchPaymentDiscount(key, value) {
-    patchSettings({
-      paymentDiscounts: { [key]: clampDiscount(value, settings.discountMin ?? 0, settings.discountMax ?? 50) },
-    });
-    onUpdateDiscount?.(model.id, 'standard', settings.paymentDiscounts?.leasing ?? value);
   }
 
   function handleSave() {
@@ -103,6 +92,110 @@ export default function DealerVehicleModelEditor({
 
   const prep = settings.preparationFee ?? {};
   const dealerDefaultFee = conditions.preparationFee ?? 1290;
+
+  function openPaymentFlow(paymentType) {
+    if (shouldShowTrimPicker(trims)) {
+      setPendingPaymentType(paymentType);
+      setTrimScope(null);
+      setView(VIEWS.TRIM_PICKER);
+      return;
+    }
+    setTrimScope(null);
+    if (paymentType === 'cash') setView(VIEWS.CASH);
+    else if (paymentType === 'leasing') setView(VIEWS.LEASING);
+    else if (paymentType === 'financing') setView(VIEWS.FINANCING);
+  }
+
+  function handleTrimConfirm(scope) {
+    setTrimScope(scope);
+    if (pendingPaymentType === 'cash') setView(VIEWS.CASH);
+    else if (pendingPaymentType === 'leasing') setView(VIEWS.LEASING);
+    else if (pendingPaymentType === 'financing') setView(VIEWS.FINANCING);
+  }
+
+  function backToConditions() {
+    setPendingPaymentType(null);
+    setTrimScope(null);
+    setView(VIEWS.CONDITIONS);
+  }
+
+  if (view === VIEWS.CONDITIONS) {
+    return (
+      <DealerModelConditionsHub
+        model={model}
+        conditions={conditions}
+        onBack={() => setView(VIEWS.MAIN)}
+        onOpenPayment={openPaymentFlow}
+      />
+    );
+  }
+
+  if (view === VIEWS.TRIM_PICKER && pendingPaymentType) {
+    return (
+      <DealerModelTrimPicker
+        model={model}
+        conditions={conditions}
+        paymentType={pendingPaymentType}
+        onBack={backToConditions}
+        onConfirm={handleTrimConfirm}
+      />
+    );
+  }
+
+  if (view === VIEWS.CASH) {
+    return (
+      <DealerModelPaymentConditions
+        model={model}
+        conditions={conditions}
+        paymentType="cash"
+        trimScope={trimScope}
+        onBack={backToConditions}
+        onUpdateModelSettings={onUpdateModelSettings}
+        onUpdateDiscount={onUpdateDiscount}
+      />
+    );
+  }
+
+  if (view === VIEWS.FINANCING) {
+    return (
+      <DealerModelFinancingWizard
+        model={model}
+        conditions={conditions}
+        trimScope={trimScope}
+        onBack={backToConditions}
+        onUpdateFinanceCondition={onUpdateFinanceCondition}
+        onUpdateModelSettings={onUpdateModelSettings}
+        onPreview={() => setView(VIEWS.PUBLISH)}
+        onPublish={mayPublish ? onPublish : undefined}
+      />
+    );
+  }
+
+  if (view === VIEWS.LEASING) {
+    return (
+      <DealerModelLeasingWizard
+        model={model}
+        conditions={conditions}
+        trimScope={trimScope}
+        onBack={backToConditions}
+        onUpdateLeasingFactor={onUpdateLeasingFactor}
+        onUpdateModelSettings={onUpdateModelSettings}
+        onPublish={mayPublish ? () => setView(VIEWS.PUBLISH) : undefined}
+      />
+    );
+  }
+
+  if (view === VIEWS.PUBLISH) {
+    return (
+      <DealerModelPublishFlow
+        model={model}
+        conditions={conditions}
+        userRole={userRole}
+        onBack={() => setView(VIEWS.MAIN)}
+        onPublish={onPublish}
+      />
+    );
+  }
 
   return (
     <div className="dvm-editor">
@@ -125,10 +218,22 @@ export default function DealerVehicleModelEditor({
           <p className="dvm-editor__brand">{model.brand}</p>
           <h2 className="dvm-editor__title">{model.name}</h2>
           <p className="dvm-editor__subtitle">Modell verwalten</p>
+          <div className="dvm-editor__status-row">
+            <DealerConditionStatusBadge
+              status={publishCheck.canPublish ? 'draft' : 'incomplete'}
+              label={publishCheck.canPublish ? 'Bereit zur Vorschau' : 'Unvollständig'}
+            />
+          </div>
         </div>
       </header>
 
-      {/* A) Grunddaten */}
+      <DealerCopyConditionsPanel
+        model={model}
+        conditions={conditions}
+        onUpdateModelSettings={onUpdateModelSettings}
+        onUpdateLeasingFactor={onUpdateLeasingFactor}
+      />
+
       <section className="dvm-section">
         <h3 className="dvm-section__title">Grunddaten</h3>
 
@@ -190,64 +295,27 @@ export default function DealerVehicleModelEditor({
         </label>
       </section>
 
-      {/* B) Konditionen */}
       <section className="dvm-section">
         <h3 className="dvm-section__title">Konditionen</h3>
-        <p className="dvm-section__hint">Rabatte je Zahlungsart – per Slider oder Schnellauswahl.</p>
-
-        <div className="dvm-discount-stack">
-          {PAYMENT_TYPES.map((pt) => (
-            <DiscountCard
-              key={pt.key}
-              label={pt.label}
-              icon={pt.icon}
-              value={settings.paymentDiscounts?.[pt.key] ?? 0}
-              min={settings.discountMin ?? 0}
-              max={settings.discountMax ?? 50}
-              onChange={(val) => patchPaymentDiscount(pt.key, val)}
-            />
-          ))}
-        </div>
-
-        <div className="dvm-field-grid">
-          <label className="dvm-field">
-            <span className="dvm-field__label">Fixer Bonus (€)</span>
-            <input
-              type="number"
-              className="dvm-field__input"
-              min={0}
-              value={settings.bonusAmount ?? ''}
-              onChange={(e) => patchSettings({
-                bonusAmount: e.target.value === '' ? null : Number(e.target.value),
-              })}
-            />
-          </label>
-          <label className="dvm-field">
-            <span className="dvm-field__label">Rabatt min–max %</span>
-            <div className="dvm-inline-range">
-              <input
-                type="number"
-                className="dvm-field__input"
-                min={0}
-                max={50}
-                value={settings.discountMin ?? 0}
-                onChange={(e) => patchSettings({ discountMin: Number(e.target.value) || 0 })}
-              />
-              <span>–</span>
-              <input
-                type="number"
-                className="dvm-field__input"
-                min={0}
-                max={50}
-                value={settings.discountMax ?? 50}
-                onChange={(e) => patchSettings({ discountMax: Number(e.target.value) || 50 })}
-              />
-            </div>
-          </label>
-        </div>
+        <p className="dvm-section__hint">
+          Barzahlung, Leasing und Finanzierung getrennt pflegen – mobil und Schritt für Schritt.
+        </p>
+        <button
+          type="button"
+          className="dvm-conditions-entry"
+          onClick={() => setView(VIEWS.CONDITIONS)}
+        >
+          <span className="dvm-conditions-entry__icon" aria-hidden>📋</span>
+          <span className="dvm-conditions-entry__body">
+            <span className="dvm-conditions-entry__title">Konditionen öffnen</span>
+            <span className="dvm-conditions-entry__meta">
+              Leasing: {leasingProgress.filled} von {leasingProgress.total} Faktoren
+            </span>
+          </span>
+          <span className="dvm-conditions-entry__chev" aria-hidden>›</span>
+        </button>
       </section>
 
-      {/* Überführung */}
       <section className="dvm-section dvm-section--prep">
         <h3 className="dvm-section__title">Überführung & Preistext</h3>
 
@@ -313,16 +381,15 @@ export default function DealerVehicleModelEditor({
         )}
       </section>
 
-      {/* C) Sonderaktionen */}
       <section className="dvm-section">
         <div className="dvm-section__head-row">
           <h3 className="dvm-section__title">Sonderaktionen</h3>
           <button
             type="button"
             className="dvm-add-btn"
-            onClick={() => onAddPromotion?.(model.id, createEmptyPromotion())}
+            onClick={() => onAddPromotion?.(model.id, createEmptyPromotion(model.id))}
           >
-            + Aktion
+            + Aktion anlegen
           </button>
         </div>
 
@@ -333,16 +400,48 @@ export default function DealerVehicleModelEditor({
             {(settings.promotions ?? []).map((promo) => (
               <DealerVehicleActionCard
                 key={promo.id}
+                model={model}
+                conditions={conditions}
                 promotion={promo}
+                allPromotions={settings.promotions ?? []}
                 onChange={(partial) => onUpdatePromotion?.(model.id, promo.id, partial)}
                 onRemove={(id) => onRemovePromotion?.(model.id, id)}
+                onAddCustomTargetGroup={onAddCustomTargetGroup}
               />
             ))}
           </div>
         )}
       </section>
 
-      {/* D) Sichtbarkeit */}
+      <section className="dvm-section">
+        <h3 className="dvm-section__title">Kundenvorschau</h3>
+        <p className="dvm-section__hint">
+          So sieht der Kunde das Fahrzeug auf der Landingpage – vor der Veröffentlichung prüfen.
+        </p>
+        <DealerModelCustomerPreview model={model} conditions={conditions} />
+        {mayPublish && (
+          <button
+            type="button"
+            className="dvm-conditions-entry dvm-conditions-entry--publish"
+            onClick={() => setView(VIEWS.PUBLISH)}
+          >
+            <span className="dvm-conditions-entry__icon" aria-hidden>🚀</span>
+            <span className="dvm-conditions-entry__body">
+              <span className="dvm-conditions-entry__title">Veröffentlichen</span>
+              <span className="dvm-conditions-entry__meta">
+                Vorschau, Prüfung und Freigabe
+              </span>
+            </span>
+            <span className="dvm-conditions-entry__chev" aria-hidden>›</span>
+          </button>
+        )}
+      </section>
+
+      <section className="dvm-section">
+        <h3 className="dvm-section__title">Änderungsverlauf</h3>
+        <DealerModelChangeHistory conditions={conditions} modelId={model.id} />
+      </section>
+
       <section className="dvm-section">
         <h3 className="dvm-section__title">Sichtbarkeit</h3>
 
@@ -389,7 +488,7 @@ export default function DealerVehicleModelEditor({
 
         {previewBadges.length > 0 && (
           <div className="dvm-preview">
-            <p className="dvm-preview__label">Vorschau Kundenseite</p>
+            <p className="dvm-preview__label">Badge-Vorschau</p>
             <DealerModelPromotionBadges badges={previewBadges} />
           </div>
         )}

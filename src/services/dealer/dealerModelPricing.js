@@ -3,27 +3,19 @@
  */
 import { resolveDiscountsForModel } from '../../data/dealerConditionsSchema.js';
 import {
-  buildCustomerModelBadges,
+  buildCustomerModelBadgePresentation,
   clampDiscount,
   formatPreparationFeeSuffix,
   getActivePromotions,
   resolveModelSettings,
   resolvePreparationFeeAmount,
 } from './dealerVehicleManagement.js';
-
-const CUSTOMER_GROUP_TO_TARGET = {
-  standard: 'all',
-  corporateBenefits: 'corporate',
-  schwerbehindert: 'schwerbehindert',
-  oeffentlicherDienst: 'oeffentlicherDienst',
-  gewerbe: 'gewerbe',
-  studenten: 'studenten',
-  aktion: 'all',
-};
-
-export function mapCustomerGroupToTargetGroup(customerGroup = 'standard') {
-  return CUSTOMER_GROUP_TO_TARGET[customerGroup] ?? customerGroup ?? 'all';
-}
+import {
+  filterCombinablePromotions,
+  mapCustomerGroupToTargetGroup,
+  promotionAppliesToModel,
+} from './dealerPromotionEngine.js';
+import { resolveTrimSettings } from './dealerTrimConditions.js';
 
 export function resolvePaymentDiscountPercent(
   conditions = {},
@@ -31,19 +23,21 @@ export function resolvePaymentDiscountPercent(
   paymentType = 'leasing',
   customerGroup = 'standard',
   customDiscountPercent = null,
+  trimId = null,
 ) {
   if (customerGroup === 'custom' && customDiscountPercent != null) {
     return clampDiscount(customDiscountPercent);
   }
 
   const settings = resolveModelSettings(conditions, modelId);
+  const trimSettings = trimId ? resolveTrimSettings(settings, trimId) : settings;
   const paymentKey = paymentType === 'cash'
     ? 'cash'
     : (paymentType === 'finance' || paymentType === 'financing' ? 'financing' : 'leasing');
 
-  if (settings.paymentDiscounts?.[paymentKey] != null) {
+  if (trimSettings.paymentDiscounts?.[paymentKey] != null) {
     return clampDiscount(
-      settings.paymentDiscounts[paymentKey],
+      trimSettings.paymentDiscounts[paymentKey],
       settings.discountMin ?? 0,
       settings.discountMax ?? 50,
     );
@@ -65,10 +59,13 @@ export function resolveApplicablePromotions(
   now = new Date(),
 ) {
   const settings = resolveModelSettings(conditions, modelId);
+  const model = conditions.activeModels?.find((m) => m.id === modelId) ?? { id: modelId };
   const target = mapCustomerGroupToTargetGroup(customerGroup);
-  return getActivePromotions(settings, now).filter((promo) => (
-    promo.targetGroup === 'all' || promo.targetGroup === target
+  const matched = getActivePromotions(settings, now).filter((promo) => (
+    promotionAppliesToModel(promo, model)
+    && (promo.targetGroup === 'all' || promo.targetGroup === 'privat' || promo.targetGroup === target)
   ));
+  return filterCombinablePromotions(matched);
 }
 
 function sumPromotionExtras(promotions = []) {
@@ -104,6 +101,7 @@ function scaleRateByHousePrice(baseRate, configurationPrice, housePrice) {
 export function applyDealerModelPricing({
   conditions = {},
   modelId = 'sportage',
+  trimId = null,
   paymentType = 'leasing',
   customerGroup = 'standard',
   customDiscountPercent = null,
@@ -117,6 +115,7 @@ export function applyDealerModelPricing({
   now = new Date(),
 } = {}) {
   const settings = resolveModelSettings(conditions, modelId);
+  const trimSettings = trimId ? resolveTrimSettings(settings, trimId) : settings;
   const prepSettings = settings.preparationFee ?? {};
   const preparationFee = resolvePreparationFeeAmount(conditions, modelId);
 
@@ -126,6 +125,7 @@ export function applyDealerModelPricing({
     paymentType,
     customerGroup,
     customDiscountPercent,
+    trimId,
   );
   const applicablePromotions = resolveApplicablePromotions(
     conditions,
@@ -143,7 +143,8 @@ export function applyDealerModelPricing({
 
   const discountAmount = Math.round(configurationPrice * (totalDiscountPercent / 100));
   const promoBonusAmount = Math.round(bonusAmount);
-  const housePrice = Math.max(0, configurationPrice - discountAmount - promoBonusAmount);
+  const housePrice = Math.max(0, configurationPrice - discountAmount - promoBonusAmount
+    - (trimSettings.bonusAmount > 0 ? Number(trimSettings.bonusAmount) : 0));
 
   let leasingRate = null;
   if (paymentType === 'leasing' || paymentType == null) {
@@ -178,10 +179,12 @@ export function applyDealerModelPricing({
   }
 
   const preparationFeeLine = formatPreparationFeeSuffix(conditions, modelId, paymentType);
-  const badges = buildCustomerModelBadges(conditions, modelId);
+  const badgePresentation = buildCustomerModelBadgePresentation(conditions, modelId, { trimId });
+  const badges = badgePresentation.badges;
 
   return {
     modelId,
+    trimId,
     baseDiscountPercent,
     extraDiscountPercent,
     discountPercent: totalDiscountPercent,
@@ -197,6 +200,7 @@ export function applyDealerModelPricing({
     financeRate: resolvedFinanceRate,
     appliedPromotions: applicablePromotions,
     badges,
+    badgePresentation,
     priceFootnotes: buildPriceFootnotes({
       paymentType,
       discountPercent: totalDiscountPercent,
@@ -312,6 +316,7 @@ export function mergeDealerPricingIntoResult(result, dealerPricing) {
     primaryRate: dealerPricing.displayRate ?? result.primaryRate,
     appliedPromotions: dealerPricing.appliedPromotions,
     customerBadges: dealerPricing.badges,
+    badgePresentation: dealerPricing.badgePresentation,
     priceFootnotes: dealerPricing.priceFootnotes,
     dealerModelPricing: dealerPricing,
     promoBonusAmount: dealerPricing.promoBonusAmount,
