@@ -1,4 +1,3 @@
-import DealerModelPromotionBadges from './DealerModelPromotionBadges.jsx';
 import './DealerModelPromotionBadges.css';
 
 export default function DealerModelPromotionBadges({

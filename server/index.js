@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import intelligenceRoutes from './intelligenceRoutes.js';
@@ -18,8 +19,35 @@ import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const PORT = Number(process.env.PORT) || 3001;
-const HOST = process.env.HOST
-  || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
+const HOST = process.env.HOST || '0.0.0.0';
+
+function getLanAddresses() {
+  const ips = new Set();
+  for (const nets of Object.values(os.networkInterfaces())) {
+    for (const net of nets ?? []) {
+      if (net.family === 'IPv4' && !net.internal && net.address) {
+        ips.add(net.address);
+      }
+    }
+  }
+  return [...ips];
+}
+
+function logServerUrls(host, port) {
+  const localUrl = `http://localhost:${port}`;
+  console.log(`Clever-Neuwagen Server: ${localUrl}`);
+  if (host === '0.0.0.0') {
+    const lanIps = getLanAddresses();
+    if (lanIps.length) {
+      console.log('WLAN (gleiches Netz):');
+      for (const ip of lanIps) {
+        console.log(`  http://${ip}:${port}`);
+      }
+    }
+  } else if (host !== '127.0.0.1' && host !== 'localhost') {
+    console.log(`Netzwerk: http://${host}:${port}`);
+  }
+}
 
 const ROBOTS_PUBLIC = 'User-agent: *\nAllow: /\n';
 const ROBOTS_TEST = 'User-agent: *\nDisallow: /\n';
@@ -94,7 +122,7 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(DIST_DIR)) {
 }
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`Clever-Neuwagen Server: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  logServerUrls(HOST, PORT);
   console.log(`Pilot-Daten (JSON): ${resolvePilotDataDir()}`);
   console.log(`Intelligence API: http://localhost:${PORT}/api/v1/intelligence/overview?period=7d`);
 });

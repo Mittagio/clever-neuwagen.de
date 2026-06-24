@@ -26,6 +26,18 @@ export function isKnownDealerSlug(slug) {
   return DEALER_SUBDOMAIN_SLUGS.includes(slug);
 }
 
+/** localhost, 127.0.0.1 und private LAN-IPs (Handy im gleichen WLAN). */
+export function isLocalNetworkHost(hostname = '') {
+  const host = (hostname || '').toLowerCase();
+  if (!host) return false;
+  if (host === 'localhost' || host === '127.0.0.1') return true;
+  if (host.endsWith('.localhost')) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+  return false;
+}
+
 /**
  * Ermittelt Händler-Slug aus Host (Produktion) oder ?dealer= (localhost).
  * @param {string} [hostname]
@@ -43,7 +55,7 @@ export function getDealerSlugFromHost(
 
   const host = (hostname || '').toLowerCase();
 
-  if (host === 'localhost' || host === '127.0.0.1') {
+  if (isLocalNetworkHost(host)) {
     return null;
   }
 
@@ -70,14 +82,14 @@ export function isDealerSubdomainHost(hostname) {
 
 export function buildDealerSubdomainUrl(slug) {
   if (!slug) return null;
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window !== 'undefined' && isLocalNetworkHost(window.location.hostname)) {
     return `${window.location.origin}/haendler/${slug}`;
   }
   return `https://${buildSubdomain(slug)}`;
 }
 
 export function getMainSiteUrl(path = '/') {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window !== 'undefined' && isLocalNetworkHost(window.location.hostname)) {
     return `${window.location.origin}${path}`;
   }
   return `https://www.${SUBDOMAIN_BASE}${path}`;

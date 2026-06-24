@@ -35,20 +35,38 @@ function Test-Port($port) {
 Write-Host 'Frontend bauen …'
 & $node node_modules/vite/bin/vite.js build | Out-Host
 
+function Get-LanIp {
+  $ip = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.IPAddress -notlike '127.*' -and
+      $_.IPAddress -notlike '169.254.*' -and
+      $_.PrefixOrigin -ne 'WellKnown'
+    } |
+    Sort-Object InterfaceMetric |
+    Select-Object -First 1 -ExpandProperty IPAddress
+  if ($ip) { return $ip }
+  return $null
+}
+
 if (-not (Test-Port 3001)) {
-  Write-Host 'Server starten (Port 3001, Production) …'
+  Write-Host 'Server starten (Port 3001, Production, WLAN-faehig) …'
   $env:NODE_ENV = 'production'
+  $env:HOST = '0.0.0.0'
   Start-Process -FilePath $node -ArgumentList 'server/index.js' -WorkingDirectory $root -WindowStyle Minimized
   Start-Sleep -Seconds 2
 }
 
 $url = 'http://localhost:3001'
+$lanIp = Get-LanIp
 Write-Host ''
-Write-Host "App:     $url"
-Write-Host "Händler: $url/haendler/autohaus-trinkle"
-Write-Host "API:     $url/health"
+Write-Host "App (PC):     $url"
+Write-Host "Händler:      $url/haendler/autohaus-trinkle"
+if ($lanIp) {
+  Write-Host "WLAN (Handy): http://${lanIp}:3001/haendler/autohaus-trinkle"
+}
+Write-Host "API:          $url/health"
 Write-Host ''
-Write-Host 'Im externen Browser öffnen (nicht Cursor Simple Browser auf :5173).'
+Write-Host 'Im externen Browser oeffnen (nicht Cursor Simple Browser auf :5173).'
 
 if ($edge) {
   Start-Process $edge $url

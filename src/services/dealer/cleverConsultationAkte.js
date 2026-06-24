@@ -259,10 +259,11 @@ export function buildCleverBeratungAkteView(lead) {
     ? (KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey)
     : (vehicleTitle?.replace(/^Kia\s+/i, '').split(' ')[0] ?? null);
 
+  const reasonLines = consultation.consultationHandoff?.lines
+    ?.find((l) => l.label === 'Gründe')?.value?.split(' · ') ?? [];
   const whyLines = recommendation?.whyLines?.length
     ? recommendation.whyLines
-    : (brief.recommended?.title && consultation.consultationHandoff?.lines
-      ?.find((l) => l.label === 'Gründe')?.value?.split(' · ') ?? []);
+    : (brief.recommended?.title ? reasonLines : []);
 
   const dealerSlug = lead?.dealerId ?? 'autohaus-trinkle';
 
