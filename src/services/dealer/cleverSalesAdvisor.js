@@ -147,6 +147,30 @@ export const CONSULTATION_QUESTIONS = [
 
 const MIN_ANSWERS_FOR_RECOMMENDATION = 4;
 
+const SALES_MODE_QUESTION_ORDER = [
+  'paymentType',
+  'monthlyBudget',
+  'annualKm',
+  'passengers',
+  'towCapacity',
+];
+
+/**
+ * @param {object} profile
+ * @param {object} [ctx]
+ */
+function getOrderedConsultationQuestions(profile, ctx = {}) {
+  const isSalesMode = profile?.salesIntent?.mode === 'sales';
+  if (!isSalesMode) return CONSULTATION_QUESTIONS;
+
+  const byId = Object.fromEntries(CONSULTATION_QUESTIONS.map((q) => [q.id, q]));
+  const ordered = SALES_MODE_QUESTION_ORDER
+    .map((id) => byId[id])
+    .filter(Boolean);
+  const rest = CONSULTATION_QUESTIONS.filter((q) => !SALES_MODE_QUESTION_ORDER.includes(q.id));
+  return [...ordered, ...rest];
+}
+
 /**
  * @param {string} [initialWish]
  */
@@ -165,8 +189,9 @@ export function createConsultationProfile(initialWish = '') {
  * @param {object} [ctx]
  */
 export function getConsultationProgress(profile, ctx = {}) {
+  const questions = getOrderedConsultationQuestions(profile, ctx);
   const answered = Object.keys(profile?.answers ?? {}).length;
-  const total = CONSULTATION_QUESTIONS.filter((q) => !q.skipIf?.({ ...ctx, answers: profile?.answers })).length;
+  const total = questions.filter((q) => !q.skipIf?.({ ...ctx, answers: profile?.answers })).length;
   return { answered, total, percent: total ? Math.round((answered / total) * 100) : 0 };
 }
 
@@ -176,7 +201,8 @@ export function getConsultationProgress(profile, ctx = {}) {
  */
 export function getNextConsultationQuestion(profile, ctx = {}) {
   const answers = profile?.answers ?? {};
-  for (const question of CONSULTATION_QUESTIONS) {
+  const questions = getOrderedConsultationQuestions(profile, ctx);
+  for (const question of questions) {
     if (answers[question.id] != null) continue;
     if (question.skipIf?.({ ...ctx, answers })) {
       continue;
@@ -310,11 +336,12 @@ function buildTrimAlternatives(trimRec) {
   if (!trimRec?.allTrims?.length) return [];
   const primaryId = trimRec.primary?.trimId;
   return trimRec.allTrims
+    .filter(Boolean)
     .filter((t) => t.trimId !== primaryId)
     .slice(0, 3)
     .map((t) => ({
       trimId: t.trimId,
-      trimLabel: t.trimLabel,
+      trimLabel: t.trimLabel ?? t.name ?? 'Ausstattung',
       tagline: t.roleLabel || t.tagline || t.valueNote,
       medal: t.medal,
     }));
@@ -460,6 +487,7 @@ export function buildConsultationHandoffSummary(profile, recommendation = null) 
 export function createConsultationLeadExtras({ profile, recommendation, handoffSummary }) {
   return {
     consultationProfile: profile,
+    salesIntent: profile?.salesIntent ?? null,
     cleverRecommendation: recommendation?.ready ? {
       vehicleTitle: recommendation.vehicleTitle,
       modelKey: recommendation.modelKey,

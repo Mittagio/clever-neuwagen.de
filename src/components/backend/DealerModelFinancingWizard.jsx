@@ -315,8 +315,8 @@ export default function DealerModelFinancingWizard({
 
   return (
     <div className="dvm-conditions dvm-finance-wizard">
-      <button type="button" className="dvm-back" onClick={onBack}>
-        ← Konditionen
+        <button type="button" className="dvm-back" onClick={onBack}>
+        ← Finanzierung
       </button>
 
       <header className="dvm-conditions__head">

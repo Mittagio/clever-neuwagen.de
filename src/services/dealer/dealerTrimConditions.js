@@ -34,6 +34,8 @@ export function resolveTrimSettings(settings = {}, trimId = null) {
       paymentDiscounts: { ...(settings.paymentDiscounts ?? {}) },
       bonusAmount: settings.bonusAmount ?? null,
       leasingFactorSkipped: { ...(settings.leasingFactorSkipped ?? {}) },
+      financeWizardSkipped: { ...(settings.financeWizardSkipped ?? {}) },
+      financeResidualsSkipped: { ...(settings.financeResidualsSkipped ?? {}) },
     };
   }
 
@@ -51,6 +53,10 @@ export function resolveTrimSettings(settings = {}, trimId = null) {
     financeWizardSkipped: {
       ...(settings.financeWizardSkipped ?? {}),
       ...(trimSpecific.financeWizardSkipped ?? {}),
+    },
+    financeResidualsSkipped: {
+      ...(settings.financeResidualsSkipped ?? {}),
+      ...(trimSpecific.financeResidualsSkipped ?? {}),
     },
   };
 }
@@ -71,6 +77,9 @@ export function buildTrimConditionsPatch(settings = {}, trimId, partial = {}) {
     financeWizardSkipped: partial.financeWizardSkipped
       ? { ...current.financeWizardSkipped, ...partial.financeWizardSkipped }
       : current.financeWizardSkipped,
+    financeResidualsSkipped: partial.financeResidualsSkipped
+      ? { ...current.financeResidualsSkipped, ...partial.financeResidualsSkipped }
+      : current.financeResidualsSkipped,
   };
 
   return {
@@ -99,6 +108,9 @@ export function buildTrimConditionsPatchForAll(settings = {}, trimIds = [], part
       financeWizardSkipped: partial.financeWizardSkipped
         ? { ...current.financeWizardSkipped, ...partial.financeWizardSkipped }
         : current.financeWizardSkipped,
+      financeResidualsSkipped: partial.financeResidualsSkipped
+        ? { ...current.financeResidualsSkipped, ...partial.financeResidualsSkipped }
+        : current.financeResidualsSkipped,
     };
   }
   return { trimConditions };

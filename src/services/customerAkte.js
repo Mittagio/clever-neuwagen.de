@@ -234,7 +234,7 @@ export function buildVehicleOpportunityCards({
   const vehicleConfigurations = lead?.crm?.vehicleConfigurations ?? [];
 
   if (vehicleConfigurations.length > 0) {
-    vehicleConfigurations.forEach((vc, index) => {
+    vehicleConfigurations.filter(Boolean).forEach((vc, index) => {
       const modelName = /^kia\b/i.test(vc.model ?? '')
         ? vc.model
         : `Kia ${vc.model ?? ''}`.trim();
@@ -270,7 +270,7 @@ export function buildVehicleOpportunityCards({
       });
     });
   } else if (reservedModels.length > 0) {
-    reservedModels.forEach((model, index) => {
+    reservedModels.filter(Boolean).forEach((model, index) => {
       const modelName = formatReservedModelName(model.name);
       cards.push({
         id: model.id ?? `reserved-${index}`,
@@ -340,7 +340,10 @@ export function buildVehicleOpportunityCards({
   });
 
   const vehicleOffers = lead?.crm?.vehicleOffers ?? {};
-  return cards.map((c) => enrichCardWithVehicleOffer(c, vehicleOffers));
+  return cards
+    .filter(Boolean)
+    .map((c) => enrichCardWithVehicleOffer(c, vehicleOffers))
+    .filter(Boolean);
 }
 
 export function formatVehicleCardConditions(card = {}) {
@@ -390,12 +393,14 @@ export function formatVehicleCardPrice(card = {}) {
   return null;
 }
 
-export function formatVehicleCardTitle(card = {}) {
-  const trim = card.trimLabel?.trim();
-  if (trim && !card.modelName.toLowerCase().includes(trim.toLowerCase())) {
-    return `${card.modelName} ${trim}`;
+export function formatVehicleCardTitle(card) {
+  const safe = card ?? {};
+  const modelName = safe.modelName ?? 'Kia';
+  const trim = safe.trimLabel?.trim();
+  if (trim && !modelName.toLowerCase().includes(trim.toLowerCase())) {
+    return `${modelName} ${trim}`;
   }
-  return card.modelName;
+  return modelName;
 }
 
 /** Kurzlabel für CTAs, z. B. „EV4-Angebot senden“. */

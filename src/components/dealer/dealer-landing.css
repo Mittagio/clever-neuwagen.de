@@ -994,6 +994,35 @@
   font-weight: 700;
 }
 
+.dl-smart-answer__consult-followup {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.dl-smart-answer__consult-followup-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.dl-smart-answer__consult-cta {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
 .dl-smart-answer__head {
   display: flex;
   gap: 12px;

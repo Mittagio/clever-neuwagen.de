@@ -339,12 +339,15 @@ export default function DealerAiConditionsStep({
   }
 
   const vehicleTitle = vehicleConfigurationTitle(vehicleConfiguration);
-  const vehicleMainLine = [vehicleConfiguration.model, vehicleConfiguration.trimLabel]
+  const vehicleMainLine = [
+    vehicleConfiguration?.model,
+    vehicleConfiguration?.trimLabel,
+  ]
     .filter(Boolean)
     .join(' ');
-  const motorLine = vehicleConfiguration.motorLabel ?? vehicleConfiguration.batteryLabel ?? null;
+  const motorLine = vehicleConfiguration?.motorLabel ?? vehicleConfiguration?.batteryLabel ?? null;
   const configSummary = buildHeroSubtitle(vehicleConfiguration, 4);
-  const uvpTotal = vehicleConfiguration.uvpConfigurationPrice;
+  const uvpTotal = vehicleConfiguration?.uvpConfigurationPrice;
 
   const activePaymentCard = isCash
     ? 'cash'

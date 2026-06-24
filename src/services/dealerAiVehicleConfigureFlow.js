@@ -855,14 +855,15 @@ export function buildParsedFromAssistantModel(model = {}) {
 }
 
 export function buildSelectedModelFieldPatch(model = {}, fields = {}) {
-  const vehicle = model.primaryMatch?.vehicle;
+  const safeModel = model ?? {};
+  const vehicle = safeModel.primaryMatch?.vehicle;
   return {
     model: vehicle?.model
-      ?? model.name?.replace(/^Kia\s+/i, '')
+      ?? safeModel.name?.replace(/^Kia\s+/i, '')
       ?? fields.model,
     brand: vehicle?.brand ?? fields.brand ?? 'Kia',
-    modelId: model.modelKey ?? model.id ?? fields.modelId,
-    trimLabel: vehicle?.trim ?? model.trimLabel ?? fields.trimLabel,
+    modelId: safeModel.modelKey ?? safeModel.id ?? fields.modelId,
+    trimLabel: vehicle?.trim ?? safeModel.trimLabel ?? fields.trimLabel,
     trimId: vehicle?.trimId ?? fields.trimId,
   };
 }

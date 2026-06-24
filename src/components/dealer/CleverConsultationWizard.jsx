@@ -30,6 +30,8 @@ export default function CleverConsultationWizard({
     [profile, ctx],
   );
 
+  const salesIntent = profile?.salesIntent ?? null;
+
   const progress = useMemo(
     () => getConsultationProgress(profile, ctx),
     [profile, ctx],
@@ -65,6 +67,11 @@ export default function CleverConsultationWizard({
     <section className="dl-clever-consult" aria-labelledby="dl-clever-consult-title">
       <header className="dl-clever-consult__head">
         <p className="dl-clever-consult__eyebrow">🚀 Frag Clever</p>
+        {salesIntent?.modeLabel && (
+          <span className={`dl-clever-consult__mode dl-clever-consult__mode--${salesIntent.mode}`}>
+            {salesIntent.modeLabel}
+          </span>
+        )}
         <div className="dl-clever-consult__progress" aria-hidden>
           <span
             className="dl-clever-consult__progress-bar"
@@ -81,6 +88,9 @@ export default function CleverConsultationWizard({
       <h2 id="dl-clever-consult-title" className="dl-clever-consult__question">
         {question.prompt}
       </h2>
+      {salesIntent?.followUpQuestion && progress.answered === 0 && (
+        <p className="dl-clever-consult__intent-hint">{salesIntent.followUpQuestion}</p>
+      )}
       {question.hint && (
         <p className="dl-clever-consult__hint">{question.hint}</p>
       )}

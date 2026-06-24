@@ -404,6 +404,47 @@ export function DealerConditionsProvider({ children }) {
       });
     },
 
+    updateFinanceResidual(modelId, trimId, termMonths, percent) {
+      const term = Number(termMonths);
+      const trimKey = trimId ?? '_default';
+      const value = percent === '' || percent == null
+        ? null
+        : Math.max(0, Math.min(100, Number(percent) || 0));
+
+      updateDealerConditions(DEFAULT_DEALER_ID, (prev) => {
+        const modelStore = { ...(prev.financeResidualsByModel?.[modelId] ?? {}) };
+        const trimStore = { ...(modelStore[trimKey] ?? {}) };
+
+        if (value == null) {
+          delete trimStore[term];
+        } else {
+          trimStore[term] = value;
+        }
+
+        const nextModelStore = { ...modelStore };
+        if (Object.keys(trimStore).length === 0) {
+          delete nextModelStore[trimKey];
+        } else {
+          nextModelStore[trimKey] = trimStore;
+        }
+
+        const updated = {
+          ...prev,
+          financeResidualsByModel: {
+            ...(prev.financeResidualsByModel ?? {}),
+            [modelId]: nextModelStore,
+          },
+        };
+
+        return withModelHistory(
+          updated,
+          modelId,
+          `Schlussrate ${term} Monate${trimId ? ` (${trimId})` : ''} geändert`,
+          'financeResidual',
+        );
+      });
+    },
+
     updateDelivery(modelId, field, value) {
       updateDealerConditions(DEFAULT_DEALER_ID, (prev) =>
         updateModelMap(prev, 'deliveryByModel', modelId, (current) => ({

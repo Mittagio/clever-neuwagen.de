@@ -10,7 +10,7 @@ import {
 } from '../services/dealerAiParser.js';
 import { buildDealerAiTextFromWishes } from '../services/dealerAiFromWishes.js';
 import { resolveDealerAiVehicleSuggestions } from '../services/dealerAiVehicleSuggestions.js';
-import { pipelineToLeadStatus } from '../services/dealerAiLeadCrm.js';
+import { pipelineToLeadStatus, sanitizeReservedModels } from '../services/dealerAiLeadCrm.js';
 import { mergeChipIds } from '../services/sales/conversationVoiceParser.js';
 import { executeDealerAiAction, formatDealerAiVehicleCard } from '../services/dealerAiActions.js';
 import {
@@ -716,7 +716,7 @@ export default function DealerAIPage() {
   }
 
   function handleReturnToReview() {
-    const ids = activeLead?.crm?.reservedModels?.map((m) => m.id) ?? selectedModelIds;
+    const ids = sanitizeReservedModels(activeLead?.crm?.reservedModels).map((m) => m.id) ?? selectedModelIds;
     setSelectedModelIds(ids);
     setPhase('review');
   }

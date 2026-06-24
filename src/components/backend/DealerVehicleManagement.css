@@ -954,6 +954,22 @@
   font-weight: 600;
 }
 
+.dvm-residual-input .dvm-lf-factor__input {
+  font-size: 2rem;
+  text-align: center;
+}
+
+.dvm-residual-transfer-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.dvm-residual-transfer-confirm {
+  margin-top: 8px;
+  width: 100%;
+}
+
 .dvm-lf-summary-list {
   list-style: none;
   margin: 0 0 18px;

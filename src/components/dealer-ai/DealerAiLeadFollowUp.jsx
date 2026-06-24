@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   formatReservedModelBadge,
   formatReservedModelName,
+  sanitizeReservedModels,
   CALL_OUTCOME_CHIPS,
   computeFollowUpAt,
   FOLLOW_UP_CHIPS,
@@ -67,6 +68,7 @@ import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import {
   buildBoardItems,
   resolveOfferSelectionGroups,
+  sanitizeOfferSelectionGroups,
 } from '../../services/sales/offerSelectionGroup.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
@@ -158,6 +160,7 @@ function ReservedModelDetailCard({
   onRemove,
   disabled = false,
 }) {
+  if (!model) return null;
   const badge = formatReservedModelBadge(model, index);
   const hint = model.priceHint ?? model.reason ?? null;
 
@@ -239,9 +242,11 @@ export default function DealerAiLeadFollowUp({
   const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
   const [toast, setToast] = useState('');
   const [showCardAnimation, setShowCardAnimation] = useState(isFresh);
-  const [reservedModels, setReservedModels] = useState(crm.reservedModels ?? []);
+  const [reservedModels, setReservedModels] = useState(
+    () => sanitizeReservedModels(crm.reservedModels),
+  );
   const [offerSelectionGroups, setOfferSelectionGroups] = useState(
-    () => crm.offerSelectionGroups ?? [],
+    () => sanitizeOfferSelectionGroups(crm.offerSelectionGroups),
   );
 
   useEffect(() => {
@@ -254,12 +259,12 @@ export default function DealerAiLeadFollowUp({
   }, [isFresh]);
 
   useEffect(() => {
-    setReservedModels(lead?.crm?.reservedModels ?? []);
+    setReservedModels(sanitizeReservedModels(lead?.crm?.reservedModels));
   }, [lead?.crm?.reservedModels]);
 
   useEffect(() => {
     if (lead?.crm?.offerSelectionGroups?.length) {
-      setOfferSelectionGroups(lead.crm.offerSelectionGroups);
+      setOfferSelectionGroups(sanitizeOfferSelectionGroups(lead.crm.offerSelectionGroups));
     }
   }, [lead?.crm?.offerSelectionGroups]);
 
@@ -581,7 +586,7 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleEditSelectionVariant(group, variant) {
-    setToast(`${variant.trimLabel} – Bearbeitung folgt in Kürze.`);
+    setToast(`${variant?.trimLabel ?? 'Variante'} – Bearbeitung folgt in Kürze.`);
     setTimeout(() => setToast(''), 3000);
     closeSheet();
     openSheet(SHEETS.wish);
@@ -1085,7 +1090,7 @@ export default function DealerAiLeadFollowUp({
               />
             </div>
             <p className="cust-akte-vehicle-sheet__meta">
-              {[selectedVehicleCard.trimLabel, formatVehicleCardConditions(selectedVehicleCard), formatVehicleCardPrice(selectedVehicleCard)]
+              {[selectedVehicleCard?.trimLabel, formatVehicleCardConditions(selectedVehicleCard), formatVehicleCardPrice(selectedVehicleCard)]
                 .filter(Boolean)
                 .join(' · ')}
             </p>

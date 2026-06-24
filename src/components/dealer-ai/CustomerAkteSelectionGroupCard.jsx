@@ -14,6 +14,8 @@ export default function CustomerAkteSelectionGroupCard({
   animateIn = false,
   onClick,
 }) {
+  if (!group) return null;
+
   const status = formatSelectionGroupStatus(group);
   const trimLine = formatSelectionGroupTrimLine(group);
   const conditionsLine = formatWishConditionsLine(group.wishConditions);

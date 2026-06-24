@@ -6,6 +6,10 @@ import {
   getFinancingWizardProgress,
 } from '../../services/dealer/dealerFinancingWizard.js';
 import {
+  getFinanceResidualProgress,
+  resolveFinanceResidualSkippedMap,
+} from '../../services/dealer/dealerFinanceResiduals.js';
+import {
   getModelTrimLines,
   resolveTrimSettings,
 } from '../../services/dealer/dealerTrimConditions.js';
@@ -98,22 +102,41 @@ export default function DealerModelConditionsHub({
                 trimSettings.financeWizardSkipped ?? {},
                 trim.id,
               );
+              const rp = getFinanceResidualProgress(
+                conditions,
+                model.id,
+                resolveFinanceResidualSkippedMap(trimSettings, trim.id),
+                trim.id,
+              );
               return {
                 filled: acc.filled + fp.filled,
                 total: acc.total + fp.total,
                 pending: acc.pending + fp.pending,
+                residualsFilled: acc.residualsFilled + rp.filled,
+                residualsTotal: acc.residualsTotal + rp.total,
               };
-            }, { filled: 0, total: 0, pending: 0 });
+            }, {
+              filled: 0,
+              total: 0,
+              pending: 0,
+              residualsFilled: 0,
+              residualsTotal: 0,
+            });
             if (!hasTrimLines) {
               const fp = getFinancingWizardProgress(
                 conditions,
                 model.id,
                 settings.financeWizardSkipped ?? {},
               );
-              meta = `${fp.filled} von ${fp.total} Konditionen gepflegt`;
+              const rp = getFinanceResidualProgress(
+                conditions,
+                model.id,
+                resolveFinanceResidualSkippedMap(settings),
+              );
+              meta = `${fp.filled} von ${fp.total} Konditionen · ${rp.filled} von ${rp.total} Schlussraten`;
               if (fp.pending > 0) meta += ` · ${fp.pending} offen`;
             } else {
-              meta = `${financeProgress.filled} von ${financeProgress.total} Konditionen gepflegt`;
+              meta = `${financeProgress.filled} von ${financeProgress.total} Konditionen · ${financeProgress.residualsFilled} von ${financeProgress.residualsTotal} Schlussraten`;
               if (financeProgress.pending > 0) meta += ` · ${financeProgress.pending} offen`;
               meta += ' · pro Ausstattung';
             }

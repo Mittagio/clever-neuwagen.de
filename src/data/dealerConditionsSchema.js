@@ -263,6 +263,7 @@ export function resolveModelConditions(conditions, modelId = 'sportage') {
     ...base,
     discounts,
     leasingFactors,
+    financeResidualsByModel: base.financeResidualsByModel ?? {},
     financeRates: {
       interestRate: finance.interestRate,
       finalPaymentPercent: finance.finalPaymentPercent ?? {},

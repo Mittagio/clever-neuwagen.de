@@ -2,7 +2,12 @@ import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 import { formatBudgetSummaryForWish } from './dealerAiBudget.js';
 import { getMatchVariantLabel } from '../logic/discoveryDisplay.js';
 
+export function sanitizeReservedModels(models = []) {
+  return (models ?? []).filter(Boolean);
+}
+
 export function mapSuggestedModelToReserved(model, index = 0) {
+  if (!model) return null;
   const trimLabel = model.primaryMatch ? getMatchVariantLabel(model.primaryMatch) : model.trimLabel ?? null;
   return {
     id: model.id,
@@ -182,8 +187,9 @@ export function buildDefaultCrm(parsed, selectedModelIds = null) {
       ? [selectedModelIds]
       : [];
   const reserved = (parsed?.suggestedModels ?? [])
-    .filter((m) => ids.includes(m.id))
-    .map((m, index) => mapSuggestedModelToReserved(m, index));
+    .filter((m) => m && ids.includes(m.id))
+    .map((m, index) => mapSuggestedModelToReserved(m, index))
+    .filter(Boolean);
 
   return {
     pipelineStatusId: 'neu',

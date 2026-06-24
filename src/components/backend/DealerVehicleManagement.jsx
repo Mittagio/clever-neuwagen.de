@@ -20,6 +20,7 @@ export default function DealerVehicleManagement({
   onUpdateDiscount,
   onUpdateLeasingFactor,
   onUpdateFinanceCondition,
+  onUpdateFinanceResidual,
   onAddPromotion,
   onUpdatePromotion,
   onRemovePromotion,
@@ -47,6 +48,7 @@ export default function DealerVehicleManagement({
         onUpdateDiscount={onUpdateDiscount}
         onUpdateLeasingFactor={onUpdateLeasingFactor}
         onUpdateFinanceCondition={onUpdateFinanceCondition}
+        onUpdateFinanceResidual={onUpdateFinanceResidual}
         onAddPromotion={onAddPromotion}
         onUpdatePromotion={onUpdatePromotion}
         onRemovePromotion={onRemovePromotion}

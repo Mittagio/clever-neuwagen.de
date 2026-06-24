@@ -28,6 +28,7 @@ import DealerJourneyLeadSheet from '../components/dealer/DealerJourneyLeadSheet.
 import DealerJourneyLeadSuccess from '../components/dealer/DealerJourneyLeadSuccess.jsx';
 import CleverConsultationWizard from '../components/dealer/CleverConsultationWizard.jsx';
 import CleverRecommendationCard from '../components/dealer/CleverRecommendationCard.jsx';
+import CleverSalesIntentBridge from '../components/dealer/CleverSalesIntentBridge.jsx';
 import SellerHandoffPanel from '../components/dealer/SellerHandoffPanel.jsx';
 import '../components/dealer/clever-consultation.css';
 import { buildDealerJourneySnapshot } from '../services/dealer/purchaseTypeOptions.js';
@@ -65,6 +66,7 @@ import {
   classifyCustomerQueryIntent,
   getCustomerQueryType,
 } from '../services/search/customerQueryIntent.js';
+import { analyzeCustomerQueryType } from '../services/search/customerQueryType.js';
 import { analyzeVehicleQuery } from '../services/search/vehicleQueryIntent.js';
 import { buildDealerSmartAnswer } from '../services/dealer/dealerSmartAnswerService.js';
 import { resolveModelConditions } from '../data/dealerConditionsSchema.js';
@@ -103,6 +105,14 @@ import {
   createConsultationLeadExtras,
   createConsultationProfile,
 } from '../services/dealer/cleverSalesAdvisor.js';
+import {
+  analyzeCleverSalesIntent,
+  attachSalesIntentToProfile,
+  CLEVER_SALES_MODES,
+  enrichSmartAnswerWithSalesIntent,
+  prefillConsultationFromSalesIntent,
+  SALES_INTENT_THRESHOLDS,
+} from '../services/dealer/cleverSalesIntent.js';
 import { hydrateStammdatenFromServer } from '../services/admin/stammdatenHydration.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
@@ -317,11 +327,29 @@ export default function DealerPage() {
     const value = text.trim();
     if (!value) return;
     skipQueryResetRef.current = true;
-    setEntryMode('clever');
-    setConsultationProfile(createConsultationProfile(value));
+
+    const intent = parseSearchIntent(value);
+    const draftProfile = buildSearchProfile({
+      query: value,
+      intent,
+      filters: intentToMarketplaceFilters(intent),
+      wishes: {},
+      chipIds: [],
+    });
+    const vehicleAnalysis = analyzeVehicleQuery(value, intent, draftProfile);
+    const queryType = analyzeCustomerQueryType(value, intent, draftProfile);
+    const salesIntent = analyzeCleverSalesIntent({
+      query: value,
+      intent,
+      profile: draftProfile,
+      vehicleAnalysis,
+      customerQueryType: queryType,
+    });
+
+    setQueryDraft(value);
+    setSubmittedQuery(value);
     setCleverRecommendation(null);
     setConsultationHandoff(null);
-    setSalesStep(null);
     setSelectedModelKey(null);
     setTrimRecommendation(null);
     setVehicleConfiguration(null);
@@ -332,8 +360,20 @@ export default function DealerPage() {
     setSpecialConditionsComplete(false);
     setOffersRevealed(false);
     setLeadSubmitted(null);
-    setQueryDraft(value);
-    setSubmittedQuery(value);
+
+    if (salesIntent.mode === CLEVER_SALES_MODES.KNOWLEDGE) {
+      setEntryMode(null);
+      setConsultationProfile(null);
+      setSalesStep(null);
+      return;
+    }
+
+    setEntryMode('clever');
+    let profile = createConsultationProfile(value);
+    profile = attachSalesIntentToProfile(profile, salesIntent);
+    profile = prefillConsultationFromSalesIntent(profile, salesIntent);
+    setConsultationProfile(profile);
+    setSalesStep('consult');
   }, []);
 
   useEffect(() => {
@@ -392,10 +432,23 @@ export default function DealerPage() {
     return classifyCustomerQueryIntent(submittedQuery, searchIntent, searchProfile);
   }, [hasSearch, submittedQuery, searchIntent, searchProfile]);
 
+  const salesIntentResult = useMemo(() => {
+    if (!hasSearch) return null;
+    return analyzeCleverSalesIntent({
+      query: submittedQuery,
+      intent: searchIntent,
+      profile: searchProfile,
+      vehicleAnalysis: vehicleQueryAnalysis,
+      customerQueryType,
+    });
+  }, [hasSearch, submittedQuery, searchIntent, searchProfile, vehicleQueryAnalysis, customerQueryType]);
+
   const smartAnswer = useMemo(() => {
     if (!hasSearch || customerQueryMode !== 'info') return null;
-    return buildDealerSmartAnswer(submittedQuery, dealerSearchPool);
-  }, [hasSearch, customerQueryMode, submittedQuery, dealerSearchPool]);
+    const base = buildDealerSmartAnswer(submittedQuery, dealerSearchPool);
+    if (!base || !salesIntentResult) return base;
+    return enrichSmartAnswerWithSalesIntent(base, salesIntentResult);
+  }, [hasSearch, customerQueryMode, submittedQuery, dealerSearchPool, salesIntentResult]);
 
   useEffect(() => {
     hydrateStammdatenFromServer();
@@ -640,6 +693,10 @@ export default function DealerPage() {
   }, [useSalesJourney, salesStep, isCleverEntry]);
 
   const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
+  const showSalesIntentBridge = hasSearch
+    && !isCleverEntry
+    && salesIntentResult?.mode === CLEVER_SALES_MODES.KNOWLEDGE
+    && salesIntentResult.score >= 28;
   const showStandaloneCompare = customerQueryType === 'compare'
     && Boolean(journeyCompareGroups)
     && !useSalesJourney;
@@ -724,6 +781,50 @@ export default function DealerPage() {
   const handleFollowUpQuery = useCallback((text) => {
     handleCleverSearch(text);
   }, [handleCleverSearch]);
+
+  const handleStartConsultationFromIntent = useCallback(() => {
+    if (!submittedQuery.trim()) return;
+    const intent = searchIntent ?? parseSearchIntent(submittedQuery);
+    const profile = searchProfile ?? buildSearchProfile({
+      query: submittedQuery,
+      intent,
+      filters: searchFilters,
+      wishes: searchWishes ?? {},
+      chipIds: activeSearchChipIds,
+    });
+    const boostedIntent = analyzeCleverSalesIntent({
+      query: submittedQuery,
+      intent,
+      profile,
+      vehicleAnalysis: vehicleQueryAnalysis,
+      customerQueryType,
+    });
+    const salesIntent = {
+      ...boostedIntent,
+      mode: CLEVER_SALES_MODES.CONSULTATION,
+      score: Math.max(boostedIntent.score, SALES_INTENT_THRESHOLDS.consultation),
+      modeLabel: 'Beratungsmodus',
+      shouldStartConsultation: true,
+    };
+    skipQueryResetRef.current = true;
+    setEntryMode('clever');
+    let consultProfile = createConsultationProfile(submittedQuery);
+    consultProfile = attachSalesIntentToProfile(consultProfile, salesIntent);
+    consultProfile = prefillConsultationFromSalesIntent(consultProfile, salesIntent);
+    setConsultationProfile(consultProfile);
+    setSalesStep('consult');
+    scrollToJourney();
+  }, [
+    submittedQuery,
+    searchIntent,
+    searchProfile,
+    searchFilters,
+    searchWishes,
+    activeSearchChipIds,
+    vehicleQueryAnalysis,
+    customerQueryType,
+    scrollToJourney,
+  ]);
 
   const handleClassicConfigure = useCallback((card) => {
     if (!card?.modelKey) return;
@@ -1319,6 +1420,14 @@ export default function DealerPage() {
               dealerId={dealerId}
               onFollowUpQuery={handleFollowUpQuery}
               onSelectModel={handleSmartAnswerSelectModel}
+              onStartConsultation={handleStartConsultationFromIntent}
+            />
+          )}
+
+          {showSalesIntentBridge && (
+            <CleverSalesIntentBridge
+              salesIntent={salesIntentResult}
+              onStartConsultation={handleStartConsultationFromIntent}
             />
           )}
 

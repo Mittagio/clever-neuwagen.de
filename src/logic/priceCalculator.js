@@ -17,6 +17,7 @@ import {
   applyDealerModelPricing,
   mergeDealerPricingIntoResult,
 } from '../services/dealer/dealerModelPricing.js';
+import { getFinanceResidualValue } from '../services/dealer/dealerFinanceResiduals.js';
 
 const DEFAULT_VARIANT_ID = 'sportage-hybrid-2wd-vision';
 const DEFAULT_COLOR_ID = 'carraraweiss';
@@ -248,7 +249,19 @@ function calcLeasingRate(configurationPrice, leasingFactor, downPayment, termMon
   return Math.max(0, Math.round(base - downPaymentShare));
 }
 
-function resolveFinalPaymentPercent(termMonths, conditions) {
+function resolveFinalPaymentPercent(termMonths, conditions, options = {}) {
+  const { dealerConditions, modelId, trimId } = options;
+
+  if (dealerConditions && modelId) {
+    const fromResiduals = getFinanceResidualValue(
+      dealerConditions,
+      modelId,
+      termMonths,
+      trimId ?? null,
+    );
+    if (fromResiduals != null) return fromResiduals;
+  }
+
   const rates = conditions.financeRates?.finalPaymentPercent;
   if (rates) {
     const key = String(termMonths);
@@ -266,13 +279,13 @@ function resolveFinalPaymentPercent(termMonths, conditions) {
   return 35;
 }
 
-function calcFinanceRate(housePrice, downPayment, termMonths, conditions) {
+function calcFinanceRate(housePrice, downPayment, termMonths, conditions, options = {}) {
   const interestRate =
     conditions.financeRates?.interestRate
     ?? conditions.financing?.effectiveRate
     ?? null;
 
-  const finalPaymentPercent = resolveFinalPaymentPercent(termMonths, conditions);
+  const finalPaymentPercent = resolveFinalPaymentPercent(termMonths, conditions, options);
 
   if (interestRate == null) {
     return { financeRate: null, finalPayment: null, interestRate: null, finalPaymentPercent: null };
@@ -366,6 +379,11 @@ export function calculatePrice(input = {}, conditionsArg) {
     config.downPayment,
     config.termMonths,
     conditions,
+    {
+      dealerConditions: rawDealerConditions,
+      modelId,
+      trimId: config.trimId,
+    },
   );
 
   const dealerPricingFinal = {

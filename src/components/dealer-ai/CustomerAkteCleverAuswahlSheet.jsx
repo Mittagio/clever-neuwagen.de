@@ -41,7 +41,7 @@ export default function CustomerAkteCleverAuswahlSheet({
             <div className="cust-akte-auswahl__variant-head">
               <span className="cust-akte-auswahl__variant-num">{variant.index}.</span>
               <div>
-                <p className="cust-akte-auswahl__variant-trim">{variant.trimLabel}</p>
+                <p className="cust-akte-auswahl__variant-trim">{variant?.trimLabel ?? 'Ausstattung'}</p>
                 <p className="cust-akte-auswahl__variant-label">{variant.label}</p>
               </div>
             </div>

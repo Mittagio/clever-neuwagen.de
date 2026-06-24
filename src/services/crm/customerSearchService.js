@@ -108,7 +108,7 @@ function buildSearchHaystack(lead = {}) {
     lead.offerCode,
     lead.notes,
     ...(lead.crm?.reservedModels?.map((m) => m.name) ?? []),
-    ...(lead.crm?.vehicleConfigurations?.map((vc) => [vc.model, vc.trimLabel].join(' ')) ?? []),
+    ...(lead.crm?.vehicleConfigurations?.filter(Boolean).map((vc) => [vc.model, vc.trimLabel].filter(Boolean).join(' ')) ?? []),
   ];
   return parts.filter(Boolean).join(' ').toLowerCase();
 }

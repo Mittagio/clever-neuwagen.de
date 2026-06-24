@@ -84,15 +84,15 @@ export default function CleverRecommendationCard({
             <div className="dl-clever-rec__alts">
               <p className="dl-clever-rec__alts-label">Alternativen</p>
               <ul className="dl-clever-rec__alts-list">
-                {alternatives.map((alt) => (
-                  <li key={alt.trimId}>
+                {alternatives.filter(Boolean).map((alt) => (
+                  <li key={alt.trimId ?? alt.trimLabel}>
                     <button
                       type="button"
                       className="dl-clever-rec__alt-btn"
                       onClick={() => onSelectAlternative?.(alt.trimId)}
                     >
                       {alt.medal && <span aria-hidden>{alt.medal} </span>}
-                      <strong>{alt.trimLabel}</strong>
+                      <strong>{alt?.trimLabel ?? 'Ausstattung'}</strong>
                       {alt.tagline && (
                         <span className="dl-clever-rec__alt-tag">
                           (

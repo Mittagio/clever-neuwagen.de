@@ -45,6 +45,7 @@ export default function BackendPage() {
     updateDiscount,
     updateLeasingFactor,
     updateFinanceCondition,
+    updateFinanceResidual,
     saveLeasingTerm,
     updateFinance,
     updateFinanceFinalPayment,
@@ -115,6 +116,7 @@ export default function BackendPage() {
           onUpdateDiscount={updateDiscount}
           onUpdateLeasingFactor={updateLeasingFactor}
           onUpdateFinanceCondition={updateFinanceCondition}
+          onUpdateFinanceResidual={updateFinanceResidual}
           onAddPromotion={addModelPromotion}
           onUpdatePromotion={updateModelPromotion}
           onRemovePromotion={removeModelPromotion}

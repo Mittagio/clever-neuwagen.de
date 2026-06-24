@@ -5,6 +5,8 @@ import DealerModelConditionsHub from './DealerModelConditionsHub.jsx';
 import DealerModelPaymentConditions from './DealerModelPaymentConditions.jsx';
 import DealerModelLeasingWizard from './DealerModelLeasingWizard.jsx';
 import DealerModelFinancingWizard from './DealerModelFinancingWizard.jsx';
+import DealerModelFinancingHub from './DealerModelFinancingHub.jsx';
+import DealerModelFinanceResidualsWizard from './DealerModelFinanceResidualsWizard.jsx';
 import DealerModelTrimPicker from './DealerModelTrimPicker.jsx';
 import DealerModelCustomerPreview from './DealerModelCustomerPreview.jsx';
 import DealerModelPublishFlow from './DealerModelPublishFlow.jsx';
@@ -37,6 +39,8 @@ const VIEWS = {
   CASH: 'cash',
   LEASING: 'leasing',
   FINANCING: 'financing',
+  FINANCING_HUB: 'financing-hub',
+  FINANCE_RESIDUALS: 'finance-residuals',
   PUBLISH: 'publish',
 };
 
@@ -50,6 +54,7 @@ export default function DealerVehicleModelEditor({
   onUpdateDiscount,
   onUpdateLeasingFactor,
   onUpdateFinanceCondition,
+  onUpdateFinanceResidual,
   onAddPromotion,
   onUpdatePromotion,
   onRemovePromotion,
@@ -94,6 +99,12 @@ export default function DealerVehicleModelEditor({
   const dealerDefaultFee = conditions.preparationFee ?? 1290;
 
   function openPaymentFlow(paymentType) {
+    if (paymentType === 'financing') {
+      setPendingPaymentType(paymentType);
+      setTrimScope(null);
+      setView(VIEWS.FINANCING_HUB);
+      return;
+    }
     if (shouldShowTrimPicker(trims)) {
       setPendingPaymentType(paymentType);
       setTrimScope(null);
@@ -103,7 +114,23 @@ export default function DealerVehicleModelEditor({
     setTrimScope(null);
     if (paymentType === 'cash') setView(VIEWS.CASH);
     else if (paymentType === 'leasing') setView(VIEWS.LEASING);
-    else if (paymentType === 'financing') setView(VIEWS.FINANCING);
+  }
+
+  function openFinancingConditions() {
+    if (shouldShowTrimPicker(trims)) {
+      setPendingPaymentType('financing');
+      setTrimScope(null);
+      setView(VIEWS.TRIM_PICKER);
+      return;
+    }
+    setTrimScope(null);
+    setView(VIEWS.FINANCING);
+  }
+
+  function backToFinancingHub() {
+    setPendingPaymentType('financing');
+    setTrimScope(null);
+    setView(VIEWS.FINANCING_HUB);
   }
 
   function handleTrimConfirm(scope) {
@@ -136,7 +163,7 @@ export default function DealerVehicleModelEditor({
         model={model}
         conditions={conditions}
         paymentType={pendingPaymentType}
-        onBack={backToConditions}
+        onBack={pendingPaymentType === 'financing' ? backToFinancingHub : backToConditions}
         onConfirm={handleTrimConfirm}
       />
     );
@@ -156,13 +183,38 @@ export default function DealerVehicleModelEditor({
     );
   }
 
+  if (view === VIEWS.FINANCING_HUB) {
+    return (
+      <DealerModelFinancingHub
+        model={model}
+        conditions={conditions}
+        onBack={backToConditions}
+        onOpenConditions={openFinancingConditions}
+        onOpenResiduals={() => setView(VIEWS.FINANCE_RESIDUALS)}
+      />
+    );
+  }
+
+  if (view === VIEWS.FINANCE_RESIDUALS) {
+    return (
+      <DealerModelFinanceResidualsWizard
+        model={model}
+        conditions={conditions}
+        onBack={backToFinancingHub}
+        onUpdateFinanceResidual={onUpdateFinanceResidual}
+        onUpdateModelSettings={onUpdateModelSettings}
+        onPublish={mayPublish ? () => setView(VIEWS.PUBLISH) : undefined}
+      />
+    );
+  }
+
   if (view === VIEWS.FINANCING) {
     return (
       <DealerModelFinancingWizard
         model={model}
         conditions={conditions}
         trimScope={trimScope}
-        onBack={backToConditions}
+        onBack={backToFinancingHub}
         onUpdateFinanceCondition={onUpdateFinanceCondition}
         onUpdateModelSettings={onUpdateModelSettings}
         onPreview={() => setView(VIEWS.PUBLISH)}

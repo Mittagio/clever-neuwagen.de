@@ -40,7 +40,8 @@ export function formatMatchCashAlt(match) {
 
 /** Prominente Lieferzeit für Ebene 1 (Sprint 37). */
 export function getMatchVariantLabel(match) {
-  const v = match?.vehicle ?? {};
+  if (!match) return 'Ausstattung';
+  const v = match.vehicle ?? {};
   if (v.trim?.trim()) return v.trim.trim();
   if (match.bestTrim?.trim()) return match.bestTrim.trim();
   const title = v.title ?? match.model ?? '';

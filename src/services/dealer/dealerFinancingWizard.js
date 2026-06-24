@@ -1,6 +1,7 @@
 /**
  * Finanzierungs-Assistent – 24 Kombinationen (4 Laufzeiten × 6 Anzahlungen)
  */
+import { getFinanceResidualValue } from './dealerFinanceResiduals.js';
 
 export const FINANCING_WIZARD_TERMS = [24, 36, 48, 60];
 
@@ -47,19 +48,32 @@ export function getFinanceConditionValue(conditions = {}, modelId = '', term, do
   const trimBucket = getTrimFinanceBucket(conditions, modelId, trimId);
   const raw = trimBucket?.[term]?.[downPayment];
   if (raw && typeof raw === 'object') {
-    return normalizeFinanceCondition(raw);
+    const normalized = normalizeFinanceCondition(raw);
+    if (normalized.finalPaymentPercent == null && normalized.finalPaymentEuro == null) {
+      const residual = getFinanceResidualValue(conditions, modelId, term, trimId);
+      if (residual != null) {
+        return { ...normalized, finalPaymentPercent: residual };
+      }
+    }
+    return normalized;
   }
+
+  const residualPercent = getFinanceResidualValue(conditions, modelId, term, trimId);
 
   if (!trimId) {
     const legacy = conditions?.financeByModel?.[modelId] ?? {};
-    if (legacy.interestRate != null) {
+    if (legacy.interestRate != null || residualPercent != null) {
       return normalizeFinanceCondition({
         effectiveRate: legacy.interestRate,
         nominalRate: legacy.nominalRate ?? null,
-        finalPaymentPercent: legacy.finalPaymentPercent?.[term] ?? null,
+        finalPaymentPercent: residualPercent ?? legacy.finalPaymentPercent?.[term] ?? null,
         finalPaymentEuro: legacy.finalPaymentEuro?.[term] ?? null,
       });
     }
+  }
+
+  if (residualPercent != null) {
+    return normalizeFinanceCondition({ finalPaymentPercent: residualPercent });
   }
 
   return null;

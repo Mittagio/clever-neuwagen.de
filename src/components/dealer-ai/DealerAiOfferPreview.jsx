@@ -62,18 +62,21 @@ export default function DealerAiOfferPreview({
   const preview = offerPreview ?? {};
   const calculation = offerCalculation ?? {};
 
-  const vehicleMainLine = [vehicleConfiguration?.model ?? vehicle.model, vehicleConfiguration?.trimLabel ?? vehicle.trimLabel]
+  const vehicleMainLine = [
+    vehicleConfiguration?.model ?? vehicle?.model,
+    vehicleConfiguration?.trimLabel ?? vehicle?.trimLabel,
+  ]
     .filter(Boolean)
     .join(' ');
   const vehicleMotorLine = vehicleConfiguration?.motorLabel
     ?? vehicleConfiguration?.batteryLabel
-    ?? vehicle.battery
+    ?? vehicle?.battery
     ?? null;
-  const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle.color ?? null;
+  const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle?.color ?? null;
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
-    ?? vehicle.uvpConfigurationPrice
+    ?? vehicle?.uvpConfigurationPrice
     ?? null;
 
   const discountPercent = preview.discountPercent ?? calculation.discountPercent ?? null;

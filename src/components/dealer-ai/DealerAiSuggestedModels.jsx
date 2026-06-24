@@ -32,7 +32,7 @@ export default function DealerAiSuggestedModels({
       </header>
 
       <div className="dai-model-carousel" tabIndex={0} aria-label="Fahrzeugvorschläge">
-        {models.map((model, index) => {
+        {models.filter(Boolean).map((model, index) => {
           const isSelected = selectedModelIds.includes(model.id);
           const imageModel = resolveVehicleImageModel(model.primaryMatch?.vehicle)
             ?? model.modelKey;

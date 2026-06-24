@@ -12,6 +12,7 @@ export default function DealerSmartAnswerCard({
   onFollowUpQuery,
   onShowFit,
   onSelectModel,
+  onStartConsultation,
   fitRevealed = false,
   configuratorRevealed = false,
 }) {
@@ -226,6 +227,23 @@ export default function DealerSmartAnswerCard({
           onClick={() => onSelectModel?.(answer.primaryModelKey)}
         >
           {answer.configuratorCta}
+        </button>
+      )}
+
+      {answer.consultationFollowUp && (
+        <p className="dl-smart-answer__consult-followup">
+          <span className="dl-smart-answer__consult-followup-label">Clever fragt als Nächstes</span>
+          {answer.consultationFollowUp}
+        </p>
+      )}
+
+      {answer.showConsultationCta && onStartConsultation && (
+        <button
+          type="button"
+          className="btn btn-primary dl-smart-answer__consult-cta"
+          onClick={onStartConsultation}
+        >
+          {answer.consultationCtaLabel ?? 'Beratung fortsetzen'}
         </button>
       )}
 

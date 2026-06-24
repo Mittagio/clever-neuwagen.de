@@ -274,9 +274,30 @@ export function formatVariantPriceLine(variant, paymentType = 'leasing') {
 
 export function formatSelectionGroupTrimLine(group) {
   return (group?.variants ?? [])
-    .map((variant) => variant.trimLabel)
+    .map((variant) => variant?.trimLabel)
     .filter(Boolean)
     .join(' · ');
+}
+
+function sanitizeSelectionGroupVariants(variants = []) {
+  return variants.filter(Boolean).map((variant) => ({
+    ...variant,
+    trimLabel: variant.trimLabel ?? variant.label ?? null,
+  }));
+}
+
+export function sanitizeOfferSelectionGroup(group) {
+  if (!group) return null;
+  return {
+    ...group,
+    variants: sanitizeSelectionGroupVariants(group.variants),
+  };
+}
+
+export function sanitizeOfferSelectionGroups(groups = []) {
+  return (groups ?? [])
+    .map(sanitizeOfferSelectionGroup)
+    .filter(Boolean);
 }
 
 export function formatSelectionGroupSubtitle(group) {
@@ -315,11 +336,13 @@ export function formatSelectionGroupBudgetLine(wishConditions = {}) {
  */
 export function buildBoardItems({ vehicleCards = [], offerSelectionGroups = [] } = {}) {
   const items = [];
+  const safeGroups = (offerSelectionGroups ?? []).filter(Boolean);
+  const safeCards = (vehicleCards ?? []).filter(Boolean);
   const groupedModelKeys = new Set(
-    offerSelectionGroups.map((group) => group.modelKey),
+    safeGroups.map((group) => group.modelKey),
   );
 
-  for (const group of offerSelectionGroups) {
+  for (const group of safeGroups) {
     items.push({
       type: 'selection_group',
       id: group.id,
@@ -327,7 +350,7 @@ export function buildBoardItems({ vehicleCards = [], offerSelectionGroups = [] }
     });
   }
 
-  for (const card of vehicleCards) {
+  for (const card of safeCards) {
     if (groupedModelKeys.has(card.modelKey)) continue;
     items.push({
       type: 'vehicle',
@@ -348,10 +371,10 @@ export function buildCleverAuswahlDetailModel(group) {
     wishConditionsLine: formatWishConditionsLine(group.wishConditions),
     status: formatSelectionGroupStatus(group),
     customerLinkButtonLabel: CUSTOMER_LINK_BUTTON_LABEL,
-    variants: (group.variants ?? []).map((variant, index) => ({
+    variants: sanitizeSelectionGroupVariants(group.variants).map((variant, index) => ({
       index: index + 1,
       id: variant.id,
-      trimLabel: variant.trimLabel,
+      trimLabel: variant.trimLabel ?? 'Ausstattung',
       label: variant.label,
       priceLine: formatVariantPriceLine(variant, paymentType),
       shortDescription: variant.shortDescription,
@@ -370,7 +393,9 @@ export function resolveOfferSelectionGroups({
   wishFields = {},
   storedGroups = null,
 } = {}) {
-  const fromCrm = storedGroups ?? lead?.crm?.offerSelectionGroups ?? [];
+  const fromCrm = (storedGroups ?? lead?.crm?.offerSelectionGroups ?? [])
+    .map(sanitizeOfferSelectionGroup)
+    .filter(Boolean);
   if (fromCrm.length > 0) return fromCrm;
 
   const generated = createOfferSelectionGroupFromWish({ lead, wishFields });
@@ -383,7 +408,7 @@ export function groupHasPreparedStatus(group) {
 
 export function groupHasCustomerReaction(group) {
   if (group?.status === OFFER_SELECTION_GROUP_STATUS.CUSTOMER_REACTED) return true;
-  return (group?.variants ?? []).some((variant) => (
+  return (group?.variants ?? []).filter(Boolean).some((variant) => (
     [
       OFFER_VARIANT_STATUS.INTERESTED,
       OFFER_VARIANT_STATUS.OFFER_REQUESTED,
@@ -401,7 +426,7 @@ export function updateVariantCustomerReaction(group, variantId, status) {
   const validStatuses = Object.values(OFFER_VARIANT_STATUS);
   if (!validStatuses.includes(status)) return group;
 
-  const variants = (group.variants ?? []).map((variant) => (
+  const variants = (group.variants ?? []).filter(Boolean).map((variant) => (
     variant.id === variantId
       ? { ...variant, status, updatedAt: new Date().toISOString() }
       : variant
