@@ -3,9 +3,6 @@
  * Vite: import.meta.glob über equipmentImportGlobEntries.js (automatisch alle *.equipment.json).
  */
 import {
-  discoverEquipmentImportFilesFromFilesystem,
-} from './equipmentImportFileDiscovery.js';
-import {
   ingestEquipmentImport,
   normalizeImportModelKey,
   validateEquipmentImport,
@@ -13,7 +10,7 @@ import {
 import { reapplyFeatureAliasMappingsForAllImportedModels } from '../admin/featureAliasProfileApplier.js';
 
 /** @typedef {import('../../data/features/modelEquipmentSchema.js').EquipmentImportRecord} EquipmentImportRecord */
-/** @typedef {import('./equipmentImportFileDiscovery.js').EquipmentImportFileEntry} EquipmentImportFileEntry */
+/** @typedef {import('./equipmentImportFileEntries.js').EquipmentImportFileEntry} EquipmentImportFileEntry */
 
 const equipmentDirUrl = new URL('../../data/imports/equipment/', import.meta.url);
 
@@ -27,8 +24,15 @@ try {
   equipmentImportFileEntries = [];
 }
 
-if (equipmentImportFileEntries.length === 0) {
-  equipmentImportFileEntries = discoverEquipmentImportFilesFromFilesystem(equipmentDirUrl);
+const isNodeRuntime = typeof process !== 'undefined' && Boolean(process.versions?.node);
+
+if (equipmentImportFileEntries.length === 0 && isNodeRuntime) {
+  try {
+    const fsMod = await import(/* @vite-ignore */ './equipmentImportFilesystem.js');
+    equipmentImportFileEntries = fsMod.discoverEquipmentImportFilesFromFilesystem(equipmentDirUrl);
+  } catch {
+    equipmentImportFileEntries = [];
+  }
 }
 
 export const EQUIPMENT_IMPORT_FILE_ENTRIES = equipmentImportFileEntries;

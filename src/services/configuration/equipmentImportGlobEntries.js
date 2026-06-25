@@ -2,7 +2,7 @@
  * Vite: alle *.equipment.json im Import-Ordner eager laden.
  * Wird in Node-Tests nicht direkt importiert (import.meta.glob ist Vite-only).
  */
-import { buildEquipmentImportFileEntries } from './equipmentImportFileDiscovery.js';
+import { buildEquipmentImportFileEntries } from './equipmentImportFileEntries.js';
 
 const equipmentImportModules = import.meta.glob(
   '../../data/imports/equipment/*.equipment.json',
