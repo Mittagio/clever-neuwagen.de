@@ -4,7 +4,6 @@ import { buildDealerWishSearchUrl } from '../../services/wish/wishUrlService.js'
 import { isSpeechRecognitionSupported, startSpeechRecognition } from '../../services/sales/conversationVoiceParser.js';
 import {
   getDealerWishChipDisplay,
-  getExtraDealerChips,
   getPrimaryDealerChips,
 } from '../../services/dealer/dealerWishChips.js';
 import { DEALER_SEARCH_PLACEHOLDERS } from '../../data/dealerLandingContent.js';
@@ -21,9 +20,6 @@ function ChipButton({ chip, active, onToggle }) {
       aria-label={active ? `${chip.label} entfernen` : chip.label}
       onClick={() => onToggle?.(chip.id)}
     >
-      {display.emoji && (
-        <span className="dl-chip__emoji" aria-hidden>{display.emoji}</span>
-      )}
       <span className="dl-chip__label">{display.label}</span>
       {active && <span className="dl-chip__remove" aria-hidden>✕</span>}
     </button>
@@ -52,10 +48,8 @@ export default function DealerSearchHero({
   const [placeholderVisible, setPlaceholderVisible] = useState(true);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
-  const [showMoreChips, setShowMoreChips] = useState(false);
 
   const primaryChips = useMemo(() => getPrimaryDealerChips(), []);
-  const extraChips = useMemo(() => getExtraDealerChips(), []);
 
   const dynamicPlaceholder = useMemo(
     () => (searchText ? '' : DEALER_SEARCH_PLACEHOLDERS[placeholderIdx]),
@@ -132,23 +126,24 @@ export default function DealerSearchHero({
   }
 
   const hasSelection = Boolean(searchText.trim());
-
   const isCleverVariant = variant === 'clever';
 
   return (
     <section
-      className={`dl-hero dl-hero--chat${isCleverVariant ? ' dl-hero--clever' : ''}`}
+      className={`dl-hero dl-hero--chat dl-hero--portal${isCleverVariant ? ' dl-hero--clever' : ''}`}
       aria-labelledby="dl-hero-title"
     >
       <header className="dl-hero__head">
-        {isCleverVariant && (
-          <p className="dl-hero__clever-badge">🚀 Frag Clever</p>
-        )}
         <h1 id="dl-hero-title" className="dl-hero__prompt">
           {isCleverVariant
-            ? 'Beschreiben Sie Ihren Wunsch – Clever berät Sie Schritt für Schritt'
+            ? 'Welches Auto suchen Sie?'
             : 'Wonach suchen Sie?'}
         </h1>
+        {isCleverVariant && (
+          <p className="dl-hero__subline">
+            Beschreiben Sie einfach Ihren Wunsch – Clever findet passende Fahrzeuge.
+          </p>
+        )}
         <p className="dl-hero__dealer">{dealerName}</p>
       </header>
 
@@ -165,7 +160,7 @@ export default function DealerSearchHero({
           <textarea
             ref={inputRef}
             className="dl-hero__composer-input"
-            rows={3}
+            rows={4}
             value={searchText}
             onChange={(e) => handleQueryInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -185,13 +180,10 @@ export default function DealerSearchHero({
               type="submit"
               className={`dl-hero__send${isCleverVariant ? ' dl-hero__send--clever' : ''}`}
               disabled={!hasSelection}
-              aria-label={isCleverVariant ? 'Clever fragen' : 'Suche starten'}
+              aria-label={isCleverVariant ? 'Frag Clever' : 'Suche starten'}
             >
               {isCleverVariant ? (
-                <>
-                  <span aria-hidden>↑</span>
-                  <span className="dl-hero__send-label">Frag Clever</span>
-                </>
+                <span className="dl-hero__send-label">Frag Clever</span>
               ) : '↑'}
             </button>
           </div>
@@ -202,7 +194,7 @@ export default function DealerSearchHero({
         <DealerRecognizedWishes wishes={recognizedWishes} compact />
       </form>
 
-      <div className="dl-hero__chips" aria-label="Schnellauswahl">
+      <div className="dl-hero__chips" aria-label="Vorschläge">
         {primaryChips.map((chip) => (
           <ChipButton
             key={chip.id}
@@ -211,23 +203,6 @@ export default function DealerSearchHero({
             onToggle={onChipToggle}
           />
         ))}
-        {showMoreChips && extraChips.map((chip) => (
-          <ChipButton
-            key={chip.id}
-            chip={chip}
-            active={selectedChipIds.includes(chip.id)}
-            onToggle={onChipToggle}
-          />
-        ))}
-        {!showMoreChips && extraChips.length > 0 && (
-          <button
-            type="button"
-            className="dl-chip dl-chip--more"
-            onClick={() => setShowMoreChips(true)}
-          >
-            Mehr
-          </button>
-        )}
       </div>
     </section>
   );

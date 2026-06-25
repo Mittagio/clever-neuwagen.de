@@ -90,14 +90,14 @@ export default function DealerAiVehicleConfigure({
 
       <SellerVehicleConfigurator draft={draft} onChange={onDraftChange} />
 
-      <FlowStickyFooter hint="Konditionen & Angebot im nächsten Schritt">
+      <FlowStickyFooter hint="Clever-Vorschläge im nächsten Schritt">
         {showVehicleSearch && (
           <FlowSecondaryButton onClick={onSwitchToSearch} disabled={isExecuting}>
             Fahrzeugsuche
           </FlowSecondaryButton>
         )}
         <FlowPrimaryButton onClick={onContinueToConditions} disabled={isExecuting}>
-          Weiter zu Konditionen
+          Weiter zu Vorschlägen
         </FlowPrimaryButton>
       </FlowStickyFooter>
     </OfferFlowLayout>

@@ -379,7 +379,7 @@ export function buildCleverAuswahlDetailModel(group) {
       priceLine: formatVariantPriceLine(variant, paymentType),
       shortDescription: variant.shortDescription,
       status: variant.status,
-      editButtonLabel: 'Variante bearbeiten',
+      editButtonLabel: 'Variante konfigurieren',
     })),
   };
 }

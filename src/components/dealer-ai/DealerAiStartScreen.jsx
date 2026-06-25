@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import CleverLexikon from '../backend/CleverLexikon.jsx';
 import './DealerAiStart.css';
@@ -15,6 +16,7 @@ export default function DealerAiStartScreen({
   inputRef,
   carryCustomer = null,
 }) {
+  const [showLexikon, setShowLexikon] = useState(false);
   const canEvaluate = Boolean(text?.trim());
 
   function appendTranscript(spoken) {
@@ -22,7 +24,7 @@ export default function DealerAiStartScreen({
   }
 
   return (
-    <section className="dai-start" aria-label="Einstieg Verkaufsassistent">
+    <section className="dai-start dai-start--calm" aria-label="Einstieg Verkaufsassistent">
       {carryCustomer?.contact?.name && (
         <p className="dai-start__carry" role="status">
           <strong>{carryCustomer.contact.name.replace('Kunde (offen)', '').trim()}</strong>
@@ -30,87 +32,79 @@ export default function DealerAiStartScreen({
         </p>
       )}
 
-      <div className="dai-start__stack">
-        <article className="dai-entry dai-entry--hero">
-          <div className="dai-entry__head">
-            <div className="dai-entry__icon dai-entry__icon--blue" aria-hidden>⚡</div>
-            <div className="dai-entry__body">
-              <h2 className="dai-entry__title">Clever KI-Check</h2>
-              <p className="dai-entry__text">
-                Kundendaten, Wunsch oder Nachricht eingeben.
-              </p>
-            </div>
-          </div>
+      <header className="dai-start__hero">
+        <h1 className="dai-start__headline">Was sucht Ihr Kunde?</h1>
+      </header>
 
-          <div className="dai-capture">
-            <textarea
-              id="dai-quick-capture"
-              ref={inputRef}
-              className="dai-capture__field"
-              rows={4}
-              value={text}
-              onChange={(e) => onTextChange?.(e.target.value)}
-              placeholder={PLACEHOLDER}
-              disabled={isAnalyzing}
-            />
-            <DealerAiInlineMic
-              variant="fab"
-              onTranscript={appendTranscript}
-              onParsed={onVoiceParsed}
-              disabled={isAnalyzing}
-            />
-          </div>
-
-          <button
-            type="button"
-            className="dai-cta dai-cta--primary"
-            onClick={onEvaluate}
-            disabled={!canEvaluate || isAnalyzing}
-          >
-            <span className="dai-cta__spark" aria-hidden>✦</span>
-            {isAnalyzing ? 'Wird ausgewertet …' : 'Clever starten'}
-          </button>
-        </article>
-
-        <button
-          type="button"
-          className="dai-entry dai-entry--link"
-          onClick={onStartAdvice}
+      <div className="dai-capture dai-capture--hero">
+        <textarea
+          id="dai-quick-capture"
+          ref={inputRef}
+          className="dai-capture__field dai-capture__field--hero"
+          rows={5}
+          value={text}
+          onChange={(e) => onTextChange?.(e.target.value)}
+          placeholder={PLACEHOLDER}
           disabled={isAnalyzing}
-        >
-          <div className="dai-entry__icon dai-entry__icon--green" aria-hidden>💬</div>
-          <div className="dai-entry__body">
-            <h3 className="dai-entry__title">Clever-Beratung</h3>
-            <p className="dai-entry__text">
-              Schritt für Schritt zum passenden Fahrzeug – ideal, wenn der Kunde noch offen ist.
-            </p>
-          </div>
-          <span className="dai-entry__chev" aria-hidden>›</span>
-        </button>
-
-        <button
-          type="button"
-          className="dai-entry dai-entry--link"
-          onClick={onStartModel}
+        />
+        <DealerAiInlineMic
+          variant="fab"
+          onTranscript={appendTranscript}
+          onParsed={onVoiceParsed}
           disabled={isAnalyzing}
-        >
-          <div className="dai-entry__icon dai-entry__icon--purple" aria-hidden>🚗</div>
-          <div className="dai-entry__body">
-            <h3 className="dai-entry__title">Modell wählen</h3>
-            <p className="dai-entry__text">
-              Kunde weiß schon, was er möchte? Modell auswählen und direkt loslegen.
-            </p>
-          </div>
-          <span className="dai-entry__chev" aria-hidden>›</span>
-        </button>
+        />
       </div>
 
-      <CleverLexikon
-        className="dai-start__lexikon"
-        subline="Fahrzeugwissen schnell nachschlagen."
-        placeholder="z. B. EV4 Länge, EV5 Kofferraum, Sportage Batterie"
-        showChips={false}
-      />
+      <button
+        type="button"
+        className="dai-cta dai-cta--primary dai-cta--hero"
+        onClick={onEvaluate}
+        disabled={!canEvaluate || isAnalyzing}
+      >
+        {isAnalyzing ? 'Wird ausgewertet …' : 'Clever starten'}
+      </button>
+
+      <div className="dai-start__alt">
+        <p className="dai-start__alt-label">oder direkt starten</p>
+        <nav className="dai-start__alt-nav" aria-label="Weitere Einstiege">
+          <button
+            type="button"
+            className="dai-start__alt-link"
+            onClick={onStartAdvice}
+            disabled={isAnalyzing}
+          >
+            Clever Beratung
+          </button>
+          <span className="dai-start__alt-sep" aria-hidden>·</span>
+          <button
+            type="button"
+            className="dai-start__alt-link"
+            onClick={onStartModel}
+            disabled={isAnalyzing}
+          >
+            Modell wählen
+          </button>
+          <span className="dai-start__alt-sep" aria-hidden>·</span>
+          <button
+            type="button"
+            className={`dai-start__alt-link${showLexikon ? ' is-active' : ''}`}
+            onClick={() => setShowLexikon((open) => !open)}
+            disabled={isAnalyzing}
+            aria-expanded={showLexikon}
+          >
+            Lexikon
+          </button>
+        </nav>
+      </div>
+
+      {showLexikon && (
+        <CleverLexikon
+          className="dai-start__lexikon-panel"
+          subline=""
+          placeholder="z. B. EV4 Länge, Sportage Batterie"
+          showChips={false}
+        />
+      )}
     </section>
   );
 }

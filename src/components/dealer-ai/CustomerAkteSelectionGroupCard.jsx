@@ -1,10 +1,8 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import {
-  formatSelectionGroupBudgetLine,
   formatSelectionGroupStatus,
   formatSelectionGroupSubtitle,
   formatSelectionGroupTrimLine,
-  formatWishConditionsLine,
 } from '../../services/sales/offerSelectionGroup.js';
 import './CustomerAkte.css';
 
@@ -18,8 +16,6 @@ export default function CustomerAkteSelectionGroupCard({
 
   const status = formatSelectionGroupStatus(group);
   const trimLine = formatSelectionGroupTrimLine(group);
-  const conditionsLine = formatWishConditionsLine(group.wishConditions);
-  const budgetLine = formatSelectionGroupBudgetLine(group.wishConditions);
 
   return (
     <article
@@ -47,25 +43,11 @@ export default function CustomerAkteSelectionGroupCard({
           <p className="cust-akte-sgroup__title">{group.modelLabel}</p>
           <p className="cust-akte-sgroup__count">{formatSelectionGroupSubtitle(group)}</p>
           {trimLine && <p className="cust-akte-sgroup__trims">{trimLine}</p>}
-          {conditionsLine && (
-            <p className="cust-akte-sgroup__conditions">{conditionsLine}</p>
-          )}
-          {budgetLine && <p className="cust-akte-sgroup__budget">{budgetLine}</p>}
-          <p className={`cust-akte-sgroup__status cust-akte-sgroup__status--${status.tone}`}>
+          <span className={`cust-akte-sgroup__status cust-akte-sgroup__status--${status.tone}`}>
             {status.label}
-          </p>
+          </span>
         </div>
       </button>
-
-      <div className="cust-akte-sgroup__cta-wrap">
-        <button
-          type="button"
-          className="cust-akte-sgroup__cta"
-          onClick={() => onClick?.(group)}
-        >
-          Auswahl öffnen
-        </button>
-      </div>
     </article>
   );
 }

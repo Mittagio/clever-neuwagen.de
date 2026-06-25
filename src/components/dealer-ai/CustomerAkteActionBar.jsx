@@ -19,6 +19,7 @@ export default function CustomerAkteActionBar({
   onActivities,
   unterlagenBadge = 0,
   activitiesBadge = 0,
+  activitiesBadgeDetail = null,
   onCall,
 }) {
   function renderAction(action) {
@@ -111,20 +112,23 @@ export default function CustomerAkteActionBar({
       activities: onActivities,
     };
     const handler = handlers[action.id];
+    const activitiesAria = action.id === 'activities' && activitiesBadgeDetail?.total
+      ? `${action.label}: ${activitiesBadgeDetail.total} Aktivitäten`
+      : action.label;
 
     return (
       <button
         key={action.id}
         type="button"
-        className="cust-akte-actions__item"
+        className={`cust-akte-actions__item${action.id === 'activities' ? ' cust-akte-actions__item--activities' : ''}`}
         onClick={handler}
-        aria-label={action.label}
+        aria-label={activitiesAria}
         disabled={!handler}
       >
         <span className="cust-akte-actions__icon-wrap">
           <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
           {badge > 0 && (
-            <span className="cust-akte-actions__badge" aria-label={`${badge} offen`}>
+            <span className="cust-akte-actions__badge" aria-label={`${badge} neu`}>
               {badge > 9 ? '9+' : badge}
             </span>
           )}

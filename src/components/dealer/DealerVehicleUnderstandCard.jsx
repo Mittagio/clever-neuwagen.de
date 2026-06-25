@@ -61,8 +61,7 @@ export default function DealerVehicleUnderstandCard({
   }
 
   return (
-    <section className="dl-sales-understand" aria-labelledby="dl-sales-understand-title">
-      <p className="dl-sales-understand__kicker">Fahrzeug gewählt</p>
+    <section className="dl-sales-understand dl-sales-understand--portal" aria-labelledby="dl-sales-understand-title">
       <div className="dl-sales-understand__hero dl-sales-understand__hero--compact">
         <VehicleImage
           brand="Kia"
@@ -79,7 +78,7 @@ export default function DealerVehicleUnderstandCard({
             {brief.title}
           </h2>
           {contextLine && (
-            <p className="dl-sales-understand__context">{contextLine}</p>
+            <p className="dl-sales-understand__context dl-sales-understand__context--muted">{contextLine}</p>
           )}
           {deliveryLabel && (
             <p className="dl-sales-understand__delivery">
@@ -96,10 +95,10 @@ export default function DealerVehicleUnderstandCard({
         onChange={onPowertrainChange}
       />
 
-      <div className="dl-sales-understand__wishes dl-sales-understand__wishes-panel dl-sales-understand__equipment">
+      <div className="dl-sales-understand__wishes dl-sales-understand__equipment">
         {prefilledWishCount > 0 && (
           <p className="dl-sales-understand__prefill-hint">
-            Aus Ihrer Suche haben wir {prefilledWishCount} Wünsche übernommen – jederzeit änderbar.
+            {prefilledWishCount} Wünsche aus Ihrer Suche übernommen.
           </p>
         )}
         <EquipmentWishAdvisor

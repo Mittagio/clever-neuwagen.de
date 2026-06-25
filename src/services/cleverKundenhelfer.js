@@ -5,6 +5,7 @@ export const KUNDENHELFER_CHIPS = [
   '2 Kinder',
   'Eigenheim',
   'Hund',
+  'AHK',
   'Einkommen ca. 3.000 €',
   'Kaffee schwarz',
   'mag rote Autos',

@@ -10,6 +10,7 @@ import {
   PAYMENT_TYPE_CARDS,
   TRADE_IN_OPTIONS,
 } from '../../services/dealer/purchaseTypeFormOptions.js';
+import MobileBottomSheet from '../shared/MobileBottomSheet.jsx';
 import './dealer-landing.css';
 
 function ConfigRecap({ summary }) {
@@ -215,6 +216,7 @@ export default function DealerPurchaseTypeCard({
   formId = 'dl-advisor-purchase-form',
 }) {
   const [selected, setSelected] = useState(value);
+  const [leasingSheetOpen, setLeasingSheetOpen] = useState(false);
   const [detailsByType, setDetailsByType] = useState(() => ({
     ...DEFAULT_DETAILS,
     ...(initialDetails ?? {}),
@@ -250,7 +252,7 @@ export default function DealerPurchaseTypeCard({
   const ctaLabel = useMemo(() => getPaymentStepCta(selected), [selected]);
 
   return (
-    <section className="dl-purchase" aria-labelledby="dl-purchase-title">
+    <section className="dl-purchase dl-purchase--portal" aria-labelledby="dl-purchase-title">
       <ConfigRecap summary={configSummary} />
       <p className="dl-purchase__phase">Zahlungsart</p>
       <h2 id="dl-purchase-title" className="dl-purchase__title">
@@ -277,7 +279,35 @@ export default function DealerPurchaseTypeCard({
         </div>
 
         {selected === 'leasing' && (
-          <LeasingFields details={details} onChange={patchDetails} />
+          <>
+            <div className="dl-purchase__details dl-purchase__details--desktop">
+              <LeasingFields details={details} onChange={patchDetails} />
+            </div>
+            <button
+              type="button"
+              className="dl-purchase__sheet-trigger"
+              onClick={() => setLeasingSheetOpen(true)}
+            >
+              Leasingdetails anpassen
+            </button>
+            <MobileBottomSheet
+              open={leasingSheetOpen}
+              onClose={() => setLeasingSheetOpen(false)}
+              title="Leasingdetails"
+              className="cn-leasing-sheet"
+              footer={(
+                <button
+                  type="button"
+                  className="cn-leasing-sheet__apply"
+                  onClick={() => setLeasingSheetOpen(false)}
+                >
+                  Übernehmen
+                </button>
+              )}
+            >
+              <LeasingFields details={details} onChange={patchDetails} />
+            </MobileBottomSheet>
+          </>
         )}
         {selected === 'finance' && (
           <FinanceFields details={details} onChange={patchDetails} />

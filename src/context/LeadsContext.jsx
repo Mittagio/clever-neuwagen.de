@@ -104,6 +104,14 @@ function historyEntry(text, type = 'system', meta = {}) {
     documentType: meta.documentType ?? null,
     subject: meta.subject ?? null,
     eventId: meta.eventId ?? null,
+    activityKind: meta.activityKind ?? null,
+    customerFacing: meta.customerFacing ?? false,
+    modelLabel: meta.modelLabel ?? null,
+    trimLabel: meta.trimLabel ?? null,
+    documentLabel: meta.documentLabel ?? null,
+    question: meta.question ?? null,
+    cleverAnswer: meta.cleverAnswer ?? null,
+    insightText: meta.insightText ?? null,
   };
 }
 

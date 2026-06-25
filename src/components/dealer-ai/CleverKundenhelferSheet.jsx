@@ -12,6 +12,7 @@ import {
   replaceKundenhelferChip,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
+import CustomerAkteConversationNotes from './CustomerAkteConversationNotes.jsx';
 import './CleverKundenhelferSheet.css';
 
 function VoiceMemoRecorder({ onSave, disabled }) {
@@ -237,6 +238,9 @@ export default function CleverKundenhelferSheet({
   onNotesChange,
   voiceMemos = [],
   onVoiceMemosChange,
+  conversationNotes = [],
+  onConversationNotesChange,
+  vehicleCards = [],
   onSave,
   isSaving = false,
 }) {
@@ -442,6 +446,13 @@ export default function CleverKundenhelferSheet({
             </div>
           )}
         </div>
+
+        <CustomerAkteConversationNotes
+          notes={conversationNotes}
+          onChange={onConversationNotesChange}
+          vehicleCards={vehicleCards}
+          disabled={isSaving}
+        />
 
         <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
 

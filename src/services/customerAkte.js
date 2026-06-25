@@ -146,10 +146,9 @@ export function buildWishConditionChips({
   const hasMileage = Number(mileagePerYear) > 0;
   const hasRate = Number(desiredRate) > 0;
   const hasPrice = Number(desiredPrice) > 0;
-  const hasDown = Number(downPayment) > 0;
   const hasDelivery = Boolean(String(delivery ?? '').trim());
 
-  if (pt === 'unknown' && !hasTerm && !hasMileage && !hasRate && !hasPrice && !hasDown && !hasDelivery) {
+  if (pt === 'unknown' && !hasTerm && !hasMileage && !hasRate && !hasPrice && !hasDelivery) {
     return [];
   }
 
@@ -170,23 +169,25 @@ export function buildWishConditionChips({
       const km = formatWishKm(mileagePerYear);
       chips.push(km ? `${km}/Jahr` : 'Kilometer offen');
     }
-    if (hasDown) {
-      const down = formatWishEuro(downPayment);
-      if (down) chips.push(`${down} Anzahlung`);
-    }
+    const downNum = Number(downPayment);
+    const downLabel = Number.isFinite(downNum)
+      ? `${downNum.toLocaleString('de-DE')} €`
+      : '0 €';
+    chips.push(`${downLabel} Anzahlung`);
     const rate = formatWishEuro(desiredRate);
-    if (rate) chips.push(`bis ${rate}/Monat`);
-    else if (!hasDown) chips.push('Budget offen');
+    chips.push(rate ? `bis ${rate}/Monat` : 'Budget offen');
   }
 
-  if (hasDelivery) {
-    const label = String(delivery).trim();
-    const deliveryChip = /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(label)
-      || /^(sofort|diese Woche|nächste Woche|diesen Monat|nächsten Monat)$/i.test(label)
-      ? label
-      : `Wunschlieferdatum ${label}`;
-    chips.push(deliveryChip.length > 42 ? `${deliveryChip.slice(0, 40)}…` : deliveryChip);
-  }
+  const deliveryLabels = {
+    sofort: 'Sofort',
+    '1-3-monate': '1–3 Monate',
+    '3-6-monate': '3–6 Monate',
+  };
+  const rawDelivery = String(delivery ?? '').trim();
+  const deliveryText = rawDelivery
+    ? (deliveryLabels[rawDelivery.toLowerCase()] ?? rawDelivery)
+  : 'Egal';
+  chips.push(`Liefertermin ${deliveryText}`);
 
   return chips;
 }
@@ -420,17 +421,17 @@ export function formatSelectionActionPrefix(group = {}) {
   return label.split(/\s+/)[0];
 }
 
-/** Feste Status für „Auf dem Tisch“ – keine losen Technik-Texte. */
+/** Feste Status für „Auf dem Tisch“ – ruhige, klare Labels. */
 export const TABLE_VEHICLE_STATUS = {
-  idea: { label: 'Idee', tone: 'idea' },
-  suggestion: { label: 'Vorschlag', tone: 'idea' },
-  configured: { label: 'Konfiguriert', tone: 'ready' },
-  offer_prepared: { label: 'Angebot vorbereitet', tone: 'ready' },
-  sent: { label: 'Gesendet', tone: 'sent' },
-  opened: { label: 'Geöffnet', tone: 'opened' },
-  interested: { label: 'Interessiert', tone: 'sent' },
-  rejected: { label: 'Abgelehnt', tone: 'idea' },
-  closing_ready: { label: 'Abschlussbereit', tone: 'ready' },
+  idea: { label: 'Entwurf', tone: 'muted' },
+  suggestion: { label: 'Entwurf', tone: 'muted' },
+  configured: { label: 'Entwurf', tone: 'muted' },
+  offer_prepared: { label: 'Entwurf', tone: 'muted' },
+  sent: { label: 'Gesendet', tone: 'muted' },
+  opened: { label: 'Gesendet', tone: 'muted' },
+  interested: { label: 'Favorit', tone: 'accent' },
+  rejected: { label: 'Abgelehnt', tone: 'muted' },
+  closing_ready: { label: 'Abschlussbereit', tone: 'accent' },
 };
 
 function isCardClosingReady(card = {}, lead = null) {
@@ -546,6 +547,7 @@ export const KUNDENHELFER_CHIP_ICONS = {
   'bevorzugt WhatsApp': '💬',
   'Finanzierung offen': '🏦',
   'Inzahlungnahme vorhanden': '🔄',
+  AHK: '🚛',
 };
 
 export function getKundenhelferChipIcon(chip = '') {

@@ -1,6 +1,5 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import {
-  formatVehicleCardConditionsDot,
   formatVehicleCardPrice,
   formatVehicleCardTitle,
   resolveVehicleStatus,
@@ -16,13 +15,12 @@ export default function CustomerAkteVehicleCard({
   onMenu,
 }) {
   const title = formatVehicleCardTitle(card);
-  const conditions = formatVehicleCardConditionsDot(card);
   const price = formatVehicleCardPrice(card);
   const status = resolveVehicleStatus(card, { lead });
 
   return (
     <article
-      className={`cust-akte-vcard cust-akte-vcard--compact${animateIn ? ' cust-akte-vcard--animate' : ''}`}
+      className={`cust-akte-vcard cust-akte-vcard--board${animateIn ? ' cust-akte-vcard--animate' : ''}`}
       style={{ '--card-index': index }}
     >
       <button
@@ -45,12 +43,9 @@ export default function CustomerAkteVehicleCard({
         <div className="cust-akte-vcard__body">
           <p className="cust-akte-vcard__title">{title}</p>
           {price && <p className="cust-akte-vcard__price">{price}</p>}
-          {conditions && (
-            <p className="cust-akte-vcard__conditions">{conditions}</p>
-          )}
-          <p className={`cust-akte-vcard__status-line cust-akte-vcard__status-line--${status.tone}`}>
+          <span className={`cust-akte-vcard__status cust-akte-vcard__status--${status.tone}`}>
             {status.label}
-          </p>
+          </span>
         </div>
       </button>
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isChipSelected } from '../../data/features/equipmentWishChips.js';
 import { formatCurrency } from '../../logic/marketplaceService.js';
-import { getEquipmentStepCta, resolveTrimPriceDisplay } from '../../services/dealer/equipmentStepPresentation.js';
+import { getEquipmentStepCta, getNeutralPriceTierLabel, resolveTrimPriceDisplay } from '../../services/dealer/equipmentStepPresentation.js';
 import {
   analyzeEquipmentWishSelection,
   getEquipmentWishChipGroups,
@@ -48,6 +48,10 @@ function TrimLineCard({
     formatCurrency,
   });
 
+  const displayDesc = isJourney && !knownPurchaseType
+    ? getNeutralPriceTierLabel(index, total)
+    : line.description;
+
   return (
     <article
       data-trim-id={line.trimId}
@@ -58,7 +62,7 @@ function TrimLineCard({
           <h4 className="vd-eq-trim__name">{line.trimName}</h4>
           {line.badge && <span className="vd-eq-trim__badge">{line.badge}</span>}
         </div>
-        <p className="vd-eq-trim__desc">{line.description}</p>
+        <p className="vd-eq-trim__desc">{displayDesc}</p>
         {hasWishes && line.matchPercent > 0 && <MatchBar percent={line.matchPercent} />}
         <div className="vd-eq-trim__price-row">
           {price.primary && (
@@ -217,15 +221,19 @@ export default function EquipmentWishAdvisor({
 
   return (
     <section
-      className="vd-wish vd-wish--embedded vd-wish--equipment"
+      className={`vd-wish vd-wish--embedded vd-wish--equipment${isJourney ? ' vd-wish--portal' : ''}`}
       id="vd-wish-builder"
       aria-label="Ausstattungsberatung"
     >
       <div className="vd-wish__intro">
-        <h2 className="vd-wish__title">Welche Ausstattung passt zu Ihnen?</h2>
-        <p className="vd-wish__question vd-wish__subline">
-          Wählen Sie aus, was Ihnen wichtig ist – Clever empfiehlt die passende Variante.
-        </p>
+        <h2 className="vd-wish__title">
+          {isJourney ? 'Welche Variante passt besser?' : 'Welche Ausstattung passt zu Ihnen?'}
+        </h2>
+        {!isJourney && (
+          <p className="vd-wish__question vd-wish__subline">
+            Wählen Sie aus, was Ihnen wichtig ist – Clever empfiehlt die passende Variante.
+          </p>
+        )}
       </div>
 
       {chipGroups.map((group) => (
@@ -270,8 +278,8 @@ export default function EquipmentWishAdvisor({
 
       {analysis.trimLines?.length > 0 && (
         <div className="vd-eq-section">
-          <h3 className="vd-eq-section__title">Ihre passende Variante</h3>
-          {!hasSelection && (
+          {!isJourney && <h3 className="vd-eq-section__title">Ihre passende Variante</h3>}
+          {!hasSelection && !isJourney && (
             <p className="vd-eq-section__lead">
               Wählen Sie Wünsche aus oder lassen Sie Clever eine sinnvolle Variante empfehlen.
             </p>

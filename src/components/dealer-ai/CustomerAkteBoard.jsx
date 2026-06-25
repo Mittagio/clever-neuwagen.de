@@ -17,7 +17,7 @@ export default function CustomerAkteBoard({
     : cards.map((card) => ({ type: 'vehicle', id: card.id, card }));
 
   return (
-    <section className="cust-akte-section cust-akte-board" aria-labelledby="cust-akte-board-title">
+    <section className="cust-akte-section cust-akte-board cust-akte-tier-2" aria-labelledby="cust-akte-board-title">
       <div className="cust-akte-section__head">
         <h2 id="cust-akte-board-title" className="cust-akte-section__title">Auf dem Tisch</h2>
         <button type="button" className="cust-akte-section__link" onClick={onAddVehicle}>

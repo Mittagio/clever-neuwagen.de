@@ -25,6 +25,7 @@ import DealerAiSuggestedModels from '../components/dealer-ai/DealerAiSuggestedMo
 import DealerAiReviewBar from '../components/dealer-ai/DealerAiReviewBar.jsx';
 import DealerAiVehicleConfigure from '../components/dealer-ai/DealerAiVehicleConfigure.jsx';
 import DealerAiConditionsStep from '../components/dealer-ai/DealerAiConditionsStep.jsx';
+import DealerAiOfferVariantsStep from '../components/dealer-ai/DealerAiOfferVariantsStep.jsx';
 import DealerAiOfferPreview from '../components/dealer-ai/DealerAiOfferPreview.jsx';
 import CustomerAddVehicleDuplicatePrompt from '../components/dealer-ai/CustomerAddVehicleDuplicatePrompt.jsx';
 import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
@@ -79,6 +80,7 @@ import {
   buildCustomerRecognitionInsight,
 } from '../services/dealerAiRecognitionInsight.js';
 import { applyDirectCustomerAkteFromRecognition } from '../services/dealerAiDirectCustomerAkte.js';
+import { buildSmartOfferVariants } from '../services/dealer/smartOfferVariants.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import './DealerAIPage.css';
 
@@ -114,6 +116,7 @@ export default function DealerAIPage() {
   const [configureDraft, setConfigureDraft] = useState(null);
   const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
+  const [smartOfferVariants, setSmartOfferVariants] = useState([]);
   const [offerPreviewSaved, setOfferPreviewSaved] = useState(false);
   const [offerPreviewSaveResult, setOfferPreviewSaveResult] = useState(null);
   const [recognitionInsight, setRecognitionInsight] = useState(null);
@@ -155,6 +158,7 @@ export default function DealerAIPage() {
     setConfigureDraft(draft);
     setVehicleConfiguration(null);
     setConfigureOfferDraft(null);
+    setSmartOfferVariants([]);
     if (primaryModel?.id) {
       setSelectedModelIds([primaryModel.id]);
     }
@@ -301,12 +305,66 @@ export default function DealerAIPage() {
   }
 
   function handleConfigureContinueToConditions() {
+    if (!configureDraft) return;
+    const variants = buildSmartOfferVariants(configureDraft, conditions, parsed?.fields ?? {});
+    setSmartOfferVariants(variants);
+    setVehicleConfiguration(buildVehicleConfiguration(configureDraft));
+    setPhase('offer-variants');
+  }
+
+  function handleOfferVariantsBack() {
+    setSmartOfferVariants([]);
+    setPhase('configure');
+  }
+
+  function handleOfferVariantsChange(nextVariants) {
+    setSmartOfferVariants(nextVariants);
+  }
+
+  function handleOpenFullConditions() {
+    if (!configureDraft) return;
     setVehicleConfiguration(buildVehicleConfiguration(configureDraft));
     setPhase('conditions');
   }
 
+  function handleSelectSmartVariant(variant) {
+    if (!parsed?.ok || !variant?.draft) return;
+
+    const nextDraft = variant.draft;
+    setConfigureDraft(nextDraft);
+    const mergedFields = fieldsFromConfigureDraft(nextDraft, parsed.fields);
+    const updatedParsed = enrichWithSuggestions(applyDealerAiFields(parsed, mergedFields));
+    setParsed(updatedParsed);
+
+    const vehicleConfig = buildVehicleConfiguration(nextDraft);
+    setVehicleConfiguration(vehicleConfig);
+
+    const contextLead = addVehicleContext?.opportunityId
+      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+      : null;
+
+    const offerDraft = buildOfferDraft({
+      configureDraft: nextDraft,
+      vehicleConfiguration: vehicleConfig,
+      parsed: updatedParsed,
+      conditions,
+      carryCustomer,
+      addVehicleContext,
+      lead: contextLead,
+    });
+
+    setConfigureOfferDraft(offerDraft);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
+    setPhase('offer-preview');
+  }
+
   function handleConditionsBack() {
-    setPhase('configure');
+    if (configureDraft) {
+      const variants = buildSmartOfferVariants(configureDraft, conditions, parsed?.fields ?? {});
+      setSmartOfferVariants(variants);
+    }
+    setPhase('offer-variants');
   }
 
   function handleConditionsToPreview() {
@@ -340,7 +398,7 @@ export default function DealerAIPage() {
     setConfigureOfferDraft(null);
     setOfferPreviewSaved(false);
     setOfferPreviewSaveResult(null);
-    setPhase('conditions');
+    setPhase(smartOfferVariants.length ? 'offer-variants' : 'conditions');
   }
 
   function handleOfferPreviewPreparePdf() {
@@ -745,7 +803,7 @@ export default function DealerAIPage() {
 
   function handleLeadHistory(text, type = 'note', options = {}) {
     if (!result?.leadId) return;
-    addHistory(result.leadId, text, type);
+    addHistory(result.leadId, text, type, options);
     if (options.pipelineStatusId) {
       const leadStatus = pipelineToLeadStatus(options.pipelineStatusId);
       updateLead(result.leadId, {
@@ -954,7 +1012,7 @@ export default function DealerAIPage() {
   const pageKicker = 'Digitaler Verkaufsassistent';
   const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
     ? ''
-    : phase === 'configure' || phase === 'conditions'
+    : phase === 'configure' || phase === 'conditions' || phase === 'offer-variants'
       ? ''
     : phase === 'review'
       ? 'Clever hat erkannt'
@@ -965,7 +1023,7 @@ export default function DealerAIPage() {
         : 'Was sucht Ihr Kunde?';
   const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
     ? ''
-    : phase === 'configure' || phase === 'conditions'
+    : phase === 'configure' || phase === 'conditions' || phase === 'offer-variants'
       ? ''
     : phase === 'review'
       ? 'Bitte kurz bestätigen, bevor es weitergeht.'
@@ -983,6 +1041,7 @@ export default function DealerAIPage() {
     && phase !== 'offer-preview'
     && phase !== 'configure'
     && phase !== 'conditions'
+    && phase !== 'offer-variants'
     && phase !== 'recognition-animate'
     && !(phase === 'input' && startView !== 'home');
 
@@ -1042,7 +1101,7 @@ export default function DealerAIPage() {
 
   return (
     <div className="dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-preview' || phase === 'offer-edit' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' ? ' dealer-ai-main--akte' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-variants' || phase === 'offer-preview' || phase === 'offer-edit' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' ? ' dealer-ai-main--akte' : ''}`}>
         {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
@@ -1106,6 +1165,19 @@ export default function DealerAIPage() {
             onContinueToConditions={handleConfigureContinueToConditions}
             onBack={handleConfigureBack}
             onSwitchToSearch={configureDraft?.modelKey ? undefined : handleSwitchToSearch}
+            isExecuting={isExecuting}
+          />
+        )}
+
+        {phase === 'offer-variants' && parsed?.ok && configureDraft && smartOfferVariants.length > 0 && (
+          <DealerAiOfferVariantsStep
+            variants={smartOfferVariants}
+            draft={configureDraft}
+            conditions={conditions}
+            onVariantsChange={handleOfferVariantsChange}
+            onSelectVariant={handleSelectSmartVariant}
+            onOpenConditions={handleOpenFullConditions}
+            onBack={handleOfferVariantsBack}
             isExecuting={isExecuting}
           />
         )}
@@ -1223,7 +1295,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'recognition-animate' && !(phase === 'input' && startView === 'home') && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'offer-variants' && phase !== 'recognition-animate' && !(phase === 'input' && startView === 'home') && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

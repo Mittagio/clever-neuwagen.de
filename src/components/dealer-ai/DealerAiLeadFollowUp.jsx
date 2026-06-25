@@ -43,7 +43,6 @@ import {
   formatCleverActionFollowedHistoryText,
 } from '../../services/crm/cleverActionEngine.js';
 import { countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
-import { getHistoryEntryCount } from '../../services/customerAkteHistory.js';
 import {
   addressFromLead,
   addressToStorageFields,
@@ -70,22 +69,40 @@ import {
   resolveOfferSelectionGroups,
   sanitizeOfferSelectionGroups,
 } from '../../services/sales/offerSelectionGroup.js';
+import { updateSelectionGroupVariant } from '../../services/sales/offerVariantConfigurator.js';
+import {
+  buildCleverQuestionActivity,
+  buildDocumentOpenedActivity,
+  buildFavoriteActivity,
+  buildVariantViewedActivity,
+  detectCleverInsights,
+  extractLexiconQuestionAnswer,
+  getActivityDashboard,
+  mergeInsightActivities,
+} from '../../services/customerActivityTimeline.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
+import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
+import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
+import CustomerAkteActivities from './CustomerAkteActivities.jsx';
+import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
+import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
 import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import CleverLexikon from '../backend/CleverLexikon.jsx';
 import { addCustomKundenhelferChip } from '../../services/cleverKundenhelfer.js';
+import { normalizeConversationNotes } from '../../services/kundenhelferConversationNotes.js';
+import { createEmptyTradeIn, getTradeIn, patchTradeIn } from '../../services/customerAkteTradeIn.js';
 import { buildLexiconAkteChip } from '../../services/lexicon/cleverLexiconSearchService.js';
 import DealerAppLegalMenu from '../dealer/DealerAppLegalMenu.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
@@ -96,6 +113,7 @@ const SHEETS = {
   customer: 'customer',
   address: 'address',
   wish: 'wish',
+  wishConditions: 'wish_conditions',
   next: 'next',
   offer: 'offer',
   models: 'models',
@@ -240,6 +258,7 @@ export default function DealerAiLeadFollowUp({
   }, [initialSheet]);
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
+  const [variantConfigureContext, setVariantConfigureContext] = useState(null);
   const [toast, setToast] = useState('');
   const [showCardAnimation, setShowCardAnimation] = useState(isFresh);
   const [reservedModels, setReservedModels] = useState(
@@ -306,11 +325,22 @@ export default function DealerAiLeadFollowUp({
 
   const [kundenhelferNotes, setKundenhelferNotes] = useState(crm.kundenhelfer?.notes ?? '');
   const [kundenhelferMemos, setKundenhelferMemos] = useState(crm.kundenhelfer?.voiceMemos ?? []);
+  const [conversationNotes, setConversationNotes] = useState(
+    () => normalizeConversationNotes(crm.kundenhelfer?.conversationNotes),
+  );
+  const [tradeInData, setTradeInData] = useState(() => getTradeIn(lead));
 
   useEffect(() => {
     setKundenhelferNotes(lead?.crm?.kundenhelfer?.notes ?? '');
     setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
-  }, [lead?.crm?.kundenhelfer?.notes, lead?.crm?.kundenhelfer?.voiceMemos]);
+    setConversationNotes(normalizeConversationNotes(lead?.crm?.kundenhelfer?.conversationNotes));
+    setTradeInData(getTradeIn(lead));
+  }, [
+    lead?.crm?.kundenhelfer?.notes,
+    lead?.crm?.kundenhelfer?.voiceMemos,
+    lead?.crm?.kundenhelfer?.conversationNotes,
+    lead?.crm?.tradeIn,
+  ]);
 
   useEffect(() => {
     setCustomerAddress(addressFromLead(lead));
@@ -503,10 +533,39 @@ export default function DealerAiLeadFollowUp({
     () => countUnterlagenOpenTasks(lead, unterlagenPaymentType),
     [lead, unterlagenPaymentType],
   );
-  const activitiesCount = useMemo(() => getHistoryEntryCount(history), [history]);
+  const activitiesLastSeenAt = crm.activitiesLastSeenAt ?? null;
+  const activityDashboard = useMemo(
+    () => getActivityDashboard(history, activitiesLastSeenAt),
+    [history, activitiesLastSeenAt],
+  );
+  const activitiesCount = activityDashboard.newCustomerActivities || activityDashboard.total;
   const pipelineStatusLabel = getLeadStatusBadgeLabel(pipelineStatusId);
 
   const lastLoggedCleverActionRef = useRef(null);
+  const syncedInsightsRef = useRef(new Set());
+
+  function logCustomerActivity(activity) {
+    if (!activity?.text) return;
+    onAddHistory?.(activity.text, activity.type ?? 'customer_activity', {
+      silent: true,
+      ...(activity.meta ?? {}),
+    });
+  }
+
+  function openActivitiesSheet() {
+    openSheet(SHEETS.history);
+    onSave?.(buildSavePayload({
+      activitiesLastSeenAt: new Date().toISOString(),
+    }), { silent: true, addFollowupHistory: false });
+  }
+
+  function handleQuestionPersonalReply(item) {
+    openCleverAntworten();
+    if (item?.cleverAnswer) {
+      setToast('Clever-Antwort in Clever Antwort übernommen – Text anpassen und senden.');
+      setTimeout(() => setToast(''), 3500);
+    }
+  }
 
   useEffect(() => {
     if (!cleverRecommendation?.actionId || !lead?.id) return;
@@ -515,6 +574,17 @@ export default function DealerAiLeadFollowUp({
     lastLoggedCleverActionRef.current = logKey;
     onAddHistory?.(cleverRecommendation.analyticsText, 'clever_action', { silent: true });
   }, [cleverRecommendation, lead?.id, onAddHistory]);
+
+  useEffect(() => {
+    if (!lead?.id) return;
+    const pending = mergeInsightActivities(history, detectCleverInsights(history));
+    for (const activity of pending) {
+      const key = activity.meta?.insightText ?? activity.text;
+      if (syncedInsightsRef.current.has(key)) continue;
+      syncedInsightsRef.current.add(key);
+      logCustomerActivity(activity);
+    }
+  }, [history, lead?.id]);
 
   const cleverAntwortenContext = useMemo(() => buildCleverAntwortenContext({
     lead,
@@ -585,11 +655,64 @@ export default function DealerAiLeadFollowUp({
     );
   }
 
-  function handleEditSelectionVariant(group, variant) {
-    setToast(`${variant?.trimLabel ?? 'Variante'} – Bearbeitung folgt in Kürze.`);
-    setTimeout(() => setToast(''), 3000);
+  function handleEditSelectionVariant(group, variantSummary) {
+    const fullVariant = group.variants?.find((v) => v.id === variantSummary.id) ?? variantSummary;
+    logCustomerActivity(buildVariantViewedActivity({
+      modelLabel: group.modelLabel,
+      trimLabel: fullVariant.trimLabel,
+    }));
+    setVariantConfigureContext({ group, variant: fullVariant });
     closeSheet();
-    openSheet(SHEETS.wish);
+  }
+
+  function handleVariantConfigureBack() {
+    const group = variantConfigureContext?.group ?? null;
+    setVariantConfigureContext(null);
+    if (group) {
+      setSelectedSelectionGroup(group);
+      openSheet(SHEETS.cleverAuswahl);
+    }
+  }
+
+  function persistOfferSelectionGroups(nextGroups, historyText) {
+    const sanitized = sanitizeOfferSelectionGroups(nextGroups);
+    setOfferSelectionGroups(sanitized);
+    onSave?.(buildSavePayload({ offerSelectionGroups: sanitized }), {
+      historyText,
+      addFollowupHistory: Boolean(historyText),
+    });
+  }
+
+  function handleVariantConfigureSave(group, nextVariant) {
+    const nextGroups = updateSelectionGroupVariant(
+      offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups,
+      group.id,
+      nextVariant.id,
+      nextVariant,
+    );
+    const updatedGroup = nextGroups.find((g) => g.id === group.id) ?? group;
+    persistOfferSelectionGroups(
+      nextGroups,
+      `Variante ${nextVariant.trimLabel ?? ''} konfiguriert und gespeichert`.trim(),
+    );
+    setVariantConfigureContext(null);
+    setSelectedSelectionGroup(updatedGroup);
+    setToast('Variante gespeichert.');
+    setTimeout(() => setToast(''), 3000);
+    openSheet(SHEETS.cleverAuswahl);
+  }
+
+  function handleVariantConfigureDuplicate(nextGroup) {
+    const sanitized = sanitizeOfferSelectionGroups([
+      ...(offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups).filter((g) => g.id !== nextGroup.id),
+      nextGroup,
+    ]);
+    persistOfferSelectionGroups(sanitized, 'Weitere Variante aus Konfigurator dupliziert');
+    setVariantConfigureContext(null);
+    setSelectedSelectionGroup(nextGroup);
+    setToast('Variante dupliziert.');
+    setTimeout(() => setToast(''), 3000);
+    openSheet(SHEETS.cleverAuswahl);
   }
 
   function openVehicleCard(card) {
@@ -608,6 +731,10 @@ export default function DealerAiLeadFollowUp({
     }
     closeSheet();
     if (hasVehicleOffer(card) && card.offer?.code) {
+      logCustomerActivity(buildDocumentOpenedActivity({
+        documentLabel: `${card.modelName ?? 'Angebot'} geöffnet`,
+        documentType: 'offer',
+      }));
       window.location.assign(`/angebot/${encodeURIComponent(card.offer.code)}`);
       return;
     }
@@ -621,11 +748,18 @@ export default function DealerAiLeadFollowUp({
 
   function toggleVehicleFavorite(card) {
     if (card.source !== 'reserved') return;
+    const nextFavorite = !card.isFavorite;
     const next = reservedModels.map((m) => (
-      m.id === card.id ? { ...m, isFavorite: !m.isFavorite } : m
+      m.id === card.id ? { ...m, isFavorite: nextFavorite } : m
     ));
     setReservedModels(next);
-    setSelectedVehicleCard({ ...card, isFavorite: !card.isFavorite });
+    setSelectedVehicleCard({ ...card, isFavorite: nextFavorite });
+    if (nextFavorite) {
+      logCustomerActivity(buildFavoriteActivity({
+        modelLabel: card.modelName ?? card.model,
+        trimLabel: card.trimLabel,
+      }));
+    }
     onSave?.(buildSavePayload({ reservedModels: next }), {
       historyText: card.isFavorite ? 'Favorit entfernt' : 'Als Favorit markiert',
       addFollowupHistory: false,
@@ -649,6 +783,9 @@ export default function DealerAiLeadFollowUp({
     }
     if (activeSheet === SHEETS.cleverAuswahl) {
       setSelectedSelectionGroup(null);
+    }
+    if (variantConfigureContext) {
+      setVariantConfigureContext(null);
     }
   }
 
@@ -702,6 +839,11 @@ export default function DealerAiLeadFollowUp({
     const vehicleLabel = [fields.brand ?? 'Kia', wishModel, wishTrim].filter(Boolean).join(' ').trim();
     const addressStorage = addressToStorageFields(addressOverride ?? customerAddress);
     const nextDistanceInfo = extraCrm.distanceInfo ?? distanceInfo ?? null;
+    const {
+      kundenhelfer: extraKundenhelfer,
+      tradeIn: extraTradeIn,
+      ...restExtraCrm
+    } = extraCrm;
 
     return {
       contact: {
@@ -738,15 +880,22 @@ export default function DealerAiLeadFollowUp({
         offerSelectionGroups: extraCrm.offerSelectionGroups ?? resolvedSelectionGroups,
         offers: crm.offers ?? [],
         kundenhelfer: {
+          ...(crm.kundenhelfer ?? {}),
+          ...(extraKundenhelfer ?? {}),
           notes: kundenhelferNotes.trim(),
           voiceMemos: kundenhelferMemos,
+          conversationNotes,
         },
+        tradeIn: patchTradeIn(
+          tradeInData ?? createEmptyTradeIn(),
+          extraTradeIn ?? {},
+        ),
         address: addressStorage.address,
         customerAddress: addressStorage.customerAddress,
         distanceInfo: nextDistanceInfo,
         lastOutcomeId: outcomeId ?? crm.lastOutcomeId,
         lastOutcomeLabel: outcomeChip?.label ?? crm.lastOutcomeLabel,
-        ...extraCrm,
+        ...restExtraCrm,
       },
     };
   }
@@ -755,8 +904,13 @@ export default function DealerAiLeadFollowUp({
     onSave?.(buildSavePayload(), meta);
   }
 
-  function saveUnterlagen(unterlagenData, historyText, historyType = 'unterlagen') {
-    onSave?.(buildSavePayload({ cleverUnterlagen: unterlagenData }), {
+  function saveUnterlagen(unterlagenData, historyText, historyType = 'unterlagen', tradeInOverride = null) {
+    const nextTradeIn = tradeInOverride ?? tradeInData;
+    if (tradeInOverride) setTradeInData(tradeInOverride);
+    onSave?.(buildSavePayload({
+      cleverUnterlagen: unterlagenData,
+      tradeIn: nextTradeIn,
+    }), {
       historyText,
       historyType,
       addFollowupHistory: false,
@@ -803,38 +957,52 @@ export default function DealerAiLeadFollowUp({
     closeSheet();
   }
 
-  function saveWishInline(patch) {
+  function applyWishConditions(patch) {
     const pt = patch.paymentType ?? wishPaymentType;
+    const nextTermMonths = patch.termMonths != null ? String(patch.termMonths) : wishTermMonths;
+    const nextMileage = patch.mileagePerYear != null ? String(patch.mileagePerYear) : wishMileage;
+    const nextDownPayment = patch.downPayment != null ? String(patch.downPayment) : wishDownPayment;
+    const nextDesiredRate = patch.desiredRate != null ? String(patch.desiredRate) : wishDesiredRate;
+    const nextDesiredPrice = patch.desiredPrice != null ? String(patch.desiredPrice) : wishDesiredPrice;
+    const nextDelivery = patch.delivery != null ? patch.delivery : wishDelivery;
+
     setWishPaymentType(pt);
-    if (patch.termMonths != null) setWishTermMonths(String(patch.termMonths));
-    if (patch.mileagePerYear != null) setWishMileage(String(patch.mileagePerYear));
-    if (patch.downPayment != null) setWishDownPayment(String(patch.downPayment));
-    if (patch.desiredRate != null) setWishDesiredRate(String(patch.desiredRate));
-    if (patch.desiredPrice != null) setWishDesiredPrice(String(patch.desiredPrice));
-    if (patch.delivery != null) setWishDelivery(patch.delivery);
+    setWishTermMonths(nextTermMonths);
+    setWishMileage(nextMileage);
+    setWishDownPayment(nextDownPayment);
+    setWishDesiredRate(nextDesiredRate);
+    setWishDesiredPrice(nextDesiredPrice);
+    setWishDelivery(nextDelivery);
 
     const payload = buildSavePayload();
     onSave?.({
       ...payload,
       paymentType: pt,
-      desiredRate: patch.desiredRate ? Number(patch.desiredRate) : null,
-      deliveryTime: patch.delivery ?? payload.deliveryTime,
+      desiredRate: nextDesiredRate ? Number(nextDesiredRate) : null,
+      deliveryTime: nextDelivery,
       wish: {
         ...payload.wish,
-        termMonths: patch.termMonths ? Number(patch.termMonths) : null,
-        mileagePerYear: patch.mileagePerYear ? Number(patch.mileagePerYear) : null,
-        desiredPrice: patch.desiredPrice ? Number(patch.desiredPrice) : null,
-        downPayment: patch.downPayment ? Number(patch.downPayment) : null,
+        termMonths: nextTermMonths ? Number(nextTermMonths) : null,
+        mileagePerYear: nextMileage ? Number(nextMileage) : null,
+        desiredPrice: nextDesiredPrice ? Number(nextDesiredPrice) : null,
+        downPayment: nextDownPayment !== '' && nextDownPayment != null
+          ? Number(nextDownPayment)
+          : null,
       },
     }, {
       historyText: 'Wunschkonditionen aktualisiert',
       addFollowupHistory: false,
     });
+    closeSheet();
   }
 
   function handleAdoptLexiconChip(searchState) {
     const chip = buildLexiconAkteChip(searchState);
     if (!chip) return;
+    const { question, cleverAnswer } = extractLexiconQuestionAnswer(searchState);
+    if (question) {
+      logCustomerActivity(buildCleverQuestionActivity({ question, cleverAnswer }));
+    }
     const nextNotes = addCustomKundenhelferChip(kundenhelferNotes, chip);
     setKundenhelferNotes(nextNotes);
     onSave?.(buildSavePayload({
@@ -974,44 +1142,34 @@ export default function DealerAiLeadFollowUp({
         email={email}
         onCleverAntwort={() => openCleverAntworten()}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-        onActivities={() => openSheet(SHEETS.history)}
+        onActivities={openActivitiesSheet}
         unterlagenBadge={unterlagenOpenCount}
-        activitiesBadge={activitiesCount}
+        activitiesBadge={activityDashboard.newCustomerActivities}
+        activitiesBadgeDetail={activityDashboard}
       />
-
-      {cleverBeratungView && (
-        <CustomerAkteCleverBeratung
-          view={cleverBeratungView}
-          telHref={telHref}
-          onPrepareOffer={handleCleverBeratungPrepareOffer}
-          onCreateMessage={() => openCleverAntworten()}
-          onChangeRecommendation={handleCleverBeratungChangeRecommendation}
-        />
-      )}
 
       <CustomerAkteKundenhelfer
         notes={kundenhelferNotes}
+        conversationNotes={conversationNotes}
         onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
         variant="profile"
       />
 
       <CustomerAkteWishConditions
         chips={wishConditionChips}
-        values={wishEditValues}
-        onSave={saveWishInline}
-        paymentOptions={DEALER_AI_PAYMENT_OPTIONS}
-        deliveryOptions={DEALER_AI_DELIVERY_DATE_OPTIONS}
-        getBudgetFieldLabel={getBudgetFieldLabel}
+        onEdit={() => openSheet(SHEETS.wishConditions)}
       />
 
-      <CustomerAkteNextStep
-        hint={nextBestStep}
-        recommendation={nextBestStep}
-        telHref={telHref}
-        onAction={handleCleverAction}
-        onFallback={() => openSheet(SHEETS.customer)}
-        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-      />
+      <div className="cust-akte-priority">
+        <CustomerAkteNextStep
+          hint={nextBestStep}
+          recommendation={nextBestStep}
+          telHref={telHref}
+          onAction={handleCleverAction}
+          onFallback={() => openSheet(SHEETS.customer)}
+          onUnterlagen={() => openSheet(SHEETS.unterlagen)}
+        />
+      </div>
 
       <CustomerAkteBoard
         items={boardItems}
@@ -1023,8 +1181,42 @@ export default function DealerAiLeadFollowUp({
         onAddVehicle={handleAddVehicle}
       />
 
+      <div className="cust-akte-tier-3-group">
+        <CustomerAkteActivities
+          history={history}
+          lastSeenAt={activitiesLastSeenAt}
+          onOpenHistory={openActivitiesSheet}
+        />
+        <CustomerAkteUnterlagen
+          lead={lead}
+          paymentType={unterlagenPaymentType}
+          onOpen={() => openSheet(SHEETS.unterlagen)}
+        />
+      </div>
+
+      {cleverBeratungView && (
+        <div className="cust-akte-secondary">
+          <CustomerAkteCleverBeratung
+            view={cleverBeratungView}
+            telHref={telHref}
+            onPrepareOffer={handleCleverBeratungPrepareOffer}
+            onCreateMessage={() => openCleverAntworten()}
+            onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+          />
+        </div>
+      )}
+
+      <CustomerAkteWishConditionsSheet
+        open={activeSheet === SHEETS.wishConditions}
+        onClose={closeSheet}
+        values={wishEditValues}
+        onApply={applyWishConditions}
+        getBudgetFieldLabel={getBudgetFieldLabel}
+        saving={isSaving}
+      />
+
       {(lead?.equipmentWishes?.length ?? 0) > 0 && (
-        <div className="cust-akte-section cust-akte-section--subtle">
+        <div className="cust-akte-secondary cust-akte-section--subtle">
           <CustomerAkteEquipmentWishes wishes={lead.equipmentWishes} />
         </div>
       )}
@@ -1491,25 +1683,21 @@ export default function DealerAiLeadFollowUp({
       <LeadDetailPanel
         open={activeSheet === SHEETS.history}
         onClose={closeSheet}
-        title="Verlauf"
+        title="Aktivitäten"
         footer={(
           <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
             Schließen
           </button>
         )}
       >
-        {history.length === 0 ? (
-          <p className="dai-lead-empty">Noch keine Einträge.</p>
-        ) : (
-          <ul className="dai-lead-history dai-lead-history--timeline">
-            {history.map((entry) => (
-              <li key={entry.id} className="dai-lead-history__item">
-                <span className="dai-lead-history__when">{formatHistoryWhen(entry.at)}</span>
-                <span className="dai-lead-history__text">{polishHistoryText(entry.text)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <CustomerAkteActivityTimeline
+          history={history}
+          dashboard={activityDashboard}
+          phone={phone}
+          email={email}
+          customerName={name}
+          onPersonalReply={handleQuestionPersonalReply}
+        />
       </LeadDetailPanel>
 
       <LeadDetailPanel
@@ -1526,6 +1714,8 @@ export default function DealerAiLeadFollowUp({
           vehicleTitle={vehicleTitleForUnterlagen}
           vehicleConditions={vehicleConditionsForUnterlagen}
           vehicleCards={vehicleCards}
+          tradeIn={tradeInData}
+          onTradeInChange={setTradeInData}
           isGewerbe={lead?.wish?.customerGroup === 'gewerbe' || lead?.crm?.customerGroup === 'gewerbe'}
           embedded
           onClose={closeSheet}
@@ -1553,8 +1743,23 @@ export default function DealerAiLeadFollowUp({
         />
       </LeadDetailPanel>
 
+      {variantConfigureContext && (
+        <OfferVariantConfigurator
+          group={variantConfigureContext.group}
+          variant={variantConfigureContext.variant}
+          lead={lead}
+          wishConditionChips={wishConditionChips}
+          equipmentWishes={lead?.equipmentWishes ?? []}
+          wishEquipmentText={wishEquipment}
+          onSave={handleVariantConfigureSave}
+          onDuplicate={handleVariantConfigureDuplicate}
+          onBack={handleVariantConfigureBack}
+          isSaving={isSaving}
+        />
+      )}
+
       <LeadDetailPanel
-        open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup)}
+        open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup) && !variantConfigureContext}
         onClose={closeSheet}
         title="Clever Auswahl"
         footer={(
@@ -1579,6 +1784,9 @@ export default function DealerAiLeadFollowUp({
         onNotesChange={setKundenhelferNotes}
         voiceMemos={kundenhelferMemos}
         onVoiceMemosChange={setKundenhelferMemos}
+        conversationNotes={conversationNotes}
+        onConversationNotesChange={setConversationNotes}
+        vehicleCards={vehicleCards}
         onSave={saveKundenhelferSheet}
         isSaving={isSaving}
       />

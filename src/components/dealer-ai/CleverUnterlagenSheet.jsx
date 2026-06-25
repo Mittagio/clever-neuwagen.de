@@ -28,6 +28,13 @@ import {
 } from '../../services/cleverSelbstauskunft.js';
 import { copyOfferLink } from '../../services/vehicleOffer.js';
 import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
+import CustomerAkteDocumentsPanel from './CustomerAkteDocumentsPanel.jsx';
+import CustomerAkteTradeInPanel from './CustomerAkteTradeInPanel.jsx';
+import {
+  shouldShowTradeInSection,
+  suggestTradeInFromDocument,
+  patchTradeIn,
+} from '../../services/customerAkteTradeIn.js';
 import './CleverUnterlagenSheet.css';
 
 function formatUploadWhen(iso) {
@@ -46,6 +53,8 @@ export default function CleverUnterlagenSheet({
   vehicleConditions = '',
   vehicleCards = [],
   isGewerbe = false,
+  tradeIn = null,
+  onTradeInChange,
   embedded = false,
   onClose,
   onSave,
@@ -89,8 +98,8 @@ export default function CleverUnterlagenSheet({
     setTimeout(() => setToast(''), 2800);
   }, []);
 
-  function persist(next, historyText, historyType = 'note') {
-    onSave?.(next, historyText, historyType);
+  function persist(next, historyText, historyType = 'note', tradeInOverride = null) {
+    onSave?.(next, historyText, historyType, tradeInOverride);
   }
 
   async function handleFile(file, slotId = activeSlot) {
@@ -193,6 +202,25 @@ export default function CleverUnterlagenSheet({
   }
 
   const isSelbstauskunftSlot = activeSlot === 'selbstauskunft';
+  const showTradeIn = shouldShowTradeInSection(lead, unterlagen.documents);
+
+  function handleTradeInPatch(patch) {
+    const next = patchTradeIn(tradeIn ?? {}, patch);
+    onTradeInChange?.(next);
+    persist(unterlagen, 'Inzahlungnahme aktualisiert', 'note', next);
+  }
+
+  function handleDocumentAdded(doc, nextUnterlagen) {
+    if (!doc || !onTradeInChange) return;
+    const suggested = suggestTradeInFromDocument(doc, tradeIn ?? {});
+    if (suggested !== tradeIn) {
+      onTradeInChange(suggested);
+    }
+    if (doc.referenceType === 'trade_in' && doc.referenceLabel && !tradeIn?.vehicle) {
+      onTradeInChange(patchTradeIn(tradeIn ?? {}, { vehicle: doc.referenceLabel }));
+    }
+    void nextUnterlagen;
+  }
 
   return (
     <div className={`clever-unterlagen-sheet${embedded ? ' clever-unterlagen-sheet--embedded' : ''}`}>
@@ -314,6 +342,21 @@ export default function CleverUnterlagenSheet({
           );
         })}
       </ul>
+
+      <CustomerAkteDocumentsPanel
+        unterlagen={unterlagen}
+        vehicleCards={vehicleCards}
+        onPersist={persist}
+        onDocumentAdded={handleDocumentAdded}
+        showToast={showToast}
+      />
+
+      {showTradeIn && (
+        <CustomerAkteTradeInPanel
+          tradeIn={tradeIn ?? {}}
+          onChange={handleTradeInPatch}
+        />
+      )}
 
       {activeSlot && (
         <div className="clever-unterlagen-sheet__detail">

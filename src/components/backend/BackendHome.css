@@ -5,6 +5,14 @@
   max-width: 960px;
 }
 
+.backend-home--calm {
+  gap: 20px;
+}
+
+.backend-home--calm .backend-home__advisor-hero {
+  margin-bottom: 0;
+}
+
 .backend-home__today-head {
   display: flex;
   flex-direction: column;

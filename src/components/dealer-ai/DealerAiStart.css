@@ -8,6 +8,111 @@
   gap: 16px;
 }
 
+.dai-start--calm {
+  gap: 20px;
+}
+
+.dai-start__hero {
+  margin: 0;
+}
+
+.dai-start__headline {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #0b1736;
+}
+
+.dai-capture--hero {
+  margin-bottom: 0;
+}
+
+.dai-capture__field--hero {
+  min-height: 148px;
+  padding: 16px 52px 16px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #fff;
+  font-size: 1rem;
+}
+
+.dai-capture__field--hero:focus {
+  border-color: #0b1736;
+  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.08);
+}
+
+.dai-cta--hero {
+  min-height: 56px;
+  font-size: 1rem;
+  border-radius: 16px;
+}
+
+.dai-start__alt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.dai-start__alt-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.dai-start__alt-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+}
+
+.dai-start__alt-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.dai-start__alt-link:hover:not(:disabled),
+.dai-start__alt-link.is-active {
+  color: #0b1736;
+  text-decoration: underline;
+}
+
+.dai-start__alt-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dai-start__alt-sep {
+  color: #cbd5e1;
+  font-size: 0.75rem;
+}
+
+.dai-start__lexikon-panel {
+  margin-top: 0;
+  padding-top: 12px;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dai-start__lexikon-panel .backend-home__section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
 .dai-start__stack {
   display: flex;
   flex-direction: column;

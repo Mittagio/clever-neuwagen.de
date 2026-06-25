@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
+import DealerPortalTopbar from '../components/dealer/DealerPortalTopbar.jsx';
 import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
 import DealerNeedAnswerCard from '../components/dealer/DealerNeedAnswerCard.jsx';
 import DealerJourneyMobileFooter from '../components/dealer/DealerJourneyMobileFooter.jsx';
@@ -1272,26 +1273,16 @@ export default function DealerPage() {
       const hasWishes = wishChipIds.length > 0 || equipmentSearchWishes.length > 0;
       const equipmentCta = getEquipmentStepCta(knownPurchaseType, hasWishes);
       const trimLabel = liveUnderstandTrim?.trimLabel;
-      const recommendationLabel = liveUnderstandTrim?.recommendationLabel;
-      const percent = liveUnderstandTrim?.cleverQuotePercent;
-      const packageCount = liveUnderstandTrim?.packageIds?.length ?? 0;
       const canContinue = true;
+      const title = trimLabel ? `${modelLabel} ${trimLabel}`.trim() : modelLabel;
 
       return {
         salesStep: effectiveSalesStep,
-        title: recommendationLabel ?? (trimLabel ? `${modelLabel} ${trimLabel}`.trim() : modelLabel),
-        subtitle: hasWishes
-          ? (knownPurchaseType === 'cash'
-            ? 'Clever hat eine passende Ausstattung gefunden'
-            : (percent != null && knownPurchaseType
-              ? `Passt zu ${percent} % Ihrer Wünsche${packageCount ? ' · mit Paketen' : ''}`
-              : (percent != null
-                ? `Passt zu ${percent} % Ihrer Wünsche${packageCount ? ' · mit Paketen' : ''}`
-                : 'Clever hat eine passende Ausstattung gefunden')))
-          : 'Clever empfiehlt eine sinnvolle Ausstattung',
+        title,
+        subtitle: null,
         stepLabel: 'Ausstattung',
         actionLabel: equipmentCta.actionLabel,
-        actionHint: equipmentCta.actionHint,
+        actionHint: null,
         disabled: !canContinue,
         onAction: () => handleUnderstandContinue(
           liveUnderstandTrim?.trimId,
@@ -1304,10 +1295,12 @@ export default function DealerPage() {
       const activePurchaseType = purchaseTypeDraft ?? purchaseType;
       return {
         salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : 'Zahlungsart wählen',
+        title: configSummary.trimLabel
+          ? `${configSummary.modelLabel} ${configSummary.trimLabel}`.trim()
+          : configSummary.modelLabel,
+        subtitle: null,
         stepLabel: 'Zahlungsart',
-        actionLabel: activePurchaseType ? getPaymentStepCta(activePurchaseType) : 'Zahlungsart wählen',
+        actionLabel: activePurchaseType ? getPaymentStepCta(activePurchaseType) : 'Weiter',
         disabled: !activePurchaseType,
         onAction: () => submitAdvisorForm('dl-advisor-purchase-form'),
       };
@@ -1316,8 +1309,10 @@ export default function DealerPage() {
     if (effectiveSalesStep === 'special' && configSummary) {
       return {
         salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : 'Kundengruppe wählen',
+        title: configSummary.trimLabel
+          ? `${configSummary.modelLabel} ${configSummary.trimLabel}`.trim()
+          : configSummary.modelLabel,
+        subtitle: null,
         stepLabel: 'Nutzung',
         actionLabel: 'Weiter',
         onAction: () => submitAdvisorForm('dl-advisor-special-form'),
@@ -1327,8 +1322,10 @@ export default function DealerPage() {
     if (effectiveSalesStep === 'summary' && configSummary) {
       return {
         salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.trimLabel ? `Ausstattung ${configSummary.trimLabel}` : null,
+        title: configSummary.trimLabel
+          ? `${configSummary.modelLabel} ${configSummary.trimLabel}`.trim()
+          : configSummary.modelLabel,
+        subtitle: null,
         stepLabel: 'Zusammenfassung',
         actionLabel: 'Preise anzeigen',
         onAction: handleRevealOffers,
@@ -1338,10 +1335,10 @@ export default function DealerPage() {
     if (effectiveSalesStep === 'offer' && configSummary) {
       return {
         salesStep: effectiveSalesStep,
-        title: `Kia ${configSummary.modelLabel}`,
-        subtitle: configSummary.cleverQuotePercent != null
-          ? `${configSummary.cleverQuotePercent} % passend`
-          : 'Ihr Angebot',
+        title: configSummary.trimLabel
+          ? `${configSummary.modelLabel} ${configSummary.trimLabel}`.trim()
+          : configSummary.modelLabel,
+        subtitle: null,
         stepLabel: 'Anfrage',
         actionLabel: 'Anfrage senden',
         onAction: handleRequestLead,
@@ -1384,6 +1381,7 @@ export default function DealerPage() {
     <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader={isSubdomain}>
       <div className={`dealer-page page dealer-page--mf5 dealer-page--clever${useSalesJourney ? ' dealer-page--advisor-flow' : ''}`}>
         <div className="container dealer-layout">
+          <DealerPortalTopbar />
           <DealerSearchHero
             dealerName={conditions.dealerName}
             city={city}

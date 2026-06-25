@@ -110,7 +110,7 @@ export default function BackendLeadAktePage() {
 
   function handleLeadHistory(text, type = 'note', options = {}) {
     if (!leadId) return;
-    addHistory(leadId, text, type);
+    addHistory(leadId, text, type, options);
     if (options.pipelineStatusId) {
       updateLead(leadId, {
         status: pipelineToLeadStatus(options.pipelineStatusId),

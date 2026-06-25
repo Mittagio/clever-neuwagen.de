@@ -1,0 +1,183 @@
+.dai-variants-intro {
+  margin: 0 0 1rem;
+  color: var(--cn-text-muted, #5c6570);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.dai-variants-budget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(0, 120, 212, 0.08);
+  font-size: 0.9rem;
+}
+
+.dai-variants-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .dai-variants-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dai-variant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--cn-border, #e2e6ea);
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+}
+
+.dai-variant-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dai-variant-card__tier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dai-variant-card__medal {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.dai-variant-card__tier-label {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.dai-variant-card__role {
+  font-size: 0.8rem;
+  color: var(--cn-text-muted, #5c6570);
+}
+
+.dai-variant-card__budget {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dai-variant-card__budget.is-ok {
+  background: rgba(16, 124, 16, 0.12);
+  color: #107c10;
+}
+
+.dai-variant-card__budget.is-over {
+  background: rgba(196, 43, 28, 0.1);
+  color: #c42b1c;
+}
+
+.dai-variant-card__trim {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dai-variant-card__rate {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cn-accent, #0078d4);
+}
+
+.dai-variant-card__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.dai-variant-card__lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dai-variant-card__lines span:first-child {
+  color: var(--cn-text-muted, #5c6570);
+}
+
+.dai-variant-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+.dai-variant-card__actions button {
+  flex: 1;
+}
+
+.dai-variant-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.dai-variant-sheet__panel {
+  width: min(100%, 520px);
+  max-height: 85vh;
+  overflow: auto;
+  padding: 1.25rem 1rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.dai-variant-sheet__title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.dai-variant-sheet__subtitle {
+  margin: 0 0 1rem;
+  color: var(--cn-text-muted, #5c6570);
+  font-size: 0.9rem;
+}
+
+.dai-variant-sheet__field {
+  margin-bottom: 1rem;
+}
+
+.dai-variant-sheet__label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dai-variant-sheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.dai-variant-sheet__footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.dai-variant-sheet__footer button {
+  flex: 1;
+}

@@ -1,0 +1,496 @@
+/**
+ * Clever Kundenseite – einheitliches Portal-Design (Mobile First)
+ * Orientierung: Carwow, MeinAuto, Booking
+ */
+
+:root {
+  --cn-page-max: 480px;
+  --cn-radius-card: 16px;
+  --cn-radius-btn: 14px;
+  --cn-shadow-card: 0 2px 12px rgba(11, 23, 54, 0.06);
+  --cn-btn-height: 52px;
+  --cn-btn-height-lg: 56px;
+  --cn-space-section: 28px;
+  --cn-space-card: 16px;
+  --cn-text-muted: #64748b;
+  --cn-text-subtle: #94a3b8;
+  --cn-surface-soft: #f8fafc;
+  --cn-border-soft: #f1f5f9;
+}
+
+/* ── Portal-Topbar ── */
+.dl-portal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.dl-portal-topbar__logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.dl-portal-topbar__logo .brand-logo {
+  height: 28px;
+}
+
+.dl-portal-topbar__login {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--cn-border-soft);
+  background: #fff;
+  color: var(--color-brand);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 40px;
+  text-decoration: none;
+}
+
+/* ── Konfigurator ruhiger ── */
+@media (max-width: 1023px) {
+  .dealer-page--clever .dl-journey-progress {
+    display: none;
+  }
+}
+
+.dl-sales-understand--portal .dl-sales-understand__context--muted,
+.dl-sales-understand--portal .dl-sales-understand__delivery,
+.dl-sales-understand--portal .dl-sales-understand__prefill-hint {
+  font-size: 0.8125rem;
+  color: var(--cn-text-subtle);
+}
+
+.vd-wish--portal .vd-eq-match {
+  display: none;
+}
+
+.vd-wish--portal .vd-eq-rec--journey {
+  display: none;
+}
+
+.vd-wish--portal .vd-eq-trim__cta {
+  min-height: var(--cn-btn-height);
+  border-radius: var(--cn-radius-btn);
+}
+
+.vd-wish--portal .vd-eq-section__title,
+.vd-wish--portal .vd-eq-section__lead {
+  display: none;
+}
+
+.dl-purchase--portal .dl-purchase__cta {
+  display: none;
+}
+
+.dl-purchase--portal .dl-purchase__recap {
+  padding: 12px 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ── Page shell ── */
+.dealer-page .page-shell__main,
+.dealer-page main {
+  max-width: var(--cn-page-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Hero ── */
+.dl-hero--portal {
+  gap: var(--cn-space-card);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.dl-hero--portal .dl-hero__clever-badge {
+  display: none;
+}
+
+.dl-hero--portal .dl-hero__prompt {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  color: var(--color-brand);
+}
+
+.dl-hero--portal .dl-hero__subline {
+  margin: 8px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--cn-text-muted);
+}
+
+.dl-hero--portal .dl-hero__dealer {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cn-text-subtle);
+}
+
+.dl-hero--portal .dl-hero__composer-box {
+  min-height: 120px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--cn-radius-card);
+  background: #fff;
+  box-shadow: var(--cn-shadow-card);
+}
+
+.dl-hero--portal .dl-hero__composer-box:focus-within {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-ring);
+}
+
+.dl-hero--portal .dl-hero__send--clever {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--color-brand);
+}
+
+.dl-hero--portal .dl-hero__chips {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dl-hero--portal .dl-chip {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--cn-border-soft);
+  border-radius: 999px;
+  background: var(--cn-surface-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  box-shadow: none;
+}
+
+.dl-hero--portal .dl-chip--active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-muted);
+  color: var(--color-brand);
+}
+
+.dl-hero--portal .dl-chip__emoji {
+  display: none;
+}
+
+.dealer-page--clever .dealer-layout {
+  gap: 24px;
+  padding-top: 12px;
+}
+
+.dl-hero--portal .dl-hero__dealer {
+  display: none;
+}
+
+/* ── Modellwelt / Produktkarten ── */
+.dl-modellwelt--portal {
+  margin-top: var(--cn-space-section);
+  padding-top: var(--cn-space-section);
+  border-top: 1px solid var(--cn-border-soft);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__classic-label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cn-text-subtle);
+  text-transform: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__classic-label::before {
+  content: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__classic-hint {
+  display: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__track {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 12px 0 0;
+  overflow: visible;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__card {
+  flex: none;
+  width: 100%;
+  max-width: none;
+  scroll-snap-align: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__card-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  border: none;
+  border-radius: var(--cn-radius-card);
+  background: #fff;
+  box-shadow: var(--cn-shadow-card);
+  overflow: hidden;
+  text-align: left;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__image {
+  width: 100%;
+  height: 168px;
+  border-radius: 0;
+  background: var(--cn-surface-soft);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__body {
+  padding: 14px 16px 16px;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__name {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__tagline {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--cn-text-muted);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__price {
+  margin-top: 10px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__trim-rates {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--cn-text-muted);
+}
+
+.dl-modellwelt--portal .dl-modellwelt__trim-rates li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__legal {
+  display: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__badges {
+  margin-top: 8px;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__badges .dealer-promo-badge:nth-child(n+3) {
+  display: none;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__configure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--cn-btn-height);
+  margin-top: 14px;
+  padding: 0 16px;
+  border-radius: var(--cn-radius-btn);
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dl-modellwelt--portal .dl-modellwelt__prep {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--cn-text-subtle);
+}
+
+/* ── Ausstattung / Trim-Karten ── */
+.vd-wish--portal .vd-wish__title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.vd-wish--portal .vd-wish__subline {
+  font-size: 0.875rem;
+  color: var(--cn-text-muted);
+}
+
+.vd-wish--portal .vd-eq-trim {
+  border: 1px solid var(--cn-border-soft);
+  border-radius: var(--cn-radius-card);
+  background: #fff;
+  box-shadow: none;
+}
+
+.vd-wish--portal .vd-eq-trim--recommended {
+  border-color: var(--color-border-strong);
+  background: #fff;
+  box-shadow: var(--cn-shadow-card);
+}
+
+.vd-wish--portal .vd-eq-trim--recommended::before,
+.vd-wish--portal .vd-eq-trim__badge {
+  display: none;
+}
+
+.vd-wish--portal .vd-eq-trim__list--ok,
+.vd-wish--portal .vd-eq-trim__list--miss,
+.vd-wish--portal .vd-eq-trim__list--uncertain {
+  display: none;
+}
+
+.vd-wish--portal .vd-wish-chip--equipment {
+  border-radius: 999px;
+  background: var(--cn-surface-soft);
+  border-color: var(--cn-border-soft);
+}
+
+.vd-wish--portal .vd-wish-chip--wish {
+  border-color: var(--color-brand);
+  background: var(--color-brand-muted);
+  color: var(--color-brand);
+}
+
+/* ── Zahlungsart / Leasing-Sheet ── */
+.dl-purchase--portal .dl-purchase__phase {
+  font-size: 0.75rem;
+  color: var(--cn-text-subtle);
+}
+
+.dl-purchase--portal .dl-purchase__title {
+  font-size: 1.25rem;
+}
+
+.dl-purchase--portal .dl-purchase__type-card {
+  border-radius: var(--cn-radius-card);
+  border-color: var(--cn-border-soft);
+  box-shadow: none;
+}
+
+.dl-purchase--portal .dl-purchase__type-card--active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-muted);
+}
+
+.dl-purchase--portal .dl-purchase__details--hidden {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .dl-purchase--portal .dl-purchase__details--desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dl-purchase--portal .dl-purchase__sheet-trigger {
+    display: none;
+  }
+}
+
+.dl-purchase__sheet-trigger {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 0;
+  border: none;
+  border-top: 1px solid var(--cn-border-soft);
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-brand);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dl-purchase__sheet-trigger:hover {
+  text-decoration: underline;
+}
+
+.cn-leasing-sheet__rate {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.cn-leasing-sheet__apply {
+  width: 100%;
+  min-height: var(--cn-btn-height);
+  border: none;
+  border-radius: var(--cn-radius-btn);
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── Sticky Footer ── */
+.dl-journey-footer--calm .dl-journey-footer__subtitle,
+.dl-journey-footer--calm .dl-journey-footer__hint {
+  display: none;
+}
+
+.dl-journey-footer--calm .dl-journey-footer__inner {
+  gap: 10px;
+}
+
+.dl-journey-footer--calm .dl-journey-footer__step {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cn-text-subtle);
+}
+
+.dl-journey-footer--calm .dl-journey-footer__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.dl-journey-footer--calm .dl-journey-footer__cta {
+  min-height: var(--cn-btn-height);
+  width: 100%;
+  border-radius: var(--cn-radius-btn);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* ── Buttons global auf Kundenseite ── */
+.dealer-page .btn-primary,
+.dealer-page .dl-purchase__cta {
+  min-height: var(--cn-btn-height);
+  border-radius: var(--cn-radius-btn);
+  background: var(--color-brand);
+}
+
+.dealer-page .btn-secondary {
+  min-height: 44px;
+  border-radius: var(--cn-radius-btn);
+}

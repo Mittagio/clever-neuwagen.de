@@ -16,10 +16,6 @@ const followUpSource = readFileSync(
   join(__dirname, 'DealerAiLeadFollowUp.jsx'),
   'utf8',
 );
-const headerSource = readFileSync(
-  join(__dirname, 'CustomerAkteHeader.jsx'),
-  'utf8',
-);
 
 const notes = [
   'Kaffee mit Milch',
@@ -48,21 +44,16 @@ assert.equal(sixOnly.visible.length, 6);
 assert.equal(sixOnly.moreCount, 0);
 
 assert.ok(
-  headerSource.includes('CustomerAkteKundenhelfer'),
-  'CustomerAkteHeader bindet Kundenhelfer-Chips ein',
+  followUpSource.includes('<CustomerAkteKundenhelfer'),
+  'Kundenhelfer-Chips werden in der Kundenakte gerendert',
 );
 assert.ok(
-  headerSource.includes('onOpenKundenhelfer'),
-  'CustomerAkteHeader erhält onOpenKundenhelfer',
-);
-
-assert.ok(
-  !followUpSource.includes('<CustomerAkteKundenhelfer'),
-  'alte Kundenhelfer-Sektion wird nicht doppelt gerendert',
+  followUpSource.indexOf('<CustomerAkteKundenhelfer') > followUpSource.indexOf('<CustomerAkteActionBar'),
+  'Infochips stehen unter der Action Bar',
 );
 assert.ok(
-  followUpSource.includes('onOpenKundenhelfer'),
-  'Follow-up öffnet Kundenhelfer-Sheet über Header',
+  followUpSource.includes('openSheet(SHEETS.kundenhelfer)'),
+  'Follow-up öffnet Kundenhelfer-Sheet',
 );
 
 const khSource = readFileSync(

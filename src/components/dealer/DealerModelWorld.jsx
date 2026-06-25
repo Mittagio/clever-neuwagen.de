@@ -94,21 +94,16 @@ export default function DealerModelWorld({
 
   return (
     <section
-      className={`dl-modellwelt dl-modellwelt--inspire${isClassicVariant ? ' dl-modellwelt--classic' : ''}`}
+      className={`dl-modellwelt dl-modellwelt--inspire dl-modellwelt--portal${isClassicVariant ? ' dl-modellwelt--classic' : ''}`}
       aria-labelledby="dl-modellwelt-heading"
     >
       <div className="dl-modellwelt__head">
         {isClassicVariant && (
-          <p className="dl-modellwelt__classic-label">⚙️ Klassisch konfigurieren</p>
+          <p className="dl-modellwelt__classic-label">Oder Modell selbst auswählen</p>
         )}
         <h2 id="dl-modellwelt-heading" className="dl-modellwelt__title">
-          {isClassicVariant ? 'Modell wählen und konfigurieren' : 'Unsere Modelle'}
+          {isClassicVariant ? 'Modell konfigurieren' : 'Unsere Modelle'}
         </h2>
-        {isClassicVariant && (
-          <p className="dl-modellwelt__classic-hint">
-            Sie kennen Ihr Wunschfahrzeug? Starten Sie direkt mit Ausstattung, Motor und Farbe.
-          </p>
-        )}
       </div>
 
       <div
@@ -143,7 +138,7 @@ export default function DealerModelWorld({
                   {(card.rateFrom != null || card.priceFrom != null) && (
                     <p className="dl-modellwelt__price">
                       {card.rateFrom != null ? (
-                        <>ab {Math.round(card.rateFrom)} € Leasing</>
+                        <>ab {Math.round(card.rateFrom)} € mtl.</>
                       ) : (
                         <>ab {formatPrice(card.priceFrom)}</>
                       )}
@@ -168,7 +163,7 @@ export default function DealerModelWorld({
                   )}
                   {card.promoBadges.length > 0 && (
                     <DealerModelPromotionBadges
-                      badges={card.promoBadges}
+                      badges={card.promoBadges.slice(0, 2)}
                       overflowLabel={card.overflowLabel}
                       className="dl-modellwelt__badges"
                     />
@@ -177,7 +172,7 @@ export default function DealerModelWorld({
                     <p key={line} className="dl-modellwelt__legal">{line}</p>
                   ))}
                   {isClassicVariant && (
-                    <span className="dl-modellwelt__configure">Konfigurieren →</span>
+                    <span className="dl-modellwelt__configure">Konfigurieren</span>
                   )}
                 </div>
               </button>

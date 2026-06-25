@@ -2,6 +2,7 @@ import {
   countUnterlagenOpenTasks,
   formatUnterlagenOpenLabel,
 } from '../../services/cleverUnterlagen.js';
+import { countAkteDocuments, formatDocumentsCompactLabel } from '../../services/customerAkteDocuments.js';
 import './CustomerAkte.css';
 
 export default function CustomerAkteUnterlagen({
@@ -11,24 +12,21 @@ export default function CustomerAkteUnterlagen({
 }) {
   const pt = paymentType ?? lead?.paymentType ?? 'leasing';
   const { openCount, showSa, saComplete } = countUnterlagenOpenTasks(lead, pt);
-  const statusLabel = formatUnterlagenOpenLabel(openCount, { showSa, saComplete });
-
+  const docCount = countAkteDocuments(lead);
+  const taskLabel = formatUnterlagenOpenLabel(openCount, { showSa, saComplete });
+  const statusLabel = docCount > 0
+    ? `${formatDocumentsCompactLabel(docCount)}${openCount > 0 ? ` · ${taskLabel}` : ''}`
+    : taskLabel;
   return (
-    <section className="cust-akte-unterlagen cust-akte-unterlagen--compact cust-akte-summary" aria-labelledby="cust-akte-unterlagen-title">
-      <button
-        type="button"
-        className="cust-akte-summary__row"
-        onClick={onOpen}
-      >
-        <span className="cust-akte-summary__main">
-          <span id="cust-akte-unterlagen-title" className="cust-akte-summary__title">
-            Abschluss & Unterlagen
-          </span>
-          <span className={`cust-akte-summary__line${openCount > 0 ? ' cust-akte-summary__line--warn' : ''}`}>
-            {statusLabel}
-          </span>
+    <section className="cust-akte-unterlagen cust-akte-compact-row cust-akte-tier-3" aria-labelledby="cust-akte-unterlagen-title">
+      <div className="cust-akte-compact-row__main">
+        <span id="cust-akte-unterlagen-title" className="cust-akte-compact-row__title">Unterlagen</span>
+        <span className={`cust-akte-compact-row__meta${openCount > 0 ? ' cust-akte-compact-row__meta--warn' : ''}`}>
+          {statusLabel}
         </span>
-        <span className="cust-akte-summary__cta">›</span>
+      </div>
+      <button type="button" className="cust-akte-compact-row__action" onClick={onOpen}>
+        Alle anzeigen
       </button>
     </section>
   );

@@ -11,16 +11,16 @@
 export function getEquipmentStepCta(knownPurchaseType, hasWishes = false) {
   if (!knownPurchaseType) {
     return {
-      actionLabel: hasWishes ? 'Mit dieser Ausstattung weiter' : 'Clever-Empfehlung anzeigen',
-      actionHint: 'Im nächsten Schritt wählen Sie Leasing, Finanzierung oder Barzahlung.',
+      actionLabel: hasWishes ? 'Auswählen' : 'Empfehlung übernehmen',
+      actionHint: 'Zahlungsart wählen Sie später.',
     };
   }
 
   if (knownPurchaseType === 'leasing') {
     return {
       actionLabel: hasWishes
-        ? 'Leasingrate für diese Ausstattung anzeigen'
-        : 'Clever-Leasingempfehlung anzeigen',
+        ? 'Auswählen'
+        : 'Empfehlung übernehmen',
       actionHint: null,
     };
   }
@@ -28,16 +28,16 @@ export function getEquipmentStepCta(knownPurchaseType, hasWishes = false) {
   if (knownPurchaseType === 'finance') {
     return {
       actionLabel: hasWishes
-        ? 'Finanzierung für diese Ausstattung anzeigen'
-        : 'Clever-Finanzierungsempfehlung anzeigen',
+        ? 'Auswählen'
+        : 'Empfehlung übernehmen',
       actionHint: null,
     };
   }
 
   return {
     actionLabel: hasWishes
-      ? 'Kaufangebot für diese Ausstattung anfragen'
-      : 'Kaufangebot anfragen',
+      ? 'Auswählen'
+      : 'Angebot anfragen',
     actionHint: null,
   };
 }
@@ -47,9 +47,10 @@ export function getEquipmentStepCta(knownPurchaseType, hasWishes = false) {
  * @param {number} total
  */
 export function getNeutralPriceTierLabel(index, total) {
-  if (total <= 1) return 'Preis wird im nächsten Schritt berechnet.';
+  if (total <= 1) return 'Preis im nächsten Schritt';
   if (index === 0) return 'günstigste Variante';
-  if (index === total - 1) return 'höchste Ausstattung';
+  if (index === total - 1) return 'Premium & Design';
+  if (index === 1 && total >= 3) return 'beste Preis-Leistung';
   return 'mittleres Preisniveau';
 }
 

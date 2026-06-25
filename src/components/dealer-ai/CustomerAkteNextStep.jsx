@@ -21,7 +21,10 @@ export default function CustomerAkteNextStep({
     || data.action === 'unterlagen';
 
   const note = explanation || reason;
-  const showNote = Boolean(note) && (isUnterlagen || !/unterlagen fehlen/i.test(note));
+  const showNote = Boolean(note)
+    && note !== cta
+    && note !== data.title
+    && (isUnterlagen || !/unterlagen fehlen/i.test(note));
 
   function handleClick() {
     if (onAction) {
@@ -36,22 +39,28 @@ export default function CustomerAkteNextStep({
   }
 
   return (
-    <section className="cust-akte-nbs cust-akte-nbs--focus" aria-labelledby="cust-akte-nbs-title">
-      <h2 id="cust-akte-nbs-title" className="cust-akte-nbs__label">Nächster guter Schritt</h2>
-      <div className="cust-akte-nbs__card">
-        {isCall ? (
-          <a href={telHref} className="cust-akte-nbs__cta" onClick={() => onAction?.(data)}>
-            {cta}
-          </a>
-        ) : (
-          <button type="button" className="cust-akte-nbs__cta" onClick={handleClick}>
-            {cta}
-          </button>
-        )}
-        {showNote && (
-          <p className="cust-akte-nbs__note">{note}</p>
-        )}
-      </div>
+    <section className="cust-akte-nbs cust-akte-nbs--dominant" aria-labelledby="cust-akte-nbs-title">
+      <p id="cust-akte-nbs-title" className="cust-akte-nbs__eyebrow">Nächster guter Schritt</p>
+      {isCall ? (
+        <a
+          href={telHref}
+          className="cust-akte-nbs__cta cust-akte-nbs__cta--dominant"
+          onClick={() => onAction?.(data)}
+        >
+          {cta}
+        </a>
+      ) : (
+        <button
+          type="button"
+          className="cust-akte-nbs__cta cust-akte-nbs__cta--dominant"
+          onClick={handleClick}
+        >
+          {cta}
+        </button>
+      )}
+      {showNote && (
+        <p className="cust-akte-nbs__note cust-akte-nbs__note--subtle">{note}</p>
+      )}
     </section>
   );
 }

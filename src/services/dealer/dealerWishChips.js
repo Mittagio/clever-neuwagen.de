@@ -36,10 +36,24 @@ export const DEALER_WISH_CHIPS = [
   {
     id: 'large_trunk',
     label: 'Großer Kofferraum',
-    shortLabel: 'Großer Kofferraum',
+    shortLabel: 'großer Kofferraum',
     emoji: '📦',
     queryFragment: 'großer Kofferraum',
     filters: { trunkLMin: LARGE_TRUNK_MIN_L, features: ['large_trunk'] },
+  },
+  {
+    id: 'suv',
+    label: 'SUV',
+    shortLabel: 'SUV',
+    queryFragment: 'SUV',
+    filters: { features: [] },
+  },
+  {
+    id: 'rate_350',
+    label: 'bis 350 €',
+    shortLabel: 'bis 350 €',
+    queryFragment: 'bis 350 € Leasing',
+    filters: { maxRate: 350 },
   },
   {
     id: 'tow_2000',
@@ -68,7 +82,7 @@ export const DEALER_WISH_CHIPS = [
   {
     id: 'tow_1500',
     label: '1,5 t Anhängelast',
-    shortLabel: 'ab 1,5 t Anhängelast',
+    shortLabel: 'Anhängelast',
     emoji: '🚛',
     queryFragment: '1,5 Tonnen Anhängelast',
     filters: { towCapacityKg: 1500, features: ['towbar'] },
@@ -159,8 +173,9 @@ export const DEALER_WISH_CHIPS = [
 export const PRIMARY_DEALER_CHIP_IDS = [
   'fuel_elektro_300',
   'seats_7',
+  'suv',
+  'rate_350',
   'tow_1500',
-  'length_4m',
   'large_trunk',
 ];
 

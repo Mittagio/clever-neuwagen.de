@@ -28,7 +28,7 @@ export default function DealerJourneyMobileFooter({
   const kicker = stepLabel ?? STEP_LABELS[salesStep] ?? 'Weiter';
 
   return (
-    <footer className="dl-journey-footer" aria-label="Nächster Beratungsschritt">
+    <footer className="dl-journey-footer dl-journey-footer--calm" aria-label="Nächster Beratungsschritt">
       <div className="dl-journey-footer__inner">
         <div className="dl-journey-footer__copy">
           <p className="dl-journey-footer__step">{kicker}</p>

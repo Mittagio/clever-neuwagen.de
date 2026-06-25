@@ -20,6 +20,7 @@ import { buildOfferConditionsFromDraft } from './configuration/offerConditionsMo
 import { buildOfferPreviewResult } from './configuration/offerPreviewBuilder.js';
 import { computeUvpPricing } from './configuration/uvpPricing.js';
 import { getKiaModelMediaEntry, resolveKiaColorImageUrl } from '../data/kia/kiaModelImages.js';
+import { applyDealerDefaultsToDraft } from './dealer/dealerOfferDefaults.js';
 
 const DEFAULT_EV_COLORS = [
   { id: 'snow-white', label: 'Snow White Pearl' },
@@ -313,12 +314,11 @@ export function buildConfigureDraft(parsed, conditions = null, primaryModel = nu
     if (ahk) accessoryIds.push(ahk.id);
   }
 
-  const preparationFee = conditions?.preparationFee ?? 1290;
   const customerName = fields.customerName
     ?? [fields.customerFirstName, fields.customerLastName].filter(Boolean).join(' ')
     ?? null;
 
-  return {
+  const draft = {
     modelKey,
     brand: fields.brand ?? 'Kia',
     model: fields.model ?? mfg?.model ?? '',
@@ -352,7 +352,6 @@ export function buildConfigureDraft(parsed, conditions = null, primaryModel = nu
       mailNote: fields.customerMailNote ?? null,
       interestedPartyName: fields.interestedPartyName ?? null,
     },
-    preparationFee,
     accessoryIds,
     packageIds,
     extras,
@@ -360,6 +359,8 @@ export function buildConfigureDraft(parsed, conditions = null, primaryModel = nu
     options: buildConfigureOptions(modelKey, trimId),
     primaryModelId: primaryModel?.id ?? modelKey,
   };
+
+  return applyDealerDefaultsToDraft(draft, conditions);
 }
 
 function variantSignature(v) {

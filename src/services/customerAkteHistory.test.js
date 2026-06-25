@@ -48,15 +48,23 @@ assert.equal(getHistoryEntryCount(history), 3);
 assert.ok(!commSource.includes('cust-akte-comm__text'), 'Kein langer Text in Kommunikation');
 assert.ok(commSource.includes('Verlauf anzeigen'), 'Kommunikation verlinkt Verlauf');
 assert.ok(activitiesSource.includes('expanded'), 'Aktivitäten sind einklappbar');
-assert.ok(activitiesSource.includes('Einträge'), 'Aktivitäten zeigen Anzahl');
+assert.ok(activitiesSource.includes('Aktivität'), 'Aktivitäten zeigen Anzahl');
 assert.ok(!activitiesSource.includes('history.slice(0, 4)'), 'Keine offene Vorschau-Liste');
 
 const renderBlock = followUpSource.slice(followUpSource.indexOf('return ('));
 const tailIndex = renderBlock.indexOf('cust-akte-tail');
+const hintIndex = renderBlock.indexOf('<CustomerAkteActivityHint');
 const commIndex = renderBlock.indexOf('<CustomerAkteCommunication');
-const unterlagenIndex = renderBlock.indexOf('{unterlagenBlock}');
+const unterlagenIndex = renderBlock.indexOf('<CustomerAkteUnterlagen');
 const activitiesIndex = renderBlock.indexOf('<CustomerAkteActivities');
 assert.ok(tailIndex > -1, 'Kompakte Bereiche in cust-akte-tail');
-assert.ok(commIndex < unterlagenIndex && unterlagenIndex < activitiesIndex, 'Reihenfolge: Kommunikation → Unterlagen → Aktivitäten');
+assert.ok(hintIndex < commIndex && commIndex < unterlagenIndex && unterlagenIndex < activitiesIndex, 'Reihenfolge: Hinweis → Kommunikation → Unterlagen → Aktivitäten');
+const hintSource = readFileSync(
+  join(__dirname, '../components/dealer-ai/CustomerAkteActivityHint.jsx'),
+  'utf8',
+);
+assert.ok(hintSource.includes('Letzte Kundenaktivität'), 'Hinweisbox für letzte Aktivität');
+assert.ok(followUpSource.includes('CustomerAkteActivityHint'), 'Hinweis in Kundenakte');
+assert.ok(followUpSource.includes('CustomerAkteActivityTimeline'), 'Timeline-Sheet');
 
 console.log('customerAkteHistory.test.js: ok');

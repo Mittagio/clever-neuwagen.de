@@ -65,7 +65,14 @@ const leasingChips = buildWishConditionChips({
   mileagePerYear: 10000,
   desiredRate: 350,
 });
-assert.deepEqual(leasingChips, ['Leasing', '48 Monate', '10.000 km/Jahr', 'bis 350 €/Monat']);
+assert.deepEqual(leasingChips, [
+  'Leasing',
+  '48 Monate',
+  '10.000 km/Jahr',
+  '0 € Anzahlung',
+  'bis 350 €/Monat',
+  'Liefertermin Egal',
+]);
 
 const cashChips = buildWishConditionChips({
   paymentType: 'cash',
