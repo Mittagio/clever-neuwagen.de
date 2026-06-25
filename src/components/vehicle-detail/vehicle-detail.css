@@ -3379,3 +3379,92 @@
 .vd-eq-search__reserve-btn:hover {
   background: #f1f5f9;
 }
+
+/* Kunden-Beratung (unverbindliche Einschätzung) */
+.vd-wish--customer-advisor .vd-customer-advisor-actions {
+  margin-top: 20px;
+}
+
+.vd-eq-rec--customer {
+  margin-top: 24px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f0fdf4 0%, #f8fafc 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.vd-eq-rec--customer .vd-eq-rec__title {
+  color: #065f46;
+}
+
+.vd-eq-rec__why {
+  margin: 12px 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.vd-eq-rec__disclaimer {
+  margin: 14px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.vd-customer-advisor-edit {
+  margin-top: 12px;
+}
+
+.vd-eq-trim--customer .vd-eq-trim__desc {
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.vd-eq-trim__detail-heading {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.vd-customer-advisor-complete {
+  margin-top: 8px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #f0fdf4 0%, #ffffff 55%);
+  border: 1px solid #d1fae5;
+  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.08);
+  text-align: center;
+}
+
+.vd-customer-advisor-complete__title {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #065f46;
+  line-height: 1.35;
+}
+
+.vd-customer-advisor-complete__direction {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vd-customer-advisor-complete__text,
+.vd-customer-advisor-complete__hint {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.vd-customer-advisor-complete__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}

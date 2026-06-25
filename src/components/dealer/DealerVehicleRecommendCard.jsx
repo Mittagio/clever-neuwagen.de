@@ -1,6 +1,9 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
-import CleverQuoteBadge from '../cleverQuote/CleverQuoteBadge.jsx';
+import CustomerSearchAssessment from './CustomerSearchAssessment.jsx';
 import { buildVehicleFitReasons, buildSearchCriteriaLabels } from '../../services/dealer/vehicleSalesJourney.js';
+import {
+  buildCustomerModelCtaLabel,
+} from '../../services/dealer/customerSearchResultPresentation.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import './dealer-landing.css';
 
@@ -25,10 +28,10 @@ export default function DealerVehicleRecommendCard({
   const quote = group.modelQuote ?? group.primaryMatch.cleverQuote;
   const criteria = buildSearchCriteriaLabels(searchProfile, searchFilters);
   const reasons = buildVehicleFitReasons(group, { searchProfile, searchWishes, chipIds });
-  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+  const modelChecks = group.modelChecks ?? [];
 
   return (
-    <section className="dl-sales-rec" aria-labelledby="dl-sales-rec-title">
+    <section className="dl-sales-rec" aria-label={`Kia ${label}`}>
       {criteria.length > 0 && (
         <p className="dl-sales-rec__criteria">{criteria.join(' · ')}</p>
       )}
@@ -48,40 +51,23 @@ export default function DealerVehicleRecommendCard({
 
         <div className="dl-sales-rec__body">
           <p className="dl-sales-rec__rank">
-            {medal && <span aria-hidden>{medal} </span>}
             Kia
             {' '}
             {label}
           </p>
-          {quote && (
-            <CleverQuoteBadge cleverQuote={quote} size="lg" showTier={false} />
-          )}
 
-          <h2 id="dl-sales-rec-title" className="dl-sales-rec__why-title">
-            Warum passt dieses Fahrzeug?
-          </h2>
-          {reasons.length > 0 ? (
-            <ul className="dl-sales-rec__reasons">
-              {reasons.map((line) => (
-                <li key={line}>
-                  <span aria-hidden>✅</span>
-                  {' '}
-                  {line}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="dl-sales-rec__fallback">Passt gut zu Ihrer Suche.</p>
-          )}
+          <CustomerSearchAssessment
+            cleverQuote={quote}
+            checks={modelChecks}
+            wishLines={reasons}
+          />
 
           <button
             type="button"
             className="btn btn-primary dl-sales-rec__cta"
             onClick={() => onViewVehicle?.(modelKey)}
           >
-            {label}
-            {' '}
-            ansehen
+            {buildCustomerModelCtaLabel(label)}
           </button>
         </div>
       </article>

@@ -37,12 +37,15 @@ import { inferKnownPurchaseType } from '../services/dealer/inferPurchaseTypeFrom
 import { detectModelKeyInQuery } from '../services/search/modelAttributeQuestion.js';
 import { resolvePowertrainOptionsForModel } from '../services/dealer/modelPowertrainFamily.js';
 import { getEquipmentStepCta } from '../services/dealer/equipmentStepPresentation.js';
+import { buildCustomerModelCtaLabel } from '../services/dealer/customerSearchResultPresentation.js';
 import { mapPurchaseDetailsToBudget, getPaymentStepCta } from '../services/dealer/purchaseTypeFormOptions.js';
 import { buildJourneyOffers } from '../services/dealer/journeyOfferService.js';
 import {
   createLeadFromJourney,
   prepareJourneyLeadContext,
 } from '../services/dealer/journeyLeadService.js';
+import { createLeadFromCustomerAdvisor } from '../services/dealer/customerAdvisorLeadService.js';
+import { createLeadFromSpecialQuestion } from '../services/dealer/specialCustomerQuestionLeadService.js';
 import { chipToFeatureIds, getEquipmentWishChip } from '../data/features/equipmentWishChips.js';
 import { findDealerWishChip, toggleWishChipIds } from '../data/dealer/dealerWishCatalog.js';
 import {
@@ -174,6 +177,8 @@ export default function DealerPage() {
   const [activeRecommendPick, setActiveRecommendPick] = useState(null);
   const [liveUnderstandTrim, setLiveUnderstandTrim] = useState(null);
   const [equipmentSearchWishes, setEquipmentSearchWishes] = useState([]);
+  const [customerAdvisorWish, setCustomerAdvisorWish] = useState(null);
+  const [leadSheetMode, setLeadSheetMode] = useState('journey');
   const [entryMode, setEntryMode] = useState(null);
   const [consultationProfile, setConsultationProfile] = useState(null);
   const [cleverRecommendation, setCleverRecommendation] = useState(null);
@@ -893,6 +898,7 @@ export default function DealerPage() {
     setPrefilledWishCount(prefilled.length);
     setLiveUnderstandTrim(null);
     setEquipmentSearchWishes([]);
+    setCustomerAdvisorWish(null);
     setTrimRecommendation(null);
     setConfigSummary(null);
     setVehicleConfiguration(null);
@@ -1101,6 +1107,42 @@ export default function DealerPage() {
     handleUnderstandContinue(trimId, packageIds);
   }, [handleUnderstandContinue]);
 
+  function handleCustomerWishReserve(payload) {
+    setCustomerAdvisorWish(payload);
+    if (payload?.possibleTrims?.length) {
+      setLiveUnderstandTrim({
+        trimId: null,
+        trimLabel: payload.possibleTrims.join(' / '),
+        packageIds: [],
+        recommendationLabel: payload.possibleDirection,
+        cleverQuotePercent: null,
+        hasEquipmentWishes: true,
+      });
+    }
+  }
+
+  const handleCustomerAdvisorContact = useCallback(() => {
+    setLeadSheetMode('customerAdvisor');
+    setLeadSheetOpen(true);
+  }, []);
+
+  const handleSpecialQuestionSubmit = useCallback(({ contact, specialCustomerQuestion, customerWish }) => {
+    const lead = createLeadFromSpecialQuestion({
+      contact,
+      specialCustomerQuestion,
+      customerWish: customerWish ?? customerAdvisorWish,
+      dealerConditions: conditions,
+      learningRequestId: specialCustomerQuestion?.learningRequestId ?? null,
+    });
+    addLead(lead);
+    setLeadSubmitted({
+      contactName: contact.name,
+      inquiryBrief: lead.inquiryBrief,
+      cleverQuotePercent: null,
+      specialQuestion: true,
+    });
+  }, [addLead, conditions, customerAdvisorWish]);
+
   const handleTrimConfirm = useCallback((recommendation) => {
     const modelKey = selectedModelKey ?? recommendation?.modelKey;
     if (!modelKey) return;
@@ -1159,9 +1201,31 @@ export default function DealerPage() {
 
   const handleLeadSheetClose = useCallback(() => {
     setLeadSheetOpen(false);
+    setLeadSheetMode('journey');
   }, []);
 
   const handleLeadSubmit = useCallback((contact) => {
+    if (leadSheetMode === 'customerAdvisor' && customerAdvisorWish) {
+      const lead = createLeadFromCustomerAdvisor({
+        contact,
+        customerWish: customerAdvisorWish,
+        dealerConditions: conditions,
+        message: contact.message,
+        wantTestDrive: contact.wantTestDrive,
+      });
+      addLead(lead);
+      clearJourneyState(dealerId);
+      setLeadSheetOpen(false);
+      setLeadSheetMode('journey');
+      setLeadSubmitted({
+        contactName: contact.name,
+        inquiryBrief: lead.inquiryBrief,
+        cleverQuotePercent: null,
+        customerAdvisor: true,
+      });
+      return;
+    }
+
     const { offerBundle } = prepareJourneyLeadContext(journeySnapshot, conditions);
     const lead = createLeadFromJourney({
       contact,
@@ -1192,7 +1256,19 @@ export default function DealerPage() {
     requestAnimationFrame(() => {
       offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [journeySnapshot, conditions, journeyCleverQuote, submittedQuery, addLead, dealerId, consultationProfile, cleverRecommendation, consultationHandoff]);
+  }, [
+    journeySnapshot,
+    conditions,
+    journeyCleverQuote,
+    submittedQuery,
+    addLead,
+    dealerId,
+    consultationProfile,
+    cleverRecommendation,
+    consultationHandoff,
+    leadSheetMode,
+    customerAdvisorWish,
+  ]);
 
   useEffect(() => {
     if (!isNeedBasedAdvisor || salesStep || isCleverEntry) return;
@@ -1257,16 +1333,18 @@ export default function DealerPage() {
       return {
         salesStep: effectiveSalesStep,
         title: shortTitle,
-        subtitle: activeRecommendPick.matchPercent != null
-          ? `🏆 CleverQuote ${activeRecommendPick.matchPercent}`
-          : 'Clever-Empfehlung',
-        stepLabel: 'Passendes Modell',
-        actionLabel: `${shortTitle} ansehen`,
+        subtitle: 'Clever Einschätzung',
+        stepLabel: 'Passende Richtung',
+        actionLabel: buildCustomerModelCtaLabel(shortTitle),
         onAction: () => handleViewVehicle(activeRecommendPick.modelKey),
       };
     }
 
     if (effectiveSalesStep === 'understand') {
+      return null;
+    }
+
+    if (effectiveSalesStep === 'understand_legacy') {
       const modelLabel = configSummary?.modelLabel
         ?? KIA_MODEL_ATTRIBUTES[selectedModelKey]?.label
         ?? 'Kia';
@@ -1518,10 +1596,10 @@ export default function DealerPage() {
               knownPurchaseType={knownPurchaseType}
               powertrainOptions={powertrainOptions}
               onPowertrainChange={handlePowertrainChange}
-              onToggleWish={handleToggleWish}
-              onTrimChange={setLiveUnderstandTrim}
-              onSearchWishesChange={setEquipmentSearchWishes}
-              onJourneyContinue={handleEquipmentJourneyContinue}
+              onCustomerWishReserve={handleCustomerWishReserve}
+              onContactRequest={handleCustomerAdvisorContact}
+              onSpecialQuestionSubmit={handleSpecialQuestionSubmit}
+              dealerName={conditions.dealerName}
             />
           )}
           {showSalesTrim && (
@@ -1695,10 +1773,12 @@ export default function DealerPage() {
         <DealerJourneyLeadSheet
           dealerName={conditions.dealerName}
           vehicleTitle={
-            journeyOfferBundle?.vehicleTitle
-            ?? (configSummary
-              ? `${configSummary.modelLabel ?? ''} ${configSummary.trimLabel ?? ''}`.trim()
-              : undefined)
+            leadSheetMode === 'customerAdvisor' && customerAdvisorWish
+              ? (customerAdvisorWish.possibleDirection ?? customerAdvisorWish.modelLabel)
+              : (journeyOfferBundle?.vehicleTitle
+                ?? (configSummary
+                  ? `${configSummary.modelLabel ?? ''} ${configSummary.trimLabel ?? ''}`.trim()
+                  : undefined))
           }
           onClose={handleLeadSheetClose}
           onSubmit={handleLeadSubmit}

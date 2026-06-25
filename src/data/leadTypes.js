@@ -42,4 +42,5 @@ export const LEAD_SOURCES = {
   marketplace: 'Fahrzeugseite',
   offer: 'Angebotslink',
   equipment: 'Ausstattungsberater',
+  customerAdvisor: 'Kunden-Beratung',
 };

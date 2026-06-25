@@ -17,6 +17,7 @@ export const BACKEND_AREA_SECTIONS = {
     { id: 'equipment-sales-search', label: 'Ausstattung prüfen', icon: '✓' },
     { id: 'equipment-inspector', label: 'Ausstattung (Debug)', icon: '🔍' },
     { id: 'clever-learning-requests', label: 'Clever Lernfragen', icon: '💡' },
+    { id: 'clever-knowledge-review', label: 'Clever Wissen prüfen', icon: '📚' },
   ],
   marketing: [
     { id: 'hub', label: 'Übersicht' },

@@ -1,25 +1,21 @@
 import VehicleImage from '../shared/VehicleImage.jsx';
 import {
-  buildDealerFulfillmentHeadline,
   buildDealerMissingWishSummary,
+  buildDealerWishCheckLines,
   resolveDealerModelTitle,
 } from '../../services/dealer/dealerAdvisorPresentation.js';
+import { CUSTOMER_SEARCH_COPY } from '../../services/dealer/customerSearchResultPresentation.js';
 import { resolveVehicleImageModel } from '../../services/vehicle/vehicleImageService.js';
 import './dealer-landing.css';
 
-const MEDALS = ['🥈', '🥉'];
-
-function AlternativeRow({ group, rank, onViewOffer }) {
+function AlternativeRow({ group, onViewOffer }) {
   const v = group.primaryMatch?.vehicle;
   if (!v) return null;
 
   const modelTitle = resolveDealerModelTitle(group);
   const checks = group.modelChecks ?? [];
-  const quote = group.modelQuote;
-  const percent = quote?.percent ?? 0;
-  const summary = buildDealerFulfillmentHeadline(quote, checks);
+  const fitLines = buildDealerWishCheckLines(checks).slice(0, 2);
   const missing = buildDealerMissingWishSummary(checks);
-  const medal = MEDALS[rank - 2] ?? `${rank}.`;
 
   return (
     <button
@@ -35,34 +31,17 @@ function AlternativeRow({ group, rank, onViewOffer }) {
         variant="hero"
       />
       <div className="dl-advisor-alt__body">
-        <p className="dl-advisor-alt__title">
-          <span className="dl-advisor-alt__medal" aria-hidden>{medal}</span>
-          {modelTitle}
-        </p>
-        <p className="dl-advisor-alt__score">
-          {percent}
-          {' '}
-          % passend
-          {summary && (
-            <span className="dl-advisor-alt__summary">
-              {' '}
-              ·
-              {' '}
-              {summary}
-            </span>
-          )}
-        </p>
+        <p className="dl-advisor-alt__title">{modelTitle}</p>
+        {fitLines.length > 0 && (
+          <p className="dl-advisor-alt__score">
+            {fitLines.map((line) => `✓ ${line}`).join(' · ')}
+          </p>
+        )}
         {missing?.length > 0 && (
           <p className="dl-advisor-alt__missing">
-            Fehlt:
+            Vom Autohaus prüfen:
             {' '}
-            {missing.map((label) => (
-              <span key={label} className="dl-advisor-alt__missing-item">
-                ❌
-                {' '}
-                {label}
-              </span>
-            ))}
+            {missing.join(', ')}
           </p>
         )}
       </div>
@@ -77,14 +56,13 @@ export default function DealerAdvisorAlternatives({ groups = [], onViewOffer }) 
   return (
     <section className="dl-advisor-alts" aria-labelledby="dl-advisor-alts-title">
       <h3 id="dl-advisor-alts-title" className="dl-advisor-alts__title">
-        Weitere passende Fahrzeuge
+        {CUSTOMER_SEARCH_COPY.multiResultHeadline}
       </h3>
       <div className="dl-advisor-alts__list">
-        {groups.map((group, index) => (
+        {groups.map((group) => (
           <AlternativeRow
             key={group.modelLineKey ?? group.label}
             group={group}
-            rank={index + 2}
             onViewOffer={onViewOffer}
           />
         ))}

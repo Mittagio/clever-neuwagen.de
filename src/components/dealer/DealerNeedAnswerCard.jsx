@@ -1,5 +1,6 @@
 import DealerInquiryLeadNotice from './DealerInquiryLeadNotice.jsx';
 import DealerModelSwipeCarousel from './DealerModelSwipeCarousel.jsx';
+import { buildCustomerSearchResultsHeadline, CUSTOMER_SEARCH_COPY } from '../../services/dealer/customerSearchResultPresentation.js';
 import './dealer-landing.css';
 
 /**
@@ -25,10 +26,10 @@ export default function DealerNeedAnswerCard({
         <p className="dl-need-answer__kicker">
           <span aria-hidden>🧠</span>
           {' '}
-          Clever Antwort
+          {CUSTOMER_SEARCH_COPY.needAnswerKicker}
         </p>
         <h2 id="dl-need-answer-title" className="dl-need-answer__title">
-          Ich habe folgende Wünsche erkannt:
+          {CUSTOMER_SEARCH_COPY.wishesRecognizedTitle}
         </h2>
         <ul className="dl-need-answer__wishes">
           {recognizedWishes.map((wish) => (
@@ -45,15 +46,7 @@ export default function DealerNeedAnswerCard({
       {modelCount > 0 && (
         <div className="dl-need-answer__results">
           <h3 className="dl-need-answer__results-title">
-            Clever hat
-            {' '}
-            {Math.min(modelCount, picks.length || modelCount)}
-            {' '}
-            passende
-            {' '}
-            {modelCount === 1 ? 'Modell' : 'Modelle'}
-            {' '}
-            gefunden
+            {buildCustomerSearchResultsHeadline(Math.min(modelCount, picks.length || modelCount))}
           </h3>
           <DealerModelSwipeCarousel
             picks={picks}

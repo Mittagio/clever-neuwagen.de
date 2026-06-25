@@ -14,8 +14,18 @@ import {
 } from '../../services/configuration/equipmentFeatureSearch.js';
 import {
   LEARNING_SOURCE_AREAS,
+  createLearningRequest,
 } from '../../services/admin/cleverLearningRequestService.js';
+import { findApprovedKnowledgeAnswer } from '../../services/admin/cleverKnowledgeAnswerService.js';
+import {
+  SPECIAL_QUESTION_COPY,
+  buildFallbackSpecialQuestion,
+  extractSpecialQuestionTopic,
+  shouldShowDealerCheckFlow,
+} from '../../services/dealer/specialCustomerQuestionService.js';
 import CleverLearningRequestCard from '../shared/CleverLearningRequestCard.jsx';
+import SpecialQuestionContactCard from './SpecialQuestionContactCard.jsx';
+import './SpecialQuestionContactCard.css';
 
 function PickedFeatureItem({ item, onRemove }) {
   const pending = isSearchItemPending(item);
@@ -71,6 +81,9 @@ export default function EquipmentFeatureSearch({
   searchedFeatures = [],
   onAddSearchedFeature,
   onRemoveSearchedFeature,
+  dealerId = null,
+  dealerName = null,
+  onSpecialQuestionSubmit,
 }) {
   const [query, setQuery] = useState('');
   const [listening, setListening] = useState(false);
@@ -78,6 +91,8 @@ export default function EquipmentFeatureSearch({
   const [spokenText, setSpokenText] = useState(null);
   const [voiceError, setVoiceError] = useState(null);
   const [searchState, setSearchState] = useState(null);
+  const [specialSubmitting, setSpecialSubmitting] = useState(false);
+  const [specialSubmitted, setSpecialSubmitted] = useState(false);
   const recognitionRef = useRef(null);
   const voiceSupported = isSpeechRecognitionSupported();
 
@@ -99,16 +114,82 @@ export default function EquipmentFeatureSearch({
     setSpokenText(null);
   }, [onAddSearchedFeature]);
 
+  const modelLabel = `${brand} ${model}`.trim();
+
   const runSearch = useCallback((rawQuery, { fromVoice = false } = {}) => {
     const q = rawQuery.trim();
     if (!q) return;
+
+    const ctx = { modelKey, modelLabel, brand };
+    const approved = findApprovedKnowledgeAnswer(q, modelKey);
+    if (approved) {
+      setSearchState({
+        type: 'knowledge_answer',
+        query: q,
+        answer: approved,
+        modelLabel: approved.modelLabel ?? modelLabel,
+        topicLabel: extractSpecialQuestionTopic(q) ?? approved.category,
+      });
+      if (fromVoice) setSpokenText(q);
+      return;
+    }
+
     const result = searchEquipmentFeature(q, brand, model, modelKey, searchCtx);
+
+    if (shouldShowDealerCheckFlow(q, result, ctx)) {
+      const specialCustomerQuestion = buildFallbackSpecialQuestion(q, ctx);
+      setSearchState({
+        type: 'special_question',
+        query: q,
+        specialCustomerQuestion,
+        equipmentResult: result,
+      });
+      setSpecialSubmitted(false);
+      if (fromVoice) setSpokenText(q);
+      return;
+    }
+
     setSearchState(result);
     if (fromVoice) setSpokenText(q);
     if (result.type === 'match' && result.item) {
       addFeature(result.item);
     }
-  }, [addFeature, brand, model, modelKey, searchCtx]);
+  }, [addFeature, brand, model, modelKey, modelLabel, searchCtx]);
+
+  async function handleSpecialQuestionSubmit(contact) {
+    if (!searchState?.specialCustomerQuestion) return;
+    setSpecialSubmitting(true);
+
+    const learning = createLearningRequest({
+      query: contact.question || searchState.query,
+      modelKey,
+      modelLabel,
+      sourceArea: LEARNING_SOURCE_AREAS.CUSTOMER_ADVISOR,
+      pageContext: 'Kunden-Beratung',
+      dealerId,
+      dealerName,
+    });
+
+    try {
+      await onSpecialQuestionSubmit?.({
+        contact,
+        specialCustomerQuestion: {
+          ...searchState.specialCustomerQuestion,
+          rawText: contact.question || searchState.specialCustomerQuestion.rawText,
+          learningRequestId: learning.request?.id ?? null,
+        },
+        learningRequest: learning.request,
+      });
+      setSpecialSubmitted(true);
+    } finally {
+      setSpecialSubmitting(false);
+    }
+  }
+
+  function handleSpecialQuestionDismiss() {
+    setSearchState(null);
+    setQuery('');
+  }
 
   function handleSubmit(event) {
     event?.preventDefault();
@@ -231,6 +312,35 @@ export default function EquipmentFeatureSearch({
             pageContext="Ausstattungssuche"
           />
         </div>
+      )}
+
+      {searchState?.type === 'knowledge_answer' && (
+        <div className="vd-eq-search__knowledge" role="region" aria-label="Clever Wissen">
+          <p className="vd-eq-search__knowledge-model">{searchState.modelLabel}</p>
+          {searchState.topicLabel && (
+            <p className="vd-eq-search__knowledge-topic">{searchState.topicLabel}</p>
+          )}
+          <p className="vd-eq-search__knowledge-text">
+            „
+            {searchState.answer?.answerText}
+            “
+          </p>
+          <p className="vd-eq-search__knowledge-source">
+            Quelle:
+            {' '}
+            {SPECIAL_QUESTION_COPY.knowledgeSource}
+          </p>
+        </div>
+      )}
+
+      {searchState?.type === 'special_question' && (
+        <SpecialQuestionContactCard
+          questionText={searchState.specialCustomerQuestion?.rawText ?? searchState.query}
+          onSubmit={handleSpecialQuestionSubmit}
+          onDismiss={handleSpecialQuestionDismiss}
+          submitting={specialSubmitting}
+          submitted={specialSubmitted}
+        />
       )}
 
       {searchState?.type === 'not_found' && (

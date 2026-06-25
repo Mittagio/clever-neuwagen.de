@@ -77,6 +77,7 @@
     "test:dealer-model-pricing": "node src/services/dealer/dealerModelPricing.test.js",
     "test:clever-lexicon": "node src/services/lexicon/cleverLexiconSearchService.test.js",
     "test:clever-learning-requests": "node src/services/admin/cleverLearningRequestService.test.js",
+    "test:clever-knowledge-answer": "node src/services/admin/cleverKnowledgeAnswerService.test.js",
     "test:dealer-ai-configure": "node src/services/dealerAiVehicleConfigureFlow.test.js",
     "test:dealer-ai-recognition-review": "node src/services/dealerAiRecognitionReview.test.js",
     "test:dealer-ai-direct-customer-akte": "node src/services/dealerAiDirectCustomerAkte.test.js",

@@ -1,0 +1,252 @@
+/* Vorberatung – kurze Beratungsfragen, mobil-first */
+
+.cpc-wizard {
+  margin-top: 8px;
+}
+
+.cpc-intro {
+  padding: 20px 4px 8px;
+  text-align: center;
+}
+
+.cpc-intro__model {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cpc-intro__type {
+  margin: 4px 0 16px;
+  font-size: 0.9375rem;
+  color: #64748b;
+}
+
+.cpc-intro__title {
+  margin: 0 0 10px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+}
+
+.cpc-intro__sub {
+  margin: 0 0 20px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.cpc-intro__cta {
+  min-height: 56px;
+  border-radius: 14px;
+}
+
+.cpc-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cpc-progress__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.cpc-progress__dot--active {
+  background: #0d9488;
+  width: 20px;
+}
+
+.cpc-progress__label {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cpc-wizard__model-line {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cpc-wizard__model-type {
+  font-weight: 500;
+  color: #64748b;
+}
+
+.cpc-step__question {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.cpc-step__optional {
+  margin: -8px 0 14px;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.cpc-choices {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cpc-choices--large {
+  gap: 12px;
+}
+
+.cpc-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.cpc-choice--active {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+  box-shadow: 0 2px 12px rgba(20, 184, 166, 0.12);
+}
+
+.cpc-choice__check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #14b8a6;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cpc-choice__label {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+.cpc-step__cta {
+  min-height: 56px;
+  border-radius: 14px;
+}
+
+.cpc-wizard--result {
+  padding: 8px 4px 4px;
+}
+
+.cpc-result__title {
+  margin: 0 0 18px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.cpc-result__wish {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cpc-result__wish-label {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cpc-result__wish-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.cpc-result__wish-list li {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #1e293b;
+  padding-left: 1.1em;
+  position: relative;
+}
+
+.cpc-result__wish-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: #0d9488;
+  font-weight: 700;
+}
+
+.cpc-result__direction {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f0fdf4 0%, #f8fafc 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.cpc-result__direction-title {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #065f46;
+}
+
+.cpc-result__direction-value {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.cpc-result__lead {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.cpc-result__hint {
+  margin: 0 0 20px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.cpc-result__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cpc-result__actions .vd-btn {
+  min-height: 56px;
+  border-radius: 14px;
+}

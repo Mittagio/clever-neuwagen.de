@@ -7,6 +7,7 @@ import {
   getDynamicEquipmentWishChip,
   resolveChipToScoringFeatureIds,
 } from '../../services/configuration/equipmentChipBuilder.js';
+import { getCustomerAdvisorWishChip } from './customerAdvisorChipGroups.js';
 
 /** @deprecated Nur noch für andere Flows (SmartSales, DealerSearch) – nicht Ausstattungsschritt */
 export const EQUIPMENT_WISH_GROUPS = [];
@@ -16,7 +17,7 @@ const CHIP_BY_ID = new Map(
 );
 
 export function getEquipmentWishChip(chipId) {
-  return CHIP_BY_ID.get(chipId) ?? getDynamicEquipmentWishChip(chipId);
+  return CHIP_BY_ID.get(chipId) ?? getCustomerAdvisorWishChip(chipId) ?? getDynamicEquipmentWishChip(chipId);
 }
 
 export function chipToFeatureIds(chipId) {

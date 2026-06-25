@@ -1,0 +1,148 @@
+.sq-contact {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.sq-contact__kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.sq-contact__headline {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.sq-contact__text {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.sq-contact__card {
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sq-contact__card-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.sq-contact__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.sq-contact__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sq-contact__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.sq-contact__input {
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+  color: #0f172a;
+  background: #fff;
+}
+
+.sq-contact__input--area {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.sq-contact__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b45309;
+}
+
+.sq-contact__cta {
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.sq-contact__cta--primary {
+  background: #10b981;
+  color: #fff;
+}
+
+.sq-contact__cta--primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sq-contact__cta--ghost {
+  background: transparent;
+  color: #64748b;
+}
+
+.sq-contact--done {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: #ecfdf5;
+}
+
+.vd-eq-search__knowledge {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f0fdf4;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.vd-eq-search__knowledge-model {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.vd-eq-search__knowledge-topic {
+  margin: 0.15rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vd-eq-search__knowledge-text {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.vd-eq-search__knowledge-source {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}

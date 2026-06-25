@@ -4621,3 +4621,65 @@
 .dl-journey-footer__subtitle--muted {
   color: #64748b;
 }
+
+/* Kunden-Suche: ruhige Einschätzung statt CleverQuote-Box */
+.dl-customer-fit {
+  margin: 12px 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.dl-customer-fit__title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.dl-customer-fit__verdict {
+  margin: 6px 0 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f766e;
+  line-height: 1.35;
+}
+
+.dl-customer-fit__matches-label {
+  margin: 14px 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.dl-customer-fit__matches {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.dl-customer-fit__match {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #1e293b;
+}
+
+.dl-customer-fit__match span[aria-hidden] {
+  color: #059669;
+  font-weight: 700;
+}
+
+.dl-customer-fit__hint {
+  margin: 14px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #64748b;
+}

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import VehicleImage from '../shared/VehicleImage.jsx';
 import DealerPowertrainPicker from './DealerPowertrainPicker.jsx';
-import EquipmentWishAdvisor from '../vehicle-detail/EquipmentWishAdvisor.jsx';
+import CustomerPreConsultationWizard from './CustomerPreConsultationWizard.jsx';
 import { buildVehicleBrief, buildVehicleContextLine } from '../../services/dealer/vehicleSalesJourney.js';
 import './dealer-landing.css';
 import '../vehicle-detail/vehicle-detail.css';
@@ -18,50 +18,33 @@ export default function DealerVehicleUnderstandCard({
   prefilledWishCount = 0,
   powertrainOptions = [],
   onPowertrainChange,
-  onToggleWish,
-  onTrimChange,
-  onSearchWishesChange,
-  onJourneyContinue,
+  onCustomerWishReserve,
+  onContactRequest,
+  onSpecialQuestionSubmit,
+  onAdvisorPhaseChange,
   knownPurchaseType = null,
+  dealerName = null,
 }) {
-  const [searchedFeatures, setSearchedFeatures] = useState([]);
   const brief = buildVehicleBrief(modelKey);
   const brand = 'Kia';
   const model = brief.title?.replace(/^Kia\s+/i, '') ?? modelKey?.toUpperCase();
-
-  const selectedFeatures = wishChipIds;
 
   const contextLine = useMemo(
     () => buildVehicleContextLine(modelKey, { searchProfile, searchFilters, searchChipIds }),
     [modelKey, searchProfile, searchFilters, searchChipIds],
   );
 
-  function handleRecommendationChange(rec) {
-    if (!rec?.trimId) return;
-    onTrimChange?.({
-      trimId: rec.trimId,
-      trimLabel: rec.trimName,
-      packageIds: rec.packageIds ?? [],
-      recommendationLabel: rec.label,
-      cleverQuotePercent: rec.matchPercent ?? null,
-      hasEquipmentWishes: wishChipIds.length > 0 || searchedFeatures.length > 0,
-    });
+  function handleWishPayloadChange(payload) {
+    onCustomerWishReserve?.(payload);
   }
 
-  function handleSearchedFeaturesChange(items) {
-    setSearchedFeatures(items);
-    onSearchWishesChange?.(items);
-  }
-
-  function handleJourneyContinue(rec) {
-    onJourneyContinue?.({
-      trimId: rec.trimId,
-      packageIds: rec.packageIds ?? [],
-    });
+  function handleContactRequest(payload) {
+    onCustomerWishReserve?.(payload);
+    onContactRequest?.(payload);
   }
 
   return (
-    <section className="dl-sales-understand dl-sales-understand--portal" aria-labelledby="dl-sales-understand-title">
+    <section className="dl-sales-understand dl-sales-understand--portal dl-sales-understand--preconsult" aria-labelledby="dl-sales-understand-title">
       <div className="dl-sales-understand__hero dl-sales-understand__hero--compact">
         <VehicleImage
           brand="Kia"
@@ -95,23 +78,23 @@ export default function DealerVehicleUnderstandCard({
         onChange={onPowertrainChange}
       />
 
-      <div className="dl-sales-understand__wishes dl-sales-understand__equipment">
+      <div className="dl-sales-understand__wishes dl-sales-understand__preconsult">
         {prefilledWishCount > 0 && (
           <p className="dl-sales-understand__prefill-hint">
-            {prefilledWishCount} Wünsche aus Ihrer Suche übernommen.
+            {prefilledWishCount} Hinweise aus Ihrer Suche – die Vorberatung baut darauf auf.
           </p>
         )}
-        <EquipmentWishAdvisor
-          variant="journey"
-          vehicle={{ brand, model }}
+        <CustomerPreConsultationWizard
           modelKey={modelKey}
-          knownPurchaseType={knownPurchaseType}
-          selectedFeatures={selectedFeatures}
-          searchedFeatures={searchedFeatures}
-          onToggleChip={onToggleWish}
-          onRecommendationChange={handleRecommendationChange}
-          onSearchedFeaturesChange={handleSearchedFeaturesChange}
-          onJourneyContinue={handleJourneyContinue}
+          modelLabel={brief.title}
+          vehicle={{ brand, model }}
+          prefilledPriorityIds={wishChipIds}
+          dealerId={dealerId}
+          dealerName={dealerName}
+          onWishPayloadChange={handleWishPayloadChange}
+          onContactRequest={handleContactRequest}
+          onSpecialQuestionSubmit={onSpecialQuestionSubmit}
+          onStepChange={onAdvisorPhaseChange}
         />
       </div>
     </section>

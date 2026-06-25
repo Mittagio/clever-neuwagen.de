@@ -16,6 +16,10 @@ import { resolveWishConfiguration } from '../configurator/wishPackageResolver.js
 import { mergeSearchedIntoFeatureIds, searchedFeatureToWishFeature } from './equipmentFeatureSearch.js';
 import { resolveModelFeatureAvailability } from './modelEquipmentData.js';
 import { buildEquipmentChipsForModel, resolveChipToScoringFeatureIds } from './equipmentChipBuilder.js';
+import {
+  buildCustomerAdvisorChipGroups,
+  resolveCustomerAdvisorChipFeatureIds,
+} from '../../data/features/customerAdvisorChipGroups.js';
 import { priceConfiguration } from '../pricing/pricingEngine.js';
 
 function getGlobalFeatureByLegacyId(legacyId) {
@@ -170,10 +174,11 @@ function uniqueFeatureIds(chipIds = []) {
   const ids = new Set();
   for (const chipId of chipIds) {
     const chip = getEquipmentWishChip(chipId);
+    if (chip?.advisorMeta) continue;
     if (chip?.advisorRelevant === false) continue;
     const global = getGlobalFeatureById(chipId);
     if (global?.advisorRelevant === false) continue;
-    resolveChipToScoringFeatureIds(chipId).forEach((id) => ids.add(id));
+    resolveCustomerAdvisorChipFeatureIds(chipId).forEach((id) => ids.add(id));
   }
   return [...ids];
 }
@@ -189,7 +194,10 @@ function resolveAdvisorContext(brand, model, modelKey) {
   return null;
 }
 
-export function getEquipmentWishChipGroups(brand, model, modelKey) {
+export function getEquipmentWishChipGroups(brand, model, modelKey, options = {}) {
+  if (options.customerJourney) {
+    return buildCustomerAdvisorChipGroups();
+  }
   return buildEquipmentChipsForModel(brand, model, modelKey);
 }
 

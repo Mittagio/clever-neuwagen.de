@@ -36,6 +36,9 @@ import {
   formatVehicleCardTitle,
   hasVehicleOffer,
 } from '../../services/customerAkte.js';
+import { buildSpecialQuestionAkteChips } from '../../services/dealer/specialCustomerQuestionService.js';
+import { saveSellerKnowledgeAnswerFromLead } from '../../services/admin/cleverKnowledgeAnswerService.js';
+import CustomerSpecialQuestionAnswerSheet from './CustomerSpecialQuestionAnswerSheet.jsx';
 import {
   buildCleverActionRecommendation,
   cleverActionToHint,
@@ -126,6 +129,7 @@ const SHEETS = {
   cleverAuswahl: 'clever_auswahl',
   more: 'more',
   lexikon: 'lexikon',
+  specialQuestionAnswer: 'special_question_answer',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -440,15 +444,31 @@ export default function DealerAiLeadFollowUp({
     deliveryTime: wishDelivery,
   }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, wishDelivery]);
 
-  const wishConditionChips = useMemo(() => buildWishConditionChips({
-    paymentType: wishPaymentType,
-    termMonths: wishSummaryFields.termMonths,
-    mileagePerYear: wishSummaryFields.mileagePerYear,
-    desiredRate: wishSummaryFields.desiredRate,
-    desiredPrice: wishSummaryFields.desiredPrice,
-    downPayment: lead?.wish?.downPayment ?? fields.downPayment ?? wishDownPayment ?? null,
-    delivery: wishDelivery,
-  }), [wishPaymentType, wishSummaryFields, lead?.wish?.downPayment, fields.downPayment, wishDownPayment, wishDelivery]);
+  const wishConditionChips = useMemo(() => {
+    const base = buildWishConditionChips({
+      paymentType: wishPaymentType,
+      termMonths: wishSummaryFields.termMonths,
+      mileagePerYear: wishSummaryFields.mileagePerYear,
+      desiredRate: wishSummaryFields.desiredRate,
+      desiredPrice: wishSummaryFields.desiredPrice,
+      downPayment: lead?.wish?.downPayment ?? fields.downPayment ?? wishDownPayment ?? null,
+      delivery: wishDelivery,
+    });
+    const specialChips = buildSpecialQuestionAkteChips(lead?.specialCustomerQuestion, {
+      contactRequested: true,
+      answered: Boolean(lead?.specialQuestionAnswer?.answerText),
+    });
+    return [...specialChips, ...base];
+  }, [
+    wishPaymentType,
+    wishSummaryFields,
+    lead?.wish?.downPayment,
+    fields.downPayment,
+    wishDownPayment,
+    wishDelivery,
+    lead?.specialCustomerQuestion,
+    lead?.specialQuestionAnswer?.answerText,
+  ]);
 
   const wishEditValues = useMemo(() => ({
     paymentType: wishPaymentType,
@@ -828,6 +848,48 @@ export default function DealerAiLeadFollowUp({
     handleAddVehicle();
   }
 
+  function handleSaveSpecialQuestionAnswer({ answerText, sourceNote, learnForClever }) {
+    const knowledgeResult = saveSellerKnowledgeAnswerFromLead({
+      lead,
+      answerText,
+      sourceNote,
+      learnForClever,
+    });
+    if (!knowledgeResult.ok) {
+      setToast(knowledgeResult.message ?? 'Antwort konnte nicht gespeichert werden.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+
+    onSave?.({
+      specialQuestionAnswer: {
+        answerText,
+        sourceNote: sourceNote || null,
+        knowledgeAnswerId: knowledgeResult.answer?.id ?? null,
+        learnForClever,
+        savedAt: new Date().toISOString(),
+        sentAt: null,
+      },
+      specialCustomerQuestion: {
+        ...lead.specialCustomerQuestion,
+        status: 'answered_pending_send',
+      },
+      crm: {
+        ...crm,
+        nextStepId: 'send_customer_answer',
+        nextStepLabel: 'Antwort an Kunden senden',
+      },
+    }, {
+      historyText: 'Kundenfrage beantwortet',
+      historyType: 'note',
+      addFollowupHistory: false,
+    });
+
+    closeSheet();
+    setToast('Antwort gespeichert – Clever kann daraus lernen.');
+    setTimeout(() => setToast(''), 3500);
+  }
+
   function selectFollowUp(chip) {
     setNextStepId(chip.id);
     setFollowUpAt(computeFollowUpAt(chip.id));
@@ -1086,6 +1148,14 @@ export default function DealerAiLeadFollowUp({
     }
     if (handler === 'order') {
       openSheet(SHEETS.more);
+      return;
+    }
+    if (handler === 'answer_customer_question') {
+      openSheet(SHEETS.specialQuestionAnswer);
+      return;
+    }
+    if (handler === 'send_customer_answer') {
+      openCleverAntworten();
       return;
     }
     if (handler !== 'call') {
@@ -1776,6 +1846,14 @@ export default function DealerAiLeadFollowUp({
           />
         )}
       </LeadDetailPanel>
+
+      <CustomerSpecialQuestionAnswerSheet
+        open={activeSheet === SHEETS.specialQuestionAnswer}
+        onClose={closeSheet}
+        lead={lead}
+        onSave={handleSaveSpecialQuestionAnswer}
+        saving={isSaving}
+      />
 
       <CleverKundenhelferSheet
         open={activeSheet === SHEETS.kundenhelfer}

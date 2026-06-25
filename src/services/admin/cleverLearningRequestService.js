@@ -21,6 +21,7 @@ export const LEARNING_SOURCE_AREAS = {
   DEALER_EQUIPMENT_SEARCH: 'dealer_equipment_search',
   CONFIGURATOR: 'configurator',
   CUSTOMER_AKTE: 'customer_akte',
+  CUSTOMER_ADVISOR: 'customer_advisor',
 };
 
 /** @type {object[] | null} */

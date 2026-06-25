@@ -23,6 +23,8 @@ export const CLEVER_ACTION_IDS = {
   SELECTION_SEND: 'selection_send',
   SELECTION_FOLLOWUP: 'selection_followup',
   GENERAL_REMINDER: 'general_reminder',
+  ANSWER_CUSTOMER_QUESTION: 'answer_customer_question',
+  SEND_CUSTOMER_ANSWER: 'send_customer_answer',
 };
 
 /** Niedrigere Zahl = höhere Priorität */
@@ -38,6 +40,8 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.SELECTION_SEND]: 68,
   [CLEVER_ACTION_IDS.OFFER_FOLLOWUP]: 80,
   [CLEVER_ACTION_IDS.DOCUMENTS_MISSING]: 85,
+  [CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION]: 50,
+  [CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER]: 51,
   [CLEVER_ACTION_IDS.GENERAL_REMINDER]: 90,
 };
 
@@ -102,6 +106,16 @@ const ACTION_DEFINITIONS = {
     ctaLabel: 'Jetzt anrufen',
     handlerType: 'call',
   },
+  [CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION]: {
+    title: 'Kundenfrage beantworten',
+    ctaLabel: 'Antwort erstellen',
+    handlerType: 'answer_customer_question',
+  },
+  [CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER]: {
+    title: 'Antwort an Kunden senden',
+    ctaLabel: 'Antwort senden',
+    handlerType: 'send_customer_answer',
+  },
 };
 
 const MS_PER_DAY = 86400000;
@@ -121,6 +135,7 @@ function daysSinceLabel(days) {
 }
 
 function normalizeOfferStatus(card = {}) {
+  if (!card) return null;
   return card.vehicleOffer?.status ?? card.offer?.status ?? null;
 }
 
@@ -142,6 +157,7 @@ function getPrimaryOfferCard(vehicleCards = []) {
 }
 
 function getOfferSentAt(card = {}) {
+  if (!card) return null;
   return card.vehicleOffer?.sentAt
     ?? card.offer?.sentAt
     ?? card.vehicleOffer?.onlineLink?.createdAt
@@ -149,6 +165,7 @@ function getOfferSentAt(card = {}) {
 }
 
 function getOfferOpenedAt(card = {}) {
+  if (!card) return null;
   return card.vehicleOffer?.tracking?.lastOpenedAt
     ?? card.offer?.openedAt
     ?? null;
@@ -274,6 +291,7 @@ export function buildCleverActionContext({
 export function evaluateCleverActions(context) {
   const candidates = [];
   const {
+    lead,
     offerStatus,
     unterlagenSummary,
     selbstauskunftComplete,
@@ -289,6 +307,23 @@ export function evaluateCleverActions(context) {
     preparedSelectionGroup,
     reactedSelectionGroup,
   } = context;
+
+  const specialQuestion = lead?.specialCustomerQuestion;
+  const specialAnswer = lead?.specialQuestionAnswer;
+
+  if (specialQuestion?.status === 'needs_dealer_check' && !specialAnswer?.answerText) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION, {
+      reason: 'Spezielle Kundenfrage',
+      explanation: 'Der Kunde hat eine spezielle Frage zum Fahrzeug gestellt.',
+      meta: { questionText: specialQuestion.rawText },
+    }));
+  } else if (specialAnswer?.answerText && !specialAnswer?.sentAt) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER, {
+      reason: 'Antwort vorbereitet',
+      explanation: 'Die Antwort zur Kundenfrage ist bereit – jetzt an den Kunden senden.',
+      meta: { knowledgeAnswerId: specialAnswer.knowledgeAnswerId ?? null },
+    }));
+  }
 
   if (reactedSelectionGroup) {
     const variantCount = reactedSelectionGroup.variants?.length ?? 0;

@@ -4,9 +4,12 @@ import {
   resolveDealerRecommendedTrim,
 } from '../../services/dealer/dealerAdvisorPresentation.js';
 import { resolveVehicleImageModel } from '../../services/vehicle/vehicleImageService.js';
-import DealerAdvisorCleverQuote from './DealerAdvisorCleverQuote.jsx';
 import DealerAdvisorCoreSpecs from './DealerAdvisorCoreSpecs.jsx';
-import DealerAdvisorWhyPanel from './DealerAdvisorWhyPanel.jsx';
+import CustomerSearchAssessment from './CustomerSearchAssessment.jsx';
+import {
+  buildCustomerModelCtaLabel,
+  CUSTOMER_SEARCH_COPY,
+} from '../../services/dealer/customerSearchResultPresentation.js';
 import './dealer-landing.css';
 
 export default function DealerAdvisorHeroCard({
@@ -29,9 +32,7 @@ export default function DealerAdvisorHeroCard({
     <article className="dl-advisor-hero">
       <header className="dl-advisor-rec">
         <p className="dl-advisor-rec__kicker">
-          <span aria-hidden>🥇</span>
-          {' '}
-          Clever Empfehlung
+          {CUSTOMER_SEARCH_COPY.heroKicker}
         </p>
       </header>
 
@@ -50,23 +51,16 @@ export default function DealerAdvisorHeroCard({
       <div className="dl-advisor-hero__body">
         <h2 className="dl-advisor-hero__title">{modelTitle}</h2>
 
-        <DealerAdvisorCleverQuote
+        <CustomerSearchAssessment
           cleverQuote={modelQuote}
           checks={modelChecks}
-          variant="hero"
-        />
-
-        <DealerAdvisorWhyPanel
-          checks={modelChecks}
-          vehicleShortName={shortName}
-          detailed
         />
 
         <DealerAdvisorCoreSpecs vehicle={v} />
 
         {trimLabel && trimLabel !== shortName && (
           <p className="dl-advisor-hero__trim">
-            Empfohlene Ausstattung:
+            Mögliche Ausstattungslinie:
             {' '}
             <span>{trimLabel}</span>
           </p>
@@ -78,7 +72,7 @@ export default function DealerAdvisorHeroCard({
             className="btn btn-primary dl-advisor-hero__cta"
             onClick={onExploreTrims}
           >
-            {exploreTrimsLabel ?? `${shortName} ansehen`}
+            {exploreTrimsLabel ?? buildCustomerModelCtaLabel(shortName)}
           </button>
         ) : (
           <button
@@ -86,9 +80,7 @@ export default function DealerAdvisorHeroCard({
             className="btn btn-primary dl-advisor-hero__cta"
             onClick={() => onViewOffer?.(v)}
           >
-            {shortName}
-            {' '}
-            ansehen
+            {buildCustomerModelCtaLabel(shortName)}
           </button>
         )}
       </div>

@@ -43,6 +43,18 @@ export function getEquipmentStepCta(knownPurchaseType, hasWishes = false) {
 }
 
 /**
+ * CTAs für Kunden-Journey (unverbindliche Einschätzung, kein Verkauf).
+ * @param {boolean} hasWishes
+ */
+export function getCustomerAdvisorStepCta(hasWishes = false) {
+  return {
+    actionLabel: hasWishes ? 'Clever Einschätzung anzeigen' : null,
+    actionHint: hasWishes ? null : 'Bitte mindestens einen Wunsch wählen.',
+    reserveLabel: 'Für Verkäufer vormerken',
+  };
+}
+
+/**
  * @param {number} index
  * @param {number} total
  */

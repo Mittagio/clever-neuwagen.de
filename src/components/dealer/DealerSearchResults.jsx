@@ -4,6 +4,10 @@ import DiscoveryModelLineCard from '../discovery/DiscoveryModelLineCard.jsx';
 import { buildFahrzeugeSearchUrl } from '../../logic/oneSearchService.js';
 import { deriveAdvisorChipIds } from '../../services/sales/advisorRanking.js';
 import { enrichModelLineGroupWithProfileQuote } from '../../services/cleverQuote/cleverQuoteService.js';
+import {
+  buildCustomerSearchSectionMeta,
+  CUSTOMER_SEARCH_COPY,
+} from '../../services/dealer/customerSearchResultPresentation.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../../data/dealerLandingContent.js';
 import DealerAdvisorAlternatives from './DealerAdvisorAlternatives.jsx';
 import '../discovery/discovery-results.css';
@@ -67,10 +71,13 @@ export default function DealerSearchResults({
       {!hideHeader && (
         <div className="dl-search-results__head">
           <h2 id="dl-search-results-heading" className="dl-section__title">
-            Unsere Empfehlungen
+            {CUSTOMER_SEARCH_COPY.searchSectionTitle}
           </h2>
           <p className="dl-search-results__meta">
-            {Math.min(groups.length, maxRecommendations)} von {groups.length} Modelllinien
+            {buildCustomerSearchSectionMeta(
+              Math.min(groups.length, maxRecommendations),
+              groups.length,
+            )}
             {source === 'server' && <span className="dl-search-results__sync"> · Berater-Sync</span>}
           </p>
         </div>

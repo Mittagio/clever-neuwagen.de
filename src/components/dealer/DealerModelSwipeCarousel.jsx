@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import VehicleImage from '../shared/VehicleImage.jsx';
-import DealerAdvisorCleverQuote from './DealerAdvisorCleverQuote.jsx';
+import CustomerSearchAssessment from './CustomerSearchAssessment.jsx';
+import { buildCustomerModelCtaLabel } from '../../services/dealer/customerSearchResultPresentation.js';
 import './dealer-landing.css';
 
 function ModelSlide({ pick, dealerId, isActive }) {
@@ -11,7 +12,7 @@ function ModelSlide({ pick, dealerId, isActive }) {
 
   return (
     <article
-      className={`dl-model-swipe__slide${isActive ? ' dl-model-swipe__slide--active' : ''}${pick.badge ? ' dl-model-swipe__slide--recommended' : ''}`}
+      className={`dl-model-swipe__slide${isActive ? ' dl-model-swipe__slide--active' : ''}`}
       aria-hidden={!isActive}
     >
       <div className="dl-model-swipe__visual">
@@ -30,19 +31,16 @@ function ModelSlide({ pick, dealerId, isActive }) {
       <div className="dl-model-swipe__body">
         <div className="dl-model-swipe__head">
           <div className="dl-model-swipe__head-main">
-            {pick.badge && (
-              <span className="dl-model-swipe__badge">{pick.badge}</span>
-            )}
-            {!pick.badge && pick.medal && (
+            {pick.medal && (
               <span className="dl-model-swipe__medal" aria-hidden>{pick.medal}</span>
             )}
             <h3 className="dl-model-swipe__title">{pick.title}</h3>
           </div>
         </div>
 
-        {pick.matchPercent != null && (
-          <DealerAdvisorCleverQuote
-            cleverQuote={cleverQuote ?? { percent: pick.matchPercent }}
+        {(cleverQuote || modelChecks.length || pick.lines?.length) && (
+          <CustomerSearchAssessment
+            cleverQuote={cleverQuote}
             checks={modelChecks}
             wishLines={pick.lines}
           />
@@ -53,7 +51,7 @@ function ModelSlide({ pick, dealerId, isActive }) {
 }
 
 /**
- * Clever empfiehlt – Tinder/Tesla-Swipe für 1–3 passende Modelle (kein EV-Katalog).
+ * Clever Einschätzung – Swipe für 1–3 mögliche Richtungen (kein EV-Katalog).
  */
 export default function DealerModelSwipeCarousel({
   picks = [],
@@ -92,7 +90,9 @@ export default function DealerModelSwipeCarousel({
   if (!picks.length) return null;
 
   const activePick = picks[activeIndex] ?? picks[0];
-  const ctaLabel = activePick.shortTitle ?? activePick.title?.replace(/^Kia\s+/i, '') ?? 'Modell';
+  const ctaLabel = buildCustomerModelCtaLabel(
+    activePick.shortTitle ?? activePick.title?.replace(/^Kia\s+/i, '') ?? 'Modell',
+  );
 
   function handleScroll() {
     const track = trackRef.current;
@@ -122,14 +122,14 @@ export default function DealerModelSwipeCarousel({
   return (
     <div className="dl-model-swipe">
       {picks.length > 1 && (
-        <div className="dl-model-swipe__tabs" role="tablist" aria-label="Passende Modelle">
+        <div className="dl-model-swipe__tabs" role="tablist" aria-label="Mögliche Richtungen">
           {picks.map((pick, index) => (
             <button
               key={pick.modelKey}
               type="button"
               role="tab"
               aria-selected={index === activeIndex}
-              className={`dl-model-swipe__tab${index === activeIndex ? ' dl-model-swipe__tab--active' : ''}${pick.badge ? ' dl-model-swipe__tab--recommended' : ''}`}
+              className={`dl-model-swipe__tab${index === activeIndex ? ' dl-model-swipe__tab--active' : ''}`}
               onClick={() => handleTabClick(index)}
             >
               {pick.medal && (
@@ -138,13 +138,6 @@ export default function DealerModelSwipeCarousel({
               <span className="dl-model-swipe__tab-label">
                 {pick.shortTitle ?? pick.title}
               </span>
-              {pick.matchPercent != null && (
-                <span className="dl-model-swipe__tab-cq">
-                  <span aria-hidden>🏆</span>
-                  {' '}
-                  {pick.matchPercent}
-                </span>
-              )}
             </button>
           ))}
         </div>
@@ -155,7 +148,7 @@ export default function DealerModelSwipeCarousel({
         className="dl-model-swipe__track"
         onScroll={handleScroll}
         role="list"
-        aria-label="Clever empfiehlt diese Fahrzeuge"
+        aria-label="Mögliche Fahrzeug-Richtungen"
       >
         {picks.map((pick, index) => (
           <ModelSlide
@@ -184,8 +177,6 @@ export default function DealerModelSwipeCarousel({
         onClick={() => onSelectModel?.(activePick.modelKey)}
       >
         {ctaLabel}
-        {' '}
-        ansehen
       </button>
     </div>
   );

@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isChipSelected } from '../../data/features/equipmentWishChips.js';
 import { formatCurrency } from '../../logic/marketplaceService.js';
-import { getEquipmentStepCta, getNeutralPriceTierLabel, resolveTrimPriceDisplay } from '../../services/dealer/equipmentStepPresentation.js';
+import {
+  getCustomerAdvisorStepCta,
+  getEquipmentStepCta,
+  getNeutralPriceTierLabel,
+  resolveTrimPriceDisplay,
+} from '../../services/dealer/equipmentStepPresentation.js';
 import {
   analyzeEquipmentWishSelection,
   getEquipmentWishChipGroups,
   resolveActiveEquipmentRecommendation,
 } from '../../services/configuration/equipmentWishAdvisor.js';
+import {
+  buildCustomerAssessmentSummary,
+  buildCustomerWishPayload,
+  CUSTOMER_ADVISOR_COPY,
+  presentCustomerTrimLine,
+} from '../../services/dealer/customerAdvisorPresentation.js';
+import CustomerAdvisorCompletionCard from './CustomerAdvisorCompletionCard.jsx';
 import EquipmentFeatureSearch from './EquipmentFeatureSearch.jsx';
 import { useTrimCardShuffle } from './useTrimCardShuffle.js';
 import '../vehicle-detail/vehicle-detail.css';
@@ -33,65 +45,91 @@ function TrimLineCard({
   total,
   isLeading,
   isJourney = false,
+  isCustomerJourney = false,
   ctaLabel = '',
   onContinue,
 }) {
-  const price = resolveTrimPriceDisplay({
-    knownPurchaseType,
-    rate: line.rate,
-    rateDelta: line.rateDelta,
-    cashPrice: line.cashPrice,
-    cashDelta: line.cashDelta,
-    trimName: line.trimName,
-    index,
-    total,
-    formatCurrency,
-  });
+  const price = isCustomerJourney
+    ? { primary: line.roleLabel ?? line.description, secondary: null, neutral: true }
+    : resolveTrimPriceDisplay({
+      knownPurchaseType,
+      rate: line.rate,
+      rateDelta: line.rateDelta,
+      cashPrice: line.cashPrice,
+      cashDelta: line.cashDelta,
+      trimName: line.trimName,
+      index,
+      total,
+      formatCurrency,
+    });
 
-  const displayDesc = isJourney && !knownPurchaseType
-    ? getNeutralPriceTierLabel(index, total)
-    : line.description;
+  const displayDesc = isCustomerJourney
+    ? line.roleLabel ?? line.description
+    : (isJourney && !knownPurchaseType
+      ? getNeutralPriceTierLabel(index, total)
+      : line.description);
 
   return (
     <article
       data-trim-id={line.trimId}
-      className={`vd-eq-trim${selected ? ' vd-eq-trim--selected' : ''}${line.recommended ? ' vd-eq-trim--recommended' : ''}${isLeading ? ' vd-eq-trim--leading' : ''}`}
+      className={`vd-eq-trim${selected ? ' vd-eq-trim--selected' : ''}${line.recommended ? ' vd-eq-trim--recommended' : ''}${isLeading ? ' vd-eq-trim--leading' : ''}${isCustomerJourney ? ' vd-eq-trim--customer' : ''}`}
     >
       <button type="button" className="vd-eq-trim__head" onClick={() => onSelect?.(line.trimId)}>
         <div className="vd-eq-trim__title-row">
           <h4 className="vd-eq-trim__name">{line.trimName}</h4>
-          {line.badge && <span className="vd-eq-trim__badge">{line.badge}</span>}
+          {line.badge && !isCustomerJourney && (
+            <span className="vd-eq-trim__badge">{line.badge}</span>
+          )}
         </div>
         <p className="vd-eq-trim__desc">{displayDesc}</p>
-        {hasWishes && line.matchPercent > 0 && <MatchBar percent={line.matchPercent} />}
-        <div className="vd-eq-trim__price-row">
-          {price.primary && (
-            <p className={`vd-eq-trim__rate${price.neutral ? ' vd-eq-trim__rate--neutral' : ''}`}>
-              {price.primary}
-            </p>
-          )}
-          {price.secondary && (
-            <p className="vd-eq-trim__delta">{price.secondary}</p>
-          )}
-        </div>
+        {hasWishes && line.matchPercent > 0 && !isCustomerJourney && (
+          <MatchBar percent={line.matchPercent} />
+        )}
+        {!isCustomerJourney && (
+          <div className="vd-eq-trim__price-row">
+            {price.primary && (
+              <p className={`vd-eq-trim__rate${price.neutral ? ' vd-eq-trim__rate--neutral' : ''}`}>
+                {price.primary}
+              </p>
+            )}
+            {price.secondary && (
+              <p className="vd-eq-trim__delta">{price.secondary}</p>
+            )}
+          </div>
+        )}
       </button>
-      {hasWishes && (line.fulfilled?.length > 0 || line.missing?.length > 0 || line.uncertain?.length > 0) && (
+      {hasWishes && (line.fulfilledItems?.length > 0 || line.fulfilled?.length > 0 || line.missing?.length > 0 || line.uncertain?.length > 0 || line.openPoints?.length > 0) && (
         <div className="vd-eq-trim__details">
-          {line.fulfilled?.length > 0 && (
-            <ul className="vd-eq-trim__list vd-eq-trim__list--ok">
-              {line.fulfilled.map((item) => (
-                <li key={item}><span aria-hidden>✓</span> {item}</li>
-              ))}
-            </ul>
+          {(line.fulfilledItems ?? line.fulfilled)?.length > 0 && (
+            <>
+              {isCustomerJourney && (
+                <p className="vd-eq-trim__detail-heading">{line.fulfilledHeading ?? CUSTOMER_ADVISOR_COPY.fulfilledHeading}</p>
+              )}
+              <ul className="vd-eq-trim__list vd-eq-trim__list--ok">
+                {(line.fulfilledItems ?? line.fulfilled).map((item) => (
+                  <li key={item}><span aria-hidden>✓</span> {item}</li>
+                ))}
+              </ul>
+            </>
           )}
-          {line.missing?.length > 0 && (
+          {isCustomerJourney && line.openPoints?.length > 0 && (
+            <>
+              <p className="vd-eq-trim__detail-heading">{line.checkHeading ?? CUSTOMER_ADVISOR_COPY.checkHeading}</p>
+              <ul className="vd-eq-trim__list vd-eq-trim__list--uncertain">
+                {line.openPoints.map((item) => (
+                  <li key={item}><span aria-hidden>•</span> {item}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {!isCustomerJourney && line.missing?.length > 0 && (
             <ul className="vd-eq-trim__list vd-eq-trim__list--miss">
               {line.missing.map((item) => (
                 <li key={item}><span aria-hidden>○</span> {item}</li>
               ))}
             </ul>
           )}
-          {line.uncertain?.length > 0 && (
+          {!isCustomerJourney && line.uncertain?.length > 0 && (
             <ul className="vd-eq-trim__list vd-eq-trim__list--uncertain">
               {line.uncertain.map((item) => (
                 <li key={item}>
@@ -102,7 +140,7 @@ function TrimLineCard({
           )}
         </div>
       )}
-      {selected && isJourney && ctaLabel && onContinue && (
+      {isCustomerJourney && ctaLabel && onContinue && (
         <button
           type="button"
           className="vd-eq-trim__cta vd-btn vd-btn--primary vd-btn--block"
@@ -111,7 +149,16 @@ function TrimLineCard({
           {ctaLabel}
         </button>
       )}
-      {!selected && isJourney && isLeading && ctaLabel && onContinue && (
+      {!isCustomerJourney && selected && isJourney && ctaLabel && onContinue && (
+        <button
+          type="button"
+          className="vd-eq-trim__cta vd-btn vd-btn--primary vd-btn--block"
+          onClick={() => onContinue(line.trimId)}
+        >
+          {ctaLabel}
+        </button>
+      )}
+      {!isCustomerJourney && !selected && isJourney && isLeading && ctaLabel && onContinue && (
         <button
           type="button"
           className="vd-eq-trim__cta vd-btn vd-btn--primary vd-btn--block"
@@ -127,23 +174,37 @@ function TrimLineCard({
 export default function EquipmentWishAdvisor({
   vehicle,
   modelKey,
+  modelLabel = '',
   selectedFeatures = [],
   searchedFeatures: searchedFeaturesProp,
   trimId,
   knownPurchaseType = null,
   paymentMode = 'leasing',
   variant = 'default',
+  advisorPhase: advisorPhaseProp,
+  onAdvisorPhaseChange,
   onToggleChip,
   onApplyRecommendation,
   onRecommendationChange,
   onSearchedFeaturesChange,
   onInquiry,
   onJourneyContinue,
+  onCustomerWishReserve,
+  onContactRequest,
 }) {
   const [previewTrimId, setPreviewTrimId] = useState(null);
   const [internalSearched, setInternalSearched] = useState([]);
+  const [internalPhase, setInternalPhase] = useState('wishes');
   const isJourney = variant === 'journey';
+  const isCustomerJourney = isJourney;
   const searchedFeatures = searchedFeaturesProp ?? internalSearched;
+
+  const phase = advisorPhaseProp ?? internalPhase;
+
+  function setPhase(next) {
+    if (advisorPhaseProp == null) setInternalPhase(next);
+    onAdvisorPhaseChange?.(next);
+  }
 
   function setSearchedFeatures(next) {
     const value = typeof next === 'function' ? next(searchedFeatures) : next;
@@ -165,49 +226,124 @@ export default function EquipmentWishAdvisor({
   );
 
   const effectivePaymentMode = knownPurchaseType ?? paymentMode;
+  const showAssessment = !isCustomerJourney || phase === 'assessment' || phase === 'completion';
+  const hasSelection = selectedChipIds.length > 0 || searchedFeatures.length > 0;
 
   const analysis = useMemo(
-    () => analyzeEquipmentWishSelection(
+    () => {
+      if (isCustomerJourney && !showAssessment) {
+        return {
+          empty: false,
+          hasWishes: hasSelection,
+          hasPackages: false,
+          trimLines: [],
+          packages: [],
+          recommendation: null,
+        };
+      }
+      return analyzeEquipmentWishSelection(
+        vehicle.brand,
+        vehicle.model,
+        selectedChipIds,
+        {
+          paymentType: effectivePaymentMode,
+          selectedTrimId: previewTrimId ?? trimId,
+          modelKey,
+          searchedFeatures,
+        },
+      );
+    },
+    [
       vehicle.brand,
       vehicle.model,
       selectedChipIds,
-      {
-        paymentType: effectivePaymentMode,
-        selectedTrimId: previewTrimId ?? trimId,
-        modelKey,
-        searchedFeatures,
-      },
-    ),
-    [vehicle.brand, vehicle.model, selectedChipIds, effectivePaymentMode, previewTrimId, trimId, modelKey, searchedFeatures],
+      effectivePaymentMode,
+      previewTrimId,
+      trimId,
+      modelKey,
+      searchedFeatures,
+      isCustomerJourney,
+      showAssessment,
+      hasSelection,
+    ],
   );
 
   const chipGroups = useMemo(
-    () => getEquipmentWishChipGroups(vehicle.brand, vehicle.model, modelKey),
-    [vehicle.brand, vehicle.model, modelKey],
+    () => getEquipmentWishChipGroups(vehicle.brand, vehicle.model, modelKey, {
+      customerJourney: isCustomerJourney,
+    }),
+    [vehicle.brand, vehicle.model, modelKey, isCustomerJourney],
   );
 
-  const hasSelection = analysis.hasWishes ?? (selectedChipIds.length > 0 || searchedFeatures.length > 0);
-  const equipmentCta = getEquipmentStepCta(knownPurchaseType, hasSelection);
+  const equipmentCta = isCustomerJourney
+    ? getCustomerAdvisorStepCta(hasSelection)
+    : getEquipmentStepCta(knownPurchaseType, analysis.hasWishes ?? hasSelection);
+
+  const displayModelLabel = modelLabel || vehicle.model || 'Fahrzeug';
+
+  const assessmentSummary = useMemo(
+    () => (isCustomerJourney && showAssessment
+      ? buildCustomerAssessmentSummary(analysis, displayModelLabel)
+      : null),
+    [isCustomerJourney, showAssessment, analysis, displayModelLabel],
+  );
+
+  const customerTrimLines = useMemo(
+    () => (isCustomerJourney && showAssessment
+      ? (analysis.trimLines ?? []).map((line, index, arr) => presentCustomerTrimLine(line, index, arr.length))
+      : analysis.trimLines ?? []),
+    [isCustomerJourney, showAssessment, analysis.trimLines],
+  );
+
   const activeTrimId = previewTrimId ?? analysis.recommendation?.trimId ?? trimId;
   const activeRecommendation = useMemo(
-    () => resolveActiveEquipmentRecommendation(analysis, activeTrimId),
-    [analysis, activeTrimId],
+    () => (showAssessment ? resolveActiveEquipmentRecommendation(analysis, activeTrimId) : null),
+    [analysis, activeTrimId, showAssessment],
   );
-  const trimOrderKey = analysis.trimLines?.map((line) => line.trimId) ?? [];
+  const trimOrderKey = customerTrimLines?.map((line) => line.trimId) ?? [];
   const trimListRef = useTrimCardShuffle(trimOrderKey);
   const topMatchPercent = hasSelection
-    ? Math.max(0, ...(analysis.trimLines?.map((line) => line.matchPercent) ?? []))
+    ? Math.max(0, ...(customerTrimLines?.map((line) => line.matchPercent) ?? []))
     : 0;
 
   useEffect(() => {
-    if (!isJourney || previewTrimId || !analysis.recommendation?.trimId) return;
+    if (!isJourney || !showAssessment || previewTrimId || !analysis.recommendation?.trimId) return;
     setPreviewTrimId(analysis.recommendation.trimId);
-  }, [isJourney, previewTrimId, analysis.recommendation?.trimId]);
+  }, [isJourney, showAssessment, previewTrimId, analysis.recommendation?.trimId]);
 
   useEffect(() => {
-    if (!activeRecommendation) return;
+    if (!activeRecommendation || !showAssessment || phase === 'completion') return;
     onRecommendationChange?.(activeRecommendation);
-  }, [activeRecommendation, onRecommendationChange]);
+  }, [activeRecommendation, onRecommendationChange, showAssessment, phase]);
+
+  function handleShowAssessment() {
+    if (!hasSelection) return;
+    setPhase('assessment');
+  }
+
+  function handleReserveTrim(trimIdForReserve) {
+    const line = customerTrimLines.find((l) => l.trimId === trimIdForReserve)
+      ?? analysis.trimLines?.find((l) => l.trimId === trimIdForReserve);
+    const payload = buildCustomerWishPayload({
+      modelKey,
+      modelLabel: displayModelLabel,
+      selectedChipIds,
+      searchedFeatures,
+      analysis,
+      reservedTrimId: trimIdForReserve,
+      reservedTrimName: line?.trimName ?? null,
+      possibleTrimIds: assessmentSummary?.trimIds ?? [],
+      openCheckpoints: line?.openPoints ?? [],
+    });
+
+    setPreviewTrimId(trimIdForReserve);
+    setPhase('completion');
+    onCustomerWishReserve?.(payload);
+
+    if (!isCustomerJourney) {
+      handleTrimContinue(trimIdForReserve);
+    }
+  }
 
   function handleTrimContinue(trimIdForContinue) {
     const rec = resolveActiveEquipmentRecommendation(analysis, trimIdForContinue);
@@ -219,24 +355,39 @@ export default function EquipmentWishAdvisor({
     onApplyRecommendation?.(rec);
   }
 
+  function handleEditWishes() {
+    setPhase('wishes');
+    setPreviewTrimId(null);
+  }
+
+  const completionDirection = assessmentSummary?.directionLabel ?? '';
+
   return (
     <section
-      className={`vd-wish vd-wish--embedded vd-wish--equipment${isJourney ? ' vd-wish--portal' : ''}`}
+      className={`vd-wish vd-wish--embedded vd-wish--equipment${isJourney ? ' vd-wish--portal' : ''}${isCustomerJourney ? ' vd-wish--customer-advisor' : ''}`}
       id="vd-wish-builder"
       aria-label="Ausstattungsberatung"
     >
-      <div className="vd-wish__intro">
-        <h2 className="vd-wish__title">
-          {isJourney ? 'Welche Variante passt besser?' : 'Welche Ausstattung passt zu Ihnen?'}
-        </h2>
-        {!isJourney && (
-          <p className="vd-wish__question vd-wish__subline">
-            Wählen Sie aus, was Ihnen wichtig ist – Clever empfiehlt die passende Variante.
-          </p>
-        )}
-      </div>
+      {(phase === 'wishes') && (
+        <div className="vd-wish__intro">
+          <h2 className="vd-wish__title">
+            {isCustomerJourney
+              ? CUSTOMER_ADVISOR_COPY.wishesHeadline(displayModelLabel)
+              : (isJourney ? 'Welche Variante passt besser?' : 'Welche Ausstattung passt zu Ihnen?')}
+          </h2>
+          {isCustomerJourney ? (
+            <p className="vd-wish__question vd-wish__subline">
+              {CUSTOMER_ADVISOR_COPY.wishesSubline}
+            </p>
+          ) : !isJourney && (
+            <p className="vd-wish__question vd-wish__subline">
+              Wählen Sie aus, was Ihnen wichtig ist – Clever grenzt die passende Richtung ein.
+            </p>
+          )}
+        </div>
+      )}
 
-      {chipGroups.map((group) => (
+      {phase === 'wishes' && chipGroups.map((group) => (
         <div key={group.id} className="vd-wish__group">
           <p className="vd-wish__group-label">{group.label}</p>
           <div className="vd-wish__chips vd-wish__chips--equipment">
@@ -259,33 +410,81 @@ export default function EquipmentWishAdvisor({
         </div>
       ))}
 
-      <EquipmentFeatureSearch
-        brand={vehicle.brand}
-        model={vehicle.model}
-        modelKey={modelKey}
-        selectedFeatureIds={selectedFeatures}
-        searchedFeatures={searchedFeatures}
-        onAddSearchedFeature={handleAddSearchedFeature}
-        onRemoveSearchedFeature={handleRemoveSearchedFeature}
-      />
+      {phase === 'wishes' && (
+        <EquipmentFeatureSearch
+          brand={vehicle.brand}
+          model={vehicle.model}
+          modelKey={modelKey}
+          selectedFeatureIds={selectedFeatures}
+          searchedFeatures={searchedFeatures}
+          onAddSearchedFeature={handleAddSearchedFeature}
+          onRemoveSearchedFeature={handleRemoveSearchedFeature}
+        />
+      )}
 
-      {!chipGroups.length && (
+      {!chipGroups.length && phase === 'wishes' && (
         <p className="vd-eq-empty">
           Für dieses Modell sind noch keine Ausstattungsdetails hinterlegt.
           Bitte wenden Sie sich an das Autohaus.
         </p>
       )}
 
-      {analysis.trimLines?.length > 0 && (
+      {isCustomerJourney && phase === 'wishes' && (
+        <div className="vd-customer-advisor-actions">
+          <button
+            type="button"
+            className="vd-btn vd-btn--primary vd-btn--block"
+            disabled={!hasSelection}
+            onClick={handleShowAssessment}
+          >
+            {equipmentCta.actionLabel}
+          </button>
+          {equipmentCta.actionHint && (
+            <p className="vd-eq-rec__hint">{equipmentCta.actionHint}</p>
+          )}
+        </div>
+      )}
+
+      {isCustomerJourney && phase === 'assessment' && assessmentSummary && (
+        <aside className="vd-eq-rec vd-eq-rec--customer" aria-label="Clever Einschätzung">
+          <h3 className="vd-eq-rec__title">{assessmentSummary.headline}</h3>
+          <p className="vd-eq-rec__label">{assessmentSummary.directionLabel}</p>
+          {assessmentSummary.reasons?.length > 0 && (
+            <>
+              <p className="vd-eq-rec__why">Warum?</p>
+              <ul className="vd-eq-rec__reasons">
+                {assessmentSummary.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="vd-eq-rec__disclaimer">{CUSTOMER_ADVISOR_COPY.disclaimer}</p>
+          <button
+            type="button"
+            className="vd-btn vd-btn--ghost vd-btn--block vd-customer-advisor-edit"
+            onClick={handleEditWishes}
+          >
+            {CUSTOMER_ADVISOR_COPY.editCta}
+          </button>
+        </aside>
+      )}
+
+      {showAssessment && customerTrimLines?.length > 0 && phase !== 'completion' && (
         <div className="vd-eq-section">
-          {!isJourney && <h3 className="vd-eq-section__title">Ihre passende Variante</h3>}
-          {!hasSelection && !isJourney && (
+          {!isJourney && !isCustomerJourney && (
+            <h3 className="vd-eq-section__title">Ihre passende Variante</h3>
+          )}
+          {isCustomerJourney && (
+            <h3 className="vd-eq-section__title">Mögliche Richtungen</h3>
+          )}
+          {!hasSelection && !isJourney && !isCustomerJourney && (
             <p className="vd-eq-section__lead">
-              Wählen Sie Wünsche aus oder lassen Sie Clever eine sinnvolle Variante empfehlen.
+              Wählen Sie Wünsche aus – Clever grenzt die passende Richtung ein.
             </p>
           )}
           <div className="vd-eq-trim-list" ref={trimListRef}>
-            {analysis.trimLines.map((line, index) => (
+            {customerTrimLines.map((line, index) => (
               <TrimLineCard
                 key={line.trimId}
                 line={line}
@@ -294,20 +493,21 @@ export default function EquipmentWishAdvisor({
                 selected={line.trimId === activeTrimId}
                 onSelect={setPreviewTrimId}
                 index={index}
-                total={analysis.trimLines.length}
+                total={customerTrimLines.length}
                 isLeading={hasSelection && index === 0 && line.matchPercent === topMatchPercent && topMatchPercent > 0}
                 isJourney={isJourney}
-                ctaLabel={equipmentCta.actionLabel}
-                onContinue={handleTrimContinue}
+                isCustomerJourney={isCustomerJourney}
+                ctaLabel={isCustomerJourney ? equipmentCta.reserveLabel : equipmentCta.actionLabel}
+                onContinue={isCustomerJourney ? handleReserveTrim : handleTrimContinue}
               />
             ))}
           </div>
         </div>
       )}
 
-      {hasSelection && analysis.hasPackages && analysis.packages?.length > 0 && (
+      {!isCustomerJourney && hasSelection && analysis.hasPackages && analysis.packages?.length > 0 && (
         <div className="vd-eq-section">
-          <h3 className="vd-eq-section__title">Empfohlene Pakete</h3>
+          <h3 className="vd-eq-section__title">Passende Pakete</h3>
           <div className="vd-eq-pkg-list">
             {analysis.packages.map((pkg) => (
               <article key={pkg.id} className="vd-eq-pkg">
@@ -321,12 +521,12 @@ export default function EquipmentWishAdvisor({
         </div>
       )}
 
-      {activeRecommendation && (
+      {!isCustomerJourney && activeRecommendation && (
         <aside
           className={`vd-eq-rec vd-eq-rec--highlight${isJourney ? ' vd-eq-rec--journey' : ''}`}
-          aria-label="Unsere Empfehlung"
+          aria-label="Clever Einschätzung"
         >
-          <h3 className="vd-eq-rec__title">Unsere Empfehlung</h3>
+          <h3 className="vd-eq-rec__title">Clever Einschätzung</h3>
           <p className="vd-eq-rec__label">{activeRecommendation.label}</p>
           {activeRecommendation.reasons?.length > 0 && (
             <ul className="vd-eq-rec__reasons">
@@ -355,11 +555,19 @@ export default function EquipmentWishAdvisor({
                 className="vd-btn vd-btn--secondary vd-btn--block"
                 onClick={() => onInquiry?.(activeRecommendation)}
               >
-                Angebot mit dieser Ausstattung anfragen
+                Zur Anfrage hinzufügen
               </button>
             )}
           </div>
         </aside>
+      )}
+
+      {isCustomerJourney && phase === 'completion' && (
+        <CustomerAdvisorCompletionCard
+          directionLabel={completionDirection}
+          onContactRequest={() => onContactRequest?.()}
+          onEdit={handleEditWishes}
+        />
       )}
     </section>
   );

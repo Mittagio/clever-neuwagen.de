@@ -68,8 +68,8 @@ export function buildAdvisorModelPick(group, index = 0, context = {}) {
   const matchPercent = resolveMatchPercent(group);
 
   return {
-    medal: index === 0 ? '🏆' : (MEDALS[index] ?? `${index + 1}.`),
-    badge: index === 0 ? 'Empfohlen' : null,
+    medal: index === 0 ? null : (MEDALS[index] ?? `${index + 1}.`),
+    badge: null,
     title: resolveDealerModelTitle(group),
     shortTitle: KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? resolveDealerModelTitle(group).replace(/^Kia\s+/i, ''),
     lines: buildNeedSearchModelLines(group, searchProfile, { searchProfile, searchWishes, chipIds }),

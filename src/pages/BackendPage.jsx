@@ -11,6 +11,7 @@ import DealerVehicleManagement from '../components/backend/DealerVehicleManageme
 import EquipmentDataInspector from '../components/admin/EquipmentDataInspector.jsx';
 import EquipmentSalesSearch from '../components/admin/EquipmentSalesSearch.jsx';
 import CleverLearningRequestsAdmin from '../components/admin/CleverLearningRequestsAdmin.jsx';
+import CleverKnowledgeReviewAdmin from '../components/admin/CleverKnowledgeReviewAdmin.jsx';
 import BackendMarketingHub from '../components/backend/BackendMarketingHub.jsx';
 import BackendVerwaltungHub from '../components/backend/BackendVerwaltungHub.jsx';
 import BackendDiscounts from '../components/backend/BackendDiscounts.jsx';
@@ -96,6 +97,9 @@ export default function BackendPage() {
       }
       if (activeSection === 'clever-learning-requests') {
         return <CleverLearningRequestsAdmin />;
+      }
+      if (activeSection === 'clever-knowledge-review') {
+        return <CleverKnowledgeReviewAdmin />;
       }
       if (activeSection === 'showroom') {
         return (
