@@ -1,0 +1,70 @@
+.cust-offer-proposal__link-status {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cust-offer-proposal__link-url {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  word-break: break-all;
+}
+
+.cust-offer-proposal__reactions,
+.cust-offer-proposal__questions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cust-offer-proposal__reactions li,
+.cust-offer-proposal__questions li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef2f6;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.cust-offer-proposal__reactions li:last-child,
+.cust-offer-proposal__questions li:last-child {
+  border-bottom: none;
+}
+
+.cust-offer-proposal__reactions time,
+.cust-offer-proposal__questions time {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.cust-offer-proposal__question-text {
+  margin: 0;
+  flex: 1 1 100%;
+  font-weight: 500;
+}
+
+.cust-offer-proposal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cust-offer-proposal__toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.85rem;
+  z-index: 40;
+}

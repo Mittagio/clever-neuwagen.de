@@ -89,6 +89,8 @@
     "test:clever-antworten": "node src/services/cleverAntworten.test.js",
     "test:clever-kundenhelfer": "node src/services/cleverKundenhelfer.test.js",
     "test:clever-action-engine": "node src/services/crm/cleverActionEngine.test.js",
+    "test:clever-inbox": "node src/services/crm/cleverInboxService.test.js",
+    "test:customer-offer-link": "node src/services/crm/customerLinkOfferService.test.js",
     "test:clever-diktat": "node src/services/cleverDiktat.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",
     "test:backend-kpi": "node src/logic/backendKpiNavigation.test.js",

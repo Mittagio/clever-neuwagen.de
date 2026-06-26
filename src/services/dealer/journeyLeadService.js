@@ -5,6 +5,7 @@ import { LEAD_SOURCES } from '../../data/leadTypes.js';
 import { getPurchaseTypeLabel, shouldShowAllPaymentVariants } from './purchaseTypeOptions.js';
 import { getSpecialConditionLabels } from './specialConditionOptions.js';
 import { buildJourneyOffers } from './journeyOfferService.js';
+import { SOURCE_MODES } from './dealerSourceMode.js';
 
 function uid(prefix = 'lead') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -179,6 +180,12 @@ export function createLeadFromJourney({
     }
   }
 
+  const sourceMode = consultationExtras?.sourceMode
+    ?? (consultationExtras?.entryMode === 'clever' ? SOURCE_MODES.ADVISOR : null)
+    ?? (consultationExtras?.entryMode === 'classic' ? SOURCE_MODES.KNOWN_MODEL : null);
+  const sourceModelKey = consultationExtras?.sourceModelKey
+    ?? (sourceMode === SOURCE_MODES.KNOWN_MODEL ? vehicle.modelKey ?? null : null);
+
   return {
     id: uid(),
     createdAt: new Date().toISOString(),
@@ -215,14 +222,21 @@ export function createLeadFromJourney({
       configuration: inquiryBrief.configuration,
       consultation: consultationExtras,
     },
+    crm: {
+      sourceMode,
+      sourceModelKey,
+    },
     notes: dossierLines.join('\n'),
     wantTestDrive: Boolean(wantTestDrive),
     history: [
       historyEntry(`Anfrage über ${LEAD_SOURCES.dealerJourney}`),
       historyEntry(
         consultationExtras?.entryMode === 'clever'
-          ? 'Journey: Frag Clever → Beratung → Empfehlung → Verkäufer'
-          : 'Journey: Beratung → Konfiguration → Kaufart → Sonderkonditionen → Angebot',
+          || sourceMode === SOURCE_MODES.ADVISOR
+          ? 'Journey: Beratung → passende Richtung → Verkäufer'
+          : sourceMode === SOURCE_MODES.KNOWN_MODEL
+            ? 'Journey: Modell gewählt → Anfrage ans Autohaus'
+            : 'Journey: Beratung → Konfiguration → Anfrage',
       ),
       ...(wantTestDrive ? [historyEntry('Probefahrt gewünscht', 'note')] : []),
       ...dossierLines.map((line) => historyEntry(line, 'note')),

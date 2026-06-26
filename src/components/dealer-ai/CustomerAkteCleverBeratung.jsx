@@ -59,7 +59,7 @@ export default function CustomerAkteCleverBeratung({
 
         {recommendation?.vehicleTitle && (
           <div className="cust-clever-beratung__block cust-clever-beratung__block--highlight">
-            <p className="cust-clever-beratung__label">Clever Empfehlung</p>
+            <p className="cust-clever-beratung__label">Passende Richtung</p>
             <p className="cust-clever-beratung__rec-title">{recommendation.vehicleTitle}</p>
             <dl className="cust-clever-beratung__rec-meta">
               {recommendation.trimLabel && (
@@ -143,7 +143,7 @@ export default function CustomerAkteCleverBeratung({
             className="cust-clever-beratung__action cust-clever-beratung__action--ghost"
             onClick={onChangeRecommendation}
           >
-            Empfehlung ändern
+            Richtung anpassen
           </button>
         </div>
       </div>

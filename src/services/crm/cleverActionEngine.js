@@ -4,6 +4,16 @@
 import { computeUnterlagenSummary } from '../cleverUnterlagen.js';
 import { needsSelbstauskunft, getSelbstauskunft, SELBSTAUSKUNFT_STATUS } from '../cleverSelbstauskunft.js';
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
+import {
+  countOpenQuestions,
+  getCustomerOfferInteraction,
+  INTEREST_STATUS,
+} from '../customerOfferInteraction.js';
+import {
+  findPrimaryOpenInboxItemForLead,
+  INBOX_EVENT_TYPES,
+  listInboxItemsForCustomer,
+} from './cleverInboxService.js';
 import { getCustomerFirstName, formatVehicleActionPrefix, formatSelectionActionPrefix } from '../customerAkte.js';
 import {
   findPreparedSelectionGroup,
@@ -17,9 +27,12 @@ export const CLEVER_ACTION_IDS = {
   LEASING_APPROVED: 'leasing_approved',
   LEASING_READY: 'leasing_ready',
   DOCUMENTS_MISSING: 'documents_missing',
+  DOCUMENTS_INBOX_CHECK: 'documents_inbox_check',
   OFFER_OPENED_CALL: 'offer_opened_call',
   OFFER_SEND: 'offer_send',
   OFFER_FOLLOWUP: 'offer_followup',
+  OFFER_QUESTION_ANSWER: 'offer_question_answer',
+  OFFER_INTEREST_FOLLOWUP: 'offer_interest_followup',
   SELECTION_SEND: 'selection_send',
   SELECTION_FOLLOWUP: 'selection_followup',
   GENERAL_REMINDER: 'general_reminder',
@@ -34,7 +47,10 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.VEHICLE_ARRIVING]: 20,
   [CLEVER_ACTION_IDS.LEASING_APPROVED]: 30,
   [CLEVER_ACTION_IDS.LEASING_READY]: 40,
+  [CLEVER_ACTION_IDS.DOCUMENTS_INBOX_CHECK]: 54,
   [CLEVER_ACTION_IDS.OFFER_OPENED_CALL]: 60,
+  [CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER]: 52,
+  [CLEVER_ACTION_IDS.OFFER_INTEREST_FOLLOWUP]: 56,
   [CLEVER_ACTION_IDS.OFFER_SEND]: 70,
   [CLEVER_ACTION_IDS.SELECTION_FOLLOWUP]: 57,
   [CLEVER_ACTION_IDS.SELECTION_SEND]: 68,
@@ -76,9 +92,24 @@ const ACTION_DEFINITIONS = {
     ctaLabel: 'Dokumentenlink senden',
     handlerType: 'documents',
   },
+  [CLEVER_ACTION_IDS.DOCUMENTS_INBOX_CHECK]: {
+    title: 'Unterlagen prüfen',
+    ctaLabel: 'Unterlagen öffnen',
+    handlerType: 'documents',
+  },
   [CLEVER_ACTION_IDS.OFFER_OPENED_CALL]: {
-    title: 'Jetzt anrufen',
-    ctaLabel: 'Anrufen',
+    title: 'Angebot nachfassen',
+    ctaLabel: 'Kunden kontaktieren',
+    handlerType: 'call',
+  },
+  [CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER]: {
+    title: 'Kundenfrage beantworten',
+    ctaLabel: 'Frage beantworten',
+    handlerType: 'offer_question',
+  },
+  [CLEVER_ACTION_IDS.OFFER_INTEREST_FOLLOWUP]: {
+    title: 'Interesse nachfassen',
+    ctaLabel: 'Kunden kontaktieren',
     handlerType: 'call',
   },
   [CLEVER_ACTION_IDS.OFFER_SEND]: {
@@ -203,8 +234,8 @@ function buildActionCandidate(actionId, {
       title = `${vehiclePrefix}-Vorschlag prüfen`;
       ctaLabel = title;
     } else if (actionId === CLEVER_ACTION_IDS.OFFER_OPENED_CALL) {
-      title = `${vehiclePrefix}: Jetzt anrufen`;
-      ctaLabel = 'Anrufen';
+      title = `${vehiclePrefix}: Angebot nachfassen`;
+      ctaLabel = 'Kunden kontaktieren';
     } else if (actionId === CLEVER_ACTION_IDS.OFFER_FOLLOWUP) {
       title = `${vehiclePrefix}: Nachfassen`;
       ctaLabel = 'Kunde kontaktieren';
@@ -233,6 +264,21 @@ function buildActionCandidate(actionId, {
     whyClever: reason,
     meta,
   };
+}
+
+function findCardWithOpenQuestion(vehicleCards = [], lead = null) {
+  return vehicleCards.find((card) => {
+    const interaction = getCustomerOfferInteraction(lead, card.id);
+    return countOpenQuestions(interaction) > 0;
+  }) ?? null;
+}
+
+function findInterestedCard(vehicleCards = [], lead = null) {
+  return vehicleCards.find((card) => {
+    const interaction = getCustomerOfferInteraction(lead, card.id);
+    if (interaction?.interestStatus === INTEREST_STATUS.INTERESTED) return true;
+    return normalizeOfferStatus(card) === VEHICLE_OFFER_STATUS.ACCEPTED;
+  }) ?? null;
 }
 
 export function buildCleverActionContext({
@@ -272,6 +318,15 @@ export function buildCleverActionContext({
     primaryCard,
     paymentType,
     offerStatus,
+    questionCard: findCardWithOpenQuestion(vehicleCards, lead),
+    interestedCard: findInterestedCard(vehicleCards, lead),
+    inboxItems: lead?.id ? listInboxItemsForCustomer(lead.id) : [],
+    primaryInboxItem: lead?.id
+      ? findPrimaryOpenInboxItemForLead(lead.id, [
+        INBOX_EVENT_TYPES.CUSTOMER_QUESTION,
+        INBOX_EVENT_TYPES.OFFER_QUESTION,
+      ])
+      : null,
     unterlagenSummary,
     selbstauskunftComplete,
     vehicleFulfillmentStatus,
@@ -306,6 +361,10 @@ export function evaluateCleverActions(context) {
     primaryCard,
     preparedSelectionGroup,
     reactedSelectionGroup,
+    questionCard,
+    interestedCard,
+    inboxItems,
+    primaryInboxItem,
   } = context;
 
   const specialQuestion = lead?.specialCustomerQuestion;
@@ -322,6 +381,48 @@ export function evaluateCleverActions(context) {
       reason: 'Antwort vorbereitet',
       explanation: 'Die Antwort zur Kundenfrage ist bereit – jetzt an den Kunden senden.',
       meta: { knowledgeAnswerId: specialAnswer.knowledgeAnswerId ?? null },
+    }));
+  }
+
+  if (primaryInboxItem) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER, {
+      reason: 'Kundenfrage im Clever Eingang',
+      explanation: primaryInboxItem.message || 'Der Kunde hat eine Frage gestellt.',
+      meta: { cardId: primaryInboxItem.offerId, inboxItemId: primaryInboxItem.id },
+      vehicleCard: vehicleCards.find((card) => card.id === primaryInboxItem.offerId) ?? primaryCard,
+    }));
+  }
+
+  const uploadedDocItem = inboxItems.find((item) => item.type === INBOX_EVENT_TYPES.DOCUMENT_UPLOADED);
+  if (uploadedDocItem) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.DOCUMENTS_INBOX_CHECK, {
+      reason: 'Unterlage hochgeladen',
+      explanation: uploadedDocItem.message || 'Der Kunde hat eine Unterlage hochgeladen.',
+      meta: { inboxItemId: uploadedDocItem.id },
+      vehicleCard: primaryCard,
+    }));
+  }
+
+  if (questionCard && !primaryInboxItem) {
+    const openCount = countOpenQuestions(getCustomerOfferInteraction(context.lead, questionCard.id));
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER, {
+      reason: 'Kunde hat eine Frage gestellt',
+      explanation: openCount > 1
+        ? `Der Kunde hat ${openCount} offene Fragen zu einem Angebot.`
+        : 'Der Kunde hat eine Frage zu einem Angebot gestellt.',
+      meta: { cardId: questionCard.id },
+      vehicleCard: questionCard,
+    }));
+  }
+
+  if (interestedCard && interestedCard.id !== questionCard?.id) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_INTEREST_FOLLOWUP, {
+      reason: 'Kunde hat Interesse markiert',
+      explanation: firstName
+        ? `${firstName} hat Interesse an einem Vorschlag gezeigt.`
+        : 'Der Kunde hat Interesse an einem Vorschlag gezeigt.',
+      meta: { cardId: interestedCard.id },
+      vehicleCard: interestedCard,
     }));
   }
 
@@ -405,13 +506,13 @@ export function evaluateCleverActions(context) {
     }));
   }
 
-  if (offerStatus === VEHICLE_OFFER_STATUS.OPENED) {
+  if (offerStatus === VEHICLE_OFFER_STATUS.OPENED && !questionCard) {
     const when = daysSinceLabel(daysSinceOpened) ?? 'kürzlich';
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_OPENED_CALL, {
       reason: 'Kunde hat Angebot geöffnet',
       explanation: firstName
-        ? `${firstName} hat das Angebot ${when} geöffnet. Die Abschlusswahrscheinlichkeit ist aktuell erhöht.`
-        : `Der Kunde hat das Angebot ${when} geöffnet. Die Abschlusswahrscheinlichkeit ist aktuell erhöht.`,
+        ? `${firstName} hat das Angebot ${when} geöffnet.`
+        : `Der Kunde hat das Angebot ${when} geöffnet.`,
       meta: { daysSinceOpened, cardId: primaryCard?.id },
       vehicleCard: primaryCard,
     }));

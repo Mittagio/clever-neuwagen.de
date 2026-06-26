@@ -58,7 +58,7 @@ export default function CleverConsultationWizard({
   if (!question) {
     return (
       <section className="dl-clever-consult dl-clever-consult--done" aria-live="polite">
-        <p className="dl-clever-consult__done">Clever hat genug Informationen – Empfehlung wird erstellt …</p>
+        <p className="dl-clever-consult__done">Clever hat genug Informationen – passende Richtung wird vorbereitet …</p>
       </section>
     );
   }
@@ -66,7 +66,7 @@ export default function CleverConsultationWizard({
   return (
     <section className="dl-clever-consult" aria-labelledby="dl-clever-consult-title">
       <header className="dl-clever-consult__head">
-        <p className="dl-clever-consult__eyebrow">🚀 Frag Clever</p>
+        <p className="dl-clever-consult__eyebrow">Frag Clever</p>
         {salesIntent?.modeLabel && (
           <span className={`dl-clever-consult__mode dl-clever-consult__mode--${salesIntent.mode}`}>
             {salesIntent.modeLabel}
@@ -115,7 +115,7 @@ export default function CleverConsultationWizard({
           className="dl-clever-consult__skip"
           onClick={handleSkipToRecommendation}
         >
-          Empfehlung jetzt anzeigen
+          Passende Richtung anzeigen
         </button>
       )}
     </section>

@@ -103,7 +103,7 @@ import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
 import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import CleverLexikon from '../backend/CleverLexikon.jsx';
-import { addCustomKundenhelferChip } from '../../services/cleverKundenhelfer.js';
+import { useCleverInboxOptional } from '../../context/CleverInboxContext.jsx';
 import { normalizeConversationNotes } from '../../services/kundenhelferConversationNotes.js';
 import { createEmptyTradeIn, getTradeIn, patchTradeIn } from '../../services/customerAkteTradeIn.js';
 import { buildLexiconAkteChip } from '../../services/lexicon/cleverLexiconSearchService.js';
@@ -244,13 +244,20 @@ export default function DealerAiLeadFollowUp({
   onSave,
   onPrepareOffer,
   onPrepareOfferFromClever,
+  onOpenOfferProposal,
   onOpenOfferEdit,
+  onOpenInbox,
   onReturnToReview,
   onDiscard,
   onAddHistory,
   initialSheet = null,
   isSaving = false,
 }) {
+  const inbox = useCleverInboxOptional();
+  const inboxOpenCount = useMemo(
+    () => (lead?.id ? (inbox?.countForCustomer(lead.id) ?? 0) : 0),
+    [inbox, lead?.id, inbox?.version],
+  );
   const fields = parsed?.fields ?? {};
   const crm = lead?.crm ?? {};
 
@@ -573,6 +580,10 @@ export default function DealerAiLeadFollowUp({
   }
 
   function openActivitiesSheet() {
+    if (inboxOpenCount > 0 && onOpenInbox) {
+      onOpenInbox(lead);
+      return;
+    }
     openSheet(SHEETS.history);
     onSave?.(buildSavePayload({
       activitiesLastSeenAt: new Date().toISOString(),
@@ -736,6 +747,10 @@ export default function DealerAiLeadFollowUp({
   }
 
   function openVehicleCard(card) {
+    if (onOpenOfferProposal) {
+      onOpenOfferProposal(card);
+      return;
+    }
     if (onOpenOfferEdit) {
       onOpenOfferEdit(card);
       return;
@@ -745,6 +760,10 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleVehicleOffer(card) {
+    if (onOpenOfferProposal) {
+      onOpenOfferProposal(card);
+      return;
+    }
     if (onOpenOfferEdit) {
       onOpenOfferEdit(card);
       return;
@@ -1126,11 +1145,18 @@ export default function DealerAiLeadFollowUp({
       }
       return;
     }
-    if (handler === 'offer_send') {
+    if (handler === 'offer_send' || handler === 'offer_question' || handler === 'offer_proposal') {
       const cardId = actionHint?.meta?.cardId;
       const card = cardId
         ? vehicleCards.find((c) => c.id === cardId)
         : vehicleCards[0];
+      if (card && onOpenOfferProposal) {
+        onOpenOfferProposal(card);
+        if (handler === 'offer_question') {
+          openCleverAntworten('offer_question');
+        }
+        return;
+      }
       if (card) {
         handleVehicleOffer(card);
       } else {
@@ -1214,13 +1240,14 @@ export default function DealerAiLeadFollowUp({
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
         onActivities={openActivitiesSheet}
         unterlagenBadge={unterlagenOpenCount}
-        activitiesBadge={activityDashboard.newCustomerActivities}
+        activitiesBadge={inboxOpenCount || activityDashboard.newCustomerActivities}
         activitiesBadgeDetail={activityDashboard}
       />
 
       <CustomerAkteKundenhelfer
         notes={kundenhelferNotes}
         conversationNotes={conversationNotes}
+        lead={lead}
         onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
         variant="profile"
       />
