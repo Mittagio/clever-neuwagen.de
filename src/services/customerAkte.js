@@ -9,6 +9,10 @@ import {
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
 import { getCleverStaerkeTier } from './cleverStaerke.js';
 import { VEHICLE_OFFER_STATUS_UI, enrichCardWithVehicleOffer, VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
+import {
+  getCustomerOfferInteraction,
+  resolveBoardBadge,
+} from './customerOfferInteraction.js';
 import { computeUnterlagenSummary } from './cleverUnterlagen.js';
 import {
   getSelbstauskunft,
@@ -428,8 +432,9 @@ export const TABLE_VEHICLE_STATUS = {
   configured: { label: 'Entwurf', tone: 'muted' },
   offer_prepared: { label: 'Entwurf', tone: 'muted' },
   sent: { label: 'Gesendet', tone: 'muted' },
-  opened: { label: 'Gesendet', tone: 'muted' },
-  interested: { label: 'Favorit', tone: 'accent' },
+  opened: { label: 'Geöffnet', tone: 'accent' },
+  interested: { label: 'Interessiert', tone: 'accent' },
+  question: { label: 'Frage offen', tone: 'warn' },
   rejected: { label: 'Abgelehnt', tone: 'muted' },
   closing_ready: { label: 'Abschlussbereit', tone: 'accent' },
 };
@@ -453,9 +458,22 @@ function isCardClosingReady(card = {}, lead = null) {
 }
 
 export function resolveVehicleStatus(card = {}, { lead = null } = {}) {
+  const interaction = lead ? getCustomerOfferInteraction(lead, card.id) : null;
+  const vehicleOffer = card.vehicleOffer ?? null;
+  const closingReady = isCardClosingReady(card, lead);
+
+  const badge = resolveBoardBadge(card, interaction, vehicleOffer, { closingReady });
+  if (badge) {
+    return {
+      label: badge.label,
+      tone: badge.tone,
+      openQuestionCount: badge.openQuestionCount ?? 0,
+    };
+  }
+
   const voStatus = card.vehicleOffer?.status ?? card.offer?.status;
 
-  if (isCardClosingReady(card, lead)) {
+  if (closingReady) {
     return TABLE_VEHICLE_STATUS.closing_ready;
   }
   if (voStatus === VEHICLE_OFFER_STATUS.REJECTED) {

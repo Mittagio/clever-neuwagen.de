@@ -16,14 +16,14 @@ export default function SellerHandoffPanel({
   return (
     <section className="dl-seller-handoff" aria-labelledby="dl-seller-handoff-title">
       <header className="dl-seller-handoff__head">
-        <p className="dl-seller-handoff__eyebrow">👤 Verkäufer übernimmt</p>
+        <p className="dl-seller-handoff__eyebrow">Verkäufer übernimmt</p>
         <h2 id="dl-seller-handoff-title" className="dl-seller-handoff__title">
-          Ihre Beratung ist vorbereitet
+          Ihre Anfrage ist vorbereitet
         </h2>
         <p className="dl-seller-handoff__sub">
           {dealerName ?? 'Ihr Verkaufsberater'}
           {' '}
-          erhält alle Antworten und kann direkt mit Ihnen ins Gespräch gehen.
+          prüft Ihre Angaben und meldet sich bei Ihnen.
         </p>
       </header>
 
@@ -73,7 +73,7 @@ export default function SellerHandoffPanel({
           className="btn btn-primary"
           onClick={onRequestContact}
         >
-          Kontakt aufnehmen
+          Verkäufer soll mich kontaktieren
         </button>
         <button
           type="button"
@@ -84,7 +84,7 @@ export default function SellerHandoffPanel({
         </button>
         {onBack && (
           <button type="button" className="dl-seller-handoff__back" onClick={onBack}>
-            ← Zur Empfehlung
+            ← Zurück
           </button>
         )}
       </div>

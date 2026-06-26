@@ -373,7 +373,7 @@ export function buildCleverRecommendation({
   if (!modelKey) {
     return {
       ready: false,
-      message: 'Noch nicht genug Informationen für eine konkrete Empfehlung.',
+      message: 'Noch nicht genug Informationen – das Autohaus kann Ihre Wünsche prüfen.',
       profile,
       openQuestions: ['Welches Fahrzeugmodell interessiert Sie?'],
     };
@@ -464,7 +464,7 @@ export function buildConsultationHandoffSummary(profile, recommendation = null) 
   if (answers.v2l === 'yes') lines.push({ label: 'V2L', value: 'gewünscht' });
 
   if (recommendation?.ready) {
-    lines.push({ label: 'Clever Empfehlung', value: recommendation.vehicleTitle, highlight: true });
+    lines.push({ label: 'Passende Richtung', value: recommendation.vehicleTitle, highlight: true });
     if (recommendation.whyLines?.length) {
       lines.push({ label: 'Gründe', value: recommendation.whyLines.join(' · ') });
     }
@@ -484,7 +484,14 @@ export function buildConsultationHandoffSummary(profile, recommendation = null) 
 /**
  * @param {object} params
  */
-export function createConsultationLeadExtras({ profile, recommendation, handoffSummary }) {
+export function createConsultationLeadExtras({
+  profile,
+  recommendation,
+  handoffSummary,
+  sourceMode = 'advisor_mode',
+  sourceModelKey = null,
+  entryMode = 'clever',
+}) {
   return {
     consultationProfile: profile,
     salesIntent: profile?.salesIntent ?? null,
@@ -497,6 +504,8 @@ export function createConsultationLeadExtras({ profile, recommendation, handoffS
       alternatives: recommendation.alternatives,
     } : null,
     consultationHandoff: handoffSummary,
-    entryMode: 'clever',
+    sourceMode,
+    sourceModelKey,
+    entryMode,
   };
 }

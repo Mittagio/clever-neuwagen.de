@@ -31,6 +31,7 @@ import CustomerAddVehicleDuplicatePrompt from '../components/dealer-ai/CustomerA
 import DealerAiCustomerCapture from '../components/dealer-ai/DealerAiCustomerCapture.jsx';
 import DealerAiLeadFollowUp from '../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../components/dealer-ai/CustomerOfferEditView.jsx';
+import CustomerOfferProposalView from '../components/dealer-ai/CustomerOfferProposalView.jsx';
 import DealerAiResultPanel from '../components/dealer-ai/DealerAiResultPanel.jsx';
 import {
   attachPdfToOffer,
@@ -111,6 +112,8 @@ export default function DealerAIPage() {
   const [duplicatePrompt, setDuplicatePrompt] = useState(null);
   const [toast, setToast] = useState('');
   const [offerEditCard, setOfferEditCard] = useState(null);
+  const [offerProposalCard, setOfferProposalCard] = useState(null);
+  const [offerEditFromProposal, setOfferEditFromProposal] = useState(false);
   const [cleverOfferTransfer, setCleverOfferTransfer] = useState(null);
   const [offerPendingFields, setOfferPendingFields] = useState([]);
   const [configureDraft, setConfigureDraft] = useState(null);
@@ -885,8 +888,19 @@ export default function DealerAIPage() {
     setIsFreshLead(false);
   }
 
-  function handleOpenOfferEdit(card) {
+  function handleOpenOfferProposal(card) {
+    setOfferProposalCard(card);
+    setPhase('offer-proposal');
+  }
+
+  function handleBackFromProposal() {
+    setOfferProposalCard(null);
+    setPhase('followup');
+  }
+
+  function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
     setOfferEditCard(card);
+    setOfferEditFromProposal(fromProposal);
     setCleverOfferTransfer(activeLead?.crm?.cleverOfferTransfer ?? null);
     setOfferPendingFields([]);
     setPhase('offer-edit');
@@ -896,6 +910,12 @@ export default function DealerAIPage() {
     setOfferEditCard(null);
     setCleverOfferTransfer(null);
     setOfferPendingFields([]);
+    if (offerEditFromProposal && offerProposalCard) {
+      setOfferEditFromProposal(false);
+      setPhase('offer-proposal');
+      return;
+    }
+    setOfferEditFromProposal(false);
     setPhase('followup');
   }
 
@@ -914,10 +934,11 @@ export default function DealerAIPage() {
   }
 
   async function handleOfferUploadPdf(file) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
     const next = await attachPdfToOffer(base, file);
-    persistVehicleOffer(offerEditCard.id, next, {
+    persistVehicleOffer(card.id, next, {
       text: VEHICLE_OFFER_HISTORY.pdf_uploaded,
       type: 'offer_pdf',
     });
@@ -925,14 +946,17 @@ export default function DealerAIPage() {
   }
 
   function handleOfferCreateLink() {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
-    const title = formatVehicleCardTitle(offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
+    const title = formatVehicleCardTitle(card);
     const next = createOnlineLinkForOffer(base, {
       modelName: title,
       customerName: activeLead?.contact?.name ?? '',
+      leadId: result.leadId,
+      vehicleCardId: card.id,
     });
-    persistVehicleOffer(offerEditCard.id, next, {
+    persistVehicleOffer(card.id, next, {
       text: VEHICLE_OFFER_HISTORY.link_created,
       type: 'offer_link',
     });
@@ -940,8 +964,9 @@ export default function DealerAIPage() {
   }
 
   function handleOfferDeletePdf() {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
     const next = {
       ...base,
       status: VEHICLE_OFFER_STATUS.DRAFT,
@@ -950,13 +975,14 @@ export default function DealerAIPage() {
       sentVia: null,
       sentAt: null,
     };
-    persistVehicleOffer(offerEditCard.id, next);
+    persistVehicleOffer(card.id, next);
     showToast('PDF entfernt');
   }
 
   function handleOfferMarkSent(via) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
     if (!base.onlineLink?.url) return;
     const next = markOfferSent(base, via);
     const historyMap = {
@@ -965,13 +991,14 @@ export default function DealerAIPage() {
       copy: { text: 'Link kopiert – bereit zum Teilen', type: 'offer_sent' },
     };
     const meta = historyMap[via] ?? null;
-    persistVehicleOffer(offerEditCard.id, next, meta);
+    persistVehicleOffer(card.id, next, meta);
     if (via !== 'copy') showToast('Angebot gesendet');
   }
 
   function handleOfferStatusChange(statusId) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
     let next = { ...base, status: statusId };
     if (statusId === VEHICLE_OFFER_STATUS.OPENED) {
       next = recordOfferOpened(base);
@@ -981,14 +1008,15 @@ export default function DealerAIPage() {
       [VEHICLE_OFFER_STATUS.REJECTED]: { text: VEHICLE_OFFER_HISTORY.rejected, type: 'offer_rejected' },
       [VEHICLE_OFFER_STATUS.OPENED]: { text: VEHICLE_OFFER_HISTORY.opened, type: 'offer_opened' },
     };
-    persistVehicleOffer(offerEditCard.id, next, historyMap[statusId] ?? null);
+    persistVehicleOffer(card.id, next, historyMap[statusId] ?? null);
     showToast('Status aktualisiert');
   }
 
   function handleOfferSave() {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(activeLead ?? {}, offerEditCard);
-    persistVehicleOffer(offerEditCard.id, base);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(activeLead ?? {}, card);
+    persistVehicleOffer(card.id, base);
     showToast('Gespeichert');
   }
 
@@ -1009,8 +1037,16 @@ export default function DealerAIPage() {
     ? getVehicleOffer(activeLead ?? {}, offerEditCard)
     : null;
 
+  const activeOfferProposal = offerProposalCard
+    ? getVehicleOffer(activeLead ?? {}, offerProposalCard)
+    : null;
+
+  function resolveOfferActionCard() {
+    return offerEditCard ?? offerProposalCard;
+  }
+
   const pageKicker = 'Digitaler Verkaufsassistent';
-  const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
+  const pageTitle = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-proposal' || phase === 'offer-preview'
     ? ''
     : phase === 'configure' || phase === 'conditions' || phase === 'offer-variants'
       ? ''
@@ -1021,7 +1057,7 @@ export default function DealerAIPage() {
       : phase === 'done' && result?.type !== 'lead'
         ? 'Ich habe erkannt'
         : 'Was sucht Ihr Kunde?';
-  const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-preview'
+  const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-proposal' || phase === 'offer-preview'
     ? ''
     : phase === 'configure' || phase === 'conditions' || phase === 'offer-variants'
       ? ''
@@ -1038,6 +1074,7 @@ export default function DealerAIPage() {
   const showMainHero = phase !== 'followup'
     && phase !== 'capture'
     && phase !== 'offer-edit'
+    && phase !== 'offer-proposal'
     && phase !== 'offer-preview'
     && phase !== 'configure'
     && phase !== 'conditions'
@@ -1101,7 +1138,7 @@ export default function DealerAIPage() {
 
   return (
     <div className="dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-variants' || phase === 'offer-preview' || phase === 'offer-edit' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' ? ' dealer-ai-main--akte' : ''}`}>
+      <main className={`dealer-ai-main${phase === 'review' ? ' dealer-ai-main--review' : ''}${phase === 'configure' || phase === 'conditions' || phase === 'offer-variants' || phase === 'offer-preview' || phase === 'offer-edit' || phase === 'offer-proposal' ? ' dealer-ai-main--configure' : ''}${phase === 'followup' ? ' dealer-ai-main--akte' : ''}`}>
         {showMainHero && (
           <div className={`dealer-ai-hero${phase === 'review' ? ' dealer-ai-hero--review' : ''}`}>
             {phase !== 'review' && (
@@ -1254,11 +1291,28 @@ export default function DealerAIPage() {
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
             onPrepareOfferFromClever={handlePrepareOfferFromClever}
+            onOpenOfferProposal={handleOpenOfferProposal}
+            onOpenInbox={(currentLead) => navigate(`/backend/clever-eingang?leadId=${encodeURIComponent(currentLead.id)}`)}
             onOpenOfferEdit={handleOpenOfferEdit}
             onReturnToReview={handleReturnToReview}
             onDiscard={handleDiscard}
             onAddHistory={handleLeadHistory}
             isSaving={isSavingLead}
+          />
+        )}
+
+        {phase === 'offer-proposal' && result?.type === 'lead' && offerProposalCard && (
+          <CustomerOfferProposalView
+            card={offerProposalCard}
+            customerName={activeLead?.contact?.name ?? ''}
+            phone={activeLead?.contact?.phone ?? ''}
+            email={activeLead?.contact?.email ?? ''}
+            offer={activeOfferProposal ?? createVehicleOfferFromCard(offerProposalCard)}
+            lead={activeLead}
+            onBack={handleBackFromProposal}
+            onEditOffer={(card) => handleOpenOfferEdit(card, { fromProposal: true })}
+            onMarkSent={handleOfferMarkSent}
+            onStatusChange={handleOfferStatusChange}
           />
         )}
 
@@ -1274,6 +1328,7 @@ export default function DealerAIPage() {
             lead={activeLead}
             cleverTransfer={cleverOfferTransfer ?? activeLead?.crm?.cleverOfferTransfer ?? null}
             pendingFields={offerPendingFields}
+            backLabel={offerEditFromProposal ? '← Zum Vorschlag' : '← Zur Kundenakte'}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
             onUploadPdf={handleOfferUploadPdf}
@@ -1295,7 +1350,7 @@ export default function DealerAIPage() {
         )}
       </main>
 
-      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'offer-variants' && phase !== 'recognition-animate' && !(phase === 'input' && startView === 'home') && (
+      {phase !== 'followup' && phase !== 'offer-edit' && phase !== 'offer-proposal' && phase !== 'offer-preview' && phase !== 'configure' && phase !== 'conditions' && phase !== 'offer-variants' && phase !== 'recognition-animate' && !(phase === 'input' && startView === 'home') && (
         <DealerAppLegalMenu compact className="dealer-ai-legal" />
       )}
 

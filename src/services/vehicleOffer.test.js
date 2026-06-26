@@ -18,10 +18,17 @@ import {
   buildVehicleOpportunityCards,
 } from './customerAkte.js';
 
-const url = buildOnlineOfferUrl({ modelName: 'Kia EV3 Earth', customerName: 'Max Müller' });
+const url = buildOnlineOfferUrl({
+  modelName: 'Kia EV3 Earth',
+  customerName: 'Max Müller',
+  leadId: 'lead-99',
+  vehicleCardId: 'card-1',
+});
 assert.ok(url.includes('/angebot/online/'));
 assert.ok(url.includes('ev3-earth'));
 assert.ok(url.includes('max-muller'));
+assert.ok(url.includes('leadId=lead-99'));
+assert.ok(url.includes('cardId=card-1'));
 
 const card = { id: 'ev3-1', modelName: 'Kia EV3', paymentType: 'leasing' };
 const offer = createVehicleOfferFromCard(card);

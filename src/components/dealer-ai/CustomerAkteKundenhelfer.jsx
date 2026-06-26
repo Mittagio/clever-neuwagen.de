@@ -4,6 +4,7 @@ import {
 } from '../../services/cleverKundenhelfer.js';
 import { countConversationNotes } from '../../services/kundenhelferConversationNotes.js';
 import { getKundenhelferChipIcon } from '../../services/customerAkte.js';
+import { getSourceModeChipLabel } from '../../services/dealer/dealerSourceMode.js';
 import './CustomerAkte.css';
 
 /**
@@ -12,18 +13,20 @@ import './CustomerAkte.css';
 export default function CustomerAkteKundenhelfer({
   notes = '',
   conversationNotes = [],
+  lead = null,
   onOpenSheet,
   variant = 'profile',
 }) {
   const chips = parseKundenhelferNotes(notes);
   const { visible, moreCount } = getProfileKundenhelferChips(notes);
   const noteCount = countConversationNotes(conversationNotes);
+  const sourceModeLabel = getSourceModeChipLabel(lead);
 
   if (variant !== 'profile') {
     return null;
   }
 
-  if (!chips.length) {
+  if (!chips.length && !sourceModeLabel) {
     return (
       <div className="cust-akte-kh cust-akte-kh--profile cust-akte-kh--profile-empty" aria-label="Clever Kundenhelfer">
         <button type="button" className="cust-akte-kh__add-link cust-akte-kh__add-link--profile" onClick={onOpenSheet}>
@@ -41,6 +44,12 @@ export default function CustomerAkteKundenhelfer({
   return (
     <div className="cust-akte-kh cust-akte-kh--profile" aria-label="Clever Kundenhelfer">
       <div className="cust-akte-kh__grid cust-akte-kh__grid--profile">
+        {sourceModeLabel && (
+          <span className="cust-akte-kh__chip cust-akte-kh__chip--profile cust-akte-kh__chip--source">
+            <span className="cust-akte-kh__chip-icon" aria-hidden>◎</span>
+            <span className="cust-akte-kh__chip-label">{sourceModeLabel}</span>
+          </span>
+        )}
         {visible.map((chip) => (
           <button
             key={chip}

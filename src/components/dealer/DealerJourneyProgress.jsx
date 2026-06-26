@@ -11,7 +11,7 @@ const CLASSIC_STEPS = [
 
 const CLEVER_STEPS = [
   { id: 'consult', label: 'Beratung' },
-  { id: 'recommendation', label: 'Empfehlung' },
+  { id: 'recommendation', label: 'Passende Richtung' },
   { id: 'handoff', label: 'Verkäufer' },
   { id: 'inquiry', label: 'Anfrage' },
 ];

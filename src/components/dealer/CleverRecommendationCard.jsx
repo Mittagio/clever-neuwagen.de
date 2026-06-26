@@ -4,7 +4,7 @@ import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import './clever-consultation.css';
 
 /**
- * Clever Empfehlung – Fahrzeug + Ausstattung mit Alternativen.
+ * Passende Richtung – Fahrzeug + Ausstattung mit Alternativen.
  */
 export default function CleverRecommendationCard({
   recommendation,
@@ -16,7 +16,7 @@ export default function CleverRecommendationCard({
   if (!recommendation?.ready) {
     return (
       <section className="dl-clever-rec dl-clever-rec--empty">
-        <p>{recommendation?.message ?? 'Clever bereitet Ihre Empfehlung vor …'}</p>
+        <p>{recommendation?.message ?? 'Clever prüft passende Richtungen …'}</p>
       </section>
     );
   }
@@ -38,7 +38,7 @@ export default function CleverRecommendationCard({
   return (
     <section className="dl-clever-rec" aria-labelledby="dl-clever-rec-title">
       <header className="dl-clever-rec__head">
-        <p className="dl-clever-rec__eyebrow">🏆 Clever Empfehlung</p>
+        <p className="dl-clever-rec__eyebrow">Das könnte passen</p>
         <h2 id="dl-clever-rec-title" className="dl-clever-rec__title">
           Kia
           {' '}
@@ -69,7 +69,7 @@ export default function CleverRecommendationCard({
             />
           )}
 
-          <h3 className="dl-clever-rec__why-title">Warum?</h3>
+          <h3 className="dl-clever-rec__why-title">Warum das passen könnte</h3>
           <ul className="dl-clever-rec__reasons">
             {whyLines.map((line) => (
               <li key={line}>
@@ -113,7 +113,7 @@ export default function CleverRecommendationCard({
               className="btn btn-primary dl-clever-rec__cta-primary"
               onClick={() => onTalkToSeller?.(recommendation)}
             >
-              Mit Verkaufsberater besprechen
+              Verkäufer soll mich kontaktieren
             </button>
             <button
               type="button"

@@ -3,6 +3,7 @@ import InternalTestEnvHead from './components/shared/InternalTestEnvHead.jsx';
 import { DealerConditionsProvider } from './context/DealerConditionsContext';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { LeadsProvider } from './context/LeadsContext';
+import CleverInboxBridge from './context/CleverInboxBridge.jsx';
 import { TemplatesProvider } from './context/TemplatesContext';
 import { OffersProvider } from './context/OffersContext';
 import { CommunicationProvider } from './context/CommunicationContext.jsx';
@@ -23,6 +24,7 @@ export default function App() {
       <DealerConditionsProvider>
       <CustomerAuthProvider>
         <LeadsProvider>
+          <CleverInboxBridge>
           <VoucherPartnersProvider>
           <TemplatesProvider>
             <OffersProvider>
@@ -48,6 +50,7 @@ export default function App() {
             </OffersProvider>
           </TemplatesProvider>
           </VoucherPartnersProvider>
+          </CleverInboxBridge>
         </LeadsProvider>
       </CustomerAuthProvider>
     </DealerConditionsProvider>

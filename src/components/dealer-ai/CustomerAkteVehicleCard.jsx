@@ -27,7 +27,7 @@ export default function CustomerAkteVehicleCard({
         type="button"
         className="cust-akte-vcard__main"
         onClick={() => onClick?.(card)}
-        aria-label={`${title} bearbeiten`}
+        aria-label={`${title} – Vorschlag ansehen`}
       >
         <div className="cust-akte-vcard__visual">
           <VehicleImage
@@ -46,6 +46,11 @@ export default function CustomerAkteVehicleCard({
           <span className={`cust-akte-vcard__status cust-akte-vcard__status--${status.tone}`}>
             {status.label}
           </span>
+          {status.openQuestionCount > 0 && (
+            <span className="cust-akte-vcard__question-hint">
+              {status.openQuestionCount} Frage{status.openQuestionCount > 1 ? 'n' : ''} offen
+            </span>
+          )}
         </div>
       </button>
 

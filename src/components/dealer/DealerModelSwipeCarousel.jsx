@@ -155,7 +155,7 @@ export default function DealerModelSwipeCarousel({
         className="dl-model-swipe__track"
         onScroll={handleScroll}
         role="list"
-        aria-label="Clever empfiehlt diese Fahrzeuge"
+        aria-label="Passende Modelle zur Auswahl"
       >
         {picks.map((pick, index) => (
           <ModelSlide

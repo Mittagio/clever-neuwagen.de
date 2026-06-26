@@ -82,11 +82,21 @@ function startOfDay(date) {
   return d;
 }
 
-export function buildOnlineOfferUrl({ modelName = '', customerName = '' } = {}) {
+export function buildOnlineOfferUrl({
+  modelName = '',
+  customerName = '',
+  leadId = null,
+  vehicleCardId = null,
+} = {}) {
   const model = slugify(modelName.replace(/^kia\s*/i, '')) || 'angebot';
   const customer = slugify(customerName) || 'kunde';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://kia-angebote.de';
-  return `${origin}/angebot/online/${model}/${customer}`;
+  const base = `${origin}/angebot/online/${model}/${customer}`;
+  const params = new URLSearchParams();
+  if (leadId) params.set('leadId', leadId);
+  if (vehicleCardId) params.set('cardId', vehicleCardId);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 export function formatFileSize(bytes = 0) {
@@ -172,12 +182,22 @@ export function attachPdfToOffer(offer, file) {
   });
 }
 
-export function createOnlineLinkForOffer(offer, { modelName, customerName } = {}) {
-  const url = buildOnlineOfferUrl({ modelName, customerName });
+export function createOnlineLinkForOffer(offer, {
+  modelName,
+  customerName,
+  leadId = null,
+  vehicleCardId = null,
+} = {}) {
+  const url = buildOnlineOfferUrl({ modelName, customerName, leadId, vehicleCardId });
   return {
     ...offer,
     status: VEHICLE_OFFER_STATUS.LINK_READY,
-    onlineLink: { url, createdAt: new Date().toISOString() },
+    onlineLink: {
+      url,
+      createdAt: new Date().toISOString(),
+      leadId: leadId ?? null,
+      vehicleCardId: vehicleCardId ?? offer.vehicleCardId ?? null,
+    },
   };
 }
 

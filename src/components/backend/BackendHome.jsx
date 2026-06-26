@@ -7,6 +7,7 @@ import {
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import BackendCustomerSearch from './BackendCustomerSearch.jsx';
 import BackendRecentCustomers from './BackendRecentCustomers.jsx';
+import BackendHomeToday from './BackendHomeToday.jsx';
 import './BackendHome.css';
 
 export default function BackendHome() {
@@ -50,6 +51,8 @@ export default function BackendHome() {
         leads={leads}
         onOpenCustomerRecord={handleOpenCustomerRecord}
       />
+
+      <BackendHomeToday leads={leads} />
     </div>
   );
 }

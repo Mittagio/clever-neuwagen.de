@@ -62,6 +62,14 @@ const khSource = readFileSync(
 );
 assert.ok(khSource.includes('onOpenSheet'), 'Klick auf Chip öffnet onOpenSheet');
 assert.ok(
+  khSource.includes('getSourceModeChipLabel'),
+  'Herkunft der Anfrage als Chip',
+);
+assert.ok(
+  followUpSource.includes('lead={lead}'),
+  'Lead wird für Herkunfts-Chip übergeben',
+);
+assert.ok(
   khSource.includes('+ Kundeninfo hinzufügen'),
   'leerer Zustand zeigt „+ Kundeninfo hinzufügen“',
 );

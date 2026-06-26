@@ -114,6 +114,10 @@ import {
   prefillConsultationFromSalesIntent,
   SALES_INTENT_THRESHOLDS,
 } from '../services/dealer/cleverSalesIntent.js';
+import {
+  resolveLeadSourceMode,
+  SOURCE_MODES,
+} from '../services/dealer/dealerSourceMode.js';
 import { hydrateStammdatenFromServer } from '../services/admin/stammdatenHydration.js';
 import './DealerPage.css';
 import './dealer-mobile.css';
@@ -1163,6 +1167,29 @@ export default function DealerPage() {
 
   const handleLeadSubmit = useCallback((contact) => {
     const { offerBundle } = prepareJourneyLeadContext(journeySnapshot, conditions);
+    const { sourceMode, sourceModelKey } = resolveLeadSourceMode({
+      entryMode,
+      isClassicEntry,
+      isCleverEntry,
+      hasSearch,
+      modelKey: selectedModelKey,
+    });
+    const consultationExtras = consultationProfile
+      ? createConsultationLeadExtras({
+        profile: consultationProfile,
+        recommendation: cleverRecommendation,
+        handoffSummary: consultationHandoff,
+        sourceMode: sourceMode ?? SOURCE_MODES.ADVISOR,
+        sourceModelKey,
+        entryMode: entryMode ?? 'clever',
+      })
+      : (sourceMode
+        ? {
+          sourceMode,
+          sourceModelKey,
+          entryMode: entryMode ?? (isClassicEntry ? 'classic' : 'clever'),
+        }
+        : null);
     const lead = createLeadFromJourney({
       contact,
       journeySnapshot,
@@ -1172,13 +1199,7 @@ export default function DealerPage() {
       dealerConditions: conditions,
       message: contact.message,
       wantTestDrive: contact.wantTestDrive,
-      consultationExtras: consultationProfile
-        ? createConsultationLeadExtras({
-          profile: consultationProfile,
-          recommendation: cleverRecommendation,
-          handoffSummary: consultationHandoff,
-        })
-        : null,
+      consultationExtras,
     });
     addLead(lead);
     clearJourneyState(dealerId);
@@ -1192,7 +1213,22 @@ export default function DealerPage() {
     requestAnimationFrame(() => {
       offersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [journeySnapshot, conditions, journeyCleverQuote, submittedQuery, addLead, dealerId, consultationProfile, cleverRecommendation, consultationHandoff]);
+  }, [
+    journeySnapshot,
+    conditions,
+    journeyCleverQuote,
+    submittedQuery,
+    addLead,
+    dealerId,
+    consultationProfile,
+    cleverRecommendation,
+    consultationHandoff,
+    entryMode,
+    isClassicEntry,
+    isCleverEntry,
+    hasSearch,
+    selectedModelKey,
+  ]);
 
   useEffect(() => {
     if (!isNeedBasedAdvisor || salesStep || isCleverEntry) return;
@@ -1222,10 +1258,10 @@ export default function DealerPage() {
     if (effectiveSalesStep === 'consult' && isCleverEntry) {
       return {
         salesStep: effectiveSalesStep,
-        title: 'Frag Clever',
-        subtitle: 'Clever stellt die wichtigsten Fragen',
-        stepLabel: 'Beratung',
-        actionLabel: 'Empfehlung anzeigen',
+        title: 'Beratung',
+        subtitle: null,
+        stepLabel: 'Vorberatung',
+        actionLabel: 'Passende Richtung anzeigen',
         onAction: () => handleConsultationComplete(consultationProfile),
       };
     }
@@ -1234,9 +1270,9 @@ export default function DealerPage() {
       return {
         salesStep: effectiveSalesStep,
         title: cleverRecommendation.vehicleTitle,
-        subtitle: 'Clever Empfehlung',
-        stepLabel: 'Empfehlung',
-        actionLabel: 'Mit Verkaufsberater besprechen',
+        subtitle: null,
+        stepLabel: 'Passende Richtung',
+        actionLabel: 'Verkäufer soll mich kontaktieren',
         onAction: handleTalkToSeller,
       };
     }
@@ -1244,10 +1280,10 @@ export default function DealerPage() {
     if (effectiveSalesStep === 'handoff' && consultationHandoff) {
       return {
         salesStep: effectiveSalesStep,
-        title: cleverRecommendation?.vehicleTitle ?? 'Beratung',
-        subtitle: 'Für den Verkäufer vorbereitet',
-        stepLabel: 'Verkäufer',
-        actionLabel: 'Kontakt aufnehmen',
+        title: cleverRecommendation?.vehicleTitle ?? 'Anfrage',
+        subtitle: null,
+        stepLabel: 'Kontakt',
+        actionLabel: 'Verkäufer soll mich kontaktieren',
         onAction: handleRequestLead,
       };
     }
@@ -1257,10 +1293,8 @@ export default function DealerPage() {
       return {
         salesStep: effectiveSalesStep,
         title: shortTitle,
-        subtitle: activeRecommendPick.matchPercent != null
-          ? `🏆 CleverQuote ${activeRecommendPick.matchPercent}`
-          : 'Clever-Empfehlung',
-        stepLabel: 'Passendes Modell',
+        subtitle: null,
+        stepLabel: 'Passende Richtung',
         actionLabel: `${shortTitle} ansehen`,
         onAction: () => handleViewVehicle(activeRecommendPick.modelKey),
       };

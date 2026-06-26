@@ -776,6 +776,16 @@
   justify-content: center;
 }
 
+.cust-akte-kh__chip--profile.cust-akte-kh__chip--source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+  cursor: default;
+}
+
 .cust-akte-kh__add-link--profile {
   font-size: 0.75rem;
   font-weight: 600;
@@ -2061,6 +2071,18 @@
 .cust-akte-vcard__status--accent {
   background: #e8eef8;
   color: #0b1736;
+}
+
+.cust-akte-vcard__status--warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.cust-akte-vcard__question-hint {
+  margin: 4px 0 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #c2410c;
 }
 
 .cust-akte-vcard--board .cust-akte-vcard__menu {

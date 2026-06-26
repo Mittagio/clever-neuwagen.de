@@ -76,6 +76,7 @@ export default function CustomerOfferEditView({
   lead = null,
   telHref = null,
   onBack,
+  backLabel = '← Zur Kundenakte',
   onSave,
   onUploadPdf,
   onCreateLink,
@@ -190,9 +191,9 @@ export default function CustomerOfferEditView({
 
   return (
     <OfferFlowLayout
-      backLabel="← Zur Kundenakte"
+      backLabel={backLabel}
       onBack={onBack}
-      title="Gespeichertes Angebot"
+      title="Angebot bearbeiten"
       titleAside={referenceCode ?? null}
     >
       {cleverTransfer && (
@@ -430,7 +431,7 @@ export default function CustomerOfferEditView({
           {isSaving ? 'Speichert…' : 'Speichern'}
         </FlowPrimaryButton>
         <FlowSecondaryButton type="button" onClick={onBack}>
-          Zur Kundenakte
+          {backLabel?.replace(/^←\s*/, '') ?? 'Zurück'}
         </FlowSecondaryButton>
       </FlowStickyFooter>
 

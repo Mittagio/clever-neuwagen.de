@@ -8,6 +8,7 @@ import intelligenceRoutes from './intelligenceRoutes.js';
 import sprint5Routes from './sprint5Routes.js';
 import googlePlacesRoutes from './googlePlacesRoutes.js';
 import pilotLeadsRoutes from './pilotLeadsRoutes.js';
+import customerOfferLinkRoutes from './customerOfferLinkRoutes.js';
 import advisorRoutes from './advisorRoutes.js';
 import customerRecordsRoutes from './customerRecordsRoutes.js';
 import customerInquiryRoutes from './customerInquiryRoutes.js';
@@ -80,6 +81,7 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1', sprint5Routes);
 app.use('/api/v1', pilotLeadsRoutes);
+app.use('/api/v1', customerOfferLinkRoutes);
 app.use('/api/v1', advisorRoutes);
 app.use('/api/v1', customerRecordsRoutes);
 app.use('/api/v1', customerInquiryRoutes);

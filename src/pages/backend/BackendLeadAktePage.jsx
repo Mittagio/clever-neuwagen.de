@@ -12,6 +12,7 @@ import { pipelineToLeadStatus } from '../../services/dealerAiLeadCrm.js';
 import { executeDealerAiAction } from '../../services/dealerAiActions.js';
 import DealerAiLeadFollowUp from '../../components/dealer-ai/DealerAiLeadFollowUp.jsx';
 import CustomerOfferEditView from '../../components/dealer-ai/CustomerOfferEditView.jsx';
+import CustomerOfferProposalView from '../../components/dealer-ai/CustomerOfferProposalView.jsx';
 import { buildKundenaktePath, buildParsedFromLead } from '../../services/leadAkteEntry.js';
 import { recordRecentCustomerOpen } from '../../services/crm/customerSearchService.js';
 import { buildAddVehicleContextFromLead } from '../../services/customerAddVehicleFlow.js';
@@ -48,6 +49,8 @@ export default function BackendLeadAktePage() {
   const [parsed, setParsed] = useState(null);
   const [phase, setPhase] = useState('followup');
   const [offerEditCard, setOfferEditCard] = useState(null);
+  const [offerProposalCard, setOfferProposalCard] = useState(null);
+  const [offerEditFromProposal, setOfferEditFromProposal] = useState(false);
   const [cleverOfferTransfer, setCleverOfferTransfer] = useState(null);
   const [offerPendingFields, setOfferPendingFields] = useState([]);
   const [isSavingLead, setIsSavingLead] = useState(false);
@@ -180,8 +183,19 @@ export default function BackendLeadAktePage() {
     navigate('/backend/neue-anfragen');
   }
 
-  function handleOpenOfferEdit(card) {
+  function handleOpenOfferProposal(card) {
+    setOfferProposalCard(card);
+    setPhase('offer-proposal');
+  }
+
+  function handleBackFromProposal() {
+    setOfferProposalCard(null);
+    setPhase('followup');
+  }
+
+  function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
     setOfferEditCard(card);
+    setOfferEditFromProposal(fromProposal);
     setCleverOfferTransfer(lead?.crm?.cleverOfferTransfer ?? null);
     setOfferPendingFields([]);
     setPhase('offer-edit');
@@ -191,7 +205,17 @@ export default function BackendLeadAktePage() {
     setOfferEditCard(null);
     setCleverOfferTransfer(null);
     setOfferPendingFields([]);
+    if (offerEditFromProposal && offerProposalCard) {
+      setOfferEditFromProposal(false);
+      setPhase('offer-proposal');
+      return;
+    }
+    setOfferEditFromProposal(false);
     setPhase('followup');
+  }
+
+  function resolveOfferActionCard() {
+    return offerEditCard ?? offerProposalCard;
   }
 
   function persistVehicleOffer(cardId, nextOffer, historyMeta = null) {
@@ -209,10 +233,11 @@ export default function BackendLeadAktePage() {
   }
 
   async function handleOfferUploadPdf(file) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(lead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(lead ?? {}, card);
     const next = await attachPdfToOffer(base, file);
-    persistVehicleOffer(offerEditCard.id, next, {
+    persistVehicleOffer(card.id, next, {
       text: VEHICLE_OFFER_HISTORY.pdf_uploaded,
       type: 'offer_pdf',
     });
@@ -220,14 +245,17 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOfferCreateLink() {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(lead ?? {}, offerEditCard);
-    const title = formatVehicleCardTitle(offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(lead ?? {}, card);
+    const title = formatVehicleCardTitle(card);
     const next = createOnlineLinkForOffer(base, {
       modelName: title,
       customerName: lead?.contact?.name ?? '',
+      leadId: lead?.id,
+      vehicleCardId: card.id,
     });
-    persistVehicleOffer(offerEditCard.id, next, {
+    persistVehicleOffer(card.id, next, {
       text: VEHICLE_OFFER_HISTORY.link_created,
       type: 'offer_link',
     });
@@ -235,9 +263,10 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOfferDeletePdf() {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(lead ?? {}, offerEditCard);
-    persistVehicleOffer(offerEditCard.id, {
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(lead ?? {}, card);
+    persistVehicleOffer(card.id, {
       ...base,
       status: VEHICLE_OFFER_STATUS.DRAFT,
       pdf: null,
@@ -249,8 +278,9 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOfferMarkSent(via) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(lead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(lead ?? {}, card);
     if (!base.onlineLink?.url) return;
     const next = markOfferSent(base, via);
     const historyMap = {
@@ -258,13 +288,14 @@ export default function BackendLeadAktePage() {
       whatsapp: { text: VEHICLE_OFFER_HISTORY.sent_whatsapp, type: 'offer_sent_whatsapp' },
       copy: { text: 'Link kopiert – bereit zum Teilen', type: 'offer_sent' },
     };
-    persistVehicleOffer(offerEditCard.id, next, historyMap[via] ?? null);
+    persistVehicleOffer(card.id, next, historyMap[via] ?? null);
     if (via !== 'copy') showToast('Angebot gesendet');
   }
 
   function handleOfferStatusChange(statusId) {
-    if (!offerEditCard) return;
-    const base = getVehicleOffer(lead ?? {}, offerEditCard);
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    const base = getVehicleOffer(lead ?? {}, card);
     let next = { ...base, status: statusId };
     if (statusId === VEHICLE_OFFER_STATUS.OPENED) {
       next = recordOfferOpened(base);
@@ -274,13 +305,14 @@ export default function BackendLeadAktePage() {
       [VEHICLE_OFFER_STATUS.REJECTED]: { text: VEHICLE_OFFER_HISTORY.rejected, type: 'offer_rejected' },
       [VEHICLE_OFFER_STATUS.OPENED]: { text: VEHICLE_OFFER_HISTORY.opened, type: 'offer_opened' },
     };
-    persistVehicleOffer(offerEditCard.id, next, historyMap[statusId] ?? null);
+    persistVehicleOffer(card.id, next, historyMap[statusId] ?? null);
     showToast('Status aktualisiert');
   }
 
   function handleOfferSave() {
-    if (!offerEditCard) return;
-    persistVehicleOffer(offerEditCard.id, getVehicleOffer(lead ?? {}, offerEditCard));
+    const card = resolveOfferActionCard();
+    if (!card) return;
+    persistVehicleOffer(card.id, getVehicleOffer(lead ?? {}, card));
     showToast('Gespeichert');
   }
 
@@ -301,6 +333,10 @@ export default function BackendLeadAktePage() {
     ? getVehicleOffer(lead ?? {}, offerEditCard)
     : null;
 
+  const activeOfferProposal = offerProposalCard
+    ? getVehicleOffer(lead ?? {}, offerProposalCard)
+    : null;
+
   if (!lead) {
     return (
       <div className="backend-lead-akte backend-lead-akte--empty">
@@ -312,7 +348,7 @@ export default function BackendLeadAktePage() {
 
   return (
     <div className="backend-lead-akte dealer-ai-page">
-      <main className={`dealer-ai-main${phase === 'offer-edit' ? ' dealer-ai-main--configure' : ' dealer-ai-main--akte'}`}>
+      <main className={`dealer-ai-main${phase === 'offer-edit' || phase === 'offer-proposal' ? ' dealer-ai-main--configure' : ' dealer-ai-main--akte'}`}>
         {phase === 'followup' && parsed && (
           <DealerAiLeadFollowUp
             result={{ type: 'lead', leadId }}
@@ -326,11 +362,28 @@ export default function BackendLeadAktePage() {
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
             onPrepareOfferFromClever={handlePrepareOfferFromClever}
+            onOpenOfferProposal={handleOpenOfferProposal}
+            onOpenInbox={(currentLead) => navigate(`/backend/clever-eingang?leadId=${encodeURIComponent(currentLead.id)}`)}
             onOpenOfferEdit={handleOpenOfferEdit}
             onReturnToReview={() => navigate('/verkaufsassistent')}
             onDiscard={handleBack}
             onAddHistory={handleLeadHistory}
             isSaving={isSavingLead}
+          />
+        )}
+
+        {phase === 'offer-proposal' && offerProposalCard && (
+          <CustomerOfferProposalView
+            card={offerProposalCard}
+            customerName={lead?.contact?.name ?? ''}
+            phone={lead?.contact?.phone ?? ''}
+            email={lead?.contact?.email ?? ''}
+            offer={activeOfferProposal ?? createVehicleOfferFromCard(offerProposalCard)}
+            lead={lead}
+            onBack={handleBackFromProposal}
+            onEditOffer={(card) => handleOpenOfferEdit(card, { fromProposal: true })}
+            onMarkSent={handleOfferMarkSent}
+            onStatusChange={handleOfferStatusChange}
           />
         )}
 
@@ -346,6 +399,7 @@ export default function BackendLeadAktePage() {
             lead={lead}
             cleverTransfer={cleverOfferTransfer ?? lead?.crm?.cleverOfferTransfer ?? null}
             pendingFields={offerPendingFields}
+            backLabel={offerEditFromProposal ? '← Zum Vorschlag' : '← Zur Kundenakte'}
             onBack={handleBackFromOffer}
             onSave={handleOfferSave}
             onUploadPdf={handleOfferUploadPdf}
