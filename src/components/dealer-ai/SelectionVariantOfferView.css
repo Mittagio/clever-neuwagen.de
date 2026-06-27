@@ -1,0 +1,213 @@
+.svo {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: var(--cn-bg, #f4f6f8);
+  overflow: hidden;
+}
+
+.svo__scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 0 1rem 6rem;
+}
+
+.svo__header {
+  padding: 1rem 1rem 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid var(--cn-border, #e2e6ea);
+}
+
+.svo__back {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cn-accent, #0078d4);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.svo__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.svo__subtitle {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+.svo__hero {
+  margin: 1rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.svo__hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.svo__card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.svo__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.svo__card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.svo__badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.svo__badge--ready {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.svo__line {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.svo__rate {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.svo__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.svo__link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--cn-accent, #0078d4);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.svo__upload {
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.svo__upload-title {
+  margin: 0 0 0.75rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.svo__upload-input {
+  display: none;
+}
+
+.svo__pdf-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.svo__pdf-name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.svo__pdf-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.svo__pdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.svo__btn {
+  min-height: 3rem;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  border: none;
+}
+
+.svo__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.svo__btn--primary {
+  background: #111827;
+  color: #fff;
+}
+
+.svo__btn--secondary {
+  background: #111827;
+  color: #fff;
+  width: 100%;
+}
+
+.svo__btn--ghost {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.svo__footer {
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #e2e6ea;
+}
+
+.svo__toast {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 210;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.8125rem;
+}

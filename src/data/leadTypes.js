@@ -43,4 +43,5 @@ export const LEAD_SOURCES = {
   offer: 'Angebotslink',
   equipment: 'Ausstattungsberater',
   customerAdvisor: 'Kunden-Beratung',
+  showroomMode: 'Showroom Modus',
 };

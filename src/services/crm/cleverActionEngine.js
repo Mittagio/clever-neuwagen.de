@@ -38,6 +38,7 @@ export const CLEVER_ACTION_IDS = {
   GENERAL_REMINDER: 'general_reminder',
   ANSWER_CUSTOMER_QUESTION: 'answer_customer_question',
   SEND_CUSTOMER_ANSWER: 'send_customer_answer',
+  SHOWROOM_CAPTURE_REVIEW: 'showroom_capture_review',
 };
 
 /** Niedrigere Zahl = höhere Priorität */
@@ -58,6 +59,7 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.DOCUMENTS_MISSING]: 85,
   [CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION]: 50,
   [CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER]: 51,
+  [CLEVER_ACTION_IDS.SHOWROOM_CAPTURE_REVIEW]: 48,
   [CLEVER_ACTION_IDS.GENERAL_REMINDER]: 90,
 };
 
@@ -146,6 +148,11 @@ const ACTION_DEFINITIONS = {
     title: 'Antwort an Kunden senden',
     ctaLabel: 'Antwort senden',
     handlerType: 'send_customer_answer',
+  },
+  [CLEVER_ACTION_IDS.SHOWROOM_CAPTURE_REVIEW]: {
+    title: 'Schnellaufnahme prüfen',
+    ctaLabel: 'Schnellaufnahme öffnen',
+    handlerType: 'showroom_capture_review',
   },
 };
 
@@ -381,6 +388,14 @@ export function evaluateCleverActions(context) {
       reason: 'Antwort vorbereitet',
       explanation: 'Die Antwort zur Kundenfrage ist bereit – jetzt an den Kunden senden.',
       meta: { knowledgeAnswerId: specialAnswer.knowledgeAnswerId ?? null },
+    }));
+  }
+
+  if (lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending') {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SHOWROOM_CAPTURE_REVIEW, {
+      reason: 'Showroom Schnellaufnahme',
+      explanation: 'Neue Schnellaufnahme aus dem Showroom Modus – bitte prüfen und übernehmen.',
+      meta: { captureId: lead.crm.pendingShowroomCapture.id },
     }));
   }
 

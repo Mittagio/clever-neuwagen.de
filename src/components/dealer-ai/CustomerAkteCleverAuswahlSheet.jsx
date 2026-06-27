@@ -3,11 +3,13 @@ import {
   CUSTOMER_LINK_BUTTON_LABEL,
   formatSelectionGroupStatus,
 } from '../../services/sales/offerSelectionGroup.js';
+import { VARIANT_OFFER_BUTTON_LABEL } from '../../services/sales/selectionVariantOffer.js';
 import './CustomerAkte.css';
 
 export default function CustomerAkteCleverAuswahlSheet({
   group,
   onEditVariant,
+  onOpenVariantOffer,
   onPrepareCustomerLink,
 }) {
   const detail = buildCleverAuswahlDetailModel(group);
@@ -48,22 +50,41 @@ export default function CustomerAkteCleverAuswahlSheet({
             {variant.priceLine && (
               <p className="cust-akte-auswahl__variant-price">{variant.priceLine}</p>
             )}
+            {variant.conditionsLine && (
+              <p className="cust-akte-auswahl__variant-conditions">{variant.conditionsLine}</p>
+            )}
             <p className="cust-akte-auswahl__variant-desc">{variant.shortDescription}</p>
-            <button
-              type="button"
-              className="cust-akte-auswahl__variant-edit"
-              onClick={() => onEditVariant?.(group, variant)}
-            >
-              {variant.editButtonLabel}
-            </button>
+            {variant.hasOfferPdf && (
+              <p className="cust-akte-auswahl__variant-pdf">
+                PDF:
+                {' '}
+                {variant.offerPdfFileName}
+              </p>
+            )}
+            <div className="cust-akte-auswahl__variant-actions">
+              <button
+                type="button"
+                className="cust-akte-auswahl__variant-edit"
+                onClick={() => onEditVariant?.(group, variant)}
+              >
+                {variant.editButtonLabel}
+              </button>
+              <button
+                type="button"
+                className="cust-akte-auswahl__variant-offer"
+                onClick={() => onOpenVariantOffer?.(group, variant)}
+              >
+                {variant.offerButtonLabel ?? VARIANT_OFFER_BUTTON_LABEL}
+              </button>
+            </div>
           </article>
         ))}
       </div>
 
-      <button
+        <button
         type="button"
         className="cust-akte-auswahl__link-btn"
-        onClick={() => onPrepareCustomerLink?.(group)}
+        onClick={() => onPrepareCustomerLink?.()}
       >
         {CUSTOMER_LINK_BUTTON_LABEL}
       </button>

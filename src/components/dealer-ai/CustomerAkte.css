@@ -2357,8 +2357,14 @@
 .cust-akte-auswahl__variant-price {
   margin: 6px 0 0 1.25rem;
   font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--cust-text);
+  font-weight: 700;
+  color: #059669;
+}
+
+.cust-akte-auswahl__variant-conditions {
+  margin: 2px 0 0 1.25rem;
+  font-size: 0.75rem;
+  color: var(--cust-muted);
 }
 
 .cust-akte-auswahl__variant-desc {
@@ -2369,15 +2375,41 @@
 }
 
 .cust-akte-auswahl__variant-edit {
-  margin: 8px 0 0 1.25rem;
-  padding: 6px 10px;
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid var(--cust-border);
   border-radius: 8px;
   background: #fff;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--cust-text);
   cursor: pointer;
+}
+
+.cust-akte-auswahl__variant-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0 1.25rem;
+}
+
+.cust-akte-auswahl__variant-offer {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.cust-akte-auswahl__variant-pdf {
+  margin: 6px 0 0 1.25rem;
+  font-size: 0.75rem;
+  color: #047857;
+  font-weight: 600;
 }
 
 .cust-akte-auswahl__link-btn {

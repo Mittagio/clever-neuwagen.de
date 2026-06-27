@@ -1,22 +1,40 @@
 /**
  * Clever Auswahl – Varianten-Konfigurator (Angebotswelt, nicht Wunschformular).
  */
-import { applyDealerDefaultsToDraft } from '../dealer/dealerOfferDefaults.js';
+import { applyDealerDefaultsToDraft, resolveDealerPaymentDefaults } from '../dealer/dealerOfferDefaults.js';
+import { resolvePaymentDiscountPercent } from '../dealer/dealerModelPricing.js';
+import { PAYMENT_DISCOUNT_QUICK_VALUES } from '../dealer/dealerVehicleManagement.js';
 import {
   buildConfigureOptions,
   computeLiveRateForDraft,
 } from '../dealerAiVehicleConfigureFlow.js';
+import { buildVehicleConfiguration } from '../configuration/vehicleConfigurationModel.js';
+import { buildOfferConditionsFromDraft } from '../configuration/offerConditionsModel.js';
+import { computeOfferCalculation } from '../configuration/offerCalculation.js';
 import { resolveConfigureModel } from '../configuration/configureModelBridge.js';
 import {
   buildPackageCatalog,
   sanitizePackageIdsForTrim,
 } from '../configuration/configurePackageCatalog.js';
 import { PAYMENT_TYPE_LABELS } from '../dealerAiParser.js';
+import { computeUvpPricing } from '../configuration/uvpPricing.js';
 import { OFFER_VARIANT_STATUS } from './offerSelectionGroup.js';
+import {
+  formatWishConditionsBanner,
+  hasMeaningfulWishConditions,
+} from './wishConditionsSync.js';
 
 export const VARIANT_TERM_OPTIONS = [24, 36, 48, 60];
 export const VARIANT_MILEAGE_OPTIONS = [5000, 10000, 15000, 20000, 30000];
 export const VARIANT_DOWN_OPTIONS = [0, 1000, 3000, 5000];
+export const VARIANT_PREP_PRESETS = [990, 1190, 1290, 1490];
+export { PAYMENT_DISCOUNT_QUICK_VALUES };
+
+export const VARIANT_PAYMENT_OPTIONS = [
+  { id: 'cash', label: 'Kauf / Bar' },
+  { id: 'leasing', label: 'Leasing' },
+  { id: 'financing', label: 'Finanzierung' },
+];
 
 let idCounter = 0;
 
@@ -52,7 +70,13 @@ export function buildDraftFromSelectionVariant({
   const wish = group.wishConditions ?? {};
   const payment = variant.payment ?? {};
   const options = buildConfigureOptions(modelKey, variant.trimId);
-  const trim = options.trims?.find((t) => t.id === variant.trimId) ?? options.trims?.[0];
+  const trim = options.trims?.find((t) => t.id === variant.trimId)
+    ?? (variant.trimLabel
+      ? options.trims?.find((t) => (
+        String(t.label ?? '').toLowerCase() === String(variant.trimLabel).toLowerCase()
+      ))
+      : null)
+    ?? options.trims?.[0];
 
   const draft = {
     modelKey,
@@ -67,12 +91,18 @@ export function buildDraftFromSelectionVariant({
     paymentType: payment.paymentType ?? wish.paymentType ?? 'leasing',
     termMonths: payment.termMonths ?? wish.termMonths ?? null,
     mileagePerYear: payment.mileagePerYear ?? wish.mileagePerYear ?? null,
-    downPayment: payment.downPayment ?? lead?.wish?.downPayment ?? 0,
+    downPayment: payment.downPayment ?? wish.downPayment ?? lead?.wish?.downPayment ?? 0,
     desiredRate: payment.desiredRate ?? wish.desiredRate ?? lead?.desiredRate ?? null,
-    customerGroup: variant.customerGroup ?? 'standard',
+    desiredPrice: payment.desiredPrice ?? wish.desiredPrice ?? lead?.wish?.desiredPrice ?? null,
+    customerGroup: variant.customerGroup ?? payment.customerGroup ?? 'standard',
+    customDiscountPercent: variant.customDiscountPercent ?? payment.customDiscountPercent ?? null,
+    discountLabel: variant.discountLabel ?? null,
+    preparationFee: variant.preparationFee ?? payment.preparationFee ?? null,
     packageIds: variant.packageIds ?? variant.packages ?? [],
     accessoryIds: variant.accessoryIds ?? [],
     extras: variant.extras ?? {},
+    displayPriceOverride: variant.displayPriceOverride ?? null,
+    displayRateOverride: variant.displayRateOverride ?? null,
     options,
     customer: {
       name: lead?.contact?.name ?? null,
@@ -81,7 +111,16 @@ export function buildDraftFromSelectionVariant({
     },
   };
 
-  return applyDealerDefaultsToDraft(draft, conditions);
+  const enriched = applyDealerDefaultsToDraft(draft, conditions);
+  const wishSummaryLine = hasMeaningfulWishConditions(wish)
+    ? formatWishConditionsBanner(wish)
+    : null;
+
+  return {
+    ...enriched,
+    conditionsFromWish: hasMeaningfulWishConditions(wish) && !variant.conditionsLocked,
+    wishSummaryLine,
+  };
 }
 
 /**
@@ -96,12 +135,84 @@ export function buildBaseDraftForVariant(draft) {
   };
 }
 
+export function resolveVariantDiscountPercent(draft, conditions) {
+  if (!draft) return 0;
+  return resolvePaymentDiscountPercent(
+    conditions,
+    draft.modelKey,
+    'cash',
+    draft.customerGroup ?? 'standard',
+    draft.customDiscountPercent,
+    draft.trimId,
+  );
+}
+
+export function buildVariantPrepFeeChips(defaultFee) {
+  const values = new Set([...VARIANT_PREP_PRESETS, defaultFee].filter((v) => v != null));
+  return [...values].sort((a, b) => a - b);
+}
+
+/**
+ * Barkauf wie Angebotsprogramm: UPE → Rabatt → Hauspreis + Überführung = Angebotspreis.
+ */
+export function computeVariantCashOffer(draft, conditions) {
+  const vehicleConfiguration = buildVehicleConfiguration(draft);
+  if (!vehicleConfiguration || !draft) return null;
+
+  const offerConditions = buildOfferConditionsFromDraft(draft, conditions);
+  const calculation = computeOfferCalculation(vehicleConfiguration, offerConditions, conditions);
+  if (!calculation) return null;
+
+  const preparationFee = offerConditions.preparationFee
+    ?? conditions?.preparationFee
+    ?? 1290;
+  const housePrice = calculation.housePrice ?? 0;
+  const uvp = calculation.configurationPrice
+    ?? vehicleConfiguration.uvpConfigurationPrice
+    ?? null;
+  const discountPercent = calculation.discountPercent ?? 0;
+  const discountAmount = calculation.discountAmount ?? 0;
+  const totalPrice = housePrice + preparationFee;
+
+  return {
+    uvp,
+    discountPercent,
+    discountAmount,
+    housePrice,
+    preparationFee,
+    totalPrice,
+    discountLabel: draft.discountLabel ?? null,
+  };
+}
+
 export function computeVariantConfiguratorPreview(draft, conditions, baseDraft = null) {
   if (!draft) return { rate: null, baseRate: null, delta: null, paymentLabel: null };
 
+  const paymentMode = normalizePaymentType(draft.paymentType);
+  const paymentLabel = PAYMENT_TYPE_LABELS[draft.paymentType]
+    ?? PAYMENT_TYPE_LABELS.leasing;
+
+  if (paymentMode === 'cash') {
+    const cashOffer = computeVariantCashOffer(draft, conditions);
+    const rate = cashOffer?.totalPrice ?? null;
+    let baseRate = rate;
+    if (baseDraft) {
+      const baseOffer = computeVariantCashOffer(baseDraft, conditions);
+      baseRate = baseOffer?.totalPrice ?? rate;
+    }
+    const delta = rate != null && baseRate != null ? Math.round(rate - baseRate) : null;
+    return {
+      rate,
+      baseRate,
+      delta,
+      paymentLabel,
+      isCash: true,
+      cashOffer,
+    };
+  }
+
   const live = computeLiveRateForDraft(draft, conditions);
   const rate = live?.amount ?? null;
-  const paymentMode = normalizePaymentType(draft.paymentType);
 
   let baseRate = rate;
   if (baseDraft) {
@@ -110,15 +221,14 @@ export function computeVariantConfiguratorPreview(draft, conditions, baseDraft =
   }
 
   const delta = rate != null && baseRate != null ? Math.round(rate - baseRate) : null;
-  const paymentLabel = PAYMENT_TYPE_LABELS[draft.paymentType]
-    ?? PAYMENT_TYPE_LABELS.leasing;
 
   return {
     rate,
     baseRate,
     delta,
     paymentLabel,
-    isCash: paymentMode === 'cash',
+    isCash: false,
+    cashOffer: null,
   };
 }
 
@@ -128,6 +238,81 @@ export function formatConfiguratorRate(preview) {
     return `${Math.round(preview.rate).toLocaleString('de-DE')} €`;
   }
   return `${Math.round(preview.rate).toLocaleString('de-DE')} €/Monat`;
+}
+
+/** Anzeige-Betrag mit optionalen VK-Overrides (PDF/Bank). */
+export function resolveVariantDisplayAmounts(draft, preview, variant = null) {
+  if (!draft) {
+    return { isCash: false, amount: null, formatted: '–' };
+  }
+  const isCash = preview?.isCash ?? normalizePaymentType(draft.paymentType) === 'cash';
+  const priceOverride = draft.displayPriceOverride ?? variant?.displayPriceOverride ?? null;
+  const rateOverride = draft.displayRateOverride ?? variant?.displayRateOverride ?? null;
+
+  if (isCash) {
+    const amount = priceOverride ?? preview?.rate ?? variant?.calculatedPrice ?? null;
+    if (amount == null) return { isCash: true, amount: null, formatted: '–' };
+    return {
+      isCash: true,
+      amount: Math.round(amount),
+      formatted: `${Math.round(amount).toLocaleString('de-DE')} €`,
+    };
+  }
+
+  const amount = rateOverride ?? preview?.rate ?? variant?.calculatedRate ?? null;
+  if (amount == null) return { isCash: false, amount: null, formatted: '–' };
+  return {
+    isCash: false,
+    amount: Math.round(amount),
+    formatted: `${Math.round(amount).toLocaleString('de-DE')} €/Monat`,
+  };
+}
+
+export function formatVariantConditionsLine(variant) {
+  if (!variant) return '';
+  const payment = variant.payment ?? {};
+  return buildConfiguratorConditionsLine({
+    paymentType: payment.paymentType ?? 'leasing',
+    termMonths: payment.termMonths ?? null,
+    mileagePerYear: payment.mileagePerYear ?? null,
+    downPayment: payment.downPayment ?? 0,
+  }, PAYMENT_TYPE_LABELS[payment.paymentType]);
+}
+
+export function formatVariantCustomerPriceLine(variant) {
+  if (!variant) return null;
+  const paymentType = variant.payment?.paymentType ?? 'leasing';
+  const isCash = normalizePaymentType(paymentType) === 'cash';
+  if (isCash) {
+    const price = variant.displayPriceOverride ?? variant.calculatedPrice;
+    if (price == null) return null;
+    return `${Math.round(price).toLocaleString('de-DE')} €`;
+  }
+  const rate = variant.displayRateOverride ?? variant.calculatedRate;
+  if (rate == null) return null;
+  return `${Math.round(rate).toLocaleString('de-DE')} €/Monat`;
+}
+
+/** Label für Duplikat-Variante: „Air · Leasing · 48 Monate · 10.000 km/Jahr“. */
+export function buildVariantOfferLabel(draft, preview = null) {
+  if (!draft?.trimLabel) return null;
+  const conditions = buildConfiguratorConditionsLine(
+    draft,
+    preview?.paymentLabel ?? PAYMENT_TYPE_LABELS[draft.paymentType],
+  );
+  if (!conditions || conditions === 'Kauf') {
+    return `${draft.trimLabel} · Kauf`;
+  }
+  return `${draft.trimLabel} · ${conditions}`;
+}
+
+export function buildPortfolioSummaryLine({ modelLabel, trimLabel, conditionsLine, displayFormatted }) {
+  const title = trimLabel ? `${modelLabel} · ${trimLabel}` : modelLabel;
+  const cond = conditionsLine && conditionsLine !== 'Kauf' ? ` (${conditionsLine})` : '';
+  if (!displayFormatted || displayFormatted === '–') {
+    return `• ${title}${cond}`;
+  }
+  return `• ${title}${cond}: ${displayFormatted}`;
 }
 
 export function formatConfiguratorDelta(delta, isCash = false) {
@@ -151,6 +336,101 @@ export function buildConfiguratorSummaryLine(draft) {
   return parts.join(' · ');
 }
 
+/** Konditionen aus Kundenakte – nur für Footer-Anzeige (ohne Trim). */
+export function buildConfiguratorConditionsLine(draft, paymentLabel = null) {
+  if (!draft) return '';
+  const mode = normalizePaymentType(draft.paymentType);
+  if (mode === 'cash') return 'Kauf';
+
+  const parts = [];
+  const label = (paymentLabel ?? PAYMENT_TYPE_LABELS[draft.paymentType] ?? '')
+    .replace(' / Barzahlung', '')
+    .replace('Kauf / Barzahlung', 'Kauf');
+  if (label) parts.push(label);
+  if (draft.termMonths) parts.push(`${draft.termMonths} Monate`);
+  if (draft.mileagePerYear) {
+    parts.push(`${draft.mileagePerYear.toLocaleString('de-DE')} km/Jahr`);
+  }
+  if (draft.downPayment != null && mode !== 'cash') {
+    parts.push(`${draft.downPayment.toLocaleString('de-DE')} € Anzahlung`);
+  }
+  return parts.join(' · ');
+}
+
+export function formatConfiguratorUvpAmount(draft) {
+  const uvp = computeUvpPricing(draft);
+  if (uvp?.uvpConfigurationPrice == null) return '–';
+  return `${Math.round(uvp.uvpConfigurationPrice).toLocaleString('de-DE')} € UPE`;
+}
+
+export function formatEuroAmount(amount) {
+  if (amount == null) return '–';
+  return `${Math.round(amount).toLocaleString('de-DE')} €`;
+}
+
+export function formatCashOfferDiscountLine(cashOffer) {
+  if (!cashOffer?.discountPercent) return null;
+  const label = cashOffer.discountLabel?.trim();
+  const prefix = label ? `${label} (${cashOffer.discountPercent} %)` : `${cashOffer.discountPercent} % Rabatt`;
+  return `${prefix}: − ${formatEuroAmount(cashOffer.discountAmount)}`;
+}
+
+export function applyCashPaymentDefaults(draft, conditions) {
+  if (!draft?.modelKey) return draft;
+  const defaults = resolveDealerPaymentDefaults(
+    conditions,
+    draft.modelKey,
+    'cash',
+    draft.trimId,
+  );
+  return {
+    ...draft,
+    paymentType: 'cash',
+    mileagePerYear: null,
+    termMonths: null,
+    preparationFee: draft.preparationFee ?? defaults.preparationFee,
+    customerGroup: draft.customerGroup ?? defaults.customerGroup ?? 'standard',
+  };
+}
+
+/**
+ * Monatsrate, wenn dieses Paket in der aktuellen Konfiguration enthalten ist.
+ */
+export function computePackageMonthlyRate(draft, packageId, conditions = null) {
+  if (!draft?.modelKey || !packageId) return null;
+  if (normalizePaymentType(draft.paymentType) === 'cash') return null;
+
+  const ids = new Set(draft.packageIds ?? []);
+  if (!ids.has(packageId)) ids.add(packageId);
+
+  const nextDraft = {
+    ...draft,
+    packageIds: sanitizePackageIdsForTrim(draft.modelKey, draft.trimId, [...ids]),
+  };
+  const live = computeLiveRateForDraft(nextDraft, conditions);
+  return live?.amount ?? null;
+}
+
+/** Paketzeile: immer UPE-Aufpreis; bei Leasing/Finanzierung zusätzlich Rate. */
+export function formatPackageDisplayLine(pkg, paymentType = 'leasing', monthlyRate = null) {
+  if (pkg?.status === 'included') return 'Serie';
+
+  const upePart = pkg?.priceGross > 0
+    ? `+ ${Math.round(pkg.priceGross).toLocaleString('de-DE')} € UPE`
+    : null;
+
+  if (normalizePaymentType(paymentType) === 'cash') {
+    return upePart ?? 'Serie';
+  }
+
+  if (monthlyRate != null) {
+    const ratePart = `${Math.round(monthlyRate).toLocaleString('de-DE')} €/Monat`;
+    return upePart ? `${upePart} · ${ratePart}` : ratePart;
+  }
+
+  return upePart ?? 'Serie';
+}
+
 function packageLabelsFromIds(catalog, packageIds = []) {
   return packageIds
     .map((id) => catalog.packages?.find((p) => p.id === id)?.name)
@@ -164,6 +444,8 @@ export function draftToSelectionVariantFields(variant, draft, preview, catalog) 
     draft.packageIds ?? [],
   );
   const isCash = preview?.isCash;
+  const display = resolveVariantDisplayAmounts(draft, preview, variant);
+  const offerLabel = buildVariantOfferLabel(draft, preview);
 
   return {
     ...variant,
@@ -179,6 +461,11 @@ export function draftToSelectionVariantFields(variant, draft, preview, catalog) 
     accessoryIds: draft.accessoryIds ?? [],
     extras: draft.extras ?? {},
     customerGroup: draft.customerGroup ?? 'standard',
+    customDiscountPercent: draft.customDiscountPercent ?? null,
+    discountLabel: draft.discountLabel ?? null,
+    preparationFee: draft.preparationFee ?? null,
+    displayPriceOverride: draft.displayPriceOverride ?? null,
+    displayRateOverride: draft.displayRateOverride ?? null,
     payment: {
       ...(variant.payment ?? {}),
       paymentType: draft.paymentType,
@@ -186,9 +473,15 @@ export function draftToSelectionVariantFields(variant, draft, preview, catalog) 
       mileagePerYear: draft.mileagePerYear,
       downPayment: draft.downPayment ?? 0,
       desiredRate: draft.desiredRate ?? null,
+      desiredPrice: draft.desiredPrice ?? null,
+      customerGroup: draft.customerGroup ?? 'standard',
+      customDiscountPercent: draft.customDiscountPercent ?? null,
+      preparationFee: draft.preparationFee ?? null,
     },
-    calculatedRate: isCash ? null : preview?.rate ?? null,
-    calculatedPrice: isCash ? preview?.rate ?? null : null,
+    conditionsLocked: true,
+    calculatedRate: isCash ? null : display.amount,
+    calculatedPrice: isCash ? display.amount : null,
+    label: offerLabel ?? variant.label,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -211,7 +504,7 @@ export function duplicateSelectionGroupVariant(group, sourceVariant, draft, prev
   const duplicate = {
     ...fields,
     id: nextVariantId(),
-    label: `${sourceVariant.label ?? 'Variante'} (Kopie)`,
+    label: buildVariantOfferLabel(draft, preview) ?? `${sourceVariant.trimLabel ?? 'Variante'} (Kopie)`,
     status: OFFER_VARIANT_STATUS.DRAFT,
     createdAt: new Date().toISOString(),
   };
@@ -223,6 +516,7 @@ export function duplicateSelectionGroupVariant(group, sourceVariant, draft, prev
 }
 
 function configHaystack(draft, catalog) {
+  if (!draft) return '';
   const pkgText = (catalog?.packages ?? [])
     .filter((p) => (draft.packageIds ?? []).includes(p.id))
     .flatMap((p) => [p.name, ...(p.highlights ?? [])])
@@ -236,6 +530,7 @@ function configHaystack(draft, catalog) {
 }
 
 function wishMatchStatus(label, draft, preview, catalog) {
+  if (!draft) return 'open';
   const norm = String(label ?? '').toLowerCase();
   const haystack = configHaystack(draft, catalog);
 
@@ -287,6 +582,7 @@ export function buildWishAlignmentRows({
   preview,
   catalog,
 } = {}) {
+  if (!draft) return [];
   const rows = [];
 
   for (const chip of wishConditionChips) {
@@ -350,13 +646,8 @@ export function buildPackageWishStatus(pkg, wishRows = []) {
   return null;
 }
 
-export function formatPackageMonthlyDelta(pkg, paymentType = 'leasing') {
-  if (paymentType === 'cash') {
-    return pkg.priceGross ? `+ ${pkg.priceGross.toLocaleString('de-DE')} €` : 'Serie';
-  }
-  if (pkg.rateDelta) return `+ ${pkg.rateDelta.toLocaleString('de-DE')} €/Monat`;
-  if (pkg.priceGross) return `+ ${pkg.priceGross.toLocaleString('de-DE')} €`;
-  return 'Serie';
+export function formatPackageMonthlyDelta(pkg, paymentType = 'leasing', monthlyRate = null) {
+  return formatPackageDisplayLine(pkg, paymentType, monthlyRate);
 }
 
 export function buildVariantPackageCatalog(draft) {

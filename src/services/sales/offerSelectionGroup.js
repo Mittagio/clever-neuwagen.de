@@ -7,6 +7,15 @@ import {
   TRIM_FEATURE_MAP,
 } from '../../data/features/trimFeatureMapping.js';
 import { buildWishConditionChips } from '../customerAkte.js';
+import {
+  formatVariantConditionsLine,
+  formatVariantCustomerPriceLine,
+} from './offerVariantConfigurator.js';
+import { variantHasOfferPdf } from './selectionVariantOffer.js';
+import {
+  buildVariantPaymentFromWish,
+  buildWishConditionsFromLeadAndFields,
+} from './wishConditionsSync.js';
 
 export const OFFER_VARIANT_STATUS = {
   DRAFT: 'draft',
@@ -23,7 +32,7 @@ export const OFFER_SELECTION_GROUP_STATUS = {
   CUSTOMER_REACTED: 'customer_reacted',
 };
 
-export const CUSTOMER_LINK_BUTTON_LABEL = 'Auswahl als Kundenlink vorbereiten';
+export const CUSTOMER_LINK_BUTTON_LABEL = 'Alle Angebote als Kundenlink senden';
 
 const TRIM_COMFORT_LINE = {
   air: 'gute Basis mit sinnvoller Ausstattung',
@@ -133,13 +142,7 @@ function formatPriceLabel(price) {
 }
 
 function buildVariantPayment(wishConditions = {}) {
-  return {
-    paymentType: wishConditions.paymentType ?? 'leasing',
-    termMonths: wishConditions.termMonths ?? null,
-    mileagePerYear: wishConditions.mileagePerYear ?? null,
-    desiredRate: wishConditions.desiredRate ?? null,
-    desiredPrice: wishConditions.desiredPrice ?? null,
-  };
+  return buildVariantPaymentFromWish(wishConditions);
 }
 
 function buildVariantFromTrim(trim, tierIndex, totalTiers, mappingKey, wishConditions) {
@@ -231,13 +234,7 @@ export function createOfferSelectionGroupFromWish({
     opportunityId: lead?.id ?? null,
     modelKey,
     modelLabel,
-    wishConditions: {
-      paymentType: wishFields.paymentType ?? 'leasing',
-      termMonths: wishFields.termMonths ?? null,
-      mileagePerYear: wishFields.mileagePerYear ?? null,
-      desiredRate: wishFields.desiredRate ?? null,
-      desiredPrice: wishFields.desiredPrice ?? null,
-    },
+    wishConditions: buildWishConditionsFromLeadAndFields(lead, wishFields),
   });
 }
 
@@ -262,7 +259,11 @@ export function formatSelectionGroupStatus(group) {
 
 export function formatVariantPriceLine(variant, paymentType = 'leasing') {
   if (!variant) return null;
-  const isCash = paymentType === 'cash';
+  const direct = formatVariantCustomerPriceLine(variant);
+  if (direct) return direct;
+
+  const pt = variant.payment?.paymentType ?? paymentType;
+  const isCash = pt === 'cash';
   if (isCash && variant.calculatedPrice != null) {
     return formatPriceLabel(variant.calculatedPrice);
   }
@@ -279,8 +280,8 @@ export function formatSelectionGroupTrimLine(group) {
     .join(' · ');
 }
 
-function sanitizeSelectionGroupVariants(variants = []) {
-  return variants.filter(Boolean).map((variant) => ({
+function sanitizeSelectionGroupVariants(variants) {
+  return (variants ?? []).filter(Boolean).map((variant) => ({
     ...variant,
     trimLabel: variant.trimLabel ?? variant.label ?? null,
   }));
@@ -313,6 +314,7 @@ export function formatWishConditionsLine(wishConditions = {}) {
     mileagePerYear: wishConditions.mileagePerYear,
     desiredRate: wishConditions.desiredRate,
     desiredPrice: wishConditions.desiredPrice,
+    downPayment: wishConditions.downPayment,
   });
   return chips
     .filter((chip) => !['Leasing', 'Finanzierung', 'Kauf'].includes(chip))
@@ -374,12 +376,18 @@ export function buildCleverAuswahlDetailModel(group) {
     variants: sanitizeSelectionGroupVariants(group.variants).map((variant, index) => ({
       index: index + 1,
       id: variant.id,
+      trimId: variant.trimId ?? null,
       trimLabel: variant.trimLabel ?? 'Ausstattung',
       label: variant.label,
-      priceLine: formatVariantPriceLine(variant, paymentType),
+      priceLine: formatVariantCustomerPriceLine(variant)
+        ?? formatVariantPriceLine(variant, variant.payment?.paymentType ?? paymentType),
+      conditionsLine: formatVariantConditionsLine(variant),
       shortDescription: variant.shortDescription,
       status: variant.status,
       editButtonLabel: 'Variante konfigurieren',
+      offerButtonLabel: 'Angebot & PDF',
+      hasOfferPdf: variantHasOfferPdf(variant),
+      offerPdfFileName: variant.offerPdf?.fileName ?? null,
     })),
   };
 }
@@ -449,6 +457,61 @@ export function updateVariantCustomerReaction(group, variantId, status) {
       : group.status,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Findet die vollständige Clever-Auswahl-Variante (nicht nur Detail-Summary).
+ * @param {object|null} group
+ * @param {{ id?: string, trimId?: string, trimLabel?: string }|null} variantRef
+ */
+export function resolveSelectionGroupVariant(group, variantRef) {
+  if (!group || !variantRef) return null;
+
+  const variants = sanitizeSelectionGroupVariants(group.variants);
+  if (!variants.length) return null;
+
+  const refId = variantRef.id;
+  if (refId) {
+    const byId = variants.find((variant) => variant?.id === refId);
+    if (byId) return byId;
+  }
+
+  const refTrimId = variantRef.trimId;
+  if (refTrimId) {
+    const byTrimId = variants.find((variant) => variant?.trimId === refTrimId);
+    if (byTrimId) return byTrimId;
+  }
+
+  const refTrimLabel = String(variantRef.trimLabel ?? '').trim().toLowerCase();
+  if (refTrimLabel) {
+    const byLabel = variants.find((variant) => (
+      String(variant?.trimLabel ?? variant?.label ?? '').trim().toLowerCase() === refTrimLabel
+    ));
+    if (byLabel) return byLabel;
+  }
+
+  if (variantRef.trimId && (variantRef.payment || variantRef.packageIds != null)) {
+    return variantRef;
+  }
+
+  if (variantRef.trimId || variantRef.trimLabel) {
+    return {
+      id: variantRef.id ?? nextId('variant'),
+      trimId: variantRef.trimId ?? null,
+      trimLabel: variantRef.trimLabel ?? variantRef.label ?? 'Ausstattung',
+      label: variantRef.label ?? 'Variante',
+      shortDescription: variantRef.shortDescription ?? '',
+      packages: variantRef.packages ?? variantRef.packageIds ?? [],
+      packageIds: variantRef.packageIds ?? variantRef.packages ?? [],
+      extras: variantRef.extras ?? {},
+      payment: variantRef.payment ?? buildVariantPayment(group.wishConditions ?? {}),
+      calculatedRate: variantRef.calculatedRate ?? null,
+      calculatedPrice: variantRef.calculatedPrice ?? null,
+      status: variantRef.status ?? OFFER_VARIANT_STATUS.DRAFT,
+    };
+  }
+
+  return null;
 }
 
 export function findPreparedSelectionGroup(offerSelectionGroups = []) {

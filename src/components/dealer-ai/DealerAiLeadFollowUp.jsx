@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   formatReservedModelBadge,
   formatReservedModelName,
@@ -39,6 +39,8 @@ import {
 import { buildSpecialQuestionAkteChips } from '../../services/dealer/specialCustomerQuestionService.js';
 import { saveSellerKnowledgeAnswerFromLead } from '../../services/admin/cleverKnowledgeAnswerService.js';
 import CustomerSpecialQuestionAnswerSheet from './CustomerSpecialQuestionAnswerSheet.jsx';
+import CustomerAkteShowroomCapture, { applyShowroomCaptureToLead } from './CustomerAkteShowroomCapture.jsx';
+import { buildShowroomAkteChips } from '../../services/showroom/showroomQuickCaptureService.js';
 import {
   buildCleverActionRecommendation,
   cleverActionToHint,
@@ -70,9 +72,23 @@ import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import {
   buildBoardItems,
   resolveOfferSelectionGroups,
+  resolveSelectionGroupVariant,
   sanitizeOfferSelectionGroups,
 } from '../../services/sales/offerSelectionGroup.js';
 import { updateSelectionGroupVariant } from '../../services/sales/offerVariantConfigurator.js';
+import {
+  buildWishConditionsFromSources,
+  syncOfferSelectionGroupsWithWish,
+} from '../../services/sales/wishConditionsSync.js';
+import {
+  attachPdfToSelectionVariant,
+  buildVariantOfferSummaryLine,
+  removePdfFromSelectionVariant,
+} from '../../services/sales/selectionVariantOffer.js';
+import {
+  markPortfolioSent,
+  prepareCustomerOfferPortfolio,
+} from '../../services/crm/customerOfferPortfolioService.js';
 import {
   buildCleverQuestionActivity,
   buildDocumentOpenedActivity,
@@ -99,7 +115,9 @@ import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsult
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
+import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
 import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
+import SelectionVariantOfferView from './SelectionVariantOfferView.jsx';
 import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import CleverLexikon from '../backend/CleverLexikon.jsx';
@@ -130,6 +148,7 @@ const SHEETS = {
   more: 'more',
   lexikon: 'lexikon',
   specialQuestionAnswer: 'special_question_answer',
+  portfolioShare: 'portfolio_share',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -253,6 +272,7 @@ export default function DealerAiLeadFollowUp({
   initialSheet = null,
   isSaving = false,
 }) {
+  const navigate = useNavigate();
   const inbox = useCleverInboxOptional();
   const inboxOpenCount = useMemo(
     () => (lead?.id ? (inbox?.countForCustomer(lead.id) ?? 0) : 0),
@@ -270,6 +290,8 @@ export default function DealerAiLeadFollowUp({
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
   const [variantConfigureContext, setVariantConfigureContext] = useState(null);
+  const [variantOfferContext, setVariantOfferContext] = useState(null);
+  const [portfolioShare, setPortfolioShare] = useState(null);
   const [toast, setToast] = useState('');
   const [showCardAnimation, setShowCardAnimation] = useState(isFresh);
   const [reservedModels, setReservedModels] = useState(
@@ -447,9 +469,12 @@ export default function DealerAiLeadFollowUp({
     desiredRate: wishDesiredRate ? Number(wishDesiredRate) : null,
     termMonths: wishTermMonths ? Number(wishTermMonths) : null,
     mileagePerYear: wishMileage ? Number(wishMileage) : null,
+    downPayment: wishDownPayment !== '' && wishDownPayment != null
+      ? Number(wishDownPayment)
+      : null,
     desiredDeliveryDate: wishDelivery,
     deliveryTime: wishDelivery,
-  }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, wishDelivery]);
+  }), [fields.brand, wishModel, wishTrim, wishPaymentType, wishDesiredPrice, wishDesiredRate, wishTermMonths, wishMileage, wishDownPayment, wishDelivery]);
 
   const wishConditionChips = useMemo(() => {
     const base = buildWishConditionChips({
@@ -465,7 +490,8 @@ export default function DealerAiLeadFollowUp({
       contactRequested: true,
       answered: Boolean(lead?.specialQuestionAnswer?.answerText),
     });
-    return [...specialChips, ...base];
+    const showroomChips = buildShowroomAkteChips(lead?.crm?.pendingShowroomCapture);
+    return [...showroomChips, ...specialChips, ...base];
   }, [
     wishPaymentType,
     wishSummaryFields,
@@ -475,6 +501,7 @@ export default function DealerAiLeadFollowUp({
     wishDelivery,
     lead?.specialCustomerQuestion,
     lead?.specialQuestionAnswer?.answerText,
+    lead?.crm?.pendingShowroomCapture,
   ]);
 
   const wishEditValues = useMemo(() => ({
@@ -676,24 +703,141 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.cleverAuswahl);
   }
 
-  function handlePrepareCustomerLink(group) {
-    setToast('Kundenlink wird in einer späteren Version verfügbar sein.');
-    setTimeout(() => setToast(''), 3500);
-    onAddHistory?.(
-      `Clever Auswahl für ${group.modelLabel} als Kundenlink vorbereitet`,
-      'clever_auswahl',
-      { silent: true },
-    );
+  function handlePrepareCustomerLink() {
+    const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
+    const result = prepareCustomerOfferPortfolio({
+      lead,
+      offerSelectionGroups: storedGroups,
+      vehicleCards,
+    });
+
+    if (!result.ok) {
+      setToast('Keine Angebote zum Senden – bitte zuerst Varianten konfigurieren.');
+      setTimeout(() => setToast(''), 4000);
+      return;
+    }
+
+    const sanitized = sanitizeOfferSelectionGroups(result.offerSelectionGroups);
+    setOfferSelectionGroups(sanitized);
+    onSave?.(buildSavePayload({
+      offerSelectionGroups: sanitized,
+      customerOfferPortfolio: result.portfolio,
+    }), {
+      historyText: `Kundenlink mit ${result.itemCount} Angebot${result.itemCount === 1 ? '' : 'en'} vorbereitet`,
+      addFollowupHistory: true,
+    });
+
+    setPortfolioShare({
+      portfolio: result.portfolio,
+      itemCount: result.itemCount,
+    });
+    setSelectedSelectionGroup(null);
+    openSheet(SHEETS.portfolioShare);
+  }
+
+  function handlePortfolioShareSent(via) {
+    if (!portfolioShare?.portfolio) return;
+    const nextPortfolio = markPortfolioSent(portfolioShare.portfolio);
+    setPortfolioShare({ ...portfolioShare, portfolio: nextPortfolio });
+    onSave?.(buildSavePayload({ customerOfferPortfolio: nextPortfolio }), {
+      historyText: via === 'whatsapp'
+        ? 'Angebotsauswahl per WhatsApp gesendet'
+        : via === 'email'
+          ? 'Angebotsauswahl per E-Mail gesendet'
+          : 'Angebotsauswahl-Link kopiert',
+      addFollowupHistory: true,
+    });
   }
 
   function handleEditSelectionVariant(group, variantSummary) {
-    const fullVariant = group.variants?.find((v) => v.id === variantSummary.id) ?? variantSummary;
+    if (!group || !variantSummary) {
+      setToast('Variante konnte nicht geladen werden.');
+      setTimeout(() => setToast(''), 4000);
+      return;
+    }
+    const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
+    const canonicalGroup = storedGroups.find((entry) => entry.id === group.id) ?? group;
+    const fullVariant = resolveSelectionGroupVariant(canonicalGroup, variantSummary);
+    if (!fullVariant) {
+      setToast('Variante konnte nicht geladen werden – bitte Clever Auswahl erneut öffnen.');
+      setTimeout(() => setToast(''), 4000);
+      return;
+    }
     logCustomerActivity(buildVariantViewedActivity({
-      modelLabel: group.modelLabel,
-      trimLabel: fullVariant.trimLabel,
+      modelLabel: canonicalGroup.modelLabel,
+      trimLabel: fullVariant.trimLabel ?? variantSummary.trimLabel ?? 'Ausstattung',
     }));
-    setVariantConfigureContext({ group, variant: fullVariant });
-    closeSheet();
+    setVariantConfigureContext({ group: canonicalGroup, variant: fullVariant });
+    setActiveSheet(null);
+    setSelectedSelectionGroup(null);
+  }
+
+  function handleOpenVariantOffer(group, variantSummary) {
+    if (!group || !variantSummary) {
+      setToast('Variante konnte nicht geladen werden.');
+      setTimeout(() => setToast(''), 4000);
+      return;
+    }
+    const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
+    const canonicalGroup = storedGroups.find((entry) => entry.id === group.id) ?? group;
+    const fullVariant = resolveSelectionGroupVariant(canonicalGroup, variantSummary);
+    if (!fullVariant) {
+      setToast('Variante konnte nicht geladen werden – bitte Clever Auswahl erneut öffnen.');
+      setTimeout(() => setToast(''), 4000);
+      return;
+    }
+    setVariantOfferContext({ group: canonicalGroup, variant: fullVariant });
+    setActiveSheet(null);
+    setSelectedSelectionGroup(null);
+  }
+
+  function handleVariantOfferBack() {
+    const group = variantOfferContext?.group ?? null;
+    setVariantOfferContext(null);
+    if (group) {
+      const refreshed = (offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups)
+        .find((entry) => entry.id === group.id) ?? group;
+      setSelectedSelectionGroup(refreshed);
+      openSheet(SHEETS.cleverAuswahl);
+    }
+  }
+
+  async function handleVariantOfferUploadPdf(variant, file) {
+    const ctx = variantOfferContext;
+    if (!ctx?.group || !variant) return null;
+    const nextVariant = await attachPdfToSelectionVariant(variant, file);
+    const nextGroups = updateSelectionGroupVariant(
+      offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups,
+      ctx.group.id,
+      nextVariant.id,
+      nextVariant,
+    );
+    const summary = buildVariantOfferSummaryLine(ctx.group, nextVariant);
+    persistOfferSelectionGroups(nextGroups, `Angebot-PDF hinterlegt: ${summary}`);
+    const updatedGroup = nextGroups.find((g) => g.id === ctx.group.id) ?? ctx.group;
+    setVariantOfferContext({ group: updatedGroup, variant: nextVariant });
+    return nextVariant;
+  }
+
+  function handleVariantOfferDeletePdf(variant) {
+    const ctx = variantOfferContext;
+    if (!ctx?.group || !variant) return null;
+    const nextVariant = removePdfFromSelectionVariant(variant);
+    const nextGroups = updateSelectionGroupVariant(
+      offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups,
+      ctx.group.id,
+      nextVariant.id,
+      nextVariant,
+    );
+    persistOfferSelectionGroups(nextGroups, `Angebot-PDF entfernt: ${buildVariantOfferSummaryLine(ctx.group, nextVariant)}`);
+    const updatedGroup = nextGroups.find((g) => g.id === ctx.group.id) ?? ctx.group;
+    setVariantOfferContext({ group: updatedGroup, variant: nextVariant });
+    return nextVariant;
+  }
+
+  function handleVariantOfferEditConfiguration(group, variant) {
+    setVariantOfferContext(null);
+    handleEditSelectionVariant(group, variant);
   }
 
   function handleVariantConfigureBack() {
@@ -823,9 +967,6 @@ export default function DealerAiLeadFollowUp({
     if (activeSheet === SHEETS.cleverAuswahl) {
       setSelectedSelectionGroup(null);
     }
-    if (variantConfigureContext) {
-      setVariantConfigureContext(null);
-    }
   }
 
   function openSheet(id) {
@@ -865,6 +1006,42 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     handleAddVehicle();
+  }
+
+  function handleApplyShowroomCapture() {
+    const result = applyShowroomCaptureToLead(lead);
+    if (!result.ok) {
+      setToast(result.message ?? 'Übernahme fehlgeschlagen.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    onSave?.(result.leadPatch, {
+      historyText: 'Showroom Schnellaufnahme übernommen',
+      historyType: 'note',
+      addFollowupHistory: false,
+    });
+    setToast('Schnellaufnahme übernommen');
+    setTimeout(() => setToast(''), 3500);
+  }
+
+  function handleEditShowroomCapture() {
+    if (!lead?.id) return;
+    navigate(`/verkaufsassistent?view=showroom&leadId=${encodeURIComponent(lead.id)}`, {
+      state: {
+        showroomLeadId: lead.id,
+        pendingCapture: lead.crm?.pendingShowroomCapture ?? null,
+      },
+    });
+  }
+
+  function handleSuggestVehiclesFromShowroom() {
+    handleApplyShowroomCapture();
+    handleAddVehicle();
+  }
+
+  function handlePrepareOfferFromShowroom() {
+    handleApplyShowroomCapture();
+    onPrepareOffer?.();
   }
 
   function handleSaveSpecialQuestionAnswer({ answerText, sourceNote, learnForClever }) {
@@ -1055,7 +1232,23 @@ export default function DealerAiLeadFollowUp({
     setWishDesiredPrice(nextDesiredPrice);
     setWishDelivery(nextDelivery);
 
-    const payload = buildSavePayload();
+    const wishConditions = buildWishConditionsFromSources({
+      paymentType: pt,
+      termMonths: nextTermMonths ? Number(nextTermMonths) : null,
+      mileagePerYear: nextMileage ? Number(nextMileage) : null,
+      downPayment: nextDownPayment !== '' && nextDownPayment != null
+        ? Number(nextDownPayment)
+        : null,
+      desiredRate: nextDesiredRate ? Number(nextDesiredRate) : null,
+      desiredPrice: nextDesiredPrice ? Number(nextDesiredPrice) : null,
+    });
+    const currentGroups = offerSelectionGroups.length
+      ? offerSelectionGroups
+      : sanitizeOfferSelectionGroups(lead?.crm?.offerSelectionGroups ?? []);
+    const syncedGroups = syncOfferSelectionGroupsWithWish(currentGroups, wishConditions);
+    setOfferSelectionGroups(syncedGroups);
+
+    const payload = buildSavePayload({ offerSelectionGroups: syncedGroups });
     onSave?.({
       ...payload,
       paymentType: pt,
@@ -1184,6 +1377,10 @@ export default function DealerAiLeadFollowUp({
       openCleverAntworten();
       return;
     }
+    if (handler === 'showroom_capture_review') {
+      handleEditShowroomCapture();
+      return;
+    }
     if (handler !== 'call') {
       openSheet(SHEETS.customer);
     }
@@ -1251,6 +1448,16 @@ export default function DealerAiLeadFollowUp({
         onOpenSheet={() => openSheet(SHEETS.kundenhelfer)}
         variant="profile"
       />
+
+      {lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending' && (
+        <CustomerAkteShowroomCapture
+          capture={lead.crm.pendingShowroomCapture}
+          onApply={handleApplyShowroomCapture}
+          onEdit={handleEditShowroomCapture}
+          onSuggestVehicles={handleSuggestVehiclesFromShowroom}
+          onPrepareOffer={handlePrepareOfferFromShowroom}
+        />
+      )}
 
       <CustomerAkteWishConditions
         chips={wishConditionChips}
@@ -1840,14 +2047,24 @@ export default function DealerAiLeadFollowUp({
         />
       </LeadDetailPanel>
 
+      {variantOfferContext && (
+        <SelectionVariantOfferView
+          group={variantOfferContext.group}
+          variant={variantOfferContext.variant}
+          lead={lead}
+          onBack={handleVariantOfferBack}
+          onUploadPdf={handleVariantOfferUploadPdf}
+          onDeletePdf={handleVariantOfferDeletePdf}
+          onEditConfiguration={handleVariantOfferEditConfiguration}
+          isSaving={isSaving}
+        />
+      )}
+
       {variantConfigureContext && (
         <OfferVariantConfigurator
           group={variantConfigureContext.group}
           variant={variantConfigureContext.variant}
           lead={lead}
-          wishConditionChips={wishConditionChips}
-          equipmentWishes={lead?.equipmentWishes ?? []}
-          wishEquipmentText={wishEquipment}
           onSave={handleVariantConfigureSave}
           onDuplicate={handleVariantConfigureDuplicate}
           onBack={handleVariantConfigureBack}
@@ -1856,7 +2073,39 @@ export default function DealerAiLeadFollowUp({
       )}
 
       <LeadDetailPanel
-        open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup) && !variantConfigureContext}
+        open={activeSheet === SHEETS.portfolioShare && Boolean(portfolioShare?.portfolio)}
+        onClose={() => {
+          setPortfolioShare(null);
+          closeSheet();
+        }}
+        title="Angebotsauswahl senden"
+        footer={(
+          <button
+            type="button"
+            className="dai-btn dai-btn--ghost"
+            onClick={() => {
+              setPortfolioShare(null);
+              closeSheet();
+            }}
+          >
+            Schließen
+          </button>
+        )}
+      >
+        {portfolioShare?.portfolio ? (
+          <CustomerAktePortfolioShareSheet
+            portfolio={portfolioShare.portfolio}
+            customerName={name}
+            phone={phone}
+            email={email}
+            itemCount={portfolioShare.itemCount}
+            onMarkSent={handlePortfolioShareSent}
+          />
+        ) : null}
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup) && !variantConfigureContext && !variantOfferContext}
         onClose={closeSheet}
         title="Clever Auswahl"
         footer={(
@@ -1869,6 +2118,7 @@ export default function DealerAiLeadFollowUp({
           <CustomerAkteCleverAuswahlSheet
             group={selectedSelectionGroup}
             onEditVariant={handleEditSelectionVariant}
+            onOpenVariantOffer={handleOpenVariantOffer}
             onPrepareCustomerLink={handlePrepareCustomerLink}
           />
         )}

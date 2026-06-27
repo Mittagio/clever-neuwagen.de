@@ -19,6 +19,7 @@ import {
   OFFER_VARIANT_STATUS,
   pickSelectionTrimIds,
   resolveOfferSelectionGroups,
+  resolveSelectionGroupVariant,
   updateVariantCustomerReaction,
 } from './offerSelectionGroup.js';
 import {
@@ -134,5 +135,16 @@ const resolved = resolveOfferSelectionGroups({
   wishFields: { model: 'EV3', paymentType: 'leasing' },
 });
 assert.equal(resolved.length, 1);
+
+const summary = detail.variants[0];
+const resolvedVariant = resolveSelectionGroupVariant(group, summary);
+assert.equal(resolvedVariant?.trimId, group.variants[0].trimId);
+assert.equal(resolvedVariant?.trimLabel, group.variants[0].trimLabel);
+
+const staleSummary = { id: 'stale-id', trimLabel: summary.trimLabel };
+const resolvedByLabel = resolveSelectionGroupVariant(group, staleSummary);
+assert.equal(resolvedByLabel?.trimId, group.variants[0].trimId);
+
+assert.equal(resolveSelectionGroupVariant(group, null), null);
 
 console.log('offerSelectionGroup.test.js: ok');

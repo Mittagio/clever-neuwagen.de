@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildRecognitionAnimationBuckets } from '../../services/dealerAiRecognitionInsight.js';
 import './DealerAiRecognition.css';
 
@@ -27,6 +27,17 @@ export default function DealerAiRecognitionAnimation({
   const [stepIndex, setStepIndex] = useState(0);
   const [visibleChips, setVisibleChips] = useState([]);
   const [done, setDone] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    setStepIndex(0);
+    setVisibleChips([]);
+    setDone(false);
+  }, [insight]);
 
   const reducedMotion = useMemo(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return false;
@@ -36,7 +47,9 @@ export default function DealerAiRecognitionAnimation({
   const allChips = useMemo(() => {
     const chips = [];
     for (const [bucket, items] of Object.entries(buckets)) {
+      if (!Array.isArray(items)) continue;
       for (const label of items) {
+        if (!label) continue;
         chips.push({ id: `${bucket}-${label}`, bucket, label });
       }
     }
@@ -47,7 +60,7 @@ export default function DealerAiRecognitionAnimation({
     if (!insight) return undefined;
 
     if (reducedMotion) {
-      const timer = setTimeout(() => onComplete?.(), 700);
+      const timer = setTimeout(() => onCompleteRef.current?.(), 700);
       return () => clearTimeout(timer);
     }
 
@@ -57,17 +70,18 @@ export default function DealerAiRecognitionAnimation({
 
     let chipIndex = 0;
     const chipTimer = setInterval(() => {
-      if (chipIndex >= allChips.length) {
+      const nextChip = allChips[chipIndex];
+      if (!nextChip) {
         clearInterval(chipTimer);
         return;
       }
-      setVisibleChips((prev) => [...prev, allChips[chipIndex]]);
+      setVisibleChips((prev) => [...prev, nextChip]);
       chipIndex += 1;
     }, 180);
 
     const completeTimer = setTimeout(() => {
       setDone(true);
-      onComplete?.();
+      onCompleteRef.current?.();
     }, durationMs);
 
     return () => {
@@ -75,7 +89,7 @@ export default function DealerAiRecognitionAnimation({
       clearInterval(chipTimer);
       clearTimeout(completeTimer);
     };
-  }, [allChips, durationMs, insight, onComplete, reducedMotion]);
+  }, [allChips, durationMs, insight, reducedMotion]);
 
   if (!insight) return null;
 
@@ -94,12 +108,14 @@ export default function DealerAiRecognitionAnimation({
         <div className="dai-recognition-anim__stage">
           <div className="dai-recognition-anim__chips" aria-hidden>
             {visibleChips.map((chip) => (
+              chip ? (
               <span
                 key={chip.id}
                 className={`dai-recognition-anim__chip dai-recognition-anim__chip--${chip.bucket}`}
               >
                 {chip.label}
               </span>
+              ) : null
             ))}
           </div>
 

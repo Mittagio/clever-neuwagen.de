@@ -21,9 +21,12 @@ import { applyDealerAiFields } from './dealerAiParser.js';
 
 const SAMPLE_TEXT = 'Kunde Stefan Wiens fährt aktuell einen 12 Jahre alten VW Golf, hat 2 Kinder, fährt oft nach Südtirol, möchte gerne Hybrid oder Plug-in-Hybrid, braucht 1.200 kg Anhängelast und bevorzugt ein schwarzes Auto.';
 
-function splitCustomerName(full = '') {
+function splitCustomerName(full) {
+  if (full == null || full === '') return { firstName: null, lastName: null };
   const trimmed = String(full).trim();
-  if (!trimmed) return { firstName: null, lastName: null };
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return { firstName: null, lastName: null };
+  }
   const parts = trimmed.split(/\s+/);
   if (parts.length === 1) return { firstName: parts[0], lastName: null };
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
@@ -411,7 +414,9 @@ export function buildRecognitionAnimationBuckets(insight = {}) {
     board: [],
   };
 
-  const name = [insight.customer?.firstName, insight.customer?.lastName].filter(Boolean).join(' ');
+  const name = [insight.customer?.firstName, insight.customer?.lastName]
+    .filter((part) => part && part !== 'null' && part !== 'undefined')
+    .join(' ');
   if (name) buckets.customer.push(name);
   if (insight.customer?.phone) buckets.customer.push(insight.customer.phone);
   if (insight.customer?.email) buckets.customer.push(insight.customer.email);

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import {
   recordRecentCustomerOpen,
@@ -8,7 +8,35 @@ import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import BackendCustomerSearch from './BackendCustomerSearch.jsx';
 import BackendRecentCustomers from './BackendRecentCustomers.jsx';
 import BackendHomeToday from './BackendHomeToday.jsx';
+import '../showroom/showroom-mode.css';
 import './BackendHome.css';
+
+const SALES_ENTRIES = [
+  {
+    id: 'advice',
+    to: '/verkaufsassistent',
+    icon: '💬',
+    title: 'Clever Beratung',
+    text: 'Kundenwunsch eingeben, einfügen oder per Mikrofon erfassen.',
+    className: '',
+  },
+  {
+    id: 'showroom',
+    to: '/verkaufsassistent?view=showroom',
+    icon: '📱',
+    title: 'Showroom Modus',
+    text: 'Mobiler Schnellmodus am Auto, im Showroom oder spontan im Gespräch.',
+    className: 'backend-home__entry-card--showroom',
+  },
+  {
+    id: 'model',
+    to: '/verkaufsassistent?view=model',
+    icon: '🚗',
+    title: 'Modell wählen',
+    text: 'Direkte Modellauswahl, wenn der Kunde schon weiß, welches Modell ihn interessiert.',
+    className: '',
+  },
+];
 
 export default function BackendHome() {
   const navigate = useNavigate();
@@ -39,10 +67,18 @@ export default function BackendHome() {
             variant="hero"
           />
 
-          <div className="backend-home__advisor-actions">
-            <Link to="/verkaufsassistent" className="backend-home__advisor-btn backend-home__advisor-btn--primary">
-              Verkaufsassistent starten
-            </Link>
+          <div className="backend-home__entry-grid" aria-label="Verkaufen Einstiege">
+            {SALES_ENTRIES.map((entry) => (
+              <Link
+                key={entry.id}
+                to={entry.to}
+                className={`backend-home__entry-card${entry.className ? ` ${entry.className}` : ''}`}
+              >
+                <span className="backend-home__entry-icon" aria-hidden>{entry.icon}</span>
+                <h3 className="backend-home__entry-title">{entry.title}</h3>
+                <p className="backend-home__entry-text">{entry.text}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

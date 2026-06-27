@@ -9,7 +9,7 @@
 }
 
 .dai-start--calm {
-  gap: 20px;
+  gap: 16px;
 }
 
 .dai-start__hero {
@@ -25,28 +25,194 @@
   color: #0b1736;
 }
 
+.dai-start__hero-subline {
+  margin: 10px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+.dai-start__magic-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 18px 18px;
+  border: 1px solid #e8edf3;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(99, 102, 241, 0.07) 0%, transparent 55%),
+    linear-gradient(180deg, #fafbff 0%, #fff 100%);
+  box-shadow: 0 8px 32px rgba(11, 23, 54, 0.07);
+}
+
+.dai-start__paste-hint {
+  margin: -4px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.dai-start__path {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ── Sekundäre Kacheln (Showroom, Modell, Lexikon) ── */
+.dai-entry--tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  border: 1px solid #e8edf3;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(11, 23, 54, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.dai-entry--tile:hover:not(:disabled) {
+  border-color: #c7d2e0;
+  box-shadow: 0 6px 20px rgba(11, 23, 54, 0.08);
+  transform: translateY(-1px);
+}
+
+.dai-entry--tile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dai-entry--tile .dai-entry__title,
+.dai-entry--tile .dai-entry__text {
+  display: block;
+}
+
+.dai-entry--tile .dai-entry__title {
+  margin: 0 0 3px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.dai-entry--tile .dai-entry__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.dai-entry--lexikon.is-active {
+  border-color: #0b1736;
+  background: #f8fafc;
+}
+
+.dai-start__lexikon-panel {
+  margin-top: 0;
+  padding-top: 12px;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .dai-capture--hero {
   margin-bottom: 0;
 }
 
+.dai-capture--magic {
+  position: relative;
+}
+
+.dai-capture__field-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dai-capture__typewriter {
+  position: absolute;
+  inset: 18px 56px 18px 18px;
+  z-index: 1;
+  pointer-events: none;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+.dai-capture__typewriter-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dai-capture__typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: #94a3b8;
+  animation: dai-typewriter-blink 1s step-end infinite;
+}
+
+@keyframes dai-typewriter-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .dai-capture__field--hero {
-  min-height: 148px;
-  padding: 16px 52px 16px 16px;
-  border: 1px solid #e2e8f0;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 168px;
+  padding: 18px 56px 18px 18px;
+  border: 1px solid #dde4ee;
+  border-radius: 18px;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  box-shadow: inset 0 1px 2px rgba(11, 23, 54, 0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dai-capture__field-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 1px solid #dde4ee;
   border-radius: 18px;
   background: #fff;
-  font-size: 1rem;
+  box-shadow: inset 0 1px 2px rgba(11, 23, 54, 0.04);
+  pointer-events: none;
+}
+
+.dai-capture__field-wrap:focus-within::before {
+  border-color: #6366f1;
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.12),
+    inset 0 1px 2px rgba(11, 23, 54, 0.04);
 }
 
 .dai-capture__field--hero:focus {
-  border-color: #0b1736;
-  box-shadow: 0 0 0 3px rgba(11, 23, 54, 0.08);
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 .dai-cta--hero {
   min-height: 56px;
   font-size: 1rem;
   border-radius: 16px;
+}
+
+.dai-cta--magic {
+  box-shadow: 0 8px 24px rgba(11, 23, 54, 0.14);
 }
 
 .dai-start__alt {
@@ -916,6 +1082,12 @@
 }
 
 /* Desktop */
+@media (min-width: 640px) {
+  .dai-start__path {
+    gap: 12px;
+  }
+}
+
 @media (min-width: 768px) {
   .dai-model-grid {
     grid-template-columns: repeat(4, 1fr);

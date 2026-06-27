@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePublishedDealerConditions, useDraftDealerConditions } from '../context/DealerConditionsContext.jsx';
 import { useLeads } from '../context/LeadsContext.jsx';
 import { useOffers } from '../context/OffersContext.jsx';
@@ -83,11 +83,15 @@ import {
 import { applyDirectCustomerAkteFromRecognition } from '../services/dealerAiDirectCustomerAkte.js';
 import { buildSmartOfferVariants } from '../services/dealer/smartOfferVariants.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
+import ShowroomModeCapture from '../components/showroom/ShowroomModeCapture.jsx';
+import { saveShowroomQuickCapture } from '../services/showroom/showroomQuickCaptureService.js';
+import '../components/showroom/showroom-mode.css';
 import './DealerAIPage.css';
 
 export default function DealerAIPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
   const { addInventoryItem, publishChanges } = useDraftDealerConditions();
   const { addLead, leads, updateLead, addHistory } = useLeads();
@@ -117,6 +121,7 @@ export default function DealerAIPage() {
   const [cleverOfferTransfer, setCleverOfferTransfer] = useState(null);
   const [offerPendingFields, setOfferPendingFields] = useState([]);
   const [configureDraft, setConfigureDraft] = useState(null);
+  const [isSavingShowroom, setIsSavingShowroom] = useState(false);
   const [vehicleConfiguration, setVehicleConfiguration] = useState(null);
   const [configureOfferDraft, setConfigureOfferDraft] = useState(null);
   const [smartOfferVariants, setSmartOfferVariants] = useState([]);
@@ -543,6 +548,81 @@ export default function DealerAIPage() {
   }
 
   useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'advice' || view === 'model' || view === 'showroom') {
+      setStartView(view);
+      setPhase('input');
+    }
+  }, [searchParams]);
+
+  const showroomLeadId = searchParams.get('leadId') ?? location.state?.showroomLeadId ?? null;
+  const showroomLead = useMemo(
+    () => (showroomLeadId ? leads.find((item) => item.id === showroomLeadId) ?? null : null),
+    [showroomLeadId, leads],
+  );
+  const showroomInitialCapture = location.state?.pendingCapture
+    ?? showroomLead?.crm?.pendingShowroomCapture
+    ?? null;
+
+  function handleShowroomBack() {
+    if (showroomLeadId) {
+      navigate(`/backend/kundenakte/${encodeURIComponent(showroomLeadId)}`);
+      return;
+    }
+    setStartView('home');
+    navigate('/verkaufsassistent', { replace: true });
+  }
+
+  const handleShowroomSave = useCallback((capture) => {
+    setIsSavingShowroom(true);
+    try {
+      const saveResult = saveShowroomQuickCapture({
+        capture,
+        existingLead: showroomLead,
+        dealerConditions: conditions,
+        getExistingCodes,
+        leads,
+      });
+
+      if (!saveResult.ok) {
+        showToast(saveResult.message ?? 'Speichern fehlgeschlagen.');
+        return;
+      }
+
+      const targetLeadId = saveResult.leadId;
+
+      if (saveResult.isNew && saveResult.lead) {
+        addLead(saveResult.lead);
+        for (const entry of saveResult.lead.history ?? []) {
+          addHistory(targetLeadId, entry.text, entry.type ?? 'system');
+        }
+      } else if (saveResult.leadPatch) {
+        updateLead(targetLeadId, saveResult.leadPatch);
+        for (const entry of saveResult.leadPatch.history ?? []) {
+          addHistory(targetLeadId, entry.text, entry.type ?? 'note');
+        }
+      }
+
+      recordRecentCustomerOpen(saveResult.isNew ? saveResult.lead : showroomLead);
+      navigate(`/backend/kundenakte/${encodeURIComponent(targetLeadId)}`, {
+        state: { fresh: saveResult.isNew, showroomSaved: true },
+      });
+    } finally {
+      setIsSavingShowroom(false);
+    }
+  }, [
+    addHistory,
+    addLead,
+    conditions,
+    getExistingCodes,
+    leads,
+    navigate,
+    showroomLead,
+    showToast,
+    updateLead,
+  ]);
+
+  useEffect(() => {
     const ctx = location.state?.addVehicleContext;
     if (!ctx?.customerId) return;
     const lead = ctx.opportunityId
@@ -577,6 +657,7 @@ export default function DealerAIPage() {
   useEffect(() => {
     const leadId = location.state?.leadId;
     if (!leadId) return;
+    if (searchParams.get('view') === 'showroom') return;
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
     recordRecentCustomerOpen(lead);
@@ -590,7 +671,7 @@ export default function DealerAIPage() {
     } else {
       setParsed(enrichWithSuggestions(buildParsedFromLead(lead)));
     }
-  }, [location.state?.leadId, leads, enrichWithSuggestions]);
+  }, [location.state?.leadId, leads, enrichWithSuggestions, searchParams]);
 
   useEffect(() => {
     if (!location.state?.focusText || phase !== 'input') return;
@@ -1056,7 +1137,15 @@ export default function DealerAIPage() {
         ? 'Clever analysiert …'
       : phase === 'done' && result?.type !== 'lead'
         ? 'Ich habe erkannt'
-        : 'Was sucht Ihr Kunde?';
+        : phase === 'input' && startView === 'advice'
+          ? 'Clever Beratung'
+          : phase === 'input' && startView === 'showroom'
+            ? 'Showroom Modus'
+            : phase === 'input' && startView === 'model'
+              ? 'Modell wählen'
+              : phase === 'input' && startView === 'home'
+                ? ''
+                : 'Was sucht Ihr Kunde?';
   const pageTagline = phase === 'followup' || phase === 'capture' || phase === 'offer-edit' || phase === 'offer-proposal' || phase === 'offer-preview'
     ? ''
     : phase === 'configure' || phase === 'conditions' || phase === 'offer-variants'
@@ -1080,7 +1169,7 @@ export default function DealerAIPage() {
     && phase !== 'conditions'
     && phase !== 'offer-variants'
     && phase !== 'recognition-animate'
-    && !(phase === 'input' && startView !== 'home');
+    && !(phase === 'input' && startView === 'home');
 
   const vehicleCard = parsed?.ok && result
     ? formatDealerAiVehicleCard(parsed.fields, conditions)
@@ -1155,7 +1244,7 @@ export default function DealerAIPage() {
             onTextChange={setInput}
             onVoiceParsed={handleVoiceParsed}
             onEvaluate={() => runAnalysis()}
-            onStartAdvice={() => setStartView('advice')}
+            onStartShowroom={() => setStartView('showroom')}
             onStartModel={() => setStartView('model')}
             isAnalyzing={isAnalyzing}
             inputRef={inputRef}
@@ -1168,6 +1257,16 @@ export default function DealerAIPage() {
             onBack={() => setStartView('home')}
             onEvaluate={(chipIds) => runAnalysis({ chipIds })}
             isAnalyzing={isAnalyzing}
+          />
+        )}
+
+        {phase === 'input' && startView === 'showroom' && (
+          <ShowroomModeCapture
+            initialCapture={showroomInitialCapture}
+            existingLead={showroomLead}
+            onSave={handleShowroomSave}
+            onBack={handleShowroomBack}
+            saving={isSavingShowroom}
           />
         )}
 
