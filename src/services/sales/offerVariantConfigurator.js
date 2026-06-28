@@ -279,6 +279,13 @@ export function formatVariantConditionsLine(variant) {
   }, PAYMENT_TYPE_LABELS[payment.paymentType]);
 }
 
+/** Konditionen als Chip-Labels für Clever-Auswahl-Sheet. */
+export function buildVariantConditionChips(variant) {
+  const line = formatVariantConditionsLine(variant);
+  if (!line) return [];
+  return line.split(' · ').map((part) => part.trim()).filter(Boolean);
+}
+
 export function formatVariantCustomerPriceLine(variant) {
   if (!variant) return null;
   const paymentType = variant.payment?.paymentType ?? 'leasing';

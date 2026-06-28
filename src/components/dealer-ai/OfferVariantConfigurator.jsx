@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePublishedDealerConditions } from '../../context/DealerConditionsContext.jsx';
 import { filterAccessoryIdsForTrim, buildConfigureOptions } from '../../services/vehicleConfiguration.js';
+import { buildWishConditionsChips } from '../../services/sales/offerSelectionGroup.js';
 import {
   applyCashPaymentDefaults,
   buildBaseDraftForVariant,
-  buildConfiguratorConditionsLine,
   buildDraftFromSelectionVariant,
+  buildVariantConditionChips,
   buildVariantPackageCatalog,
   buildVariantPrepFeeChips,
   computePackageMonthlyRate,
@@ -26,6 +27,7 @@ import {
   VARIANT_TERM_OPTIONS,
 } from '../../services/sales/offerVariantConfigurator.js';
 import { FlowChip } from './flow/OfferFlowComponents.jsx';
+import ConditionChipRow, { ConditionChipButton } from './ConditionChipRow.jsx';
 import './OfferVariantConfigurator.css';
 
 function parseEuroInput(value) {
@@ -82,7 +84,7 @@ function VariantPackageCard({
 }
 
 /**
- * Varianten-Konfigurator: Fahrzeug zusammenstellen (Pakete, Farbe, Konditionen, Betrag).
+ * Varianten-Konfigurator: Fahrzeug zusammenstellen, dann Konditionen.
  */
 export default function OfferVariantConfigurator({
   group,
@@ -149,8 +151,7 @@ export default function OfferVariantConfigurator({
   if (!draft || !group || !variant) return null;
 
   const paymentType = draft.paymentType ?? 'leasing';
-  const modelLine = `Kia ${draft.model}`;
-  const conditionsLine = buildConfiguratorConditionsLine(draft, preview.paymentLabel);
+  const vehicleTitle = `Kia ${draft.model} · ${draft.trimLabel ?? 'Ausstattung'}`;
   const displayAmounts = resolveVariantDisplayAmounts(draft, preview, variant);
   const isCash = preview.isCash;
   const cashOffer = preview.cashOffer;
@@ -159,9 +160,17 @@ export default function OfferVariantConfigurator({
   const showFinanceFields = !isCash;
   const preparationFee = draft.preparationFee ?? defaultPreparationFee;
   const prepChips = buildVariantPrepFeeChips(defaultPreparationFee);
-  const selectedPackageNames = (draft.packageIds ?? [])
-    .map((id) => catalog.packages.find((p) => p.id === id)?.name)
-    .filter(Boolean);
+  const uvpFormatted = formatConfiguratorUvpAmount(draft).replace(/\s*UPE\s*$/i, '').trim();
+
+  const wishChips = buildWishConditionsChips(group?.wishConditions ?? {});
+  const activeConditionChips = buildVariantConditionChips({
+    payment: {
+      paymentType: draft.paymentType,
+      termMonths: draft.termMonths,
+      mileagePerYear: draft.mileagePerYear,
+      downPayment: draft.downPayment ?? 0,
+    },
+  });
 
   const handleSave = () => {
     const nextVariant = draftToSelectionVariantFields(variant, draft, preview, catalog);
@@ -173,147 +182,32 @@ export default function OfferVariantConfigurator({
     onDuplicate?.(nextGroup);
   };
 
+  const handlePaymentType = (optId) => {
+    if (optId === 'cash') {
+      setDraft((prev) => applyCashPaymentDefaults(
+        { ...prev, paymentType: 'cash' },
+        conditions,
+      ));
+      return;
+    }
+    patch({ paymentType: optId, ...(optId === 'cash' ? { mileagePerYear: null } : {}) });
+  };
+
   return (
-    <div className="ovc" role="dialog" aria-label="Variante konfigurieren">
+    <div className="ovc" role="dialog" aria-label={vehicleTitle}>
       <div className="ovc__scroll">
         <header className="ovc__header">
           <button type="button" className="ovc__back" onClick={onBack}>
             ← Zur Auswahl
           </button>
-          <h1 className="ovc__title">Variante konfigurieren</h1>
-          <p className="ovc__subtitle">
-            {modelLine}
-            {' '}
-            {draft.trimLabel}
-          </p>
+          <h1 className="ovc__title">{vehicleTitle}</h1>
         </header>
 
-        {(draft.wishSummaryLine || variant.conditionsLocked) && (
-          <div
-            className={`ovc__wish-banner${variant.conditionsLocked ? ' ovc__wish-banner--locked' : ''}`}
-            role="status"
-          >
-            <span className="ovc__wish-banner-label">
-              {variant.conditionsLocked ? 'Gespeicherte Konditionen' : 'Aus Kundenwunsch übernommen'}
-            </span>
-            {draft.wishSummaryLine && (
-              <p className="ovc__wish-banner-text">{draft.wishSummaryLine}</p>
-            )}
-            <p className="ovc__wish-banner-hint">
-              {variant.conditionsLocked
-                ? 'Bereits gespeichert – bei Bedarf unten anpassen.'
-                : 'Vorbelegt aus der Kundenakte – nur noch prüfen oder anpassen.'}
-            </p>
+        {wishChips.length > 0 && (
+          <div className="ovc__wish-strip">
+            <ConditionChipRow label="Kundenwunsch" chips={wishChips} />
           </div>
         )}
-
-        <section className="ovc__section" aria-labelledby="ovc-conditions-title">
-          <h2 id="ovc-conditions-title" className="ovc__section-title">Konditionen für diese Variante</h2>
-          <p className="ovc__section-hint">
-            {draft.wishSummaryLine && !variant.conditionsLocked
-              ? 'Wunschkonditionen sind vorausgefüllt – Leasing, Finanzierung oder Kauf pro Variante anpassbar.'
-              : 'Bar, Leasing oder Finanzierung – pro Variante getrennt (z.\u00a0B. 3× Air mit verschiedenen Optionen).'}
-          </p>
-          <div className="ovc__payment-row">
-            {VARIANT_PAYMENT_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={`ovc__payment-btn${paymentType === opt.id ? ' is-active' : ''}`}
-                onClick={() => {
-                  if (opt.id === 'cash') {
-                    setDraft((prev) => applyCashPaymentDefaults(
-                      { ...prev, paymentType: 'cash' },
-                      conditions,
-                    ));
-                    return;
-                  }
-                  patch({
-                    paymentType: opt.id,
-                    ...(opt.id === 'cash' ? { mileagePerYear: null } : {}),
-                  });
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {showFinanceFields && (
-            <div className="ovc__conditions-grid">
-              <label className="ovc__field">
-                <span className="ovc__field-label">Laufzeit</span>
-                <select
-                  className="ovc__select"
-                  value={draft.termMonths ?? VARIANT_TERM_OPTIONS[2]}
-                  onChange={(e) => patch({ termMonths: Number(e.target.value) })}
-                >
-                  {VARIANT_TERM_OPTIONS.map((months) => (
-                    <option key={months} value={months}>{months} Monate</option>
-                  ))}
-                </select>
-              </label>
-              {isLeasing && (
-                <label className="ovc__field">
-                  <span className="ovc__field-label">km / Jahr</span>
-                  <select
-                    className="ovc__select"
-                    value={draft.mileagePerYear ?? VARIANT_MILEAGE_OPTIONS[1]}
-                    onChange={(e) => patch({ mileagePerYear: Number(e.target.value) })}
-                  >
-                    {VARIANT_MILEAGE_OPTIONS.map((km) => (
-                      <option key={km} value={km}>{km.toLocaleString('de-DE')} km</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {isFinance && (
-                <label className="ovc__field">
-                  <span className="ovc__field-label">Anzahlung</span>
-                  <select
-                    className="ovc__select"
-                    value={draft.downPayment ?? 0}
-                    onChange={(e) => patch({ downPayment: Number(e.target.value) })}
-                  >
-                    {VARIANT_DOWN_OPTIONS.map((amount) => (
-                      <option key={amount} value={amount}>
-                        {amount.toLocaleString('de-DE')} €
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-          )}
-          {!isCash && (
-          <label className="ovc__field ovc__field--full">
-            <span className="ovc__field-label">
-              Anzeige Rate (optional, z. B. aus Bank-PDF)
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              className="ovc__input"
-              placeholder={formatConfiguratorRate(preview)}
-              value={draft.displayRateOverride != null ? String(draft.displayRateOverride) : ''}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === '') {
-                  patch({ displayRateOverride: null });
-                  return;
-                }
-                const val = parseEuroInput(raw);
-                patch({ displayRateOverride: val });
-              }}
-            />
-            <span className="ovc__field-hint">
-              Clever-Vorschlag:
-              {' '}
-              {displayAmounts.formatted}
-              {!draft.displayRateOverride ? '' : ' · Überschreibt Anzeige im Kundenlink'}
-            </span>
-          </label>
-          )}
-        </section>
 
         <section className="ovc__section" aria-labelledby="ovc-packages-title">
           <h2 id="ovc-packages-title" className="ovc__section-title">Pakete &amp; Optionen</h2>
@@ -332,13 +226,13 @@ export default function OfferVariantConfigurator({
               />
             ))}
             {!catalog.packages.length && (
-              <p className="ovc__footer-line">Für diese Ausstattung sind keine Pakete hinterlegt.</p>
+              <p className="ovc__empty-note">Keine Pakete für diese Ausstattung.</p>
             )}
           </div>
         </section>
 
         {configureOptions.colors?.length > 0 && (
-          <section className="ovc__section" aria-labelledby="ovc-color-title">
+          <section className="ovc__section ovc__section--compact" aria-labelledby="ovc-color-title">
             <h2 id="ovc-color-title" className="ovc__section-title">Farbe</h2>
             <div className="ovc__colors">
               {configureOptions.colors.map((color) => (
@@ -356,7 +250,7 @@ export default function OfferVariantConfigurator({
         )}
 
         {configureOptions.accessories?.length > 0 && (
-          <section className="ovc__section" aria-labelledby="ovc-accessories-title">
+          <section className="ovc__section ovc__section--compact" aria-labelledby="ovc-accessories-title">
             <h2 id="ovc-accessories-title" className="ovc__section-title">Zubehör</h2>
             <div className="ovc__chips">
               {configureOptions.accessories.map((acc) => {
@@ -385,16 +279,103 @@ export default function OfferVariantConfigurator({
           </section>
         )}
 
+        <section className="ovc__section" aria-labelledby="ovc-conditions-title">
+          <h2 id="ovc-conditions-title" className="ovc__section-title">Konditionen</h2>
+
+          <div className="ovc__payment-chips">
+            {VARIANT_PAYMENT_OPTIONS.map((opt) => (
+              <ConditionChipButton
+                key={opt.id}
+                active={paymentType === opt.id}
+                onClick={() => handlePaymentType(opt.id)}
+              >
+                {opt.label.replace(' / Bar', '')}
+              </ConditionChipButton>
+            ))}
+          </div>
+
+          {showFinanceFields && (
+            <div className="ovc__cond-toolbar">
+              <label className="ovc__toolbar-field">
+                <span className="ovc__toolbar-label">Laufzeit</span>
+                <select
+                  className="ovc__toolbar-select"
+                  value={draft.termMonths ?? VARIANT_TERM_OPTIONS[2]}
+                  onChange={(e) => patch({ termMonths: Number(e.target.value) })}
+                >
+                  {VARIANT_TERM_OPTIONS.map((months) => (
+                    <option key={months} value={months}>{months} Mon.</option>
+                  ))}
+                </select>
+              </label>
+              {isLeasing && (
+                <label className="ovc__toolbar-field">
+                  <span className="ovc__toolbar-label">km/Jahr</span>
+                  <select
+                    className="ovc__toolbar-select"
+                    value={draft.mileagePerYear ?? VARIANT_MILEAGE_OPTIONS[1]}
+                    onChange={(e) => patch({ mileagePerYear: Number(e.target.value) })}
+                  >
+                    {VARIANT_MILEAGE_OPTIONS.map((km) => (
+                      <option key={km} value={km}>{km.toLocaleString('de-DE')}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {isFinance && (
+                <label className="ovc__toolbar-field">
+                  <span className="ovc__toolbar-label">Anzahlung</span>
+                  <select
+                    className="ovc__toolbar-select"
+                    value={draft.downPayment ?? 0}
+                    onChange={(e) => patch({ downPayment: Number(e.target.value) })}
+                  >
+                    {VARIANT_DOWN_OPTIONS.map((amount) => (
+                      <option key={amount} value={amount}>
+                        {amount.toLocaleString('de-DE')} €
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+
+          {!isCash && (
+            <details className="ovc__details">
+              <summary>Anzeige aus PDF überschreiben</summary>
+              <label className="ovc__field ovc__field--full">
+                <span className="ovc__field-label">Rate für Kundenlink</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="ovc__input"
+                  placeholder={formatConfiguratorRate(preview)}
+                  value={draft.displayRateOverride != null ? String(draft.displayRateOverride) : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      patch({ displayRateOverride: null });
+                      return;
+                    }
+                    patch({ displayRateOverride: parseEuroInput(raw) });
+                  }}
+                />
+                {draft.displayRateOverride != null && (
+                  <span className="ovc__field-hint">Überschreibt Anzeige im Kundenlink</span>
+                )}
+              </label>
+            </details>
+          )}
+        </section>
+
         {isCash && cashOffer && (
           <section className="ovc__section" aria-labelledby="ovc-cash-offer-title">
-            <h2 id="ovc-cash-offer-title" className="ovc__section-title">Angebotsprogramm (Barkauf)</h2>
-            <p className="ovc__section-hint">
-              Nach der Konfiguration: Rabatt und Überführung festlegen. Überführung standardmäßig aus der Verwaltung.
-            </p>
+            <h2 id="ovc-cash-offer-title" className="ovc__section-title">Barkauf</h2>
 
             <div className="ovc__cash-breakdown" aria-label="Preisaufbau">
               <div className="ovc__cash-row">
-                <span>UPE Konfiguration</span>
+                <span>UPE</span>
                 <strong>{formatEuroAmount(cashOffer.uvp)}</strong>
               </div>
               {cashOffer.discountPercent > 0 && (
@@ -441,7 +422,7 @@ export default function OfferVariantConfigurator({
                   max={50}
                   step={0.5}
                   className="ovc__input ovc__input--compact"
-                  placeholder="Eigener Rabatt in %"
+                  placeholder="%"
                   value={draft.customDiscountPercent ?? ''}
                   onChange={(e) => patch({
                     customerGroup: 'custom',
@@ -451,11 +432,6 @@ export default function OfferVariantConfigurator({
                   })}
                 />
                 <span className="ovc__input-suffix">%</span>
-                <span className="ovc__field-hint">
-                  Aktiv:
-                  {' '}
-                  {activeDiscountPercent} %
-                </span>
               </div>
             </label>
 
@@ -464,7 +440,7 @@ export default function OfferVariantConfigurator({
               <input
                 type="text"
                 className="ovc__input"
-                placeholder="z. B. Jubiläumsaktion, Probefahrt-Bonus"
+                placeholder="z. B. Jubiläumsaktion"
                 value={draft.discountLabel ?? ''}
                 onChange={(e) => patch({ discountLabel: e.target.value || null })}
               />
@@ -484,109 +460,66 @@ export default function OfferVariantConfigurator({
                   </button>
                 ))}
               </div>
-              <div className="ovc__inline-input">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="ovc__input ovc__input--compact"
-                  placeholder={`Standard ${defaultPreparationFee.toLocaleString('de-DE')} €`}
-                  value={draft.preparationFee != null ? String(draft.preparationFee) : ''}
-                  onChange={(e) => {
-                    const val = parseEuroInput(e.target.value);
-                    patch({ preparationFee: val ?? defaultPreparationFee });
-                  }}
-                />
-                <span className="ovc__field-hint">Standard aus Verwaltung</span>
-              </div>
             </div>
 
-            <label className="ovc__field ovc__field--full">
-              <span className="ovc__field-label">Anzeige Kaufpreis (optional, z. B. aus Angebot-PDF)</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                className="ovc__input"
-                placeholder={formatEuroAmount(cashOffer.totalPrice)}
-                value={draft.displayPriceOverride != null ? String(draft.displayPriceOverride) : ''}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === '') {
-                    patch({ displayPriceOverride: null });
-                    return;
-                  }
-                  patch({ displayPriceOverride: parseEuroInput(raw) });
-                }}
-              />
-              {draft.displayPriceOverride != null && (
-                <span className="ovc__field-hint">Überschreibt Anzeige im Kundenlink</span>
-              )}
-            </label>
+            <details className="ovc__details">
+              <summary>Anzeige aus PDF überschreiben</summary>
+              <label className="ovc__field ovc__field--full">
+                <span className="ovc__field-label">Kaufpreis für Kundenlink</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="ovc__input"
+                  placeholder={formatEuroAmount(cashOffer.totalPrice)}
+                  value={draft.displayPriceOverride != null ? String(draft.displayPriceOverride) : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      patch({ displayPriceOverride: null });
+                      return;
+                    }
+                    patch({ displayPriceOverride: parseEuroInput(raw) });
+                  }}
+                />
+              </label>
+            </details>
           </section>
         )}
       </div>
 
       <footer className="ovc__footer">
-        <div className="ovc__footer-summary">
-          <p className="ovc__footer-line ovc__footer-line--vehicle">
-            {modelLine}
-            {' '}
-            {draft.trimLabel}
-          </p>
-          {conditionsLine && (
-            <p className="ovc__footer-line ovc__footer-line--conditions">{conditionsLine}</p>
-          )}
-          {selectedPackageNames.length > 0 && (
-            <ul className="ovc__selected-packages">
-              {selectedPackageNames.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ul>
-          )}
-          <p className="ovc__footer-uvp">
-            UPE:
-            {' '}
-            {formatConfiguratorUvpAmount(draft)}
-          </p>
-          {isCash && cashOffer && (
-            <>
-              {cashOffer.discountPercent > 0 && (
-                <p className="ovc__footer-line">
-                  {formatCashOfferDiscountLine(cashOffer)}
-                </p>
-              )}
-              <p className="ovc__footer-line">
-                Überführung:
-                {' '}
-                {formatEuroAmount(cashOffer.preparationFee)}
-              </p>
-            </>
-          )}
-          <p className="ovc__footer-rate">
-            {isCash ? 'Angebotspreis' : 'Rate'}
-            :
-            {' '}
-            {displayAmounts.formatted}
-          </p>
+        <ConditionChipRow chips={activeConditionChips} />
+        <div className="ovc__footer-prices">
+          <div className="ovc__footer-price-col">
+            <span className="ovc__footer-price-label">UPE</span>
+            <span className="ovc__footer-price-value">{uvpFormatted}</span>
+          </div>
+          <div className="ovc__footer-price-col ovc__footer-price-col--main">
+            <span className="ovc__footer-price-label">{isCash ? 'Angebotspreis' : 'Rate'}</span>
+            <span className="ovc__footer-price-value ovc__footer-price-value--accent">
+              {displayAmounts.formatted}
+            </span>
+          </div>
         </div>
-        <div className="ovc__footer-actions">
+        <button
+          type="button"
+          className="ovc__btn ovc__btn-primary ovc__btn--footer-save"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          Variante speichern
+        </button>
+        <div className="ovc__footer-secondary">
           <button
             type="button"
-            className="ovc__btn ovc__btn-primary"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            Variante speichern
-          </button>
-          <button
-            type="button"
-            className="ovc__btn"
+            className="ovc__text-btn"
             onClick={handleDuplicate}
             disabled={isSaving}
           >
-            Als weitere Variante duplizieren
+            Duplizieren
           </button>
-          <button type="button" className="ovc__btn" onClick={onBack} disabled={isSaving}>
-            Zur Auswahl zurück
+          <button type="button" className="ovc__text-btn" onClick={onBack} disabled={isSaving}>
+            Zurück
           </button>
         </div>
       </footer>

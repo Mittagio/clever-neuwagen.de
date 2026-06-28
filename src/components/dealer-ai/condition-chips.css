@@ -1,0 +1,48 @@
+/* Gemeinsame Konditions-Chips – gleiche Optik wie Wunschkonditionen-Flow */
+
+.cn-cond-chips-wrap {
+  margin-bottom: 0.35rem;
+}
+
+.cn-cond-chips-wrap__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cn-text-muted, #5c6570);
+}
+
+.cn-cond-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cn-cond-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.52rem 0.75rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.cn-cond-chip--btn {
+  cursor: pointer;
+  min-height: 2.75rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.cn-cond-chip.is-active {
+  border-color: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #1a5cff);
+  color: #fff;
+}

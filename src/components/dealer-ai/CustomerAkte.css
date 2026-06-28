@@ -2288,90 +2288,40 @@
 }
 
 /* Clever Auswahl – Detail-Sheet */
-.cust-akte-auswahl__head {
-  margin-bottom: 16px;
+.cust-akte-auswahl__variants {
+  margin-top: 0;
 }
 
-.cust-akte-auswahl__eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #7c3aed;
-}
-
-.cust-akte-auswahl__model {
-  margin: 4px 0 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--cust-text);
-}
-
-.cust-akte-auswahl__wish,
-.cust-akte-auswahl__status {
-  margin: 8px 0 0;
-  font-size: 0.8125rem;
-  color: var(--cust-muted);
-  line-height: 1.45;
-}
-
-.cust-akte-auswahl__variants-title {
-  margin: 0 0 10px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--cust-text);
+.cust-akte-auswahl__variant .cn-cond-chips-wrap {
+  margin-top: 8px;
 }
 
 .cust-akte-auswahl__variant {
-  padding: 12px 0;
+  padding: 14px 0;
   border-top: 1px solid var(--cust-border);
 }
 
-.cust-akte-auswahl__variant-head {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.cust-akte-auswahl__variant-num {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--cust-muted);
+.cust-akte-auswahl__variant:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .cust-akte-auswahl__variant-trim {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--cust-text);
 }
 
-.cust-akte-auswahl__variant-label {
-  margin: 2px 0 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #7c3aed;
-}
-
 .cust-akte-auswahl__variant-price {
-  margin: 6px 0 0 1.25rem;
-  font-size: 0.9375rem;
+  margin: 4px 0 0;
+  font-size: 1.0625rem;
   font-weight: 700;
   color: #059669;
 }
 
-.cust-akte-auswahl__variant-conditions {
-  margin: 2px 0 0 1.25rem;
-  font-size: 0.75rem;
-  color: var(--cust-muted);
-}
-
-.cust-akte-auswahl__variant-desc {
-  margin: 4px 0 0 1.25rem;
-  font-size: 0.8125rem;
-  color: var(--cust-muted);
-  line-height: 1.4;
+.cust-akte-auswahl__variant .cust-akte-auswahl__conditions {
+  margin-top: 8px;
 }
 
 .cust-akte-auswahl__variant-edit {

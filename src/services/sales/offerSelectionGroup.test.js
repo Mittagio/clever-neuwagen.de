@@ -21,6 +21,7 @@ import {
   resolveOfferSelectionGroups,
   resolveSelectionGroupVariant,
   updateVariantCustomerReaction,
+  variantConditionChipsDifferFromWish,
 } from './offerSelectionGroup.js';
 import {
   buildCleverActionRecommendation,
@@ -75,8 +76,10 @@ assert.equal(formatSelectionGroupSubtitle(boardItems[0].group), '3 Vorschläge v
 
 // 5. Detailansicht zeigt alle Varianten
 const detail = buildCleverAuswahlDetailModel(group);
-assert.equal(detail.title, 'Clever Auswahl');
+assert.equal(detail.modelLabel, 'Kia Sportage');
 assert.equal(detail.variants.length, 3);
+assert.ok(detail.wishConditionChips?.length > 0);
+assert.ok(detail.variants[0].conditionChips?.length > 0);
 assert.equal(detail.variants[0].trimLabel, 'Vision');
 assert.equal(detail.variants[1].trimLabel, 'Spirit');
 assert.equal(detail.variants[2].trimLabel, 'GT-Line');
@@ -146,5 +149,20 @@ const resolvedByLabel = resolveSelectionGroupVariant(group, staleSummary);
 assert.equal(resolvedByLabel?.trimId, group.variants[0].trimId);
 
 assert.equal(resolveSelectionGroupVariant(group, null), null);
+
+assert.equal(
+  variantConditionChipsDifferFromWish(group, group.variants[0]),
+  false,
+  'Standard-Variante entspricht Wunschkonditionen',
+);
+const changedVariant = {
+  ...group.variants[0],
+  payment: { ...group.variants[0].payment, termMonths: 36 },
+};
+assert.equal(
+  variantConditionChipsDifferFromWish(group, changedVariant),
+  true,
+  'Abweichende Laufzeit wird erkannt',
+);
 
 console.log('offerSelectionGroup.test.js: ok');

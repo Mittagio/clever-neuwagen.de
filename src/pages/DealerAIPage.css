@@ -1917,12 +1917,28 @@
 .dai-sheet__head,
 .dai-modal__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 16px 16px 12px;
   border-bottom: 1px solid #f1f5f9;
   flex-shrink: 0;
+}
+
+.dai-sheet__head-main,
+.dai-modal__head-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.dai-sheet__head-extra,
+.dai-modal__head-extra {
+  margin-top: 8px;
+}
+
+.dai-sheet__head-extra .cn-cond-chips-wrap,
+.dai-modal__head-extra .cn-cond-chips-wrap {
+  margin-bottom: 0;
 }
 
 .dai-sheet__title,

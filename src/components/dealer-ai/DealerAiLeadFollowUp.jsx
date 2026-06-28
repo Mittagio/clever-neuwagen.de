@@ -71,6 +71,7 @@ import {
 import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
 import {
   buildBoardItems,
+  buildCleverAuswahlDetailModel,
   resolveOfferSelectionGroups,
   resolveSelectionGroupVariant,
   sanitizeOfferSelectionGroups,
@@ -115,6 +116,7 @@ import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsult
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
+import ConditionChipRow from './ConditionChipRow.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
 import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
 import SelectionVariantOfferView from './SelectionVariantOfferView.jsx';
@@ -548,6 +550,13 @@ export default function DealerAiLeadFollowUp({
     wishFields: wishSummaryFields,
     storedGroups: offerSelectionGroups.length ? offerSelectionGroups : null,
   }), [lead, wishSummaryFields, offerSelectionGroups]);
+
+  const cleverAuswahlHeaderExtra = useMemo(() => {
+    if (!selectedSelectionGroup) return null;
+    const detail = buildCleverAuswahlDetailModel(selectedSelectionGroup);
+    if (!detail?.wishConditionChips?.length) return null;
+    return <ConditionChipRow chips={detail.wishConditionChips} />;
+  }, [selectedSelectionGroup]);
 
   useEffect(() => {
     if (offerSelectionGroups.length > 0) return;
@@ -2107,7 +2116,8 @@ export default function DealerAiLeadFollowUp({
       <LeadDetailPanel
         open={activeSheet === SHEETS.cleverAuswahl && Boolean(selectedSelectionGroup) && !variantConfigureContext && !variantOfferContext}
         onClose={closeSheet}
-        title="Clever Auswahl"
+        title={selectedSelectionGroup?.modelLabel ?? 'Clever Auswahl'}
+        headerExtra={cleverAuswahlHeaderExtra}
         footer={(
           <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
             Schließen

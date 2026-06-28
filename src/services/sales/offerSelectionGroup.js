@@ -8,6 +8,7 @@ import {
 } from '../../data/features/trimFeatureMapping.js';
 import { buildWishConditionChips } from '../customerAkte.js';
 import {
+  buildVariantConditionChips,
   formatVariantConditionsLine,
   formatVariantCustomerPriceLine,
 } from './offerVariantConfigurator.js';
@@ -307,16 +308,19 @@ export function formatSelectionGroupSubtitle(group) {
   return `${count} Vorschlag${count === 1 ? '' : 'e'} vorbereitet`;
 }
 
-export function formatWishConditionsLine(wishConditions = {}) {
-  const chips = buildWishConditionChips({
-    paymentType: wishConditions.paymentType ?? 'leasing',
+export function buildWishConditionsChips(wishConditions = {}) {
+  return buildWishConditionChips({
+    paymentType: wishConditions.paymentType ?? 'unknown',
     termMonths: wishConditions.termMonths,
     mileagePerYear: wishConditions.mileagePerYear,
     desiredRate: wishConditions.desiredRate,
     desiredPrice: wishConditions.desiredPrice,
     downPayment: wishConditions.downPayment,
   });
-  return chips
+}
+
+export function formatWishConditionsLine(wishConditions = {}) {
+  return buildWishConditionsChips(wishConditions)
     .filter((chip) => !['Leasing', 'Finanzierung', 'Kauf'].includes(chip))
     .join(' · ');
 }
@@ -364,26 +368,36 @@ export function buildBoardItems({ vehicleCards = [], offerSelectionGroups = [] }
   return items;
 }
 
+function buildBaselineVariantConditionChips(wishConditions = {}) {
+  const payment = buildVariantPaymentFromWish(wishConditions);
+  return buildVariantConditionChips({ payment });
+}
+
+export function variantConditionChipsDifferFromWish(group, variant) {
+  if (!group || !variant) return false;
+  const baseline = buildBaselineVariantConditionChips(group.wishConditions ?? {});
+  const variantChips = buildVariantConditionChips(variant);
+  if (!variantChips.length) return false;
+  return baseline.join('\0') !== variantChips.join('\0');
+}
+
 export function buildCleverAuswahlDetailModel(group) {
   if (!group) return null;
   const paymentType = group.wishConditions?.paymentType ?? 'leasing';
+  const wishConditionChips = buildWishConditionsChips(group.wishConditions ?? {});
   return {
-    title: 'Clever Auswahl',
     modelLabel: group.modelLabel,
     wishConditionsLine: formatWishConditionsLine(group.wishConditions),
-    status: formatSelectionGroupStatus(group),
+    wishConditionChips,
     customerLinkButtonLabel: CUSTOMER_LINK_BUTTON_LABEL,
-    variants: sanitizeSelectionGroupVariants(group.variants).map((variant, index) => ({
-      index: index + 1,
+    variants: sanitizeSelectionGroupVariants(group.variants).map((variant) => ({
       id: variant.id,
       trimId: variant.trimId ?? null,
       trimLabel: variant.trimLabel ?? 'Ausstattung',
-      label: variant.label,
       priceLine: formatVariantCustomerPriceLine(variant)
         ?? formatVariantPriceLine(variant, variant.payment?.paymentType ?? paymentType),
       conditionsLine: formatVariantConditionsLine(variant),
-      shortDescription: variant.shortDescription,
-      status: variant.status,
+      conditionChips: buildVariantConditionChips(variant),
       editButtonLabel: 'Variante konfigurieren',
       offerButtonLabel: 'Angebot & PDF',
       hasOfferPdf: variantHasOfferPdf(variant),

@@ -24,6 +24,7 @@ export default function LeadDetailPanel({
   open,
   onClose,
   title,
+  headerExtra = null,
   children,
   footer = null,
 }) {
@@ -52,7 +53,12 @@ export default function LeadDetailPanel({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="dai-sheet__head">
-            <h2 id={titleId} className="dai-sheet__title">{title}</h2>
+            <div className="dai-sheet__head-main">
+              <h2 id={titleId} className="dai-sheet__title">{title}</h2>
+              {headerExtra && (
+                <div className="dai-sheet__head-extra">{headerExtra}</div>
+              )}
+            </div>
             <button type="button" className="dai-sheet__close" onClick={onClose} aria-label="Schließen">
               ×
             </button>
@@ -74,7 +80,12 @@ export default function LeadDetailPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="dai-modal__head">
-          <h2 id={titleId} className="dai-modal__title">{title}</h2>
+          <div className="dai-modal__head-main">
+            <h2 id={titleId} className="dai-modal__title">{title}</h2>
+            {headerExtra && (
+              <div className="dai-modal__head-extra">{headerExtra}</div>
+            )}
+          </div>
           <button type="button" className="dai-modal__close" onClick={onClose} aria-label="Schließen">
             ×
           </button>

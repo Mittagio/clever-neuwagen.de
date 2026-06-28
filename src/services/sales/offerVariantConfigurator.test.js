@@ -8,6 +8,7 @@ import {
   buildDraftFromSelectionVariant,
   buildConfiguratorConditionsLine,
   buildPortfolioSummaryLine,
+  buildVariantConditionChips,
   buildVariantOfferLabel,
   buildWishAlignmentRows,
   computeVariantCashOffer,
@@ -60,6 +61,11 @@ const updated = updateSelectionGroupVariant([group], group.id, variant.id, saved
 assert.equal(updated[0].variants[0].trimId, saved.trimId);
 
 assert.equal(buildConfiguratorConditionsLine({ paymentType: 'cash' }), 'Kauf');
+const variantChips = buildVariantConditionChips({
+  payment: { paymentType: 'leasing', termMonths: 48, mileagePerYear: 15000, downPayment: 0 },
+});
+assert.ok(variantChips.includes('Leasing'));
+assert.ok(variantChips.some((c) => c.includes('48 Monate')));
 assert.match(
   buildConfiguratorConditionsLine({ paymentType: 'leasing', termMonths: 48, mileagePerYear: 15000, downPayment: 0 }),
   /48 Monate/,
