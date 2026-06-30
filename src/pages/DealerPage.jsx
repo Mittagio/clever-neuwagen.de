@@ -46,6 +46,12 @@ import {
 } from '../services/dealer/journeyLeadService.js';
 import { createLeadFromCustomerAdvisor } from '../services/dealer/customerAdvisorLeadService.js';
 import { createLeadFromSpecialQuestion } from '../services/dealer/specialCustomerQuestionLeadService.js';
+import { createLeadFromAdvisorConversation } from '../services/dealer/advisorConversationLeadService.js';
+import {
+  appendAdvisorExchange,
+  createCustomerAdvisorSession,
+  sessionToApiContext,
+} from '../services/clever/customerAdvisorSession.js';
 import { fetchCustomerQuery } from '../services/customer/customerQueryApi.js';
 import { UI_COMPONENTS } from '../services/clever/customerQueryTypes.js';
 import {
@@ -198,6 +204,10 @@ export default function DealerPage() {
   const [hybridQueryLoading, setHybridQueryLoading] = useState(false);
   const [hybridSpecialSubmitted, setHybridSpecialSubmitted] = useState(false);
   const [hybridSpecialSubmitting, setHybridSpecialSubmitting] = useState(false);
+  const [adviceContactOpen, setAdviceContactOpen] = useState(false);
+  const [advisorContactIntent, setAdvisorContactIntent] = useState(null);
+  const advisorSessionRef = useRef(null);
+  const [customerAdvisorSession, setCustomerAdvisorSession] = useState(null);
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
   const offersSectionRef = useRef(null);
@@ -543,7 +553,17 @@ export default function DealerPage() {
   }, [submittedQuery]);
 
   useEffect(() => {
+    if (!advisorSessionRef.current) {
+      const session = createCustomerAdvisorSession(dealerId);
+      advisorSessionRef.current = session;
+      setCustomerAdvisorSession(session);
+    }
+  }, [dealerId]);
+
+  useEffect(() => {
     setHybridSpecialSubmitted(false);
+    setAdviceContactOpen(false);
+    setAdvisorContactIntent(null);
     if (!submittedQuery.trim()) {
       setHybridQueryResult(null);
       return undefined;
@@ -552,16 +572,24 @@ export default function DealerPage() {
     let cancelled = false;
     setHybridQueryLoading(true);
 
+    const session = advisorSessionRef.current ?? createCustomerAdvisorSession(dealerId);
+
     fetchCustomerQuery({
       query: submittedQuery.trim(),
       dealerId,
       context: {
         page: 'dealer_landing',
         activeChipIds: submittedChipIds,
+        ...sessionToApiContext(session),
       },
     })
       .then((result) => {
-        if (!cancelled) setHybridQueryResult(result);
+        if (!cancelled) {
+          setHybridQueryResult(result);
+          const updated = appendAdvisorExchange(session, submittedQuery.trim(), result);
+          advisorSessionRef.current = updated;
+          setCustomerAdvisorSession(updated);
+        }
       })
       .catch(() => {
         if (!cancelled) setHybridQueryResult(null);
@@ -748,18 +776,20 @@ export default function DealerPage() {
 
   const hybridSmartAnswer = hybridQueryResult?.smartAnswer ?? null;
   const effectiveSmartAnswer = hybridSmartAnswer ?? smartAnswer;
-  const showHybridAdvice = hasSearch && Boolean(hybridQueryResult?.answer)
-    && (hybridQueryResult?.ui?.component === UI_COMPONENTS.ADVICE_ANSWER
-      || hybridQueryResult?.ui?.component === UI_COMPONENTS.SMART_ANSWER);
+  const hybridUiComponent = hybridQueryResult?.ui?.component;
+  const showHybridFactualAnswer = hasSearch && Boolean(hybridQueryResult?.answer)
+    && [
+      UI_COMPONENTS.ADVICE_ANSWER,
+      UI_COMPONENTS.SMART_ANSWER,
+      UI_COMPONENTS.RANKING_ANSWER,
+      UI_COMPONENTS.COMPARISON_ANSWER,
+    ].includes(hybridUiComponent);
   const showHybridSpecialContact = hasSearch
-    && hybridQueryResult?.ui?.component === UI_COMPONENTS.SPECIAL_CONTACT;
-  const hybridBlocksNeedAnswer = showHybridAdvice
-    || showHybridSpecialContact
-    || (hybridQueryResult?.classification?.queryType === 'advice_question'
-      && !hybridQueryResult?.classification?.shouldShowModels);
+    && (hybridUiComponent === UI_COMPONENTS.SPECIAL_CONTACT || adviceContactOpen);
+  const hybridBlocksNeedAnswer = showHybridFactualAnswer || showHybridSpecialContact;
 
   const showSmartAnswer = hasSearch && Boolean(effectiveSmartAnswer) && (
-    showHybridAdvice
+    showHybridFactualAnswer
     || (customerQueryMode === 'info' && Boolean(smartAnswer) && !hybridQueryResult)
   );
   const showSalesIntentBridge = hasSearch
@@ -849,8 +879,18 @@ export default function DealerPage() {
   }, [isCleverEntry, salesStep, submittedQuery]);
 
   const handleFollowUpQuery = useCallback((text) => {
-    handleCleverSearch(text);
-  }, [handleCleverSearch]);
+    handleSearch(text);
+  }, [handleSearch]);
+
+  const handleAdvisorFollowUp = useCallback((suggestion) => {
+    if (!suggestion) return;
+    if (suggestion.type === 'purchase_intent') {
+      setAdvisorContactIntent(suggestion);
+      setAdviceContactOpen(true);
+      return;
+    }
+    handleSearch(suggestion.query);
+  }, [handleSearch]);
 
   const handleStartConsultationFromIntent = useCallback(() => {
     if (!submittedQuery.trim()) return;
@@ -1208,38 +1248,87 @@ export default function DealerPage() {
   }, [addLead, conditions, customerAdvisorWish]);
 
   const handleHybridSpecialQuestionSubmit = useCallback(async (contact) => {
-    const specialCustomerQuestion = hybridQueryResult?.specialCustomerQuestion;
-    if (!specialCustomerQuestion) return;
+    const useAdvisorConversation = Boolean(advisorContactIntent)
+      || (customerAdvisorSession?.messages?.length ?? 0) > 2;
+    const specialCustomerQuestion = hybridQueryResult?.specialCustomerQuestion
+      ?? hybridQueryResult?.adviceContact;
+    if (!useAdvisorConversation && !specialCustomerQuestion) return;
     setHybridSpecialSubmitting(true);
     const learning = createLearningRequest({
       query: contact.question || submittedQuery,
-      modelKey: specialCustomerQuestion.modelKey,
-      modelLabel: specialCustomerQuestion.modelLabel,
+      modelKey: specialCustomerQuestion?.modelKey ?? customerAdvisorSession?.currentContext?.modelsInFocus?.[0],
+      modelLabel: specialCustomerQuestion?.modelLabel,
       sourceArea: LEARNING_SOURCE_AREAS.CUSTOMER_ADVISOR,
       pageContext: 'Händler-Landing',
       dealerId,
       dealerName: conditions.dealerName,
     });
     try {
-      handleSpecialQuestionSubmit({
-        contact,
-        specialCustomerQuestion: {
-          ...specialCustomerQuestion,
-          rawText: contact.question || specialCustomerQuestion.rawText,
+      if (useAdvisorConversation) {
+        const lead = createLeadFromAdvisorConversation({
+          contact,
+          advisorSession: customerAdvisorSession,
+          dealerConditions: conditions,
+          intentType: advisorContactIntent?.target ?? 'contact',
           learningRequestId: learning.request?.id ?? null,
-        },
-      });
+        });
+        addLead(lead);
+        setLeadSubmitted({
+          contactName: contact.name,
+          inquiryBrief: lead.inquiryBrief,
+          cleverQuotePercent: null,
+          specialQuestion: true,
+          advisorConversation: true,
+        });
+      } else {
+        handleSpecialQuestionSubmit({
+          contact,
+          specialCustomerQuestion: {
+            ...specialCustomerQuestion,
+            rawText: contact.question || specialCustomerQuestion.rawText,
+            learningRequestId: learning.request?.id ?? null,
+          },
+        });
+      }
       setHybridSpecialSubmitted(true);
     } finally {
       setHybridSpecialSubmitting(false);
     }
   }, [
+    advisorContactIntent,
+    customerAdvisorSession,
     hybridQueryResult,
     submittedQuery,
     dealerId,
-    conditions.dealerName,
+    conditions,
     handleSpecialQuestionSubmit,
+    addLead,
   ]);
+
+  const handleAdviceAskDealer = useCallback(() => {
+    setAdvisorContactIntent({ type: 'purchase_intent', target: 'contact' });
+    setAdviceContactOpen(true);
+  }, []);
+
+  const handleAdviceLearningRequest = useCallback((answer) => {
+    createLearningRequest({
+      query: submittedQuery,
+      detectedIntent: 'advice_question',
+      detectedFeatureId: answer?.adviceTopicId ?? null,
+      sourceArea: LEARNING_SOURCE_AREAS.CUSTOMER_ADVISOR,
+      pageContext: 'Händler-Landing · Beratung',
+      dealerId,
+      dealerName: conditions.dealerName,
+    });
+  }, [submittedQuery, dealerId, conditions.dealerName]);
+
+  const handleAdviceOptionalModels = useCallback((answer) => {
+    const featureId = answer?.optionalModelsFeatureId;
+    const query = featureId === 'towbar'
+      ? 'Elektroauto mit Anhängelast'
+      : submittedQuery;
+    handleCleverSearch(query);
+  }, [submittedQuery, handleCleverSearch]);
 
   const handleTrimConfirm = useCallback((recommendation) => {
     const modelKey = selectedModelKey ?? recommendation?.modelKey;
@@ -1616,9 +1705,17 @@ export default function DealerPage() {
 
           {showHybridSpecialContact && (
             <SpecialQuestionContactCard
-              questionText={hybridQueryResult?.specialCustomerQuestion?.rawText ?? submittedQuery}
+              questionText={hybridQueryResult?.specialCustomerQuestion?.rawText
+                ?? hybridQueryResult?.adviceContact?.rawText
+                ?? submittedQuery}
               onSubmit={handleHybridSpecialQuestionSubmit}
-              onDismiss={() => setHybridQueryResult(null)}
+              onDismiss={() => {
+                setAdviceContactOpen(false);
+                setAdvisorContactIntent(null);
+                if (hybridUiComponent === UI_COMPONENTS.SPECIAL_CONTACT) {
+                  setHybridQueryResult(null);
+                }
+              }}
               submitting={hybridSpecialSubmitting}
               submitted={hybridSpecialSubmitted}
             />
@@ -1629,8 +1726,12 @@ export default function DealerPage() {
               answer={effectiveSmartAnswer}
               dealerId={dealerId}
               onFollowUpQuery={handleFollowUpQuery}
+              onFollowUpSuggestion={handleAdvisorFollowUp}
               onSelectModel={handleSmartAnswerSelectModel}
               onStartConsultation={handleStartConsultationFromIntent}
+              onAskDealer={handleAdviceAskDealer}
+              onLearningRequest={handleAdviceLearningRequest}
+              onOptionalModelsSearch={handleAdviceOptionalModels}
             />
           )}
 

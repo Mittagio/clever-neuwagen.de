@@ -6,8 +6,10 @@ import { buildAdvisoryAnswer } from '../dealer/dealerAdvisoryAnswerService.js';
 import { buildDealerSmartAnswer } from '../dealer/dealerSmartAnswerService.js';
 import { getModelTrims } from '../../data/features/trimFeatureMapping.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
-import { getAdviceTopicById, matchAdviceTopic } from './adviceTopicCatalog.js';
+import { getAdviceTopicById } from './adviceTopicsRegistry.js';
+import { matchAdviceTopicByQuery } from './adviceTopicMatcher.js';
 import { QUERY_TYPES } from './customerQueryTypes.js';
+import { getRankingByMetric } from './customerQueryTools.js';
 import { parseSearchIntent } from '../search/searchIntentParser.js';
 import { buildSearchProfile } from '../search/searchProfile.js';
 
@@ -42,12 +44,27 @@ function resolveFeatureAvailability(modelKey, featureId) {
   return { status: 'unknown', label: 'Verfügbarkeit im Bestand prüfen' };
 }
 
+function resolveAdviceTopic(classification, query) {
+  const topicId = classification.adviceTopicId ?? classification.topic;
+  if (topicId && topicId !== 'general_advice' && topicId !== 'unmatched_advice') {
+    return getAdviceTopicById(topicId);
+  }
+  return matchAdviceTopicByQuery(query);
+}
+
 /**
  * @param {object} classification
  * @param {string} query
  */
 export function resolveFactsForQuery(classification = {}, query = '') {
-  const { queryType, modelKey, featureId, topic } = classification;
+  const {
+    queryType,
+    modelKey,
+    featureId,
+    topic,
+    rankingMetric,
+    comparisonModels = [],
+  } = classification;
 
   if (queryType === QUERY_TYPES.SPECIAL_CHECK_QUESTION) {
     return {
@@ -81,19 +98,82 @@ export function resolveFactsForQuery(classification = {}, query = '') {
     };
   }
 
+  if (queryType === QUERY_TYPES.RANKING_QUESTION && rankingMetric) {
+    const ranking = getRankingByMetric(rankingMetric, {
+      powertrainFilter: classification.rankingFilter ?? null,
+    });
+    const bullets = (ranking?.matches ?? []).slice(0, 5).map((match, index) => {
+      const detail = match.factLine?.split(' · ')[0] ?? '';
+      return `${index + 1}. ${match.label}${detail ? `: ${detail}` : ''}`;
+    });
+    return {
+      kind: 'ranking',
+      rankingMetric,
+      ranking,
+      modelKeys: (ranking?.matches ?? []).map((m) => m.modelKey),
+      bullets,
+      sources: ['kiaCleverRecords', 'vehicleLexicon'],
+    };
+  }
+
+  if (queryType === QUERY_TYPES.COMPARISON_QUESTION && comparisonModels.length >= 2) {
+    const [modelKeyA, modelKeyB] = comparisonModels;
+    const advisory = {
+      kind: 'advisory',
+      topic: 'comparison',
+      modelKeyA,
+      modelKeyB,
+      query,
+    };
+    const smartAnswer = buildAdvisoryAnswer(advisory, []);
+    return {
+      kind: 'comparison',
+      comparisonModels,
+      smartAnswer,
+      modelKeys: comparisonModels,
+      bullets: (smartAnswer?.facts ?? []).map((f) => `${f.label}: ${f.value}`),
+      sources: ['kiaCleverRecords', 'dealerAdvisoryAnswer'],
+    };
+  }
+
   if (queryType === QUERY_TYPES.ADVICE_QUESTION) {
-    const advice = getAdviceTopicById(topic) ?? matchAdviceTopic(query);
-    if (advice) {
+    if (topic === 'unmatched_advice' || (!classification.adviceTopicId && topic === 'general_advice')) {
       return {
-        kind: 'advice_snippets',
-        topic: advice.topic,
-        featureId: advice.featureId ?? featureId,
-        headline: advice.headline,
-        snippets: advice.snippets,
-        bullets: advice.snippets,
-        sources: ['adviceTopicCatalog'],
+        kind: 'advice_unmatched',
+        topic: 'unmatched_advice',
+        headline: 'Clever hat dazu noch keine sichere Antwort.',
+        shortAnswer: 'Diese Frage ist noch nicht in unserer Beratungsdatenbank. Ihr Autohaus oder unser Team kann Ihnen gezielt weiterhelfen.',
+        usefulWhen: [],
+        dealerChecks: ['individuelle Beratung', 'passendes Modell', 'Verfügbarkeit'],
+        dealerCheckHint: 'Ein Verkäufer kann Ihre Frage persönlich beantworten.',
+        bullets: [],
+        sources: ['advice_unmatched'],
       };
     }
+
+    const adviceTopic = resolveAdviceTopic(classification, query);
+    if (adviceTopic) {
+      return {
+        kind: 'advice_topic',
+        adviceTopicId: adviceTopic.id,
+        topic: adviceTopic.id,
+        featureId: adviceTopic.featureId ?? featureId,
+        label: adviceTopic.label,
+        headline: adviceTopic.label,
+        shortAnswer: adviceTopic.shortAnswer,
+        usefulWhen: adviceTopic.usefulWhen ?? [],
+        lessImportantWhen: adviceTopic.lessImportantWhen ?? [],
+        dealerCheckHint: adviceTopic.dealerCheckHint,
+        dealerChecks: adviceTopic.dealerChecks ?? [],
+        relatedQuestions: adviceTopic.relatedQuestions ?? [],
+        ctaLabel: adviceTopic.ctaLabel ?? 'Verkäufer dazu fragen',
+        secondaryCtaLabel: adviceTopic.secondaryCtaLabel ?? null,
+        needsDealerCheck: Boolean(adviceTopic.needsDealerCheck),
+        bullets: [adviceTopic.shortAnswer, ...(adviceTopic.usefulWhen ?? []).slice(0, 3)],
+        sources: ['adviceTopicsRegistry'],
+      };
+    }
+
     return {
       kind: 'advice_snippets',
       topic: topic ?? 'general_advice',

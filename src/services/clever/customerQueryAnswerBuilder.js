@@ -3,6 +3,245 @@
  */
 import { DEALER_DISCLAIMER, QUERY_TYPES, UI_COMPONENTS } from './customerQueryTypes.js';
 import { SPECIAL_QUESTION_COPY } from '../dealer/specialCustomerQuestionService.js';
+import { getAdviceTopicById } from './adviceTopicsRegistry.js';
+
+function rankingToSmartAnswer(ranking, query) {
+  const matches = ranking?.matches ?? [];
+  const highlights = matches.slice(0, 5).map((match) => ({
+    modelKey: match.modelKey,
+    label: match.label,
+    detail: match.factLine?.split(' · ')[0] ?? null,
+  }));
+
+  let lead = null;
+  if (matches.length > 1) {
+    const second = matches[1];
+    const detail = second.factLine?.split(' · ')[0];
+    lead = detail
+      ? `Danach folgen ${second.label} (${detail}) und weitere Modelle.`
+      : `Danach folgt ${second.label} und weitere Modelle.`;
+  }
+
+  return {
+    mode: 'info',
+    intent: 'vehicle_fact_question',
+    query,
+    kicker: 'Clever Antwort',
+    title: ranking?.headline ?? 'Kia-Modelle im Vergleich',
+    lead,
+    summary: DEALER_DISCLAIMER,
+    facts: [],
+    highlights,
+    matchCount: matches.length,
+    canShowOffers: true,
+    routingLayer: 'advisory',
+  };
+}
+
+/**
+ * @param {object} facts
+ */
+export function buildClarificationSmartAnswer(facts = {}) {
+  return {
+    mode: 'info',
+    intent: 'clarification_question',
+    kicker: 'Clever Antwort',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    facts: (facts.orientation ?? []).map((item) => ({
+      label: item.label,
+      value: item.hint,
+    })),
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: false,
+    routingLayer: 'advisory',
+  };
+}
+
+/**
+ * @param {object} facts
+ */
+export function buildModelDetailSmartAnswer(facts = {}) {
+  const narrative = [
+    facts.shortAnswer,
+    facts.strengths?.length ? `Stärken: ${facts.strengths.join(' · ')}` : null,
+    facts.watchOut?.length ? `Worauf achten: ${facts.watchOut.join(' · ')}` : null,
+    facts.fits?.length ? `Passt besonders für: ${facts.fits.join(' · ')}` : null,
+  ].filter(Boolean);
+
+  return {
+    mode: 'info',
+    intent: 'model_detail_question',
+    kicker: 'Clever Antwort',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    primaryModelKey: facts.modelKey,
+    facts: (facts.bullets ?? []).map((b) => ({ label: 'Daten', value: b })),
+    narrative,
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: false,
+    routingLayer: 'advisory',
+  };
+}
+
+/**
+ * @param {object} facts
+ * @param {object} classification
+ */
+export function buildFamilyVariantSmartAnswer(facts = {}, classification = {}) {
+  return {
+    mode: 'advice',
+    intent: 'advice_question',
+    kicker: 'Clever Einschätzung',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    usefulWhen: facts.usefulWhen ?? [],
+    dealerChecks: facts.dealerChecks ?? [],
+    dealerHint: facts.dealerCheckHint,
+    primaryModelKey: facts.modelKey,
+    showDealerCta: true,
+    dealerCtaLabel: 'Verkäufer dazu fragen',
+    adviceTopicId: 'family_luggage',
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: false,
+    routingLayer: 'advice',
+  };
+}
+
+/**
+ * @param {object} facts
+ */
+export function buildGeneralKnowledgeSmartAnswer(facts = {}) {
+  const narrative = [
+    facts.shortAnswer,
+    ...(facts.narrative ?? []),
+    facts.kiaBridge,
+    facts.dealerHint,
+  ].filter(Boolean);
+
+  const isAdvice = facts.subkind === 'towing_range' || facts.subkind === 'heat_pump'
+    || facts.usefulWhen?.length;
+
+  return {
+    mode: isAdvice ? 'advice' : 'info',
+    intent: facts.kind === 'general_knowledge' ? 'general_car_question' : 'hybrid_query',
+    kicker: isAdvice ? 'Clever Einschätzung' : 'Clever Antwort',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    usefulWhen: facts.usefulWhen ?? [],
+    narrative: facts.narrative?.length ? facts.narrative : undefined,
+    kiaBridge: facts.kiaBridge,
+    dealerHint: facts.dealerHint,
+    showDealerCta: true,
+    dealerCtaLabel: 'Verkäufer dazu fragen',
+    primaryModelKey: facts.primaryModelKey ?? facts.kiaAlternatives?.[0] ?? null,
+    competitorMentions: facts.competitorMentions ?? [],
+    canShowOffers: false,
+    routingLayer: 'general_knowledge',
+    summary: DEALER_DISCLAIMER,
+  };
+}
+
+/**
+ * @param {object} facts
+ */
+export function buildDealerDataRequiredSmartAnswer(facts = {}) {
+  return {
+    mode: 'info',
+    intent: 'dealer_data_required',
+    kicker: 'Clever Antwort',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    dealerHint: facts.dealerHint,
+    showDealerCta: true,
+    dealerCtaLabel: 'Angebot vom Autohaus anfragen',
+    primaryModelKey: facts.modelKey ?? null,
+    canShowOffers: false,
+    routingLayer: 'dealer_check',
+    summary: DEALER_DISCLAIMER,
+  };
+}
+
+/**
+ * @param {object} facts
+ * @param {object} classification
+ */
+export function buildAdviceSmartAnswer(facts = {}, classification = {}) {
+  if (facts.kind === 'advice_unmatched') {
+    return {
+      mode: 'advice',
+      intent: 'advice_question',
+      kicker: 'Clever Einschätzung',
+      title: facts.headline ?? 'Clever hat dazu noch keine sichere Antwort.',
+      lead: facts.shortAnswer,
+      usefulWhen: [],
+      dealerChecks: facts.dealerChecks ?? [],
+      dealerHint: facts.dealerCheckHint,
+      showDealerCta: true,
+      dealerCtaLabel: 'Verkäufer dazu fragen',
+      showLearningCta: true,
+      learningCtaLabel: 'Clever soll das lernen',
+      canShowOffers: false,
+      routingLayer: 'advice',
+      adviceTopicId: null,
+      unmatched: true,
+    };
+  }
+
+  if (facts.kind !== 'advice_topic') return null;
+
+  return {
+    mode: 'advice',
+    intent: 'advice_question',
+    kicker: 'Clever Einschätzung',
+    title: facts.label ?? facts.headline,
+    lead: facts.shortAnswer,
+    usefulWhen: facts.usefulWhen ?? [],
+    lessImportantWhen: facts.lessImportantWhen ?? [],
+    dealerChecks: facts.dealerChecks ?? [],
+    dealerHint: facts.dealerCheckHint,
+    relatedTopics: facts.relatedQuestions ?? [],
+    showDealerCta: true,
+    dealerCtaLabel: facts.ctaLabel ?? 'Verkäufer dazu fragen',
+    showSecondaryCta: Boolean(facts.secondaryCtaLabel),
+    secondaryCtaLabel: facts.secondaryCtaLabel,
+    showOptionalModelsCta: Boolean(facts.featureId),
+    optionalModelsCtaLabel: facts.featureId === 'towbar'
+      ? 'Passende Modelle mit Anhängelast ansehen'
+      : 'Passende Modelle ansehen',
+    optionalModelsFeatureId: facts.featureId ?? null,
+    canShowOffers: false,
+    routingLayer: 'advice',
+    adviceTopicId: facts.adviceTopicId ?? classification.adviceTopicId,
+    needsDealerCheck: facts.needsDealerCheck ?? classification.needsDealerCheck,
+    summary: DEALER_DISCLAIMER,
+  };
+}
+
+/**
+ * @param {object} classification
+ * @param {string} query
+ */
+export function buildAdviceQuestionPayload(classification = {}, query = '') {
+  const adviceTopicId = classification.adviceTopicId ?? (
+    classification.topic && classification.topic !== 'unmatched_advice'
+      && classification.topic !== 'general_advice'
+      ? classification.topic
+      : null
+  );
+  const topic = adviceTopicId ? getAdviceTopicById(adviceTopicId) : null;
+
+  return {
+    rawText: query,
+    queryType: QUERY_TYPES.ADVICE_QUESTION,
+    adviceTopicId,
+    category: topic?.label ? `Beratung / ${topic.label}` : 'Beratung',
+    modelKey: classification.modelKey ?? null,
+    modelLabel: null,
+    status: 'needs_dealer_check',
+    createdAt: new Date().toISOString(),
+  };
+}
 
 /**
  * @param {object} classification
@@ -18,6 +257,122 @@ export function buildTemplateAnswer(classification = {}, facts = {}, query = '')
       disclaimer: DEALER_DISCLAIMER,
       kicker: 'Clever Wissen · geprüft',
       source: 'approved_knowledge',
+    };
+  }
+
+  if (facts.kind === 'general_knowledge') {
+    const smartAnswer = buildGeneralKnowledgeSmartAnswer(facts);
+    return {
+      mode: smartAnswer.mode,
+      title: facts.headline,
+      body: [facts.shortAnswer, facts.kiaBridge, facts.dealerHint].filter(Boolean).join(' '),
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: smartAnswer.kicker,
+      primaryModelKey: facts.primaryModelKey ?? facts.kiaAlternatives?.[0] ?? null,
+      source: facts.subkind === 'openai' ? 'openai_general_knowledge' : 'general_knowledge_templates',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'dealer_data_required') {
+    const smartAnswer = buildDealerDataRequiredSmartAnswer(facts);
+    return {
+      mode: 'dealer_data',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      primaryModelKey: facts.modelKey,
+      source: 'dealer_data_required',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'clarification_largest_ev') {
+    const smartAnswer = buildClarificationSmartAnswer(facts);
+    return {
+      mode: 'clarification',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      source: 'clarification_largest_ev',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'model_detail') {
+    const smartAnswer = buildModelDetailSmartAnswer(facts);
+    return {
+      mode: 'model_detail',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      primaryModelKey: facts.modelKey,
+      source: 'model_detail',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'family_variant_advice') {
+    const smartAnswer = buildFamilyVariantSmartAnswer(facts, classification);
+    return {
+      mode: 'advice',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Einschätzung',
+      primaryModelKey: facts.modelKey,
+      source: 'family_variant_advice',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'ranking' && facts.ranking) {
+    const smartAnswer = rankingToSmartAnswer(facts.ranking, query);
+    const topLines = (facts.bullets ?? []).slice(0, 3).join(' ');
+    return {
+      mode: 'ranking',
+      title: facts.ranking.headline ?? 'Ranking',
+      body: topLines,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      primaryModelKey: facts.ranking.matches?.[0]?.modelKey ?? null,
+      source: 'vehicle_lexicon_ranking',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'comparison' && facts.smartAnswer) {
+    const sa = facts.smartAnswer;
+    const contextualTitle = facts.contextualTitle;
+    const title = contextualTitle ?? sa.title;
+    const narrative = [...(sa.narrative ?? []), sa.lead, sa.summary].filter(Boolean);
+    return {
+      mode: 'comparison',
+      title,
+      body: narrative.join(' ') || (facts.bullets ?? []).join(' '),
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      primaryModelKey: facts.comparisonModels?.[0] ?? sa.primaryModelKey ?? null,
+      facts: sa.facts ?? facts.bullets?.map((b) => ({ label: 'Vergleich', value: b })),
+      source: 'dealer_advisory_compare',
+      smartAnswer: sa,
+    };
+  }
+
+  if (facts.kind === 'advice_topic' || facts.kind === 'advice_unmatched') {
+    const smartAnswer = buildAdviceSmartAnswer(facts, classification);
+    return {
+      mode: 'advice',
+      title: smartAnswer?.title ?? facts.headline ?? 'Clever Beratung',
+      body: facts.shortAnswer ?? (facts.snippets ?? []).join(' '),
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Einschätzung',
+      source: facts.kind === 'advice_unmatched' ? 'advice_unmatched' : 'adviceTopicsRegistry',
+      smartAnswer,
+      adviceTopicId: facts.adviceTopicId ?? classification.adviceTopicId,
     };
   }
 
@@ -82,16 +437,11 @@ export function buildTemplateAnswer(classification = {}, facts = {}, query = '')
 /**
  * @param {object} answer
  * @param {object} classification
+ * @param {object[]} [followUpSuggestions]
  */
-export function hybridAnswerToSmartAnswerCard(answer = {}, classification = {}) {
+export function hybridAnswerToSmartAnswerCard(answer = {}, classification = {}, followUpSuggestions = []) {
   if (!answer) return null;
-  if (answer.smartAnswer) return answer.smartAnswer;
-
-  const facts = (answer.facts ?? []).length
-    ? answer.facts
-    : undefined;
-
-  return {
+  const base = answer.smartAnswer ?? {
     mode: 'info',
     intent: 'hybrid_query',
     kicker: answer.kicker ?? 'Clever Antwort',
@@ -99,10 +449,16 @@ export function hybridAnswerToSmartAnswerCard(answer = {}, classification = {}) 
     lead: answer.body ?? '',
     summary: answer.disclaimer ?? DEALER_DISCLAIMER,
     primaryModelKey: answer.primaryModelKey ?? classification.modelKey ?? null,
-    facts: facts ?? [],
+    facts: (answer.facts ?? []).length ? answer.facts : [],
     narrative: answer.body ? [answer.body] : [],
     canShowOffers: classification.shouldShowModels,
     routingLayer: 'advisory',
+  };
+
+  return {
+    ...base,
+    followUpSuggestions: followUpSuggestions.length ? followUpSuggestions : (base.followUpSuggestions ?? []),
+    followUpLabel: base.mode === 'advice' ? 'Nächster Schritt' : 'Das könnten Sie auch fragen:',
   };
 }
 
@@ -111,18 +467,36 @@ export function hybridAnswerToSmartAnswerCard(answer = {}, classification = {}) 
  * @param {object} answer
  */
 export function resolveUiComponent(classification = {}, answer = null) {
-  if (classification.queryType === QUERY_TYPES.SPECIAL_CHECK_QUESTION
-    || classification.shouldAskForContact) {
+  if (classification.queryType === QUERY_TYPES.SPECIAL_CHECK_QUESTION) {
     return UI_COMPONENTS.SPECIAL_CONTACT;
   }
   if (classification.queryType === QUERY_TYPES.VEHICLE_WISH) {
     return UI_COMPONENTS.NEED_SEARCH;
   }
+  if (answer && classification.queryType === QUERY_TYPES.RANKING_QUESTION) {
+    return UI_COMPONENTS.RANKING_ANSWER;
+  }
+  if (answer && classification.queryType === QUERY_TYPES.COMPARISON_QUESTION) {
+    return UI_COMPONENTS.COMPARISON_ANSWER;
+  }
   if (answer && (classification.queryType === QUERY_TYPES.ADVICE_QUESTION
-    || classification.queryType === QUERY_TYPES.MODEL_EQUIPMENT_QUESTION)) {
-    return classification.queryType === QUERY_TYPES.ADVICE_QUESTION
-      ? UI_COMPONENTS.ADVICE_ANSWER
-      : UI_COMPONENTS.SMART_ANSWER;
+    || answer.mode === 'model_detail'
+    || answer.mode === 'clarification'
+    || answer.mode === 'advice'
+    || classification.queryType === QUERY_TYPES.GENERAL_CAR_QUESTION
+    || classification.queryType === QUERY_TYPES.GENERAL_CAR_COMPARISON
+    || classification.queryType === QUERY_TYPES.COMPETITOR_COMPARISON)) {
+    if (answer.mode === 'model_detail' || answer.mode === 'clarification' || answer.mode === 'info') {
+      return UI_COMPONENTS.SMART_ANSWER;
+    }
+    return UI_COMPONENTS.ADVICE_ANSWER;
+  }
+
+  if (answer?.mode === 'dealer_data' || classification.needsDealerCheck) {
+    return UI_COMPONENTS.SMART_ANSWER;
+  }
+  if (answer && classification.queryType === QUERY_TYPES.MODEL_EQUIPMENT_QUESTION) {
+    return UI_COMPONENTS.SMART_ANSWER;
   }
   return UI_COMPONENTS.NEED_SEARCH;
 }
@@ -132,6 +506,9 @@ export function resolveUiComponent(classification = {}, answer = null) {
  * @param {string} query
  */
 export function buildSpecialQuestionPayload(classification = {}, query = '') {
+  if (classification.queryType === QUERY_TYPES.ADVICE_QUESTION) {
+    return buildAdviceQuestionPayload(classification, query);
+  }
   return {
     rawText: query,
     category: classification.topic ?? 'Sonstiges',

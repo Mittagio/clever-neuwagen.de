@@ -32,6 +32,7 @@ export function createLeadFromSpecialQuestion({
   const modelLabel = specialCustomerQuestion?.modelLabel
     ?? customerWish?.modelLabel
     ?? 'Fahrzeug';
+  const isAdvice = specialCustomerQuestion?.queryType === 'advice_question';
   const topic = extractSpecialQuestionTopic(specialCustomerQuestion?.rawText);
   const kundenhelferNotes = buildKundenhelferNotesForSpecialQuestion(specialCustomerQuestion);
 
@@ -42,8 +43,10 @@ export function createLeadFromSpecialQuestion({
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     status: 'neu',
-    source: 'specialCustomerQuestion',
-    advisorStatus: topic ? `Frage / ${topic} prüfen` : 'Frage / prüfen',
+    source: isAdvice ? 'adviceQuestion' : 'specialCustomerQuestion',
+    advisorStatus: isAdvice
+      ? 'Beratungsfrage beantworten'
+      : (topic ? `Frage / ${topic} prüfen` : 'Frage / prüfen'),
     dealerId: dealerConditions?.dealerId ?? dealerConditions?.slug ?? 'autohaus-trinkle',
     contact: {
       name: contact?.name?.trim() ?? '',
@@ -65,8 +68,8 @@ export function createLeadFromSpecialQuestion({
       learningRequestId: learningRequestId ?? specialCustomerQuestion?.learningRequestId ?? null,
     },
     crm: {
-      nextStepId: 'answer_customer_question',
-      nextStepLabel: 'Kundenfrage beantworten',
+      nextStepId: isAdvice ? 'answer_advice_question' : 'answer_customer_question',
+      nextStepLabel: isAdvice ? 'Beratungsfrage beantworten' : 'Kundenfrage beantworten',
       kundenhelfer: {
         notes: kundenhelferNotes,
       },
@@ -84,8 +87,8 @@ export function createLeadFromSpecialQuestion({
       `Modell: ${modelLabel}`,
       `Spezielle Frage: ${specialCustomerQuestion?.rawText ?? ''}`,
       `Kategorie: ${specialCustomerQuestion?.category ?? 'Sonstiges'}`,
-      `Status: ${topic ? `${topic} prüfen` : 'Frage prüfen'}`,
-      'Nächster Schritt: Kundenfrage beantworten',
+      `Status: ${isAdvice ? 'Beratungsfrage' : (topic ? `${topic} prüfen` : 'Frage prüfen')}`,
+      `Nächster Schritt: ${isAdvice ? 'Beratungsfrage beantworten' : 'Kundenfrage beantworten'}`,
     ].join('\n'),
     history: [
       historyEntry('Anfrage über spezielle Kundenfrage'),

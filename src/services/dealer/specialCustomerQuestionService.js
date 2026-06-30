@@ -175,6 +175,9 @@ export function buildSpecialQuestionAkteChips(specialCustomerQuestion, options =
 }
 
 export function buildKundenhelferNotesForSpecialQuestion(specialCustomerQuestion) {
+  if (specialCustomerQuestion?.queryType === 'advice_question') {
+    return buildKundenhelferNotesForAdviceQuestion(specialCustomerQuestion);
+  }
   const topic = extractSpecialQuestionTopic(specialCustomerQuestion?.rawText);
   const parts = [
     'spezielle Frage vorhanden',
@@ -182,6 +185,30 @@ export function buildKundenhelferNotesForSpecialQuestion(specialCustomerQuestion
     topic ? `Frage zu ${topic}` : specialCustomerQuestion?.rawText,
   ].filter(Boolean);
   return parts.join(' · ');
+}
+
+const ADVICE_TOPIC_NOTES = {
+  ev_towing_range: [
+    'Anhänger / Wohnwagen wichtig',
+    'Reichweite mit Anhänger prüfen',
+    'Beratung zu E-Auto + Anhänger gewünscht',
+  ],
+  heat_pump: ['Wärmepumpe Beratung', 'Winter-Reichweite relevant'],
+  winter_range: ['Winter-Reichweite prüfen', 'Kälte-Einfluss besprechen'],
+  home_charging: ['Wallbox / Laden zuhause', 'Installation klären'],
+  leasing_vs_financing: ['Leasing vs. Finanzierung vergleichen'],
+  long_distance_travel: ['Urlaubs-/Langstrecken-Beratung', 'Ladeplanung'],
+};
+
+/**
+ * @param {object} specialCustomerQuestion
+ */
+export function buildKundenhelferNotesForAdviceQuestion(specialCustomerQuestion) {
+  const topicId = specialCustomerQuestion?.adviceTopicId;
+  const preset = ADVICE_TOPIC_NOTES[topicId];
+  if (preset) return preset.join(' · ');
+  const label = specialCustomerQuestion?.category?.replace(/^Beratung \/ /, '') ?? 'Beratungsfrage';
+  return [`Beratung: ${label}`, specialCustomerQuestion?.rawText].filter(Boolean).join(' · ');
 }
 
 export function validateSpecialQuestionContact({ phone = '', email = '' } = {}) {

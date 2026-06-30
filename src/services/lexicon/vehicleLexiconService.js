@@ -130,6 +130,7 @@ function answerMaxRangeRanking(lexicon, vehicles = []) {
   return {
     kind: 'ranking',
     ranking: 'max_range',
+    rankingMetric: 'wltp_range',
     queryInterpretation: 'Längste WLTP-Reichweite (Elektro)',
     headline: leader
       ? `${leader.label} führt mit ${leader.facts.rangeKm} km WLTP`
@@ -142,6 +143,138 @@ function answerMaxRangeRanking(lexicon, vehicles = []) {
       factLine: formatFactLine(entry),
     })),
     lexiconSize: lexicon.length,
+  };
+}
+
+function buildRankingResult({
+  ranking,
+  rankingMetric,
+  queryInterpretation,
+  headline,
+  ranked,
+  valueLabel,
+}) {
+  const top = ranked.slice(0, 8);
+  const leader = top[0];
+  return {
+    kind: 'ranking',
+    ranking,
+    rankingMetric,
+    queryInterpretation,
+    headline: headline ?? (leader
+      ? `${leader.label} führt mit ${valueLabel(leader)}`
+      : 'Keine passenden Angaben in den Kia-Stammdaten'),
+    matches: top.map((entry, index) => ({
+      modelKey: entry.modelKey,
+      label: entry.label,
+      rank: index + 1,
+      facts: entry.facts,
+      factLine: formatFactLine(entry),
+    })),
+    lexiconSize: ranked.length,
+  };
+}
+
+function answerMaxTrunkRanking(lexicon) {
+  const ranked = lexicon
+    .filter((e) => e.facts.trunkL != null)
+    .sort((a, b) => b.facts.trunkL - a.facts.trunkL);
+  return buildRankingResult({
+    ranking: 'max_trunk',
+    rankingMetric: 'trunk_volume',
+    queryInterpretation: 'Größtes Kofferraumvolumen (Herstellerangabe)',
+    ranked,
+    valueLabel: (entry) => `${entry.facts.trunkL} Liter Kofferraum`,
+  });
+}
+
+function answerMaxTowingRanking(lexicon) {
+  const ranked = lexicon
+    .filter((e) => e.facts.towBrakedKg != null)
+    .sort((a, b) => b.facts.towBrakedKg - a.facts.towBrakedKg);
+  return buildRankingResult({
+    ranking: 'max_towing',
+    rankingMetric: 'towing',
+    queryInterpretation: 'Höchste Anhängelast (gebremst)',
+    ranked,
+    valueLabel: (entry) => `${Math.round(entry.facts.towBrakedKg / 100) / 10} t Anhängelast`,
+  });
+}
+
+function answerMaxLengthRanking(lexicon) {
+  const ranked = lexicon
+    .filter((e) => e.facts.lengthMm != null)
+    .sort((a, b) => b.facts.lengthMm - a.facts.lengthMm);
+  return buildRankingResult({
+    ranking: 'max_length',
+    rankingMetric: 'length',
+    queryInterpretation: 'Längste Fahrzeuglänge',
+    ranked,
+    valueLabel: (entry) => formatMmAsM(entry.facts.lengthMm),
+  });
+}
+
+/**
+ * @param {string} metric
+ * @param {object[]} [vehicles]
+ * @param {object} [options]
+ */
+export function getRankingByMetric(metric, vehicles = [], options = {}) {
+  const lexicon = buildVehicleLexicon();
+  let result;
+  switch (metric) {
+    case 'wltp_range':
+    case 'max_range':
+      result = answerMaxRangeRanking(lexicon, vehicles);
+      break;
+    case 'trunk_volume':
+    case 'trunk':
+      result = answerMaxTrunkRanking(lexicon);
+      break;
+    case 'towing':
+      result = answerMaxTowingRanking(lexicon);
+      break;
+    case 'length':
+      result = answerMaxLengthRanking(lexicon);
+      break;
+    default:
+      return null;
+  }
+  return applyRankingPowertrainFilter(result, lexicon, options);
+}
+
+function isElectricLexiconEntry(entry) {
+  const pt = String(entry.powertrain ?? '').toLowerCase();
+  return pt === 'elektro' || pt === 'bev' || /^ev/i.test(entry.modelKey);
+}
+
+function applyRankingPowertrainFilter(result, lexicon, options = {}) {
+  if (!result || options.powertrainFilter !== 'elektro') return result;
+
+  const electricKeys = new Set(
+    lexicon.filter(isElectricLexiconEntry).map((entry) => entry.modelKey),
+  );
+  const matches = (result.matches ?? []).filter((match) => electricKeys.has(match.modelKey));
+  const leader = matches[0];
+
+  let headline = 'Keine Elektro-Modelle mit passenden Angaben in den Kia-Stammdaten';
+  if (leader) {
+    if (result.rankingMetric === 'length' || result.ranking === 'max_length') {
+      headline = `${leader.label} ist das größte Elektroauto (${formatMmAsM(leader.facts.lengthMm)} Länge)`;
+    } else if (result.rankingMetric === 'wltp_range' || result.ranking === 'max_range') {
+      headline = `${leader.label} führt bei Elektro-Modellen mit ${leader.facts.rangeKm} km WLTP`;
+    } else if (result.rankingMetric === 'trunk_volume' || result.ranking === 'max_trunk') {
+      headline = `${leader.label} hat den größten Kofferraum unter den Elektro-Modellen (${leader.facts.trunkL} Liter)`;
+    } else {
+      headline = `${leader.label} führt in dieser Kategorie unter den Elektro-Modellen`;
+    }
+  }
+
+  return {
+    ...result,
+    matches,
+    queryInterpretation: 'Ranking nur für Elektro-Modelle (Kia-Stammdaten)',
+    headline,
   };
 }
 

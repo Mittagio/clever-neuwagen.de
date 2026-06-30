@@ -10,14 +10,19 @@ export default function DealerSmartAnswerCard({
   answer,
   dealerId,
   onFollowUpQuery,
+  onFollowUpSuggestion,
   onShowFit,
   onSelectModel,
   onStartConsultation,
+  onAskDealer,
+  onLearningRequest,
+  onOptionalModelsSearch,
   fitRevealed = false,
   configuratorRevealed = false,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [notifySent, setNotifySent] = useState(false);
+  const [learningSent, setLearningSent] = useState(false);
 
   if (!answer) return null;
 
@@ -35,11 +40,31 @@ export default function DealerSmartAnswerCard({
   }
 
   const hasDetails = (answer.facts?.length ?? 0) > 0;
-  const showImage = Boolean(answer.primaryModelKey);
+  const showImage = Boolean(answer.primaryModelKey) && answer.mode !== 'advice';
+  const isAdvice = answer.mode === 'advice' || answer.intent === 'advice_question';
+  const usefulWhen = answer.usefulWhen ?? [];
+  const dealerChecks = answer.dealerChecks ?? [];
   const narrative = [
     ...(answer.narrative ?? []),
     ...(answer.summary ? [answer.summary] : []),
   ];
+
+  const followUpItems = answer.followUpSuggestions?.length
+    ? answer.followUpSuggestions
+    : (answer.relatedTopics ?? []).map((topic) => ({
+      label: topic.label,
+      query: topic.query,
+      type: 'advice_question',
+      target: topic.id,
+    }));
+
+  function handleFollowUpClick(item) {
+    if (onFollowUpSuggestion) {
+      onFollowUpSuggestion(item);
+      return;
+    }
+    onFollowUpQuery?.(item.query ?? item);
+  }
 
   return (
     <section className="dl-smart-answer" aria-labelledby="dl-smart-answer-title">
@@ -74,6 +99,31 @@ export default function DealerSmartAnswerCard({
             <p className="dl-smart-answer__lead">{answer.lead}</p>
           )}
 
+          {isAdvice && usefulWhen.length > 0 && (
+            <div className="dl-smart-answer__advice-section">
+              <p className="dl-smart-answer__advice-label">Wichtig dabei:</p>
+              <ul className="dl-smart-answer__advice-list">
+                {usefulWhen.map((item) => (
+                  <li key={item} className="dl-smart-answer__advice-item">{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isAdvice && dealerChecks.length > 0 && (
+            <div className="dl-smart-answer__advice-section">
+              <p className="dl-smart-answer__advice-label">Das prüft Ihr Autohaus:</p>
+              <ul className="dl-smart-answer__advice-list dl-smart-answer__advice-list--dealer">
+                {dealerChecks.map((item) => (
+                  <li key={item} className="dl-smart-answer__advice-item">{item}</li>
+                ))}
+              </ul>
+              {answer.dealerHint && (
+                <p className="dl-smart-answer__advice-hint">{answer.dealerHint}</p>
+              )}
+            </div>
+          )}
+
           {hasDetails && (
             <ul className="dl-smart-answer__key-facts" aria-label="Wichtige Daten">
               {answer.facts.map((fact) => (
@@ -83,6 +133,10 @@ export default function DealerSmartAnswerCard({
                 </li>
               ))}
             </ul>
+          )}
+
+          {answer.kiaBridge && (
+            <p className="dl-smart-answer__advice-hint dl-smart-answer__kia-bridge">{answer.kiaBridge}</p>
           )}
 
           {narrative.length > 0 && (
@@ -151,18 +205,20 @@ export default function DealerSmartAnswerCard({
         </p>
       )}
 
-      {answer.relatedTopics?.length > 0 && (
+      {followUpItems.length > 0 && (
         <div className="dl-smart-answer__related">
-          <p className="dl-smart-answer__related-label">Das könnte Sie auch interessieren</p>
+          <p className="dl-smart-answer__related-label">
+            {answer.followUpLabel ?? (isAdvice ? 'Nächster Schritt' : 'Das könnten Sie auch fragen:')}
+          </p>
           <div className="dl-smart-answer__related-chips">
-            {answer.relatedTopics.map((topic) => (
+            {followUpItems.map((item) => (
               <button
-                key={topic.id}
+                key={`${item.label}-${item.query}`}
                 type="button"
                 className="dl-smart-answer__related-chip"
-                onClick={() => onFollowUpQuery?.(topic.query)}
+                onClick={() => handleFollowUpClick(item)}
               >
-                {topic.label}
+                {item.label}
               </button>
             ))}
           </div>
@@ -205,6 +261,57 @@ export default function DealerSmartAnswerCard({
               onClick={handleNotify}
             >
               {answer.notifyCta ?? 'Benachrichtigen, sobald die Antwort verfügbar ist'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {answer.showDealerCta && onAskDealer && (
+        <button
+          type="button"
+          className="btn btn-primary dl-smart-answer__consult-cta"
+          onClick={onAskDealer}
+        >
+          {answer.dealerCtaLabel ?? 'Verkäufer dazu fragen'}
+        </button>
+      )}
+
+      {answer.showSecondaryCta && onAskDealer && (
+        <button
+          type="button"
+          className="btn btn-secondary dl-smart-answer__fit-cta"
+          onClick={onAskDealer}
+        >
+          {answer.secondaryCtaLabel}
+        </button>
+      )}
+
+      {answer.showOptionalModelsCta && onOptionalModelsSearch && (
+        <button
+          type="button"
+          className="btn btn-secondary dl-smart-answer__fit-cta"
+          onClick={() => onOptionalModelsSearch(answer)}
+        >
+          {answer.optionalModelsCtaLabel ?? 'Passende Modelle ansehen'}
+        </button>
+      )}
+
+      {answer.showLearningCta && onLearningRequest && (
+        <div className="dl-smart-answer__data-gap">
+          {learningSent ? (
+            <p className="dl-smart-answer__data-gap-ok">
+              Danke – Clever merkt sich Ihre Frage für die Beratungsdatenbank.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary dl-smart-answer__notify-cta"
+              onClick={() => {
+                onLearningRequest(answer);
+                setLearningSent(true);
+              }}
+            >
+              {answer.learningCtaLabel ?? 'Clever soll das lernen'}
             </button>
           )}
         </div>
