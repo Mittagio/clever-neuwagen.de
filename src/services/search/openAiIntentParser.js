@@ -38,9 +38,8 @@ export async function parseCustomerSearchProfile(query, options = {}) {
   const localIntent = parseSearchIntent(query);
   const localProfile = buildSearchProfile({ query, intent: localIntent });
 
-  const apiKey = typeof import.meta !== 'undefined'
-    ? import.meta.env?.VITE_OPENAI_API_KEY
-    : process.env?.OPENAI_API_KEY;
+  const isBrowser = typeof import.meta !== 'undefined' && import.meta.env;
+  const apiKey = !isBrowser ? process.env?.OPENAI_API_KEY : null;
 
   if (!options.useOpenAi || !apiKey) {
     return {

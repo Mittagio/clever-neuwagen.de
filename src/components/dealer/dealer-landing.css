@@ -3937,6 +3937,13 @@
   border: 1px solid #e2e8f0;
 }
 
+.dl-hybrid-query-loading {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 .dl-need-answer__kicker {
   margin: 0 0 6px;
   font-size: 0.8125rem;

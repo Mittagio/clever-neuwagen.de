@@ -93,6 +93,8 @@
     "test:clever-action-engine": "node src/services/crm/cleverActionEngine.test.js",
     "test:clever-inbox": "node src/services/crm/cleverInboxService.test.js",
     "test:customer-offer-link": "node src/services/crm/customerLinkOfferService.test.js",
+    "test:clever-customer-query": "node src/services/clever/cleverCustomerQuery.test.js",
+    "test:clever-lexikon-query": "node src/services/clever/cleverLexiconQuery.test.js",
     "test:customer-offer-portfolio": "node src/services/crm/customerOfferPortfolioService.test.js",
     "test:clever-diktat": "node src/services/cleverDiktat.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",

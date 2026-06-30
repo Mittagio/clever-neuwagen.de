@@ -4,6 +4,7 @@ import {
   searchCleverLexicon,
   buildLexiconAkteChip,
 } from '../../services/lexicon/cleverLexiconSearchService.js';
+import { fetchLexikonQuery } from '../../services/lexicon/lexikonQueryApi.js';
 import {
   LEARNING_SOURCE_AREAS,
   lexiconNeedsLearningFeedback,
@@ -21,13 +22,23 @@ export default function CleverLexikon({
   const [query, setQuery] = useState('');
   const [searchState, setSearchState] = useState(null);
   const [showRelated, setShowRelated] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  function runSearch(text) {
+  async function runSearch(text) {
     const q = text.trim();
     if (!q) return;
     setQuery(q);
     setShowRelated(false);
-    setSearchState(searchCleverLexicon(q));
+    setIsSearching(true);
+
+    try {
+      const response = await fetchLexikonQuery({ query: q });
+      setSearchState(response.searchState ?? searchCleverLexicon(q));
+    } catch {
+      setSearchState(searchCleverLexicon(q));
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   function handleSubmit(e) {
@@ -74,8 +85,8 @@ export default function CleverLexikon({
             autoComplete="off"
           />
         </label>
-        <button type="submit" className="backend-home__lexikon-submit">
-          Nachschlagen
+        <button type="submit" className="backend-home__lexikon-submit" disabled={isSearching}>
+          {isSearching ? 'Suche …' : 'Nachschlagen'}
         </button>
       </form>
 

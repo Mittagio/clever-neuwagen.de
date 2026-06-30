@@ -46,6 +46,13 @@ import {
 } from '../services/dealer/journeyLeadService.js';
 import { createLeadFromCustomerAdvisor } from '../services/dealer/customerAdvisorLeadService.js';
 import { createLeadFromSpecialQuestion } from '../services/dealer/specialCustomerQuestionLeadService.js';
+import { fetchCustomerQuery } from '../services/customer/customerQueryApi.js';
+import { UI_COMPONENTS } from '../services/clever/customerQueryTypes.js';
+import {
+  createLearningRequest,
+  LEARNING_SOURCE_AREAS,
+} from '../services/admin/cleverLearningRequestService.js';
+import SpecialQuestionContactCard from '../components/vehicle-detail/SpecialQuestionContactCard.jsx';
 import { chipToFeatureIds, getEquipmentWishChip } from '../data/features/equipmentWishChips.js';
 import { findDealerWishChip, toggleWishChipIds } from '../data/dealer/dealerWishCatalog.js';
 import {
@@ -187,6 +194,10 @@ export default function DealerPage() {
   const [consultationProfile, setConsultationProfile] = useState(null);
   const [cleverRecommendation, setCleverRecommendation] = useState(null);
   const [consultationHandoff, setConsultationHandoff] = useState(null);
+  const [hybridQueryResult, setHybridQueryResult] = useState(null);
+  const [hybridQueryLoading, setHybridQueryLoading] = useState(false);
+  const [hybridSpecialSubmitted, setHybridSpecialSubmitted] = useState(false);
+  const [hybridSpecialSubmitting, setHybridSpecialSubmitting] = useState(false);
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
   const offersSectionRef = useRef(null);
@@ -532,6 +543,39 @@ export default function DealerPage() {
   }, [submittedQuery]);
 
   useEffect(() => {
+    setHybridSpecialSubmitted(false);
+    if (!submittedQuery.trim()) {
+      setHybridQueryResult(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setHybridQueryLoading(true);
+
+    fetchCustomerQuery({
+      query: submittedQuery.trim(),
+      dealerId,
+      context: {
+        page: 'dealer_landing',
+        activeChipIds: submittedChipIds,
+      },
+    })
+      .then((result) => {
+        if (!cancelled) setHybridQueryResult(result);
+      })
+      .catch(() => {
+        if (!cancelled) setHybridQueryResult(null);
+      })
+      .finally(() => {
+        if (!cancelled) setHybridQueryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [submittedQuery, dealerId, submittedChipIds]);
+
+  useEffect(() => {
     if (!hasSearch || !submittedQuery.trim()) return;
     const saved = loadJourneyState(dealerId, submittedQuery);
     if (!saved?.salesStep) return;
@@ -702,7 +746,22 @@ export default function DealerPage() {
     return 'recommend';
   }, [useSalesJourney, salesStep, isCleverEntry]);
 
-  const showSmartAnswer = hasSearch && customerQueryMode === 'info' && Boolean(smartAnswer);
+  const hybridSmartAnswer = hybridQueryResult?.smartAnswer ?? null;
+  const effectiveSmartAnswer = hybridSmartAnswer ?? smartAnswer;
+  const showHybridAdvice = hasSearch && Boolean(hybridQueryResult?.answer)
+    && (hybridQueryResult?.ui?.component === UI_COMPONENTS.ADVICE_ANSWER
+      || hybridQueryResult?.ui?.component === UI_COMPONENTS.SMART_ANSWER);
+  const showHybridSpecialContact = hasSearch
+    && hybridQueryResult?.ui?.component === UI_COMPONENTS.SPECIAL_CONTACT;
+  const hybridBlocksNeedAnswer = showHybridAdvice
+    || showHybridSpecialContact
+    || (hybridQueryResult?.classification?.queryType === 'advice_question'
+      && !hybridQueryResult?.classification?.shouldShowModels);
+
+  const showSmartAnswer = hasSearch && Boolean(effectiveSmartAnswer) && (
+    showHybridAdvice
+    || (customerQueryMode === 'info' && Boolean(smartAnswer) && !hybridQueryResult)
+  );
   const showSalesIntentBridge = hasSearch
     && !isCleverEntry
     && salesIntentResult?.mode === CLEVER_SALES_MODES.KNOWLEDGE
@@ -718,7 +777,8 @@ export default function DealerPage() {
     && effectiveSalesStep === 'recommend'
     && Boolean(needSearchAnswer)
     && !showSalesCompare
-    && !isCleverEntry;
+    && !isCleverEntry
+    && !hybridBlocksNeedAnswer;
   const showSalesRecommend = useSalesJourney
     && effectiveSalesStep === 'recommend'
     && primaryRecommendGroup
@@ -1147,6 +1207,40 @@ export default function DealerPage() {
     });
   }, [addLead, conditions, customerAdvisorWish]);
 
+  const handleHybridSpecialQuestionSubmit = useCallback(async (contact) => {
+    const specialCustomerQuestion = hybridQueryResult?.specialCustomerQuestion;
+    if (!specialCustomerQuestion) return;
+    setHybridSpecialSubmitting(true);
+    const learning = createLearningRequest({
+      query: contact.question || submittedQuery,
+      modelKey: specialCustomerQuestion.modelKey,
+      modelLabel: specialCustomerQuestion.modelLabel,
+      sourceArea: LEARNING_SOURCE_AREAS.CUSTOMER_ADVISOR,
+      pageContext: 'Händler-Landing',
+      dealerId,
+      dealerName: conditions.dealerName,
+    });
+    try {
+      handleSpecialQuestionSubmit({
+        contact,
+        specialCustomerQuestion: {
+          ...specialCustomerQuestion,
+          rawText: contact.question || specialCustomerQuestion.rawText,
+          learningRequestId: learning.request?.id ?? null,
+        },
+      });
+      setHybridSpecialSubmitted(true);
+    } finally {
+      setHybridSpecialSubmitting(false);
+    }
+  }, [
+    hybridQueryResult,
+    submittedQuery,
+    dealerId,
+    conditions.dealerName,
+    handleSpecialQuestionSubmit,
+  ]);
+
   const handleTrimConfirm = useCallback((recommendation) => {
     const modelKey = selectedModelKey ?? recommendation?.modelKey;
     if (!modelKey) return;
@@ -1297,9 +1391,9 @@ export default function DealerPage() {
   ]);
 
   useEffect(() => {
-    if (!isNeedBasedAdvisor || salesStep || isCleverEntry) return;
+    if (!isNeedBasedAdvisor || salesStep || isCleverEntry || hybridBlocksNeedAnswer) return;
     setSalesStep('recommend');
-  }, [isNeedBasedAdvisor, salesStep, isCleverEntry]);
+  }, [isNeedBasedAdvisor, salesStep, isCleverEntry, hybridBlocksNeedAnswer]);
 
   useEffect(() => {
     if (!needSearchAnswer?.picks?.length) {
@@ -1516,9 +1610,23 @@ export default function DealerPage() {
             <SearchConflictBanner conflict={searchConflict} />
           )}
 
+          {hybridQueryLoading && hasSearch && (
+            <p className="dl-hybrid-query-loading" role="status">Clever prüft Ihre Frage …</p>
+          )}
+
+          {showHybridSpecialContact && (
+            <SpecialQuestionContactCard
+              questionText={hybridQueryResult?.specialCustomerQuestion?.rawText ?? submittedQuery}
+              onSubmit={handleHybridSpecialQuestionSubmit}
+              onDismiss={() => setHybridQueryResult(null)}
+              submitting={hybridSpecialSubmitting}
+              submitted={hybridSpecialSubmitted}
+            />
+          )}
+
           {showSmartAnswer && (
             <DealerSmartAnswerCard
-              answer={smartAnswer}
+              answer={effectiveSmartAnswer}
               dealerId={dealerId}
               onFollowUpQuery={handleFollowUpQuery}
               onSelectModel={handleSmartAnswerSelectModel}
@@ -1691,7 +1799,7 @@ export default function DealerPage() {
             />
           )}
           <div ref={searchResultsRef}>
-          {showLegacySearchResults && needSearchAnswer && !useSalesJourney && (
+          {showLegacySearchResults && needSearchAnswer && !useSalesJourney && !hybridBlocksNeedAnswer && (
             <DealerNeedAnswerCard
               recognizedWishes={recognizedWishes}
               answer={needSearchAnswer}
