@@ -71,6 +71,11 @@ const ev4HasFeature = classifyWithRules('Hat der EV4 eine Wärmepumpe?');
 assert.equal(ev4HasFeature.queryType, QUERY_TYPES.MODEL_EQUIPMENT_QUESTION);
 assert.equal(ev4HasFeature.modelKey, 'ev4');
 
+const ev4TrunkSize = classifyWithRules('wie groß ist kofferraum vom ev4');
+assert.equal(ev4TrunkSize.queryType, QUERY_TYPES.MODEL_EQUIPMENT_QUESTION);
+assert.equal(ev4TrunkSize.modelKey, 'ev4');
+assert.equal(ev4TrunkSize.topic, 'trunk');
+
 const vehicleWish = classifyWithRules('E-Auto bis 400 € SUV');
 assert.equal(vehicleWish.queryType, QUERY_TYPES.VEHICLE_WISH);
 assert.equal(vehicleWish.shouldShowModels, true);
@@ -183,5 +188,15 @@ const modelQ = await orchestrateCustomerQuery({
 });
 assert.ok(modelQ.ok);
 assert.equal(modelQ.classification.queryType, QUERY_TYPES.MODEL_EQUIPMENT_QUESTION);
+
+const orchestratedEv4Trunk = await orchestrateCustomerQuery({
+  query: 'wie groß ist kofferraum vom ev4',
+  useOpenAi: false,
+});
+assert.ok(orchestratedEv4Trunk.ok);
+assert.equal(orchestratedEv4Trunk.classification.queryType, QUERY_TYPES.MODEL_EQUIPMENT_QUESTION);
+assert.equal(orchestratedEv4Trunk.classification.modelKey, 'ev4');
+assert.match(orchestratedEv4Trunk.answer?.body ?? '', /490/);
+assert.doesNotMatch(orchestratedEv4Trunk.answer?.body ?? '', /Fahrprofil|Clever Einschätzung/i);
 
 console.log('cleverCustomerQuery.test.js: OK');

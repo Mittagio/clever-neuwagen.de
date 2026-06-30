@@ -14,6 +14,7 @@ const ATTRIBUTE_DETECTORS = [
   { id: 'seats', patterns: [/\bsitze\b/i, /\bsitzer\b/i, /\bplätze\b/i] },
   { id: 'length', patterns: [/\bl[aä]nge\b/i, /\bwie\s+lang\b/i] },
   { id: 'height', patterns: [/\bh[oö]he\b/i, /\bwie\s+hoch\b/i] },
+  { id: 'size', patterns: [/\bwie\s+gro[ßs]\b/i, /\bgro[ßs]e?\s+(?:ist|sind)\b/i] },
   { id: 'price', patterns: [/\bpreis\b/i, /\bwas\s+kostet\b/i, /\bkosten\b/i] },
 ];
 

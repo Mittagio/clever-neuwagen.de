@@ -1,7 +1,7 @@
 /**
  * Regelbasierte Klassifikation – Fallback ohne OpenAI.
  */
-import { detectModelKeyInQuery } from '../search/modelAttributeQuestion.js';
+import { detectModelKeyInQuery, parseModelAttributeQuestion } from '../search/modelAttributeQuestion.js';
 import { parseAdvisoryQuestion } from '../search/advisoryQuestionParser.js';
 import { analyzeCustomerQueryType } from '../search/customerQueryType.js';
 import { parseSearchIntent } from '../search/searchIntentParser.js';
@@ -252,6 +252,23 @@ export function classifyWithRules(query = '', context = {}) {
       shouldAskForContact: false,
       needsDealerCheck: false,
       confidence: 0.85,
+      source: 'rules',
+    });
+  }
+
+  const modelAttributeQ = !VEHICLE_WISH_VERBS.test(text)
+    && parseModelAttributeQuestion(text);
+  if (modelAttributeQ) {
+    return normalizeClassification({
+      queryType: QUERY_TYPES.MODEL_EQUIPMENT_QUESTION,
+      topic: modelAttributeQ.attribute,
+      modelKey: modelAttributeQ.modelKey,
+      featureId,
+      customerIntent: `Technische Frage: ${modelAttributeQ.attribute}`,
+      shouldShowModels: true,
+      shouldAskForContact: false,
+      needsDealerCheck: false,
+      confidence: 0.88,
       source: 'rules',
     });
   }

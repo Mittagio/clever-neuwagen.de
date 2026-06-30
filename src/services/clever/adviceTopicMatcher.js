@@ -1,6 +1,7 @@
 /**
  * Topic-basierte Beratungserkennung – Token-Overlap statt Einzel-Regex pro Frage.
  */
+import { parseModelAttributeQuestion } from '../search/modelAttributeQuestion.js';
 import { ADVICE_TOPICS, getAdviceTopicById } from './adviceTopicsRegistry.js';
 
 const STOP_WORDS = new Set([
@@ -67,6 +68,12 @@ export function matchAdviceTopicByQuery(query = '', options = {}) {
   const text = String(query).trim();
   if (!text) return null;
 
+  if (parseModelAttributeQuestion(text)) return null;
+
+  if (SHOPPING_VERBS.test(text)) {
+    return null;
+  }
+
   const minScore = options.minScore ?? 0.38;
   let bestTopic = null;
   let bestScore = 0;
@@ -112,7 +119,8 @@ export function isModelSpecificTechnicalQuery(text, modelKey) {
       return true;
     }
   }
-  if (/anhängelast|anhaengelast|zuglast/i.test(text) && modelKey) return true;
+  if (/anhängelast|anhaengelast|zuglast|kofferraum|laderaum|reichweite|wlpt/i.test(text) && modelKey) return true;
+  if (/\bwie\s+gro[ßs]\b/i.test(text) && modelKey) return true;
   return false;
 }
 

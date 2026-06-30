@@ -94,7 +94,7 @@ export const ADVICE_TOPICS = [
     id: ADVICE_TOPIC_IDS.BATTERY_SIZE,
     label: 'Batteriegröße einschätzen',
     triggerExamples: ['Reicht eine kleine Batterie?', 'Was bringt eine große Batterie?', 'Batteriegröße Elektroauto'],
-    keywords: ['batterie', 'akku', 'kwh', 'klein', 'groß', 'reicht'],
+    keywords: ['batterie', 'akku', 'kwh', 'kleine batterie', 'große batterie', 'reicht'],
     shortAnswer: 'Kurze Pendelstrecken: kompaktere Batterie kann reichen. Vielfahrer und Urlaub profitieren oft von mehr Kapazität.',
     usefulWhen: ['Tägliche Strecke realistisch einschätzen', 'Lademöglichkeiten zuhause und unterwegs', 'Urlaubsfahrten mit einplanen'],
     lessImportantWhen: ['Sie laden täglich und fahren wenig.'],
