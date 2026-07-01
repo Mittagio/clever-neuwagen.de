@@ -107,13 +107,17 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 1,
+    urgent: true,
   },
   [INBOX_EVENT_TYPES.OFFER_QUESTION]: {
-    badge: 'Angebot',
+    badge: 'Frage',
     icon: '💬',
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 1,
+    urgent: true,
   },
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: {
     badge: 'Kontakt',
@@ -121,6 +125,8 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 3,
+    urgent: true,
   },
   [INBOX_EVENT_TYPES.OFFER_INTERESTED]: {
     badge: 'Interesse',
@@ -128,40 +134,39 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 3,
   },
   [INBOX_EVENT_TYPES.OFFER_OPENED]: {
-    badge: 'Angebot',
+    badge: 'Geöffnet',
     icon: '👁',
     actionLabel: 'Nachfassen',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
+    sortOrder: 4,
   },
   [INBOX_EVENT_TYPES.OFFER_DECLINED]: {
-    badge: 'Angebot',
+    badge: 'Abgelehnt',
     icon: '✕',
-    actionLabel: 'Antworten',
+    actionLabel: 'Alternative anbieten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
+    sortOrder: 6,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_UPLOADED]: {
     badge: 'Unterlagen',
     icon: '📎',
     actionLabel: 'Unterlagen öffnen',
     actionTarget: 'documents',
-    secondaryActionLabel: 'Unterlagen anfordern',
-    secondaryActionTarget: 'reply',
-    secondaryIntentId: 'request_documents',
     priority: INBOX_PRIORITY.NORMAL,
+    sortOrder: 5,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED]: {
     badge: 'Unterlagen',
     icon: '✓',
     actionLabel: 'Unterlagen öffnen',
     actionTarget: 'documents',
-    secondaryActionLabel: 'Unterlagen anfordern',
-    secondaryActionTarget: 'reply',
-    secondaryIntentId: 'request_documents',
     priority: INBOX_PRIORITY.NORMAL,
+    sortOrder: 5,
   },
   [INBOX_EVENT_TYPES.SPECIAL_QUESTION]: {
     badge: 'Frage',
@@ -169,6 +174,8 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 1,
+    urgent: true,
   },
   [INBOX_EVENT_TYPES.LEARNING_REQUEST_CREATED]: {
     badge: 'Lernanfrage',
@@ -176,6 +183,7 @@ const EVENT_META = {
     actionLabel: 'Prüfen',
     actionTarget: 'learning',
     priority: INBOX_PRIORITY.LOW,
+    sortOrder: 6,
   },
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: {
     badge: 'Frag Clever',
@@ -183,6 +191,8 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 2,
+    urgent: true,
   },
 };
 
@@ -252,7 +262,137 @@ function normalizeItem(input = {}) {
 }
 
 function sortItems(items = []) {
-  return [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return [...items].sort((a, b) => {
+    const metaA = EVENT_META[a.type] ?? {};
+    const metaB = EVENT_META[b.type] ?? {};
+    const orderA = metaA.sortOrder ?? 99;
+    const orderB = metaB.sortOrder ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+}
+
+function countLabel(count, singular, plural = `${singular}n`) {
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${plural}`;
+}
+
+export function getCategoryOpenCount(categoryId, filter = {}) {
+  if (categoryId === 'all') {
+    return listInboxItems({ ...filter, status: 'open' }).length;
+  }
+  return listInboxItems({ ...filter, status: 'open', category: categoryId }).length;
+}
+
+export function isInboxItemUrgent(item = {}) {
+  if (item.metadata?.urgent === true) return true;
+  const meta = EVENT_META[item.type] ?? {};
+  if (meta.urgent && item.priority === INBOX_PRIORITY.HIGH) return true;
+  if (item.type === INBOX_EVENT_TYPES.CONTACT_REQUESTED) return true;
+  return false;
+}
+
+/**
+ * Zusammenfassung für Clever-Eingang-Seitenkopf
+ * @param {object} [filter]
+ */
+export function buildInboxPageSummary(filter = {}) {
+  const openItems = listInboxItems({ ...filter, status: 'open' });
+  const openCount = openItems.length;
+  const questionCount = getCategoryOpenCount('questions', filter);
+  const offerCount = getCategoryOpenCount('offers', filter);
+  const documentCount = getCategoryOpenCount('documents', filter);
+
+  const parts = [
+    `${openCount} offen`,
+    countLabel(questionCount, 'Frage', 'Fragen'),
+    countLabel(offerCount, 'Angebot', 'Angebote'),
+    countLabel(documentCount, 'Unterlage', 'Unterlagen'),
+  ];
+
+  return {
+    openCount,
+    questionCount,
+    offerCount,
+    documentCount,
+    summaryLine: parts.join(' · '),
+  };
+}
+
+/**
+ * Demo-Karten für Vorschau / Abnahme (?demo=1)
+ */
+export function buildInboxDemoItems() {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: 'demo-inbox-advisor',
+      createdAt: now,
+      updatedAt: now,
+      type: INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST,
+      title: 'Neue Frage aus Frag Clever',
+      message: '„Was wäre die Lieferzeit für den EV9?“',
+      customerName: 'EV9 Kunde',
+      leadId: 'demo-lead-ev9',
+      vehicleLabel: 'Kia EV9',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.HIGH,
+      actionLabel: 'Antworten',
+      actionTarget: 'reply',
+      metadata: { topics: ['EV9', 'Lieferzeit'], demo: true },
+    },
+    {
+      id: 'demo-inbox-question',
+      createdAt: new Date(Date.now() - 3600000).toISOString(),
+      updatedAt: new Date(Date.now() - 3600000).toISOString(),
+      type: INBOX_EVENT_TYPES.OFFER_QUESTION,
+      title: 'Kundenfrage offen',
+      message: '„Winterreifen dabei?“',
+      customerName: 'E2E Kunde',
+      leadId: 'demo-lead-ev3',
+      offerId: 'vc-ev3',
+      vehicleLabel: 'Kia EV3',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.HIGH,
+      actionLabel: 'Antworten',
+      actionTarget: 'reply',
+      metadata: { topics: ['EV3', 'Winterreifen', 'Angebot'], questionId: 'demo-q-1', demo: true },
+    },
+    {
+      id: 'demo-inbox-opened',
+      createdAt: new Date(Date.now() - 7200000).toISOString(),
+      updatedAt: new Date(Date.now() - 7200000).toISOString(),
+      type: INBOX_EVENT_TYPES.OFFER_OPENED,
+      title: 'Angebot wurde geöffnet',
+      message: 'Kunde hat die EV9-Auswahl geöffnet.',
+      customerName: 'EV9 Interessent',
+      leadId: 'demo-lead-opened',
+      offerId: 'vc-ev9',
+      vehicleLabel: 'EV9 Auswahl',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.NORMAL,
+      actionLabel: 'Nachfassen',
+      actionTarget: 'reply',
+      metadata: { demo: true },
+    },
+    {
+      id: 'demo-inbox-interested',
+      createdAt: new Date(Date.now() - 10800000).toISOString(),
+      updatedAt: new Date(Date.now() - 10800000).toISOString(),
+      type: INBOX_EVENT_TYPES.OFFER_INTERESTED,
+      title: 'Kunde interessiert sich',
+      message: 'Kunde hat diese Variante als interessant markiert.',
+      customerName: 'Kia Fan',
+      leadId: 'demo-lead-interested',
+      offerId: 'vc-ev9-air',
+      vehicleLabel: 'Kia EV9 Air',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.HIGH,
+      actionLabel: 'Antworten',
+      actionTarget: 'reply',
+      metadata: { demo: true },
+    },
+  ];
 }
 
 export function shouldCreateInboxFromHistory(entry = {}) {
@@ -506,11 +646,13 @@ export function buildInboxItemFromOfferInteraction({
       ?? interaction?.lastViewedAt
       ?? vehicleOffer?.tracking?.lastOpenedAt
       ?? new Date().toISOString();
+    const openedMessage = /Auswahl/i.test(label)
+      ? `Kunde hat die ${label} geöffnet.`
+      : `Kunde hat ${label} geöffnet.`;
     return createInboxItem({
       type: INBOX_EVENT_TYPES.OFFER_OPENED,
       title: 'Angebot wurde geöffnet',
-      message: `${label} wurde geöffnet.`,
-      customerId: lead.id,
+      message: openedMessage,      customerId: lead.id,
       customerName,
       leadId: lead.id,
       offerId,
@@ -529,7 +671,7 @@ export function buildInboxItemFromOfferInteraction({
     return createInboxItem({
       type: INBOX_EVENT_TYPES.OFFER_INTERESTED,
       title: 'Kunde interessiert sich',
-      message: `${label} – der Kunde hat Interesse signalisiert.`,
+      message: 'Kunde hat diese Variante als interessant markiert.',
       customerId: lead.id,
       customerName,
       leadId: lead.id,

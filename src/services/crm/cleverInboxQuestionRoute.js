@@ -41,6 +41,52 @@ function shouldOpenCleverAntworten(item = {}, { secondary = false } = {}) {
 }
 
 /**
+ * Kundenakte-Link mit passendem Kontext (ohne Clever-Nachrichten-Sheet)
+ * @param {string} leadId
+ * @param {object} item
+ */
+export function buildInboxKundenakteUrl(leadId, item = {}) {
+  if (!leadId) return buildKundenaktePath('');
+
+  if (item.actionTarget === 'documents'
+    || item.type === INBOX_EVENT_TYPES.DOCUMENT_UPLOADED
+    || item.type === INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED) {
+    const params = new URLSearchParams({ sheet: 'unterlagen' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  if (item.type === INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST) {
+    const params = new URLSearchParams({ sheet: 'history' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  const questionId = item.metadata?.questionId ?? null;
+  const offerId = item.offerId ?? item.metadata?.offerId ?? null;
+  if (questionId && offerId && (
+    item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
+    || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
+  )) {
+    const params = new URLSearchParams({
+      sheet: 'question_answer',
+      offerId,
+      questionId,
+    });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  if (offerId) {
+    const params = new URLSearchParams({ offerId });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  return buildKundenaktePath(leadId);
+}
+
+/**
  * @param {string} leadId
  * @param {object} item
  * @param {object} [options]

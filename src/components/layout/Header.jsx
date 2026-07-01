@@ -32,25 +32,32 @@ export default function Header() {
           </nav>
         )}
 
-        {!isPublicMarketing && (
-          <nav className="header-nav" aria-label="Navigation">
-            {isBackend && <span className="header-context">Händler-Backend</span>}
-            {isAdmin && <span className="header-context">Ober-Admin</span>}
-          </nav>
+        {(isPublicMarketing || (!isBackend && !isAdmin)) && (
+          <div className="header-actions">
+            {isPublicMarketing ? (
+              <Link to="/login" className="header-btn header-btn--login">Login</Link>
+            ) : (
+              <>
+                <Link to="/backend" className="header-action">Backend</Link>
+                <Link to="/admin" className="header-action header-action-muted">Admin</Link>
+              </>
+            )}
+          </div>
         )}
 
-        <div className="header-actions">
-          {isPublicMarketing ? (
-            <>
-              <Link to="/login" className="header-btn header-btn--login">Login</Link>
-            </>
-          ) : (
-            <>
-              <Link to="/backend" className="header-action">Backend</Link>
-              <Link to="/admin" className="header-action header-action-muted">Admin</Link>
-            </>
-          )}
-        </div>
+        {isBackend && (
+          <div className="header-actions">
+            <Link
+              to="/backend/verwaltung"
+              className="header-settings"
+              aria-label="Verwaltung öffnen"
+              title="Verwaltung öffnen"
+            >
+              <span className="header-settings__icon" aria-hidden>⚙️</span>
+              <span className="header-settings__label">Verwaltung</span>
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   );

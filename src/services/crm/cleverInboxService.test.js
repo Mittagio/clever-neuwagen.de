@@ -9,11 +9,14 @@ import {
   __clearInboxTestMode,
   __resetInboxStoreForTests,
   buildInboxDashboardSummary,
+  buildInboxDemoItems,
   buildInboxItemFromDocumentEvent,
   buildInboxItemFromOfferInteraction,
+  buildInboxPageSummary,
   createInboxItem,
   INBOX_EVENT_TYPES,
   INBOX_STATUS,
+  isInboxItemUrgent,
   listInboxItems,
   listInboxItemsForCustomer,
   markInboxItemDone,
@@ -71,7 +74,39 @@ const openedItem = buildInboxItemFromOfferInteraction({
   eventType: INBOX_EVENT_TYPES.OFFER_OPENED,
 });
 assert.equal(openedItem.type, INBOX_EVENT_TYPES.OFFER_OPENED);
-assert.match(openedItem.message, /Sportage Vision/);
+assert.match(openedItem.message, /geöffnet/);
+
+// Seiten-Zusammenfassung
+reset();
+createInboxItem({ type: INBOX_EVENT_TYPES.OFFER_QUESTION, title: 'Frage', message: 'Q', leadId: 'l1', customerId: 'l1', status: INBOX_STATUS.OPEN });
+createInboxItem({ type: INBOX_EVENT_TYPES.OFFER_OPENED, title: 'A', message: 'B', leadId: 'l2', customerId: 'l2', status: INBOX_STATUS.OPEN });
+const pageSummary = buildInboxPageSummary();
+assert.match(pageSummary.summaryLine, /2 offen/);
+assert.match(pageSummary.summaryLine, /1 Frage/);
+assert.match(pageSummary.summaryLine, /1 Angebot/);
+
+// Priorität: Fragen vor Geöffnet
+reset();
+createInboxItem({ type: INBOX_EVENT_TYPES.OFFER_OPENED, title: 'O', message: 'B', leadId: 'l1', customerId: 'l1', status: INBOX_STATUS.OPEN, createdAt: '2026-06-18T12:00:00.000Z' });
+createInboxItem({ type: INBOX_EVENT_TYPES.CUSTOMER_QUESTION, title: 'F', message: 'Q', leadId: 'l2', customerId: 'l2', status: INBOX_STATUS.OPEN, createdAt: '2026-06-18T10:00:00.000Z' });
+const sorted = listInboxItems({ status: 'open' });
+assert.equal(sorted[0].type, INBOX_EVENT_TYPES.CUSTOMER_QUESTION, 'Fragen zuerst sortiert');
+
+// Dringend-Markierung
+assert.equal(isInboxItemUrgent({ type: INBOX_EVENT_TYPES.CONTACT_REQUESTED }), true);
+assert.equal(isInboxItemUrgent({ type: INBOX_EVENT_TYPES.OFFER_OPENED }), false);
+
+// Demo-Karten
+assert.equal(buildInboxDemoItems().length, 4);
+
+// Clever Eingang UI
+const inboxPageSource = readFileSync(
+  join(__dirname, '../../pages/backend/CleverInboxPage.jsx'),
+  'utf8',
+);
+assert.ok(inboxPageSource.includes('buildInboxPageSummary'), 'Seitenkopf mit Zusammenfassung');
+assert.ok(inboxPageSource.includes('Alles erledigt'), 'Freundlicher Empty State');
+assert.ok(inboxPageSource.includes('Clever Berater starten'), 'Empty-State CTA');
 
 // 3. Interesse markiert erstellt InboxItem
 reset();
@@ -168,8 +203,8 @@ const syncedLead = {
 const synced = syncInboxItemsFromLead(syncedLead);
 assert.ok(synced.length >= 1, 'syncInboxItemsFromLead erzeugt Meldungen');
 
-const homeToday = readFileSync(
-  join(__dirname, '../../components/backend/BackendHomeToday.jsx'),
+const mainTilesSource = readFileSync(
+  join(__dirname, '../../components/backend/BackendMainTiles.jsx'),
   'utf8',
 );
 const inboxTileSource = readFileSync(
@@ -177,7 +212,8 @@ const inboxTileSource = readFileSync(
   'utf8',
 );
 assert.ok(inboxTileSource.includes('Clever Eingang'), 'Dashboard-Kachel Clever Eingang');
-assert.ok(homeToday.includes('BackendCleverInboxTile'), 'Heute-Bereich bindet Clever Eingang ein');
+assert.ok(mainTilesSource.includes('BackendCleverInboxTile') || mainTilesSource.includes('Clever Eingang'), 'Hauptkacheln binden Clever Eingang ein');
+assert.ok(mainTilesSource.includes('/backend/clever-eingang'), 'Clever Eingang verlinkt Nachrichtenzentrum');
 
 __clearInboxTestMode();
 console.log('cleverInboxService.test.js: ok');

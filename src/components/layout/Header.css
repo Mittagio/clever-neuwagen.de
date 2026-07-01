@@ -210,3 +210,48 @@
 .header-action-muted:hover {
   color: var(--color-text-secondary, #475569);
 }
+
+.header-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.header-settings:hover {
+  border-color: #c7d9ff;
+  background: #f8fbff;
+  text-decoration: none;
+}
+
+.header-settings__icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+@media (max-width: 639px) {
+  .header-settings__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .header-settings {
+    padding: 10px 12px;
+  }
+}

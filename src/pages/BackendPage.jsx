@@ -6,6 +6,7 @@ import VehicleDataReadonlyBanner from '../components/shared/VehicleDataReadonlyB
 import BackendNav from '../components/backend/BackendNav.jsx';
 import BackendSyncStatus from '../components/backend/BackendSyncStatus.jsx';
 import BackendHome from '../components/backend/BackendHome.jsx';
+import BackendVerkaufenHub from '../components/backend/BackendVerkaufenHub.jsx';
 import BackendVehicleShowroom from '../components/backend/BackendVehicleShowroom.jsx';
 import DealerVehicleManagement from '../components/backend/DealerVehicleManagement.jsx';
 import EquipmentDataInspector from '../components/admin/EquipmentDataInspector.jsx';
@@ -36,6 +37,11 @@ export default function BackendPage() {
     if (location.pathname === '/backend/fahrzeuge') {
       setActiveArea('fahrzeuge');
       setActiveSection('overview');
+      return;
+    }
+    if (location.pathname === '/backend/verwaltung') {
+      setActiveArea('verwaltung');
+      setActiveSection('hub');
     }
   }, [location.pathname]);
   const {
@@ -63,9 +69,9 @@ export default function BackendPage() {
     resetToDefaults,
   } = useDraftDealerConditions();
 
-  const handleAreaChange = useCallback((areaId) => {
+  const handleAreaChange = useCallback((areaId, sectionId) => {
     setActiveArea(areaId);
-    setActiveSection(getDefaultSection(areaId));
+    setActiveSection(sectionId ?? getDefaultSection(areaId));
   }, []);
 
   const handleSectionChange = useCallback((sectionId) => {
@@ -80,11 +86,18 @@ export default function BackendPage() {
 
   const showPublishDock = hasDraftChanges() && activeArea === 'verwaltung';
   const isHome = activeArea === 'verkaufen' && activeSection === 'home';
+  const isSellHub = activeArea === 'verkaufen' && activeSection === 'sell';
 
   function renderContent() {
     if (activeArea === 'verkaufen' && activeSection === 'home') {
       return (
-        <BackendHome />
+        <BackendHome onNavigateArea={handleAreaChange} />
+      );
+    }
+
+    if (activeArea === 'verkaufen' && activeSection === 'sell') {
+      return (
+        <BackendVerkaufenHub onBack={() => handleAreaChange('verkaufen', 'home')} />
       );
     }
 
@@ -185,9 +198,9 @@ export default function BackendPage() {
 
   return (
     <PageShell>
-      <div className={`backend page backend--v2 backend--mf5${showPublishDock ? ' backend--has-publish-dock' : ''}${isHome ? ' backend--home' : ''}`}>
+      <div className={`backend page backend--v2 backend--mf5${showPublishDock ? ' backend--has-publish-dock' : ''}${isHome ? ' backend--home' : ''}${isSellHub ? ' backend--sell-hub' : ''}`}>
         <div className="container">
-          {!isHome && (
+          {!isHome && !isSellHub && (
             <header className="backend-header backend-header--slim">
               <div>
                 <p className="backend-header-eyebrow">Händler-Backend</p>
@@ -196,13 +209,14 @@ export default function BackendPage() {
             </header>
           )}
 
-          <BackendNav
-            compact={isHome}
-            activeArea={activeArea}
-            activeSection={activeSection}
-            onAreaChange={handleAreaChange}
-            onSectionChange={handleSectionChange}
-          />
+          {!isHome && !isSellHub && (
+            <BackendNav
+              activeArea={activeArea}
+              activeSection={activeSection}
+              onAreaChange={handleAreaChange}
+              onSectionChange={handleSectionChange}
+            />
+          )}
 
           {showConditionTools && <VehicleDataReadonlyBanner />}
 

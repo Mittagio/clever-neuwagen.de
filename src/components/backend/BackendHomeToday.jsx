@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useOffers } from '../../context/OffersContext.jsx';
 import { useCommunication } from '../../context/CommunicationContext.jsx';
-import { KPI_TILES } from '../../logic/backendKpiNavigation.js';
+import { KPI_TILES, getDueTodayLeadIds } from '../../logic/backendKpiNavigation.js';
 import { computeBackendTodayStats } from '../../logic/backendTodayStats.js';
-import { getDueTodayLeadIds } from '../../logic/backendKpiNavigation.js';
-import BackendCleverInboxTile from './BackendCleverInboxTile.jsx';
 
 function resolveKpiValue(tile, stats, leads, dueTodayLeadIds) {
   switch (tile.key) {
@@ -34,8 +32,6 @@ export default function BackendHomeToday({ leads = [] }) {
       <h2 id="backend-home-today-title" className="backend-home__section-title">
         Heute im Autohaus
       </h2>
-
-      <BackendCleverInboxTile />
 
       <div className="backend-home__kpi-grid">
         {KPI_TILES.map((tile) => {

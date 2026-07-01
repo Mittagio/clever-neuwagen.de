@@ -11,7 +11,7 @@ import {
   resolveBoardBadge,
 } from '../customerOfferInteraction.js';
 import { applyCustomerOfferQuestionAnswer } from '../dealer/customerOfferQuestionAnswerService.js';
-import { buildInboxActionAkteUrl, buildQuestionAnswerAkteUrl, resolveInboxReplyIntent } from '../crm/cleverInboxQuestionRoute.js';
+import { buildInboxActionAkteUrl, buildInboxKundenakteUrl, buildQuestionAnswerAkteUrl, resolveInboxReplyIntent } from '../crm/cleverInboxQuestionRoute.js';
 import {
   __clearInboxTestMode,
   __resetInboxStoreForTests,
@@ -79,6 +79,16 @@ const openedUrl = buildInboxActionAkteUrl('lead-1', {
   offerId: 'vc-ev6',
 });
 assert.match(openedUrl, /intentId=offer_opened_followup/);
+
+const kundenakteDocUrl = buildInboxKundenakteUrl('lead-1', {
+  id: 'inbox-doc',
+  type: INBOX_EVENT_TYPES.DOCUMENT_UPLOADED,
+  leadId: 'lead-1',
+});
+assert.match(kundenakteDocUrl, /sheet=unterlagen/);
+
+const kundenakteQuestionUrl = buildInboxKundenakteUrl('lead-1', inboxItem);
+assert.match(kundenakteQuestionUrl, /sheet=question_answer/);
 
 // C) applyCustomerOfferQuestionAnswer
 const lead = {

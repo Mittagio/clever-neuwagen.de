@@ -9,7 +9,8 @@ export const BACKEND_AREAS = [
 
 export const BACKEND_AREA_SECTIONS = {
   verkaufen: [
-    { id: 'home', label: 'Start' },
+    { id: 'home', label: 'Dashboard' },
+    { id: 'sell', label: 'Verkaufen' },
   ],
   fahrzeuge: [
     { id: 'overview', label: 'Modelle' },

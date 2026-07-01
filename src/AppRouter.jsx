@@ -114,6 +114,7 @@ export default function AppRouter() {
         <Route path="/haendler/autohaus-trinkle" element={<DealerPage />} />
         <Route path="/haendler/:slug" element={<DealerPage />} />
         <Route path="/backend" element={<BackendPage />} />
+        <Route path="/backend/verwaltung" element={<BackendPage />} />
         <Route path="/partner-verwaltung" element={<PartnerVerwaltungPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/intelligence" element={<IntelligencePage />} />

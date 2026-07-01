@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { searchCustomers } from '../../services/crm/customerSearchService.js';
 
-const SEARCH_PLACEHOLDER = 'Name, Telefon, E-Mail, Fahrzeug oder CN-Nummer suchen …';
+const SEARCH_PLACEHOLDER = 'Name, Telefon, E-Mail, Fahrzeug oder CN-Nummer';
 
 function CustomerHitCard({ result, onOpen }) {
   return (
