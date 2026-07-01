@@ -65,6 +65,7 @@ export function createLeadFromAdvisorConversation({
       label: modelLabel,
     },
     advisorConversationSummary: summary,
+    customerQuestion: contact?.question ?? advisorSession?.messages?.filter((m) => m.role === 'user').slice(-1)[0]?.text ?? summary,
     advisorSessionId: advisorSession?.id ?? null,
     customerWish: {
       modelKey: focusModel,

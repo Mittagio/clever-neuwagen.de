@@ -76,6 +76,58 @@ function buildFacts(query, classification, routing) {
     };
   }
 
+  if (/zeekr/i.test(query) && /lad|schnell|dc|kw/i.test(query)) {
+    return {
+      kind: 'general_knowledge',
+      subkind: 'zeekr_charging',
+      headline: 'Ladegeschwindigkeit Zeekr – Orientierung',
+      shortAnswer: 'Nach allgemeinem Datenstand hängt die Ladegeschwindigkeit vom genauen Zeekr-Modell, der Akkugröße und der DC-Ladeleistung ab. Wichtig sind maximale kW-Leistung, die 10–80-%-Zeit und die reale Ladekurve unterwegs.',
+      narrative: [
+        'Große Akkus laden oft schneller an High-Power-Chargern, verlieren aber bei hohem Ladestand an Tempo.',
+        'Im Alltag zählen verfügbare Ladeinfrastruktur und Ihre typischen Strecken.',
+      ],
+      kiaBridge: 'Zum Vergleich der Ladegeschwindigkeit bieten sich Kia EV6, EV9, EV5 oder EV4 an – Ihr Autohaus vergleicht Modelle anhand Ihres Fahrprofils.',
+      dealerHint: 'Konkrete Ladeleistung und Ausstattung prüft Ihr Autohaus am Wunschmodell.',
+      competitorMentions: ['Zeekr'],
+      kiaAlternatives: ['ev6', 'ev9', 'ev5', 'ev4'],
+    };
+  }
+
+  if ((classification.modelKey === 'ev4' || /ev4/i.test(query))
+    && /steckdose|usb|v2l|anschluss|12v/i.test(query)) {
+    return {
+      kind: 'general_knowledge',
+      subkind: 'ev4_power_outlets',
+      headline: 'Anschlüsse und Steckdosen beim Kia EV4',
+      shortAnswer: 'Beim EV4 muss man unterscheiden zwischen USB-Anschlüssen im Innenraum, 12V-Anschluss, dem Ladeanschluss außen und möglichen Funktionen wie V2L (Vehicle-to-Load). Je nach Ausstattungslinie können Anzahl und Position der Anschlüsse variieren.',
+      narrative: [
+        'USB-C/USB-A dienen Medien und Laden von Geräten im Innenraum.',
+        'V2L erlaubt unter Umständen Strom aus dem Akku für Geräte – nicht in jeder Linie verfügbar.',
+      ],
+      kiaBridge: 'Ihr Autohaus zeigt Ihnen die konkrete EV4-Version mit passender Ausstattung.',
+      dealerHint: 'Die genaue EV4-Ausstattung und Verfügbarkeit prüft Ihr Autohaus final.',
+      competitorMentions: [],
+      kiaAlternatives: ['ev4'],
+      primaryModelKey: 'ev4',
+    };
+  }
+
+  if (routing.reason === 'model_equipment_gap' || topic === 'equipment_gap') {
+    const modelKey = classification.modelKey ?? detectModelKeyInQuery(query);
+    const label = modelKey ? `Kia ${modelKey.toUpperCase()}` : 'Ihr Wunschmodell';
+    return {
+      kind: 'general_knowledge',
+      subkind: 'model_equipment_gap',
+      headline: `${label}: Ausstattung im Überblick`,
+      shortAnswer: `Nach allgemeinem Datenstand variiert die Ausstattung je nach Linie und Paket. Für verbindliche Angaben zu Ihrer konkreten Version ist Ihr Autohaus die sichere Quelle.`,
+      kiaBridge: `${label} können Sie direkt beim Autohaus konfigurieren und vergleichen.`,
+      dealerHint: 'Ihr Autohaus prüft die genaue Ausstattung und Verfügbarkeit final.',
+      competitorMentions: [],
+      kiaAlternatives: modelKey ? [modelKey] : ['ev4'],
+      primaryModelKey: modelKey,
+    };
+  }
+
   return {
     kind: 'general_knowledge',
     subkind: 'open_auto',

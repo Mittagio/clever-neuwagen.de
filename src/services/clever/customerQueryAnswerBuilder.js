@@ -121,11 +121,16 @@ export function buildGeneralKnowledgeSmartAnswer(facts = {}) {
 
   const isAdvice = facts.subkind === 'towing_range' || facts.subkind === 'heat_pump'
     || facts.usefulWhen?.length;
+  const confidenceLabel = facts.dataConfidence === 'clever_verified'
+    ? 'Nach hinterlegten Fahrzeugdaten'
+    : facts.dataConfidence === 'needs_dealer_check'
+      ? 'Autohaus prüft final'
+      : 'Allgemeine Einschätzung';
 
   return {
     mode: isAdvice ? 'advice' : 'info',
     intent: facts.kind === 'general_knowledge' ? 'general_car_question' : 'hybrid_query',
-    kicker: isAdvice ? 'Clever Einschätzung' : 'Clever Antwort',
+    kicker: confidenceLabel,
     title: facts.headline,
     lead: facts.shortAnswer,
     usefulWhen: facts.usefulWhen ?? [],
@@ -168,24 +173,7 @@ export function buildDealerDataRequiredSmartAnswer(facts = {}) {
  */
 export function buildAdviceSmartAnswer(facts = {}, classification = {}) {
   if (facts.kind === 'advice_unmatched') {
-    return {
-      mode: 'advice',
-      intent: 'advice_question',
-      kicker: 'Clever Einschätzung',
-      title: facts.headline ?? 'Clever hat dazu noch keine sichere Antwort.',
-      lead: facts.shortAnswer,
-      usefulWhen: [],
-      dealerChecks: facts.dealerChecks ?? [],
-      dealerHint: facts.dealerCheckHint,
-      showDealerCta: true,
-      dealerCtaLabel: 'Verkäufer dazu fragen',
-      showLearningCta: true,
-      learningCtaLabel: 'Clever soll das lernen',
-      canShowOffers: false,
-      routingLayer: 'advice',
-      adviceTopicId: null,
-      unmatched: true,
-    };
+    return null;
   }
 
   if (facts.kind !== 'advice_topic') return null;
@@ -255,8 +243,9 @@ export function buildTemplateAnswer(classification = {}, facts = {}, query = '')
       title: 'Clever Wissen',
       body: facts.approvedAnswer.answerText,
       disclaimer: DEALER_DISCLAIMER,
-      kicker: 'Clever Wissen · geprüft',
+      kicker: 'Nach hinterlegten Fahrzeugdaten',
       source: 'approved_knowledge',
+      dataConfidence: 'clever_verified',
     };
   }
 

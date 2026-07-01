@@ -1,3 +1,16 @@
+export const DATA_CONFIDENCE = {
+  GENERAL: 'general',
+  CLEVER_VERIFIED: 'clever_verified',
+  NEEDS_DEALER_CHECK: 'needs_dealer_check',
+};
+
+/** Dezente UI-Labels – nicht technisch */
+export const DATA_CONFIDENCE_LABELS = {
+  [DATA_CONFIDENCE.GENERAL]: 'Allgemeine Einschätzung',
+  [DATA_CONFIDENCE.CLEVER_VERIFIED]: 'Nach hinterlegten Fahrzeugdaten',
+  [DATA_CONFIDENCE.NEEDS_DEALER_CHECK]: 'Autohaus prüft final',
+};
+
 export const QUERY_TYPES = {
   VEHICLE_WISH: 'vehicle_wish',
   MODEL_EQUIPMENT_QUESTION: 'model_equipment_question',

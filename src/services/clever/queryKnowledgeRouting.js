@@ -42,6 +42,10 @@ export function routeQueryKnowledge(query = '', classification = {}) {
     return { route: KNOWLEDGE_ROUTES.DEALER_CHECK, reason: 'special_check' };
   }
 
+  if (classification.queryType === QUERY_TYPES.PURCHASE_INTENT) {
+    return { route: KNOWLEDGE_ROUTES.DEALER_CHECK, reason: 'purchase_intent' };
+  }
+
   const competitor = detectCompetitorComparison(query);
   if (competitor) {
     return {

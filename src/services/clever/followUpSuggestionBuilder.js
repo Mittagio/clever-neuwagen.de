@@ -73,6 +73,20 @@ export function buildFollowUpSuggestions({
       push(contactSuggestion('Verkäufer dazu fragen'));
       return suggestions;
     }
+    if (facts.subkind === 'zeekr_charging') {
+      push(querySuggestion('Mit Kia EV6 vergleichen', 'Kia EV6 Ladegeschwindigkeit', 'model_detail_question', 'ev6'));
+      push(querySuggestion('Mit Kia EV9 vergleichen', 'Kia EV9 Ladegeschwindigkeit', 'model_detail_question', 'ev9'));
+      push(querySuggestion('Ladegeschwindigkeit erklären', 'Was bedeutet DC-Schnellladen?', 'general_car_question'));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
+    if (facts.subkind === 'ev4_power_outlets' || facts.subkind === 'model_equipment_gap') {
+      push(querySuggestion('EV4 Ausstattung prüfen', 'EV4 Ausstattung je Linie', 'model_equipment_question', 'ev4'));
+      push(querySuggestion('V2L erklären', 'Was ist V2L beim Elektroauto?', 'general_car_question'));
+      push(querySuggestion('EV4 Angebot anfragen', 'Ich möchte ein EV4 Angebot anfragen', 'purchase_intent', 'offer'));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
     for (const alt of facts.kiaAlternatives ?? []) {
       push(querySuggestion(`Kia ${modelLabel(alt)} Alternative`, `Mehr Infos zum Kia ${modelLabel(alt)}`, 'model_detail_question', alt));
     }

@@ -54,6 +54,17 @@ if (-not (Test-Port 3001)) {
   $env:HOST = '0.0.0.0'
   Start-Process -FilePath $node -ArgumentList 'server/index.js' -WorkingDirectory $root -WindowStyle Minimized
   Start-Sleep -Seconds 2
+} else {
+  Write-Host 'Server laeuft bereits auf Port 3001 (bei .env.local-Aenderungen Server neu starten).'
+}
+
+function Get-OpenAiHealth {
+  try {
+    $h = Invoke-RestMethod -Uri 'http://127.0.0.1:3001/api/v1/clever/customer-query/health' -TimeoutSec 3
+    return $h
+  } catch {
+    return $null
+  }
 }
 
 $url = 'http://localhost:3001'
@@ -65,6 +76,12 @@ if ($lanIp) {
   Write-Host "WLAN (Handy): http://${lanIp}:3001/haendler/autohaus-trinkle"
 }
 Write-Host "API:          $url/health"
+$openAi = Get-OpenAiHealth
+if ($openAi) {
+  $configured = if ($openAi.openAiConfigured) { 'ja' } else { 'nein (OPENAI_API_KEY in .env.local setzen)' }
+  $advisor = if ($openAi.advisorUseOpenAi) { 'aktiv' } else { 'aus (ADVISOR_USE_OPENAI=true)' }
+  Write-Host "OpenAI:       konfiguriert=$configured, Berater=$advisor"
+}
 Write-Host ''
 Write-Host 'Im externen Browser oeffnen (nicht Cursor Simple Browser auf :5173).'
 

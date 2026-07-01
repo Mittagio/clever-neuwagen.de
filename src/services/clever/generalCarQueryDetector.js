@@ -90,6 +90,7 @@ export function detectGeneralCarQuestion(text = '') {
     { pattern: /welche\s+e-?autos?\s+.{0,30}reichweite/i, topic: 'ev_range_overview' },
     { pattern: /viel\s+reichweite|lange\s+reichweite/i, topic: 'ev_range_overview' },
     { pattern: /was\s+ist\s+besser.*(diesel|elektro|hybrid)/i, topic: 'powertrain_choice' },
+    { pattern: /wie\s+schnell\s+lädt|ladegeschwindigkeit|schnelllad/i, topic: 'charging_speed' },
   ];
 
   for (const entry of generalTopics) {
@@ -139,5 +140,6 @@ export function detectDealerDataQuery(text = '') {
  * @param {string} text
  */
 export function isPurchaseIntentQuery(text = '') {
-  return /\b(angebot\s+anfragen|probefahrt|autohaus\s+soll|verkäufer|beraten\s+lassen)\b/i.test(String(text));
+  const q = String(text).trim();
+  return /\b(angebot\s+anfragen|ich\s+will\s+(ein\s+)?angebot|angebot\s+erhalten|probefahrt|autohaus\s+soll|verkäufer|beraten\s+lassen|kontakt\s+aufnehmen)\b/i.test(q);
 }

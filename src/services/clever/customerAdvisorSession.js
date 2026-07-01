@@ -78,7 +78,13 @@ export function appendAdvisorExchange(session, userText, result = {}) {
   };
 
   next.currentContext = mergeContextFromResult(next.currentContext ?? {}, result, userText);
-  next.extractedCustomerSignals = extractCustomerSignals(next);
+  next.extractedCustomerSignals = [
+    ...new Set([
+      ...(next.extractedCustomerSignals ?? []),
+      ...(result.extractedSignals ?? []),
+      ...extractCustomerSignals(next),
+    ]),
+  ];
   next.suggestedFollowUps = result.followUpSuggestions ?? [];
   return next;
 }

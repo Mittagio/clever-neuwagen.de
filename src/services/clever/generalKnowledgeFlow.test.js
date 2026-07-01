@@ -70,4 +70,33 @@ assert.equal(ev4Leasing.classification.needsDealerCheck, true);
 assert.match(ev4Leasing.answer?.body ?? '', /Autohaus|Rate|Händler/i);
 assert.doesNotMatch(ev4Leasing.answer?.body ?? '', /^\d+.*€/);
 
+const zeekrCharge = await orchestrateCustomerQuery({
+  query: 'Wie schnell lädt der Zeekr?',
+  useOpenAi: false,
+});
+assert.ok(zeekrCharge.ok);
+assert.match(zeekrCharge.answer?.body ?? '', /Zeekr|Lade|kW|DC/i);
+assert.match(zeekrCharge.answer?.body ?? '', /Kia|EV6|EV9|EV4/i);
+assert.ok(zeekrCharge.followUpSuggestions?.some((s) => /EV6|EV9|Verkäufer/i.test(s.label)));
+assert.doesNotMatch(zeekrCharge.answer?.body ?? '', /weiß ich nicht|keine Antwort/i);
+
+const ev4Outlets = await orchestrateCustomerQuery({
+  query: 'Wie viele Steckdosen hat der EV4?',
+  useOpenAi: false,
+});
+assert.ok(ev4Outlets.ok);
+assert.match(ev4Outlets.answer?.body ?? '', /USB|12V|V2L|Anschluss|Ausstattung/i);
+assert.match(ev4Outlets.answer?.body ?? '', /Autohaus/i);
+assert.doesNotMatch(ev4Outlets.answer?.body ?? '', /weiß ich nicht|keine sichere Antwort/i);
+assert.ok(ev4Outlets.followUpSuggestions?.length >= 3);
+
+const purchaseIntent = await orchestrateCustomerQuery({
+  query: 'Ich will ein Angebot',
+  useOpenAi: false,
+});
+assert.ok(purchaseIntent.ok);
+assert.equal(purchaseIntent.dataConfidence, 'needs_dealer_check');
+assert.match(purchaseIntent.answer?.body ?? '', /Autohaus|Angebot|Anfrage/i);
+assert.doesNotMatch(purchaseIntent.answer?.body ?? '', /^\d+.*€/);
+
 console.log('generalKnowledgeFlow.test.js: OK');

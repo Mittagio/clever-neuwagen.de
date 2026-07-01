@@ -141,13 +141,13 @@ export function resolveFactsForQuery(classification = {}, query = '') {
       return {
         kind: 'advice_unmatched',
         topic: 'unmatched_advice',
-        headline: 'Clever hat dazu noch keine sichere Antwort.',
-        shortAnswer: 'Diese Frage ist noch nicht in unserer Beratungsdatenbank. Ihr Autohaus oder unser Team kann Ihnen gezielt weiterhelfen.',
+        headline: null,
+        shortAnswer: null,
         usefulWhen: [],
         dealerChecks: ['individuelle Beratung', 'passendes Modell', 'Verfügbarkeit'],
-        dealerCheckHint: 'Ein Verkäufer kann Ihre Frage persönlich beantworten.',
+        dealerCheckHint: 'Ihr Autohaus beantwortet Detailfragen zur konkreten Ausstattung.',
         bullets: [],
-        sources: ['advice_unmatched'],
+        sources: ['openai_advisor_pending'],
       };
     }
 
