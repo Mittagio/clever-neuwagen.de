@@ -10,6 +10,8 @@ export function hasVerifiedCleverFacts(facts = {}) {
   if (facts.kind === 'approved_knowledge') return true;
   if (facts.kind === 'ranking' || facts.kind === 'comparison') return true;
   if (facts.kind === 'model_detail' || facts.kind === 'family_variant_advice') return true;
+  if (facts.kind === 'model_technical') return Boolean(facts.hasVerifiedData);
+  if (facts.kind === 'advisor_profile') return true;
 
   if (facts.kind === 'model_equipment') {
     if (facts.featureId && facts.availability?.status !== 'unknown') return true;

@@ -37,11 +37,22 @@ import { buildGeneralKnowledgeFacts } from './generalKnowledgeTemplates.js';
 import { answerWithOpenAiAdvisor } from './openAiAdvisorAnswerService.js';
 import { hasVerifiedCleverFacts, resolveDataConfidence } from './dataConfidenceResolver.js';
 import { detectDealerDataQuery } from './generalCarQueryDetector.js';
+import {
+  analyzeQueryBrands,
+  buildBrandScopeCrmSignals,
+  buildCompetitorInterest,
+  enrichClassificationWithBrandScope,
+  filterFollowUpsForBrandScope,
+  getDealerBrandScope,
+} from './dealerBrandScope.js';
+import { buildBrandScopedKnowledgeFacts } from './brandScopeKnowledgeTemplates.js';
+import { buildBrandScopedFollowUps } from './brandScopeFollowUps.js';
 
 const LOW_CONFIDENCE = 0.55;
 
 const RULE_GUARD_TYPES = new Set([
   QUERY_TYPES.SPECIAL_CHECK_QUESTION,
+  QUERY_TYPES.MIXED_INTENT,
   QUERY_TYPES.RANKING_QUESTION,
   QUERY_TYPES.VEHICLE_WISH,
   QUERY_TYPES.PURCHASE_INTENT,
@@ -219,6 +230,8 @@ export async function orchestrateCustomerQuery(input = {}) {
   const rawQuery = String(input.query ?? '').trim();
   const sessionContext = input.context ?? {};
   const useOpenAi = shouldUseOpenAi(input);
+  const brandScope = getDealerBrandScope(input.dealerId ?? sessionContext.dealerId);
+  const brandAnalysis = analyzeQueryBrands(rawQuery, brandScope);
 
   if (!rawQuery) {
     return { ok: false, error: 'query_required' };
@@ -265,6 +278,10 @@ export async function orchestrateCustomerQuery(input = {}) {
     }
   }
 
+  const brandEnriched = enrichClassificationWithBrandScope(query, brandScope, classification);
+  classification = normalizeClassification(brandEnriched.classification);
+  const activeBrandAnalysis = brandEnriched.analysis ?? brandAnalysis;
+
   let facts = resolveAdvisoryFlowFacts(query, contextual, classification)
     ?? resolveFactsForQuery(classification, query);
 
@@ -278,9 +295,24 @@ export async function orchestrateCustomerQuery(input = {}) {
     facts.primaryModelKey = classification.modelKey;
   }
 
+  const brandScopedFacts = buildBrandScopedKnowledgeFacts({
+    query,
+    classification,
+    brandScope,
+    analysis: activeBrandAnalysis,
+  });
+  if (brandScopedFacts) {
+    facts = brandScopedFacts;
+    classification = normalizeClassification({
+      ...classification,
+      shouldShowModels: Boolean(brandScopedFacts.primaryModelKey && !brandScopedFacts.disallowForeignDetail),
+    });
+  }
+
   const knowledgeRoute = routeQueryKnowledge(query, classification);
 
   if (knowledgeRoute.route === KNOWLEDGE_ROUTES.DEALER_CHECK
+    && classification.queryType !== QUERY_TYPES.MIXED_INTENT
     && (knowledgeRoute.reason === 'leasing_rate'
       || classification.queryType === QUERY_TYPES.PURCHASE_INTENT
       || (classification.needsDealerCheck && knowledgeRoute.reason !== 'special_check'))) {
@@ -295,10 +327,10 @@ export async function orchestrateCustomerQuery(input = {}) {
     const openAiFacts = await resolveOpenAiAdvisorFacts({
       query,
       classification,
-      sessionContext,
+      sessionContext: { ...sessionContext, brandScope, brandAnalysis: activeBrandAnalysis },
       knowledgeRoute,
       localFacts: facts,
-      useOpenAi,
+      useOpenAi: useOpenAi && !brandScopedFacts?.disallowForeignDetail,
     });
 
     if (openAiFacts) {
@@ -318,14 +350,14 @@ export async function orchestrateCustomerQuery(input = {}) {
         });
       }
 
-      if (openAiFacts.needsDealerCheck) {
+      if (openAiFacts.needsDealerCheck && classification.queryType !== QUERY_TYPES.MIXED_INTENT) {
         classification = normalizeClassification({
           ...classification,
           needsDealerCheck: true,
           shouldAskForContact: true,
         });
       }
-    } else if (knowledgeRoute.route === KNOWLEDGE_ROUTES.GENERAL
+    } else if (!brandScopedFacts && knowledgeRoute.route === KNOWLEDGE_ROUTES.GENERAL
       && shouldUseOpenAiGeneralKnowledge(knowledgeRoute)
       && facts.kind !== 'ranking'
       && facts.kind !== 'comparison'
@@ -333,7 +365,9 @@ export async function orchestrateCustomerQuery(input = {}) {
       && facts.kind !== 'approved_knowledge'
       && facts.kind !== 'clarification_largest_ev'
       && facts.kind !== 'model_detail'
-      && facts.kind !== 'family_variant_advice') {
+      && facts.kind !== 'family_variant_advice'
+      && facts.kind !== 'model_technical'
+      && facts.kind !== 'advisor_profile') {
       facts = buildGeneralKnowledgeFacts({ query, classification, routing: knowledgeRoute });
 
       if (knowledgeRoute.competitor) {
@@ -355,11 +389,12 @@ export async function orchestrateCustomerQuery(input = {}) {
           topic: knowledgeRoute.generalQ.topic,
         });
       }
-    } else if (facts.kind === 'advice_unmatched' || facts.kind === 'advice_snippets') {
+    } else if (!brandScopedFacts && (facts.kind === 'advice_unmatched' || facts.kind === 'advice_snippets')) {
       facts = buildGeneralKnowledgeFacts({ query, classification, routing: knowledgeRoute });
-    } else if (knowledgeRoute.route === KNOWLEDGE_ROUTES.CLEVER_DATA
+    } else if (!brandScopedFacts && knowledgeRoute.route === KNOWLEDGE_ROUTES.CLEVER_DATA
       && facts.kind === 'model_equipment'
-      && !hasVerifiedCleverFacts(facts)) {
+      && !hasVerifiedCleverFacts(facts)
+      && facts.kind !== 'model_technical') {
       facts = buildGeneralKnowledgeFacts({
         query,
         classification: { ...classification, topic: classification.topic ?? 'equipment_gap' },
@@ -407,6 +442,16 @@ export async function orchestrateCustomerQuery(input = {}) {
     });
   }
 
+  if (facts?.kind === 'mixed_intent') {
+    classification = normalizeClassification({
+      ...classification,
+      queryType: QUERY_TYPES.MIXED_INTENT,
+      shouldAskForContact: false,
+      needsDealerCheck: false,
+      shouldShowModels: true,
+    });
+  }
+
   let answer = buildTemplateAnswer(classification, facts, query);
 
   const canFormulate = classification.queryType === QUERY_TYPES.ADVICE_QUESTION
@@ -446,12 +491,25 @@ export async function orchestrateCustomerQuery(input = {}) {
 
   let followUpSuggestions = facts.followUpSuggestions?.length
     ? facts.followUpSuggestions
-    : buildFollowUpSuggestions({
+    : buildBrandScopedFollowUps({
+      facts,
+      classification,
+      brandScope,
+      analysis: activeBrandAnalysis,
+    })
+    ?? buildFollowUpSuggestions({
       classification,
       facts,
       smartAnswer: answer?.smartAnswer,
       sessionContext,
+      brandScope,
+      brandAnalysis: activeBrandAnalysis,
     });
+
+  followUpSuggestions = filterFollowUpsForBrandScope(followUpSuggestions, brandScope);
+
+  const competitorInterest = buildCompetitorInterest(rawQuery, activeBrandAnalysis, brandScope);
+  const brandScopeSignals = buildBrandScopeCrmSignals(activeBrandAnalysis, rawQuery);
 
   const uiComponent = resolveUiComponent(classification, answer);
   const smartAnswer = hybridAnswerToSmartAnswerCard(answer, classification, followUpSuggestions);
@@ -464,6 +522,7 @@ export async function orchestrateCustomerQuery(input = {}) {
   }
 
   const extractedSignals = [
+    ...brandScopeSignals,
     ...(facts.extractedSignals ?? []),
     ...(sessionContext.extractedSignals ?? []),
   ].filter(Boolean);
@@ -471,7 +530,8 @@ export async function orchestrateCustomerQuery(input = {}) {
   const isAdvice = classification.queryType === QUERY_TYPES.ADVICE_QUESTION
     || facts.kind === 'family_variant_advice'
     || facts.kind === 'general_knowledge';
-  const advicePayload = isAdvice || classification.needsDealerCheck
+  const advicePayload = (isAdvice || classification.needsDealerCheck)
+    && classification.queryType !== QUERY_TYPES.MIXED_INTENT
     ? buildAdviceQuestionPayload(classification, rawQuery)
     : null;
 
@@ -482,6 +542,12 @@ export async function orchestrateCustomerQuery(input = {}) {
     source: pipelineSource,
     resolvedQuery: contextual.enriched ? query : null,
     classification,
+    dealerBrandScope: {
+      dealerId: brandScope.dealerId,
+      allowedBrands: brandScope.allowedBrands,
+      primaryBrand: brandScope.primaryBrand,
+    },
+    competitorInterest,
     dataConfidence,
     dataConfidenceLabel,
     extractedSignals: [...new Set(extractedSignals)],
@@ -536,7 +602,7 @@ export async function orchestrateCustomerQuery(input = {}) {
     specialCustomerQuestion: uiComponent === UI_COMPONENTS.SPECIAL_CONTACT
       ? buildSpecialQuestionPayload(classification, rawQuery)
       : (classification.queryType === QUERY_TYPES.PURCHASE_INTENT ? advicePayload : null),
-    adviceContact: (isAdvice || classification.needsDealerCheck) ? advicePayload : null,
+    adviceContact: advicePayload,
     knowledgeRoute: knowledgeRoute.route,
     knowledgeReason: knowledgeRoute.reason,
     persistence: {
@@ -547,6 +613,10 @@ export async function orchestrateCustomerQuery(input = {}) {
       customerQuestion: rawQuery,
       advisorConversationSummary: sessionContext.advisorConversationSummary ?? null,
       extractedSignals,
+      competitorInterest,
+      nextStepHint: competitorInterest
+        ? 'Alternative aus eigener Markenwelt anbieten'
+        : null,
     },
   };
 }

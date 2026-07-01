@@ -16,7 +16,7 @@ export const SPECIAL_QUESTION_CATEGORIES = [
 
 const CATEGORY_RULES = [
   { category: 'Anhängerkupplung', patterns: [/anhängerkupplung|\bahk\b|zuglast|kupplung\s*nach/i] },
-  { category: 'Familie / Hund', patterns: [/hundebox|\bhund\b|kindersitz|isofix|familie|kinderwagen/i] },
+  { category: 'Familie / Hund', patterns: [/hundebox|\bhund\b|kindersitz|isofix|iso\s*fix|familie|kinderwagen/i] },
   { category: 'Räder / Reifen', patterns: [/winterreifen|winterräder|sommerreifen|allwetter|felgen|reifen|\bräder\b/i] },
   { category: 'Transport', patterns: [/fahrradträger|dachträger|dachbox|dachgepäck|anhänger|transportbox|lastenträger/i] },
   { category: 'Zubehör', patterns: [/windabweiser|dachkoffer|fußmatte|schutz|spoiler|schweller|leiste|zubehör|dachbox/i] },
@@ -109,6 +109,25 @@ export function detectSpecialCustomerQuestion(query, ctx = {}) {
   const rawText = String(query ?? '').trim();
   if (rawText.length < 6) return null;
 
+  if (/\b(suche|suchen|möchte|moechte|brauche|interessier)\b/i.test(rawText)
+    && (/\?/.test(rawText) || /\b(hat|haben|gibt|ist)\s+(der|die|das|ein)\b/i.test(rawText))
+    && /\b(isofix|iso\s*fix|kindersitz|kinder|\bahk\b|anhängerkupplung|anhaengerkupplung)\b/i.test(rawText)) {
+    return null;
+  }
+
+  if (/\b(suche|suchen|möchte|moechte|brauche|interessier|ich\s+suche)\b/i.test(rawText)
+    && /\b(isofix|iso\s*fix|kindersitz|kinder|\bahk\b|anhängerkupplung|anhaengerkupplung)\b/i.test(rawText)
+    && !/montier|nachrüst|zubehör|windabweiser|dachbox/i.test(rawText)) {
+    return null;
+  }
+
+  const model = resolveModelFromQuery(rawText, ctx);
+  if ((model?.modelKey || ctx.modelKey)
+    && /\b(ahk|anhängerkupplung|anhaengerkupplung|isofix|iso\s*fix|kindersitz)\b/i.test(rawText)
+    && !/montier|nachrüst|zubehör|windabweiser|dachbox/i.test(rawText)) {
+    return null;
+  }
+
   const hasTopic = hasSpecialTopic(rawText);
   const accessoryContext = /montier|einbau|nachrüst|zubehör|pass|geht|möglich|kupplung|träger|box|reifen|heizung|wind|hund|dach/i.test(rawText);
 
@@ -116,7 +135,6 @@ export function detectSpecialCustomerQuestion(query, ctx = {}) {
     return null;
   }
 
-  const model = resolveModelFromQuery(rawText, ctx);
   const category = inferCategory(rawText);
 
   return {
@@ -133,6 +151,12 @@ export function isLikelySpecialDealerQuestion(query, ctx = {}) {
   if (detectSpecialCustomerQuestion(query, ctx)) return true;
   const rawText = String(query ?? '').trim();
   if (!isQuestionForm(rawText)) return false;
+  const model = resolveModelFromQuery(rawText, ctx);
+  if ((model?.modelKey || ctx.modelKey)
+    && /\b(ahk|anhängerkupplung|anhaengerkupplung|isofix|iso\s*fix|kindersitz)\b/i.test(rawText)
+    && !/montier|nachrüst|zubehör|windabweiser|dachbox/i.test(rawText)) {
+    return false;
+  }
   return /montier|einbau|nachrüst|zubehör|pass|geht|möglich|kupplung|träger|box|reifen|heizung|wind|hund|dach/i.test(rawText);
 }
 

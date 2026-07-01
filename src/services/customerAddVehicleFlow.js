@@ -7,6 +7,7 @@ import { buildDefaultCrm, mapSuggestedModelToReserved } from './dealerAiLeadCrm.
 import { resolveCustomerId } from './dealerAiCustomer.js';
 import { formatCustomerDisplayName } from './dealerAiParser.js';
 import { buildKundenaktePath } from './leadAkteEntry.js';
+import { buildWishFieldsFromLead } from './dealer/offerEditWishMerge.js';
 
 export const ADD_VEHICLE_SOURCE = 'customer_record';
 export const ADD_VEHICLE_CREATED_FROM = 'add_vehicle_from_customer_record';
@@ -16,6 +17,13 @@ export function buildAddVehicleContextFromLead(lead, options = {}) {
   const customerId = resolveCustomerId(lead);
   if (!customerId) return null;
   const opportunityId = options.opportunityId ?? lead.id ?? null;
+  const wishFields = {
+    ...buildWishFieldsFromLead(lead),
+    ...(options.wishFields ?? {}),
+  };
+  if (options.paymentType) {
+    wishFields.paymentType = options.paymentType;
+  }
   return {
     source: ADD_VEHICLE_SOURCE,
     customerId,
@@ -23,6 +31,9 @@ export function buildAddVehicleContextFromLead(lead, options = {}) {
     leadId: lead.id,
     customerName: formatCustomerDisplayName(lead.contact?.name) || lead.contact?.name?.trim() || '',
     returnPath: options.returnPath ?? buildKundenaktePath(lead.id),
+    proposalIntent: options.proposalIntent ?? null,
+    paymentType: options.paymentType ?? wishFields.paymentType ?? null,
+    wishFields,
   };
 }
 
@@ -32,7 +43,27 @@ export function isCustomerRecordAddVehicleContext(ctx) {
 
 export function getReviewBarButtonLabel(ctx) {
   if (isCustomerRecordAddVehicleContext(ctx)) {
-    return 'Auto zur Kundenakte hinzufügen';
+    if (ctx.proposalIntent === 'create_selection_group') {
+      return 'Clever Auswahl vorbereiten';
+    }
+    if (
+      ctx.proposalIntent === 'vehicle'
+      || ctx.proposalIntent === 'cash'
+      || ctx.proposalIntent === 'leasing'
+      || ctx.proposalIntent === 'financing'
+    ) {
+      return 'Fahrzeug konfigurieren';
+    }
+    if (ctx.paymentType === 'cash' || ctx.proposalIntent === 'cash') {
+      return 'Barangebot vorbereiten';
+    }
+    if (ctx.paymentType === 'financing' || ctx.proposalIntent === 'financing') {
+      return 'Finanzierungsvorschlag vorbereiten';
+    }
+    if (ctx.paymentType === 'leasing' || ctx.proposalIntent === 'leasing') {
+      return 'Leasingvorschlag vorbereiten';
+    }
+    return 'Vorschlag auf den Tisch legen';
   }
   return 'Verkaufschance erstellen';
 }
@@ -351,8 +382,16 @@ export function executeAddVehicleToCustomerRecord(fields, parsed, deps, options 
 
 export function getContextBannerLabel(ctx) {
   if (!isCustomerRecordAddVehicleContext(ctx)) return null;
+  const intentLine = {
+    vehicle: 'Fahrzeugvorschlag vorbereiten',
+    create_selection_group: 'Clever Auswahl vorbereiten',
+    cash: 'Barangebot – Kaufpreis statt Leasingrate',
+    leasing: 'Leasingvorschlag vorbereiten',
+    financing: 'Finanzierungsvorschlag vorbereiten',
+  }[ctx.proposalIntent];
+  if (intentLine) return intentLine;
   if (ctx.customerName) {
-    return `Für: ${ctx.customerName}`;
+    return `Vorschlag für: ${ctx.customerName}`;
   }
-  return 'Fahrzeug wird zur Kundenakte hinzugefügt.';
+  return 'Vorschlag auf den Tisch legen';
 }

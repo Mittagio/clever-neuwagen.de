@@ -12,6 +12,14 @@ import { QUERY_TYPES } from './customerQueryTypes.js';
 import { getRankingByMetric } from './customerQueryTools.js';
 import { parseSearchIntent } from '../search/searchIntentParser.js';
 import { buildSearchProfile } from '../search/searchProfile.js';
+import {
+  buildDealerFinalChecks,
+  buildMixedIntentAnswerText,
+  buildMixedOpenQuestions,
+  buildUnderstoodWishes,
+} from './mixedIntentAnswerBuilder.js';
+import { buildModelTechnicalFacts } from './modelTechnicalFactBuilder.js';
+import { buildAdvisorProfileFacts } from './advisorProfileAssessment.js';
 
 function modelLabel(modelKey) {
   const label = KIA_MODEL_ATTRIBUTES[modelKey]?.label;
@@ -76,9 +84,34 @@ export function resolveFactsForQuery(classification = {}, query = '') {
     };
   }
 
+  if (queryType === QUERY_TYPES.MIXED_INTENT) {
+    const intent = classification.searchIntent ?? parseSearchIntent(query);
+    const profile = classification.searchProfile ?? buildSearchProfile({ query, intent });
+    const answerText = buildMixedIntentAnswerText(classification);
+    return {
+      kind: 'mixed_intent',
+      modelKey: classification.modelKey ?? modelKey,
+      primaryModelKey: answerText.primaryModelKey,
+      headline: answerText.title,
+      shortAnswer: answerText.body,
+      understoodWishes: buildUnderstoodWishes(classification, intent, profile),
+      dealerFinalChecks: buildDealerFinalChecks(classification),
+      openQuestions: buildMixedOpenQuestions(classification),
+      questionPart: classification.questionPart,
+      vehicleWishPart: classification.vehicleWishPart,
+      topic: classification.topic,
+      featureId: classification.featureId,
+      bullets: [answerText.body],
+    };
+  }
+
   if (queryType === QUERY_TYPES.VEHICLE_WISH) {
     const intent = parseSearchIntent(query);
     const profile = buildSearchProfile({ query, intent });
+    const advisorProfile = buildAdvisorProfileFacts(query, intent, profile);
+    if (advisorProfile) {
+      return advisorProfile;
+    }
     return {
       kind: 'vehicle_wish',
       profile,
@@ -188,6 +221,11 @@ export function resolveFactsForQuery(classification = {}, query = '') {
   }
 
   if (queryType === QUERY_TYPES.MODEL_EQUIPMENT_QUESTION) {
+    const technicalFacts = buildModelTechnicalFacts(classification, query);
+    if (technicalFacts) {
+      return technicalFacts;
+    }
+
     const availability = resolveFeatureAvailability(modelKey, featureId);
     const advisory = modelKey && featureId
       ? buildAdvisoryAnswer({ kind: 'advisory', topic: 'feature', modelKey, featureId, query }, [])

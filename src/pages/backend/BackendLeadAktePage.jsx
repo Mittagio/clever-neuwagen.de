@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { usePublishedDealerConditions } from '../../context/DealerConditionsContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useOffers } from '../../context/OffersContext.jsx';
@@ -16,6 +16,12 @@ import CustomerOfferProposalView from '../../components/dealer-ai/CustomerOfferP
 import { buildKundenaktePath, buildParsedFromLead } from '../../services/leadAkteEntry.js';
 import { recordRecentCustomerOpen } from '../../services/crm/customerSearchService.js';
 import { buildAddVehicleContextFromLead } from '../../services/customerAddVehicleFlow.js';
+import { buildAddProposalNavigateContext } from '../../services/dealer/customerAddProposalFlow.js';
+import {
+  enrichOfferEditCardFromLead,
+  buildOfferEditPendingFields,
+  cardNeedsConditionsConfigure,
+} from '../../services/dealer/offerEditWishMerge.js';
 import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import {
   attachPdfToOffer,
@@ -41,6 +47,7 @@ export default function BackendLeadAktePage() {
   const { leadId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { publishedConditions: conditions } = usePublishedDealerConditions();
   const { leads, updateLead, addHistory } = useLeads();
   const { addOffer, getExistingCodes, linkLead } = useOffers();
@@ -56,19 +63,58 @@ export default function BackendLeadAktePage() {
   const [isSavingLead, setIsSavingLead] = useState(false);
   const [toast, setToast] = useState('');
 
+  const initialSheet = searchParams.get('sheet') === 'question_answer'
+    ? 'question_answer'
+    : (searchParams.get('sheet') || null);
+
+  const initialQuestionContext = useMemo(() => {
+    if (searchParams.get('sheet') !== 'question_answer') return null;
+    const offerId = searchParams.get('offerId');
+    const questionId = searchParams.get('questionId');
+    if (!offerId || !questionId) return null;
+    return {
+      offerId,
+      questionId,
+      inboxItemId: searchParams.get('inboxItemId') || null,
+    };
+  }, [searchParams]);
+
+  const [questionAnswerContext, setQuestionAnswerContext] = useState(initialQuestionContext);
+
+  useEffect(() => {
+    setQuestionAnswerContext(initialQuestionContext);
+  }, [initialQuestionContext]);
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3200);
   }, []);
 
-  function navigateToAddVehicle(sourceLead = lead) {
+  function navigateToAddVehicle(sourceLead = lead, options = {}) {
     if (!sourceLead) return;
-    navigate('/verkaufsassistent', {
-      state: {
-        addVehicleContext: buildAddVehicleContextFromLead(sourceLead, {
-          returnPath: buildKundenaktePath(sourceLead.id),
-        }),
-      },
+    const returnPath = buildKundenaktePath(sourceLead.id);
+    const addVehicleContext = (options.proposalIntent || options.paymentType || options.openConditions)
+      ? buildAddProposalNavigateContext(sourceLead, { returnPath, ...options })
+      : buildAddVehicleContextFromLead(sourceLead, { returnPath });
+    if (options.openConditions) {
+      addVehicleContext.openConditions = true;
+    }
+    if (options.focusModelKey) {
+      addVehicleContext.focusModelKey = options.focusModelKey;
+    }
+    navigate('/verkaufsassistent', { state: { addVehicleContext } });
+  }
+
+  function navigateToConfigureConditions(sourceLead = lead, card = null) {
+    if (!sourceLead) return;
+    const enriched = card ? enrichOfferEditCardFromLead(card, sourceLead) : null;
+    navigateToAddVehicle(sourceLead, {
+      proposalIntent: 'vehicle',
+      paymentType: enriched?.paymentType && enriched.paymentType !== 'unknown'
+        ? enriched.paymentType
+        : (sourceLead.paymentType !== 'unknown' ? sourceLead.paymentType : null),
+      openConditions: true,
+      focusModelKey: enriched?.modelKey ?? card?.modelKey ?? null,
     });
   }
 
@@ -179,6 +225,19 @@ export default function BackendLeadAktePage() {
     }
   }
 
+  function handleOpenQuestionAnswer({ offerId, questionId, inboxItemId = null }) {
+    setQuestionAnswerContext({ offerId, questionId, inboxItemId });
+    setOfferProposalCard(null);
+    setPhase('followup');
+  }
+
+  function handleQuestionAnswerContextConsumed() {
+    setQuestionAnswerContext(null);
+    if (searchParams.get('sheet')) {
+      navigate(buildKundenaktePath(leadId), { replace: true });
+    }
+  }
+
   function handleBack() {
     navigate('/backend/neue-anfragen');
   }
@@ -194,11 +253,22 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
-    setOfferEditCard(card);
+    const enriched = enrichOfferEditCardFromLead(card, lead);
+    if (cardNeedsConditionsConfigure(enriched)) {
+      navigateToConfigureConditions(lead, enriched);
+      return;
+    }
+    setOfferEditCard(enriched);
     setOfferEditFromProposal(fromProposal);
     setCleverOfferTransfer(lead?.crm?.cleverOfferTransfer ?? null);
-    setOfferPendingFields([]);
+    setOfferPendingFields(buildOfferEditPendingFields(enriched, {
+      deliveryNote: lead?.deliveryTime ?? lead?.wish?.desiredDeliveryDate ?? '',
+    }));
     setPhase('offer-edit');
+  }
+
+  function handleEditOfferConditions(card) {
+    navigateToConfigureConditions(lead, card);
   }
 
   function handleBackFromOffer() {
@@ -358,7 +428,7 @@ export default function BackendLeadAktePage() {
             isFresh={false}
             onEnterDetail={() => navigate(`/backend/verkaufschancen?leadId=${encodeURIComponent(leadId)}`)}
             onNewWish={() => navigateToAddVehicle(lead)}
-            onStartNewWish={() => navigateToAddVehicle(lead)}
+            onStartNewWish={(currentLead, options) => navigateToAddVehicle(currentLead ?? lead, options)}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
             onPrepareOfferFromClever={handlePrepareOfferFromClever}
@@ -369,6 +439,10 @@ export default function BackendLeadAktePage() {
             onDiscard={handleBack}
             onAddHistory={handleLeadHistory}
             isSaving={isSavingLead}
+            initialSheet={initialSheet === 'question_answer' ? 'question_answer' : initialSheet}
+            initialQuestionContext={questionAnswerContext}
+            onOpenOfferQuestionAnswer={handleOpenQuestionAnswer}
+            onQuestionAnswerContextConsumed={handleQuestionAnswerContextConsumed}
           />
         )}
 
@@ -384,6 +458,10 @@ export default function BackendLeadAktePage() {
             onEditOffer={(card) => handleOpenOfferEdit(card, { fromProposal: true })}
             onMarkSent={handleOfferMarkSent}
             onStatusChange={handleOfferStatusChange}
+            onAnswerQuestion={(question) => handleOpenQuestionAnswer({
+              offerId: offerProposalCard.id,
+              questionId: question.id,
+            })}
           />
         )}
 
@@ -407,6 +485,7 @@ export default function BackendLeadAktePage() {
             onDeletePdf={handleOfferDeletePdf}
             onMarkSent={handleOfferMarkSent}
             onStatusChange={handleOfferStatusChange}
+            onEditConditions={handleEditOfferConditions}
             isSaving={isSavingLead}
           />
         )}

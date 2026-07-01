@@ -20,6 +20,9 @@ import {
   isPurchaseIntentQuery,
 } from './generalCarQueryDetector.js';
 import { normalizeClassification, QUERY_TYPES, RANKING_METRICS } from './customerQueryTypes.js';
+import { detectMixedIntent } from './mixedIntentDetector.js';
+import { detectModelTechnicalQuestion } from './modelTechnicalTopicDetector.js';
+import { detectAdvisorProfileAssessment } from './advisorProfileAssessment.js';
 
 const ADVICE_MARKERS = /\b(warum|wofür|wofuer|brauche?\s+ich|lohnt|sinnvoll|empfehl|unterschied|was\s+bringt|bringt|nutzen|vorteil|vorteile|gut|reicht|mit\s+oder\s+ohne)\b/i;
 
@@ -127,6 +130,11 @@ export function classifyWithRules(query = '', context = {}) {
   const adviceFromTopics = classifyAdviceFromTopics(text, { modelKey });
   const comparisonModels = detectComparisonModels(text, advisory);
   const rankingContext = detectRankingContext(text, intent);
+
+  const mixed = detectMixedIntent(text, { modelKey, modelLabel: context.modelLabel });
+  if (mixed) {
+    return normalizeClassification(mixed);
+  }
 
   const special = detectSpecialCustomerQuestion(text, { modelKey, modelLabel: context.modelLabel })
     ?? buildFallbackSpecialQuestion(text, { modelKey, modelLabel: context.modelLabel });
@@ -256,16 +264,54 @@ export function classifyWithRules(query = '', context = {}) {
     });
   }
 
+  const technicalQ = detectModelTechnicalQuestion(text, { modelKey });
+  if (technicalQ) {
+    return normalizeClassification({
+      queryType: QUERY_TYPES.MODEL_EQUIPMENT_QUESTION,
+      topic: technicalQ.topic,
+      modelKey: technicalQ.modelKey,
+      featureId: technicalQ.featureId ?? featureId,
+      adviceTopicId: technicalQ.adviceTopicId ?? null,
+      customerIntent: `Technische Frage: ${technicalQ.topic}`,
+      shouldShowModels: false,
+      shouldAskForContact: false,
+      needsDealerCheck: false,
+      confidence: 0.9,
+      source: 'rules',
+    });
+  }
+
+  const advisorProfile = detectAdvisorProfileAssessment(text, intent, profile);
+  if (advisorProfile) {
+    return normalizeClassification({
+      queryType: QUERY_TYPES.VEHICLE_WISH,
+      topic: 'advisor_profile_assessment',
+      answerType: 'clever_assessment',
+      modelKey: advisorProfile.primaryModelKey,
+      featureId,
+      customerIntent: 'Komplexes Bedarfsprofil mit Clever-Einschätzung',
+      shouldShowModels: false,
+      shouldAskForContact: false,
+      needsDealerCheck: false,
+      confidence: 0.9,
+      source: 'advisor_profile',
+    });
+  }
+
   const modelAttributeQ = !VEHICLE_WISH_VERBS.test(text)
     && parseModelAttributeQuestion(text);
   if (modelAttributeQ) {
+    const attrTopic = modelAttributeQ.attribute === 'vertical_load' ? 'vertical_load'
+      : modelAttributeQ.attribute === 'charging' ? 'charging_speed'
+        : modelAttributeQ.attribute === 'isofix' ? 'isofix'
+          : modelAttributeQ.attribute;
     return normalizeClassification({
       queryType: QUERY_TYPES.MODEL_EQUIPMENT_QUESTION,
-      topic: modelAttributeQ.attribute,
+      topic: attrTopic,
       modelKey: modelAttributeQ.modelKey,
       featureId,
-      customerIntent: `Technische Frage: ${modelAttributeQ.attribute}`,
-      shouldShowModels: true,
+      customerIntent: `Technische Frage: ${attrTopic}`,
+      shouldShowModels: false,
       shouldAskForContact: false,
       needsDealerCheck: false,
       confidence: 0.88,
@@ -285,6 +331,27 @@ export function classifyWithRules(query = '', context = {}) {
       confidence: 0.82,
       source: 'rules',
     });
+  }
+
+  if (isShoppingCriteriaQuery(text, intent, profile) && !comparisonModels && !rankingContext) {
+    const isShortModelAttribute = modelKey
+      && !VEHICLE_WISH_VERBS.test(text)
+      && !/\?/.test(text)
+      && text.split(/\s+/).filter(Boolean).length <= 5
+      && (featureId || /wärmepumpe|waermepumpe|ausstattung|serie|kofferraum|reichweite/i.test(text));
+    if (!isShortModelAttribute) {
+      return normalizeClassification({
+        queryType: QUERY_TYPES.VEHICLE_WISH,
+        topic: 'vehicle_search',
+        modelKey,
+        featureId,
+        customerIntent: 'Fahrzeugwunsch mit Kriterien',
+        shouldShowModels: true,
+        shouldAskForContact: false,
+        confidence: 0.78,
+        source: 'rules',
+      });
+    }
   }
 
   if (adviceFromTopics && !comparisonModels) {

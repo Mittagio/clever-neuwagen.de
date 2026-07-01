@@ -147,6 +147,41 @@ export function countOpenQuestions(interaction = null) {
   return interaction.customerQuestions.filter((q) => q.status === 'open').length;
 }
 
+/**
+ * @param {object} interaction
+ * @param {string} questionId
+ * @param {object} answer
+ */
+export function answerCustomerQuestion(interaction = {}, questionId, answer = {}) {
+  const questions = interaction.customerQuestions ?? [];
+  const idx = questions.findIndex((q) => q.id === questionId);
+  if (idx === -1) return interaction;
+
+  const now = new Date().toISOString();
+  const updatedQuestion = {
+    ...questions[idx],
+    status: 'answered',
+    answerText: String(answer.answerText ?? '').trim(),
+    answeredAt: answer.answeredAt ?? now,
+    answeredBy: answer.answeredBy ?? null,
+  };
+  const customerQuestions = questions.map((q, i) => (i === idx ? updatedQuestion : q));
+  const openCount = customerQuestions.filter((q) => q.status === 'open').length;
+  let interestStatus = interaction.interestStatus;
+  if (openCount === 0 && interestStatus === INTEREST_STATUS.QUESTION_ASKED) {
+    interestStatus = interaction.openedAt
+      ? INTEREST_STATUS.OPENED
+      : INTEREST_STATUS.NOT_SEEN;
+  }
+
+  return {
+    ...interaction,
+    customerQuestions,
+    interestStatus,
+    updatedAt: now,
+  };
+}
+
 function resolveInterestFromOffer(vehicleOffer = {}) {
   const status = vehicleOffer?.status;
   if (status === VEHICLE_OFFER_STATUS.ACCEPTED) return INTEREST_STATUS.INTERESTED;
@@ -185,8 +220,8 @@ export function resolveBoardBadge(card = {}, interaction = null, vehicleOffer = 
   const vo = vehicleOffer ?? card.vehicleOffer ?? null;
   const openQuestions = countOpenQuestions(interaction);
 
-  if (openQuestions > 0 || interaction?.interestStatus === INTEREST_STATUS.QUESTION_ASKED) {
-    return { ...BOARD_BADGE.question, openQuestionCount: openQuestions || 1 };
+  if (openQuestions > 0) {
+    return { ...BOARD_BADGE.question, openQuestionCount: openQuestions };
   }
 
   if (interaction?.interestStatus === INTEREST_STATUS.INTERESTED) {

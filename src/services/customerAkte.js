@@ -9,6 +9,7 @@ import {
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
 import { getCleverStaerkeTier } from './cleverStaerke.js';
 import { VEHICLE_OFFER_STATUS_UI, enrichCardWithVehicleOffer, VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
+import { resolveEffectivePaymentType } from './dealer/offerEditWishMerge.js';
 import {
   getCustomerOfferInteraction,
   resolveBoardBadge,
@@ -243,7 +244,10 @@ export function buildVehicleOpportunityCards({
       const modelName = /^kia\b/i.test(vc.model ?? '')
         ? vc.model
         : `Kia ${vc.model ?? ''}`.trim();
-      const paymentType = vc.paymentType ?? wishFields.paymentType ?? 'unknown';
+      const paymentType = resolveEffectivePaymentType(
+        vc.paymentType,
+        wishFields.paymentType,
+      );
       const termMonths = vc.leasingData?.termMonths
         ?? vc.financingData?.termMonths
         ?? wishFields.termMonths
@@ -284,7 +288,7 @@ export function buildVehicleOpportunityCards({
         modelName,
         trimLabel: model.trimLabel ?? wishFields.trimLabel ?? null,
         bodyType: model.bodyType ?? 'suv',
-        paymentType: wishFields.paymentType ?? 'unknown',
+        paymentType: resolveEffectivePaymentType(wishFields.paymentType),
         termMonths: wishFields.termMonths ?? null,
         mileagePerYear: wishFields.mileagePerYear ?? null,
         desiredRate: wishFields.desiredRate ?? null,
@@ -307,7 +311,7 @@ export function buildVehicleOpportunityCards({
       modelName,
       trimLabel: wishFields.trimLabel ?? null,
       bodyType: 'suv',
-      paymentType: wishFields.paymentType ?? 'unknown',
+      paymentType: resolveEffectivePaymentType(wishFields.paymentType),
       termMonths: wishFields.termMonths ?? null,
       mileagePerYear: wishFields.mileagePerYear ?? null,
       desiredRate: wishFields.desiredRate ?? null,

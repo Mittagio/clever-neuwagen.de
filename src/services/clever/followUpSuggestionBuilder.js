@@ -4,6 +4,8 @@
 import { QUERY_TYPES, RANKING_METRICS } from './customerQueryTypes.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { getAdviceTopicById } from './adviceTopicsRegistry.js';
+import { filterFollowUpsForBrandScope } from './dealerBrandScope.js';
+import { buildMixedIntentFollowUps } from './mixedIntentAnswerBuilder.js';
 
 function modelLabel(modelKey) {
   return KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey?.toUpperCase();
@@ -30,6 +32,8 @@ export function buildFollowUpSuggestions({
   facts = {},
   smartAnswer = null,
   sessionContext = {},
+  brandScope = null,
+  brandAnalysis = null,
 } = {}) {
   const suggestions = [];
   const push = (item) => {
@@ -37,6 +41,51 @@ export function buildFollowUpSuggestions({
       suggestions.push(item);
     }
   };
+
+  if (facts.kind === 'mixed_intent' || classification.queryType === QUERY_TYPES.MIXED_INTENT) {
+    for (const item of buildMixedIntentFollowUps(classification)) push(item);
+    return suggestions;
+  }
+
+  if (facts.kind === 'advisor_profile' || classification.topic === 'advisor_profile_assessment') {
+    push(querySuggestion('EV5 oder EV9 für Familie mit Hund?', 'EV5 oder EV9 für Familie mit Hund vergleichen', 'comparison_question', 'ev5'));
+    push(querySuggestion('Wie weit komme ich elektrisch mit Wohnwagen?', 'Wie weit komme ich mit einem Elektroauto und Wohnwagen?', 'advice_question', 'ev_towing_range'));
+    push(querySuggestion('Welche Kia Elektroautos dürfen Anhänger ziehen?', 'Welcher Kia zieht am meisten?', 'ranking_question', 'towing'));
+    push(querySuggestion('Verkäufer soll meinen Wohnwagen prüfen', 'Verkäufer soll mich beraten', 'purchase_intent', 'contact'));
+    return suggestions;
+  }
+
+  if (facts.kind === 'model_technical') {
+    const label = modelLabel(facts.modelKey);
+    if (facts.topic === 'vertical_load' || facts.topic === 'towing') {
+      push(querySuggestion(`${label} Anhängerbetrieb erklären`, `${label} Anhängelast und Reichweite`, 'model_equipment_question', facts.modelKey));
+      push(querySuggestion('Reicht das für Fahrradträger?', 'Reicht die Stützlast für Fahrradträger?', 'advice_question', 'trailer_load'));
+      push(querySuggestion('Welche Kia ziehen am meisten?', 'Welcher Kia zieht am meisten?', 'ranking_question', 'towing'));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
+    if (facts.topic === 'seating') {
+      push(querySuggestion('6- oder 7-Sitzer erklären', `${label} 6 oder 7 Sitzer`, 'model_equipment_question', facts.modelKey));
+      push(querySuggestion(`${label} als Familienauto prüfen`, `${label} als Familienauto`, 'advice_question', 'family_luggage'));
+      push(querySuggestion('Kofferraum mit 7 Sitzen', `${label} Kofferraum`, 'model_equipment_question', facts.modelKey));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
+    if (facts.topic === 'isofix') {
+      push(querySuggestion(`${label} als Familienauto prüfen`, `${label} als Familienauto`, 'advice_question', 'family_luggage'));
+      push(querySuggestion('Kofferraum mit Kindersitzen', `${label} Kofferraum`, 'model_equipment_question', facts.modelKey));
+      push(querySuggestion(`AHK beim ${label.replace('Kia ', '')} prüfen`, `${label} Anhängelast`, 'model_equipment_question', facts.modelKey));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
+    if (facts.topic === 'charging_speed') {
+      push(querySuggestion('Laden 10–80 % erklären', 'Wie lange dauert Schnellladen 10 bis 80 Prozent?', 'advice_question', 'charging_speed'));
+      push(querySuggestion(`${label} mit EV9 Ladeleistung vergleichen`, 'EV6 oder EV9 Ladegeschwindigkeit vergleichen', 'comparison_question', `${facts.modelKey},ev9`));
+      push(querySuggestion('Welche Kia laden am schnellsten?', 'Welcher Kia lädt am schnellsten?', 'ranking_question', 'charging'));
+      push(contactSuggestion('Verkäufer dazu fragen'));
+      return suggestions;
+    }
+  }
 
   const focus = sessionContext.modelsInFocus?.[sessionContext.modelsInFocus.length - 1]
     ?? classification.modelKey
@@ -202,5 +251,6 @@ export function buildFollowUpSuggestions({
   }
 
   push(contactSuggestion('Autohaus soll mich beraten'));
-  return suggestions.slice(0, 4);
+  const result = suggestions.slice(0, 4);
+  return brandScope ? filterFollowUpsForBrandScope(result, brandScope) : result;
 }

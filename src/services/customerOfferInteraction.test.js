@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   INTEREST_STATUS,
   addCustomerQuestion,
+  answerCustomerQuestion,
   countOpenQuestions,
   createEmptyInteraction,
   resolveBoardBadge,
@@ -16,6 +17,15 @@ assert.equal(empty.customerQuestions.length, 0);
 const withQuestion = addCustomerQuestion(empty, 'Gibt es den auch in Schwarz?');
 assert.equal(withQuestion.interestStatus, INTEREST_STATUS.QUESTION_ASKED);
 assert.equal(countOpenQuestions(withQuestion), 1);
+
+const qid = withQuestion.customerQuestions[0].id;
+const answered = answerCustomerQuestion(withQuestion, qid, {
+  answerText: 'Ja, schwarz ist verfügbar.',
+  answeredBy: 'verkäufer',
+});
+assert.equal(answered.customerQuestions[0].status, 'answered');
+assert.ok(answered.customerQuestions[0].answeredAt);
+assert.equal(countOpenQuestions(answered), 0);
 
 const sentBadge = resolveBoardBadge({}, null, { status: VEHICLE_OFFER_STATUS.SENT });
 assert.equal(sentBadge.label, 'Gesendet');

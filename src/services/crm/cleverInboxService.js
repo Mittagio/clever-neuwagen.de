@@ -17,6 +17,7 @@ export const INBOX_EVENT_TYPES = {
   DOCUMENT_LINK_COMPLETED: 'document_link_completed',
   SPECIAL_QUESTION: 'special_question',
   LEARNING_REQUEST_CREATED: 'learning_request_created',
+  ADVISOR_CONTACT_REQUEST: 'advisor_contact_request',
 };
 
 export const INBOX_STATUS = {
@@ -132,6 +133,13 @@ const EVENT_META = {
     actionLabel: 'Prüfen',
     actionTarget: 'learning',
     priority: INBOX_PRIORITY.LOW,
+  },
+  [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: {
+    badge: 'Frag Clever',
+    icon: '✨',
+    actionLabel: 'Kundenakte öffnen',
+    actionTarget: 'lead',
+    priority: INBOX_PRIORITY.HIGH,
   },
 };
 
@@ -308,6 +316,28 @@ export function markInboxItemDone(id) {
   ));
   saveToStorage(next);
   return next.find((item) => item.id === id) ?? null;
+}
+
+/**
+ * @param {object} params
+ */
+export function markInboxDoneForQuestion({
+  inboxItemId = null,
+  leadId = null,
+  questionId = null,
+} = {}) {
+  if (inboxItemId) {
+    return markInboxItemDone(inboxItemId);
+  }
+  if (!leadId || !questionId) return null;
+
+  const match = listInboxItems({ leadId, status: 'open' }).find(
+    (item) => (item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
+        || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION)
+      && item.metadata?.questionId === questionId,
+  );
+  if (!match) return null;
+  return markInboxItemDone(match.id);
 }
 
 export function ignoreInboxItem(id) {

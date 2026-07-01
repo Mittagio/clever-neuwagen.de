@@ -264,7 +264,7 @@ export default function CustomerOfferEditView({
             ))}
           </ul>
         )}
-        {rateDisplay === 'offen' && !isPending('desiredRate') && !isPending('desiredPrice') && (
+        {rateDisplay === 'offen' && !isPending('desiredRate') && !isPending('desiredPrice') && pt !== 'unknown' && (
           <dl className="cn-summary-rows">
             <FlowSummaryRow label="Rate" value="offen" variant="muted" />
           </dl>

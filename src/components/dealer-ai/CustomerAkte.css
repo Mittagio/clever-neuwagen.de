@@ -1566,6 +1566,66 @@
   letter-spacing: 0.03em;
 }
 
+.cust-akte-board__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cust-akte-board__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.cust-akte-add-proposal__sub {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.cust-akte-add-proposal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cust-akte-add-proposal__option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.cust-akte-add-proposal__option:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.cust-akte-add-proposal__option-title {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cust-akte-add-proposal__option-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .cust-akte-board__stack {
   display: flex;
   flex-direction: column;
@@ -2617,6 +2677,76 @@
   .cust-clever-beratung__action--ghost {
     grid-column: 1 / -1;
   }
+}
+
+.cust-clever-gespraech {
+  margin: 8px 0 4px;
+}
+
+.cust-clever-gespraech__summary,
+.cust-clever-gespraech__last {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.cust-clever-gespraech__last {
+  font-style: italic;
+}
+
+.cust-clever-gespraech__toggle {
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-clever-gespraech__toggle:hover {
+  text-decoration: underline;
+}
+
+.cust-clever-gespraech__thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cust-clever-gespraech__msg {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cust-clever-gespraech__msg--user {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.cust-clever-gespraech__role {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.cust-clever-gespraech__text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #0f172a;
 }
 
 .cust-akte-activity-hint {

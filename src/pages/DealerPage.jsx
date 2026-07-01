@@ -47,8 +47,10 @@ import {
 import { createLeadFromCustomerAdvisor } from '../services/dealer/customerAdvisorLeadService.js';
 import { createLeadFromSpecialQuestion } from '../services/dealer/specialCustomerQuestionLeadService.js';
 import { createLeadFromAdvisorConversation } from '../services/dealer/advisorConversationLeadService.js';
+import { createAdvisorContactInboxItem } from '../services/dealer/advisorInboxService.js';
 import {
   appendAdvisorExchange,
+  appendFollowUpClick,
   createCustomerAdvisorSession,
   sessionToApiContext,
 } from '../services/clever/customerAdvisorSession.js';
@@ -79,6 +81,7 @@ import {
   enrichModelLineGroupWithProfileQuote,
 } from '../services/cleverQuote/cleverQuoteService.js';
 import { useLeads } from '../context/LeadsContext.jsx';
+import { useCleverInboxOptional } from '../context/CleverInboxContext.jsx';
 import {
   classifyCustomerQueryIntent,
   getCustomerQueryType,
@@ -190,6 +193,7 @@ export default function DealerPage() {
   const [leadSheetOpen, setLeadSheetOpen] = useState(false);
   const [leadSubmitted, setLeadSubmitted] = useState(null);
   const { leads, addLead, updateLead, addHistory } = useLeads();
+  const cleverInbox = useCleverInboxOptional();
   const [inquiryLeadSync, setInquiryLeadSync] = useState(null);
   const [activeRecommendPick, setActiveRecommendPick] = useState(null);
   const [liveUnderstandTrim, setLiveUnderstandTrim] = useState(null);
@@ -884,6 +888,12 @@ export default function DealerPage() {
 
   const handleAdvisorFollowUp = useCallback((suggestion) => {
     if (!suggestion) return;
+    const session = advisorSessionRef.current;
+    if (session) {
+      const updated = appendFollowUpClick(session, suggestion);
+      advisorSessionRef.current = updated;
+      setCustomerAdvisorSession(updated);
+    }
     if (suggestion.type === 'purchase_intent') {
       setAdvisorContactIntent(suggestion);
       setAdviceContactOpen(true);
@@ -1273,6 +1283,8 @@ export default function DealerPage() {
           learningRequestId: learning.request?.id ?? null,
         });
         addLead(lead);
+        createAdvisorContactInboxItem(lead);
+        cleverInbox?.refresh?.();
         setLeadSubmitted({
           contactName: contact.name,
           inquiryBrief: lead.inquiryBrief,
@@ -1303,6 +1315,7 @@ export default function DealerPage() {
     conditions,
     handleSpecialQuestionSubmit,
     addLead,
+    cleverInbox,
   ]);
 
   const handleAdviceAskDealer = useCallback(() => {

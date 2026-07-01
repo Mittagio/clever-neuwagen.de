@@ -84,9 +84,78 @@ export function buildModelDetailSmartAnswer(facts = {}) {
   };
 }
 
+export function buildAdvisorProfileSmartAnswer(facts = {}) {
+  return {
+    mode: 'clever_assessment',
+    intent: 'advisor_profile_assessment',
+    kicker: 'Clever Einschätzung',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    understoodWishes: facts.understoodWishes ?? [],
+    understoodLabel: 'Das haben wir verstanden:',
+    modelDirections: facts.modelDirections ?? [],
+    modelDirectionsLabel: 'Erste passende Richtung:',
+    dealerChecks: facts.dealerChecks ?? [],
+    dealerChecksLabel: 'Das sollte Ihr Autohaus klären:',
+    primaryModelKey: facts.primaryModelKey ?? facts.modelKey ?? null,
+    dealerCtaLabel: 'Verkäufer dazu fragen',
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: false,
+    routingLayer: 'advisory',
+    showDealerCta: false,
+  };
+}
+
 /**
  * @param {object} facts
- * @param {object} classification
+ */
+export function buildModelTechnicalSmartAnswer(facts = {}) {
+  const confidenceLabel = facts.hasVerifiedData
+    ? 'Nach hinterlegten Fahrzeugdaten'
+    : 'Allgemeine Einschätzung';
+
+  return {
+    mode: 'info',
+    intent: 'model_equipment_question',
+    kicker: confidenceLabel,
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    primaryModelKey: facts.modelKey ?? null,
+    facts: facts.facts ?? (facts.bullets ?? []).map((b) => ({ label: 'Daten', value: b })),
+    narrative: [facts.shortAnswer].filter(Boolean),
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: false,
+    routingLayer: 'clever_data',
+    showDealerCta: true,
+    dealerCtaLabel: 'Verkäufer dazu fragen',
+  };
+}
+
+/**
+ * @param {object} facts
+ */
+export function buildMixedIntentSmartAnswer(facts = {}) {
+  return {
+    mode: 'mixed',
+    intent: 'mixed_intent',
+    kicker: 'Clever Antwort',
+    title: facts.headline,
+    lead: facts.shortAnswer,
+    primaryModelKey: facts.primaryModelKey ?? facts.modelKey ?? null,
+    understoodWishes: facts.understoodWishes ?? [],
+    understoodLabel: 'Das haben wir verstanden:',
+    dealerFinalChecks: facts.dealerFinalChecks ?? [],
+    dealerChecksLabel: 'Das prüft Ihr Autohaus final:',
+    openQuestions: facts.openQuestions ?? [],
+    summary: DEALER_DISCLAIMER,
+    canShowOffers: true,
+    routingLayer: 'advisory',
+    showDealerCta: false,
+  };
+}
+
+/**
+ * @param {object} facts
  */
 export function buildFamilyVariantSmartAnswer(facts = {}, classification = {}) {
   return {
@@ -304,6 +373,50 @@ export function buildTemplateAnswer(classification = {}, facts = {}, query = '')
     };
   }
 
+  if (facts.kind === 'mixed_intent') {
+    const smartAnswer = buildMixedIntentSmartAnswer(facts);
+    return {
+      mode: 'mixed',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Antwort',
+      primaryModelKey: facts.primaryModelKey ?? facts.modelKey ?? null,
+      source: 'mixed_intent',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'advisor_profile') {
+    const smartAnswer = buildAdvisorProfileSmartAnswer(facts);
+    return {
+      mode: 'clever_assessment',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: 'Clever Einschätzung',
+      primaryModelKey: facts.primaryModelKey ?? facts.modelKey ?? null,
+      source: 'advisor_profile_assessment',
+      smartAnswer,
+    };
+  }
+
+  if (facts.kind === 'model_technical') {
+    const smartAnswer = buildModelTechnicalSmartAnswer(facts);
+    return {
+      mode: 'info',
+      title: facts.headline,
+      body: facts.shortAnswer,
+      disclaimer: DEALER_DISCLAIMER,
+      kicker: smartAnswer.kicker,
+      primaryModelKey: facts.modelKey,
+      facts: facts.facts ?? [],
+      source: facts.hasVerifiedData ? 'kia_clever_technical' : 'model_technical_templates',
+      smartAnswer,
+      dataConfidence: facts.hasVerifiedData ? 'clever_verified' : 'general',
+    };
+  }
+
   if (facts.kind === 'family_variant_advice') {
     const smartAnswer = buildFamilyVariantSmartAnswer(facts, classification);
     return {
@@ -456,10 +569,16 @@ export function hybridAnswerToSmartAnswerCard(answer = {}, classification = {}, 
  * @param {object} answer
  */
 export function resolveUiComponent(classification = {}, answer = null) {
+  if (classification.queryType === QUERY_TYPES.MIXED_INTENT) {
+    return UI_COMPONENTS.SMART_ANSWER;
+  }
   if (classification.queryType === QUERY_TYPES.SPECIAL_CHECK_QUESTION) {
     return UI_COMPONENTS.SPECIAL_CONTACT;
   }
   if (classification.queryType === QUERY_TYPES.VEHICLE_WISH) {
+    if (classification.topic === 'advisor_profile_assessment' || answer?.mode === 'clever_assessment') {
+      return UI_COMPONENTS.SMART_ANSWER;
+    }
     return UI_COMPONENTS.NEED_SEARCH;
   }
   if (answer && classification.queryType === QUERY_TYPES.RANKING_QUESTION) {
@@ -474,7 +593,8 @@ export function resolveUiComponent(classification = {}, answer = null) {
     || answer.mode === 'advice'
     || classification.queryType === QUERY_TYPES.GENERAL_CAR_QUESTION
     || classification.queryType === QUERY_TYPES.GENERAL_CAR_COMPARISON
-    || classification.queryType === QUERY_TYPES.COMPETITOR_COMPARISON)) {
+    || classification.queryType === QUERY_TYPES.COMPETITOR_COMPARISON
+    || classification.queryType === QUERY_TYPES.COMPETITOR_QUESTION)) {
     if (answer.mode === 'model_detail' || answer.mode === 'clarification' || answer.mode === 'info') {
       return UI_COMPONENTS.SMART_ANSWER;
     }

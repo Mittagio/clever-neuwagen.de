@@ -86,6 +86,7 @@ export default function CustomerOfferProposalView({
     [interaction, offer],
   );
   const openQuestions = interaction?.customerQuestions?.filter((q) => q.status === 'open') ?? [];
+  const answeredQuestions = interaction?.customerQuestions?.filter((q) => q.status === 'answered') ?? [];
   const linkStatus = resolveLinkStatusLabel(offer);
 
   const heroImage = useMemo(() => resolveConfigureHeroImage({
@@ -201,6 +202,22 @@ export default function CustomerOfferProposalView({
                 <p className="cust-offer-proposal__question-text">&ldquo;{q.text}&rdquo;</p>
                 {q.createdAt && (
                   <time dateTime={q.createdAt}>{formatWhen(q.createdAt)}</time>
+                )}
+              </li>
+            ))}
+          </ul>
+        </FlowCard>
+      )}
+
+      {answeredQuestions.length > 0 && (
+        <FlowCard variant="flat">
+          <FlowSectionHeader title="Beantwortete Fragen" />
+          <ul className="cust-offer-proposal__questions">
+            {answeredQuestions.map((q) => (
+              <li key={q.id}>
+                <p className="cust-offer-proposal__question-text">&ldquo;{q.text}&rdquo;</p>
+                {q.answerText && (
+                  <p className="cust-offer-proposal__answer-text">{q.answerText}</p>
                 )}
               </li>
             ))}

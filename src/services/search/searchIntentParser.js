@@ -572,6 +572,24 @@ function extractIsofixRearMin(text, spans) {
     }
   }
 
+  const spacedIsofix = text.match(/\b(ein|eine|zwei|drei|vier|\d)\s*iso\s*fix\b/i);
+  if (spacedIsofix && !isSpanConsumed(spans, spacedIsofix.index)) {
+    const raw = spacedIsofix[1].toLowerCase();
+    const count = ISOFIX_WORDS[raw] ?? Number(raw);
+    if (count >= 1 && count <= 4) {
+      markSpan(spans, spacedIsofix.index, spacedIsofix.index + spacedIsofix[0].length);
+      return count;
+    }
+  }
+
+  if (/\biso\s*fix\b/i.test(text) && !/\bisofix\b/i.test(text)) {
+    const m = text.match(/\biso\s*fix\b/i);
+    if (m && !isSpanConsumed(spans, m.index)) {
+      markSpan(spans, m.index, m.index + m[0].length);
+      return 1;
+    }
+  }
+
   if (/\bisofix\b/i.test(text) && !isSpanConsumed(spans, text.search(/\bisofix\b/i))) {
     const m = text.match(/\bisofix\b/i);
     if (m) {

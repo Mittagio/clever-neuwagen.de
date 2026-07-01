@@ -20,8 +20,10 @@ export const QUERY_TYPES = {
   GENERAL_CAR_QUESTION: 'general_car_question',
   GENERAL_CAR_COMPARISON: 'general_car_comparison',
   COMPETITOR_COMPARISON: 'competitor_comparison',
+  COMPETITOR_QUESTION: 'competitor_question',
   PURCHASE_INTENT: 'purchase_intent',
   SPECIAL_CHECK_QUESTION: 'special_check_question',
+  MIXED_INTENT: 'mixed_intent',
   UNKNOWN: 'unknown',
 };
 
@@ -158,5 +160,14 @@ export function normalizeClassification(input = {}) {
     needsDealerCheck: Boolean(input.needsDealerCheck),
     confidence: Math.max(0, Math.min(1, Number(input.confidence) || 0.5)),
     source: input.source ?? 'rules',
+    competitorBrands: Array.isArray(input.competitorBrands) ? input.competitorBrands.filter(Boolean) : [],
+    competitorModels: Array.isArray(input.competitorModels) ? input.competitorModels.filter(Boolean) : [],
+    brandScopeMode: input.brandScopeMode ?? null,
+    primaryIntent: input.primaryIntent ?? null,
+    secondaryIntent: input.secondaryIntent ?? null,
+    vehicleWishPart: input.vehicleWishPart ?? null,
+    questionPart: input.questionPart ?? null,
+    searchIntent: input.searchIntent ?? null,
+    searchProfile: input.searchProfile ?? null,
   };
 }

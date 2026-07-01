@@ -22,6 +22,7 @@ const CLEVER_DATA_TYPES = new Set([
   QUERY_TYPES.RANKING_QUESTION,
   QUERY_TYPES.COMPARISON_QUESTION,
   QUERY_TYPES.VEHICLE_WISH,
+  QUERY_TYPES.MIXED_INTENT,
 ]);
 
 /**
@@ -40,6 +41,22 @@ export function routeQueryKnowledge(query = '', classification = {}) {
 
   if (classification.queryType === QUERY_TYPES.SPECIAL_CHECK_QUESTION) {
     return { route: KNOWLEDGE_ROUTES.DEALER_CHECK, reason: 'special_check' };
+  }
+
+  if (classification.queryType === QUERY_TYPES.MIXED_INTENT) {
+    return {
+      route: KNOWLEDGE_ROUTES.CLEVER_DATA,
+      reason: 'mixed_intent',
+      modelKey: classification.modelKey,
+    };
+  }
+
+  if (classification.queryType === QUERY_TYPES.MODEL_EQUIPMENT_QUESTION && classification.modelKey) {
+    return {
+      route: KNOWLEDGE_ROUTES.CLEVER_DATA,
+      reason: 'model_equipment',
+      modelKey: classification.modelKey,
+    };
   }
 
   if (classification.queryType === QUERY_TYPES.PURCHASE_INTENT) {

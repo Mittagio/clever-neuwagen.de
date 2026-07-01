@@ -39,6 +39,12 @@ import {
 import { buildSpecialQuestionAkteChips } from '../../services/dealer/specialCustomerQuestionService.js';
 import { saveSellerKnowledgeAnswerFromLead } from '../../services/admin/cleverKnowledgeAnswerService.js';
 import CustomerSpecialQuestionAnswerSheet from './CustomerSpecialQuestionAnswerSheet.jsx';
+import CustomerOfferQuestionAnswerSheet, {
+  resolveOfferQuestionVehicleLabel,
+} from './CustomerOfferQuestionAnswerSheet.jsx';
+import { applyCustomerOfferQuestionAnswer } from '../../services/dealer/customerOfferQuestionAnswerService.js';
+import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
+import { markInboxDoneForQuestion } from '../../services/crm/cleverInboxService.js';
 import CustomerAkteShowroomCapture, { applyShowroomCaptureToLead } from './CustomerAkteShowroomCapture.jsx';
 import { buildShowroomAkteChips } from '../../services/showroom/showroomQuickCaptureService.js';
 import {
@@ -109,12 +115,20 @@ import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
+import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteUnterlagen from './CustomerAkteUnterlagen.jsx';
 import CustomerAkteActivities from './CustomerAkteActivities.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
+import CustomerAkteAddProposalSheet, {
+  CustomerAkteLeaseFinanceSheet,
+} from './CustomerAkteAddProposalSheet.jsx';
+import {
+  PROPOSAL_INTENTS,
+  resolveProposalPaymentType,
+} from '../../services/dealer/customerAddProposalFlow.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import ConditionChipRow from './ConditionChipRow.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
@@ -150,7 +164,10 @@ const SHEETS = {
   more: 'more',
   lexikon: 'lexikon',
   specialQuestionAnswer: 'special_question_answer',
+  questionAnswer: 'question_answer',
   portfolioShare: 'portfolio_share',
+  addProposal: 'add_proposal',
+  leaseFinancePick: 'lease_finance_pick',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -272,6 +289,9 @@ export default function DealerAiLeadFollowUp({
   onDiscard,
   onAddHistory,
   initialSheet = null,
+  initialQuestionContext = null,
+  onOpenOfferQuestionAnswer,
+  onQuestionAnswerContextConsumed,
   isSaving = false,
 }) {
   const navigate = useNavigate();
@@ -283,12 +303,22 @@ export default function DealerAiLeadFollowUp({
   const fields = parsed?.fields ?? {};
   const crm = lead?.crm ?? {};
 
-  const [activeSheet, setActiveSheet] = useState(initialSheet);
+  const [activeSheet, setActiveSheet] = useState(
+    initialSheet === SHEETS.questionAnswer ? SHEETS.questionAnswer : initialSheet,
+  );
   const [antwortenPreset, setAntwortenPreset] = useState(null);
+  const [questionContext, setQuestionContext] = useState(initialQuestionContext);
 
   useEffect(() => {
-    if (initialSheet) setActiveSheet(initialSheet);
+    if (initialSheet) setActiveSheet(initialSheet === SHEETS.questionAnswer ? SHEETS.questionAnswer : initialSheet);
   }, [initialSheet]);
+
+  useEffect(() => {
+    if (initialQuestionContext?.offerId && initialQuestionContext?.questionId) {
+      setQuestionContext(initialQuestionContext);
+      setActiveSheet(SHEETS.questionAnswer);
+    }
+  }, [initialQuestionContext]);
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
   const [variantConfigureContext, setVariantConfigureContext] = useState(null);
@@ -591,6 +621,22 @@ export default function DealerAiLeadFollowUp({
     [cleverRecommendation, telHref],
   );
 
+  const advisorNextStepHint = useMemo(() => {
+    const label = lead?.crm?.nextStepLabel;
+    if (!label) return null;
+    if (lead?.advisorConversation || lead?.crm?.nextStepId === 'continue_advisor_conversation') {
+      return {
+        title: label,
+        text: label,
+        cta: label,
+        ctaLabel: label,
+      };
+    }
+    return null;
+  }, [lead?.advisorConversation, lead?.crm?.nextStepId, lead?.crm?.nextStepLabel]);
+
+  const displayedNextStep = advisorNextStepHint ?? nextBestStep;
+
   const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
   const unterlagenOpenCount = useMemo(
     () => countUnterlagenOpenTasks(lead, unterlagenPaymentType),
@@ -694,17 +740,87 @@ export default function DealerAiLeadFollowUp({
     ? formatVehicleCardConditions(primaryVehicleCard)
     : '';
 
-  const nextStepLabel = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label ?? 'Morgen anrufen';
+  const nextStepLabel = lead?.crm?.nextStepLabel
+    ?? FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label
+    ?? 'Morgen anrufen';
 
   const primaryOffer = resolvedOffers[0];
   const offerFeedback = primaryOffer ? getOfferMicroFeedback(primaryOffer.status) : null;
 
   function handleAddVehicle() {
+    openSheet(SHEETS.addProposal);
+  }
+
+  function persistLeadWishBeforeNavigate(paymentType = null) {
+    if (paymentType && paymentType !== 'unknown') {
+      setWishPaymentType(paymentType);
+    }
+    const payload = buildSavePayload();
+    if (paymentType && paymentType !== 'unknown') {
+      payload.paymentType = paymentType;
+      payload.wish = {
+        ...(payload.wish ?? {}),
+        paymentType,
+      };
+    }
+    onSave?.(payload, {
+      silent: true,
+      addFollowupHistory: false,
+    });
+  }
+
+  function startProposalNavigateFlow({ proposalIntent, paymentType = null } = {}) {
+    closeSheet();
+    persistLeadWishBeforeNavigate(paymentType);
     if (onStartNewWish) {
-      onStartNewWish(lead);
+      onStartNewWish(lead, { proposalIntent, paymentType });
       return;
     }
     onNewWish?.();
+  }
+
+  function handleAddProposalOption(optionId) {
+    if (optionId === 'lease_finance') {
+      setActiveSheet(SHEETS.leaseFinancePick);
+      return;
+    }
+
+    if (optionId === 'selection_group') {
+      const groups = offerSelectionGroups.length
+        ? offerSelectionGroups
+        : resolvedSelectionGroups;
+      if (groups.length > 0) {
+        closeSheet();
+        openSelectionGroup(groups[0]);
+        return;
+      }
+      startProposalNavigateFlow({
+        proposalIntent: PROPOSAL_INTENTS.SELECTION_GROUP,
+        paymentType: wishPaymentType !== 'unknown' ? wishPaymentType : 'leasing',
+      });
+      return;
+    }
+
+    if (optionId === 'vehicle') {
+      startProposalNavigateFlow({ proposalIntent: PROPOSAL_INTENTS.VEHICLE });
+      return;
+    }
+
+    if (optionId === 'cash') {
+      startProposalNavigateFlow({
+        proposalIntent: PROPOSAL_INTENTS.CASH,
+        paymentType: 'cash',
+      });
+      return;
+    }
+  }
+
+  function handleLeaseFinanceOption(optionId) {
+    const paymentType = resolveProposalPaymentType(optionId);
+    const proposalIntent = optionId === 'financing'
+      ? PROPOSAL_INTENTS.FINANCING
+      : PROPOSAL_INTENTS.LEASING;
+    startProposalNavigateFlow({ proposalIntent, paymentType });
   }
 
   function openSelectionGroup(group) {
@@ -970,6 +1086,10 @@ export default function DealerAiLeadFollowUp({
   function closeSheet() {
     setActiveSheet(null);
     setAntwortenPreset(null);
+    if (activeSheet === SHEETS.questionAnswer) {
+      setQuestionContext(null);
+      onQuestionAnswerContextConsumed?.();
+    }
     if (activeSheet === SHEETS.vehicle) {
       setSelectedVehicleCard(null);
     }
@@ -985,6 +1105,58 @@ export default function DealerAiLeadFollowUp({
   function openCleverAntworten(presetType = null) {
     setAntwortenPreset(presetType);
     openSheet(SHEETS.antworten);
+  }
+
+  function openOfferQuestionAnswer({ offerId, questionId, inboxItemId = null }) {
+    const ctx = { offerId, questionId, inboxItemId };
+    setQuestionContext(ctx);
+    openSheet(SHEETS.questionAnswer);
+    onOpenOfferQuestionAnswer?.(ctx);
+  }
+
+  function handleSaveOfferQuestionAnswer({ answerText }) {
+    if (!questionContext?.offerId || !questionContext?.questionId) return;
+
+    const result = applyCustomerOfferQuestionAnswer({
+      lead,
+      offerId: questionContext.offerId,
+      questionId: questionContext.questionId,
+      answerText,
+    });
+    if (!result.ok) {
+      setToast('Antwort konnte nicht gespeichert werden.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+
+    onSave?.(result.leadPatch, {
+      historyText: result.historyText,
+      historyType: 'note',
+      addFollowupHistory: false,
+    });
+
+    markInboxDoneForQuestion({
+      inboxItemId: questionContext.inboxItemId,
+      leadId: lead?.id,
+      questionId: questionContext.questionId,
+    });
+    inbox?.refresh?.();
+
+    closeSheet();
+    setToast('Antwort gespeichert');
+    setTimeout(() => setToast(''), 3500);
+  }
+
+  function handleMarkOfferQuestionDoneOnly() {
+    markInboxDoneForQuestion({
+      inboxItemId: questionContext?.inboxItemId,
+      leadId: lead?.id,
+      questionId: questionContext?.questionId,
+    });
+    inbox?.refresh?.();
+    closeSheet();
+    setToast('Im Clever Eingang als erledigt markiert');
+    setTimeout(() => setToast(''), 3500);
   }
 
   function handleCleverBeratungPrepareOffer() {
@@ -1101,7 +1273,9 @@ export default function DealerAiLeadFollowUp({
   }
 
   function buildSavePayload(extraCrm = {}, addressOverride = null) {
-    const nextLabel = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label ?? nextStepLabel;
+    const nextLabel = lead?.crm?.nextStepLabel
+      ?? FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId)?.label
+      ?? nextStepLabel;
     const outcomeChip = CALL_OUTCOME_CHIPS.find((c) => c.id === outcomeId);
     const vehicleLabel = [fields.brand ?? 'Kia', wishModel, wishTrim].filter(Boolean).join(' ').trim();
     const addressStorage = addressToStorageFields(addressOverride ?? customerAddress);
@@ -1347,16 +1521,31 @@ export default function DealerAiLeadFollowUp({
       }
       return;
     }
-    if (handler === 'offer_send' || handler === 'offer_question' || handler === 'offer_proposal') {
+    if (handler === 'offer_question') {
+      const cardId = actionHint?.meta?.cardId;
+      const card = cardId
+        ? vehicleCards.find((c) => c.id === cardId)
+        : vehicleCards[0];
+      if (card) {
+        const interaction = getCustomerOfferInteraction(lead, card.id);
+        const openQuestion = (interaction?.customerQuestions ?? []).find((q) => q.status === 'open');
+        if (openQuestion) {
+          openOfferQuestionAnswer({
+            offerId: card.id,
+            questionId: openQuestion.id,
+            inboxItemId: actionHint?.meta?.inboxItemId ?? null,
+          });
+        }
+      }
+      return;
+    }
+    if (handler === 'offer_send' || handler === 'offer_proposal') {
       const cardId = actionHint?.meta?.cardId;
       const card = cardId
         ? vehicleCards.find((c) => c.id === cardId)
         : vehicleCards[0];
       if (card && onOpenOfferProposal) {
         onOpenOfferProposal(card);
-        if (handler === 'offer_question') {
-          openCleverAntworten('offer_question');
-        }
         return;
       }
       if (card) {
@@ -1473,10 +1662,16 @@ export default function DealerAiLeadFollowUp({
         onEdit={() => openSheet(SHEETS.wishConditions)}
       />
 
+      {lead?.advisorConversation && (
+        <div className="cust-akte-secondary">
+          <CustomerAkteCleverGespraech conversation={lead.advisorConversation} />
+        </div>
+      )}
+
       <div className="cust-akte-priority">
         <CustomerAkteNextStep
-          hint={nextBestStep}
-          recommendation={nextBestStep}
+          hint={displayedNextStep}
+          recommendation={displayedNextStep}
           telHref={telHref}
           onAction={handleCleverAction}
           onFallback={() => openSheet(SHEETS.customer)}
@@ -1491,7 +1686,7 @@ export default function DealerAiLeadFollowUp({
         onCardClick={openVehicleCard}
         onCardMenu={openVehicleCard}
         onSelectionGroupClick={openSelectionGroup}
-        onAddVehicle={handleAddVehicle}
+        onAddProposal={handleAddVehicle}
       />
 
       <div className="cust-akte-tier-3-group">
@@ -1605,7 +1800,7 @@ export default function DealerAiLeadFollowUp({
                 className="dai-btn dai-btn--primary dai-btn--block"
                 onClick={() => handleVehicleOffer(selectedVehicleCard)}
               >
-                {hasVehicleOffer(selectedVehicleCard) ? 'Angebot bearbeiten' : 'Angebot erstellen'}
+                {hasVehicleOffer(selectedVehicleCard) ? 'Angebotsvorschlag öffnen' : 'Angebotsvorschlag vorbereiten'}
               </button>
               <button
                 type="button"
@@ -2139,6 +2334,31 @@ export default function DealerAiLeadFollowUp({
         onClose={closeSheet}
         lead={lead}
         onSave={handleSaveSpecialQuestionAnswer}
+        saving={isSaving}
+      />
+
+      <CustomerAkteAddProposalSheet
+        open={activeSheet === SHEETS.addProposal}
+        onClose={closeSheet}
+        onSelect={handleAddProposalOption}
+      />
+
+      <CustomerAkteLeaseFinanceSheet
+        open={activeSheet === SHEETS.leaseFinancePick}
+        onClose={closeSheet}
+        onBack={() => openSheet(SHEETS.addProposal)}
+        onSelect={handleLeaseFinanceOption}
+      />
+
+      <CustomerOfferQuestionAnswerSheet
+        open={activeSheet === SHEETS.questionAnswer && Boolean(questionContext)}
+        onClose={closeSheet}
+        lead={lead}
+        offerId={questionContext?.offerId}
+        questionId={questionContext?.questionId}
+        vehicleLabel={resolveOfferQuestionVehicleLabel(lead, questionContext?.offerId, vehicleCards)}
+        onSave={handleSaveOfferQuestionAnswer}
+        onMarkDoneOnly={handleMarkOfferQuestionDoneOnly}
         saving={isSaving}
       />
 

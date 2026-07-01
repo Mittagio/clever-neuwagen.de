@@ -10,7 +10,7 @@ export default function CustomerAkteBoard({
   onCardClick,
   onCardMenu,
   onSelectionGroupClick,
-  onAddVehicle,
+  onAddProposal,
 }) {
   const boardItems = items.length > 0
     ? items
@@ -19,15 +19,25 @@ export default function CustomerAkteBoard({
   return (
     <section className="cust-akte-section cust-akte-board cust-akte-tier-2" aria-labelledby="cust-akte-board-title">
       <div className="cust-akte-section__head">
-        <h2 id="cust-akte-board-title" className="cust-akte-section__title">Auf dem Tisch</h2>
-        <button type="button" className="cust-akte-section__link" onClick={onAddVehicle}>
-          + Auto hinzufügen
+        <div className="cust-akte-board__head-text">
+          <h2 id="cust-akte-board-title" className="cust-akte-section__title">Auf dem Tisch</h2>
+          <p className="cust-akte-board__hint" title="Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen">
+            Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen
+          </p>
+        </div>
+        <button
+          type="button"
+          className="cust-akte-section__link"
+          onClick={onAddProposal}
+          title="Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen"
+        >
+          + Vorschlag hinzufügen
         </button>
       </div>
 
       {boardItems.length === 0 ? (
-        <button type="button" className="cust-akte-board__empty" onClick={onAddVehicle}>
-          Noch kein Fahrzeug – Auto hinzufügen
+        <button type="button" className="cust-akte-board__empty" onClick={onAddProposal}>
+          Noch kein Vorschlag – Vorschlag hinzufügen
         </button>
       ) : (
         <div className="cust-akte-board__stack">

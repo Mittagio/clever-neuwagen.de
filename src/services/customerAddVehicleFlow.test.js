@@ -35,9 +35,13 @@ assert.ok(isCustomerRecordAddVehicleContext(ctxFromLead));
 assert.equal(ctxFromLead.source, ADD_VEHICLE_SOURCE);
 assert.equal(ctxFromLead.customerId, 'cust-1');
 assert.equal(ctxFromLead.opportunityId, 'lead-1');
-assert.equal(getReviewBarButtonLabel(ctxFromLead), 'Auto zur Kundenakte hinzufügen');
+assert.equal(getReviewBarButtonLabel(ctxFromLead), 'Vorschlag auf den Tisch legen');
 assert.equal(getReviewBarButtonLabel(null), 'Verkaufschance erstellen');
-assert.equal(getContextBannerLabel(ctxFromLead), 'Für: Max Mustermann');
+assert.equal(getContextBannerLabel(ctxFromLead), 'Vorschlag für: Max Mustermann');
+assert.equal(
+  getContextBannerLabel({ ...ctxFromLead, proposalIntent: 'cash' }),
+  'Barangebot – Kaufpreis statt Leasingrate',
+);
 
 const parsed = {
   ok: true,

@@ -75,6 +75,19 @@ import {
   buildCleverConsultationOfferPrefill,
   buildLeadPatchFromCleverPrefill,
 } from '../services/dealer/cleverConsultationOfferPrefill.js';
+import {
+  enrichOfferEditCardFromLead,
+  buildOfferEditPendingFields,
+  resolveEffectivePaymentType,
+  cardNeedsConditionsConfigure,
+} from '../services/dealer/offerEditWishMerge.js';
+import {
+  shouldForceConfigureFlow,
+} from '../services/dealer/customerAddProposalFlow.js';
+import {
+  createOfferSelectionGroupFromWish,
+  sanitizeOfferSelectionGroups,
+} from '../services/sales/offerSelectionGroup.js';
 import DealerAiRecognitionAnimation from '../components/dealer-ai/DealerAiRecognitionAnimation.jsx';
 import {
   applyRecognitionInsightToParsed,
@@ -146,6 +159,21 @@ export default function DealerAIPage() {
   const bootstrapConfigureState = useCallback((nextParsed) => {
     const primaryModel = resolvePrimarySuggestedModel(nextParsed);
     let draft = buildConfigureDraft(nextParsed, conditions, primaryModel);
+    const wish = addVehicleContext?.wishFields ?? {};
+    const paymentType = resolveEffectivePaymentType(
+      addVehicleContext?.paymentType,
+      wish.paymentType,
+      draft.paymentType,
+    );
+    draft = {
+      ...draft,
+      paymentType,
+      termMonths: wish.termMonths ?? draft.termMonths,
+      mileagePerYear: wish.mileagePerYear ?? draft.mileagePerYear,
+      downPayment: wish.downPayment ?? draft.downPayment,
+      desiredRate: wish.desiredRate ?? draft.desiredRate,
+      desiredPrice: wish.desiredPrice ?? draft.desiredPrice,
+    };
     const crmCustomer = mergeConfigureCustomerContext({ parsedFields: nextParsed.fields });
     if (crmCustomer.hasContact || draft.customer?.mailNote) {
       draft = {
@@ -170,7 +198,8 @@ export default function DealerAIPage() {
     if (primaryModel?.id) {
       setSelectedModelIds([primaryModel.id]);
     }
-  }, [conditions]);
+    return draft;
+  }, [conditions, addVehicleContext?.paymentType, addVehicleContext?.wishFields]);
 
   const buildCombinedText = useCallback((extra = {}) => {
     const extraChips = extra.chipIds ?? [];
@@ -443,6 +472,33 @@ export default function DealerAIPage() {
         addHistory(saveResult.leadId, saveResult.activityText, 'offer');
       }
 
+      if (
+        addVehicleContext?.proposalIntent === 'create_selection_group'
+        && saveResult.leadId
+        && saveResult.offerDraft
+      ) {
+        const targetLead = leads.find((l) => l.id === saveResult.leadId);
+        const wishFields = offerDraftToParserFields(saveResult.offerDraft);
+        const group = createOfferSelectionGroupFromWish({ lead: targetLead, wishFields });
+        if (group && targetLead) {
+          const existing = sanitizeOfferSelectionGroups(targetLead.crm?.offerSelectionGroups ?? []);
+          const hasModel = existing.some((entry) => entry.modelKey === group.modelKey);
+          if (!hasModel) {
+            updateLead(saveResult.leadId, {
+              crm: {
+                ...targetLead.crm,
+                offerSelectionGroups: [...existing, group],
+              },
+            });
+            addHistory(
+              saveResult.leadId,
+              `Clever Auswahl vorbereitet: ${group.modelLabel}`,
+              'note',
+            );
+          }
+        }
+      }
+
       return true;
     } catch (err) {
       showToast(err.message ?? 'Angebot konnte nicht gespeichert werden');
@@ -638,7 +694,39 @@ export default function DealerAIPage() {
     setCarryCustomer(carry);
     setIsReturningWish(true);
     setIsFreshLead(false);
-  }, [location.state?.addVehicleContext, leads]);
+    if (lead) {
+      let nextParsed = enrichWithSuggestions(buildParsedFromLead(lead));
+      const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
+      if (storedConfig?.modelKey && !hasRecognizedModelKey(nextParsed)) {
+        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+          modelId: storedConfig.modelKey,
+          model: storedConfig.model ?? lead.vehicle?.model,
+          trimLabel: storedConfig.trimLabel ?? lead.vehicle?.trim,
+        }));
+      } else if (ctx.focusModelKey && !hasRecognizedModelKey(nextParsed)) {
+        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+          modelId: ctx.focusModelKey,
+        }));
+      }
+      setParsed(nextParsed);
+      setStartView('home');
+      if (
+        shouldForceConfigureFlow(ctx)
+        && (hasRecognizedModelKey(nextParsed) || nextParsed.fields?.model?.trim())
+      ) {
+        const draft = bootstrapConfigureState(nextParsed);
+        if (ctx.openConditions && draft) {
+          setVehicleConfiguration(buildVehicleConfiguration(draft));
+          setSmartOfferVariants([]);
+          setPhase('conditions');
+        } else {
+          setPhase('configure');
+        }
+      } else {
+        setPhase('input');
+      }
+    }
+  }, [location.state?.addVehicleContext, leads, enrichWithSuggestions, bootstrapConfigureState]);
 
   useEffect(() => {
     const wishText = location.state?.wishText;
@@ -776,6 +864,18 @@ export default function DealerAIPage() {
   }
 
   function handleCreateLead(forceDuplicate = false) {
+    if (
+      isCustomerRecordAddVehicleContext(addVehicleContext)
+      && shouldForceConfigureFlow(addVehicleContext)
+    ) {
+      showToast('Bitte Fahrzeug konfigurieren – so werden Konditionen und Rate berechnet.');
+      if (parsed?.ok && hasRecognizedModelKey(parsed)) {
+        handleOpenConfigureFromReview();
+      } else {
+        setStartView('model');
+      }
+      return;
+    }
     if (isCustomerRecordAddVehicleContext(addVehicleContext)) {
       runActionAndApply('add_vehicle_to_customer_record', { forceDuplicate });
       return;
@@ -979,12 +1079,60 @@ export default function DealerAIPage() {
     setPhase('followup');
   }
 
+  function openProposalConditionsFlow(card) {
+    const enriched = enrichOfferEditCardFromLead(card, activeLead);
+    let base = parsed?.ok
+      ? parsed
+      : enrichWithSuggestions(buildParsedFromLead(activeLead ?? {}));
+    if (enriched?.modelKey) {
+      base = applyDealerAiFields(base, {
+        modelId: enriched.modelKey,
+        model: enriched.modelName?.replace(/^Kia\s+/i, '') ?? base.fields?.model,
+        trimLabel: enriched.trimLabel ?? base.fields?.trimLabel,
+        paymentType: resolveEffectivePaymentType(
+          enriched.paymentType,
+          activeLead?.paymentType,
+          base.fields?.paymentType,
+        ),
+        termMonths: enriched.termMonths ?? activeLead?.wish?.termMonths ?? base.fields?.termMonths,
+        mileagePerYear: enriched.mileagePerYear ?? activeLead?.wish?.mileagePerYear ?? base.fields?.mileagePerYear,
+        desiredRate: enriched.desiredRate ?? activeLead?.desiredRate ?? base.fields?.desiredRate,
+        downPayment: enriched.downPayment ?? activeLead?.wish?.downPayment ?? base.fields?.downPayment,
+        desiredPrice: enriched.desiredPrice ?? activeLead?.wish?.desiredPrice ?? base.fields?.desiredPrice,
+      });
+    }
+    const nextParsed = enrichWithSuggestions(base);
+    const draft = bootstrapConfigureState(nextParsed);
+    setParsed(nextParsed);
+    setOfferEditCard(null);
+    setOfferEditFromProposal(false);
+    setOfferPendingFields([]);
+    if (draft) {
+      setVehicleConfiguration(buildVehicleConfiguration(draft));
+      setSmartOfferVariants([]);
+      setPhase('conditions');
+      return;
+    }
+    setPhase('configure');
+  }
+
   function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
-    setOfferEditCard(card);
+    const enriched = enrichOfferEditCardFromLead(card, activeLead);
+    if (cardNeedsConditionsConfigure(enriched)) {
+      openProposalConditionsFlow(enriched);
+      return;
+    }
+    setOfferEditCard(enriched);
     setOfferEditFromProposal(fromProposal);
     setCleverOfferTransfer(activeLead?.crm?.cleverOfferTransfer ?? null);
-    setOfferPendingFields([]);
+    setOfferPendingFields(buildOfferEditPendingFields(enriched, {
+      deliveryNote: activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? '',
+    }));
     setPhase('offer-edit');
+  }
+
+  function handleEditOfferConditions(card) {
+    openProposalConditionsFlow(card);
   }
 
   function handleBackFromOffer() {
@@ -1215,6 +1363,11 @@ export default function DealerAIPage() {
       handleOpenConfigureFromReview();
       return;
     }
+    if (shouldForceConfigureFlow(addVehicleContext)) {
+      showToast('Bitte Modell wählen, dann Fahrzeug konfigurieren.');
+      setStartView('model');
+      return;
+    }
     handleCreateLead();
   }
 
@@ -1435,6 +1588,7 @@ export default function DealerAIPage() {
             onDeletePdf={handleOfferDeletePdf}
             onMarkSent={handleOfferMarkSent}
             onStatusChange={handleOfferStatusChange}
+            onEditConditions={handleEditOfferConditions}
             isSaving={isSavingLead}
           />
         )}

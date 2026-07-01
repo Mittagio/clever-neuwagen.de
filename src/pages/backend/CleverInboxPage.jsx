@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCleverInbox } from '../../context/CleverInboxContext.jsx';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
+import { buildQuestionAnswerAkteUrl } from '../../services/crm/cleverInboxQuestionRoute.js';
 import CleverInboxCard from '../../components/backend/CleverInboxCard.jsx';
 import '../../components/backend/CleverInbox.css';
 
@@ -26,7 +27,7 @@ export default function CleverInboxPage() {
   function handleAction(item) {
     if (item.actionTarget === 'reply') {
       if (item.leadId) {
-        navigate(`${buildKundenaktePath(item.leadId)}?sheet=antworten`);
+        navigate(buildQuestionAnswerAkteUrl(item.leadId, item));
       }
       return;
     }

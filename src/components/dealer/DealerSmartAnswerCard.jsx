@@ -40,10 +40,20 @@ export default function DealerSmartAnswerCard({
   }
 
   const hasDetails = (answer.facts?.length ?? 0) > 0;
-  const showImage = Boolean(answer.primaryModelKey) && answer.mode !== 'advice';
+  const isProfileAssessment = answer.mode === 'clever_assessment' || answer.intent === 'advisor_profile_assessment';
+  const isTechnicalAnswer = answer.intent === 'model_equipment_question' && answer.routingLayer === 'clever_data';
+  const showImage = Boolean(answer.primaryModelKey)
+    && answer.mode !== 'advice'
+    && answer.mode !== 'mixed'
+    && !isProfileAssessment
+    && !isTechnicalAnswer;
   const isAdvice = answer.mode === 'advice' || answer.intent === 'advice_question';
+  const isMixed = answer.mode === 'mixed' || answer.intent === 'mixed_intent' || isProfileAssessment;
   const usefulWhen = answer.usefulWhen ?? [];
   const dealerChecks = answer.dealerChecks ?? [];
+  const understoodWishes = answer.understoodWishes ?? [];
+  const modelDirections = answer.modelDirections ?? [];
+  const dealerFinalChecks = answer.dealerFinalChecks ?? dealerChecks;
   const narrative = [
     ...(answer.narrative ?? []),
     ...(answer.summary ? [answer.summary] : []),
@@ -97,6 +107,39 @@ export default function DealerSmartAnswerCard({
 
           {answer.lead && (
             <p className="dl-smart-answer__lead">{answer.lead}</p>
+          )}
+
+          {isMixed && understoodWishes.length > 0 && (
+            <div className="dl-smart-answer__advice-section">
+              <p className="dl-smart-answer__advice-label">{answer.understoodLabel ?? 'Das haben wir verstanden:'}</p>
+              <ul className="dl-smart-answer__advice-list">
+                {understoodWishes.map((item) => (
+                  <li key={item} className="dl-smart-answer__advice-item">✓ {item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isProfileAssessment && modelDirections.length > 0 && (
+            <div className="dl-smart-answer__advice-section">
+              <p className="dl-smart-answer__advice-label">{answer.modelDirectionsLabel ?? 'Erste passende Richtung:'}</p>
+              <ul className="dl-smart-answer__advice-list">
+                {modelDirections.map((item) => (
+                  <li key={item} className="dl-smart-answer__advice-item">→ {item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isMixed && dealerFinalChecks.length > 0 && (
+            <div className="dl-smart-answer__advice-section">
+              <p className="dl-smart-answer__advice-label">{answer.dealerChecksLabel ?? 'Das prüft Ihr Autohaus final:'}</p>
+              <ul className="dl-smart-answer__advice-list dl-smart-answer__advice-list--dealer">
+                {dealerFinalChecks.map((item) => (
+                  <li key={item} className="dl-smart-answer__advice-item">✓ {item}</li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {isAdvice && usefulWhen.length > 0 && (

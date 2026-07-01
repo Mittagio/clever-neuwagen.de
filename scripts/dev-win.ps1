@@ -32,6 +32,17 @@ function Test-Port($port) {
   }
 }
 
+function Stop-ServerOnPort($port) {
+  $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+  foreach ($conn in $connections) {
+    if ($conn.OwningProcess -and $conn.OwningProcess -gt 0) {
+      Write-Host "Beende Prozess auf Port $port (PID $($conn.OwningProcess)) …"
+      Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+  }
+  if ($connections) { Start-Sleep -Seconds 1 }
+}
+
 Write-Host 'Frontend bauen …'
 & $node node_modules/vite/bin/vite.js build | Out-Host
 
@@ -48,15 +59,16 @@ function Get-LanIp {
   return $null
 }
 
-if (-not (Test-Port 3001)) {
-  Write-Host 'Server starten (Port 3001, Production, WLAN-faehig) …'
-  $env:NODE_ENV = 'production'
-  $env:HOST = '0.0.0.0'
-  Start-Process -FilePath $node -ArgumentList 'server/index.js' -WorkingDirectory $root -WindowStyle Minimized
-  Start-Sleep -Seconds 2
-} else {
-  Write-Host 'Server laeuft bereits auf Port 3001 (bei .env.local-Aenderungen Server neu starten).'
+if (Test-Port 3001) {
+  Write-Host 'Server auf Port 3001 wird neu gestartet (aktueller Code) …'
+  Stop-ServerOnPort 3001
 }
+
+Write-Host 'Server starten (Port 3001, Production, WLAN-faehig) …'
+$env:NODE_ENV = 'production'
+$env:HOST = '0.0.0.0'
+Start-Process -FilePath $node -ArgumentList 'server/index.js' -WorkingDirectory $root -WindowStyle Minimized
+Start-Sleep -Seconds 2
 
 function Get-OpenAiHealth {
   try {

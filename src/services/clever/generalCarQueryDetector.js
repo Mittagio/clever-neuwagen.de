@@ -141,5 +141,8 @@ export function detectDealerDataQuery(text = '') {
  */
 export function isPurchaseIntentQuery(text = '') {
   const q = String(text).trim();
-  return /\b(angebot\s+anfragen|ich\s+will\s+(ein\s+)?angebot|angebot\s+erhalten|probefahrt|autohaus\s+soll|verkäufer|beraten\s+lassen|kontakt\s+aufnehmen)\b/i.test(q);
+  if (/\b(suche|suchen)\b/i.test(q) && /\b(bis|unter|maximal|höchstens|hoechstens|\d+\s*€)\b/i.test(q)) {
+    return false;
+  }
+  return /\b(angebot\s+anfragen|angebot\s+erstellen|bitte\s+angebot|ich\s+(?:möchte|moechte|hätte\s+gerne|haette\s+gerne|will|würde\s+gerne|wuerde\s+gerne)\s+(?:ein\s+|eine\s+)?angebot|ich\s+(?:möchte|moechte)\s+(?:eine\s+)?leasingrate|ich\s+(?:möchte|moechte)\s+die\s+rate\s+wissen|angebot\s+erhalten|angebot\s+bekommen|kann\s+ich\s+(?:ein\s+)?angebot|interessier(?:e|t)?\s+mich\s+für\s+(?:ein\s+)?angebot|verkäufer\s+soll\s+(?:mir\s+)?(?:ein\s+)?angebot|verkäufer\s+soll\s+mich\s+beraten|probefahrt|autohaus\s+soll|verkäufer|beraten\s+lassen|kontakt\s+aufnehmen)\b/i.test(q);
 }
