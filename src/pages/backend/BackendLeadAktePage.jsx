@@ -65,7 +65,10 @@ export default function BackendLeadAktePage() {
 
   const initialSheet = searchParams.get('sheet') === 'question_answer'
     ? 'question_answer'
-    : (searchParams.get('sheet') || null);
+    : (searchParams.get('sheet') === 'antworten' ? 'antworten' : (searchParams.get('sheet') || null));
+
+  const initialAntwortenIntent = searchParams.get('intentId') || null;
+  const initialInboxItemId = searchParams.get('inboxItemId') || null;
 
   const initialQuestionContext = useMemo(() => {
     if (searchParams.get('sheet') !== 'question_answer') return null;
@@ -440,6 +443,8 @@ export default function BackendLeadAktePage() {
             onAddHistory={handleLeadHistory}
             isSaving={isSavingLead}
             initialSheet={initialSheet === 'question_answer' ? 'question_answer' : initialSheet}
+            initialAntwortenIntent={initialAntwortenIntent}
+            initialInboxItemId={initialInboxItemId}
             initialQuestionContext={questionAnswerContext}
             onOpenOfferQuestionAnswer={handleOpenQuestionAnswer}
             onQuestionAnswerContextConsumed={handleQuestionAnswerContextConsumed}

@@ -107,7 +107,7 @@ const followUpSource = readFileSync(
   'utf8',
 );
 assert.ok(followUpSource.includes('inboxOpenCount'), 'Kundenakte kennt inboxOpenCount');
-assert.ok(followUpSource.includes('activitiesBadge={inboxOpenCount'), 'Badge nutzt Inbox-Zähler');
+assert.ok(followUpSource.includes('inboxOpenCount={inboxOpenCount}'), 'Badge nutzt Inbox-Zähler');
 
 // 7. Item kann als erledigt markiert werden
 reset();

@@ -197,6 +197,100 @@ export function buildWishConditionChips({
   return chips;
 }
 
+/**
+ * Klickbare Schnellaufnahme-Chips für die Kundenakte (nur Kern-Wunschkonditionen).
+ * @returns {Array<{ id: string, label: string, field: string }>}
+ */
+export function buildSchnellaufnahmeChips({
+  paymentType = 'unknown',
+  termMonths = null,
+  mileagePerYear = null,
+  desiredRate = null,
+  desiredPrice = null,
+  downPayment = null,
+  delivery = '',
+} = {}) {
+  const pt = paymentType ?? 'unknown';
+  const hasTerm = Number(termMonths) > 0;
+  const hasMileage = Number(mileagePerYear) > 0;
+  const hasRate = Number(desiredRate) > 0;
+  const hasPrice = Number(desiredPrice) > 0;
+  const hasDelivery = Boolean(String(delivery ?? '').trim());
+
+  if (pt === 'unknown' && !hasTerm && !hasMileage && !hasRate && !hasPrice && !hasDelivery) {
+    return [{ id: 'paymentType', label: 'Noch offen', field: 'paymentType' }];
+  }
+
+  const chips = [];
+
+  if (pt === 'leasing') {
+    chips.push({ id: 'paymentType', label: 'Leasing', field: 'paymentType' });
+  } else if (pt === 'cash') {
+    chips.push({ id: 'paymentType', label: 'Kauf', field: 'paymentType' });
+  } else if (pt === 'financing' || pt === 'threeWayFinancing') {
+    chips.push({ id: 'paymentType', label: 'Finanzierung', field: 'paymentType' });
+  } else if (pt !== 'unknown') {
+    chips.push({ id: 'paymentType', label: paymentLabel(pt), field: 'paymentType' });
+  } else {
+    chips.push({ id: 'paymentType', label: 'Angebotsart offen', field: 'paymentType' });
+  }
+
+  if (pt === 'cash') {
+    const price = formatWishEuro(desiredPrice);
+    chips.push({
+      id: 'desiredPrice',
+      label: price ? `bis ${price}` : 'Budget offen',
+      field: 'desiredPrice',
+    });
+  } else if (pt !== 'unknown') {
+    chips.push({
+      id: 'termMonths',
+      label: hasTerm ? `${Number(termMonths)} Monate` : 'Laufzeit offen',
+      field: 'termMonths',
+    });
+    if (pt === 'leasing') {
+      const km = formatWishKm(mileagePerYear);
+      chips.push({
+        id: 'mileagePerYear',
+        label: km ? `${km}/Jahr` : 'Kilometer offen',
+        field: 'mileagePerYear',
+      });
+    }
+    const downNum = Number(downPayment);
+    const downLabel = Number.isFinite(downNum)
+      ? `${downNum.toLocaleString('de-DE')} €`
+      : '0 €';
+    chips.push({
+      id: 'downPayment',
+      label: `${downLabel} Anzahlung`,
+      field: 'downPayment',
+    });
+    const rate = formatWishEuro(desiredRate);
+    chips.push({
+      id: 'desiredRate',
+      label: rate ? `bis ${rate}/Monat` : 'Budget offen',
+      field: 'desiredRate',
+    });
+  }
+
+  const deliveryLabels = {
+    sofort: 'Sofort',
+    '1-3-monate': '1–3 Monate',
+    '3-6-monate': '3–6 Monate',
+  };
+  const rawDelivery = String(delivery ?? '').trim();
+  const deliveryText = rawDelivery
+    ? (deliveryLabels[rawDelivery.toLowerCase()] ?? rawDelivery)
+    : 'Egal';
+  chips.push({
+    id: 'delivery',
+    label: `Liefertermin ${deliveryText}`,
+    field: 'delivery',
+  });
+
+  return chips;
+}
+
 function findOfferForVehicle(offers = [], model = {}) {
   const modelName = (model.modelName ?? model.name ?? '').toLowerCase();
   return offers.find((o) => {

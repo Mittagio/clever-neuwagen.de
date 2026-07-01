@@ -27,10 +27,42 @@
   opacity: 0.92;
 }
 
+.cust-akte-verlauf {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cust-akte-verlauf__block {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--cust-border, #e2e8f0);
+}
+
+.cust-akte-verlauf__block:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.cust-akte-verlauf__block--subtle {
+  opacity: 0.95;
+}
+
+.cust-akte-board {
+  margin-bottom: 2px;
+}
+
 .cust-akte-tier-2 .cust-akte-section__title {
   font-size: 0.8125rem;
   font-weight: 700;
   color: #334155;
+}
+
+.cust-akte-tier-2 .cust-akte-section__title.cust-akte-section__title--eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cust-muted, #64748b);
 }
 
 .cust-akte-tier-3-group {
@@ -548,9 +580,25 @@
 
 .cust-akte-actions {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 2px;
-  padding: 0 0 2px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 0 0 4px;
+}
+
+.cust-akte-actions__item--primary {
+  color: #0b1736;
+}
+
+.cust-akte-actions__item--primary .cust-akte-actions__icon {
+  font-size: 1.2rem;
+}
+
+.cust-akte-actions__label--short {
+  display: none;
+}
+
+.cust-akte-actions__label--full {
+  display: inline;
 }
 
 .cust-akte-actions__item {
@@ -694,6 +742,14 @@
   color: var(--cust-text);
 }
 
+.cust-akte-section__title--eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cust-muted, #64748b);
+}
+
 .cust-akte-section__link {
   margin: 0;
   padding: 0;
@@ -706,7 +762,71 @@
   white-space: nowrap;
 }
 
-/* Kundenhelfer – Chips */
+/* Kundenwissen – Kategorien im Profilkopf */
+.cust-akte-kw {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cust-akte-kw--empty {
+  padding-top: 8px;
+}
+
+.cust-akte-kw__title {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-akte-kw__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cust-akte-kw__cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #e8edf3;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.cust-akte-kw__cat-icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.cust-akte-kw__add {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--cust-blue, #145cff);
+  cursor: pointer;
+}
+
+.cust-akte-kw__notes-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted, #64748b);
+}
+
+/* Kundenhelfer – Chips (legacy sheet) */
 .cust-akte-kh {
   display: flex;
   flex-direction: column;
@@ -1056,6 +1176,86 @@
   text-decoration: underline;
 }
 
+/* Schnellaufnahme – Mini-Karte */
+.cust-akte-schnell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cust-akte-schnell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cust-akte-schnell__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-akte-schnell__edit {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--cust-blue, #145cff);
+  cursor: pointer;
+}
+
+.cust-akte-schnell__edit:hover {
+  text-decoration: underline;
+}
+
+.cust-akte-schnell__card {
+  padding: 8px 10px;
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.cust-akte-schnell__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cust-akte-schnell__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.cust-akte-schnell__chip:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.cust-akte-schnell__chip:active {
+  transform: scale(0.98);
+}
+
 /* Wunschkonditionen – Bottom-Sheet */
 .cust-wish-sheet {
   display: flex;
@@ -1067,6 +1267,16 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  scroll-margin-top: 24px;
+  scroll-margin-bottom: 24px;
+}
+
+.cust-wish-sheet-field.is-focused {
+  padding: 10px;
+  margin: -10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 2px #dbeafe;
 }
 
 .cust-wish-sheet-field__label {
@@ -2250,6 +2460,14 @@
     font-size: 0.52rem;
   }
 
+  .cust-akte-actions__label--full {
+    display: none;
+  }
+
+  .cust-akte-actions__label--short {
+    display: inline;
+  }
+
   .cust-akte-actions__item {
     min-height: 52px;
     padding: 5px 1px 3px;
@@ -2286,7 +2504,7 @@
 .cust-akte-sgroup__visual {
   flex: none;
   width: 100%;
-  height: 120px;
+  height: 96px;
 }
 
 .cust-akte-sgroup__body {
@@ -2311,13 +2529,13 @@
 
 .cust-akte-sgroup__status {
   display: inline-flex;
-  margin-top: 8px;
-  padding: 4px 10px;
+  margin-top: 6px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: #eef2f7;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .cust-akte-sgroup__status--accent,

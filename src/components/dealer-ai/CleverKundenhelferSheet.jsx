@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 import {
   KUNDENHELFER_CHIPS,
@@ -7,11 +7,17 @@ import {
   createVoiceMemoId,
   formatMemoDuration,
   formatMemoLine,
-  getCustomKundenhelferChips,
   parseKundenhelferNotes,
   replaceKundenhelferChip,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
+import {
+  KUNDENWISSEN_CATEGORY_ORDER,
+  buildKundenwissenOverview,
+  getKundenwissenCategory,
+  getPredefinedChipsForCategory,
+  suggestKundenwissenCategory,
+} from '../../services/kundenwissenCategories.js';
 import CustomerAkteConversationNotes from './CustomerAkteConversationNotes.jsx';
 import './CleverKundenhelferSheet.css';
 
@@ -241,24 +247,36 @@ export default function CleverKundenhelferSheet({
   conversationNotes = [],
   onConversationNotesChange,
   vehicleCards = [],
+  lead = null,
+  initialCategoryId = null,
+  chipCategories = {},
+  onChipCategoriesChange,
   onSave,
   isSaving = false,
 }) {
-  const [playingId, setPlayingId] = useState(null);
-  const [customEditMode, setCustomEditMode] = useState(null);
-  const [customDraft, setCustomDraft] = useState('');
+  const [sheetView, setSheetView] = useState('categories');
+  const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [addMode, setAddMode] = useState(false);
+  const [addDraft, setAddDraft] = useState('');
+  const [addCategoryId, setAddCategoryId] = useState('sonstiges');
   const [editingChip, setEditingChip] = useState(null);
+  const [playingId, setPlayingId] = useState(null);
+
   const playerRef = useRef(null);
-  const customInputRef = useRef(null);
+  const addInputRef = useRef(null);
 
   const activeChips = parseKundenhelferNotes(notes);
-  const customChips = getCustomKundenhelferChips(notes);
-  const isAddingCustom = customEditMode === 'add';
-  const isEditingCustom = customEditMode === 'edit';
+  const overview = useMemo(
+    () => buildKundenwissenOverview(notes, lead, chipCategories),
+    [notes, lead, chipCategories],
+  );
 
-  const resetCustomEdit = useCallback(() => {
-    setCustomEditMode(null);
-    setCustomDraft('');
+  const resetSheetNav = useCallback(() => {
+    setSheetView('categories');
+    setActiveCategoryId(null);
+    setAddMode(false);
+    setAddDraft('');
+    setAddCategoryId('sonstiges');
     setEditingChip(null);
   }, []);
 
@@ -266,64 +284,136 @@ export default function CleverKundenhelferSheet({
     if (!open) {
       playerRef.current?.pause();
       setPlayingId(null);
-      resetCustomEdit();
-    }
-  }, [open, resetCustomEdit]);
-
-  useEffect(() => {
-    if (open && customEditMode && customInputRef.current) {
-      customInputRef.current.focus();
-    }
-  }, [open, customEditMode, customDraft]);
-
-  function toggleChip(chip) {
-    resetCustomEdit();
-    onNotesChange?.(toggleKundenhelferChip(notes, chip));
-  }
-
-  function startAddCustom() {
-    if (isAddingCustom) {
-      resetCustomEdit();
+      resetSheetNav();
       return;
     }
-    setCustomEditMode('add');
-    setCustomDraft('');
+    if (initialCategoryId) {
+      setActiveCategoryId(initialCategoryId);
+      setSheetView('detail');
+    } else {
+      resetSheetNav();
+    }
+  }, [open, initialCategoryId, resetSheetNav]);
+
+  useEffect(() => {
+    if (open && addMode && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [open, addMode]);
+
+  const activeCategory = activeCategoryId
+    ? getKundenwissenCategory(activeCategoryId)
+    : null;
+
+  const categoryDetail = overview.find((cat) => cat.id === activeCategoryId) ?? {
+    ...getKundenwissenCategory(activeCategoryId ?? 'sonstiges'),
+    count: 0,
+    items: [],
+  };
+
+  const predefinedForCategory = getPredefinedChipsForCategory(
+    activeCategoryId ?? 'sonstiges',
+    KUNDENHELFER_CHIPS,
+  );
+
+  function openCategory(categoryId) {
+    setActiveCategoryId(categoryId);
+    setSheetView('detail');
+    setAddMode(false);
+  }
+
+  function backToCategories() {
+    setSheetView('categories');
+    setActiveCategoryId(null);
+    setAddMode(false);
     setEditingChip(null);
   }
 
-  function startEditCustom(chip) {
-    setCustomEditMode('edit');
-    setCustomDraft(chip);
-    setEditingChip(chip);
+  function startAddInfo() {
+    setAddMode(true);
+    setAddDraft('');
+    setAddCategoryId('sonstiges');
+    setEditingChip(null);
+    if (sheetView === 'detail' && activeCategoryId) {
+      setAddCategoryId(activeCategoryId);
+    }
   }
 
-  function commitCustomChip() {
-    const trimmed = customDraft.trim();
+  function cancelAddInfo() {
+    setAddMode(false);
+    setAddDraft('');
+    setEditingChip(null);
+  }
+
+  function commitAddInfo() {
+    const trimmed = addDraft.trim();
     if (!trimmed) {
-      if (isEditingCustom && editingChip) {
-        onNotesChange?.(toggleKundenhelferChip(notes, editingChip));
-      }
-      resetCustomEdit();
+      cancelAddInfo();
       return;
     }
-
-    if (isEditingCustom && editingChip) {
+    if (editingChip) {
       onNotesChange?.(replaceKundenhelferChip(notes, editingChip, trimmed));
+      if (editingChip !== trimmed) {
+        onChipCategoriesChange?.((prev) => {
+          const next = { ...(prev ?? {}) };
+          delete next[editingChip];
+          next[trimmed] = addCategoryId;
+          return next;
+        });
+      } else {
+        onChipCategoriesChange?.((prev) => ({
+          ...(prev ?? {}),
+          [trimmed]: addCategoryId,
+        }));
+      }
     } else {
       onNotesChange?.(addCustomKundenhelferChip(notes, trimmed));
+      onChipCategoriesChange?.((prev) => ({
+        ...(prev ?? {}),
+        [trimmed]: addCategoryId,
+      }));
     }
-    resetCustomEdit();
+    cancelAddInfo();
+    if (sheetView === 'categories') {
+      setActiveCategoryId(addCategoryId);
+      setSheetView('detail');
+    }
   }
 
-  function handleCustomKeyDown(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      commitCustomChip();
+  function handleAddDraftChange(value) {
+    setAddDraft(value);
+    if (!editingChip) {
+      setAddCategoryId(suggestKundenwissenCategory(value));
     }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      resetCustomEdit();
+  }
+
+  function toggleChip(chip) {
+    const wasActive = activeChips.includes(chip);
+    onNotesChange?.(toggleKundenhelferChip(notes, chip));
+    if (wasActive) {
+      onChipCategoriesChange?.((prev) => {
+        const next = { ...(prev ?? {}) };
+        delete next[chip];
+        return next;
+      });
+    } else if (activeCategoryId) {
+      onChipCategoriesChange?.((prev) => ({
+        ...(prev ?? {}),
+        [chip]: activeCategoryId,
+      }));
     }
+  }
+
+  function startEditItem(raw) {
+    if (String(raw).startsWith('unterlagen:')) return;
+    setEditingChip(raw);
+    setAddDraft(raw);
+    setAddCategoryId(chipCategories[raw] ?? categorizeChip(raw));
+    setAddMode(true);
+  }
+
+  function categorizeChip(chip) {
+    return suggestKundenwissenCategory(chip);
   }
 
   function handlePlayMemo(memo) {
@@ -346,11 +436,26 @@ export default function CleverKundenhelferSheet({
     onVoiceMemosChange?.([memo, ...voiceMemos]);
   }
 
+  function handleAddKeyDown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitAddInfo();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelAddInfo();
+    }
+  }
+
+  const panelTitle = sheetView === 'detail' && activeCategory
+    ? activeCategory.label
+    : 'Clever Kundenhelfer';
+
   return (
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Clever Kundenhelfer"
+      title={panelTitle}
       footer={(
         <div className="dai-sheet-actions">
           <button type="button" className="dai-btn dai-btn--ghost" onClick={onClose}>
@@ -368,84 +473,147 @@ export default function CleverKundenhelferSheet({
       )}
     >
       <div className="dai-kh-sheet">
-        <p className="dai-kh-sheet__subline">Kleine Details fürs nächste Gespräch.</p>
+        {sheetView === 'categories' && (
+          <>
+            <p className="dai-kh-sheet__subline">Wählen Sie einen Bereich.</p>
 
-        <div className="dai-kh-chips-wrap">
-          <div className="dai-kh-chips" role="group" aria-label="Schnell-Bemerkungen">
-            <button
-              type="button"
-              className={`dai-kh-chip dai-kh-chip--add${isAddingCustom ? ' is-active' : ''}`}
-              onClick={startAddCustom}
-              aria-pressed={isAddingCustom}
-            >
-              + Weitere Info
+            {overview.length > 0 ? (
+              <div className="dai-kh-cat-grid" role="list">
+                {overview.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className="dai-kh-cat-tile"
+                    onClick={() => openCategory(category.id)}
+                  >
+                    <span className="dai-kh-cat-tile__icon" aria-hidden>{category.icon}</span>
+                    <span className="dai-kh-cat-tile__label">{category.label}</span>
+                    <span className="dai-kh-cat-tile__count">
+                      {category.count}
+                      {' '}
+                      Info{category.count === 1 ? '' : 's'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="dai-kh-sheet__empty">Noch keine Infos hinterlegt.</p>
+            )}
+
+            <button type="button" className="dai-kh-add-btn" onClick={startAddInfo}>
+              + Info hinzufügen
+            </button>
+          </>
+        )}
+
+        {sheetView === 'detail' && activeCategory && (
+          <>
+            <button type="button" className="dai-kh-back" onClick={backToCategories}>
+              ← Bereiche
             </button>
 
-            {customChips.map((chip) => {
-              const isEditing = isEditingCustom && editingChip === chip;
-              return (
-                <button
-                  key={chip}
-                  type="button"
-                  className={`dai-kh-chip dai-kh-chip--custom is-active${isEditing ? ' is-editing' : ''}`}
-                  onClick={() => startEditCustom(chip)}
-                  aria-pressed
-                >
-                  {chip}
-                </button>
-              );
-            })}
-
-            {KUNDENHELFER_CHIPS.map((chip) => {
-              const active = activeChips.includes(chip);
-              return (
-                <button
-                  key={chip}
-                  type="button"
-                  className={`dai-kh-chip${active ? ' is-active' : ''}`}
-                  onClick={() => toggleChip(chip)}
-                  aria-pressed={active}
-                >
-                  {chip}
-                </button>
-              );
-            })}
-          </div>
-
-          {customEditMode && (
-            <div className="dai-kh-custom-edit">
-              <input
-                ref={customInputRef}
-                type="text"
-                className="dai-kh-custom-edit__input"
-                value={customDraft}
-                onChange={(e) => setCustomDraft(e.target.value)}
-                onKeyDown={handleCustomKeyDown}
-                placeholder="z. B. Gebrauchtwagen BMW"
-                aria-label={isEditingCustom ? 'Eigene Info bearbeiten' : 'Neue Info eingeben'}
-              />
-              <div className="dai-kh-custom-edit__actions">
-                <button
-                  type="button"
-                  className="dai-btn dai-btn--primary dai-kh-custom-edit__confirm"
-                  onClick={commitCustomChip}
-                >
-                  Übernehmen
-                </button>
-                <button
-                  type="button"
-                  className="dai-btn dai-btn--ghost"
-                  onClick={resetCustomEdit}
-                >
-                  Abbrechen
-                </button>
-              </div>
-              <p className="dai-kh-custom-edit__hint">
-                Enter zum Übernehmen · Leer lassen und übernehmen entfernt den Chip
-              </p>
+            <div className="dai-kh-detail-list">
+              {categoryDetail.items.length > 0 ? (
+                <ul className="dai-kh-detail-items">
+                  {categoryDetail.items.map((item) => (
+                    <li key={item.raw}>
+                      {item.readOnly ? (
+                        <span className="dai-kh-detail-item dai-kh-detail-item--readonly">
+                          {item.display}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="dai-kh-detail-item is-active"
+                          onClick={() => startEditItem(item.raw)}
+                        >
+                          {item.display}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dai-kh-sheet__empty">Noch keine Infos in diesem Bereich.</p>
+              )}
             </div>
-          )}
-        </div>
+
+            {predefinedForCategory.length > 0 && (
+              <div className="dai-kh-suggestions">
+                <p className="dai-kh-suggestions__label">Hinzufügen</p>
+                <div className="dai-kh-chips" role="group" aria-label={`Vorschläge ${activeCategory.label}`}>
+                  {predefinedForCategory.map((chip) => {
+                    const active = activeChips.includes(chip);
+                    return (
+                      <button
+                        key={chip}
+                        type="button"
+                        className={`dai-kh-chip${active ? ' is-active' : ''}`}
+                        onClick={() => toggleChip(chip)}
+                        aria-pressed={active}
+                      >
+                        {chip}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <button type="button" className="dai-kh-add-btn" onClick={startAddInfo}>
+              + Info hinzufügen
+            </button>
+          </>
+        )}
+
+        {addMode && (
+          <div className="dai-kh-custom-edit">
+            <label className="dai-kh-custom-edit__label" htmlFor="dai-kh-add-input">
+              {editingChip ? 'Info bearbeiten' : 'Neue Info'}
+            </label>
+            <input
+              id="dai-kh-add-input"
+              ref={addInputRef}
+              type="text"
+              className="dai-kh-custom-edit__input"
+              value={addDraft}
+              onChange={(e) => handleAddDraftChange(e.target.value)}
+              onKeyDown={handleAddKeyDown}
+              placeholder="z. B. Kaffee schwarz"
+            />
+            <label className="dai-kh-custom-edit__label" htmlFor="dai-kh-add-category">
+              Kategorie
+            </label>
+            <select
+              id="dai-kh-add-category"
+              className="dai-kh-custom-edit__select"
+              value={addCategoryId}
+              onChange={(e) => setAddCategoryId(e.target.value)}
+            >
+              {KUNDENWISSEN_CATEGORY_ORDER.filter((id) => id !== 'unterlagen').map((id) => {
+                const cat = getKundenwissenCategory(id);
+                return (
+                  <option key={id} value={id}>{cat.label}</option>
+                );
+              })}
+            </select>
+            <div className="dai-kh-custom-edit__actions">
+              <button
+                type="button"
+                className="dai-btn dai-btn--primary dai-kh-custom-edit__confirm"
+                onClick={commitAddInfo}
+              >
+                Übernehmen
+              </button>
+              <button type="button" className="dai-btn dai-btn--ghost" onClick={cancelAddInfo}>
+                Abbrechen
+              </button>
+            </div>
+            <p className="dai-kh-custom-edit__hint">
+              Kategorie wird automatisch vorgeschlagen · Enter zum Übernehmen
+            </p>
+          </div>
+        )}
 
         <CustomerAkteConversationNotes
           notes={conversationNotes}

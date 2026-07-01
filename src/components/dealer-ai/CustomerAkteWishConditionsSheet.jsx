@@ -46,9 +46,13 @@ function nearestDownIndex(value) {
   return best;
 }
 
-function SheetField({ label, children }) {
+function SheetField({ label, children, fieldId, focused = false }) {
   return (
-    <div className="cust-wish-sheet-field">
+    <div
+      className={`cust-wish-sheet-field${focused ? ' is-focused' : ''}`}
+      id={fieldId ? `wish-field-${fieldId}` : undefined}
+      data-wish-field={fieldId || undefined}
+    >
       <span className="cust-wish-sheet-field__label">{label}</span>
       {children}
     </div>
@@ -78,12 +82,24 @@ export default function CustomerAkteWishConditionsSheet({
   onApply,
   getBudgetFieldLabel = () => 'Budget / Rate',
   saving = false,
+  focusField = null,
 }) {
   const [draft, setDraft] = useState(values);
 
   useEffect(() => {
     if (open) setDraft(values);
   }, [open, values]);
+
+  useEffect(() => {
+    if (!open || !focusField) return undefined;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`wish-field-${focusField}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [open, focusField]);
 
   const paymentType = draft.paymentType ?? 'unknown';
   const isCash = paymentType === 'cash';
@@ -108,6 +124,8 @@ export default function CustomerAkteWishConditionsSheet({
       desiredPrice: id === 'cash' ? draft.desiredPrice : '',
     });
   }
+
+  const budgetField = isCash ? 'desiredPrice' : 'desiredRate';
 
   function handleApply() {
     onApply?.(draft);
@@ -135,7 +153,7 @@ export default function CustomerAkteWishConditionsSheet({
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Wunschkonditionen ändern"
+      title="Schnellaufnahme ändern"
       footer={(
         <button
           type="button"
@@ -148,7 +166,7 @@ export default function CustomerAkteWishConditionsSheet({
       )}
     >
       <div className="cust-wish-sheet">
-        <SheetField label="Zahlungsart">
+        <SheetField label="Zahlungsart" fieldId="paymentType" focused={focusField === 'paymentType'}>
           <div className="cust-wish-sheet-segmented" role="group" aria-label="Zahlungsart">
             {PAYMENT_OPTIONS.map((opt) => (
               <button
@@ -166,7 +184,7 @@ export default function CustomerAkteWishConditionsSheet({
 
         {showFinanceFields && (
           <>
-            <SheetField label="Anzahlung">
+            <SheetField label="Anzahlung" fieldId="downPayment" focused={focusField === 'downPayment'}>
               <p className="cust-wish-sheet__value-display">{formatEuro(draft.downPayment ?? 0)}</p>
               <input
                 type="range"
@@ -196,7 +214,7 @@ export default function CustomerAkteWishConditionsSheet({
               </div>
             </SheetField>
 
-            <SheetField label="Laufzeit">
+            <SheetField label="Laufzeit" fieldId="termMonths" focused={focusField === 'termMonths'}>
               <SheetSelect
                 value={draft.termMonths ? String(draft.termMonths) : String(TERM_OPTIONS[2])}
                 onChange={(v) => patch({ termMonths: v })}
@@ -205,7 +223,7 @@ export default function CustomerAkteWishConditionsSheet({
             </SheetField>
 
             {isLeasing && (
-              <SheetField label="Laufleistung / Jahr">
+              <SheetField label="Laufleistung / Jahr" fieldId="mileagePerYear" focused={focusField === 'mileagePerYear'}>
                 <SheetSelect
                   value={draft.mileagePerYear ? String(draft.mileagePerYear) : String(MILEAGE_OPTIONS[2])}
                   onChange={(v) => patch({ mileagePerYear: v })}
@@ -217,7 +235,11 @@ export default function CustomerAkteWishConditionsSheet({
         )}
 
         {paymentType !== 'unknown' && (
-          <SheetField label={getBudgetFieldLabel(paymentType)}>
+          <SheetField
+            label={getBudgetFieldLabel(paymentType)}
+            fieldId={budgetField}
+            focused={focusField === budgetField}
+          >
             <SheetSelect
               value={isCash ? String(draft.desiredPrice ?? '') : String(draft.desiredRate ?? '')}
               onChange={(v) => patch(
@@ -230,7 +252,7 @@ export default function CustomerAkteWishConditionsSheet({
           </SheetField>
         )}
 
-        <SheetField label="Wunschliefertermin">
+        <SheetField label="Wunschliefertermin" fieldId="delivery" focused={focusField === 'delivery'}>
           <SheetSelect
             value={draft.delivery ?? ''}
             onChange={(v) => patch({ delivery: v })}

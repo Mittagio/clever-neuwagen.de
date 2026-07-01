@@ -257,6 +257,12 @@ export function buildOfferWhatsappHref(phone, message) {
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }
 
+export function buildSmsHref(phone, message) {
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits || !message?.trim()) return null;
+  return `sms:${digits}?body=${encodeURIComponent(message)}`;
+}
+
 export function buildOfferMailtoHref(email, subject, body) {
   if (!email?.trim()) return null;
   return `mailto:${encodeURIComponent(email.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

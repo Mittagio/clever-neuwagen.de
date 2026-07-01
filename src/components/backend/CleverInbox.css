@@ -30,7 +30,30 @@
 .clever-inbox-page__tabs {
   display: flex;
   gap: 8px;
+  margin-bottom: 10px;
+}
+
+.clever-inbox-page__categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 16px;
+}
+
+.clever-inbox-page__category {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.clever-inbox-page__category.is-active {
+  background: #eef5ff;
+  border-color: #c7d9ff;
+  color: #0b1736;
 }
 
 .clever-inbox-page__tab {
@@ -102,17 +125,37 @@
 }
 
 .clever-inbox-card__customer {
-  margin: 0 0 6px;
-  font-size: 0.8rem;
+  margin: 0 0 2px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clever-inbox-card__vehicle {
+  margin: 0 0 8px;
+  font-size: 0.76rem;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
 }
 
 .clever-inbox-card__message {
-  margin: 0 0 12px;
-  font-size: 0.85rem;
-  color: #334155;
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: #1e293b;
   line-height: 1.45;
+  font-style: italic;
+}
+
+.clever-inbox-card__topics {
+  margin: 0 0 12px;
+  font-size: 0.74rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.clever-inbox-card__topics-label {
+  font-weight: 700;
+  color: #475569;
 }
 
 .clever-inbox-card__actions {

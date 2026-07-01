@@ -63,6 +63,43 @@ const EXCLUDED_HISTORY_PATTERNS = [
   /^Nachfassen geplant/i,
 ];
 
+/** Kategorie-Filter für Clever Eingang (Erweiterbar) */
+export const INBOX_CATEGORY_FILTERS = [
+  { id: 'all', label: 'Alle' },
+  {
+    id: 'questions',
+    label: 'Fragen',
+    types: [
+      INBOX_EVENT_TYPES.CUSTOMER_QUESTION,
+      INBOX_EVENT_TYPES.OFFER_QUESTION,
+      INBOX_EVENT_TYPES.SPECIAL_QUESTION,
+    ],
+  },
+  {
+    id: 'offers',
+    label: 'Angebote',
+    types: [
+      INBOX_EVENT_TYPES.OFFER_OPENED,
+      INBOX_EVENT_TYPES.OFFER_INTERESTED,
+      INBOX_EVENT_TYPES.OFFER_DECLINED,
+      INBOX_EVENT_TYPES.CONTACT_REQUESTED,
+    ],
+  },
+  {
+    id: 'advisor',
+    label: 'Frag Clever',
+    types: [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST],
+  },
+  {
+    id: 'documents',
+    label: 'Unterlagen',
+    types: [
+      INBOX_EVENT_TYPES.DOCUMENT_UPLOADED,
+      INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED,
+    ],
+  },
+];
+
 const EVENT_META = {
   [INBOX_EVENT_TYPES.CUSTOMER_QUESTION]: {
     badge: 'Frage',
@@ -72,7 +109,7 @@ const EVENT_META = {
     priority: INBOX_PRIORITY.HIGH,
   },
   [INBOX_EVENT_TYPES.OFFER_QUESTION]: {
-    badge: 'Frage',
+    badge: 'Angebot',
     icon: '💬',
     actionLabel: 'Antworten',
     actionTarget: 'reply',
@@ -81,36 +118,39 @@ const EVENT_META = {
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: {
     badge: 'Kontakt',
     icon: '📞',
-    actionLabel: 'Kunden kontaktieren',
-    actionTarget: 'call',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
   },
   [INBOX_EVENT_TYPES.OFFER_INTERESTED]: {
     badge: 'Interesse',
     icon: '★',
-    actionLabel: 'Kundenakte öffnen',
-    actionTarget: 'lead',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
   },
   [INBOX_EVENT_TYPES.OFFER_OPENED]: {
-    badge: 'Geöffnet',
+    badge: 'Angebot',
     icon: '👁',
     actionLabel: 'Nachfassen',
-    actionTarget: 'followup',
+    actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
   },
   [INBOX_EVENT_TYPES.OFFER_DECLINED]: {
-    badge: 'Abgelehnt',
+    badge: 'Angebot',
     icon: '✕',
-    actionLabel: 'Kundenakte öffnen',
-    actionTarget: 'lead',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_UPLOADED]: {
-    badge: 'Unterlage',
+    badge: 'Unterlagen',
     icon: '📎',
     actionLabel: 'Unterlagen öffnen',
     actionTarget: 'documents',
+    secondaryActionLabel: 'Unterlagen anfordern',
+    secondaryActionTarget: 'reply',
+    secondaryIntentId: 'request_documents',
     priority: INBOX_PRIORITY.NORMAL,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED]: {
@@ -118,10 +158,13 @@ const EVENT_META = {
     icon: '✓',
     actionLabel: 'Unterlagen öffnen',
     actionTarget: 'documents',
+    secondaryActionLabel: 'Unterlagen anfordern',
+    secondaryActionTarget: 'reply',
+    secondaryIntentId: 'request_documents',
     priority: INBOX_PRIORITY.NORMAL,
   },
   [INBOX_EVENT_TYPES.SPECIAL_QUESTION]: {
-    badge: 'Spezialfrage',
+    badge: 'Frage',
     icon: '?',
     actionLabel: 'Antworten',
     actionTarget: 'reply',
@@ -137,8 +180,8 @@ const EVENT_META = {
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: {
     badge: 'Frag Clever',
     icon: '✨',
-    actionLabel: 'Kundenakte öffnen',
-    actionTarget: 'lead',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
   },
 };
@@ -261,6 +304,12 @@ export function listInboxItems(filter = {}) {
   } else if (filter.status) {
     items = items.filter((item) => item.status === filter.status);
   }
+  if (filter.category && filter.category !== 'all') {
+    const category = INBOX_CATEGORY_FILTERS.find((entry) => entry.id === filter.category);
+    if (category?.types?.length) {
+      items = items.filter((item) => category.types.includes(item.type));
+    }
+  }
   return sortItems(items);
 }
 
@@ -294,7 +343,7 @@ export function buildInboxDashboardSummary(filter = {}) {
   ).length;
   const openCount = openItems.length;
 
-  let subtitle = `${openCount} neue Meldung${openCount === 1 ? '' : 'en'}`;
+  let subtitle = `${openCount} Nachricht${openCount === 1 ? '' : 'en'} offen`;
   if (questionCount > 0) {
     subtitle = `${questionCount} Frage${questionCount === 1 ? '' : 'n'} offen`;
   }
@@ -352,7 +401,36 @@ export function ignoreInboxItem(id) {
 }
 
 export function getInboxEventMeta(type) {
-  return EVENT_META[type] ?? { badge: 'Meldung', icon: '•', actionLabel: 'Öffnen', actionTarget: 'lead' };
+  return EVENT_META[type] ?? { badge: 'Nachricht', icon: '•', actionLabel: 'Öffnen', actionTarget: 'lead' };
+}
+
+/**
+ * @param {object} item
+ */
+export function getInboxItemTopics(item = {}) {
+  if (Array.isArray(item.metadata?.topics) && item.metadata.topics.length) {
+    return item.metadata.topics.filter(Boolean).slice(0, 6);
+  }
+  const signals = item.metadata?.extractedSignals ?? [];
+  if (signals.length) {
+    return signals.map((signal) => signal?.label ?? signal).filter(Boolean).slice(0, 6);
+  }
+  const match = String(item.message ?? '').match(/^Themen:\s*(.+?)\.?$/);
+  if (match) {
+    return match[1].split(',').map((entry) => entry.trim()).filter(Boolean).slice(0, 6);
+  }
+  return [];
+}
+
+/**
+ * @param {object} item
+ */
+export function getInboxDisplayMessage(item = {}) {
+  const topics = getInboxItemTopics(item);
+  const message = String(item.message ?? '').trim();
+  if (!message) return '';
+  if (topics.length && /^Themen:/i.test(message)) return '';
+  return message;
 }
 
 /**
@@ -450,8 +528,8 @@ export function buildInboxItemFromOfferInteraction({
     || (!eventType && vehicleOffer?.status === VEHICLE_OFFER_STATUS.ACCEPTED)) {
     return createInboxItem({
       type: INBOX_EVENT_TYPES.OFFER_INTERESTED,
-      title: `Kunde interessiert sich für ${label}`,
-      message: 'Der Kunde hat den Vorschlag als interessant markiert.',
+      title: 'Kunde interessiert sich',
+      message: `${label} – der Kunde hat Interesse signalisiert.`,
       customerId: lead.id,
       customerName,
       leadId: lead.id,

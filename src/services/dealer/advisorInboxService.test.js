@@ -11,6 +11,7 @@ import {
 } from '../crm/cleverInboxService.js';
 import {
   buildAdvisorInboxMessage,
+  buildAdvisorInboxTopics,
   createAdvisorContactInboxItem,
   hasAdvisorContactInboxItem,
 } from './advisorInboxService.js';
@@ -23,10 +24,10 @@ import {
 __resetInboxStoreForTests([]);
 
 const session = createCustomerAdvisorSession('autohaus-trinkle');
-const withExchange = appendAdvisorExchange(session, 'Ich habe 2 Kinder, einen Hund, einen Wohnwagen', {
+const withExchange = appendAdvisorExchange(session, 'Gibt es den EV9 neu und was wäre die Lieferzeit?', {
   classification: { queryType: 'vehicle_wish', topic: 'advisor_profile_assessment' },
-  smartAnswer: { title: 'Vom Kia XCeed Benziner zum Elektroauto' },
-  extractedSignals: ['2 Kinder', 'Hund', 'Wohnwagen', 'XCeed', 'Elektro'],
+  smartAnswer: { title: 'Kia EV9 – Verfügbarkeit' },
+  extractedSignals: ['EV9', 'Lieferzeit', 'Angebot gewünscht'],
 });
 
 const lead = createLeadFromAdvisorConversation({
@@ -40,31 +41,28 @@ const lead = createLeadFromAdvisorConversation({
 const item = createAdvisorContactInboxItem(lead);
 assert.ok(item, 'Inbox Item soll erstellt werden');
 assert.equal(item.type, INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST);
-assert.equal(item.title, 'Kunde möchte Beratung aus Frag Clever');
-assert.equal(item.actionLabel, 'Kundenakte öffnen');
-assert.equal(item.actionTarget, 'lead');
+assert.equal(item.title, 'Neue Frage aus Frag Clever');
+assert.equal(item.actionLabel, 'Antworten');
+assert.equal(item.actionTarget, 'reply');
 assert.equal(item.leadId, lead.id);
 assert.equal(item.sourceArea, 'customer_advisor');
+assert.match(item.message, /EV9/i);
+assert.match(item.message, /Lieferzeit/i);
 
-// B) Message aus extractedSignals
-const message = buildAdvisorInboxMessage({
+// B) Themen aus extractedSignals
+const topics = buildAdvisorInboxTopics({
   advisorConversation: {
     extractedSignals: [
       { id: '1', label: 'EV9 interessiert' },
       { id: '2', label: 'Familie' },
       { id: '3', label: 'Sorento Diesel Alternative' },
-      { id: '4', label: 'Reichweite wichtig' },
     ],
   },
 });
-assert.match(message, /Themen:/);
-assert.match(message, /EV9 interessiert/);
-assert.match(message, /Familie/);
-assert.match(message, /Sorento Diesel Alternative/);
-assert.match(message, /Reichweite wichtig/);
+assert.ok(topics.includes('EV9 interessiert'));
+assert.ok(topics.includes('Familie'));
 
-assert.match(buildAdvisorInboxMessage(lead), /Themen:/);
-assert.match(buildAdvisorInboxMessage(lead), /Kinder|Hund|Wohnwagen|XCeed|Elektro/);
+assert.match(buildAdvisorInboxMessage(lead), /EV9/i);
 
 // C) Dedup
 const second = createAdvisorContactInboxItem(lead);
@@ -96,7 +94,7 @@ assert.equal(listInboxItems({ type: INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST })
 // Fallback message
 assert.equal(
   buildAdvisorInboxMessage({ id: 'x' }),
-  'Kunde hat über Frag Clever Beratung angefragt.',
+  'Kunde hat über Frag Clever eine Frage gestellt.',
 );
 
 __clearInboxTestMode();

@@ -1,84 +1,60 @@
 import {
-  getProfileKundenhelferChips,
-  parseKundenhelferNotes,
-} from '../../services/cleverKundenhelfer.js';
-import { countConversationNotes } from '../../services/kundenhelferConversationNotes.js';
-import { getKundenhelferChipIcon } from '../../services/customerAkte.js';
-import { getSourceModeChipLabel } from '../../services/dealer/dealerSourceMode.js';
+  buildKundenwissenOverview,
+  countKundenwissenItems,
+} from '../../services/kundenwissenCategories.js';
 import './CustomerAkte.css';
 
 /**
- * Clever-Kundenhelfer-Chips im Profilkopf (kompakt, max. 6 + „+ X mehr“).
+ * Kundenwissen – kompakte Kategorien im Profilkopf (keine Detail-Chips).
  */
 export default function CustomerAkteKundenhelfer({
   notes = '',
+  chipCategories = {},
   conversationNotes = [],
   lead = null,
   onOpenSheet,
   variant = 'profile',
 }) {
-  const chips = parseKundenhelferNotes(notes);
-  const { visible, moreCount } = getProfileKundenhelferChips(notes);
-  const noteCount = countConversationNotes(conversationNotes);
-  const sourceModeLabel = getSourceModeChipLabel(lead);
+  const categories = buildKundenwissenOverview(notes, lead, chipCategories);
+  const totalCount = countKundenwissenItems(notes, lead, chipCategories);
 
   if (variant !== 'profile') {
     return null;
   }
 
-  if (!chips.length && !sourceModeLabel) {
+  if (!totalCount) {
     return (
-      <div className="cust-akte-kh cust-akte-kh--profile cust-akte-kh--profile-empty" aria-label="Clever Kundenhelfer">
-        <button type="button" className="cust-akte-kh__add-link cust-akte-kh__add-link--profile" onClick={onOpenSheet}>
-          + Kundeninfo hinzufügen
+      <div className="cust-akte-kw cust-akte-kw--empty" aria-label="Kundenwissen">
+        <button type="button" className="cust-akte-kw__add" onClick={() => onOpenSheet?.()}>
+          + Info hinzufügen
         </button>
-        {noteCount > 0 && (
-          <p className="cust-akte-kh__notes-hint">
-            {noteCount} Gesprächsnotiz{noteCount > 1 ? 'en' : ''}
-          </p>
-        )}
       </div>
     );
   }
 
   return (
-    <div className="cust-akte-kh cust-akte-kh--profile" aria-label="Clever Kundenhelfer">
-      <div className="cust-akte-kh__grid cust-akte-kh__grid--profile">
-        {sourceModeLabel && (
-          <span className="cust-akte-kh__chip cust-akte-kh__chip--profile cust-akte-kh__chip--source">
-            <span className="cust-akte-kh__chip-icon" aria-hidden>◎</span>
-            <span className="cust-akte-kh__chip-label">{sourceModeLabel}</span>
-          </span>
-        )}
-        {visible.map((chip) => (
+    <div className="cust-akte-kw" aria-label="Kundenwissen">
+      <p className="cust-akte-kw__title">Kundenwissen</p>
+      <div className="cust-akte-kw__grid">
+        {categories.map((category) => (
           <button
-            key={chip}
+            key={category.id}
             type="button"
-            className="cust-akte-kh__chip cust-akte-kh__chip--profile"
-            onClick={onOpenSheet}
+            className="cust-akte-kw__cat"
+            onClick={() => onOpenSheet?.(category.id)}
           >
-            <span className="cust-akte-kh__chip-icon" aria-hidden>{getKundenhelferChipIcon(chip)}</span>
-            <span className="cust-akte-kh__chip-label">{chip}</span>
+            <span className="cust-akte-kw__cat-icon" aria-hidden>{category.icon}</span>
+            <span className="cust-akte-kw__cat-label">
+              {category.label}
+              {' '}
+              {category.count}
+            </span>
           </button>
         ))}
-        {moreCount > 0 && (
-          <button
-            type="button"
-            className="cust-akte-kh__chip cust-akte-kh__chip--profile cust-akte-kh__chip--more"
-            onClick={onOpenSheet}
-          >
-            + {moreCount} mehr
-          </button>
-        )}
       </div>
-      <button type="button" className="cust-akte-kh__add-link cust-akte-kh__add-link--profile" onClick={onOpenSheet}>
+      <button type="button" className="cust-akte-kw__add" onClick={() => onOpenSheet?.()}>
         + Info hinzufügen
       </button>
-      {noteCount > 0 && (
-        <p className="cust-akte-kh__notes-hint">
-          {noteCount} Gesprächsnotiz{noteCount > 1 ? 'en' : ''}
-        </p>
-      )}
     </div>
   );
 }

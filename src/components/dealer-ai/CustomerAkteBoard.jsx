@@ -19,17 +19,13 @@ export default function CustomerAkteBoard({
   return (
     <section className="cust-akte-section cust-akte-board cust-akte-tier-2" aria-labelledby="cust-akte-board-title">
       <div className="cust-akte-section__head">
-        <div className="cust-akte-board__head-text">
-          <h2 id="cust-akte-board-title" className="cust-akte-section__title">Auf dem Tisch</h2>
-          <p className="cust-akte-board__hint" title="Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen">
-            Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen
-          </p>
-        </div>
+        <h2 id="cust-akte-board-title" className="cust-akte-section__title cust-akte-section__title--eyebrow">
+          Auf dem Tisch
+        </h2>
         <button
           type="button"
           className="cust-akte-section__link"
           onClick={onAddProposal}
-          title="Fahrzeug, Zahlungsart oder Alternative auf den Tisch legen"
         >
           + Vorschlag hinzufügen
         </button>

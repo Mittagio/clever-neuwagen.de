@@ -11,7 +11,7 @@ import {
   resolveBoardBadge,
 } from '../customerOfferInteraction.js';
 import { applyCustomerOfferQuestionAnswer } from '../dealer/customerOfferQuestionAnswerService.js';
-import { buildQuestionAnswerAkteUrl } from '../crm/cleverInboxQuestionRoute.js';
+import { buildInboxActionAkteUrl, buildQuestionAnswerAkteUrl, resolveInboxReplyIntent } from '../crm/cleverInboxQuestionRoute.js';
 import {
   __clearInboxTestMode,
   __resetInboxStoreForTests,
@@ -54,7 +54,8 @@ const inboxItem = {
   metadata: { questionId: 'cq-123' },
 };
 const url = buildQuestionAnswerAkteUrl('lead-1', inboxItem);
-assert.match(url, /sheet=question_answer/);
+assert.match(url, /sheet=antworten/);
+assert.match(url, /intentId=answer_customer_question/);
 assert.match(url, /offerId=vc-ev6/);
 assert.match(url, /questionId=cq-123/);
 assert.match(url, /inboxItemId=inbox-q-1/);
@@ -65,7 +66,19 @@ const fallbackUrl = buildQuestionAnswerAkteUrl('lead-1', {
   leadId: 'lead-1',
 });
 assert.match(fallbackUrl, /sheet=antworten/);
+assert.match(fallbackUrl, /intentId=offer_callback/);
 assert.doesNotMatch(fallbackUrl, /questionId=/);
+
+assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_OPENED }), 'offer_opened_followup');
+assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_INTERESTED }), 'offer_interested_followup');
+
+const openedUrl = buildInboxActionAkteUrl('lead-1', {
+  id: 'inbox-open',
+  type: INBOX_EVENT_TYPES.OFFER_OPENED,
+  leadId: 'lead-1',
+  offerId: 'vc-ev6',
+});
+assert.match(openedUrl, /intentId=offer_opened_followup/);
 
 // C) applyCustomerOfferQuestionAnswer
 const lead = {

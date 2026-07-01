@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   buildVehicleOpportunityCards,
+  buildSchnellaufnahmeChips,
   buildWishConditionChips,
   computeAkteCleverStaerke,
   formatCustomerSince,
@@ -81,5 +82,19 @@ const cashChips = buildWishConditionChips({
 });
 assert.ok(cashChips.includes('Kauf'));
 assert.ok(cashChips.some((c) => c.includes('50.000')));
+
+const schnellChips = buildSchnellaufnahmeChips({
+  paymentType: 'leasing',
+  termMonths: 48,
+  mileagePerYear: 15000,
+  downPayment: 1000,
+  desiredRate: null,
+  delivery: '',
+});
+assert.equal(schnellChips[0].label, 'Leasing');
+assert.equal(schnellChips[0].field, 'paymentType');
+assert.ok(schnellChips.some((c) => c.label === '48 Monate' && c.field === 'termMonths'));
+assert.ok(schnellChips.some((c) => c.label === 'Budget offen' && c.field === 'desiredRate'));
+assert.ok(schnellChips.some((c) => c.label === 'Liefertermin Egal' && c.field === 'delivery'));
 
 console.log('customerAkte.test.js: ok');

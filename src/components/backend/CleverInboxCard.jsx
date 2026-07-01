@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
-import { getInboxEventMeta } from '../../services/crm/cleverInboxService.js';
+import {
+  getInboxDisplayMessage,
+  getInboxEventMeta,
+  getInboxItemTopics,
+} from '../../services/crm/cleverInboxService.js';
 import './CleverInbox.css';
 
 function formatWhen(iso) {
@@ -17,10 +21,14 @@ function formatWhen(iso) {
 export default function CleverInboxCard({
   item,
   onAction,
+  onSecondaryAction,
   onMarkDone,
 }) {
   const meta = getInboxEventMeta(item.type);
-  const customerLine = [item.customerName, item.vehicleLabel].filter(Boolean).join(' · ');
+  const topics = getInboxItemTopics(item);
+  const displayMessage = getInboxDisplayMessage(item);
+  const primaryLabel = item.actionLabel ?? meta.actionLabel;
+  const secondaryLabel = meta.secondaryActionLabel ?? null;
 
   return (
     <article className="clever-inbox-card">
@@ -36,8 +44,26 @@ export default function CleverInboxCard({
       </div>
 
       <h3 className="clever-inbox-card__title">{item.title}</h3>
-      {customerLine && <p className="clever-inbox-card__customer">{customerLine}</p>}
-      {item.message && <p className="clever-inbox-card__message">{item.message}</p>}
+
+      {item.customerName && (
+        <p className="clever-inbox-card__customer">{item.customerName}</p>
+      )}
+
+      {item.vehicleLabel && (
+        <p className="clever-inbox-card__vehicle">{item.vehicleLabel}</p>
+      )}
+
+      {displayMessage && (
+        <p className="clever-inbox-card__message">{displayMessage}</p>
+      )}
+
+      {topics.length > 0 && (
+        <p className="clever-inbox-card__topics">
+          <span className="clever-inbox-card__topics-label">Themen:</span>
+          {' '}
+          {topics.join(' · ')}
+        </p>
+      )}
 
       <div className="clever-inbox-card__actions">
         <button
@@ -45,12 +71,21 @@ export default function CleverInboxCard({
           className="clever-inbox-card__cta"
           onClick={() => onAction?.(item)}
         >
-          {item.actionLabel ?? meta.actionLabel}
+          {primaryLabel}
         </button>
         {item.leadId && (
           <Link to={buildKundenaktePath(item.leadId)} className="clever-inbox-card__link">
             Kundenakte
           </Link>
+        )}
+        {secondaryLabel && (
+          <button
+            type="button"
+            className="clever-inbox-card__ghost"
+            onClick={() => onSecondaryAction?.(item)}
+          >
+            {secondaryLabel}
+          </button>
         )}
         {item.status === 'open' && (
           <button

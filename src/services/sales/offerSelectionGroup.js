@@ -34,6 +34,10 @@ export const OFFER_SELECTION_GROUP_STATUS = {
 };
 
 export const CUSTOMER_LINK_BUTTON_LABEL = 'Alle Angebote als Kundenlink senden';
+export const VARIANT_EDIT_BUTTON_LABEL = 'Variante bearbeiten';
+export const VARIANT_PREPARE_OFFER_LABEL = 'Angebot vorbereiten';
+export const VARIANT_PREPARE_LINK_LABEL = 'Kundenlink vorbereiten';
+export const VARIANT_UPLOAD_PDF_LABEL = 'PDF hochladen';
 
 const TRIM_COMFORT_LINE = {
   air: 'gute Basis mit sinnvoller Ausstattung',
@@ -309,14 +313,86 @@ export function formatSelectionGroupSubtitle(group) {
 }
 
 export function buildWishConditionsChips(wishConditions = {}) {
-  return buildWishConditionChips({
+  const chips = buildWishConditionChips({
     paymentType: wishConditions.paymentType ?? 'unknown',
     termMonths: wishConditions.termMonths,
     mileagePerYear: wishConditions.mileagePerYear,
     desiredRate: wishConditions.desiredRate,
     desiredPrice: wishConditions.desiredPrice,
     downPayment: wishConditions.downPayment,
+    delivery: wishConditions.delivery ?? '',
   });
+  if (chips.length) return chips;
+  return ['Angebotsart offen', 'Liefertermin egal'];
+}
+
+export function resolveVariantOverviewStatus(variant) {
+  if (!variant) return { label: 'Entwurf', tone: 'draft' };
+  if (variantHasOfferPdf(variant)) {
+    return { label: 'PDF hinterlegt', tone: 'ready' };
+  }
+  const status = variant.status ?? OFFER_VARIANT_STATUS.DRAFT;
+  if ([OFFER_VARIANT_STATUS.INTERESTED, OFFER_VARIANT_STATUS.OFFER_REQUESTED].includes(status)) {
+    return { label: 'Interesse', tone: 'ready' };
+  }
+  if (status === OFFER_VARIANT_STATUS.SENT || status === OFFER_VARIANT_STATUS.OPENED) {
+    return { label: 'Gesendet', tone: 'sent' };
+  }
+  const hasRate = variant.calculatedRate != null || variant.calculatedPrice != null;
+  const packageCount = (variant.packageIds ?? variant.packages ?? []).filter(Boolean).length;
+  if (hasRate && packageCount > 0) return { label: 'Vorbereitet', tone: 'ready' };
+  if (hasRate) return { label: 'Rate berechnet', tone: 'ready' };
+  if (packageCount > 0) return { label: 'In Bearbeitung', tone: 'progress' };
+  return { label: 'Entwurf', tone: 'draft' };
+}
+
+export function buildVariantOverviewMetaLines(variant) {
+  if (!variant) return [];
+  const lines = [];
+  const packageIds = (variant.packageIds ?? variant.packages ?? []).filter(Boolean);
+  if (packageIds.length > 0) {
+    lines.push(`Pakete: ${packageIds.length} gewählt`);
+  }
+  const hasRate = variant.calculatedRate != null || variant.calculatedPrice != null;
+  lines.push(hasRate ? 'Rate berechnet' : 'Rate noch prüfen');
+  return lines;
+}
+
+export function resolveSelectionGroupFooterAction(group) {
+  const variants = sanitizeSelectionGroupVariants(group?.variants ?? []);
+  if (!variants.length) {
+    return { label: 'Varianten prüfen', action: 'review', disabled: true };
+  }
+  const incomplete = variants.some((variant) => (
+    variant.calculatedRate == null && variant.calculatedPrice == null
+  ));
+  if (incomplete) {
+    return { label: 'Varianten prüfen', action: 'review', disabled: false };
+  }
+  if (groupHasPreparedStatus(group)) {
+    return { label: 'Auswahl senden', action: 'send', disabled: false };
+  }
+  return { label: 'Kundenlink vorbereiten', action: 'prepare_link', disabled: false };
+}
+
+export function cloneSelectionGroupVariant(group, variantId) {
+  if (!group || !variantId) return group;
+  const source = (group.variants ?? []).find((variant) => variant.id === variantId);
+  if (!source) return group;
+  const duplicate = {
+    ...source,
+    id: nextId('variant'),
+    label: `${source.trimLabel ?? 'Variante'} (Kopie)`,
+    status: OFFER_VARIANT_STATUS.DRAFT,
+    offerPdf: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  return {
+    ...group,
+    variants: [...(group.variants ?? []), duplicate],
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function formatWishConditionsLine(wishConditions = {}) {
@@ -390,19 +466,28 @@ export function buildCleverAuswahlDetailModel(group) {
     wishConditionsLine: formatWishConditionsLine(group.wishConditions),
     wishConditionChips,
     customerLinkButtonLabel: CUSTOMER_LINK_BUTTON_LABEL,
-    variants: sanitizeSelectionGroupVariants(group.variants).map((variant) => ({
-      id: variant.id,
-      trimId: variant.trimId ?? null,
-      trimLabel: variant.trimLabel ?? 'Ausstattung',
-      priceLine: formatVariantCustomerPriceLine(variant)
-        ?? formatVariantPriceLine(variant, variant.payment?.paymentType ?? paymentType),
-      conditionsLine: formatVariantConditionsLine(variant),
-      conditionChips: buildVariantConditionChips(variant),
-      editButtonLabel: 'Variante konfigurieren',
-      offerButtonLabel: 'Angebot & PDF',
-      hasOfferPdf: variantHasOfferPdf(variant),
-      offerPdfFileName: variant.offerPdf?.fileName ?? null,
-    })),
+    groupFooterAction: resolveSelectionGroupFooterAction(group),
+    variants: sanitizeSelectionGroupVariants(group.variants).map((variant) => {
+      const overviewStatus = resolveVariantOverviewStatus(variant);
+      const hasOfferPdf = variantHasOfferPdf(variant);
+      return {
+        id: variant.id,
+        trimId: variant.trimId ?? null,
+        trimLabel: variant.trimLabel ?? 'Ausstattung',
+        priceLine: formatVariantCustomerPriceLine(variant)
+          ?? formatVariantPriceLine(variant, variant.payment?.paymentType ?? paymentType),
+        conditionsLine: formatVariantConditionsLine(variant),
+        conditionChips: buildVariantConditionChips(variant),
+        statusLabel: overviewStatus.label,
+        statusTone: overviewStatus.tone,
+        metaLines: buildVariantOverviewMetaLines(variant),
+        editButtonLabel: VARIANT_EDIT_BUTTON_LABEL,
+        offerButtonLabel: VARIANT_PREPARE_OFFER_LABEL,
+        uploadPdfButtonLabel: VARIANT_UPLOAD_PDF_LABEL,
+        hasOfferPdf,
+        offerPdfFileName: variant.offerPdf?.fileName ?? null,
+      };
+    }),
   };
 }
 

@@ -40,6 +40,13 @@
   line-height: 1.25;
 }
 
+.ovc__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cn-text-muted, #5c6570);
+}
+
 .ovc__wish-strip {
   margin: 0.5rem 0 0.25rem;
   padding-bottom: 0.5rem;
@@ -486,4 +493,129 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--cn-text-muted, #5c6570);
+}
+
+/* Clever-Auswahl Übersicht – gleicher Flow wie Konfigurator */
+.ovc--overview .ovc__scroll {
+  padding-bottom: 7.5rem;
+}
+
+.ovc__section--variants {
+  margin-top: 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ovc__variant-card {
+  padding: 1rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--cn-border, #e2e6ea);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+
+.ovc__variant-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ovc__variant-card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ovc__variant-status {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ovc__variant-status--draft {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ovc__variant-status--progress {
+  background: rgba(255, 170, 0, 0.15);
+  color: #8a5a00;
+}
+
+.ovc__variant-status--ready {
+  background: rgba(0, 120, 212, 0.1);
+  color: var(--cn-accent, #0078d4);
+}
+
+.ovc__variant-status--sent {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ovc__variant-rate {
+  margin: 0.35rem 0 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--cn-accent, #0078d4);
+}
+
+.ovc__variant-meta {
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.ovc__variant-meta li {
+  font-size: 0.75rem;
+  color: var(--cn-text-muted, #5c6570);
+}
+
+.ovc__variant-card .cn-cond-chips-wrap {
+  margin-top: 0.5rem;
+}
+
+.ovc__variant-pdf-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: #047857;
+  font-weight: 600;
+}
+
+.ovc__btn--variant-main {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.75rem;
+}
+
+.ovc__variant-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 1rem;
+  margin-top: 0.45rem;
+}
+
+.ovc__footer--overview {
+  padding-top: 0.75rem;
+}
+
+.ovc__overview-summary {
+  margin: 0 0 0.55rem;
+  font-size: 0.8125rem;
+  color: var(--cn-text-muted, #5c6570);
+  text-align: center;
 }

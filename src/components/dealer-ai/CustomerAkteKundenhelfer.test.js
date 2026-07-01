@@ -1,15 +1,14 @@
 /**
- * Clever-Kundenhelfer-Chips im Profilkopf
+ * Clever-Kundenhelfer – Kategorien im Profilkopf
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  PROFILE_KUNDENHELFER_CHIP_LIMIT,
-  getProfileKundenhelferChips,
-  parseKundenhelferNotes,
-} from '../../services/cleverKundenhelfer.js';
+  buildKundenwissenOverview,
+  countKundenwissenItems,
+} from '../../services/kundenwissenCategories.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const followUpSource = readFileSync(
@@ -27,51 +26,37 @@ const notes = [
   'bevorzugt WhatsApp',
 ].join(', ');
 
-const parsed = parseKundenhelferNotes(notes);
-assert.equal(parsed.length, 7);
-
-const profile = getProfileKundenhelferChips(notes);
-assert.equal(PROFILE_KUNDENHELFER_CHIP_LIMIT, 6);
-assert.equal(profile.visible.length, 6, 'maximal 6 Chips sichtbar');
-assert.equal(profile.moreCount, 1, 'mehr als 6 zeigt „+ X mehr“');
-
-const empty = getProfileKundenhelferChips('');
-assert.equal(empty.visible.length, 0);
-assert.equal(empty.moreCount, 0);
-
-const sixOnly = getProfileKundenhelferChips(parsed.slice(0, 6).join(', '));
-assert.equal(sixOnly.visible.length, 6);
-assert.equal(sixOnly.moreCount, 0);
-
-assert.ok(
-  followUpSource.includes('<CustomerAkteKundenhelfer'),
-  'Kundenhelfer-Chips werden in der Kundenakte gerendert',
-);
-assert.ok(
-  followUpSource.indexOf('<CustomerAkteKundenhelfer') > followUpSource.indexOf('<CustomerAkteActionBar'),
-  'Infochips stehen unter der Action Bar',
-);
-assert.ok(
-  followUpSource.includes('openSheet(SHEETS.kundenhelfer)'),
-  'Follow-up öffnet Kundenhelfer-Sheet',
-);
+const overview = buildKundenwissenOverview(notes);
+assert.ok(overview.length >= 4, 'Kategorien statt Einzelchips');
+assert.ok(!overview.some((cat) => cat.label === 'Kaffee mit Milch'));
+assert.equal(countKundenwissenItems(notes), 7);
 
 const khSource = readFileSync(
   join(__dirname, 'CustomerAkteKundenhelfer.jsx'),
   'utf8',
 );
-assert.ok(khSource.includes('onOpenSheet'), 'Klick auf Chip öffnet onOpenSheet');
+assert.ok(khSource.includes('Kundenwissen'), 'Profil zeigt Kundenwissen-Titel');
+assert.ok(khSource.includes('cust-akte-kw__cat'), 'Kategorie-Chips statt Detailchips');
+assert.ok(khSource.includes('onOpenSheet?.(category.id)'), 'Klick öffnet Kategorie');
+
 assert.ok(
-  khSource.includes('getSourceModeChipLabel'),
-  'Herkunft der Anfrage als Chip',
+  followUpSource.includes('<CustomerAkteKundenhelfer'),
+  'Kundenhelfer wird in der Kundenakte gerendert',
 );
 assert.ok(
-  followUpSource.includes('lead={lead}'),
-  'Lead wird für Herkunfts-Chip übergeben',
+  followUpSource.includes('openKundenhelferSheet'),
+  'Follow-up öffnet Kundenhelfer mit Kategorie',
 );
 assert.ok(
-  khSource.includes('+ Kundeninfo hinzufügen'),
-  'leerer Zustand zeigt „+ Kundeninfo hinzufügen“',
+  khSource.includes('+ Info hinzufügen'),
+  'leerer Zustand zeigt „+ Info hinzufügen“',
 );
+
+const sheetSource = readFileSync(
+  join(__dirname, 'CleverKundenhelferSheet.jsx'),
+  'utf8',
+);
+assert.ok(sheetSource.includes('Wählen Sie einen Bereich'), 'Sheet startet mit Kategorien');
+assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Kategorie-Kacheln im Sheet');
 
 console.log('CustomerAkteKundenhelfer.test.js: ok');

@@ -41,7 +41,8 @@ assert.equal(
   '',
 );
 
-assert.ok(sheetSource.includes('+ Weitere Info'), 'Sheet zeigt + Weitere Info Chip');
-assert.ok(!sheetSource.includes('kundenhelfer-notes'), 'großes Textarea entfernt');
+assert.ok(sheetSource.includes('+ Info hinzufügen'), 'Sheet zeigt + Info hinzufügen');
+assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Kategorie-Grid statt Chip-Wand');
+assert.ok(!sheetSource.includes('Kleine Details fürs nächste Gespräch'), 'alte Chip-Wand entfernt');
 
 console.log('cleverKundenhelfer.test.js: ok');

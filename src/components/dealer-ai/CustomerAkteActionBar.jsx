@@ -2,30 +2,26 @@ import './CustomerAkte.css';
 
 const ACTIONS = [
   { id: 'call', label: 'Anrufen', icon: '📞' },
-  { id: 'antworten', label: 'Clever Antwort', icon: '✦' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-  { id: 'email', label: 'E-Mail', icon: '✉' },
+  { id: 'nachrichten', label: 'Clever Nachrichten', shortLabel: 'Nachrichten', icon: '✦' },
   { id: 'unterlagen', label: 'Unterlagen', icon: '📁' },
-  { id: 'activities', label: 'Aktivitäten', icon: '🕘' },
+  { id: 'history', label: 'Verlauf', icon: '🕘' },
 ];
 
 export default function CustomerAkteActionBar({
   telHref,
-  whatsappHref,
-  mailHref,
-  email = '',
-  onCleverAntwort,
+  onCleverNachrichten,
   onUnterlagen,
-  onActivities,
+  onHistory,
   unterlagenBadge = 0,
-  activitiesBadge = 0,
-  activitiesBadgeDetail = null,
-  onCall,
+  inboxOpenCount = 0,
+  historyBadge = 0,
 }) {
   function renderAction(action) {
-    const badge = action.id === 'unterlagen' ? unterlagenBadge
-      : action.id === 'activities' ? activitiesBadge
-        : 0;
+    const isHistory = action.id === 'history';
+    const historyLabel = inboxOpenCount > 0 ? 'Eingang' : action.label;
+    const badge = action.id === 'unterlagen'
+      ? unterlagenBadge
+      : (isHistory && inboxOpenCount > 0 ? inboxOpenCount : (isHistory ? historyBadge : 0));
 
     if (action.id === 'call') {
       if (!telHref) {
@@ -33,7 +29,8 @@ export default function CustomerAkteActionBar({
           <span
             key={action.id}
             className="cust-akte-actions__item cust-akte-actions__item--disabled"
-            aria-label={`${action.label} (nicht verfügbar)`}
+            title="Telefonnummer fehlt"
+            aria-label={`${action.label} (Telefonnummer fehlt)`}
           >
             <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
             <span className="cust-akte-actions__label">{action.label}</span>
@@ -46,60 +43,7 @@ export default function CustomerAkteActionBar({
           href={telHref}
           className="cust-akte-actions__item"
           aria-label={action.label}
-          onClick={onCall}
         >
-          <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
-          <span className="cust-akte-actions__label">{action.label}</span>
-        </a>
-      );
-    }
-
-    if (action.id === 'whatsapp') {
-      if (!whatsappHref) {
-        return (
-          <span
-            key={action.id}
-            className="cust-akte-actions__item cust-akte-actions__item--disabled"
-            aria-label={`${action.label} (nicht verfügbar)`}
-          >
-            <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
-            <span className="cust-akte-actions__label">{action.label}</span>
-          </span>
-        );
-      }
-      return (
-        <a
-          key={action.id}
-          href={whatsappHref}
-          className="cust-akte-actions__item"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={action.label}
-        >
-          <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
-          <span className="cust-akte-actions__label">{action.label}</span>
-        </a>
-      );
-    }
-
-    if (action.id === 'email') {
-      const href = email?.trim()
-        ? (mailHref ?? `mailto:${email}`)
-        : null;
-      if (!href) {
-        return (
-          <span
-            key={action.id}
-            className="cust-akte-actions__item cust-akte-actions__item--disabled"
-            aria-label={`${action.label} (nicht verfügbar)`}
-          >
-            <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
-            <span className="cust-akte-actions__label">{action.label}</span>
-          </span>
-        );
-      }
-      return (
-        <a key={action.id} href={href} className="cust-akte-actions__item" aria-label={action.label}>
           <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
           <span className="cust-akte-actions__label">{action.label}</span>
         </a>
@@ -107,39 +51,45 @@ export default function CustomerAkteActionBar({
     }
 
     const handlers = {
-      antworten: onCleverAntwort,
+      nachrichten: onCleverNachrichten,
       unterlagen: onUnterlagen,
-      activities: onActivities,
+      history: onHistory,
     };
     const handler = handlers[action.id];
-    const activitiesAria = action.id === 'activities' && activitiesBadgeDetail?.total
-      ? `${action.label}: ${activitiesBadgeDetail.total} Aktivitäten`
-      : action.label;
+    const isNachrichten = action.id === 'nachrichten';
 
     return (
       <button
         key={action.id}
         type="button"
-        className={`cust-akte-actions__item${action.id === 'activities' ? ' cust-akte-actions__item--activities' : ''}`}
+        className={`cust-akte-actions__item${isNachrichten ? ' cust-akte-actions__item--primary' : ''}${isHistory && inboxOpenCount > 0 ? ' cust-akte-actions__item--inbox' : ''}`}
         onClick={handler}
-        aria-label={activitiesAria}
+        title={isNachrichten ? 'Nachricht aus Kundenakte erstellen' : undefined}
+        aria-label={isNachrichten ? 'Clever Nachrichten – Nachricht aus Kundenakte erstellen' : historyLabel}
         disabled={!handler}
       >
         <span className="cust-akte-actions__icon-wrap">
           <span className="cust-akte-actions__icon" aria-hidden>{action.icon}</span>
           {badge > 0 && (
-            <span className="cust-akte-actions__badge" aria-label={`${badge} neu`}>
+            <span className="cust-akte-actions__badge" aria-label={`${badge} offen`}>
               {badge > 9 ? '9+' : badge}
             </span>
           )}
         </span>
-        <span className="cust-akte-actions__label">{action.label}</span>
+        {isNachrichten ? (
+          <>
+            <span className="cust-akte-actions__label cust-akte-actions__label--full">{action.label}</span>
+            <span className="cust-akte-actions__label cust-akte-actions__label--short">{action.shortLabel}</span>
+          </>
+        ) : (
+          <span className="cust-akte-actions__label">{historyLabel}</span>
+        )}
       </button>
     );
   }
 
   return (
-    <nav className="cust-akte-actions" aria-label="Schnellaktionen">
+    <nav className="cust-akte-actions" aria-label="Kommunikation">
       {ACTIONS.map(renderAction)}
     </nav>
   );

@@ -81,6 +81,8 @@ assert.equal(detail.variants.length, 3);
 assert.ok(detail.wishConditionChips?.length > 0);
 assert.ok(detail.variants[0].conditionChips?.length > 0);
 assert.equal(detail.variants[0].trimLabel, 'Vision');
+assert.equal(detail.variants[0].editButtonLabel, 'Variante bearbeiten');
+assert.equal(detail.groupFooterAction.label, 'Auswahl senden');
 assert.equal(detail.variants[1].trimLabel, 'Spirit');
 assert.equal(detail.variants[2].trimLabel, 'GT-Line');
 
