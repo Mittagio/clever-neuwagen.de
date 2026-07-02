@@ -67,6 +67,7 @@
     "test:clever-data": "node src/services/cleverData/cleverDataEngine.test.js",
     "test:kia-clever-records": "node src/data/clever/kiaCleverRecords.test.js",
     "test:customer-akte": "node src/services/customerAkte.test.js",
+    "test:board-offer-model": "node src/services/dealer/boardOfferModel.test.js",
     "test:offer-selection-group": "node src/services/sales/offerSelectionGroup.test.js",
     "test:selection-variant-offer": "node src/services/sales/selectionVariantOffer.test.js",
     "test:customer-address-location": "node src/services/location/customerAddressLocation.test.js",

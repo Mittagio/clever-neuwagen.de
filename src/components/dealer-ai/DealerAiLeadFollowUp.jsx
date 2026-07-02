@@ -132,6 +132,11 @@ import {
   PROPOSAL_INTENTS,
   resolveProposalPaymentType,
 } from '../../services/dealer/customerAddProposalFlow.js';
+import {
+  duplicateVehicleConfiguration,
+  filterSendableVehicleCards,
+} from '../../services/dealer/boardOfferModel.js';
+import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
 import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
@@ -794,11 +799,6 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleAddProposalOption(optionId) {
-    if (optionId === 'lease_finance') {
-      setActiveSheet(SHEETS.leaseFinancePick);
-      return;
-    }
-
     if (optionId === 'selection_group') {
       const groups = offerSelectionGroups.length
         ? offerSelectionGroups
@@ -815,8 +815,11 @@ export default function DealerAiLeadFollowUp({
       return;
     }
 
-    if (optionId === 'vehicle') {
-      startProposalNavigateFlow({ proposalIntent: PROPOSAL_INTENTS.VEHICLE });
+    if (optionId === 'leasing' || optionId === 'financing') {
+      const proposalIntent = optionId === 'financing'
+        ? PROPOSAL_INTENTS.FINANCING
+        : PROPOSAL_INTENTS.LEASING;
+      startProposalNavigateFlow({ proposalIntent, paymentType: optionId });
       return;
     }
 
@@ -826,6 +829,10 @@ export default function DealerAiLeadFollowUp({
         paymentType: 'cash',
       });
       return;
+    }
+
+    if (optionId === 'vehicle' || optionId === 'lease_finance') {
+      startProposalNavigateFlow({ proposalIntent: PROPOSAL_INTENTS.VEHICLE });
     }
   }
 
@@ -924,15 +931,16 @@ export default function DealerAiLeadFollowUp({
     }
 
     const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
+    const sendableCards = filterSendableVehicleCards(vehicleCards, lead);
     const result = prepareCustomerOfferPortfolio({
       lead,
       offerSelectionGroups: storedGroups,
-      vehicleCards,
+      vehicleCards: sendableCards,
       origin: typeof window !== 'undefined' ? window.location.origin : null,
     });
 
     if (!result.ok) {
-      setToast('Keine Angebote zum Senden – bitte zuerst Varianten konfigurieren.');
+      setToast('Keine versandbereiten Angebote – bitte zuerst Angebote im Angebotsrechner erstellen.');
       setTimeout(() => setToast(''), 4000);
       return;
     }
@@ -1157,6 +1165,94 @@ export default function DealerAiLeadFollowUp({
     }
     setSelectedVehicleCard(card);
     openSheet(SHEETS.vehicle);
+  }
+
+  function handleBoardCardAction(action, card) {
+    const handler = action?.handlerType ?? action?.id;
+    if (handler === 'create_offer' || handler === 'edit_offer') {
+      if (onOpenOfferEdit) {
+        onOpenOfferEdit(card);
+        return;
+      }
+      openVehicleCard(card);
+      return;
+    }
+    if (handler === 'duplicate_offer') {
+      handleDuplicateVehicleCard(card);
+      return;
+    }
+    if (handler === 'remove_offer') {
+      handleRemoveBoardCard(card);
+      return;
+    }
+    if (handler === 'send_offer') {
+      handleSendCustomerSelection();
+      return;
+    }
+    if (handler === 'answer_question') {
+      const interaction = getCustomerOfferInteraction(lead, card.id);
+      const openQuestion = (interaction?.customerQuestions ?? []).find((q) => q.status === 'open');
+      if (openQuestion) {
+        openOfferQuestionAnswer({ offerId: card.id, questionId: openQuestion.id });
+      } else {
+        openCleverAntworten('answer_customer_question');
+      }
+    }
+  }
+
+  function handleDuplicateVehicleCard(card) {
+    const configs = lead?.crm?.vehicleConfigurations ?? [];
+    const config = configs.find((entry) => entry.id === card.configurationId || entry.id === card.id);
+    if (!config) {
+      setToast('Bitte zuerst im Angebotsrechner ein Angebot speichern.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    const newId = `vc-${Date.now()}`;
+    const duplicated = duplicateVehicleConfiguration(config, { newId });
+    const nextConfigs = [...configs, duplicated];
+    const nextReserved = [
+      ...reservedModels,
+      {
+        id: newId,
+        name: `${config.model ?? card.modelName}`.trim(),
+        modelKey: config.modelKey ?? card.modelKey,
+        trimLabel: config.trimLabel ?? card.trimLabel,
+        configurationId: newId,
+        isPrimary: false,
+      },
+    ];
+    onSave?.(buildSavePayload({
+      vehicleConfigurations: nextConfigs,
+      reservedModels: nextReserved,
+    }), {
+      historyText: `Angebot dupliziert: ${formatVehicleCardTitle(card)}`,
+      addFollowupHistory: true,
+    });
+    setToast('Angebot dupliziert.');
+    setTimeout(() => setToast(''), 3000);
+  }
+
+  function handleRemoveBoardCard(card) {
+    const configs = (lead?.crm?.vehicleConfigurations ?? []).filter(
+      (entry) => entry.id !== card.id && entry.id !== card.configurationId,
+    );
+    const nextReserved = reservedModels.filter(
+      (entry) => entry.id !== card.id && entry.configurationId !== card.id,
+    );
+    const vehicleOffers = { ...(lead?.crm?.vehicleOffers ?? {}) };
+    delete vehicleOffers[card.id];
+    setReservedModels(nextReserved);
+    onSave?.(buildSavePayload({
+      vehicleConfigurations: configs,
+      reservedModels: nextReserved,
+      vehicleOffers,
+    }), {
+      historyText: `Angebot entfernt: ${formatVehicleCardTitle(card)}`,
+      addFollowupHistory: true,
+    });
+    setToast('Angebot vom Tisch entfernt.');
+    setTimeout(() => setToast(''), 3000);
   }
 
   function handleVehicleOffer(card) {
@@ -1774,6 +1870,14 @@ export default function DealerAiLeadFollowUp({
       openSelfDisclosureReview(actionHint?.meta?.inboxItemId ?? null);
       return;
     }
+    if (handler === 'offer_create') {
+      handleAddVehicle();
+      return;
+    }
+    if (handler === 'offer_send_portfolio') {
+      handleSendCustomerSelection();
+      return;
+    }
     if (handler === 'delivery_handover' || handler === 'delivery_plan') {
       openCleverAntworten('delivery');
       return;
@@ -1893,6 +1997,7 @@ export default function DealerAiLeadFollowUp({
         animateNew={showCardAnimation && boardItems.length > 0}
         onCardClick={openVehicleCard}
         onCardMenu={openVehicleCard}
+        onCardAction={handleBoardCardAction}
         onSelectionGroupClick={openSelectionGroup}
         onAddProposal={handleAddVehicle}
       />

@@ -2,37 +2,24 @@ import LeadDetailPanel from './LeadDetailPanel.jsx';
 
 const MAIN_OPTIONS = [
   {
-    id: 'vehicle',
-    title: 'Fahrzeugvorschlag',
-    description: 'Ein einzelnes Fahrzeug als Vorschlag vorbereiten.',
+    id: 'leasing',
+    title: 'Leasing',
+    description: 'Fahrzeug wählen, Rate berechnen und Angebot speichern.',
+  },
+  {
+    id: 'financing',
+    title: 'Finanzierung',
+    description: 'Laufzeit, Anzahlung und Monatsrate im Angebotsrechner festlegen.',
+  },
+  {
+    id: 'cash',
+    title: 'Bar / Kauf',
+    description: 'UPE, Rabatt und Kaufpreis berechnen.',
   },
   {
     id: 'selection_group',
     title: 'Clever Auswahl',
-    description: 'Mehrere Varianten eines Modells vorbereiten, z. B. Vision / Spirit / GT-Line.',
-  },
-  {
-    id: 'cash',
-    title: 'Barangebot',
-    description: 'Kaufpreis-Angebot ohne Leasingrate vorbereiten.',
-  },
-  {
-    id: 'lease_finance',
-    title: 'Leasing / Finanzierung',
-    description: 'Rate, Laufzeit, Kilometer und Anzahlung vorbereiten.',
-  },
-];
-
-const LEASE_FINANCE_OPTIONS = [
-  {
-    id: 'leasing',
-    title: 'Leasingvorschlag',
-    description: 'Monatsrate, Laufzeit und Kilometer vorbereiten.',
-  },
-  {
-    id: 'financing',
-    title: 'Finanzierungsvorschlag',
-    description: 'Finanzierung mit Rate, Laufzeit und Anzahlung vorbereiten.',
+    description: 'Mehrere Varianten eines Modells vorbereiten (z. B. Air / Earth / GT-Line).',
   },
 ];
 
@@ -41,15 +28,11 @@ export default function CustomerAkteAddProposalSheet({
   onClose,
   onSelect,
 }) {
-  function handleSelect(optionId) {
-    onSelect?.(optionId);
-  }
-
   return (
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Vorschlag hinzufügen"
+      title="Angebot erstellen"
       footer={(
         <button type="button" className="dai-btn dai-btn--ghost" onClick={onClose}>
           Abbrechen
@@ -58,7 +41,7 @@ export default function CustomerAkteAddProposalSheet({
     >
       <div className="cust-akte-add-proposal">
         <p className="cust-akte-add-proposal__sub">
-          Was möchten Sie dem Kunden auf den Tisch legen?
+          Angebotsrechner öffnen – Fahrzeug konfigurieren, Konditionen berechnen und auf dem Tisch speichern.
         </p>
 
         <ul className="cust-akte-add-proposal__list">
@@ -67,7 +50,7 @@ export default function CustomerAkteAddProposalSheet({
               <button
                 type="button"
                 className="cust-akte-add-proposal__option"
-                onClick={() => handleSelect(option.id)}
+                onClick={() => onSelect?.(option.id)}
               >
                 <span className="cust-akte-add-proposal__option-title">{option.title}</span>
                 <span className="cust-akte-add-proposal__option-desc">{option.description}</span>
@@ -80,6 +63,7 @@ export default function CustomerAkteAddProposalSheet({
   );
 }
 
+/** @deprecated LeaseFinanceSheet bleibt für Abwärtskompatibilität erhalten. */
 export function CustomerAkteLeaseFinanceSheet({
   open,
   onClose,
@@ -90,7 +74,7 @@ export function CustomerAkteLeaseFinanceSheet({
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Leasing / Finanzierung"
+      title="Angebotsrechner"
       footer={(
         <>
           <button type="button" className="dai-btn dai-btn--ghost" onClick={onBack}>
@@ -104,10 +88,10 @@ export function CustomerAkteLeaseFinanceSheet({
     >
       <div className="cust-akte-add-proposal">
         <p className="cust-akte-add-proposal__sub">
-          Welche Zahlungsart soll der Vorschlag haben?
+          Welche Zahlungsart soll berechnet werden?
         </p>
         <ul className="cust-akte-add-proposal__list">
-          {LEASE_FINANCE_OPTIONS.map((option) => (
+          {MAIN_OPTIONS.filter((option) => option.id === 'leasing' || option.id === 'financing').map((option) => (
             <li key={option.id}>
               <button
                 type="button"

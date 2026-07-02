@@ -347,11 +347,14 @@ export function buildVehicleOpportunityCards({
         ?? wishFields.termMonths
         ?? null;
       const mileagePerYear = vc.leasingData?.mileagePerYear ?? wishFields.mileagePerYear ?? null;
-      const desiredRate = vc.leasingData?.desiredRate
-        ?? vc.financingData?.desiredRate
-        ?? wishFields.desiredRate
+      const hasCreatedOffer = vc.boardOffer?.status === 'offer_created';
+      const desiredRate = vc.leasingData?.calculatedRate
+        ?? vc.financingData?.calculatedRate
+        ?? (hasCreatedOffer ? wishFields.desiredRate : null)
         ?? null;
-      const desiredPrice = vc.cashPurchaseData?.desiredPrice ?? wishFields.desiredPrice ?? null;
+      const desiredPrice = vc.cashPurchaseData?.calculatedPrice
+        ?? (hasCreatedOffer ? wishFields.desiredPrice : null)
+        ?? null;
       cards.push({
         id: vc.id ?? `vc-${index}`,
         leadId: lead?.id,
@@ -446,7 +449,45 @@ export function buildVehicleOpportunityCards({
   return cards
     .filter(Boolean)
     .map((c) => enrichCardWithVehicleOffer(c, vehicleOffers))
+    .map((c) => enrichCardWithBoardOffer(c, lead))
     .filter(Boolean);
+}
+
+function enrichCardWithBoardOffer(card = {}, lead = null) {
+  const configs = lead?.crm?.vehicleConfigurations ?? [];
+  const config = card.configurationId
+    ? configs.find((entry) => entry.id === card.configurationId)
+    : configs.find((entry) => entry.id === card.id);
+  const boardOffer = config?.boardOffer ?? card.vehicleOffer?.boardOffer ?? null;
+  if (!boardOffer && !config) return card;
+
+  const payment = boardOffer?.payment ?? {};
+  const paymentType = normalizeBoardPaymentType(config?.paymentType ?? card.paymentType);
+
+  return {
+    ...card,
+    boardOffer,
+    boardStatus: boardOffer?.status ?? card.vehicleOffer?.boardStatus ?? null,
+    configurationId: config?.id ?? card.configurationId,
+    colorId: config?.colorId ?? card.colorId,
+    trimId: config?.trimId ?? card.trimId,
+    selectedPackages: config?.selectedPackages ?? card.selectedPackages,
+    downPayment: payment.downPayment ?? card.downPayment,
+    finalRate: payment.finalRate ?? card.finalRate,
+    listPrice: payment.listPrice ?? card.listPrice,
+    discountPercent: payment.discountPercent ?? card.discountPercent,
+    discountAmount: payment.discountAmount ?? card.discountAmount,
+    desiredRate: payment.monthlyRate ?? (boardOffer?.status === 'offer_created' ? card.desiredRate : null),
+    desiredPrice: payment.cashPrice ?? (boardOffer?.status === 'offer_created' ? card.desiredPrice : null),
+    paymentType: paymentType ?? card.paymentType,
+    termMonths: payment.termMonths ?? card.termMonths,
+    mileagePerYear: payment.mileagePerYear ?? card.mileagePerYear,
+  };
+}
+
+function normalizeBoardPaymentType(paymentType = '') {
+  if (paymentType === 'finance') return 'financing';
+  return paymentType || 'leasing';
 }
 
 export function formatVehicleCardConditions(card = {}) {

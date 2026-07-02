@@ -2362,6 +2362,159 @@
   transform: none;
 }
 
+.cust-akte-board__head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cust-akte-board__subline {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.cust-akte-vcard--draft {
+  opacity: 0.82;
+  background: #f1f5f9;
+}
+
+.cust-akte-vcard--draft .cust-akte-vcard__image-wrap {
+  filter: grayscale(0.35);
+}
+
+.cust-akte-vcard__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.cust-akte-vcard__badge--draft {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.cust-akte-vcard__badge--created,
+.cust-akte-vcard__badge--cash {
+  background: #111827;
+  color: #fff;
+}
+
+.cust-akte-vcard__badge--question {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.cust-akte-vcard__badge--sent,
+.cust-akte-vcard__badge--interest {
+  background: #e8eef8;
+  color: #0b1736;
+}
+
+.cust-akte-vcard__badge--declined {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.cust-akte-vcard--board .cust-akte-vcard__visual {
+  position: relative;
+}
+
+.cust-akte-vcard__payment-type {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.cust-akte-vcard__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.cust-akte-vcard__chip {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cust-akte-vcard__result {
+  margin: 0.55rem 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.cust-akte-vcard__result-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.cust-akte-vcard__result-suffix {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.cust-akte-vcard__draft-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.cust-akte-vcard__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cust-akte-vcard__meta--muted {
+  color: #94a3b8;
+}
+
+.cust-akte-vcard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.cust-akte-vcard__action {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.cust-akte-vcard__action--primary {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.cust-akte-vcard--board .cust-akte-vcard__menu {
+  position: static;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+}
+
 /* Kompakte Fahrzeugkarten */
 .cust-akte-vcard--compact {
   border: none;

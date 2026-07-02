@@ -53,6 +53,7 @@ import {
   mergeVehicleOffersPatch,
   VEHICLE_OFFER_STATUS,
 } from '../vehicleOffer.js';
+import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 
 export const PORTFOLIO_STATUS = {
   PREPARED: 'prepared',
@@ -262,6 +263,7 @@ export function buildPortfolioItems({
   const groupedModelKeys = new Set(safeGroups.map((group) => group.modelKey));
   for (const card of vehicleCards ?? []) {
     if (groupedModelKeys.has(card.modelKey)) continue;
+    if (!isBoardOfferSendable(card, lead)) continue;
     const item = buildPortfolioItemFromVehicleCard(card, lead);
     if (item) items.push(item);
   }

@@ -155,7 +155,7 @@ export default function AppRouter() {
         <Route path="/gespraech" element={<SmartSalesPage />} />
         <Route path="/vergleich/:token" element={<SalesCompareSharePage />} />
         <Route path="/assistant" element={<AssistantPage />} />
-        <Route path="/dealer-ai" element={<DealerAIPage />} />
+        <Route path="/dealer-ai" element={<Navigate to="/verkaufsassistent" replace />} />
         <Route path="/verkaufsassistent" element={<DealerAIPage />} />
         <Route path="/empfehlung" element={<RecommendationPage />} />
         <Route path="/fahrzeuge" element={<FahrzeugePage />} />

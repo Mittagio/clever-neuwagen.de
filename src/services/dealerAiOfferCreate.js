@@ -28,6 +28,7 @@ import {
 } from './dealerAiCustomerContext.js';
 import { joinKundenhelferNotes, parseKundenhelferNotes } from './cleverKundenhelfer.js';
 import { VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
+import { buildBoardOfferFromDraft, BOARD_OFFER_STATUS } from './dealer/boardOfferModel.js';
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 
 export function normalizeOfferPaymentType(paymentType = 'leasing') {
@@ -73,16 +74,22 @@ function buildPaymentSideData(payment = {}) {
       desiredRate: payment.budget ?? null,
       calculatedRate: payment.calculatedRate ?? null,
       downPayment: payment.downPayment ?? 0,
+      listPrice: payment.listPrice ?? null,
     } : null,
     financingData: paymentType === 'financing' ? {
       termMonths: payment.termMonths ?? null,
       desiredRate: payment.budget ?? null,
       calculatedRate: payment.calculatedRate ?? null,
       downPayment: payment.downPayment ?? 0,
+      finalRate: payment.finalRate ?? payment.balloonPayment ?? null,
+      listPrice: payment.listPrice ?? null,
     } : null,
     cashPurchaseData: paymentType === 'cash' ? {
       desiredPrice: payment.budget ?? null,
       calculatedPrice: payment.calculatedRate ?? null,
+      listPrice: payment.listPrice ?? null,
+      discountPercent: payment.discountPercent ?? null,
+      discountAmount: payment.discountAmount ?? null,
     } : null,
   };
 }
@@ -167,7 +174,13 @@ export function buildOfferDraft({
       mileagePerYear: configureDraft.mileagePerYear ?? mergedFields.mileagePerYear ?? null,
       downPayment: configureDraft.downPayment ?? mergedFields.downPayment ?? 0,
       budget,
-      calculatedRate: preview.monthlyRate ?? null,
+      calculatedRate: paymentType === 'cash'
+        ? (preview.housePrice ?? preview.monthlyRate ?? null)
+        : (preview.monthlyRate ?? null),
+      listPrice: preview.uvpConfigurationPrice ?? resolvedVehicleConfiguration?.uvpConfigurationPrice ?? null,
+      discountPercent: preview.discountPercent ?? null,
+      discountAmount: preview.discountAmount ?? null,
+      finalRate: preview.balloonPayment ?? configureDraft.balloonPayment ?? null,
       transferCost: configureDraft.preparationFee ?? conditions?.preparationFee ?? 1290,
       maintenance: Boolean(configureDraft.extras?.wartung),
       insurance: Boolean(configureDraft.extras?.versicherung),
@@ -235,9 +248,12 @@ export function offerDraftToVehicleConfiguration(offerDraft, configId = null) {
   const { vehicle, payment, customerId, opportunityId } = offerDraft;
   const paymentType = normalizeOfferPaymentType(payment.type);
   const { leasingData, financingData, cashPurchaseData } = buildPaymentSideData(payment);
+  const id = configId ?? `vc-${Date.now()}`;
+  const now = new Date().toISOString();
+  const boardOffer = buildBoardOfferFromDraft(offerDraft, { configId: id, now });
 
   return {
-    id: configId ?? `vc-${Date.now()}`,
+    id,
     type: 'vehicle_configuration',
     customerId: customerId ?? null,
     opportunityId: opportunityId ?? null,
@@ -256,6 +272,7 @@ export function offerDraftToVehicleConfiguration(offerDraft, configId = null) {
     leasingData,
     financingData,
     cashPurchaseData,
+    boardOffer,
     extras: {
       maintenance: payment.maintenance,
       insurance: payment.insurance,
@@ -264,7 +281,8 @@ export function offerDraftToVehicleConfiguration(offerDraft, configId = null) {
     },
     timing: offerDraft.timing,
     createdFrom: offerDraft.source.createdFrom,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -436,6 +454,9 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
     text: buildOfferSavedActivityText(offerDraft),
   };
 
+  const boardOffer = buildBoardOfferFromDraft(offerDraft, { configId, now });
+  const hasCalculated = boardOffer.status === BOARD_OFFER_STATUS.OFFER_CREATED;
+
   return {
     crmPatch: {
       pipelineStatusId: 'angebot_erstellt',
@@ -453,6 +474,8 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
           id: `vo-${cardId}`,
           vehicleCardId: cardId,
           status: VEHICLE_OFFER_STATUS.DRAFT,
+          boardStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : BOARD_OFFER_STATUS.DRAFT,
+          boardOffer,
           downPayment: offerDraft.payment.downPayment ?? 0,
           deliveryFee: offerDraft.payment.transferCost ?? 990,
           pdf: null,
@@ -465,7 +488,7 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
         },
       },
       lastOfferAt: now,
-      lastOfferStatus: 'draft',
+      lastOfferStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : 'draft',
     },
     historyEntry,
     activityText: historyEntry.text,

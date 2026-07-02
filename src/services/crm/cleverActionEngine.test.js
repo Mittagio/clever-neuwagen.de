@@ -38,15 +38,48 @@ const baseLead = {
   crm: { cleverUnterlagen: { items: {} } },
 };
 
-// Angebot erstellt → Angebot senden
+// Entwurf auf dem Tisch → Angebot erstellen
 const draftCtx = buildCleverActionContext({
   lead: baseLead,
   vehicleCards: [cardWithOffer(VEHICLE_OFFER_STATUS.DRAFT)],
   customerName: 'Max Mustermann',
 });
 const draftRec = recommendCleverAction(draftCtx);
-assert.equal(draftRec.actionId, CLEVER_ACTION_IDS.OFFER_SEND);
-assert.equal(draftRec.title, 'EV4-Angebot senden');
+assert.equal(draftRec.actionId, CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE);
+assert.equal(draftRec.title, 'Angebot erstellen');
+
+// Angebot erstellt → An Kunden senden
+const createdCtx = buildCleverActionContext({
+  lead: {
+    ...baseLead,
+    crm: {
+      vehicleConfigurations: [{
+        id: 'vc-1',
+        modelKey: 'ev4',
+        model: 'EV4',
+        trimLabel: 'Earth',
+        paymentType: 'leasing',
+        leasingData: { termMonths: 48, mileagePerYear: 10000, calculatedRate: 399 },
+        boardOffer: {
+          status: 'offer_created',
+          payment: { type: 'leasing', termMonths: 48, mileagePerYear: 10000, monthlyRate: 399 },
+        },
+      }],
+    },
+  },
+  vehicleCards: [{
+    ...cardWithOffer(VEHICLE_OFFER_STATUS.DRAFT),
+    configurationId: 'vc-1',
+    desiredRate: 399,
+    termMonths: 48,
+    mileagePerYear: 10000,
+    boardStatus: 'offer_created',
+  }],
+  customerName: 'Max Mustermann',
+});
+const createdRec = recommendCleverAction(createdCtx);
+assert.equal(createdRec.actionId, CLEVER_ACTION_IDS.OFFER_CREATED_SEND);
+assert.equal(createdRec.title, 'Angebot senden');
 
 // Angebot geöffnet → Jetzt anrufen
 const openedAt = new Date(Date.now() - MS_DAY).toISOString();
@@ -147,7 +180,7 @@ const full = buildCleverActionRecommendation({
   customerName: 'Max Mustermann',
 });
 assert.ok(full.analyticsText.includes('Clever empfahl'));
-assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: EV4-Angebot senden');
+assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: Angebot erstellen');
 
 // Kundenportal – Nächster guter Schritt
 const portalPreparedCtx = buildCleverActionContext({

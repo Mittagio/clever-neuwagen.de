@@ -25,6 +25,7 @@ import {
 } from './customerPortalAccessService.js';
 import { buildDealerPortalDocumentsOverview } from './customerPortalShellPresenter.js';
 import { SELF_DISCLOSURE_STATUS } from './customerPortalSelfDisclosureService.js';
+import { resolveBoardOfferStatus, BOARD_OFFER_STATUS } from '../dealer/boardOfferModel.js';
 
 export const CLEVER_ACTION_IDS = {
   VEHICLE_SUGGESTION_REVIEW: 'vehicle_suggestion_review',
@@ -54,6 +55,8 @@ export const CLEVER_ACTION_IDS = {
   SELF_DISCLOSURE_FOLLOWUP: 'self_disclosure_followup',
   SELF_DISCLOSURE_CORRECTION_FOLLOWUP: 'self_disclosure_correction_followup',
   APPLICATION_PREPARE: 'application_prepare',
+  OFFER_DRAFT_CREATE: 'offer_draft_create',
+  OFFER_CREATED_SEND: 'offer_created_send',
 };
 
 /** Niedrigere Zahl = höhere Priorität */
@@ -79,7 +82,8 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REVIEW]: 49,
   [CLEVER_ACTION_IDS.SELF_DISCLOSURE_CORRECTION_FOLLOWUP]: 53,
   [CLEVER_ACTION_IDS.SELF_DISCLOSURE_FOLLOWUP]: 55,
-  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REQUEST]: 61,
+  [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: 63,
+  [CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE]: 66,
   [CLEVER_ACTION_IDS.PORTAL_LINK_SEND]: 64,
   [CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP]: 61,
   [CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP]: 58,
@@ -222,6 +226,16 @@ const ACTION_DEFINITIONS = {
     title: 'Antrag vorbereiten',
     ctaLabel: 'Unterlagen ansehen',
     handlerType: 'unterlagen',
+  },
+  [CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE]: {
+    title: 'Angebot erstellen',
+    ctaLabel: 'Angebotsrechner öffnen',
+    handlerType: 'offer_create',
+  },
+  [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: {
+    title: 'Angebot senden',
+    ctaLabel: 'An Kunden senden',
+    handlerType: 'offer_send_portfolio',
   },
 };
 
@@ -525,6 +539,26 @@ export function evaluateCleverActions(context) {
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.APPLICATION_PREPARE, {
       reason: 'Antrag vorbereiten',
       explanation: 'Selbstauskunft und Nachweise sind vollständig. Jetzt den Antrag vorbereiten.',
+    }));
+  }
+
+  const boardDraftCards = vehicleCards.filter(
+    (card) => resolveBoardOfferStatus(card, context.lead) === BOARD_OFFER_STATUS.DRAFT,
+  );
+  const boardCreatedCards = vehicleCards.filter(
+    (card) => resolveBoardOfferStatus(card, context.lead) === BOARD_OFFER_STATUS.OFFER_CREATED,
+  );
+  if (boardDraftCards.length > 0) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE, {
+      reason: 'Entwurf auf dem Tisch',
+      explanation: 'Es liegt noch ein Fahrzeugwunsch ohne berechnetes Angebot. Jetzt im Angebotsrechner erstellen.',
+      meta: { cardId: boardDraftCards[0].id },
+    }));
+  } else if (boardCreatedCards.length > 0) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_CREATED_SEND, {
+      reason: 'Angebot bereit',
+      explanation: 'Das Angebot ist erstellt und kann an den Kunden gesendet werden.',
+      meta: { cardId: boardCreatedCards[0].id },
     }));
   }
 
