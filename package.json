@@ -106,6 +106,7 @@
     "test:customer-portal-access": "node src/services/crm/customerPortalAccess.test.js",
     "test:customer-portal-shell": "node src/services/crm/customerPortalShellPresenter.test.js",
     "test:customer-portal-documents-area": "node src/services/crm/customerPortalDocumentsArea.test.js",
+    "test:customer-akte-application-documents": "node src/services/crm/customerAkteApplicationDocuments.test.js",
     "test:customer-portal-advisor": "node src/services/crm/customerPortalAdvisorService.test.js",
     "test:customer-portal-self-disclosure": "node src/services/crm/customerPortalSelfDisclosure.test.js",
     "test:customer-portal-self-disclosure-review": "node src/services/crm/customerPortalSelfDisclosureReview.test.js",

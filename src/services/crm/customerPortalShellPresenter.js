@@ -244,6 +244,102 @@ function resolveUploadAction({ uploadUrl, openCount, allDone }) {
   };
 }
 
+function hasApplicationDocumentsContext(lead = {}) {
+  if (lead?.crm?.selfDisclosure) return true;
+  const unterlagen = lead?.crm?.cleverUnterlagen;
+  if (!unterlagen) return false;
+  return Boolean(
+    unterlagen.uploadLink?.url
+    || (unterlagen.items && Object.keys(unterlagen.items).length > 0),
+  );
+}
+
+function mapDealerSelfDisclosureStatusLabel(status = '', progress = 0) {
+  switch (status) {
+    case SELF_DISCLOSURE_STATUS.IN_PROGRESS:
+      return `In Bearbeitung · ${progress ?? 0} %`;
+    case SELF_DISCLOSURE_STATUS.SUBMITTED:
+      return 'Eingereicht';
+    case SELF_DISCLOSURE_STATUS.REVIEWED:
+      return 'Geprüft';
+    case SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION:
+      return 'Korrektur nötig';
+    case SELF_DISCLOSURE_STATUS.NOT_STARTED:
+    default:
+      return 'Nicht begonnen';
+  }
+}
+
+function buildDealerEvidenceSummaryLine(evidence = {}) {
+  const parts = [];
+  if (evidence.open > 0) {
+    parts.push(`${evidence.open} offen`);
+  }
+  if (evidence.uploaded > 0) {
+    parts.push(`${evidence.uploaded} hochgeladen`);
+  }
+  if (evidence.checked > 0) {
+    parts.push(`${evidence.checked} geprüft`);
+  }
+  if (!parts.length) {
+    return evidence.total > 0 ? 'Keine offenen Nachweise' : 'Noch keine Nachweise';
+  }
+  return parts.join(' · ');
+}
+
+function buildApplicationDocumentsActions({
+  selfDisclosureStatus,
+  evidence = {},
+  hasUploadLink = false,
+  allDone = false,
+}) {
+  const candidates = [];
+
+  if (selfDisclosureStatus === SELF_DISCLOSURE_STATUS.SUBMITTED) {
+    candidates.push({
+      id: 'self_disclosure_review',
+      label: 'Selbstauskunft prüfen',
+      handlerType: 'self_disclosure_review',
+    });
+  } else if (selfDisclosureStatus === SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION) {
+    candidates.push({
+      id: 'self_disclosure_review',
+      label: 'Korrektur ansehen',
+      handlerType: 'self_disclosure_review',
+    });
+  }
+
+  if (evidence.open > 0 || allDone || evidence.total > 0) {
+    candidates.push({
+      id: 'open_unterlagen',
+      label: 'Unterlagen ansehen',
+      handlerType: 'unterlagen',
+    });
+  }
+
+  const moreActions = [];
+  if (!hasUploadLink && evidence.open > 0) {
+    moreActions.push({
+      id: 'create_upload_link',
+      label: 'Upload-Link erstellen',
+      handlerType: 'unterlagen',
+    });
+  }
+
+  const deduped = [];
+  const seen = new Set();
+  for (const action of candidates) {
+    if (seen.has(action.id)) continue;
+    seen.add(action.id);
+    deduped.push(action);
+  }
+
+  return {
+    actions: deduped.slice(0, 2),
+    moreActions: deduped.slice(2).concat(moreActions),
+  };
+}
+
 /**
  * Kompakte Verkäufer-Übersicht – für Kundenakte / Unterlagen-Sheet (Stufe 2).
  * @param {object} lead
@@ -264,10 +360,45 @@ export function buildDealerPortalDocumentsOverview(lead = {}) {
       total: area.evidence.total,
     },
     summaryLabel: area.summaryLabel,
+    allDone: area.allDone,
+    hasUploadLink: area.evidence.hasUploadLink,
     lastActivityAt: area.selfDisclosureCard.lastSavedAt
       ?? lead?.crm?.cleverUnterlagen?.updatedAt
+      ?? lead?.crm?.selfDisclosure?.submittedAt
       ?? null,
-    // TODO: In CleverUnterlagenSheet oder Portal-Statuskarte als kompakte Zeile einbinden.
+  };
+}
+
+/**
+ * Kompakte Karte „Antrag & Unterlagen“ für die Verkäufer-Kundenakte.
+ * Nutzt buildDealerPortalDocumentsOverview() – keine sensiblen Finanzwerte.
+ * @param {object} lead
+ */
+export function buildCustomerAkteApplicationDocumentsCardModel(lead = {}) {
+  if (!hasApplicationDocumentsContext(lead)) {
+    return { visible: false };
+  }
+
+  const overview = buildDealerPortalDocumentsOverview(lead);
+  const { actions, moreActions } = buildApplicationDocumentsActions({
+    selfDisclosureStatus: overview.selfDisclosure.status,
+    evidence: overview.evidence,
+    hasUploadLink: overview.hasUploadLink,
+    allDone: overview.allDone,
+  });
+
+  return {
+    visible: true,
+    title: 'Antrag & Unterlagen',
+    subline: overview.summaryLabel,
+    selfDisclosureLabel: mapDealerSelfDisclosureStatusLabel(
+      overview.selfDisclosure.status,
+      overview.selfDisclosure.progress,
+    ),
+    evidenceSummaryLine: buildDealerEvidenceSummaryLine(overview.evidence),
+    lastActivityLabel: formatLastSavedLabel(overview.lastActivityAt),
+    actions,
+    moreActions,
   };
 }
 

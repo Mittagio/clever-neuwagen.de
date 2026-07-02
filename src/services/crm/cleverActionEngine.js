@@ -23,6 +23,8 @@ import {
   getCustomerPortalAccess,
   PORTAL_ACCESS_STATUS,
 } from './customerPortalAccessService.js';
+import { buildDealerPortalDocumentsOverview } from './customerPortalShellPresenter.js';
+import { SELF_DISCLOSURE_STATUS } from './customerPortalSelfDisclosureService.js';
 
 export const CLEVER_ACTION_IDS = {
   VEHICLE_SUGGESTION_REVIEW: 'vehicle_suggestion_review',
@@ -47,6 +49,11 @@ export const CLEVER_ACTION_IDS = {
   PORTAL_LINK_FOLLOWUP: 'portal_link_followup',
   PORTAL_CODE_REMIND: 'portal_code_remind',
   PORTAL_VIEWED_FOLLOWUP: 'portal_viewed_followup',
+  SELF_DISCLOSURE_REVIEW: 'self_disclosure_review',
+  SELF_DISCLOSURE_REQUEST: 'self_disclosure_request',
+  SELF_DISCLOSURE_FOLLOWUP: 'self_disclosure_followup',
+  SELF_DISCLOSURE_CORRECTION_FOLLOWUP: 'self_disclosure_correction_followup',
+  APPLICATION_PREPARE: 'application_prepare',
 };
 
 /** Niedrigere Zahl = höhere Priorität */
@@ -56,6 +63,7 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.VEHICLE_ARRIVING]: 20,
   [CLEVER_ACTION_IDS.LEASING_APPROVED]: 30,
   [CLEVER_ACTION_IDS.LEASING_READY]: 40,
+  [CLEVER_ACTION_IDS.APPLICATION_PREPARE]: 41,
   [CLEVER_ACTION_IDS.DOCUMENTS_INBOX_CHECK]: 54,
   [CLEVER_ACTION_IDS.OFFER_OPENED_CALL]: 60,
   [CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER]: 52,
@@ -68,6 +76,10 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION]: 50,
   [CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER]: 51,
   [CLEVER_ACTION_IDS.SHOWROOM_CAPTURE_REVIEW]: 48,
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REVIEW]: 49,
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_CORRECTION_FOLLOWUP]: 53,
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_FOLLOWUP]: 55,
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REQUEST]: 61,
   [CLEVER_ACTION_IDS.PORTAL_LINK_SEND]: 64,
   [CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP]: 61,
   [CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP]: 58,
@@ -185,6 +197,31 @@ const ACTION_DEFINITIONS = {
     title: 'Angebot nachfassen',
     ctaLabel: 'Angebot nachfassen',
     handlerType: 'portal_viewed_followup',
+  },
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REVIEW]: {
+    title: 'Selbstauskunft prüfen',
+    ctaLabel: 'Selbstauskunft prüfen',
+    handlerType: 'self_disclosure_review',
+  },
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_CORRECTION_FOLLOWUP]: {
+    title: 'Korrektur nachfassen',
+    ctaLabel: 'Kunden kontaktieren',
+    handlerType: 'portal_followup',
+  },
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_FOLLOWUP]: {
+    title: 'Selbstauskunft nachfassen',
+    ctaLabel: 'Kunden erinnern',
+    handlerType: 'portal_followup',
+  },
+  [CLEVER_ACTION_IDS.SELF_DISCLOSURE_REQUEST]: {
+    title: 'Selbstauskunft anfordern',
+    ctaLabel: 'Unterlagen öffnen',
+    handlerType: 'documents',
+  },
+  [CLEVER_ACTION_IDS.APPLICATION_PREPARE]: {
+    title: 'Antrag vorbereiten',
+    ctaLabel: 'Unterlagen ansehen',
+    handlerType: 'unterlagen',
   },
 };
 
@@ -451,6 +488,46 @@ export function evaluateCleverActions(context) {
     }));
   }
 
+  const selfDisclosure = context.lead?.crm?.selfDisclosure;
+  const sdStatus = selfDisclosure?.status ?? SELF_DISCLOSURE_STATUS.NOT_STARTED;
+  const applicationDocsOverview = buildDealerPortalDocumentsOverview(context.lead);
+  const sdInboxItem = inboxItems.find((item) => item.type === INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED);
+
+  if (sdInboxItem) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELF_DISCLOSURE_REVIEW, {
+      reason: 'Selbstauskunft eingereicht',
+      explanation: sdInboxItem.message || 'Der Kunde hat die Selbstauskunft abgesendet.',
+      meta: { inboxItemId: sdInboxItem.id },
+    }));
+  } else if (sdStatus === SELF_DISCLOSURE_STATUS.SUBMITTED) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELF_DISCLOSURE_REVIEW, {
+      reason: 'Selbstauskunft eingereicht',
+      explanation: 'Der Kunde hat die Selbstauskunft abgesendet. Jetzt prüfen.',
+    }));
+  } else if (sdStatus === SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELF_DISCLOSURE_CORRECTION_FOLLOWUP, {
+      reason: 'Korrektur ausstehend',
+      explanation: 'Der Kunde muss die Selbstauskunft korrigieren. Kurz nachfassen.',
+    }));
+  } else if (sdStatus === SELF_DISCLOSURE_STATUS.IN_PROGRESS) {
+    const daysSinceSd = daysSince(selfDisclosure?.lastSavedAt ?? selfDisclosure?.startedAt);
+    if (daysSinceSd != null && daysSinceSd >= 1) {
+      candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELF_DISCLOSURE_FOLLOWUP, {
+        reason: 'Selbstauskunft unvollständig',
+        explanation: 'Der Kunde hat die Selbstauskunft begonnen, aber noch nicht abgeschlossen.',
+      }));
+    }
+  }
+
+  if (applicationDocsOverview.allDone
+    && (sdStatus === SELF_DISCLOSURE_STATUS.REVIEWED || !selfDisclosure)
+    && applicationDocsOverview.evidence.total > 0) {
+    candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.APPLICATION_PREPARE, {
+      reason: 'Antrag vorbereiten',
+      explanation: 'Selbstauskunft und Nachweise sind vollständig. Jetzt den Antrag vorbereiten.',
+    }));
+  }
+
   if (questionCard && !primaryInboxItem) {
     const openCount = countOpenQuestions(getCustomerOfferInteraction(context.lead, questionCard.id));
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_QUESTION_ANSWER, {
@@ -513,6 +590,12 @@ export function evaluateCleverActions(context) {
         reason: 'Auswahl angesehen',
         explanation: 'Der Kunde hat die Fahrzeugauswahl angesehen, aber noch nicht reagiert.',
       }));
+      if (sdStatus === SELF_DISCLOSURE_STATUS.NOT_STARTED) {
+        candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELF_DISCLOSURE_REQUEST, {
+          reason: 'Selbstauskunft noch offen',
+          explanation: 'Der Kunde hat das Portal angesehen, die Selbstauskunft aber noch nicht gestartet.',
+        }));
+      }
     }
   } else if (preparedSelectionGroup && !reactedSelectionGroup) {
     const variantCount = preparedSelectionGroup.variants?.length ?? 0;
@@ -683,5 +766,6 @@ function mapHandlerToLegacyAction(handlerType) {
   if (handlerType === 'offer_send') return 'offer_send';
   if (handlerType === 'selection_send') return 'selection_send';
   if (handlerType === 'call') return 'call';
+  if (handlerType === 'self_disclosure_review') return 'self_disclosure_review';
   return handlerType;
 }

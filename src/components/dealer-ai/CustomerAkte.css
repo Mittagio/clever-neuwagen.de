@@ -3268,6 +3268,104 @@
   margin-top: 0.5rem;
 }
 
+.cust-akte-application-docs {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.cust-akte-application-docs__head {
+  margin-bottom: 0.75rem;
+}
+
+.cust-akte-application-docs__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cust-akte-application-docs__subline {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.cust-akte-application-docs__rows {
+  margin: 0 0 0.85rem;
+  padding: 0;
+}
+
+.cust-akte-application-docs__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.cust-akte-application-docs__row dt {
+  margin: 0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.cust-akte-application-docs__row dd {
+  margin: 0;
+  color: #1e293b;
+  text-align: right;
+  font-weight: 600;
+}
+
+.cust-akte-application-docs__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cust-akte-application-docs__btn {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cust-akte-application-docs__btn--primary {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.cust-akte-application-docs__btn--ghost {
+  background: #f8fafc;
+}
+
+.cust-akte-application-docs__more {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+}
+
+.cust-akte-application-docs__more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .cust-sd-review {
   display: flex;
   flex-direction: column;

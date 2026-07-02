@@ -124,6 +124,7 @@ import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAktePortalSendCta from './CustomerAktePortalSendCta.jsx';
 import CustomerAktePortalStatusCard from './CustomerAktePortalStatusCard.jsx';
+import CustomerAkteApplicationDocumentsCard from './CustomerAkteApplicationDocumentsCard.jsx';
 import CustomerAkteAddProposalSheet, {
   CustomerAkteLeaseFinanceSheet,
 } from './CustomerAkteAddProposalSheet.jsx';
@@ -1769,6 +1770,10 @@ export default function DealerAiLeadFollowUp({
       openSheet(SHEETS.unterlagen);
       return;
     }
+    if (handler === 'self_disclosure_review') {
+      openSelfDisclosureReview(actionHint?.meta?.inboxItemId ?? null);
+      return;
+    }
     if (handler === 'delivery_handover' || handler === 'delivery_plan') {
       openCleverAntworten('delivery');
       return;
@@ -1902,6 +1907,12 @@ export default function DealerAiLeadFollowUp({
         onReply={handlePortalCardReply}
         onOpenInbox={() => onOpenInbox?.(lead)}
         onOpenSelfDisclosureReview={() => openSelfDisclosureReview()}
+      />
+
+      <CustomerAkteApplicationDocumentsCard
+        lead={lead}
+        onOpenSelfDisclosureReview={() => openSelfDisclosureReview()}
+        onOpenUnterlagen={() => openSheet(SHEETS.unterlagen)}
       />
 
       <CustomerAktePortalSendCta
