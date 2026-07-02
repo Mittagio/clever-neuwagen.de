@@ -67,6 +67,9 @@ assert.ok(documents.totalCount > 0);
 assert.ok(documents.hasUploadLink);
 assert.ok(documents.uploadUrl?.includes('/mein-bereich/unterlagen/'));
 assert.ok(documents.slots.some((slot) => slot.label === 'Ausweis'));
+assert.ok(documents.documentsArea);
+assert.equal(documents.documentsArea.headline, 'Ihre Unterlagen');
+assert.ok(documents.documentsArea.evidence.groups.open.length > 0);
 
 const shell = buildCustomerPortalShellModel(withUpload, { messageCount: 2 });
 assert.equal(shell.defaultSection, PORTAL_NAV_IDS.OFFERS);

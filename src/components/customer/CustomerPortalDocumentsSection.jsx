@@ -1,22 +1,60 @@
+function EvidenceGroup({ title, items = [] }) {
+  if (!items.length) return null;
+
+  return (
+    <div className="cop-docs-area__group">
+      <h4 className="cop-docs-area__group-title">{title}</h4>
+      <ul className="cop-docs-list">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className={`cop-docs-list__item cop-docs-list__item--${item.group}`}
+          >
+            <span className="cop-docs-list__icon" aria-hidden="true">{item.icon}</span>
+            <span className="cop-docs-list__label">{item.label}</span>
+            {item.group === 'checked' ? (
+              <span className="cop-docs-list__status">{item.statusLabel}</span>
+            ) : item.group !== 'open' ? (
+              <span className="cop-docs-list__status">{item.statusLabel}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function CustomerPortalDocumentsSection({
   documents = null,
   selfDisclosureHref = null,
 }) {
   if (!documents) return null;
 
-  const sd = documents.selfDisclosure ?? null;
+  const area = documents.documentsArea ?? null;
+  if (!area) return null;
+
+  const sd = {
+    ...area.selfDisclosureCard,
+    href: selfDisclosureHref,
+  };
+  const upload = area.uploadAction ?? {};
+  const groups = area.evidence?.groups ?? {};
 
   return (
-    <section className="cop-panel" aria-label="Ihre Unterlagen">
+    <section className="cop-panel cop-docs-area" aria-label="Ihre Unterlagen">
       <header className="cop-panel__header">
-        <h2 className="cop-panel__title">Ihre Unterlagen</h2>
-        <p className="cop-panel__subline">{documents.subline}</p>
+        <h2 className="cop-panel__title">{area.headline}</h2>
+        <p className="cop-panel__subline">{area.subline}</p>
+        {area.summaryLabel ? (
+          <p className="cop-docs-area__summary" role="status">{area.summaryLabel}</p>
+        ) : null}
       </header>
 
-      {sd?.visible ? (
+      <section className="cop-docs-area__section" aria-label="Digital ausfüllen">
+        <h3 className="cop-docs-area__section-title">Digital ausfüllen</h3>
         <article className="cop-sd-card" aria-label="Selbstauskunft">
           <div className="cop-sd-card__head">
-            <h3 className="cop-sd-card__title">{sd.title}</h3>
+            <h4 className="cop-sd-card__title">Selbstauskunft</h4>
             <span className="cop-sd-card__status">{sd.statusLabel}</span>
           </div>
           {sd.typeLabel ? (
@@ -27,49 +65,62 @@ export default function CustomerPortalDocumentsSection({
               Welche Selbstauskunft möchten Sie ausfüllen?
             </p>
           ) : null}
-          {selfDisclosureHref ? (
-            <a className="cop-btn cop-btn--primary cop-sd-card__cta" href={selfDisclosureHref}>
+          {sd.lastSavedLabel ? (
+            <p className="cop-sd-card__saved">
+              Zuletzt gespeichert:
+              {' '}
+              {sd.lastSavedLabel}
+            </p>
+          ) : null}
+          {sd.href ? (
+            <a className="cop-btn cop-btn--primary cop-sd-card__cta" href={sd.href}>
               {sd.actionLabel}
             </a>
           ) : null}
         </article>
-      ) : null}
+      </section>
 
-      {documents.slots?.length > 0 ? (
-        <ul className="cop-docs-list">
-          {documents.slots.map((slot) => (
-            <li
-              key={slot.id}
-              className={`cop-docs-list__item${slot.done ? ' is-done' : ''}`}
-            >
-              <span className="cop-docs-list__icon" aria-hidden="true">
-                {slot.done ? '✓' : '○'}
-              </span>
-              <span className="cop-docs-list__label">{slot.label}</span>
-              <span className="cop-docs-list__status">{slot.statusLabel}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="cop-panel__empty">
-          Noch keine Unterlagen angefordert.
-        </p>
-      )}
+      <section className="cop-docs-area__section" aria-label="Nachweise hochladen">
+        <h3 className="cop-docs-area__section-title">Nachweise hochladen</h3>
 
-      {documents.hasUploadLink && documents.uploadUrl ? (
-        <a
-          className="cop-btn cop-btn--primary cop-panel__cta"
-          href={documents.uploadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Unterlagen hochladen
-        </a>
-      ) : (
-        <p className="cop-panel__hint">
-          Ihr Verkäufer sendet Ihnen den Upload-Link, sobald Unterlagen benötigt werden.
-        </p>
-      )}
+        {groups.open?.length || groups.uploaded?.length || groups.checked?.length ? (
+          <>
+            <EvidenceGroup title="Noch benötigt" items={groups.open} />
+            <EvidenceGroup title="Hochgeladen" items={groups.uploaded} />
+            <EvidenceGroup title="Geprüft" items={groups.checked} />
+          </>
+        ) : (
+          <p className="cop-panel__empty">
+            Noch keine Nachweise angefordert.
+          </p>
+        )}
+
+        {area.recommendedEvidence?.length > 0 ? (
+          <div className="cop-docs-area__recommended">
+            <p className="cop-docs-area__recommended-title">Typische Nachweise</p>
+            <ul className="cop-docs-area__recommended-list">
+              {area.recommendedEvidence.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {upload.visible && upload.url ? (
+          <a
+            className={`cop-btn cop-btn--${upload.variant === 'secondary' ? 'secondary' : 'primary'} cop-panel__cta`}
+            href={upload.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {upload.label}
+          </a>
+        ) : null}
+
+        {upload.hint ? (
+          <p className="cop-panel__hint">{upload.hint}</p>
+        ) : null}
+      </section>
     </section>
   );
 }

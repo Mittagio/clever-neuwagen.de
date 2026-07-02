@@ -7,7 +7,11 @@ import {
 } from '../cleverUnterlagen.js';
 import { getCustomerMessageStore } from './customerMessageService.js';
 import { buildCustomerPortalAdvisorModel } from './customerPortalAdvisorService.js';
-import { buildSelfDisclosureCardModel } from './customerPortalSelfDisclosureService.js';
+import {
+  buildSelfDisclosureCardModel,
+  SELF_DISCLOSURE_STATUS,
+  SELF_DISCLOSURE_TYPES,
+} from './customerPortalSelfDisclosureService.js';
 
 export const PORTAL_NAV_IDS = {
   OFFERS: 'offers',
@@ -24,10 +28,247 @@ export const PORTAL_NAV_SECTIONS = [
 ];
 
 const DONE_DOCUMENT_STATUSES = new Set(['uploaded', 'checked', 'replaced', 'not_needed']);
+const UPLOADED_EVIDENCE_STATUSES = new Set(['uploaded', 'replaced']);
+const DIGITAL_SLOT_IDS = new Set(['selbstauskunft']);
+
+const RECOMMENDED_EVIDENCE_LABELS = {
+  [SELF_DISCLOSURE_TYPES.PRIVATE]: [
+    'Ausweis',
+    'Gehaltsnachweis',
+    'Bankverbindung / SEPA',
+    'Meldebescheinigung',
+  ],
+  [SELF_DISCLOSURE_TYPES.FREELANCER]: [
+    'Ausweis',
+    'Gewerbeanmeldung',
+    'Gewinnermittlung',
+    'Kontoauszüge / Bankunterlagen',
+    'Bankverbindung / SEPA',
+  ],
+  [SELF_DISCLOSURE_TYPES.CORPORATION]: [
+    'Handelsregisterauszug',
+    'Ausweis Ansprechpartner',
+    'Bilanz / GuV / vorläufige Gewinnermittlung',
+    'Bankverbindung / SEPA',
+  ],
+};
+
+const DOCUMENTS_AREA_SUBLINE = 'Hier sehen Sie, was für Ihr Leasing- oder Finanzierungsangebot noch benötigt wird.';
 
 function countVisibleMessages(lead = {}) {
   const store = getCustomerMessageStore(lead);
   return store.messages.filter((message) => message.visibleToCustomer).length;
+}
+
+function formatLastSavedLabel(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `heute ${time}`;
+  return `${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${time}`;
+}
+
+function mapSelfDisclosureCardForDocumentsArea(card = {}) {
+  let statusLabel = card.statusLabel ?? 'Noch nicht begonnen';
+  switch (card.status) {
+    case SELF_DISCLOSURE_STATUS.IN_PROGRESS:
+      statusLabel = `In Bearbeitung · ${card.progress ?? 0} %`;
+      break;
+    case SELF_DISCLOSURE_STATUS.SUBMITTED:
+      statusLabel = 'Eingereicht';
+      break;
+    case SELF_DISCLOSURE_STATUS.REVIEWED:
+      statusLabel = 'Geprüft';
+      break;
+    case SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION:
+      statusLabel = 'Bitte Angaben prüfen';
+      break;
+    case SELF_DISCLOSURE_STATUS.NOT_STARTED:
+      statusLabel = 'Noch nicht begonnen';
+      break;
+    default:
+      break;
+  }
+
+  return {
+    status: card.status,
+    statusLabel,
+    progress: card.progress ?? 0,
+    typeLabel: card.typeLabel ?? null,
+    actionLabel: card.actionLabel ?? 'Selbstauskunft starten',
+    actionMode: card.actionMode ?? 'start',
+    showTypePicker: Boolean(card.showTypePicker),
+    lastSavedAt: card.lastSavedAt ?? null,
+    lastSavedLabel: formatLastSavedLabel(card.lastSavedAt),
+    href: null,
+  };
+}
+
+function isSelfDisclosureOpenForCustomer(status = '') {
+  return status === SELF_DISCLOSURE_STATUS.NOT_STARTED
+    || status === SELF_DISCLOSURE_STATUS.IN_PROGRESS
+    || status === SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION;
+}
+
+function buildEvidenceItem(slot = {}) {
+  let group = 'open';
+  let icon = '○';
+  let statusLabel = slot.statusLabel ?? 'Noch offen';
+
+  if (slot.status === UNTERLAGEN_STATUS.checked.id) {
+    group = 'checked';
+    icon = '✓✓';
+    statusLabel = `${slot.label} geprüft`;
+  } else if (UPLOADED_EVIDENCE_STATUSES.has(slot.status)) {
+    group = 'uploaded';
+    icon = '✓';
+    statusLabel = 'Hochgeladen';
+  } else if (slot.status === UNTERLAGEN_STATUS.not_needed.id) {
+    group = 'notNeeded';
+    icon = '–';
+    statusLabel = 'Nicht erforderlich';
+  }
+
+  return {
+    id: slot.id,
+    label: slot.label,
+    status: slot.status,
+    statusLabel,
+    optional: Boolean(slot.optional),
+    icon,
+    group,
+  };
+}
+
+function groupEvidenceItems(items = []) {
+  const groups = {
+    open: [],
+    uploaded: [],
+    checked: [],
+    notNeeded: [],
+  };
+
+  for (const item of items) {
+    groups[item.group]?.push(item);
+  }
+
+  return groups;
+}
+
+function buildSummaryLabel(selfDisclosureCard = {}, evidence = {}) {
+  const sdOpen = isSelfDisclosureOpenForCustomer(selfDisclosureCard.status);
+  const openCount = evidence.groups?.open?.length ?? 0;
+  const uploadedCount = (evidence.groups?.uploaded?.length ?? 0)
+    + (evidence.groups?.checked?.length ?? 0);
+  const relevantTotal = openCount + uploadedCount;
+
+  if (!sdOpen && openCount === 0) {
+    return 'Alles erledigt';
+  }
+
+  if (selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.IN_PROGRESS) {
+    if (openCount > 0) {
+      return `Selbstauskunft in Bearbeitung · ${openCount} Unterlage${openCount === 1 ? '' : 'n'} offen`;
+    }
+    return `Selbstauskunft in Bearbeitung · ${selfDisclosureCard.progress ?? 0} %`;
+  }
+
+  if (selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.NOT_STARTED) {
+    if (openCount > 0) {
+      return `Selbstauskunft noch offen · ${openCount} Nachweis${openCount === 1 ? '' : 'e'} benötigt`;
+    }
+    return 'Selbstauskunft noch nicht begonnen';
+  }
+
+  if (selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.NEEDS_CORRECTION) {
+    return `Korrektur an Selbstauskunft nötig${openCount > 0 ? ` · ${openCount} Nachweis${openCount === 1 ? '' : 'e'} offen` : ''}`;
+  }
+
+  if (selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.SUBMITTED
+    || selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.REVIEWED) {
+    if (relevantTotal === 0) {
+      return selfDisclosureCard.status === SELF_DISCLOSURE_STATUS.REVIEWED
+        ? 'Selbstauskunft geprüft'
+        : 'Selbstauskunft eingereicht';
+    }
+    if (openCount > 0) {
+      return `Selbstauskunft eingereicht · ${openCount} Nachweis${openCount === 1 ? '' : 'e'} noch offen`;
+    }
+    return `Selbstauskunft eingereicht · ${uploadedCount} von ${relevantTotal} Nachweisen hochgeladen`;
+  }
+
+  if (openCount > 0) {
+    return `${openCount} Unterlage${openCount === 1 ? '' : 'n'} noch offen`;
+  }
+
+  return 'Alle Unterlagen sind eingereicht oder nicht benötigt';
+}
+
+function countDocumentsBadge(selfDisclosureCard = {}, evidenceGroups = {}) {
+  const sdCount = isSelfDisclosureOpenForCustomer(selfDisclosureCard.status) ? 1 : 0;
+  const evidenceOpen = (evidenceGroups.open ?? []).filter((item) => !item.optional).length;
+  const total = sdCount + evidenceOpen;
+  return total > 0 ? total : null;
+}
+
+function resolveUploadAction({ uploadUrl, openCount, allDone }) {
+  if (!uploadUrl) {
+    return {
+      visible: false,
+      label: null,
+      variant: null,
+      hint: openCount > 0
+        ? 'Das Autohaus stellt Ihnen den Upload-Link bereit.'
+        : null,
+    };
+  }
+
+  if (allDone) {
+    return {
+      visible: true,
+      label: 'Weitere Unterlage hochladen',
+      variant: 'secondary',
+      hint: null,
+      url: uploadUrl,
+    };
+  }
+
+  return {
+    visible: true,
+    label: 'Nachweise hochladen',
+    variant: 'primary',
+    hint: null,
+    url: uploadUrl,
+  };
+}
+
+/**
+ * Kompakte Verkäufer-Übersicht – für Kundenakte / Unterlagen-Sheet (Stufe 2).
+ * @param {object} lead
+ */
+export function buildDealerPortalDocumentsOverview(lead = {}) {
+  const documents = buildCustomerPortalDocumentsModel(lead);
+  const area = documents.documentsArea;
+  return {
+    selfDisclosure: {
+      status: area.selfDisclosureCard.status,
+      label: area.selfDisclosureCard.statusLabel,
+      progress: area.selfDisclosureCard.progress,
+    },
+    evidence: {
+      open: area.evidence.open,
+      uploaded: area.evidence.uploaded,
+      checked: area.evidence.checked,
+      total: area.evidence.total,
+    },
+    summaryLabel: area.summaryLabel,
+    lastActivityAt: area.selfDisclosureCard.lastSavedAt
+      ?? lead?.crm?.cleverUnterlagen?.updatedAt
+      ?? null,
+    // TODO: In CleverUnterlagenSheet oder Portal-Statuskarte als kompakte Zeile einbinden.
+  };
 }
 
 /**
@@ -51,20 +292,65 @@ export function buildCustomerPortalDocumentsModel(lead = {}) {
     };
   });
 
-  const openCount = slots.filter((slot) => !slot.done && !slot.optional).length;
+  const evidenceSlots = slots.filter((slot) => !DIGITAL_SLOT_IDS.has(slot.id));
+  const evidenceItems = evidenceSlots.map(buildEvidenceItem);
+  const evidenceGroups = groupEvidenceItems(evidenceItems);
+
+  const rawSelfDisclosure = buildSelfDisclosureCardModel(lead);
+  const selfDisclosureCard = mapSelfDisclosureCardForDocumentsArea(rawSelfDisclosure);
+
+  const sdType = rawSelfDisclosure.type ?? lead?.crm?.selfDisclosure?.type ?? null;
+  const recommendedEvidence = sdType
+    ? (RECOMMENDED_EVIDENCE_LABELS[sdType] ?? [])
+    : RECOMMENDED_EVIDENCE_LABELS[SELF_DISCLOSURE_TYPES.PRIVATE];
+
+  const openCount = evidenceGroups.open.length;
+  const uploadedCount = evidenceGroups.uploaded.length;
+  const checkedCount = evidenceGroups.checked.length;
+  const allDone = !isSelfDisclosureOpenForCustomer(selfDisclosureCard.status) && openCount === 0;
+
+  const evidence = {
+    total: evidenceSlots.length,
+    open: openCount,
+    uploaded: uploadedCount,
+    checked: checkedCount,
+    uploadUrl,
+    hasUploadLink: Boolean(uploadUrl),
+    groups: evidenceGroups,
+  };
+
+  const summaryLabel = buildSummaryLabel(selfDisclosureCard, evidence);
+  const uploadAction = resolveUploadAction({
+    uploadUrl,
+    openCount,
+    allDone,
+  });
+
+  const documentsArea = {
+    headline: 'Ihre Unterlagen',
+    subline: DOCUMENTS_AREA_SUBLINE,
+    summaryLabel,
+    selfDisclosureCard,
+    evidence,
+    recommendedEvidence,
+    uploadAction,
+    allDone,
+  };
+
+  const badgeCount = countDocumentsBadge(selfDisclosureCard, evidenceGroups);
 
   return {
     headline: summary.headline,
     doneCount: summary.doneCount,
     totalCount: summary.totalCount,
-    openCount,
+    openCount: badgeCount ?? 0,
+    badgeCount,
     hasUploadLink: Boolean(uploadUrl),
     uploadUrl,
     slots,
-    selfDisclosure: buildSelfDisclosureCardModel(lead),
-    subline: openCount > 0
-      ? `${openCount} Unterlage${openCount === 1 ? '' : 'n'} noch offen`
-      : 'Alle Unterlagen sind eingereicht oder nicht benötigt',
+    selfDisclosure: rawSelfDisclosure,
+    documentsArea,
+    subline: summaryLabel,
   };
 }
 
@@ -79,7 +365,7 @@ export function buildCustomerPortalShellModel(lead = {}, options = {}) {
 
   const badges = {
     messageCount: messageCount > 0 ? messageCount : null,
-    documentsOpenCount: documents.openCount > 0 ? documents.openCount : null,
+    documentsOpenCount: documents.badgeCount,
   };
 
   return {

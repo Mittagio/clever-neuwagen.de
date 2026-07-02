@@ -694,6 +694,72 @@
   width: 100%;
 }
 
+.cop-sd-card__saved {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.cop-docs-area__summary {
+  margin: 0.5rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.65rem;
+  background: #f1f5f9;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cop-docs-area__section {
+  margin-bottom: 1.25rem;
+}
+
+.cop-docs-area__section-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cop-docs-area__group {
+  margin-bottom: 0.85rem;
+}
+
+.cop-docs-area__group-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cop-docs-list__item--checked .cop-docs-list__icon {
+  color: #0f766e;
+}
+
+.cop-docs-area__recommended {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+}
+
+.cop-docs-area__recommended-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.cop-docs-area__recommended-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
 .cop-sd-flow {
   max-width: 32rem;
 }

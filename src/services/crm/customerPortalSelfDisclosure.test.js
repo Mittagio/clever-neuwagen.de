@@ -228,8 +228,8 @@ const docsSectionSource = readFileSync(
   join(__dirname, '../../components/customer/CustomerPortalDocumentsSection.jsx'),
   'utf8',
 );
-assert.ok(docsSectionSource.includes('Unterlagen hochladen'));
-assert.ok(docsSectionSource.includes('documents.uploadUrl'));
+assert.ok(docsSectionSource.includes('Nachweise hochladen'));
+assert.ok(docsSectionSource.includes('upload.url'));
 
 const portfolioPageSource = readFileSync(
   join(__dirname, '../../pages/CustomerOfferPortfolioPage.jsx'),
