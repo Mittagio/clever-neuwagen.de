@@ -11,6 +11,7 @@ import {
   BOARD_OFFER_STATUS,
   resolveBoardOfferStatus,
 } from './boardOfferModel.js';
+import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 
 export const OFFER_ENTRY_TARGET = {
   CALCULATOR: 'calculator',
@@ -18,22 +19,46 @@ export const OFFER_ENTRY_TARGET = {
   ANSWER_QUESTION: 'answer_question',
 };
 
+function readStoredVehicleOffer(card = {}, lead = null) {
+  return card?.vehicleOffer
+    ?? lead?.crm?.vehicleOffers?.[card?.id]
+    ?? lead?.crm?.vehicleOffers?.[card?.configurationId]
+    ?? null;
+}
+
+/** Angebot wurde dem Kunden zugestellt (nicht nur intern vorbereitet). */
+export function isCustomerVisibleOfferState(card = {}, lead = null) {
+  const stored = readStoredVehicleOffer(card, lead);
+  if (!stored) return false;
+  return [
+    VEHICLE_OFFER_STATUS.SENT,
+    VEHICLE_OFFER_STATUS.OPENED,
+    VEHICLE_OFFER_STATUS.ACCEPTED,
+    VEHICLE_OFFER_STATUS.REJECTED,
+  ].includes(stored.status);
+}
+
 /**
  * Zielansicht für einen Angebots-Einstieg.
+ * Entwurf, offer_created und vorbereitete Links → immer Kalkulator.
+ * Vorschlag nur bei tatsächlich gesendetem Kundenangebot.
  */
 export function resolveOfferEntryTarget(card = {}, lead = null) {
   const status = resolveBoardOfferStatus(card, lead);
+  const sentToCustomer = isCustomerVisibleOfferState(card, lead);
+
+  if (!sentToCustomer) {
+    if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
+      return OFFER_ENTRY_TARGET.ANSWER_QUESTION;
+    }
+    return OFFER_ENTRY_TARGET.CALCULATOR;
+  }
+
   if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
     return OFFER_ENTRY_TARGET.ANSWER_QUESTION;
   }
-  if (
-    status === BOARD_OFFER_STATUS.OFFER_SENT
-    || status === BOARD_OFFER_STATUS.INTERESTED
-    || status === BOARD_OFFER_STATUS.DECLINED
-  ) {
-    return OFFER_ENTRY_TARGET.PROPOSAL;
-  }
-  return OFFER_ENTRY_TARGET.CALCULATOR;
+
+  return OFFER_ENTRY_TARGET.PROPOSAL;
 }
 
 export function shouldOpenOfferProposalView(card = {}, lead = null) {
@@ -74,6 +99,8 @@ export function buildOfferCalculatorNavigateState(lead, card = null, options = {
     vehicleCardId,
   });
 
+  if (!addVehicleContext) return null;
+
   addVehicleContext.openConditions = true;
   addVehicleContext.openCalculator = true;
   if (vehicleCardId) {
@@ -93,6 +120,19 @@ export function buildOfferCalculatorNavigateState(lead, card = null, options = {
 /** Bearbeitung im Angebotskalkulator (nicht nur Vorschau). */
 export function canEditOfferInCalculator(card = {}, lead = null) {
   return resolveOfferEntryTarget(card, lead) !== OFFER_ENTRY_TARGET.ANSWER_QUESTION;
+}
+
+/**
+ * Einheitlicher Board-Einstieg: Kalkulator oder Vorschlag (nur gesendet).
+ */
+export function openBoardOfferEntry(card, lead, { onOpenProposal, onOpenCalculator } = {}, options = {}) {
+  if (!card) return null;
+  if (shouldOpenOfferProposalView(card, lead)) {
+    onOpenProposal?.(card);
+    return OFFER_ENTRY_TARGET.PROPOSAL;
+  }
+  onOpenCalculator?.(card, options);
+  return OFFER_ENTRY_TARGET.CALCULATOR;
 }
 
 /**

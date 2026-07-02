@@ -83,6 +83,7 @@ export default function CustomerOfferProposalView({
     [lead, card?.id],
   );
   const showEditInCalculator = canEditOfferInCalculator(card, lead);
+
   const reactionLines = useMemo(
     () => buildCustomerReactionLines(interaction, offer),
     [interaction, offer],

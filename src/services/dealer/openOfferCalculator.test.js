@@ -20,7 +20,7 @@ import {
   resolveBoardOfferPrimaryAction,
 } from './boardOfferModel.js';
 import { buildVehicleOpportunityCards } from '../customerAkte.js';
-import { mergeCustomerOfferInteractionPatch } from '../customerOfferInteraction.js';
+import { INTEREST_STATUS, mergeCustomerOfferInteractionPatch } from '../customerOfferInteraction.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const followUpSource = readFileSync(
@@ -103,12 +103,13 @@ assert.equal(navState.addVehicleContext.openCalculator, true);
 assert.equal(navState.addVehicleContext.vehicleCardId, 'vc-ev6');
 assert.ok(navState.addVehicleContext.returnPath.includes('lead-created'));
 
-assert.ok(followUpSource.includes('openOfferCalculator') || followUpSource.includes('shouldOpenOfferProposalView'));
+assert.ok(followUpSource.includes('openBoardOfferEntry'));
 assert.ok(backendAkteSource.includes('openOfferCalculator'));
 assert.ok(dealerAiSource.includes('openOfferCalculator') || dealerAiSource.includes('buildOfferCalculatorNavigateState'));
 assert.ok(!backendAkteSource.includes("setPhase('offer-edit')"), 'Backend nutzt offer-edit nicht mehr');
 assert.ok(!dealerAiSource.includes("setPhase('offer-edit')"), 'DealerAI nutzt offer-edit nicht mehr');
 assert.ok(proposalSource.includes('canEditOfferInCalculator'));
+assert.ok(backendAkteSource.includes('shouldOpenOfferProposalView(offerProposalCard'));
 
 // A) + Angebot erstellen → Kalkulator
 assert.ok(followUpSource.includes('startProposalNavigateFlow'));
@@ -141,15 +142,61 @@ assert.equal(partialAction.label, 'Konditionen ergänzen');
 // E) Internes Angebot aus Vorschlag → Kalkulator (canEditOfferInCalculator)
 assert.equal(canEditOfferInCalculator(createdCards[0], createdLead), true);
 
-// F) offer_sent → Vorschlag
+// F) offer_sent → Vorschlag (nur wenn Kundenlink aktiv)
 assert.equal(resolveOfferEntryTarget(sentCards[0], sentLead), OFFER_ENTRY_TARGET.PROPOSAL);
 
-// G) question_open → Frage beantworten
-const questionLead = {
+// EV6-E2E: Interesse/Status ohne gesendeten Link → trotzdem Kalkulator
+const interestedDraftLead = {
   ...createdLead,
   crm: {
     ...createdLead.crm,
     customerOfferInteractions: mergeCustomerOfferInteractionPatch(createdLead, 'vc-ev6', {
+      interestStatus: INTEREST_STATUS.INTERESTED,
+    }),
+    vehicleOffers: {
+      'vc-ev6': {
+        id: 'vo-ev6',
+        vehicleCardId: 'vc-ev6',
+        status: 'draft',
+        boardStatus: BOARD_OFFER_STATUS.OFFER_SENT,
+      },
+    },
+  },
+};
+const interestedDraftCards = buildVehicleOpportunityCards({ lead: interestedDraftLead });
+assert.equal(
+  resolveOfferEntryTarget(interestedDraftCards[0], interestedDraftLead),
+  OFFER_ENTRY_TARGET.CALCULATOR,
+  'Entwurf mit Interaktion öffnet Kalkulator, nicht Vorschlag',
+);
+
+const linkReadyLead = {
+  ...createdLead,
+  crm: {
+    ...createdLead.crm,
+    vehicleOffers: {
+      'vc-ev6': {
+        id: 'vo-ev6',
+        vehicleCardId: 'vc-ev6',
+        status: 'link_ready',
+        onlineLink: { url: 'http://localhost/angebot/test' },
+      },
+    },
+  },
+};
+const linkReadyCards = buildVehicleOpportunityCards({ lead: linkReadyLead });
+assert.equal(
+  resolveOfferEntryTarget(linkReadyCards[0], linkReadyLead),
+  OFFER_ENTRY_TARGET.CALCULATOR,
+  'Vorbereiteter Link ohne Versand → Kalkulator',
+);
+
+// G) question_open → Frage beantworten (nur bei Kundenlink)
+const questionLead = {
+  ...sentLead,
+  crm: {
+    ...sentLead.crm,
+    customerOfferInteractions: mergeCustomerOfferInteractionPatch(sentLead, 'vc-ev6', {
       customerQuestions: [{
         id: 'q1',
         text: 'Frage?',

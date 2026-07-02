@@ -27,7 +27,7 @@ assert.ok(dealerAiPage.includes('CustomerOfferProposalView'), 'DealerAIPage rend
 assert.ok(dealerAiPage.includes('handleConditionsSave'), 'Direktes Speichern aus Konditionen');
 assert.ok(dealerAiPage.includes('openProposalConditionsFlow'), 'Bearbeiten öffnet Konditionen');
 assert.ok(backendAkte.includes('openOfferCalculator'), 'Backend-Akte nutzt zentralen Kalkulator');
-assert.ok(followUp.includes('shouldOpenOfferProposalView'), 'Clever-Aktionen statusabhängig');
+assert.ok(followUp.includes('openBoardOfferEntry'), 'Board-Einstieg zentral geroutet');
 assert.ok(conditionsStep.includes('buildConditionsFooterAction'));
 
 const editView = readFileSync(join(__dirname, 'CustomerOfferEditView.jsx'), 'utf8');

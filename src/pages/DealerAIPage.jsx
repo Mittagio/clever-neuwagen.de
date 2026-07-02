@@ -84,6 +84,7 @@ import {
 } from '../services/dealer/offerEditWishMerge.js';
 import {
   buildOfferCalculatorNavigateState,
+  openBoardOfferEntry,
   shouldOpenOfferProposalView,
 } from '../services/dealer/openOfferCalculator.js';
 import {
@@ -1174,12 +1175,13 @@ export default function DealerAIPage() {
   }
 
   function handleOpenOfferProposal(card) {
-    if (shouldOpenOfferProposalView(card, activeLead)) {
-      setOfferProposalCard(card);
-      setPhase('offer-proposal');
-      return;
-    }
-    handleOpenOfferEdit(card);
+    openBoardOfferEntry(card, activeLead, {
+      onOpenProposal: (targetCard) => {
+        setOfferProposalCard(targetCard);
+        setPhase('offer-proposal');
+      },
+      onOpenCalculator: (targetCard) => handleOpenOfferEdit(targetCard),
+    });
   }
 
   function handleBackFromProposal() {
@@ -1257,6 +1259,14 @@ export default function DealerAIPage() {
     const enriched = enrichOfferEditCardFromLead(card, activeLead);
     openProposalConditionsFlow(enriched);
   }
+
+  useEffect(() => {
+    if (phase !== 'offer-proposal' || !offerProposalCard || !activeLead) return;
+    if (shouldOpenOfferProposalView(offerProposalCard, activeLead)) return;
+    setOfferProposalCard(null);
+    setPhase('followup');
+    openProposalConditionsFlow(offerProposalCard);
+  }, [phase, offerProposalCard, activeLead]);
 
   function handleEditOfferConditions(card) {
     openProposalConditionsFlow(card);
@@ -1683,7 +1693,8 @@ export default function DealerAIPage() {
           />
         )}
 
-        {phase === 'offer-proposal' && result?.type === 'lead' && offerProposalCard && (
+        {phase === 'offer-proposal' && result?.type === 'lead' && offerProposalCard
+          && shouldOpenOfferProposalView(offerProposalCard, activeLead) && (
           <CustomerOfferProposalView
             card={offerProposalCard}
             customerName={activeLead?.contact?.name ?? ''}

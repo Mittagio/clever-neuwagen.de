@@ -137,7 +137,7 @@ import {
   filterSendableVehicleCards,
   resolveBoardOfferPrimaryAction,
 } from '../../services/dealer/boardOfferModel.js';
-import { shouldOpenOfferProposalView } from '../../services/dealer/openOfferCalculator.js';
+import { openBoardOfferEntry } from '../../services/dealer/openOfferCalculator.js';
 import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
@@ -1159,6 +1159,13 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.cleverAuswahl);
   }
 
+  function openBoardOfferFromCard(card, options = {}) {
+    openBoardOfferEntry(card, lead, {
+      onOpenProposal: onOpenOfferProposal,
+      onOpenCalculator: onOpenOfferEdit,
+    }, options);
+  }
+
   function navigateBoardOfferCard(card) {
     const primaryAction = resolveBoardOfferPrimaryAction(card, lead);
     handleBoardCardAction(primaryAction, card);
@@ -1184,11 +1191,7 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     if (handler === 'view_proposal') {
-      if (onOpenOfferProposal) {
-        onOpenOfferProposal(card);
-        return;
-      }
-      handleVehicleOffer(card);
+      openBoardOfferFromCard(card);
       return;
     }
     if (handler === 'duplicate_offer') {
@@ -1271,33 +1274,11 @@ export default function DealerAiLeadFollowUp({
 
   function handleVehicleOffer(card) {
     const primaryAction = resolveBoardOfferPrimaryAction(card, lead);
-    if (primaryAction.handlerType !== 'view_proposal') {
+    if (primaryAction.handlerType === 'answer_question') {
       handleBoardCardAction(primaryAction, card);
       return;
     }
-    if (onOpenOfferProposal) {
-      onOpenOfferProposal(card);
-      return;
-    }
-    if (onOpenOfferEdit) {
-      onOpenOfferEdit(card);
-      return;
-    }
-    closeSheet();
-    if (hasVehicleOffer(card) && card.offer?.code) {
-      logCustomerActivity(buildDocumentOpenedActivity({
-        documentLabel: `${card.modelName ?? 'Angebot'} geöffnet`,
-        documentType: 'offer',
-      }));
-      window.location.assign(`/angebot/${encodeURIComponent(card.offer.code)}`);
-      return;
-    }
-    if (card.source === 'reserved') {
-      const model = reservedModels.find((m) => m.id === card.id);
-      createOfferForModel(model ?? card);
-      return;
-    }
-    onPrepareOffer?.();
+    openBoardOfferFromCard(card);
   }
 
   function toggleVehicleFavorite(card) {
@@ -1871,15 +1852,7 @@ export default function DealerAiLeadFollowUp({
         ? vehicleCards.find((c) => c.id === cardId)
         : vehicleCards[0];
       if (card) {
-        if (shouldOpenOfferProposalView(card, lead) && onOpenOfferProposal) {
-          onOpenOfferProposal(card);
-          return;
-        }
-        if (onOpenOfferEdit) {
-          onOpenOfferEdit(card);
-          return;
-        }
-        handleVehicleOffer(card);
+        openBoardOfferFromCard(card);
         return;
       }
       onPrepareOffer?.();
@@ -2130,9 +2103,12 @@ export default function DealerAiLeadFollowUp({
               <button
                 type="button"
                 className="dai-btn dai-btn--primary dai-btn--block"
-                onClick={() => handleVehicleOffer(selectedVehicleCard)}
+                onClick={() => {
+                  closeSheet();
+                  openBoardOfferFromCard(selectedVehicleCard);
+                }}
               >
-                {hasVehicleOffer(selectedVehicleCard) ? 'Angebotsvorschlag öffnen' : 'Angebotsvorschlag vorbereiten'}
+                {resolveBoardOfferPrimaryAction(selectedVehicleCard, lead).label}
               </button>
               <button
                 type="button"

@@ -23,6 +23,7 @@ import {
 } from '../../services/dealer/offerEditWishMerge.js';
 import {
   openOfferCalculator,
+  openBoardOfferEntry,
   shouldOpenOfferProposalView,
 } from '../../services/dealer/openOfferCalculator.js';
 import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
@@ -238,6 +239,17 @@ export default function BackendLeadAktePage() {
     }
   }
 
+  useEffect(() => {
+    if (phase !== 'offer-proposal' || !offerProposalCard || !lead) return;
+    if (shouldOpenOfferProposalView(offerProposalCard, lead)) return;
+    const enriched = enrichOfferEditCardFromLead(offerProposalCard, lead);
+    setOfferProposalCard(null);
+    setPhase('followup');
+    openOfferCalculator(navigate, lead, enriched, {
+      returnPath: buildKundenaktePath(leadId),
+    });
+  }, [phase, offerProposalCard, lead, leadId, navigate]);
+
   function handleOpenQuestionAnswer({ offerId, questionId, inboxItemId = null }) {
     setQuestionAnswerContext({ offerId, questionId, inboxItemId });
     setOfferProposalCard(null);
@@ -256,12 +268,13 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOpenOfferProposal(card) {
-    if (shouldOpenOfferProposalView(card, lead)) {
-      setOfferProposalCard(card);
-      setPhase('offer-proposal');
-      return;
-    }
-    handleOpenOfferEdit(card);
+    openBoardOfferEntry(card, lead, {
+      onOpenProposal: (targetCard) => {
+        setOfferProposalCard(targetCard);
+        setPhase('offer-proposal');
+      },
+      onOpenCalculator: (targetCard, options) => handleOpenOfferEdit(targetCard, options),
+    });
   }
 
   function handleBackFromProposal() {
@@ -270,11 +283,16 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
+    setOfferProposalCard(null);
+    setPhase('followup');
     const enriched = enrichOfferEditCardFromLead(card, lead);
-    openOfferCalculator(navigate, lead, enriched, {
+    const ok = openOfferCalculator(navigate, lead, enriched, {
       returnPath: buildKundenaktePath(leadId),
       fromProposal,
     });
+    if (!ok) {
+      showToast('Angebotskalkulator konnte nicht geöffnet werden');
+    }
   }
 
   function handleEditOfferConditions(card) {
@@ -473,7 +491,7 @@ export default function BackendLeadAktePage() {
           />
         )}
 
-        {phase === 'offer-proposal' && offerProposalCard && (
+        {phase === 'offer-proposal' && offerProposalCard && shouldOpenOfferProposalView(offerProposalCard, lead) && (
           <CustomerOfferProposalView
             card={offerProposalCard}
             customerName={lead?.contact?.name ?? ''}
