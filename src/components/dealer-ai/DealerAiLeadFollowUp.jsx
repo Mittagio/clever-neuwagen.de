@@ -41,6 +41,7 @@ import CustomerSpecialQuestionAnswerSheet from './CustomerSpecialQuestionAnswerS
 import CustomerOfferQuestionAnswerSheet, {
   resolveOfferQuestionVehicleLabel,
 } from './CustomerOfferQuestionAnswerSheet.jsx';
+import CustomerSelfDisclosureReviewSheet from './CustomerSelfDisclosureReviewSheet.jsx';
 import { applyCustomerOfferQuestionAnswer } from '../../services/dealer/customerOfferQuestionAnswerService.js';
 import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
 import { markInboxDoneForQuestion, markInboxItemDone } from '../../services/crm/cleverInboxService.js';
@@ -168,6 +169,7 @@ const SHEETS = {
   lexikon: 'lexikon',
   specialQuestionAnswer: 'special_question_answer',
   questionAnswer: 'question_answer',
+  selfDisclosureReview: 'self_disclosure_review',
   portfolioShare: 'portfolio_share',
   addProposal: 'add_proposal',
   leaseFinancePick: 'lease_finance_pick',
@@ -323,7 +325,11 @@ export default function DealerAiLeadFollowUp({
       : (initialSheet === SHEETS.antworten ? SHEETS.antworten : initialSheet),
   );
   const [antwortenPreset, setAntwortenPreset] = useState(initialAntwortenIntent ?? null);
+  const [antwortenInitialDraft, setAntwortenInitialDraft] = useState(null);
   const [inboxItemIdForAntworten, setInboxItemIdForAntworten] = useState(initialInboxItemId ?? null);
+  const [inboxItemIdForSelfDisclosure, setInboxItemIdForSelfDisclosure] = useState(
+    initialSheet === SHEETS.selfDisclosureReview ? initialInboxItemId : null,
+  );
   const [questionContext, setQuestionContext] = useState(initialQuestionContext);
 
   useEffect(() => {
@@ -349,8 +355,11 @@ export default function DealerAiLeadFollowUp({
   useEffect(() => {
     if (initialInboxItemId) {
       setInboxItemIdForAntworten(initialInboxItemId);
+      if (initialSheet === SHEETS.selfDisclosureReview) {
+        setInboxItemIdForSelfDisclosure(initialInboxItemId);
+      }
     }
-  }, [initialInboxItemId]);
+  }, [initialInboxItemId, initialSheet]);
 
   useEffect(() => {
     if (initialQuestionContext?.offerId && initialQuestionContext?.questionId) {
@@ -1250,6 +1259,22 @@ export default function DealerAiLeadFollowUp({
     markInboxItemDone(inboxItemId);
     inbox?.refresh?.();
     setInboxItemIdForAntworten(null);
+    setInboxItemIdForSelfDisclosure(null);
+  }
+
+  function openSelfDisclosureReview(inboxItemId = null) {
+    if (inboxItemId) setInboxItemIdForSelfDisclosure(inboxItemId);
+    openSheet(SHEETS.selfDisclosureReview);
+  }
+
+  function handlePrepareCorrectionMessage(draft) {
+    if (!draft) return;
+    setAntwortenInitialDraft(draft);
+    setAntwortenPreset('free_reply');
+    setInboxItemIdForAntworten(null);
+    openSheet(SHEETS.antworten);
+    setToast('Korrekturtext in Clever Nachrichten vorbereitet.');
+    setTimeout(() => setToast(''), 3500);
   }
 
   function openOfferQuestionAnswer({ offerId, questionId, inboxItemId = null }) {
@@ -1876,6 +1901,7 @@ export default function DealerAiLeadFollowUp({
         onPrepareFollowup={() => openCleverAntworten('nachfassen')}
         onReply={handlePortalCardReply}
         onOpenInbox={() => onOpenInbox?.(lead)}
+        onOpenSelfDisclosureReview={() => openSelfDisclosureReview()}
       />
 
       <CustomerAktePortalSendCta
@@ -2437,6 +2463,7 @@ export default function DealerAiLeadFollowUp({
           kundenhelferNotes={kundenhelferNotes}
           wishPaymentType={wishPaymentType}
           initialTypeId={antwortenPreset}
+          initialDraft={antwortenInitialDraft}
           inboxItemId={inboxItemIdForAntworten}
           initialThreadId={initialThreadId}
           initialMessageId={initialMessageId}
@@ -2548,6 +2575,17 @@ export default function DealerAiLeadFollowUp({
         vehicleLabel={resolveOfferQuestionVehicleLabel(lead, questionContext?.offerId, vehicleCards)}
         onSave={handleSaveOfferQuestionAnswer}
         onMarkDoneOnly={handleMarkOfferQuestionDoneOnly}
+        saving={isSaving}
+      />
+
+      <CustomerSelfDisclosureReviewSheet
+        open={activeSheet === SHEETS.selfDisclosureReview}
+        onClose={closeSheet}
+        lead={lead}
+        onSave={onSave}
+        onPrepareCorrectionMessage={handlePrepareCorrectionMessage}
+        inboxItemId={inboxItemIdForSelfDisclosure}
+        onInboxItemHandled={handleInboxItemHandled}
         saving={isSaving}
       />
 

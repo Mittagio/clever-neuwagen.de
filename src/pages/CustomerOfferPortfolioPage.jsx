@@ -507,7 +507,10 @@ export default function CustomerOfferPortfolioPage() {
         ) : null}
 
         {activeSection === PORTAL_NAV_IDS.DOCUMENTS ? (
-          <CustomerPortalDocumentsSection documents={shell?.documents} />
+          <CustomerPortalDocumentsSection
+            documents={shell?.documents}
+            selfDisclosureHref={`/angebot/auswahl/${customerSlug}/selbstauskunft?leadId=${leadId}&token=${token}`}
+          />
         ) : null}
 
         {activeSection === PORTAL_NAV_IDS.ADVISOR ? (

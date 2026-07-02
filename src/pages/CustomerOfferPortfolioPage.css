@@ -654,3 +654,164 @@
   gap: 0.5rem;
   margin-top: 0.85rem;
 }
+
+.cop-sd-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #f8fafc;
+}
+
+.cop-sd-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.cop-sd-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.cop-sd-card__status {
+  font-size: 0.8125rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.cop-sd-card__type,
+.cop-sd-card__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cop-sd-card__cta {
+  width: 100%;
+}
+
+.cop-sd-flow {
+  max-width: 32rem;
+}
+
+.cop-sd-progress {
+  position: relative;
+  height: 0.5rem;
+  background: #e2e8f0;
+  border-radius: 999px;
+  margin-top: 0.75rem;
+  overflow: hidden;
+}
+
+.cop-sd-progress__bar {
+  height: 100%;
+  background: #0f766e;
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.cop-sd-progress__label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cop-sd-type-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.cop-sd-type-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cop-sd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.cop-sd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cop-sd-field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cop-sd-field__input {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+}
+
+.cop-sd-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cop-sd-review__block {
+  margin-bottom: 1rem;
+}
+
+.cop-sd-review__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.cop-sd-review__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cop-sd-review__row dt {
+  color: #64748b;
+}
+
+.cop-sd-correction-notice {
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.cop-sd-correction-notice__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.cop-sd-correction-notice__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: #78350f;
+}

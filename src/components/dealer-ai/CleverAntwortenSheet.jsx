@@ -568,6 +568,7 @@ export default function CleverAntwortenSheet({
   dealerName = '',
   wishPaymentType = 'unknown',
   initialTypeId = null,
+  initialDraft = null,
   inboxItemId = null,
   initialThreadId = null,
   initialMessageId = null,
@@ -624,14 +625,16 @@ export default function CleverAntwortenSheet({
   const [showFineTune, setShowFineTune] = useState(false);
   const [dictation, setDictation] = useState('');
   const [draft, setDraft] = useState(() => (
-    mappedInitialIntent
-      ? generateCleverAnswerDraft({
-        intentId: mappedInitialIntent,
-        context,
-        tone: 'freundlich',
-        channel: initialChannel,
-      })
-      : ''
+    initialDraft?.trim()
+      ? initialDraft.trim()
+      : mappedInitialIntent
+        ? generateCleverAnswerDraft({
+          intentId: mappedInitialIntent,
+          context,
+          tone: 'freundlich',
+          channel: initialChannel,
+        })
+        : ''
   ));
   const [toast, setToast] = useState('');
   const [diktatRecording, setDiktatRecording] = useState('idle');

@@ -65,7 +65,9 @@ export default function BackendLeadAktePage() {
 
   const initialSheet = searchParams.get('sheet') === 'question_answer'
     ? 'question_answer'
-    : (searchParams.get('sheet') === 'antworten' ? 'antworten' : (searchParams.get('sheet') || null));
+    : (searchParams.get('sheet') === 'antworten'
+      ? 'antworten'
+      : (searchParams.get('sheet') || null));
 
   const initialAntwortenIntent = searchParams.get('intentId') || null;
   const initialInboxItemId = searchParams.get('inboxItemId') || null;

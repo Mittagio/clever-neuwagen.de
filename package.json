@@ -106,6 +106,8 @@
     "test:customer-portal-access": "node src/services/crm/customerPortalAccess.test.js",
     "test:customer-portal-shell": "node src/services/crm/customerPortalShellPresenter.test.js",
     "test:customer-portal-advisor": "node src/services/crm/customerPortalAdvisorService.test.js",
+    "test:customer-portal-self-disclosure": "node src/services/crm/customerPortalSelfDisclosure.test.js",
+    "test:customer-portal-self-disclosure-review": "node src/services/crm/customerPortalSelfDisclosureReview.test.js",
     "test:clever-customer-query": "node src/services/clever/cleverCustomerQuery.test.js",
     "test:frag-clever-fixes": "node src/services/clever/fragCleverFixes.test.js",
     "test:advisor-inbox": "node src/services/dealer/advisorInboxService.test.js",

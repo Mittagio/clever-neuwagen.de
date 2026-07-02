@@ -51,6 +51,13 @@ function shouldOpenCleverAntworten(item = {}, { secondary = false } = {}) {
 export function buildInboxKundenakteUrl(leadId, item = {}) {
   if (!leadId) return buildKundenaktePath('');
 
+  if (item.type === INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED
+    || item.actionTarget === 'self_disclosure_review') {
+    const params = new URLSearchParams({ sheet: 'self_disclosure_review' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
   if (item.actionTarget === 'documents'
     || item.type === INBOX_EVENT_TYPES.DOCUMENT_UPLOADED
     || item.type === INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED) {
@@ -100,6 +107,13 @@ export function buildInboxActionAkteUrl(leadId, item = {}, options = {}) {
 
   const meta = getInboxEventMeta(item.type);
   const secondary = options.secondary === true;
+
+  if (!secondary && (item.actionTarget === 'self_disclosure_review'
+    || item.type === INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED)) {
+    const params = new URLSearchParams({ sheet: 'self_disclosure_review' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
 
   if (!secondary && item.actionTarget === 'documents') {
     const params = new URLSearchParams({ sheet: 'unterlagen' });

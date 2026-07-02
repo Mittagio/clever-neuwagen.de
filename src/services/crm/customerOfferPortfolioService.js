@@ -26,6 +26,12 @@ import {
 } from './customerPortalAccessService.js';
 import { buildCustomerPortalShellModel } from './customerPortalShellPresenter.js';
 import {
+  buildSelfDisclosureInterviewModel,
+  saveSelfDisclosureStep,
+  startSelfDisclosure,
+  submitSelfDisclosure,
+} from './customerPortalSelfDisclosureService.js';
+import {
   buildBoardItems,
   OFFER_SELECTION_GROUP_STATUS,
   OFFER_VARIANT_STATUS,
@@ -435,6 +441,64 @@ export function applyCustomerPortalMessage(lead, { text } = {}) {
     message: mirrored.message,
     inboxItem: mirrored.inboxItem,
     context: buildPortfolioCustomerContext(nextLead),
+  };
+}
+
+/**
+ * Selbstauskunft im Kundenportal starten.
+ */
+export function applyCustomerPortalSelfDisclosureStart(lead, { type } = {}) {
+  const result = startSelfDisclosure(lead, type);
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    lead: result.lead,
+    selfDisclosure: result.selfDisclosure,
+    interview: buildSelfDisclosureInterviewModel(result.lead),
+    context: buildPortfolioCustomerContext(result.lead),
+  };
+}
+
+/**
+ * Selbstauskunft-Schritt speichern.
+ */
+export function applyCustomerPortalSelfDisclosureSave(lead, { stepId, data, advance = true } = {}) {
+  const result = saveSelfDisclosureStep(lead, { stepId, data, advance });
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    lead: result.lead,
+    selfDisclosure: result.selfDisclosure,
+    nextStep: result.nextStep,
+    interview: buildSelfDisclosureInterviewModel(result.lead),
+    context: buildPortfolioCustomerContext(result.lead),
+  };
+}
+
+/**
+ * Selbstauskunft absenden.
+ */
+export function applyCustomerPortalSelfDisclosureSubmit(lead) {
+  const result = submitSelfDisclosure(lead);
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    lead: result.lead,
+    selfDisclosure: result.selfDisclosure,
+    inboxItem: result.inboxItem,
+    interview: buildSelfDisclosureInterviewModel(result.lead),
+    context: buildPortfolioCustomerContext(result.lead),
+  };
+}
+
+/**
+ * Interview-Modell für Selbstauskunft.
+ */
+export function getCustomerPortalSelfDisclosureInterview(lead) {
+  return {
+    ok: true,
+    interview: buildSelfDisclosureInterviewModel(lead),
+    context: buildPortfolioCustomerContext(lead),
   };
 }
 

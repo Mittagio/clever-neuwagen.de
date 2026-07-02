@@ -3,7 +3,11 @@ import { listPilotLeads, upsertPilotLead } from './pilotLeadsStore.js';
 import {
   applyPortfolioEvent,
   applyCustomerPortalMessage,
+  applyCustomerPortalSelfDisclosureSave,
+  applyCustomerPortalSelfDisclosureStart,
+  applyCustomerPortalSelfDisclosureSubmit,
   buildPortfolioCustomerContext,
+  getCustomerPortalSelfDisclosureInterview,
   PORTFOLIO_EVENTS,
   resolvePortfolioFromRequest,
 } from '../src/services/crm/customerOfferPortfolioService.js';
@@ -159,6 +163,89 @@ router.post('/customer-offer-portfolio/access/viewed', express.json({ limit: '8k
     changed: viewed.changed,
     context: buildPortfolioCustomerContext(viewed.lead, { accessVerified: true }),
     portalAccess: viewed.access,
+  });
+});
+
+router.get('/customer-offer-portfolio/self-disclosure', (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = getCustomerPortalSelfDisclosureInterview(lead);
+  return res.json({
+    ok: true,
+    interview: result.interview,
+    context: result.context,
+  });
+});
+
+router.post('/customer-offer-portfolio/self-disclosure/start', express.json({ limit: '16kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = applyCustomerPortalSelfDisclosureStart(lead, { type: req.body?.type });
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  upsertPilotLead(result.lead);
+
+  return res.json({
+    ok: true,
+    selfDisclosure: result.selfDisclosure,
+    interview: result.interview,
+    context: result.context,
+  });
+});
+
+router.post('/customer-offer-portfolio/self-disclosure/save', express.json({ limit: '64kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = applyCustomerPortalSelfDisclosureSave(lead, {
+    stepId: req.body?.stepId,
+    data: req.body?.data ?? {},
+    advance: req.body?.advance !== false,
+  });
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  upsertPilotLead(result.lead);
+
+  return res.json({
+    ok: true,
+    selfDisclosure: result.selfDisclosure,
+    nextStep: result.nextStep,
+    interview: result.interview,
+    context: result.context,
+  });
+});
+
+router.post('/customer-offer-portfolio/self-disclosure/submit', express.json({ limit: '8kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = applyCustomerPortalSelfDisclosureSubmit(lead);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  upsertPilotLead(result.lead);
+
+  return res.json({
+    ok: true,
+    selfDisclosure: result.selfDisclosure,
+    inboxItem: result.inboxItem,
+    interview: result.interview,
+    context: result.context,
   });
 });
 

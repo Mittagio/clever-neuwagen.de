@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import AngebotPage from './pages/sprint7/AngebotPage.jsx';
 import CustomerOfferLinkPage from './pages/CustomerOfferLinkPage.jsx';
 import CustomerOfferPortfolioPage from './pages/CustomerOfferPortfolioPage.jsx';
+import CustomerPortalSelfDisclosurePage from './pages/CustomerPortalSelfDisclosurePage.jsx';
 import InsertGeneratorPage from './pages/InsertGeneratorPage';
 import EquipmentAdvisorPage from './pages/EquipmentAdvisorPage';
 import AdvisorPage from './pages/AdvisorPage.jsx';
@@ -190,6 +191,7 @@ export default function AppRouter() {
         <Route path="/backend/angebote" element={<OffersPage />} />
         <Route path="/backend/fahrzeuge" element={<BackendPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
+        <Route path="/angebot/auswahl/:customerSlug/selbstauskunft" element={<CustomerPortalSelfDisclosurePage />} />
         <Route path="/angebot/auswahl/:customerSlug" element={<CustomerOfferPortfolioPage />} />
         <Route path="/angebot/online/:modelSlug/:customerSlug" element={<CustomerOfferLinkPage />} />
         <Route path="/angebot/:code" element={<AngebotPage />} />

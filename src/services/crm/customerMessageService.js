@@ -3,6 +3,7 @@
  * Speicher: lead.crm.customerMessageThreads + lead.crm.customerMessages
  */
 import { createInboxItem, INBOX_EVENT_TYPES } from './cleverInboxService.js';
+import { isSelfDisclosureSensitiveText } from './customerPortalSelfDisclosureService.js';
 
 export const MESSAGE_DIRECTION = {
   INBOUND: 'inbound',
@@ -83,6 +84,7 @@ export function mergeCustomerMessageStore(lead = {}, patch = {}) {
 export function sanitizeCustomerVisibleText(text = '') {
   const raw = String(text ?? '').trim();
   if (!raw) return '';
+  if (isSelfDisclosureSensitiveText(raw)) return '';
   if (FORBIDDEN_CUSTOMER_TEXT_PATTERNS.some((pattern) => pattern.test(raw))) {
     return '';
   }

@@ -9,6 +9,7 @@ import {
   buildPortalAdvisorHintFromLead,
   mergeAdvisorSnapshot,
 } from './customerPortalAdvisorService.js';
+import { buildDealerSelfDisclosureSummary } from './customerPortalSelfDisclosureService.js';
 
 export const PORTAL_ACCESS_STATUS = {
   PREPARED: 'prepared',
@@ -516,6 +517,7 @@ export function buildCustomerPortalStatusCardModel(lead = {}, options = {}) {
     title: 'Kundenportal',
     subline: PORTAL_STATUS_SUBLINES[status] ?? PORTAL_STATUS_SUBLINES[PORTAL_ACCESS_STATUS.PREPARED],
     advisorLabel: buildCustomerPortalAdvisorModel(lead).name ?? null,
+    selfDisclosure: buildDealerSelfDisclosureSummary(lead),
     steps,
     lastActivityLabel: formatPortalLastActivity(access.lastActivityAt),
     portfolioUrl: access.portfolioUrl ?? null,

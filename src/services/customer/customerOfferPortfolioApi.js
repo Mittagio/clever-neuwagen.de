@@ -107,4 +107,57 @@ export async function postCustomerPortalAccessViewed(payload = {}) {
   return data;
 }
 
+export async function fetchCustomerPortalSelfDisclosure(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.leadId) qs.set('leadId', params.leadId);
+  if (params.token) qs.set('token', params.token);
+  if (params.customerSlug) qs.set('customerSlug', params.customerSlug);
+  const query = qs.toString();
+  const res = await fetch(`${API_BASE}/customer-offer-portfolio/self-disclosure${query ? `?${query}` : ''}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? 'self_disclosure_not_found');
+  }
+  return data.interview ?? null;
+}
+
+export async function postCustomerPortalSelfDisclosureStart(payload = {}) {
+  const res = await fetch(`${API_BASE}/customer-offer-portfolio/self-disclosure/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? 'self_disclosure_start_failed');
+  }
+  return data;
+}
+
+export async function postCustomerPortalSelfDisclosureSave(payload = {}) {
+  const res = await fetch(`${API_BASE}/customer-offer-portfolio/self-disclosure/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? 'self_disclosure_save_failed');
+  }
+  return data;
+}
+
+export async function postCustomerPortalSelfDisclosureSubmit(payload = {}) {
+  const res = await fetch(`${API_BASE}/customer-offer-portfolio/self-disclosure/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? 'self_disclosure_submit_failed');
+  }
+  return data;
+}
+
 export { PORTFOLIO_EVENTS };

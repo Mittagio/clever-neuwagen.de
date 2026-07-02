@@ -19,6 +19,7 @@ export const INBOX_EVENT_TYPES = {
   LEARNING_REQUEST_CREATED: 'learning_request_created',
   ADVISOR_CONTACT_REQUEST: 'advisor_contact_request',
   CUSTOMER_MESSAGE: 'customer_message',
+  SELF_DISCLOSURE_SUBMITTED: 'self_disclosure_submitted',
 };
 
 export const INBOX_STATUS = {
@@ -98,6 +99,7 @@ export const INBOX_CATEGORY_FILTERS = [
     types: [
       INBOX_EVENT_TYPES.DOCUMENT_UPLOADED,
       INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED,
+      INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED,
     ],
   },
 ];
@@ -203,6 +205,15 @@ const EVENT_META = {
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
     sortOrder: 1,
+    urgent: true,
+  },
+  [INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED]: {
+    badge: 'Unterlagen',
+    icon: '📋',
+    actionLabel: 'Prüfen',
+    actionTarget: 'self_disclosure_review',
+    priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 4,
     urgent: true,
   },
 };
@@ -582,10 +593,23 @@ export function getInboxItemTopics(item = {}) {
  * @param {object} item
  */
 export function getInboxDisplayMessage(item = {}) {
+  if (item.type === INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED) {
+    const type = item.metadata?.selfDisclosureType;
+    const typeLabels = {
+      private: 'Privatperson',
+      freelancer: 'Selbstständig',
+      corporation: 'Firma',
+    };
+    if (type) return `Typ: ${typeLabels[type] ?? type}`;
+    return 'Selbstauskunft eingereicht';
+  }
   const topics = getInboxItemTopics(item);
   const message = String(item.message ?? '').trim();
   if (!message) return '';
   if (topics.length && /^Themen:/i.test(message)) return '';
+  if (/\bnettoeinkommen\b/i.test(message) || /\beinkommen\b/i.test(message)) {
+    return 'Selbstauskunft eingereicht';
+  }
   return message;
 }
 

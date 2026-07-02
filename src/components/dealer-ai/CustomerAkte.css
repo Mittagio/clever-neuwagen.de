@@ -3267,3 +3267,127 @@
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+
+.cust-sd-review {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cust-sd-review__summary {
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.cust-sd-review__eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cust-sd-review__headline {
+  margin: 0 0 0.35rem;
+  font-size: 1.125rem;
+}
+
+.cust-sd-review__meta,
+.cust-sd-review__status {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.cust-sd-review__section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.cust-sd-review__indicator-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cust-sd-review__indicator {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cust-sd-review__indicator.is-ok {
+  color: #0f766e;
+}
+
+.cust-sd-review__indicator.is-missing {
+  color: #b45309;
+}
+
+.cust-sd-review__fold {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.75rem 0.75rem;
+  background: #fff;
+}
+
+.cust-sd-review__fold-title {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 0.35rem 0;
+}
+
+.cust-sd-review__fields {
+  margin: 0.5rem 0 0;
+}
+
+.cust-sd-review__field {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+.cust-sd-review__field dt {
+  color: #64748b;
+}
+
+.cust-sd-review__field dd {
+  margin: 0;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.cust-sd-review__preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.cust-sd-review__preset {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.cust-sd-review__preset.is-active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
+.cust-sd-review__internal-note {
+  margin-top: 0.25rem;
+}

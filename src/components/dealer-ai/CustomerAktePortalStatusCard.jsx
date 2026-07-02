@@ -11,6 +11,7 @@ export default function CustomerAktePortalStatusCard({
   onPrepareFollowup,
   onReply,
   onOpenInbox,
+  onOpenSelfDisclosureReview,
 }) {
   const [showMore, setShowMore] = useState(false);
 
@@ -41,6 +42,9 @@ export default function CustomerAktePortalStatusCard({
       case 'inbox':
         onOpenInbox?.();
         break;
+      case 'self_disclosure_review':
+        onOpenSelfDisclosureReview?.();
+        break;
       default:
         break;
     }
@@ -57,6 +61,22 @@ export default function CustomerAktePortalStatusCard({
             {' '}
             {model.advisorLabel}
           </p>
+        ) : null}
+        {model.selfDisclosure?.label ? (
+          <p className="cust-akte-portal-status__self-disclosure">
+            Selbstauskunft:
+            {' '}
+            {model.selfDisclosure.label}
+          </p>
+        ) : null}
+        {model.selfDisclosure?.canReview ? (
+          <button
+            type="button"
+            className="cust-akte-portal-status__btn cust-akte-portal-status__btn--primary"
+            onClick={() => handleAction('self_disclosure_review')}
+          >
+            Selbstauskunft prüfen
+          </button>
         ) : null}
       </header>
 

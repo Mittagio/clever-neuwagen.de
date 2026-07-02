@@ -7,6 +7,7 @@ import {
 } from '../cleverUnterlagen.js';
 import { getCustomerMessageStore } from './customerMessageService.js';
 import { buildCustomerPortalAdvisorModel } from './customerPortalAdvisorService.js';
+import { buildSelfDisclosureCardModel } from './customerPortalSelfDisclosureService.js';
 
 export const PORTAL_NAV_IDS = {
   OFFERS: 'offers',
@@ -60,6 +61,7 @@ export function buildCustomerPortalDocumentsModel(lead = {}) {
     hasUploadLink: Boolean(uploadUrl),
     uploadUrl,
     slots,
+    selfDisclosure: buildSelfDisclosureCardModel(lead),
     subline: openCount > 0
       ? `${openCount} Unterlage${openCount === 1 ? '' : 'n'} noch offen`
       : 'Alle Unterlagen sind eingereicht oder nicht benötigt',
