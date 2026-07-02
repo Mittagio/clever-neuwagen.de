@@ -479,7 +479,7 @@ function enrichCardWithBoardOffer(card = {}, lead = null) {
     discountAmount: payment.discountAmount ?? card.discountAmount,
     desiredRate: payment.monthlyRate ?? (boardOffer?.status === 'offer_created' ? card.desiredRate : null),
     desiredPrice: payment.cashPrice ?? (boardOffer?.status === 'offer_created' ? card.desiredPrice : null),
-    paymentType: paymentType ?? card.paymentType,
+    paymentType: paymentType && paymentType !== 'unknown' ? paymentType : card.paymentType,
     termMonths: payment.termMonths ?? card.termMonths,
     mileagePerYear: payment.mileagePerYear ?? card.mileagePerYear,
   };

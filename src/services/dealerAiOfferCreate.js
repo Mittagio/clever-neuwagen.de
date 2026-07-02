@@ -665,7 +665,8 @@ export function executeSaveOfferDraft(offerDraft, deps) {
 
   const mode = resolveOfferSaveMode(offerDraft);
   const fields = offerDraftToParserFields(offerDraft);
-  const config = offerDraftToVehicleConfiguration(offerDraft);
+  const existingConfigId = deps.addVehicleContext?.vehicleCardId ?? null;
+  const config = offerDraftToVehicleConfiguration(offerDraft, existingConfigId);
   const card = offerDraftToVehicleCard(offerDraft, { configId: config.id, cardId: config.id });
   const enrichedParsed = buildParsedFromOfferDraft(offerDraft, parsed);
 

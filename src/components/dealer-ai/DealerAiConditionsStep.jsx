@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react';
 import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
 import {
   buildConditionsFooterAction,
+  buildConditionsFooterSummary,
+  computeConditionsStepPreview,
   DISCOUNT_GROUP_OPTIONS,
   DOWN_PAYMENT_OPTIONS,
   LEASING_MILEAGE_OPTIONS,
   LEASING_TERM_OPTIONS,
 } from '../../services/configuration/conditionsStepPreview.js';
+import ConditionChipRow from './ConditionChipRow.jsx';
 import { vehicleConfigurationTitle } from '../../services/configuration/vehicleConfigurationModel.js';
 import {
   ConfigurationOverviewTiles,
@@ -306,7 +309,11 @@ export default function DealerAiConditionsStep({
   conditions,
   onDraftChange,
   onContinue,
+  onSave,
   onBack,
+  backLabel = '← Zur Konfiguration',
+  wishChips = [],
+  onWishChange,
   isExecuting = false,
 }) {
   const [customDownPayment, setCustomDownPayment] = useState('');
@@ -323,6 +330,14 @@ export default function DealerAiConditionsStep({
   const preparationFee = draft.preparationFee ?? defaultPreparationFee;
 
   const footerAction = buildConditionsFooterAction();
+  const preview = useMemo(
+    () => computeConditionsStepPreview(vehicleConfiguration, draft, conditions),
+    [vehicleConfiguration, draft, conditions],
+  );
+  const footerSummary = useMemo(
+    () => buildConditionsFooterSummary(preview, draft),
+    [preview, draft],
+  );
   const heroImage = useMemo(() => resolveConfigureHeroImage(draft), [draft]);
 
   function patch(partial) {
@@ -362,11 +377,28 @@ export default function DealerAiConditionsStep({
 
   return (
     <OfferFlowLayout
-      backLabel="← Zur Konfiguration"
+      backLabel={backLabel}
       onBack={onBack}
       title="Konditionen"
       subtitle="Angebotsart und Konditionen festlegen."
     >
+      {wishChips.length > 0 ? (
+        <FlowCard className="dai-cond-wish-card">
+          <div className="dai-cond-wish-card__head">
+            <ConditionChipRow label="Kundenwunsch" chips={wishChips} />
+            {onWishChange ? (
+              <button
+                type="button"
+                className="dai-cond-wish-card__edit"
+                onClick={onWishChange}
+              >
+                Ändern
+              </button>
+            ) : null}
+          </div>
+        </FlowCard>
+      ) : null}
+
       <VehicleOfferHero
         modelLine={vehicleMainLine || vehicleTitle || draft.model}
         motorLine={motorLine}
@@ -553,9 +585,45 @@ export default function DealerAiConditionsStep({
       </details>
 
       <FlowStickyFooter hint={footerAction.hint}>
-        <FlowPrimaryButton onClick={onContinue} disabled={isExecuting}>
-          {isExecuting ? 'Wird geladen …' : footerAction.label}
-        </FlowPrimaryButton>
+        <div className="dai-cond-footer-summary">
+          {footerSummary.chips.length > 0 ? (
+            <p className="dai-cond-footer-summary__chips">
+              {footerSummary.chips.join(' · ')}
+            </p>
+          ) : null}
+          {footerSummary.upe ? (
+            <p className="dai-cond-footer-summary__upe">UPE {footerSummary.upe}</p>
+          ) : null}
+          {footerSummary.result ? (
+            <p className="dai-cond-footer-summary__result">
+              <span>{footerSummary.result}</span>
+              {footerSummary.resultSuffix ? (
+                <span className="dai-cond-footer-summary__suffix">{footerSummary.resultSuffix}</span>
+              ) : null}
+            </p>
+          ) : null}
+          {footerSummary.finalPayment ? (
+            <p className="dai-cond-footer-summary__final">{footerSummary.finalPayment}</p>
+          ) : null}
+        </div>
+        <div className="dai-cond-footer-actions">
+          <FlowPrimaryButton
+            onClick={onSave ?? onContinue}
+            disabled={isExecuting}
+          >
+            {isExecuting ? 'Wird gespeichert …' : footerAction.label}
+          </FlowPrimaryButton>
+          {onSave && onContinue ? (
+            <button
+              type="button"
+              className="dai-cond-footer-actions__secondary"
+              onClick={onContinue}
+              disabled={isExecuting}
+            >
+              {footerAction.previewLabel}
+            </button>
+          ) : null}
+        </div>
       </FlowStickyFooter>
     </OfferFlowLayout>
   );

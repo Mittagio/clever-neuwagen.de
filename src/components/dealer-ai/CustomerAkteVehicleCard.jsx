@@ -15,6 +15,14 @@ export default function CustomerAkteVehicleCard({
   const title = formatVehicleCardTitle(card);
   const model = buildBoardOfferCardModel(card, lead);
 
+  function handleCardClick() {
+    if (model.primaryAction && onAction) {
+      onAction(model.primaryAction, card);
+      return;
+    }
+    onClick?.(card);
+  }
+
   function handlePrimaryAction(event) {
     event.stopPropagation();
     if (model.primaryAction) {
@@ -37,7 +45,7 @@ export default function CustomerAkteVehicleCard({
       <button
         type="button"
         className="cust-akte-vcard__main"
-        onClick={() => onClick?.(card)}
+        onClick={handleCardClick}
         aria-label={`${title} – ${model.badge.label}`}
       >
         <div className="cust-akte-vcard__visual">
@@ -76,6 +84,10 @@ export default function CustomerAkteVehicleCard({
           ) : (
             <p className="cust-akte-vcard__draft-hint">{model.metaLine}</p>
           )}
+
+          {model.budgetHint ? (
+            <p className="cust-akte-vcard__meta cust-akte-vcard__meta--muted">{model.budgetHint}</p>
+          ) : null}
 
           {model.listPriceLine ? (
             <p className="cust-akte-vcard__meta">{model.listPriceLine}</p>

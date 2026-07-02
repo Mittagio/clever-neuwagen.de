@@ -33,6 +33,7 @@ export function buildAddVehicleContextFromLead(lead, options = {}) {
     returnPath: options.returnPath ?? buildKundenaktePath(lead.id),
     proposalIntent: options.proposalIntent ?? null,
     paymentType: options.paymentType ?? wishFields.paymentType ?? null,
+    vehicleCardId: options.vehicleCardId ?? null,
     wishFields,
   };
 }

@@ -135,6 +135,7 @@ import {
 import {
   duplicateVehicleConfiguration,
   filterSendableVehicleCards,
+  resolveBoardOfferPrimaryAction,
 } from '../../services/dealer/boardOfferModel.js';
 import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
@@ -767,7 +768,10 @@ export default function DealerAiLeadFollowUp({
   const offerFeedback = primaryOffer ? getOfferMicroFeedback(primaryOffer.status) : null;
 
   function handleAddVehicle() {
-    openSheet(SHEETS.addProposal);
+    startProposalNavigateFlow({
+      proposalIntent: PROPOSAL_INTENTS.VEHICLE,
+      paymentType: wishPaymentType !== 'unknown' ? wishPaymentType : 'leasing',
+    });
   }
 
   function persistLeadWishBeforeNavigate(paymentType = null) {
@@ -1154,17 +1158,9 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.cleverAuswahl);
   }
 
-  function openVehicleCard(card) {
-    if (onOpenOfferProposal) {
-      onOpenOfferProposal(card);
-      return;
-    }
-    if (onOpenOfferEdit) {
-      onOpenOfferEdit(card);
-      return;
-    }
-    setSelectedVehicleCard(card);
-    openSheet(SHEETS.vehicle);
+  function navigateBoardOfferCard(card) {
+    const primaryAction = resolveBoardOfferPrimaryAction(card, lead);
+    handleBoardCardAction(primaryAction, card);
   }
 
   function handleBoardCardAction(action, card) {
@@ -1174,7 +1170,24 @@ export default function DealerAiLeadFollowUp({
         onOpenOfferEdit(card);
         return;
       }
-      openVehicleCard(card);
+      if (handler === 'create_offer' && onStartNewWish) {
+        const pt = card.paymentType ?? wishPaymentType;
+        onStartNewWish(lead, {
+          proposalIntent: pt === 'cash' ? PROPOSAL_INTENTS.CASH : PROPOSAL_INTENTS.LEASING,
+          paymentType: pt !== 'unknown' ? pt : 'leasing',
+        });
+        return;
+      }
+      setSelectedVehicleCard(card);
+      openSheet(SHEETS.vehicle);
+      return;
+    }
+    if (handler === 'view_proposal') {
+      if (onOpenOfferProposal) {
+        onOpenOfferProposal(card);
+        return;
+      }
+      handleVehicleOffer(card);
       return;
     }
     if (handler === 'duplicate_offer') {
@@ -1256,6 +1269,11 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleVehicleOffer(card) {
+    const primaryAction = resolveBoardOfferPrimaryAction(card, lead);
+    if (primaryAction.handlerType !== 'view_proposal') {
+      handleBoardCardAction(primaryAction, card);
+      return;
+    }
     if (onOpenOfferProposal) {
       onOpenOfferProposal(card);
       return;
@@ -1995,8 +2013,8 @@ export default function DealerAiLeadFollowUp({
         items={boardItems}
         lead={lead}
         animateNew={showCardAnimation && boardItems.length > 0}
-        onCardClick={openVehicleCard}
-        onCardMenu={openVehicleCard}
+        onCardClick={navigateBoardOfferCard}
+        onCardMenu={navigateBoardOfferCard}
         onCardAction={handleBoardCardAction}
         onSelectionGroupClick={openSelectionGroup}
         onAddProposal={handleAddVehicle}

@@ -12,6 +12,7 @@ import {
   duplicateVehicleConfiguration,
   filterSendableVehicleCards,
   isBoardOfferSendable,
+  resolveBoardOfferPrimaryAction,
   resolveBoardOfferStatus,
 } from './boardOfferModel.js';
 import { buildVehicleOpportunityCards } from '../customerAkte.js';
@@ -29,8 +30,16 @@ const cardSource = readFileSync(
   join(__dirname, '../../components/dealer-ai/CustomerAkteVehicleCard.jsx'),
   'utf8',
 );
+const followUpSource = readFileSync(
+  join(__dirname, '../../components/dealer-ai/DealerAiLeadFollowUp.jsx'),
+  'utf8',
+);
 const boardSource = readFileSync(
   join(__dirname, '../../components/dealer-ai/CustomerAkteBoard.jsx'),
+  'utf8',
+);
+const conditionsPreviewSource = readFileSync(
+  join(__dirname, '../configuration/conditionsStepPreview.js'),
   'utf8',
 );
 
@@ -58,10 +67,14 @@ assert.equal(draftModel.status, BOARD_OFFER_STATUS.DRAFT);
 assert.equal(draftModel.badge.label, 'ENTWURF');
 assert.equal(draftModel.isDraft, true);
 assert.ok(cardSource.includes('cust-akte-vcard--draft'));
+assert.ok(cardSource.includes('budgetHint'));
+assert.ok(conditionsPreviewSource.includes('buildConditionsFooterSummary'));
 
 // B) Draft zeigt Aktion Angebot erstellen
 assert.equal(draftModel.primaryAction?.label, 'Angebot erstellen');
 assert.equal(draftModel.primaryAction?.handlerType, 'create_offer');
+assert.equal(draftModel.primaryResult, null);
+assert.ok(draftModel.budgetHint?.includes('399'));
 
 const leasingOfferDraft = {
   vehicle: {
@@ -201,9 +214,18 @@ assert.equal(financeModel.badge.label, 'FINANZIERUNG ERSTELLT');
 assert.ok(financeModel.conditionChips.some((chip) => /Schlussrate/.test(chip.label)));
 assert.match(financeModel.primaryResult?.value ?? '', /299/);
 
-// G) Bearbeiten-Aktion vorhanden
-assert.ok(leasingModel.secondaryActions.some((action) => action.label === 'Bearbeiten'));
+// G) offer_created: primär Bearbeiten, Klick öffnet Editor
+assert.equal(leasingModel.primaryAction?.label, 'Bearbeiten');
+assert.equal(leasingModel.primaryAction?.handlerType, 'edit_offer');
+assert.ok(leasingModel.secondaryActions.some((action) => action.label === 'Senden'));
 assert.ok(cardSource.includes('onAction'));
+assert.ok(cardSource.includes('handleCardClick'));
+assert.ok(followUpSource.includes('navigateBoardOfferCard'));
+assert.ok(followUpSource.includes('resolveBoardOfferPrimaryAction'));
+assert.ok(followUpSource.includes("handler === 'view_proposal'"));
+assert.ok(followUpSource.includes('onOpenOfferEdit(card)'));
+assert.ok(followUpSource.includes('startProposalNavigateFlow'));
+assert.ok(!followUpSource.includes('function openVehicleCard'));
 
 // H) Speichern setzt offer_created
 const enrichment = buildKundenakteEnrichmentFromOfferDraft(leasingOfferDraft, {
@@ -264,6 +286,9 @@ const questionModel = buildBoardOfferCardModel(questionCard, questionLead);
 assert.equal(questionModel.badge.label, 'FRAGE OFFEN');
 assert.match(questionModel.primaryResult?.value ?? '', /359/);
 assert.equal(questionModel.questionHint, '1 Frage offen');
+assert.equal(questionModel.primaryAction?.handlerType, 'answer_question');
+assert.equal(questionModel.primaryAction?.label, 'Frage beantworten');
+assert.ok(questionModel.secondaryActions.some((action) => action.handlerType === 'view_proposal'));
 
 // M) Nächster guter Schritt: draft → Angebot erstellen
 const draftRec = recommendCleverAction(buildCleverActionContext({
@@ -284,5 +309,58 @@ assert.ok(boardSource.includes('+ Angebot erstellen'));
 assert.equal(resolveBoardOfferStatus(draftCard, draftLead), BOARD_OFFER_STATUS.DRAFT);
 assert.equal(isBoardOfferSendable(leasingCard, createdLead), true);
 assert.equal(isBoardOfferSendable(draftCard, draftLead), false);
+
+// Navigation: Draft primaryAction = create_offer, Klick → Editor nicht Vorschlag
+assert.equal(resolveBoardOfferPrimaryAction(draftCard, draftLead).handlerType, 'create_offer');
+assert.ok(followUpSource.includes('onCardClick={navigateBoardOfferCard}'));
+
+// Navigation: offer_created → edit_offer
+assert.equal(resolveBoardOfferPrimaryAction(leasingCard, createdLead).handlerType, 'edit_offer');
+
+// Navigation: offer_sent → view_proposal
+const sentLead = {
+  ...createdLead,
+  crm: {
+    ...createdLead.crm,
+    vehicleOffers: {
+      'vc-ev3': {
+        ...createdLead.crm.vehicleOffers['vc-ev3'],
+        status: 'sent',
+        boardStatus: BOARD_OFFER_STATUS.OFFER_SENT,
+      },
+    },
+  },
+};
+const sentCard = buildVehicleOpportunityCards({ lead: sentLead })[0];
+const sentModel = buildBoardOfferCardModel(sentCard, sentLead);
+assert.equal(sentModel.status, BOARD_OFFER_STATUS.OFFER_SENT);
+assert.equal(resolveBoardOfferPrimaryAction(sentCard, sentLead).handlerType, 'view_proposal');
+assert.equal(sentModel.primaryAction?.label, 'Kundenlink ansehen');
+
+// Navigation: interested / declined → view_proposal
+const interestedLead = {
+  ...sentLead,
+  crm: {
+    ...sentLead.crm,
+    customerOfferInteractions: mergeCustomerOfferInteractionPatch(sentLead, 'vc-ev3', {
+      interestStatus: 'interested',
+    }),
+  },
+};
+const interestedCard = buildVehicleOpportunityCards({ lead: interestedLead })[0];
+assert.equal(resolveBoardOfferPrimaryAction(interestedCard, interestedLead).handlerType, 'view_proposal');
+assert.equal(resolveBoardOfferPrimaryAction(interestedCard, interestedLead).label, 'Reaktion ansehen');
+
+const declinedLead = {
+  ...sentLead,
+  crm: {
+    ...sentLead.crm,
+    customerOfferInteractions: mergeCustomerOfferInteractionPatch(sentLead, 'vc-ev3', {
+      interestStatus: 'not_interested',
+    }),
+  },
+};
+const declinedCard = buildVehicleOpportunityCards({ lead: declinedLead })[0];
+assert.equal(resolveBoardOfferPrimaryAction(declinedCard, declinedLead).handlerType, 'view_proposal');
 
 console.log('boardOfferModel.test.js: alle Tests bestanden');

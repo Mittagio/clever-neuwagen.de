@@ -108,7 +108,67 @@ export function computeConditionsStepPreview(vehicleConfiguration, draft, dealer
 
 export function buildConditionsFooterAction() {
   return {
-    label: 'Angebotsvorschau anzeigen',
-    hint: 'Rate oder Angebotspreis werden in der Vorschau berechnet.',
+    label: 'Angebot speichern',
+    previewLabel: 'Vorschau ansehen',
+    hint: 'Rate oder Angebotspreis werden live berechnet.',
+  };
+}
+
+function formatRate(amount) {
+  if (amount == null) return null;
+  return `${Number(amount).toLocaleString('de-DE')} €/Monat`;
+}
+
+function formatCashPrice(amount) {
+  if (amount == null) return null;
+  return `${Number(amount).toLocaleString('de-DE')} €`;
+}
+
+/**
+ * Zusammenfassung für die Speicherleiste im Konditionen-Schritt.
+ */
+export function buildConditionsFooterSummary(preview, draft = {}) {
+  if (!preview || !draft) {
+    return { chips: [], result: null, resultSuffix: null };
+  }
+
+  const paymentType = draft.paymentType === 'unknown' ? 'leasing' : draft.paymentType;
+  const termMonths = draft.termMonths ?? null;
+  const mileagePerYear = draft.mileagePerYear ?? null;
+  const downPayment = draft.downPayment ?? 0;
+
+  if (preview.isCash) {
+    const chips = ['Barangebot'];
+    if (preview.discountPercent != null) {
+      chips.push(`${preview.discountPercent} % Rabatt`);
+    }
+    return {
+      chips,
+      result: formatCashPrice(preview.cashOfferPrice),
+      resultSuffix: 'Kaufpreis',
+      upe: formatCashPrice(preview.uvpTotal),
+    };
+  }
+
+  const chips = [];
+  if (preview.isLeasing) chips.push('Leasing');
+  if (preview.isFinance) chips.push(preview.isThreeWay ? '3-Wege-Finanzierung' : 'Finanzierung');
+  if (termMonths) chips.push(`${termMonths} Monate`);
+  if (preview.isLeasing && mileagePerYear) {
+    chips.push(`${Number(mileagePerYear).toLocaleString('de-DE')} km/Jahr`);
+  }
+  chips.push(downPayment === 0 ? '0 € Anzahlung' : `${Number(downPayment).toLocaleString('de-DE')} € Anzahlung`);
+
+  const rate = preview.canShowLiveLeasingRate || preview.canShowLiveFinanceRate
+    ? preview.monthlyRate
+    : null;
+
+  return {
+    chips,
+    result: formatRate(rate),
+    resultSuffix: rate != null ? '/Monat' : null,
+    finalPayment: preview.finalPayment != null
+      ? `Schlussrate ${formatCashPrice(preview.finalPayment)}`
+      : null,
   };
 }

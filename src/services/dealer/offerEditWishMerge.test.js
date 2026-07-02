@@ -2,15 +2,31 @@
  * Tests: Wish-Konditionen in Angebots-Bearbeiten übernehmen
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   buildOfferEditPendingFields,
   buildWishFieldsFromLead,
   cardNeedsConditionsConfigure,
   enrichOfferEditCardFromLead,
+  hasCalculatedOfferOnCard,
   resolveEffectivePaymentType,
+  shouldNavigateToOfferCalculator,
 } from './offerEditWishMerge.js';
 import { buildAddVehicleContextFromLead } from '../customerAddVehicleFlow.js';
 import { buildVehicleOpportunityCards } from '../customerAkte.js';
+import { BOARD_OFFER_STATUS, buildBoardOfferFromDraft } from './boardOfferModel.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const conditionsSource = readFileSync(
+  join(__dirname, '../../components/dealer-ai/DealerAiConditionsStep.jsx'),
+  'utf8',
+);
+const conditionsPreviewSource = readFileSync(
+  join(__dirname, '../configuration/conditionsStepPreview.js'),
+  'utf8',
+);
 
 assert.equal(resolveEffectivePaymentType('unknown', 'leasing', null), 'leasing');
 assert.equal(resolveEffectivePaymentType('unknown', null, 'cash'), 'cash');
@@ -50,12 +66,13 @@ const enriched = enrichOfferEditCardFromLead({
 assert.equal(enriched.paymentType, 'leasing');
 assert.equal(enriched.termMonths, 48);
 assert.equal(enriched.mileagePerYear, 50000);
-assert.equal(enriched.desiredRate, 350);
+assert.equal(enriched.wishBudgetRate, 350);
+assert.equal(enriched.desiredRate, null);
 
 const pending = buildOfferEditPendingFields(enriched, { deliveryNote: 'sofort' });
 assert.ok(!pending.some((field) => field.id === 'termMonths'));
 assert.ok(!pending.some((field) => field.id === 'mileagePerYear'));
-assert.ok(!pending.some((field) => field.id === 'desiredRate'));
+assert.ok(pending.some((field) => field.id === 'desiredRate'));
 
 const cards = buildVehicleOpportunityCards({
   lead,
@@ -69,8 +86,53 @@ assert.equal(ctx.paymentType, 'cash');
 assert.equal(ctx.wishFields.paymentType, 'cash');
 assert.equal(ctx.wishFields.termMonths, 48);
 
+// Kundenwunsch-Budget ≠ fertiges Angebot
+assert.equal(cardNeedsConditionsConfigure({ paymentType: 'leasing', desiredRate: 399 }), true);
 assert.equal(cardNeedsConditionsConfigure({ paymentType: 'leasing', desiredRate: null }), true);
-assert.equal(cardNeedsConditionsConfigure({ paymentType: 'leasing', desiredRate: 399 }), false);
-assert.equal(cardNeedsConditionsConfigure({ paymentType: 'cash', desiredPrice: 25000 }), false);
+assert.equal(hasCalculatedOfferOnCard({ id: 'vc-1', configurationId: 'vc-1' }, lead), false);
+
+const offerDraft = {
+  vehicle: { brand: 'Kia', model: 'EV3', modelKey: 'ev3', trimLabel: 'Earth', selectedPackages: [], selectedEquipmentFeatures: [] },
+  payment: { type: 'leasing', termMonths: 48, mileagePerYear: 10000, downPayment: 0, calculatedRate: 359, listPrice: 51990 },
+  customer: { name: 'Test' },
+  timing: {},
+  source: { parsedFields: {}, createdFrom: 'customer_akte', originalText: '' },
+};
+
+const createdLead = {
+  id: 'lead-created',
+  crm: {
+    vehicleConfigurations: [{
+      id: 'vc-ev3',
+      modelKey: 'ev3',
+      model: 'EV3',
+      paymentType: 'leasing',
+      leasingData: { termMonths: 48, mileagePerYear: 10000, downPayment: 0, calculatedRate: 359 },
+      boardOffer: buildBoardOfferFromDraft(offerDraft, { configId: 'vc-ev3' }),
+    }],
+  },
+};
+
+const createdCards = buildVehicleOpportunityCards({ lead: createdLead });
+assert.equal(hasCalculatedOfferOnCard(createdCards[0], createdLead), true);
+assert.equal(shouldNavigateToOfferCalculator(createdCards[0], createdLead), true);
+assert.equal(cardNeedsConditionsConfigure(createdCards[0], createdLead), true);
+
+const draftLead = {
+  id: 'lead-draft',
+  paymentType: 'leasing',
+  desiredRate: 386,
+  wish: { termMonths: 48, mileagePerYear: 15000, downPayment: 0 },
+  crm: {
+    reservedModels: [{ id: 'ev6-draft', name: 'EV6', modelKey: 'ev6', trimLabel: 'Vision', isPrimary: true }],
+  },
+};
+const draftCards = buildVehicleOpportunityCards({ lead: draftLead, wishFields: draftLead.wish, reservedModels: draftLead.crm.reservedModels });
+assert.equal(shouldNavigateToOfferCalculator(draftCards[0], draftLead), true);
+assert.equal(cardNeedsConditionsConfigure(draftCards[0], draftLead), true);
+
+assert.ok(conditionsSource.includes('Kundenwunsch'));
+assert.ok(conditionsSource.includes('buildConditionsFooterAction'));
+assert.ok(conditionsPreviewSource.includes("label: 'Angebot speichern'"));
 
 console.log('offerEditWishMerge.test.js: ok');

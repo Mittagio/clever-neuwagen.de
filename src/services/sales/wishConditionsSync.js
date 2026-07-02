@@ -34,8 +34,8 @@ export function buildWishConditionsFromLeadAndFields(lead = null, wishFields = {
     termMonths: wishFields.termMonths ?? lead?.wish?.termMonths ?? null,
     mileagePerYear: wishFields.mileagePerYear ?? lead?.wish?.mileagePerYear ?? null,
     downPayment: wishFields.downPayment ?? lead?.wish?.downPayment ?? null,
-    desiredRate: wishFields.desiredRate ?? lead?.desiredRate ?? null,
-    desiredPrice: wishFields.desiredPrice ?? lead?.wish?.desiredPrice ?? null,
+    desiredRate: wishFields.desiredRate ?? lead?.desiredRate ?? lead?.wish?.desiredRate ?? null,
+    desiredPrice: wishFields.desiredPrice ?? lead?.desiredPrice ?? lead?.wish?.desiredPrice ?? null,
   });
 }
 

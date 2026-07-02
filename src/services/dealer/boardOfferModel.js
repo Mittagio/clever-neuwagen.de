@@ -2,6 +2,7 @@
  * Angebots-Arbeitsbereich („Auf dem Tisch“) – Status & Darstellung pro Fahrzeugkarte.
  */
 import { PAYMENT_TYPE_LABELS } from '../dealerAiParser.js';
+import { buildWishConditionsFromLeadAndFields } from '../sales/wishConditionsSync.js';
 import {
   countOpenQuestions,
   getCustomerOfferInteraction,
@@ -236,6 +237,18 @@ function resolveBadge(status, payment = {}) {
   return BOARD_OFFER_BADGE[status] ?? BOARD_OFFER_BADGE[BOARD_OFFER_STATUS.DRAFT];
 }
 
+function buildDraftBudgetHint(lead, paymentType = 'leasing') {
+  if (!lead) return null;
+  const wish = buildWishConditionsFromLeadAndFields(lead, {});
+  if (paymentType === 'cash' && wish.desiredPrice != null) {
+    return `Kundenwunsch: bis ${formatCurrency(wish.desiredPrice)}`;
+  }
+  if (wish.desiredRate != null) {
+    return `Kundenwunsch: bis ${Number(wish.desiredRate).toLocaleString('de-DE')} €/Monat`;
+  }
+  return null;
+}
+
 function buildPackageLine(config = null, card = {}) {
   const packages = config?.selectedPackages ?? card.selectedPackages ?? [];
   if (!packages.length) return null;
@@ -243,6 +256,61 @@ function buildPackageLine(config = null, card = {}) {
   const label = typeof first === 'string' ? first : first?.label ?? first?.name;
   if (!label) return null;
   return packages.length > 1 ? `Pakete: ${label} +${packages.length - 1}` : `Paket: ${label}`;
+}
+
+/**
+ * Primäre Kartenaktion für Klick und Haupt-CTA – abhängig vom Angebotsstatus.
+ */
+export function resolveBoardOfferPrimaryAction(card = {}, lead = null) {
+  const status = resolveBoardOfferStatus(card, lead);
+  const config = findVehicleConfiguration(lead, card);
+  const payment = readPaymentSnapshot(card, config, card.vehicleOffer ?? null);
+
+  if (status === BOARD_OFFER_STATUS.DRAFT || !hasCalculatedOfferPayment(payment)) {
+    return { id: 'create_offer', label: 'Angebot erstellen', handlerType: 'create_offer' };
+  }
+  if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
+    return { id: 'answer_question', label: 'Frage beantworten', handlerType: 'answer_question' };
+  }
+  if (status === BOARD_OFFER_STATUS.INTERESTED) {
+    return { id: 'view_proposal', label: 'Reaktion ansehen', handlerType: 'view_proposal' };
+  }
+  if (status === BOARD_OFFER_STATUS.DECLINED) {
+    return { id: 'view_proposal', label: 'Angebot ansehen', handlerType: 'view_proposal' };
+  }
+  if (status === BOARD_OFFER_STATUS.OFFER_SENT) {
+    return { id: 'view_proposal', label: 'Kundenlink ansehen', handlerType: 'view_proposal' };
+  }
+  if (status === BOARD_OFFER_STATUS.OFFER_CREATED) {
+    return { id: 'edit_offer', label: 'Bearbeiten', handlerType: 'edit_offer' };
+  }
+  return { id: 'create_offer', label: 'Angebot erstellen', handlerType: 'create_offer' };
+}
+
+function buildBoardOfferSecondaryActions(status, { openQuestionCount = 0 } = {}) {
+  const duplicate = { id: 'duplicate', label: 'Duplizieren', handlerType: 'duplicate_offer' };
+  const remove = { id: 'remove', label: 'Entfernen', handlerType: 'remove_offer' };
+  const send = { id: 'send', label: 'Senden', handlerType: 'send_offer' };
+  const edit = { id: 'edit', label: 'Bearbeiten', handlerType: 'edit_offer' };
+  const viewProposal = { id: 'view_proposal', label: 'Angebot ansehen', handlerType: 'view_proposal' };
+
+  if (status === BOARD_OFFER_STATUS.DRAFT) {
+    return [];
+  }
+  if (status === BOARD_OFFER_STATUS.OFFER_CREATED) {
+    return [duplicate, remove, send];
+  }
+  if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
+    const actions = [viewProposal, duplicate, remove];
+    if (openQuestionCount === 0) return [duplicate, remove];
+    return actions;
+  }
+  if (status === BOARD_OFFER_STATUS.OFFER_SENT
+    || status === BOARD_OFFER_STATUS.INTERESTED
+    || status === BOARD_OFFER_STATUS.DECLINED) {
+    return [edit, duplicate, remove];
+  }
+  return [duplicate, remove];
 }
 
 export function buildBoardOfferFromDraft(offerDraft, { configId, now = new Date().toISOString() } = {}) {
@@ -301,23 +369,8 @@ export function buildBoardOfferCardModel(card = {}, lead = null) {
     ?? config?.createdAt
     ?? null;
 
-  const primaryAction = isDraft
-    ? { id: 'create_offer', label: 'Angebot erstellen', handlerType: 'create_offer' }
-    : openQuestionCount > 0
-      ? { id: 'answer_question', label: 'Frage beantworten', handlerType: 'answer_question' }
-      : null;
-
-  const secondaryActions = [];
-  if (!isDraft) {
-    secondaryActions.push(
-      { id: 'edit', label: 'Bearbeiten', handlerType: 'edit_offer' },
-      { id: 'duplicate', label: 'Duplizieren', handlerType: 'duplicate_offer' },
-      { id: 'remove', label: 'Entfernen', handlerType: 'remove_offer' },
-    );
-    if (status === BOARD_OFFER_STATUS.OFFER_CREATED) {
-      secondaryActions.push({ id: 'send', label: 'Senden', handlerType: 'send_offer' });
-    }
-  }
+  const primaryAction = resolveBoardOfferPrimaryAction(card, lead);
+  const secondaryActions = buildBoardOfferSecondaryActions(status, { openQuestionCount });
 
   return {
     cardId: card.id,
@@ -340,6 +393,7 @@ export function buildBoardOfferCardModel(card = {}, lead = null) {
     discountLine: !isDraft && payment.type === 'cash' && payment.discountPercent != null
       ? `${payment.discountPercent} % Rabatt`
       : null,
+    budgetHint: isDraft ? buildDraftBudgetHint(lead, paymentType) : null,
     packageLine: buildPackageLine(config, card),
     openQuestionCount,
     questionHint: openQuestionCount > 0

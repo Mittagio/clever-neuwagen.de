@@ -44,7 +44,7 @@ import {
   VEHICLE_OFFER_HISTORY,
   VEHICLE_OFFER_STATUS,
 } from '../services/vehicleOffer.js';
-import { formatVehicleCardTitle } from '../services/customerAkte.js';
+import { formatVehicleCardTitle, buildSchnellaufnahmeChips } from '../services/customerAkte.js';
 import {
   applyCustomerContextToFields,
   mergeConfigureCustomerContext,
@@ -78,8 +78,9 @@ import {
 import {
   enrichOfferEditCardFromLead,
   buildOfferEditPendingFields,
+  buildConfigureDraftFromStoredConfiguration,
+  buildWishFieldsFromLead,
   resolveEffectivePaymentType,
-  cardNeedsConditionsConfigure,
 } from '../services/dealer/offerEditWishMerge.js';
 import {
   shouldForceConfigureFlow,
@@ -397,11 +398,91 @@ export default function DealerAIPage() {
   }
 
   function handleConditionsBack() {
+    if (addVehicleContext?.returnPath) {
+      navigate(addVehicleContext.returnPath);
+      clearAddVehicleFlow();
+      return;
+    }
     if (configureDraft) {
       const variants = buildSmartOfferVariants(configureDraft, conditions, parsed?.fields ?? {});
       setSmartOfferVariants(variants);
     }
     setPhase('offer-variants');
+  }
+
+  function handleConditionsSave() {
+    if (!parsed?.ok || !configureDraft || !vehicleConfiguration) return;
+
+    const mergedFields = fieldsFromConfigureDraft(configureDraft, parsed.fields);
+    const updatedParsed = enrichWithSuggestions(applyDealerAiFields(parsed, mergedFields));
+    setParsed(updatedParsed);
+
+    const contextLead = addVehicleContext?.opportunityId
+      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+      : null;
+
+    const offerDraft = buildOfferDraft({
+      configureDraft,
+      vehicleConfiguration,
+      parsed: updatedParsed,
+      conditions,
+      carryCustomer,
+      addVehicleContext,
+      lead: contextLead,
+    });
+
+    setIsExecuting(true);
+    try {
+      const saveResult = executeSaveOfferDraft(offerDraft, {
+        parsed: updatedParsed,
+        conditions,
+        leads,
+        addLead,
+        updateLead,
+        getExistingCodes,
+        selectedModelIds,
+        addVehicleContext,
+      });
+
+      if (saveResult.activityText && saveResult.leadId) {
+        addHistory(saveResult.leadId, saveResult.activityText, 'offer');
+      }
+
+      if (addVehicleContext?.returnPath) {
+        navigate(addVehicleContext.returnPath, {
+          state: { toast: saveResult.message ?? 'Angebot gespeichert' },
+        });
+        clearAddVehicleFlow();
+        setConfigureDraft(null);
+        setVehicleConfiguration(null);
+        setConfigureOfferDraft(null);
+        return;
+      }
+
+      setOfferPreviewSaveResult(saveResult);
+      setOfferPreviewSaved(true);
+      handleOfferPreviewFinishFromSave(saveResult);
+      showToast(saveResult.message ?? 'Angebot gespeichert');
+    } catch (err) {
+      showToast(err.message ?? 'Angebot konnte nicht gespeichert werden');
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  function handleOfferPreviewFinishFromSave(saveResult) {
+    if (!saveResult) return;
+    setResult({ type: 'lead', leadId: saveResult.leadId, customerId: saveResult.customerId });
+    setOfferEditCard(saveResult.card);
+    setConfigureOfferDraft(null);
+    setConfigureDraft(null);
+    setVehicleConfiguration(null);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
+    setPhase('followup');
+    setIsFreshLead(saveResult.mode !== 'attached_to_opportunity');
+    setIsReturningWish(Boolean(saveResult.customerId && carryCustomer));
+    clearAddVehicleFlow();
   }
 
   function handleConditionsToPreview() {
@@ -714,7 +795,20 @@ export default function DealerAIPage() {
         shouldForceConfigureFlow(ctx)
         && (hasRecognizedModelKey(nextParsed) || nextParsed.fields?.model?.trim())
       ) {
-        const draft = bootstrapConfigureState(nextParsed);
+        let draft = bootstrapConfigureState(nextParsed);
+        const storedConfig = ctx.vehicleCardId
+          ? (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry.id === ctx.vehicleCardId)
+          : null;
+        if (storedConfig) {
+          const storedDraft = buildConfigureDraftFromStoredConfiguration(
+            storedConfig,
+            ctx.wishFields ?? {},
+          );
+          if (storedDraft) {
+            draft = { ...draft, ...storedDraft };
+            setConfigureDraft(draft);
+          }
+        }
         if (ctx.openConditions && draft) {
           setVehicleConfiguration(buildVehicleConfiguration(draft));
           setSmartOfferVariants([]);
@@ -967,6 +1061,14 @@ export default function DealerAIPage() {
     ? leads.find((l) => l.id === result.leadId) ?? null
     : null;
 
+  const conditionsWishChips = useMemo(() => {
+    const contextLead = addVehicleContext?.opportunityId
+      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+      : activeLead;
+    const wish = addVehicleContext?.wishFields ?? buildWishFieldsFromLead(contextLead);
+    return buildSchnellaufnahmeChips(wish);
+  }, [addVehicleContext, activeLead, leads]);
+
   function handleLeadSave(patch, meta = {}) {
     if (!result?.leadId) return;
     setIsSavingLead(true);
@@ -1081,6 +1183,16 @@ export default function DealerAIPage() {
 
   function openProposalConditionsFlow(card) {
     const enriched = enrichOfferEditCardFromLead(card, activeLead);
+    const vehicleCardId = enriched.configurationId ?? enriched.id ?? null;
+    if (activeLead) {
+      setAddVehicleContext((prev) => ({
+        ...(prev ?? buildAddVehicleContextFromLead(activeLead)),
+        vehicleCardId,
+        openConditions: true,
+        proposalIntent: 'vehicle',
+        wishFields: buildWishFieldsFromLead(activeLead),
+      }));
+    }
     let base = parsed?.ok
       ? parsed
       : enrichWithSuggestions(buildParsedFromLead(activeLead ?? {}));
@@ -1096,17 +1208,36 @@ export default function DealerAIPage() {
         ),
         termMonths: enriched.termMonths ?? activeLead?.wish?.termMonths ?? base.fields?.termMonths,
         mileagePerYear: enriched.mileagePerYear ?? activeLead?.wish?.mileagePerYear ?? base.fields?.mileagePerYear,
-        desiredRate: enriched.desiredRate ?? activeLead?.desiredRate ?? base.fields?.desiredRate,
+        desiredRate: enriched.wishBudgetRate
+          ?? enriched.calculatedRate
+          ?? activeLead?.desiredRate
+          ?? base.fields?.desiredRate,
         downPayment: enriched.downPayment ?? activeLead?.wish?.downPayment ?? base.fields?.downPayment,
-        desiredPrice: enriched.desiredPrice ?? activeLead?.wish?.desiredPrice ?? base.fields?.desiredPrice,
+        desiredPrice: enriched.wishBudgetPrice
+          ?? enriched.calculatedPrice
+          ?? activeLead?.wish?.desiredPrice
+          ?? base.fields?.desiredPrice,
       });
     }
     const nextParsed = enrichWithSuggestions(base);
-    const draft = bootstrapConfigureState(nextParsed);
     setParsed(nextParsed);
     setOfferEditCard(null);
     setOfferEditFromProposal(false);
     setOfferPendingFields([]);
+    let draft = bootstrapConfigureState(nextParsed);
+    const storedConfig = vehicleCardId
+      ? (activeLead?.crm?.vehicleConfigurations ?? []).find((entry) => entry.id === vehicleCardId)
+      : null;
+    if (storedConfig) {
+      const storedDraft = buildConfigureDraftFromStoredConfiguration(
+        storedConfig,
+        buildWishFieldsFromLead(activeLead),
+      );
+      if (storedDraft) {
+        draft = { ...draft, ...storedDraft };
+        setConfigureDraft(draft);
+      }
+    }
     if (draft) {
       setVehicleConfiguration(buildVehicleConfiguration(draft));
       setSmartOfferVariants([]);
@@ -1116,19 +1247,9 @@ export default function DealerAIPage() {
     setPhase('configure');
   }
 
-  function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
+  function handleOpenOfferEdit(card) {
     const enriched = enrichOfferEditCardFromLead(card, activeLead);
-    if (cardNeedsConditionsConfigure(enriched)) {
-      openProposalConditionsFlow(enriched);
-      return;
-    }
-    setOfferEditCard(enriched);
-    setOfferEditFromProposal(fromProposal);
-    setCleverOfferTransfer(activeLead?.crm?.cleverOfferTransfer ?? null);
-    setOfferPendingFields(buildOfferEditPendingFields(enriched, {
-      deliveryNote: activeLead?.deliveryTime ?? activeLead?.wish?.desiredDeliveryDate ?? '',
-    }));
-    setPhase('offer-edit');
+    openProposalConditionsFlow(enriched);
   }
 
   function handleEditOfferConditions(card) {
@@ -1478,7 +1599,10 @@ export default function DealerAIPage() {
             conditions={conditions}
             onDraftChange={handleConfigureDraftChange}
             onContinue={handleConditionsToPreview}
+            onSave={handleConditionsSave}
             onBack={handleConditionsBack}
+            backLabel={addVehicleContext?.returnPath ? '← Zur Kundenakte' : '← Zur Konfiguration'}
+            wishChips={conditionsWishChips}
             isExecuting={isExecuting}
           />
         )}
