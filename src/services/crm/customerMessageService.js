@@ -295,6 +295,8 @@ export function mirrorInboundCustomerQuestion({
   relatedOfferId = null,
   relatedQuestionId = null,
   customerName = '',
+  vehicleLabel = null,
+  source = 'customer_portal',
 } = {}) {
   const trimmed = String(text ?? '').trim();
   if (!lead?.id || !trimmed) {
@@ -325,6 +327,8 @@ export function mirrorInboundCustomerQuestion({
     lead: nextLead,
     message: added.message,
     thread: added.thread,
+    vehicleLabel,
+    source,
   });
 
   return {
@@ -413,24 +417,40 @@ export function sendCleverChannelMessage({
 /**
  * @param {object} params
  */
-export function buildInboxItemFromCustomerMessage({ lead, message, thread }) {
+export function buildInboxItemFromCustomerMessage({
+  lead,
+  message,
+  thread,
+  vehicleLabel = null,
+  source = 'customer_portal',
+}) {
   if (!lead?.id || !message?.id) return null;
+
+  const offerId = message.relatedOfferId ?? null;
+  const questionId = message.relatedQuestionId ?? null;
+  const hasOfferContext = Boolean(offerId);
 
   return createInboxItem({
     type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
-    title: 'Neue Nachricht vom Kunden',
+    title: hasOfferContext ? 'Neue Nachricht zum Angebot' : 'Neue Nachricht vom Kunden',
     message: buildMessagePreview(message),
     customerId: lead.id,
     customerName: lead.contact?.name ?? '',
     leadId: lead.id,
-    offerId: message.relatedOfferId ?? null,
+    offerId,
+    vehicleLabel: vehicleLabel ?? null,
     sourceArea: 'customer_link',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
     metadata: {
       dedupeKey: `customer-message:${message.id}`,
       threadId: thread?.id ?? message.threadId,
       messageId: message.id,
-      questionId: message.relatedQuestionId ?? null,
-      suggestedIntent: message.relatedQuestionId
+      offerId,
+      questionId,
+      relatedOfferTitle: vehicleLabel ?? null,
+      source,
+      suggestedIntent: questionId
         ? 'answer_customer_question'
         : 'free_reply',
     },

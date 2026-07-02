@@ -3,10 +3,10 @@
 export const CURRENT_SELLER_STORAGE_KEY = 'clever-neuwagen-current-seller';
 
 export const DEALER_SELLERS = [
-  { id: 'mike-quach', name: 'Mike Quach' },
-  { id: 'andreas', name: 'Andreas' },
-  { id: 'lisa', name: 'Lisa' },
-  { id: 'thomas', name: 'Thomas' },
+  { id: 'mike-quach', name: 'Mike Quach', phone: '+49 170 5550199', email: 'mike.quach@autohaus-trinkle.de', roleLabel: 'Ihr Verkaufsberater' },
+  { id: 'andreas', name: 'Andreas', phone: '+49 171 9876543', email: 'andreas@autohaus-trinkle.de', roleLabel: 'Ihr Verkaufsberater' },
+  { id: 'lisa', name: 'Lisa', phone: '+49 160 1122334', email: 'lisa@autohaus-trinkle.de', roleLabel: 'Ihr Verkaufsberater' },
+  { id: 'thomas', name: 'Thomas', phone: '+49 160 5554433', email: 'thomas@autohaus-trinkle.de', roleLabel: 'Ihr Verkaufsberater' },
 ];
 
 export const SALES_CHANCE_LIST_FILTERS = [

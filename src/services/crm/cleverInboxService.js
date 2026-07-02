@@ -534,8 +534,11 @@ export function markInboxDoneForQuestion({
   if (!leadId || !questionId) return null;
 
   const match = listInboxItems({ leadId, status: 'open' }).find(
-    (item) => (item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
-        || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION)
+    (item) => (
+      item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
+      || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
+      || (item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE && item.metadata?.questionId)
+    )
       && item.metadata?.questionId === questionId,
   );
   if (!match) return null;
@@ -789,7 +792,13 @@ export function syncInboxItemsFromLead(lead = {}) {
 
     (interaction.customerQuestions ?? [])
       .filter((q) => q.status === 'open')
-      .forEach(() => {
+      .forEach((openQuestion) => {
+        const hasMirroredMessage = listInboxItems({ leadId: lead.id, status: 'open' }).some(
+          (item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE
+            && item.metadata?.questionId === openQuestion.id,
+        );
+        if (hasMirroredMessage) return;
+
         const item = buildInboxItemFromOfferInteraction({
           lead,
           cardId,
@@ -848,7 +857,15 @@ export function findPrimaryOpenInboxItemForLead(leadId, preferredTypes = []) {
   const open = listInboxItemsForCustomer(leadId);
   if (!open.length) return null;
   if (preferredTypes.length) {
-    const match = open.find((item) => preferredTypes.includes(item.type));
+    const match = open.find((item) => {
+      if (preferredTypes.includes(item.type)) {
+        if (item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE) {
+          return Boolean(item.metadata?.questionId);
+        }
+        return true;
+      }
+      return false;
+    });
     if (match) return match;
   }
   return open[0];

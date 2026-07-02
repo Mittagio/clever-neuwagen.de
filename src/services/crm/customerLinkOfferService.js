@@ -274,6 +274,8 @@ export function applyCustomerLinkEvent(lead = {}, vehicleCardId = '', eventType,
       relatedOfferId: vehicleCardId,
       relatedQuestionId: lastQuestion?.id ?? null,
       customerName: lead.contact?.name ?? '',
+      vehicleLabel,
+      source: 'customer_portal',
     });
     finalLead = mirrored.lead;
     customerMessageInboxItem = mirrored.inboxItem;
@@ -283,19 +285,20 @@ export function applyCustomerLinkEvent(lead = {}, vehicleCardId = '', eventType,
     [CUSTOMER_LINK_EVENTS.OPENED]: INBOX_EVENT_TYPES.OFFER_OPENED,
     [CUSTOMER_LINK_EVENTS.INTERESTED]: INBOX_EVENT_TYPES.OFFER_INTERESTED,
     [CUSTOMER_LINK_EVENTS.DECLINED]: INBOX_EVENT_TYPES.OFFER_DECLINED,
-    [CUSTOMER_LINK_EVENTS.QUESTION]: INBOX_EVENT_TYPES.OFFER_QUESTION,
   };
 
-  const inboxItem = buildInboxItemFromOfferInteraction({
-    lead: finalLead,
-    cardId: vehicleCardId,
-    interaction,
-    vehicleOffer,
-    vehicleLabel,
-    eventType: eventMap[eventType],
-  });
-
-  const persistedInboxItem = inboxItem ? createInboxItem(inboxItem) : null;
+  let persistedInboxItem = customerMessageInboxItem;
+  if (eventType !== CUSTOMER_LINK_EVENTS.QUESTION) {
+    const inboxItem = buildInboxItemFromOfferInteraction({
+      lead: finalLead,
+      cardId: vehicleCardId,
+      interaction,
+      vehicleOffer,
+      vehicleLabel,
+      eventType: eventMap[eventType],
+    });
+    persistedInboxItem = inboxItem ? createInboxItem(inboxItem) : null;
+  }
 
   if (syncInbox && typeof localStorage !== 'undefined') {
     syncInboxItemsFromLead(finalLead);

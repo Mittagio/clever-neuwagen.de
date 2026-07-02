@@ -90,6 +90,32 @@ assert.match(kundenakteDocUrl, /sheet=unterlagen/);
 const kundenakteQuestionUrl = buildInboxKundenakteUrl('lead-1', inboxItem);
 assert.match(kundenakteQuestionUrl, /sheet=question_answer/);
 
+const customerMessageItem = {
+  id: 'inbox-cm-1',
+  type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
+  leadId: 'lead-1',
+  offerId: 'vc-ev6',
+  metadata: {
+    threadId: 'thread-1',
+    messageId: 'msg-1',
+    questionId: 'cq-123',
+    suggestedIntent: 'answer_customer_question',
+  },
+};
+assert.equal(resolveInboxReplyIntent(customerMessageItem), 'answer_customer_question');
+const customerMessageUrl = buildQuestionAnswerAkteUrl('lead-1', customerMessageItem);
+assert.match(customerMessageUrl, /sheet=antworten/);
+assert.match(customerMessageUrl, /intentId=answer_customer_question/);
+assert.match(customerMessageUrl, /threadId=thread-1/);
+assert.match(customerMessageUrl, /messageId=msg-1/);
+assert.match(customerMessageUrl, /offerId=vc-ev6/);
+assert.match(customerMessageUrl, /questionId=cq-123/);
+
+assert.equal(resolveInboxReplyIntent({
+  type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
+  metadata: { suggestedIntent: 'free_reply' },
+}), 'free_reply');
+
 // C) applyCustomerOfferQuestionAnswer
 const lead = {
   id: 'lead-1',
@@ -131,6 +157,28 @@ assert.equal(done.status, INBOX_STATUS.DONE);
 __resetInboxStoreForTests([item]);
 const doneFallback = markInboxDoneForQuestion({ leadId: 'lead-1', questionId });
 assert.equal(doneFallback.status, INBOX_STATUS.DONE);
+
+const customerMessageInbox = createInboxItem({
+  type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
+  title: 'Neue Nachricht zum Angebot',
+  message: '„Winterreifen dabei?“',
+  leadId: 'lead-1',
+  customerId: 'lead-1',
+  offerId: 'vc-ev6',
+  metadata: {
+    questionId,
+    threadId: 'thread-1',
+    messageId: 'msg-1',
+    dedupeKey: 'customer-message:msg-1',
+  },
+});
+__resetInboxStoreForTests([customerMessageInbox]);
+const doneCustomerMessage = markInboxDoneForQuestion({
+  leadId: 'lead-1',
+  questionId,
+});
+assert.equal(doneCustomerMessage.status, INBOX_STATUS.DONE);
+assert.equal(doneCustomerMessage.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
 
 // E) Beantwortete Frage nicht mehr priorisiert
 const answeredLead = {

@@ -3,6 +3,12 @@
  * Speicher: lead.crm.customerPortalAccess
  */
 import { generateOfferAccessToken } from '../../logic/offerAccessToken.js';
+import {
+  applyPortalAdvisorToLead,
+  buildCustomerPortalAdvisorModel,
+  buildPortalAdvisorHintFromLead,
+  mergeAdvisorSnapshot,
+} from './customerPortalAdvisorService.js';
 
 export const PORTAL_ACCESS_STATUS = {
   PREPARED: 'prepared',
@@ -84,6 +90,7 @@ export function prepareCustomerPortalAccess(lead = {}, {
   email = '',
   accessToken = null,
   codeRequired = true,
+  advisor = null,
 } = {}) {
   const normalizedEmail = String(email ?? lead.contact?.email ?? '').trim();
   if (!normalizedEmail) {
@@ -95,6 +102,9 @@ export function prepareCustomerPortalAccess(lead = {}, {
 
   const existing = getCustomerPortalAccess(lead);
   const now = nowIso();
+  const advisorHint = advisor ?? buildPortalAdvisorHintFromLead(lead);
+  const mergedAdvisor = mergeAdvisorSnapshot(existing?.advisor ?? {}, advisorHint);
+
   const access = {
     portfolioUrl,
     email: normalizedEmail,
@@ -111,9 +121,13 @@ export function prepareCustomerPortalAccess(lead = {}, {
     historyLogged: {
       ...(existing?.historyLogged ?? {}),
     },
+    ...(Object.keys(mergedAdvisor).length ? { advisor: mergedAdvisor } : {}),
   };
 
   let nextLead = mergeCustomerPortalAccess(lead, access);
+  if (Object.keys(mergedAdvisor).length) {
+    nextLead = applyPortalAdvisorToLead(nextLead, advisorHint);
+  }
   const result = appendPortalAccessHistory(nextLead, HISTORY_KEYS.PREPARED, 'Kundenlink vorbereitet');
   nextLead = result.lead;
 
@@ -143,6 +157,10 @@ export function markCustomerPortalAccessSent(lead = {}, { via = 'copy' } = {}) {
   };
 
   let nextLead = mergeCustomerPortalAccess(lead, nextAccess);
+  const advisorHint = buildPortalAdvisorHintFromLead(nextLead);
+  if (advisorHint.name || advisorHint.userId) {
+    nextLead = applyPortalAdvisorToLead(nextLead, advisorHint);
+  }
   const result = appendPortalAccessHistory(nextLead, HISTORY_KEYS.SENT, 'Kundenlink gesendet');
   nextLead = result.lead;
 
@@ -497,6 +515,7 @@ export function buildCustomerPortalStatusCardModel(lead = {}, options = {}) {
     empty: false,
     title: 'Kundenportal',
     subline: PORTAL_STATUS_SUBLINES[status] ?? PORTAL_STATUS_SUBLINES[PORTAL_ACCESS_STATUS.PREPARED],
+    advisorLabel: buildCustomerPortalAdvisorModel(lead).name ?? null,
     steps,
     lastActivityLabel: formatPortalLastActivity(access.lastActivityAt),
     portfolioUrl: access.portfolioUrl ?? null,

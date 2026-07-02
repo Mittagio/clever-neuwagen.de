@@ -161,9 +161,11 @@ const questionResult = applyCustomerLinkEvent(linkLead, 'card-ev3', CUSTOMER_LIN
 });
 assert.ok(questionResult.ok);
 assert.equal(questionResult.interaction.customerQuestions.length, 1);
-assert.equal(questionResult.inboxItem?.type, INBOX_EVENT_TYPES.OFFER_QUESTION);
+assert.equal(questionResult.inboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.equal(questionResult.inboxItem?.title, 'Neue Nachricht zum Angebot');
 assert.equal(questionResult.lead.crm.customerMessages?.length, 1);
 assert.equal(questionResult.customerMessageInboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.ok(!listInboxItems({ leadId: linkLead.id }).some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
 
 const directSend = sendCustomerPortalInboundMessage({
   lead: workingLead,

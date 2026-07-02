@@ -457,3 +457,200 @@
   color: #b91c1c;
   font-size: 0.875rem;
 }
+
+.cop-shell-nav {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  margin: 0 0 1rem;
+  padding-bottom: 0.15rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cop-shell-nav__item {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cop-shell-nav__item.is-active {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.cop-shell-nav__badge {
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.125rem;
+  text-align: center;
+}
+
+.cop-shell-nav__item.is-active .cop-shell-nav__badge {
+  background: #fff;
+  color: #111827;
+}
+
+.cop-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem 1.125rem 1.125rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cop-panel__header {
+  margin-bottom: 0.875rem;
+}
+
+.cop-panel__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cop-panel__subline {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.cop-panel__empty,
+.cop-panel__hint {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.cop-panel__cta {
+  display: inline-flex;
+  margin-top: 1rem;
+  text-decoration: none;
+}
+
+.cop-docs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cop-docs-list__item {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.cop-docs-list__item:last-child {
+  border-bottom: none;
+}
+
+.cop-docs-list__item.is-done {
+  color: #64748b;
+}
+
+.cop-docs-list__icon {
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.cop-docs-list__status {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.cop-advisor__name {
+  margin: 0 0 0.2rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cop-advisor__role {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cop-advisor__contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.cop-advisor__link {
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cop-advisor__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.cop-advisor-card {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+
+.cop-advisor-card__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cop-advisor-card__body {
+  min-width: 0;
+}
+
+.cop-advisor__dealer {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cop-advisor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}

@@ -23,6 +23,7 @@ export const DEALER_PROFILES = {
     contactName: 'Max Trinkle',
     contactRole: 'Verkauf Neuwagen',
     contactPhone: '+49 7131 123456',
+    contactEmail: 'verkauf@autohaus-trinkle.de',
   },
   'autohaus-mueller': {
     dealerSlug: 'autohaus-mueller',

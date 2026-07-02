@@ -51,6 +51,13 @@ export default function CustomerAktePortalStatusCard({
       <header className="cust-akte-portal-status__head">
         <h3 className="cust-akte-portal-status__title">{model.title}</h3>
         <p className="cust-akte-portal-status__subline">{model.subline}</p>
+        {model.advisorLabel ? (
+          <p className="cust-akte-portal-status__advisor">
+            Ansprechpartner:
+            {' '}
+            {model.advisorLabel}
+          </p>
+        ) : null}
       </header>
 
       <ol className="cust-akte-portal-status__steps">

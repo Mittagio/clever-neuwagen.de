@@ -14,7 +14,7 @@ import {
   resolvePortfolioFromRequest,
 } from './customerOfferPortfolioService.js';
 import { createOfferSelectionGroup } from '../sales/offerSelectionGroup.js';
-import { __clearInboxTestMode, __resetInboxStoreForTests, listInboxItems } from './cleverInboxService.js';
+import { __clearInboxTestMode, __resetInboxStoreForTests, INBOX_EVENT_TYPES, listInboxItems } from './cleverInboxService.js';
 
 __resetInboxStoreForTests([]);
 
@@ -130,6 +130,9 @@ const moreInfo = applyPortfolioEvent(
   { token: prepared.portfolio.token, questionText: 'Ist Winterreifen-Paket dabei?' },
 );
 assert.ok(moreInfo.ok);
+assert.equal(moreInfo.inboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.equal(moreInfo.inboxItem?.title, 'Neue Nachricht zum Angebot');
+assert.ok(moreInfo.lead.crm.customerMessages?.length >= 1);
 
 const shareMsg = buildPortfolioShareMessage({
   customerName: 'Anna Schmidt',
@@ -145,6 +148,11 @@ assert.equal(PORTFOLIO_DECLINE_REASONS.too_expensive, 'Zu teuer');
 
 const inbox = listInboxItems({ leadId: lead.id });
 assert.ok(inbox.length >= 3, 'Inbox-Einträge für Portfolio-Events');
+assert.equal(
+  inbox.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE).length,
+  1,
+);
+assert.ok(!inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
 
 __clearInboxTestMode();
 

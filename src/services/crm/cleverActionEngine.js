@@ -364,6 +364,7 @@ export function buildCleverActionContext({
       ? findPrimaryOpenInboxItemForLead(lead.id, [
         INBOX_EVENT_TYPES.CUSTOMER_QUESTION,
         INBOX_EVENT_TYPES.OFFER_QUESTION,
+        INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
       ])
       : null,
     unterlagenSummary,

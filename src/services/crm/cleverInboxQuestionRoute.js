@@ -15,6 +15,7 @@ export function resolveInboxReplyIntent(item = {}) {
     case INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST:
       return 'answer_customer_question';
     case INBOX_EVENT_TYPES.CUSTOMER_MESSAGE:
+      if (item.metadata?.questionId) return 'answer_customer_question';
       return item.metadata?.suggestedIntent ?? 'free_reply';
     case INBOX_EVENT_TYPES.OFFER_OPENED:
       return 'offer_opened_followup';
@@ -69,6 +70,7 @@ export function buildInboxKundenakteUrl(leadId, item = {}) {
   if (questionId && offerId && (
     item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
     || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
+    || item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE
   )) {
     const params = new URLSearchParams({
       sheet: 'question_answer',

@@ -931,6 +931,10 @@ export default function DealerAiLeadFollowUp({
       portfolioUrl: result.portfolio.url,
       email: email.trim(),
       accessToken: result.portfolio.token,
+      advisor: {
+        userId: lead.ownerId ?? null,
+        name: lead.ownerName ?? null,
+      },
     });
 
     if (!portalPrepared.ok) {

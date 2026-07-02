@@ -69,15 +69,23 @@ const question = applyCustomerLinkEvent(current, 'card-ev3', CUSTOMER_LINK_EVENT
 assert.ok(question.ok);
 assert.equal(question.interaction.interestStatus, INTEREST_STATUS.QUESTION_ASKED);
 assert.equal(question.interaction.customerQuestions.length, 1);
-assert.equal(question.inboxItem?.type, INBOX_EVENT_TYPES.OFFER_QUESTION);
+assert.equal(question.inboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.equal(question.inboxItem?.title, 'Neue Nachricht zum Angebot');
 assert.equal(question.inboxItem?.status, 'open');
+assert.equal(question.inboxItem?.metadata?.questionId, question.interaction.customerQuestions[0].id);
+assert.equal(question.inboxItem?.metadata?.source, 'customer_portal');
 
 const inbox = listInboxItems({ leadId: lead.id });
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_OPENED));
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_INTERESTED));
-assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE));
+assert.ok(!inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
+assert.equal(
+  inbox.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE && item.status === 'open').length,
+  1,
+);
 assert.equal(question.lead.crm.customerMessages?.length, 1);
+assert.equal(question.customerMessageInboxItem?.id, question.inboxItem?.id);
 
 const cards = buildVehicleOpportunityCards({
   lead: question.lead,

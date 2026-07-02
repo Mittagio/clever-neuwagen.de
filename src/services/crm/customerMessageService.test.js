@@ -17,6 +17,7 @@ import {
   __resetInboxStoreForTests,
   INBOX_EVENT_TYPES,
   listInboxItems,
+  syncInboxItemsFromLead,
 } from './cleverInboxService.js';
 import {
   applyCustomerLinkEvent,
@@ -75,7 +76,8 @@ const questionResult = applyCustomerLinkEvent(linkLead, 'card-ev3', CUSTOMER_LIN
 });
 assert.ok(questionResult.ok);
 assert.equal(questionResult.interaction.customerQuestions.length, 1);
-assert.equal(questionResult.inboxItem?.type, INBOX_EVENT_TYPES.OFFER_QUESTION);
+assert.equal(questionResult.inboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.equal(questionResult.inboxItem?.title, 'Neue Nachricht zum Angebot');
 
 const store = getCustomerMessageStore(questionResult.lead);
 assert.equal(store.messages.length, 1);
@@ -83,6 +85,14 @@ assert.equal(store.messages[0].channel, MESSAGE_CHANNEL.CLEVER);
 assert.equal(store.messages[0].direction, MESSAGE_DIRECTION.INBOUND);
 assert.ok(questionResult.customerMessageInboxItem);
 assert.equal(questionResult.customerMessageInboxItem.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+assert.equal(questionResult.customerMessageInboxItem.id, questionResult.inboxItem?.id);
+
+const openInbox = listInboxItems({ leadId: linkLead.id, status: 'open' });
+assert.equal(
+  openInbox.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE).length,
+  1,
+);
+assert.ok(!openInbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
 
 // C) Clever Nachrichten "In Clever senden" erzeugt outbound customerMessage
 const sent = sendCleverChannelMessage({
@@ -107,7 +117,9 @@ const mirrored = mirrorInboundCustomerQuestion({
 });
 assert.ok(mirrored.inboxItem);
 assert.equal(mirrored.inboxItem.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
-assert.equal(mirrored.inboxItem.title, 'Neue Nachricht vom Kunden');
+assert.equal(mirrored.inboxItem.title, 'Neue Nachricht zum Angebot');
+assert.equal(mirrored.inboxItem.metadata.source, 'customer_portal');
+assert.equal(mirrored.inboxItem.metadata.offerId, 'card-ev3');
 const inboxItems = listInboxItems({ leadId: baseLead.id });
 assert.ok(inboxItems.some((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE));
 
@@ -128,6 +140,32 @@ assert.match(replyUrl, /sheet=antworten/);
 assert.match(replyUrl, /threadId=/);
 assert.match(replyUrl, /messageId=/);
 assert.match(replyUrl, /intentId=answer_customer_question/);
+assert.match(replyUrl, /offerId=card-ev3/);
+assert.match(replyUrl, /questionId=cq-test/);
+
+// G) Allgemeine Nachricht ohne questionId öffnet freie Antwort
+const freeReplyUrl = buildInboxActionAkteUrl('lead-msg-1', {
+  id: 'inbox-cm-free',
+  type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
+  leadId: 'lead-msg-1',
+  metadata: {
+    threadId: 'thread-free',
+    messageId: 'msg-free',
+    suggestedIntent: 'free_reply',
+  },
+});
+assert.match(freeReplyUrl, /intentId=free_reply/);
+assert.doesNotMatch(freeReplyUrl, /questionId=/);
+
+// H) syncInboxItemsFromLead erzeugt kein offer_question bei vorhandenem customer_message
+__resetInboxStoreForTests(openInbox);
+syncInboxItemsFromLead(questionResult.lead);
+const afterSync = listInboxItems({ leadId: linkLead.id, status: 'open' });
+assert.ok(!afterSync.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
+assert.equal(
+  afterSync.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE).length,
+  1,
+);
 
 // F) WhatsApp/E-Mail extern markieren nicht automatisch als sent
 const beforeExternal = getCustomerMessageStore(sent.lead).messages.length;

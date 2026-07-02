@@ -24,6 +24,7 @@ import {
   buildCustomerPortalAccessContext,
   isCustomerPortalAccessVerified,
 } from './customerPortalAccessService.js';
+import { buildCustomerPortalShellModel } from './customerPortalShellPresenter.js';
 import {
   buildBoardItems,
   OFFER_SELECTION_GROUP_STATUS,
@@ -372,6 +373,12 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     customerReaction: item.customerReaction ?? { status: PORTFOLIO_REACTION_STATUS.NONE },
   }));
 
+  const messageThreads = buildCustomerPortalMessageThreads(lead, { portfolioItems: portfolio.items });
+  const messageCount = messageThreads.reduce(
+    (sum, thread) => sum + (thread.messages?.length ?? 0),
+    0,
+  );
+
   return {
     leadId: lead.id,
     customerFirstName: firstName,
@@ -383,8 +390,9 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
       ? `${items[0].modelLabel}${items.every((i) => i.trimLabel === items[0].trimLabel && i.trimLabel) ? ` · ${items[0].trimLabel}` : ''} – Ihre ${items.length} Option${items.length === 1 ? '' : 'en'}`
       : 'Ihre Angebotsauswahl',
     items,
-    messageThreads: buildCustomerPortalMessageThreads(lead, { portfolioItems: portfolio.items }),
+    messageThreads,
     portalAccess,
+    shell: buildCustomerPortalShellModel(lead, { messageCount }),
     requiresCode: false,
     pageTitle: 'Ihre Fahrzeugauswahl',
   };
@@ -628,12 +636,14 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       updatedAt: now,
     };
 
-    inboxItem = buildInboxForPortfolioEvent({
-      lead,
-      item,
-      eventType,
-      message: historyText,
-    });
+    inboxItem = eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
+      ? null
+      : buildInboxForPortfolioEvent({
+        lead,
+        item,
+        eventType,
+        message: historyText,
+      });
   }
 
   let offerSelectionGroups = lead?.crm?.offerSelectionGroups ?? [];
@@ -667,14 +677,20 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
   if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO && itemIndex >= 0) {
     const reactedItem = nextPortfolio.items[itemIndex];
     const trimmed = String(questionText ?? '').trim();
+    const vehicleLabel = reactedItem.trimLabel
+      ? `${reactedItem.modelLabel} · ${reactedItem.trimLabel}`
+      : reactedItem.modelLabel;
     const mirrored = mirrorInboundCustomerQuestion({
       lead: finalLead,
       text: trimmed,
       relatedOfferId: reactedItem.vehicleCardId ?? reactedItem.id,
       relatedQuestionId: `portfolio-more-info-${reactedItem.id}`,
       customerName: lead.contact?.name ?? '',
+      vehicleLabel,
+      source: 'customer_portal',
     });
     finalLead = mirrored.lead;
+    inboxItem = mirrored.inboxItem;
   }
 
   return {

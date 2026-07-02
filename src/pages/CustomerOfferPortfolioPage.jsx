@@ -15,6 +15,10 @@ import {
 import { PORTFOLIO_DECLINE_REASONS, PORTFOLIO_REACTION_STATUS } from '../services/crm/customerOfferPortfolioService.js';
 import CustomerPortalMessagesSection from '../components/customer/CustomerPortalMessagesSection.jsx';
 import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGate.jsx';
+import CustomerPortalShellNav from '../components/customer/CustomerPortalShellNav.jsx';
+import CustomerPortalDocumentsSection from '../components/customer/CustomerPortalDocumentsSection.jsx';
+import CustomerPortalAdvisorSection from '../components/customer/CustomerPortalAdvisorSection.jsx';
+import { PORTAL_NAV_IDS } from '../services/crm/customerPortalShellPresenter.js';
 import './CustomerOfferPortfolioPage.css';
 
 const DECLINE_OPTIONS = Object.entries(PORTFOLIO_DECLINE_REASONS).map(([id, label]) => ({
@@ -43,6 +47,7 @@ export default function CustomerOfferPortfolioPage() {
   const [accessVerified, setAccessVerified] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [activeSection, setActiveSection] = useState(PORTAL_NAV_IDS.OFFERS);
   const portfolioOpenedRef = useRef(false);
   const viewedReportedRef = useRef(false);
 
@@ -201,6 +206,20 @@ export default function CustomerOfferPortfolioPage() {
     [context?.items],
   );
 
+  const shell = context?.shell ?? null;
+  const sectionTitle = useMemo(() => {
+    switch (activeSection) {
+      case PORTAL_NAV_IDS.MESSAGES:
+        return 'Ihre Nachrichten';
+      case PORTAL_NAV_IDS.DOCUMENTS:
+        return 'Ihre Unterlagen';
+      case PORTAL_NAV_IDS.ADVISOR:
+        return 'Ihr Ansprechpartner';
+      default:
+        return `${firstName}, Ihre Fahrzeugauswahl`;
+    }
+  }, [activeSection, firstName]);
+
   if (loading) {
     return (
       <div className="cop-page">
@@ -239,40 +258,41 @@ export default function CustomerOfferPortfolioPage() {
       <div className="cop-shell">
         <header className="cop-header">
           <p className="cop-eyebrow">Persönliche Fahrzeugauswahl</p>
-          <h1 className="cop-title">
-            {firstName}
-            , Ihre Fahrzeugauswahl
-          </h1>
-          {context.summaryTitle ? (
-            <p className="cop-subline">{context.summaryTitle}</p>
-          ) : (
-            <p className="cop-subline">
-              Schauen Sie sich jedes Angebot an und geben Sie uns pro Vorschlag Ihre Rückmeldung.
-            </p>
-          )}
+          <h1 className="cop-title">{sectionTitle}</h1>
+          {activeSection === PORTAL_NAV_IDS.OFFERS ? (
+            context.summaryTitle ? (
+              <p className="cop-subline">{context.summaryTitle}</p>
+            ) : (
+              <p className="cop-subline">
+                Schauen Sie sich jedes Angebot an und geben Sie uns pro Vorschlag Ihre Rückmeldung.
+              </p>
+            )
+          ) : null}
         </header>
 
-        {context.summaryLines?.length > 0 ? (
-          <section className="cop-summary" aria-label="Übersicht aller Optionen">
-            <h2 className="cop-summary__title">Clever-Zusammenfassung</h2>
-            <ul className="cop-summary__list">
-              {context.summaryLines.map((line) => (
-                <li key={line}>{line.replace(/^•\s*/, '')}</li>
-              ))}
-            </ul>
-          </section>
+        {shell ? (
+          <CustomerPortalShellNav
+            sections={shell.navSections}
+            activeId={activeSection}
+            badges={shell.badges}
+            onChange={setActiveSection}
+          />
         ) : null}
 
-        <CustomerPortalMessagesSection
-          threads={context.messageThreads ?? []}
-          draft={portalMessage}
-          onDraftChange={setPortalMessage}
-          onSend={sendPortalMessage}
-          sending={sendingMessage}
-          sendFeedback={messageFeedback}
-        />
+        {activeSection === PORTAL_NAV_IDS.OFFERS ? (
+          <>
+            {context.summaryLines?.length > 0 ? (
+              <section className="cop-summary" aria-label="Übersicht aller Optionen">
+                <h2 className="cop-summary__title">Clever-Zusammenfassung</h2>
+                <ul className="cop-summary__list">
+                  {context.summaryLines.map((line) => (
+                    <li key={line}>{line.replace(/^•\s*/, '')}</li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
-        <div className="cop-list">
+            <div className="cop-list">
           {sortedItems.map((item) => {
             const reaction = item.customerReaction?.status ?? PORTFOLIO_REACTION_STATUS.NONE;
             const hasReacted = reaction !== PORTFOLIO_REACTION_STATUS.NONE;
@@ -471,7 +491,31 @@ export default function CustomerOfferPortfolioPage() {
           })}
         </div>
 
-        {feedback ? <p className="cop-feedback" role="status">{feedback}</p> : null}
+            {feedback ? <p className="cop-feedback" role="status">{feedback}</p> : null}
+          </>
+        ) : null}
+
+        {activeSection === PORTAL_NAV_IDS.MESSAGES ? (
+          <CustomerPortalMessagesSection
+            threads={context.messageThreads ?? []}
+            draft={portalMessage}
+            onDraftChange={setPortalMessage}
+            onSend={sendPortalMessage}
+            sending={sendingMessage}
+            sendFeedback={messageFeedback}
+          />
+        ) : null}
+
+        {activeSection === PORTAL_NAV_IDS.DOCUMENTS ? (
+          <CustomerPortalDocumentsSection documents={shell?.documents} />
+        ) : null}
+
+        {activeSection === PORTAL_NAV_IDS.ADVISOR ? (
+          <CustomerPortalAdvisorSection
+            advisor={shell?.advisor}
+            onWriteMessage={() => setActiveSection(PORTAL_NAV_IDS.MESSAGES)}
+          />
+        ) : null}
       </div>
     </div>
   );
