@@ -63,7 +63,7 @@ import {
   getReviewBarButtonLabel,
   isCustomerRecordAddVehicleContext,
 } from '../services/customerAddVehicleFlow.js';
-import { buildParsedFromLead } from '../services/leadAkteEntry.js';
+import { buildParsedFromLead, buildKundenaktePath } from '../services/leadAkteEntry.js';
 import { recordRecentCustomerOpen } from '../services/crm/customerSearchService.js';
 import {
   buildOfferDraft,
@@ -82,6 +82,10 @@ import {
   buildWishFieldsFromLead,
   resolveEffectivePaymentType,
 } from '../services/dealer/offerEditWishMerge.js';
+import {
+  buildOfferCalculatorNavigateState,
+  shouldOpenOfferProposalView,
+} from '../services/dealer/openOfferCalculator.js';
 import {
   shouldForceConfigureFlow,
 } from '../services/dealer/customerAddProposalFlow.js';
@@ -651,15 +655,14 @@ export default function DealerAIPage() {
     setPhase('input');
   }
 
-  function handleStartNewWish(sourceLead) {
-    const ctx = buildAddVehicleContextFromLead(sourceLead);
-    const carry = extractCarryCustomerFromLead(sourceLead);
-    resetWishInput();
-    setAddVehicleContext(ctx);
-    setCarryCustomer(carry);
-    setIsReturningWish(Boolean(carry));
-    setIsFreshLead(false);
-    setPhase('input');
+  function handleStartNewWish(sourceLead, options = {}) {
+    const navState = buildOfferCalculatorNavigateState(sourceLead, null, {
+      returnPath: sourceLead?.id ? buildKundenaktePath(sourceLead.id) : undefined,
+      proposalIntent: options.proposalIntent,
+      paymentType: options.paymentType,
+    });
+    if (!navState) return;
+    navigate('/verkaufsassistent', { state: navState, replace: true });
   }
 
   function handleFieldsChange(patch) {
@@ -1017,8 +1020,7 @@ export default function DealerAIPage() {
 
     setCleverOfferTransfer(prefill.cleverTransfer);
     setOfferPendingFields(prefill.pendingFields);
-    setOfferEditCard(prefill.card);
-    setPhase('offer-edit');
+    openProposalConditionsFlow(enrichOfferEditCardFromLead(prefill.card, lead));
   }
 
   function handlePrepareOffer(reservedModel) {
@@ -1172,8 +1174,12 @@ export default function DealerAIPage() {
   }
 
   function handleOpenOfferProposal(card) {
-    setOfferProposalCard(card);
-    setPhase('offer-proposal');
+    if (shouldOpenOfferProposalView(card, activeLead)) {
+      setOfferProposalCard(card);
+      setPhase('offer-proposal');
+      return;
+    }
+    handleOpenOfferEdit(card);
   }
 
   function handleBackFromProposal() {

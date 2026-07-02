@@ -137,6 +137,7 @@ import {
   filterSendableVehicleCards,
   resolveBoardOfferPrimaryAction,
 } from '../../services/dealer/boardOfferModel.js';
+import { shouldOpenOfferProposalView } from '../../services/dealer/openOfferCalculator.js';
 import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
@@ -1165,7 +1166,7 @@ export default function DealerAiLeadFollowUp({
 
   function handleBoardCardAction(action, card) {
     const handler = action?.handlerType ?? action?.id;
-    if (handler === 'create_offer' || handler === 'edit_offer') {
+    if (handler === 'create_offer' || handler === 'edit_offer' || handler === 'configure_conditions') {
       if (onOpenOfferEdit) {
         onOpenOfferEdit(card);
         return;
@@ -1869,15 +1870,19 @@ export default function DealerAiLeadFollowUp({
       const card = cardId
         ? vehicleCards.find((c) => c.id === cardId)
         : vehicleCards[0];
-      if (card && onOpenOfferProposal) {
-        onOpenOfferProposal(card);
+      if (card) {
+        if (shouldOpenOfferProposalView(card, lead) && onOpenOfferProposal) {
+          onOpenOfferProposal(card);
+          return;
+        }
+        if (onOpenOfferEdit) {
+          onOpenOfferEdit(card);
+          return;
+        }
+        handleVehicleOffer(card);
         return;
       }
-      if (card) {
-        handleVehicleOffer(card);
-      } else {
-        onPrepareOffer?.();
-      }
+      onPrepareOffer?.();
       return;
     }
     if (handler === 'documents' || handler === 'leasing_submit' || handler === 'unterlagen') {

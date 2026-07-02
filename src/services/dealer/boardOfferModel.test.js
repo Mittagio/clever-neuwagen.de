@@ -215,7 +215,7 @@ assert.ok(financeModel.conditionChips.some((chip) => /Schlussrate/.test(chip.lab
 assert.match(financeModel.primaryResult?.value ?? '', /299/);
 
 // G) offer_created: primär Bearbeiten, Klick öffnet Editor
-assert.equal(leasingModel.primaryAction?.label, 'Bearbeiten');
+assert.equal(leasingModel.primaryAction?.label, 'Angebot bearbeiten');
 assert.equal(leasingModel.primaryAction?.handlerType, 'edit_offer');
 assert.ok(leasingModel.secondaryActions.some((action) => action.label === 'Senden'));
 assert.ok(cardSource.includes('onAction'));

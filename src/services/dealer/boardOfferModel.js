@@ -266,8 +266,23 @@ export function resolveBoardOfferPrimaryAction(card = {}, lead = null) {
   const config = findVehicleConfiguration(lead, card);
   const payment = readPaymentSnapshot(card, config, card.vehicleOffer ?? null);
 
-  if (status === BOARD_OFFER_STATUS.DRAFT || !hasCalculatedOfferPayment(payment)) {
+  if (status === BOARD_OFFER_STATUS.DRAFT) {
+    const config = findVehicleConfiguration(lead, card);
+    if (config && !hasCalculatedOfferPayment(payment)) {
+      return {
+        id: 'configure_conditions',
+        label: 'Konditionen ergänzen',
+        handlerType: 'configure_conditions',
+      };
+    }
     return { id: 'create_offer', label: 'Angebot erstellen', handlerType: 'create_offer' };
+  }
+  if (!hasCalculatedOfferPayment(payment)) {
+    return {
+      id: 'configure_conditions',
+      label: 'Konditionen ergänzen',
+      handlerType: 'configure_conditions',
+    };
   }
   if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
     return { id: 'answer_question', label: 'Frage beantworten', handlerType: 'answer_question' };
@@ -282,7 +297,7 @@ export function resolveBoardOfferPrimaryAction(card = {}, lead = null) {
     return { id: 'view_proposal', label: 'Kundenlink ansehen', handlerType: 'view_proposal' };
   }
   if (status === BOARD_OFFER_STATUS.OFFER_CREATED) {
-    return { id: 'edit_offer', label: 'Bearbeiten', handlerType: 'edit_offer' };
+    return { id: 'edit_offer', label: 'Angebot bearbeiten', handlerType: 'edit_offer' };
   }
   return { id: 'create_offer', label: 'Angebot erstellen', handlerType: 'create_offer' };
 }
@@ -291,7 +306,7 @@ function buildBoardOfferSecondaryActions(status, { openQuestionCount = 0 } = {})
   const duplicate = { id: 'duplicate', label: 'Duplizieren', handlerType: 'duplicate_offer' };
   const remove = { id: 'remove', label: 'Entfernen', handlerType: 'remove_offer' };
   const send = { id: 'send', label: 'Senden', handlerType: 'send_offer' };
-  const edit = { id: 'edit', label: 'Bearbeiten', handlerType: 'edit_offer' };
+  const edit = { id: 'edit', label: 'Angebot bearbeiten', handlerType: 'edit_offer' };
   const viewProposal = { id: 'view_proposal', label: 'Angebot ansehen', handlerType: 'view_proposal' };
 
   if (status === BOARD_OFFER_STATUS.DRAFT) {

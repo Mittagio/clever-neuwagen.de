@@ -21,6 +21,10 @@ import {
   enrichOfferEditCardFromLead,
   buildOfferEditPendingFields,
 } from '../../services/dealer/offerEditWishMerge.js';
+import {
+  openOfferCalculator,
+  shouldOpenOfferProposalView,
+} from '../../services/dealer/openOfferCalculator.js';
 import { setActiveSalesChanceId } from '../../services/sales/activeSalesChanceStore.js';
 import {
   attachPdfToOffer,
@@ -118,18 +122,10 @@ export default function BackendLeadAktePage() {
     navigate('/verkaufsassistent', { state: { addVehicleContext } });
   }
 
-  function navigateToConfigureConditions(sourceLead = lead, card = null) {
-    if (!sourceLead) return;
-    const enriched = card ? enrichOfferEditCardFromLead(card, sourceLead) : null;
-    const vehicleCardId = enriched?.configurationId ?? enriched?.id ?? null;
-    navigateToAddVehicle(sourceLead, {
-      proposalIntent: 'vehicle',
-      paymentType: enriched?.paymentType && enriched.paymentType !== 'unknown'
-        ? enriched.paymentType
-        : (sourceLead.paymentType !== 'unknown' ? sourceLead.paymentType : null),
-      openConditions: true,
-      focusModelKey: enriched?.modelKey ?? card?.modelKey ?? null,
-      vehicleCardId,
+  function navigateToConfigureConditions(sourceLead = lead, card = null, options = {}) {
+    openOfferCalculator(navigate, sourceLead, card, {
+      returnPath: buildKundenaktePath(sourceLead?.id ?? leadId),
+      ...options,
     });
   }
 
@@ -205,8 +201,10 @@ export default function BackendLeadAktePage() {
 
     setCleverOfferTransfer(prefill.cleverTransfer);
     setOfferPendingFields(prefill.pendingFields);
-    setOfferEditCard(prefill.card);
-    setPhase('offer-edit');
+    const enriched = enrichOfferEditCardFromLead(prefill.card, lead);
+    openOfferCalculator(navigate, lead, enriched, {
+      returnPath: buildKundenaktePath(leadId),
+    });
   }
 
   function handlePrepareOffer(reservedModel) {
@@ -258,8 +256,12 @@ export default function BackendLeadAktePage() {
   }
 
   function handleOpenOfferProposal(card) {
-    setOfferProposalCard(card);
-    setPhase('offer-proposal');
+    if (shouldOpenOfferProposalView(card, lead)) {
+      setOfferProposalCard(card);
+      setPhase('offer-proposal');
+      return;
+    }
+    handleOpenOfferEdit(card);
   }
 
   function handleBackFromProposal() {
@@ -269,7 +271,10 @@ export default function BackendLeadAktePage() {
 
   function handleOpenOfferEdit(card, { fromProposal = false } = {}) {
     const enriched = enrichOfferEditCardFromLead(card, lead);
-    navigateToConfigureConditions(lead, enriched);
+    openOfferCalculator(navigate, lead, enriched, {
+      returnPath: buildKundenaktePath(leadId),
+      fromProposal,
+    });
   }
 
   function handleEditOfferConditions(card) {
@@ -433,11 +438,19 @@ export default function BackendLeadAktePage() {
             isFresh={false}
             onEnterDetail={() => navigate(`/backend/verkaufschancen?leadId=${encodeURIComponent(leadId)}`)}
             onNewWish={() => navigateToAddVehicle(lead)}
-            onStartNewWish={(currentLead, options) => navigateToAddVehicle(currentLead ?? lead, {
-              ...options,
-              openConditions: options?.openConditions
-                ?? isSingleVehicleProposalIntent(options?.proposalIntent),
-            })}
+            onStartNewWish={(currentLead, options) => {
+              const targetLead = currentLead ?? lead;
+              const openConditions = options?.openConditions
+                ?? isSingleVehicleProposalIntent(options?.proposalIntent);
+              if (openConditions) {
+                openOfferCalculator(navigate, targetLead, null, {
+                  returnPath: buildKundenaktePath(targetLead.id),
+                  ...options,
+                });
+                return;
+              }
+              navigateToAddVehicle(targetLead, options);
+            }}
             onSave={handleLeadSave}
             onPrepareOffer={handlePrepareOffer}
             onPrepareOfferFromClever={handlePrepareOfferFromClever}

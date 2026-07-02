@@ -18,6 +18,7 @@ import {
   buildOfferMailtoHref,
   copyOfferLink,
 } from '../../services/vehicleOffer.js';
+import { canEditOfferInCalculator } from '../../services/dealer/openOfferCalculator.js';
 import {
   FlowCard,
   FlowChip,
@@ -81,6 +82,7 @@ export default function CustomerOfferProposalView({
     () => getCustomerOfferInteraction(lead, card?.id),
     [lead, card?.id],
   );
+  const showEditInCalculator = canEditOfferInCalculator(card, lead);
   const reactionLines = useMemo(
     () => buildCustomerReactionLines(interaction, offer),
     [interaction, offer],
@@ -226,9 +228,11 @@ export default function CustomerOfferProposalView({
       )}
 
       <div className="cust-offer-proposal__actions">
-        <FlowPrimaryButton type="button" onClick={() => onEditOffer?.(card)}>
-          Angebot bearbeiten
-        </FlowPrimaryButton>
+        {showEditInCalculator && (
+          <FlowPrimaryButton type="button" onClick={() => onEditOffer?.(card)}>
+            Angebot bearbeiten
+          </FlowPrimaryButton>
+        )}
         <FlowSecondaryButton type="button" onClick={handlePreview}>
           Kundenlink ansehen
         </FlowSecondaryButton>

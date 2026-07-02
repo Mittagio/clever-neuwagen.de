@@ -76,6 +76,7 @@
     "test:customer-add-vehicle-flow": "node src/services/customerAddVehicleFlow.test.js",
     "test:customer-add-proposal": "node src/services/dealer/customerAddProposalFlow.test.js",
     "test:offer-edit-wish": "node src/services/dealer/offerEditWishMerge.test.js",
+    "test:open-offer-calculator": "node src/services/dealer/openOfferCalculator.test.js",
     "test:customer-search": "node src/services/crm/customerSearchService.test.js",
     "test:backend-home": "node src/components/backend/BackendHome.test.js",
     "test:dealer-vehicle-management": "node src/services/dealer/dealerVehicleManagement.test.js",
