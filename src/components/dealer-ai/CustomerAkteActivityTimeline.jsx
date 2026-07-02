@@ -40,6 +40,10 @@ function ActivityTimelineItem({
         <p className="cust-akte-timeline__body">{item.body}</p>
       )}
 
+      {item.channelLabel && (
+        <p className="cust-akte-timeline__meta">{item.channelLabel}</p>
+      )}
+
       {item.isQuestion && item.cleverAnswer && (
         <details className="cust-akte-timeline__answer">
           <summary>Clever-Antwort anzeigen</summary>

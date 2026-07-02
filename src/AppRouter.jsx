@@ -53,6 +53,7 @@ import AgbPage from './pages/legal/AgbPage';
 import HaendlerAgbPage from './pages/legal/HaendlerAgbPage';
 import PriceListImportPage from './pages/PriceListImportPage';
 import PriceListImportHistoryPage from './pages/PriceListImportHistoryPage';
+import DatenpruefungAdminPage from './pages/DatenpruefungAdminPage.jsx';
 import AdminBillingPage from './pages/billing/AdminBillingPage.jsx';
 import AdminBillingDealerPage from './pages/billing/AdminBillingDealerPage.jsx';
 import AdminDeliveriesPage from './pages/billing/AdminDeliveriesPage.jsx';
@@ -123,6 +124,7 @@ export default function AppRouter() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/import" element={<PriceListImportPage />} />
         <Route path="/admin/import/history" element={<PriceListImportHistoryPage />} />
+        <Route path="/admin/datenpruefung" element={<DatenpruefungAdminPage />} />
         <Route path="/admin/billing" element={<AdminBillingPage />} />
         <Route path="/admin/billing/dealer/:id" element={<AdminBillingDealerPage />} />
         <Route path="/admin/dealers" element={<AdminDealersPage />} />

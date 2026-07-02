@@ -153,6 +153,38 @@ export function formatTimelinePresentation(entry = {}) {
   const time = formatClockTime(entry.at);
   const whenLabel = formatHistoryWhen(entry.at);
 
+  if (entry.type === 'customer_message' || entry.meta?.isCustomerMessage) {
+    const inbound = entry.direction === 'inbound' || entry.meta?.direction === 'inbound';
+    const channel = entry.channel ?? entry.meta?.channel ?? 'clever';
+    const channelLabel = channel === 'clever'
+      ? 'Clever'
+      : channel === 'whatsapp'
+        ? 'WhatsApp'
+        : channel === 'email'
+          ? 'E-Mail'
+          : channel === 'sms'
+            ? 'SMS'
+            : channel;
+    const preview = String(entry.text ?? '')
+      .replace(/^Nachricht vom Kunden:\s*„?/i, '')
+      .replace(/^Clever Nachricht gesendet:\s*„?/i, '')
+      .replace(/“$/, '')
+      .trim();
+
+    return {
+      id: entry.id,
+      icon: inbound ? '💬' : '📤',
+      time,
+      whenLabel,
+      headline: inbound ? 'Nachricht vom Kunden' : 'Clever Nachricht gesendet',
+      body: preview || entry.text,
+      channelLabel: inbound ? null : `Kanal: ${channelLabel}`,
+      cleverAnswer: null,
+      isQuestion: false,
+      entry,
+    };
+  }
+
   if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.CLEVER_QUESTION) {
     return {
       id: entry.id,

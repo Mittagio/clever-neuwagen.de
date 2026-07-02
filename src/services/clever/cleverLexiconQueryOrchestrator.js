@@ -37,7 +37,10 @@ function isHighConfidenceLexiconResult(searchState) {
 
 function shouldFormulateLexiconResult(searchState) {
   if (!searchState?.ok) return false;
-  const confidence = searchState.result?.confidence;
+  const result = searchState.result ?? {};
+  if (result.needsReview && result.intentType === 'technical') return false;
+  if (result.dataConfidence === 'needs_review') return false;
+  const confidence = result.confidence;
   return confidence === 'low' || confidence === 'medium';
 }
 

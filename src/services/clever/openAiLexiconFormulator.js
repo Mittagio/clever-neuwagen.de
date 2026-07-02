@@ -45,6 +45,7 @@ export async function formulateLexiconWithOpenAi({
             'Du formulierst eine kurze Verkäufer-Zusammenfassung auf Deutsch für das Clever-Lexikon.',
             'Ton: sachlich, präzise, intern für Verkäufer – keine Kundenansprache, kein Marketing.',
             'Nutze AUSSCHLIESSLICH die Fakten aus facts – erfinde keine Verfügbarkeit, Pakete oder technischen Werte.',
+            'Wenn needsReview oder dataConfidence needs_review: erkläre nur, dass eine Datenprüfung nötig ist – keine kg-Zahlen.',
             'Maximal 2–3 Sätze. Nenne Modell und Kernbefund klar.',
             'Antworte als JSON: { "summary": string }',
           ].join('\n'),

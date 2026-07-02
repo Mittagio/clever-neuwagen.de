@@ -19,6 +19,10 @@ import {
   findPreparedSelectionGroup,
   findReactedSelectionGroup,
 } from '../sales/offerSelectionGroup.js';
+import {
+  getCustomerPortalAccess,
+  PORTAL_ACCESS_STATUS,
+} from './customerPortalAccessService.js';
 
 export const CLEVER_ACTION_IDS = {
   VEHICLE_SUGGESTION_REVIEW: 'vehicle_suggestion_review',
@@ -39,6 +43,10 @@ export const CLEVER_ACTION_IDS = {
   ANSWER_CUSTOMER_QUESTION: 'answer_customer_question',
   SEND_CUSTOMER_ANSWER: 'send_customer_answer',
   SHOWROOM_CAPTURE_REVIEW: 'showroom_capture_review',
+  PORTAL_LINK_SEND: 'portal_link_send',
+  PORTAL_LINK_FOLLOWUP: 'portal_link_followup',
+  PORTAL_CODE_REMIND: 'portal_code_remind',
+  PORTAL_VIEWED_FOLLOWUP: 'portal_viewed_followup',
 };
 
 /** Niedrigere Zahl = höhere Priorität */
@@ -60,6 +68,10 @@ export const CLEVER_ACTION_PRIORITY = {
   [CLEVER_ACTION_IDS.ANSWER_CUSTOMER_QUESTION]: 50,
   [CLEVER_ACTION_IDS.SEND_CUSTOMER_ANSWER]: 51,
   [CLEVER_ACTION_IDS.SHOWROOM_CAPTURE_REVIEW]: 48,
+  [CLEVER_ACTION_IDS.PORTAL_LINK_SEND]: 64,
+  [CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP]: 61,
+  [CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP]: 58,
+  [CLEVER_ACTION_IDS.PORTAL_CODE_REMIND]: 59,
   [CLEVER_ACTION_IDS.GENERAL_REMINDER]: 90,
 };
 
@@ -153,6 +165,26 @@ const ACTION_DEFINITIONS = {
     title: 'Schnellaufnahme prüfen',
     ctaLabel: 'Schnellaufnahme öffnen',
     handlerType: 'showroom_capture_review',
+  },
+  [CLEVER_ACTION_IDS.PORTAL_LINK_SEND]: {
+    title: 'Kundenlink senden',
+    ctaLabel: 'Kundenlink senden',
+    handlerType: 'selection_send',
+  },
+  [CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP]: {
+    title: 'Kundenlink nachfassen',
+    ctaLabel: 'Kundenlink nachfassen',
+    handlerType: 'portal_followup',
+  },
+  [CLEVER_ACTION_IDS.PORTAL_CODE_REMIND]: {
+    title: 'Zugang prüfen',
+    ctaLabel: 'Code erneut senden',
+    handlerType: 'portal_code_remind',
+  },
+  [CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP]: {
+    title: 'Angebot nachfassen',
+    ctaLabel: 'Angebot nachfassen',
+    handlerType: 'portal_viewed_followup',
   },
 };
 
@@ -453,7 +485,35 @@ export function evaluateCleverActions(context) {
     }));
   }
 
-  if (preparedSelectionGroup && !reactedSelectionGroup) {
+  const portalAccess = getCustomerPortalAccess(context.lead);
+  if (portalAccess) {
+    const portfolio = context.lead?.crm?.customerOfferPortfolio;
+    const hasPortfolioReaction = (portfolio?.items ?? []).some(
+      (item) => item.customerReaction?.status && item.customerReaction.status !== 'none',
+    );
+
+    if (portalAccess.status === PORTAL_ACCESS_STATUS.PREPARED) {
+      candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.PORTAL_LINK_SEND, {
+        reason: 'Kundenlink vorbereitet',
+        explanation: 'Der persönliche Kundenlink ist vorbereitet – jetzt an den Kunden senden.',
+      }));
+    } else if (portalAccess.status === PORTAL_ACCESS_STATUS.SENT && !portalAccess.openedAt) {
+      candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP, {
+        reason: 'Kundenlink noch nicht geöffnet',
+        explanation: 'Der Kunde hat den Link noch nicht geöffnet. Kurz nachfassen oder Link erneut senden.',
+      }));
+    } else if (portalAccess.status === PORTAL_ACCESS_STATUS.OPENED && !portalAccess.verifiedAt) {
+      candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.PORTAL_CODE_REMIND, {
+        reason: 'Zugang noch nicht bestätigt',
+        explanation: 'Der Kunde hat den Link geöffnet, den Code aber noch nicht bestätigt.',
+      }));
+    } else if (portalAccess.status === PORTAL_ACCESS_STATUS.VIEWED && !hasPortfolioReaction) {
+      candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP, {
+        reason: 'Auswahl angesehen',
+        explanation: 'Der Kunde hat die Fahrzeugauswahl angesehen, aber noch nicht reagiert.',
+      }));
+    }
+  } else if (preparedSelectionGroup && !reactedSelectionGroup) {
     const variantCount = preparedSelectionGroup.variants?.length ?? 0;
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.SELECTION_SEND, {
       reason: 'Clever Auswahl vorbereitet',

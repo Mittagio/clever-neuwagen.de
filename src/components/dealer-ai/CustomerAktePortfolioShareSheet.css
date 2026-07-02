@@ -1,7 +1,51 @@
+.cust-portfolio-share__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+}
+
 .cust-portfolio-share__intro {
   margin: 0 0 1rem;
   color: #374151;
   line-height: 1.5;
+}
+
+.cust-portfolio-share__meta {
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.cust-portfolio-share__meta div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.cust-portfolio-share__meta dt {
+  margin: 0;
+  color: #6b7280;
+}
+
+.cust-portfolio-share__meta dd {
+  margin: 0;
+  color: #111827;
+  font-weight: 600;
+}
+
+.cust-portfolio-share__btn--primary {
+  background: #111827;
+}
+
+.cust-portfolio-share__demo-code {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.875rem;
 }
 
 .cust-portfolio-share__actions {

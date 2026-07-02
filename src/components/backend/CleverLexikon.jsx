@@ -140,25 +140,49 @@ export default function CleverLexikon({
         )}
 
         {searchState?.ok && result && (
-          <article className="backend-home__lexikon-card">
+          <article className={`backend-home__lexikon-card${result.needsReview ? ' backend-home__lexikon-card--review' : ''}`}>
             <p className="backend-home__lexikon-question">{searchState.question}</p>
             <h4 className="backend-home__lexikon-model">{result.title ?? result.modelTitle}</h4>
             <p className="backend-home__lexikon-field-label">{result.fieldLabel}</p>
 
-            {result.primaryFacts?.map((fact) => (
-              <p key={fact.label} className="backend-home__lexikon-primary">
-                <span className="backend-home__lexikon-primary-label">{fact.label}</span>
-                <strong className="backend-home__lexikon-primary-value">{fact.value}</strong>
-              </p>
-            ))}
-
-            {!result.primaryFacts?.length && result.answer && (
-              <p className="backend-home__lexikon-primary-value backend-home__lexikon-primary-value--solo">
-                {result.answer}
+            {result.statusLabel && (
+              <p className={`backend-home__lexikon-status backend-home__lexikon-status--${result.needsReview ? 'review' : 'verified'}`}>
+                {result.statusLabel}
               </p>
             )}
 
-            {result.shortAnswer && (
+            {result.needsReview ? (
+              <div className="backend-home__lexikon-review">
+                <p className="backend-home__lexikon-review-title">Datenprüfung nötig</p>
+                <p className="backend-home__lexikon-review-text">
+                  {result.shortAnswer || 'Für diese Version liegt Clever aktuell kein geprüfter Wert vor. Bitte Datenquelle ergänzen oder Preislisten-Import prüfen.'}
+                </p>
+                {result.reviewHints?.length > 0 && (
+                  <ul className="backend-home__lexikon-review-hints">
+                    {result.reviewHints.map((hint) => (
+                      <li key={hint}>{hint}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <>
+                {result.primaryFacts?.map((fact) => (
+                  <p key={fact.label} className="backend-home__lexikon-primary">
+                    <span className="backend-home__lexikon-primary-label">{fact.label}</span>
+                    <strong className="backend-home__lexikon-primary-value">{fact.value}</strong>
+                  </p>
+                ))}
+
+                {!result.primaryFacts?.length && result.answer && (
+                  <p className="backend-home__lexikon-primary-value backend-home__lexikon-primary-value--solo">
+                    {result.answer}
+                  </p>
+                )}
+              </>
+            )}
+
+            {!result.needsReview && result.shortAnswer && (
               <p className="backend-home__lexikon-short">
                 <span className="backend-home__lexikon-short-label">Kurzantwort: </span>
                 {result.shortAnswer}
@@ -167,7 +191,9 @@ export default function CleverLexikon({
 
             {result.availabilityByTrim?.length > 0 && (
               <div className="backend-home__lexikon-trims">
-                <p className="backend-home__lexikon-trims-title">Verfügbarkeit je Linie</p>
+                <p className="backend-home__lexikon-trims-title">
+                  {result.intentType === 'technical' ? 'Je Motorisierung' : 'Verfügbarkeit je Linie'}
+                </p>
                 <table className="backend-home__lexikon-trim-table">
                   <tbody>
                     {result.availabilityByTrim.map((row) => (
@@ -226,6 +252,22 @@ export default function CleverLexikon({
                 detectedIntent={result.intentType ?? null}
                 detectedFeatureId={result.featureId ?? null}
               />
+            )}
+
+            {result.needsReview && onAdoptToAkte && (
+              <button
+                type="button"
+                className="backend-home__lexikon-adopt backend-home__lexikon-adopt--secondary"
+                onClick={() => onAdoptToAkte({
+                  ...searchState,
+                  result: {
+                    ...result,
+                    adoptNote: `${result.fieldLabel}: Prüfung nötig – ${searchState.question}`,
+                  },
+                })}
+              >
+                In Kundenakte vormerken
+              </button>
             )}
 
             {adoptChip && (

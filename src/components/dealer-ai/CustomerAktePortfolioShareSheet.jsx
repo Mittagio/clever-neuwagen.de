@@ -2,22 +2,25 @@ import { useState } from 'react';
 import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
 import {
   buildOfferMailtoHref,
-  buildOfferWhatsappHref,
   copyOfferLink,
 } from '../../services/vehicleOffer.js';
 import { buildPortfolioShareMessage } from '../../services/crm/customerOfferPortfolioService.js';
+import {
+  buildPortalShareEmailBody,
+  formatPortalAccessStatusLabel,
+} from '../../services/crm/customerPortalAccessService.js';
 import './CustomerAktePortfolioShareSheet.css';
 
 export default function CustomerAktePortfolioShareSheet({
   portfolio,
+  portalAccess = null,
   customerName = '',
-  phone = '',
   email = '',
   itemCount = 0,
   onMarkSent,
 }) {
   const [toast, setToast] = useState('');
-  const url = portfolio?.url ?? '';
+  const url = portalAccess?.portfolioUrl ?? portfolio?.url ?? '';
 
   const shareMessage = buildPortfolioShareMessage({
     customerName,
@@ -27,12 +30,21 @@ export default function CustomerAktePortfolioShareSheet({
       ?.map((item) => item.summaryLine)
       .filter(Boolean) ?? [],
   });
-  const whatsappHref = buildOfferWhatsappHref(phone, shareMessage);
-  const mailHref = buildOfferMailtoHref(
-    email,
-    `Ihre ${itemCount === 1 ? 'Angebotsauswahl' : `${itemCount} Vorschläge`}`,
-    shareMessage,
-  );
+  const emailBody = buildPortalShareEmailBody({
+    customerName,
+    portfolioUrl: url,
+    itemCount,
+    summaryLines: portfolio?.items
+      ?.map((item) => item.summaryLine)
+      .filter(Boolean) ?? [],
+  });
+  const mailHref = email
+    ? buildOfferMailtoHref(
+      email,
+      itemCount === 1 ? 'Ihre Fahrzeugauswahl' : `Ihre ${itemCount} Fahrzeugvorschläge`,
+      `${emailBody}\n\nIhr Zugangscode: ${portalAccess?.accessCode ?? '—'}`,
+    )
+    : null;
 
   function showToast(msg) {
     setToast(msg);
@@ -45,54 +57,64 @@ export default function CustomerAktePortfolioShareSheet({
     onMarkSent?.('copy');
   }
 
-  function handleWhatsApp() {
-    if (whatsappHref) {
-      window.open(whatsappHref, '_blank', 'noopener');
-    }
-    onMarkSent?.('whatsapp');
-    showToast('WhatsApp geöffnet');
-  }
-
-  function handleEmail() {
+  function handleEmailPrepare() {
     if (mailHref) {
       window.location.href = mailHref;
     }
     onMarkSent?.('email');
   }
 
+  const statusLabel = formatPortalAccessStatusLabel(portalAccess?.status ?? 'prepared');
+
   return (
     <div className="cust-portfolio-share">
       <InternalTestCustomerShareWarning />
+
+      <h3 className="cust-portfolio-share__title">Kundenlink vorbereitet</h3>
       <p className="cust-portfolio-share__intro">
-        {itemCount === 1
-          ? '1 Angebot ist im Link enthalten.'
-          : `${itemCount} Angebote sind im Link enthalten.`}
-        {' '}
-        Der Kunde kann pro Vorschlag reagieren.
+        Der Kunde erhält diesen Link per E-Mail und bestätigt den Zugang mit einem Code.
       </p>
 
+      <dl className="cust-portfolio-share__meta">
+        <div>
+          <dt>E-Mail</dt>
+          <dd>{email || '—'}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{statusLabel}</dd>
+        </div>
+        <div>
+          <dt>Angebote im Link</dt>
+          <dd>{itemCount}</dd>
+        </div>
+      </dl>
+
       <div className="cust-portfolio-share__actions">
-        <button type="button" className="cust-portfolio-share__btn" onClick={handleCopy}>
+        <button type="button" className="cust-portfolio-share__btn cust-portfolio-share__btn--primary" onClick={handleCopy}>
           Link kopieren
         </button>
-        {whatsappHref ? (
-          <button type="button" className="cust-portfolio-share__btn cust-portfolio-share__btn--wa" onClick={handleWhatsApp}>
-            WhatsApp
-          </button>
-        ) : null}
         {mailHref ? (
-          <button type="button" className="cust-portfolio-share__btn" onClick={handleEmail}>
-            E-Mail
+          <button type="button" className="cust-portfolio-share__btn" onClick={handleEmailPrepare}>
+            Als E-Mail-Text vorbereiten
           </button>
         ) : null}
       </div>
 
       <p className="cust-portfolio-share__url">{url}</p>
 
+      {portalAccess?.accessCode ? (
+        <p className="cust-portfolio-share__demo-code">
+          Demo-Zugangscode für Test:
+          {' '}
+          <strong>{portalAccess.accessCode}</strong>
+        </p>
+      ) : null}
+
       <ul className="cust-portfolio-share__hints">
-        <li>Leasing/Finanzierung: PDF separat hochladen, wenn verbindlich.</li>
-        <li>Kunde sieht UPE und Richtwert-Rate online.</li>
-        <li>Rückmeldungen landen im Clever Eingang.</li>
+        <li>Kein Checkout – nur Angebote vergleichen und Rückmeldung geben.</li>
+        <li>Kundenfragen und Nachrichten landen im Clever Eingang.</li>
+        <li>Link-Öffnung und Code-Bestätigung werden in der Kundenakte protokolliert.</li>
       </ul>
 
       {toast ? <p className="cust-portfolio-share__toast" role="status">{toast}</p> : null}

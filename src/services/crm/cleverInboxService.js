@@ -18,6 +18,7 @@ export const INBOX_EVENT_TYPES = {
   SPECIAL_QUESTION: 'special_question',
   LEARNING_REQUEST_CREATED: 'learning_request_created',
   ADVISOR_CONTACT_REQUEST: 'advisor_contact_request',
+  CUSTOMER_MESSAGE: 'customer_message',
 };
 
 export const INBOX_STATUS = {
@@ -73,6 +74,7 @@ export const INBOX_CATEGORY_FILTERS = [
       INBOX_EVENT_TYPES.CUSTOMER_QUESTION,
       INBOX_EVENT_TYPES.OFFER_QUESTION,
       INBOX_EVENT_TYPES.SPECIAL_QUESTION,
+      INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
     ],
   },
   {
@@ -192,6 +194,15 @@ const EVENT_META = {
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
     sortOrder: 2,
+    urgent: true,
+  },
+  [INBOX_EVENT_TYPES.CUSTOMER_MESSAGE]: {
+    badge: 'Nachricht',
+    icon: '💬',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
+    priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 1,
     urgent: true,
   },
 };
@@ -468,7 +479,8 @@ export function countOpenQuestionInboxItems(filter = {}) {
   return listInboxItems({ ...filter, status: 'open' }).filter(
     (item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
       || item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
-      || item.type === INBOX_EVENT_TYPES.SPECIAL_QUESTION,
+      || item.type === INBOX_EVENT_TYPES.SPECIAL_QUESTION
+      || item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
   ).length;
 }
 
@@ -479,7 +491,8 @@ export function buildInboxDashboardSummary(filter = {}) {
   const openItems = listInboxItems({ ...filter, status: 'open' });
   const questionCount = openItems.filter(
     (item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
-      || item.type === INBOX_EVENT_TYPES.OFFER_QUESTION,
+      || item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
+      || item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
   ).length;
   const openCount = openItems.length;
 

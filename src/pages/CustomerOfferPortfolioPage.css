@@ -67,6 +67,164 @@
   border-bottom: none;
 }
 
+.cop-messages {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem 1.125rem 1.125rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cop-messages__header {
+  margin-bottom: 0.875rem;
+}
+
+.cop-messages__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cop-messages__subline {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.cop-messages__empty {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.cop-messages__empty-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cop-messages__threads {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cop-messages__thread-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.cop-messages__chat {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cop-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 92%;
+}
+
+.cop-msg--customer {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.cop-msg--dealer {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.cop-msg__label {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.cop-msg__bubble {
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  line-height: 1.45;
+}
+
+.cop-msg--customer .cop-msg__bubble {
+  background: #e8f1ff;
+  color: #0f172a;
+  border-bottom-right-radius: 4px;
+}
+
+.cop-msg--dealer .cop-msg__bubble {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-bottom-left-radius: 4px;
+}
+
+.cop-msg__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cop-msg__time {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cop-messages__compose {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+}
+
+.cop-messages__compose-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cop-messages__textarea {
+  min-height: 5.5rem;
+  width: 100%;
+  resize: vertical;
+}
+
+.cop-messages__compose-actions {
+  margin-top: 0.75rem;
+}
+
+.cop-messages__send {
+  width: 100%;
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+.cop-messages__feedback {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: #047857;
+  line-height: 1.4;
+}
+
+.cop-messages__anchor {
+  height: 1px;
+}
+
 .cop-muted {
   color: #6b7280;
   margin: 0;
@@ -255,4 +413,47 @@
   text-align: center;
   color: #059669;
   margin: 1.25rem 0 0;
+}
+
+.cop-shell--narrow {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.cop-code-hint {
+  margin-top: 0.5rem;
+}
+
+.cop-code-form {
+  margin-top: 1.25rem;
+}
+
+.cop-code-form__label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cop-code-form__input {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-size: 1.125rem;
+  letter-spacing: 0.12em;
+  text-align: center;
+  margin-bottom: 0.85rem;
+}
+
+.cop-code-form__submit {
+  width: 100%;
+}
+
+.cop-code-form__error {
+  margin: 0.75rem 0 0;
+  color: #b91c1c;
+  font-size: 0.875rem;
 }

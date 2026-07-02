@@ -153,6 +153,64 @@
   background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
 }
 
+.backend-home__lexikon-card--review {
+  border-color: #fde68a;
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
+}
+
+.backend-home__lexikon-status {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.backend-home__lexikon-status--verified {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.backend-home__lexikon-status--review {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.backend-home__lexikon-review {
+  margin: 8px 0 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.backend-home__lexikon-review-title {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.backend-home__lexikon-review-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+.backend-home__lexikon-review-hints {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+
+.backend-home__lexikon-adopt--secondary {
+  margin-top: 8px;
+}
+
 .backend-home__lexikon-soft-hint {
   margin: 4px 0 0;
   font-size: 0.875rem;

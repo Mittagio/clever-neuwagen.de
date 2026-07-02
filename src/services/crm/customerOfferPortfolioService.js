@@ -16,6 +16,15 @@ import {
   INBOX_STATUS,
 } from './cleverInboxService.js';
 import {
+  buildCustomerPortalMessageThreads,
+  mirrorInboundCustomerQuestion,
+  sendCustomerPortalInboundMessage,
+} from './customerMessageService.js';
+import {
+  buildCustomerPortalAccessContext,
+  isCustomerPortalAccessVerified,
+} from './customerPortalAccessService.js';
+import {
   buildBoardItems,
   OFFER_SELECTION_GROUP_STATUS,
   OFFER_VARIANT_STATUS,
@@ -320,11 +329,27 @@ export function resolvePortfolioFromLead(lead = {}, token = null) {
   return portfolio;
 }
 
-export function buildPortfolioCustomerContext(lead = {}) {
+export function buildPortfolioCustomerContext(lead = {}, options = {}) {
   const portfolio = lead?.crm?.customerOfferPortfolio ?? null;
   if (!portfolio?.items?.length) return null;
 
   const firstName = String(lead.contact?.name ?? '').split(/\s+/)[0] || 'Hallo';
+  const accessVerified = options.accessVerified === true
+    || isCustomerPortalAccessVerified(lead);
+  const portalAccess = buildCustomerPortalAccessContext(lead, { accessVerified });
+
+  if (portalAccess.codeRequired && !portalAccess.verified) {
+    return {
+      leadId: lead.id,
+      customerFirstName: firstName,
+      portfolioId: portfolio.id,
+      token: portfolio.token,
+      requiresCode: true,
+      portalAccess,
+      pageTitle: 'Ihre Fahrzeugauswahl',
+    };
+  }
+
   const items = portfolio.items.map((item) => ({
     id: item.id,
     title: item.trimLabel
@@ -358,6 +383,50 @@ export function buildPortfolioCustomerContext(lead = {}) {
       ? `${items[0].modelLabel}${items.every((i) => i.trimLabel === items[0].trimLabel && i.trimLabel) ? ` · ${items[0].trimLabel}` : ''} – Ihre ${items.length} Option${items.length === 1 ? '' : 'en'}`
       : 'Ihre Angebotsauswahl',
     items,
+    messageThreads: buildCustomerPortalMessageThreads(lead, { portfolioItems: portfolio.items }),
+    portalAccess,
+    requiresCode: false,
+    pageTitle: 'Ihre Fahrzeugauswahl',
+  };
+}
+
+/**
+ * Kunde sendet Nachricht aus dem Portal-Nachrichtenbereich.
+ * @param {object} lead
+ * @param {object} [options]
+ */
+export function applyCustomerPortalMessage(lead, { text } = {}) {
+  const trimmed = String(text ?? '').trim();
+  if (!trimmed) {
+    return { ok: false, error: 'message_required' };
+  }
+
+  const mirrored = sendCustomerPortalInboundMessage({
+    lead,
+    text: trimmed,
+    customerName: lead.contact?.name ?? '',
+  });
+
+  if (!mirrored.message) {
+    return { ok: false, error: 'message_invalid' };
+  }
+
+  const now = new Date().toISOString();
+  const nextLead = {
+    ...mirrored.lead,
+    updatedAt: now,
+    history: [
+      ...(mirrored.lead.history ?? []),
+      historyEntry(`Kundenfrage: „${trimmed}“`),
+    ],
+  };
+
+  return {
+    ok: true,
+    lead: nextLead,
+    message: mirrored.message,
+    inboxItem: mirrored.inboxItem,
+    context: buildPortfolioCustomerContext(nextLead),
   };
 }
 
@@ -580,7 +649,7 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     vehicleOffers = applyReactionToVehicleOffer(lead, reactedItem, reactionStatus);
   }
 
-  const nextLead = {
+  let finalLead = {
     ...lead,
     updatedAt: now,
     crm: {
@@ -595,14 +664,27 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     ],
   };
 
+  if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO && itemIndex >= 0) {
+    const reactedItem = nextPortfolio.items[itemIndex];
+    const trimmed = String(questionText ?? '').trim();
+    const mirrored = mirrorInboundCustomerQuestion({
+      lead: finalLead,
+      text: trimmed,
+      relatedOfferId: reactedItem.vehicleCardId ?? reactedItem.id,
+      relatedQuestionId: `portfolio-more-info-${reactedItem.id}`,
+      customerName: lead.contact?.name ?? '',
+    });
+    finalLead = mirrored.lead;
+  }
+
   return {
     ok: true,
-    lead: nextLead,
+    lead: finalLead,
     portfolio: nextPortfolio,
     offerUnitId,
     eventType,
     inboxItem,
-    context: buildPortfolioCustomerContext(nextLead),
+    context: buildPortfolioCustomerContext(finalLead),
   };
 }
 

@@ -44,14 +44,36 @@ const hudPackage = hud.result.availabilityByTrim.some(
 );
 assert.ok(hudPackage, 'Paketbezug erkennbar');
 
-// 4. Sportage Anhängelast – fokussiert, nicht Vollübersicht
+// 4. Sportage Anhängelast – geprüfte Varianten aus Preisliste
 const tow = searchCleverLexicon('Sportage Anhängelast');
 assert.equal(tow.ok, true);
 assert.equal(tow.result.intentType, 'technical');
 assert.equal(tow.result.fieldLabel, 'Anhängelast');
-assert.match(tow.result.primaryFacts[0].value, /kg/);
+assert.equal(tow.result.dataConfidence, 'verified');
+assert.ok(tow.result.availabilityByTrim?.length >= 2 || tow.result.primaryFacts?.length > 0);
+assert.match(tow.result.source, /Preisliste/i);
 const towExtras = tow.result.relatedFacts ?? tow.result.extras ?? [];
 assert.ok(towExtras.length < 6, 'Keine pauschale Eckdaten-Liste');
+
+// 4b. EV5 204 PS Anhängelast – keine erfundene Zahl (204 PS existiert nicht)
+const ev5Tow204 = searchCleverLexicon('anhängelast kia ev5 204 ps');
+assert.equal(ev5Tow204.ok, true);
+assert.equal(ev5Tow204.result.needsReview, true);
+assert.equal(ev5Tow204.result.primaryFacts.length, 0, 'Keine ungeprüfte kg-Zahl');
+assert.match(ev5Tow204.result.shortAnswer, /204 PS|nicht hinterlegt|kein geprüfter/i);
+
+// 4c. EV5 218 PS – geprüfter Wert FWD
+const ev5Tow218 = searchCleverLexicon('anhängelast kia ev5 218 ps');
+assert.equal(ev5Tow218.ok, true);
+assert.equal(ev5Tow218.result.dataConfidence, 'verified');
+assert.match(ev5Tow218.result.primaryFacts[0].value, /1\.200\s*kg/);
+assert.match(ev5Tow218.result.source, /EV5 Preisliste/i);
+
+// 4d. EV5 160 kW – kW-Alias für FWD
+const ev5TowKw = searchCleverLexicon('anhängelast kia ev5 160 kw');
+assert.equal(ev5TowKw.ok, true);
+assert.equal(ev5TowKw.result.dataConfidence, 'verified');
+assert.match(ev5TowKw.result.primaryFacts[0].value, /1\.200\s*kg/);
 
 // 5. EV3 V2L – Synonym globalFeatureCatalog
 const v2l = searchCleverLexicon('EV3 V2L');
@@ -86,6 +108,7 @@ assert.ok(
 // 10. Quelle wird angezeigt
 assert.ok(battery.result.source, 'Quelle bei technischer Antwort');
 assert.ok(heat.result.source, 'Quelle bei Ausstattungsantwort');
+assert.equal(battery.result.dataConfidence, 'verified', 'Batterie aus Preisliste = verified');
 
 // Intent-Parsing
 const model = resolveLexiconModel('kia ev4 fastback batterie');

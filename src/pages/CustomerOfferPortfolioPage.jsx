@@ -4,9 +4,17 @@ import usePageSeo from '../hooks/usePageSeo';
 import {
   fetchCustomerOfferPortfolioContext,
   postCustomerOfferPortfolioEvent,
+  postCustomerOfferPortfolioMessage,
+  postCustomerPortalAccessOpen,
+  postCustomerPortalAccessVerify,
+  postCustomerPortalAccessViewed,
+  isPortfolioAccessVerifiedLocally,
+  markPortfolioAccessVerifiedLocally,
   PORTFOLIO_EVENTS,
 } from '../services/customer/customerOfferPortfolioApi.js';
 import { PORTFOLIO_DECLINE_REASONS, PORTFOLIO_REACTION_STATUS } from '../services/crm/customerOfferPortfolioService.js';
+import CustomerPortalMessagesSection from '../components/customer/CustomerPortalMessagesSection.jsx';
+import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGate.jsx';
 import './CustomerOfferPortfolioPage.css';
 
 const DECLINE_OPTIONS = Object.entries(PORTFOLIO_DECLINE_REASONS).map(([id, label]) => ({
@@ -28,14 +36,21 @@ export default function CustomerOfferPortfolioPage() {
   const [declineReason, setDeclineReason] = useState('');
   const [declineNote, setDeclineNote] = useState('');
   const [question, setQuestion] = useState('');
+  const [portalMessage, setPortalMessage] = useState('');
+  const [messageFeedback, setMessageFeedback] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const openedRef = useRef(false);
+  const [accessVerified, setAccessVerified] = useState(false);
+  const [codeError, setCodeError] = useState('');
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const portfolioOpenedRef = useRef(false);
+  const viewedReportedRef = useRef(false);
 
   const firstName = context?.customerFirstName ?? 'Hallo';
   const itemCount = context?.items?.length ?? 0;
 
   usePageSeo({
-    title: `${firstName} – Ihre Angebotsauswahl`,
+    title: `${firstName} – Ihre Fahrzeugauswahl`,
     description: 'Vergleichen Sie Ihre persönlichen Fahrzeugvorschläge.',
     path: `/angebot/auswahl/${customerSlug ?? 'kunde'}`,
   });
@@ -43,15 +58,31 @@ export default function CustomerOfferPortfolioPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!leadId || !token) {
+        setError('Diese Auswahl ist gerade nicht verfügbar.');
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError('');
       try {
+        const locallyVerified = isPortfolioAccessVerifiedLocally(leadId, token);
+        await postCustomerPortalAccessOpen({
+          leadId,
+          token,
+          customerSlug,
+          accessVerified: locallyVerified,
+        });
         const next = await fetchCustomerOfferPortfolioContext({
           leadId,
           token,
           customerSlug,
+          accessVerified: locallyVerified,
         });
-        if (!cancelled) setContext(next);
+        if (!cancelled) {
+          setContext(next);
+          setAccessVerified(locallyVerified || !next?.requiresCode);
+        }
       } catch {
         if (!cancelled) setError('Diese Auswahl ist gerade nicht verfügbar.');
       } finally {
@@ -63,20 +94,54 @@ export default function CustomerOfferPortfolioPage() {
   }, [leadId, token, customerSlug]);
 
   useEffect(() => {
-    if (!context?.leadId || openedRef.current) return;
-    openedRef.current = true;
-    postCustomerOfferPortfolioEvent({
-      leadId: context.leadId,
-      token,
-      eventType: PORTFOLIO_EVENTS.OPENED,
-    })
-      .then((data) => {
-        if (data.context) setContext(data.context);
+    if (!context?.leadId || context.requiresCode || !accessVerified) return;
+
+    if (!portfolioOpenedRef.current) {
+      portfolioOpenedRef.current = true;
+      postCustomerOfferPortfolioEvent({
+        leadId: context.leadId,
+        token,
+        eventType: PORTFOLIO_EVENTS.OPENED,
       })
-      .catch(() => {
-        /* Öffnen ist best-effort */
+        .then((data) => {
+          if (data.context) setContext(data.context);
+        })
+        .catch(() => {
+          /* Öffnen ist best-effort */
+        });
+    }
+
+    if (!viewedReportedRef.current) {
+      viewedReportedRef.current = true;
+      postCustomerPortalAccessViewed({ leadId: context.leadId, token, customerSlug })
+        .then((data) => {
+          if (data.context) setContext(data.context);
+        })
+        .catch(() => {
+          /* Angesehen ist best-effort */
+        });
+    }
+  }, [context, accessVerified, token, customerSlug]);
+
+  async function handleVerifyCode(code) {
+    setVerifyingCode(true);
+    setCodeError('');
+    try {
+      const data = await postCustomerPortalAccessVerify({
+        leadId,
+        token,
+        customerSlug,
+        code,
       });
-  }, [context?.leadId, token]);
+      markPortfolioAccessVerifiedLocally(leadId, token);
+      setAccessVerified(true);
+      setContext(data.context);
+    } catch {
+      setCodeError('Code ungültig. Bitte prüfen Sie Ihre E-Mail.');
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
 
   async function sendEvent(itemId, eventType, extra = {}) {
     if (!context?.leadId || !itemId) return;
@@ -111,6 +176,26 @@ export default function CustomerOfferPortfolioPage() {
     }
   }
 
+  async function sendPortalMessage(text) {
+    if (!context?.leadId || !text.trim()) return;
+    setSendingMessage(true);
+    setMessageFeedback('');
+    try {
+      const data = await postCustomerOfferPortfolioMessage({
+        leadId: context.leadId,
+        token,
+        text: text.trim(),
+      });
+      if (data.context) setContext(data.context);
+      setPortalMessage('');
+      setMessageFeedback('Nachricht wurde an das Autohaus gesendet.');
+    } catch {
+      setMessageFeedback('Das hat leider nicht geklappt. Bitte versuchen Sie es erneut.');
+    } finally {
+      setSendingMessage(false);
+    }
+  }
+
   const sortedItems = useMemo(
     () => [...(context?.items ?? [])],
     [context?.items],
@@ -137,14 +222,26 @@ export default function CustomerOfferPortfolioPage() {
     );
   }
 
+  if (context.requiresCode && !accessVerified) {
+    return (
+      <CustomerPortalCodeGate
+        customerFirstName={context.customerFirstName}
+        emailHint={context.portalAccess?.emailHint}
+        onVerify={handleVerifyCode}
+        verifying={verifyingCode}
+        error={codeError}
+      />
+    );
+  }
+
   return (
     <div className="cop-page">
       <div className="cop-shell">
         <header className="cop-header">
-          <p className="cop-eyebrow">Persönliche Angebotsauswahl</p>
+          <p className="cop-eyebrow">Persönliche Fahrzeugauswahl</p>
           <h1 className="cop-title">
             {firstName}
-            , hier sind Ihre Optionen
+            , Ihre Fahrzeugauswahl
           </h1>
           {context.summaryTitle ? (
             <p className="cop-subline">{context.summaryTitle}</p>
@@ -165,6 +262,15 @@ export default function CustomerOfferPortfolioPage() {
             </ul>
           </section>
         ) : null}
+
+        <CustomerPortalMessagesSection
+          threads={context.messageThreads ?? []}
+          draft={portalMessage}
+          onDraftChange={setPortalMessage}
+          onSend={sendPortalMessage}
+          sending={sendingMessage}
+          sendFeedback={messageFeedback}
+        />
 
         <div className="cop-list">
           {sortedItems.map((item) => {

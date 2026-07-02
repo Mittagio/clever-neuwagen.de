@@ -30,6 +30,7 @@ export const CLEVER_ANSWER_TONES = [
 ];
 
 export const CLEVER_ANSWER_CHANNELS = [
+  { id: 'clever', label: 'Clever' },
   { id: 'whatsapp', label: 'WhatsApp' },
   { id: 'email', label: 'E-Mail' },
   { id: 'sms', label: 'SMS / Kurz' },

@@ -14,6 +14,8 @@ export function resolveInboxReplyIntent(item = {}) {
     case INBOX_EVENT_TYPES.SPECIAL_QUESTION:
     case INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST:
       return 'answer_customer_question';
+    case INBOX_EVENT_TYPES.CUSTOMER_MESSAGE:
+      return item.metadata?.suggestedIntent ?? 'free_reply';
     case INBOX_EVENT_TYPES.OFFER_OPENED:
       return 'offer_opened_followup';
     case INBOX_EVENT_TYPES.OFFER_INTERESTED:
@@ -120,6 +122,10 @@ export function buildInboxActionAkteUrl(leadId, item = {}, options = {}) {
     if (offerId) params.set('offerId', offerId);
     const questionId = item.metadata?.questionId ?? null;
     if (questionId) params.set('questionId', questionId);
+    const threadId = item.metadata?.threadId ?? null;
+    if (threadId) params.set('threadId', threadId);
+    const messageId = item.metadata?.messageId ?? null;
+    if (messageId) params.set('messageId', messageId);
     return `${buildKundenaktePath(leadId)}?${params.toString()}`;
   }
 

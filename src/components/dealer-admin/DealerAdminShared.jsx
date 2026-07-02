@@ -12,6 +12,7 @@ export function AdminOperatorNav() {
     { to: '/admin/approvals', label: 'Freigaben' },
     { to: '/admin/onboarding', label: 'Onboarding' },
     { to: '/admin/billing', label: 'Abrechnung' },
+    { to: '/admin/datenpruefung', label: 'Datenprüfung' },
     { to: '/admin/import', label: 'Preislisten' },
     { to: '/admin/launch', label: 'Launch' },
   ];

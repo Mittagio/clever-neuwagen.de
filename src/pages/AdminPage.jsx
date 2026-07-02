@@ -68,6 +68,7 @@ export default function AdminPage() {
               <Link to="/admin/billing" className="admin-header-link">Abrechnung →</Link>
               <Link to="/backend" className="admin-header-link">Händler-Backend →</Link>
               <Link to="/admin/foundation" className="admin-header-link">Konfigurator-Fundament →</Link>
+              <Link to="/admin/datenpruefung" className="admin-header-link">Datenprüfung →</Link>
               <Link to="/admin/import" className="admin-header-link">Preislisten Import →</Link>
               <Link to="/admin/compliance" className="admin-header-link">Compliance Shield →</Link>
               <Link to="/admin/launch" className="admin-header-link admin-header-link--launch">Launch →</Link>

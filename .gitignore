@@ -13,6 +13,7 @@ node_modules
 data/pilot-leads.json
 data/advisor-share-sessions.json
 data/customer-records.json
+data/technical/generated/
 dist
 dist-ssr
 .env

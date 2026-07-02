@@ -11,6 +11,7 @@ import {
   recommendCleverAction,
 } from './cleverActionEngine.js';
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
+import { PORTAL_ACCESS_STATUS } from './customerPortalAccessService.js';
 
 const MS_DAY = 86400000;
 
@@ -45,7 +46,7 @@ const draftCtx = buildCleverActionContext({
 });
 const draftRec = recommendCleverAction(draftCtx);
 assert.equal(draftRec.actionId, CLEVER_ACTION_IDS.OFFER_SEND);
-assert.equal(draftRec.title, 'Angebot senden');
+assert.equal(draftRec.title, 'EV4-Angebot senden');
 
 // Angebot geöffnet → Jetzt anrufen
 const openedAt = new Date(Date.now() - MS_DAY).toISOString();
@@ -56,7 +57,7 @@ const openedCtx = buildCleverActionContext({
 });
 const openedRec = recommendCleverAction(openedCtx);
 assert.equal(openedRec.actionId, CLEVER_ACTION_IDS.OFFER_OPENED_CALL);
-assert.equal(openedRec.title, 'Jetzt anrufen');
+assert.equal(openedRec.title, 'EV4: Angebot nachfassen');
 
 // Unterlagen fehlen → Unterlagen anfordern
 const sentAt = new Date(Date.now() - MS_DAY).toISOString();
@@ -146,6 +147,69 @@ const full = buildCleverActionRecommendation({
   customerName: 'Max Mustermann',
 });
 assert.ok(full.analyticsText.includes('Clever empfahl'));
-assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: Angebot senden');
+assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: EV4-Angebot senden');
+
+// Kundenportal – Nächster guter Schritt
+const portalPreparedCtx = buildCleverActionContext({
+  lead: {
+    ...baseLead,
+    crm: {
+      customerPortalAccess: {
+        status: PORTAL_ACCESS_STATUS.PREPARED,
+        portfolioUrl: 'https://example.de/angebot/auswahl/demo',
+      },
+    },
+  },
+  vehicleCards: [],
+});
+const portalPreparedRec = recommendCleverAction(portalPreparedCtx);
+assert.equal(portalPreparedRec.actionId, CLEVER_ACTION_IDS.PORTAL_LINK_SEND);
+assert.equal(portalPreparedRec.title, 'Kundenlink senden');
+
+const portalSentCtx = buildCleverActionContext({
+  lead: {
+    ...baseLead,
+    crm: {
+      customerPortalAccess: {
+        status: PORTAL_ACCESS_STATUS.SENT,
+        sentAt: new Date().toISOString(),
+      },
+    },
+  },
+  vehicleCards: [],
+});
+const portalSentRec = recommendCleverAction(portalSentCtx);
+assert.equal(portalSentRec.actionId, CLEVER_ACTION_IDS.PORTAL_LINK_FOLLOWUP);
+
+const portalOpenedCtx = buildCleverActionContext({
+  lead: {
+    ...baseLead,
+    crm: {
+      customerPortalAccess: {
+        status: PORTAL_ACCESS_STATUS.OPENED,
+        openedAt: new Date().toISOString(),
+      },
+    },
+  },
+  vehicleCards: [],
+});
+const portalOpenedRec = recommendCleverAction(portalOpenedCtx);
+assert.equal(portalOpenedRec.actionId, CLEVER_ACTION_IDS.PORTAL_CODE_REMIND);
+
+const portalViewedCtx = buildCleverActionContext({
+  lead: {
+    ...baseLead,
+    crm: {
+      customerPortalAccess: {
+        status: PORTAL_ACCESS_STATUS.VIEWED,
+        viewedAt: new Date().toISOString(),
+      },
+      customerOfferPortfolio: { items: [{ customerReaction: { status: 'none' } }] },
+    },
+  },
+  vehicleCards: [],
+});
+const portalViewedRec = recommendCleverAction(portalViewedCtx);
+assert.equal(portalViewedRec.actionId, CLEVER_ACTION_IDS.PORTAL_VIEWED_FOLLOWUP);
 
 console.log('cleverActionEngine tests OK');

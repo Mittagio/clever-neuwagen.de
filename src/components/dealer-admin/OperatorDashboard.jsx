@@ -46,6 +46,7 @@ export default function OperatorDashboard() {
         </Link>
         <Link to="/admin/onboarding" className="dop-operator-dash__link">🚀 Onboarding</Link>
         <Link to="/admin/billing" className="dop-operator-dash__link">💶 Abrechnung</Link>
+        <Link to="/admin/datenpruefung" className="dop-operator-dash__link">🔍 Datenprüfung</Link>
         <Link to="/admin/import" className="dop-operator-dash__link">📋 Preislisten</Link>
         <Link to="/admin/launch" className="dop-operator-dash__link">🚀 Launch Readiness</Link>
         <Link to="/admin/pilot" className="dop-operator-dash__link">🏁 Pilot Trinkle</Link>

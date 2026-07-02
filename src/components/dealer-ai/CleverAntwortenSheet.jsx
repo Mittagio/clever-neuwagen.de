@@ -343,6 +343,7 @@ function ResultEditor({
   showToast,
   onAddHistory,
   onInboxItemHandled,
+  onSendClever,
 }) {
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showMoreRefine, setShowMoreRefine] = useState(false);
@@ -394,6 +395,14 @@ function ResultEditor({
   }
 
   function renderChannelAction() {
+    if (channel === 'clever') {
+      return (
+        <span className="dai-ca-result__link dai-ca-result__link--disabled" title="Im Kundenportal speichern">
+          Im Kundenportal sichtbar nach „In Clever senden“
+        </span>
+      );
+    }
+
     if (channel === 'whatsapp') {
       if (whatsappHref) {
         return (
@@ -468,6 +477,16 @@ function ResultEditor({
         <button type="button" className="dai-ca-generate dai-ca-generate--copy" onClick={handleCopy}>
           Kopieren
         </button>
+
+        {onSendClever && (
+          <button
+            type="button"
+            className="dai-ca-generate dai-ca-generate--clever"
+            onClick={onSendClever}
+          >
+            In Clever senden
+          </button>
+        )}
 
         <div className="dai-ca-result__secondary">
           {renderChannelAction()}
@@ -550,7 +569,12 @@ export default function CleverAntwortenSheet({
   wishPaymentType = 'unknown',
   initialTypeId = null,
   inboxItemId = null,
+  initialThreadId = null,
+  initialMessageId = null,
+  relatedOfferId = null,
+  relatedQuestionId = null,
   onInboxItemHandled = null,
+  onSendCleverMessage = null,
   embedded = false,
   onAddHistory,
 }) {
@@ -727,6 +751,19 @@ export default function CleverAntwortenSheet({
     }
   }
 
+  function handleSendClever() {
+    if (!draft.trim() || !onSendCleverMessage) return;
+    onSendCleverMessage({
+      text: draft.trim(),
+      threadId: initialThreadId,
+      messageId: initialMessageId,
+      relatedOfferId,
+      relatedQuestionId,
+    });
+    showToast('Im Kundenportal gespeichert');
+    if (inboxItemId) onInboxItemHandled?.(inboxItemId);
+  }
+
   return (
     <div className={`dai-ca-sheet${embedded ? ' dai-ca-sheet--embedded' : ''}${phase === 'result' ? ' dai-ca-sheet--result' : ''}`}>
       {phase === 'compose' && (
@@ -835,6 +872,7 @@ export default function CleverAntwortenSheet({
             showToast={showToast}
             onAddHistory={onAddHistory}
             onInboxItemHandled={handleInboxHandledFromResult}
+            onSendClever={onSendCleverMessage ? handleSendClever : null}
           />
         </>
       )}

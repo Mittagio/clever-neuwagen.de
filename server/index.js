@@ -17,6 +17,7 @@ import customerRecordsRoutes from './customerRecordsRoutes.js';
 import customerInquiryRoutes from './customerInquiryRoutes.js';
 import stammdatenRoutes from './stammdatenRoutes.js';
 import configuratorFoundationRoutes from './configuratorFoundationRoutes.js';
+import technicalSyncRoutes from './technicalSyncRoutes.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
 import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
 
@@ -92,6 +93,7 @@ app.use('/api/v1', customerRecordsRoutes);
 app.use('/api/v1', customerInquiryRoutes);
 app.use('/api/v1', stammdatenRoutes);
 app.use('/api/v1', configuratorFoundationRoutes);
+app.use('/api/v1', technicalSyncRoutes);
 app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
 

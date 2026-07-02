@@ -16,6 +16,7 @@ import {
   INBOX_EVENT_TYPES,
   syncInboxItemsFromLead,
 } from './cleverInboxService.js';
+import { mirrorInboundCustomerQuestion } from './customerMessageService.js';
 import {
   formatVehicleCardTitle,
   buildVehicleOpportunityCards,
@@ -261,6 +262,23 @@ export function applyCustomerLinkEvent(lead = {}, vehicleCardId = '', eventType,
     ],
   };
 
+  let finalLead = nextLead;
+  let customerMessageInboxItem = null;
+
+  if (eventType === CUSTOMER_LINK_EVENTS.QUESTION) {
+    const trimmed = String(questionText ?? '').trim();
+    const lastQuestion = interaction.customerQuestions?.[interaction.customerQuestions.length - 1];
+    const mirrored = mirrorInboundCustomerQuestion({
+      lead: finalLead,
+      text: trimmed,
+      relatedOfferId: vehicleCardId,
+      relatedQuestionId: lastQuestion?.id ?? null,
+      customerName: lead.contact?.name ?? '',
+    });
+    finalLead = mirrored.lead;
+    customerMessageInboxItem = mirrored.inboxItem;
+  }
+
   const eventMap = {
     [CUSTOMER_LINK_EVENTS.OPENED]: INBOX_EVENT_TYPES.OFFER_OPENED,
     [CUSTOMER_LINK_EVENTS.INTERESTED]: INBOX_EVENT_TYPES.OFFER_INTERESTED,
@@ -269,7 +287,7 @@ export function applyCustomerLinkEvent(lead = {}, vehicleCardId = '', eventType,
   };
 
   const inboxItem = buildInboxItemFromOfferInteraction({
-    lead: nextLead,
+    lead: finalLead,
     cardId: vehicleCardId,
     interaction,
     vehicleOffer,
@@ -280,16 +298,17 @@ export function applyCustomerLinkEvent(lead = {}, vehicleCardId = '', eventType,
   const persistedInboxItem = inboxItem ? createInboxItem(inboxItem) : null;
 
   if (syncInbox && typeof localStorage !== 'undefined') {
-    syncInboxItemsFromLead(nextLead);
+    syncInboxItemsFromLead(finalLead);
   }
 
   return {
     ok: true,
-    lead: nextLead,
+    lead: finalLead,
     vehicleCardId,
     interaction,
     vehicleOffer,
     inboxItem: persistedInboxItem,
+    customerMessageInboxItem,
     vehicleLabel,
     eventType,
   };

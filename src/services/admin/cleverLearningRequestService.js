@@ -308,6 +308,8 @@ export function lexiconNeedsLearningFeedback(searchState) {
   if (!searchState) return false;
   if (!searchState.ok) return true;
   const result = searchState.result ?? {};
+  if (result.needsReview) return true;
+  if (result.dataConfidence === 'needs_review') return true;
   if (result.confidence === 'low') return true;
   if (result.warnings?.length > 0 && !result.primaryFacts?.length && !result.availabilityByTrim?.length) {
     return true;

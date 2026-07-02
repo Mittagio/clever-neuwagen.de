@@ -90,6 +90,10 @@ import {
   prepareCustomerOfferPortfolio,
 } from '../../services/crm/customerOfferPortfolioService.js';
 import {
+  prepareCustomerPortalAccess,
+  markCustomerPortalAccessSent,
+} from '../../services/crm/customerPortalAccessService.js';
+import {
   buildCleverQuestionActivity,
   buildDocumentOpenedActivity,
   buildFavoriteActivity,
@@ -99,6 +103,10 @@ import {
   getActivityDashboard,
   mergeInsightActivities,
 } from '../../services/customerActivityTimeline.js';
+import {
+  buildCustomerMessageHistoryEntries,
+  sendCleverChannelMessage,
+} from '../../services/crm/customerMessageService.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteHeader from './CustomerAkteHeader.jsx';
@@ -113,6 +121,8 @@ import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
+import CustomerAktePortalSendCta from './CustomerAktePortalSendCta.jsx';
+import CustomerAktePortalStatusCard from './CustomerAktePortalStatusCard.jsx';
 import CustomerAkteAddProposalSheet, {
   CustomerAkteLeaseFinanceSheet,
 } from './CustomerAkteAddProposalSheet.jsx';
@@ -128,6 +138,8 @@ import CustomerAddressSheet from './CustomerAddressSheet.jsx';
 import CleverUnterlagenSheet from './CleverUnterlagenSheet.jsx';
 import CleverLexikon from '../backend/CleverLexikon.jsx';
 import { useCleverInboxOptional } from '../../context/CleverInboxContext.jsx';
+import { INBOX_EVENT_TYPES } from '../../services/crm/cleverInboxService.js';
+import { copyOfferLink } from '../../services/vehicleOffer.js';
 import { normalizeConversationNotes } from '../../services/kundenhelferConversationNotes.js';
 import { sanitizeKundenhelferChipCategories } from '../../services/kundenwissenCategories.js';
 import { createEmptyTradeIn, getTradeIn, patchTradeIn } from '../../services/customerAkteTradeIn.js';
@@ -282,6 +294,9 @@ export default function DealerAiLeadFollowUp({
   initialSheet = null,
   initialAntwortenIntent = null,
   initialInboxItemId = null,
+  initialThreadId = null,
+  initialMessageId = null,
+  initialAntwortenOfferId = null,
   initialQuestionContext = null,
   onOpenOfferQuestionAnswer,
   onQuestionAnswerContextConsumed,
@@ -293,6 +308,12 @@ export default function DealerAiLeadFollowUp({
     () => (lead?.id ? (inbox?.countForCustomer(lead.id) ?? 0) : 0),
     [inbox, lead?.id, inbox?.version],
   );
+  const portalCustomerMessageItem = useMemo(() => {
+    if (!lead?.id || !inbox?.listForCustomer) return null;
+    return inbox.listForCustomer(lead.id).find(
+      (item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
+    ) ?? null;
+  }, [inbox, lead?.id, inbox?.version]);
   const fields = parsed?.fields ?? {};
   const crm = lead?.crm ?? {};
 
@@ -492,10 +513,15 @@ export default function DealerAiLeadFollowUp({
     };
   }, [addressCacheKey, dealerLocation.dealerId]);
 
-  const history = useMemo(
-    () => [...(lead?.history ?? [])].sort((a, b) => new Date(b.at) - new Date(a.at)),
-    [lead?.history],
-  );
+  const history = useMemo(() => {
+    const baseHistory = lead?.history ?? [];
+    const linkedMessageIds = new Set(
+      baseHistory.map((entry) => entry.meta?.customerMessageId).filter(Boolean),
+    );
+    const messageEntries = buildCustomerMessageHistoryEntries(lead ?? {})
+      .filter((entry) => !linkedMessageIds.has(entry.meta?.customerMessageId));
+    return [...baseHistory, ...messageEntries].sort((a, b) => new Date(b.at) - new Date(a.at));
+  }, [lead]);
 
   const telHref = phoneTelHref(phone);
 
@@ -836,12 +862,63 @@ export default function DealerAiLeadFollowUp({
     setTimeout(() => setToast(''), 4000);
   }
 
+  function handleOpenPortalShare() {
+    const portfolio = lead?.crm?.customerOfferPortfolio;
+    const access = lead?.crm?.customerPortalAccess;
+    if (!portfolio?.items?.length) {
+      handleSendCustomerSelection();
+      return;
+    }
+    setPortfolioShare({
+      portfolio,
+      itemCount: portfolio.items.length,
+      portalAccess: access,
+    });
+    openSheet(SHEETS.portfolioShare);
+  }
+
+  async function handlePortalCopyLink(url) {
+    const target = url ?? lead?.crm?.customerPortalAccess?.portfolioUrl;
+    if (!target) return;
+    const ok = await copyOfferLink(target);
+    setToast(ok ? 'Link kopiert' : 'Link konnte nicht kopiert werden');
+    setTimeout(() => setToast(''), 3000);
+  }
+
+  function handlePortalCardReply() {
+    const item = portalCustomerMessageItem;
+    if (!item) {
+      openCleverAntworten('answer_customer_question');
+      return;
+    }
+    setInboxItemIdForAntworten(item.id);
+    openCleverAntworten(item.metadata?.suggestedIntent ?? 'answer_customer_question');
+  }
+
+  function handleSendCustomerSelection() {
+    if (!email?.trim()) {
+      setToast('Bitte zuerst E-Mail-Adresse ergänzen.');
+      setTimeout(() => setToast(''), 3500);
+      openSheet(SHEETS.customer);
+      return;
+    }
+    handlePrepareCustomerLink();
+  }
+
   function handlePrepareCustomerLink() {
+    if (!email?.trim()) {
+      setToast('Bitte zuerst E-Mail-Adresse ergänzen.');
+      setTimeout(() => setToast(''), 3500);
+      openSheet(SHEETS.customer);
+      return;
+    }
+
     const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
     const result = prepareCustomerOfferPortfolio({
       lead,
       offerSelectionGroups: storedGroups,
       vehicleCards,
+      origin: typeof window !== 'undefined' ? window.location.origin : null,
     });
 
     if (!result.ok) {
@@ -850,19 +927,34 @@ export default function DealerAiLeadFollowUp({
       return;
     }
 
+    const portalPrepared = prepareCustomerPortalAccess(lead, {
+      portfolioUrl: result.portfolio.url,
+      email: email.trim(),
+      accessToken: result.portfolio.token,
+    });
+
+    if (!portalPrepared.ok) {
+      setToast('Kundenlink konnte nicht vorbereitet werden.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+
     const sanitized = sanitizeOfferSelectionGroups(result.offerSelectionGroups);
     setOfferSelectionGroups(sanitized);
     onSave?.(buildSavePayload({
       offerSelectionGroups: sanitized,
       customerOfferPortfolio: result.portfolio,
+      customerPortalAccess: portalPrepared.access,
     }), {
-      historyText: `Kundenlink mit ${result.itemCount} Angebot${result.itemCount === 1 ? '' : 'en'} vorbereitet`,
+      historyText: portalPrepared.historyText
+        ?? `Kundenlink mit ${result.itemCount} Angebot${result.itemCount === 1 ? '' : 'en'} vorbereitet`,
       addFollowupHistory: true,
     });
 
     setPortfolioShare({
       portfolio: result.portfolio,
       itemCount: result.itemCount,
+      portalAccess: portalPrepared.access,
     });
     setSelectedSelectionGroup(null);
     openSheet(SHEETS.portfolioShare);
@@ -871,13 +963,30 @@ export default function DealerAiLeadFollowUp({
   function handlePortfolioShareSent(via) {
     if (!portfolioShare?.portfolio) return;
     const nextPortfolio = markPortfolioSent(portfolioShare.portfolio);
-    setPortfolioShare({ ...portfolioShare, portfolio: nextPortfolio });
-    onSave?.(buildSavePayload({ customerOfferPortfolio: nextPortfolio }), {
-      historyText: via === 'whatsapp'
-        ? 'Angebotsauswahl per WhatsApp gesendet'
-        : via === 'email'
-          ? 'Angebotsauswahl per E-Mail gesendet'
-          : 'Angebotsauswahl-Link kopiert',
+    const sentAccess = markCustomerPortalAccessSent({
+      ...lead,
+      crm: {
+        ...(lead?.crm ?? {}),
+        customerOfferPortfolio: nextPortfolio,
+        customerPortalAccess: portfolioShare.portalAccess ?? lead?.crm?.customerPortalAccess ?? null,
+      },
+    }, { via });
+
+    setPortfolioShare({
+      ...portfolioShare,
+      portfolio: nextPortfolio,
+      portalAccess: sentAccess.access,
+    });
+
+    onSave?.(buildSavePayload({
+      customerOfferPortfolio: nextPortfolio,
+      customerPortalAccess: sentAccess.access,
+    }), {
+      historyText: sentAccess.historyText ?? (
+        via === 'email'
+          ? 'Kundenlink per E-Mail vorbereitet'
+          : 'Kundenlink kopiert'
+      ),
       addFollowupHistory: true,
     });
   }
@@ -1377,6 +1486,40 @@ export default function DealerAiLeadFollowUp({
     };
   }
 
+  function handleSendCleverMessage({
+    text,
+    threadId,
+    relatedOfferId,
+    relatedQuestionId,
+  }) {
+    const result = sendCleverChannelMessage({
+      lead,
+      text,
+      threadId,
+      relatedOfferId: relatedOfferId ?? questionContext?.offerId ?? initialAntwortenOfferId,
+      relatedQuestionId: relatedQuestionId ?? questionContext?.questionId,
+      createdByName: name?.trim() || 'Verkäufer',
+    });
+    if (!result.message) {
+      setToast('Nachricht enthält sensible Daten und kann nicht gesendet werden.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    onSave?.({
+      ...buildSavePayload({
+        customerMessages: result.lead.crm?.customerMessages,
+        customerMessageThreads: result.lead.crm?.customerMessageThreads,
+      }),
+      history: result.lead.history,
+    }, {
+      silent: true,
+      addFollowupHistory: false,
+    });
+    if (inboxItemIdForAntworten) handleInboxItemHandled(inboxItemIdForAntworten);
+    setToast('Im Kundenportal gespeichert');
+    setTimeout(() => setToast(''), 3500);
+  }
+
   function save(meta = {}) {
     onSave?.(buildSavePayload(), meta);
   }
@@ -1548,13 +1691,15 @@ export default function DealerAiLeadFollowUp({
     trackCleverActionFollowed(actionHint);
     const handler = actionHint?.handlerType ?? actionHint?.action;
     if (handler === 'selection_send') {
-      const groupId = actionHint?.meta?.groupId;
-      const group = groupId
-        ? resolvedSelectionGroups.find((entry) => entry.id === groupId)
-        : resolvedSelectionGroups[0];
-      if (group) {
-        openSelectionGroup(group);
-      }
+      handleSendCustomerSelection();
+      return;
+    }
+    if (handler === 'portal_followup' || handler === 'portal_code_remind') {
+      handleOpenPortalShare();
+      return;
+    }
+    if (handler === 'portal_viewed_followup') {
+      openCleverAntworten('nachfassen');
       return;
     }
     if (handler === 'offer_question') {
@@ -1716,6 +1861,25 @@ export default function DealerAiLeadFollowUp({
         onCardMenu={openVehicleCard}
         onSelectionGroupClick={openSelectionGroup}
         onAddProposal={handleAddVehicle}
+      />
+
+      <CustomerAktePortalStatusCard
+        lead={lead}
+        hasOpenInboxMessage={Boolean(portalCustomerMessageItem)}
+        onCopyLink={handlePortalCopyLink}
+        onPrepareEmail={handleOpenPortalShare}
+        onWriteMessage={() => openCleverAntworten('frei')}
+        onPrepareFollowup={() => openCleverAntworten('nachfassen')}
+        onReply={handlePortalCardReply}
+        onOpenInbox={() => onOpenInbox?.(lead)}
+      />
+
+      <CustomerAktePortalSendCta
+        boardItems={boardItems}
+        email={email}
+        onSend={handleSendCustomerSelection}
+        onAddEmail={() => openSheet(SHEETS.customer)}
+        disabled={isSaving}
       />
 
       <CustomerAkteWishConditionsSheet
@@ -2259,7 +2423,7 @@ export default function DealerAiLeadFollowUp({
         title="Clever Nachrichten"
       >
         <CleverAntwortenSheet
-          key={`${antwortenPreset ?? 'pick'}-${inboxItemIdForAntworten ?? 'none'}`}
+          key={`${antwortenPreset ?? 'pick'}-${inboxItemIdForAntworten ?? 'none'}-${initialThreadId ?? 'thread'}`}
           lead={lead}
           customerName={name}
           phone={phone}
@@ -2270,7 +2434,12 @@ export default function DealerAiLeadFollowUp({
           wishPaymentType={wishPaymentType}
           initialTypeId={antwortenPreset}
           inboxItemId={inboxItemIdForAntworten}
+          initialThreadId={initialThreadId}
+          initialMessageId={initialMessageId}
+          relatedOfferId={questionContext?.offerId ?? initialAntwortenOfferId}
+          relatedQuestionId={questionContext?.questionId}
           onInboxItemHandled={handleInboxItemHandled}
+          onSendCleverMessage={handleSendCleverMessage}
           embedded
           onAddHistory={(text, type, options) => onAddHistory?.(text, type, options)}
         />
@@ -2307,7 +2476,7 @@ export default function DealerAiLeadFollowUp({
           setPortfolioShare(null);
           closeSheet();
         }}
-        title="Angebotsauswahl senden"
+        title="Kundenlink senden"
         footer={(
           <button
             type="button"
@@ -2324,8 +2493,8 @@ export default function DealerAiLeadFollowUp({
         {portfolioShare?.portfolio ? (
           <CustomerAktePortfolioShareSheet
             portfolio={portfolioShare.portfolio}
+            portalAccess={portfolioShare.portalAccess}
             customerName={name}
-            phone={phone}
             email={email}
             itemCount={portfolioShare.itemCount}
             onMarkSent={handlePortfolioShareSent}

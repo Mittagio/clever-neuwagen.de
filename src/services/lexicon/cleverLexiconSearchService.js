@@ -17,6 +17,7 @@ import {
   buildSalesStatusHeadline,
   describeSalesTrimLine,
 } from '../admin/equipmentSalesSearchService.js';
+import { resolveTechnicalAttribute } from './technicalDataConfidenceService.js';
 
 /** @typedef {'technical' | 'equipment' | 'package' | 'unknown'} LexiconIntentType */
 
@@ -30,22 +31,31 @@ export const LEXICON_EXAMPLE_CHIPS = [
 ];
 
 export const LEXICON_MODEL_ENTRIES = [
-  { brand: 'Kia', model: 'EV2', modelKey: 'ev2', patterns: [/\bev\s*2\b/i, /\bev2\b/i] },
-  { brand: 'Kia', model: 'EV3', modelKey: 'ev3', patterns: [/\bev\s*3\b/i, /\bev3\b/i] },
-  { brand: 'Kia', model: 'EV4', modelKey: 'ev4', patterns: [/\bev\s*4\b/i, /\bev4\b/i] },
-  { brand: 'Kia', model: 'EV4 Fastback', modelKey: 'ev4-fastback', patterns: [/\bev\s*4\s*fastback\b/i, /\bev4\s*fastback\b/i] },
-  { brand: 'Kia', model: 'EV5', modelKey: 'ev5', patterns: [/\bev\s*5\b/i, /\bev5\b/i] },
-  { brand: 'Kia', model: 'EV6', modelKey: 'ev6', patterns: [/\bev\s*6\b/i, /\bev6\b/i] },
-  { brand: 'Kia', model: 'EV9', modelKey: 'ev9', patterns: [/\bev\s*9\b/i, /\bev9\b/i] },
-  { brand: 'Kia', model: 'Sportage', modelKey: 'sportage', patterns: [/sportage/i] },
-  { brand: 'Kia', model: 'Stonic', modelKey: 'stonic', patterns: [/stonic/i] },
-  { brand: 'Kia', model: 'XCeed', modelKey: 'xceed', patterns: [/\bx\s*ceed\b/i, /\bxceed\b/i] },
-  { brand: 'Kia', model: 'Ceed', modelKey: 'ceed', patterns: [/\bceed\b/i] },
-  { brand: 'Kia', model: 'Niro', modelKey: 'niro', patterns: [/niro/i] },
-  { brand: 'Kia', model: 'Picanto', modelKey: 'picanto', patterns: [/picanto/i] },
-  { brand: 'Kia', model: 'Sorento', modelKey: 'sorento', patterns: [/sorento/i] },
-  { brand: 'Kia', model: 'Seltos', modelKey: 'seltos', patterns: [/seltos/i] },
-  { brand: 'Kia', model: 'PV5', modelKey: 'pv5-passenger', patterns: [/\bpv\s*5\b/i, /\bpv5\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV2', modelKey: 'ev2', patterns: [/\bev\s*2\b/i, /\bev2\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV3', modelKey: 'ev3', patterns: [/\bev\s*3\b/i, /\bev3\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV4', modelKey: 'ev4', patterns: [/\bev\s*4\b/i, /\bev4\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV4 Fastback', modelKey: 'ev4-fastback', patterns: [/\bev\s*4\s*fastback\b/i, /\bev4\s*fastback\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV5', modelKey: 'ev5', patterns: [/\bev\s*5\b/i, /\bev5\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV5 GT', modelKey: 'ev5-gt', patterns: [/\bev\s*5\s*gt\b/i, /\bev5\s*gt\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV6', modelKey: 'ev6', patterns: [/\bev\s*6\b/i, /\bev6\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV6 GT', modelKey: 'ev6-gt', patterns: [/\bev\s*6\s*gt\b/i, /\bev6\s*gt\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV9', modelKey: 'ev9', patterns: [/\bev\s*9\b/i, /\bev9\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV9 GT', modelKey: 'ev9-gt', patterns: [/\bev\s*9\s*gt\b/i, /\bev9\s*gt\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sportage', modelKey: 'sportage', patterns: [/sportage/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sportage Hybrid', modelKey: 'sportage-hybrid', patterns: [/sportage\s*hybrid/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sportage PHEV', modelKey: 'sportage-phev', patterns: [/sportage\s*phev/i, /sportage\s*plug/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sorento', modelKey: 'sorento', patterns: [/sorento/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sorento Hybrid', modelKey: 'sorento-hybrid', patterns: [/sorento\s*hybrid/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Sorento PHEV', modelKey: 'sorento-phev', patterns: [/sorento\s*phev/i, /sorento\s*plug/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Stonic', modelKey: 'stonic', patterns: [/stonic/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'XCeed', modelKey: 'xceed', patterns: [/\bx\s*ceed\b/i, /\bxceed\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'K4', modelKey: 'k4', patterns: [/\bk\s*4\b/i, /\bk4\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'K4 Sportswagon', modelKey: 'k4-sportswagon', patterns: [/k\s*4\s*sportswagon/i, /k4\s*sportswagon/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Ceed', modelKey: 'ceed', patterns: [/\bceed\b/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Niro', modelKey: 'niro', patterns: [/niro/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Picanto', modelKey: 'picanto', patterns: [/picanto/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'Seltos', modelKey: 'seltos', patterns: [/seltos/i] },
+  { brand: 'Kia', brandKey: 'kia', model: 'PV5', modelKey: 'pv5-passenger', patterns: [/\bpv\s*5\b/i, /\bpv5\b/i] },
 ];
 
 const TECHNICAL_TOPICS = [
@@ -279,7 +289,7 @@ export function resolveLexiconIntent(query, modelEntry = null) {
  * @param {object} modelEntry
  * @param {ReturnType<typeof resolveLexiconIntent>} intent
  */
-export function buildTechnicalDataAnswer(modelEntry, intent) {
+export function buildTechnicalDataAnswer(modelEntry, intent, query = '') {
   const topic = intent.topic;
   const record = getCleverRecordForModelKey(modelEntry.modelKey);
   const spec = getKiaTechnicalSpec(modelEntry.modelKey);
@@ -287,75 +297,29 @@ export function buildTechnicalDataAnswer(modelEntry, intent) {
   const modelTitle = `${modelEntry.brand} ${modelEntry.model}`;
   const fieldLabel = topic.label;
 
-  let primaryValue = null;
-  let shortAnswer = null;
-  const warnings = [];
+  const resolved = resolveTechnicalAttribute({
+    modelKey: modelEntry.modelKey,
+    topicId: topic.id,
+    query,
+    brandKey: modelEntry.brandKey ?? 'kia',
+  });
 
-  switch (topic.id) {
-    case 'battery':
-      primaryValue = formatBattery(record);
-      shortAnswer = primaryValue
-        ? 'Batteriekapazität je nach Motorisierung/Variante.'
-        : 'Batteriedaten in den Stammdaten noch nicht hinterlegt.';
-      break;
-    case 'range': {
-      const km = record?.electric?.wltpRangeKm ?? spec?.electricRangeKm;
-      primaryValue = km ? `${km} km (WLTP)` : null;
-      shortAnswer = primaryValue ? 'WLTP-Reichweite nach aktuellem Datenstand.' : 'Reichweite noch nicht hinterlegt.';
-      break;
-    }
-    case 'trunk': {
-      const l = record?.family?.trunkL ?? spec?.trunkL;
-      primaryValue = l ? formatLiters(l) : null;
-      shortAnswer = primaryValue ? 'Kofferraumvolumen nach Herstellerangabe.' : 'Kofferraumvolumen noch nicht hinterlegt.';
-      break;
-    }
-    case 'length':
-      primaryValue = formatMm(record?.dimensions?.lengthMm ?? spec?.lengthMm);
-      shortAnswer = primaryValue ? 'Fahrzeuglänge über alle Räder.' : 'Länge noch nicht hinterlegt.';
-      break;
-    case 'width':
-      primaryValue = formatMm(record?.dimensions?.widthMm ?? spec?.widthMm);
-      shortAnswer = primaryValue ? 'Fahrzeugbreite inkl. Spiegel nach Datenstand.' : 'Breite noch nicht hinterlegt.';
-      break;
-    case 'height':
-      primaryValue = formatMm(record?.dimensions?.heightMm ?? spec?.heightMm);
-      shortAnswer = primaryValue ? 'Fahrzeughöhe unbeladen.' : 'Höhe noch nicht hinterlegt.';
-      break;
-    case 'wheelbase':
-      primaryValue = formatMm(record?.dimensions?.wheelbaseMm ?? spec?.wheelbaseMm);
-      shortAnswer = primaryValue ? 'Radstand nach Herstellerangabe.' : 'Radstand noch nicht hinterlegt.';
-      break;
-    case 'towing': {
-      const kg = record?.towing?.brakedKg;
-      primaryValue = kg ? `${kg.toLocaleString('de-DE')} kg (gebremst)` : null;
-      shortAnswer = primaryValue
-        ? 'Anhängelast gebremst – abhängig von Motorisierung und Ausstattung.'
-        : 'Anhängelast noch nicht hinterlegt.';
-      break;
-    }
-    case 'charging': {
-      const dc = record?.electric?.dcKw ?? DEMO_DC_KW[modelEntry.modelKey];
-      const isDemo = !record?.electric?.dcKw && Boolean(DEMO_DC_KW[modelEntry.modelKey]);
-      primaryValue = dc ? `bis ${dc} kW (DC-Schnellladung)` : null;
-      shortAnswer = primaryValue ? 'Maximale DC-Ladeleistung nach Datenstand.' : 'Ladeleistung noch nicht hinterlegt.';
-      if (isDemo) warnings.push('DC-Wert aus Referenzdaten – vor Angebot final prüfen.');
-      break;
-    }
-    case 'powertrain':
-      primaryValue = record?.basis?.powertrain
-        ? String(record.basis.powertrain).replace('elektro', 'Elektro').replace('plugin-hybrid', 'Plug-in-Hybrid')
-        : null;
-      shortAnswer = primaryValue ? 'Antriebsart nach Modelllinie.' : 'Antrieb nicht hinterlegt.';
-      break;
-    default:
-      primaryValue = null;
-      shortAnswer = 'Technische Angabe nicht gefunden.';
+  const warnings = [...(resolved.warnings ?? [])];
+  if (resolved.needsReview) {
+    warnings.push('Wert in Clever noch nicht geprüft.');
   }
 
-  if (!primaryValue) warnings.push(...buildWarnings({ hasData: false }));
+  const primaryFacts = resolved.showHardNumber && resolved.primaryValue
+    ? [{ label: fieldLabel, value: resolved.primaryValue }]
+    : [];
 
   const relatedFacts = relatedTechnicalFacts(record, spec, topic.id, [topic.id]);
+
+  const lexiconConfidence = resolved.confidence === 'verified'
+    ? 'high'
+    : resolved.confidence === 'partially_verified'
+      ? 'medium'
+      : 'low';
 
   return {
     query: null,
@@ -363,15 +327,21 @@ export function buildTechnicalDataAnswer(modelEntry, intent) {
     intentType: 'technical',
     title: modelTitle,
     fieldLabel,
-    shortAnswer,
-    primaryFacts: primaryValue ? [{ label: fieldLabel, value: primaryValue }] : [],
-    availabilityByTrim: [],
+    shortAnswer: resolved.shortAnswer,
+    primaryFacts,
+    availabilityByTrim: resolved.availabilityByTrim ?? [],
     relatedFacts,
-    source: buildSourceLine({ record, profile }),
-    confidence: primaryValue ? (record ? 'medium' : 'low') : 'low',
+    source: resolved.sourceLine ?? buildSourceLine({ record, profile }),
+    sourceType: resolved.sourceType ?? null,
+    statusLabel: resolved.statusLabel ?? null,
+    confidence: lexiconConfidence,
+    dataConfidence: resolved.confidence,
+    needsReview: resolved.needsReview,
+    reviewHints: resolved.reviewHints ?? [],
     warnings,
     modelKey: modelEntry.modelKey,
     topic: topic.id,
+    meta: resolved.meta ?? {},
   };
 }
 
@@ -578,7 +548,7 @@ export function searchCleverLexicon(query) {
   let result;
 
   if (intent.type === 'technical') {
-    result = buildTechnicalDataAnswer(model, intent);
+    result = buildTechnicalDataAnswer(model, intent, question);
   } else if (intent.type === 'package') {
     result = buildPackageAnswer(model, intent.packageTopic);
   } else if (intent.type === 'equipment' && intent.feature) {
@@ -617,6 +587,10 @@ export function getLexiconModelSuggestions(limit = 6) {
 export function buildLexiconAkteChip(searchState) {
   if (!searchState?.ok) return null;
   const result = searchState.result ?? {};
+  if (result.needsReview) {
+    const topic = String(searchState.question ?? '').trim();
+    return `Prüfung nötig: ${topic}`.slice(0, 80);
+  }
   const query = String(searchState.question ?? '').trim();
   const primary = result.primaryFacts?.[0];
   if (primary?.value && /\d/.test(String(primary.value))) {

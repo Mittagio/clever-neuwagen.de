@@ -76,6 +76,8 @@ const inbox = listInboxItems({ leadId: lead.id });
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_OPENED));
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_INTERESTED));
 assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
+assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE));
+assert.equal(question.lead.crm.customerMessages?.length, 1);
 
 const cards = buildVehicleOpportunityCards({
   lead: question.lead,

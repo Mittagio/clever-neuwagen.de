@@ -2,10 +2,16 @@ import express from 'express';
 import { listPilotLeads, upsertPilotLead } from './pilotLeadsStore.js';
 import {
   applyPortfolioEvent,
+  applyCustomerPortalMessage,
   buildPortfolioCustomerContext,
   PORTFOLIO_EVENTS,
   resolvePortfolioFromRequest,
 } from '../src/services/crm/customerOfferPortfolioService.js';
+import {
+  recordCustomerPortalAccessOpened,
+  recordCustomerPortalAccessViewed,
+  verifyCustomerPortalAccessCode,
+} from '../src/services/crm/customerPortalAccessService.js';
 
 const router = express.Router();
 
@@ -27,9 +33,10 @@ router.get('/customer-offer-portfolio/context', (req, res) => {
   if (!lead?.id || !portfolio) {
     return res.status(404).json({ ok: false, error: 'not_found' });
   }
+  const accessVerified = req.query?.accessVerified === 'true';
   return res.json({
     ok: true,
-    context: buildPortfolioCustomerContext(lead),
+    context: buildPortfolioCustomerContext(lead, { accessVerified }),
   });
 });
 
@@ -70,6 +77,88 @@ router.post('/customer-offer-portfolio/event', express.json({ limit: '32kb' }), 
     portfolio: result.portfolio,
     inboxItem: result.inboxItem,
     context: result.context,
+  });
+});
+
+router.post('/customer-offer-portfolio/message', express.json({ limit: '16kb' }), (req, res) => {
+  const text = req.body?.text;
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = applyCustomerPortalMessage(lead, { text });
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  upsertPilotLead(result.lead);
+
+  return res.json({
+    ok: true,
+    leadId: result.lead.id,
+    message: result.message,
+    inboxItem: result.inboxItem,
+    context: result.context,
+  });
+});
+
+router.post('/customer-offer-portfolio/access/open', express.json({ limit: '8kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const opened = recordCustomerPortalAccessOpened(lead);
+  const nextLead = opened.historyText
+    ? { ...opened.lead, history: opened.lead.history }
+    : opened.lead;
+  upsertPilotLead(nextLead);
+
+  return res.json({
+    ok: true,
+    changed: opened.changed,
+    context: buildPortfolioCustomerContext(nextLead, {
+      accessVerified: req.body?.accessVerified === true,
+    }),
+    portalAccess: opened.access,
+  });
+});
+
+router.post('/customer-offer-portfolio/access/verify', express.json({ limit: '8kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const result = verifyCustomerPortalAccessCode(lead, req.body?.code);
+  if (!result.ok) {
+    return res.status(400).json(result);
+  }
+
+  upsertPilotLead(result.lead);
+
+  return res.json({
+    ok: true,
+    context: buildPortfolioCustomerContext(result.lead, { accessVerified: true }),
+    portalAccess: result.access,
+  });
+});
+
+router.post('/customer-offer-portfolio/access/viewed', express.json({ limit: '8kb' }), (req, res) => {
+  const { lead, portfolio } = findPortfolioContext(req);
+  if (!lead?.id || !portfolio) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const viewed = recordCustomerPortalAccessViewed(lead);
+  upsertPilotLead(viewed.lead);
+
+  return res.json({
+    ok: true,
+    changed: viewed.changed,
+    context: buildPortfolioCustomerContext(viewed.lead, { accessVerified: true }),
+    portalAccess: viewed.access,
   });
 });
 

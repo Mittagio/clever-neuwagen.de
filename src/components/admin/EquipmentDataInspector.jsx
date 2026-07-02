@@ -451,6 +451,28 @@ export default function EquipmentDataInspector() {
         )}
       </section>
 
+      {ctx.technicalDataGaps?.length > 0 && (
+        <section className="eq-inspector-card" aria-label="Technische Daten">
+          <h2 className="eq-inspector-card__title">Technische Daten (Preisliste)</h2>
+          <ul className="eq-inspector-review-list">
+            {ctx.technicalDataGaps.map((gap) => (
+              <li key={`${gap.attribute}-${gap.status}`} className="eq-inspector-review-item">
+                <strong>{gap.attribute}</strong>
+                <span className="eq-inspector-muted">
+                  {gap.status === 'verified' ? 'geprüft' : 'Prüfung nötig'}
+                  {gap.value ? ` · ${gap.value}` : ''}
+                  {gap.noseWeight ? ` · Stützlast ${gap.noseWeight} kg` : ''}
+                </span>
+                {gap.source && gap.source !== 'keine' && (
+                  <span className="eq-inspector-hint">Quelle: {gap.source}</span>
+                )}
+                {gap.note && <span className="eq-inspector-hint">{gap.note}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="eq-inspector-grid">
         <section className="eq-inspector-card" aria-label="Ausstattungslinien">
           <h2 className="eq-inspector-card__title">Ausstattungslinien</h2>

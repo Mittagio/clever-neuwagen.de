@@ -28,11 +28,13 @@ import {
   buildFeatureSourceDetailFromSearch,
   canShowSourceForRow,
 } from './equipmentInspectorSourcePresenter.js';
+import { listTechnicalDataGapsForModel } from '../../data/technical/verifiedTechnicalDataRegistry.js';
 
 export const INSPECTOR_DEMO_MODELS = [
-  { brand: 'Kia', model: 'EV3', modelKey: 'ev3' },
-  { brand: 'Kia', model: 'EV2', modelKey: 'ev2' },
-  { brand: 'Demo', model: 'Model X', modelKey: 'demo-model-x' },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV3', modelKey: 'ev3' },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV2', modelKey: 'ev2' },
+  { brand: 'Kia', brandKey: 'kia', model: 'EV5', modelKey: 'ev5' },
+  { brand: 'Demo', brandKey: 'demo', model: 'Model X', modelKey: 'demo-model-x' },
 ];
 
 export const PROFILE_ORIGIN_LABELS = {
@@ -220,6 +222,7 @@ export function loadInspectorModelContext(modelKey) {
     trims: profile?.trims ?? [],
     packages: profile?.packages ?? [],
     featureRows: buildAvailabilityRows(profile),
+    technicalDataGaps: listTechnicalDataGapsForModel(modelKey, demo.brandKey ?? 'kia'),
   };
 }
 
