@@ -18,6 +18,9 @@ import customerInquiryRoutes from './customerInquiryRoutes.js';
 import stammdatenRoutes from './stammdatenRoutes.js';
 import configuratorFoundationRoutes from './configuratorFoundationRoutes.js';
 import technicalSyncRoutes from './technicalSyncRoutes.js';
+import mailRoutes from './mail/mailRoutes.js';
+import { configureMailOutboxStorage } from '../src/services/mail/mailOutboxStore.js';
+import { listServerMailOutbox, setServerMailOutbox } from './mail/mailStore.js';
 import { startDocumentCleanupInterval } from './documentStore.js';
 import { resolvePilotDataDir, ensureDataDir } from './jsonStore.js';
 
@@ -94,11 +97,17 @@ app.use('/api/v1', customerInquiryRoutes);
 app.use('/api/v1', stammdatenRoutes);
 app.use('/api/v1', configuratorFoundationRoutes);
 app.use('/api/v1', technicalSyncRoutes);
+app.use('/api/v1', mailRoutes);
 app.use('/api/v1', googlePlacesRoutes);
 app.use('/api', intelligenceRoutes);
 
 startDocumentCleanupInterval();
 ensureDataDir();
+
+configureMailOutboxStorage({
+  load: () => listServerMailOutbox(),
+  save: (entries) => setServerMailOutbox(entries),
+});
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'clever-neuwagen', ts: new Date().toISOString() });

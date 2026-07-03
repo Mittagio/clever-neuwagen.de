@@ -6,7 +6,7 @@ import {
   resolveCustomerOpenAction,
 } from '../../services/crm/customerSearchService.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
-import { buildCleverEmpfiehltToday } from '../../services/crm/cleverRecommendationPresenter.js';
+import { evaluateSellerReminders } from '../../services/journey/journeyReminderService.js';
 import CleverEmpfiehltToday from './CleverEmpfiehltToday.jsx';
 import BackendAdvisorHero from './BackendAdvisorHero.jsx';
 import BackendCustomerSearch from './BackendCustomerSearch.jsx';
@@ -18,7 +18,7 @@ export default function BackendHome({ onNavigateArea }) {
   const { leads } = useLeads();
 
   const cleverTodayItems = useMemo(
-    () => buildCleverEmpfiehltToday(leads, { maxItems: 10 }),
+    () => evaluateSellerReminders(leads, { maxItems: 10 }),
     [leads],
   );
 

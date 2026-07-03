@@ -102,6 +102,14 @@ export default function CustomerAktePortalStatusCard({
         </p>
       ) : null}
 
+      {model.lastReactionLabel ? (
+        <p className="cust-akte-portal-status__reaction">
+          Kundenreaktion:
+          {' '}
+          {model.lastReactionLabel}
+        </p>
+      ) : null}
+
       {model.actions.length > 0 ? (
         <div className="cust-akte-portal-status__actions">
           {model.actions.map((action, index) => (

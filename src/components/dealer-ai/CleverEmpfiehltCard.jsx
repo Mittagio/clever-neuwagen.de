@@ -6,6 +6,8 @@ export default function CleverEmpfiehltCard({
   onPrimaryAction,
   onMarkDone,
   onOpenOffer,
+  onCopyMessage,
+  onPrepareMessage,
   loading = false,
 }) {
   if (!view && !loading) return null;
@@ -46,6 +48,10 @@ export default function CleverEmpfiehltCard({
 
       {view.subline ? (
         <p className="clever-empfiehlt__subline">{view.subline}</p>
+      ) : null}
+
+      {view.reminderLine ? (
+        <p className="clever-empfiehlt__reminder">{view.reminderLine}</p>
       ) : null}
 
       {view.whyBullets?.length > 0 && (
@@ -125,6 +131,29 @@ export default function CleverEmpfiehltCard({
             })}
         </div>
       </div>
+
+      {view.messageSuggestion?.text ? (
+        <div className="clever-empfiehlt__message">
+          <p className="clever-empfiehlt__message-label">Clever Textvorschlag</p>
+          <p className="clever-empfiehlt__message-preview">{view.messageSuggestion.preview}</p>
+          <div className="clever-empfiehlt__message-actions">
+            <button
+              type="button"
+              className="clever-empfiehlt__btn clever-empfiehlt__btn--secondary clever-empfiehlt__btn--compact"
+              onClick={() => onCopyMessage?.(view.messageSuggestion)}
+            >
+              Textvorschlag kopieren
+            </button>
+            <button
+              type="button"
+              className="clever-empfiehlt__btn clever-empfiehlt__btn--secondary clever-empfiehlt__btn--compact"
+              onClick={() => onPrepareMessage?.(view.messageSuggestion)}
+            >
+              Nachricht vorbereiten
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {view.doneOption ? (
         <div className="clever-empfiehlt__done">

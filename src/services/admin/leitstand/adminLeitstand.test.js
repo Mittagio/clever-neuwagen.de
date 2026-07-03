@@ -42,7 +42,7 @@ assert.equal(published?.status, 'published');
 console.log('Release-Center – OK');
 
 // Mail
-assert.equal(MAIL_FROM, 'info@clever-neuwagen.de');
+assert.equal(MAIL_FROM.email, 'info@clever-neuwagen.de');
 assert.ok(listMailOutbox().length >= 1);
 console.log('Mail-Outbox – OK');
 

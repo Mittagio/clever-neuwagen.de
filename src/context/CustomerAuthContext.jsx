@@ -22,11 +22,7 @@ import {
   upsertVehicleStatus,
   updateVehicleStatusStage,
 } from '../services/customerAccountService.js';
-import {
-  addLinkedShareToken,
-  mergeShareSessionsIntoComparisons,
-  mergeShareSessionsIntoInquiries,
-} from '../services/customer/customerShareAccountService.js';
+import { sendCustomerLoginCodeMail } from '../services/mail/mailFlowService.js';
 
 const SESSION_KEY = 'clever-neuwagen-customer-session';
 const DATA_PREFIX = 'clever-neuwagen-customer-data-';
@@ -90,7 +86,7 @@ export function CustomerAuthProvider({ children }) {
     pendingEmail,
     demoCode,
 
-    requestCode(email) {
+    async requestCode(email) {
       const normalized = email.trim().toLowerCase();
       if (!normalized || !normalized.includes('@')) {
         return { ok: false, error: 'Bitte gültige E-Mail eingeben.' };
@@ -99,7 +95,23 @@ export function CustomerAuthProvider({ children }) {
       sessionStorage.setItem(`${PENDING_CODE_PREFIX}${normalized}`, code);
       setPendingEmail(normalized);
       setDemoCode(code);
-      return { ok: true, email: normalized };
+
+      const portalUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const mailResult = await sendCustomerLoginCodeMail({
+        to: normalized,
+        customerName: normalized.split('@')[0],
+        code,
+        portalUrl,
+        dealerName: 'Clever Neuwagen',
+        meta: { source: 'customer-auth' },
+      });
+
+      return {
+        ok: true,
+        email: normalized,
+        mailSent: mailResult.ok,
+        mailError: mailResult.error ?? null,
+      };
     },
 
     verifyCode(code) {
@@ -134,12 +146,20 @@ export function CustomerAuthProvider({ children }) {
       return { ok: true };
     },
 
-    resendCode() {
+    async resendCode() {
       if (!pendingEmail) return { ok: false };
       const code = generateCode();
       sessionStorage.setItem(`${PENDING_CODE_PREFIX}${pendingEmail}`, code);
       setDemoCode(code);
-      return { ok: true };
+      const mailResult = await sendCustomerLoginCodeMail({
+        to: pendingEmail,
+        customerName: pendingEmail.split('@')[0],
+        code,
+        portalUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        dealerName: 'Clever Neuwagen',
+        meta: { source: 'customer-auth-resend' },
+      });
+      return { ok: true, mailSent: mailResult.ok, mailError: mailResult.error ?? null };
     },
 
     logout() {

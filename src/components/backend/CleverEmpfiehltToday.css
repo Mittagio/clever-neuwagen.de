@@ -83,6 +83,24 @@
   margin-bottom: 2px;
 }
 
+.clever-today__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clever-today__due-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #92400e;
+}
+
 .clever-today__stars {
   font-size: 0.72rem;
   letter-spacing: -0.05em;

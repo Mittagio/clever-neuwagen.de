@@ -351,6 +351,13 @@
   color: #059669;
 }
 
+.al-mail-outbox-banner {
+  color: #b45309;
+  background: rgba(251, 191, 36, 0.12);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
 .al-mail-row {
   display: flex;
   gap: 10px;
@@ -381,6 +388,18 @@
   margin: 2px 0 0;
   font-size: 0.72rem;
   color: #6b7280;
+}
+
+.al-mail-row__template {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.al-mail-row__time {
+  margin: 4px 0 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
 }
 
 .al-mail-row__error {

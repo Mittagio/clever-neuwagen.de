@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import usePageSeo from '../../hooks/usePageSeo';
 import { usePriceListImport } from '../../context/PriceListImportContext.jsx';
@@ -12,7 +12,13 @@ import {
 } from '../../components/admin/leitstand/AdminLeitstandShell.jsx';
 import '../../components/admin/leitstand/adminLeitstand.css';
 import { buildSystemHealthModel, probeApiHealth } from '../../services/admin/leitstand/adminSystemHealth.js';
-import { listMailOutbox, retryMail, MAIL_FROM } from '../../services/admin/leitstand/mailOutboxService.js';
+import {
+  loadMailOutboxForAdmin,
+  retryMail,
+  getMailOutboxStats,
+  MAIL_FROM,
+  OUTBOX_SOURCE,
+} from '../../services/admin/leitstand/mailOutboxService.js';
 import { getAdminLeitstandState, subscribeAdminLeitstand } from '../../services/admin/leitstand/adminLeitstandStore.js';
 import { buildActivityFeedGrouped } from '../../services/admin/leitstand/adminActivityFeed.js';
 
@@ -22,8 +28,22 @@ export default function AdminSystemLeitstandPage() {
   const importMetrics = getMetrics();
   const [leitstand, setLeitstand] = useState(getAdminLeitstandState);
   const [apiHealth, setApiHealth] = useState(null);
+  const [outboxSnapshot, setOutboxSnapshot] = useState({
+    items: [],
+    source: OUTBOX_SOURCE.DEMO,
+    isDemo: true,
+    loading: true,
+  });
+
+  const refreshOutbox = useCallback(async () => {
+    const snapshot = await loadMailOutboxForAdmin();
+    setOutboxSnapshot({ ...snapshot, loading: false });
+  }, []);
 
   useEffect(() => subscribeAdminLeitstand(setLeitstand), []);
+  useEffect(() => {
+    refreshOutbox();
+  }, [refreshOutbox]);
 
   useEffect(() => {
     probeApiHealth().then(setApiHealth);
@@ -35,21 +55,29 @@ export default function AdminSystemLeitstandPage() {
     path: '/admin/system',
   });
 
+  const mailItems = outboxSnapshot.items ?? [];
+  const isDemoOutbox = outboxSnapshot.isDemo || outboxSnapshot.source === OUTBOX_SOURCE.DEMO;
+
   const health = buildSystemHealthModel({
     apiHealth,
-    mailOutbox: leitstand.mailOutbox,
+    mailOutbox: mailItems,
     importMetrics,
     systemIssues,
   });
 
-  const mailItems = listMailOutbox();
   const activity = buildActivityFeedGrouped(leitstand.activityFeed);
+  const mailStats = getMailOutboxStats();
+
+  async function handleRetry(mailId) {
+    await retryMail(mailId);
+    await refreshOutbox();
+  }
 
   return (
     <>
       <AlPageHeader
         title="System"
-        subtitle={`Kommunikations-Hub: ${MAIL_FROM}`}
+        subtitle={`Kommunikations-Hub: ${MAIL_FROM.email}`}
         action={(
           <Link to="/admin/email" className="al-btn al-btn--ghost">Vorlagen →</Link>
         )}
@@ -60,17 +88,32 @@ export default function AdminSystemLeitstandPage() {
       ))}
 
       <AlSection title="Mail-Outbox" id="mail">
+        {isDemoOutbox ? (
+          <p className="al-header__sub al-mail-outbox-banner" style={{ marginBottom: 10 }}>
+            Demo-Outbox aktiv (localStorage) – Server-Outbox nicht erreichbar
+          </p>
+        ) : (
+          <p className="al-header__sub" style={{ marginBottom: 10 }}>
+            Server-Outbox · zentrale Produktiv-Quelle
+          </p>
+        )}
         <p className="al-header__sub" style={{ marginBottom: 10 }}>
-          Versendet · Warteschlange · Fehlgeschlagen · Erneut senden
+          ✅ {mailStats.sent} versendet · ⏳ {mailStats.queued} wartend · ❌ {mailStats.failed} fehlgeschlagen
         </p>
-        {mailItems.map((mail) => (
-          <AlMailRow
-            key={mail.id}
-            mail={mail}
-            onRetry={(id) => retryMail(id)}
-          />
-        ))}
-        {!mailItems.length && <p className="al-empty">Outbox leer.</p>}
+        {outboxSnapshot.loading ? (
+          <p className="al-empty">Outbox wird geladen …</p>
+        ) : (
+          <>
+            {mailItems.map((mail) => (
+              <AlMailRow
+                key={mail.id}
+                mail={mail}
+                onRetry={(id) => handleRetry(id)}
+              />
+            ))}
+            {!mailItems.length && <p className="al-empty">Outbox leer.</p>}
+          </>
+        )}
       </AlSection>
 
       <AlSection

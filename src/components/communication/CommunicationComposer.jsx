@@ -87,12 +87,13 @@ export default function CommunicationComposer({ lead, onToast }) {
   }
 
   async function handleOffer() {
-    const res = sendOffer(lead.id);
+    const res = await sendOffer(lead.id);
     if (!res.ok) {
-      toast('Angebot konnte nicht erstellt werden');
+      toast(res.mail?.error ? `Versand fehlgeschlagen: ${res.mail.error}` : 'Angebot konnte nicht erstellt werden');
       return;
     }
-    toast(`Angebot ${res.offer.code} – versendet`);
+    const mailNote = res.mail?.ok === false ? ' (Mail-Fallback: Mail-App)' : '';
+    toast(`Angebot ${res.offer.code} – versendet${mailNote}`);
     if (res.url) {
       setMessage((prev) => (prev ? prev : `Anbei Ihr Angebot: ${res.url}`));
     }

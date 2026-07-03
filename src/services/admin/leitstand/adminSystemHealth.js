@@ -1,3 +1,6 @@
+import { isMailProductionReady } from '../../mail/mailConfig.js';
+import { getActiveTransportLabel } from '../../mail/mailTransport.js';
+
 /**
  * System-Health für Admin Leitstand „System“.
  */
@@ -38,7 +41,7 @@ export function buildSystemHealthModel({
         id: 'mail',
         title: 'Mail',
         items: [
-          { id: 'smtp', label: 'SMTP / Versand', status: mailStatus, detail: failedMails ? `${failedMails} Fehler` : 'Mock aktiv (Resend vorbereitet)' },
+          { id: 'smtp', label: 'SMTP / Versand', status: mailStatus, detail: failedMails ? `${failedMails} Fehler` : `${getActiveTransportLabel()}${isMailProductionReady() ? '' : ' (nicht produktiv)'}` },
           { id: 'last-mail', label: 'Letzte Mail', status: lastMail ? 'ok' : 'unknown', detail: lastMail ? `${lastMail.subject} → ${lastMail.to}` : '–' },
           { id: 'queue', label: 'Queue', status: queuedMails > 2 ? 'warn' : 'ok', detail: `${queuedMails} in Warteschlange` },
         ],

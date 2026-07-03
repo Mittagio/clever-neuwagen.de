@@ -21,6 +21,7 @@ import { CUSTOMER_LABELS } from '../data/customerFlow.js';
 import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
+import { notifyCustomerInquirySubmitted } from '../services/mail/mailInquiryNotify.js';
 import { buildDealerInquiryBrief } from '../logic/dealerInquiryBrief.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
 import AlternativesCompareSheet from '../components/compare/AlternativesCompareSheet.jsx';
@@ -151,6 +152,11 @@ export default function VehicleDetailPage() {
       inquiryBrief,
     });
     addLead(lead);
+    void notifyCustomerInquirySubmitted(lead, {
+      dealerName: dealer?.name ?? dealer?.dealerName,
+      dealerPhone: dealer?.phone ?? dealer?.contact?.phone,
+      dealerEmail: dealer?.email ?? dealer?.contact?.email,
+    });
     if (contact.email) {
       registerMarketplaceInquiry(
         vehicle,

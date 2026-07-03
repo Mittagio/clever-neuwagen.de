@@ -16,6 +16,7 @@ import {
   sendWhatsAppToLead,
 } from '../logic/communicationService.js';
 import { linkOfferToLead } from '../logic/offerLeadService.js';
+import { markOfferSent } from '../logic/offerService.js';
 import { calculateRateForLead as computeLeadPricing } from '../logic/salesChancePricing.js';
 import {
   prepareCounterOfferSend,
@@ -28,6 +29,10 @@ import {
 } from '../logic/documentRequestService.js';
 import { OFFER_DIALOG_EVENTS } from '../data/offerDialogTypes.js';
 import { sendMockEmail } from '../services/mockMailService.js';
+import {
+  sendCustomerOfferLinkMailFromOffer,
+  applyOfferMailDelivery,
+} from '../services/mail/mailFlowService.js';
 import {
   CURRENT_SELLER_STORAGE_KEY,
   DEALER_SELLERS,
@@ -213,7 +218,7 @@ export function CommunicationProvider({ children }) {
         return { ok: true };
       },
 
-      sendOffer(leadId) {
+      async sendOffer(leadId) {
         const lead = leadsApi.getLead(leadId);
         if (!lead) return { ok: false, code: 'NOT_FOUND' };
 
@@ -235,23 +240,36 @@ export function CommunicationProvider({ children }) {
         const url = buildOfferUrl(offer.code);
         const { mailto } = buildOfferSendMail(offer, url);
 
+        let mailResult = { ok: false, error: 'Keine E-Mail' };
         if (lead.contact?.email) {
-          window.location.href = mailto;
+          mailResult = await sendCustomerOfferLinkMailFromOffer(offer, url, { leadId });
+          if (!mailResult.ok) {
+            window.location.href = mailto;
+          }
         }
+
+        const sentOffer = applyOfferMailDelivery(markOfferSent(offer), mailResult);
 
         appendHistory(leadId, `Angebot versendet (${offer.code})`, {
           channel: 'offer',
           offerCode: offer.code,
           type: 'offer',
+          mailStatus: sentOffer.mailDelivery?.status ?? null,
+          mailError: sentOffer.mailDelivery?.error ?? null,
         });
 
         if (lead.status === 'neu' || lead.status === 'inBearbeitung') {
           leadsApi.updateStatus(leadId, 'angebotVersendet');
         }
 
-        markSent(offer.code);
+        applyOfferPatch(sentOffer.code, sentOffer);
         recordAudit(AUDIT_ACTIONS.OFFER_SENT, leadId, offer.code);
-        return { ok: true, offer, url };
+        return {
+          ok: mailResult.ok || Boolean(lead.contact?.email),
+          offer: sentOffer,
+          url,
+          mail: mailResult,
+        };
       },
 
       sendCounterOffer(leadId, { accessoriesNote = '', dealerMessage = '' } = {}) {

@@ -14,6 +14,7 @@ import {
   getCustomerPortalAccess,
   markCustomerPortalAccessSent,
   prepareCustomerPortalAccess,
+  recordCustomerPortalAccessLinkCopied,
   recordCustomerPortalAccessOpened,
   recordCustomerPortalAccessViewed,
   verifyCustomerPortalAccessCode,
@@ -66,9 +67,12 @@ assert.equal(getCustomerPortalAccess(portalPrepared.lead)?.portfolioUrl, prepare
 assert.equal(getCustomerPortalAccess(portalPrepared.lead)?.email, 'anna@example.de');
 assert.ok(getCustomerPortalAccess(portalPrepared.lead)?.accessCode);
 
-// C) Status prepared / sent
+// C) Status prepared / sent (nur bei echtem Versand)
 assert.equal(portalPrepared.access.status, PORTAL_ACCESS_STATUS.PREPARED);
-const sent = markCustomerPortalAccessSent(portalPrepared.lead, { via: 'copy' });
+const copied = recordCustomerPortalAccessLinkCopied(portalPrepared.lead);
+assert.equal(getCustomerPortalAccess(copied.lead)?.status, PORTAL_ACCESS_STATUS.PREPARED);
+assert.ok(getCustomerPortalAccess(copied.lead)?.linkCopiedAt);
+const sent = markCustomerPortalAccessSent(copied.lead, { via: 'email' });
 assert.equal(getCustomerPortalAccess(sent.lead)?.status, PORTAL_ACCESS_STATUS.SENT);
 assert.ok(getCustomerPortalAccess(sent.lead)?.sentAt);
 
@@ -190,6 +194,11 @@ const sentCard = cardForStatus(PORTAL_ACCESS_STATUS.SENT);
 assert.equal(sentCard.portfolioUrl, prepared.portfolio.url);
 assert.ok(sentCard.actions.some((action) => action.id === 'copy'));
 assert.ok(sentCard.actions.some((action) => action.id === 'email'));
+
+const reactedCard = cardForStatus(PORTAL_ACCESS_STATUS.VIEWED, {
+  lastReaction: { type: 'offer_interested', label: 'Kunde interessiert', at: '2026-07-02T14:00:00.000Z' },
+});
+assert.equal(reactedCard.lastReactionLabel, 'Kunde interessiert');
 
 const historyBefore = viewed.lead.history?.length ?? 0;
 buildCustomerPortalStatusCardModel(viewed.lead);

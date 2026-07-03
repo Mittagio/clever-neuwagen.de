@@ -23,6 +23,7 @@ import {
 import {
   buildCustomerPortalAccessContext,
   isCustomerPortalAccessVerified,
+  recordPortalCustomerReaction,
 } from './customerPortalAccessService.js';
 import { buildCustomerPortalShellModel } from './customerPortalShellPresenter.js';
 import {
@@ -31,6 +32,15 @@ import {
   startSelfDisclosure,
   submitSelfDisclosure,
 } from './customerPortalSelfDisclosureService.js';
+import {
+  createEmptyInteraction,
+  getCustomerOfferInteraction,
+  mergeCustomerOfferInteractionPatch,
+  recordCustomerOpened,
+  recordCustomerInterested,
+  recordCustomerDeclined,
+  addCustomerQuestion,
+} from '../customerOfferInteraction.js';
 import {
   buildBoardItems,
   OFFER_SELECTION_GROUP_STATUS,
@@ -664,6 +674,69 @@ function applyReactionToVehicleOffer(lead, item, reactionStatus) {
   });
 }
 
+const PORTFOLIO_REACTION_LABELS = {
+  [PORTFOLIO_REACTION_STATUS.INTERESTED]: 'Kunde interessiert',
+  [PORTFOLIO_REACTION_STATUS.CALL_REQUESTED]: 'Rückruf gewünscht',
+  [PORTFOLIO_REACTION_STATUS.DECLINED]: 'Angebot abgelehnt',
+  [PORTFOLIO_REACTION_STATUS.MORE_INFO]: 'Rückfrage gestellt',
+};
+
+function syncPortfolioEventToCrm(lead, {
+  eventType,
+  item = null,
+  questionText = '',
+  reactionStatus = PORTFOLIO_REACTION_STATUS.NONE,
+} = {}) {
+  let nextLead = lead;
+  const cardId = item?.vehicleCardId ?? item?.id ?? null;
+
+  if (cardId) {
+    let interaction = getCustomerOfferInteraction(nextLead, cardId)
+      ?? createEmptyInteraction(cardId, nextLead?.id ?? null);
+
+    if (eventType === PORTFOLIO_EVENTS.OPENED) {
+      interaction = recordCustomerOpened(interaction);
+    } else if (eventType === PORTFOLIO_EVENTS.OFFER_INTERESTED) {
+      interaction = recordCustomerInterested(interaction);
+    } else if (eventType === PORTFOLIO_EVENTS.OFFER_DECLINED) {
+      interaction = recordCustomerDeclined(interaction);
+    } else if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO) {
+      interaction = addCustomerQuestion(interaction, questionText);
+    }
+
+    const interactions = mergeCustomerOfferInteractionPatch(nextLead, cardId, interaction);
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...(nextLead.crm ?? {}),
+        customerOfferInteractions: interactions,
+      },
+    };
+  } else if (eventType === PORTFOLIO_EVENTS.OPENED) {
+    const firstItem = nextLead?.crm?.customerOfferPortfolio?.items?.[0];
+    if (firstItem) {
+      nextLead = syncPortfolioEventToCrm(nextLead, {
+        eventType,
+        item: firstItem,
+      });
+    }
+  }
+
+  const reactionLabel = eventType === PORTFOLIO_EVENTS.OPENED
+    ? 'Auswahl geöffnet'
+    : PORTFOLIO_REACTION_LABELS[reactionStatus];
+  if (reactionLabel) {
+    const reacted = recordPortalCustomerReaction(nextLead, {
+      type: eventType,
+      label: reactionLabel,
+      offerUnitId: item?.id ?? null,
+    });
+    nextLead = reacted.lead;
+  }
+
+  return nextLead;
+}
+
 /**
  * Kundenreaktion auf ein Portfolio-Angebot.
  */
@@ -814,6 +887,13 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     finalLead = mirrored.lead;
     inboxItem = mirrored.inboxItem;
   }
+
+  finalLead = syncPortfolioEventToCrm(finalLead, {
+    eventType,
+    item: itemIndex >= 0 ? nextPortfolio.items[itemIndex] : null,
+    questionText,
+    reactionStatus,
+  });
 
   return {
     ok: true,

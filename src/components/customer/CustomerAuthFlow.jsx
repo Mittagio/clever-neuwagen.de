@@ -9,10 +9,10 @@ export default function CustomerAuthFlow({ onSuccess }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
 
-  function handleEmailSubmit(e) {
+  async function handleEmailSubmit(e) {
     e.preventDefault();
     setError('');
-    const result = requestCode(email);
+    const result = await requestCode(email);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -31,9 +31,9 @@ export default function CustomerAuthFlow({ onSuccess }) {
     onSuccess?.();
   }
 
-  function handleResend() {
+  async function handleResend() {
     setError('');
-    resendCode();
+    await resendCode();
   }
 
   function handleBack() {

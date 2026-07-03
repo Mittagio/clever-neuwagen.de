@@ -1,26 +1,19 @@
 /**
- * Phase 1: Mock-E-Mail-Versand (Protokoll in Console + Rückgabe für Historie)
- * Phase 2: Resend / SMTP
+ * Phase-1-Kompatibilität – bitte mailService.sendTemplatedMail nutzen.
  */
+import { sendViaOutbox } from './mail/mailOutboxService.js';
 
-export async function sendMockEmail({ to, subject, body, leadId, templateId }) {
-  await new Promise((r) => setTimeout(r, 400));
-
-  const entry = {
-    id: `mail-${Date.now()}`,
+export async function sendMockEmail({ to, subject, body, leadId, templateId, meta = {} }) {
+  const result = await sendViaOutbox({
     to,
     subject,
-    bodyPreview: body?.slice(0, 120) ?? '',
-    leadId,
+    body,
     templateId,
-    sentAt: new Date().toISOString(),
-    provider: 'mock',
-    status: 'sent',
+    meta: { ...meta, leadId },
+  });
+  return {
+    ok: result.ok,
+    entry: result.entry,
+    error: result.error,
   };
-
-  if (typeof console !== 'undefined') {
-    console.info('[MockMail]', entry);
-  }
-
-  return { ok: true, entry };
 }

@@ -74,6 +74,18 @@
   color: #475569;
 }
 
+.clever-empfiehlt__reminder {
+  margin: -6px 0 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #92400e;
+}
+
 .clever-empfiehlt__why {
   margin-bottom: 16px;
   padding: 12px 14px;
@@ -157,6 +169,41 @@
   background: #fff;
   color: #0f172a;
   border: 1px solid #cbd5e1;
+}
+
+.clever-empfiehlt__btn--compact {
+  min-height: 40px;
+  font-size: 0.82rem;
+}
+
+.clever-empfiehlt__message {
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+}
+
+.clever-empfiehlt__message-label {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.clever-empfiehlt__message-preview {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.clever-empfiehlt__message-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .clever-empfiehlt__done {

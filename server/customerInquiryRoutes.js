@@ -7,9 +7,9 @@ const router = express.Router();
  * POST /api/v1/customer/inquiries
  * Kundenanfrage (Fahrzeugseite, Angebotslink, Berater) → Verkaufschance im Backend.
  */
-router.post('/customer/inquiries', express.json({ limit: '512kb' }), (req, res) => {
+router.post('/customer/inquiries', express.json({ limit: '512kb' }), async (req, res) => {
   try {
-    const result = processCustomerInquiry(req.body ?? {});
+    const result = await processCustomerInquiry(req.body ?? {});
     if (!result.ok) {
       return res.status(400).json({ error: true, message: result.message });
     }

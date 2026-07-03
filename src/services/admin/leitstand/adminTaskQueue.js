@@ -1,6 +1,6 @@
 import { listComplianceVehicles } from '../../../logic/complianceShield.js';
 import { COMPLIANCE_STATUS } from '../../../data/complianceSchema.js';
-import { getAdminLeitstandState } from './adminLeitstandStore.js';
+import { listMailOutbox } from '../../mail/mailOutboxService.js';
 
 export const TASK_PRIORITY = {
   urgent: { id: 'urgent', label: 'Sofort', emoji: '🔴', order: 0 },
@@ -20,7 +20,7 @@ export function buildAdminTaskQueue({
   learningRequests = [],
 } = {}) {
   const tasks = [];
-  const { mailOutbox } = getAdminLeitstandState();
+  const mailOutbox = listMailOutbox();
 
   for (const approval of approvals.filter((a) => a.status === 'pending')) {
     tasks.push({
@@ -71,14 +71,16 @@ export function buildAdminTaskQueue({
   }
 
   for (const mail of mailOutbox.filter((m) => m.status === 'failed')) {
+    const leadId = mail.leadId ?? mail.meta?.leadId ?? null;
+    const leadHint = leadId ? `Lead ${leadId} · ` : '';
     tasks.push({
       id: `mail-${mail.id}`,
       priority: 'urgent',
       title: 'Mail konnte nicht versendet werden',
-      subtitle: `${mail.to} · ${mail.error ?? 'Unbekannter Fehler'}`,
+      subtitle: `${leadHint}${mail.to} · ${mail.error ?? 'Unbekannter Fehler'}`,
       category: 'Mail',
-      href: '/admin/system#mail',
-      actionLabel: 'Outbox öffnen',
+      href: leadId ? `/dealer-ai/lead/${leadId}` : '/admin/system#mail',
+      actionLabel: leadId ? 'Kundenakte öffnen' : 'Outbox öffnen',
     });
   }
 

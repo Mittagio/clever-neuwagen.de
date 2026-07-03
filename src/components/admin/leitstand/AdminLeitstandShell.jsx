@@ -184,19 +184,33 @@ export function AlReleaseCard({ release, onPublish }) {
 
 export function AlMailRow({ mail, onRetry }) {
   const statusMap = {
-    sent: '✅',
-    queued: '⏳',
-    failed: '❌',
+    sent: { emoji: '✅', label: 'Versendet' },
+    queued: { emoji: '⏳', label: 'Wartend' },
+    failed: { emoji: '❌', label: 'Fehlgeschlagen' },
   };
+  const status = statusMap[mail.status] ?? statusMap.queued;
+  const created = mail.createdAt ? new Date(mail.createdAt).toLocaleString('de-DE') : '–';
+  const sent = mail.sentAt ? new Date(mail.sentAt).toLocaleString('de-DE') : null;
+
   return (
     <article className={`al-mail-row al-mail-row--${mail.status}`}>
-      <span className="al-mail-row__status" aria-hidden>{statusMap[mail.status] ?? '⏳'}</span>
+      <span className="al-mail-row__status" aria-label={status.label}>{status.emoji}</span>
       <div className="al-mail-row__body">
         <p className="al-mail-row__subject">{mail.subject}</p>
-        <p className="al-mail-row__to">{mail.to}</p>
-        {mail.error ? <p className="al-mail-row__error">{mail.error}</p> : null}
+        <p className="al-mail-row__to">An: {mail.to}</p>
+        {mail.templateName ? (
+          <p className="al-mail-row__template">Vorlage: {mail.templateName}</p>
+        ) : mail.templateId ? (
+          <p className="al-mail-row__template">Vorlage: {mail.templateId}</p>
+        ) : null}
+        <p className="al-mail-row__time">
+          Erstellt: {created}
+          {sent ? ` · Versendet: ${sent}` : ''}
+          {mail.retryCount > 0 ? ` · Versuche: ${mail.retryCount}` : ''}
+        </p>
+        {mail.error ? <p className="al-mail-row__error">Fehler: {mail.error}</p> : null}
       </div>
-      {mail.status === 'failed' && (
+      {(mail.status === 'failed' || mail.status === 'queued') && (
         <button type="button" className="al-btn al-btn--ghost" onClick={() => onRetry?.(mail.id)}>
           🔁 Erneut
         </button>

@@ -144,7 +144,7 @@ export function prepareCustomerPortalAccess(lead = {}, {
  * @param {object} lead
  * @param {object} [options]
  */
-export function markCustomerPortalAccessSent(lead = {}, { via = 'copy' } = {}) {
+export function markCustomerPortalAccessSent(lead = {}, { via = 'email' } = {}) {
   const access = getCustomerPortalAccess(lead);
   if (!access) return { lead, access: null, historyText: null };
 
@@ -153,8 +153,9 @@ export function markCustomerPortalAccessSent(lead = {}, { via = 'copy' } = {}) {
     ...access,
     status: PORTAL_ACCESS_STATUS.SENT,
     sentAt: access.sentAt ?? now,
-    lastCodeSentAt: now,
+    lastCodeSentAt: via === 'email' ? now : access.lastCodeSentAt,
     lastActivityAt: now,
+    deliveryVia: via,
   };
 
   let nextLead = mergeCustomerPortalAccess(lead, nextAccess);
@@ -162,15 +163,97 @@ export function markCustomerPortalAccessSent(lead = {}, { via = 'copy' } = {}) {
   if (advisorHint.name || advisorHint.userId) {
     nextLead = applyPortalAdvisorToLead(nextLead, advisorHint);
   }
-  const result = appendPortalAccessHistory(nextLead, HISTORY_KEYS.SENT, 'Kundenlink gesendet');
+  const historyLabel = via === 'mailto'
+    ? 'Kundenlink per Mail-App vorbereitet'
+    : 'Kundenlink per E-Mail versendet';
+  const result = appendPortalAccessHistory(nextLead, HISTORY_KEYS.SENT, historyLabel);
   nextLead = result.lead;
 
   return {
     lead: nextLead,
     access: getCustomerPortalAccess(nextLead),
-    historyText: result.added ? 'Kundenlink gesendet' : null,
+    historyText: result.added ? historyLabel : null,
     via,
   };
+}
+
+/**
+ * Link kopiert – Status bleibt vorbereitet (nicht als „versendet“ werten).
+ */
+export function recordCustomerPortalAccessLinkCopied(lead = {}) {
+  const access = getCustomerPortalAccess(lead);
+  if (!access) return { lead, access: null, historyText: null };
+
+  const now = nowIso();
+  const nextAccess = {
+    ...access,
+    linkCopiedAt: now,
+    lastActivityAt: now,
+    deliveryVia: access.deliveryVia ?? 'copy',
+  };
+
+  let nextLead = mergeCustomerPortalAccess(lead, nextAccess);
+  const result = appendPortalAccessHistory(
+    nextLead,
+    'link_copied',
+    'Kundenlink kopiert',
+  );
+  nextLead = result.lead;
+
+  return {
+    lead: nextLead,
+    access: getCustomerPortalAccess(nextLead),
+    historyText: result.added ? 'Kundenlink kopiert' : null,
+  };
+}
+
+/**
+ * Letzte Kundenreaktion im Portal-Access spiegeln (für Verkäuferkarte).
+ */
+export function recordPortalCustomerReaction(lead = {}, {
+  type = '',
+  label = '',
+  offerUnitId = null,
+} = {}) {
+  const access = getCustomerPortalAccess(lead);
+  if (!access || !type) return { lead, access };
+
+  const now = nowIso();
+  const nextAccess = {
+    ...access,
+    lastReaction: {
+      type,
+      label,
+      offerUnitId,
+      at: now,
+    },
+    lastActivityAt: now,
+  };
+
+  return {
+    lead: mergeCustomerPortalAccess(lead, nextAccess),
+    access: nextAccess,
+  };
+}
+
+export function buildPortalReactionSummary(lead = {}) {
+  const access = getCustomerPortalAccess(lead);
+  if (access?.lastReaction?.label) return access.lastReaction.label;
+
+  const portfolio = lead?.crm?.customerOfferPortfolio;
+  const reacted = portfolio?.items?.find(
+    (item) => item.customerReaction?.status && item.customerReaction.status !== 'none',
+  );
+  if (!reacted?.customerReaction) return null;
+
+  const map = {
+    interested: 'Kunde interessiert',
+    call_requested: 'Rückruf gewünscht',
+    declined: 'Angebot abgelehnt',
+    more_info: 'Rückfrage gestellt',
+  };
+  return map[reacted.customerReaction.status]
+    ?? reacted.customerReaction.status;
 }
 
 /**
@@ -520,6 +603,8 @@ export function buildCustomerPortalStatusCardModel(lead = {}, options = {}) {
     selfDisclosure: buildDealerSelfDisclosureSummary(lead),
     steps,
     lastActivityLabel: formatPortalLastActivity(access.lastActivityAt),
+    lastReactionLabel: buildPortalReactionSummary(lead),
+    linkCopiedAt: access.linkCopiedAt ?? null,
     portfolioUrl: access.portfolioUrl ?? null,
     email: access.email ?? null,
     actions: actions.slice(0, 2),

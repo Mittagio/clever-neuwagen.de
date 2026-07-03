@@ -3,6 +3,7 @@ import { normalizeLead } from '../src/logic/leadNormalization.js';
 import { generateOfferNumber } from '../src/logic/offerService.js';
 import { upsertLeadFromOfferAction } from '../src/logic/offerDialogService.js';
 import { createCustomerId } from '../src/services/dealerAiCustomer.js';
+import { sendCustomerInquiryMails } from '../src/services/mail/mailFlowService.js';
 
 function collectReferenceCodes(leads = []) {
   const codes = [];
@@ -37,7 +38,7 @@ function mergeLead(existing, incoming) {
 /**
  * Kundenanfrage vom Frontend → Verkaufschance im Backend (Pilot-Leads Store).
  */
-export function processCustomerInquiry(body = {}) {
+export async function processCustomerInquiry(body = {}) {
   const data = loadPilotLeads();
   const leads = data.leads ?? [];
 
@@ -58,7 +59,10 @@ export function processCustomerInquiry(body = {}) {
     }, leads));
 
     upsertPilotLead(lead);
-    return { ok: true, lead, leadId: lead.id, isNew: result.isNew };
+    const mail = result.isNew
+      ? await sendCustomerInquiryMails({ lead })
+      : null;
+    return { ok: true, lead, leadId: lead.id, isNew: result.isNew, mail };
   }
 
   const incoming = body.lead;
@@ -92,5 +96,8 @@ export function processCustomerInquiry(body = {}) {
   }
 
   upsertPilotLead(lead);
-  return { ok: true, lead, leadId: lead.id, isNew };
+  const mail = isNew
+    ? await sendCustomerInquiryMails({ lead })
+    : null;
+  return { ok: true, lead, leadId: lead.id, isNew, mail };
 }

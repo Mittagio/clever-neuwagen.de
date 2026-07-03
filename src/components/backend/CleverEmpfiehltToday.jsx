@@ -29,7 +29,12 @@ export default function CleverEmpfiehltToday({ items = [] }) {
                   <span className="clever-today__stars" aria-label={`${item.stars} von 5 Sternen`}>
                     {item.starLabel}
                   </span>
-                  <span className="clever-today__chance">{item.closureChance} %</span>
+                  <span className="clever-today__meta">
+                    {item.dueTodayBadge ? (
+                      <span className="clever-today__due-badge">{item.dueTodayBadge}</span>
+                    ) : null}
+                    <span className="clever-today__chance">{item.closureChance} %</span>
+                  </span>
                 </div>
                 <p className="clever-today__name">{item.customerName}</p>
                 <p className="clever-today__action">{item.headline}</p>

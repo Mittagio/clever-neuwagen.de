@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import InternalTestCustomerShareWarning from '../shared/InternalTestCustomerShareWarning.jsx';
+import { sendCustomerLoginCodeMail } from '../../services/mail/mailFlowService.js';
 import {
   buildOfferMailtoHref,
   copyOfferLink,
@@ -14,12 +15,15 @@ import './CustomerAktePortfolioShareSheet.css';
 export default function CustomerAktePortfolioShareSheet({
   portfolio,
   portalAccess = null,
+  leadId = null,
   customerName = '',
   email = '',
   itemCount = 0,
+  dealerName = 'Clever Neuwagen',
   onMarkSent,
 }) {
   const [toast, setToast] = useState('');
+  const [sending, setSending] = useState(false);
   const url = portalAccess?.portfolioUrl ?? portfolio?.url ?? '';
 
   const shareMessage = buildPortfolioShareMessage({
@@ -57,11 +61,36 @@ export default function CustomerAktePortfolioShareSheet({
     onMarkSent?.('copy');
   }
 
-  function handleEmailPrepare() {
-    if (mailHref) {
-      window.location.href = mailHref;
+  async function handleEmailSend() {
+    if (!email?.trim()) {
+      showToast('Keine E-Mail hinterlegt');
+      return;
     }
-    onMarkSent?.('email');
+    setSending(true);
+    const mailResult = await sendCustomerLoginCodeMail({
+      to: email.trim(),
+      customerName: customerName || 'Kunde',
+      code: portalAccess?.accessCode ?? '',
+      portalUrl: url,
+      dealerName,
+      meta: {
+        flow: 'portfolio-share',
+        portfolioId: portfolio?.id,
+        leadId: leadId ?? portfolio?.leadId ?? null,
+      },
+    });
+    setSending(false);
+    if (mailResult.ok) {
+      showToast('E-Mail versendet');
+    } else {
+      showToast(mailResult.error ?? 'Versand fehlgeschlagen');
+    }
+    onMarkSent?.({ via: 'email', mailResult });
+  }
+
+  function handleMailtoFallback() {
+    if (mailHref) window.location.href = mailHref;
+    onMarkSent?.({ via: 'mailto' });
   }
 
   const statusLabel = formatPortalAccessStatusLabel(portalAccess?.status ?? 'prepared');
@@ -94,9 +123,19 @@ export default function CustomerAktePortfolioShareSheet({
         <button type="button" className="cust-portfolio-share__btn cust-portfolio-share__btn--primary" onClick={handleCopy}>
           Link kopieren
         </button>
+        {email ? (
+          <button
+            type="button"
+            className="cust-portfolio-share__btn cust-portfolio-share__btn--primary"
+            onClick={handleEmailSend}
+            disabled={sending}
+          >
+            {sending ? 'Wird gesendet …' : 'Per E-Mail senden'}
+          </button>
+        ) : null}
         {mailHref ? (
-          <button type="button" className="cust-portfolio-share__btn" onClick={handleEmailPrepare}>
-            Als E-Mail-Text vorbereiten
+          <button type="button" className="cust-portfolio-share__btn" onClick={handleMailtoFallback}>
+            Mail-App öffnen
           </button>
         ) : null}
       </div>

@@ -47,6 +47,7 @@ import {
 import { createLeadFromCustomerAdvisor } from '../services/dealer/customerAdvisorLeadService.js';
 import { createLeadFromSpecialQuestion } from '../services/dealer/specialCustomerQuestionLeadService.js';
 import { createLeadFromAdvisorConversation } from '../services/dealer/advisorConversationLeadService.js';
+import { notifyCustomerInquirySubmitted } from '../services/mail/mailInquiryNotify.js';
 import { createAdvisorContactInboxItem } from '../services/dealer/advisorInboxService.js';
 import {
   appendAdvisorExchange,
@@ -195,6 +196,25 @@ export default function DealerPage() {
   const { leads, addLead, updateLead, addHistory } = useLeads();
   const cleverInbox = useCleverInboxOptional();
   const [inquiryLeadSync, setInquiryLeadSync] = useState(null);
+
+  const registerCustomerInquiryLead = useCallback((lead) => {
+    addLead(lead);
+    void notifyCustomerInquirySubmitted(lead, {
+      dealerName: conditions.dealerName,
+      dealerPhone: contact.phone ?? conditions.phone,
+      dealerEmail: contact.email ?? conditions.email,
+      contactName: contact.name,
+    });
+    return lead;
+  }, [
+    addLead,
+    conditions.dealerName,
+    conditions.email,
+    conditions.phone,
+    contact.email,
+    contact.name,
+    contact.phone,
+  ]);
   const [activeRecommendPick, setActiveRecommendPick] = useState(null);
   const [liveUnderstandTrim, setLiveUnderstandTrim] = useState(null);
   const [equipmentSearchWishes, setEquipmentSearchWishes] = useState([]);
@@ -1248,14 +1268,14 @@ export default function DealerPage() {
       dealerConditions: conditions,
       learningRequestId: specialCustomerQuestion?.learningRequestId ?? null,
     });
-    addLead(lead);
+    registerCustomerInquiryLead(lead);
     setLeadSubmitted({
       contactName: contact.name,
       inquiryBrief: lead.inquiryBrief,
       cleverQuotePercent: null,
       specialQuestion: true,
     });
-  }, [addLead, conditions, customerAdvisorWish]);
+  }, [registerCustomerInquiryLead, conditions, customerAdvisorWish]);
 
   const handleHybridSpecialQuestionSubmit = useCallback(async (contact) => {
     const useAdvisorConversation = Boolean(advisorContactIntent)
@@ -1282,7 +1302,7 @@ export default function DealerPage() {
           intentType: advisorContactIntent?.target ?? 'contact',
           learningRequestId: learning.request?.id ?? null,
         });
-        addLead(lead);
+        registerCustomerInquiryLead(lead);
         createAdvisorContactInboxItem(lead);
         cleverInbox?.refresh?.();
         setLeadSubmitted({
@@ -1314,7 +1334,7 @@ export default function DealerPage() {
     dealerId,
     conditions,
     handleSpecialQuestionSubmit,
-    addLead,
+    registerCustomerInquiryLead,
     cleverInbox,
   ]);
 
@@ -1413,7 +1433,7 @@ export default function DealerPage() {
         message: contact.message,
         wantTestDrive: contact.wantTestDrive,
       });
-      addLead(lead);
+      registerCustomerInquiryLead(lead);
       clearJourneyState(dealerId);
       setLeadSheetOpen(false);
       setLeadSheetMode('journey');
@@ -1461,7 +1481,7 @@ export default function DealerPage() {
       wantTestDrive: contact.wantTestDrive,
       consultationExtras,
     });
-    addLead(lead);
+    registerCustomerInquiryLead(lead);
     clearJourneyState(dealerId);
     setLeadSheetOpen(false);
     setLeadSubmitted({
@@ -1478,7 +1498,7 @@ export default function DealerPage() {
     conditions,
     journeyCleverQuote,
     submittedQuery,
-    addLead,
+    registerCustomerInquiryLead,
     dealerId,
     consultationProfile,
     cleverRecommendation,

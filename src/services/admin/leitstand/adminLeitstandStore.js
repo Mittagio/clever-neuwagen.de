@@ -6,7 +6,6 @@ const STORAGE_KEY = 'clever-neuwagen-admin-leitstand';
 const DEFAULT_STATE = {
   activityFeed: [],
   releases: [],
-  mailOutbox: [],
 };
 
 function loadState() {
@@ -19,7 +18,6 @@ function loadState() {
         ...parsed,
         activityFeed: parsed.activityFeed ?? [],
         releases: parsed.releases ?? [],
-        mailOutbox: parsed.mailOutbox ?? [],
       };
     }
   } catch {
@@ -110,42 +108,6 @@ export function publishRelease(releaseId, actor = 'Admin') {
   return published;
 }
 
-export function enqueueMail(item) {
-  const entry = {
-    id: item.id ?? `mail-${Date.now()}`,
-    to: item.to,
-    subject: item.subject,
-    templateId: item.templateId ?? null,
-    status: item.status ?? 'queued',
-    error: item.error ?? null,
-    createdAt: item.createdAt ?? new Date().toISOString(),
-    sentAt: item.sentAt ?? null,
-  };
-  memoryState = {
-    ...memoryState,
-    mailOutbox: [entry, ...memoryState.mailOutbox].slice(0, 100),
-  };
-  persist();
-  return entry;
-}
-
-export function updateMailStatus(mailId, status, error = null) {
-  memoryState = {
-    ...memoryState,
-    mailOutbox: memoryState.mailOutbox.map((m) => (
-      m.id === mailId
-        ? {
-          ...m,
-          status,
-          error,
-          sentAt: status === 'sent' ? new Date().toISOString() : m.sentAt,
-        }
-        : m
-    )),
-  };
-  persist();
-}
-
 export function seedAdminLeitstandDemo() {
   if (memoryState.activityFeed.length > 0) return;
   const now = Date.now();
@@ -178,11 +140,6 @@ export function seedAdminLeitstandDemo() {
         createdAt: mins(120),
         updatedAt: mins(16),
       },
-    ],
-    mailOutbox: [
-      { id: 'm-1', to: 'kontakt@autohaus-mueller.de', subject: 'Willkommen bei Clever-Neuwagen', templateId: 'dealer-approval', status: 'failed', error: 'Mailbox voll', createdAt: mins(24) },
-      { id: 'm-2', to: 'kunde@example.de', subject: 'Ihr Angebot Kia EV3', templateId: 'offer-send', status: 'sent', createdAt: mins(45), sentAt: mins(44) },
-      { id: 'm-3', to: 'info@clever-neuwagen.de', subject: 'Login-Code', templateId: 'login-code', status: 'queued', createdAt: mins(2) },
     ],
   };
   persist();

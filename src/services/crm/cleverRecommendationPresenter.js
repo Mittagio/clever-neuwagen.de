@@ -234,9 +234,22 @@ function resolveDoneOption(recommendation) {
   return DONE_OPTIONS_BY_HANDLER.default;
 }
 
-function buildContactActions({ recommendation, phone, email, telHref, offerPath }) {
+function buildContactActions({ recommendation, phone, email, telHref, offerPath, portalUrl }) {
   const actions = [];
   const canCall = Boolean(telHref || phone);
+
+  if (portalUrl && (
+    recommendation?.handlerType?.startsWith('portal')
+    || recommendation?.actionId?.includes('PORTAL')
+  )) {
+    actions.push({
+      id: 'portal',
+      label: '🔗 Kundenlink',
+      type: 'portal',
+      href: portalUrl,
+      primary: true,
+    });
+  }
 
   if (canCall) {
     actions.push({
@@ -312,6 +325,7 @@ export function buildCleverEmpfiehltView({
   const whyBullets = collectWhyBullets(context, recommendation);
   const phone = lead?.contact?.phone ?? '';
   const email = lead?.contact?.email ?? '';
+  const portalUrl = getCustomerPortalAccess(lead)?.portfolioUrl ?? null;
 
   return {
     actionId: recommendation.actionId,
@@ -329,6 +343,7 @@ export function buildCleverEmpfiehltView({
       email,
       telHref,
       offerPath,
+      portalUrl,
     }),
     doneOption: resolveDoneOption(recommendation),
     recommendation,

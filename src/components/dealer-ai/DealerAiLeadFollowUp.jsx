@@ -96,6 +96,7 @@ import { applyPortfolioMailDelivery } from '../../services/mail/mailFlowService.
 import {
   prepareCustomerPortalAccess,
   markCustomerPortalAccessSent,
+  recordCustomerPortalAccessLinkCopied,
 } from '../../services/crm/customerPortalAccessService.js';
 import {
   buildCleverQuestionActivity,
@@ -125,7 +126,14 @@ import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
-import { buildCleverEmpfiehltView } from '../../services/crm/cleverRecommendationPresenter.js';
+import { evaluateJourney } from '../../services/journey/journeyEngine.js';
+import {
+  applyJourneyReminder,
+  evaluateJourneyReminder,
+  formatReminderDisplay,
+} from '../../services/journey/journeyReminderService.js';
+import { buildCleverMessageSuggestion } from '../../services/communication/cleverMessageSuggestionService.js';
+import { copyToClipboard } from '../../logic/templateService.js';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAktePortalSendCta from './CustomerAktePortalSendCta.jsx';
 import CustomerAktePortalStatusCard from './CustomerAktePortalStatusCard.jsx';
@@ -449,6 +457,7 @@ export default function DealerAiLeadFollowUp({
   const [followUpAt, setFollowUpAt] = useState(
     crm.followUpAt ?? computeFollowUpAt(getDefaultFollowUpChipId()),
   );
+  const [followUpSource, setFollowUpSource] = useState(crm.followUpSource ?? null);
   const [pipelineStatusId, setPipelineStatusId] = useState(crm.pipelineStatusId ?? 'neu');
   const [outcomeId, setOutcomeId] = useState(crm.lastOutcomeId ?? null);
   const [outcomeNote, setOutcomeNote] = useState('');
@@ -707,22 +716,58 @@ export default function DealerAiLeadFollowUp({
     return null;
   }, [lead?.advisorConversation, lead?.crm?.nextStepId, lead?.crm?.nextStepLabel]);
 
+  const journeyResult = useMemo(() => evaluateJourney(lead, {
+    excludedActionIds: cleverDoneActionIds,
+    telHref,
+    customerName: name,
+    vehicleCards,
+    offerSelectionGroups: resolvedSelectionGroups,
+  }), [lead, vehicleCards, resolvedSelectionGroups, name, cleverDoneActionIds, telHref]);
+
+  const reminderEval = useMemo(() => evaluateJourneyReminder(lead, {
+    journey: journeyResult,
+    vehicleCards,
+    offerSelectionGroups: resolvedSelectionGroups,
+  }), [lead, journeyResult, vehicleCards, resolvedSelectionGroups]);
+
+  const messageSuggestion = useMemo(() => buildCleverMessageSuggestion(lead, {
+    journey: journeyResult,
+    reminder: reminderEval,
+    vehicleCards,
+    offerSelectionGroups: resolvedSelectionGroups,
+    customerName: name,
+    phone,
+    email,
+    kundenhelferNotes,
+    wishPaymentType,
+  }), [lead, journeyResult, reminderEval, vehicleCards, resolvedSelectionGroups, name, phone, email, kundenhelferNotes, wishPaymentType]);
+
   const cleverEmpfiehltView = useMemo(() => {
-    const view = buildCleverEmpfiehltView({
-      lead,
-      vehicleCards,
-      offerSelectionGroups: resolvedSelectionGroups,
-      customerName: name,
-      excludedActionIds: cleverDoneActionIds,
-      telHref,
-    });
-    if (!view || !advisorNextStepHint) return view;
+    let view = journeyResult?.view;
+    if (!view || !advisorNextStepHint) {
+      if (view) {
+        view = {
+          ...view,
+          messageSuggestion,
+          ...(reminderEval?.displayLine ? { reminderLine: reminderEval.displayLine } : {}),
+        };
+        if (!reminderEval?.displayLine && crm.followUpAt && crm.nextStepLabel) {
+          view.reminderLine = formatReminderDisplay({
+            dueAt: crm.followUpAt,
+            reason: crm.journeyReminderReason ?? crm.nextStepLabel,
+          });
+        }
+      }
+      return view;
+    }
     return {
       ...view,
       headline: advisorNextStepHint.title ?? view.headline,
       subline: advisorNextStepHint.text ?? view.subline,
+      reminderLine: reminderEval?.displayLine ?? view.reminderLine,
+      messageSuggestion,
     };
-  }, [lead, vehicleCards, resolvedSelectionGroups, name, cleverDoneActionIds, telHref, advisorNextStepHint]);
+  }, [journeyResult, advisorNextStepHint, reminderEval, messageSuggestion, crm.followUpAt, crm.nextStepLabel, crm.journeyReminderReason]);
 
   const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
   const unterlagenOpenCount = useMemo(
@@ -739,6 +784,7 @@ export default function DealerAiLeadFollowUp({
 
   const lastLoggedCleverActionRef = useRef(null);
   const syncedInsightsRef = useRef(new Set());
+  const appliedReminderRef = useRef(null);
 
   function logCustomerActivity(activity) {
     if (!activity?.text) return;
@@ -1043,18 +1089,54 @@ export default function DealerAiLeadFollowUp({
     const via = typeof payload === 'string' ? payload : payload?.via;
     const mailResult = typeof payload === 'object' ? payload?.mailResult : null;
 
+    const baseCrm = {
+      ...(lead?.crm ?? {}),
+      customerOfferPortfolio: portfolioShare.portfolio,
+      customerPortalAccess: portfolioShare.portalAccess ?? lead?.crm?.customerPortalAccess ?? null,
+    };
+    const baseLead = { ...lead, crm: baseCrm };
+
+    if (via === 'copy') {
+      const copied = recordCustomerPortalAccessLinkCopied(baseLead);
+      setPortfolioShare({
+        ...portfolioShare,
+        portalAccess: copied.access,
+      });
+      onSave?.(buildSavePayload({
+        customerPortalAccess: copied.access,
+      }), {
+        historyText: copied.historyText ?? 'Kundenlink kopiert',
+        addFollowupHistory: true,
+      });
+      return;
+    }
+
+    if (via === 'email' && mailResult?.ok === false) {
+      let nextPortfolio = applyPortfolioMailDelivery(portfolioShare.portfolio, mailResult);
+      setPortfolioShare({
+        ...portfolioShare,
+        portfolio: nextPortfolio,
+      });
+      onSave?.(buildSavePayload({
+        customerOfferPortfolio: nextPortfolio,
+      }), {
+        historyText: `Kundenlink E-Mail fehlgeschlagen: ${mailResult?.error ?? 'Unbekannt'}`,
+        addFollowupHistory: true,
+      });
+      return;
+    }
+
     let nextPortfolio = markPortfolioSent(portfolioShare.portfolio);
     if (mailResult) {
       nextPortfolio = applyPortfolioMailDelivery(nextPortfolio, mailResult);
     }
     const sentAccess = markCustomerPortalAccessSent({
-      ...lead,
+      ...baseLead,
       crm: {
-        ...(lead?.crm ?? {}),
+        ...baseCrm,
         customerOfferPortfolio: nextPortfolio,
-        customerPortalAccess: portfolioShare.portalAccess ?? lead?.crm?.customerPortalAccess ?? null,
       },
-    }, { via });
+    }, { via: via === 'mailto' ? 'mailto' : 'email' });
 
     setPortfolioShare({
       ...portfolioShare,
@@ -1068,12 +1150,8 @@ export default function DealerAiLeadFollowUp({
     }), {
       historyText: sentAccess.historyText ?? (
         via === 'email'
-          ? (mailResult?.ok === false
-            ? `Kundenlink E-Mail fehlgeschlagen: ${mailResult?.error ?? 'Unbekannt'}`
-            : 'Kundenlink per E-Mail versendet')
-          : via === 'mailto'
-            ? 'Kundenlink per Mail-App vorbereitet'
-            : 'Kundenlink kopiert'
+          ? 'Kundenlink per E-Mail versendet'
+          : 'Kundenlink per Mail-App vorbereitet'
       ),
       addFollowupHistory: true,
     });
@@ -1598,6 +1676,7 @@ export default function DealerAiLeadFollowUp({
   function selectFollowUp(chip) {
     setNextStepId(chip.id);
     setFollowUpAt(computeFollowUpAt(chip.id));
+    setFollowUpSource('manual');
   }
 
   function buildSavePayload(extraCrm = {}, addressOverride = null) {
@@ -1645,6 +1724,7 @@ export default function DealerAiLeadFollowUp({
         nextStepId,
         nextStepLabel: nextLabel,
         followUpAt,
+        followUpSource,
         reservedModels,
         offerSelectionGroups: extraCrm.offerSelectionGroups ?? resolvedSelectionGroups,
         offers: crm.offers ?? [],
@@ -1672,6 +1752,23 @@ export default function DealerAiLeadFollowUp({
       },
     };
   }
+
+  useEffect(() => {
+    if (!reminderEval?.shouldApply || !lead?.id) return;
+    const key = `${lead.id}:${reminderEval.fingerprint}`;
+    if (appliedReminderRef.current === key) return;
+
+    const result = applyJourneyReminder(lead, reminderEval);
+    if (!result.applied) return;
+
+    appliedReminderRef.current = key;
+    onSave?.(buildSavePayload(result.crmPatch), { silent: true, addFollowupHistory: false });
+    onAddHistory?.(
+      result.historyEntry.text,
+      result.historyEntry.type,
+      { silent: true, meta: result.historyEntry.meta },
+    );
+  }, [lead, reminderEval, onSave, onAddHistory]);
 
   function handleSendCleverMessage({
     text,
@@ -1909,6 +2006,28 @@ export default function DealerAiLeadFollowUp({
     handleCleverAction(cleverActionToHint(view?.recommendation ?? cleverRecommendation, { telHref }));
   }
 
+  async function handleCopyMessageSuggestion(suggestion) {
+    if (!suggestion?.text) return;
+    try {
+      await copyToClipboard(suggestion.text);
+      onAddHistory?.('Clever Textvorschlag kopiert', 'clever_message', { silent: true });
+      setToast('Textvorschlag kopiert');
+      setTimeout(() => setToast(''), 3000);
+    } catch {
+      setToast('Kopieren nicht möglich – Text in Clever Nachrichten öffnen.');
+      setTimeout(() => setToast(''), 3500);
+    }
+  }
+
+  function handlePrepareMessageSuggestion(suggestion) {
+    if (!suggestion?.text) return;
+    setAntwortenInitialDraft(suggestion.text);
+    setAntwortenPreset('frei');
+    setInboxItemIdForAntworten(null);
+    openCleverAntworten('frei');
+    onAddHistory?.('Clever Textvorschlag in Nachrichten vorbereitet', 'clever_message', { silent: true });
+  }
+
   function handleCleverAction(actionHint) {
     trackCleverActionFollowed(actionHint);
     const handler = actionHint?.handlerType ?? actionHint?.action;
@@ -2087,6 +2206,8 @@ export default function DealerAiLeadFollowUp({
           onPrimaryAction={handleCleverEmpfiehltAction}
           onMarkDone={handleCleverMarkDone}
           onOpenOffer={handleCleverOpenOffer}
+          onCopyMessage={handleCopyMessageSuggestion}
+          onPrepareMessage={handlePrepareMessageSuggestion}
         />
       </div>
 
@@ -2467,7 +2588,10 @@ export default function DealerAiLeadFollowUp({
             type="datetime-local"
             className="dai-lead-field__input"
             value={toDatetimeLocalValue(followUpAt)}
-            onChange={(e) => setFollowUpAt(new Date(e.target.value).toISOString())}
+            onChange={(e) => {
+              setFollowUpAt(new Date(e.target.value).toISOString());
+              setFollowUpSource('manual');
+            }}
           />
         </label>
       </LeadDetailPanel>
@@ -2743,6 +2867,7 @@ export default function DealerAiLeadFollowUp({
           <CustomerAktePortfolioShareSheet
             portfolio={portfolioShare.portfolio}
             portalAccess={portfolioShare.portalAccess}
+            leadId={lead?.id}
             customerName={name}
             email={email}
             itemCount={portfolioShare.itemCount}
