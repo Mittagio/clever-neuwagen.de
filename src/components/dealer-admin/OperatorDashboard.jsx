@@ -30,7 +30,7 @@ export default function OperatorDashboard() {
             In 30 Sekunden: Was läuft, wo fehlen Freigaben, wo muss eingegriffen werden?
           </p>
         </div>
-        <Link to="/admin/dealers" className="admin-header-link">Händlerverwaltung →</Link>
+        <Link to="/admin/haendler" className="admin-header-link">Händlerverwaltung →</Link>
       </header>
 
       <div className="dop-kpi-grid">

@@ -21,7 +21,7 @@ export default function AdminSystemPage() {
   usePageSeo({
     title: 'Fehlercenter',
     description: 'Systemfehler, Warnungen und Logs.',
-    path: '/admin/system',
+    path: '/admin/launch/system',
   });
 
   return (

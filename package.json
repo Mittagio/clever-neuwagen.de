@@ -79,6 +79,7 @@
     "test:open-offer-calculator": "node src/services/dealer/openOfferCalculator.test.js",
     "test:paste-inquiry": "node src/services/inquiry/pasteInquiryClassifier.test.js",
     "test:envkv": "node src/services/vehicle/vehicleEnvironmentalData.test.js",
+    "test:admin-leitstand": "node src/services/admin/leitstand/adminLeitstand.test.js",
     "test:customer-search": "node src/services/crm/customerSearchService.test.js",
     "test:backend-home": "node src/components/backend/BackendHome.test.js",
     "test:dealer-vehicle-management": "node src/services/dealer/dealerVehicleManagement.test.js",

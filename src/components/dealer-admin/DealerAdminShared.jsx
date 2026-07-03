@@ -8,7 +8,7 @@ export function AdminOperatorNav() {
   const location = useLocation();
   const links = [
     { to: '/admin', label: 'Cockpit', end: true },
-    { to: '/admin/dealers', label: 'Händler' },
+    { to: '/admin/haendler', label: 'Händler' },
     { to: '/admin/approvals', label: 'Freigaben' },
     { to: '/admin/onboarding', label: 'Onboarding' },
     { to: '/admin/billing', label: 'Abrechnung' },

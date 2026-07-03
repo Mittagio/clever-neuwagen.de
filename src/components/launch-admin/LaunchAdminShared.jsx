@@ -10,7 +10,7 @@ export const LAUNCH_NAV = [
   { to: '/admin/pilot', label: 'Pilot Trinkle' },
   { to: '/admin/roles', label: 'Rollen' },
   { to: '/admin/email', label: 'E-Mail' },
-  { to: '/admin/system', label: 'System' },
+  { to: '/admin/launch/system', label: 'Fehlercenter' },
   { to: '/admin/compliance', label: 'Compliance' },
   { to: '/admin/audit', label: 'Audit' },
   { to: '/admin/backup', label: 'Backup' },

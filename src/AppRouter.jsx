@@ -7,6 +7,12 @@ import LandingPage from './pages/LandingPage';
 import DealerPage from './pages/DealerPage';
 import BackendPage from './pages/BackendPage';
 import AdminPage from './pages/AdminPage';
+import AdminLeitstandLayout from './components/admin/leitstand/AdminLeitstandShell.jsx';
+import AdminHeutePage from './pages/admin-leitstand/AdminHeutePage.jsx';
+import AdminAufgabenPage from './pages/admin-leitstand/AdminAufgabenPage.jsx';
+import AdminHaendlerPage from './pages/admin-leitstand/AdminHaendlerPage.jsx';
+import AdminDatenPage from './pages/admin-leitstand/AdminDatenPage.jsx';
+import AdminSystemLeitstandPage from './pages/admin-leitstand/AdminSystemLeitstandPage.jsx';
 import SmartSalesPage from './pages/SmartSalesPage';
 import SalesPage from './pages/SalesPage';
 import SalesCompareSharePage from './pages/SalesCompareSharePage';
@@ -122,13 +128,20 @@ export default function AppRouter() {
         <Route path="/intelligence" element={<IntelligencePage />} />
         <Route path="/intelligence/api" element={<IntelligenceApiDocsPage />} />
         <Route path="/api/v1/intelligence/:resource" element={<IntelligenceApiJsonPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={<AdminLeitstandLayout />}>
+          <Route index element={<AdminHeutePage />} />
+          <Route path="aufgaben" element={<AdminAufgabenPage />} />
+          <Route path="haendler" element={<AdminHaendlerPage />} />
+          <Route path="daten" element={<AdminDatenPage />} />
+          <Route path="daten/fahrzeuge" element={<AdminPage />} />
+          <Route path="system" element={<AdminSystemLeitstandPage />} />
+        </Route>
         <Route path="/admin/import" element={<PriceListImportPage />} />
         <Route path="/admin/import/history" element={<PriceListImportHistoryPage />} />
         <Route path="/admin/datenpruefung" element={<DatenpruefungAdminPage />} />
         <Route path="/admin/billing" element={<AdminBillingPage />} />
         <Route path="/admin/billing/dealer/:id" element={<AdminBillingDealerPage />} />
-        <Route path="/admin/dealers" element={<AdminDealersPage />} />
+        <Route path="/admin/dealers" element={<Navigate to="/admin/haendler" replace />} />
         <Route path="/admin/dealers/:id" element={<AdminDealerDetailPage />} />
         <Route path="/admin/approvals" element={<AdminApprovalsPage />} />
         <Route path="/admin/onboarding" element={<AdminOnboardingPage />} />
@@ -140,7 +153,7 @@ export default function AppRouter() {
         <Route path="/admin/pilot" element={<AdminPilotPage />} />
         <Route path="/admin/roles" element={<AdminRolesPage />} />
         <Route path="/admin/email" element={<AdminEmailPage />} />
-        <Route path="/admin/system" element={<AdminSystemPage />} />
+        <Route path="/admin/launch/system" element={<AdminSystemPage />} />
         <Route path="/admin/audit" element={<AdminAuditPage />} />
         <Route path="/admin/backup" element={<AdminBackupPage />} />
         <Route path="/admin/domains" element={<AdminDomainsPage />} />

@@ -61,7 +61,7 @@ export default function AdminDealerDetailPage() {
       <PageShell>
         <div className="dop-page">
           <p>Händler nicht gefunden.</p>
-          <Link to="/admin/dealers">← Zurück</Link>
+          <Link to="/admin/haendler">← Zurück</Link>
         </div>
       </PageShell>
     );
@@ -73,7 +73,7 @@ export default function AdminDealerDetailPage() {
         <OperatorPageHeader
           title={dealer.companyName}
           subtitle={dealer.city}
-          backTo="/admin/dealers"
+          backTo="/admin/haendler"
           actions={(
             <select
               value={dealer.status}
