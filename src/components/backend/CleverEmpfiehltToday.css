@@ -1,0 +1,126 @@
+.clever-today {
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.clever-today__head {
+  margin-bottom: 12px;
+}
+
+.clever-today__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.clever-today__sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.clever-today__empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.clever-today__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clever-today__card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(90deg, #f8fbff 0%, #fff 40%);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.clever-today__card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.1);
+}
+
+.clever-today__rank {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.clever-today__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.clever-today__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.clever-today__stars {
+  font-size: 0.72rem;
+  letter-spacing: -0.05em;
+}
+
+.clever-today__chance {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.clever-today__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clever-today__action {
+  margin: 2px 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.clever-today__why {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #64748b;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clever-today__chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}

@@ -92,6 +92,7 @@ import {
   prepareCustomerOfferPortfolio,
   validatePortfolioEnVkvForSend,
 } from '../../services/crm/customerOfferPortfolioService.js';
+import { applyPortfolioMailDelivery } from '../../services/mail/mailFlowService.js';
 import {
   prepareCustomerPortalAccess,
   markCustomerPortalAccessSent,
@@ -123,7 +124,8 @@ import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
-import CustomerAkteNextStep from './CustomerAkteNextStep.jsx';
+import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
+import { buildCleverEmpfiehltView } from '../../services/crm/cleverRecommendationPresenter.js';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAktePortalSendCta from './CustomerAktePortalSendCta.jsx';
 import CustomerAktePortalStatusCard from './CustomerAktePortalStatusCard.jsx';
@@ -684,10 +686,12 @@ export default function DealerAiLeadFollowUp({
     customerName: name,
   }), [lead, vehicleCards, resolvedSelectionGroups, name]);
 
-  const nextBestStep = useMemo(
-    () => cleverActionToHint(cleverRecommendation, { telHref }),
-    [cleverRecommendation, telHref],
-  );
+  const [cleverDoneActionIds, setCleverDoneActionIds] = useState([]);
+
+  useEffect(() => {
+    const last = lead?.crm?.cleverLastDoneActionId;
+    setCleverDoneActionIds(last ? [last] : []);
+  }, [lead?.id, lead?.crm?.cleverLastDoneActionId]);
 
   const advisorNextStepHint = useMemo(() => {
     const label = lead?.crm?.nextStepLabel;
@@ -703,7 +707,22 @@ export default function DealerAiLeadFollowUp({
     return null;
   }, [lead?.advisorConversation, lead?.crm?.nextStepId, lead?.crm?.nextStepLabel]);
 
-  const displayedNextStep = advisorNextStepHint ?? nextBestStep;
+  const cleverEmpfiehltView = useMemo(() => {
+    const view = buildCleverEmpfiehltView({
+      lead,
+      vehicleCards,
+      offerSelectionGroups: resolvedSelectionGroups,
+      customerName: name,
+      excludedActionIds: cleverDoneActionIds,
+      telHref,
+    });
+    if (!view || !advisorNextStepHint) return view;
+    return {
+      ...view,
+      headline: advisorNextStepHint.title ?? view.headline,
+      subline: advisorNextStepHint.text ?? view.subline,
+    };
+  }, [lead, vehicleCards, resolvedSelectionGroups, name, cleverDoneActionIds, telHref, advisorNextStepHint]);
 
   const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
   const unterlagenOpenCount = useMemo(
@@ -1019,9 +1038,15 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.portfolioShare);
   }
 
-  function handlePortfolioShareSent(via) {
+  function handlePortfolioShareSent(payload) {
     if (!portfolioShare?.portfolio) return;
-    const nextPortfolio = markPortfolioSent(portfolioShare.portfolio);
+    const via = typeof payload === 'string' ? payload : payload?.via;
+    const mailResult = typeof payload === 'object' ? payload?.mailResult : null;
+
+    let nextPortfolio = markPortfolioSent(portfolioShare.portfolio);
+    if (mailResult) {
+      nextPortfolio = applyPortfolioMailDelivery(nextPortfolio, mailResult);
+    }
     const sentAccess = markCustomerPortalAccessSent({
       ...lead,
       crm: {
@@ -1043,8 +1068,12 @@ export default function DealerAiLeadFollowUp({
     }), {
       historyText: sentAccess.historyText ?? (
         via === 'email'
-          ? 'Kundenlink per E-Mail vorbereitet'
-          : 'Kundenlink kopiert'
+          ? (mailResult?.ok === false
+            ? `Kundenlink E-Mail fehlgeschlagen: ${mailResult?.error ?? 'Unbekannt'}`
+            : 'Kundenlink per E-Mail versendet')
+          : via === 'mailto'
+            ? 'Kundenlink per Mail-App vorbereitet'
+            : 'Kundenlink kopiert'
       ),
       addFollowupHistory: true,
     });
@@ -1845,6 +1874,41 @@ export default function DealerAiLeadFollowUp({
     );
   }
 
+  function handleCleverMarkDone(view) {
+    if (!view?.actionId) return;
+    setCleverDoneActionIds((prev) => [...new Set([...prev, view.actionId])]);
+    onAddHistory?.(
+      view.doneOption?.historyText ?? '✓ Clever-Empfehlung erledigt',
+      'clever_action',
+      { silent: true },
+    );
+    onSave?.(buildSavePayload({
+      cleverLastDoneActionId: view.actionId,
+      cleverLastDoneAt: new Date().toISOString(),
+    }), { silent: true });
+  }
+
+  function handleCleverEmpfiehltAction(view, action) {
+    const hint = cleverActionToHint(view?.recommendation ?? cleverRecommendation, { telHref });
+    if (action?.type === 'call' || action?.type === 'whatsapp' || action?.type === 'email') {
+      trackCleverActionFollowed(hint);
+      return;
+    }
+    handleCleverAction(hint);
+  }
+
+  function handleCleverOpenOffer(view) {
+    const cardId = view?.recommendation?.meta?.cardId;
+    const card = cardId
+      ? vehicleCards.find((item) => item.id === cardId)
+      : vehicleCards[0];
+    if (card) {
+      openBoardOfferFromCard(card);
+      return;
+    }
+    handleCleverAction(cleverActionToHint(view?.recommendation ?? cleverRecommendation, { telHref }));
+  }
+
   function handleCleverAction(actionHint) {
     trackCleverActionFollowed(actionHint);
     const handler = actionHint?.handlerType ?? actionHint?.action;
@@ -2017,13 +2081,12 @@ export default function DealerAiLeadFollowUp({
       )}
 
       <div className="cust-akte-priority">
-        <CustomerAkteNextStep
-          hint={displayedNextStep}
-          recommendation={displayedNextStep}
+        <CleverEmpfiehltCard
+          view={cleverEmpfiehltView}
           telHref={telHref}
-          onAction={handleCleverAction}
-          onFallback={() => openSheet(SHEETS.customer)}
-          onUnterlagen={() => openSheet(SHEETS.unterlagen)}
+          onPrimaryAction={handleCleverEmpfiehltAction}
+          onMarkDone={handleCleverMarkDone}
+          onOpenOffer={handleCleverOpenOffer}
         />
       </div>
 
@@ -2683,6 +2746,7 @@ export default function DealerAiLeadFollowUp({
             customerName={name}
             email={email}
             itemCount={portfolioShare.itemCount}
+            dealerName={lead?.dealerName ?? lead?.ownerName ?? 'Clever Neuwagen'}
             onMarkSent={handlePortfolioShareSent}
           />
         ) : null}

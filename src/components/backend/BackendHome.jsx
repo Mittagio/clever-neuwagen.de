@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import {
@@ -5,6 +6,8 @@ import {
   resolveCustomerOpenAction,
 } from '../../services/crm/customerSearchService.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
+import { buildCleverEmpfiehltToday } from '../../services/crm/cleverRecommendationPresenter.js';
+import CleverEmpfiehltToday from './CleverEmpfiehltToday.jsx';
 import BackendAdvisorHero from './BackendAdvisorHero.jsx';
 import BackendCustomerSearch from './BackendCustomerSearch.jsx';
 import BackendMainTiles from './BackendMainTiles.jsx';
@@ -13,6 +16,11 @@ import './BackendHome.css';
 export default function BackendHome({ onNavigateArea }) {
   const navigate = useNavigate();
   const { leads } = useLeads();
+
+  const cleverTodayItems = useMemo(
+    () => buildCleverEmpfiehltToday(leads, { maxItems: 10 }),
+    [leads],
+  );
 
   function handleOpenCustomerRecord(leadId) {
     const { action, leadId: resolvedId } = resolveCustomerOpenAction(leadId, leads);
@@ -35,6 +43,8 @@ export default function BackendHome({ onNavigateArea }) {
   return (
     <div className="backend-home backend-home--calm">
       <BackendMainTiles onNavigateArea={handleNavigateArea} />
+
+      <CleverEmpfiehltToday items={cleverTodayItems} />
 
       <BackendAdvisorHero />
 

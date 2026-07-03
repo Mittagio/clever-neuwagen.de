@@ -103,7 +103,7 @@
     "test:clever-selbstauskunft": "node src/services/cleverSelbstauskunft.test.js",
     "test:clever-antworten": "node src/services/cleverAntworten.test.js",
     "test:clever-kundenhelfer": "node src/services/cleverKundenhelfer.test.js",
-    "test:clever-action-engine": "node src/services/crm/cleverActionEngine.test.js",
+    "test:clever-action-engine": "node src/services/crm/cleverActionEngine.test.js && node src/services/crm/cleverRecommendationPresenter.test.js",
     "test:clever-inbox": "node src/services/crm/cleverInboxService.test.js && node src/services/crm/inboxWorkCardModel.test.js",
     "test:customer-offer-link": "node src/services/crm/customerLinkOfferService.test.js",
     "test:customer-message": "node src/services/crm/customerMessageService.test.js",
