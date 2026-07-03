@@ -137,4 +137,30 @@ assert.equal(
 );
 console.log('J) Gebrauchtwagen exempt – OK');
 
-console.log('\nAlle EnVKV-Tests (A–J) bestanden.');
+// K) Tageszulassung: junge Zulassung + wenig km → Pflicht
+const recentReg = new Date();
+recentReg.setMonth(recentReg.getMonth() - 2);
+assert.equal(
+  requiresPkwEnVkv({
+    registrationDate: recentReg.toISOString(),
+    mileageKm: 120,
+    vehicleState: VEHICLE_STATE.STOCK,
+  }, { channel: ENVKV_CHANNEL.PORTAL, paymentType: 'leasing' }),
+  true,
+);
+console.log('K) registrationDate Tageszulassung – OK');
+
+// L) Ältere Zulassung + hohe km → keine Pflicht
+const oldReg = new Date();
+oldReg.setFullYear(oldReg.getFullYear() - 2);
+assert.equal(
+  requiresPkwEnVkv({
+    registrationDate: oldReg.toISOString(),
+    mileageKm: 18000,
+    vehicleState: VEHICLE_STATE.STOCK,
+  }, { channel: ENVKV_CHANNEL.PORTAL, paymentType: 'leasing' }),
+  false,
+);
+console.log('L) registrationDate Gebrauchtwagen-Heuristik – OK');
+
+console.log('\nAlle EnVKV-Tests (A–L) bestanden.');

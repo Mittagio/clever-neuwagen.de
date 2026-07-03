@@ -42,14 +42,40 @@ function normalizeMileage(vehicle) {
   return null;
 }
 
+const MAX_NEW_CAR_REGISTRATION_MONTHS = 12;
+
+function parseRegistrationDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** @returns {number|null} Monate seit Erstzulassung */
+export function monthsSinceRegistration(registrationDate) {
+  const date = parseRegistrationDate(registrationDate);
+  if (!date) return null;
+  return (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+}
+
 function isLegallyNewPassengerCar(vehicle) {
   if (vehicle.isNewPassengerCar === true) return true;
   if (vehicle.isNewPassengerCar === false) return false;
 
+  const mileage = normalizeMileage(vehicle);
+  const regMonths = monthsSinceRegistration(vehicle.registrationDate);
+
+  if (regMonths != null) {
+    if (regMonths > MAX_NEW_CAR_REGISTRATION_MONTHS && mileage != null && mileage > 1000) {
+      return false;
+    }
+    if (regMonths <= MAX_NEW_CAR_REGISTRATION_MONTHS && mileage != null && mileage <= 1000) {
+      return true;
+    }
+  }
+
   const state = vehicle.vehicleState;
   if (state === VEHICLE_STATE.USED) return false;
 
-  const mileage = normalizeMileage(vehicle);
   if (mileage != null && mileage > 1000) return false;
 
   if (state === VEHICLE_STATE.STOCK || state === VEHICLE_STATE.DEMO) {
@@ -85,5 +111,7 @@ export function buildDefaultNewPassengerCarRef(vehicleRef = {}) {
     isNewPassengerCar: vehicleRef.isNewPassengerCar ?? true,
     vehicleState: vehicleRef.vehicleState ?? VEHICLE_STATE.NEW,
     market: vehicleRef.market ?? 'DE',
+    registrationDate: vehicleRef.registrationDate ?? null,
+    mileageKm: vehicleRef.mileageKm ?? null,
   };
 }

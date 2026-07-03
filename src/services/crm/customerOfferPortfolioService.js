@@ -230,6 +230,7 @@ function buildPortfolioItemFromSelectionVariant(group, variant, lead = null) {
     isNewPassengerCar: draft?.isNewPassengerCar ?? true,
     mileageKm: draft?.mileageKm,
     vehicleState: draft?.vehicleState,
+    registrationDate: draft?.registrationDate,
   });
 }
 
@@ -291,6 +292,7 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
     mileageKm: card.mileageKm ?? card.mileage,
     vehicleState: card.vehicleState,
     envkvExempt: card.envkvExempt,
+    registrationDate: card.registrationDate,
   });
 }
 

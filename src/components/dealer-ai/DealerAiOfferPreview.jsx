@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { PAYMENT_TYPE_LABELS } from '../../services/dealerAiParser.js';
 import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
+import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../../services/vehicle/requiresPkwEnVkv.js';
+import { buildVehicleRefFromOfferContext } from '../../services/vehicle/pkwEnVkvPublishGate.js';
 import {
   FlowCard,
   FlowGhostButton,
@@ -109,6 +112,21 @@ export default function DealerAiOfferPreview({
   const hasCustomer = Boolean(customer.name || customer.phone || customer.email);
   const saved = isSaved;
 
+  const envkvVehicleRef = useMemo(() => buildVehicleRefFromOfferContext({
+    modelKey: vehicle?.modelKey ?? vehicleConfiguration?.modelKey,
+    trimId: vehicle?.trimId ?? vehicleConfiguration?.trimId,
+    engineId: vehicle?.engineId ?? vehicleConfiguration?.engineId,
+    brand: vehicleConfiguration?.brand ?? vehicle?.brand,
+    model: vehicle?.model ?? vehicleConfiguration?.model,
+    trimLabel: vehicleConfiguration?.trimLabel ?? vehicle?.trimLabel,
+    paymentType: payment?.type,
+    isNewPassengerCar: vehicle?.isNewPassengerCar,
+    mileageKm: vehicle?.mileageKm ?? vehicle?.mileage,
+    vehicleState: vehicle?.vehicleState,
+    registrationDate: vehicle?.registrationDate,
+    envkvExempt: vehicle?.envkvExempt,
+  }), [vehicle, vehicleConfiguration, payment?.type]);
+
   const heroBadges = [];
   if (isCash && discountPercent != null) {
     heroBadges.push({ label: `${discountPercent} % Rabatt`, tone: 'discount' });
@@ -165,6 +183,13 @@ export default function DealerAiOfferPreview({
           </ul>
         )}
       </FlowCard>
+
+      <PkwEnVkvBox
+        variant="detail"
+        audience="internal"
+        channel={ENVKV_CHANNEL.OFFER}
+        vehicleRef={envkvVehicleRef}
+      />
 
       <FlowCard>
         <FlowSectionHeader title="Preisdetails" />

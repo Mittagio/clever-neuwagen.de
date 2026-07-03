@@ -23,6 +23,7 @@ export function buildVehicleRefFromOfferContext(context = {}) {
     mileageKm: context.mileageKm ?? null,
     isNewPassengerCar: context.isNewPassengerCar,
     envkvExempt: context.envkvExempt,
+    registrationDate: context.registrationDate ?? null,
   });
 }
 

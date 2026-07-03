@@ -130,6 +130,13 @@
   font-weight: 600;
 }
 
+.admin-item-envkv-status {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
 .admin-item-desc {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);

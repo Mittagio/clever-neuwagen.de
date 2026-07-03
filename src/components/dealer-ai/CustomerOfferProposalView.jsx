@@ -19,6 +19,9 @@ import {
   copyOfferLink,
 } from '../../services/vehicleOffer.js';
 import { canEditOfferInCalculator } from '../../services/dealer/openOfferCalculator.js';
+import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../../services/vehicle/requiresPkwEnVkv.js';
+import { buildVehicleRefFromOfferContext } from '../../services/vehicle/pkwEnVkvPublishGate.js';
 import {
   FlowCard,
   FlowChip,
@@ -98,6 +101,21 @@ export default function CustomerOfferProposalView({
     trimId: null,
   }), [card?.modelKey]);
 
+  const envkvVehicleRef = useMemo(() => buildVehicleRefFromOfferContext({
+    modelKey: card?.modelKey,
+    trimId: card?.trimId,
+    engineId: card?.engineId,
+    brand: card?.brand,
+    model: card?.model,
+    trimLabel: card?.trimLabel,
+    paymentType: card?.paymentType,
+    isNewPassengerCar: card?.isNewPassengerCar,
+    mileageKm: card?.mileageKm ?? card?.mileage,
+    vehicleState: card?.vehicleState,
+    registrationDate: card?.registrationDate,
+    envkvExempt: card?.envkvExempt,
+  }), [card]);
+
   const shareMessage = buildOfferShareMessage({
     customerName,
     vehicleTitle: title,
@@ -167,6 +185,14 @@ export default function CustomerOfferProposalView({
           <span className="cn-offer-customer-row__name">{customerName}</span>
         </div>
       )}
+
+      <PkwEnVkvBox
+        variant="detail"
+        audience="internal"
+        channel={ENVKV_CHANNEL.OFFER}
+        vehicleRef={envkvVehicleRef}
+        environmentalData={offer?.vehicleEnvironmentalData ?? card?.vehicleEnvironmentalData}
+      />
 
       <FlowCard variant="flat">
         <FlowSectionHeader title="Kundenlink" />

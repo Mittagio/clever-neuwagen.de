@@ -10,6 +10,7 @@ import StatusBadge from './StatusBadge.jsx';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
 import { validateVehicleCompliance } from '../../logic/complianceShield.js';
+import { buildAdminEnVkvStatusLabel, resolveVehicleEnvironmentalData } from '../../services/vehicle/vehicleEnvironmentalData.js';
 import './SportageDetail.css';
 
 function FieldRow({ label, value, hint }) {
@@ -185,6 +186,13 @@ function TabWltp() {
           return (
             <article key={engine.id} className="admin-item-card">
               <h3 className="admin-item-title">{engine.name}</h3>
+              <p className="admin-item-envkv-status">
+                {buildAdminEnVkvStatusLabel(resolveVehicleEnvironmentalData({
+                  engineId: engine.id,
+                  trimId: 'spirit',
+                  isNewPassengerCar: true,
+                }))}
+              </p>
               <ComplianceShieldBanner validation={validation} compact />
               <div className="admin-wltp-grid">
                 <FieldRow label="Kraftstoff" value={validation.values.fuel} />
