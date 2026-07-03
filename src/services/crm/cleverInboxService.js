@@ -20,6 +20,7 @@ export const INBOX_EVENT_TYPES = {
   ADVISOR_CONTACT_REQUEST: 'advisor_contact_request',
   CUSTOMER_MESSAGE: 'customer_message',
   SELF_DISCLOSURE_SUBMITTED: 'self_disclosure_submitted',
+  STOCK_VEHICLE_REQUEST: 'stock_vehicle_request',
 };
 
 export const INBOX_STATUS = {
@@ -86,6 +87,7 @@ export const INBOX_CATEGORY_FILTERS = [
       INBOX_EVENT_TYPES.OFFER_INTERESTED,
       INBOX_EVENT_TYPES.OFFER_DECLINED,
       INBOX_EVENT_TYPES.CONTACT_REQUESTED,
+      INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST,
     ],
   },
   {
@@ -111,7 +113,7 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 1,
+    sortOrder: 10,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.OFFER_QUESTION]: {
@@ -120,7 +122,7 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 1,
+    sortOrder: 10,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: {
@@ -129,16 +131,16 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 3,
+    sortOrder: 10,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.OFFER_INTERESTED]: {
     badge: 'Interesse',
     icon: '★',
-    actionLabel: 'Antworten',
+    actionLabel: 'Nachfassen',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 3,
+    sortOrder: 30,
   },
   [INBOX_EVENT_TYPES.OFFER_OPENED]: {
     badge: 'Geöffnet',
@@ -146,31 +148,31 @@ const EVENT_META = {
     actionLabel: 'Nachfassen',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
-    sortOrder: 4,
+    sortOrder: 40,
   },
   [INBOX_EVENT_TYPES.OFFER_DECLINED]: {
     badge: 'Abgelehnt',
     icon: '✕',
-    actionLabel: 'Alternative anbieten',
+    actionLabel: 'Nachfassen',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.NORMAL,
-    sortOrder: 6,
+    sortOrder: 50,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_UPLOADED]: {
     badge: 'Unterlagen',
     icon: '📎',
-    actionLabel: 'Unterlagen öffnen',
+    actionLabel: 'Prüfen',
     actionTarget: 'documents',
     priority: INBOX_PRIORITY.NORMAL,
-    sortOrder: 5,
+    sortOrder: 20,
   },
   [INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED]: {
     badge: 'Unterlagen',
     icon: '✓',
-    actionLabel: 'Unterlagen öffnen',
+    actionLabel: 'Prüfen',
     actionTarget: 'documents',
     priority: INBOX_PRIORITY.NORMAL,
-    sortOrder: 5,
+    sortOrder: 20,
   },
   [INBOX_EVENT_TYPES.SPECIAL_QUESTION]: {
     badge: 'Frage',
@@ -178,7 +180,7 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 1,
+    sortOrder: 10,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.LEARNING_REQUEST_CREATED]: {
@@ -187,7 +189,7 @@ const EVENT_META = {
     actionLabel: 'Prüfen',
     actionTarget: 'learning',
     priority: INBOX_PRIORITY.LOW,
-    sortOrder: 6,
+    sortOrder: 50,
   },
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: {
     badge: 'Frag Clever',
@@ -195,7 +197,7 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 2,
+    sortOrder: 12,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.CUSTOMER_MESSAGE]: {
@@ -204,7 +206,7 @@ const EVENT_META = {
     actionLabel: 'Antworten',
     actionTarget: 'reply',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 1,
+    sortOrder: 10,
     urgent: true,
   },
   [INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED]: {
@@ -213,7 +215,18 @@ const EVENT_META = {
     actionLabel: 'Prüfen',
     actionTarget: 'self_disclosure_review',
     priority: INBOX_PRIORITY.HIGH,
-    sortOrder: 4,
+    sortOrder: 20,
+    urgent: true,
+  },
+  [INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST]: {
+    badge: 'Bestand',
+    icon: '🚗',
+    actionLabel: 'Antworten',
+    actionTarget: 'reply',
+    secondaryActionLabel: 'Inserat öffnen',
+    secondaryActionTarget: 'listing',
+    priority: INBOX_PRIORITY.HIGH,
+    sortOrder: 8,
     urgent: true,
   },
 };
@@ -338,6 +351,7 @@ export function buildInboxPageSummary(filter = {}) {
     offerCount,
     documentCount,
     summaryLine: parts.join(' · '),
+    openItems,
   };
 }
 
@@ -346,6 +360,12 @@ export function buildInboxPageSummary(filter = {}) {
  */
 export function buildInboxDemoItems() {
   const now = new Date().toISOString();
+  const ev6OfferMeta = {
+    paymentTypeLabel: 'Leasing',
+    offerConditionsLine: '48 Monate · 15.000 km/Jahr',
+    monthlyRate: 386,
+    demo: true,
+  };
   return [
     {
       id: 'demo-inbox-advisor',
@@ -364,21 +384,62 @@ export function buildInboxDemoItems() {
       metadata: { topics: ['EV9', 'Lieferzeit'], demo: true },
     },
     {
-      id: 'demo-inbox-question',
+      id: 'demo-inbox-stock',
+      createdAt: new Date(Date.now() - 1800000).toISOString(),
+      updatedAt: new Date(Date.now() - 1800000).toISOString(),
+      type: INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST,
+      title: 'Neue Bestandsfahrzeug-Anfrage',
+      message: 'Wir benötigen zeitnah ein zusätzliches Fahrzeug …',
+      customerName: 'Alexander Wagner',
+      leadId: 'demo-lead-stock',
+      vehicleLabel: 'Kia Picanto 1.0 VISION AMT',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.HIGH,
+      actionLabel: 'Antworten',
+      actionTarget: 'reply',
+      metadata: {
+        contentLine: '17.990 € · Fahrzeuglink gefunden',
+        vehicleUrl: 'https://example.de/fahrzeug/picanto',
+        suggestedIntent: 'answer_stock_vehicle_request',
+        demo: true,
+      },
+    },
+    {
       createdAt: new Date(Date.now() - 3600000).toISOString(),
       updatedAt: new Date(Date.now() - 3600000).toISOString(),
       type: INBOX_EVENT_TYPES.OFFER_QUESTION,
       title: 'Kundenfrage offen',
       message: '„Winterreifen dabei?“',
       customerName: 'E2E Kunde',
-      leadId: 'demo-lead-ev3',
-      offerId: 'vc-ev3',
-      vehicleLabel: 'Kia EV3',
+      leadId: 'demo-lead-ev6',
+      offerId: 'vc-ev6',
+      vehicleLabel: 'EV6',
       status: INBOX_STATUS.OPEN,
       priority: INBOX_PRIORITY.HIGH,
       actionLabel: 'Antworten',
       actionTarget: 'reply',
-      metadata: { topics: ['EV3', 'Winterreifen', 'Angebot'], questionId: 'demo-q-1', demo: true },
+      metadata: {
+        topics: ['EV6', 'Winterreifen', 'Angebot'],
+        questionId: 'demo-q-1',
+        ...ev6OfferMeta,
+      },
+    },
+    {
+      id: 'demo-inbox-interested',
+      createdAt: new Date(Date.now() - 3500000).toISOString(),
+      updatedAt: new Date(Date.now() - 3500000).toISOString(),
+      type: INBOX_EVENT_TYPES.OFFER_INTERESTED,
+      title: 'Kunde interessiert sich',
+      message: 'Kunde hat diese Variante als interessant markiert.',
+      customerName: 'E2E Kunde',
+      leadId: 'demo-lead-ev6',
+      offerId: 'vc-ev6',
+      vehicleLabel: 'EV6',
+      status: INBOX_STATUS.OPEN,
+      priority: INBOX_PRIORITY.HIGH,
+      actionLabel: 'Nachfassen',
+      actionTarget: 'reply',
+      metadata: { ...ev6OfferMeta },
     },
     {
       id: 'demo-inbox-opened',
@@ -395,24 +456,28 @@ export function buildInboxDemoItems() {
       priority: INBOX_PRIORITY.NORMAL,
       actionLabel: 'Nachfassen',
       actionTarget: 'reply',
-      metadata: { demo: true },
+      metadata: {
+        demo: true,
+        paymentTypeLabel: 'Leasing',
+        offerConditionsLine: '48 Monate · 10.000 km/Jahr',
+        monthlyRate: 512,
+      },
     },
     {
-      id: 'demo-inbox-interested',
-      createdAt: new Date(Date.now() - 10800000).toISOString(),
-      updatedAt: new Date(Date.now() - 10800000).toISOString(),
-      type: INBOX_EVENT_TYPES.OFFER_INTERESTED,
-      title: 'Kunde interessiert sich',
-      message: 'Kunde hat diese Variante als interessant markiert.',
-      customerName: 'Kia Fan',
-      leadId: 'demo-lead-interested',
-      offerId: 'vc-ev9-air',
-      vehicleLabel: 'Kia EV9 Air',
+      id: 'demo-inbox-self-disclosure',
+      createdAt: new Date(Date.now() - 5400000).toISOString(),
+      updatedAt: new Date(Date.now() - 5400000).toISOString(),
+      type: INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED,
+      title: 'Selbstauskunft eingereicht',
+      message: 'Selbstauskunft eingereicht',
+      customerName: 'Faas Stefanie',
+      leadId: 'demo-lead-sd',
+      vehicleLabel: 'XCeed',
       status: INBOX_STATUS.OPEN,
       priority: INBOX_PRIORITY.HIGH,
-      actionLabel: 'Antworten',
-      actionTarget: 'reply',
-      metadata: { demo: true },
+      actionLabel: 'Prüfen',
+      actionTarget: 'self_disclosure_review',
+      metadata: { demo: true, selfDisclosureType: 'private' },
     },
   ];
 }
@@ -593,6 +658,9 @@ export function getInboxItemTopics(item = {}) {
  * @param {object} item
  */
 export function getInboxDisplayMessage(item = {}) {
+  if (item.type === INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST && item.metadata?.contentLine) {
+    return item.metadata.contentLine;
+  }
   if (item.type === INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED) {
     const type = item.metadata?.selfDisclosureType;
     const typeLabels = {
@@ -790,7 +858,7 @@ export function buildInboxItemFromDocumentEvent({
     customerName: name,
     leadId: lead.id,
     sourceArea: INBOX_SOURCE_AREA.DOCUMENTS,
-    actionLabel: 'Unterlagen öffnen',
+    actionLabel: 'Prüfen',
     actionTarget: 'documents',
     metadata: {
       dedupeKey: `doc:${lead.id}:${documentLabel}:${eventType}`,

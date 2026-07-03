@@ -69,6 +69,7 @@ import {
 } from '../../services/location/customerDistanceService.js';
 import { buildDealerToCustomerRouteUrl } from '../../services/location/mapsRouteService.js';
 import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
+import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import {
   buildBoardItems,
   cloneSelectionGroupVariant,
@@ -89,6 +90,7 @@ import {
 import {
   markPortfolioSent,
   prepareCustomerOfferPortfolio,
+  validatePortfolioEnVkvForSend,
 } from '../../services/crm/customerOfferPortfolioService.js';
 import {
   prepareCustomerPortalAccess,
@@ -114,6 +116,7 @@ import CustomerAkteHeader from './CustomerAkteHeader.jsx';
 import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
+import CustomerAkteRequestedStockVehicle from './CustomerAkteRequestedStockVehicle.jsx';
 import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.jsx';
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
@@ -138,7 +141,11 @@ import {
   resolveBoardOfferPrimaryAction,
 } from '../../services/dealer/boardOfferModel.js';
 import { openBoardOfferEntry } from '../../services/dealer/openOfferCalculator.js';
-import { getCustomerOfferInteraction } from '../../services/customerOfferInteraction.js';
+import {
+  buildStockVehicleCalculatorNavigateState,
+  getPrimaryRequestedStockVehicle,
+  openStockVehicleListing,
+} from '../../services/inquiry/stockVehicleInquiryFlow.js';
 import CustomerAkteCleverAuswahlSheet from './CustomerAkteCleverAuswahlSheet.jsx';
 import CustomerAktePortfolioShareSheet from './CustomerAktePortfolioShareSheet.jsx';
 import OfferVariantConfigurator from './OfferVariantConfigurator.jsx';
@@ -541,6 +548,23 @@ export default function DealerAiLeadFollowUp({
   }, [lead]);
 
   const telHref = phoneTelHref(phone);
+
+  const requestedStockVehicle = useMemo(
+    () => getPrimaryRequestedStockVehicle(lead),
+    [lead],
+  );
+
+  function handleOpenStockListing(stockVehicle) {
+    openStockVehicleListing(stockVehicle);
+  }
+
+  function handleCreateStockOffer(stockVehicle) {
+    const navState = buildStockVehicleCalculatorNavigateState(lead, stockVehicle, {
+      returnPath: buildKundenaktePath(lead.id),
+    });
+    if (!navState) return;
+    navigate('/verkaufsassistent', { state: navState });
+  }
 
   const cleverBeratungView = useMemo(
     () => (lead ? buildCleverBeratungAkteView(lead) : null),
@@ -947,6 +971,14 @@ export default function DealerAiLeadFollowUp({
     if (!result.ok) {
       setToast('Keine versandbereiten Angebote – bitte zuerst Angebote im Angebotsrechner erstellen.');
       setTimeout(() => setToast(''), 4000);
+      return;
+    }
+
+    const envkvCheck = validatePortfolioEnVkvForSend(result.portfolio.items);
+    if (!envkvCheck.ok) {
+      const labels = envkvCheck.blockers.map((b) => b.label).join(', ');
+      setToast(`${envkvCheck.message} (${labels})`);
+      setTimeout(() => setToast(''), 6000);
       return;
     }
 
@@ -1965,6 +1997,14 @@ export default function DealerAiLeadFollowUp({
         onEdit={() => openWishConditionsSheet()}
         onChipClick={(field) => openWishConditionsSheet(field)}
       />
+
+      {requestedStockVehicle && (
+        <CustomerAkteRequestedStockVehicle
+          stockVehicle={requestedStockVehicle}
+          onOpenListing={handleOpenStockListing}
+          onCreateOffer={handleCreateStockOffer}
+        />
+      )}
 
       {lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending' && (
         <CustomerAkteShowroomCapture

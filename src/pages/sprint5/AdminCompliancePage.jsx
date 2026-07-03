@@ -5,6 +5,7 @@ import usePageSeo from '../../hooks/usePageSeo';
 import { COMPLIANCE_STATUS } from '../../data/complianceSchema.js';
 import { listComplianceVehicles } from '../../logic/complianceShield.js';
 import ComplianceShieldBanner from '../../components/compliance/ComplianceShieldBanner.jsx';
+import { buildAdminEnVkvStatusLabel, resolveVehicleEnvironmentalData } from '../../services/vehicle/vehicleEnvironmentalData.js';
 import '../sprint5/Sprint5Shared.css';
 import './AdminCompliancePage.css';
 
@@ -78,6 +79,9 @@ export default function AdminCompliancePage() {
         <ul className="compliance-list">
           {filtered.map((v) => (
             <li key={`${v.engineId}-${v.vehicleLabel}`} className="s5-card compliance-card">
+              <p className="compliance-card__envkv-status">
+                {buildAdminEnVkvStatusLabel(resolveVehicleEnvironmentalData({ engineId: v.engineId, label: v.vehicleLabel }))}
+              </p>
               <ComplianceShieldBanner validation={v} showFields />
               <dl className="compliance-values">
                 {Object.entries(v.values ?? {}).map(([key, val]) => (

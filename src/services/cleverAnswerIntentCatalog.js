@@ -27,6 +27,7 @@ export const ANSWER_INTENTS = [
   { id: 'soft_close', label: 'Abschluss freundlich vorbereiten', groupId: 'angebot', generatorId: 'soft_close' },
 
   { id: 'answer_customer_question', label: 'Kundenfrage beantworten', groupId: 'kundenfrage', generatorId: 'kundenfrage' },
+  { id: 'answer_stock_vehicle_request', label: 'Bestandsfahrzeug-Anfrage beantworten', groupId: 'kundenfrage', generatorId: 'stock_vehicle_request' },
   { id: 'ask_followup_question', label: 'Rückfrage stellen', groupId: 'kundenfrage', generatorId: 'rueckfrage' },
   { id: 'clarify_technical_question', label: 'Technische Frage klären', groupId: 'kundenfrage', generatorId: 'technical_question' },
 

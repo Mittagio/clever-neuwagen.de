@@ -1,0 +1,60 @@
+.cust-akte-stock {
+  margin: 0.65rem 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #e3e8f1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.cust-akte-stock__label {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.cust-akte-stock__title {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cust-akte-stock__price {
+  margin: 0.15rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cust-akte-stock__meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.cust-akte-stock__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.cust-akte-stock__btn {
+  border: 1px solid #dbe3f0;
+  border-radius: 9px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.cust-akte-stock__btn--primary {
+  border-color: #145cff;
+  background: #145cff;
+  color: #fff;
+}

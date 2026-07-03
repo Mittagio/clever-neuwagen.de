@@ -97,14 +97,16 @@ assert.equal(isInboxItemUrgent({ type: INBOX_EVENT_TYPES.CONTACT_REQUESTED }), t
 assert.equal(isInboxItemUrgent({ type: INBOX_EVENT_TYPES.OFFER_OPENED }), false);
 
 // Demo-Karten
-assert.equal(buildInboxDemoItems().length, 4);
+assert.equal(buildInboxDemoItems().length, 5);
 
 // Clever Eingang UI
 const inboxPageSource = readFileSync(
   join(__dirname, '../../pages/backend/CleverInboxPage.jsx'),
   'utf8',
 );
-assert.ok(inboxPageSource.includes('buildInboxPageSummary'), 'Seitenkopf mit Zusammenfassung');
+assert.ok(inboxPageSource.includes('buildInboxHeroSummary'), 'Seitenkopf mit Hero-Zusammenfassung');
+assert.ok(inboxPageSource.includes('Heute wichtig'), 'Hero-Kicker');
+assert.ok(inboxPageSource.includes('Jetzt zuerst bearbeiten'), 'Hero-CTA');
 assert.ok(inboxPageSource.includes('Alles erledigt'), 'Freundlicher Empty State');
 assert.ok(inboxPageSource.includes('Clever Berater starten'), 'Empty-State CTA');
 
@@ -118,6 +120,7 @@ const interestedItem = buildInboxItemFromOfferInteraction({
   eventType: INBOX_EVENT_TYPES.OFFER_INTERESTED,
 });
 assert.equal(interestedItem.type, INBOX_EVENT_TYPES.OFFER_INTERESTED);
+assert.equal(interestedItem.actionLabel, 'Nachfassen');
 
 // 4. Unterlage hochgeladen erstellt InboxItem
 reset();

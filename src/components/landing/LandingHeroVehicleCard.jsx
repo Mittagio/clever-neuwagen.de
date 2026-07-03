@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AvailabilityBadge from '../shared/AvailabilityBadge.jsx';
 import DealerModelPromotionBadges from '../shared/DealerModelPromotionBadges.jsx';
+import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../../services/vehicle/requiresPkwEnVkv.js';
 import { resolveManufacturerImageUrl } from '../../services/media/manufacturerMediaService.js';
 import { getHeroVehicleLocalImage } from '../../data/landingHeroVehicles.js';
 
@@ -78,6 +80,20 @@ export default function LandingHeroVehicleCard({
         <div className="lp-hero-card__meta">
           <span className="lp-hero-card__meta-chip">⏱ {delivery}</span>
         </div>
+
+        <PkwEnVkvBox
+          className="lp-hero-card__envkv"
+          variant="compact"
+          channel={ENVKV_CHANNEL.LANDING}
+          vehicleRef={{
+            brand: vehicle.brand,
+            model: vehicle.model,
+            trimId: vehicle.trimId,
+            engineId: vehicle.engineId,
+            isNewPassengerCar: vehicle.isNewPassengerCar ?? true,
+            paymentType: 'leasing',
+          }}
+        />
 
         {trimLines.length > 1 && (
           <ul className="lp-hero-card__trim-rates">

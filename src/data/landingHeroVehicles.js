@@ -22,6 +22,9 @@ export const LANDING_HERO_VEHICLES = [
     pressImageUrl:
       'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/2022_Kia_Sportage_GT-Line_HEV_AWD_Automatic_1.6_Front.jpg/1280px-2022_Kia_Sportage_GT-Line_HEV_AWD_Automatic_1.6_Front.jpg',
     floatClass: 'lp-hero-card--back-left',
+    engineId: 'tgi-hybrid-2wd',
+    trimId: 'spirit',
+    isNewPassengerCar: true,
   },
   {
     id: 'hero-ev3',
@@ -39,6 +42,8 @@ export const LANDING_HERO_VEHICLES = [
     pressImageUrl:
       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/2024_Kia_EV3_GT-Line_%28cropped%29.jpg/1280px-2024_Kia_EV3_GT-Line_%28cropped%29.jpg',
     floatClass: 'lp-hero-card--front',
+    engineId: 'ev3-long-range',
+    isNewPassengerCar: true,
   },
   {
     id: 'hero-ev4',
@@ -56,6 +61,8 @@ export const LANDING_HERO_VEHICLES = [
     pressImageUrl:
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Kia_EV4_%28cropped%29.jpg/1280px-Kia_EV4_%28cropped%29.jpg',
     floatClass: 'lp-hero-card--back-right',
+    engineId: 'ev4-earth',
+    isNewPassengerCar: true,
   },
 ];
 

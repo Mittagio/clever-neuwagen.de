@@ -197,6 +197,25 @@ function draftNachfassen(context = {}, channel = 'whatsapp') {
   return joinParagraphs(lines);
 }
 
+function draftStockVehicleRequest(context = {}, channel = 'whatsapp') {
+  const stock = context.legacy?.requestedStockVehicle
+    ?? context.board?.requestedStockVehicle
+    ?? {};
+  const vehicle = stock.vehicleTitle ?? context.legacy?.vehicleTitle ?? 'das angefragte Fahrzeug';
+  const price = stock.price != null
+    ? `${Number(stock.price).toLocaleString('de-DE')} €`
+    : null;
+  const priceLine = price ? `Das Fahrzeug ist laut Inserat aktuell mit ${price} inseriert.` : 'Das Fahrzeug ist laut Inserat aktuell angefragt.';
+  return joinParagraphs([
+    greeting(context),
+    '',
+    `vielen Dank für Ihre Anfrage zum ${vehicle}.`,
+    priceLine,
+    'Gerne erstelle ich Ihnen ein passendes Angebot. Möchten Sie das Fahrzeug kaufen, finanzieren oder leasen?',
+    closing(context, channel),
+  ]);
+}
+
 function draftKundenfrage(context = {}, channel = 'whatsapp', dictation = '') {
   const question = context.primaryOpenQuestion;
   const lines = [greeting(context), ''];
@@ -554,6 +573,7 @@ const GENERATORS = {
   no_response_followup: draftNoResponseFollowup,
   short_followup: draftShortFollowup,
   kundenfrage: draftKundenfrage,
+  stock_vehicle_request: draftStockVehicleRequest,
   rueckfrage: draftRueckfrage,
   technical_question: draftTechnicalQuestion,
   auswahl_erklaeren: draftAuswahlErklaeren,
@@ -598,7 +618,7 @@ export function generateCleverAnswerDraft({
   text = applyTone(text, tone);
   text = adaptForChannel(text, channel);
 
-  const skipDictationAppend = ['kundenfrage', 'technical_question', 'frei', 'confirm_appointment'].includes(generatorId);
+  const skipDictationAppend = ['kundenfrage', 'technical_question', 'frei', 'confirm_appointment', 'stock_vehicle_request'].includes(generatorId);
   if (!skipDictationAppend) {
     text = appendDictationNote(text, dictation);
   }

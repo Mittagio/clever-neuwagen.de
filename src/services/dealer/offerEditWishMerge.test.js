@@ -30,6 +30,7 @@ const conditionsPreviewSource = readFileSync(
 
 assert.equal(resolveEffectivePaymentType('unknown', 'leasing', null), 'leasing');
 assert.equal(resolveEffectivePaymentType('unknown', null, 'cash'), 'cash');
+assert.equal(resolveEffectivePaymentType('cash', 'leasing', 'leasing'), 'cash');
 assert.equal(resolveEffectivePaymentType(null, null), 'unknown');
 
 const lead = {
@@ -132,7 +133,23 @@ assert.equal(shouldNavigateToOfferCalculator(draftCards[0], draftLead), true);
 assert.equal(cardNeedsConditionsConfigure(draftCards[0], draftLead), true);
 
 assert.ok(conditionsSource.includes('Kundenwunsch'));
+assert.ok(conditionsSource.includes('CashOfferSection'), 'Barangebot-Maske sichtbar');
+assert.ok(conditionsSource.includes('CompactVehicleCard'), 'kompakte Fahrzeugzeile');
+assert.ok(conditionsSource.includes('PaymentTab'), 'Angebotsart-Tabs');
+assert.ok(conditionsSource.includes('SellerHints'), 'Verkäufer-Hinweise');
+assert.ok(conditionsSource.includes('FlowStickyFooter'), 'Sticky-Footer');
+assert.ok(conditionsSource.includes('QuickPickRow'), 'Schnellwerte für Konditionen');
+assert.ok(conditionsSource.includes('dai-cond-sticky-live'), 'Sticky Live-Ergebnis');
+assert.ok(conditionsPreviewSource.includes('Barangebot'));
+assert.ok(conditionsPreviewSource.includes('buildCompactVehicleSummary'));
+assert.ok(conditionsPreviewSource.includes('buildConditionsSellerHints'));
 assert.ok(conditionsSource.includes('buildConditionsFooterAction'));
 assert.ok(conditionsPreviewSource.includes("label: 'Angebot speichern'"));
+
+const dealerAiPageSource = readFileSync(
+  join(__dirname, '../../pages/DealerAIPage.jsx'),
+  'utf8',
+);
+assert.ok(dealerAiPageSource.includes('addVehicleBootstrapKeyRef'), 'Kein Re-Bootstrap bei leads-Sync');
 
 console.log('offerEditWishMerge.test.js: ok');

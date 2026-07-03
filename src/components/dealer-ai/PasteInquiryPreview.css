@@ -1,0 +1,129 @@
+.paste-inquiry-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid #e3e8f1;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.paste-inquiry-preview__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.paste-inquiry-preview__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.paste-inquiry-preview__type {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.paste-inquiry-preview__source {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.paste-inquiry-preview__block {
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+}
+
+.paste-inquiry-preview__block-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.paste-inquiry-preview__line,
+.paste-inquiry-preview__message {
+  margin: 0.1rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.paste-inquiry-preview__message {
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+.paste-inquiry-preview__uncertain {
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: #fff8eb;
+  border: 1px solid #f5d9a8;
+  font-size: 0.8rem;
+  color: #92400e;
+}
+
+.paste-inquiry-preview__uncertain p {
+  margin: 0 0 0.45rem;
+}
+
+.paste-inquiry-preview__uncertain-actions,
+.paste-inquiry-preview__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.paste-inquiry-preview__primary {
+  border: none;
+  border-radius: 12px;
+  background: #145cff;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(20, 92, 255, 0.22);
+}
+
+.paste-inquiry-preview__secondary,
+.paste-inquiry-preview__chip {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+}
+
+.paste-inquiry-preview__chip--ghost,
+.paste-inquiry-preview__ghost {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.paste-inquiry-preview__primary:disabled,
+.paste-inquiry-preview__secondary:disabled,
+.paste-inquiry-preview__chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

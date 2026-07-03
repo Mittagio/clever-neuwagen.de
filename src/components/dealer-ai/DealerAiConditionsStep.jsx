@@ -3,17 +3,16 @@ import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigu
 import {
   buildConditionsFooterAction,
   buildConditionsFooterSummary,
+  buildConditionsSellerHints,
+  buildCompactVehicleSummary,
   computeConditionsStepPreview,
   DISCOUNT_GROUP_OPTIONS,
   DOWN_PAYMENT_OPTIONS,
   LEASING_MILEAGE_OPTIONS,
   LEASING_TERM_OPTIONS,
 } from '../../services/configuration/conditionsStepPreview.js';
-import ConditionChipRow from './ConditionChipRow.jsx';
-import { vehicleConfigurationTitle } from '../../services/configuration/vehicleConfigurationModel.js';
 import {
   ConfigurationOverviewTiles,
-  buildHeroSubtitle,
 } from './ConfigurationChecklist.jsx';
 import {
   FlowCard,
@@ -21,8 +20,8 @@ import {
   FlowPrimaryButton,
   FlowStickyFooter,
   OfferFlowLayout,
-  VehicleOfferHero,
 } from './flow/OfferFlowComponents.jsx';
+import { PkwEnVkvCalculatorStatus } from '../compliance/PkwEnVkvBox.jsx';
 import './DealerAiConditionsStep.css';
 
 const PAYMENT_CARDS = [
@@ -30,6 +29,10 @@ const PAYMENT_CARDS = [
   { id: 'financing', label: 'Finanzierung', hint: 'Kredit / 3-Wege' },
   { id: 'cash', label: 'Kauf', hint: 'Barzahlung' },
 ];
+
+const TERM_QUICK_PICKS = [24, 36, 48, 60];
+const MILEAGE_QUICK_PICKS = [10000, 15000, 20000, 25000];
+const DOWN_QUICK_PICKS = [0, 3000, 5000];
 
 const PREP_PRESETS = [990, 1190, 1290, 1490];
 
@@ -94,29 +97,118 @@ function ChoiceChip({ label, selected, onClick, className = '' }) {
   );
 }
 
-function PaymentCard({ card, selected, onSelect }) {
+function PaymentTab({ card, selected, onSelect }) {
   return (
     <button
       type="button"
-      className={`dai-cond-pay-card${selected ? ' is-selected' : ''}`}
+      className={`dai-cond-pay-tab${selected ? ' is-selected' : ''}`}
       onClick={() => onSelect(card.id)}
       aria-pressed={selected}
     >
-      {selected && (
-        <span className="dai-cond-pay-card__check" aria-hidden="true">✓</span>
-      )}
-      <span className="dai-cond-pay-card__label">{card.label}</span>
-      <span className="dai-cond-pay-card__hint">{card.hint}</span>
+      {card.label}
     </button>
   );
 }
 
-function SectionBlock({ title, children }) {
+function CompactVehicleCard({ summary, imageSrc, imageAlt, onEdit }) {
   return (
-    <FlowCard>
-      {title && <h3 className="cn-section-head__title">{title}</h3>}
-      {children}
+    <FlowCard className="dai-cond-vehicle-compact" variant="flat">
+      <div className="dai-cond-vehicle-compact__row">
+        {imageSrc ? (
+          <img
+            className="dai-cond-vehicle-compact__img"
+            src={imageSrc}
+            alt={imageAlt ?? summary.modelLine}
+          />
+        ) : (
+          <div className="dai-cond-vehicle-compact__img dai-cond-vehicle-compact__img--placeholder" aria-hidden />
+        )}
+        <div className="dai-cond-vehicle-compact__body">
+          <p className="dai-cond-vehicle-compact__model">{summary.modelLine}</p>
+          {summary.metaLine && (
+            <p className="dai-cond-vehicle-compact__meta">{summary.metaLine}</p>
+          )}
+          {summary.uvpFormatted && (
+            <p className="dai-cond-vehicle-compact__uvp">
+              UPE {summary.uvpFormatted}
+            </p>
+          )}
+        </div>
+        {onEdit && (
+          <button type="button" className="dai-cond-vehicle-compact__edit" onClick={onEdit}>
+            Bearbeiten
+          </button>
+        )}
+      </div>
     </FlowCard>
+  );
+}
+
+function SellerHints({ hints = [] }) {
+  if (!hints.length) return null;
+  return (
+    <div className="dai-cond-hints" aria-live="polite">
+      {hints.map((hint) => (
+        <p key={hint.message} className={`dai-cond-hint dai-cond-hint--${hint.tone}`}>
+          {hint.message}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function CashOfferSection({ draft, customerGroup, onPatch }) {
+  return (
+    <div className="dai-cond-cash-offer">
+      <p className="dai-cond-block__title">Rabatt</p>
+      <div className="dai-cond-chips dai-cond-chips--discount">
+        {DISCOUNT_GROUP_OPTIONS.map((opt) => (
+          <ChoiceChip
+            key={opt.id}
+            label={opt.label}
+            selected={customerGroup === opt.id}
+            onClick={() => onPatch({ customerGroup: opt.id })}
+          />
+        ))}
+      </div>
+      {customerGroup === 'custom' && (
+        <div className="dai-cond-custom-input dai-cond-custom-input--percent">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            className="dai-cond-custom-input__field"
+            placeholder="Rabatt in %"
+            value={draft.customDiscountPercent ?? ''}
+            onChange={(event) => onPatch({
+              customDiscountPercent: event.target.value === ''
+                ? null
+                : Number(event.target.value),
+            })}
+          />
+          <span className="dai-cond-custom-input__suffix">%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuickPickRow({ picks, value, onChange, formatLabel, extra }) {
+  return (
+    <div className="dai-cond-quick-picks">
+      {picks.map((pick) => (
+        <button
+          key={pick}
+          type="button"
+          className={`dai-cond-quick-pick${value === pick ? ' is-selected' : ''}`}
+          onClick={() => onChange(pick)}
+        >
+          {formatLabel(pick)}
+        </button>
+      ))}
+      {extra}
+    </div>
   );
 }
 
@@ -129,18 +221,34 @@ function StepSlider({
   formatTick,
   displayValue,
   footer,
+  quickPicks,
+  formatQuick,
+  quickValue,
+  quickExtra,
 }) {
   const index = nearestStepIndex(steps, value ?? steps[0]);
   const current = steps[index];
   const tickFormat = formatTick ?? formatValue;
   const shown = displayValue ?? formatValue(current);
 
+  const quickFormat = formatQuick ?? formatValue;
+  const hasQuick = quickPicks?.length > 0;
+
   return (
-    <div className="dai-cond-step">
+    <div className={`dai-cond-step${hasQuick ? ' dai-cond-step--with-quick' : ''}`}>
       <div className="dai-cond-step__head">
         <span className="dai-cond-step__label">{label}</span>
         <span className="dai-cond-step__value">{shown}</span>
       </div>
+      {hasQuick && (
+        <QuickPickRow
+          picks={quickPicks}
+          value={quickValue ?? current}
+          onChange={onChange}
+          formatLabel={quickFormat}
+          extra={quickExtra}
+        />
+      )}
       <div className="dai-cond-step__ticks" aria-hidden="true">
         {steps.map((step, stepIndex) => (
           <span
@@ -205,16 +313,19 @@ function DownPaymentSlider({
       formatValue={formatDownPayment}
       formatTick={formatDownTick}
       displayValue={formatDownPayment(value)}
-      footer={(
-        <>
-          <button
-            type="button"
-            className="dai-cond-custom-link"
-            onClick={() => setShowCustomDown((open) => !open)}
-          >
-            Eingabefeld öffnen
-          </button>
-          {showCustomDown && (
+      quickPicks={DOWN_QUICK_PICKS}
+      formatQuick={formatDownPayment}
+      quickValue={value}
+      quickExtra={(
+        <button
+          type="button"
+          className={`dai-cond-quick-pick dai-cond-quick-pick--extra${showCustomDown || !preset ? ' is-selected' : ''}`}
+          onClick={() => setShowCustomDown((open) => !open)}
+        >
+          Eigener Wert
+        </button>
+      )}
+      footer={showCustomDown && (
             <div className="dai-cond-custom-input dai-cond-custom-input--inline">
               <input
                 type="text"
@@ -236,8 +347,6 @@ function DownPaymentSlider({
               </button>
             </div>
           )}
-        </>
-      )}
     />
   );
 }
@@ -257,8 +366,12 @@ function PreparationFeePicker({ value, defaultFee, onChange }) {
   }
 
   return (
-    <SectionBlock title="Überführung">
-      <div className="dai-cond-chips">
+    <div className="dai-cond-prep">
+      <div className="dai-cond-step__head">
+        <span className="dai-cond-step__label">Überführung</span>
+        <span className="dai-cond-step__value">{formatCurrency(value)}</span>
+      </div>
+      <div className="dai-cond-chips dai-cond-chips--prep">
         {chips.map((amount) => (
           <ChoiceChip
             key={amount}
@@ -298,7 +411,7 @@ function PreparationFeePicker({ value, defaultFee, onChange }) {
           </button>
         </div>
       )}
-    </SectionBlock>
+    </div>
   );
 }
 
@@ -334,9 +447,17 @@ export default function DealerAiConditionsStep({
     () => computeConditionsStepPreview(vehicleConfiguration, draft, conditions),
     [vehicleConfiguration, draft, conditions],
   );
+  const vehicleSummary = useMemo(
+    () => buildCompactVehicleSummary(vehicleConfiguration, draft),
+    [vehicleConfiguration, draft],
+  );
   const footerSummary = useMemo(
-    () => buildConditionsFooterSummary(preview, draft),
-    [preview, draft],
+    () => buildConditionsFooterSummary(preview, draft, vehicleSummary),
+    [preview, draft, vehicleSummary],
+  );
+  const sellerHints = useMemo(
+    () => buildConditionsSellerHints(preview, draft, wishChips, vehicleConfiguration),
+    [preview, draft, wishChips, vehicleConfiguration],
   );
   const heroImage = useMemo(() => resolveConfigureHeroImage(draft), [draft]);
 
@@ -346,23 +467,20 @@ export default function DealerAiConditionsStep({
 
   function handlePaymentType(id) {
     const next = { paymentType: id };
-    if (id === 'cash') next.desiredRate = null;
-    else if (id !== 'cash' && draft.desiredPrice && !draft.desiredRate) {
-      next.desiredPrice = null;
+    if (id === 'cash') {
+      next.desiredRate = null;
+    } else {
+      if (draft.desiredPrice && !draft.desiredRate) {
+        next.desiredPrice = null;
+      }
+      if (!draft.termMonths) next.termMonths = 48;
+      if (id === 'leasing' && !draft.mileagePerYear) next.mileagePerYear = 15000;
+      if (!draft.downPayment && draft.downPayment !== 0) next.downPayment = 0;
     }
     patch(next);
   }
 
-  const vehicleTitle = vehicleConfigurationTitle(vehicleConfiguration);
-  const vehicleMainLine = [
-    vehicleConfiguration?.model,
-    vehicleConfiguration?.trimLabel,
-  ]
-    .filter(Boolean)
-    .join(' ');
-  const motorLine = vehicleConfiguration?.motorLabel ?? vehicleConfiguration?.batteryLabel ?? null;
-  const configSummary = buildHeroSubtitle(vehicleConfiguration, 4);
-  const uvpTotal = vehicleConfiguration?.uvpConfigurationPrice;
+  const vehicleTitle = vehicleSummary.modelLine;
 
   const activePaymentCard = isCash
     ? 'cash'
@@ -377,19 +495,23 @@ export default function DealerAiConditionsStep({
 
   return (
     <OfferFlowLayout
+      className="dai-cond-workspace"
       backLabel={backLabel}
       onBack={onBack}
-      title="Konditionen"
-      subtitle="Angebotsart und Konditionen festlegen."
+      title="Angebotskalkulator"
+      subtitle="Konditionen festlegen und Angebot speichern."
     >
       {wishChips.length > 0 ? (
-        <FlowCard className="dai-cond-wish-card">
-          <div className="dai-cond-wish-card__head">
-            <ConditionChipRow label="Kundenwunsch" chips={wishChips} />
+        <FlowCard className="dai-cond-wish-strip" variant="flat">
+          <div className="dai-cond-wish-strip__row">
+            <p className="dai-cond-wish-strip__line">
+              <span className="dai-cond-wish-strip__label">Kundenwunsch · </span>
+              {wishChips.join(' · ')}
+            </p>
             {onWishChange ? (
               <button
                 type="button"
-                className="dai-cond-wish-card__edit"
+                className="dai-cond-wish-strip__edit"
                 onClick={onWishChange}
               >
                 Ändern
@@ -399,27 +521,26 @@ export default function DealerAiConditionsStep({
         </FlowCard>
       ) : null}
 
-      <VehicleOfferHero
-        modelLine={vehicleMainLine || vehicleTitle || draft.model}
-        motorLine={motorLine}
-        colorLabel={vehicleConfiguration.colorLabel}
+      <CompactVehicleCard
+        summary={vehicleSummary}
         imageSrc={heroImage}
-        imageAlt={vehicleTitle || draft.model}
-        priceMain={formatCurrency(uvpTotal)}
-        priceLabel="UVP"
-        footerMeta={configSummary || undefined}
-        showImage={Boolean(heroImage)}
+        imageAlt={vehicleTitle}
+        onEdit={onBack}
       />
+
+      <PkwEnVkvCalculatorStatus draft={draft} />
 
       <ConfigurationOverviewTiles
         vehicleConfiguration={vehicleConfiguration}
         onEdit={onBack}
+        compact
       />
 
-      <SectionBlock title="Angebotsart">
-        <div className="dai-cond-pay-row">
+      <FlowCard className="dai-cond-module" variant="flat">
+        <p className="dai-cond-module__title">Angebotsart</p>
+        <div className="dai-cond-pay-tabs">
           {PAYMENT_CARDS.map((card) => (
-            <PaymentCard
+            <PaymentTab
               key={card.id}
               card={card}
               selected={activePaymentCard === card.id}
@@ -427,48 +548,69 @@ export default function DealerAiConditionsStep({
             />
           ))}
         </div>
-      </SectionBlock>
+        <p className="dai-cond-pay-legend">
+          Leasing = monatliche Rate · Finanzierung = Kredit / 3-Wege · Kauf = Barzahlung
+        </p>
+      </FlowCard>
 
-      {(isLeasing || isFinance) && (
-        <StepSlider
-          label="Laufzeit"
-          steps={LEASING_TERM_OPTIONS}
-          value={termValue}
-          onChange={(months) => patch({ termMonths: months })}
-          formatValue={(months) => `${months} Monate`}
-          formatTick={(months) => String(months)}
+      <FlowCard className="dai-cond-module dai-cond-module--conditions" variant="flat">
+        <p className="dai-cond-module__title">Konditionen</p>
+
+        {isCash && (
+          <CashOfferSection
+            draft={draft}
+            customerGroup={customerGroup}
+            onPatch={patch}
+          />
+        )}
+
+        {(isLeasing || isFinance) && (
+          <StepSlider
+            label="Laufzeit"
+            steps={LEASING_TERM_OPTIONS}
+            value={termValue}
+            onChange={(months) => patch({ termMonths: months })}
+            formatValue={(months) => `${months} Monate`}
+            formatTick={(months) => String(months)}
+            quickPicks={TERM_QUICK_PICKS}
+            formatQuick={(months) => String(months)}
+          />
+        )}
+
+        {isLeasing && (
+          <StepSlider
+            label="Kilometer"
+            steps={LEASING_MILEAGE_OPTIONS}
+            value={mileageValue}
+            onChange={(km) => patch({ mileagePerYear: km })}
+            formatValue={formatMileage}
+            formatTick={formatMileageShort}
+            quickPicks={MILEAGE_QUICK_PICKS}
+            formatQuick={(km) => `${(km / 1000).toLocaleString('de-DE')}.000`}
+          />
+        )}
+
+        {(isLeasing || isFinance) && (
+          <DownPaymentSlider
+            value={downValue}
+            onChange={(amount) => patch({ downPayment: amount })}
+            customDownPayment={customDownPayment}
+            setCustomDownPayment={setCustomDownPayment}
+            showCustomDown={showCustomDown}
+            setShowCustomDown={setShowCustomDown}
+          />
+        )}
+
+        <PreparationFeePicker
+          value={preparationFee}
+          defaultFee={defaultPreparationFee}
+          onChange={(fee) => patch({ preparationFee: fee })}
         />
-      )}
+      </FlowCard>
 
-      {isLeasing && (
-        <StepSlider
-          label="Kilometer"
-          steps={LEASING_MILEAGE_OPTIONS}
-          value={mileageValue}
-          onChange={(km) => patch({ mileagePerYear: km })}
-          formatValue={formatMileage}
-          formatTick={formatMileageShort}
-        />
-      )}
+      <SellerHints hints={sellerHints} />
 
-      {(isLeasing || isFinance) && (
-        <DownPaymentSlider
-          value={downValue}
-          onChange={(amount) => patch({ downPayment: amount })}
-          customDownPayment={customDownPayment}
-          setCustomDownPayment={setCustomDownPayment}
-          showCustomDown={showCustomDown}
-          setShowCustomDown={setShowCustomDown}
-        />
-      )}
-
-      <PreparationFeePicker
-        value={preparationFee}
-        defaultFee={defaultPreparationFee}
-        onChange={(fee) => patch({ preparationFee: fee })}
-      />
-
-      <details className="dai-cond-wish-fold">
+      <details className="dai-cond-wish-fold dai-cond-wish-fold--compact">
         <summary>Weitere Optionen</summary>
         <div className="dai-cond-wish-fold__body">
           <div className="dai-cond-wish-field">
@@ -546,68 +688,34 @@ export default function DealerAiConditionsStep({
               </div>
             </div>
           )}
-
-          {isCash && (
-            <div className="dai-cond-wish-field">
-              <p className="dai-cond-block__title">Rabatt</p>
-              <div className="dai-cond-chips dai-cond-chips--discount">
-                {DISCOUNT_GROUP_OPTIONS.map((opt) => (
-                  <ChoiceChip
-                    key={opt.id}
-                    label={opt.label}
-                    selected={customerGroup === opt.id}
-                    onClick={() => patch({ customerGroup: opt.id })}
-                  />
-                ))}
-              </div>
-              {customerGroup === 'custom' && (
-                <div className="dai-cond-custom-input dai-cond-custom-input--percent">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    className="dai-cond-custom-input__field"
-                    placeholder="Rabatt in %"
-                    value={draft.customDiscountPercent ?? ''}
-                    onChange={(event) => patch({
-                      customDiscountPercent: event.target.value === ''
-                        ? null
-                        : Number(event.target.value),
-                    })}
-                  />
-                  <span className="dai-cond-custom-input__suffix">%</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </details>
 
-      <FlowStickyFooter hint={footerAction.hint}>
-        <div className="dai-cond-footer-summary">
-          {footerSummary.chips.length > 0 ? (
-            <p className="dai-cond-footer-summary__chips">
-              {footerSummary.chips.join(' · ')}
-            </p>
-          ) : null}
-          {footerSummary.upe ? (
-            <p className="dai-cond-footer-summary__upe">UPE {footerSummary.upe}</p>
-          ) : null}
-          {footerSummary.result ? (
-            <p className="dai-cond-footer-summary__result">
+      <FlowStickyFooter className="dai-cond-sticky-live">
+        <div className="dai-cond-sticky-live__bar">
+          <div className="dai-cond-sticky-live__context">
+            {footerSummary.contextLine && (
+              <p className="dai-cond-sticky-live__context-line">{footerSummary.contextLine}</p>
+            )}
+            {footerSummary.upe && preview?.isCash && (
+              <p className="dai-cond-sticky-live__meta">UPE {footerSummary.upe}</p>
+            )}
+            {footerSummary.finalPayment && (
+              <p className="dai-cond-sticky-live__meta">{footerSummary.finalPayment}</p>
+            )}
+          </div>
+          {footerSummary.result && (
+            <p className={`dai-cond-sticky-live__rate${footerSummary.hasLiveResult ? ' is-live' : ''}`}>
               <span>{footerSummary.result}</span>
               {footerSummary.resultSuffix ? (
-                <span className="dai-cond-footer-summary__suffix">{footerSummary.resultSuffix}</span>
+                <span className="dai-cond-sticky-live__suffix">{footerSummary.resultSuffix}</span>
               ) : null}
             </p>
-          ) : null}
-          {footerSummary.finalPayment ? (
-            <p className="dai-cond-footer-summary__final">{footerSummary.finalPayment}</p>
-          ) : null}
+          )}
         </div>
         <div className="dai-cond-footer-actions">
           <FlowPrimaryButton
+            className="dai-cond-save-btn"
             onClick={onSave ?? onContinue}
             disabled={isExecuting}
           >

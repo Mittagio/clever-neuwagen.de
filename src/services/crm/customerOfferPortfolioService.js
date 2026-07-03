@@ -49,6 +49,11 @@ import {
   resolveVariantDisplayAmounts,
 } from '../sales/offerVariantConfigurator.js';
 import {
+  attachVehicleEnvironmentalData,
+  validatePortfolioEnVkvForSend,
+} from '../vehicle/pkwEnVkvPublishGate.js';
+import { buildPkwEnVkvLabelBlock } from '../vehicle/pkwEnVkvPresentation.js';
+import {
   getVehicleOffer,
   mergeVehicleOffersPatch,
   VEHICLE_OFFER_STATUS,
@@ -140,6 +145,32 @@ export function buildPortfolioLinkUrl({
   return `${baseOrigin}/angebot/auswahl/${customer}${qs ? `?${qs}` : ''}`;
 }
 
+function enrichPortfolioItemWithEnVkv(item, context = {}) {
+  const attached = attachVehicleEnvironmentalData({
+    ...context,
+    ...item,
+    title: item.modelLabel,
+    paymentType: item.paymentType ?? context.paymentType,
+  });
+  const labelBlock = attached.envData?.publishable
+    ? buildPkwEnVkvLabelBlock(attached.envData)
+    : null;
+  return {
+    ...item,
+    engineId: context.engineId ?? item.engineId ?? null,
+    trimId: context.trimId ?? item.trimId ?? null,
+    brand: context.brand ?? item.brand ?? null,
+    model: context.model ?? item.model ?? null,
+    isNewPassengerCar: context.isNewPassengerCar ?? item.isNewPassengerCar ?? true,
+    vehicleEnvironmentalData: attached.vehicleEnvironmentalData,
+    envkvRequired: attached.envkvRequired,
+    envkvPublishable: attached.envkvPublishable,
+    envkvLabelBlock: labelBlock,
+  };
+}
+
+export { validatePortfolioEnVkvForSend };
+
 function buildPortfolioItemFromSelectionVariant(group, variant, lead = null) {
   if (!group || !variant) return null;
 
@@ -160,7 +191,7 @@ function buildPortfolioItemFromSelectionVariant(group, variant, lead = null) {
     displayFormatted: display.formatted,
   });
 
-  return {
+  return enrichPortfolioItemWithEnVkv({
     id: nextId('pu'),
     sourceType: 'selection_variant',
     groupId: group.id,
@@ -189,7 +220,17 @@ function buildPortfolioItemFromSelectionVariant(group, variant, lead = null) {
       questionText: '',
       reactedAt: null,
     },
-  };
+  }, {
+    modelKey: group.modelKey,
+    trimId: draft?.trimId,
+    engineId: draft?.engineId,
+    brand: draft?.brand,
+    model: draft?.model,
+    paymentType,
+    isNewPassengerCar: draft?.isNewPassengerCar ?? true,
+    mileageKm: draft?.mileageKm,
+    vehicleState: draft?.vehicleState,
+  });
 }
 
 function buildPortfolioItemFromVehicleCard(card, lead = null) {
@@ -213,7 +254,7 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
     conditionsParts.push(`${card.mileagePerYear.toLocaleString('de-DE')} km/Jahr`);
   }
 
-  return {
+  return enrichPortfolioItemWithEnVkv({
     id: nextId('pu'),
     sourceType: 'vehicle_card',
     groupId: null,
@@ -239,7 +280,18 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
       questionText: '',
       reactedAt: null,
     },
-  };
+  }, {
+    modelKey: card.modelKey,
+    trimId: card.trimId,
+    engineId: card.engineId,
+    brand: card.brand,
+    model: card.model,
+    paymentType,
+    isNewPassengerCar: card.isNewPassengerCar ?? true,
+    mileageKm: card.mileageKm ?? card.mileage,
+    vehicleState: card.vehicleState,
+    envkvExempt: card.envkvExempt,
+  });
 }
 
 /**
@@ -379,6 +431,8 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     pdfFileName: item.pdfFileName,
     pdfDataUrl: item.pdfDataUrl ?? null,
     customerReaction: item.customerReaction ?? { status: PORTFOLIO_REACTION_STATUS.NONE },
+    vehicleEnvironmentalData: item.vehicleEnvironmentalData ?? null,
+    envkvLabelBlock: item.envkvLabelBlock ?? null,
   }));
 
   const messageThreads = buildCustomerPortalMessageThreads(lead, { portfolioItems: portfolio.items });

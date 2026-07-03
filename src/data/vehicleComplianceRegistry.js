@@ -135,7 +135,7 @@ function buildSportageWltpValues(engineId) {
 }
 
 export function resolveVehicleComplianceProfile(input = {}) {
-  const extKey = input.vehicleId ?? input.id ?? input.catalogId;
+  const extKey = input.vehicleId ?? input.id ?? input.catalogId ?? input.engineId;
   if (extKey && EXTENDED_VEHICLES[extKey]) {
     const ext = EXTENDED_VEHICLES[extKey];
     return {

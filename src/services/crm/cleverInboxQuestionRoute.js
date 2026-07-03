@@ -17,6 +17,8 @@ export function resolveInboxReplyIntent(item = {}) {
     case INBOX_EVENT_TYPES.CUSTOMER_MESSAGE:
       if (item.metadata?.questionId) return 'answer_customer_question';
       return item.metadata?.suggestedIntent ?? 'free_reply';
+    case INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST:
+      return 'answer_stock_vehicle_request';
     case INBOX_EVENT_TYPES.OFFER_OPENED:
       return 'offer_opened_followup';
     case INBOX_EVENT_TYPES.OFFER_INTERESTED:

@@ -775,6 +775,66 @@
   line-height: 1.3;
 }
 
+/* ── Kompakte Ausstattungs-Kacheln (Angebotskalkulator) ── */
+
+.cn-config-overview--compact {
+  gap: 0.35rem;
+}
+
+.cn-config-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.cn-config-compact-tile {
+  padding: 0.42rem 0.55rem;
+  border: 1px solid var(--cn-border);
+  border-radius: 10px;
+  background: var(--cn-card);
+  min-height: 0;
+  box-shadow: none;
+}
+
+.cn-config-compact-tile--warn {
+  border-color: #f5d9a8;
+  background: var(--cn-warning-soft);
+}
+
+.cn-config-compact-tile__title {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cn-muted);
+}
+
+.cn-config-compact-tile__value {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cn-text);
+  line-height: 1.3;
+}
+
+.cn-config-compact-tile__action {
+  margin-top: 0.2rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cn-primary);
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .cn-config-compact-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 480px) {
   .cn-flow {
     --cn-page-pad: 16px;

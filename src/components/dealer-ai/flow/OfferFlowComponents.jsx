@@ -188,9 +188,9 @@ export function FlowStatusBadge({ label, tone = 'neutral' }) {
   return <span className={`cn-badge cn-badge--status-${tone}`}>{label}</span>;
 }
 
-export function FlowStickyFooter({ hint, saved, children }) {
+export function FlowStickyFooter({ hint, saved, children, className = '' }) {
   return (
-    <footer className="cn-flow-foot">
+    <footer className={`cn-flow-foot ${className}`.trim()}>
       {hint && <p className="cn-flow-foot__hint">{hint}</p>}
       {saved && <p className="cn-flow-foot__saved">{saved}</p>}
       <div className="cn-flow-foot__actions">{children}</div>

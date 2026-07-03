@@ -1,0 +1,148 @@
+.pkw-envkv-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-muted, #5c6470);
+}
+
+.pkw-envkv-box--detail {
+  display: block;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 0.78rem;
+}
+
+.pkw-envkv-box--label {
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.pkw-envkv-box__title {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #374151;
+}
+
+.pkw-envkv-box__rows {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.pkw-envkv-box__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.pkw-envkv-box__row dt {
+  margin: 0;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.pkw-envkv-box__row dd {
+  margin: 0;
+  font-weight: 600;
+  color: #111827;
+  text-align: right;
+}
+
+.pkw-envkv-box__chip {
+  white-space: nowrap;
+}
+
+.pkw-envkv-box__source {
+  margin: 0.45rem 0 0;
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+
+.pkw-envkv-warning {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(254, 242, 242, 0.9);
+  font-size: 0.78rem;
+}
+
+.pkw-envkv-warning__title {
+  margin: 0;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.pkw-envkv-warning__body {
+  margin: 0.25rem 0 0;
+  color: #7f1d1d;
+}
+
+.pkw-envkv-warning__actions {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pkw-envkv-warning__hint {
+  color: #991b1b;
+  font-size: 0.72rem;
+}
+
+.pkw-envkv-warning__action {
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.pkw-envkv-calc-status {
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pkw-envkv-calc-status--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.pkw-envkv-calc-status--warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.pkw-envkv-placeholder {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.lp-hero-card__envkv {
+  margin-top: 0.35rem;
+}
+
+.cop-card__envkv {
+  margin-top: 0.5rem;
+}

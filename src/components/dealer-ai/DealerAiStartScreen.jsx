@@ -4,10 +4,10 @@ import CleverLexikon from '../backend/CleverLexikon.jsx';
 import './DealerAiStart.css';
 
 const PLACEHOLDER_EXAMPLES = [
-  'Claus Clever sucht einen Elektro-Kleinwagen mit AHK, 48 Monate, 10.000 km/Jahr, bis 350 €.',
-  'Familie Müller möchte einen Sportage Plug-in-Hybrid, 36 Monate Leasing, 15.000 km pro Jahr.',
-  'Herr Weber will einen EV4 mit AHK – Finanzierung, Termin am Freitag im Showroom.',
-  'Kundin sucht Kleinwagen Benziner, bis 280 € monatlich, sofort verfügbar.',
+  'Kopieren Sie hier eine Kundenmail, mobile.de-Anfrage, Händlerwebsite-Anfrage oder Nachricht ein …',
+  'Neue Fahrzeuganfrage über Ihre Website – Kia Picanto 1.0 VISION AMT, 17.990 €',
+  'Alexander Wagner fragt per mobile.de nach einem Lagerwagen – Fahrzeug-Nr. GW-1234',
+  'Claus Clever sucht einen Elektro-Kleinwagen mit AHK, 48 Monate, bis 350 €.',
 ];
 
 function useTypewriterPlaceholder(examples) {
@@ -73,11 +73,11 @@ export default function DealerAiStartScreen({
 
       <div className="dai-start__magic-hero">
         <header className="dai-start__hero">
-          <h1 className="dai-start__headline">Clever Beratung ✨</h1>
+          <h1 className="dai-start__headline">Anfrage einfügen</h1>
           <p className="dai-start__hero-subline">
-            Schreib oder sprich einfach, was der Kunde sagt.
+            Kundenmail, mobile.de, Website oder Nachricht einfügen.
             <br />
-            Clever erkennt daraus Auto, Bezahlung, Kunde und Notiz.
+            Clever erkennt Kunde, Fahrzeug und Anfrageart automatisch.
           </p>
         </header>
 
@@ -100,7 +100,7 @@ export default function DealerAiStartScreen({
               onBlur={() => setFieldFocused(false)}
               placeholder=""
               disabled={isAnalyzing}
-              aria-label="Kundenwunsch frei eingeben"
+              aria-label="Anfrage einfügen"
               aria-describedby="dai-capture-hint"
             />
           </div>
@@ -113,7 +113,7 @@ export default function DealerAiStartScreen({
         </div>
 
         <p id="dai-capture-hint" className="dai-start__paste-hint">
-          Text kopieren, einfügen oder einfach diktieren.
+          Mail einfügen · Text einfügen · oder diktieren
         </p>
 
         <button
@@ -122,7 +122,7 @@ export default function DealerAiStartScreen({
           onClick={onEvaluate}
           disabled={!canEvaluate || isAnalyzing}
         >
-          {isAnalyzing ? 'Wird ausgewertet …' : 'Clever starten'}
+          {isAnalyzing ? 'Wird erkannt …' : 'Clever erkennen'}
         </button>
       </div>
 

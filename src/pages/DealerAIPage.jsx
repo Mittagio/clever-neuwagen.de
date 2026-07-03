@@ -44,7 +44,7 @@ import {
   VEHICLE_OFFER_HISTORY,
   VEHICLE_OFFER_STATUS,
 } from '../services/vehicleOffer.js';
-import { formatVehicleCardTitle, buildSchnellaufnahmeChips } from '../services/customerAkte.js';
+import { formatVehicleCardTitle, buildWishConditionChips } from '../services/customerAkte.js';
 import {
   applyCustomerContextToFields,
   mergeConfigureCustomerContext,
@@ -100,6 +100,20 @@ import {
   buildCustomerRecognitionInsight,
 } from '../services/dealerAiRecognitionInsight.js';
 import { applyDirectCustomerAkteFromRecognition } from '../services/dealerAiDirectCustomerAkte.js';
+import {
+  buildPasteInquiryPreview,
+  classifyPastedInquiry,
+  extractStockVehicleInquiry,
+  INQUIRY_TYPES,
+} from '../services/inquiry/pasteInquiryClassifier.js';
+import {
+  applyStockVehicleInquiry,
+  buildStockVehicleCalculatorNavigateState,
+  buildStockVehicleConfigureDraft,
+  buildStockVehicleVehicleConfiguration,
+  openStockVehicleListing,
+} from '../services/inquiry/stockVehicleInquiryFlow.js';
+import PasteInquiryPreview from '../components/dealer-ai/PasteInquiryPreview.jsx';
 import { buildSmartOfferVariants } from '../services/dealer/smartOfferVariants.js';
 import DealerAppLegalMenu from '../components/dealer/DealerAppLegalMenu.jsx';
 import ShowroomModeCapture from '../components/showroom/ShowroomModeCapture.jsx';
@@ -117,6 +131,7 @@ export default function DealerAIPage() {
   const { addOffer, getExistingCodes, linkLead } = useOffers();
 
   const inputRef = useRef(null);
+  const addVehicleBootstrapKeyRef = useRef(null);
   const [input, setInput] = useState('');
   const [selectedChipIds, setSelectedChipIds] = useState([]);
   const [voiceTranscript, setVoiceTranscript] = useState('');
@@ -148,6 +163,10 @@ export default function DealerAIPage() {
   const [offerPreviewSaveResult, setOfferPreviewSaveResult] = useState(null);
   const [recognitionInsight, setRecognitionInsight] = useState(null);
   const [sourceText, setSourceText] = useState('');
+  const [pasteInquiryPreview, setPasteInquiryPreview] = useState(null);
+  const [pasteInquiryExtraction, setPasteInquiryExtraction] = useState(null);
+  const [pasteInquiryClassification, setPasteInquiryClassification] = useState(null);
+  const [pasteAppliedLeadId, setPasteAppliedLeadId] = useState(null);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -167,18 +186,21 @@ export default function DealerAIPage() {
     let draft = buildConfigureDraft(nextParsed, conditions, primaryModel);
     const wish = addVehicleContext?.wishFields ?? {};
     const paymentType = resolveEffectivePaymentType(
+      draft.paymentType,
       addVehicleContext?.paymentType,
       wish.paymentType,
-      draft.paymentType,
     );
+    const isCash = paymentType === 'cash';
     draft = {
       ...draft,
       paymentType,
-      termMonths: wish.termMonths ?? draft.termMonths,
-      mileagePerYear: wish.mileagePerYear ?? draft.mileagePerYear,
-      downPayment: wish.downPayment ?? draft.downPayment,
-      desiredRate: wish.desiredRate ?? draft.desiredRate,
-      desiredPrice: wish.desiredPrice ?? draft.desiredPrice,
+      termMonths: isCash ? draft.termMonths : (draft.termMonths ?? wish.termMonths),
+      mileagePerYear: isCash ? draft.mileagePerYear : (draft.mileagePerYear ?? wish.mileagePerYear),
+      downPayment: isCash ? draft.downPayment : (draft.downPayment ?? wish.downPayment),
+      desiredRate: isCash ? null : (draft.desiredRate ?? wish.desiredRate),
+      desiredPrice: isCash
+        ? (draft.desiredPrice ?? wish.desiredPrice)
+        : (draft.desiredPrice ?? wish.desiredPrice),
     };
     const crmCustomer = mergeConfigureCustomerContext({ parsedFields: nextParsed.fields });
     if (crmCustomer.hasContact || draft.customer?.mailNote) {
@@ -226,6 +248,24 @@ export default function DealerAIPage() {
     const combined = buildCombinedText(extra);
     setIsAnalyzing(true);
     setResult(null);
+    setSourceText(combined);
+
+    const classification = classifyPastedInquiry(combined);
+    const isStockCandidate = classification.type === INQUIRY_TYPES.STOCK_VEHICLE_REQUEST
+      || (classification.uncertain && classification.signals?.length > 0);
+
+    if (isStockCandidate) {
+      const extraction = extractStockVehicleInquiry(combined);
+      const preview = buildPasteInquiryPreview(classification, extraction);
+      setPasteInquiryClassification(classification);
+      setPasteInquiryExtraction(extraction);
+      setPasteInquiryPreview(preview);
+      setPasteAppliedLeadId(null);
+      setIsAnalyzing(false);
+      setPhase('paste-inquiry');
+      return;
+    }
+
     const next = parseDealerAiInput(combined);
     setIsAnalyzing(false);
 
@@ -245,10 +285,103 @@ export default function DealerAIPage() {
     const chipIds = [...selectedChipIds, ...extraChips];
     const enriched = enrichWithSuggestions(next, chipIds);
     setParsed(enriched);
-    setSourceText(combined);
     setRecognitionInsight(buildCustomerRecognitionInsight(combined, enriched));
     setStartView('home');
     setPhase('recognition-animate');
+  }
+
+  function continueNormalAnalysis(combined) {
+    const next = parseDealerAiInput(combined);
+    if (!next.ok) {
+      showToast(next.error);
+      return;
+    }
+    const enriched = enrichWithSuggestions(next);
+    setParsed(enriched);
+    setRecognitionInsight(buildCustomerRecognitionInsight(combined, enriched));
+    setStartView('home');
+    setPhase('recognition-animate');
+  }
+
+  function handleApplyStockInquiry({ openAkte = false } = {}) {
+    if (!pasteInquiryPreview?.stockVehicle || !pasteInquiryExtraction) return null;
+    setIsExecuting(true);
+    try {
+      const applied = applyStockVehicleInquiry({
+        extraction: pasteInquiryExtraction,
+        stockVehicle: pasteInquiryPreview.stockVehicle,
+        classification: pasteInquiryClassification,
+      }, {
+        addLead,
+        updateLead,
+        leads,
+        conditions,
+        getExistingCodes,
+      });
+      setPasteAppliedLeadId(applied.leadId);
+      setResult({
+        type: 'lead',
+        leadId: applied.leadId,
+        leadName: applied.lead.contact?.name,
+      });
+      showToast(applied.message);
+      if (openAkte) {
+        navigate(buildKundenaktePath(applied.leadId));
+      }
+      return applied;
+    } catch (err) {
+      showToast(err.message ?? 'Bestandsfahrzeug-Anfrage konnte nicht übernommen werden.');
+      return null;
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  function handlePasteApplyCustomer() {
+    const combined = sourceText || input;
+    setPasteInquiryPreview(null);
+    setPasteInquiryExtraction(null);
+    setPasteInquiryClassification(null);
+    setPhase('input');
+    continueNormalAnalysis(combined);
+  }
+
+  function handlePasteManualEdit() {
+    setPasteInquiryPreview(null);
+    setPhase('input');
+    if (sourceText && !input.trim()) {
+      setInput(sourceText);
+    }
+  }
+
+  function handlePastePrepareAnswer() {
+    let applied = null;
+    if (!pasteAppliedLeadId) {
+      applied = handleApplyStockInquiry();
+      if (!applied?.leadId) return;
+    }
+    const leadId = pasteAppliedLeadId ?? applied.leadId;
+    navigate(`${buildKundenaktePath(leadId)}?sheet=antworten&intentId=answer_stock_vehicle_request`);
+  }
+
+  function handlePasteCreateOffer() {
+    let applied = null;
+    if (!pasteAppliedLeadId) {
+      applied = handleApplyStockInquiry();
+      if (!applied?.leadId) return;
+    }
+    const leadId = pasteAppliedLeadId ?? applied.leadId;
+    const lead = leads.find((entry) => entry.id === leadId) ?? applied?.lead;
+    const stock = pasteInquiryPreview?.stockVehicle;
+    const navState = buildStockVehicleCalculatorNavigateState(lead, stock, {
+      returnPath: buildKundenaktePath(leadId),
+    });
+    if (!navState) return;
+    navigate('/verkaufsassistent', { state: navState });
+  }
+
+  function handlePasteOpenListing() {
+    openStockVehicleListing(pasteInquiryPreview?.stockVehicle);
   }
 
   function handleRecognitionAnimationComplete() {
@@ -338,6 +471,7 @@ export default function DealerAIPage() {
   function clearAddVehicleFlow() {
     setAddVehicleContext(null);
     setDuplicatePrompt(null);
+    addVehicleBootstrapKeyRef.current = null;
   }
 
   function handleConfigureDraftChange(nextDraft) {
@@ -769,62 +903,91 @@ export default function DealerAIPage() {
     const lead = ctx.opportunityId
       ? leads.find((l) => l.id === ctx.opportunityId)
       : null;
-    const carry = lead
-      ? extractCarryCustomerFromLead(lead)
-      : {
-          customerId: ctx.customerId,
-          contact: { name: ctx.customerName ?? '', phone: '', email: '' },
-        };
+    if (!lead) return;
+
+    const bootstrapKey = [
+      ctx.customerId,
+      ctx.opportunityId ?? '',
+      ctx.vehicleCardId ?? '',
+      ctx.openConditions ? 'conditions' : 'configure',
+    ].join('::');
+    if (addVehicleBootstrapKeyRef.current === bootstrapKey) return;
+    addVehicleBootstrapKeyRef.current = bootstrapKey;
+
+    const carry = extractCarryCustomerFromLead(lead);
     setAddVehicleContext(ctx);
     setCarryCustomer(carry);
     setIsReturningWish(true);
     setIsFreshLead(false);
-    if (lead) {
-      let nextParsed = enrichWithSuggestions(buildParsedFromLead(lead));
-      const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
-      if (storedConfig?.modelKey && !hasRecognizedModelKey(nextParsed)) {
-        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
-          modelId: storedConfig.modelKey,
-          model: storedConfig.model ?? lead.vehicle?.model,
-          trimLabel: storedConfig.trimLabel ?? lead.vehicle?.trim,
-        }));
-      } else if (ctx.focusModelKey && !hasRecognizedModelKey(nextParsed)) {
-        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
-          modelId: ctx.focusModelKey,
-        }));
-      }
-      setParsed(nextParsed);
-      setStartView('home');
-      if (
-        shouldForceConfigureFlow(ctx)
-        && (hasRecognizedModelKey(nextParsed) || nextParsed.fields?.model?.trim())
-      ) {
-        let draft = bootstrapConfigureState(nextParsed);
-        const storedConfig = ctx.vehicleCardId
-          ? (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry.id === ctx.vehicleCardId)
-          : null;
-        if (storedConfig) {
-          const storedDraft = buildConfigureDraftFromStoredConfiguration(
-            storedConfig,
-            ctx.wishFields ?? {},
-          );
-          if (storedDraft) {
-            draft = { ...draft, ...storedDraft };
-            setConfigureDraft(draft);
-          }
-        }
-        if (ctx.openConditions && draft) {
-          setVehicleConfiguration(buildVehicleConfiguration(draft));
-          setSmartOfferVariants([]);
-          setPhase('conditions');
-        } else {
-          setPhase('configure');
-        }
-      } else {
-        setPhase('input');
-      }
+
+    let nextParsed = enrichWithSuggestions(buildParsedFromLead(lead));
+    const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
+    if (storedConfig?.modelKey && !hasRecognizedModelKey(nextParsed)) {
+      nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+        modelId: storedConfig.modelKey,
+        model: storedConfig.model ?? lead.vehicle?.model,
+        trimLabel: storedConfig.trimLabel ?? lead.vehicle?.trim,
+      }));
+    } else if (ctx.focusModelKey && !hasRecognizedModelKey(nextParsed)) {
+      nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+        modelId: ctx.focusModelKey,
+      }));
     }
-  }, [location.state?.addVehicleContext, leads, enrichWithSuggestions, bootstrapConfigureState]);
+    setParsed(nextParsed);
+    setStartView('home');
+
+    if (ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions) {
+      const draft = buildStockVehicleConfigureDraft(ctx.stockVehicle, lead, conditions);
+      const vehicleConfiguration = buildStockVehicleVehicleConfiguration(ctx.stockVehicle);
+      setConfigureDraft(draft);
+      setVehicleConfiguration(vehicleConfiguration);
+      setSmartOfferVariants([]);
+      setPhase('conditions');
+      return;
+    }
+
+    if (
+      shouldForceConfigureFlow(ctx)
+      && (hasRecognizedModelKey(nextParsed) || nextParsed.fields?.model?.trim())
+    ) {
+      let draft = bootstrapConfigureState(nextParsed);
+      const cardConfig = ctx.vehicleCardId
+        ? (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry.id === ctx.vehicleCardId)
+        : null;
+      if (cardConfig) {
+        const storedDraft = buildConfigureDraftFromStoredConfiguration(
+          cardConfig,
+          ctx.wishFields ?? {},
+        );
+        if (storedDraft) {
+          draft = {
+            ...storedDraft,
+            ...draft,
+            paymentType: resolveEffectivePaymentType(draft.paymentType, storedDraft.paymentType),
+          };
+          setConfigureDraft(draft);
+        }
+      }
+      if (ctx.openConditions && draft) {
+        setVehicleConfiguration(buildVehicleConfiguration(draft));
+        setSmartOfferVariants([]);
+        setPhase('conditions');
+      } else {
+        setPhase('configure');
+      }
+    } else {
+      setPhase('input');
+    }
+  }, [location.state?.addVehicleContext, location.state?.pasteText, leads, enrichWithSuggestions, bootstrapConfigureState, conditions]);
+
+  useEffect(() => {
+    const pasteText = location.state?.pasteText;
+    if (!pasteText?.trim()) return;
+    setInput(pasteText);
+    setPhase('input');
+    setStartView('home');
+    inputRef.current?.focus();
+  }, [location.state?.pasteText]);
 
   useEffect(() => {
     const wishText = location.state?.wishText;
@@ -1069,7 +1232,7 @@ export default function DealerAIPage() {
       ? leads.find((l) => l.id === addVehicleContext.opportunityId)
       : activeLead;
     const wish = addVehicleContext?.wishFields ?? buildWishFieldsFromLead(contextLead);
-    return buildSchnellaufnahmeChips(wish);
+    return buildWishConditionChips(wish);
   }, [addVehicleContext, activeLead, leads]);
 
   function handleLeadSave(patch, meta = {}) {
@@ -1242,7 +1405,11 @@ export default function DealerAIPage() {
         buildWishFieldsFromLead(activeLead),
       );
       if (storedDraft) {
-        draft = { ...draft, ...storedDraft };
+        draft = {
+          ...storedDraft,
+          ...draft,
+          paymentType: resolveEffectivePaymentType(draft.paymentType, storedDraft.paymentType),
+        };
         setConfigureDraft(draft);
       }
     }
@@ -1454,6 +1621,7 @@ export default function DealerAIPage() {
     && phase !== 'conditions'
     && phase !== 'offer-variants'
     && phase !== 'recognition-animate'
+    && phase !== 'paste-inquiry'
     && !(phase === 'input' && startView === 'home');
 
   const vehicleCard = parsed?.ok && result
@@ -1539,6 +1707,33 @@ export default function DealerAIPage() {
             isAnalyzing={isAnalyzing}
             inputRef={inputRef}
             carryCustomer={carryCustomer}
+          />
+        )}
+
+        {phase === 'paste-inquiry' && pasteInquiryPreview && (
+          <PasteInquiryPreview
+            preview={pasteInquiryPreview}
+            onApplyStock={() => {
+              if (pasteAppliedLeadId) {
+                navigate(buildKundenaktePath(pasteAppliedLeadId));
+                return;
+              }
+              handleApplyStockInquiry();
+            }}
+            onApplyCustomer={handlePasteApplyCustomer}
+            onManualEdit={handlePasteManualEdit}
+            onOpenAkte={() => {
+              if (pasteAppliedLeadId) {
+                navigate(buildKundenaktePath(pasteAppliedLeadId));
+                return;
+              }
+              handleApplyStockInquiry({ openAkte: true });
+            }}
+            onPrepareAnswer={handlePastePrepareAnswer}
+            onCreateOffer={handlePasteCreateOffer}
+            onOpenListing={handlePasteOpenListing}
+            isExecuting={isExecuting}
+            appliedLeadId={pasteAppliedLeadId}
           />
         )}
 

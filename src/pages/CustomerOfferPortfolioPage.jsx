@@ -18,6 +18,8 @@ import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGat
 import CustomerPortalShellNav from '../components/customer/CustomerPortalShellNav.jsx';
 import CustomerPortalDocumentsSection from '../components/customer/CustomerPortalDocumentsSection.jsx';
 import CustomerPortalAdvisorSection from '../components/customer/CustomerPortalAdvisorSection.jsx';
+import PkwEnVkvBox from '../components/compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../services/vehicle/requiresPkwEnVkv.js';
 import { PORTAL_NAV_IDS } from '../services/crm/customerPortalShellPresenter.js';
 import './CustomerOfferPortfolioPage.css';
 
@@ -326,6 +328,20 @@ export default function CustomerOfferPortfolioPage() {
                   {!item.rateLine && item.priceLine ? (
                     <p className="cop-card__rate">{item.priceLine}</p>
                   ) : null}
+
+                  <PkwEnVkvBox
+                    className="cop-card__envkv"
+                    variant="detail"
+                    channel={ENVKV_CHANNEL.PORTAL}
+                    environmentalData={item.vehicleEnvironmentalData}
+                    vehicleRef={{
+                      modelKey: item.modelKey,
+                      engineId: item.engineId,
+                      trimId: item.trimId,
+                      paymentType: item.paymentType,
+                      isNewPassengerCar: true,
+                    }}
+                  />
 
                   {item.requiresPdf && !item.hasPdf ? (
                     <p className="cop-card__pdf-hint">

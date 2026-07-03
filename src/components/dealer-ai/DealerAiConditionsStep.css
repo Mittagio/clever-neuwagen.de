@@ -701,6 +701,13 @@
 
 /* ── Kundenwunsch (eingeklappt) ── */
 
+.dai-cond-cash-offer__hint {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 .dai-cond-wish-fold {
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 14px;
@@ -993,4 +1000,384 @@
   font-weight: 700;
   cursor: pointer;
   padding: 0.35rem 0;
+}
+
+/* ── Verkäufer-Werkzeug (kompakter Angebotskalkulator) ── */
+
+.dai-cond-workspace {
+  --cn-card-gap: 8px;
+  --cn-page-pad: 12px;
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.dai-cond-workspace .cn-flow-card {
+  box-shadow: 0 1px 2px rgba(7, 19, 43, 0.04);
+  border: 1px solid #e3e8f1;
+}
+
+.dai-cond-workspace .cn-flow-card--flat {
+  box-shadow: none;
+}
+
+.dai-cond-workspace .cn-flow-header__title {
+  font-size: 1.15rem;
+}
+
+.dai-cond-workspace .cn-flow-header__subtitle {
+  font-size: 0.75rem;
+  margin-top: 0.1rem;
+}
+
+.dai-cond-wish-strip {
+  padding: 0.4rem 0.65rem !important;
+}
+
+.dai-cond-wish-strip__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.dai-cond-wish-strip__line {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.dai-cond-wish-strip__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.dai-cond-wish-strip__edit {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dai-cond-vehicle-compact {
+  padding: 0.45rem 0.65rem !important;
+}
+
+.dai-cond-vehicle-compact__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.dai-cond-vehicle-compact__img {
+  flex-shrink: 0;
+  width: 3.75rem;
+  height: 2.65rem;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 8px;
+  background: #f4f6f9;
+}
+
+.dai-cond-vehicle-compact__img--placeholder {
+  background: linear-gradient(135deg, #eef1f5, #e2e8f0);
+}
+
+.dai-cond-vehicle-compact__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dai-cond-vehicle-compact__model {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.dai-cond-vehicle-compact__meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.dai-cond-vehicle-compact__uvp {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-cond-vehicle-compact__edit {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  white-space: nowrap;
+}
+
+.dai-cond-module {
+  padding: 0.5rem 0.65rem !important;
+}
+
+.dai-cond-module__title {
+  margin: 0 0 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.dai-cond-pay-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.dai-cond-pay-tab {
+  padding: 0.5rem 0.4rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dai-cond-pay-tab.is-selected {
+  border-color: var(--color-primary, #1a5cff);
+  background: #f0f6ff;
+  color: var(--color-primary, #1a5cff);
+  box-shadow: 0 0 0 1px rgba(26, 92, 255, 0.18), 0 2px 10px rgba(26, 92, 255, 0.14);
+}
+
+.dai-cond-pay-legend {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.dai-cond-module--conditions .dai-cond-step,
+.dai-cond-module--conditions .dai-cond-prep,
+.dai-cond-module--conditions .dai-cond-cash-offer {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dai-cond-module--conditions .dai-cond-step:last-child,
+.dai-cond-module--conditions .dai-cond-prep:last-child,
+.dai-cond-module--conditions .dai-cond-cash-offer:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.dai-cond-module--conditions .dai-cond-step__head {
+  margin-bottom: 0.4rem;
+}
+
+.dai-cond-module--conditions .dai-cond-step__value {
+  font-size: 0.95rem;
+}
+
+.dai-cond-module--conditions .dai-cond-step__scale-mark {
+  font-size: 0.55rem;
+}
+
+.dai-cond-module--conditions .dai-cond-step--with-quick .dai-cond-step__scale {
+  display: none;
+}
+
+.dai-cond-quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+}
+
+.dai-cond-quick-pick {
+  padding: 0.32rem 0.55rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dai-cond-quick-pick.is-selected {
+  border-color: var(--color-primary, #1a5cff);
+  background: #f0f6ff;
+  color: var(--color-primary, #1a5cff);
+}
+
+.dai-cond-quick-pick--extra {
+  color: #64748b;
+}
+
+.dai-cond-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.dai-cond-hint {
+  margin: 0;
+  padding: 0.28rem 0.5rem;
+  border-radius: 7px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  border: 1px solid transparent;
+}
+
+.dai-cond-hint--warn {
+  background: #fff8eb;
+  color: #9a6700;
+  border-color: #f5d9a8;
+  box-shadow: 0 1px 6px rgba(154, 103, 0, 0.08);
+}
+
+.dai-cond-hint--info {
+  background: #f7faff;
+  color: #1e40af;
+  border-color: #dbeafe;
+}
+
+.dai-cond-hint--ok {
+  background: #f3faf5;
+  color: #166534;
+  border-color: #bbf7d0;
+  box-shadow: 0 1px 6px rgba(22, 101, 52, 0.08);
+}
+
+.dai-cond-wish-fold--compact {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.dai-cond-footer-summary--workspace {
+  margin-bottom: 0.45rem;
+}
+
+.dai-cond-footer-summary--workspace .dai-cond-footer-summary__result {
+  font-size: 1.15rem;
+}
+
+/* ── Sticky Live-Ergebnis ── */
+
+.dai-cond-sticky-live.cn-flow-foot {
+  padding: 0.5rem var(--cn-page-pad) calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  gap: 0.35rem;
+  background: linear-gradient(transparent, #f4f6fa 25%, #f4f6fa 100%);
+  border-top: 1px solid #e3e8f1;
+}
+
+.dai-cond-sticky-live__bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.dai-cond-sticky-live__context {
+  flex: 1;
+  min-width: 0;
+}
+
+.dai-cond-sticky-live__context-line {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dai-cond-sticky-live__meta {
+  margin: 0.12rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.dai-cond-sticky-live__rate {
+  margin: 0;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.dai-cond-sticky-live__rate.is-live {
+  color: var(--color-primary, #1a5cff);
+  text-shadow: 0 0 20px rgba(26, 92, 255, 0.25);
+}
+
+.dai-cond-sticky-live__suffix {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0;
+}
+
+.dai-cond-save-btn.cn-btn-primary {
+  padding: 0.72rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 18px rgba(26, 92, 255, 0.32);
+}
+
+.dai-cond-workspace .cn-flow-foot:not(.dai-cond-sticky-live) {
+  padding-top: 0.45rem;
+  padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+  gap: 0.25rem;
+}
+
+.dai-cond-workspace .cn-btn-primary:not(.dai-cond-save-btn) {
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+  box-shadow: none;
+}
+
+@media (max-width: 380px) {
+  .dai-cond-pay-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .dai-cond-vehicle-compact__img {
+    width: 3.75rem;
+    height: 2.75rem;
+  }
 }

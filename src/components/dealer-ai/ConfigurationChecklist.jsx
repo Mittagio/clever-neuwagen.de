@@ -75,18 +75,82 @@ function OverviewTile({ icon, title, lines, badge, complete = true, showCheck = 
   );
 }
 
-export function ConfigurationOverviewTiles({ vehicleConfiguration, onEdit }) {
+function CompactConfigTile({
+  title,
+  value,
+  actionLabel,
+  onAction,
+  warn = false,
+}) {
+  return (
+    <div className={`cn-config-compact-tile${warn ? ' cn-config-compact-tile--warn' : ''}`}>
+      <p className="cn-config-compact-tile__title">{title}</p>
+      <p className="cn-config-compact-tile__value">{value}</p>
+      {onAction && actionLabel && (
+        <button type="button" className="cn-config-compact-tile__action" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ConfigurationOverviewTiles({ vehicleConfiguration, onEdit, compact = false }) {
   if (!vehicleConfiguration) return null;
 
   const motor = vehicleConfiguration.motorLabel ?? vehicleConfiguration.batteryLabel;
-  const vehicleLines = [
-    [vehicleConfiguration.model, vehicleConfiguration.trimLabel].filter(Boolean).join(' '),
-    motor,
-  ].filter(Boolean);
+  const vehicleLine = [
+    vehicleConfiguration.model,
+    vehicleConfiguration.trimLabel,
+  ].filter(Boolean).join(' ') || 'Auswahl offen';
 
   const packageCount = vehicleConfiguration.selectedPackages?.length ?? 0;
+  const packageNames = (vehicleConfiguration.selectedPackages ?? [])
+    .map((pkg) => pkg.name)
+    .filter(Boolean);
+  const packageLabel = packageCount === 0
+    ? 'Keine Pakete'
+    : (packageNames[0] ?? `${packageCount} ausgewählt`);
+
   const extrasCount = (vehicleConfiguration.accessories?.length ?? 0)
     + (vehicleConfiguration.dealerExtras?.length ?? 0);
+  const extrasLabel = extrasCount === 0 ? 'Keine Extras' : `${extrasCount} ausgewählt`;
+
+  if (compact) {
+    return (
+      <section className="cn-config-overview cn-config-overview--compact" aria-label="Ausstattung">
+        <div className="cn-config-compact-grid">
+          <CompactConfigTile
+            title="Fahrzeug"
+            value={vehicleLine}
+            actionLabel="Bearbeiten"
+            onAction={onEdit}
+          />
+          <CompactConfigTile
+            title="Farbe"
+            value={vehicleConfiguration.colorLabel ?? 'Auswahl offen'}
+            actionLabel={vehicleConfiguration.colorLabel ? 'ändern' : 'wählen'}
+            onAction={onEdit}
+            warn={!vehicleConfiguration.colorId}
+          />
+          <CompactConfigTile
+            title="Pakete"
+            value={packageLabel}
+            actionLabel={packageCount === 0 ? 'hinzufügen' : 'ändern'}
+            onAction={onEdit}
+          />
+          <CompactConfigTile
+            title="Extras"
+            value={extrasLabel}
+            actionLabel={extrasCount === 0 ? 'hinzufügen' : 'ändern'}
+            onAction={onEdit}
+          />
+        </div>
+      </section>
+    );
+  }
+
+  const vehicleLines = [vehicleLine, motor].filter(Boolean);
 
   return (
     <section className="cn-config-overview" aria-label="Konfigurationsübersicht">

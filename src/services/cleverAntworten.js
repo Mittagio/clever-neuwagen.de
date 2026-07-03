@@ -3,6 +3,7 @@
  */
 import { formatCustomerDisplayName, PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import { getPrimaryRequestedStockVehicle } from './inquiry/stockVehicleInquiryFlow.js';
 import {
   formatVehicleCardConditions,
   formatVehicleCardPrice,
@@ -170,6 +171,7 @@ export function buildCleverAntwortenContext({
     unterlagenUrl: resolveUnterlagenUrl(lead),
     kundenhelferChips: chips,
     nextStepText: lead?.crm?.nextStepLabel ?? '',
+    requestedStockVehicle: getPrimaryRequestedStockVehicle(lead),
   };
 }
 

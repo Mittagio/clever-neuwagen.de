@@ -6,6 +6,8 @@ import { LANDING_TRENDING, buildAdvisorUrl } from '../../services/landingAdvisor
 import { AUTOHAUS_TRINKLE_ID } from '../../data/dealers/autohausTrinkle.js';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import LegalDisclaimer from '../legal/LegalDisclaimer.jsx';
+import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../../services/vehicle/requiresPkwEnVkv.js';
 
 export default function LandingTrending() {
   const { publishedConditions: conditions } = usePublishedDealerConditions();
@@ -99,6 +101,19 @@ export default function LandingTrending() {
               <span className="lp-offer-card__meta-chip">⏱ {card.delivery}</span>
               <span className="lp-offer-card__meta-chip">📍 {card.mileage}</span>
             </div>
+
+            <PkwEnVkvBox
+              variant="compact"
+              channel={ENVKV_CHANNEL.LANDING}
+              vehicleRef={{
+                brand: card.brand,
+                model: card.model,
+                engineId: card.engineId,
+                trimId: card.trimId,
+                isNewPassengerCar: card.isNewPassengerCar ?? true,
+                paymentType: 'leasing',
+              }}
+            />
           </Link>
         ))}
       </div>

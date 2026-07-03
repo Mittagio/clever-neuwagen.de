@@ -7,7 +7,12 @@
   gap: 16px;
 }
 
-.compliance-card__head {
+.compliance-card__envkv-status {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
   display: flex;
   justify-content: space-between;
   gap: 16px;

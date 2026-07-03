@@ -64,6 +64,7 @@ export const LANDING_TRENDING = [
     delivery: '4–6 Wochen',
     mileage: '10.000 km/J',
     visual: 'niro',
+    isNewPassengerCar: true,
   },
   {
     id: 'trend-ev3',
@@ -80,6 +81,8 @@ export const LANDING_TRENDING = [
     delivery: '8–10 Wochen',
     mileage: '15.000 km/J',
     visual: 'ev3',
+    engineId: 'ev3-long-range',
+    isNewPassengerCar: true,
   },
   {
     id: 'trend-sportage',
@@ -96,6 +99,9 @@ export const LANDING_TRENDING = [
     delivery: '2–4 Wochen',
     mileage: '10.000 km/J',
     visual: 'sportage',
+    engineId: 'tgi-hybrid-2wd',
+    trimId: 'spirit',
+    isNewPassengerCar: true,
   },
   {
     id: 'trend-ceed',
@@ -112,6 +118,8 @@ export const LANDING_TRENDING = [
     delivery: '6–8 Wochen',
     mileage: '20.000 km/J',
     visual: 'ceed',
+    engineId: 'niro-phev',
+    isNewPassengerCar: true,
   },
 ];
 

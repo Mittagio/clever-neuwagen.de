@@ -25,6 +25,9 @@ import { CUSTOMER_LABELS } from '../../data/customerFlow.js';
 import OfferVehicleImage from '../shared/OfferVehicleImage.jsx';
 import LegalDisclaimer from '../legal/LegalDisclaimer.jsx';
 import ComplianceShieldBanner from '../compliance/ComplianceShieldBanner.jsx';
+import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
+import { ENVKV_CHANNEL } from '../../services/vehicle/requiresPkwEnVkv.js';
+import { resolveVehicleEnvironmentalData } from '../../services/vehicle/vehicleEnvironmentalData.js';
 import { validateVehicleCompliance } from '../../logic/complianceShield.js';
 import BrandLogo from '../layout/BrandLogo.jsx';
 import OfferDocumentUpload from './OfferDocumentUpload.jsx';
@@ -235,6 +238,15 @@ export default function OfferMiniSite() {
     model: offer.vehicle?.model,
     label: offer.vehicle?.label,
   });
+  const offerEnvironmentalData = resolveVehicleEnvironmentalData({
+    engineId: offer.vehicle?.engineId,
+    trimId: offer.vehicle?.trimId,
+    brand: offer.vehicle?.brand,
+    model: offer.vehicle?.model,
+    label: offer.vehicle?.label,
+    isNewPassengerCar: true,
+    paymentType: pricing.paymentType ?? 'leasing',
+  });
 
   const paymentOptions = [
     { id: 'leasing', label: 'Leasing', rate: pricing.leasingRate },
@@ -387,8 +399,34 @@ export default function OfferMiniSite() {
                 <dd>{offer.deliveryTime}</dd>
               </div>
             </dl>
+            <PkwEnVkvBox
+              variant="label"
+              channel={ENVKV_CHANNEL.OFFER}
+              environmentalData={offerEnvironmentalData}
+              vehicleRef={{
+                engineId: offer.vehicle?.engineId,
+                trimId: offer.vehicle?.trimId,
+                brand: offer.vehicle?.brand,
+                model: offer.vehicle?.model,
+                isNewPassengerCar: true,
+                paymentType: pricing.paymentType ?? 'leasing',
+              }}
+            />
             <LegalDisclaimer compact className="angebot-rate__disclaimer" />
             <ComplianceShieldBanner validation={offerCompliance} compact />
+            <PkwEnVkvBox
+              variant="detail"
+              channel={ENVKV_CHANNEL.OFFER}
+              environmentalData={offerEnvironmentalData}
+              vehicleRef={{
+                engineId: offer.vehicle?.engineId,
+                trimId: offer.vehicle?.trimId,
+                brand: offer.vehicle?.brand,
+                model: offer.vehicle?.model,
+                isNewPassengerCar: true,
+                paymentType: pricing.paymentType ?? 'leasing',
+              }}
+            />
           </section>
 
           <section className="angebot-config card" id="ausstattung">

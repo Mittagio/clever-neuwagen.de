@@ -116,7 +116,7 @@ export function buildConditionsFooterAction() {
 
 function formatRate(amount) {
   if (amount == null) return null;
-  return `${Number(amount).toLocaleString('de-DE')} €/Monat`;
+  return `${Number(amount).toLocaleString('de-DE')} €`;
 }
 
 function formatCashPrice(amount) {
@@ -124,29 +124,30 @@ function formatCashPrice(amount) {
   return `${Number(amount).toLocaleString('de-DE')} €`;
 }
 
-/**
- * Zusammenfassung für die Speicherleiste im Konditionen-Schritt.
- */
-export function buildConditionsFooterSummary(preview, draft = {}) {
+export function buildConditionsFooterSummary(preview, draft = {}, vehicleSummary = null) {
   if (!preview || !draft) {
-    return { chips: [], result: null, resultSuffix: null };
+    return { chips: [], contextLine: null, result: null, resultSuffix: null, hasLiveResult: false };
   }
 
   const paymentType = draft.paymentType === 'unknown' ? 'leasing' : draft.paymentType;
   const termMonths = draft.termMonths ?? null;
   const mileagePerYear = draft.mileagePerYear ?? null;
   const downPayment = draft.downPayment ?? 0;
+  const vehicleLine = vehicleSummary?.modelLine ?? null;
 
   if (preview.isCash) {
     const chips = ['Barangebot'];
     if (preview.discountPercent != null) {
       chips.push(`${preview.discountPercent} % Rabatt`);
     }
+    const contextParts = vehicleLine ? [vehicleLine, ...chips] : chips;
     return {
       chips,
+      contextLine: contextParts.join(' · '),
       result: formatCashPrice(preview.cashOfferPrice),
       resultSuffix: 'Kaufpreis',
       upe: formatCashPrice(preview.uvpTotal),
+      hasLiveResult: preview.cashOfferPrice != null,
     };
   }
 
@@ -163,12 +164,121 @@ export function buildConditionsFooterSummary(preview, draft = {}) {
     ? preview.monthlyRate
     : null;
 
+  const contextParts = vehicleLine ? [vehicleLine, ...chips] : chips;
+
   return {
     chips,
+    contextLine: contextParts.join(' · '),
     result: formatRate(rate),
     resultSuffix: rate != null ? '/Monat' : null,
     finalPayment: preview.finalPayment != null
       ? `Schlussrate ${formatCashPrice(preview.finalPayment)}`
       : null,
+    hasLiveResult: rate != null,
   };
+}
+
+/**
+ * Kompakte Fahrzeugzeile für den Angebotskalkulator (Verkäufer-Werkzeug).
+ */
+export function buildCompactVehicleSummary(vehicleConfiguration, draft = {}) {
+  const modelLine = [
+    vehicleConfiguration?.model ?? draft.model,
+    vehicleConfiguration?.trimLabel ?? draft.trimLabel,
+  ].filter(Boolean).join(' ') || 'Fahrzeug';
+
+  const motor = vehicleConfiguration?.motorLabel ?? vehicleConfiguration?.batteryLabel ?? null;
+  const color = vehicleConfiguration?.colorLabel ?? null;
+  const metaLine = [motor, color].filter(Boolean).join(' · ');
+
+  const uvp = vehicleConfiguration?.uvpConfigurationPrice ?? null;
+
+  return {
+    modelLine,
+    metaLine,
+    uvp,
+    uvpFormatted: uvp != null
+      ? `${Number(uvp).toLocaleString('de-DE')} €`
+      : null,
+  };
+}
+
+function parseWishBudgetRate(wishChips = []) {
+  for (const chip of wishChips) {
+    const text = String(chip ?? '');
+    const match = text.match(/bis\s+([\d.]+)\s*€/i);
+    if (match) {
+      const value = Number(match[1].replace(/\./g, ''));
+      if (Number.isFinite(value) && value > 0) return value;
+    }
+  }
+  return null;
+}
+
+function hasMaintenanceSelected(draft = {}, vehicleConfiguration = null) {
+  if (draft?.extras?.wartung) return true;
+  const names = [
+    ...(vehicleConfiguration?.dealerExtras ?? []),
+    ...(vehicleConfiguration?.accessories ?? []),
+  ].map((item) => String(item?.name ?? item?.id ?? '').toLowerCase());
+  return names.some((name) => name.includes('wartung') || name.includes('service'));
+}
+
+/**
+ * Dezente Verkäufer-Hinweise im Konditionen-Schritt.
+ */
+export function buildConditionsSellerHints(
+  preview,
+  draft = {},
+  wishChips = [],
+  vehicleConfiguration = null,
+) {
+  if (!preview || !draft) return [];
+
+  const hints = [];
+
+  if (!draft.desiredDeliveryDate) {
+    hints.push({ tone: 'warn', message: 'Lieferzeit fehlt.' });
+  }
+
+  if (preview.isCash) {
+    const hasDiscount = preview.discountPercent != null && preview.discountPercent > 0;
+    if (!hasDiscount && (draft.customerGroup ?? 'standard') === 'standard') {
+      hints.push({ tone: 'info', message: 'Zielgruppe / Aktion bitte prüfen.' });
+    }
+  }
+
+  if (preview.preparationFee > 0) {
+    hints.push({ tone: 'info', message: 'Überführung enthalten.' });
+  }
+
+  if (preview.isLeasing || preview.isFinance) {
+    if (hasMaintenanceSelected(draft, vehicleConfiguration)) {
+      hints.push({ tone: 'ok', message: 'Wartung in Rate enthalten.' });
+    } else {
+      hints.push({ tone: 'info', message: 'Wartung nicht in Rate enthalten.' });
+    }
+  }
+
+  const wishBudget = parseWishBudgetRate(wishChips);
+  const liveRate = (preview.canShowLiveLeasingRate || preview.canShowLiveFinanceRate)
+    ? preview.monthlyRate
+    : null;
+  if (wishBudget != null && liveRate != null) {
+    const diff = Math.round(liveRate - wishBudget);
+    if (diff > 0) {
+      hints.push({
+        tone: 'warn',
+        message: `Rate liegt ${diff.toLocaleString('de-DE')} € über Kundenwunsch.`,
+      });
+    } else if (diff <= 0) {
+      hints.push({ tone: 'ok', message: 'Rate passt zum Kundenwunsch.' });
+    }
+  }
+
+  if (preview.isLeasing && !preview.canShowLiveLeasingRate) {
+    hints.push({ tone: 'info', message: 'Leasingfaktor für diese Kombination nicht hinterlegt.' });
+  }
+
+  return hints;
 }
