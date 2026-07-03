@@ -22,7 +22,7 @@ export default function CustomerAkteCleverBeratung({
 }) {
   if (!view?.customerWish) return null;
 
-  const { status, customerWish, requirementChips, recommendation, openQuestions, configuratorUrl } = view;
+  const { status, customerWish, requirementChips, recommendation, openQuestions, configuratorUrl, understoodLabels = [] } = view;
 
   return (
     <section className="cust-clever-beratung" aria-labelledby="cust-clever-beratung-title">
@@ -44,6 +44,19 @@ export default function CustomerAkteCleverBeratung({
           <p className="cust-clever-beratung__wish">&ldquo;{customerWish}&rdquo;</p>
         </div>
 
+        {understoodLabels.length > 0 && (
+          <div className="cust-clever-beratung__block">
+            <p className="cust-clever-beratung__label">Clever hat verstanden</p>
+            <ul className="cust-clever-beratung__chips">
+              {understoodLabels.map((label) => (
+                <li key={label}>
+                  <span className="cust-clever-beratung__chip">✓ {label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {requirementChips.length > 0 && (
           <div className="cust-clever-beratung__block">
             <p className="cust-clever-beratung__label">Erkannte Anforderungen</p>
@@ -59,7 +72,10 @@ export default function CustomerAkteCleverBeratung({
 
         {recommendation?.vehicleTitle && (
           <div className="cust-clever-beratung__block cust-clever-beratung__block--highlight">
-            <p className="cust-clever-beratung__label">Passende Richtung</p>
+            <p className="cust-clever-beratung__label">Clever empfiehlt</p>
+            {recommendation.headline ? (
+              <p className="cust-clever-beratung__rec-summary">{recommendation.headline}</p>
+            ) : null}
             <p className="cust-clever-beratung__rec-title">{recommendation.vehicleTitle}</p>
             <dl className="cust-clever-beratung__rec-meta">
               {recommendation.trimLabel && (
@@ -81,15 +97,22 @@ export default function CustomerAkteCleverBeratung({
                 </div>
               )}
             </dl>
-            {recommendation.summarySentence && (
-              <p className="cust-clever-beratung__rec-summary">{recommendation.summarySentence}</p>
-            )}
             {recommendation.whyLines?.length > 0 && (
               <ul className="cust-clever-beratung__reasons">
                 {recommendation.whyLines.slice(0, 4).map((line) => (
-                  <li key={line}>{line}</li>
+                  <li key={line}>✓ {line}</li>
                 ))}
               </ul>
+            )}
+            {recommendation.alternatives?.length > 0 && (
+              <div className="cust-clever-beratung__block">
+                <p className="cust-clever-beratung__label">Alternativen</p>
+                <ul className="cust-clever-beratung__open">
+                  {recommendation.alternatives.map((alt) => (
+                    <li key={alt.modelKey ?? alt.vehicleTitle}>{alt.vehicleTitle ?? alt.modelLabel}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

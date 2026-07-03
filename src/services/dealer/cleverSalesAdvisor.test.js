@@ -31,6 +31,7 @@ while (working && steps.size < 12) {
   working = answerConsultationQuestion(working, question.id, question.options[0].id);
 }
 
+assert.ok(!steps.has('heatPump'), 'Wärmepumpe nur in Welt 2');
 assert.ok(steps.size >= 3, 'Mehrere Fragen durchlaufen');
 assert.ok(
   hasEnoughForRecommendation(working, { primaryModelKey: 'ev3' }),

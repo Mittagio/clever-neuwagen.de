@@ -1,0 +1,31 @@
+---
+description: Clever Beratung – drei Welten, NeedProfile, Golden Rules
+globs: src/services/consultation/**,src/services/dealer/cleverSalesAdvisor.js,src/services/clever/cleverCustomerQueryOrchestrator.js,src/components/dealer/CleverConsultationWizard.jsx
+alwaysApply: false
+---
+
+# Clever Beratung – Architektur-Leitsätze
+
+## Drei Welten (niemals vermischen)
+
+1. **Welt 1 – Clever Beratung** (`need_consultation`): Kein Fahrzeug, kein Trim, keine Rate, keine Ausstattungsfragen.
+2. **Welt 2 – Fahrzeugberatung** (`vehicle_consultation`): Modell gewählt → Wärmepumpe, GT-Line, HUD, AHK, Earth.
+3. **Welt 3 – Angebot** (`offer`): Rate, Portal, Journey, Verkäufer, Dokumente.
+
+## NeedProfile ist die DNA
+
+- Zentrales Objekt: `lead.crm.needProfile`
+- Alle Welten lesen daraus; Welt 1 schreibt primär.
+- Nach jeder Nutzerantwort: `understoodLabels` aktualisieren (sichtbares Zuhören).
+
+## Golden Rules
+
+1. **Eine Frage pro Turn** – kein Wizard, keine Fragenliste.
+2. **Niemals Bekanntes erneut fragen** – Parser + `skipIf` + `needProfile.missingFields`.
+3. **Welt 1 endet mit Primärempfehlung** – „Ich würde zuerst den Kia EV3 ansehen“ + Alternativen, keine gleichwertige Shortlist.
+
+## Code-Konventionen
+
+- Bedarfsfragen: `NEED_CONSULTATION_QUESTIONS`
+- Ausstattungsfragen: `VEHICLE_EQUIPMENT_QUESTIONS` (nur mit `primaryModelKey`)
+- Fahrzeug-Orchestrator: `requiresVehicleConsultationWorld` → Gate in Welt 1

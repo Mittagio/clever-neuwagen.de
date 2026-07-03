@@ -5,6 +5,11 @@ import { PAYMENT_TYPES } from '../../data/leadTypes.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { CONSULTATION_QUESTIONS } from './cleverSalesAdvisor.js';
 import { buildDealerClassicModelUrl } from '../wish/wishUrlService.js';
+import { CLEVER_WORLD } from '../consultation/consultationWorlds.js';
+import {
+  buildUnderstoodLabels,
+  getNeedProfileFromLead,
+} from '../consultation/needProfileService.js';
 
 const KM_MAP = {
   '8000': 8000,
@@ -266,25 +271,44 @@ export function buildCleverBeratungAkteView(lead) {
     : (brief.recommended?.title ? reasonLines : []);
 
   const dealerSlug = lead?.dealerId ?? 'autohaus-trinkle';
+  const needProfile = getNeedProfileFromLead(lead);
+  const cleverWorld = needProfile?.selectedModelKey
+    ? CLEVER_WORLD.VEHICLE_CONSULTATION
+    : CLEVER_WORLD.NEED_CONSULTATION;
+  const needHeadline = recommendation?.headline
+    ?? (modelLabel ? `Nach Ihren Angaben würde ich zuerst den Kia ${modelLabel} ansehen.` : null);
+  const modelAlternatives = recommendation?.needWorldAlternatives
+    ?? recommendation?.alternatives?.filter((alt) => alt.modelKey && !alt.trimId)
+    ?? [];
 
   return {
     status,
+    cleverWorld,
     customerWish: profile.initialWish ?? brief.searchQuery ?? lead?.notes?.split('\n')[0] ?? '',
     requirementChips,
+    understoodLabels: needProfile?.understoodLabels?.length
+      ? needProfile.understoodLabels
+      : buildUnderstoodLabels(needProfile ?? {}),
     recommendation: {
       vehicleTitle,
       modelKey,
       modelLabel,
-      trimLabel,
-      batteryOrMotor: resolveBatteryLabel(lead, consultation, modelKey),
-      priceLine: resolvePriceLine(lead, consultation),
-      summarySentence: buildRecommendationSummary(
-        { vehicleTitle, whyLines },
-        whyLines,
-      ),
+      trimLabel: cleverWorld === CLEVER_WORLD.NEED_CONSULTATION ? null : trimLabel,
+      batteryOrMotor: cleverWorld === CLEVER_WORLD.NEED_CONSULTATION
+        ? null
+        : resolveBatteryLabel(lead, consultation, modelKey),
+      priceLine: cleverWorld === CLEVER_WORLD.NEED_CONSULTATION
+        ? null
+        : resolvePriceLine(lead, consultation),
+      summarySentence: cleverWorld === CLEVER_WORLD.NEED_CONSULTATION
+        ? needHeadline
+        : buildRecommendationSummary({ vehicleTitle, whyLines }, whyLines),
+      headline: needHeadline,
       whyLines,
-      alternatives: recommendation?.alternatives ?? [],
-      cleverQuotePercent: lead?.cleverQuotePercent ?? brief.cleverQuotePercent ?? null,
+      alternatives: modelAlternatives,
+      cleverQuotePercent: cleverWorld === CLEVER_WORLD.NEED_CONSULTATION
+        ? null
+        : (lead?.cleverQuotePercent ?? brief.cleverQuotePercent ?? null),
     },
     openQuestions,
     configuratorUrl: modelKey

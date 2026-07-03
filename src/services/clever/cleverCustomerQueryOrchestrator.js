@@ -47,6 +47,11 @@ import {
 } from './dealerBrandScope.js';
 import { buildBrandScopedKnowledgeFacts } from './brandScopeKnowledgeTemplates.js';
 import { buildBrandScopedFollowUps } from './brandScopeFollowUps.js';
+import {
+  buildWorldGateRedirect,
+  getActiveCleverWorld,
+  requiresVehicleConsultationWorld,
+} from '../consultation/consultationWorlds.js';
 
 const LOW_CONFIDENCE = 0.55;
 
@@ -281,6 +286,15 @@ export async function orchestrateCustomerQuery(input = {}) {
   const brandEnriched = enrichClassificationWithBrandScope(query, brandScope, classification);
   classification = normalizeClassification(brandEnriched.classification);
   const activeBrandAnalysis = brandEnriched.analysis ?? brandAnalysis;
+
+  const activeWorld = getActiveCleverWorld({
+    lead: input.lead ?? null,
+    sessionContext: enrichedContext,
+    hasOffer: Boolean(input.hasOffer),
+  });
+  if (requiresVehicleConsultationWorld(classification) && activeWorld === 'need_consultation') {
+    return buildWorldGateRedirect(classification);
+  }
 
   let facts = resolveAdvisoryFlowFacts(query, contextual, classification)
     ?? resolveFactsForQuery(classification, query);

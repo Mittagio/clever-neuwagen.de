@@ -7,6 +7,16 @@ import { findDealerWishChip } from '../../data/dealer/dealerWishCatalog.js';
 import { chipToFeatureIds } from '../../data/features/equipmentWishChips.js';
 import { buildVehicleFitReasons } from './vehicleSalesJourney.js';
 import { recommendTrimForWishes } from './trimWishRecommendation.js';
+import {
+  CONSULTATION_QUESTIONS,
+  NEED_CONSULTATION_QUESTIONS,
+  VEHICLE_EQUIPMENT_QUESTIONS,
+} from '../consultation/consultationQuestions.js';
+import { CLEVER_WORLD } from '../consultation/consultationWorlds.js';
+import {
+  buildNeedWorldRecommendation,
+  mapNeedRecommendationToLegacy,
+} from '../consultation/consultationRecommendation.js';
 
 /** @typedef {'clever'|'classic'} CustomerEntryMode */
 
@@ -31,119 +41,8 @@ const IMPORTANCE_LABELS = {
   high: 'sehr wichtig',
 };
 
-/** @type {Array<object>} */
-export const CONSULTATION_QUESTIONS = [
-  {
-    id: 'annualKm',
-    prompt: 'Wie viele Kilometer fahren Sie pro Jahr?',
-    hint: 'Hilft bei Leasing-Laufleistung und Reichweitenplanung.',
-    options: [
-      { id: '8000', label: 'bis 8.000 km' },
-      { id: '12000', label: '8.000 – 12.000 km' },
-      { id: '15000', label: '12.000 – 15.000 km' },
-      { id: '20000', label: '15.000 – 20.000 km' },
-      { id: '25000', label: 'über 20.000 km' },
-    ],
-    skipIf: (ctx) => Boolean(ctx.searchProfile?.mileagePerYear),
-  },
-  {
-    id: 'paymentType',
-    prompt: 'Leasing, Finanzierung oder Kauf?',
-    options: [
-      { id: 'leasing', label: 'Leasing' },
-      { id: 'finance', label: 'Finanzierung' },
-      { id: 'cash', label: 'Barzahlung' },
-      { id: 'open', label: 'Noch unentschieden' },
-    ],
-    skipIf: (ctx) => Boolean(ctx.searchProfile?.paymentPreference || ctx.searchFilters?.payment),
-  },
-  {
-    id: 'monthlyBudget',
-    prompt: 'Gibt es ein monatliches Budget?',
-    options: [
-      { id: '200', label: 'bis 200 €' },
-      { id: '300', label: 'bis 300 €' },
-      { id: '400', label: 'bis 400 €' },
-      { id: '500', label: 'bis 500 €' },
-      { id: '600', label: 'über 500 €' },
-      { id: 'open', label: 'Noch kein Budget' },
-    ],
-    skipIf: (ctx) => Boolean(ctx.searchProfile?.maxMonthlyRate || ctx.searchFilters?.maxRate),
-  },
-  {
-    id: 'passengers',
-    prompt: 'Wie viele Personen fahren regelmäßig mit?',
-    options: [
-      { id: '2', label: '1–2 Personen' },
-      { id: '4', label: '3–4 Personen' },
-      { id: '5', label: '5 Personen' },
-      { id: '7', label: '6–7 Personen' },
-    ],
-    skipIf: (ctx) => (ctx.searchProfile?.seatsMin ?? 0) >= 5,
-  },
-  {
-    id: 'towCapacity',
-    prompt: 'Benötigen Sie Anhängelast?',
-    options: [
-      { id: 'no', label: 'Nein' },
-      { id: 'light', label: 'Leichter Anhänger (bis 750 kg)' },
-      { id: 'braked', label: 'Gebremster Anhänger (ab 1,5 t)' },
-      { id: 'heavy', label: 'Wohnwagen / schwer (ab 2 t)' },
-    ],
-    skipIf: (ctx) => ctx.searchProfile?.requiredFeatures?.some((f) => f.startsWith('tow'))
-      || (ctx.searchFilters?.towCapacityKg ?? 0) >= 750,
-  },
-  {
-    id: 'rangeImportance',
-    prompt: 'Wie wichtig sind Reichweite und Ladegeschwindigkeit?',
-    options: [
-      { id: 'low', label: 'Weniger wichtig' },
-      { id: 'medium', label: 'Wichtig' },
-      { id: 'high', label: 'Sehr wichtig' },
-    ],
-    skipIf: (ctx) => ctx.searchProfile?.requiredFeatures?.includes('range_400')
-      || (ctx.searchFilters?.rangeKmMin ?? 0) >= 400,
-  },
-  {
-    id: 'trunkImportance',
-    prompt: 'Wie wichtig ist Kofferraumvolumen?',
-    options: [
-      { id: 'low', label: 'Weniger wichtig' },
-      { id: 'medium', label: 'Wichtig' },
-      { id: 'high', label: 'Sehr wichtig' },
-    ],
-    skipIf: (ctx) => ctx.searchProfile?.requiredFeatures?.includes('large_trunk'),
-  },
-  {
-    id: 'heatPump',
-    prompt: 'Benötigen Sie eine Wärmepumpe?',
-    options: [
-      { id: 'yes', label: 'Ja, unbedingt' },
-      { id: 'nice', label: 'Schön, aber nicht Pflicht' },
-      { id: 'no', label: 'Nein' },
-    ],
-    skipIf: (ctx) => ctx.answers?.heatPump != null,
-  },
-  {
-    id: 'hud',
-    prompt: 'Möchten Sie ein Head-up-Display?',
-    options: [
-      { id: 'yes', label: 'Ja' },
-      { id: 'nice', label: 'Wäre schön' },
-      { id: 'no', label: 'Nein' },
-    ],
-  },
-  {
-    id: 'v2l',
-    prompt: 'Ist V2L oder bidirektionales Laden wichtig?',
-    options: [
-      { id: 'yes', label: 'Ja, wichtig' },
-      { id: 'nice', label: 'Interessant, aber optional' },
-      { id: 'no', label: 'Nein' },
-    ],
-    skipIf: (ctx) => ctx.searchProfile?.fuel !== 'electric' && ctx.searchFilters?.fuel !== 'elektro',
-  },
-];
+/** @type {Array<object>} – re-export für Abwärtskompatibilität */
+export { CONSULTATION_QUESTIONS, NEED_CONSULTATION_QUESTIONS, VEHICLE_EQUIPMENT_QUESTIONS };
 
 const MIN_ANSWERS_FOR_RECOMMENDATION = 4;
 
@@ -161,14 +60,21 @@ const SALES_MODE_QUESTION_ORDER = [
  */
 function getOrderedConsultationQuestions(profile, ctx = {}) {
   const isSalesMode = profile?.salesIntent?.mode === 'sales';
-  if (!isSalesMode) return CONSULTATION_QUESTIONS;
+  const base = NEED_CONSULTATION_QUESTIONS;
+  if (!isSalesMode) return base;
 
-  const byId = Object.fromEntries(CONSULTATION_QUESTIONS.map((q) => [q.id, q]));
+  const byId = Object.fromEntries(base.map((q) => [q.id, q]));
   const ordered = SALES_MODE_QUESTION_ORDER
     .map((id) => byId[id])
     .filter(Boolean);
-  const rest = CONSULTATION_QUESTIONS.filter((q) => !SALES_MODE_QUESTION_ORDER.includes(q.id));
+  const rest = base.filter((q) => !SALES_MODE_QUESTION_ORDER.includes(q.id));
   return [...ordered, ...rest];
+}
+
+function getOrderedVehicleQuestions(profile, ctx = {}) {
+  const modelKey = ctx.primaryModelKey ?? ctx.needProfile?.selectedModelKey ?? null;
+  if (!modelKey) return [];
+  return VEHICLE_EQUIPMENT_QUESTIONS.filter((q) => !q.requiresModelKey || modelKey);
 }
 
 /**
@@ -207,6 +113,20 @@ export function getNextConsultationQuestion(profile, ctx = {}) {
     if (question.skipIf?.({ ...ctx, answers })) {
       continue;
     }
+    return question;
+  }
+  return null;
+}
+
+/**
+ * Welt 2 – Ausstattungsfragen (nur mit gewähltem Modell).
+ */
+export function getNextVehicleConsultationQuestion(profile, ctx = {}) {
+  const answers = profile?.answers ?? {};
+  const questions = getOrderedVehicleQuestions(profile, ctx);
+  for (const question of questions) {
+    if (answers[question.id] != null) continue;
+    if (question.skipIf?.({ ...ctx, answers })) continue;
     return question;
   }
   return null;
@@ -357,7 +277,34 @@ export function buildCleverRecommendation({
   searchFilters,
   searchWishes,
   chipIds = [],
+  needProfile = null,
+  world = CLEVER_WORLD.NEED_CONSULTATION,
+  primaryModelKey = null,
 }) {
+  const needRec = buildNeedWorldRecommendation({
+    profile,
+    searchBundle,
+    searchProfile: enrichSearchProfileFromConsultation(searchProfile, profile),
+    searchWishes,
+    chipIds,
+    needProfile,
+  });
+
+  const resolvedModelKey = primaryModelKey
+    ?? needProfile?.selectedModelKey
+    ?? needRec.primary?.modelKey
+    ?? null;
+
+  if (world === CLEVER_WORLD.NEED_CONSULTATION && !primaryModelKey) {
+    return mapNeedRecommendationToLegacy(needRec) ?? {
+      ready: false,
+      message: needRec.message,
+      profile,
+      openQuestions: needRec.ready ? [] : ['Noch ein paar Angaben für eine Empfehlung'],
+      understoodLabels: needRec.understoodLabels,
+    };
+  }
+
   const answers = profile?.answers ?? {};
   const consultationChips = resolveChipIdsFromAnswers(answers);
   const mergedChipIds = [...new Set([...chipIds, ...consultationChips])];
@@ -365,8 +312,11 @@ export function buildCleverRecommendation({
   const enrichedProfile = enrichSearchProfileFromConsultation(searchProfile, profile);
 
   const groups = searchBundle?.exact?.modelLineGroups ?? [];
-  const primaryGroup = groups[0] ?? null;
-  const modelKey = primaryGroup?.modelLineKey
+  const primaryGroup = groups.find(
+    (g) => (g.modelLineKey ?? g.primaryMatch?.vehicle?.modelKey) === resolvedModelKey,
+  ) ?? groups[0] ?? null;
+  const modelKey = resolvedModelKey
+    ?? primaryGroup?.modelLineKey
     ?? primaryGroup?.primaryMatch?.vehicle?.modelKey
     ?? null;
 
@@ -405,9 +355,11 @@ export function buildCleverRecommendation({
   }
 
   const alternatives = buildTrimAlternatives(trimRec);
+  const needLegacy = mapNeedRecommendationToLegacy(needRec);
 
   return {
     ready: true,
+    world: CLEVER_WORLD.VEHICLE_CONSULTATION,
     modelKey,
     modelLabel,
     trimId: trimRec?.primary?.trimId ?? null,
@@ -416,12 +368,16 @@ export function buildCleverRecommendation({
     batteryLabel: attrs?.fuel === 'electric' ? trimRec?.primary?.batteryLabel ?? null : null,
     whyLines,
     alternatives,
+    needWorldPrimary: needLegacy?.needWorldPrimary ?? needRec.primary,
+    needWorldAlternatives: needLegacy?.needWorldAlternatives ?? needRec.alternatives,
+    headline: needRec.headline,
     trimRecommendation: trimRec,
     wishChipIds: mergedChipIds,
     wishFeatures,
     enrichedProfile,
     cleverQuotePercent: trimRec?.primary?.cleverQuotePercent ?? primaryGroup?.modelQuote?.percent ?? null,
     group: primaryGroup,
+    understoodLabels: needRec.understoodLabels,
   };
 }
 
