@@ -10,10 +10,6 @@ lerna-debug.log*
 node_modules
 .tmp-kia*
 .tools/
-data/pilot-leads.json
-data/advisor-share-sessions.json
-data/customer-records.json
-data/technical/generated/
 dist
 dist-ssr
 .env
@@ -31,9 +27,24 @@ dist-ssr
 *.sln
 *.sw?
 
-# Intelligence event store (runtime data)
+# Test-/Build-Artefakte
+coverage/
+*.sqlite
+*.sqlite3
+*.db
+
+# Laufzeit-JSON-Stores (server/jsonStore.js → data/)
+# Bewusst versioniert bleiben nur data/.gitkeep und ggf. Demo-Seeds unter src/data/
+data/pilot-leads.json
+data/advisor-share-sessions.json
+data/customer-records.json
+data/mail-outbox.json
+data/stammdaten-overrides.json
+data/configurator-foundation.json
+data/open-customer-questions.json
 data/intelligence-events.json
 data/published-trends.json
+data/technical/generated/
 
 # Sprint 5 – sensible Laufzeitdaten (niemals committen)
 server/data/documents/
