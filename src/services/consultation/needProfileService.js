@@ -67,7 +67,13 @@ function applyIntentToNeedProfile(profile, intent = {}) {
   }
 
   if (intent.familyHint) {
-    next.children = next.children ?? true;
+    if (intent.familyHint === 'Zwei Kinder') {
+      next.children = 2;
+    } else if (intent.familyHint === 'Drei Kinder') {
+      next.children = 3;
+    } else {
+      next.children = next.children ?? true;
+    }
     next.priorities = pushUnique(next.priorities, 'family');
     confidence += 8;
   }
