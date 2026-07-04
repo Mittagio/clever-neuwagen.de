@@ -8,6 +8,12 @@ import { answerConsultationQuestion } from '../dealer/cleverSalesAdvisor.js';
 import { buildNeedWorldRecommendation } from './consultationRecommendation.js';
 import { NEED_CONSULTATION_QUESTIONS } from './consultationQuestions.js';
 import {
+  evaluateRecommendationReadiness,
+  getConsultationQuestionById,
+  getFuelCategory,
+  planNextQuestion,
+} from './conversationPlanner.js';
+import {
   buildUnderstoodLabels,
   createEmptyNeedProfile,
   mergeTextIntoNeedProfile,
@@ -22,7 +28,7 @@ import {
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
 
-/** Nur die zwei Gesprächslücken nach reichem Erstinput (Conversation Design). */
+/** @deprecated Planner steuert die Reihenfolge – nur noch für Legacy-Tests. */
 export const HAPPY_PATH_QUESTION_SEQUENCE = ['longDistance', 'chargingAtHome'];
 
 export const CONVERSATION_PHASE = {
@@ -48,6 +54,12 @@ export const WARM_QUESTION_PROMPTS = {
     'Darf ich noch kurz fragen: Fahren Sie im Alltag eher kurze Strecken '
     + '– oder auch regelmäßig längere, zum Beispiel in den Urlaub?',
   chargingAtHome: 'Und können Sie zu Hause laden – Garage oder Wallbox?',
+  fuel_type:
+    'Haben Sie beim Antrieb schon einen Favoriten – Benzin, Hybrid oder Elektro?',
+  allradNeed:
+    'Brauchen Sie Allrad wirklich – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
+  comfortVsSpace:
+    'Soll es eher möglichst komfortabel sein – oder ist Ihnen vor allem viel Platz und Anhängelast wichtig?',
 };
 
 /** Kürzere Chip-Labels – weniger Formular, mehr Gespräch. */
@@ -114,7 +126,7 @@ function createConsultationProfile() {
 }
 
 function questionById(id) {
-  return NEED_CONSULTATION_QUESTIONS.find((q) => q.id === id) ?? null;
+  return getConsultationQuestionById(id) ?? NEED_CONSULTATION_QUESTIONS.find((q) => q.id === id) ?? null;
 }
 
 function buildConsultationCtx(needProfile, consultationProfile) {
@@ -189,7 +201,7 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
 
   if (questionId === 'longDistance') {
     next.longDistance = answerId;
-    if (answerId === 'often' || answerId === 'sometimes') {
+    if ((answerId === 'often' || answerId === 'sometimes') && getFuelCategory(next) === 'electric') {
       next.priorities = [...new Set([...(next.priorities ?? []), 'range'])];
     }
   }
@@ -198,6 +210,34 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
     next.chargingAtHome = answerId;
     if (answerId === 'yes' || answerId === 'maybe') {
       next.priorities = [...new Set([...(next.priorities ?? []), 'charging'])];
+    }
+  }
+
+  if (questionId === 'fuel_type') {
+    const fuelMap = {
+      benzin: 'verbrenner',
+      hybrid: 'hybrid',
+      electric: 'electric',
+      open: null,
+    };
+    const mapped = fuelMap[answerId];
+    if (mapped) next.fuel = mapped;
+  }
+
+  if (questionId === 'allradNeed') {
+    next.allradNeed = answerId;
+    if (answerId === 'yes') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'awd'])];
+    }
+  }
+
+  if (questionId === 'comfortVsSpace') {
+    next.comfortVsSpace = answerId;
+    if (answerId === 'comfort') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'comfort'])];
+    }
+    if (answerId === 'space') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'space'])];
     }
   }
 
@@ -228,6 +268,14 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
     return 'yes';
   }
 
+  if (questionId === 'fuel_type') {
+    if (/elektro|ev\b|strom/.test(t)) return 'electric';
+    if (/hybrid|plug/.test(t)) return 'hybrid';
+    if (/benzin|verbrenner|diesel/.test(t)) return 'benzin';
+    if (/offen|unklar|egal/.test(t)) return 'open';
+    return null;
+  }
+
   return null;
 }
 
@@ -235,21 +283,24 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
  * @param {object} needProfile
  * @param {object} consultationProfile
  */
-export function getHappyPathNextQuestion(needProfile, consultationProfile) {
-  const ctx = buildConsultationCtx(needProfile, consultationProfile);
-  const answers = consultationProfile?.answers ?? {};
+/** Fragen, die der magische Happy Path stellt – kein voller Sales-Katalog. */
+const HAPPY_PATH_PLANNER_IDS = new Set([
+  'fuel_type',
+  'comfortVsSpace',
+  'allradNeed',
+  'longDistance',
+  'chargingAtHome',
+]);
 
-  for (const id of HAPPY_PATH_QUESTION_SEQUENCE) {
-    if (answers[id] != null) continue;
-    const question = questionById(id);
-    if (!question) continue;
-    if (question.skipIf?.({ ...ctx, answers })) continue;
-    return {
-      ...question,
-      prompt: WARM_QUESTION_PROMPTS[id] ?? question.prompt,
-    };
-  }
-  return null;
+export function getHappyPathNextQuestion(needProfile, consultationProfile) {
+  const answers = consultationProfile?.answers ?? {};
+  const result = planNextQuestion({ needProfile, answers });
+  const question = result.question;
+  if (!question || !HAPPY_PATH_PLANNER_IDS.has(question.id)) return null;
+  return {
+    ...question,
+    prompt: WARM_QUESTION_PROMPTS[question.id] ?? question.prompt,
+  };
 }
 
 function buildHappyPathWhyLines(needProfile = {}) {
@@ -289,7 +340,19 @@ function humanizeHappyPathRecommendation(rec, needProfile) {
   };
 }
 
-function buildHappyPathRecommendation(needProfile) {
+function buildHappyPathRecommendation(needProfile, consultationProfile = {}) {
+  const readiness = evaluateRecommendationReadiness({
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+  });
+  if (!readiness.ready) {
+    return {
+      ready: false,
+      blocker: readiness.blocker,
+      reason: readiness.reason,
+    };
+  }
+
   const rec = buildNeedWorldRecommendation({
     searchBundle: HAPPY_PATH_SEARCH_BUNDLE,
     needProfile,
@@ -366,7 +429,18 @@ function startThinkingPhase(session) {
 }
 
 function finishWithRecommendation(session) {
-  const recommendation = buildHappyPathRecommendation(session.needProfile);
+  const recommendation = buildHappyPathRecommendation(
+    session.needProfile,
+    session.consultationProfile,
+  );
+  if (!recommendation.ready) {
+    return {
+      ...session,
+      phase: CONVERSATION_PHASE.CONVERSATION,
+      recommendation: null,
+      turns: session.turns.filter((t) => t.type !== TURN_TYPE.THINKING),
+    };
+  }
   return {
     ...session,
     phase: CONVERSATION_PHASE.RECOMMENDATION,
@@ -409,7 +483,15 @@ export function submitOpeningMessage(session, text = '') {
     next = pushTurn(next, cleverQuestionTurn(question));
     next = withPendingQuestion(next, question);
   } else {
-    next = startThinkingPhase(next);
+    const readiness = evaluateRecommendationReadiness({
+      needProfile,
+      answers: next.consultationProfile?.answers ?? {},
+    });
+    if (readiness.ready) {
+      next = startThinkingPhase(next);
+    } else {
+      next = { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+    }
   }
 
   return next;
@@ -464,7 +546,15 @@ export function submitQuestionAnswer(session, payload = {}) {
     return next;
   }
 
-  next = startThinkingPhase(next);
+  const readiness = evaluateRecommendationReadiness({
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+  });
+  if (readiness.ready) {
+    next = startThinkingPhase(next);
+  } else {
+    next = { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+  }
   return next;
 }
 
@@ -474,6 +564,17 @@ export function submitQuestionAnswer(session, payload = {}) {
  */
 export function advanceFromThinking(session) {
   if (session.phase !== CONVERSATION_PHASE.THINKING) return session;
+  const readiness = evaluateRecommendationReadiness({
+    needProfile: session.needProfile,
+    answers: session.consultationProfile?.answers ?? {},
+  });
+  if (!readiness.ready) {
+    return {
+      ...session,
+      phase: CONVERSATION_PHASE.CONVERSATION,
+      turns: session.turns.filter((t) => t.type !== TURN_TYPE.THINKING),
+    };
+  }
   return finishWithRecommendation(session);
 }
 

@@ -12,6 +12,7 @@ import {
   NEED_CONSULTATION_QUESTIONS,
   VEHICLE_EQUIPMENT_QUESTIONS,
 } from '../consultation/consultationQuestions.js';
+import { planNextQuestion } from '../consultation/conversationPlanner.js';
 import { CLEVER_WORLD } from '../consultation/consultationWorlds.js';
 import {
   buildNeedWorldRecommendation,
@@ -106,30 +107,33 @@ export function getConsultationProgress(profile, ctx = {}) {
  * @param {object} [ctx]
  */
 export function getNextConsultationQuestion(profile, ctx = {}) {
-  const answers = profile?.answers ?? {};
-  const questions = getOrderedConsultationQuestions(profile, ctx);
-  for (const question of questions) {
-    if (answers[question.id] != null) continue;
-    if (question.skipIf?.({ ...ctx, answers })) {
-      continue;
-    }
-    return question;
-  }
-  return null;
+  const result = planNextQuestion({
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    needProfile: ctx.needProfile ?? {},
+    answers: profile?.answers ?? {},
+    searchProfile: ctx.searchProfile ?? {},
+    searchFilters: ctx.searchFilters ?? {},
+  });
+  if (!result.question) return null;
+  const { plannerReason, rules, knownWhen, visibleWhen, hiddenWhen, ...question } = result.question;
+  return question;
 }
 
 /**
  * Welt 2 – Ausstattungsfragen (nur mit gewähltem Modell).
  */
 export function getNextVehicleConsultationQuestion(profile, ctx = {}) {
-  const answers = profile?.answers ?? {};
-  const questions = getOrderedVehicleQuestions(profile, ctx);
-  for (const question of questions) {
-    if (answers[question.id] != null) continue;
-    if (question.skipIf?.({ ...ctx, answers })) continue;
-    return question;
-  }
-  return null;
+  const result = planNextQuestion({
+    world: CLEVER_WORLD.VEHICLE_CONSULTATION,
+    needProfile: ctx.needProfile ?? {},
+    answers: profile?.answers ?? {},
+    selectedModelKey: ctx.primaryModelKey ?? ctx.needProfile?.selectedModelKey ?? null,
+    searchProfile: ctx.searchProfile ?? {},
+    searchFilters: ctx.searchFilters ?? {},
+  });
+  if (!result.question) return null;
+  const { plannerReason, rules, knownWhen, visibleWhen, hiddenWhen, ...question } = result.question;
+  return question;
 }
 
 /**
