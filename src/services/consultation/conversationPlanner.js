@@ -3,6 +3,12 @@
  * Entscheidet, welche Frage jetzt sinnvoll ist (intent-aware, keine harte Reihenfolge).
  */
 import { NEED_CONSULTATION_QUESTIONS, VEHICLE_EQUIPMENT_QUESTIONS } from './consultationQuestions.js';
+import {
+  getRecognitionQuestionBlocks,
+  hasEquipmentWish,
+  isAwdRecognized,
+  isTowbarRecognized,
+} from './needRecognitionService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 
 export const PLANNER_PRIORITY = {
@@ -86,14 +92,19 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
     ],
     visibleWhen: (ctx) => {
       const p = ctx.needProfile ?? {};
+      if (p.drive === 'awd' || p.allradNeed === 'yes') return false;
       if (p.drive === 'fwd' || p.drive === 'rwd' || p.allradNeed === 'no') return false;
       return p.bodyType === 'suv'
         || (p.towing && p.towing !== 'no')
         || p.priorities?.includes('awd')
         || p.priorities?.includes('winter');
     },
-    hiddenWhen: (ctx) => ctx.answers?.allradNeed != null || ctx.needProfile?.allradNeed != null,
-    knownWhen: (ctx) => ctx.answers?.allradNeed != null || ctx.needProfile?.allradNeed != null,
+    hiddenWhen: (ctx) => isAwdRecognized(ctx.needProfile)
+      || ctx.answers?.allradNeed != null
+      || ctx.needProfile?.allradNeed != null,
+    knownWhen: (ctx) => isAwdRecognized(ctx.needProfile)
+      || ctx.answers?.allradNeed != null
+      || ctx.needProfile?.allradNeed != null,
   },
   {
     id: 'comfortVsSpace',
@@ -144,9 +155,18 @@ const NEED_QUESTION_RULES = {
   trunkImportance: {
     priority: 'low',
     reason: 'Kofferraum bei Familie oft schon erkannt.',
-    visibleWhen: (ctx) => !ctx.needProfile?.children,
-    hiddenWhen: () => false,
+    visibleWhen: (ctx) => !ctx.needProfile?.children && ctx.needProfile?.bodyType !== 'pickup',
+    hiddenWhen: (ctx) => ctx.needProfile?.bodyType === 'pickup',
     knownWhen: (ctx) => ctx.answers?.trunkImportance != null,
+  },
+  towCapacity: {
+    priority: 'medium',
+    reason: 'Anhängelast nur fragen, wenn noch nicht erkannt.',
+    visibleWhen: (ctx) => !isTowbarRecognized(ctx.needProfile) && ctx.needProfile?.towing == null,
+    hiddenWhen: (ctx) => isTowbarRecognized(ctx.needProfile) || ctx.needProfile?.towing != null,
+    knownWhen: (ctx) => isTowbarRecognized(ctx.needProfile)
+      || ctx.needProfile?.towing != null
+      || ctx.answers?.towCapacity != null,
   },
 };
 
@@ -156,8 +176,10 @@ const VEHICLE_QUESTION_RULES = {
     reason: 'Wärmepumpe betrifft Elektro-Fahrzeuge, nicht Verbrenner.',
     visibleWhen: (ctx) => isElectricOrPhevProfile(ctx.needProfile)
       && EV_MODEL_KEYS.has(ctx.selectedModelKey ?? ctx.needProfile?.selectedModelKey ?? ''),
-    hiddenWhen: (ctx) => isCombustionProfile(ctx.needProfile),
-    knownWhen: (ctx) => ctx.answers?.heatPump != null,
+    hiddenWhen: (ctx) => isCombustionProfile(ctx.needProfile)
+      || hasEquipmentWish(ctx.needProfile, 'heat_pump'),
+    knownWhen: (ctx) => ctx.answers?.heatPump != null
+      || hasEquipmentWish(ctx.needProfile, 'heat_pump'),
   },
   v2l: {
     priority: 'medium',
@@ -171,8 +193,9 @@ const VEHICLE_QUESTION_RULES = {
     priority: 'low',
     reason: 'Ausstattungswunsch nach Modellwahl.',
     visibleWhen: (ctx) => Boolean(ctx.selectedModelKey ?? ctx.needProfile?.selectedModelKey),
-    hiddenWhen: () => false,
-    knownWhen: (ctx) => ctx.answers?.hud != null,
+    hiddenWhen: (ctx) => hasEquipmentWish(ctx.needProfile, 'head_up_display'),
+    knownWhen: (ctx) => ctx.answers?.hud != null
+      || hasEquipmentWish(ctx.needProfile, 'head_up_display'),
   },
 };
 
@@ -278,6 +301,7 @@ export function planNextQuestion({
 
   const candidates = buildPlannerCandidates(world)
     .filter((q) => {
+      if (getRecognitionQuestionBlocks(needProfile).has(q.id)) return false;
       if (q.rules.hiddenWhen?.(ctx)) return false;
       if (!q.rules.visibleWhen?.(ctx)) return false;
       if (q.rules.knownWhen?.(ctx)) return false;

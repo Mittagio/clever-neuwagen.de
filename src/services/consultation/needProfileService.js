@@ -5,25 +5,11 @@ import { parseSearchIntent } from '../search/searchIntentParser.js';
 import { NEED_CONSULTATION_QUESTIONS } from './consultationQuestions.js';
 import { getFuelCategory } from './conversationPlanner.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import {
+  applyNeedRecognition,
+  buildRecognitionLabels,
+} from './needRecognitionService.js';
 import { createEmptyNeedProfile } from './needProfileTypes.js';
-
-const FUEL_LABELS = {
-  electric: 'Elektro',
-  elektro: 'Elektro',
-  hybrid: 'Hybrid',
-  phev: 'Plug-in-Hybrid',
-  benzin: 'Benzin',
-  verbrenner: 'Benzin',
-  diesel: 'Diesel',
-};
-
-const BODY_LABELS = {
-  suv: 'SUV',
-  kleinwagen: 'Kleinwagen',
-  kombi: 'Kombi',
-  limousine: 'Limousine',
-  van: 'Van',
-};
 
 function clampConfidence(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -63,6 +49,11 @@ function applyIntentToNeedProfile(profile, intent = {}) {
   if (intent.bodyType) {
     next.bodyType = intent.bodyType;
     confidence += 10;
+  }
+
+  if (intent.transmission) {
+    next.transmission = intent.transmission;
+    confidence += 4;
   }
 
   if (intent.seatsMin) {
@@ -131,6 +122,13 @@ function applyIntentToNeedProfile(profile, intent = {}) {
     confidence += 8;
   }
 
+  if (intent.features?.includes('towbar')) {
+    next.towbar = true;
+    next.priorities = pushUnique(next.priorities, 'towbar');
+    if (!next.towing) next.towing = 'braked';
+    confidence += 6;
+  }
+
   if (intent.model && /^sportage$/i.test(intent.model)) {
     next.modelHint = 'sportage';
     next.bodyType = next.bodyType ?? 'suv';
@@ -155,37 +153,14 @@ function applyIntentToNeedProfile(profile, intent = {}) {
  * @param {object} profile
  */
 export function buildUnderstoodLabels(profile = {}) {
-  const labels = [];
-
-  if (profile.fuel) {
-    labels.push(FUEL_LABELS[profile.fuel] ?? profile.fuel);
-  }
-  if (profile.bodyType) {
-    labels.push(BODY_LABELS[profile.bodyType] ?? profile.bodyType);
-  }
-  if (profile.priorities?.includes('family') || profile.children || (profile.persons ?? 0) >= 5) {
-    labels.push('Familie');
-  }
-  if (profile.children === 2 || profile.children === '2') {
-    labels.push('2 Kinder');
-  } else if (profile.children) {
-    labels.push('Kinder');
-  }
-  if (profile.dog) labels.push('Hund');
-  if (profile.budget?.maxMonthlyRate) {
-    labels.push(`Budget ${profile.budget.maxMonthlyRate} €`);
-  }
-  if (profile.budget?.paymentType === 'leasing') labels.push('Leasing');
-  if (profile.budget?.paymentType === 'cash') labels.push('Kauf');
-  if (profile.towing && profile.towing !== 'no') labels.push('Anhängelast');
+  const labels = buildRecognitionLabels(profile);
   const fuelCat = getFuelCategory(profile);
+
   if (profile.priorities?.includes('range') && (fuelCat === 'electric' || fuelCat === 'phev')) {
     labels.push('Reichweite wichtig');
   }
-  if (profile.chargingAtHome === 'yes') labels.push('Laden zuhause');
-  if (profile.longDistance === 'often') {
-    labels.push('Langstrecke');
-  } else if (profile.longDistance === 'sometimes' && fuelCat === 'combustion') {
+  if (profile.dog) labels.push('Hund');
+  if (profile.longDistance === 'sometimes' && fuelCat === 'combustion') {
     labels.push('Häufig längere Fahrten');
   }
 
@@ -224,14 +199,7 @@ export function mergeTextIntoNeedProfile(text = '', base = null) {
 
   const intent = parseSearchIntent(trimmed);
   profile = applyIntentToNeedProfile(profile, intent);
-
-  if (/\ballrad\b/i.test(trimmed)) {
-    profile = {
-      ...profile,
-      priorities: pushUnique(profile.priorities, 'awd'),
-    };
-  }
-
+  profile = applyNeedRecognition(profile, trimmed, intent);
   profile.understoodLabels = buildUnderstoodLabels(profile);
   profile.missingFields = computeMissingNeedFields(profile);
   return profile;

@@ -29,7 +29,10 @@ function testSuvBenzinNoWallbox() {
   const result = planNextQuestion({ needProfile: profile, answers: {} });
 
   assert.notEqual(result.question?.id, 'chargingAtHome');
+  assert.notEqual(result.question?.id, 'allradNeed');
   assert.equal(isQuestionAllowed('chargingAtHome', { needProfile: profile }), false);
+  assert.equal(isQuestionAllowed('allradNeed', { needProfile: profile }), false);
+  assert.ok(profile.understoodLabels.includes('Allrad'));
   console.log('✓ SUV Benzin Automatik bis 40.000 € Allrad → keine Wallbox-Frage');
 }
 

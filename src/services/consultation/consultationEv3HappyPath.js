@@ -3,6 +3,11 @@
  */
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import { beginOfferHandoff } from './consultationOfferHandoff.js';
+import {
+  equipmentLabelsFromProfile,
+  getRecognitionQuestionBlocks,
+  shouldSkipEv3EquipmentQuestion,
+} from './needRecognitionService.js';
 
 export const VEHICLE_CONVERSATION_PHASE = {
   VEHICLE_CONVERSATION: 'vehicle_conversation',
@@ -83,6 +88,23 @@ function withOptionEmoji(options = []) {
     if (!emoji || emoji === '—') return option;
     return { ...option, label: `${emoji} ${option.label}` };
   });
+}
+
+function buildEv3EquipmentQuestion(needProfile = {}) {
+  const blocks = getRecognitionQuestionBlocks(needProfile);
+  const optionBlockMap = {
+    heatPump: 'heatPump',
+    towbar: 'towbar',
+    hud: 'hud',
+    camera360: 'camera360',
+  };
+  const options = EV3_EQUIPMENT_QUESTION.options.filter(
+    (option) => !blocks.has(optionBlockMap[option.id]),
+  );
+  return {
+    ...EV3_EQUIPMENT_QUESTION,
+    options: options.length ? options : [{ id: 'none', label: 'Nichts Bestimmtes' }],
+  };
 }
 
 function vehicleQuestionTurn(question) {
@@ -263,6 +285,13 @@ export function initVehicleSessionFields(session, modelKey = 'ev3', modelLabel =
 export function beginEv3VehicleConsultation(session, modelKey = 'ev3') {
   const modelLabel = modelKey === 'ev3' ? 'EV3' : modelKey.toUpperCase();
   let next = initVehicleSessionFields(session, modelKey, modelLabel);
+  const prefillLabels = equipmentLabelsFromProfile(next.needProfile);
+  if (prefillLabels.length) {
+    next = {
+      ...next,
+      vehicleNotepadLabels: appendVehicleLabels(next.vehicleNotepadLabels ?? [], prefillLabels),
+    };
+  }
   next = {
     ...next,
     phase: VEHICLE_CONVERSATION_PHASE.VEHICLE_CONVERSATION,
@@ -296,7 +325,9 @@ export function submitVehicleQuestionAnswer(session, payload = {}) {
     ?? mapVehicleFreetextToAnswer(questionId, payload.text);
   if (!answerId) return session;
 
-  const question = questionId === 'ev3Priority' ? EV3_PRIORITY_QUESTION : EV3_EQUIPMENT_QUESTION;
+  const question = questionId === 'ev3Priority'
+    ? EV3_PRIORITY_QUESTION
+    : buildEv3EquipmentQuestion(session.needProfile);
   const displayText = payload.text?.trim() || optionLabel(question, answerId);
   const learned = labelsForVehicleAnswer(questionId, answerId);
   const vehicleProfile = {
@@ -318,11 +349,23 @@ export function submitVehicleQuestionAnswer(session, payload = {}) {
 
   if (questionId === 'ev3Priority') {
     const reflection = PRIORITY_REFLECTION[answerId] ?? PRIORITY_REFLECTION.balanced;
+    if (shouldSkipEv3EquipmentQuestion(session.needProfile)) {
+      next = {
+        ...next,
+        turns: [...next.turns, reflectionTurn(reflection)],
+      };
+      return startVehicleThinkingPhase(next);
+    }
+    const equipmentQuestion = buildEv3EquipmentQuestion(session.needProfile);
     next = {
       ...next,
-      turns: [...next.turns, reflectionTurn(reflection), vehicleQuestionTurn(EV3_EQUIPMENT_QUESTION)],
+      turns: [
+        ...next.turns,
+        reflectionTurn(reflection),
+        vehicleQuestionTurn(equipmentQuestion),
+      ],
     };
-    return withVehiclePending(next, EV3_EQUIPMENT_QUESTION);
+    return withVehiclePending(next, equipmentQuestion);
   }
 
   return startVehicleThinkingPhase(next);
