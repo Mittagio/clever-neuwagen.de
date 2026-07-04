@@ -15,6 +15,10 @@ Es soll auch in fünf Jahren noch gültig sein.
 Verwandte Dokumente:
 - [Charakter & Kommunikation](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
+- [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
+- [Nutzer-Tests & Verstanden-Gefühl](clever-user-testing.md)
+- [Experiments](../experiments/README.md)
+- [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
 ---
 

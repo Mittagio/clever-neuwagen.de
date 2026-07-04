@@ -1,0 +1,27 @@
+---
+description: Heilige zwei Minuten – kein Verkauf am Anfang, Verstanden-Gefühl first
+globs: src/components/conversation/**,src/pages/CleverBeratungPage.jsx,src/pages/**/Landing*
+alwaysApply: false
+---
+
+# Heilige zwei Minuten
+
+Die ersten zwei Minuten von Clever sind heilig. Priorität: **Verstanden werden.** Erst danach Verkauf.
+
+## Verboten am Gesprächsbeginn
+
+Werbung, Leasingrate, Rabatt, Aktionen, Banner, Pop-ups, Registrierung, Newsletter, „Jetzt Termin buchen“.
+
+## Vor Merge / neuer Funktion am Einstieg
+
+Frage: Zerstört das den ersten Eindruck oder stärkt es das Verstanden-Gefühl? Im Zweifel: Nein.
+
+## Metrik (Nutzer-Tests)
+
+„Hattest du das Gefühl, dass Clever verstanden hat, was du suchst?“ (1–10). Ziel: regelmäßig 9–10.
+
+## Flow-Status
+
+Magischer Flow `/beratung` ist feature-complete für Phase 1. **Jetzt mit Menschen testen — nicht erweitern**, außer aus `/experiments` bewusst freigegeben.
+
+Siehe: `docs/clever-sacred-first-two-minutes.md`, `docs/clever-user-testing.md`, `PRINCIPLE.md`
