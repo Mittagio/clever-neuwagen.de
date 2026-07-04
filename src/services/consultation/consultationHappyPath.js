@@ -65,6 +65,20 @@ const WARM_OPTION_LABELS = {
   },
 };
 
+const WARM_OPTION_EMOJI = {
+  longDistance: {
+    rarely: '🚗',
+    sometimes: '🛣️',
+    often: '✈️',
+  },
+  chargingAtHome: {
+    yes: '🔌',
+    maybe: '🏗️',
+    no: '⚡',
+    open: '💭',
+  },
+};
+
 const LEARNED_FROM_ANSWER = {
   longDistance: {
     rarely: ['Kurzstrecke'],
@@ -145,10 +159,8 @@ export function getOpeningCopy(dealerName = 'Autohaus') {
   };
 }
 
-export function getNotepadHeading(labelCount) {
-  if (labelCount === 0) return 'Clever notiert …';
-  if (labelCount < 5) return 'Clever kennt bereits …';
-  return 'Das weiß ich über Sie';
+export function getNotepadHeading(_labelCount) {
+  return null;
 }
 
 function appendLabels(existing = [], incoming = []) {
@@ -290,10 +302,15 @@ function buildHappyPathRecommendation(needProfile) {
 
 function warmOptionsForQuestion(question) {
   const warm = WARM_OPTION_LABELS[question.id] ?? {};
-  return (question.options ?? []).map((option) => ({
-    ...option,
-    label: warm[option.id] ?? option.label,
-  }));
+  const emojis = WARM_OPTION_EMOJI[question.id] ?? {};
+  return (question.options ?? []).map((option) => {
+    const label = warm[option.id] ?? option.label;
+    const emoji = emojis[option.id];
+    return {
+      ...option,
+      label: emoji ? `${emoji} ${label}` : label,
+    };
+  });
 }
 
 function cleverQuestionTurn(question) {
@@ -304,14 +321,6 @@ function cleverQuestionTurn(question) {
     text: question.prompt,
     options: warmOptionsForQuestion(question),
     hint: question.hint ?? null,
-  };
-}
-
-function learnedTurn(labels) {
-  return {
-    type: TURN_TYPE.LEARNED,
-    id: `learned-${Date.now()}-${labels.join('-')}`,
-    labels: [...labels],
   };
 }
 
@@ -392,7 +401,6 @@ export function submitOpeningMessage(session, text = '') {
     notepadLabels,
     turns: [
       customerTurn(trimmed),
-      learnedTurn(initialLabels),
     ],
   };
 
@@ -424,7 +432,10 @@ export function submitQuestionAnswer(session, payload = {}) {
 
   const question = questionById(questionId);
   const option = question?.options?.find((o) => o.id === answerId);
-  const displayText = payload.text?.trim() || option?.label || answerId;
+  const displayText = payload.text?.trim()
+    || WARM_OPTION_LABELS[questionId]?.[answerId]
+    || option?.label
+    || answerId;
 
   let consultationProfile = answerConsultationQuestion(
     session.consultationProfile,
@@ -432,7 +443,6 @@ export function submitQuestionAnswer(session, payload = {}) {
     answerId,
   );
   let needProfile = applyAnswerToNeedProfile(session.needProfile, questionId, answerId);
-  const learned = learnedLabelsForAnswer(questionId, answerId);
   const notepadLabels = labelsFromNeedProfile(needProfile, session.notepadLabels);
 
   let next = {
@@ -444,7 +454,6 @@ export function submitQuestionAnswer(session, payload = {}) {
     turns: [
       ...session.turns,
       customerTurn(displayText),
-      ...(learned.length ? [learnedTurn(learned)] : []),
     ],
   };
 

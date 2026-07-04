@@ -24,6 +24,14 @@ alwaysApply: false
 2. **Niemals Bekanntes erneut fragen** – Parser + `skipIf` + `needProfile.missingFields`.
 3. **Welt 1 endet mit Primärempfehlung** – „Ich würde zuerst den Kia EV3 ansehen“ + Alternativen, keine gleichwertige Shortlist.
 
+## Gesprächsfluss (UI)
+
+Jedes Element, das den Gesprächsfluss unterbricht, muss verschwinden oder in die Sticky-Notiz integriert werden. Der Nutzer soll nie das Gefühl haben, zwischen Gespräch und Zusammenfassung zu wechseln – beides soll gleichzeitig passieren.
+
+- Keine doppelten Notizen (Learned-Karte + Notizleiste).
+- Kurzer „Ich notiere mir“-Moment statt großer Zusammenfassungsblöcke.
+- Kunden-Antworten als dezente Antwortkarte, nicht als Fließtext.
+
 ## Code-Konventionen
 
 - Bedarfsfragen: `NEED_CONSULTATION_QUESTIONS`

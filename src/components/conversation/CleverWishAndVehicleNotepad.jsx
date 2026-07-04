@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { getNotepadHeading } from '../../services/consultation/consultationHappyPath.js';
 import './clever-conversation.css';
 
-function NotepadSection({ heading, labels = [], variant = 'wish' }) {
+function NotepadSection({ heading = null, labels = [], variant = 'wish' }) {
   const prevCountRef = useRef(0);
 
   useEffect(() => {
@@ -15,7 +14,7 @@ function NotepadSection({ heading, labels = [], variant = 'wish' }) {
 
   return (
     <div className={`cc-notepad-section cc-notepad-section--${variant}`}>
-      <p className="cc-notepad-section__heading">{heading}</p>
+      {heading && <p className="cc-notepad-section__heading">{heading}</p>}
       <ul className="cc-notepad__chips">
         {labels.map((label, index) => {
           const isNew = index >= prevCount;
@@ -45,16 +44,14 @@ export default function CleverWishAndVehicleNotepad({
 }) {
   if (!wishLabels.length && !vehicleLabels.length && !chapterTitle) return null;
 
-  const wishHeading = wishLabels.length
-    ? (wishLabels.length < 5 ? 'Ihr Wunschprofil' : 'Ihr Wunschprofil')
-    : null;
+  const wishHeading = null;
 
   return (
-    <aside className="cc-dual-notepad" aria-label="Clever Notizen">
+    <aside className="cc-dual-notepad" aria-label="Ihr Wunsch">
       {chapterTitle && (
         <p className="cc-dual-notepad__chapter">{chapterTitle}</p>
       )}
-      {wishHeading && (
+      {wishLabels.length > 0 && (
         <NotepadSection heading={wishHeading} labels={wishLabels} variant="wish" />
       )}
       {vehicleLabels.length > 0 && (

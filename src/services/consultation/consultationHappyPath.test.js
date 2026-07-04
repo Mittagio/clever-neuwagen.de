@@ -45,7 +45,7 @@ function testHappyPathFlow() {
   assert.equal(session.phase, CONVERSATION_PHASE.CONVERSATION);
   assert.ok(session.notepadLabels.length >= 4, 'Notizleiste soll wachsen');
   assert.ok(session.turns.some((t) => t.type === TURN_TYPE.CUSTOMER));
-  assert.ok(session.turns.some((t) => t.type === TURN_TYPE.LEARNED));
+  assert.ok(!session.turns.some((t) => t.type === TURN_TYPE.LEARNED));
   assert.ok(session.turns.some((t) => t.type === TURN_TYPE.CLEVER));
   assert.equal(session.pendingQuestion?.id, 'longDistance');
 

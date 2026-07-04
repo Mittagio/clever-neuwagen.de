@@ -1,19 +1,29 @@
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import './clever-conversation.css';
 
-export default function CleverConversationTurn({ turn, onOptionSelect }) {
+export default function CleverConversationTurn({
+  turn,
+  onOptionSelect,
+  isActiveQuestion = false,
+  isTyping = false,
+}) {
   if (!turn) return null;
 
   if (turn.type === 'customer') {
     return (
-      <p className="cc-customer-line cc-turn-enter" aria-label="Ihre Antwort">
-        {turn.text}
-      </p>
+      <article className="cc-customer-reply cc-turn-enter" aria-label="Ihre Antwort">
+        <p className="cc-customer-reply__label">Sie</p>
+        <p className="cc-customer-reply__text">{turn.text}</p>
+      </article>
     );
   }
 
   if (turn.type === 'clever') {
     const isVehicle = turn.world === CLEVER_WORLD.VEHICLE_CONSULTATION;
+    const chipsClass = [
+      'cc-clever-turn__options',
+      isActiveQuestion && isTyping ? ' cc-clever-turn__options--dimmed' : '',
+    ].filter(Boolean).join(' ');
 
     return (
       <article
@@ -30,7 +40,7 @@ export default function CleverConversationTurn({ turn, onOptionSelect }) {
               </p>
             )}
             <div
-              className="cc-clever-turn__options"
+              className={chipsClass}
               role="group"
               aria-label={isVehicle ? 'Antwort-Hilfen' : 'Antwortmöglichkeiten'}
             >

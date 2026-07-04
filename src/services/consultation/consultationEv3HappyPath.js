@@ -66,6 +66,25 @@ const VEHICLE_LEARNED_FROM_ANSWER = {
   },
 };
 
+const EV3_OPTION_EMOJI = {
+  range: '🔋',
+  equipment: '✨',
+  balanced: '⚖️',
+  heatPump: '🌡️',
+  towbar: '🔗',
+  hud: '🎯',
+  camera360: '📷',
+  none: '—',
+};
+
+function withOptionEmoji(options = []) {
+  return options.map((option) => {
+    const emoji = EV3_OPTION_EMOJI[option.id];
+    if (!emoji || emoji === '—') return option;
+    return { ...option, label: `${emoji} ${option.label}` };
+  });
+}
+
 function vehicleQuestionTurn(question) {
   return {
     type: 'clever',
@@ -74,15 +93,7 @@ function vehicleQuestionTurn(question) {
     world: CLEVER_WORLD.VEHICLE_CONSULTATION,
     text: question.prompt,
     optionsHint: question.optionsHint ?? 'Zum Beispiel:',
-    options: question.options ?? [],
-  };
-}
-
-function vehicleLearnedTurn(labels) {
-  return {
-    type: VEHICLE_TURN_TYPE.VEHICLE_LEARNED,
-    id: `vehicle-learned-${Date.now()}-${labels.join('-')}`,
-    labels: [...labels],
+    options: withOptionEmoji(question.options ?? []),
   };
 }
 
@@ -302,7 +313,6 @@ export function submitVehicleQuestionAnswer(session, payload = {}) {
     turns: [
       ...session.turns,
       customerTurn(displayText),
-      ...(learned.length ? [vehicleLearnedTurn(learned)] : []),
     ],
   };
 

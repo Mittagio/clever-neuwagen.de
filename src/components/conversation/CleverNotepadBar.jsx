@@ -15,10 +15,11 @@ export default function CleverNotepadBar({ labels = [] }) {
   if (!labels.length) return null;
 
   const prevCount = prevCountRef.current;
+  const heading = getNotepadHeading(labels.length);
 
   return (
-    <aside className="cc-notepad" aria-label="Was Clever über Sie weiß">
-      <p className="cc-notepad__heading">{getNotepadHeading(labels.length)}</p>
+    <aside className="cc-notepad" aria-label="Ihr Wunsch">
+      {heading && <p className="cc-notepad__heading">{heading}</p>}
       <ul className="cc-notepad__chips">
         {labels.map((label, index) => {
           const isNew = index >= prevCount;

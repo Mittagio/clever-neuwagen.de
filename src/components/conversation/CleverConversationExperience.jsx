@@ -28,8 +28,7 @@ import {
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import CleverNotepadBar from './CleverNotepadBar.jsx';
 import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
-import CleverLearnedBlock from './CleverLearnedBlock.jsx';
-import CleverVehicleLearnedBlock from './CleverVehicleLearnedBlock.jsx';
+import CleverNotingFlash from './CleverNotingFlash.jsx';
 import CleverConversationTurn from './CleverConversationTurn.jsx';
 import CleverRecommendationMoment from './CleverRecommendationMoment.jsx';
 import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.jsx';
@@ -37,31 +36,38 @@ import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import './clever-conversation.css';
 
+const SKIPPED_TURN_TYPES = new Set([
+  TURN_TYPE.LEARNED,
+  VEHICLE_TURN_TYPE.VEHICLE_LEARNED,
+]);
+
 const TURN_REVEAL_DELAY = {
-  [TURN_TYPE.CUSTOMER]: 280,
-  [TURN_TYPE.LEARNED]: 480,
-  [TURN_TYPE.CLEVER]: 720,
+  [TURN_TYPE.CUSTOMER]: 240,
+  [TURN_TYPE.CLEVER]: 520,
   [TURN_TYPE.THINKING]: 320,
   [TURN_TYPE.RECOMMENDATION]: 400,
   [TURN_TYPE.HANDOFF]: 420,
-  [VEHICLE_TURN_TYPE.VEHICLE_LEARNED]: 480,
-  [VEHICLE_TURN_TYPE.CLEVER_REFLECTION]: 560,
+  [VEHICLE_TURN_TYPE.CLEVER_REFLECTION]: 480,
   [VEHICLE_TURN_TYPE.VEHICLE_MINI_RECOMMENDATION]: 400,
   [OFFER_TURN_TYPE.PERSONAL_HANDOFF]: 480,
   [OFFER_TURN_TYPE.HANDOFF_COMPLETE]: 420,
 };
 
 function delayForTurn(turn, prevTurn) {
-  if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === TURN_TYPE.LEARNED) {
-    return 900;
+  if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === TURN_TYPE.CUSTOMER) {
+    return 360;
   }
   if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === VEHICLE_TURN_TYPE.CLEVER_REFLECTION) {
-    return 640;
+    return 480;
   }
-  if (turn.type === VEHICLE_TURN_TYPE.CLEVER_REFLECTION && prevTurn?.type === VEHICLE_TURN_TYPE.VEHICLE_LEARNED) {
-    return 520;
+  if (turn.type === VEHICLE_TURN_TYPE.CLEVER_REFLECTION && prevTurn?.type === TURN_TYPE.CUSTOMER) {
+    return 400;
   }
-  return TURN_REVEAL_DELAY[turn.type] ?? 360;
+  return TURN_REVEAL_DELAY[turn.type] ?? 320;
+}
+
+function buildLabelKey(wishLabels = [], vehicleLabels = []) {
+  return [...wishLabels, '||', ...vehicleLabels].join('|');
 }
 
 export default function CleverConversationExperience({
@@ -73,7 +79,9 @@ export default function CleverConversationExperience({
   const [inputValue, setInputValue] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
+  const [notingFlash, setNotingFlash] = useState(null);
   const scrollRef = useRef(null);
+  const labelKeyRef = useRef('');
   const opening = useMemo(() => getOpeningCopy(dealerName), [dealerName]);
   const inVehicleWorld = isInVehicleWorld(session);
   const inOfferWorld = isInOfferWorld(session);
@@ -84,10 +92,14 @@ export default function CleverConversationExperience({
   }, [dealerName]);
 
   useEffect(() => {
-    if (revealedCount >= session.turns.length) return undefined;
+    const playableCount = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type)).length;
+    if (revealedCount >= playableCount) return undefined;
 
-    const nextTurn = session.turns[revealedCount];
-    const prevTurn = revealedCount > 0 ? session.turns[revealedCount - 1] : null;
+    const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
+    const nextTurn = playableTurns[revealedCount];
+    if (!nextTurn) return undefined;
+
+    const prevTurn = revealedCount > 0 ? playableTurns[revealedCount - 1] : null;
     const delay = delayForTurn(nextTurn, prevTurn);
 
     const timer = window.setTimeout(() => {
@@ -96,6 +108,21 @@ export default function CleverConversationExperience({
 
     return () => window.clearTimeout(timer);
   }, [revealedCount, session.turns]);
+
+  useEffect(() => {
+    const labelKey = buildLabelKey(session.notepadLabels, session.vehicleNotepadLabels);
+    const prevLabels = labelKeyRef.current ? labelKeyRef.current.split('|').filter(Boolean) : [];
+    const currentLabels = labelKey.split('|').filter(Boolean);
+    const added = currentLabels.filter((label) => !prevLabels.includes(label));
+
+    labelKeyRef.current = labelKey;
+
+    if (!added.length) return undefined;
+
+    setNotingFlash(added);
+    const timer = window.setTimeout(() => setNotingFlash(null), 1800);
+    return () => window.clearTimeout(timer);
+  }, [session.notepadLabels, session.vehicleNotepadLabels]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -167,7 +194,11 @@ export default function CleverConversationExperience({
 
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
   const inputEnabled = isInputEnabled(session) && !inOfferWorld;
-  const visibleTurns = session.turns.slice(0, revealedCount);
+  const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
+  const visibleTurns = playableTurns.slice(0, revealedCount);
+  const activeQuestionId = session.pendingQuestion?.id ?? null;
+  const chipsVisible = inputEnabled && Boolean(activeQuestionId);
+  const isTyping = Boolean(inputValue.trim());
   const inputPlaceholder = inVehicleWorld && inputEnabled
     ? getVehicleInputPlaceholder()
     : opening.placeholder;
@@ -217,13 +248,8 @@ export default function CleverConversationExperience({
         )}
 
         <div className="cc-transcript">
+          {notingFlash && <CleverNotingFlash labels={notingFlash} />}
           {visibleTurns.map((turn) => {
-            if (turn.type === TURN_TYPE.LEARNED) {
-              return <CleverLearnedBlock key={turn.id} labels={turn.labels} />;
-            }
-            if (turn.type === VEHICLE_TURN_TYPE.VEHICLE_LEARNED) {
-              return <CleverVehicleLearnedBlock key={turn.id} labels={turn.labels} />;
-            }
             if (turn.type === TURN_TYPE.RECOMMENDATION) {
               return (
                 <CleverRecommendationMoment
@@ -269,6 +295,8 @@ export default function CleverConversationExperience({
                 key={turn.id}
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
+                isActiveQuestion={turn.type === TURN_TYPE.CLEVER && turn.questionId === activeQuestionId}
+                isTyping={isTyping}
               />
             );
           })}
@@ -277,7 +305,12 @@ export default function CleverConversationExperience({
 
       {!inOfferWorld && (
         <form
-          className={`cc-input-bar${inputFocused ? ' cc-input-bar--focused' : ''}${inVehicleWorld && inputEnabled ? ' cc-input-bar--vehicle-active' : ''}`}
+          className={[
+            'cc-input-bar',
+            inputFocused ? 'cc-input-bar--focused' : '',
+            inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
+            chipsVisible && !isTyping && !inputFocused ? ' cc-input-bar--chips-visible' : '',
+          ].filter(Boolean).join('')}
           onSubmit={handleFormSubmit}
         >
           <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
