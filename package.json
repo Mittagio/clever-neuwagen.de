@@ -119,7 +119,7 @@
     "test:customer-portal-self-disclosure": "node src/services/crm/customerPortalSelfDisclosure.test.js",
     "test:customer-portal-self-disclosure-review": "node src/services/crm/customerPortalSelfDisclosureReview.test.js",
     "test:clever-customer-query": "node src/services/clever/cleverCustomerQuery.test.js",
-    "test:consultation": "node src/services/consultation/consultationPhase1.test.js && node src/services/consultation/consultationHappyPath.test.js && node src/services/consultation/consultationEv3HappyPath.test.js && node src/services/dealer/cleverSalesAdvisor.test.js && node src/services/dealer/cleverConsultationAkte.test.js",
+    "test:consultation": "node src/services/consultation/consultationPhase1.test.js && node src/services/consultation/consultationHappyPath.test.js && node src/services/consultation/consultationEv3HappyPath.test.js && node src/services/consultation/consultationOfferHandoff.test.js && node src/services/dealer/cleverSalesAdvisor.test.js && node src/services/dealer/cleverConsultationAkte.test.js",
     "test:frag-clever-fixes": "node src/services/clever/fragCleverFixes.test.js",
     "test:advisor-inbox": "node src/services/dealer/advisorInboxService.test.js",
     "test:customer-offer-question": "node src/services/dealer/customerOfferQuestionFlow.test.js",

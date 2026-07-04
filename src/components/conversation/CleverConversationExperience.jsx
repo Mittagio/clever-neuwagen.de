@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLeads } from '../../context/LeadsContext.jsx';
+import { notifyCustomerInquirySubmitted } from '../../services/mail/mailInquiryNotify.js';
 import {
   CONVERSATION_PHASE,
   TURN_TYPE,
   VEHICLE_CONVERSATION_PHASE,
   VEHICLE_TURN_TYPE,
+  OFFER_CONVERSATION_PHASE,
+  OFFER_TURN_TYPE,
   advanceFromThinking,
   advanceFromVehicleThinking,
   createHappyPathSession,
   getOpeningCopy,
   getVehicleInputPlaceholder,
   HAPPY_PATH_EXAMPLE_MESSAGE,
+  isInOfferWorld,
   isInVehicleWorld,
   isInputEnabled,
   selectRecommendedModel,
   submitConversationInput,
   submitDealerHandoff,
   submitOpeningMessage,
+  submitPersonalHandoff,
   submitQuestionAnswer,
   submitVehicleAnswer,
 } from '../../services/consultation/consultationHappyPath.js';
@@ -27,7 +33,8 @@ import CleverVehicleLearnedBlock from './CleverVehicleLearnedBlock.jsx';
 import CleverConversationTurn from './CleverConversationTurn.jsx';
 import CleverRecommendationMoment from './CleverRecommendationMoment.jsx';
 import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.jsx';
-import CleverDealerPrepCard from './CleverDealerPrepCard.jsx';
+import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
+import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import './clever-conversation.css';
 
 const TURN_REVEAL_DELAY = {
@@ -40,7 +47,8 @@ const TURN_REVEAL_DELAY = {
   [VEHICLE_TURN_TYPE.VEHICLE_LEARNED]: 480,
   [VEHICLE_TURN_TYPE.CLEVER_REFLECTION]: 560,
   [VEHICLE_TURN_TYPE.VEHICLE_MINI_RECOMMENDATION]: 400,
-  [VEHICLE_TURN_TYPE.DEALER_PREP_CARD]: 420,
+  [OFFER_TURN_TYPE.PERSONAL_HANDOFF]: 480,
+  [OFFER_TURN_TYPE.HANDOFF_COMPLETE]: 420,
 };
 
 function delayForTurn(turn, prevTurn) {
@@ -56,7 +64,11 @@ function delayForTurn(turn, prevTurn) {
   return TURN_REVEAL_DELAY[turn.type] ?? 360;
 }
 
-export default function CleverConversationExperience({ dealerName = 'Autohaus' }) {
+export default function CleverConversationExperience({
+  dealerName = 'Autohaus',
+  dealerConditions = {},
+}) {
+  const { addLead } = useLeads();
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
   const [inputValue, setInputValue] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
@@ -64,6 +76,7 @@ export default function CleverConversationExperience({ dealerName = 'Autohaus' }
   const scrollRef = useRef(null);
   const opening = useMemo(() => getOpeningCopy(dealerName), [dealerName]);
   const inVehicleWorld = isInVehicleWorld(session);
+  const inOfferWorld = isInOfferWorld(session);
 
   useEffect(() => {
     setSession(createHappyPathSession(dealerName));
@@ -137,30 +150,50 @@ export default function CleverConversationExperience({ dealerName = 'Autohaus' }
   };
 
   const handleDealerHandoff = () => {
-    setSession((prev) => submitDealerHandoff(prev));
+    setSession((prev) => submitDealerHandoff(prev, dealerConditions));
   };
 
+  const handlePersonalHandoffSubmit = useCallback((handoffForm) => {
+    const result = submitPersonalHandoff(session, handoffForm, dealerConditions);
+    addLead(result.lead);
+    void notifyCustomerInquirySubmitted(result.lead, {
+      dealerName: dealerConditions?.dealerName ?? dealerName,
+      dealerPhone: dealerConditions?.contact?.phone ?? dealerConditions?.phone,
+      dealerEmail: dealerConditions?.contact?.email ?? dealerConditions?.email,
+      contactName: dealerConditions?.contact?.name,
+    });
+    setSession(result.session);
+  }, [session, dealerConditions, dealerName, addLead]);
+
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
-  const inputEnabled = isInputEnabled(session);
+  const inputEnabled = isInputEnabled(session) && !inOfferWorld;
   const visibleTurns = session.turns.slice(0, revealedCount);
   const inputPlaceholder = inVehicleWorld && inputEnabled
     ? getVehicleInputPlaceholder()
     : opening.placeholder;
 
+  const experienceClass = [
+    'cc-experience',
+    inVehicleWorld ? 'cc-experience--vehicle' : '',
+    inOfferWorld ? 'cc-experience--offer' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={`cc-experience${inVehicleWorld ? ' cc-experience--vehicle' : ''}`}>
+    <div className={experienceClass}>
       <header className="cc-experience__dealer">
         <span className="cc-experience__dealer-name">{dealerName}</span>
       </header>
 
-      {inVehicleWorld ? (
-        <CleverWishAndVehicleNotepad
-          wishLabels={session.notepadLabels}
-          vehicleLabels={session.vehicleNotepadLabels}
-          chapterTitle={session.vehicleChapterTitle}
-        />
-      ) : (
-        <CleverNotepadBar labels={session.notepadLabels} />
+      {!inOfferWorld && (
+        inVehicleWorld ? (
+          <CleverWishAndVehicleNotepad
+            wishLabels={session.notepadLabels}
+            vehicleLabels={session.vehicleNotepadLabels}
+            chapterTitle={session.vehicleChapterTitle}
+          />
+        ) : (
+          <CleverNotepadBar labels={session.notepadLabels} />
+        )
       )}
 
       <div className="cc-experience__scroll" ref={scrollRef}>
@@ -212,8 +245,17 @@ export default function CleverConversationExperience({ dealerName = 'Autohaus' }
                 />
               );
             }
-            if (turn.type === VEHICLE_TURN_TYPE.DEALER_PREP_CARD) {
-              return <CleverDealerPrepCard key={turn.id} summary={turn.summary} />;
+            if (turn.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF) {
+              return (
+                <CleverPersonalHandoff
+                  key={turn.id}
+                  handoffView={turn.handoffView}
+                  onSubmit={handlePersonalHandoffSubmit}
+                />
+              );
+            }
+            if (turn.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE) {
+              return <CleverHandoffComplete key={turn.id} completeView={turn.completeView} />;
             }
             if (turn.type === TURN_TYPE.HANDOFF) {
               return (
@@ -233,36 +275,38 @@ export default function CleverConversationExperience({ dealerName = 'Autohaus' }
         </div>
       </div>
 
-      <form
-        className={`cc-input-bar${inputFocused ? ' cc-input-bar--focused' : ''}${inVehicleWorld && inputEnabled ? ' cc-input-bar--vehicle-active' : ''}`}
-        onSubmit={handleFormSubmit}
-      >
-        <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
-          {inVehicleWorld ? 'Oder einfach ergänzen' : 'Erzählen Sie Clever, wonach Sie suchen'}
-        </label>
-        <div className="cc-input-bar__row">
-          <input
-            id="cc-conversation-input"
-            type="text"
-            className="cc-input-bar__field"
-            placeholder={inputPlaceholder}
-            value={inputValue}
-            disabled={!inputEnabled}
-            onChange={(event) => setInputValue(event.target.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            className="cc-input-bar__send"
-            disabled={!inputEnabled || !inputValue.trim()}
-            aria-label="Senden"
-          >
-            <span aria-hidden>➜</span>
-          </button>
-        </div>
-      </form>
+      {!inOfferWorld && (
+        <form
+          className={`cc-input-bar${inputFocused ? ' cc-input-bar--focused' : ''}${inVehicleWorld && inputEnabled ? ' cc-input-bar--vehicle-active' : ''}`}
+          onSubmit={handleFormSubmit}
+        >
+          <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
+            {inVehicleWorld ? 'Oder einfach ergänzen' : 'Erzählen Sie Clever, wonach Sie suchen'}
+          </label>
+          <div className="cc-input-bar__row">
+            <input
+              id="cc-conversation-input"
+              type="text"
+              className="cc-input-bar__field"
+              placeholder={inputPlaceholder}
+              value={inputValue}
+              disabled={!inputEnabled}
+              onChange={(event) => setInputValue(event.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              className="cc-input-bar__send"
+              disabled={!inputEnabled || !inputValue.trim()}
+              aria-label="Senden"
+            >
+              <span aria-hidden>➜</span>
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

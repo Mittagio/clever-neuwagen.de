@@ -2,6 +2,7 @@
  * Welt 2 – EV3 Fahrzeugberatung (Happy Path, kein Engine-Overkill).
  */
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import { beginOfferHandoff } from './consultationOfferHandoff.js';
 
 export const VEHICLE_CONVERSATION_PHASE = {
   VEHICLE_CONVERSATION: 'vehicle_conversation',
@@ -322,21 +323,11 @@ export function advanceFromVehicleThinking(session) {
   return finishVehicleMiniRecommendation(session);
 }
 
-export function submitDealerHandoff(session) {
-  const summary = buildDealerPrepSummary(session);
-  return {
-    ...session,
-    phase: VEHICLE_CONVERSATION_PHASE.DEALER_PREP,
-    dealerPrepSummary: summary,
-    turns: [
-      ...session.turns,
-      {
-        type: VEHICLE_TURN_TYPE.DEALER_PREP_CARD,
-        id: `dealer-prep-${Date.now()}`,
-        summary,
-      },
-    ],
-  };
+/**
+ * Welt 2 → 3: Persönliche Übergabe starten (Screen 5).
+ */
+export function submitDealerHandoff(session, dealerConditions = {}) {
+  return beginOfferHandoff(session, dealerConditions);
 }
 
 export function mapVehicleFreetextToAnswer(questionId, text = '') {

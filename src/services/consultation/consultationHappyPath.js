@@ -524,3 +524,15 @@ export {
   VEHICLE_CONVERSATION_PHASE,
   VEHICLE_TURN_TYPE,
 } from './consultationEv3HappyPath.js';
+
+export {
+  beginOfferHandoff,
+  submitPersonalHandoff,
+  buildPersonalHandoffView,
+  createLeadFromConsultationHappyPath,
+  validateHandoffForm,
+  isInOfferWorld,
+  OFFER_CONVERSATION_PHASE,
+  OFFER_TURN_TYPE,
+  CONTACT_TIMING_OPTIONS,
+} from './consultationOfferHandoff.js';

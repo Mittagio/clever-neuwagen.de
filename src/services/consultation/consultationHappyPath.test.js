@@ -18,11 +18,15 @@ import {
   selectRecommendedModel,
   submitVehicleAnswer,
   submitDealerHandoff,
+  submitPersonalHandoff,
   isInVehicleWorld,
+  OFFER_CONVERSATION_PHASE,
+  OFFER_TURN_TYPE,
 } from './consultationHappyPath.js';
 import { buildEv3MiniRecommendation } from './consultationEv3HappyPath.js';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
 
 function testInitialParse() {
   const profile = mergeTextIntoNeedProfile(HAPPY_PATH_EXAMPLE_MESSAGE);
@@ -102,14 +106,26 @@ function testEv3VehicleConsultationFlow() {
   assert.equal(session.vehicleMiniRecommendation.hasOffer, false);
   assert.ok(!JSON.stringify(session.vehicleMiniRecommendation).match(/€\s*\d|leasing|angebot/i));
 
-  session = submitDealerHandoff(session);
-  assert.equal(session.phase, VEHICLE_CONVERSATION_PHASE.DEALER_PREP);
-  const prepTurn = session.turns.find((t) => t.type === VEHICLE_TURN_TYPE.DEALER_PREP_CARD);
-  assert.ok(prepTurn?.summary?.items?.includes('Ihr Wunschprofil'));
-  assert.ok(prepTurn?.summary?.items?.includes('Die EV3-Richtung'));
+  session = submitDealerHandoff(session, { dealerId: 'autohaus-trinkle', contact: { name: 'Mike Quach' } });
+  assert.equal(session.phase, OFFER_CONVERSATION_PHASE.OFFER_HANDOFF);
+  const prepTurn = session.turns.find((t) => t.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF);
+  assert.ok(prepTurn?.handoffView?.advisor?.name);
+  assert.ok(prepTurn?.handoffView?.preparedItems?.includes('Ihr Wunschprofil'));
   assert.ok(session.notepadLabels.length >= 4);
 
-  console.log('✓ Welt 2: EV3-Fragen → getrennte Notizen → Mini-Empfehlung → Handoff-Karte');
+  const handoffResult = submitPersonalHandoff(session, {
+    firstName: 'Tom',
+    lastName: 'Kunde',
+    email: 'tom@example.de',
+    contactPreference: 'phone',
+    contactTiming: 'today',
+  }, { dealerId: 'autohaus-trinkle', contact: { name: 'Mike Quach' } });
+  assert.equal(handoffResult.session.phase, OFFER_CONVERSATION_PHASE.OFFER_COMPLETE);
+  assert.equal(handoffResult.session.needProfile.world, CLEVER_WORLD.OFFER);
+  assert.equal(handoffResult.journey?.phase, JOURNEY_PHASE.FIRST_CONTACT);
+  assert.ok(handoffResult.lead.crm.needProfile.world === 'offer');
+
+  console.log('✓ Welt 2: EV3-Fragen → getrennte Notizen → Mini-Empfehlung → Welt 3 Übergabe');
 }
 
 function testEv3MiniRecommendationContent() {

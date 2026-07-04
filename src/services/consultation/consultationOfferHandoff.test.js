@@ -1,0 +1,131 @@
+/**
+ * Welt 3 – Persönliche Übergabe (Happy Path).
+ */
+import assert from 'node:assert/strict';
+import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
+import { CLEVER_WORLD } from './consultationWorlds.js';
+import {
+  OFFER_CONVERSATION_PHASE,
+  OFFER_TURN_TYPE,
+  beginOfferHandoff,
+  buildPersonalHandoffView,
+  createLeadFromConsultationHappyPath,
+  submitPersonalHandoff,
+  validateHandoffForm,
+} from './consultationOfferHandoff.js';
+import {
+  advanceFromThinking,
+  advanceFromVehicleThinking,
+  createHappyPathSession,
+  HAPPY_PATH_EXAMPLE_MESSAGE,
+  selectRecommendedModel,
+  submitOpeningMessage,
+  submitQuestionAnswer,
+  submitVehicleAnswer,
+} from './consultationHappyPath.js';
+
+function buildFullSession() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  session = submitQuestionAnswer(session, { answerId: 'often' });
+  session = submitQuestionAnswer(session, { text: 'Ja, Garage' });
+  session = advanceFromThinking(session);
+  session = selectRecommendedModel(session, 'ev3');
+  session = submitVehicleAnswer(session, { answerId: 'range' });
+  session = submitVehicleAnswer(session, { answerId: 'heatPump' });
+  session = advanceFromVehicleThinking(session);
+  return session;
+}
+
+const dealerConditions = {
+  dealerId: 'autohaus-trinkle',
+  dealerName: 'Autohaus Trinkle',
+  contact: { name: 'Mike Quach', phone: '+49 170 5550199', email: 'mike@autohaus-trinkle.de' },
+};
+
+function testHandoffView() {
+  const session = buildFullSession();
+  const view = buildPersonalHandoffView(session, dealerConditions);
+
+  assert.equal(view.title, 'Ihr Wunsch ist vorbereitet.');
+  assert.ok(view.preparedItems.includes('Ihr Wunschprofil'));
+  assert.ok(view.preparedItems.includes('Passendes Fahrzeug'));
+  assert.ok(view.advisor.name.includes('Mike'));
+  assert.equal(view.hasRate, false);
+  assert.equal(view.hasOffer, false);
+  assert.ok(!view.directionLine?.match(/€\s*\d|leasing/i));
+  assert.ok(!view.trimLine?.match(/€\s*\d|leasing/i));
+  console.log('✓ Beraterkarte wird angezeigt, keine Rate, kein Angebot');
+}
+
+function testBeginOfferHandoff() {
+  const session = beginOfferHandoff(buildFullSession(), dealerConditions);
+  assert.equal(session.phase, OFFER_CONVERSATION_PHASE.OFFER_HANDOFF);
+  assert.ok(session.turns.some((t) => t.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF));
+  assert.equal(session.needProfile.world, CLEVER_WORLD.OFFER);
+  console.log('✓ Journey geht in Welt 3');
+}
+
+function testLeadCreation() {
+  const session = buildFullSession();
+  const form = {
+    firstName: 'Anna',
+    lastName: 'Muster',
+    email: 'anna@example.de',
+    phone: '01701234567',
+    contactPreference: 'whatsapp',
+    contactTiming: 'tomorrow',
+    advisorNote: 'Lieber nachmittags',
+  };
+
+  const lead = createLeadFromConsultationHappyPath({ session, handoffForm: form, dealerConditions });
+
+  assert.ok(lead.crm.needProfile);
+  assert.equal(lead.crm.needProfile.world, CLEVER_WORLD.OFFER);
+  assert.ok(lead.crm.needProfile.understoodLabels?.length >= 4);
+  assert.ok(lead.sonderwuensche?.consultation?.consultationHandoff);
+  assert.match(lead.notes, /EV3/i);
+  assert.ok(lead.notes.includes('Wärmepumpe') || lead.notes.includes('Ausstattung'));
+  assert.equal(lead.contact.email, 'anna@example.de');
+  assert.equal(lead.contact.name, 'Anna Muster');
+  assert.ok(!lead.currentRate);
+  assert.ok(!lead.desiredRate);
+  console.log('✓ NeedProfile, EV3-Richtung, Ausstattung und Kontakt im Lead');
+}
+
+function testSubmitPersonalHandoff() {
+  const session = buildFullSession();
+  const form = {
+    firstName: 'Tom',
+    lastName: 'Kunde',
+    email: 'tom@example.de',
+    contactPreference: 'email',
+    contactTiming: 'this_week',
+  };
+
+  const result = submitPersonalHandoff(session, form, dealerConditions);
+  assert.equal(result.session.phase, OFFER_CONVERSATION_PHASE.OFFER_COMPLETE);
+  assert.equal(result.session.needProfile.world, CLEVER_WORLD.OFFER);
+  assert.equal(result.journey?.phase, JOURNEY_PHASE.FIRST_CONTACT);
+  assert.ok(result.session.turns.some((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE));
+  console.log('✓ Persönliche Übergabe erzeugt Lead und Abschluss');
+}
+
+function testValidation() {
+  const invalid = validateHandoffForm({ firstName: '', lastName: 'X', email: 'bad' });
+  assert.equal(invalid.valid, false);
+  const valid = validateHandoffForm({
+    firstName: 'A',
+    lastName: 'B',
+    email: 'a@b.de',
+  });
+  assert.equal(valid.valid, true);
+  console.log('✓ Kontaktdaten-Validierung');
+}
+
+testHandoffView();
+testBeginOfferHandoff();
+testLeadCreation();
+testSubmitPersonalHandoff();
+testValidation();
+console.log('\nAlle Welt-3-Happy-Path-Tests bestanden.');
