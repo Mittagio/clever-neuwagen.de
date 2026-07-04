@@ -13,6 +13,11 @@ import {
   mergeTextIntoNeedProfile,
 } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import {
+  beginEv3VehicleConsultation,
+  isVehicleInputEnabled,
+  submitVehicleQuestionAnswer,
+} from './consultationEv3HappyPath.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -118,6 +123,11 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
     needProfile: createEmptyNeedProfile(),
     consultationProfile: createConsultationProfile(),
     notepadLabels: [],
+    vehicleNotepadLabels: [],
+    vehicleProfile: { answers: {} },
+    vehicleChapterTitle: null,
+    vehicleMiniRecommendation: null,
+    dealerPrepSummary: null,
     pendingQuestion: null,
     recommendation: null,
     selectedModelKey: null,
@@ -472,6 +482,9 @@ export function submitConversationInput(session, text = '') {
   }
 
   if (session.pendingQuestion) {
+    if (session.pendingQuestion.world === CLEVER_WORLD.VEHICLE_CONSULTATION) {
+      return submitVehicleQuestionAnswer(session, { text: trimmed });
+    }
     return submitQuestionAnswer(session, { text: trimmed });
   }
 
@@ -489,31 +502,25 @@ export function submitConversationInput(session, text = '') {
  */
 export function selectRecommendedModel(session, modelKey) {
   if (!modelKey) return session;
-  const modelLabel = session.recommendation?.primary?.modelLabel ?? modelKey;
-  return {
-    ...session,
-    phase: CONVERSATION_PHASE.HANDOFF,
-    selectedModelKey: modelKey,
-    needProfile: {
-      ...session.needProfile,
-      selectedModelKey: modelKey,
-      world: CLEVER_WORLD.VEHICLE_CONSULTATION,
-    },
-    turns: [
-      ...session.turns,
-      {
-        type: TURN_TYPE.HANDOFF,
-        id: `handoff-${Date.now()}`,
-        modelKey,
-        modelLabel,
-        chapterTitle: `Fahrzeugberatung · Kia ${modelLabel}`,
-        text: `Prima. Dann schauen wir uns den Kia ${modelLabel} gemeinsam etwas genauer an.`,
-      },
-    ],
-  };
+  return beginEv3VehicleConsultation(session, modelKey);
+}
+
+export function submitVehicleAnswer(session, payload = {}) {
+  return submitVehicleQuestionAnswer(session, payload);
 }
 
 export function isInputEnabled(session) {
   return session.phase === CONVERSATION_PHASE.OPENING
-    || session.phase === CONVERSATION_PHASE.CONVERSATION;
+    || session.phase === CONVERSATION_PHASE.CONVERSATION
+    || isVehicleInputEnabled(session);
 }
+
+export {
+  beginEv3VehicleConsultation,
+  advanceFromVehicleThinking,
+  submitDealerHandoff,
+  getVehicleInputPlaceholder,
+  isInVehicleWorld,
+  VEHICLE_CONVERSATION_PHASE,
+  VEHICLE_TURN_TYPE,
+} from './consultationEv3HappyPath.js';

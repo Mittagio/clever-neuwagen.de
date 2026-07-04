@@ -225,6 +225,33 @@
   margin-top: 24px;
 }
 
+.cc-clever-turn__options-wrap {
+  margin-top: 24px;
+}
+
+.cc-clever-turn--vehicle .cc-clever-turn__options-wrap {
+  margin-top: 20px;
+}
+
+.cc-clever-turn__options-hint {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  color: var(--cc-muted);
+  letter-spacing: 0.01em;
+}
+
+.cc-clever-turn__input-nudge {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: var(--cc-muted);
+  line-height: 1.45;
+}
+
+.cc-clever-turn--vehicle .cc-clever-turn__options {
+  margin-top: 0;
+  gap: 6px;
+}
+
 .cc-option-chip {
   padding: 10px 16px;
   border: 1px solid var(--cc-chip-border);
@@ -236,9 +263,32 @@
   transition: border-color 180ms ease, background 180ms ease;
 }
 
+.cc-option-chip--hint {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--cc-muted);
+  text-decoration: underline;
+  text-decoration-color: #d1d5db;
+  text-underline-offset: 3px;
+}
+
+.cc-option-chip--hint:hover {
+  color: var(--cc-accent);
+  background: rgba(0, 0, 0, 0.03);
+  text-decoration-color: #9ca3af;
+}
+
 .cc-option-chip:hover {
   border-color: #d1d5db;
   background: var(--cc-chip-bg);
+}
+
+.cc-option-chip--hint:hover {
+  border: none;
 }
 
 .cc-thinking {
@@ -539,6 +589,17 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
 }
 
+.cc-input-bar--vehicle-active .cc-input-bar__row {
+  border-color: #c9c4bc;
+  background: #fff;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cc-input-bar--vehicle-active .cc-input-bar__field::placeholder {
+  color: #6b7280;
+  font-style: italic;
+}
+
 .cc-input-bar__field {
   flex: 1;
   border: none;
@@ -591,3 +652,226 @@
     animation: none;
   }
 }
+
+/* ── Welt 2 – Fahrzeugberatung ── */
+
+.cc-experience--vehicle {
+  --cc-bg: #f9f8f6;
+}
+
+.cc-dual-notepad {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 8px 20px 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e8e4df;
+  backdrop-filter: blur(8px);
+}
+
+.cc-dual-notepad__chapter {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8e4df;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+  text-align: center;
+}
+
+.cc-notepad-section + .cc-notepad-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f0eeeb;
+}
+
+.cc-notepad-section__heading {
+  margin: 0 0 10px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--cc-muted);
+  letter-spacing: 0.03em;
+}
+
+.cc-notepad-section--vehicle .cc-notepad-section__heading {
+  color: #6b5f52;
+}
+
+.cc-learned--vehicle .cc-learned__divider {
+  color: #6b5f52;
+}
+
+.cc-clever-turn--reflection .cc-clever-turn__text {
+  color: var(--cc-muted);
+  font-style: italic;
+}
+
+/* ── Mini-Empfehlung Welt 2 ── */
+
+.cc-vehicle-mini {
+  text-align: center;
+  padding: 8px 0 24px;
+}
+
+.cc-vehicle-mini__headline {
+  margin: 0 0 28px;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.cc-vehicle-mini__direction {
+  margin-bottom: 32px;
+}
+
+.cc-vehicle-mini__battery {
+  margin: 0 0 6px;
+  font-size: clamp(1.375rem, 5vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cc-vehicle-mini__trim {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--cc-muted);
+}
+
+.cc-vehicle-mini__why {
+  text-align: left;
+  margin: 0 auto 36px;
+  max-width: 280px;
+}
+
+.cc-vehicle-mini__why-title {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cc-muted);
+}
+
+.cc-vehicle-mini__why-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cc-vehicle-mini__why-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.cc-vehicle-mini__why-item span {
+  color: var(--cc-check);
+  flex-shrink: 0;
+}
+
+.cc-vehicle-mini__cta {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 14px;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 10px;
+  background: var(--cc-accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cc-vehicle-mini__secondary {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: var(--cc-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+/* ── Welt 3 Andeutung ── */
+
+.cc-dealer-prep {
+  margin-top: 8px;
+  padding: 32px 20px 40px;
+  border-top: 2px solid #e8e4df;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, transparent 100%);
+  text-align: center;
+}
+
+.cc-dealer-prep__title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cc-dealer-prep__intro {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  color: var(--cc-muted);
+}
+
+.cc-dealer-prep__list {
+  margin: 0 auto 24px;
+  padding: 0;
+  list-style: none;
+  max-width: 260px;
+  text-align: left;
+}
+
+.cc-dealer-prep__item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.9375rem;
+}
+
+.cc-dealer-prep__item span {
+  color: var(--cc-check);
+  flex-shrink: 0;
+}
+
+.cc-dealer-prep__direction {
+  margin: 0 auto 28px;
+  max-width: 280px;
+  font-size: 0.875rem;
+  color: var(--cc-muted);
+  line-height: 1.5;
+}
+
+.cc-dealer-prep__direction p {
+  margin: 0 0 4px;
+}
+
+.cc-dealer-prep__cta {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 14px 22px;
+  border: 1px solid var(--cc-chip-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--cc-accent);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cc-handoff .cc-handoff__text {
+  text-align: left;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
