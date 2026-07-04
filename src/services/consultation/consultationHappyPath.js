@@ -162,9 +162,9 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
 
 export function getOpeningCopy(dealerName = 'Autohaus') {
   return {
-    greeting: 'Hallo.',
-    intro: `Ich bin Clever – Ihr Fahrzeugberater bei ${dealerName}.`,
+    greeting: `Willkommen im ${dealerName}.`,
     invitation: 'Erzählen Sie mir einfach, wonach Sie suchen.',
+    intro: 'Ich nehme Ihre Wünsche auf und bereite alles für Ihren persönlichen Berater vor.',
     placeholder: 'Ich suche …',
     examplesLabel: 'So könnte ein Satz klingen',
     exampleLabel: HAPPY_PATH_EXAMPLE_MESSAGE,

@@ -1,5 +1,29 @@
 /* Clever Conversation Experience – Phase 2 Happy Path (Feinschliff) */
 
+.cc-experience--embedded {
+  min-height: auto;
+  max-width: 100%;
+  border-radius: 0;
+}
+
+.cc-experience--embedded .cc-experience__scroll {
+  padding-bottom: 96px;
+  max-height: min(72dvh, 640px);
+}
+
+.cc-experience--embedded .cc-opening__invitation {
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.cc-experience--embedded .cc-opening__intro {
+  color: var(--cc-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+
 .cc-experience {
   --cc-bg: #f8f8f7;
   --cc-text: #1a1a1a;

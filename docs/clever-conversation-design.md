@@ -114,7 +114,9 @@ Keine Chatblasen links/rechts. Vertikale **Beratungsfläche**:
 
 ---
 
-# Screen 1 – Der Kunde beginnt (Welt 1: Wunsch aufnehmen)
+# Screen 1 – Der Kunde beginnt (Welt 1: Wunsch aufnehmen / **Empfang**)
+
+Die Händler-Startseite ist der **digitale Empfang** – nicht Landingpage, nicht Suche, nicht Modellkatalog.
 
 ## Emotion
 Einladung. Kein Druck. Keine Prüfung.

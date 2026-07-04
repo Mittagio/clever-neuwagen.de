@@ -12,6 +12,7 @@ import {
   advanceFromVehicleThinking,
   createHappyPathSession,
   getHappyPathNextQuestion,
+  getOpeningCopy,
   mapFreetextToQuestionAnswer,
   submitOpeningMessage,
   submitQuestionAnswer,
@@ -169,6 +170,15 @@ function testOpeningIsNotAQuestion() {
   console.log('✓ Erster Clever-Satz ist keine Frage (Kunde beginnt)');
 }
 
+function testReceptionOpeningCopy() {
+  const copy = getOpeningCopy('Autohaus Trinkle');
+  assert.match(copy.greeting, /Willkommen im Autohaus Trinkle/);
+  assert.match(copy.invitation, /wonach Sie suchen/);
+  assert.match(copy.intro, /persönlichen Berater vor/);
+  assert.doesNotMatch(copy.greeting, /Fahrzeugberater/);
+  console.log('✓ Empfangs-Copy: Willkommen, Wunsch aufnehmen, Verkäufer vorbereiten');
+}
+
 testInitialParse();
 testHappyPathFlow();
 testEv3VehicleConsultationFlow();
@@ -176,4 +186,5 @@ testEv3MiniRecommendationContent();
 testOnlyTwoGapQuestions();
 testFreetextMapping();
 testOpeningIsNotAQuestion();
+testReceptionOpeningCopy();
 console.log('\nAlle Happy-Path-Tests bestanden.');

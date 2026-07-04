@@ -28,6 +28,18 @@ Verwandte Dokumente:
 
 ---
 
+## Der digitale Empfang
+
+Die Händler-Startseite (`/haendler/:slug`) ist künftig der **digitale Empfang des Autohauses**.
+
+Nicht Landingpage. Nicht Suche. Nicht Modellkatalog.
+
+Wie in einem Hotel geht der Kunde zuerst zur Rezeption – nicht zu den Zimmerpreisen. Clever ist dieser Empfang: Begrüßung, Gespräch, Wunschprofil – dann optional Inspiration und Vertrauen.
+
+**Interne Bezeichnung:** Empfang (nicht Landingpage). Siehe [Conversation Design – Screen 1](clever-conversation-design.md).
+
+---
+
 ## 1. Das Gespräch ist immer der Einstieg
 
 Nicht die Fahrzeugsuche.

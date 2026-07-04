@@ -91,18 +91,26 @@ export default function DealerModelWorld({
   }
 
   const isClassicVariant = variant === 'classic';
+  const isInspirationVariant = variant === 'inspiration';
 
   return (
     <section
-      className={`dl-modellwelt dl-modellwelt--inspire dl-modellwelt--portal${isClassicVariant ? ' dl-modellwelt--classic' : ''}`}
+      className={`dl-modellwelt dl-modellwelt--inspire dl-modellwelt--portal${isClassicVariant ? ' dl-modellwelt--classic' : ''}${isInspirationVariant ? ' dl-modellwelt--inspiration' : ''}`}
       aria-labelledby="dl-modellwelt-heading"
     >
       <div className="dl-modellwelt__head">
         {isClassicVariant && (
           <p className="dl-modellwelt__classic-label">Oder Modell selbst auswählen</p>
         )}
+        {isInspirationVariant && (
+          <p className="dl-modellwelt__inspiration-label">Inspiration</p>
+        )}
         <h2 id="dl-modellwelt-heading" className="dl-modellwelt__title">
-          {isClassicVariant ? 'Modell konfigurieren' : 'Unsere Modelle'}
+          {isInspirationVariant
+            ? 'Unsere Modelle entdecken'
+            : isClassicVariant
+              ? 'Modell konfigurieren'
+              : 'Unsere Modelle'}
         </h2>
       </div>
 
