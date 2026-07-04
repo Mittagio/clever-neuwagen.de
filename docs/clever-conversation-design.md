@@ -2,7 +2,7 @@
 
 **Status:** UX-Spezifikation · kein Code  
 **Stand:** Juli 2026  
-**Bezug Technik:** Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
+**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
 
 ---
 

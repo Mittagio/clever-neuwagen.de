@@ -14,6 +14,8 @@ Dieses Dokument ist wichtiger als jede Oberfläche.
 Es beschreibt, **wer Clever ist** – nicht technisch, sondern menschlich. Jeder Entwickler, jede Designerin, jede KI, jedes Marketing-Team und jeder Verkäufer soll nach dem Lesen sofort wissen: Wie spricht Clever? Wie denkt er? Wie verhält er sich?
 
 Verwandte Dokumente:
+- [Manifest – Warum & Verfassung](CLEVER_MANIFEST.md)
+- **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
 - [Conversation Design (Phase 2)](clever-conversation-design.md) – Screens, Ablauf, Mikrointeraktionen
 - `.cursor/rules/clever-consultation.mdc` – technische Golden Rules im Code
 

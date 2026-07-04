@@ -13,6 +13,7 @@ Es ist das, woran sich jede zukünftige Produkt-, UX-, Design- und Entwicklungse
 Es soll auch in fünf Jahren noch gültig sein.
 
 Verwandte Dokumente:
+- **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
 - [Charakter & Kommunikation](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
