@@ -2,10 +2,19 @@
  * NeedProfile – Aufbau, Merge, sichtbares Verständnis, Lead-Anbindung.
  */
 import { parseSearchIntent } from '../search/searchIntentParser.js';
+import { detectModelKeyInQuery } from '../search/modelAttributeQuestion.js';
+import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { NEED_CONSULTATION_QUESTIONS } from './consultationQuestions.js';
 import { getFuelCategory } from './conversationPlanner.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import { createEmptyNeedProfile } from './needProfileTypes.js';
+
+const EV_MODEL_KEYS = new Set([
+  'ev3', 'ev4', 'ev4-fastback', 'ev5', 'ev6', 'ev9', 'ev9-gt', 'esoul',
+]);
+
+const TOWING_TEXT = /\banh[aä]ngerkupplung\b|\bahk\b|\banh[aä]nger\b|\banhaenger\b|\bwohnwagen\b|\bfahrradtr[aä]ger\b/i;
+const ALLRAD_TEXT = /\ballrad\b/i;
 
 const FUEL_LABELS = {
   electric: 'Elektro',
@@ -32,6 +41,93 @@ function clampConfidence(value) {
 function pushUnique(list, item) {
   if (!item || list.includes(item)) return list;
   return [...list, item];
+}
+
+/**
+ * @param {string} modelKey
+ */
+export function modelDisplayLabel(modelKey = '') {
+  if (!modelKey) return '';
+  return KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey.toUpperCase();
+}
+
+function isSportageModelKey(modelKey = '') {
+  return String(modelKey).startsWith('sportage');
+}
+
+/**
+ * @param {object} profile
+ * @param {string} text
+ */
+function applyModelDetection(profile, text = '') {
+  const modelKey = detectModelKeyInQuery(text);
+  if (!modelKey) return profile;
+
+  const next = {
+    ...profile,
+    selectedModelKey: modelKey,
+    modelHint: isSportageModelKey(modelKey) ? 'sportage' : modelKey.split('-')[0],
+  };
+
+  const attr = KIA_MODEL_ATTRIBUTES[modelKey];
+  if (EV_MODEL_KEYS.has(modelKey) || attr?.fuel === 'electric') {
+    next.fuel = 'electric';
+  } else if (modelKey === 'sportage-hybrid') {
+    next.fuel = 'hybrid';
+  } else if (modelKey === 'sportage-phev') {
+    next.fuel = 'phev';
+  }
+
+  return next;
+}
+
+/**
+ * @param {object} profile
+ * @param {string} text
+ */
+function applyFeatureHints(profile, text = '') {
+  let next = { ...profile };
+
+  if (TOWING_TEXT.test(text) && !next.towing) {
+    next.towing = 'braked';
+    next.priorities = pushUnique(next.priorities, 'towing');
+  }
+
+  if (ALLRAD_TEXT.test(text)) {
+    next.allradNeed = 'yes';
+    next.priorities = pushUnique(next.priorities, 'awd');
+  }
+
+  if (/\bfamilie\b|\bkinder\b|\bkind\b/i.test(text)) {
+    next.priorities = pushUnique(next.priorities, 'family');
+  }
+
+  if (/\bsuv\b/i.test(text)) {
+    next.bodyType = next.bodyType ?? 'suv';
+  }
+
+  if (/\bautomatik\b/i.test(text)) {
+    next.priorities = pushUnique(next.priorities, 'automatic');
+  }
+
+  return next;
+}
+
+/**
+ * Sehr allgemeiner Einstieg ohne Modell, Antrieb oder Nutzung.
+ * @param {object} profile
+ * @param {string} [text]
+ */
+export function isMinimalVehicleWish(profile = {}, text = '') {
+  if (profile.selectedModelKey || getFuelCategory(profile) || profile.bodyType) return false;
+  if ((profile.usage?.length ?? 0) > 0 || profile.children || profile.persons) return false;
+  if ((profile.priorities?.length ?? 0) > 0 && !profile.priorities.every((p) => p === 'automatic')) {
+    return false;
+  }
+
+  const trimmed = String(text || profile.initialWish || '').trim().toLowerCase();
+  return /^(ich\s+)?suche(?:n)?\s+(ein(en|)\s+)?(auto|fahrzeug|wagen)\.?$/.test(trimmed)
+    || /^auto\s*gesucht\.?$/.test(trimmed);
 }
 
 /**
@@ -157,10 +253,14 @@ function applyIntentToNeedProfile(profile, intent = {}) {
 export function buildUnderstoodLabels(profile = {}) {
   const labels = [];
 
+  if (profile.selectedModelKey) {
+    labels.push(modelDisplayLabel(profile.selectedModelKey));
+  }
+
   if (profile.fuel) {
     labels.push(FUEL_LABELS[profile.fuel] ?? profile.fuel);
   }
-  if (profile.bodyType) {
+  if (profile.bodyType && !profile.selectedModelKey) {
     labels.push(BODY_LABELS[profile.bodyType] ?? profile.bodyType);
   }
   if (profile.priorities?.includes('family') || profile.children || (profile.persons ?? 0) >= 5) {
@@ -172,12 +272,15 @@ export function buildUnderstoodLabels(profile = {}) {
     labels.push('Kinder');
   }
   if (profile.dog) labels.push('Hund');
+  if (profile.towing && profile.towing !== 'no') labels.push('Anhängerkupplung');
+  if (profile.allradNeed === 'yes' || profile.priorities?.includes('awd')) labels.push('Allrad');
+  if (profile.priorities?.includes('automatic')) labels.push('Automatik');
+  if (profile.usage?.includes('family') && !labels.includes('Familie')) labels.push('Familie');
   if (profile.budget?.maxMonthlyRate) {
     labels.push(`Budget ${profile.budget.maxMonthlyRate} €`);
   }
   if (profile.budget?.paymentType === 'leasing') labels.push('Leasing');
   if (profile.budget?.paymentType === 'cash') labels.push('Kauf');
-  if (profile.towing && profile.towing !== 'no') labels.push('Anhängelast');
   const fuelCat = getFuelCategory(profile);
   if (profile.priorities?.includes('range') && (fuelCat === 'electric' || fuelCat === 'phev')) {
     labels.push('Reichweite wichtig');
@@ -224,6 +327,8 @@ export function mergeTextIntoNeedProfile(text = '', base = null) {
 
   const intent = parseSearchIntent(trimmed);
   profile = applyIntentToNeedProfile(profile, intent);
+  profile = applyModelDetection(profile, trimmed);
+  profile = applyFeatureHints(profile, trimmed);
 
   if (/\ballrad\b/i.test(trimmed)) {
     profile = {

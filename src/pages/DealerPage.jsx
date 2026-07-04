@@ -163,7 +163,7 @@ export default function DealerPage() {
   const navigate = useNavigate();
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
-  const { dealerId: subdomainDealerId, isSubdomain } = useDealerSubdomain();
+  const { dealerId: subdomainDealerId } = useDealerSubdomain();
   const dealerId = useMemo(
     () => subdomainDealerId || routeSlug || DEFAULT_DEALER_ID,
     [subdomainDealerId, routeSlug],
@@ -1700,7 +1700,7 @@ export default function DealerPage() {
   const modelsChecked = dealerSearchPool.length;
 
   return (
-    <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader={isSubdomain}>
+    <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader>
       <div className={`dealer-page page dealer-page--mf5 dealer-page--clever${useSalesJourney ? ' dealer-page--advisor-flow' : ''}`}>
         <div className="container dealer-layout">
           <DealerPortalTopbar />

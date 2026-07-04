@@ -10,6 +10,8 @@ import {
 import {
   applyAnswerToNeedProfile,
   getHappyPathNextQuestion,
+  submitOpeningMessage,
+  createHappyPathSession,
 } from './consultationHappyPath.js';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
@@ -38,10 +40,11 @@ function testSportageFamilyFuelFirst() {
   const result = planNextQuestion({ needProfile: profile, answers: {} });
   const readiness = evaluateRecommendationReadiness({ needProfile: profile });
 
-  assert.equal(result.question?.id, 'fuel_type', `Erwartet fuel_type, bekam ${result.question?.id}`);
+  assert.equal(result.question?.id, 'sportagePowertrain', `Erwartet sportagePowertrain, bekam ${result.question?.id}`);
+  assert.notEqual(result.question?.id, 'fuel_type', 'Keine generische Antriebsfrage bei Sportage');
   assert.equal(readiness.ready, false);
   assert.equal(readiness.blocker, 'fuel_unknown');
-  console.log('✓ Sportage Familie ohne Antrieb → zuerst Antrieb klären, keine Empfehlung');
+  console.log('✓ Sportage Familie ohne Antrieb → modellspezifische Antriebsfrage, keine Empfehlung');
 }
 
 function testElectricFamilyChargingAllowed() {
@@ -99,6 +102,77 @@ function testHappyPathElectricStillWorks() {
   console.log('✓ Elektro-Happy-Path: Langstrecke → Laden zuhause');
 }
 
+function testEv3OpeningNoFuelQuestion() {
+  const profile = mergeTextIntoNeedProfile('mir gefällt der ev3');
+  const q = getHappyPathNextQuestion(profile, { answers: {} });
+
+  assert.equal(profile.selectedModelKey, 'ev3');
+  assert.ok(profile.understoodLabels.includes('EV3'), `EV3-Chip fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.ok(profile.understoodLabels.includes('Elektro'), `Elektro-Chip fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.equal(q?.id, 'evModelPriority', `Erwartet evModelPriority, bekam ${q?.id}`);
+  assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
+  assert.match(q?.prompt ?? '', /EV3 nehme ich auf/i);
+  assert.match(q?.prompt ?? '', /Reichweite oder gute Ausstattung/i);
+  assert.doesNotMatch(q?.prompt ?? '', /Benzin, Hybrid oder Elektro/i);
+  console.log('✓ „mir gefällt der ev3“ → EV3 + Elektro Chips, Reichweite/Ausstattung, keine Antriebsfrage');
+}
+
+function testSportageTowingContextualQuestion() {
+  const profile = mergeTextIntoNeedProfile('Ich suche einen Sportage mit Anhängerkupplung');
+  const q = getHappyPathNextQuestion(profile, { answers: {} });
+
+  assert.ok(profile.understoodLabels.includes('Sportage'), `Sportage fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.ok(profile.understoodLabels.includes('Anhängerkupplung'), `AHK fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.equal(q?.id, 'sportagePowertrain');
+  assert.match(q?.prompt ?? '', /Sportage mit Anhängerkupplung nehme ich auf/i);
+  assert.match(q?.prompt ?? '', /Benzin, Hybrid oder Plug-in-Hybrid/i);
+  assert.notEqual(q?.id, 'fuel_type');
+  console.log('✓ Sportage mit AHK → Sportage + AHK Chips, modellspezifische Antriebsfrage');
+}
+
+function testMinimalWishPrimaryUsage() {
+  const profile = mergeTextIntoNeedProfile('Ich suche ein Auto');
+  const q = getHappyPathNextQuestion(profile, { answers: {} });
+
+  assert.equal(q?.id, 'primaryUsage');
+  assert.match(q?.prompt ?? '', /Wofür soll das Auto hauptsächlich genutzt werden/i);
+  assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
+  console.log('✓ „Ich suche ein Auto“ → Nutzungsfrage, nicht Antriebsfrage');
+}
+
+function testAllradRecognizedNoAllradQuestion() {
+  const profile = mergeTextIntoNeedProfile('SUV Benzin Automatik Allrad');
+  const result = planNextQuestion({ needProfile: profile, answers: {} });
+
+  assert.ok(profile.understoodLabels.includes('Allrad'));
+  assert.notEqual(result.question?.id, 'allradNeed');
+  assert.equal(isQuestionAllowed('allradNeed', { needProfile: profile }), false);
+  console.log('✓ Allrad erkannt → keine Allrad-Grundsatzfrage');
+}
+
+function testTowingRecognizedNoTowingYesNo() {
+  const profile = mergeTextIntoNeedProfile('Sportage mit Anhängerkupplung');
+  const result = planNextQuestion({ needProfile: profile, answers: {} });
+
+  assert.ok(profile.understoodLabels.includes('Anhängerkupplung'));
+  assert.notEqual(result.question?.id, 'towingNeed', 'Keine AHK-Grundsatzfrage');
+  const allowedIds = ['sportagePowertrain', 'towingUsage'];
+  assert.ok(allowedIds.includes(result.question?.id), `Unerwartete Frage: ${result.question?.id}`);
+  console.log('✓ AHK erkannt → keine AHK-Grundsatzfrage, höchstens Nutzung oder Antrieb');
+}
+
+function testEv3OpeningSessionFlow() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'mir gefällt der ev3');
+
+  assert.ok(session.notepadLabels.includes('EV3'));
+  assert.ok(session.notepadLabels.includes('Elektro'));
+  assert.equal(session.pendingQuestion?.id, 'evModelPriority');
+  const cleverTurn = session.turns.find((t) => t.type === 'clever' && t.questionId === 'evModelPriority');
+  assert.match(cleverTurn?.text ?? '', /nehme ich auf/i);
+  console.log('✓ Session: EV3-Eingang → Chips wachsen, nächste Frage Reichweite/Ausstattung');
+}
+
 testSportageBenzinNoWallbox();
 testSuvBenzinNoWallbox();
 testSportageFamilyFuelFirst();
@@ -107,4 +181,10 @@ testEv3HeatPumpAllowed();
 testSportageBenzinNoHeatPump();
 testCombustionLongDistanceLabel();
 testHappyPathElectricStillWorks();
+testEv3OpeningNoFuelQuestion();
+testSportageTowingContextualQuestion();
+testMinimalWishPrimaryUsage();
+testAllradRecognizedNoAllradQuestion();
+testTowingRecognizedNoTowingYesNo();
+testEv3OpeningSessionFlow();
 console.log('\nAlle Conversation-Planner-Tests bestanden.');
