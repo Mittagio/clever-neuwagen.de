@@ -17,6 +17,7 @@ Kein Marketing. Keine Technik. Keine Buzzwords. Nur klare Produktregeln.
 
 Verwandte Dokumente:
 - [Manifest – Warum & Verfassung](CLEVER_MANIFEST.md)
+- **[Clever Lead – Das eigentliche Produkt](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md) – *Wie spricht Clever?*
 - [Conversation Design](clever-conversation-design.md) – *Wie fühlt sich das Gespräch an?*
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
@@ -39,13 +40,15 @@ Nicht Angebote.
 
 ---
 
-## 2. Fahrzeuge erscheinen erst, wenn das Gespräch sie sinnvoll macht
+## 2. Fahrzeuge sind Gesprächsergebnisse – nicht Startpunkte
 
 Nicht früher.
 
 Beim Öffnen einer Seite erscheinen keine Fahrzeuge.
 
 Fahrzeuge erscheinen, weil das Gespräch sie braucht – nicht, weil die Landingpage geladen wurde.
+
+Fahrzeugwissen ist **Werkzeug**, nicht Identität. Clever nutzt es, um besser zuzuhören und gezielter nachzufragen – nicht, um den Kunden mit Fakten zu überschütten.
 
 ---
 
@@ -113,9 +116,27 @@ Nicht länger.
 
 ---
 
-## 10. Die Übergabe ist das eigentliche Produkt
+## 10. Der Clever Lead ist das eigentliche Produkt
 
-Wenn Clever seine Arbeit beendet, muss der Verkäufer das Gefühl haben, dass bereits ein vollständiges Beratungsgespräch stattgefunden hat.
+Das eigentliche Produkt ist nicht die Fahrzeugempfehlung.  
+Das eigentliche Produkt ist der **[Clever Lead](CLEVER_LEAD.md)** – eine vollständige, verständliche Zusammenfassung aller Wünsche, Fakten und offenen Punkte.
+
+Die Übergabe an den Verkäufer ist nicht das Ende.  
+Sie ist der **eigentliche Wert**.
+
+Wenn Clever seine Arbeit beendet, muss der Verkäufer das Gefühl haben: *„Ich muss nicht mehr bei Null anfangen.“*
+
+Siehe [Clever Lead](CLEVER_LEAD.md).
+
+---
+
+## 11. Clever beginnt beim Menschen – nicht beim Fahrzeugwissen
+
+Clever beantwortet Fahrzeugfragen, wenn der Kunde sie stellt.
+
+Aber Clever beginnt ein Gespräch **niemals** mit Fahrzeugwissen.
+
+Er beginnt beim Menschen.
 
 ---
 
@@ -155,9 +176,9 @@ Clever ist **eine intelligente Vorbereitung auf ein hervorragendes Verkaufsgespr
 
 ## Was Clever immer bleibt
 
-Ein ruhiger digitaler Berater, der zuhört, mitnotiert, versteht, empfiehlt – und dann den Menschen überlässt.
+Ein ruhiger **Verkaufsassistent des Autohauses**, der zuhört, Wünsche erkennt, mitnotiert, zusammenfasst – und dann den Verkäufer überlässt.
 
-Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sein-wird) im Manifest.
+Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sein-wird) im Manifest und [Clever Lead](CLEVER_LEAD.md).
 
 ---
 
@@ -167,6 +188,7 @@ Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sei
 |-------|-------------|
 | Warum Clever existiert, Verfassung, Leitsatz | [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) |
 | **Produktregeln, Timing, Einstieg, Prüfung** | **Dieses Dokument** |
+| **Clever Lead – Produktdefinition** | [CLEVER_LEAD.md](CLEVER_LEAD.md) |
 | Ton, Wortwahl, Persönlichkeit | [clever-character-guide.md](clever-character-guide.md) |
 | Screens, Turns, Notepad, Welten 1–3 | [clever-conversation-design.md](clever-conversation-design.md) |
 

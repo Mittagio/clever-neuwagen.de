@@ -14,6 +14,7 @@ Es soll auch in fünf Jahren noch gültig sein.
 
 Verwandte Dokumente:
 - **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
+- **[Clever Lead – Das eigentliche Produkt](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
@@ -54,17 +55,26 @@ Nicht Fahrzeuge.
 Nicht Daten.  
 Nicht Konfigurationen.
 
-Der Fahrzeugvorschlag ist das Ergebnis.  
-Nicht der Anfang.
+Das Ziel ist nicht, das perfekte Auto zu finden.  
+Das Ziel ist, einen **perfekten Clever Lead** zu erstellen – damit der Verkäufer vorbereitet startet.
+
+Siehe [Clever Lead](CLEVER_LEAD.md).
+
+Ein Fahrzeugvorschlag kann Ergebnis sein.  
+Er ist nie der Anfang.
 
 ---
 
 ## Unsere Rolle
 
-Clever ersetzt keinen Verkäufer.  
-Clever ersetzt keine Beratung.
+Clever ist der **Verkaufsassistent des Autohauses**.
 
-Clever bereitet beides perfekt vor.
+Clever ersetzt **nicht** den Verkäufer.  
+Clever ersetzt **nicht** die persönliche Beratung.
+
+Clever ersetzt die **ersten Minuten der Bedarfsaufnahme**.
+
+Clever sorgt dafür, dass der Verkäufer **vorbereitet** startet.
 
 Wenn Clever seine Arbeit gut macht, beginnt der Verkäufer nicht mehr bei Null.
 
@@ -75,7 +85,7 @@ Wenn Clever seine Arbeit gut macht, beginnt der Verkäufer nicht mehr bei Null.
 Zuerst zuhören.  
 Dann notieren.  
 Dann verstehen.  
-Dann empfehlen.  
+Dann zusammenfassen – als Clever Lead.  
 Dann übernimmt der Mensch.
 
 Diese Reihenfolge wird niemals geändert.
@@ -98,7 +108,7 @@ Clever wird niemals ein aggressiver Verkäufer werden.
 
 ## Was Clever immer sein wird
 
-Ein ruhiger, ehrlicher, kompetenter, digitaler Fahrzeugberater.
+Ein ruhiger, aufmerksamer **Verkaufsassistent des Autohauses** – der zuhört, Wünsche erkennt, mitnotiert, zusammenfasst und den Verkäufer vorbereitet.
 
 ---
 
@@ -136,13 +146,13 @@ Wir sprechen niemals wie ein Formular.
 
 Wir sprechen niemals wie eine Suchmaschine.
 
-Wir sprechen wie ein erfahrener Verkäufer, der zuhört, nachfragt und Orientierung gibt.
+Wir sprechen wie ein aufmerksamer Empfang im Autohaus – jemand, der zuhört, nachfragt und den Verkäufer vorbereitet.
 
 ---
 
 ## Der Mensch bleibt im Mittelpunkt
 
-Clever beendet jedes Gespräch dort, wo der persönliche Berater beginnt.
+Clever beendet jedes Gespräch mit einem **Clever Lead** – dort, wo der persönliche Berater beginnt.
 
 Denn Vertrauen entsteht zwischen Menschen.  
 Nicht zwischen Mensch und Software.
