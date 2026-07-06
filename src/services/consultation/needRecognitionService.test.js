@@ -13,7 +13,7 @@ import {
   shouldSkipEv3EquipmentQuestion,
 } from './needRecognitionService.js';
 import { beginEv3VehicleConsultation, submitVehicleQuestionAnswer } from './consultationEv3HappyPath.js';
-import { createHappyPathSession } from './consultationHappyPath.js';
+import { createHappyPathSession, submitOpeningMessage } from './consultationHappyPath.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 
 function assertLabelsInclude(profile, expected = []) {
@@ -25,9 +25,95 @@ function assertLabelsInclude(profile, expected = []) {
   }
 }
 
+function assertLabelsStartWith(profile, orderedPrefix = []) {
+  const labels = profile.understoodLabels;
+  for (let i = 0; i < orderedPrefix.length; i += 1) {
+    assert.equal(
+      labels[i],
+      orderedPrefix[i],
+      `Position ${i}: erwartet „${orderedPrefix[i]}“, ist „${labels[i] ?? '—'}“ — alle: ${labels.join(', ')}`,
+    );
+  }
+}
+
+function testWowSportageDieselBudget() {
+  const profile = mergeTextIntoNeedProfile(
+    'Ich suche einen Sportage Diesel mit Allrad und Automatik bis 45.000 €.',
+  );
+  assertLabelsInclude(profile, [
+    'Sportage', 'Diesel', 'Allrad', 'Automatik', 'Budget bis 45.000 €',
+  ]);
+  assertLabelsStartWith(profile, [
+    'Sportage', 'Diesel', 'Allrad', 'Automatik', 'Budget bis 45.000 €',
+  ]);
+  console.log('✓ Wow 1: Sportage Diesel Allrad Automatik bis 45.000 €');
+}
+
+function testWowZweitwagenFrau() {
+  const profile = mergeTextIntoNeedProfile('Zweitwagen für meine Frau');
+  assertLabelsInclude(profile, ['Zweitwagen', 'Fahrerin']);
+  assertLabelsStartWith(profile, ['Zweitwagen', 'Fahrerin']);
+  console.log('✓ Wow 2: Zweitwagen Fahrerin');
+}
+
+function testWowZugfahrzeugFamilie() {
+  const profile = mergeTextIntoNeedProfile(
+    'zwei Kinder + Zugfahrzeug + 2 Tonnen',
+  );
+  assertLabelsInclude(profile, ['Familie', '2 Kinder', 'Zugfahrzeug', 'Anhängelast 2.000 kg']);
+  assert.equal(profile.towCapacityKg, 2000);
+  console.log('✓ Wow 3: Familie, Zugfahrzeug, 2t Anhängelast');
+}
+
+function testWowElektroZweitwagenFrauStadt() {
+  const profile = mergeTextIntoNeedProfile(
+    'Elektroauto als Zweitwagen für meine Frau, Stadt, 20 km am Tag',
+  );
+  assertLabelsInclude(profile, ['Elektro', 'Zweitwagen', 'Fahrerin', 'Stadt', 'Kurzstrecke']);
+  assertLabelsStartWith(profile, ['Elektro', 'Zweitwagen', 'Fahrerin', 'Stadt', 'Kurzstrecke']);
+  console.log('✓ Wow 4: Elektro Zweitwagen Fahrerin Stadt Kurzstrecke');
+}
+
+function testBudgetRecognition() {
+  const cases = [
+    { text: 'bis 45.000 €', label: 'Budget bis 45.000 €' },
+    { text: '45.000 €', label: 'Budget bis 45.000 €' },
+    { text: 'unter 400 €', label: 'Budget bis 400 €/Monat' },
+    { text: 'bis 400 Euro im Monat', label: 'Budget bis 400 €/Monat' },
+    { text: 'Budget 500 €', label: 'Budget 500 €/Monat' },
+  ];
+  for (const { text, label } of cases) {
+    const profile = mergeTextIntoNeedProfile(text);
+    assert.ok(
+      profile.understoodLabels.includes(label),
+      `„${text}“ → erwartet „${label}“, ist: ${profile.understoodLabels.join(', ')}`,
+    );
+  }
+  console.log('✓ Budget-Erkennung: Kaufpreis und Monatsrate');
+}
+
+function testFirstMessageChipsViaOpeningMessage() {
+  let session = createHappyPathSession('Test');
+  assert.equal(session.notepadLabels.length, 0);
+
+  session = submitOpeningMessage(
+    session,
+    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
+  );
+
+  assert.ok(session.notepadLabels.length >= 5, `Chips fehlen: ${session.notepadLabels.join(', ')}`);
+  for (const label of ['Sportage', 'Diesel', 'Allrad', 'Automatik', 'Budget bis 45.000 €']) {
+    assert.ok(
+      session.notepadLabels.includes(label),
+      `Chip „${label}“ fehlt nach erstem Satz: ${session.notepadLabels.join(', ')}`,
+    );
+  }
+  console.log('✓ Erster Kundensatz → Chips sofort in notepadLabels');
+}
+
 function testSuvBenzinAllrad() {
   const profile = mergeTextIntoNeedProfile('SUV Benzin Automatik bis 40.000 € Allrad');
-  assertLabelsInclude(profile, ['Benzin', 'SUV', 'Kauf', 'Allrad']);
+  assertLabelsInclude(profile, ['Benzin', 'SUV', 'Budget bis 40.000 €', 'Allrad']);
   assert.equal(profile.drive, 'awd');
 
   const result = planNextQuestion({ needProfile: profile, answers: {} });
@@ -120,6 +206,12 @@ function testPickupBenzinAutomatik() {
   console.log('✓ Pickup Benzin → keine Wallbox, Kofferraum depriorisiert');
 }
 
+testWowSportageDieselBudget();
+testWowZweitwagenFrau();
+testWowZugfahrzeugFamilie();
+testWowElektroZweitwagenFrauStadt();
+testBudgetRecognition();
+testFirstMessageChipsViaOpeningMessage();
 testSuvBenzinAllrad();
 testSportageFamilyAhk();
 testElectricEquipmentBundle();

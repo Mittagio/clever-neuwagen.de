@@ -48,6 +48,8 @@ export function createEmptyNeedProfile(initialText = '') {
     longDistance: null,
     chargingAtHome: null,
     towing: null,
+    towCapacityKg: null,
+    driverHint: null,
     design: [],
     technology: [],
     usage: [],

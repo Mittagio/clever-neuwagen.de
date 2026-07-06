@@ -228,7 +228,7 @@ function hasRateContext(text) {
 }
 
 function hasPriceContext(text) {
-  return /kauf|bar|unter|preis|einmal|neupreis/i.test(text);
+  return /kauf|bar|preis|einmal|neupreis/i.test(text);
 }
 
 function hasRangeContext(text, nearIndex, matchLen = 3) {
@@ -937,12 +937,6 @@ export function parseSearchIntent(input) {
     intent.paymentExplicit = true;
   } else if (financeZeroPercent) {
     intent.payment = 'finance';
-    intent.paymentExplicit = true;
-  } else if (intent.maxRate && hasRateContext(text)) {
-    intent.payment = 'leasing';
-    intent.paymentExplicit = true;
-  } else if (intent.maxPrice && hasPriceContext(text)) {
-    intent.payment = 'cash';
     intent.paymentExplicit = true;
   }
 

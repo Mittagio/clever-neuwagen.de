@@ -10,6 +10,7 @@ import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   applyNeedRecognition,
   buildRecognitionLabels,
+  detectMonthlyBudgetStyle,
 } from './needRecognitionService.js';
 import { createEmptyNeedProfile } from './needProfileTypes.js';
 
@@ -93,7 +94,12 @@ function applyFeatureHints(profile, text = '') {
   }
 
   if (/\bautomatik\b/i.test(text)) {
+    next.transmission = next.transmission ?? 'automatic';
     next.priorities = pushUnique(next.priorities, 'automatic');
+  }
+
+  if (/\bschalter\b|\bschaltgetriebe\b/i.test(text)) {
+    next.transmission = 'manual';
   }
 
   return next;
@@ -131,8 +137,9 @@ function fuelFromIntent(intent = {}) {
 /**
  * @param {object} profile
  * @param {object} intent
+ * @param {string} [text]
  */
-function applyIntentToNeedProfile(profile, intent = {}) {
+function applyIntentToNeedProfile(profile, intent = {}, text = '') {
   const next = { ...profile };
   let confidence = next.confidence ?? 0;
 
@@ -185,8 +192,12 @@ function applyIntentToNeedProfile(profile, intent = {}) {
     next.budget = {
       ...next.budget,
       maxMonthlyRate: intent.maxRate,
-      paymentType: next.budget?.paymentType ?? intent.payment ?? 'leasing',
+      monthlyBudgetStyle: detectMonthlyBudgetStyle(text),
     };
+    if (intent.paymentExplicit) {
+      next.budget.paymentType = intent.payment ?? next.budget?.paymentType ?? 'leasing';
+      next.budget.paymentExplicit = true;
+    }
     confidence += 14;
   }
 
@@ -194,15 +205,19 @@ function applyIntentToNeedProfile(profile, intent = {}) {
     next.budget = {
       ...next.budget,
       maxPrice: intent.maxPrice,
-      paymentType: next.budget?.paymentType ?? 'cash',
     };
+    if (intent.paymentExplicit) {
+      next.budget.paymentType = intent.payment ?? next.budget?.paymentType ?? 'cash';
+      next.budget.paymentExplicit = true;
+    }
     confidence += 12;
   }
 
-  if (intent.payment) {
+  if (intent.paymentExplicit && intent.payment) {
     next.budget = {
       ...next.budget,
       paymentType: intent.payment,
+      paymentExplicit: true,
     };
     confidence += 8;
   }
@@ -213,12 +228,14 @@ function applyIntentToNeedProfile(profile, intent = {}) {
   }
 
   if (intent.towCapacityKg >= 750 || intent.features?.some((f) => f.includes('tow'))) {
-    next.towing = intent.towCapacityKg >= 2000 ? 'heavy' : 'braked';
+    next.towCapacityKg = Math.max(next.towCapacityKg ?? 0, intent.towCapacityKg ?? 0);
+    next.towing = (intent.towCapacityKg >= 2000 || next.towCapacityKg >= 2000) ? 'heavy' : 'braked';
     next.priorities = pushUnique(next.priorities, 'towing');
     confidence += 8;
   }
 
-  if (intent.features?.includes('towbar')) {
+  if (intent.features?.includes('towbar')
+    && /\banhängerkupplung\b|\banhaengerkupplung\b|\bahk\b/i.test(text)) {
     next.towbar = true;
     next.priorities = pushUnique(next.priorities, 'towbar');
     if (!next.towing) next.towing = 'braked';
@@ -227,7 +244,6 @@ function applyIntentToNeedProfile(profile, intent = {}) {
 
   if (intent.model && /^sportage$/i.test(intent.model)) {
     next.modelHint = 'sportage';
-    next.bodyType = next.bodyType ?? 'suv';
     confidence += 6;
   }
 
@@ -249,27 +265,7 @@ function applyIntentToNeedProfile(profile, intent = {}) {
  * @param {object} profile
  */
 export function buildUnderstoodLabels(profile = {}) {
-  const labels = [];
-
-  if (profile.selectedModelKey) {
-    labels.push(modelDisplayLabel(profile.selectedModelKey));
-  }
-
-  for (const label of buildRecognitionLabels(profile)) {
-    if (!labels.includes(label)) labels.push(label);
-  }
-
-  const fuelCat = getFuelCategory(profile);
-
-  if (profile.priorities?.includes('range') && (fuelCat === 'electric' || fuelCat === 'phev')) {
-    labels.push('Reichweite wichtig');
-  }
-  if (profile.dog) labels.push('Hund');
-  if (profile.longDistance === 'sometimes' && fuelCat === 'combustion') {
-    labels.push('Häufig längere Fahrten');
-  }
-
-  return [...new Set(labels)];
+  return buildRecognitionLabels(profile);
 }
 
 /**
@@ -303,7 +299,7 @@ export function mergeTextIntoNeedProfile(text = '', base = null) {
   if (!trimmed) return profile;
 
   const intent = parseSearchIntent(trimmed);
-  profile = applyIntentToNeedProfile(profile, intent);
+  profile = applyIntentToNeedProfile(profile, intent, trimmed);
   profile = applyModelDetection(profile, trimmed);
   profile = applyFeatureHints(profile, trimmed);
   profile = applyNeedRecognition(profile, trimmed, intent);
