@@ -35,4 +35,4 @@ Der erste Eindruck darf nicht kaputt gemacht werden.
 
 ## Bezug zum Manifest
 
-Siehe [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) — *Zuerst zuhören. Dann notieren. Dann verstehen. Dann empfehlen.*
+Siehe [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) und [Die vier Aufgaben](CLEVER_FOUR_TASKS.md) — *Zuerst zuhören. Dann verstehen. Dann einordnen. Dann übergeben.*

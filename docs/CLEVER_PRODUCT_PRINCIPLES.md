@@ -17,14 +17,15 @@ Kein Marketing. Keine Technik. Keine Buzzwords. Nur klare Produktregeln.
 
 Verwandte Dokumente:
 - [Manifest – Warum & Verfassung](CLEVER_MANIFEST.md)
-- **[Clever Lead – Das eigentliche Produkt](CLEVER_LEAD.md)**
+- **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)**
+- **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md) – *Wie spricht Clever?*
 - [Conversation Design](clever-conversation-design.md) – *Wie fühlt sich das Gespräch an?*
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
 - [Nutzer-Tests & Verstanden-Gefühl](clever-user-testing.md)
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
-**Hierarchie:** Manifest → **Produktprinzipien** → Charakter → Conversation Design → Umsetzung.
+**Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** → Clever Lead → Charakter → Conversation Design → Umsetzung.
 
 ---
 
@@ -74,6 +75,8 @@ Der Verkäufer verkauft.
 
 ## 4. Clever sammelt Wünsche – nicht Antworten
 
+Siehe [Die wichtigste Produktregel](CLEVER_FOUR_TASKS.md#die-wichtigste-produktregel) in den Vier Aufgaben.
+
 Jede Information, die der Kunde nennt, wird sofort sichtbar notiert.
 
 Der Kunde soll spüren: *„Clever hört mir zu.“*
@@ -88,11 +91,13 @@ Nicht umgekehrt.
 
 ---
 
-## 6. Eine Empfehlung ist niemals eine Vermutung
+## 6. Orientierung ist keine Vermutung
+
+Clever empfiehlt nicht. Clever ordnet ein. Siehe [Orientierung statt Empfehlung](CLEVER_FOUR_TASKS.md#orientierung-statt-empfehlung).
 
 Wenn wichtige Informationen fehlen, fragt Clever nach.
 
-Lieber eine gute Frage als eine falsche Empfehlung.
+Lieber eine gute Frage als eine falsche Richtung.
 
 ---
 
@@ -128,13 +133,17 @@ Nicht länger.
 
 ---
 
-## 10. Der Clever Lead ist das eigentliche Produkt
+## 10. Verständnis ist das Produkt – der Clever Lead ist sein Dokument
 
-Das eigentliche Produkt ist nicht die Fahrzeugempfehlung.  
-Das eigentliche Produkt ist der **[Clever Lead](CLEVER_LEAD.md)** – eine vollständige, verständliche Zusammenfassung aller Wünsche, Fakten und offenen Punkte.
+Clever sammelt Verständnis. Der **[Clever Lead](CLEVER_LEAD.md)** ist nicht das Produkt. Er ist das **Dokument des aufgebauten Verständnisses** für den Verkäufer – Wünsche, Fakten, offene Punkte.
+
+Der Verkäufer soll nicht denken: *„Super Lead."*  
+Er soll denken: *„Ah … jetzt verstehe ich den Kunden."*
+
+Das Zentrum ist **wachsendes Verständnis** — siehe [Die Wahrheit von Clever](CLEVER_FOUR_TASKS.md#die-wahrheit-von-clever).
 
 Die Übergabe an den Verkäufer ist nicht das Ende.  
-Sie ist der **eigentliche Wert**.
+Sie ist der **Moment, in dem Verständnis übergeben wird**.
 
 Wenn Clever seine Arbeit beendet, muss der Verkäufer das Gefühl haben: *„Ich muss nicht mehr bei Null anfangen.“*
 
@@ -154,7 +163,7 @@ Er beginnt beim Menschen.
 
 ## Produktprüfung
 
-Vor jeder neuen Funktion beantworten wir:
+Vor jeder neuen Funktion beantworten wir die [vier Produktfragen](CLEVER_FOUR_TASKS.md#die-vier-produktfragen) aus den Vier Aufgaben – und ergänzend:
 
 1. Hilft diese Funktion dem Gespräch?
 2. Macht sie den Verkäufer besser vorbereitet?
@@ -199,12 +208,13 @@ Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sei
 | Thema | Wo es steht |
 |-------|-------------|
 | Warum Clever existiert, Verfassung, Leitsatz | [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) |
+| **Kern: Verständnis – wie es entsteht und wächst** | **[CLEVER_FOUR_TASKS.md](CLEVER_FOUR_TASKS.md)** |
 | **Produktregeln, Timing, Einstieg, Prüfung** | **Dieses Dokument** |
-| **Clever Lead – Produktdefinition** | [CLEVER_LEAD.md](CLEVER_LEAD.md) |
+| **Clever Lead – Dokument des Verständnisses** | [CLEVER_LEAD.md](CLEVER_LEAD.md) |
 | Ton, Wortwahl, Persönlichkeit | [clever-character-guide.md](clever-character-guide.md) |
 | Screens, Turns, Notepad, Welten 1–3 | [clever-conversation-design.md](clever-conversation-design.md) |
 
-Bei Widerspruch gilt: **Manifest** > **Produktprinzipien** > Charakter > Conversation Design > Code.
+Bei Widerspruch gilt: **Manifest** > **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** > **Verständnis** (Wahrheit in Vier Aufgaben) > **Produktprinzipien** > Charakter > Conversation Design > Code.
 
 Bei Unklarheit in der Umsetzung: **Produktprüfung** (oben) anwenden.
 

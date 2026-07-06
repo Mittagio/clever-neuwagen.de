@@ -20,6 +20,8 @@ Nur: **Hat Clever dich verstanden?**
 **Zielwert:** Regelmäßig **9 oder 10**.  
 Das unterscheidet Clever fundamental von klassischen Konfiguratoren.
 
+Siehe Aufgabe 2 in [Die vier Aufgaben](CLEVER_FOUR_TASKS.md) — der Kunde soll „Genau.“ denken.
+
 ---
 
 ## Testperson 1 — Junger Käufer (25–35)

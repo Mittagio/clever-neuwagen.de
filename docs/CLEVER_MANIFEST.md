@@ -13,8 +13,9 @@ Es ist das, woran sich jede zukünftige Produkt-, UX-, Design- und Entwicklungse
 Es soll auch in fünf Jahren noch gültig sein.
 
 Verwandte Dokumente:
+- **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)** ← verbindlich für UX, Produkt und Architektur
 - **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
-- **[Clever Lead – Das eigentliche Produkt](CLEVER_LEAD.md)**
+- **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
@@ -83,10 +84,12 @@ Wenn Clever seine Arbeit gut macht, beginnt der Verkäufer nicht mehr bei Null.
 ## Unsere Philosophie
 
 Zuerst zuhören.  
-Dann notieren.  
 Dann verstehen.  
-Dann zusammenfassen – als Clever Lead.  
+Dann einordnen.  
+Dann übergeben – als Clever Lead.  
 Dann übernimmt der Mensch.
+
+Siehe [Die vier Aufgaben von Clever](CLEVER_FOUR_TASKS.md).
 
 Diese Reihenfolge wird niemals geändert.
 

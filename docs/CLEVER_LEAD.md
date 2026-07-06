@@ -1,17 +1,18 @@
 # Clever Lead
 
-**Was ein Clever Lead ist – und warum er das eigentliche Produkt ist.**
+**Was ein Clever Lead ist – das Dokument des aufgebauten Verständnisses.**
 
 ---
 
 Verwandte Dokumente:
 - [Manifest](CLEVER_MANIFEST.md)
 - [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md)
+- **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)**
 - [Charakter](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
-**Hierarchie:** Manifest → Produktprinzipien → **Clever Lead** (Produktdefinition) → Charakter → Conversation Design → Umsetzung.
+**Hierarchie:** Manifest → [Vier Aufgaben](CLEVER_FOUR_TASKS.md) → **Verständnis** → Produktprinzipien → **Clever Lead** (Dokument des Verständnisses) → Charakter → Conversation Design → Umsetzung.
 
 ---
 
@@ -19,24 +20,27 @@ Verwandte Dokumente:
 
 Ein Clever Lead ist die **vollständige, verständliche Zusammenfassung** dessen, was Clever im Gespräch über den Kunden gelernt hat – plus das, was bewusst **noch offen** ist.
 
+Er ist das Ergebnis der vierten Aufgabe – **Übergeben**. Siehe [Die vier Aufgaben von Clever](CLEVER_FOUR_TASKS.md).
+
 Er ist kein Kontaktformular mit drei Feldern.  
 Er ist kein Suchfilter.  
 Er ist das Ergebnis eines echten Bedarfsgesprächs – in strukturierter Form für den Verkäufer.
 
 ---
 
-## Warum ist er das eigentliche Produkt?
+## Warum ist er so wichtig?
 
-Clever existiert nicht, damit der Kunde online das perfekte Auto findet.
+Clever sammelt kein Formular. Clever baut **Verständnis** auf.
 
-Clever existiert, damit der Verkäufer **nicht bei Null beginnen muss**.
+Der Clever Lead ist **nicht das Produkt**. Er ist das **Dokument des aufgebauten Verständnisses** für den Verkäufer.
 
-Das Ziel ist nicht: *„Clever findet das perfekte Auto.“*  
-Das Ziel ist: *„Clever erstellt einen perfekten Clever Lead.“*
+Wenn der Verkäufer den Lead öffnet, soll er nicht denken: *„Super Lead."*
 
-Wenn der Verkäufer den Lead öffnet, soll er denken:
+Er soll denken:
 
-> *„Perfekt. Ich muss nicht mehr bei Null anfangen.“*
+> *„Ah … jetzt verstehe ich den Kunden."*
+
+Siehe [Die Wahrheit von Clever](CLEVER_FOUR_TASKS.md#die-wahrheit-von-clever).
 
 ---
 
@@ -61,11 +65,13 @@ Technisch entspricht das dem `NeedProfile` im CRM (`lead.crm.needProfile`) plus 
 
 ## Wie entsteht er aus dem Gespräch?
 
-1. Der Kunde erzählt frei – Clever **notiert sichtbar** (Chips, Notizleiste).
-2. Clever **fragt nur**, was wirklich fehlt.
-3. Der Kunde kann **Fahrzeugfragen stellen** – Clever antwortet, drängt Wissen aber nicht ungefragt auf.
-4. Mit jeder Antwort wächst das **Wunschprofil**.
-5. Am Ende (oder wenn genug da ist): **Zusammenfassung** + **Offene Punkte** + **Übergabe** an den Verkäufer.
+1. Der Kunde erzählt – Clever **hört zu** (Aufgabe 1).
+2. Clever **versteht** – Wünsche werden sichtbar notiert (Aufgabe 2).
+3. Clever **ordnet ein** – Richtungen, Kundenreaktion (Aufgabe 3).
+4. Mit jeder Reaktion wächst das Verständnis (innere Schleife).
+5. Clever **übergibt** – der Clever Lead entsteht (Aufgabe 4).
+
+Siehe [Die vier Aufgaben](CLEVER_FOUR_TASKS.md).
 
 Kein Formular. Kein Wizard. Ein Gespräch mit sichtbarem Notizblock.
 

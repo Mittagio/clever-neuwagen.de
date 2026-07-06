@@ -2,7 +2,7 @@
 
 **Status:** UX-Spezifikation · kein Code  
 **Stand:** Juli 2026  
-**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · [Clever Lead](CLEVER_LEAD.md) · Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
+**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** · [Clever Lead](CLEVER_LEAD.md) · Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
 
 ---
 
@@ -66,24 +66,28 @@ Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit 
 
 ## Die Geschichte in fünf Akten
 
+Entspricht den [vier Aufgaben](CLEVER_FOUR_TASKS.md):
+
 ```
-1. Clever hört mir zu.          → Ich darf erzählen.
-2. Clever macht sich Notizen.   → Ich sehe, was er aufschreibt.
-3. Clever versteht mich.        → Das Wunschprofil wird vollständiger.
-4. Clever fasst zusammen.       → Clever Lead – optional erste Richtung.
-5. Der Verkäufer übernimmt.     → Mensch + Autohaus (Welt 3).
+1. Clever hört mir zu.          → Zuhören
+2. Clever versteht mich.        → Verstehen (Chips)
+3. Clever ordnet ein.           → Einordnen (Richtungen)
+4. Clever versteht noch mehr.   → Reaktion des Kunden
+5. Der Verkäufer übernimmt.     → Übergeben (Clever Lead)
 ```
 
 ---
 
 ## Golden Rules (aus Phase 1, für UX verbindlich)
 
-1. **Eine Frage pro Turn** – kein Wizard, keine Fragenliste.
+Siehe [Die vier Aufgaben](CLEVER_FOUR_TASKS.md) und [vier Produktfragen](CLEVER_FOUR_TASKS.md#die-vier-produktfragen).
+
+1. **Eine Frage pro Turn** – nur wenn Verstehen/Einordnen es erfordert; Fragen sind keine Pflicht.
 2. **Niemals Bekanntes erneut fragen** – Parser + sichtbare Notizen.
-3. **Erster Satz Clever ist nie eine Frage** – der Kunde spricht zuerst.
-4. **Clever Lead im Mittelpunkt** – Wünsche, Fakten, offene Punkte; Richtung optional, nie erzwungen.
+3. **Erster Satz Clever ist nie eine Frage** – der Kunde spricht zuerst (Zuhören).
+4. **Orientierung statt Empfehlung** – Einordnen, Kunde reagiert; Clever Lead bei Übergeben.
 5. **Weltwechsel emotional spürbar** – neues Kapitel, nicht nur neuer Inhalt.
-6. **Fahrzeugfragen beantworten, wenn der Kunde fragt** – Gespräch beginnt nie mit Fahrzeugwissen.
+6. **Fahrzeugwissen auf Nachfrage** – Gespräch wichtiger als technische Antwort.
 
 ---
 

@@ -2,7 +2,9 @@
 
 **Status:** Experiment · noch nicht im Produkt  
 **Stand:** Juli 2026  
-**Bezug:** [Clever Manifest](../../docs/CLEVER_MANIFEST.md) · [Conversation Design](../../docs/clever-conversation-design.md) · [Experiments](../README.md)
+**Bezug:** [Die vier Aufgaben](../../docs/CLEVER_FOUR_TASKS.md) (Produktkern) · [Clever Manifest](../../docs/CLEVER_MANIFEST.md) · [Conversation Design](../../docs/clever-conversation-design.md) · [Experiments](../README.md)
+
+> **Hinweis:** Der Conversation Planner ist ein **technisches Mittel** für gezielte Rückfragen (Aufgabe 2: Verstehen). Er ist nicht das Zentrum des Produkts. Das Zentrum ist wachsendes Verständnis — siehe [Die innere Schleife](../../docs/CLEVER_FOUR_TASKS.md#die-innere-schleife).
 
 ---
 
