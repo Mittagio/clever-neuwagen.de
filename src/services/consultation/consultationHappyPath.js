@@ -30,6 +30,10 @@ import {
   buildNeedDirectionQuestion,
   shouldOfferDirectionChoice,
 } from './needUnderstandingGate.js';
+import {
+  buildVehicleDirectionsView,
+  isEvDirectionModel,
+} from './vehicleDirectionService.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -51,6 +55,7 @@ export const TURN_TYPE = {
   LEARNED: 'learned',
   THINKING: 'thinking',
   RECOMMENDATION: 'recommendation',
+  VEHICLE_DIRECTIONS: 'vehicle_directions',
   HANDOFF: 'handoff',
 };
 
@@ -218,6 +223,8 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
     pendingQuestion: null,
     recommendation: null,
     selectedModelKey: null,
+    vehicleDirectionsView: null,
+    vehicleDirectionReactions: {},
   };
 }
 
@@ -494,6 +501,8 @@ function submitNeedDirectionAnswer(session, answerId, displayText) {
   );
 
   let needProfile = { ...session.needProfile };
+  let anchorModelKey = null;
+
   if (answerId === 'explore_model' && needProfile.modelHint) {
     needProfile = {
       ...needProfile,
@@ -503,31 +512,104 @@ function submitNeedDirectionAnswer(session, answerId, displayText) {
         selectedModelKey: needProfile.modelHint,
       }),
     };
+    anchorModelKey = needProfile.modelHint;
+  } else if (answerId === 'compare_similar') {
+    anchorModelKey = needProfile.modelHint ?? null;
   }
 
-  const modelLabel = needProfile.modelHint
-    ? modelDisplayLabel(needProfile.modelHint)
-    : null;
-
-  let ackText;
-  if (answerId === 'explore_model') {
-    ackText = modelLabel
-      ? `Gut – ich halte den ${modelLabel} mit Ihren Wünschen fest. Damit kann Ihr Berater direkt loslegen.`
-      : 'Gut – ich halte Ihre Richtung fest. Damit kann Ihr Berater direkt loslegen.';
-  } else {
-    ackText = 'Gut – ich ordne ähnliche Fahrzeuge in Ihrer Richtung ein. Ihr Berater sieht alles auf einen Blick.';
-  }
-
-  return {
+  let next = {
     ...session,
     consultationProfile,
     needProfile,
-    pendingQuestion: null,
-    phase: CONVERSATION_PHASE.CONVERSATION,
     turns: [
       ...session.turns,
       customerTurn(displayText),
-      cleverAckTurn(ackText),
+    ],
+  };
+
+  if (answerId === 'compare_similar' || answerId === 'explore_model') {
+    const directionsView = buildVehicleDirectionsView(needProfile, { anchorModelKey });
+    return {
+      ...next,
+      vehicleDirectionsView: directionsView,
+      vehicleDirectionReactions: {},
+      pendingQuestion: null,
+      phase: CONVERSATION_PHASE.CONVERSATION,
+      turns: [
+        ...next.turns,
+        {
+          type: TURN_TYPE.VEHICLE_DIRECTIONS,
+          id: `directions-${Date.now()}`,
+          directionsView,
+        },
+      ],
+    };
+  }
+
+  return {
+    ...next,
+    pendingQuestion: null,
+    phase: CONVERSATION_PHASE.CONVERSATION,
+    turns: [
+      ...next.turns,
+      cleverAckTurn('Alles klar – ich notiere das für Ihren Berater.'),
+    ],
+  };
+}
+
+/**
+ * Reaktion auf eine Fahrzeugrichtung.
+ * @param {object} session
+ * @param {string} modelKey
+ * @param {'interested'|'not_fit'|'explore'} reactionId
+ */
+export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
+  const reactions = {
+    ...(session.vehicleDirectionReactions ?? {}),
+    [modelKey]: reactionId,
+  };
+
+  const directionsView = session.vehicleDirectionsView
+    ? { ...session.vehicleDirectionsView, reactions }
+    : null;
+
+  let next = {
+    ...session,
+    vehicleDirectionReactions: reactions,
+    vehicleDirectionsView: directionsView,
+    turns: session.turns.map((turn) => (
+      turn.type === TURN_TYPE.VEHICLE_DIRECTIONS
+        ? { ...turn, directionsView: { ...turn.directionsView, reactions } }
+        : turn
+    )),
+  };
+
+  if (reactionId !== 'explore') {
+    return next;
+  }
+
+  const needProfile = {
+    ...next.needProfile,
+    selectedModelKey: modelKey,
+    understoodLabels: buildUnderstoodLabels({
+      ...next.needProfile,
+      selectedModelKey: modelKey,
+    }),
+  };
+  next = { ...next, needProfile, selectedModelKey: modelKey };
+
+  if (isEvDirectionModel(modelKey)) {
+    return beginEv3VehicleConsultation(next, modelKey);
+  }
+
+  const label = modelDisplayLabel(modelKey);
+  return {
+    ...next,
+    turns: [
+      ...next.turns,
+      cleverAckTurn(
+        `Gut – ich halte ${label} für die genauere Prüfung fest. Damit kann Ihr Berater direkt loslegen.`,
+      ),
     ],
   };
 }

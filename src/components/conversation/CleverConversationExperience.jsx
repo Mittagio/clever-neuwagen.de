@@ -24,6 +24,7 @@ import {
   submitPersonalHandoff,
   submitQuestionAnswer,
   submitVehicleAnswer,
+  submitVehicleDirectionReaction,
 } from '../../services/consultation/consultationHappyPath.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import CleverNotepadBar from './CleverNotepadBar.jsx';
@@ -31,6 +32,7 @@ import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
 import CleverNotingFlash from './CleverNotingFlash.jsx';
 import CleverConversationTurn from './CleverConversationTurn.jsx';
 import CleverRecommendationMoment from './CleverRecommendationMoment.jsx';
+import CleverVehicleDirections from './CleverVehicleDirections.jsx';
 import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.jsx';
 import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
@@ -177,6 +179,10 @@ export default function CleverConversationExperience({
     setSession((prev) => selectRecommendedModel(prev, modelKey));
   };
 
+  const handleDirectionReaction = useCallback((modelKey, reactionId) => {
+    setSession((prev) => submitVehicleDirectionReaction(prev, modelKey, reactionId));
+  }, []);
+
   const handleDealerHandoff = () => {
     setSession((prev) => submitDealerHandoff(prev, dealerConditions));
   };
@@ -254,6 +260,15 @@ export default function CleverConversationExperience({
         <div className="cc-transcript">
           {notingFlash && <CleverNotingFlash labels={notingFlash} />}
           {visibleTurns.map((turn) => {
+            if (turn.type === TURN_TYPE.VEHICLE_DIRECTIONS) {
+              return (
+                <CleverVehicleDirections
+                  key={turn.id}
+                  directionsView={turn.directionsView}
+                  onReact={handleDirectionReaction}
+                />
+              );
+            }
             if (turn.type === TURN_TYPE.RECOMMENDATION) {
               return (
                 <CleverRecommendationMoment

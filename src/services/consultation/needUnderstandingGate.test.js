@@ -9,6 +9,7 @@ import {
   resolveNextHappyPathQuestion,
   submitOpeningMessage,
   submitQuestionAnswer,
+  TURN_TYPE,
 } from './consultationHappyPath.js';
 import {
   NEED_DIRECTION_QUESTION_ID,
@@ -81,7 +82,7 @@ function testSportageFamilyAhkStillAsksPowertrain() {
   console.log('✓ Sportage ohne Antrieb → modellspezifische Antriebsfrage');
 }
 
-function testDirectionExploreModelAcknowledgment() {
+function testDirectionExploreModelShowsDirections() {
   let session = createHappyPathSession('Test');
   session = submitOpeningMessage(
     session,
@@ -90,9 +91,10 @@ function testDirectionExploreModelAcknowledgment() {
   session = submitQuestionAnswer(session, { answerId: 'explore_model' });
   assert.equal(session.pendingQuestion, null);
   assert.equal(session.needProfile.selectedModelKey, 'sportage');
-  const lastClever = [...session.turns].reverse().find((t) => t.type === 'clever');
-  assert.match(lastClever?.text ?? '', /Sportage/i);
-  console.log('✓ Richtungswahl „genauer ansehen“ → Bestätigung ohne Katalog');
+  const directionsTurn = session.turns.find((t) => t.type === TURN_TYPE.VEHICLE_DIRECTIONS);
+  assert.ok(directionsTurn, 'Richtungsübersicht fehlt nach „genauer ansehen“');
+  assert.ok(directionsTurn.directionsView.directions.some((d) => d.modelKey === 'sportage'));
+  console.log('✓ Richtungswahl „genauer ansehen“ → Fahrzeugrichtungen');
 }
 
 testSportageStrongMessageSkipsComfortQuestion();
@@ -100,5 +102,5 @@ testSportageOpeningShowsDirectionNotCatalog();
 testElektroFamilyStillAsksLongDistance();
 testMinimalWishStillAsksUsage();
 testSportageFamilyAhkStillAsksPowertrain();
-testDirectionExploreModelAcknowledgment();
+testDirectionExploreModelShowsDirections();
 console.log('\nAlle Understanding-Gate-Tests bestanden.');
