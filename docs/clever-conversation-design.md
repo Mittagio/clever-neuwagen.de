@@ -2,26 +2,24 @@
 
 **Status:** UX-Spezifikation · kein Code  
 **Stand:** Juli 2026  
-**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** · [Clever Lead](CLEVER_LEAD.md) · Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
+**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** · [Clever Lead](CLEVER_LEAD.md)
+
+**Verbindliche Produktentscheidung (Juli 2026):** Clever besteht aus **genau zwei Welten** — Wunschgespräch und Fahrzeuggespräch. Übergabe an den Verkäufer ist kein drittes Gespräch, sondern das gemeinsame Ende beider Wege.
 
 ---
 
 ## Begriffe (verbindlich)
 
-| Bevorzugt | Verwendung |
-|-----------|------------|
-| Wunsch aufnehmen | Welt 1 – Bedarf sammeln |
-| Wunsch ergänzen | Kunde fügt im Gespräch hinzu |
-| Wunschprofil | `NeedProfile` – wächst sichtbar |
-| Clever Lead | Ergebnis – Übergabe an Verkäufer |
-| Übergabe an Berater / Verkäufer übernimmt | Welt 3 |
-| Offene Punkte | Ehrliche Lücken – besser als falsche Empfehlung |
+| Bevorzugt | Intern | Bedeutung |
+|-----------|--------|-----------|
+| **Wunschgespräch** | Need Conversation | Welt 1 — Lebenssituation, Wünsche, Orientierung |
+| **Fahrzeuggespräch** | Vehicle Conversation | Welt 2 — ein konkretes Fahrzeug, Passung prüfen |
+| **Übergabe** | Handoff | Clever Lead → Verkäufer übernimmt |
+| Wunschprofil | `NeedProfile` | Wächst sichtbar in beiden Welten |
+| Clever Lead | — | Dokument des Verständnisses für den Verkäufer |
+| Offene Punkte | — | Ehrliche Lücken — besser als falsche Richtung |
 
-| Nur wenn … | Begriff |
-|------------|---------|
-| Konkretes Modell im Gespräch | **Fahrzeugberatung** (Welt 2) |
-
-**Nicht** als Identität oder Einstieg: „digitaler Fahrzeugberater“, „Clever findet das perfekte Auto“.
+**Nicht** als Identität oder Einstieg: „digitaler Fahrzeugberater“, „Clever findet das perfekte Auto“, Angebot, Leasing, Kauf.
 
 ---
 
@@ -50,29 +48,83 @@
 
 ---
 
-## Drei Welten (Produktarchitektur)
+## Der Leitsatz
 
-| Welt | Name | Inhalt |
-|------|------|--------|
-| 1 | **Wunsch aufnehmen** | Kein Fahrzeug, kein Trim, keine Rate – nur Bedarf und Wunschprofil |
-| 2 | **Fahrzeugberatung** | Nur wenn Modell konkret im Gespräch → Ausstattung, Trim, Fahrzeugwissen |
-| 3 | **Übergabe** | Autohaus: Clever Lead, Kontakt, Verkäufer übernimmt |
+> **Clever beginnt immer dort, wo der Kunde gerade steht.**
 
-Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit einem **Clever Lead** – optional mit einer ersten Richtung, nie mit drei gleichwertigen Karten.
+Nicht dort, wo der Konfigurator beginnt. Nicht dort, wo das Autohaus beginnen möchte.
 
-**NeedProfile** ist die digitale DNA des Kunden (`lead.crm.needProfile`) – alle Welten lesen daraus. Der **Clever Lead** ist die menschenlesbare Übergabe. Siehe [CLEVER_LEAD.md](CLEVER_LEAD.md).
+---
+
+## Die zwei Welten
+
+Clever besteht aus **genau zwei Welten**. Nicht mehr.
+
+| Welt | Name | Intern | Inhalt |
+|------|------|--------|--------|
+| **1** | **Wunschgespräch** | Need Conversation | Lebenssituation, Wünsche, Orientierung — **kein** konkretes Fahrzeug |
+| **2** | **Fahrzeuggespräch** | Vehicle Conversation | **2A:** Ein Modell — Passung prüfen · **2B:** Anschaffung vorbereiten |
+
+### Die wichtigste Regel
+
+Die beiden Welten dürfen sich **weder inhaltlich noch im UX** vermischen.
+
+| Welt 1 | Welt 2 |
+|--------|--------|
+| Menschen | Ein konkretes Fahrzeug |
+| Lebenssituationen | Ausstattung, Reichweite, Anhängelast |
+| Wünsche | Passungsprüfung |
+| Orientierung (Richtungen) | Nicht das gesamte Portfolio |
+
+### Beide Welten enden gleich
+
+```
+Verständnis  →  Clever Lead  →  Verkäufer übernimmt
+```
+
+Nicht: Angebot. Nicht: Leasingrechner. Nicht: Vertragsabschluss.
+
+Anschaffungsfragen (Budget, Kilometer, Kaufart) gehören in **Welt 2B** — nicht in den Hero, nicht als erste Frage in Welt 1.
+
+### Der Gesprächsfluss
+
+```
+Wunschgespräch  (Welt 1)
+       ↓
+Fahrzeuggespräch  (Welt 2)
+   ├─ 2A  Fahrzeug prüfen
+   └─ 2B  Anschaffung vorbereiten
+       ↓
+Übergabe  (Clever Lead)
+```
+
+### Zwei Einstiege
+
+**Einstieg A** — *„Ich suche ein Auto."*
+
+```
+Wunschgespräch  →  optional Fahrzeuggespräch  →  Übergabe  →  Verkäufer
+```
+
+**Einstieg B** — *„Ich möchte den EV5."*
+
+```
+Fahrzeuggespräch  →  Übergabe  →  Verkäufer
+```
+
+**NeedProfile** wächst in beiden Welten sichtbar. Der **Clever Lead** entsteht nach Welt 1, nach Welt 2 oder nach beiden — je nach Einstieg. Siehe [CLEVER_LEAD.md](CLEVER_LEAD.md).
 
 ---
 
 ## Die Geschichte in fünf Akten
 
-Entspricht den [vier Aufgaben](CLEVER_FOUR_TASKS.md):
+Entspricht den [vier Aufgaben](CLEVER_FOUR_TASKS.md) — über beide Welten:
 
 ```
 1. Clever hört mir zu.          → Zuhören
 2. Clever versteht mich.        → Verstehen (Chips)
-3. Clever ordnet ein.           → Einordnen (Richtungen)
-4. Clever versteht noch mehr.   → Reaktion des Kunden
+3. Clever ordnet ein.           → Einordnen (Richtungen) — vor allem Welt 1
+4. Clever prüft die Passung.    → Fahrzeuggespräch — Welt 2
 5. Der Verkäufer übernimmt.     → Übergeben (Clever Lead)
 ```
 
@@ -86,8 +138,9 @@ Siehe [Die vier Aufgaben](CLEVER_FOUR_TASKS.md) und [vier Produktfragen](CLEVER_
 2. **Niemals Bekanntes erneut fragen** – Parser + sichtbare Notizen.
 3. **Erster Satz Clever ist nie eine Frage** – der Kunde spricht zuerst (Zuhören).
 4. **Orientierung statt Empfehlung** – Einordnen, Kunde reagiert; Clever Lead bei Übergeben.
-5. **Weltwechsel emotional spürbar** – neues Kapitel, nicht nur neuer Inhalt.
-6. **Fahrzeugwissen auf Nachfrage** – Gespräch wichtiger als technische Antwort.
+5. **Weltwechsel emotional spürbar** — neues Kapitel: vom Wunschgespräch zum Fahrzeuggespräch.
+6. **Fahrzeugwissen auf Nachfrage** (Welt 1) / **im Dienst der Passung** (Welt 2).
+7. **Kein Angebot vor Übergabe** — Clever endet mit Verständnis, nicht mit Leasing oder Kauf.
 
 ---
 
@@ -118,7 +171,7 @@ Keine Chatblasen links/rechts. Vertikale **Beratungsfläche**:
 
 ---
 
-# Screen 1 – Der Kunde beginnt (Welt 1: Wunsch aufnehmen / **Empfang**)
+# Screen 1 – Der Kunde beginnt (Welt 1: Wunschgespräch / **Empfang**)
 
 Die Händler-Startseite ist der **digitale Empfang** – nicht Landingpage, nicht Suche, nicht Modellkatalog.
 
@@ -179,7 +232,7 @@ Kundentext erscheint ruhig im Verlauf → Notizleiste erscheint → erste ✓ pe
 
 ---
 
-# Screen 2 – Das Gespräch (Welt 1: Wunsch ergänzen)
+# Screen 2 – Das Wunschgespräch (Welt 1)
 
 ## Emotion
 Jemand hört zu und schreibt mit – nicht „KI verarbeitet“.
@@ -238,20 +291,47 @@ Optional kleine Hilfen unter der Frage:
 ```
 Freitext in der unteren Leiste geht immer.
 
-## Fragen-Priorität (max. ~8 Turns)
+## Fragen-Priorität Welt 1 (Wunschgespräch)
 
-1. Personen / Familie / Kinder  
-2. Antrieb (falls unklar)  
-3. Fahrzeugart (falls unklar)  
-4. Budget + Zahlungsart  
-5. Kilometer/Jahr  
-6. Langstrecke vs. Stadt  
-7. Laden zuhause  
-8. Anhänger / Hund / Stauraum  
+Nur fragen, was Parser + NeedProfile noch nicht erkannt haben.
 
-Nur fragen, was Parser + NeedProfile noch nicht mit hoher Confidence haben.
+1. Lebenssituation / Nutzung (Familie, Kinder, Hund, Arbeitsweg, Urlaub)  
+2. Antrieb — **nur** wenn unklar und relevant  
+3. Fahrzeugart — **nur** wenn unklar  
+4. Stadt / Langstrecke / Anhänger / Zugfahrzeug  
+5. **Fahrzeugrichtungen** zeigen — Kunde reagiert  
 
-## Beispiel-Dialog (Happy Path)
+**Nicht in Welt 1 systematisch:** Kilometer/Jahr, Leasing/Finanzierung/Kauf, Laufzeit, Anzahlung.
+
+**Ausnahme:** Der Kunde nennt Budget oder Kaufart selbst → sofort als Chip.
+
+## Fragen-Priorität Welt 2A (Fahrzeug prüfen)
+
+1. Nutzung / Passt das zum Alltag?  
+2. Platz / Kofferraum / Größe  
+3. Reichweite / Batterie (bei Elektro)  
+4. Anhängelast / AHK  
+5. Ausstattung / Bedenken / Farbe / Lieferzeit  
+
+## Fragen-Priorität Welt 2B (Anschaffung vorbereiten)
+
+**Erst nach klarem Fahrzeuginteresse.** Eine Frage pro Moment.
+
+1. Leasing, Finanzierung, Kauf — oder noch offen?  
+2. Wunschbudget (z. B. bis 300 / 400 / 500 € — oder offen)  
+3. Kilometer pro Jahr (10.000 / 15.000 / 20.000 — oder offen)  
+4. Laufzeit — wenn relevant  
+5. Anzahlung / Inzahlungnahme — wenn relevant  
+6. Gewünschter Zeitraum  
+
+**Übergang von 2A → 2B:**
+
+```
+Damit Ihr Berater das passend vorbereiten kann:
+Möchten Sie den EV5 eher leasen, finanzieren oder kaufen?
+```
+
+## Beispiel-Dialog Welt 1 (Zugfahrzeug)
 
 **Kunde:** *„Ich suche ein Elektroauto für zwei Kinder, bis etwa 350 Euro im Monat.“*
 
@@ -296,7 +376,9 @@ Kunde kann jederzeit ergänzen („ach ja, Hund“) – Notizleiste wächst.
 
 ---
 
-# Screen 3 – Clever Lead & optional erste Richtung (Welt 1 Ende)
+# Screen 3 – Übergabe (Clever Lead)
+
+Gilt nach **Welt 1 allein**, nach **Welt 1 + Welt 2**, oder nach **Welt 2 allein** (Einstieg B).
 
 ## Emotion
 Jemand, der mich kennt, fasst ehrlich zusammen – und bereitet den Berater vor.
@@ -362,42 +444,76 @@ Jemand, der mich kennt, fasst ehrlich zusammen – und bereitet den Berater vor.
 - Optionale Richtung: gestaffelt nach Zusammenfassung
 - „Noch etwas ergänzen?“ → zurück ins Gespräch, Notizen bleiben
 
-## Übergang → Welt 2 (nur bei Modell-Fokus)
+## Übergang → Welt 2 (Fahrzeuggespräch)
+
+Nur wenn der Kunde ein Modell wählt oder klar Interesse zeigt:
+
 ```
 Clever
-Prima. Dann schauen wir uns den Kia EV3
-gemeinsam etwas genauer an.
+Schauen wir gemeinsam, ob der Kia EV3
+wirklich zu Ihrem Wunsch passt.
 ```
+
 400 ms Pause → sichtbarer Weltwechsel (Screen 4).
+
+**Einstieg B** überspringt Screen 1–3 und beginnt direkt bei Screen 4.
 
 ---
 
-# Screen 4 – Fahrzeugberatung (Welt 2)
+# Screen 4 – Fahrzeuggespräch (Welt 2)
 
 ## Emotion
-Jetzt kennen wir uns. Jetzt geht es um dieses eine Auto.
+Jetzt kennen wir den Wunsch — oder der Kunde kam direkt mit einem Modell. Jetzt geht es um **Passung**.
 
 ## Weltwechsel – spürbar
-- Header: „Fahrzeugberatung · Kia EV3“
+- Header: „Fahrzeuggespräch · Kia EV3"
 - Feine visuelle Änderung (Linie, minimal wärmerer Ton)
-- **Notizleiste bleibt** – Clever vergisst nichts
+- **Notizleiste bleibt** — Clever vergisst nichts aus dem Wunschgespräch
 - Crossfade Header 300 ms
 
-## Erster Turn
+## Erster Turn (Einstieg B)
+
+```
+    Clever
+    Schauen wir gemeinsam, ob der EV5
+    wirklich zu Ihrem Wunsch passt.
+```
+
+## Erster Turn (nach Welt 1)
+
 ```
     Clever
     Schön. Beim EV3 gibt es verschiedene
-    Ausstattungslinien – ist Ihnen eher
+    Ausstattungslinien — ist Ihnen eher
     Reichweite oder Komfort/Ausstattung wichtiger?
 ```
 
-Danach: Wärmepumpe, GT-Line, HUD, Earth, AHK – nur modellbezogen.
+Danach: Wärmepumpe, GT-Line, HUD, Earth, AHK — nur modellbezogen, immer mit der Frage: **Passt das zu Ihnen?**
 
 ## Eingabe
-Gleiche Leiste, Platzhalter optional: „Noch eine Frage zum EV3 …“
+Gleiche Leiste, Platzhalter optional: „Noch eine Frage zum EV3 …"
 
-## Welt 3 (Ausblick)
-Nach Übergabe: Verkäufer übernimmt mit Clever Lead – Rate, Portal, persönlicher Kontakt (Welt 3).
+## Ende Welt 2
+
+Nicht mit Rate oder Angebot.
+
+Nach **2A** (Passung geklärt) und **2B** (Anschaffung vorbereitet, soweit sinnvoll):
+
+**Clever Lead** → Übergabe → Verkäufer übernimmt.
+
+### Übergang 2A → 2B (verbindlich)
+
+Sichtbarer Moment — neues Kapitel innerhalb Welt 2, nicht Weltwechsel:
+
+```
+Clever
+Damit Ihr Berater das passend vorbereiten kann:
+Möchten Sie den EV5 eher leasen, finanzieren oder kaufen?
+```
+
+Danach einzeln: Budget → Kilometer → ggf. Laufzeit, Anzahlung, Inzahlungnahme, Zeitraum.
+
+Jede Antwort → Chip. Offenes bleibt unter **Offene Punkte** im Lead.
 
 ---
 
@@ -424,8 +540,8 @@ Nach Übergabe: Verkäufer übernimmt mit Clever Lead – Rate, Portal, persönl
 | 0:00 | Ich darf erzählen |
 | 0:30 | Er notiert sich das |
 | 0:45 | Er versteht mich |
-| 1:30 | Alles ist zusammengefasst – Clever Lead |
-| 2:00 | Optional: konkretes Modell – oder direkt Übergabe |
+| 1:30 | Alles ist zusammengefasst — Clever Lead |
+| 2:00 | Optional: Fahrzeuggespräch — oder direkt Übergabe |
 
 **Ziel-Satz:** *„Das war kein Formular. Das war ein Gespräch.“*
 
@@ -445,8 +561,13 @@ Nach Übergabe: Verkäufer übernimmt mit Clever Lead – Rate, Portal, persönl
 - [ ] Gespräch beginnt beim Menschen – nicht mit Fahrzeugwissen?
 - [ ] Fahrzeugfragen nur auf Kundenanfrage?
 - [ ] Empfehlung optional, nie Pflicht?
-- [ ] Welt 2 emotional neues Kapitel?
-- [ ] Keine Rate vor Welt 3?
+- [ ] Welt 2 emotional neues Kapitel (Fahrzeuggespräch)?
+- [ ] Kein Angebot, keine Rate — nur Übergabe?
+- [ ] Einstieg B: direkt Fahrzeuggespräch möglich?
+
+---
+
+*Clever ist der digitale Empfang des Autohauses. Er holt den Kunden genau dort ab, wo er gerade steht, und übergibt ihn erst dann, wenn ein gutes Verkaufsgespräch beginnen kann.*
 
 ---
 
@@ -469,13 +590,10 @@ Nach Übergabe: Verkäufer übernimmt mit Clever Lead – Rate, Portal, persönl
 
 ---
 
-# Technischer Bezug (Phase 1, bereits im Repo)
+# Technischer Bezug (Implementierung — kann von dieser Spezifikation abweichen)
 
-| Baustein | Pfad |
-|----------|------|
-| Drei Welten | `src/services/consultation/consultationWorlds.js` |
-| NeedProfile | `src/services/consultation/needProfileService.js` |
-| Fragen Welt 1/2 | `src/services/consultation/consultationQuestions.js` |
-| Primärempfehlung | `src/services/consultation/consultationRecommendation.js` |
-| Golden Rules | `.cursor/rules/clever-consultation.mdc` |
-| Tests | `npm run test:consultation` |
+| Baustein | Hinweis |
+|----------|---------|
+| Zwei Welten | Wunschgespräch + Fahrzeuggespräch — siehe [Vier Aufgaben](CLEVER_FOUR_TASKS.md) |
+| NeedProfile | Wächst sichtbar in beiden Welten |
+| Übergabe | Clever Lead — kein drittes Gespräch |

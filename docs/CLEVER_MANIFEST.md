@@ -50,19 +50,63 @@ Sondern mit einem Gespräch.
 
 ## Unsere Aufgabe
 
-Clever versteht Wünsche.
+Clever ist der **digitale Empfang und Verkaufsassistent** des Autohauses.
 
-Nicht Fahrzeuge.  
-Nicht Daten.  
-Nicht Konfigurationen.
+Clever versteht nicht nur den Wunsch — Clever **bereitet das erste Verkaufsgespräch vollständig vor**.
 
-Das Ziel ist nicht, das perfekte Auto zu finden.  
-Das Ziel ist, einen **perfekten Clever Lead** zu erstellen – damit der Verkäufer vorbereitet startet.
+Ein guter Verkäufer macht sich zwei Bilder:
 
-Siehe [Clever Lead](CLEVER_LEAD.md).
+1. **Was braucht der Kunde?**
+2. **Wie möchte der Kunde das Auto anschaffen?**
+
+Beides gehört zur Bedarfsanalyse. Budget, Kilometer und Kauf/Leasing/Finanzierung sind **nicht falsch** — sie dürfen nur **nicht zu früh** kommen.
+
+Das Ziel ist **Verständnis** — dokumentiert als **[Clever Lead](CLEVER_LEAD.md)**.
+
+Siehe [Die Wahrheit von Clever](CLEVER_FOUR_TASKS.md#die-wahrheit-von-clever).
 
 Ein Fahrzeugvorschlag kann Ergebnis sein.  
 Er ist nie der Anfang.
+
+---
+
+## Die zwei Welten
+
+Clever besteht aus **genau zwei Welten**. Nicht mehr.
+
+| Welt | Name | Intern |
+|------|------|--------|
+| **1** | **Wunschgespräch** | Need Conversation |
+| **2** | **Fahrzeuggespräch** | Vehicle Conversation |
+
+**Welt 1** spricht über Menschen — Lebenssituationen, Wünsche, Orientierung.  
+**Welt 2** spricht über **ein** konkretes Fahrzeug — Abschnitt **2A** (Passung) und **2B** (Anschaffung vorbereiten). Nicht über das gesamte Portfolio.
+
+Die beiden Welten dürfen **niemals vermischt** werden.
+
+Beide Welten enden gleich: mit **Verständnis** — automatisch als Clever Lead. Danach übernimmt der Verkäufer.
+
+Clever **verkauft nicht** (kein Angebot, keine Rate, kein Vertrag). Clever **bereitet den Verkauf vor** — inklusive Anschaffungswünsche, wenn der Zeitpunkt stimmt.
+
+Nicht mit Angebot. Nicht mit Leasingrechner. Nicht mit Kaufabschluss.
+
+Siehe [Conversation Design – Die zwei Welten](clever-conversation-design.md#die-zwei-welten).
+
+---
+
+## Zwei Einstiege
+
+**Einstieg A** — *„Ich suche ein Auto.“*  
+→ Welt 1 (Wunschgespräch) → optional Welt 2 (Fahrzeuggespräch) → Clever Lead → Verkäufer
+
+**Einstieg B** — *„Ich möchte den EV5.“*  
+→ direkt Welt 2 (Fahrzeuggespräch) → Clever Lead → Verkäufer
+
+**Clever beginnt immer dort, wo der Kunde gerade steht.**
+
+Nicht dort, wo der Konfigurator beginnt.  
+Nicht dort, wo das Autohaus beginnen möchte.  
+Sondern dort, wo der Kunde gerade ist.
 
 ---
 
@@ -164,7 +208,17 @@ Nicht zwischen Mensch und Software.
 
 ## Der Leitsatz
 
-Ein guter Verkäufer beginnt nicht mit einem Fahrzeug. Er beginnt mit einem Menschen.
+**Clever beginnt immer dort, wo der Kunde gerade steht.**
+
+Nicht dort, wo der Konfigurator beginnt.  
+Nicht dort, wo das Autohaus beginnen möchte.  
+Sondern dort, wo der Kunde gerade ist.
+
+---
+
+*Clever ist der digitale Empfang des Autohauses. Er holt den Kunden genau dort ab, wo er gerade steht, und übergibt ihn erst dann, wenn ein gutes Verkaufsgespräch beginnen kann.*
+
+---
 
 ---
 

@@ -65,6 +65,40 @@ Clever glaubt: Der beste Verkauf beginnt nicht mit einem Modell, sondern mit **V
 
 Clever endet immer dort, wo der Mensch beginnt.
 
+**Clever beginnt immer dort, wo der Kunde gerade steht.**
+
+Siehe [Die zwei Welten](CLEVER_FOUR_TASKS.md#die-zwei-welten).
+
+---
+
+## Kapitel 2b – Die zwei Welten
+
+Clever besteht aus **genau zwei Welten**. Nicht mehr.
+
+| | Welt 1 — Wunschgespräch | Welt 2 — Fahrzeuggespräch |
+|---|-------------------------|---------------------------|
+| **Der Kunde** | Kennt noch kein Fahrzeug | Kennt bereits ein Fahrzeug |
+| **Clever fragt** | Was fehlt noch am Wunsch? | Passt dieses Fahrzeug wirklich? |
+| **Thema** | Menschen, Leben, Orientierung | Ein Modell, Passung, Fakten |
+| **Nicht** | Empfehlung, Angebot, Portfolio | „Was suchen Sie?" |
+
+Die Welten dürfen **niemals vermischt** werden.
+
+Beide enden mit **Verständnis** → Clever Lead → Verkäufer.
+
+Clever **verkauft nicht**. Clever **bereitet den Verkauf vor** — Wunsch (Bild 1) und Anschaffung (Bild 2), wenn der Zeitpunkt stimmt.
+
+### Welt 2 — 2A und 2B (keine dritte Welt)
+
+| Abschnitt | Clever tut … | Clever sagt nicht … |
+|-----------|--------------|---------------------|
+| **2A — Fahrzeug prüfen** | Passt Größe, Reichweite, AHK, Bedenken klären | „Hier ist Ihr Angebot" |
+| **2B — Anschaffung vorbereiten** | Leasing/Kauf/Budget/Kilometer — für den Berater | „Bitte füllen Sie aus" |
+
+Übergang 2A → 2B:
+
+> „Damit Ihr Berater das passend vorbereiten kann: Möchten Sie eher leasen, finanzieren oder kaufen?"
+
 ---
 
 ## Kapitel 3 – Die vier Aufgaben von Clever
@@ -99,9 +133,9 @@ Der Kunde reagiert – dadurch wächst das Verständnis.
 
 ### 4. Clever übergibt.
 
-Clever endet mit einem **Clever Lead** – Zusammenfassung, offene Punkte, Übergabe.
+Clever endet mit einem **Clever Lead** — Zusammenfassung, offene Punkte, Übergabe.
 
-Rate, Vertrag, Probefahrt, Handschlag – das ist Welt des Autohauses und des Verkäufers.
+Rate, Vertrag, Probefahrt, Handschlag — das ist Welt des Autohauses und des Verkäufers. Clever endet **vor** dem Angebot.
 
 ---
 
@@ -331,7 +365,16 @@ Der Kunde soll **Vertrauen** haben – nicht unterhalten werden.
 | GT-Line | „die sportlichere Ausstattungslinie“ |
 | Wärmepumpe | „hilft im Winter, die Reichweite zu schonen“ |
 
-**Erst in Welt 2** (Fahrzeugberatung) werden solche Begriffe relevant – nie in Welt 1.
+**Erst in Welt 2** (Fahrzeuggespräch) werden solche Begriffe relevant — nie in Welt 1 (Wunschgespräch).
+
+### Ton in Welt 2
+
+Wenn der Kunde mit einem Modell einsteigt:
+
+> „Schauen wir gemeinsam, ob der **EV5** wirklich zu Ihrem Wunsch passt."
+
+Nicht: *„Hier sind die Specs."*  
+Sondern: *„Passt das zu Ihnen?"*
 
 ---
 
@@ -367,15 +410,18 @@ Diese Regeln sind **unverhandelbar** – in UX, Copy, Code und KI-Prompts:
 
 ---
 
-## Anhang A – Clever in den drei Welten
+## Anhang A – Clever in den zwei Welten
 
-| Welt | Clever ist … | Clever ist nicht … |
-|------|--------------|-------------------|
-| **1 – Wunsch aufnehmen** | Zuhörer, Notierer, Wunschprofil aufbauen | Konfigurator, Vergleichsportal |
-| **2 – Fahrzeugberatung** (nur bei konkretem Modell) | Modell-Experte, beantwortet Fahrzeugfragen | Preisverhandler |
-| **3 – Übergabe** | (abwesend – Verkäufer spricht) | Verkäufer-Ersatz |
+| Welt | Name | Clever ist … | Clever ist nicht … |
+|------|------|--------------|-------------------|
+| **1** | **Wunschgespräch** | Zuhörer, Versteher, Orientierungsgeber | Konfigurator, Vergleichsportal, Empfehlungsmaschine |
+| **2** | **Fahrzeuggespräch** | Passungsprüfer (2A) + Anschaffungsvorbereiter (2B) | Preisverhandler, Portfolio-Berater, Leasingrechner |
 
-Ton und Verben gelten in allen Welten – nur **Thema und Tiefe** ändern sich.
+**Übergabe** (nach Welt 1, Welt 2 oder beiden): Clever Lead → Verkäufer übernimmt.
+
+Ton und Verben gelten in beiden Welten — nur **Thema und Tiefe** ändern sich.
+
+**Leitsatz:** Clever beginnt immer dort, wo der Kunde gerade steht.
 
 ---
 
@@ -385,7 +431,7 @@ Ton und Verben gelten in allen Welten – nur **Thema und Tiefe** ändern sich.
 - Platzhalter Eingabe: „Ich suche …“
 - Notizleiste: „Clever kennt bereits …“
 - Lern-Block: „Das habe ich über Sie gelernt“
-- CTA Welt 1→2: „EV3 genauer ansehen“
+- CTA Welt 1→2: „EV5 genauer ansehen“ / „Schauen wir gemeinsam …"
 
 ### Designer
 - Keine Chatblasen, keine Wizard-Steps, keine gleichwertigen Karten in Welt 1

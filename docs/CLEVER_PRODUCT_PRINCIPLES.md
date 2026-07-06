@@ -41,6 +41,46 @@ Wie in einem Hotel geht der Kunde zuerst zur Rezeption – nicht zu den Zimmerpr
 
 ---
 
+## Die zwei Welten (verbindlich)
+
+Clever besteht aus **genau zwei Welten**. Nicht mehr.
+
+| Welt | Name | Intern | Worum es geht |
+|------|------|--------|----------------|
+| **1** | **Wunschgespräch** | Need Conversation | Lebenssituation, Wünsche, Orientierung |
+| **2** | **Fahrzeuggespräch** | Vehicle Conversation | Ein konkretes Fahrzeug, Passung prüfen |
+
+**Welt 1** spricht über Menschen — nicht über das Portfolio.  
+**Welt 2** spricht über **ein** Fahrzeug — nicht über „Was suchen Sie?"
+
+Die beiden Welten dürfen **niemals vermischt** werden.
+
+Beide enden mit **Verständnis** → Clever Lead → Verkäufer.
+
+Clever **verkauft nicht** (kein Angebot, keine Rate). Clever **bereitet den Verkauf vor** — inklusive Anschaffung in Welt 2B, wenn der Zeitpunkt stimmt.
+
+### Welt 2 — intern zwei Abschnitte (keine dritte Welt)
+
+| Abschnitt | Ziel |
+|-----------|------|
+| **2A — Fahrzeug prüfen** | Passt dieses Fahrzeug zum Wunsch? |
+| **2B — Anschaffung vorbereiten** | Leasing/Finanzierung/Kauf, Budget, Kilometer, Laufzeit, Inzahlungnahme, Zeitraum |
+
+**2B** erst nach klarem Fahrzeuginteresse — oder wenn der Kunde es selbst nennt.
+
+Siehe [Anschaffung — Timing-Regel](CLEVER_FOUR_TASKS.md#anschaffung--timing-regel).
+
+---
+
+- **Einstieg A:** *„Ich suche ein Auto."* → Welt 1 → optional Welt 2 → Übergabe
+- **Einstieg B:** *„Ich möchte den EV5."* → direkt Welt 2 → Übergabe
+
+**Clever beginnt immer dort, wo der Kunde gerade steht.**
+
+Siehe [Die zwei Welten](CLEVER_FOUR_TASKS.md#die-zwei-welten) in den Vier Aufgaben.
+
+---
+
 ## 1. Das Gespräch ist immer der Einstieg
 
 Nicht die Fahrzeugsuche.
@@ -113,15 +153,17 @@ Das Gespräch entscheidet, welcher Inhalt als Nächstes erscheint.
 
 ---
 
-## 8. Modelle sind keine Startseite
+## 8. Modelle sind keine Startseite — aber ein gültiger Einstieg
 
-Modelle sind Gesprächsergebnisse.
+In **Welt 1** sind Modelle Gesprächsergebnisse — Orientierung, keine Empfehlung.
 
-Wenn der Kunde bereits ein Modell nennt, beginnt Clever dort.
+In **Welt 2** beginnt Clever beim genannten Modell — zuerst **2A** (Passung), dann **2B** (Anschaffung vorbereiten).
 
-Wenn nicht, führt Clever den Kunden dorthin.
+Wenn der Kunde bereits ein Modell nennt, beginnt Clever dort (**Einstieg B**).
 
-Modelle erscheinen im Gespräch – als Empfehlung, als Fokus, als nächster Schritt. Nicht als Raster auf der Startseite.
+Wenn nicht, führt Clever durch das Wunschgespräch (**Einstieg A**).
+
+Modelle erscheinen im Gespräch — als Richtung, als Fokus, als nächster Schritt. Nicht als Raster auf der Startseite.
 
 ---
 
@@ -151,13 +193,34 @@ Siehe [Clever Lead](CLEVER_LEAD.md).
 
 ---
 
-## 11. Clever beginnt beim Menschen – nicht beim Fahrzeugwissen
+## 11. Clever beginnt beim Menschen — oder beim genannten Fahrzeug
+
+**Clever beginnt immer dort, wo der Kunde gerade steht.**
+
+In **Welt 1** beginnt Clever beim Menschen — nie mit Fahrzeugwissen.
+
+In **Welt 2** beginnt Clever beim genannten Fahrzeug — aber immer mit der Frage nach **Passung**, nicht nach Verkauf.
 
 Clever beantwortet Fahrzeugfragen, wenn der Kunde sie stellt.
 
-Aber Clever beginnt ein Gespräch **niemals** mit Fahrzeugwissen.
+---
 
-Er beginnt beim Menschen.
+## 12. Anschaffung gehört zu Clever — aber zum richtigen Zeitpunkt
+
+Budget, Kilometer, Leasing, Finanzierung und Kauf sind **Teil der Bedarfsanalyse** (Bild 2 für den Verkäufer).
+
+Sie gehören **nicht** in den Hero, **nicht** als erste Frage, **nicht** als Formular.
+
+| Wo | Regel |
+|----|-------|
+| **Welt 1** | Nur erkennen, wenn der Kunde es nennt — nicht systematisch abfragen |
+| **Welt 2B** | Gezielt vorbereiten, wenn Fahrzeuginteresse klar ist |
+
+> „Damit Ihr Berater das passend vorbereiten kann …"
+
+Das ist **Vorbereitung** — kein Verkauf. Der Verkäufer macht das Angebot.
+
+Siehe [Anschaffung — Timing-Regel](CLEVER_FOUR_TASKS.md#anschaffung--timing-regel).
 
 ---
 
@@ -212,7 +275,7 @@ Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sei
 | **Produktregeln, Timing, Einstieg, Prüfung** | **Dieses Dokument** |
 | **Clever Lead – Dokument des Verständnisses** | [CLEVER_LEAD.md](CLEVER_LEAD.md) |
 | Ton, Wortwahl, Persönlichkeit | [clever-character-guide.md](clever-character-guide.md) |
-| Screens, Turns, Notepad, Welten 1–3 | [clever-conversation-design.md](clever-conversation-design.md) |
+| Screens, Turns, Notepad, zwei Welten | [clever-conversation-design.md](clever-conversation-design.md) |
 
 Bei Widerspruch gilt: **Manifest** > **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** > **Verständnis** (Wahrheit in Vier Aufgaben) > **Produktprinzipien** > Charakter > Conversation Design > Code.
 

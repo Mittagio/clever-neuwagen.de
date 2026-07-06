@@ -44,20 +44,63 @@ Siehe [Die Wahrheit von Clever](CLEVER_FOUR_TASKS.md#die-wahrheit-von-clever).
 
 ---
 
+## Wann entsteht der Clever Lead?
+
+Der Clever Lead entsteht **sowohl nach Welt 1 als auch nach Welt 2** — je nachdem, an welcher Stelle der Kunde einsteigt.
+
+| Einstieg | Weg | Wann der Lead entsteht |
+|----------|-----|------------------------|
+| **A** — *„Ich suche ein Auto."* | Welt 1 (Wunschgespräch) → optional Welt 2 (Fahrzeuggespräch) | Nach genug Verständnis — spätestens vor dem Verkäufer |
+| **B** — *„Ich möchte den EV5."* | Direkt Welt 2 (Fahrzeuggespräch) | Nach der Passungsprüfung — spätestens vor dem Verkäufer |
+
+Clever endet **nicht** mit Angebot oder Vertrag.
+
+Clever endet mit **Verständnis** — inklusive Anschaffungswünschen (Bild 2), wenn sie im Gespräch geklärt wurden.
+
+Danach übernimmt der Verkäufer.
+
+Siehe [Die zwei Welten](CLEVER_FOUR_TASKS.md#die-zwei-welten).
+
+---
+
 ## Welche Informationen enthält ein Clever Lead?
+
+Ein guter Verkäufer braucht **zwei Bilder** — beide gehören in den Lead:
+
+### Bild 1 — Was braucht der Kunde?
 
 | Kategorie | Beispiele |
 |-----------|-----------|
-| **Erkannte Wünsche** | SUV, Familie, 2 Kinder, Automatik, Schwarz |
-| **Bestätigte Fakten** | Benzin bevorzugt, Anhängerkupplung gewünscht |
-| **Nutzung** | überwiegend Kurzstrecke, Urlaub 2–3× pro Jahr |
-| **Budget** | bis 40.000 € (Kauf) oder ~350 €/Monat (offen) |
-| **Modellinteresse** | Sportage genannt, oder noch offen |
-| **Ausstattungswünsche** | AHK, Fahrradträger geplant |
+| **Erkannte Wünsche** | SUV, Familie, 2 Kinder, Automatik |
+| **Nutzung** | Stadt, Langstrecke, Urlaub, Zugfahrzeug |
+| **Lebenssituation** | Hund, Kinderwagen, Anhänger, Arbeitsweg |
+| **Antrieb / Fahrzeugart** | Elektro, Diesel, Kleinwagen — wenn bekannt |
+| **Fahrzeugrichtungen** | Interessiert: Sportage · Nicht: EV9 |
 | **Prioritäten** | Familie wichtiger als Allrad |
-| **Offene Punkte** | jährliche Kilometer, Leasing oder Kauf, AHK-Nutzung |
+| **Bedenken** | Größe, Reichweite, Lieferzeit |
+
+### Bild 2 — Wie möchte der Kunde anschaffen?
+
+| Kategorie | Beispiele |
+|-----------|-----------|
+| **Kaufart** | Leasing, Finanzierung, Kauf — oder noch offen |
+| **Budget** | bis 400 €/Monat, bis 40.000 € Kauf, grob genannt |
+| **Kilometer** | 10.000 / 15.000 / 20.000 km/Jahr |
+| **Laufzeit** | 36 / 48 Monate — wenn genannt |
+| **Anzahlung** | offen oder Betrag |
+| **Inzahlungnahme** | ja / nein / offen |
+| **Zeitraum** | „in den nächsten 4 Wochen" — wenn genannt |
+
+### Übergreifend
+
+| Kategorie | Beispiele |
+|-----------|-----------|
+| **Modellinteresse** | EV5 interessiert, Sportage in Prüfung |
+| **Offene Punkte** | Anzahlung, genaue Ausstattung, Farbe |
 | **Kontaktwunsch** | Rückruf, E-Mail, Termin |
-| **Verkäufer-Zusammenfassung** | Kurzer Hinweis in Alltagssprache |
+| **Verkäufer-Hinweis** | Kurzer Einstiegssatz in Alltagssprache |
+
+Was in Welt 1 noch offen ist, darf in Welt 2B nachgezogen werden — oder als **offener Punkt** im Lead bleiben.
 
 Technisch entspricht das dem `NeedProfile` im CRM (`lead.crm.needProfile`) plus Handoff-Dossier.
 
@@ -65,11 +108,21 @@ Technisch entspricht das dem `NeedProfile` im CRM (`lead.crm.needProfile`) plus 
 
 ## Wie entsteht er aus dem Gespräch?
 
+### Nach Welt 1 (Wunschgespräch)
+
 1. Der Kunde erzählt – Clever **hört zu** (Aufgabe 1).
 2. Clever **versteht** – Wünsche werden sichtbar notiert (Aufgabe 2).
 3. Clever **ordnet ein** – Richtungen, Kundenreaktion (Aufgabe 3).
 4. Mit jeder Reaktion wächst das Verständnis (innere Schleife).
-5. Clever **übergibt** – der Clever Lead entsteht (Aufgabe 4).
+5. Optional: Übergang zu Welt 2, wenn der Kunde ein Modell wählt.
+6. Clever **übergibt** – der Clever Lead entsteht (Aufgabe 4).
+
+### Nach Welt 2 (Fahrzeuggespräch) — Einstieg B
+
+1. Der Kunde nennt ein Fahrzeug – Clever beginnt dort.
+2. Clever prüft gemeinsam: **Passt dieses Fahrzeug zu diesem Menschen?**
+3. Ausstattung, Reichweite, Anhängelast — alles im Dienst der Passung.
+4. Clever **übergibt** – der Clever Lead entsteht mit Wunsch **und** Fahrzeugkontext.
 
 Siehe [Die vier Aufgaben](CLEVER_FOUR_TASKS.md).
 
@@ -79,32 +132,47 @@ Kein Formular. Kein Wizard. Ein Gespräch mit sichtbarem Notizblock.
 
 ## Wie sieht er für den Verkäufer aus?
 
+### Beispiel nach Welt 1 + Orientierung
+
 ```
 Clever Lead – Familie Muster
 
-Kunde sucht:
-✓ SUV
-✓ Familie
-✓ 2 Kinder
-✓ Benzin
-✓ Automatik
-✓ Anhängerkupplung
-✓ Budget bis 40.000 €
-✓ Farbe Schwarz
+Interessiert:
+✓ Sportage
 
-Offene Punkte:
-• jährliche Kilometer
-• Leasing oder Kauf
-• AHK-Nutzung (nur gelegentlich?)
-• Lieferzeit
+Nicht interessant:
+✗ EV9
 
-Verkäufer-Hinweis:
-„Kunde sucht einen familiengeeigneten SUV mit AHK und Automatik.
-Benzin ist bevorzugt. Allrad wurde nicht final bestätigt.
-Bitte Sportage / XCeed / Stonic prüfen.“
+Offen:
+• Antrieb
+• Budget
+• Kaufart
+• Kilometer
 ```
 
-Der Verkäufer sieht **Wünsche**, **Lücken** und einen **Einstiegssatz** – nicht zehn gleichwertige Fahrzeugkarten.
+### Beispiel nach Welt 2 (EV5)
+
+```
+Clever Lead – Familie Muster
+
+✓ EV5 interessiert
+✓ Elektro
+✓ Nutzung: Familie / Alltag / Stadt
+✓ Budgetwunsch: bis 400 €
+✓ Kilometer: 10.000 km/Jahr
+✓ Kaufart: Leasing gewünscht
+
+Bedenken:
+• Größe (geklärt: passt)
+• Reichweite (offen für Berater)
+
+Offen:
+• Anzahlung
+• Inzahlungnahme
+• genaue Ausstattung
+```
+
+Der Verkäufer sieht **beide Bilder** — Wunsch **und** Anschaffung — plus **offene Punkte** und einen **Einstiegssatz**.
 
 ---
 
@@ -199,4 +267,4 @@ Dieser Satz ist der Kern des Produkts – wichtiger als jede technische Spezifik
 
 ---
 
-*Der Clever Lead ist das, wofür Clever existiert. Alles andere – Fahrzeugkarten, Richtung, Modellwissen – ist Mittel zum Zweck.*
+*Der Clever Lead dokumentiert Verständnis — aus Wunschgespräch, Fahrzeuggespräch oder beiden. Alles andere ist Mittel zum Zweck.*
