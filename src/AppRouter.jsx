@@ -14,7 +14,6 @@ import AdminHaendlerPage from './pages/admin-leitstand/AdminHaendlerPage.jsx';
 import AdminDatenPage from './pages/admin-leitstand/AdminDatenPage.jsx';
 import AdminSystemLeitstandPage from './pages/admin-leitstand/AdminSystemLeitstandPage.jsx';
 import SmartSalesPage from './pages/SmartSalesPage';
-import CleverBeratungPage from './pages/CleverBeratungPage.jsx';
 import SalesPage from './pages/SalesPage';
 import SalesCompareSharePage from './pages/SalesCompareSharePage';
 import AccountPage from './pages/sprint7/AccountPage.jsx';
@@ -167,7 +166,7 @@ export default function AppRouter() {
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/smart" element={<SmartSalesPage />} />
         <Route path="/gespraech" element={<SmartSalesPage />} />
-        <Route path="/beratung" element={<CleverBeratungPage />} />
+        <Route path="/beratung" element={<Navigate to={`/haendler/${PILOT_DEALER_ID}`} replace />} />
         <Route path="/vergleich/:token" element={<SalesCompareSharePage />} />
         <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/dealer-ai" element={<Navigate to="/verkaufsassistent" replace />} />

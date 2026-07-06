@@ -2,7 +2,26 @@
 
 **Status:** UX-Spezifikation · kein Code  
 **Stand:** Juli 2026  
-**Bezug Technik:** Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
+**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · [Clever Lead](CLEVER_LEAD.md) · Phase 1 (`feat: split clever consultation worlds`) – drei Welten, `NeedProfile`, Golden Rules in `.cursor/rules/clever-consultation.mdc`
+
+---
+
+## Begriffe (verbindlich)
+
+| Bevorzugt | Verwendung |
+|-----------|------------|
+| Wunsch aufnehmen | Welt 1 – Bedarf sammeln |
+| Wunsch ergänzen | Kunde fügt im Gespräch hinzu |
+| Wunschprofil | `NeedProfile` – wächst sichtbar |
+| Clever Lead | Ergebnis – Übergabe an Verkäufer |
+| Übergabe an Berater / Verkäufer übernimmt | Welt 3 |
+| Offene Punkte | Ehrliche Lücken – besser als falsche Empfehlung |
+
+| Nur wenn … | Begriff |
+|------------|---------|
+| Konkretes Modell im Gespräch | **Fahrzeugberatung** (Welt 2) |
+
+**Nicht** als Identität oder Einstieg: „digitaler Fahrzeugberater“, „Clever findet das perfekte Auto“.
 
 ---
 
@@ -17,17 +36,17 @@
 
 | Wir bauen **nicht** | Wir bauen |
 |---------------------|-----------|
-| Messenger (WhatsApp) | Beratungsgespräch |
-| Chatbot (ChatGPT) | Digitaler Berater namens Clever |
+| Messenger (WhatsApp) | Bedarfsgespräch |
+| Chatbot (ChatGPT) | Verkaufsassistent namens Clever |
 | Wizard / Formular | Ein Gespräch mit einer Frage pro Moment |
-| Vergleichsportal | Eine persönliche Empfehlung |
-| Konfigurator-Einstieg | Bedarf zuerst, Fahrzeug danach |
+| Vergleichsportal | Ein Clever Lead – Wünsche verstanden, Verkäufer vorbereitet |
+| Konfigurator-Einstieg | Wunsch zuerst, Fahrzeug danach |
 
-**Kernunterscheidung:** Kein Chat – ein **Gespräch**. Ein Chat ist eine Messenger-Oberfläche. Ein Gespräch ist ein digitaler Berater.
+**Kernunterscheidung:** Kein Chat – ein **Gespräch**. Ein Chat ist eine Messenger-Oberfläche. Ein Gespräch ist ein Verkaufsassistent, der zuhört und vorbereitet.
 
-**Metapher:** Nicht „mit einem Bot chatten“, sondern **neben einem ruhigen Verkäufer sitzen**, der mitliest, notiert und am Ende sagt: *„Wissen Sie was – ich würde zuerst hier schauen.“*
+**Metapher:** Nicht „mit einem Bot chatten“, sondern **am Empfang sitzen**, während jemand aufmerksam mitnotiert und am Ende sagt: *„Ich habe alles für Ihren Berater vorbereitet.“*
 
-**USP:** Nicht KI. Nicht GPT. **Sichtbares Verstehen.**
+**USP:** Nicht KI. Nicht GPT. **Sichtbares Verstehen** – und ein **Clever Lead**, der den Verkäufer nicht bei Null beginnen lässt.
 
 ---
 
@@ -35,13 +54,13 @@
 
 | Welt | Name | Inhalt |
 |------|------|--------|
-| 1 | **Clever Beratung** | Kein Fahrzeug, kein Trim, keine Rate – nur Bedarf |
-| 2 | **Fahrzeugberatung** | Modell gewählt → Ausstattung, Trim, Fahrzeugwissen |
-| 3 | **Angebot** | Autohaus: Rate, Portal, Journey, Verkäufer |
+| 1 | **Wunsch aufnehmen** | Kein Fahrzeug, kein Trim, keine Rate – nur Bedarf und Wunschprofil |
+| 2 | **Fahrzeugberatung** | Nur wenn Modell konkret im Gespräch → Ausstattung, Trim, Fahrzeugwissen |
+| 3 | **Übergabe** | Autohaus: Clever Lead, Kontakt, Verkäufer übernimmt |
 
-Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit **einer Empfehlung** (nicht drei gleichwertigen Karten).
+Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit einem **Clever Lead** – optional mit einer ersten Richtung, nie mit drei gleichwertigen Karten.
 
-**NeedProfile** ist die digitale DNA des Kunden (`lead.crm.needProfile`) – alle Welten lesen daraus.
+**NeedProfile** ist die digitale DNA des Kunden (`lead.crm.needProfile`) – alle Welten lesen daraus. Der **Clever Lead** ist die menschenlesbare Übergabe. Siehe [CLEVER_LEAD.md](CLEVER_LEAD.md).
 
 ---
 
@@ -50,9 +69,9 @@ Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit 
 ```
 1. Clever hört mir zu.          → Ich darf erzählen.
 2. Clever macht sich Notizen.   → Ich sehe, was er aufschreibt.
-3. Clever versteht mich.        → Die Notizen werden vollständiger.
-4. Clever empfiehlt mir etwas.  → Eine Richtung, nicht zehn Karten.
-5. Mein Berater übernimmt.      → Mensch + Autohaus (Welt 3).
+3. Clever versteht mich.        → Das Wunschprofil wird vollständiger.
+4. Clever fasst zusammen.       → Clever Lead – optional erste Richtung.
+5. Der Verkäufer übernimmt.     → Mensch + Autohaus (Welt 3).
 ```
 
 ---
@@ -62,8 +81,9 @@ Welten dürfen sich **weder technisch noch im UX** vermischen. Welt 1 endet mit 
 1. **Eine Frage pro Turn** – kein Wizard, keine Fragenliste.
 2. **Niemals Bekanntes erneut fragen** – Parser + sichtbare Notizen.
 3. **Erster Satz Clever ist nie eine Frage** – der Kunde spricht zuerst.
-4. **Empfehlung im Mittelpunkt** – Alternativen sekundär.
+4. **Clever Lead im Mittelpunkt** – Wünsche, Fakten, offene Punkte; Richtung optional, nie erzwungen.
 5. **Weltwechsel emotional spürbar** – neues Kapitel, nicht nur neuer Inhalt.
+6. **Fahrzeugfragen beantworten, wenn der Kunde fragt** – Gespräch beginnt nie mit Fahrzeugwissen.
 
 ---
 
@@ -94,7 +114,9 @@ Keine Chatblasen links/rechts. Vertikale **Beratungsfläche**:
 
 ---
 
-# Screen 1 – Der Kunde beginnt (Welt 1)
+# Screen 1 – Der Kunde beginnt (Welt 1: Wunsch aufnehmen / **Empfang**)
+
+Die Händler-Startseite ist der **digitale Empfang** – nicht Landingpage, nicht Suche, nicht Modellkatalog.
 
 ## Emotion
 Einladung. Kein Druck. Keine Prüfung.
@@ -105,12 +127,12 @@ Fahrzeuge, Preise, Karten, Clever-Fragen.
 ## Layout
 
 ```
-                    Hallo.
-
-         Ich bin Clever – Ihr digitaler
-         Fahrzeugberater bei [Autohaus].
+         Willkommen im Autohaus [Name].
 
     Erzählen Sie mir einfach, wonach Sie suchen.
+
+    Ich nehme Ihre Wünsche auf und bereite alles
+    für Ihren persönlichen Berater vor.
 
     ┌─────────────────────────────────────┐
     │  Ich suche …                     ➜ │
@@ -127,15 +149,17 @@ Fahrzeuge, Preise, Karten, Clever-Fragen.
 
 | Element | Text |
 |---------|------|
-| Begrüßung | „Hallo.“ |
-| Vorstellung | „Ich bin Clever – Ihr digitaler Fahrzeugberater bei [Autohaus].“ |
-| **Erster Satz** | **„Erzählen Sie mir einfach, wonach Sie suchen.“** |
+| Begrüßung | „Willkommen im Autohaus [Name].“ |
+| Einladung | **„Erzählen Sie mir einfach, wonach Sie suchen.“** |
+| Vorbereitung | „Ich nehme Ihre Wünsche auf und bereite alles für Ihren persönlichen Berater vor.“ |
 | Eingabe-Platzhalter | „Ich suche …“ |
 | Beispiele | „oder ein Beispiel“ |
 
 ## Verboten als erster Clever-Satz
+- „Ich bin Clever – Ihr digitaler Fahrzeugberater …“
 - „Wie kann ich Ihnen helfen?“
 - „Welche Fahrzeugart suchen Sie?“
+- Fahrzeugwissen, Specs, Modellnamen
 
 ## Interaktion
 - ➜ in der Eingabezeile sendet – **kein „Weiter“-Button**
@@ -151,7 +175,7 @@ Kundentext erscheint ruhig im Verlauf → Notizleiste erscheint → erste ✓ pe
 
 ---
 
-# Screen 2 – Das Gespräch (Welt 1)
+# Screen 2 – Das Gespräch (Welt 1: Wunsch ergänzen)
 
 ## Emotion
 Jemand hört zu und schreibt mit – nicht „KI verarbeitet“.
@@ -193,7 +217,8 @@ Wie ein Verkäufer, der ins Notizbuch schreibt.
 |-------|-------|
 | Anfang | „Clever notiert sich …“ |
 | Mitte | „Clever kennt bereits …“ |
-| Vor Empfehlung | „Das weiß ich über Sie“ |
+| Vor Zusammenfassung | „Das weiß ich über Sie“ |
+| Offene Punkte | „Noch offen …“ (ehrlich, nicht versteckt) |
 
 **Verhalten:**
 - Jeder neue Punkt: **plop** (200 ms, scale 0.92→1, opacity 0→1)
@@ -248,9 +273,15 @@ Können Sie zu Hause laden – Garage oder Wallbox?
 **Kunde:** *„Ja, Garage.“*  
 → Lern-Block: `✓ Laden zuhause`
 
-Wenn nichts Wesentliches fehlt: **keine weitere Frage** → Screen 3.
+Wenn nichts Wesentliches fehlt: **keine weitere Frage** → Screen 3 (Clever Lead).
 
-## Pause vor Empfehlung
+## Fahrzeugfragen des Kunden (jederzeit)
+
+Wenn der Kunde fragt: *„Wie groß ist der Kofferraum vom Sportage?“* – Clever antwortet kurz und kehrt zum Wunschprofil zurück.
+
+Clever **beginnt** das Gespräch nie mit Fahrzeugwissen.
+
+## Pause vor Zusammenfassung
 400–600 ms, Text: „Clever denkt einen Moment nach …“ – kein Spinner.
 
 ## Eingabe unten – dauerhaft
@@ -261,26 +292,34 @@ Kunde kann jederzeit ergänzen („ach ja, Hund“) – Notizleiste wächst.
 
 ---
 
-# Screen 3 – Die Empfehlung (Welt 1 Ende)
+# Screen 3 – Clever Lead & optional erste Richtung (Welt 1 Ende)
 
 ## Emotion
-Jemand, der mich kennt, sagt ehrlich, womit ich anfangen soll.
+Jemand, der mich kennt, fasst ehrlich zusammen – und bereitet den Berater vor.
 
 ## Verboten
 - „Hier sind drei passende Fahrzeuge.“
-- Leasingrate / „ab 299 €“
-- Gleich große Modellkarten
+- Leasingrate / „ab 299 €“ als Einstieg
+- Gleich große Modellkarten als Pflicht
+- Falsche Empfehlung statt offener Punkte
 
 ## Layout
 
 ```
     [ Notizleiste – vollständig ]
 
-    Das habe ich über Sie gelernt
+    Clever Lead – So habe ich Sie verstanden
+
     ✓ Elektro  ✓ Familie  ✓ 2 Kinder
     ✓ Langstrecke  ✓ Garage  ✓ ~350 €
 
+    Offene Punkte:
+    • jährliche Kilometer
+    • Leasing oder Kauf
+
     ─────────────────────────────────
+
+    [ Optional – nur wenn sinnvoll ]
 
     Nach Ihren Angaben würde ich zuerst den
 
@@ -295,29 +334,31 @@ Jemand, der mich kennt, sagt ehrlich, womit ich anfangen soll.
     ✓ passt zu Ihrer Familie
     ✓ ausreichend Reichweite
     ✓ innerhalb Ihres Budgets
-    ✓ Anhängerkupplung möglich
 
     ─── Alternativen ───
          EV4          Niro EV
       (sekundär, kleiner)
 
     ┌─────────────────────────────────┐
-    │   EV3 genauer ansehen        ➜  │
+    │   Berater kontaktieren       ➜  │
     └─────────────────────────────────┘
 
-         Passt nicht ganz?
-         [ Andere Richtung besprechen ]
+         Noch etwas ergänzen?
+         [ Wunsch ergänzen ]
 ```
 
 ## Copy
-- Empfehlung: „Nach Ihren Angaben würde ich zuerst den **Kia EV3** ansehen.“
-- Warum-Zeilen immer mit „Sie/Ihr“, nie technisch
+- Zusammenfassung: „So habe ich Sie verstanden“ – nicht „Ich habe verstanden“
+- Optional Richtung: „Nach Ihren Angaben würde ich zuerst den **Kia EV3** ansehen.“
+- Offene Punkte immer sichtbar, wenn vorhanden
+- Primärer CTA: **Übergabe an Berater** – nicht „Jetzt kaufen“
 
 ## Mikrointeraktion
-- Empfehlung: Fade-up 400 ms, Name 100 ms gestaffelt
-- „Passt nicht ganz?“ → zurück in Gespräch, Notizen bleiben
+- Clever Lead: Fade-up 400 ms
+- Optionale Richtung: gestaffelt nach Zusammenfassung
+- „Noch etwas ergänzen?“ → zurück ins Gespräch, Notizen bleiben
 
-## Übergang → Welt 2
+## Übergang → Welt 2 (nur bei Modell-Fokus)
 ```
 Clever
 Prima. Dann schauen wir uns den Kia EV3
@@ -352,7 +393,7 @@ Danach: Wärmepumpe, GT-Line, HUD, Earth, AHK – nur modellbezogen.
 Gleiche Leiste, Platzhalter optional: „Noch eine Frage zum EV3 …“
 
 ## Welt 3 (Ausblick)
-Nach Fahrzeugberatung: „Ihr Autohaus bereitet ein passendes Angebot vor“ – anderer Screen-Stil (Rate, Portal, Verkäufer).
+Nach Übergabe: Verkäufer übernimmt mit Clever Lead – Rate, Portal, persönlicher Kontakt (Welt 3).
 
 ---
 
@@ -379,8 +420,8 @@ Nach Fahrzeugberatung: „Ihr Autohaus bereitet ein passendes Angebot vor“ –
 | 0:00 | Ich darf erzählen |
 | 0:30 | Er notiert sich das |
 | 0:45 | Er versteht mich |
-| 1:30 | Er empfiehlt ehrlich |
-| 2:00 | Jetzt geht’s um das Auto – logisch |
+| 1:30 | Alles ist zusammengefasst – Clever Lead |
+| 2:00 | Optional: konkretes Modell – oder direkt Übergabe |
 
 **Ziel-Satz:** *„Das war kein Formular. Das war ein Gespräch.“*
 
@@ -395,7 +436,11 @@ Nach Fahrzeugberatung: „Ihr Autohaus bereitet ein passendes Angebot vor“ –
 - [ ] Wächst die Notizleiste organisch mit plop?
 - [ ] Keine Chatblasen?
 - [ ] Eingabe unten immer – kein „Weiter“?
-- [ ] Empfehlung zentral, Alternativen sekundär?
+- [ ] Clever Lead sichtbar – Wünsche und offene Punkte getrennt?
+- [ ] Offene Punkte statt falscher Empfehlung?
+- [ ] Gespräch beginnt beim Menschen – nicht mit Fahrzeugwissen?
+- [ ] Fahrzeugfragen nur auf Kundenanfrage?
+- [ ] Empfehlung optional, nie Pflicht?
 - [ ] Welt 2 emotional neues Kapitel?
 - [ ] Keine Rate vor Welt 3?
 

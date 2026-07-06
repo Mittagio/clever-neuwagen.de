@@ -17,6 +17,7 @@ import {
   buildUnderstoodLabels,
   createEmptyNeedProfile,
   mergeTextIntoNeedProfile,
+  modelDisplayLabel,
 } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
@@ -60,6 +61,10 @@ export const WARM_QUESTION_PROMPTS = {
     'Brauchen Sie Allrad wirklich – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
   comfortVsSpace:
     'Soll es eher möglichst komfortabel sein – oder ist Ihnen vor allem viel Platz und Anhängelast wichtig?',
+  primaryUsage: 'Gerne. Wofür soll das Auto hauptsächlich genutzt werden?',
+  evModelPriority: 'Ist Ihnen eher viel Reichweite oder gute Ausstattung wichtig?',
+  sportagePowertrain: 'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
+  towingUsage: 'Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
 };
 
 /** Kürzere Chip-Labels – weniger Formular, mehr Gespräch. */
@@ -73,6 +78,31 @@ const WARM_OPTION_LABELS = {
     yes: 'Ja, Garage',
     maybe: 'In Planung',
     no: 'Eher öffentlich',
+    open: 'Noch unklar',
+  },
+  primaryUsage: {
+    daily: 'Alltag',
+    family: 'Familie',
+    work: 'Arbeit',
+    leisure: 'Freizeit',
+    towing: 'Anhänger',
+    open: 'Noch offen',
+  },
+  evModelPriority: {
+    range: 'Mehr Reichweite',
+    equipment: 'Mehr Ausstattung',
+    balanced: 'Beides ausgewogen',
+  },
+  sportagePowertrain: {
+    benzin: 'Benzin',
+    hybrid: 'Hybrid',
+    phev: 'Plug-in-Hybrid',
+    open: 'Noch offen',
+  },
+  towingUsage: {
+    bike: 'Fahrradträger',
+    trailer: 'Anhänger / Wohnwagen',
+    occasional: 'Nur gelegentlich',
     open: 'Noch unklar',
   },
 };
@@ -101,6 +131,31 @@ const LEARNED_FROM_ANSWER = {
     yes: ['Laden zuhause'],
     maybe: ['Wallbox in Planung'],
     no: ['Öffentliches Laden'],
+    open: [],
+  },
+  primaryUsage: {
+    daily: ['Alltag'],
+    family: ['Familie'],
+    work: ['Arbeit'],
+    leisure: ['Freizeit'],
+    towing: ['Anhänger'],
+    open: [],
+  },
+  evModelPriority: {
+    range: ['Reichweite wichtig'],
+    equipment: ['Ausstattung wichtig'],
+    balanced: ['Ausgewogen'],
+  },
+  sportagePowertrain: {
+    benzin: ['Benzin'],
+    hybrid: ['Hybrid'],
+    phev: ['Plug-in-Hybrid'],
+    open: [],
+  },
+  towingUsage: {
+    bike: ['Fahrradträger'],
+    trailer: ['Anhänger / Wohnwagen'],
+    occasional: ['AHK gelegentlich'],
     open: [],
   },
 };
@@ -162,9 +217,9 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
 
 export function getOpeningCopy(dealerName = 'Autohaus') {
   return {
-    greeting: 'Hallo.',
-    intro: `Ich bin Clever – Ihr Fahrzeugberater bei ${dealerName}.`,
+    greeting: `Willkommen im ${dealerName}.`,
     invitation: 'Erzählen Sie mir einfach, wonach Sie suchen.',
+    intro: 'Ich nehme Ihre Wünsche auf und bereite alles für Ihren persönlichen Berater vor.',
     placeholder: 'Ich suche …',
     examplesLabel: 'So könnte ein Satz klingen',
     exampleLabel: HAPPY_PATH_EXAMPLE_MESSAGE,
@@ -241,6 +296,52 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
     }
   }
 
+  if (questionId === 'primaryUsage') {
+    const usageMap = {
+      daily: ['daily'],
+      family: ['family'],
+      work: ['work'],
+      leisure: ['leisure'],
+      towing: ['towing'],
+      open: [],
+    };
+    next.usage = usageMap[answerId] ?? next.usage ?? [];
+    if (answerId === 'family') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'family'])];
+    }
+    if (answerId === 'towing') {
+      next.towing = next.towing ?? 'braked';
+      next.priorities = [...new Set([...(next.priorities ?? []), 'towing'])];
+    }
+  }
+
+  if (questionId === 'evModelPriority' || questionId === 'ev3Priority') {
+    if (answerId === 'range') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'range'])];
+    }
+    if (answerId === 'equipment') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'comfort'])];
+    }
+  }
+
+  if (questionId === 'sportagePowertrain') {
+    const fuelMap = {
+      benzin: 'verbrenner',
+      hybrid: 'hybrid',
+      phev: 'phev',
+      open: null,
+    };
+    const mapped = fuelMap[answerId];
+    if (mapped) next.fuel = mapped;
+  }
+
+  if (questionId === 'towingUsage') {
+    next.towingUsage = answerId;
+    if (answerId === 'bike') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'towing'])];
+    }
+  }
+
   next.understoodLabels = buildUnderstoodLabels(next);
   return next;
 }
@@ -285,12 +386,64 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
  */
 /** Fragen, die der magische Happy Path stellt – kein voller Sales-Katalog. */
 const HAPPY_PATH_PLANNER_IDS = new Set([
+  'primaryUsage',
+  'evModelPriority',
+  'sportagePowertrain',
+  'towingUsage',
   'fuel_type',
   'comfortVsSpace',
   'allradNeed',
   'longDistance',
   'chargingAtHome',
 ]);
+
+function buildAcknowledgment(needProfile = {}) {
+  const modelKey = needProfile.selectedModelKey;
+  const modelLabel = modelKey ? `Kia ${modelDisplayLabel(modelKey)}` : null;
+  const hasTowing = needProfile.towing && needProfile.towing !== 'no';
+
+  if (modelLabel && hasTowing) {
+    return `Alles klar, den ${modelDisplayLabel(modelKey)} mit Anhängerkupplung nehme ich auf.`;
+  }
+  if (modelLabel) {
+    return `Alles klar, den ${modelLabel} nehme ich auf.`;
+  }
+  if (hasTowing) {
+    return 'Alles klar, Anhängerkupplung nehme ich auf.';
+  }
+  return null;
+}
+
+function buildAdvisorBridge(questionId) {
+  if (questionId === 'evModelPriority') {
+    return 'Damit Ihr Berater die passende Richtung prüfen kann:';
+  }
+  if (questionId === 'sportagePowertrain') {
+    return 'Damit Ihr Berater nicht in die falsche Richtung prüft:';
+  }
+  if (questionId === 'towingUsage') {
+    return 'Damit Ihr Berater das richtig einordnen kann:';
+  }
+  return null;
+}
+
+function buildContextualQuestionPrompt(needProfile = {}, question = {}) {
+  const base = WARM_QUESTION_PROMPTS[question.id] ?? question.prompt ?? '';
+  const ack = buildAcknowledgment(needProfile);
+  const bridge = buildAdvisorBridge(question.id);
+
+  if (ack && bridge) {
+    const modelLabel = needProfile.selectedModelKey
+      ? modelDisplayLabel(needProfile.selectedModelKey)
+      : null;
+    if (question.id === 'evModelPriority' && modelLabel) {
+      return `${ack}\n\n${bridge}\nIst Ihnen beim ${modelLabel} eher viel Reichweite oder gute Ausstattung wichtig?`;
+    }
+    return `${ack}\n\n${bridge}\n${base}`;
+  }
+
+  return base;
+}
 
 export function getHappyPathNextQuestion(needProfile, consultationProfile) {
   const answers = consultationProfile?.answers ?? {};
@@ -299,7 +452,7 @@ export function getHappyPathNextQuestion(needProfile, consultationProfile) {
   if (!question || !HAPPY_PATH_PLANNER_IDS.has(question.id)) return null;
   return {
     ...question,
-    prompt: WARM_QUESTION_PROMPTS[question.id] ?? question.prompt,
+    prompt: buildContextualQuestionPrompt(needProfile, question),
   };
 }
 
@@ -328,7 +481,7 @@ function humanizeHappyPathRecommendation(rec, needProfile) {
 
   return {
     ...rec,
-    personalLead: 'Wenn ich Sie wäre, würde ich hier anfangen.',
+    personalLead: 'Das würde ich mir für Ihren Berater notieren.',
     headline: 'Nach Ihren Angaben würde ich zuerst den',
     modelName: `Kia ${rec.primary.modelLabel}`,
     modelSubline: 'ansehen.',

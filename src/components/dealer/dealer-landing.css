@@ -334,6 +334,31 @@
   margin-top: 4px;
 }
 
+.dl-modellwelt--inspiration {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef0f2;
+}
+
+.dl-modellwelt--inspiration .dl-modellwelt__inspiration-label {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.dl-modellwelt--inspiration .dl-modellwelt__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dl-modellwelt--inspiration .dl-modellwelt__card {
+  opacity: 0.96;
+}
+
 .dl-modellwelt__title {
   margin: 0;
   font-size: 1.0625rem;

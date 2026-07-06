@@ -44,7 +44,7 @@ function testSportageFamilyAhk() {
   assert.equal(profile.modelHint, 'sportage');
 
   const result = planNextQuestion({ needProfile: profile, answers: {} });
-  assert.equal(result.question?.id, 'fuel_type');
+  assert.equal(result.question?.id, 'sportagePowertrain');
   const readiness = evaluateRecommendationReadiness({ needProfile: profile });
   assert.equal(readiness.ready, false);
   console.log('✓ Sportage Familie AHK → Chips + Antrieb zuerst, keine EV-Empfehlung');

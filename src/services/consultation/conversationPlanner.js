@@ -9,6 +9,7 @@ import {
   isAwdRecognized,
   isTowbarRecognized,
 } from './needRecognitionService.js';
+import { isMinimalVehicleWish } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 
 export const PLANNER_PRIORITY = {
@@ -61,8 +62,81 @@ function baseQuestionById(id) {
     ?? null;
 }
 
+function isSportageInterest(profile = {}) {
+  const key = profile.selectedModelKey ?? profile.modelHint ?? '';
+  return String(key).startsWith('sportage');
+}
+
 /** Nur im Planner – nicht im Legacy-Katalog. */
 const PLANNER_ONLY_NEED_QUESTIONS = [
+  {
+    id: 'primaryUsage',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Bei sehr allgemeinem Einstieg zuerst Nutzung klären.',
+    prompt: 'Gerne. Wofür soll das Auto hauptsächlich genutzt werden?',
+    options: [
+      { id: 'daily', label: 'Alltag' },
+      { id: 'family', label: 'Familie' },
+      { id: 'work', label: 'Arbeit' },
+      { id: 'leisure', label: 'Freizeit' },
+      { id: 'towing', label: 'Anhänger' },
+      { id: 'open', label: 'Noch offen' },
+    ],
+    visibleWhen: (ctx) => isMinimalVehicleWish(ctx.needProfile ?? {}),
+    hiddenWhen: () => false,
+    knownWhen: (ctx) => (ctx.needProfile?.usage?.length ?? 0) > 0 || ctx.answers?.primaryUsage != null,
+  },
+  {
+    id: 'evModelPriority',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Modellinteresse Elektro – Reichweite vs. Ausstattung klären.',
+    prompt: 'Ist Ihnen eher viel Reichweite oder gute Ausstattung wichtig?',
+    options: [
+      { id: 'range', label: 'Mehr Reichweite' },
+      { id: 'equipment', label: 'Mehr Ausstattung' },
+      { id: 'balanced', label: 'Beides ausgewogen' },
+    ],
+    visibleWhen: (ctx) => EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? ''),
+    hiddenWhen: () => false,
+    knownWhen: (ctx) => ctx.answers?.evModelPriority != null || ctx.answers?.ev3Priority != null,
+  },
+  {
+    id: 'sportagePowertrain',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Sportage ohne klaren Antrieb – modellspezifische Antriebsfrage.',
+    prompt: 'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
+    options: [
+      { id: 'benzin', label: 'Benzin' },
+      { id: 'hybrid', label: 'Hybrid' },
+      { id: 'phev', label: 'Plug-in-Hybrid' },
+      { id: 'open', label: 'Noch offen' },
+    ],
+    visibleWhen: (ctx) => isSportageInterest(ctx.needProfile ?? {}) && !getFuelCategory(ctx.needProfile),
+    hiddenWhen: () => false,
+    knownWhen: (ctx) => getFuelCategory(ctx.needProfile) != null || ctx.answers?.sportagePowertrain != null,
+  },
+  {
+    id: 'towingUsage',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'medium',
+    reason: 'AHK erkannt – Nutzung klären statt Grundsatzfrage.',
+    prompt: 'Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
+    options: [
+      { id: 'bike', label: 'Fahrradträger' },
+      { id: 'trailer', label: 'Anhänger / Wohnwagen' },
+      { id: 'occasional', label: 'Nur gelegentlich' },
+      { id: 'open', label: 'Noch unklar' },
+    ],
+    visibleWhen: (ctx) => {
+      const p = ctx.needProfile ?? {};
+      return Boolean(p.towing && p.towing !== 'no') && !ctx.answers?.towingUsage;
+    },
+    hiddenWhen: (ctx) => ctx.answers?.towingUsage != null || ctx.needProfile?.towingUsage != null,
+    knownWhen: (ctx) => ctx.answers?.towingUsage != null || ctx.needProfile?.towingUsage != null,
+  },
   {
     id: 'fuel_type',
     world: CLEVER_WORLD.NEED_CONSULTATION,
@@ -75,7 +149,13 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
       { id: 'electric', label: 'Elektro' },
       { id: 'open', label: 'Noch offen' },
     ],
-    visibleWhen: (ctx) => !getFuelCategory(ctx.needProfile),
+    visibleWhen: (ctx) => {
+      if (getFuelCategory(ctx.needProfile)) return false;
+      if (EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? '')) return false;
+      if (isSportageInterest(ctx.needProfile ?? {})) return false;
+      if (isMinimalVehicleWish(ctx.needProfile ?? {})) return false;
+      return true;
+    },
     hiddenWhen: () => false,
     knownWhen: (ctx) => getFuelCategory(ctx.needProfile) != null || ctx.answers?.fuel_type != null,
   },
@@ -94,9 +174,9 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
       const p = ctx.needProfile ?? {};
       if (p.drive === 'awd' || p.allradNeed === 'yes') return false;
       if (p.drive === 'fwd' || p.drive === 'rwd' || p.allradNeed === 'no') return false;
+      if (p.priorities?.includes('awd')) return false;
       return p.bodyType === 'suv'
         || (p.towing && p.towing !== 'no')
-        || p.priorities?.includes('awd')
         || p.priorities?.includes('winter');
     },
     hiddenWhen: (ctx) => isAwdRecognized(ctx.needProfile)
@@ -255,6 +335,10 @@ function scoreCandidate(candidate) {
 }
 
 const QUESTION_TIE_ORDER = [
+  'primaryUsage',
+  'evModelPriority',
+  'sportagePowertrain',
+  'towingUsage',
   'fuel_type',
   'comfortVsSpace',
   'allradNeed',
@@ -392,6 +476,18 @@ export function evaluateRecommendationReadiness({
   needProfile = {},
   answers = {},
 } = {}) {
+  if (EV_MODEL_KEYS.has(needProfile.selectedModelKey ?? '') && getFuelCategory(needProfile) === 'electric') {
+    const pending = planNextQuestion({ needProfile, answers });
+    if (pending.question?.id === 'evModelPriority') {
+      return {
+        ready: false,
+        blocker: 'model_priority',
+        reason: 'Modellinteresse da – noch eine gezielte Frage.',
+        suggestedQuestionId: 'evModelPriority',
+      };
+    }
+  }
+
   const fuelCat = getFuelCategory(needProfile);
 
   if (!fuelCat) {

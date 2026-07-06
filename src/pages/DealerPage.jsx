@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
-import DealerSearchHero from '../components/dealer/DealerSearchHero.jsx';
 import DealerPortalTopbar from '../components/dealer/DealerPortalTopbar.jsx';
 import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
+import CleverConversationExperience from '../components/conversation/CleverConversationExperience.jsx';
+import '../components/conversation/clever-conversation.css';
 import DealerNeedAnswerCard from '../components/dealer/DealerNeedAnswerCard.jsx';
 import DealerJourneyMobileFooter from '../components/dealer/DealerJourneyMobileFooter.jsx';
 import { buildRecognizedCustomerWishes, shouldShowNeedAnswer } from '../services/dealer/customerWishRecognition.js';
@@ -162,7 +163,7 @@ export default function DealerPage() {
   const navigate = useNavigate();
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
-  const { dealerId: subdomainDealerId, isSubdomain } = useDealerSubdomain();
+  const { dealerId: subdomainDealerId } = useDealerSubdomain();
   const dealerId = useMemo(
     () => subdomainDealerId || routeSlug || DEFAULT_DEALER_ID,
     [subdomainDealerId, routeSlug],
@@ -267,6 +268,7 @@ export default function DealerPage() {
   }, [queryDraft]);
 
   const hasSearch = Boolean(submittedQuery.trim());
+  const showReception = !hasSearch;
   const submittedChipIds = useMemo(() => {
     const text = submittedQuery.trim();
     if (!text) return [];
@@ -1698,33 +1700,28 @@ export default function DealerPage() {
   const modelsChecked = dealerSearchPool.length;
 
   return (
-    <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader={isSubdomain}>
+    <PageShell className={`dealer-shell${useSalesJourney ? ' dealer-shell--advisor-flow' : ''}`} hideMarketingHeader>
       <div className={`dealer-page page dealer-page--mf5 dealer-page--clever${useSalesJourney ? ' dealer-page--advisor-flow' : ''}`}>
         <div className="container dealer-layout">
           <DealerPortalTopbar />
-          <DealerSearchHero
-            dealerName={conditions.dealerName}
-            city={city}
-            brand="Kia"
-            dealerSlug={dealerId}
-            onCleverSearch={handleCleverSearch}
-            onSearch={handleSearch}
-            onQueryChange={handleQueryChange}
-            onChipToggle={handleChipToggle}
-            selectedChipIds={draftChipIds}
-            recognizedWishes={draftRecognizedWishes}
-            inputRef={searchInputRef}
-            queryValue={queryDraft}
-            variant="clever"
-          />
 
-          {!hasSearch && (
+          {showReception && (
+            <section className="dealer-reception" aria-label="Clever Empfang">
+              <CleverConversationExperience
+                embedded
+                dealerName={conditions.dealerName}
+                dealerConditions={conditions}
+              />
+            </section>
+          )}
+
+          {showReception && (
             <DealerModelWorld
               city={city}
               dealerSlug={dealerId}
               conditions={conditions}
               onConfigureModel={handleClassicConfigure}
-              variant="classic"
+              variant="inspiration"
             />
           )}
 
@@ -2017,10 +2014,12 @@ export default function DealerPage() {
           </div>
           </div>
 
-          <DealerWhySection
-            dealerName={conditions.dealerName}
-            contact={contact}
-          />
+          {showReception && (
+            <DealerWhySection
+              dealerName={conditions.dealerName}
+              contact={contact}
+            />
+          )}
         </div>
       </div>
 

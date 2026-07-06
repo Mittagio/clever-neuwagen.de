@@ -73,6 +73,7 @@ function buildLabelKey(wishLabels = [], vehicleLabels = []) {
 export default function CleverConversationExperience({
   dealerName = 'Autohaus',
   dealerConditions = {},
+  embedded = false,
 }) {
   const { addLead } = useLeads();
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
@@ -205,15 +206,18 @@ export default function CleverConversationExperience({
 
   const experienceClass = [
     'cc-experience',
+    embedded ? 'cc-experience--embedded' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
   ].filter(Boolean).join(' ');
 
   return (
     <div className={experienceClass}>
-      <header className="cc-experience__dealer">
-        <span className="cc-experience__dealer-name">{dealerName}</span>
-      </header>
+      {!embedded && (
+        <header className="cc-experience__dealer">
+          <span className="cc-experience__dealer-name">{dealerName}</span>
+        </header>
+      )}
 
       {!inOfferWorld && (
         inVehicleWorld ? (
@@ -229,10 +233,10 @@ export default function CleverConversationExperience({
 
       <div className="cc-experience__scroll" ref={scrollRef}>
         {showOpening && (
-          <section className="cc-opening" aria-label="Clever Beratung beginnen">
+          <section className="cc-opening" aria-label="Clever Empfang">
             <h1 className="cc-opening__greeting">{opening.greeting}</h1>
-            <p className="cc-opening__intro">{opening.intro}</p>
             <p className="cc-opening__invitation">{opening.invitation}</p>
+            <p className="cc-opening__intro">{opening.intro}</p>
 
             <div className="cc-opening__examples">
               <p className="cc-opening__examples-label">{opening.examplesLabel}</p>
