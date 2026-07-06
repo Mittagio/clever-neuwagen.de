@@ -206,7 +206,12 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
         || p.priorities?.includes('family');
     },
     hiddenWhen: () => false,
-    knownWhen: (ctx) => ctx.answers?.comfortVsSpace != null,
+    knownWhen: (ctx) => {
+      if (ctx.answers?.comfortVsSpace != null) return true;
+      const p = ctx.needProfile ?? {};
+      if (p.modelHint && getFuelCategory(p) && p.transmission) return true;
+      return false;
+    },
   },
 ];
 

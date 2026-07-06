@@ -25,6 +25,11 @@ import {
   isVehicleInputEnabled,
   submitVehicleQuestionAnswer,
 } from './consultationEv3HappyPath.js';
+import {
+  NEED_DIRECTION_QUESTION_ID,
+  buildNeedDirectionQuestion,
+  shouldOfferDirectionChoice,
+} from './needUnderstandingGate.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -65,6 +70,7 @@ export const WARM_QUESTION_PROMPTS = {
   evModelPriority: 'Ist Ihnen eher viel Reichweite oder gute Ausstattung wichtig?',
   sportagePowertrain: 'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
   towingUsage: 'Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
+  needDirection: null,
 };
 
 /** Kürzere Chip-Labels – weniger Formular, mehr Gespräch. */
@@ -395,6 +401,7 @@ const HAPPY_PATH_PLANNER_IDS = new Set([
   'allradNeed',
   'longDistance',
   'chargingAtHome',
+  NEED_DIRECTION_QUESTION_ID,
 ]);
 
 function buildAcknowledgment(needProfile = {}) {
@@ -450,9 +457,78 @@ export function getHappyPathNextQuestion(needProfile, consultationProfile) {
   const result = planNextQuestion({ needProfile, answers });
   const question = result.question;
   if (!question || !HAPPY_PATH_PLANNER_IDS.has(question.id)) return null;
+  if (question.id === NEED_DIRECTION_QUESTION_ID) return null;
   return {
     ...question,
     prompt: buildContextualQuestionPrompt(needProfile, question),
+  };
+}
+
+/**
+ * Katalogfrage oder Richtungswahl – je nach Verständnisstärke.
+ * @param {object} needProfile
+ * @param {object} consultationProfile
+ */
+export function resolveNextHappyPathQuestion(needProfile, consultationProfile) {
+  const answers = consultationProfile?.answers ?? {};
+  const catalogQuestion = getHappyPathNextQuestion(needProfile, consultationProfile);
+  if (shouldOfferDirectionChoice(needProfile, catalogQuestion, answers)) {
+    return buildNeedDirectionQuestion(needProfile);
+  }
+  return catalogQuestion;
+}
+
+function cleverAckTurn(text) {
+  return {
+    type: TURN_TYPE.CLEVER,
+    id: `clever-ack-${Date.now()}`,
+    text,
+  };
+}
+
+function submitNeedDirectionAnswer(session, answerId, displayText) {
+  const consultationProfile = answerConsultationQuestion(
+    session.consultationProfile,
+    NEED_DIRECTION_QUESTION_ID,
+    answerId,
+  );
+
+  let needProfile = { ...session.needProfile };
+  if (answerId === 'explore_model' && needProfile.modelHint) {
+    needProfile = {
+      ...needProfile,
+      selectedModelKey: needProfile.modelHint,
+      understoodLabels: buildUnderstoodLabels({
+        ...needProfile,
+        selectedModelKey: needProfile.modelHint,
+      }),
+    };
+  }
+
+  const modelLabel = needProfile.modelHint
+    ? modelDisplayLabel(needProfile.modelHint)
+    : null;
+
+  let ackText;
+  if (answerId === 'explore_model') {
+    ackText = modelLabel
+      ? `Gut – ich halte den ${modelLabel} mit Ihren Wünschen fest. Damit kann Ihr Berater direkt loslegen.`
+      : 'Gut – ich halte Ihre Richtung fest. Damit kann Ihr Berater direkt loslegen.';
+  } else {
+    ackText = 'Gut – ich ordne ähnliche Fahrzeuge in Ihrer Richtung ein. Ihr Berater sieht alles auf einen Blick.';
+  }
+
+  return {
+    ...session,
+    consultationProfile,
+    needProfile,
+    pendingQuestion: null,
+    phase: CONVERSATION_PHASE.CONVERSATION,
+    turns: [
+      ...session.turns,
+      customerTurn(displayText),
+      cleverAckTurn(ackText),
+    ],
   };
 }
 
@@ -631,7 +707,7 @@ export function submitOpeningMessage(session, text = '') {
     ],
   };
 
-  const question = getHappyPathNextQuestion(needProfile, next.consultationProfile);
+  const question = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
   if (question) {
     next = pushTurn(next, cleverQuestionTurn(question));
     next = withPendingQuestion(next, question);
@@ -665,6 +741,13 @@ export function submitQuestionAnswer(session, payload = {}) {
   }
   if (!answerId) return session;
 
+  if (questionId === NEED_DIRECTION_QUESTION_ID) {
+    const directionQ = buildNeedDirectionQuestion(session.needProfile);
+    const option = directionQ.options?.find((o) => o.id === answerId);
+    const displayText = payload.text?.trim() || option?.label || answerId;
+    return submitNeedDirectionAnswer(session, answerId, displayText);
+  }
+
   const question = questionById(questionId);
   const option = question?.options?.find((o) => o.id === answerId);
   const displayText = payload.text?.trim()
@@ -692,7 +775,7 @@ export function submitQuestionAnswer(session, payload = {}) {
     ],
   };
 
-  const followUp = getHappyPathNextQuestion(needProfile, consultationProfile);
+  const followUp = resolveNextHappyPathQuestion(needProfile, consultationProfile);
   if (followUp) {
     next = pushTurn(next, cleverQuestionTurn(followUp));
     next = withPendingQuestion(next, followUp);
