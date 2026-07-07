@@ -40,4 +40,18 @@ const normalized = normalizeSellerInsights([
 ]);
 assert.equal(normalized[0].text, 'Lieferzeit wichtiger als Preis', 'chronologisch sortiert');
 
+const baseLead = {
+  id: 'lead-need-profile',
+  crm: {
+    needProfile: {
+      rawMessages: ['Ich suche einen EV3'],
+      initialWish: 'Ich suche einen EV3',
+      version: 1,
+    },
+  },
+};
+const withInsight = appendSellerInsightToLead(baseLead, 'Hund fährt regelmäßig mit.');
+assert.deepEqual(withInsight.crm.needProfile, baseLead.crm.needProfile, 'needProfile bleibt unverändert');
+assert.equal(withInsight.crm.sellerInsights.length, 1);
+
 console.log('sellerInsights.test.js: ok');

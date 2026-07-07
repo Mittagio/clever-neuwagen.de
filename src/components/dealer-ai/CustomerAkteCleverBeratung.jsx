@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import CustomerAkteSellerInsightCapture from './CustomerAkteSellerInsightCapture.jsx';
 import './CustomerAkte.css';
 
 function normalizeLabel(text = '') {
@@ -183,7 +184,12 @@ function EntwicklungSection({ entwicklung = [], hideQuotes = false }) {
           {entwicklung.map((step, index) => (
             <li key={`${step.customerText}-${index}`} className="cust-clever-beratung__evolution-step">
               {!hideQuotes && (
-                <p className="cust-clever-beratung__evolution-quote">&ldquo;{step.customerText}&rdquo;</p>
+                <>
+                  {step.source === 'seller' && (
+                    <p className="cust-clever-beratung__evolution-source">Verkäufer</p>
+                  )}
+                  <p className="cust-clever-beratung__evolution-quote">&ldquo;{step.customerText}&rdquo;</p>
+                </>
               )}
               {step.newLabels?.length > 0 ? (
                 <div className="cust-clever-beratung__evolution-new">
@@ -247,6 +253,8 @@ export default function CustomerAkteCleverBeratung({
   onPrepareOffer,
   onCreateMessage,
   onChangeRecommendation,
+  onAddSellerInsight,
+  isSavingInsight = false,
 }) {
   const understanding = understandingProp ?? view?.understanding;
   if (!understanding?.meta?.hasData) return null;
@@ -277,9 +285,16 @@ export default function CustomerAkteCleverBeratung({
           Kundenbild
         </h2>
         <p className="cust-clever-beratung__hint">
-          Was Clever über diesen Kunden verstanden hat.
+          Gemeinsames Kundenbild – Kunde und Ihre Erkenntnisse.
         </p>
       </header>
+
+      {onAddSellerInsight && (
+        <CustomerAkteSellerInsightCapture
+          onSubmit={onAddSellerInsight}
+          isSaving={isSavingInsight}
+        />
+      )}
 
       <div className="cust-clever-beratung__card cust-clever-beratung__card--kundenbild">
         <GespraechseinstiegSection gespraechseinstieg={gespraechseinstieg} />

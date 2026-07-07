@@ -126,6 +126,7 @@ import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
+import { appendSellerInsightToLead } from '../../services/dealer/sellerInsights.js';
 import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
 import { evaluateJourney } from '../../services/journey/journeyEngine.js';
 import {
@@ -1864,6 +1865,23 @@ export default function DealerAiLeadFollowUp({
     closeSheet();
   }
 
+  function handleAddSellerInsight(text, context = null) {
+    const trimmed = String(text ?? '').trim();
+    if (!trimmed) return;
+
+    const nextLead = appendSellerInsightToLead(lead, trimmed, { context });
+    onSave?.(buildSavePayload({
+      sellerInsights: nextLead.crm.sellerInsights,
+    }), {
+      historyText: 'Erkenntnis ergänzt',
+      historyType: 'note',
+      addFollowupHistory: false,
+      silent: true,
+    });
+    setToast('Erkenntnis ergänzt');
+    setTimeout(() => setToast(''), 2800);
+  }
+
   function saveCustomerSheet() {
     save({ historyText: 'Kundendaten ergänzt', addFollowupHistory: false });
     closeSheet();
@@ -2209,6 +2227,8 @@ export default function DealerAiLeadFollowUp({
             onPrepareOffer={handleCleverBeratungPrepareOffer}
             onCreateMessage={() => openCleverAntworten()}
             onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+            onAddSellerInsight={handleAddSellerInsight}
+            isSavingInsight={isSaving}
           />
         </div>
       )}

@@ -3922,6 +3922,145 @@
   color: #0f766e;
 }
 
+/* Verkäufer-Erkenntnis – direkt am Kundenbild */
+.cust-insight-capture {
+  margin: 0 0 12px;
+}
+
+.cust-insight-capture--collapsed {
+  display: flex;
+}
+
+.cust-insight-capture__trigger {
+  width: 100%;
+  border: 1px dashed #94a3b8;
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  background: #f8fafc;
+  color: #0f766e;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-insight-capture__trigger:hover:not(:disabled) {
+  background: #ecfdf5;
+  border-color: #0f766e;
+}
+
+.cust-insight-capture--open {
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0.75rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.cust-insight-capture__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cust-insight-capture__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.cust-insight-capture__input {
+  flex: 1;
+  min-height: 2.75rem;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.cust-insight-capture__input:focus {
+  outline: 2px solid #99f6e4;
+  border-color: #0f766e;
+}
+
+.cust-insight-capture__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.cust-insight-capture__context-chip {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  background: #f8fafc;
+  font-size: 0.75rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+.cust-insight-capture__context-chip.is-active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
+.cust-insight-capture__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.cust-insight-capture__cancel,
+.cust-insight-capture__save {
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.cust-insight-capture__cancel {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+}
+
+.cust-insight-capture__save {
+  border: none;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 600;
+}
+
+.cust-insight-capture__save:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cust-clever-beratung__evolution-source {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+@media (max-width: 640px) {
+  .cust-insight-capture__row {
+    flex-direction: column;
+  }
+
+  .cust-insight-capture__save {
+    width: 100%;
+  }
+}
+
 .cust-sd-review__internal-note {
   margin-top: 0.25rem;
 }
