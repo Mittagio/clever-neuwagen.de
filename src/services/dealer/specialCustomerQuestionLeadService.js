@@ -2,9 +2,11 @@
  * Lead aus spezieller Kundenfrage + Kontaktwunsch.
  */
 import {
-  buildKundenhelferNotesForSpecialQuestion,
+  buildOperationalSpecialQuestionHistoryNote,
+  collectSellerInsightTextsFromSpecialQuestion,
   extractSpecialQuestionTopic,
 } from './specialCustomerQuestionService.js';
+import { appendSellerInsightsFromTexts } from './sellerInsights.js';
 
 function uid(prefix = 'lead') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -34,7 +36,11 @@ export function createLeadFromSpecialQuestion({
     ?? 'Fahrzeug';
   const isAdvice = specialCustomerQuestion?.queryType === 'advice_question';
   const topic = extractSpecialQuestionTopic(specialCustomerQuestion?.rawText);
-  const kundenhelferNotes = buildKundenhelferNotesForSpecialQuestion(specialCustomerQuestion);
+  const operationalNote = buildOperationalSpecialQuestionHistoryNote(specialCustomerQuestion);
+  const insightTexts = collectSellerInsightTextsFromSpecialQuestion(specialCustomerQuestion);
+  const sellerInsights = insightTexts.length
+    ? appendSellerInsightsFromTexts({ crm: {} }, insightTexts).crm.sellerInsights
+    : [];
 
   const vehicleModel = modelLabel.replace(/^Kia\s+/i, '');
 
@@ -70,9 +76,7 @@ export function createLeadFromSpecialQuestion({
     crm: {
       nextStepId: isAdvice ? 'answer_advice_question' : 'answer_customer_question',
       nextStepLabel: isAdvice ? 'Beratungsfrage beantworten' : 'Kundenfrage beantworten',
-      kundenhelfer: {
-        notes: kundenhelferNotes,
-      },
+      ...(sellerInsights.length ? { sellerInsights } : {}),
     },
     inquiryBrief: {
       customerName: contact?.name?.trim() ?? '',
@@ -94,7 +98,7 @@ export function createLeadFromSpecialQuestion({
       historyEntry('Anfrage über spezielle Kundenfrage'),
       historyEntry('Kunde wünscht Verkäuferkontakt zur Prüffrage'),
       historyEntry(`Frage: „${specialCustomerQuestion?.rawText ?? ''}"`, 'note'),
-      historyEntry(kundenhelferNotes, 'note'),
+      historyEntry(operationalNote, 'note'),
     ],
   };
 }

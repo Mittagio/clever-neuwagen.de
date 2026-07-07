@@ -235,6 +235,35 @@ export function buildKundenhelferNotesForAdviceQuestion(specialCustomerQuestion)
   return [`Beratung: ${label}`, specialCustomerQuestion?.rawText].filter(Boolean).join(' · ');
 }
 
+/**
+ * Verkäufer-Erkenntnisse aus Beratungsfragen (Phase 3b).
+ * Operative Spezialfrage-Metadaten gehören nicht hierher.
+ * @param {object} specialCustomerQuestion
+ * @returns {string[]}
+ */
+export function collectSellerInsightTextsFromSpecialQuestion(specialCustomerQuestion) {
+  if (specialCustomerQuestion?.queryType !== 'advice_question') return [];
+
+  const topicId = specialCustomerQuestion?.adviceTopicId;
+  const preset = ADVICE_TOPIC_NOTES[topicId];
+  if (preset?.length) return [...preset];
+
+  const label = specialCustomerQuestion?.category?.replace(/^Beratung \/ /, '') ?? 'Beratungsfrage';
+  return [`Beratung: ${label}`].filter(Boolean);
+}
+
+/**
+ * Operative Zusammenfassung für History/CRM – nicht nach kundenhelfer.notes.
+ * @param {object} specialCustomerQuestion
+ */
+export function buildOperationalSpecialQuestionHistoryNote(specialCustomerQuestion) {
+  if (specialCustomerQuestion?.queryType === 'advice_question') {
+    const label = specialCustomerQuestion?.category?.replace(/^Beratung \/ /, '') ?? 'Beratungsfrage';
+    return `Beratungsfrage: ${specialCustomerQuestion?.rawText ?? label}`;
+  }
+  return buildKundenhelferNotesForSpecialQuestion(specialCustomerQuestion);
+}
+
 export function validateSpecialQuestionContact({ phone = '', email = '' } = {}) {
   const hasPhone = Boolean(String(phone).trim());
   const hasEmail = Boolean(String(email).trim());
