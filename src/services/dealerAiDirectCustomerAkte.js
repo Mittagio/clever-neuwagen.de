@@ -4,6 +4,7 @@
 import { generateOfferNumber } from '../logic/offerService.js';
 import { normalizeLead } from '../logic/leadNormalization.js';
 import { joinKundenhelferNotes, parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import { appendSellerInsightsFromTexts } from './dealer/sellerInsights.js';
 import { buildDefaultCrm, buildLeadSubline, mapSuggestedModelToReserved } from './dealerAiLeadCrm.js';
 import { createCustomerId } from './dealerAiCustomer.js';
 import {
@@ -153,10 +154,10 @@ function appendSourceTextNote(existingNotes = '', sourceText = '') {
 export function buildLeadPatchFromDirectAkte(existingLead, enriched, insight) {
   const fields = enriched?.fields ?? {};
   const now = new Date().toISOString();
-  const helperNotes = mergeKundenhelferChipLists(
-    existingLead?.crm?.kundenhelfer?.notes ?? '',
-    enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [],
-  );
+  const helperNoteTexts = enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [];
+  const withInsights = helperNoteTexts.length
+    ? appendSellerInsightsFromTexts(existingLead ?? { crm: {} }, helperNoteTexts)
+    : (existingLead ?? { crm: {} });
   const reservedMerge = mergeReservedModels(
     existingLead?.crm?.reservedModels ?? [],
     buildReservedModelFromInsight(insight, enriched),
@@ -194,8 +195,9 @@ export function buildLeadPatchFromDirectAkte(existingLead, enriched, insight) {
       ...(existingLead?.crm ?? {}),
       ...addressFields,
       address: addressFields.address ?? existingLead?.crm?.address ?? existingLead?.contact?.address ?? '',
+      sellerInsights: withInsights.crm?.sellerInsights ?? existingLead?.crm?.sellerInsights ?? [],
       kundenhelfer: {
-        notes: helperNotes,
+        ...(existingLead?.crm?.kundenhelfer ?? {}),
         voiceMemos: existingLead?.crm?.kundenhelfer?.voiceMemos ?? [],
       },
       reservedModels: reservedMerge.models,
@@ -221,10 +223,13 @@ function buildNewLeadFromDirectAkte(enriched, insight, deps) {
   const { conditions, getExistingCodes, leads = [], carryCustomer } = deps;
   const fields = enriched.fields ?? {};
   const referenceCode = generateOfferNumber(collectReferenceCodes(getExistingCodes, leads));
-  const helperNotes = enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [];
+  const helperNoteTexts = enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [];
   const reservedModels = buildReservedModelFromInsight(insight, enriched);
   const crmBase = buildDefaultCrm(enriched, []);
   const addressFields = buildAddressCrmFields(fields);
+  const withInsights = helperNoteTexts.length
+    ? appendSellerInsightsFromTexts({ crm: crmBase }, helperNoteTexts)
+    : { crm: crmBase };
   const crm = {
     ...crmBase,
     ...addressFields,
@@ -232,12 +237,11 @@ function buildNewLeadFromDirectAkte(enriched, insight, deps) {
     reservedModels,
     recognitionStatus: 'applied',
     sourceText: insight?.sourceText ?? null,
-    kundenhelfer: helperNotes.length
-      ? {
-          notes: joinKundenhelferNotes(helperNotes),
-          voiceMemos: carryCustomer?.kundenhelfer?.voiceMemos ?? [],
-        }
-      : crmBase.kundenhelfer,
+    sellerInsights: withInsights.crm?.sellerInsights ?? [],
+    kundenhelfer: {
+      ...(crmBase.kundenhelfer ?? {}),
+      voiceMemos: carryCustomer?.kundenhelfer?.voiceMemos ?? crmBase.kundenhelfer?.voiceMemos ?? [],
+    },
   };
 
   const customerId = carryCustomer?.customerId ?? createCustomerId();

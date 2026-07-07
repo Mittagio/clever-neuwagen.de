@@ -6,6 +6,7 @@ import { parseDealerAiInput } from './dealerAiParser.js';
 import { buildCustomerRecognitionInsight, applyRecognitionInsightToParsed } from './dealerAiRecognitionInsight.js';
 import { buildVehicleOpportunityCards, formatVehicleCardTitle } from './customerAkte.js';
 import { joinKundenhelferNotes } from './cleverKundenhelfer.js';
+import { getSellerInsightsFromLead } from './dealer/sellerInsights.js';
 import {
   DIRECT_AKTE_SAMPLE_TEXT,
   SCHLAYER_SAMPLE_TEXT,
@@ -61,7 +62,9 @@ assert.equal(created.type, 'lead', 'Nach KI-Check wird Kundenakte erstellt');
 assert.ok(created.leadId, 'Lead-ID vorhanden');
 const lead = leads.find((item) => item.id === created.leadId);
 assert.ok(lead, 'Lead wurde angelegt');
-assert.ok(joinKundenhelferNotes(insight.customerHelperNotes).includes('Wohnmobil'), 'Chips in Kundenakte gespeichert');
+const leadInsights = getSellerInsightsFromLead(lead).map((item) => item.text);
+assert.ok(leadInsights.some((t) => /wohnmobil/i.test(t)), 'Erkenntnis in sellerInsights gespeichert');
+assert.equal(lead.crm?.kundenhelfer?.notes, undefined, 'kundenhelfer.notes nicht neu geschrieben');
 
 const cards = buildVehicleOpportunityCards({
   lead,
@@ -97,6 +100,9 @@ const extended = applyDirectCustomerAkteFromRecognition(enriched, insight, {
 });
 assert.equal(extended.extendedExisting, true, 'Bestehende Kundenakte wird erweitert');
 assert.equal(extendedLeads.length, 1, 'Keine zweite Kundenakte erstellt');
+const extendedInsights = getSellerInsightsFromLead(extendedLeads[0]).map((item) => item.text);
+assert.ok(extendedInsights.some((t) => /farbe\s+blau/i.test(t)), 'KI-Check schreibt neue Erkenntnisse nach sellerInsights');
+assert.equal(extendedLeads[0].crm?.kundenhelfer?.notes, 'Wohnmobil', 'bestehende kundenhelfer.notes unverändert');
 
 const duplicateMerge = mergeReservedModels(
   buildReservedModelFromInsight(insight, enriched),
