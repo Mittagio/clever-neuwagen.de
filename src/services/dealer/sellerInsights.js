@@ -217,6 +217,36 @@ export function appendSellerInsightToLead(lead = {}, text = '', options = {}) {
 }
 
 /**
+ * Mehrere Freitexte/Chips als Verkäufer-Erkenntnisse anhängen.
+ * Schreibt ausschließlich nach crm.sellerInsights.
+ * - ignoriert leere Texte
+ * - dedupliziert (gegen bestehende + virtuelle Insights und untereinander)
+ * - verändert needProfile nicht
+ * - verändert kundenhelfer.notes nicht
+ *
+ * @param {object} lead
+ * @param {string[]|string} texts
+ * @param {{ context?: string|null }} [options]
+ */
+export function appendSellerInsightsFromTexts(lead = {}, texts = [], options = {}) {
+  const list = Array.isArray(texts) ? texts : [texts];
+  const existing = getSellerInsightsFromLead(lead);
+  const pending = [];
+
+  for (const raw of list) {
+    const trimmed = String(raw ?? '').trim();
+    if (!trimmed) continue;
+    if (isInsightTextDuplicate(trimmed, existing, pending)) continue;
+    const insight = createSellerInsight(trimmed, options);
+    if (insight) pending.push(insight);
+  }
+
+  if (!pending.length) return lead;
+
+  return mergeSellerInsightsIntoLead(lead, [...existing, ...pending]);
+}
+
+/**
  * @param {object} lead
  * @param {object[]} insights
  */

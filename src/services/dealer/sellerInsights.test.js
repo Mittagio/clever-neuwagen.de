@@ -3,6 +3,7 @@
  */
 import assert from 'node:assert/strict';
 import {
+  appendSellerInsightsFromTexts,
   appendSellerInsightToLead,
   createSellerInsight,
   getSellerInsightsFromLead,
@@ -125,5 +126,61 @@ assert.equal(m4Lead.crm.kundenhelfer.notes, 'Hund', 'M5: Original-notes unverän
 
 const m5Insight = getSellerInsightsFromLead(m4Migrated)[0];
 assert.equal(m5Insight.migratedFrom, MIGRATED_FROM_KUNDENHELFER, 'migriertes Insight markiert');
+
+// ── Phase 3b: appendSellerInsightsFromTexts ─────────────────────────────────
+
+const b1Lead = {
+  id: 'b1',
+  crm: {
+    needProfile: mergeTextIntoNeedProfile(
+      'Ich suche einen EV3',
+      createEmptyNeedProfile('Ich suche einen EV3'),
+    ),
+    kundenhelfer: { notes: 'Hund' },
+  },
+};
+const b1NeedProfileBefore = JSON.stringify(b1Lead.crm.needProfile);
+const b1NotesBefore = b1Lead.crm.kundenhelfer.notes;
+
+const b1Result = appendSellerInsightsFromTexts(
+  b1Lead,
+  ['Dachzelt wird regelmäßig genutzt.', 'Kunde will Probefahrt am Samstag'],
+  { context: 'phone_call' },
+);
+const b1Insights = b1Result.crm.sellerInsights;
+assert.ok(
+  b1Insights.some((i) => /dachzelt/i.test(i.text)),
+  'B1: Dachzelt als sellerInsight geschrieben',
+);
+assert.ok(
+  b1Insights.some((i) => /probefahrt/i.test(i.text)),
+  'B1: Probefahrt als sellerInsight geschrieben',
+);
+assert.equal(
+  JSON.stringify(b1Result.crm.needProfile),
+  b1NeedProfileBefore,
+  'B1: needProfile unverändert',
+);
+assert.equal(
+  b1Result.crm.kundenhelfer.notes,
+  b1NotesBefore,
+  'B1: kundenhelfer.notes unverändert',
+);
+assert.equal(b1Lead.crm.kundenhelfer.notes, 'Hund', 'B1: Original-Lead notes unverändert');
+
+// leere Texte werden ignoriert
+const b2Lead = { id: 'b2', crm: {} };
+const b2Result = appendSellerInsightsFromTexts(b2Lead, ['', '   ', null, undefined]);
+assert.equal(b2Result, b2Lead, 'B2: nur leere Texte → Lead unverändert');
+assert.equal(getSellerInsightsFromLead(b2Result).length, 0, 'B2: keine Insights erzeugt');
+
+// Deduplizierung gegen Bestand und untereinander
+const b3Lead = appendSellerInsightsFromTexts({ id: 'b3', crm: {} }, ['Hund fährt mit']);
+const b3Result = appendSellerInsightsFromTexts(b3Lead, ['Hund fährt mit', 'hund fährt mit', 'Neu: AHK']);
+assert.equal(
+  b3Result.crm.sellerInsights.length,
+  2,
+  'B3: Duplikate übersprungen, nur neues AHK ergänzt',
+);
 
 console.log('sellerInsights.test.js: ok');

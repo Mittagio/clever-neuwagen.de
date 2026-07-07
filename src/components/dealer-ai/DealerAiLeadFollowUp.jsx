@@ -127,6 +127,7 @@ import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { appendSellerInsightToLead } from '../../services/dealer/sellerInsights.js';
+import { buildKundenhelferSavePatch } from '../../services/dealer/kundenhelferSavePayload.js';
 import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
 import { evaluateJourney } from '../../services/journey/journeyEngine.js';
 import {
@@ -1763,17 +1764,12 @@ export default function DealerAiLeadFollowUp({
         reservedModels,
         offerSelectionGroups: extraCrm.offerSelectionGroups ?? resolvedSelectionGroups,
         offers: crm.offers ?? [],
-        kundenhelfer: {
-          ...(crm.kundenhelfer ?? {}),
-          ...(extraKundenhelfer ?? {}),
-          notes: kundenhelferNotes.trim(),
-          chipCategories: sanitizeKundenhelferChipCategories(
-            kundenhelferChipCategories,
-            kundenhelferNotes.trim(),
-          ),
+        kundenhelfer: buildKundenhelferSavePatch({
+          existingKundenhelfer: crm.kundenhelfer,
+          extraKundenhelfer,
           voiceMemos: kundenhelferMemos,
           conversationNotes,
-        },
+        }),
         tradeIn: patchTradeIn(
           tradeInData ?? createEmptyTradeIn(),
           extraTradeIn ?? {},
