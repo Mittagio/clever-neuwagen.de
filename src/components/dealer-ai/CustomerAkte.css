@@ -2946,6 +2946,143 @@
   font-weight: 600;
 }
 
+.cust-clever-beratung__chip--concern {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.cust-clever-beratung__block--section {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8ecff;
+}
+
+.cust-clever-beratung__block--section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.cust-clever-beratung__block--einstieg {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.cust-clever-beratung__section-title {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #312e81;
+}
+
+.cust-clever-beratung__section-title--inline {
+  margin: 0;
+}
+
+.cust-clever-beratung__subblock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cust-clever-beratung__evolution {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cust-clever-beratung__evolution-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cust-clever-beratung__evolution-quote {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #334155;
+  font-style: italic;
+}
+
+.cust-clever-beratung__evolution-new {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cust-clever-beratung__evolution-arrow {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.cust-clever-beratung__evolution-muted {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted);
+}
+
+.cust-clever-beratung__einstieg-lead {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--cust-text);
+  line-height: 1.45;
+}
+
+.cust-clever-beratung__einstieg-context {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.cust-clever-beratung__originalton-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-clever-beratung__originalton-hint {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--cust-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cust-clever-beratung__originalton-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+}
+
+.cust-clever-beratung__originalton-quote {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
 .cust-clever-beratung__rec-title {
   margin: 0;
   font-size: 1.0625rem;
