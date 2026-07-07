@@ -126,8 +126,13 @@ import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
-import { appendSellerInsightToLead } from '../../services/dealer/sellerInsights.js';
-import { buildKundenhelferSavePatch } from '../../services/dealer/kundenhelferSavePayload.js';
+import { appendSellerInsightToLead, appendSellerInsightsFromTexts } from '../../services/dealer/sellerInsights.js';
+import {
+  buildKundenhelferDisplayNotes,
+  buildKundenhelferSavePatch,
+  collectNewKundenhelferChips,
+} from '../../services/dealer/kundenhelferSavePayload.js';
+import { addCustomKundenhelferChip } from '../../services/cleverKundenhelfer.js';
 import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
 import { evaluateJourney } from '../../services/journey/journeyEngine.js';
 import {
@@ -465,7 +470,9 @@ export default function DealerAiLeadFollowUp({
   const [outcomeId, setOutcomeId] = useState(crm.lastOutcomeId ?? null);
   const [outcomeNote, setOutcomeNote] = useState('');
 
-  const [kundenhelferNotes, setKundenhelferNotes] = useState(crm.kundenhelfer?.notes ?? '');
+  const [kundenhelferNotes, setKundenhelferNotes] = useState(
+    () => buildKundenhelferDisplayNotes(lead),
+  );
   const [kundenhelferChipCategories, setKundenhelferChipCategories] = useState(
     () => sanitizeKundenhelferChipCategories(
       crm.kundenhelfer?.chipCategories,
@@ -481,7 +488,7 @@ export default function DealerAiLeadFollowUp({
   const [tradeInData, setTradeInData] = useState(() => getTradeIn(lead));
 
   useEffect(() => {
-    setKundenhelferNotes(lead?.crm?.kundenhelfer?.notes ?? '');
+    setKundenhelferNotes(buildKundenhelferDisplayNotes(lead));
     setKundenhelferChipCategories(sanitizeKundenhelferChipCategories(
       lead?.crm?.kundenhelfer?.chipCategories,
       lead?.crm?.kundenhelfer?.notes ?? '',
@@ -491,6 +498,8 @@ export default function DealerAiLeadFollowUp({
     setTradeInData(getTradeIn(lead));
   }, [
     lead?.crm?.kundenhelfer?.notes,
+    lead?.crm?.sellerInsights,
+    lead?.crm?.migration?.kundenhelferV1At,
     lead?.crm?.kundenhelfer?.chipCategories,
     lead?.crm?.kundenhelfer?.voiceMemos,
     lead?.crm?.kundenhelfer?.conversationNotes,
@@ -1854,7 +1863,13 @@ export default function DealerAiLeadFollowUp({
   }
 
   function saveKundenhelferSheet() {
-    save({
+    const baseline = buildKundenhelferDisplayNotes(lead);
+    const newChips = collectNewKundenhelferChips(baseline, kundenhelferNotes);
+    const extraCrm = newChips.length
+      ? { sellerInsights: appendSellerInsightsFromTexts(lead, newChips).crm.sellerInsights }
+      : {};
+
+    onSave?.(buildSavePayload(extraCrm), {
       historyText: 'Clever Kundenhelfer aktualisiert',
       addFollowupHistory: false,
     });
@@ -1971,13 +1986,10 @@ export default function DealerAiLeadFollowUp({
     if (question) {
       logCustomerActivity(buildCleverQuestionActivity({ question, cleverAnswer }));
     }
-    const nextNotes = addCustomKundenhelferChip(kundenhelferNotes, chip);
-    setKundenhelferNotes(nextNotes);
+    const nextLead = appendSellerInsightsFromTexts(lead, [chip]);
+    setKundenhelferNotes(addCustomKundenhelferChip(kundenhelferNotes, chip));
     onSave?.(buildSavePayload({
-      kundenhelfer: {
-        notes: nextNotes.trim(),
-        voiceMemos: kundenhelferMemos,
-      },
+      sellerInsights: nextLead.crm.sellerInsights,
     }), {
       historyText: `Lexikon übernommen: ${chip}`,
       addFollowupHistory: false,
