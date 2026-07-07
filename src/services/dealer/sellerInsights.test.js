@@ -7,9 +7,16 @@ import {
   createSellerInsight,
   getSellerInsightsFromLead,
   hasSellerInsights,
+  migrateKundenhelferToSellerInsights,
+  MIGRATED_FROM_KUNDENHELFER,
   normalizeSellerInsights,
   SELLER_INSIGHT_SOURCE,
 } from './sellerInsights.js';
+import { buildCustomerUnderstanding } from './customerUnderstanding.js';
+import {
+  createEmptyNeedProfile,
+  mergeTextIntoNeedProfile,
+} from '../consultation/needProfileService.js';
 
 const insight = createSellerInsight(
   'Anhängelast jetzt doch 2.500 kg. Hund fährt regelmäßig mit.',
@@ -53,5 +60,70 @@ const baseLead = {
 const withInsight = appendSellerInsightToLead(baseLead, 'Hund fährt regelmäßig mit.');
 assert.deepEqual(withInsight.crm.needProfile, baseLead.crm.needProfile, 'needProfile bleibt unverändert');
 assert.equal(withInsight.crm.sellerInsights.length, 1);
+
+// ── Phase 3a: kundenhelfer → sellerInsights Migration ───────────────────────
+
+const m1Lead = {
+  id: 'm1',
+  crm: {
+    kundenhelfer: { notes: 'Hund, AHK' },
+  },
+};
+
+const m1Understanding = buildCustomerUnderstanding(m1Lead);
+assert.ok(m1Understanding, 'M1: Understanding aus kundenhelfer');
+const m1Labels = m1Understanding.verstaendnis.labels.join(' ');
+assert.ok(/hund/i.test(m1Labels), `M1: Hund fehlt in ${m1Labels}`);
+assert.ok(/ahk|anhäng/i.test(m1Labels), `M1: AHK fehlt in ${m1Labels}`);
+assert.equal(m1Lead.crm.needProfile, undefined, 'M1: needProfile unverändert am Original-Lead');
+
+const m2Lead = {
+  id: 'm2',
+  crm: {
+    needProfile: mergeTextIntoNeedProfile(
+      'Ich suche einen EV3, Hund fährt mit',
+      createEmptyNeedProfile('Ich suche einen EV3, Hund fährt mit'),
+    ),
+    kundenhelfer: { notes: 'Hund, AHK' },
+  },
+};
+const m2Insights = getSellerInsightsFromLead(m2Lead);
+assert.equal(m2Insights.length, 1, 'M2: nur AHK migriert, Hund dedupliziert');
+assert.ok(/ahk/i.test(m2Insights[0].text), 'M2: migrierter Text ist AHK');
+const m2Understanding = buildCustomerUnderstanding(m2Lead);
+const m2HundCount = m2Understanding.verstaendnis.labels.filter((l) => /hund/i.test(l)).length;
+assert.ok(m2HundCount <= 1, 'M2: Hund nicht doppelt im Verständnis');
+
+const m3Base = { id: 'm3', crm: { kundenhelfer: { notes: 'Hund, AHK' } } };
+const m3First = migrateKundenhelferToSellerInsights(m3Base);
+const m3Second = migrateKundenhelferToSellerInsights(m3First);
+assert.equal(
+  getSellerInsightsFromLead(m3Second).length,
+  getSellerInsightsFromLead(m3First).length,
+  'M3: zweite Migration erzeugt keine Duplikate',
+);
+assert.ok(m3First.crm.migration?.kundenhelferV1At, 'M3: Migrationsmarker gesetzt');
+
+const m3LazyOnce = getSellerInsightsFromLead(m3Base);
+const m3LazyTwice = getSellerInsightsFromLead(m3Base);
+assert.equal(m3LazyOnce.length, m3LazyTwice.length, 'M3: Lazy Read idempotent');
+
+const m4Notes = [{ id: 'cn-1', text: 'Kunde ruft Montag zurück', createdAt: '2026-01-01T10:00:00.000Z', updatedAt: '2026-01-01T10:00:00.000Z' }];
+const m4Lead = {
+  id: 'm4',
+  crm: {
+    kundenhelfer: {
+      notes: 'Hund',
+      conversationNotes: m4Notes,
+    },
+  },
+};
+const m4Migrated = migrateKundenhelferToSellerInsights(m4Lead);
+assert.deepEqual(m4Migrated.crm.kundenhelfer.conversationNotes, m4Notes, 'M4: conversationNotes erhalten');
+assert.equal(m4Migrated.crm.kundenhelfer.notes, 'Hund', 'M5: kundenhelfer.notes erhalten');
+assert.equal(m4Lead.crm.kundenhelfer.notes, 'Hund', 'M5: Original-notes unverändert');
+
+const m5Insight = getSellerInsightsFromLead(m4Migrated)[0];
+assert.equal(m5Insight.migratedFrom, MIGRATED_FROM_KUNDENHELFER, 'migriertes Insight markiert');
 
 console.log('sellerInsights.test.js: ok');
