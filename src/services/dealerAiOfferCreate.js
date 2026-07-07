@@ -26,7 +26,10 @@ import {
   customerContextFromDraft,
   mergeConfigureCustomerContext,
 } from './dealerAiCustomerContext.js';
-import { joinKundenhelferNotes, parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import {
+  appendSellerInsightsFromTexts,
+  SELLER_INSIGHT_CONTEXT,
+} from './dealer/sellerInsights.js';
 import { VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
 import { buildBoardOfferFromDraft, BOARD_OFFER_STATUS } from './dealer/boardOfferModel.js';
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
@@ -315,15 +318,6 @@ export function offerDraftToVehicleCard(offerDraft, options = {}) {
   };
 }
 
-function mergeKundenhelferNotes(existingNotes = '', additions = []) {
-  const parts = parseKundenhelferNotes(existingNotes);
-  for (const item of additions) {
-    const trimmed = String(item ?? '').trim();
-    if (trimmed && !parts.includes(trimmed)) parts.push(trimmed);
-  }
-  return joinKundenhelferNotes(parts);
-}
-
 export function buildOfferSavedActivityText(offerDraft) {
   const vehicle = [offerDraft.vehicle.model, offerDraft.vehicle.trimLabel].filter(Boolean).join(' ');
   const parts = [];
@@ -443,8 +437,12 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
   const nextStepId = 'send_offer';
   const nextStepChip = FOLLOW_UP_CHIPS.find((c) => c.id === nextStepId);
   const { chips, extras } = buildKundenhelferChipsFromOfferDraft(offerDraft);
-  const existingNotes = existingLead?.crm?.kundenhelfer?.notes ?? '';
-  const kundenhelferNotes = mergeKundenhelferNotes(existingNotes, [...chips, ...extras]);
+  const insightTexts = [...chips, ...extras];
+  const withInsights = insightTexts.length
+    ? appendSellerInsightsFromTexts(existingLead ?? { crm: {} }, insightTexts, {
+      context: SELLER_INSIGHT_CONTEXT.OFFER,
+    })
+    : (existingLead ?? { crm: {} });
   const crmOffer = buildCrmOfferEntry(offerDraft, cardId);
   const now = new Date().toISOString();
   const historyEntry = {
@@ -464,8 +462,9 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
       nextStepLabel: nextStepChip?.label ?? 'Angebot senden',
       followUpAt: computeFollowUpAt(nextStepId),
       preferredContact: inferPreferredContact(offerDraft),
+      sellerInsights: withInsights.crm?.sellerInsights ?? existingLead?.crm?.sellerInsights ?? [],
       kundenhelfer: {
-        notes: kundenhelferNotes,
+        ...(existingLead?.crm?.kundenhelfer ?? {}),
         voiceMemos: existingLead?.crm?.kundenhelfer?.voiceMemos ?? [],
       },
       offers: mergeCrmOffers(existingLead?.crm?.offers ?? [], crmOffer),

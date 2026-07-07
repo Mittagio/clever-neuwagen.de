@@ -102,6 +102,22 @@ assert.equal(
   'new_opportunity_for_customer',
 );
 
+const chipOfferDraft = {
+  ...altOfferDraft,
+  timing: { ...altOfferDraft.timing, urgentNeed: true, desiredDeliveryDate: 'sofort' },
+  payment: { ...altOfferDraft.payment, towBar: true },
+};
+const chipEnrichment = buildKundenakteEnrichmentFromOfferDraft(chipOfferDraft, {
+  configId: 'cfg-test',
+  existingLead: { crm: { kundenhelfer: { notes: 'Alt' } } },
+});
+assert.ok(chipEnrichment.crmPatch.sellerInsights?.length >= 2, 'Angebots-Chips in sellerInsights');
+assert.ok(
+  chipEnrichment.crmPatch.sellerInsights.some((i) => /braucht auto sofort/i.test(i.text)),
+  'Dringlichkeits-Chip in sellerInsights',
+);
+assert.equal(chipEnrichment.crmPatch.kundenhelfer.notes, 'Alt', 'bestehende kundenhelfer.notes unverändert');
+
 const sampleLead = {
   id: 'lead-existing',
   customerId: 'cust-existing',
@@ -149,7 +165,7 @@ assert.equal(
   attachUpdated.patch.crm.vehicleOffers[attachResult.card.id].status,
   VEHICLE_OFFER_STATUS.DRAFT,
 );
-assert.ok(attachUpdated.patch.crm.kundenhelfer.notes.length > 0);
+assert.equal(attachUpdated.patch.crm.kundenhelfer?.notes, undefined, 'kundenhelfer.notes nicht neu geschrieben');
 assert.ok(attachResult.activityText.includes('Clever Empfehlung gespeichert'));
 
 let newOppLead = null;
