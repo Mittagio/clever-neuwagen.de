@@ -7,9 +7,9 @@ import { CONSULTATION_QUESTIONS } from './cleverSalesAdvisor.js';
 import { buildDealerClassicModelUrl } from '../wish/wishUrlService.js';
 import { CLEVER_WORLD } from '../consultation/consultationWorlds.js';
 import {
-  buildUnderstoodLabels,
   getNeedProfileFromLead,
 } from '../consultation/needProfileService.js';
+import { buildCustomerUnderstanding } from './customerUnderstanding.js';
 
 const KM_MAP = {
   '8000': 8000,
@@ -237,9 +237,11 @@ function resolveBatteryLabel(lead, consultation, modelKey) {
 }
 
 /**
+ * Legacy-Akte-View aus Customer Understanding (Kompatibilität).
+ * @param {object} understanding
  * @param {object} lead
  */
-export function buildCleverBeratungAkteView(lead) {
+function mapUnderstandingToLegacyAkteView(understanding, lead) {
   const consultation = extractConsultationFromLead(lead);
   if (!consultation) return null;
 
@@ -248,7 +250,9 @@ export function buildCleverBeratungAkteView(lead) {
   const brief = lead?.inquiryBrief ?? {};
   const modelKey = resolveModelKey(lead, consultation);
   const requirementChips = buildRequirementChips(lead, consultation);
-  const openQuestions = buildOpenQuestions(lead, consultation);
+  const openQuestions = understanding.verstaendnis.openPoints.length
+    ? understanding.verstaendnis.openPoints
+    : buildOpenQuestions(lead, consultation);
   const status = computeConsultationStatus(lead, consultation, requirementChips, openQuestions);
 
   const vehicleTitle = recommendation?.vehicleTitle
@@ -272,9 +276,10 @@ export function buildCleverBeratungAkteView(lead) {
 
   const dealerSlug = lead?.dealerId ?? 'autohaus-trinkle';
   const needProfile = getNeedProfileFromLead(lead);
-  const cleverWorld = needProfile?.selectedModelKey
-    ? CLEVER_WORLD.VEHICLE_CONSULTATION
-    : CLEVER_WORLD.NEED_CONSULTATION;
+  const cleverWorld = understanding.meta.world
+    ?? (needProfile?.selectedModelKey
+      ? CLEVER_WORLD.VEHICLE_CONSULTATION
+      : CLEVER_WORLD.NEED_CONSULTATION);
   const needHeadline = recommendation?.headline
     ?? (modelLabel ? `Nach Ihren Angaben würde ich zuerst den Kia ${modelLabel} ansehen.` : null);
   const modelAlternatives = recommendation?.needWorldAlternatives
@@ -284,11 +289,13 @@ export function buildCleverBeratungAkteView(lead) {
   return {
     status,
     cleverWorld,
-    customerWish: profile.initialWish ?? brief.searchQuery ?? lead?.notes?.split('\n')[0] ?? '',
+    customerWish: understanding.originalton.messages[0]
+      ?? profile.initialWish
+      ?? brief.searchQuery
+      ?? lead?.notes?.split('\n')[0]
+      ?? '',
     requirementChips,
-    understoodLabels: needProfile?.understoodLabels?.length
-      ? needProfile.understoodLabels
-      : buildUnderstoodLabels(needProfile ?? {}),
+    understoodLabels: understanding.verstaendnis.labels,
     recommendation: {
       vehicleTitle,
       modelKey,
@@ -316,5 +323,18 @@ export function buildCleverBeratungAkteView(lead) {
       : null,
     entryMode: consultation.entryMode ?? 'clever',
     answeredCount: Object.keys(profile.answers ?? {}).length,
+    understanding,
+    gespraechseinstieg: understanding.gespraechseinstieg,
+    entwicklung: understanding.entwicklung,
+    originalton: understanding.originalton,
   };
+}
+
+/**
+ * @param {object} lead
+ */
+export function buildCleverBeratungAkteView(lead) {
+  const understanding = buildCustomerUnderstanding(lead);
+  if (!understanding) return null;
+  return mapUnderstandingToLegacyAkteView(understanding, lead);
 }
