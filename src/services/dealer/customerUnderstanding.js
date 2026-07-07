@@ -10,6 +10,10 @@ import {
   mergeTextIntoNeedProfile,
   modelDisplayLabel,
 } from '../consultation/needProfileService.js';
+import {
+  getSellerInsightsFromLead,
+  hasSellerInsights,
+} from './sellerInsights.js';
 
 const CONCERN_PATTERNS = [
   {
@@ -140,6 +144,8 @@ export function buildUnderstandingEvolution(messages = []) {
 
     steps.push({
       customerText,
+      text: customerText,
+      source: 'customer',
       newLabels,
       labelsAfter,
     });
@@ -149,6 +155,77 @@ export function buildUnderstandingEvolution(messages = []) {
   }
 
   return steps;
+}
+
+/**
+ * @param {object[]} insights
+ */
+export function buildSellerInsightEvolution(insights = []) {
+  if (!insights.length) return [];
+
+  let labelsBefore = [];
+  let concernsBefore = [];
+  const steps = [];
+
+  for (const insight of insights) {
+    const sellerText = String(insight.text ?? '').trim();
+    if (!sellerText) continue;
+
+    const profile = mergeTextIntoNeedProfile(sellerText);
+    const messageConcerns = detectConcernsFromText(sellerText);
+    const concernsAfter = [...new Set([...concernsBefore, ...messageConcerns])];
+    const labelsAfter = mergeLabelLists(
+      insight.understoodLabels?.length
+        ? insight.understoodLabels
+        : buildUnderstoodLabels(profile),
+      concernsAfter,
+    );
+    const newLabels = labelDelta(
+      mergeLabelLists(labelsBefore, concernsBefore),
+      labelsAfter,
+    );
+
+    steps.push({
+      customerText: sellerText,
+      text: sellerText,
+      source: 'seller',
+      context: insight.context ?? null,
+      createdAt: insight.createdAt ?? null,
+      newLabels,
+      labelsAfter,
+    });
+
+    labelsBefore = labelsAfter;
+    concernsBefore = concernsAfter;
+  }
+
+  return steps;
+}
+
+/**
+ * @param {object[]} customerSteps
+ * @param {object[]} sellerSteps
+ */
+export function mergeUnderstandingEvolution(customerSteps = [], sellerSteps = []) {
+  return [
+    ...customerSteps.map((step) => ({ ...step, source: step.source ?? 'customer' })),
+    ...sellerSteps.map((step) => ({ ...step, source: step.source ?? 'seller' })),
+  ];
+}
+
+/**
+ * Ephemeres Profil nur für Ableitung – needProfile bleibt unverändert.
+ * @param {object} customerProfile
+ * @param {object[]} sellerInsights
+ */
+export function buildEphemeralMergedProfile(customerProfile = {}, sellerInsights = []) {
+  let merged = { ...customerProfile };
+  for (const insight of sellerInsights) {
+    const text = String(insight.text ?? '').trim();
+    if (!text) continue;
+    merged = mergeTextIntoNeedProfile(text, merged);
+  }
+  return merged;
 }
 
 /**
@@ -276,6 +353,7 @@ function resolveOpenPoints(profile = {}, lead = {}) {
 function resolveUnderstandingSource(lead = {}) {
   const sources = [];
   if (lead?.crm?.needProfile) sources.push('need_profile');
+  if (hasSellerInsights(lead)) sources.push('seller_insights');
   if (lead?.sonderwuensche?.consultation) sources.push('consultation');
   if (lead?.advisorConversation?.messages?.length) sources.push('advisor_conversation');
   if (lead?.inquiryBrief?.searchQuery) sources.push('inquiry_brief');
@@ -307,6 +385,8 @@ export function hasCustomerUnderstanding(lead = {}) {
 
   if (String(lead?.inquiryBrief?.searchQuery ?? '').trim()) return true;
 
+  if (hasSellerInsights(lead)) return true;
+
   return false;
 }
 
@@ -317,40 +397,59 @@ export function buildCustomerUnderstanding(lead = {}) {
   if (!hasCustomerUnderstanding(lead)) return null;
 
   const profile = resolveNeedProfileForUnderstanding(lead) ?? createEmptyNeedProfile();
+  const sellerInsights = getSellerInsightsFromLead(lead);
   const customerMessages = collectCustomerMessages(lead);
-  const concerns = detectConcernsFromMessages(customerMessages);
+  const sellerMessages = sellerInsights.map((insight) => insight.text);
+
+  const customerConcerns = detectConcernsFromMessages(customerMessages);
+  const sellerConcerns = detectConcernsFromMessages(sellerMessages);
+  const concerns = [...new Set([...customerConcerns, ...sellerConcerns])];
+
+  const sellerLabels = sellerInsights.flatMap((insight) => insight.understoodLabels ?? []);
+  const sellerPriorities = sellerInsights.flatMap((insight) => insight.priorities ?? []);
+
   const labels = mergeLabelLists(
     profile.understoodLabels?.length ? profile.understoodLabels : buildUnderstoodLabels(profile),
+    sellerLabels,
     concerns,
   );
 
-  const entwicklung = buildUnderstandingEvolution(
+  const customerEvolution = buildUnderstandingEvolution(
     profile.rawMessages?.length ? profile.rawMessages : customerMessages,
   );
+  const sellerEvolution = buildSellerInsightEvolution(sellerInsights);
+  const entwicklung = mergeUnderstandingEvolution(customerEvolution, sellerEvolution);
+
+  const mergedProfile = buildEphemeralMergedProfile(profile, sellerInsights);
 
   const verstaendnis = {
     labels,
     concerns,
     openPoints: resolveOpenPoints(profile, lead),
-    vehicles: resolveVehicles(profile, labels),
-    priorities: [...(profile.priorities ?? [])],
+    vehicles: resolveVehicles(mergedProfile, labels),
+    priorities: [...new Set([...(profile.priorities ?? []), ...sellerPriorities])],
   };
 
-  const gespraechseinstieg = buildGespraechseinstieg(verstaendnis, profile);
+  const gespraechseinstieg = buildGespraechseinstieg(verstaendnis, mergedProfile);
   const originalton = buildOriginalton(lead, profile.rawMessages?.length ? profile.rawMessages : customerMessages);
 
   const resolvedWorld = lead?.crm?.needProfile?.world
-    ?? (profile.selectedModelKey
+    ?? (mergedProfile.selectedModelKey
       ? CLEVER_WORLD.VEHICLE_CONSULTATION
       : CLEVER_WORLD.NEED_CONSULTATION);
+
+  const latestSellerAt = sellerInsights.length
+    ? sellerInsights[sellerInsights.length - 1].updatedAt
+    : null;
 
   return {
     meta: {
       hasData: true,
       world: resolvedWorld,
       confidence: profile.confidence ?? 0,
-      updatedAt: profile.updatedAt ?? lead?.updatedAt ?? null,
+      updatedAt: latestSellerAt ?? profile.updatedAt ?? lead?.updatedAt ?? null,
       source: resolveUnderstandingSource(lead),
+      sellerInsightCount: sellerInsights.length,
     },
     verstaendnis,
     entwicklung,

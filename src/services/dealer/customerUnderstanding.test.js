@@ -12,6 +12,7 @@ import {
   createEmptyNeedProfile,
   mergeTextIntoNeedProfile,
 } from '../consultation/needProfileService.js';
+import { appendSellerInsightToLead } from './sellerInsights.js';
 
 function buildProfileFromMessages(messages = []) {
   return messages.reduce(
@@ -134,5 +135,42 @@ const batteryFirst = buildGespraechseinstieg(
   { selectedModelKey: 'ev3', usage: ['urlaub'] },
 );
 assert.match(batteryFirst.lead, /batteriegröße/i);
+
+// ── D) sellerInsights + needProfile Merge ───────────────────────────────────
+
+const sellerText = 'Anhängelast jetzt doch 2.500 kg. EV4 gefällt inzwischen besser.';
+const mergedLead = appendSellerInsightToLead(ev3Lead, sellerText, {
+  context: 'phone_call',
+  createdAt: '2026-07-07T14:00:00.000Z',
+});
+
+const mergedUnderstanding = buildCustomerUnderstanding(mergedLead);
+assert.ok(mergedUnderstanding, 'Understanding mit sellerInsights');
+assert.equal(mergedUnderstanding.entwicklung.length, 4, '3 Kunde + 1 Verkäufer');
+assert.equal(mergedUnderstanding.entwicklung[3].source, 'seller');
+assert.equal(mergedUnderstanding.entwicklung[3].customerText, sellerText);
+assert.equal(mergedUnderstanding.meta.source, 'mixed', 'need_profile + seller_insights = mixed');
+assert.ok(mergedUnderstanding.meta.sellerInsightCount === 1);
+
+const sellerStepLabels = mergedUnderstanding.entwicklung[3].newLabels.join(' ').toLowerCase();
+assert.ok(
+  sellerStepLabels.includes('anhängelast') || sellerStepLabels.includes('ev4'),
+  `Anhängelast/EV4 in Verkäufer-Schritt: ${mergedUnderstanding.entwicklung[3].newLabels.join(', ')}`,
+);
+
+assert.ok(
+  mergedUnderstanding.verstaendnis.labels.some((label) => /ev4|anhängelast/i.test(label)),
+  'Verständnis enthält Verkäufer-Labels',
+);
+
+assert.deepEqual(
+  mergedUnderstanding.originalton.messages,
+  ev3Messages,
+  'Originalton bleibt Kundenstimme',
+);
+
+// needProfile unverändert (keine Verkäufer-Texte in rawMessages)
+assert.equal(mergedLead.crm.needProfile.rawMessages.length, 3);
+assert.ok(!mergedLead.crm.needProfile.rawMessages.includes(sellerText));
 
 console.log('customerUnderstanding.test.js: ok');
