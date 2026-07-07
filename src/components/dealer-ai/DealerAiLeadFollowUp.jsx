@@ -125,6 +125,7 @@ import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
+import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import CleverEmpfiehltCard from './CleverEmpfiehltCard.jsx';
 import { evaluateJourney } from '../../services/journey/journeyEngine.js';
 import {
@@ -579,6 +580,11 @@ export default function DealerAiLeadFollowUp({
 
   const cleverBeratungView = useMemo(
     () => (lead ? buildCleverBeratungAkteView(lead) : null),
+    [lead],
+  );
+
+  const customerUnderstanding = useMemo(
+    () => (lead ? buildCustomerUnderstanding(lead) : null),
     [lead],
   );
 
@@ -2166,6 +2172,19 @@ export default function DealerAiLeadFollowUp({
         historyBadge={inboxOpenCount ? 0 : activityDashboard.newCustomerActivities}
       />
 
+      {customerUnderstanding?.meta?.hasData && (
+        <div className="cust-akte-verstaendnis">
+          <CustomerAkteCleverBeratung
+            view={cleverBeratungView}
+            understanding={customerUnderstanding}
+            telHref={telHref}
+            onPrepareOffer={handleCleverBeratungPrepareOffer}
+            onCreateMessage={() => openCleverAntworten()}
+            onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+          />
+        </div>
+      )}
+
       <CustomerAkteKundenhelfer
         notes={kundenhelferNotes}
         chipCategories={kundenhelferChipCategories}
@@ -2739,16 +2758,10 @@ export default function DealerAiLeadFollowUp({
               <CustomerAkteCleverGespraech conversation={lead.advisorConversation} />
             </div>
           )}
-          {cleverBeratungView && (
-            <div className="cust-akte-verlauf__block">
-              <CustomerAkteCleverBeratung
-                view={cleverBeratungView}
-                telHref={telHref}
-                onPrepareOffer={handleCleverBeratungPrepareOffer}
-                onCreateMessage={() => openCleverAntworten()}
-                onChangeRecommendation={handleCleverBeratungChangeRecommendation}
-              />
-            </div>
+          {customerUnderstanding?.meta?.hasData && (
+            <p className="cust-akte-verlauf__note">
+              Das Clever-Verständnis finden Sie oben in der Kundenakte.
+            </p>
           )}
           {(lead?.equipmentWishes?.length ?? 0) > 0 && (
             <div className="cust-akte-verlauf__block cust-akte-verlauf__block--subtle">

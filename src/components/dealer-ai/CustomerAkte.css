@@ -47,6 +47,21 @@
   opacity: 0.95;
 }
 
+.cust-akte-verstaendnis {
+  margin: 0 0 12px;
+}
+
+.cust-akte-verlauf__note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--cust-border, #e2e8f0);
+  font-size: 0.8125rem;
+  color: var(--cust-muted, #64748b);
+  line-height: 1.45;
+}
+
 .cust-akte-board {
   margin-bottom: 2px;
 }
