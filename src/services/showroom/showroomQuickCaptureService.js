@@ -12,7 +12,10 @@ import {
   getShowroomChipById,
   getShowroomChipLabels,
 } from '../../data/showroom/showroomModeChipGroups.js';
-import { joinKundenhelferNotes, parseKundenhelferNotes } from '../cleverKundenhelfer.js';
+import {
+  appendSellerInsightsFromTexts,
+  SELLER_INSIGHT_CONTEXT,
+} from '../dealer/sellerInsights.js';
 
 export const SHOWROOM_CAPTURE_STATUS = {
   PENDING: 'pending',
@@ -168,11 +171,9 @@ export function saveShowroomQuickCapture({
 
   if (existingLead) {
     const now = new Date().toISOString();
-    const existingNotes = existingLead.crm?.kundenhelfer?.notes ?? '';
-    const mergedNotes = joinKundenhelferNotes([
-      ...parseKundenhelferNotes(existingNotes),
-      helperNote,
-    ]);
+    const withInsights = appendSellerInsightsFromTexts(existingLead, [helperNote], {
+      context: SELLER_INSIGHT_CONTEXT.SHOWROOM,
+    });
 
     return {
       ok: true,
@@ -195,9 +196,9 @@ export function saveShowroomQuickCapture({
           pendingShowroomCapture: draft,
           hasPendingShowroomCapture: true,
           nextStepLabel: 'Schnellaufnahme prüfen',
+          sellerInsights: withInsights.crm?.sellerInsights ?? existingLead.crm?.sellerInsights ?? [],
           kundenhelfer: {
             ...(existingLead.crm?.kundenhelfer ?? {}),
-            notes: mergedNotes,
           },
           showroomSourceText: sourceText,
         },
@@ -218,6 +219,10 @@ export function saveShowroomQuickCapture({
     phone: contact?.phone?.trim() || '',
     email: contact?.email?.trim() || '',
   };
+  const defaultCrm = buildDefaultCrm();
+  const withInsights = appendSellerInsightsFromTexts({ crm: defaultCrm }, [helperNote], {
+    context: SELLER_INSIGHT_CONTEXT.SHOWROOM,
+  });
 
   const lead = normalizeLead({
     id: uid('lead'),
@@ -244,13 +249,13 @@ export function saveShowroomQuickCapture({
     },
     notes: summaryLines.join('\n'),
     crm: {
-      ...buildDefaultCrm(),
+      ...defaultCrm,
       pendingShowroomCapture: draft,
       hasPendingShowroomCapture: true,
       nextStepId: 'showroom_capture_review',
       nextStepLabel: 'Schnellaufnahme prüfen',
+      sellerInsights: withInsights.crm?.sellerInsights ?? [],
       kundenhelfer: {
-        notes: helperNote,
         voiceMemos: [],
       },
       showroomSourceText: sourceText,
@@ -292,11 +297,9 @@ export function applyShowroomCaptureToLead(lead, capture = null) {
   );
   const paymentType = paymentTypeFromChipIds(pending.paymentChipIds ?? []);
   const helperNote = buildShowroomCaptureHelperNotes(pending);
-  const existingNotes = lead.crm?.kundenhelfer?.notes ?? '';
-  const mergedNotes = joinKundenhelferNotes([
-    ...parseKundenhelferNotes(existingNotes),
-    helperNote,
-  ]);
+  const withInsights = appendSellerInsightsFromTexts(lead, [helperNote], {
+    context: SELLER_INSIGHT_CONTEXT.SHOWROOM,
+  });
 
   return {
     ok: true,
@@ -319,9 +322,9 @@ export function applyShowroomCaptureToLead(lead, capture = null) {
           appliedAt: new Date().toISOString(),
         },
         hasPendingShowroomCapture: false,
+        sellerInsights: withInsights.crm?.sellerInsights ?? lead.crm?.sellerInsights ?? [],
         kundenhelfer: {
           ...(lead.crm?.kundenhelfer ?? {}),
-          notes: mergedNotes,
         },
       },
       history: [
