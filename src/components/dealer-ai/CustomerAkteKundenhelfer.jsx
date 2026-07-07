@@ -14,6 +14,7 @@ export default function CustomerAkteKundenhelfer({
   lead = null,
   onOpenSheet,
   variant = 'profile',
+  subdued = false,
 }) {
   const categories = buildKundenwissenOverview(notes, lead, chipCategories);
   const totalCount = countKundenwissenItems(notes, lead, chipCategories);
@@ -33,8 +34,8 @@ export default function CustomerAkteKundenhelfer({
   }
 
   return (
-    <div className="cust-akte-kw" aria-label="Kundenwissen">
-      <p className="cust-akte-kw__title">Kundenwissen</p>
+    <div className={`cust-akte-kw${subdued ? ' cust-akte-kw--subdued' : ''}`} aria-label="Kundenwissen">
+      <p className="cust-akte-kw__title">{subdued ? 'Ihre Notizen' : 'Kundenwissen'}</p>
       <div className="cust-akte-kw__grid">
         {categories.map((category) => (
           <button

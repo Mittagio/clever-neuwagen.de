@@ -51,6 +51,33 @@
   margin: 0 0 12px;
 }
 
+.cust-akte-operativ {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cust-border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0.96;
+}
+
+.cust-akte-operativ__empfiehlt {
+  margin-top: 2px;
+}
+
+.cust-akte-kw--subdued {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.cust-akte-kw--subdued .cust-akte-kw__cat {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.6875rem;
+  background: #fff;
+}
+
 .cust-akte-verlauf__note {
   margin: 0;
   padding: 10px 12px;
@@ -2849,6 +2876,21 @@
   gap: 10px;
 }
 
+.cust-clever-beratung--kundenbild .cust-clever-beratung__card--kundenbild {
+  gap: 10px;
+}
+
+.cust-clever-beratung__head--minimal {
+  gap: 2px;
+}
+
+.cust-clever-beratung__head--minimal .cust-clever-beratung__title {
+  text-transform: none;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  color: #1e293b;
+}
+
 .cust-clever-beratung__head {
   display: flex;
   flex-direction: column;
@@ -2966,6 +3008,88 @@
   color: #c2410c;
 }
 
+.cust-clever-beratung__block--hero {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.cust-clever-beratung__hero-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.cust-clever-beratung__block--compact {
+  padding-bottom: 8px;
+}
+
+.cust-clever-beratung__block--fold {
+  padding-bottom: 4px;
+}
+
+.cust-clever-beratung__fold-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-clever-beratung__fold-meta {
+  margin-left: 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cust-clever-beratung__section-title--subtle {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.cust-clever-beratung__chips--compact {
+  gap: 4px;
+}
+
+.cust-clever-beratung__chip--compact {
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.cust-clever-beratung__open--inline {
+  margin-top: 4px;
+  padding-left: 16px;
+  font-size: 0.75rem;
+}
+
+.cust-clever-beratung__open-more {
+  color: #94a3b8;
+  list-style: none;
+  margin-left: -16px;
+}
+
+.cust-clever-beratung__evolution--open {
+  margin-top: 8px;
+}
+
 .cust-clever-beratung__block--section {
   padding-bottom: 12px;
   border-bottom: 1px solid #e8ecff;
@@ -3045,10 +3169,11 @@
 
 .cust-clever-beratung__einstieg-lead {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 650;
-  color: var(--cust-text);
-  line-height: 1.45;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 }
 
 .cust-clever-beratung__einstieg-context {
@@ -3159,6 +3284,12 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding-top: 4px;
+}
+
+@media (min-width: 400px) {
+  .cust-clever-beratung__actions--secondary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .cust-clever-beratung__action {

@@ -588,6 +588,8 @@ export default function DealerAiLeadFollowUp({
     [lead],
   );
 
+  const hasSellerCustomerPicture = Boolean(customerUnderstanding?.meta?.hasData);
+
   const resolvedOffers = useMemo(() => {
     const crmOffers = crm.offers ?? [];
     if (crmOffers.length) return crmOffers;
@@ -645,6 +647,32 @@ export default function DealerAiLeadFollowUp({
     () => buildSchnellaufnahmeChips(wishEditValues),
     [wishEditValues],
   );
+
+  const hideRedundantWishChips = useMemo(() => {
+    if (!hasSellerCustomerPicture || !schnellaufnahmeChips.length) return false;
+    const corpus = [
+      ...(customerUnderstanding?.verstaendnis?.labels ?? []),
+      ...(customerUnderstanding?.verstaendnis?.concerns ?? []),
+      customerUnderstanding?.gespraechseinstieg?.lead ?? '',
+      customerUnderstanding?.gespraechseinstieg?.context ?? '',
+    ].join(' ').toLowerCase();
+    if (!corpus.trim()) return false;
+
+    let overlap = 0;
+    for (const chip of schnellaufnahmeChips) {
+      const label = String(chip.label ?? '').toLowerCase();
+      if (!label) continue;
+      if (corpus.includes(label)) {
+        overlap += 1;
+        continue;
+      }
+      if (/budget|leasing|finanz|kauf|\bkm\b|rate|zahlungsart|monat/i.test(label)
+        && /budget|leasing|finanz|kauf|\bkm\b|rate|zahlungsart|monat/i.test(corpus)) {
+        overlap += 1;
+      }
+    }
+    return overlap >= Math.min(2, schnellaufnahmeChips.length);
+  }, [hasSellerCustomerPicture, customerUnderstanding, schnellaufnahmeChips]);
 
   const headSubline = buildSalesDoneVehicleLine({
     brand: fields.brand ?? 'Kia',
@@ -2185,20 +2213,39 @@ export default function DealerAiLeadFollowUp({
         </div>
       )}
 
-      <CustomerAkteKundenhelfer
-        notes={kundenhelferNotes}
-        chipCategories={kundenhelferChipCategories}
-        conversationNotes={conversationNotes}
-        lead={lead}
-        onOpenSheet={openKundenhelferSheet}
-        variant="profile"
-      />
+      <div className={hasSellerCustomerPicture ? 'cust-akte-operativ' : undefined}>
+        <CustomerAkteKundenhelfer
+          notes={kundenhelferNotes}
+          chipCategories={kundenhelferChipCategories}
+          conversationNotes={conversationNotes}
+          lead={lead}
+          onOpenSheet={openKundenhelferSheet}
+          variant="profile"
+          subdued={hasSellerCustomerPicture}
+        />
 
-      <CustomerAkteWishConditions
-        chips={schnellaufnahmeChips}
-        onEdit={() => openWishConditionsSheet()}
-        onChipClick={(field) => openWishConditionsSheet(field)}
-      />
+        {(!hasSellerCustomerPicture || !hideRedundantWishChips) && (
+          <CustomerAkteWishConditions
+            chips={schnellaufnahmeChips}
+            onEdit={() => openWishConditionsSheet()}
+            onChipClick={(field) => openWishConditionsSheet(field)}
+          />
+        )}
+
+        {cleverEmpfiehltView && (
+          <div className={hasSellerCustomerPicture ? 'cust-akte-operativ__empfiehlt' : 'cust-akte-priority'}>
+            <CleverEmpfiehltCard
+              view={cleverEmpfiehltView}
+              telHref={telHref}
+              onPrimaryAction={handleCleverEmpfiehltAction}
+              onMarkDone={handleCleverMarkDone}
+              onOpenOffer={handleCleverOpenOffer}
+              onCopyMessage={handleCopyMessageSuggestion}
+              onPrepareMessage={handlePrepareMessageSuggestion}
+            />
+          </div>
+        )}
+      </div>
 
       {requestedStockVehicle && (
         <CustomerAkteRequestedStockVehicle
@@ -2217,18 +2264,6 @@ export default function DealerAiLeadFollowUp({
           onPrepareOffer={handlePrepareOfferFromShowroom}
         />
       )}
-
-      <div className="cust-akte-priority">
-        <CleverEmpfiehltCard
-          view={cleverEmpfiehltView}
-          telHref={telHref}
-          onPrimaryAction={handleCleverEmpfiehltAction}
-          onMarkDone={handleCleverMarkDone}
-          onOpenOffer={handleCleverOpenOffer}
-          onCopyMessage={handleCopyMessageSuggestion}
-          onPrepareMessage={handlePrepareMessageSuggestion}
-        />
-      </div>
 
       <CustomerAkteBoard
         items={boardItems}

@@ -1,23 +1,80 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './CustomerAkte.css';
 
-function StatusBadge({ status }) {
-  if (!status) return null;
-  return (
-    <span className={`cust-clever-beratung__status cust-clever-beratung__status--${status.tone}`}>
-      {status.label}
-    </span>
+function normalizeLabel(text = '') {
+  return String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function labelsIncludeTerm(labels = [], term = '') {
+  const needle = normalizeLabel(term);
+  if (!needle) return false;
+  return labels.some((label) => {
+    const hay = normalizeLabel(label);
+    return hay.includes(needle) || needle.includes(hay);
+  });
+}
+
+function compactVerstaendnis(verstaendnis = {}) {
+  const labels = [...(verstaendnis.labels ?? [])];
+  const concerns = [...(verstaendnis.concerns ?? [])];
+  const concernKeys = new Set(concerns.map(normalizeLabel));
+  const compactLabels = labels.filter((label) => !concernKeys.has(normalizeLabel(label)));
+  const vehicles = (verstaendnis.vehicles ?? []).filter(
+    (vehicle) => !labelsIncludeTerm(compactLabels, vehicle),
+  );
+
+  return {
+    labels: compactLabels,
+    concerns,
+    vehicles,
+    openPoints: verstaendnis.openPoints ?? [],
+  };
+}
+
+function shouldShowRecommendation(recommendation, verstaendnis = {}) {
+  if (!recommendation?.vehicleTitle) return false;
+
+  const labels = [
+    ...(verstaendnis.labels ?? []),
+    ...(verstaendnis.concerns ?? []),
+    ...(verstaendnis.vehicles ?? []),
+  ];
+
+  const hasVehicleOnly = labelsIncludeTerm(labels, recommendation.vehicleTitle)
+    && !recommendation.trimLabel
+    && !recommendation.batteryOrMotor
+    && !recommendation.priceLine
+    && !(recommendation.whyLines?.length)
+    && !(recommendation.alternatives?.length)
+    && !recommendation.headline;
+
+  if (hasVehicleOnly) return false;
+
+  return Boolean(
+    recommendation.trimLabel
+    || recommendation.batteryOrMotor
+    || recommendation.priceLine
+    || recommendation.whyLines?.length
+    || recommendation.alternatives?.length
+    || recommendation.headline,
   );
 }
 
-function LabelChips({ labels = [], variant = 'default' }) {
+function originaltonMatchesEntwicklung(originalton, entwicklung = []) {
+  const messages = originalton?.messages ?? [];
+  const steps = entwicklung.map((step) => step.customerText);
+  if (!messages.length || messages.length !== steps.length) return false;
+  return messages.every((message, index) => message === steps[index]);
+}
+
+function LabelChips({ labels = [], variant = 'default', compact = false }) {
   if (!labels.length) return null;
   return (
-    <ul className="cust-clever-beratung__chips">
+    <ul className={`cust-clever-beratung__chips${compact ? ' cust-clever-beratung__chips--compact' : ''}`}>
       {labels.map((label) => (
         <li key={label}>
-          <span className={`cust-clever-beratung__chip${variant === 'concern' ? ' cust-clever-beratung__chip--concern' : ''}`}>
+          <span className={`cust-clever-beratung__chip${variant === 'concern' ? ' cust-clever-beratung__chip--concern' : ''}${compact ? ' cust-clever-beratung__chip--compact' : ''}`}>
             {variant === 'default' ? `✓ ${label}` : label}
           </span>
         </li>
@@ -26,13 +83,28 @@ function LabelChips({ labels = [], variant = 'default' }) {
   );
 }
 
+function GespraechseinstiegSection({ gespraechseinstieg }) {
+  if (!gespraechseinstieg?.lead) return null;
+
+  return (
+    <div className="cust-clever-beratung__block cust-clever-beratung__block--hero">
+      <p className="cust-clever-beratung__hero-eyebrow">Womit beginne ich das Gespräch?</p>
+      <p className="cust-clever-beratung__einstieg-lead">{gespraechseinstieg.lead}</p>
+      {gespraechseinstieg.context ? (
+        <p className="cust-clever-beratung__einstieg-context">{gespraechseinstieg.context}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function VerstaendnisSection({ verstaendnis }) {
+  const compact = compactVerstaendnis(verstaendnis);
   const {
-    labels = [],
-    concerns = [],
-    vehicles = [],
-    openPoints = [],
-  } = verstaendnis ?? {};
+    labels,
+    concerns,
+    vehicles,
+    openPoints,
+  } = compact;
 
   const hasContent = labels.length > 0
     || concerns.length > 0
@@ -42,90 +114,111 @@ function VerstaendnisSection({ verstaendnis }) {
   if (!hasContent) return null;
 
   return (
-    <div className="cust-clever-beratung__block cust-clever-beratung__block--section">
-      <p className="cust-clever-beratung__section-title">1. Verständnis</p>
-      <LabelChips labels={labels} />
+    <div className="cust-clever-beratung__block cust-clever-beratung__block--compact">
+      <p className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle">
+        Verständnis
+      </p>
+      <LabelChips labels={labels} compact />
       {concerns.length > 0 && (
-        <div className="cust-clever-beratung__subblock">
-          <p className="cust-clever-beratung__label">Unsicherheiten</p>
-          <LabelChips labels={concerns} variant="concern" />
-        </div>
+        <LabelChips labels={concerns} variant="concern" compact />
       )}
       {vehicles.length > 0 && (
-        <div className="cust-clever-beratung__subblock">
-          <p className="cust-clever-beratung__label">Fahrzeuge im Fokus</p>
-          <LabelChips labels={vehicles} />
-        </div>
+        <LabelChips labels={vehicles} compact />
       )}
       {openPoints.length > 0 && (
-        <div className="cust-clever-beratung__subblock">
-          <p className="cust-clever-beratung__label">Offene Punkte</p>
-          <ul className="cust-clever-beratung__open">
-            {openPoints.map((point) => (
-              <li key={point}>{point}</li>
-            ))}
-          </ul>
-        </div>
+        <ul className="cust-clever-beratung__open cust-clever-beratung__open--inline">
+          {openPoints.slice(0, 3).map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+          {openPoints.length > 3 && (
+            <li className="cust-clever-beratung__open-more">
+              +
+              {openPoints.length - 3}
+              {' '}
+              weitere offene Punkte
+            </li>
+          )}
+        </ul>
       )}
     </div>
   );
 }
 
-function EntwicklungSection({ entwicklung = [] }) {
+function EntwicklungSection({ entwicklung = [], hideQuotes = false }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!entwicklung.length) return null;
 
+  const summaryLabel = entwicklung.length === 1
+    ? 'Ein Gesprächsschritt'
+    : `${entwicklung.length} Gesprächsschritte`;
+
+  const latestLabels = entwicklung[entwicklung.length - 1]?.labelsAfter ?? [];
+
   return (
-    <div className="cust-clever-beratung__block cust-clever-beratung__block--section">
-      <p className="cust-clever-beratung__section-title">2. Entwicklung</p>
-      <ol className="cust-clever-beratung__evolution">
-        {entwicklung.map((step, index) => (
-          <li key={`${step.customerText}-${index}`} className="cust-clever-beratung__evolution-step">
-            <p className="cust-clever-beratung__evolution-quote">&ldquo;{step.customerText}&rdquo;</p>
-            {step.newLabels?.length > 0 ? (
-              <div className="cust-clever-beratung__evolution-new">
-                <span className="cust-clever-beratung__evolution-arrow" aria-hidden>↓</span>
-                <LabelChips labels={step.newLabels} />
-              </div>
-            ) : (
-              <p className="cust-clever-beratung__evolution-muted">Kein neues Verständnis</p>
-            )}
-          </li>
-        ))}
-      </ol>
+    <div className="cust-clever-beratung__block cust-clever-beratung__block--fold">
+      <button
+        type="button"
+        className="cust-clever-beratung__fold-toggle"
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+      >
+        <span className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle cust-clever-beratung__section-title--inline">
+          Entwicklung
+          <span className="cust-clever-beratung__fold-meta">
+            {summaryLabel}
+          </span>
+        </span>
+        <span className="cust-clever-beratung__originalton-hint">
+          {expanded ? 'Einklappen' : 'Anzeigen'}
+        </span>
+      </button>
+
+      {!expanded && latestLabels.length > 0 && (
+        <LabelChips labels={latestLabels.slice(-4)} compact />
+      )}
+
+      {expanded && (
+        <ol className="cust-clever-beratung__evolution cust-clever-beratung__evolution--open">
+          {entwicklung.map((step, index) => (
+            <li key={`${step.customerText}-${index}`} className="cust-clever-beratung__evolution-step">
+              {!hideQuotes && (
+                <p className="cust-clever-beratung__evolution-quote">&ldquo;{step.customerText}&rdquo;</p>
+              )}
+              {step.newLabels?.length > 0 ? (
+                <div className="cust-clever-beratung__evolution-new">
+                  {!hideQuotes && (
+                    <span className="cust-clever-beratung__evolution-arrow" aria-hidden>↓</span>
+                  )}
+                  <LabelChips labels={step.newLabels} compact />
+                </div>
+              ) : (
+                <p className="cust-clever-beratung__evolution-muted">Kein neues Verständnis</p>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
 
-function GespraechseinstiegSection({ gespraechseinstieg }) {
-  if (!gespraechseinstieg?.lead) return null;
-
-  return (
-    <div className="cust-clever-beratung__block cust-clever-beratung__block--section cust-clever-beratung__block--einstieg">
-      <p className="cust-clever-beratung__section-title">3. Gesprächseinstieg</p>
-      <p className="cust-clever-beratung__einstieg-lead">{gespraechseinstieg.lead}</p>
-      {gespraechseinstieg.context ? (
-        <p className="cust-clever-beratung__einstieg-context">{gespraechseinstieg.context}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function OriginaltonSection({ originalton }) {
-  const [expanded, setExpanded] = useState(false);
+function OriginaltonSection({ originalton, defaultCollapsed = true }) {
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
   const messages = originalton?.messages ?? [];
 
   if (!messages.length) return null;
 
   return (
-    <div className="cust-clever-beratung__block cust-clever-beratung__block--section">
+    <div className="cust-clever-beratung__block cust-clever-beratung__block--fold">
       <button
         type="button"
-        className="cust-clever-beratung__originalton-toggle"
+        className="cust-clever-beratung__fold-toggle"
         onClick={() => setExpanded((open) => !open)}
         aria-expanded={expanded}
       >
-        <span className="cust-clever-beratung__section-title cust-clever-beratung__section-title--inline">
-          4. 💬 Originale Aussage des Kunden
+        <span className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle cust-clever-beratung__section-title--inline">
+          💬 Originale Aussage des Kunden
         </span>
         <span className="cust-clever-beratung__originalton-hint">
           {expanded ? 'Einklappen' : 'Anzeigen'}
@@ -166,34 +259,37 @@ export default function CustomerAkteCleverBeratung({
   } = understanding;
 
   const {
-    status,
     recommendation,
     configuratorUrl,
   } = view ?? {};
 
+  const showRecommendation = useMemo(
+    () => shouldShowRecommendation(recommendation, verstaendnis),
+    [recommendation, verstaendnis],
+  );
+
+  const hideEntwicklungQuotes = originaltonMatchesEntwicklung(originalton, entwicklung);
+
   return (
-    <section className="cust-clever-beratung" aria-labelledby="cust-clever-beratung-title">
-      <header className="cust-clever-beratung__head">
-        <div className="cust-clever-beratung__title-row">
-          <h2 id="cust-clever-beratung-title" className="cust-clever-beratung__title">
-            Clever Beratung
-          </h2>
-          <StatusBadge status={status} />
-        </div>
+    <section className="cust-clever-beratung cust-clever-beratung--kundenbild" aria-labelledby="cust-clever-beratung-title">
+      <header className="cust-clever-beratung__head cust-clever-beratung__head--minimal">
+        <h2 id="cust-clever-beratung-title" className="cust-clever-beratung__title">
+          Kundenbild
+        </h2>
         <p className="cust-clever-beratung__hint">
-          Clever hat den Kunden bereits beraten – hier das Verständnis für Sie.
+          Was Clever über diesen Kunden verstanden hat.
         </p>
       </header>
 
-      <div className="cust-clever-beratung__card">
-        <VerstaendnisSection verstaendnis={verstaendnis} />
-        <EntwicklungSection entwicklung={entwicklung} />
+      <div className="cust-clever-beratung__card cust-clever-beratung__card--kundenbild">
         <GespraechseinstiegSection gespraechseinstieg={gespraechseinstieg} />
-        <OriginaltonSection originalton={originalton} />
+        <VerstaendnisSection verstaendnis={verstaendnis} />
+        <EntwicklungSection entwicklung={entwicklung} hideQuotes={hideEntwicklungQuotes} />
+        <OriginaltonSection originalton={originalton} defaultCollapsed />
 
-        {recommendation?.vehicleTitle && (
+        {showRecommendation && (
           <div className="cust-clever-beratung__block cust-clever-beratung__block--highlight">
-            <p className="cust-clever-beratung__label">Fahrzeugrichtung</p>
+            <p className="cust-clever-beratung__label">Zusatz zur Fahrzeugrichtung</p>
             {recommendation.headline ? (
               <p className="cust-clever-beratung__rec-summary">{recommendation.headline}</p>
             ) : null}
@@ -220,7 +316,7 @@ export default function CustomerAkteCleverBeratung({
             </dl>
             {recommendation.whyLines?.length > 0 && (
               <ul className="cust-clever-beratung__reasons">
-                {recommendation.whyLines.slice(0, 4).map((line) => (
+                {recommendation.whyLines.slice(0, 3).map((line) => (
                   <li key={line}>✓ {line}</li>
                 ))}
               </ul>
@@ -238,10 +334,10 @@ export default function CustomerAkteCleverBeratung({
           </div>
         )}
 
-        <div className="cust-clever-beratung__actions">
+        <div className="cust-clever-beratung__actions cust-clever-beratung__actions--secondary">
           <button
             type="button"
-            className="cust-clever-beratung__action cust-clever-beratung__action--primary"
+            className="cust-clever-beratung__action cust-clever-beratung__action--secondary"
             onClick={onPrepareOffer}
           >
             Angebot vorbereiten
@@ -249,31 +345,31 @@ export default function CustomerAkteCleverBeratung({
           {telHref && (
             <a
               href={telHref}
-              className="cust-clever-beratung__action"
+              className="cust-clever-beratung__action cust-clever-beratung__action--secondary"
             >
-              Kunde anrufen
+              Anrufen
             </a>
           )}
           <button
             type="button"
-            className="cust-clever-beratung__action"
+            className="cust-clever-beratung__action cust-clever-beratung__action--secondary"
             onClick={onCreateMessage}
           >
-            Nachricht erstellen
+            Nachricht
           </button>
           {configuratorUrl && (
             <Link
               to={configuratorUrl}
-              className="cust-clever-beratung__action"
+              className="cust-clever-beratung__action cust-clever-beratung__action--secondary"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Im Konfigurator öffnen
+              Konfigurator
             </Link>
           )}
           <button
             type="button"
-            className="cust-clever-beratung__action cust-clever-beratung__action--ghost"
+            className="cust-clever-beratung__action cust-clever-beratung__action--ghost cust-clever-beratung__action--secondary"
             onClick={onChangeRecommendation}
           >
             Richtung anpassen
