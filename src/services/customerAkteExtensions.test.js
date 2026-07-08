@@ -46,6 +46,24 @@ const lead = {
 };
 assert.equal(shouldShowTradeInSection(lead), true);
 
+const tradeInInsightLead = {
+  crm: {
+    sellerInsights: [{
+      id: 'si-trade',
+      text: 'Inzahlungnahme vorhanden',
+      source: 'seller',
+      understoodLabels: ['Inzahlungnahme vorhanden'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }],
+  },
+};
+assert.equal(
+  shouldShowTradeInSection(tradeInInsightLead),
+  true,
+  'Trade-in-Sektion aus Customer Understanding ohne kundenhelfer.notes',
+);
+
 const suggested = suggestTradeInFromDocument(
   { category: 'dat_bewertung', description: '34.356 €' },
   createEmptyTradeIn(),

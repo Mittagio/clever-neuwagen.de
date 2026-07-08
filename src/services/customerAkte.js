@@ -7,6 +7,7 @@ import {
   formatReservedModelName,
 } from './dealerAiLeadCrm.js';
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
 import { getCleverStaerkeTier } from './cleverStaerke.js';
 import { VEHICLE_OFFER_STATUS_UI, enrichCardWithVehicleOffer, VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
 import { resolveEffectivePaymentType } from './dealer/offerEditWishMerge.js';
@@ -69,12 +70,21 @@ export function computeAkteCleverStaerke({
   name = '',
   phone = '',
   email = '',
+  lead = null,
+  understandingLabelCount = null,
   kundenhelferNotes = '',
   vehicleCardCount = 0,
   offersCount = 0,
   hasNextStep = true,
 } = {}) {
-  const chipCount = parseKundenhelferNotes(kundenhelferNotes).length;
+  let chipCount = 0;
+  if (understandingLabelCount != null) {
+    chipCount = understandingLabelCount;
+  } else if (lead) {
+    chipCount = buildCustomerUnderstanding(lead)?.verstaendnis?.labels?.length ?? 0;
+  } else if (kundenhelferNotes) {
+    chipCount = parseKundenhelferNotes(kundenhelferNotes).length;
+  }
   let score = 0;
   if (hasCustomerName(name)) score += 20;
   if (phone?.trim()) score += 15;

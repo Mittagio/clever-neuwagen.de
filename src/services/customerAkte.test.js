@@ -26,6 +26,26 @@ const score = computeAkteCleverStaerke({
 });
 assert.ok(score >= 70);
 
+const scoreFromUnderstanding = computeAkteCleverStaerke({
+  name: 'Max Müller',
+  phone: '0170',
+  email: 'max@web.de',
+  lead: {
+    crm: {
+      sellerInsights: [{
+        id: 'si-1',
+        text: 'Hund, 2 Kinder',
+        source: 'seller',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+    },
+  },
+  vehicleCardCount: 2,
+  offersCount: 1,
+});
+assert.ok(scoreFromUnderstanding >= 70, 'Score nutzt Customer Understanding statt kundenhelfer.notes');
+
 const cards = buildVehicleOpportunityCards({
   lead: { id: 'lead-1', createdAt: new Date().toISOString() },
   wishFields: {

@@ -2,7 +2,7 @@
  * Inzahlungnahme – strukturierte Werte für Angebot & Finanzierung.
  */
 import { getAkteDocuments, isTradeInDocumentCategory, parseEuroAmount } from './customerAkteDocuments.js';
-import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
 
 export function createEmptyTradeIn() {
   return {
@@ -53,8 +53,9 @@ export function shouldShowTradeInSection(lead = {}, documents = null) {
   if (tradeIn.vehicle?.trim() || tradeIn.datValue != null || tradeIn.payoffAmount != null) {
     return true;
   }
-  const chips = parseKundenhelferNotes(lead?.crm?.kundenhelfer?.notes ?? '');
-  if (chips.includes('Inzahlungnahme vorhanden')) return true;
+  const understanding = buildCustomerUnderstanding(lead);
+  const labels = understanding?.verstaendnis?.labels ?? [];
+  if (labels.some((label) => /inzahlungnahme/i.test(label))) return true;
 
   const docs = documents ?? getAkteDocuments(lead?.crm?.cleverUnterlagen);
   return docs.some((doc) => isTradeInDocumentCategory(doc.category));
