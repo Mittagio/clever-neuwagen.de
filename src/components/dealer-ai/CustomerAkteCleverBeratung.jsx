@@ -285,7 +285,7 @@ export default function CustomerAkteCleverBeratung({
           Kundenbild
         </h2>
         <p className="cust-clever-beratung__hint">
-          Gemeinsames Kundenbild – Kunde und Ihre Erkenntnisse.
+          Was der Kunde erzählt hat – und was Sie im Gespräch gelernt haben.
         </p>
       </header>
 

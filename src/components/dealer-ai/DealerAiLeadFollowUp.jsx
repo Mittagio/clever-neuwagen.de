@@ -1883,12 +1883,12 @@ export default function DealerAiLeadFollowUp({
     onSave?.(buildSavePayload({
       sellerInsights: nextLead.crm.sellerInsights,
     }), {
-      historyText: 'Erkenntnis ergänzt',
+      historyText: 'Gespräch festgehalten',
       historyType: 'note',
       addFollowupHistory: false,
       silent: true,
     });
-    setToast('Erkenntnis ergänzt');
+    setToast('Notiert');
     setTimeout(() => setToast(''), 2800);
   }
 

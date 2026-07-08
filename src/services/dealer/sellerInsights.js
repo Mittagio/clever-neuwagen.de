@@ -16,6 +16,8 @@ export const SELLER_INSIGHT_CONTEXT = {
   PHONE: 'phone_call',
   TEST_DRIVE: 'test_drive',
   OFFER: 'offer',
+  CALLBACK: 'callback',
+  VEHICLE_VIEWING: 'vehicle_viewing',
   EMAIL: 'email',
   SHOWROOM: 'showroom',
   OTHER: 'other',

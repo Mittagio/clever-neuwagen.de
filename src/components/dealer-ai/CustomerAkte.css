@@ -3967,7 +3967,7 @@
   color: #0f766e;
 }
 
-/* Verkäufer-Erkenntnis – direkt am Kundenbild */
+/* Verkäufer-Spracharbeitsplatz – direkt am Kundenbild */
 .cust-insight-capture {
   margin: 0 0 12px;
 }
@@ -3977,14 +3977,16 @@
 }
 
 .cust-insight-capture__trigger {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
   width: 100%;
   border: 1px dashed #94a3b8;
-  border-radius: 12px;
-  padding: 0.65rem 0.9rem;
-  background: #f8fafc;
-  color: #0f766e;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+  font: inherit;
   cursor: pointer;
   text-align: left;
 }
@@ -3994,12 +3996,63 @@
   border-color: #0f766e;
 }
 
+.cust-insight-capture__trigger-icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.cust-insight-capture__trigger-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.cust-insight-capture__trigger-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f766e;
+  line-height: 1.35;
+}
+
+.cust-insight-capture__trigger-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
+}
+
 .cust-insight-capture--open {
   border: 1px solid #cbd5e1;
   border-radius: 14px;
-  padding: 0.75rem;
+  padding: 0.85rem;
   background: #fff;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.cust-insight-capture__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f766e;
+  line-height: 1.35;
+}
+
+.cust-insight-capture__heading-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.cust-insight-capture__hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 .cust-insight-capture__label {
