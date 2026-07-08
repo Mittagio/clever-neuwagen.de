@@ -957,6 +957,8 @@ export {
   beginOfferHandoff,
   submitPersonalHandoff,
   buildPersonalHandoffView,
+  buildAdvisorContactPrompt,
+  countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,
   validateHandoffForm,
   isInOfferWorld,

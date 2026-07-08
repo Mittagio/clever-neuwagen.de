@@ -36,6 +36,12 @@ import CleverVehicleDirections from './CleverVehicleDirections.jsx';
 import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.jsx';
 import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
+import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
+import { countSessionUnderstandingLabels } from '../../services/consultation/consultationOfferHandoff.js';
+import {
+  isSpeechRecognitionSupported,
+  startSpeechRecognition,
+} from '../../services/sales/conversationVoiceParser.js';
 import './clever-conversation.css';
 
 const SKIPPED_TURN_TYPES = new Set([
@@ -83,8 +89,14 @@ export default function CleverConversationExperience({
   const [inputFocused, setInputFocused] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [notingFlash, setNotingFlash] = useState(null);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
+  const voiceCommittedRef = useRef('');
+  const recognitionRef = useRef(null);
+  const inputRef = useRef(null);
+  const voiceSupported = isSpeechRecognitionSupported();
   const opening = useMemo(() => getOpeningCopy(dealerName), [dealerName]);
   const inVehicleWorld = isInVehicleWorld(session);
   const inOfferWorld = isInOfferWorld(session);
@@ -149,6 +161,10 @@ export default function CleverConversationExperience({
     return () => window.clearTimeout(timer);
   }, [session.phase]);
 
+  useEffect(() => () => {
+    recognitionRef.current?.stop?.();
+  }, []);
+
   const handleSend = useCallback((text) => {
     const trimmed = String(text ?? '').trim();
     if (!trimmed) return;
@@ -210,11 +226,47 @@ export default function CleverConversationExperience({
     ? getVehicleInputPlaceholder()
     : opening.placeholder;
 
+  const handleVoiceStart = useCallback(() => {
+    if (!voiceSupported || !inputEnabled || voiceListening) return;
+    setVoiceError('');
+    const prefix = String(inputValue ?? '').trim();
+    voiceCommittedRef.current = prefix ? `${prefix} ` : '';
+    setVoiceListening(true);
+    recognitionRef.current = startSpeechRecognition({
+      continuous: true,
+      onResult: ({ finalText, interimText }) => {
+        if (finalText) {
+          const next = `${voiceCommittedRef.current}${finalText}`.trim();
+          voiceCommittedRef.current = next ? `${next} ` : '';
+        }
+        const display = `${voiceCommittedRef.current}${interimText ?? ''}`.trim();
+        setInputValue(display);
+      },
+      onError: (message) => {
+        setVoiceError(message);
+        setVoiceListening(false);
+      },
+      onEnd: () => {
+        setVoiceListening(false);
+        const finalText = voiceCommittedRef.current.trim();
+        if (finalText) {
+          setInputValue(finalText);
+        }
+        inputRef.current?.focus();
+      },
+    });
+    inputRef.current?.focus();
+  }, [inputEnabled, inputValue, voiceListening, voiceSupported]);
+
+  const understandingCount = countSessionUnderstandingLabels(session);
+  const showAdvisorContact = !inOfferWorld && understandingCount > 0;
+
   const experienceClass = [
     'cc-experience',
     embedded ? 'cc-experience--embedded' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
+    showAdvisorContact ? 'cc-experience--advisor-contact' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -322,6 +374,13 @@ export default function CleverConversationExperience({
         </div>
       </div>
 
+      {showAdvisorContact && (
+        <CleverAdvisorContactPrompt
+          understandingCount={understandingCount}
+          onContact={handleDealerHandoff}
+        />
+      )}
+
       {!inOfferWorld && (
         <form
           className={[
@@ -329,18 +388,30 @@ export default function CleverConversationExperience({
             inputFocused ? 'cc-input-bar--focused' : '',
             inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
             chipsVisible && !isTyping && !inputFocused ? ' cc-input-bar--chips-visible' : '',
+            voiceListening ? ' cc-input-bar--listening' : '',
           ].filter(Boolean).join('')}
           onSubmit={handleFormSubmit}
         >
           <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
             {inVehicleWorld ? 'Oder einfach ergänzen' : 'Erzählen Sie Clever, wonach Sie suchen'}
           </label>
+          {voiceListening && (
+            <p className="cc-input-bar__voice-status" aria-live="polite">
+              Clever hört zu …
+            </p>
+          )}
+          {voiceError && !voiceListening && (
+            <p className="cc-input-bar__voice-error" role="alert">
+              {voiceError}
+            </p>
+          )}
           <div className="cc-input-bar__row">
             <input
+              ref={inputRef}
               id="cc-conversation-input"
               type="text"
               className="cc-input-bar__field"
-              placeholder={inputPlaceholder}
+              placeholder={voiceListening ? 'Clever hört zu …' : inputPlaceholder}
               value={inputValue}
               disabled={!inputEnabled}
               onChange={(event) => setInputValue(event.target.value)}
@@ -348,6 +419,16 @@ export default function CleverConversationExperience({
               onBlur={() => setInputFocused(false)}
               autoComplete="off"
             />
+            <button
+              type="button"
+              className={`cc-input-bar__mic${voiceListening ? ' cc-input-bar__mic--active' : ''}`}
+              onClick={handleVoiceStart}
+              disabled={!inputEnabled || !voiceSupported || voiceListening}
+              aria-label="Wunsch sprechen"
+              title={voiceSupported ? 'Wunsch sprechen' : 'Spracheingabe nicht verfügbar'}
+            >
+              <span aria-hidden>🎤</span>
+            </button>
             <button
               type="submit"
               className="cc-input-bar__send"

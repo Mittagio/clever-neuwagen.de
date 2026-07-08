@@ -127,6 +127,45 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   };
 }
 
+/**
+ * Copy für „Mit einem Berater sprechen“ – abhängig vom erkannten Verständnis.
+ * @param {number} labelCount
+ */
+export function buildAdvisorContactPrompt(labelCount = 0) {
+  if (labelCount <= 0) return null;
+  if (labelCount <= 3) {
+    return {
+      level: 'early',
+      hint:
+        'Wir haben bereits erste Informationen gesammelt. '
+        + 'Ihr Berater kann direkt anknüpfen.',
+    };
+  }
+  if (labelCount <= 5) {
+    return {
+      level: 'medium',
+      hint:
+        'Wir haben bereits ein gutes Bild Ihres Wunsches. '
+        + 'Ihr Berater kann direkt ins Gespräch einsteigen.',
+    };
+  }
+  return {
+    level: 'strong',
+    hint:
+      'Wir glauben, dass wir bereits gut vorbereitet sind. '
+      + 'Ihr Berater kann direkt übernehmen.',
+  };
+}
+
+export function countSessionUnderstandingLabels(session = {}) {
+  const merged = new Set([
+    ...(session.needProfile?.understoodLabels ?? []),
+    ...(session.notepadLabels ?? []),
+    ...(session.vehicleNotepadLabels ?? []),
+  ]);
+  return merged.size;
+}
+
 export function buildHandoffCompleteView() {
   return {
     title: 'Vielen Dank.',

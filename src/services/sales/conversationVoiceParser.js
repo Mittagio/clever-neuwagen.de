@@ -180,7 +180,13 @@ export function mapSpeechRecognitionError(code) {
   return messages[code] ?? `Spracheingabe fehlgeschlagen (${code}). Bitte eintippen oder Chips nutzen.`;
 }
 
-export function startSpeechRecognition({ onResult, onError, onEnd, interim = true }) {
+export function startSpeechRecognition({
+  onResult,
+  onError,
+  onEnd,
+  interim = true,
+  continuous = false,
+}) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     onError?.('Spracheingabe wird in diesem Browser nicht unterstützt.');
@@ -190,7 +196,7 @@ export function startSpeechRecognition({ onResult, onError, onEnd, interim = tru
   recognition.lang = 'de-DE';
   recognition.interimResults = interim;
   recognition.maxAlternatives = 1;
-  recognition.continuous = false;
+  recognition.continuous = continuous;
   recognition.onresult = (event) => {
     let finalText = '';
     let interimText = '';

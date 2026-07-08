@@ -8,7 +8,9 @@ import {
   OFFER_CONVERSATION_PHASE,
   OFFER_TURN_TYPE,
   beginOfferHandoff,
+  buildAdvisorContactPrompt,
   buildPersonalHandoffView,
+  countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,
   submitPersonalHandoff,
   validateHandoffForm,
@@ -123,7 +125,32 @@ function testValidation() {
   console.log('✓ Kontaktdaten-Validierung');
 }
 
+function testAdvisorContactPrompt() {
+  assert.equal(buildAdvisorContactPrompt(0), null);
+  assert.match(buildAdvisorContactPrompt(2).hint, /erste Informationen/);
+  assert.match(buildAdvisorContactPrompt(4).hint, /gutes Bild/);
+  assert.match(buildAdvisorContactPrompt(7).hint, /gut vorbereitet/);
+  console.log('✓ Berater-Kontakt-Copy nach Verständnisstärke');
+}
+
+function testEarlyAdvisorHandoffPreservesUnderstanding() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  session = submitQuestionAnswer(session, { answerId: 'often' });
+  const labelsBefore = [...session.notepadLabels];
+  assert.ok(countSessionUnderstandingLabels(session) > 0);
+
+  const handedOff = beginOfferHandoff(session, dealerConditions);
+  assert.equal(handedOff.phase, OFFER_CONVERSATION_PHASE.OFFER_HANDOFF);
+  assert.deepEqual(handedOff.notepadLabels, labelsBefore);
+  assert.ok(handedOff.needProfile?.understoodLabels?.length > 0);
+  assert.ok(handedOff.turns.some((turn) => turn.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF));
+  console.log('✓ Frühe Berater-Übergabe behält Verständnis');
+}
+
 testHandoffView();
+testAdvisorContactPrompt();
+testEarlyAdvisorHandoffPreservesUnderstanding();
 testBeginOfferHandoff();
 testLeadCreation();
 testSubmitPersonalHandoff();
