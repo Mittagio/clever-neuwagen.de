@@ -2245,9 +2245,11 @@ export default function DealerAiLeadFollowUp({
           notes={kundenhelferNotes}
           chipCategories={kundenhelferChipCategories}
           conversationNotes={conversationNotes}
+          voiceMemos={kundenhelferMemos}
           lead={lead}
           onOpenSheet={openKundenhelferSheet}
           variant="profile"
+          hasCustomerUnderstanding={hasSellerCustomerPicture}
           subdued={hasSellerCustomerPicture}
         />
 

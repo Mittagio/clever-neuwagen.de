@@ -78,6 +78,51 @@
   background: #fff;
 }
 
+.cust-akte-kw--tool {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cust-akte-kw__tool-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cust-akte-kw__tool-line {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-akte-kw__tool-line:hover {
+  color: #334155;
+}
+
+.cust-akte-kw__tool-open {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--cust-blue, #145cff);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .cust-akte-verlauf__note {
   margin: 0;
   padding: 10px 12px;
