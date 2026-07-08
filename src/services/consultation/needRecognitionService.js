@@ -122,6 +122,7 @@ const USAGE_LABELS = {
   boot: 'Boot',
   pendler: 'Pendler',
   dachzelt: 'Dachzelt',
+  dachbox: 'Dachbox',
   familie: 'Familie',
   stadtverkehr: 'Stadtverkehr',
 };
@@ -226,6 +227,11 @@ function detectUsageTags(text = '') {
     { test: /\bboot\b|\bbootstrailer\b|\bbootsanhänger\b|\bbootsanhaenger\b/i, tag: 'boot' },
     { test: /\bpendler\b|\bpendeln\b|\bviel\s+pendeln\b/i, tag: 'pendler' },
     { test: /\bdachzelt\b/i, tag: 'dachzelt' },
+    { test: /\bdachbox\b/i, tag: 'dachbox' },
+    {
+      test: /\burlaub\b.*\b(zweimal|kroatien|italien|regelmäßig|regelmaessig|spanien|österreich|oesterreich)\b|\b(zweimal|kroatien|italien)\b.*\burlaub\b/i,
+      tag: 'langstrecke',
+    },
     { test: /\bfamilie\b|\bfamilienauto\b/i, tag: 'familie' },
     { test: /\bstadtverkehr\b/i, tag: 'stadtverkehr' },
   ];
@@ -355,7 +361,7 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
 
   if (!colorHint) {
     for (const color of COLOR_PATTERNS) {
-      if (color.test.test(lower) && (/\bfarbe\b|\bbevorzugt\b/i.test(lower))) {
+      if (color.test.test(lower) && (/\bfarbe\b|\bbevorzugt\b|\btraumfarbe\b/i.test(lower))) {
         colorHint = color.label;
         break;
       }
@@ -441,6 +447,32 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
     openQuestions.push('Reichweitenbedenken');
   }
 
+  if (/\bdachbox\b/i.test(lower) && /\bwichtig\b|\bnötig\b|\bnotwendig\b|\bwäre\b|\bwaere\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Dachbox wichtig');
+  }
+  if (/\bsportage\b/i.test(lower) && /\bgefällt\b|\bgfaellt\b|\bbevorzugt\b|\bfavorit\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Sportage bevorzugt');
+    modelHint = modelHint ?? 'sportage';
+  }
+  if (/\bgt[- ]?line\b/i.test(lower) && /\bzu\s+sportlich\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'GT-Line eher nicht passend');
+  }
+  if (/\bspirit\b/i.test(lower) && /\breicht\b|\bausreichend\b|\bvöllig\b|\bvoellig\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Spirit bevorzugt');
+    trimHint = trimHint ?? 'spirit';
+  }
+  if (/\bkofferraum\b/i.test(lower) && /\bgrößer\b|\bgroesser\b|\bpositiv\b|\büberzeugt\b|\bueberzeugt\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Kofferraum positiv bewertet');
+  }
+  if (/\bkuga\b/i.test(lower) && (/\bläuft\b|\blaeuft\b|\baus\b|\bendet\b/i.test(lower))) {
+    pushExtraLabel(extraLabels, 'Ford Kuga aktuell');
+  }
+  if (/\bkuga\b/i.test(lower)
+    && (/\bläuft\b|\blaeuft\b|\baus\b|\bendet\b/i.test(lower))
+    && (/\brestwert\b|\bübernahme\b|\buebernahme\b/i.test(lower))) {
+    pushExtraLabel(extraLabels, 'Anschlussmobilität relevant');
+  }
+
   if (/\bhybrid\b.*\belektro\b|\belektro\b.*\bhybrid\b/i.test(lower)
     && /\boffen\b|\bunsicher\b|\bschwankt\b|\bnoch\s+nicht\s+sicher\b/i.test(lower)) {
     openQuestions.push('Hybrid oder Elektro offen');
@@ -456,8 +488,14 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
   if (/\bleasing\b.*\bfinanzierung\b|\bfinanzierung\b.*\bleasing\b/i.test(lower) && /\boffen\b|\bunsicher\b/i.test(lower)) {
     openQuestions.push('Leasing oder Finanzierung offen');
   }
-  if (/\bev\s*3\b.*\bev\s*4\b|\bev\s*4\b.*\bev\s*3\b/i.test(lower) && /\boffen\b|\bunsicher\b|\bnoch\b/i.test(lower)) {
+  if (/\bev\s*3\b.*\bev\s*4\b|\bev\s*4\b.*\bev\s*3\b/i.test(lower)
+    && /\boffen\b|\bunsicher\b|\bnoch\b|\bschwankt\b/i.test(lower)) {
     openQuestions.push('EV3 oder EV4 offen');
+    pushExtraLabel(extraLabels, 'EV3');
+    pushExtraLabel(extraLabels, 'EV4');
+  }
+  if (/\blieferzeit\b/i.test(lower) && /\bwichtiger\b/i.test(lower) && /\brate\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Preis zweitrangig');
   }
   if (/\bkaufzeitpunkt\b/i.test(lower) && /\boffen\b|\bunklar\b/i.test(lower)) {
     openQuestions.push('Kaufzeitpunkt offen');

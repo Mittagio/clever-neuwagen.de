@@ -235,16 +235,31 @@ export function buildEphemeralMergedProfile(customerProfile = {}, sellerInsights
 export function buildGespraechseinstieg(verstaendnis = {}, profile = {}) {
   const labels = verstaendnis.labels ?? [];
   const concerns = verstaendnis.concerns ?? [];
+  const openPoints = verstaendnis.openPoints ?? [];
   const labelText = labels.join(' ').toLowerCase();
+  const openText = openPoints.join(' ').toLowerCase();
 
   const hasEv3 = /ev3/.test(labelText)
     || profile.selectedModelKey === 'ev3'
     || profile.modelHint === 'ev3';
+  const hasEv4 = /ev4/.test(labelText)
+    || profile.selectedModelKey === 'ev4'
+    || profile.modelHint === 'ev4';
+  const hasEvUncertainty = /ev3 oder ev4 offen/i.test(labelText)
+    || openText.includes('ev3 oder ev4 offen')
+    || openPoints.some((point) => /ev3 oder ev4/i.test(point));
   const hasBatteryConcern = concerns.includes('Batterie unsicher')
     || labels.some((label) => /batterie.*unsicher/i.test(label));
   const hasLongDistance = labels.some((label) => (
     /langstrecke|urlaub|reichweite wichtig/i.test(label)
   )) || profile.longDistance === 'often' || profile.longDistance === 'sometimes';
+  const hasUrlaub = labels.some((label) => /urlaub/i.test(label))
+    || (profile.usage ?? []).includes('urlaub');
+  const hasLieferzeitPriority = labels.some((label) => /lieferzeit wichtiger|schnell verfügbar/i.test(label));
+  const hasSpiritPreferred = labels.some((label) => /spirit bevorzugt/i.test(label));
+  const hasAnschluss = labels.some((label) => /anschlussmobilität|fahrzeugwechsel|restwertübernahme|ford kuga/i.test(label))
+    || Boolean(profile.timelineLabel)
+    || profile.residualTakeover === true;
   const hasZugfahrzeug = labels.some((label) => /zugfahrzeug/i.test(label))
     || (profile.usage ?? []).includes('zugfahrzeug');
   const hasTow = labels.some((label) => /anhängelast|anhängerkupplung/i.test(label))
@@ -252,7 +267,19 @@ export function buildGespraechseinstieg(verstaendnis = {}, profile = {}) {
     || profile.towbar;
 
   let leadLine;
-  if (hasEv3 && hasBatteryConcern) {
+  if (hasAnschluss && (/\bkuga\b/i.test(labelText) || profile.timelineLabel)) {
+    leadLine = 'Beginnen Sie mit der Anschlusslösung zum Ford Kuga und der gewünschten Übernahmeoption.';
+  } else if (hasSpiritPreferred) {
+    leadLine = 'Beginnen Sie mit der Spirit-Ausstattung und bestätigen Sie die Alltagstauglichkeit.';
+  } else if (hasLieferzeitPriority) {
+    leadLine = 'Beginnen Sie mit Verfügbarkeit und möglichen Lieferterminen.';
+  } else if ((hasEv3 || hasEv4) && (hasLongDistance || hasUrlaub)) {
+    if (hasBatteryConcern || hasEvUncertainty) {
+      leadLine = 'Beginnen Sie mit Reichweite und Batteriegröße sowie der Nutzung im Urlaub.';
+    } else {
+      leadLine = 'Beginnen Sie mit der Reichweite und der Nutzung im Urlaub.';
+    }
+  } else if (hasEv3 && hasBatteryConcern) {
     leadLine = 'Beginnen Sie mit der Batteriegröße.';
   } else if (hasEv3 && hasLongDistance) {
     leadLine = 'Beginnen Sie mit der Reichweite.';

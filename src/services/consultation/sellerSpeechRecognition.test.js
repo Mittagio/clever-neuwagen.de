@@ -3,7 +3,11 @@
  */
 import assert from 'node:assert/strict';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
-import { appendSellerInsightToLead, createSellerInsight } from '../dealer/sellerInsights.js';
+import {
+  appendSellerInsightToLead,
+  createSellerInsight,
+  SELLER_INSIGHT_CONTEXT,
+} from '../dealer/sellerInsights.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 
 function assertLabelsInclude(profile, expected = []) {
@@ -28,6 +32,54 @@ function assertUnderstandingIncludes(lead, expected = []) {
     );
   }
 }
+
+function assertUnderstandingExcludes(lead, unexpected = []) {
+  const understanding = buildCustomerUnderstanding(lead);
+  const labels = understanding?.verstaendnis?.labels ?? [];
+  const openPoints = understanding?.verstaendnis?.openPoints ?? [];
+  const corpus = [...labels, ...openPoints].join(' | ');
+  for (const label of unexpected) {
+    assert.ok(
+      !labels.some((entry) => entry.includes(label) || label.includes(entry))
+        && !openPoints.some((entry) => entry.includes(label) || label.includes(entry)),
+      `Understanding sollte „${label}“ nicht enthalten: ${corpus}`,
+    );
+  }
+}
+
+function assertGespraechseinstiegKeywords(lead, keywords = []) {
+  const understanding = buildCustomerUnderstanding(lead);
+  const leadLine = String(understanding?.gespraechseinstieg?.lead ?? '').toLowerCase();
+  for (const keyword of keywords) {
+    assert.ok(
+      leadLine.includes(String(keyword).toLowerCase()),
+      `Gesprächseinstieg sollte „${keyword}“ enthalten: ${understanding?.gespraechseinstieg?.lead}`,
+    );
+  }
+}
+
+function runGoldenSellerMoment({
+  name,
+  text,
+  context,
+  expectedLabels = [],
+  unexpectedLabels = [],
+  einstiegKeywords = [],
+}) {
+  const profile = mergeTextIntoNeedProfile(text);
+  assertLabelsInclude(profile, expectedLabels);
+
+  const lead = appendSellerInsightToLead({ id: `lead-gsm-${name}`, crm: {} }, text, { context });
+  assertUnderstandingIncludes(lead, expectedLabels);
+  if (unexpectedLabels.length) {
+    assertUnderstandingExcludes(lead, unexpectedLabels);
+  }
+  if (einstiegKeywords.length) {
+    assertGespraechseinstiegKeywords(lead, einstiegKeywords);
+  }
+}
+
+// --- Einzelmuster (Regression) ---
 
 const kugaTimeline = mergeTextIntoNeedProfile('Der Kuga läuft im November 2026 aus.');
 assertLabelsInclude(kugaTimeline, ['Fahrzeugwechsel November 2026']);
@@ -71,6 +123,71 @@ assertLabelsInclude(urlaubSorgen, ['Reichweitenbedenken']);
 const evTrims = mergeTextIntoNeedProfile('EV3 Earth in Silber, GT-Line offen.');
 assertLabelsInclude(evTrims, ['EV3', 'Earth', 'Silber']);
 
+const hybridUnsicher = mergeTextIntoNeedProfile(
+  'Er ist sich noch nicht sicher ob Hybrid oder Elektro besser passt. Das Dachzelt ist wichtig. Lieferzeit ist wichtiger als die letzte Rate.',
+);
+assertLabelsInclude(hybridUnsicher, ['Hybrid oder Elektro offen', 'Dachzelt', 'Lieferzeit wichtiger als Rate']);
+
+// --- Golden Seller Moments (Verkäufer-Realitäts-Test) ---
+
+runGoldenSellerMoment({
+  name: 'telefonat',
+  context: SELLER_INSIGHT_CONTEXT.PHONE,
+  text: 'Er schwankt zwischen EV3 und EV4. Die Frau fährt hauptsächlich. Urlaub in Kroatien zweimal im Jahr. Dachbox wäre wichtig.',
+  expectedLabels: [
+    'EV3',
+    'EV4',
+    'Hauptfahrerin',
+    'Urlaub',
+    'Langstrecke',
+    'Dachbox',
+    'EV3 oder EV4 offen',
+  ],
+  einstiegKeywords: ['reichweite', 'batterie', 'urlaub'],
+});
+
+runGoldenSellerMoment({
+  name: 'probefahrt',
+  context: SELLER_INSIGHT_CONTEXT.TEST_DRIVE,
+  text: 'Sportage gefällt deutlich besser. Grün wäre seine Traumfarbe. Lieferzeit ist wichtiger als die letzte Rate.',
+  expectedLabels: [
+    'Sportage',
+    'Grün',
+    'Lieferzeit wichtiger als Rate',
+    'Preis zweitrangig',
+  ],
+  einstiegKeywords: ['verfügbarkeit', 'liefertermin'],
+});
+
+runGoldenSellerMoment({
+  name: 'fahrzeugentscheidung',
+  context: SELLER_INSIGHT_CONTEXT.VEHICLE_VIEWING,
+  text: 'GT-Line ist ihm zu sportlich. Spirit reicht völlig. Kofferraum größer als erwartet.',
+  expectedLabels: [
+    'Spirit bevorzugt',
+    'GT-Line eher nicht passend',
+    'Kofferraum positiv bewertet',
+  ],
+  einstiegKeywords: ['spirit', 'alltagstauglichkeit'],
+});
+
+runGoldenSellerMoment({
+  name: 'angebotsgespraech',
+  context: SELLER_INSIGHT_CONTEXT.OFFER,
+  text: 'Der Kuga läuft im November 2026 aus. Restwertübernahme wäre ideal. 15.000 km reichen aus.',
+  expectedLabels: [
+    'Fahrzeugwechsel November 2026',
+    'Restwertübernahme',
+    '15.000 km',
+    'Anschlussmobilität',
+    'Ford Kuga',
+  ],
+  unexpectedLabels: ['Langstrecke'],
+  einstiegKeywords: ['anschlusslösung', 'kuga', 'übernahme'],
+});
+
+// --- Pipeline-Smoke (mehrere Signale in einem Telefonat) ---
+
 const telefonat = [
   'Sportage Spirit in Grün.',
   'Tönungscheiben wichtig.',
@@ -105,10 +222,5 @@ assertUnderstandingIncludes(sellerLead, [
   '48 Monate',
   'Fahrzeugwechsel November 2026',
 ]);
-
-const hybridUnsicher = mergeTextIntoNeedProfile(
-  'Er ist sich noch nicht sicher ob Hybrid oder Elektro besser passt. Das Dachzelt ist wichtig. Lieferzeit ist wichtiger als die letzte Rate.',
-);
-assertLabelsInclude(hybridUnsicher, ['Hybrid oder Elektro offen', 'Dachzelt', 'Lieferzeit wichtiger als Rate']);
 
 console.log('sellerSpeechRecognition.test.js: ok');

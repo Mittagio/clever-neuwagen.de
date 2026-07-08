@@ -231,8 +231,14 @@ function hasPriceContext(text) {
   return /kauf|bar|preis|einmal|neupreis/i.test(text);
 }
 
+function hasMileageSufficiencyContext(text, nearIndex, matchLen = 3) {
+  const window = text.slice(Math.max(0, nearIndex - 10), nearIndex + matchLen + 40);
+  return /\b(reichen|reicht|ausreichen|ausreicht|genügen|genuegen|genügt|genuegt)\b/i.test(window);
+}
+
 function hasRangeContext(text, nearIndex, matchLen = 3) {
   const window = text.slice(Math.max(0, nearIndex - 20), nearIndex + matchLen + 30);
+  if (hasMileageSufficiencyContext(text, nearIndex, matchLen)) return false;
   return /\b(km|kilometer|reichweite|range)\b/i.test(window);
 }
 
