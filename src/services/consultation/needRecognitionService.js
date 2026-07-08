@@ -37,7 +37,11 @@ const EQUIPMENT_LABELS = {
 
 const TRIM_LABELS = {
   spirit: 'Spirit',
+  vision: 'Vision',
   'gt-line': 'GT-Line',
+  earth: 'Earth',
+  air: 'Air',
+  platinum: 'Platinum',
 };
 
 const COLOR_PATTERNS = [
@@ -48,13 +52,20 @@ const COLOR_PATTERNS = [
   { test: /\bblau\b/i, label: 'Blau' },
   { test: /\brot\b/i, label: 'Rot' },
   { test: /\bgrau\b/i, label: 'Grau' },
+  { test: /\bsilber\b/i, label: 'Silber' },
 ];
 
 const MODEL_INTEREST_RULES = [
+  { key: 'ev2', pattern: /\bev\s*2\b/i, label: 'EV2' },
   { key: 'ev3', pattern: /\bev\s*3\b/i, label: 'EV3' },
   { key: 'ev4', pattern: /\bev\s*4\b/i, label: 'EV4' },
+  { key: 'ev5', pattern: /\bev\s*5\b/i, label: 'EV5' },
   { key: 'ev6', pattern: /\bev\s*6\b/i, label: 'EV6' },
+  { key: 'ev9', pattern: /\bev\s*9\b/i, label: 'EV9' },
   { key: 'sportage', pattern: /\bsportage\b/i, label: 'Sportage' },
+  { key: 'ceed', pattern: /\bceed\b/i, label: 'Ceed' },
+  { key: 'niro', pattern: /\bniro\b/i, label: 'Niro' },
+  { key: 'picanto', pattern: /\bpicanto\b/i, label: 'Picanto' },
   { key: 'sorento', pattern: /\bsorento\b/i, label: 'Sorento' },
 ];
 
@@ -68,6 +79,10 @@ const SEASON_NAMES = ['frühjahr', 'fruehjahr', 'sommer', 'herbst', 'winter'];
 const MODEL_HINT_LABELS = {
   sportage: 'Sportage',
   sorento: 'Sorento',
+  ceed: 'Ceed',
+  niro: 'Niro',
+  picanto: 'Picanto',
+  ev2: 'EV2',
   ev3: 'EV3',
   ev4: 'EV4',
   ev5: 'EV5',
@@ -107,10 +122,13 @@ const USAGE_LABELS = {
   boot: 'Boot',
   pendler: 'Pendler',
   dachzelt: 'Dachzelt',
+  familie: 'Familie',
+  stadtverkehr: 'Stadtverkehr',
 };
 
 const DRIVER_LABELS = {
   frau: 'Fahrerin',
+  frau_main: 'Hauptfahrerin',
   sohn: 'Sohn',
   tochter: 'Tochter',
 };
@@ -155,6 +173,10 @@ function normalizeModelHint(model) {
   if (MODEL_HINT_LABELS[key]) return key;
   if (key.startsWith('sportage')) return 'sportage';
   if (key.startsWith('sorento')) return 'sorento';
+  if (key.startsWith('ceed')) return 'ceed';
+  if (key.startsWith('niro')) return 'niro';
+  if (key.startsWith('picanto')) return 'picanto';
+  if (key.startsWith('ev')) return key.replace(/[^a-z0-9]/g, '').slice(0, 3);
   return null;
 }
 
@@ -193,7 +215,7 @@ function detectUsageTags(text = '') {
     { test: /\bzugfahrzeug\b/i, tag: 'zugfahrzeug' },
     { test: /\bzweitwagen\b|\bzweit[- ]?auto\b/i, tag: 'zweitwagen' },
     { test: /\berstwagen\b|\berstes\s+auto\b/i, tag: 'erstwagen' },
-    { test: /\bstadtfahrzeug\b|\bstadtauto\b|\b(stadt|innerstadt)\b/i, tag: 'stadt' },
+    { test: /\bstadtfahrzeug\b|\bstadtauto\b|\bstadtverkehr\b|\b(stadt|innerstadt)\b/i, tag: 'stadt' },
     { test: /\bkurzstrecke\b|\bkurze\s+wege\b|\bkurze\s+strecken\b/i, tag: 'kurzstrecke' },
     { test: /\b\d{1,3}\s*km\s*(am\s+tag|pro\s+tag|täglich|taeglich|daily)\b/i, tag: 'kurzstrecke' },
     { test: /\blangstrecke\b|\blangstrecken\b|\bautobahn\b|\bviel\s+pendeln\b/i, tag: 'langstrecke' },
@@ -204,6 +226,8 @@ function detectUsageTags(text = '') {
     { test: /\bboot\b|\bbootstrailer\b|\bbootsanhänger\b|\bbootsanhaenger\b/i, tag: 'boot' },
     { test: /\bpendler\b|\bpendeln\b|\bviel\s+pendeln\b/i, tag: 'pendler' },
     { test: /\bdachzelt\b/i, tag: 'dachzelt' },
+    { test: /\bfamilie\b|\bfamilienauto\b/i, tag: 'familie' },
+    { test: /\bstadtverkehr\b/i, tag: 'stadtverkehr' },
   ];
 
   for (const rule of rules) {
@@ -217,6 +241,10 @@ function detectUsageTags(text = '') {
 }
 
 function detectDriverHint(text = '') {
+  if (/\bdie\s+frau\b[^\n.]{0,50}\b(fährt|faellt|nutzt)\b/i.test(text)
+    || /\bfrau\b[^\n.]{0,30}\b(überwiegend|ueberwiegend|hauptsächlich|hauptsaechlich)\b/i.test(text)) {
+    return 'frau_main';
+  }
   if (/\b(für\s+)?meine\s+frau\b|\b(für\s+)?meiner\s+frau\b|\bfahrerin\b/i.test(text)) {
     return 'frau';
   }
@@ -247,33 +275,42 @@ function detectTimelineLabel(text = '') {
   const lower = String(text).toLowerCase();
 
   for (const month of MONTH_NAMES) {
+    const monthLabel = month.charAt(0).toUpperCase() + month.slice(1);
     const monthRe = new RegExp(
-      `(?:läuft|laeuft|ende|aus|wechsel|leasingende|fahrzeugwechsel|ablauf)[^.]{0,40}\\b${month}\\b[^.]{0,12}(20\\d{2})`,
+      `(?:läuft|laeuft|ende|aus|wechsel|leasingende|fahrzeugwechsel|ablauf|rückgabe|rueckgabe)[^.]{0,40}\\b${month}\\b[^.]{0,12}(20\\d{2})`,
       'i',
     );
     const monthMatch = lower.match(monthRe);
     if (monthMatch) {
-      const year = monthMatch[1];
-      const monthLabel = month.charAt(0).toUpperCase() + month.slice(1);
-      if (/leasingende|läuft\s+.*\s+aus|laeuft\s+.*\s+aus/i.test(lower)) {
-        return `Fahrzeugwechsel ${monthLabel} ${year}`;
-      }
-      return `Fahrzeugwechsel ${monthLabel} ${year}`;
+      return `Fahrzeugwechsel ${monthLabel} ${monthMatch[1]}`;
     }
   }
 
   for (const season of SEASON_NAMES) {
-    const seasonRe = new RegExp(
-      `fahrzeugwechsel[^.]{0,20}\\b${season}\\b[^.]{0,12}(20\\d{2})`,
+    const seasonLabel = season.charAt(0).toUpperCase() + season.slice(1);
+    const seasonWithYear = new RegExp(
+      `(?:fahrzeugwechsel|wechsel|leasing\\s+endet|leasingende)[^.]{0,20}\\b${season}\\b[^.]{0,12}(20\\d{2})`,
       'i',
     );
-    const seasonMatch = lower.match(seasonRe);
+    const seasonMatch = lower.match(seasonWithYear);
     if (seasonMatch) {
-      const seasonLabel = season.charAt(0).toUpperCase() + season.slice(1);
       return `Fahrzeugwechsel ${seasonLabel} ${seasonMatch[1]}`;
+    }
+    const seasonOnly = new RegExp(
+      `(?:leasing\\s+endet|leasingende|fahrzeugwechsel|wechsel)[^.]{0,20}\\b(im\\s+)?${season}\\b`,
+      'i',
+    );
+    if (seasonOnly.test(lower)) {
+      return `Fahrzeugwechsel ${seasonLabel}`;
     }
   }
 
+  if (/\bleasing\s+läuft\s+aus\b|\bleasing\s+laeuft\s+aus\b|\bfahrzeug\s+läuft\s+aus\b|\bfahrzeug\s+laeuft\s+aus\b/i.test(lower)) {
+    return 'Fahrzeug läuft aus';
+  }
+  if (/\bfahrzeugwechsel\s+geplant\b|\bwechsel\s+geplant\b/i.test(lower)) {
+    return 'Fahrzeugwechsel geplant';
+  }
   if (/\baktuell(?:es)?\s+fahrzeug\b.*\bläuft\b|\bläuft\b.*\baktuell(?:es)?\s+fahrzeug\b/i.test(lower)) {
     return 'Aktuelles Fahrzeug läuft aus';
   }
@@ -304,9 +341,13 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
   let takeoverPlanned = false;
 
   if (/\bspirit\b/i.test(lower)) trimHint = 'spirit';
+  if (/\bvision\b/i.test(lower)) trimHint = 'vision';
   if (/\bgt[- ]?line\b/i.test(lower)) trimHint = 'gt-line';
+  if (/\bearth\b/i.test(lower)) trimHint = 'earth';
+  if (/\bair\b/i.test(lower) && /\bev\b|\bev\d/i.test(lower)) trimHint = 'air';
+  if (/\bplatinum\b/i.test(lower)) trimHint = 'platinum';
 
-  const inColorMatch = lower.match(/\bin\s+(grün|gruen|schwarz|weiß|weiss|blau|rot|grau|wolfsgrau)\b/i);
+  const inColorMatch = lower.match(/\bin\s+(grün|gruen|schwarz|weiß|weiss|blau|rot|grau|wolfsgrau|silber)\b/i);
   if (inColorMatch) {
     const raw = inColorMatch[1].toLowerCase();
     colorHint = COLOR_PATTERNS.find((entry) => entry.test.test(raw))?.label ?? null;
@@ -331,13 +372,22 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
 
   const timelineLabel = detectTimelineLabel(trimmed);
 
-  const interestCtx = /\binteressiert\b|\bmöchte\b|\bmoechte\b|\bwill\b|\bwünscht\b|\bwuenscht\b|\bdenkt\s+an\b|\bfavorit\b|\boffen\s+für\b/i;
+  const interestCtx = /\binteressiert\b|\bmöchte\b|\bmoechte\b|\bwill\b|\bwünscht\b|\bwuenscht\b|\bdenkt\s+an\b|\bfavorit\b|\boffen\s+für\b|\bnotwendig\b|\bwichtig\b/i;
   const hasStrongModelCue = interestCtx.test(lower) || parsed.modelExplicit || trimHint || colorHint;
   for (const rule of MODEL_INTEREST_RULES) {
     if (rule.pattern.test(lower) && hasStrongModelCue) {
       modelHint = rule.key;
       if (rule.key.startsWith('ev')) selectedModelKey = rule.key;
       break;
+    }
+  }
+  if (!modelHint) {
+    for (const rule of MODEL_INTEREST_RULES) {
+      if (rule.pattern.test(lower)) {
+        modelHint = rule.key;
+        if (rule.key.startsWith('ev')) selectedModelKey = rule.key;
+        break;
+      }
     }
   }
 
@@ -351,8 +401,17 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
   if (/\bsportlich(?:es)?\s+design\b/i.test(lower) && /\bwichtig\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Sportliches Design wichtig');
   }
+  if ((/\boptik\b/i.test(lower) || /\bdesign\b/i.test(lower)) && /\bwichtiger\b/i.test(lower) && /\bausstattung\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Design wichtiger als Ausstattung');
+  }
+  if (/\bdesign\b/i.test(lower) && /\bwichtig\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Design wichtig');
+  }
   if (/\blieferzeit\b/i.test(lower) && /\bwichtiger\b/i.test(lower) && /\brate\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Lieferzeit wichtiger als Rate');
+  }
+  if (/\bpreis\b/i.test(lower) && /\bwichtiger\b/i.test(lower) && /\bausstattung\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Preis wichtiger als Ausstattung');
   }
   if (/\brate\b/i.test(lower) && /\bwichtiger\b/i.test(lower) && /\bausstattung\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Rate wichtiger als Ausstattung');
@@ -372,16 +431,27 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
   if (/\bbetriebskosten\b/i.test(lower) && /\bwichtig\b|\bniedrig\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Niedrige Betriebskosten wichtig');
   }
+  if (/\bwertstabilität\b|\bwertstabilitaet\b/i.test(lower) && /\bwichtig\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Wertstabilität wichtig');
+  }
   if (/\bschnell\s+verfügbar\b|\bsofort\s+verfügbar\b|\bsofort\s+verfuegbar\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Schnell verfügbar wichtig');
+  }
+  if (/\burlaub\b/i.test(lower) && /\bsorgen\b|\bangst\b|\bunsicher\b/i.test(lower)) {
+    openQuestions.push('Reichweitenbedenken');
   }
 
   if (/\bhybrid\b.*\belektro\b|\belektro\b.*\bhybrid\b/i.test(lower)
     && /\boffen\b|\bunsicher\b|\bschwankt\b|\bnoch\s+nicht\s+sicher\b/i.test(lower)) {
     openQuestions.push('Hybrid oder Elektro offen');
   }
-  if (/\bbatteriegröße\b|\bbatteriegroesse\b/i.test(lower) && /\bunklar\b|\boffen\b|\bunsicher\b/i.test(lower)) {
-    openQuestions.push('Batteriegröße unklar');
+  if (/\bverbrenner\b.*\belektro\b|\belektro\b.*\bverbrenner\b/i.test(lower)
+    && /\boffen\b|\bunsicher\b|\bschwankt\b/i.test(lower)) {
+    openQuestions.push('Verbrenner oder Elektro offen');
+  }
+  if ((/\bbatteriegröße\b|\bbatteriegroesse\b/i.test(lower) || /\b(kleine|große|grosse)\s+batterie\b/i.test(lower))
+    && /\boffen\b|\bunklar\b|\bunsicher\b/i.test(lower)) {
+    openQuestions.push('Batteriegröße offen');
   }
   if (/\bleasing\b.*\bfinanzierung\b|\bfinanzierung\b.*\bleasing\b/i.test(lower) && /\boffen\b|\bunsicher\b/i.test(lower)) {
     openQuestions.push('Leasing oder Finanzierung offen');
@@ -414,7 +484,7 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
     const km = Number(kmMatch[1]) * 1000 + Number(kmMatch[2]);
     if (km >= 5000 && km <= 50000) annualKm = km;
   } else {
-    const kmSimple = lower.match(/\b(1[0-9]|20)\s?000\s*km\b/);
+    const kmSimple = lower.match(/\b(10|15|20)\s?000\s*km\b/);
     if (kmSimple) annualKm = Number(kmSimple[1]) * 1000;
   }
 
@@ -623,6 +693,10 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
 
   if (recognition.childrenCount != null) {
     next.children = recognition.childrenCount;
+    next.priorities = pushUnique(next.priorities ?? [], 'family');
+  }
+
+  if (recognition.usageTags.includes('familie')) {
     next.priorities = pushUnique(next.priorities ?? [], 'family');
   }
 
@@ -857,6 +931,10 @@ function buildExtraLabels(profile = {}) {
   return [...(profile.extraLabels ?? [])];
 }
 
+function buildUncertaintyLabels(profile = {}) {
+  return [...(profile.openQuestions ?? [])];
+}
+
 /**
  * Sichtbare Chips in Kundensprache – geordnet nach Wichtigkeit.
  * @param {object} profile
@@ -871,6 +949,7 @@ export function buildRecognitionLabels(profile = {}) {
     buildBudgetLabels(profile),
     buildAcquisitionLabels(profile),
     buildExtraLabels(profile),
+    buildUncertaintyLabels(profile),
   );
 }
 

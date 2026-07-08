@@ -32,6 +32,9 @@ function assertUnderstandingIncludes(lead, expected = []) {
 const kugaTimeline = mergeTextIntoNeedProfile('Der Kuga läuft im November 2026 aus.');
 assertLabelsInclude(kugaTimeline, ['Fahrzeugwechsel November 2026']);
 
+const leasingFruehjahr = mergeTextIntoNeedProfile('Leasing endet im Frühjahr.');
+assertLabelsInclude(leasingFruehjahr, ['Fahrzeugwechsel Frühjahr']);
+
 const lieferzeit = mergeTextIntoNeedProfile(
   'Lieferzeit ist ihm wichtiger als die letzte Rate.',
 );
@@ -40,10 +43,7 @@ assertLabelsInclude(lieferzeit, ['Lieferzeit wichtiger als Rate']);
 const antriebOffen = mergeTextIntoNeedProfile(
   'Er schwankt noch zwischen Hybrid und Elektro.',
 );
-assert.ok(
-  antriebOffen.openQuestions.includes('Hybrid oder Elektro offen'),
-  'Unsicherheit Antrieb als offener Punkt',
-);
+assertLabelsInclude(antriebOffen, ['Hybrid oder Elektro offen']);
 
 const dachzelt = mergeTextIntoNeedProfile('Das Dachzelt wäre wichtig.');
 assertLabelsInclude(dachzelt, ['Dachzelt']);
@@ -52,6 +52,24 @@ const rateBudget = mergeTextIntoNeedProfile(
   'Eigentlich möchte er die Rate unter 500 Euro halten.',
 );
 assertLabelsInclude(rateBudget, ['500']);
+
+const hauptfahrerin = mergeTextIntoNeedProfile(
+  'Die Frau fährt das Fahrzeug überwiegend.',
+);
+assertLabelsInclude(hauptfahrerin, ['Hauptfahrerin']);
+
+const designPrioritaet = mergeTextIntoNeedProfile(
+  'Optik ist ihm wichtiger als maximale Ausstattung.',
+);
+assertLabelsInclude(designPrioritaet, ['Design wichtiger als Ausstattung']);
+
+const urlaubSorgen = mergeTextIntoNeedProfile(
+  'Urlaub in Italien machen ihnen Sorgen.',
+);
+assertLabelsInclude(urlaubSorgen, ['Reichweitenbedenken']);
+
+const evTrims = mergeTextIntoNeedProfile('EV3 Earth in Silber, GT-Line offen.');
+assertLabelsInclude(evTrims, ['EV3', 'Earth', 'Silber']);
 
 const telefonat = [
   'Sportage Spirit in Grün.',
@@ -79,7 +97,7 @@ assertLabelsInclude(telefonatProfile, [
 let sellerLead = { id: 'lead-seller-speech', crm: {} };
 sellerLead = appendSellerInsightToLead(sellerLead, telefonat, { context: 'phone_call' });
 const insight = createSellerInsight(telefonat, { context: 'phone_call' });
-assert.ok(insight.understoodLabels.length >= 5, 'sellerInsight Parser erzeugt Labels');
+assert.ok(insight.understoodLabels.length >= 8, 'sellerInsight Parser erzeugt viele Labels');
 
 assertUnderstandingIncludes(sellerLead, [
   'Sportage',
@@ -91,7 +109,6 @@ assertUnderstandingIncludes(sellerLead, [
 const hybridUnsicher = mergeTextIntoNeedProfile(
   'Er ist sich noch nicht sicher ob Hybrid oder Elektro besser passt. Das Dachzelt ist wichtig. Lieferzeit ist wichtiger als die letzte Rate.',
 );
-assert.ok(hybridUnsicher.openQuestions.includes('Hybrid oder Elektro offen'));
-assertLabelsInclude(hybridUnsicher, ['Dachzelt', 'Lieferzeit wichtiger als Rate']);
+assertLabelsInclude(hybridUnsicher, ['Hybrid oder Elektro offen', 'Dachzelt', 'Lieferzeit wichtiger als Rate']);
 
 console.log('sellerSpeechRecognition.test.js: ok');
