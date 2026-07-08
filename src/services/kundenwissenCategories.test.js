@@ -39,4 +39,22 @@ assert.equal(
   true,
 );
 
+const understandingLead = {
+  crm: {
+    sellerInsights: [{
+      id: 'si-1',
+      text: 'Hund, 2 Kinder',
+      source: 'seller',
+      understoodLabels: ['Hund', '2 Kinder'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }],
+  },
+};
+const overviewFromLead = buildKundenwissenOverview('', understandingLead);
+assert.ok(
+  overviewFromLead.some((cat) => cat.id === 'familie' && cat.count >= 2),
+  'Kundenwissen aus Customer Understanding ohne notes',
+);
+
 console.log('kundenwissenCategories.test.js: ok');

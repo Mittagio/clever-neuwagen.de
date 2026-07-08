@@ -4,6 +4,7 @@
 import { buildCleverAntwortenContext } from './cleverAntworten.js';
 import { buildSchnellaufnahmeChips } from './customerAkte.js';
 import { buildKundenwissenOverview } from './kundenwissenCategories.js';
+import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
 import { countUnterlagenOpenTasks, getUnterlagenSlotsForLead } from './cleverUnterlagen.js';
 import {
   countOpenQuestions,
@@ -217,7 +218,11 @@ function summarizeUnterlagen(lead = {}, paymentType = 'unknown') {
 
 function summarizeKundenwissen(lead = {}, kundenhelferNotes = '') {
   const chipCategories = lead?.crm?.kundenhelfer?.chipCategories ?? {};
-  const categories = buildKundenwissenOverview(kundenhelferNotes, lead, chipCategories);
+  const understanding = buildCustomerUnderstanding(lead);
+  const notesForOverview = understanding?.verstaendnis?.labels?.length
+    ? understanding.verstaendnis.labels.join(', ')
+    : kundenhelferNotes;
+  const categories = buildKundenwissenOverview(notesForOverview, lead, chipCategories);
   const facts = [];
 
   for (const category of categories) {

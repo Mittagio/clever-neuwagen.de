@@ -727,11 +727,11 @@ export default function DealerAiLeadFollowUp({
     name,
     phone,
     email,
-    kundenhelferNotes,
+    lead,
     vehicleCardCount: vehicleCards.length,
     offersCount: resolvedOffers.length,
     hasNextStep: Boolean(nextStepId),
-  }), [name, phone, email, kundenhelferNotes, vehicleCards.length, resolvedOffers.length, nextStepId]);
+  }), [lead, name, phone, email, vehicleCards.length, resolvedOffers.length, nextStepId]);
 
   const cleverRecommendation = useMemo(() => buildCleverActionRecommendation({
     lead,
@@ -883,9 +883,8 @@ export default function DealerAiLeadFollowUp({
     phone,
     email,
     vehicleCards,
-    kundenhelferNotes,
     wishPaymentType,
-  }), [lead, name, phone, email, vehicleCards, kundenhelferNotes, wishPaymentType]);
+  }), [lead, name, phone, email, vehicleCards, wishPaymentType]);
 
   const primaryVehicleCard = vehicleCards[0];
   const vehicleTitleForUnterlagen = primaryVehicleCard
@@ -2205,7 +2204,7 @@ export default function DealerAiLeadFollowUp({
         routeHref={routeHref}
         customerSince={lead?.createdAt}
         cleverScore={akteCleverScore}
-        kundenhelferNotes={kundenhelferNotes}
+        lead={lead}
         vehicleCardCount={vehicleCards.length}
         offersCount={resolvedOffers.length}
         hasNextStep={Boolean(nextStepId)}

@@ -1,5 +1,6 @@
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
 import { computeUnterlagenSummary } from './cleverUnterlagen.js';
+import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
 
 export const KUNDENWISSEN_CATEGORY_ORDER = [
   'familie',
@@ -181,7 +182,10 @@ function emptyGroups() {
  */
 export function buildKundenwissenOverview(notes = '', lead = null, chipCategories = {}) {
   const groups = emptyGroups();
-  const chips = parseKundenhelferNotes(notes);
+  const understanding = lead ? buildCustomerUnderstanding(lead) : null;
+  const chips = understanding?.verstaendnis?.labels?.length
+    ? [...understanding.verstaendnis.labels]
+    : parseKundenhelferNotes(notes);
 
   for (const chip of chips) {
     const categoryId = categorizeKundenhelferChip(chip, chipCategories);

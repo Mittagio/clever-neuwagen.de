@@ -79,4 +79,23 @@ const longText = generateCleverAntwortText('danke', namedCtx);
 const shorter = refineCleverAntwortText(longText, 'kuerzer', namedCtx, 'danke');
 assert.ok(shorter.length <= longText.length + 5);
 
+const probefahrtLead = {
+  crm: {
+    sellerInsights: [{
+      id: 'si-pf',
+      text: 'will Probefahrt',
+      source: 'seller',
+      understoodLabels: ['will Probefahrt'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }],
+  },
+};
+const probefahrtCtx = buildCleverAntwortenContext({
+  lead: probefahrtLead,
+  customerName: 'Max',
+  vehicleCards: [{ id: 'c1', modelName: 'EV3', paymentType: 'leasing' }],
+});
+assert.equal(suggestCleverAntwortType(probefahrtCtx), 'probefahrt', 'Probefahrt aus Customer Understanding');
+
 console.log('cleverAntworten.test.js: ok');

@@ -3,6 +3,8 @@
  */
 import { formatCustomerDisplayName, PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 import { parseKundenhelferNotes } from './cleverKundenhelfer.js';
+import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
+import { getSellerInsightsFromLead } from './dealer/sellerInsights.js';
 import { getPrimaryRequestedStockVehicle } from './inquiry/stockVehicleInquiryFlow.js';
 import {
   formatVehicleCardConditions,
@@ -44,6 +46,31 @@ const KUNDENHELFER_HINTS = {
   'will Probefahrt': 'Eine Probefahrt können wir gerne früh einplanen.',
   'Inzahlungnahme vorhanden': 'Ihre Inzahlungnahme berücksichtige ich bei der Kalkulation.',
 };
+
+function collectUnderstandingChips(lead) {
+  const understanding = buildCustomerUnderstanding(lead);
+  const labels = understanding?.verstaendnis?.labels ?? [];
+  const insightTexts = getSellerInsightsFromLead(lead).map((insight) => insight.text);
+  const merged = [];
+  const seen = new Set();
+  for (const item of [...labels, ...insightTexts]) {
+    const trimmed = String(item ?? '').trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(trimmed);
+  }
+  return merged;
+}
+
+function resolveKundenhelferChips(lead, kundenhelferNotes = '') {
+  if (lead) {
+    const chips = collectUnderstandingChips(lead);
+    if (chips.length) return chips;
+  }
+  return parseKundenhelferNotes(kundenhelferNotes || lead?.crm?.kundenhelfer?.notes || '');
+}
 
 function pickPrimaryCard(vehicleCards = []) {
   const opened = vehicleCards.find((c) => {
@@ -148,7 +175,7 @@ export function buildCleverAntwortenContext({
     lead?.vehicle?.model ? `Kia ${String(lead.vehicle.model).replace(/^Kia\s+/i, '')}` : ''
   );
   const paymentType = primaryCard?.paymentType ?? wishPaymentType ?? lead?.paymentType ?? 'unknown';
-  const chips = parseKundenhelferNotes(kundenhelferNotes || lead?.crm?.kundenhelfer?.notes || '');
+  const chips = resolveKundenhelferChips(lead, kundenhelferNotes);
 
   return {
     customerName,
