@@ -1,7 +1,7 @@
 /**
  * Kontext für Clever-Textvorschläge aus Journey, Reminder, Kunde und Angebot.
  */
-import { buildCleverAntwortenContext } from '../cleverAntworten.js';
+import { buildCleverAntwortenContext, resolveLegacyKundenhelferNotes } from '../cleverAntworten.js';
 import { getCustomerPortalAccess } from '../crm/customerPortalAccessService.js';
 import {
   formatVehicleCardConditions,
@@ -29,7 +29,7 @@ export function buildCleverMessageContext({
     phone: phone || lead?.contact?.phone || '',
     email: email || lead?.contact?.email || '',
     vehicleCards,
-    kundenhelferNotes,
+    kundenhelferNotes: resolveLegacyKundenhelferNotes(lead, kundenhelferNotes),
     sellerName,
     dealerName,
     wishPaymentType,

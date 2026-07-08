@@ -1,7 +1,7 @@
 /**
  * Clever Antworten – reicher Kundenkontext aus der Kundenakte
  */
-import { buildCleverAntwortenContext } from './cleverAntworten.js';
+import { buildCleverAntwortenContext, resolveLegacyKundenhelferNotes } from './cleverAntworten.js';
 import { buildSchnellaufnahmeChips } from './customerAkte.js';
 import { buildKundenwissenOverview } from './kundenwissenCategories.js';
 import { buildCustomerUnderstanding } from './dealer/customerUnderstanding.js';
@@ -373,13 +373,14 @@ export function buildCleverAnswerContext({
 } = {}) {
   const wishConditions = resolveWishConditions(lead, wishPaymentType, offerSelectionGroups);
   const paymentType = wishConditions.paymentType;
+  const legacyNotes = resolveLegacyKundenhelferNotes(lead, kundenhelferNotes);
   const legacy = buildCleverAntwortenContext({
     lead,
     customerName,
     phone,
     email,
     vehicleCards,
-    kundenhelferNotes,
+    kundenhelferNotes: legacyNotes,
     sellerName,
     dealerName,
     wishPaymentType: paymentType,
@@ -394,7 +395,7 @@ export function buildCleverAnswerContext({
   const board = summarizeBoard(vehicleCards, offerSelectionGroups);
   const reactions = summarizeReactions(lead, vehicleCards);
   const unterlagen = summarizeUnterlagen(lead, paymentType);
-  const kundenwissen = summarizeKundenwissen(lead, kundenhelferNotes);
+  const kundenwissen = summarizeKundenwissen(lead, legacyNotes);
   const advisor = summarizeAdvisorConversation(lead);
   const openCustomerQuestions = collectOpenCustomerQuestions(lead, vehicleCards);
 

@@ -11,6 +11,8 @@ import {
   replaceKundenhelferChip,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
+import { buildKundenhelferDisplayNotes } from '../../services/dealer/kundenhelferSavePayload.js';
+import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import {
   KUNDENWISSEN_CATEGORY_ORDER,
   buildKundenwissenOverview,
@@ -265,10 +267,22 @@ export default function CleverKundenhelferSheet({
   const playerRef = useRef(null);
   const addInputRef = useRef(null);
 
-  const activeChips = parseKundenhelferNotes(notes);
+  const displayNotes = useMemo(() => {
+    const legacyNotes = lead?.crm?.kundenhelfer?.notes ?? '';
+    if (lead && buildCustomerUnderstanding(lead)) {
+      const insightNotes = buildKundenhelferDisplayNotes(lead);
+      return notes !== legacyNotes ? notes : insightNotes;
+    }
+    return notes || legacyNotes;
+  }, [lead, notes]);
+
+  const activeChips = useMemo(
+    () => parseKundenhelferNotes(displayNotes),
+    [displayNotes],
+  );
   const overview = useMemo(
-    () => buildKundenwissenOverview(notes, lead, chipCategories),
-    [notes, lead, chipCategories],
+    () => buildKundenwissenOverview(displayNotes, lead, chipCategories),
+    [displayNotes, lead, chipCategories],
   );
 
   const resetSheetNav = useCallback(() => {

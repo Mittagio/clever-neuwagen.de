@@ -44,5 +44,7 @@ assert.equal(
 assert.ok(sheetSource.includes('+ Info hinzufügen'), 'Sheet zeigt + Info hinzufügen');
 assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Kategorie-Grid statt Chip-Wand');
 assert.ok(!sheetSource.includes('Kleine Details fürs nächste Gespräch'), 'alte Chip-Wand entfernt');
+assert.ok(sheetSource.includes('buildKundenhelferDisplayNotes'), 'Chips aus sellerInsights/Understanding');
+assert.ok(sheetSource.includes('buildCustomerUnderstanding'), 'Understanding statt notes als Wahrheit');
 
 console.log('cleverKundenhelfer.test.js: ok');

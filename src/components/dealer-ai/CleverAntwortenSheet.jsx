@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildCleverAnswerContext } from '../../services/cleverAnswerContextBuilder.js';
+import { resolveLegacyKundenhelferNotes } from '../../services/cleverAntworten.js';
 import {
   ANSWER_INTENT_GROUPS,
   getIntentsForGroup,
@@ -582,6 +583,8 @@ export default function CleverAntwortenSheet({
   const mappedInitialIntent = resolveAnswerIntent(initialTypeId);
   const initialChannel = resolveInitialChannel(phone, email);
 
+  const legacyKundenhelferNotes = resolveLegacyKundenhelferNotes(lead, kundenhelferNotes);
+
   const context = useMemo(() => buildCleverAnswerContext({
     lead,
     customerName,
@@ -589,7 +592,7 @@ export default function CleverAntwortenSheet({
     email,
     vehicleCards,
     offerSelectionGroups,
-    kundenhelferNotes,
+    kundenhelferNotes: legacyKundenhelferNotes,
     sellerName,
     dealerName,
     wishPaymentType,
@@ -600,7 +603,7 @@ export default function CleverAntwortenSheet({
     email,
     vehicleCards,
     offerSelectionGroups,
-    kundenhelferNotes,
+    legacyKundenhelferNotes,
     sellerName,
     dealerName,
     wishPaymentType,

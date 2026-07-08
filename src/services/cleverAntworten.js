@@ -64,12 +64,17 @@ function collectUnderstandingChips(lead) {
   return merged;
 }
 
+export function resolveLegacyKundenhelferNotes(lead, kundenhelferNotes = '') {
+  if (lead && buildCustomerUnderstanding(lead)) return '';
+  if (!lead) return kundenhelferNotes;
+  return kundenhelferNotes || lead?.crm?.kundenhelfer?.notes || '';
+}
+
 function resolveKundenhelferChips(lead, kundenhelferNotes = '') {
-  if (lead) {
-    const chips = collectUnderstandingChips(lead);
-    if (chips.length) return chips;
+  if (lead && buildCustomerUnderstanding(lead)) {
+    return collectUnderstandingChips(lead);
   }
-  return parseKundenhelferNotes(kundenhelferNotes || lead?.crm?.kundenhelfer?.notes || '');
+  return parseKundenhelferNotes(resolveLegacyKundenhelferNotes(lead, kundenhelferNotes));
 }
 
 function pickPrimaryCard(vehicleCards = []) {

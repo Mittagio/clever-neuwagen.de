@@ -7,6 +7,7 @@ import {
   buildCleverGreeting,
   generateCleverAntwortText,
   refineCleverAntwortText,
+  resolveLegacyKundenhelferNotes,
   suggestCleverAntwortType,
 } from './cleverAntworten.js';
 
@@ -97,5 +98,36 @@ const probefahrtCtx = buildCleverAntwortenContext({
   vehicleCards: [{ id: 'c1', modelName: 'EV3', paymentType: 'leasing' }],
 });
 assert.equal(suggestCleverAntwortType(probefahrtCtx), 'probefahrt', 'Probefahrt aus Customer Understanding');
+
+const understandingLead = {
+  crm: {
+    sellerInsights: [{
+      id: 'si-1',
+      text: 'Kofferraum wichtig',
+      source: 'seller',
+      understoodLabels: ['Kofferraum wichtig'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }],
+  },
+};
+assert.equal(
+  resolveLegacyKundenhelferNotes(understandingLead, 'Nur im Parameter'),
+  '',
+  'Legacy notes ignoriert wenn Understanding vorhanden',
+);
+const understandingCtx = buildCleverAntwortenContext({
+  lead: understandingLead,
+  customerName: 'Anna',
+  kundenhelferNotes: 'Nur im Parameter',
+});
+assert.ok(
+  understandingCtx.kundenhelferChips.includes('Kofferraum wichtig'),
+  'Chips aus Understanding, nicht aus legacy notes-Parameter',
+);
+assert.ok(
+  !understandingCtx.kundenhelferChips.includes('Nur im Parameter'),
+  'kundenhelferNotes-Parameter wird bei Understanding ignoriert',
+);
 
 console.log('cleverAntworten.test.js: ok');

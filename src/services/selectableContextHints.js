@@ -26,8 +26,10 @@ function collectKnowledgeText(context = {}) {
   for (const fact of context.kundenwissen?.facts ?? []) {
     if (fact?.text) parts.push(fact.text);
   }
-  for (const chip of context.legacy?.kundenhelferChips ?? []) {
-    if (chip) parts.push(chip);
+  if (!parts.length) {
+    for (const chip of context.legacy?.kundenhelferChips ?? []) {
+      if (chip) parts.push(chip);
+    }
   }
   for (const signal of context.advisor?.extractedSignals ?? []) {
     if (signal) parts.push(signal);
