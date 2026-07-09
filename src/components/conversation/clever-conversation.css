@@ -348,17 +348,22 @@
 }
 
 .cc-clever-turn__options-hint {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 0.75rem;
   color: var(--cc-muted);
   letter-spacing: 0.01em;
+  font-style: italic;
 }
 
 .cc-clever-turn__input-nudge {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   font-size: 0.75rem;
   color: var(--cc-muted);
   line-height: 1.45;
+}
+
+.cc-clever-turn--active-question .cc-clever-turn__options-wrap {
+  padding-top: 4px;
 }
 
 .cc-clever-turn--vehicle .cc-clever-turn__options {
@@ -378,16 +383,20 @@
 }
 
 .cc-option-chip--hint {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
+  border-style: dashed;
+  border-color: #d1d5db;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--cc-text);
   font-size: 0.8125rem;
-  font-weight: 400;
-  color: var(--cc-muted);
-  text-decoration: underline;
-  text-decoration-color: #d1d5db;
-  text-underline-offset: 3px;
+  padding: 8px 14px;
+}
+
+.cc-option-chip--suggestion {
+  border-style: dashed;
+  border-color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--cc-text);
+  font-weight: 450;
 }
 
 .cc-option-chip--hint:hover {
@@ -680,12 +689,13 @@
 }
 
 .cc-advisor-contact__hint {
-  margin: 0 0 8px;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--cc-muted);
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cc-text);
   text-align: center;
   pointer-events: none;
+  opacity: 0.88;
 }
 
 .cc-advisor-contact__cta {

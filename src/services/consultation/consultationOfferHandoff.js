@@ -137,8 +137,8 @@ export function buildAdvisorContactPrompt(labelCount = 0) {
     return {
       level: 'early',
       hint:
-        'Wir haben bereits erste Informationen gesammelt. '
-        + 'Ihr Berater kann direkt anknüpfen.',
+        'Schon einiges verstanden. '
+        + 'Ihr Berater kann jederzeit nahtlos ins Gespräch einsteigen.',
     };
   }
   if (labelCount <= 5) {
@@ -152,8 +152,8 @@ export function buildAdvisorContactPrompt(labelCount = 0) {
   return {
     level: 'strong',
     hint:
-      'Wir glauben, dass wir bereits gut vorbereitet sind. '
-      + 'Ihr Berater kann direkt übernehmen.',
+      'Wir haben bereits sehr gut verstanden, wonach Sie suchen. '
+      + 'Ihr Berater kann direkt übernehmen – ohne von vorn anzufangen.',
   };
 }
 

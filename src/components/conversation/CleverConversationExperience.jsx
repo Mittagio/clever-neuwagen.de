@@ -12,6 +12,7 @@ import {
   advanceFromVehicleThinking,
   createHappyPathSession,
   getOpeningCopy,
+  getConversationInputPlaceholder,
   getVehicleInputPlaceholder,
   HAPPY_PATH_EXAMPLE_MESSAGE,
   isInOfferWorld,
@@ -220,11 +221,9 @@ export default function CleverConversationExperience({
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
   const activeQuestionId = session.pendingQuestion?.id ?? null;
-  const chipsVisible = inputEnabled && Boolean(activeQuestionId);
-  const isTyping = Boolean(inputValue.trim());
   const inputPlaceholder = inVehicleWorld && inputEnabled
-    ? getVehicleInputPlaceholder()
-    : opening.placeholder;
+    ? getVehicleInputPlaceholder(session)
+    : getConversationInputPlaceholder(session);
 
   const handleVoiceStart = useCallback(() => {
     if (!voiceSupported || !inputEnabled || voiceListening) return;
@@ -367,7 +366,6 @@ export default function CleverConversationExperience({
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
                 isActiveQuestion={turn.type === TURN_TYPE.CLEVER && turn.questionId === activeQuestionId}
-                isTyping={isTyping}
               />
             );
           })}
@@ -387,13 +385,12 @@ export default function CleverConversationExperience({
             'cc-input-bar',
             inputFocused ? 'cc-input-bar--focused' : '',
             inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
-            chipsVisible && !isTyping && !inputFocused ? ' cc-input-bar--chips-visible' : '',
             voiceListening ? ' cc-input-bar--listening' : '',
           ].filter(Boolean).join('')}
           onSubmit={handleFormSubmit}
         >
           <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
-            {inVehicleWorld ? 'Oder einfach ergänzen' : 'Erzählen Sie Clever, wonach Sie suchen'}
+            {inVehicleWorld ? 'Einfach weitererzählen' : 'Einfach erzählen oder fragen'}
           </label>
           {voiceListening && (
             <p className="cc-input-bar__voice-status" aria-live="polite">
@@ -424,8 +421,8 @@ export default function CleverConversationExperience({
               className={`cc-input-bar__mic${voiceListening ? ' cc-input-bar__mic--active' : ''}`}
               onClick={handleVoiceStart}
               disabled={!inputEnabled || !voiceSupported || voiceListening}
-              aria-label="Wunsch sprechen"
-              title={voiceSupported ? 'Wunsch sprechen' : 'Spracheingabe nicht verfügbar'}
+              aria-label="Erzählen"
+              title={voiceSupported ? 'Erzählen' : 'Spracheingabe nicht verfügbar'}
             >
               <span aria-hidden>🎤</span>
             </button>

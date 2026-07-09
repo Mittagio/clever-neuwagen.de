@@ -23,7 +23,9 @@ import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   beginEv3VehicleConsultation,
   isVehicleInputEnabled,
+  submitVehicleContinuingNarrative,
   submitVehicleQuestionAnswer,
+  VEHICLE_CONVERSATION_PHASE,
 } from './consultationEv3HappyPath.js';
 import {
   NEED_DIRECTION_QUESTION_ID,
@@ -59,22 +61,26 @@ export const TURN_TYPE = {
   HANDOFF: 'handoff',
 };
 
-/** Warme Clever-Formulierungen – Character Guide + Conversation Design. */
+/** Warme Clever-Formulierungen – optional, nie als Pflichtfrage. */
 export const WARM_QUESTION_PROMPTS = {
   longDistance:
-    'Darf ich noch kurz fragen: Fahren Sie im Alltag eher kurze Strecken '
+    'Das hilft bei der Einordnung noch etwas: Fahren Sie im Alltag eher kurze Strecken '
     + '– oder auch regelmäßig längere, zum Beispiel in den Urlaub?',
-  chargingAtHome: 'Und können Sie zu Hause laden – Garage oder Wallbox?',
+  chargingAtHome: 'Falls wichtig für Sie: Können Sie zu Hause laden – Garage oder Wallbox?',
   fuel_type:
-    'Haben Sie beim Antrieb schon einen Favoriten – Benzin, Hybrid oder Elektro?',
+    'Eine Sache würde mich noch interessieren: Haben Sie beim Antrieb schon einen Favoriten '
+    + '– Benzin, Hybrid oder Elektro?',
   allradNeed:
-    'Brauchen Sie Allrad wirklich – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
+    'Falls wichtig für Sie: Brauchen Sie Allrad – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
   comfortVsSpace:
-    'Soll es eher möglichst komfortabel sein – oder ist Ihnen vor allem viel Platz und Anhängelast wichtig?',
-  primaryUsage: 'Gerne. Wofür soll das Auto hauptsächlich genutzt werden?',
-  evModelPriority: 'Ist Ihnen eher viel Reichweite oder gute Ausstattung wichtig?',
-  sportagePowertrain: 'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
-  towingUsage: 'Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
+    'Das hilft bei der Einordnung noch etwas: Soll es eher möglichst komfortabel sein '
+    + '– oder ist Ihnen vor allem viel Platz und Anhängelast wichtig?',
+  primaryUsage: 'Falls hilfreich: Wofür soll das Auto hauptsächlich genutzt werden?',
+  evModelPriority: 'Falls wichtig für Sie: Ist eher viel Reichweite oder gute Ausstattung wichtig?',
+  sportagePowertrain:
+    'Eine Sache würde mich noch interessieren: Kommt für Sie eher Benzin, Hybrid '
+    + 'oder Plug-in-Hybrid infrage?',
+  towingUsage: 'Falls wichtig für Sie: Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
   needDirection: null,
 };
 
@@ -233,7 +239,7 @@ export function getOpeningCopy(dealerName = 'Autohaus') {
     greeting: `Willkommen im ${dealerName}.`,
     invitation: 'Erzählen Sie mir einfach, wonach Sie suchen.',
     intro: 'Ich nehme Ihre Wünsche auf und bereite alles für Ihren persönlichen Berater vor.',
-    placeholder: 'Ich suche …',
+    placeholder: 'Erzählen oder fragen Sie einfach …',
     examplesLabel: 'So könnte ein Satz klingen',
     exampleLabel: HAPPY_PATH_EXAMPLE_MESSAGE,
   };
@@ -430,13 +436,13 @@ function buildAcknowledgment(needProfile = {}) {
 
 function buildAdvisorBridge(questionId) {
   if (questionId === 'evModelPriority') {
-    return 'Damit Ihr Berater die passende Richtung prüfen kann:';
+    return 'Falls wichtig für die Einordnung:';
   }
   if (questionId === 'sportagePowertrain') {
-    return 'Damit Ihr Berater nicht in die falsche Richtung prüft:';
+    return 'Das hilft bei der Einordnung noch etwas:';
   }
   if (questionId === 'towingUsage') {
-    return 'Damit Ihr Berater das richtig einordnen kann:';
+    return 'Falls wichtig für Sie:';
   }
   return null;
 }
@@ -897,7 +903,88 @@ export function advanceFromThinking(session) {
 }
 
 /**
- * Freitext in der unteren Leiste – Kontextabhängig.
+ * Kontextabhängiger Placeholder – Erzählen, nicht Suchen.
+ * @param {object} session
+ */
+export function getConversationInputPlaceholder(session = {}) {
+  const fallback = 'Erzählen oder fragen Sie einfach …';
+  if (session.phase === CONVERSATION_PHASE.OPENING) {
+    return fallback;
+  }
+
+  const needProfile = session.needProfile ?? {};
+  const labels = [
+    ...(session.notepadLabels ?? []),
+    ...(session.vehicleNotepadLabels ?? []),
+    ...(needProfile.understoodLabels ?? []),
+  ];
+  const labelBlob = labels.join(' ').toLowerCase();
+  const customerTurns = (session.turns ?? []).filter((t) => t.type === TURN_TYPE.CUSTOMER).length;
+
+  if (
+    session.selectedModelKey
+    || needProfile.selectedModelKey
+    || session.phase === VEHICLE_CONVERSATION_PHASE.VEHICLE_CONVERSATION
+  ) {
+    return 'Was ist Ihnen beim Auto besonders wichtig?';
+  }
+
+  if (/urlaub|reichweite|langstrecke|anhänger|anhaenger|laden|wallbox|garage|kroatien/.test(labelBlob)) {
+    return 'Zum Beispiel Urlaub, Anhänger oder Laden zuhause …';
+  }
+
+  if (customerTurns >= 2 || labels.length >= 4) {
+    return 'Was sollten wir noch wissen?';
+  }
+
+  if (customerTurns >= 1) {
+    return 'Erzählen Sie einfach weiter …';
+  }
+
+  return fallback;
+}
+
+/**
+ * Freitext während laufendem Gespräch – immer erzählen, nie blockieren.
+ * @param {object} session
+ * @param {string} text
+ */
+export function submitContinuingNarrative(session, text = '') {
+  const trimmed = String(text ?? '').trim();
+  if (!trimmed) return session;
+
+  const dismissedQuestionId = session.pendingQuestion?.id ?? null;
+  const needProfile = mergeTextIntoNeedProfile(trimmed, session.needProfile);
+  const notepadLabels = labelsFromNeedProfile(needProfile, session.notepadLabels);
+
+  let next = {
+    ...session,
+    needProfile,
+    notepadLabels,
+    pendingQuestion: null,
+    turns: [...session.turns, customerTurn(trimmed)],
+  };
+
+  const followUp = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
+  if (followUp && followUp.id !== dismissedQuestionId) {
+    next = pushTurn(next, cleverQuestionTurn(followUp));
+    next = withPendingQuestion(next, followUp);
+    return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+  }
+
+  const readiness = evaluateRecommendationReadiness({
+    needProfile,
+    answers: next.consultationProfile?.answers ?? {},
+  });
+  if (readiness.ready) {
+    return startThinkingPhase(next);
+  }
+
+  return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+}
+
+/**
+ * Freitext in der unteren Leiste – Chips sind Vorschläge, Text hat Priorität.
  * @param {object} session
  * @param {string} text
  */
@@ -909,15 +996,20 @@ export function submitConversationInput(session, text = '') {
     return submitOpeningMessage(session, trimmed);
   }
 
-  if (session.pendingQuestion) {
-    if (session.pendingQuestion.world === CLEVER_WORLD.VEHICLE_CONSULTATION) {
-      return submitVehicleQuestionAnswer(session, { text: trimmed });
-    }
-    return submitQuestionAnswer(session, { text: trimmed });
-  }
-
   if (session.phase === CONVERSATION_PHASE.RECOMMENDATION) {
     return session;
+  }
+
+  if (session.pendingQuestion?.world === CLEVER_WORLD.VEHICLE_CONSULTATION) {
+    return submitVehicleContinuingNarrative(session, trimmed);
+  }
+
+  if (
+    session.phase === CONVERSATION_PHASE.CONVERSATION
+    || session.phase === CONVERSATION_PHASE.THINKING
+    || isVehicleInputEnabled(session)
+  ) {
+    return submitContinuingNarrative(session, trimmed);
   }
 
   return session;

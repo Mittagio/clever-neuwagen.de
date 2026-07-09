@@ -13,9 +13,12 @@ import {
   createHappyPathSession,
   getHappyPathNextQuestion,
   getOpeningCopy,
+  getConversationInputPlaceholder,
   mapFreetextToQuestionAnswer,
+  submitConversationInput,
   submitOpeningMessage,
   submitQuestionAnswer,
+  WARM_QUESTION_PROMPTS,
   selectRecommendedModel,
   submitVehicleAnswer,
   submitDealerHandoff,
@@ -157,10 +160,50 @@ function testOnlyTwoGapQuestions() {
   console.log('✓ Nur Langstrecke + Laden zuhause – kein erneutes Budget/Familie');
 }
 
+function testFreetextNarrativeDuringOpenQuestion() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  assert.equal(session.pendingQuestion?.id, 'longDistance');
+
+  const tangential = 'Wir fahren übrigens zweimal im Jahr nach Kroatien.';
+  session = submitConversationInput(session, tangential);
+
+  assert.ok(
+    session.turns.some((t) => t.type === TURN_TYPE.CUSTOMER && t.text === tangential),
+    'Freitext wird als Kundenturn aufgenommen',
+  );
+  assert.equal(session.pendingQuestion, null, 'offene Rückfrage wird nicht erzwungen');
+  console.log('✓ Freitext während Rückfrage: erzählen statt blockieren');
+}
+
+function testContextualPlaceholders() {
+  const opening = createHappyPathSession('Test');
+  assert.match(getConversationInputPlaceholder(opening), /Erzählen oder fragen/);
+
+  let session = submitOpeningMessage(opening, HAPPY_PATH_EXAMPLE_MESSAGE);
+  const afterFirst = getConversationInputPlaceholder(session);
+  assert.ok(
+    /weiter|wissen|Urlaub/i.test(afterFirst),
+    `nach erstem Turn: ${afterFirst}`,
+  );
+
+  session = submitQuestionAnswer(session, { answerId: 'often' });
+  assert.match(getConversationInputPlaceholder(session), /Urlaub|wissen/i);
+
+  console.log('✓ Placeholder wechselt kontextabhängig');
+}
+
+function testWarmQuestionsSoundOptional() {
+  const copy = WARM_QUESTION_PROMPTS.longDistance;
+  assert.doesNotMatch(copy, /Darf ich/i);
+  assert.match(copy, /Einordnung|Falls wichtig|interessieren/i);
+  console.log('✓ Rückfragen klingen optional');
+}
+
 function testFreetextMapping() {
   assert.equal(mapFreetextToQuestionAnswer('longDistance', 'Auch im Urlaub'), 'often');
   assert.equal(mapFreetextToQuestionAnswer('chargingAtHome', 'Ja, Garage'), 'yes');
-  console.log('✓ Freitext-Antworten werden erkannt');
+  console.log('✓ Freitext-Chip-Mapping bleibt für Vorschläge erhalten');
 }
 
 function testOpeningIsNotAQuestion() {
@@ -184,6 +227,9 @@ testHappyPathFlow();
 testEv3VehicleConsultationFlow();
 testEv3MiniRecommendationContent();
 testOnlyTwoGapQuestions();
+testFreetextNarrativeDuringOpenQuestion();
+testContextualPlaceholders();
+testWarmQuestionsSoundOptional();
 testFreetextMapping();
 testOpeningIsNotAQuestion();
 testReceptionOpeningCopy();

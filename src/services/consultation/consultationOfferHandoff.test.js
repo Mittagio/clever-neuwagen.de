@@ -127,9 +127,9 @@ function testValidation() {
 
 function testAdvisorContactPrompt() {
   assert.equal(buildAdvisorContactPrompt(0), null);
-  assert.match(buildAdvisorContactPrompt(2).hint, /erste Informationen/);
+  assert.match(buildAdvisorContactPrompt(2).hint, /einiges verstanden|nahtlos/i);
   assert.match(buildAdvisorContactPrompt(4).hint, /gutes Bild/);
-  assert.match(buildAdvisorContactPrompt(7).hint, /gut vorbereitet/);
+  assert.match(buildAdvisorContactPrompt(7).hint, /sehr gut verstanden|übernehmen/i);
   console.log('✓ Berater-Kontakt-Copy nach Verständnisstärke');
 }
 

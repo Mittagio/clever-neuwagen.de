@@ -8,6 +8,10 @@ import {
   getRecognitionQuestionBlocks,
   shouldSkipEv3EquipmentQuestion,
 } from './needRecognitionService.js';
+import {
+  buildUnderstoodLabels,
+  mergeTextIntoNeedProfile,
+} from './needProfileService.js';
 
 export const VEHICLE_CONVERSATION_PHASE = {
   VEHICLE_CONVERSATION: 'vehicle_conversation',
@@ -26,10 +30,10 @@ export const VEHICLE_TURN_TYPE = {
 const EV3_PRIORITY_QUESTION = {
   id: 'ev3Priority',
   prompt:
-    'Beim EV3 gibt es unterschiedliche Varianten. '
+    'Eine Sache würde mich noch interessieren: Beim EV3 gibt es unterschiedliche Varianten. '
     + 'Ist Ihnen eher möglichst viel Reichweite wichtig '
     + '– oder eine besonders gute Ausstattung?',
-  optionsHint: 'Zum Beispiel:',
+  optionsHint: 'Falls hilfreich – ganz ohne Pflicht:',
   options: [
     { id: 'range', label: 'Mehr Reichweite' },
     { id: 'equipment', label: 'Mehr Ausstattung' },
@@ -40,7 +44,7 @@ const EV3_PRIORITY_QUESTION = {
 const EV3_EQUIPMENT_QUESTION = {
   id: 'ev3Equipment',
   prompt: 'Falls Ihnen etwas davon wichtig ist, sagen Sie es einfach.',
-  optionsHint: 'Falls davon etwas dabei ist:',
+  optionsHint: 'Falls davon etwas dabei ist – ganz ohne Pflicht:',
   options: [
     { id: 'heatPump', label: 'Wärmepumpe' },
     { id: 'towbar', label: 'Anhängerkupplung' },
@@ -406,13 +410,60 @@ export function mapVehicleFreetextToAnswer(questionId, text = '') {
   return null;
 }
 
-export function isVehicleInputEnabled(session) {
-  return session.phase === VEHICLE_CONVERSATION_PHASE.VEHICLE_CONVERSATION
-    && Boolean(session.pendingQuestion?.world === CLEVER_WORLD.VEHICLE_CONSULTATION);
+function appendNotepadLabels(existing = [], incoming = []) {
+  const next = [...existing];
+  for (const label of incoming) {
+    if (label && !next.includes(label)) next.push(label);
+  }
+  return next;
 }
 
-export function getVehicleInputPlaceholder() {
-  return 'Oder einfach ergänzen …';
+/**
+ * Freitext in der Fahrzeugberatung – gleiche Pipeline wie im Empfang.
+ * @param {object} session
+ * @param {string} text
+ */
+export function submitVehicleContinuingNarrative(session, text = '') {
+  const trimmed = String(text ?? '').trim();
+  if (!trimmed) return session;
+
+  const needProfile = mergeTextIntoNeedProfile(trimmed, session.needProfile);
+  const notepadLabels = appendNotepadLabels(
+    session.notepadLabels ?? [],
+    buildUnderstoodLabels(needProfile),
+  );
+  const equipmentLabels = equipmentLabelsFromProfile(needProfile);
+  const vehicleNotepadLabels = appendVehicleLabels(
+    session.vehicleNotepadLabels ?? [],
+    equipmentLabels,
+  );
+
+  return {
+    ...session,
+    needProfile,
+    notepadLabels,
+    vehicleNotepadLabels,
+    pendingQuestion: null,
+    phase: VEHICLE_CONVERSATION_PHASE.VEHICLE_CONVERSATION,
+    turns: [...session.turns, customerTurn(trimmed)],
+  };
+}
+
+export function isVehicleInputEnabled(session) {
+  return session.phase === VEHICLE_CONVERSATION_PHASE.VEHICLE_CONVERSATION;
+}
+
+export function getVehicleInputPlaceholder(session = {}) {
+  const labels = [
+    ...(session.notepadLabels ?? []),
+    ...(session.vehicleNotepadLabels ?? []),
+    ...(session.needProfile?.understoodLabels ?? []),
+  ];
+  const labelBlob = labels.join(' ').toLowerCase();
+  if (/urlaub|reichweite|anhänger|anhaenger|laden|wallbox|garage/.test(labelBlob)) {
+    return 'Zum Beispiel Urlaub, Anhänger oder Laden zuhause …';
+  }
+  return 'Was ist Ihnen beim Auto besonders wichtig?';
 }
 
 export function isInVehicleWorld(session) {
