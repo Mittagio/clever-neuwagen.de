@@ -5,14 +5,14 @@ import assert from 'node:assert/strict';
 import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
+  ADVISOR_BOOST_CATEGORIES,
   OFFER_CONVERSATION_PHASE,
   OFFER_TURN_TYPE,
   beginOfferHandoff,
+  buildAdvisorBoostView,
   buildAdvisorContactPrompt,
   filterNewHandoffChipIds,
-  getVisibleHandoffCategories,
-  inferPrefilledHandoffChipIds,
-  QUICK_HANDOFF_CATEGORIES,
+  inferRecognizedBoostChipIds,
   QUICK_HANDOFF_COPY,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
   buildPersonalHandoffView,
@@ -131,30 +131,46 @@ function testValidation() {
   console.log('✓ Kontaktdaten-Validierung');
 }
 
-function testQuickHandoffChips() {
-  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 30);
-  assert.equal(QUICK_HANDOFF_CATEGORIES.length, 6);
-  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'budget'));
-  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'elektro'));
-  assert.match(QUICK_HANDOFF_COPY.title, /Falls Sie möchten/i);
-  assert.match(QUICK_HANDOFF_COPY.subtitle, /Keine Pflicht/i);
-  console.log('✓ Kontaktphase-Chips nach Kategorien inkl. Budget und Elektro');
+function testAdvisorBoostChips() {
+  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 35);
+  assert.equal(ADVISOR_BOOST_CATEGORIES.length, 5);
+  assert.ok(ADVISOR_BOOST_CATEGORIES.some((c) => c.id === 'elektro'));
+  assert.match(QUICK_HANDOFF_COPY.title, /Verkäufer noch wissen/i);
+  assert.match(QUICK_HANDOFF_COPY.expandLabel, /Optional/i);
+  console.log('✓ Berater-Boost-Chips nach Kategorien');
 }
 
-function testHandoffChipPrefill() {
+function testAdvisorBoostView() {
   let session = createHappyPathSession('Autohaus Trinkle');
   session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
-  const prefilled = inferPrefilledHandoffChipIds(session);
-  assert.ok(prefilled.includes('twoChildren') || prefilled.includes('dog'), `Prefill: ${prefilled.join(', ')}`);
-  assert.ok(prefilled.some((id) => /budget|leasing|range|wallbox|fastCharge/i.test(id)) || prefilled.length > 0);
 
-  const visible = getVisibleHandoffCategories(session.needProfile);
-  assert.ok(visible.some((c) => c.id === 'elektro'), 'Elektro-Kategorie bei EV-Kontext');
+  const recognized = inferRecognizedBoostChipIds(session);
+  assert.ok(recognized.includes('budget400'), `Budget erkannt: ${recognized.join(', ')}`);
 
-  const onlyNew = filterNewHandoffChipIds(session, [...prefilled, 'commuter']);
-  assert.ok(onlyNew.includes('commuter'));
-  assert.ok(!onlyNew.some((id) => prefilled.includes(id)));
-  console.log('✓ Smarte Vorbelegung und keine doppelte Chip-Wahrheit');
+  const boost = buildAdvisorBoostView(session);
+  const dailyIds = boost.categories.find((c) => c.id === 'daily')?.chips.map((c) => c.id) ?? [];
+  assert.ok(!dailyIds.includes('budget400'));
+  assert.ok(boost.categories.some((c) => c.id === 'elektro'), 'Elektro-Kategorie bei EV');
+  assert.ok(boost.showSuggestions, 'Entdeckungs-Chips bei erkanntem Verständnis');
+  assert.ok(boost.suggestions.some((c) => c.id === 'seatHeating'));
+
+  const onlyNew = filterNewHandoffChipIds(session, [...recognized, 'seatHeating']);
+  assert.ok(onlyNew.includes('seatHeating'));
+  assert.ok(!onlyNew.some((id) => recognized.includes(id)));
+  console.log('✓ Erkannte Wünsche ausblenden, Entdeckungs-Chips anbieten');
+}
+
+function testTowbarBoostView() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Ich brauche einen Sportage mit Anhängerkupplung.');
+
+  const recognized = inferRecognizedBoostChipIds(session);
+  assert.ok(recognized.includes('towbar'));
+
+  const boost = buildAdvisorBoostView(session);
+  const dailyIds = boost.categories.find((c) => c.id === 'daily')?.chips.map((c) => c.id) ?? [];
+  assert.ok(!dailyIds.includes('towbar'), 'Anhängerkupplung nicht doppelt anbieten');
+  console.log('✓ Anhängerkupplung wird nicht erneut als Chip angeboten');
 }
 
 function testAdvisorOpeningPrompt() {
@@ -163,6 +179,7 @@ function testAdvisorOpeningPrompt() {
   assert.match(opening.optionalNote, /direkt kontaktieren/i);
   const handoff = buildAdvisorContactPrompt(4, 'handoff');
   assert.match(handoff.hint, /gutes Bild/);
+  assert.match(handoff.hint, /übernehmen/i);
   console.log('✓ Berater-Copy für Empfang und Übergabe');
 }
 
@@ -170,7 +187,7 @@ function testAdvisorContactPrompt() {
   assert.equal(buildAdvisorContactPrompt(0), null);
   assert.match(buildAdvisorContactPrompt(2).hint, /einiges verstanden|nahtlos/i);
   assert.match(buildAdvisorContactPrompt(4).hint, /gutes Bild/);
-  assert.match(buildAdvisorContactPrompt(7).hint, /sehr gut verstanden|übernehmen/i);
+  assert.match(buildAdvisorContactPrompt(7).hint, /übernehmen/i);
   console.log('✓ Berater-Kontakt-Copy nach Verständnisstärke');
 }
 
@@ -190,8 +207,9 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 }
 
 testHandoffView();
-testQuickHandoffChips();
-testHandoffChipPrefill();
+testAdvisorBoostChips();
+testAdvisorBoostView();
+testTowbarBoostView();
 testAdvisorOpeningPrompt();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();

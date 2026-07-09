@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   CONTACT_PREFERENCES,
   CONTACT_TIMING_OPTIONS,
   validateHandoffForm,
 } from '../../services/consultation/consultationOfferHandoff.js';
-import CleverHandoffEnrichment from './CleverHandoffEnrichment.jsx';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -16,10 +15,9 @@ const EMPTY_FORM = {
   contactTiming: 'this_week',
 };
 
-export default function CleverPersonalHandoff({ handoffView, session, onSubmit }) {
+export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const enrichmentRef = useRef({ selectedChipIds: [], freetext: '' });
 
   if (!handoffView) return null;
 
@@ -44,10 +42,7 @@ export default function CleverPersonalHandoff({ handoffView, session, onSubmit }
       setErrors(result.errors);
       return;
     }
-    onSubmit?.({
-      ...form,
-      enrichment: enrichmentRef.current,
-    });
+    onSubmit?.(form);
   }
 
   return (
@@ -183,13 +178,6 @@ export default function CleverPersonalHandoff({ handoffView, session, onSubmit }
             ))}
           </div>
         </div>
-
-        <CleverHandoffEnrichment
-          session={session}
-          onChange={(enrichment) => {
-            enrichmentRef.current = enrichment;
-          }}
-        />
 
         <button type="submit" className="cc-offer-handoff__cta">
           Persönliche Beratung anfordern

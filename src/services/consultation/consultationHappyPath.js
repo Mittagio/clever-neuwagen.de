@@ -70,7 +70,7 @@ export const TURN_TYPE = {
 };
 
 export const UNDERSTANDING_MIRROR_COPY = {
-  lead: 'Ich glaube, ich habe bereits ein gutes Bild Ihres Wunsches:',
+  lead: 'Ich glaube, ich habe bereits ein gutes Bild Ihrer Wünsche:',
 };
 
 /** Warme Clever-Formulierungen – Neugier nach Konsequenzen, nicht nach Datenfeldern. */
@@ -1222,8 +1222,9 @@ export {
   buildPersonalHandoffView,
   buildAdvisorContactPrompt,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
-  QUICK_HANDOFF_CATEGORIES,
   QUICK_HANDOFF_COPY,
+  buildAdvisorBoostView,
+  inferRecognizedBoostChipIds,
   countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,
   validateHandoffForm,

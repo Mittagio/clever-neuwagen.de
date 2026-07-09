@@ -854,6 +854,27 @@
   color: var(--cc-text);
 }
 
+.cc-advisor-contact__quick-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+}
+
+.cc-advisor-contact__quick-intro {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--cc-muted);
+}
+
+.cc-advisor-contact__quick-group--suggestions .cc-advisor-contact__quick-group-label {
+  color: var(--cc-muted);
+  font-weight: 500;
+}
+
 .cc-advisor-contact__quick-subtitle {
   margin: 0 0 12px;
   font-size: 0.75rem;
@@ -1584,6 +1605,52 @@
   margin: -6px 0 0;
   font-size: 0.875rem;
   color: var(--cc-muted);
+}
+
+.cc-offer-handoff__enrichment-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-offer-handoff__enrichment-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e8e6e2;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--cc-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cc-offer-handoff__enrichment-chip:hover {
+  border-color: #d1d5db;
+  background: #faf9f7;
+}
+
+.cc-offer-handoff__enrichment-chip--selected {
+  border-color: var(--cc-accent);
+  background: var(--cc-chip-bg);
+  font-weight: 500;
+}
+
+.cc-offer-handoff__enrichment-chip-plus {
+  flex-shrink: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cc-muted);
+}
+
+.cc-offer-handoff__enrichment-note {
+  margin-top: 4px;
 }
 
 .cc-offer-handoff__enrichment-group {

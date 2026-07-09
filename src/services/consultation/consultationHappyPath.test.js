@@ -199,13 +199,13 @@ function testQuickHandoffEnrichment() {
   session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
 
   const enriched = applyQuickHandoffEnrichment(session, {
-    selectedChipIds: ['towbar', 'commuter'],
+    selectedChipIds: ['horseTrailer'],
     freetext: 'Hund fährt mit.',
   });
 
   assert.ok(
-    enriched.notepadLabels.some((l) => /anhäng|ahk/i.test(l)),
-    `AHK-Label fehlt: ${enriched.notepadLabels.join(', ')}`,
+    enriched.notepadLabels.some((l) => /pferde/i.test(l)),
+    `Pferdeanhänger fehlt: ${enriched.notepadLabels.join(', ')}`,
   );
   assert.ok(
     enriched.turns.some((t) => t.type === TURN_TYPE.CUSTOMER && /Hund/i.test(t.text)),

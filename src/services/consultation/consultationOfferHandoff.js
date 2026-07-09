@@ -14,7 +14,7 @@ import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
 import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 import { mergeNeedProfileIntoLead } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
-import { getFuelCategory, isElectricOrPhevProfile } from './conversationPlanner.js';
+import { isElectricOrPhevProfile } from './conversationPlanner.js';
 
 export const OFFER_CONVERSATION_PHASE = {
   OFFER_HANDOFF: 'offer_handoff',
@@ -149,8 +149,7 @@ export function buildAdvisorContactPrompt(labelCount = 0, variant = 'engaged') {
       level: 'handoff',
       hint:
         'Wir haben bereits ein gutes Bild Ihres Wunsches.\n\n'
-        + 'Ihr Berater kann direkt ins Gespräch einsteigen '
-        + 'und muss nicht bei null beginnen.',
+        + 'Ihr Berater kann direkt übernehmen — ohne von vorne anzufangen.',
     };
   }
 
@@ -174,98 +173,112 @@ export function buildAdvisorContactPrompt(labelCount = 0, variant = 'engaged') {
   return {
     level: 'strong',
     hint:
-      'Wir haben bereits sehr gut verstanden, wonach Sie suchen. '
-      + 'Ihr Berater kann direkt übernehmen – ohne von vorn anzufangen.',
+      'Wir haben bereits ein gutes Bild Ihres Wunsches.\n\n'
+      + 'Ihr Berater kann direkt übernehmen — ohne von vorne anzufangen.',
   };
 }
 
-/** Kontaktphase – optionale Chips, Texte für mergeTextIntoNeedProfile. */
+/** Optionaler Berater-Boost – Chips für mergeTextIntoNeedProfile. */
 export const QUICK_HANDOFF_ENRICHMENT_CHIPS = [
-  { id: 'twoChildren', label: '2 Kinder', text: 'Familie mit zwei Kindern.' },
-  { id: 'childSeats', label: 'Kindersitze', text: 'Kindersitze sind wichtig.' },
-  { id: 'dog', label: 'Hund', text: 'Hund fährt mit.' },
-  { id: 'stroller', label: 'Kinderwagen', text: 'Kinderwagen muss mit.' },
-  { id: 'bigSpace', label: 'viel Platz', text: 'Viel Platz im Auto ist wichtig.' },
-  { id: 'towbar', label: 'Anhängerkupplung', text: 'Anhängerkupplung ist wichtig.' },
-  { id: 'bigTrunk', label: 'großer Kofferraum', text: 'Großer Kofferraum ist wichtig.' },
-  { id: 'color', label: 'Wunschfarbe', text: 'Wunschfarbe ist wichtig.' },
-  { id: 'fastDelivery', label: 'schnell lieferbar', text: 'Schnelle Lieferung ist wichtig.' },
-  { id: 'tradeIn', label: 'Inzahlungnahme', text: 'Inzahlungnahme ist wichtig.' },
-  { id: 'leaseEnd', label: 'Leasing läuft aus', text: 'Leasing läuft bald aus.' },
+  { id: 'seatHeating', label: 'Sitzheizung', text: 'Sitzheizung ist wichtig.' },
+  { id: 'steeringWheelHeating', label: 'Lenkradheizung', text: 'Lenkradheizung ist wichtig.' },
+  { id: 'powerTailgate', label: 'Elektrische Heckklappe', text: 'Elektrische Heckklappe ist wichtig.' },
+  { id: 'panoramicRoof', label: 'Panoramadach', text: 'Panoramadach ist wichtig.' },
+  { id: 'seatVentilation', label: 'Sitzbelüftung', text: 'Sitzbelüftung ist wichtig.' },
+  { id: 'memorySeats', label: 'Memory-Sitze', text: 'Memory-Sitze sind wichtig.' },
+  { id: 'ledLight', label: 'LED-Licht', text: 'LED-Licht ist wichtig.' },
+  { id: 'matrixLed', label: 'Matrix-LED', text: 'Matrix-LED ist wichtig.' },
+  { id: 'frontParkingSensors', label: 'Parksensoren vorne', text: 'Parksensoren vorne sind wichtig.' },
   { id: 'rearCamera', label: 'Rückfahrkamera', text: 'Rückfahrkamera ist wichtig.' },
-  { id: 'frontSensors', label: 'Parksensoren vorne', text: 'Parksensoren vorne sind wichtig.' },
   { id: 'camera360', label: '360° Kamera', text: '360° Kamera ist wichtig.' },
   { id: 'hud', label: 'Head-up-Display', text: 'Head-up-Display ist wichtig.' },
   { id: 'navi', label: 'Navi', text: 'Navigation ist wichtig.' },
-  { id: 'powerTailgate', label: 'elektrische Heckklappe', text: 'Elektrische Heckklappe ist wichtig.' },
-  { id: 'fastCharge', label: 'schnelle Ladezeit', text: 'Schnelle Ladezeit ist wichtig.' },
-  { id: 'wallbox', label: 'Wallbox vorhanden', text: 'Wallbox zu Hause ist vorhanden.' },
-  { id: 'publicCharging', label: 'öffentlich laden', text: 'Öffentliches Laden ist wichtig.' },
-  { id: 'v2l', label: 'V2L', text: 'Vehicle-to-Load ist wichtig.' },
+  { id: 'appleCarPlay', label: 'Apple CarPlay', text: 'Apple CarPlay ist wichtig.' },
+  { id: 'androidAuto', label: 'Android Auto', text: 'Android Auto ist wichtig.' },
+  { id: 'fastCharging', label: 'Schnelles Laden', text: 'Schnelles Laden ist wichtig.' },
   { id: 'heatPump', label: 'Wärmepumpe', text: 'Wärmepumpe ist wichtig.' },
-  { id: 'range', label: 'Reichweite wichtig', text: 'Große Reichweite ist wichtig.' },
+  { id: 'v2l', label: 'V2L', text: 'Vehicle-to-Load ist wichtig.' },
+  { id: 'rangeImportant', label: 'Reichweite wichtig', text: 'Große Reichweite ist wichtig.' },
+  { id: 'wallboxAvailable', label: 'Wallbox vorhanden', text: 'Wallbox zu Hause ist vorhanden.' },
+  { id: 'publicCharging', label: 'Öffentlich laden', text: 'Öffentliches Laden ist wichtig.' },
+  { id: 'towbar', label: 'Anhängerkupplung', text: 'Anhängerkupplung ist wichtig.' },
+  { id: 'bigTrunk', label: 'Großer Kofferraum', text: 'Großer Kofferraum ist wichtig.' },
+  { id: 'dog', label: 'Hund', text: 'Hund fährt mit.' },
+  { id: 'stroller', label: 'Kinderwagen', text: 'Kinderwagen muss mit.' },
+  { id: 'colorWish', label: 'Wunschfarbe', text: 'Wunschfarbe ist wichtig.' },
+  { id: 'fastDelivery', label: 'Schnell lieferbar', text: 'Schnelle Lieferung ist wichtig.' },
+  { id: 'bikeRack', label: 'Fahrradträger', text: 'Fahrradträger ist wichtig.' },
+  { id: 'roofBox', label: 'Dachbox', text: 'Dachbox ist wichtig.' },
+  { id: 'horseTrailer', label: 'Pferdeanhänger', text: 'Pferdeanhänger muss gezogen werden.' },
+  { id: 'tradeIn', label: 'Inzahlungnahme', text: 'Inzahlungnahme ist wichtig.' },
+  { id: 'leaseEnding', label: 'Leasing läuft aus', text: 'Leasing läuft bald aus.' },
+  { id: 'residualValueTakeover', label: 'Restwertübernahme', text: 'Restwertübernahme ist wichtig.' },
+  { id: 'rateImportant', label: 'Rate wichtig', text: 'Die monatliche Rate ist wichtig.' },
+  { id: 'noDownPayment', label: 'Ohne Anzahlung', text: 'Ohne Anzahlung bevorzugt.' },
+  { id: 'downPaymentPossible', label: 'Anzahlung möglich', text: 'Anzahlung ist möglich.' },
   { id: 'budget300', label: 'bis 300 €/Monat', text: 'Budget bis 300 Euro im Monat.' },
   { id: 'budget400', label: 'bis 400 €/Monat', text: 'Budget bis 400 Euro im Monat.' },
   { id: 'budget500', label: 'bis 500 €/Monat', text: 'Budget bis 500 Euro im Monat.' },
-  { id: 'downPayment', label: 'Anzahlung möglich', text: 'Anzahlung ist möglich.' },
-  { id: 'noDownPayment', label: 'ohne Anzahlung', text: 'Ohne Anzahlung bevorzugt.' },
-  { id: 'leasing', label: 'Leasing', text: 'Leasing ist bevorzugt.' },
-  { id: 'financing', label: 'Finanzierung', text: 'Finanzierung ist bevorzugt.' },
-  { id: 'caravan', label: 'Wohnwagen', text: 'Wohnwagen ist wichtig.' },
-  { id: 'roofTent', label: 'Dachzelt', text: 'Dachzelt ist wichtig.' },
-  { id: 'bikeRack', label: 'Fahrradträger', text: 'Fahrradträger ist wichtig.' },
-  { id: 'camping', label: 'Camping', text: 'Camping ist wichtig.' },
-  { id: 'ski', label: 'Ski', text: 'Ski-Transport ist wichtig.' },
-  { id: 'commuter', label: 'Pendler', text: 'Pendeln ist wichtig.' },
+  { id: 'budget600', label: 'bis 600 €/Monat', text: 'Budget bis 600 Euro im Monat.' },
 ];
 
-export const QUICK_HANDOFF_CATEGORIES = [
+export const ADVISOR_BOOST_CATEGORIES = [
   {
-    id: 'family',
-    label: 'Familie',
-    icon: '👨‍👩‍👧',
-    chipIds: ['twoChildren', 'childSeats', 'dog', 'stroller', 'bigSpace'],
-  },
-  {
-    id: 'car',
-    label: 'Auto',
-    icon: '🚗',
-    chipIds: ['towbar', 'bigTrunk', 'color', 'fastDelivery', 'tradeIn', 'leaseEnd'],
+    id: 'comfort',
+    label: 'Komfort',
+    chipIds: ['seatHeating', 'steeringWheelHeating', 'powerTailgate', 'panoramicRoof', 'seatVentilation', 'memorySeats'],
   },
   {
     id: 'tech',
     label: 'Technik',
-    icon: '⚙️',
-    chipIds: ['rearCamera', 'frontSensors', 'camera360', 'hud', 'navi', 'powerTailgate'],
+    chipIds: ['ledLight', 'matrixLed', 'frontParkingSensors', 'rearCamera', 'camera360', 'hud', 'navi', 'appleCarPlay', 'androidAuto'],
   },
   {
     id: 'elektro',
     label: 'Elektro',
-    icon: '🔌',
-    chipIds: ['fastCharge', 'wallbox', 'publicCharging', 'v2l', 'heatPump', 'range'],
-    requiresElektro: true,
+    requiresElectric: true,
+    chipIds: ['fastCharging', 'heatPump', 'v2l', 'rangeImportant', 'wallboxAvailable', 'publicCharging'],
   },
   {
-    id: 'budget',
-    label: 'Budget',
-    icon: '💶',
-    chipIds: ['budget300', 'budget400', 'budget500', 'downPayment', 'noDownPayment', 'leasing', 'financing'],
+    id: 'daily',
+    label: 'Alltag',
+    chipIds: ['towbar', 'bigTrunk', 'dog', 'stroller', 'colorWish', 'fastDelivery', 'bikeRack', 'roofBox', 'horseTrailer'],
   },
   {
-    id: 'hobby',
-    label: 'Hobby / Alltag',
-    icon: '🏕️',
-    chipIds: ['caravan', 'roofTent', 'bikeRack', 'camping', 'ski', 'commuter'],
+    id: 'offer',
+    label: 'Angebot',
+    chipIds: [
+      'tradeIn', 'leaseEnding', 'residualValueTakeover', 'rateImportant',
+      'noDownPayment', 'downPaymentPossible',
+      'budget300', 'budget400', 'budget500', 'budget600',
+    ],
   },
 ];
 
+export const ADVISOR_BOOST_LEASING_BUDGET_CHIP_IDS = [
+  'budget300', 'budget400', 'budget500', 'budget600',
+];
+
+export const ADVISOR_BOOST_COMPLEMENTARY_CHIP_IDS = [
+  'seatHeating', 'heatPump', 'v2l', 'hud', 'bigTrunk', 'stroller',
+  'steeringWheelHeating', 'frontParkingSensors', 'rearCamera', 'panoramicRoof',
+];
+
 export const QUICK_HANDOFF_COPY = {
-  sectionLabel: 'Optional – keine Pflicht',
-  title: 'Falls Sie möchten: Was sollte Ihr Berater noch wissen?',
+  expandLabel: 'Optional ▾',
+  collapseLabel: 'Optional ▴',
+  sectionLabel: 'Optional — keine Pflicht',
+  title: 'Was sollte Ihr Verkäufer noch wissen?',
   subtitle: 'Keine Pflicht.',
+  intro: 'Wenn Sie möchten, können Sie Ihrem Verkäufer noch ein paar Hinweise mitgeben.',
+  suggestionsLabel: 'Vielleicht noch interessant:',
+  freetextLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
   freetextPlaceholder:
-    'Zum Beispiel: Mein Kuga läuft im November aus, meine Frau fährt überwiegend, '
-    + 'Lieferzeit ist wichtiger als Rate.',
+    'Mein Kuga läuft im November aus.\n'
+    + 'Meine Frau fährt überwiegend.\n'
+    + 'Lieferzeit ist wichtiger als die Rate.\n'
+    + 'Ein Pferdeanhänger muss gezogen werden.\n'
+    + 'Sitzheizung und PDC vorne wären schön.',
 };
 
 const QUICK_HANDOFF_CHIP_MAP = Object.fromEntries(
@@ -284,90 +297,141 @@ function labelBlob(session = {}) {
   ].join(' ').toLowerCase();
 }
 
+function isLeasingContext(needProfile = {}, blob = '') {
+  return needProfile.budget?.paymentType === 'leasing'
+    || /\bleasing\b/i.test(blob)
+    || /\d+\s*€?\s*(im monat|\/monat|pro monat)/i.test(blob);
+}
+
 /**
- * Smarte Vorbelegung aus bestehendem needProfile – keine zweite Wahrheit.
+ * Bereits erkannte Wünsche – diese Chips werden nicht erneut angeboten.
  * @param {object} session
  */
-export function inferPrefilledHandoffChipIds(session = {}) {
+export function inferRecognizedBoostChipIds(session = {}) {
   const needProfile = session.needProfile ?? {};
   const blob = labelBlob(session);
   const ids = new Set();
 
-  if (needProfile.children === 2 || /\b2 kinder\b/i.test(blob)) ids.add('twoChildren');
-  if (/kindersitz/i.test(blob)) ids.add('childSeats');
-  if (needProfile.dog || /\bhund\b/i.test(blob)) ids.add('dog');
-  if (/kinderwagen/i.test(blob)) ids.add('stroller');
-  if (/viel platz|großer kofferraum|grosser kofferraum/i.test(blob)) {
-    ids.add('bigSpace');
-    ids.add('bigTrunk');
-  }
+  if (/sitzheiz/i.test(blob)) ids.add('seatHeating');
+  if (/lenkradheiz/i.test(blob)) ids.add('steeringWheelHeating');
+  if (/heckklappe/i.test(blob)) ids.add('powerTailgate');
+  if (/panorama/i.test(blob)) ids.add('panoramicRoof');
+  if (/sitzbelüft|sitzbelueft/i.test(blob)) ids.add('seatVentilation');
+  if (/memory/i.test(blob)) ids.add('memorySeats');
 
-  if (needProfile.towing || /anhäng|ahk|kupplung|anhaenger/i.test(blob)) ids.add('towbar');
-  if (needProfile.colorHint || /\bfarbe\b/i.test(blob)) ids.add('color');
-  if (/liefer|schnell liefer/i.test(blob)) ids.add('fastDelivery');
-  if (/inzahlung|restwert/i.test(blob)) ids.add('tradeIn');
-  if (/leasing|fahrzeugwechsel|läuft aus|laeuft aus/i.test(blob)) {
-    ids.add('leaseEnd');
-    ids.add('leasing');
-  }
-
+  if (/\bled\b/i.test(blob) && !/matrix/i.test(blob)) ids.add('ledLight');
+  if (/matrix.?led/i.test(blob)) ids.add('matrixLed');
+  if (/parksensor|pdc|einpark/i.test(blob)) ids.add('frontParkingSensors');
   if (/rückfahr|rueckfahr/i.test(blob)) ids.add('rearCamera');
-  if (/parksensor|einpark/i.test(blob)) ids.add('frontSensors');
-  if (/360|kamera/i.test(blob)) ids.add('camera360');
+  if (/360|umgebung/i.test(blob)) ids.add('camera360');
   if (/head-up|hud/i.test(blob)) ids.add('hud');
   if (/navi|navigation/i.test(blob)) ids.add('navi');
-  if (/heckklappe/i.test(blob)) ids.add('powerTailgate');
+  if (/carplay/i.test(blob)) ids.add('appleCarPlay');
+  if (/android auto/i.test(blob)) ids.add('androidAuto');
 
-  if (isElectricOrPhevProfile(needProfile)) {
-    if (/schnell.*lad|dc.?lad/i.test(blob)) ids.add('fastCharge');
-    if (needProfile.chargingAtHome === 'yes' || /wallbox|laden zuhause/i.test(blob)) {
-      ids.add('wallbox');
-    }
-    if (/öffentlich|oeffentlich.*lad/i.test(blob)) ids.add('publicCharging');
-    if (/\bv2l\b/i.test(blob)) ids.add('v2l');
-    if (/wärme|waerme|pumpe/i.test(blob)) ids.add('heatPump');
-    if (/reichweite/i.test(blob) || needProfile.priorities?.includes('range')) ids.add('range');
+  if (/schnell.*lad|dc.?lad/i.test(blob)) ids.add('fastCharging');
+  if (/wärme|waerme|pumpe/i.test(blob) || needProfile.priorities?.includes('heatPump')) {
+    ids.add('heatPump');
   }
+  if (/\bv2l\b/i.test(blob)) ids.add('v2l');
+  if (/reichweite/i.test(blob) || needProfile.priorities?.includes('range')) ids.add('rangeImportant');
+  if (needProfile.chargingAtHome === 'yes' || /wallbox|laden zuhause/i.test(blob)) {
+    ids.add('wallboxAvailable');
+  }
+  if (/öffentlich|oeffentlich.*lad/i.test(blob)) ids.add('publicCharging');
+
+  if (needProfile.towing || /anhäng|ahk|kupplung|anhaenger/i.test(blob)) ids.add('towbar');
+  if (/großer kofferraum|grosser kofferraum|viel platz/i.test(blob)) ids.add('bigTrunk');
+  if (needProfile.dog || /\bhund\b/i.test(blob)) ids.add('dog');
+  if (/kinderwagen/i.test(blob)) ids.add('stroller');
+  if (needProfile.colorHint || /\bfarbe\b|wunschfarbe/i.test(blob)) ids.add('colorWish');
+  if (/liefer|schnell liefer|schnell verfüg|schnell verfueg/i.test(blob)) ids.add('fastDelivery');
+  if (/fahrrad/i.test(blob)) ids.add('bikeRack');
+  if (/dachbox/i.test(blob)) ids.add('roofBox');
+  if (/pferde/i.test(blob)) ids.add('horseTrailer');
+
+  if (/inzahlung|restwert/i.test(blob)) ids.add('tradeIn');
+  if (/leasing.*aus|läuft aus|laeuft aus|fahrzeugwechsel/i.test(blob)) ids.add('leaseEnding');
+  if (/restwertübernahme|restwertuebernahme/i.test(blob)) ids.add('residualValueTakeover');
+  if (/rate wichtig|monatliche rate/i.test(blob) || needProfile.priorities?.includes('rate')) {
+    ids.add('rateImportant');
+  }
+  if (/ohne anzahlung/i.test(blob)) ids.add('noDownPayment');
+  if (/anzahlung/i.test(blob)) ids.add('downPaymentPossible');
 
   const rate = needProfile.budget?.maxMonthlyRate;
   if (rate) {
     if (rate <= 300) ids.add('budget300');
     else if (rate <= 400) ids.add('budget400');
     else if (rate <= 500) ids.add('budget500');
-    else ids.add('budget500');
+    else ids.add('budget600');
   }
-  if (needProfile.budget?.paymentType === 'leasing' || /leasing/i.test(blob)) ids.add('leasing');
-  if (needProfile.budget?.paymentType === 'finance' || /finanzierung/i.test(blob)) ids.add('financing');
-  if (/anzahlung/i.test(blob)) ids.add('downPayment');
-  if (/ohne anzahlung/i.test(blob)) ids.add('noDownPayment');
-
-  if (/wohnwagen|caravan/i.test(blob)) ids.add('caravan');
-  if (/dachzelt/i.test(blob)) ids.add('roofTent');
-  if (/fahrrad/i.test(blob)) ids.add('bikeRack');
-  if (/camping/i.test(blob)) ids.add('camping');
-  if (/ski/i.test(blob)) ids.add('ski');
-  if (/pendl/i.test(blob)) ids.add('commuter');
 
   return [...ids];
 }
+
+/** @deprecated Alias – erkannte Chips, keine Vorbelegung. */
+export const inferPrefilledHandoffChipIds = inferRecognizedBoostChipIds;
 
 /**
  * Nur neue Chip-Auswahl mergen – bereits verstandenes nicht doppelt schreiben.
  */
 export function filterNewHandoffChipIds(session = {}, selectedChipIds = []) {
-  const understood = new Set(inferPrefilledHandoffChipIds(session));
+  const understood = new Set(inferRecognizedBoostChipIds(session));
   return selectedChipIds.filter((id) => !understood.has(id));
 }
 
 /**
- * Kategorien für Kontaktphase – Elektro nur bei EV/Hybrid-Kontext.
+ * Kategorien und Entdeckungs-Chips für den optionalen Berater-Boost.
  */
+export function buildAdvisorBoostView(session = {}) {
+  const needProfile = session.needProfile ?? {};
+  const blob = labelBlob(session);
+  const recognized = new Set(inferRecognizedBoostChipIds(session));
+  const isElectric = isElectricOrPhevProfile(needProfile);
+  const isLeasing = isLeasingContext(needProfile, blob);
+
+  const categories = ADVISOR_BOOST_CATEGORIES
+    .filter((category) => !category.requiresElectric || isElectric)
+    .map((category) => ({
+      id: category.id,
+      label: category.label,
+      chips: category.chipIds
+        .filter((chipId) => {
+          if (!isLeasing && ADVISOR_BOOST_LEASING_BUDGET_CHIP_IDS.includes(chipId)) return false;
+          return !recognized.has(chipId);
+        })
+        .map((chipId) => getQuickHandoffChip(chipId))
+        .filter(Boolean),
+    }))
+    .filter((category) => category.chips.length > 0);
+
+  const suggestions = ADVISOR_BOOST_COMPLEMENTARY_CHIP_IDS
+    .filter((chipId) => !recognized.has(chipId))
+    .map((chipId) => getQuickHandoffChip(chipId))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  return {
+    categories,
+    suggestions,
+    showSuggestions: recognized.size > 0 && suggestions.length > 0,
+    copy: QUICK_HANDOFF_COPY,
+  };
+}
+
+/** @deprecated Nutze buildAdvisorBoostView. */
+export function getVisibleHandoffChips(needProfile = {}) {
+  return buildAdvisorBoostView({ needProfile }).categories.flatMap((c) => c.chips);
+}
+
+/** @deprecated */
 export function getVisibleHandoffCategories(needProfile = {}) {
-  const showElektro = isElectricOrPhevProfile(needProfile)
-    || getFuelCategory(needProfile) === 'electric';
-  return QUICK_HANDOFF_CATEGORIES.filter(
-    (category) => !category.requiresElektro || showElektro,
-  );
+  return buildAdvisorBoostView({ needProfile }).categories.map((category) => ({
+    id: category.id,
+    label: category.label,
+    chipIds: category.chips.map((chip) => chip.id),
+  }));
 }
 
 export function countSessionUnderstandingLabels(session = {}) {
