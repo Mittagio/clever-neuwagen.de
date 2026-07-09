@@ -7,6 +7,7 @@ import {
   getFuelCategory,
   isCombustionProfile,
   isElectricOrPhevProfile,
+  planNextQuestion,
 } from './conversationPlanner.js';
 import { isMinimalVehicleWish } from './needProfileService.js';
 import {
@@ -38,6 +39,20 @@ const BODY_LABELS = {
 };
 
 export const NEED_DIRECTION_QUESTION_ID = 'needDirection';
+export const SELLER_READINESS_QUESTION_ID = 'sellerReadiness';
+
+/** Nur Einordnung – nicht wesentlich für den Verkäufer-Einstieg. */
+const SELLER_OPTIMIZATION_QUESTION_IDS = new Set([
+  'longDistance',
+  'chargingAtHome',
+  'rangeImportance',
+  'trunkImportance',
+  'evModelPriority',
+  'comfortVsSpace',
+  'heatPump',
+  'v2l',
+  'hud',
+]);
 
 function modelDisplayLabel(needProfile = {}) {
   const key = needProfile.selectedModelKey ?? needProfile.modelHint;
@@ -127,6 +142,61 @@ export function hasCompleteVehicleBrief(needProfile = {}) {
   const hasConfig = Boolean(needProfile.drive && needProfile.transmission);
 
   return Boolean(anchor && fuelKnown && hasBudget && hasConfig);
+}
+
+/**
+ * Fehlt dem Verkäufer noch eine wirklich wesentliche Lücke?
+ * @param {object} needProfile
+ * @param {object} [answers]
+ */
+export function hasEssentialSellerGaps(needProfile = {}, answers = {}) {
+  const pending = planNextQuestion({ needProfile, answers });
+  const questionId = pending.question?.id;
+  if (!questionId) return false;
+  if (!questionImprovesUnderstanding(questionId, needProfile, answers)) return false;
+  if (hasRichNeedPicture(needProfile) && SELLER_OPTIMIZATION_QUESTION_IDS.has(questionId)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Nach ausreichend Verständnis: nicht optimieren, sondern Verkäufer-Bereitschaft klären.
+ * @param {object} needProfile
+ * @param {object} [consultationProfile]
+ */
+export function shouldOfferSellerReadinessGate(
+  needProfile = {},
+  consultationProfile = {},
+) {
+  const answers = consultationProfile?.answers ?? {};
+  if (consultationProfile?.sellerReady) return false;
+  if (answers[SELLER_READINESS_QUESTION_ID]) return false;
+  if (!hasRichNeedPicture(needProfile)) return false;
+  if (hasEssentialSellerGaps(needProfile, answers)) return false;
+  return true;
+}
+
+/**
+ * @param {object} [needProfile]
+ */
+export function buildSellerReadinessQuestion(needProfile = {}) {
+  const modelLabel = modelDisplayLabel(needProfile);
+  const intro = modelLabel
+    ? `Für Ihren Berater zum ${modelLabel}:`
+    : 'Für Ihren Berater:';
+
+  return {
+    id: SELLER_READINESS_QUESTION_ID,
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    prompt:
+      `${intro} Fehlt Ihrem Berater noch etwas Wesentliches – oder können wir so weitergeben?`,
+    optionsHint: 'Falls hilfreich — ganz ohne Pflicht:',
+    options: [
+      { id: 'seller_ready', label: 'Das reicht – Berater kann einsteigen' },
+      { id: 'still_missing', label: 'Ja, noch etwas Wichtiges' },
+    ],
+  };
 }
 
 /**

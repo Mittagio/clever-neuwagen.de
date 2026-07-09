@@ -9,6 +9,7 @@ import {
   OFFER_TURN_TYPE,
   beginOfferHandoff,
   buildAdvisorContactPrompt,
+  QUICK_HANDOFF_CATEGORIES,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
   buildPersonalHandoffView,
   countSessionUnderstandingLabels,
@@ -127,10 +128,20 @@ function testValidation() {
 }
 
 function testQuickHandoffChips() {
-  assert.equal(QUICK_HANDOFF_ENRICHMENT_CHIPS.length, 8);
-  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.some((c) => c.id === 'towbar'));
+  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 8);
+  assert.equal(QUICK_HANDOFF_CATEGORIES.length, 4);
+  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'family'));
   assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.every((c) => c.text));
-  console.log('✓ Schnellaufnahme-Chips mit Parser-Texten');
+  console.log('✓ Schnellaufnahme-Chips nach Kategorien');
+}
+
+function testAdvisorOpeningPrompt() {
+  const opening = buildAdvisorContactPrompt(0, 'opening');
+  assert.equal(opening.level, 'opening');
+  assert.match(opening.optionalNote, /direkt kontaktieren/i);
+  const handoff = buildAdvisorContactPrompt(4, 'handoff');
+  assert.match(handoff.hint, /gutes Bild/);
+  console.log('✓ Berater-Copy für Empfang und Übergabe');
 }
 
 function testAdvisorContactPrompt() {
@@ -158,6 +169,7 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 
 testHandoffView();
 testQuickHandoffChips();
+testAdvisorOpeningPrompt();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();
 testBeginOfferHandoff();

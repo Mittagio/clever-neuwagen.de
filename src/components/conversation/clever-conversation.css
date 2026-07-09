@@ -161,19 +161,67 @@
   color: var(--cc-text);
 }
 
-.cc-opening__intro {
-  margin: 0 0 12px;
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--cc-muted);
-}
-
 .cc-opening__invitation {
-  margin: 0;
+  margin: 0 0 16px;
   font-size: 1.125rem;
   line-height: 1.55;
   font-weight: 450;
   color: var(--cc-accent);
+}
+
+.cc-opening__intro {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--cc-muted);
+}
+
+/* ── WOW-Moment: Verständnis spiegeln ── */
+
+.cc-understanding-mirror {
+  max-width: var(--cc-max-width);
+  margin: 28px auto 8px;
+  padding: 0 4px;
+}
+
+.cc-understanding-mirror__brand {
+  margin: 0 0 12px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+}
+
+.cc-understanding-mirror__lead {
+  margin: 0 0 16px;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--cc-text);
+}
+
+.cc-understanding-mirror__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-understanding-mirror__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--cc-text);
+}
+
+.cc-understanding-mirror__check {
+  color: var(--cc-check);
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .cc-opening__examples {
@@ -686,6 +734,41 @@
   margin: 0 auto;
   padding: 0 20px 10px;
   pointer-events: none;
+}
+
+.cc-advisor-contact__opening-or {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  color: var(--cc-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.cc-advisor-contact__optional-note {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--cc-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.cc-advisor-contact--opening .cc-advisor-contact__cta {
+  margin-top: 0;
+}
+
+.cc-advisor-contact__quick-group {
+  margin-bottom: 14px;
+}
+
+.cc-advisor-contact__quick-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cc-text);
 }
 
 .cc-advisor-contact__hint {

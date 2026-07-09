@@ -14,7 +14,6 @@ import {
   getOpeningCopy,
   getConversationInputPlaceholder,
   getVehicleInputPlaceholder,
-  HAPPY_PATH_EXAMPLE_MESSAGE,
   isInOfferWorld,
   isInVehicleWorld,
   isInputEnabled,
@@ -39,6 +38,7 @@ import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.j
 import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
+import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
 import { countSessionUnderstandingLabels } from '../../services/consultation/consultationOfferHandoff.js';
 import {
   isSpeechRecognitionSupported,
@@ -55,6 +55,7 @@ const TURN_REVEAL_DELAY = {
   [TURN_TYPE.CUSTOMER]: 240,
   [TURN_TYPE.CLEVER]: 520,
   [TURN_TYPE.THINKING]: 320,
+  [TURN_TYPE.UNDERSTANDING_MIRROR]: 440,
   [TURN_TYPE.RECOMMENDATION]: 400,
   [TURN_TYPE.HANDOFF]: 420,
   [VEHICLE_TURN_TYPE.CLEVER_REFLECTION]: 480,
@@ -180,11 +181,6 @@ export default function CleverConversationExperience({
     handleSend(inputValue);
   };
 
-  const handleExample = () => {
-    if (session.phase !== CONVERSATION_PHASE.OPENING) return;
-    setSession((prev) => submitOpeningMessage(prev, HAPPY_PATH_EXAMPLE_MESSAGE));
-  };
-
   const handleOptionSelect = (questionId, answerId) => {
     setSession((prev) => {
       if (prev.pendingQuestion?.world === CLEVER_WORLD.VEHICLE_CONSULTATION) {
@@ -230,7 +226,7 @@ export default function CleverConversationExperience({
   const activeQuestionId = session.pendingQuestion?.id ?? null;
   const inputPlaceholder = inVehicleWorld && inputEnabled
     ? getVehicleInputPlaceholder(session)
-    : getConversationInputPlaceholder(session);
+    : (showOpening ? opening.placeholder : getConversationInputPlaceholder(session));
 
   const handleVoiceStart = useCallback(() => {
     if (!voiceSupported || !inputEnabled || voiceListening) return;
@@ -265,7 +261,10 @@ export default function CleverConversationExperience({
   }, [inputEnabled, inputValue, voiceListening, voiceSupported]);
 
   const understandingCount = countSessionUnderstandingLabels(session);
-  const showAdvisorContact = !inOfferWorld && understandingCount > 0;
+  const advisorVariant = session.phase === CONVERSATION_PHASE.HANDOFF
+    ? 'handoff'
+    : (showOpening ? 'opening' : 'engaged');
+  const showAdvisorContact = !inOfferWorld;
 
   const experienceClass = [
     'cc-experience',
@@ -302,23 +301,20 @@ export default function CleverConversationExperience({
             <h1 className="cc-opening__greeting">{opening.greeting}</h1>
             <p className="cc-opening__invitation">{opening.invitation}</p>
             <p className="cc-opening__intro">{opening.intro}</p>
-
-            <div className="cc-opening__examples">
-              <p className="cc-opening__examples-label">{opening.examplesLabel}</p>
-              <button
-                type="button"
-                className="cc-example-chip"
-                onClick={handleExample}
-              >
-                „{opening.exampleLabel}“
-              </button>
-            </div>
           </section>
         )}
 
         <div className="cc-transcript">
           {notingFlash && <CleverNotingFlash labels={notingFlash} />}
           {visibleTurns.map((turn) => {
+            if (turn.type === TURN_TYPE.UNDERSTANDING_MIRROR) {
+              return (
+                <CleverUnderstandingMoment
+                  key={turn.id}
+                  labels={turn.labels ?? []}
+                />
+              );
+            }
             if (turn.type === TURN_TYPE.VEHICLE_DIRECTIONS) {
               return (
                 <CleverVehicleDirections
@@ -383,6 +379,7 @@ export default function CleverConversationExperience({
       {showAdvisorContact && (
         <CleverAdvisorContactPrompt
           understandingCount={understandingCount}
+          variant={advisorVariant}
           onContact={handleDealerHandoff}
           onExpandedChange={setAdvisorQuickExpanded}
         />

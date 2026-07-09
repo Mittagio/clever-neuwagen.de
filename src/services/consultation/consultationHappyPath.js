@@ -29,8 +29,11 @@ import {
 } from './consultationEv3HappyPath.js';
 import {
   NEED_DIRECTION_QUESTION_ID,
+  SELLER_READINESS_QUESTION_ID,
   buildNeedDirectionQuestion,
+  buildSellerReadinessQuestion,
   shouldOfferDirectionChoice,
+  shouldOfferSellerReadinessGate,
 } from './needUnderstandingGate.js';
 import {
   buildVehicleDirectionsView,
@@ -57,31 +60,37 @@ export const TURN_TYPE = {
   CLEVER: 'clever',
   LEARNED: 'learned',
   THINKING: 'thinking',
+  UNDERSTANDING_MIRROR: 'understanding_mirror',
   RECOMMENDATION: 'recommendation',
   VEHICLE_DIRECTIONS: 'vehicle_directions',
   HANDOFF: 'handoff',
 };
 
-/** Warme Clever-Formulierungen – optional, nie als Pflichtfrage. */
+export const UNDERSTANDING_MIRROR_COPY = {
+  lead: 'Ich glaube, ich habe bereits ein gutes Bild Ihres Wunsches:',
+};
+
+/** Warme Clever-Formulierungen – Neugier nach Konsequenzen, nicht nach Datenfeldern. */
 export const WARM_QUESTION_PROMPTS = {
   longDistance:
-    'Das hilft bei der Einordnung noch etwas: Fahren Sie im Alltag eher kurze Strecken '
-    + '– oder auch regelmäßig längere, zum Beispiel in den Urlaub?',
-  chargingAtHome: 'Falls wichtig für Sie: Können Sie zu Hause laden – Garage oder Wallbox?',
+    'Dann wird Reichweite vermutlich wichtiger als im reinen Stadtverkehr. '
+    + 'Fahren Sie auch regelmäßig längere Strecken – zum Beispiel in den Urlaub?',
+  chargingAtHome:
+    'Wenn Sie zuhause laden könnten – Garage oder Wallbox – wäre das für Sie möglich?',
   fuel_type:
-    'Eine Sache würde mich noch interessieren: Haben Sie beim Antrieb schon einen Favoriten '
-    + '– Benzin, Hybrid oder Elektro?',
+    'Haben Sie beim Antrieb schon eine Richtung im Kopf – Benzin, Hybrid oder Elektro?',
   allradNeed:
-    'Falls wichtig für Sie: Brauchen Sie Allrad – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
+    'Dann könnte Allrad relevant werden – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
   comfortVsSpace:
-    'Das hilft bei der Einordnung noch etwas: Soll es eher möglichst komfortabel sein '
-    + '– oder ist Ihnen vor allem viel Platz und Anhängelast wichtig?',
-  primaryUsage: 'Falls hilfreich: Wofür soll das Auto hauptsächlich genutzt werden?',
-  evModelPriority: 'Falls wichtig für Sie: Ist eher viel Reichweite oder gute Ausstattung wichtig?',
+    'Dann spielen Platz und Alltag vermutlich eine größere Rolle – '
+    + 'oder ist Ihnen vor allem Komfort wichtig?',
+  primaryUsage:
+    'Dann interessiert mich: Wofür soll das Auto hauptsächlich im Alltag da sein?',
+  evModelPriority:
+    'Ist Ihnen dabei eher die Rate wichtiger oder eher die Ausstattung?',
   sportagePowertrain:
-    'Eine Sache würde mich noch interessieren: Kommt für Sie eher Benzin, Hybrid '
-    + 'oder Plug-in-Hybrid infrage?',
-  towingUsage: 'Falls wichtig für Sie: Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
+    'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
+  towingUsage: 'Was möchten Sie später ziehen – Fahrrad, Anhänger oder eher gelegentlich?',
   needDirection: null,
 };
 
@@ -195,7 +204,7 @@ const HAPPY_PATH_SEARCH_BUNDLE = {
 };
 
 function createConsultationProfile() {
-  return { answers: {} };
+  return { answers: {}, sellerReady: false };
 }
 
 function questionById(id) {
@@ -229,6 +238,7 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
     dealerPrepSummary: null,
     pendingQuestion: null,
     recommendation: null,
+    sellerReady: false,
     selectedModelKey: null,
     vehicleDirectionsView: null,
     vehicleDirectionReactions: {},
@@ -237,12 +247,13 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
 
 export function getOpeningCopy(dealerName = 'Autohaus') {
   return {
-    greeting: `Willkommen im ${dealerName}.`,
-    invitation: 'Erzählen Sie mir einfach, wonach Sie suchen.',
-    intro: 'Ich nehme Ihre Wünsche auf und bereite alles für Ihren persönlichen Berater vor.',
-    placeholder: 'Erzählen oder fragen Sie einfach …',
-    examplesLabel: 'So könnte ein Satz klingen',
-    exampleLabel: HAPPY_PATH_EXAMPLE_MESSAGE,
+    greeting: '👋 Willkommen bei Clever.',
+    invitation: 'Erzählen Sie einfach, wonach Sie suchen.',
+    intro: 'Sie können schreiben, sprechen oder direkt mit einem Berater starten.',
+    placeholder: 'Ich suche …',
+    advisorNote:
+      'Ihr Berater kann Sie auch direkt kontaktieren, '
+      + 'ohne dass Sie vorher etwas erzählen müssen.',
   };
 }
 
@@ -397,6 +408,13 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
     return null;
   }
 
+  if (questionId === SELLER_READINESS_QUESTION_ID) {
+    if (/noch|fehlt|wichtig|ja\b/.test(t) && !/reicht|einsteigen|passt|nein|nichts/.test(t)) {
+      return 'still_missing';
+    }
+    return 'seller_ready';
+  }
+
   return null;
 }
 
@@ -448,10 +466,35 @@ function buildAdvisorBridge(questionId) {
   return null;
 }
 
+function buildConsequenceIntro(needProfile = {}, question = {}) {
+  const labels = needProfile.understoodLabels ?? [];
+  const labelBlob = labels.join(' ').toLowerCase();
+
+  if (/kuga|ford/.test(labelBlob) && /fahrzeugwechsel|läuft|laeuft/.test(labelBlob)) {
+    return 'Dann spielt der Zeitpunkt des Fahrzeugwechsels wahrscheinlich eine größere Rolle.';
+  }
+  if ((needProfile.children || /kinder|familie/.test(labelBlob))
+    && (question.id === 'comfortVsSpace' || question.id === 'primaryUsage')) {
+    return 'Dann spielen Platz und Alltag vermutlich eine größere Rolle.';
+  }
+  if (getFuelCategory(needProfile) === 'electric' && question.id === 'longDistance') {
+    return 'Dann wird Reichweite vermutlich wichtiger als im reinen Stadtverkehr.';
+  }
+  if (/anhäng|ahk|kupplung|anhaenger/.test(labelBlob) && question.id === 'towingUsage') {
+    return 'Mit Anhängerkupplung im Blick:';
+  }
+  return null;
+}
+
 function buildContextualQuestionPrompt(needProfile = {}, question = {}) {
   const base = WARM_QUESTION_PROMPTS[question.id] ?? question.prompt ?? '';
+  const consequence = buildConsequenceIntro(needProfile, question);
   const ack = buildAcknowledgment(needProfile);
   const bridge = buildAdvisorBridge(question.id);
+
+  if (consequence) {
+    return `${consequence}\n\n${base}`;
+  }
 
   if (ack && bridge) {
     const modelLabel = needProfile.selectedModelKey
@@ -485,11 +528,105 @@ export function getHappyPathNextQuestion(needProfile, consultationProfile) {
  */
 export function resolveNextHappyPathQuestion(needProfile, consultationProfile) {
   const answers = consultationProfile?.answers ?? {};
+  if (consultationProfile?.sellerReady) return null;
+
+  if (shouldOfferSellerReadinessGate(needProfile, consultationProfile)) {
+    return buildSellerReadinessQuestion(needProfile);
+  }
+
   const catalogQuestion = getHappyPathNextQuestion(needProfile, consultationProfile);
   if (shouldOfferDirectionChoice(needProfile, catalogQuestion, answers)) {
     return buildNeedDirectionQuestion(needProfile);
   }
   return catalogQuestion;
+}
+
+function enterSellerHandoffState(session) {
+  if (session.phase === CONVERSATION_PHASE.HANDOFF && session.sellerReady) {
+    return session;
+  }
+  return {
+    ...session,
+    phase: CONVERSATION_PHASE.HANDOFF,
+    sellerReady: true,
+    consultationProfile: {
+      ...session.consultationProfile,
+      sellerReady: true,
+    },
+    pendingQuestion: null,
+    turns: [
+      ...session.turns,
+      {
+        type: TURN_TYPE.CLEVER,
+        id: `clever-seller-handoff-${Date.now()}`,
+        text: 'Perfekt. Ihr Berater kann direkt einsteigen – ohne bei null anzufangen.',
+      },
+    ],
+  };
+}
+
+function submitSellerReadinessAnswer(session, answerId, displayText) {
+  const consultationProfile = answerConsultationQuestion(
+    session.consultationProfile,
+    SELLER_READINESS_QUESTION_ID,
+    answerId,
+  );
+
+  let next = {
+    ...session,
+    consultationProfile: {
+      ...consultationProfile,
+      sellerReady: answerId === 'seller_ready',
+    },
+    sellerReady: answerId === 'seller_ready',
+    pendingQuestion: null,
+    turns: [
+      ...session.turns,
+      customerTurn(displayText),
+    ],
+  };
+
+  if (answerId === 'seller_ready') {
+    return enterSellerHandoffState(next);
+  }
+
+  return {
+    ...next,
+    phase: CONVERSATION_PHASE.CONVERSATION,
+    turns: [
+      ...next.turns,
+      cleverAckTurn('Alles klar — erzählen Sie einfach, was Ihrem Berater noch fehlt.'),
+    ],
+  };
+}
+
+function advanceAfterCustomerTurn(session, needProfile, consultationProfile, options = {}) {
+  const dismissedQuestionId = options.dismissedQuestionId ?? null;
+
+  if (consultationProfile?.sellerReady || session.sellerReady) {
+    return enterSellerHandoffState({
+      ...session,
+      needProfile,
+      consultationProfile,
+    });
+  }
+
+  const followUp = resolveNextHappyPathQuestion(needProfile, consultationProfile);
+  if (followUp && followUp.id !== dismissedQuestionId) {
+    let next = pushTurn(session, cleverQuestionTurn(followUp));
+    next = withPendingQuestion(next, followUp);
+    return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+  }
+
+  const readiness = evaluateRecommendationReadiness({
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+  });
+  if (readiness.ready) {
+    return startThinkingPhase(session);
+  }
+
+  return { ...session, phase: CONVERSATION_PHASE.CONVERSATION };
 }
 
 function cleverAckTurn(text) {
@@ -694,6 +831,14 @@ function warmOptionsForQuestion(question) {
   });
 }
 
+function understandingMirrorTurn(labels = []) {
+  return {
+    type: TURN_TYPE.UNDERSTANDING_MIRROR,
+    id: `understanding-mirror-${Date.now()}`,
+    labels: [...labels],
+  };
+}
+
 function cleverQuestionTurn(question) {
   return {
     type: TURN_TYPE.CLEVER,
@@ -796,20 +941,16 @@ export function submitOpeningMessage(session, text = '') {
     ],
   };
 
+  if (notepadLabels.length >= 1) {
+    next = pushTurn(next, understandingMirrorTurn(notepadLabels));
+  }
+
   const question = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
   if (question) {
     next = pushTurn(next, cleverQuestionTurn(question));
     next = withPendingQuestion(next, question);
   } else {
-    const readiness = evaluateRecommendationReadiness({
-      needProfile,
-      answers: next.consultationProfile?.answers ?? {},
-    });
-    if (readiness.ready) {
-      next = startThinkingPhase(next);
-    } else {
-      next = { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
-    }
+    next = advanceAfterCustomerTurn(next, needProfile, next.consultationProfile);
   }
 
   return next;
@@ -835,6 +976,15 @@ export function submitQuestionAnswer(session, payload = {}) {
     const option = directionQ.options?.find((o) => o.id === answerId);
     const displayText = payload.text?.trim() || option?.label || answerId;
     return submitNeedDirectionAnswer(session, answerId, displayText);
+  }
+
+  if (questionId === SELLER_READINESS_QUESTION_ID) {
+    const question = buildSellerReadinessQuestion(session.needProfile);
+    const option = question.options?.find((o) => o.id === answerId);
+    const displayText = payload.text?.trim()
+      || option?.label
+      || answerId;
+    return submitSellerReadinessAnswer(session, answerId, displayText);
   }
 
   const question = questionById(questionId);
@@ -871,16 +1021,7 @@ export function submitQuestionAnswer(session, payload = {}) {
     return next;
   }
 
-  const readiness = evaluateRecommendationReadiness({
-    needProfile,
-    answers: consultationProfile?.answers ?? {},
-  });
-  if (readiness.ready) {
-    next = startThinkingPhase(next);
-  } else {
-    next = { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
-  }
-  return next;
+  return advanceAfterCustomerTurn(next, needProfile, consultationProfile);
 }
 
 /**
@@ -910,7 +1051,7 @@ export function advanceFromThinking(session) {
 export function getConversationInputPlaceholder(session = {}) {
   const fallback = 'Erzählen oder fragen Sie einfach …';
   if (session.phase === CONVERSATION_PHASE.OPENING) {
-    return fallback;
+    return getOpeningCopy(session.dealerName ?? 'Autohaus').placeholder;
   }
 
   const needProfile = session.needProfile ?? {};
@@ -968,20 +1109,14 @@ export function submitContinuingNarrative(session, text = '') {
 
   const followUp = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
   if (followUp && followUp.id !== dismissedQuestionId) {
-    next = pushTurn(next, cleverQuestionTurn(followUp));
-    next = withPendingQuestion(next, followUp);
-    return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+    let advanced = pushTurn(next, cleverQuestionTurn(followUp));
+    advanced = withPendingQuestion(advanced, followUp);
+    return { ...advanced, phase: CONVERSATION_PHASE.CONVERSATION };
   }
 
-  const readiness = evaluateRecommendationReadiness({
-    needProfile,
-    answers: next.consultationProfile?.answers ?? {},
+  return advanceAfterCustomerTurn(next, needProfile, next.consultationProfile, {
+    dismissedQuestionId,
   });
-  if (readiness.ready) {
-    return startThinkingPhase(next);
-  }
-
-  return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
 }
 
 /**
@@ -1007,6 +1142,7 @@ export function submitConversationInput(session, text = '') {
 
   if (
     session.phase === CONVERSATION_PHASE.CONVERSATION
+    || session.phase === CONVERSATION_PHASE.HANDOFF
     || session.phase === CONVERSATION_PHASE.THINKING
     || isVehicleInputEnabled(session)
   ) {
@@ -1033,6 +1169,7 @@ export function submitVehicleAnswer(session, payload = {}) {
 export function isInputEnabled(session) {
   return session.phase === CONVERSATION_PHASE.OPENING
     || session.phase === CONVERSATION_PHASE.CONVERSATION
+    || session.phase === CONVERSATION_PHASE.HANDOFF
     || isVehicleInputEnabled(session);
 }
 
@@ -1083,6 +1220,7 @@ export {
   buildPersonalHandoffView,
   buildAdvisorContactPrompt,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
+  QUICK_HANDOFF_CATEGORIES,
   QUICK_HANDOFF_COPY,
   countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,

@@ -128,10 +128,31 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
 }
 
 /**
- * Copy für „Mit einem Berater sprechen“ – abhängig vom erkannten Verständnis.
+ * Copy für „Mit einem Berater sprechen“.
  * @param {number} labelCount
+ * @param {'opening'|'engaged'|'handoff'} [variant]
  */
-export function buildAdvisorContactPrompt(labelCount = 0) {
+export function buildAdvisorContactPrompt(labelCount = 0, variant = 'engaged') {
+  if (variant === 'opening') {
+    return {
+      level: 'opening',
+      hint: null,
+      optionalNote:
+        'Ihr Berater kann Sie auch direkt kontaktieren, '
+        + 'ohne dass Sie vorher etwas erzählen müssen.',
+    };
+  }
+
+  if (variant === 'handoff') {
+    return {
+      level: 'handoff',
+      hint:
+        'Wir haben bereits ein gutes Bild Ihres Wunsches.\n\n'
+        + 'Ihr Berater kann direkt ins Gespräch einsteigen '
+        + 'und muss nicht bei null beginnen.',
+    };
+  }
+
   if (labelCount <= 0) return null;
   if (labelCount <= 3) {
     return {
@@ -157,28 +178,75 @@ export function buildAdvisorContactPrompt(labelCount = 0) {
   };
 }
 
-/** Optionale Schnellaufnahme vor Beraterkontakt – Texte für mergeTextIntoNeedProfile. */
+/** Optionale Schnellaufnahme – Texte für mergeTextIntoNeedProfile. */
 export const QUICK_HANDOFF_ENRICHMENT_CHIPS = [
-  { id: 'towbar', label: 'Anhängerkupplung wichtig', text: 'Anhängerkupplung ist wichtig.' },
-  { id: 'family', label: 'Familie / Kinder', text: 'Familie mit Kindern.' },
-  { id: 'fuelOpen', label: 'Elektro oder Hybrid noch offen', text: 'Elektro oder Hybrid noch offen.' },
+  { id: 'children', label: 'Kinder', text: 'Familie mit Kindern.' },
+  { id: 'family', label: 'Familie', text: 'Familie ist wichtig.' },
+  { id: 'dog', label: 'Hund', text: 'Hund fährt mit.' },
+  { id: 'roofTent', label: 'Dachzelt', text: 'Dachzelt ist wichtig.' },
+  { id: 'towbar', label: 'Anhängerkupplung', text: 'Anhängerkupplung ist wichtig.' },
+  { id: 'color', label: 'Wunschfarbe', text: 'Wunschfarbe ist wichtig.' },
+  { id: 'trunk', label: 'Kofferraum', text: 'Großer Kofferraum ist wichtig.' },
+  { id: 'delivery', label: 'Lieferzeit', text: 'Lieferzeit ist wichtiger als die Rate.' },
+  { id: 'rate', label: 'Rate wichtig', text: 'Die monatliche Rate ist wichtig.' },
+  { id: 'leaseEnd', label: 'Fahrzeugwechsel', text: 'Fahrzeugwechsel läuft bald aus.' },
+  { id: 'tradeIn', label: 'Inzahlungnahme', text: 'Inzahlungnahme ist wichtig.' },
+  { id: 'camping', label: 'Camping', text: 'Camping ist wichtig.' },
+  { id: 'bike', label: 'Fahrrad', text: 'Fahrradtransport ist wichtig.' },
+  { id: 'ski', label: 'Ski', text: 'Ski-Transport ist wichtig.' },
+  { id: 'caravan', label: 'Wohnwagen', text: 'Wohnwagen ist wichtig.' },
+  { id: 'fuelOpen', label: 'Elektro/Hybrid offen', text: 'Elektro oder Hybrid noch offen.' },
   { id: 'sportDesign', label: 'Sportliches Design', text: 'Sportliches Design ist wichtig.' },
-  { id: 'range', label: 'Große Reichweite wichtig', text: 'Große Reichweite ist wichtig.' },
-  { id: 'delivery', label: 'Lieferzeit wichtiger als Rate', text: 'Lieferzeit ist wichtiger als die Rate.' },
-  { id: 'leaseEnd', label: 'Fahrzeugwechsel läuft bald aus', text: 'Fahrzeugwechsel läuft bald aus.' },
-  { id: 'testDrive', label: 'Probefahrt gewünscht', text: 'Probefahrt gewünscht.' },
+  { id: 'range', label: 'Reichweite', text: 'Große Reichweite ist wichtig.' },
+  { id: 'testDrive', label: 'Probefahrt', text: 'Probefahrt gewünscht.' },
+];
+
+export const QUICK_HANDOFF_CATEGORIES = [
+  {
+    id: 'family',
+    label: 'Familie',
+    icon: '👨‍👩‍👧',
+    chipIds: ['children', 'family', 'dog', 'roofTent'],
+  },
+  {
+    id: 'car',
+    label: 'Auto',
+    icon: '🚗',
+    chipIds: ['towbar', 'color', 'trunk', 'delivery'],
+  },
+  {
+    id: 'money',
+    label: 'Geld',
+    icon: '💶',
+    chipIds: ['rate', 'leaseEnd', 'tradeIn'],
+  },
+  {
+    id: 'hobby',
+    label: 'Hobby',
+    icon: '🏕️',
+    chipIds: ['camping', 'bike', 'ski', 'caravan'],
+  },
 ];
 
 export const QUICK_HANDOFF_COPY = {
-  expandLabel: 'Optional — Berater vorbereiten',
-  collapseLabel: 'Weniger anzeigen',
-  title: 'Was sollten wir Ihrem Berater noch mitgeben?',
-  subtitle:
-    'Optional — Ihr Berater freut sich über jedes Detail, '
-    + 'kann Sie aber auch direkt kontaktieren.',
+  expandLabel: 'Optional ▾',
+  collapseLabel: 'Optional ▴',
+  title: 'Was sollte Ihr Verkäufer noch wissen?',
+  subtitle: 'Keine Pflicht.',
   freetextPlaceholder:
-    'Zum Beispiel: Dachzelt, Hund, Ford Kuga läuft aus, Farbe Grün oder Restwertübernahme.',
+    'Mein Kuga läuft im November aus.\n'
+    + 'Meine Frau fährt überwiegend.\n'
+    + 'Lieferzeit ist wichtiger als Rate.\n'
+    + 'Dachzelt muss passen.',
 };
+
+const QUICK_HANDOFF_CHIP_MAP = Object.fromEntries(
+  QUICK_HANDOFF_ENRICHMENT_CHIPS.map((chip) => [chip.id, chip]),
+);
+
+export function getQuickHandoffChip(chipId) {
+  return QUICK_HANDOFF_CHIP_MAP[chipId] ?? null;
+}
 
 export function countSessionUnderstandingLabels(session = {}) {
   const merged = new Set([

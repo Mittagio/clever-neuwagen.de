@@ -179,7 +179,7 @@ function testFreetextNarrativeDuringOpenQuestion() {
 
 function testContextualPlaceholders() {
   const opening = createHappyPathSession('Test');
-  assert.match(getConversationInputPlaceholder(opening), /Erzählen oder fragen/);
+  assert.match(getConversationInputPlaceholder(opening), /Ich suche/);
 
   let session = submitOpeningMessage(opening, HAPPY_PATH_EXAMPLE_MESSAGE);
   const afterFirst = getConversationInputPlaceholder(session);
@@ -218,11 +218,20 @@ function testQuickHandoffEnrichment() {
   console.log('✓ Schnellaufnahme nutzt mergeTextIntoNeedProfile und submitConversationInput');
 }
 
+function testUnderstandingMirrorOnOpening() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  const mirror = session.turns.find((t) => t.type === TURN_TYPE.UNDERSTANDING_MIRROR);
+  assert.ok(mirror, 'WOW-Moment fehlt nach erster Aussage');
+  assert.ok(mirror.labels?.includes('Elektro'));
+  console.log('✓ WOW-Moment spiegelt Verständnis nach erster Aussage');
+}
+
 function testWarmQuestionsSoundOptional() {
   const copy = WARM_QUESTION_PROMPTS.longDistance;
-  assert.doesNotMatch(copy, /Darf ich/i);
-  assert.match(copy, /Einordnung|Falls wichtig|interessieren/i);
-  console.log('✓ Rückfragen klingen optional');
+  assert.doesNotMatch(copy, /Darf ich|Wie viele Kilometer/i);
+  assert.match(copy, /Reichweite|Stadtverkehr|Urlaub/i);
+  console.log('✓ Rückfragen klingen nach Konsequenz, nicht nach Datenfeld');
 }
 
 function testFreetextMapping() {
@@ -240,11 +249,12 @@ function testOpeningIsNotAQuestion() {
 
 function testReceptionOpeningCopy() {
   const copy = getOpeningCopy('Autohaus Trinkle');
-  assert.match(copy.greeting, /Willkommen im Autohaus Trinkle/);
-  assert.match(copy.invitation, /wonach Sie suchen/);
-  assert.match(copy.intro, /persönlichen Berater vor/);
-  assert.doesNotMatch(copy.greeting, /Fahrzeugberater/);
-  console.log('✓ Empfangs-Copy: Willkommen, Wunsch aufnehmen, Verkäufer vorbereiten');
+  assert.match(copy.greeting, /Willkommen bei Clever/);
+  assert.match(copy.invitation, /Erzählen Sie einfach/);
+  assert.match(copy.intro, /schreiben|sprechen|Berater/i);
+  assert.match(copy.placeholder, /Ich suche/);
+  assert.match(copy.advisorNote, /direkt kontaktieren/i);
+  console.log('✓ Empfangs-Copy: erzählen, sprechen oder Berater');
 }
 
 testInitialParse();
@@ -254,6 +264,7 @@ testEv3MiniRecommendationContent();
 testOnlyTwoGapQuestions();
 testFreetextNarrativeDuringOpenQuestion();
 testContextualPlaceholders();
+testUnderstandingMirrorOnOpening();
 testQuickHandoffEnrichment();
 testWarmQuestionsSoundOptional();
 testFreetextMapping();

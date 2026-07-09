@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
 import { planNextQuestion } from './conversationPlanner.js';
 import {
+  CONVERSATION_PHASE,
   createHappyPathSession,
   resolveNextHappyPathQuestion,
   submitOpeningMessage,
@@ -13,11 +14,15 @@ import {
 } from './consultationHappyPath.js';
 import {
   NEED_DIRECTION_QUESTION_ID,
+  SELLER_READINESS_QUESTION_ID,
   buildNeedDirectionQuestion,
+  buildSellerReadinessQuestion,
   hasCompleteVehicleBrief,
+  hasEssentialSellerGaps,
   hasRichNeedPicture,
   questionImprovesUnderstanding,
   shouldOfferDirectionChoice,
+  shouldOfferSellerReadinessGate,
 } from './needUnderstandingGate.js';
 
 function testSportageStrongMessageSkipsComfortQuestion() {
@@ -28,28 +33,47 @@ function testSportageStrongMessageSkipsComfortQuestion() {
   const planned = planNextQuestion({ needProfile: profile, answers: {} });
   assert.equal(planned.question?.id, 'longDistance');
   assert.ok(hasCompleteVehicleBrief(profile));
-  assert.ok(shouldOfferDirectionChoice(profile, planned.question, {}));
+  assert.equal(hasEssentialSellerGaps(profile, {}), false);
+  assert.ok(shouldOfferSellerReadinessGate(profile, { answers: {} }));
 
-  const direction = buildNeedDirectionQuestion(profile);
-  assert.match(direction.prompt, /gutes Bild/i);
-  assert.match(direction.prompt, /Sportage genauer ansehen/i);
-  assert.match(direction.prompt, /ähnliche Fahrzeuge einordnen/i);
-  console.log('✓ Sportage stark erkannt → keine Komfort-Frage, Richtungswahl');
+  const sellerQ = buildSellerReadinessQuestion(profile);
+  assert.match(sellerQ.prompt, /Fehlt Ihrem Berater noch etwas Wesentliches/i);
+  assert.match(sellerQ.prompt, /Sportage/i);
+  console.log('✓ Sportage stark erkannt → Verkäufer-Bereitschaft statt Optimierungsfrage');
 }
 
-function testSportageOpeningShowsDirectionNotCatalog() {
+function testSportageOpeningShowsSellerReadinessNotCatalog() {
   let session = createHappyPathSession('Autohaus Trinkle');
   session = submitOpeningMessage(
     session,
     'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
   );
 
-  assert.equal(session.pendingQuestion?.id, NEED_DIRECTION_QUESTION_ID);
-  const cleverTurn = session.turns.find((t) => t.type === 'clever');
-  assert.match(cleverTurn?.text ?? '', /gutes Bild/i);
+  assert.equal(session.pendingQuestion?.id, SELLER_READINESS_QUESTION_ID);
+  const cleverTurn = session.turns.find((t) => t.type === TURN_TYPE.CLEVER);
+  assert.match(cleverTurn?.text ?? '', /Fehlt Ihrem Berater noch etwas Wesentliches/i);
   assert.doesNotMatch(cleverTurn?.text ?? '', /Antrieb schon einen Favoriten/i);
   assert.doesNotMatch(cleverTurn?.text ?? '', /komfortabel/i);
-  console.log('✓ Eröffnung Sportage → Richtungswahl statt Katalogfrage');
+  console.log('✓ Eröffnung Sportage → Verkäufer-Bereitschaft statt Katalogfrage');
+}
+
+function testSellerReadyEntersHandoffState() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(
+    session,
+    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
+  );
+  session = submitQuestionAnswer(session, { answerId: 'seller_ready' });
+
+  assert.equal(session.phase, CONVERSATION_PHASE.HANDOFF);
+  assert.equal(session.sellerReady, true);
+  assert.equal(session.consultationProfile?.sellerReady, true);
+  assert.equal(session.pendingQuestion, null);
+  assert.match(
+    session.turns.at(-1)?.text ?? '',
+    /Berater kann direkt einsteigen/i,
+  );
+  console.log('✓ seller_ready → Übergabezustand ohne weitere Optimierungsfragen');
 }
 
 function testElektroFamilyStillAsksLongDistance() {
@@ -59,18 +83,18 @@ function testElektroFamilyStillAsksLongDistance() {
   const catalog = planNextQuestion({ needProfile: profile, answers: {} });
   assert.equal(catalog.question?.id, 'longDistance');
   assert.equal(questionImprovesUnderstanding('longDistance', profile, {}), true);
-  assert.equal(shouldOfferDirectionChoice(profile, catalog.question, {}), false);
+  assert.equal(shouldOfferSellerReadinessGate(profile, { answers: {} }), false);
 
   const next = resolveNextHappyPathQuestion(profile, { answers: {} });
   assert.equal(next?.id, 'longDistance');
-  console.log('✓ Elektro-Familie → Langstrecke bleibt sinnvolle Frage');
+  console.log('✓ Elektro-Familie ohne reiches Bild → Langstrecke bleibt sinnvolle Frage');
 }
 
 function testMinimalWishStillAsksUsage() {
   const profile = mergeTextIntoNeedProfile('Ich suche ein Auto');
   const catalog = planNextQuestion({ needProfile: profile, answers: {} });
   assert.equal(catalog.question?.id, 'primaryUsage');
-  assert.equal(shouldOfferDirectionChoice(profile, catalog.question, {}), false);
+  assert.equal(shouldOfferSellerReadinessGate(profile, { answers: {} }), false);
   console.log('✓ Minimaler Wunsch → Nutzungsfrage bleibt');
 }
 
@@ -78,16 +102,33 @@ function testSportageFamilyAhkStillAsksPowertrain() {
   const profile = mergeTextIntoNeedProfile('Sportage Familie 2 Kinder AHK');
   const catalog = planNextQuestion({ needProfile: profile, answers: {} });
   assert.equal(catalog.question?.id, 'sportagePowertrain');
-  assert.equal(shouldOfferDirectionChoice(profile, catalog.question, {}), false);
+  assert.equal(shouldOfferSellerReadinessGate(profile, { answers: {} }), false);
   console.log('✓ Sportage ohne Antrieb → modellspezifische Antriebsfrage');
 }
 
 function testDirectionExploreModelShowsDirections() {
-  let session = createHappyPathSession('Test');
-  session = submitOpeningMessage(
-    session,
+  const profile = mergeTextIntoNeedProfile(
     'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
   );
+  const direction = buildNeedDirectionQuestion(profile);
+  let session = {
+    ...createHappyPathSession('Test'),
+    needProfile: profile,
+    notepadLabels: profile.understoodLabels ?? [],
+    consultationProfile: {
+      answers: { [SELLER_READINESS_QUESTION_ID]: 'still_missing' },
+      sellerReady: false,
+    },
+    pendingQuestion: { id: direction.id, options: direction.options },
+    turns: [{
+      type: TURN_TYPE.CLEVER,
+      id: 'clever-direction',
+      questionId: direction.id,
+      text: direction.prompt,
+      options: direction.options,
+    }],
+  };
+
   session = submitQuestionAnswer(session, { answerId: 'explore_model' });
   assert.equal(session.pendingQuestion, null);
   assert.equal(session.needProfile.selectedModelKey, 'sportage');
@@ -98,7 +139,8 @@ function testDirectionExploreModelShowsDirections() {
 }
 
 testSportageStrongMessageSkipsComfortQuestion();
-testSportageOpeningShowsDirectionNotCatalog();
+testSportageOpeningShowsSellerReadinessNotCatalog();
+testSellerReadyEntersHandoffState();
 testElektroFamilyStillAsksLongDistance();
 testMinimalWishStillAsksUsage();
 testSportageFamilyAhkStillAsksPowertrain();
