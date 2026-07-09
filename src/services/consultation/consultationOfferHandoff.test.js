@@ -9,6 +9,7 @@ import {
   OFFER_TURN_TYPE,
   beginOfferHandoff,
   buildAdvisorContactPrompt,
+  QUICK_HANDOFF_ENRICHMENT_CHIPS,
   buildPersonalHandoffView,
   countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,
@@ -125,6 +126,13 @@ function testValidation() {
   console.log('✓ Kontaktdaten-Validierung');
 }
 
+function testQuickHandoffChips() {
+  assert.equal(QUICK_HANDOFF_ENRICHMENT_CHIPS.length, 8);
+  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.some((c) => c.id === 'towbar'));
+  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.every((c) => c.text));
+  console.log('✓ Schnellaufnahme-Chips mit Parser-Texten');
+}
+
 function testAdvisorContactPrompt() {
   assert.equal(buildAdvisorContactPrompt(0), null);
   assert.match(buildAdvisorContactPrompt(2).hint, /einiges verstanden|nahtlos/i);
@@ -149,6 +157,7 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 }
 
 testHandoffView();
+testQuickHandoffChips();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();
 testBeginOfferHandoff();

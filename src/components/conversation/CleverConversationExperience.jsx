@@ -19,6 +19,7 @@ import {
   isInVehicleWorld,
   isInputEnabled,
   selectRecommendedModel,
+  applyQuickHandoffEnrichment,
   submitConversationInput,
   submitDealerHandoff,
   submitOpeningMessage,
@@ -92,6 +93,7 @@ export default function CleverConversationExperience({
   const [notingFlash, setNotingFlash] = useState(null);
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [advisorQuickExpanded, setAdvisorQuickExpanded] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const voiceCommittedRef = useRef('');
@@ -200,9 +202,14 @@ export default function CleverConversationExperience({
     setSession((prev) => submitVehicleDirectionReaction(prev, modelKey, reactionId));
   }, []);
 
-  const handleDealerHandoff = () => {
-    setSession((prev) => submitDealerHandoff(prev, dealerConditions));
-  };
+  const handleDealerHandoff = useCallback((enrichment) => {
+    setSession((prev) => {
+      const enriched = enrichment
+        ? applyQuickHandoffEnrichment(prev, enrichment)
+        : prev;
+      return submitDealerHandoff(enriched, dealerConditions);
+    });
+  }, [dealerConditions]);
 
   const handlePersonalHandoffSubmit = useCallback((handoffForm) => {
     const result = submitPersonalHandoff(session, handoffForm, dealerConditions);
@@ -266,6 +273,7 @@ export default function CleverConversationExperience({
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
     showAdvisorContact ? 'cc-experience--advisor-contact' : '',
+    advisorQuickExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -376,6 +384,7 @@ export default function CleverConversationExperience({
         <CleverAdvisorContactPrompt
           understandingCount={understandingCount}
           onContact={handleDealerHandoff}
+          onExpandedChange={setAdvisorQuickExpanded}
         />
       )}
 

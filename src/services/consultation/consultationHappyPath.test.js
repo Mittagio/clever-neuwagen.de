@@ -15,6 +15,7 @@ import {
   getOpeningCopy,
   getConversationInputPlaceholder,
   mapFreetextToQuestionAnswer,
+  applyQuickHandoffEnrichment,
   submitConversationInput,
   submitOpeningMessage,
   submitQuestionAnswer,
@@ -193,6 +194,30 @@ function testContextualPlaceholders() {
   console.log('✓ Placeholder wechselt kontextabhängig');
 }
 
+function testQuickHandoffEnrichment() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+
+  const enriched = applyQuickHandoffEnrichment(session, {
+    selectedChipIds: ['towbar', 'testDrive'],
+    freetext: 'Hund fährt mit.',
+  });
+
+  assert.ok(
+    enriched.notepadLabels.some((l) => /anhäng|ahk/i.test(l)),
+    `AHK-Label fehlt: ${enriched.notepadLabels.join(', ')}`,
+  );
+  assert.ok(
+    enriched.turns.some((t) => t.type === TURN_TYPE.CUSTOMER && /Hund/i.test(t.text)),
+    'Freitext landet im Gespräch',
+  );
+
+  const direct = applyQuickHandoffEnrichment(session, { selectedChipIds: [], freetext: '' });
+  assert.equal(direct, session, 'leere Schnellaufnahme ändert nichts');
+
+  console.log('✓ Schnellaufnahme nutzt mergeTextIntoNeedProfile und submitConversationInput');
+}
+
 function testWarmQuestionsSoundOptional() {
   const copy = WARM_QUESTION_PROMPTS.longDistance;
   assert.doesNotMatch(copy, /Darf ich/i);
@@ -229,6 +254,7 @@ testEv3MiniRecommendationContent();
 testOnlyTwoGapQuestions();
 testFreetextNarrativeDuringOpenQuestion();
 testContextualPlaceholders();
+testQuickHandoffEnrichment();
 testWarmQuestionsSoundOptional();
 testFreetextMapping();
 testOpeningIsNotAQuestion();

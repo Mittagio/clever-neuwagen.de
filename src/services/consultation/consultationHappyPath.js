@@ -36,6 +36,7 @@ import {
   buildVehicleDirectionsView,
   isEvDirectionModel,
 } from './vehicleDirectionService.js';
+import { QUICK_HANDOFF_ENRICHMENT_CHIPS } from './consultationOfferHandoff.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -1035,6 +1036,37 @@ export function isInputEnabled(session) {
     || isVehicleInputEnabled(session);
 }
 
+/**
+ * Optionale Schnellaufnahme vor Beraterkontakt – bestehende Parser-Pipeline.
+ * @param {object} session
+ * @param {{ selectedChipIds?: string[], freetext?: string }} enrichment
+ */
+export function applyQuickHandoffEnrichment(session, enrichment = {}) {
+  const selectedChipIds = enrichment.selectedChipIds ?? [];
+  const freetext = String(enrichment.freetext ?? '').trim();
+  if (!selectedChipIds.length && !freetext) return session;
+
+  let next = session;
+  const selected = new Set(selectedChipIds);
+
+  for (const chipId of selected) {
+    const chip = QUICK_HANDOFF_ENRICHMENT_CHIPS.find((c) => c.id === chipId);
+    if (!chip?.text) continue;
+    const needProfile = mergeTextIntoNeedProfile(chip.text, next.needProfile);
+    next = {
+      ...next,
+      needProfile,
+      notepadLabels: labelsFromNeedProfile(needProfile, next.notepadLabels),
+    };
+  }
+
+  if (freetext) {
+    next = submitConversationInput(next, freetext);
+  }
+
+  return next;
+}
+
 export {
   beginEv3VehicleConsultation,
   advanceFromVehicleThinking,
@@ -1050,6 +1082,8 @@ export {
   submitPersonalHandoff,
   buildPersonalHandoffView,
   buildAdvisorContactPrompt,
+  QUICK_HANDOFF_ENRICHMENT_CHIPS,
+  QUICK_HANDOFF_COPY,
   countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,
   validateHandoffForm,

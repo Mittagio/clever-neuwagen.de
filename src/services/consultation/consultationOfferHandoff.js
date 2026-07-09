@@ -157,6 +157,29 @@ export function buildAdvisorContactPrompt(labelCount = 0) {
   };
 }
 
+/** Optionale Schnellaufnahme vor Beraterkontakt – Texte für mergeTextIntoNeedProfile. */
+export const QUICK_HANDOFF_ENRICHMENT_CHIPS = [
+  { id: 'towbar', label: 'Anhängerkupplung wichtig', text: 'Anhängerkupplung ist wichtig.' },
+  { id: 'family', label: 'Familie / Kinder', text: 'Familie mit Kindern.' },
+  { id: 'fuelOpen', label: 'Elektro oder Hybrid noch offen', text: 'Elektro oder Hybrid noch offen.' },
+  { id: 'sportDesign', label: 'Sportliches Design', text: 'Sportliches Design ist wichtig.' },
+  { id: 'range', label: 'Große Reichweite wichtig', text: 'Große Reichweite ist wichtig.' },
+  { id: 'delivery', label: 'Lieferzeit wichtiger als Rate', text: 'Lieferzeit ist wichtiger als die Rate.' },
+  { id: 'leaseEnd', label: 'Fahrzeugwechsel läuft bald aus', text: 'Fahrzeugwechsel läuft bald aus.' },
+  { id: 'testDrive', label: 'Probefahrt gewünscht', text: 'Probefahrt gewünscht.' },
+];
+
+export const QUICK_HANDOFF_COPY = {
+  expandLabel: 'Optional — Berater vorbereiten',
+  collapseLabel: 'Weniger anzeigen',
+  title: 'Was sollten wir Ihrem Berater noch mitgeben?',
+  subtitle:
+    'Optional — Ihr Berater freut sich über jedes Detail, '
+    + 'kann Sie aber auch direkt kontaktieren.',
+  freetextPlaceholder:
+    'Zum Beispiel: Dachzelt, Hund, Ford Kuga läuft aus, Farbe Grün oder Restwertübernahme.',
+};
+
 export function countSessionUnderstandingLabels(session = {}) {
   const merged = new Set([
     ...(session.needProfile?.understoodLabels ?? []),
