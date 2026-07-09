@@ -1554,6 +1554,58 @@
   gap: 10px;
 }
 
+.cc-offer-handoff__enrichment {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid #eceae6;
+}
+
+.cc-offer-handoff__enrichment-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+}
+
+.cc-offer-handoff__enrichment-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--cc-text);
+}
+
+.cc-offer-handoff__enrichment-subtitle {
+  margin: -6px 0 0;
+  font-size: 0.875rem;
+  color: var(--cc-muted);
+}
+
+.cc-offer-handoff__enrichment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-offer-handoff__enrichment-group-label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cc-text);
+}
+
+.cc-offer-handoff__enrichment-freetext-label {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cc-muted);
+}
+
 .cc-offer-handoff__note {
   width: 100%;
   padding: 14px 16px;

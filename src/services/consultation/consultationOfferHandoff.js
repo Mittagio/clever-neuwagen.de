@@ -14,6 +14,7 @@ import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
 import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 import { mergeNeedProfileIntoLead } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import { getFuelCategory, isElectricOrPhevProfile } from './conversationPlanner.js';
 
 export const OFFER_CONVERSATION_PHASE = {
   OFFER_HANDOFF: 'offer_handoff',
@@ -178,27 +179,44 @@ export function buildAdvisorContactPrompt(labelCount = 0, variant = 'engaged') {
   };
 }
 
-/** Optionale Schnellaufnahme – Texte für mergeTextIntoNeedProfile. */
+/** Kontaktphase – optionale Chips, Texte für mergeTextIntoNeedProfile. */
 export const QUICK_HANDOFF_ENRICHMENT_CHIPS = [
-  { id: 'children', label: 'Kinder', text: 'Familie mit Kindern.' },
-  { id: 'family', label: 'Familie', text: 'Familie ist wichtig.' },
+  { id: 'twoChildren', label: '2 Kinder', text: 'Familie mit zwei Kindern.' },
+  { id: 'childSeats', label: 'Kindersitze', text: 'Kindersitze sind wichtig.' },
   { id: 'dog', label: 'Hund', text: 'Hund fährt mit.' },
-  { id: 'roofTent', label: 'Dachzelt', text: 'Dachzelt ist wichtig.' },
+  { id: 'stroller', label: 'Kinderwagen', text: 'Kinderwagen muss mit.' },
+  { id: 'bigSpace', label: 'viel Platz', text: 'Viel Platz im Auto ist wichtig.' },
   { id: 'towbar', label: 'Anhängerkupplung', text: 'Anhängerkupplung ist wichtig.' },
+  { id: 'bigTrunk', label: 'großer Kofferraum', text: 'Großer Kofferraum ist wichtig.' },
   { id: 'color', label: 'Wunschfarbe', text: 'Wunschfarbe ist wichtig.' },
-  { id: 'trunk', label: 'Kofferraum', text: 'Großer Kofferraum ist wichtig.' },
-  { id: 'delivery', label: 'Lieferzeit', text: 'Lieferzeit ist wichtiger als die Rate.' },
-  { id: 'rate', label: 'Rate wichtig', text: 'Die monatliche Rate ist wichtig.' },
-  { id: 'leaseEnd', label: 'Fahrzeugwechsel', text: 'Fahrzeugwechsel läuft bald aus.' },
+  { id: 'fastDelivery', label: 'schnell lieferbar', text: 'Schnelle Lieferung ist wichtig.' },
   { id: 'tradeIn', label: 'Inzahlungnahme', text: 'Inzahlungnahme ist wichtig.' },
-  { id: 'camping', label: 'Camping', text: 'Camping ist wichtig.' },
-  { id: 'bike', label: 'Fahrrad', text: 'Fahrradtransport ist wichtig.' },
-  { id: 'ski', label: 'Ski', text: 'Ski-Transport ist wichtig.' },
+  { id: 'leaseEnd', label: 'Leasing läuft aus', text: 'Leasing läuft bald aus.' },
+  { id: 'rearCamera', label: 'Rückfahrkamera', text: 'Rückfahrkamera ist wichtig.' },
+  { id: 'frontSensors', label: 'Parksensoren vorne', text: 'Parksensoren vorne sind wichtig.' },
+  { id: 'camera360', label: '360° Kamera', text: '360° Kamera ist wichtig.' },
+  { id: 'hud', label: 'Head-up-Display', text: 'Head-up-Display ist wichtig.' },
+  { id: 'navi', label: 'Navi', text: 'Navigation ist wichtig.' },
+  { id: 'powerTailgate', label: 'elektrische Heckklappe', text: 'Elektrische Heckklappe ist wichtig.' },
+  { id: 'fastCharge', label: 'schnelle Ladezeit', text: 'Schnelle Ladezeit ist wichtig.' },
+  { id: 'wallbox', label: 'Wallbox vorhanden', text: 'Wallbox zu Hause ist vorhanden.' },
+  { id: 'publicCharging', label: 'öffentlich laden', text: 'Öffentliches Laden ist wichtig.' },
+  { id: 'v2l', label: 'V2L', text: 'Vehicle-to-Load ist wichtig.' },
+  { id: 'heatPump', label: 'Wärmepumpe', text: 'Wärmepumpe ist wichtig.' },
+  { id: 'range', label: 'Reichweite wichtig', text: 'Große Reichweite ist wichtig.' },
+  { id: 'budget300', label: 'bis 300 €/Monat', text: 'Budget bis 300 Euro im Monat.' },
+  { id: 'budget400', label: 'bis 400 €/Monat', text: 'Budget bis 400 Euro im Monat.' },
+  { id: 'budget500', label: 'bis 500 €/Monat', text: 'Budget bis 500 Euro im Monat.' },
+  { id: 'downPayment', label: 'Anzahlung möglich', text: 'Anzahlung ist möglich.' },
+  { id: 'noDownPayment', label: 'ohne Anzahlung', text: 'Ohne Anzahlung bevorzugt.' },
+  { id: 'leasing', label: 'Leasing', text: 'Leasing ist bevorzugt.' },
+  { id: 'financing', label: 'Finanzierung', text: 'Finanzierung ist bevorzugt.' },
   { id: 'caravan', label: 'Wohnwagen', text: 'Wohnwagen ist wichtig.' },
-  { id: 'fuelOpen', label: 'Elektro/Hybrid offen', text: 'Elektro oder Hybrid noch offen.' },
-  { id: 'sportDesign', label: 'Sportliches Design', text: 'Sportliches Design ist wichtig.' },
-  { id: 'range', label: 'Reichweite', text: 'Große Reichweite ist wichtig.' },
-  { id: 'testDrive', label: 'Probefahrt', text: 'Probefahrt gewünscht.' },
+  { id: 'roofTent', label: 'Dachzelt', text: 'Dachzelt ist wichtig.' },
+  { id: 'bikeRack', label: 'Fahrradträger', text: 'Fahrradträger ist wichtig.' },
+  { id: 'camping', label: 'Camping', text: 'Camping ist wichtig.' },
+  { id: 'ski', label: 'Ski', text: 'Ski-Transport ist wichtig.' },
+  { id: 'commuter', label: 'Pendler', text: 'Pendeln ist wichtig.' },
 ];
 
 export const QUICK_HANDOFF_CATEGORIES = [
@@ -206,38 +224,48 @@ export const QUICK_HANDOFF_CATEGORIES = [
     id: 'family',
     label: 'Familie',
     icon: '👨‍👩‍👧',
-    chipIds: ['children', 'family', 'dog', 'roofTent'],
+    chipIds: ['twoChildren', 'childSeats', 'dog', 'stroller', 'bigSpace'],
   },
   {
     id: 'car',
     label: 'Auto',
     icon: '🚗',
-    chipIds: ['towbar', 'color', 'trunk', 'delivery'],
+    chipIds: ['towbar', 'bigTrunk', 'color', 'fastDelivery', 'tradeIn', 'leaseEnd'],
   },
   {
-    id: 'money',
-    label: 'Geld',
+    id: 'tech',
+    label: 'Technik',
+    icon: '⚙️',
+    chipIds: ['rearCamera', 'frontSensors', 'camera360', 'hud', 'navi', 'powerTailgate'],
+  },
+  {
+    id: 'elektro',
+    label: 'Elektro',
+    icon: '🔌',
+    chipIds: ['fastCharge', 'wallbox', 'publicCharging', 'v2l', 'heatPump', 'range'],
+    requiresElektro: true,
+  },
+  {
+    id: 'budget',
+    label: 'Budget',
     icon: '💶',
-    chipIds: ['rate', 'leaseEnd', 'tradeIn'],
+    chipIds: ['budget300', 'budget400', 'budget500', 'downPayment', 'noDownPayment', 'leasing', 'financing'],
   },
   {
     id: 'hobby',
-    label: 'Hobby',
+    label: 'Hobby / Alltag',
     icon: '🏕️',
-    chipIds: ['camping', 'bike', 'ski', 'caravan'],
+    chipIds: ['caravan', 'roofTent', 'bikeRack', 'camping', 'ski', 'commuter'],
   },
 ];
 
 export const QUICK_HANDOFF_COPY = {
-  expandLabel: 'Optional ▾',
-  collapseLabel: 'Optional ▴',
-  title: 'Was sollte Ihr Verkäufer noch wissen?',
+  sectionLabel: 'Optional – keine Pflicht',
+  title: 'Falls Sie möchten: Was sollte Ihr Berater noch wissen?',
   subtitle: 'Keine Pflicht.',
   freetextPlaceholder:
-    'Mein Kuga läuft im November aus.\n'
-    + 'Meine Frau fährt überwiegend.\n'
-    + 'Lieferzeit ist wichtiger als Rate.\n'
-    + 'Dachzelt muss passen.',
+    'Zum Beispiel: Mein Kuga läuft im November aus, meine Frau fährt überwiegend, '
+    + 'Lieferzeit ist wichtiger als Rate.',
 };
 
 const QUICK_HANDOFF_CHIP_MAP = Object.fromEntries(
@@ -246,6 +274,100 @@ const QUICK_HANDOFF_CHIP_MAP = Object.fromEntries(
 
 export function getQuickHandoffChip(chipId) {
   return QUICK_HANDOFF_CHIP_MAP[chipId] ?? null;
+}
+
+function labelBlob(session = {}) {
+  return [
+    ...(session.needProfile?.understoodLabels ?? []),
+    ...(session.notepadLabels ?? []),
+    ...(session.vehicleNotepadLabels ?? []),
+  ].join(' ').toLowerCase();
+}
+
+/**
+ * Smarte Vorbelegung aus bestehendem needProfile – keine zweite Wahrheit.
+ * @param {object} session
+ */
+export function inferPrefilledHandoffChipIds(session = {}) {
+  const needProfile = session.needProfile ?? {};
+  const blob = labelBlob(session);
+  const ids = new Set();
+
+  if (needProfile.children === 2 || /\b2 kinder\b/i.test(blob)) ids.add('twoChildren');
+  if (/kindersitz/i.test(blob)) ids.add('childSeats');
+  if (needProfile.dog || /\bhund\b/i.test(blob)) ids.add('dog');
+  if (/kinderwagen/i.test(blob)) ids.add('stroller');
+  if (/viel platz|großer kofferraum|grosser kofferraum/i.test(blob)) {
+    ids.add('bigSpace');
+    ids.add('bigTrunk');
+  }
+
+  if (needProfile.towing || /anhäng|ahk|kupplung|anhaenger/i.test(blob)) ids.add('towbar');
+  if (needProfile.colorHint || /\bfarbe\b/i.test(blob)) ids.add('color');
+  if (/liefer|schnell liefer/i.test(blob)) ids.add('fastDelivery');
+  if (/inzahlung|restwert/i.test(blob)) ids.add('tradeIn');
+  if (/leasing|fahrzeugwechsel|läuft aus|laeuft aus/i.test(blob)) {
+    ids.add('leaseEnd');
+    ids.add('leasing');
+  }
+
+  if (/rückfahr|rueckfahr/i.test(blob)) ids.add('rearCamera');
+  if (/parksensor|einpark/i.test(blob)) ids.add('frontSensors');
+  if (/360|kamera/i.test(blob)) ids.add('camera360');
+  if (/head-up|hud/i.test(blob)) ids.add('hud');
+  if (/navi|navigation/i.test(blob)) ids.add('navi');
+  if (/heckklappe/i.test(blob)) ids.add('powerTailgate');
+
+  if (isElectricOrPhevProfile(needProfile)) {
+    if (/schnell.*lad|dc.?lad/i.test(blob)) ids.add('fastCharge');
+    if (needProfile.chargingAtHome === 'yes' || /wallbox|laden zuhause/i.test(blob)) {
+      ids.add('wallbox');
+    }
+    if (/öffentlich|oeffentlich.*lad/i.test(blob)) ids.add('publicCharging');
+    if (/\bv2l\b/i.test(blob)) ids.add('v2l');
+    if (/wärme|waerme|pumpe/i.test(blob)) ids.add('heatPump');
+    if (/reichweite/i.test(blob) || needProfile.priorities?.includes('range')) ids.add('range');
+  }
+
+  const rate = needProfile.budget?.maxMonthlyRate;
+  if (rate) {
+    if (rate <= 300) ids.add('budget300');
+    else if (rate <= 400) ids.add('budget400');
+    else if (rate <= 500) ids.add('budget500');
+    else ids.add('budget500');
+  }
+  if (needProfile.budget?.paymentType === 'leasing' || /leasing/i.test(blob)) ids.add('leasing');
+  if (needProfile.budget?.paymentType === 'finance' || /finanzierung/i.test(blob)) ids.add('financing');
+  if (/anzahlung/i.test(blob)) ids.add('downPayment');
+  if (/ohne anzahlung/i.test(blob)) ids.add('noDownPayment');
+
+  if (/wohnwagen|caravan/i.test(blob)) ids.add('caravan');
+  if (/dachzelt/i.test(blob)) ids.add('roofTent');
+  if (/fahrrad/i.test(blob)) ids.add('bikeRack');
+  if (/camping/i.test(blob)) ids.add('camping');
+  if (/ski/i.test(blob)) ids.add('ski');
+  if (/pendl/i.test(blob)) ids.add('commuter');
+
+  return [...ids];
+}
+
+/**
+ * Nur neue Chip-Auswahl mergen – bereits verstandenes nicht doppelt schreiben.
+ */
+export function filterNewHandoffChipIds(session = {}, selectedChipIds = []) {
+  const understood = new Set(inferPrefilledHandoffChipIds(session));
+  return selectedChipIds.filter((id) => !understood.has(id));
+}
+
+/**
+ * Kategorien für Kontaktphase – Elektro nur bei EV/Hybrid-Kontext.
+ */
+export function getVisibleHandoffCategories(needProfile = {}) {
+  const showElektro = isElectricOrPhevProfile(needProfile)
+    || getFuelCategory(needProfile) === 'electric';
+  return QUICK_HANDOFF_CATEGORIES.filter(
+    (category) => !category.requiresElektro || showElektro,
+  );
 }
 
 export function countSessionUnderstandingLabels(session = {}) {

@@ -9,7 +9,11 @@ import {
   OFFER_TURN_TYPE,
   beginOfferHandoff,
   buildAdvisorContactPrompt,
+  filterNewHandoffChipIds,
+  getVisibleHandoffCategories,
+  inferPrefilledHandoffChipIds,
   QUICK_HANDOFF_CATEGORIES,
+  QUICK_HANDOFF_COPY,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
   buildPersonalHandoffView,
   countSessionUnderstandingLabels,
@@ -128,11 +132,29 @@ function testValidation() {
 }
 
 function testQuickHandoffChips() {
-  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 8);
-  assert.equal(QUICK_HANDOFF_CATEGORIES.length, 4);
-  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'family'));
-  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.every((c) => c.text));
-  console.log('✓ Schnellaufnahme-Chips nach Kategorien');
+  assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 30);
+  assert.equal(QUICK_HANDOFF_CATEGORIES.length, 6);
+  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'budget'));
+  assert.ok(QUICK_HANDOFF_CATEGORIES.some((c) => c.id === 'elektro'));
+  assert.match(QUICK_HANDOFF_COPY.title, /Falls Sie möchten/i);
+  assert.match(QUICK_HANDOFF_COPY.subtitle, /Keine Pflicht/i);
+  console.log('✓ Kontaktphase-Chips nach Kategorien inkl. Budget und Elektro');
+}
+
+function testHandoffChipPrefill() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  const prefilled = inferPrefilledHandoffChipIds(session);
+  assert.ok(prefilled.includes('twoChildren') || prefilled.includes('dog'), `Prefill: ${prefilled.join(', ')}`);
+  assert.ok(prefilled.some((id) => /budget|leasing|range|wallbox|fastCharge/i.test(id)) || prefilled.length > 0);
+
+  const visible = getVisibleHandoffCategories(session.needProfile);
+  assert.ok(visible.some((c) => c.id === 'elektro'), 'Elektro-Kategorie bei EV-Kontext');
+
+  const onlyNew = filterNewHandoffChipIds(session, [...prefilled, 'commuter']);
+  assert.ok(onlyNew.includes('commuter'));
+  assert.ok(!onlyNew.some((id) => prefilled.includes(id)));
+  console.log('✓ Smarte Vorbelegung und keine doppelte Chip-Wahrheit');
 }
 
 function testAdvisorOpeningPrompt() {
@@ -169,6 +191,7 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 
 testHandoffView();
 testQuickHandoffChips();
+testHandoffChipPrefill();
 testAdvisorOpeningPrompt();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();

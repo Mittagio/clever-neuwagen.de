@@ -39,7 +39,10 @@ import {
   buildVehicleDirectionsView,
   isEvDirectionModel,
 } from './vehicleDirectionService.js';
-import { QUICK_HANDOFF_ENRICHMENT_CHIPS } from './consultationOfferHandoff.js';
+import {
+  filterNewHandoffChipIds,
+  QUICK_HANDOFF_ENRICHMENT_CHIPS,
+} from './consultationOfferHandoff.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -1179,14 +1182,13 @@ export function isInputEnabled(session) {
  * @param {{ selectedChipIds?: string[], freetext?: string }} enrichment
  */
 export function applyQuickHandoffEnrichment(session, enrichment = {}) {
-  const selectedChipIds = enrichment.selectedChipIds ?? [];
+  const selectedChipIds = filterNewHandoffChipIds(session, enrichment.selectedChipIds ?? []);
   const freetext = String(enrichment.freetext ?? '').trim();
   if (!selectedChipIds.length && !freetext) return session;
 
   let next = session;
-  const selected = new Set(selectedChipIds);
 
-  for (const chipId of selected) {
+  for (const chipId of selectedChipIds) {
     const chip = QUICK_HANDOFF_ENRICHMENT_CHIPS.find((c) => c.id === chipId);
     if (!chip?.text) continue;
     const needProfile = mergeTextIntoNeedProfile(chip.text, next.needProfile);

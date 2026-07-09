@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   CONTACT_PREFERENCES,
   CONTACT_TIMING_OPTIONS,
   validateHandoffForm,
 } from '../../services/consultation/consultationOfferHandoff.js';
+import CleverHandoffEnrichment from './CleverHandoffEnrichment.jsx';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -13,12 +14,12 @@ const EMPTY_FORM = {
   phone: '',
   contactPreference: 'phone',
   contactTiming: 'this_week',
-  advisorNote: '',
 };
 
-export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
+export default function CleverPersonalHandoff({ handoffView, session, onSubmit }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const enrichmentRef = useRef({ selectedChipIds: [], freetext: '' });
 
   if (!handoffView) return null;
 
@@ -43,7 +44,10 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
       setErrors(result.errors);
       return;
     }
-    onSubmit?.(form);
+    onSubmit?.({
+      ...form,
+      enrichment: enrichmentRef.current,
+    });
   }
 
   return (
@@ -180,17 +184,12 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
           </div>
         </div>
 
-        <div className="cc-offer-handoff__note-block">
-          <p className="cc-offer-handoff__pick-label">Noch etwas, das Ihr Berater wissen sollte?</p>
-          <textarea
-            className="cc-offer-handoff__note"
-            rows={3}
-            value={form.advisorNote}
-            onChange={(e) => updateField('advisorNote', e.target.value)}
-            placeholder="Optional – in eigenen Worten …"
-            aria-label="Hinweis für Ihren Berater"
-          />
-        </div>
+        <CleverHandoffEnrichment
+          session={session}
+          onChange={(enrichment) => {
+            enrichmentRef.current = enrichment;
+          }}
+        />
 
         <button type="submit" className="cc-offer-handoff__cta">
           Persönliche Beratung anfordern

@@ -199,7 +199,7 @@ function testQuickHandoffEnrichment() {
   session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
 
   const enriched = applyQuickHandoffEnrichment(session, {
-    selectedChipIds: ['towbar', 'testDrive'],
+    selectedChipIds: ['towbar', 'commuter'],
     freetext: 'Hund fährt mit.',
   });
 

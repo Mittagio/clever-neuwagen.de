@@ -94,7 +94,6 @@ export default function CleverConversationExperience({
   const [notingFlash, setNotingFlash] = useState(null);
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
-  const [advisorQuickExpanded, setAdvisorQuickExpanded] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const voiceCommittedRef = useRef('');
@@ -198,26 +197,27 @@ export default function CleverConversationExperience({
     setSession((prev) => submitVehicleDirectionReaction(prev, modelKey, reactionId));
   }, []);
 
-  const handleDealerHandoff = useCallback((enrichment) => {
-    setSession((prev) => {
-      const enriched = enrichment
-        ? applyQuickHandoffEnrichment(prev, enrichment)
-        : prev;
-      return submitDealerHandoff(enriched, dealerConditions);
-    });
+  const handleDealerHandoff = useCallback(() => {
+    setSession((prev) => submitDealerHandoff(prev, dealerConditions));
   }, [dealerConditions]);
 
   const handlePersonalHandoffSubmit = useCallback((handoffForm) => {
-    const result = submitPersonalHandoff(session, handoffForm, dealerConditions);
-    addLead(result.lead);
-    void notifyCustomerInquirySubmitted(result.lead, {
-      dealerName: dealerConditions?.dealerName ?? dealerName,
-      dealerPhone: dealerConditions?.contact?.phone ?? dealerConditions?.phone,
-      dealerEmail: dealerConditions?.contact?.email ?? dealerConditions?.email,
-      contactName: dealerConditions?.contact?.name,
+    setSession((prev) => {
+      const { enrichment, ...form } = handoffForm;
+      const enriched = enrichment
+        ? applyQuickHandoffEnrichment(prev, enrichment)
+        : prev;
+      const result = submitPersonalHandoff(enriched, form, dealerConditions);
+      addLead(result.lead);
+      void notifyCustomerInquirySubmitted(result.lead, {
+        dealerName: dealerConditions?.dealerName ?? dealerName,
+        dealerPhone: dealerConditions?.contact?.phone ?? dealerConditions?.phone,
+        dealerEmail: dealerConditions?.contact?.email ?? dealerConditions?.email,
+        contactName: dealerConditions?.contact?.name,
+      });
+      return result.session;
     });
-    setSession(result.session);
-  }, [session, dealerConditions, dealerName, addLead]);
+  }, [dealerConditions, dealerName, addLead]);
 
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
   const inputEnabled = isInputEnabled(session) && !inOfferWorld;
@@ -272,7 +272,6 @@ export default function CleverConversationExperience({
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
     showAdvisorContact ? 'cc-experience--advisor-contact' : '',
-    advisorQuickExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -350,6 +349,7 @@ export default function CleverConversationExperience({
                 <CleverPersonalHandoff
                   key={turn.id}
                   handoffView={turn.handoffView}
+                  session={session}
                   onSubmit={handlePersonalHandoffSubmit}
                 />
               );
@@ -381,7 +381,6 @@ export default function CleverConversationExperience({
           understandingCount={understandingCount}
           variant={advisorVariant}
           onContact={handleDealerHandoff}
-          onExpandedChange={setAdvisorQuickExpanded}
         />
       )}
 
