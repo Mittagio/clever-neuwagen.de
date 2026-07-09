@@ -8,6 +8,7 @@ import {
   CONVERSATION_PHASE,
   createHappyPathSession,
   resolveNextHappyPathQuestion,
+  submitConversationInput,
   submitOpeningMessage,
   submitQuestionAnswer,
   TURN_TYPE,
@@ -76,6 +77,35 @@ function testSellerReadyEntersHandoffState() {
   console.log('✓ seller_ready → Übergabezustand ohne weitere Optimierungsfragen');
 }
 
+function testStillMissingEntersCollectModeWithoutFollowUp() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(
+    session,
+    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
+  );
+  session = submitQuestionAnswer(session, { answerId: 'still_missing' });
+
+  assert.equal(session.phase, CONVERSATION_PHASE.HANDOFF);
+  assert.equal(session.advisorCollectMode, true);
+  assert.equal(session.consultationProfile?.advisorCollectMode, true);
+  assert.ok(session.turns.some((t) => t.type === TURN_TYPE.ADVISOR_COLLECT));
+  assert.equal(session.pendingQuestion, null);
+  assert.doesNotMatch(
+    session.turns.at(-1)?.text ?? '',
+    /erzählen Sie einfach/i,
+  );
+
+  session = submitConversationInput(session, 'farbe blau und dachreling');
+  assert.equal(session.pendingQuestion, null);
+  assert.equal(resolveNextHappyPathQuestion(session.needProfile, session.consultationProfile), null);
+  const cleverTurns = session.turns.filter((t) => t.type === TURN_TYPE.CLEVER);
+  assert.ok(
+    !cleverTurns.some((t) => /reichweite|ausstattung/i.test(t.text ?? '')),
+    'Keine weitere Berater-Rückfrage nach Sammelmodus',
+  );
+  console.log('✓ still_missing → Sammelmodus ohne weitere Clever-Fragen');
+}
+
 function testElektroFamilyStillAsksLongDistance() {
   const profile = mergeTextIntoNeedProfile(
     'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.',
@@ -141,6 +171,7 @@ function testDirectionExploreModelShowsDirections() {
 testSportageStrongMessageSkipsComfortQuestion();
 testSportageOpeningShowsSellerReadinessNotCatalog();
 testSellerReadyEntersHandoffState();
+testStillMissingEntersCollectModeWithoutFollowUp();
 testElektroFamilyStillAsksLongDistance();
 testMinimalWishStillAsksUsage();
 testSportageFamilyAhkStillAsksPowertrain();

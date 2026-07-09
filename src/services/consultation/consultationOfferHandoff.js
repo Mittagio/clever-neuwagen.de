@@ -264,6 +264,21 @@ export const ADVISOR_BOOST_COMPLEMENTARY_CHIP_IDS = [
   'steeringWheelHeating', 'frontParkingSensors', 'rearCamera', 'panoramicRoof',
 ];
 
+export const ADVISOR_COLLECT_COPY = {
+  sectionLabel: 'Optional — keine Pflicht',
+  title: 'Was sollten wir Ihrem Berater noch mitgeben?',
+  subtitle: 'Keine Pflicht.',
+  reassurance: 'Ihr Berater kann bereits übernehmen.',
+  intro: 'Falls Sie möchten, können Sie noch etwas ergänzen:',
+  freetextLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
+  freetextPlaceholder:
+    'Meine Frau fährt überwiegend.\n'
+    + 'Blau wäre schön.\n'
+    + 'Dachreling wäre wichtig.\n'
+    + 'Mein Leasing läuft im November aus.',
+  submitLabel: 'Kontakt senden',
+};
+
 export const QUICK_HANDOFF_COPY = {
   expandLabel: 'Optional ▾',
   collapseLabel: 'Optional ▴',

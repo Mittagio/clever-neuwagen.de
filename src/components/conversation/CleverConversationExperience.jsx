@@ -17,6 +17,7 @@ import {
   isInOfferWorld,
   isInVehicleWorld,
   isInputEnabled,
+  isAdvisorCollectMode,
   selectRecommendedModel,
   applyQuickHandoffEnrichment,
   submitConversationInput,
@@ -38,6 +39,7 @@ import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.j
 import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
+import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
 import { countSessionUnderstandingLabels } from '../../services/consultation/consultationOfferHandoff.js';
 import {
@@ -222,6 +224,7 @@ export default function CleverConversationExperience({
   }, [dealerConditions, dealerName, addLead]);
 
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
+  const inCollectMode = isAdvisorCollectMode(session);
   const inputEnabled = isInputEnabled(session) && !inOfferWorld;
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
@@ -266,7 +269,7 @@ export default function CleverConversationExperience({
   const advisorVariant = session.phase === CONVERSATION_PHASE.HANDOFF
     ? 'handoff'
     : (showOpening ? 'opening' : 'engaged');
-  const showAdvisorContact = !inOfferWorld;
+  const showAdvisorContact = !inOfferWorld && !inCollectMode;
 
   const experienceClass = [
     'cc-experience',
@@ -309,6 +312,15 @@ export default function CleverConversationExperience({
         <div className="cc-transcript">
           {notingFlash && <CleverNotingFlash labels={notingFlash} />}
           {visibleTurns.map((turn) => {
+            if (turn.type === TURN_TYPE.ADVISOR_COLLECT) {
+              return (
+                <CleverAdvisorCollectPanel
+                  key={turn.id}
+                  session={session}
+                  onSubmit={handleDealerHandoff}
+                />
+              );
+            }
             if (turn.type === TURN_TYPE.UNDERSTANDING_MIRROR) {
               return (
                 <CleverUnderstandingMoment
@@ -388,7 +400,7 @@ export default function CleverConversationExperience({
         />
       )}
 
-      {!inOfferWorld && (
+      {!inOfferWorld && !inCollectMode && (
         <form
           className={[
             'cc-input-bar',

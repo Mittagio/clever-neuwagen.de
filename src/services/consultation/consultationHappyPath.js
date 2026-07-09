@@ -67,6 +67,7 @@ export const TURN_TYPE = {
   RECOMMENDATION: 'recommendation',
   VEHICLE_DIRECTIONS: 'vehicle_directions',
   HANDOFF: 'handoff',
+  ADVISOR_COLLECT: 'advisor_collect',
 };
 
 export const UNDERSTANDING_MIRROR_COPY = {
@@ -207,7 +208,7 @@ const HAPPY_PATH_SEARCH_BUNDLE = {
 };
 
 function createConsultationProfile() {
-  return { answers: {}, sellerReady: false };
+  return { answers: {}, sellerReady: false, advisorCollectMode: false };
 }
 
 function questionById(id) {
@@ -242,6 +243,7 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
     pendingQuestion: null,
     recommendation: null,
     sellerReady: false,
+    advisorCollectMode: false,
     selectedModelKey: null,
     vehicleDirectionsView: null,
     vehicleDirectionReactions: {},
@@ -532,6 +534,8 @@ export function getHappyPathNextQuestion(needProfile, consultationProfile) {
 export function resolveNextHappyPathQuestion(needProfile, consultationProfile) {
   const answers = consultationProfile?.answers ?? {};
   if (consultationProfile?.sellerReady) return null;
+  if (consultationProfile?.advisorCollectMode) return null;
+  if (answers[SELLER_READINESS_QUESTION_ID] === 'still_missing') return null;
 
   if (shouldOfferSellerReadinessGate(needProfile, consultationProfile)) {
     return buildSellerReadinessQuestion(needProfile);
@@ -542,6 +546,28 @@ export function resolveNextHappyPathQuestion(needProfile, consultationProfile) {
     return buildNeedDirectionQuestion(needProfile);
   }
   return catalogQuestion;
+}
+
+function enterAdvisorCollectMode(session) {
+  return {
+    ...session,
+    phase: CONVERSATION_PHASE.HANDOFF,
+    advisorCollectMode: true,
+    sellerReady: false,
+    consultationProfile: {
+      ...session.consultationProfile,
+      advisorCollectMode: true,
+      sellerReady: false,
+    },
+    pendingQuestion: null,
+    turns: [
+      ...session.turns,
+      {
+        type: TURN_TYPE.ADVISOR_COLLECT,
+        id: `advisor-collect-${Date.now()}`,
+      },
+    ],
+  };
 }
 
 function enterSellerHandoffState(session) {
@@ -593,18 +619,21 @@ function submitSellerReadinessAnswer(session, answerId, displayText) {
     return enterSellerHandoffState(next);
   }
 
-  return {
-    ...next,
-    phase: CONVERSATION_PHASE.CONVERSATION,
-    turns: [
-      ...next.turns,
-      cleverAckTurn('Alles klar — erzählen Sie einfach, was Ihrem Berater noch fehlt.'),
-    ],
-  };
+  return enterAdvisorCollectMode(next);
 }
 
 function advanceAfterCustomerTurn(session, needProfile, consultationProfile, options = {}) {
   const dismissedQuestionId = options.dismissedQuestionId ?? null;
+
+  if (consultationProfile?.advisorCollectMode || session.advisorCollectMode) {
+    return {
+      ...session,
+      needProfile,
+      consultationProfile,
+      phase: CONVERSATION_PHASE.HANDOFF,
+      pendingQuestion: null,
+    };
+  }
 
   if (consultationProfile?.sellerReady || session.sellerReady) {
     return enterSellerHandoffState({
@@ -1110,6 +1139,10 @@ export function submitContinuingNarrative(session, text = '') {
     turns: [...session.turns, customerTurn(trimmed)],
   };
 
+  if (session.advisorCollectMode || session.consultationProfile?.advisorCollectMode) {
+    return { ...next, phase: CONVERSATION_PHASE.HANDOFF };
+  }
+
   const followUp = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
   if (followUp && followUp.id !== dismissedQuestionId) {
     let advanced = pushTurn(next, cleverQuestionTurn(followUp));
@@ -1170,10 +1203,17 @@ export function submitVehicleAnswer(session, payload = {}) {
 }
 
 export function isInputEnabled(session) {
+  if (session.advisorCollectMode || session.consultationProfile?.advisorCollectMode) {
+    return false;
+  }
   return session.phase === CONVERSATION_PHASE.OPENING
     || session.phase === CONVERSATION_PHASE.CONVERSATION
     || session.phase === CONVERSATION_PHASE.HANDOFF
     || isVehicleInputEnabled(session);
+}
+
+export function isAdvisorCollectMode(session = {}) {
+  return Boolean(session.advisorCollectMode || session.consultationProfile?.advisorCollectMode);
 }
 
 /**
@@ -1200,7 +1240,13 @@ export function applyQuickHandoffEnrichment(session, enrichment = {}) {
   }
 
   if (freetext) {
-    next = submitConversationInput(next, freetext);
+    const needProfile = mergeTextIntoNeedProfile(freetext, next.needProfile);
+    next = {
+      ...next,
+      needProfile,
+      notepadLabels: labelsFromNeedProfile(needProfile, next.notepadLabels),
+      turns: [...next.turns, customerTurn(freetext)],
+    };
   }
 
   return next;
