@@ -39,6 +39,126 @@ export const CONTACT_TIMING_LABELS = Object.fromEntries(
 
 export { CONTACT_PREFERENCES };
 
+const WISH_PROFILE_MODEL_LABELS = {
+  ev3: 'EV3',
+  ev4: 'EV4',
+  'ev4-fastback': 'EV4',
+  ev5: 'EV5',
+  ev6: 'EV6',
+  ev9: 'EV9',
+  sportage: 'Sportage',
+  sorento: 'Sorento',
+  stonic: 'Stonic',
+  carnival: 'Carnival',
+};
+
+/**
+ * Kompakte Profil-Darstellung aus bestehendem Verständnis – nur Präsentation.
+ * @param {object} [needProfile]
+ * @param {string[]} [labels]
+ */
+export function buildWishProfilePresentation(needProfile = {}, labels = []) {
+  const sourceLabels = labels.length ? [...labels] : [...(needProfile.understoodLabels ?? [])];
+  const consumed = new Set();
+  const lines = [];
+
+  const take = (regex) => {
+    const idx = sourceLabels.findIndex((label, i) => !consumed.has(i) && regex.test(label));
+    if (idx === -1) return null;
+    consumed.add(idx);
+    return sourceLabels[idx];
+  };
+
+  const fuelFromProfile = needProfile.fuel === 'electric'
+    ? 'Elektro'
+    : (needProfile.fuel === 'hybrid' || needProfile.fuel === 'phev' ? 'Hybrid' : null);
+  const fuelLabel = take(/^elektro$|^hybrid$|^plug-in/i) || fuelFromProfile;
+  const bodyLabel = take(/^suv$|^kombi$|^van$|^limousine$/i)
+    || (needProfile.bodyType === 'suv' ? 'SUV' : null);
+  if (fuelLabel && bodyLabel) {
+    lines.push({ icon: '⚡', text: `${fuelLabel} ${bodyLabel}` });
+  } else if (fuelLabel) {
+    lines.push({ icon: '⚡', text: fuelLabel });
+  }
+
+  const modelKey = needProfile.selectedModelKey ?? needProfile.modelHint;
+  const modelPart = modelKey
+    ? (WISH_PROFILE_MODEL_LABELS[modelKey] ?? String(modelKey).toUpperCase())
+    : take(/^ev\d|^sportage|^sorento|^stonic|^carnival/i);
+  const trimPart = take(/^earth$|^gt-?line$|^spirit$|^premium$/i)
+    || (needProfile.trimHint === 'earth' ? 'Earth' : null);
+  if (modelPart) {
+    const vehicleText = trimPart && !String(modelPart).toLowerCase().includes(String(trimPart).toLowerCase())
+      ? `Kia ${modelPart} ${trimPart}`
+      : (String(modelPart).startsWith('Kia') ? modelPart : `Kia ${modelPart}`);
+    lines.push({ icon: '🚗', text: vehicleText });
+  }
+
+  const leasingLabel = take(/^leasing$/i);
+  const budgetLabel = take(/budget|€\/monat|euro.*monat/i);
+  const budgetFromProfile = needProfile.budget?.maxMonthlyRate
+    ? `Leasing bis ${needProfile.budget.maxMonthlyRate} €/Monat`
+    : null;
+  if (budgetFromProfile) {
+    lines.push({ icon: '💶', text: budgetFromProfile });
+  } else if (budgetLabel) {
+    const text = leasingLabel
+      ? budgetLabel.replace(/^budget\s*/i, 'Leasing bis ')
+      : budgetLabel;
+    lines.push({ icon: '💶', text });
+  } else if (leasingLabel) {
+    lines.push({ icon: '💶', text: leasingLabel });
+  }
+
+  const months = take(/\d+\s*monate/i)
+    || (needProfile.leaseDurationMonths ? `${needProfile.leaseDurationMonths} Monate` : null);
+  const km = take(/\d+[\d.]*\s*km/i)
+    || (needProfile.annualKm
+      ? `${needProfile.annualKm.toLocaleString('de-DE')} km/Jahr`
+      : null);
+  if (months && km) {
+    lines.push({ icon: '📅', text: `${months} · ${km}` });
+  } else if (months) {
+    lines.push({ icon: '📅', text: months });
+  } else if (km) {
+    lines.push({ icon: '📅', text: km });
+  }
+
+  const tow = take(/anhäng|ahk|kupplung/i) || (needProfile.towing ? 'Anhängerkupplung' : null);
+  if (tow) {
+    lines.push({ icon: '🔗', text: /anhäng|ahk|kupplung/i.test(tow) ? tow : 'Anhängerkupplung' });
+  }
+
+  const color = needProfile.colorHint || take(/^blau$|^rot$|^weiß$|^schwarz$|^grün$/i);
+  if (color) {
+    lines.push({ icon: '🎨', text: color });
+  }
+
+  const family = take(/familie|\d+\s*kinder/i)
+    || (needProfile.children ? `${needProfile.children} Kinder` : null);
+  if (family && lines.length < 7) {
+    lines.push({ icon: '👨‍👩‍👧', text: family });
+  }
+
+  for (let i = 0; i < sourceLabels.length && lines.length < 7; i += 1) {
+    if (consumed.has(i)) continue;
+    const label = sourceLabels[i];
+    if (/^elektro$|^suv$|^earth$|^leasing$|^ev\d$/i.test(label)) continue;
+    lines.push({ icon: '·', text: label });
+    consumed.add(i);
+  }
+
+  if (!lines.length) {
+    sourceLabels.slice(0, 5).forEach((label) => lines.push({ icon: '·', text: label }));
+  }
+
+  return {
+    title: 'Ihr Wunschprofil',
+    lines: lines.slice(0, 7),
+    footer: 'Ihr Verkäufer muss nicht bei null anfangen.',
+  };
+}
+
 function uid(prefix = 'lead') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -58,14 +178,15 @@ function defaultAdvisor(dealerConditions = {}) {
   return {
     userId: seller?.id ?? 'mike-quach',
     name,
-    role: 'Kia-Spezialist',
-    experience: '14 Jahre Erfahrung',
+    role: 'Kia Spezialist aus Schorndorf',
+    tagline: 'Seit über 14 Jahren im Kia Vertrieb.',
+    experience: 'Seit über 14 Jahren im Kia Vertrieb.',
     initials: buildAdvisorInitials(name),
     phone: seller?.phone ?? dealerConditions?.contact?.phone ?? null,
     email: seller?.email ?? dealerConditions?.contact?.email ?? null,
     message:
-      'Ich schaue mir Ihren Wunsch persönlich an und prüfe, '
-      + 'welche Variante wirklich am besten zu Ihnen passt.',
+      'Ich schaue mir Ihren Wunsch persönlich an '
+      + 'und melde mich mit einer passenden Lösung.',
   };
 }
 
@@ -118,6 +239,7 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
     title: 'Ihr Wunsch ist vorbereitet.',
     preparedIntro: 'Das habe ich für Ihren Berater vorbereitet.',
     preparedItems: buildPreparedSummaryItems(session),
+    wishProfile: buildWishProfilePresentation(session.needProfile ?? {}, session.notepadLabels ?? []),
     wishLabels: session.notepadLabels ?? [],
     vehicleLabels: session.vehicleNotepadLabels ?? [],
     directionLine: session.vehicleMiniRecommendation?.batteryLine ?? null,
@@ -264,12 +386,34 @@ export const ADVISOR_BOOST_COMPLEMENTARY_CHIP_IDS = [
   'steeringWheelHeating', 'frontParkingSensors', 'rearCamera', 'panoramicRoof',
 ];
 
+export const ADVISOR_BOOST_HIGHLIGHT_GROUPS = [
+  {
+    id: 'popular',
+    icon: '🔥',
+    label: 'Oft zusätzlich wichtig',
+    chipIds: ['seatHeating', 'frontParkingSensors', 'rearCamera', 'ledLight'],
+  },
+  {
+    id: 'elektroPopular',
+    icon: '⚡',
+    label: 'Beim Elektroauto häufig gefragt',
+    requiresElectric: true,
+    chipIds: ['heatPump', 'v2l', 'fastCharging'],
+  },
+  {
+    id: 'offerPopular',
+    icon: '💶',
+    label: 'Rund ums Angebot',
+    chipIds: ['tradeIn', 'leaseEnding', 'residualValueTakeover'],
+  },
+];
+
 export const ADVISOR_COLLECT_COPY = {
   sectionLabel: 'Optional — keine Pflicht',
   title: 'Was sollten wir Ihrem Berater noch mitgeben?',
   subtitle: 'Keine Pflicht.',
   reassurance: 'Ihr Berater kann bereits übernehmen.',
-  intro: 'Falls Sie möchten, können Sie noch etwas ergänzen:',
+  intro: 'Falls Sie möchten, können Sie ihm noch etwas mitgeben.',
   freetextLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
   freetextPlaceholder:
     'Meine Frau fährt überwiegend.\n'
@@ -283,9 +427,10 @@ export const QUICK_HANDOFF_COPY = {
   expandLabel: 'Optional ▾',
   collapseLabel: 'Optional ▴',
   sectionLabel: 'Optional — keine Pflicht',
-  title: 'Was sollte Ihr Verkäufer noch wissen?',
-  subtitle: 'Keine Pflicht.',
-  intro: 'Wenn Sie möchten, können Sie Ihrem Verkäufer noch ein paar Hinweise mitgeben.',
+  reassurance: 'Ihr Berater kann bereits übernehmen.',
+  intro: 'Falls Sie möchten, können Sie ihm noch etwas mitgeben.',
+  showMoreLabel: 'Mehr anzeigen ▾',
+  showLessLabel: 'Weniger anzeigen ▴',
   suggestionsLabel: 'Vielleicht noch interessant:',
   freetextLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
   freetextPlaceholder:
@@ -406,6 +551,19 @@ export function buildAdvisorBoostView(session = {}) {
   const isElectric = isElectricOrPhevProfile(needProfile);
   const isLeasing = isLeasingContext(needProfile, blob);
 
+  const highlights = ADVISOR_BOOST_HIGHLIGHT_GROUPS
+    .filter((group) => !group.requiresElectric || isElectric)
+    .map((group) => ({
+      id: group.id,
+      icon: group.icon,
+      label: group.label,
+      chips: group.chipIds
+        .filter((chipId) => !recognized.has(chipId))
+        .map((chipId) => getQuickHandoffChip(chipId))
+        .filter(Boolean),
+    }))
+    .filter((group) => group.chips.length > 0);
+
   const categories = ADVISOR_BOOST_CATEGORIES
     .filter((category) => !category.requiresElectric || isElectric)
     .map((category) => ({
@@ -428,9 +586,10 @@ export function buildAdvisorBoostView(session = {}) {
     .slice(0, 6);
 
   return {
+    highlights,
     categories,
     suggestions,
-    showSuggestions: recognized.size > 0 && suggestions.length > 0,
+    showSuggestions: false,
     copy: QUICK_HANDOFF_COPY,
   };
 }

@@ -1270,6 +1270,7 @@ export {
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
   QUICK_HANDOFF_COPY,
   buildAdvisorBoostView,
+  buildWishProfilePresentation,
   inferRecognizedBoostChipIds,
   countSessionUnderstandingLabels,
   createLeadFromConsultationHappyPath,

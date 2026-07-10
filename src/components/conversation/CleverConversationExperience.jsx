@@ -296,7 +296,7 @@ export default function CleverConversationExperience({
             chapterTitle={session.vehicleChapterTitle}
           />
         ) : (
-          <CleverNotepadBar labels={session.notepadLabels} />
+          <CleverNotepadBar labels={session.notepadLabels} needProfile={session.needProfile} />
         )
       )}
 
@@ -326,6 +326,7 @@ export default function CleverConversationExperience({
                 <CleverUnderstandingMoment
                   key={turn.id}
                   labels={turn.labels ?? []}
+                  needProfile={session.needProfile}
                 />
               );
             }

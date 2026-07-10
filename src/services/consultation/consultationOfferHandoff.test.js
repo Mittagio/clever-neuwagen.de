@@ -11,6 +11,7 @@ import {
   beginOfferHandoff,
   buildAdvisorBoostView,
   buildAdvisorContactPrompt,
+  buildWishProfilePresentation,
   filterNewHandoffChipIds,
   inferRecognizedBoostChipIds,
   QUICK_HANDOFF_COPY,
@@ -56,8 +57,9 @@ function testHandoffView() {
   const view = buildPersonalHandoffView(session, dealerConditions);
 
   assert.equal(view.title, 'Ihr Wunsch ist vorbereitet.');
-  assert.ok(view.preparedItems.includes('Ihr Wunschprofil'));
-  assert.ok(view.preparedItems.includes('Passendes Fahrzeug'));
+  assert.ok(view.wishProfile?.lines?.length > 0);
+  assert.match(view.advisor.role, /Schorndorf/i);
+  assert.match(view.advisor.message, /passenden Lösung/i);
   assert.ok(view.advisor.name.includes('Mike'));
   assert.equal(view.hasRate, false);
   assert.equal(view.hasOffer, false);
@@ -134,10 +136,21 @@ function testValidation() {
 function testAdvisorBoostChips() {
   assert.ok(QUICK_HANDOFF_ENRICHMENT_CHIPS.length >= 35);
   assert.equal(ADVISOR_BOOST_CATEGORIES.length, 5);
-  assert.ok(ADVISOR_BOOST_CATEGORIES.some((c) => c.id === 'elektro'));
-  assert.match(QUICK_HANDOFF_COPY.title, /Verkäufer noch wissen/i);
-  assert.match(QUICK_HANDOFF_COPY.expandLabel, /Optional/i);
+  assert.match(QUICK_HANDOFF_COPY.reassurance, /bereits übernehmen/i);
+  assert.match(QUICK_HANDOFF_COPY.showMoreLabel, /Mehr anzeigen/i);
   console.log('✓ Berater-Boost-Chips nach Kategorien');
+}
+
+function testWishProfilePresentation() {
+  const profile = buildWishProfilePresentation(
+    { fuel: 'electric', bodyType: 'suv', budget: { maxMonthlyRate: 370 }, towing: true, colorHint: 'Blau' },
+    ['Elektro', 'EV4', 'Earth', 'Leasing', 'Budget bis 370 €/Monat', '48 Monate', '20.000 km', 'Anhängerkupplung', 'Blau'],
+  );
+  assert.equal(profile.title, 'Ihr Wunschprofil');
+  assert.ok(profile.lines.length <= 7);
+  assert.ok(profile.lines.some((line) => /elektro/i.test(line.text)));
+  assert.match(profile.footer, /nicht bei null anfangen/i);
+  console.log('✓ Wunschprofil statt Checkliste');
 }
 
 function testAdvisorBoostView() {
@@ -151,8 +164,8 @@ function testAdvisorBoostView() {
   const dailyIds = boost.categories.find((c) => c.id === 'daily')?.chips.map((c) => c.id) ?? [];
   assert.ok(!dailyIds.includes('budget400'));
   assert.ok(boost.categories.some((c) => c.id === 'elektro'), 'Elektro-Kategorie bei EV');
-  assert.ok(boost.showSuggestions, 'Entdeckungs-Chips bei erkanntem Verständnis');
-  assert.ok(boost.suggestions.some((c) => c.id === 'seatHeating'));
+  assert.ok(boost.highlights.length > 0, 'Highlight-Gruppen sichtbar');
+  assert.equal(boost.showSuggestions, false);
 
   const onlyNew = filterNewHandoffChipIds(session, [...recognized, 'seatHeating']);
   assert.ok(onlyNew.includes('seatHeating'));
@@ -208,6 +221,7 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 
 testHandoffView();
 testAdvisorBoostChips();
+testWishProfilePresentation();
 testAdvisorBoostView();
 testTowbarBoostView();
 testAdvisorOpeningPrompt();

@@ -32,6 +32,7 @@ import { buildEv3MiniRecommendation } from './consultationEv3HappyPath.js';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import { JOURNEY_PHASE } from '../journey/journeyTypes.js';
+import { buildWishProfilePresentation } from './consultationOfferHandoff.js';
 
 function testInitialParse() {
   const profile = mergeTextIntoNeedProfile(HAPPY_PATH_EXAMPLE_MESSAGE);
@@ -227,6 +228,15 @@ function testUnderstandingMirrorOnOpening() {
   console.log('✓ WOW-Moment spiegelt Verständnis nach erster Aussage');
 }
 
+function testWishProfileFromOpening() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+  const profile = buildWishProfilePresentation(session.needProfile, session.notepadLabels);
+  assert.ok(profile.lines.length >= 3);
+  assert.match(profile.footer, /nicht bei null anfangen/i);
+  console.log('✓ Eröffnung erzeugt kompaktes Wunschprofil');
+}
+
 function testWarmQuestionsSoundOptional() {
   const copy = WARM_QUESTION_PROMPTS.longDistance;
   assert.doesNotMatch(copy, /Darf ich|Wie viele Kilometer/i);
@@ -265,6 +275,7 @@ testOnlyTwoGapQuestions();
 testFreetextNarrativeDuringOpenQuestion();
 testContextualPlaceholders();
 testUnderstandingMirrorOnOpening();
+testWishProfileFromOpening();
 testQuickHandoffEnrichment();
 testWarmQuestionsSoundOptional();
 testFreetextMapping();

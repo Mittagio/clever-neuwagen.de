@@ -4,6 +4,7 @@ import {
   CONTACT_TIMING_OPTIONS,
   validateHandoffForm,
 } from '../../services/consultation/consultationOfferHandoff.js';
+import CleverWishProfile from './CleverWishProfile.jsx';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -52,27 +53,19 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
       </h2>
 
       <div className="cc-offer-handoff__prepared">
-        <p className="cc-offer-handoff__prepared-intro">{handoffView.preparedIntro}</p>
-        <ul className="cc-offer-handoff__prepared-list">
-          {handoffView.preparedItems.map((item) => (
-            <li key={item} className="cc-offer-handoff__prepared-item">
-              <span aria-hidden>✓</span>
-              {item}
-            </li>
-          ))}
-        </ul>
+        {handoffView.wishProfile && (
+          <CleverWishProfile profile={handoffView.wishProfile} />
+        )}
       </div>
 
       <article className="cc-offer-handoff__advisor">
         <p className="cc-offer-handoff__section-label">Ihr Ansprechpartner</p>
         <div className="cc-offer-handoff__advisor-card">
-          <div className="cc-offer-handoff__avatar" aria-hidden>
-            {advisor.initials || '👤'}
-          </div>
+          <div className="cc-offer-handoff__avatar" aria-hidden>👤</div>
           <div className="cc-offer-handoff__advisor-body">
             <p className="cc-offer-handoff__advisor-name">{advisor.name}</p>
             <p className="cc-offer-handoff__advisor-role">{advisor.role}</p>
-            <p className="cc-offer-handoff__advisor-exp">{advisor.experience}</p>
+            <p className="cc-offer-handoff__advisor-tagline">{advisor.tagline || advisor.experience}</p>
             <p className="cc-offer-handoff__advisor-message">{advisor.message}</p>
           </div>
         </div>
