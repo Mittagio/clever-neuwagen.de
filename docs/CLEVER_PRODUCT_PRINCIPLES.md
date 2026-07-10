@@ -23,6 +23,7 @@ Verwandte Dokumente:
 - [Conversation Design](clever-conversation-design.md) – *Wie fühlt sich das Gespräch an?*
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
 - [Nutzer-Tests & Verstanden-Gefühl](clever-user-testing.md)
+- **[v1.0 Beobachtungsphase (UX Freeze)](CLEVER_V1_OBSERVATION_PHASE.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
 **Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** → Clever Lead → Charakter → Conversation Design → Umsetzung.
