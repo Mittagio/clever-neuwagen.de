@@ -87,6 +87,8 @@ export default function CleverConversationExperience({
   dealerName = 'Autohaus',
   dealerConditions = {},
   embedded = false,
+  modelQuickPicks = [],
+  onModelQuickPick,
 }) {
   const { addLead } = useLeads();
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
@@ -181,6 +183,85 @@ export default function CleverConversationExperience({
   const handleFormSubmit = (event) => {
     event.preventDefault();
     handleSend(inputValue);
+  };
+
+  const handleExampleSelect = useCallback((text) => {
+    handleSend(text);
+  }, [handleSend]);
+
+  const handleModelQuickPick = useCallback((card) => {
+    if (onModelQuickPick) {
+      onModelQuickPick(card);
+      return;
+    }
+    handleSend(card.searchQuery ?? `Kia ${card.name}`);
+  }, [handleSend, onModelQuickPick]);
+
+  const renderComposer = (variant = 'bar') => {
+    const isTool = variant === 'tool';
+    const formClass = [
+      isTool ? 'cc-tool__composer' : 'cc-input-bar',
+      !isTool && inputFocused ? 'cc-input-bar--focused' : '',
+      !isTool && inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
+      !isTool && voiceListening ? ' cc-input-bar--listening' : '',
+    ].filter(Boolean).join(' ');
+
+    return (
+      <form className={formClass} onSubmit={handleFormSubmit}>
+        {!isTool && (
+          <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
+            {inVehicleWorld ? 'Einfach weitererzählen' : 'Einfach erzählen oder fragen'}
+          </label>
+        )}
+        {voiceListening && (
+          <p className={isTool ? 'cc-tool__voice-status' : 'cc-input-bar__voice-status'} aria-live="polite">
+            Clever hört zu …
+          </p>
+        )}
+        {voiceError && !voiceListening && (
+          <p className={isTool ? 'cc-tool__voice-error' : 'cc-input-bar__voice-error'} role="alert">
+            {voiceError}
+          </p>
+        )}
+        <div className={isTool ? 'cc-tool__input-row' : 'cc-input-bar__row'}>
+          <input
+            ref={inputRef}
+            id="cc-conversation-input"
+            type="text"
+            className={isTool ? 'cc-tool__field' : 'cc-input-bar__field'}
+            placeholder={voiceListening ? 'Clever hört zu …' : inputPlaceholder}
+            value={inputValue}
+            disabled={!inputEnabled}
+            onChange={(event) => setInputValue(event.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            autoComplete="off"
+            autoFocus={isTool}
+          />
+          <button
+            type="button"
+            className={`${isTool ? 'cc-tool__mic' : 'cc-input-bar__mic'}${voiceListening ? ' is-active' : ''}`}
+            onClick={handleVoiceStart}
+            disabled={!inputEnabled || !voiceSupported || voiceListening}
+            aria-label={opening.voiceLabel}
+            title={voiceSupported ? opening.voiceLabel : 'Spracheingabe nicht verfügbar'}
+          >
+            <span aria-hidden>🎤</span>
+          </button>
+          <button
+            type="submit"
+            className={isTool ? 'cc-tool__send' : 'cc-input-bar__send'}
+            disabled={!inputEnabled || !inputValue.trim()}
+            aria-label="Senden"
+          >
+            <span aria-hidden>➜</span>
+          </button>
+        </div>
+        {isTool && voiceSupported && !voiceListening && (
+          <p className="cc-tool__voice-hint">{opening.voiceLabel}</p>
+        )}
+      </form>
+    );
   };
 
   const handleOptionSelect = (questionId, answerId) => {
@@ -281,6 +362,7 @@ export default function CleverConversationExperience({
     embedded ? 'cc-experience--embedded' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
+    showOpening ? 'cc-experience--tool-opening' : '',
     showAdvisorContact ? 'cc-experience--advisor-contact' : '',
     advisorBoostExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
@@ -307,10 +389,45 @@ export default function CleverConversationExperience({
 
       <div className="cc-experience__scroll" ref={scrollRef}>
         {showOpening && (
-          <section className="cc-opening" aria-label="Clever Empfang">
-            <h1 className="cc-opening__greeting">{opening.greeting}</h1>
-            <p className="cc-opening__invitation">{opening.invitation}</p>
-            <p className="cc-opening__intro">{opening.intro}</p>
+          <section className="cc-tool" aria-label="Clever">
+            <h1 className="cc-tool__headline">{opening.headline}</h1>
+            {renderComposer('tool')}
+
+            <div className="cc-tool__examples">
+              <p className="cc-tool__section-label">{opening.examplesLabel}</p>
+              <ul className="cc-tool__example-list">
+                {opening.examples.map((example) => (
+                  <li key={example}>
+                    <button
+                      type="button"
+                      className="cc-tool__example"
+                      onClick={() => handleExampleSelect(example)}
+                    >
+                      {example}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {modelQuickPicks.length > 0 && (
+              <div className="cc-tool__models">
+                <p className="cc-tool__section-label">{opening.modelsLabel}</p>
+                <div className="cc-tool__model-chips" role="list">
+                  {modelQuickPicks.map((card) => (
+                    <button
+                      key={card.id ?? card.modelKey}
+                      type="button"
+                      className="cc-tool__model-chip"
+                      role="listitem"
+                      onClick={() => handleModelQuickPick(card)}
+                    >
+                      {card.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -405,64 +522,7 @@ export default function CleverConversationExperience({
         />
       )}
 
-      {!inOfferWorld && !inCollectMode && (
-        <form
-          className={[
-            'cc-input-bar',
-            inputFocused ? 'cc-input-bar--focused' : '',
-            inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
-            voiceListening ? ' cc-input-bar--listening' : '',
-          ].filter(Boolean).join('')}
-          onSubmit={handleFormSubmit}
-        >
-          <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
-            {inVehicleWorld ? 'Einfach weitererzählen' : 'Einfach erzählen oder fragen'}
-          </label>
-          {voiceListening && (
-            <p className="cc-input-bar__voice-status" aria-live="polite">
-              Clever hört zu …
-            </p>
-          )}
-          {voiceError && !voiceListening && (
-            <p className="cc-input-bar__voice-error" role="alert">
-              {voiceError}
-            </p>
-          )}
-          <div className="cc-input-bar__row">
-            <input
-              ref={inputRef}
-              id="cc-conversation-input"
-              type="text"
-              className="cc-input-bar__field"
-              placeholder={voiceListening ? 'Clever hört zu …' : inputPlaceholder}
-              value={inputValue}
-              disabled={!inputEnabled}
-              onChange={(event) => setInputValue(event.target.value)}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              autoComplete="off"
-            />
-            <button
-              type="button"
-              className={`cc-input-bar__mic${voiceListening ? ' cc-input-bar__mic--active' : ''}`}
-              onClick={handleVoiceStart}
-              disabled={!inputEnabled || !voiceSupported || voiceListening}
-              aria-label="Erzählen"
-              title={voiceSupported ? 'Erzählen' : 'Spracheingabe nicht verfügbar'}
-            >
-              <span aria-hidden>🎤</span>
-            </button>
-            <button
-              type="submit"
-              className="cc-input-bar__send"
-              disabled={!inputEnabled || !inputValue.trim()}
-              aria-label="Senden"
-            >
-              <span aria-hidden>➜</span>
-            </button>
-          </div>
-        </form>
-      )}
+      {!inOfferWorld && !inCollectMode && !showOpening && renderComposer('bar')}
     </div>
   );
 }

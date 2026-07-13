@@ -15,6 +15,15 @@
   padding-bottom: 168px;
 }
 
+.cc-experience--embedded.cc-experience--tool-opening .cc-experience__scroll {
+  max-height: none;
+  padding: 24px 20px 32px;
+}
+
+.cc-experience--embedded.cc-experience--tool-opening {
+  min-height: auto;
+}
+
 .cc-experience--embedded .cc-opening__invitation {
   font-size: 1.125rem;
   font-weight: 500;
@@ -189,6 +198,191 @@
   font-size: 0.9375rem;
   line-height: 1.55;
   color: var(--cc-muted);
+}
+
+/* ── Tool Opening (Werkzeug statt Landingpage) ── */
+
+.cc-tool {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+}
+
+.cc-tool__headline {
+  margin: 0 0 20px;
+  font-size: clamp(1.5rem, 5vw, 1.875rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--cc-text);
+}
+
+.cc-tool__composer {
+  margin-bottom: 28px;
+}
+
+.cc-tool__input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.cc-tool__field {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 12px;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--cc-text);
+}
+
+.cc-tool__field::placeholder {
+  color: #9ca3af;
+}
+
+.cc-tool__field:focus {
+  outline: none;
+}
+
+.cc-tool__mic,
+.cc-tool__send {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: var(--cc-text);
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.cc-tool__mic:hover:not(:disabled),
+.cc-tool__send:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.cc-tool__mic.is-active {
+  background: #dbeafe;
+}
+
+.cc-tool__mic:disabled,
+.cc-tool__send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cc-tool__send:not(:disabled) {
+  background: var(--cc-accent);
+  color: #fff;
+}
+
+.cc-tool__send:not(:disabled):hover {
+  background: #111827;
+}
+
+.cc-tool__voice-status,
+.cc-tool__voice-error,
+.cc-tool__voice-hint {
+  margin: 8px 4px 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.cc-tool__voice-status {
+  color: var(--cc-check);
+}
+
+.cc-tool__voice-error {
+  color: #b45309;
+}
+
+.cc-tool__voice-hint {
+  color: var(--cc-muted);
+}
+
+.cc-tool__section-label {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cc-muted);
+}
+
+.cc-tool__examples {
+  margin-bottom: 28px;
+}
+
+.cc-tool__example-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-tool__example {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--cc-chip-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--cc-accent);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.cc-tool__example::before {
+  content: '• ';
+  color: var(--cc-muted);
+}
+
+.cc-tool__example:hover {
+  border-color: #d1d5db;
+  background: #fafafa;
+}
+
+.cc-tool__models {
+  padding-top: 4px;
+}
+
+.cc-tool__model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cc-tool__model-chip {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--cc-chip-border);
+  border-radius: 999px;
+  background: var(--cc-chip-bg);
+  color: var(--cc-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.cc-tool__model-chip:hover {
+  border-color: #d1d5db;
+  background: #fff;
 }
 
 /* ── WOW-Moment: Verständnis spiegeln ── */

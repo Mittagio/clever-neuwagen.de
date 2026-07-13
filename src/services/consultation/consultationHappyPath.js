@@ -250,15 +250,24 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
   };
 }
 
-export function getOpeningCopy(dealerName = 'Autohaus') {
+/** Beispiel-Prompts – zeigen, wie man mit Clever spricht (ChatGPT-Prinzip). */
+export const OPENING_EXAMPLE_PROMPTS = [
+  'EV3 Leasing für Familie',
+  'Mein Leasing läuft im November aus',
+  'Ich brauche einen Nachfolger für meinen Kuga',
+  'EV2 oder EV3?',
+  '2 Kinder und Hund',
+  'Elektro oder Hybrid?',
+];
+
+export function getOpeningCopy(_dealerName = 'Autohaus') {
   return {
-    greeting: '👋 Willkommen bei Clever.',
-    invitation: 'Erzählen Sie einfach, wonach Sie suchen.',
-    intro: 'Sie können schreiben, sprechen oder direkt mit einem Berater starten.',
+    headline: 'Wonach suchen Sie?',
     placeholder: 'Ich suche …',
-    advisorNote:
-      'Ihr Berater kann Sie auch direkt kontaktieren, '
-      + 'ohne dass Sie vorher etwas erzählen müssen.',
+    examples: OPENING_EXAMPLE_PROMPTS,
+    examplesLabel: 'Zum Beispiel:',
+    modelsLabel: 'Oder direkt:',
+    voiceLabel: 'Spracheingabe',
   };
 }
 

@@ -259,12 +259,14 @@ function testOpeningIsNotAQuestion() {
 
 function testReceptionOpeningCopy() {
   const copy = getOpeningCopy('Autohaus Trinkle');
-  assert.match(copy.greeting, /Willkommen bei Clever/);
-  assert.match(copy.invitation, /Erzählen Sie einfach/);
-  assert.match(copy.intro, /schreiben|sprechen|Berater/i);
+  assert.equal(copy.headline, 'Wonach suchen Sie?');
   assert.match(copy.placeholder, /Ich suche/);
-  assert.match(copy.advisorNote, /direkt kontaktieren/i);
-  console.log('✓ Empfangs-Copy: erzählen, sprechen oder Berater');
+  assert.equal(copy.examples.length, 6);
+  assert.match(copy.examples[0], /EV3/);
+  assert.equal(copy.examplesLabel, 'Zum Beispiel:');
+  assert.equal(copy.modelsLabel, 'Oder direkt:');
+  assert.equal(copy.voiceLabel, 'Spracheingabe');
+  console.log('✓ Tool-Opening: Wonach suchen Sie? + Beispiele');
 }
 
 testInitialParse();

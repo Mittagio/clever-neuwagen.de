@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import DealerPortalTopbar from '../components/dealer/DealerPortalTopbar.jsx';
-import DealerModelWorld from '../components/dealer/DealerModelWorld.jsx';
 import CleverConversationExperience from '../components/conversation/CleverConversationExperience.jsx';
 import '../components/conversation/clever-conversation.css';
 import DealerNeedAnswerCard from '../components/dealer/DealerNeedAnswerCard.jsx';
@@ -13,7 +12,6 @@ import { syncDealerSearchInquiryLead } from '../services/dealer/dealerInquiryLea
 import { scoreTrimWithPackages } from '../services/dealer/trimEquipmentPresentation.js';
 import DealerSearchResults from '../components/dealer/DealerSearchResults.jsx';
 import DealerSearchAlternatives from '../components/dealer/DealerSearchAlternatives.jsx';
-import DealerWhySection from '../components/dealer/DealerWhySection.jsx';
 import DealerSmartAnswerCard from '../components/dealer/DealerSmartAnswerCard.jsx';
 import DealerJourneyProgress from '../components/dealer/DealerJourneyProgress.jsx';
 import DealerJourneyResumeBanner from '../components/dealer/DealerJourneyResumeBanner.jsx';
@@ -108,6 +106,11 @@ import { detectProfileConflict } from '../services/search/profileConflictHint.js
 import { buildDealerWishSearchUrl } from '../services/wish/wishUrlService.js';
 import { DEALER_MAX_RECOMMENDATIONS } from '../data/dealerLandingContent.js';
 import { KIA_MODEL_WORLD } from '../data/dealerLandingContent.js';
+
+const RECEPTION_MODEL_PICK_IDS = ['ev2', 'ev3', 'ev4', 'sportage', 'ceed'];
+const RECEPTION_MODEL_PICKS = KIA_MODEL_WORLD.filter((card) => (
+  RECEPTION_MODEL_PICK_IDS.includes(card.id)
+));
 import { KIA_MODEL_ATTRIBUTES } from '../data/kia/kiaModelAttributes.js';
 import {
   mergeDealerChipFilters,
@@ -1706,23 +1709,15 @@ export default function DealerPage() {
           <DealerPortalTopbar />
 
           {showReception && (
-            <section className="dealer-reception" aria-label="Clever Empfang">
+            <section className="dealer-reception" aria-label="Clever">
               <CleverConversationExperience
                 embedded
                 dealerName={conditions.dealerName}
                 dealerConditions={conditions}
+                modelQuickPicks={RECEPTION_MODEL_PICKS}
+                onModelQuickPick={handleClassicConfigure}
               />
             </section>
-          )}
-
-          {showReception && (
-            <DealerModelWorld
-              city={city}
-              dealerSlug={dealerId}
-              conditions={conditions}
-              onConfigureModel={handleClassicConfigure}
-              variant="inspiration"
-            />
           )}
 
           {searchConflict && (
@@ -2013,13 +2008,6 @@ export default function DealerPage() {
           )}
           </div>
           </div>
-
-          {showReception && (
-            <DealerWhySection
-              dealerName={conditions.dealerName}
-              contact={contact}
-            />
-          )}
         </div>
       </div>
 
