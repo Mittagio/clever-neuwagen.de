@@ -261,12 +261,8 @@ function testReceptionOpeningCopy() {
   const copy = getOpeningCopy('Autohaus Trinkle');
   assert.equal(copy.headline, 'Wonach suchen Sie?');
   assert.match(copy.placeholder, /Ich suche/);
-  assert.equal(copy.examples.length, 6);
-  assert.match(copy.examples[0], /EV3/);
-  assert.equal(copy.examplesLabel, 'Zum Beispiel:');
-  assert.equal(copy.modelsLabel, 'Oder direkt:');
   assert.equal(copy.voiceLabel, 'Spracheingabe');
-  console.log('✓ Tool-Opening: Wonach suchen Sie? + Beispiele');
+  console.log('✓ Tool-Opening: Wonach suchen Sie? + Smart Entry');
 }
 
 testInitialParse();

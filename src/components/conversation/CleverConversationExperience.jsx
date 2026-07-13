@@ -66,6 +66,17 @@ const TURN_REVEAL_DELAY = {
   [OFFER_TURN_TYPE.HANDOFF_COMPLETE]: 420,
 };
 
+const LIVING_PLACEHOLDER_TEXTS = [
+  'Ich suche ein Elektroauto für zwei Kinder …',
+  'Mein Leasing läuft im November aus …',
+  'EV2 oder EV3?',
+  'Ich brauche Platz für Hund und Kinderwagen …',
+  'Ich fahre oft mit Anhänger …',
+  'Mein Budget liegt bei etwa 350 € monatlich …',
+  'Sportage oder EV5?',
+  'Ich möchte später übernehmen können …',
+];
+
 function delayForTurn(turn, prevTurn) {
   if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === TURN_TYPE.CUSTOMER) {
     return 360;
@@ -87,8 +98,6 @@ export default function CleverConversationExperience({
   dealerName = 'Autohaus',
   dealerConditions = {},
   embedded = false,
-  modelQuickPicks = [],
-  onModelQuickPick,
 }) {
   const { addLead } = useLeads();
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
@@ -99,6 +108,8 @@ export default function CleverConversationExperience({
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [advisorBoostExpanded, setAdvisorBoostExpanded] = useState(false);
+  const [livingPlaceholderIndex, setLivingPlaceholderIndex] = useState(0);
+  const [livingPlaceholderFading, setLivingPlaceholderFading] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const voiceCommittedRef = useRef('');
@@ -108,11 +119,34 @@ export default function CleverConversationExperience({
   const opening = useMemo(() => getOpeningCopy(dealerName), [dealerName]);
   const inVehicleWorld = isInVehicleWorld(session);
   const inOfferWorld = isInOfferWorld(session);
+  const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
+  const inCollectMode = isAdvisorCollectMode(session);
+  const inputEnabled = isInputEnabled(session) && !inOfferWorld;
 
   useEffect(() => {
     setSession(createHappyPathSession(dealerName));
     setRevealedCount(0);
   }, [dealerName]);
+
+  useEffect(() => {
+    if (!showOpening) return undefined;
+    if (voiceListening) return undefined;
+    if (inputValue.trim()) return undefined;
+    if (inputFocused) return undefined;
+
+    const intervalMs = 3600;
+    const fadeMs = 260;
+
+    const handle = window.setInterval(() => {
+      setLivingPlaceholderFading(true);
+      window.setTimeout(() => {
+        setLivingPlaceholderIndex((prev) => (prev + 1) % LIVING_PLACEHOLDER_TEXTS.length);
+        setLivingPlaceholderFading(false);
+      }, fadeMs);
+    }, intervalMs);
+
+    return () => window.clearInterval(handle);
+  }, [showOpening, voiceListening, inputValue, inputFocused]);
 
   useEffect(() => {
     const playableCount = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type)).length;
@@ -189,13 +223,103 @@ export default function CleverConversationExperience({
     handleSend(text);
   }, [handleSend]);
 
-  const handleModelQuickPick = useCallback((card) => {
-    if (onModelQuickPick) {
-      onModelQuickPick(card);
-      return;
-    }
-    handleSend(card.searchQuery ?? `Kia ${card.name}`);
-  }, [handleSend, onModelQuickPick]);
+  const smartChipState = useMemo(() => {
+    const raw = String(inputValue ?? '').trim().toLowerCase();
+
+    const defaults = {
+      label: '✨ Häufig gesucht',
+      chips: [
+        { id: 'lease_ends', label: 'Leasing läuft aus', text: 'Mein Leasing läuft im November aus.' },
+        { id: 'family', label: 'Familie', text: 'Ich brauche ein Auto für Familie (Kinder, Alltag).' },
+        { id: 'electric', label: 'Elektro', text: 'Ich suche ein Elektroauto.' },
+        { id: 'ev2ev3', label: 'EV2 oder EV3', text: 'EV2 oder EV3?' },
+        { id: 'towbar', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
+      ],
+    };
+
+    if (!raw) return defaults;
+
+    const pick = (group) => ({
+      label: group.label,
+      chips: group.chips.map((chip) => ({
+        id: chip.id,
+        label: chip.label,
+        text: chip.text,
+      })),
+    });
+
+    const groups = [
+      {
+        id: 'ev2',
+        match: /\bev2\b/,
+        label: '🚗 Zum EV2 häufig gewählt:',
+        chips: [
+          { id: 'ev2_heatpump', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
+          { id: 'ev2_seatheat', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
+          { id: 'ev2_cam', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
+          { id: 'ev2_leasing', label: 'Leasing', text: 'Ich möchte leasen.' },
+          { id: 'ev2_km', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
+        ],
+      },
+      {
+        id: 'trailer',
+        match: /anh(ä|ae)ng|wohnwagen|pferd/,
+        label: '🚚 Häufig ergänzt:',
+        chips: [
+          { id: 'towbar', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
+          { id: '1500', label: '1.500 kg', text: 'Zuglast ca. 1.500 kg wäre wichtig.' },
+          { id: 'caravan', label: 'Wohnwagen', text: 'Ich ziehe gelegentlich einen Wohnwagen.' },
+          { id: 'horse', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
+        ],
+      },
+      {
+        id: 'leasing',
+        match: /leasing|rate|monat|km|anzahlung|restwert|inzahlung/,
+        label: '💶 Rund ums Angebot:',
+        chips: [
+          { id: '10k', label: '10.000 km', text: 'Ich fahre ca. 10.000 km pro Jahr.' },
+          { id: '15k', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
+          { id: 'no_down', label: 'ohne Anzahlung', text: 'Am liebsten ohne Anzahlung.' },
+          { id: 'buyout', label: 'Restwertübernahme', text: 'Spätere Übernahme wäre interessant.' },
+          { id: 'tradein', label: 'Inzahlungnahme', text: 'Inzahlungnahme wäre gut.' },
+        ],
+      },
+      {
+        id: 'family',
+        match: /familie|kinder|hund|kinderwagen|isofix/,
+        label: '👨‍👩‍👧‍👦 Vielleicht interessant:',
+        chips: [
+          { id: 'stroller', label: 'Kinderwagen', text: 'Kofferraum muss Kinderwagen-tauglich sein.' },
+          { id: 'dog', label: 'Hund', text: 'Platz für einen Hund wäre wichtig.' },
+          { id: 'big_trunk', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
+          { id: 'isofix', label: 'Isofix', text: 'Isofix ist Pflicht.' },
+          { id: 'roofbox', label: 'Dachbox', text: 'Dachbox / Dachträger wäre relevant.' },
+        ],
+      },
+      {
+        id: 'electric',
+        match: /elektro|ev\b|strom|wallbox|reichweite|laden/,
+        label: '⚡ Vielleicht noch wichtig:',
+        chips: [
+          { id: 'heatpump', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
+          { id: 'v2l', label: 'V2L', text: 'V2L wäre interessant.' },
+          { id: 'fastcharge', label: 'Schnellladen', text: 'Gutes Schnellladen ist mir wichtig.' },
+          { id: 'wallbox', label: 'Wallbox', text: 'Ich kann zuhause an Wallbox laden.' },
+          { id: 'winter', label: 'Reichweite Winter', text: 'Winterreichweite ist mir wichtig.' },
+        ],
+      },
+    ];
+
+    const hit = groups.find((g) => g.match.test(raw));
+    return hit ? pick(hit) : defaults;
+  }, [inputValue]);
+
+  const handleSmartChipClick = useCallback((chipText) => {
+    const next = String(chipText ?? '').trim();
+    if (!next) return;
+    setInputValue(next);
+    inputRef.current?.focus?.();
+  }, []);
 
   const renderComposer = (variant = 'bar') => {
     const isTool = variant === 'tool';
@@ -224,20 +348,33 @@ export default function CleverConversationExperience({
           </p>
         )}
         <div className={isTool ? 'cc-tool__input-row' : 'cc-input-bar__row'}>
-          <input
-            ref={inputRef}
-            id="cc-conversation-input"
-            type="text"
-            className={isTool ? 'cc-tool__field' : 'cc-input-bar__field'}
-            placeholder={voiceListening ? 'Clever hört zu …' : inputPlaceholder}
-            value={inputValue}
-            disabled={!inputEnabled}
-            onChange={(event) => setInputValue(event.target.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            autoComplete="off"
-            autoFocus={isTool}
-          />
+          <div className={isTool ? 'cc-tool__field-wrap' : ''}>
+            <input
+              ref={inputRef}
+              id="cc-conversation-input"
+              type="text"
+              className={isTool ? 'cc-tool__field' : 'cc-input-bar__field'}
+              placeholder={voiceListening ? 'Clever hört zu …' : (showOpening ? opening.placeholder : inputPlaceholder)}
+              value={inputValue}
+              disabled={!inputEnabled}
+              onChange={(event) => setInputValue(event.target.value)}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              autoComplete="off"
+              autoFocus={isTool}
+            />
+            {isTool && showOpening && !voiceListening && !inputValue.trim() && (
+              <span
+                className={[
+                  'cc-tool__living-placeholder',
+                  livingPlaceholderFading ? 'is-fading' : '',
+                ].filter(Boolean).join(' ')}
+                aria-hidden
+              >
+                {LIVING_PLACEHOLDER_TEXTS[livingPlaceholderIndex] ?? opening.placeholder}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             className={`${isTool ? 'cc-tool__mic' : 'cc-input-bar__mic'}${voiceListening ? ' is-active' : ''}`}
@@ -304,9 +441,6 @@ export default function CleverConversationExperience({
     });
   }, [dealerConditions, dealerName, addLead]);
 
-  const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
-  const inCollectMode = isAdvisorCollectMode(session);
-  const inputEnabled = isInputEnabled(session) && !inOfferWorld;
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
   const activeQuestionId = session.pendingQuestion?.id ?? null;
@@ -393,41 +527,22 @@ export default function CleverConversationExperience({
             <h1 className="cc-tool__headline">{opening.headline}</h1>
             {renderComposer('tool')}
 
-            <div className="cc-tool__examples">
-              <p className="cc-tool__section-label">{opening.examplesLabel}</p>
-              <ul className="cc-tool__example-list">
-                {opening.examples.map((example) => (
-                  <li key={example}>
-                    <button
-                      type="button"
-                      className="cc-tool__example"
-                      onClick={() => handleExampleSelect(example)}
-                    >
-                      {example}
-                    </button>
-                  </li>
+            <div className="cc-smartchips" aria-label="Gedankenanstöße">
+              <p className="cc-smartchips__label">{smartChipState.label}</p>
+              <div className="cc-smartchips__row" role="list">
+                {smartChipState.chips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className="cc-smartchips__chip"
+                    role="listitem"
+                    onClick={() => handleSmartChipClick(chip.text)}
+                  >
+                    {chip.label}
+                  </button>
                 ))}
-              </ul>
-            </div>
-
-            {modelQuickPicks.length > 0 && (
-              <div className="cc-tool__models">
-                <p className="cc-tool__section-label">{opening.modelsLabel}</p>
-                <div className="cc-tool__model-chips" role="list">
-                  {modelQuickPicks.map((card) => (
-                    <button
-                      key={card.id ?? card.modelKey}
-                      type="button"
-                      className="cc-tool__model-chip"
-                      role="listitem"
-                      onClick={() => handleModelQuickPick(card)}
-                    >
-                      {card.name}
-                    </button>
-                  ))}
-                </div>
               </div>
-            )}
+            </div>
           </section>
         )}
 

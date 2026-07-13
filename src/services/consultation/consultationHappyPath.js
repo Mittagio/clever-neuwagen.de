@@ -250,23 +250,10 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
   };
 }
 
-/** Beispiel-Prompts – zeigen, wie man mit Clever spricht (ChatGPT-Prinzip). */
-export const OPENING_EXAMPLE_PROMPTS = [
-  'EV3 Leasing für Familie',
-  'Mein Leasing läuft im November aus',
-  'Ich brauche einen Nachfolger für meinen Kuga',
-  'EV2 oder EV3?',
-  '2 Kinder und Hund',
-  'Elektro oder Hybrid?',
-];
-
 export function getOpeningCopy(_dealerName = 'Autohaus') {
   return {
     headline: 'Wonach suchen Sie?',
     placeholder: 'Ich suche …',
-    examples: OPENING_EXAMPLE_PROMPTS,
-    examplesLabel: 'Zum Beispiel:',
-    modelsLabel: 'Oder direkt:',
     voiceLabel: 'Spracheingabe',
   };
 }

@@ -232,6 +232,12 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
+.cc-tool__field-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
 .cc-tool__field {
   flex: 1;
   min-width: 0;
@@ -241,6 +247,28 @@
   font-size: 1rem;
   line-height: 1.4;
   color: var(--cc-text);
+}
+
+.cc-tool__living-placeholder {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+  color: #9ca3af;
+  font-size: 1rem;
+  line-height: 1.4;
+  opacity: 0.96;
+  transition: opacity 260ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-tool__living-placeholder.is-fading {
+  opacity: 0.08;
 }
 
 .cc-tool__field::placeholder {
@@ -319,70 +347,45 @@
   color: var(--cc-muted);
 }
 
-.cc-tool__examples {
-  margin-bottom: 28px;
+/* ── Smart Chips (Gedankenanstöße statt Filter) ── */
+
+.cc-smartchips {
+  margin-top: 18px;
 }
 
-.cc-tool__example-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cc-tool__example {
-  display: block;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid var(--cc-chip-border);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--cc-accent);
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
-}
-
-.cc-tool__example::before {
-  content: '• ';
+.cc-smartchips__label {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--cc-muted);
 }
 
-.cc-tool__example:hover {
-  border-color: #d1d5db;
-  background: #fafafa;
-}
-
-.cc-tool__models {
-  padding-top: 4px;
-}
-
-.cc-tool__model-chips {
+.cc-smartchips__row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.cc-tool__model-chip {
-  min-height: 44px;
-  padding: 10px 18px;
+.cc-smartchips__chip {
+  min-height: 40px;
+  padding: 9px 14px;
   border: 1px solid var(--cc-chip-border);
   border-radius: 999px;
-  background: var(--cc-chip-bg);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--cc-text);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, background 160ms ease, transform 120ms ease;
 }
 
-.cc-tool__model-chip:hover {
+.cc-smartchips__chip:hover {
   border-color: #d1d5db;
   background: #fff;
+}
+
+.cc-smartchips__chip:active {
+  transform: translateY(1px);
 }
 
 /* ── WOW-Moment: Verständnis spiegeln ── */
