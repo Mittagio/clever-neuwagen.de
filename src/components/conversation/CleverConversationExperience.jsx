@@ -31,6 +31,9 @@ import {
 } from '../../services/consultation/consultationHappyPath.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import { buildWishProfilePresentation } from '../../services/consultation/consultationOfferHandoff.js';
+import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
+import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
+import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
 import CleverNotepadBar from './CleverNotepadBar.jsx';
 import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
 import CleverNotingFlash from './CleverNotingFlash.jsx';
@@ -138,6 +141,8 @@ export default function CleverConversationExperience({
   const [livingPlaceholderIndex, setLivingPlaceholderIndex] = useState(0);
   const [livingPlaceholderFading, setLivingPlaceholderFading] = useState(false);
   const [labelsAnimating, setLabelsAnimating] = useState(false);
+  const [excludedModelKeys, setExcludedModelKeys] = useState([]);
+  const [lastAddedLabel, setLastAddedLabel] = useState('');
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const prevLabelCountRef = useRef(0);
@@ -156,6 +161,8 @@ export default function CleverConversationExperience({
     setSession(createHappyPathSession(dealerName));
     setRevealedCount(0);
     prevLabelCountRef.current = 0;
+    setExcludedModelKeys([]);
+    setLastAddedLabel('');
   }, [dealerName]);
 
   useEffect(() => {
@@ -215,6 +222,7 @@ export default function CleverConversationExperience({
 
     if (!added.length) return undefined;
 
+    setLastAddedLabel(added[0] ?? '');
     setNotingFlash(added);
     const timer = window.setTimeout(() => setNotingFlash(null), 1800);
     return () => window.clearTimeout(timer);
@@ -374,6 +382,28 @@ export default function CleverConversationExperience({
   const handleRemoveUnderstoodLabel = useCallback((label) => {
     setSession((prev) => removeNeedLabel(prev, label));
   }, []);
+
+  const customerUnderstanding = useMemo(() => {
+    // Reader-only: wir bauen das bestehende CustomerUnderstanding aus dem aktuellen NeedProfile.
+    const leadLike = { crm: { needProfile: session.needProfile } };
+    return buildCustomerUnderstanding(leadLike);
+  }, [session.needProfile]);
+
+  const vehicleReasoning = useMemo(() => recommendVehicles(customerUnderstanding), [customerUnderstanding]);
+  const visibleReasoningItems = useMemo(() => (
+    (vehicleReasoning.items ?? []).filter((item) => !excludedModelKeys.includes(item.modelKey))
+  ), [vehicleReasoning.items, excludedModelKeys]);
+
+  const reasoningHeadline = useMemo(() => {
+    const label = String(lastAddedLabel ?? '').trim();
+    if (!label) return vehicleReasoning.intro;
+    if (/schnellladen/i.test(label)) return 'Durch Schnellladen wird der EV6 jetzt besonders interessant:';
+    if (/familie|kinder|hund/i.test(label)) return 'Für Familie würde ich aktuell diese Fahrzeuge anschauen:';
+    if (/budget/i.test(label) || /€\/monat/i.test(label) || /leasing/i.test(label)) {
+      return 'Preislich passend wären aktuell diese Fahrzeuge:';
+    }
+    return vehicleReasoning.intro;
+  }, [lastAddedLabel, vehicleReasoning.intro]);
 
   const renderComposer = (variant = 'bar') => {
     const isTool = variant === 'tool';
@@ -625,6 +655,53 @@ export default function CleverConversationExperience({
                 ))}
               </div>
             </div>
+
+            {visibleReasoningItems.length > 0 && (
+              <section className="cc-reasoning" aria-label="Clever denkt mit">
+                <p className="cc-reasoning__kicker">CLEVER DENKT MIT</p>
+                {reasoningHeadline && (
+                  <p className="cc-reasoning__intro">{reasoningHeadline}</p>
+                )}
+                <div className="cc-reasoning__cards">
+                  {visibleReasoningItems.map((item, idx) => {
+                    const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : '🥉');
+                    const img = getKiaModelMediaEntry(item.modelKey, 'card').card;
+                    return (
+                      <article key={item.modelKey} className="cc-reasoning__card">
+                        <div className="cc-reasoning__media">
+                          <img className="cc-reasoning__img" src={img} alt={item.title} loading="lazy" />
+                          <span className="cc-reasoning__rank" aria-hidden>{medal}</span>
+                        </div>
+                        <div className="cc-reasoning__body">
+                          <h2 className="cc-reasoning__title">{item.title}</h2>
+                          {item.subtitle && <p className="cc-reasoning__subtitle">{item.subtitle}</p>}
+                          {item.rateLine && <p className="cc-reasoning__rate">{item.rateLine}</p>}
+                          {(item.reasons?.length ?? 0) > 0 && (
+                            <ul className="cc-reasoning__reasons">
+                              {item.reasons.map((reason) => (
+                                <li key={reason}>✓ {reason}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <button
+                            type="button"
+                            className="cc-reasoning__exclude"
+                            onClick={() => setExcludedModelKeys((prev) => [...new Set([...prev, item.modelKey])])}
+                          >
+                            Nicht meins
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {excludedModelKeys.length > 0 && (
+                  <p className="cc-reasoning__hint">
+                    Falls Ihnen das optisch nicht gefällt, hätte ich noch andere Ideen.
+                  </p>
+                )}
+              </section>
+            )}
           </section>
         )}
 
