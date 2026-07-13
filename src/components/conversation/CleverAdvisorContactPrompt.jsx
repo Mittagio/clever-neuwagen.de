@@ -16,7 +16,6 @@ export default function CleverAdvisorContactPrompt({
   const [expanded, setExpanded] = useState(false);
   const enrichmentRef = useRef({ selectedChipIds: [], freetext: '' });
 
-  const copy = buildWishHandoffCta(dealerName);
   const understandingCount = countSessionUnderstandingLabels(session);
   const showBoost = understandingCount > 0;
 
@@ -43,16 +42,13 @@ export default function CleverAdvisorContactPrompt({
         onClick={handleContact}
       >
         <span className="cc-wish-handoff__cta-main">
-          <span className="cc-wish-handoff__icon" aria-hidden>✨</span>
+          <span className="cc-wish-handoff__icon" aria-hidden>✓</span>
           <span className="cc-wish-handoff__cta-copy">
-            <span className="cc-wish-handoff__cta-title">{copy.buttonTitle}</span>
-            <span className="cc-wish-handoff__cta-sub">{copy.subline}</span>
+            <span className="cc-wish-handoff__cta-title">Wunsch verstanden</span>
+            <span className="cc-wish-handoff__cta-sub">Passendes Angebot erhalten</span>
           </span>
         </span>
-        <span className="cc-wish-handoff__cta-sticky-note">{copy.stickySubline}</span>
       </button>
-
-      <p className="cc-wish-handoff__reassurance">{copy.compactReassurance}</p>
 
       {showBoost && (
         <button

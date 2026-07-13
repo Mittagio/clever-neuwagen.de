@@ -18,6 +18,7 @@ import {
   isInVehicleWorld,
   isInputEnabled,
   isAdvisorCollectMode,
+  removeNeedLabel,
   selectRecommendedModel,
   applyQuickHandoffEnrichment,
   submitConversationInput,
@@ -110,8 +111,10 @@ export default function CleverConversationExperience({
   const [advisorBoostExpanded, setAdvisorBoostExpanded] = useState(false);
   const [livingPlaceholderIndex, setLivingPlaceholderIndex] = useState(0);
   const [livingPlaceholderFading, setLivingPlaceholderFading] = useState(false);
+  const [labelsAnimating, setLabelsAnimating] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
+  const prevLabelCountRef = useRef(0);
   const voiceCommittedRef = useRef('');
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
@@ -126,7 +129,17 @@ export default function CleverConversationExperience({
   useEffect(() => {
     setSession(createHappyPathSession(dealerName));
     setRevealedCount(0);
+    prevLabelCountRef.current = 0;
   }, [dealerName]);
+
+  useEffect(() => {
+    const count = session.notepadLabels?.length ?? 0;
+    if (count > prevLabelCountRef.current) {
+      setLabelsAnimating(true);
+      window.setTimeout(() => setLabelsAnimating(false), 520);
+    }
+    prevLabelCountRef.current = count;
+  }, [session.notepadLabels]);
 
   useEffect(() => {
     if (!showOpening) return undefined;
@@ -319,6 +332,10 @@ export default function CleverConversationExperience({
     if (!next) return;
     setInputValue(next);
     inputRef.current?.focus?.();
+  }, []);
+
+  const handleRemoveUnderstoodLabel = useCallback((label) => {
+    setSession((prev) => removeNeedLabel(prev, label));
   }, []);
 
   const renderComposer = (variant = 'bar') => {
@@ -525,6 +542,32 @@ export default function CleverConversationExperience({
         {showOpening && (
           <section className="cc-tool" aria-label="Clever">
             <h1 className="cc-tool__headline">{opening.headline}</h1>
+
+            {(session.notepadLabels?.length ?? 0) > 0 && (
+              <div
+                className={[
+                  'cc-understood',
+                  labelsAnimating ? 'is-animating' : '',
+                ].filter(Boolean).join(' ')}
+                aria-label="Verstanden"
+              >
+                {session.notepadLabels.map((label) => (
+                  <span key={label} className="cc-understood__chip">
+                    <span className="cc-understood__chip-text">{label}</span>
+                    <button
+                      type="button"
+                      className="cc-understood__chip-x"
+                      onClick={() => handleRemoveUnderstoodLabel(label)}
+                      aria-label={`${label} entfernen`}
+                      title={`${label} entfernen`}
+                    >
+                      <span aria-hidden>✕</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             {renderComposer('tool')}
 
             <div className="cc-smartchips" aria-label="Gedankenanstöße">

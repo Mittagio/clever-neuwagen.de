@@ -155,7 +155,7 @@ export function buildWishProfilePresentation(needProfile = {}, labels = []) {
   return {
     title: 'Ihr Wunschprofil',
     lines: lines.slice(0, 7),
-    footer: 'Ihr Verkäufer muss nicht bei null anfangen.',
+    footer: null,
   };
 }
 

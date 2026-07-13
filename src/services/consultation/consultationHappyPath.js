@@ -1184,6 +1184,122 @@ export function submitConversationInput(session, text = '') {
   return session;
 }
 
+function normalizeNeedLabel(label) {
+  return String(label ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+const EQUIPMENT_LABEL_TO_WISH_ID = {
+  'wärmepumpe': 'heat_pump',
+  'waermepumpe': 'heat_pump',
+  'v2l': 'v2l',
+  'head-up-display': 'head_up_display',
+  'hud': 'head_up_display',
+  '360° kamera': 'camera_360',
+  '360 kamera': 'camera_360',
+  'matrix-led': 'matrix_led',
+  'anhängerkupplung': 'towbar',
+  'anhaengerkupplung': 'towbar',
+  'sitzheizung hinten': 'rear_seat_heat',
+  'elektrische heckklappe': 'power_tailgate',
+  'großes navi': 'large_navi',
+  'grosses navi': 'large_navi',
+  'kofferraum wichtig': 'large_trunk',
+  'panorama': 'panorama_roof',
+  'tönung': 'tinting',
+  'toenung': 'tinting',
+};
+
+/**
+ * Entfernt ein verstandenens Label aus dem NeedProfile (Single Source of Truth).
+ * Keine neue Wahrheit: wir löschen/neutralisieren die zugrunde liegenden Felder,
+ * sodass buildUnderstoodLabels() das Label nicht direkt wieder erzeugt.
+ *
+ * @param {object} session
+ * @param {string} label
+ */
+export function removeNeedLabel(session, label) {
+  const key = normalizeNeedLabel(label);
+  if (!key) return session;
+
+  const prevProfile = session.needProfile ?? {};
+  const nextProfile = { ...prevProfile };
+
+  // Modelle
+  if (/^(ev2|ev3|ev4|ev5|ev6|ev9|sportage|ceed|niro|picanto|sorento)$/.test(key)) {
+    nextProfile.modelHint = null;
+    nextProfile.selectedModelKey = null;
+    nextProfile.world = 'need_consultation';
+  }
+
+  // Kraftstoff
+  if (/^(elektro|hybrid|plug-in-hybrid|benzin|diesel)$/.test(key)) {
+    nextProfile.fuel = null;
+  }
+
+  // Budget / Zahlungsart
+  if (key === 'leasing' || key === 'finanzierung' || key === 'kauf') {
+    nextProfile.budget = { ...(nextProfile.budget ?? {}), paymentType: null, paymentExplicit: false };
+  }
+  if (key.startsWith('budget')) {
+    nextProfile.budget = {
+      ...(nextProfile.budget ?? {}),
+      maxMonthlyRate: null,
+      maxPrice: null,
+    };
+  }
+
+  // Farbe
+  if (/^(blau|rot|weiß|weiss|schwarz|grün|gruen|grau|silber|wolfsgrau)$/.test(key)) {
+    nextProfile.colorHint = null;
+  }
+
+  // Familie / Personen
+  if (key === 'familie') {
+    nextProfile.children = null;
+    nextProfile.dog = false;
+    nextProfile.usage = (nextProfile.usage ?? []).filter((u) => u !== 'family');
+    nextProfile.priorities = (nextProfile.priorities ?? []).filter((p) => p !== 'family');
+  }
+
+  // Anhänger / AHK / Zuglast
+  if (key.includes('anhäng') || key.includes('anhaeng') || key.includes('ahk') || key.includes('anhängelast')) {
+    nextProfile.towbar = false;
+    nextProfile.towing = null;
+    nextProfile.towCapacityKg = null;
+    nextProfile.priorities = (nextProfile.priorities ?? []).filter((p) => p !== 'towing');
+  }
+
+  // Kilometer / Laufzeit
+  if (/\bkm\b/.test(key)) {
+    nextProfile.annualKm = null;
+  }
+  if (/\bmonate\b/.test(key)) {
+    nextProfile.leaseDurationMonths = null;
+  }
+
+  // Ausstattung
+  const equipId = EQUIPMENT_LABEL_TO_WISH_ID[key];
+  if (equipId) {
+    nextProfile.equipmentWishes = (nextProfile.equipmentWishes ?? []).filter((id) => id !== equipId);
+    if (equipId === 'towbar') nextProfile.towbar = false;
+  }
+
+  // Offene Fragen / Extras – falls der Chip davon stammt, einfach entfernen.
+  nextProfile.openQuestions = (nextProfile.openQuestions ?? []).filter((q) => normalizeNeedLabel(q) !== key);
+  nextProfile.extraLabels = (nextProfile.extraLabels ?? []).filter((l) => normalizeNeedLabel(l) !== key);
+
+  nextProfile.understoodLabels = buildUnderstoodLabels(nextProfile);
+
+  return {
+    ...session,
+    needProfile: nextProfile,
+    notepadLabels: labelsFromNeedProfile(nextProfile, session.notepadLabels ?? []),
+  };
+}
+
 /**
  * Welt 1 → 2 – Modell gewählt.
  * @param {object} session

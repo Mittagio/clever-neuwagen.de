@@ -233,7 +233,6 @@ function testWishProfileFromOpening() {
   session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
   const profile = buildWishProfilePresentation(session.needProfile, session.notepadLabels);
   assert.ok(profile.lines.length >= 3);
-  assert.match(profile.footer, /nicht bei null anfangen/i);
   console.log('✓ Eröffnung erzeugt kompaktes Wunschprofil');
 }
 

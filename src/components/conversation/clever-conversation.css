@@ -217,6 +217,65 @@
   color: var(--cc-text);
 }
 
+/* ── Verstanden-Chips (sichtbar statt erklärt) ── */
+
+.cc-understood {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.cc-understood.is-animating {
+  animation: cc-understood-in 420ms ease-out both;
+}
+
+@keyframes cc-understood-in {
+  from { opacity: 0.6; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cc-understood__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+}
+
+.cc-understood__chip-text {
+  font-size: 0.9375rem;
+  font-weight: 520;
+  color: var(--cc-text);
+}
+
+.cc-understood__chip-x {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.75);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+
+.cc-understood__chip-x:hover {
+  background: rgba(15, 23, 42, 0.10);
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.cc-understood__chip-x:active {
+  transform: scale(0.96);
+}
+
 .cc-tool__composer {
   margin-bottom: 28px;
 }
