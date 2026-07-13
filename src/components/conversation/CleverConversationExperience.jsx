@@ -30,6 +30,7 @@ import {
   submitVehicleDirectionReaction,
 } from '../../services/consultation/consultationHappyPath.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
+import { buildWishProfilePresentation } from '../../services/consultation/consultationOfferHandoff.js';
 import CleverNotepadBar from './CleverNotepadBar.jsx';
 import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
 import CleverNotingFlash from './CleverNotingFlash.jsx';
@@ -77,6 +78,31 @@ const LIVING_PLACEHOLDER_TEXTS = [
   'Sportage oder EV5?',
   'Ich möchte später übernehmen können …',
 ];
+
+function iconForLabel(label = '') {
+  const t = String(label ?? '').toLowerCase();
+  if (/^elektro$|plug-in|hybrid|benzin|diesel/.test(t)) return '⚡';
+  if (/^ev\d|sportage|ceed|niro|picanto|sorento|carnival/.test(t)) return '🚗';
+  if (/leasing|finanz|kauf/.test(t) || /budget/.test(t) || /€\/monat/.test(t)) return '💶';
+  if (/monate|km/.test(t)) return '📅';
+  if (/anhäng|anhaeng|ahk|kupplung|anhängelast/.test(t)) return '🔗';
+  if (/blau|rot|weiß|weiss|schwarz|grün|gruen|grau|silber|wolfsgrau/.test(t)) return '🎨';
+  if (/familie|kinder/.test(t)) return '👨‍👩‍👧';
+  if (/hund/.test(t)) return '🐶';
+  if (/wärmepumpe|waermepumpe/.test(t)) return '🌡';
+  if (/\bv2l\b/.test(t)) return '🔌';
+  if (/sitzheizung/.test(t)) return '🔥';
+  if (/kofferraum/.test(t)) return '📦';
+  if (/rückfahr|rueckfahr|kamera|360/.test(t)) return '📷';
+  if (/schnellladen/.test(t)) return '⚡';
+  if (/wallbox|zuhause|daheim/.test(t)) return '🏠';
+  if (/winter/.test(t)) return '❄';
+  if (/isofix/.test(t)) return '👶';
+  if (/kinderwagen/.test(t)) return '🛒';
+  if (/dachbox/.test(t)) return '🏕';
+  if (/pferde/.test(t)) return '🐴';
+  return '·';
+}
 
 function delayForTurn(turn, prevTurn) {
   if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === TURN_TYPE.CUSTOMER) {
@@ -238,24 +264,28 @@ export default function CleverConversationExperience({
 
   const smartChipState = useMemo(() => {
     const raw = String(inputValue ?? '').trim().toLowerCase();
+    const wishBlob = [
+      ...(session.notepadLabels ?? []),
+      ...(session.needProfile?.understoodLabels ?? []),
+    ].join(' ').toLowerCase();
+    const context = `${raw} ${wishBlob}`.trim();
 
     const defaults = {
-      label: '✨ Häufig gesucht',
+      label: '✨ Vielleicht noch wichtig:',
       chips: [
-        { id: 'lease_ends', label: 'Leasing läuft aus', text: 'Mein Leasing läuft im November aus.' },
-        { id: 'family', label: 'Familie', text: 'Ich brauche ein Auto für Familie (Kinder, Alltag).' },
-        { id: 'electric', label: 'Elektro', text: 'Ich suche ein Elektroauto.' },
-        { id: 'ev2ev3', label: 'EV2 oder EV3', text: 'EV2 oder EV3?' },
-        { id: 'towbar', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
+        { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
+        { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
+        { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
+        { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
+        { id: 'rear_cam', icon: '📷', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
       ],
     };
 
-    if (!raw) return defaults;
-
     const pick = (group) => ({
-      label: group.label,
+      label: '✨ Vielleicht noch wichtig:',
       chips: group.chips.map((chip) => ({
         id: chip.id,
+        icon: chip.icon,
         label: chip.label,
         text: chip.text,
       })),
@@ -263,74 +293,81 @@ export default function CleverConversationExperience({
 
     const groups = [
       {
-        id: 'ev2',
-        match: /\bev2\b/,
-        label: '🚗 Zum EV2 häufig gewählt:',
+        id: 'electric',
+        match: /elektro|ev\b|strom|wallbox|reichweite|laden/,
         chips: [
-          { id: 'ev2_heatpump', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
-          { id: 'ev2_seatheat', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
-          { id: 'ev2_cam', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
-          { id: 'ev2_leasing', label: 'Leasing', text: 'Ich möchte leasen.' },
-          { id: 'ev2_km', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
-        ],
-      },
-      {
-        id: 'trailer',
-        match: /anh(ä|ae)ng|wohnwagen|pferd/,
-        label: '🚚 Häufig ergänzt:',
-        chips: [
-          { id: 'towbar', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
-          { id: '1500', label: '1.500 kg', text: 'Zuglast ca. 1.500 kg wäre wichtig.' },
-          { id: 'caravan', label: 'Wohnwagen', text: 'Ich ziehe gelegentlich einen Wohnwagen.' },
-          { id: 'horse', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
-        ],
-      },
-      {
-        id: 'leasing',
-        match: /leasing|rate|monat|km|anzahlung|restwert|inzahlung/,
-        label: '💶 Rund ums Angebot:',
-        chips: [
-          { id: '10k', label: '10.000 km', text: 'Ich fahre ca. 10.000 km pro Jahr.' },
-          { id: '15k', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
-          { id: 'no_down', label: 'ohne Anzahlung', text: 'Am liebsten ohne Anzahlung.' },
-          { id: 'buyout', label: 'Restwertübernahme', text: 'Spätere Übernahme wäre interessant.' },
-          { id: 'tradein', label: 'Inzahlungnahme', text: 'Inzahlungnahme wäre gut.' },
+          { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
+          { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
+          { id: 'fastcharge', icon: '⚡', label: 'Schnellladen', text: 'Gutes Schnellladen ist mir wichtig.' },
+          { id: 'wallbox', icon: '🏠', label: 'Wallbox', text: 'Ich kann zuhause an Wallbox laden.' },
+          { id: 'winter', icon: '❄', label: 'Reichweite Winter', text: 'Winterreichweite ist mir wichtig.' },
         ],
       },
       {
         id: 'family',
         match: /familie|kinder|hund|kinderwagen|isofix/,
-        label: '👨‍👩‍👧‍👦 Vielleicht interessant:',
         chips: [
-          { id: 'stroller', label: 'Kinderwagen', text: 'Kofferraum muss Kinderwagen-tauglich sein.' },
-          { id: 'dog', label: 'Hund', text: 'Platz für einen Hund wäre wichtig.' },
-          { id: 'big_trunk', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
-          { id: 'isofix', label: 'Isofix', text: 'Isofix ist Pflicht.' },
-          { id: 'roofbox', label: 'Dachbox', text: 'Dachbox / Dachträger wäre relevant.' },
+          { id: 'isofix', icon: '👶', label: 'Isofix', text: 'Isofix ist mir wichtig.' },
+          { id: 'stroller', icon: '🛒', label: 'Kinderwagen', text: 'Platz für Kinderwagen wäre wichtig.' },
+          { id: 'dog', icon: '🐶', label: 'Hund', text: 'Platz für einen Hund wäre wichtig.' },
+          { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
+          { id: 'roofbox', icon: '🏕', label: 'Dachbox', text: 'Dachbox / Dachträger wäre relevant.' },
         ],
       },
       {
-        id: 'electric',
-        match: /elektro|ev\b|strom|wallbox|reichweite|laden/,
-        label: '⚡ Vielleicht noch wichtig:',
+        id: 'leasing',
+        match: /leasing|rate|monat|km|anzahlung|restwert|inzahlung/,
         chips: [
-          { id: 'heatpump', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
-          { id: 'v2l', label: 'V2L', text: 'V2L wäre interessant.' },
-          { id: 'fastcharge', label: 'Schnellladen', text: 'Gutes Schnellladen ist mir wichtig.' },
-          { id: 'wallbox', label: 'Wallbox', text: 'Ich kann zuhause an Wallbox laden.' },
-          { id: 'winter', label: 'Reichweite Winter', text: 'Winterreichweite ist mir wichtig.' },
+          { id: 'no_down', icon: '💶', label: 'ohne Anzahlung', text: 'Am liebsten ohne Anzahlung.' },
+          { id: '48m', icon: '📅', label: '48 Monate', text: '48 Monate wären ideal.' },
+          { id: '15k', icon: '🛣', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
+          { id: 'buyout', icon: '🔄', label: 'Restwertübernahme', text: 'Spätere Übernahme wäre interessant.' },
+          { id: 'tradein', icon: '🚗', label: 'Inzahlungnahme', text: 'Inzahlungnahme wäre gut.' },
+        ],
+      },
+      {
+        id: 'ev3',
+        match: /\bev3\b/,
+        chips: [
+          { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
+          { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
+          { id: 'rear_cam', icon: '📷', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
+          { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
+          { id: 'lease_15k', icon: '📅', label: '15.000 km Leasing', text: '15.000 km Leasing wäre ideal.' },
+        ],
+      },
+      {
+        id: 'sportage',
+        match: /\bsportage\b/,
+        chips: [
+          { id: 'towbar', icon: '🔗', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
+          { id: 'horse', icon: '🐴', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
+          { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
+          { id: 'cam360', icon: '📷', label: '360° Kamera', text: '360° Kamera wäre mir wichtig.' },
+          { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
+        ],
+      },
+      {
+        id: 'trailer',
+        match: /anh(ä|ae)ng|wohnwagen|pferd/,
+        chips: [
+          { id: 'towbar', icon: '🔗', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
+          { id: '1500', icon: '🚚', label: '1.500 kg', text: 'Zuglast ca. 1.500 kg wäre wichtig.' },
+          { id: 'caravan', icon: '🏕', label: 'Wohnwagen', text: 'Ich ziehe gelegentlich einen Wohnwagen.' },
+          { id: 'horse', icon: '🐴', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
         ],
       },
     ];
 
-    const hit = groups.find((g) => g.match.test(raw));
+    const hit = groups.find((g) => g.match.test(context));
     return hit ? pick(hit) : defaults;
-  }, [inputValue]);
+  }, [inputValue, session.notepadLabels, session.needProfile?.understoodLabels]);
 
   const handleSmartChipClick = useCallback((chipText) => {
     const next = String(chipText ?? '').trim();
     if (!next) return;
-    setInputValue(next);
+    setSession((prev) => submitConversationInput(prev, next));
+    setInputValue('');
     inputRef.current?.focus?.();
   }, []);
 
@@ -543,16 +580,19 @@ export default function CleverConversationExperience({
           <section className="cc-tool" aria-label="Clever">
             <h1 className="cc-tool__headline">{opening.headline}</h1>
 
+            {renderComposer('tool')}
+
             {(session.notepadLabels?.length ?? 0) > 0 && (
               <div
                 className={[
                   'cc-understood',
                   labelsAnimating ? 'is-animating' : '',
                 ].filter(Boolean).join(' ')}
-                aria-label="Verstanden"
+                aria-label="Das wurde verstanden"
               >
                 {session.notepadLabels.map((label) => (
                   <span key={label} className="cc-understood__chip">
+                    <span className="cc-understood__chip-icon" aria-hidden>{iconForLabel(label)}</span>
                     <span className="cc-understood__chip-text">{label}</span>
                     <button
                       type="button"
@@ -568,8 +608,6 @@ export default function CleverConversationExperience({
               </div>
             )}
 
-            {renderComposer('tool')}
-
             <div className="cc-smartchips" aria-label="Gedankenanstöße">
               <p className="cc-smartchips__label">{smartChipState.label}</p>
               <div className="cc-smartchips__row" role="list">
@@ -581,7 +619,8 @@ export default function CleverConversationExperience({
                     role="listitem"
                     onClick={() => handleSmartChipClick(chip.text)}
                   >
-                    {chip.label}
+                    <span className="cc-smartchips__chip-icon" aria-hidden>{chip.icon}</span>
+                    <span className="cc-smartchips__chip-text">{chip.label}</span>
                   </button>
                 ))}
               </div>

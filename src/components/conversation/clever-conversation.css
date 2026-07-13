@@ -247,6 +247,14 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
 }
 
+.cc-understood__chip-icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .cc-understood__chip-text {
   font-size: 0.9375rem;
   font-weight: 520;
@@ -435,7 +443,22 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   transition: border-color 160ms ease, background 160ms ease, transform 120ms ease;
+}
+
+.cc-smartchips__chip-icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.cc-smartchips__chip-text {
+  line-height: 1.2;
 }
 
 .cc-smartchips__chip:hover {
