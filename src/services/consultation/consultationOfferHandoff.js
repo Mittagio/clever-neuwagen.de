@@ -250,53 +250,87 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   };
 }
 
+/** Mindest-Verständnis (0–100) für frühen Wunsch-CTA. */
+export const WISH_HANDOFF_MIN_CONFIDENCE = 45;
+
 /**
- * Copy für „Mit einem Berater sprechen“.
- * @param {number} labelCount
- * @param {'opening'|'engaged'|'handoff'} [variant]
+ * @param {object} needProfile
+ */
+export function normalizeNeedProfileConfidence(needProfile = {}) {
+  const raw = Number(needProfile?.confidence ?? 0);
+  if (!Number.isFinite(raw)) return 0;
+  return raw <= 1 ? raw * 100 : raw;
+}
+
+/**
+ * @param {object} needProfile
+ */
+export function hasRecognizedModelInProfile(needProfile = {}) {
+  return Boolean(needProfile.selectedModelKey || needProfile.modelHint);
+}
+
+/**
+ * @param {object} needProfile
+ */
+export function hasRecognizedBudgetInProfile(needProfile = {}) {
+  const budget = needProfile.budget ?? {};
+  return Boolean(budget.maxMonthlyRate || budget.maxPrice);
+}
+
+const USAGE_LABEL_PATTERN = /Familie|Alltag|Zweitwagen|Anhänger|Gewerbe|Arbeit|Kurzstrecke|Langstrecke|Urlaub/i;
+
+/**
+ * @param {object} needProfile
+ * @param {object} [session]
+ */
+export function hasRecognizedUsageInProfile(needProfile = {}, session = {}) {
+  if ((needProfile.usage?.length ?? 0) > 0) return true;
+  if (session.consultationProfile?.answers?.primaryUsage) return true;
+  if (needProfile.priorities?.includes('family') || needProfile.children) return true;
+  const labels = [
+    ...(needProfile.understoodLabels ?? []),
+    ...(session.notepadLabels ?? []),
+  ];
+  return labels.some((label) => USAGE_LABEL_PATTERN.test(label));
+}
+
+/**
+ * Sticky Wunsch-CTA: Modell, Budget, Nutzung oder ausreichend Verständnis.
+ * @param {object} session
+ */
+export function shouldShowWishHandoffCta(session = {}) {
+  const needProfile = session.needProfile ?? {};
+  if (hasRecognizedModelInProfile(needProfile)) return true;
+  if (hasRecognizedBudgetInProfile(needProfile)) return true;
+  if (hasRecognizedUsageInProfile(needProfile, session)) return true;
+  if (normalizeNeedProfileConfidence(needProfile) >= WISH_HANDOFF_MIN_CONFIDENCE) return true;
+  return false;
+}
+
+/**
+ * Copy für „Wunsch an Autohaus senden“.
+ * @param {string} [dealerName]
+ */
+export function buildWishHandoffCta(dealerName = 'Autohaus') {
+  const name = String(dealerName || 'Autohaus').trim();
+  return {
+    buttonTitle: `Wunsch an ${name} senden`,
+    subline: 'Ihr persönlicher Ansprechpartner meldet sich mit einer passenden Lösung.',
+    stickySubline: 'Ihr Ansprechpartner kann bereits übernehmen.',
+    reassurance: 'Ohne Verpflichtung. Sie entscheiden selbst, wie es weitergeht.',
+    compactReassurance: 'Ohne Verpflichtung. Kein Rückrufzwang.',
+  };
+}
+
+/**
+ * @deprecated Nutze buildWishHandoffCta
  */
 export function buildAdvisorContactPrompt(labelCount = 0, variant = 'engaged') {
-  if (variant === 'opening') {
-    return {
-      level: 'opening',
-      hint: null,
-      optionalNote:
-        'Ihr Berater kann Sie auch direkt kontaktieren, '
-        + 'ohne dass Sie vorher etwas erzählen müssen.',
-    };
-  }
-
-  if (variant === 'handoff') {
-    return {
-      level: 'handoff',
-      hint:
-        'Wir haben bereits ein gutes Bild Ihres Wunsches.\n\n'
-        + 'Ihr Berater kann direkt übernehmen — ohne von vorne anzufangen.',
-    };
-  }
-
-  if (labelCount <= 0) return null;
-  if (labelCount <= 3) {
-    return {
-      level: 'early',
-      hint:
-        'Schon einiges verstanden. '
-        + 'Ihr Berater kann jederzeit nahtlos ins Gespräch einsteigen.',
-    };
-  }
-  if (labelCount <= 5) {
-    return {
-      level: 'medium',
-      hint:
-        'Wir haben bereits ein gutes Bild Ihres Wunsches. '
-        + 'Ihr Berater kann direkt ins Gespräch einsteigen.',
-    };
-  }
+  if (variant === 'opening' || labelCount <= 0) return null;
   return {
-    level: 'strong',
-    hint:
-      'Wir haben bereits ein gutes Bild Ihres Wunsches.\n\n'
-      + 'Ihr Berater kann direkt übernehmen — ohne von vorne anzufangen.',
+    level: variant,
+    hint: null,
+    optionalNote: buildWishHandoffCta().compactReassurance,
   };
 }
 

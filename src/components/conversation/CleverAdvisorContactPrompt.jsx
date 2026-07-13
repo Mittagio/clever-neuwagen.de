@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
-  buildAdvisorContactPrompt,
+  buildWishHandoffCta,
+  countSessionUnderstandingLabels,
   QUICK_HANDOFF_COPY,
 } from '../../services/consultation/consultationOfferHandoff.js';
 import CleverAdvisorBoost from './CleverAdvisorBoost.jsx';
@@ -8,18 +9,16 @@ import './clever-conversation.css';
 
 export default function CleverAdvisorContactPrompt({
   session,
-  understandingCount = 0,
-  variant = 'engaged',
+  dealerName = 'Autohaus',
   onContact,
   onExpandedChange,
 }) {
   const [expanded, setExpanded] = useState(false);
   const enrichmentRef = useRef({ selectedChipIds: [], freetext: '' });
 
-  const prompt = buildAdvisorContactPrompt(understandingCount, variant);
-  if (!prompt) return null;
-
-  const showBoost = variant !== 'opening' && understandingCount > 0;
+  const copy = buildWishHandoffCta(dealerName);
+  const understandingCount = countSessionUnderstandingLabels(session);
+  const showBoost = understandingCount > 0;
 
   const toggleExpanded = () => {
     setExpanded((prev) => {
@@ -35,32 +34,30 @@ export default function CleverAdvisorContactPrompt({
 
   return (
     <aside
-      className={`cc-advisor-contact${expanded ? ' cc-advisor-contact--expanded' : ''}${variant === 'opening' ? ' cc-advisor-contact--opening' : ''}`}
-      aria-label="Persönliche Beratung"
+      className={`cc-wish-handoff${expanded ? ' cc-wish-handoff--expanded' : ''}`}
+      aria-label="Wunsch übergeben"
     >
-      {variant === 'opening' && (
-        <p className="cc-advisor-contact__opening-or">oder</p>
-      )}
-      {prompt.hint && (
-        <p className="cc-advisor-contact__hint">{prompt.hint}</p>
-      )}
       <button
         type="button"
-        className="cc-advisor-contact__cta"
+        className="cc-wish-handoff__cta"
         onClick={handleContact}
       >
-        <span className="cc-advisor-contact__icon" aria-hidden>☎</span>
-        Mit einem Berater sprechen
+        <span className="cc-wish-handoff__cta-main">
+          <span className="cc-wish-handoff__icon" aria-hidden>✨</span>
+          <span className="cc-wish-handoff__cta-copy">
+            <span className="cc-wish-handoff__cta-title">{copy.buttonTitle}</span>
+            <span className="cc-wish-handoff__cta-sub">{copy.subline}</span>
+          </span>
+        </span>
+        <span className="cc-wish-handoff__cta-sticky-note">{copy.stickySubline}</span>
       </button>
 
-      {prompt.optionalNote && (
-        <p className="cc-advisor-contact__optional-note">{prompt.optionalNote}</p>
-      )}
+      <p className="cc-wish-handoff__reassurance">{copy.compactReassurance}</p>
 
       {showBoost && (
         <button
           type="button"
-          className="cc-advisor-contact__expand"
+          className="cc-wish-handoff__expand"
           onClick={toggleExpanded}
           aria-expanded={expanded}
           aria-controls="cc-advisor-boost-panel"

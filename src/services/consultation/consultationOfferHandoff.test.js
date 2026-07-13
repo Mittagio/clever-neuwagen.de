@@ -11,6 +11,8 @@ import {
   beginOfferHandoff,
   buildAdvisorBoostView,
   buildAdvisorContactPrompt,
+  buildWishHandoffCta,
+  shouldShowWishHandoffCta,
   buildWishProfilePresentation,
   filterNewHandoffChipIds,
   inferRecognizedBoostChipIds,
@@ -186,22 +188,45 @@ function testTowbarBoostView() {
   console.log('✓ Anhängerkupplung wird nicht erneut als Chip angeboten');
 }
 
+function testWishHandoffCtaCopy() {
+  const copy = buildWishHandoffCta('Autohaus Trinkle');
+  assert.match(copy.buttonTitle, /Wunsch an Autohaus Trinkle senden/);
+  assert.match(copy.subline, /persönlicher Ansprechpartner/);
+  assert.match(copy.stickySubline, /übernehmen/i);
+  assert.match(copy.compactReassurance, /Ohne Verpflichtung/);
+  assert.doesNotMatch(copy.buttonTitle, /Berater sprechen/i);
+  console.log('✓ Wunsch-CTA Copy – Übergabe statt Anruf');
+}
+
+function testWishHandoffVisibility() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  assert.equal(shouldShowWishHandoffCta(session), false, 'Leerer Start → kein CTA');
+
+  session = submitOpeningMessage(session, 'mir gefällt der ev3');
+  assert.equal(shouldShowWishHandoffCta(session), true, 'Modell erkannt → CTA');
+
+  session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Ich suche ein Elektroauto für zwei Kinder bis 350 Euro');
+  assert.equal(shouldShowWishHandoffCta(session), true, 'Budget + Nutzung → CTA');
+
+  session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Ich suche ein Auto');
+  assert.equal(shouldShowWishHandoffCta(session), false, 'Minimal ohne Verständnis → noch kein CTA');
+  console.log('✓ Wunsch-CTA Sichtbarkeit nach Modell, Budget, Nutzung');
+}
+
 function testAdvisorOpeningPrompt() {
-  const opening = buildAdvisorContactPrompt(0, 'opening');
-  assert.equal(opening.level, 'opening');
-  assert.match(opening.optionalNote, /direkt kontaktieren/i);
-  const handoff = buildAdvisorContactPrompt(4, 'handoff');
-  assert.match(handoff.hint, /gutes Bild/);
-  assert.match(handoff.hint, /übernehmen/i);
-  console.log('✓ Berater-Copy für Empfang und Übergabe');
+  assert.equal(buildAdvisorContactPrompt(0, 'opening'), null);
+  const engaged = buildAdvisorContactPrompt(2, 'engaged');
+  assert.ok(engaged);
+  assert.match(engaged.optionalNote, /Ohne Verpflichtung/);
+  console.log('✓ Legacy buildAdvisorContactPrompt delegiert auf Wunsch-CTA');
 }
 
 function testAdvisorContactPrompt() {
   assert.equal(buildAdvisorContactPrompt(0), null);
-  assert.match(buildAdvisorContactPrompt(2).hint, /einiges verstanden|nahtlos/i);
-  assert.match(buildAdvisorContactPrompt(4).hint, /gutes Bild/);
-  assert.match(buildAdvisorContactPrompt(7).hint, /übernehmen/i);
-  console.log('✓ Berater-Kontakt-Copy nach Verständnisstärke');
+  assert.ok(buildAdvisorContactPrompt(2));
+  console.log('✓ Berater-Kontakt-Legacy nur bei Verständnis');
 }
 
 function testEarlyAdvisorHandoffPreservesUnderstanding() {
@@ -224,6 +249,8 @@ testAdvisorBoostChips();
 testWishProfilePresentation();
 testAdvisorBoostView();
 testTowbarBoostView();
+testWishHandoffCtaCopy();
+testWishHandoffVisibility();
 testAdvisorOpeningPrompt();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();

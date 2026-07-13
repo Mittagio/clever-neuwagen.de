@@ -41,7 +41,7 @@ import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
 import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
-import { countSessionUnderstandingLabels } from '../../services/consultation/consultationOfferHandoff.js';
+import { shouldShowWishHandoffCta } from '../../services/consultation/consultationOfferHandoff.js';
 import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
@@ -265,11 +265,16 @@ export default function CleverConversationExperience({
     inputRef.current?.focus();
   }, [inputEnabled, inputValue, voiceListening, voiceSupported]);
 
-  const understandingCount = countSessionUnderstandingLabels(session);
-  const advisorVariant = session.phase === CONVERSATION_PHASE.HANDOFF
-    ? 'handoff'
-    : (showOpening ? 'opening' : 'engaged');
-  const showAdvisorContact = !inOfferWorld && !inCollectMode;
+  const [wishHandoffLatched, setWishHandoffLatched] = useState(false);
+
+  useEffect(() => {
+    if (shouldShowWishHandoffCta(session)) {
+      setWishHandoffLatched(true);
+    }
+  }, [session]);
+
+  const showWishHandoff = wishHandoffLatched || shouldShowWishHandoffCta(session);
+  const showAdvisorContact = !inOfferWorld && !inCollectMode && showWishHandoff;
 
   const experienceClass = [
     'cc-experience',
@@ -394,8 +399,7 @@ export default function CleverConversationExperience({
       {showAdvisorContact && (
         <CleverAdvisorContactPrompt
           session={session}
-          understandingCount={understandingCount}
-          variant={advisorVariant}
+          dealerName={dealerName}
           onContact={handleDealerHandoff}
           onExpandedChange={setAdvisorBoostExpanded}
         />
