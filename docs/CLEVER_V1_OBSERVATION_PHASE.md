@@ -160,7 +160,7 @@ Verwandte Dokumente:
 
 **Stand:** Juli 2026  
 **Implementierung (read-only):** `src/services/clever/sellerReasoningEngine.js`  
-**Bezug:** [Conversation Design](clever-conversation-design.md) · [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md)
+**Bezug:** [Golden Conversations v1.0](CLEVER_GOLDEN_CONVERSATIONS.md) · [Conversation Design](clever-conversation-design.md) · [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md)
 
 ### Status
 
