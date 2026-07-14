@@ -189,6 +189,17 @@ function testEv3OpeningSessionFlow() {
   console.log('✓ Session: EV3-Eingang → Chips wachsen, nächste Frage Rate/Ausstattung');
 }
 
+function testHybridOnlyAsksHevPhev() {
+  const profile = mergeTextIntoNeedProfile('Hybrid für Familie');
+  profile.fuel = 'hybrid';
+  const result = planNextQuestion({ needProfile: profile, answers: {} });
+
+  assert.equal(result.question?.id, 'hybridPowertrain');
+  assert.match(result.question?.prompt ?? '', /HEV.*PHEV/i);
+  assert.equal(isQuestionAllowed('hybridPowertrain', { needProfile: profile, answers: {} }), true);
+  console.log('✓ Hybrid ohne Detail → HEV/PHEV-Frage');
+}
+
 testSportageBenzinNoWallbox();
 testSuvBenzinNoWallbox();
 testSportageFamilyFuelFirst();
@@ -203,4 +214,5 @@ testMinimalWishPrimaryUsage();
 testAllradRecognizedNoAllradQuestion();
 testTowingRecognizedNoTowingYesNo();
 testEv3OpeningSessionFlow();
+testHybridOnlyAsksHevPhev();
 console.log('\nAlle Conversation-Planner-Tests bestanden.');

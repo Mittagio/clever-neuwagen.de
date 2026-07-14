@@ -20,14 +20,43 @@ export default function CleverConversationTurn({
   if (turn.type === 'clever') {
     const isVehicle = turn.world === CLEVER_WORLD.VEHICLE_CONSULTATION;
     const hasOptions = turn.options?.length > 0;
+    const isKnowledge = turn.answerKind === 'knowledge' || turn.knowledgeOnly;
+    const facts = turn.facts ?? [];
+    const modelCards = turn.modelCards ?? [];
 
     return (
       <article
-        className={`cc-clever-turn cc-turn-enter${isVehicle ? ' cc-clever-turn--vehicle' : ''}${isActiveQuestion ? ' cc-clever-turn--active-question' : ''}`}
+        className={`cc-clever-turn cc-turn-enter${isVehicle ? ' cc-clever-turn--vehicle' : ''}${isActiveQuestion ? ' cc-clever-turn--active-question' : ''}${isKnowledge ? ' cc-clever-turn--knowledge' : ''}`}
         aria-labelledby={`cc-clever-${turn.id}`}
       >
         <p className="cc-clever-turn__brand" id={`cc-clever-${turn.id}`}>Clever</p>
         <p className="cc-clever-turn__text">{turn.text}</p>
+        {facts.length > 0 && (
+          <ul className="cc-knowledge-facts" aria-label="Fahrzeugdaten">
+            {facts.map((fact) => (
+              <li key={`${fact.label}-${fact.value}`}>
+                <span className="cc-knowledge-facts__label">{fact.label}</span>
+                <span className="cc-knowledge-facts__value">{fact.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {modelCards.length > 0 && (
+          <div className="cc-knowledge-cards" aria-label="Fahrzeugrichtungen">
+            {modelCards.slice(0, 3).map((card) => (
+              <div key={card.modelKey ?? card.name} className="cc-knowledge-card">
+                <p className="cc-knowledge-card__title">{card.name}</p>
+                {card.bullets?.length > 0 && (
+                  <ul className="cc-knowledge-card__bullets">
+                    {card.bullets.slice(0, 4).map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {hasOptions && (
           <div className="cc-clever-turn__options-wrap">
             {turn.optionsHint && (

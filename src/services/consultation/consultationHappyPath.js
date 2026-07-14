@@ -44,6 +44,7 @@ import {
   filterNewHandoffChipIds,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
 } from './consultationOfferHandoff.js';
+import { tryConversationKnowledgeAnswer } from './conversationKnowledgeAnswer.js';
 
 export const HAPPY_PATH_EXAMPLE_MESSAGE =
   'Ich suche ein Elektroauto für zwei Kinder bis etwa 350 € im Monat.';
@@ -91,6 +92,8 @@ export const WARM_QUESTION_PROMPTS = {
   evModelPriority: 'Was wäre Ihnen wichtiger?',
   sportagePowertrain:
     'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
+  hybridPowertrain:
+    'Kommt für Sie eher ein Vollhybrid (HEV) oder Plug-in-Hybrid (PHEV) infrage?',
   towingUsage: 'Was möchten Sie hauptsächlich ziehen?',
   vehicleNeedTiming: 'Wann benötigen Sie Ihr neues Fahrzeug ungefähr?',
   vehicleReturnDate: 'Wann geben Sie Ihr aktuelles Fahrzeug ungefähr zurück?',
@@ -128,6 +131,11 @@ const WARM_OPTION_LABELS = {
     benzin: 'Benzin',
     hybrid: 'Hybrid',
     phev: 'Plug-in-Hybrid',
+    open: 'Noch offen',
+  },
+  hybridPowertrain: {
+    hev: 'Vollhybrid (HEV)',
+    phev: 'Plug-in-Hybrid (PHEV)',
     open: 'Noch offen',
   },
   towingUsage: {
@@ -195,6 +203,11 @@ const LEARNED_FROM_ANSWER = {
     benzin: ['Benzin'],
     hybrid: ['Hybrid'],
     phev: ['Plug-in-Hybrid'],
+    open: [],
+  },
+  hybridPowertrain: {
+    hev: ['Vollhybrid (HEV)'],
+    phev: ['Plug-in-Hybrid (PHEV)'],
     open: [],
   },
   towingUsage: {
@@ -398,6 +411,16 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
     if (mapped) next.fuel = mapped;
   }
 
+  if (questionId === 'hybridPowertrain') {
+    if (answerId === 'hev') {
+      next.fuel = 'hybrid';
+      next.priorities = [...new Set([...(next.priorities ?? []), 'hev'])];
+    }
+    if (answerId === 'phev') {
+      next.fuel = 'phev';
+    }
+  }
+
   if (questionId === 'towingUsage') {
     next.towingUsage = answerId;
     if (answerId === 'small_trailer' || answerId === 'boat') {
@@ -461,8 +484,16 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
 
   if (questionId === 'fuel_type') {
     if (/elektro|ev\b|strom/.test(t)) return 'electric';
-    if (/hybrid|plug/.test(t)) return 'hybrid';
+    if (/plug-in|phev/.test(t)) return 'hybrid';
+    if (/hybrid|hev|vollhybrid/.test(t)) return 'hybrid';
     if (/benzin|verbrenner|diesel/.test(t)) return 'benzin';
+    if (/offen|unklar|egal/.test(t)) return 'open';
+    return null;
+  }
+
+  if (questionId === 'hybridPowertrain') {
+    if (/plug-in|phev|steckdose|laden zuhause/.test(t)) return 'phev';
+    if (/vollhybrid|\bhev\b|ohne steckdose/.test(t)) return 'hev';
     if (/offen|unklar|egal/.test(t)) return 'open';
     return null;
   }
@@ -516,6 +547,7 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
 const HAPPY_PATH_PLANNER_IDS = new Set([
   'primaryUsage',
   'evModelPriority',
+  'hybridPowertrain',
   'sportagePowertrain',
   'towingUsage',
   'fuel_type',
@@ -550,6 +582,9 @@ function buildAdvisorBridge(questionId) {
     return 'Falls wichtig für die Einordnung:';
   }
   if (questionId === 'sportagePowertrain') {
+    return 'Das hilft bei der Einordnung noch etwas:';
+  }
+  if (questionId === 'hybridPowertrain') {
     return 'Das hilft bei der Einordnung noch etwas:';
   }
   if (questionId === 'towingUsage') {
@@ -951,6 +986,41 @@ function understandingMirrorTurn(labels = []) {
   };
 }
 
+function cleverKnowledgeTurn(knowledge) {
+  return {
+    type: TURN_TYPE.CLEVER,
+    id: `clever-knowledge-${Date.now()}`,
+    text: knowledge.text,
+    answerKind: 'knowledge',
+    facts: knowledge.facts ?? [],
+    modelCards: knowledge.modelCards ?? [],
+    primaryModelKey: knowledge.primaryModelKey ?? null,
+    knowledgeOnly: true,
+  };
+}
+
+function pushKnowledgeThenFollowUp(session, needProfile, consultationProfile) {
+  const followUp = resolveNextHappyPathQuestion(needProfile, consultationProfile);
+  if (!followUp) {
+    return advanceAfterCustomerTurn(session, needProfile, consultationProfile);
+  }
+
+  const contextualQuestion = {
+    ...followUp,
+    prompt: buildContextualQuestionPrompt(needProfile, followUp, consultationProfile),
+  };
+
+  let next = pushTurn(session, cleverQuestionTurn(contextualQuestion));
+  next = withPendingQuestion(next, contextualQuestion);
+  return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
+}
+
+function applyKnowledgeAnswerFlow(session, text, needProfile) {
+  const knowledge = tryConversationKnowledgeAnswer(text, needProfile);
+  if (!knowledge) return null;
+  return pushTurn(session, cleverKnowledgeTurn(knowledge));
+}
+
 function cleverReactionTurn(text) {
   return {
     type: TURN_TYPE.CLEVER,
@@ -1079,6 +1149,11 @@ export function submitOpeningMessage(session, text = '') {
 
   if (notepadLabels.length >= 1) {
     next = pushTurn(next, understandingMirrorTurn(notepadLabels));
+  }
+
+  const withKnowledge = applyKnowledgeAnswerFlow(next, trimmed, needProfile);
+  if (withKnowledge) {
+    return pushKnowledgeThenFollowUp(withKnowledge, needProfile, withKnowledge.consultationProfile);
   }
 
   const question = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
@@ -1252,6 +1327,11 @@ export function submitContinuingNarrative(session, text = '') {
 
   if (session.advisorCollectMode || session.consultationProfile?.advisorCollectMode) {
     return { ...next, phase: CONVERSATION_PHASE.HANDOFF };
+  }
+
+  const withKnowledge = applyKnowledgeAnswerFlow(next, trimmed, needProfile);
+  if (withKnowledge) {
+    return pushKnowledgeThenFollowUp(withKnowledge, needProfile, withKnowledge.consultationProfile);
   }
 
   const followUp = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);

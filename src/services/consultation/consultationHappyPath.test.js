@@ -272,6 +272,31 @@ function testReceptionOpeningCopy() {
   console.log('✓ Tool-Opening: Wonach suchen Sie? + Smart Entry');
 }
 
+function testKnowledgeAnswerBeforeQuestion() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Wie weit kommt der EV3?');
+
+  const knowledgeTurn = session.turns.find((t) => t.knowledgeOnly || t.answerKind === 'knowledge');
+  assert.ok(knowledgeTurn, 'Sachantwort fehlt');
+  assert.match(knowledgeTurn.text ?? '', /EV3|605|WLTP/i);
+
+  const knowledgeIdx = session.turns.indexOf(knowledgeTurn);
+  const questionTurn = session.turns.find((t, i) => i > knowledgeIdx && t.type === TURN_TYPE.CLEVER && t.questionId);
+  assert.ok(questionTurn, 'Rückfrage nach Sachantwort fehlt');
+  assert.ok(knowledgeIdx < session.turns.indexOf(questionTurn), 'Antwort muss vor Rückfrage kommen');
+  console.log('✓ Fahrzeugfrage → erst Antwort, dann Rückfrage');
+}
+
+function testWishOnlyNoKnowledgeGate() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, HAPPY_PATH_EXAMPLE_MESSAGE);
+
+  const knowledgeTurn = session.turns.find((t) => t.knowledgeOnly);
+  assert.equal(knowledgeTurn, undefined, 'Reiner Wunsch darf keine Wissensantwort triggern');
+  assert.equal(session.pendingQuestion?.id, 'longDistance');
+  console.log('✓ Reiner Bedarfswunsch → kein Knowledge-Gate');
+}
+
 testInitialParse();
 testHappyPathFlow();
 testEv3VehicleConsultationFlow();
@@ -286,4 +311,6 @@ testWarmQuestionsSoundOptional();
 testFreetextMapping();
 testOpeningIsNotAQuestion();
 testReceptionOpeningCopy();
+testKnowledgeAnswerBeforeQuestion();
+testWishOnlyNoKnowledgeGate();
 console.log('\nAlle Happy-Path-Tests bestanden.');

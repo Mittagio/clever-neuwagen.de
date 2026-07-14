@@ -71,8 +71,58 @@ function testReactionAfterUrlaub() {
   console.log('✓ Urlaub-Antwort → EV6-Reaktion');
 }
 
+function testHybridHevCandidates() {
+  const profile = mergeTextIntoNeedProfile('Hybrid für Familie');
+  profile.fuel = 'hybrid';
+  const understanding = buildCustomerUnderstanding({ crm: { needProfile: profile } });
+  const result = runSellerReasoning({ needProfile: profile, customerUnderstanding: understanding });
+
+  const keys = result.items.map((i) => i.modelKey);
+  assert.ok(keys.includes('sportage-hybrid'), 'Sportage HEV sollte dabei sein');
+  assert.ok(keys.includes('sorento-hybrid'), 'Sorento HEV sollte dabei sein');
+  assert.ok(keys.includes('niro'), 'Niro HEV sollte dabei sein');
+  console.log('✓ Hybrid → Sportage HEV, Sorento HEV, Niro HEV');
+}
+
+function testHybridLangstreckePrefersHev() {
+  const profile = mergeTextIntoNeedProfile('Hybrid Langstrecke');
+  profile.fuel = 'hybrid';
+  const understanding = buildCustomerUnderstanding({ crm: { needProfile: profile } });
+  const result = runSellerReasoning({
+    needProfile: profile,
+    answers: { longDistance: 'often' },
+    customerUnderstanding: understanding,
+  });
+
+  const top = result.items[0]?.modelKey ?? '';
+  assert.ok(
+    top === 'sportage-hybrid' || top === 'sorento-hybrid',
+    `Erwartet HEV-SUV oben, bekam: ${top}`,
+  );
+  const msg = buildVehicleReactionMessage('longDistance', 'often', {
+    needProfile: profile,
+    answers: {},
+  });
+  assert.match(msg ?? '', /Vollhybrid|Sportage HEV|Sorento HEV/i);
+  console.log('✓ Hybrid + Langstrecke → HEV-Kandidaten bevorzugt');
+}
+
+function testHybridPowertrainQuestionPrompt() {
+  assert.match(
+    buildSellerQuestionPrompt({
+      needProfile: { fuel: 'hybrid' },
+      question: { id: 'hybridPowertrain', prompt: 'HEV oder PHEV?' },
+    }),
+    /Vollhybrid \(HEV\).*Plug-in-Hybrid \(PHEV\)/i,
+  );
+  console.log('✓ hybridPowertrain-Frage formuliert');
+}
+
 testElectricFamilyHypothesis();
 testTrailerExclusion();
 testHybridTrailerQuestionImpact();
 testReactionAfterUrlaub();
+testHybridHevCandidates();
+testHybridLangstreckePrefersHev();
+testHybridPowertrainQuestionPrompt();
 console.log('\nSeller Reasoning Engine Tests bestanden.');

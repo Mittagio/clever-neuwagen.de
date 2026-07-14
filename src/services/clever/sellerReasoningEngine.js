@@ -33,7 +33,7 @@ const MODEL_CATALOG = {
   'sportage-phev': { modelKey: 'sportage-phev', modelLabel: 'Kia Sportage PHEV', tagline: 'Plug-in Hybrid', rateFrom: 289 },
   'sorento-hybrid': { modelKey: 'sorento-hybrid', modelLabel: 'Kia Sorento HEV', tagline: 'Großer Hybrid-SUV', rateFrom: 349 },
   ceed: { modelKey: 'ceed', modelLabel: 'Kia Ceed', tagline: 'Kompakter Allrounder', rateFrom: 179 },
-  niro: { modelKey: 'niro', modelLabel: 'Kia Niro', tagline: 'Kompakt-Hybrid', rateFrom: 209 },
+  niro: { modelKey: 'niro', modelLabel: 'Kia Niro HEV', tagline: 'Kompakter Vollhybrid', rateFrom: 209 },
 };
 
 const EV3_TRIM_HYPOTHESES = [
@@ -62,6 +62,7 @@ const QUESTION_OPTION_MAP = {
   chargingAtHome: ['yes', 'maybe', 'no', 'open'],
   evModelPriority: ['price', 'range', 'equipment', 'balanced'],
   towingUsage: ['small_trailer', 'caravan', 'horse', 'boat', 'open'],
+  hybridPowertrain: ['hev', 'phev', 'open'],
   sportagePowertrain: ['benzin', 'hybrid', 'phev', 'open'],
   primaryUsage: ['daily', 'family', 'work', 'leisure', 'towing', 'open'],
   comfortVsSpace: ['comfort', 'space', 'balanced'],
@@ -119,7 +120,22 @@ function normalizeBudgetCap(understanding = {}, needProfile = {}) {
   return needProfile.budget?.maxMonthlyRate ?? null;
 }
 
-function baseCandidates(understanding = {}, needProfile = {}) {
+function isHybridHevContext(needProfile = {}, answers = {}, blob = '') {
+  const fuel = getFuelCategory(needProfile);
+  if (fuel === 'phev' || answers.hybridPowertrain === 'phev') return false;
+  if (answers.hybridPowertrain === 'hev') return true;
+  if (fuel === 'hybrid') return true;
+  return /\bhybrid\b|\bhev\b|\bvollhybrid\b/.test(blob) && !/\bplug-in|phev\b/.test(blob);
+}
+
+function prefersHevForDistance(needProfile = {}, answers = {}, blob = '') {
+  return answers.longDistance === 'often'
+    || answers.longDistance === 'sometimes'
+    || needProfile.priorities?.includes('range')
+    || /\blangstrecke\b|\burlaub\b/.test(blob);
+}
+
+function baseCandidates(understanding = {}, needProfile = {}, answers = {}) {
   const labels = understanding?.verstaendnis?.labels ?? [];
   const blob = labels.join(' ').toLowerCase();
   const fuel = getFuelCategory(needProfile);
@@ -131,16 +147,22 @@ function baseCandidates(understanding = {}, needProfile = {}) {
   if (fuel === 'electric' || includesAny(blob, [/elektro/, /\bev\d\b/, /reichweite/, /schnellladen/])) {
     return ['ev3', 'ev5', 'ev6', 'ev9'];
   }
-  if (fuel === 'hybrid' || fuel === 'phev' || includesAny(blob, [/hybrid/, /plug-in/])) {
-    return ['sportage-hybrid', 'sportage-phev', 'sorento-hybrid'];
+
+  if (fuel === 'phev' || answers.hybridPowertrain === 'phev' || includesAny(blob, [/plug-in hybrid/, /\bphev\b/])) {
+    return ['sportage-phev', 'sportage-hybrid', 'sorento-hybrid'];
   }
+
+  if (isHybridHevContext(needProfile, answers, blob) || fuel === 'hybrid') {
+    return ['sportage-hybrid', 'sorento-hybrid', 'niro'];
+  }
+
   if (includesAny(blob, [/sportage/])) {
     return ['sportage-hybrid', 'sportage-phev', 'sportage'];
   }
   return ['sportage', 'ev3', 'ev5', 'ceed'];
 }
 
-function checkHardExclusion(modelKey, needProfile = {}, userExcluded = []) {
+function checkHardExclusion(modelKey, needProfile = {}, userExcluded = [], answers = {}) {
   if (userExcluded.includes(modelKey)) {
     return { excluded: true, reason: 'Passt optisch nicht', faded: true };
   }
@@ -164,6 +186,20 @@ function checkHardExclusion(modelKey, needProfile = {}, userExcluded = []) {
   const meta = MODEL_CATALOG[modelKey];
   if (cap && meta?.rateFrom && meta.rateFrom > cap * 1.15) {
     return { excluded: true, reason: 'Über Budget', faded: true };
+  }
+
+  const labels = needProfile.understoodLabels ?? [];
+  const blob = labels.join(' ').toLowerCase();
+  const hybridHev = isHybridHevContext(needProfile, answers, blob);
+  const hevPreferred = answers.hybridPowertrain === 'hev'
+    || prefersHevForDistance(needProfile, answers, blob);
+
+  if (hybridHev && hevPreferred && (modelKey.includes('phev') || modelKey === 'sportage-phev')) {
+    return { excluded: true, reason: 'Auf Langstrecke eher Vollhybrid (HEV)', faded: true };
+  }
+
+  if (answers.hybridPowertrain === 'hev' && modelKey.includes('phev')) {
+    return { excluded: true, reason: 'Sie tendieren zu Vollhybrid (HEV)', faded: true };
   }
 
   return { excluded: false };
@@ -219,12 +255,54 @@ function scoreCandidate(modelKey, understanding = {}, answers = {}, needProfile 
   }
 
   if (answers.longDistance === 'often') {
-    if (modelKey === 'ev6' || modelKey === 'ev9') {
-      score += 30;
-      reasons.push('Reisen');
+    const fuel = getFuelCategory(needProfile);
+    const hybridCtx = fuel === 'hybrid' || fuel === 'phev'
+      || isHybridHevContext(needProfile, answers, blob);
+    if (hybridCtx) {
+      if (modelKey === 'sportage-hybrid' || modelKey === 'sorento-hybrid') {
+        score += 30;
+        reasons.push('Langstrecke HEV');
+      }
+      if (modelKey === 'niro') {
+        score += 14;
+        reasons.push('Kompakt HEV');
+      }
+      if (modelKey.includes('phev')) {
+        score -= 22;
+      }
+    } else {
+      if (modelKey === 'ev6' || modelKey === 'ev9') {
+        score += 30;
+        reasons.push('Reisen');
+      }
+      if (modelKey === 'ev3') score += 8;
+      if (modelKey === 'ev5') score -= 6;
     }
-    if (modelKey === 'ev3') score += 8;
-    if (modelKey === 'ev5') score -= 6;
+  }
+
+  if (answers.longDistance === 'sometimes') {
+    const fuel = getFuelCategory(needProfile);
+    if (fuel === 'hybrid' || isHybridHevContext(needProfile, answers, blob)) {
+      if (modelKey === 'sportage-hybrid' || modelKey === 'sorento-hybrid') {
+        score += 18;
+        reasons.push('Gemischte Nutzung HEV');
+      }
+      if (modelKey.includes('phev')) score -= 10;
+    }
+  }
+
+  if (answers.hybridPowertrain === 'hev') {
+    if (modelKey.includes('-hybrid') || modelKey === 'niro') {
+      score += 24;
+      reasons.push('Vollhybrid');
+    }
+    if (modelKey.includes('phev')) score -= 26;
+  }
+  if (answers.hybridPowertrain === 'phev') {
+    if (modelKey.includes('phev')) {
+      score += 24;
+      reasons.push('Plug-in-Hybrid');
+    }
   }
 
   if (answers.longDistance === 'rarely') {
@@ -245,9 +323,12 @@ function scoreCandidate(modelKey, understanding = {}, answers = {}, needProfile 
     reasons.push('Ausstattung');
   }
 
-  if (answers.towingUsage === 'trailer') {
+  if (answers.towingUsage === 'caravan' || answers.towingUsage === 'horse') {
     if (modelKey === 'sorento-hybrid' || modelKey === 'ev9') score += 16;
     if (modelKey === 'sportage-phev') score += 8;
+  }
+  if (answers.towingUsage === 'small_trailer' || answers.towingUsage === 'boat') {
+    if (modelKey === 'sportage-hybrid' || modelKey === 'niro') score += 10;
   }
 
   if (labels.some((l) => String(l).toLowerCase() === modelKey.replace('-hybrid', '').replace('-phev', ''))) {
@@ -273,7 +354,7 @@ function rankVehicleHypothesis({
   limit = 3,
   includeFaded = true,
 } = {}) {
-  const keys = baseCandidates(customerUnderstanding, needProfile);
+  const keys = baseCandidates(customerUnderstanding, needProfile, answers);
   const isEv3Leasing = needProfile.selectedModelKey === 'ev3'
     && includesAny((customerUnderstanding?.verstaendnis?.labels ?? []).join(' ').toLowerCase(), [/leasing|rate|monat/i]);
 
@@ -281,7 +362,7 @@ function rankVehicleHypothesis({
     .filter(Boolean)
     .map((entry) => {
       const modelKey = entry.modelKey;
-      const exclusion = checkHardExclusion(modelKey, needProfile, userExcluded);
+      const exclusion = checkHardExclusion(modelKey, needProfile, userExcluded, answers);
       const s = scoreCandidate(modelKey, customerUnderstanding, answers, needProfile);
       return {
         modelKey,
@@ -425,6 +506,7 @@ const UNCERTAINTY_QUESTION_HINTS = {
   longDistance: 'Nutzung',
   towingUsage: 'Anhängerart',
   evModelPriority: 'Priorität',
+  hybridPowertrain: 'Hybrid-Art',
   sportagePowertrain: 'Antrieb',
   chargingAtHome: 'Laden zuhause',
   primaryUsage: 'Nutzung',
@@ -506,6 +588,10 @@ export function buildSellerQuestionPrompt({
     return 'Was möchten Sie hauptsächlich ziehen?';
   }
 
+  if (question.id === 'hybridPowertrain') {
+    return 'Kommt für Sie eher ein Vollhybrid (HEV) oder Plug-in-Hybrid (PHEV) infrage?';
+  }
+
   if (question.id === 'vehicleNeedTiming') {
     return 'Wann benötigen Sie Ihr neues Fahrzeug ungefähr?';
   }
@@ -569,6 +655,10 @@ export function buildVehicleReactionMessage(questionId, answerId, context = {}) 
   const afterTop = shortModelName(after.items[0]?.title ?? '');
 
   if (questionId === 'longDistance' && answerId === 'often') {
+    const fuel = getFuelCategory(needProfile);
+    if (fuel === 'hybrid' || fuel === 'phev' || answers.hybridPowertrain === 'hev') {
+      return 'Dann würde ich eher Richtung Vollhybrid schauen – Sportage HEV oder Sorento HEV.';
+    }
     return 'Dann wird der EV6 interessanter – besonders für Urlaub und längere Strecken.';
   }
   if (questionId === 'longDistance' && answerId === 'rarely') {
@@ -580,7 +670,17 @@ export function buildVehicleReactionMessage(questionId, answerId, context = {}) 
     return 'Für den Alltag bleibt der EV3 eine starke Option – kompakt und effizient.';
   }
   if (questionId === 'longDistance' && answerId === 'sometimes') {
+    const fuel = getFuelCategory(needProfile);
+    if (fuel === 'hybrid' || answers.hybridPowertrain === 'hev') {
+      return 'Bei gemischter Nutzung bleiben Sportage HEV und Sorento HEV interessante Optionen.';
+    }
     return 'Bei gemischter Nutzung lohnt sich ein Blick auf Modelle mit etwas mehr Reichweite und Platz.';
+  }
+  if (questionId === 'hybridPowertrain' && answerId === 'hev') {
+    return 'Dann würde ich eher Richtung Sportage HEV, Sorento HEV oder Niro HEV schauen.';
+  }
+  if (questionId === 'hybridPowertrain' && answerId === 'phev') {
+    return 'Dann kommt der Sportage PHEV eher in Frage – sinnvoll, wenn Sie oft kurze Strecken elektrisch fahren.';
   }
   if (questionId === 'towingUsage' && (answerId === 'small_trailer' || answerId === 'bike')) {
     return 'Dann benötigen Sie vermutlich kein besonders großes Fahrzeug.';

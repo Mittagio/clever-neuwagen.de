@@ -6,7 +6,7 @@
 
 **Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) · [Golden Conversations v1.0](CLEVER_GOLDEN_CONVERSATIONS.md) · [Clever Lead](CLEVER_LEAD.md) · [Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md)
 
-**Implementierung (read-only):** `needProfile` · `sellerInsights` · `buildCustomerUnderstanding()` · [Seller Reasoning Engine](CLEVER_V1_OBSERVATION_PHASE.md#seller-reasoning-engine-v10--erweiterung-beobachtungsphase) (Fahrzeuge als Kontext)
+**Implementierung (read-only):** `needProfile` · `sellerInsights` · `buildCustomerUnderstanding()` · [Knowledge Conversation v1.0](CLEVER_KNOWLEDGE_CONVERSATION.md)
 
 ---
 

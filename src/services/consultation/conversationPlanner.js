@@ -132,6 +132,29 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
     knownWhen: (ctx) => ctx.answers?.evModelPriority != null || ctx.answers?.ev3Priority != null,
   },
   {
+    id: 'hybridPowertrain',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Hybrid ohne HEV/PHEV-Klarheit – Antriebsvariante klären.',
+    prompt: 'Kommt für Sie eher ein Vollhybrid (HEV) oder Plug-in-Hybrid (PHEV) infrage?',
+    options: [
+      { id: 'hev', label: 'Vollhybrid (HEV)' },
+      { id: 'phev', label: 'Plug-in-Hybrid (PHEV)' },
+      { id: 'open', label: 'Noch offen' },
+    ],
+    visibleWhen: (ctx) => {
+      const p = ctx.needProfile ?? {};
+      if (ctx.answers?.hybridPowertrain != null) return false;
+      if (getFuelCategory(p) === 'phev') return false;
+      if (isSportageInterest(p) && !getFuelCategory(p)) return false;
+      if (getFuelCategory(p) === 'hybrid') return true;
+      const blob = (p.understoodLabels ?? []).join(' ').toLowerCase();
+      return /\bhybrid\b/.test(blob) && !/\bplug-in|phev\b/.test(blob);
+    },
+    hiddenWhen: (ctx) => ctx.answers?.hybridPowertrain != null,
+    knownWhen: (ctx) => ctx.answers?.hybridPowertrain != null,
+  },
+  {
     id: 'sportagePowertrain',
     world: CLEVER_WORLD.NEED_CONSULTATION,
     priority: 'high',
@@ -422,6 +445,7 @@ const QUESTION_TIE_ORDER = [
   'vehicleReturnDate',
   'primaryUsage',
   'towingUsage',
+  'hybridPowertrain',
   'sportagePowertrain',
   'longDistance',
   'evModelPriority',

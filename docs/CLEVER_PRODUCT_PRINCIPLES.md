@@ -27,6 +27,7 @@ Verwandte Dokumente:
 - **[Golden Conversations v1.0 – Referenzgespräche](CLEVER_GOLDEN_CONVERSATIONS.md)**
 - **[Need Discovery Engine v1.0 – Produktmission](CLEVER_NEED_DISCOVERY_ENGINE.md)**
 - **[Seller Conversation Loop v1.0 – Verkäufer-Denken](CLEVER_SELLER_CONVERSATION_LOOP.md)**
+- **[Knowledge Conversation v1.0 – Erst antworten, dann verstehen](CLEVER_KNOWLEDGE_CONVERSATION.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
 **Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** → Clever Lead → Charakter → Conversation Design → Umsetzung.

@@ -90,6 +90,13 @@ export function questionImprovesUnderstanding(questionId, needProfile = {}, answ
     case 'sportagePowertrain':
       return getFuelCategory(needProfile) == null && answers[questionId] == null;
 
+    case 'hybridPowertrain':
+      if (answers.hybridPowertrain != null) return false;
+      if (getFuelCategory(needProfile) === 'phev') return false;
+      if (getFuelCategory(needProfile) === 'hybrid') return true;
+      return (needProfile.understoodLabels ?? []).some((l) => /\bhybrid\b/i.test(l))
+        && !getFuelCategory(needProfile);
+
     case 'allradNeed':
       return !isAwdRecognized(needProfile) && answers.allradNeed == null;
 
