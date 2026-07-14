@@ -4,7 +4,7 @@
 **Stand:** Juli 2026  
 **Leitsatz:** *Nicht fragen wie ein Formular. Denken wie ein Verkäufer.*
 
-**Bezug:** [Seller Reasoning Engine – Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md) · [Conversation Design](clever-conversation-design.md) · [Living Conversation UI v3](../src/components/conversation/CleverMemoryBar.jsx)
+**Bezug:** [Need Discovery Engine v1.0](CLEVER_NEED_DISCOVERY_ENGINE.md) · [Seller Reasoning Engine – Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md) · [Conversation Design](clever-conversation-design.md) · [Living Conversation UI v3](../src/components/conversation/CleverMemoryBar.jsx)
 
 **Implementierung (read-only):** `src/services/clever/sellerReasoningEngine.js` · `src/services/consultation/conversationPlanner.js` · `src/services/consultation/consultationHappyPath.js`
 

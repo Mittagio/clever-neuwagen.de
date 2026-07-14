@@ -10,6 +10,7 @@ Verwandte Dokumente:
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)**
 - [Charakter](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)
+- **[Need Discovery Engine v1.0](CLEVER_NEED_DISCOVERY_ENGINE.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
 **Hierarchie:** Manifest → [Vier Aufgaben](CLEVER_FOUR_TASKS.md) → **Verständnis** → Produktprinzipien → **Clever Lead** (Dokument des Verständnisses) → Charakter → Conversation Design → Umsetzung.

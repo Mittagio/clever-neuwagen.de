@@ -2,7 +2,7 @@
 
 **Status:** UX-Spezifikation · kein Code  
 **Stand:** Juli 2026  
-**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** · [Clever Lead](CLEVER_LEAD.md) · **[Golden Conversations v1.0](CLEVER_GOLDEN_CONVERSATIONS.md)**
+**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) (verbindlich) · [Manifest](CLEVER_MANIFEST.md) · **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** · [Clever Lead](CLEVER_LEAD.md) · **[Need Discovery Engine v1.0](CLEVER_NEED_DISCOVERY_ENGINE.md)** · **[Golden Conversations v1.0](CLEVER_GOLDEN_CONVERSATIONS.md)**
 
 **Verbindliche Produktentscheidung (Juli 2026):** Clever besteht aus **genau zwei Welten** — Wunschgespräch und Fahrzeuggespräch. Übergabe an den Verkäufer ist kein drittes Gespräch, sondern das gemeinsame Ende beider Wege.
 

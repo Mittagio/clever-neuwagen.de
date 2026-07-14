@@ -25,6 +25,7 @@ Verwandte Dokumente:
 - [Nutzer-Tests & Verstanden-Gefühl](clever-user-testing.md)
 - **[v1.0 Beobachtungsphase (UX Freeze)](CLEVER_V1_OBSERVATION_PHASE.md)**
 - **[Golden Conversations v1.0 – Referenzgespräche](CLEVER_GOLDEN_CONVERSATIONS.md)**
+- **[Need Discovery Engine v1.0 – Produktmission](CLEVER_NEED_DISCOVERY_ENGINE.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
 **Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** → Clever Lead → Charakter → Conversation Design → Umsetzung.
