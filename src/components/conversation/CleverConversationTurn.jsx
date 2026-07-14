@@ -30,9 +30,11 @@ export default function CleverConversationTurn({
         <p className="cc-clever-turn__text">{turn.text}</p>
         {hasOptions && (
           <div className="cc-clever-turn__options-wrap">
-            <p className="cc-clever-turn__options-hint">
-              {turn.optionsHint ?? 'Falls hilfreich – ganz ohne Pflicht:'}
-            </p>
+            {turn.optionsHint && (
+              <p className="cc-clever-turn__options-hint">
+                {turn.optionsHint}
+              </p>
+            )}
             <div
               className="cc-clever-turn__options"
               role="group"

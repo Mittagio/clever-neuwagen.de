@@ -19,7 +19,7 @@ import {
   mergeTextIntoNeedProfile,
   modelDisplayLabel,
 } from './needProfileService.js';
-import { buildVehicleReactionMessage, buildSellerQuestionPrompt } from '../clever/sellerReasoningEngine.js';
+import { buildVehicleReactionMessage, buildSellerQuestionPrompt, buildSellerThoughtBeforeQuestion } from '../clever/sellerReasoningEngine.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   beginEv3VehicleConsultation,
@@ -77,33 +77,32 @@ export const UNDERSTANDING_MIRROR_COPY = {
 
 /** Warme Clever-Formulierungen – Verkäufer statt Formular. */
 export const WARM_QUESTION_PROMPTS = {
-  longDistance:
-    'Fahren Sie überwiegend Alltag oder auch längere Strecken und Urlaub?',
+  longDistance: 'Wie nutzen Sie das Fahrzeug überwiegend?',
   chargingAtHome:
     'Wenn Sie zuhause laden könnten – Garage oder Wallbox – wäre das für Sie möglich?',
   fuel_type:
     'Haben Sie beim Antrieb schon eine Richtung im Kopf – Benzin, Hybrid oder Elektro?',
   allradNeed:
-    'Dann könnte Allrad relevant werden – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
+    'Brauchen Sie Allrad wirklich – zum Beispiel wegen Anhänger, Schnee oder Gelände?',
   comfortVsSpace:
-    'Dann spielen Platz und Alltag vermutlich eine größere Rolle – '
-    + 'oder ist Ihnen vor allem Komfort wichtig?',
+    'Soll es eher möglichst komfortabel sein – oder ist Ihnen vor allem viel Platz wichtig?',
   primaryUsage:
-    'Dann interessiert mich: Wofür soll das Auto hauptsächlich im Alltag da sein?',
-  evModelPriority:
-    'Was wäre Ihnen wichtiger?',
+    'Ist das Fahrzeug eher für die Familie, für Sie selbst oder als Zweitwagen gedacht?',
+  evModelPriority: 'Was wäre Ihnen wichtiger?',
   sportagePowertrain:
     'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
-  towingUsage: 'Was möchten Sie später ziehen – Fahrrad, Anhänger oder eher gelegentlich?',
+  towingUsage: 'Was möchten Sie hauptsächlich ziehen?',
+  vehicleNeedTiming: 'Wann benötigen Sie Ihr neues Fahrzeug ungefähr?',
+  vehicleReturnDate: 'Wann geben Sie Ihr aktuelles Fahrzeug ungefähr zurück?',
   needDirection: null,
 };
 
 /** Kürzere Chip-Labels – weniger Formular, mehr Gespräch. */
 const WARM_OPTION_LABELS = {
   longDistance: {
-    rarely: 'Vor allem Alltag',
-    sometimes: 'Ab und zu',
-    often: 'Auch Urlaub',
+    rarely: 'Alltag',
+    sometimes: 'regelmäßig längere Strecken',
+    often: 'Urlaub und Familie',
   },
   chargingAtHome: {
     yes: 'Ja, Garage',
@@ -132,10 +131,24 @@ const WARM_OPTION_LABELS = {
     open: 'Noch offen',
   },
   towingUsage: {
-    bike: 'Anhänger im Alltag',
-    trailer: 'Wohnwagen',
-    occasional: 'Pferdeanhänger',
+    small_trailer: 'kleiner Anhänger',
+    caravan: 'Wohnwagen',
+    horse: 'Pferdeanhänger',
+    boat: 'Boot',
     open: 'Noch offen',
+  },
+  vehicleNeedTiming: {
+    asap: 'möglichst bald',
+    '8weeks': 'innerhalb der nächsten 8 Wochen',
+    later: 'Fahrzeug läuft später aus',
+    open: 'noch offen',
+  },
+  vehicleReturnDate: {
+    '2026-10': '10/2026',
+    '2026-12': '12/2026',
+    '2027-03': '03/2027',
+    '2027-06': '06/2027',
+    unknown: 'noch unklar',
   },
 };
 
@@ -155,9 +168,9 @@ const WARM_OPTION_EMOJI = {
 
 const LEARNED_FROM_ANSWER = {
   longDistance: {
-    rarely: ['Kurzstrecke'],
-    sometimes: ['Ab und zu längere Strecken'],
-    often: ['Langstrecke', 'Urlaub'],
+    rarely: ['Alltag'],
+    sometimes: ['regelmäßig längere Strecken'],
+    often: ['Urlaub und Familie'],
   },
   chargingAtHome: {
     yes: ['Laden zuhause'],
@@ -185,10 +198,24 @@ const LEARNED_FROM_ANSWER = {
     open: [],
   },
   towingUsage: {
-    bike: ['Fahrradträger'],
-    trailer: ['Anhänger / Wohnwagen'],
-    occasional: ['AHK gelegentlich'],
+    small_trailer: ['kleiner Anhänger'],
+    caravan: ['Wohnwagen'],
+    horse: ['Pferdeanhänger'],
+    boat: ['Boot'],
     open: [],
+  },
+  vehicleNeedTiming: {
+    asap: ['Lieferzeit: möglichst bald'],
+    '8weeks': ['Lieferzeit: innerhalb 8 Wochen'],
+    later: ['Fahrzeug läuft später aus'],
+    open: [],
+  },
+  vehicleReturnDate: {
+    '2026-10': ['Fahrzeugwechsel Oktober 2026'],
+    '2026-12': ['Fahrzeugwechsel Dezember 2026'],
+    '2027-03': ['Fahrzeugwechsel März 2027'],
+    '2027-06': ['Fahrzeugwechsel Juni 2027'],
+    unknown: [],
   },
 };
 
@@ -373,13 +400,40 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
 
   if (questionId === 'towingUsage') {
     next.towingUsage = answerId;
-    if (answerId === 'bike') {
+    if (answerId === 'small_trailer' || answerId === 'boat') {
       next.priorities = [...new Set([...(next.priorities ?? []), 'towing'])];
+    }
+    if (answerId === 'caravan' || answerId === 'horse') {
+      next.towing = next.towing ?? 'braked';
+      next.priorities = [...new Set([...(next.priorities ?? []), 'towing', 'space'])];
+    }
+  }
+
+  if (questionId === 'vehicleNeedTiming') {
+    if (answerId === 'asap' || answerId === '8weeks') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'urgency'])];
+    }
+  }
+
+  if (questionId === 'vehicleReturnDate') {
+    const timelineLabel = timelineLabelFromReturnDate(answerId);
+    if (timelineLabel) {
+      next.timelineLabel = timelineLabel;
     }
   }
 
   next.understoodLabels = buildUnderstoodLabels(next);
   return next;
+}
+
+function timelineLabelFromReturnDate(answerId) {
+  const map = {
+    '2026-10': 'Fahrzeugwechsel Oktober 2026',
+    '2026-12': 'Fahrzeugwechsel Dezember 2026',
+    '2027-03': 'Fahrzeugwechsel März 2027',
+    '2027-06': 'Fahrzeugwechsel Juni 2027',
+  };
+  return map[answerId] ?? null;
 }
 
 /**
@@ -420,6 +474,37 @@ export function mapFreetextToQuestionAnswer(questionId, text = '') {
     return 'seller_ready';
   }
 
+  if (questionId === 'towingUsage') {
+    if (/klein|baumarkt|boot|pferd|wohnwagen|anhänger|anhaenger/.test(t)) {
+      if (/wohnwagen|caravan/.test(t)) return 'caravan';
+      if (/pferd/.test(t)) return 'horse';
+      if (/boot/.test(t)) return 'boat';
+      return 'small_trailer';
+    }
+    return null;
+  }
+
+  if (questionId === 'vehicleNeedTiming') {
+    if (/bald|sofort|schnell|dringend|woche/.test(t)) return 'asap';
+    if (/8\s*wochen|acht wochen/.test(t)) return '8weeks';
+    if (/später|spaeter|läuft|laeuft|leasing|aus/.test(t)) return 'later';
+    if (/offen|unklar/.test(t)) return 'open';
+    return null;
+  }
+
+  if (questionId === 'vehicleReturnDate') {
+    const mmYyyy = t.match(/\b(0?[1-9]|1[0-2])\s*[\/.\-]\s*(20\d{2})\b/);
+    if (mmYyyy) {
+      const month = String(mmYyyy[1]).padStart(2, '0');
+      const year = mmYyyy[2];
+      const key = `${year}-${month}`;
+      if (['2026-10', '2026-12', '2027-03', '2027-06'].includes(key)) return key;
+    }
+    if (/oktober\s*2026|10\s*2026|10\/2026/.test(t)) return '2026-10';
+    if (/unklar|offen|weiß nicht|weiss nicht/.test(t)) return 'unknown';
+    return null;
+  }
+
   return null;
 }
 
@@ -438,6 +523,8 @@ const HAPPY_PATH_PLANNER_IDS = new Set([
   'allradNeed',
   'longDistance',
   'chargingAtHome',
+  'vehicleNeedTiming',
+  'vehicleReturnDate',
   NEED_DIRECTION_QUESTION_ID,
 ]);
 
@@ -499,26 +586,7 @@ function buildContextualQuestionPrompt(needProfile = {}, question = {}, consulta
   });
   if (sellerPrompt) return sellerPrompt;
 
-  const base = WARM_QUESTION_PROMPTS[question.id] ?? question.prompt ?? '';
-  const consequence = buildConsequenceIntro(needProfile, question);
-  const ack = buildAcknowledgment(needProfile);
-  const bridge = buildAdvisorBridge(question.id);
-
-  if (consequence) {
-    return `${consequence}\n\n${base}`;
-  }
-
-  if (ack && bridge) {
-    const modelLabel = needProfile.selectedModelKey
-      ? modelDisplayLabel(needProfile.selectedModelKey)
-      : null;
-    if (question.id === 'evModelPriority' && modelLabel) {
-      return `${ack}\n\n${bridge}\nIst Ihnen beim ${modelLabel} eher viel Reichweite oder gute Ausstattung wichtig?`;
-    }
-    return `${ack}\n\n${bridge}\n${base}`;
-  }
-
-  return base;
+  return WARM_QUESTION_PROMPTS[question.id] ?? question.prompt ?? '';
 }
 
 export function getHappyPathNextQuestion(needProfile, consultationProfile) {
@@ -652,8 +720,13 @@ function advanceAfterCustomerTurn(session, needProfile, consultationProfile, opt
 
   const followUp = resolveNextHappyPathQuestion(needProfile, consultationProfile);
   if (followUp && followUp.id !== dismissedQuestionId) {
-    let next = pushTurn(session, cleverQuestionTurn(followUp));
-    next = withPendingQuestion(next, followUp);
+    let next = session;
+    if (!options.afterReaction) {
+      next = pushQuestionWithSellerThought(next, followUp, needProfile, consultationProfile);
+    } else {
+      next = pushTurn(next, cleverQuestionTurn(followUp));
+      next = withPendingQuestion(next, followUp);
+    }
     return { ...next, phase: CONVERSATION_PHASE.CONVERSATION };
   }
 
@@ -895,7 +968,22 @@ function cleverQuestionTurn(question) {
     text: question.prompt,
     options: warmOptionsForQuestion(question),
     hint: question.hint ?? null,
+    optionsHint: '',
   };
+}
+
+function pushQuestionWithSellerThought(session, question, needProfile, consultationProfile, { opening = false } = {}) {
+  let next = session;
+  const thought = buildSellerThoughtBeforeQuestion({
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+    includeAck: opening,
+  });
+  if (thought) {
+    next = pushTurn(next, cleverReactionTurn(thought));
+  }
+  next = pushTurn(next, cleverQuestionTurn(question));
+  return withPendingQuestion(next, question);
 }
 
 function customerTurn(text) {
@@ -995,8 +1083,7 @@ export function submitOpeningMessage(session, text = '') {
 
   const question = resolveNextHappyPathQuestion(needProfile, next.consultationProfile);
   if (question) {
-    next = pushTurn(next, cleverQuestionTurn(question));
-    next = withPendingQuestion(next, question);
+    next = pushQuestionWithSellerThought(next, question, needProfile, next.consultationProfile, { opening: true });
   } else {
     next = advanceAfterCustomerTurn(next, needProfile, next.consultationProfile);
   }
@@ -1077,7 +1164,7 @@ export function submitQuestionAnswer(session, payload = {}) {
     return next;
   }
 
-  return advanceAfterCustomerTurn(next, needProfile, consultationProfile);
+  return advanceAfterCustomerTurn(next, needProfile, consultationProfile, { afterReaction: Boolean(reactionText) });
 }
 
 /**

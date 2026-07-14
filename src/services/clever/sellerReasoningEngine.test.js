@@ -21,7 +21,7 @@ function testElectricFamilyHypothesis() {
       question: { id: 'longDistance', prompt: 'Langstrecke?' },
       customerUnderstanding: understanding,
     }),
-    /Alltag|Urlaub/i,
+    /Wie nutzen Sie das Fahrzeug überwiegend/i,
   );
   console.log('✓ Elektro Familie → Fahrzeughypothese + Langstreckenfrage');
 }

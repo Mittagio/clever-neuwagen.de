@@ -406,7 +406,7 @@ export default function CleverConversationExperience({
     if (/budget/i.test(label) || /€\/monat/i.test(label) || /leasing/i.test(label)) {
       return 'Preislich passend wären aktuell diese Fahrzeuge:';
     }
-    return vehicleReasoning.intro || 'Spontan würde ich aktuell an diese Fahrzeuge denken:';
+    return vehicleReasoning.intro || 'Diese Fahrzeuge würden aktuell zu Ihren Angaben passen.';
   }, [lastAddedLabel, vehicleReasoning.intro]);
 
   const livingPlaceholder = LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]

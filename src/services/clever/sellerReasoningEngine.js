@@ -61,12 +61,34 @@ const QUESTION_OPTION_MAP = {
   longDistance: ['rarely', 'sometimes', 'often'],
   chargingAtHome: ['yes', 'maybe', 'no', 'open'],
   evModelPriority: ['price', 'range', 'equipment', 'balanced'],
-  towingUsage: ['bike', 'trailer', 'occasional', 'open'],
+  towingUsage: ['small_trailer', 'caravan', 'horse', 'boat', 'open'],
   sportagePowertrain: ['benzin', 'hybrid', 'phev', 'open'],
   primaryUsage: ['daily', 'family', 'work', 'leisure', 'towing', 'open'],
   comfortVsSpace: ['comfort', 'space', 'balanced'],
   fuel_type: ['benzin', 'hybrid', 'electric', 'open'],
+  vehicleNeedTiming: ['asap', '8weeks', 'later', 'open'],
+  vehicleReturnDate: ['2026-10', '2026-12', '2027-03', '2027-06', 'unknown'],
 };
+
+const FORBIDDEN_SELLER_PHRASES = [
+  /perfekt für sie/i,
+  /sie sollten kaufen/i,
+  /beste wahl/i,
+  /passt zu 100\s*%/i,
+  /das richtige fahrzeug/i,
+  /unsere empfehlung/i,
+];
+
+function sanitizeNeedDiscoveryCopy(text = '') {
+  const raw = String(text ?? '').trim();
+  if (!raw) return raw;
+  for (const pattern of FORBIDDEN_SELLER_PHRASES) {
+    if (pattern.test(raw)) {
+      return 'Diese Fahrzeuge würden aktuell zu Ihren Angaben passen.';
+    }
+  }
+  return raw;
+}
 
 function includesAny(blob, tests = []) {
   return tests.some((t) => t.test(blob));
@@ -297,9 +319,36 @@ export function buildSellerHypothesisLead({ active = [] } = {}) {
   if (!active.length) return null;
   const names = active.slice(0, 2).map((item) => shortModelName(item.title));
   if (names.length === 1) {
-    return `Dann denke ich spontan an den ${names[0]}.`;
+    return `Dann würde ich aktuell eher Richtung ${names[0]} schauen.`;
   }
-  return `Spontan würde ich mir ${names[0]} und ${names[1]} anschauen.`;
+  return `Mit Ihren bisherigen Angaben würde ich aktuell eher Richtung ${names[0]} oder ${names[1]} schauen.`;
+}
+
+/**
+ * Lautes Denken vor der nächsten Unsicherheitsfrage (Verkäufer-Loop).
+ */
+export function buildSellerThoughtBeforeQuestion({
+  needProfile = {},
+  answers = {},
+  customerUnderstanding = null,
+  userExcluded = [],
+  includeAck = false,
+} = {}) {
+  const reasoning = runSellerReasoning({
+    needProfile,
+    answers,
+    customerUnderstanding,
+    userExcluded,
+  });
+
+  const lead = reasoning.hypothesisLead ?? reasoning.intro;
+  if (!lead) return null;
+
+  const sanitized = sanitizeNeedDiscoveryCopy(lead);
+  if (includeAck) {
+    return `Verstanden.\n\n${sanitized}`;
+  }
+  return sanitized;
 }
 
 export function buildExclusionExplanation({ faded = [] } = {}) {
@@ -373,7 +422,7 @@ export function scoreQuestionImpact({
 }
 
 const UNCERTAINTY_QUESTION_HINTS = {
-  longDistance: 'Langstrecke',
+  longDistance: 'Nutzung',
   towingUsage: 'Anhängerart',
   evModelPriority: 'Priorität',
   sportagePowertrain: 'Antrieb',
@@ -381,6 +430,8 @@ const UNCERTAINTY_QUESTION_HINTS = {
   primaryUsage: 'Nutzung',
   comfortVsSpace: 'Komfort vs. Platz',
   fuel_type: 'Antrieb',
+  vehicleNeedTiming: 'Lieferzeit',
+  vehicleReturnDate: 'Rückgabe',
 };
 
 /**
@@ -418,7 +469,9 @@ export function runSellerReasoning({
   const exclusionNote = buildExclusionExplanation({ faded });
 
   let intro = hypothesisLead
-    ?? 'Auf Basis Ihrer Angaben würde ich spontan diese Fahrzeuge anschauen:';
+    ?? 'Diese Fahrzeuge würden aktuell zu Ihren Angaben passen.';
+
+  intro = sanitizeNeedDiscoveryCopy(intro);
 
   if (exclusionNote && !pendingQuestionId) {
     intro = `${exclusionNote}\n\n${intro}`;
@@ -445,46 +498,34 @@ export function buildSellerQuestionPrompt({
   customerUnderstanding = null,
   userExcluded = [],
 } = {}) {
-  const reasoning = runSellerReasoning({
-    needProfile,
-    answers,
-    customerUnderstanding,
-    userExcluded,
-    pendingQuestionId: question.id,
-  });
-
-  const basePrompt = question.prompt ?? '';
-  const lead = reasoning.hypothesisLead;
-  const exclusion = reasoning.exclusionNote;
-
   if (question.id === 'longDistance') {
-    return lead
-      ? `${lead}\n\nFahren Sie überwiegend Alltag oder auch Urlaub und Langstrecke?`
-      : 'Fahren Sie überwiegend Alltag oder auch Urlaub und Langstrecke?';
+    return 'Wie nutzen Sie das Fahrzeug überwiegend?';
   }
 
   if (question.id === 'towingUsage') {
-    const sportageLead = lead ?? 'Dann denke ich spontan an den Sportage Hybrid.';
-    return `${sportageLead}\n\nWas möchten Sie hauptsächlich ziehen?`;
+    return 'Was möchten Sie hauptsächlich ziehen?';
+  }
+
+  if (question.id === 'vehicleNeedTiming') {
+    return 'Wann benötigen Sie Ihr neues Fahrzeug ungefähr?';
+  }
+
+  if (question.id === 'vehicleReturnDate') {
+    return 'Wann geben Sie Ihr aktuelles Fahrzeug ungefähr zurück?';
   }
 
   if (question.id === 'evModelPriority') {
     if (needProfile.selectedModelKey === 'ev3') {
-      return 'Soll es eher die günstigste Rate sein oder darf die Ausstattung wichtiger sein?';
+      return 'Soll die Rate möglichst niedrig sein oder darf die Ausstattung wichtiger sein?';
     }
-    return lead
-      ? `${lead}\n\nWas wäre Ihnen wichtiger – Preis, Reichweite oder Ausstattung?`
-      : 'Was wäre Ihnen wichtiger – Preis, Reichweite oder Ausstattung?';
+    return 'Was wäre Ihnen wichtiger – Preis, Reichweite oder Ausstattung?';
   }
 
-  if (exclusion) {
-    return `${exclusion}\n\n${basePrompt}`;
+  if (question.id === 'primaryUsage') {
+    return 'Ist das Fahrzeug eher für die Familie, für Sie selbst oder als Zweitwagen gedacht?';
   }
 
-  if (lead) {
-    return `${lead}\n\n${basePrompt}`;
-  }
-
+  const basePrompt = question.prompt ?? '';
   return basePrompt;
 }
 
@@ -528,10 +569,30 @@ export function buildVehicleReactionMessage(questionId, answerId, context = {}) 
   const afterTop = shortModelName(after.items[0]?.title ?? '');
 
   if (questionId === 'longDistance' && answerId === 'often') {
-    return 'Dann wird der EV6 deutlich interessanter. Die 800V-Technik spart auf langen Reisen viel Zeit.';
+    return 'Dann wird der EV6 interessanter – besonders für Urlaub und längere Strecken.';
   }
   if (questionId === 'longDistance' && answerId === 'rarely') {
+    const fuel = getFuelCategory(needProfile);
+    if (fuel === 'hybrid' || fuel === 'phev') {
+      return 'Dann würde ich aktuell eher beim Sportage Hybrid bleiben. '
+        + 'Der spielt seine Stärken besonders im Alltag und auf kürzeren Strecken aus.';
+    }
     return 'Für den Alltag bleibt der EV3 eine starke Option – kompakt und effizient.';
+  }
+  if (questionId === 'longDistance' && answerId === 'sometimes') {
+    return 'Bei gemischter Nutzung lohnt sich ein Blick auf Modelle mit etwas mehr Reichweite und Platz.';
+  }
+  if (questionId === 'towingUsage' && (answerId === 'small_trailer' || answerId === 'bike')) {
+    return 'Dann benötigen Sie vermutlich kein besonders großes Fahrzeug.';
+  }
+  if (questionId === 'towingUsage' && answerId === 'caravan') {
+    return 'Mit Wohnwagen im Blick würde ich eher Richtung größerer Hybrid-SUV schauen.';
+  }
+  if (questionId === 'vehicleNeedTiming' && answerId === 'later') {
+    return 'Alles klar – dann klären wir kurz den ungefähren Rückgabezeitpunkt.';
+  }
+  if (questionId === 'vehicleReturnDate' && answerId && answerId !== 'unknown') {
+    return 'Danke – das hilft bei der Planung des Fahrzeugwechsels.';
   }
   if (questionId === 'evModelPriority' && answerId === 'price') {
     return 'Preisbewusst wäre der EV3 aktuell mein erster Blick.';

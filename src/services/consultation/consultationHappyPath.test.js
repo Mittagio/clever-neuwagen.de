@@ -247,7 +247,7 @@ function testWishProfileFromOpening() {
 function testWarmQuestionsSoundOptional() {
   const copy = WARM_QUESTION_PROMPTS.longDistance;
   assert.doesNotMatch(copy, /Darf ich|Wie viele Kilometer|Wallbox/i);
-  assert.match(copy, /Alltag|Urlaub/i);
+  assert.match(copy, /Wie nutzen Sie|überwiegend/i);
   console.log('✓ Rückfragen klingen nach Verkäufer, nicht nach Formular');
 }
 

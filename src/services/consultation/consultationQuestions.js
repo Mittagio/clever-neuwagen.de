@@ -118,11 +118,11 @@ export const NEED_CONSULTATION_QUESTIONS = [
   {
     id: 'longDistance',
     world: 'need_consultation',
-    prompt: 'Fahren Sie regelmäßig lange Strecken?',
+    prompt: 'Wie nutzen Sie das Fahrzeug überwiegend?',
     options: [
-      { id: 'rarely', label: 'Selten – vor allem Stadt' },
-      { id: 'sometimes', label: 'Ab und zu' },
-      { id: 'often', label: 'Ja, häufig Langstrecke' },
+      { id: 'rarely', label: 'Alltag' },
+      { id: 'sometimes', label: 'regelmäßig längere Strecken' },
+      { id: 'often', label: 'Urlaub und Familie' },
     ],
     skipIf: (ctx) => ctx.answers?.longDistance != null,
   },

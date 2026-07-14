@@ -78,6 +78,16 @@ function isSportageInterest(profile = {}) {
   return String(key).startsWith('sportage');
 }
 
+function hasTimingRelevantNeed(profile = {}) {
+  const labels = (profile.understoodLabels ?? []).join(' ').toLowerCase();
+  const payment = profile.budget?.paymentType;
+  if (payment === 'leasing' || payment === 'finance') return true;
+  if (/\bleasing\b|\bfinanzierung\b|\b€\/monat\b|\bmonatliche rate\b/.test(labels)) return true;
+  if (/fahrzeugwechsel|läuft aus|laeuft aus|leasingende|rückgabe|rueckgabe/.test(labels)) return true;
+  if (profile.timelineLabel) return false;
+  return false;
+}
+
 /** Nur im Planner – nicht im Legacy-Katalog. */
 const PLANNER_ONLY_NEED_QUESTIONS = [
   {
@@ -140,21 +150,62 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
   {
     id: 'towingUsage',
     world: CLEVER_WORLD.NEED_CONSULTATION,
-    priority: 'medium',
-    reason: 'AHK erkannt – Nutzung klären statt Grundsatzfrage.',
-    prompt: 'Wofür möchten Sie die Anhängerkupplung hauptsächlich nutzen?',
+    priority: 'high',
+    reason: 'Anhängelast erkannt – Nutzung klären statt Katalogfrage.',
+    prompt: 'Was möchten Sie hauptsächlich ziehen?',
     options: [
-      { id: 'bike', label: 'Fahrradträger' },
-      { id: 'trailer', label: 'Anhänger / Wohnwagen' },
-      { id: 'occasional', label: 'Nur gelegentlich' },
-      { id: 'open', label: 'Noch unklar' },
+      { id: 'small_trailer', label: 'kleiner Anhänger' },
+      { id: 'caravan', label: 'Wohnwagen' },
+      { id: 'horse', label: 'Pferdeanhänger' },
+      { id: 'boat', label: 'Boot' },
+      { id: 'open', label: 'Noch offen' },
     ],
     visibleWhen: (ctx) => {
       const p = ctx.needProfile ?? {};
-      return Boolean(p.towing && p.towing !== 'no') && !ctx.answers?.towingUsage;
+      const hasTowNeed = Boolean(p.towing && p.towing !== 'no')
+        || (Number(p.towCapacityKg) >= 750)
+        || isTowbarRecognized(p);
+      return hasTowNeed && !ctx.answers?.towingUsage;
     },
     hiddenWhen: (ctx) => ctx.answers?.towingUsage != null || ctx.needProfile?.towingUsage != null,
     knownWhen: (ctx) => ctx.answers?.towingUsage != null || ctx.needProfile?.towingUsage != null,
+  },
+  {
+    id: 'vehicleNeedTiming',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Lieferzeit verstehen – Bedarf vertiefen, nicht Formular.',
+    prompt: 'Wann benötigen Sie Ihr neues Fahrzeug ungefähr?',
+    options: [
+      { id: 'asap', label: 'möglichst bald' },
+      { id: '8weeks', label: 'innerhalb der nächsten 8 Wochen' },
+      { id: 'later', label: 'mein aktuelles Fahrzeug läuft später aus' },
+      { id: 'open', label: 'noch offen' },
+    ],
+    visibleWhen: (ctx) => hasTimingRelevantNeed(ctx.needProfile)
+      && !ctx.answers?.vehicleNeedTiming
+      && !ctx.needProfile?.timelineLabel,
+    hiddenWhen: (ctx) => ctx.answers?.vehicleNeedTiming != null || Boolean(ctx.needProfile?.timelineLabel),
+    knownWhen: (ctx) => ctx.answers?.vehicleNeedTiming != null || Boolean(ctx.needProfile?.timelineLabel),
+  },
+  {
+    id: 'vehicleReturnDate',
+    world: CLEVER_WORLD.NEED_CONSULTATION,
+    priority: 'high',
+    reason: 'Rückgabezeitpunkt für Anschlussmobilität.',
+    prompt: 'Wann geben Sie Ihr aktuelles Fahrzeug ungefähr zurück?',
+    options: [
+      { id: '2026-10', label: '10/2026' },
+      { id: '2026-12', label: '12/2026' },
+      { id: '2027-03', label: '03/2027' },
+      { id: '2027-06', label: '06/2027' },
+      { id: 'unknown', label: 'noch unklar' },
+    ],
+    visibleWhen: (ctx) => ctx.answers?.vehicleNeedTiming === 'later'
+      && !ctx.answers?.vehicleReturnDate
+      && !ctx.needProfile?.timelineLabel,
+    hiddenWhen: (ctx) => ctx.answers?.vehicleReturnDate != null || Boolean(ctx.needProfile?.timelineLabel),
+    knownWhen: (ctx) => ctx.answers?.vehicleReturnDate != null || Boolean(ctx.needProfile?.timelineLabel),
   },
   {
     id: 'fuel_type',
@@ -191,6 +242,9 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
     ],
     visibleWhen: (ctx) => {
       const p = ctx.needProfile ?? {};
+      if ((isTowbarRecognized(p) || (p.towing && p.towing !== 'no')) && !ctx.answers?.towingUsage) {
+        return false;
+      }
       if (p.drive === 'awd' || p.allradNeed === 'yes') return false;
       if (p.drive === 'fwd' || p.drive === 'rwd' || p.allradNeed === 'no') return false;
       if (p.priorities?.includes('awd')) return false;
@@ -364,11 +418,13 @@ function scoreCandidate(candidate) {
 }
 
 const QUESTION_TIE_ORDER = [
+  'vehicleNeedTiming',
+  'vehicleReturnDate',
   'primaryUsage',
+  'towingUsage',
   'sportagePowertrain',
   'longDistance',
   'evModelPriority',
-  'towingUsage',
   'fuel_type',
   'comfortVsSpace',
   'allradNeed',

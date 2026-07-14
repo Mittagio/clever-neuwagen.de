@@ -13,6 +13,7 @@ import {
   submitOpeningMessage,
   createHappyPathSession,
 } from './consultationHappyPath.js';
+import { buildSellerThoughtBeforeQuestion } from '../clever/sellerReasoningEngine.js';
 import { mergeTextIntoNeedProfile } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 
@@ -138,8 +139,9 @@ function testSportageTowingContextualQuestion() {
   assert.ok(profile.understoodLabels.includes('Sportage'), `Sportage fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.ok(profile.understoodLabels.includes('Anhängerkupplung'), `AHK fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.equal(q?.id, 'towingUsage');
-  assert.match(q?.prompt ?? '', /Sportage|spontan/i);
   assert.match(q?.prompt ?? '', /ziehen|Anhänger/i);
+  const thought = buildSellerThoughtBeforeQuestion({ needProfile: profile, answers: {} });
+  assert.match(thought ?? '', /Sportage|Richtung/i);
   assert.notEqual(q?.id, 'fuel_type');
   console.log('✓ Sportage mit AHK → Sportage + AHK Chips, Anhängerart-Frage');
 }
@@ -149,7 +151,7 @@ function testMinimalWishPrimaryUsage() {
   const q = getHappyPathNextQuestion(profile, { answers: {} });
 
   assert.equal(q?.id, 'primaryUsage');
-  assert.match(q?.prompt ?? '', /Wofür soll das Auto hauptsächlich/i);
+  assert.match(q?.prompt ?? '', /Familie|Zweitwagen|selbst/i);
   assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
   console.log('✓ „Ich suche ein Auto“ → Nutzungsfrage, nicht Antriebsfrage');
 }
