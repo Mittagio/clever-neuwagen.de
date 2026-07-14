@@ -12,6 +12,8 @@ export default function CleverAdvisorContactPrompt({
   dealerName = 'Autohaus',
   onContact,
   onExpandedChange,
+  offerModelKeys = [],
+  offerModels = [],
 }) {
   const [expanded, setExpanded] = useState(false);
   const enrichmentRef = useRef({ selectedChipIds: [], freetext: '' });
@@ -28,8 +30,23 @@ export default function CleverAdvisorContactPrompt({
   };
 
   const handleContact = () => {
-    onContact?.(showBoost ? enrichmentRef.current : undefined);
+    const enrichment = showBoost ? enrichmentRef.current : undefined;
+    if (offerModelKeys.length) {
+      onContact?.({
+        ...enrichment,
+        selectedOfferModels: offerModelKeys,
+        offerModelLabels: offerModels
+          .filter((item) => offerModelKeys.includes(item.modelKey))
+          .map((item) => item.title),
+      });
+      return;
+    }
+    onContact?.(enrichment);
   };
+
+  const ctaSub = offerModelKeys.length
+    ? `Angebot für ${offerModelKeys.length} Fahrzeug${offerModelKeys.length > 1 ? 'e' : ''} vorbereiten`
+    : 'Passendes Angebot erhalten';
 
   return (
     <aside
@@ -45,7 +62,7 @@ export default function CleverAdvisorContactPrompt({
           <span className="cc-wish-handoff__icon" aria-hidden>✓</span>
           <span className="cc-wish-handoff__cta-copy">
             <span className="cc-wish-handoff__cta-title">Wunsch verstanden</span>
-            <span className="cc-wish-handoff__cta-sub">Passendes Angebot erhalten</span>
+            <span className="cc-wish-handoff__cta-sub">{ctaSub}</span>
           </span>
         </span>
       </button>

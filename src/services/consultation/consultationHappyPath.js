@@ -19,6 +19,7 @@ import {
   mergeTextIntoNeedProfile,
   modelDisplayLabel,
 } from './needProfileService.js';
+import { buildVehicleReactionMessage } from '../clever/recommendVehicles.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   beginEv3VehicleConsultation,
@@ -74,11 +75,10 @@ export const UNDERSTANDING_MIRROR_COPY = {
   lead: 'Ich glaube, ich habe bereits ein gutes Bild Ihrer Wünsche:',
 };
 
-/** Warme Clever-Formulierungen – Neugier nach Konsequenzen, nicht nach Datenfeldern. */
+/** Warme Clever-Formulierungen – Verkäufer statt Formular. */
 export const WARM_QUESTION_PROMPTS = {
   longDistance:
-    'Dann wird Reichweite vermutlich wichtiger als im reinen Stadtverkehr. '
-    + 'Fahren Sie auch regelmäßig längere Strecken – zum Beispiel in den Urlaub?',
+    'Fahren Sie überwiegend Alltag oder auch längere Strecken und Urlaub?',
   chargingAtHome:
     'Wenn Sie zuhause laden könnten – Garage oder Wallbox – wäre das für Sie möglich?',
   fuel_type:
@@ -91,7 +91,7 @@ export const WARM_QUESTION_PROMPTS = {
   primaryUsage:
     'Dann interessiert mich: Wofür soll das Auto hauptsächlich im Alltag da sein?',
   evModelPriority:
-    'Ist Ihnen dabei eher die Rate wichtiger oder eher die Ausstattung?',
+    'Was wäre Ihnen wichtiger?',
   sportagePowertrain:
     'Kommt für Sie eher Benzin, Hybrid oder Plug-in-Hybrid infrage?',
   towingUsage: 'Was möchten Sie später ziehen – Fahrrad, Anhänger oder eher gelegentlich?',
@@ -101,8 +101,8 @@ export const WARM_QUESTION_PROMPTS = {
 /** Kürzere Chip-Labels – weniger Formular, mehr Gespräch. */
 const WARM_OPTION_LABELS = {
   longDistance: {
-    rarely: 'Vor allem Stadt',
-    sometimes: 'Ab und zu länger',
+    rarely: 'Vor allem Alltag',
+    sometimes: 'Ab und zu',
     often: 'Auch Urlaub',
   },
   chargingAtHome: {
@@ -120,8 +120,9 @@ const WARM_OPTION_LABELS = {
     open: 'Noch offen',
   },
   evModelPriority: {
-    range: 'Mehr Reichweite',
-    equipment: 'Mehr Ausstattung',
+    price: 'Preis',
+    range: 'Reichweite',
+    equipment: 'Ausstattung',
     balanced: 'Beides ausgewogen',
   },
   sportagePowertrain: {
@@ -348,6 +349,9 @@ export function applyAnswerToNeedProfile(needProfile, questionId, answerId) {
   }
 
   if (questionId === 'evModelPriority' || questionId === 'ev3Priority') {
+    if (answerId === 'price') {
+      next.priorities = [...new Set([...(next.priorities ?? []), 'budget'])];
+    }
     if (answerId === 'range') {
       next.priorities = [...new Set([...(next.priorities ?? []), 'range'])];
     }
@@ -479,7 +483,7 @@ function buildConsequenceIntro(needProfile = {}, question = {}) {
     return 'Dann spielen Platz und Alltag vermutlich eine größere Rolle.';
   }
   if (getFuelCategory(needProfile) === 'electric' && question.id === 'longDistance') {
-    return 'Dann wird Reichweite vermutlich wichtiger als im reinen Stadtverkehr.';
+    return null;
   }
   if (/anhäng|ahk|kupplung|anhaenger/.test(labelBlob) && question.id === 'towingUsage') {
     return 'Mit Anhängerkupplung im Blick:';
@@ -867,6 +871,15 @@ function understandingMirrorTurn(labels = []) {
   };
 }
 
+function cleverReactionTurn(text) {
+  return {
+    type: TURN_TYPE.CLEVER,
+    id: `clever-reaction-${Date.now()}`,
+    text,
+    reactionOnly: true,
+  };
+}
+
 function cleverQuestionTurn(question) {
   return {
     type: TURN_TYPE.CLEVER,
@@ -1041,6 +1054,11 @@ export function submitQuestionAnswer(session, payload = {}) {
       customerTurn(displayText),
     ],
   };
+
+  const reactionText = buildVehicleReactionMessage(questionId, answerId);
+  if (reactionText) {
+    next = pushTurn(next, cleverReactionTurn(reactionText));
+  }
 
   const followUp = resolveNextHappyPathQuestion(needProfile, consultationProfile);
   if (followUp) {

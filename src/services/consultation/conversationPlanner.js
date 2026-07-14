@@ -47,6 +47,15 @@ export function isCombustionProfile(profile = {}) {
   return getFuelCategory(profile) === 'combustion';
 }
 
+export function hasSellerEngagement(ctx = {}) {
+  const answers = ctx.answers ?? {};
+  return answers.longDistance != null
+    || answers.evModelPriority != null
+    || answers.ev3Priority != null
+    || answers.primaryUsage != null
+    || answers.comfortVsSpace != null;
+}
+
 export function isElectricOrPhevProfile(profile = {}) {
   const cat = getFuelCategory(profile);
   return cat === 'electric' || cat === 'phev' || cat === 'hybrid';
@@ -92,13 +101,21 @@ const PLANNER_ONLY_NEED_QUESTIONS = [
     world: CLEVER_WORLD.NEED_CONSULTATION,
     priority: 'high',
     reason: 'Modellinteresse Elektro – Reichweite vs. Ausstattung klären.',
-    prompt: 'Ist Ihnen eher viel Reichweite oder gute Ausstattung wichtig?',
+    prompt: 'Was wäre Ihnen wichtiger?',
     options: [
-      { id: 'range', label: 'Mehr Reichweite' },
-      { id: 'equipment', label: 'Mehr Ausstattung' },
+      { id: 'price', label: 'Preis' },
+      { id: 'range', label: 'Reichweite' },
+      { id: 'equipment', label: 'Ausstattung' },
       { id: 'balanced', label: 'Beides ausgewogen' },
     ],
-    visibleWhen: (ctx) => EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? ''),
+    visibleWhen: (ctx) => {
+      const p = ctx.needProfile ?? {};
+      if (EV_MODEL_KEYS.has(p.selectedModelKey ?? '')) return true;
+      if (getFuelCategory(p) === 'electric' && (p.children || p.priorities?.includes('family'))) {
+        return true;
+      }
+      return false;
+    },
     hiddenWhen: () => false,
     knownWhen: (ctx) => ctx.answers?.evModelPriority != null || ctx.answers?.ev3Priority != null,
   },
@@ -219,16 +236,17 @@ const NEED_QUESTION_RULES = {
   chargingAtHome: {
     priority: 'high',
     reason: 'Laden zuhause ist nur bei Elektro und Plug-in-Hybrid relevant.',
-    visibleWhen: (ctx) => isElectricOrPhevProfile(ctx.needProfile),
-    hiddenWhen: (ctx) => isCombustionProfile(ctx.needProfile),
+    visibleWhen: (ctx) => isElectricOrPhevProfile(ctx.needProfile) && hasSellerEngagement(ctx),
+    hiddenWhen: (ctx) => isCombustionProfile(ctx.needProfile)
+      || (isElectricOrPhevProfile(ctx.needProfile) && !hasSellerEngagement(ctx)),
     knownWhen: (ctx) => ctx.needProfile?.chargingAtHome != null || ctx.answers?.chargingAtHome != null,
   },
   longDistance: {
     priority: 'high',
     reason: 'Langstrecken-Nutzung für passende Beratung.',
     visibleWhen: () => true,
-    hiddenWhen: () => false,
-    knownWhen: (ctx) => ctx.needProfile?.longDistance != null || ctx.answers?.longDistance != null,
+    hiddenWhen: (ctx) => EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? ''),
+    knownWhen: (ctx) => ctx.answers?.longDistance != null,
   },
   rangeImportance: {
     priority: 'low',
@@ -341,13 +359,13 @@ function scoreCandidate(candidate) {
 
 const QUESTION_TIE_ORDER = [
   'primaryUsage',
-  'evModelPriority',
   'sportagePowertrain',
+  'longDistance',
+  'evModelPriority',
   'towingUsage',
   'fuel_type',
   'comfortVsSpace',
   'allradNeed',
-  'longDistance',
   'chargingAtHome',
   'rangeImportance',
   'trunkImportance',
@@ -481,6 +499,16 @@ export function evaluateRecommendationReadiness({
   needProfile = {},
   answers = {},
 } = {}) {
+  const pendingPriority = planNextQuestion({ needProfile, answers });
+  if (pendingPriority.question?.id === 'evModelPriority') {
+    return {
+      ready: false,
+      blocker: 'model_priority',
+      reason: 'Noch eine gezielte Prioritätsfrage.',
+      suggestedQuestionId: 'evModelPriority',
+    };
+  }
+
   if (EV_MODEL_KEYS.has(needProfile.selectedModelKey ?? '') && getFuelCategory(needProfile) === 'electric') {
     const pending = planNextQuestion({ needProfile, answers });
     if (pending.question?.id === 'evModelPriority') {

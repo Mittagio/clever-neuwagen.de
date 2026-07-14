@@ -594,6 +594,113 @@
   color: rgba(15, 23, 42, 0.62);
 }
 
+.cc-reasoning__reaction {
+  margin: 14px 2px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 215, 0, 0.12);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: rgba(15, 23, 42, 0.88);
+}
+
+.cc-reasoning--compact {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.cc-reasoning--compact .cc-reasoning__cards {
+  gap: 10px;
+}
+
+.cc-reasoning--compact .cc-reasoning__card {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: stretch;
+}
+
+.cc-reasoning--compact .cc-reasoning__media {
+  height: 88px;
+}
+
+.cc-reasoning--compact .cc-reasoning__body {
+  padding: 10px 12px;
+}
+
+.cc-reasoning--compact .cc-reasoning__title {
+  font-size: 0.9375rem;
+}
+
+.cc-reasoning--compact .cc-reasoning__subtitle,
+.cc-reasoning--compact .cc-reasoning__reasons {
+  display: none;
+}
+
+.cc-reasoning--compact .cc-reasoning__rate {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+}
+
+.cc-reasoning--compact .cc-reasoning__exclude {
+  margin-top: 8px;
+  min-height: 36px;
+  font-size: 0.8125rem;
+}
+
+.cc-reasoning__match {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.92);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cc-reasoning--endgame .cc-reasoning__card {
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.cc-reasoning__card--selectable {
+  position: relative;
+}
+
+.cc-reasoning__card.is-selected {
+  border-color: rgba(255, 215, 0, 0.65);
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.35);
+}
+
+.cc-reasoning__offer-check {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cc-reasoning__offer-lead {
+  margin: 14px 2px 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.88);
+}
+
 /* ── WOW-Moment: Verständnis spiegeln ── */
 
 .cc-understanding-mirror__brand,

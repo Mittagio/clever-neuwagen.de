@@ -57,9 +57,18 @@ function testElectricFamilyChargingAllowed() {
     answers: { longDistance: 'rarely' },
   });
 
-  assert.equal(isQuestionAllowed('chargingAtHome', { needProfile: profile }), true);
-  assert.equal(afterLongDistance.question?.id, 'chargingAtHome');
-  console.log('✓ Elektro Familie 2 Kinder 350 € → Ladefrage erlaubt');
+  assert.equal(afterLongDistance.question?.id, 'evModelPriority');
+  assert.equal(
+    isQuestionAllowed('chargingAtHome', { needProfile: profile, answers: { longDistance: 'rarely' } }),
+    true,
+  );
+
+  const afterPriority = planNextQuestion({
+    needProfile: profile,
+    answers: { longDistance: 'rarely', evModelPriority: 'balanced' },
+  });
+  assert.equal(afterPriority.question?.id, 'chargingAtHome');
+  console.log('✓ Elektro Familie → Alltag/Urlaub, Priorität, dann Ladefrage');
 }
 
 function testEv3HeatPumpAllowed() {
@@ -101,8 +110,11 @@ function testHappyPathElectricStillWorks() {
   assert.equal(q1?.id, 'longDistance');
 
   const q2 = getHappyPathNextQuestion(profile, { answers: { longDistance: 'often' } });
-  assert.equal(q2?.id, 'chargingAtHome');
-  console.log('✓ Elektro-Happy-Path: Langstrecke → Laden zuhause');
+  assert.equal(q2?.id, 'evModelPriority');
+
+  const q3 = getHappyPathNextQuestion(profile, { answers: { longDistance: 'often', evModelPriority: 'balanced' } });
+  assert.equal(q3?.id, 'chargingAtHome');
+  console.log('✓ Elektro-Happy-Path: Langstrecke → Priorität → Laden zuhause');
 }
 
 function testEv3OpeningNoFuelQuestion() {
@@ -138,7 +150,7 @@ function testMinimalWishPrimaryUsage() {
   const q = getHappyPathNextQuestion(profile, { answers: {} });
 
   assert.equal(q?.id, 'primaryUsage');
-  assert.match(q?.prompt ?? '', /Wofür soll das Auto hauptsächlich genutzt werden/i);
+  assert.match(q?.prompt ?? '', /Wofür soll das Auto hauptsächlich/i);
   assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
   console.log('✓ „Ich suche ein Auto“ → Nutzungsfrage, nicht Antriebsfrage');
 }

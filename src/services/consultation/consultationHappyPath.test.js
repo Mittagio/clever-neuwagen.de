@@ -56,6 +56,10 @@ function testHappyPathFlow() {
   assert.equal(session.pendingQuestion?.id, 'longDistance');
 
   session = submitQuestionAnswer(session, { answerId: 'often' });
+  assert.equal(session.pendingQuestion?.id, 'evModelPriority');
+  assert.ok(session.turns.some((t) => t.type === TURN_TYPE.CLEVER && /EV6/.test(t.text ?? '')));
+
+  session = submitQuestionAnswer(session, { answerId: 'balanced' });
   assert.equal(session.pendingQuestion?.id, 'chargingAtHome');
   assert.ok(session.notepadLabels.includes('Langstrecke'));
 
@@ -153,13 +157,17 @@ function testOnlyTwoGapQuestions() {
 
   const afterFirst = { answers: { longDistance: 'often' } };
   const q2 = getHappyPathNextQuestion(needProfile, afterFirst);
-  assert.equal(q2?.id, 'chargingAtHome');
+  assert.equal(q2?.id, 'evModelPriority');
 
-  const afterSecond = { answers: { longDistance: 'often', chargingAtHome: 'yes' } };
+  const afterSecond = { answers: { longDistance: 'often', evModelPriority: 'balanced' } };
   const q3 = getHappyPathNextQuestion(needProfile, afterSecond);
-  assert.equal(q3, null);
+  assert.equal(q3?.id, 'chargingAtHome');
 
-  console.log('✓ Nur Langstrecke + Laden zuhause – kein erneutes Budget/Familie');
+  const afterThird = { answers: { longDistance: 'often', evModelPriority: 'balanced', chargingAtHome: 'yes' } };
+  const q4 = getHappyPathNextQuestion(needProfile, afterThird);
+  assert.equal(q4, null);
+
+  console.log('✓ Verkäufer-Flow: Alltag/Urlaub → Priorität → Wallbox');
 }
 
 function testFreetextNarrativeDuringOpenQuestion() {
@@ -238,9 +246,9 @@ function testWishProfileFromOpening() {
 
 function testWarmQuestionsSoundOptional() {
   const copy = WARM_QUESTION_PROMPTS.longDistance;
-  assert.doesNotMatch(copy, /Darf ich|Wie viele Kilometer/i);
-  assert.match(copy, /Reichweite|Stadtverkehr|Urlaub/i);
-  console.log('✓ Rückfragen klingen nach Konsequenz, nicht nach Datenfeld');
+  assert.doesNotMatch(copy, /Darf ich|Wie viele Kilometer|Wallbox/i);
+  assert.match(copy, /Alltag|Urlaub/i);
+  console.log('✓ Rückfragen klingen nach Verkäufer, nicht nach Formular');
 }
 
 function testFreetextMapping() {

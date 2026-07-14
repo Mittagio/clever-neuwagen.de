@@ -5,6 +5,7 @@
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   getFuelCategory,
+  hasSellerEngagement,
   isCombustionProfile,
   isElectricOrPhevProfile,
   planNextQuestion,
@@ -107,17 +108,19 @@ export function questionImprovesUnderstanding(questionId, needProfile = {}, answ
         && answers.primaryUsage == null;
 
     case 'longDistance':
-      return needProfile.longDistance == null && answers.longDistance == null;
+      return answers.longDistance == null;
 
     case 'chargingAtHome':
       return isElectricOrPhevProfile(needProfile)
         && needProfile.chargingAtHome == null
-        && answers.chargingAtHome == null;
+        && answers.chargingAtHome == null
+        && hasSellerEngagement({ answers });
 
     case 'evModelPriority':
-      return EV_MODEL_KEYS.has(needProfile.selectedModelKey ?? '')
-        && answers.evModelPriority == null
-        && answers.ev3Priority == null;
+      if (answers.evModelPriority != null || answers.ev3Priority != null) return false;
+      if (EV_MODEL_KEYS.has(needProfile.selectedModelKey ?? '')) return true;
+      return getFuelCategory(needProfile) === 'electric'
+        && (needProfile.children || needProfile.priorities?.includes('family'));
 
     case 'towingUsage':
       return Boolean(needProfile.towing && needProfile.towing !== 'no')

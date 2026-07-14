@@ -124,7 +124,7 @@ export const NEED_CONSULTATION_QUESTIONS = [
       { id: 'sometimes', label: 'Ab und zu' },
       { id: 'often', label: 'Ja, häufig Langstrecke' },
     ],
-    skipIf: (ctx) => ctx.needProfile?.longDistance != null,
+    skipIf: (ctx) => ctx.answers?.longDistance != null,
   },
 ];
 

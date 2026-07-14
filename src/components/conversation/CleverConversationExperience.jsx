@@ -33,8 +33,8 @@ import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js'
 import { buildWishProfilePresentation } from '../../services/consultation/consultationOfferHandoff.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
-import { getKiaModelMediaEntry } from '../../data/kia/kiaModelImages.js';
 import CleverNotepadBar from './CleverNotepadBar.jsx';
+import CleverVehicleReasoningPanel from './CleverVehicleReasoningPanel.jsx';
 import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
 import CleverNotingFlash from './CleverNotingFlash.jsx';
 import CleverConversationTurn from './CleverConversationTurn.jsx';
@@ -142,6 +142,8 @@ export default function CleverConversationExperience({
   const [livingPlaceholderFading, setLivingPlaceholderFading] = useState(false);
   const [labelsAnimating, setLabelsAnimating] = useState(false);
   const [excludedModelKeys, setExcludedModelKeys] = useState([]);
+  const [excludeReaction, setExcludeReaction] = useState('');
+  const [offerModelKeys, setOfferModelKeys] = useState([]);
   const [lastAddedLabel, setLastAddedLabel] = useState('');
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
@@ -162,6 +164,8 @@ export default function CleverConversationExperience({
     setRevealedCount(0);
     prevLabelCountRef.current = 0;
     setExcludedModelKeys([]);
+    setExcludeReaction('');
+    setOfferModelKeys([]);
     setLastAddedLabel('');
   }, [dealerName]);
 
@@ -389,14 +393,42 @@ export default function CleverConversationExperience({
     return buildCustomerUnderstanding(leadLike);
   }, [session.needProfile]);
 
-  const vehicleReasoning = useMemo(() => recommendVehicles(customerUnderstanding), [customerUnderstanding]);
+  const vehicleReasoning = useMemo(
+    () => recommendVehicles(customerUnderstanding, {
+      answers: session.consultationProfile?.answers ?? {},
+    }),
+    [customerUnderstanding, session.consultationProfile?.answers],
+  );
   const visibleReasoningItems = useMemo(() => (
     (vehicleReasoning.items ?? []).filter((item) => !excludedModelKeys.includes(item.modelKey))
   ), [vehicleReasoning.items, excludedModelKeys]);
 
+  const handleExcludeModel = useCallback((modelKey) => {
+    setExcludedModelKeys((prev) => {
+      const next = [...new Set([...prev, modelKey])];
+      const remaining = (vehicleReasoning.items ?? []).filter((item) => !next.includes(item.modelKey));
+      if (remaining.length) {
+        const names = remaining.map((item) => item.title.replace(/^Kia /, '')).join(' und ');
+        setExcludeReaction(`Alles klar. Dann konzentrieren wir uns auf ${names}.`);
+      }
+      return next;
+    });
+  }, [vehicleReasoning.items]);
+
+  const handleOfferModelToggle = useCallback((modelKey) => {
+    setOfferModelKeys((prev) => (
+      prev.includes(modelKey)
+        ? prev.filter((key) => key !== modelKey)
+        : [...prev, modelKey]
+    ));
+  }, []);
+
+  const showLiveReasoning = !inOfferWorld
+    && !inVehicleWorld
+    && (session.notepadLabels?.length ?? 0) > 0;
+
   const reasoningHeadline = useMemo(() => {
     const label = String(lastAddedLabel ?? '').trim();
-    if (!label) return vehicleReasoning.intro;
     if (/schnellladen/i.test(label)) return 'Durch Schnellladen wird der EV6 jetzt besonders interessant:';
     if (/familie|kinder|hund/i.test(label)) return 'Für Familie würde ich aktuell diese Fahrzeuge anschauen:';
     if (/budget/i.test(label) || /€\/monat/i.test(label) || /leasing/i.test(label)) {
@@ -575,6 +607,13 @@ export default function CleverConversationExperience({
   const showWishHandoff = wishHandoffLatched || shouldShowWishHandoffCta(session);
   const showAdvisorContact = !inOfferWorld && !inCollectMode && showWishHandoff;
 
+  useEffect(() => {
+    if (!showAdvisorContact || offerModelKeys.length) return undefined;
+    const defaults = visibleReasoningItems.slice(0, 2).map((item) => item.modelKey);
+    if (defaults.length) setOfferModelKeys(defaults);
+    return undefined;
+  }, [showAdvisorContact, visibleReasoningItems, offerModelKeys.length]);
+
   const experienceClass = [
     'cc-experience',
     embedded ? 'cc-experience--embedded' : '',
@@ -657,52 +696,31 @@ export default function CleverConversationExperience({
             </div>
 
             {visibleReasoningItems.length > 0 && (
-              <section className="cc-reasoning" aria-label="Clever denkt mit">
-                <p className="cc-reasoning__kicker">CLEVER DENKT MIT</p>
-                {reasoningHeadline && (
-                  <p className="cc-reasoning__intro">{reasoningHeadline}</p>
-                )}
-                <div className="cc-reasoning__cards">
-                  {visibleReasoningItems.map((item, idx) => {
-                    const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : '🥉');
-                    const img = getKiaModelMediaEntry(item.modelKey, 'card').card;
-                    return (
-                      <article key={item.modelKey} className="cc-reasoning__card">
-                        <div className="cc-reasoning__media">
-                          <img className="cc-reasoning__img" src={img} alt={item.title} loading="lazy" />
-                          <span className="cc-reasoning__rank" aria-hidden>{medal}</span>
-                        </div>
-                        <div className="cc-reasoning__body">
-                          <h2 className="cc-reasoning__title">{item.title}</h2>
-                          {item.subtitle && <p className="cc-reasoning__subtitle">{item.subtitle}</p>}
-                          {item.rateLine && <p className="cc-reasoning__rate">{item.rateLine}</p>}
-                          {(item.reasons?.length ?? 0) > 0 && (
-                            <ul className="cc-reasoning__reasons">
-                              {item.reasons.map((reason) => (
-                                <li key={reason}>✓ {reason}</li>
-                              ))}
-                            </ul>
-                          )}
-                          <button
-                            type="button"
-                            className="cc-reasoning__exclude"
-                            onClick={() => setExcludedModelKeys((prev) => [...new Set([...prev, item.modelKey])])}
-                          >
-                            Nicht meins
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-                {excludedModelKeys.length > 0 && (
-                  <p className="cc-reasoning__hint">
-                    Falls Ihnen das optisch nicht gefällt, hätte ich noch andere Ideen.
-                  </p>
-                )}
-              </section>
+              <CleverVehicleReasoningPanel
+                items={visibleReasoningItems}
+                intro={reasoningHeadline}
+                onExclude={handleExcludeModel}
+                excludedKeys={excludedModelKeys}
+                excludeReaction={excludeReaction}
+              />
             )}
           </section>
+        )}
+
+        {showLiveReasoning && !showOpening && visibleReasoningItems.length > 0 && (
+          <CleverVehicleReasoningPanel
+            compact
+            showMatchPercent={showAdvisorContact}
+            items={visibleReasoningItems}
+            intro={reasoningHeadline}
+            onExclude={showAdvisorContact ? null : handleExcludeModel}
+            excludedKeys={excludedModelKeys}
+            excludeReaction={excludeReaction}
+            offerPrep={showAdvisorContact ? {
+              selectedKeys: offerModelKeys,
+              onToggle: handleOfferModelToggle,
+            } : null}
+          />
         )}
 
         <div className="cc-transcript">
@@ -793,6 +811,8 @@ export default function CleverConversationExperience({
           dealerName={dealerName}
           onContact={handleDealerHandoff}
           onExpandedChange={setAdvisorBoostExpanded}
+          offerModelKeys={offerModelKeys}
+          offerModels={visibleReasoningItems}
         />
       )}
 
