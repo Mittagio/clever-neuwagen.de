@@ -12,7 +12,6 @@ import {
   advanceFromVehicleThinking,
   createHappyPathSession,
   getOpeningCopy,
-  getConversationInputPlaceholder,
   getVehicleInputPlaceholder,
   isInOfferWorld,
   isInVehicleWorld,
@@ -30,10 +29,10 @@ import {
   submitVehicleDirectionReaction,
 } from '../../services/consultation/consultationHappyPath.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
-import { buildWishProfilePresentation } from '../../services/consultation/consultationOfferHandoff.js';
+import { shouldShowWishHandoffCta } from '../../services/consultation/consultationOfferHandoff.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
-import CleverNotepadBar from './CleverNotepadBar.jsx';
+import CleverMemoryBar from './CleverMemoryBar.jsx';
 import CleverVehicleReasoningPanel from './CleverVehicleReasoningPanel.jsx';
 import CleverWishAndVehicleNotepad from './CleverWishAndVehicleNotepad.jsx';
 import CleverNotingFlash from './CleverNotingFlash.jsx';
@@ -46,7 +45,6 @@ import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
 import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
-import { shouldShowWishHandoffCta } from '../../services/consultation/consultationOfferHandoff.js';
 import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
@@ -55,8 +53,18 @@ import './clever-conversation.css';
 
 const SKIPPED_TURN_TYPES = new Set([
   TURN_TYPE.LEARNED,
+  TURN_TYPE.UNDERSTANDING_MIRROR,
   VEHICLE_TURN_TYPE.VEHICLE_LEARNED,
 ]);
+
+const LIVING_INPUT_PLACEHOLDERS = [
+  'Was ist Ihnen noch wichtig?',
+  'Erzählen Sie einfach weiter …',
+  'Was sollten wir noch wissen?',
+  'Ich suche einen Hybrid mit Anhängelast …',
+  'Elektro für Familie mit 400 km Reichweite …',
+  'Panorama wäre schön …',
+];
 
 const TURN_REVEAL_DELAY = {
   [TURN_TYPE.CUSTOMER]: 240,
@@ -70,42 +78,6 @@ const TURN_REVEAL_DELAY = {
   [OFFER_TURN_TYPE.PERSONAL_HANDOFF]: 480,
   [OFFER_TURN_TYPE.HANDOFF_COMPLETE]: 420,
 };
-
-const LIVING_PLACEHOLDER_TEXTS = [
-  'Ich suche ein Elektroauto für zwei Kinder …',
-  'Mein Leasing läuft im November aus …',
-  'EV2 oder EV3?',
-  'Ich brauche Platz für Hund und Kinderwagen …',
-  'Ich fahre oft mit Anhänger …',
-  'Mein Budget liegt bei etwa 350 € monatlich …',
-  'Sportage oder EV5?',
-  'Ich möchte später übernehmen können …',
-];
-
-function iconForLabel(label = '') {
-  const t = String(label ?? '').toLowerCase();
-  if (/^elektro$|plug-in|hybrid|benzin|diesel/.test(t)) return '⚡';
-  if (/^ev\d|sportage|ceed|niro|picanto|sorento|carnival/.test(t)) return '🚗';
-  if (/leasing|finanz|kauf/.test(t) || /budget/.test(t) || /€\/monat/.test(t)) return '💶';
-  if (/monate|km/.test(t)) return '📅';
-  if (/anhäng|anhaeng|ahk|kupplung|anhängelast/.test(t)) return '🔗';
-  if (/blau|rot|weiß|weiss|schwarz|grün|gruen|grau|silber|wolfsgrau/.test(t)) return '🎨';
-  if (/familie|kinder/.test(t)) return '👨‍👩‍👧';
-  if (/hund/.test(t)) return '🐶';
-  if (/wärmepumpe|waermepumpe/.test(t)) return '🌡';
-  if (/\bv2l\b/.test(t)) return '🔌';
-  if (/sitzheizung/.test(t)) return '🔥';
-  if (/kofferraum/.test(t)) return '📦';
-  if (/rückfahr|rueckfahr|kamera|360/.test(t)) return '📷';
-  if (/schnellladen/.test(t)) return '⚡';
-  if (/wallbox|zuhause|daheim/.test(t)) return '🏠';
-  if (/winter/.test(t)) return '❄';
-  if (/isofix/.test(t)) return '👶';
-  if (/kinderwagen/.test(t)) return '🛒';
-  if (/dachbox/.test(t)) return '🏕';
-  if (/pferde/.test(t)) return '🐴';
-  return '·';
-}
 
 function delayForTurn(turn, prevTurn) {
   if (turn.type === TURN_TYPE.CLEVER && prevTurn?.type === TURN_TYPE.CUSTOMER) {
@@ -179,7 +151,7 @@ export default function CleverConversationExperience({
   }, [session.notepadLabels]);
 
   useEffect(() => {
-    if (!showOpening) return undefined;
+    if (inOfferWorld || inVehicleWorld || inCollectMode) return undefined;
     if (voiceListening) return undefined;
     if (inputValue.trim()) return undefined;
     if (inputFocused) return undefined;
@@ -190,13 +162,13 @@ export default function CleverConversationExperience({
     const handle = window.setInterval(() => {
       setLivingPlaceholderFading(true);
       window.setTimeout(() => {
-        setLivingPlaceholderIndex((prev) => (prev + 1) % LIVING_PLACEHOLDER_TEXTS.length);
+        setLivingPlaceholderIndex((prev) => (prev + 1) % LIVING_INPUT_PLACEHOLDERS.length);
         setLivingPlaceholderFading(false);
       }, fadeMs);
     }, intervalMs);
 
     return () => window.clearInterval(handle);
-  }, [showOpening, voiceListening, inputValue, inputFocused]);
+  }, [inOfferWorld, inVehicleWorld, inCollectMode, voiceListening, inputValue, inputFocused]);
 
   useEffect(() => {
     const playableCount = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type)).length;
@@ -269,10 +241,6 @@ export default function CleverConversationExperience({
     event.preventDefault();
     handleSend(inputValue);
   };
-
-  const handleExampleSelect = useCallback((text) => {
-    handleSend(text);
-  }, [handleSend]);
 
   const smartChipState = useMemo(() => {
     const raw = String(inputValue ?? '').trim().toLowerCase();
@@ -430,10 +398,6 @@ export default function CleverConversationExperience({
     ));
   }, []);
 
-  const showLiveReasoning = !inOfferWorld
-    && !inVehicleWorld
-    && (session.notepadLabels?.length ?? 0) > 0;
-
   const reasoningHeadline = useMemo(() => {
     if (vehicleReasoning.intro) return vehicleReasoning.intro;
     const label = String(lastAddedLabel ?? '').trim();
@@ -442,66 +406,72 @@ export default function CleverConversationExperience({
     if (/budget/i.test(label) || /€\/monat/i.test(label) || /leasing/i.test(label)) {
       return 'Preislich passend wären aktuell diese Fahrzeuge:';
     }
-    return vehicleReasoning.intro;
+    return vehicleReasoning.intro || 'Spontan würde ich aktuell an diese Fahrzeuge denken:';
   }, [lastAddedLabel, vehicleReasoning.intro]);
 
-  const renderComposer = (variant = 'bar') => {
-    const isTool = variant === 'tool';
+  const livingPlaceholder = LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]
+    ?? LIVING_INPUT_PLACEHOLDERS[0];
+
+  const renderComposer = () => {
     const formClass = [
-      isTool ? 'cc-tool__composer' : 'cc-input-bar',
-      !isTool && inputFocused ? 'cc-input-bar--focused' : '',
-      !isTool && inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
-      !isTool && voiceListening ? ' cc-input-bar--listening' : '',
+      'cc-input-bar',
+      inputFocused ? 'cc-input-bar--focused' : '',
+      inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
+      voiceListening ? 'cc-input-bar--listening' : '',
+      showOpening && !(session.notepadLabels?.length ?? 0) ? 'cc-input-bar--chips-visible' : '',
     ].filter(Boolean).join(' ');
+
+    const placeholderText = voiceListening
+      ? 'Clever hört zu …'
+      : (inVehicleWorld && inputEnabled
+        ? getVehicleInputPlaceholder(session)
+        : livingPlaceholder);
 
     return (
       <form className={formClass} onSubmit={handleFormSubmit}>
-        {!isTool && (
-          <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
-            {inVehicleWorld ? 'Einfach weitererzählen' : 'Einfach erzählen oder fragen'}
-          </label>
-        )}
+        <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
+          {inVehicleWorld ? 'Einfach weitererzählen' : 'Erzählen Sie einfach weiter'}
+        </label>
         {voiceListening && (
-          <p className={isTool ? 'cc-tool__voice-status' : 'cc-input-bar__voice-status'} aria-live="polite">
+          <p className="cc-input-bar__voice-status" aria-live="polite">
             Clever hört zu …
           </p>
         )}
         {voiceError && !voiceListening && (
-          <p className={isTool ? 'cc-tool__voice-error' : 'cc-input-bar__voice-error'} role="alert">
+          <p className="cc-input-bar__voice-error" role="alert">
             {voiceError}
           </p>
         )}
-        <div className={isTool ? 'cc-tool__input-row' : 'cc-input-bar__row'}>
-          <div className={isTool ? 'cc-tool__field-wrap' : ''}>
+        <div className="cc-input-bar__row">
+          <div className="cc-input-bar__field-wrap">
             <input
               ref={inputRef}
               id="cc-conversation-input"
               type="text"
-              className={isTool ? 'cc-tool__field' : 'cc-input-bar__field'}
-              placeholder={voiceListening ? 'Clever hört zu …' : (showOpening ? opening.placeholder : inputPlaceholder)}
+              className="cc-input-bar__field"
+              placeholder={placeholderText}
               value={inputValue}
               disabled={!inputEnabled}
               onChange={(event) => setInputValue(event.target.value)}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
               autoComplete="off"
-              autoFocus={isTool}
             />
-            {isTool && showOpening && !voiceListening && !inputValue.trim() && (
+            {!inVehicleWorld && !voiceListening && !inputValue.trim() && (
               <span
                 className={[
-                  'cc-tool__living-placeholder',
+                  'cc-input-bar__living-placeholder',
                   livingPlaceholderFading ? 'is-fading' : '',
                 ].filter(Boolean).join(' ')}
                 aria-hidden
               >
-                {LIVING_PLACEHOLDER_TEXTS[livingPlaceholderIndex] ?? opening.placeholder}
+                {livingPlaceholder}
               </span>
             )}
           </div>
           <button
             type="button"
-            className={`${isTool ? 'cc-tool__mic' : 'cc-input-bar__mic'}${voiceListening ? ' is-active' : ''}`}
+            className={`cc-input-bar__mic${voiceListening ? ' is-active' : ''}`}
             onClick={handleVoiceStart}
             disabled={!inputEnabled || !voiceSupported || voiceListening}
             aria-label={opening.voiceLabel}
@@ -511,16 +481,13 @@ export default function CleverConversationExperience({
           </button>
           <button
             type="submit"
-            className={isTool ? 'cc-tool__send' : 'cc-input-bar__send'}
+            className="cc-input-bar__send"
             disabled={!inputEnabled || !inputValue.trim()}
             aria-label="Senden"
           >
             <span aria-hidden>➜</span>
           </button>
         </div>
-        {isTool && voiceSupported && !voiceListening && (
-          <p className="cc-tool__voice-hint">{opening.voiceLabel}</p>
-        )}
       </form>
     );
   };
@@ -568,9 +535,12 @@ export default function CleverConversationExperience({
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
   const activeQuestionId = session.pendingQuestion?.id ?? null;
-  const inputPlaceholder = inVehicleWorld && inputEnabled
-    ? getVehicleInputPlaceholder(session)
-    : (showOpening ? opening.placeholder : getConversationInputPlaceholder(session));
+
+  const hasReasoningContent = visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0;
+  const showInlineReasoning = !inOfferWorld
+    && !inVehicleWorld
+    && hasReasoningContent
+    && ((session.notepadLabels?.length ?? 0) > 0 || visibleTurns.length > 0);
 
   const handleVoiceStart = useCallback(() => {
     if (!voiceSupported || !inputEnabled || voiceListening) return;
@@ -627,7 +597,8 @@ export default function CleverConversationExperience({
     embedded ? 'cc-experience--embedded' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
-    showOpening ? 'cc-experience--tool-opening' : '',
+    !inOfferWorld && !inVehicleWorld ? 'cc-experience--living' : '',
+    showOpening ? 'cc-experience--living-opening' : '',
     showAdvisorContact ? 'cc-experience--advisor-contact' : '',
     advisorBoostExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
@@ -648,90 +619,39 @@ export default function CleverConversationExperience({
             chapterTitle={session.vehicleChapterTitle}
           />
         ) : (
-          <CleverNotepadBar labels={session.notepadLabels} needProfile={session.needProfile} />
+          <CleverMemoryBar
+            labels={session.notepadLabels}
+            onRemove={handleRemoveUnderstoodLabel}
+            animating={labelsAnimating}
+          />
         )
       )}
 
       <div className="cc-experience__scroll" ref={scrollRef}>
         {showOpening && (
-          <section className="cc-tool" aria-label="Clever">
-            <h1 className="cc-tool__headline">{opening.headline}</h1>
-
-            {renderComposer('tool')}
-
-            {(session.notepadLabels?.length ?? 0) > 0 && (
-              <div
-                className={[
-                  'cc-understood',
-                  labelsAnimating ? 'is-animating' : '',
-                ].filter(Boolean).join(' ')}
-                aria-label="Das wurde verstanden"
-              >
-                {session.notepadLabels.map((label) => (
-                  <span key={label} className="cc-understood__chip">
-                    <span className="cc-understood__chip-icon" aria-hidden>{iconForLabel(label)}</span>
-                    <span className="cc-understood__chip-text">{label}</span>
-                    <button
-                      type="button"
-                      className="cc-understood__chip-x"
-                      onClick={() => handleRemoveUnderstoodLabel(label)}
-                      aria-label={`${label} entfernen`}
-                      title={`${label} entfernen`}
-                    >
-                      <span aria-hidden>✕</span>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="cc-smartchips" aria-label="Gedankenanstöße">
-              <p className="cc-smartchips__label">{smartChipState.label}</p>
-              <div className="cc-smartchips__row" role="list">
-                {smartChipState.chips.map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className="cc-smartchips__chip"
-                    role="listitem"
-                    onClick={() => handleSmartChipClick(chip.text)}
-                  >
-                    <span className="cc-smartchips__chip-icon" aria-hidden>{chip.icon}</span>
-                    <span className="cc-smartchips__chip-text">{chip.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {visibleReasoningItems.length > 0 && (
-              <CleverVehicleReasoningPanel
-                items={visibleReasoningItems}
-                fadedItems={fadedReasoningItems}
-                intro={reasoningHeadline}
-                showMatchPercent
-                onExclude={handleExcludeModel}
-                excludedKeys={excludedModelKeys}
-                excludeReaction={excludeReaction}
-              />
-            )}
-          </section>
+          <div className="cc-living__opening">
+            <h1 className="cc-living__headline">{opening.headline}</h1>
+          </div>
         )}
 
-        {showLiveReasoning && !showOpening && (visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0) && (
-          <CleverVehicleReasoningPanel
-            compact
-            showMatchPercent
-            items={visibleReasoningItems}
-            fadedItems={fadedReasoningItems}
-            intro={reasoningHeadline}
-            onExclude={showAdvisorContact ? null : handleExcludeModel}
-            excludedKeys={excludedModelKeys}
-            excludeReaction={excludeReaction}
-            offerPrep={showAdvisorContact ? {
-              selectedKeys: offerModelKeys,
-              onToggle: handleOfferModelToggle,
-            } : null}
-          />
+        {showOpening && !(session.notepadLabels?.length ?? 0) && (
+          <div className="cc-smartchips cc-smartchips--living" aria-label="Gedankenanstöße">
+            <p className="cc-smartchips__label">{smartChipState.label}</p>
+            <div className="cc-smartchips__row" role="list">
+              {smartChipState.chips.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className="cc-smartchips__chip"
+                  role="listitem"
+                  onClick={() => handleSmartChipClick(chip.text)}
+                >
+                  <span className="cc-smartchips__chip-icon" aria-hidden>{chip.icon}</span>
+                  <span className="cc-smartchips__chip-text">{chip.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         <div className="cc-transcript">
@@ -813,6 +733,23 @@ export default function CleverConversationExperience({
               />
             );
           })}
+
+          {showInlineReasoning && (
+            <CleverVehicleReasoningPanel
+              inline
+              showMatchPercent
+              items={visibleReasoningItems}
+              fadedItems={fadedReasoningItems}
+              intro={reasoningHeadline}
+              onExclude={showAdvisorContact ? null : handleExcludeModel}
+              excludedKeys={excludedModelKeys}
+              excludeReaction={excludeReaction}
+              offerPrep={showAdvisorContact ? {
+                selectedKeys: offerModelKeys,
+                onToggle: handleOfferModelToggle,
+              } : null}
+            />
+          )}
         </div>
       </div>
 
@@ -827,7 +764,7 @@ export default function CleverConversationExperience({
         />
       )}
 
-      {!inOfferWorld && !inCollectMode && !showOpening && renderComposer('bar')}
+      {!inOfferWorld && !inCollectMode && renderComposer()}
     </div>
   );
 }

@@ -15,6 +15,15 @@
   padding-bottom: 168px;
 }
 
+.cc-experience--embedded.cc-experience--living-opening .cc-experience__scroll {
+  max-height: none;
+  padding: 16px 20px 32px;
+}
+
+.cc-experience--embedded.cc-experience--living-opening {
+  min-height: auto;
+}
+
 .cc-experience--embedded.cc-experience--tool-opening .cc-experience__scroll {
   max-height: none;
   padding: 24px 20px 32px;
@@ -110,6 +119,183 @@
 @keyframes cc-notepad-in {
   from { opacity: 0.7; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Living Memory Bar (Gesprächsgedächtnis) ── */
+
+.cc-memory {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  padding: 10px 16px 12px;
+  background: rgba(248, 248, 247, 0.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.cc-memory__label {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+}
+
+.cc-memory__track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cc-memory__track::-webkit-scrollbar {
+  display: none;
+}
+
+.cc-memory__track.is-animating {
+  animation: cc-memory-in 420ms ease-out both;
+}
+
+@keyframes cc-memory-in {
+  from { opacity: 0.65; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cc-memory__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 10px 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+}
+
+.cc-memory__chip-icon {
+  font-size: 0.9375rem;
+  line-height: 1;
+}
+
+.cc-memory__chip-text {
+  font-size: 0.875rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--cc-text);
+}
+
+.cc-memory__chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 -2px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cc-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.cc-memory__chip-x:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--cc-text);
+}
+
+/* ── Living Conversation Layout ── */
+
+.cc-experience--living .cc-experience__scroll {
+  padding-top: 16px;
+}
+
+.cc-living__opening {
+  max-width: var(--cc-max-width);
+  margin: 0 auto 20px;
+}
+
+.cc-living__headline {
+  margin: 0;
+  font-size: clamp(1.375rem, 4.5vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--cc-text);
+}
+
+.cc-smartchips--living {
+  max-width: var(--cc-max-width);
+  margin: 0 auto 20px;
+}
+
+.cc-reasoning--inline {
+  max-width: var(--cc-max-width);
+  margin: 20px auto 8px;
+  padding: 0;
+  position: static;
+  border: none;
+  background: transparent;
+}
+
+.cc-reasoning--inline .cc-reasoning__clever-line {
+  margin: 0 0 12px;
+  padding: 0 4px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--cc-accent);
+  font-weight: 450;
+}
+
+.cc-reasoning--inline .cc-reasoning__cards {
+  gap: 12px;
+}
+
+.cc-reasoning--inline .cc-reasoning__card {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.cc-input-bar__field-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-input-bar__living-placeholder {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+  color: #9ca3af;
+  font-size: 1rem;
+  line-height: 1.4;
+  opacity: 0.96;
+  transition: opacity 260ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-input-bar__living-placeholder.is-fading {
+  opacity: 0.08;
+}
+
+.cc-input-bar__field-wrap .cc-input-bar__field::placeholder {
+  color: transparent;
 }
 
 /* ── Wunschprofil (statt Checkliste) ── */

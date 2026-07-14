@@ -13,6 +13,7 @@ export default function CleverVehicleReasoningPanel({
   fadedItems = [],
   intro = null,
   compact = false,
+  inline = false,
   showMatchPercent = false,
   excludedKeys = [],
   excludeReaction = null,
@@ -27,6 +28,7 @@ export default function CleverVehicleReasoningPanel({
   const panelClass = [
     'cc-reasoning',
     compact ? 'cc-reasoning--compact' : '',
+    inline ? 'cc-reasoning--inline' : '',
     showMatchPercent ? 'cc-reasoning--endgame' : '',
   ].filter(Boolean).join(' ');
 
@@ -93,9 +95,11 @@ export default function CleverVehicleReasoningPanel({
   };
 
   return (
-    <section className={panelClass} aria-label="Clever denkt mit">
-      <p className="cc-reasoning__kicker">CLEVER DENKT MIT</p>
-      {intro && <p className="cc-reasoning__intro">{intro}</p>}
+    <section className={panelClass} aria-label={inline ? 'Fahrzeugempfehlung' : 'Clever denkt mit'}>
+      {!inline && <p className="cc-reasoning__kicker">CLEVER DENKT MIT</p>}
+      {intro && (
+        <p className={inline ? 'cc-reasoning__clever-line' : 'cc-reasoning__intro'}>{intro}</p>
+      )}
       <div className="cc-reasoning__cards">
         {visibleActive.map((item, idx) => renderCard(item, idx, false))}
         {visibleFaded.map((item, idx) => renderCard(item, idx, true))}
