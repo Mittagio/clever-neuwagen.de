@@ -43,11 +43,11 @@ function testSportageFamilyFuelFirst() {
   const result = planNextQuestion({ needProfile: profile, answers: {} });
   const readiness = evaluateRecommendationReadiness({ needProfile: profile });
 
-  assert.equal(result.question?.id, 'sportagePowertrain', `Erwartet sportagePowertrain, bekam ${result.question?.id}`);
+  assert.equal(result.question?.id, 'towingUsage', `Erwartet towingUsage bei AHK, bekam ${result.question?.id}`);
   assert.notEqual(result.question?.id, 'fuel_type', 'Keine generische Antriebsfrage bei Sportage');
   assert.equal(readiness.ready, false);
   assert.equal(readiness.blocker, 'fuel_unknown');
-  console.log('✓ Sportage Familie ohne Antrieb → modellspezifische Antriebsfrage, keine Empfehlung');
+  console.log('✓ Sportage Familie ohne Antrieb → Anhängerart bei erkanntem AHK');
 }
 
 function testElectricFamilyChargingAllowed() {
@@ -126,10 +126,9 @@ function testEv3OpeningNoFuelQuestion() {
   assert.ok(profile.understoodLabels.includes('Elektro'), `Elektro-Chip fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.equal(q?.id, 'evModelPriority', `Erwartet evModelPriority, bekam ${q?.id}`);
   assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
-  assert.match(q?.prompt ?? '', /EV3 nehme ich auf/i);
-  assert.match(q?.prompt ?? '', /Reichweite oder gute Ausstattung/i);
+  assert.match(q?.prompt ?? '', /günstigste Rate|Ausstattung/i);
   assert.doesNotMatch(q?.prompt ?? '', /Benzin, Hybrid oder Elektro/i);
-  console.log('✓ „mir gefällt der ev3“ → EV3 + Elektro Chips, Reichweite/Ausstattung, keine Antriebsfrage');
+  console.log('✓ „mir gefällt der ev3“ → EV3 + Elektro Chips, Rate/Ausstattung, keine Antriebsfrage');
 }
 
 function testSportageTowingContextualQuestion() {
@@ -138,11 +137,11 @@ function testSportageTowingContextualQuestion() {
 
   assert.ok(profile.understoodLabels.includes('Sportage'), `Sportage fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.ok(profile.understoodLabels.includes('Anhängerkupplung'), `AHK fehlt: ${profile.understoodLabels.join(', ')}`);
-  assert.equal(q?.id, 'sportagePowertrain');
-  assert.match(q?.prompt ?? '', /Sportage mit Anhängerkupplung nehme ich auf/i);
-  assert.match(q?.prompt ?? '', /Benzin, Hybrid oder Plug-in-Hybrid/i);
+  assert.equal(q?.id, 'towingUsage');
+  assert.match(q?.prompt ?? '', /Sportage|spontan/i);
+  assert.match(q?.prompt ?? '', /ziehen|Anhänger/i);
   assert.notEqual(q?.id, 'fuel_type');
-  console.log('✓ Sportage mit AHK → Sportage + AHK Chips, modellspezifische Antriebsfrage');
+  console.log('✓ Sportage mit AHK → Sportage + AHK Chips, Anhängerart-Frage');
 }
 
 function testMinimalWishPrimaryUsage() {
@@ -184,8 +183,8 @@ function testEv3OpeningSessionFlow() {
   assert.ok(session.notepadLabels.includes('Elektro'));
   assert.equal(session.pendingQuestion?.id, 'evModelPriority');
   const cleverTurn = session.turns.find((t) => t.type === 'clever' && t.questionId === 'evModelPriority');
-  assert.match(cleverTurn?.text ?? '', /nehme ich auf/i);
-  console.log('✓ Session: EV3-Eingang → Chips wachsen, nächste Frage Reichweite/Ausstattung');
+  assert.match(cleverTurn?.text ?? '', /günstigste Rate|Ausstattung/i);
+  console.log('✓ Session: EV3-Eingang → Chips wachsen, nächste Frage Rate/Ausstattung');
 }
 
 testSportageBenzinNoWallbox();

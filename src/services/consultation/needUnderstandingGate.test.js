@@ -131,9 +131,9 @@ function testMinimalWishStillAsksUsage() {
 function testSportageFamilyAhkStillAsksPowertrain() {
   const profile = mergeTextIntoNeedProfile('Sportage Familie 2 Kinder AHK');
   const catalog = planNextQuestion({ needProfile: profile, answers: {} });
-  assert.equal(catalog.question?.id, 'sportagePowertrain');
+  assert.equal(catalog.question?.id, 'towingUsage');
   assert.equal(shouldOfferSellerReadinessGate(profile, { answers: {} }), false);
-  console.log('✓ Sportage ohne Antrieb → modellspezifische Antriebsfrage');
+  console.log('✓ Sportage mit AHK → Anhängerart vor Antrieb');
 }
 
 function testDirectionExploreModelShowsDirections() {

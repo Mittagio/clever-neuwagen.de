@@ -19,7 +19,7 @@ import {
   mergeTextIntoNeedProfile,
   modelDisplayLabel,
 } from './needProfileService.js';
-import { buildVehicleReactionMessage } from '../clever/recommendVehicles.js';
+import { buildVehicleReactionMessage, buildSellerQuestionPrompt } from '../clever/sellerReasoningEngine.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import {
   beginEv3VehicleConsultation,
@@ -132,10 +132,10 @@ const WARM_OPTION_LABELS = {
     open: 'Noch offen',
   },
   towingUsage: {
-    bike: 'Fahrradträger',
-    trailer: 'Anhänger / Wohnwagen',
-    occasional: 'Nur gelegentlich',
-    open: 'Noch unklar',
+    bike: 'Anhänger im Alltag',
+    trailer: 'Wohnwagen',
+    occasional: 'Pferdeanhänger',
+    open: 'Noch offen',
   },
 };
 
@@ -491,7 +491,14 @@ function buildConsequenceIntro(needProfile = {}, question = {}) {
   return null;
 }
 
-function buildContextualQuestionPrompt(needProfile = {}, question = {}) {
+function buildContextualQuestionPrompt(needProfile = {}, question = {}, consultationProfile = {}) {
+  const sellerPrompt = buildSellerQuestionPrompt({
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+    question,
+  });
+  if (sellerPrompt) return sellerPrompt;
+
   const base = WARM_QUESTION_PROMPTS[question.id] ?? question.prompt ?? '';
   const consequence = buildConsequenceIntro(needProfile, question);
   const ack = buildAcknowledgment(needProfile);
@@ -522,7 +529,7 @@ export function getHappyPathNextQuestion(needProfile, consultationProfile) {
   if (question.id === NEED_DIRECTION_QUESTION_ID) return null;
   return {
     ...question,
-    prompt: buildContextualQuestionPrompt(needProfile, question),
+    prompt: buildContextualQuestionPrompt(needProfile, question, consultationProfile),
   };
 }
 
@@ -1055,7 +1062,10 @@ export function submitQuestionAnswer(session, payload = {}) {
     ],
   };
 
-  const reactionText = buildVehicleReactionMessage(questionId, answerId);
+  const reactionText = buildVehicleReactionMessage(questionId, answerId, {
+    needProfile,
+    answers: consultationProfile?.answers ?? {},
+  });
   if (reactionText) {
     next = pushTurn(next, cleverReactionTurn(reactionText));
   }

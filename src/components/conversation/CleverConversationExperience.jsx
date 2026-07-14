@@ -396,12 +396,19 @@ export default function CleverConversationExperience({
   const vehicleReasoning = useMemo(
     () => recommendVehicles(customerUnderstanding, {
       answers: session.consultationProfile?.answers ?? {},
+      needProfile: session.needProfile,
+      userExcluded: excludedModelKeys,
     }),
-    [customerUnderstanding, session.consultationProfile?.answers],
+    [customerUnderstanding, session.consultationProfile?.answers, session.needProfile, excludedModelKeys],
   );
-  const visibleReasoningItems = useMemo(() => (
-    (vehicleReasoning.items ?? []).filter((item) => !excludedModelKeys.includes(item.modelKey))
-  ), [vehicleReasoning.items, excludedModelKeys]);
+  const visibleReasoningItems = useMemo(
+    () => (vehicleReasoning.items ?? []).filter((item) => !excludedModelKeys.includes(item.modelKey)),
+    [vehicleReasoning.items, excludedModelKeys],
+  );
+  const fadedReasoningItems = useMemo(
+    () => vehicleReasoning.fadedItems ?? [],
+    [vehicleReasoning.fadedItems],
+  );
 
   const handleExcludeModel = useCallback((modelKey) => {
     setExcludedModelKeys((prev) => {
@@ -428,6 +435,7 @@ export default function CleverConversationExperience({
     && (session.notepadLabels?.length ?? 0) > 0;
 
   const reasoningHeadline = useMemo(() => {
+    if (vehicleReasoning.intro) return vehicleReasoning.intro;
     const label = String(lastAddedLabel ?? '').trim();
     if (/schnellladen/i.test(label)) return 'Durch Schnellladen wird der EV6 jetzt besonders interessant:';
     if (/familie|kinder|hund/i.test(label)) return 'Für Familie würde ich aktuell diese Fahrzeuge anschauen:';
@@ -698,7 +706,9 @@ export default function CleverConversationExperience({
             {visibleReasoningItems.length > 0 && (
               <CleverVehicleReasoningPanel
                 items={visibleReasoningItems}
+                fadedItems={fadedReasoningItems}
                 intro={reasoningHeadline}
+                showMatchPercent
                 onExclude={handleExcludeModel}
                 excludedKeys={excludedModelKeys}
                 excludeReaction={excludeReaction}
@@ -707,11 +717,12 @@ export default function CleverConversationExperience({
           </section>
         )}
 
-        {showLiveReasoning && !showOpening && visibleReasoningItems.length > 0 && (
+        {showLiveReasoning && !showOpening && (visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0) && (
           <CleverVehicleReasoningPanel
             compact
-            showMatchPercent={showAdvisorContact}
+            showMatchPercent
             items={visibleReasoningItems}
+            fadedItems={fadedReasoningItems}
             intro={reasoningHeadline}
             onExclude={showAdvisorContact ? null : handleExcludeModel}
             excludedKeys={excludedModelKeys}

@@ -694,6 +694,22 @@
   cursor: pointer;
 }
 
+.cc-reasoning__card--faded {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.cc-reasoning__exclusion {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: rgba(185, 28, 28, 0.88);
+}
+
+.cc-reasoning__match--faded {
+  background: rgba(100, 116, 139, 0.88);
+}
+
 .cc-reasoning__offer-lead {
   margin: 14px 2px 0;
   font-size: 0.9375rem;

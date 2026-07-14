@@ -11,6 +11,8 @@ import {
 } from './needRecognitionService.js';
 import { isMinimalVehicleWish } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
+import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
+import { scoreQuestionImpact } from '../clever/sellerReasoningEngine.js';
 
 export const PLANNER_PRIORITY = {
   high: 3,
@@ -245,7 +247,11 @@ const NEED_QUESTION_RULES = {
     priority: 'high',
     reason: 'Langstrecken-Nutzung für passende Beratung.',
     visibleWhen: () => true,
-    hiddenWhen: (ctx) => EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? ''),
+    hiddenWhen: (ctx) => {
+      if (EV_MODEL_KEYS.has(ctx.needProfile?.selectedModelKey ?? '')) return true;
+      if (isMinimalVehicleWish(ctx.needProfile ?? {})) return true;
+      return false;
+    },
     knownWhen: (ctx) => ctx.answers?.longDistance != null,
   },
   rangeImportance: {
@@ -379,7 +385,23 @@ const QUESTION_TIE_ORDER = [
   'hud',
 ];
 
-function compareCandidates(a, b) {
+function compareCandidates(a, b, ctx = {}) {
+  const understanding = buildCustomerUnderstanding({ crm: { needProfile: ctx.needProfile ?? {} } });
+  const impactA = scoreQuestionImpact({
+    questionId: a.id,
+    needProfile: ctx.needProfile ?? {},
+    answers: ctx.answers ?? {},
+    customerUnderstanding: understanding,
+  });
+  const impactB = scoreQuestionImpact({
+    questionId: b.id,
+    needProfile: ctx.needProfile ?? {},
+    answers: ctx.answers ?? {},
+    customerUnderstanding: understanding,
+  });
+
+  if (impactB !== impactA) return impactB - impactA;
+
   const scoreDiff = scoreCandidate(b) - scoreCandidate(a);
   if (scoreDiff !== 0) return scoreDiff;
   const ai = QUESTION_TIE_ORDER.indexOf(a.id);
@@ -406,7 +428,7 @@ export function planNextQuestion({
     searchFilters,
   };
 
-  const candidates = buildPlannerCandidates(world)
+  let candidates = buildPlannerCandidates(world)
     .filter((q) => {
       if (getRecognitionQuestionBlocks(needProfile).has(q.id)) return false;
       if (q.rules.hiddenWhen?.(ctx)) return false;
@@ -415,7 +437,23 @@ export function planNextQuestion({
       if (q.skipIf?.({ ...ctx, needProfile, answers })) return false;
       return true;
     })
-    .sort(compareCandidates);
+    .map((q) => {
+      const understanding = buildCustomerUnderstanding({ crm: { needProfile } });
+      const impact = scoreQuestionImpact({
+        questionId: q.id,
+        needProfile,
+        answers,
+        customerUnderstanding: understanding,
+      });
+      return { ...q, reasoningImpact: impact };
+    });
+
+  const impactful = candidates.filter((q) => q.reasoningImpact > 0);
+  if (impactful.length) {
+    candidates = impactful;
+  }
+
+  candidates.sort((a, b) => compareCandidates(a, b, ctx));
 
   const winner = candidates[0] ?? null;
   if (!winner) {
