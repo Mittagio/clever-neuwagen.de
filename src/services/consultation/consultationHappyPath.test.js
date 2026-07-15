@@ -297,6 +297,31 @@ function testWishOnlyNoKnowledgeGate() {
   console.log('✓ Reiner Bedarfswunsch → kein Knowledge-Gate');
 }
 
+function testElectricKleinwagenEv2First() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Elektro-Kleinwagen bei Kia');
+
+  const knowledgeTurn = session.turns.find((t) => t.knowledgeOnly);
+  assert.ok(knowledgeTurn, 'EV2-Erklärung fehlt');
+  assert.match(knowledgeTurn.text ?? '', /EV2/i);
+  assert.match(knowledgeTurn.text ?? '', /nicht Kleinwagen/i);
+  const cards = knowledgeTurn.modelCards ?? [];
+  assert.equal(cards.length, 1, 'Nur EV2 als Kleinwagen-Karte');
+  assert.equal(cards[0]?.modelKey, 'ev2');
+  assert.ok(!cards.some((c) => c.modelKey === 'ev3' || c.modelKey === 'ev5'));
+  console.log('✓ Elektro-Kleinwagen → nur EV2 erklärt, kein EV3/EV5 als Kleinwagen');
+}
+
+function testLangstreckeWishStillAsksUsage() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = submitOpeningMessage(session, 'Ich fahre Langstrecke');
+
+  assert.ok(session.notepadLabels.includes('Langstrecke'));
+  assert.equal(session.needProfile.longDistance, null);
+  assert.equal(session.pendingQuestion?.id, 'longDistance');
+  console.log('✓ Langstrecke-Wunsch → Chip ja, Nutzungsfrage bleibt offen');
+}
+
 testInitialParse();
 testHappyPathFlow();
 testEv3VehicleConsultationFlow();
@@ -313,4 +338,6 @@ testOpeningIsNotAQuestion();
 testReceptionOpeningCopy();
 testKnowledgeAnswerBeforeQuestion();
 testWishOnlyNoKnowledgeGate();
+testElectricKleinwagenEv2First();
+testLangstreckeWishStillAsksUsage();
 console.log('\nAlle Happy-Path-Tests bestanden.');

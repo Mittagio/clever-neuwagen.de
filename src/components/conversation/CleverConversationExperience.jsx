@@ -49,7 +49,10 @@ import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
 } from '../../services/sales/conversationVoiceParser.js';
-import './clever-conversation.css';
+import {
+  isCleverAiConversationClientEnabled,
+  requestCleverConversationTurn,
+} from '../../services/clever/openai/cleverConversationClient.js';
 
 const SKIPPED_TURN_TYPES = new Set([
   TURN_TYPE.LEARNED,
@@ -98,6 +101,7 @@ function buildLabelKey(wishLabels = [], vehicleLabels = []) {
 
 export default function CleverConversationExperience({
   dealerName = 'Autohaus',
+  dealerId = import.meta.env.VITE_PILOT_DEALER_ID ?? null,
   dealerConditions = {},
   embedded = false,
 }) {
@@ -116,7 +120,7 @@ export default function CleverConversationExperience({
   const [excludedModelKeys, setExcludedModelKeys] = useState([]);
   const [excludeReaction, setExcludeReaction] = useState('');
   const [offerModelKeys, setOfferModelKeys] = useState([]);
-  const [lastAddedLabel, setLastAddedLabel] = useState('');
+  const [aiTurnPending, setAiTurnPending] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const prevLabelCountRef = useRef(0);
@@ -230,12 +234,47 @@ export default function CleverConversationExperience({
     recognitionRef.current?.stop?.();
   }, []);
 
-  const handleSend = useCallback((text) => {
+  const handleSend = useCallback(async (text) => {
     const trimmed = String(text ?? '').trim();
-    if (!trimmed) return;
+    if (!trimmed || aiTurnPending) return;
+
+    if (isCleverAiConversationClientEnabled()) {
+      setAiTurnPending(true);
+      try {
+        const conversationHistory = (session.turns ?? [])
+          .filter((turn) => turn.type === TURN_TYPE.CUSTOMER || turn.type === TURN_TYPE.CLEVER)
+          .slice(-8)
+          .map((turn) => ({
+            role: turn.type === TURN_TYPE.CUSTOMER ? 'user' : 'assistant',
+            text: turn.text ?? '',
+          }));
+
+        const result = await requestCleverConversationTurn({
+          customerMessage: trimmed,
+          conversationHistory,
+          dealerId,
+          brandContext: {
+            dealerName,
+            brand: 'Kia',
+          },
+          session,
+        });
+
+        if (result.ok && result.session) {
+          setSession(result.session);
+          setInputValue('');
+          return;
+        }
+      } catch {
+        // Fallback auf deterministischen Flow
+      } finally {
+        setAiTurnPending(false);
+      }
+    }
+
     setSession((prev) => submitConversationInput(prev, trimmed));
     setInputValue('');
-  }, []);
+  }, [aiTurnPending, dealerId, dealerName, session]);
 
   const handleFormSubmit = (event) => {
     event.preventDefault();
@@ -493,6 +532,11 @@ export default function CleverConversationExperience({
   };
 
   const handleOptionSelect = (questionId, answerId) => {
+    if (String(questionId ?? '').startsWith('ai_')) {
+      const option = session.pendingQuestion?.options?.find((o) => o.id === answerId);
+      handleSend(option?.label ?? String(answerId));
+      return;
+    }
     setSession((prev) => {
       if (prev.pendingQuestion?.world === CLEVER_WORLD.VEHICLE_CONSULTATION) {
         return submitVehicleAnswer(prev, { answerId });

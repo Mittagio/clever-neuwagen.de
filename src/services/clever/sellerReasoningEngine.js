@@ -128,11 +128,19 @@ function isHybridHevContext(needProfile = {}, answers = {}, blob = '') {
   return /\bhybrid\b|\bhev\b|\bvollhybrid\b/.test(blob) && !/\bplug-in|phev\b/.test(blob);
 }
 
-function prefersHevForDistance(needProfile = {}, answers = {}, blob = '') {
+function prefersHevForDistance(needProfile = {}, answers = {}) {
   return answers.longDistance === 'often'
     || answers.longDistance === 'sometimes'
-    || needProfile.priorities?.includes('range')
-    || /\blangstrecke\b|\burlaub\b/.test(blob);
+    || needProfile.longDistance === 'often'
+    || needProfile.longDistance === 'sometimes';
+}
+
+function hybridCandidatesForTow(needProfile = {}) {
+  const requiredTow = Number(needProfile.towCapacityKg ?? 0);
+  if (requiredTow >= 750) {
+    return ['sportage-hybrid', 'sorento-hybrid'];
+  }
+  return ['sportage-hybrid', 'sorento-hybrid', 'niro'];
 }
 
 function baseCandidates(understanding = {}, needProfile = {}, answers = {}) {
@@ -149,11 +157,18 @@ function baseCandidates(understanding = {}, needProfile = {}, answers = {}) {
   }
 
   if (fuel === 'phev' || answers.hybridPowertrain === 'phev' || includesAny(blob, [/plug-in hybrid/, /\bphev\b/])) {
+    const requiredTow = Number(needProfile.towCapacityKg ?? 0);
+    if (requiredTow >= 1500) {
+      return ['sportage-hybrid', 'sorento-hybrid'];
+    }
+    if (requiredTow >= 750) {
+      return ['sportage-hybrid', 'sorento-hybrid'];
+    }
     return ['sportage-phev', 'sportage-hybrid', 'sorento-hybrid'];
   }
 
   if (isHybridHevContext(needProfile, answers, blob) || fuel === 'hybrid') {
-    return ['sportage-hybrid', 'sorento-hybrid', 'niro'];
+    return hybridCandidatesForTow(needProfile);
   }
 
   if (includesAny(blob, [/sportage/])) {
@@ -180,6 +195,20 @@ function checkHardExclusion(modelKey, needProfile = {}, userExcluded = [], answe
     if (maxTow === 0 && includesAny(String(modelKey), [/ev2|ev4|ceed|niro/])) {
       return { excluded: true, reason: 'Keine Anhängelast', faded: true };
     }
+    if (modelKey === 'niro' && requiredTow >= 750) {
+      return {
+        excluded: true,
+        reason: `Anhängelast zu gering (max. ${maxTow.toLocaleString('de-DE')} kg)`,
+        faded: true,
+      };
+    }
+    if (modelKey === 'sportage-phev' && requiredTow >= 1500) {
+      return {
+        excluded: true,
+        reason: `Anhängelast zu gering (max. ${maxTow.toLocaleString('de-DE')} kg)`,
+        faded: true,
+      };
+    }
   }
 
   const cap = needProfile.budget?.maxMonthlyRate;
@@ -192,7 +221,7 @@ function checkHardExclusion(modelKey, needProfile = {}, userExcluded = [], answe
   const blob = labels.join(' ').toLowerCase();
   const hybridHev = isHybridHevContext(needProfile, answers, blob);
   const hevPreferred = answers.hybridPowertrain === 'hev'
-    || prefersHevForDistance(needProfile, answers, blob);
+    || prefersHevForDistance(needProfile, answers);
 
   if (hybridHev && hevPreferred && (modelKey.includes('phev') || modelKey === 'sportage-phev')) {
     return { excluded: true, reason: 'Auf Langstrecke eher Vollhybrid (HEV)', faded: true };
@@ -234,7 +263,7 @@ function scoreCandidate(modelKey, understanding = {}, answers = {}, needProfile 
     }
   }
 
-  if (includesAny(blob, [/reichweite|langstrecke|400\s*km/i]) || needProfile.priorities?.includes('range')) {
+  if (includesAny(blob, [/reichweite|400\s*km/i]) || needProfile.priorities?.includes('range')) {
     const range = attrs.typicalRangeKm ?? 0;
     if (range >= 500) {
       score += 20;

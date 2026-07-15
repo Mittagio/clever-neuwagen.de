@@ -119,6 +119,8 @@
     "test:customer-portal-self-disclosure": "node src/services/crm/customerPortalSelfDisclosure.test.js",
     "test:customer-portal-self-disclosure-review": "node src/services/crm/customerPortalSelfDisclosureReview.test.js",
     "test:clever-customer-query": "node src/services/clever/cleverCustomerQuery.test.js",
+    "test:clever-ai-conversation": "node src/services/clever/openai/runCleverTurn.test.js",
+    "clever:eval": "node scripts/clever-eval.mjs",
     "test:consultation": "node src/services/consultation/needRecognitionService.test.js && node src/services/consultation/sellerSpeechRecognition.test.js && node src/services/consultation/needUnderstandingGate.test.js && node src/services/consultation/vehicleDirectionService.test.js && node src/services/consultation/conversationPlanner.test.js && node src/services/consultation/consultationPhase1.test.js && node src/services/consultation/consultationHappyPath.test.js && node src/services/consultation/consultationEv3HappyPath.test.js && node src/services/consultation/consultationOfferHandoff.test.js && node src/services/dealer/cleverSalesAdvisor.test.js && node src/services/dealer/sellerInsights.test.js && node src/services/dealer/kundenhelferSavePayload.test.js && node src/services/dealer/specialCustomerQuestionLeadService.test.js && node src/services/dealer/customerUnderstanding.test.js && node src/services/dealer/cleverConsultationAkte.test.js",
     "test:frag-clever-fixes": "node src/services/clever/fragCleverFixes.test.js",
     "test:advisor-inbox": "node src/services/dealer/advisorInboxService.test.js",
@@ -168,6 +170,7 @@
     "express": "^5.2.1",
     "mime-db": "^1.54.0",
     "mime-types": "^3.0.2",
+    "openai": "^6.47.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0"

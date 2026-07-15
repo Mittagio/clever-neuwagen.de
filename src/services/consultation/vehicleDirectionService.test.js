@@ -15,6 +15,27 @@ import {
   submitVehicleDirectionReaction,
   TURN_TYPE,
 } from './consultationHappyPath.js';
+import {
+  SELLER_READINESS_QUESTION_ID,
+  buildNeedDirectionQuestion,
+} from './needUnderstandingGate.js';
+
+function openSportageSession() {
+  let session = createHappyPathSession('Test');
+  session = submitOpeningMessage(
+    session,
+    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
+  );
+  const directionQ = buildNeedDirectionQuestion(session.needProfile);
+  return {
+    ...session,
+    consultationProfile: {
+      ...session.consultationProfile,
+      answers: { [SELLER_READINESS_QUESTION_ID]: 'deferred' },
+    },
+    pendingQuestion: { id: directionQ.id, options: directionQ.options ?? [] },
+  };
+}
 
 function testSportageDirections() {
   const profile = mergeTextIntoNeedProfile(
@@ -40,11 +61,7 @@ function testElektroFamilyDirections() {
 }
 
 function testCompareSimilarShowsDirections() {
-  let session = createHappyPathSession('Test');
-  session = submitOpeningMessage(
-    session,
-    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
-  );
+  let session = openSportageSession();
   session = submitQuestionAnswer(session, { answerId: 'compare_similar' });
   const directionsTurn = session.turns.find((t) => t.type === TURN_TYPE.VEHICLE_DIRECTIONS);
   assert.ok(directionsTurn, 'Fahrzeugrichtungen-Turn fehlt');
@@ -54,25 +71,16 @@ function testCompareSimilarShowsDirections() {
 }
 
 function testDirectionReactionInterested() {
-  let session = createHappyPathSession('Test');
-  session = submitOpeningMessage(
-    session,
-    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
-  );
+  let session = openSportageSession();
   session = submitQuestionAnswer(session, { answerId: 'compare_similar' });
   session = submitVehicleDirectionReaction(session, 'sportage', 'interested');
   assert.equal(session.vehicleDirectionReactions.sportage, 'interested');
-  const turn = session.turns.find((t) => t.type === TURN_TYPE.VEHICLE_DIRECTIONS);
-  assert.equal(turn.directionsView.reactions.sportage, 'interested');
+  assert.equal(session.vehicleDirectionsView?.reactions?.sportage, 'interested');
   console.log('✓ Reaktion „interessiert mich“ wird gespeichert');
 }
 
 function testDirectionReactionNotFit() {
-  let session = createHappyPathSession('Test');
-  session = submitOpeningMessage(
-    session,
-    'Sportage Diesel mit Allrad und Automatik bis 45.000 €',
-  );
+  let session = openSportageSession();
   session = submitQuestionAnswer(session, { answerId: 'compare_similar' });
   session = submitVehicleDirectionReaction(session, 'sportage-hybrid', 'not_fit');
   assert.equal(session.vehicleDirectionReactions['sportage-hybrid'], 'not_fit');

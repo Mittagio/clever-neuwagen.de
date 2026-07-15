@@ -51,7 +51,9 @@ function testSportageOpeningShowsSellerReadinessNotCatalog() {
   );
 
   assert.equal(session.pendingQuestion?.id, SELLER_READINESS_QUESTION_ID);
-  const cleverTurn = session.turns.find((t) => t.type === TURN_TYPE.CLEVER);
+  const cleverTurn = session.turns.find(
+    (t) => t.type === TURN_TYPE.CLEVER && t.questionId === SELLER_READINESS_QUESTION_ID,
+  );
   assert.match(cleverTurn?.text ?? '', /Fehlt Ihrem Berater noch etwas Wesentliches/i);
   assert.doesNotMatch(cleverTurn?.text ?? '', /Antrieb schon einen Favoriten/i);
   assert.doesNotMatch(cleverTurn?.text ?? '', /komfortabel/i);

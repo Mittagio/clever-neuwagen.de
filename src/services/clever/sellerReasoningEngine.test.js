@@ -118,6 +118,41 @@ function testHybridPowertrainQuestionPrompt() {
   console.log('✓ hybridPowertrain-Frage formuliert');
 }
 
+function testHybrid1500ExcludesNiro() {
+  const profile = mergeTextIntoNeedProfile('Hybrid mit 1.500 kg Anhängelast');
+  profile.fuel = 'hybrid';
+  profile.towCapacityKg = 1500;
+  const understanding = buildCustomerUnderstanding({ crm: { needProfile: profile } });
+  const result = runSellerReasoning({ needProfile: profile, customerUnderstanding: understanding });
+
+  const activeKeys = result.items.map((i) => i.modelKey);
+  assert.ok(!activeKeys.includes('niro'), 'Niro HEV darf bei 1.500 kg nicht aktiv sein');
+  assert.ok(activeKeys.includes('sportage-hybrid'), 'Sportage HEV sollte dabei sein');
+  assert.ok(activeKeys.includes('sorento-hybrid'), 'Sorento HEV sollte dabei sein');
+
+  const niroFaded = result.fadedItems.find((i) => i.modelKey === 'niro');
+  if (niroFaded) {
+    assert.match(niroFaded.exclusionReason ?? '', /Anhängelast/i);
+  }
+  console.log('✓ Hybrid 1.500 kg → Niro aus, Sportage/Sorento HEV');
+}
+
+function testLangstreckeWishNoDriveDecision() {
+  const profile = mergeTextIntoNeedProfile('Ich fahre Langstrecke');
+  assert.ok(profile.understoodLabels.includes('Langstrecke'));
+  assert.equal(profile.longDistance, null, 'Langstrecke darf longDistance nicht vorbelegen');
+
+  profile.fuel = 'hybrid';
+  const understanding = buildCustomerUnderstanding({ crm: { needProfile: profile } });
+  const beforeAnswer = runSellerReasoning({ needProfile: profile, customerUnderstanding: understanding });
+  const topBefore = beforeAnswer.items[0]?.modelKey ?? '';
+  assert.ok(
+    topBefore === 'sportage-hybrid' || topBefore === 'sorento-hybrid' || topBefore === 'niro',
+    'Ohne beantwortete Nutzungsfrage kein Langstrecken-Boost',
+  );
+  console.log('✓ Langstrecke als Wunsch – keine automatische Antriebsentscheidung');
+}
+
 testElectricFamilyHypothesis();
 testTrailerExclusion();
 testHybridTrailerQuestionImpact();
@@ -125,4 +160,6 @@ testReactionAfterUrlaub();
 testHybridHevCandidates();
 testHybridLangstreckePrefersHev();
 testHybridPowertrainQuestionPrompt();
+testHybrid1500ExcludesNiro();
+testLangstreckeWishNoDriveDecision();
 console.log('\nSeller Reasoning Engine Tests bestanden.');

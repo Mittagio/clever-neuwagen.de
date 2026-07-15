@@ -748,9 +748,7 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
     next.usage = pushUnique(next.usage ?? [], 'kinderwagen');
   }
 
-  if (recognition.usageTags.includes('langstrecke')) {
-    next.longDistance = 'often';
-  }
+  // Langstrecke nur als Wunsch (usage/Label) – keine automatische Antriebs-/Nutzungsentscheidung.
 
   const speech = recognition.sellerSpeech ?? detectSellerSpeechPatterns(text, intent);
   if (speech.extraLabels?.length) {
@@ -851,6 +849,11 @@ function buildUsageLabels(profile = {}) {
 
   if (hasFamily) labels.push('Familie');
 
+  if ((profile.persons ?? 0) >= 7) labels.push('7 Sitze');
+  else if ((profile.persons ?? 0) >= 5 && !labels.includes('Familie')) {
+    labels.push(`${profile.persons} Sitze`);
+  }
+
   if (profile.children === 2 || profile.children === '2') labels.push('2 Kinder');
   else if (profile.children === 3 || profile.children === '3') labels.push('3 Kinder');
   else if (profile.children === 4 || profile.children === '4') labels.push('4 Kinder');
@@ -879,8 +882,8 @@ function buildUsageLabels(profile = {}) {
     }
   }
 
-  if (profile.longDistance === 'often') labels.push('Langstrecke');
-  else if (profile.longDistance === 'sometimes') labels.push('Langstrecke');
+  if (!usage.includes('langstrecke') && profile.longDistance === 'often') labels.push('Langstrecke');
+  else if (!usage.includes('langstrecke') && profile.longDistance === 'sometimes') labels.push('Langstrecke');
 
   if (profile.priorities?.includes('range')
     && ['electric', 'phev', 'hybrid', 'elektro'].includes(profile.fuel)) {

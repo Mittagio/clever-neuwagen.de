@@ -23,15 +23,18 @@ function looksLikeKnowledgeQuestion(text = '') {
   return QUESTION_SIGNAL.test(trimmed);
 }
 
+function matchesElectricKleinwagenIntent(text = '') {
+  return /\belektro[\s-]*kleinwagen\b|\bkleinwagen[\s-]*elektro\b|\belektro[\s-]*klein\b/i.test(text)
+    || (/\bkleinwagen\b/i.test(text) && /\belektro\b/i.test(text));
+}
+
 function buildCompactElectricKleinwagenAnswer(query) {
   const ev2Record = getCleverRecordForModelKey('ev2');
-  const ev3Record = getCleverRecordForModelKey('ev3');
   const ev2Specs = resolveElectricSpecs(ev2Record ?? {});
-  const ev3Specs = resolveElectricSpecs(ev3Record ?? {});
 
   const lines = [
     'Bei Kia würde ich bei einem echten Elektro-Kleinwagen zuerst den EV2 ansehen.',
-    'Der EV3 ist bereits deutlich größer und eher ein Kompakt-SUV.',
+    'EV3 und EV5 sind bereits deutlich größer – eher Kompakt-SUV, nicht Kleinwagen.',
   ];
 
   const facts = [];
@@ -43,9 +46,6 @@ function buildCompactElectricKleinwagenAnswer(query) {
       label: 'EV2 Batterie',
       value: `${formatKwh(ev2Specs.batteryGrossKwh ?? ev2Specs.batteryNetKwh)} kWh`,
     });
-  }
-  if (ev3Specs.wltpRangeKm) {
-    facts.push({ label: 'EV3 WLTP', value: `${ev3Specs.wltpRangeKm} km` });
   }
 
   return {
@@ -59,14 +59,6 @@ function buildCompactElectricKleinwagenAnswer(query) {
         bullets: [
           'Elektro-Kleinwagen',
           ...(ev2Specs.wltpRangeKm ? [`${ev2Specs.wltpRangeKm} km WLTP`] : []),
-        ].filter(Boolean),
-      },
-      {
-        modelKey: 'ev3',
-        name: KIA_MODEL_ATTRIBUTES.ev3?.label ?? 'EV3',
-        bullets: [
-          'Kompakt-SUV',
-          ...(ev3Specs.wltpRangeKm ? [`${ev3Specs.wltpRangeKm} km WLTP`] : []),
         ].filter(Boolean),
       },
     ],
@@ -105,11 +97,13 @@ function formatSmartAnswerForConversation(smartAnswer, query) {
  */
 export function tryConversationKnowledgeAnswer(text = '', needProfile = {}) {
   const query = String(text ?? '').trim();
-  if (!query || !looksLikeKnowledgeQuestion(query)) return null;
+  if (!query) return null;
 
-  if (/\belektro[\s-]*kleinwagen\b|\bkleinwagen[\s-]*elektro\b|\belektro[\s-]*klein\b/i.test(query)) {
+  if (matchesElectricKleinwagenIntent(query)) {
     return buildCompactElectricKleinwagenAnswer(query);
   }
+
+  if (!looksLikeKnowledgeQuestion(query)) return null;
 
   const intent = parseSearchIntent(query);
   const profile = buildSearchProfile({ intent, query });
