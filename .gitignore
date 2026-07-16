@@ -27,8 +27,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Test-/Build-Artefakte
-coverage/
+# Clever AI Eval-Reports (lokal/Staging, nicht committen)
+eval-reports/
+
 *.sqlite
 *.sqlite3
 *.db

@@ -109,7 +109,27 @@ VITE_CLEVER_AI_CONVERSATION_ENABLED=false
 1. `.env.local`: `CLEVER_AI_CONVERSATION_ENABLED=true`, `OPENAI_API_KEY=…`
 2. Optional Frontend: `VITE_CLEVER_AI_CONVERSATION_ENABLED=true`
 3. `npm run dev`
-4. Optional Live-Eval: `npm run clever:eval` (nur mit API-Key, nicht CI)
+## Live-Eval (20 Golden Turns)
+
+Fixture: `tests/fixtures/cleverGoldenConversationsEval.json` (T01–T20)
+
+```bash
+# Einzelmodell (Standard: OPENAI_CLEVER_MODEL aus .env.local)
+npm run clever:eval
+
+# Explizites Modell + Report-Datei
+npm run clever:eval -- --model gpt-5.6-luna --out eval-reports/luna.json
+
+# Modellvergleich (luna, mini, terra)
+npm run clever:eval:compare
+npm run clever:eval:compare -- --models gpt-5.6-luna,gpt-4o-mini
+```
+
+Ausgabe pro Turn: `mode`, `intent`, `nextAction`, `needProfilePatch`, `usedFactIds`, `durationMs`, `usage`.
+
+Vergleichsreport: `eval-reports/comparison.md` und `comparison.json`.
+
+**Nicht für CI** – erfordert `OPENAI_API_KEY` und `CLEVER_AI_CONVERSATION_ENABLED=true`.
 
 ## Tests
 
@@ -117,7 +137,8 @@ VITE_CLEVER_AI_CONVERSATION_ENABLED=false
 npm run test:clever-ai-conversation
 ```
 
-Golden Conversations: `tests/fixtures/cleverGoldenConversations.js` (mockbasiert, kein API in CI).
+Golden Conversations (Mock, CI): `tests/fixtures/cleverGoldenConversations.js`  
+Live-Eval (20 Turns): `tests/fixtures/cleverGoldenConversationsEval.json`
 
 ## Version
 

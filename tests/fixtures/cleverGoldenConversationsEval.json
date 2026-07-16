@@ -1,0 +1,234 @@
+{
+  "version": "1.0",
+  "description": "20 Golden-Conversation-Turns für Live-Eval (Staging/lokal, keine Kundendaten).",
+  "scenarios": [
+    {
+      "id": "suv-7-seats-leasing",
+      "label": "SUV 7 Sitze → Elektro → Leasing-Flow",
+      "turns": [
+        {
+          "turnId": "T01",
+          "customer": "Ich suche einen SUV mit 7 Sitzen bei Kia.",
+          "expect": {
+            "intent": "vehicle_discovery",
+            "needProfile": { "bodyType": "suv", "persons": 7 },
+            "vehicleDirectionsInclude": ["ev9", "sorento"],
+            "vehicleDirectionsExclude": ["sportage", "ev3"],
+            "forbiddenInReply": ["Hauptauto", "Zweitwagen", "Wallbox", "Langstrecke"]
+          }
+        },
+        {
+          "turnId": "T02",
+          "customer": "Elektrisch.",
+          "expect": {
+            "needProfile": { "fuel": "electric" },
+            "vehicleDirectionsInclude": ["ev9"],
+            "vehicleDirectionsExclude": ["sorento"],
+            "forbiddenInReply": ["Hauptauto", "Wallbox", "Langstrecke"]
+          }
+        },
+        {
+          "turnId": "T03",
+          "customer": "Leasen.",
+          "expect": {
+            "needProfile": { "budget": { "paymentType": "leasing" } },
+            "nextAction": { "type": "ask_offer_parameter", "targetField": "annualMileage" }
+          }
+        },
+        {
+          "turnId": "T04",
+          "customer": "15.000 km.",
+          "expect": {
+            "needProfile": { "annualKm": 15000 },
+            "nextAction": { "type": "ask_offer_parameter", "targetField": "durationMonths" }
+          }
+        },
+        {
+          "turnId": "T05",
+          "customer": "48 Monate Angebot.",
+          "expect": {
+            "needProfile": { "leaseDurationMonths": 48 },
+            "nextAction": { "type": "ask_offer_parameter", "targetField": "downPayment" }
+          }
+        },
+        {
+          "turnId": "T06",
+          "customer": "0 Euro.",
+          "expect": {
+            "needProfile": { "budget": { "downPayment": 0 } },
+            "nextAction": { "type": "ask_offer_parameter", "targetField": "neededBy" }
+          }
+        },
+        {
+          "turnId": "T07",
+          "customer": "In ein bis drei Monaten.",
+          "expect": {
+            "handoff": { "ready": true },
+            "forbiddenInReply": ["Was ist Ihnen wichtig"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ev3-range-knowledge",
+      "label": "Reine Wissensfrage Reichweite",
+      "turns": [
+        {
+          "turnId": "T08",
+          "customer": "Wie weit kommt der EV3?",
+          "expect": {
+            "intent": "knowledge_question",
+            "nextAction": { "type": "none" },
+            "requiresUsedFactIds": true,
+            "vehicleDirectionsInclude": ["ev3"],
+            "forbiddenInReply": ["Hauptauto", "Zweitwagen", "Langstrecke", "Wallbox", "Leasing", "Familie"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "electric-kleinwagen",
+      "label": "Elektro-Kleinwagen Discovery",
+      "turns": [
+        {
+          "turnId": "T09",
+          "customer": "Ich suche einen Elektro-Kleinwagen bei Kia.",
+          "expect": {
+            "intent": "vehicle_discovery",
+            "needProfile": { "fuel": "electric", "bodyType": "kleinwagen" },
+            "vehicleDirectionsInclude": ["ev2"],
+            "vehicleDirectionsExclude": ["ev3"],
+            "nextAction": { "type": "none" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hybrid-towing-1500",
+      "label": "Hybrid mit Anhängelast",
+      "turns": [
+        {
+          "turnId": "T10",
+          "customer": "Ich suche einen Hybrid mit mindestens 1.500 kg Anhängelast.",
+          "expect": {
+            "intent": "vehicle_discovery",
+            "needProfile": { "fuel": "hybrid" },
+            "vehicleDirectionsExclude": ["niro"],
+            "forbiddenInReply": ["Langstrecke"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "correction-flow",
+      "label": "Kundenkorrekturen (HUD, Karosserie, Antrieb)",
+      "turns": [
+        {
+          "turnId": "T11",
+          "customer": "Ich möchte einen Kia EV3 mit Head-up-Display.",
+          "expect": {
+            "intent": "vehicle_discovery",
+            "needProfile": { "selectedModelKey": "ev3" }
+          }
+        },
+        {
+          "turnId": "T12",
+          "customer": "HUD brauche ich doch nicht.",
+          "expect": {
+            "intent": "correction",
+            "forbiddenInReply": ["Warum", "sicher dass"]
+          }
+        },
+        {
+          "turnId": "T13",
+          "customer": "Eigentlich doch lieber ein SUV.",
+          "expect": {
+            "intent": "correction",
+            "needProfile": { "bodyType": "suv" }
+          }
+        },
+        {
+          "turnId": "T14",
+          "customer": "Nein, doch wieder der EV3.",
+          "expect": {
+            "intent": "correction",
+            "needProfile": { "selectedModelKey": "ev3" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "offer-params-sportage",
+      "label": "Angebotsparameter Sportage Leasing",
+      "turns": [
+        {
+          "turnId": "T15",
+          "customer": "Ich möchte den Sportage leasen.",
+          "expect": {
+            "intent": "offer_preparation",
+            "needProfile": { "budget": { "paymentType": "leasing" } },
+            "nextAction": { "type": "ask_offer_parameter" }
+          }
+        },
+        {
+          "turnId": "T16",
+          "customer": "15.000 km und 48 Monate.",
+          "expect": {
+            "needProfile": { "annualKm": 15000, "leaseDurationMonths": 48 }
+          }
+        },
+        {
+          "turnId": "T17",
+          "customer": "0 Euro Anzahlung.",
+          "expect": {
+            "needProfile": { "budget": { "downPayment": 0 } }
+          }
+        }
+      ]
+    },
+    {
+      "id": "handoff-request",
+      "label": "Ausdrückliche Verkäuferübergabe",
+      "turns": [
+        {
+          "turnId": "T18",
+          "customer": "Bitte ein verbindliches Angebot vom Verkäufer.",
+          "expect": {
+            "intent": "handoff_request",
+            "handoff": { "requested": true }
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge-model-compare",
+      "label": "Grenzfall Modellvergleich",
+      "turns": [
+        {
+          "turnId": "T19",
+          "customer": "Was ist der Unterschied zwischen EV4 und EV4 Fastback?",
+          "expect": {
+            "intent": "knowledge_question",
+            "requiresUsedFactIds": true,
+            "forbiddenInReply": ["Hauptauto", "Zweitwagen", "Wallbox"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge-ambiguous-powertrain",
+      "label": "Grenzfall mehrdeutiger Antrieb",
+      "turns": [
+        {
+          "turnId": "T20",
+          "customer": "Sportage – was empfiehlt ihr mir?",
+          "expect": {
+            "intent": "vehicle_discovery",
+            "vehicleDirectionsInclude": ["sportage"],
+            "forbiddenInReply": ["perfektes Fahrzeug", "klare Kaufempfehlung", "greifen Sie zu"]
+          }
+        }
+      ]
+    }
+  ]
+}

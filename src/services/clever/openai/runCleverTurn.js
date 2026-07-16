@@ -30,7 +30,7 @@ function fallbackResult(reason, metrics) {
   };
 }
 
-function successResult(turnResult, metrics, evidence) {
+function successResult(turnResult, metrics, evidence, usage = null) {
   const finalized = finalizeCleverTurnMetrics(metrics, {
     aiUsed: true,
     fallback: false,
@@ -38,6 +38,7 @@ function successResult(turnResult, metrics, evidence) {
     groundingValid: true,
     nextActionType: turnResult.nextAction?.type ?? null,
     handoff: turnResult.handoff?.ready === true,
+    usage,
   });
   logCleverTurnMetrics(finalized);
   return {
@@ -45,6 +46,7 @@ function successResult(turnResult, metrics, evidence) {
     turnResult,
     evidence,
     metrics: finalized,
+    usage,
   };
 }
 
@@ -135,7 +137,7 @@ export async function runCleverTurn(params, deps = {}) {
       return fallbackResult('grounding_failed', metrics);
     }
 
-    return successResult(validation.result, metrics, evidence);
+    return successResult(validation.result, metrics, evidence, apiResult.usage ?? null);
   } catch (err) {
     const errorClass = err?.name === 'APIConnectionTimeoutError'
       || /timeout/i.test(String(err?.message))
