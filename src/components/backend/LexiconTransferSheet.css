@@ -1,0 +1,80 @@
+.lex-transfer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.lex-transfer__panel {
+  width: min(520px, 100%);
+  background: #fff;
+  border-radius: 16px 16px 12px 12px;
+  padding: 1rem 1rem 1.25rem;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+}
+
+.lex-transfer__head h3 {
+  margin: 0 0 0.35rem;
+}
+
+.lex-transfer__head p {
+  margin: 0 0 1rem;
+  color: #64748b;
+}
+
+.lex-transfer__modes {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lex-transfer__mode {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.lex-transfer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.lex-transfer__actions button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  padding: 0.35rem 0.75rem;
+}
+
+.lex-transfer__ghost {
+  background: transparent !important;
+}
+
+.lex-transfer__preview {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.lex-transfer__error {
+  color: #b91c1c;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .lex-transfer {
+    align-items: center;
+  }
+}

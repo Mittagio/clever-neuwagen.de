@@ -10,19 +10,24 @@ import {
   lexiconNeedsLearningFeedback,
 } from '../../services/admin/cleverLearningRequestService.js';
 import CleverLearningRequestCard from '../shared/CleverLearningRequestCard.jsx';
+import LexiconTransferSheet from './LexiconTransferSheet.jsx';
 import './CleverLexikon.css';
 
 export default function CleverLexikon({
   className = '',
-  subline = 'Fahrzeugwissen in Sekunden. Technische Daten, Ausstattung und Paketverfügbarkeit – aus Konfigurator- und Importdaten.',
-  placeholder = 'z. B. EV4 Wärmepumpe, Sportage Anhängelast, EV3 V2L …',
+  subline = 'Fragen Sie nach Modellen, Technik oder Ausstattung.',
+  placeholder = 'Zum Beispiel: Welche Kia haben sieben Sitze?',
   showChips = true,
   onAdoptToAkte = null,
+  lead = null,
+  onLeadUpdated = null,
 }) {
   const [query, setQuery] = useState('');
   const [searchState, setSearchState] = useState(null);
+  const [lexiconResult, setLexiconResult] = useState(null);
   const [showRelated, setShowRelated] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   async function runSearch(text) {
     const q = text.trim();
@@ -34,8 +39,10 @@ export default function CleverLexikon({
     try {
       const response = await fetchLexikonQuery({ query: q });
       setSearchState(response.searchState ?? searchCleverLexicon(q));
+      setLexiconResult(response.lexiconResult ?? null);
     } catch {
       setSearchState(searchCleverLexicon(q));
+      setLexiconResult(null);
     } finally {
       setIsSearching(false);
     }
@@ -55,6 +62,10 @@ export default function CleverLexikon({
   const adoptChip = searchState?.ok && onAdoptToAkte ? buildLexiconAkteChip(searchState) : null;
 
   function handleAdopt() {
+    if (lexiconResult || searchState?.result?.aiLexicon) {
+      setTransferOpen(true);
+      return;
+    }
     if (!onAdoptToAkte || !searchState) return;
     onAdoptToAkte(searchState);
   }
@@ -215,10 +226,6 @@ export default function CleverLexikon({
               </ul>
             )}
 
-            {result.source && (
-              <p className="backend-home__lexikon-source">{result.source}</p>
-            )}
-
             {(result.relatedFacts?.length > 0 || result.extras?.length > 0) && (
               <>
                 <button
@@ -254,6 +261,40 @@ export default function CleverLexikon({
               />
             )}
 
+            {result.sourceStatus && (
+              <p className={`backend-home__lexikon-source-status backend-home__lexikon-source-status--${result.sourceStatus.code}`}>
+                {result.sourceStatus.icon} {result.sourceStatus.label}
+              </p>
+            )}
+
+            {result.source && (
+              <p className="backend-home__lexikon-source">{result.source}</p>
+            )}
+
+            <div className="backend-home__lexikon-actions">
+              {(adoptChip || lexiconResult) && (
+                <button
+                  type="button"
+                  className="backend-home__lexikon-adopt"
+                  onClick={handleAdopt}
+                >
+                  Für Kundenakte übernehmen
+                </button>
+              )}
+              {(result.suggestedActions ?? []).map((action) => (
+                <button
+                  key={`${action.type}-${action.label}`}
+                  type="button"
+                  className="backend-home__lexikon-adopt backend-home__lexikon-adopt--secondary"
+                  onClick={() => {
+                    if (action.type === 'transfer_to_customer') setTransferOpen(true);
+                  }}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+
             {result.needsReview && onAdoptToAkte && (
               <button
                 type="button"
@@ -269,19 +310,26 @@ export default function CleverLexikon({
                 In Kundenakte vormerken
               </button>
             )}
-
-            {adoptChip && (
-              <button
-                type="button"
-                className="backend-home__lexikon-adopt"
-                onClick={handleAdopt}
-              >
-                In Kundenakte übernehmen
-              </button>
-            )}
           </article>
         )}
       </div>
+
+      <LexiconTransferSheet
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        lexiconResult={lexiconResult ?? {
+          answer: result?.answer ?? result?.shortAnswer ?? '',
+          facts: result?.primaryFacts ?? [],
+          vehicleDirections: result?.vehicleDirections ?? [],
+          evidence: result?.evidence ?? [],
+        }}
+        query={query}
+        lead={lead}
+        onApplied={(nextLead, preview) => {
+          onLeadUpdated?.(nextLead, preview);
+          if (onAdoptToAkte && searchState) onAdoptToAkte(searchState);
+        }}
+      />
     </section>
   );
 }

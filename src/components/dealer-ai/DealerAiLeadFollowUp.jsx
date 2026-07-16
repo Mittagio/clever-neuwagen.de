@@ -123,6 +123,7 @@ import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.j
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
+import CustomerAkteCleverCopilot from './CustomerAkteCleverCopilot.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
@@ -2236,6 +2237,16 @@ export default function DealerAiLeadFollowUp({
             onChangeRecommendation={handleCleverBeratungChangeRecommendation}
             onAddSellerInsight={handleAddSellerInsight}
             isSavingInsight={isSaving}
+          />
+          <CustomerAkteCleverCopilot
+            lead={lead}
+            dealerId={lead?.dealerId ?? null}
+            sellerId={lead?.assignedSellerId ?? null}
+            onOpenOffer={() => onPrepareOffer?.(lead)}
+            onUseDraft={(draft, action) => {
+              if (action === 'discard') return;
+              if (draft) openCleverAntworten();
+            }}
           />
         </div>
       )}

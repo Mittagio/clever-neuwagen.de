@@ -37,6 +37,8 @@ export async function runOpenAiCleverResponse(params, deps = {}) {
     dealerId = null,
     env = process.env,
     performOfficialWebSearch = null,
+    tools = CLEVER_CONVERSATION_TOOLS,
+    jsonSchema = CLEVER_TURN_RESULT_JSON_SCHEMA,
   } = params;
 
   const OpenAiCtor = deps.OpenAI ?? OpenAI;
@@ -55,13 +57,13 @@ export async function runOpenAiCleverResponse(params, deps = {}) {
       model,
       instructions,
       input: currentInput,
-      tools: CLEVER_CONVERSATION_TOOLS,
+      tools,
       text: {
         format: {
           type: 'json_schema',
-          name: CLEVER_TURN_RESULT_JSON_SCHEMA.name,
-          schema: CLEVER_TURN_RESULT_JSON_SCHEMA.schema,
-          strict: CLEVER_TURN_RESULT_JSON_SCHEMA.strict,
+          name: jsonSchema.name,
+          schema: jsonSchema.schema,
+          strict: jsonSchema.strict,
         },
       },
     };

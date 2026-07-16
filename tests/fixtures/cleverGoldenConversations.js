@@ -171,6 +171,59 @@ export const GOLDEN_CONVERSATION_MISSED_NEED_FEEDBACK = {
   ],
 };
 
+export const GOLDEN_LEXICON_SEVEN_SEATS = {
+  id: 'lexicon-seven-seats',
+  surface: 'lexicon',
+  conversation: [
+    {
+      customer: 'Welche Kia haben sieben Sitze?',
+      expectedIntent: 'model_discovery',
+      expectedModels: ['ev9', 'sorento'],
+      forbidsNeedProfileChange: true,
+      forbidsSalesQuestions: true,
+      requiresEvidence: true,
+    },
+  ],
+};
+
+export const GOLDEN_LEXICON_800V = {
+  id: 'lexicon-800v-tech',
+  surface: 'lexicon',
+  conversation: [
+    {
+      customer: 'Was ist 800-Volt-Technik?',
+      expectedIntent: 'technology_explanation',
+      forbidsNeedProfileChange: true,
+      forbidsSalesQuestions: true,
+    },
+  ],
+};
+
+export const GOLDEN_SELLER_EV9_SUMMARY = {
+  id: 'seller-ev9-leasing-summary',
+  surface: 'seller_dashboard',
+  conversation: [
+    {
+      customer: 'Was sucht der Kunde genau?',
+      expectedIntent: 'customer_summary',
+      expectedLabels: ['SUV', '7 Sitze', 'Elektro', 'Leasing', '15.000', '48', '0'],
+    },
+  ],
+};
+
+export const GOLDEN_SELLER_WHATSAPP_DRAFT = {
+  id: 'seller-whatsapp-draft',
+  surface: 'seller_dashboard',
+  conversation: [
+    {
+      customer: 'Schreibe eine kurze WhatsApp zum Angebot.',
+      expectedIntent: 'message_draft',
+      requiresSellerConfirmation: true,
+      forbidsAutoSend: true,
+    },
+  ],
+};
+
 export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_CONVERSATION_SUV_7_LEASING,
   GOLDEN_CONVERSATION_EV3_RANGE,
@@ -182,4 +235,8 @@ export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_CONVERSATION_DATA_CONFLICT,
   GOLDEN_CONVERSATION_UNNECESSARY_QUESTION_FEEDBACK,
   GOLDEN_CONVERSATION_MISSED_NEED_FEEDBACK,
+  GOLDEN_LEXICON_SEVEN_SEATS,
+  GOLDEN_LEXICON_800V,
+  GOLDEN_SELLER_EV9_SUMMARY,
+  GOLDEN_SELLER_WHATSAPP_DRAFT,
 ];

@@ -1,6 +1,8 @@
 import express from 'express';
 import { orchestrateCustomerQuery } from '../src/services/clever/cleverCustomerQueryOrchestrator.js';
 import { orchestrateLexiconQuery } from '../src/services/clever/cleverLexiconQueryOrchestrator.js';
+import { runCleverLexiconQuery } from '../src/services/clever/intelligence/runCleverLexiconQuery.js';
+import { isCleverLexiconAiEnabled } from '../src/services/clever/intelligence/cleverIntelligenceConfig.js';
 import { isOpenAiConfigured } from '../src/services/clever/openAiQueryClassifier.js';
 
 const router = express.Router();
@@ -10,12 +12,31 @@ router.get('/clever/customer-query/health', (_req, res) => {
     ok: true,
     openAiConfigured: isOpenAiConfigured(),
     advisorUseOpenAi: process.env.ADVISOR_USE_OPENAI === 'true',
+    lexiconAi: isCleverLexiconAiEnabled(),
   });
 });
 
 router.post('/clever/lexikon-query', express.json({ limit: '16kb' }), async (req, res) => {
   try {
     const { query } = req.body ?? {};
+
+    if (isCleverLexiconAiEnabled()) {
+      const shared = await runCleverLexiconQuery({
+        query,
+        brandKey: req.body?.brandKey ?? 'kia',
+        modelKey: req.body?.modelKey ?? null,
+        variantKey: req.body?.variantKey ?? null,
+      });
+      return res.json({
+        ok: shared.ok !== false,
+        source: shared.mode ?? 'shared_intelligence',
+        searchState: shared.searchState,
+        lexiconResult: shared.lexiconResult ?? null,
+        metrics: shared.metrics ?? null,
+        fallback: shared.fallback === true,
+      });
+    }
+
     const result = await orchestrateLexiconQuery({
       query,
       useOpenAi: req.body?.useOpenAi,
