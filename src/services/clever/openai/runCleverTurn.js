@@ -12,6 +12,11 @@ import {
   finalizeCleverTurnMetrics,
   logCleverTurnMetrics,
 } from './cleverConversationObservability.js';
+import {
+  evaluateCleverModelEscalation,
+  isSimpleInternalKnowledgeQuestion,
+} from './cleverModelEscalation.js';
+import { deriveKnowledgeGapsFromTurn } from '../knowledge/knowledgeGapService.js';
 import { buildCustomerUnderstanding } from '../../dealer/customerUnderstanding.js';
 import { mergeTextIntoNeedProfile } from '../../consultation/needProfileService.js';
 
@@ -30,7 +35,7 @@ function fallbackResult(reason, metrics) {
   };
 }
 
-function successResult(turnResult, metrics, evidence, usage = null) {
+function successResult(turnResult, metrics, evidence, usage = null, extras = {}) {
   const finalized = finalizeCleverTurnMetrics(metrics, {
     aiUsed: true,
     fallback: false,
@@ -39,6 +44,12 @@ function successResult(turnResult, metrics, evidence, usage = null) {
     nextActionType: turnResult.nextAction?.type ?? null,
     handoff: turnResult.handoff?.ready === true,
     usage,
+    primaryModel: metrics.primaryModel ?? null,
+    finalModel: metrics.finalModel ?? null,
+    escalationUsed: metrics.escalationUsed === true,
+    escalationReason: metrics.escalationReason ?? null,
+    usedOfficialWeb: extras.usedOfficialWeb === true,
+    hadDataConflict: (evidence.conflicts ?? []).length > 0,
   });
   logCleverTurnMetrics(finalized);
   return {
@@ -47,7 +58,28 @@ function successResult(turnResult, metrics, evidence, usage = null) {
     evidence,
     metrics: finalized,
     usage,
+    knowledgeGaps: extras.knowledgeGaps ?? [],
   };
+}
+
+async function executeCleverApiTurn({
+  config,
+  context,
+  dealerId,
+  model,
+  deps,
+}) {
+  return runOpenAiCleverResponse({
+    instructions: context.instructions,
+    input: context.input,
+    model,
+    apiKey: config.apiKey,
+    timeoutMs: config.timeoutMs,
+    maxToolRounds: config.maxToolRounds,
+    dealerId,
+    env: deps.env ?? process.env,
+    performOfficialWebSearch: deps.performOfficialWebSearch,
+  }, deps);
 }
 
 /**
@@ -96,16 +128,33 @@ export async function runCleverTurn(params, deps = {}) {
     brandContext,
   });
 
+  const needProfile = lead?.crm?.needProfile ?? null;
+  metrics.primaryModel = config.model;
+  metrics.finalModel = config.model;
+
+  const escalationPreview = evaluateCleverModelEscalation({
+    customerMessage,
+    needProfile,
+  }, deps.env ?? process.env);
+
+  let useEscalationFirst = escalationPreview.shouldEscalate
+    && config.escalationEnabled
+    && !isSimpleInternalKnowledgeQuestion(customerMessage);
+
+  if (useEscalationFirst) {
+    metrics.escalationUsed = true;
+    metrics.escalationReason = escalationPreview.reason;
+    metrics.finalModel = config.escalationModel;
+  }
+
   try {
-    const apiResult = await runOpenAiCleverResponse({
-      instructions: context.instructions,
-      input: context.input,
-      model: config.model,
-      apiKey: config.apiKey,
-      timeoutMs: config.timeoutMs,
-      maxToolRounds: config.maxToolRounds,
+    let apiResult = await executeCleverApiTurn({
+      config,
+      context,
       dealerId,
-    }, deps);
+      model: metrics.finalModel,
+      deps,
+    });
 
     metrics.toolCallCount = apiResult.toolCallCount ?? 0;
 
@@ -122,13 +171,57 @@ export async function runCleverTurn(params, deps = {}) {
       }
     }
 
-    const validation = validateCleverTurnResult(parsed);
+    let validation = parsed ? validateCleverTurnResult(parsed) : { ok: false, errors: ['missing_parsed'] };
+    let evidence = buildToolEvidence(apiResult.toolResults ?? []);
+    let grounding = validation.ok
+      ? assertGroundedCleverTurn(validation.result, evidence)
+      : { ok: false, errors: validation.errors ?? ['invalid_schema'] };
+
+    const canRetryEscalation = config.escalationEnabled
+      && !metrics.escalationUsed
+      && (!validation.ok || !grounding.ok)
+      && !isSimpleInternalKnowledgeQuestion(customerMessage);
+
+    if (canRetryEscalation) {
+      metrics.escalationUsed = true;
+      metrics.escalationReason = validation.ok
+        ? 'grounding_failed'
+        : 'schema_invalid';
+      metrics.finalModel = config.escalationModel;
+
+      apiResult = await executeCleverApiTurn({
+        config,
+        context,
+        dealerId,
+        model: config.escalationModel,
+        deps,
+      });
+      metrics.toolCallCount += apiResult.toolCallCount ?? 0;
+
+      if (!apiResult.ok) {
+        return fallbackResult(apiResult.error ?? 'api_error', metrics);
+      }
+
+      parsed = apiResult.parsed;
+      if (!parsed && apiResult.rawText) {
+        try {
+          parsed = JSON.parse(apiResult.rawText);
+        } catch {
+          return fallbackResult('invalid_json', metrics);
+        }
+      }
+
+      validation = validateCleverTurnResult(parsed);
+      evidence = buildToolEvidence(apiResult.toolResults ?? []);
+      grounding = validation.ok
+        ? assertGroundedCleverTurn(validation.result, evidence)
+        : { ok: false, errors: validation.errors ?? ['invalid_schema'] };
+    }
+
     if (!validation.ok) {
       return fallbackResult(`schema:${validation.errors?.join(',')}`, metrics);
     }
 
-    const evidence = buildToolEvidence(apiResult.toolResults ?? []);
-    const grounding = assertGroundedCleverTurn(validation.result, evidence);
     if (!grounding.ok) {
       console.warn('[clever-ai] grounding failed', {
         errors: grounding.errors,
@@ -137,7 +230,22 @@ export async function runCleverTurn(params, deps = {}) {
       return fallbackResult('grounding_failed', metrics);
     }
 
-    return successResult(validation.result, metrics, evidence, apiResult.usage ?? null);
+    const usedOfficialWeb = (apiResult.toolResults ?? []).some(
+      (tool) => tool.name === 'search_official_manufacturer_knowledge'
+        && (tool.output?.evidence ?? []).length > 0,
+    );
+
+    const knowledgeGaps = deriveKnowledgeGapsFromTurn({
+      toolResults: apiResult.toolResults ?? [],
+      customerMessage,
+      conversationTurnId: apiResult.responseId ?? null,
+      brandKey: brandContext.brandKey ?? 'kia',
+    });
+
+    return successResult(validation.result, metrics, evidence, apiResult.usage ?? null, {
+      knowledgeGaps,
+      usedOfficialWeb,
+    });
   } catch (err) {
     const errorClass = err?.name === 'APIConnectionTimeoutError'
       || /timeout/i.test(String(err?.message))

@@ -6,6 +6,7 @@ import { CLEVER_TURN_RESULT_JSON_SCHEMA } from './cleverTurnResultSchema.js';
 import { CLEVER_CONVERSATION_TOOLS } from './tools/toolDefinitions.js';
 import { executeToolCallsFromOutput } from './tools/executeTool.js';
 import { collectFactIdsFromToolResults } from './tools/getVerifiedVehicleFacts.js';
+import { collectEvidenceIdsFromToolResults } from './assertGroundedCleverTurn.js';
 
 function extractFunctionCalls(output = []) {
   return output.filter(
@@ -34,6 +35,8 @@ export async function runOpenAiCleverResponse(params, deps = {}) {
     timeoutMs = 25000,
     maxToolRounds = 3,
     dealerId = null,
+    env = process.env,
+    performOfficialWebSearch = null,
   } = params;
 
   const OpenAiCtor = deps.OpenAI ?? OpenAI;
@@ -92,7 +95,11 @@ export async function runOpenAiCleverResponse(params, deps = {}) {
       };
     }
 
-    const executions = executeToolCallsFromOutput(functionCalls, { dealerId });
+    const executions = await executeToolCallsFromOutput(functionCalls, {
+      dealerId,
+      env,
+      performOfficialWebSearch,
+    });
     toolCallCount += executions.length;
     toolResults.push(...executions);
 
@@ -108,8 +115,13 @@ export async function runOpenAiCleverResponse(params, deps = {}) {
 }
 
 export function buildToolEvidence(toolResults = []) {
+  const factIds = collectFactIdsFromToolResults(toolResults);
+  const { evidenceIds, evidenceById, conflicts } = collectEvidenceIdsFromToolResults(toolResults);
   return {
-    factIds: collectFactIdsFromToolResults(toolResults),
+    factIds,
+    evidenceIds,
+    evidenceById,
+    conflicts,
     toolResults,
   };
 }

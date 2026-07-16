@@ -7,6 +7,7 @@ import { usePriceListImport } from '../context/PriceListImportContext.jsx';
 import AdminOpenQuestionsPanel from '../components/admin/AdminOpenQuestionsPanel.jsx';
 import CleverLearningRequestsAdmin from '../components/admin/CleverLearningRequestsAdmin.jsx';
 import CleverKnowledgeReviewAdmin from '../components/admin/CleverKnowledgeReviewAdmin.jsx';
+import CleverQualityAdmin from '../components/admin/CleverQualityAdmin.jsx';
 import EquipmentDataInspector from '../components/admin/EquipmentDataInspector.jsx';
 import KiaTechnicalSyncPanel from '../components/admin/KiaTechnicalSyncPanel.jsx';
 import ImportKpiBar from '../components/admin/import/ImportKpiBar.jsx';
@@ -161,6 +162,10 @@ export default function DatenpruefungAdminPage() {
                 </section>
                 <EquipmentDataInspector />
               </div>
+            )}
+
+            {tab === 'qualitaet' && (
+              <CleverQualityAdmin />
             )}
 
             {tab === 'lernen' && (

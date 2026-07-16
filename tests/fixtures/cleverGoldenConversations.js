@@ -98,9 +98,88 @@ export const GOLDEN_CONVERSATION_HYBRID_TOWING = {
   ],
 };
 
+export const GOLDEN_CONVERSATION_EV9_TOWING_INTERNAL = {
+  id: 'ev9-towing-internal',
+  conversation: [
+    {
+      customer: 'Wie viel Anhängelast hat der EV9?',
+      expectedIntent: 'knowledge_question',
+      expectedModel: 'ev9',
+      expectedNextAction: { type: 'none' },
+      requiresUsedFactIds: true,
+      forbidsWebSearch: true,
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_UNKNOWN_BRAND_OFFICIAL = {
+  id: 'unknown-brand-official-source',
+  conversation: [
+    {
+      customer: 'Hat der neue BYD Seal ein Head-up-Display?',
+      expectedIntent: 'knowledge_question',
+      allowsProvisionalOfficial: true,
+      expectedNextAction: { type: 'none' },
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_OFFICIAL_NOT_FOUND = {
+  id: 'official-source-not-found',
+  conversation: [
+    {
+      customer: 'Wie hoch ist die Anhängelast des BYD Dolphin?',
+      expectedIntent: 'knowledge_question',
+      expectsSellerVerification: true,
+      expectedNextAction: { type: 'none' },
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_DATA_CONFLICT = {
+  id: 'data-conflict-towing',
+  conversation: [
+    {
+      customer: 'Stimmt die Anhängelast vom EV9?',
+      expectedIntent: 'knowledge_question',
+      expectsConflictHandling: true,
+      expectedNextAction: { type: 'none' },
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_UNNECESSARY_QUESTION_FEEDBACK = {
+  id: 'unnecessary-question-feedback',
+  conversation: [
+    {
+      customer: 'Elektro-Kleinwagen bei Kia?',
+      sellerFeedbackCategory: 'unnecessary_question',
+      sellerCorrection: 'Zuerst passendes Modell zeigen, nicht nach Hauptauto fragen.',
+      expectedNextAction: { type: 'none' },
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_MISSED_NEED_FEEDBACK = {
+  id: 'missed-customer-need-feedback',
+  conversation: [
+    {
+      customer: 'Ich brauche 7 Sitze und Leasing.',
+      sellerFeedbackCategory: 'missed_customer_need',
+      sellerCorrection: '7 Sitze und Leasing im Kundenbild sichern.',
+    },
+  ],
+};
+
 export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_CONVERSATION_SUV_7_LEASING,
   GOLDEN_CONVERSATION_EV3_RANGE,
   GOLDEN_CONVERSATION_ELECTRIC_KLEINWAGEN,
   GOLDEN_CONVERSATION_HYBRID_TOWING,
+  GOLDEN_CONVERSATION_EV9_TOWING_INTERNAL,
+  GOLDEN_CONVERSATION_UNKNOWN_BRAND_OFFICIAL,
+  GOLDEN_CONVERSATION_OFFICIAL_NOT_FOUND,
+  GOLDEN_CONVERSATION_DATA_CONFLICT,
+  GOLDEN_CONVERSATION_UNNECESSARY_QUESTION_FEEDBACK,
+  GOLDEN_CONVERSATION_MISSED_NEED_FEEDBACK,
 ];

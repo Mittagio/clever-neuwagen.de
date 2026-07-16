@@ -4,13 +4,15 @@
 import { findMatchingVehicles } from './findMatchingVehicles.js';
 import { getVerifiedVehicleFacts } from './getVerifiedVehicleFacts.js';
 import { getSupportedOfferParameters } from './getSupportedOfferParameters.js';
+import { searchOfficialManufacturerKnowledge } from '../../knowledge/searchOfficialManufacturerKnowledge.js';
+import { resolveBrandKeyFromModelKey } from '../../../../config/officialManufacturerDomains.js';
 
 /**
  * @param {string} name
  * @param {object} args
- * @param {{ dealerId?: string|null }} [ctx]
+ * @param {{ dealerId?: string|null, env?: object, performOfficialWebSearch?: Function }} [ctx]
  */
-export function executeCleverTool(name, args = {}, ctx = {}) {
+export async function executeCleverTool(name, args = {}, ctx = {}) {
   switch (name) {
     case 'find_matching_vehicles':
       return findMatchingVehicles({ ...args, brand: args.brand ?? 'Kia' });
@@ -18,6 +20,20 @@ export function executeCleverTool(name, args = {}, ctx = {}) {
       return getVerifiedVehicleFacts(args);
     case 'get_supported_offer_parameters':
       return getSupportedOfferParameters(args);
+    case 'search_official_manufacturer_knowledge': {
+      const brandKey = args.brandKey ?? resolveBrandKeyFromModelKey(args.modelKey);
+      return searchOfficialManufacturerKnowledge({
+        brandKey,
+        modelKey: args.modelKey,
+        variantKey: args.variantKey ?? null,
+        requestedFacts: args.requestedFacts ?? [],
+        market: args.market ?? 'DE',
+        locale: args.locale ?? 'de-DE',
+      }, {
+        env: ctx.env ?? process.env,
+        performOfficialWebSearch: ctx.performOfficialWebSearch,
+      });
+    }
     case 'get_dealer_offer_options':
       return {
         available: false,
@@ -31,9 +47,9 @@ export function executeCleverTool(name, args = {}, ctx = {}) {
 
 /**
  * @param {Array<{ type?: string, name?: string, call_id?: string, arguments?: string }>} outputItems
- * @param {{ dealerId?: string|null }} [ctx]
+ * @param {{ dealerId?: string|null, env?: object, performOfficialWebSearch?: Function }} [ctx]
  */
-export function executeToolCallsFromOutput(outputItems = [], ctx = {}) {
+export async function executeToolCallsFromOutput(outputItems = [], ctx = {}) {
   const executions = [];
 
   for (const item of outputItems) {
@@ -47,7 +63,7 @@ export function executeToolCallsFromOutput(outputItems = [], ctx = {}) {
       parsedArgs = {};
     }
 
-    const output = executeCleverTool(name, parsedArgs, ctx);
+    const output = await executeCleverTool(name, parsedArgs, ctx);
     executions.push({
       callId,
       name,

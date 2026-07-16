@@ -49,6 +49,7 @@ export function buildCleverTurnResultJsonSchema() {
       'nextAction',
       'handoff',
       'usedFactIds',
+      'evidence',
     ],
     properties: {
       reply: { type: 'string' },
@@ -103,6 +104,33 @@ export function buildCleverTurnResultJsonSchema() {
         },
       },
       usedFactIds: { type: 'array', items: { type: 'string' } },
+      evidence: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'evidenceId',
+            'sourceTier',
+            'status',
+            'factKey',
+            'modelKey',
+            'variantKey',
+            'sourceId',
+            'sourceUrl',
+          ],
+          properties: {
+            evidenceId: { type: 'string' },
+            sourceTier: { type: 'string', enum: ['internal_verified', 'official_web'] },
+            status: { type: 'string', enum: ['verified', 'provisional_official_source'] },
+            factKey: { type: ['string', 'null'] },
+            modelKey: { type: ['string', 'null'] },
+            variantKey: { type: ['string', 'null'] },
+            sourceId: { type: ['string', 'null'] },
+            sourceUrl: { type: ['string', 'null'] },
+          },
+        },
+      },
     },
   };
 }
@@ -139,6 +167,7 @@ export function validateCleverTurnResult(value) {
   if (!NEXT_ACTION_TYPES.includes(String(result.nextAction?.type))) errors.push('invalid_nextAction_type');
   if (!result.handoff || typeof result.handoff !== 'object') errors.push('missing_handoff');
   if (!Array.isArray(result.usedFactIds)) errors.push('missing_usedFactIds');
+  if (!Array.isArray(result.evidence)) errors.push('missing_evidence');
 
   if (result.nextAction?.type !== 'none') {
     const reason = result.nextAction?.reason;

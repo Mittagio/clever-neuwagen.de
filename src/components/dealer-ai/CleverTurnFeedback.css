@@ -1,0 +1,52 @@
+.clever-turn-feedback {
+  margin-top: 0.5rem;
+}
+
+.clever-turn-feedback__toggle {
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 0.35rem 0.75rem;
+}
+
+.clever-turn-feedback__panel {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.clever-turn-feedback__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.clever-turn-feedback__buttons button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0.35rem 0.65rem;
+}
+
+.clever-turn-feedback__label {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.clever-turn-feedback__label textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+}
+
+.clever-turn-feedback__status {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}

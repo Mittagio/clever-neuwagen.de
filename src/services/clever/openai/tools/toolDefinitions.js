@@ -75,4 +75,39 @@ export const CLEVER_CONVERSATION_TOOLS = [
     },
     strict: false,
   },
+  {
+    type: 'function',
+    name: 'search_official_manufacturer_knowledge',
+    description: 'Sucht fehlende Fahrzeugfakten ausschließlich auf offiziellen Herstellerdomains. Nur wenn interne verifizierte Daten fehlen.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['modelKey', 'requestedFacts'],
+      properties: {
+        brandKey: { type: 'string' },
+        modelKey: { type: 'string', enum: PRIMARY_MODEL_KEYS },
+        variantKey: { type: ['string', 'null'] },
+        requestedFacts: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: [
+              'wltpRange',
+              'batteryCapacity',
+              'seats',
+              'towingCapacity',
+              'headUpDisplay',
+              'charging',
+              'dimensions',
+              'listPrice',
+              'deliveryTime',
+            ],
+          },
+        },
+        market: { type: 'string' },
+        locale: { type: 'string' },
+      },
+    },
+    strict: false,
+  },
 ];

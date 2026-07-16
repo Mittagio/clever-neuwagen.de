@@ -14,6 +14,12 @@ export function createCleverTurnMetrics() {
     handoff: false,
     errorClass: null,
     durationMs: null,
+    primaryModel: null,
+    finalModel: null,
+    escalationUsed: false,
+    escalationReason: null,
+    usedOfficialWeb: false,
+    hadDataConflict: false,
   };
 }
 
@@ -45,6 +51,12 @@ export function logCleverTurnMetrics(metrics = {}) {
     nextActionType: metrics.nextActionType ?? null,
     handoff: metrics.handoff === true,
     errorClass: metrics.errorClass ?? null,
+    primaryModel: metrics.primaryModel ?? null,
+    finalModel: metrics.finalModel ?? null,
+    escalationUsed: metrics.escalationUsed === true,
+    escalationReason: metrics.escalationReason ?? null,
+    usedOfficialWeb: metrics.usedOfficialWeb === true,
+    hadDataConflict: metrics.hadDataConflict === true,
   };
   console.info(JSON.stringify(payload));
 }

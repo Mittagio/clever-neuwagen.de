@@ -42,12 +42,12 @@ export function getVerifiedVehicleFacts(params = {}) {
   const requested = (params.requestedFacts ?? []).filter((f) => ALLOWED_FACTS.has(f));
 
   if (!modelKey || !KIA_MODEL_ATTRIBUTES[modelKey]) {
-    return { facts: [], error: 'unknown_model' };
+    return { facts: [], missingFacts: requested, error: 'unknown_model' };
   }
 
   const record = getCleverRecordForModelKey(modelKey);
   if (!record) {
-    return { facts: [], error: 'no_verified_record' };
+    return { facts: [], missingFacts: requested, error: 'no_verified_record' };
   }
 
   const attrs = KIA_MODEL_ATTRIBUTES[modelKey];
@@ -55,6 +55,7 @@ export function getVerifiedVehicleFacts(params = {}) {
   const resolvedVariant = variantKey ?? record.trimId ?? null;
   const sourceId = record.sourceId ?? record.id ?? `kia:${modelKey}`;
   const facts = [];
+  const missingFacts = [];
 
   for (const factKey of requested) {
     switch (factKey) {
@@ -196,9 +197,13 @@ export function getVerifiedVehicleFacts(params = {}) {
       default:
         break;
     }
+    const found = facts.some((f) => f.key === factKey);
+    if (!found && requested.includes(factKey)) {
+      missingFacts.push(factKey);
+    }
   }
 
-  return { facts };
+  return { facts, missingFacts };
 }
 
 export function collectFactIdsFromToolResults(toolResults = []) {

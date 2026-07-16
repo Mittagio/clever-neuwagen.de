@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import LeadDetailPanel from './LeadDetailPanel.jsx';
+import CleverTurnFeedback from './CleverTurnFeedback.jsx';
 import './CustomerAkte.css';
 
 /**
@@ -100,6 +101,17 @@ export default function CustomerAkteCleverGespraech({ conversation }) {
                 {message.role === 'user' ? 'Kunde' : 'Clever'}
               </span>
               <p className="cust-clever-gespraech__text">{message.text}</p>
+              {message.role === 'assistant' && (
+                <CleverTurnFeedback
+                  conversationId={conversation?.id ?? null}
+                  turnId={message.id ?? `${index}`}
+                  originalCustomerMessage={
+                    messages.slice(0, index).reverse().find((m) => m.role === 'user')?.text ?? ''
+                  }
+                  originalCleverReply={message.text ?? ''}
+                  originalNextAction={message.nextAction ?? null}
+                />
+              )}
             </li>
           ))}
         </ul>

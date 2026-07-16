@@ -4,6 +4,8 @@ import { isCleverAiConversationEnabled } from '../src/services/clever/openai/cle
 import { applyCleverTurnToSession } from '../src/services/clever/openai/applyCleverTurnResult.js';
 import { createHappyPathSession } from '../src/services/consultation/consultationHappyPath.js';
 import { submitConversationInput } from '../src/services/consultation/consultationHappyPath.js';
+import { appendKnowledgeGaps } from './knowledgeGapStore.js';
+import { appendQualityTurnMetric } from './cleverQualityStore.js';
 
 const router = express.Router();
 
@@ -45,6 +47,13 @@ router.post('/clever/conversation-turn', express.json({ limit: '32kb' }), async 
     });
 
     if (!aiResult.ok) {
+      appendQualityTurnMetric({
+        createdAt: new Date().toISOString(),
+        fallback: true,
+        reason: aiResult.reason ?? 'fallback',
+        metrics: aiResult.metrics ?? null,
+      });
+
       const baseSession = session ?? createHappyPathSession(brandContext.dealerName ?? 'Autohaus');
       const fallbackSession = submitConversationInput(baseSession, trimmed);
       return res.json({
@@ -55,6 +64,17 @@ router.post('/clever/conversation-turn', express.json({ limit: '32kb' }), async 
         metrics: aiResult.metrics ?? null,
       });
     }
+
+    if (aiResult.knowledgeGaps?.length) {
+      appendKnowledgeGaps(aiResult.knowledgeGaps);
+    }
+
+    appendQualityTurnMetric({
+      createdAt: new Date().toISOString(),
+      fallback: false,
+      metrics: aiResult.metrics ?? null,
+      knowledgeGapCount: aiResult.knowledgeGaps?.length ?? 0,
+    });
 
     let nextSession;
     if (session) {
@@ -81,6 +101,8 @@ router.post('/clever/conversation-turn', express.json({ limit: '32kb' }), async 
       session: nextSession,
       customerUnderstanding: applyCleverTurnToLead(lead, aiResult.turnResult, trimmed).customerUnderstanding,
       metrics: aiResult.metrics ?? null,
+      evidence: aiResult.evidence ?? null,
+      knowledgeGapCount: aiResult.knowledgeGaps?.length ?? 0,
     });
   } catch (err) {
     console.error('[clever/conversation-turn]', err?.message ?? err);

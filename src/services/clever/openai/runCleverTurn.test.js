@@ -40,6 +40,7 @@ function makeValidTurn(overrides = {}) {
       summary: null,
     },
     usedFactIds: [],
+    evidence: [],
     ...overrides,
   };
 }
@@ -79,7 +80,7 @@ function makeValidTurn(overrides = {}) {
 
 // 4. Tool Calls nutzen verifizierte Services
 {
-  const matchResult = executeCleverTool('find_matching_vehicles', {
+  const matchResult = await executeCleverTool('find_matching_vehicles', {
     bodyType: 'suv',
     minimumSeats: 7,
     fuelType: 'electric',
@@ -87,7 +88,7 @@ function makeValidTurn(overrides = {}) {
   assert.ok(matchResult.matches.some((m) => m.modelKey === 'ev9'));
   assert.ok(!matchResult.matches.some((m) => m.modelKey === 'ev3'));
 
-  const facts = executeCleverTool('get_verified_vehicle_facts', {
+  const facts = await executeCleverTool('get_verified_vehicle_facts', {
     modelKey: 'ev3',
     requestedFacts: ['wltpRange'],
   });

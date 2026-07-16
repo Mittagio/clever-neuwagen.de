@@ -32,5 +32,6 @@ export const DATENPRUEFUNG_TABS = [
   { id: 'technisch', label: 'Technische Daten' },
   { id: 'ausstattung', label: 'Ausstattung' },
   { id: 'lernen', label: 'Clever Lernen' },
+  { id: 'qualitaet', label: 'Clever Qualität' },
   { id: 'kundenfragen', label: 'Kundenfragen' },
 ];

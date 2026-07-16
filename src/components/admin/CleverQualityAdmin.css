@@ -1,0 +1,79 @@
+.cq-admin__header h2 {
+  margin: 0 0 0.35rem;
+}
+
+.cq-admin__header p {
+  margin: 0 0 1rem;
+  color: #64748b;
+}
+
+.cq-admin__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.cq-admin__kpi {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cq-admin__section + .cq-admin__section {
+  margin-top: 1.5rem;
+}
+
+.cq-admin__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cq-admin__item {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.cq-admin__item-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.cq-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cq-admin__actions button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  padding: 0.35rem 0.75rem;
+}
+
+.cq-admin__quote {
+  margin: 0.35rem 0;
+  color: #334155;
+}
+
+.cq-admin__hint,
+.cq-admin__error {
+  color: #64748b;
+}
+
+.cq-admin__error {
+  color: #b91c1c;
+}
