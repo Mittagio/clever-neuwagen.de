@@ -121,6 +121,7 @@ export default function CleverConversationExperience({
   const [excludeReaction, setExcludeReaction] = useState('');
   const [offerModelKeys, setOfferModelKeys] = useState([]);
   const [aiTurnPending, setAiTurnPending] = useState(false);
+  const [lastAddedLabel, setLastAddedLabel] = useState('');
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const prevLabelCountRef = useRef(0);
