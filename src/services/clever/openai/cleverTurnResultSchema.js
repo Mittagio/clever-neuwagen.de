@@ -21,6 +21,7 @@ export const NEXT_ACTION_TYPES = [
 ];
 
 export const NEXT_ACTION_REASONS = [
+  'need_clarification',
   'vehicle_disambiguation',
   'offer_parameter',
   'customer_uncertainty',

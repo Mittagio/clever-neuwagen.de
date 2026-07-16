@@ -174,6 +174,10 @@ export async function runCleverIntelligenceCore(params, deps = {}) {
       return fallbackResult(`schema:${validation.errors?.join(',')}`, metrics, { surface });
     }
     if (!grounding.ok) {
+      console.warn('[clever-intelligence] grounding failed', {
+        surface,
+        errors: grounding.errors,
+      });
       return fallbackResult('grounding_failed', metrics, { surface });
     }
 

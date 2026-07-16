@@ -204,7 +204,7 @@ function makeValidTurn(overrides = {}) {
   for (const phrase of forbidden) {
     assert.ok(!ai.turnResult.reply.includes(phrase), `Keine Frage: ${phrase}`);
   }
-  console.log('✓ EV3-Wissensfrage ohne künstliche Rückfrage');
+  console.log('✓ EV3-Wissensfrage ohne generische Verkaufsfragen');
 }
 
 // 10. 7 Sitze schließt 5-Sitzer aus
@@ -289,6 +289,29 @@ function makeValidTurn(overrides = {}) {
   assert.ok(next.turns.some((t) => t.type === 'customer'));
   assert.ok(next.turns.some((t) => t.type === 'clever'));
   console.log('✓ Session-Anwendung');
+}
+
+// 15. Anschlussfrage ohne Option-Chips bleibt sichtbar
+{
+  const session = createHappyPathSession('Testhaus');
+  const turn = makeValidTurn({
+    reply: 'Bei umgelegten Sitzen ist die Laderaumlänge laut Daten etwa 2 m.',
+    intent: 'knowledge_question',
+    nextAction: {
+      type: 'ask_vehicle_disambiguation',
+      targetField: null,
+      question: 'Müssen die zwei Meter auch bei aufgestellter dritter Sitzreihe verfügbar sein?',
+      options: [],
+      reason: 'need_clarification',
+    },
+  });
+  const next = applyCleverTurnToSession(session, {
+    customerMessage: 'Wie lang ist der Laderaum beim EV9?',
+    turnResult: turn,
+  });
+  const questionTurns = next.turns.filter((t) => t.type === 'clever' && /dritter Sitzreihe|zwei Meter/i.test(t.text ?? ''));
+  assert.ok(questionTurns.length >= 1, 'Themenfrage ohne Options muss im Thread erscheinen');
+  console.log('✓ Anschlussfrage ohne Optionen');
 }
 
 // Angebotsfeld-Whitelist

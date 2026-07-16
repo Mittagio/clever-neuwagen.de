@@ -29,6 +29,35 @@ function customerTurn(text) {
   };
 }
 
+function formatFactValue(fact) {
+  const value = fact?.value;
+  if (value == null) return '–';
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    if (fact.key === 'dimensions' || value.lengthMm != null || value.wheelbaseMm != null) {
+      const parts = [];
+      if (value.lengthMm != null) parts.push(`Länge ${Number(value.lengthMm).toLocaleString('de-DE')} mm`);
+      if (value.widthMm != null) parts.push(`Breite ${Number(value.widthMm).toLocaleString('de-DE')} mm`);
+      if (value.heightMm != null) parts.push(`Höhe ${Number(value.heightMm).toLocaleString('de-DE')} mm`);
+      if (value.wheelbaseMm != null) parts.push(`Radstand ${Number(value.wheelbaseMm).toLocaleString('de-DE')} mm`);
+      return parts.length ? parts.join(' · ') : 'Abmessungen verfügbar';
+    }
+    if (fact.key === 'charging' || value.dcCharge10_80Min != null || value.acCharge0_100Min != null) {
+      const parts = [];
+      if (value.dcCharge10_80Min != null) parts.push(`DC 10–80 %: ${value.dcCharge10_80Min} Min`);
+      if (value.acCharge0_100Min != null) parts.push(`AC 0–100 %: ${value.acCharge0_100Min} Min`);
+      return parts.length ? parts.join(' · ') : 'Ladedaten verfügbar';
+    }
+    return Object.entries(value)
+      .filter(([, v]) => v != null && v !== '')
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(' · ') || '–';
+  }
+
+  if (fact.unit) return `${value} ${fact.unit}`;
+  return String(value);
+}
+
 function buildFactsFromUsedIds(usedFactIds = [], vehicleDirections = []) {
   const facts = [];
   const modelKeys = new Set([
@@ -46,11 +75,9 @@ function buildFactsFromUsedIds(usedFactIds = [], vehicleDirections = []) {
     if (!requestedFacts.length) continue;
     const result = getVerifiedVehicleFacts({ modelKey, requestedFacts: [...new Set(requestedFacts)] });
     for (const fact of result.facts ?? []) {
-      let value = fact.value;
-      if (typeof value === 'object') value = JSON.stringify(value);
       facts.push({
         label: `${KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey} ${fact.key}`,
-        value: fact.unit ? `${value} ${fact.unit}` : String(value),
+        value: formatFactValue(fact),
       });
     }
   }
@@ -156,11 +183,14 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
 
   if (turnResult.nextAction?.type && turnResult.nextAction.type !== 'none') {
     const question = buildQuestionFromNextAction(turnResult.nextAction);
-    if (question?.options?.length) {
+    if (question?.prompt) {
+      const hasOptions = (question.options?.length ?? 0) > 0;
       next = {
         ...next,
         turns: [...next.turns, cleverQuestionTurn(question)],
-        pendingQuestion: { id: question.id, options: question.options },
+        pendingQuestion: hasOptions
+          ? { id: question.id, options: question.options }
+          : null,
         phase: CONVERSATION_PHASE.CONVERSATION,
       };
     }

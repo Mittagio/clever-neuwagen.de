@@ -782,7 +782,7 @@ export default function CleverConversationExperience({
           {showInlineReasoning && (
             <CleverVehicleReasoningPanel
               inline
-              showMatchPercent
+              showMatchPercent={false}
               items={visibleReasoningItems}
               fadedItems={fadedReasoningItems}
               intro={reasoningHeadline}

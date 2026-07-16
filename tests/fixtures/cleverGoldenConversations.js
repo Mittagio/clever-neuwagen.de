@@ -58,7 +58,7 @@ export const GOLDEN_CONVERSATION_EV3_RANGE = {
       customer: 'Wie weit kommt der EV3?',
       expectedIntent: 'knowledge_question',
       expectedModel: 'ev3',
-      expectedNextAction: { type: 'none' },
+      // Zielgerichtet: themenbezogene Anschlussfrage erlaubt; generische Verkaufsfragen verboten.
       forbiddenQuestions: [
         'Hauptauto',
         'Zweitwagen',
@@ -66,7 +66,9 @@ export const GOLDEN_CONVERSATION_EV3_RANGE = {
         'Wallbox',
         'Leasing',
         'Familie',
+        'Was ist Ihnen am wichtigsten',
       ],
+      forbidsNeedFromFactAlone: true,
       requiresUsedFactIds: true,
     },
   ],
@@ -105,9 +107,40 @@ export const GOLDEN_CONVERSATION_EV9_TOWING_INTERNAL = {
       customer: 'Wie viel Anhängelast hat der EV9?',
       expectedIntent: 'knowledge_question',
       expectedModel: 'ev9',
-      expectedNextAction: { type: 'none' },
+      forbidsNeedFromFactAlone: true,
       requiresUsedFactIds: true,
       forbidsWebSearch: true,
+      forbiddenQuestions: ['Hauptauto', 'Zweitwagen', 'Wallbox'],
+    },
+  ],
+};
+
+export const GOLDEN_CONVERSATION_EV9_CARGO_GOAL_DRIVEN = {
+  id: 'ev9-cargo-goal-driven',
+  conversation: [
+    {
+      customer: 'Wie lang ist der Laderaum beim EV9?',
+      expectedIntent: 'knowledge_question',
+      expectedModel: 'ev9',
+      forbidsNeedFromFactAlone: true,
+      expectedLabelsAbsent: ['ca. 2 m Ladelänge'],
+      expectedNextAction: { type: 'ask_vehicle_disambiguation' },
+      expectedNextActionReason: 'need_clarification',
+      forbiddenQuestions: [
+        'Hauptauto',
+        'Zweitwagen',
+        'Wallbox',
+        'Wie nutzen Sie',
+        'Was ist Ihnen am wichtigsten',
+      ],
+      expectedQuestionTopics: ['sitz', 'lade', 'umgelegt', 'dritte'],
+    },
+    {
+      customer: 'Die dritte Sitzreihe brauche ich nur gelegentlich. Ich möchte aber zwei Meter lange Gegenstände transportieren.',
+      expectedLabels: ['7 Sitze gelegentlich', 'ca. 2 m Ladelänge'],
+      expectedNeedProfileHints: { persons: 7 },
+      forbiddenQuestions: ['Hauptauto', 'Zweitwagen', 'Wallbox'],
+      expectedProgressToward: ['vehicle_compare', 'offer', 'handoff'],
     },
   ],
 };
@@ -230,6 +263,7 @@ export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_CONVERSATION_ELECTRIC_KLEINWAGEN,
   GOLDEN_CONVERSATION_HYBRID_TOWING,
   GOLDEN_CONVERSATION_EV9_TOWING_INTERNAL,
+  GOLDEN_CONVERSATION_EV9_CARGO_GOAL_DRIVEN,
   GOLDEN_CONVERSATION_UNKNOWN_BRAND_OFFICIAL,
   GOLDEN_CONVERSATION_OFFICIAL_NOT_FOUND,
   GOLDEN_CONVERSATION_DATA_CONFLICT,

@@ -2,8 +2,12 @@ import './clever-conversation.css';
 
 function iconForLabel(label = '') {
   const t = String(label ?? '').toLowerCase();
+  if (/^suv$|^van$|^kombi$|^kleinwagen$|^limousine$/.test(t)) return '🚙';
   if (/^elektro$|plug-in|hybrid|benzin|diesel/.test(t)) return '⚡';
+  if (/ev9|kia ev9/.test(t)) return '🚙';
   if (/^ev\d|sportage|ceed|niro|picanto|sorento|carnival/.test(t)) return '🚗';
+  if (/sitz/.test(t)) return '💺';
+  if (/ladelänge|2\s*m|laderaum|kofferraum/.test(t)) return '📦';
   if (/leasing|finanz|kauf/.test(t) || /budget/.test(t) || /€\/monat/.test(t)) return '💶';
   if (/monate|km/.test(t)) return '📅';
   if (/anhäng|anhaeng|ahk|kupplung|zuglast|anhängelast/.test(t)) return '🚛';
@@ -15,7 +19,6 @@ function iconForLabel(label = '') {
   if (/wärmepumpe|waermepumpe/.test(t)) return '🌡';
   if (/\bv2l\b/.test(t)) return '🔌';
   if (/sitzheizung/.test(t)) return '🔥';
-  if (/kofferraum/.test(t)) return '📦';
   if (/rückfahr|rueckfahr|kamera|360|hud|head-up/.test(t)) return '📷';
   if (/schnellladen|800v|800-v/.test(t)) return '⚡';
   if (/wallbox|zuhause|daheim/.test(t)) return '🏠';
@@ -35,8 +38,8 @@ export default function CleverMemoryBar({
   if (!labels.length) return null;
 
   return (
-    <div className="cc-memory" aria-label="Verstanden">
-      <p className="cc-memory__label">✓ Verstanden</p>
+    <div className="cc-memory" aria-label="Clevers Notizzettel">
+      <p className="cc-memory__label">Notizzettel</p>
       <div
         className={[
           'cc-memory__track',

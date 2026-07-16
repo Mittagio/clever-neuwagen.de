@@ -217,4 +217,23 @@ testSportageFamilyAhk();
 testElectricEquipmentBundle();
 testEv3HudHeatPumpWorld2();
 testPickupBenzinAutomatik();
+
+function testCargoLengthWishChips() {
+  const factOnly = mergeTextIntoNeedProfile('Wie lang ist der Laderaum beim EV9?');
+  assert.ok(
+    !(factOnly.understoodLabels ?? []).some((l) => /2\s*m Ladelänge/i.test(l)),
+    'Fahrzeugfrage allein erzeugt keinen Ladelängen-Chip',
+  );
+
+  const wish = mergeTextIntoNeedProfile(
+    'Die dritte Sitzreihe brauche ich nur gelegentlich. Ich möchte aber zwei Meter lange Gegenstände transportieren.',
+    factOnly,
+  );
+  assertLabelsInclude(wish, ['7 Sitze gelegentlich', 'ca. 2 m Ladelänge']);
+  assert.equal(wish.persons, 7);
+  assert.ok((wish.equipmentWishes ?? []).includes('large_trunk'));
+  console.log('✓ Laderaum: Fakt ≠ Wunsch; Bestätigung → Chips');
+}
+
+testCargoLengthWishChips();
 console.log('\nAlle Need-Recognition-Tests bestanden.');

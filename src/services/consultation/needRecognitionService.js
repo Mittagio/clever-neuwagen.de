@@ -204,6 +204,13 @@ function collectEquipmentWishes(intent = {}, text = '') {
   if (/\belektrische?\s+heckklappe\b|\bpower\s*tailgate\b/i.test(lower)) wishes.add('power_tailgate');
   if (/\bgroßes?\s+navi\b|\bgrosses?\s+navi\b|\bnavigationssystem\b/i.test(lower)) wishes.add('large_navi');
   if (/\bkofferraum\b.*\bwichtig\b|\bwichtig\b.*\bkofferraum\b/i.test(lower)) wishes.add('large_trunk');
+  if (/\bladeraum\b.*\bwichtig\b|\bwichtig\b.*\bladeraum\b/i.test(lower)) wishes.add('large_trunk');
+  if (/\bladelänge\b|\bladelange\b/i.test(lower) && /\b(brauch|wichtig|möcht|moecht|will|benötig|benoetig|transport)/i.test(lower)) {
+    wishes.add('large_trunk');
+  }
+  if (/\b(2|zwei)\s*(m|meter)\b/i.test(lower) && /\b(transport|gegenst|lade|koffer)/i.test(lower)) {
+    wishes.add('large_trunk');
+  }
 
   return [...wishes].filter((id) => EQUIPMENT_WISH_IDS.has(id));
 }
@@ -463,6 +470,16 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
   }
   if (/\bkofferraum\b/i.test(lower) && /\bgrößer\b|\bgroesser\b|\bpositiv\b|\büberzeugt\b|\bueberzeugt\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Kofferraum positiv bewertet');
+  }
+  if (/\b(ca\.?\s*)?(2|zwei)\s*(m|meter)\b/i.test(lower)
+    && /\b(lade|koffer|raum|transport|lang|gegenst)/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'ca. 2 m Ladelänge');
+  }
+  if (/\b(7|sieben)\s*sitz/i.test(lower) && /\bgelegentlich\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, '7 Sitze gelegentlich');
+  }
+  if (/\bdritte\s+sitzreihe\b/i.test(lower) && /\bgelegentlich\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, '7 Sitze gelegentlich');
   }
   if (/\bkuga\b/i.test(lower) && (/\bläuft\b|\blaeuft\b|\baus\b|\bendet\b/i.test(lower))) {
     pushExtraLabel(extraLabels, 'Ford Kuga aktuell');
@@ -776,6 +793,15 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
   if (speech.takeoverPlanned) next.takeoverPlanned = true;
   if (speech.timelineLabel) next.timelineLabel = speech.timelineLabel;
 
+  if (speech.extraLabels?.includes('7 Sitze gelegentlich') && (next.persons ?? 0) < 7) {
+    next.persons = 7;
+    next.priorities = pushUnique(next.priorities ?? [], 'family');
+  }
+  if (speech.extraLabels?.some((label) => /2\s*m Ladelänge|ladelänge/i.test(label))) {
+    next.equipmentWishes = pushUnique(next.equipmentWishes ?? [], 'large_trunk');
+    next.priorities = pushUnique(next.priorities ?? [], 'space');
+  }
+
   if (speech.extraLabels?.includes('Sportliches Design wichtig')) {
     next.priorities = pushUnique(next.priorities ?? [], 'design');
   }
@@ -849,8 +875,12 @@ function buildUsageLabels(profile = {}) {
 
   if (hasFamily) labels.push('Familie');
 
-  if ((profile.persons ?? 0) >= 7) labels.push('7 Sitze');
-  else if ((profile.persons ?? 0) >= 5 && !labels.includes('Familie')) {
+  const hasOccasional7 = (profile.extraLabels ?? []).some((label) => /7 Sitze gelegentlich/i.test(label));
+  if (hasOccasional7) {
+    /* Chip kommt aus extraLabels – kein doppeltes „7 Sitze“ */
+  } else if ((profile.persons ?? 0) >= 7) {
+    labels.push('7 Sitze');
+  } else if ((profile.persons ?? 0) >= 5 && !labels.includes('Familie')) {
     labels.push(`${profile.persons} Sitze`);
   }
 
@@ -903,10 +933,13 @@ function buildEquipmentLabels(profile = {}) {
   const towLabel = formatTowCapacityLabel(profile.towCapacityKg);
   if (towLabel) labels.push(towLabel);
 
+  const hasCargoLengthLabel = (profile.extraLabels ?? []).some((label) => /ladelänge|2\s*m/i.test(label));
+
   for (const wishId of [
     'heat_pump', 'camera_360', 'head_up_display', 'matrix_led', 'v2l',
     'tinting', 'panorama_roof', 'rear_seat_heat', 'power_tailgate', 'large_navi', 'large_trunk',
   ]) {
+    if (wishId === 'large_trunk' && hasCargoLengthLabel) continue;
     if (hasEquipmentWish(profile, wishId)) {
       labels.push(EQUIPMENT_LABELS[wishId]);
     }

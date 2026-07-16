@@ -199,13 +199,24 @@ export function assertGroundedSellerCopilotResult(result, evidence = {}) {
     errors.push('internal_official_conflict');
   }
 
-  const technical = /\b(\d[\d.,]*\s*(?:km|kwh|kg|€|eur))\b/i.test(result.answer ?? '');
-  if (technical && !(result.usedFactIds ?? []).length && !(result.evidence ?? []).length) {
-    errors.push('technical_claim_without_evidence');
+  const vehicleIntents = new Set(['vehicle_question', 'vehicle_comparison', 'data_conflict']);
+  if (vehicleIntents.has(result.intent)) {
+    const technical = /\b(\d[\d.,]*\s*(?:km|kwh|kg|€|eur))\b/i.test(result.answer ?? '');
+    if (technical && !(result.usedFactIds ?? []).length && !(result.evidence ?? []).length) {
+      errors.push('technical_claim_without_evidence');
+    }
   }
 
   if (result.draft?.body && result.requiresSellerConfirmation !== true) {
     errors.push('draft_without_confirmation');
+  }
+
+  // Keine erfundenen Raten/Lieferzeiten in Entwürfen ohne Evidence
+  if (result.draft?.body && /\b\d+[\d.,]*\s*€|\b\d+\s*wochen\b/i.test(result.draft.body)) {
+    const hasEvidence = (result.usedFactIds ?? []).length > 0 || (result.evidence ?? []).length > 0;
+    if (!hasEvidence) {
+      errors.push('draft_invents_price_or_delivery');
+    }
   }
 
   return { ok: errors.length === 0, errors };

@@ -71,17 +71,52 @@
     },
     {
       "id": "ev3-range-knowledge",
-      "label": "Reine Wissensfrage Reichweite",
+      "label": "Wissensfrage Reichweite – themenbezogen weiterführen",
       "turns": [
         {
           "turnId": "T08",
           "customer": "Wie weit kommt der EV3?",
           "expect": {
             "intent": "knowledge_question",
-            "nextAction": { "type": "none" },
             "requiresUsedFactIds": true,
             "vehicleDirectionsInclude": ["ev3"],
-            "forbiddenInReply": ["Hauptauto", "Zweitwagen", "Langstrecke", "Wallbox", "Leasing", "Familie"]
+            "forbiddenInReply": [
+              "Hauptauto",
+              "Zweitwagen",
+              "Langstrecke",
+              "Wallbox",
+              "Leasing",
+              "Familie",
+              "Was ist Ihnen am wichtigsten"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ev9-cargo-goal-driven",
+      "label": "EV9 Laderaum – Fakt, dann Wunsch, dann zielgerichtete Frage",
+      "turns": [
+        {
+          "turnId": "T08b",
+          "customer": "Wie lang ist der Laderaum beim EV9?",
+          "expect": {
+            "intent": "knowledge_question",
+            "forbiddenInReply": [
+              "Hauptauto",
+              "Zweitwagen",
+              "Wallbox",
+              "Wie nutzen Sie",
+              "Was ist Ihnen am wichtigsten"
+            ]
+          }
+        },
+        {
+          "turnId": "T08c",
+          "customer": "Die dritte Sitzreihe brauche ich nur gelegentlich. Ich möchte aber zwei Meter lange Gegenstände transportieren.",
+          "expect": {
+            "needProfile": { "persons": 7 },
+            "forbiddenInReply": ["Hauptauto", "Zweitwagen", "Wallbox"]
           }
         }
       ]
@@ -97,8 +132,7 @@
             "intent": "vehicle_discovery",
             "needProfile": { "fuel": "electric", "bodyType": "kleinwagen" },
             "vehicleDirectionsInclude": ["ev2"],
-            "vehicleDirectionsExclude": ["ev3"],
-            "nextAction": { "type": "none" }
+            "vehicleDirectionsExclude": ["ev3"]
           }
         }
       ]

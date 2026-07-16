@@ -31,6 +31,7 @@ const ALLOWED_TOP_LEVEL = new Set([
   'allradNeed',
   'comfortVsSpace',
   'hybridPowertrain',
+  'extraLabels',
 ]);
 
 const ALLOWED_BUDGET_KEYS = new Set([
@@ -65,6 +66,7 @@ export function sanitizeNeedProfilePatch(patch = {}) {
 
   for (const [key, value] of Object.entries(patch)) {
     if (key === 'budget') {
+      if (value == null) continue;
       if (!isPlainObject(value)) {
         rejectedKeys.push(key);
         continue;
@@ -75,7 +77,7 @@ export function sanitizeNeedProfilePatch(patch = {}) {
           rejectedKeys.push(`budget.${bKey}`);
           continue;
         }
-        if (bVal === undefined) continue;
+        if (bVal === undefined || bVal === null) continue;
         budget[bKey] = bVal;
       }
       if (Object.keys(budget).length) out.budget = budget;
@@ -87,9 +89,9 @@ export function sanitizeNeedProfilePatch(patch = {}) {
       continue;
     }
 
-    if (value === undefined) continue;
+    if (value === undefined || value === null) continue;
 
-    if (['equipmentWishes', 'design', 'technology', 'usage', 'priorities'].includes(key)) {
+    if (['equipmentWishes', 'design', 'technology', 'usage', 'priorities', 'extraLabels'].includes(key)) {
       const arr = sanitizeArray(value);
       if (arr) out[key] = arr;
       continue;
@@ -119,6 +121,16 @@ export function applyNeedProfilePatch(needProfile = {}, patch = {}) {
 
   for (const [key, value] of Object.entries(safePatch)) {
     if (key === 'budget') continue;
+    if (['equipmentWishes', 'design', 'technology', 'usage', 'priorities', 'extraLabels'].includes(key)
+      && Array.isArray(value)) {
+      const existing = Array.isArray(next[key]) ? next[key] : [];
+      const merged = [...existing];
+      for (const item of value) {
+        if (item != null && item !== '' && !merged.includes(item)) merged.push(item);
+      }
+      next[key] = merged;
+      continue;
+    }
     next[key] = value;
   }
 
@@ -127,50 +139,62 @@ export function applyNeedProfilePatch(needProfile = {}, patch = {}) {
 }
 
 export function buildNeedProfilePatchJsonSchema() {
+  const properties = {
+    persons: { type: ['integer', 'null'] },
+    children: { type: ['integer', 'boolean', 'null'] },
+    dog: { type: ['boolean', 'null'] },
+    fuel: { type: ['string', 'null'] },
+    bodyType: { type: ['string', 'null'] },
+    drive: { type: ['string', 'null'] },
+    transmission: { type: ['string', 'null'] },
+    towbar: { type: ['boolean', 'null'] },
+    equipmentWishes: { type: ['array', 'null'], items: { type: 'string' } },
+    modelHint: { type: ['string', 'null'] },
+    selectedModelKey: { type: ['string', 'null'] },
+    annualKm: { type: ['integer', 'null'] },
+    leaseDurationMonths: { type: ['integer', 'null'] },
+    longDistance: { type: ['string', 'null'] },
+    chargingAtHome: { type: ['string', 'null'] },
+    towing: { type: ['string', 'null'] },
+    towCapacityKg: { type: ['integer', 'null'] },
+    driverHint: { type: ['string', 'null'] },
+    design: { type: ['array', 'null'], items: { type: 'string' } },
+    technology: { type: ['array', 'null'], items: { type: 'string' } },
+    usage: { type: ['array', 'null'], items: { type: 'string' } },
+    priorities: { type: ['array', 'null'], items: { type: 'string' } },
+    trimHint: { type: ['string', 'null'] },
+    colorHint: { type: ['string', 'null'] },
+    timelineLabel: { type: ['string', 'null'] },
+    allradNeed: { type: ['string', 'null'] },
+    comfortVsSpace: { type: ['string', 'null'] },
+    hybridPowertrain: { type: ['string', 'null'] },
+    extraLabels: { type: ['array', 'null'], items: { type: 'string' } },
+    budget: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: [
+        'paymentType',
+        'maxMonthlyRate',
+        'maxPrice',
+        'downPayment',
+        'paymentExplicit',
+        'monthlyBudgetStyle',
+      ],
+      properties: {
+        paymentType: { type: ['string', 'null'] },
+        maxMonthlyRate: { type: ['number', 'null'] },
+        maxPrice: { type: ['number', 'null'] },
+        downPayment: { type: ['number', 'null'] },
+        paymentExplicit: { type: ['boolean', 'null'] },
+        monthlyBudgetStyle: { type: ['string', 'null'] },
+      },
+    },
+  };
+
   return {
     type: 'object',
     additionalProperties: false,
-    properties: {
-      persons: { type: ['integer', 'null'] },
-      children: { type: ['integer', 'boolean', 'null'] },
-      dog: { type: 'boolean' },
-      fuel: { type: ['string', 'null'] },
-      bodyType: { type: ['string', 'null'] },
-      drive: { type: ['string', 'null'] },
-      transmission: { type: ['string', 'null'] },
-      towbar: { type: 'boolean' },
-      equipmentWishes: { type: 'array', items: { type: 'string' } },
-      modelHint: { type: ['string', 'null'] },
-      selectedModelKey: { type: ['string', 'null'] },
-      annualKm: { type: ['integer', 'null'] },
-      leaseDurationMonths: { type: ['integer', 'null'] },
-      longDistance: { type: ['string', 'null'] },
-      chargingAtHome: { type: ['string', 'null'] },
-      towing: { type: ['string', 'null'] },
-      towCapacityKg: { type: ['integer', 'null'] },
-      driverHint: { type: ['string', 'null'] },
-      design: { type: 'array', items: { type: 'string' } },
-      technology: { type: 'array', items: { type: 'string' } },
-      usage: { type: 'array', items: { type: 'string' } },
-      priorities: { type: 'array', items: { type: 'string' } },
-      trimHint: { type: ['string', 'null'] },
-      colorHint: { type: ['string', 'null'] },
-      timelineLabel: { type: ['string', 'null'] },
-      allradNeed: { type: ['string', 'null'] },
-      comfortVsSpace: { type: ['string', 'null'] },
-      hybridPowertrain: { type: ['string', 'null'] },
-      budget: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          paymentType: { type: ['string', 'null'] },
-          maxMonthlyRate: { type: ['number', 'null'] },
-          maxPrice: { type: ['number', 'null'] },
-          downPayment: { type: ['number', 'null'] },
-          paymentExplicit: { type: 'boolean' },
-          monthlyBudgetStyle: { type: ['string', 'null'] },
-        },
-      },
-    },
+    required: Object.keys(properties),
+    properties,
   };
 }

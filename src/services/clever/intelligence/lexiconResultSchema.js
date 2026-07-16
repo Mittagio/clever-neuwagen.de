@@ -186,8 +186,10 @@ export function assertGroundedLexiconResult(result, evidence = {}) {
     errors.push('internal_official_conflict');
   }
 
-  const technical = /\b(\d[\d.,]*\s*(?:km|kwh|kg|€|eur|sitze?))\b/i.test(result.answer ?? '');
-  const hasEvidence = (result.usedFactIds ?? []).length > 0 || (result.evidence ?? []).length > 0;
+  const technical = /\b(\d[\d.,]*\s*(?:km|kwh|kg|€|eur))\b/i.test(result.answer ?? '');
+  const hasEvidence = (result.usedFactIds ?? []).length > 0
+    || (result.evidence ?? []).length > 0
+    || (result.vehicleDirections ?? []).some((d) => (d.evidenceIds ?? []).length > 0);
   if (technical && !hasEvidence) {
     errors.push('technical_claim_without_evidence');
   }
