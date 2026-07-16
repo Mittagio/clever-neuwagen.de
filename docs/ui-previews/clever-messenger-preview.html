@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clever Messenger Preview v1.1</title>
+  <link rel="stylesheet" href="../../src/components/conversation/clever-conversation.css" />
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #e7e5e4; }
+    #root { height: 100%; }
+  </style>
+</head>
+<body>
+  <div class="cc-experience cc-experience--messenger cc-experience--living">
+    <header class="cc-experience__dealer">
+      <span class="cc-experience__dealer-name">clever-neuwagen.de</span>
+    </header>
+    <div class="cc-memory" aria-label="Clevers Notizzettel">
+      <p class="cc-memory__label">Notizzettel</p>
+      <div class="cc-memory__track" role="list">
+        <span class="cc-memory__chip is-new" role="listitem"><span class="cc-memory__chip-icon">🚗</span><span class="cc-memory__chip-text">EV2</span><button class="cc-memory__chip-x" type="button">×</button></span>
+        <span class="cc-memory__chip" role="listitem"><span class="cc-memory__chip-icon">⚡</span><span class="cc-memory__chip-text">Elektro</span><button class="cc-memory__chip-x" type="button">×</button></span>
+        <span class="cc-memory__chip" role="listitem"><span class="cc-memory__chip-icon">🚙</span><span class="cc-memory__chip-text">Kleinwagen</span><button class="cc-memory__chip-x" type="button">×</button></span>
+        <span class="cc-memory__chip" role="listitem"><span class="cc-memory__chip-icon">🔋</span><span class="cc-memory__chip-text">mindestens 300 km</span><button class="cc-memory__chip-x" type="button">×</button></span>
+      </div>
+    </div>
+    <div class="cc-experience__scroll">
+      <div class="cc-transcript">
+        <article class="cc-bubble cc-bubble--customer">
+          <p class="cc-bubble__meta">Sie</p>
+          <p class="cc-bubble__text">Elektro-Kleinwagen mit mindestens 300 km</p>
+        </article>
+        <article class="cc-bubble cc-bubble--clever cc-bubble--knowledge">
+          <p class="cc-bubble__meta">Clever</p>
+          <p class="cc-bubble__text">Der EV2 erfüllt diese Richtung. Mit der hinterlegten Batterie erreicht er bis zu 350 km WLTP.</p>
+          <ul class="cc-fact-chips">
+            <li class="cc-fact-chip">🔋 350 km WLTP</li>
+            <li class="cc-fact-chip">💺 5 Sitze</li>
+          </ul>
+          <div class="cc-attach-rail">
+            <article class="cc-attach-card">
+              <div class="cc-attach-card__img cc-attach-card__img--placeholder"></div>
+              <div class="cc-attach-card__body">
+                <p class="cc-attach-card__title">Kia EV2</p>
+                <p class="cc-attach-card__sub">Elektro-Kleinwagen</p>
+                <p class="cc-attach-card__facts">350 km · 5 Sitze</p>
+                <button type="button" class="cc-attach-card__cta">EV2 ansehen</button>
+              </div>
+            </article>
+          </div>
+        </article>
+        <article class="cc-bubble cc-bubble--clever cc-bubble--follow-up">
+          <p class="cc-bubble__text">Benötigen Sie zusätzlich eine Anhängerkupplung?</p>
+          <div class="cc-bubble__options">
+            <div class="cc-clever-turn__options">
+              <button type="button" class="cc-option-chip cc-option-chip--suggestion">Ja</button>
+              <button type="button" class="cc-option-chip cc-option-chip--suggestion">Nein</button>
+              <button type="button" class="cc-option-chip cc-option-chip--suggestion">Noch offen</button>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <form class="cc-input-bar" onsubmit="return false">
+      <div class="cc-input-bar__row">
+        <input class="cc-input-bar__field" placeholder="Weiterfragen oder Wunsch ergänzen …" />
+        <button type="button" class="cc-input-bar__mic" aria-label="Mikrofon">🎤</button>
+        <button type="button" class="cc-input-bar__send" aria-label="Senden">➜</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

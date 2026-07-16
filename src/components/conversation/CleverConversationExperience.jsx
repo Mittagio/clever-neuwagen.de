@@ -29,7 +29,6 @@ import {
   submitVehicleDirectionReaction,
 } from '../../services/consultation/consultationHappyPath.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
-import { shouldShowWishHandoffCta } from '../../services/consultation/consultationOfferHandoff.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
 import CleverMemoryBar from './CleverMemoryBar.jsx';
@@ -42,9 +41,9 @@ import CleverVehicleDirections from './CleverVehicleDirections.jsx';
 import CleverVehicleMiniRecommendation from './CleverVehicleMiniRecommendation.jsx';
 import CleverPersonalHandoff from './CleverPersonalHandoff.jsx';
 import CleverHandoffComplete from './CleverHandoffComplete.jsx';
-import CleverAdvisorContactPrompt from './CleverAdvisorContactPrompt.jsx';
 import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
+import CleverInlineOfferCard from './CleverInlineOfferCard.jsx';
 import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
@@ -54,6 +53,32 @@ import {
   requestCleverConversationTurn,
 } from '../../services/clever/openai/cleverConversationClient.js';
 
+function sessionUsesAiMode(session) {
+  if (session?.conversationMode === 'ai') return true;
+  return (session?.turns ?? []).some((turn) => turn.aiTurn || turn.mode === 'ai');
+}
+
+function shouldShowInlineOfferCard(session) {
+  if (session?.offerRequested) return true;
+  if (session?.sellerReady) return true;
+  if (session?.phase === CONVERSATION_PHASE.HANDOFF) return true;
+  return (session?.turns ?? []).some((turn) => turn.offerHandoff);
+}
+
+function composerPlaceholderForSession(session) {
+  const labels = session?.notepadLabels ?? [];
+  const model = labels.find((label) => /^EV\d$/i.test(String(label)))
+    || session?.needProfile?.selectedModelKey
+    || session?.needProfile?.modelHint;
+  if (model) {
+    const name = String(model).toUpperCase().startsWith('EV')
+      ? String(model).toUpperCase()
+      : String(model);
+    return `Noch eine Frage zum ${name}?`;
+  }
+  return DEFAULT_COMPOSER_PLACEHOLDER;
+}
+
 const SKIPPED_TURN_TYPES = new Set([
   TURN_TYPE.LEARNED,
   TURN_TYPE.UNDERSTANDING_MIRROR,
@@ -61,13 +86,10 @@ const SKIPPED_TURN_TYPES = new Set([
 ]);
 
 const LIVING_INPUT_PLACEHOLDERS = [
-  'Was ist Ihnen noch wichtig?',
-  'Erzählen Sie einfach weiter …',
-  'Was sollten wir noch wissen?',
-  'Ich suche einen Hybrid mit Anhängelast …',
-  'Elektro für Familie mit 400 km Reichweite …',
-  'Panorama wäre schön …',
+  'Weiterfragen oder Wunsch ergänzen …',
 ];
+
+const DEFAULT_COMPOSER_PLACEHOLDER = 'Weiterfragen oder Wunsch ergänzen …';
 
 const TURN_REVEAL_DELAY = {
   [TURN_TYPE.CUSTOMER]: 240,
@@ -122,6 +144,7 @@ export default function CleverConversationExperience({
   const [offerModelKeys, setOfferModelKeys] = useState([]);
   const [aiTurnPending, setAiTurnPending] = useState(false);
   const [lastAddedLabel, setLastAddedLabel] = useState('');
+  const [highlightLabels, setHighlightLabels] = useState([]);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
   const prevLabelCountRef = useRef(0);
@@ -160,6 +183,7 @@ export default function CleverConversationExperience({
     if (voiceListening) return undefined;
     if (inputValue.trim()) return undefined;
     if (inputFocused) return undefined;
+    if (LIVING_INPUT_PLACEHOLDERS.length <= 1) return undefined;
 
     const intervalMs = 3600;
     const fadeMs = 260;
@@ -204,9 +228,14 @@ export default function CleverConversationExperience({
     if (!added.length) return undefined;
 
     setLastAddedLabel(added[0] ?? '');
+    setHighlightLabels(added);
     setNotingFlash(added);
-    const timer = window.setTimeout(() => setNotingFlash(null), 1800);
-    return () => window.clearTimeout(timer);
+    const toastTimer = window.setTimeout(() => setNotingFlash(null), 1500);
+    const glowTimer = window.setTimeout(() => setHighlightLabels([]), 1600);
+    return () => {
+      window.clearTimeout(toastTimer);
+      window.clearTimeout(glowTimer);
+    };
   }, [session.notepadLabels, session.vehicleNotepadLabels]);
 
   useEffect(() => {
@@ -386,10 +415,8 @@ export default function CleverConversationExperience({
   const handleSmartChipClick = useCallback((chipText) => {
     const next = String(chipText ?? '').trim();
     if (!next) return;
-    setSession((prev) => submitConversationInput(prev, next));
-    setInputValue('');
-    inputRef.current?.focus?.();
-  }, []);
+    void handleSend(next);
+  }, [handleSend]);
 
   const handleRemoveUnderstoodLabel = useCallback((label) => {
     setSession((prev) => removeNeedLabel(prev, label));
@@ -449,8 +476,12 @@ export default function CleverConversationExperience({
     return vehicleReasoning.intro || 'Diese Fahrzeuge würden aktuell zu Ihren Angaben passen.';
   }, [lastAddedLabel, vehicleReasoning.intro]);
 
-  const livingPlaceholder = LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]
-    ?? LIVING_INPUT_PLACEHOLDERS[0];
+  const livingPlaceholder = composerPlaceholderForSession(session)
+    || LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]
+    || DEFAULT_COMPOSER_PLACEHOLDER;
+
+  const aiConversationActive = sessionUsesAiMode(session)
+    || isCleverAiConversationClientEnabled();
 
   const renderComposer = () => {
     const formClass = [
@@ -582,7 +613,8 @@ export default function CleverConversationExperience({
   const activeQuestionId = session.pendingQuestion?.id ?? null;
 
   const hasReasoningContent = visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0;
-  const showInlineReasoning = !inOfferWorld
+  const showInlineReasoning = !aiConversationActive
+    && !inOfferWorld
     && !inVehicleWorld
     && hasReasoningContent
     && ((session.notepadLabels?.length ?? 0) > 0 || visibleTurns.length > 0);
@@ -622,29 +654,35 @@ export default function CleverConversationExperience({
   const [wishHandoffLatched, setWishHandoffLatched] = useState(false);
 
   useEffect(() => {
-    if (shouldShowWishHandoffCta(session)) {
+    if (shouldShowInlineOfferCard(session)) {
       setWishHandoffLatched(true);
     }
   }, [session]);
 
-  const showWishHandoff = wishHandoffLatched || shouldShowWishHandoffCta(session);
-  const showAdvisorContact = !inOfferWorld && !inCollectMode && showWishHandoff;
+  const showInlineOffer = !inOfferWorld
+    && !inCollectMode
+    && (wishHandoffLatched || shouldShowInlineOfferCard(session));
+
+  // Legacy fixed Overlay ist entfernt – Angebot nur als Inline-Karte
+  const showAdvisorContact = false;
 
   useEffect(() => {
-    if (!showAdvisorContact || offerModelKeys.length) return undefined;
+    if (!showInlineOffer || offerModelKeys.length) return undefined;
+    if (aiConversationActive) return undefined;
     const defaults = visibleReasoningItems.slice(0, 2).map((item) => item.modelKey);
     if (defaults.length) setOfferModelKeys(defaults);
     return undefined;
-  }, [showAdvisorContact, visibleReasoningItems, offerModelKeys.length]);
+  }, [showInlineOffer, visibleReasoningItems, offerModelKeys.length, aiConversationActive]);
 
   const experienceClass = [
     'cc-experience',
+    'cc-experience--messenger',
     embedded ? 'cc-experience--embedded' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
     !inOfferWorld && !inVehicleWorld ? 'cc-experience--living' : '',
     showOpening ? 'cc-experience--living-opening' : '',
-    showAdvisorContact ? 'cc-experience--advisor-contact' : '',
+    showInlineOffer ? 'cc-experience--inline-offer' : '',
     advisorBoostExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
 
@@ -668,11 +706,18 @@ export default function CleverConversationExperience({
             labels={session.notepadLabels}
             onRemove={handleRemoveUnderstoodLabel}
             animating={labelsAnimating}
+            highlightLabels={highlightLabels}
           />
         )
       )}
 
       <div className="cc-experience__scroll" ref={scrollRef}>
+        {notingFlash && (
+          <div className="cc-note-toast-slot">
+            <CleverNotingFlash labels={notingFlash} />
+          </div>
+        )}
+
         {showOpening && (
           <div className="cc-living__opening">
             <h1 className="cc-living__headline">{opening.headline}</h1>
@@ -700,7 +745,6 @@ export default function CleverConversationExperience({
         )}
 
         <div className="cc-transcript">
-          {notingFlash && <CleverNotingFlash labels={notingFlash} />}
           {visibleTurns.map((turn) => {
             if (turn.type === TURN_TYPE.ADVISOR_COLLECT) {
               return (
@@ -774,10 +818,21 @@ export default function CleverConversationExperience({
                 key={turn.id}
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
+                onVehicleAction={handleSelectPrimary}
                 isActiveQuestion={turn.type === TURN_TYPE.CLEVER && turn.questionId === activeQuestionId}
               />
             );
           })}
+
+          {showInlineOffer && !inOfferWorld && (
+            <CleverInlineOfferCard
+              vehicleCount={offerModelKeys.length
+                || (session.cleverVehicleDirections ?? []).filter((d) => d.status === 'candidate' || d.status === 'interesting').length}
+              onContinue={() => handleDealerHandoff({
+                selectedOfferModels: offerModelKeys,
+              })}
+            />
+          )}
 
           {showInlineReasoning && (
             <CleverVehicleReasoningPanel
@@ -786,28 +841,14 @@ export default function CleverConversationExperience({
               items={visibleReasoningItems}
               fadedItems={fadedReasoningItems}
               intro={reasoningHeadline}
-              onExclude={showAdvisorContact ? null : handleExcludeModel}
+              onExclude={handleExcludeModel}
               excludedKeys={excludedModelKeys}
               excludeReaction={excludeReaction}
-              offerPrep={showAdvisorContact ? {
-                selectedKeys: offerModelKeys,
-                onToggle: handleOfferModelToggle,
-              } : null}
+              offerPrep={null}
             />
           )}
         </div>
       </div>
-
-      {showAdvisorContact && (
-        <CleverAdvisorContactPrompt
-          session={session}
-          dealerName={dealerName}
-          onContact={handleDealerHandoff}
-          onExpandedChange={setAdvisorBoostExpanded}
-          offerModelKeys={offerModelKeys}
-          offerModels={visibleReasoningItems}
-        />
-      )}
 
       {!inOfferWorld && !inCollectMode && renderComposer()}
     </div>

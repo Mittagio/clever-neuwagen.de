@@ -10,7 +10,9 @@ import {
   mergeTextIntoNeedProfile,
 } from '../../consultation/needProfileService.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../../data/kia/kiaModelAttributes.js';
+import { getKiaModelMediaEntry } from '../../../data/kia/kiaModelImages.js';
 import { applyNeedProfilePatch, sanitizeNeedProfilePatch } from './needProfilePatch.js';
+import { formatHumanFactChip } from './conversationFactDisplay.js';
 import { getVerifiedVehicleFacts } from './tools/getVerifiedVehicleFacts.js';
 
 function appendLabels(existing = [], incoming = []) {
@@ -75,24 +77,69 @@ function buildFactsFromUsedIds(usedFactIds = [], vehicleDirections = []) {
     if (!requestedFacts.length) continue;
     const result = getVerifiedVehicleFacts({ modelKey, requestedFacts: [...new Set(requestedFacts)] });
     for (const fact of result.facts ?? []) {
-      facts.push({
-        label: `${KIA_MODEL_ATTRIBUTES[modelKey]?.label ?? modelKey} ${fact.key}`,
-        value: formatFactValue(fact),
-      });
+      const human = formatHumanFactChip(fact.key, fact.value, fact.unit ?? null);
+      if (human) {
+        facts.push({
+          key: fact.key,
+          icon: human.icon,
+          chip: human.chip,
+          label: human.label,
+          value: human.value,
+        });
+        continue;
+      }
+      const readable = formatFactValue(fact);
+      if (readable && readable !== '–' && !/^[a-zA-Z]+$/.test(String(fact.key))) {
+        facts.push({
+          key: fact.key,
+          icon: '·',
+          chip: readable,
+          label: readable,
+          value: readable,
+        });
+      }
     }
   }
-  return facts.slice(0, 6);
+  return facts.slice(0, 4);
+}
+
+function compactFactLine(modelKey) {
+  const result = getVerifiedVehicleFacts({
+    modelKey,
+    requestedFacts: ['wltpRange', 'seats', 'towingCapacity'],
+  });
+  const parts = [];
+  for (const fact of result.facts ?? []) {
+    const human = formatHumanFactChip(fact.key, fact.value, fact.unit ?? null);
+    if (!human) continue;
+    if (fact.key === 'wltpRange') parts.push(human.text.replace(/\s*WLTP\s*$/i, '').trim());
+    else if (fact.key === 'seats') parts.push(human.text);
+    else if (fact.key === 'towingCapacity') parts.push(human.text);
+    if (parts.length >= 2) break;
+  }
+  return parts.join(' · ');
 }
 
 function buildModelCards(vehicleDirections = []) {
   return vehicleDirections
     .filter((d) => d.status === 'candidate' || d.status === 'interesting')
-    .slice(0, 3)
-    .map((d) => ({
-      modelKey: d.modelKey,
-      name: KIA_MODEL_ATTRIBUTES[d.modelKey]?.label ?? d.modelKey,
-      bullets: [d.reason].filter(Boolean),
-    }));
+    .slice(0, 2)
+    .map((d) => {
+      const attrs = KIA_MODEL_ATTRIBUTES[d.modelKey] ?? {};
+      const name = attrs.label ?? d.modelKey;
+      const shortName = String(name).replace(/^Kia\s+/i, '');
+      const image = getKiaModelMediaEntry(d.modelKey, 'card').card;
+      const factLine = compactFactLine(d.modelKey);
+      return {
+        modelKey: d.modelKey,
+        name,
+        subtitle: attrs.tagline || attrs.bodyTypeLabel || null,
+        factLine: factLine || null,
+        image,
+        ctaLabel: `${shortName} ansehen`,
+        bullets: [d.reason].filter(Boolean).slice(0, 2),
+      };
+    });
 }
 
 function buildQuestionFromNextAction(nextAction = {}) {
@@ -117,6 +164,8 @@ function cleverAiTurn(turnResult) {
   const facts = buildFactsFromUsedIds(turnResult.usedFactIds ?? [], turnResult.vehicleDirections ?? []);
   const modelCards = buildModelCards(turnResult.vehicleDirections ?? []);
   const isKnowledge = turnResult.intent === 'knowledge_question';
+  const offerHandoff = turnResult.nextAction?.type === 'offer_handoff'
+    || Boolean(turnResult.handoff?.ready);
 
   return {
     type: TURN_TYPE.CLEVER,
@@ -127,7 +176,9 @@ function cleverAiTurn(turnResult) {
     modelCards,
     knowledgeOnly: isKnowledge && turnResult.nextAction?.type === 'none',
     aiTurn: true,
+    mode: 'ai',
     intent: turnResult.intent,
+    offerHandoff,
   };
 }
 
@@ -169,6 +220,7 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
     needProfile,
     notepadLabels,
     pendingQuestion: null,
+    conversationMode: 'ai',
     cleverVehicleDirections: turnResult.vehicleDirections ?? [],
     turns: [...(session.turns ?? []), customerTurn(trimmed)],
     phase: session.phase === CONVERSATION_PHASE.OPENING
@@ -196,11 +248,12 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
     }
   }
 
-  if (turnResult.handoff?.ready) {
+  if (turnResult.nextAction?.type === 'offer_handoff' || turnResult.handoff?.ready) {
     next = {
       ...next,
-      sellerReady: true,
-      phase: CONVERSATION_PHASE.HANDOFF,
+      sellerReady: Boolean(turnResult.handoff?.ready) || next.sellerReady,
+      offerRequested: true,
+      phase: turnResult.handoff?.ready ? CONVERSATION_PHASE.HANDOFF : next.phase,
     };
   }
 

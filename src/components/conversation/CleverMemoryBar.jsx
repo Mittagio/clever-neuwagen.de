@@ -7,26 +7,15 @@ function iconForLabel(label = '') {
   if (/ev9|kia ev9/.test(t)) return '🚙';
   if (/^ev\d|sportage|ceed|niro|picanto|sorento|carnival/.test(t)) return '🚗';
   if (/sitz/.test(t)) return '💺';
+  if (/km|reichweite/.test(t)) return '🔋';
   if (/ladelänge|2\s*m|laderaum|kofferraum/.test(t)) return '📦';
+  if (/anhäng|anhaeng|ahk|kupplung|zuglast|anhängelast/.test(t)) return '🪝';
   if (/leasing|finanz|kauf/.test(t) || /budget/.test(t) || /€\/monat/.test(t)) return '💶';
-  if (/monate|km/.test(t)) return '📅';
-  if (/anhäng|anhaeng|ahk|kupplung|zuglast|anhängelast/.test(t)) return '🚛';
+  if (/monate/.test(t)) return '📅';
+  if (/hud|head-up/.test(t)) return '📷';
   if (/blau|rot|weiß|weiss|schwarz|grün|gruen|grau|silber|wolfsgrau/.test(t)) return '🎨';
   if (/familie|kinder/.test(t)) return '👨‍👩‍👧';
-  if (/hauptfahrerin|frau fährt|partnerin/.test(t)) return '👩';
   if (/hund/.test(t)) return '🐶';
-  if (/panorama|glasschiebe|schiebedach/.test(t)) return '☀';
-  if (/wärmepumpe|waermepumpe/.test(t)) return '🌡';
-  if (/\bv2l\b/.test(t)) return '🔌';
-  if (/sitzheizung/.test(t)) return '🔥';
-  if (/rückfahr|rueckfahr|kamera|360|hud|head-up/.test(t)) return '📷';
-  if (/schnellladen|800v|800-v/.test(t)) return '⚡';
-  if (/wallbox|zuhause|daheim/.test(t)) return '🏠';
-  if (/winter/.test(t)) return '❄';
-  if (/isofix/.test(t)) return '👶';
-  if (/kinderwagen/.test(t)) return '🛒';
-  if (/dachbox/.test(t)) return '🏕';
-  if (/pferde/.test(t)) return '🐴';
   return '·';
 }
 
@@ -34,8 +23,11 @@ export default function CleverMemoryBar({
   labels = [],
   onRemove,
   animating = false,
+  highlightLabels = [],
 }) {
   if (!labels.length) return null;
+
+  const highlight = new Set(highlightLabels);
 
   return (
     <div className="cc-memory" aria-label="Clevers Notizzettel">
@@ -48,7 +40,14 @@ export default function CleverMemoryBar({
         role="list"
       >
         {labels.map((label) => (
-          <span key={label} className="cc-memory__chip" role="listitem">
+          <span
+            key={label}
+            className={[
+              'cc-memory__chip',
+              highlight.has(label) ? 'is-new' : '',
+            ].filter(Boolean).join(' ')}
+            role="listitem"
+          >
             <span className="cc-memory__chip-icon" aria-hidden>{iconForLabel(label)}</span>
             <span className="cc-memory__chip-text">{label}</span>
             <button
