@@ -34,7 +34,7 @@ function buildCompactElectricKleinwagenAnswer(query) {
 
   const lines = [
     'Bei Kia würde ich bei einem echten Elektro-Kleinwagen zuerst den EV2 ansehen.',
-    'EV3 und EV5 sind bereits deutlich größer – eher Kompakt-SUV, nicht Kleinwagen.',
+    'Der EV3 ist bereits deutlich größer und eher ein Kompakt-SUV.',
   ];
 
   const facts = [];

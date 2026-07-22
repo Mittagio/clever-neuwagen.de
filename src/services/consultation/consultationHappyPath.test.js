@@ -305,7 +305,7 @@ function testElectricKleinwagenEv2First() {
   const knowledgeTurn = session.turns.find((t) => t.knowledgeOnly);
   assert.ok(knowledgeTurn, 'EV2-Erklärung fehlt');
   assert.match(knowledgeTurn.text ?? '', /EV2/i);
-  assert.match(knowledgeTurn.text ?? '', /nicht Kleinwagen/i);
+  assert.match(knowledgeTurn.text ?? '', /EV3.*größer|Kompakt-SUV/i);
   const cards = knowledgeTurn.modelCards ?? [];
   assert.equal(cards.length, 1, 'Nur EV2 als Kleinwagen-Karte');
   assert.equal(cards[0]?.modelKey, 'ev2');

@@ -20,14 +20,16 @@ import {
   removeNeedLabel,
   selectRecommendedModel,
   applyQuickHandoffEnrichment,
-  submitConversationInput,
   submitDealerHandoff,
-  submitOpeningMessage,
   submitPersonalHandoff,
   submitQuestionAnswer,
   submitVehicleAnswer,
   submitVehicleDirectionReaction,
 } from '../../services/consultation/consultationHappyPath.js';
+import {
+  humanizeFallbackReason,
+  submitSafeIntakeFallback,
+} from '../../services/consultation/safeIntakeFallback.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
@@ -336,18 +338,31 @@ export default function CleverConversationExperience({
         });
 
         if (result.ok && result.session) {
+          // AI ok → nur CleverTurnResult; Server-Fallback → Safe Intake (nie Legacy Planner)
           setSession(result.session);
           setInputValue('');
           return;
         }
+
+        setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+          reason: result.error ?? 'request_failed',
+        }));
+        setInputValue('');
+        return;
       } catch {
-        // Fallback auf deterministischen Flow
+        setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+          reason: 'api_error',
+        }));
+        setInputValue('');
+        return;
       } finally {
         setAiTurnPending(false);
       }
     }
 
-    setSession((prev) => submitConversationInput(prev, trimmed));
+    setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+      reason: 'feature_disabled',
+    }));
     setInputValue('');
   }, [aiTurnPending, dealerId, dealerName, session]);
 
@@ -668,7 +683,13 @@ export default function CleverConversationExperience({
   };
 
   const handleOptionSelect = (questionId, answerId) => {
-    if (String(questionId ?? '').startsWith('ai_')) {
+    if (String(questionId ?? '').startsWith('ai_') || String(questionId ?? '').startsWith('safe_')) {
+      const option = session.pendingQuestion?.options?.find((o) => o.id === answerId);
+      handleSend(option?.label ?? String(answerId));
+      return;
+    }
+    // Öffentlicher Intake: keine Legacy-Planner-Chips mehr – Freitext/Label über Safe Fallback
+    if (session.conversationMode === 'fallback' || session.conversationMode === 'ai') {
       const option = session.pendingQuestion?.options?.find((o) => o.id === answerId);
       handleSend(option?.label ?? String(answerId));
       return;
@@ -773,6 +794,21 @@ export default function CleverConversationExperience({
   });
   const contactExitLabel = buildContactExitLabel();
 
+  const isDevEngineBadge = Boolean(import.meta.env.DEV);
+  const engineBadge = useMemo(() => {
+    if (!isDevEngineBadge) return null;
+    if (session.conversationMode === 'ai' || sessionUsesAiMode(session)) {
+      const model = session.aiModel || 'openai';
+      return { kind: 'ai', label: `AI · ${model}` };
+    }
+    if (session.conversationMode === 'fallback' || (session.turns ?? []).some((t) => t.fallbackTurn)) {
+      const reason = session.fallbackReason
+        || humanizeFallbackReason('unavailable');
+      return { kind: 'fallback', label: `FALLBACK · ${reason}` };
+    }
+    return null;
+  }, [isDevEngineBadge, session]);
+
   const handleOfferExit = useCallback(() => {
     setWishHandoffLatched(true);
     handleDealerHandoff({
@@ -810,7 +846,24 @@ export default function CleverConversationExperience({
       {!embedded && (
         <header className="cc-experience__dealer">
           <span className="cc-experience__dealer-name">{dealerName}</span>
+          {engineBadge && (
+            <span
+              className={`cc-experience__engine-badge cc-experience__engine-badge--${engineBadge.kind}`}
+              title="Nur Development – Conversation Engine"
+            >
+              {engineBadge.label}
+            </span>
+          )}
         </header>
+      )}
+      {embedded && engineBadge && (
+        <div className="cc-experience__engine-badge-row" aria-hidden="true">
+          <span
+            className={`cc-experience__engine-badge cc-experience__engine-badge--${engineBadge.kind}`}
+          >
+            {engineBadge.label}
+          </span>
+        </div>
       )}
 
       {!inOfferWorld && !showOpening && (

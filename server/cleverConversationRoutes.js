@@ -3,7 +3,7 @@ import { runCleverTurn, applyCleverTurnToLead } from '../src/services/clever/ope
 import { isCleverAiConversationEnabled } from '../src/services/clever/openai/cleverConversationConfig.js';
 import { applyCleverTurnToSession } from '../src/services/clever/openai/applyCleverTurnResult.js';
 import { createHappyPathSession } from '../src/services/consultation/consultationHappyPath.js';
-import { submitConversationInput } from '../src/services/consultation/consultationHappyPath.js';
+import { submitSafeIntakeFallback } from '../src/services/consultation/safeIntakeFallback.js';
 import { appendKnowledgeGaps } from './knowledgeGapStore.js';
 import { appendQualityTurnMetric } from './cleverQualityStore.js';
 
@@ -55,7 +55,9 @@ router.post('/clever/conversation-turn', express.json({ limit: '32kb' }), async 
       });
 
       const baseSession = session ?? createHappyPathSession(brandContext.dealerName ?? 'Autohaus');
-      const fallbackSession = submitConversationInput(baseSession, trimmed);
+      const fallbackSession = submitSafeIntakeFallback(baseSession, trimmed, {
+        reason: aiResult.reason ?? 'fallback',
+      });
       return res.json({
         ok: true,
         mode: 'fallback',
@@ -93,6 +95,15 @@ router.post('/clever/conversation-turn', express.json({ limit: '32kb' }), async 
       );
       nextSession.needProfile = applied.needProfile;
     }
+
+    nextSession = {
+      ...nextSession,
+      conversationMode: 'ai',
+      fallbackReason: null,
+      aiModel: aiResult.metrics?.finalModel
+        ?? aiResult.metrics?.primaryModel
+        ?? null,
+    };
 
     return res.json({
       ok: true,

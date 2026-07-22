@@ -95,8 +95,11 @@ export async function runCleverTurn(params, deps = {}) {
   const metrics = createCleverTurnMetrics();
   const config = deps.config ?? getCleverAiConfig(deps.env);
 
-  if (!config.enabled || !config.apiKey) {
-    return fallbackResult('disabled_or_missing_key', metrics);
+  if (!config.enabled) {
+    return fallbackResult('feature_disabled', metrics);
+  }
+  if (!config.apiKey) {
+    return fallbackResult('api_key_missing', metrics);
   }
 
   if (deps.mockTurnResult) {

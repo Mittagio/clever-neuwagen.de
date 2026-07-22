@@ -97,6 +97,11 @@
 
 .cc-experience__dealer {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
   padding: 14px 20px 0;
   text-align: center;
 }
@@ -106,6 +111,38 @@
   color: var(--cc-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.cc-experience__engine-badge-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.35rem 0.75rem 0;
+}
+
+.cc-experience__engine-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.42rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0.92;
+  user-select: none;
+  pointer-events: none;
+  text-transform: none;
+}
+
+.cc-experience__engine-badge--ai {
+  background: #e8f5ee;
+  color: #1b5e3b;
+  border: 1px solid #b7dfc7;
+}
+
+.cc-experience__engine-badge--fallback {
+  background: #f4f1ea;
+  color: #5c4a32;
+  border: 1px solid #ddd2bf;
 }
 
 .cc-experience__scroll {
