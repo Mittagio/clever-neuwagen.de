@@ -52,9 +52,9 @@ Clever ist **kein** digitaler Verkaufsberater.
 
 ---
 
-## Wunschübergabe
+## Wunschübergabe (intern) / „Meine Wünsche weitergeben“ (Kunden-UI)
 
-**Definition:** Die Wunschübergabe ist der Moment, in dem Clever die bisher gesammelten Kundenwünsche und den vollständigen Gesprächskontext an den echten Verkäufer übergibt.
+**Definition:** Der Moment, in dem Clever die bisher gesammelten Kundenwünsche und den vollständigen Gesprächskontext an den echten Verkäufer übergibt.
 
 Sie ist **keine** Kaufentscheidung, **keine** Bestellung und **kein** sofortiger Callcenterkontakt.
 
@@ -62,7 +62,7 @@ Sie ist **keine** Kaufentscheidung, **keine** Bestellung und **kein** sofortiger
 
 Primär:
 
-**„Meine Wünsche übergeben“**
+**„Meine Wünsche weitergeben“**
 
 Nicht als Standard:
 
@@ -71,19 +71,20 @@ Nicht als Standard:
 - Kontakt aufnehmen
 - Rückmeldung wünschen
 - Angebot anfordern
+- Übergabe (als Headline)
 
-Intern dürfen technische Begriffe bleiben (`handoff`, `offer_handoff`, …). Im Kunden-UI heißt der Prozess **Wunschübergabe**.
+Intern dürfen technische Begriffe bleiben (`handoff`, `offer_handoff`, …).
 
 ### CTA-Reifung
 
-Grundbegriff bleibt „Meine Wünsche übergeben“. Nur bei klarem Kundenwunsch konkretisieren:
+Grundbegriff bleibt „Meine Wünsche weitergeben“. Nur bei klarem Kundenwunsch konkretisieren:
 
 | Situation | CTA |
 |-----------|-----|
-| Noch kein Modell | Meine Wünsche übergeben |
-| EV9 klar interessant | Meine EV9-Wünsche übergeben |
-| Expliziter Angebotswunsch | Für Angebot übergeben |
-| Leasingdaten weitgehend da | Wünsche & Leasingdaten übergeben |
+| Noch kein Modell | Meine Wünsche weitergeben |
+| EV9 klar interessant | Meine EV9-Wünsche weitergeben |
+| Expliziter Angebotswunsch | Für Angebot weitergeben |
+| Leasingdaten weitgehend da | Wünsche & Leasingdaten weitergeben |
 
 ### Erreichbarkeit
 
@@ -91,7 +92,27 @@ Ab dem **ersten echten Kundenturn**. Unvollständige Übergaben sind erlaubt.
 
 ### Nach dem Klick
 
-E-Mail → Code → Name → optional Ergänzen → Übergeben.
+**Soft Wish Enrichment** (optional) → E-Mail → Code → Erfolg.
+
+#### Soft Wish Enrichment
+
+Freiwilliger kurzer Moment unmittelbar vor der Identifikation.
+
+Headline: „Möchten Sie dem Verkäufer noch etwas mitgeben?“  
+Subline: „Damit er direkt weiß, worauf es Ihnen ankommt.“
+
+- 4–6 dynamische Vorschläge (Gespräch / Modell / noch nicht notiert)
+- AI darf Vorschläge machen – erst aktive Auswahl wird Kundenwunsch
+- Freitext möglich („Etwas anderes?“)
+- Buttons: **Weiter** / **So passt es** (keine Pflichtauswahl)
+- Kein Akkordeon-Fragebogen (Verfügbarkeit / Bezahlung / Ausstattung)
+
+Danach Identifikation:
+
+Headline: „Meine Wünsche weitergeben“  
+Pflicht: E-Mail + Datenschutz → Code senden → Code bestätigen
+
+Erfolg: „Ihre Wünsche sind angekommen“ + kompakte Wunschchips + Rückkehr zur Händlerseite / „Noch etwas ergänzen“.
 
 ---
 
@@ -159,7 +180,7 @@ Erlaubt:
 - verifizierte Fact-Chips zur Antwort
 - kompakte Fahrzeugrichtungen ohne Entscheidungssprache
 - Next-Topic-Chips
-- sticky Composer mit **Meine Wünsche übergeben**
+- sticky Composer mit **Meine Wünsche weitergeben**
 
 ---
 

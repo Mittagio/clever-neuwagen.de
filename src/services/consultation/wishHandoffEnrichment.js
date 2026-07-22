@@ -61,6 +61,7 @@ export function emptyWishHandoffEnrichment() {
     specialConditionId: null,
     tradeIn: null,
     equipmentWishIds: [],
+    softExtraLabels: [],
     leasing: {
       termId: null,
       mileageId: null,
@@ -183,6 +184,10 @@ export function buildWishHandoffNotepadLabels(enrichment = {}) {
     labels.push(label);
   }
 
+  for (const label of enrichment.softExtraLabels ?? []) {
+    if (label && !labels.includes(label)) labels.push(label);
+  }
+
   return labels;
 }
 
@@ -201,6 +206,7 @@ export function mergeWishHandoffNotepadLabels(existingLabels = [], enrichment = 
     || enrichment?.specialConditionId
     || enrichment?.tradeIn
     || (enrichment?.equipmentWishIds?.length > 0)
+    || (enrichment?.softExtraLabels?.length > 0)
     || enrichment?.leasing?.termId
     || enrichment?.leasing?.mileageId
     || enrichment?.leasing?.downPayment
@@ -326,6 +332,13 @@ export function applyWishHandoffEnrichmentToNeedProfile(needProfile = {}, enrich
 
   if (enrichment.equipmentWishIds?.length) {
     next.equipmentWishIds = [...enrichment.equipmentWishIds];
+  }
+
+  if (enrichment.softExtraLabels?.length) {
+    next.extraLabels = [...new Set([
+      ...(next.extraLabels ?? []),
+      ...enrichment.softExtraLabels,
+    ])];
   }
 
   next.wishHandoffEnrichment = enrichment;

@@ -58,8 +58,8 @@ function testHandoffView() {
   const session = buildFullSession();
   const view = buildPersonalHandoffView(session, dealerConditions);
 
-  assert.equal(view.title, 'Übergabe');
-  assert.equal(view.intro, null);
+  assert.equal(view.title, 'Meine Wünsche weitergeben');
+  assert.match(view.intro, /E-Mail-Adresse/);
   assert.equal(view.accountLead, null);
   assert.equal(view.trustSla, null);
   assert.ok(view.wishProfile?.lines?.length > 0);
@@ -125,7 +125,7 @@ function testSubmitPersonalHandoff() {
   assert.equal(result.journey?.phase, JOURNEY_PHASE.FIRST_CONTACT);
   assert.ok(result.session.turns.some((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE));
   const complete = result.session.turns.find((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE);
-  assert.equal(complete.completeView.title, 'Fertig');
+  assert.match(complete.completeView.title, /Wünsche sind angekommen/);
   assert.match(complete.completeView.confirmationHint, /tom@example\.de/i);
   assert.equal(complete.completeView.outro, null);
   assert.ok(complete.completeView.returnActions.some((a) => a.id === 'account'));
@@ -133,12 +133,10 @@ function testSubmitPersonalHandoff() {
 }
 
 function testValidation() {
-  const invalid = validateHandoffForm({ firstName: '', lastName: 'X', email: 'bad' });
+  const invalid = validateHandoffForm({ email: 'bad', privacyAccepted: true });
   assert.equal(invalid.valid, false);
 
   const missingPrivacy = validateHandoffForm({
-    firstName: 'A',
-    lastName: 'B',
     email: 'a@b.de',
     contactPreference: 'platform',
   });
@@ -146,8 +144,6 @@ function testValidation() {
   assert.ok(missingPrivacy.errors.privacyAccepted);
 
   const valid = validateHandoffForm({
-    firstName: 'A',
-    lastName: 'B',
     email: 'a@b.de',
     contactPreference: 'platform',
     privacyAccepted: true,
@@ -155,8 +151,6 @@ function testValidation() {
   assert.equal(valid.valid, true);
 
   const validNoPhone = validateHandoffForm({
-    firstName: 'A',
-    lastName: 'B',
     email: 'a@b.de',
     contactPreference: 'platform',
     privacyAccepted: true,
@@ -220,7 +214,7 @@ function testTowbarBoostView() {
 
 function testWishHandoffCtaCopy() {
   const copy = buildWishHandoffCta('Autohaus Trinkle');
-  assert.match(copy.buttonTitle, /Meine Wünsche übergeben/);
+  assert.match(copy.buttonTitle, /Meine Wünsche weitergeben/);
   assert.equal(copy.subline, null);
   assert.equal(copy.stickySubline, null);
   assert.equal(copy.compactReassurance, null);

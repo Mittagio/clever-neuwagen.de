@@ -16,7 +16,7 @@ Leitsatz: **Antworten. Wünsche erkennen. Notieren. Weiterhelfen. Übergeben.**
 | Notizzettel | Sticky unter dem Header, eine Zeile, horizontal scrollbar |
 | Thread | Einziger vertikaler Scrollbereich |
 | Clever-Turn | Antwort · Facts · Karte · Next Topics |
-| Composer | Sticky Footer + **Meine Wünsche übergeben** |
+| Composer | Sticky Footer + **Meine Wünsche weitergeben** |
 
 ### Bubbles
 
@@ -89,31 +89,36 @@ Nach einer Clever-Antwort maximal **eine** Folge:
 `nextAction.type = "none"` ist erlaubt. Freies Eingabefeld bleibt immer sichtbar.
 Keine Frage nur weil ein Profilfeld leer ist.
 
-## Wunschübergabe (ab Turn 1)
+## Meine Wünsche weitergeben (ab Turn 1)
 
 Am sticky Composer immer erreichbar:
 
-**Meine Wünsche übergeben**
+**Meine Wünsche weitergeben**
 
 CTA-Evolution nur bei klarem Kundenwunsch:
 
-- „Meine Wünsche übergeben“
-- „Meine EV9-Wünsche übergeben“
-- „Für Angebot übergeben“
-- „Wünsche & Leasingdaten übergeben“
+- „Meine Wünsche weitergeben“
+- „Meine EV9-Wünsche weitergeben“
+- „Für Angebot weitergeben“
+- „Wünsche und Leasingdaten weitergeben“
 
-Nicht als Standard: „Verkäufer kontaktieren“, „Angebot anfordern“.
+Nicht als Standard: „Verkäufer kontaktieren“, „Angebot anfordern“, Headline „Übergabe“.
 
-## Wunschübergabe-Flow
+## Soft Wish Enrichment + Identifikation
+
+**SOFT WISH ENRICHMENT:** Freiwilliger kurzer Moment unmittelbar vor der Identifikation,
+bei dem Clever dem Kunden noch wenige relevante, bisher nicht genannte Wünsche anbietet.
+Erst eine aktive Auswahl wird Teil des Kunden-Notizzettels.
 
 Kein permanentes „Wunsch verstanden“-Overlay.
 
 Nach Klick Inline:
 
-1. Erklärung (Wünsche + Gespräch weitergeben)
-2. Bisherige Wünsche
-3. Anmeldung: E-Mail-Code → Clever-Plattform
-4. Optional: Wann passt es?
+1. Soft Wish Enrichment – „Möchten Sie dem Verkäufer noch etwas mitgeben?“
+2. 4–6 Chips + optional Freitext · **Weiter** / **So passt es**
+3. „Meine Wünsche weitergeben“ – E-Mail + Datenschutz → Code senden
+4. Code → Handoff
+5. Erfolg: „Ihre Wünsche sind angekommen“ + Wunschchips + Rückkehr
 
 Unvollständige Profile sind erlaubt.
 
@@ -122,7 +127,7 @@ Unvollständige Profile sind erlaubt.
 - Placeholder-Standard: „Weiterfragen oder Wunsch ergänzen …“
 - Kontext: „Weitere Frage oder Wunsch zum EV9 …“
 - Keine Pflichtfragen im Placeholder
-- Permanente Wunschübergabe
+- Permanenter CTA „Meine Wünsche weitergeben“
 - safe-area-inset-bottom
 
 ## Öffentliche UI – verboten
@@ -130,6 +135,7 @@ Unvollständige Profile sind erlaubt.
 - Match-Prozent, Ranking-Medaillen, „beste Wahl“
 - Seller-Reasoning-Panel im Kundendialog
 - parallele Legacy-Empfehlungsausgabe neben AI-Turns
+- Headline „Übergabe“
 
 ## Scrollverhalten
 
@@ -152,27 +158,27 @@ Unvollständige Profile sind erlaubt.
 4. relevante Fakten
 5. optionale Fahrzeugkarte
 6. Next Topics
-7. Wunschübergabe-CTA
+7. CTA „Meine Wünsche weitergeben“
 8. Composer
 
 ## Komponenten
 
 | Datei | Rolle |
 |-------|--------|
-| `CleverConversationExperience.jsx` | Shell, AI/Fallback-Gate, Wunschübergabe |
+| `CleverConversationExperience.jsx` | Shell, AI/Fallback-Gate |
 | `CleverMemoryBar.jsx` | Notizzettel |
 | `CleverConversationTurn.jsx` | Bubbles, Fact-Chips, Next Topics, Anhänge |
-| `CleverComposerExits.jsx` | Wunschübergabe-CTA |
-| `CleverPersonalHandoff.jsx` | Inline Wunschübergabe |
-| `conversationNextTopics.js` | Next-Topic-Sanitizer / Fallback |
-| `customerIntakeExits.js` | CTA-Copy Wunschübergabe |
+| `CleverComposerExits.jsx` | CTA „Meine Wünsche weitergeben“ |
+| `CleverPersonalHandoff.jsx` | Soft Wish Enrichment → E-Mail → Code |
+| `CleverHandoffComplete.jsx` | Erfolg mit Wunschchips |
+| `softWishEnrichmentSuggestions.js` | Soft-Opt-in-Vorschläge |
+| `customerIntakeExits.js` | CTA-Copy |
 | `clever-conversation.css` | Layout / Messenger |
 
 ## Tests
 
-- AI und Fallback rendern nicht gleichzeitig (Gate in Experience)
-- Keine technischen Keys in Fact-Chips
-- Kein dauerhaftes Wunsch-Overlay
-- Wunschübergabe ab Turn 1 / unvollständig erlaubt
-- `npm run test:clever-ai-conversation` inkl. Fact-Display-Test
-- `npm run test:consultation` inkl. Intake-Golden + Next Topics
+- Soft Opt-in vor E-Mail, optional, ohne Auto-Speichern von Vorschlägen
+- Keine Headline „Übergabe“
+- AI und Fallback rendern nicht gleichzeitig
+- `npm run test:clever-ai-conversation`
+- `npm run test:consultation` inkl. Soft-Wish-Tests

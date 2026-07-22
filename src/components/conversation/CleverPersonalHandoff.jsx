@@ -1,20 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCustomerAuth } from '../../context/CustomerAuthContext.jsx';
 import { validateHandoffForm } from '../../services/consultation/consultationOfferHandoff.js';
 import {
-  ACQUISITION_OPTIONS,
-  DOWN_PAYMENT_OPTIONS,
-  FINANCE_BALLOON_OPTIONS,
-  FINANCE_TERM_OPTIONS,
-  HANDOFF_TRADE_IN_OPTIONS,
-  LEASING_MILEAGE_OPTIONS,
-  LEASING_TERM_OPTIONS,
-  PURCHASE_SPECIAL_OPTIONS,
-  VEHICLE_NEED_TIMING_OPTIONS,
   emptyWishHandoffEnrichment,
   prefillWishHandoffEnrichment,
 } from '../../services/consultation/wishHandoffEnrichment.js';
-import { buildEquipmentCategoryView } from '../../services/consultation/wishHandoffEquipment.js';
+import {
+  buildSoftWishEnrichmentSuggestions,
+  sanitizeSoftWishSuggestions,
+} from '../../services/consultation/softWishEnrichmentSuggestions.js';
+import { mergeTextIntoNeedProfile } from '../../services/consultation/needProfileService.js';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -29,63 +24,33 @@ const EMPTY_FORM = {
   privacyAccepted: false,
 };
 
-function ChipGroup({ label, options, value, onChange }) {
-  return (
-    <div className="cc-offer-handoff__pick-group">
-      {label && <p className="cc-offer-handoff__pick-label">{label}</p>}
-      <div className="cc-offer-handoff__chips" role="group" aria-label={label || 'Auswahl'}>
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`cc-option-chip cc-offer-handoff__chip${
-              value === option.id ? ' cc-offer-handoff__chip--selected' : ''
-            }`}
-            aria-pressed={value === option.id}
-            onClick={() => onChange(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Accordion({ id, title, icon, open, onToggle, summary = null, children }) {
-  return (
-    <div className={`cc-handoff-acc${open ? ' is-open' : ''}`}>
-      <button
-        type="button"
-        className="cc-handoff-acc__head"
-        aria-expanded={open}
-        aria-controls={`cc-acc-${id}`}
-        onClick={() => onToggle(id)}
-      >
-        <span className="cc-handoff-acc__icon" aria-hidden>{icon}</span>
-        <span className="cc-handoff-acc__title">{title}</span>
-        {summary && <span className="cc-handoff-acc__summary">{summary}</span>}
-        <span className="cc-handoff-acc__chev" aria-hidden>{open ? '▾' : '▸'}</span>
-      </button>
-      {open && (
-        <div id={`cc-acc-${id}`} className="cc-handoff-acc__body">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function buildSubmitPayload(form, authEmail, enrichment) {
+  const email = authEmail || form.email;
+  const local = String(email ?? '').split('@')[0] || 'Kunde';
   return {
     ...form,
-    email: authEmail || form.email,
+    email,
+    firstName: form.firstName?.trim() || local,
+    lastName: form.lastName?.trim() || '',
     contactPreference: 'platform',
     contactTiming: null,
     contactIntent: null,
     phone: '',
     enrichment,
   };
+}
+
+function SoftWishChip({ suggestion, flying, onSelect }) {
+  return (
+    <button
+      type="button"
+      className={`cc-soft-wish__chip${flying ? ' is-flying' : ''}`}
+      onClick={() => onSelect?.(suggestion)}
+    >
+      <span className="cc-soft-wish__chip-icon" aria-hidden>{suggestion.icon || '·'}</span>
+      <span>{suggestion.label}</span>
+    </button>
+  );
 }
 
 export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichmentChange }) {
@@ -97,16 +62,18 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     [handoffView?.needProfile, handoffView?.wishLabels],
   );
 
-  const [step, setStep] = useState('auth');
+  const [step, setStep] = useState('soft');
   const [enrichment, setEnrichment] = useState(initialEnrichment);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [openAcc, setOpenAcc] = useState(null);
-  const [openEquipCat, setOpenEquipCat] = useState(null);
   const [authPhase, setAuthPhase] = useState('email');
   const [loginCode, setLoginCode] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [freetext, setFreetext] = useState('');
+  const [flyingId, setFlyingId] = useState(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState([]);
+  const codeAutoSubmitRef = useRef(false);
 
   const {
     isLoggedIn,
@@ -120,6 +87,28 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     saveProfile,
   } = useCustomerAuth();
 
+  const suggestions = useMemo(() => {
+    const ctx = {
+      needProfile: handoffView?.needProfile ?? {},
+      notepadLabels: [
+        ...(handoffView?.wishLabels ?? []),
+        ...(enrichment.softExtraLabels ?? []),
+      ],
+      max: 6,
+    };
+    const fromAi = handoffView?.handoffSuggestions;
+    const list = fromAi?.length
+      ? sanitizeSoftWishSuggestions(fromAi, ctx)
+      : buildSoftWishEnrichmentSuggestions(ctx);
+    return list.filter((item) => !dismissedSuggestionIds.includes(item.id));
+  }, [
+    handoffView?.needProfile,
+    handoffView?.wishLabels,
+    handoffView?.handoffSuggestions,
+    enrichment.softExtraLabels,
+    dismissedSuggestionIds,
+  ]);
+
   useEffect(() => {
     onEnrichmentChange?.(enrichment);
   }, [enrichment, onEnrichmentChange]);
@@ -127,29 +116,28 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   useEffect(() => {
     if (isLoggedIn && authEmail) {
       setForm((prev) => ({ ...prev, email: authEmail }));
-      setAuthPhase('ready');
+      if (step === 'identify' && authPhase === 'code') {
+        // stay on success path via finalize
+      }
     }
-  }, [isLoggedIn, authEmail]);
+  }, [isLoggedIn, authEmail, step, authPhase]);
 
   if (!handoffView) return null;
 
-  const nameHint = errors.firstName || errors.lastName;
-  const title = handoffView.title || 'Übergabe';
-  const notePlaceholder = handoffView.notePlaceholder || 'Notiz (optional)';
-  const privacyText = handoffView.privacyText || 'Übergabe & Datenschutz';
+  const title = handoffView.title || 'Meine Wünsche weitergeben';
+  const softHeadline = handoffView.softHeadline
+    || 'Möchten Sie dem Verkäufer noch etwas mitgeben?';
+  const softSubline = handoffView.softSubline
+    || 'Damit er direkt weiß, worauf es Ihnen ankommt.';
+  const identifyIntro = handoffView.intro
+    || 'Damit Ihre Wünsche beim richtigen Ansprechpartner landen, bestätigen Sie bitte kurz Ihre E-Mail-Adresse.';
+  const trustNote = handoffView.trustNote
+    || 'Ihr Notizzettel und der bisherige Gesprächsverlauf werden gemeinsam weitergegeben.';
+  const privacyText = handoffView.privacyText || 'Datenschutz';
   const privacyLinkHref = handoffView.privacyLinkHref || '/legal/datenschutz';
   const privacyLinkLabel = handoffView.privacyLinkLabel || 'Details';
-  const submitLabel = handoffView.submitLabel || 'Übergeben';
   const advisor = handoffView.advisor;
-
-  const equipmentCategories = buildEquipmentCategoryView(
-    enrichment.equipmentWishIds ?? [],
-    handoffView.wishLabels ?? [],
-  );
-
-  const timingSummary = VEHICLE_NEED_TIMING_OPTIONS.find((o) => o.id === enrichment.vehicleNeedTiming)?.label;
-  const paySummary = ACQUISITION_OPTIONS.find((o) => o.id === enrichment.acquisitionType && o.id !== 'open')?.label;
-  const equipCount = enrichment.equipmentWishIds?.length ?? 0;
+  const dealerName = handoffView.dealerName || 'unser Verkaufsteam';
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -162,34 +150,63 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     }
   }
 
-  function patchEnrichment(patch) {
-    setEnrichment((prev) => ({ ...prev, ...patch }));
-  }
+  function selectSuggestion(suggestion) {
+    if (!suggestion) return;
+    setFlyingId(suggestion.id);
+    window.setTimeout(() => setFlyingId(null), 520);
 
-  function patchNested(key, patch) {
-    setEnrichment((prev) => ({
-      ...prev,
-      [key]: { ...(prev[key] ?? {}), ...patch },
-    }));
-  }
-
-  function toggleAcc(id) {
-    setOpenAcc((prev) => (prev === id ? null : id));
-  }
-
-  function toggleEquipment(id) {
     setEnrichment((prev) => {
-      const current = prev.equipmentWishIds ?? [];
-      const next = current.includes(id)
-        ? current.filter((x) => x !== id)
-        : [...current, id];
-      return { ...prev, equipmentWishIds: next };
+      const next = { ...prev };
+      if (suggestion.equipmentWishId) {
+        const current = prev.equipmentWishIds ?? [];
+        if (!current.includes(suggestion.equipmentWishId)) {
+          next.equipmentWishIds = [...current, suggestion.equipmentWishId];
+        }
+      } else {
+        const label = suggestion.customerNoteValue || suggestion.label;
+        const extras = prev.softExtraLabels ?? [];
+        if (label && !extras.includes(label)) {
+          next.softExtraLabels = [...extras, label];
+        }
+      }
+      return next;
     });
+
+    setDismissedSuggestionIds((prev) => (
+      prev.includes(suggestion.id) ? prev : [...prev, suggestion.id]
+    ));
+  }
+
+  function applyFreetextWish() {
+    const text = String(freetext ?? '').trim();
+    if (!text) return;
+    const recognized = mergeTextIntoNeedProfile(text, handoffView?.needProfile ?? {});
+    const newLabels = (recognized.understoodLabels ?? []).filter(
+      (label) => !(handoffView?.wishLabels ?? []).includes(label),
+    );
+    setEnrichment((prev) => {
+      const extras = [...(prev.softExtraLabels ?? [])];
+      for (const label of newLabels.length ? newLabels : [text.slice(0, 48)]) {
+        if (!extras.includes(label)) extras.push(label);
+      }
+      return { ...prev, softExtraLabels: extras };
+    });
+    setFreetext('');
+  }
+
+  function goToIdentify() {
+    setStep('identify');
+    setAuthPhase(isLoggedIn ? 'email' : 'email');
+    setAuthError('');
   }
 
   async function handleRequestLoginCode(event) {
     event.preventDefault();
     setAuthError('');
+    if (!form.privacyAccepted) {
+      setErrors({ privacyAccepted: 'Bitte bestätigen' });
+      return;
+    }
     setAuthBusy(true);
     const result = await requestCode(form.email);
     setAuthBusy(false);
@@ -199,60 +216,16 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     }
     setForm((prev) => ({ ...prev, email: result.email || prev.email }));
     setAuthPhase('code');
-  }
-
-  function handleVerifyLoginCode(event) {
-    event.preventDefault();
-    setAuthError('');
-    const result = verifyCode(loginCode);
-    if (!result.ok) {
-      setAuthError(result.error || 'Code falsch');
-      return;
-    }
-    setAuthPhase('ready');
-  }
-
-  async function handleResendLoginCode() {
-    setAuthError('');
-    setAuthBusy(true);
-    await resendCode();
-    setAuthBusy(false);
-  }
-
-  function handleAuthBack() {
-    setAuthPhase('email');
-    setLoginCode('');
-    setAuthError('');
-    cancelLogin();
-  }
-
-  function handleGoToEnrich(event) {
-    event.preventDefault();
-    if (!isLoggedIn) {
-      setAuthError('Zuerst anmelden');
-      return;
-    }
-    const payload = buildSubmitPayload(form, authEmail, enrichment);
-    const result = validateHandoffForm(payload);
-    if (!result.valid) {
-      setErrors(result.errors);
-      return;
-    }
-    setErrors({});
-    setStep('enrich');
+    codeAutoSubmitRef.current = false;
   }
 
   function finalizeSubmit(nextEnrichment) {
-    if (!isLoggedIn) {
-      setAuthError('Zuerst anmelden');
-      setStep('auth');
-      return;
-    }
-    const payload = buildSubmitPayload(form, authEmail, nextEnrichment);
+    const payload = buildSubmitPayload(form, authEmail || form.email, nextEnrichment);
     const result = validateHandoffForm(payload);
     if (!result.valid) {
       setErrors(result.errors);
-      setStep('auth');
+      setStep('identify');
+      setAuthPhase('email');
       return;
     }
     saveProfile?.({
@@ -263,53 +236,140 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     onSubmit?.(payload);
   }
 
-  function handleSubmitEnrichment() {
+  function handleVerifyLoginCode(event) {
+    event?.preventDefault?.();
+    setAuthError('');
+    const result = verifyCode(loginCode);
+    if (!result.ok) {
+      setAuthError(result.error || 'Code falsch');
+      return;
+    }
     finalizeSubmit(enrichment);
   }
 
-  function handleSkipEnrichment() {
-    const empty = emptyWishHandoffEnrichment();
-    setEnrichment(empty);
-    finalizeSubmit(empty);
+  useEffect(() => {
+    if (authPhase !== 'code') return undefined;
+    if (loginCode.length < 6) return undefined;
+    if (codeAutoSubmitRef.current) return undefined;
+    codeAutoSubmitRef.current = true;
+    const timer = window.setTimeout(() => {
+      handleVerifyLoginCode();
+    }, 80);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginCode, authPhase]);
+
+  async function handleResendLoginCode() {
+    setAuthError('');
+    setAuthBusy(true);
+    await resendCode();
+    setAuthBusy(false);
+    codeAutoSubmitRef.current = false;
   }
 
-  const showPurchaseSpecial = enrichment.acquisitionType === 'purchase';
-  const showLeasing = enrichment.acquisitionType === 'leasing';
-  const showFinance = enrichment.acquisitionType === 'finance';
-  const platformReady = isLoggedIn && authPhase === 'ready';
+  function handleAuthBack() {
+    setAuthPhase('email');
+    setLoginCode('');
+    setAuthError('');
+    codeAutoSubmitRef.current = false;
+    cancelLogin();
+  }
 
   return (
-    <section className="cc-offer-handoff cc-turn-enter" aria-labelledby="cc-offer-handoff-title">
-      <p className="cc-offer-handoff__ready" aria-hidden>✓</p>
-      <h2 id="cc-offer-handoff-title" className="cc-offer-handoff__title">
-        {title}
-      </h2>
+    <section className="cc-offer-handoff cc-soft-handoff cc-turn-enter" aria-labelledby="cc-offer-handoff-title">
+      {step === 'soft' && (
+        <div className="cc-soft-wish" aria-label="Wünsche ergänzen">
+          <h2 id="cc-offer-handoff-title" className="cc-soft-wish__headline">
+            {softHeadline}
+          </h2>
+          <p className="cc-soft-wish__sub">{softSubline}</p>
 
-      {advisor && (
-        <div className="cc-offer-handoff__trust" aria-label="Ihr Verkäufer">
-          <div className="cc-offer-handoff__trust-avatar" aria-hidden>
-            {advisor.initials || 'V'}
+          {suggestions.length > 0 && (
+            <div className="cc-soft-wish__chips" role="group" aria-label="Vorschläge">
+              {suggestions.map((suggestion) => (
+                <SoftWishChip
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  flying={flyingId === suggestion.id}
+                  onSelect={selectSuggestion}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="cc-soft-wish__freetext">
+            <p className="cc-soft-wish__freetext-label">Etwas anderes?</p>
+            <div className="cc-soft-wish__freetext-row">
+              <input
+                type="text"
+                className="cc-offer-handoff__input"
+                placeholder="z. B. kein schwarzes Auto, unbedingt AHK …"
+                aria-label="Weiteren Wunsch ergänzen"
+                value={freetext}
+                onChange={(e) => setFreetext(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyFreetextWish();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="cc-soft-wish__add"
+                onClick={applyFreetextWish}
+                disabled={!freetext.trim()}
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div className="cc-offer-handoff__trust-copy">
-            <p className="cc-offer-handoff__trust-line">
-              {handoffView.trustLine || advisor.name}
-            </p>
-            {handoffView.trustSla && (
-              <p className="cc-offer-handoff__trust-sla">{handoffView.trustSla}</p>
-            )}
-          </div>
+
+          <button type="button" className="cc-offer-handoff__cta" onClick={goToIdentify}>
+            Weiter
+          </button>
+          <button type="button" className="cc-offer-handoff__skip" onClick={goToIdentify}>
+            So passt es
+          </button>
         </div>
       )}
 
-      {step === 'auth' && (
-        <div className="cc-offer-handoff__form">
-          {!platformReady && authPhase === 'email' && (
+      {step === 'identify' && (
+        <div className="cc-soft-identify">
+          <h2 id="cc-offer-handoff-title" className="cc-offer-handoff__title">
+            {title}
+          </h2>
+          <p className="cc-soft-identify__intro">{identifyIntro}</p>
+          <p className="cc-soft-identify__trust">{trustNote}</p>
+
+          {advisor ? (
+            <div className="cc-offer-handoff__trust cc-offer-handoff__trust--soft" aria-label="Ihr Verkäufer">
+              <div className="cc-offer-handoff__trust-avatar" aria-hidden>
+                {advisor.initials || 'V'}
+              </div>
+              <div className="cc-offer-handoff__trust-copy">
+                <p className="cc-offer-handoff__trust-line">
+                  {handoffView.trustLine || advisor.name}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="cc-soft-identify__team">
+              Ihre Wünsche gehen an {dealerName}.
+            </p>
+          )}
+
+          {authPhase === 'email' && (
             <form className="cc-offer-handoff__auth" onSubmit={handleRequestLoginCode} noValidate>
+              <label className="cc-soft-identify__field-label" htmlFor="cc-wish-email">
+                E-Mail-Adresse
+              </label>
               <input
+                id="cc-wish-email"
                 type="email"
                 className="cc-offer-handoff__input"
                 autoComplete="email"
-                placeholder="E-Mail"
+                placeholder="name@email.de"
                 aria-label="E-Mail"
                 value={form.email}
                 onChange={(e) => updateField('email', e.target.value)}
@@ -320,104 +380,6 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                   {errors.email || authError}
                 </p>
               )}
-              <button type="submit" className="cc-offer-handoff__cta" disabled={authBusy}>
-                {authBusy ? '…' : 'Code senden'}
-              </button>
-            </form>
-          )}
-
-          {!platformReady && authPhase === 'code' && (
-            <form className="cc-offer-handoff__auth" onSubmit={handleVerifyLoginCode} noValidate>
-              <button type="button" className="cc-offer-handoff__back" onClick={handleAuthBack}>
-                ← {pendingEmail || form.email}
-              </button>
-              {demoCode && (
-                <p className="cc-offer-handoff__auth-demo" role="status">
-                  <strong>{demoCode}</strong>
-                </p>
-              )}
-              <input
-                type="text"
-                className="cc-offer-handoff__input"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="Code"
-                aria-label="Code"
-                value={loginCode}
-                onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                maxLength={6}
-              />
-              {authError && (
-                <p className="cc-offer-handoff__field-hint cc-offer-handoff__field-hint--warn" role="alert">
-                  {authError}
-                </p>
-              )}
-              <button
-                type="submit"
-                className="cc-offer-handoff__cta"
-                disabled={loginCode.length < 6}
-              >
-                Weiter
-              </button>
-              <button
-                type="button"
-                className="cc-offer-handoff__skip"
-                onClick={handleResendLoginCode}
-                disabled={authBusy}
-              >
-                Neu senden
-              </button>
-            </form>
-          )}
-
-          {platformReady && (
-            <form onSubmit={handleGoToEnrich} noValidate>
-              <p className="cc-offer-handoff__auth-ready" role="status">
-                {authEmail || form.email}
-              </p>
-
-              <div className="cc-offer-handoff__contact-block">
-                <div className="cc-offer-handoff__contact-fields">
-                  <div className="cc-offer-handoff__name-group">
-                    {nameHint && (
-                      <p className="cc-offer-handoff__field-hint cc-offer-handoff__field-hint--warn" role="alert">
-                        {nameHint}
-                      </p>
-                    )}
-                    <input
-                      type="text"
-                      className="cc-offer-handoff__input"
-                      autoComplete="given-name"
-                      placeholder="Vorname"
-                      aria-label="Vorname"
-                      value={form.firstName}
-                      onChange={(e) => updateField('firstName', e.target.value)}
-                      aria-invalid={Boolean(errors.firstName)}
-                    />
-                    <input
-                      type="text"
-                      className="cc-offer-handoff__input"
-                      autoComplete="family-name"
-                      placeholder="Nachname"
-                      aria-label="Nachname"
-                      value={form.lastName}
-                      onChange={(e) => updateField('lastName', e.target.value)}
-                      aria-invalid={Boolean(errors.lastName)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="cc-offer-handoff__note-block">
-                <textarea
-                  className="cc-offer-handoff__note"
-                  rows={2}
-                  placeholder={notePlaceholder}
-                  aria-label="Notiz"
-                  value={form.advisorNote}
-                  onChange={(e) => updateField('advisorNote', e.target.value)}
-                />
-              </div>
 
               <div className="cc-offer-handoff__privacy">
                 <label className="cc-offer-handoff__privacy-label">
@@ -448,202 +410,64 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                 )}
               </div>
 
+              <button type="submit" className="cc-offer-handoff__cta" disabled={authBusy}>
+                {authBusy ? '…' : 'Code senden'}
+              </button>
+              <button type="button" className="cc-offer-handoff__skip" onClick={() => setStep('soft')}>
+                Zurück
+              </button>
+            </form>
+          )}
+
+          {authPhase === 'code' && (
+            <form className="cc-offer-handoff__auth" onSubmit={handleVerifyLoginCode} noValidate>
+              <button type="button" className="cc-offer-handoff__back" onClick={handleAuthBack}>
+                ← {pendingEmail || form.email}
+              </button>
+              <p className="cc-soft-identify__code-copy">
+                Wir haben Ihnen gerade einen Bestätigungscode geschickt.
+              </p>
+              {demoCode && (
+                <p className="cc-offer-handoff__auth-demo" role="status">
+                  <strong>{demoCode}</strong>
+                </p>
+              )}
+              <input
+                type="text"
+                className="cc-offer-handoff__input cc-soft-identify__code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="Code"
+                aria-label="Bestätigungscode"
+                value={loginCode}
+                onChange={(e) => {
+                  codeAutoSubmitRef.current = false;
+                  setLoginCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                }}
+                maxLength={6}
+              />
               {authError && (
                 <p className="cc-offer-handoff__field-hint cc-offer-handoff__field-hint--warn" role="alert">
                   {authError}
                 </p>
               )}
-
-              <button type="submit" className="cc-offer-handoff__cta">
+              <button
+                type="submit"
+                className="cc-offer-handoff__cta"
+                disabled={loginCode.length < 6}
+              >
                 Weiter
+              </button>
+              <button
+                type="button"
+                className="cc-offer-handoff__skip"
+                onClick={handleResendLoginCode}
+                disabled={authBusy}
+              >
+                Neu senden
               </button>
             </form>
           )}
-        </div>
-      )}
-
-      {step === 'enrich' && (
-        <div className="cc-offer-handoff__enrich" aria-label="Angaben ergänzen">
-          <button
-            type="button"
-            className="cc-offer-handoff__back"
-            onClick={() => setStep('auth')}
-          >
-            ← {authEmail || form.email}
-          </button>
-
-          <Accordion
-            id="availability"
-            title="Verfügbarkeit"
-            icon="📅"
-            open={openAcc === 'availability'}
-            onToggle={toggleAcc}
-            summary={timingSummary || null}
-          >
-            <ChipGroup
-              options={VEHICLE_NEED_TIMING_OPTIONS}
-              value={enrichment.vehicleNeedTiming}
-              onChange={(id) => patchEnrichment({ vehicleNeedTiming: id })}
-            />
-          </Accordion>
-
-          <Accordion
-            id="payment"
-            title="Bezahlung"
-            icon="💶"
-            open={openAcc === 'payment'}
-            onToggle={toggleAcc}
-            summary={paySummary || null}
-          >
-            <ChipGroup
-              options={ACQUISITION_OPTIONS}
-              value={enrichment.acquisitionType}
-              onChange={(id) => patchEnrichment({
-                acquisitionType: id,
-                specialConditionId: id === 'purchase' ? enrichment.specialConditionId : null,
-              })}
-            />
-
-            {showPurchaseSpecial && (
-              <ChipGroup
-                label="Kundengruppe"
-                options={PURCHASE_SPECIAL_OPTIONS}
-                value={enrichment.specialConditionId}
-                onChange={(id) => patchEnrichment({ specialConditionId: id })}
-              />
-            )}
-
-            {showLeasing && (
-              <div className="cc-offer-handoff__branch">
-                <ChipGroup
-                  label="Laufzeit"
-                  options={LEASING_TERM_OPTIONS}
-                  value={enrichment.leasing?.termId}
-                  onChange={(id) => patchNested('leasing', { termId: id })}
-                />
-                <ChipGroup
-                  label="km / Jahr"
-                  options={LEASING_MILEAGE_OPTIONS}
-                  value={enrichment.leasing?.mileageId}
-                  onChange={(id) => patchNested('leasing', { mileageId: id })}
-                />
-                <ChipGroup
-                  label="Anzahlung"
-                  options={DOWN_PAYMENT_OPTIONS}
-                  value={enrichment.leasing?.downPayment}
-                  onChange={(id) => patchNested('leasing', { downPayment: id })}
-                />
-              </div>
-            )}
-
-            {showFinance && (
-              <div className="cc-offer-handoff__branch">
-                <ChipGroup
-                  label="Laufzeit"
-                  options={FINANCE_TERM_OPTIONS}
-                  value={enrichment.finance?.termId}
-                  onChange={(id) => patchNested('finance', { termId: id })}
-                />
-                <ChipGroup
-                  label="Anzahlung"
-                  options={DOWN_PAYMENT_OPTIONS}
-                  value={enrichment.finance?.downPayment}
-                  onChange={(id) => patchNested('finance', { downPayment: id })}
-                />
-                <div className="cc-offer-handoff__field-line">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    className="cc-offer-handoff__input cc-offer-handoff__input--optional"
-                    placeholder="Wunschrate €"
-                    aria-label="Wunschrate"
-                    value={enrichment.finance?.desiredRate ?? ''}
-                    onChange={(e) => patchNested('finance', { desiredRate: e.target.value })}
-                  />
-                </div>
-                <ChipGroup
-                  label="Schlussrate"
-                  options={FINANCE_BALLOON_OPTIONS}
-                  value={enrichment.finance?.balloon}
-                  onChange={(id) => patchNested('finance', { balloon: id })}
-                />
-              </div>
-            )}
-
-            <ChipGroup
-              label="Inzahlungnahme"
-              options={HANDOFF_TRADE_IN_OPTIONS}
-              value={enrichment.tradeIn}
-              onChange={(id) => patchEnrichment({ tradeIn: id })}
-            />
-          </Accordion>
-
-          <Accordion
-            id="equipment"
-            title="Ausstattung"
-            icon="💺"
-            open={openAcc === 'equipment'}
-            onToggle={toggleAcc}
-            summary={equipCount > 0 ? `${equipCount}` : null}
-          >
-            <div className="cc-handoff-equip">
-              {equipmentCategories.map((category) => {
-                const catOpen = openEquipCat === category.id;
-                const selectedInCat = category.chips.filter((c) => c.selected).length;
-                return (
-                  <div key={category.id} className={`cc-handoff-equip__cat${catOpen ? ' is-open' : ''}`}>
-                    <button
-                      type="button"
-                      className="cc-handoff-equip__cat-head"
-                      aria-expanded={catOpen}
-                      onClick={() => setOpenEquipCat((prev) => (prev === category.id ? null : category.id))}
-                    >
-                      <span aria-hidden>{category.icon}</span>
-                      <span>{category.label}</span>
-                      {selectedInCat > 0 && (
-                        <span className="cc-handoff-equip__cat-count">{selectedInCat}</span>
-                      )}
-                      <span aria-hidden>{catOpen ? '▾' : '▸'}</span>
-                    </button>
-                    {catOpen && (
-                      <div className="cc-handoff-equip__chips" role="group" aria-label={category.label}>
-                        {category.chips.map((chip) => (
-                          <button
-                            key={chip.id}
-                            type="button"
-                            className={`cc-option-chip cc-offer-handoff__chip${
-                              chip.selected ? ' cc-offer-handoff__chip--selected' : ''
-                            }`}
-                            aria-pressed={chip.selected}
-                            onClick={() => toggleEquipment(chip.id)}
-                          >
-                            {chip.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </Accordion>
-
-          <div className="cc-offer-handoff__enrich-actions">
-            <button
-              type="button"
-              className="cc-offer-handoff__cta"
-              onClick={handleSubmitEnrichment}
-            >
-              {submitLabel}
-            </button>
-            <button
-              type="button"
-              className="cc-offer-handoff__skip"
-              onClick={handleSkipEnrichment}
-            >
-              Überspringen
-            </button>
-          </div>
         </div>
       )}
     </section>

@@ -258,19 +258,23 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   const advisor = defaultAdvisor(dealerConditions);
   const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
   return {
-    title: 'Übergabe',
-    intro: null,
+    title: 'Meine Wünsche weitergeben',
+    softHeadline: 'Möchten Sie dem Verkäufer noch etwas mitgeben?',
+    softSubline: 'Damit er direkt weiß, worauf es Ihnen ankommt.',
+    intro: 'Damit Ihre Wünsche beim richtigen Ansprechpartner landen, bestätigen Sie bitte kurz Ihre E-Mail-Adresse.',
+    trustNote: 'Ihr Notizzettel und der bisherige Gesprächsverlauf werden gemeinsam weitergegeben.',
     wishesHeading: null,
     contactLead: null,
     timingLead: null,
     noteLabel: null,
     notePlaceholder: 'Notiz (optional)',
-    privacyText: 'Übergabe & Datenschutz',
+    privacyText: 'Datenschutz',
     privacyLinkLabel: 'Details',
     privacyLinkHref: '/legal/datenschutz',
     trustLine: `${advisor.name} · ${dealerName}`,
     trustSla: null,
-    submitLabel: 'Übergeben',
+    dealerName,
+    submitLabel: 'Code senden',
     accountLead: null,
     preparedIntro: null,
     preparedItems: buildPreparedSummaryItems(session),
@@ -350,7 +354,7 @@ export function shouldShowWishHandoffCta(session = {}) {
 export function buildWishHandoffCta(dealerName = 'Autohaus') {
   void dealerName;
   return {
-    buttonTitle: 'Meine Wünsche übergeben',
+    buttonTitle: 'Meine Wünsche weitergeben',
     subline: null,
     stickySubline: null,
     reassurance: null,
@@ -691,9 +695,13 @@ export function buildHandoffCompleteView(
   handoffForm = {},
   dealerConditions = {},
   pageContext = {},
+  session = {},
 ) {
-  void dealerConditions;
   const email = String(handoffForm.email ?? '').trim();
+  const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
+  const advisorName = dealerConditions?.contact?.name?.trim()
+    || defaultAdvisor(dealerConditions).name
+    || null;
 
   const returnUrl = pageContext?.returnUrl ? String(pageContext.returnUrl) : null;
   const modelKey = pageContext?.modelKey ? String(pageContext.modelKey) : null;
@@ -709,20 +717,30 @@ export function buildHandoffCompleteView(
   if (returnUrl && modelReturnLabel) {
     returnActions.push({ id: 'return_model', label: modelReturnLabel, href: returnUrl });
   } else if (returnUrl) {
-    returnActions.push({ id: 'return_home', label: 'Zurück', href: returnUrl });
+    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: returnUrl });
   } else {
-    returnActions.push({ id: 'return_home', label: 'Zurück', href: '/' });
+    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: '/' });
   }
-  returnActions.push({ id: 'continue_wishes', label: 'Ergänzen', href: null });
+  returnActions.push({ id: 'continue_wishes', label: 'Noch etwas ergänzen', href: null });
   if (email) {
     returnActions.push({ id: 'account', label: 'Konto', href: '/account' });
   }
 
+  const wishLabels = [
+    ...(session.notepadLabels ?? []),
+  ].filter(Boolean);
+
+  const recipient = advisorName
+    ? `${advisorName} erhält Ihren Notizzettel und den bisherigen Gesprächsverlauf.`
+    : `${dealerName} erhält Ihren Notizzettel und den bisherigen Gesprächsverlauf.`;
+
   return {
-    title: 'Fertig',
+    title: 'Ihre Wünsche sind angekommen',
     headline: null,
-    intro: null,
-    checklist: ['Wünsche', 'Gespräch', 'Konto'],
+    intro: `${recipient} Der Verkäufer kann direkt dort weitermachen, wo Sie mit Clever aufgehört haben.`,
+    checklist: null,
+    wishLabels,
+    wishesHeading: 'Ihre Wünsche',
     outro: null,
     confirmationHint: email || null,
     trustSla: null,
@@ -735,7 +753,11 @@ export function buildHandoffCompleteView(
 function formatContactName(form = {}) {
   const first = String(form.firstName ?? '').trim();
   const last = String(form.lastName ?? '').trim();
-  return [first, last].filter(Boolean).join(' ');
+  const joined = [first, last].filter(Boolean).join(' ');
+  if (joined) return joined;
+  const email = String(form.email ?? '').trim();
+  if (email.includes('@')) return email.split('@')[0];
+  return 'Kunde';
 }
 
 function buildHandoffDossierLines(session = {}, form = {}) {
@@ -932,7 +954,7 @@ export function submitPersonalHandoff(
     dealerConditions,
   });
   const journey = evaluateJourney(lead);
-  const completeView = buildHandoffCompleteView(handoffForm, dealerConditions, pageContext);
+  const completeView = buildHandoffCompleteView(handoffForm, dealerConditions, pageContext, session);
 
   return {
     session: {
@@ -961,12 +983,6 @@ export function submitPersonalHandoff(
 
 export function validateHandoffForm(form = {}) {
   const errors = {};
-  if (!String(form.firstName ?? '').trim()) {
-    errors.firstName = 'Vorname fehlt';
-  }
-  if (!String(form.lastName ?? '').trim()) {
-    errors.lastName = 'Nachname fehlt';
-  }
   if (!String(form.email ?? '').trim()) {
     errors.email = 'E-Mail fehlt';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {

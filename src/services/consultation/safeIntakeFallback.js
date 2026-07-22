@@ -265,7 +265,7 @@ function buildAckReply({
     return `Verstanden. Ich habe ${list} notiert.`;
   }
 
-  return 'Verstanden – ich habe das notiert. Sie können gerne weitererzählen oder Ihre Wünsche übergeben.';
+  return 'Verstanden – ich habe das notiert. Sie können gerne weitererzählen oder Ihre Wünsche weitergeben.';
 }
 
 function buildSafeFollowUp({

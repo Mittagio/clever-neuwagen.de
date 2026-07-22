@@ -6,6 +6,8 @@ export default function CleverHandoffComplete({
 }) {
   if (!completeView) return null;
 
+  const wishLabels = (completeView.wishLabels ?? []).slice(0, 12);
+
   return (
     <section className="cc-offer-complete cc-turn-enter" aria-labelledby="cc-offer-complete-title">
       <p className="cc-offer-complete__ready" aria-hidden>✓</p>
@@ -17,22 +19,32 @@ export default function CleverHandoffComplete({
         <p className="cc-offer-complete__headline">{completeView.headline}</p>
       )}
 
-      {(completeView.intro || (completeView.checklist?.length > 0)) && (
-        <div className="cc-offer-complete__checklist-block">
-          {completeView.intro && (
-            <p className="cc-offer-complete__intro">{completeView.intro}</p>
-          )}
-          {(completeView.checklist?.length > 0) && (
-            <ul className="cc-offer-complete__checklist">
-              {completeView.checklist.map((item) => (
-                <li key={item} className="cc-offer-complete__check-item">
-                  <span aria-hidden>✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          )}
+      {completeView.intro && (
+        <p className="cc-offer-complete__intro">{completeView.intro}</p>
+      )}
+
+      {wishLabels.length > 0 && (
+        <div className="cc-offer-complete__wishes" aria-label={completeView.wishesHeading || 'Ihre Wünsche'}>
+          <p className="cc-offer-complete__wishes-heading">
+            {completeView.wishesHeading || 'Ihre Wünsche'}
+          </p>
+          <ul className="cc-offer-complete__wish-chips">
+            {wishLabels.map((label) => (
+              <li key={label} className="cc-offer-complete__wish-chip">{label}</li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {(completeView.checklist?.length > 0) && (
+        <ul className="cc-offer-complete__checklist">
+          {completeView.checklist.map((item) => (
+            <li key={item} className="cc-offer-complete__check-item">
+              <span aria-hidden>✓</span>
+              {item}
+            </li>
+          ))}
+        </ul>
       )}
 
       {completeView.outro && (
@@ -41,16 +53,6 @@ export default function CleverHandoffComplete({
 
       {completeView.confirmationHint && (
         <p className="cc-offer-complete__confirm">{completeView.confirmationHint}</p>
-      )}
-
-      {completeView.publicReference && (
-        <p className="cc-offer-complete__ref">
-          {completeView.publicReference}
-        </p>
-      )}
-
-      {completeView.trustSla && (
-        <p className="cc-offer-complete__sla">{completeView.trustSla}</p>
       )}
 
       {(completeView.returnActions?.length > 0) && (
@@ -70,13 +72,12 @@ export default function CleverHandoffComplete({
             }
             if (action.href) {
               const isPrimary = action.id === 'return_model'
-                || action.id === 'return_home'
-                || action.id === 'account';
+                || action.id === 'return_home';
               return (
                 <a
                   key={action.id}
                   className={`cc-offer-complete__action${
-                    isPrimary && action.id !== 'continue_wishes' ? ' cc-offer-complete__action--primary' : ''
+                    isPrimary ? ' cc-offer-complete__action--primary' : ''
                   }`}
                   href={action.href}
                 >

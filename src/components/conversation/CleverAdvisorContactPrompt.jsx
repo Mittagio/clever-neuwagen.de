@@ -51,7 +51,7 @@ export default function CleverAdvisorContactPrompt({
   return (
     <aside
       className={`cc-wish-handoff${expanded ? ' cc-wish-handoff--expanded' : ''}`}
-      aria-label="Wunsch übergeben"
+      aria-label="Wünsche weitergeben"
     >
       <button
         type="button"

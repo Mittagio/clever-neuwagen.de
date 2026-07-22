@@ -5,7 +5,7 @@ export default function CleverSoftHandoffPrompt({ onHandoff, onContinue }) {
   const copy = buildSoftHandoffPromptCopy();
 
   return (
-    <aside className="cc-soft-handoff cc-turn-enter" aria-label="Wünsche übergeben">
+    <aside className="cc-soft-handoff cc-turn-enter" aria-label="Wünsche weitergeben">
       <p className="cc-soft-handoff__text">{copy.text}</p>
       <div className="cc-soft-handoff__actions">
         <button

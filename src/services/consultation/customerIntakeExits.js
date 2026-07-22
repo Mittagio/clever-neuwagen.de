@@ -70,19 +70,19 @@ export function hasSubstantialLeasingData(needProfile = {}) {
  */
 export function buildWishHandoffExitLabel(session = {}) {
   if (hasExplicitOfferIntent(session)) {
-    return 'Für Angebot übergeben';
+    return 'Für Angebot weitergeben';
   }
 
   if (hasSubstantialLeasingData(session.needProfile ?? {})) {
-    return 'Wünsche & Leasingdaten übergeben';
+    return 'Wünsche & Leasingdaten weitergeben';
   }
 
   const model = resolveConfirmedWishModelLabel(session);
   if (model) {
-    return `Meine ${model}-Wünsche übergeben`;
+    return `Meine ${model}-Wünsche weitergeben`;
   }
 
-  return 'Meine Wünsche übergeben';
+  return 'Meine Wünsche weitergeben';
 }
 
 /**
@@ -125,7 +125,7 @@ export function shouldShowSoftHandoffPrompt(session = {}) {
 export function buildSoftHandoffPromptCopy() {
   return {
     text: 'Sie haben mir schon einiges mitgegeben. Möchten Sie Ihre Wünsche so an den Verkäufer weitergeben oder noch etwas ergänzen?',
-    handoffLabel: 'Meine Wünsche übergeben',
+    handoffLabel: 'Meine Wünsche weitergeben',
     continueLabel: 'Weiter erzählen',
   };
 }
@@ -137,7 +137,7 @@ export function buildIncompleteOfferHandoffCopy() {
   return {
     title: 'Wünsche für Angebot',
     body: 'Gerne. Ihre bisherigen Wünsche habe ich bereits aufgenommen. Sie können noch ein paar Angebotsdaten ergänzen oder wir geben den aktuellen Stand direkt weiter.',
-    primaryLabel: 'Für Angebot übergeben',
+    primaryLabel: 'Für Angebot weitergeben',
     secondaryLabel: 'Leasingdaten ergänzen',
   };
 }

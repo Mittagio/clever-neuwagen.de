@@ -47,7 +47,7 @@ function hasApprox(labels, re) {
   assert.ok(hasApprox(labels, /EV3.*interessant|interessant.*EV3/i), 'A: EV3 interessant');
   assert.equal(profile.towCapacityKg == null || profile.towCapacityKg < 2000, true, 'A: keine 2t-Normierung');
   const wishCta = buildWishHandoffExitLabel({ notepadLabels: labels, needProfile: profile });
-  assert.match(wishCta, /Wünsche übergeben/i, 'A: Wunschübergabe-CTA');
+  assert.match(wishCta, /Wünsche weitergeben/i, 'A: Wunschübergabe-CTA');
   assert.ok(!/Verkäufer kontaktieren/i.test(wishCta), 'A: kein Verkäufer-kontaktieren');
   assert.equal(buildContactExitLabel({ notepadLabels: labels, needProfile: profile }), wishCta);
   console.log('✓ A Elektro+HUD+AHK → Notizzettel + Wunschübergabe');
@@ -115,14 +115,14 @@ function hasApprox(labels, re) {
     needProfile: withWish.needProfile,
   }), 'F: CTA bleibt');
   const incomplete = buildIncompleteOfferHandoffCopy();
-  assert.match(incomplete.primaryLabel, /Angebot übergeben/i);
+  assert.match(incomplete.primaryLabel, /Angebot weitergeben/i);
   console.log('✓ F Handoff ohne vollständige Leasingdaten');
 }
 
 // --- G: Sofort-Kontakt / Handoff-Policy ---
 {
   const offerLabel = buildWishHandoffExitLabel({ notepadLabels: [] });
-  assert.equal(offerLabel, 'Meine Wünsche übergeben');
+  assert.equal(offerLabel, 'Meine Wünsche weitergeben');
   assert.ok(!/Verkäufer kontaktieren/i.test(buildContactExitLabel()));
   console.log('✓ G Sofort-Kontakt / Handoff-Policy');
 }
@@ -176,17 +176,17 @@ function hasApprox(labels, re) {
 
 // --- CTA Evolution (Wunschübergabe) ---
 {
-  assert.equal(buildWishHandoffExitLabel({ notepadLabels: [] }), 'Meine Wünsche übergeben');
+  assert.equal(buildWishHandoffExitLabel({ notepadLabels: [] }), 'Meine Wünsche weitergeben');
   assert.equal(
     buildWishHandoffExitLabel({ notepadLabels: ['Elektro', 'HUD'] }),
-    'Meine Wünsche übergeben',
+    'Meine Wünsche weitergeben',
   );
   assert.equal(
     buildWishHandoffExitLabel({
       notepadLabels: ['EV9 interessant'],
       needProfile: { selectedModelKey: 'ev9' },
     }),
-    'Meine EV9-Wünsche übergeben',
+    'Meine EV9-Wünsche weitergeben',
   );
   assert.equal(
     buildWishHandoffExitLabel({
@@ -197,9 +197,9 @@ function hasApprox(labels, re) {
       },
       offerRequested: true,
     }),
-    'Für Angebot übergeben',
+    'Für Angebot weitergeben',
   );
-  assert.equal(buildOfferExitLabel({ notepadLabels: [] }), 'Meine Wünsche übergeben');
+  assert.equal(buildOfferExitLabel({ notepadLabels: [] }), 'Meine Wünsche weitergeben');
   console.log('✓ CTA-Evolution Wunschübergabe');
 }
 
@@ -275,7 +275,7 @@ function hasApprox(labels, re) {
   };
   assert.equal(
     buildWishHandoffExitLabel(session),
-    'Meine EV9-Wünsche übergeben',
+    'Meine EV9-Wünsche weitergeben',
   );
   session = submitDealerHandoff(session, {});
   assert.ok(session.turns.some((t) => t.type === 'personal_handoff' || t.handoffView), 'L: Handoff-Turn');
@@ -292,7 +292,7 @@ function hasApprox(labels, re) {
   assert.ok(
     (result.lead.sonderwuensche?.consultation?.consultationHandoff
       || result.session?.turns?.length) ,
-    'L: Gesprächskontext übergeben',
+    'L: Gesprächskontext weitergeben',
   );
   console.log('✓ L Wunschübergabe unvollständig + Chat');
 }
@@ -311,7 +311,7 @@ function hasApprox(labels, re) {
       needProfile: { rawMessages: ['Schicken Sie mir ein Angebot.'], budget: {} },
       offerRequested: true,
     }),
-    'Für Angebot übergeben',
+    'Für Angebot weitergeben',
   );
   console.log('✓ M Angebotssprache erst bei Angebotswunsch');
 }

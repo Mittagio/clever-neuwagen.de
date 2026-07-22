@@ -13,6 +13,7 @@ Clever arbeitet zunächst **ohne Händlerbestand** mit:
 - Kundenwünschen (Notizzettel)
 - Gesprächsverlauf
 - Wunschübergabe
+- Soft Wish Enrichment vor Identifikation
 - Händlerkontakt (WhatsApp / Telefon)
 - Session Resume
 - Händlerbranding
@@ -47,9 +48,11 @@ Laufzeitkontext (keine neue Kundenwahrheit):
 
 Implementierung: `src/services/consultation/cleverDealerPluginContext.js`
 
-## Wunschübergabe
+## Meine Wünsche weitergeben
 
-Primärer CTA: **Meine Wünsche übergeben** (ab erstem Kundenturn).
+Primärer CTA: **Meine Wünsche weitergeben** (ab erstem Kundenturn).
+
+Flow: Soft Wish Enrichment (optional) → E-Mail → Code → Erfolg.
 
 Kein Zwang zu vollständiger Bedarfsermittlung. Details: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](./CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
@@ -61,7 +64,7 @@ Keine zweite Soft-Prompt-Box mit demselben Button (Doppel-CTA im Embed vermeiden
 WhatsApp-/Anruf-Shortcuts sind im öffentlichen Chat-UI **nicht** aktiv
 („Lieber direkt sprechen“ würde mit der Wunschübergabe konkurrieren).
 
-Kontakt läuft über die Wunschübergabe mit **E-Mail-Anmeldung auf der Clever-Plattform**
+Kontakt läuft über Soft Wish Enrichment und **E-Mail-Anmeldung auf der Clever-Plattform**
 (Code-Login). KD und VK sprechen anschließend in Clever weiter.
 Die Escape-Helfer (`cleverDealerPluginEscape.js`) bleiben für spätere Einbindung verfügbar.
 
@@ -81,16 +84,17 @@ Händler im Vordergrund: Name, optional Logo/Accent, Ansprechpartner, Telefon/Wh
 
 Klein: „Unterstützt durch Clever“.
 
-## Complete Screen
+## Success Screen
 
-Nach Übergabe keine Sackgasse:
+Nach erfolgreicher Weitergabe keine Sackgasse:
 
+- „Ihre Wünsche sind angekommen“ + kompakte Wunschchips
 - Rückkehr über `returnUrl` / Modellkontext
-- „Wünsche ergänzen“ öffnet das Gespräch wieder
+- „Noch etwas ergänzen“ öffnet das Gespräch wieder
 
 ## Safe Intake
 
-Bei AI-Ausfall bleiben Notizzettel, Session, Wunschübergabe und Escape-Kanäle erhalten.
+Bei AI-Ausfall bleiben Notizzettel, Session, Soft Wish Enrichment (Fallback-Chips/Freitext) und Escape-Kanäle erhalten.
 
 ## Mobile Embed
 

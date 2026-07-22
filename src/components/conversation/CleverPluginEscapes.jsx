@@ -105,7 +105,7 @@ export default function CleverPluginEscapes({
       {callHint && (
         <div className="cc-plugin-escapes__sheet" role="status">
           <p className="cc-plugin-escapes__sheet-text">
-            Sie können auch erst Ihre Wünsche übergeben, damit der Verkäufer bereits weiß, worum es geht.
+            Sie können auch erst Ihre Wünsche weitergeben, damit der Verkäufer bereits weiß, worum es geht.
           </p>
           <div className="cc-plugin-escapes__sheet-actions">
             <a className="cc-plugin-escapes__btn cc-plugin-escapes__btn--primary" href={branding.phoneHref}>
