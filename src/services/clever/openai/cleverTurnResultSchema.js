@@ -51,6 +51,7 @@ export function buildCleverTurnResultJsonSchema() {
       'handoff',
       'usedFactIds',
       'evidence',
+      'nextTopics',
     ],
     properties: {
       reply: { type: 'string' },
@@ -132,6 +133,20 @@ export function buildCleverTurnResultJsonSchema() {
           },
         },
       },
+      nextTopics: {
+        type: 'array',
+        maxItems: 4,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'label', 'customerMessage'],
+          properties: {
+            id: { type: 'string' },
+            label: { type: 'string' },
+            customerMessage: { type: 'string' },
+          },
+        },
+      },
     },
   };
 }
@@ -170,6 +185,24 @@ export function validateCleverTurnResult(value) {
   if (!Array.isArray(result.usedFactIds)) errors.push('missing_usedFactIds');
   if (!Array.isArray(result.evidence)) errors.push('missing_evidence');
 
+  // nextTopics optional für Rückwärtskompatibilität in Unit-Tests; OpenAI liefert immer Array
+  if (result.nextTopics != null && !Array.isArray(result.nextTopics)) {
+    errors.push('invalid_nextTopics');
+  }
+  if (Array.isArray(result.nextTopics) && result.nextTopics.length > 4) {
+    errors.push('too_many_nextTopics');
+  }
+  for (const topic of result.nextTopics ?? []) {
+    if (!topic || typeof topic !== 'object') {
+      errors.push('invalid_nextTopic_item');
+      break;
+    }
+    if (!isNonEmptyString(topic.id) || !isNonEmptyString(topic.label) || !isNonEmptyString(topic.customerMessage)) {
+      errors.push('invalid_nextTopic_fields');
+      break;
+    }
+  }
+
   if (result.nextAction?.type !== 'none') {
     const reason = result.nextAction?.reason;
     if (reason && !NEXT_ACTION_REASONS.includes(String(reason))) {
@@ -183,5 +216,13 @@ export function validateCleverTurnResult(value) {
     }
   }
 
-  return errors.length ? { ok: false, errors } : { ok: true, result };
+  return errors.length
+    ? { ok: false, errors }
+    : {
+      ok: true,
+      result: {
+        ...result,
+        nextTopics: Array.isArray(result.nextTopics) ? result.nextTopics : [],
+      },
+    };
 }

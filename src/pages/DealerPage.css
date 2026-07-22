@@ -27,6 +27,10 @@
   min-width: 0;
 }
 
+.dealer-reception--chat .cc-experience--embedded {
+  max-height: min(88dvh, 860px);
+}
+
 .dealer-reception .cc-experience--embedded {
   border-radius: 20px;
   overflow: hidden;

@@ -16,6 +16,67 @@ import {
 } from './needProfileService.js';
 import { tryConversationKnowledgeAnswer } from './conversationKnowledgeAnswer.js';
 import { hasEquipmentWish } from './needRecognitionService.js';
+import { CLEVER_WORLD } from './consultationWorlds.js';
+import {
+  isInVehicleWorld,
+  VEHICLE_CONVERSATION_PHASE,
+} from './consultationEv3HappyPath.js';
+import { buildDeterministicNextTopics } from './conversationNextTopics.js';
+
+/**
+ * Öffentlicher Intake: Messenger bleibt offen – keine Welt-2-Fahrzeugberatung.
+ * @param {object} session
+ */
+export function keepPublicIntakeMessenger(session) {
+  if (!session) return session;
+
+  // Angebot/Handoff nicht zurückdrehen – nur Welt-2-Fahrzeugberatung beenden
+  if (
+    session.phase === CONVERSATION_PHASE.HANDOFF
+    || session.phase === 'personal_handoff'
+    || session.phase === 'handoff_complete'
+  ) {
+    if (!session.vehicleChapterTitle) return session;
+    return {
+      ...session,
+      vehicleChapterTitle: null,
+      vehicleMiniRecommendation: null,
+    };
+  }
+
+  const pending = session.pendingQuestion;
+  const pendingIsVehicle = pending?.world === CLEVER_WORLD.VEHICLE_CONSULTATION
+    || pending?.id === 'ev3Priority'
+    || pending?.id === 'ev3Equipment'
+    || String(pending?.id ?? '').startsWith('ev3');
+
+  const inVehicle = isInVehicleWorld(session)
+    || Boolean(session.vehicleChapterTitle)
+    || session.needProfile?.world === CLEVER_WORLD.VEHICLE_CONSULTATION
+    || Object.values(VEHICLE_CONVERSATION_PHASE).includes(session.phase);
+
+  if (!inVehicle && !pendingIsVehicle) {
+    return session;
+  }
+
+  const nextPhase = session.phase === CONVERSATION_PHASE.OPENING
+    && (session.turns?.length ?? 0) === 0
+    ? CONVERSATION_PHASE.OPENING
+    : CONVERSATION_PHASE.CONVERSATION;
+
+  return {
+    ...session,
+    phase: nextPhase,
+    vehicleChapterTitle: null,
+    vehicleMiniRecommendation: null,
+    dealerPrepSummary: null,
+    pendingQuestion: pendingIsVehicle ? null : pending,
+    needProfile: {
+      ...session.needProfile,
+      world: CLEVER_WORLD.NEED_CONSULTATION,
+    },
+  };
+}
 
 const FORBIDDEN_PLANNER_QUESTION_IDS = new Set([
   'primaryUsage',
@@ -85,6 +146,7 @@ function customerTurn(text) {
 function cleverReplyTurn({
   text,
   knowledge = null,
+  nextTopics = [],
 }) {
   return {
     type: TURN_TYPE.CLEVER,
@@ -96,6 +158,7 @@ function cleverReplyTurn({
     modelCards: knowledge?.modelCards ?? [],
     primaryModelKey: knowledge?.primaryModelKey ?? null,
     knowledgeOnly: Boolean(knowledge),
+    nextTopics,
     fallbackTurn: true,
   };
 }
@@ -308,13 +371,13 @@ export function submitSafeIntakeFallback(session, text = '', options = {}) {
     knowledge,
   });
 
-  next = {
-    ...next,
-    turns: [
-      ...next.turns,
-      cleverReplyTurn({ text: replyText, knowledge }),
-    ],
-  };
+  const nextTopics = buildDeterministicNextTopics({
+    needProfile,
+    notepadLabels,
+    text: trimmed,
+    knowledge,
+    answeredTopicIds: base.answeredNextTopicIds ?? [],
+  });
 
   const followUp = buildSafeFollowUp({
     needProfile,
@@ -324,10 +387,28 @@ export function submitSafeIntakeFallback(session, text = '', options = {}) {
     knowledge,
   });
 
+  next = {
+    ...next,
+    turns: [
+      ...next.turns,
+      cleverReplyTurn({
+        text: replyText,
+        knowledge,
+        nextTopics: followUp ? [] : nextTopics,
+      }),
+    ],
+  };
+
   if (followUp) {
     next = {
       ...next,
-      turns: [...next.turns, cleverQuestionTurn(followUp)],
+      turns: [
+        ...next.turns,
+        {
+          ...cleverQuestionTurn(followUp),
+          nextTopics,
+        },
+      ],
       pendingQuestion: {
         id: followUp.id,
         options: followUp.options,
@@ -336,7 +417,7 @@ export function submitSafeIntakeFallback(session, text = '', options = {}) {
     };
   }
 
-  return next;
+  return keepPublicIntakeMessenger(next);
 }
 
 /**

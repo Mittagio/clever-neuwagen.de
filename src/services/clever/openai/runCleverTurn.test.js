@@ -17,6 +17,7 @@ import { applyCleverTurnToSession } from './applyCleverTurnResult.js';
 import { buildCustomerUnderstanding } from '../../dealer/customerUnderstanding.js';
 import { mergeTextIntoNeedProfile } from '../../consultation/needProfileService.js';
 import { createHappyPathSession } from '../../consultation/consultationHappyPath.js';
+import { sanitizeCleverTurnOfferOptions } from './tools/getSupportedOfferParameters.js';
 import {
   GOLDEN_CONVERSATION_EV3_RANGE,
 } from '../../../../tests/fixtures/cleverGoldenConversations.js';
@@ -41,6 +42,7 @@ function makeValidTurn(overrides = {}) {
     },
     usedFactIds: [],
     evidence: [],
+    nextTopics: [],
     ...overrides,
   };
 }
@@ -317,5 +319,30 @@ function makeValidTurn(overrides = {}) {
 // Angebotsfeld-Whitelist
 assert.ok(OFFER_PARAMETER_FIELDS.includes('downPayment'));
 assert.ok(OFFER_PARAMETER_FIELDS.includes('neededBy'));
+
+{
+  const dirty = makeValidTurn({
+    nextAction: {
+      type: 'ask_offer_parameter',
+      targetField: 'downPayment',
+      question: 'Wie hoch darf die Anzahlung sein?',
+      options: [
+        { value: '0', label: '0 €' },
+        { value: 'other', label: 'Anders' },
+      ],
+      reason: 'offer_parameter',
+    },
+  });
+  const clean = sanitizeCleverTurnOfferOptions(dirty);
+  assert.equal(clean.nextAction.options.length, 1);
+  assert.equal(clean.nextAction.options[0].value, '0');
+  const grounded = assertGroundedCleverTurn(clean, {
+    factIds: new Set(),
+    evidenceIds: new Set(),
+    evidenceById: new Map(),
+  });
+  assert.equal(grounded.ok, true, grounded.errors?.join(','));
+  console.log('✓ ungültige Offer-Option (downPayment:other) wird entfernt, Turn bleibt gültig');
+}
 
 console.log('\nAlle Clever AI Conversation Tests bestanden.');

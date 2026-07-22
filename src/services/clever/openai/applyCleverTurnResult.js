@@ -14,6 +14,11 @@ import { getKiaModelMediaEntry } from '../../../data/kia/kiaModelImages.js';
 import { applyNeedProfilePatch, sanitizeNeedProfilePatch } from './needProfilePatch.js';
 import { formatHumanFactChip } from './conversationFactDisplay.js';
 import { getVerifiedVehicleFacts } from './tools/getVerifiedVehicleFacts.js';
+import { keepPublicIntakeMessenger } from '../../consultation/safeIntakeFallback.js';
+import {
+  buildDeterministicNextTopics,
+  sanitizeNextTopics,
+} from '../../consultation/conversationNextTopics.js';
 
 function appendLabels(existing = [], incoming = []) {
   const next = [...existing];
@@ -160,7 +165,24 @@ function buildQuestionFromNextAction(nextAction = {}) {
   };
 }
 
-function cleverAiTurn(turnResult) {
+function resolveTurnNextTopics({
+  turnResult,
+  needProfile,
+  notepadLabels,
+  customerMessage,
+  answeredTopicIds = [],
+}) {
+  const fromAi = sanitizeNextTopics(turnResult.nextTopics ?? []);
+  if (fromAi.length) return fromAi;
+  return buildDeterministicNextTopics({
+    needProfile,
+    notepadLabels,
+    text: customerMessage,
+    answeredTopicIds,
+  });
+}
+
+function cleverAiTurn(turnResult, nextTopics = []) {
   const facts = buildFactsFromUsedIds(turnResult.usedFactIds ?? [], turnResult.vehicleDirections ?? []);
   const modelCards = buildModelCards(turnResult.vehicleDirections ?? []);
   const isKnowledge = turnResult.intent === 'knowledge_question';
@@ -174,6 +196,7 @@ function cleverAiTurn(turnResult) {
     answerKind: isKnowledge || facts.length ? 'knowledge' : undefined,
     facts,
     modelCards,
+    nextTopics,
     knowledgeOnly: isKnowledge && turnResult.nextAction?.type === 'none',
     aiTurn: true,
     mode: 'ai',
@@ -228,9 +251,17 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
       : session.phase,
   };
 
+  const topics = resolveTurnNextTopics({
+    turnResult,
+    needProfile,
+    notepadLabels,
+    customerMessage: trimmed,
+    answeredTopicIds: session.answeredNextTopicIds ?? [],
+  });
+
   next = {
     ...next,
-    turns: [...next.turns, cleverAiTurn(turnResult)],
+    turns: [...next.turns, cleverAiTurn(turnResult, topics)],
   };
 
   if (turnResult.nextAction?.type && turnResult.nextAction.type !== 'none') {
@@ -239,7 +270,17 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
       const hasOptions = (question.options?.length ?? 0) > 0;
       next = {
         ...next,
-        turns: [...next.turns, cleverQuestionTurn(question)],
+        turns: [
+          ...next.turns.map((turn, index, arr) => (
+            index === arr.length - 1 && turn.type === TURN_TYPE.CLEVER
+              ? { ...turn, nextTopics: [] }
+              : turn
+          )),
+          {
+            ...cleverQuestionTurn(question),
+            nextTopics: topics,
+          },
+        ],
         pendingQuestion: hasOptions
           ? { id: question.id, options: question.options }
           : null,
@@ -257,5 +298,5 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
     };
   }
 
-  return next;
+  return keepPublicIntakeMessenger(next);
 }

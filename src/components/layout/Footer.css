@@ -72,9 +72,17 @@
   display: none;
 }
 
+body.clever-chat-active .site-footer {
+  display: none !important;
+}
+
 @media (min-width: 1024px) {
   .app-layout--dealer-app .site-footer--minimal {
     display: block;
+  }
+
+  body.clever-chat-active .site-footer {
+    display: none !important;
   }
 }
 

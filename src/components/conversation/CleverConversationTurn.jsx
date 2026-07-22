@@ -3,14 +3,20 @@ import { looksTechnicalFactLabel } from '../../services/clever/openai/conversati
 import './clever-conversation.css';
 
 function FactChips({ facts = [] }) {
-  const visible = facts
-    .map((fact) => {
-      const chip = fact.chip || [fact.icon, fact.label || fact.value].filter(Boolean).join(' ');
-      if (!chip || looksTechnicalFactLabel(chip) || looksTechnicalFactLabel(fact.label)) return null;
-      return { key: `${fact.key ?? chip}-${chip}`, chip };
-    })
-    .filter(Boolean)
-    .slice(0, 4);
+  const seen = new Set();
+  const visible = [];
+  for (const [index, fact] of (facts ?? []).entries()) {
+    const chip = fact.chip || [fact.icon, fact.label || fact.value].filter(Boolean).join(' ');
+    if (!chip || looksTechnicalFactLabel(chip) || looksTechnicalFactLabel(fact.label)) continue;
+    const dedupeKey = String(chip).trim().toLowerCase();
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    visible.push({
+      key: `${fact.key ?? 'fact'}-${index}-${dedupeKey}`,
+      chip,
+    });
+    if (visible.length >= 4) break;
+  }
 
   if (!visible.length) return null;
 
@@ -62,11 +68,49 @@ function VehicleAttachments({ cards = [], onPrimaryAction }) {
   );
 }
 
+function NextTopicChips({
+  topics = [],
+  active = true,
+  disabled = false,
+  onNextTopic,
+}) {
+  const visible = (topics ?? []).filter((topic) => topic?.id && topic?.label && topic?.customerMessage);
+  if (!visible.length) return null;
+
+  return (
+    <div
+      className={[
+        'cc-next-topics',
+        active ? 'cc-next-topics--active' : 'cc-next-topics--faded',
+      ].join(' ')}
+      aria-label="Nächste Themen"
+    >
+      <p className="cc-next-topics__prompt">Was möchten Sie noch wissen?</p>
+      <div className="cc-next-topics__chips" role="group">
+        {visible.map((topic) => (
+          <button
+            key={topic.id}
+            type="button"
+            className="cc-next-topic-chip"
+            disabled={disabled || !active}
+            onClick={() => onNextTopic?.(topic)}
+          >
+            {topic.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CleverConversationTurn({
   turn,
   onOptionSelect,
   onVehicleAction,
+  onNextTopic,
   isActiveQuestion = false,
+  nextTopicsActive = false,
+  nextTopicsDisabled = false,
 }) {
   if (!turn) return null;
 
@@ -85,6 +129,7 @@ export default function CleverConversationTurn({
     const isKnowledge = turn.answerKind === 'knowledge' || turn.knowledgeOnly;
     const facts = turn.facts ?? [];
     const modelCards = turn.modelCards ?? [];
+    const nextTopics = turn.nextTopics ?? [];
     const isFollowUp = Boolean(turn.questionId || turn.aiGenerated);
 
     return (
@@ -120,6 +165,12 @@ export default function CleverConversationTurn({
             </div>
           </div>
         )}
+        <NextTopicChips
+          topics={nextTopics}
+          active={nextTopicsActive}
+          disabled={nextTopicsDisabled}
+          onNextTopic={onNextTopic}
+        />
       </article>
     );
   }

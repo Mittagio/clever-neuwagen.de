@@ -8,8 +8,6 @@ import {
   VEHICLE_TURN_TYPE,
   OFFER_CONVERSATION_PHASE,
   OFFER_TURN_TYPE,
-  advanceFromThinking,
-  advanceFromVehicleThinking,
   createHappyPathSession,
   getOpeningCopy,
   getVehicleInputPlaceholder,
@@ -18,7 +16,6 @@ import {
   isInputEnabled,
   isAdvisorCollectMode,
   removeNeedLabel,
-  selectRecommendedModel,
   applyQuickHandoffEnrichment,
   submitDealerHandoff,
   submitPersonalHandoff,
@@ -28,9 +25,11 @@ import {
 } from '../../services/consultation/consultationHappyPath.js';
 import {
   humanizeFallbackReason,
+  keepPublicIntakeMessenger,
   submitSafeIntakeFallback,
 } from '../../services/consultation/safeIntakeFallback.js';
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
+import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { recommendVehicles } from '../../services/clever/recommendVehicles.js';
 import CleverMemoryBar from './CleverMemoryBar.jsx';
@@ -81,7 +80,7 @@ function composerPlaceholderForSession(session) {
     const name = String(model).toUpperCase().startsWith('EV')
       ? String(model).toUpperCase()
       : String(model);
-    return `Noch eine Frage zum ${name}?`;
+    return `Oder einfach weiterfragen zum ${name} …`;
   }
   return DEFAULT_COMPOSER_PLACEHOLDER;
 }
@@ -93,7 +92,7 @@ const SKIPPED_TURN_TYPES = new Set([
 ]);
 
 const LIVING_INPUT_PLACEHOLDERS = [
-  'Weiterfragen oder Wunsch ergänzen …',
+  'Oder einfach weiterfragen …',
 ];
 
 const HERO_EXAMPLE_PLACEHOLDERS = [
@@ -104,7 +103,7 @@ const HERO_EXAMPLE_PLACEHOLDERS = [
   'z. B. Auto unter 350 € / Monat',
 ];
 
-const DEFAULT_COMPOSER_PLACEHOLDER = 'Schreiben oder sprechen …';
+const DEFAULT_COMPOSER_PLACEHOLDER = 'Oder einfach weiterfragen …';
 
 const POPULAR_ENTRY_CHIPS = [
   { id: 'ev3_family', icon: '👨‍👩‍👧', label: 'EV3 Leasing für Familie', text: 'EV3 Leasing für Familie' },
@@ -149,6 +148,7 @@ export default function CleverConversationExperience({
   dealerId = import.meta.env.VITE_PILOT_DEALER_ID ?? null,
   dealerConditions = {},
   embedded = false,
+  onChatActiveChange = null,
 }) {
   const { addLead } = useLeads();
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
@@ -183,6 +183,13 @@ export default function CleverConversationExperience({
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
   const inCollectMode = isAdvisorCollectMode(session);
   const inputEnabled = isInputEnabled(session) && !inOfferWorld;
+  const chatActive = !showOpening;
+
+  useEffect(() => {
+    if (typeof onChatActiveChange !== 'function') return undefined;
+    onChatActiveChange(chatActive);
+    return undefined;
+  }, [chatActive, onChatActiveChange]);
 
   useEffect(() => {
     setSession(createHappyPathSession(dealerName));
@@ -293,18 +300,20 @@ export default function CleverConversationExperience({
 
   useEffect(() => {
     if (session.phase !== CONVERSATION_PHASE.THINKING) return undefined;
-    const timer = window.setTimeout(() => {
-      setSession((prev) => advanceFromThinking(prev));
-    }, 580);
-    return () => window.clearTimeout(timer);
+    // Öffentlicher Intake: keine Empfehlungs-Abschlussseite aus dem Happy Path
+    setSession((prev) => keepPublicIntakeMessenger({
+      ...prev,
+      phase: CONVERSATION_PHASE.CONVERSATION,
+      turns: (prev.turns ?? []).filter((t) => t.type !== TURN_TYPE.THINKING),
+    }));
+    return undefined;
   }, [session.phase]);
 
   useEffect(() => {
     if (session.phase !== VEHICLE_CONVERSATION_PHASE.VEHICLE_THINKING) return undefined;
-    const timer = window.setTimeout(() => {
-      setSession((prev) => advanceFromVehicleThinking(prev));
-    }, 580);
-    return () => window.clearTimeout(timer);
+    // Öffentlicher Intake: Welt-2-Denkpause → zurück in den Messenger
+    setSession((prev) => keepPublicIntakeMessenger(prev));
+    return undefined;
   }, [session.phase]);
 
   useEffect(() => () => {
@@ -339,7 +348,8 @@ export default function CleverConversationExperience({
 
         if (result.ok && result.session) {
           // AI ok → nur CleverTurnResult; Server-Fallback → Safe Intake (nie Legacy Planner)
-          setSession(result.session);
+          // Nie in Welt-2-Fahrzeugberatung rutschen
+          setSession(keepPublicIntakeMessenger(result.session));
           setInputValue('');
           return;
         }
@@ -702,9 +712,30 @@ export default function CleverConversationExperience({
     });
   };
 
-  const handleSelectPrimary = (modelKey) => {
-    setSession((prev) => selectRecommendedModel(prev, modelKey));
-  };
+  const handleSelectPrimary = useCallback((modelKey) => {
+    const key = String(modelKey ?? '').toLowerCase().trim();
+    if (!key || aiTurnPending) return;
+    // Öffentlicher Intake: „EV2 ansehen“ startet KEINE Welt-2-Fahrzeugberatung
+    const label = String(KIA_MODEL_ATTRIBUTES[key]?.label ?? key).replace(/^Kia\s+/i, '');
+    handleSend(`Ich möchte den ${label} genauer ansehen.`);
+  }, [aiTurnPending, handleSend]);
+
+  const handleNextTopic = useCallback((topic) => {
+    const message = String(topic?.customerMessage ?? '').trim();
+    const topicId = String(topic?.id ?? '').trim();
+    if (!message || aiTurnPending) return;
+    if (topicId) {
+      setSession((prev) => {
+        const answered = prev.answeredNextTopicIds ?? [];
+        if (answered.includes(topicId)) return prev;
+        return {
+          ...prev,
+          answeredNextTopicIds: [...answered, topicId],
+        };
+      });
+    }
+    void handleSend(message);
+  }, [aiTurnPending, handleSend]);
 
   const handleDirectionReaction = useCallback((modelKey, reactionId) => {
     setSession((prev) => submitVehicleDirectionReaction(prev, modelKey, reactionId));
@@ -736,6 +767,15 @@ export default function CleverConversationExperience({
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
   const activeQuestionId = session.pendingQuestion?.id ?? null;
+  const activeNextTopicsTurnId = (() => {
+    for (let i = visibleTurns.length - 1; i >= 0; i -= 1) {
+      const turn = visibleTurns[i];
+      if (turn?.type === TURN_TYPE.CLEVER && (turn.nextTopics?.length ?? 0) > 0) {
+        return turn.id;
+      }
+    }
+    return null;
+  })();
 
   const hasReasoningContent = visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0;
   // Intake: kein Seller-Reasoning-Panel / Ranking in der öffentlichen Kunden-UI
@@ -998,7 +1038,10 @@ export default function CleverConversationExperience({
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
                 onVehicleAction={handleSelectPrimary}
+                onNextTopic={handleNextTopic}
                 isActiveQuestion={turn.type === TURN_TYPE.CLEVER && turn.questionId === activeQuestionId}
+                nextTopicsActive={turn.id === activeNextTopicsTurnId}
+                nextTopicsDisabled={aiTurnPending || !inputEnabled}
               />
             );
           })}

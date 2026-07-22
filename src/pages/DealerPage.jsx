@@ -174,6 +174,7 @@ export default function DealerPage() {
 
   const [queryDraft, setQueryDraft] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
+  const [cleverChatActive, setCleverChatActive] = useState(false);
   const [salesStep, setSalesStep] = useState(null);
   const [selectedModelKey, setSelectedModelKey] = useState(null);
   const [wishChipIds, setWishChipIds] = useState([]);
@@ -269,6 +270,18 @@ export default function DealerPage() {
 
   const hasSearch = Boolean(submittedQuery.trim());
   const showReception = !hasSearch;
+  const showInspirationModels = showReception && !cleverChatActive;
+
+  const handleCleverChatActiveChange = useCallback((active) => {
+    const next = Boolean(active);
+    setCleverChatActive(next);
+    document.body.classList.toggle('clever-chat-active', next);
+  }, []);
+
+  useEffect(() => () => {
+    document.body.classList.remove('clever-chat-active');
+  }, []);
+
   const submittedChipIds = useMemo(() => {
     const text = submittedQuery.trim();
     if (!text) return [];
@@ -1706,16 +1719,20 @@ export default function DealerPage() {
           <DealerPortalTopbar />
 
           {showReception && (
-            <section className="dealer-reception" aria-label="Clever">
+            <section
+              className={`dealer-reception${cleverChatActive ? ' dealer-reception--chat' : ''}`}
+              aria-label="Clever"
+            >
               <CleverConversationExperience
                 embedded
                 dealerName={conditions.dealerName}
                 dealerConditions={conditions}
+                onChatActiveChange={handleCleverChatActiveChange}
               />
             </section>
           )}
 
-          {showReception && (
+          {showInspirationModels && (
             <DealerModelWorld
               city={city}
               dealerSlug={dealerId}
