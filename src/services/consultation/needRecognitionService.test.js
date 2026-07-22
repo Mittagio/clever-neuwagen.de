@@ -16,10 +16,18 @@ import { beginEv3VehicleConsultation, submitVehicleQuestionAnswer } from './cons
 import { createHappyPathSession, submitOpeningMessage } from './consultationHappyPath.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 
+function labelMatches(labels = [], expected = '') {
+  return (labels ?? []).some((entry) => (
+    entry === expected
+    || String(entry).startsWith(`${expected} `)
+    || String(entry).includes(expected)
+  ));
+}
+
 function assertLabelsInclude(profile, expected = []) {
   for (const label of expected) {
     assert.ok(
-      profile.understoodLabels.includes(label),
+      labelMatches(profile.understoodLabels, label),
       `Label „${label}“ fehlt in: ${profile.understoodLabels.join(', ')}`,
     );
   }
@@ -28,10 +36,14 @@ function assertLabelsInclude(profile, expected = []) {
 function assertLabelsStartWith(profile, orderedPrefix = []) {
   const labels = profile.understoodLabels;
   for (let i = 0; i < orderedPrefix.length; i += 1) {
-    assert.equal(
-      labels[i],
-      orderedPrefix[i],
-      `Position ${i}: erwartet „${orderedPrefix[i]}“, ist „${labels[i] ?? '—'}“ — alle: ${labels.join(', ')}`,
+    const expected = orderedPrefix[i];
+    const actual = labels[i];
+    const ok = actual === expected
+      || String(actual ?? '').startsWith(`${expected} `)
+      || String(actual ?? '').includes(expected);
+    assert.ok(
+      ok,
+      `Position ${i}: erwartet „${expected}“, ist „${actual ?? '—'}“ — alle: ${labels.join(', ')}`,
     );
   }
 }
@@ -104,7 +116,7 @@ function testFirstMessageChipsViaOpeningMessage() {
   assert.ok(session.notepadLabels.length >= 5, `Chips fehlen: ${session.notepadLabels.join(', ')}`);
   for (const label of ['Sportage', 'Diesel', 'Allrad', 'Automatik', 'Budget bis 45.000 €']) {
     assert.ok(
-      session.notepadLabels.includes(label),
+      labelMatches(session.notepadLabels, label),
       `Chip „${label}“ fehlt nach erstem Satz: ${session.notepadLabels.join(', ')}`,
     );
   }

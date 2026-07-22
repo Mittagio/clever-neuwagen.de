@@ -12,6 +12,7 @@ import {
   buildRecognitionLabels,
   detectMonthlyBudgetStyle,
   detectTowCapacityRange,
+  isLikelyFactQuestionNotWish,
 } from './needRecognitionService.js';
 import { createEmptyNeedProfile } from './needProfileTypes.js';
 
@@ -75,6 +76,10 @@ function applyModelDetection(profile, text = '') {
  */
 function applyFeatureHints(profile, text = '') {
   let next = { ...profile };
+
+  if (isLikelyFactQuestionNotWish(text)) {
+    return next;
+  }
 
   if (TOWING_TEXT.test(text) && !next.towing) {
     next.towing = 'braked';

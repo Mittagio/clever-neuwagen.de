@@ -37,7 +37,7 @@ export default function CleverVehicleMiniRecommendation({
         className="cc-vehicle-mini__cta"
         onClick={onHandoffToDealer}
       >
-        Wunsch an Berater übergeben
+        Wunschübergabe
       </button>
 
       <button

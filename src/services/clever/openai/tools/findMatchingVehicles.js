@@ -4,6 +4,7 @@
 import { KIA_MODEL_ATTRIBUTES } from '../../../../data/kia/kiaModelAttributes.js';
 import { getCleverRecordForModelKey } from '../../../admin/vehicleStammdatenOverrideService.js';
 import { resolveElectricSpecs } from '../../../../data/kia/pricelistBatteryLookup.js';
+import { resolveVerifiedTowingCapacity } from './resolveVerifiedTowingCapacity.js';
 
 const PRIMARY_MODEL_KEYS = Object.keys(KIA_MODEL_ATTRIBUTES).filter(
   (key) => !key.endsWith('-gt') && !key.includes('-hybrid') && !key.includes('-phev'),
@@ -52,10 +53,12 @@ function buildFactId(modelKey, variantKey, factKey) {
   return `fact:${modelKey}:${variantKey || 'default'}:${factKey}`;
 }
 
-function readTowingKg(attrs, record) {
-  return record?.towing?.brakedKg
-    ?? attrs.towCapacityKg
-    ?? null;
+function readTowingKg(attrs, record, modelKey) {
+  const resolved = resolveVerifiedTowingCapacity(modelKey, record, attrs);
+  if (!resolved) return null;
+  if (typeof resolved.value === 'number') return resolved.value;
+  if (resolved.maxKg != null) return resolved.maxKg;
+  return null;
 }
 
 function readSeats(attrs, record) {
@@ -104,7 +107,7 @@ export function findMatchingVehicles(criteria = {}) {
     const record = getCleverRecordForModelKey(modelKey);
     const variantKey = record?.trimId ?? null;
     const seats = readSeats(attrs, record);
-    const towingKg = readTowingKg(attrs, record);
+    const towingKg = readTowingKg(attrs, record, modelKey);
     const wltpRange = readWltpRange(record);
     const listPrice = readListPrice(record);
 

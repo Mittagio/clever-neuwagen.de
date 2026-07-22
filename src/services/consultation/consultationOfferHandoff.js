@@ -235,12 +235,20 @@ export function buildPreparedSummaryItems(session = {}) {
  * Screen 5 – Ansichtsdaten für persönliche Übergabe.
  */
 export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
+  const wishLabels = session.notepadLabels ?? [];
   return {
-    title: 'Ihr Wunsch ist vorbereitet.',
-    preparedIntro: 'Das habe ich für Ihren Berater vorbereitet.',
+    title: 'Wünsche bereit zur Übergabe',
+    intro:
+      'Alles klar. Ich gebe Ihre bisherigen Wünsche und unser Gespräch an den Verkäufer weiter. '
+      + 'Sie müssen dort nicht noch einmal von vorne anfangen.',
+    wishesHeading: 'Ihre bisherigen Wünsche',
+    contactLead: 'Wie dürfen wir uns bei Ihnen melden?',
+    timingLead: 'Wann passt es ungefähr?',
+    submitLabel: 'Wünsche übergeben',
+    preparedIntro: null,
     preparedItems: buildPreparedSummaryItems(session),
-    wishProfile: buildWishProfilePresentation(session.needProfile ?? {}, session.notepadLabels ?? []),
-    wishLabels: session.notepadLabels ?? [],
+    wishProfile: buildWishProfilePresentation(session.needProfile ?? {}, wishLabels),
+    wishLabels,
     vehicleLabels: session.vehicleNotepadLabels ?? [],
     directionLine: session.vehicleMiniRecommendation?.batteryLine ?? null,
     trimLine: session.vehicleMiniRecommendation?.trimLine ?? null,
@@ -308,17 +316,17 @@ export function shouldShowWishHandoffCta(session = {}) {
 }
 
 /**
- * Copy für „Wunsch an Autohaus senden“.
+ * Copy für Wunschübergabe-CTA (Legacy-Overlay / sticky).
  * @param {string} [dealerName]
  */
 export function buildWishHandoffCta(dealerName = 'Autohaus') {
-  const name = String(dealerName || 'Autohaus').trim();
+  void dealerName;
   return {
-    buttonTitle: `Wunsch an ${name} senden`,
-    subline: 'Ihr persönlicher Ansprechpartner meldet sich mit einer passenden Lösung.',
-    stickySubline: 'Ihr Ansprechpartner kann bereits übernehmen.',
-    reassurance: 'Ohne Verpflichtung. Sie entscheiden selbst, wie es weitergeht.',
-    compactReassurance: 'Ohne Verpflichtung. Kein Rückrufzwang.',
+    buttonTitle: 'Meine Wünsche übergeben',
+    subline: 'Der Verkäufer macht dort weiter, wo Sie aufgehört haben.',
+    stickySubline: 'Wünsche und Gespräch an den Verkäufer übergeben.',
+    reassurance: 'Keine Kaufentscheidung. Kein sofortiger Anruf.',
+    compactReassurance: 'Ohne Verpflichtung. Kein Callcenter-Kontakt.',
   };
 }
 
@@ -654,18 +662,17 @@ export function countSessionUnderstandingLabels(session = {}) {
 export function buildHandoffCompleteView() {
   return {
     title: 'Vielen Dank.',
-    headline: 'Ihr Wunsch wurde vorbereitet.',
-    intro: 'Ihr Berater prüft jetzt:',
+    headline: 'Ihre Wünsche sind übergeben.',
+    intro: 'Der Verkäufer erhält Ihre Wünsche und kann direkt dort einsteigen, wo wir aufgehört haben.',
     checklist: [
-      'Fahrzeug',
-      'Ausstattung',
-      'Verfügbarkeit',
-      'passende Konditionen',
+      'Ihre bisherigen Wünsche',
+      'unser Gespräch',
+      'offene Punkte',
     ],
-    outro: 'Anschließend meldet er sich persönlich bei Ihnen.',
+    outro: 'Er meldet sich auf dem von Ihnen gewählten Weg.',
     reassurance:
-      'Ihre bisherigen Angaben bleiben gespeichert. '
-      + 'Sie müssen Ihrem Berater nichts noch einmal erklären.',
+      'Keine Sorge: Sie müssen nichts noch einmal erklären. '
+      + 'Wir rufen Sie nicht ungefragt sofort an.',
   };
 }
 
@@ -750,7 +757,7 @@ export function createLeadFromConsultationHappyPath({
     `Kunde: ${contactName}`,
     `Fahrzeug-Richtung: ${vehicleTitle}`,
     ...buildHandoffDossierLines(session, handoffForm),
-    'Status: Persönliche Beratung angefordert',
+    'Status: Wunschübergabe',
   ];
 
   let lead = {
@@ -759,7 +766,7 @@ export function createLeadFromConsultationHappyPath({
     updatedAt: new Date().toISOString(),
     status: 'neu',
     source: 'dealerJourney',
-    advisorStatus: 'Persönliche Beratung angefordert',
+    advisorStatus: 'Wunschübergabe',
     dealerId: dealerConditions?.dealerId ?? dealerConditions?.slug ?? 'autohaus-trinkle',
     ownerId: defaultAdvisor(dealerConditions).userId,
     ownerName: defaultAdvisor(dealerConditions).name,

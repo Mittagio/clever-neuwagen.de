@@ -12,9 +12,11 @@ const EMPTY_FORM = {
   lastName: '',
   email: '',
   phone: '',
-  contactPreference: 'phone',
+  contactPreference: 'whatsapp',
   contactTiming: 'this_week',
 };
+
+const CHANNEL_ORDER = ['whatsapp', 'email', 'phone'];
 
 export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -22,8 +24,17 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
 
   if (!handoffView) return null;
 
-  const { advisor } = handoffView;
+  const contactPrefs = [...CONTACT_PREFERENCES].sort((a, b) => (
+    CHANNEL_ORDER.indexOf(a.id) - CHANNEL_ORDER.indexOf(b.id)
+  ));
+
   const nameHint = errors.firstName || errors.lastName;
+  const title = handoffView.title || 'Wünsche bereit zur Übergabe';
+  const intro = handoffView.intro
+    || 'Alles klar. Ich gebe Ihre bisherigen Wünsche und unser Gespräch an den Verkäufer weiter.';
+  const contactLead = handoffView.contactLead || 'Wie dürfen wir uns bei Ihnen melden?';
+  const timingLead = handoffView.timingLead || 'Wann passt es ungefähr?';
+  const submitLabel = handoffView.submitLabel || 'Wünsche übergeben';
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -48,33 +59,49 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
 
   return (
     <section className="cc-offer-handoff cc-turn-enter" aria-labelledby="cc-offer-handoff-title">
+      <p className="cc-offer-handoff__ready" aria-hidden>✓ Wünsche bereit zur Übergabe</p>
       <h2 id="cc-offer-handoff-title" className="cc-offer-handoff__title">
-        {handoffView.title}
+        {title}
       </h2>
+      <p className="cc-offer-handoff__intro">{intro}</p>
 
       <div className="cc-offer-handoff__prepared">
+        <p className="cc-offer-handoff__section-label">
+          {handoffView.wishesHeading || 'Ihre bisherigen Wünsche'}
+        </p>
         {handoffView.wishProfile && (
           <CleverWishProfile profile={handoffView.wishProfile} />
         )}
+        {!handoffView.wishProfile && (handoffView.wishLabels?.length > 0) && (
+          <ul className="cc-offer-handoff__wish-chips" aria-label="Bisherige Wünsche">
+            {handoffView.wishLabels.map((label) => (
+              <li key={label} className="cc-offer-handoff__wish-chip">{label}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <article className="cc-offer-handoff__advisor">
-        <p className="cc-offer-handoff__section-label">Ihr Ansprechpartner</p>
-        <div className="cc-offer-handoff__advisor-card">
-          <div className="cc-offer-handoff__avatar" aria-hidden>👤</div>
-          <div className="cc-offer-handoff__advisor-body">
-            <p className="cc-offer-handoff__advisor-name">{advisor.name}</p>
-            <p className="cc-offer-handoff__advisor-role">{advisor.role}</p>
-            <p className="cc-offer-handoff__advisor-tagline">{advisor.tagline || advisor.experience}</p>
-            <p className="cc-offer-handoff__advisor-message">{advisor.message}</p>
+      <form className="cc-offer-handoff__form" onSubmit={handleSubmit} noValidate>
+        <div className="cc-offer-handoff__pick-group">
+          <p className="cc-offer-handoff__pick-label">{contactLead}</p>
+          <div className="cc-offer-handoff__chips" role="group" aria-label="Kontaktweg">
+            {contactPrefs.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`cc-option-chip cc-offer-handoff__chip${
+                  form.contactPreference === option.id ? ' cc-offer-handoff__chip--selected' : ''
+                }`}
+                aria-pressed={form.contactPreference === option.id}
+                onClick={() => updateField('contactPreference', option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
-      </article>
 
-      <form className="cc-offer-handoff__form" onSubmit={handleSubmit} noValidate>
         <div className="cc-offer-handoff__contact-block">
-          <p className="cc-offer-handoff__contact-lead">Damit Ihr Berater Sie erreichen kann</p>
-
           <div className="cc-offer-handoff__contact-fields">
             <div className="cc-offer-handoff__name-group">
               {nameHint && (
@@ -135,27 +162,8 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
         </div>
 
         <div className="cc-offer-handoff__pick-group">
-          <p className="cc-offer-handoff__pick-label">Bevorzugte Kontaktart</p>
-          <div className="cc-offer-handoff__chips" role="group" aria-label="Bevorzugte Kontaktart">
-            {CONTACT_PREFERENCES.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`cc-option-chip cc-offer-handoff__chip${
-                  form.contactPreference === option.id ? ' cc-offer-handoff__chip--selected' : ''
-                }`}
-                aria-pressed={form.contactPreference === option.id}
-                onClick={() => updateField('contactPreference', option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="cc-offer-handoff__pick-group">
-          <p className="cc-offer-handoff__pick-label">Wann dürfen wir uns bei Ihnen melden?</p>
-          <div className="cc-offer-handoff__chips" role="group" aria-label="Wann dürfen wir uns melden">
+          <p className="cc-offer-handoff__pick-label">{timingLead}</p>
+          <div className="cc-offer-handoff__chips" role="group" aria-label="Wann passt es">
             {CONTACT_TIMING_OPTIONS.map((option) => (
               <button
                 key={option.id}
@@ -173,7 +181,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit }) {
         </div>
 
         <button type="submit" className="cc-offer-handoff__cta">
-          Persönliche Beratung anfordern
+          {submitLabel}
         </button>
       </form>
     </section>

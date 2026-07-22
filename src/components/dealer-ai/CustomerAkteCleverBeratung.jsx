@@ -117,29 +117,30 @@ function VerstaendnisSection({ verstaendnis }) {
   return (
     <div className="cust-clever-beratung__block cust-clever-beratung__block--compact">
       <p className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle">
-        Verständnis
+        Wunschübergabe von Clever
       </p>
       <LabelChips labels={labels} compact />
-      {concerns.length > 0 && (
-        <LabelChips labels={concerns} variant="concern" compact />
-      )}
+      <LabelChips labels={concerns} variant="concern" compact />
       {vehicles.length > 0 && (
-        <LabelChips labels={vehicles} compact />
+        <ul className="cust-clever-beratung__chips cust-clever-beratung__chips--compact">
+          {vehicles.map((vehicle) => (
+            <li key={vehicle}>
+              <span className="cust-clever-beratung__chip cust-clever-beratung__chip--compact">
+                🚙 {vehicle}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
       {openPoints.length > 0 && (
-        <ul className="cust-clever-beratung__open cust-clever-beratung__open--inline">
-          {openPoints.slice(0, 3).map((point) => (
-            <li key={point}>{point}</li>
-          ))}
-          {openPoints.length > 3 && (
-            <li className="cust-clever-beratung__open-more">
-              +
-              {openPoints.length - 3}
-              {' '}
-              weitere offene Punkte
-            </li>
-          )}
-        </ul>
+        <div className="cust-clever-beratung__open">
+          <p className="cust-clever-beratung__open-label">Offen</p>
+          <ul className="cust-clever-beratung__open-list">
+            {openPoints.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -224,10 +225,10 @@ function OriginaltonSection({ originalton, defaultCollapsed = true }) {
         aria-expanded={expanded}
       >
         <span className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle cust-clever-beratung__section-title--inline">
-          💬 Originale Aussage des Kunden
+          Gespräch ansehen
         </span>
         <span className="cust-clever-beratung__originalton-hint">
-          {expanded ? 'Einklappen' : 'Anzeigen'}
+          {expanded ? 'Einklappen' : `${messages.length} Nachrichten`}
         </span>
       </button>
       {expanded && (

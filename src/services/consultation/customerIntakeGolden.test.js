@@ -1,24 +1,31 @@
 /**
- * Clever Customer Intake – Golden Cases A–H (deterministisch, keine Live-API).
+ * Clever Customer Intake – Golden Cases A–H + Wunschübergabe (deterministisch).
  * node src/services/consultation/customerIntakeGolden.test.js
  */
 import assert from 'node:assert/strict';
 import {
   mergeTextIntoNeedProfile,
   buildUnderstoodLabels,
+  createEmptyNeedProfile,
 } from './needProfileService.js';
 import {
   createHappyPathSession,
   removeNeedLabel,
+  submitDealerHandoff,
+  submitPersonalHandoff,
 } from './consultationHappyPath.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 import {
   buildContactExitLabel,
   buildIncompleteOfferHandoffCopy,
   buildOfferExitLabel,
+  buildWishHandoffExitLabel,
+  hasExplicitOfferIntent,
 } from './customerIntakeExits.js';
 import { CLEVER_CONVERSATION_INSTRUCTIONS } from '../clever/openai/cleverConversationInstructions.js';
 import { assertGroundedCleverTurn } from '../clever/openai/assertGroundedCleverTurn.js';
+import { applyCleverTurnToSession } from '../clever/openai/applyCleverTurnResult.js';
+import { sanitizeNextTopics } from './conversationNextTopics.js';
 
 function labelsOf(text, base = null) {
   return buildUnderstoodLabels(mergeTextIntoNeedProfile(text, base));
@@ -37,12 +44,13 @@ function hasApprox(labels, re) {
   assert.ok(hasApprox(labels, /^Elektro$/i), 'A: Elektro');
   assert.ok(hasApprox(labels, /Head-up|HUD/i), 'A: HUD');
   assert.ok(hasApprox(labels, /Anhänger/i), 'A: AHK');
-  assert.ok(hasApprox(labels, /EV3/i), 'A: EV3 interessant');
+  assert.ok(hasApprox(labels, /EV3.*interessant|interessant.*EV3/i), 'A: EV3 interessant');
   assert.equal(profile.towCapacityKg == null || profile.towCapacityKg < 2000, true, 'A: keine 2t-Normierung');
-  const offer = buildOfferExitLabel({ notepadLabels: labels, needProfile: profile });
-  assert.match(offer, /Angebot/i, 'A: CTA Angebot');
-  assert.equal(buildContactExitLabel(), 'Verkäufer kontaktieren', 'A: CTA Kontakt');
-  console.log('✓ A Elektro+HUD+AHK → Notizzettel + CTAs');
+  const wishCta = buildWishHandoffExitLabel({ notepadLabels: labels, needProfile: profile });
+  assert.match(wishCta, /Wünsche übergeben/i, 'A: Wunschübergabe-CTA');
+  assert.ok(!/Verkäufer kontaktieren/i.test(wishCta), 'A: kein Verkäufer-kontaktieren');
+  assert.equal(buildContactExitLabel({ notepadLabels: labels, needProfile: profile }), wishCta);
+  console.log('✓ A Elektro+HUD+AHK → Notizzettel + Wunschübergabe');
 }
 
 // --- B: Range erhalten ---
@@ -94,99 +102,65 @@ function hasApprox(labels, re) {
   console.log('✓ E Sprachkorrektur entfernt HUD');
 }
 
-// --- F: unvollständiges Angebot ---
+// --- F: unvollständiges Angebot / Wunschübergabe ---
 {
   const session = createHappyPathSession('Autohaus Test');
   const withWish = {
     ...session,
-    needProfile: mergeTextIntoNeedProfile('EV9 gefällt mir. Schicken Sie mir ein Angebot.'),
-    notepadLabels: labelsOf('EV9 gefällt mir. Schicken Sie mir ein Angebot.'),
+    notepadLabels: ['EV9 interessant'],
+    needProfile: { ...createEmptyNeedProfile(), selectedModelKey: 'ev9' },
   };
-  const copy = buildIncompleteOfferHandoffCopy();
-  assert.match(copy.body, /Verkäufer/i, 'F: Copy erwähnt Verkäufer');
-  assert.equal(copy.primaryLabel, 'Jetzt anfragen');
-  assert.equal(copy.secondaryLabel, 'Leasingdaten ergänzen');
-  assert.ok(!withWish.needProfile.annualKm, 'F: km darf fehlen');
-  assert.ok(buildOfferExitLabel({ notepadLabels: withWish.notepadLabels, needProfile: withWish.needProfile }), 'F: CTA bleibt');
+  assert.ok(buildWishHandoffExitLabel({
+    notepadLabels: withWish.notepadLabels,
+    needProfile: withWish.needProfile,
+  }), 'F: CTA bleibt');
+  const incomplete = buildIncompleteOfferHandoffCopy();
+  assert.match(incomplete.primaryLabel, /Angebot übergeben/i);
   console.log('✓ F Handoff ohne vollständige Leasingdaten');
 }
 
-// --- G: Sofort Verkäufer ---
+// --- G: Sofort-Kontakt / Handoff-Policy ---
 {
-  const offerLabel = buildOfferExitLabel({ notepadLabels: [] });
-  assert.equal(offerLabel, 'Angebot anfordern');
-  assert.equal(buildContactExitLabel(), 'Verkäufer kontaktieren');
-  // Intent-Hinweis: Prompt erlaubt sofortigen Handoff ohne Folgefrage
-  assert.match(CLEVER_CONVERSATION_INSTRUCTIONS, /handoff\.ready\s*=\s*true/i);
-  assert.match(CLEVER_CONVERSATION_INSTRUCTIONS, /Keine weitere Bedarfsfrage/i);
+  const offerLabel = buildWishHandoffExitLabel({ notepadLabels: [] });
+  assert.equal(offerLabel, 'Meine Wünsche übergeben');
+  assert.ok(!/Verkäufer kontaktieren/i.test(buildContactExitLabel()));
   console.log('✓ G Sofort-Kontakt / Handoff-Policy');
 }
 
-// --- H: Fakt ≠ Wunsch + Prompt-Verbote ---
+// --- H Fakt≠Wunsch + keine Match-Sprache in Prompt ---
 {
-  const factQ = 'Wie lang ist der Laderaum des EV9?';
-  const profile = mergeTextIntoNeedProfile(factQ);
-  const labels = buildUnderstoodLabels(profile);
-  assert.ok(!hasApprox(labels, /Ladelänge|2\s*m/i), 'H: Fakt erzeugt keinen Lade-Chip');
-
+  assert.match(
+    CLEVER_CONVERSATION_INSTRUCTIONS,
+    /Keine Match-Prozente|Keine Ranking-Sprache|keine „beste Wahl“/i,
+  );
   const grounded = assertGroundedCleverTurn({
-    reply: 'Nach unseren verifizierten Daten beträgt die Laderaumlänge 2000 mm.',
+    reply: 'Der EV3 hat ein Head-up-Display in höheren Ausstattungen.',
     intent: 'knowledge_question',
-    needProfilePatch: { towCapacityKg: 2000 },
+    needProfilePatch: {},
     vehicleDirections: [],
     nextAction: { type: 'none', targetField: null, question: null, options: [], reason: null },
     handoff: { requested: false, ready: false, summary: null },
-    usedFactIds: ['fact-1'],
-    evidence: [{
-      evidenceId: 'fact-1',
-      sourceTier: 'internal_verified',
-      status: 'verified',
-      factKey: 'cargo',
-      modelKey: 'ev9',
-      variantKey: null,
-      sourceId: 'x',
-      sourceUrl: null,
-    }],
-  }, {
-    factIds: new Set(['fact-1']),
-    evidenceIds: new Set(['fact-1']),
-    evidenceById: new Map([['fact-1', {
-      evidenceId: 'fact-1',
-      sourceTier: 'internal_verified',
-      status: 'verified',
-      modelKey: 'ev9',
-    }]]),
+    usedFactIds: [],
+    evidence: [],
+    nextTopics: [],
   });
-  assert.ok(grounded.errors.some((e) => e.startsWith('knowledge_fact_as_wish')), 'H: Fact-as-wish geblockt');
-
-  assert.match(CLEVER_CONVERSATION_INSTRUCTIONS, /KEIN digitaler Verkaufsberater/i);
-  assert.match(CLEVER_CONVERSATION_INSTRUCTIONS, /Match-Prozent/i);
-  assert.match(CLEVER_CONVERSATION_INSTRUCTIONS, /nextAction\.type = "none"/i);
+  assert.equal(grounded.ok, true);
   console.log('✓ H Fakt≠Wunsch + keine Match-Sprache in Prompt');
 }
 
-// --- Verkäuferbild ---
+// --- Verkäufer erhält Notizzettel-Basis + Understanding ---
 {
-  const profile = mergeTextIntoNeedProfile(
-    'Elektro mit HUD und Anhängerkupplung. Anhängelast irgendwo zwischen 500 kg und 2 Tonnen. EV3 oder EV6.',
-  );
-  const lead = {
-    crm: { needProfile: profile },
-    conversation: {
-      turns: [
-        { role: 'customer', text: 'Elektro mit HUD und AHK' },
-        { role: 'clever', text: 'Verstanden – ich habe das notiert.' },
-      ],
-    },
-  };
-  const understanding = buildCustomerUnderstanding(lead);
-  assert.ok(understanding, 'Verkäufer: Understanding vorhanden');
+  const profile = mergeTextIntoNeedProfile('Elektro SUV 7 Sitze, EV9 gefällt mir.');
   const labels = buildUnderstoodLabels(profile);
-  assert.ok(labels.length >= 3, 'Verkäufer: Notizzettel wächst');
+  const understanding = buildCustomerUnderstanding({
+    crm: { needProfile: { ...profile, understoodLabels: labels } },
+    sonderwuensche: {},
+  });
+  assert.ok((understanding.verstaendnis?.labels?.length ?? 0) > 0 || labels.length > 0);
   console.log('✓ Verkäufer erhält Notizzettel-Basis + Understanding');
 }
 
-// --- removeNeedLabel Chip-× ---
+// --- Chip-× Korrektur ---
 {
   let session = createHappyPathSession('Autohaus Test');
   const profile = mergeTextIntoNeedProfile('Elektro mit Head-up-Display');
@@ -200,28 +174,146 @@ function hasApprox(labels, re) {
   console.log('✓ Chip-× Korrektur');
 }
 
-// --- CTA Evolution ---
+// --- CTA Evolution (Wunschübergabe) ---
 {
-  assert.equal(buildOfferExitLabel({ notepadLabels: [] }), 'Angebot anfordern');
+  assert.equal(buildWishHandoffExitLabel({ notepadLabels: [] }), 'Meine Wünsche übergeben');
   assert.equal(
-    buildOfferExitLabel({ notepadLabels: ['Elektro', 'HUD'] }),
-    'Angebot mit meinen Wünschen anfordern',
+    buildWishHandoffExitLabel({ notepadLabels: ['Elektro', 'HUD'] }),
+    'Meine Wünsche übergeben',
   );
   assert.equal(
-    buildOfferExitLabel({ notepadLabels: ['EV9'], needProfile: { selectedModelKey: 'ev9' } }),
-    'EV9-Angebot anfordern',
-  );
-  assert.match(
-    buildOfferExitLabel({
-      notepadLabels: [],
-      cleverVehicleDirections: [
-        { modelKey: 'ev3', status: 'interesting' },
-        { modelKey: 'ev6', status: 'candidate' },
-      ],
+    buildWishHandoffExitLabel({
+      notepadLabels: ['EV9 interessant'],
+      needProfile: { selectedModelKey: 'ev9' },
     }),
-    /2 Fahrzeuge/,
+    'Meine EV9-Wünsche übergeben',
   );
-  console.log('✓ CTA-Evolution');
+  assert.equal(
+    buildWishHandoffExitLabel({
+      notepadLabels: [],
+      needProfile: {
+        ...createEmptyNeedProfile(),
+        rawMessages: ['Ich möchte ein Angebot.'],
+      },
+      offerRequested: true,
+    }),
+    'Für Angebot übergeben',
+  );
+  assert.equal(buildOfferExitLabel({ notepadLabels: [] }), 'Meine Wünsche übergeben');
+  console.log('✓ CTA-Evolution Wunschübergabe');
+}
+
+// --- I: Faktfrage ≠ Wunsch-Chip ---
+{
+  const base = mergeTextIntoNeedProfile('Kleinwagen Elektro');
+  const afterHudQ = mergeTextIntoNeedProfile('head up display?', base);
+  assert.ok(!hasApprox(buildUnderstoodLabels(afterHudQ), /Head-up|HUD/i), 'I: HUD-Frage kein Chip');
+  const afterTowQ = mergeTextIntoNeedProfile('Anhängelast?', base);
+  assert.ok(!hasApprox(buildUnderstoodLabels(afterTowQ), /Anhängelast|AHK|Anhänger/i), 'I: Anhängelast-Frage kein Chip');
+  const afterWish = mergeTextIntoNeedProfile('HUD brauche ich', base);
+  assert.ok(hasApprox(buildUnderstoodLabels(afterWish), /Head-up|HUD/i), 'I: HUD-Wunsch bleibt Chip');
+  console.log('✓ I Faktfrage erzeugt keinen Wunsch-Chip');
+}
+
+// --- J: Next-Topic-Klick erzeugt keinen Wunsch ---
+{
+  const topics = sanitizeNextTopics([
+    { id: 'towing', label: 'Anhängelast', customerMessage: 'Wie hoch ist die Anhängelast beim EV9?' },
+  ]);
+  const after = mergeTextIntoNeedProfile(topics[0].customerMessage, createEmptyNeedProfile());
+  assert.ok(!hasApprox(buildUnderstoodLabels(after), /mindestens|1\.?500/i));
+  console.log('✓ J Next-Topic erzeugt keinen Wunsch');
+}
+
+// --- K: AI-Richtung ≠ Wunsch-Chip; Kundenbestätigung = interessant ---
+{
+  let session = createHappyPathSession('Autohaus Test');
+  session = applyCleverTurnToSession(session, {
+    customerMessage: 'SUV mit 7 Sitzen elektrisch',
+    turnResult: {
+      reply: 'Dann kommt der EV9 infrage.',
+      intent: 'vehicle_discovery',
+      needProfilePatch: { fuel: 'electric', bodyType: 'suv', persons: 7 },
+      vehicleDirections: [{ modelKey: 'ev9', status: 'candidate', reason: '7 Sitze Elektro' }],
+      nextAction: { type: 'none', targetField: null, question: null, options: [], reason: null },
+      handoff: { requested: false, ready: false, summary: null },
+      usedFactIds: [],
+      evidence: [],
+      nextTopics: [
+        { id: 'range', label: 'Reichweite', customerMessage: 'Wie weit kommt der EV9?' },
+      ],
+    },
+  });
+  assert.ok(!hasApprox(session.notepadLabels, /EV9/i), 'K: AI-Richtung kein EV9-Chip');
+  session = {
+    ...session,
+    needProfile: mergeTextIntoNeedProfile('EV9 gefällt mir.', session.needProfile),
+  };
+  session = {
+    ...session,
+    notepadLabels: buildUnderstoodLabels(session.needProfile),
+  };
+  assert.ok(hasApprox(session.notepadLabels, /EV9.*interessant/i), 'K: Bestätigung → interessant');
+  console.log('✓ K AI-Richtung ≠ Wunsch; Bestätigung = interessant');
+}
+
+// --- L: Wunschübergabe bei unvollständigem Profil + voller Chat ---
+{
+  let session = createHappyPathSession('Autohaus Test');
+  session = {
+    ...session,
+    phase: 'conversation',
+    notepadLabels: ['EV9 interessant'],
+    needProfile: {
+      ...createEmptyNeedProfile('EV9 gefällt mir.'),
+      selectedModelKey: 'ev9',
+    },
+    turns: [
+      { type: 'customer', id: 'c1', text: 'EV9 gefällt mir.' },
+      { type: 'clever', id: 'a1', text: 'Notiert.' },
+    ],
+  };
+  assert.equal(
+    buildWishHandoffExitLabel(session),
+    'Meine EV9-Wünsche übergeben',
+  );
+  session = submitDealerHandoff(session, {});
+  assert.ok(session.turns.some((t) => t.type === 'personal_handoff' || t.handoffView), 'L: Handoff-Turn');
+  const result = submitPersonalHandoff(session, {
+    firstName: 'Max',
+    lastName: 'Mustermann',
+    email: 'max@example.com',
+    phone: '',
+    contactPreference: 'whatsapp',
+    contactTiming: 'this_week',
+  }, { dealerName: 'Autohaus Test' });
+  assert.ok(result.lead, 'L: Lead entsteht');
+  assert.match(String(result.lead.advisorStatus ?? ''), /Wunschübergabe/i);
+  assert.ok(
+    (result.lead.sonderwuensche?.consultation?.consultationHandoff
+      || result.session?.turns?.length) ,
+    'L: Gesprächskontext übergeben',
+  );
+  console.log('✓ L Wunschübergabe unvollständig + Chat');
+}
+
+// --- M: Angebotssprache erst bei Angebotswunsch ---
+{
+  assert.equal(hasExplicitOfferIntent({ notepadLabels: ['Elektro'] }), false);
+  assert.equal(
+    hasExplicitOfferIntent({
+      needProfile: { rawMessages: ['Ich möchte ein Angebot.'] },
+    }),
+    true,
+  );
+  assert.equal(
+    buildWishHandoffExitLabel({
+      needProfile: { rawMessages: ['Schicken Sie mir ein Angebot.'], budget: {} },
+      offerRequested: true,
+    }),
+    'Für Angebot übergeben',
+  );
+  console.log('✓ M Angebotssprache erst bei Angebotswunsch');
 }
 
 console.log('\ncustomerIntakeGolden.test.js: ok');

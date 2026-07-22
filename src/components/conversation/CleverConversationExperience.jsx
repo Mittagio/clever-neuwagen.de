@@ -47,8 +47,8 @@ import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
 import CleverInlineOfferCard from './CleverInlineOfferCard.jsx';
 import CleverComposerExits from './CleverComposerExits.jsx';
 import {
-  buildContactExitLabel,
-  buildOfferExitLabel,
+  buildWishHandoffExitLabel,
+  buildWishHandoffSecondaryLabel,
 } from '../../services/consultation/customerIntakeExits.js';
 import {
   isSpeechRecognitionSupported,
@@ -73,14 +73,15 @@ function shouldShowInlineOfferCard(session) {
 
 function composerPlaceholderForSession(session) {
   const labels = session?.notepadLabels ?? [];
-  const model = labels.find((label) => /^EV\d$/i.test(String(label)))
+  const model = labels.find((label) => /^EV\d/i.test(String(label)) || /interessant/i.test(String(label)))
     || session?.needProfile?.selectedModelKey
     || session?.needProfile?.modelHint;
   if (model) {
-    const name = String(model).toUpperCase().startsWith('EV')
-      ? String(model).toUpperCase()
-      : String(model);
-    return `Oder einfach weiterfragen zum ${name} …`;
+    const raw = String(model).replace(/\s+interessant$/i, '');
+    const name = String(raw).toUpperCase().startsWith('EV')
+      ? String(raw).toUpperCase().replace(/[^A-Z0-9-]/g, '')
+      : String(raw);
+    return `Weitere Frage oder Wunsch zum ${name} …`;
   }
   return DEFAULT_COMPOSER_PLACEHOLDER;
 }
@@ -92,7 +93,7 @@ const SKIPPED_TURN_TYPES = new Set([
 ]);
 
 const LIVING_INPUT_PLACEHOLDERS = [
-  'Oder einfach weiterfragen …',
+  'Weiterfragen oder Wunsch ergänzen …',
 ];
 
 const HERO_EXAMPLE_PLACEHOLDERS = [
@@ -103,7 +104,7 @@ const HERO_EXAMPLE_PLACEHOLDERS = [
   'z. B. Auto unter 350 € / Monat',
 ];
 
-const DEFAULT_COMPOSER_PLACEHOLDER = 'Oder einfach weiterfragen …';
+const DEFAULT_COMPOSER_PLACEHOLDER = 'Weiterfragen oder Wunsch ergänzen …';
 
 const POPULAR_ENTRY_CHIPS = [
   { id: 'ev3_family', icon: '👨‍👩‍👧', label: 'EV3 Leasing für Familie', text: 'EV3 Leasing für Familie' },
@@ -592,10 +593,10 @@ export default function CleverConversationExperience({
         <div className="cc-composer-stack cc-composer-stack--opening">
           {showComposerExits && (
             <CleverComposerExits
-              offerLabel={offerExitLabel}
-              contactLabel={contactExitLabel}
-              onOffer={handleOfferExit}
-              onContact={handleContactExit}
+              primaryLabel={wishHandoffExitLabel}
+              secondaryLabel={wishHandoffSecondaryLabel}
+              onPrimary={handleWishHandoffExit}
+              onSecondary={handleWishHandoffSecondary}
               disabled={false}
             />
           )}
@@ -620,10 +621,10 @@ export default function CleverConversationExperience({
       <div className="cc-composer-stack">
         {showComposerExits && (
           <CleverComposerExits
-            offerLabel={offerExitLabel}
-            contactLabel={contactExitLabel}
-            onOffer={handleOfferExit}
-            onContact={handleContactExit}
+            primaryLabel={wishHandoffExitLabel}
+            secondaryLabel={wishHandoffSecondaryLabel}
+            onPrimary={handleWishHandoffExit}
+            onSecondary={handleWishHandoffSecondary}
             disabled={!inputEnabled}
           />
         )}
@@ -826,13 +827,16 @@ export default function CleverConversationExperience({
     && !inCollectMode
     && (wishHandoffLatched || shouldShowInlineOfferCard(session));
 
-  // Permanente Ausgänge ab Turn 1 (Intake) – keine separate „Wunsch verstanden“-Box
+  // Wunschübergabe ab Turn 1 – keine parallelen „Verkäufer kontaktieren“-CTAs
   const showComposerExits = !inOfferWorld && !inCollectMode;
-  const offerExitLabel = buildOfferExitLabel({
+  const wishHandoffExitLabel = buildWishHandoffExitLabel({
     ...session,
     offerModelKeys,
   });
-  const contactExitLabel = buildContactExitLabel();
+  const wishHandoffSecondaryLabel = buildWishHandoffSecondaryLabel({
+    ...session,
+    offerModelKeys,
+  });
 
   const isDevEngineBadge = Boolean(import.meta.env.DEV);
   const engineBadge = useMemo(() => {
@@ -849,17 +853,20 @@ export default function CleverConversationExperience({
     return null;
   }, [isDevEngineBadge, session]);
 
-  const handleOfferExit = useCallback(() => {
+  const handleWishHandoffExit = useCallback(() => {
     setWishHandoffLatched(true);
     handleDealerHandoff({
       selectedOfferModels: offerModelKeys,
     });
   }, [handleDealerHandoff, offerModelKeys]);
 
-  const handleContactExit = useCallback(() => {
+  const handleWishHandoffSecondary = useCallback(() => {
     setWishHandoffLatched(true);
-    handleDealerHandoff({});
-  }, [handleDealerHandoff]);
+    handleDealerHandoff({
+      selectedOfferModels: offerModelKeys,
+      enrichLeasing: true,
+    });
+  }, [handleDealerHandoff, offerModelKeys]);
 
   useEffect(() => {
     if (!showInlineOffer || offerModelKeys.length) return undefined;

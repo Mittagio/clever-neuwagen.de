@@ -5,6 +5,7 @@ import { KIA_MODEL_ATTRIBUTES } from '../../../../data/kia/kiaModelAttributes.js
 import { getCleverRecordForModelKey } from '../../../admin/vehicleStammdatenOverrideService.js';
 import { resolveElectricSpecs } from '../../../../data/kia/pricelistBatteryLookup.js';
 import { buildFactId } from './findMatchingVehicles.js';
+import { resolveVerifiedTowingCapacity } from './resolveVerifiedTowingCapacity.js';
 
 const ALLOWED_FACTS = new Set([
   'wltpRange',
@@ -103,17 +104,19 @@ export function getVerifiedVehicleFacts(params = {}) {
         break;
       }
       case 'towingCapacity': {
-        const kg = record.towing?.brakedKg ?? attrs.towCapacityKg ?? null;
-        const entry = factEntry({
-          key: 'towingCapacity',
-          value: kg,
-          unit: 'kg',
-          status: kg != null ? 'verified' : 'missing',
-          sourceId,
-          modelKey,
-          variantKey: resolvedVariant,
-        });
-        if (entry) facts.push(entry);
+        const resolved = resolveVerifiedTowingCapacity(modelKey, record, attrs);
+        if (resolved) {
+          const entry = factEntry({
+            key: 'towingCapacity',
+            value: resolved.value,
+            unit: 'kg',
+            status: 'verified',
+            sourceId: resolved.sourceId ?? sourceId,
+            modelKey,
+            variantKey: resolvedVariant,
+          });
+          if (entry) facts.push(entry);
+        }
         break;
       }
       case 'headUpDisplay': {

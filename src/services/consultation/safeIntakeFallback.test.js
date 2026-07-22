@@ -7,11 +7,13 @@ import { createHappyPathSession, TURN_TYPE } from './consultationHappyPath.js';
 import { applyCleverTurnToSession } from '../clever/openai/applyCleverTurnResult.js';
 import {
   humanizeFallbackReason,
+  keepPublicIntakeMessenger,
   sessionContainsForbiddenPlannerQuestion,
   sessionEnteredAutoRecommendation,
   submitSafeIntakeFallback,
   SAFE_ANNUAL_KM_QUESTION_ID,
 } from './safeIntakeFallback.js';
+import { beginEv3VehicleConsultation } from './consultationEv3HappyPath.js';
 
 function cleverTexts(session) {
   return (session.turns ?? [])
@@ -158,6 +160,18 @@ function hasApprox(labels, re) {
     'E: keine Planner-IDs',
   );
   console.log('✓ E AI-Erfolg → nur CleverTurnResult, kein Legacy parallel');
+}
+
+// --- F: Modell-CTA darf keine Fahrzeugberatung starten ---
+{
+  let session = createHappyPathSession('Autohaus Test');
+  session = beginEv3VehicleConsultation(session, 'ev2');
+  assert.ok(session.vehicleChapterTitle, 'F: Setup Welt 2');
+  session = keepPublicIntakeMessenger(session);
+  assert.equal(session.vehicleChapterTitle, null, 'F: Kapitel entfernt');
+  assert.equal(session.phase, 'conversation', 'F: zurück im Messenger');
+  assert.ok(!session.pendingQuestion || session.pendingQuestion.id !== 'ev3Priority', 'F: keine EV3-Prio-Frage');
+  console.log('✓ F keepPublicIntakeMessenger beendet Welt-2');
 }
 
 // --- humanize ---

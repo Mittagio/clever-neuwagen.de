@@ -1,33 +1,47 @@
 import './clever-conversation.css';
 
 /**
- * Permanente Ausgänge am Composer – ab Turn 1, ohne Bedarfsanalyse-Zwang.
+ * Permanente Wunschübergabe am Composer – ab Turn 1, ohne Bedarfsanalyse-Zwang.
  */
 export default function CleverComposerExits({
-  offerLabel = 'Angebot anfordern',
-  contactLabel = 'Verkäufer kontaktieren',
+  primaryLabel = 'Meine Wünsche übergeben',
+  secondaryLabel = null,
+  onPrimary,
+  onSecondary,
+  /** @deprecated legacy alias */
+  offerLabel,
+  /** @deprecated legacy alias */
+  contactLabel,
+  /** @deprecated legacy alias */
   onOffer,
+  /** @deprecated legacy alias */
   onContact,
   disabled = false,
 }) {
+  const label = primaryLabel || offerLabel || contactLabel || 'Meine Wünsche übergeben';
+  const handlePrimary = onPrimary || onOffer || onContact;
+
   return (
-    <div className="cc-exits" role="group" aria-label="Gespräch beenden oder Angebot">
+    <div className="cc-exits" role="group" aria-label="Wunschübergabe">
       <button
         type="button"
-        className="cc-exits__btn cc-exits__btn--offer"
-        onClick={() => onOffer?.()}
+        className="cc-exits__btn cc-exits__btn--wish"
+        onClick={() => handlePrimary?.()}
         disabled={disabled}
       >
-        {offerLabel}
+        <span className="cc-exits__btn-icon" aria-hidden>→</span>
+        <span>{label}</span>
       </button>
-      <button
-        type="button"
-        className="cc-exits__btn cc-exits__btn--contact"
-        onClick={() => onContact?.()}
-        disabled={disabled}
-      >
-        {contactLabel}
-      </button>
+      {secondaryLabel && (
+        <button
+          type="button"
+          className="cc-exits__btn cc-exits__btn--secondary"
+          onClick={() => onSecondary?.()}
+          disabled={disabled}
+        >
+          {secondaryLabel}
+        </button>
+      )}
     </div>
   );
 }

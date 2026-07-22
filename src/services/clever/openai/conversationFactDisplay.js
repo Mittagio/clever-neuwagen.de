@@ -35,7 +35,13 @@ export function formatHumanFactChip(key, value, unit = null) {
     text = Number.isFinite(n) ? `${n.toLocaleString('de-DE')} km WLTP` : `${value} km WLTP`;
   } else if (key === 'towingCapacity') {
     const n = Number(value);
-    text = Number.isFinite(n) ? `${n.toLocaleString('de-DE')} kg Anhängelast` : String(value);
+    if (Number.isFinite(n)) {
+      text = `${n.toLocaleString('de-DE')} kg Anhängelast`;
+    } else if (/\d/.test(String(value))) {
+      text = `${String(value).replace(/\s*kg\s*$/i, '')} kg Anhängelast`;
+    } else {
+      text = String(value);
+    }
   } else if (key === 'batteryCapacity') {
     text = unit ? `${value} ${unit}` : `${value} kWh`;
   } else if (typeof value === 'object') {

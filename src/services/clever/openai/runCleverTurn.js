@@ -7,6 +7,7 @@ import { validateCleverTurnResult } from './cleverTurnResultSchema.js';
 import { assertGroundedCleverTurn } from './assertGroundedCleverTurn.js';
 import { applyNeedProfilePatch, sanitizeNeedProfilePatch } from './needProfilePatch.js';
 import { buildToolEvidence, runOpenAiCleverResponse } from './openAiResponsesClient.js';
+import { sanitizeCleverTurnOfferOptions } from './tools/getSupportedOfferParameters.js';
 import {
   createCleverTurnMetrics,
   finalizeCleverTurnMetrics,
@@ -19,6 +20,14 @@ import {
 import { deriveKnowledgeGapsFromTurn } from '../knowledge/knowledgeGapService.js';
 import { buildCustomerUnderstanding } from '../../dealer/customerUnderstanding.js';
 import { mergeTextIntoNeedProfile } from '../../consultation/needProfileService.js';
+
+function finalizeValidatedTurn(validation) {
+  if (!validation?.ok || !validation.result) return validation;
+  return {
+    ...validation,
+    result: sanitizeCleverTurnOfferOptions(validation.result),
+  };
+}
 
 function fallbackResult(reason, metrics) {
   const finalized = finalizeCleverTurnMetrics(metrics, {
@@ -103,7 +112,7 @@ export async function runCleverTurn(params, deps = {}) {
   }
 
   if (deps.mockTurnResult) {
-    const validation = validateCleverTurnResult(deps.mockTurnResult);
+    const validation = finalizeValidatedTurn(validateCleverTurnResult(deps.mockTurnResult));
     if (!validation.ok) {
       return fallbackResult('mock_schema_invalid', metrics);
     }
@@ -174,7 +183,9 @@ export async function runCleverTurn(params, deps = {}) {
       }
     }
 
-    let validation = parsed ? validateCleverTurnResult(parsed) : { ok: false, errors: ['missing_parsed'] };
+    let validation = parsed
+      ? finalizeValidatedTurn(validateCleverTurnResult(parsed))
+      : { ok: false, errors: ['missing_parsed'] };
     let evidence = buildToolEvidence(apiResult.toolResults ?? []);
     let grounding = validation.ok
       ? assertGroundedCleverTurn(validation.result, evidence)
@@ -214,7 +225,7 @@ export async function runCleverTurn(params, deps = {}) {
         }
       }
 
-      validation = validateCleverTurnResult(parsed);
+      validation = finalizeValidatedTurn(validateCleverTurnResult(parsed));
       evidence = buildToolEvidence(apiResult.toolResults ?? []);
       grounding = validation.ok
         ? assertGroundedCleverTurn(validation.result, evidence)

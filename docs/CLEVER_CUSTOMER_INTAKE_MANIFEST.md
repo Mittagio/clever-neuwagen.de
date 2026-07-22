@@ -18,13 +18,14 @@ wo der Kunde aufgehört hat.
 Antworten.  
 Wünsche erkennen.  
 Notieren.  
-Übergabe ermöglichen.
+Weiterhelfen.  
+Übergeben.
 
 ---
 
 ## Was Clever ist
 
-Clever ist ein **digitaler Verkaufsassistent zur Gesprächsaufnahme**.
+Clever ist die **digitale Verkaufstheke** des Autohauses – ein Assistent zur Gesprächsaufnahme.
 
 Clever ist **kein** digitaler Verkaufsberater.
 
@@ -34,9 +35,9 @@ Clever ist **kein** digitaler Verkaufsberater.
 2. Nebenbei Wünsche und Aussagen erkennen.
 3. Diese sichtbar als **Notizzettel** sammeln.
 4. Unsicherheiten und Alternativen erhalten.
-5. Das Gespräch natürlich weiterführen.
-6. Dem Kunden jederzeit Angebot oder Verkäuferkontakt ermöglichen.
-7. Am Ende alles vollständig an den Verkäufer übergeben.
+5. Mit Next Topics beim Weiterfragen helfen.
+6. Dem Kunden jederzeit die **Wunschübergabe** ermöglichen.
+7. Am Ende Wünsche und Gespräch vollständig an den Verkäufer übergeben.
 
 ### Clever tut nicht
 
@@ -48,6 +49,49 @@ Clever ist **kein** digitaler Verkaufsberater.
 - einen Fragebogen abarbeiten
 - endlos weitere Fragen stellen
 - ein zweites ChatGPT oder Lexikon sein
+
+---
+
+## Wunschübergabe
+
+**Definition:** Die Wunschübergabe ist der Moment, in dem Clever die bisher gesammelten Kundenwünsche und den vollständigen Gesprächskontext an den echten Verkäufer übergibt.
+
+Sie ist **keine** Kaufentscheidung, **keine** Bestellung und **kein** sofortiger Callcenterkontakt.
+
+### Öffentlicher CTA
+
+Primär:
+
+**„Meine Wünsche übergeben“**
+
+Nicht als Standard:
+
+- Verkäufer kontaktieren
+- Verkäufer anrufen
+- Kontakt aufnehmen
+- Rückmeldung wünschen
+- Angebot anfordern
+
+Intern dürfen technische Begriffe bleiben (`handoff`, `offer_handoff`, …). Im Kunden-UI heißt der Prozess **Wunschübergabe**.
+
+### CTA-Reifung
+
+Grundbegriff bleibt „Meine Wünsche übergeben“. Nur bei klarem Kundenwunsch konkretisieren:
+
+| Situation | CTA |
+|-----------|-----|
+| Noch kein Modell | Meine Wünsche übergeben |
+| EV9 klar interessant | Meine EV9-Wünsche übergeben |
+| Expliziter Angebotswunsch | Für Angebot übergeben |
+| Leasingdaten weitgehend da | Wünsche & Leasingdaten übergeben |
+
+### Erreichbarkeit
+
+Ab dem **ersten echten Kundenturn**. Unvollständige Übergaben sind erlaubt.
+
+### Nach dem Klick
+
+Ruhige Erklärung → bisherige Wünsche zeigen → Kontaktweg (WhatsApp / E-Mail / Telefon) → optional Zeitpunkt.
 
 ---
 
@@ -77,11 +121,23 @@ Keine zweite Kundenwahrheit. Keine parallele Wunschdatenbank.
 1. **Zuerst antworten** – erst die Kundenfrage, dann optional eine Anschlussfrage.
 2. **Notizzettel statt Analyse** – sichtbare Chips, keine Match-/Score-Sprache.
 3. **Fahrzeugfakt ≠ Kundenwunsch** – beantwortete Fakten erzeugen keine Chips.
-4. **Unsicherheit erhalten** – Ranges, Alternativen und Nuancen nicht weginterpretieren.
-5. **Maximal eine Anschlussfrage** pro Turn – oder `nextAction.type = "none"`.
-6. **Keine Endlosschleife** – Angebot und Verkäuferkontakt ab dem ersten Turn erreichbar.
-7. **Handoff darf unvollständig sein** – fehlende Leasingdaten blockieren nicht.
-8. **Verkäufer entscheidet** – Customer Understanding beschreibt, empfiehlt nicht.
+4. **AI-Richtung ≠ Wunsch** – `vehicleDirections` schreiben keinen Notizzettel.
+5. **Unsicherheit erhalten** – Ranges, Alternativen und Nuancen nicht weginterpretieren.
+6. **Maximal eine Anschlussfrage** pro Turn – oder `nextAction.type = "none"`.
+7. **Next Topics statt Fragebogen** – 0–4 Navigations-Chips, keine Pflichtkette.
+8. **Keine Endlosschleife** – Wunschübergabe ab dem ersten Turn erreichbar.
+9. **Handoff darf unvollständig sein** – fehlende Leasingdaten blockieren nicht.
+10. **Verkäufer entscheidet** – Customer Understanding beschreibt, empfiehlt nicht.
+
+---
+
+## Drei Chip-Ebenen
+
+| Ebene | Ort | Persistenz |
+|-------|-----|------------|
+| **Notizzettel** | Sticky oben | needProfile / Understanding |
+| **Next Topics** | Unter Clever-Turn | Nur UI-Navigation |
+| **Wunschübergabe** | Composer-CTA | Startet Handoff-Flow |
 
 ---
 
@@ -94,6 +150,7 @@ Verboten:
 - „beste Wahl“ / „empfohlenes Fahrzeug“
 - Seller-Reasoning-Panel
 - permanente „Wunsch verstanden“-Overlay-Box
+- Standard-CTA „Verkäufer kontaktieren“
 
 Erlaubt:
 
@@ -101,18 +158,19 @@ Erlaubt:
 - sticky **NOTIZZETTEL**
 - verifizierte Fact-Chips zur Antwort
 - kompakte Fahrzeugrichtungen ohne Entscheidungssprache
-- sticky Composer mit Angebot / Verkäuferkontakt
+- Next-Topic-Chips
+- sticky Composer mit **Meine Wünsche übergeben**
 
 ---
 
-## Verkäuferübergabe
+## Verkäuferansicht
 
-Der Verkäufer erhält:
+Bereich: **Wunschübergabe von Clever**
 
 - Notizzettel / Kundenwünsche
 - besprochene Fahrzeuge (ohne Sieger)
 - offene Punkte
-- vollständigen Original-Chat
+- vollständigen Original-Chat („Gespräch ansehen“)
 
 Er muss nicht erneut fragen: „Was suchen Sie denn eigentlich?“
 

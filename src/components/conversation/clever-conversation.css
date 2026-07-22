@@ -2558,14 +2558,40 @@
 
 .cc-exits__btn {
   flex: 1 1 auto;
-  min-height: 40px;
+  min-height: 44px;
   min-width: 0;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 0.8125rem;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+.cc-exits__btn-icon {
+  font-size: 0.95em;
+  opacity: 0.85;
+}
+
+.cc-exits__btn--wish {
+  border: none;
+  background: #111827;
+  color: #fff;
+}
+
+.cc-exits__btn--wish:hover:not(:disabled) {
+  background: #0b1220;
+}
+
+.cc-exits__btn--secondary {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  color: #111827;
+  font-weight: 550;
 }
 
 .cc-exits__btn--offer {
@@ -2587,8 +2613,8 @@
 
 @media (max-width: 420px) {
   .cc-exits__btn {
-    font-size: 0.75rem;
-    padding: 0 10px;
+    font-size: 0.8125rem;
+    padding: 0 12px;
   }
 }
 
@@ -3007,6 +3033,37 @@
 
 .cc-offer-handoff {
   padding: 8px 0 32px;
+}
+
+.cc-offer-handoff__ready {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.cc-offer-handoff__intro {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--cc-text, #111827);
+}
+
+.cc-offer-handoff__wish-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cc-offer-handoff__wish-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 0.8125rem;
+  color: #111827;
 }
 
 .cc-offer-handoff__title {

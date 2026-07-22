@@ -123,7 +123,10 @@ function testEv3OpeningNoFuelQuestion() {
   const q = getHappyPathNextQuestion(profile, { answers: {} });
 
   assert.equal(profile.selectedModelKey, 'ev3');
-  assert.ok(profile.understoodLabels.includes('EV3'), `EV3-Chip fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.ok(
+    profile.understoodLabels.some((l) => String(l).includes('EV3')),
+    `EV3-Chip fehlt: ${profile.understoodLabels.join(', ')}`,
+  );
   assert.ok(profile.understoodLabels.includes('Elektro'), `Elektro-Chip fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.equal(q?.id, 'evModelPriority', `Erwartet evModelPriority, bekam ${q?.id}`);
   assert.equal(isQuestionAllowed('fuel_type', { needProfile: profile }), false);
@@ -136,7 +139,10 @@ function testSportageTowingContextualQuestion() {
   const profile = mergeTextIntoNeedProfile('Ich suche einen Sportage mit Anhängerkupplung');
   const q = getHappyPathNextQuestion(profile, { answers: {} });
 
-  assert.ok(profile.understoodLabels.includes('Sportage'), `Sportage fehlt: ${profile.understoodLabels.join(', ')}`);
+  assert.ok(
+    profile.understoodLabels.some((l) => String(l).includes('Sportage')),
+    `Sportage fehlt: ${profile.understoodLabels.join(', ')}`,
+  );
   assert.ok(profile.understoodLabels.includes('Anhängerkupplung'), `AHK fehlt: ${profile.understoodLabels.join(', ')}`);
   assert.equal(q?.id, 'towingUsage');
   assert.match(q?.prompt ?? '', /ziehen|Anhänger/i);
@@ -181,7 +187,7 @@ function testEv3OpeningSessionFlow() {
   let session = createHappyPathSession('Autohaus Trinkle');
   session = submitOpeningMessage(session, 'mir gefällt der ev3');
 
-  assert.ok(session.notepadLabels.includes('EV3'));
+  assert.ok(session.notepadLabels.some((l) => String(l).includes('EV3')));
   assert.ok(session.notepadLabels.includes('Elektro'));
   assert.equal(session.pendingQuestion?.id, 'evModelPriority');
   const cleverTurn = session.turns.find((t) => t.type === 'clever' && t.questionId === 'evModelPriority');

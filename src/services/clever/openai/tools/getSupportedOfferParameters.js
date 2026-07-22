@@ -83,3 +83,53 @@ export function isAllowedOfferOption(field, value) {
   }
   return false;
 }
+
+/**
+ * Entfernt ungültige Offer-Optionen (z. B. downPayment: "other"),
+ * statt den ganzen AI-Turn an Grounding scheitern zu lassen.
+ * @param {object} turnResult
+ */
+export function sanitizeCleverTurnOfferOptions(turnResult) {
+  if (!turnResult || turnResult.nextAction?.type !== 'ask_offer_parameter') {
+    return turnResult;
+  }
+
+  const field = turnResult.nextAction.targetField;
+  const rawOptions = turnResult.nextAction.options ?? [];
+  const options = rawOptions.filter((opt) => isAllowedOfferOption(field, opt?.value));
+
+  if (options.length === rawOptions.length) {
+    return turnResult;
+  }
+
+  // Keine gültigen Chips → Freitext-Frage behalten oder Anschluss streichen
+  if (options.length === 0) {
+    if (turnResult.nextAction.question) {
+      return {
+        ...turnResult,
+        nextAction: {
+          ...turnResult.nextAction,
+          options: [],
+        },
+      };
+    }
+    return {
+      ...turnResult,
+      nextAction: {
+        type: 'none',
+        targetField: null,
+        question: null,
+        options: [],
+        reason: null,
+      },
+    };
+  }
+
+  return {
+    ...turnResult,
+    nextAction: {
+      ...turnResult.nextAction,
+      options,
+    },
+  };
+}

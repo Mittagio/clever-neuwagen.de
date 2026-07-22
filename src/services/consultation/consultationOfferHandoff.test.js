@@ -58,7 +58,8 @@ function testHandoffView() {
   const session = buildFullSession();
   const view = buildPersonalHandoffView(session, dealerConditions);
 
-  assert.equal(view.title, 'Ihr Wunsch ist vorbereitet.');
+  assert.equal(view.title, 'Wünsche bereit zur Übergabe');
+  assert.match(view.intro, /Verkäufer weiter/i);
   assert.ok(view.wishProfile?.lines?.length > 0);
   assert.match(view.advisor.role, /Schorndorf/i);
   assert.match(view.advisor.message, /passenden Lösung/i);
@@ -190,12 +191,12 @@ function testTowbarBoostView() {
 
 function testWishHandoffCtaCopy() {
   const copy = buildWishHandoffCta('Autohaus Trinkle');
-  assert.match(copy.buttonTitle, /Wunsch an Autohaus Trinkle senden/);
-  assert.match(copy.subline, /persönlicher Ansprechpartner/);
-  assert.match(copy.stickySubline, /übernehmen/i);
-  assert.match(copy.compactReassurance, /Ohne Verpflichtung/);
-  assert.doesNotMatch(copy.buttonTitle, /Berater sprechen/i);
-  console.log('✓ Wunsch-CTA Copy – Übergabe statt Anruf');
+  assert.match(copy.buttonTitle, /Meine Wünsche übergeben/);
+  assert.match(copy.subline, /Verkäufer|weiter/i);
+  assert.match(copy.stickySubline, /übergeben/i);
+  assert.match(copy.compactReassurance, /Ohne Verpflichtung|Callcenter/i);
+  assert.doesNotMatch(copy.buttonTitle, /Verkäufer kontaktieren|Berater sprechen/i);
+  console.log('✓ Wunsch-CTA Copy – Wunschübergabe');
 }
 
 function testWishHandoffVisibility() {

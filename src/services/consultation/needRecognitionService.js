@@ -181,9 +181,35 @@ function normalizeModelHint(model) {
   return null;
 }
 
+/**
+ * Reine Faktfragen sollen keine Wunsch-Chips erzeugen (Fakt ≠ Wunsch).
+ * @param {string} text
+ */
+export function isLikelyFactQuestionNotWish(text = '') {
+  const t = String(text ?? '').trim();
+  if (!t) return false;
+  const lower = t.toLowerCase();
+
+  // Explizite Wunschsprache → kein reiner Fakt
+  if (/\b(brauch|möcht|moecht|will|wünsch|wuensch|wichtig|suche|für\s+mich|für\s+uns|hätte\s+gern|haette\s+gern)\b/i.test(lower)) {
+    return false;
+  }
+
+  const isQuestion = /\?\s*$/.test(t)
+    || /^(wie|welche|was|wo|wann|hat|haben|gibt|ist|kann|kommt|wieviel|wie\s+viel)\b/i.test(lower);
+  if (!isQuestion) return false;
+
+  return /\b(head[- ]?up|hud|anhängelast|anhaengelast|anhängerkupplung|anhaengerkupplung|\bahk\b|wärmepumpe|waermepumpe|reichweite|wltp|batterie|sitze|laderaum|ladelänge|ladelaenge|kofferraum|dachlast|ladezeit|abmessung|matrix[- ]?led|panorama|360\s*°?\s*kamera)\b/i.test(lower);
+}
+
 function collectEquipmentWishes(intent = {}, text = '') {
   const wishes = new Set();
   const lower = String(text).toLowerCase();
+
+  // Faktfrage ≠ Wunsch (z. B. „head up display?“ / „Anhängelast?“)
+  if (isLikelyFactQuestionNotWish(text)) {
+    return [];
+  }
 
   for (const fid of intent.features ?? []) {
     if (fid === 'towbar') continue;
@@ -726,22 +752,24 @@ export function recognizeWishesFromText(text = '', intent = null) {
   const parsed = intent ?? (trimmed ? parseSearchIntent(trimmed) : { features: [] });
   const lower = trimmed.toLowerCase();
 
+  const factOnly = isLikelyFactQuestionNotWish(trimmed);
+
   const recognized = {
     drive: null,
     allradNeed: null,
     towbar: false,
     towing: null,
-    towCapacityKg: parsed.towCapacityKg ?? null,
+    towCapacityKg: factOnly ? null : (parsed.towCapacityKg ?? null),
     equipmentWishes: [],
     transmission: parsed.transmission ?? null,
     bodyType: parsed.bodyType ?? null,
     modelHint: null,
     selectedModelKey: null,
-    usageTags: detectUsageTags(trimmed),
-    driverHint: detectDriverHint(trimmed),
-    childrenCount: detectChildrenCount(trimmed, parsed.familyHint),
-    hasDog: /\bhund(?:e)?\b/i.test(lower),
-    hasStroller: /\bkinderwagen\b/i.test(lower),
+    usageTags: factOnly ? [] : detectUsageTags(trimmed),
+    driverHint: factOnly ? null : detectDriverHint(trimmed),
+    childrenCount: factOnly ? null : detectChildrenCount(trimmed, parsed.familyHint),
+    hasDog: factOnly ? false : /\bhund(?:e)?\b/i.test(lower),
+    hasStroller: factOnly ? false : /\bkinderwagen\b/i.test(lower),
     topics: [],
   };
 
@@ -1026,9 +1054,11 @@ export function isTowbarRecognized(profile = {}) {
 function buildModelLabels(profile = {}) {
   const labels = [];
   if (profile.selectedModelKey) {
-    labels.push(modelDisplayLabel(profile.selectedModelKey));
+    const base = modelDisplayLabel(profile.selectedModelKey).replace(/^Kia\s+/i, '');
+    labels.push(`${base} interessant`);
   } else if (profile.modelHint) {
-    labels.push(MODEL_HINT_LABELS[profile.modelHint] ?? profile.modelHint);
+    const base = MODEL_HINT_LABELS[profile.modelHint] ?? profile.modelHint;
+    labels.push(`${base} interessant`);
   }
   if (profile.trimHint && TRIM_LABELS[profile.trimHint]) {
     labels.push(TRIM_LABELS[profile.trimHint]);

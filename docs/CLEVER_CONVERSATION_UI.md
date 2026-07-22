@@ -1,4 +1,4 @@
-# Clever Conversation UI v1.2
+# Clever Conversation UI v1.3
 
 > **Produktvorrang:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
@@ -6,7 +6,7 @@
 
 Ruhiges, modernes **Messenger-Gespräch** mit Verkäufer-**Notizzettel**.
 
-Leitsatz: **Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.**
+Leitsatz: **Antworten. Wünsche erkennen. Notieren. Weiterhelfen. Übergeben.**
 
 ## Messenger-Struktur
 
@@ -15,13 +15,14 @@ Leitsatz: **Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.**
 | Header | Dealer / App-Kopf |
 | Notizzettel | Sticky unter dem Header, eine Zeile, horizontal scrollbar |
 | Thread | Einziger vertikaler Scrollbereich |
-| Composer | Sticky Footer + permanente Ausgänge Angebot / Verkäuferkontakt |
+| Clever-Turn | Antwort · Facts · Karte · Next Topics |
+| Composer | Sticky Footer + **Meine Wünsche übergeben** |
 
 ### Bubbles
 
 - **Kunde rechts** – max. 72 % Desktop / 88 % Mobile, dezenter Hintergrund, Kennung „Sie“
 - **Clever links** – max. ca. 760 px, ruhige Bubble, Kennung „Clever“
-- Fakten, Fahrzeuganhänge und Anschlussfrage gehören **zu diesem Turn**
+- Fakten, Fahrzeuganhänge, Next Topics und Anschlussfrage gehören **zu diesem Turn**
 
 ## Notizzettel
 
@@ -32,6 +33,8 @@ Leitsatz: **Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.**
 - Optionaler Toast max. 1,5 s („Notiert: …“) – blockiert nichts
 - Quelle: Customer Understanding / needProfile – keine zweite Wahrheit
 - Fahrzeugfakt in der Antwort erzeugt **keinen** Wunsch-Chip
+- AI-`vehicleDirections` erzeugen **keinen** Wunsch-Chip
+- Kundenbestätigung eines Modells → z. B. „EV9 interessant“
 
 ## Antwortturn (Darstellungshoheit)
 
@@ -42,12 +45,25 @@ Nur `CleverTurnResult`-Inhalte:
 1. `reply`
 2. human-readable `facts`
 3. kompakte `vehicleDirections`-Anhänge
-4. höchstens eine `nextAction` (Frage **oder** Aktion)
+4. 0–4 `nextTopics` (Navigation)
+5. höchstens eine `nextAction` (Frage **oder** Aktion)
 
 **Nicht gleichzeitig** Legacy-Planner, Reasoning-Panel oder Seller-Thought.
 
 Fallback-Komponenten nur, wenn der Turn tatsächlich im Fallback-Pfad liegt
 (keine AI-Turns in der Session / kein AI-Modus).
+
+## Next Topics
+
+Unter dem aktiven Clever-Turn:
+
+> Was möchten Sie noch wissen?
+
+Chips wie Reichweite · Anhängelast · Platz & Kofferraum · Ausstattung
+
+- Reine Navigation – **nicht** in needProfile
+- Klick → natürliche Kundennachricht → normaler `runCleverTurn()`-Flow
+- Max. 4 · ältere Turns optisch zurückgetreten
 
 ## Fact-Chips
 
@@ -67,47 +83,46 @@ Verboten im Kunden-UI: `modelKey`, `variantKey`, Fact-IDs, JSON, `wltpRange`, `E
 Nach einer Clever-Antwort maximal **eine** Folge:
 
 - Anschlussfrage mit optionalen Antwortchips, **oder**
-- eine primäre Aktion (z. B. „Angebot anfordern“)
+- Next Topics, **oder**
+- klare Aktion
 
 `nextAction.type = "none"` ist erlaubt. Freies Eingabefeld bleibt immer sichtbar.
 Keine Frage nur weil ein Profilfeld leer ist.
 
-## Permanente Ausgänge (ab Turn 1)
+## Wunschübergabe (ab Turn 1)
 
 Am sticky Composer immer erreichbar:
 
-- **Angebot anfordern** (Copy darf mit dem Gespräch wachsen)
-- **Verkäufer kontaktieren**
+**Meine Wünsche übergeben**
 
-Der Kunde muss keine Bedarfsanalyse abschließen.
+CTA-Evolution nur bei klarem Kundenwunsch:
 
-CTA-Evolution (nur wenn eindeutig aus dem Gespräch):
+- „Meine Wünsche übergeben“
+- „Meine EV9-Wünsche übergeben“
+- „Für Angebot übergeben“
+- „Wünsche & Leasingdaten übergeben“
 
-- „Angebot anfordern“
-- „Angebot mit meinen Wünschen anfordern“
-- „EV9-Angebot anfordern“
-- „Angebote für 2 Fahrzeuge anfordern“
+Nicht als Standard: „Verkäufer kontaktieren“, „Angebot anfordern“.
 
-## Angebots-Handoff
+## Wunschübergabe-Flow
 
 Kein permanentes „Wunsch verstanden“-Overlay.
 
-Unvollständige Profile sind erlaubt. Beispiel:
+Nach Klick Inline:
 
-> Gerne. Ihre bisherigen Wünsche nehmen wir direkt mit.
-> Sie können die Leasingdaten noch ergänzen oder der Verkäufer
-> klärt den Rest mit Ihnen.
+1. Erklärung (Wünsche + Gespräch weitergeben)
+2. Bisherige Wünsche
+3. Kontaktweg: WhatsApp · E-Mail · Telefon
+4. Optional: Wann passt es?
 
-Aktionen: **Jetzt anfragen** · **Leasingdaten ergänzen**
-
-Zusätzlich Inline-Karte im Thread wenn der Kunde Angebot/Kontakt wählt.
+Unvollständige Profile sind erlaubt.
 
 ## Composer
 
 - Placeholder-Standard: „Weiterfragen oder Wunsch ergänzen …“
-- Kontext möglich: „Noch eine Frage zum EV9?“
+- Kontext: „Weitere Frage oder Wunsch zum EV9 …“
 - Keine Pflichtfragen im Placeholder
-- Permanente Ausgänge Angebot / Kontakt
+- Permanente Wunschübergabe
 - safe-area-inset-bottom
 
 ## Öffentliche UI – verboten
@@ -131,22 +146,26 @@ Zusätzlich Inline-Karte im Thread wenn der Kunde Angebot/Kontakt wählt.
 
 ## Visuelle Hierarchie
 
-1. Kundenfrage  
-2. Clever-Antwort  
-3. relevante Fakten  
-4. optionale Fahrzeugkarte  
-5. eine Anschlussfrage oder Aktion  
-6. Notizzettel  
+1. Notizzettel (sticky)
+2. Kundenfrage
+3. Clever-Antwort
+4. relevante Fakten
+5. optionale Fahrzeugkarte
+6. Next Topics
+7. Wunschübergabe-CTA
+8. Composer
 
 ## Komponenten
 
 | Datei | Rolle |
 |-------|--------|
-| `CleverConversationExperience.jsx` | Shell, AI/Fallback-Gate, Inline-Offer |
+| `CleverConversationExperience.jsx` | Shell, AI/Fallback-Gate, Wunschübergabe |
 | `CleverMemoryBar.jsx` | Notizzettel |
-| `CleverConversationTurn.jsx` | Bubbles, Fact-Chips, Anhänge |
-| `CleverInlineOfferCard.jsx` | Inline Angebot |
-| `conversationFactDisplay.js` | Human-readable Facts |
+| `CleverConversationTurn.jsx` | Bubbles, Fact-Chips, Next Topics, Anhänge |
+| `CleverComposerExits.jsx` | Wunschübergabe-CTA |
+| `CleverPersonalHandoff.jsx` | Inline Wunschübergabe |
+| `conversationNextTopics.js` | Next-Topic-Sanitizer / Fallback |
+| `customerIntakeExits.js` | CTA-Copy Wunschübergabe |
 | `clever-conversation.css` | Layout / Messenger |
 
 ## Tests
@@ -154,5 +173,6 @@ Zusätzlich Inline-Karte im Thread wenn der Kunde Angebot/Kontakt wählt.
 - AI und Fallback rendern nicht gleichzeitig (Gate in Experience)
 - Keine technischen Keys in Fact-Chips
 - Kein dauerhaftes Wunsch-Overlay
-- Handoff nur bei Angebotsstatus
+- Wunschübergabe ab Turn 1 / unvollständig erlaubt
 - `npm run test:clever-ai-conversation` inkl. Fact-Display-Test
+- `npm run test:consultation` inkl. Intake-Golden + Next Topics
