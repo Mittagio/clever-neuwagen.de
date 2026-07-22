@@ -9,7 +9,6 @@ import {
   OFFER_CONVERSATION_PHASE,
   OFFER_TURN_TYPE,
   createHappyPathSession,
-  getOpeningCopy,
   getVehicleInputPlaceholder,
   isInOfferWorld,
   isInVehicleWorld,
@@ -46,10 +45,29 @@ import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
 import CleverInlineOfferCard from './CleverInlineOfferCard.jsx';
 import CleverComposerExits from './CleverComposerExits.jsx';
+import CleverPluginBrandBar from './CleverPluginBrandBar.jsx';
+import CleverPluginResume from './CleverPluginResume.jsx';
+import CleverPluginEscapes from './CleverPluginEscapes.jsx';
+import CleverSoftHandoffPrompt from './CleverSoftHandoffPrompt.jsx';
+import { mergeWishHandoffNotepadLabels } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
   buildWishHandoffExitLabel,
   buildWishHandoffSecondaryLabel,
+  shouldShowSoftHandoffPrompt,
 } from '../../services/consultation/customerIntakeExits.js';
+import {
+  buildPluginOpeningCopy,
+  buildCrossModelResumeHint,
+  normalizePluginPageContext,
+} from '../../services/consultation/cleverDealerPluginContext.js';
+import {
+  buildPluginSessionSnapshot,
+  clearPluginSession,
+  loadPluginSession,
+  savePluginSession,
+  shouldOfferPluginResume,
+} from '../../services/consultation/cleverDealerPluginSession.js';
+import { buildPluginDealerBranding } from '../../services/consultation/cleverDealerPluginBranding.js';
 import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
@@ -149,9 +167,31 @@ export default function CleverConversationExperience({
   dealerId = import.meta.env.VITE_PILOT_DEALER_ID ?? null,
   dealerConditions = {},
   embedded = false,
+  pageContext: pageContextProp = null,
+  hostConsent = null,
   onChatActiveChange = null,
 }) {
   const { addLead } = useLeads();
+  const resolvedDealerId = dealerId
+    || dealerConditions?.dealerId
+    || import.meta.env.VITE_PILOT_DEALER_ID
+    || 'default';
+
+  const pageContext = useMemo(
+    () => normalizePluginPageContext({
+      dealerId: resolvedDealerId,
+      pageType: 'dealer_home',
+      returnUrl: typeof window !== 'undefined' ? window.location.pathname : '/',
+      ...(pageContextProp ?? {}),
+    }),
+    [pageContextProp, resolvedDealerId],
+  );
+
+  const branding = useMemo(
+    () => buildPluginDealerBranding(dealerConditions, dealerName),
+    [dealerConditions, dealerName],
+  );
+
   const [session, setSession] = useState(() => createHappyPathSession(dealerName));
   const [inputValue, setInputValue] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
@@ -171,14 +211,24 @@ export default function CleverConversationExperience({
   const [aiTurnPending, setAiTurnPending] = useState(false);
   const [lastAddedLabel, setLastAddedLabel] = useState('');
   const [highlightLabels, setHighlightLabels] = useState([]);
+  const [resumeSnapshot, setResumeSnapshot] = useState(null);
+  const [resumeGate, setResumeGate] = useState(false);
+  const [laterSavedFlash, setLaterSavedFlash] = useState(false);
   const scrollRef = useRef(null);
   const labelKeyRef = useRef('');
-  const prevLabelCountRef = useRef(0);
+  const handoffNotepadBaselineRef = useRef(null);
   const voiceCommittedRef = useRef('');
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
+  const resumeCheckedRef = useRef(false);
   const voiceSupported = isSpeechRecognitionSupported();
-  const opening = useMemo(() => getOpeningCopy(dealerName), [dealerName]);
+  const opening = useMemo(
+    () => buildPluginOpeningCopy(pageContext, dealerName),
+    [pageContext, dealerName],
+  );
+  const heroPlaceholders = opening.placeholders?.length
+    ? opening.placeholders.map((p) => (p.startsWith('z. B.') ? p : `z. B. ${p}`))
+    : HERO_EXAMPLE_PLACEHOLDERS;
   const inVehicleWorld = isInVehicleWorld(session);
   const inOfferWorld = isInOfferWorld(session);
   const showOpening = session.phase === CONVERSATION_PHASE.OPENING && session.turns.length === 0;
@@ -193,9 +243,33 @@ export default function CleverConversationExperience({
   }, [chatActive, onChatActiveChange]);
 
   useEffect(() => {
+    if (resumeCheckedRef.current) return undefined;
+    resumeCheckedRef.current = true;
+    const stored = loadPluginSession(resolvedDealerId, hostConsent);
+    if (shouldOfferPluginResume(stored)) {
+      setResumeSnapshot(stored);
+      setResumeGate(true);
+    }
+    return undefined;
+  }, [resolvedDealerId, hostConsent]);
+
+  useEffect(() => {
+    if (resumeGate) return undefined;
+    const hasProgress = (session.turns?.length ?? 0) > 0
+      || (session.notepadLabels?.length ?? 0) > 0;
+    if (!hasProgress) return undefined;
+    savePluginSession(
+      resolvedDealerId,
+      buildPluginSessionSnapshot(session, pageContext),
+      hostConsent,
+    );
+    return undefined;
+  }, [session, pageContext, resolvedDealerId, hostConsent, resumeGate]);
+
+  useEffect(() => {
     setSession(createHappyPathSession(dealerName));
     setRevealedCount(0);
-    prevLabelCountRef.current = 0;
+    handoffNotepadBaselineRef.current = null;
     setExcludedModelKeys([]);
     setExcludeReaction('');
     setOfferModelKeys([]);
@@ -203,20 +277,11 @@ export default function CleverConversationExperience({
   }, [dealerName]);
 
   useEffect(() => {
-    const count = session.notepadLabels?.length ?? 0;
-    if (count > prevLabelCountRef.current) {
-      setLabelsAnimating(true);
-      window.setTimeout(() => setLabelsAnimating(false), 520);
-    }
-    prevLabelCountRef.current = count;
-  }, [session.notepadLabels]);
-
-  useEffect(() => {
     if (!showOpening) return undefined;
     if (voiceListening) return undefined;
     if (inputValue.trim()) return undefined;
     if (inputFocused) return undefined;
-    if (HERO_EXAMPLE_PLACEHOLDERS.length <= 1) return undefined;
+    if (heroPlaceholders.length <= 1) return undefined;
 
     const intervalMs = 3400;
     const fadeMs = 240;
@@ -224,13 +289,13 @@ export default function CleverConversationExperience({
     const handle = window.setInterval(() => {
       setHeroPlaceholderFading(true);
       window.setTimeout(() => {
-        setHeroPlaceholderIndex((prev) => (prev + 1) % HERO_EXAMPLE_PLACEHOLDERS.length);
+        setHeroPlaceholderIndex((prev) => (prev + 1) % heroPlaceholders.length);
         setHeroPlaceholderFading(false);
       }, fadeMs);
     }, intervalMs);
 
     return () => window.clearInterval(handle);
-  }, [showOpening, voiceListening, inputValue, inputFocused]);
+  }, [showOpening, voiceListening, inputValue, inputFocused, heroPlaceholders]);
 
   useEffect(() => {
     if (inOfferWorld || inVehicleWorld || inCollectMode) return undefined;
@@ -285,9 +350,12 @@ export default function CleverConversationExperience({
     setLastAddedLabel(added[0] ?? '');
     setHighlightLabels(added);
     setNotingFlash(added);
+    setLabelsAnimating(true);
+    const animTimer = window.setTimeout(() => setLabelsAnimating(false), 520);
     const toastTimer = window.setTimeout(() => setNotingFlash(null), 1500);
     const glowTimer = window.setTimeout(() => setHighlightLabels([]), 1600);
     return () => {
+      window.clearTimeout(animTimer);
       window.clearTimeout(toastTimer);
       window.clearTimeout(glowTimer);
     };
@@ -384,6 +452,9 @@ export default function CleverConversationExperience({
 
   const smartChipState = useMemo(() => {
     if (showOpening) {
+      if (pageContext.pageType === 'model') {
+        return { label: null, chips: [] };
+      }
       return {
         label: 'Beliebte Einstiege',
         chips: POPULAR_ENTRY_CHIPS,
@@ -453,7 +524,7 @@ export default function CleverConversationExperience({
 
     const hit = groups.find((g) => g.match.test(context));
     return hit ? pick(hit) : defaults;
-  }, [inputValue, session.notepadLabels, session.needProfile?.understoodLabels, showOpening]);
+  }, [inputValue, session.notepadLabels, session.needProfile?.understoodLabels, showOpening, pageContext.pageType]);
 
   const handleSmartChipClick = useCallback((chipText) => {
     const next = String(chipText ?? '').trim();
@@ -527,7 +598,7 @@ export default function CleverConversationExperience({
 
   const heroPlaceholder = voiceListening
     ? 'Clever hört zu …'
-    : (HERO_EXAMPLE_PLACEHOLDERS[heroPlaceholderIndex] || opening.placeholder);
+    : (heroPlaceholders[heroPlaceholderIndex] || opening.placeholder);
 
   const livingPlaceholder = composerPlaceholderForSession(session)
     || LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]
@@ -627,6 +698,31 @@ export default function CleverConversationExperience({
             onSecondary={handleWishHandoffSecondary}
             disabled={!inputEnabled}
           />
+        )}
+        {showSoftHandoff && (
+          <CleverSoftHandoffPrompt
+            onHandoff={handleWishHandoffExit}
+            onContinue={handleSoftHandoffContinue}
+          />
+        )}
+        <CleverPluginEscapes
+          branding={branding}
+          notepadLabels={session.notepadLabels}
+          dealerName={dealerName}
+        />
+        {hasCustomerTurn && (
+          <button
+            type="button"
+            className="cc-plugin-later"
+            onClick={handleSaveForLater}
+          >
+            Später weitermachen
+          </button>
+        )}
+        {laterSavedFlash && (
+          <p className="cc-plugin-later-flash" role="status">
+            Kein Problem. Ihre bisherigen Wünsche bleiben auf diesem Gerät gespeichert.
+          </p>
         )}
       <form className={formClass} onSubmit={handleFormSubmit}>
         <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
@@ -751,9 +847,29 @@ export default function CleverConversationExperience({
     });
   }, [dealerConditions]);
 
+  const handleHandoffEnrichmentChange = useCallback((enrichment) => {
+    setSession((prev) => {
+      if (handoffNotepadBaselineRef.current == null) {
+        handoffNotepadBaselineRef.current = [...(prev.notepadLabels ?? [])];
+      }
+      const nextLabels = mergeWishHandoffNotepadLabels(
+        handoffNotepadBaselineRef.current,
+        enrichment,
+      );
+      if (
+        nextLabels.length === (prev.notepadLabels?.length ?? 0)
+        && nextLabels.every((label, index) => label === prev.notepadLabels[index])
+      ) {
+        return prev;
+      }
+      return { ...prev, notepadLabels: nextLabels };
+    });
+  }, []);
+
   const handlePersonalHandoffSubmit = useCallback((handoffForm) => {
     setSession((prev) => {
-      const result = submitPersonalHandoff(prev, handoffForm, dealerConditions);
+      const result = submitPersonalHandoff(prev, handoffForm, dealerConditions, pageContext);
+      handoffNotepadBaselineRef.current = null;
       addLead(result.lead);
       void notifyCustomerInquirySubmitted(result.lead, {
         dealerName: dealerConditions?.dealerName ?? dealerName,
@@ -761,9 +877,77 @@ export default function CleverConversationExperience({
         dealerEmail: dealerConditions?.contact?.email ?? dealerConditions?.email,
         contactName: dealerConditions?.contact?.name,
       });
+      savePluginSession(
+        resolvedDealerId,
+        buildPluginSessionSnapshot(result.session, pageContext),
+        hostConsent,
+      );
       return result.session;
     });
-  }, [dealerConditions, dealerName, addLead]);
+  }, [dealerConditions, dealerName, addLead, pageContext, resolvedDealerId, hostConsent]);
+
+  const handleResumeContinue = useCallback(() => {
+    if (!resumeSnapshot?.session) {
+      setResumeGate(false);
+      return;
+    }
+    const restored = {
+      ...createHappyPathSession(dealerName),
+      ...resumeSnapshot.session,
+      dealerName,
+    };
+    setSession(restored);
+    const playable = (restored.turns ?? []).filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
+    setRevealedCount(playable.length);
+    setResumeGate(false);
+    setResumeSnapshot(null);
+  }, [resumeSnapshot, dealerName]);
+
+  const handleResumeRestart = useCallback(() => {
+    clearPluginSession(resolvedDealerId);
+    setSession(createHappyPathSession(dealerName));
+    setRevealedCount(0);
+    setResumeGate(false);
+    setResumeSnapshot(null);
+    handoffNotepadBaselineRef.current = null;
+  }, [resolvedDealerId, dealerName]);
+
+  const handleContinueWishesAfterHandoff = useCallback(() => {
+    setSession((prev) => ({
+      ...prev,
+      phase: CONVERSATION_PHASE.CONVERSATION,
+      needProfile: {
+        ...(prev.needProfile ?? {}),
+        world: CLEVER_WORLD.NEED_CONSULTATION,
+      },
+      softHandoffDismissed: false,
+    }));
+  }, []);
+
+  const handleSaveForLater = useCallback(() => {
+    const ok = savePluginSession(
+      resolvedDealerId,
+      buildPluginSessionSnapshot(session, pageContext),
+      hostConsent,
+    );
+    if (ok) {
+      setLaterSavedFlash(true);
+      window.setTimeout(() => setLaterSavedFlash(false), 2800);
+    }
+  }, [resolvedDealerId, session, pageContext, hostConsent]);
+
+  const handleSoftHandoffContinue = useCallback(() => {
+    setSession((prev) => ({ ...prev, softHandoffDismissed: true }));
+  }, []);
+
+  const crossModelHint = useMemo(() => {
+    if (!resumeSnapshot?.pageContext) return null;
+    return buildCrossModelResumeHint(
+      resumeSnapshot.pageContext,
+      pageContext,
+      resumeSnapshot.session?.notepadLabels ?? [],
+    );
+  }, [resumeSnapshot, pageContext]);
 
   const playableTurns = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
   const visibleTurns = playableTurns.slice(0, revealedCount);
@@ -827,8 +1011,14 @@ export default function CleverConversationExperience({
     && !inCollectMode
     && (wishHandoffLatched || shouldShowInlineOfferCard(session));
 
-  // Wunschübergabe ab Turn 1 – keine parallelen „Verkäufer kontaktieren“-CTAs
-  const showComposerExits = !inOfferWorld && !inCollectMode;
+  // Wunschübergabe ab erstem Kundenturn
+  const hasCustomerTurn = (session.turns ?? []).some((t) => t.type === TURN_TYPE.CUSTOMER);
+  const showComposerExits = !inOfferWorld && !inCollectMode && (hasCustomerTurn || (session.notepadLabels?.length > 0));
+  const showSoftHandoff = !inOfferWorld
+    && !inCollectMode
+    && !showOpening
+    && !resumeGate
+    && shouldShowSoftHandoffPrompt(session);
   const wishHandoffExitLabel = buildWishHandoffExitLabel({
     ...session,
     offerModelKeys,
@@ -880,17 +1070,44 @@ export default function CleverConversationExperience({
     'cc-experience',
     'cc-experience--messenger',
     embedded ? 'cc-experience--embedded' : '',
+    embedded ? 'cc-experience--plugin' : '',
     inVehicleWorld ? 'cc-experience--vehicle' : '',
     inOfferWorld ? 'cc-experience--offer' : '',
     !inOfferWorld && !inVehicleWorld ? 'cc-experience--living' : '',
     showOpening ? 'cc-experience--living-opening' : '',
+    pageContext.pageType === 'model' ? 'cc-experience--plugin-model' : '',
     showInlineOffer ? 'cc-experience--inline-offer' : '',
     advisorBoostExpanded ? 'cc-experience--advisor-quick' : '',
   ].filter(Boolean).join(' ');
 
+  const experienceStyle = branding.accentColor
+    ? { '--cc-accent': branding.accentColor }
+    : undefined;
+
+  if (resumeGate) {
+    return (
+      <div className={experienceClass} style={experienceStyle}>
+        {embedded && <CleverPluginBrandBar branding={branding} />}
+        <CleverPluginResume
+          labels={resumeSnapshot?.session?.notepadLabels ?? []}
+          crossModelHint={crossModelHint}
+          onContinue={handleResumeContinue}
+          onRestart={handleResumeRestart}
+        />
+        <CleverPluginEscapes
+          branding={branding}
+          notepadLabels={resumeSnapshot?.session?.notepadLabels ?? []}
+          dealerName={dealerName}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={experienceClass}>
-      {!embedded && (
+    <div className={experienceClass} style={experienceStyle}>
+      {embedded ? (
+        <CleverPluginBrandBar branding={branding} />
+      ) : (
         <header className="cc-experience__dealer">
           <span className="cc-experience__dealer-name">{dealerName}</span>
           {engineBadge && (
@@ -913,8 +1130,8 @@ export default function CleverConversationExperience({
         </div>
       )}
 
-      {!inOfferWorld && !showOpening && (
-        inVehicleWorld ? (
+      {!showOpening && (
+        inVehicleWorld && !inOfferWorld ? (
           <CleverWishAndVehicleNotepad
             wishLabels={session.notepadLabels}
             vehicleLabels={session.vehicleNotepadLabels}
@@ -923,7 +1140,7 @@ export default function CleverConversationExperience({
         ) : (
           <CleverMemoryBar
             labels={session.notepadLabels}
-            onRemove={handleRemoveUnderstoodLabel}
+            onRemove={inOfferWorld ? undefined : handleRemoveUnderstoodLabel}
             animating={labelsAnimating}
             highlightLabels={highlightLabels}
           />
@@ -1025,12 +1242,19 @@ export default function CleverConversationExperience({
                 <CleverPersonalHandoff
                   key={turn.id}
                   handoffView={turn.handoffView}
+                  onEnrichmentChange={handleHandoffEnrichmentChange}
                   onSubmit={handlePersonalHandoffSubmit}
                 />
               );
             }
             if (turn.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE) {
-              return <CleverHandoffComplete key={turn.id} completeView={turn.completeView} />;
+              return (
+                <CleverHandoffComplete
+                  key={turn.id}
+                  completeView={turn.completeView}
+                  onContinueWishes={handleContinueWishesAfterHandoff}
+                />
+              );
             }
             if (turn.type === TURN_TYPE.HANDOFF) {
               return (
@@ -1081,6 +1305,15 @@ export default function CleverConversationExperience({
       </div>
 
       {!inOfferWorld && !inCollectMode && renderComposer()}
+      {inOfferWorld && !inCollectMode && (
+        <div className="cc-composer-stack cc-composer-stack--escape-only">
+          <CleverPluginEscapes
+            branding={branding}
+            notepadLabels={session.notepadLabels}
+            dealerName={dealerName}
+          />
+        </div>
+      )}
     </div>
   );
 }

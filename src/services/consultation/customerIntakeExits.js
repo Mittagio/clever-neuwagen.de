@@ -113,6 +113,24 @@ export function buildWishHandoffSecondaryLabel(session = {}) {
 }
 
 /**
+ * Soft-Hinweis wenn Notizzettel schon Substanz hat – kein hartes Turn-Limit.
+ * @param {{ notepadLabels?: string[], softHandoffDismissed?: boolean }} session
+ */
+export function shouldShowSoftHandoffPrompt(session = {}) {
+  if (session.softHandoffDismissed) return false;
+  const labels = session.notepadLabels ?? [];
+  return labels.length >= 3;
+}
+
+export function buildSoftHandoffPromptCopy() {
+  return {
+    text: 'Sie haben mir schon einiges mitgegeben. Möchten Sie Ihre Wünsche so an den Verkäufer weitergeben oder noch etwas ergänzen?',
+    handoffLabel: 'Meine Wünsche übergeben',
+    continueLabel: 'Weiter erzählen',
+  };
+}
+
+/**
  * Copy für unvollständigen Angebots-Handoff / Inline.
  */
 export function buildIncompleteOfferHandoffCopy() {

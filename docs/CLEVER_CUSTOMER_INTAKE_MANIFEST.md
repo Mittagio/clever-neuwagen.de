@@ -178,6 +178,7 @@ Er muss nicht erneut fragen: „Was suchen Sie denn eigentlich?“
 
 ## Verwandte Dokumente
 
+- [Dealer Plugin](CLEVER_DEALER_PLUGIN.md) – eingebettete Händlerseiten-Erfahrung (Page Context, Resume, Escape, Branding; **ohne** Bestandsintegration)
 - [Conversation UI](CLEVER_CONVERSATION_UI.md)
 - [AI Conversation Engine](CLEVER_AI_CONVERSATION_ENGINE.md)
 - [Clever Lead](CLEVER_LEAD.md)
@@ -185,3 +186,5 @@ Er muss nicht erneut fragen: „Was suchen Sie denn eigentlich?“
 
 Ältere Discovery-/Golden-/Ranking-Specs gelten für den Kundendialog nur noch,
 soweit sie diesem Manifest nicht widersprechen (siehe Supersession-Hinweise dort).
+
+Dealer-Plugin-Verhalten ist in [CLEVER_DEALER_PLUGIN.md](CLEVER_DEALER_PLUGIN.md) spezifiziert.

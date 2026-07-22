@@ -15,6 +15,10 @@ import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 import { mergeNeedProfileIntoLead } from './needProfileService.js';
 import { CLEVER_WORLD } from './consultationWorlds.js';
 import { isElectricOrPhevProfile } from './conversationPlanner.js';
+import {
+  applyWishHandoffEnrichmentToNeedProfile,
+  buildWishHandoffEnrichmentLines,
+} from './wishHandoffEnrichment.js';
 
 export const OFFER_CONVERSATION_PHASE = {
   OFFER_HANDOFF: 'offer_handoff',
@@ -36,6 +40,21 @@ export const CONTACT_TIMING_OPTIONS = [
 export const CONTACT_TIMING_LABELS = Object.fromEntries(
   CONTACT_TIMING_OPTIONS.map((o) => [o.id, o.label]),
 );
+
+/** Absicht hinter der Wunschübergabe (Scout-üblich: Rückruf / Infos / Probefahrt). */
+export const HANDOFF_INTENT_OPTIONS = [
+  { id: 'callback', label: 'Rückruf' },
+  { id: 'info', label: 'Nur Infos' },
+  { id: 'testdrive', label: 'Probefahrt' },
+  { id: 'consult', label: 'Beratungsgespräch' },
+];
+
+export const HANDOFF_INTENT_LABELS = Object.fromEntries(
+  HANDOFF_INTENT_OPTIONS.map((o) => [o.id, o.label]),
+);
+
+/** Kanäle, die eine Telefonnummer brauchen. */
+export const PHONE_REQUIRED_CONTACT_PREFS = new Set(['phone', 'whatsapp']);
 
 export { CONTACT_PREFERENCES };
 
@@ -236,6 +255,8 @@ export function buildPreparedSummaryItems(session = {}) {
  */
 export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   const wishLabels = session.notepadLabels ?? [];
+  const advisor = defaultAdvisor(dealerConditions);
+  const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
   return {
     title: 'Wünsche bereit zur Übergabe',
     intro:
@@ -243,16 +264,27 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
       + 'Sie müssen dort nicht noch einmal von vorne anfangen.',
     wishesHeading: 'Ihre bisherigen Wünsche',
     contactLead: 'Wie dürfen wir uns bei Ihnen melden?',
+    intentLead: 'Worum soll es gehen?',
     timingLead: 'Wann passt es ungefähr?',
+    noteLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
+    notePlaceholder:
+      'z. B. Lieber nachmittags · Probefahrt am Wochenende · Farbe Blau wäre schön',
+    privacyText:
+      'Mit dem Absenden willige ich ein, dass meine Angaben und das Gespräch an den zuständigen Verkäufer weitergegeben werden, damit er mich kontaktieren kann.',
+    privacyLinkLabel: 'Datenschutz',
+    privacyLinkHref: '/legal/datenschutz',
+    trustLine: `${advisor.name} · ${dealerName}`,
+    trustSla: 'In der Regel Rückmeldung innerhalb eines Werktags.',
     submitLabel: 'Wünsche übergeben',
     preparedIntro: null,
     preparedItems: buildPreparedSummaryItems(session),
     wishProfile: buildWishProfilePresentation(session.needProfile ?? {}, wishLabels),
     wishLabels,
+    needProfile: session.needProfile ?? {},
     vehicleLabels: session.vehicleNotepadLabels ?? [],
     directionLine: session.vehicleMiniRecommendation?.batteryLine ?? null,
     trimLine: session.vehicleMiniRecommendation?.trimLine ?? null,
-    advisor: defaultAdvisor(dealerConditions),
+    advisor,
     hasRate: false,
     hasOffer: false,
   };
@@ -659,20 +691,60 @@ export function countSessionUnderstandingLabels(session = {}) {
   return merged.size;
 }
 
-export function buildHandoffCompleteView() {
+export function buildHandoffCompleteView(
+  handoffForm = {},
+  dealerConditions = {},
+  pageContext = {},
+) {
+  void dealerConditions;
+  const email = String(handoffForm.email ?? '').trim();
+  const pref = CONTACT_PREFERENCES.find((p) => p.id === handoffForm.contactPreference)?.label
+    ?? 'Ihrem bevorzugten Weg';
+  const timing = CONTACT_TIMING_LABELS[handoffForm.contactTiming] ?? null;
+  const intent = HANDOFF_INTENT_LABELS[handoffForm.contactIntent] ?? null;
+  const when = timing ? ` (${timing.toLowerCase()})` : '';
+
+  const returnUrl = pageContext?.returnUrl ? String(pageContext.returnUrl) : null;
+  const modelKey = pageContext?.modelKey ? String(pageContext.modelKey) : null;
+  let modelReturnLabel = null;
+  if (modelKey) {
+    const short = modelKey.replace(/^kia-/i, '').toUpperCase();
+    modelReturnLabel = /^EV\d/i.test(short)
+      ? `Zurück zum ${short}`
+      : `Zurück zum ${short.charAt(0)}${short.slice(1).toLowerCase()}`;
+  }
+
+  const returnActions = [];
+  if (returnUrl && modelReturnLabel) {
+    returnActions.push({ id: 'return_model', label: modelReturnLabel, href: returnUrl });
+  } else if (returnUrl) {
+    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: returnUrl });
+  } else {
+    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: '/' });
+  }
+  returnActions.push({ id: 'continue_wishes', label: 'Wünsche ergänzen', href: null });
+
   return {
     title: 'Vielen Dank.',
-    headline: 'Ihre Wünsche sind übergeben.',
-    intro: 'Der Verkäufer erhält Ihre Wünsche und kann direkt dort einsteigen, wo wir aufgehört haben.',
+    headline: 'Wünsche übergeben',
+    intro:
+      'Der Verkauf erhält Ihren Notizzettel und den bisherigen Gesprächsverlauf.',
     checklist: [
       'Ihre bisherigen Wünsche',
       'unser Gespräch',
       'offene Punkte',
+      ...(intent ? [`Absicht: ${intent}`] : []),
     ],
-    outro: 'Er meldet sich auf dem von Ihnen gewählten Weg.',
+    outro: `Er meldet sich voraussichtlich${when} per ${pref}.`,
+    confirmationHint: email
+      ? `Eine Bestätigung geht an ${email}.`
+      : null,
+    trustSla: 'In der Regel Rückmeldung innerhalb eines Werktags.',
     reassurance:
       'Keine Sorge: Sie müssen nichts noch einmal erklären. '
       + 'Wir rufen Sie nicht ungefragt sofort an.',
+    returnActions,
+    publicReference: null,
   };
 }
 
@@ -699,12 +771,21 @@ function buildHandoffDossierLines(session = {}, form = {}) {
   if (form.contactTiming) {
     lines.push(`Rückruf: ${CONTACT_TIMING_LABELS[form.contactTiming] ?? form.contactTiming}`);
   }
+  if (form.contactIntent) {
+    const intent = HANDOFF_INTENT_LABELS[form.contactIntent] ?? form.contactIntent;
+    lines.push(`Absicht: ${intent}`);
+  }
   if (form.contactPreference) {
     const pref = CONTACT_PREFERENCES.find((p) => p.id === form.contactPreference)?.label;
     if (pref) lines.push(`Kontakt bevorzugt per: ${pref}`);
   }
   if (form.advisorNote?.trim()) {
     lines.push(`Hinweis: ${form.advisorNote.trim()}`);
+  }
+  if (form.enrichment) {
+    for (const line of buildWishHandoffEnrichmentLines(form.enrichment)) {
+      lines.push(line);
+    }
   }
   return lines;
 }
@@ -738,16 +819,25 @@ export function createLeadFromConsultationHappyPath({
   });
 
   const contactName = formatContactName(handoffForm);
+  const enrichedNeedProfile = applyWishHandoffEnrichmentToNeedProfile(
+    session.needProfile ?? {},
+    handoffForm.enrichment ?? {},
+  );
   const needProfile = {
-    ...session.needProfile,
+    ...enrichedNeedProfile,
     world: CLEVER_WORLD.OFFER,
-    selectedModelKey: session.selectedModelKey ?? 'ev3',
+    selectedModelKey: session.selectedModelKey
+      ?? enrichedNeedProfile.selectedModelKey
+      ?? 'ev3',
     understoodLabels: session.notepadLabels ?? [],
     vehicleNotes: session.vehicleNotepadLabels ?? [],
     handoff: {
       contactPreference: handoffForm.contactPreference ?? null,
       contactTiming: handoffForm.contactTiming ?? null,
+      contactIntent: handoffForm.contactIntent ?? null,
       advisorNote: handoffForm.advisorNote?.trim() || null,
+      privacyAccepted: Boolean(handoffForm.privacyAccepted),
+      enrichment: handoffForm.enrichment ?? null,
       submittedAt: new Date().toISOString(),
     },
   };
@@ -803,6 +893,7 @@ export function createLeadFromConsultationHappyPath({
       journeyPhase: JOURNEY_PHASE.NEW_INQUIRY,
       contactPreference: handoffForm.contactPreference ?? null,
       contactTiming: handoffForm.contactTiming ?? null,
+      contactIntent: handoffForm.contactIntent ?? null,
     },
     notes: dossierLines.join('\n'),
     history: [
@@ -847,14 +938,19 @@ export function beginOfferHandoff(session, dealerConditions = {}) {
 /**
  * Persönliche Beratung anfordern – Lead + Journey Welt 3.
  */
-export function submitPersonalHandoff(session, handoffForm = {}, dealerConditions = {}) {
+export function submitPersonalHandoff(
+  session,
+  handoffForm = {},
+  dealerConditions = {},
+  pageContext = {},
+) {
   const lead = createLeadFromConsultationHappyPath({
     session,
     handoffForm,
     dealerConditions,
   });
   const journey = evaluateJourney(lead);
-  const completeView = buildHandoffCompleteView();
+  const completeView = buildHandoffCompleteView(handoffForm, dealerConditions, pageContext);
 
   return {
     session: {
@@ -894,6 +990,18 @@ export function validateHandoffForm(form = {}) {
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     errors.email = 'Das sieht noch nicht nach einer E-Mail aus – wo dürfen wir Sie erreichen?';
   }
+
+  const pref = form.contactPreference ?? 'email';
+  if (PHONE_REQUIRED_CONTACT_PREFS.has(pref) && !String(form.phone ?? '').trim()) {
+    errors.phone = pref === 'whatsapp'
+      ? 'Für WhatsApp brauchen wir Ihre Handynummer.'
+      : 'Für einen Rückruf brauchen wir Ihre Telefonnummer.';
+  }
+
+  if (!form.privacyAccepted) {
+    errors.privacyAccepted = 'Bitte bestätigen Sie die Weitergabe an Ihren Verkäufer.';
+  }
+
   return { valid: Object.keys(errors).length === 0, errors };
 }
 

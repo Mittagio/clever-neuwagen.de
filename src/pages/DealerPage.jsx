@@ -1726,7 +1726,14 @@ export default function DealerPage() {
               <CleverConversationExperience
                 embedded
                 dealerName={conditions.dealerName}
+                dealerId={dealerId}
                 dealerConditions={conditions}
+                pageContext={{
+                  dealerId,
+                  pageType: 'dealer_home',
+                  brandKey: 'kia',
+                  returnUrl: typeof window !== 'undefined' ? window.location.pathname : `/${dealerId}`,
+                }}
                 onChatActiveChange={handleCleverChatActiveChange}
               />
             </section>

@@ -88,7 +88,9 @@ function testLeadCreation() {
     phone: '01701234567',
     contactPreference: 'whatsapp',
     contactTiming: 'tomorrow',
+    contactIntent: 'testdrive',
     advisorNote: 'Lieber nachmittags',
+    privacyAccepted: true,
   };
 
   const lead = createLeadFromConsultationHappyPath({ session, handoffForm: form, dealerConditions });
@@ -96,8 +98,10 @@ function testLeadCreation() {
   assert.ok(lead.crm.needProfile);
   assert.equal(lead.crm.needProfile.world, CLEVER_WORLD.OFFER);
   assert.ok(lead.crm.needProfile.understoodLabels?.length >= 4);
+  assert.equal(lead.crm.needProfile.handoff.contactIntent, 'testdrive');
   assert.ok(lead.sonderwuensche?.consultation?.consultationHandoff);
   assert.match(lead.notes, /EV3/i);
+  assert.match(lead.notes, /Probefahrt|Absicht/i);
   assert.ok(lead.notes.includes('Wärmepumpe') || lead.notes.includes('Ausstattung'));
   assert.equal(lead.contact.email, 'anna@example.de');
   assert.equal(lead.contact.name, 'Anna Muster');
@@ -114,6 +118,8 @@ function testSubmitPersonalHandoff() {
     email: 'tom@example.de',
     contactPreference: 'email',
     contactTiming: 'this_week',
+    contactIntent: 'callback',
+    privacyAccepted: true,
   };
 
   const result = submitPersonalHandoff(session, form, dealerConditions);
@@ -121,19 +127,55 @@ function testSubmitPersonalHandoff() {
   assert.equal(result.session.needProfile.world, CLEVER_WORLD.OFFER);
   assert.equal(result.journey?.phase, JOURNEY_PHASE.FIRST_CONTACT);
   assert.ok(result.session.turns.some((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE));
+  const complete = result.session.turns.find((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE);
+  assert.match(complete.completeView.outro, /E-Mail|per/i);
+  assert.match(complete.completeView.confirmationHint, /tom@example\.de/i);
+  assert.match(complete.completeView.trustSla, /Werktag/i);
   console.log('✓ Persönliche Übergabe erzeugt Lead und Abschluss');
 }
 
 function testValidation() {
   const invalid = validateHandoffForm({ firstName: '', lastName: 'X', email: 'bad' });
   assert.equal(invalid.valid, false);
+
+  const missingPhone = validateHandoffForm({
+    firstName: 'A',
+    lastName: 'B',
+    email: 'a@b.de',
+    contactPreference: 'whatsapp',
+    privacyAccepted: true,
+  });
+  assert.equal(missingPhone.valid, false);
+  assert.ok(missingPhone.errors.phone);
+
+  const missingPrivacy = validateHandoffForm({
+    firstName: 'A',
+    lastName: 'B',
+    email: 'a@b.de',
+    contactPreference: 'email',
+  });
+  assert.equal(missingPrivacy.valid, false);
+  assert.ok(missingPrivacy.errors.privacyAccepted);
+
   const valid = validateHandoffForm({
     firstName: 'A',
     lastName: 'B',
     email: 'a@b.de',
+    contactPreference: 'email',
+    privacyAccepted: true,
   });
   assert.equal(valid.valid, true);
-  console.log('✓ Kontaktdaten-Validierung');
+
+  const validWhatsapp = validateHandoffForm({
+    firstName: 'A',
+    lastName: 'B',
+    email: 'a@b.de',
+    phone: '01701234567',
+    contactPreference: 'whatsapp',
+    privacyAccepted: true,
+  });
+  assert.equal(validWhatsapp.valid, true);
+  console.log('✓ Kontaktdaten-Validierung inkl. Telefon & Datenschutz');
 }
 
 function testAdvisorBoostChips() {

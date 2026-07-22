@@ -50,15 +50,17 @@ export default function CleverMemoryBar({
           >
             <span className="cc-memory__chip-icon" aria-hidden>{iconForLabel(label)}</span>
             <span className="cc-memory__chip-text">{label}</span>
-            <button
-              type="button"
-              className="cc-memory__chip-x"
-              onClick={() => onRemove?.(label)}
-              aria-label={`${label} entfernen`}
-              title={`${label} entfernen`}
-            >
-              <span aria-hidden>×</span>
-            </button>
+            {typeof onRemove === 'function' && (
+              <button
+                type="button"
+                className="cc-memory__chip-x"
+                onClick={() => onRemove(label)}
+                aria-label={`${label} entfernen`}
+                title={`${label} entfernen`}
+              >
+                <span aria-hidden>×</span>
+              </button>
+            )}
           </span>
         ))}
       </div>
