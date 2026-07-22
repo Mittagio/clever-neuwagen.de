@@ -48,7 +48,6 @@ export default function CustomerAuthFlow({ onSuccess }) {
       <div className="cust-auth">
         <div className="cust-auth-intro">
           <h1 className="cust-auth-title">Anmelden</h1>
-          <p className="cust-auth-sub">Ohne Passwort – wir senden Ihnen einen Code per E-Mail.</p>
         </div>
 
         <form className="cust-auth-form" onSubmit={handleEmailSubmit}>
@@ -74,28 +73,21 @@ export default function CustomerAuthFlow({ onSuccess }) {
 
   return (
     <div className="cust-auth">
-      <button type="button" className="cust-auth-back" onClick={handleBack}>← Andere E-Mail</button>
-
-      <div className="cust-auth-intro">
-        <h1 className="cust-auth-title">Code eingeben</h1>
-        <p className="cust-auth-sub">
-          Code an <strong>{pendingEmail}</strong> gesendet.
-        </p>
-      </div>
+      <button type="button" className="cust-auth-back" onClick={handleBack}>← {pendingEmail}</button>
 
       {demoCode && (
         <p className="cust-auth-demo">
-          Demo: Ihr Code ist <strong>{demoCode}</strong>
+          <strong>{demoCode}</strong>
         </p>
       )}
 
       <form className="cust-auth-form" onSubmit={handleCodeSubmit}>
-        <label className="cust-auth-label" htmlFor="cust-code">Verifizierungscode</label>
+        <label className="cust-auth-label" htmlFor="cust-code">Code</label>
         <input
           id="cust-code"
           type="text"
           className="cust-auth-input cust-auth-input--code"
-          placeholder="6-stelliger Code"
+          placeholder="······"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
           inputMode="numeric"
@@ -106,10 +98,10 @@ export default function CustomerAuthFlow({ onSuccess }) {
         />
         {error && <p className="cust-auth-error" role="alert">{error}</p>}
         <button type="submit" className="cust-auth-btn" disabled={code.length < 6}>
-          Anmelden
+          Weiter
         </button>
         <button type="button" className="cust-auth-link" onClick={handleResend}>
-          Code erneut senden
+          Neu senden
         </button>
       </form>
     </div>

@@ -8,26 +8,36 @@ export default function CleverHandoffComplete({
 
   return (
     <section className="cc-offer-complete cc-turn-enter" aria-labelledby="cc-offer-complete-title">
-      <p className="cc-offer-complete__ready" aria-hidden>✓ Wünsche übergeben</p>
+      <p className="cc-offer-complete__ready" aria-hidden>✓</p>
       <h2 id="cc-offer-complete-title" className="cc-offer-complete__title">
         {completeView.title}
       </h2>
 
-      <p className="cc-offer-complete__headline">{completeView.headline}</p>
+      {completeView.headline && (
+        <p className="cc-offer-complete__headline">{completeView.headline}</p>
+      )}
 
-      <div className="cc-offer-complete__checklist-block">
-        <p className="cc-offer-complete__intro">{completeView.intro}</p>
-        <ul className="cc-offer-complete__checklist">
-          {(completeView.checklist ?? []).map((item) => (
-            <li key={item} className="cc-offer-complete__check-item">
-              <span aria-hidden>✓</span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {(completeView.intro || (completeView.checklist?.length > 0)) && (
+        <div className="cc-offer-complete__checklist-block">
+          {completeView.intro && (
+            <p className="cc-offer-complete__intro">{completeView.intro}</p>
+          )}
+          {(completeView.checklist?.length > 0) && (
+            <ul className="cc-offer-complete__checklist">
+              {completeView.checklist.map((item) => (
+                <li key={item} className="cc-offer-complete__check-item">
+                  <span aria-hidden>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-      <p className="cc-offer-complete__outro">{completeView.outro}</p>
+      {completeView.outro && (
+        <p className="cc-offer-complete__outro">{completeView.outro}</p>
+      )}
 
       {completeView.confirmationHint && (
         <p className="cc-offer-complete__confirm">{completeView.confirmationHint}</p>
@@ -35,8 +45,6 @@ export default function CleverHandoffComplete({
 
       {completeView.publicReference && (
         <p className="cc-offer-complete__ref">
-          Ihre Anfrage:
-          {' '}
           {completeView.publicReference}
         </p>
       )}
@@ -61,10 +69,15 @@ export default function CleverHandoffComplete({
               );
             }
             if (action.href) {
+              const isPrimary = action.id === 'return_model'
+                || action.id === 'return_home'
+                || action.id === 'account';
               return (
                 <a
                   key={action.id}
-                  className="cc-offer-complete__action cc-offer-complete__action--primary"
+                  className={`cc-offer-complete__action${
+                    isPrimary && action.id !== 'continue_wishes' ? ' cc-offer-complete__action--primary' : ''
+                  }`}
                   href={action.href}
                 >
                   {action.label}
@@ -76,7 +89,9 @@ export default function CleverHandoffComplete({
         </div>
       )}
 
-      <p className="cc-offer-complete__reassurance">{completeView.reassurance}</p>
+      {completeView.reassurance && (
+        <p className="cc-offer-complete__reassurance">{completeView.reassurance}</p>
+      )}
     </section>
   );
 }

@@ -47,13 +47,10 @@ import CleverInlineOfferCard from './CleverInlineOfferCard.jsx';
 import CleverComposerExits from './CleverComposerExits.jsx';
 import CleverPluginBrandBar from './CleverPluginBrandBar.jsx';
 import CleverPluginResume from './CleverPluginResume.jsx';
-import CleverPluginEscapes from './CleverPluginEscapes.jsx';
-import CleverSoftHandoffPrompt from './CleverSoftHandoffPrompt.jsx';
 import { mergeWishHandoffNotepadLabels } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
   buildWishHandoffExitLabel,
   buildWishHandoffSecondaryLabel,
-  shouldShowSoftHandoffPrompt,
 } from '../../services/consultation/customerIntakeExits.js';
 import {
   buildPluginOpeningCopy,
@@ -699,17 +696,6 @@ export default function CleverConversationExperience({
             disabled={!inputEnabled}
           />
         )}
-        {showSoftHandoff && (
-          <CleverSoftHandoffPrompt
-            onHandoff={handleWishHandoffExit}
-            onContinue={handleSoftHandoffContinue}
-          />
-        )}
-        <CleverPluginEscapes
-          branding={branding}
-          notepadLabels={session.notepadLabels}
-          dealerName={dealerName}
-        />
         {hasCustomerTurn && (
           <button
             type="button"
@@ -936,10 +922,6 @@ export default function CleverConversationExperience({
     }
   }, [resolvedDealerId, session, pageContext, hostConsent]);
 
-  const handleSoftHandoffContinue = useCallback(() => {
-    setSession((prev) => ({ ...prev, softHandoffDismissed: true }));
-  }, []);
-
   const crossModelHint = useMemo(() => {
     if (!resumeSnapshot?.pageContext) return null;
     return buildCrossModelResumeHint(
@@ -1011,14 +993,9 @@ export default function CleverConversationExperience({
     && !inCollectMode
     && (wishHandoffLatched || shouldShowInlineOfferCard(session));
 
-  // Wunschübergabe ab erstem Kundenturn
+  // Wunschübergabe ab erstem Kundenturn – ein CTA, kein paralleler Soft-Prompt
   const hasCustomerTurn = (session.turns ?? []).some((t) => t.type === TURN_TYPE.CUSTOMER);
   const showComposerExits = !inOfferWorld && !inCollectMode && (hasCustomerTurn || (session.notepadLabels?.length > 0));
-  const showSoftHandoff = !inOfferWorld
-    && !inCollectMode
-    && !showOpening
-    && !resumeGate
-    && shouldShowSoftHandoffPrompt(session);
   const wishHandoffExitLabel = buildWishHandoffExitLabel({
     ...session,
     offerModelKeys,
@@ -1093,11 +1070,6 @@ export default function CleverConversationExperience({
           crossModelHint={crossModelHint}
           onContinue={handleResumeContinue}
           onRestart={handleResumeRestart}
-        />
-        <CleverPluginEscapes
-          branding={branding}
-          notepadLabels={resumeSnapshot?.session?.notepadLabels ?? []}
-          dealerName={dealerName}
         />
       </div>
     );
@@ -1305,15 +1277,6 @@ export default function CleverConversationExperience({
       </div>
 
       {!inOfferWorld && !inCollectMode && renderComposer()}
-      {inOfferWorld && !inCollectMode && (
-        <div className="cc-composer-stack cc-composer-stack--escape-only">
-          <CleverPluginEscapes
-            branding={branding}
-            notepadLabels={session.notepadLabels}
-            dealerName={dealerName}
-          />
-        </div>
-      )}
     </div>
   );
 }

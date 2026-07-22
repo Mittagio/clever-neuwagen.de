@@ -258,24 +258,20 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   const advisor = defaultAdvisor(dealerConditions);
   const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
   return {
-    title: 'Wünsche bereit zur Übergabe',
-    intro:
-      'Alles klar. Ich gebe Ihre bisherigen Wünsche und unser Gespräch an den Verkäufer weiter. '
-      + 'Sie müssen dort nicht noch einmal von vorne anfangen.',
-    wishesHeading: 'Ihre bisherigen Wünsche',
-    contactLead: 'Wie dürfen wir uns bei Ihnen melden?',
-    intentLead: 'Worum soll es gehen?',
-    timingLead: 'Wann passt es ungefähr?',
-    noteLabel: 'Gibt es noch etwas, das Ihr Verkäufer wissen sollte?',
-    notePlaceholder:
-      'z. B. Lieber nachmittags · Probefahrt am Wochenende · Farbe Blau wäre schön',
-    privacyText:
-      'Mit dem Absenden willige ich ein, dass meine Angaben und das Gespräch an den zuständigen Verkäufer weitergegeben werden, damit er mich kontaktieren kann.',
-    privacyLinkLabel: 'Datenschutz',
+    title: 'Übergabe',
+    intro: null,
+    wishesHeading: null,
+    contactLead: null,
+    timingLead: null,
+    noteLabel: null,
+    notePlaceholder: 'Notiz (optional)',
+    privacyText: 'Übergabe & Datenschutz',
+    privacyLinkLabel: 'Details',
     privacyLinkHref: '/legal/datenschutz',
     trustLine: `${advisor.name} · ${dealerName}`,
-    trustSla: 'In der Regel Rückmeldung innerhalb eines Werktags.',
-    submitLabel: 'Wünsche übergeben',
+    trustSla: null,
+    submitLabel: 'Übergeben',
+    accountLead: null,
     preparedIntro: null,
     preparedItems: buildPreparedSummaryItems(session),
     wishProfile: buildWishProfilePresentation(session.needProfile ?? {}, wishLabels),
@@ -355,10 +351,10 @@ export function buildWishHandoffCta(dealerName = 'Autohaus') {
   void dealerName;
   return {
     buttonTitle: 'Meine Wünsche übergeben',
-    subline: 'Der Verkäufer macht dort weiter, wo Sie aufgehört haben.',
-    stickySubline: 'Wünsche und Gespräch an den Verkäufer übergeben.',
-    reassurance: 'Keine Kaufentscheidung. Kein sofortiger Anruf.',
-    compactReassurance: 'Ohne Verpflichtung. Kein Callcenter-Kontakt.',
+    subline: null,
+    stickySubline: null,
+    reassurance: null,
+    compactReassurance: null,
   };
 }
 
@@ -698,11 +694,6 @@ export function buildHandoffCompleteView(
 ) {
   void dealerConditions;
   const email = String(handoffForm.email ?? '').trim();
-  const pref = CONTACT_PREFERENCES.find((p) => p.id === handoffForm.contactPreference)?.label
-    ?? 'Ihrem bevorzugten Weg';
-  const timing = CONTACT_TIMING_LABELS[handoffForm.contactTiming] ?? null;
-  const intent = HANDOFF_INTENT_LABELS[handoffForm.contactIntent] ?? null;
-  const when = timing ? ` (${timing.toLowerCase()})` : '';
 
   const returnUrl = pageContext?.returnUrl ? String(pageContext.returnUrl) : null;
   const modelKey = pageContext?.modelKey ? String(pageContext.modelKey) : null;
@@ -718,31 +709,24 @@ export function buildHandoffCompleteView(
   if (returnUrl && modelReturnLabel) {
     returnActions.push({ id: 'return_model', label: modelReturnLabel, href: returnUrl });
   } else if (returnUrl) {
-    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: returnUrl });
+    returnActions.push({ id: 'return_home', label: 'Zurück', href: returnUrl });
   } else {
-    returnActions.push({ id: 'return_home', label: 'Zurück zur Händlerseite', href: '/' });
+    returnActions.push({ id: 'return_home', label: 'Zurück', href: '/' });
   }
-  returnActions.push({ id: 'continue_wishes', label: 'Wünsche ergänzen', href: null });
+  returnActions.push({ id: 'continue_wishes', label: 'Ergänzen', href: null });
+  if (email) {
+    returnActions.push({ id: 'account', label: 'Konto', href: '/account' });
+  }
 
   return {
-    title: 'Vielen Dank.',
-    headline: 'Wünsche übergeben',
-    intro:
-      'Der Verkauf erhält Ihren Notizzettel und den bisherigen Gesprächsverlauf.',
-    checklist: [
-      'Ihre bisherigen Wünsche',
-      'unser Gespräch',
-      'offene Punkte',
-      ...(intent ? [`Absicht: ${intent}`] : []),
-    ],
-    outro: `Er meldet sich voraussichtlich${when} per ${pref}.`,
-    confirmationHint: email
-      ? `Eine Bestätigung geht an ${email}.`
-      : null,
-    trustSla: 'In der Regel Rückmeldung innerhalb eines Werktags.',
-    reassurance:
-      'Keine Sorge: Sie müssen nichts noch einmal erklären. '
-      + 'Wir rufen Sie nicht ungefragt sofort an.',
+    title: 'Fertig',
+    headline: null,
+    intro: null,
+    checklist: ['Wünsche', 'Gespräch', 'Konto'],
+    outro: null,
+    confirmationHint: email || null,
+    trustSla: null,
+    reassurance: null,
     returnActions,
     publicReference: null,
   };
@@ -771,11 +755,9 @@ function buildHandoffDossierLines(session = {}, form = {}) {
   if (form.contactTiming) {
     lines.push(`Rückruf: ${CONTACT_TIMING_LABELS[form.contactTiming] ?? form.contactTiming}`);
   }
-  if (form.contactIntent) {
-    const intent = HANDOFF_INTENT_LABELS[form.contactIntent] ?? form.contactIntent;
-    lines.push(`Absicht: ${intent}`);
-  }
-  if (form.contactPreference) {
+  if (form.contactPreference === 'platform' || !form.contactPreference) {
+    lines.push('Kanal: Clever Plattform');
+  } else if (form.contactPreference) {
     const pref = CONTACT_PREFERENCES.find((p) => p.id === form.contactPreference)?.label;
     if (pref) lines.push(`Kontakt bevorzugt per: ${pref}`);
   }
@@ -980,26 +962,19 @@ export function submitPersonalHandoff(
 export function validateHandoffForm(form = {}) {
   const errors = {};
   if (!String(form.firstName ?? '').trim()) {
-    errors.firstName = 'Wie darf Ihr Berater Sie ansprechen?';
+    errors.firstName = 'Vorname fehlt';
   }
   if (!String(form.lastName ?? '').trim()) {
-    errors.lastName = 'Wie darf Ihr Berater Sie ansprechen?';
+    errors.lastName = 'Nachname fehlt';
   }
   if (!String(form.email ?? '').trim()) {
-    errors.email = 'Wohin darf Ihr Berater die Bestätigung senden?';
+    errors.email = 'E-Mail fehlt';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-    errors.email = 'Das sieht noch nicht nach einer E-Mail aus – wo dürfen wir Sie erreichen?';
-  }
-
-  const pref = form.contactPreference ?? 'email';
-  if (PHONE_REQUIRED_CONTACT_PREFS.has(pref) && !String(form.phone ?? '').trim()) {
-    errors.phone = pref === 'whatsapp'
-      ? 'Für WhatsApp brauchen wir Ihre Handynummer.'
-      : 'Für einen Rückruf brauchen wir Ihre Telefonnummer.';
+    errors.email = 'E-Mail prüfen';
   }
 
   if (!form.privacyAccepted) {
-    errors.privacyAccepted = 'Bitte bestätigen Sie die Weitergabe an Ihren Verkäufer.';
+    errors.privacyAccepted = 'Bitte bestätigen';
   }
 
   return { valid: Object.keys(errors).length === 0, errors };

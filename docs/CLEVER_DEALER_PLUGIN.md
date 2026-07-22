@@ -53,12 +53,17 @@ Primärer CTA: **Meine Wünsche übergeben** (ab erstem Kundenturn).
 
 Kein Zwang zu vollständiger Bedarfsermittlung. Details: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](./CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
+Wenn der Notizzettel Substanz hat, bleibt weiterhin **nur dieser eine** sticky CTA.
+Keine zweite Soft-Prompt-Box mit demselben Button (Doppel-CTA im Embed vermeiden).
+
 ## Escape-Kanäle
 
-Dezent neben der Wunschübergabe:
+WhatsApp-/Anruf-Shortcuts sind im öffentlichen Chat-UI **nicht** aktiv
+(„Lieber direkt sprechen“ würde mit der Wunschübergabe konkurrieren).
 
-- **WhatsApp** – optional Wunschzettel mitgeben (`buildWhatsAppWishMessage`)
-- **Anrufen** – nur verifizierte Händlernummer, kein Formularzwang
+Kontakt läuft über die Wunschübergabe mit **E-Mail-Anmeldung auf der Clever-Plattform**
+(Code-Login). KD und VK sprechen anschließend in Clever weiter.
+Die Escape-Helfer (`cleverDealerPluginEscape.js`) bleiben für spätere Einbindung verfügbar.
 
 ## Session Resume
 

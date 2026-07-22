@@ -112,7 +112,7 @@ Nach Klick Inline:
 
 1. Erklärung (Wünsche + Gespräch weitergeben)
 2. Bisherige Wünsche
-3. Kontaktweg: WhatsApp · E-Mail · Telefon
+3. Anmeldung: E-Mail-Code → Clever-Plattform
 4. Optional: Wann passt es?
 
 Unvollständige Profile sind erlaubt.

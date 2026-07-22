@@ -91,7 +91,7 @@ Ab dem **ersten echten Kundenturn**. Unvollständige Übergaben sind erlaubt.
 
 ### Nach dem Klick
 
-Ruhige Erklärung → bisherige Wünsche zeigen → Kontaktweg (WhatsApp / E-Mail / Telefon) → optional Zeitpunkt.
+E-Mail → Code → Name → optional Ergänzen → Übergeben.
 
 ---
 

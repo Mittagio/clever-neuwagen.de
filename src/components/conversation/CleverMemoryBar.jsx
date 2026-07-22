@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+import { buildBundledNotepadItems } from '../../services/consultation/notepadChipBundling.js';
 import './clever-conversation.css';
 
 function iconForLabel(label = '') {
@@ -6,17 +8,45 @@ function iconForLabel(label = '') {
   if (/^elektro$|plug-in|hybrid|benzin|diesel/.test(t)) return '⚡';
   if (/ev9|kia ev9/.test(t)) return '🚙';
   if (/^ev\d|sportage|ceed|niro|picanto|sorento|carnival/.test(t)) return '🚗';
-  if (/sitz/.test(t)) return '💺';
+  if (/sitz|heckklappe|panorama|komfort/.test(t)) return '💺';
+  if (/park|kamera|hud|navi|carplay|matrix|technik/.test(t)) return '⚙️';
+  if (/notruf|totwinkel|spur|abstand|sicherheit/.test(t)) return '🛡️';
   if (/km|reichweite/.test(t)) return '🔋';
   if (/ladelänge|2\s*m|laderaum|kofferraum/.test(t)) return '📦';
   if (/anhäng|anhaeng|ahk|kupplung|zuglast|anhängelast/.test(t)) return '🪝';
-  if (/leasing|finanz|kauf/.test(t) || /budget/.test(t) || /€\/monat/.test(t)) return '💶';
-  if (/monate/.test(t)) return '📅';
-  if (/hud|head-up/.test(t)) return '📷';
+  if (/leasing|finanz|kauf|kondition|anzahlung|inzahlung|budget|€/.test(t)) return '💶';
+  if (/monate|verfügbarkeit|sofort|monat/.test(t)) return '📅';
   if (/blau|rot|weiß|weiss|schwarz|grün|gruen|grau|silber|wolfsgrau/.test(t)) return '🎨';
   if (/familie|kinder/.test(t)) return '👨‍👩‍👧';
   if (/hund/.test(t)) return '🐶';
   return '·';
+}
+
+function MemoryChip({
+  label,
+  highlight = false,
+  onRemove,
+}) {
+  return (
+    <span
+      className={['cc-memory__chip', highlight ? 'is-new' : ''].filter(Boolean).join(' ')}
+      role="listitem"
+    >
+      <span className="cc-memory__chip-icon" aria-hidden>{iconForLabel(label)}</span>
+      <span className="cc-memory__chip-text">{label}</span>
+      {typeof onRemove === 'function' && (
+        <button
+          type="button"
+          className="cc-memory__chip-x"
+          onClick={() => onRemove(label)}
+          aria-label={`${label} entfernen`}
+          title={`${label} entfernen`}
+        >
+          <span aria-hidden>×</span>
+        </button>
+      )}
+    </span>
+  );
 }
 
 export default function CleverMemoryBar({
@@ -25,9 +55,11 @@ export default function CleverMemoryBar({
   animating = false,
   highlightLabels = [],
 }) {
-  if (!labels.length) return null;
-
+  const [expandedBundle, setExpandedBundle] = useState(null);
+  const items = useMemo(() => buildBundledNotepadItems(labels), [labels]);
   const highlight = new Set(highlightLabels);
+
+  if (!labels.length) return null;
 
   return (
     <div className="cc-memory" aria-label="Clevers Notizzettel">
@@ -39,30 +71,46 @@ export default function CleverMemoryBar({
         ].filter(Boolean).join(' ')}
         role="list"
       >
-        {labels.map((label) => (
-          <span
-            key={label}
-            className={[
-              'cc-memory__chip',
-              highlight.has(label) ? 'is-new' : '',
-            ].filter(Boolean).join(' ')}
-            role="listitem"
-          >
-            <span className="cc-memory__chip-icon" aria-hidden>{iconForLabel(label)}</span>
-            <span className="cc-memory__chip-text">{label}</span>
-            {typeof onRemove === 'function' && (
+        {items.map((item) => {
+          if (item.type === 'chip') {
+            return (
+              <MemoryChip
+                key={item.id}
+                label={item.label}
+                highlight={highlight.has(item.label)}
+                onRemove={onRemove}
+              />
+            );
+          }
+
+          const isOpen = expandedBundle === item.id;
+          return (
+            <span key={item.id} className="cc-memory__bundle-wrap" role="listitem">
               <button
                 type="button"
-                className="cc-memory__chip-x"
-                onClick={() => onRemove(label)}
-                aria-label={`${label} entfernen`}
-                title={`${label} entfernen`}
+                className={`cc-memory__bundle${isOpen ? ' is-open' : ''}`}
+                aria-expanded={isOpen}
+                onClick={() => setExpandedBundle((prev) => (prev === item.id ? null : item.id))}
               >
-                <span aria-hidden>×</span>
+                <span className="cc-memory__chip-icon" aria-hidden>{item.icon}</span>
+                <span className="cc-memory__bundle-count">{item.count}</span>
+                <span className="cc-memory__chip-text">{item.title}</span>
               </button>
-            )}
-          </span>
-        ))}
+              {isOpen && (
+                <span className="cc-memory__bundle-panel">
+                  {(item.labels ?? []).map((label) => (
+                    <MemoryChip
+                      key={label}
+                      label={label}
+                      highlight={highlight.has(label)}
+                      onRemove={onRemove}
+                    />
+                  ))}
+                </span>
+              )}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

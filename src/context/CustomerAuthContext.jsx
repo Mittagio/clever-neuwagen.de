@@ -89,7 +89,7 @@ export function CustomerAuthProvider({ children }) {
     async requestCode(email) {
       const normalized = email.trim().toLowerCase();
       if (!normalized || !normalized.includes('@')) {
-        return { ok: false, error: 'Bitte gültige E-Mail eingeben.' };
+        return { ok: false, error: 'E-Mail prüfen' };
       }
       const code = generateCode();
       sessionStorage.setItem(`${PENDING_CODE_PREFIX}${normalized}`, code);
@@ -116,11 +116,11 @@ export function CustomerAuthProvider({ children }) {
 
     verifyCode(code) {
       if (!pendingEmail) {
-        return { ok: false, error: 'Bitte zuerst E-Mail eingeben.' };
+        return { ok: false, error: 'Zuerst E-Mail' };
       }
       const stored = sessionStorage.getItem(`${PENDING_CODE_PREFIX}${pendingEmail}`);
       if (code.trim() !== stored) {
-        return { ok: false, error: 'Code ungültig. Bitte erneut versuchen.' };
+        return { ok: false, error: 'Code falsch' };
       }
       sessionStorage.removeItem(`${PENDING_CODE_PREFIX}${pendingEmail}`);
       const newSession = { email: pendingEmail, loggedInAt: new Date().toISOString() };

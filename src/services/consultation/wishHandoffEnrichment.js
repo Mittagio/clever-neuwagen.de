@@ -12,6 +12,7 @@ import {
   PAYMENT_TYPE_CARDS,
 } from '../dealer/purchaseTypeFormOptions.js';
 import { SPECIAL_CONDITION_OPTIONS } from '../dealer/specialConditionOptions.js';
+import { handoffEquipmentLabels, labelsFromEquipmentIds } from './wishHandoffEquipment.js';
 
 /** Wann brauchen Sie das Fahrzeug? */
 export const VEHICLE_NEED_TIMING_OPTIONS = [
@@ -59,6 +60,7 @@ export function emptyWishHandoffEnrichment() {
     acquisitionType: null,
     specialConditionId: null,
     tradeIn: null,
+    equipmentWishIds: [],
     leasing: {
       termId: null,
       mileageId: null,
@@ -128,6 +130,7 @@ export function wishHandoffManagedNotepadLabels() {
     ...DOWN_PAYMENT_OPTIONS.map((o) => o.label),
     ...FINANCE_TERM_OPTIONS.map((o) => o.label),
     ...FINANCE_BALLOON_OPTIONS.map((o) => o.label),
+    ...handoffEquipmentLabels(),
   ];
 }
 
@@ -176,6 +179,10 @@ export function buildWishHandoffNotepadLabels(enrichment = {}) {
   const trade = HANDOFF_TRADE_IN_OPTIONS.find((o) => o.id === enrichment.tradeIn);
   if (trade) labels.push(trade.notepadLabel);
 
+  for (const label of labelsFromEquipmentIds(enrichment.equipmentWishIds ?? [])) {
+    labels.push(label);
+  }
+
   return labels;
 }
 
@@ -193,6 +200,7 @@ export function mergeWishHandoffNotepadLabels(existingLabels = [], enrichment = 
     || enrichment?.acquisitionType
     || enrichment?.specialConditionId
     || enrichment?.tradeIn
+    || (enrichment?.equipmentWishIds?.length > 0)
     || enrichment?.leasing?.termId
     || enrichment?.leasing?.mileageId
     || enrichment?.leasing?.downPayment
@@ -264,6 +272,11 @@ export function buildWishHandoffEnrichmentLines(enrichment = {}) {
   const trade = HANDOFF_TRADE_IN_OPTIONS.find((o) => o.id === enrichment.tradeIn);
   if (trade) lines.push(`Inzahlungnahme: ${trade.label}`);
 
+  const equipment = labelsFromEquipmentIds(enrichment.equipmentWishIds ?? []);
+  if (equipment.length) {
+    lines.push(`Ausstattung: ${equipment.join(' · ')}`);
+  }
+
   return lines;
 }
 
@@ -309,6 +322,10 @@ export function applyWishHandoffEnrichmentToNeedProfile(needProfile = {}, enrich
 
   if (enrichment.tradeIn) {
     next.tradeInInterest = enrichment.tradeIn;
+  }
+
+  if (enrichment.equipmentWishIds?.length) {
+    next.equipmentWishIds = [...enrichment.equipmentWishIds];
   }
 
   next.wishHandoffEnrichment = enrichment;

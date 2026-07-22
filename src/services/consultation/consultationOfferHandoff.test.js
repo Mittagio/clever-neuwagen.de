@@ -58,8 +58,10 @@ function testHandoffView() {
   const session = buildFullSession();
   const view = buildPersonalHandoffView(session, dealerConditions);
 
-  assert.equal(view.title, 'Wünsche bereit zur Übergabe');
-  assert.match(view.intro, /Verkäufer weiter/i);
+  assert.equal(view.title, 'Übergabe');
+  assert.equal(view.intro, null);
+  assert.equal(view.accountLead, null);
+  assert.equal(view.trustSla, null);
   assert.ok(view.wishProfile?.lines?.length > 0);
   assert.match(view.advisor.role, /Schorndorf/i);
   assert.match(view.advisor.message, /passenden Lösung/i);
@@ -85,10 +87,7 @@ function testLeadCreation() {
     firstName: 'Anna',
     lastName: 'Muster',
     email: 'anna@example.de',
-    phone: '01701234567',
-    contactPreference: 'whatsapp',
-    contactTiming: 'tomorrow',
-    contactIntent: 'testdrive',
+    contactPreference: 'platform',
     advisorNote: 'Lieber nachmittags',
     privacyAccepted: true,
   };
@@ -98,16 +97,16 @@ function testLeadCreation() {
   assert.ok(lead.crm.needProfile);
   assert.equal(lead.crm.needProfile.world, CLEVER_WORLD.OFFER);
   assert.ok(lead.crm.needProfile.understoodLabels?.length >= 4);
-  assert.equal(lead.crm.needProfile.handoff.contactIntent, 'testdrive');
+  assert.equal(lead.crm.needProfile.handoff.contactPreference, 'platform');
   assert.ok(lead.sonderwuensche?.consultation?.consultationHandoff);
   assert.match(lead.notes, /EV3/i);
-  assert.match(lead.notes, /Probefahrt|Absicht/i);
+  assert.match(lead.notes, /Clever Plattform/i);
   assert.ok(lead.notes.includes('Wärmepumpe') || lead.notes.includes('Ausstattung'));
   assert.equal(lead.contact.email, 'anna@example.de');
   assert.equal(lead.contact.name, 'Anna Muster');
   assert.ok(!lead.currentRate);
   assert.ok(!lead.desiredRate);
-  console.log('✓ NeedProfile, EV3-Richtung, Ausstattung und Kontakt im Lead');
+  console.log('✓ NeedProfile, EV3-Richtung, Ausstattung und Plattform-Kanal im Lead');
 }
 
 function testSubmitPersonalHandoff() {
@@ -116,9 +115,7 @@ function testSubmitPersonalHandoff() {
     firstName: 'Tom',
     lastName: 'Kunde',
     email: 'tom@example.de',
-    contactPreference: 'email',
-    contactTiming: 'this_week',
-    contactIntent: 'callback',
+    contactPreference: 'platform',
     privacyAccepted: true,
   };
 
@@ -128,9 +125,10 @@ function testSubmitPersonalHandoff() {
   assert.equal(result.journey?.phase, JOURNEY_PHASE.FIRST_CONTACT);
   assert.ok(result.session.turns.some((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE));
   const complete = result.session.turns.find((t) => t.type === OFFER_TURN_TYPE.HANDOFF_COMPLETE);
-  assert.match(complete.completeView.outro, /E-Mail|per/i);
+  assert.equal(complete.completeView.title, 'Fertig');
   assert.match(complete.completeView.confirmationHint, /tom@example\.de/i);
-  assert.match(complete.completeView.trustSla, /Werktag/i);
+  assert.equal(complete.completeView.outro, null);
+  assert.ok(complete.completeView.returnActions.some((a) => a.id === 'account'));
   console.log('✓ Persönliche Übergabe erzeugt Lead und Abschluss');
 }
 
@@ -138,21 +136,11 @@ function testValidation() {
   const invalid = validateHandoffForm({ firstName: '', lastName: 'X', email: 'bad' });
   assert.equal(invalid.valid, false);
 
-  const missingPhone = validateHandoffForm({
-    firstName: 'A',
-    lastName: 'B',
-    email: 'a@b.de',
-    contactPreference: 'whatsapp',
-    privacyAccepted: true,
-  });
-  assert.equal(missingPhone.valid, false);
-  assert.ok(missingPhone.errors.phone);
-
   const missingPrivacy = validateHandoffForm({
     firstName: 'A',
     lastName: 'B',
     email: 'a@b.de',
-    contactPreference: 'email',
+    contactPreference: 'platform',
   });
   assert.equal(missingPrivacy.valid, false);
   assert.ok(missingPrivacy.errors.privacyAccepted);
@@ -161,21 +149,20 @@ function testValidation() {
     firstName: 'A',
     lastName: 'B',
     email: 'a@b.de',
-    contactPreference: 'email',
+    contactPreference: 'platform',
     privacyAccepted: true,
   });
   assert.equal(valid.valid, true);
 
-  const validWhatsapp = validateHandoffForm({
+  const validNoPhone = validateHandoffForm({
     firstName: 'A',
     lastName: 'B',
     email: 'a@b.de',
-    phone: '01701234567',
-    contactPreference: 'whatsapp',
+    contactPreference: 'platform',
     privacyAccepted: true,
   });
-  assert.equal(validWhatsapp.valid, true);
-  console.log('✓ Kontaktdaten-Validierung inkl. Telefon & Datenschutz');
+  assert.equal(validNoPhone.valid, true);
+  console.log('✓ Kontaktdaten-Validierung Plattform-Anmeldung');
 }
 
 function testAdvisorBoostChips() {
@@ -234,9 +221,9 @@ function testTowbarBoostView() {
 function testWishHandoffCtaCopy() {
   const copy = buildWishHandoffCta('Autohaus Trinkle');
   assert.match(copy.buttonTitle, /Meine Wünsche übergeben/);
-  assert.match(copy.subline, /Verkäufer|weiter/i);
-  assert.match(copy.stickySubline, /übergeben/i);
-  assert.match(copy.compactReassurance, /Ohne Verpflichtung|Callcenter/i);
+  assert.equal(copy.subline, null);
+  assert.equal(copy.stickySubline, null);
+  assert.equal(copy.compactReassurance, null);
   assert.doesNotMatch(copy.buttonTitle, /Verkäufer kontaktieren|Berater sprechen/i);
   console.log('✓ Wunsch-CTA Copy – Wunschübergabe');
 }
@@ -262,7 +249,7 @@ function testAdvisorOpeningPrompt() {
   assert.equal(buildAdvisorContactPrompt(0, 'opening'), null);
   const engaged = buildAdvisorContactPrompt(2, 'engaged');
   assert.ok(engaged);
-  assert.match(engaged.optionalNote, /Ohne Verpflichtung/);
+  assert.equal(engaged.optionalNote, null);
   console.log('✓ Legacy buildAdvisorContactPrompt delegiert auf Wunsch-CTA');
 }
 

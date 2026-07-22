@@ -4114,3 +4114,175 @@
     padding: 8px 2px 10px;
   }
 }
+
+/* -- Handoff Akkordeon / Ausstattung -- */
+.cc-handoff-acc {
+  margin: 0 0 8px;
+  border: 1px solid #ebe8e1;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.cc-handoff-acc__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cc-handoff-acc__icon {
+  flex: 0 0 auto;
+}
+
+.cc-handoff-acc__title {
+  flex: 1 1 auto;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.cc-handoff-acc__summary {
+  flex: 0 0 auto;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--cc-muted);
+}
+
+.cc-handoff-acc__chev {
+  color: var(--cc-muted);
+}
+
+.cc-handoff-acc__body {
+  padding: 0 12px 12px;
+  border-top: 1px solid #f0eee9;
+}
+
+.cc-handoff-equip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cc-handoff-equip__cat {
+  border-radius: 10px;
+  background: #f7f6f3;
+}
+
+.cc-handoff-equip__cat-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cc-handoff-equip__cat-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--cc-accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-handoff-equip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.cc-memory__bundle-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.cc-memory__bundle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #e2dfd7;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.cc-memory__bundle.is-open {
+  border-color: var(--cc-accent);
+  background: var(--cc-chip-bg, #f3f1ec);
+}
+
+.cc-memory__bundle-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-memory__bundle-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(92vw, 420px);
+  padding: 4px 0 2px;
+}
+
+.cc-offer-handoff__account-lead {
+  margin: 0 0 14px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--cc-text);
+}
+
+.cc-offer-handoff__auth {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cc-offer-handoff__auth-ready {
+  margin: 0 0 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f0efeb;
+  font-size: 0.8125rem;
+  color: var(--cc-text);
+  font-weight: 600;
+}
+
+.cc-offer-handoff__auth-demo {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f7f6f3;
+  font-size: 0.8125rem;
+}
