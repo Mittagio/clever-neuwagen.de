@@ -1,10 +1,16 @@
 # Clever Need Discovery Engine v1.0
 
-**Status:** Verbindliche Produktdefinition  
-**Stand:** Juli 2026  
+> **SUPERSEDED für den öffentlichen Kundendialog**  
+> Verbindlich ist jetzt: **[CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)**.  
+> Architektur (`needProfile` / `sellerInsights` / `buildCustomerUnderstanding`) bleibt gültig.  
+> Discovery-/Vertiefungs- und „Orientierungs“-Formulierungen gelten nur noch,
+> soweit sie dem Intake-Manifest nicht widersprechen.
+
+**Status:** Historische Produktdefinition – Kundendialog siehe Intake-Manifest  
+**Stand:** Juli 2026 (superseded)  
 **Kern:** Clever verkauft nicht. Clever versteht Bedarf und bereitet den Verkäufer vor.
 
-**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) · [Golden Conversations v1.0](CLEVER_GOLDEN_CONVERSATIONS.md) · [Clever Lead](CLEVER_LEAD.md) · [Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md)
+**Bezug:** [Customer Intake Manifest](CLEVER_CUSTOMER_INTAKE_MANIFEST.md) · [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) · [Golden Conversations (superseded)](CLEVER_GOLDEN_CONVERSATIONS.md) · [Clever Lead](CLEVER_LEAD.md) · [Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md)
 
 **Implementierung (read-only):** `needProfile` · `sellerInsights` · `buildCustomerUnderstanding()` · [Knowledge Conversation v1.0](CLEVER_KNOWLEDGE_CONVERSATION.md)
 

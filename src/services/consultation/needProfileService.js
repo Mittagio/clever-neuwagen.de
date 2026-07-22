@@ -11,6 +11,7 @@ import {
   applyNeedRecognition,
   buildRecognitionLabels,
   detectMonthlyBudgetStyle,
+  detectTowCapacityRange,
 } from './needRecognitionService.js';
 import { createEmptyNeedProfile } from './needProfileTypes.js';
 
@@ -214,12 +215,16 @@ function applyIntentToNeedProfile(profile, intent = {}, text = '') {
   }
 
   if (intent.paymentExplicit && intent.payment) {
-    next.budget = {
-      ...next.budget,
-      paymentType: intent.payment,
-      paymentExplicit: true,
-    };
-    confidence += 8;
+    const softLeasing = intent.payment === 'leasing'
+      && /\bwahrscheinlich\b|\beher\b|\bvielleicht\b|\bwäre\b|\bwaere\b|\bkönnte\b|\bkoennte\b/i.test(text);
+    if (!softLeasing) {
+      next.budget = {
+        ...next.budget,
+        paymentType: intent.payment,
+        paymentExplicit: true,
+      };
+      confidence += 8;
+    }
   }
 
   if (intent.mileagePerYear) {
@@ -228,10 +233,17 @@ function applyIntentToNeedProfile(profile, intent = {}, text = '') {
   }
 
   if (intent.towCapacityKg >= 750 || intent.features?.some((f) => f.includes('tow'))) {
-    next.towCapacityKg = Math.max(next.towCapacityKg ?? 0, intent.towCapacityKg ?? 0);
-    next.towing = (intent.towCapacityKg >= 2000 || next.towCapacityKg >= 2000) ? 'heavy' : 'braked';
-    next.priorities = pushUnique(next.priorities, 'towing');
-    confidence += 8;
+    if (detectTowCapacityRange(text)) {
+      next.towbar = true;
+      next.priorities = pushUnique(next.priorities, 'towing');
+      if (!next.towing) next.towing = 'braked';
+      confidence += 8;
+    } else {
+      next.towCapacityKg = Math.max(next.towCapacityKg ?? 0, intent.towCapacityKg ?? 0);
+      next.towing = (intent.towCapacityKg >= 2000 || next.towCapacityKg >= 2000) ? 'heavy' : 'braked';
+      next.priorities = pushUnique(next.priorities, 'towing');
+      confidence += 8;
+    }
   }
 
   if (intent.features?.includes('towbar')

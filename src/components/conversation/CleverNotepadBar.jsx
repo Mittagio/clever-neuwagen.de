@@ -4,7 +4,9 @@ import CleverWishProfile from './CleverWishProfile.jsx';
 import './clever-conversation.css';
 
 /**
- * Sticky Notizleiste – kompaktes Wunschprofil statt Chip-Checkliste.
+ * Sticky Notizleiste – Legacy „Wunschprofil“.
+ * @deprecated Für den Kundendialog gilt CleverMemoryBar (Notizzettel) + Intake-Manifest.
+ * Nicht neu verdrahten.
  */
 export default function CleverNotepadBar({ labels = [], needProfile = {} }) {
   const prevCountRef = useRef(0);

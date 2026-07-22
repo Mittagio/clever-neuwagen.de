@@ -101,6 +101,31 @@ export function assertGroundedCleverTurn(result, evidence = {}) {
     errors.push('technical_claim_without_evidence');
   }
 
+  // Intake: Knowledge-Turns dürfen keine Fact-abgeleiteten harten Wünsche setzen.
+  // Modellinteresse (selectedModelKey) bleibt erlaubt, wenn der Kunde das Modell nennt.
+  if (result.intent === 'knowledge_question') {
+    const patch = result.needProfilePatch ?? {};
+    const hardWishKeys = [
+      'towCapacityKg', 'persons', 'fuel', 'bodyType', 'colorHint',
+      'annualKm', 'leaseDurationMonths',
+    ];
+    for (const key of hardWishKeys) {
+      if (patch[key] != null && patch[key] !== '' && !(Array.isArray(patch[key]) && patch[key].length === 0)) {
+        errors.push(`knowledge_fact_as_wish:${key}`);
+      }
+    }
+    if (Array.isArray(patch.equipmentWishes) && patch.equipmentWishes.length > 0) {
+      errors.push('knowledge_fact_as_wish:equipmentWishes');
+    }
+  }
+
+  const replyLower = String(result.reply ?? '').toLowerCase();
+  for (const banned of ['% match', 'match-prozent', 'perfekt für sie', 'beste wahl', 'klare empfehlung', 'sie sollten den']) {
+    if (replyLower.includes(banned)) {
+      errors.push(`forbidden_recommendation_language:${banned}`);
+    }
+  }
+
   for (const usedId of usedFactIds) {
     const meta = evidenceById.get(usedId);
     if (meta?.sourceTier === 'official_web' && meta?.sourceUrl) {

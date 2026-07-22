@@ -1,10 +1,14 @@
 # Clever AI Conversation Engine
 
+> **Produktvorrang:** Für den öffentlichen Kundendialog gilt  
+> **[CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)**.  
+> Clever berät nicht und rankt nicht – Clever nimmt das Gespräch auf.
+
 ## Ziel
 
-Clever ist der **Verkaufsassistent** des Autohauses – kein zweites ChatGPT und kein reines Lexikon.
+Clever ist der **digitale Verkaufsassistent zur Gesprächsaufnahme** – kein Verkaufsberater, kein zweites ChatGPT und kein reines Lexikon.
 
-Leitsatz: **Antworten. Verstehen. Notieren. Weiterführen.**
+Leitsatz: **Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.**
 
 ## Abgrenzung
 
@@ -13,7 +17,7 @@ Leitsatz: **Antworten. Verstehen. Notieren. Weiterführen.**
 | Verifizierte Fahrzeugdaten via Tools | Freie Modellbehauptungen |
 | `lead.crm.needProfile` als Schreibquelle | Paralleles KI-Profil |
 | `buildCustomerUnderstanding(lead)` als Lesequelle | Separate AI-Summary als Wahrheit |
-| Genau eine themenbezogene Anschlussfrage | Generische Interview-Fragen |
+| Höchstens eine themenbezogene Anschlussfrage (oder `none`) | Generische Interview-Fragen / Endlosschleife |
 | Echte Kundenwünsche als Notizzettel | Fahrzeugfakten als Wunsch speichern |
 
 ## Datenfluss
@@ -63,18 +67,17 @@ Fahrzeugfakt in der Antwort ≠ Kundenwunsch im needProfile.
 Beispiel EV9-Laderaum: Zuerst nur Fakt beantworten und Sitz-/Ladebedarf fragen.
 Erst nach Kundenbestätigung („ca. zwei Meter Ladelänge“) Chip und Profil aktualisieren.
 
-## Gesprächszielstufen
+## Gesprächszielstufen (optional, kein Funnel-Zwang)
 
 1. Anliegen beantworten  
-2. Bedarf verstehen  
-3. Harte Wünsche sammeln  
-4. Fahrzeugrichtung eingrenzen  
-5. Anschaffungsart klären  
-6. Angebotsparameter sammeln  
-7. Zeitpunkt klären  
-8. Verkäuferübergabe  
+2. Geäußerte Wünsche notieren  
+3. Bei Bedarf eine themenbezogene Anschlussfrage  
+4. Fahrzeugrichtungen zeigen (ohne Entscheidungssprache)  
+5. Angebot oder Verkäuferkontakt – jederzeit, auch unvollständig  
 
-Nicht jede Stufe muss vorkommen. Keine bekannten Infos erneut fragen.
+Stufen sind Orientierung, kein Pflichtfragebogen.  
+`nextAction.type = "none"` ist ausdrücklich erlaubt.  
+Fehlende Angebotsparameter blockieren den Handoff nicht.
 
 ## Zentrale Dateien
 
@@ -82,11 +85,12 @@ Nicht jede Stufe muss vorkommen. Keine bekannten Infos erneut fragen.
 |-------|--------|
 | `src/services/clever/openai/runCleverTurn.js` | Zentraler Service |
 | `src/services/clever/openai/openAiResponsesClient.js` | Responses API + Tool-Loop |
-| `src/services/clever/openai/cleverConversationInstructions.js` | Systemprompt **v0.3** |
+| `src/services/clever/openai/cleverConversationInstructions.js` | Systemprompt (Intake) |
 | `src/services/clever/intelligence/cleverBaseInstructions.js` | Shared Base + Surface |
 | `src/services/clever/openai/tools/*` | Verifizierte Tool-Handler |
 | `src/services/clever/openai/applyCleverTurnResult.js` | Session-Anwendung |
 | `server/cleverConversationRoutes.js` | POST `/api/v1/clever/conversation-turn` |
+| `docs/CLEVER_CUSTOMER_INTAKE_MANIFEST.md` | **Produktgesetz Kundendialog** |
 | `docs/CLEVER_CONVERSATION_UI.md` | Messenger + Notizzettel |
 
 ## Tool-Vertrag

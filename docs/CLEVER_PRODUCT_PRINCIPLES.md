@@ -23,9 +23,10 @@ Verwandte Dokumente:
 - [Conversation Design](clever-conversation-design.md) – *Wie fühlt sich das Gespräch an?*
 - [Heilige zwei Minuten](clever-sacred-first-two-minutes.md)
 - [Nutzer-Tests & Verstanden-Gefühl](clever-user-testing.md)
+- **[Customer Intake Manifest (Kundendialog)](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)**
 - **[v1.0 Beobachtungsphase (UX Freeze)](CLEVER_V1_OBSERVATION_PHASE.md)**
-- **[Golden Conversations v1.0 – Referenzgespräche](CLEVER_GOLDEN_CONVERSATIONS.md)**
-- **[Need Discovery Engine v1.0 – Produktmission](CLEVER_NEED_DISCOVERY_ENGINE.md)**
+- **[Golden Conversations – historische Referenz](CLEVER_GOLDEN_CONVERSATIONS.md)**
+- **[Need Discovery Engine – historische Mission](CLEVER_NEED_DISCOVERY_ENGINE.md)**
 - **[Seller Conversation Loop v1.0 – Verkäufer-Denken](CLEVER_SELLER_CONVERSATION_LOOP.md)**
 - **[Knowledge Conversation v1.0 – Erst antworten, dann verstehen](CLEVER_KNOWLEDGE_CONVERSATION.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)

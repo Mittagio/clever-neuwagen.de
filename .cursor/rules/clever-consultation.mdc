@@ -20,9 +20,10 @@ alwaysApply: false
 
 ## Golden Rules
 
-1. **Eine Frage pro Turn** – kein Wizard, keine Fragenliste.
-2. **Niemals Bekanntes erneut fragen** – Parser + `skipIf` + `needProfile.missingFields`.
-3. **Welt 1 endet mit Primärempfehlung** – „Ich würde zuerst den Kia EV3 ansehen“ + Alternativen, keine gleichwertige Shortlist.
+1. **Höchstens eine Frage pro Turn** – oder keine (`nextAction = none`). Kein Wizard, keine Fragenliste.
+2. **Niemals Bekanntes erneut fragen** – Parser + `skipIf` + `needProfile`.
+3. **Welt 1 endet mit Übergabe-Bereitschaft** – Notizzettel + besprochene Richtungen, **ohne** „Primärempfehlung“ / Match-% / „beste Wahl“ im Kundendialog.
+4. **Produktvorrang Kundendialog:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](../../docs/CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
 ## Gesprächsfluss (UI)
 

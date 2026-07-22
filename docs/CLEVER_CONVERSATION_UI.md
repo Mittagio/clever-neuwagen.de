@@ -1,10 +1,12 @@
-# Clever Conversation UI v1.1
+# Clever Conversation UI v1.2
+
+> **Produktvorrang:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
 ## Ziel
 
-Ruhiges, modernes **Messenger-Gespräch** mit Verkäufer-Notizzettel.
+Ruhiges, modernes **Messenger-Gespräch** mit Verkäufer-**Notizzettel**.
 
-Leitsatz: **Eine Nachricht. Eine Antwort. Eine nächste Handlung.**
+Leitsatz: **Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.**
 
 ## Messenger-Struktur
 
@@ -13,7 +15,7 @@ Leitsatz: **Eine Nachricht. Eine Antwort. Eine nächste Handlung.**
 | Header | Dealer / App-Kopf |
 | Notizzettel | Sticky unter dem Header, eine Zeile, horizontal scrollbar |
 | Thread | Einziger vertikaler Scrollbereich |
-| Composer | Sticky Footer im Flex-Layout (kein fixed Overlay über Inhalt) |
+| Composer | Sticky Footer + permanente Ausgänge Angebot / Verkäuferkontakt |
 
 ### Bubbles
 
@@ -23,11 +25,13 @@ Leitsatz: **Eine Nachricht. Eine Antwort. Eine nächste Handlung.**
 
 ## Notizzettel
 
-- Sticky, kompakte Chips (~32–36 px)
+- Label: **Notizzettel** (nicht „Wunschprofil“, nicht „Analyse“)
+- Sticky, kompakte Chips (~32–36 px), löschbar (×)
 - overflow-x auto, kein Zeilenumbruch
-- Neue Chips: kurze Glow-Animation
+- Neue Chips: kurze Magic-/Fly-in- + Glow-Animation (`prefers-reduced-motion` beachten)
 - Optionaler Toast max. 1,5 s („Notiert: …“) – blockiert nichts
 - Quelle: Customer Understanding / needProfile – keine zweite Wahrheit
+- Fahrzeugfakt in der Antwort erzeugt **keinen** Wunsch-Chip
 
 ## Antwortturn (Darstellungshoheit)
 
@@ -63,26 +67,54 @@ Verboten im Kunden-UI: `modelKey`, `variantKey`, Fact-IDs, JSON, `wltpRange`, `E
 Nach einer Clever-Antwort maximal **eine** Folge:
 
 - Anschlussfrage mit optionalen Antwortchips, **oder**
-- eine primäre Aktion (z. B. „EV2 ansehen“)
+- eine primäre Aktion (z. B. „Angebot anfordern“)
 
-Freies Eingabefeld bleibt immer sichtbar.
+`nextAction.type = "none"` ist erlaubt. Freies Eingabefeld bleibt immer sichtbar.
+Keine Frage nur weil ein Profilfeld leer ist.
+
+## Permanente Ausgänge (ab Turn 1)
+
+Am sticky Composer immer erreichbar:
+
+- **Angebot anfordern** (Copy darf mit dem Gespräch wachsen)
+- **Verkäufer kontaktieren**
+
+Der Kunde muss keine Bedarfsanalyse abschließen.
+
+CTA-Evolution (nur wenn eindeutig aus dem Gespräch):
+
+- „Angebot anfordern“
+- „Angebot mit meinen Wünschen anfordern“
+- „EV9-Angebot anfordern“
+- „Angebote für 2 Fahrzeuge anfordern“
 
 ## Angebots-Handoff
 
 Kein permanentes „Wunsch verstanden“-Overlay.
 
-Inline-Karte im Thread nur wenn:
+Unvollständige Profile sind erlaubt. Beispiel:
 
-- `offerRequested === true`, oder
-- `nextAction.type === offer_handoff`, oder
-- `sellerReady` / Handoff-Phase
+> Gerne. Ihre bisherigen Wünsche nehmen wir direkt mit.
+> Sie können die Leasingdaten noch ergänzen oder der Verkäufer
+> klärt den Rest mit Ihnen.
+
+Aktionen: **Jetzt anfragen** · **Leasingdaten ergänzen**
+
+Zusätzlich Inline-Karte im Thread wenn der Kunde Angebot/Kontakt wählt.
 
 ## Composer
 
 - Placeholder-Standard: „Weiterfragen oder Wunsch ergänzen …“
 - Kontext möglich: „Noch eine Frage zum EV9?“
 - Keine Pflichtfragen im Placeholder
+- Permanente Ausgänge Angebot / Kontakt
 - safe-area-inset-bottom
+
+## Öffentliche UI – verboten
+
+- Match-Prozent, Ranking-Medaillen, „beste Wahl“
+- Seller-Reasoning-Panel im Kundendialog
+- parallele Legacy-Empfehlungsausgabe neben AI-Turns
 
 ## Scrollverhalten
 

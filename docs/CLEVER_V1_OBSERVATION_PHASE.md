@@ -1,8 +1,12 @@
 # Clever v1.0 — UX Freeze & Beobachtungsphase
 
-**Status:** Verbindlich ab Post-UX-Freeze  
+**Status:** Verbindlich ab Post-UX-Freeze (Architektur)  
 **Stand:** Juli 2026  
-**Bezug:** [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) · [Conversation Design](clever-conversation-design.md) · [Clever Lead](CLEVER_LEAD.md)
+**Bezug:** [Customer Intake Manifest](CLEVER_CUSTOMER_INTAKE_MANIFEST.md) · [Produktprinzipien](CLEVER_PRODUCT_PRINCIPLES.md) · [Conversation Design](clever-conversation-design.md) · [Clever Lead](CLEVER_LEAD.md)
+
+> **Hinweis Kundendialog:** Ranking-, Match-%- und „Seller Reasoning“-Messlatten weiter unten  
+> gelten **nicht** für die öffentliche Kunden-UI. Dort gilt das Intake-Manifest.  
+> Interne Seller-Werkzeuge dürfen Scores weiterhin nutzen.
 
 ---
 

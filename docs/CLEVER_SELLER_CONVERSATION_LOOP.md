@@ -1,10 +1,15 @@
 # Clever Seller Conversation Loop v1.0
 
-**Status:** Verbindlich für Copy, Fragenlogik und UI-Dramaturgie  
+> **Hinweis:** Für den **öffentlichen Kundendialog** gilt  
+> **[CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)**.  
+> Dieses Dokument beschreibt das **Verkäufer-Denken** (interne Vorbereitung).  
+> Ranking-/Match-Ideen hier dürfen die Kunden-UI nicht steuern.
+
+**Status:** Historische / interne Verkäufer-Dramaturgie – Kundendialog siehe Intake-Manifest  
 **Stand:** Juli 2026  
 **Leitsatz:** *Nicht fragen wie ein Formular. Denken wie ein Verkäufer.*
 
-**Bezug:** [Need Discovery Engine](CLEVER_NEED_DISCOVERY_ENGINE.md) · [Golden Conversations](CLEVER_GOLDEN_CONVERSATIONS.md) · [Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md)
+**Bezug:** [Customer Intake Manifest](CLEVER_CUSTOMER_INTAKE_MANIFEST.md) · [Need Discovery Engine](CLEVER_NEED_DISCOVERY_ENGINE.md) · [Golden Conversations](CLEVER_GOLDEN_CONVERSATIONS.md) · [Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md)
 
 **Implementierung (read-only Engine, bestehende Schreibpfade):**  
 `sellerReasoningEngine.js` · `conversationPlanner.js` · `consultationHappyPath.js`

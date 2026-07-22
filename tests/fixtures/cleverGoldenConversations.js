@@ -257,6 +257,105 @@ export const GOLDEN_SELLER_WHATSAPP_DRAFT = {
   ],
 };
 
+/** Intake v1.0 – Pflichtfälle A–H (deterministisch in customerIntakeGolden.test.js) */
+export const GOLDEN_INTAKE_A_ELECTRO_HUD_TOW = {
+  id: 'intake-a-electro-hud-tow',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Ich suche einen Elektro mit Head-up-Display und Anhängerkupplung.',
+      expectedLabels: ['Elektro', 'Head-up-Display', 'Anhängerkupplung'],
+      forbidsRecommendationLanguage: true,
+      expectsPermanentExits: true,
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_B_TOW_RANGE = {
+  id: 'intake-b-tow-range',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Anhänger zwischen 500 kg und 2 Tonnen.',
+      expectedLabelsMatch: [/Anhängelast:\s*ca\./i],
+      forbidsExactTowKg: 2000,
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_C_COLOR_ALT = {
+  id: 'intake-c-color-alt',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Rot wäre schön, meine Frau will Blau.',
+      expectedLabelsMatch: [/Rot\s*\/\s*Blau|Blau\s*\/\s*Rot/i],
+      forbidsSingleColorDecision: true,
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_D_EV3_OR_EV6 = {
+  id: 'intake-d-ev3-or-ev6',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'EV3 oder EV6.',
+      expectedLabels: ['EV3', 'EV6'],
+      forbidsSelectedModelWinner: true,
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_E_HUD_CORRECTION = {
+  id: 'intake-e-hud-correction',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'HUD brauche ich doch nicht.',
+      removesLabelsMatch: [/Head-up|HUD/i],
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_F_EARLY_OFFER = {
+  id: 'intake-f-early-offer',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Schicken Sie mir jetzt ein Angebot.',
+      expectedHandoff: { ready: true },
+      allowsIncompleteProfile: true,
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_G_SELLER_CONTACT = {
+  id: 'intake-g-seller-contact',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Ich möchte mit einem Verkäufer sprechen.',
+      expectedHandoff: { ready: true },
+      expectedNextAction: { type: 'none' },
+    },
+  ],
+};
+
+export const GOLDEN_INTAKE_H_FACTS_NOT_WISHES = {
+  id: 'intake-h-facts-not-wishes',
+  productLaw: 'customer_intake',
+  conversation: [
+    {
+      customer: 'Wie lang ist der Laderaum des EV9?',
+      expectedIntent: 'knowledge_question',
+      forbidsNeedFromFactAlone: true,
+      expectedLabelsAbsent: ['ca. 2 m Ladelänge'],
+      expectsPermanentExits: true,
+    },
+  ],
+};
+
 export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_CONVERSATION_SUV_7_LEASING,
   GOLDEN_CONVERSATION_EV3_RANGE,
@@ -273,4 +372,12 @@ export const ALL_GOLDEN_CONVERSATIONS = [
   GOLDEN_LEXICON_800V,
   GOLDEN_SELLER_EV9_SUMMARY,
   GOLDEN_SELLER_WHATSAPP_DRAFT,
+  GOLDEN_INTAKE_A_ELECTRO_HUD_TOW,
+  GOLDEN_INTAKE_B_TOW_RANGE,
+  GOLDEN_INTAKE_C_COLOR_ALT,
+  GOLDEN_INTAKE_D_EV3_OR_EV6,
+  GOLDEN_INTAKE_E_HUD_CORRECTION,
+  GOLDEN_INTAKE_F_EARLY_OFFER,
+  GOLDEN_INTAKE_G_SELLER_CONTACT,
+  GOLDEN_INTAKE_H_FACTS_NOT_WISHES,
 ];

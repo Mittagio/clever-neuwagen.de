@@ -331,6 +331,128 @@ function detectTimelineLabel(text = '') {
   return null;
 }
 
+function formatKgShort(kg) {
+  if (kg >= 1000 && kg % 1000 === 0) return `${kg / 1000} t`;
+  if (kg >= 1000) {
+    const tons = kg / 1000;
+    return `${String(tons).replace('.', ',')} t`;
+  }
+  return `${kg} kg`;
+}
+
+/**
+ * Range-Angaben zur Anhängelast – Unsicherheit erhalten.
+ * @param {string} text
+ * @returns {{ minKg: number, maxKg: number, label: string } | null}
+ */
+export function detectTowCapacityRange(text = '') {
+  const lower = String(text ?? '').toLowerCase();
+  if (!/anhäng|anhaeng|ziehen|zuglast|kupplung|wohnwagen|wohnanh/i.test(lower)) return null;
+
+  const betweenKg = lower.match(
+    /(?:zwischen|irgendwo\s+zwischen)\s*(\d{3,5})\s*(?:kg)?\s*(?:und|bis|-|–)\s*(\d{3,5})\s*kg/,
+  );
+  if (betweenKg) {
+    const minKg = Number(betweenKg[1]);
+    const maxKg = Number(betweenKg[2]);
+    return {
+      minKg,
+      maxKg,
+      label: `Anhängelast: ca. ${formatKgShort(minKg)}–${formatKgShort(maxKg)}`,
+    };
+  }
+
+  const betweenMixed = lower.match(
+    /(?:zwischen|irgendwo\s+zwischen)\s*(\d{3,5})\s*kg\s*(?:und|bis|-|–)\s*(\d+(?:[.,]\d+)?)\s*(?:t|tonnen?)/,
+  );
+  if (betweenMixed) {
+    const minKg = Number(betweenMixed[1]);
+    const maxKg = Math.round(Number(betweenMixed[2].replace(',', '.')) * 1000);
+    return {
+      minKg,
+      maxKg,
+      label: `Anhängelast: ca. ${formatKgShort(minKg)}–${formatKgShort(maxKg)}`,
+    };
+  }
+
+  const kgBisTons = lower.match(
+    /(\d{3,5})\s*kg\s*(?:bis|und|-|–)\s*(?:zwei|2)\s*(?:t|tonnen?)/,
+  );
+  if (kgBisTons) {
+    const minKg = Number(kgBisTons[1]);
+    return {
+      minKg,
+      maxKg: 2000,
+      label: `Anhängelast: ca. ${formatKgShort(minKg)}–2 t`,
+    };
+  }
+
+  const tonsRange = lower.match(
+    /(\d+(?:[.,]\d+)?)\s*(?:t|tonnen?)\s*(?:bis|und|-|–)\s*(\d+(?:[.,]\d+)?)\s*(?:t|tonnen?)/,
+  );
+  if (tonsRange) {
+    const minKg = Math.round(Number(tonsRange[1].replace(',', '.')) * 1000);
+    const maxKg = Math.round(Number(tonsRange[2].replace(',', '.')) * 1000);
+    return {
+      minKg,
+      maxKg,
+      label: `Anhängelast: ca. ${formatKgShort(minKg)}–${formatKgShort(maxKg)}`,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Farbalternativen als ein Chip – keine Einzelfarb-Entscheidung.
+ * @param {string} text
+ */
+export function detectColorAlternativeLabel(text = '') {
+  const lower = String(text ?? '').toLowerCase();
+  const found = [];
+  for (const entry of COLOR_PATTERNS) {
+    if (entry.test.test(lower)) found.push(entry.label);
+  }
+  const unique = [...new Set(found)];
+  if (unique.length < 2) return null;
+  if (!/\boder\b|\baber\b|\bfrau\b|\bpartner(?:in)?\b|\bmann\b|\bbeide\b/i.test(lower)) {
+    return null;
+  }
+  return unique.slice(0, 3).join(' / ');
+}
+
+/**
+ * Sprachkorrekturen: Wunsch entfernen.
+ * @param {string} text
+ */
+export function detectWishRemovals(text = '') {
+  const lower = String(text ?? '').toLowerCase();
+  const labels = [];
+  const equipmentWishIds = [];
+
+  const neg = /\b(doch\s+)?nicht\b|\bkein(?:e|en)?\b|\bbrauche\s+ich\s+(doch\s+)?nicht\b|\bbrauche\s+ich\s+nicht\b|\bbrauchen\s+wir\s+nicht\b|\bweg\b|\bstreichen\b/i.test(lower);
+  if (!neg) return { labels, equipmentWishIds };
+
+  if (/\bhud\b|\bhead[- ]?up/.test(lower)) {
+    equipmentWishIds.push('head_up_display');
+    labels.push('Head-up-Display');
+  }
+  if (/\bwärmepumpe\b|\bwaermepumpe\b/.test(lower)) {
+    equipmentWishIds.push('heat_pump');
+    labels.push('Wärmepumpe');
+  }
+  if (/\bpanorama\b/.test(lower)) {
+    equipmentWishIds.push('panorama_roof');
+    labels.push('Panorama');
+  }
+  if (/\banhängerkupplung\b|\banhaengerkupplung\b|\bahk\b/.test(lower)) {
+    equipmentWishIds.push('towbar');
+    labels.push('Anhängerkupplung');
+  }
+
+  return { labels, equipmentWishIds };
+}
+
 /**
  * Verkäufer- und Kundensprache: Alltagsformulierungen in Labels / offene Punkte.
  * @param {string} text
@@ -506,11 +628,43 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
     openQuestions.push('Leasing oder Finanzierung offen');
   }
   if (/\bev\s*3\b.*\bev\s*4\b|\bev\s*4\b.*\bev\s*3\b/i.test(lower)
-    && /\boffen\b|\bunsicher\b|\bnoch\b|\bschwankt\b/i.test(lower)) {
+    && (/\boffen\b|\bunsicher\b|\bnoch\b|\bschwankt\b|\boder\b|\bzwischen\b/i.test(lower))) {
     openQuestions.push('EV3 oder EV4 offen');
     pushExtraLabel(extraLabels, 'EV3');
     pushExtraLabel(extraLabels, 'EV4');
+    modelHint = null;
+    selectedModelKey = null;
   }
+  if (/\bev\s*3\b.*\bev\s*6\b|\bev\s*6\b.*\bev\s*3\b/i.test(lower)
+    && (/\boffen\b|\bunsicher\b|\bnoch\b|\bschwankt\b|\boder\b|\bzwischen\b/i.test(lower))) {
+    openQuestions.push('EV3 oder EV6 offen');
+    pushExtraLabel(extraLabels, 'EV3');
+    pushExtraLabel(extraLabels, 'EV6');
+    modelHint = null;
+    selectedModelKey = null;
+  }
+
+  // Anhängelast-Range: Unsicherheit erhalten, kein Einzelwert erzwingen
+  const towRange = detectTowCapacityRange(trimmed);
+  if (towRange) {
+    pushExtraLabel(extraLabels, towRange.label);
+  }
+
+  // Mehrere Farben / Alternativen
+  const colorAlt = detectColorAlternativeLabel(trimmed);
+  if (colorAlt) {
+    pushExtraLabel(extraLabels, colorAlt);
+    colorHint = null;
+  }
+
+  // Leasing-Nuance ohne harte Entscheidung
+  if (/\bleasing\b/i.test(lower)
+    && /\bwahrscheinlich\b|\beher\b|\bvielleicht\b|\bwäre\b|\bwaere\b|\bkönnte\b|\bkoennte\b/i.test(lower)) {
+    pushExtraLabel(extraLabels, 'Leasing wahrscheinlich');
+  }
+
+  // Sprachkorrektur-Signale (werden in applyNeedRecognition angewendet)
+  const removals = detectWishRemovals(trimmed);
   if (/\blieferzeit\b/i.test(lower) && /\bwichtiger\b/i.test(lower) && /\brate\b/i.test(lower)) {
     pushExtraLabel(extraLabels, 'Preis zweitrangig');
   }
@@ -556,6 +710,10 @@ export function detectSellerSpeechPatterns(text = '', intent = null) {
     purchaseOption,
     takeoverPlanned,
     timelineLabel,
+    towRangePreserved: Boolean(towRange),
+    softLeasing: /\bleasing\b/i.test(lower)
+      && /\bwahrscheinlich\b|\beher\b|\bvielleicht\b|\bwäre\b|\bwaere\b|\bkönnte\b|\bkoennte\b/i.test(lower),
+    removals,
   };
 }
 
@@ -684,6 +842,7 @@ export function recognizeWishesFromText(text = '', intent = null) {
  */
 export function applyNeedRecognition(profile = {}, text = '', intent = null) {
   const recognition = recognizeWishesFromText(text, intent);
+  const speech = recognition.sellerSpeech ?? detectSellerSpeechPatterns(text, intent);
   const next = { ...profile };
 
   if (recognition.drive) {
@@ -711,7 +870,13 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
     next.priorities = pushUnique(next.priorities ?? [], 'towing');
   }
 
-  if (recognition.towCapacityKg) {
+  if (speech.towRangePreserved) {
+    // Range bleibt als extraLabel – kein künstlicher Mindestwert
+    next.towbar = true;
+    next.priorities = pushUnique(next.priorities ?? [], 'towing');
+    if (!next.towing) next.towing = 'braked';
+    next.towCapacityKg = null;
+  } else if (recognition.towCapacityKg) {
     next.towCapacityKg = Math.max(next.towCapacityKg ?? 0, recognition.towCapacityKg);
     next.towing = next.towCapacityKg >= 2000 ? 'heavy' : (next.towing ?? 'braked');
     next.priorities = pushUnique(next.priorities ?? [], 'towing');
@@ -725,11 +890,16 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
     }
   }
 
-  if (recognition.modelHint) {
+  const hasModelAlternative = (speech.openQuestions ?? []).some((q) => /EV\d oder EV\d/i.test(q));
+  if (recognition.modelHint && !hasModelAlternative) {
     next.modelHint = recognition.modelHint;
     if (recognition.selectedModelKey) {
       next.selectedModelKey = recognition.selectedModelKey;
     }
+  }
+  if (hasModelAlternative) {
+    next.selectedModelKey = null;
+    next.modelHint = null;
   }
 
   if (recognition.usageTags.length) {
@@ -767,7 +937,6 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
 
   // Langstrecke nur als Wunsch (usage/Label) – keine automatische Antriebs-/Nutzungsentscheidung.
 
-  const speech = recognition.sellerSpeech ?? detectSellerSpeechPatterns(text, intent);
   if (speech.extraLabels?.length) {
     next.extraLabels = speech.extraLabels.reduce(
       (list, label) => pushUnique(list, label),
@@ -781,8 +950,10 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
     );
   }
   if (speech.trimHint) next.trimHint = speech.trimHint;
-  if (speech.colorHint) next.colorHint = speech.colorHint;
-  if (speech.modelHint && !next.modelHint) {
+  if (speech.colorHint && !speech.extraLabels?.some((l) => / \/ /.test(l))) {
+    next.colorHint = speech.colorHint;
+  }
+  if (speech.modelHint && !next.modelHint && !hasModelAlternative) {
     next.modelHint = speech.modelHint;
     if (speech.selectedModelKey) next.selectedModelKey = speech.selectedModelKey;
   }
@@ -792,6 +963,24 @@ export function applyNeedRecognition(profile = {}, text = '', intent = null) {
   if (speech.purchaseOption) next.purchaseOption = true;
   if (speech.takeoverPlanned) next.takeoverPlanned = true;
   if (speech.timelineLabel) next.timelineLabel = speech.timelineLabel;
+
+  if (speech.softLeasing) {
+    // Nuance als Chip – keine harte paymentExplicit-Entscheidung erzwingen
+    if (next.budget?.paymentExplicit && next.budget?.paymentType === 'leasing') {
+      /* behalten wenn schon explizit gesetzt */
+    }
+  }
+
+  // Korrekturen: Wünsche entfernen
+  if (speech.removals?.equipmentWishIds?.length) {
+    next.equipmentWishes = (next.equipmentWishes ?? [])
+      .filter((id) => !speech.removals.equipmentWishIds.includes(id));
+  }
+  if (speech.removals?.labels?.length) {
+    const removeSet = new Set(speech.removals.labels.map((l) => String(l).toLowerCase()));
+    next.extraLabels = (next.extraLabels ?? [])
+      .filter((label) => !removeSet.has(String(label).toLowerCase()));
+  }
 
   if (speech.extraLabels?.includes('7 Sitze gelegentlich') && (next.persons ?? 0) < 7) {
     next.persons = 7;
@@ -930,7 +1119,8 @@ function buildEquipmentLabels(profile = {}) {
 
   if (isTowbarRecognized(profile)) labels.push('Anhängerkupplung');
 
-  const towLabel = formatTowCapacityLabel(profile.towCapacityKg);
+  const hasTowRangeLabel = (profile.extraLabels ?? []).some((label) => /Anhängelast:\s*ca\./i.test(label));
+  const towLabel = hasTowRangeLabel ? null : formatTowCapacityLabel(profile.towCapacityKg);
   if (towLabel) labels.push(towLabel);
 
   const hasCargoLengthLabel = (profile.extraLabels ?? []).some((label) => /ladelänge|2\s*m/i.test(label));

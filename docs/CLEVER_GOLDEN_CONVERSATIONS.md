@@ -1,16 +1,39 @@
-# Clever Golden Conversations v1.0
+# Clever Golden Conversations
 
-**Status:** Verbindliche Referenzgespräche für Seller Reasoning  
-**Stand:** Juli 2026  
-**Leitsatz:** *Nicht fragen wie ein Formular. Denken wie ein Verkäufer.*
+> **SUPERSEDED für den öffentlichen Kundendialog**  
+> Verbindlich ist jetzt: **[CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)**.  
+>  
+> Dieses Dokument beschreibt historische Seller-Reasoning-Muster  
+> (Hypothesen, Ranking, Match-%, „immer eine Frage“).  
+> Diese Muster dürfen die öffentliche Intake-UI **nicht** steuern.  
+> Interne Seller-/Dealer-Werkzeuge dürfen technische Scores behalten,  
+> ohne sie dem Kunden zu zeigen.
 
-**Bezug:** [Need Discovery Engine v1.0](CLEVER_NEED_DISCOVERY_ENGINE.md) · [Seller Reasoning Engine – Beobachtungsphase](CLEVER_V1_OBSERVATION_PHASE.md) · [Conversation Design](clever-conversation-design.md) · [Living Conversation UI v3](../src/components/conversation/CleverMemoryBar.jsx)
+**Status:** Historische Referenz (Seller Reasoning) – Kundendialog siehe Intake-Manifest  
+**Stand:** Juli 2026 (superseded)  
+**Leitsatz (historisch):** *Nicht fragen wie ein Formular. Denken wie ein Verkäufer.*
 
-**Implementierung (read-only):** `src/services/clever/sellerReasoningEngine.js` · `src/services/consultation/conversationPlanner.js` · `src/services/consultation/consultationHappyPath.js`
+Für aktuelle Kundengespräche gilt:
+
+> Antworten. Wünsche erkennen. Notieren. Übergabe ermöglichen.
+
+**Bezug:** [Customer Intake Manifest](CLEVER_CUSTOMER_INTAKE_MANIFEST.md) · [Need Discovery (superseded)](CLEVER_NEED_DISCOVERY_ENGINE.md) · [Conversation Design](clever-conversation-design.md)
 
 ---
 
-## Mission
+## Hinweis zur weiteren Nutzung
+
+Die unten stehenden Abschnitte bleiben als **historische Gesprächsmuster** erhalten.
+Sie sind **nicht** mehr die Produktgesetz-Quelle für:
+
+- Match-Prozent in der Kunden-UI
+- Ranking-Medaillen
+- verpflichtende Anschlussfragen
+- „beste Fahrzeugrichtung“
+
+---
+
+## Mission (historisch)
 
 Clever ist **kein Chatbot**.
 
@@ -18,25 +41,27 @@ Clever ist **kein Fragebaum**.
 
 Clever ist der **digitale Verkaufsassistent**, der vorne im Autohaus sitzt und gemeinsam mit dem Kunden denkt.
 
-| Clever tut | Clever tut nicht |
-|------------|------------------|
+| Clever tut (historisch) | Clever tut nicht |
+|-------------------------|------------------|
 | Beraten | Verkaufen |
 | Mitdenken | Aufzählen |
 | Vorbereiten | Abschließen |
+
+**Aktuell (Intake):** Clever **berät nicht** – Clever nimmt auf und übergibt.
 
 Der Verkäufer übernimmt später — **mit vollständigem Kontext**.
 
 ---
 
-## Die goldene Regel
+## Die goldene Regel (historisch – für Kunden-UI außer Kraft)
 
 Nach **jeder** Kundenantwort passieren **immer genau drei Dinge**:
 
-1. **Das Kundenverständnis wächst** — sichtbar in der Sticky Memory Bar.
-2. **Die Fahrzeughypothese verändert sich sichtbar** — Karten steigen, fallen, verschwinden (mit Erklärung).
-3. **Clever stellt genau eine Frage**, die die Fahrzeugwahl verbessern würde.
+1. **Das Kundenverständnis wächst** — sichtbar in der Sticky Memory Bar / Notizzettel.
+2. **Die Fahrzeughypothese verändert sich sichtbar** — *nur intern / Seller; nicht als Ranking-UI für Kunden.*
+3. **Clever stellt genau eine Frage**, die die Fahrzeugwahl verbessern würde — *optional; `none` ist erlaubt.*
 
-**Nicht mehr. Nicht weniger.**
+Für den Kundendialog gilt stattdessen das Intake-Manifest.
 
 ```
 Kundenantwort

@@ -1491,7 +1491,8 @@ export function removeNeedLabel(session, label) {
   return {
     ...session,
     needProfile: nextProfile,
-    notepadLabels: labelsFromNeedProfile(nextProfile, session.notepadLabels ?? []),
+    // Intake: Notizzettel neu aus Profil ableiten – entfernte Chips nicht aus previous behalten
+    notepadLabels: buildUnderstoodLabels(nextProfile),
   };
 }
 

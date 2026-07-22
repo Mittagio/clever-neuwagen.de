@@ -44,6 +44,11 @@ import CleverHandoffComplete from './CleverHandoffComplete.jsx';
 import CleverAdvisorCollectPanel from './CleverAdvisorCollectPanel.jsx';
 import CleverUnderstandingMoment from './CleverUnderstandingMoment.jsx';
 import CleverInlineOfferCard from './CleverInlineOfferCard.jsx';
+import CleverComposerExits from './CleverComposerExits.jsx';
+import {
+  buildContactExitLabel,
+  buildOfferExitLabel,
+} from '../../services/consultation/customerIntakeExits.js';
 import {
   isSpeechRecognitionSupported,
   startSpeechRecognition,
@@ -499,6 +504,16 @@ export default function CleverConversationExperience({
         : livingPlaceholder);
 
     return (
+      <div className="cc-composer-stack">
+        {showComposerExits && (
+          <CleverComposerExits
+            offerLabel={offerExitLabel}
+            contactLabel={contactExitLabel}
+            onOffer={handleOfferExit}
+            onContact={handleContactExit}
+            disabled={!inputEnabled && !showOpening}
+          />
+        )}
       <form className={formClass} onSubmit={handleFormSubmit}>
         <label className="cc-input-bar__label" htmlFor="cc-conversation-input">
           {inVehicleWorld ? 'Einfach weitererzählen' : 'Erzählen Sie einfach weiter'}
@@ -560,6 +575,7 @@ export default function CleverConversationExperience({
           </button>
         </div>
       </form>
+      </div>
     );
   };
 
@@ -613,11 +629,9 @@ export default function CleverConversationExperience({
   const activeQuestionId = session.pendingQuestion?.id ?? null;
 
   const hasReasoningContent = visibleReasoningItems.length > 0 || fadedReasoningItems.length > 0;
-  const showInlineReasoning = !aiConversationActive
-    && !inOfferWorld
-    && !inVehicleWorld
-    && hasReasoningContent
-    && ((session.notepadLabels?.length ?? 0) > 0 || visibleTurns.length > 0);
+  // Intake: kein Seller-Reasoning-Panel / Ranking in der öffentlichen Kunden-UI
+  const showInlineReasoning = false;
+  void hasReasoningContent;
 
   const handleVoiceStart = useCallback(() => {
     if (!voiceSupported || !inputEnabled || voiceListening) return;
@@ -663,8 +677,25 @@ export default function CleverConversationExperience({
     && !inCollectMode
     && (wishHandoffLatched || shouldShowInlineOfferCard(session));
 
-  // Legacy fixed Overlay ist entfernt – Angebot nur als Inline-Karte
-  const showAdvisorContact = false;
+  // Permanente Ausgänge ab Turn 1 (Intake) – keine separate „Wunsch verstanden“-Box
+  const showComposerExits = !inOfferWorld && !inCollectMode;
+  const offerExitLabel = buildOfferExitLabel({
+    ...session,
+    offerModelKeys,
+  });
+  const contactExitLabel = buildContactExitLabel();
+
+  const handleOfferExit = useCallback(() => {
+    setWishHandoffLatched(true);
+    handleDealerHandoff({
+      selectedOfferModels: offerModelKeys,
+    });
+  }, [handleDealerHandoff, offerModelKeys]);
+
+  const handleContactExit = useCallback(() => {
+    setWishHandoffLatched(true);
+    handleDealerHandoff({});
+  }, [handleDealerHandoff]);
 
   useEffect(() => {
     if (!showInlineOffer || offerModelKeys.length) return undefined;
