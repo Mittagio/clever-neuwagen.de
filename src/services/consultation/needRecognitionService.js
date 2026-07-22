@@ -14,6 +14,7 @@ const EQUIPMENT_WISH_IDS = new Set([
   'v2l',
   'tinting',
   'panorama_roof',
+  'heated_seats',
   'rear_seat_heat',
   'power_tailgate',
   'large_navi',
@@ -29,6 +30,7 @@ const EQUIPMENT_LABELS = {
   v2l: 'V2L',
   tinting: 'Tönung',
   panorama_roof: 'Panorama',
+  heated_seats: 'Sitzheizung',
   rear_seat_heat: 'Sitzheizung hinten',
   power_tailgate: 'Elektrische Heckklappe',
   large_navi: 'Großes Navi',
@@ -213,11 +215,19 @@ function collectEquipmentWishes(intent = {}, text = '') {
 
   for (const fid of intent.features ?? []) {
     if (fid === 'towbar') continue;
+    if (fid === 'heated_front_seats' || fid === 'heated_seats') {
+      wishes.add('heated_seats');
+      continue;
+    }
+    if (fid === 'heated_rear_seats') {
+      wishes.add('rear_seat_heat');
+      continue;
+    }
     if (EQUIPMENT_WISH_IDS.has(fid)) wishes.add(fid);
   }
 
   if (/\bwärmepumpe\b|\bwaermepumpe\b/i.test(lower)) wishes.add('heat_pump');
-  if (/\b360\s*°?\s*kamera\b|\b360-grad/i.test(lower) || /\b360\s*°/i.test(lower)) {
+  if (/\b360\s*°?\s*(?:grad\s+)?kamera\b|\b360[-\s]?grad/i.test(lower) || /\b360\s*°/i.test(lower)) {
     wishes.add('camera_360');
   }
   if (/\bhead[- ]?up[- ]?display\b|\bhud\b/i.test(lower)) wishes.add('head_up_display');
@@ -226,7 +236,11 @@ function collectEquipmentWishes(intent = {}, text = '') {
   if (/\bv2l\b|\bvehicle[- ]?to[- ]?load\b/i.test(lower)) wishes.add('v2l');
   if (/\btönung\b|\btoenung\b|\bscheibentönung\b|\bscheibentoenung\b|\btönungscheiben\b|\btoenungscheiben\b/i.test(lower)) wishes.add('tinting');
   if (/\bpanorama(?:dach)?\b|\bglasdach\b|\bschiebedach\b/i.test(lower)) wishes.add('panorama_roof');
-  if (/\bsitzheizung\s+hinten\b|\bhinten\s+sitzheizung\b/i.test(lower)) wishes.add('rear_seat_heat');
+  if (/\bsitzheizung\s+hinten\b|\bhinten\s+sitzheizung\b/i.test(lower)) {
+    wishes.add('rear_seat_heat');
+  } else if (/\bsitzheizung\b|\bbeheizte?\s+sitze\b|\bbeheizbare?\s+sitze\b/i.test(lower)) {
+    wishes.add('heated_seats');
+  }
   if (/\belektrische?\s+heckklappe\b|\bpower\s*tailgate\b/i.test(lower)) wishes.add('power_tailgate');
   if (/\bgroßes?\s+navi\b|\bgrosses?\s+navi\b|\bnavigationssystem\b/i.test(lower)) wishes.add('large_navi');
   if (/\bkofferraum\b.*\bwichtig\b|\bwichtig\b.*\bkofferraum\b/i.test(lower)) wishes.add('large_trunk');
@@ -1157,7 +1171,7 @@ function buildEquipmentLabels(profile = {}) {
 
   for (const wishId of [
     'heat_pump', 'camera_360', 'head_up_display', 'matrix_led', 'v2l',
-    'tinting', 'panorama_roof', 'rear_seat_heat', 'power_tailgate', 'large_navi', 'large_trunk',
+    'tinting', 'panorama_roof', 'heated_seats', 'rear_seat_heat', 'power_tailgate', 'large_navi', 'large_trunk',
   ]) {
     if (wishId === 'large_trunk' && hasCargoLengthLabel) continue;
     if (hasEquipmentWish(profile, wishId)) {
