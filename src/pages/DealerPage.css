@@ -31,6 +31,16 @@
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(167, 139, 250, 0.14), transparent 55%),
+    radial-gradient(90% 60% at 80% 20%, rgba(244, 114, 182, 0.1), transparent 50%),
+    #fff;
+}
+
+.dealer-reception .cc-experience--embedded.cc-experience--living-opening {
+  max-height: none;
+  min-height: 0;
+  height: auto;
 }
 
 .dealer-reception .cc-experience--embedded.cc-experience--tool-opening {

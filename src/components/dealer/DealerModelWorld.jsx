@@ -95,7 +95,7 @@ export default function DealerModelWorld({
 
   return (
     <section
-      className={`dl-modellwelt dl-modellwelt--inspire dl-modellwelt--portal${isClassicVariant ? ' dl-modellwelt--classic' : ''}${isInspirationVariant ? ' dl-modellwelt--inspiration' : ''}`}
+      className={`dl-modellwelt dl-modellwelt--inspire dl-modellwelt--portal dl-modellwelt--swipe-compact${isClassicVariant ? ' dl-modellwelt--classic' : ''}${isInspirationVariant ? ' dl-modellwelt--inspiration' : ''}`}
       aria-labelledby="dl-modellwelt-heading"
     >
       <div className="dl-modellwelt__head">
@@ -152,7 +152,7 @@ export default function DealerModelWorld({
                       )}
                     </p>
                   )}
-                  {card.trimLines?.length > 1 && (
+                  {!isInspirationVariant && card.trimLines?.length > 1 && (
                     <ul className="dl-modellwelt__trim-rates">
                       {card.trimLines.map((line) => (
                         <li key={line.trimId}>
@@ -166,17 +166,17 @@ export default function DealerModelWorld({
                       ))}
                     </ul>
                   )}
-                  {card.preparationFeeLine && (
+                  {!isInspirationVariant && card.preparationFeeLine && (
                     <p className="dl-modellwelt__prep">{card.preparationFeeLine}</p>
                   )}
-                  {card.promoBadges.length > 0 && (
+                  {!isInspirationVariant && card.promoBadges.length > 0 && (
                     <DealerModelPromotionBadges
                       badges={card.promoBadges.slice(0, 2)}
                       overflowLabel={card.overflowLabel}
                       className="dl-modellwelt__badges"
                     />
                   )}
-                  {card.priceFootnotes?.slice(0, 1).map((line) => (
+                  {!isInspirationVariant && card.priceFootnotes?.slice(0, 1).map((line) => (
                     <p key={line} className="dl-modellwelt__legal">{line}</p>
                   ))}
                   {isClassicVariant && (

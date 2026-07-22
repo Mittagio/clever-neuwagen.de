@@ -94,7 +94,23 @@ const LIVING_INPUT_PLACEHOLDERS = [
   'Weiterfragen oder Wunsch ergänzen …',
 ];
 
-const DEFAULT_COMPOSER_PLACEHOLDER = 'Weiterfragen oder Wunsch ergänzen …';
+const HERO_EXAMPLE_PLACEHOLDERS = [
+  'z. B. SUV mit 7 Sitzen',
+  'z. B. Hybrid mit 1.500 kg Anhängelast',
+  'z. B. EV3 Leasing für Familie',
+  'z. B. Kleinwagen Elektro',
+  'z. B. Auto unter 350 € / Monat',
+];
+
+const DEFAULT_COMPOSER_PLACEHOLDER = 'Schreiben oder sprechen …';
+
+const POPULAR_ENTRY_CHIPS = [
+  { id: 'ev3_family', icon: '👨‍👩‍👧', label: 'EV3 Leasing für Familie', text: 'EV3 Leasing für Familie' },
+  { id: 'suv7', icon: '🚙', label: 'SUV mit 7 Sitzen', text: 'SUV mit 7 Sitzen' },
+  { id: 'hybrid_tow', icon: '🪝', label: 'Hybrid mit 1.500 kg Anhängelast', text: 'Hybrid mit 1.500 kg Anhängelast' },
+  { id: 'klein_e', icon: '⚡', label: 'Kleinwagen Elektro', text: 'Kleinwagen Elektro' },
+  { id: 'budget350', icon: '💶', label: 'Auto unter 350 € / Monat', text: 'Auto unter 350 € / Monat' },
+];
 
 const TURN_REVEAL_DELAY = {
   [TURN_TYPE.CUSTOMER]: 240,
@@ -143,6 +159,8 @@ export default function CleverConversationExperience({
   const [advisorBoostExpanded, setAdvisorBoostExpanded] = useState(false);
   const [livingPlaceholderIndex, setLivingPlaceholderIndex] = useState(0);
   const [livingPlaceholderFading, setLivingPlaceholderFading] = useState(false);
+  const [heroPlaceholderIndex, setHeroPlaceholderIndex] = useState(0);
+  const [heroPlaceholderFading, setHeroPlaceholderFading] = useState(false);
   const [labelsAnimating, setLabelsAnimating] = useState(false);
   const [excludedModelKeys, setExcludedModelKeys] = useState([]);
   const [excludeReaction, setExcludeReaction] = useState('');
@@ -184,7 +202,29 @@ export default function CleverConversationExperience({
   }, [session.notepadLabels]);
 
   useEffect(() => {
+    if (!showOpening) return undefined;
+    if (voiceListening) return undefined;
+    if (inputValue.trim()) return undefined;
+    if (inputFocused) return undefined;
+    if (HERO_EXAMPLE_PLACEHOLDERS.length <= 1) return undefined;
+
+    const intervalMs = 3400;
+    const fadeMs = 240;
+
+    const handle = window.setInterval(() => {
+      setHeroPlaceholderFading(true);
+      window.setTimeout(() => {
+        setHeroPlaceholderIndex((prev) => (prev + 1) % HERO_EXAMPLE_PLACEHOLDERS.length);
+        setHeroPlaceholderFading(false);
+      }, fadeMs);
+    }, intervalMs);
+
+    return () => window.clearInterval(handle);
+  }, [showOpening, voiceListening, inputValue, inputFocused]);
+
+  useEffect(() => {
     if (inOfferWorld || inVehicleWorld || inCollectMode) return undefined;
+    if (showOpening) return undefined;
     if (voiceListening) return undefined;
     if (inputValue.trim()) return undefined;
     if (inputFocused) return undefined;
@@ -202,7 +242,7 @@ export default function CleverConversationExperience({
     }, intervalMs);
 
     return () => window.clearInterval(handle);
-  }, [inOfferWorld, inVehicleWorld, inCollectMode, voiceListening, inputValue, inputFocused]);
+  }, [inOfferWorld, inVehicleWorld, inCollectMode, showOpening, voiceListening, inputValue, inputFocused]);
 
   useEffect(() => {
     const playableCount = session.turns.filter((t) => !SKIPPED_TURN_TYPES.has(t.type)).length;
@@ -317,6 +357,13 @@ export default function CleverConversationExperience({
   };
 
   const smartChipState = useMemo(() => {
+    if (showOpening) {
+      return {
+        label: 'Beliebte Einstiege',
+        chips: POPULAR_ENTRY_CHIPS,
+      };
+    }
+
     const raw = String(inputValue ?? '').trim().toLowerCase();
     const wishBlob = [
       ...(session.notepadLabels ?? []),
@@ -325,18 +372,12 @@ export default function CleverConversationExperience({
     const context = `${raw} ${wishBlob}`.trim();
 
     const defaults = {
-      label: '✨ Vielleicht noch wichtig:',
-      chips: [
-        { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
-        { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
-        { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
-        { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
-        { id: 'rear_cam', icon: '📷', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
-      ],
+      label: 'Vielleicht noch wichtig',
+      chips: POPULAR_ENTRY_CHIPS.slice(0, 4),
     };
 
     const pick = (group) => ({
-      label: '✨ Vielleicht noch wichtig:',
+      label: 'Vielleicht noch wichtig',
       chips: group.chips.map((chip) => ({
         id: chip.id,
         icon: chip.icon,
@@ -350,78 +391,55 @@ export default function CleverConversationExperience({
         id: 'electric',
         match: /elektro|ev\b|strom|wallbox|reichweite|laden/,
         chips: [
-          { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
-          { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
-          { id: 'fastcharge', icon: '⚡', label: 'Schnellladen', text: 'Gutes Schnellladen ist mir wichtig.' },
-          { id: 'wallbox', icon: '🏠', label: 'Wallbox', text: 'Ich kann zuhause an Wallbox laden.' },
-          { id: 'winter', icon: '❄', label: 'Reichweite Winter', text: 'Winterreichweite ist mir wichtig.' },
+          { id: 'klein_e', icon: '⚡', label: 'Kleinwagen Elektro', text: 'Kleinwagen Elektro' },
+          { id: 'range400', icon: '🔋', label: 'über 400 km Reichweite', text: 'Ich brauche über 400 km Reichweite.' },
+          { id: 'ev3_family', icon: '👨‍👩‍👧', label: 'EV3 Leasing für Familie', text: 'EV3 Leasing für Familie' },
         ],
       },
       {
         id: 'family',
-        match: /familie|kinder|hund|kinderwagen|isofix/,
+        match: /familie|kinder|7\s*sitz|siebensitzer/,
         chips: [
-          { id: 'isofix', icon: '👶', label: 'Isofix', text: 'Isofix ist mir wichtig.' },
-          { id: 'stroller', icon: '🛒', label: 'Kinderwagen', text: 'Platz für Kinderwagen wäre wichtig.' },
-          { id: 'dog', icon: '🐶', label: 'Hund', text: 'Platz für einen Hund wäre wichtig.' },
-          { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
-          { id: 'roofbox', icon: '🏕', label: 'Dachbox', text: 'Dachbox / Dachträger wäre relevant.' },
+          { id: 'suv7', icon: '🚙', label: 'SUV mit 7 Sitzen', text: 'SUV mit 7 Sitzen' },
+          { id: 'ev3_family', icon: '👨‍👩‍👧', label: 'EV3 Leasing für Familie', text: 'EV3 Leasing für Familie' },
+          { id: 'trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
         ],
       },
       {
         id: 'leasing',
-        match: /leasing|rate|monat|km|anzahlung|restwert|inzahlung/,
+        match: /leasing|rate|monat|km|anzahlung/,
         chips: [
-          { id: 'no_down', icon: '💶', label: 'ohne Anzahlung', text: 'Am liebsten ohne Anzahlung.' },
+          { id: 'budget350', icon: '💶', label: 'unter 350 € / Monat', text: 'Auto unter 350 € / Monat' },
           { id: '48m', icon: '📅', label: '48 Monate', text: '48 Monate wären ideal.' },
           { id: '15k', icon: '🛣', label: '15.000 km', text: 'Ich fahre ca. 15.000 km pro Jahr.' },
-          { id: 'buyout', icon: '🔄', label: 'Restwertübernahme', text: 'Spätere Übernahme wäre interessant.' },
-          { id: 'tradein', icon: '🚗', label: 'Inzahlungnahme', text: 'Inzahlungnahme wäre gut.' },
-        ],
-      },
-      {
-        id: 'ev3',
-        match: /\bev3\b/,
-        chips: [
-          { id: 'heatpump', icon: '🌡', label: 'Wärmepumpe', text: 'Wärmepumpe wäre mir wichtig.' },
-          { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
-          { id: 'rear_cam', icon: '📷', label: 'Rückfahrkamera', text: 'Eine Rückfahrkamera wäre mir wichtig.' },
-          { id: 'v2l', icon: '🔌', label: 'V2L', text: 'V2L wäre interessant.' },
-          { id: 'lease_15k', icon: '📅', label: '15.000 km Leasing', text: '15.000 km Leasing wäre ideal.' },
-        ],
-      },
-      {
-        id: 'sportage',
-        match: /\bsportage\b/,
-        chips: [
-          { id: 'towbar', icon: '🔗', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
-          { id: 'horse', icon: '🐴', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
-          { id: 'seatheat', icon: '🔥', label: 'Sitzheizung', text: 'Sitzheizung wäre mir wichtig.' },
-          { id: 'cam360', icon: '📷', label: '360° Kamera', text: '360° Kamera wäre mir wichtig.' },
-          { id: 'big_trunk', icon: '📦', label: 'großer Kofferraum', text: 'Großer Kofferraum ist mir wichtig.' },
         ],
       },
       {
         id: 'trailer',
         match: /anh(ä|ae)ng|wohnwagen|pferd/,
         chips: [
+          { id: 'hybrid_tow', icon: '🪝', label: 'Hybrid mit 1.500 kg', text: 'Hybrid mit 1.500 kg Anhängelast' },
           { id: 'towbar', icon: '🔗', label: 'Anhängerkupplung', text: 'Ich brauche eine Anhängerkupplung.' },
-          { id: '1500', icon: '🚚', label: '1.500 kg', text: 'Zuglast ca. 1.500 kg wäre wichtig.' },
-          { id: 'caravan', icon: '🏕', label: 'Wohnwagen', text: 'Ich ziehe gelegentlich einen Wohnwagen.' },
-          { id: 'horse', icon: '🐴', label: 'Pferdeanhänger', text: 'Pferdeanhänger ist ein Thema.' },
+          { id: '1500', icon: '🚚', label: 'ca. 1.500 kg', text: 'Zuglast ca. 1.500 kg wäre wichtig.' },
         ],
       },
     ];
 
     const hit = groups.find((g) => g.match.test(context));
     return hit ? pick(hit) : defaults;
-  }, [inputValue, session.notepadLabels, session.needProfile?.understoodLabels]);
+  }, [inputValue, session.notepadLabels, session.needProfile?.understoodLabels, showOpening]);
 
   const handleSmartChipClick = useCallback((chipText) => {
     const next = String(chipText ?? '').trim();
     if (!next) return;
+    // Opening: nur vorbefüllen – Kunde sendet selbst
+    if (showOpening) {
+      setInputValue(next);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
     void handleSend(next);
-  }, [handleSend]);
+  }, [handleSend, showOpening]);
 
   const handleRemoveUnderstoodLabel = useCallback((label) => {
     setSession((prev) => removeNeedLabel(prev, label));
@@ -481,6 +499,10 @@ export default function CleverConversationExperience({
     return vehicleReasoning.intro || 'Diese Fahrzeuge würden aktuell zu Ihren Angaben passen.';
   }, [lastAddedLabel, vehicleReasoning.intro]);
 
+  const heroPlaceholder = voiceListening
+    ? 'Clever hört zu …'
+    : (HERO_EXAMPLE_PLACEHOLDERS[heroPlaceholderIndex] || opening.placeholder);
+
   const livingPlaceholder = composerPlaceholderForSession(session)
     || LIVING_INPUT_PLACEHOLDERS[livingPlaceholderIndex]
     || DEFAULT_COMPOSER_PLACEHOLDER;
@@ -488,13 +510,79 @@ export default function CleverConversationExperience({
   const aiConversationActive = sessionUsesAiMode(session)
     || isCleverAiConversationClientEnabled();
 
+  const renderHeroInput = () => (
+    <form className="cc-hero-input" onSubmit={handleFormSubmit}>
+      <div className="cc-hero-input__field-wrap">
+        <span className="cc-hero-input__spark" aria-hidden>✨</span>
+        <input
+          ref={inputRef}
+          id="cc-hero-conversation-input"
+          type="text"
+          className="cc-hero-input__field"
+          placeholder={heroPlaceholder}
+          value={inputValue}
+          disabled={!inputEnabled}
+          onChange={(event) => setInputValue(event.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
+          autoComplete="off"
+          aria-label="Ihren Wunsch eingeben"
+        />
+        {!voiceListening && !inputValue.trim() && (
+          <span
+            className={[
+              'cc-hero-input__rotating',
+              heroPlaceholderFading ? 'is-fading' : '',
+            ].filter(Boolean).join(' ')}
+            aria-hidden
+          >
+            {heroPlaceholder}
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        className={`cc-hero-input__mic${voiceListening ? ' is-active' : ''}`}
+        onClick={handleVoiceStart}
+        disabled={!inputEnabled || !voiceSupported || voiceListening}
+        aria-label={opening.voiceLabel}
+        title={voiceSupported ? opening.voiceLabel : 'Spracheingabe nicht verfügbar'}
+      >
+        <span aria-hidden>🎤</span>
+      </button>
+      <button
+        type="submit"
+        className="cc-hero-input__send"
+        disabled={!inputEnabled || !inputValue.trim()}
+        aria-label="Senden"
+      >
+        <span aria-hidden>➜</span>
+      </button>
+    </form>
+  );
+
   const renderComposer = () => {
+    if (showOpening) {
+      return (
+        <div className="cc-composer-stack cc-composer-stack--opening">
+          {showComposerExits && (
+            <CleverComposerExits
+              offerLabel={offerExitLabel}
+              contactLabel={contactExitLabel}
+              onOffer={handleOfferExit}
+              onContact={handleContactExit}
+              disabled={false}
+            />
+          )}
+        </div>
+      );
+    }
+
     const formClass = [
       'cc-input-bar',
       inputFocused ? 'cc-input-bar--focused' : '',
       inVehicleWorld && inputEnabled ? 'cc-input-bar--vehicle-active' : '',
       voiceListening ? 'cc-input-bar--listening' : '',
-      showOpening && !(session.notepadLabels?.length ?? 0) ? 'cc-input-bar--chips-visible' : '',
     ].filter(Boolean).join(' ');
 
     const placeholderText = voiceListening
@@ -511,7 +599,7 @@ export default function CleverConversationExperience({
             contactLabel={contactExitLabel}
             onOffer={handleOfferExit}
             onContact={handleContactExit}
-            disabled={!inputEnabled && !showOpening}
+            disabled={!inputEnabled}
           />
         )}
       <form className={formClass} onSubmit={handleFormSubmit}>
@@ -725,7 +813,7 @@ export default function CleverConversationExperience({
         </header>
       )}
 
-      {!inOfferWorld && (
+      {!inOfferWorld && !showOpening && (
         inVehicleWorld ? (
           <CleverWishAndVehicleNotepad
             wishLabels={session.notepadLabels}
@@ -743,38 +831,45 @@ export default function CleverConversationExperience({
       )}
 
       <div className="cc-experience__scroll" ref={scrollRef}>
-        {notingFlash && (
+        {notingFlash && !showOpening && (
           <div className="cc-note-toast-slot">
             <CleverNotingFlash labels={notingFlash} />
           </div>
         )}
 
         {showOpening && (
-          <div className="cc-living__opening">
-            <h1 className="cc-living__headline">{opening.headline}</h1>
-          </div>
-        )}
-
-        {showOpening && !(session.notepadLabels?.length ?? 0) && (
-          <div className="cc-smartchips cc-smartchips--living" aria-label="Gedankenanstöße">
-            <p className="cc-smartchips__label">{smartChipState.label}</p>
-            <div className="cc-smartchips__row" role="list">
-              {smartChipState.chips.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className="cc-smartchips__chip"
-                  role="listitem"
-                  onClick={() => handleSmartChipClick(chip.text)}
-                >
-                  <span className="cc-smartchips__chip-icon" aria-hidden>{chip.icon}</span>
-                  <span className="cc-smartchips__chip-text">{chip.label}</span>
-                </button>
-              ))}
+          <div className="cc-hero">
+            <div className="cc-hero__copy">
+              <h1 className="cc-hero__headline">{opening.headline}</h1>
+              {opening.subline && (
+                <p className="cc-hero__subline">{opening.subline}</p>
+              )}
+            </div>
+            {renderHeroInput()}
+            {voiceError && !voiceListening && (
+              <p className="cc-hero__voice-error" role="alert">{voiceError}</p>
+            )}
+            <div className="cc-hero__entries" aria-label="Beliebte Einstiege">
+              <p className="cc-hero__entries-label">{smartChipState.label}</p>
+              <div className="cc-hero__entries-row" role="list">
+                {smartChipState.chips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className="cc-hero__entry"
+                    role="listitem"
+                    onClick={() => handleSmartChipClick(chip.text)}
+                  >
+                    <span className="cc-hero__entry-icon" aria-hidden>{chip.icon}</span>
+                    <span className="cc-hero__entry-text">{chip.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
+        {!showOpening && (
         <div className="cc-transcript">
           {visibleTurns.map((turn) => {
             if (turn.type === TURN_TYPE.ADVISOR_COLLECT) {
@@ -879,6 +974,7 @@ export default function CleverConversationExperience({
             />
           )}
         </div>
+        )}
       </div>
 
       {!inOfferWorld && !inCollectMode && renderComposer()}

@@ -188,7 +188,7 @@ function testFreetextNarrativeDuringOpenQuestion() {
 
 function testContextualPlaceholders() {
   const opening = createHappyPathSession('Test');
-  assert.match(getConversationInputPlaceholder(opening), /Ich suche/);
+  assert.match(getConversationInputPlaceholder(opening), /Elektro-SUV|Wonach|z\.\s*B\./i);
 
   let session = submitOpeningMessage(opening, HAPPY_PATH_EXAMPLE_MESSAGE);
   const afterFirst = getConversationInputPlaceholder(session);
@@ -267,7 +267,8 @@ function testOpeningIsNotAQuestion() {
 function testReceptionOpeningCopy() {
   const copy = getOpeningCopy('Autohaus Trinkle');
   assert.equal(copy.headline, 'Wonach suchen Sie?');
-  assert.match(copy.placeholder, /Ich suche/);
+  assert.match(copy.subline, /Schreiben oder sprechen/i);
+  assert.match(copy.placeholder, /Elektro-SUV|z\.\s*B\./i);
   assert.equal(copy.voiceLabel, 'Spracheingabe');
   console.log('✓ Tool-Opening: Wonach suchen Sie? + Smart Entry');
 }

@@ -294,7 +294,8 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
 export function getOpeningCopy(_dealerName = 'Autohaus') {
   return {
     headline: 'Wonach suchen Sie?',
-    placeholder: 'Ich suche …',
+    subline: 'Schreiben oder sprechen Sie einfach Ihren Wunsch.',
+    placeholder: 'z. B. Elektro-SUV mit Anhängerkupplung',
     voiceLabel: 'Spracheingabe',
   };
 }

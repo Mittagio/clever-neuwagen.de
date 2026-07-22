@@ -203,13 +203,18 @@
     margin-top: 20px;
   }
 
-  .dealer-page--clever .dl-modellwelt--inspire .dl-modellwelt__track {
-    grid-auto-columns: minmax(272px, 82vw);
-    gap: 10px;
+  .dealer-page--clever .dl-modellwelt--inspire .dl-modellwelt__track,
+  .dealer-page--clever .dl-modellwelt--swipe-compact .dl-modellwelt__track {
+    grid-auto-columns: minmax(176px, 56vw);
+    gap: 8px;
+  }
+
+  .dealer-page--clever .dl-modellwelt--swipe-compact .dl-modellwelt__image {
+    aspect-ratio: 5 / 4;
   }
 
   .dealer-page--clever .dl-modellwelt__image {
-    aspect-ratio: 16 / 11;
+    aspect-ratio: 5 / 4;
   }
 
   .dealer-page--clever .dl-chip {

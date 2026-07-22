@@ -559,6 +559,63 @@
   grid-auto-columns: minmax(240px, 72vw);
 }
 
+/* Kompakte Swipe-Karten unter Clever-Hero (Inspiration) */
+.dl-modellwelt--swipe-compact .dl-modellwelt__track {
+  grid-auto-columns: minmax(188px, 58vw);
+  gap: 10px;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__card {
+  border-radius: 14px;
+  box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__image {
+  aspect-ratio: 5 / 4;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__vehicle-image .vehicle-image__img {
+  object-fit: cover;
+  object-position: center 40%;
+  transform: scale(1.06);
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__body {
+  padding: 10px 12px 12px;
+  gap: 2px;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__tagline {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__price {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dl-modellwelt--swipe-compact .dl-modellwelt__title {
+  font-size: 1.05rem;
+}
+
+@media (min-width: 900px) {
+  .dl-modellwelt--swipe-compact .dl-modellwelt__track {
+    grid-auto-columns: minmax(220px, 240px);
+  }
+}
+
 .dl-search-results__more {
   width: 100%;
   margin-top: 4px;
