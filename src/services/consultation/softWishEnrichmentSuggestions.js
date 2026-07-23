@@ -146,7 +146,7 @@ export function buildSoftWishEnrichmentSuggestions(ctx = {}) {
       id: `equip_${chip.id}`,
       label: chip.label,
       icon: EQUIPMENT_ICONS[chip.id] || '·',
-      equipmentWishId: chip.id === 'heatPump' ? null : chip.id,
+      equipmentWishId: chip.id,
       customerNoteValue: chip.label,
       category: chip.category || 'soft',
     });

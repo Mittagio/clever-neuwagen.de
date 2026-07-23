@@ -22,7 +22,17 @@ import {
   VEHICLE_CONVERSATION_PHASE,
 } from './consultationEv3HappyPath.js';
 import { buildDeterministicNextTopics } from './conversationNextTopics.js';
+import { maybeAppendProgressiveVehicleDirections } from './progressiveVehicleDirections.js';
 
+function isAnnualKmOnlyUtterance(text = '') {
+  const t = String(text).toLowerCase();
+  if (!/\d/.test(t) || !/\bkm\b/.test(t)) return false;
+  if (/\breichweite|wltp|langstrecke|autobahn|pendeln\b/.test(t)) return false;
+  return /\d{1,2}(?:\.\d{3})?\s*[–\-]\s*\d{1,2}(?:\.\d{3})?\s*km/.test(t)
+    || /\bbis\s+\d/.test(t)
+    || /\b\d{1,2}(?:\.\d{3})?\s*km(?:\s*\/?\s*jahr)?/.test(t)
+    || /\büber\s*20/.test(t);
+}
 /**
  * Öffentlicher Intake: Messenger bleibt offen – keine Welt-2-Fahrzeugberatung.
  * @param {object} session
@@ -332,11 +342,26 @@ export function submitSafeIntakeFallback(session, text = '', options = {}) {
 
   const previousLabels = [...(base.notepadLabels ?? [])];
   const askedSafeQuestionIds = [...(base.askedSafeQuestionIds ?? [])];
+  const prevNeedProfile = base.needProfile ?? {};
 
   let needProfile = mergeTextIntoNeedProfile(trimmed, base.needProfile);
   needProfile = applyPendingSafeAnswer(needProfile, base.pendingQuestion, trimmed);
 
-  let notepadLabels = appendLabels(previousLabels, buildUnderstoodLabels(needProfile));
+  if (isAnnualKmOnlyUtterance(trimmed)) {
+    needProfile = {
+      ...needProfile,
+      longDistance: prevNeedProfile.longDistance ?? null,
+      usage: (needProfile.usage ?? []).filter((item) => !/langstrecke/i.test(String(item))),
+    };
+    needProfile = {
+      ...needProfile,
+      understoodLabels: buildUnderstoodLabels(needProfile)
+        .filter((label) => !/^langstrecke$/i.test(String(label))),
+    };
+  }
+
+  let notepadLabels = appendLabels(previousLabels, buildUnderstoodLabels(needProfile))
+    .filter((label) => !(isAnnualKmOnlyUtterance(trimmed) && /^langstrecke$/i.test(String(label))));
   notepadLabels = refineNotepadLabels(notepadLabels, trimmed, needProfile);
   needProfile = {
     ...needProfile,
@@ -417,7 +442,9 @@ export function submitSafeIntakeFallback(session, text = '', options = {}) {
     };
   }
 
-  return keepPublicIntakeMessenger(next);
+  return keepPublicIntakeMessenger(
+    maybeAppendProgressiveVehicleDirections(next, prevNeedProfile),
+  );
 }
 
 /**

@@ -19,11 +19,33 @@ import {
   buildDeterministicNextTopics,
   sanitizeNextTopics,
 } from '../../consultation/conversationNextTopics.js';
+import { maybeAppendProgressiveVehicleDirections } from '../../consultation/progressiveVehicleDirections.js';
 
 function appendLabels(existing = [], incoming = []) {
   const next = [...existing];
   for (const label of incoming) {
     if (label && !next.includes(label)) next.push(label);
+  }
+  return next;
+}
+
+function isAnnualKmOnlyUtterance(text = '') {
+  const t = String(text).toLowerCase();
+  if (!/\d/.test(t) || !/\bkm\b/.test(t)) return false;
+  if (/\breichweite|wltp|langstrecke|autobahn|pendeln\b/.test(t)) return false;
+  return /\d{1,2}(?:\.\d{3})?\s*[–\-]\s*\d{1,2}(?:\.\d{3})?\s*km/.test(t)
+    || /\bbis\s+\d/.test(t)
+    || /\b\d{1,2}(?:\.\d{3})?\s*km(?:\s*\/?\s*jahr)?/.test(t)
+    || /\büber\s*20/.test(t);
+}
+
+function stripLangstreckeFromAnnualKmPatch(patch = {}, customerMessage = '') {
+  if (!isAnnualKmOnlyUtterance(customerMessage)) return patch;
+  const next = { ...patch };
+  if ('longDistance' in next) delete next.longDistance;
+  if (Array.isArray(next.usage)) {
+    next.usage = next.usage.filter((item) => !/langstrecke/i.test(String(item)));
+    if (!next.usage.length) delete next.usage;
   }
   return next;
 }
@@ -227,16 +249,30 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
   if (!trimmed || !turnResult) return session;
 
   let needProfile = mergeTextIntoNeedProfile(trimmed, session.needProfile);
-  const { patch, rejectedKeys } = sanitizeNeedProfilePatch(turnResult.needProfilePatch ?? {});
+  const prevNeedProfile = session.needProfile ?? {};
+  let { patch, rejectedKeys } = sanitizeNeedProfilePatch(turnResult.needProfilePatch ?? {});
   if (rejectedKeys.length) {
     throw new Error(`rejected_need_profile_fields:${rejectedKeys.join(',')}`);
   }
+  patch = stripLangstreckeFromAnnualKmPatch(patch, trimmed);
   needProfile = applyNeedProfilePatch(needProfile, patch);
+
+  // Jahres-km-Äußerung: Langstrecke aus Merge/Patch entfernen
+  if (isAnnualKmOnlyUtterance(trimmed)) {
+    needProfile = {
+      ...needProfile,
+      longDistance: prevNeedProfile.longDistance ?? null,
+      usage: (needProfile.usage ?? []).filter((item) => !/langstrecke/i.test(String(item))),
+      understoodLabels: (needProfile.understoodLabels ?? [])
+        .filter((label) => !/^langstrecke$/i.test(String(label))),
+    };
+    needProfile.understoodLabels = buildUnderstoodLabels(needProfile);
+  }
 
   const notepadLabels = appendLabels(
     session.notepadLabels ?? [],
     buildUnderstoodLabels(needProfile),
-  );
+  ).filter((label) => !(isAnnualKmOnlyUtterance(trimmed) && /^langstrecke$/i.test(String(label))));
 
   let next = {
     ...session,
@@ -290,13 +326,18 @@ export function applyCleverTurnToSession(session, { customerMessage, turnResult 
   }
 
   if (turnResult.nextAction?.type === 'offer_handoff' || turnResult.handoff?.ready) {
+    // Richtungen zuerst anhängen, bevor Handoff-Flags greifen
+    next = maybeAppendProgressiveVehicleDirections(next, prevNeedProfile);
     next = {
       ...next,
       sellerReady: Boolean(turnResult.handoff?.ready) || next.sellerReady,
       offerRequested: true,
       phase: turnResult.handoff?.ready ? CONVERSATION_PHASE.HANDOFF : next.phase,
     };
+    return keepPublicIntakeMessenger(next);
   }
 
-  return keepPublicIntakeMessenger(next);
+  return keepPublicIntakeMessenger(
+    maybeAppendProgressiveVehicleDirections(next, prevNeedProfile),
+  );
 }

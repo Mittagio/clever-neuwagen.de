@@ -41,6 +41,9 @@ import {
   isEvDirectionModel,
 } from './vehicleDirectionService.js';
 import {
+  applyInterestedDirectionToNotepad,
+} from './progressiveVehicleDirections.js';
+import {
   filterNewHandoffChipIds,
   QUICK_HANDOFF_ENRICHMENT_CHIPS,
 } from './consultationOfferHandoff.js';
@@ -865,10 +868,14 @@ export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
     ? { ...session.vehicleDirectionsView, reactions }
     : null;
 
+  const notepadUpdate = applyInterestedDirectionToNotepad(session, modelKey, reactionId);
+
   let next = {
     ...session,
     vehicleDirectionReactions: reactions,
     vehicleDirectionsView: directionsView,
+    notepadLabels: notepadUpdate.notepadLabels,
+    needProfile: notepadUpdate.needProfile ?? session.needProfile,
     turns: session.turns.map((turn) => (
       turn.type === TURN_TYPE.VEHICLE_DIRECTIONS
         ? { ...turn, directionsView: { ...turn.directionsView, reactions } }
@@ -888,7 +895,15 @@ export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
       selectedModelKey: modelKey,
     }),
   };
-  next = { ...next, needProfile, selectedModelKey: modelKey };
+  next = {
+    ...next,
+    needProfile,
+    selectedModelKey: modelKey,
+    notepadLabels: [...new Set([
+      ...(next.notepadLabels ?? []),
+      ...buildUnderstoodLabels(needProfile),
+    ])],
+  };
 
   if (isEvDirectionModel(modelKey)) {
     return beginEv3VehicleConsultation(next, modelKey);
@@ -899,9 +914,7 @@ export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
     ...next,
     turns: [
       ...next.turns,
-      cleverAckTurn(
-        `Gut – ich halte ${label} für die genauere Prüfung fest. Damit kann Ihr Berater direkt loslegen.`,
-      ),
+      cleverAckTurn(`Gut – ${label}.`),
     ],
   };
 }

@@ -67,7 +67,7 @@ import { buildWishHandoffExitLabel } from './customerIntakeExits.js';
   assert.equal(view.title, 'Meine Wünsche weitergeben');
   assert.ok(!/Übergabe/.test(view.title));
   assert.ok(!/Übergabe/.test(view.privacyText || ''));
-  assert.match(view.softHeadline, /Verkäufer noch etwas/);
+  assert.match(view.softHeadline, /Noch etwas/i);
   console.log('✓ Keine Kundenheadline „Übergabe“');
 }
 

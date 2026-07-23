@@ -236,10 +236,26 @@ function hasMileageSufficiencyContext(text, nearIndex, matchLen = 3) {
   return /\b(reichen|reicht|ausreichen|ausreicht|genügen|genuegen|genügt|genuegt)\b/i.test(window);
 }
 
+/** Jahreskilometer / Leasing-km – kein Reichweitenwunsch. */
+function hasAnnualMileageContext(text, nearIndex, matchLen = 3) {
+  const window = text.slice(Math.max(0, nearIndex - 30), nearIndex + matchLen + 45);
+  if (/\b(jahr|j\.?|\/\s*jahr|pro\s*jahr|jahreskilometer|laufleistung|leasing|km\s*\/\s*jahr)\b/i.test(window)) {
+    return true;
+  }
+  // Chip-Labels: „8.000 – 12.000 km“, „bis 8.000 km“, „über 20.000 km“
+  if (/\d{1,2}(?:\.\d{3})?\s*[–\-]\s*\d{1,2}(?:\.\d{3})?\s*km\b/i.test(window)) return true;
+  if (/\bbis\s+\d{1,2}(?:\.\d{3})?\s*km\b/i.test(window)) return true;
+  if (/\b(?:über|ueber)\s*20\.?000\s*km\b/i.test(window)) return true;
+  return false;
+}
+
 function hasRangeContext(text, nearIndex, matchLen = 3) {
   const window = text.slice(Math.max(0, nearIndex - 20), nearIndex + matchLen + 30);
   if (hasMileageSufficiencyContext(text, nearIndex, matchLen)) return false;
-  return /\b(km|kilometer|reichweite|range)\b/i.test(window);
+  if (hasAnnualMileageContext(text, nearIndex, matchLen)) return false;
+  // Nur echte Reichweiten-Sprache – bloßes „km“ reicht nicht
+  return /\b(reichweite|wltp|range|elektrische\s+reichweite)\b/i.test(window)
+    || /\b(?:über|ueber|ab|mindestens|mehr als)\s*\d{2,4}\s*km\b/i.test(window);
 }
 
 function extractMoneyAndRange(text, spans) {

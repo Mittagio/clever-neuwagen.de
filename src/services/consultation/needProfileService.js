@@ -269,7 +269,7 @@ function applyIntentToNeedProfile(profile, intent = {}, text = '') {
     if (fuelCat === 'electric' || fuelCat === 'phev') {
       next.priorities = pushUnique(next.priorities, 'range');
     }
-    next.longDistance = next.longDistance ?? 'sometimes';
+    // Jahres-km / Reichweite ≠ Nutzungs-Label „Langstrecke“
     confidence += 6;
   }
 

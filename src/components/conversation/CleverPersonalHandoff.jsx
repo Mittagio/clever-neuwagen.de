@@ -1,14 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCustomerAuth } from '../../context/CustomerAuthContext.jsx';
 import { validateHandoffForm } from '../../services/consultation/consultationOfferHandoff.js';
 import {
+  ACQUISITION_OPTIONS,
+  DOWN_PAYMENT_OPTIONS,
+  FINANCE_BALLOON_OPTIONS,
+  FINANCE_TERM_OPTIONS,
+  HANDOFF_TRADE_IN_OPTIONS,
+  LEASING_MILEAGE_OPTIONS,
+  LEASING_TERM_OPTIONS,
+  PURCHASE_SPECIAL_OPTIONS,
+  VEHICLE_NEED_TIMING_OPTIONS,
   emptyWishHandoffEnrichment,
   prefillWishHandoffEnrichment,
 } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
-  buildSoftWishEnrichmentSuggestions,
-  sanitizeSoftWishSuggestions,
-} from '../../services/consultation/softWishEnrichmentSuggestions.js';
+  SOFT_EQUIPMENT_CATEGORY_CHIPS,
+  buildEquipmentChipsForCategory,
+} from '../../services/consultation/wishHandoffEquipment.js';
 import { mergeTextIntoNeedProfile } from '../../services/consultation/needProfileService.js';
 import './clever-conversation.css';
 
@@ -40,30 +49,65 @@ function buildSubmitPayload(form, authEmail, enrichment) {
   };
 }
 
-function SoftWishChip({ suggestion, flying, onSelect }) {
+function SoftAccordion({ id, title, icon, open, onToggle, summary = null, children }) {
   return (
-    <button
-      type="button"
-      className={`cc-soft-wish__chip${flying ? ' is-flying' : ''}`}
-      onClick={() => onSelect?.(suggestion)}
-    >
-      <span className="cc-soft-wish__chip-icon" aria-hidden>{suggestion.icon || '·'}</span>
-      <span>{suggestion.label}</span>
-    </button>
+    <div className={`cc-handoff-acc${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="cc-handoff-acc__head"
+        aria-expanded={open}
+        aria-controls={`cc-soft-acc-${id}`}
+        onClick={() => onToggle(id)}
+      >
+        <span className="cc-handoff-acc__icon" aria-hidden>{icon}</span>
+        <span className="cc-handoff-acc__title">{title}</span>
+        {summary && <span className="cc-handoff-acc__summary">{summary}</span>}
+        <span className="cc-handoff-acc__chev" aria-hidden>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div id={`cc-soft-acc-${id}`} className="cc-handoff-acc__body">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SoftChipGroup({ label = null, options, value, multi = false, selectedIds = [], onSelect }) {
+  return (
+    <div className="cc-offer-handoff__pick-group">
+      {label && <p className="cc-offer-handoff__pick-label">{label}</p>}
+      <div className="cc-soft-wish__chips" role="group" aria-label={label || 'Auswahl'}>
+        {options.map((option) => {
+          const selected = multi
+            ? selectedIds.includes(option.id)
+            : value === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`cc-soft-wish__chip${selected ? ' is-selected' : ''}`}
+              aria-pressed={selected}
+              onClick={() => onSelect(option.id)}
+            >
+              {option.icon && (
+                <span className="cc-soft-wish__chip-icon" aria-hidden>{option.icon}</span>
+              )}
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichmentChange }) {
-  const initialEnrichment = useMemo(
-    () => prefillWishHandoffEnrichment(
-      handoffView?.needProfile ?? {},
-      handoffView?.wishLabels ?? [],
-    ),
-    [handoffView?.needProfile, handoffView?.wishLabels],
-  );
-
   const [step, setStep] = useState('soft');
-  const [enrichment, setEnrichment] = useState(initialEnrichment);
+  const [enrichment, setEnrichment] = useState(() => prefillWishHandoffEnrichment(
+    handoffView?.needProfile ?? {},
+    handoffView?.wishLabels ?? [],
+  ));
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [authPhase, setAuthPhase] = useState('email');
@@ -71,8 +115,8 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
   const [freetext, setFreetext] = useState('');
-  const [flyingId, setFlyingId] = useState(null);
-  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState([]);
+  const [openAcc, setOpenAcc] = useState(null);
+  const [equipCategory, setEquipCategory] = useState('comfort');
   const codeAutoSubmitRef = useRef(false);
 
   const {
@@ -87,28 +131,6 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     saveProfile,
   } = useCustomerAuth();
 
-  const suggestions = useMemo(() => {
-    const ctx = {
-      needProfile: handoffView?.needProfile ?? {},
-      notepadLabels: [
-        ...(handoffView?.wishLabels ?? []),
-        ...(enrichment.softExtraLabels ?? []),
-      ],
-      max: 6,
-    };
-    const fromAi = handoffView?.handoffSuggestions;
-    const list = fromAi?.length
-      ? sanitizeSoftWishSuggestions(fromAi, ctx)
-      : buildSoftWishEnrichmentSuggestions(ctx);
-    return list.filter((item) => !dismissedSuggestionIds.includes(item.id));
-  }, [
-    handoffView?.needProfile,
-    handoffView?.wishLabels,
-    handoffView?.handoffSuggestions,
-    enrichment.softExtraLabels,
-    dismissedSuggestionIds,
-  ]);
-
   useEffect(() => {
     onEnrichmentChange?.(enrichment);
   }, [enrichment, onEnrichmentChange]);
@@ -116,19 +138,13 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   useEffect(() => {
     if (isLoggedIn && authEmail) {
       setForm((prev) => ({ ...prev, email: authEmail }));
-      if (step === 'identify' && authPhase === 'code') {
-        // stay on success path via finalize
-      }
     }
-  }, [isLoggedIn, authEmail, step, authPhase]);
+  }, [isLoggedIn, authEmail]);
 
   if (!handoffView) return null;
 
   const title = handoffView.title || 'Meine Wünsche weitergeben';
-  const softHeadline = handoffView.softHeadline
-    || 'Möchten Sie dem Verkäufer noch etwas mitgeben?';
-  const softSubline = handoffView.softSubline
-    || 'Damit er direkt weiß, worauf es Ihnen ankommt.';
+  const softHeadline = handoffView.softHeadline || 'Noch etwas?';
   const identifyIntro = handoffView.intro
     || 'Damit Ihre Wünsche beim richtigen Ansprechpartner landen, bestätigen Sie bitte kurz Ihre E-Mail-Adresse.';
   const trustNote = handoffView.trustNote
@@ -138,6 +154,17 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   const privacyLinkLabel = handoffView.privacyLinkLabel || 'Details';
   const advisor = handoffView.advisor;
   const dealerName = handoffView.dealerName || 'unser Verkaufsteam';
+
+  const timingSummary = VEHICLE_NEED_TIMING_OPTIONS.find(
+    (o) => o.id === enrichment.vehicleNeedTiming,
+  )?.label;
+  const paySummary = ACQUISITION_OPTIONS.find(
+    (o) => o.id === enrichment.acquisitionType && o.id !== 'open',
+  )?.label;
+  const equipCount = enrichment.equipmentWishIds?.length ?? 0;
+  const showPurchaseSpecial = enrichment.acquisitionType === 'purchase';
+  const showLeasing = enrichment.acquisitionType === 'leasing';
+  const showFinance = enrichment.acquisitionType === 'finance';
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -150,31 +177,34 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     }
   }
 
-  function selectSuggestion(suggestion) {
-    if (!suggestion) return;
-    setFlyingId(suggestion.id);
-    window.setTimeout(() => setFlyingId(null), 520);
+  function toggleAcc(id) {
+    setOpenAcc((prev) => (prev === id ? null : id));
+  }
 
+  function patchEnrichment(patch) {
+    setEnrichment((prev) => ({ ...prev, ...patch }));
+  }
+
+  function patchNested(key, patch) {
+    setEnrichment((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] ?? {}), ...patch },
+    }));
+  }
+
+  function toggleEquipmentId(equipmentId) {
+    if (!equipmentId) return;
     setEnrichment((prev) => {
-      const next = { ...prev };
-      if (suggestion.equipmentWishId) {
-        const current = prev.equipmentWishIds ?? [];
-        if (!current.includes(suggestion.equipmentWishId)) {
-          next.equipmentWishIds = [...current, suggestion.equipmentWishId];
-        }
-      } else {
-        const label = suggestion.customerNoteValue || suggestion.label;
-        const extras = prev.softExtraLabels ?? [];
-        if (label && !extras.includes(label)) {
-          next.softExtraLabels = [...extras, label];
-        }
-      }
-      return next;
+      const current = prev.equipmentWishIds ?? [];
+      const nextIds = current.includes(equipmentId)
+        ? current.filter((id) => id !== equipmentId)
+        : [...current, equipmentId];
+      return { ...prev, equipmentWishIds: nextIds };
     });
+  }
 
-    setDismissedSuggestionIds((prev) => (
-      prev.includes(suggestion.id) ? prev : [...prev, suggestion.id]
-    ));
+  function selectEquipCategory(categoryId) {
+    setEquipCategory(categoryId);
   }
 
   function applyFreetextWish() {
@@ -196,7 +226,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
 
   function goToIdentify() {
     setStep('identify');
-    setAuthPhase(isLoggedIn ? 'email' : 'email');
+    setAuthPhase('email');
     setAuthError('');
   }
 
@@ -275,6 +305,15 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     cancelLogin();
   }
 
+  const equipmentChips = buildEquipmentChipsForCategory(
+    equipCategory,
+    enrichment.equipmentWishIds ?? [],
+    [
+      ...(handoffView.wishLabels ?? []),
+      ...(enrichment.softExtraLabels ?? []),
+    ],
+  );
+
   return (
     <section className="cc-offer-handoff cc-soft-handoff cc-turn-enter" aria-labelledby="cc-offer-handoff-title">
       {step === 'soft' && (
@@ -282,20 +321,150 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
           <h2 id="cc-offer-handoff-title" className="cc-soft-wish__headline">
             {softHeadline}
           </h2>
-          <p className="cc-soft-wish__sub">{softSubline}</p>
 
-          {suggestions.length > 0 && (
-            <div className="cc-soft-wish__chips" role="group" aria-label="Vorschläge">
-              {suggestions.map((suggestion) => (
-                <SoftWishChip
-                  key={suggestion.id}
-                  suggestion={suggestion}
-                  flying={flyingId === suggestion.id}
-                  onSelect={selectSuggestion}
-                />
+          <SoftAccordion
+            id="equipment"
+            title="Ausstattung"
+            icon="💺"
+            open={openAcc === 'equipment'}
+            onToggle={toggleAcc}
+            summary={equipCount > 0 ? `${equipCount}` : null}
+          >
+            <div className="cc-soft-wish__cat-chips" role="group" aria-label="Ausstattungsbereich">
+              {SOFT_EQUIPMENT_CATEGORY_CHIPS.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`cc-soft-wish__cat-chip${
+                    equipCategory === category.id ? ' is-active' : ''
+                  }`}
+                  aria-pressed={equipCategory === category.id}
+                  onClick={() => selectEquipCategory(category.id)}
+                >
+                  {category.label}
+                </button>
               ))}
             </div>
-          )}
+
+            {equipmentChips.length > 0 ? (
+              <div className="cc-soft-wish__chips" role="group" aria-label={equipCategory}>
+                {equipmentChips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className={`cc-soft-wish__chip${chip.selected ? ' is-selected' : ''}`}
+                    aria-pressed={chip.selected}
+                    onClick={() => toggleEquipmentId(chip.id)}
+                  >
+                    <span>{chip.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="cc-soft-wish__empty">Bereits notiert.</p>
+            )}
+          </SoftAccordion>
+
+          <SoftAccordion
+            id="availability"
+            title="Verfügbarkeit"
+            icon="📅"
+            open={openAcc === 'availability'}
+            onToggle={toggleAcc}
+            summary={timingSummary || null}
+          >
+            <SoftChipGroup
+              options={VEHICLE_NEED_TIMING_OPTIONS}
+              value={enrichment.vehicleNeedTiming}
+              onSelect={(id) => patchEnrichment({
+                vehicleNeedTiming: enrichment.vehicleNeedTiming === id ? null : id,
+              })}
+            />
+          </SoftAccordion>
+
+          <SoftAccordion
+            id="acquisition"
+            title="Anschaffung"
+            icon="💶"
+            open={openAcc === 'acquisition'}
+            onToggle={toggleAcc}
+            summary={paySummary || null}
+          >
+            <SoftChipGroup
+              options={ACQUISITION_OPTIONS}
+              value={enrichment.acquisitionType}
+              onSelect={(id) => patchEnrichment({
+                acquisitionType: enrichment.acquisitionType === id ? null : id,
+                specialConditionId: id === 'purchase' ? enrichment.specialConditionId : null,
+              })}
+            />
+
+            {showPurchaseSpecial && (
+              <SoftChipGroup
+                label="Kundengruppe"
+                options={PURCHASE_SPECIAL_OPTIONS}
+                value={enrichment.specialConditionId}
+                onSelect={(id) => patchEnrichment({
+                  specialConditionId: enrichment.specialConditionId === id ? null : id,
+                })}
+              />
+            )}
+
+            {showLeasing && (
+              <div className="cc-offer-handoff__branch">
+                <SoftChipGroup
+                  label="Laufzeit"
+                  options={LEASING_TERM_OPTIONS}
+                  value={enrichment.leasing?.termId}
+                  onSelect={(id) => patchNested('leasing', { termId: id })}
+                />
+                <SoftChipGroup
+                  label="km / Jahr"
+                  options={LEASING_MILEAGE_OPTIONS}
+                  value={enrichment.leasing?.mileageId}
+                  onSelect={(id) => patchNested('leasing', { mileageId: id })}
+                />
+                <SoftChipGroup
+                  label="Anzahlung"
+                  options={DOWN_PAYMENT_OPTIONS}
+                  value={enrichment.leasing?.downPayment}
+                  onSelect={(id) => patchNested('leasing', { downPayment: id })}
+                />
+              </div>
+            )}
+
+            {showFinance && (
+              <div className="cc-offer-handoff__branch">
+                <SoftChipGroup
+                  label="Laufzeit"
+                  options={FINANCE_TERM_OPTIONS}
+                  value={enrichment.finance?.termId}
+                  onSelect={(id) => patchNested('finance', { termId: id })}
+                />
+                <SoftChipGroup
+                  label="Anzahlung"
+                  options={DOWN_PAYMENT_OPTIONS}
+                  value={enrichment.finance?.downPayment}
+                  onSelect={(id) => patchNested('finance', { downPayment: id })}
+                />
+                <SoftChipGroup
+                  label="Schlussrate"
+                  options={FINANCE_BALLOON_OPTIONS}
+                  value={enrichment.finance?.balloon}
+                  onSelect={(id) => patchNested('finance', { balloon: id })}
+                />
+              </div>
+            )}
+
+            <SoftChipGroup
+              label="Inzahlungnahme"
+              options={HANDOFF_TRADE_IN_OPTIONS}
+              value={enrichment.tradeIn}
+              onSelect={(id) => patchEnrichment({
+                tradeIn: enrichment.tradeIn === id ? null : id,
+              })}
+            />
+          </SoftAccordion>
 
           <div className="cc-soft-wish__freetext">
             <p className="cc-soft-wish__freetext-label">Etwas anderes?</p>
@@ -303,7 +472,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
               <input
                 type="text"
                 className="cc-offer-handoff__input"
-                placeholder="z. B. kein schwarzes Auto, unbedingt AHK …"
+                placeholder="z. B. kein schwarzes Auto …"
                 aria-label="Weiteren Wunsch ergänzen"
                 value={freetext}
                 onChange={(e) => setFreetext(e.target.value)}
@@ -328,7 +497,14 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
           <button type="button" className="cc-offer-handoff__cta" onClick={goToIdentify}>
             Weiter
           </button>
-          <button type="button" className="cc-offer-handoff__skip" onClick={goToIdentify}>
+          <button
+            type="button"
+            className="cc-offer-handoff__skip"
+            onClick={() => {
+              setEnrichment(emptyWishHandoffEnrichment());
+              goToIdentify();
+            }}
+          >
             So passt es
           </button>
         </div>
@@ -425,7 +601,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                 ← {pendingEmail || form.email}
               </button>
               <p className="cc-soft-identify__code-copy">
-                Wir haben Ihnen gerade einen Bestätigungscode geschickt.
+                Code geschickt.
               </p>
               {demoCode && (
                 <p className="cc-offer-handoff__auth-demo" role="status">

@@ -4310,6 +4310,38 @@
   color: var(--cc-muted);
 }
 
+.cc-soft-wish__cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.cc-soft-wish__cat-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #f8fafc;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cc-text);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.cc-soft-wish__cat-chip:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.cc-soft-wish__cat-chip.is-active {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+}
+
 .cc-soft-wish__chips {
   display: flex;
   flex-wrap: wrap;
@@ -4336,6 +4368,23 @@
 .cc-soft-wish__chip:hover {
   border-color: rgba(16, 185, 129, 0.4);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.cc-soft-wish__chip.is-selected {
+  border-color: #1e293b;
+  background: #1e293b;
+  color: #fff;
+  box-shadow: none;
+}
+
+.cc-soft-wish__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cc-muted, #78716c);
+}
+
+.cc-soft-wish .cc-handoff-acc {
+  margin-bottom: 8px;
 }
 
 .cc-soft-wish__chip.is-flying {

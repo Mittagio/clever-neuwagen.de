@@ -4,13 +4,12 @@
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 import { getFuelCategory } from './conversationPlanner.js';
 
-export const VEHICLE_DIRECTION_INTRO =
-  'Diese Richtungen könnten grundsätzlich zu Ihrem Wunsch passen.';
+export const VEHICLE_DIRECTION_INTRO = 'Passende Richtungen:';
 
 export const VEHICLE_DIRECTION_REACTIONS = [
-  { id: 'interested', label: 'interessiert mich' },
-  { id: 'not_fit', label: 'passt eher nicht' },
-  { id: 'explore', label: 'genauer ansehen' },
+  { id: 'interested', label: 'Interessant' },
+  { id: 'not_fit', label: 'Nein' },
+  { id: 'explore', label: 'Genau' },
 ];
 
 const EV_MODEL_KEYS = new Set([
@@ -81,7 +80,7 @@ function buildFitHints(profile = {}, attrs = {}) {
   if (profile.towCapacityKg && (attrs.towCapacityKg ?? 0) >= profile.towCapacityKg) {
     hints.push('hohe Anhängelast');
   }
-  if (!hints.length) hints.push('grundlegend passend zu Ihren Angaben');
+  if (!hints.length) hints.push('passt zu Ihren Angaben');
   return hints.slice(0, 3);
 }
 
@@ -130,13 +129,15 @@ function familyKey(modelKey = '') {
 
 /**
  * @param {object} needProfile
- * @param {{ anchorModelKey?: string, limit?: number }} [options]
+ * @param {{ anchorModelKey?: string, limit?: number, excludeModelKeys?: string[] }} [options]
  */
 export function buildVehicleDirectionsView(needProfile = {}, options = {}) {
-  const { anchorModelKey = null, limit = 4 } = options;
+  const { anchorModelKey = null, limit = 4, excludeModelKeys = [] } = options;
+  const excluded = new Set(excludeModelKeys);
   const scored = [];
 
   for (const attrs of Object.values(KIA_MODEL_ATTRIBUTES)) {
+    if (excluded.has(attrs.modelKey)) continue;
     const score = scoreModel(attrs, needProfile);
     if (score <= 0) continue;
     scored.push({

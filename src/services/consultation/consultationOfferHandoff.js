@@ -259,8 +259,8 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
   return {
     title: 'Meine Wünsche weitergeben',
-    softHeadline: 'Möchten Sie dem Verkäufer noch etwas mitgeben?',
-    softSubline: 'Damit er direkt weiß, worauf es Ihnen ankommt.',
+    softHeadline: 'Noch etwas?',
+    softSubline: null,
     intro: 'Damit Ihre Wünsche beim richtigen Ansprechpartner landen, bestätigen Sie bitte kurz Ihre E-Mail-Adresse.',
     trustNote: 'Ihr Notizzettel und der bisherige Gesprächsverlauf werden gemeinsam weitergegeben.',
     wishesHeading: null,

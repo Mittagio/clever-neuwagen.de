@@ -65,7 +65,7 @@ function testCompareSimilarShowsDirections() {
   session = submitQuestionAnswer(session, { answerId: 'compare_similar' });
   const directionsTurn = session.turns.find((t) => t.type === TURN_TYPE.VEHICLE_DIRECTIONS);
   assert.ok(directionsTurn, 'Fahrzeugrichtungen-Turn fehlt');
-  assert.match(directionsTurn.directionsView.intro, /grundsätzlich zu Ihrem Wunsch passen/i);
+  assert.match(directionsTurn.directionsView.intro, /Passende Richtungen/i);
   assert.ok(directionsTurn.directionsView.directions.length >= 2);
   console.log('✓ „Ähnliche einordnen“ → Richtungsübersicht');
 }
@@ -76,7 +76,7 @@ function testDirectionReactionInterested() {
   session = submitVehicleDirectionReaction(session, 'sportage', 'interested');
   assert.equal(session.vehicleDirectionReactions.sportage, 'interested');
   assert.equal(session.vehicleDirectionsView?.reactions?.sportage, 'interested');
-  console.log('✓ Reaktion „interessiert mich“ wird gespeichert');
+  console.log('✓ Reaktion „Interessant“ wird gespeichert');
 }
 
 function testDirectionReactionNotFit() {
