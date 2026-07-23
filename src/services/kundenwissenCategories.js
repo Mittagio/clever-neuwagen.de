@@ -177,10 +177,16 @@ function emptyGroups() {
 }
 
 /**
- * Gruppiert Kundenhelfer-Chips + offene Unterlagen-Slots.
+ * Gruppiert Kundenhelfer-Chips.
+ * Offene Unterlagen-Slots erscheinen hier nicht mehr (Ordner in der Action-Bar).
+ * @param {string} notes
+ * @param {object|null} lead
+ * @param {object} chipCategories
+ * @param {{ includeUnterlagen?: boolean }} [options] – nur noch für Legacy-Tests; Standard ohne Unterlagen-Slots
  * @returns {Array<{ id, label, icon, count, items }>}
  */
-export function buildKundenwissenOverview(notes = '', lead = null, chipCategories = {}) {
+export function buildKundenwissenOverview(notes = '', lead = null, chipCategories = {}, options = {}) {
+  const includeUnterlagen = options.includeUnterlagen === true;
   const groups = emptyGroups();
   const understanding = lead ? buildCustomerUnderstanding(lead) : null;
   const chips = understanding?.verstaendnis?.labels?.length
@@ -198,9 +204,11 @@ export function buildKundenwissenOverview(notes = '', lead = null, chipCategorie
     });
   }
 
-  for (const item of buildUnterlagenKundenwissenItems(lead)) {
-    const exists = groups.unterlagen.some((entry) => entry.raw === item.raw);
-    if (!exists) groups.unterlagen.push(item);
+  if (includeUnterlagen) {
+    for (const item of buildUnterlagenKundenwissenItems(lead)) {
+      const exists = groups.unterlagen.some((entry) => entry.raw === item.raw);
+      if (!exists) groups.unterlagen.push(item);
+    }
   }
 
   return KUNDENWISSEN_CATEGORY_ORDER

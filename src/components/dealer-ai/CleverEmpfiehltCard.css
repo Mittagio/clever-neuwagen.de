@@ -67,6 +67,37 @@
   color: #0f172a;
 }
 
+.clever-empfiehlt--compact .clever-empfiehlt__headline {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+}
+
+.clever-empfiehlt__reminder--compact {
+  margin: 0 0 12px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+.clever-empfiehlt__more {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.clever-empfiehlt__details {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+}
+
 .clever-empfiehlt__subline {
   margin: 0 0 14px;
   font-size: 0.9rem;

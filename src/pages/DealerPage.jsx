@@ -175,6 +175,7 @@ export default function DealerPage() {
   const [queryDraft, setQueryDraft] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [cleverChatActive, setCleverChatActive] = useState(false);
+  const [pendingInspirationModel, setPendingInspirationModel] = useState(null);
   const [salesStep, setSalesStep] = useState(null);
   const [selectedModelKey, setSelectedModelKey] = useState(null);
   const [wishChipIds, setWishChipIds] = useState([]);
@@ -1013,6 +1014,32 @@ export default function DealerPage() {
     });
   }, [searchProfile, searchFilters, activeSearchChipIds]);
 
+  /** Inspiration-Kachel → Clever Soft Wish Enrichment (kein Classic-Journey). */
+  const handleInspirationModelSelect = useCallback((card) => {
+    if (!card?.modelKey) return;
+    skipQueryResetRef.current = true;
+    setEntryMode(null);
+    setSubmittedQuery('');
+    setQueryDraft('');
+    setSalesStep(null);
+    setConsultationProfile(null);
+    setCleverRecommendation(null);
+    setConsultationHandoff(null);
+    setSelectedModelKey(null);
+    setResumeBannerDismissed(true);
+    setPendingInspirationModel(card.modelKey);
+    requestAnimationFrame(() => {
+      document.querySelector('.dealer-reception')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  }, []);
+
+  const handleInspirationModelConsumed = useCallback(() => {
+    setPendingInspirationModel(null);
+  }, []);
+
   useEffect(() => {
     const entry = searchParams.get('entry');
     const q = searchParams.get('q')?.trim();
@@ -1735,6 +1762,8 @@ export default function DealerPage() {
                   returnUrl: typeof window !== 'undefined' ? window.location.pathname : `/${dealerId}`,
                 }}
                 onChatActiveChange={handleCleverChatActiveChange}
+                pendingInspirationModel={pendingInspirationModel}
+                onInspirationModelConsumed={handleInspirationModelConsumed}
               />
             </section>
           )}
@@ -1744,7 +1773,7 @@ export default function DealerPage() {
               city={city}
               dealerSlug={dealerId}
               conditions={conditions}
-              onConfigureModel={handleClassicConfigure}
+              onConfigureModel={handleInspirationModelSelect}
               variant="inspiration"
             />
           )}

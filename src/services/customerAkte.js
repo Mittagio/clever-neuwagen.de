@@ -208,7 +208,8 @@ export function buildWishConditionChips({
 }
 
 /**
- * Klickbare Schnellaufnahme-Chips für die Kundenakte (nur Kern-Wunschkonditionen).
+ * Klickbare Konditionen-Chips für die Kundenakte (harte Deal-Fakten).
+ * Zahlungsart + Laufzeit · km · Anzahlung · Verfügbarkeit.
  * @returns {Array<{ id: string, label: string, field: string }>}
  */
 export function buildSchnellaufnahmeChips({
@@ -223,65 +224,9 @@ export function buildSchnellaufnahmeChips({
   const pt = paymentType ?? 'unknown';
   const hasTerm = Number(termMonths) > 0;
   const hasMileage = Number(mileagePerYear) > 0;
-  const hasRate = Number(desiredRate) > 0;
-  const hasPrice = Number(desiredPrice) > 0;
-  const hasDelivery = Boolean(String(delivery ?? '').trim());
-
-  if (pt === 'unknown' && !hasTerm && !hasMileage && !hasRate && !hasPrice && !hasDelivery) {
-    return [{ id: 'paymentType', label: 'Noch offen', field: 'paymentType' }];
-  }
-
-  const chips = [];
-
-  if (pt === 'leasing') {
-    chips.push({ id: 'paymentType', label: 'Leasing', field: 'paymentType' });
-  } else if (pt === 'cash') {
-    chips.push({ id: 'paymentType', label: 'Kauf', field: 'paymentType' });
-  } else if (pt === 'financing' || pt === 'threeWayFinancing') {
-    chips.push({ id: 'paymentType', label: 'Finanzierung', field: 'paymentType' });
-  } else if (pt !== 'unknown') {
-    chips.push({ id: 'paymentType', label: paymentLabel(pt), field: 'paymentType' });
-  } else {
-    chips.push({ id: 'paymentType', label: 'Angebotsart offen', field: 'paymentType' });
-  }
-
-  if (pt === 'cash') {
-    const price = formatWishEuro(desiredPrice);
-    chips.push({
-      id: 'desiredPrice',
-      label: price ? `bis ${price}` : 'Budget offen',
-      field: 'desiredPrice',
-    });
-  } else if (pt !== 'unknown') {
-    chips.push({
-      id: 'termMonths',
-      label: hasTerm ? `${Number(termMonths)} Monate` : 'Laufzeit offen',
-      field: 'termMonths',
-    });
-    if (pt === 'leasing') {
-      const km = formatWishKm(mileagePerYear);
-      chips.push({
-        id: 'mileagePerYear',
-        label: km ? `${km}/Jahr` : 'Kilometer offen',
-        field: 'mileagePerYear',
-      });
-    }
-    const downNum = Number(downPayment);
-    const downLabel = Number.isFinite(downNum)
-      ? `${downNum.toLocaleString('de-DE')} €`
-      : '0 €';
-    chips.push({
-      id: 'downPayment',
-      label: `${downLabel} Anzahlung`,
-      field: 'downPayment',
-    });
-    const rate = formatWishEuro(desiredRate);
-    chips.push({
-      id: 'desiredRate',
-      label: rate ? `bis ${rate}/Monat` : 'Budget offen',
-      field: 'desiredRate',
-    });
-  }
+  const kmLabel = formatWishKm(mileagePerYear);
+  const downNum = Number(downPayment);
+  const hasDown = Number.isFinite(downNum) && String(downPayment ?? '').trim() !== '';
 
   const deliveryLabels = {
     sofort: 'Sofort',
@@ -291,14 +236,78 @@ export function buildSchnellaufnahmeChips({
   const rawDelivery = String(delivery ?? '').trim();
   const deliveryText = rawDelivery
     ? (deliveryLabels[rawDelivery.toLowerCase()] ?? rawDelivery)
-    : 'Egal';
-  chips.push({
-    id: 'delivery',
-    label: `Liefertermin ${deliveryText}`,
-    field: 'delivery',
-  });
+    : null;
 
-  return chips;
+  void desiredRate;
+  void desiredPrice;
+
+  let paymentLabelText = 'Zahlungsart offen';
+  if (pt === 'leasing') paymentLabelText = 'Leasing';
+  else if (pt === 'cash') paymentLabelText = 'Kauf';
+  else if (pt === 'financing' || pt === 'threeWayFinancing') paymentLabelText = 'Finanzierung';
+  else if (pt !== 'unknown') paymentLabelText = paymentLabel(pt);
+
+  return [
+    {
+      id: 'paymentType',
+      label: paymentLabelText,
+      field: 'paymentType',
+    },
+    {
+      id: 'termMonths',
+      label: hasTerm ? String(Number(termMonths)) : 'Laufzeit offen',
+      field: 'termMonths',
+    },
+    {
+      id: 'mileagePerYear',
+      label: hasMileage && kmLabel ? kmLabel : 'km offen',
+      field: 'mileagePerYear',
+    },
+    {
+      id: 'downPayment',
+      label: hasDown
+        ? `Anzahlung ${downNum.toLocaleString('de-DE')} €`
+        : 'Anzahlung offen',
+      field: 'downPayment',
+    },
+    {
+      id: 'delivery',
+      label: deliveryText
+        ? `Verfügbarkeit ${deliveryText}`
+        : 'Verfügbarkeit offen',
+      field: 'delivery',
+    },
+  ];
+}
+
+/** Labels, die nur unter Konditionen leben – nicht am Notizzettel. */
+export const KONDITIONEN_OWNED_NOTEPAD_LABELS = new Set([
+  'Leasing',
+  'Kauf',
+  'Finanzierung',
+  'Angebotsart offen',
+  'Zahlungsart offen',
+]);
+
+/**
+ * @param {string} label
+ */
+export function isKonditionenOwnedNotepadLabel(label = '') {
+  const text = String(label ?? '').trim();
+  if (!text) return false;
+  if (KONDITIONEN_OWNED_NOTEPAD_LABELS.has(text)) return true;
+  return false;
+}
+
+/**
+ * Notizzettel-Chips ohne Konditionen-Doppelungen (Leasing/Kauf/…).
+ * @param {Array<{ label: string }|string>} chips
+ */
+export function filterNotepadChipsExcludingKonditionen(chips = []) {
+  return (chips ?? []).filter((chip) => {
+    const label = typeof chip === 'string' ? chip : chip?.label;
+    return !isKonditionenOwnedNotepadLabel(label);
+  });
 }
 
 function findOfferForVehicle(offers = [], model = {}) {

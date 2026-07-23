@@ -2,7 +2,11 @@
  * Progressive Fahrzeugrichtungen während des Intake-Gesprächs.
  * Nach Substanz (Budget/Leasing/km/…) 2–3 Modelle zeigen; ✓ → Notizzettel.
  */
-import { buildUnderstoodLabels, modelDisplayLabel } from './needProfileService.js';
+import {
+  buildUnderstoodLabels,
+  mergeTextIntoNeedProfile,
+  modelDisplayLabel,
+} from './needProfileService.js';
 import { buildVehicleDirectionsView } from './vehicleDirectionService.js';
 
 export const PROGRESSIVE_DIRECTIONS_SOURCE = 'progressive';
@@ -156,4 +160,46 @@ export function applyInterestedDirectionToNotepad(session, modelKey, reactionId)
 
   // Mehrere Interessenten erlauben – selectedModelKey nur bei explore setzen
   return { notepadLabels, needProfile };
+}
+
+/**
+ * Expliziter Klick auf eine Inspiration-Modellkachel (Händlerseite).
+ * Page Context allein erzeugt keinen Wunsch – dieser aktive Klick schon.
+ * Danach kann Soft Wish Enrichment / Handoff geöffnet werden.
+ *
+ * @param {object} session
+ * @param {string} modelKey
+ */
+export function applyInspirationModelSelection(session = {}, modelKey = '') {
+  const key = String(modelKey || '').trim().toLowerCase();
+  if (!key) return session;
+
+  const seedText = modelDisplayLabel(key);
+  const needProfile = mergeTextIntoNeedProfile(seedText, session.needProfile ?? {});
+  const interest = applyInterestedDirectionToNotepad(
+    { ...session, needProfile },
+    key,
+    'interested',
+  );
+
+  const notepadLabels = [];
+  for (const label of [
+    ...(interest.notepadLabels ?? []),
+    ...(buildUnderstoodLabels(interest.needProfile ?? needProfile)),
+  ]) {
+    if (label && !notepadLabels.includes(label)) notepadLabels.push(label);
+  }
+
+  return {
+    ...session,
+    needProfile: {
+      ...(interest.needProfile ?? needProfile),
+      understoodLabels: notepadLabels,
+    },
+    notepadLabels,
+    vehicleDirectionReactions: {
+      ...(session.vehicleDirectionReactions ?? {}),
+      [key]: 'interested',
+    },
+  };
 }

@@ -48,6 +48,7 @@ import CleverComposerExits from './CleverComposerExits.jsx';
 import CleverPluginBrandBar from './CleverPluginBrandBar.jsx';
 import CleverPluginResume from './CleverPluginResume.jsx';
 import { mergeWishHandoffNotepadLabels } from '../../services/consultation/wishHandoffEnrichment.js';
+import { applyInspirationModelSelection } from '../../services/consultation/progressiveVehicleDirections.js';
 import {
   buildWishHandoffExitLabel,
   buildWishHandoffSecondaryLabel,
@@ -167,6 +168,8 @@ export default function CleverConversationExperience({
   pageContext: pageContextProp = null,
   hostConsent = null,
   onChatActiveChange = null,
+  pendingInspirationModel = null,
+  onInspirationModelConsumed = null,
 }) {
   const { addLead } = useLeads();
   const resolvedDealerId = dealerId
@@ -238,6 +241,39 @@ export default function CleverConversationExperience({
     onChatActiveChange(chatActive);
     return undefined;
   }, [chatActive, onChatActiveChange]);
+
+  useEffect(() => {
+    const modelKey = String(pendingInspirationModel ?? '').trim();
+    if (!modelKey) return undefined;
+
+    const resumeBase = resumeSnapshot?.session
+      ? {
+        ...createHappyPathSession(dealerName),
+        ...resumeSnapshot.session,
+        dealerName,
+      }
+      : null;
+
+    setResumeGate(false);
+    setResumeSnapshot(null);
+    const start = resumeBase ?? null;
+    setSession((prev) => {
+      const base = start ?? prev;
+      const withModel = applyInspirationModelSelection(base, modelKey);
+      const next = submitDealerHandoff(withModel, dealerConditions);
+      const playable = (next.turns ?? []).filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
+      window.setTimeout(() => setRevealedCount(playable.length), 0);
+      return next;
+    });
+    onInspirationModelConsumed?.();
+    return undefined;
+  }, [
+    pendingInspirationModel,
+    onInspirationModelConsumed,
+    resumeSnapshot,
+    dealerName,
+    dealerConditions,
+  ]);
 
   useEffect(() => {
     if (resumeCheckedRef.current) return undefined;

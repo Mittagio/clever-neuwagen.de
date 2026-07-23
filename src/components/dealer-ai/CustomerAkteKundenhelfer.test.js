@@ -1,5 +1,5 @@
 /**
- * Clever-Kundenhelfer – Kategorien im Profilkopf / Werkzeug-Einstieg
+ * Notizzettel in der Kundenakte – Chips statt Kategorie-Kacheln
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import {
   buildKundenwissenOverview,
   countKundenwissenItems,
+  buildUnterlagenKundenwissenItems,
 } from '../../services/kundenwissenCategories.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,54 +28,48 @@ const notes = [
 ].join(', ');
 
 const overview = buildKundenwissenOverview(notes);
-assert.ok(overview.length >= 4, 'Kategorien statt Einzelchips');
+assert.ok(overview.length >= 4, 'Kategorien für Sheet/Fallback');
 assert.ok(!overview.some((cat) => cat.label === 'Kaffee mit Milch'));
 assert.equal(countKundenwissenItems(notes), 7);
+
+const withoutSlots = buildKundenwissenOverview(notes, null, {}, { includeUnterlagen: false });
+assert.ok(!withoutSlots.some((cat) => cat.items.some((i) => i.fromUnterlagen)));
 
 const khSource = readFileSync(
   join(__dirname, 'CustomerAkteKundenhelfer.jsx'),
   'utf8',
 );
-assert.ok(khSource.includes('Kundenwissen'), 'Profil zeigt Kundenwissen-Titel im Legacy-Pfad');
-assert.ok(khSource.includes('cust-akte-kw__cat'), 'Kategorie-Chips im Legacy-Pfad');
-assert.ok(khSource.includes('onOpenSheet?.(category.id)'), 'Klick öffnet Kategorie im Legacy-Pfad');
-assert.ok(khSource.includes('hasCustomerUnderstanding'), 'unterstützt Understanding-Werkzeug-Modus');
-assert.ok(khSource.includes('Verkaufsnotizen'), 'Werkzeug-Modus zeigt Verkaufsnotizen');
-assert.ok(khSource.includes('Sprachmemos'), 'Werkzeug-Modus zeigt Sprachmemos');
-assert.ok(khSource.includes('cust-akte-kw--tool'), 'Werkzeug-Modus eigene Darstellung');
+assert.ok(khSource.includes('Notizzettel'), 'Profil zeigt Notizzettel');
+assert.ok(khSource.includes('cust-akte-kw__chip'), 'Wunsch-Chips');
+assert.ok(khSource.includes('buildAttributedWishChips'), 'Attributed Chips');
+assert.ok(khSource.includes('filterNotepadChipsExcludingKonditionen'), 'Konditionen nicht doppelt am Notizzettel');
+assert.ok(khSource.includes('CustomerAkteNotepadCapture'), 'Memo/Scan am Notizzettel');
+assert.ok(!khSource.includes('cust-akte-kw__cat'), 'keine Kategorie-Kacheln mehr im Profil');
 
 assert.ok(
   followUpSource.includes('<CustomerAkteKundenhelfer'),
   'Kundenhelfer wird in der Kundenakte gerendert',
 );
 assert.ok(
+  followUpSource.includes('onCaptureCommit'),
+  'Follow-up verdrahtet Memo/Scan',
+);
+assert.ok(
   followUpSource.includes('openKundenhelferSheet'),
-  'Follow-up öffnet Kundenhelfer mit Kategorie',
+  'Follow-up öffnet Kundenhelfer',
 );
 assert.ok(
-  followUpSource.includes('hasCustomerUnderstanding={hasSellerCustomerPicture}'),
-  'Understanding schaltet Werkzeug-Modus',
-);
-assert.ok(
-  followUpSource.includes('voiceMemos={kundenhelferMemos}'),
-  'Sprachmemos werden für Zähler übergeben',
-);
-assert.ok(
-  khSource.includes('+ Info hinzufügen'),
-  'leerer Legacy-Zustand zeigt „+ Info hinzufügen“',
+  followUpSource.includes('hideWishChips'),
+  'Doppelte Wunschchips im Kundenbild ausgeblendet',
 );
 
-const kundenbildIndex = followUpSource.indexOf('CustomerAkteCleverBeratung');
-const kundenhelferIndex = followUpSource.indexOf('<CustomerAkteKundenhelfer');
-assert.ok(kundenbildIndex > 0 && kundenhelferIndex > kundenbildIndex, 'Kundenbild vor Kundenhelfer');
-
-const sheetSource = readFileSync(
-  join(__dirname, 'CleverKundenhelferSheet.jsx'),
+const empfiehltSource = readFileSync(
+  join(__dirname, 'CleverEmpfiehltCard.jsx'),
   'utf8',
 );
-assert.ok(sheetSource.includes('Wählen Sie einen Bereich'), 'Sheet startet mit Kategorien');
-assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Kategorie-Kacheln im Sheet');
-assert.ok(sheetSource.includes('CustomerAkteConversationNotes'), 'conversationNotes im Sheet');
-assert.ok(sheetSource.includes('VoiceMemoRecorder'), 'voiceMemos im Sheet');
+assert.ok(empfiehltSource.includes('Mehr Details'), 'Clever sagt kompakt mit Details');
+assert.ok(empfiehltSource.includes('clever-empfiehlt--compact'), 'Compact-Klasse');
+
+assert.ok(typeof buildUnterlagenKundenwissenItems === 'function');
 
 console.log('CustomerAkteKundenhelfer.test.js: ok');

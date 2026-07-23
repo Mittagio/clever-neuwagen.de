@@ -1,5 +1,17 @@
 /* Kundenakte – Mockup UI (Mobile First) */
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .cust-akte {
   --cust-blue: #2563eb;
   --cust-blue-dark: #1d4ed8;
@@ -869,6 +881,88 @@
   color: var(--cust-muted, #64748b);
 }
 
+.cust-akte-kw__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cust-akte-kw__head .cust-akte-kw__title {
+  margin: 0;
+}
+
+.cust-akte-kw__edit {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cust-akte-kw--notepad .cust-akte-kw__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cust-akte-kw__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cust-akte-kw__chip--seller {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.cust-akte-kw__chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.15rem;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cust-akte-kw__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.cust-akte-kw__meta-link {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
 .cust-akte-kw__grid {
   display: flex;
   flex-wrap: wrap;
@@ -897,14 +991,170 @@
 
 .cust-akte-kw__add {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   margin-top: 8px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 0.8125rem;
+  padding: 0 12px;
+  border: 1px dashed #94a3b8;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--cust-blue, #145cff);
   cursor: pointer;
+}
+
+.cust-akte-kw-capture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cust-akte-kw-capture--open {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.cust-akte-kw-capture__file {
+  display: none;
+}
+
+.cust-akte-kw-capture__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cust-akte-kw-capture__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 1.15rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cust-akte-kw-capture__icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cust-akte-kw-capture__icon-btn--ghost {
+  color: #64748b;
+}
+
+.cust-akte-kw-capture__icon-btn--ok {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+}
+
+.cust-akte-kw-capture__who {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.cust-akte-kw-capture__who.is-active {
+  background: #0f172a;
+  color: #fff;
+}
+
+.cust-akte-kw-capture__thumb {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.cust-akte-kw-capture__input {
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  resize: vertical;
+  background: #fff;
+}
+
+.cust-akte-kw-capture__input:focus {
+  outline: none;
+  border-color: #145cff;
+  box-shadow: 0 0 0 3px rgba(20, 92, 255, 0.12);
+}
+
+.cust-akte-kw-capture__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cust-akte-kw-capture__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.cust-akte-kw-capture__chip.is-on {
+  border-color: #334155;
+  color: #0f172a;
+  background: #fff;
+}
+
+.cust-akte-kw-capture__chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.cust-akte-kw-capture .dai-inline-mic--fab .dai-inline-mic__btn {
+  width: 44px;
+  height: 44px;
 }
 
 .cust-akte-kw__notes-hint {
@@ -1263,7 +1513,7 @@
   text-decoration: underline;
 }
 
-/* Schnellaufnahme – Mini-Karte */
+/* Konditionen – Mini-Karte (harte Deal-Fakten) */
 .cust-akte-schnell {
   display: flex;
   flex-direction: column;
@@ -3040,12 +3290,36 @@
 
 .cust-clever-beratung__chip {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 10px;
   border-radius: 999px;
   background: #eef2ff;
   color: #3730a3;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.cust-clever-beratung__chip--seller {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.cust-clever-beratung__chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.15rem;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .cust-clever-beratung__chip--concern {

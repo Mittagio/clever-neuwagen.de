@@ -153,7 +153,7 @@ export default function CustomerAkteWishConditionsSheet({
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Schnellaufnahme ändern"
+      title="Konditionen ändern"
       footer={(
         <button
           type="button"

@@ -11,6 +11,8 @@ import {
   migrateKundenhelferToSellerInsights,
   MIGRATED_FROM_KUNDENHELFER,
   normalizeSellerInsights,
+  proposeSellerInsightLabels,
+  SELLER_INSIGHT_CONTEXT,
   SELLER_INSIGHT_SOURCE,
 } from './sellerInsights.js';
 import { buildCustomerUnderstanding } from './customerUnderstanding.js';
@@ -21,16 +23,51 @@ import {
 
 const insight = createSellerInsight(
   'Anhängelast jetzt doch 2.500 kg. Hund fährt regelmäßig mit.',
-  { context: 'phone_call' },
+  { context: 'phone_call', sellerName: 'Mike Quach' },
 );
 assert.ok(insight, 'Insight erstellt');
 assert.equal(insight.source, SELLER_INSIGHT_SOURCE);
 assert.equal(insight.context, 'phone_call');
+assert.equal(insight.sellerInitials, 'MQ');
 assert.ok(insight.understoodLabels.length >= 1, 'Parser erzeugt Labels');
 assert.ok(
   insight.understoodLabels.some((label) => /anhängelast|hund/i.test(label)),
   `Labels: ${insight.understoodLabels.join(', ')}`,
 );
+
+const vkFallback = createSellerInsight('Sitzheizung hinten');
+assert.equal(vkFallback.sellerInitials, 'VK', 'ohne Name → VK');
+
+const cg = createSellerInsight('Sitzheizung hinten', { sellerName: 'Corrado Garritano' });
+assert.equal(cg.sellerInitials, 'CG');
+
+const proposed = proposeSellerInsightLabels(
+  'Wunschrate 400 Euro Farbe blau und Elektro',
+);
+assert.ok(proposed.length >= 1, 'Scan/Memo-Text erzeugt Chip-Vorschläge');
+assert.ok(
+  proposed.some((label) => /blau|elektro|400|budget|rate/i.test(label)),
+  `Vorschläge: ${proposed.join(', ')}`,
+);
+
+const withScan = createSellerInsight(
+  'Wunschrate 400 € Farbe blau Elektro',
+  {
+    sellerName: 'Mike Quach',
+    context: SELLER_INSIGHT_CONTEXT.HANDWRITTEN_NOTE,
+    understoodLabels: ['Budget bis 400 €', 'Blau', 'Elektro'],
+    attachment: {
+      type: 'image',
+      dataUrl: 'data:image/png;base64,aaa',
+      createdAt: '2026-07-23T10:00:00.000Z',
+    },
+  },
+);
+assert.equal(withScan.sellerInitials, 'MQ');
+assert.equal(withScan.context, SELLER_INSIGHT_CONTEXT.HANDWRITTEN_NOTE);
+assert.deepEqual(withScan.understoodLabels, ['Budget bis 400 €', 'Blau', 'Elektro']);
+assert.ok(withScan.attachment?.dataUrl?.startsWith('data:image'));
+
 
 const lead = appendSellerInsightToLead({ id: 'lead-1', crm: {} }, insight.text, {
   context: 'phone_call',

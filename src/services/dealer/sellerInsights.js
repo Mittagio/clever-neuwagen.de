@@ -8,9 +8,11 @@ import {
   buildUnderstoodLabels,
   mergeTextIntoNeedProfile,
 } from '../consultation/needProfileService.js';
+import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 
 export const SELLER_INSIGHT_SOURCE = 'seller';
 export const MIGRATED_FROM_KUNDENHELFER = 'kundenhelfer';
+export const SELLER_BADGE_FALLBACK = 'VK';
 
 export const SELLER_INSIGHT_CONTEXT = {
   PHONE: 'phone_call',
@@ -20,11 +22,38 @@ export const SELLER_INSIGHT_CONTEXT = {
   VEHICLE_VIEWING: 'vehicle_viewing',
   EMAIL: 'email',
   SHOWROOM: 'showroom',
+  VOICE_NOTE: 'voice_note',
+  HANDWRITTEN_NOTE: 'handwritten_note',
   OTHER: 'other',
 };
 
 function createSellerInsightId() {
   return `si-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
+ * Verkäufer-Kürzel für Chip-Badge (MQ, CG, …) – Fallback „VK“.
+ * @param {{ sellerInitials?: string, sellerName?: string, sellerId?: string }} [options]
+ * @param {object} [lead]
+ */
+export function resolveSellerAttribution(options = {}, lead = {}) {
+  const sellerName = String(
+    options.sellerName
+    ?? lead?.ownerName
+    ?? '',
+  ).trim() || null;
+  const sellerId = options.sellerId
+    ?? lead?.ownerId
+    ?? lead?.assignedSellerId
+    ?? null;
+  const fromOptions = String(options.sellerInitials ?? '').trim().toUpperCase();
+  const fromName = sellerName ? buildAdvisorInitials(sellerName) : '';
+  const sellerInitials = fromOptions || fromName || SELLER_BADGE_FALLBACK;
+  return {
+    sellerId: sellerId || null,
+    sellerName,
+    sellerInitials,
+  };
 }
 
 /**
@@ -36,6 +65,7 @@ export function normalizeSellerInsight(insight = {}) {
   if (!text) return null;
 
   const parsed = mergeTextIntoNeedProfile(text);
+  const attribution = resolveSellerAttribution(insight);
 
   return {
     id: insight.id ?? createSellerInsightId(),
@@ -51,6 +81,33 @@ export function normalizeSellerInsight(insight = {}) {
       ? [...insight.priorities]
       : [...(parsed.priorities ?? [])],
     migratedFrom: insight.migratedFrom ?? null,
+    sellerId: attribution.sellerId,
+    sellerName: attribution.sellerName,
+    sellerInitials: attribution.sellerInitials,
+    attachment: normalizeInsightAttachment(insight.attachment),
+  };
+}
+
+/**
+ * Chip-Vorschläge aus Freitext / Diktat / Scan-Text (VK bestätigt danach).
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function proposeSellerInsightLabels(text = '') {
+  const trimmed = String(text ?? '').trim();
+  if (!trimmed) return [];
+  const parsed = mergeTextIntoNeedProfile(trimmed);
+  return [...(parsed.understoodLabels ?? buildUnderstoodLabels(parsed))];
+}
+
+function normalizeInsightAttachment(attachment = null) {
+  if (!attachment || typeof attachment !== 'object') return null;
+  const dataUrl = String(attachment.dataUrl ?? '').trim();
+  if (!dataUrl.startsWith('data:image')) return null;
+  return {
+    type: 'image',
+    dataUrl,
+    createdAt: attachment.createdAt ?? new Date().toISOString(),
   };
 }
 
@@ -188,13 +245,22 @@ export function hasSellerInsights(lead = {}) {
 
 /**
  * @param {string} text
- * @param {{ context?: string|null, createdAt?: string }} [options]
+ * @param {{
+ *   context?: string|null,
+ *   createdAt?: string,
+ *   sellerId?: string,
+ *   sellerName?: string,
+ *   sellerInitials?: string,
+ *   understoodLabels?: string[],
+ *   attachment?: { type?: string, dataUrl?: string, createdAt?: string }|null,
+ * }} [options]
  */
 export function createSellerInsight(text = '', options = {}) {
   const trimmed = String(text ?? '').trim();
   if (!trimmed) return null;
 
   const now = options.createdAt ?? new Date().toISOString();
+  const attribution = resolveSellerAttribution(options);
   return normalizeSellerInsight({
     id: createSellerInsightId(),
     text: trimmed,
@@ -202,16 +268,24 @@ export function createSellerInsight(text = '', options = {}) {
     context: options.context ?? null,
     createdAt: now,
     updatedAt: now,
+    sellerId: attribution.sellerId,
+    sellerName: attribution.sellerName,
+    sellerInitials: attribution.sellerInitials,
+    understoodLabels: options.understoodLabels,
+    attachment: options.attachment ?? null,
   });
 }
 
 /**
  * @param {object} lead
  * @param {string} text
- * @param {{ context?: string|null }} [options]
+ * @param {{ context?: string|null, sellerId?: string, sellerName?: string, sellerInitials?: string }} [options]
  */
 export function appendSellerInsightToLead(lead = {}, text = '', options = {}) {
-  const insight = createSellerInsight(text, options);
+  const insight = createSellerInsight(text, {
+    ...options,
+    ...resolveSellerAttribution(options, lead),
+  });
   if (!insight) return lead;
 
   const existing = getSellerInsightsFromLead(lead);
@@ -228,18 +302,19 @@ export function appendSellerInsightToLead(lead = {}, text = '', options = {}) {
  *
  * @param {object} lead
  * @param {string[]|string} texts
- * @param {{ context?: string|null }} [options]
+ * @param {{ context?: string|null, sellerId?: string, sellerName?: string, sellerInitials?: string }} [options]
  */
 export function appendSellerInsightsFromTexts(lead = {}, texts = [], options = {}) {
   const list = Array.isArray(texts) ? texts : [texts];
   const existing = getSellerInsightsFromLead(lead);
   const pending = [];
+  const attribution = resolveSellerAttribution(options, lead);
 
   for (const raw of list) {
     const trimmed = String(raw ?? '').trim();
     if (!trimmed) continue;
     if (isInsightTextDuplicate(trimmed, existing, pending)) continue;
-    const insight = createSellerInsight(trimmed, options);
+    const insight = createSellerInsight(trimmed, { ...options, ...attribution });
     if (insight) pending.push(insight);
   }
 

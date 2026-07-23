@@ -1,12 +1,15 @@
+import { buildAttributedWishChips } from '../../services/dealer/customerUnderstanding.js';
 import {
   buildKundenwissenOverview,
-  countKundenwissenItems,
 } from '../../services/kundenwissenCategories.js';
+import { resolveSellerAttribution } from '../../services/dealer/sellerInsights.js';
+import { filterNotepadChipsExcludingKonditionen } from '../../services/customerAkte.js';
+import CustomerAkteNotepadCapture from './CustomerAkteNotepadCapture.jsx';
 import './CustomerAkte.css';
 
 /**
- * Kundenwissen – kompakte Kategorien im Profilkopf (keine Detail-Chips).
- * Bei vorhandenem Customer Understanding: reduzierter Werkzeug-Einstieg.
+ * Notizzettel in der Kundenakte – Wunsch-Chips (Kunde / VK-Kürzel).
+ * Memo / Scan: kompakt, Attribution Pflicht.
  */
 export default function CustomerAkteKundenhelfer({
   notes = '',
@@ -15,12 +18,12 @@ export default function CustomerAkteKundenhelfer({
   voiceMemos = [],
   lead = null,
   onOpenSheet,
+  onCaptureCommit = null,
+  isSavingCapture = false,
   variant = 'profile',
   subdued = false,
   hasCustomerUnderstanding = false,
 }) {
-  const categories = buildKundenwissenOverview(notes, lead, chipCategories);
-  const totalCount = countKundenwissenItems(notes, lead, chipCategories);
   const conversationCount = conversationNotes?.length ?? 0;
   const memoCount = voiceMemos?.length ?? 0;
 
@@ -28,73 +31,91 @@ export default function CustomerAkteKundenhelfer({
     return null;
   }
 
-  if (hasCustomerUnderstanding) {
-    return (
-      <div className="cust-akte-kw cust-akte-kw--tool" aria-label="Verkaufsnotizen">
-        <div className="cust-akte-kw__tool-lines">
-          <button
-            type="button"
-            className="cust-akte-kw__tool-line"
-            onClick={() => onOpenSheet?.()}
-          >
-            Verkaufsnotizen (
-            {conversationCount}
-            )
-          </button>
-          <button
-            type="button"
-            className="cust-akte-kw__tool-line"
-            onClick={() => onOpenSheet?.()}
-          >
-            Sprachmemos (
-            {memoCount}
-            )
-          </button>
-        </div>
-        <button
-          type="button"
-          className="cust-akte-kw__tool-open"
-          onClick={() => onOpenSheet?.()}
-        >
-          Öffnen
-        </button>
-      </div>
-    );
-  }
+  const attribution = resolveSellerAttribution({}, lead ?? {});
+  const attributed = lead
+    ? buildAttributedWishChips(lead)
+    : [];
 
-  if (!totalCount) {
-    return (
-      <div className="cust-akte-kw cust-akte-kw--empty" aria-label="Kundenwissen">
-        <button type="button" className="cust-akte-kw__add" onClick={() => onOpenSheet?.()}>
-          + Info hinzufügen
-        </button>
-      </div>
-    );
-  }
+  const fallbackChips = attributed.length
+    ? []
+    : buildKundenwissenOverview(notes, lead, chipCategories, { includeUnterlagen: false })
+      .flatMap((category) => category.items.map((item) => ({
+        label: item.display || item.raw,
+        origin: 'customer',
+        badge: null,
+        sellerName: null,
+      })));
+
+  const chips = filterNotepadChipsExcludingKonditionen(
+    attributed.length ? attributed : fallbackChips,
+  );
 
   return (
-    <div className={`cust-akte-kw${subdued ? ' cust-akte-kw--subdued' : ''}`} aria-label="Kundenwissen">
-      <p className="cust-akte-kw__title">{subdued ? 'Ihre Notizen' : 'Kundenwissen'}</p>
-      <div className="cust-akte-kw__grid">
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            type="button"
-            className="cust-akte-kw__cat"
-            onClick={() => onOpenSheet?.(category.id)}
-          >
-            <span className="cust-akte-kw__cat-icon" aria-hidden>{category.icon}</span>
-            <span className="cust-akte-kw__cat-label">
-              {category.label}
-              {' '}
-              {category.count}
-            </span>
-          </button>
-        ))}
+    <div
+      className={`cust-akte-kw cust-akte-kw--notepad${subdued ? ' cust-akte-kw--subdued' : ''}`}
+      aria-label="Notizzettel"
+    >
+      <div className="cust-akte-kw__head">
+        <p className="cust-akte-kw__title">Notizzettel</p>
       </div>
-      <button type="button" className="cust-akte-kw__add" onClick={() => onOpenSheet?.()}>
-        + Info hinzufügen
-      </button>
+
+      {chips.length > 0 ? (
+        <ul className="cust-akte-kw__chips">
+          {chips.map((chip) => {
+            const isSeller = chip.origin === 'seller';
+            const title = isSeller
+              ? (chip.sellerName
+                ? `Vom Verkäufer ergänzt (${chip.sellerName})`
+                : 'Vom Verkäufer ergänzt')
+              : 'Vom Kunden';
+            return (
+              <li key={`${chip.origin}-${chip.label}`}>
+                <button
+                  type="button"
+                  className={`cust-akte-kw__chip${isSeller ? ' cust-akte-kw__chip--seller' : ''}`}
+                  title={title}
+                  onClick={() => onOpenSheet?.()}
+                >
+                  <span>{chip.label}</span>
+                  {isSeller && chip.badge ? (
+                    <span className="cust-akte-kw__chip-badge" aria-label={title}>
+                      {chip.badge}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <button type="button" className="cust-akte-kw__add" onClick={() => onOpenSheet?.()}>
+          +
+        </button>
+      )}
+
+      {onCaptureCommit && (
+        <CustomerAkteNotepadCapture
+          sellerInitials={attribution.sellerInitials}
+          sellerName={attribution.sellerName}
+          onCommit={onCaptureCommit}
+          isSaving={isSavingCapture}
+        />
+      )}
+
+      {hasCustomerUnderstanding && (conversationCount > 0 || memoCount > 0) && (
+        <div className="cust-akte-kw__meta-row">
+          {conversationCount > 0 && (
+            <button type="button" className="cust-akte-kw__meta-link" onClick={() => onOpenSheet?.()}>
+              📝 {conversationCount}
+            </button>
+          )}
+          {memoCount > 0 && (
+            <button type="button" className="cust-akte-kw__meta-link" onClick={() => onOpenSheet?.()}>
+              🎙 {memoCount}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

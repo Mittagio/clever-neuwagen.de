@@ -437,6 +437,16 @@ export default function DealerAiLeadFollowUp({
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
   const [email, setEmail] = useState(lead?.contact?.email ?? '');
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const previous = document.title;
+    const titleName = String(name ?? '').trim() || 'Kunde noch offen';
+    document.title = `${titleName} · Clever`;
+    return () => {
+      document.title = previous;
+    };
+  }, [name]);
   const [customerAddress, setCustomerAddress] = useState(() => addressFromLead(lead));
   const [distanceInfo, setDistanceInfo] = useState(() => lead?.crm?.distanceInfo ?? null);
   const [note, setNote] = useState(lead?.notes ?? parsed?.shortForm ?? '');
@@ -1862,11 +1872,25 @@ export default function DealerAiLeadFollowUp({
     });
   }
 
+  function sellerInsightOptions(extra = {}) {
+    return {
+      ...extra,
+      sellerId: lead?.ownerId ?? lead?.assignedSellerId ?? null,
+      sellerName: lead?.ownerName ?? null,
+    };
+  }
+
   function saveKundenhelferSheet() {
     const baseline = buildKundenhelferDisplayNotes(lead);
     const newChips = collectNewKundenhelferChips(baseline, kundenhelferNotes);
     const extraCrm = newChips.length
-      ? { sellerInsights: appendSellerInsightsFromTexts(lead, newChips).crm.sellerInsights }
+      ? {
+        sellerInsights: appendSellerInsightsFromTexts(
+          lead,
+          newChips,
+          sellerInsightOptions(),
+        ).crm.sellerInsights,
+      }
       : {};
 
     onSave?.(buildSavePayload(extraCrm), {
@@ -1876,15 +1900,28 @@ export default function DealerAiLeadFollowUp({
     closeSheet();
   }
 
-  function handleAddSellerInsight(text, context = null) {
+  function handleNotepadCaptureCommit({
+    text,
+    labels = null,
+    context = null,
+    attachment = null,
+  } = {}) {
     const trimmed = String(text ?? '').trim();
-    if (!trimmed) return;
+    if (!trimmed && !(labels?.length) && !attachment) return;
 
-    const nextLead = appendSellerInsightToLead(lead, trimmed, { context });
+    const nextLead = appendSellerInsightToLead(
+      lead,
+      trimmed || (labels?.length ? labels.join(', ') : 'Notiz-Scan'),
+      sellerInsightOptions({
+        context,
+        understoodLabels: Array.isArray(labels) && labels.length ? labels : undefined,
+        attachment: attachment ?? null,
+      }),
+    );
     onSave?.(buildSavePayload({
       sellerInsights: nextLead.crm.sellerInsights,
     }), {
-      historyText: 'Gespräch festgehalten',
+      historyText: context === 'handwritten_note' ? 'Zettel gescannt' : 'Gespräch festgehalten',
       historyType: 'note',
       addFollowupHistory: false,
       silent: true,
@@ -1986,7 +2023,7 @@ export default function DealerAiLeadFollowUp({
     if (question) {
       logCustomerActivity(buildCleverQuestionActivity({ question, cleverAnswer }));
     }
-    const nextLead = appendSellerInsightsFromTexts(lead, [chip]);
+    const nextLead = appendSellerInsightsFromTexts(lead, [chip], sellerInsightOptions());
     setKundenhelferNotes(addCustomKundenhelferChip(kundenhelferNotes, chip));
     onSave?.(buildSavePayload({
       sellerInsights: nextLead.crm.sellerInsights,
@@ -2194,7 +2231,9 @@ export default function DealerAiLeadFollowUp({
 
   return (
     <section className="dai-lead-followup cust-akte" aria-labelledby="dai-lead-followup-title">
-      <h2 id="dai-lead-followup-title" className="visually-hidden">Kundenakte</h2>
+      <h2 id="dai-lead-followup-title" className="visually-hidden">
+        {name?.trim() || 'Kunde noch offen'}
+      </h2>
 
       <CustomerAkteHeader
         customerName={name}
@@ -2226,31 +2265,6 @@ export default function DealerAiLeadFollowUp({
         historyBadge={inboxOpenCount ? 0 : activityDashboard.newCustomerActivities}
       />
 
-      {customerUnderstanding?.meta?.hasData && (
-        <div className="cust-akte-verstaendnis">
-          <CustomerAkteCleverBeratung
-            view={cleverBeratungView}
-            understanding={customerUnderstanding}
-            telHref={telHref}
-            onPrepareOffer={handleCleverBeratungPrepareOffer}
-            onCreateMessage={() => openCleverAntworten()}
-            onChangeRecommendation={handleCleverBeratungChangeRecommendation}
-            onAddSellerInsight={handleAddSellerInsight}
-            isSavingInsight={isSaving}
-          />
-          <CustomerAkteCleverCopilot
-            lead={lead}
-            dealerId={lead?.dealerId ?? null}
-            sellerId={lead?.assignedSellerId ?? null}
-            onOpenOffer={() => onPrepareOffer?.(lead)}
-            onUseDraft={(draft, action) => {
-              if (action === 'discard') return;
-              if (draft) openCleverAntworten();
-            }}
-          />
-        </div>
-      )}
-
       <div className={hasSellerCustomerPicture ? 'cust-akte-operativ' : undefined}>
         <CustomerAkteKundenhelfer
           notes={kundenhelferNotes}
@@ -2259,9 +2273,11 @@ export default function DealerAiLeadFollowUp({
           voiceMemos={kundenhelferMemos}
           lead={lead}
           onOpenSheet={openKundenhelferSheet}
+          onCaptureCommit={handleNotepadCaptureCommit}
+          isSavingCapture={isSaving}
           variant="profile"
           hasCustomerUnderstanding={hasSellerCustomerPicture}
-          subdued={hasSellerCustomerPicture}
+          subdued={false}
         />
 
         {(!hasSellerCustomerPicture || !hideRedundantWishChips) && (
@@ -2286,6 +2302,30 @@ export default function DealerAiLeadFollowUp({
           </div>
         )}
       </div>
+
+      {customerUnderstanding?.meta?.hasData && (
+        <div className="cust-akte-verstaendnis">
+          <CustomerAkteCleverBeratung
+            view={cleverBeratungView}
+            understanding={customerUnderstanding}
+            telHref={telHref}
+            onPrepareOffer={handleCleverBeratungPrepareOffer}
+            onCreateMessage={() => openCleverAntworten()}
+            onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+            hideWishChips
+          />
+          <CustomerAkteCleverCopilot
+            lead={lead}
+            dealerId={lead?.dealerId ?? null}
+            sellerId={lead?.assignedSellerId ?? null}
+            onOpenOffer={() => onPrepareOffer?.(lead)}
+            onUseDraft={(draft, action) => {
+              if (action === 'discard') return;
+              if (draft) openCleverAntworten();
+            }}
+          />
+        </div>
+      )}
 
       {requestedStockVehicle && (
         <CustomerAkteRequestedStockVehicle

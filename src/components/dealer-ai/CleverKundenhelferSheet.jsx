@@ -9,6 +9,7 @@ import {
   formatMemoLine,
   parseKundenhelferNotes,
   replaceKundenhelferChip,
+  setExclusiveChipInGroup,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
 import { buildKundenhelferDisplayNotes } from '../../services/dealer/kundenhelferSavePayload.js';
@@ -20,8 +21,58 @@ import {
   getPredefinedChipsForCategory,
   suggestKundenwissenCategory,
 } from '../../services/kundenwissenCategories.js';
+import {
+  HANDOFF_TRADE_IN_OPTIONS,
+  VEHICLE_NEED_TIMING_OPTIONS,
+} from '../../services/consultation/wishHandoffEnrichment.js';
+import {
+  HANDOFF_EQUIPMENT_CHIPS,
+  SOFT_EQUIPMENT_CATEGORY_CHIPS,
+  buildEquipmentChipsForCategory,
+  labelsFromEquipmentIds,
+} from '../../services/consultation/wishHandoffEquipment.js';
 import CustomerAkteConversationNotes from './CustomerAkteConversationNotes.jsx';
 import './CleverKundenhelferSheet.css';
+
+const HUB_SECTIONS = [
+  { id: 'equipment', label: 'Ausstattung', icon: '💺' },
+  { id: 'availability', label: 'Verfügbarkeit', icon: '📅' },
+  { id: 'life', label: 'Leben & Alltag', icon: '🏠' },
+  { id: 'freetext', label: 'Freitext', icon: '✏️' },
+];
+
+const LIFE_CATEGORY_IDS = KUNDENWISSEN_CATEGORY_ORDER.filter((id) => id !== 'unterlagen');
+
+const TIMING_LABELS = VEHICLE_NEED_TIMING_OPTIONS.map((o) => o.label);
+const TRADE_IN_LABELS = HANDOFF_TRADE_IN_OPTIONS.map((o) => o.notepadLabel);
+const ALL_EQUIPMENT_LABELS = new Set(labelsFromEquipmentIds(
+  HANDOFF_EQUIPMENT_CHIPS.map((chip) => chip.id),
+));
+
+function SoftChipRow({ label = null, options, value, onSelect, getOptionLabel = (o) => o.label }) {
+  return (
+    <div className="dai-kh-soft-group">
+      {label && <p className="dai-kh-soft-group__label">{label}</p>}
+      <div className="dai-kh-chips" role="group" aria-label={label || 'Auswahl'}>
+        {options.map((option) => {
+          const optionLabel = getOptionLabel(option);
+          const selected = value === option.id || value === optionLabel;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`dai-kh-chip${selected ? ' is-active' : ''}`}
+              aria-pressed={selected}
+              onClick={() => onSelect(option)}
+            >
+              {optionLabel}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function VoiceMemoRecorder({ onSave, disabled }) {
   const [phase, setPhase] = useState('idle');
@@ -198,14 +249,14 @@ function VoiceMemoRecorder({ onSave, disabled }) {
             Aufnahme · {formatMemoDuration(previewDuration || seconds)}
           </p>
           <div className="dai-kh-memo__preview-actions">
-            <button type="button" className="dai-btn dai-btn--secondary" onClick={togglePlay}>
-              {playing ? 'Pause' : 'Anhören'}
+            <button type="button" className="dai-btn dai-btn--ghost" onClick={togglePlay}>
+              {playing ? 'Pause' : 'Abspielen'}
             </button>
             <button type="button" className="dai-btn dai-btn--primary" onClick={savePreview}>
               Speichern
             </button>
             <button type="button" className="dai-btn dai-btn--ghost" onClick={discardPreview}>
-              Neu aufnehmen
+              Verwerfen
             </button>
           </div>
         </div>
@@ -214,29 +265,30 @@ function VoiceMemoRecorder({ onSave, disabled }) {
   );
 }
 
-function VoiceMemoItem({ memo, onPlay, isPlaying }) {
+function VoiceMemoItem({ memo, isPlaying, onPlay }) {
   return (
-    <div className="dai-kh-memo-item">
-      <p className="dai-kh-memo-item__label">
-        <span aria-hidden>🎙</span> {formatMemoLine(memo)}
-      </p>
-      <button
-        type="button"
-        className="dai-kh-memo-item__play"
-        onClick={() => onPlay(memo)}
-      >
-        {isPlaying ? 'Pause' : 'Anhören'}
-      </button>
-      {memo.transcript && (
-        <p className="dai-kh-memo-item__transcript">{memo.transcript}</p>
-      )}
-      {!memo.transcript && (
-        <button type="button" className="dai-kh-memo-item__transcribe" disabled title="Bald verfügbar">
-          In Text umwandeln
-        </button>
-      )}
-    </div>
+    <button
+      type="button"
+      className={`dai-kh-memo-item${isPlaying ? ' is-playing' : ''}`}
+      onClick={() => onPlay(memo)}
+    >
+      <span className="dai-kh-memo-item__icon" aria-hidden>{isPlaying ? '⏸' : '▶'}</span>
+      <span className="dai-kh-memo-item__line">{formatMemoLine(memo)}</span>
+    </button>
   );
+}
+
+function patchChipCategories(onChipCategoriesChange, removedLabels = [], added = {}) {
+  onChipCategoriesChange?.((prev) => {
+    const next = { ...(prev ?? {}) };
+    for (const label of removedLabels) {
+      delete next[label];
+    }
+    for (const [label, categoryId] of Object.entries(added)) {
+      if (label) next[label] = categoryId;
+    }
+    return next;
+  });
 }
 
 export default function CleverKundenhelferSheet({
@@ -256,13 +308,16 @@ export default function CleverKundenhelferSheet({
   onSave,
   isSaving = false,
 }) {
-  const [sheetView, setSheetView] = useState('categories');
+  const [sheetView, setSheetView] = useState('hub');
+  const [softSection, setSoftSection] = useState(null);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [addMode, setAddMode] = useState(false);
   const [addDraft, setAddDraft] = useState('');
   const [addCategoryId, setAddCategoryId] = useState('sonstiges');
   const [editingChip, setEditingChip] = useState(null);
   const [playingId, setPlayingId] = useState(null);
+  const [moreNotesOpen, setMoreNotesOpen] = useState(false);
+  const [equipCategory, setEquipCategory] = useState('comfort');
 
   const playerRef = useRef(null);
   const addInputRef = useRef(null);
@@ -285,13 +340,51 @@ export default function CleverKundenhelferSheet({
     [displayNotes, lead, chipCategories],
   );
 
+  const lifeOverview = useMemo(
+    () => LIFE_CATEGORY_IDS.map((id) => {
+      const found = overview.find((cat) => cat.id === id);
+      if (found) return found;
+      return {
+        ...getKundenwissenCategory(id),
+        count: 0,
+        items: [],
+      };
+    }),
+    [overview],
+  );
+
+  const timingValue = TIMING_LABELS.find((label) => activeChips.includes(label)) ?? null;
+  const tradeInValue = TRADE_IN_LABELS.find((label) => activeChips.includes(label)) ?? null;
+
+  const selectedEquipmentIds = useMemo(
+    () => HANDOFF_EQUIPMENT_CHIPS
+      .filter((chip) => activeChips.includes(chip.label))
+      .map((chip) => chip.id),
+    [activeChips],
+  );
+
+  const equipmentChips = useMemo(
+    () => buildEquipmentChipsForCategory(equipCategory, selectedEquipmentIds, []),
+    [equipCategory, selectedEquipmentIds],
+  );
+
+  const hubCounts = useMemo(() => ({
+    equipment: activeChips.filter((chip) => ALL_EQUIPMENT_LABELS.has(chip)).length,
+    availability: timingValue ? 1 : 0,
+    life: lifeOverview.reduce((sum, cat) => sum + cat.count, 0)
+      + (tradeInValue ? 1 : 0),
+  }), [activeChips, timingValue, tradeInValue, lifeOverview]);
+
   const resetSheetNav = useCallback(() => {
-    setSheetView('categories');
+    setSheetView('hub');
+    setSoftSection(null);
     setActiveCategoryId(null);
     setAddMode(false);
     setAddDraft('');
     setAddCategoryId('sonstiges');
     setEditingChip(null);
+    setMoreNotesOpen(false);
+    setEquipCategory('comfort');
   }, []);
 
   useEffect(() => {
@@ -301,9 +394,11 @@ export default function CleverKundenhelferSheet({
       resetSheetNav();
       return;
     }
-    if (initialCategoryId) {
+    if (initialCategoryId && LIFE_CATEGORY_IDS.includes(initialCategoryId)) {
       setActiveCategoryId(initialCategoryId);
       setSheetView('detail');
+      setSoftSection(null);
+      setAddMode(false);
     } else {
       resetSheetNav();
     }
@@ -330,14 +425,44 @@ export default function CleverKundenhelferSheet({
     KUNDENHELFER_CHIPS,
   );
 
+  function openHubSection(sectionId) {
+    if (sectionId === 'freetext') {
+      setSheetView('hub');
+      setSoftSection(null);
+      setActiveCategoryId(null);
+      startAddInfo();
+      return;
+    }
+    setAddMode(false);
+    setEditingChip(null);
+    if (sectionId === 'life') {
+      setSheetView('life');
+      setSoftSection(null);
+      setActiveCategoryId(null);
+      return;
+    }
+    setSheetView('soft');
+    setSoftSection(sectionId);
+    setActiveCategoryId(null);
+  }
+
   function openCategory(categoryId) {
     setActiveCategoryId(categoryId);
     setSheetView('detail');
     setAddMode(false);
+    setSoftSection(null);
   }
 
-  function backToCategories() {
-    setSheetView('categories');
+  function backToHub() {
+    setSheetView('hub');
+    setSoftSection(null);
+    setActiveCategoryId(null);
+    setAddMode(false);
+    setEditingChip(null);
+  }
+
+  function backToLife() {
+    setSheetView('life');
     setActiveCategoryId(null);
     setAddMode(false);
     setEditingChip(null);
@@ -346,11 +471,8 @@ export default function CleverKundenhelferSheet({
   function startAddInfo() {
     setAddMode(true);
     setAddDraft('');
-    setAddCategoryId('sonstiges');
+    setAddCategoryId(activeCategoryId || 'sonstiges');
     setEditingChip(null);
-    if (sheetView === 'detail' && activeCategoryId) {
-      setAddCategoryId(activeCategoryId);
-    }
   }
 
   function cancelAddInfo() {
@@ -388,7 +510,7 @@ export default function CleverKundenhelferSheet({
       }));
     }
     cancelAddInfo();
-    if (sheetView === 'categories') {
+    if (sheetView === 'hub' || sheetView === 'life') {
       setActiveCategoryId(addCategoryId);
       setSheetView('detail');
     }
@@ -398,6 +520,38 @@ export default function CleverKundenhelferSheet({
     setAddDraft(value);
     if (!editingChip) {
       setAddCategoryId(suggestKundenwissenCategory(value));
+    }
+  }
+
+  function applyExclusive(groupLabels, nextLabel, categoryId) {
+    const before = new Set(parseKundenhelferNotes(notes));
+    const nextNotes = setExclusiveChipInGroup(notes, groupLabels, nextLabel);
+    const after = new Set(parseKundenhelferNotes(nextNotes));
+    const removed = [...before].filter((label) => !after.has(label));
+    const added = [...after].filter((label) => !before.has(label));
+    onNotesChange?.(nextNotes);
+    const addedMap = {};
+    for (const label of added) {
+      addedMap[label] = categoryId;
+    }
+    patchChipCategories(onChipCategoriesChange, removed, addedMap);
+  }
+
+  function selectTiming(option) {
+    applyExclusive(TIMING_LABELS, option.label, 'auto');
+  }
+
+  function selectTradeIn(option) {
+    applyExclusive(TRADE_IN_LABELS, option.notepadLabel, 'auto');
+  }
+
+  function toggleEquipmentLabel(label) {
+    const wasActive = activeChips.includes(label);
+    onNotesChange?.(toggleKundenhelferChip(notes, label));
+    if (wasActive) {
+      patchChipCategories(onChipCategoriesChange, [label], {});
+    } else {
+      patchChipCategories(onChipCategoriesChange, [], { [label]: 'auto' });
     }
   }
 
@@ -461,9 +615,16 @@ export default function CleverKundenhelferSheet({
     }
   }
 
+  const softTitle = HUB_SECTIONS.find((s) => s.id === softSection)?.label;
   const panelTitle = sheetView === 'detail' && activeCategory
     ? activeCategory.label
-    : 'Clever Kundenhelfer';
+    : sheetView === 'soft' && softTitle
+      ? softTitle
+      : sheetView === 'life'
+        ? 'Leben & Alltag'
+        : 'Clever Kundenhelfer';
+
+  const moreNotesCount = (conversationNotes?.length ?? 0) + (voiceMemos?.length ?? 0);
 
   return (
     <LeadDetailPanel
@@ -471,49 +632,132 @@ export default function CleverKundenhelferSheet({
       onClose={onClose}
       title={panelTitle}
       footer={(
-        <div className="dai-sheet-actions">
-          <button type="button" className="dai-btn dai-btn--ghost" onClick={onClose}>
+        <div className="dai-kh-sheet-footer">
+          <button type="button" className="dai-kh-sheet-footer__cancel" onClick={onClose}>
             Abbrechen
           </button>
           <button
             type="button"
-            className="dai-btn dai-btn--primary"
+            className="dai-kh-sheet-footer__apply"
             onClick={onSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Speichern …' : 'Speichern'}
+            {isSaving ? 'Übernehmen …' : 'Übernehmen'}
           </button>
         </div>
       )}
     >
       <div className="dai-kh-sheet">
-        {sheetView === 'categories' && (
+        {sheetView === 'hub' && (
           <>
-            <p className="dai-kh-sheet__subline">Wählen Sie einen Bereich.</p>
+            <div className="dai-kh-hub" role="list">
+              {HUB_SECTIONS.map((section) => {
+                const count = hubCounts[section.id];
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className="dai-kh-hub__chip"
+                    role="listitem"
+                    onClick={() => openHubSection(section.id)}
+                  >
+                    <span className="dai-kh-hub__icon" aria-hidden>{section.icon}</span>
+                    <span className="dai-kh-hub__label">{section.label}</span>
+                    {count > 0 && (
+                      <span className="dai-kh-hub__count">{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
-            {overview.length > 0 ? (
-              <div className="dai-kh-cat-grid" role="list">
-                {overview.map((category) => (
+        {sheetView === 'soft' && softSection === 'equipment' && (
+          <>
+            <button type="button" className="dai-kh-back" onClick={backToHub}>
+              ← Bereiche
+            </button>
+            <div className="dai-kh-soft-group">
+              <div className="dai-kh-soft-cats" role="group" aria-label="Ausstattungsbereich">
+                {SOFT_EQUIPMENT_CATEGORY_CHIPS.map((category) => (
                   <button
                     key={category.id}
                     type="button"
-                    className="dai-kh-cat-tile"
-                    onClick={() => openCategory(category.id)}
+                    className={`dai-kh-soft-cat${equipCategory === category.id ? ' is-active' : ''}`}
+                    aria-pressed={equipCategory === category.id}
+                    onClick={() => setEquipCategory(category.id)}
                   >
-                    <span className="dai-kh-cat-tile__icon" aria-hidden>{category.icon}</span>
-                    <span className="dai-kh-cat-tile__label">{category.label}</span>
-                    <span className="dai-kh-cat-tile__count">
-                      {category.count}
-                      {' '}
-                      Info{category.count === 1 ? '' : 's'}
-                    </span>
+                    {category.label}
                   </button>
                 ))}
               </div>
-            ) : (
-              <p className="dai-kh-sheet__empty">Noch keine Infos hinterlegt.</p>
-            )}
+              {equipmentChips.length > 0 ? (
+                <div className="dai-kh-chips" role="group" aria-label={equipCategory}>
+                  {equipmentChips.map((chip) => {
+                    const active = activeChips.includes(chip.label);
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        className={`dai-kh-chip${active ? ' is-active' : ''}`}
+                        aria-pressed={active}
+                        onClick={() => toggleEquipmentLabel(chip.label)}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="dai-kh-sheet__empty">Bereits notiert oder keine Vorschläge.</p>
+              )}
+            </div>
+          </>
+        )}
 
+        {sheetView === 'soft' && softSection === 'availability' && (
+          <>
+            <button type="button" className="dai-kh-back" onClick={backToHub}>
+              ← Bereiche
+            </button>
+            <SoftChipRow
+              options={VEHICLE_NEED_TIMING_OPTIONS}
+              value={VEHICLE_NEED_TIMING_OPTIONS.find((o) => o.label === timingValue)?.id ?? null}
+              onSelect={selectTiming}
+            />
+            <SoftChipRow
+              label="Inzahlungnahme"
+              options={HANDOFF_TRADE_IN_OPTIONS}
+              value={HANDOFF_TRADE_IN_OPTIONS.find((o) => o.notepadLabel === tradeInValue)?.id ?? null}
+              onSelect={selectTradeIn}
+            />
+          </>
+        )}
+
+        {sheetView === 'life' && (
+          <>
+            <button type="button" className="dai-kh-back" onClick={backToHub}>
+              ← Bereiche
+            </button>
+            <div className="dai-kh-cat-grid" role="list">
+              {lifeOverview.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className="dai-kh-cat-tile"
+                  onClick={() => openCategory(category.id)}
+                >
+                  <span className="dai-kh-cat-tile__icon" aria-hidden>{category.icon}</span>
+                  <span className="dai-kh-cat-tile__label">{category.label}</span>
+                  <span className="dai-kh-cat-tile__count">
+                    {category.count}
+                    {' '}
+                    Info{category.count === 1 ? '' : 's'}
+                  </span>
+                </button>
+              ))}
+            </div>
             <button type="button" className="dai-kh-add-btn" onClick={startAddInfo}>
               + Info hinzufügen
             </button>
@@ -522,8 +766,12 @@ export default function CleverKundenhelferSheet({
 
         {sheetView === 'detail' && activeCategory && (
           <>
-            <button type="button" className="dai-kh-back" onClick={backToCategories}>
-              ← Bereiche
+            <button
+              type="button"
+              className="dai-kh-back"
+              onClick={LIFE_CATEGORY_IDS.includes(activeCategoryId) ? backToLife : backToHub}
+            >
+              ← {LIFE_CATEGORY_IDS.includes(activeCategoryId) ? 'Leben & Alltag' : 'Bereiche'}
             </button>
 
             <div className="dai-kh-detail-list">
@@ -604,7 +852,7 @@ export default function CleverKundenhelferSheet({
               value={addCategoryId}
               onChange={(e) => setAddCategoryId(e.target.value)}
             >
-              {KUNDENWISSEN_CATEGORY_ORDER.filter((id) => id !== 'unterlagen').map((id) => {
+              {LIFE_CATEGORY_IDS.map((id) => {
                 const cat = getKundenwissenCategory(id);
                 return (
                   <option key={id} value={id}>{cat.label}</option>
@@ -629,30 +877,47 @@ export default function CleverKundenhelferSheet({
           </div>
         )}
 
-        <CustomerAkteConversationNotes
-          notes={conversationNotes}
-          onChange={onConversationNotesChange}
-          vehicleCards={vehicleCards}
-          disabled={isSaving}
-        />
-
-        <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
-
-        {voiceMemos.length > 0 ? (
-          <div className="dai-kh-memo-list">
-            <p className="dai-kh-memo-list__title">Gespeicherte Memos</p>
-            {voiceMemos.map((memo) => (
-              <VoiceMemoItem
-                key={memo.id}
-                memo={memo}
-                isPlaying={playingId === memo.id}
-                onPlay={handlePlayMemo}
+        <div className="dai-kh-more">
+          <button
+            type="button"
+            className="dai-kh-more__toggle"
+            aria-expanded={moreNotesOpen}
+            onClick={() => setMoreNotesOpen((prev) => !prev)}
+          >
+            {moreNotesOpen ? '▾' : '▸'}
+            {' '}
+            Mehr Notizen
+            {moreNotesCount > 0 ? ` (${moreNotesCount})` : ''}
+          </button>
+          {moreNotesOpen && (
+            <div className="dai-kh-more__body">
+              <CustomerAkteConversationNotes
+                notes={conversationNotes}
+                onChange={onConversationNotesChange}
+                vehicleCards={vehicleCards}
+                disabled={isSaving}
               />
-            ))}
-          </div>
-        ) : (
-          <p className="dai-kh-memo-empty">Noch kein Memo</p>
-        )}
+
+              <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
+
+              {voiceMemos.length > 0 ? (
+                <div className="dai-kh-memo-list">
+                  <p className="dai-kh-memo-list__title">Gespeicherte Memos</p>
+                  {voiceMemos.map((memo) => (
+                    <VoiceMemoItem
+                      key={memo.id}
+                      memo={memo}
+                      isPlaying={playingId === memo.id}
+                      onPlay={handlePlayMemo}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="dai-kh-memo-empty">Noch kein Memo</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </LeadDetailPanel>
   );

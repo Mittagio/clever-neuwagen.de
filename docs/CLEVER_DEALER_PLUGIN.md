@@ -54,6 +54,10 @@ Primärer CTA: **Meine Wünsche weitergeben** (ab erstem Kundenturn).
 
 Flow: Soft Wish Enrichment (optional) → E-Mail → Code → Erfolg.
 
+**Inspiration-Modellkacheln** auf der Händler-Startseite starten denselben Clever-Pfad:
+aktiver Klick → Modellwunsch im Notizzettel → Soft Wish Enrichment → Identifikation → Lead.
+Nicht den klassischen Konfigurator-/Stepper-Journey.
+
 Kein Zwang zu vollständiger Bedarfsermittlung. Details: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](./CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
 Wenn der Notizzettel Substanz hat, bleibt weiterhin **nur dieser eine** sticky CTA.

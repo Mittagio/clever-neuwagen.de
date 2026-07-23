@@ -201,10 +201,23 @@ Erlaubt:
 
 Bereich: **Wunschübergabe von Clever**
 
-- Notizzettel / Kundenwünsche
+- **Notizzettel** oben in der Akte (Wunsch-Chips), nicht Kategorie-Kacheln
+- Kein „Unterlagen“-Chip im Notizzettel (Ordner in der Action-Bar)
+- **+ Info hinzufügen** im Notizzettel-Body (kein kleines „+ Info“ rechts im Header)
+- **Konditionen** darunter: harte Fakten inkl. Zahlungsart (Leasing/Kauf · Laufzeit · km · Anzahlung · Verfügbarkeit)
+- Zahlungsart **nur** unter Konditionen – nicht im Soft-Wish-Hub / Notizzettel (keine Doppelung)
+- Soft-Wish-Hub: Ausstattung · Verfügbarkeit · Leben & Alltag · Freitext
+- Am Notizzettel: 🎤 Memo · 📷 Scan → Chip-Vorschau mit VK-Kürzel
+- Sheets teilen dieselbe Akte-Optik (Indigo-Übernehmen)
+- Leben & Alltag bündelt Familie / Auto / Geld / …
+- Clever sagt: kompakt (Headline + Primary); Details aufklappbar
 - besprochene Fahrzeuge (ohne Sieger)
 - offene Punkte
 - vollständigen Original-Chat („Gespräch ansehen“)
+
+**Chip-Herkunft:** Kundenwünsche ohne Badge. Vom Verkäufer ergänzte Chips
+tragen das **Kürzel** (z. B. MQ, CG) – Fallback „VK“, wenn kein Name bekannt ist.
+`needProfile` bleibt kundenrein; VK-Zusätze liegen in `sellerInsights`.
 
 Er muss nicht erneut fragen: „Was suchen Sie denn eigentlich?“
 

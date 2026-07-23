@@ -13,8 +13,12 @@ import {
 import {
   getSellerInsightsFromLead,
   hasSellerInsights,
+  SELLER_BADGE_FALLBACK,
 } from './sellerInsights.js';
 
+function normalizeChipKey(text = '') {
+  return String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+}
 const CONCERN_PATTERNS = [
   {
     id: 'battery',
@@ -191,6 +195,8 @@ export function buildSellerInsightEvolution(insights = []) {
       source: 'seller',
       context: insight.context ?? null,
       createdAt: insight.createdAt ?? null,
+      sellerInitials: insight.sellerInitials || SELLER_BADGE_FALLBACK,
+      sellerName: insight.sellerName || null,
       newLabels,
       labelsAfter,
     });
@@ -418,6 +424,63 @@ export function hasCustomerUnderstanding(lead = {}) {
 }
 
 /**
+ * Chips mit Herkunft: Kunde (ohne Badge) vs. Verkäufer (Kürzel MQ/CG, Fallback VK).
+ * needProfile bleibt kundenrein – Attribution ist nur Display.
+ *
+ * @param {object} lead
+ * @param {string[]} [customerLabels]
+ * @param {object[]} [sellerInsights]
+ */
+export function buildAttributedWishChips(
+  lead = {},
+  customerLabels = null,
+  sellerInsights = null,
+) {
+  const profile = resolveNeedProfileForUnderstanding(lead) ?? createEmptyNeedProfile();
+  const customer = customerLabels ?? (
+    profile.understoodLabels?.length
+      ? profile.understoodLabels
+      : buildUnderstoodLabels(profile)
+  );
+  const insights = sellerInsights ?? getSellerInsightsFromLead(lead);
+  const chips = [];
+  const seen = new Set();
+
+  for (const label of customer) {
+    const key = normalizeChipKey(label);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    chips.push({
+      label,
+      origin: 'customer',
+      badge: null,
+      sellerName: null,
+    });
+  }
+
+  for (const insight of insights) {
+    const badge = insight.sellerInitials || SELLER_BADGE_FALLBACK;
+    const sellerName = insight.sellerName || null;
+    const labels = insight.understoodLabels?.length
+      ? insight.understoodLabels
+      : [insight.text].filter(Boolean);
+    for (const label of labels) {
+      const key = normalizeChipKey(label);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      chips.push({
+        label,
+        origin: 'seller',
+        badge,
+        sellerName,
+      });
+    }
+  }
+
+  return chips;
+}
+
+/**
  * @param {object} lead
  */
 export function buildCustomerUnderstanding(lead = {}) {
@@ -435,8 +498,12 @@ export function buildCustomerUnderstanding(lead = {}) {
   const sellerLabels = sellerInsights.flatMap((insight) => insight.understoodLabels ?? []);
   const sellerPriorities = sellerInsights.flatMap((insight) => insight.priorities ?? []);
 
+  const customerLabels = profile.understoodLabels?.length
+    ? profile.understoodLabels
+    : buildUnderstoodLabels(profile);
+
   const labels = mergeLabelLists(
-    profile.understoodLabels?.length ? profile.understoodLabels : buildUnderstoodLabels(profile),
+    customerLabels,
     sellerLabels,
     concerns,
   );
@@ -449,8 +516,11 @@ export function buildCustomerUnderstanding(lead = {}) {
 
   const mergedProfile = buildEphemeralMergedProfile(profile, sellerInsights);
 
+  const attributedLabels = buildAttributedWishChips(lead, customerLabels, sellerInsights);
+
   const verstaendnis = {
     labels,
+    attributedLabels,
     concerns,
     openPoints: resolveOpenPoints(profile, lead),
     vehicles: resolveVehicles(mergedProfile, labels),

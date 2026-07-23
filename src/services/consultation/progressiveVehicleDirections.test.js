@@ -12,9 +12,14 @@ import {
 } from './consultationHappyPath.js';
 import { submitSafeIntakeFallback } from './safeIntakeFallback.js';
 import {
+  beginOfferHandoff,
+  isInOfferWorld,
+} from './consultationOfferHandoff.js';
+import {
   buildInterestedDirectionLabel,
   hasProgressiveDirectionSignal,
   maybeAppendProgressiveVehicleDirections,
+  applyInspirationModelSelection,
 } from './progressiveVehicleDirections.js';
 
 function testAnnualKmDoesNotCreateLangstrecke() {
@@ -108,4 +113,25 @@ function testMaybeAppendIdempotentWithoutNewSignal() {
 testAnnualKmDoesNotCreateLangstrecke();
 testProgressiveDirectionsAfterLeasingAndKm();
 testMaybeAppendIdempotentWithoutNewSignal();
+
+function testInspirationModelOpensHandoffPath() {
+  let session = createHappyPathSession('Autohaus Trinkle');
+  session = applyInspirationModelSelection(session, 'ev3');
+  assert.ok(
+    (session.notepadLabels ?? []).some((l) => /EV3.*interessant/i.test(l)),
+    'Inspiration-Klick → EV3 interessant',
+  );
+  assert.equal(session.needProfile.selectedModelKey, 'ev3');
+  assert.equal(session.vehicleDirectionReactions.ev3, 'interested');
+
+  session = beginOfferHandoff(session, { dealerName: 'Autohaus Trinkle' });
+  assert.ok(isInOfferWorld(session), 'danach Soft-Handoff / Offer-World');
+  assert.ok(
+    (session.turns ?? []).some((t) => t.type === 'personal_handoff'),
+    'Personal-Handoff-Turn',
+  );
+  console.log('✓ Inspiration-Modell → Notizzettel + Soft-Handoff');
+}
+
+testInspirationModelOpensHandoffPath();
 console.log('\nprogressiveVehicleDirections.test.js: ok');

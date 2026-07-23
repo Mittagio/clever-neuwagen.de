@@ -142,6 +142,8 @@ const sellerText = 'Anhängelast jetzt doch 2.500 kg. EV4 gefällt inzwischen be
 const mergedLead = appendSellerInsightToLead(ev3Lead, sellerText, {
   context: 'phone_call',
   createdAt: '2026-07-07T14:00:00.000Z',
+  sellerName: 'Mike Quach',
+  sellerId: 'mike-quach',
 });
 
 const mergedUnderstanding = buildCustomerUnderstanding(mergedLead);
@@ -149,8 +151,26 @@ assert.ok(mergedUnderstanding, 'Understanding mit sellerInsights');
 assert.equal(mergedUnderstanding.entwicklung.length, 4, '3 Kunde + 1 Verkäufer');
 assert.equal(mergedUnderstanding.entwicklung[3].source, 'seller');
 assert.equal(mergedUnderstanding.entwicklung[3].customerText, sellerText);
+assert.equal(mergedUnderstanding.entwicklung[3].sellerInitials, 'MQ');
 assert.equal(mergedUnderstanding.meta.source, 'mixed', 'need_profile + seller_insights = mixed');
 assert.ok(mergedUnderstanding.meta.sellerInsightCount === 1);
+
+const attributed = mergedUnderstanding.verstaendnis.attributedLabels ?? [];
+assert.ok(attributed.some((c) => c.origin === 'customer'), 'Kunden-Chips ohne Badge');
+assert.ok(
+  attributed.some((c) => c.origin === 'seller' && c.badge === 'MQ'),
+  'VK-Chips mit Kürzel MQ',
+);
+
+const corradoLead = appendSellerInsightToLead(ev3Lead, 'Sitzheizung hinten wichtig', {
+  sellerName: 'Corrado Garritano',
+});
+const corradoUnderstanding = buildCustomerUnderstanding(corradoLead);
+assert.ok(
+  (corradoUnderstanding.verstaendnis.attributedLabels ?? [])
+    .some((c) => c.origin === 'seller' && c.badge === 'CG'),
+  'Corrado Garritano → Badge CG',
+);
 
 const sellerStepLabels = mergedUnderstanding.entwicklung[3].newLabels.join(' ').toLowerCase();
 assert.ok(

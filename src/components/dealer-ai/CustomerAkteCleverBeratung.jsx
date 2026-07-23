@@ -69,17 +69,47 @@ function originaltonMatchesEntwicklung(originalton, entwicklung = []) {
   return messages.every((message, index) => message === steps[index]);
 }
 
-function LabelChips({ labels = [], variant = 'default', compact = false }) {
-  if (!labels.length) return null;
+function LabelChips({ labels = [], chips = null, variant = 'default', compact = false }) {
+  const items = chips?.length
+    ? chips
+    : labels.map((label) => ({ label, origin: 'customer', badge: null }));
+  if (!items.length) return null;
   return (
     <ul className={`cust-clever-beratung__chips${compact ? ' cust-clever-beratung__chips--compact' : ''}`}>
-      {labels.map((label) => (
-        <li key={label}>
-          <span className={`cust-clever-beratung__chip${variant === 'concern' ? ' cust-clever-beratung__chip--concern' : ''}${compact ? ' cust-clever-beratung__chip--compact' : ''}`}>
-            {variant === 'default' ? `✓ ${label}` : label}
-          </span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const label = typeof item === 'string' ? item : item.label;
+        const origin = typeof item === 'string' ? 'customer' : (item.origin ?? 'customer');
+        const badge = typeof item === 'string' ? null : item.badge;
+        const sellerName = typeof item === 'string' ? null : item.sellerName;
+        const isSeller = origin === 'seller';
+        const title = isSeller
+          ? (sellerName
+            ? `Vom Verkäufer ergänzt (${sellerName})`
+            : 'Vom Verkäufer ergänzt')
+          : 'Vom Kunden';
+        return (
+          <li key={`${origin}-${label}`}>
+            <span
+              className={[
+                'cust-clever-beratung__chip',
+                variant === 'concern' ? 'cust-clever-beratung__chip--concern' : '',
+                compact ? 'cust-clever-beratung__chip--compact' : '',
+                isSeller ? 'cust-clever-beratung__chip--seller' : '',
+              ].filter(Boolean).join(' ')}
+              title={title}
+            >
+              <span className="cust-clever-beratung__chip-text">
+                {variant === 'default' && !isSeller ? `✓ ${label}` : label}
+              </span>
+              {isSeller && badge && (
+                <span className="cust-clever-beratung__chip-badge" aria-label={title}>
+                  {badge}
+                </span>
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -98,7 +128,7 @@ function GespraechseinstiegSection({ gespraechseinstieg }) {
   );
 }
 
-function VerstaendnisSection({ verstaendnis }) {
+function VerstaendnisSection({ verstaendnis, hideWishChips = false }) {
   const compact = compactVerstaendnis(verstaendnis);
   const {
     labels,
@@ -107,7 +137,13 @@ function VerstaendnisSection({ verstaendnis }) {
     openPoints,
   } = compact;
 
-  const hasContent = labels.length > 0
+  const attributed = (verstaendnis.attributedLabels ?? []).filter((chip) => {
+    const key = normalizeLabel(chip.label);
+    return !concerns.some((c) => normalizeLabel(c) === key);
+  });
+
+  const showChips = !hideWishChips;
+  const hasContent = (showChips && (attributed.length > 0 || labels.length > 0))
     || concerns.length > 0
     || vehicles.length > 0
     || openPoints.length > 0;
@@ -116,10 +152,18 @@ function VerstaendnisSection({ verstaendnis }) {
 
   return (
     <div className="cust-clever-beratung__block cust-clever-beratung__block--compact">
-      <p className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle">
-        Wunschübergabe von Clever
-      </p>
-      <LabelChips labels={labels} compact />
+      {!hideWishChips && (
+        <p className="cust-clever-beratung__section-title cust-clever-beratung__section-title--subtle">
+          Wunschübergabe von Clever
+        </p>
+      )}
+      {showChips && (
+        attributed.length > 0 ? (
+          <LabelChips chips={attributed} compact />
+        ) : (
+          <LabelChips labels={labels} compact />
+        )
+      )}
       <LabelChips labels={concerns} variant="concern" compact />
       {vehicles.length > 0 && (
         <ul className="cust-clever-beratung__chips cust-clever-beratung__chips--compact">
@@ -187,7 +231,11 @@ function EntwicklungSection({ entwicklung = [], hideQuotes = false }) {
               {!hideQuotes && (
                 <>
                   {step.source === 'seller' && (
-                    <p className="cust-clever-beratung__evolution-source">Verkäufer</p>
+                    <p className="cust-clever-beratung__evolution-source">
+                      {step.sellerInitials
+                        ? `Verkäufer · ${step.sellerInitials}`
+                        : 'Verkäufer'}
+                    </p>
                   )}
                   <p className="cust-clever-beratung__evolution-quote">&ldquo;{step.customerText}&rdquo;</p>
                 </>
@@ -197,7 +245,19 @@ function EntwicklungSection({ entwicklung = [], hideQuotes = false }) {
                   {!hideQuotes && (
                     <span className="cust-clever-beratung__evolution-arrow" aria-hidden>↓</span>
                   )}
-                  <LabelChips labels={step.newLabels} compact />
+                  {step.source === 'seller' ? (
+                    <LabelChips
+                      chips={step.newLabels.map((label) => ({
+                        label,
+                        origin: 'seller',
+                        badge: step.sellerInitials || 'VK',
+                        sellerName: step.sellerName || null,
+                      }))}
+                      compact
+                    />
+                  ) : (
+                    <LabelChips labels={step.newLabels} compact />
+                  )}
                 </div>
               ) : (
                 <p className="cust-clever-beratung__evolution-muted">Kein neues Verständnis</p>
@@ -256,6 +316,7 @@ export default function CustomerAkteCleverBeratung({
   onChangeRecommendation,
   onAddSellerInsight,
   isSavingInsight = false,
+  hideWishChips = false,
 }) {
   const understanding = understandingProp ?? view?.understanding;
   if (!understanding?.meta?.hasData) return null;
@@ -283,11 +344,8 @@ export default function CustomerAkteCleverBeratung({
     <section className="cust-clever-beratung cust-clever-beratung--kundenbild" aria-labelledby="cust-clever-beratung-title">
       <header className="cust-clever-beratung__head cust-clever-beratung__head--minimal">
         <h2 id="cust-clever-beratung-title" className="cust-clever-beratung__title">
-          Kundenbild
+          Gespräch & nächster Schritt
         </h2>
-        <p className="cust-clever-beratung__hint">
-          Was der Kunde erzählt hat – und was Sie im Gespräch gelernt haben.
-        </p>
       </header>
 
       {onAddSellerInsight && (
@@ -299,7 +357,7 @@ export default function CustomerAkteCleverBeratung({
 
       <div className="cust-clever-beratung__card cust-clever-beratung__card--kundenbild">
         <GespraechseinstiegSection gespraechseinstieg={gespraechseinstieg} />
-        <VerstaendnisSection verstaendnis={verstaendnis} />
+        <VerstaendnisSection verstaendnis={verstaendnis} hideWishChips={hideWishChips} />
         <EntwicklungSection entwicklung={entwicklung} hideQuotes={hideEntwicklungQuotes} />
         <OriginaltonSection originalton={originalton} defaultCollapsed />
 

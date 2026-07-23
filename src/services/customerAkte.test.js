@@ -7,10 +7,12 @@ import {
   buildSchnellaufnahmeChips,
   buildWishConditionChips,
   computeAkteCleverStaerke,
+  filterNotepadChipsExcludingKonditionen,
   formatCustomerSince,
   formatVehicleCardConditions,
   formatVehicleCardPrice,
   formatVehicleCardsReadyMessage,
+  isKonditionenOwnedNotepadLabel,
 } from './customerAkte.js';
 
 const since = formatCustomerSince(new Date().toISOString());
@@ -106,15 +108,36 @@ assert.ok(cashChips.some((c) => c.includes('50.000')));
 const schnellChips = buildSchnellaufnahmeChips({
   paymentType: 'leasing',
   termMonths: 48,
-  mileagePerYear: 15000,
+  mileagePerYear: 10000,
   downPayment: 1000,
   desiredRate: null,
-  delivery: '',
+  delivery: 'sofort',
 });
+assert.equal(schnellChips.length, 5);
+assert.deepEqual(
+  schnellChips.map((c) => c.field),
+  ['paymentType', 'termMonths', 'mileagePerYear', 'downPayment', 'delivery'],
+);
 assert.equal(schnellChips[0].label, 'Leasing');
-assert.equal(schnellChips[0].field, 'paymentType');
-assert.ok(schnellChips.some((c) => c.label === '48 Monate' && c.field === 'termMonths'));
-assert.ok(schnellChips.some((c) => c.label === 'Budget offen' && c.field === 'desiredRate'));
-assert.ok(schnellChips.some((c) => c.label === 'Liefertermin Egal' && c.field === 'delivery'));
+assert.equal(schnellChips[1].label, '48');
+assert.equal(schnellChips[2].label, '10.000 km');
+assert.equal(schnellChips[3].label, 'Anzahlung 1.000 €');
+assert.equal(schnellChips[4].label, 'Verfügbarkeit Sofort');
+
+const emptyKonditionen = buildSchnellaufnahmeChips({});
+assert.equal(emptyKonditionen.length, 5);
+assert.equal(emptyKonditionen[0].label, 'Zahlungsart offen');
+assert.ok(emptyKonditionen.slice(1).every((c) => /offen/i.test(c.label)));
+
+assert.ok(isKonditionenOwnedNotepadLabel('Leasing'));
+assert.ok(isKonditionenOwnedNotepadLabel('Kauf'));
+assert.ok(!isKonditionenOwnedNotepadLabel('AHK'));
+assert.deepEqual(
+  filterNotepadChipsExcludingKonditionen([
+    { label: 'Leasing', origin: 'seller' },
+    { label: 'AHK', origin: 'seller' },
+  ]).map((c) => c.label),
+  ['AHK'],
+);
 
 console.log('customerAkte.test.js: ok');

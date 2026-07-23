@@ -90,6 +90,27 @@ export function replaceKundenhelferChip(notes = '', oldChip = '', newChip = '') 
   );
 }
 
+/**
+ * Innerhalb einer Optionsgruppe genau ein Label (oder keines).
+ * Tippt man das aktive Label erneut → Gruppe leeren (Toggle-Off).
+ * @param {string} notes
+ * @param {string[]} groupLabels
+ * @param {string|null} nextLabel
+ */
+export function setExclusiveChipInGroup(notes = '', groupLabels = [], nextLabel = null) {
+  const group = new Set(
+    (groupLabels ?? []).map((label) => String(label).trim()).filter(Boolean),
+  );
+  const parts = parseKundenhelferNotes(notes);
+  const current = parts.find((part) => group.has(part)) ?? null;
+  const cleaned = parts.filter((part) => !group.has(part));
+  const trimmed = String(nextLabel ?? '').trim();
+  if (!trimmed || current === trimmed) {
+    return joinKundenhelferNotes(cleaned);
+  }
+  return joinKundenhelferNotes([...cleaned, trimmed]);
+}
+
 export function buildKundenhelferCardSummary(notes = '', voiceMemoCount = 0) {
   const parts = parseKundenhelferNotes(notes);
   if (!parts.length) {

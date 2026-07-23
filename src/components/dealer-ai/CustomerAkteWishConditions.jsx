@@ -1,5 +1,5 @@
 /**
- * Schnellaufnahme – kompakte Mini-Karte mit klickbaren Chips.
+ * Konditionen – harte Deal-Fakten als klickbare Chips.
  */
 import './CustomerAkte.css';
 
@@ -21,7 +21,7 @@ export default function CustomerAkteWishConditions({
   return (
     <section className="cust-akte-schnell" aria-labelledby="cust-akte-schnell-title">
       <div className="cust-akte-schnell__head">
-        <p id="cust-akte-schnell-title" className="cust-akte-schnell__label">Schnellaufnahme</p>
+        <p id="cust-akte-schnell-title" className="cust-akte-schnell__label">Konditionen</p>
         {onEdit && (
           <button type="button" className="cust-akte-schnell__edit" onClick={onEdit}>
             Ändern
