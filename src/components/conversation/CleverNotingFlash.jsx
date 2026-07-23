@@ -2,6 +2,7 @@ import './clever-conversation.css';
 
 /**
  * Kurzer Toast (max. ~1,5 s) – blockiert keine Inhalte.
+ * Screenreader-Details kommen über Memory-Bar aria-live.
  */
 export default function CleverNotingFlash({ labels = [] }) {
   if (!labels.length) return null;
@@ -10,7 +11,7 @@ export default function CleverNotingFlash({ labels = [] }) {
 
   return (
     <div className="cc-note-toast cc-note-toast--enter" role="status" aria-live="polite">
-      Notiert: {preview}
+      Clever hat mich verstanden · {preview}
     </div>
   );
 }

@@ -8,8 +8,8 @@ export const VEHICLE_DIRECTION_INTRO = 'Passende Richtungen:';
 
 export const VEHICLE_DIRECTION_REACTIONS = [
   { id: 'interested', label: 'Interessant' },
-  { id: 'not_fit', label: 'Nein' },
-  { id: 'explore', label: 'Genau' },
+  { id: 'explore', label: 'Mehr erfahren' },
+  { id: 'not_fit', label: 'Nicht passend', subtle: true },
 ];
 
 const EV_MODEL_KEYS = new Set([
@@ -50,36 +50,65 @@ function fuelMatchesProfile(attrs, profile) {
 
 function buildDirectionSubtitle(profile = {}, attrs = {}) {
   const parts = [];
-  const fuel = profile.fuel;
-  if (fuel === 'diesel') parts.push('Diesel');
-  else if (fuel === 'verbrenner' || fuel === 'benzin') parts.push('Benzin');
-  else if (fuel === 'electric' || fuel === 'elektro') parts.push('Elektro');
-  else if (fuel === 'hybrid') parts.push('Hybrid');
-  else if (fuel === 'phev') parts.push('Plug-in-Hybrid');
 
-  if (profile.drive === 'awd') parts.push('Allrad');
-  if (profile.transmission === 'automatic') parts.push('Automatik');
-  if (attrs.seats >= 7) parts.push('7 Sitze');
-  else if (profile.children) parts.push('Familien-SUV');
+  if (attrs.typicalRangeKm && (profile.fuel === 'electric' || profile.fuel === 'elektro'
+    || profile.priorities?.includes('range') || profile.longDistance === 'often')) {
+    parts.push(`${attrs.typicalRangeKm} km WLTP`);
+  }
 
-  return parts.length ? parts.join(' · ') : attrs.bodyType === 'suv' ? 'SUV' : null;
+  if (attrs.towCapacityKg && (profile.towCapacityKg || profile.towing || profile.usage?.includes('anhaenger'))) {
+    parts.push(`${Number(attrs.towCapacityKg).toLocaleString('de-DE')} kg Anhängelast`);
+  }
+
+  if (attrs.seats >= 7 || profile.children || profile.seatsNeeded >= 7) {
+    parts.push(`${attrs.seats} Sitze`);
+  } else if (parts.length < 2 && attrs.seats) {
+    parts.push(`${attrs.seats} Sitze`);
+  }
+
+  if (parts.length < 2) {
+    const fuel = profile.fuel;
+    if (fuel === 'diesel') parts.push('Diesel');
+    else if (fuel === 'verbrenner' || fuel === 'benzin') parts.push('Benzin');
+    else if (fuel === 'electric' || fuel === 'elektro') parts.push('Elektro');
+    else if (fuel === 'hybrid') parts.push('Hybrid');
+    else if (fuel === 'phev') parts.push('Plug-in-Hybrid');
+  }
+
+  if (parts.length < 2 && profile.drive === 'awd') parts.push('Allrad');
+  if (parts.length < 2 && attrs.bodyType === 'suv') parts.push('SUV');
+
+  return parts.length ? parts.slice(0, 3).join(' · ') : null;
 }
 
 function buildFitHints(profile = {}, attrs = {}) {
   const hints = [];
+
+  if (attrs.typicalRangeKm && hints.length < 3) {
+    if (profile.priorities?.includes('range') || profile.longDistance === 'often'
+      || profile.fuel === 'electric' || profile.fuel === 'elektro') {
+      hints.push(`${attrs.typicalRangeKm} km WLTP`);
+    }
+  }
+
+  if (attrs.towCapacityKg && (profile.towCapacityKg || profile.towing)) {
+    hints.push(`${Number(attrs.towCapacityKg).toLocaleString('de-DE')} kg Anhängelast`);
+  }
+
+  if (attrs.seats >= 7 && (profile.children || profile.seatsNeeded >= 7)) {
+    hints.push(`${attrs.seats} Sitze`);
+  } else if (profile.children && attrs.seats >= 5) {
+    hints.push('genug Platz');
+  }
+
   if (profile.modelHint && attrs.modelKey.startsWith(profile.modelHint)) {
     hints.push('passt zu Ihrem Modellwunsch');
-  } else if (profile.bodyType && attrs.bodyType === profile.bodyType) {
+  } else if (profile.bodyType && attrs.bodyType === profile.bodyType && hints.length < 3) {
     hints.push('ähnliche Fahrzeugklasse');
   }
-  if (profile.budget?.maxPrice || profile.budget?.maxMonthlyRate) {
-    hints.push('in Ihrer Budget-Richtung');
-  }
-  if (profile.drive === 'awd') hints.push('Allrad verfügbar');
-  if (profile.children && attrs.seats >= 5) hints.push('genug Platz');
-  if (profile.towCapacityKg && (attrs.towCapacityKg ?? 0) >= profile.towCapacityKg) {
-    hints.push('hohe Anhängelast');
-  }
+
+  if (profile.drive === 'awd' && hints.length < 3) hints.push('Allrad verfügbar');
+
   if (!hints.length) hints.push('passt zu Ihren Angaben');
   return hints.slice(0, 3);
 }

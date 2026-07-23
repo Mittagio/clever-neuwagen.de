@@ -1,4 +1,47 @@
+import { buildStructuredNotepadSummary } from '../../services/consultation/notepadChipBundling.js';
+import { iconForNotepadLabel } from './CleverMemoryBar.jsx';
 import './clever-conversation.css';
+
+function SummarySection({ title, labels }) {
+  if (!labels?.length) return null;
+  return (
+    <div className="cc-note-summary__section">
+      <p className="cc-note-summary__section-title">{title}</p>
+      <ul className="cc-note-summary__chips">
+        {labels.map((label) => (
+          <li key={label} className="cc-note-summary__chip">
+            <span aria-hidden>{iconForNotepadLabel(label)}</span>
+            <span>{label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Strukturierte Notizzettel-Zusammenfassung (Display-only). */
+export function CleverNotepadSummary({
+  labels = [],
+  heading = 'Das habe ich für Sie notiert',
+  className = '',
+}) {
+  const summary = buildStructuredNotepadSummary(labels);
+  const hasAny = summary.vehicle.length
+    || summary.conditions.length
+    || summary.wishes.length
+    || summary.timing.length;
+  if (!hasAny) return null;
+
+  return (
+    <div className={`cc-note-summary ${className}`.trim()} aria-label={heading}>
+      <p className="cc-note-summary__heading">{heading}</p>
+      <SummarySection title="Fahrzeugwunsch" labels={summary.vehicle} />
+      <SummarySection title="Ausstattung & Wünsche" labels={summary.wishes} />
+      <SummarySection title="Konditionen" labels={summary.conditions} />
+      <SummarySection title="Planung" labels={summary.timing} />
+    </div>
+  );
+}
 
 export default function CleverHandoffComplete({
   completeView,
@@ -6,7 +49,7 @@ export default function CleverHandoffComplete({
 }) {
   if (!completeView) return null;
 
-  const wishLabels = (completeView.wishLabels ?? []).slice(0, 12);
+  const wishLabels = completeView.wishLabels ?? [];
 
   return (
     <section className="cc-offer-complete cc-turn-enter" aria-labelledby="cc-offer-complete-title">
@@ -24,16 +67,10 @@ export default function CleverHandoffComplete({
       )}
 
       {wishLabels.length > 0 && (
-        <div className="cc-offer-complete__wishes" aria-label={completeView.wishesHeading || 'Ihre Wünsche'}>
-          <p className="cc-offer-complete__wishes-heading">
-            {completeView.wishesHeading || 'Ihre Wünsche'}
-          </p>
-          <ul className="cc-offer-complete__wish-chips">
-            {wishLabels.map((label) => (
-              <li key={label} className="cc-offer-complete__wish-chip">{label}</li>
-            ))}
-          </ul>
-        </div>
+        <CleverNotepadSummary
+          labels={wishLabels}
+          heading={completeView.wishesHeading || 'Das habe ich für Sie notiert'}
+        />
       )}
 
       {(completeView.checklist?.length > 0) && (

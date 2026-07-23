@@ -57,6 +57,7 @@ export default function CleverVehicleDirections({
                       type="button"
                       className={[
                         'cc-directions__action',
+                        option.subtle ? ' cc-directions__action--subtle' : '',
                         reaction === option.id ? ' cc-directions__action--active' : '',
                       ].join('')}
                       aria-pressed={reaction === option.id}

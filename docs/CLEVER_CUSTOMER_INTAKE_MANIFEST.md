@@ -160,6 +160,19 @@ Keine zweite Kundenwahrheit. Keine parallele Wunschdatenbank.
 | **Next Topics** | Unter Clever-Turn | Nur UI-Navigation |
 | **Wunschübergabe** | Composer-CTA | Startet Handoff-Flow |
 
+### Smart Notizzettel
+
+Darstellungslogik über dem bestehenden Notizzettel:
+
+- Wenige **Kernwünsche** bleiben direkt sichtbar.
+- Details landen in kompakten Gruppen (**Konditionen**, **Wünsche**).
+- Magic Capture: kurz bestätigen → einsortieren → Count/Glow.
+- Keine neue Datenstruktur / keine zweite Kundenwahrheit.
+- Customer-only: nur Gesagtes, Gewähltes, Bestätigtes, Korrigiertes.
+- „Interessant“ auf Fahrzeugkarte → Modellinteresse; „Mehr erfahren“ → nur Navigation.
+
+Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#smart-notizzettel).
+
 ---
 
 ## Öffentliche Kunden-UI

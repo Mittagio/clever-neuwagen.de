@@ -887,22 +887,15 @@ export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
     return next;
   }
 
+  // „Mehr erfahren“ = Gesprächsnavigation, kein neuer Notizzettel-Wunsch
   const needProfile = {
     ...next.needProfile,
     selectedModelKey: modelKey,
-    understoodLabels: buildUnderstoodLabels({
-      ...next.needProfile,
-      selectedModelKey: modelKey,
-    }),
   };
   next = {
     ...next,
     needProfile,
     selectedModelKey: modelKey,
-    notepadLabels: [...new Set([
-      ...(next.notepadLabels ?? []),
-      ...buildUnderstoodLabels(needProfile),
-    ])],
   };
 
   if (isEvDirectionModel(modelKey)) {
@@ -914,7 +907,7 @@ export function submitVehicleDirectionReaction(session, modelKey, reactionId) {
     ...next,
     turns: [
       ...next.turns,
-      cleverAckTurn(`Gut – ${label}.`),
+      cleverAckTurn(`Gerne mehr zu ${label}.`),
     ],
   };
 }

@@ -1,4 +1,4 @@
-# Clever Conversation UI v1.3
+# Clever Conversation UI v1.4
 
 > **Produktvorrang:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
 
@@ -28,14 +28,43 @@ Leitsatz: **Antworten. Wünsche erkennen. Notieren. Weiterhelfen. Übergeben.**
 
 - Label: **Notizzettel** (nicht „Wunschprofil“, nicht „Analyse“)
 - Sticky, kompakte Chips (~32–36 px), löschbar (×)
-- overflow-x auto, kein Zeilenumbruch
+- overflow-x auto, horizontal swipebar, möglichst 1–2 Reihen
 - Neue Chips: kurze Magic-/Fly-in- + Glow-Animation (`prefers-reduced-motion` beachten)
-- Optionaler Toast max. 1,5 s („Notiert: …“) – blockiert nichts
+- Optionaler Toast max. 1,5 s („Clever hat mich verstanden · …“) – blockiert nichts
 - Quelle: Customer Understanding / needProfile – keine zweite Wahrheit
 - Fahrzeugfakt in der Antwort erzeugt **keinen** Wunsch-Chip
 - AI-`vehicleDirections` erzeugen **keinen** Wunsch-Chip
 - Kundenbestätigung eines Modells → z. B. „EV9 interessant“
 
+### Smart Notizzettel
+
+Der Smart Notizzettel zeigt wenige zentrale Kundenwünsche direkt
+und gruppiert Detailinformationen kompakt.
+
+Neue Informationen werden zunächst sichtbar bestätigt
+(Toast + kurzer Capture-/Glow-Moment) und anschließend automatisch
+in die passende Gruppe einsortiert.
+
+**Gruppierung ist Darstellung, nicht neue Kundenwahrheit.**
+Keine parallele `noteGroups`-Speicherung – Renderer liest `session.notepadLabels`.
+
+| Ebene | Inhalt |
+|-------|--------|
+| **Kernchips** | ca. 3–5 direkt sichtbar: Antrieb, Klasse, Sitze, harte Anhängelast, Modellinteresse … |
+| **💶 Konditionen** | Budget, Leasing/Finanzierung/Kauf, Laufzeit, km, Anzahlung … |
+| **✨ Wünsche** | Ausstattung & weiche Verkäufernotizen |
+| **📅 Planung** | optional, nur wenn mehrere Timing-Angaben |
+
+Geschlossen: z. B. `💶 Konditionen 4 ▾` – Kinderchips **nicht** parallel in der Hauptzeile.
+Geöffnet: kompaktes Panel/Popover mit ×-Löschen über bestehende Pfade.
+
+„Konditionen“ ist UI-Navigation, keine Clever-Gesprächssprache.
+
+Wunschübergabe / Complete: strukturierte Zusammenfassung
+„Das habe ich für Sie notiert“ (Fahrzeugwunsch · Wünsche · Konditionen).
+
+Logik: `notepadChipBundling.js` → `buildBundledNotepadItems` / `buildStructuredNotepadSummary`
+UI: `CleverMemoryBar.jsx`
 ## Antwortturn (Darstellungshoheit)
 
 Im **AI-Modus** (`conversationMode === 'ai'` / `turn.aiTurn`):
@@ -166,11 +195,12 @@ Unvollständige Profile sind erlaubt.
 | Datei | Rolle |
 |-------|--------|
 | `CleverConversationExperience.jsx` | Shell, AI/Fallback-Gate |
-| `CleverMemoryBar.jsx` | Notizzettel |
+| `CleverMemoryBar.jsx` | Smart Notizzettel (Kernchips + Gruppen) |
+| `notepadChipBundling.js` | Display-Gruppierung (keine zweite Wahrheit) |
 | `CleverConversationTurn.jsx` | Bubbles, Fact-Chips, Next Topics, Anhänge |
 | `CleverComposerExits.jsx` | CTA „Meine Wünsche weitergeben“ |
 | `CleverPersonalHandoff.jsx` | Soft Wish Enrichment → E-Mail → Code |
-| `CleverHandoffComplete.jsx` | Erfolg mit Wunschchips |
+| `CleverHandoffComplete.jsx` | Erfolg + strukturierte Wunsch-Zusammenfassung |
 | `softWishEnrichmentSuggestions.js` | Soft-Opt-in-Vorschläge |
 | `customerIntakeExits.js` | CTA-Copy |
 | `clever-conversation.css` | Layout / Messenger |

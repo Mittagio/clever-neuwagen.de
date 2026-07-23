@@ -12,6 +12,7 @@ import {
   PURCHASE_SPECIAL_OPTIONS,
   VEHICLE_NEED_TIMING_OPTIONS,
   emptyWishHandoffEnrichment,
+  mergeWishHandoffNotepadLabels,
   prefillWishHandoffEnrichment,
 } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
@@ -19,6 +20,7 @@ import {
   buildEquipmentChipsForCategory,
 } from '../../services/consultation/wishHandoffEquipment.js';
 import { mergeTextIntoNeedProfile } from '../../services/consultation/needProfileService.js';
+import { CleverNotepadSummary } from './CleverHandoffComplete.jsx';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -493,6 +495,12 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
               </button>
             </div>
           </div>
+
+          <CleverNotepadSummary
+            labels={mergeWishHandoffNotepadLabels(handoffView.wishLabels ?? [], enrichment)}
+            heading="Das habe ich für Sie notiert"
+            className="cc-note-summary--soft"
+          />
 
           <button type="button" className="cc-offer-handoff__cta" onClick={goToIdentify}>
             Weiter

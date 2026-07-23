@@ -740,7 +740,7 @@ export function buildHandoffCompleteView(
     intro: `${recipient} Der Verkäufer kann direkt dort weitermachen, wo Sie mit Clever aufgehört haben.`,
     checklist: null,
     wishLabels,
-    wishesHeading: 'Ihre Wünsche',
+    wishesHeading: 'Das habe ich für Sie notiert',
     outro: null,
     confirmationHint: email || null,
     trustSla: null,
