@@ -166,7 +166,8 @@ Darstellungslogik über dem bestehenden Notizzettel:
 
 - Wenige **Kernwünsche** bleiben direkt sichtbar.
 - Details landen in kompakten Gruppen (**Konditionen**, **Wünsche**).
-- Magic Capture: kurz bestätigen → einsortieren → Count/Glow.
+- Magic Capture: kurz bestätigen → einsortieren → Count/Glow (inkl. Soft Wish).
+- Vor E-Mail / Complete: einmal strukturierte Zusammenfassung „Das habe ich für Sie notiert“.
 - Keine neue Datenstruktur / keine zweite Kundenwahrheit.
 - Customer-only: nur Gesagtes, Gewähltes, Bestätigtes, Korrigiertes.
 - „Interessant“ auf Fahrzeugkarte → Modellinteresse; „Mehr erfahren“ → nur Navigation.

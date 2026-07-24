@@ -12,6 +12,7 @@ import {
   PURCHASE_SPECIAL_OPTIONS,
   VEHICLE_NEED_TIMING_OPTIONS,
   emptyWishHandoffEnrichment,
+  mergeWishHandoffNotepadLabels,
   prefillWishHandoffEnrichment,
 } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
@@ -19,6 +20,7 @@ import {
   buildEquipmentChipsForCategory,
 } from '../../services/consultation/wishHandoffEquipment.js';
 import { mergeTextIntoNeedProfile } from '../../services/consultation/needProfileService.js';
+import { CleverNotepadSummary } from './CleverHandoffComplete.jsx';
 import CleverVehicleModelRail from './CleverVehicleModelRail.jsx';
 import './clever-conversation.css';
 
@@ -80,7 +82,15 @@ function SoftAccordion({ id, title, icon, open, onToggle, summary = null, childr
   );
 }
 
-function SoftChipGroup({ label = null, options, value, multi = false, selectedIds = [], onSelect }) {
+function SoftChipGroup({
+  label = null,
+  options,
+  value,
+  multi = false,
+  selectedIds = [],
+  flyingId = null,
+  onSelect,
+}) {
   return (
     <div className="cc-offer-handoff__pick-group">
       {label && <p className="cc-offer-handoff__pick-label">{label}</p>}
@@ -93,7 +103,11 @@ function SoftChipGroup({ label = null, options, value, multi = false, selectedId
             <button
               key={option.id}
               type="button"
-              className={`cc-soft-wish__chip${selected ? ' is-selected' : ''}`}
+              className={[
+                'cc-soft-wish__chip',
+                selected ? 'is-selected' : '',
+                flyingId === option.id ? 'is-flying' : '',
+              ].filter(Boolean).join(' ')}
               aria-pressed={selected}
               onClick={() => onSelect(option.id)}
             >
@@ -124,8 +138,10 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   const [freetext, setFreetext] = useState('');
   const [openAcc, setOpenAcc] = useState(null);
   const [equipCategory, setEquipCategory] = useState('comfort');
+  const [flyingChipId, setFlyingChipId] = useState(null);
   const codeAutoSubmitRef = useRef(false);
   const freetextRef = useRef(null);
+  const flyTimerRef = useRef(null);
 
   const {
     isLoggedIn,
@@ -153,6 +169,10 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     }
   }, [isLoggedIn, authEmail]);
 
+  useEffect(() => () => {
+    if (flyTimerRef.current) window.clearTimeout(flyTimerRef.current);
+  }, []);
+
   if (!handoffView) return null;
 
   const title = handoffView.title || 'Meine Wünsche weitergeben';
@@ -177,6 +197,21 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   const showPurchaseSpecial = enrichment.acquisitionType === 'purchase';
   const showLeasing = enrichment.acquisitionType === 'leasing';
   const showFinance = enrichment.acquisitionType === 'finance';
+  const liveNotepadLabels = mergeWishHandoffNotepadLabels(
+    handoffView.wishLabels ?? [],
+    enrichment,
+  );
+
+  function triggerSoftFly(chipId) {
+    if (!chipId || typeof window === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (flyTimerRef.current) window.clearTimeout(flyTimerRef.current);
+    setFlyingChipId(chipId);
+    flyTimerRef.current = window.setTimeout(() => {
+      setFlyingChipId((prev) => (prev === chipId ? null : prev));
+      flyTimerRef.current = null;
+    }, 520);
+  }
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -206,11 +241,14 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
 
   function toggleEquipmentId(equipmentId) {
     if (!equipmentId) return;
+    const current = enrichment.equipmentWishIds ?? [];
+    const adding = !current.includes(equipmentId);
+    if (adding) triggerSoftFly(equipmentId);
     setEnrichment((prev) => {
-      const current = prev.equipmentWishIds ?? [];
-      const nextIds = current.includes(equipmentId)
-        ? current.filter((id) => id !== equipmentId)
-        : [...current, equipmentId];
+      const ids = prev.equipmentWishIds ?? [];
+      const nextIds = ids.includes(equipmentId)
+        ? ids.filter((id) => id !== equipmentId)
+        : [...ids, equipmentId];
       return { ...prev, equipmentWishIds: nextIds };
     });
   }
@@ -374,7 +412,11 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                   <button
                     key={chip.id}
                     type="button"
-                    className={`cc-soft-wish__chip${chip.selected ? ' is-selected' : ''}`}
+                    className={[
+                      'cc-soft-wish__chip',
+                      chip.selected ? 'is-selected' : '',
+                      flyingChipId === chip.id ? 'is-flying' : '',
+                    ].filter(Boolean).join(' ')}
                     aria-pressed={chip.selected}
                     onClick={() => toggleEquipmentId(chip.id)}
                   >
@@ -398,9 +440,13 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
             <SoftChipGroup
               options={VEHICLE_NEED_TIMING_OPTIONS}
               value={enrichment.vehicleNeedTiming}
-              onSelect={(id) => patchEnrichment({
-                vehicleNeedTiming: enrichment.vehicleNeedTiming === id ? null : id,
-              })}
+              flyingId={flyingChipId}
+              onSelect={(id) => {
+                if (enrichment.vehicleNeedTiming !== id) triggerSoftFly(id);
+                patchEnrichment({
+                  vehicleNeedTiming: enrichment.vehicleNeedTiming === id ? null : id,
+                });
+              }}
             />
           </SoftAccordion>
 
@@ -415,10 +461,14 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
             <SoftChipGroup
               options={ACQUISITION_OPTIONS}
               value={enrichment.acquisitionType}
-              onSelect={(id) => patchEnrichment({
-                acquisitionType: enrichment.acquisitionType === id ? null : id,
-                specialConditionId: id === 'purchase' ? enrichment.specialConditionId : null,
-              })}
+              flyingId={flyingChipId}
+              onSelect={(id) => {
+                if (enrichment.acquisitionType !== id) triggerSoftFly(id);
+                patchEnrichment({
+                  acquisitionType: enrichment.acquisitionType === id ? null : id,
+                  specialConditionId: id === 'purchase' ? enrichment.specialConditionId : null,
+                });
+              }}
             />
 
             {showPurchaseSpecial && (
@@ -426,9 +476,13 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                 label="Kundengruppe"
                 options={PURCHASE_SPECIAL_OPTIONS}
                 value={enrichment.specialConditionId}
-                onSelect={(id) => patchEnrichment({
-                  specialConditionId: enrichment.specialConditionId === id ? null : id,
-                })}
+                flyingId={flyingChipId}
+                onSelect={(id) => {
+                  if (enrichment.specialConditionId !== id) triggerSoftFly(id);
+                  patchEnrichment({
+                    specialConditionId: enrichment.specialConditionId === id ? null : id,
+                  });
+                }}
               />
             )}
 
@@ -438,19 +492,31 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                   label="Laufzeit"
                   options={LEASING_TERM_OPTIONS}
                   value={enrichment.leasing?.termId}
-                  onSelect={(id) => patchNested('leasing', { termId: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.leasing?.termId !== id) triggerSoftFly(id);
+                    patchNested('leasing', { termId: id });
+                  }}
                 />
                 <SoftChipGroup
                   label="km / Jahr"
                   options={LEASING_MILEAGE_OPTIONS}
                   value={enrichment.leasing?.mileageId}
-                  onSelect={(id) => patchNested('leasing', { mileageId: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.leasing?.mileageId !== id) triggerSoftFly(id);
+                    patchNested('leasing', { mileageId: id });
+                  }}
                 />
                 <SoftChipGroup
                   label="Anzahlung"
                   options={DOWN_PAYMENT_OPTIONS}
                   value={enrichment.leasing?.downPayment}
-                  onSelect={(id) => patchNested('leasing', { downPayment: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.leasing?.downPayment !== id) triggerSoftFly(id);
+                    patchNested('leasing', { downPayment: id });
+                  }}
                 />
               </div>
             )}
@@ -461,19 +527,31 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
                   label="Laufzeit"
                   options={FINANCE_TERM_OPTIONS}
                   value={enrichment.finance?.termId}
-                  onSelect={(id) => patchNested('finance', { termId: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.finance?.termId !== id) triggerSoftFly(id);
+                    patchNested('finance', { termId: id });
+                  }}
                 />
                 <SoftChipGroup
                   label="Anzahlung"
                   options={DOWN_PAYMENT_OPTIONS}
                   value={enrichment.finance?.downPayment}
-                  onSelect={(id) => patchNested('finance', { downPayment: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.finance?.downPayment !== id) triggerSoftFly(id);
+                    patchNested('finance', { downPayment: id });
+                  }}
                 />
                 <SoftChipGroup
                   label="Schlussrate"
                   options={FINANCE_BALLOON_OPTIONS}
                   value={enrichment.finance?.balloon}
-                  onSelect={(id) => patchNested('finance', { balloon: id })}
+                  flyingId={flyingChipId}
+                  onSelect={(id) => {
+                    if (enrichment.finance?.balloon !== id) triggerSoftFly(id);
+                    patchNested('finance', { balloon: id });
+                  }}
                 />
               </div>
             )}
@@ -482,9 +560,13 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
               label="Inzahlungnahme"
               options={HANDOFF_TRADE_IN_OPTIONS}
               value={enrichment.tradeIn}
-              onSelect={(id) => patchEnrichment({
-                tradeIn: enrichment.tradeIn === id ? null : id,
-              })}
+              flyingId={flyingChipId}
+              onSelect={(id) => {
+                if (enrichment.tradeIn !== id) triggerSoftFly(id);
+                patchEnrichment({
+                  tradeIn: enrichment.tradeIn === id ? null : id,
+                });
+              }}
             />
           </SoftAccordion>
 
@@ -543,6 +625,14 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
           </h2>
           <p className="cc-soft-identify__intro">{identifyIntro}</p>
           <p className="cc-soft-identify__trust">{trustNote}</p>
+
+          {liveNotepadLabels.length > 0 && (
+            <CleverNotepadSummary
+              labels={liveNotepadLabels}
+              heading="Das habe ich für Sie notiert"
+              className="cc-note-summary--soft"
+            />
+          )}
 
           {advisor ? (
             <div className="cc-offer-handoff__trust cc-offer-handoff__trust--soft" aria-label="Ihr Verkäufer">

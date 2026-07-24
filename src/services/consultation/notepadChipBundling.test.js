@@ -206,4 +206,34 @@ import { applyInterestedDirectionToNotepad } from './progressiveVehicleDirection
   console.log('✓ Interessant notiert, Mehr erfahren nicht');
 }
 
+{
+  // Korrektur: 48 → 36 Monate ersetzt, kein Doppel
+  const with48 = mergeWishHandoffNotepadLabels(['Elektro', '48 Monate'], {
+    vehicleNeedTiming: null,
+    acquisitionType: 'leasing',
+    specialConditionId: null,
+    tradeIn: null,
+    equipmentWishIds: [],
+    softExtraLabels: [],
+    leasing: { termId: 'term_48', mileageId: null, downPayment: null },
+    finance: {},
+  });
+  assert.ok(with48.includes('48 Monate'));
+
+  const with36 = mergeWishHandoffNotepadLabels(['Elektro', '48 Monate'], {
+    vehicleNeedTiming: null,
+    acquisitionType: 'leasing',
+    specialConditionId: null,
+    tradeIn: null,
+    equipmentWishIds: [],
+    softExtraLabels: [],
+    leasing: { termId: 'term_36', mileageId: null, downPayment: null },
+    finance: {},
+  });
+  assert.ok(with36.includes('36 Monate'));
+  assert.ok(!with36.includes('48 Monate'));
+  assert.equal(with36.filter((l) => /\d+\s*Monate/.test(l)).length, 1);
+  console.log('✓ Korrektur ersetzt Laufzeit ohne Doppel');
+}
+
 console.log('\nnotepadChipBundling.test.js: ok');

@@ -81,7 +81,13 @@ export default function CleverMemoryBar({
     const reduceMotion = typeof window !== 'undefined'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    setAnnounce(`${label} zum Notizzettel hinzugefügt.`);
+    setAnnounce(
+      bundle?.id === 'bundle:wishes'
+        ? `${label} als Wunsch notiert.`
+        : bundle?.id === 'bundle:payment'
+          ? `${label} zu den Konditionen hinzugefügt.`
+          : `${label} zum Notizzettel hinzugefügt.`,
+    );
 
     if (bundle && expandedBundle !== bundle.id) {
       if (!reduceMotion) {

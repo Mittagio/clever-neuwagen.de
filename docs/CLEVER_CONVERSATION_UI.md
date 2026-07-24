@@ -60,8 +60,11 @@ Geöffnet: kompaktes Panel/Popover mit ×-Löschen über bestehende Pfade.
 
 „Konditionen“ ist UI-Navigation, keine Clever-Gesprächssprache.
 
-Wunschübergabe / Complete: strukturierte Zusammenfassung
+Wunschübergabe: Soft-Schritt ohne doppelte Zusammenfassung (Notizzettel oben reicht);
+Identify-Schritt / Complete zeigt strukturiert
 „Das habe ich für Sie notiert“ (Fahrzeugwunsch · Wünsche · Konditionen).
+
+Soft Wish Enrichment nutzt dieselben `notepadLabels`-Pfade inkl. Magic Capture / Fly-Moment.
 
 Logik: `notepadChipBundling.js` → `buildBundledNotepadItems` / `buildStructuredNotepadSummary`
 UI: `CleverMemoryBar.jsx`
