@@ -49,6 +49,11 @@ Auf Fahrzeugkacheln kann Clever eine verifizierte Hersteller-Preisliste anbieten
 
 Details: [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#preisliste-als-digitale-verkaufstheke)
 
+## Magic Offer (Verkäufer)
+
+Natürliche Angebotserstellung mit Safe Calculation Boundary:
+[CLEVER_MAGIC_OFFER.md](./CLEVER_MAGIC_OFFER.md)
+
 ## Page Context
 
 Laufzeitkontext (keine neue Kundenwahrheit):

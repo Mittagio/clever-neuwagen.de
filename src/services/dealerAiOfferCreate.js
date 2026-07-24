@@ -454,6 +454,15 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
 
   const boardOffer = buildBoardOfferFromDraft(offerDraft, { configId, now });
   const hasCalculated = boardOffer.status === BOARD_OFFER_STATUS.OFFER_CREATED;
+  const originalPdf = offerDraft.source?.originalPdf ?? null;
+  const pdfPayload = originalPdf?.dataUrl
+    ? {
+      fileName: originalPdf.fileName ?? 'angebot.pdf',
+      uploadedAt: originalPdf.uploadedAt ?? now,
+      sizeBytes: originalPdf.sizeBytes ?? null,
+      dataUrl: originalPdf.dataUrl,
+    }
+    : null;
 
   return {
     crmPatch: {
@@ -472,12 +481,12 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
         [cardId]: {
           id: `vo-${cardId}`,
           vehicleCardId: cardId,
-          status: VEHICLE_OFFER_STATUS.DRAFT,
+          status: pdfPayload ? VEHICLE_OFFER_STATUS.PDF_UPLOADED : VEHICLE_OFFER_STATUS.DRAFT,
           boardStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : BOARD_OFFER_STATUS.DRAFT,
           boardOffer,
           downPayment: offerDraft.payment.downPayment ?? 0,
           deliveryFee: offerDraft.payment.transferCost ?? 990,
-          pdf: null,
+          pdf: pdfPayload,
           onlineLink: null,
           tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
           sentVia: null,

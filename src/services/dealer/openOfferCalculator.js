@@ -1,5 +1,6 @@
 /**
- * Einheitlicher Einstieg zum Angebotskalkulator (DealerAiConditionsStep /verkaufsassistent).
+ * Einheitlicher Einstieg zur Angebotserstellung (Magic Offer · PDF · Legacy-Kalkulator).
+ * Primär: magic-offer-entry. Legacy: DealerAiConditionsStep („Manuell erfassen“).
  */
 import { buildKundenaktePath } from '../leadAkteEntry.js';
 import { buildAddProposalNavigateContext } from './customerAddProposalFlow.js';
