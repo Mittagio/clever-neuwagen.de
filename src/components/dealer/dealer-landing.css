@@ -3159,7 +3159,7 @@
   }
 
   .dl-sales-journey--advisor {
-    max-width: 720px;
+    max-width: var(--content-reading, 720px);
   }
 
   .dl-sales-understand__hero--compact {

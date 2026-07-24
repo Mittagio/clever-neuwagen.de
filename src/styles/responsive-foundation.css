@@ -1,0 +1,408 @@
+/**
+ * Clever Responsive Foundation – Layout Primitives & Utilities
+ * Same components, responsive composition. See docs/CLEVER_RESPONSIVE_DESIGN.md
+ */
+
+/* ── Page shells ── */
+.cn-page {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+  box-sizing: border-box;
+}
+
+.cn-page--reading {
+  max-width: var(--content-reading);
+}
+
+.cn-page--workspace {
+  max-width: var(--content-workspace);
+}
+
+.cn-page--wide {
+  max-width: var(--content-wide);
+}
+
+.cn-page--phone {
+  max-width: var(--cn-page-max);
+}
+
+.cn-page--flush {
+  padding-inline: 0;
+}
+
+/* ── Conversational Workspace Shell (Seitentyp A) ── */
+.cn-workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  margin-inline: auto;
+  background: var(--color-bg, #f7f8fa);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cn-workspace__header {
+  flex-shrink: 0;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border, #eef1f5);
+}
+
+.cn-workspace__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cn-workspace__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-surface, #fff);
+}
+
+.cn-workspace__context,
+.cn-workspace__assist {
+  display: none;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--color-surface, #fff);
+}
+
+.cn-workspace__context {
+  border-right: 1px solid var(--color-border, #eef1f5);
+  padding: var(--space-md);
+}
+
+.cn-workspace__assist {
+  border-left: 1px solid var(--color-border, #eef1f5);
+  padding: var(--space-md);
+}
+
+.cn-workspace__nav {
+  flex-shrink: 0;
+}
+
+/* Tablet: Context | Main */
+@media (min-width: 768px) {
+  .cn-workspace {
+    max-width: var(--content-workspace);
+    max-height: none;
+    min-height: 100dvh;
+    border-inline: 1px solid var(--color-border, #eef1f5);
+  }
+
+  .cn-workspace--split .cn-workspace__body {
+    flex-direction: row;
+  }
+
+  .cn-workspace--split .cn-workspace__context {
+    display: block;
+    width: var(--sidebar-context);
+    flex-shrink: 0;
+  }
+
+  .cn-workspace--split .cn-workspace__mobile-context {
+    display: none !important;
+  }
+}
+
+/* Desktop: Context | Main | Assist */
+@media (min-width: 1100px) {
+  .cn-workspace {
+    max-width: min(100%, var(--content-wide));
+  }
+
+  .cn-workspace--triple .cn-workspace__body {
+    flex-direction: row;
+  }
+
+  .cn-workspace--triple .cn-workspace__context {
+    display: block;
+    width: var(--sidebar-context);
+    flex-shrink: 0;
+  }
+
+  .cn-workspace--triple .cn-workspace__assist {
+    display: block;
+    width: var(--sidebar-assistant);
+    flex-shrink: 0;
+  }
+
+  .cn-workspace--triple .cn-workspace__mobile-context {
+    display: none !important;
+  }
+
+  .cn-workspace--triple .cn-workspace__main {
+    max-width: none;
+    flex: 1 1 minmax(560px, 760px);
+  }
+}
+
+@media (min-width: 1440px) {
+  .cn-workspace {
+    max-width: var(--content-wide);
+  }
+
+  .cn-workspace--triple .cn-workspace__context {
+    width: 280px;
+  }
+
+  .cn-workspace--triple .cn-workspace__assist {
+    width: 320px;
+  }
+}
+
+/* Bottom nav only on mobile; desktop uses side rail / rail variant */
+.cn-hide-desktop-nav {
+  display: block;
+}
+
+@media (min-width: 1100px) {
+  .cn-hide-desktop-nav {
+    display: none !important;
+  }
+
+  .cn-show-desktop-only {
+    display: block !important;
+  }
+}
+
+.cn-show-desktop-only {
+  display: none;
+}
+
+/* ── Offer prep split (Seitentyp C) ── */
+.cn-split-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: var(--content-workspace);
+  margin-inline: auto;
+}
+
+@media (min-width: 1100px) {
+  .cn-split-preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: var(--space-lg);
+    align-items: start;
+  }
+}
+
+/* ── Card grid (Seitentyp D / F) ── */
+.cn-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .cn-card-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .cn-card-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cn-card-grid--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ── Form reading width (Seitentyp E) ── */
+.cn-form-rail {
+  width: 100%;
+  max-width: var(--content-reading);
+  margin-inline: auto;
+}
+
+@media (min-width: 1100px) {
+  .cn-form-rail--with-progress {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-xl);
+    max-width: var(--content-workspace);
+  }
+}
+
+/* ── Sticky composer shell ── */
+.cn-sticky-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-surface, #fff);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.cn-workspace .cn-sticky-composer {
+  bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .cn-workspace--with-bottom-nav .cn-sticky-composer {
+    bottom: var(--sticky-composer-offset);
+  }
+}
+
+/* ── Chat reading width inside workspace ── */
+.cn-chat-readable {
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (min-width: 1100px) {
+  .cn-chat-readable .sw-chat__list,
+  .cn-chat-readable .sw-composer {
+    max-width: 100%;
+  }
+
+  .cn-chat-readable .sw-bubble,
+  .cn-chat-readable .sw-chat__item > * {
+    max-width: min(80%, 36rem);
+  }
+}
+
+/* ── Desktop side rail nav (same semantics as bottom nav) ── */
+.cn-side-rail {
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: var(--sidebar-nav);
+  flex-shrink: 0;
+  padding: 12px 8px;
+  border-right: 1px solid var(--color-border, #eef1f5);
+  background: var(--color-surface, #fff);
+  box-sizing: border-box;
+}
+
+@media (min-width: 1100px) {
+  .cn-side-rail {
+    display: flex;
+  }
+}
+
+.cn-side-rail__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.625rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cn-side-rail__item--active {
+  color: var(--color-brand, #0b1736);
+  background: var(--color-brand-muted, rgba(11, 23, 54, 0.08));
+}
+
+.cn-side-rail__item--clever {
+  color: #0f766e;
+}
+
+.cn-side-rail__icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+/* CleverMoment */
+.cn-clever-moment {
+  padding: 14px;
+  border-radius: var(--radius-lg, 16px);
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 48%);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.cn-clever-moment--empty {
+  background: var(--color-bg-muted, #eef1f5);
+  border-color: var(--color-border, #eef1f5);
+}
+
+.cn-clever-moment__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.cn-clever-moment__title {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--color-text, #0b1736);
+}
+
+.cn-clever-moment__body,
+.cn-clever-moment__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #5c6478);
+}
+
+.cn-clever-moment__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cn-clever-moment__btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong, #d9dee7);
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cn-clever-moment__btn--primary {
+  border-color: transparent;
+  background: #fef08a;
+  color: #0f172a;
+}
+
+.cn-workspace__stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (min-width: 1100px) {
+  .cn-workspace--with-bottom-nav {
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .cn-workspace--with-bottom-nav .cn-workspace__stack {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}

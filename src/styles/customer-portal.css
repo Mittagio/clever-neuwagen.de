@@ -4,7 +4,7 @@
  */
 
 :root {
-  --cn-page-max: 480px;
+  /* --cn-page-max kommt in variables.css (responsive foundation) */
   --cn-radius-card: 16px;
   --cn-radius-btn: 14px;
   --cn-shadow-card: 0 2px 12px rgba(11, 23, 54, 0.06);

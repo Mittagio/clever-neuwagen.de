@@ -52,6 +52,45 @@
   --header-height: 56px;
   --max-width: 1120px;
   --transition: 0.2s ease;
+
+  /*
+   * Clever Responsive Product Law – zentrale Breakpoints & Content-Widths
+   * Siehe docs/CLEVER_RESPONSIVE_DESIGN.md
+   *
+   * MOBILE  < 768
+   * TABLET  768–1099
+   * DESKTOP >= 1100
+   * WIDE    >= 1440
+   */
+  --bp-mobile-max: 767px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1100px;
+  --bp-wide: 1440px;
+
+  /* Legacy-Kompatibilität (häufig im Code) */
+  --bp-phone-column: 480px;
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+
+  /* Content-Width Tokens */
+  --content-reading: 720px;
+  --content-workspace: 1200px;
+  --content-wide: 1400px;
+  --sidebar-context: 260px;
+  --sidebar-assistant: 300px;
+  --sidebar-nav: 72px;
+
+  /* Phone-column (Portal / mobile app surfaces) */
+  --cn-page-max: 480px;
+
+  /* Sticky / Safe Area */
+  --sticky-nav-height: 64px;
+  --sticky-composer-offset: calc(var(--sticky-nav-height) + env(safe-area-inset-bottom, 0px));
+  --z-sticky: 40;
+  --z-nav: 60;
+  --z-sheet: 70;
+  --z-modal: 80;
 }
 
 @media (prefers-color-scheme: dark) {

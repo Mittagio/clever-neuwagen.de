@@ -303,7 +303,7 @@ export default function CustomerOfferPortfolioPage() {
               </section>
             ) : null}
 
-            <div className="cop-list">
+            <div className="cop-list cop-offer-grid">
           {sortedItems.map((item) => {
             const reaction = item.customerReaction?.status ?? PORTFOLIO_REACTION_STATUS.NONE;
             const hasReacted = reaction !== PORTFOLIO_REACTION_STATUS.NONE;

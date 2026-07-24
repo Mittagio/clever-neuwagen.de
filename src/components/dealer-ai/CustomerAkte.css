@@ -35,6 +35,15 @@
   gap: 12px;
 }
 
+.cust-akte.dai-lead-followup.cust-akte--responsive-shell {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  background: transparent;
+}
+
 /* Clever Design – visuelle Hierarchie (★★★★★ → ★) */
 .cust-akte-priority {
   margin: 6px 0 10px;
@@ -3002,7 +3011,7 @@
 }
 
 @media (min-width: 720px) {
-  .cust-akte.dai-lead-followup {
+  .cust-akte.dai-lead-followup:not(.cust-akte--responsive-shell) {
     max-width: 480px;
   }
 }
@@ -4475,14 +4484,125 @@
 }
 
 /* ===== Mobile Kundenakte Shell (Declutter) ===== */
-.cust-akte--mobile-shell {
+.cust-akte--mobile-shell,
+.cust-akte--responsive-shell {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   max-height: 100dvh;
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   overflow: hidden;
+  background: var(--color-bg, #f7f8fa);
+}
+
+.cust-akte--responsive-shell {
+  max-height: none;
+  padding-bottom: 0;
+}
+
+.cust-akte--responsive-shell .cn-workspace {
+  min-height: 100dvh;
+  max-height: 100dvh;
+}
+
+.cust-akte--responsive-shell .cust-akte-shell__workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.cust-akte-context-rail__name {
+  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  font-weight: 800;
+}
+
+.cust-akte-context-rail__meta {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-akte-context-rail__label {
+  margin: 16px 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #64748b);
+}
+
+.cust-akte-shell__kunde-facts--rail {
+  margin: 0 0 12px;
+}
+
+.cust-akte-assist-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cust-akte-assist-rail .clever-empfiehlt {
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .cn-hide-when-context-rail {
+    /* Kunde-Tab bleibt auf Tablet erreichbar */
+  }
+}
+
+@media (min-width: 1100px) {
+  .cust-akte--responsive-shell .cn-workspace {
+    max-height: calc(100dvh - 0px);
+  }
+
+  .cn-hide-when-assist-rail {
+    display: none !important;
+  }
+
+  .cn-hide-when-context-rail {
+    /* Desktop: Kontext links – Kunde-Tab nur für Details/Notizzettel */
+  }
+
+  .cust-akte-offers-grid .cust-akte-board,
+  .cust-akte-offers-grid {
+    display: block;
+  }
+}
+
+/* Legacy phone-column centering – ersetzt durch WorkspaceShell */
+@media (min-width: 720px) {
+  .cust-akte--mobile-shell {
+    max-width: var(--cn-page-max, 480px);
+    margin: 0 auto;
+    max-height: none;
+    min-height: calc(100dvh - 24px);
+  }
+
+  .cust-akte--mobile-shell .cust-akte-file-nav {
+    left: 50%;
+    right: auto;
+    width: var(--cn-page-max, 480px);
+    transform: translateX(-50%);
+  }
+
+  /* Responsive shell uses full workspace width – not a centered phone column */
+  .cust-akte--responsive-shell {
+    max-width: none;
+    margin: 0;
+  }
+
+  .cust-akte--responsive-shell .cust-akte-file-nav {
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+  }
 }
 
 .cust-akte-compact-header {
@@ -4879,20 +4999,4 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--cust-muted, #64748b);
-}
-
-@media (min-width: 720px) {
-  .cust-akte--mobile-shell {
-    max-width: 480px;
-    margin: 0 auto;
-    max-height: none;
-    min-height: calc(100dvh - 24px);
-  }
-
-  .cust-akte-file-nav {
-    left: 50%;
-    right: auto;
-    width: 480px;
-    transform: translateX(-50%);
-  }
 }
