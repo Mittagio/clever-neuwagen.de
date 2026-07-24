@@ -52,7 +52,8 @@ import {
   CLEVER_ACTION_IDS,
   formatCleverActionFollowedHistoryText,
 } from '../../services/crm/cleverActionEngine.js';
-import { countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
+import { computeUnterlagenSummary, countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
+import { buildSelfDisclosureCardModel } from '../../services/crm/customerPortalSelfDisclosureService.js';
 import {
   addressFromLead,
   addressToStorageFields,
@@ -114,8 +115,11 @@ import {
 } from '../../services/crm/customerMessageService.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
-import CustomerAkteHeader from './CustomerAkteHeader.jsx';
-import CustomerAkteActionBar from './CustomerAkteActionBar.jsx';
+import CustomerAkteCompactHeader from './CustomerAkteCompactHeader.jsx';
+import CustomerAkteSmartChips from './CustomerAkteSmartChips.jsx';
+import CustomerAkteFileNav from './CustomerAkteFileNav.jsx';
+import { AKTE_TABS } from './customerAkteTabs.js';
+import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteWishConditions from './CustomerAkteWishConditions.jsx';
 import CustomerAkteRequestedStockVehicle from './CustomerAkteRequestedStockVehicle.jsx';
@@ -124,7 +128,6 @@ import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteCleverCopilot from './CustomerAkteCleverCopilot.jsx';
-import CustomerAkteSellerAssistant from './CustomerAkteSellerAssistant.jsx';
 import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
@@ -148,8 +151,6 @@ import { buildCleverMessageSuggestion } from '../../services/communication/cleve
 import { copyToClipboard } from '../../logic/templateService.js';
 import CustomerAkteBoard from './CustomerAkteBoard.jsx';
 import CustomerAktePortalSendCta from './CustomerAktePortalSendCta.jsx';
-import CustomerAktePortalStatusCard from './CustomerAktePortalStatusCard.jsx';
-import CustomerAkteApplicationDocumentsCard from './CustomerAkteApplicationDocumentsCard.jsx';
 import CustomerAkteAddProposalSheet, {
   CustomerAkteLeaseFinanceSheet,
 } from './CustomerAkteAddProposalSheet.jsx';
@@ -356,6 +357,11 @@ export default function DealerAiLeadFollowUp({
   const fields = parsed?.fields ?? {};
   const crm = lead?.crm ?? {};
 
+  const [akteTab, setAkteTab] = useState(AKTE_TABS.chat);
+  const [cleverMode, setCleverMode] = useState(false);
+  const [composerFocusToken, setComposerFocusToken] = useState(0);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(
     initialSheet === SHEETS.questionAnswer
       ? SHEETS.questionAnswer
@@ -833,6 +839,56 @@ export default function DealerAiLeadFollowUp({
     () => countUnterlagenOpenTasks(lead, unterlagenPaymentType),
     [lead, unterlagenPaymentType],
   );
+  const unterlagenSummary = useMemo(
+    () => computeUnterlagenSummary(lead, unterlagenPaymentType),
+    [lead, unterlagenPaymentType],
+  );
+  const selfDisclosureCard = useMemo(() => buildSelfDisclosureCardModel(lead), [lead]);
+  const selfDisclosureLabel = selfDisclosureCard?.statusLabel || 'offen';
+
+  const headerContextLine = useMemo(() => {
+    const models = [...new Set(
+      vehicleCards
+        .map((card) => String(formatVehicleCardTitle(card) || '').replace(/^Kia\s+/i, '').trim())
+        .filter(Boolean),
+    )].slice(0, 2);
+    if (!models.length && wishModel) models.push(String(wishModel).replace(/^Kia\s+/i, '').trim());
+    const paymentLabel = PAYMENT_TYPE_LABELS[wishPaymentType]
+      || (wishPaymentType === 'leasing' ? 'Leasing'
+        : wishPaymentType === 'financing' ? 'Finanzierung'
+          : wishPaymentType === 'cash' ? 'Kauf' : '');
+    const parts = [];
+    if (models.length) parts.push(models.join(' / '));
+    if (paymentLabel) parts.push(paymentLabel);
+    return parts.join(' · ');
+  }, [vehicleCards, wishModel, wishPaymentType]);
+
+  function focusChatComposer({ clever = false } = {}) {
+    setAkteTab(AKTE_TABS.chat);
+    setCleverMode(Boolean(clever));
+    setComposerFocusToken((n) => n + 1);
+    setMoreSheetOpen(false);
+  }
+
+  function handleAkteNavSelect(tabId) {
+    if (tabId === AKTE_TABS.mehr) {
+      setMoreSheetOpen(true);
+      return;
+    }
+    if (tabId === AKTE_TABS.clever) {
+      focusChatComposer({ clever: true });
+      return;
+    }
+    if (tabId === AKTE_TABS.chat) {
+      setCleverMode(false);
+      setAkteTab(AKTE_TABS.chat);
+      setMoreSheetOpen(false);
+      return;
+    }
+    setAkteTab(tabId);
+    setMoreSheetOpen(false);
+  }
+
   const activitiesLastSeenAt = crm.activitiesLastSeenAt ?? null;
   const activityDashboard = useMemo(
     () => getActivityDashboard(history, activitiesLastSeenAt),
@@ -2345,186 +2401,235 @@ export default function DealerAiLeadFollowUp({
   }
 
   return (
-    <section className="dai-lead-followup cust-akte" aria-labelledby="dai-lead-followup-title">
+    <section className="dai-lead-followup cust-akte cust-akte--mobile-shell" aria-labelledby="dai-lead-followup-title">
       <h2 id="dai-lead-followup-title" className="visually-hidden">
         {name?.trim() || 'Kunde noch offen'}
       </h2>
 
-      <CustomerAkteHeader
+      <CustomerAkteCompactHeader
         customerName={name}
+        contextLine={headerContextLine}
         phone={phone}
-        email={email}
-        address={addressLine}
-        distanceSummary={distanceSummary}
-        routeHref={routeHref}
-        customerSince={lead?.createdAt}
-        cleverScore={akteCleverScore}
-        lead={lead}
-        vehicleCardCount={vehicleCards.length}
-        offersCount={resolvedOffers.length}
-        hasNextStep={Boolean(nextStepId)}
-        pipelineStatusLabel={pipelineStatusLabel}
+        telHref={telHref}
         onBack={onDiscard}
-        onEditCustomer={() => openSheet(SHEETS.customer)}
-        onEditAddress={() => openSheet(SHEETS.address)}
-        telHref={telHref}
+        onMore={() => setMoreSheetOpen(true)}
+        onMissingPhone={() => openSheet(SHEETS.customer)}
       />
 
-      <CustomerAkteActionBar
-        telHref={telHref}
-        onCleverNachrichten={() => openCleverAntworten()}
-        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-        onHistory={openActivitiesSheet}
-        unterlagenBadge={unterlagenOpenCount}
-        inboxOpenCount={inboxOpenCount}
-        historyBadge={inboxOpenCount ? 0 : activityDashboard.newCustomerActivities}
-      />
-
-      <CustomerAkteSellerAssistant
+      <CustomerAkteSmartChips
         lead={lead}
-        telHref={telHref}
-        customerName={name}
-        isSaving={isSaving}
-        onSendMessage={handleSellerAssistSendMessage}
-        onSendWorkspacePackage={handleSellerAssistSendWorkspacePackage}
-        onWhatsApp={handleSellerAssistWhatsApp}
-        onEmail={handleSellerAssistEmail}
-        onEditMessage={handleSellerAssistEditMessage}
-        onPrepareOffer={handleSellerAssistPrepareOffer}
-        onSaveNote={handleSellerAssistSaveNote}
-        onScheduleCallback={handleSellerAssistCallback}
+        onChipClick={() => openWishConditionsSheet()}
       />
 
-      <CustomerAkteSharedWorkspace
-        lead={lead}
-        customerName={name}
-        isSaving={isSaving}
-        onPersistLead={(nextLead) => {
-          onSave?.({
-            ...buildSavePayload({
-              customerMessages: nextLead.crm?.customerMessages,
-              customerMessageThreads: nextLead.crm?.customerMessageThreads,
-            }),
-            history: nextLead.history,
-          }, { silent: true, addFollowupHistory: false });
-        }}
-      />
+      <div className="cust-akte-shell__workspace">
+        {(akteTab === AKTE_TABS.chat) && (
+          <div className="cust-akte-shell__pane cust-akte-shell__pane--chat">
+            {cleverEmpfiehltView && (
+              <div className="cust-akte-shell__situativ">
+                <CleverEmpfiehltCard
+                  view={cleverEmpfiehltView}
+                  telHref={telHref}
+                  onPrimaryAction={handleCleverEmpfiehltAction}
+                  onMarkDone={handleCleverMarkDone}
+                  onOpenOffer={handleCleverOpenOffer}
+                  onCopyMessage={handleCopyMessageSuggestion}
+                  onPrepareMessage={handlePrepareMessageSuggestion}
+                />
+              </div>
+            )}
 
-      <div className={hasSellerCustomerPicture ? 'cust-akte-operativ' : undefined}>
-        <CustomerAkteKundenhelfer
-          notes={kundenhelferNotes}
-          chipCategories={kundenhelferChipCategories}
-          conversationNotes={conversationNotes}
-          voiceMemos={kundenhelferMemos}
-          lead={lead}
-          onOpenSheet={openKundenhelferSheet}
-          onCaptureCommit={handleNotepadCaptureCommit}
-          isSavingCapture={isSaving}
-          variant="profile"
-          hasCustomerUnderstanding={hasSellerCustomerPicture}
-          subdued={false}
-        />
+            {requestedStockVehicle && (
+              <CustomerAkteRequestedStockVehicle
+                stockVehicle={requestedStockVehicle}
+                onOpenListing={handleOpenStockListing}
+                onCreateOffer={handleCreateStockOffer}
+              />
+            )}
 
-        {(!hasSellerCustomerPicture || !hideRedundantWishChips) && (
-          <CustomerAkteWishConditions
-            chips={schnellaufnahmeChips}
-            onEdit={() => openWishConditionsSheet()}
-            onChipClick={(field) => openWishConditionsSheet(field)}
-          />
+            {lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending' && (
+              <CustomerAkteShowroomCapture
+                capture={lead.crm.pendingShowroomCapture}
+                onApply={handleApplyShowroomCapture}
+                onEdit={handleEditShowroomCapture}
+                onSuggestVehicles={handleSuggestVehiclesFromShowroom}
+                onPrepareOffer={handlePrepareOfferFromShowroom}
+              />
+            )}
+
+            <CustomerAkteSharedWorkspace
+              lead={lead}
+              customerName={name}
+              cleverMode={cleverMode}
+              focusToken={composerFocusToken}
+              isSaving={isSaving}
+              onOpenOffer={() => setAkteTab(AKTE_TABS.angebote)}
+              onUploadDocument={() => openSheet(SHEETS.unterlagen)}
+              onStartSelfDisclosure={() => openSelfDisclosureReview()}
+              onPersistLead={(nextLead) => {
+                onSave?.({
+                  ...buildSavePayload({
+                    customerMessages: nextLead.crm?.customerMessages,
+                    customerMessageThreads: nextLead.crm?.customerMessageThreads,
+                  }),
+                  history: nextLead.history,
+                }, { silent: true, addFollowupHistory: false });
+              }}
+            />
+          </div>
         )}
 
-        {cleverEmpfiehltView && (
-          <div className={hasSellerCustomerPicture ? 'cust-akte-operativ__empfiehlt' : 'cust-akte-priority'}>
-            <CleverEmpfiehltCard
-              view={cleverEmpfiehltView}
-              telHref={telHref}
-              onPrimaryAction={handleCleverEmpfiehltAction}
-              onMarkDone={handleCleverMarkDone}
-              onOpenOffer={handleCleverOpenOffer}
-              onCopyMessage={handleCopyMessageSuggestion}
-              onPrepareMessage={handlePrepareMessageSuggestion}
+        {akteTab === AKTE_TABS.angebote && (
+          <div className="cust-akte-shell__pane cust-akte-shell__pane--offers">
+            <header className="cust-akte-shell__pane-header">
+              <h3 className="cust-akte-shell__pane-title">Angebote</h3>
+              <button
+                type="button"
+                className="cust-akte-shell__pane-cta"
+                onClick={handleAddVehicle}
+              >
+                + Angebot
+              </button>
+            </header>
+            <CustomerAkteBoard
+              items={boardItems}
+              lead={lead}
+              animateNew={showCardAnimation && boardItems.length > 0}
+              onCardClick={navigateBoardOfferCard}
+              onCardMenu={navigateBoardOfferCard}
+              onCardAction={handleBoardCardAction}
+              onSelectionGroupClick={openSelectionGroup}
+              onAddProposal={handleAddVehicle}
             />
+            <CustomerAktePortalSendCta
+              boardItems={boardItems}
+              email={email}
+              onSend={handleSendCustomerSelection}
+              onAddEmail={() => openSheet(SHEETS.customer)}
+              disabled={isSaving}
+            />
+          </div>
+        )}
+
+        {akteTab === AKTE_TABS.kunde && (
+          <div className="cust-akte-shell__pane cust-akte-shell__pane--kunde">
+            <header className="cust-akte-shell__pane-header">
+              <h3 className="cust-akte-shell__pane-title">Kunde</h3>
+              <button
+                type="button"
+                className="cust-akte-shell__pane-link"
+                onClick={() => openSheet(SHEETS.customer)}
+              >
+                Bearbeiten
+              </button>
+            </header>
+
+            <dl className="cust-akte-shell__kunde-facts">
+              <div>
+                <dt>Telefon</dt>
+                <dd>{phone?.trim() || 'fehlt'}</dd>
+              </div>
+              <div>
+                <dt>E-Mail</dt>
+                <dd>{email?.trim() || 'fehlt'}</dd>
+              </div>
+              {addressLine ? (
+                <div>
+                  <dt>Adresse</dt>
+                  <dd>{addressLine}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <CustomerAkteWishConditions
+              chips={schnellaufnahmeChips}
+              onEdit={() => openWishConditionsSheet()}
+              onChipClick={(field) => openWishConditionsSheet(field)}
+            />
+
+            <CustomerAkteKundenhelfer
+              notes={kundenhelferNotes}
+              chipCategories={kundenhelferChipCategories}
+              conversationNotes={conversationNotes}
+              voiceMemos={kundenhelferMemos}
+              lead={lead}
+              onOpenSheet={openKundenhelferSheet}
+              onCaptureCommit={handleNotepadCaptureCommit}
+              isSavingCapture={isSaving}
+              variant="profile"
+              hasCustomerUnderstanding={hasSellerCustomerPicture}
+              subdued
+            />
+
+            <button
+              type="button"
+              className="cust-akte-shell__details-toggle"
+              onClick={() => setKundeDetailsOpen((open) => !open)}
+              aria-expanded={kundeDetailsOpen}
+            >
+              {kundeDetailsOpen ? 'Weniger Details' : 'Details'}
+            </button>
+
+            {kundeDetailsOpen && customerUnderstanding?.meta?.hasData && (
+              <div className="cust-akte-shell__kunde-details">
+                <CustomerAkteCleverBeratung
+                  view={cleverBeratungView}
+                  understanding={customerUnderstanding}
+                  telHref={telHref}
+                  onPrepareOffer={handleCleverBeratungPrepareOffer}
+                  onCreateMessage={() => {
+                    focusChatComposer({ clever: true });
+                    openCleverAntworten();
+                  }}
+                  onChangeRecommendation={handleCleverBeratungChangeRecommendation}
+                  hideWishChips
+                />
+                <CustomerAkteCleverCopilot
+                  lead={lead}
+                  dealerId={lead?.dealerId ?? null}
+                  sellerId={lead?.assignedSellerId ?? null}
+                  onOpenOffer={() => onPrepareOffer?.(lead)}
+                  onUseDraft={(draft, action) => {
+                    if (action === 'discard') return;
+                    if (draft) {
+                      focusChatComposer({ clever: true });
+                      openCleverAntworten();
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {customerUnderstanding?.meta?.hasData && (
-        <div className="cust-akte-verstaendnis">
-          <CustomerAkteCleverBeratung
-            view={cleverBeratungView}
-            understanding={customerUnderstanding}
-            telHref={telHref}
-            onPrepareOffer={handleCleverBeratungPrepareOffer}
-            onCreateMessage={() => openCleverAntworten()}
-            onChangeRecommendation={handleCleverBeratungChangeRecommendation}
-            hideWishChips
-          />
-          <CustomerAkteCleverCopilot
-            lead={lead}
-            dealerId={lead?.dealerId ?? null}
-            sellerId={lead?.assignedSellerId ?? null}
-            onOpenOffer={() => onPrepareOffer?.(lead)}
-            onUseDraft={(draft, action) => {
-              if (action === 'discard') return;
-              if (draft) openCleverAntworten();
-            }}
-          />
-        </div>
-      )}
-
-      {requestedStockVehicle && (
-        <CustomerAkteRequestedStockVehicle
-          stockVehicle={requestedStockVehicle}
-          onOpenListing={handleOpenStockListing}
-          onCreateOffer={handleCreateStockOffer}
-        />
-      )}
-
-      {lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending' && (
-        <CustomerAkteShowroomCapture
-          capture={lead.crm.pendingShowroomCapture}
-          onApply={handleApplyShowroomCapture}
-          onEdit={handleEditShowroomCapture}
-          onSuggestVehicles={handleSuggestVehiclesFromShowroom}
-          onPrepareOffer={handlePrepareOfferFromShowroom}
-        />
-      )}
-
-      <CustomerAkteBoard
-        items={boardItems}
-        lead={lead}
-        animateNew={showCardAnimation && boardItems.length > 0}
-        onCardClick={navigateBoardOfferCard}
-        onCardMenu={navigateBoardOfferCard}
-        onCardAction={handleBoardCardAction}
-        onSelectionGroupClick={openSelectionGroup}
-        onAddProposal={handleAddVehicle}
+      <CustomerAkteFileNav
+        activeTab={akteTab}
+        onSelect={handleAkteNavSelect}
+        badges={{
+          chat: inboxOpenCount || undefined,
+          angebote: boardItems.length || undefined,
+          mehr: (unterlagenOpenCount || 0) + (selfDisclosureCard?.status === 'submitted' ? 1 : 0) || undefined,
+          cleverMode,
+        }}
       />
 
-      <CustomerAktePortalStatusCard
-        lead={lead}
-        hasOpenInboxMessage={Boolean(portalCustomerMessageItem)}
-        onCopyLink={handlePortalCopyLink}
-        onPrepareEmail={handleOpenPortalShare}
-        onWriteMessage={() => openCleverAntworten('frei')}
-        onPrepareFollowup={() => openCleverAntworten('nachfassen')}
-        onReply={handlePortalCardReply}
-        onOpenInbox={() => onOpenInbox?.(lead)}
-        onOpenSelfDisclosureReview={() => openSelfDisclosureReview()}
-      />
-
-      <CustomerAkteApplicationDocumentsCard
-        lead={lead}
-        onOpenSelfDisclosureReview={() => openSelfDisclosureReview()}
-        onOpenUnterlagen={() => openSheet(SHEETS.unterlagen)}
-      />
-
-      <CustomerAktePortalSendCta
-        boardItems={boardItems}
-        email={email}
-        onSend={handleSendCustomerSelection}
-        onAddEmail={() => openSheet(SHEETS.customer)}
-        disabled={isSaving}
+      <CustomerAkteMoreSheet
+        open={moreSheetOpen}
+        onClose={() => setMoreSheetOpen(false)}
+        unterlagenLabel={`${unterlagenSummary.doneCount ?? 0}/${unterlagenSummary.totalCount ?? 0}`}
+        unterlagenOpen={unterlagenOpenCount}
+        selfDisclosureLabel={selfDisclosureLabel}
+        activitiesCount={activityDashboard.newCustomerActivities || 0}
+        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
+        onSelfDisclosure={() => openSelfDisclosureReview()}
+        onHistory={openActivitiesSheet}
+        onTermine={() => openSheet(SHEETS.next)}
+        onCustomerData={() => {
+          setAkteTab(AKTE_TABS.kunde);
+          openSheet(SHEETS.customer);
+        }}
+        onPortal={() => handleOpenPortalShare()}
+        onLexikon={() => openSheet(SHEETS.lexikon)}
       />
 
       <CustomerAkteWishConditionsSheet

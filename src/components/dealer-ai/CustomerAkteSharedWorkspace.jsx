@@ -7,40 +7,44 @@ import { sendCleverChannelMessage } from '../../services/crm/customerMessageServ
 import {
   insertInlineFactIntoDraft,
   runSellerInlineAssist,
-  buildSellerInlineContext,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
 import { sendSellerWorkspacePackage } from '../../services/crm/sharedWorkspaceService.js';
+import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 
 const DEBOUNCE_MS = 380;
 
 /**
- * Verkäufer-Sicht: gleicher Conversation-Verlauf + Inline Clever Assist.
+ * Verkäufer-Sicht: gemeinsamer Conversation-Verlauf + ein Composer (inkl. Clever Inline).
+ * Chips / Tab-Leisten leben in der Akte-Shell – hier nur die Arbeitsfläche Chat.
  */
 export default function CustomerAkteSharedWorkspace({
   lead,
   customerName = '',
   onPersistLead = null,
   isSaving = false,
+  cleverMode = false,
+  focusToken = 0,
+  onOpenOffer = null,
+  onUploadDocument = null,
+  onStartSelfDisclosure = null,
 }) {
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
   const debounceRef = useRef(null);
+  const composerInputRef = useRef(null);
 
   const timeline = useMemo(
     () => buildSharedWorkspaceTimeline(lead, { role: 'seller' }),
     [lead],
   );
 
-  const idleContext = useMemo(
-    () => buildSellerInlineContext(lead, ''),
-    [lead],
-  );
+  const displayName = formatCustomerDisplayName(customerName) || 'dem Kunden';
 
-  const liveChips = assist?.context?.customerChips?.length
-    ? assist.context.customerChips
-    : idleContext.customerChips;
+  const placeholder = cleverMode
+    ? `Was soll Clever für ${displayName} erledigen?`
+    : `Nachricht an ${displayName} …`;
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -57,6 +61,14 @@ export default function CustomerAkteSharedWorkspace({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [draft, lead]);
+
+  useEffect(() => {
+    if (!focusToken) return;
+    const el = document.getElementById('sw-composer-seller');
+    if (!el) return;
+    el.focus?.();
+    composerInputRef.current = el;
+  }, [focusToken, cleverMode]);
 
   function persistMessages(nextLead, historyText) {
     onPersistLead?.(nextLead, { historyText });
@@ -147,39 +159,7 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   return (
-    <section className="cust-akte-workspace" aria-label="Gemeinsamer Arbeitsraum">
-      <header className="cust-akte-workspace__header">
-        <h2 className="cust-akte-workspace__title">{timeline.header?.title || customerName}</h2>
-        {timeline.header?.subtitle ? (
-          <p className="cust-akte-workspace__sub">{timeline.header.subtitle}</p>
-        ) : null}
-        {liveChips?.length ? (
-          <ul className="cust-akte-workspace__live-chips" aria-label="Live-Kundenkontext">
-            {liveChips.slice(0, 6).map((chip) => (
-              <li key={chip.label}>
-                <span className="cust-akte-workspace__live-chip">{chip.label}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <p className="cust-akte-workspace__tabs" aria-label="Status">
-          <span>Chat</span>
-          <span>
-            Angebote
-            {' '}
-            {timeline.progress?.offerCount ?? 0}
-          </span>
-          <span>
-            Unterlagen
-            {' '}
-            {timeline.progress?.documentsLabel ?? '0/0'}
-          </span>
-          <span>
-            Selbstauskunft
-            {timeline.progress?.selfDisclosureOpen ? ' •' : ''}
-          </span>
-        </p>
-      </header>
+    <section className="cust-akte-workspace cust-akte-workspace--chat-only" aria-label="Gemeinsamer Arbeitsraum">
       <SharedWorkspaceChat
         role="seller"
         items={timeline.items}
@@ -188,7 +168,10 @@ export default function CustomerAkteSharedWorkspace({
         onSend={handleSend}
         sending={sending || isSaving}
         sendFeedback={feedback}
-        placeholder={`Was möchten Sie ${customerName || 'dem Kunden'} schreiben?`}
+        placeholder={placeholder}
+        onOpenOffer={onOpenOffer}
+        onUploadDocument={onUploadDocument}
+        onStartSelfDisclosure={onStartSelfDisclosure}
         reviewSlot={(
           <SellerInlineAssistCard
             results={assist?.results ?? []}
@@ -212,7 +195,7 @@ export default function CustomerAkteSharedWorkspace({
             id: 'file',
             icon: '📄',
             label: 'Datei senden',
-            onClick: () => setFeedback('Datei über Unterlagen-Sheet senden'),
+            onClick: () => onUploadDocument?.(),
           },
           {
             id: 'offer',
