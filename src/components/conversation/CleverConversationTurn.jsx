@@ -1,5 +1,6 @@
 import { CLEVER_WORLD } from '../../services/consultation/consultationWorlds.js';
 import { looksTechnicalFactLabel } from '../../services/clever/openai/conversationFactDisplay.js';
+import CleverVehicleModelRail from './CleverVehicleModelRail.jsx';
 import './clever-conversation.css';
 
 function FactChips({ facts = [] }) {
@@ -26,45 +27,6 @@ function FactChips({ facts = [] }) {
         <li key={fact.key} className="cc-fact-chip">{fact.chip}</li>
       ))}
     </ul>
-  );
-}
-
-function VehicleAttachments({ cards = [], onPrimaryAction }) {
-  const visible = cards.slice(0, 2);
-  if (!visible.length) return null;
-
-  return (
-    <div className="cc-attach-rail" aria-label="Fahrzeuganhänge">
-      {visible.map((card) => (
-        <article key={card.modelKey ?? card.name} className="cc-attach-card">
-          {card.image ? (
-            <img
-              className="cc-attach-card__img"
-              src={card.image}
-              alt=""
-              loading="lazy"
-            />
-          ) : (
-            <div className="cc-attach-card__img cc-attach-card__img--placeholder" aria-hidden />
-          )}
-          <div className="cc-attach-card__body">
-            <p className="cc-attach-card__title">{card.name}</p>
-            {card.subtitle && <p className="cc-attach-card__sub">{card.subtitle}</p>}
-            {card.factLine && <p className="cc-attach-card__facts">{card.factLine}</p>}
-            {!card.factLine && card.bullets?.[0] && (
-              <p className="cc-attach-card__facts">{card.bullets[0]}</p>
-            )}
-            <button
-              type="button"
-              className="cc-attach-card__cta"
-              onClick={() => onPrimaryAction?.(card.modelKey)}
-            >
-              {card.ctaLabel ?? 'Ansehen'}
-            </button>
-          </div>
-        </article>
-      ))}
-    </div>
   );
 }
 
@@ -106,8 +68,10 @@ function NextTopicChips({
 export default function CleverConversationTurn({
   turn,
   onOptionSelect,
-  onVehicleAction,
+  onVehicleReact,
   onNextTopic,
+  needProfile = {},
+  notepadLabels = [],
   isActiveQuestion = false,
   nextTopicsActive = false,
   nextTopicsDisabled = false,
@@ -131,6 +95,7 @@ export default function CleverConversationTurn({
     const modelCards = turn.modelCards ?? [];
     const nextTopics = turn.nextTopics ?? [];
     const isFollowUp = Boolean(turn.questionId || turn.aiGenerated);
+    const showLooseFacts = modelCards.length === 0;
 
     return (
       <article
@@ -147,8 +112,15 @@ export default function CleverConversationTurn({
       >
         <p className="cc-bubble__meta" id={`cc-clever-${turn.id}`}>Clever</p>
         {turn.text && <p className="cc-bubble__text">{turn.text}</p>}
-        <FactChips facts={facts} />
-        <VehicleAttachments cards={modelCards} onPrimaryAction={onVehicleAction} />
+        {showLooseFacts && <FactChips facts={facts} />}
+        <CleverVehicleModelRail
+          cards={modelCards}
+          reactions={turn.vehicleCardReactions ?? {}}
+          needProfile={needProfile}
+          notepadLabels={notepadLabels}
+          onReact={onVehicleReact}
+          ariaLabel="Passende Modelle"
+        />
         {hasOptions && (
           <div className="cc-bubble__options">
             <div className="cc-clever-turn__options" role="group" aria-label="Antwortvorschläge">

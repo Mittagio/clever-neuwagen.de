@@ -117,10 +117,25 @@ function scoreModel(attrs, profile) {
   let score = 0;
   const key = attrs.modelKey;
 
+  // Harte Ausschlüsse: Wunsch nicht erfüllbar → raus
+  const labelBlob = [
+    ...(profile.extraLabels ?? []),
+    ...(profile.understoodLabels ?? []),
+  ].join(' ');
+  const wantsSeven = Number(profile.seatsNeeded) >= 7
+    || Number(profile.persons) >= 7
+    || /mindestens\s*7|7\s*sitze|sieben\s*sitze/i.test(labelBlob);
+  if (wantsSeven && (attrs.seats ?? 0) < 7) return 0;
+
+  const wantsSuv = profile.bodyType === 'suv' || /\bsuv\b/i.test(labelBlob);
+  if (wantsSuv && attrs.bodyType !== 'suv') return 0;
+  if (profile.bodyType === 'kleinwagen' && attrs.bodyType !== 'kleinwagen') return 0;
+
   if (profile.modelHint && key.startsWith(profile.modelHint)) score += 50;
   if (profile.selectedModelKey && key === profile.selectedModelKey) score += 60;
 
-  if (profile.bodyType && attrs.bodyType === profile.bodyType) score += 20;
+  if (wantsSuv && attrs.bodyType === 'suv') score += 20;
+  else if (profile.bodyType && attrs.bodyType === profile.bodyType) score += 20;
 
   if (!fuelMatchesProfile(attrs, profile)) return 0;
   score += 25;
@@ -128,7 +143,8 @@ function scoreModel(attrs, profile) {
   if (profile.fuel === 'diesel' && attrs.powertrains?.includes('verbrenner')) score += 20;
   if (getFuelCategory(profile) === 'electric' && attrs.fuel === 'electric') score += 25;
 
-  if (profile.children) {
+  if (wantsSeven && attrs.seats >= 7) score += 30;
+  else if (profile.children) {
     if (attrs.seats >= 7) score += 12;
     else if (attrs.seats >= 5) score += 8;
   }
@@ -161,20 +177,27 @@ function familyKey(modelKey = '') {
  * @param {{ anchorModelKey?: string, limit?: number, excludeModelKeys?: string[] }} [options]
  */
 export function buildVehicleDirectionsView(needProfile = {}, options = {}) {
-  const { anchorModelKey = null, limit = 4, excludeModelKeys = [] } = options;
+  const { anchorModelKey = null, limit = 4, excludeModelKeys = [], notepadLabels = [] } = options;
   const excluded = new Set(excludeModelKeys);
+  const profile = {
+    ...needProfile,
+    understoodLabels: [
+      ...(needProfile.understoodLabels ?? []),
+      ...(notepadLabels ?? []),
+    ],
+  };
   const scored = [];
 
   for (const attrs of Object.values(KIA_MODEL_ATTRIBUTES)) {
     if (excluded.has(attrs.modelKey)) continue;
-    const score = scoreModel(attrs, needProfile);
+    const score = scoreModel(attrs, profile);
     if (score <= 0) continue;
     scored.push({
       modelKey: attrs.modelKey,
       label: attrs.label,
       score,
-      subtitle: buildDirectionSubtitle(needProfile, attrs),
-      fitHints: buildFitHints(needProfile, attrs),
+      subtitle: buildDirectionSubtitle(profile, attrs),
+      fitHints: buildFitHints(profile, attrs),
       familyKey: familyKey(attrs.modelKey),
     });
   }

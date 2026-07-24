@@ -95,6 +95,7 @@ export function maybeAppendProgressiveVehicleDirections(session = {}, prevNeedPr
     ...buildVehicleDirectionsView(needProfile, {
       excludeModelKeys: excludeKeys,
       limit: 3,
+      notepadLabels: session.notepadLabels ?? [],
     }),
     source: PROGRESSIVE_DIRECTIONS_SOURCE,
     reactions: { ...(session.vehicleDirectionReactions ?? {}) },

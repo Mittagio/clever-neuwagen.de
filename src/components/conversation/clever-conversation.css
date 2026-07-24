@@ -1495,6 +1495,203 @@
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
 
+/* Einheitliche Modellkacheln (swipebar, mittelgroß) */
+.cc-model-rail {
+  margin: 10px 0 4px;
+}
+
+.cc-model-rail__intro {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--cc-text);
+}
+
+.cc-model-rail__track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 8px;
+  scrollbar-width: none;
+}
+
+.cc-model-rail__track::-webkit-scrollbar {
+  display: none;
+}
+
+.cc-model-card {
+  flex: 0 0 auto;
+  width: min(86vw, 320px);
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 160ms ease, opacity 160ms ease;
+}
+
+.cc-model-card.is-highlighted {
+  border-color: rgba(15, 23, 42, 0.22);
+}
+
+.cc-model-card.is-interested {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.cc-model-card.is-dismissed {
+  opacity: 0.55;
+}
+
+.cc-model-card__img {
+  width: 100%;
+  height: 148px;
+  object-fit: cover;
+  background: #e8e8e6;
+}
+
+.cc-model-card__img--placeholder {
+  display: block;
+}
+
+.cc-model-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 14px;
+}
+
+.cc-model-card__name {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--cc-text);
+}
+
+.cc-model-card__answer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.cc-model-card__answer-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cc-muted, #64748b);
+}
+
+.cc-model-card__answer-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cc-text);
+}
+
+.cc-model-card__fixed {
+  display: grid;
+  gap: 4px;
+}
+
+.cc-model-card__fixed-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--cc-muted, #64748b);
+}
+
+.cc-model-card__fixed-row strong {
+  font-weight: 650;
+  color: var(--cc-text);
+  text-align: right;
+}
+
+.cc-model-card__meta,
+.cc-model-card__reason {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--cc-muted, #64748b);
+}
+
+.cc-model-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cc-model-card__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cc-text);
+}
+
+.cc-model-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cc-model-card__action {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--cc-text);
+  cursor: pointer;
+}
+
+.cc-model-card__action:hover {
+  border-color: rgba(15, 23, 42, 0.28);
+}
+
+.cc-model-card__action.is-active {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+}
+
+.cc-model-card__action.is-subtle {
+  border-color: transparent;
+  background: transparent;
+  color: var(--cc-muted, #64748b);
+  font-size: 0.75rem;
+}
+
+.cc-model-card__action.is-subtle:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--cc-text);
+}
+
+@media (min-width: 720px) {
+  .cc-model-card {
+    width: min(300px, 42vw);
+  }
+}
+
 .cc-bubble__options {
   margin-top: 10px;
 }
@@ -4448,6 +4645,14 @@
   text-align: left;
 }
 
+.cc-soft-wish .cc-model-rail {
+  margin: 0 0 16px;
+}
+
+.cc-soft-wish .cc-model-rail__track {
+  justify-content: flex-start;
+}
+
 .cc-soft-wish__headline {
   margin: 0 0 8px;
   font-size: clamp(1.125rem, 4.5vw, 1.375rem);
@@ -4579,7 +4784,24 @@
 .cc-soft-wish__freetext-row {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-end;
+}
+
+.cc-soft-wish__textarea {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  min-height: 44px;
+  max-height: 40vh;
+  line-height: 1.45;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .cc-soft-wish__add {

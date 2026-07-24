@@ -70,6 +70,10 @@ function testHandoffView() {
   assert.equal(view.hasOffer, false);
   assert.ok(!view.directionLine?.match(/€\s*\d|leasing/i));
   assert.ok(!view.trimLine?.match(/€\s*\d|leasing/i));
+  assert.ok(
+    view.focusModelCards?.some((c) => c.modelKey === 'ev3'),
+    'Soft-Handoff zeigt Modellkachel zum gewählten Fahrzeug',
+  );
   console.log('✓ Beraterkarte wird angezeigt, keine Rate, kein Angebot');
 }
 
@@ -79,6 +83,14 @@ function testBeginOfferHandoff() {
   assert.ok(session.turns.some((t) => t.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF));
   assert.equal(session.needProfile.world, CLEVER_WORLD.OFFER);
   console.log('✓ Journey geht in Welt 3');
+}
+
+function testBeginOfferHandoffIdempotent() {
+  let session = beginOfferHandoff(buildFullSession(), dealerConditions);
+  session = beginOfferHandoff(session, dealerConditions);
+  const handoffs = session.turns.filter((t) => t.type === OFFER_TURN_TYPE.PERSONAL_HANDOFF);
+  assert.equal(handoffs.length, 1, 'Soft-Handoff darf nur einmal existieren');
+  console.log('✓ beginOfferHandoff ersetzt bestehendes Panel');
 }
 
 function testLeadCreation() {
@@ -279,6 +291,7 @@ testAdvisorOpeningPrompt();
 testAdvisorContactPrompt();
 testEarlyAdvisorHandoffPreservesUnderstanding();
 testBeginOfferHandoff();
+testBeginOfferHandoffIdempotent();
 testLeadCreation();
 testSubmitPersonalHandoff();
 testValidation();

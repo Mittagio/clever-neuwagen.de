@@ -130,7 +130,13 @@ function testInspirationModelOpensHandoffPath() {
     (session.turns ?? []).some((t) => t.type === 'personal_handoff'),
     'Personal-Handoff-Turn',
   );
-  console.log('✓ Inspiration-Modell → Notizzettel + Soft-Handoff');
+  const handoff = session.turns.find((t) => t.type === 'personal_handoff');
+  assert.ok(
+    handoff?.handoffView?.focusModelCards?.some((c) => c.modelKey === 'ev3'),
+    'Inspiration → EV3-Kachel im Soft-Handoff',
+  );
+  assert.ok(handoff.handoffView.focusModelCards[0].uvpLabel || handoff.handoffView.focusModelCards[0].powerLabel);
+  console.log('✓ Inspiration-Modell → Notizzettel + Soft-Handoff + Kachel');
 }
 
 testInspirationModelOpensHandoffPath();

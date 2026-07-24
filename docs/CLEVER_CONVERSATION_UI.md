@@ -102,10 +102,13 @@ Verboten im Kunden-UI: `modelKey`, `variantKey`, Fact-IDs, JSON, `wltpRange`, `E
 
 ## Fahrzeuganhänge
 
-- Kompakte Karten (Bild + Name + 1–2 Fakten + eine CTA)
-- Mobile: horizontal wischbar mit scroll-snap
-- Keine Raten ohne verifizierte Kondition
-- Maximal zwei Karten unmittelbar sichtbar
+- **Ein** Kachel-Design: mittelgroß (~Handybreite), horizontal swipebar
+- Pro Modell eine Kachel (max. 4)
+- Kontextantwort auf der Kachel (z. B. Anhängelast), nicht als lose kg-Chips
+- Fest (nur verifiziert): **UVP ab** · **PS von–bis** · bei Elektro zusätzlich **Reichweite von–bis (WLTP)**
+- Aktionen: Interessant · Mehr erfahren · Nicht passend
+- AI-`vehicleDirections` und „Passende Richtungen“ nutzen dieselbe Darstellung
+- Keine erfundenen Preise/PS
 
 ## Anschlussfrage / Aktion
 

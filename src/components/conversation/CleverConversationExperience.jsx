@@ -221,6 +221,7 @@ export default function CleverConversationExperience({
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
   const resumeCheckedRef = useRef(false);
+  const inspirationAppliedRef = useRef(null);
   const voiceSupported = isSpeechRecognitionSupported();
   const opening = useMemo(
     () => buildPluginOpeningCopy(pageContext, dealerName),
@@ -245,6 +246,11 @@ export default function CleverConversationExperience({
   useEffect(() => {
     const modelKey = String(pendingInspirationModel ?? '').trim();
     if (!modelKey) return undefined;
+    if (inspirationAppliedRef.current === modelKey) {
+      onInspirationModelConsumed?.();
+      return undefined;
+    }
+    inspirationAppliedRef.current = modelKey;
 
     const resumeBase = resumeSnapshot?.session
       ? {
@@ -267,13 +273,7 @@ export default function CleverConversationExperience({
     });
     onInspirationModelConsumed?.();
     return undefined;
-  }, [
-    pendingInspirationModel,
-    onInspirationModelConsumed,
-    resumeSnapshot,
-    dealerName,
-    dealerConditions,
-  ]);
+  }, [pendingInspirationModel, onInspirationModelConsumed, dealerName, dealerConditions, resumeSnapshot]);
 
   useEffect(() => {
     if (resumeCheckedRef.current) return undefined;
@@ -303,6 +303,7 @@ export default function CleverConversationExperience({
     setSession(createHappyPathSession(dealerName));
     setRevealedCount(0);
     handoffNotepadBaselineRef.current = null;
+    inspirationAppliedRef.current = null;
     setExcludedModelKeys([]);
     setExcludeReaction('');
     setOfferModelKeys([]);
@@ -857,7 +858,22 @@ export default function CleverConversationExperience({
   }, [aiTurnPending, handleSend]);
 
   const handleDirectionReaction = useCallback((modelKey, reactionId) => {
-    setSession((prev) => submitVehicleDirectionReaction(prev, modelKey, reactionId));
+    setSession((prev) => {
+      const next = submitVehicleDirectionReaction(prev, modelKey, reactionId);
+      return {
+        ...next,
+        turns: (next.turns ?? []).map((turn) => {
+          if (turn.type !== TURN_TYPE.CLEVER || !(turn.modelCards?.length > 0)) return turn;
+          return {
+            ...turn,
+            vehicleCardReactions: {
+              ...(turn.vehicleCardReactions ?? {}),
+              [modelKey]: reactionId,
+            },
+          };
+        }),
+      };
+    });
   }, []);
 
   const handleDealerHandoff = useCallback((enrichment) => {
@@ -1220,6 +1236,8 @@ export default function CleverConversationExperience({
                 <CleverVehicleDirections
                   key={turn.id}
                   directionsView={turn.directionsView}
+                  needProfile={session.needProfile}
+                  notepadLabels={session.notepadLabels}
                   onReact={handleDirectionReaction}
                 />
               );
@@ -1276,8 +1294,10 @@ export default function CleverConversationExperience({
                 key={turn.id}
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
-                onVehicleAction={handleSelectPrimary}
+                onVehicleReact={handleDirectionReaction}
                 onNextTopic={handleNextTopic}
+                needProfile={session.needProfile}
+                notepadLabels={session.notepadLabels}
                 isActiveQuestion={turn.type === TURN_TYPE.CLEVER && turn.questionId === activeQuestionId}
                 nextTopicsActive={turn.id === activeNextTopicsTurnId}
                 nextTopicsDisabled={aiTurnPending || !inputEnabled}

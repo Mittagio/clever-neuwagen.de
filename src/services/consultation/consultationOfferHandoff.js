@@ -19,6 +19,8 @@ import {
   applyWishHandoffEnrichmentToNeedProfile,
   buildWishHandoffEnrichmentLines,
 } from './wishHandoffEnrichment.js';
+import { buildVehicleModelCard } from './vehicleModelCardPresentation.js';
+import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 
 export const OFFER_CONVERSATION_PHASE = {
   OFFER_HANDOFF: 'offer_handoff',
@@ -237,6 +239,53 @@ function buildRecommendationFromSession(session = {}) {
   };
 }
 
+/**
+ * Modellschlüssel für die Soft-Handoff-Kachel (Inspiration-Klick / Interessant).
+ * @param {object} session
+ * @returns {string[]}
+ */
+export function resolveHandoffFocusModelKeys(session = {}) {
+  const keys = [];
+  const push = (key) => {
+    const k = String(key ?? '').toLowerCase().replace(/^kia-/, '').trim();
+    if (k && !keys.includes(k)) keys.push(k);
+  };
+
+  push(session.needProfile?.selectedModelKey);
+  push(session.needProfile?.modelHint);
+
+  for (const [modelKey, reaction] of Object.entries(session.vehicleDirectionReactions ?? {})) {
+    if (reaction === 'interested') push(modelKey);
+  }
+
+  for (const label of session.notepadLabels ?? []) {
+    const match = String(label).match(/^(.+?)\s+interessant$/i);
+    if (!match) continue;
+    const raw = match[1].replace(/^kia\s+/i, '').trim().toLowerCase();
+    const byLabel = Object.values(KIA_MODEL_ATTRIBUTES).find(
+      (attrs) => String(attrs.label ?? '').replace(/^kia\s+/i, '').trim().toLowerCase() === raw
+        || attrs.modelKey === raw,
+    );
+    if (byLabel) push(byLabel.modelKey);
+    else push(raw.replace(/\s+/g, '-'));
+  }
+
+  return keys.slice(0, 2);
+}
+
+/**
+ * @param {object} session
+ * @returns {object[]}
+ */
+export function buildHandoffFocusModelCards(session = {}) {
+  return resolveHandoffFocusModelKeys(session)
+    .map((modelKey) => buildVehicleModelCard(modelKey, {
+      needProfile: session.needProfile ?? {},
+      notepadLabels: session.notepadLabels ?? [],
+    }))
+    .filter(Boolean);
+}
+
 export function buildPreparedSummaryItems(session = {}) {
   const items = [
     'Ihr Wunschprofil',
@@ -257,6 +306,10 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
   const wishLabels = session.notepadLabels ?? [];
   const advisor = defaultAdvisor(dealerConditions);
   const dealerName = dealerConditions?.dealerName?.trim() || 'Ihr Autohaus';
+  const focusModelCards = buildHandoffFocusModelCards(session);
+  const focusReactions = Object.fromEntries(
+    focusModelCards.map((card) => [card.modelKey, 'interested']),
+  );
   return {
     title: 'Meine Wünsche weitergeben',
     softHeadline: 'Noch etwas?',
@@ -282,6 +335,8 @@ export function buildPersonalHandoffView(session = {}, dealerConditions = {}) {
     wishLabels,
     needProfile: session.needProfile ?? {},
     vehicleLabels: session.vehicleNotepadLabels ?? [],
+    focusModelCards,
+    focusReactions,
     directionLine: session.vehicleMiniRecommendation?.batteryLine ?? null,
     trimLine: session.vehicleMiniRecommendation?.trimLine ?? null,
     advisor,
@@ -916,9 +971,13 @@ export function createLeadFromConsultationHappyPath({
 
 /**
  * Welt 2 → Welt 3 – Screen 5 anzeigen.
+ * Bestehenden Soft-Handoff ersetzen (kein zweites Panel).
  */
 export function beginOfferHandoff(session, dealerConditions = {}) {
   const handoffView = buildPersonalHandoffView(session, dealerConditions);
+  const priorTurns = (session.turns ?? []).filter(
+    (turn) => turn.type !== OFFER_TURN_TYPE.PERSONAL_HANDOFF,
+  );
   return {
     ...session,
     phase: OFFER_CONVERSATION_PHASE.OFFER_HANDOFF,
@@ -929,7 +988,7 @@ export function beginOfferHandoff(session, dealerConditions = {}) {
     },
     pendingQuestion: null,
     turns: [
-      ...session.turns,
+      ...priorTurns,
       {
         type: OFFER_TURN_TYPE.PERSONAL_HANDOFF,
         id: `personal-handoff-${Date.now()}`,

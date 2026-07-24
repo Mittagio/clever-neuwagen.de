@@ -87,9 +87,28 @@ function testDirectionReactionNotFit() {
   console.log('✓ Reaktion „passt eher nicht“ wird gespeichert');
 }
 
+function testSevenSeaterSuvExcludesCityCars() {
+  const view = buildVehicleDirectionsView(
+    {},
+    { notepadLabels: ['SUV', '7 Sitze', 'Familie'], limit: 4 },
+  );
+  const keys = view.directions.map((d) => d.modelKey);
+  assert.ok(keys.length >= 1, 'Mindestens eine 7-Sitzer-Richtung');
+  assert.ok(
+    !keys.some((k) => /^(picanto|ev2|rio|ceed)\b/.test(k)),
+    `Falsche Richtungen: ${keys}`,
+  );
+  assert.ok(
+    keys.every((k) => /^(ev9|sorento|carnival)/.test(k)),
+    `Nur 7-Sitzer-SUVs erwartet, got: ${keys}`,
+  );
+  console.log('✓ SUV + 7 Sitze → keine Picanto/EV2-Richtungen');
+}
+
 testSportageDirections();
 testElektroFamilyDirections();
 testCompareSimilarShowsDirections();
 testDirectionReactionInterested();
 testDirectionReactionNotFit();
+testSevenSeaterSuvExcludesCityCars();
 console.log('\nAlle Vehicle-Direction-Tests bestanden.');

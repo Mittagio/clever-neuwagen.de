@@ -12,7 +12,6 @@ import {
   PURCHASE_SPECIAL_OPTIONS,
   VEHICLE_NEED_TIMING_OPTIONS,
   emptyWishHandoffEnrichment,
-  mergeWishHandoffNotepadLabels,
   prefillWishHandoffEnrichment,
 } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
@@ -20,7 +19,7 @@ import {
   buildEquipmentChipsForCategory,
 } from '../../services/consultation/wishHandoffEquipment.js';
 import { mergeTextIntoNeedProfile } from '../../services/consultation/needProfileService.js';
-import { CleverNotepadSummary } from './CleverHandoffComplete.jsx';
+import CleverVehicleModelRail from './CleverVehicleModelRail.jsx';
 import './clever-conversation.css';
 
 const EMPTY_FORM = {
@@ -49,6 +48,12 @@ function buildSubmitPayload(form, authEmail, enrichment) {
     phone: '',
     enrichment,
   };
+}
+
+function resizeFreetextArea(el) {
+  if (!el) return;
+  el.style.height = '0px';
+  el.style.height = `${Math.max(44, el.scrollHeight)}px`;
 }
 
 function SoftAccordion({ id, title, icon, open, onToggle, summary = null, children }) {
@@ -120,6 +125,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   const [openAcc, setOpenAcc] = useState(null);
   const [equipCategory, setEquipCategory] = useState('comfort');
   const codeAutoSubmitRef = useRef(false);
+  const freetextRef = useRef(null);
 
   const {
     isLoggedIn,
@@ -136,6 +142,10 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
   useEffect(() => {
     onEnrichmentChange?.(enrichment);
   }, [enrichment, onEnrichmentChange]);
+
+  useEffect(() => {
+    resizeFreetextArea(freetextRef.current);
+  }, [freetext]);
 
   useEffect(() => {
     if (isLoggedIn && authEmail) {
@@ -320,6 +330,16 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
     <section className="cc-offer-handoff cc-soft-handoff cc-turn-enter" aria-labelledby="cc-offer-handoff-title">
       {step === 'soft' && (
         <div className="cc-soft-wish" aria-label="Wünsche ergänzen">
+          {(handoffView.focusModelCards?.length > 0) && (
+            <CleverVehicleModelRail
+              cards={handoffView.focusModelCards}
+              reactions={handoffView.focusReactions ?? {}}
+              needProfile={handoffView.needProfile ?? {}}
+              notepadLabels={handoffView.wishLabels ?? []}
+              ariaLabel="Gewähltes Modell"
+            />
+          )}
+
           <h2 id="cc-offer-handoff-title" className="cc-soft-wish__headline">
             {softHeadline}
           </h2>
@@ -471,15 +491,19 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
           <div className="cc-soft-wish__freetext">
             <p className="cc-soft-wish__freetext-label">Etwas anderes?</p>
             <div className="cc-soft-wish__freetext-row">
-              <input
-                type="text"
-                className="cc-offer-handoff__input"
+              <textarea
+                ref={freetextRef}
+                className="cc-offer-handoff__input cc-soft-wish__textarea"
                 placeholder="z. B. kein schwarzes Auto …"
                 aria-label="Weiteren Wunsch ergänzen"
+                rows={1}
                 value={freetext}
-                onChange={(e) => setFreetext(e.target.value)}
+                onChange={(e) => {
+                  setFreetext(e.target.value);
+                  resizeFreetextArea(e.target);
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     applyFreetextWish();
                   }
@@ -495,12 +519,6 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
               </button>
             </div>
           </div>
-
-          <CleverNotepadSummary
-            labels={mergeWishHandoffNotepadLabels(handoffView.wishLabels ?? [], enrichment)}
-            heading="Das habe ich für Sie notiert"
-            className="cc-note-summary--soft"
-          />
 
           <button type="button" className="cc-offer-handoff__cta" onClick={goToIdentify}>
             Weiter
