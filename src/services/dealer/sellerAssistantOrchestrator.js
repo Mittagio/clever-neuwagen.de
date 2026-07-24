@@ -13,6 +13,7 @@ import {
 } from './sellerActionIntent.js';
 import { filterNotepadChipsExcludingKonditionen } from '../customerAkte.js';
 import { proposeSellerInsightLabels } from './sellerInsights.js';
+import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -57,6 +58,79 @@ export function buildSellerAssistantContextChips(lead = {}, sellerFacts = []) {
   return {
     customer,
     seller: [...sellerCurrent, ...sellerFromAkte],
+  };
+}
+
+/**
+ * Nächster Clever-Moment aus Portfolio-/Portal-Aktivitäten (kein Match-Score).
+ */
+export function buildSellerCleverMoment(lead = {}) {
+  const name = customerDisplayName(lead);
+  const short = name.replace(/^(Herr|Frau)\s+/i, '') || name;
+  const items = lead?.crm?.customerOfferPortfolio?.items ?? [];
+  const reactions = items
+    .map((item) => ({
+      item,
+      status: item?.customerReaction?.status ?? PORTFOLIO_REACTION_STATUS.NONE,
+      question: String(item?.customerReaction?.questionText ?? '').trim(),
+      reactedAt: item?.customerReaction?.reactedAt ?? null,
+      label: item.trimLabel
+        ? `${item.modelLabel} · ${item.trimLabel}`
+        : (item.modelLabel || 'Angebot'),
+    }))
+    .filter((entry) => entry.status && entry.status !== PORTFOLIO_REACTION_STATUS.NONE)
+    .sort((a, b) => String(b.reactedAt || '').localeCompare(String(a.reactedAt || '')));
+
+  const opened = lead?.crm?.customerOfferPortfolio?.tracking?.lastOpenedAt
+    || lead?.crm?.customerOfferPortfolio?.tracking?.firstOpenedAt
+    || null;
+
+  if (!reactions.length && !opened) return null;
+
+  const interested = reactions.find((r) => r.status === PORTFOLIO_REACTION_STATUS.INTERESTED);
+  const question = reactions.find((r) => (
+    r.status === PORTFOLIO_REACTION_STATUS.MORE_INFO && r.question
+  ));
+  const change = reactions.find((r) => (
+    r.status === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED && r.question
+  ));
+
+  const parts = [];
+  if (interested) {
+    parts.push(`${interested.label} interessiert ${short} besonders`);
+  } else if (opened) {
+    const first = items[0];
+    const label = first?.modelLabel || 'das Angebot';
+    parts.push(`${short} hat ${label} angesehen`);
+  }
+
+  if (question) {
+    const q = question.question.replace(/^["„]|["“]$/g, '');
+    if (/anhängelast|ziehen|ahk|kupplung/i.test(q)) {
+      parts.push('Er hat nach der Anhängelast gefragt');
+    } else {
+      parts.push(`Er hat gefragt: „${q.slice(0, 80)}${q.length > 80 ? '…' : ''}“`);
+    }
+  }
+
+  if (change) {
+    parts.push(`${change.label}: Änderungswunsch „${change.question.slice(0, 60)}${change.question.length > 60 ? '…' : ''}“`);
+  }
+
+  if (!parts.length) return null;
+
+  const summary = parts.join('. ').replace(/\.\./g, '.') + (parts.length ? '.' : '');
+  const primaryAction = change
+    ? { id: 'adapt_offer', label: 'Angebot anpassen', modeHint: 'offer' }
+    : { id: 'prepare_message', label: 'Nachricht vorbereiten', modeHint: 'message' };
+
+  return {
+    summary,
+    primaryAction,
+    secondaryAction: change
+      ? { id: 'prepare_message', label: 'Nachricht vorbereiten', modeHint: 'message' }
+      : { id: 'adapt_offer', label: 'Angebot anpassen', modeHint: 'offer' },
+    reactions: reactions.slice(0, 5),
   };
 }
 
@@ -198,8 +272,9 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
         inheritedFromCustomer: inherited,
         importantForCustomer: important,
         sellerFacts: actionIntent.sellerFacts,
-        primaryCta: 'An Kunden senden',
+        primaryCta: `Angebot an ${customerDisplayName(lead)} senden`,
         secondaryCta: 'Details ansehen',
+        tertiaryCta: 'Bearbeiten',
       },
     };
   }

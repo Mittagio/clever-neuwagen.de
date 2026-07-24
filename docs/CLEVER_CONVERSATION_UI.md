@@ -217,13 +217,21 @@ Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md).
 
 Mobile-First in der Kundenakte:
 
-1. Kundenkontext-Chips (customer_need)
-2. Clever-Composer (Tippen / Mic)
-3. Action Result (Nachricht / Angebot / Notiz) – immer mit Bestätigung
-4. Verkäuferkontext (seller_input) getrennt von Kundenwünschen
-5. Bottom Quick Actions: Angebot · Nachricht · Anrufen
+1. Clever-Moment aus Kundenreaktionen (falls vorhanden)
+2. Kundenkontext-Chips (customer_need) – Abschnitt „Kundenkontext“
+3. Verkäufer-Notizen (seller_input) – getrennt
+4. Clever-Composer (Tippen / Mic)
+5. Action Result (Nachricht / Angebot / Notiz) – immer mit Bestätigung
+6. Bottom Quick Actions: Angebot · Nachricht · Anrufen
 
 Keine Inventar-API. Kein Auto-Send.
+
+## Kunden-Angebotsraum
+
+Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
+
+Kunde: Angebote → Detail → „Das gefällt mir“ / Frage / Änderungswunsch.  
+Rückfluss in die Verkäuferakte über bestehende Activities / Inbox.
 
 ## Komponenten
 

@@ -22,9 +22,9 @@ export const PORTAL_NAV_IDS = {
 
 export const PORTAL_NAV_SECTIONS = [
   { id: PORTAL_NAV_IDS.OFFERS, label: 'Angebote' },
-  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Nachrichten', badgeKey: 'messageCount' },
+  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat mit Clever', badgeKey: 'messageCount' },
   { id: PORTAL_NAV_IDS.DOCUMENTS, label: 'Unterlagen', badgeKey: 'documentsOpenCount' },
-  { id: PORTAL_NAV_IDS.ADVISOR, label: 'Ansprechpartner' },
+  { id: PORTAL_NAV_IDS.ADVISOR, label: 'Profil' },
 ];
 
 const DONE_DOCUMENT_STATUSES = new Set(['uploaded', 'checked', 'replaced', 'not_needed']);

@@ -10,10 +10,12 @@ import {
   extractSellerFactsFromInput,
 } from './sellerActionIntent.js';
 import {
+  buildSellerCleverMoment,
   buildSellerMessageDraft,
   runSellerAssistantTurn,
 } from './sellerAssistantOrchestrator.js';
 import { createEmptyNeedProfile } from '../consultation/needProfileService.js';
+import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.js';
 
 assert.equal(
   detectSellerActionIntent('Ich habe einen EV3 GT-Line in Schwarzmetallic sofort verfügbar'),
@@ -87,5 +89,42 @@ assert.ok(
   offerTurn.result.inheritedFromCustomer.some((i) => /15\.000|15000/i.test(i.label)),
   'km aus Kundenwunsch',
 );
+
+const momentLead = {
+  ...lead,
+  crm: {
+    ...lead.crm,
+    customerOfferPortfolio: {
+      id: 'pf-1',
+      items: [
+        {
+          id: 'u1',
+          modelLabel: 'Kia EV3 GT-Line',
+          customerReaction: {
+            status: PORTFOLIO_REACTION_STATUS.INTERESTED,
+            questionText: '',
+            reactedAt: '2026-07-24T09:20:00.000Z',
+          },
+        },
+        {
+          id: 'u2',
+          modelLabel: 'Kia EV3 GT-Line',
+          customerReaction: {
+            status: PORTFOLIO_REACTION_STATUS.MORE_INFO,
+            questionText: 'Wie hoch ist die Anhängelast?',
+            reactedAt: '2026-07-24T09:25:00.000Z',
+          },
+        },
+      ],
+      tracking: { lastOpenedAt: '2026-07-24T09:10:00.000Z' },
+    },
+  },
+};
+
+const moment = buildSellerCleverMoment(momentLead);
+assert.ok(moment);
+assert.ok(/EV3/i.test(moment.summary));
+assert.ok(/Anhängelast/i.test(moment.summary));
+assert.equal(moment.primaryAction.modeHint, 'message');
 
 console.log('sellerAssistantOrchestrator.test.js: ok');

@@ -299,6 +299,7 @@ export function mirrorInboundCustomerQuestion({
   customerName = '',
   vehicleLabel = null,
   source = 'customer_portal',
+  createInbox = true,
 } = {}) {
   const trimmed = String(text ?? '').trim();
   if (!lead?.id || !trimmed) {
@@ -325,13 +326,15 @@ export function mirrorInboundCustomerQuestion({
   });
 
   const nextLead = added.lead;
-  const inboxItem = buildInboxItemFromCustomerMessage({
-    lead: nextLead,
-    message: added.message,
-    thread: added.thread,
-    vehicleLabel,
-    source,
-  });
+  const inboxItem = createInbox
+    ? buildInboxItemFromCustomerMessage({
+      lead: nextLead,
+      message: added.message,
+      thread: added.thread,
+      vehicleLabel,
+      source,
+    })
+    : null;
 
   return {
     lead: nextLead,

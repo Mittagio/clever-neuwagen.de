@@ -12,7 +12,7 @@ import {
   markPortfolioAccessVerifiedLocally,
   PORTFOLIO_EVENTS,
 } from '../services/customer/customerOfferPortfolioApi.js';
-import { PORTFOLIO_DECLINE_REASONS, PORTFOLIO_REACTION_STATUS } from '../services/crm/customerOfferPortfolioService.js';
+import { PORTFOLIO_CHANGE_DIMENSIONS, PORTFOLIO_DECLINE_REASONS, PORTFOLIO_REACTION_STATUS } from '../services/crm/customerOfferPortfolioService.js';
 import CustomerPortalMessagesSection from '../components/customer/CustomerPortalMessagesSection.jsx';
 import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGate.jsx';
 import CustomerPortalShellNav from '../components/customer/CustomerPortalShellNav.jsx';
@@ -42,6 +42,7 @@ export default function CustomerOfferPortfolioPage() {
   const [declineReason, setDeclineReason] = useState('');
   const [declineNote, setDeclineNote] = useState('');
   const [question, setQuestion] = useState('');
+  const [changeDimension, setChangeDimension] = useState('');
   const [portalMessage, setPortalMessage] = useState('');
   const [messageFeedback, setMessageFeedback] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -57,8 +58,8 @@ export default function CustomerOfferPortfolioPage() {
   const itemCount = context?.items?.length ?? 0;
 
   usePageSeo({
-    title: `${firstName} – Ihre Fahrzeugauswahl`,
-    description: 'Vergleichen Sie Ihre persönlichen Fahrzeugvorschläge.',
+    title: `${firstName} – Ihre Angebote`,
+    description: 'Ihr persönlicher Clever-Angebotsraum.',
     path: `/angebot/auswahl/${customerSlug ?? 'kunde'}`,
   });
 
@@ -212,13 +213,13 @@ export default function CustomerOfferPortfolioPage() {
   const sectionTitle = useMemo(() => {
     switch (activeSection) {
       case PORTAL_NAV_IDS.MESSAGES:
-        return 'Ihre Nachrichten';
+        return 'Chat mit Clever';
       case PORTAL_NAV_IDS.DOCUMENTS:
         return 'Ihre Unterlagen';
       case PORTAL_NAV_IDS.ADVISOR:
-        return 'Ihr Ansprechpartner';
+        return 'Ihr Profil';
       default:
-        return `${firstName}, Ihre Fahrzeugauswahl`;
+        return `Hallo ${firstName} 👋`;
     }
   }, [activeSection, firstName]);
 
@@ -259,16 +260,19 @@ export default function CustomerOfferPortfolioPage() {
     <div className="cop-page">
       <div className="cop-shell">
         <header className="cop-header">
-          <p className="cop-eyebrow">Persönliche Fahrzeugauswahl</p>
+          <p className="cop-eyebrow">Ihr Clever-Angebotsraum</p>
           <h1 className="cop-title">{sectionTitle}</h1>
           {activeSection === PORTAL_NAV_IDS.OFFERS ? (
-            context.summaryTitle ? (
-              <p className="cop-subline">{context.summaryTitle}</p>
-            ) : (
-              <p className="cop-subline">
-                Schauen Sie sich jedes Angebot an und geben Sie uns pro Vorschlag Ihre Rückmeldung.
-              </p>
-            )
+            <>
+              <p className="cop-offers-heading">Ihre Angebote</p>
+              {context.updatedLabel ? (
+                <p className="cop-subline">Aktualisiert: {context.updatedLabel}</p>
+              ) : (
+                <p className="cop-subline">
+                  Schauen Sie sich jedes Angebot an – ohne komplizierte Vergleichstabelle.
+                </p>
+              )}
+            </>
           ) : null}
         </header>
 
@@ -301,6 +305,7 @@ export default function CustomerOfferPortfolioPage() {
             const isDeclineOpen = activeItemId === item.id && !declineReason;
             const isDeclineForm = activeItemId === item.id && declineReason;
             const isQuestionOpen = activeItemId === `${item.id}:question`;
+            const isChangeOpen = activeItemId === `${item.id}:change`;
             const busy = submitting.startsWith(`${item.id}:`);
 
             return (
@@ -345,7 +350,7 @@ export default function CustomerOfferPortfolioPage() {
 
                   {item.requiresPdf && !item.hasPdf ? (
                     <p className="cop-card__pdf-hint">
-                      Für Leasing/Finanzierung erhalten Sie das verbindliche Angebot als PDF von uns.
+                      Das verbindliche Originalangebot erhalten Sie bei Bedarf als PDF von uns.
                     </p>
                   ) : null}
                   {item.hasPdf && item.pdfFileName && item.pdfDataUrl ? (
@@ -354,15 +359,16 @@ export default function CustomerOfferPortfolioPage() {
                       href={item.pdfDataUrl}
                       download={item.pdfFileName}
                     >
-                      Offizielles Angebot (PDF) herunterladen
+                      Originalangebot ansehen
                     </a>
                   ) : null}
 
                   {hasReacted ? (
                     <p className="cop-card__done">
-                      {reaction === PORTFOLIO_REACTION_STATUS.INTERESTED && '✓ Sehr interessant – wir melden uns.'}
+                      {reaction === PORTFOLIO_REACTION_STATUS.INTERESTED && '✓ Das gefällt Ihnen – wir melden uns.'}
                       {reaction === PORTFOLIO_REACTION_STATUS.CALL_REQUESTED && '✓ Rückruf gewünscht – wir rufen an.'}
-                      {reaction === PORTFOLIO_REACTION_STATUS.MORE_INFO && '✓ Mehr Infos angefragt – wir melden uns.'}
+                      {reaction === PORTFOLIO_REACTION_STATUS.MORE_INFO && '✓ Frage erhalten – wir melden uns.'}
+                      {reaction === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED && '✓ Änderungswunsch notiert – ohne Neuberechnung hier.'}
                       {reaction === PORTFOLIO_REACTION_STATUS.DECLINED && '✓ Rückmeldung erhalten – danke.'}
                     </p>
                   ) : (
@@ -373,15 +379,7 @@ export default function CustomerOfferPortfolioPage() {
                         disabled={busy}
                         onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_INTERESTED)}
                       >
-                        Sehr interessant
-                      </button>
-                      <button
-                        type="button"
-                        className="cop-btn cop-btn--call"
-                        disabled={busy}
-                        onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_CALL_REQUEST)}
-                      >
-                        Bitte rufen Sie mich an
+                        Das gefällt mir ❤️
                       </button>
                       <button
                         type="button"
@@ -390,10 +388,32 @@ export default function CustomerOfferPortfolioPage() {
                         onClick={() => {
                           setActiveItemId(`${item.id}:question`);
                           setDeclineReason('');
+                          setChangeDimension('');
                           setQuestion('');
                         }}
                       >
-                        Mehr Infos
+                        Dazu habe ich eine Frage
+                      </button>
+                      <button
+                        type="button"
+                        className="cop-btn cop-btn--secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          setActiveItemId(`${item.id}:change`);
+                          setDeclineReason('');
+                          setChangeDimension('');
+                          setQuestion('');
+                        }}
+                      >
+                        Ich möchte etwas ändern
+                      </button>
+                      <button
+                        type="button"
+                        className="cop-btn cop-btn--ghost"
+                        disabled={busy}
+                        onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_CALL_REQUEST)}
+                      >
+                        Bitte anrufen
                       </button>
                       <button
                         type="button"
@@ -415,7 +435,7 @@ export default function CustomerOfferPortfolioPage() {
                       <textarea
                         className="cop-textarea"
                         rows={3}
-                        placeholder="Was möchten Sie wissen?"
+                        placeholder="Was möchten Sie zu diesem Angebot wissen?"
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
                       />
@@ -426,12 +446,67 @@ export default function CustomerOfferPortfolioPage() {
                           disabled={busy || !question.trim()}
                           onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_MORE_INFO, { questionText: question.trim() })}
                         >
-                          Anfrage senden
+                          Frage senden
                         </button>
                         <button
                           type="button"
                           className="cop-btn cop-btn--ghost"
                           onClick={() => setActiveItemId(null)}
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isChangeOpen && !hasReacted ? (
+                    <div className="cop-card__form">
+                      <p className="cop-form-label">Was möchten Sie ändern?</p>
+                      <p className="cop-form-hint">
+                        Keine automatische Ratenberechnung – Ihr Verkäufer prüft den Wunsch.
+                      </p>
+                      <div className="cop-decline-chips">
+                        {Object.entries(PORTFOLIO_CHANGE_DIMENSIONS).map(([id, label]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className={`cop-chip${changeDimension === id ? ' is-active' : ''}`}
+                            onClick={() => {
+                              setChangeDimension(id);
+                              if (id !== 'other' && !question.trim()) {
+                                setQuestion(`Lieber: ${label}`);
+                              }
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        className="cop-textarea"
+                        rows={3}
+                        placeholder='z. B. „Lieber 36 Monate.“'
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                      />
+                      <div className="cop-form-row">
+                        <button
+                          type="button"
+                          className="cop-btn cop-btn--secondary"
+                          disabled={busy || !question.trim()}
+                          onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST, {
+                            questionText: question.trim(),
+                          })}
+                        >
+                          Änderungswunsch senden
+                        </button>
+                        <button
+                          type="button"
+                          className="cop-btn cop-btn--ghost"
+                          onClick={() => {
+                            setActiveItemId(null);
+                            setChangeDimension('');
+                          }}
                         >
                           Abbrechen
                         </button>

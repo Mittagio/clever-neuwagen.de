@@ -129,7 +129,16 @@ Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledi
 Der Kunde sagt Clever, was ihm wichtig ist.  
 Der Verkäufer sagt Clever, was erledigt werden soll.
 
-Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md).
+Kunde und Verkäufer arbeiten mit demselben Clever-Kontext,  
+aber mit unterschiedlichen Oberflächen.
+
+Clever bereitet vor.  
+Der Verkäufer bestätigt.  
+Der Kunde reagiert.  
+Clever bringt die Reaktion zurück in den Verkaufsprozess.
+
+Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md) und  
+[Clever Customer Portal](CLEVER_CUSTOMER_PORTAL.md).
 
 ---
 

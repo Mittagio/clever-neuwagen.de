@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import {
   buildSellerAssistantContextChips,
+  buildSellerCleverMoment,
   runSellerAssistantTurn,
 } from '../../services/dealer/sellerAssistantOrchestrator.js';
 import './CustomerAkteSellerAssistant.css';
@@ -41,6 +42,11 @@ export default function CustomerAkteSellerAssistant({
 
   const idleChips = useMemo(
     () => buildSellerAssistantContextChips(lead, []),
+    [lead],
+  );
+
+  const cleverMoment = useMemo(
+    () => buildSellerCleverMoment(lead),
     [lead],
   );
 
@@ -85,6 +91,11 @@ export default function CustomerAkteSellerAssistant({
     setEditBody(null);
   }
 
+  function focusComposer(hint) {
+    setModeHint(hint);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
   function handlePrimary() {
     if (!turn?.result) return;
     const { type } = turn.result;
@@ -117,31 +128,62 @@ export default function CustomerAkteSellerAssistant({
 
   return (
     <section className="cust-seller-assist" aria-label="Clever Verkäufer-Assistent">
+      {cleverMoment && !result ? (
+        <div className="cust-seller-assist__moment" role="status">
+          <p className="cust-seller-assist__moment-label">Clever sagt</p>
+          <p className="cust-seller-assist__moment-text">{cleverMoment.summary}</p>
+          <div className="cust-seller-assist__moment-actions">
+            <button
+              type="button"
+              className="cust-seller-assist__primary cust-seller-assist__primary--compact"
+              onClick={() => focusComposer(cleverMoment.primaryAction.modeHint)}
+            >
+              {cleverMoment.primaryAction.label}
+            </button>
+            {cleverMoment.secondaryAction ? (
+              <button
+                type="button"
+                className="cust-seller-assist__sec"
+                onClick={() => focusComposer(cleverMoment.secondaryAction.modeHint)}
+              >
+                {cleverMoment.secondaryAction.label}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="cust-seller-assist__context">
         {contextChips.customer.length > 0 && (
-          <ul className="cust-seller-assist__chips" aria-label="Kundenkontext">
-            {contextChips.customer.map((chip) => (
-              <li key={`c-${chip.label}`}>
-                <span className="cust-seller-assist__chip cust-seller-assist__chip--customer">
-                  {chip.label}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="cust-seller-assist__context-block">
+            <p className="cust-seller-assist__section-label">Kundenkontext</p>
+            <ul className="cust-seller-assist__chips" aria-label="Kundenkontext">
+              {contextChips.customer.map((chip) => (
+                <li key={`c-${chip.label}`}>
+                  <span className="cust-seller-assist__chip cust-seller-assist__chip--customer">
+                    {chip.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {contextChips.seller.length > 0 && (
-          <ul className="cust-seller-assist__chips cust-seller-assist__chips--seller" aria-label="Verkäuferkontext">
-            {contextChips.seller.map((chip) => (
-              <li key={`s-${chip.label}-${chip.group}`}>
-                <span className="cust-seller-assist__chip cust-seller-assist__chip--seller">
-                  {chip.label}
-                  {chip.badge ? (
-                    <span className="cust-seller-assist__badge">{chip.badge}</span>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="cust-seller-assist__context-block">
+            <p className="cust-seller-assist__section-label">Verkäufer-Notizen</p>
+            <ul className="cust-seller-assist__chips cust-seller-assist__chips--seller" aria-label="Verkäufer-Notizen">
+              {contextChips.seller.map((chip) => (
+                <li key={`s-${chip.label}-${chip.group}`}>
+                  <span className="cust-seller-assist__chip cust-seller-assist__chip--seller">
+                    {chip.label}
+                    {chip.badge ? (
+                      <span className="cust-seller-assist__badge">{chip.badge}</span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
@@ -149,7 +191,7 @@ export default function CustomerAkteSellerAssistant({
         <p className="cust-seller-assist__headline">
           <span aria-hidden>✨</span>
           {' '}
-          Clever
+          Clever Verkäufer-Assistent
         </p>
         <div className="cust-seller-assist__row">
           <textarea
@@ -184,9 +226,13 @@ export default function CustomerAkteSellerAssistant({
       {result?.type === 'message_draft' && (
         <div className="cust-seller-assist__result cust-seller-assist__result--message">
           <p className="cust-seller-assist__result-title">
-            <span aria-hidden>💬</span>
+            Clever Vorschlag
+            <span className="cust-seller-assist__result-ready">Bereit</span>
+          </p>
+          <p className="cust-seller-assist__result-sub">
+            Nachricht für
             {' '}
-            {result.title}
+            {displayName}
           </p>
           <textarea
             className="cust-seller-assist__draft"
@@ -226,9 +272,9 @@ export default function CustomerAkteSellerAssistant({
           <p className="cust-seller-assist__result-title">
             <span aria-hidden>✨</span>
             {' '}
-            {result.title}
+            Angebot vorbereitet
+            <span className="cust-seller-assist__result-ready">Bereit</span>
           </p>
-          <p className="cust-seller-assist__offer-name">{shortName}</p>
           <p className="cust-seller-assist__offer-vehicle">{result.headline}</p>
           {result.subline && <p className="cust-seller-assist__offer-sub">{result.subline}</p>}
           {result.inheritedFromCustomer?.length > 0 && (
@@ -246,7 +292,7 @@ export default function CustomerAkteSellerAssistant({
               <p className="cust-seller-assist__important-label">
                 Für
                 {' '}
-                {shortName}
+                {displayName}
                 {' '}
                 wichtig
               </p>
@@ -267,19 +313,24 @@ export default function CustomerAkteSellerAssistant({
             onClick={handlePrimary}
             disabled={isSaving}
           >
-            An
-            {' '}
-            {shortName}
-            {' '}
-            senden
+            {result.primaryCta || `Angebot an ${displayName} senden`}
           </button>
-          <button
-            type="button"
-            className="cust-seller-assist__link"
-            onClick={() => onPrepareOffer?.(result)}
-          >
-            Details ansehen
-          </button>
+          <div className="cust-seller-assist__secondaries">
+            <button
+              type="button"
+              className="cust-seller-assist__sec"
+              onClick={() => onPrepareOffer?.(result)}
+            >
+              Details ansehen
+            </button>
+            <button
+              type="button"
+              className="cust-seller-assist__sec"
+              onClick={() => onPrepareOffer?.(result)}
+            >
+              Bearbeiten
+            </button>
+          </div>
         </div>
       )}
 
@@ -295,13 +346,13 @@ export default function CustomerAkteSellerAssistant({
 
       {result?.opportunity && (
         <div className="cust-seller-assist__opportunity">
-          <p className="cust-seller-assist__opp-title">Passendes Fahrzeug verfügbar</p>
+          <p className="cust-seller-assist__opp-title">Passendes Fahrzeug</p>
           <p className="cust-seller-assist__opp-vehicle">{result.opportunity.vehicleLabel}</p>
           <div className="cust-seller-assist__opp-meta">
             {result.opportunity.color && <span>{result.opportunity.color}</span>}
             {result.opportunity.availability && <span>{result.opportunity.availability}</span>}
           </div>
-          <p className="cust-seller-assist__opp-source">Aus Ihrer Angabe</p>
+          <p className="cust-seller-assist__opp-source">Aus Ihrer Angabe · Seller Fact</p>
         </div>
       )}
 

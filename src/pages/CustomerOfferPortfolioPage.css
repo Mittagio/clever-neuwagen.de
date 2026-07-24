@@ -28,6 +28,20 @@
   color: #111827;
 }
 
+.cop-offers-heading {
+  margin: 0 0 0.35rem;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.cop-form-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .cop-subline {
   margin: 0;
   color: #4b5563;

@@ -134,6 +134,34 @@ assert.equal(moreInfo.inboxItem?.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
 assert.equal(moreInfo.inboxItem?.title, 'Neue Nachricht zum Angebot');
 assert.ok(moreInfo.lead.crm.customerMessages?.length >= 1);
 
+const changeLead = {
+  ...moreInfo.lead,
+  crm: {
+    ...moreInfo.lead.crm,
+    customerOfferPortfolio: {
+      ...moreInfo.lead.crm.customerOfferPortfolio,
+      items: moreInfo.lead.crm.customerOfferPortfolio.items.map((item) => (
+        item.id === ev6Item.id
+          ? { ...item, customerReaction: { status: PORTFOLIO_REACTION_STATUS.NONE } }
+          : item
+      )),
+    },
+  },
+};
+const changeReq = applyPortfolioEvent(
+  changeLead,
+  ev6Item.id,
+  PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST,
+  { token: prepared.portfolio.token, questionText: 'Lieber 36 Monate.' },
+);
+assert.ok(changeReq.ok);
+assert.equal(
+  changeReq.portfolio.items.find((i) => i.id === ev6Item.id)?.customerReaction?.status,
+  PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED,
+);
+assert.equal(changeReq.inboxItem?.type, INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST);
+assert.ok(/36 Monate/i.test(changeReq.inboxItem?.message ?? changeReq.inboxItem?.title ?? ''));
+
 const shareMsg = buildPortfolioShareMessage({
   customerName: 'Anna Schmidt',
   itemCount: 3,
@@ -141,18 +169,21 @@ const shareMsg = buildPortfolioShareMessage({
   summaryLines: prepared.portfolio.items.map((i) => i.summaryLine).filter(Boolean),
 });
 assert.ok(shareMsg.includes('Anna'));
-assert.ok(shareMsg.includes('3 Optionen'));
+assert.ok(shareMsg.includes('Ihre neuen Angebote sind online'));
 assert.ok(shareMsg.includes('👉'));
+assert.ok(!shareMsg.toLowerCase().includes('pdf'));
 
 assert.equal(PORTFOLIO_DECLINE_REASONS.too_expensive, 'Zu teuer');
 
 const inbox = listInboxItems({ leadId: lead.id });
 assert.ok(inbox.length >= 3, 'Inbox-Einträge für Portfolio-Events');
-assert.equal(
-  inbox.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE).length,
-  1,
+assert.ok(
+  inbox.filter((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE).length >= 1,
+  'Portal-Frage als Kunden-Nachricht',
 );
 assert.ok(!inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_QUESTION));
+assert.ok(inbox.some((item) => item.type === INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST));
+assert.ok(/36 Monate/i.test(changeReq.inboxItem?.message ?? ''));
 
 __clearInboxTestMode();
 

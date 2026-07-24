@@ -83,6 +83,8 @@ export const PORTFOLIO_EVENTS = {
   OFFER_CALL_REQUEST: 'portfolio_offer_call',
   OFFER_DECLINED: 'portfolio_offer_declined',
   OFFER_MORE_INFO: 'portfolio_offer_more_info',
+  /** Änderungswunsch ohne Kunden-Neuberechnung */
+  OFFER_CHANGE_REQUEST: 'portfolio_offer_change_request',
 };
 
 export const PORTFOLIO_DECLINE_REASONS = {
@@ -91,12 +93,21 @@ export const PORTFOLIO_DECLINE_REASONS = {
   not_interested: 'Kein Interesse',
 };
 
+export const PORTFOLIO_CHANGE_DIMENSIONS = {
+  term: 'Laufzeit',
+  mileage: 'Kilometer',
+  down_payment: 'Sonderzahlung',
+  color: 'Farbe',
+  other: 'Etwas anderes',
+};
+
 export const PORTFOLIO_REACTION_STATUS = {
   NONE: 'none',
   INTERESTED: 'interested',
   CALL_REQUESTED: 'call_requested',
   DECLINED: 'declined',
   MORE_INFO: 'more_info',
+  CHANGE_REQUESTED: 'change_requested',
 };
 
 let idCounter = 0;
@@ -419,7 +430,7 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
       token: portfolio.token,
       requiresCode: true,
       portalAccess,
-      pageTitle: 'Ihre Fahrzeugauswahl',
+      pageTitle: 'Ihre Angebote',
     };
   }
 
@@ -453,6 +464,26 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     0,
   );
 
+  let updatedLabel = null;
+  const stamp = portfolio.updatedAt || portfolio.tracking?.lastOpenedAt || portfolio.createdAt;
+  if (stamp) {
+    try {
+      const d = new Date(stamp);
+      const today = new Date();
+      const isToday = d.toDateString() === today.toDateString();
+      updatedLabel = isToday
+        ? `heute, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+        : d.toLocaleString('de-DE', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+    } catch {
+      updatedLabel = null;
+    }
+  }
+
   return {
     leadId: lead.id,
     customerFirstName: firstName,
@@ -463,12 +494,13 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     summaryTitle: items.length
       ? `${items[0].modelLabel}${items.every((i) => i.trimLabel === items[0].trimLabel && i.trimLabel) ? ` · ${items[0].trimLabel}` : ''} – Ihre ${items.length} Option${items.length === 1 ? '' : 'en'}`
       : 'Ihre Angebotsauswahl',
+    updatedLabel,
     items,
     messageThreads,
     portalAccess,
     shell: buildCustomerPortalShellModel(lead, { messageCount }),
     requiresCode: false,
-    pageTitle: 'Ihre Fahrzeugauswahl',
+    pageTitle: 'Ihre Angebote',
   };
 }
 
@@ -576,6 +608,7 @@ function mapReactionToVariantStatus(reactionStatus) {
       return OFFER_VARIANT_STATUS.INTERESTED;
     case PORTFOLIO_REACTION_STATUS.CALL_REQUESTED:
     case PORTFOLIO_REACTION_STATUS.MORE_INFO:
+    case PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED:
       return OFFER_VARIANT_STATUS.OFFER_REQUESTED;
     case PORTFOLIO_REACTION_STATUS.DECLINED:
       return OFFER_VARIANT_STATUS.REJECTED;
@@ -611,6 +644,7 @@ function buildInboxForPortfolioEvent({
     [PORTFOLIO_EVENTS.OFFER_CALL_REQUEST]: INBOX_EVENT_TYPES.CONTACT_REQUESTED,
     [PORTFOLIO_EVENTS.OFFER_DECLINED]: INBOX_EVENT_TYPES.OFFER_DECLINED,
     [PORTFOLIO_EVENTS.OFFER_MORE_INFO]: INBOX_EVENT_TYPES.OFFER_QUESTION,
+    [PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST]: INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST,
     [PORTFOLIO_EVENTS.OPENED]: INBOX_EVENT_TYPES.OFFER_OPENED,
   };
 
@@ -620,6 +654,7 @@ function buildInboxForPortfolioEvent({
     [PORTFOLIO_EVENTS.OFFER_CALL_REQUEST]: 'Rückruf gewünscht',
     [PORTFOLIO_EVENTS.OFFER_DECLINED]: 'Angebot passt nicht',
     [PORTFOLIO_EVENTS.OFFER_MORE_INFO]: 'Mehr Infos gewünscht',
+    [PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST]: 'Änderungswunsch zum Angebot',
     [PORTFOLIO_EVENTS.OPENED]: 'Auswahl geöffnet',
   };
 
@@ -679,6 +714,7 @@ const PORTFOLIO_REACTION_LABELS = {
   [PORTFOLIO_REACTION_STATUS.CALL_REQUESTED]: 'Rückruf gewünscht',
   [PORTFOLIO_REACTION_STATUS.DECLINED]: 'Angebot abgelehnt',
   [PORTFOLIO_REACTION_STATUS.MORE_INFO]: 'Rückfrage gestellt',
+  [PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED]: 'Änderung gewünscht',
 };
 
 function syncPortfolioEventToCrm(lead, {
@@ -700,7 +736,8 @@ function syncPortfolioEventToCrm(lead, {
       interaction = recordCustomerInterested(interaction);
     } else if (eventType === PORTFOLIO_EVENTS.OFFER_DECLINED) {
       interaction = recordCustomerDeclined(interaction);
-    } else if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO) {
+    } else if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
+      || eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST) {
       interaction = addCustomerQuestion(interaction, questionText);
     }
 
@@ -801,6 +838,13 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
         historyText = `Kunde möchte mehr Infos (${item.modelLabel}): „${trimmed}“`;
         break;
       }
+      case PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST: {
+        const trimmed = String(questionText ?? '').trim();
+        if (!trimmed) return { ok: false, error: 'change_request_required' };
+        reactionStatus = PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED;
+        historyText = `Kunde wünscht Änderung (${item.modelLabel}): „${trimmed}“`;
+        break;
+      }
       default:
         return { ok: false, error: 'unknown_event' };
     }
@@ -831,7 +875,8 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       updatedAt: now,
     };
 
-    inboxItem = eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
+    inboxItem = (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
+      || eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST)
       ? null
       : buildInboxForPortfolioEvent({
         lead,
@@ -869,23 +914,35 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     ],
   };
 
-  if (eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO && itemIndex >= 0) {
+  if ((eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
+    || eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST) && itemIndex >= 0) {
     const reactedItem = nextPortfolio.items[itemIndex];
     const trimmed = String(questionText ?? '').trim();
     const vehicleLabel = reactedItem.trimLabel
       ? `${reactedItem.modelLabel} · ${reactedItem.trimLabel}`
       : reactedItem.modelLabel;
+    const isChange = eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST;
     const mirrored = mirrorInboundCustomerQuestion({
       lead: finalLead,
       text: trimmed,
       relatedOfferId: reactedItem.vehicleCardId ?? reactedItem.id,
-      relatedQuestionId: `portfolio-more-info-${reactedItem.id}`,
+      relatedQuestionId: isChange
+        ? `portfolio-change-${reactedItem.id}`
+        : `portfolio-more-info-${reactedItem.id}`,
       customerName: lead.contact?.name ?? '',
       vehicleLabel,
       source: 'customer_portal',
+      createInbox: !isChange,
     });
     finalLead = mirrored.lead;
-    inboxItem = mirrored.inboxItem;
+    inboxItem = isChange
+      ? buildInboxForPortfolioEvent({
+        lead: finalLead,
+        item: reactedItem,
+        eventType,
+        message: historyText,
+      })
+      : mirrored.inboxItem;
   }
 
   finalLead = syncPortfolioEventToCrm(finalLead, {
@@ -913,11 +970,11 @@ export function buildPortfolioShareMessage({
   summaryLines = [],
 } = {}) {
   const first = customerName.split(/\s+/)[0] || 'Hallo';
-  const countLabel = itemCount === 1 ? '1 Option' : `${itemCount} Optionen`;
+  void itemCount;
   const linesBlock = summaryLines.length
     ? `\n\n${summaryLines.join('\n')}\n`
     : '\n';
-  return `Hallo ${first}, hier ${countLabel === '1 Option' ? 'ist' : 'sind'} ${countLabel} für Sie zum Vergleichen:${linesBlock}\n👉 ${url}`;
+  return `Hallo ${first},\n\nIhre neuen Angebote sind online.${linesBlock}\n👉 ${url}`;
 }
 
 export function buildPortfolioSummaryLinesFromItems(items = []) {

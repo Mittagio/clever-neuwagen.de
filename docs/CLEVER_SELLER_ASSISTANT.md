@@ -17,6 +17,14 @@ Dashboard = **Kundenkontext + Clever + Action Result + letzte Aktivität**.
 
 Nicht: zehn Menüs, Formulare, Copy/Paste, parallele ChatGPT-Nutzung.
 
+Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar getrennt**.
+
+Nach Kundenreaktionen im Angebotsraum erscheint ein **Clever-Moment**  
+(„… hat den EV3 angesehen und nach der Anhängelast gefragt“) mit  
+Quick Action „Nachricht vorbereiten“ / „Angebot anpassen“.
+
+Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
+
 ## Komponenten
 
 | Baustein | Datei |
@@ -54,5 +62,6 @@ Kein DMS-/Bestandsabgleich in v1.
 
 - [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md)
 - [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md)
+- [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md)
 - [CLEVER_MAGIC_OFFER.md](CLEVER_MAGIC_OFFER.md)
 - Seller Copilot: `runCleverSellerCopilot.js`
