@@ -28,6 +28,7 @@ export default function CustomerAkteSellerAssistant({
   onPrepareOffer = null,
   onSaveNote = null,
   onScheduleCallback = null,
+  onSendWorkspacePackage = null,
   isSaving = false,
 }) {
   const [draft, setDraft] = useState('');
@@ -71,7 +72,7 @@ export default function CustomerAkteSellerAssistant({
     try {
       const result = runSellerAssistantTurn(lead, trimmed, { modeHint: hint });
       setTurn(result);
-      if (result?.result?.type === 'message_draft') {
+      if (result?.result?.type === 'message_draft' || result?.result?.type === 'workspace_package') {
         setEditBody(result.result.draft?.body ?? '');
       } else {
         setEditBody(null);
@@ -105,6 +106,15 @@ export default function CustomerAkteSellerAssistant({
         channel: turn.result.draft?.channel,
         subject: turn.result.draft?.subject,
       });
+      return;
+    }
+    if (type === 'workspace_package') {
+      onSendWorkspacePackage?.({
+        body: editBody ?? turn.result.draft?.body,
+        actions: turn.result.actions ?? [],
+      });
+      setTurn(null);
+      setDraft('');
       return;
     }
     if (type === 'offer_draft') {
@@ -264,6 +274,48 @@ export default function CustomerAkteSellerAssistant({
               Bearbeiten
             </button>
           </div>
+        </div>
+      )}
+
+      {result?.type === 'workspace_package' && (
+        <div className="cust-seller-assist__result cust-seller-assist__result--workspace">
+          <p className="cust-seller-assist__result-title">
+            ✨ Clever hat vorbereitet
+            <span className="cust-seller-assist__result-ready">Bereit</span>
+          </p>
+          <textarea
+            className="cust-seller-assist__draft"
+            rows={6}
+            value={editBody ?? result.draft?.body ?? ''}
+            onChange={(e) => setEditBody(e.target.value)}
+            aria-label="Nachrichtenvorschlag"
+          />
+          {result.actions?.length > 0 ? (
+            <ul className="cust-seller-assist__actions-list">
+              {result.actions.map((action) => (
+                <li key={action.id}>
+                  ✓
+                  {' '}
+                  {action.label}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <button
+            type="button"
+            className="cust-seller-assist__primary"
+            onClick={handlePrimary}
+            disabled={isSaving || !String(editBody ?? result.draft?.body ?? '').trim()}
+          >
+            Senden
+          </button>
+          <button
+            type="button"
+            className="cust-seller-assist__sec"
+            onClick={() => onEditMessage?.(editBody ?? result.draft?.body)}
+          >
+            Bearbeiten
+          </button>
         </div>
       )}
 

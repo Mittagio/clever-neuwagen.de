@@ -14,10 +14,9 @@ import {
 } from '../services/customer/customerOfferPortfolioApi.js';
 import { PORTFOLIO_CHANGE_DIMENSIONS, PORTFOLIO_DECLINE_REASONS, PORTFOLIO_REACTION_STATUS } from '../services/crm/customerOfferPortfolioService.js';
 import CustomerPortalMessagesSection from '../components/customer/CustomerPortalMessagesSection.jsx';
-import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGate.jsx';
-import CustomerPortalShellNav from '../components/customer/CustomerPortalShellNav.jsx';
 import CustomerPortalDocumentsSection from '../components/customer/CustomerPortalDocumentsSection.jsx';
-import CustomerPortalAdvisorSection from '../components/customer/CustomerPortalAdvisorSection.jsx';
+import CustomerPortalShellNav from '../components/customer/CustomerPortalShellNav.jsx';
+import CustomerPortalCodeGate from '../components/customer/CustomerPortalCodeGate.jsx';
 import PkwEnVkvBox from '../components/compliance/PkwEnVkvBox.jsx';
 import { ENVKV_CHANNEL } from '../services/vehicle/requiresPkwEnVkv.js';
 import { PORTAL_NAV_IDS } from '../services/crm/customerPortalShellPresenter.js';
@@ -50,7 +49,7 @@ export default function CustomerOfferPortfolioPage() {
   const [accessVerified, setAccessVerified] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [verifyingCode, setVerifyingCode] = useState(false);
-  const [activeSection, setActiveSection] = useState(PORTAL_NAV_IDS.OFFERS);
+  const [activeSection, setActiveSection] = useState(PORTAL_NAV_IDS.MESSAGES);
   const portfolioOpenedRef = useRef(false);
   const viewedReportedRef = useRef(false);
 
@@ -213,15 +212,17 @@ export default function CustomerOfferPortfolioPage() {
   const sectionTitle = useMemo(() => {
     switch (activeSection) {
       case PORTAL_NAV_IDS.MESSAGES:
-        return 'Chat mit Clever';
+        return context?.dealerName || 'Ihr Autohaus';
       case PORTAL_NAV_IDS.DOCUMENTS:
         return 'Ihre Unterlagen';
-      case PORTAL_NAV_IDS.ADVISOR:
-        return 'Ihr Profil';
+      case PORTAL_NAV_IDS.SELF_DISCLOSURE:
+        return 'Selbstauskunft';
+      case PORTAL_NAV_IDS.OFFERS:
+        return `Hallo ${firstName} 👋`;
       default:
         return `Hallo ${firstName} 👋`;
     }
-  }, [activeSection, firstName]);
+  }, [activeSection, firstName, context?.dealerName]);
 
   if (loading) {
     return (
@@ -260,7 +261,11 @@ export default function CustomerOfferPortfolioPage() {
     <div className="cop-page">
       <div className="cop-shell">
         <header className="cop-header">
-          <p className="cop-eyebrow">Ihr Clever-Angebotsraum</p>
+          <p className="cop-eyebrow">
+            {activeSection === PORTAL_NAV_IDS.MESSAGES
+              ? (context.advisorName ? `Ihr Ansprechpartner: ${context.advisorName}` : 'Clever Arbeitsraum')
+              : 'Ihr Clever-Angebotsraum'}
+          </p>
           <h1 className="cop-title">{sectionTitle}</h1>
           {activeSection === PORTAL_NAV_IDS.OFFERS ? (
             <>
@@ -588,12 +593,61 @@ export default function CustomerOfferPortfolioPage() {
 
         {activeSection === PORTAL_NAV_IDS.MESSAGES ? (
           <CustomerPortalMessagesSection
+            items={context.workspace?.items ?? []}
             threads={context.messageThreads ?? []}
             draft={portalMessage}
             onDraftChange={setPortalMessage}
             onSend={sendPortalMessage}
             sending={sendingMessage}
             sendFeedback={messageFeedback}
+            dealerName={context.dealerName || 'Autohaus'}
+            onOpenOffer={() => setActiveSection(PORTAL_NAV_IDS.OFFERS)}
+            onUploadDocument={(payload) => {
+              const url = payload?.uploadUrl
+                || shell?.documents?.uploadUrl
+                || shell?.documents?.documentsArea?.uploadAction?.url;
+              if (url) window.location.href = url;
+              else setActiveSection(PORTAL_NAV_IDS.DOCUMENTS);
+            }}
+            onStartSelfDisclosure={() => {
+              window.location.href = `/angebot/auswahl/${customerSlug}/selbstauskunft?leadId=${leadId}&token=${token}`;
+            }}
+            plusActions={[
+              {
+                id: 'photo',
+                icon: '📷',
+                label: 'Foto',
+                onClick: () => {
+                  const url = shell?.documents?.uploadUrl;
+                  if (url) window.location.href = url;
+                  else setActiveSection(PORTAL_NAV_IDS.DOCUMENTS);
+                },
+              },
+              {
+                id: 'file',
+                icon: '📄',
+                label: 'Datei',
+                onClick: () => {
+                  const url = shell?.documents?.uploadUrl;
+                  if (url) window.location.href = url;
+                  else setActiveSection(PORTAL_NAV_IDS.DOCUMENTS);
+                },
+              },
+              {
+                id: 'sa',
+                icon: '✍️',
+                label: 'Selbstauskunft',
+                onClick: () => {
+                  window.location.href = `/angebot/auswahl/${customerSlug}/selbstauskunft?leadId=${leadId}&token=${token}`;
+                },
+              },
+              {
+                id: 'offers',
+                icon: '🚗',
+                label: 'Angebote',
+                onClick: () => setActiveSection(PORTAL_NAV_IDS.OFFERS),
+              },
+            ]}
           />
         ) : null}
 
@@ -604,10 +658,11 @@ export default function CustomerOfferPortfolioPage() {
           />
         ) : null}
 
-        {activeSection === PORTAL_NAV_IDS.ADVISOR ? (
-          <CustomerPortalAdvisorSection
-            advisor={shell?.advisor}
-            onWriteMessage={() => setActiveSection(PORTAL_NAV_IDS.MESSAGES)}
+        {activeSection === PORTAL_NAV_IDS.SELF_DISCLOSURE ? (
+          <CustomerPortalDocumentsSection
+            documents={shell?.documents}
+            selfDisclosureHref={`/angebot/auswahl/${customerSlug}/selbstauskunft?leadId=${leadId}&token=${token}`}
+            focusSelfDisclosure
           />
         ) : null}
       </div>

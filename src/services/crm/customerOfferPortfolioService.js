@@ -20,6 +20,7 @@ import {
   mirrorInboundCustomerQuestion,
   sendCustomerPortalInboundMessage,
 } from './customerMessageService.js';
+import { buildSharedWorkspaceTimeline, postSelfDisclosureStatusMessage } from './sharedWorkspaceService.js';
 import {
   buildCustomerPortalAccessContext,
   isCustomerPortalAccessVerified,
@@ -464,6 +465,20 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     0,
   );
 
+  const advisorName = lead?.assignedSellerName
+    || lead?.ownerName
+    || lead?.crm?.advisorName
+    || null;
+  const dealerName = lead?.dealerName
+    || lead?.crm?.dealerName
+    || 'Ihr Autohaus';
+
+  const workspace = buildSharedWorkspaceTimeline(lead, {
+    role: 'customer',
+    dealerName,
+    advisorName,
+  });
+
   let updatedLabel = null;
   const stamp = portfolio.updatedAt || portfolio.tracking?.lastOpenedAt || portfolio.createdAt;
   if (stamp) {
@@ -497,10 +512,16 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     updatedLabel,
     items,
     messageThreads,
+    workspace,
     portalAccess,
-    shell: buildCustomerPortalShellModel(lead, { messageCount }),
+    shell: buildCustomerPortalShellModel(lead, {
+      messageCount,
+      offerCount: items.length,
+    }),
     requiresCode: false,
-    pageTitle: 'Ihre Angebote',
+    pageTitle: 'Ihr Clever-Arbeitsraum',
+    dealerName,
+    advisorName,
   };
 }
 
@@ -581,13 +602,18 @@ export function applyCustomerPortalSelfDisclosureSave(lead, { stepId, data, adva
 export function applyCustomerPortalSelfDisclosureSubmit(lead) {
   const result = submitSelfDisclosure(lead);
   if (!result.ok) return result;
+  const withStatus = postSelfDisclosureStatusMessage({
+    lead: result.lead,
+    status: result.selfDisclosure?.status,
+  });
+  const nextLead = withStatus.lead ?? result.lead;
   return {
     ok: true,
-    lead: result.lead,
+    lead: nextLead,
     selfDisclosure: result.selfDisclosure,
     inboxItem: result.inboxItem,
-    interview: buildSelfDisclosureInterviewModel(result.lead),
-    context: buildPortfolioCustomerContext(result.lead),
+    interview: buildSelfDisclosureInterviewModel(nextLead),
+    context: buildPortfolioCustomerContext(nextLead),
   };
 }
 

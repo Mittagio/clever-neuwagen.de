@@ -31,6 +31,27 @@ export const THREAD_STATUS = {
   ARCHIVED: 'archived',
 };
 
+/** Chat-Karten im gemeinsamen Arbeitsraum (additive Erweiterung, kein neuer Store). */
+export const MESSAGE_KIND = {
+  TEXT: 'text',
+  OFFER_CARD: 'offer_card',
+  DOCUMENT_CARD: 'document_card',
+  DOCUMENT_REQUEST: 'document_request',
+  SELF_DISCLOSURE_CARD: 'self_disclosure_card',
+  CHECKLIST_CARD: 'checklist_card',
+  CLEVER_MESSAGE: 'clever_message',
+  SYSTEM_STATUS: 'system_status',
+};
+
+const CARD_MESSAGE_KINDS = new Set([
+  MESSAGE_KIND.OFFER_CARD,
+  MESSAGE_KIND.DOCUMENT_CARD,
+  MESSAGE_KIND.DOCUMENT_REQUEST,
+  MESSAGE_KIND.SELF_DISCLOSURE_CARD,
+  MESSAGE_KIND.CHECKLIST_CARD,
+  MESSAGE_KIND.SYSTEM_STATUS,
+]);
+
 const FORBIDDEN_CUSTOMER_TEXT_PATTERNS = [
   /\beinkommen\b/i,
   /\bbonit/i,
@@ -42,6 +63,18 @@ const FORBIDDEN_CUSTOMER_TEXT_PATTERNS = [
   /\bselbstauskunft\b/i,
   /\bschufa\b/i,
 ];
+
+/** Für Workspace-Karten (Anforderung/Status) – nur hochsensible Begriffe blocken. */
+const FORBIDDEN_CARD_TEXT_PATTERNS = [
+  /\beinkommen\b/i,
+  /\bbonit/i,
+  /\bschufa\b/i,
+  /\binterne?\s+notiz/i,
+];
+
+export function isCardMessageKind(kind = '') {
+  return CARD_MESSAGE_KINDS.has(kind);
+}
 
 function uid(prefix = 'msg') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -80,12 +113,16 @@ export function mergeCustomerMessageStore(lead = {}, patch = {}) {
 
 /**
  * @param {string} text
+ * @param {{ kind?: string }} [options]
  */
-export function sanitizeCustomerVisibleText(text = '') {
+export function sanitizeCustomerVisibleText(text = '', options = {}) {
   const raw = String(text ?? '').trim();
   if (!raw) return '';
   if (isSelfDisclosureSensitiveText(raw)) return '';
-  if (FORBIDDEN_CUSTOMER_TEXT_PATTERNS.some((pattern) => pattern.test(raw))) {
+  const patterns = isCardMessageKind(options.kind)
+    ? FORBIDDEN_CARD_TEXT_PATTERNS
+    : FORBIDDEN_CUSTOMER_TEXT_PATTERNS;
+  if (patterns.some((pattern) => pattern.test(raw))) {
     return '';
   }
   return raw;
@@ -158,6 +195,10 @@ export function addCustomerMessage({
   visibleToCustomer = false,
   createdByUserId = null,
   createdByName = null,
+  kind = MESSAGE_KIND.TEXT,
+  payload = null,
+  senderRole = null,
+  bypassSanitize = false,
 } = {}) {
   if (!lead?.id) return { lead, message: null, thread: null };
 
@@ -174,16 +215,19 @@ export function addCustomerMessage({
     thread = created.thread;
   }
 
-  const safeText = visibleToCustomer
-    ? sanitizeCustomerVisibleText(text)
+  const resolvedKind = kind || MESSAGE_KIND.TEXT;
+  const isCard = isCardMessageKind(resolvedKind);
+  const safeText = visibleToCustomer && !bypassSanitize
+    ? sanitizeCustomerVisibleText(text, { kind: resolvedKind })
     : String(text ?? '').trim();
 
-  if (visibleToCustomer && !safeText) {
+  if (visibleToCustomer && !safeText && !isCard && resolvedKind !== MESSAGE_KIND.CLEVER_MESSAGE) {
     return { lead: workingLead, message: null, thread, error: 'sensitive_or_empty' };
   }
 
   const store = getCustomerMessageStore(workingLead);
   const now = nowIso();
+  const fallbackCardText = payload?.title || payload?.label || 'Aktualisierung';
   const message = {
     id: uid('cmsg'),
     threadId: thread.id,
@@ -192,13 +236,16 @@ export function addCustomerMessage({
     direction,
     channel,
     status,
-    text: safeText || String(text ?? '').trim(),
+    text: safeText || (isCard ? fallbackCardText : String(text ?? '').trim()),
     subject: subject ?? null,
     attachments: Array.isArray(attachments) ? attachments : [],
     relatedOfferId: relatedOfferId ?? null,
     relatedQuestionId: relatedQuestionId ?? null,
     relatedDocumentIds: Array.isArray(relatedDocumentIds) ? relatedDocumentIds : [],
     visibleToCustomer: Boolean(visibleToCustomer),
+    kind: resolvedKind,
+    payload: payload && typeof payload === 'object' ? payload : null,
+    senderRole: senderRole || null,
     createdAt: now,
     createdByUserId: createdByUserId ?? null,
     createdByName: createdByName ?? null,
@@ -355,9 +402,14 @@ export function sendCleverChannelMessage({
   relatedQuestionId = null,
   createdByUserId = null,
   createdByName = null,
+  kind = MESSAGE_KIND.TEXT,
+  payload = null,
+  senderRole = 'seller',
+  bypassSanitize = false,
 } = {}) {
   const trimmed = String(text ?? '').trim();
-  if (!lead?.id || !trimmed) {
+  const isCard = isCardMessageKind(kind);
+  if (!lead?.id || (!trimmed && !isCard)) {
     return { lead, message: null, historyEntry: null };
   }
 
@@ -378,12 +430,16 @@ export function sendCleverChannelMessage({
     direction: MESSAGE_DIRECTION.OUTBOUND,
     channel: MESSAGE_CHANNEL.CLEVER,
     status: MESSAGE_STATUS.SENT,
-    text: trimmed,
+    text: trimmed || payload?.title || '',
     relatedOfferId,
     relatedQuestionId,
     visibleToCustomer: true,
     createdByUserId,
     createdByName,
+    kind,
+    payload,
+    senderRole,
+    bypassSanitize,
   });
 
   if (!added.message) {
@@ -509,9 +565,13 @@ function formatPortalTime(iso = '') {
  */
 export function formatPortalMessageText(message = {}) {
   if (!message.visibleToCustomer) return null;
+  const kind = message.kind || MESSAGE_KIND.TEXT;
+  if (isCardMessageKind(kind)) {
+    return String(message.text ?? message.payload?.title ?? message.payload?.label ?? ' ').trim() || ' ';
+  }
   const text = String(message.text ?? '').trim();
   if (!text) return null;
-  const safe = sanitizeCustomerVisibleText(text);
+  const safe = sanitizeCustomerVisibleText(text, { kind });
   return safe || null;
 }
 
@@ -578,14 +638,26 @@ export function buildCustomerPortalMessageThreads(lead = {}, options = {}) {
     threads.push({
       id: threadId,
       title: resolvePortalThreadTitle(threadMeta, rawMessages, portfolioItems),
-      messages: sorted.map(({ message, text }) => ({
-        id: message.id,
-        senderLabel: message.direction === MESSAGE_DIRECTION.INBOUND ? 'Sie' : 'Autohaus',
-        isCustomer: message.direction === MESSAGE_DIRECTION.INBOUND,
-        text,
-        createdAt: message.createdAt,
-        timeLabel: formatPortalTime(message.createdAt),
-      })),
+      messages: sorted.map(({ message, text }) => {
+        const isCustomer = message.direction === MESSAGE_DIRECTION.INBOUND;
+        const isClever = message.kind === MESSAGE_KIND.CLEVER_MESSAGE
+          || message.senderRole === 'clever';
+        let senderLabel = isCustomer ? 'Sie' : 'Autohaus';
+        if (isClever) senderLabel = '✨ Clever';
+        else if (!isCustomer && message.createdByName) senderLabel = message.createdByName;
+        return {
+          id: message.id,
+          senderLabel,
+          isCustomer,
+          isClever,
+          text,
+          kind: message.kind || MESSAGE_KIND.TEXT,
+          payload: message.payload ?? null,
+          relatedOfferId: message.relatedOfferId ?? null,
+          createdAt: message.createdAt,
+          timeLabel: formatPortalTime(message.createdAt),
+        };
+      }),
       lastMessageAt: sorted[sorted.length - 1]?.message.createdAt ?? null,
     });
   }

@@ -125,7 +125,9 @@ import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteCleverCopilot from './CustomerAkteCleverCopilot.jsx';
 import CustomerAkteSellerAssistant from './CustomerAkteSellerAssistant.jsx';
+import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
+import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { appendSellerInsightToLead, appendSellerInsightsFromTexts } from '../../services/dealer/sellerInsights.js';
@@ -1194,6 +1196,20 @@ export default function DealerAiLeadFollowUp({
       },
     }, { via: via === 'mailto' ? 'mailto' : 'email' });
 
+    const withCards = appendOfferCardsToThread({
+      lead: {
+        ...baseLead,
+        crm: {
+          ...baseCrm,
+          customerOfferPortfolio: nextPortfolio,
+          customerPortalAccess: sentAccess.access,
+        },
+      },
+      items: nextPortfolio.items ?? [],
+      introText: `Guten Morgen ${String(name || '').split(/\s+/)[0] || ''},\nich habe Ihnen die Angebote eingestellt.`.replace(/\n+/g, '\n').trim(),
+      createdByName: name?.trim() || 'Verkäufer',
+    });
+
     setPortfolioShare({
       ...portfolioShare,
       portfolio: nextPortfolio,
@@ -1203,6 +1219,12 @@ export default function DealerAiLeadFollowUp({
     onSave?.(buildSavePayload({
       customerOfferPortfolio: nextPortfolio,
       customerPortalAccess: sentAccess.access,
+      customerMessages: withCards.ok
+        ? withCards.lead.crm?.customerMessages
+        : undefined,
+      customerMessageThreads: withCards.ok
+        ? withCards.lead.crm?.customerMessageThreads
+        : undefined,
     }), {
       historyText: sentAccess.historyText ?? (
         via === 'email'
@@ -1550,6 +1572,33 @@ export default function DealerAiLeadFollowUp({
     const text = String(body ?? '').trim();
     if (!text) return;
     handleSendCleverMessage({ text });
+  }
+
+  function handleSellerAssistSendWorkspacePackage({ body, actions } = {}) {
+    const result = sendSellerWorkspacePackage({
+      lead,
+      body,
+      actions,
+      createdByName: name?.trim() || 'Verkäufer',
+    });
+    if (!result.ok) {
+      setToast('Paket konnte nicht gesendet werden.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    onSave?.({
+      ...buildSavePayload({
+        customerMessages: result.lead.crm?.customerMessages,
+        customerMessageThreads: result.lead.crm?.customerMessageThreads,
+        cleverUnterlagen: result.lead.crm?.cleverUnterlagen,
+      }),
+      history: result.lead.history,
+    }, {
+      silent: true,
+      addFollowupHistory: false,
+    });
+    setToast('Nachricht + Aktionen im Arbeitsraum gesendet');
+    setTimeout(() => setToast(''), 3500);
   }
 
   function handleSellerAssistWhatsApp(body) {
@@ -2337,12 +2386,28 @@ export default function DealerAiLeadFollowUp({
         customerName={name}
         isSaving={isSaving}
         onSendMessage={handleSellerAssistSendMessage}
+        onSendWorkspacePackage={handleSellerAssistSendWorkspacePackage}
         onWhatsApp={handleSellerAssistWhatsApp}
         onEmail={handleSellerAssistEmail}
         onEditMessage={handleSellerAssistEditMessage}
         onPrepareOffer={handleSellerAssistPrepareOffer}
         onSaveNote={handleSellerAssistSaveNote}
         onScheduleCallback={handleSellerAssistCallback}
+      />
+
+      <CustomerAkteSharedWorkspace
+        lead={lead}
+        customerName={name}
+        isSaving={isSaving}
+        onPersistLead={(nextLead) => {
+          onSave?.({
+            ...buildSavePayload({
+              customerMessages: nextLead.crm?.customerMessages,
+              customerMessageThreads: nextLead.crm?.customerMessageThreads,
+            }),
+            history: nextLead.history,
+          }, { silent: true, addFollowupHistory: false });
+        }}
       />
 
       <div className={hasSellerCustomerPicture ? 'cust-akte-operativ' : undefined}>

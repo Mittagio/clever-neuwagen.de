@@ -34,7 +34,8 @@ const baseLead = {
 };
 
 assert.equal(PORTAL_NAV_SECTIONS.length, 4);
-assert.equal(PORTAL_NAV_SECTIONS[0].id, PORTAL_NAV_IDS.OFFERS);
+assert.equal(PORTAL_NAV_SECTIONS[0].id, PORTAL_NAV_IDS.MESSAGES);
+assert.equal(PORTAL_NAV_SECTIONS[1].id, PORTAL_NAV_IDS.OFFERS);
 
 const advisor = buildCustomerPortalAdvisorModel(baseLead);
 assert.equal(advisor.title, 'Ihr Ansprechpartner');
@@ -72,7 +73,7 @@ assert.equal(documents.documentsArea.headline, 'Ihre Unterlagen');
 assert.ok(documents.documentsArea.evidence.groups.open.length > 0);
 
 const shell = buildCustomerPortalShellModel(withUpload, { messageCount: 2 });
-assert.equal(shell.defaultSection, PORTAL_NAV_IDS.OFFERS);
+assert.equal(shell.defaultSection, PORTAL_NAV_IDS.MESSAGES);
 assert.equal(shell.badges.messageCount, 2);
 assert.ok(shell.documents.totalCount > 0);
 assert.ok(shell.advisor.visible);
@@ -112,7 +113,7 @@ const leadWithPortfolio = {
 
 const context = buildPortfolioCustomerContext(leadWithPortfolio, { accessVerified: true });
 assert.ok(context.shell);
-assert.equal(context.shell.defaultSection, PORTAL_NAV_IDS.OFFERS);
+assert.equal(context.shell.defaultSection, PORTAL_NAV_IDS.MESSAGES);
 assert.equal(context.shell.badges.messageCount, 1);
 assert.ok(context.shell.documents.slots.length > 0);
 

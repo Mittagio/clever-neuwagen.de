@@ -14,6 +14,7 @@ import {
 import { filterNotepadChipsExcludingKonditionen } from '../customerAkte.js';
 import { proposeSellerInsightLabels } from './sellerInsights.js';
 import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.js';
+import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -236,6 +237,21 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
 
   if (!actionIntent.sellerInput) {
     return { ...base, ok: false, error: 'empty_input', result: null };
+  }
+
+  if (actionIntent.intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS) {
+    const pkg = prepareSellerWorkspacePackage(lead, actionIntent.sellerInput);
+    return {
+      ...base,
+      result: {
+        type: 'workspace_package',
+        title: 'Clever hat vorbereitet',
+        draft: { body: pkg.body, channel: 'preferred' },
+        actions: pkg.actions,
+        primaryCta: 'Senden',
+        secondaryCta: 'Bearbeiten',
+      },
+    };
   }
 
   if (actionIntent.intent === SELLER_ACTION_INTENTS.PREPARE_OFFER) {

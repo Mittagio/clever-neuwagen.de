@@ -78,6 +78,19 @@ assert.equal(turn.result.type, 'message_draft');
 assert.equal(turn.requiresSellerConfirmation, true);
 assert.ok(turn.result.opportunity?.source === 'seller_input');
 
+assert.equal(
+  detectSellerActionIntent('Schreib Herrn Notz, dass noch Gehaltsnachweis und Selbstauskunft fehlen'),
+  SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS,
+);
+
+const workspaceTurn = runSellerAssistantTurn(
+  lead,
+  'Schreib Herrn Notz, dass noch Gehaltsnachweis und Selbstauskunft fehlen.',
+);
+assert.equal(workspaceTurn.result.type, 'workspace_package');
+assert.ok(workspaceTurn.result.actions?.length >= 1);
+assert.equal(workspaceTurn.requiresSellerConfirmation, true);
+
 const offerTurn = runSellerAssistantTurn(
   lead,
   'Mach Herrn Notz den EV4 GT-Line mit DriveWise in Weiß, 21 Prozent, 329 Euro auf vier Jahre.',

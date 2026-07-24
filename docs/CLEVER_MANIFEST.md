@@ -129,6 +129,9 @@ Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledi
 Der Kunde sagt Clever, was ihm wichtig ist.  
 Der Verkäufer sagt Clever, was erledigt werden soll.
 
+WhatsApp überträgt Nachrichten.  
+Clever versteht den Vorgang.
+
 Kunde und Verkäufer arbeiten mit demselben Clever-Kontext,  
 aber mit unterschiedlichen Oberflächen.
 
@@ -137,8 +140,9 @@ Der Verkäufer bestätigt.
 Der Kunde reagiert.  
 Clever bringt die Reaktion zurück in den Verkaufsprozess.
 
-Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md) und  
-[Clever Customer Portal](CLEVER_CUSTOMER_PORTAL.md).
+Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md),  
+[Clever Customer Portal](CLEVER_CUSTOMER_PORTAL.md) und  
+[Conversation UI – Shared Workspace](CLEVER_CONVERSATION_UI.md#shared-customer-workspace).
 
 ---
 

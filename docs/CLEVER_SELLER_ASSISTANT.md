@@ -30,17 +30,31 @@ Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 | Baustein | Datei |
 |----------|--------|
 | UI | `CustomerAkteSellerAssistant.jsx` |
+| Shared Chat | `CustomerAkteSharedWorkspace.jsx` |
 | Intent | `sellerActionIntent.js` |
 | Orchestrierung | `sellerAssistantOrchestrator.js` |
+| Workspace | `sharedWorkspaceService.js` |
 | Einbindung | `DealerAiLeadFollowUp.jsx` |
 
 ## Flow
 
 1. Verkäufer tippt oder spricht (Mic).
-2. Intent: `message_customer` | `prepare_offer` | `add_note` | `prepare_callback`.
-3. Clever nutzt `buildCustomerUnderstanding` + `sellerInsights`.
-4. Action Result mit **Seller Confirmation** (kein Auto-Send).
-5. Bestehende Kanäle: Portal-Nachricht, WhatsApp-Deep-Link, mailto, Clever Nachrichten Sheet, Magic Offer / Offer-Pipeline.
+2. Intent: `message_customer` | `prepare_offer` | `request_documents` | `add_note` | `prepare_callback`.
+3. Clever nutzt `buildCustomerUnderstanding` + offene Unterlagen.
+4. Action Result / **Workspace-Paket** (Nachricht + Dokument-/SA-Karten) mit Seller Confirmation.
+5. Bestehende Kanäle: Shared Workspace Thread, Portal, WhatsApp-Deep-Link, mailto, Magic Offer.
+
+## Shared Workspace (Verkäufer)
+
+In der Kundenakte: `CustomerAkteSharedWorkspace` zeigt denselben Verlauf wie der Kunde.
+
+Clever Review vor Send:
+
+✨ Clever hat vorbereitet  
+Nachricht + ✓ Selbstauskunft / ✓ Gehaltsnachweis  
+[ Senden ]
+
+Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 
 ## Source Awareness
 

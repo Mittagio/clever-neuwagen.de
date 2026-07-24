@@ -9,6 +9,7 @@ export const SELLER_ACTION_INTENTS = {
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
   LOOKUP_FACT: 'lookup_fact',
+  REQUEST_DOCUMENTS: 'request_documents',
   UNKNOWN: 'unknown',
 };
 
@@ -35,6 +36,12 @@ const NOTE_PATTERNS = [
   /\b(notiz|merken|festhalten|notieren)\b/i,
 ];
 
+const DOCUMENT_REQUEST_PATTERNS = [
+  /\b(unterlagen?|gehaltsnachweis|bankverbindung|ausweis|selbstauskunft)\b/i,
+  /\b(anforder|schick.{0,20}selbstauskunft|fehl(?:en|t)|hochladen)\b/i,
+  /\bschreib.{0,40}(fehlt|fehlen|unterlage|selbstauskunft|gehalt)/i,
+];
+
 /**
  * @param {string} text
  * @returns {typeof SELLER_ACTION_INTENTS[keyof typeof SELLER_ACTION_INTENTS]}
@@ -45,6 +52,9 @@ export function detectSellerActionIntent(text = '') {
 
   if (OFFER_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.PREPARE_OFFER;
+  }
+  if (DOCUMENT_REQUEST_PATTERNS.some((re) => re.test(t))) {
+    return SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
   }
   if (CALLBACK_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.PREPARE_CALLBACK;
@@ -117,6 +127,7 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
   let intent = detectSellerActionIntent(text);
   if (options.modeHint === 'message') intent = SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
   if (options.modeHint === 'offer') intent = SELLER_ACTION_INTENTS.PREPARE_OFFER;
+  if (options.modeHint === 'documents') intent = SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
 
   const sellerFacts = extractSellerFactsFromInput(text);
   const customerId = lead?.id ?? lead?.crm?.customerId ?? null;
@@ -134,7 +145,9 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
           ? 'save_note'
           : intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK
             ? 'schedule_callback'
-            : 'draft_message',
+            : intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS
+              ? 'workspace_package'
+              : 'draft_message',
       channel: 'preferred',
     },
   };

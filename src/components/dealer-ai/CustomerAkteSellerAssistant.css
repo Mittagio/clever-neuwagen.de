@@ -1,4 +1,49 @@
-/* Clever Verkäufer-Assistent – Mobile-First, Context + Composer + Action Result */
+.cust-akte-workspace {
+  margin: 12px 0 24px;
+}
+
+.cust-akte-workspace__header {
+  margin-bottom: 10px;
+}
+
+.cust-akte-workspace__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cust-akte-workspace__sub {
+  margin: 4px 0 8px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.cust-akte-workspace__tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0;
+  padding-bottom: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cust-akte-workspace__tabs span {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.cust-akte-workspace__tabs span:first-child {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 
 .cust-seller-assist {
   display: flex;
@@ -79,10 +124,16 @@
   vertical-align: middle;
 }
 
-.cust-seller-assist__result-sub {
-  margin: 0 0 10px;
-  font-size: 0.8125rem;
-  color: #64748b;
+.cust-seller-assist__actions-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: #0f172a;
 }
 
 .cust-seller-assist__chips {

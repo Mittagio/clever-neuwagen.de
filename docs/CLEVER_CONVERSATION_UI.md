@@ -226,12 +226,29 @@ Mobile-First in der Kundenakte:
 
 Keine Inventar-API. Kein Auto-Send.
 
-## Kunden-Angebotsraum
+## Shared Customer Workspace
 
-Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
+Der gemeinsame Clever-Arbeitsraum ist die zentrale
+Interaktionsfläche zwischen Kunde und Verkäufer.
 
-Kunde: Angebote → Detail → „Das gefällt mir“ / Frage / Änderungswunsch.  
-Rückfluss in die Verkäuferakte über bestehende Activities / Inbox.
+Nachrichten, Angebote, Dokumente, Selbstauskunft
+und relevante Statusinformationen werden
+in einem chronologischen Gespräch zusammengeführt.
+
+Strukturierte Bereiche wie Angebote und Unterlagen
+bleiben als Übersicht verfügbar,
+verwenden jedoch dieselben zugrunde liegenden Daten.
+
+**Leitsatz:** WhatsApp überträgt Nachrichten. Clever versteht den Vorgang.
+
+| Rolle | Header | Einstieg |
+|-------|--------|----------|
+| Kunde | Autohaus + Ansprechpartner | Tab **Chat** |
+| Verkäufer | Kundenname + Fahrzeugkontext | Kundenakte Workspace |
+
+Message-Kinds (additive auf `customerMessages`): `text`, `offer_card`, `document_request`, `self_disclosure_card`, `checklist_card`, `clever_message`, `system_status`.
+
+Services: `sharedWorkspaceService.js`, UI: `SharedWorkspaceChat.jsx` + `WorkspaceChatCards.jsx`.
 
 ## Komponenten
 

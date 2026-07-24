@@ -1,6 +1,6 @@
-# Clever Customer Portal – Persönlicher Angebotsraum
+# Clever Customer Portal – Persönlicher Angebotsraum & Shared Workspace
 
-**Status:** v1 – verbunden mit Seller Assistant  
+**Status:** v1 – Shared Conversational Workspace  
 **Stand:** Juli 2026
 
 ## Leitsatz
@@ -8,54 +8,47 @@
 Der Kunde öffnet nicht nur eine PDF.  
 Er hat einen **persönlichen Clever-Angebotsraum**.
 
+**WhatsApp überträgt Nachrichten. Clever versteht den Vorgang.**
+
 Kunde und Verkäufer arbeiten mit demselben Clever-Kontext, aber mit unterschiedlichen Oberflächen.
 
-## Was der Kunde erlebt
+## Shared Customer Workspace
 
-1. Sicherer Link (bestehender Kanal: E-Mail / WhatsApp / App-Link)
-2. Start: „Hallo … 👋“ · **Ihre Angebote**
-3. Mehrere Angebotskarten (kein 40-Spalten-Vergleich)
-4. Detailaktionen:
-   - **Das gefällt mir** → `portfolio_offer_interested` / Inbox `offer_interested`
-   - **Dazu habe ich eine Frage** → Offer-Kontext-Chat / `offer_question`
-   - **Ich möchte etwas ändern** → `portfolio_offer_change_request` (**keine** Kunden-Leasing-Neuberechnung)
-5. Optional: Originalangebot (PDF), nur wenn vorhanden
+Der Chat ist der Vorgang: Nachrichten, Angebotskarten, Dokumentanforderungen, Selbstauskunft und Status erscheinen chronologisch.
 
-Share-Copy an Kunden: **„Ihre neuen Angebote sind online.“** – nicht „Hier ist Ihre PDF.“
+Strukturierte Tabs (Angebote / Unterlagen / Selbstauskunft) bleiben Übersichten über dieselben Daten.
 
 ## Bottom Nav (Shell)
 
-Bestehendes Portal-Shell-Pattern:
+| Tab | Label-Beispiel |
+|-----|----------------|
+| Chat | Chat (Primäreinstieg) |
+| Angebote | Angebote 2 |
+| Unterlagen | Unterlagen 3/5 |
+| Selbstauskunft | Selbstauskunft • |
 
-| Tab | Label |
-|-----|--------|
-| Angebote | Angebote |
-| Messages | Chat mit Clever |
-| Documents | Unterlagen |
-| Advisor | Profil |
+## Was der Kunde erlebt
 
-## Rückfluss zum Verkäufer
+1. Sicherer Link (bestehender Kanal)
+2. Chat mit Autohaus / Clever
+3. Angebotskarten im Verlauf → digitale Offer View
+4. Unterlagen hochladen / Selbstauskunft ausfüllen aus Chat-Karten
+5. Angebotsraum-Aktionen: Gefällt mir / Frage / Änderung (ohne Leasing-Rechner)
 
-Events fließen in Inbox + Lead-History + `customerOfferInteractions`.
-
-In der Verkäufer-Kundenakte zeigt `buildSellerCleverMoment()` z. B.:
-
-> EV3 interessiert Herrn Notz besonders. Er hat nach der Anhängelast gefragt.
-
-Quick Actions: **Nachricht vorbereiten** · **Angebot anpassen**
+Share-Copy: **„Ihre neuen Angebote sind online.“**
 
 ## Architektur (wiederverwendet)
 
 | Baustein | Rolle |
 |----------|--------|
-| `customerOfferPortfolioService.js` | Portfolio, Events, Share-Copy |
-| `CustomerOfferPortfolioPage.jsx` | Kunden-UI |
-| `customerOfferInteraction.js` | Interest / Questions |
-| `cleverInboxService.js` | Verkäufer-Eingang |
-| `sellerAssistantOrchestrator.js` | Clever-Moment + Seller Turns |
-| `customerPortalShellPresenter.js` | Nav / Shell |
+| `customerMessageService.js` | Thread + Message + `kind` / `payload` |
+| `sharedWorkspaceService.js` | Timeline, Workspace-Paket, Offer-Cards |
+| `SharedWorkspaceChat.jsx` | Chat-UI |
+| `customerOfferPortfolioService.js` | Portfolio / Events |
+| `cleverUnterlagen.js` | Checklist / Upload |
+| Self Disclosure Services | Formular + Status |
 
-Kein zweites CRM. Kein Kunden-Kalkulator. Kein Match-Score.
+Kein zweites CRM. Kein paralleler Messenger-Store.
 
 ## Verwandt
 

@@ -14,17 +14,18 @@ import {
 } from './customerPortalSelfDisclosureService.js';
 
 export const PORTAL_NAV_IDS = {
-  OFFERS: 'offers',
   MESSAGES: 'messages',
+  OFFERS: 'offers',
   DOCUMENTS: 'documents',
+  SELF_DISCLOSURE: 'self_disclosure',
   ADVISOR: 'advisor',
 };
 
 export const PORTAL_NAV_SECTIONS = [
-  { id: PORTAL_NAV_IDS.OFFERS, label: 'Angebote' },
-  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat mit Clever', badgeKey: 'messageCount' },
-  { id: PORTAL_NAV_IDS.DOCUMENTS, label: 'Unterlagen', badgeKey: 'documentsOpenCount' },
-  { id: PORTAL_NAV_IDS.ADVISOR, label: 'Profil' },
+  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat' },
+  { id: PORTAL_NAV_IDS.OFFERS, label: 'Angebote', badgeKey: 'offerCount' },
+  { id: PORTAL_NAV_IDS.DOCUMENTS, label: 'Unterlagen', badgeKey: 'documentsProgress' },
+  { id: PORTAL_NAV_IDS.SELF_DISCLOSURE, label: 'Selbstauskunft', badgeKey: 'selfDisclosureDot' },
 ];
 
 const DONE_DOCUMENT_STATUSES = new Set(['uploaded', 'checked', 'replaced', 'not_needed']);
@@ -493,15 +494,41 @@ export function buildCustomerPortalShellModel(lead = {}, options = {}) {
   const messageCount = options.messageCount ?? countVisibleMessages(lead);
   const documents = buildCustomerPortalDocumentsModel(lead);
   const advisor = buildCustomerPortalAdvisorModel(lead);
+  const offerCount = options.offerCount
+    ?? lead?.crm?.customerOfferPortfolio?.items?.length
+    ?? 0;
+  const docsProgress = documents.totalCount > 0
+    ? `${documents.doneCount}/${documents.totalCount}`
+    : null;
+  const sdOpen = isSelfDisclosureOpenForCustomer(documents.selfDisclosure?.status);
+
+  const navSections = [
+    { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat' },
+    {
+      id: PORTAL_NAV_IDS.OFFERS,
+      label: offerCount > 0 ? `Angebote ${offerCount}` : 'Angebote',
+    },
+    {
+      id: PORTAL_NAV_IDS.DOCUMENTS,
+      label: docsProgress ? `Unterlagen ${docsProgress}` : 'Unterlagen',
+    },
+    {
+      id: PORTAL_NAV_IDS.SELF_DISCLOSURE,
+      label: sdOpen ? 'Selbstauskunft •' : 'Selbstauskunft',
+    },
+  ];
 
   const badges = {
     messageCount: messageCount > 0 ? messageCount : null,
     documentsOpenCount: documents.badgeCount,
+    offerCount: null,
+    documentsProgress: null,
+    selfDisclosureDot: null,
   };
 
   return {
-    navSections: PORTAL_NAV_SECTIONS,
-    defaultSection: PORTAL_NAV_IDS.OFFERS,
+    navSections,
+    defaultSection: PORTAL_NAV_IDS.MESSAGES,
     badges,
     documents,
     advisor,
