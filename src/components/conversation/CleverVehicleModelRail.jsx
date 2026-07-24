@@ -14,6 +14,7 @@ export default function CleverVehicleModelRail({
   needProfile = {},
   notepadLabels = [],
   onReact = null,
+  onOpenPriceList = null,
   ariaLabel = 'Fahrzeugmodelle',
 }) {
   const list = useMemo(() => {
@@ -31,7 +32,6 @@ export default function CleverVehicleModelRail({
         return {
           ...(fresh ?? {}),
           ...card,
-          // Frische verifizierte Felder gewinnen über stale Turn-Daten
           ...(fresh ? {
             name: fresh.name || card.name,
             image: fresh.image || card.image,
@@ -42,6 +42,7 @@ export default function CleverVehicleModelRail({
             matchChips: fresh.matchChips,
             contextAnswer: fresh.contextAnswer ?? card.contextAnswer,
             metaLine: fresh.metaLine,
+            priceList: fresh.priceList ?? card.priceList ?? null,
           } : {}),
         };
       });
@@ -55,6 +56,7 @@ export default function CleverVehicleModelRail({
       <div className="cc-model-rail__track" role="list">
         {list.map((card) => {
           const reaction = reactions[card.modelKey] ?? null;
+          const priceList = card.priceList;
           return (
             <article
               key={card.modelKey}
@@ -140,6 +142,22 @@ export default function CleverVehicleModelRail({
                       </button>
                     ))}
                   </div>
+                )}
+
+                {priceList?.sourceUrl && typeof onOpenPriceList === 'function' && (
+                  <button
+                    type="button"
+                    className="cc-model-card__pricelist"
+                    onClick={() => onOpenPriceList(card.modelKey, priceList)}
+                  >
+                    Preisliste ansehen
+                    <span aria-hidden> ↗</span>
+                    {priceList.standLabel && (
+                      <span className="cc-model-card__pricelist-stand">
+                        Stand: {priceList.standLabel}
+                      </span>
+                    )}
+                  </button>
                 )}
               </div>
             </article>

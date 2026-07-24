@@ -20,6 +20,7 @@ import {
   buildWishHandoffEnrichmentLines,
 } from './wishHandoffEnrichment.js';
 import { buildVehicleModelCard } from './vehicleModelCardPresentation.js';
+import { buildPriceListActivityLines } from './priceListBrowsingService.js';
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 
 export const OFFER_CONVERSATION_PHASE = {
@@ -829,6 +830,9 @@ function buildHandoffDossierLines(session = {}, form = {}) {
   if (session.vehicleNotepadLabels?.length) {
     lines.push(`Ausstattung: ${session.vehicleNotepadLabels.join(', ')}`);
   }
+  for (const activity of buildPriceListActivityLines(session)) {
+    lines.push(`Aktivität: ${activity}`);
+  }
   if (form.contactTiming) {
     lines.push(`Rückruf: ${CONTACT_TIMING_LABELS[form.contactTiming] ?? form.contactTiming}`);
   }
@@ -958,7 +962,10 @@ export function createLeadFromConsultationHappyPath({
     history: [
       historyEntry(`Anfrage über ${LEAD_SOURCES.dealerJourney}`),
       historyEntry('Clever Beratung → EV3-Richtung → persönliche Übergabe'),
-      ...dossierLines.map((line) => historyEntry(line, 'note')),
+      ...dossierLines.map((line) => historyEntry(
+        line,
+        /^Aktivität:/i.test(line) ? 'customer_activity' : 'note',
+      )),
     ],
   };
 

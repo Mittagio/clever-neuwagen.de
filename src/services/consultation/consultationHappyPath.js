@@ -291,6 +291,7 @@ export function createHappyPathSession(dealerName = 'Autohaus') {
     selectedModelKey: null,
     vehicleDirectionsView: null,
     vehicleDirectionReactions: {},
+    conversationSignals: {},
   };
 }
 

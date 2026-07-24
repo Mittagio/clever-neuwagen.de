@@ -57,6 +57,7 @@ export function buildPluginSessionSnapshot(session = {}, pageContext = {}) {
       offerRequested: session.offerRequested ?? false,
       softHandoffDismissed: session.softHandoffDismissed ?? false,
       submittedLeadId: session.submittedLead?.id ?? null,
+      conversationSignals: session.conversationSignals ?? {},
     },
   };
 }

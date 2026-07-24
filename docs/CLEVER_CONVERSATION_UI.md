@@ -68,6 +68,21 @@ Soft Wish Enrichment nutzt dieselben `notepadLabels`-Pfade inkl. Magic Capture /
 
 Logik: `notepadChipBundling.js` → `buildBundledNotepadItems` / `buildStructuredNotepadSummary`
 UI: `CleverMemoryBar.jsx`
+
+### Preisliste als digitale Verkaufstheke
+
+Die Preisliste dient dem Kunden zur freien Orientierung (Prospekt an der Theke).
+
+- Sekundärer Link auf Modellkacheln: **Preisliste ansehen ↗** (nur verifizierte Hersteller-PDF)
+- Öffnen ist ein **Gesprächssignal** (`conversationSignals.priceList`), **kein** Kundenwunsch
+- Nicht im Notizzettel: „Preisliste angesehen“
+- Nach Rückkehr: höchstens **ein** natürlicher Follow-up („War etwas dabei …?“)
+- Erst ausdrückliche Kundenreaktion → Notizzettel (bestehende Magic-Capture-Pfade)
+- Kein Konfigurator, keine automatische Ausstattungs-/Motorwahl
+- Verkäufer sieht die Ansicht als **Aktivität**, getrennt von Wünschen
+
+Logik: `priceListBrowsingService.js`
+
 ## Antwortturn (Darstellungshoheit)
 
 Im **AI-Modus** (`conversationMode === 'ai'` / `turn.aiTurn`):

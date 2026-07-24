@@ -50,6 +50,15 @@ import CleverPluginResume from './CleverPluginResume.jsx';
 import { mergeWishHandoffNotepadLabels } from '../../services/consultation/wishHandoffEnrichment.js';
 import { applyInspirationModelSelection } from '../../services/consultation/progressiveVehicleDirections.js';
 import {
+  PRICE_LIST_FOLLOW_UP_QUESTION_ID,
+  appendPriceListFollowUpIfNeeded,
+  customerMessageForPriceListFollowUpAnswer,
+  markPriceListFollowUpResolved,
+  recordPriceListViewed,
+  resolveVerifiedPriceListDocument,
+  shouldOfferPriceListFollowUp,
+} from '../../services/consultation/priceListBrowsingService.js';
+import {
   buildWishHandoffExitLabel,
   buildWishHandoffSecondaryLabel,
 } from '../../services/consultation/customerIntakeExits.js';
@@ -427,10 +436,12 @@ export default function CleverConversationExperience({
     const trimmed = String(text ?? '').trim();
     if (!trimmed || aiTurnPending) return;
 
+    const sessionBase = markPriceListFollowUpResolved(session);
+
     if (isCleverAiConversationClientEnabled()) {
       setAiTurnPending(true);
       try {
-        const conversationHistory = (session.turns ?? [])
+        const conversationHistory = (sessionBase.turns ?? [])
           .filter((turn) => turn.type === TURN_TYPE.CUSTOMER || turn.type === TURN_TYPE.CLEVER)
           .slice(-8)
           .map((turn) => ({
@@ -446,24 +457,22 @@ export default function CleverConversationExperience({
             dealerName,
             brand: 'Kia',
           },
-          session,
+          session: sessionBase,
         });
 
         if (result.ok && result.session) {
-          // AI ok → nur CleverTurnResult; Server-Fallback → Safe Intake (nie Legacy Planner)
-          // Nie in Welt-2-Fahrzeugberatung rutschen
           setSession(keepPublicIntakeMessenger(result.session));
           setInputValue('');
           return;
         }
 
-        setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+        setSession(() => submitSafeIntakeFallback(sessionBase, trimmed, {
           reason: result.error ?? 'request_failed',
         }));
         setInputValue('');
         return;
       } catch {
-        setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+        setSession(() => submitSafeIntakeFallback(sessionBase, trimmed, {
           reason: 'api_error',
         }));
         setInputValue('');
@@ -473,7 +482,7 @@ export default function CleverConversationExperience({
       }
     }
 
-    setSession((prev) => submitSafeIntakeFallback(prev, trimmed, {
+    setSession(() => submitSafeIntakeFallback(sessionBase, trimmed, {
       reason: 'feature_disabled',
     }));
     setInputValue('');
@@ -813,6 +822,12 @@ export default function CleverConversationExperience({
   };
 
   const handleOptionSelect = (questionId, answerId) => {
+    if (questionId === PRICE_LIST_FOLLOW_UP_QUESTION_ID) {
+      const message = customerMessageForPriceListFollowUpAnswer(answerId);
+      setSession((prev) => markPriceListFollowUpResolved(prev));
+      if (message) void handleSend(message);
+      return;
+    }
     if (String(questionId ?? '').startsWith('ai_') || String(questionId ?? '').startsWith('safe_')) {
       const option = session.pendingQuestion?.options?.find((o) => o.id === answerId);
       handleSend(option?.label ?? String(answerId));
@@ -831,6 +846,48 @@ export default function CleverConversationExperience({
       return submitQuestionAnswer(prev, { answerId });
     });
   };
+
+  const handleOpenPriceList = useCallback((modelKey, doc = null) => {
+    const resolved = doc?.sourceUrl
+      ? doc
+      : resolveVerifiedPriceListDocument(modelKey);
+    setSession((prev) => recordPriceListViewed(prev, { modelKey }));
+    if (resolved?.sourceUrl && typeof window !== 'undefined') {
+      window.open(resolved.sourceUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, []);
+
+  const tryAppendPriceListFollowUp = useCallback(() => {
+    setSession((prev) => {
+      if (!shouldOfferPriceListFollowUp(prev, {
+        hasPendingQuestion: Boolean(prev.pendingQuestion),
+        inOfferWorld: isInOfferWorld(prev),
+      })) {
+        return prev;
+      }
+      const next = appendPriceListFollowUpIfNeeded(prev, {
+        hasPendingQuestion: Boolean(prev.pendingQuestion),
+        inOfferWorld: isInOfferWorld(prev),
+      });
+      if (next === prev) return prev;
+      const playable = (next.turns ?? []).filter((t) => !SKIPPED_TURN_TYPES.has(t.type));
+      window.setTimeout(() => setRevealedCount(playable.length), 0);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    function onReturnToChat() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      tryAppendPriceListFollowUp();
+    }
+    document.addEventListener('visibilitychange', onReturnToChat);
+    window.addEventListener('focus', onReturnToChat);
+    return () => {
+      document.removeEventListener('visibilitychange', onReturnToChat);
+      window.removeEventListener('focus', onReturnToChat);
+    };
+  }, [tryAppendPriceListFollowUp]);
 
   const handleSelectPrimary = useCallback((modelKey) => {
     const key = String(modelKey ?? '').toLowerCase().trim();
@@ -1239,6 +1296,7 @@ export default function CleverConversationExperience({
                   needProfile={session.needProfile}
                   notepadLabels={session.notepadLabels}
                   onReact={handleDirectionReaction}
+                  onOpenPriceList={handleOpenPriceList}
                 />
               );
             }
@@ -1295,6 +1353,7 @@ export default function CleverConversationExperience({
                 turn={turn}
                 onOptionSelect={handleOptionSelect}
                 onVehicleReact={handleDirectionReaction}
+                onOpenPriceList={handleOpenPriceList}
                 onNextTopic={handleNextTopic}
                 needProfile={session.needProfile}
                 notepadLabels={session.notepadLabels}

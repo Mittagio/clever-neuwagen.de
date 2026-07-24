@@ -69,6 +69,7 @@ export default function CleverConversationTurn({
   turn,
   onOptionSelect,
   onVehicleReact,
+  onOpenPriceList,
   onNextTopic,
   needProfile = {},
   notepadLabels = [],
@@ -119,6 +120,7 @@ export default function CleverConversationTurn({
           needProfile={needProfile}
           notepadLabels={notepadLabels}
           onReact={onVehicleReact}
+          onOpenPriceList={onOpenPriceList}
           ariaLabel="Passende Modelle"
         />
         {hasOptions && (

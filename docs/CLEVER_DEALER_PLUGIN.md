@@ -34,8 +34,20 @@ Ausdrücklich **nicht** Bestandteil dieses Plugin-Standes:
 | **Page Context** | Woher der Kunde kommt (Seite, Modell, Kampagne) – **kein** Kundenwunsch |
 | **Notizzettel** | Was der Kunde gesagt, bestätigt oder ausgewählt hat |
 | **Next Topics** | Gesprächsnavigation – kein `needProfile`-Patch |
+| **Preislisten-Signal** | Preisliste angesehen – Activity/Follow-up, **kein** Wunsch |
 
 Beispiel: EV9-Modellseite setzt `modelKey`, erzeugt aber **nicht** automatisch „EV9 interessant“.
+Preislisten-Öffnen ebenso: Signal ja, Wunsch erst nach Kundenbestätigung.
+
+## Preisliste als digitale Verkaufstheke
+
+Auf Fahrzeugkacheln kann Clever eine verifizierte Hersteller-Preisliste anbieten.
+
+- Öffnen → `conversationSignals.priceList` (Session/Plugin-Resume)
+- einmaliger Follow-up möglich
+- Wunschübergabe: Activity getrennt von Kundenwünschen
+
+Details: [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#preisliste-als-digitale-verkaufstheke)
 
 ## Page Context
 

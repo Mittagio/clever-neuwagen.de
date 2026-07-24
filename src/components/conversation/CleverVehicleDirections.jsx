@@ -8,6 +8,7 @@ export default function CleverVehicleDirections({
   needProfile = {},
   notepadLabels = [],
   onReact,
+  onOpenPriceList,
 }) {
   if (!directionsView?.directions?.length) return null;
 
@@ -40,6 +41,7 @@ export default function CleverVehicleDirections({
       needProfile={needProfile}
       notepadLabels={notepadLabels}
       onReact={onReact}
+      onOpenPriceList={onOpenPriceList}
       ariaLabel="Passende Fahrzeugrichtungen"
     />
   );

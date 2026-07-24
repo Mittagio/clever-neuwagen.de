@@ -174,6 +174,26 @@ Darstellungslogik über dem bestehenden Notizzettel:
 
 Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#smart-notizzettel).
 
+### Preisliste als digitale Verkaufstheke
+
+Definition:
+
+Die Preisliste dient dem Kunden zur freien Orientierung.
+
+Das Öffnen einer Preisliste ist ein Gesprächssignal,
+aber kein Kundenwunsch.
+
+Clever darf nach der Rückkehr natürlich nachfragen,
+ob eine Ausstattung, Motorisierung oder andere Information
+besonders interessant war.
+
+Erst eine ausdrückliche Kundenreaktion
+wird Teil des Notizzettels.
+
+Die konkrete Konfiguration bleibt Aufgabe des Verkäufers.
+
+Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#preisliste-als-digitale-verkaufstheke).
+
 ---
 
 ## Öffentliche Kunden-UI

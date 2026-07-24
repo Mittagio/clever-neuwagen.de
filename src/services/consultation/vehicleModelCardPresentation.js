@@ -13,6 +13,7 @@ import { getVerifiedTechnicalProfile } from '../../data/technical/verifiedTechni
 import { getVerifiedVehicleFacts } from '../clever/openai/tools/getVerifiedVehicleFacts.js';
 import { resolveVerifiedTowingCapacity } from '../clever/openai/tools/resolveVerifiedTowingCapacity.js';
 import pricelistCatalog from '../../data/kia/pricelist-imports/catalog.js';
+import { resolveVerifiedPriceListDocument } from './priceListBrowsingService.js';
 
 export const MAX_VEHICLE_MODEL_CARDS = 4;
 
@@ -317,6 +318,7 @@ export function buildVehicleModelCard(modelKey, options = {}) {
     reason: options.reason ?? null,
     fitHints: (options.fitHints ?? []).slice(0, 2),
     highlighted: Boolean(options.highlighted),
+    priceList: resolveVerifiedPriceListDocument(key),
   };
 }
 
