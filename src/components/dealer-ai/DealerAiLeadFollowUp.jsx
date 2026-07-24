@@ -124,6 +124,7 @@ import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverBeratung from './CustomerAkteCleverBeratung.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteCleverCopilot from './CustomerAkteCleverCopilot.jsx';
+import CustomerAkteSellerAssistant from './CustomerAkteSellerAssistant.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
@@ -1545,6 +1546,68 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.antworten);
   }
 
+  function handleSellerAssistSendMessage({ body } = {}) {
+    const text = String(body ?? '').trim();
+    if (!text) return;
+    handleSendCleverMessage({ text });
+  }
+
+  function handleSellerAssistWhatsApp(body) {
+    const digits = String(phone ?? '').replace(/\D/g, '');
+    if (!digits) {
+      setToast('Telefonnummer fehlt');
+      setTimeout(() => setToast(''), 2800);
+      return;
+    }
+    const normalized = digits.startsWith('0') ? `49${digits.slice(1)}` : digits;
+    window.open(
+      `https://wa.me/${normalized}?text=${encodeURIComponent(String(body ?? ''))}`,
+      '_blank',
+      'noopener',
+    );
+  }
+
+  function handleSellerAssistEmail(body) {
+    if (!email?.trim()) {
+      setToast('E-Mail fehlt');
+      setTimeout(() => setToast(''), 2800);
+      return;
+    }
+    window.location.href = `mailto:${encodeURIComponent(email.trim())}?body=${encodeURIComponent(String(body ?? ''))}`;
+  }
+
+  function handleSellerAssistEditMessage(body) {
+    setAntwortenInitialDraft(String(body ?? ''));
+    setAntwortenPreset('frei');
+    setInboxItemIdForAntworten(null);
+    openSheet(SHEETS.antworten);
+  }
+
+  function handleSellerAssistPrepareOffer(result) {
+    onPrepareOffer?.(lead, { magicPreparation: result?.magic ?? null });
+    setToast('Angebotsskizze bereit');
+    setTimeout(() => setToast(''), 2800);
+  }
+
+  function handleSellerAssistSaveNote(text) {
+    handleNotepadCaptureCommit({
+      text,
+      labels: null,
+      context: 'voice_note',
+      attachment: null,
+    });
+  }
+
+  function handleSellerAssistCallback(text) {
+    onAddHistory?.(
+      `Rückruf vorgemerkt: ${String(text ?? '').slice(0, 120)}`,
+      'note',
+      { silent: false },
+    );
+    setToast('Rückruf vorgemerkt');
+    setTimeout(() => setToast(''), 2800);
+  }
+
   function handleInboxItemHandled(inboxItemId) {
     if (!inboxItemId) return;
     markInboxItemDone(inboxItemId);
@@ -2266,6 +2329,20 @@ export default function DealerAiLeadFollowUp({
         unterlagenBadge={unterlagenOpenCount}
         inboxOpenCount={inboxOpenCount}
         historyBadge={inboxOpenCount ? 0 : activityDashboard.newCustomerActivities}
+      />
+
+      <CustomerAkteSellerAssistant
+        lead={lead}
+        telHref={telHref}
+        customerName={name}
+        isSaving={isSaving}
+        onSendMessage={handleSellerAssistSendMessage}
+        onWhatsApp={handleSellerAssistWhatsApp}
+        onEmail={handleSellerAssistEmail}
+        onEditMessage={handleSellerAssistEditMessage}
+        onPrepareOffer={handleSellerAssistPrepareOffer}
+        onSaveNote={handleSellerAssistSaveNote}
+        onScheduleCallback={handleSellerAssistCallback}
       />
 
       <div className={hasSellerCustomerPicture ? 'cust-akte-operativ' : undefined}>

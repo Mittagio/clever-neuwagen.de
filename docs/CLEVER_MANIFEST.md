@@ -123,6 +123,14 @@ Clever sorgt dafür, dass der Verkäufer **vorbereitet** startet.
 
 Wenn Clever seine Arbeit gut macht, beginnt der Verkäufer nicht mehr bei Null.
 
+**Seller Dashboard:** Clever ist kein CRM, das der Verkäufer bedienen muss.  
+Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledigt werden soll.
+
+Der Kunde sagt Clever, was ihm wichtig ist.  
+Der Verkäufer sagt Clever, was erledigt werden soll.
+
+Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md).
+
 ---
 
 ## Unsere Philosophie

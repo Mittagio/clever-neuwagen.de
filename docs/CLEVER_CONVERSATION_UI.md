@@ -211,6 +211,20 @@ Unvollständige Profile sind erlaubt.
 7. CTA „Meine Wünsche weitergeben“
 8. Composer
 
+## Verkäufer-Kundenakte (Seller Assistant)
+
+Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md).
+
+Mobile-First in der Kundenakte:
+
+1. Kundenkontext-Chips (customer_need)
+2. Clever-Composer (Tippen / Mic)
+3. Action Result (Nachricht / Angebot / Notiz) – immer mit Bestätigung
+4. Verkäuferkontext (seller_input) getrennt von Kundenwünschen
+5. Bottom Quick Actions: Angebot · Nachricht · Anrufen
+
+Keine Inventar-API. Kein Auto-Send.
+
 ## Komponenten
 
 | Datei | Rolle |
@@ -224,6 +238,7 @@ Unvollständige Profile sind erlaubt.
 | `CleverHandoffComplete.jsx` | Erfolg + strukturierte Wunsch-Zusammenfassung |
 | `softWishEnrichmentSuggestions.js` | Soft-Opt-in-Vorschläge |
 | `customerIntakeExits.js` | CTA-Copy |
+| `CustomerAkteSellerAssistant.jsx` | Verkäufer-Assistent in der Kundenakte |
 | `clever-conversation.css` | Layout / Messenger |
 
 ## Tests
