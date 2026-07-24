@@ -132,6 +132,13 @@ Der Verkäufer sagt Clever, was erledigt werden soll.
 WhatsApp überträgt Nachrichten.  
 Clever versteht den Vorgang.
 
+Der Verkäufer sieht den Kunden in drei Sekunden.  
+Clever sieht denselben Kundenkontext.
+
+Clever soll den Verkäufer nicht zum Nachschlagen schicken.  
+Clever bringt das relevante Wissen in den Moment,  
+in dem der Verkäufer es braucht.
+
 Kunde und Verkäufer arbeiten mit demselben Clever-Kontext,  
 aber mit unterschiedlichen Oberflächen.
 

@@ -226,6 +226,34 @@ Mobile-First in der Kundenakte:
 
 Keine Inventar-API. Kein Auto-Send.
 
+## Live Customer Context
+
+Der Smart Notizzettel ist nicht nur eine visuelle Zusammenfassung.
+
+Er bildet den kompakten Live-Kontext,
+den Clever bei jeder Verkäuferinteraktion berücksichtigt.
+
+Clever verwendet diesen Kontext,
+um relevante Fahrzeugfakten zu finden,
+auf wichtige Kundenwünsche hinzuweisen,
+Nachrichten vorzubereiten
+und Aktionen zu orchestrieren.
+
+Der Kontext darf jedoch nicht dazu führen,
+dass irrelevante Kundeninformationen
+automatisch in jede Nachricht eingefügt werden.
+
+Inline im Seller-Composer (`sellerInlineComposerAssist.js`):
+
+| Modus | Beispiel | Result |
+|-------|----------|--------|
+| LOOKUP | „EV4 Anhängelast“ | `fact_suggestion` (verified only) |
+| WRITE | „Schreib ihm …“ | `message_draft` |
+| ACT | „Schick Selbstauskunft …“ | `action_draft` |
+| CONFLICT | „EV4 zieht 1500“ vs verified | `conflict_warning` |
+
+UI: `SellerInlineAssistCard` über dem Composer in `CustomerAkteSharedWorkspace`.
+
 ## Shared Customer Workspace
 
 Der gemeinsame Clever-Arbeitsraum ist die zentrale

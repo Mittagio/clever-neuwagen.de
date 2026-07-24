@@ -42,6 +42,10 @@ const DOCUMENT_REQUEST_PATTERNS = [
   /\bschreib.{0,40}(fehlt|fehlen|unterlage|selbstauskunft|gehalt)/i,
 ];
 
+const LOOKUP_FACT_PATTERNS = [
+  /\b(anhängelast|reichweite|wltp|hud|head-?\s*up|ladeleistung|kofferraum)\b/i,
+];
+
 /**
  * @param {string} text
  * @returns {typeof SELLER_ACTION_INTENTS[keyof typeof SELLER_ACTION_INTENTS]}
@@ -55,6 +59,13 @@ export function detectSellerActionIntent(text = '') {
   }
   if (DOCUMENT_REQUEST_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
+  }
+  const hasLookup = LOOKUP_FACT_PATTERNS.some((re) => re.test(t));
+  const hasVehicle = /\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b/i.test(t);
+  const isShortLookup = hasLookup && hasVehicle && t.length <= 48
+    && !/\b(schreib|sag|informier|schick|anforder)\b/i.test(t);
+  if (isShortLookup || (hasLookup && t.length <= 24 && !MESSAGE_PATTERNS.some((re) => re.test(t)))) {
+    return SELLER_ACTION_INTENTS.LOOKUP_FACT;
   }
   if (CALLBACK_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.PREPARE_CALLBACK;

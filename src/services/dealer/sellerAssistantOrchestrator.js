@@ -15,6 +15,7 @@ import { filterNotepadChipsExcludingKonditionen } from '../customerAkte.js';
 import { proposeSellerInsightLabels } from './sellerInsights.js';
 import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.js';
 import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
+import { runSellerInlineAssist, INLINE_RESULT_TYPES } from './sellerInlineComposerAssist.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -251,6 +252,31 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
         primaryCta: 'Senden',
         secondaryCta: 'Bearbeiten',
       },
+    };
+  }
+
+  if (actionIntent.intent === SELLER_ACTION_INTENTS.LOOKUP_FACT) {
+    const inline = runSellerInlineAssist(lead, actionIntent.sellerInput);
+    const fact = inline.results?.find((r) => (
+      r.type === INLINE_RESULT_TYPES.FACT_SUGGESTION
+      || r.type === INLINE_RESULT_TYPES.MISSING_FACT
+      || r.type === INLINE_RESULT_TYPES.CONFLICT_WARNING
+    ));
+    return {
+      ...base,
+      result: fact
+        ? {
+          type: 'fact_lookup',
+          title: fact.title,
+          fact,
+          primaryCta: fact.primaryCta || 'In Nachricht übernehmen',
+        }
+        : {
+          type: 'message_draft',
+          title: 'Clever Vorschlag',
+          draft: buildSellerMessageDraft(lead, actionIntent.sellerInput, actionIntent.sellerFacts),
+          primaryCta: 'Nachricht senden',
+        },
     };
   }
 

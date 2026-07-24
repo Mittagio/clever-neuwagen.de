@@ -44,6 +44,22 @@ Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 4. Action Result / **Workspace-Paket** (Nachricht + Dokument-/SA-Karten) mit Seller Confirmation.
 5. Bestehende Kanäle: Shared Workspace Thread, Portal, WhatsApp-Deep-Link, mailto, Magic Offer.
 
+## Live Customer Context
+
+Die sichtbaren Chips oben sind Clevers Gedächtnis im Moment.
+
+`buildSellerInlineContext(lead)` nutzt dieselben attributed Chips wie der Notizzettel  
+(`buildAttributedWishChips` / needProfile + sellerInsights).
+
+Inline im Workspace-Composer:
+
+- Debounce ~380 ms
+- Grounded Facts via `getVerifiedVehicleFacts`
+- Ein Tap: „In Nachricht übernehmen“
+- Fact Conflicts: Verkäuferangabe ≠ verified → Warnung, kein Blind-Send
+
+Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#live-customer-context).
+
 ## Shared Workspace (Verkäufer)
 
 In der Kundenakte: `CustomerAkteSharedWorkspace` zeigt denselben Verlauf wie der Kunde.
