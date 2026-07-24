@@ -15,6 +15,8 @@ Es soll auch in fünf Jahren noch gültig sein.
 Verwandte Dokumente:
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)** ← verbindlich für UX, Produkt und Architektur
 - **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
+- **[UI Filigree – Premium Visual Law](CLEVER_UI_FILIGREE.md)** ← verbindlich für Desktop/Mobile-Optik (Polish only)
+- **[Responsive Design](CLEVER_RESPONSIVE_DESIGN.md)** ← Breakpoints & Workspace-Composition
 - **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md)
 - [Conversation Design](clever-conversation-design.md)

@@ -16,6 +16,8 @@
 9. **Business logic is never duplicated for breakpoints.**
 10. **Every core workflow must work from 390 px to wide desktop.**
 
+**Visuell ergänzend (verbindlich):** [CLEVER_UI_FILIGREE.md](CLEVER_UI_FILIGREE.md) – filigrane Premium-SaaS-Optik (dünne Borders, kaum Schatten, Navy + dezentes Lavender, Line-Icons, Chat als Hauptfläche).
+
 ## 2. Breakpoints (Single Source)
 
 Definiert in `src/styles/variables.css` und gespiegelt in `src/components/layout/responsiveBreakpoints.js`:

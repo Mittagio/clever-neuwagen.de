@@ -1,6 +1,7 @@
 # Clever Conversation UI v1.4
 
-> **Produktvorrang:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)
+> **Produktvorrang:** [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md)  
+> **Visuelle Richtung:** [CLEVER_UI_FILIGREE.md](CLEVER_UI_FILIGREE.md) – filigran, Navy + dezentes Lavender, Line-Icons
 
 ## Ziel
 

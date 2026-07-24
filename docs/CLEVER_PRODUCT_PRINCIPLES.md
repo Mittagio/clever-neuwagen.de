@@ -16,7 +16,9 @@ Es ist **verbindlich**. Jede neue Funktion muss dazu passen.
 Kein Marketing. Keine Technik. Keine Buzzwords. Nur klare Produktregeln.
 
 Verwandte Dokumente:
-- [Manifest – Warum & Verfassung](CLEVER_MANIFEST.md)
+- [Manifest](CLEVER_MANIFEST.md)
+- **[UI Filigree – Premium Visual Law](CLEVER_UI_FILIGREE.md)** ← Optik Desktop/Mobile
+- **[Responsive Design](CLEVER_RESPONSIVE_DESIGN.md)**
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)**
 - **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md) – *Wie spricht Clever?*
