@@ -14,6 +14,11 @@ import {
   INBOX_STATUS,
 } from '../crm/cleverInboxService.js';
 import { INQUIRY_TYPES } from './pasteInquiryClassifier.js';
+import { organizeInquiryText } from '../dealer/notepadLabelSuggestions.js';
+import {
+  appendSellerInsightsFromTexts,
+  SELLER_INSIGHT_CONTEXT,
+} from '../dealer/sellerInsights.js';
 
 function uid(prefix = 'stock') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -108,13 +113,26 @@ function buildStockVehicleCrmPatch(existingCrm = {}, stockVehicle) {
   };
 }
 
+function buildOrganizedSellerInsights(leadLike, extraction = {}, stockVehicle = {}) {
+  const raw = extraction.rawText
+    || stockVehicle.rawText
+    || extraction.customerMessage
+    || '';
+  const labels = organizeInquiryText(raw);
+  if (!labels.length) return leadLike?.crm?.sellerInsights ?? [];
+  return appendSellerInsightsFromTexts(leadLike ?? { crm: {} }, labels, {
+    context: SELLER_INSIGHT_CONTEXT.EMAIL,
+  }).crm.sellerInsights;
+}
+
 function buildNewLeadFromStockInquiry(extraction, stockVehicle, deps = {}) {
   const { conditions = {}, getExistingCodes, leads = [] } = deps;
   const now = new Date().toISOString();
   const contact = buildContactFromExtraction(extraction);
   const referenceCode = generateOfferNumber(collectReferenceCodes(getExistingCodes, leads));
   const customerId = createCustomerId();
-  const crm = buildStockVehicleCrmPatch(buildDefaultCrm(), stockVehicle);
+  const crmBase = buildStockVehicleCrmPatch(buildDefaultCrm(), stockVehicle);
+  const sellerInsights = buildOrganizedSellerInsights({ crm: crmBase }, extraction, stockVehicle);
 
   const vehicleLabel = stockVehicle.vehicleTitle ?? 'Bestandsfahrzeug';
   return normalizeLead({
@@ -134,7 +152,10 @@ function buildNewLeadFromStockInquiry(extraction, stockVehicle, deps = {}) {
     },
     paymentType: 'unknown',
     notes: extraction.customerMessage ?? '',
-    crm,
+    crm: {
+      ...crmBase,
+      sellerInsights,
+    },
     history: [{
       id: uid('h'),
       at: now,
@@ -159,7 +180,8 @@ function collectReferenceCodes(getExistingCodes, leads = []) {
 function buildLeadPatchFromStockInquiry(existingLead, extraction, stockVehicle) {
   const now = new Date().toISOString();
   const contact = buildContactFromExtraction(extraction);
-  const crm = buildStockVehicleCrmPatch(existingLead.crm ?? {}, stockVehicle);
+  const crmBase = buildStockVehicleCrmPatch(existingLead.crm ?? {}, stockVehicle);
+  const sellerInsights = buildOrganizedSellerInsights(existingLead, extraction, stockVehicle);
   const vehicleLabel = stockVehicle.vehicleTitle ?? existingLead.vehicle?.label;
 
   return {
@@ -175,7 +197,10 @@ function buildLeadPatchFromStockInquiry(existingLead, extraction, stockVehicle) 
       model: vehicleLabel?.replace(/^Kia\s+/i, '') ?? existingLead.vehicle?.model,
     },
     notes: extraction.customerMessage ?? existingLead.notes,
-    crm,
+    crm: {
+      ...crmBase,
+      sellerInsights,
+    },
     history: [
       ...(existingLead.history ?? []),
       {

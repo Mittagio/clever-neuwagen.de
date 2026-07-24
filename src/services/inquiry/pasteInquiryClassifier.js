@@ -7,6 +7,7 @@ import {
   preprocessCustomerMail,
 } from '../dealerAiMailExtractor.js';
 import { parseCustomerPhone } from '../dealerAiParser.js';
+import { organizeInquiryText } from '../dealer/notepadLabelSuggestions.js';
 
 export const INQUIRY_TYPES = {
   CUSTOMER_MESSAGE: 'customer_message',
@@ -341,6 +342,13 @@ export function buildPasteInquiryPreview(classification, extraction) {
     vehicle.vehicleUrl ? 'Link gefunden' : null,
   ].filter(Boolean);
 
+  const wishLines = organizeInquiryText(
+    extraction?.customerMessage
+    || extraction?.rawText
+    || classification?.rawText
+    || '',
+  );
+
   return {
     title: classification?.uncertain ? 'Clever ist nicht sicher' : 'Clever hat erkannt',
     inquiryType: type,
@@ -350,6 +358,7 @@ export function buildPasteInquiryPreview(classification, extraction) {
     signals: classification?.signals ?? [],
     customerLines,
     vehicleLines,
+    wishLines,
     customerMessage: extraction?.customerMessage ?? null,
     sourceLabel: extraction?.sourceLabel ?? null,
     vehicleUrl: vehicle.vehicleUrl ?? null,

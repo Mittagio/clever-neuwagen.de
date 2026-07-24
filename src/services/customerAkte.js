@@ -190,7 +190,11 @@ export function buildWishConditionChips({
       : '0 €';
     chips.push(`${downLabel} Anzahlung`);
     const rate = formatWishEuro(desiredRate);
-    chips.push(rate ? `bis ${rate}/Monat` : 'Budget offen');
+    if (rate) {
+      chips.push(`bis ${rate}/Monat`);
+    } else if (!(Number.isFinite(downNum) && downNum > 0)) {
+      chips.push('Budget offen');
+    }
   }
 
   const deliveryLabels = {

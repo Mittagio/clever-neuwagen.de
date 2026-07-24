@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
+import { SELLER_INSIGHT_CONTEXT } from '../../services/dealer/sellerInsights.js';
 import {
-  SELLER_INSIGHT_CONTEXT,
-  proposeSellerInsightLabels,
-} from '../../services/dealer/sellerInsights.js';
+  extractLastNotepadKeyword,
+  organizeInquiryText,
+  suggestNotepadLabels,
+} from '../../services/dealer/notepadLabelSuggestions.js';
 import './CustomerAkte.css';
 
 /**
- * Kompakte Memo-/Scan-Leiste am Notizzettel.
- * Viel UI, wenig Text – Chips bestätigen, Attribution immer sichtbar.
+ * Memo-/Scan-Leiste am Notizzettel (Akten-Verlauf).
+ * E-Mail-Start: Verkaufsassistent „Anfrage einfügen“.
+ * Hier: Stichwort tippen → Vorschläge (Sitzh → Sitzheizung).
  */
 export default function CustomerAkteNotepadCapture({
   sellerInitials = 'VK',
@@ -23,17 +26,29 @@ export default function CustomerAkteNotepadCapture({
   const inputRef = useRef(null);
   const fileRef = useRef(null);
 
-  const proposed = useMemo(() => proposeSellerInsightLabels(draft), [draft]);
+  const organized = useMemo(() => organizeInquiryText(draft), [draft]);
+  const keyword = useMemo(() => extractLastNotepadKeyword(draft), [draft]);
+  const typeahead = useMemo(() => {
+    if (draft.trim().length > 160 && keyword.length < 4) return [];
+    return suggestNotepadLabels(keyword, {
+      exclude: organized,
+      limit: 6,
+    });
+  }, [draft, keyword, organized]);
 
   useEffect(() => {
     setSelected((prev) => {
       const prevOn = new Set(prev.filter((item) => item.on).map((item) => item.label));
-      return proposed.map((label) => ({
+      const labels = [...organized];
+      for (const item of prev) {
+        if (item.on && !labels.includes(item.label)) labels.push(item.label);
+      }
+      return labels.map((label) => ({
         label,
         on: prevOn.size ? prevOn.has(label) : true,
       }));
     });
-  }, [proposed]);
+  }, [organized]);
 
   useEffect(() => {
     if (mode === 'memo' || (mode === 'scan' && imageDataUrl)) {
@@ -83,6 +98,22 @@ export default function CustomerAkteNotepadCapture({
     )));
   }
 
+  function acceptSuggestion(label) {
+    setSelected((prev) => {
+      if (prev.some((item) => item.label === label)) {
+        return prev.map((item) => (item.label === label ? { ...item, on: true } : item));
+      }
+      return [...prev, { label, on: true }];
+    });
+    setDraft((prev) => {
+      const last = extractLastNotepadKeyword(prev);
+      if (!last || last.length < 3) return prev;
+      const cut = prev.lastIndexOf(last);
+      if (cut < 0) return prev;
+      return `${prev.slice(0, cut)}${label}`;
+    });
+  }
+
   function handleCommit() {
     const labels = selected.filter((item) => item.on).map((item) => item.label);
     const text = draft.trim() || labels.join(', ');
@@ -114,7 +145,7 @@ export default function CustomerAkteNotepadCapture({
           onClick={openMemo}
           disabled={isSaving}
           aria-label="Memo"
-          title="Memo"
+          title="Memo / Stichwort"
         >
           <span aria-hidden>🎤</span>
         </button>
@@ -208,8 +239,24 @@ export default function CustomerAkteNotepadCapture({
         onChange={(event) => setDraft(event.target.value)}
         disabled={isSaving}
         aria-label="Text"
-        placeholder={mode === 'scan' ? '…' : '…'}
+        placeholder={mode === 'scan' ? '…' : 'Stichwort tippen, z. B. Sitzh …'}
       />
+
+      {typeahead.length > 0 && (
+        <div className="cust-akte-kw-capture__suggest" role="listbox" aria-label="Stichwort-Vorschläge">
+          {typeahead.map((label) => (
+            <button
+              key={`suggest-${label}`}
+              type="button"
+              className="cust-akte-kw-capture__suggest-chip"
+              role="option"
+              onClick={() => acceptSuggestion(label)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {selected.length > 0 && (
         <div className="cust-akte-kw-capture__chips" role="group" aria-label="Chips">

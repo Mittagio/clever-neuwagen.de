@@ -18,6 +18,7 @@ import {
 } from './dealerAiParser.js';
 import { hasRecognizedModelKey } from './dealerAiVehicleConfigureFlow.js';
 import { applyDealerAiFields } from './dealerAiParser.js';
+import { organizeInquiryText } from './dealer/notepadLabelSuggestions.js';
 
 const SAMPLE_TEXT = 'Kunde Stefan Wiens fährt aktuell einen 12 Jahre alten VW Golf, hat 2 Kinder, fährt oft nach Südtirol, möchte gerne Hybrid oder Plug-in-Hybrid, braucht 1.200 kg Anhängelast und bevorzugt ein schwarzes Auto.';
 
@@ -340,20 +341,32 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
   };
   vehicleWish.labels = buildVehicleWishLabels(vehicleWish);
 
-  const paymentType = fields.paymentType && fields.paymentType !== 'unknown'
+  let paymentType = fields.paymentType && fields.paymentType !== 'unknown'
     ? fields.paymentType
     : (budget ? 'cash' : 'unknown');
+  const organizedLabels = organizeInquiryText(text);
+  if (paymentType === 'unknown' && organizedLabels.some((label) => /leasing/i.test(label))) {
+    paymentType = 'leasing';
+  }
   const deliveryLabel = fields.desiredDeliveryDate
     ?? wishDate?.label
     ?? fields.deliveryTime
     ?? null;
+  const monthlyFromOrganized = organizedLabels
+    .map((label) => label.match(/^Budget bis\s+(\d+)\s*€$/i)?.[1])
+    .find(Boolean);
+  const desiredRate = fields.desiredRate
+    ?? (monthlyFromOrganized ? Number(monthlyFromOrganized) : null);
+  const downPayment = fields.downPayment
+    ?? (organizedLabels.some((label) => /0\s*€\s*Anzahlung/i.test(label)) ? 0 : null);
   const paymentWish = {
     paymentType,
     paymentLabel: PAYMENT_TYPE_LABELS[paymentType] ?? 'noch offen',
     budget,
+    desiredRate: Number.isFinite(desiredRate) ? desiredRate : null,
     termMonths: fields.termMonths ?? null,
     mileagePerYear: fields.mileagePerYear ?? null,
-    downPayment: fields.downPayment ?? null,
+    downPayment,
     desiredDeliveryDate: deliveryLabel,
     specialCondition: /corporate\s*benefits?/i.test(text) ? 'corporate_benefits' : null,
   };
@@ -367,6 +380,15 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
   });
   const customerHelperNotes = [];
   for (const note of [...narrativeNotes, ...structuredNotes]) uniquePush(customerHelperNotes, note);
+
+  // Verkaufsassistent „Anfrage einfügen“: Mail/Text → organisierte Notizzettel-Chips
+  for (const label of organizedLabels) uniquePush(customerHelperNotes, label);
+  for (const label of organizedLabels) {
+    if (/sitzheizung|parksensor|heckklappe|lenkrad|kamera|anhänger|panorama|keyless|wärmepumpe|head-up|totwinkel|spurhalte|tempomat/i.test(label)) {
+      uniquePush(vehicleWish.labels, label);
+    }
+  }
+
   const recommendation = buildRecommendation(parsed, vehicleWish, text);
 
   return {
@@ -381,6 +403,7 @@ export function buildCustomerRecognitionInsight(sourceText = '', parsed = {}) {
       addressFormatted: address?.formatted ?? fields.customerAddress ?? null,
     },
     customerHelperNotes,
+    organizedLabels,
     vehicleWish,
     paymentWish,
     recommendation,
@@ -433,7 +456,17 @@ export function buildRecognitionAnimationBuckets(insight = {}) {
   if (payment?.paymentLabel && payment.paymentLabel !== 'noch offen') {
     buckets.paymentWish.push(payment.paymentLabel);
   }
-  if (payment?.budget) buckets.paymentWish.push(String(payment.budget));
+  if (payment?.desiredRate) {
+    buckets.paymentWish.push(`bis ${Number(payment.desiredRate).toLocaleString('de-DE')} €/Monat`);
+  }
+  if (payment?.budget) {
+    buckets.paymentWish.push(`Budget bis ${Number(payment.budget).toLocaleString('de-DE')} €`);
+  }
+  if (payment?.termMonths) buckets.paymentWish.push(`${payment.termMonths} Monate`);
+  if (payment?.mileagePerYear) {
+    buckets.paymentWish.push(`${Number(payment.mileagePerYear).toLocaleString('de-DE')} km/Jahr`);
+  }
+  if (payment?.downPayment === 0) buckets.paymentWish.push('0 € Anzahlung');
 
   const rec = insight.recommendation;
   if (rec?.modelLabel) buckets.recommendation.push(rec.modelLabel);
@@ -468,9 +501,10 @@ export function applyRecognitionInsightToParsed(parsed, insight) {
     termMonths: insight.paymentWish?.termMonths ?? parsed.fields?.termMonths,
     mileagePerYear: insight.paymentWish?.mileagePerYear ?? parsed.fields?.mileagePerYear,
     downPayment: insight.paymentWish?.downPayment ?? parsed.fields?.downPayment,
-    desiredRate: insight.paymentWish?.paymentType !== 'cash'
-      ? parsed.fields?.desiredRate ?? null
-      : parsed.fields?.desiredRate,
+    desiredRate: insight.paymentWish?.desiredRate
+      ?? (insight.paymentWish?.paymentType !== 'cash'
+        ? parsed.fields?.desiredRate ?? null
+        : parsed.fields?.desiredRate),
     desiredPrice: insight.paymentWish?.paymentType === 'cash'
       ? insight.paymentWish?.budget ?? parsed.fields?.desiredPrice
       : parsed.fields?.desiredPrice,

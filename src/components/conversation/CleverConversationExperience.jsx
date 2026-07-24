@@ -1328,6 +1328,7 @@ export default function CleverConversationExperience({
                   handoffView={turn.handoffView}
                   onEnrichmentChange={handleHandoffEnrichmentChange}
                   onSubmit={handlePersonalHandoffSubmit}
+                  onOpenPriceList={handleOpenPriceList}
                 />
               );
             }

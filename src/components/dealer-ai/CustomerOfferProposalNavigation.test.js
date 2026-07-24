@@ -29,6 +29,12 @@ assert.ok(dealerAiPage.includes('openProposalConditionsFlow'), 'Bearbeiten öffn
 assert.ok(backendAkte.includes('openOfferCalculator'), 'Backend-Akte nutzt zentralen Kalkulator');
 assert.ok(followUp.includes('openBoardOfferEntry'), 'Board-Einstieg zentral geroutet');
 assert.ok(conditionsStep.includes('buildConditionsFooterAction'));
+assert.ok(conditionsStep.includes('onEditConfiguration'), 'Bearbeiten öffnet Konfiguration, nicht Akte');
+assert.ok(dealerAiPage.includes('handleConditionsEditConfiguration'), 'DealerAIPage: Edit → configure');
+assert.ok(
+  dealerAiPage.includes('onEditConfiguration={handleConditionsEditConfiguration}'),
+  'ConditionsStep bekommt Edit-Handler',
+);
 
 const editView = readFileSync(join(__dirname, 'CustomerOfferEditView.jsx'), 'utf8');
 assert.ok(editView.includes('title="Angebot bearbeiten"'), 'Bearbeitungsansicht benannt');

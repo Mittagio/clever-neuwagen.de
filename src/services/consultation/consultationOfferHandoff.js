@@ -21,7 +21,7 @@ import {
 } from './wishHandoffEnrichment.js';
 import { buildVehicleModelCard } from './vehicleModelCardPresentation.js';
 import { buildPriceListActivityLines } from './priceListBrowsingService.js';
-import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
+import { KIA_MODEL_ATTRIBUTES, resolveModelAttributeKey } from '../../data/kia/kiaModelAttributes.js';
 
 export const OFFER_CONVERSATION_PHASE = {
   OFFER_HANDOFF: 'offer_handoff',
@@ -242,18 +242,24 @@ function buildRecommendationFromSession(session = {}) {
 
 /**
  * Modellschlüssel für die Soft-Handoff-Kachel (Inspiration-Klick / Interessant).
+ * Family-Hints wie „pv5“ werden auf konkrete Keys (pv5-passenger) kanonisiert –
+ * keine Doppelkachel pv5 + pv5-passenger.
  * @param {object} session
  * @returns {string[]}
  */
 export function resolveHandoffFocusModelKeys(session = {}) {
   const keys = [];
   const push = (key) => {
-    const k = String(key ?? '').toLowerCase().replace(/^kia-/, '').trim();
+    const raw = String(key ?? '').toLowerCase().replace(/^kia-/, '').trim();
+    if (!raw) return;
+    const resolved = KIA_MODEL_ATTRIBUTES[raw]
+      ? raw
+      : resolveModelAttributeKey({ modelKey: raw });
+    const k = resolved || raw;
     if (k && !keys.includes(k)) keys.push(k);
   };
 
   push(session.needProfile?.selectedModelKey);
-  push(session.needProfile?.modelHint);
 
   for (const [modelKey, reaction] of Object.entries(session.vehicleDirectionReactions ?? {})) {
     if (reaction === 'interested') push(modelKey);
@@ -270,6 +276,9 @@ export function resolveHandoffFocusModelKeys(session = {}) {
     if (byLabel) push(byLabel.modelKey);
     else push(raw.replace(/\s+/g, '-'));
   }
+
+  // modelHint zuletzt – oft nur Familienkürzel (pv5), bereits durch selectedModelKey abgedeckt
+  push(session.needProfile?.modelHint);
 
   return keys.slice(0, 2);
 }

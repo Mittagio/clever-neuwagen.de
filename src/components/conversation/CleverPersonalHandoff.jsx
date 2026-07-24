@@ -123,7 +123,12 @@ function SoftChipGroup({
   );
 }
 
-export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichmentChange }) {
+export default function CleverPersonalHandoff({
+  handoffView,
+  onSubmit,
+  onEnrichmentChange,
+  onOpenPriceList = null,
+}) {
   const [step, setStep] = useState('soft');
   const [enrichment, setEnrichment] = useState(() => prefillWishHandoffEnrichment(
     handoffView?.needProfile ?? {},
@@ -374,6 +379,7 @@ export default function CleverPersonalHandoff({ handoffView, onSubmit, onEnrichm
               reactions={handoffView.focusReactions ?? {}}
               needProfile={handoffView.needProfile ?? {}}
               notepadLabels={handoffView.wishLabels ?? []}
+              onOpenPriceList={onOpenPriceList}
               ariaLabel="Gewähltes Modell"
             />
           )}

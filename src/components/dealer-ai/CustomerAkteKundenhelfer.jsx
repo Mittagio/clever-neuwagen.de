@@ -9,7 +9,8 @@ import './CustomerAkte.css';
 
 /**
  * Notizzettel in der Kundenakte – Wunsch-Chips (Kunde / VK-Kürzel).
- * Memo / Scan: kompakt, Attribution Pflicht.
+ * Memo / Scan im Verlauf; E-Mail-Start über Verkaufsassistent „Anfrage einfügen“.
+ * Memo: Stichwort-Vorschläge (Sitzh → Sitzheizung).
  */
 export default function CustomerAkteKundenhelfer({
   notes = '',

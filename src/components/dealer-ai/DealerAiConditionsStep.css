@@ -1,7 +1,9 @@
-/* Konditionen – Studio-Ansicht (Tesla/Apple) */
+/* Konditionen – Studio-Ansicht (Bild-4-Klarheit) */
 
 .dai-conditions--studio,
 .dai-conditions--sales {
+  --color-primary: #0f172a;
+  --color-primary-soft: #f1f5f9;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -27,7 +29,7 @@
   align-self: flex-start;
   border: none;
   background: none;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.88rem;
   font-weight: 600;
   padding: 0;
@@ -109,7 +111,7 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -120,7 +122,7 @@
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1.05;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-hero__meta {
@@ -204,20 +206,20 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
   color: #fff;
   font-size: 0.62rem;
   font-weight: 800;
 }
 
 .dai-cond-pay-card:hover {
-  border-color: rgba(26, 92, 255, 0.28);
+  border-color: rgba(15, 23, 42, 0.28);
 }
 
 .dai-cond-pay-card.is-selected {
-  border-color: var(--color-primary, #1a5cff);
-  background: #f0f6ff;
-  box-shadow: 0 2px 10px rgba(26, 92, 255, 0.12);
+  border-color: var(--color-primary, #0f172a);
+  background: var(--color-primary-soft, #f1f5f9);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
 }
 
 .dai-cond-pay-card__label {
@@ -229,7 +231,7 @@
 }
 
 .dai-cond-pay-card.is-selected .dai-cond-pay-card__label {
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-pay-card__label-alt {
@@ -240,7 +242,7 @@
 }
 
 .dai-cond-pay-card.is-selected .dai-cond-pay-card__label-alt {
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   opacity: 0.85;
 }
 
@@ -274,7 +276,7 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   cursor: pointer;
 }
 
@@ -324,7 +326,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
@@ -392,8 +394,8 @@
 }
 
 .dai-cond-chip.is-selected {
-  border-color: var(--color-primary, #1a5cff);
-  background: var(--color-primary, #1a5cff);
+  border-color: var(--color-primary, #0f172a);
+  background: var(--color-primary, #0f172a);
   color: #fff;
 }
 
@@ -436,7 +438,7 @@
 
 .dai-cond-config-list__check {
   flex-shrink: 0;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -494,13 +496,13 @@
 }
 
 .dai-cond-step__tick.is-active {
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
 }
 
 .dai-cond-step__range {
   width: 100%;
   margin: 0;
-  accent-color: var(--color-primary, #1a5cff);
+  accent-color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-step__scale {
@@ -539,7 +541,7 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   cursor: pointer;
 }
 
@@ -581,8 +583,8 @@
   gap: 0.15rem;
   padding: 1rem;
   border-radius: 14px;
-  background: #f0f6ff;
-  border: 1px solid rgba(26, 92, 255, 0.15);
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.1);
 }
 
 .dai-cond-offer-live__label {
@@ -599,7 +601,7 @@
   font-size: 1.65rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-offer-live__meta {
@@ -641,7 +643,7 @@
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   list-style: none;
   user-select: none;
 }
@@ -691,7 +693,7 @@
   border: none;
   border-radius: 10px;
   background: #e8eef9;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.78rem;
   font-weight: 700;
   padding: 0.55rem 0.75rem;
@@ -767,7 +769,7 @@
 .dai-cond-wish-toggle input {
   width: 1.05rem;
   height: 1.05rem;
-  accent-color: var(--color-primary, #1a5cff);
+  accent-color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-wish-fold summary::-webkit-details-marker {
@@ -858,13 +860,13 @@
   width: 100%;
   border: none;
   border-radius: 14px;
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
   padding: 0.95rem 1rem;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(26, 92, 255, 0.28);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
 }
 
 .dai-cond-sticky-foot__cta:disabled {
@@ -945,7 +947,7 @@
 .dai-cond-wish-card__edit {
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -995,7 +997,7 @@
 .dai-cond-footer-actions__secondary {
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -1058,7 +1060,7 @@
 .dai-cond-wish-strip__edit {
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
@@ -1123,7 +1125,7 @@
   flex-shrink: 0;
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
@@ -1164,10 +1166,10 @@
 }
 
 .dai-cond-pay-tab.is-selected {
-  border-color: var(--color-primary, #1a5cff);
-  background: #f0f6ff;
-  color: var(--color-primary, #1a5cff);
-  box-shadow: 0 0 0 1px rgba(26, 92, 255, 0.18), 0 2px 10px rgba(26, 92, 255, 0.14);
+  border-color: var(--color-primary, #0f172a);
+  background: var(--color-primary-soft, #f1f5f9);
+  color: var(--color-primary, #0f172a);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08), 0 2px 10px rgba(15, 23, 42, 0.08);
 }
 
 .dai-cond-pay-legend {
@@ -1231,9 +1233,9 @@
 }
 
 .dai-cond-quick-pick.is-selected {
-  border-color: var(--color-primary, #1a5cff);
-  background: #f0f6ff;
-  color: var(--color-primary, #1a5cff);
+  border-color: var(--color-primary, #0f172a);
+  background: #f1f5f9;
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-cond-quick-pick--extra {
@@ -1341,8 +1343,8 @@
 }
 
 .dai-cond-sticky-live__rate.is-live {
-  color: var(--color-primary, #1a5cff);
-  text-shadow: 0 0 20px rgba(26, 92, 255, 0.25);
+  color: var(--color-primary, #0f172a);
+  text-shadow: 0 0 20px rgba(15, 23, 42, 0.18);
 }
 
 .dai-cond-sticky-live__suffix {
@@ -1356,7 +1358,7 @@
 .dai-cond-save-btn.cn-btn-primary {
   padding: 0.72rem 1rem;
   font-size: 0.9rem;
-  box-shadow: 0 4px 18px rgba(26, 92, 255, 0.32);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.22);
 }
 
 .dai-cond-workspace .cn-flow-foot:not(.dai-cond-sticky-live) {

@@ -1,6 +1,7 @@
-/* Angebotsvorschau – Checkout-Stil (Tesla / Apple / Kia) */
+/* Angebotsvorschau – Checkout-Stil (Bild-4-Klarheit) */
 
 .dai-offer-preview--checkout {
+  --color-primary: #0f172a;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -22,7 +23,7 @@
   align-self: flex-start;
   border: none;
   background: none;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.86rem;
   font-weight: 600;
   padding: 0;
@@ -146,7 +147,7 @@
 
 .dai-opreview-badge--discount {
   background: #eff6ff;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-opreview-badge--savings {
@@ -195,7 +196,7 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   cursor: pointer;
 }
 
@@ -250,7 +251,7 @@
 
 .dai-opreview-packages li::before {
   content: '✓ ';
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-weight: 800;
 }
 
@@ -400,13 +401,13 @@
   width: 100%;
   border: none;
   border-radius: 14px;
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
   padding: 0.95rem 1rem;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(26, 92, 255, 0.26);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.26);
 }
 
 .dai-opreview-foot__primary:disabled {

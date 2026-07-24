@@ -13,12 +13,17 @@
 }
 
 .cust-akte {
-  --cust-blue: #2563eb;
-  --cust-blue-dark: #1d4ed8;
+  --cust-primary: #0f172a;
+  --cust-primary-hover: #1e293b;
+  --cust-blue: #0f172a;
+  --cust-blue-dark: #020617;
   --cust-text: #0f172a;
   --cust-muted: #64748b;
   --cust-border: #e2e8f0;
   --cust-bg: #f8fafc;
+  --cust-chip-bg: #f3f4f6;
+  --cust-soft: #f1f5f9;
+  --color-primary: #0f172a;
   background: #fff;
   min-height: 100%;
 }
@@ -130,7 +135,7 @@
   background: none;
   font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--cust-blue, #145cff);
+  color: var(--cust-blue, #0f172a);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -352,7 +357,7 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 100%);
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
   border: 2px solid #c7d2fe;
   color: #1e3a8a;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
@@ -366,7 +371,7 @@
 
 .cust-akte-profile__score-ring--mid {
   border-color: #c7d2fe;
-  background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 100%);
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
   color: #1e3a8a;
 }
 
@@ -896,7 +901,7 @@
 .cust-akte-kw__edit {
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -1002,7 +1007,7 @@
   background: #fff;
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--cust-blue, #145cff);
+  color: var(--cust-blue, #0f172a);
   cursor: pointer;
 }
 
@@ -1072,8 +1077,8 @@
   height: 28px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--cust-soft, #f1f5f9);
+  color: var(--cust-primary, #0f172a);
   font-size: 0.6875rem;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -1105,10 +1110,40 @@
   background: #fff;
 }
 
+.cust-akte-kw-capture__input--paste {
+  min-height: 110px;
+}
+
 .cust-akte-kw-capture__input:focus {
   outline: none;
-  border-color: #145cff;
-  box-shadow: 0 0 0 3px rgba(20, 92, 255, 0.12);
+  border-color: var(--cust-primary, #0f172a);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+}
+
+.cust-akte-kw-capture__suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cust-akte-kw-capture__suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 1px dashed #94a3b8;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cust-primary, #0f172a);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.cust-akte-kw-capture__suggest-chip:hover {
+  border-style: solid;
+  border-color: var(--cust-primary, #0f172a);
+  background: var(--cust-soft, #f1f5f9);
 }
 
 .cust-akte-kw-capture__chips {
@@ -1146,8 +1181,8 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--cust-soft, #f1f5f9);
+  color: var(--cust-primary, #0f172a);
   font-size: 0.625rem;
   font-weight: 800;
 }
@@ -1227,9 +1262,9 @@
 }
 
 .cust-akte-kh__chip--profile.cust-akte-kh__chip--more {
-  background: #eef5ff;
-  border-color: #c7d9ff;
-  color: #145cff;
+  background: var(--cust-soft, #f1f5f9);
+  border-color: var(--cust-border, #e2e8f0);
+  color: var(--cust-primary, #0f172a);
   justify-content: center;
 }
 
@@ -1547,7 +1582,7 @@
   background: none;
   font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--cust-blue, #145cff);
+  color: var(--cust-blue, #0f172a);
   cursor: pointer;
 }
 
@@ -1678,7 +1713,7 @@
 
 .cust-wish-sheet__slider {
   width: 100%;
-  accent-color: #4f46e5;
+  accent-color: var(--cust-primary, #0f172a);
 }
 
 .cust-wish-sheet__ticks {
@@ -1688,19 +1723,21 @@
 }
 
 .cust-wish-sheet__tick {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 6px;
-  background: #f8fafc;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--cust-chip-bg, #f3f4f6);
   font-size: 0.72rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
 }
 
 .cust-wish-sheet__tick.is-active {
-  background: #eef2ff;
-  color: #4338ca;
+  background: #fff;
+  border-color: var(--cust-border, #e2e8f0);
+  color: var(--cust-primary, #0f172a);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .cust-wish-sheet__apply {
@@ -1708,7 +1745,7 @@
   min-height: 52px;
   border: none;
   border-radius: 14px;
-  background: #4f46e5;
+  background: var(--cust-primary, #0f172a);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
@@ -1843,7 +1880,7 @@
 
 .cust-akte-nbs__card--primary {
   background: linear-gradient(135deg, #eef6ff 0%, #fff 58%);
-  border: 1px solid rgba(26, 92, 255, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.18);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   padding: 22px 20px;
 }
@@ -1888,7 +1925,7 @@
   border: none;
   background: none;
   padding: 0;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -2893,10 +2930,10 @@
   color: var(--cust-muted);
 }
 
-.cust-akte-vcard__status-line--sent { color: #2563eb; }
+.cust-akte-vcard__status-line--sent { color: #0f172a; }
 .cust-akte-vcard__status-line--opened { color: #059669; }
 .cust-akte-vcard__status-line--idea { color: #64748b; }
-.cust-akte-vcard__status-line--ready { color: #7c3aed; }
+.cust-akte-vcard__status-line--ready { color: var(--cust-primary, #0f172a); }
 
 .cust-akte-vcard--compact .cust-akte-vcard__menu {
   position: absolute;
@@ -3137,7 +3174,7 @@
   padding: 12px 14px;
   border: none;
   border-radius: 10px;
-  background: #7c3aed;
+  background: var(--cust-primary, #0f172a);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
@@ -3205,7 +3242,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #3730a3;
+  color: var(--cust-primary, #0f172a);
 }
 
 .cust-clever-beratung__hint {
@@ -3294,8 +3331,8 @@
   gap: 6px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--cust-chip-bg, #f3f4f6);
+  color: var(--cust-primary, #0f172a);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -3675,7 +3712,7 @@
   background: none;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #2563eb;
+  color: #0f172a;
   cursor: pointer;
   text-align: left;
 }

@@ -549,6 +549,14 @@ export default function DealerAIPage() {
     setPhase('offer-variants');
   }
 
+  function handleConditionsEditConfiguration() {
+    // Fahrzeug bearbeiten → Konfigurator, nicht zurück zur Akte
+    if (addVehicleContext?.skipConfigure) {
+      setAddVehicleContext((prev) => (prev ? { ...prev, skipConfigure: false, openConditions: false } : prev));
+    }
+    setPhase('configure');
+  }
+
   function handleConditionsSave() {
     if (!parsed?.ok || !configureDraft || !vehicleConfiguration) return;
 
@@ -1812,6 +1820,7 @@ export default function DealerAIPage() {
             onContinue={handleConditionsToPreview}
             onSave={handleConditionsSave}
             onBack={handleConditionsBack}
+            onEditConfiguration={handleConditionsEditConfiguration}
             backLabel={addVehicleContext?.returnPath ? '← Zur Kundenakte' : '← Zur Konfiguration'}
             wishChips={conditionsWishChips}
             isExecuting={isExecuting}

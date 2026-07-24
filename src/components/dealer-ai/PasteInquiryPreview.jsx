@@ -64,6 +64,10 @@ export default function PasteInquiryPreview({
         <PreviewBlock title="Fahrzeug" lines={preview.vehicleLines} />
       )}
 
+      {preview.wishLines?.length > 0 && (
+        <PreviewBlock title="Notiert" lines={preview.wishLines} />
+      )}
+
       {preview.customerMessage && (
         <PreviewBlock title="Nachricht">
           <p className="paste-inquiry-preview__message">{preview.customerMessage}</p>

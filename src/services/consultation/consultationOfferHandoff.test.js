@@ -77,6 +77,24 @@ function testHandoffView() {
   console.log('✓ Beraterkarte wird angezeigt, keine Rate, kein Angebot');
 }
 
+function testPv5FocusModelNoDuplicate() {
+  const view = buildPersonalHandoffView({
+    needProfile: {
+      selectedModelKey: 'pv5-passenger',
+      modelHint: 'pv5',
+      fuel: 'electric',
+    },
+    notepadLabels: ['PV5 Passenger interessant', 'Elektro'],
+    vehicleDirectionReactions: { 'pv5-passenger': 'interested' },
+  }, dealerConditions);
+
+  const keys = (view.focusModelCards ?? []).map((c) => c.modelKey);
+  assert.equal(keys.filter((k) => String(k).startsWith('pv5')).length, 1, `Doppel-PV5: ${keys}`);
+  assert.equal(keys[0], 'pv5-passenger');
+  assert.ok(view.focusModelCards[0].priceList?.sourceUrl, 'Preisliste-Link-Daten an Kachel');
+  console.log('✓ PV5 Soft-Handoff: eine Kachel + Preisliste');
+}
+
 function testBeginOfferHandoff() {
   const session = beginOfferHandoff(buildFullSession(), dealerConditions);
   assert.equal(session.phase, OFFER_CONVERSATION_PHASE.OFFER_HANDOFF);
@@ -281,6 +299,7 @@ function testEarlyAdvisorHandoffPreservesUnderstanding() {
 }
 
 testHandoffView();
+testPv5FocusModelNoDuplicate();
 testAdvisorBoostChips();
 testWishProfilePresentation();
 testAdvisorBoostView();

@@ -1918,10 +1918,13 @@ export default function DealerAiLeadFollowUp({
         attachment: attachment ?? null,
       }),
     );
+    const historyText = context === 'handwritten_note'
+      ? 'Zettel gescannt'
+      : 'Gespräch festgehalten';
     onSave?.(buildSavePayload({
       sellerInsights: nextLead.crm.sellerInsights,
     }), {
-      historyText: context === 'handwritten_note' ? 'Zettel gescannt' : 'Gespräch festgehalten',
+      historyText,
       historyType: 'note',
       addFollowupHistory: false,
       silent: true,

@@ -78,6 +78,33 @@ assert.equal(hasMeaningfulVehicleWish(infoOnlyInsight), false);
 const helperOnly = extractCustomerHelperNotes('hat 2 Kinder und fährt oft nach Südtirol');
 assert.ok(helperOnly.includes('2 Kinder'));
 
+const softMail = [
+  'Guten Tag,',
+  'ich interessiere mich für ein E-Auto im Leasing.',
+  'Maximal 250 Euro monatlich, 15.000 km/Jahr, 48 Monate, 0 Euro Anzahlung.',
+  'Gebrauchtwagen wäre auch ok. Ohne BAFA.',
+  'Viele Grüße Patrick',
+].join('\n');
+const softParsed = parseDealerAiInput(softMail);
+assert.equal(softParsed.ok, true);
+const softInsight = buildCustomerRecognitionInsight(softMail, softParsed);
+assert.ok(softInsight.customerHelperNotes.some((n) => /250|Budget/i.test(n)), `Soft-Mail Budget notiert: ${softInsight.customerHelperNotes.join(', ')}`);
+assert.ok(softInsight.customerHelperNotes.some((n) => /BAFA/i.test(n)), `Soft-Mail BAFA: ${softInsight.customerHelperNotes.join(', ')}`);
+assert.ok(!softInsight.customerHelperNotes.some((n) => /^0\s*€\s*Anzahlung$/i.test(n) && /2000/.test(softMail)), 'kein falsches 0€');
+assert.equal(softInsight.paymentWish.paymentType, 'leasing');
+assert.equal(softInsight.paymentWish.desiredRate, 250);
+assert.ok(softInsight.organizedLabels?.length >= 1, 'organizedLabels aus Anfrage einfügen');
+
+const hardMail = [
+  'Bitte Angebot Kia EV3 GT-Line,',
+  'Sitzheizung, Parksensoren vorne und hinten, elektrische Heckklappe, Firmenzulassung.',
+].join(' ');
+const hardParsed = parseDealerAiInput(hardMail);
+const hardInsight = buildCustomerRecognitionInsight(hardMail, hardParsed);
+assert.ok(hardInsight.customerHelperNotes.includes('Sitzheizung'), 'Hard-Mail Sitzheizung');
+assert.ok(hardInsight.customerHelperNotes.includes('Parksensoren vorne'), 'Hard-Mail PDC v');
+assert.ok(hardInsight.customerHelperNotes.some((n) => /Heckklappe/i.test(n)), 'Hard-Mail Heckklappe');
+
 const pageSource = readFileSync(
   join(__dirname, '../pages/DealerAIPage.jsx'),
   'utf8',

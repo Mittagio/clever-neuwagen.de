@@ -4,7 +4,7 @@
 import { generateOfferNumber } from '../logic/offerService.js';
 import { normalizeLead } from '../logic/leadNormalization.js';
 import { joinKundenhelferNotes, parseKundenhelferNotes } from './cleverKundenhelfer.js';
-import { appendSellerInsightsFromTexts } from './dealer/sellerInsights.js';
+import { appendSellerInsightsFromTexts, SELLER_INSIGHT_CONTEXT } from './dealer/sellerInsights.js';
 import { buildDefaultCrm, buildLeadSubline, mapSuggestedModelToReserved } from './dealerAiLeadCrm.js';
 import { createCustomerId } from './dealerAiCustomer.js';
 import {
@@ -156,7 +156,9 @@ export function buildLeadPatchFromDirectAkte(existingLead, enriched, insight) {
   const now = new Date().toISOString();
   const helperNoteTexts = enriched?.customerHelperNotes ?? insight?.customerHelperNotes ?? [];
   const withInsights = helperNoteTexts.length
-    ? appendSellerInsightsFromTexts(existingLead ?? { crm: {} }, helperNoteTexts)
+    ? appendSellerInsightsFromTexts(existingLead ?? { crm: {} }, helperNoteTexts, {
+      context: SELLER_INSIGHT_CONTEXT.EMAIL,
+    })
     : (existingLead ?? { crm: {} });
   const reservedMerge = mergeReservedModels(
     existingLead?.crm?.reservedModels ?? [],
@@ -228,7 +230,9 @@ function buildNewLeadFromDirectAkte(enriched, insight, deps) {
   const crmBase = buildDefaultCrm(enriched, []);
   const addressFields = buildAddressCrmFields(fields);
   const withInsights = helperNoteTexts.length
-    ? appendSellerInsightsFromTexts({ crm: crmBase }, helperNoteTexts)
+    ? appendSellerInsightsFromTexts({ crm: crmBase }, helperNoteTexts, {
+      context: SELLER_INSIGHT_CONTEXT.EMAIL,
+    })
     : { crm: crmBase };
   const crm = {
     ...crmBase,

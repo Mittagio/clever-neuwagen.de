@@ -171,7 +171,10 @@ assert.ok(wishChips.includes('Leasing'), 'Wunschkonditionen: Leasing');
 assert.ok(wishChips.some((c) => /48\s*Monate/.test(c)), 'Wunschkonditionen: 48 Monate');
 assert.ok(wishChips.some((c) => /10\.000\s*km\/Jahr/.test(c)), 'Wunschkonditionen: 10.000 km/Jahr');
 assert.ok(wishChips.some((c) => /2\.000\s*€\s*Anzahlung/.test(c)), 'Wunschkonditionen: 2.000 € Anzahlung');
-assert.ok(wishChips.some((c) => /Wunschlieferdatum November 2026/.test(c)), 'Wunschlieferdatum November 2026');
+assert.ok(
+  wishChips.some((c) => /(?:Wunschlieferdatum|Liefertermin)\s+November 2026/.test(c)),
+  'Liefertermin November 2026',
+);
 assert.ok(!wishChips.includes('Budget offen'), 'Kein Budget offen bei Anzahlung ohne Rate');
 
 const schlayerCards = buildVehicleOpportunityCards({

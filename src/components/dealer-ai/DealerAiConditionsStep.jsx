@@ -424,6 +424,7 @@ export default function DealerAiConditionsStep({
   onContinue,
   onSave,
   onBack,
+  onEditConfiguration = null,
   backLabel = '← Zur Konfiguration',
   wishChips = [],
   onWishChange,
@@ -433,6 +434,8 @@ export default function DealerAiConditionsStep({
   const [showCustomDown, setShowCustomDown] = useState(false);
 
   if (!draft || !vehicleConfiguration) return null;
+
+  const editConfiguration = onEditConfiguration ?? onBack;
 
   const paymentType = draft.paymentType === 'unknown' ? 'leasing' : draft.paymentType;
   const isCash = paymentType === 'cash';
@@ -525,14 +528,14 @@ export default function DealerAiConditionsStep({
         summary={vehicleSummary}
         imageSrc={heroImage}
         imageAlt={vehicleTitle}
-        onEdit={onBack}
+        onEdit={editConfiguration}
       />
 
       <PkwEnVkvCalculatorStatus draft={draft} />
 
       <ConfigurationOverviewTiles
         vehicleConfiguration={vehicleConfiguration}
-        onEdit={onBack}
+        onEdit={editConfiguration}
         compact
       />
 

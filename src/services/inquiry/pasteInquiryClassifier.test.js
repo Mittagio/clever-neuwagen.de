@@ -84,6 +84,13 @@ const created = applyStockVehicleInquiry({
 assert.ok(created.leadId);
 assert.equal(leads.length, 1);
 assert.ok(leads[0].crm?.requestedStockVehicle?.vehicleTitle?.includes('Picanto'));
+assert.ok(
+  Array.isArray(leads[0].crm?.sellerInsights),
+  'Bestandsanfrage schreibt organisierte sellerInsights',
+);
+
+const stockPreview = buildPasteInquiryPreview(classification, extraction);
+assert.ok(Array.isArray(stockPreview.wishLines), 'Preview enthält wishLines');
 
 const found = findLeadForStockInquiry(extraction, leads);
 assert.equal(found?.id, created.leadId);

@@ -1,4 +1,16 @@
 .dealer-ai-page {
+  /* Bild-4-Klarheit: eine Primary (fast schwarz), Soft nur als Fläche */
+  --color-primary: #0f172a;
+  --color-primary-hover: #1e293b;
+  --dai-primary: #0f172a;
+  --dai-primary-soft: #f1f5f9;
+  --dai-surface-soft:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(148, 163, 184, 0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #fafbff 0%, #fff 100%);
+  --dai-chip-bg: #f3f4f6;
+  --dai-border: #e2e8f0;
+  --dai-muted: #64748b;
+  --dai-text: #0f172a;
   min-height: 100dvh;
   background: #f4f6f9;
   color: #111;
@@ -190,7 +202,7 @@
 }
 
 .dai-btn--primary {
-  background: #111;
+  background: var(--dai-primary, #0f172a);
   color: #fff;
 }
 

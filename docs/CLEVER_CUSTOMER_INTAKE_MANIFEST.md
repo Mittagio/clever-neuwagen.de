@@ -229,7 +229,13 @@ Bereich: **Wunschübergabe von Clever**
 - Zahlungsart **nur** unter Konditionen – nicht im Soft-Wish-Hub / Notizzettel (keine Doppelung)
 - Soft-Wish-Hub: Ausstattung · Verfügbarkeit · Leben & Alltag · Freitext
 - Am Notizzettel: 🎤 Memo · 📷 Scan → Chip-Vorschau mit VK-Kürzel
-- Sheets teilen dieselbe Akte-Optik (Indigo-Übernehmen)
+- **E-Mail/Anfrage starten:** `/verkaufsassistent` → „Anfrage einfügen“ → „Clever erkennen“
+  (`DealerAiStartScreen` · `buildCustomerRecognitionInsight` · `organizeInquiryText`)
+- Erkennen schreibt organisierte Chips in `sellerInsights` (Notizzettel in der Akte)
+- **Stichworte tippen (Akten-Verlauf):** ab ~3 Zeichen Vorschläge
+  (z. B. `Sitzh` → Sitzheizung, `Parksenso` → Parksensoren vorne/hinten, `Heckkl` → Elektrische Heckklappe)
+- Logik: `notepadLabelSuggestions.js` · UI Memo: `CustomerAkteNotepadCapture.jsx`
+- Sheets teilen dieselbe Akte-Optik (dunkle Primary wie Clever-Plugin „Weiter“)
 - Leben & Alltag bündelt Familie / Auto / Geld / …
 - Clever sagt: kompakt (Headline + Primary); Details aufklappbar
 - besprochene Fahrzeuge (ohne Sieger)

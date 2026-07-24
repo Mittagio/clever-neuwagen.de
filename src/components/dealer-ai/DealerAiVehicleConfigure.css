@@ -1,13 +1,16 @@
 .dai-configure--seller {
+  --color-primary: #0f172a;
   gap: 0.65rem;
 }
 
 .dai-configure--mobile {
+  --color-primary: #0f172a;
   max-width: 32rem;
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .dai-configure--studio {
+  --color-primary: #0f172a;
   max-width: 40rem;
 }
 
@@ -293,7 +296,7 @@
   padding: 0.95rem 1rem;
   font-size: 1rem;
   border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(26, 92, 255, 0.28);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
 }
 
 .dai-config-sticky-foot__actions .dai-config-actions__secondary {
@@ -345,8 +348,8 @@
   gap: 0.25rem;
   padding: 0.75rem 0.9rem;
   border-radius: 12px;
-  background: #f0f6ff;
-  border: 1px solid rgba(26, 92, 255, 0.15);
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.15);
 }
 
 .dai-config-live-rate__main {
@@ -367,7 +370,7 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   white-space: nowrap;
 }
 
@@ -435,7 +438,7 @@
   align-self: flex-start;
   border: none;
   background: none;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   font-size: 0.9rem;
   padding: 0;
   cursor: pointer;
@@ -558,7 +561,7 @@
 .dai-config-framework {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed rgba(26, 92, 255, 0.2);
+  border-top: 1px dashed rgba(15, 23, 42, 0.2);
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -574,7 +577,7 @@
 
 .dai-config-card--recognized {
   background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
-  border-color: rgba(26, 92, 255, 0.15);
+  border-color: rgba(15, 23, 42, 0.15);
 }
 
 .dai-config-card__title {
@@ -659,7 +662,7 @@
   margin: 0.85rem 0 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
 }
 
 .dai-config-extras {
@@ -700,7 +703,7 @@
 }
 
 .dai-config-variant.is-recommended {
-  border-color: rgba(26, 92, 255, 0.35);
+  border-color: rgba(15, 23, 42, 0.35);
   background: #f0f5ff;
 }
 
@@ -724,7 +727,7 @@
 
 .dai-config-card--recommendation {
   background: linear-gradient(135deg, #eef6ff 0%, #fff 55%);
-  border-color: rgba(26, 92, 255, 0.22);
+  border-color: rgba(15, 23, 42, 0.22);
 }
 
 .dai-config-offer-title {
@@ -768,7 +771,7 @@
   gap: 0.55rem;
   margin-top: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed rgba(26, 92, 255, 0.18);
+  border-top: 1px dashed rgba(15, 23, 42, 0.18);
 }
 
 .dai-config-offer-alt {
@@ -787,14 +790,14 @@
 }
 
 .dai-config-offer-alt:hover {
-  border-color: rgba(26, 92, 255, 0.35);
+  border-color: rgba(15, 23, 42, 0.35);
   background: #f8fbff;
 }
 
 .dai-config-offer-alt__label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary, #1a5cff);
+  color: var(--color-primary, #0f172a);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -877,7 +880,7 @@
 .dai-config-actions__primary {
   border: none;
   border-radius: 12px;
-  background: var(--color-primary, #1a5cff);
+  background: var(--color-primary, #0f172a);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;

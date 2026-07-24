@@ -77,7 +77,7 @@ export default function DealerAiStartScreen({
           <p className="dai-start__hero-subline">
             Kundenmail, mobile.de, Website oder Nachricht einfügen.
             <br />
-            Clever erkennt Kunde, Fahrzeug und Anfrageart automatisch.
+            Clever erkennt Kunde, Fahrzeug und Anfrageart – und sortiert Wünsche.
           </p>
         </header>
 

@@ -193,9 +193,9 @@
 }
 
 .dai-capture__field-wrap:focus-within::before {
-  border-color: #6366f1;
+  border-color: #0f172a;
   box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.12),
+    0 0 0 3px rgba(15, 23, 42, 0.1),
     inset 0 1px 2px rgba(11, 23, 54, 0.04);
 }
 
@@ -959,15 +959,15 @@
   margin: 0;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: #f0f6ff;
-  border: 1px solid rgba(26, 92, 255, 0.15);
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.15);
   text-align: center;
 }
 
 .dai-model-selected__label {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #1a5cff;
+  color: #0f172a;
 }
 
 .dai-model-options {
