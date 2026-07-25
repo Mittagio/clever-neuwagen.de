@@ -13,6 +13,8 @@
   font-weight: 600;
   color: #374151;
 }
+
+.compliance-card__header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
