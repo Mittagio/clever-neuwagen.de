@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
+import { IconBack, IconMoreDots, IconPhone } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
 /**
- * Kompakter Header der Mobile-Kundenakte (kein CRM-Block).
+ * Kompakter Header der Kundenakte (kein CRM-Block).
  */
 export default function CustomerAkteCompactHeader({
   customerName = '',
@@ -38,7 +39,7 @@ export default function CustomerAkteCompactHeader({
             onClick={onBack}
             aria-label="Zurück"
           >
-            ←
+            <IconBack />
           </button>
         ) : (
           <span className="cust-akte-compact-header__spacer" aria-hidden />
@@ -49,6 +50,11 @@ export default function CustomerAkteCompactHeader({
           {contextLine ? (
             <p className="cust-akte-compact-header__context">{contextLine}</p>
           ) : null}
+          {!hasPhone ? (
+            <p className="cust-akte-compact-header__hint" role="status">
+              Telefon fehlt
+            </p>
+          ) : null}
         </div>
 
         <div className="cust-akte-compact-header__actions">
@@ -58,17 +64,17 @@ export default function CustomerAkteCompactHeader({
               className="cust-akte-compact-header__icon-btn"
               aria-label="Anrufen"
             >
-              📞
+              <IconPhone />
             </a>
           ) : (
             <button
               type="button"
               className="cust-akte-compact-header__icon-btn cust-akte-compact-header__icon-btn--muted"
               onClick={handleCall}
-              aria-label="Telefonnummer fehlt"
-              title="Telefonnummer fehlt"
+              aria-label="Telefon fehlt"
+              title="Telefon fehlt"
             >
-              📞
+              <IconPhone />
             </button>
           )}
           <button
@@ -78,15 +84,10 @@ export default function CustomerAkteCompactHeader({
             aria-label="Mehr Aktionen"
             aria-expanded={menuOpen}
           >
-            •••
+            <IconMoreDots />
           </button>
         </div>
       </div>
-      {!hasPhone ? (
-        <p className="cust-akte-compact-header__hint" role="status">
-          Telefonnummer fehlt
-        </p>
-      ) : null}
     </header>
   );
 }

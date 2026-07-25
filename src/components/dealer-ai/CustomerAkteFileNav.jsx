@@ -1,12 +1,13 @@
 import './CustomerAkte.css';
 import { AKTE_TABS } from './customerAkteTabs.js';
+import { AKTE_NAV_ICONS } from './AkteIcons.jsx';
 
 const NAV_ITEMS = [
-  { id: AKTE_TABS.kunde, label: 'Kunde', icon: '👤' },
-  { id: AKTE_TABS.chat, label: 'Chat', icon: '💬' },
-  { id: AKTE_TABS.clever, label: 'Clever', icon: '✨', clever: true },
-  { id: AKTE_TABS.angebote, label: 'Angebote', icon: '🚗' },
-  { id: AKTE_TABS.mehr, label: 'Mehr', icon: '☰' },
+  { id: AKTE_TABS.kunde, label: 'Kunde', icon: 'kunde' },
+  { id: AKTE_TABS.chat, label: 'Chat', icon: 'chat' },
+  { id: AKTE_TABS.clever, label: 'Clever', icon: 'clever', clever: true },
+  { id: AKTE_TABS.angebote, label: 'Angebote', icon: 'angebote' },
+  { id: AKTE_TABS.mehr, label: 'Mehr', icon: 'mehr' },
 ];
 
 /**
@@ -28,6 +29,7 @@ export default function CustomerAkteFileNav({
         const isActive = activeTab === item.id
           || (item.id === AKTE_TABS.clever && activeTab === AKTE_TABS.chat && badges.cleverMode);
         const badge = badges[item.id === AKTE_TABS.angebote ? 'angebote' : item.id];
+        const Icon = AKTE_NAV_ICONS[item.icon];
         return (
           <button
             key={item.id}
@@ -41,9 +43,9 @@ export default function CustomerAkteFileNav({
             aria-current={isActive ? 'page' : undefined}
           >
             <span className={isRail ? 'cn-side-rail__icon' : 'cust-akte-file-nav__icon'} aria-hidden>
-              {item.icon}
+              {Icon ? <Icon /> : null}
             </span>
-            <span className={isRail ? undefined : 'cust-akte-file-nav__label'}>{item.label}</span>
+            <span className={isRail ? 'cn-side-rail__label' : 'cust-akte-file-nav__label'}>{item.label}</span>
             {!isRail && badge ? (
               <span className="cust-akte-file-nav__badge" aria-label={`${badge} offen`}>
                 {badge > 9 ? '9+' : badge}

@@ -15,12 +15,12 @@ export const BREAKPOINTS = {
 
 export const CONTENT_WIDTH = {
   reading: 720,
-  workspace: 1200,
-  wide: 1400,
+  workspace: 1280,
+  wide: 1360,
   phone: 480,
   sidebarContext: 260,
   sidebarAssistant: 300,
-  sidebarNav: 72,
+  sidebarNav: 68,
 };
 
 /** Page types from Clever Responsive Product Law */

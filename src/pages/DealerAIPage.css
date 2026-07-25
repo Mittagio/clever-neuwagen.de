@@ -21,7 +21,26 @@
 }
 
 .dealer-ai-page:has(.dealer-ai-main--akte) {
-  background: #fff;
+  background: var(--color-bg, #f7f8fa);
+}
+
+.dealer-ai-main--akte {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.dealer-ai-page:has(.dealer-ai-main--akte) .dealer-ai-legal {
+  display: none;
+}
+
+.cust-akte.dai-lead-followup.cust-akte--responsive-shell {
+  max-width: none;
+  margin: 0;
+  padding-bottom: 0;
+  gap: 0;
 }
 
 .dealer-ai-legal {
@@ -29,11 +48,6 @@
   width: 100%;
   margin: 0 auto;
   padding: 4px 20px calc(16px + env(safe-area-inset-bottom, 0px));
-}
-
-.dealer-ai-main--akte {
-  max-width: none;
-  padding: 0;
 }
 
 .dealer-ai-header {

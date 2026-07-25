@@ -99,6 +99,10 @@ Optik: exakt so fein wie das Mockup – kaum visuelle Schwere.
 
 ---
 
+## Status
+
+**Visual Quality Reset v1.0 (2026-07-25):** Tokens auf Navy + dezentes Lavender, Line-Icons in File-Nav/Header, Desktop-Shell `flex-direction: row`, Score in Clever-Card ausgeblendet, Chat/Composer/Assist beruhigt.
+
 ## Verwandte Docs
 
 - [CLEVER_RESPONSIVE_DESIGN.md](CLEVER_RESPONSIVE_DESIGN.md) – Breakpoints & Workspace-Composition

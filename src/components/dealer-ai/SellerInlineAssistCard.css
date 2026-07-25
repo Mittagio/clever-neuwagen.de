@@ -7,26 +7,26 @@
 
 .sia-card {
   padding: 12px 14px;
-  border-radius: 14px;
-  background: #f0fdf4;
-  border: 1px solid #a7f3d0;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  border-radius: var(--radius-card, 14px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  box-shadow: none;
 }
 
 .sia-card--conflict_warning {
-  background: #fff7ed;
-  border-color: #fdba74;
+  background: #fffbeb;
+  border-color: rgba(217, 119, 6, 0.35);
 }
 
 .sia-card--context_reminder {
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  background: var(--color-clever-soft, rgba(109, 91, 184, 0.08));
+  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
 }
 
 .sia-card--message_draft,
 .sia-card--action_draft {
-  background: #f8fafc;
-  border-color: #e2e8f0;
+  background: var(--color-surface, #fff);
+  border-color: var(--color-border-subtle, #e8e8ef);
 }
 
 .sia-card__head {
@@ -39,19 +39,19 @@
 
 .sia-card__title {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: 0.6875rem;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #047857;
+  color: var(--color-clever, #6d5bb8);
 }
 
 .sia-card--conflict_warning .sia-card__title {
-  color: #c2410c;
+  color: var(--color-warning, #d97706);
 }
 
 .sia-card--context_reminder .sia-card__title {
-  color: #4338ca;
+  color: var(--color-clever, #6d5bb8);
 }
 
 .sia-card__dismiss {
@@ -60,16 +60,16 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #64748b;
+  color: var(--color-text-muted, #8b93a7);
   font-size: 1.25rem;
   cursor: pointer;
 }
 
 .sia-card__headline {
   margin: 0 0 4px;
-  font-size: 1rem;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--color-text, #0b1736);
 }
 
 .sia-card__body,
@@ -77,79 +77,76 @@
   margin: 0 0 6px;
   font-size: 0.875rem;
   line-height: 1.4;
-  color: #334155;
-}
-
-.sia-card__hint {
-  color: #047857;
-  font-weight: 650;
+  font-weight: 400;
+  color: var(--color-text-secondary, #5c6478);
 }
 
 .sia-card__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 0 0 8px;
+  margin: 8px 0;
   padding: 0;
   list-style: none;
 }
 
 .sia-chip {
   display: inline-flex;
+  align-items: center;
+  min-height: 28px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid #c7d2fe;
+  border-radius: var(--radius-chip, 999px);
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  background: var(--color-surface, #fff);
   font-size: 0.75rem;
-  font-weight: 700;
-  color: #3730a3;
+  font-weight: 500;
+  color: var(--color-text, #0b1736);
 }
 
 .sia-card__actions {
-  margin: 0 0 8px;
+  margin: 8px 0;
   padding: 0;
   list-style: none;
   font-size: 0.875rem;
-  font-weight: 650;
-  color: #0f172a;
+  color: var(--color-text, #0b1736);
 }
 
 .sia-card__draft {
-  margin: 0 0 10px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  font: inherit;
-  font-size: 0.8125rem;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-surface-muted, #f4f4f7);
+  border: none;
   white-space: pre-wrap;
-  max-height: 160px;
-  overflow: auto;
+  font: inherit;
+  font-size: 0.875rem;
 }
 
 .sia-card__ctas {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .sia-btn {
   min-height: 40px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: none;
-  font-size: 0.8125rem;
-  font-weight: 700;
+  padding: 0 14px;
+  border-radius: var(--radius-button, 12px);
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  background: var(--color-surface, #fff);
+  font-size: 0.875rem;
+  font-weight: 650;
   cursor: pointer;
+  color: var(--color-text, #0b1736);
 }
 
 .sia-btn--primary {
-  background: #10b981;
+  border-color: transparent;
+  background: var(--color-brand, #0b1736);
   color: #fff;
 }
 
 .sia-btn--ghost {
-  background: #fff;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background: transparent;
 }

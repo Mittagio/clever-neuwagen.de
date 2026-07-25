@@ -15,7 +15,9 @@ assert(BREAKPOINTS.tablet === 768, 'tablet bp');
 assert(BREAKPOINTS.desktop === 1100, 'desktop bp');
 assert(BREAKPOINTS.wide === 1440, 'wide bp');
 assert(CONTENT_WIDTH.reading === 720, 'reading width');
-assert(CONTENT_WIDTH.workspace === 1200, 'workspace width');
+assert(CONTENT_WIDTH.workspace === 1280, 'workspace width');
+assert(CONTENT_WIDTH.wide === 1360, 'wide width');
+assert(CONTENT_WIDTH.sidebarNav === 68, 'sidebar nav');
 assert(PAGE_TYPES.conversational === 'A', 'page type A');
 
 assert(matchViewport(390) === 'mobile', '390 mobile');

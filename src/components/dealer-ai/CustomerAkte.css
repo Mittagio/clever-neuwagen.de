@@ -13,17 +13,17 @@
 }
 
 .cust-akte {
-  --cust-primary: #0f172a;
-  --cust-primary-hover: #1e293b;
-  --cust-blue: #0f172a;
+  --cust-primary: var(--color-brand, #0b1736);
+  --cust-primary-hover: var(--color-brand-hover, #152347);
+  --cust-blue: var(--color-brand, #0b1736);
   --cust-blue-dark: #020617;
-  --cust-text: #0f172a;
-  --cust-muted: #64748b;
-  --cust-border: #e2e8f0;
-  --cust-bg: #f8fafc;
-  --cust-chip-bg: #f3f4f6;
-  --cust-soft: #f1f5f9;
-  --color-primary: #0f172a;
+  --cust-text: var(--color-text, #0b1736);
+  --cust-muted: var(--color-text-secondary, #5c6478);
+  --cust-border: var(--color-border-subtle, #e8e8ef);
+  --cust-bg: var(--color-surface-muted, #f4f4f7);
+  --cust-chip-bg: var(--color-bg-muted, #eef1f5);
+  --cust-soft: var(--color-bg-muted, #eef1f5);
+  --color-primary: var(--color-brand, #0b1736);
   background: #fff;
   min-height: 100%;
 }
@@ -4517,23 +4517,24 @@
 .cust-akte-context-rail__name {
   margin: 0 0 4px;
   font-size: 1.0625rem;
-  font-weight: 800;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
 }
 
 .cust-akte-context-rail__meta {
   margin: 0 0 12px;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--cust-muted, #64748b);
+  font-weight: 500;
+  color: var(--cust-muted, #5c6478);
 }
 
 .cust-akte-context-rail__label {
   margin: 16px 0 8px;
   font-size: 0.6875rem;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--cust-muted, #64748b);
+  color: var(--cust-muted, #5c6478);
 }
 
 .cust-akte-shell__kunde-facts--rail {
@@ -4607,9 +4608,11 @@
 
 .cust-akte-compact-header {
   flex-shrink: 0;
-  padding: 8px 12px 6px;
+  min-height: var(--header-height, 64px);
+  padding: 10px 16px;
   background: #fff;
-  border-bottom: 1px solid var(--cust-border, #e2e8f0);
+  border-bottom: 1px solid var(--cust-border, #e8e8ef);
+  box-sizing: border-box;
 }
 
 .cust-akte-compact-header__row {
@@ -4617,6 +4620,7 @@
   grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
 }
 
 .cust-akte-compact-header__back,
@@ -4629,14 +4633,14 @@
   border: none;
   background: transparent;
   border-radius: 12px;
-  font-size: 1.125rem;
-  color: var(--cust-text, #0f172a);
+  color: var(--cust-text, #0b1736);
   text-decoration: none;
   cursor: pointer;
 }
 
 .cust-akte-compact-header__icon-btn--muted {
-  opacity: 0.45;
+  opacity: 0.4;
+  color: var(--cust-muted, #5c6478);
 }
 
 .cust-akte-compact-header__actions {
@@ -4651,10 +4655,10 @@
 
 .cust-akte-compact-header__name {
   margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 800;
+  font-size: 1.125rem;
+  font-weight: 650;
   line-height: 1.2;
-  color: var(--cust-text, #0f172a);
+  color: var(--cust-text, #0b1736);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4663,18 +4667,18 @@
 .cust-akte-compact-header__context {
   margin: 2px 0 0;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--cust-muted, #64748b);
+  font-weight: 500;
+  color: var(--cust-muted, #5c6478);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cust-akte-compact-header__hint {
-  margin: 4px 0 0 48px;
+  margin: 2px 0 0;
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: #b45309;
+  font-weight: 500;
+  color: var(--cust-muted, #8b93a7);
 }
 
 .cust-akte-smart-chips {
@@ -4702,13 +4706,14 @@
 .cust-akte-smart-chips__chip {
   flex: 0 0 auto;
   max-width: 220px;
-  padding: 8px 12px;
-  border: 1px solid var(--cust-border, #e2e8f0);
-  border-radius: 999px;
-  background: #f8fafc;
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 1px solid var(--cust-border, #e8e8ef);
+  border-radius: var(--radius-chip, 999px);
+  background: var(--color-surface, #fff);
   font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--cust-text, #0f172a);
+  font-weight: 500;
+  color: var(--cust-text, #0b1736);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4757,6 +4762,13 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cust-akte--responsive-shell .cust-akte-profile__score {
+  display: none;
 }
 
 .cust-akte-shell__situativ {
@@ -4856,7 +4868,7 @@
   gap: 0;
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 255, 255, 0.98);
-  border-top: 1px solid var(--cust-border, #e2e8f0);
+  border-top: 1px solid var(--cust-border, #e8e8ef);
   backdrop-filter: blur(12px);
 }
 
@@ -4871,23 +4883,23 @@
   padding: 4px 2px;
   border: none;
   background: none;
-  color: #94a3b8;
+  color: var(--color-text-muted, #8b93a7);
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .cust-akte-file-nav__item--active {
-  color: var(--cust-blue, #0f172a);
+  color: var(--cust-blue, #0b1736);
 }
 
 .cust-akte-file-nav__item--clever {
-  color: #0f766e;
+  color: var(--color-clever, #6d5bb8);
 }
 
 .cust-akte-file-nav__item--clever.cust-akte-file-nav__item--active,
 .cust-akte-file-nav__item--clever:focus-visible {
-  color: #0f766e;
+  color: var(--color-clever, #6d5bb8);
 }
 
 .cust-akte-file-nav__item--clever .cust-akte-file-nav__icon {
@@ -4897,14 +4909,19 @@
   width: 36px;
   height: 36px;
   border-radius: 14px;
-  background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-  font-size: 1.125rem;
+  background: var(--color-clever-soft, rgba(109, 91, 184, 0.1));
+  color: var(--color-clever, #6d5bb8);
+  box-shadow: none;
 }
 
 .cust-akte-file-nav__icon {
-  font-size: 1.0625rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   line-height: 1;
+  color: inherit;
 }
 
 .cust-akte-file-nav__badge {
@@ -4915,10 +4932,10 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #ef4444;
+  background: var(--color-error, #dc2626);
   color: #fff;
   font-size: 0.625rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 16px;
   text-align: center;
 }

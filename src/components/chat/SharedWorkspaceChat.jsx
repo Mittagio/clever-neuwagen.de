@@ -24,7 +24,7 @@ export default function SharedWorkspaceChat({
   onClosePlus,
   micSlot = null,
   reviewSlot = null,
-  emptyHint = 'Noch keine Nachrichten. Schreiben Sie die erste Nachricht.',
+  emptyHint = 'Noch kein Verlauf.\nSchreiben oder sprechen Sie einfach los.',
 }) {
   const endRef = useRef(null);
   const [localPlus, setLocalPlus] = useState(false);

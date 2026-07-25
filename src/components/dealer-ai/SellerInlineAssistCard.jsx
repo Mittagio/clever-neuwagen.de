@@ -23,7 +23,7 @@ export default function SellerInlineAssistCard({
           className={`sia-card sia-card--${result.type}`}
         >
           <header className="sia-card__head">
-            <p className="sia-card__title">{result.title || '✨ Clever'}</p>
+            <p className="sia-card__title">{result.title || 'Clever'}</p>
             {onDismiss && index === 0 ? (
               <button type="button" className="sia-card__dismiss" onClick={onDismiss} aria-label="Schließen">
                 ×
