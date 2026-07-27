@@ -1,6 +1,6 @@
 # Clever Seller Assistant
 
-**Status:** v2.1 – Notizzettel-first + action-driven + Termin-Assistent  
+**Status:** v2.2 – Universal Input Orchestrator + Notizzettel-first  
 **Stand:** Juli 2026
 
 ## Leitsatz
@@ -8,14 +8,32 @@
 Clever ist kein CRM, das der Verkäufer bedienen muss.  
 Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledigt werden soll.
 
-**Der Verkäufer nennt das Ziel.  
+**„Wirf mir alles hin. Ich kümmere mich darum.“**
+
+**Der Verkäufer nennt das Ziel (oder wirft unsortierte Infos hin).  
 Clever verwendet vorhandenen Kundenkontext und fragt nur nach den Informationen, die zur Ausführung wirklich fehlen.**
+
+Der Composer ist der **universelle Eingang** – nicht nur Texteingabe. Siehe [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
 
 **Notizzettel-Chips sind nicht nur Anzeige.  
 Sie sind direkte Arbeitsobjekte des Verkäufers.**
 
 **Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**  
 Clever erkennt einen sinnvollen Terminmoment, der Verkäufer schlägt vor, der Kunde bestätigt, Clever übernimmt den bestätigten Termin in den Prozess (CRM-Wiedervorlage / followUpAt – kein Kalender-Klon).
+
+## Architektur: Universal Orchestrator
+
+| Baustein | Datei |
+|----------|--------|
+| `runCleverSellerTurn` | `src/services/cleverSeller/runCleverSellerTurn.js` |
+| Fact-/Intent-Interpretation | `interpretSellerInput.js` |
+| proposedUpdates | `proposeSellerUpdates.js` |
+| Missing Info | `resolveMissingInformation.js` |
+| Action Plan | `planSellerActions.js` |
+
+`runSellerAssistantTurn` hängt das Universal-Result unter `universal` an (Flag `CLEVER_SELLER_ORCHESTRATOR_ENABLED`).
+
+**Regel:** Interpretation ≠ Persistenz. Persistenz nur über bestehende Pfade nach Review.
 
 ## UX-Philosophie
 
@@ -103,4 +121,5 @@ node src/services/dealer/sellerOfferAssistFlow.test.js
 node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js
 node src/services/dealer/magicOfferService.test.js
+node src/services/cleverSeller/runCleverSellerTurn.test.js
 ```

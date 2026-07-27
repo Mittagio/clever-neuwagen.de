@@ -574,14 +574,28 @@ function formatPortalTime(iso = '') {
  */
 export function formatPortalMessageText(message = {}) {
   if (!message.visibleToCustomer) return null;
+  return formatWorkspaceMessageText(message);
+}
+
+/**
+ * Feed-Text für Workspace (Seller sieht auch interne Clever-Karten).
+ * @param {object} message
+ */
+export function formatWorkspaceMessageText(message = {}) {
   const kind = message.kind || MESSAGE_KIND.TEXT;
   if (isCardMessageKind(kind)) {
     return String(message.text ?? message.payload?.title ?? message.payload?.label ?? ' ').trim() || ' ';
   }
-  const text = String(message.text ?? '').trim();
+  const text = String(message.text ?? '').trim()
+    || (kind === MESSAGE_KIND.CLEVER_MESSAGE
+      ? String(message.payload?.title ?? message.payload?.label ?? '').trim()
+      : '');
   if (!text) return null;
-  const safe = sanitizeCustomerVisibleText(text, { kind });
-  return safe || null;
+  if (message.visibleToCustomer) {
+    const safe = sanitizeCustomerVisibleText(text, { kind });
+    return safe || null;
+  }
+  return text;
 }
 
 /**
@@ -625,11 +639,14 @@ export function buildCustomerPortalMessageThreads(lead = {}, options = {}) {
   const portfolioItems = options.portfolioItems
     ?? lead?.crm?.customerOfferPortfolio?.items
     ?? [];
+  const includeInternal = options.includeInternal === true;
   const store = getCustomerMessageStore(lead);
   const visibleByThread = new Map();
 
   for (const message of store.messages) {
-    const text = formatPortalMessageText(message);
+    const text = includeInternal
+      ? formatWorkspaceMessageText(message)
+      : formatPortalMessageText(message);
     if (!text) continue;
     const bucket = visibleByThread.get(message.threadId) ?? [];
     bucket.push({ message, text });

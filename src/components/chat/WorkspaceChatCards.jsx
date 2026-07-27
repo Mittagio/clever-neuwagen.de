@@ -1,5 +1,15 @@
 import { MESSAGE_KIND } from '../../services/crm/customerMessageService.js';
 
+function initialsFromLabel(label = '') {
+  const cleaned = String(label).replace(/✨/g, '').trim();
+  if (!cleaned) return '·';
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  }
+  return cleaned.slice(0, 2).toUpperCase();
+}
+
 export function OfferChatCard({ payload = {}, onOpen }) {
   return (
     <article className="sw-card sw-card--offer">
@@ -74,13 +84,28 @@ export function ChecklistChatCard({ payload = {}, onUpload, onStartSa }) {
   );
 }
 
-export function CleverChatMessage({ text, payload = {} }) {
+export function CleverChatMessage({ text, payload = {}, onCta = null }) {
+  const hasCta = Boolean(payload.ctaLabel && onCta);
+  const rawTitle = String(payload.title || 'Clever').replace(/^✨\s*/, '').trim() || 'Clever';
   return (
-    <article className="sw-card sw-card--clever">
-      <p className="sw-card__clever-label">{payload.title || '✨ Clever'}</p>
+    <article className={`sw-card sw-card--clever${hasCta ? ' sw-card--clever-banner' : ''}`}>
+      <div className="sw-card__clever-head">
+        <span className="sw-card__clever-spark" aria-hidden>✨</span>
+        <p className="sw-card__clever-label">{rawTitle}</p>
+      </div>
       <p className="sw-card__text">{text}</p>
       {payload.sourceLabel ? (
         <p className="sw-card__source">{payload.sourceLabel}</p>
+      ) : null}
+      {hasCta ? (
+        <button
+          type="button"
+          className="sw-card__cta sw-card__cta--clever"
+          onClick={() => onCta(payload)}
+        >
+          {payload.ctaLabel}
+          {' ›'}
+        </button>
       ) : null}
     </article>
   );
@@ -141,6 +166,40 @@ export function AppointmentChatCard({
   );
 }
 
+function TextBubble({ item }) {
+  const isCustomer = Boolean(item.isCustomer);
+  const isClever = Boolean(item.isClever);
+  const initials = isClever ? '✨' : initialsFromLabel(item.senderLabel);
+
+  return (
+    <div
+      className={`sw-bubble${isCustomer ? ' sw-bubble--customer' : ' sw-bubble--dealer'}${isClever ? ' sw-bubble--clever' : ''}`}
+    >
+      {!isCustomer ? (
+        <span className={`sw-bubble__avatar${isClever ? ' sw-bubble__avatar--clever' : ''}`} aria-hidden>
+          {initials}
+        </span>
+      ) : null}
+      <div className="sw-bubble__content">
+        <div className="sw-bubble__meta">
+          <span className="sw-bubble__label">{item.senderLabel}</span>
+          {item.timeLabel ? (
+            <time className="sw-bubble__time">{item.timeLabel}</time>
+          ) : null}
+        </div>
+        <div className="sw-bubble__body">
+          <p className="sw-bubble__text">{item.text}</p>
+        </div>
+      </div>
+      {isCustomer ? (
+        <span className="sw-bubble__avatar sw-bubble__avatar--customer" aria-hidden>
+          {initialsFromLabel(item.senderLabel === 'Sie' ? 'K' : item.senderLabel)}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function WorkspaceChatItem({
   item,
   onOpenOffer,
@@ -148,6 +207,7 @@ export function WorkspaceChatItem({
   onStartSelfDisclosure,
   onConfirmAppointment = null,
   onChangeAppointment = null,
+  onCleverAction = null,
 }) {
   const kind = item.kind || MESSAGE_KIND.TEXT;
 
@@ -179,20 +239,17 @@ export function WorkspaceChatItem({
     );
   }
   if (kind === MESSAGE_KIND.CLEVER_MESSAGE) {
-    return <CleverChatMessage text={item.text} payload={item.payload} />;
+    return (
+      <CleverChatMessage
+        text={item.text}
+        payload={item.payload}
+        onCta={onCleverAction}
+      />
+    );
   }
   if (kind === MESSAGE_KIND.SYSTEM_STATUS || kind === MESSAGE_KIND.DOCUMENT_CARD) {
     return <StatusChatCard payload={item.payload} text={item.text} />;
   }
 
-  return (
-    <div className={`sw-bubble${item.isCustomer ? ' sw-bubble--customer' : ' sw-bubble--dealer'}`}>
-      <span className="sw-bubble__label">{item.senderLabel}</span>
-      <div className="sw-bubble__body">
-        <p className="sw-bubble__text">{item.text}</p>
-        {item.timeLabel ? <time className="sw-bubble__time">{item.timeLabel}</time> : null}
-      </div>
-    </div>
-  );
+  return <TextBubble item={item} />;
 }
-

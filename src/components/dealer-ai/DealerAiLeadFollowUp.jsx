@@ -127,6 +127,7 @@ import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.j
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
+import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
@@ -2561,7 +2562,7 @@ export default function DealerAiLeadFollowUp({
       <WorkspaceShell
         className="cust-akte-workspace-shell"
         withBottomNav={false}
-        variant="split"
+        variant="triple"
         header={(
           <CustomerAkteCompactHeader
             customerName={name}
@@ -2577,7 +2578,15 @@ export default function DealerAiLeadFollowUp({
         band={null}
         mobileContext={null}
         context={null}
-        assist={null}
+        assist={(
+          <CustomerAkteOfferRail
+            lead={lead}
+            boardItems={boardItems}
+            onOpenBoard={openOffersBoard}
+            onCardClick={navigateBoardOfferCard}
+            onCardAction={handleBoardCardAction}
+          />
+        )}
         main={<div className="cust-akte-shell__workspace">{mainWorkspace}</div>}
         nav={null}
       />

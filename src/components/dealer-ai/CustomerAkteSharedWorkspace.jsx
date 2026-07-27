@@ -2,12 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import SellerInlineAssistCard from './SellerInlineAssistCard.jsx';
-import { buildSharedWorkspaceTimeline } from '../../services/crm/sharedWorkspaceService.js';
+import {
+  buildSharedWorkspaceTimeline,
+  postCleverAssistFeedCard,
+  sendSellerWorkspacePackage,
+} from '../../services/crm/sharedWorkspaceService.js';
 import {
   MESSAGE_KIND,
   sendCleverChannelMessage,
 } from '../../services/crm/customerMessageService.js';
 import {
+  INLINE_RESULT_TYPES,
   insertInlineFactIntoDraft,
   runSellerInlineAssist,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
@@ -22,10 +27,32 @@ import {
   getOpenCleverAppointment,
   runSellerAppointmentAssist,
 } from '../../services/dealer/sellerAppointmentAssistFlow.js';
-import { sendSellerWorkspacePackage } from '../../services/crm/sharedWorkspaceService.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 
 const DEBOUNCE_MS = 380;
+
+function buildCleverFeedTextFromResult(result = {}) {
+  if (result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT) {
+    return [result.headline, result.hint].map((p) => String(p ?? '').trim()).filter(Boolean).join('\n')
+      || 'Nachricht vorbereitet';
+  }
+  return [result.headline, result.body, result.contextLink, result.hint]
+    .map((p) => String(p ?? '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function resolveCleverFeedCtaAction(result = {}) {
+  if (result.type === INLINE_RESULT_TYPES.OFFER_DRAFT) {
+    return result.magic?.canCreateOffer ? 'prepare_offer' : 'complete_offer';
+  }
+  if (result.type === INLINE_RESULT_TYPES.APPOINTMENT_DRAFT) {
+    return result.canScheduleNow || result.primaryCta === 'Termin eintragen'
+      ? 'schedule_appointment'
+      : 'propose_appointment';
+  }
+  return null;
+}
 
 /**
  * Verkäufer-Sicht: gemeinsamer Conversation-Verlauf + ein Composer (inkl. Clever Inline).
@@ -155,6 +182,22 @@ export default function CustomerAkteSharedWorkspace({
     onPersistLead?.(nextLead, { historyText });
   }
 
+  function persistCleverFeedCard(result, options = {}) {
+    const text = options.text || buildCleverFeedTextFromResult(result);
+    if (!text || !lead?.id) return lead;
+    const posted = postCleverAssistFeedCard({
+      lead,
+      title: result?.title || '✨ Clever',
+      text,
+      ctaLabel: options.ctaLabel ?? result?.primaryCta ?? null,
+      ctaAction: options.ctaAction ?? resolveCleverFeedCtaAction(result),
+      visibleToCustomer: options.visibleToCustomer === true,
+    });
+    if (!posted.message) return lead;
+    persistMessages(posted.lead, options.historyText || 'Clever im Kundenverlauf');
+    return posted.lead;
+  }
+
   function handleSend(text) {
     if (!text || sending) return;
     setSending(true);
@@ -183,6 +226,16 @@ export default function CustomerAkteSharedWorkspace({
   function handleInsertFact(result) {
     const insert = result.insertText || result.body;
     setDraft((prev) => insertInlineFactIntoDraft(prev, insert));
+    if (
+      result.type === INLINE_RESULT_TYPES.FACT_SUGGESTION
+      || result.type === INLINE_RESULT_TYPES.MISSING_FACT
+      || result.type === INLINE_RESULT_TYPES.OFFER_DRAFT
+    ) {
+      persistCleverFeedCard({
+        ...result,
+        body: result.insertText || result.body,
+      }, { ctaLabel: null, ctaAction: null });
+    }
     setFeedback('Fakt übernommen');
     setTimeout(() => setFeedback(''), 2000);
   }
@@ -199,6 +252,7 @@ export default function CustomerAkteSharedWorkspace({
       }
       return insertInlineFactIntoDraft(next, result.insertText || '');
     });
+    persistCleverFeedCard(result, { ctaLabel: null, ctaAction: null });
     setAssist(null);
     setFeedback('Verifizierten Wert übernommen');
     setTimeout(() => setFeedback(''), 2200);
@@ -250,6 +304,10 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handlePrepareOffer(result) {
+    persistCleverFeedCard(result, {
+      ctaAction: resolveCleverFeedCtaAction(result) || 'prepare_offer',
+      historyText: 'Clever Angebotsvorbereitung',
+    });
     const magic = result?.magic ?? offerPrep;
     if (onPrepareOfferDraft) {
       onPrepareOfferDraft({ magic });
@@ -258,6 +316,17 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     onOpenOffer?.();
+  }
+
+  function handleCleverFeedCta(payload = {}) {
+    const action = payload.ctaAction;
+    if (action === 'prepare_offer' || action === 'complete_offer' || action === 'open_offer') {
+      if (onPrepareOfferDraft) {
+        onPrepareOfferDraft({ magic: null });
+        return;
+      }
+      onOpenOffer?.();
+    }
   }
 
   function handleSendAppointmentProposal(result) {
@@ -343,7 +412,15 @@ export default function CustomerAkteSharedWorkspace({
     try {
       const patch = buildCrmPatchFromAppointment(appointment, { markScheduled: true });
       let nextLead = applyAppointmentCrmPatch(lead, patch);
-      const historyText = `${appointment.typeLabel} eingetragen (${formatAppointmentWhen(appointment.startAt)})`;
+      const when = formatAppointmentWhen(appointment.startAt);
+      const historyText = `${appointment.typeLabel} eingetragen (${when})`;
+      const clever = postCleverAssistFeedCard({
+        lead: nextLead,
+        title: '✨ Clever',
+        text: `${appointment.typeLabel} eingetragen · ${when}`,
+        visibleToCustomer: false,
+      });
+      if (clever.message) nextLead = clever.lead;
       nextLead = {
         ...nextLead,
         history: [
@@ -408,6 +485,7 @@ export default function CustomerAkteSharedWorkspace({
         onOpenOffer={onOpenOffer}
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
+        onCleverAction={handleCleverFeedCta}
         feedTopSlot={feedTopSlot}
         reviewSlot={(
           <SellerInlineAssistCard

@@ -260,6 +260,21 @@ Sondern dort, wo der Kunde gerade ist.
 
 ---
 
+## Universal Seller Input (Verkäufer)
+
+1. **Der Verkäufer muss Informationen nicht vorsortieren.**
+2. **Der Composer ist der universelle Eingang in Clever.**
+3. **Clever versteht, sortiert, ergänzt und bereitet Aktionen vor.**
+4. **Bekannte Informationen werden nicht erneut abgefragt.**
+5. **Clever fragt nur nach dem, was für die aktuelle Aufgabe wirklich fehlt.**
+6. **Customer Truth, Seller Working State und Prepared Actions bleiben getrennt.**
+7. **OpenAI interpretiert. Clever entscheidet und persistiert.**
+8. **Sensible Daten werden nur minimal an externe AI-Dienste übermittelt.**
+
+Details: [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md)
+
+---
+
 ---
 
 ## Die Clever-Prüfung

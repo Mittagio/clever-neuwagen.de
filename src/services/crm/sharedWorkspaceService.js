@@ -390,6 +390,43 @@ export function postCleverVerifiedReply({
 }
 
 /**
+ * Clever Assist-Moment in den Vorgangs-Feed (Seller-sichtbar; optional kunden-sichtbar).
+ */
+export function postCleverAssistFeedCard({
+  lead,
+  title = '✨ Clever',
+  text = '',
+  ctaLabel = null,
+  ctaAction = null,
+  visibleToCustomer = false,
+  relatedOfferId = null,
+} = {}) {
+  const trimmed = String(text ?? '').trim();
+  if (!lead?.id || !trimmed) return { lead, message: null };
+
+  const { lead: withThread, thread } = findOrCreateThreadForLead(lead, { relatedOfferId });
+  return addCustomerMessage({
+    lead: withThread,
+    threadId: thread?.id,
+    direction: MESSAGE_DIRECTION.OUTBOUND,
+    channel: MESSAGE_CHANNEL.CLEVER,
+    status: MESSAGE_STATUS.SENT,
+    text: trimmed,
+    relatedOfferId,
+    visibleToCustomer: Boolean(visibleToCustomer),
+    createdByName: 'Clever',
+    kind: MESSAGE_KIND.CLEVER_MESSAGE,
+    senderRole: 'clever',
+    bypassSanitize: !visibleToCustomer,
+    payload: {
+      title,
+      ctaLabel,
+      ctaAction,
+    },
+  });
+}
+
+/**
  * Chronologischer Feed für Kunde und Verkäufer (gleiche Messages).
  */
 export function buildSharedWorkspaceTimeline(lead = {}, options = {}) {
@@ -397,6 +434,7 @@ export function buildSharedWorkspaceTimeline(lead = {}, options = {}) {
   const portfolio = lead?.crm?.customerOfferPortfolio ?? null;
   const threads = buildCustomerPortalMessageThreads(lead, {
     portfolioItems: portfolio?.items ?? [],
+    includeInternal: role === 'seller',
   });
 
   const items = [];

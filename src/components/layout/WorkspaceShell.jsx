@@ -43,7 +43,7 @@ export default function WorkspaceShell({
             {main}
           </div>
           {assist ? (
-            <aside className="cn-workspace__assist" aria-label="Clever">
+            <aside className="cn-workspace__assist" aria-label="Angebot">
               {assist}
             </aside>
           ) : null}

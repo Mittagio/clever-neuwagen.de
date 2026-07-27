@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildAttributedWishChips } from '../../services/dealer/customerUnderstanding.js';
+import {
+  buildBundledNotepadItems,
+  classifyNotepadLabel,
+} from '../../services/consultation/notepadChipBundling.js';
 import './CustomerAkte.css';
 
 function normalizeKey(label) {
@@ -17,7 +21,7 @@ function classifyChip(chip) {
 }
 
 /**
- * Notizzettel – semantisch gruppiert, Magic Capture bei neuen Chips.
+ * Notizzettel – Konditionen sichtbar; Rest wie KD-Memory (Chips + Bundle-Zähler).
  */
 export default function CustomerAkteCleverNotepad({
   lead = null,
@@ -30,6 +34,7 @@ export default function CustomerAkteCleverNotepad({
   const [compact, setCompact] = useState(false);
   const [captureLabels, setCaptureLabels] = useState([]);
   const [glowKeys, setGlowKeys] = useState(() => new Set());
+  const [expandedBundle, setExpandedBundle] = useState(null);
   const blockRef = useRef(null);
   const prevKeysRef = useRef(new Set());
 
@@ -61,13 +66,39 @@ export default function CustomerAkteCleverNotepad({
     return merged;
   }, [lead, conditionChips]);
 
-  const groups = useMemo(() => {
-    const condition = chips.filter((c) => c.group === 'condition');
-    const important = chips.filter((c) => c.group === 'important');
-    const model = chips.filter((c) => c.group === 'model');
-    const wish = chips.filter((c) => c.group === 'wish');
-    return { condition, important, model, wish };
-  }, [chips]);
+  const conditions = useMemo(
+    () => chips.filter((c) => c.group === 'condition'),
+    [chips],
+  );
+
+  const otherChips = useMemo(
+    () => chips.filter((c) => c.group !== 'condition'),
+    [chips],
+  );
+
+  const conditionKeys = useMemo(
+    () => new Set(conditions.map((c) => normalizeKey(c.label))),
+    [conditions],
+  );
+
+  /** KD-Bundling nur für Nicht-Konditionen (keine Doppelung). */
+  const bundledRest = useMemo(() => {
+    const labels = otherChips
+      .map((c) => c.label)
+      .filter((label) => {
+        if (conditionKeys.has(normalizeKey(label))) return false;
+        // Konditionen-Gruppe ist schon sichtbar → keine zweite Payment-Bundle
+        if (conditions.length && classifyNotepadLabel(label) === 'payment') return false;
+        return true;
+      });
+    return buildBundledNotepadItems(labels);
+  }, [otherChips, conditionKeys, conditions.length]);
+
+  const chipByLabel = useMemo(() => {
+    const map = new Map();
+    for (const chip of otherChips) map.set(normalizeKey(chip.label), chip);
+    return map;
+  }, [otherChips]);
 
   useEffect(() => {
     const keys = new Set(chips.map((c) => normalizeKey(c.label)));
@@ -107,14 +138,22 @@ export default function CustomerAkteCleverNotepad({
     onOpenFull?.();
   }
 
-  function renderChipList(list, limit = 8) {
-    const visible = list.slice(0, limit);
+  function handleLabelClick(label) {
+    const chip = chipByLabel.get(normalizeKey(label));
+    if (chip) {
+      handleChipClick(chip);
+      return;
+    }
+    onOpenFull?.();
+  }
+
+  function renderConditionChips(list) {
     return (
       <ul className="cust-akte-clever-notepad__chips">
-        {visible.map((chip) => {
+        {list.map((chip) => {
           const key = normalizeKey(chip.label);
           return (
-            <li key={`${chip.group}-${chip.origin}-${chip.label}`}>
+            <li key={`condition-${chip.origin}-${chip.label}`}>
               <button
                 type="button"
                 className={[
@@ -137,10 +176,8 @@ export default function CustomerAkteCleverNotepad({
   }
 
   const stickyChips = [
-    ...groups.model,
-    ...groups.condition,
-    ...groups.important,
-    ...groups.wish,
+    ...conditions,
+    ...otherChips,
   ].slice(0, 5);
 
   if (!chips.length) {
@@ -190,47 +227,86 @@ export default function CustomerAkteCleverNotepad({
         </div>
       ) : null}
 
-      <section ref={blockRef} className="cust-akte-clever-notepad" aria-label="Notizzettel">
-        <p className="cust-akte-clever-notepad__label">Notizzettel</p>
-
-        {groups.model.length ? (
-          <div className="cust-akte-clever-notepad__group">
-            <p className="cust-akte-clever-notepad__group-label">Modell</p>
-            {renderChipList(groups.model, 4)}
-          </div>
-        ) : null}
-
-        {groups.condition.length ? (
-          <div className="cust-akte-clever-notepad__group">
+      <section
+        ref={blockRef}
+        className="cust-akte-clever-notepad cust-akte-clever-notepad--compact"
+        aria-label="Notizzettel"
+      >
+        {conditions.length ? (
+          <div className="cust-akte-clever-notepad__group cust-akte-clever-notepad__group--conditions">
             <p className="cust-akte-clever-notepad__group-label">Konditionen</p>
-            {renderChipList(groups.condition, 6)}
+            {renderConditionChips(conditions)}
           </div>
         ) : null}
 
-        {groups.important.length ? (
-          <div className="cust-akte-clever-notepad__group">
-            <p className="cust-akte-clever-notepad__group-label">Wichtig</p>
-            {renderChipList(groups.important, 4)}
+        {bundledRest.length ? (
+          <div className="cust-akte-clever-notepad__rest" role="list" aria-label="Weitere Merker">
+            {bundledRest.map((item) => {
+              if (item.type === 'bundle' && !(item.count > 0)) return null;
+
+              if (item.type === 'chip') {
+                const key = normalizeKey(item.label);
+                const chip = chipByLabel.get(key);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="listitem"
+                    className={[
+                      'cust-akte-clever-notepad__chip',
+                      chip?.origin === 'seller' ? 'cust-akte-clever-notepad__chip--seller' : '',
+                      glowKeys.has(key) ? 'is-magic-capture' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => handleLabelClick(item.label)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              }
+
+              const isOpen = expandedBundle === item.id;
+              return (
+                <div key={item.id} className="cust-akte-clever-notepad__bundle-wrap" role="listitem">
+                  <button
+                    type="button"
+                    className={`cust-akte-clever-notepad__bundle${isOpen ? ' is-open' : ''}`}
+                    aria-expanded={isOpen}
+                    aria-label={`${item.title}, ${item.count} Einträge`}
+                    onClick={() => setExpandedBundle((prev) => (prev === item.id ? null : item.id))}
+                  >
+                    <span className="cust-akte-clever-notepad__bundle-title">{item.title}</span>
+                    <span className="cust-akte-clever-notepad__bundle-count">{item.count}</span>
+                  </button>
+                  {isOpen ? (
+                    <div className="cust-akte-clever-notepad__bundle-panel" role="group" aria-label={item.title}>
+                      {(item.labels ?? []).map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className="cust-akte-clever-notepad__chip"
+                          onClick={() => handleLabelClick(label)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="cust-akte-clever-notepad__more"
+                        onClick={() => onOpenFull?.()}
+                      >
+                        Alle öffnen
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : null}
 
-        {groups.wish.length ? (
-          <div className="cust-akte-clever-notepad__group">
-            <p className="cust-akte-clever-notepad__group-label">Weitere Wünsche</p>
-            {renderChipList(groups.wish, 4)}
-          </div>
-        ) : null}
-
-        {chips.length > 12 ? (
-          <button
-            type="button"
-            className="cust-akte-clever-notepad__more"
-            onClick={() => onOpenFull?.()}
-          >
-            +
-            {chips.length - 12}
-            {' '}
-            mehr
+        {!conditions.length && !bundledRest.length ? (
+          <button type="button" className="cust-akte-clever-notepad__empty" onClick={() => onOpenFull?.()}>
+            Wünsche ergänzen
           </button>
         ) : null}
       </section>

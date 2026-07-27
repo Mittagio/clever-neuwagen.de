@@ -100,8 +100,9 @@
 }
 
 .cn-workspace__assist {
-  border-left: 1px solid var(--color-border-subtle, #e8e8ef);
-  padding: var(--space-md);
+  border-left: 1px solid rgba(15, 23, 42, 0.05);
+  padding: 18px 16px;
+  background: #fafafc;
 }
 
 .cn-workspace__nav {
@@ -175,7 +176,7 @@
     flex: 1 1 auto;
     min-width: min(560px, 100%);
     margin-inline: 0;
-    background: var(--color-surface-muted, #f4f4f7);
+    background: #fafafc;
   }
 }
 

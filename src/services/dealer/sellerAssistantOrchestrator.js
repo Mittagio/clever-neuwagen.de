@@ -17,6 +17,8 @@ import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.
 import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
 import { runSellerInlineAssist, INLINE_RESULT_TYPES } from './sellerInlineComposerAssist.js';
 import { runSellerAppointmentAssist } from './sellerAppointmentAssistFlow.js';
+import { runCleverSellerTurn } from '../cleverSeller/runCleverSellerTurn.js';
+import { isCleverSellerOrchestratorEnabled } from '../cleverSeller/cleverSellerOrchestratorConfig.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -247,6 +249,15 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
   const actionIntent = buildSellerActionIntent(lead, sellerInput, options);
   const contextChips = buildSellerAssistantContextChips(lead, actionIntent.sellerFacts);
   const understanding = buildCustomerUnderstanding(lead);
+  const universal = isCleverSellerOrchestratorEnabled()
+    ? runCleverSellerTurn({
+      lead,
+      sellerInput,
+      attachments: options.attachments ?? [],
+      sellerContext: options.sellerContext ?? null,
+      currentOfferContext: options.currentOfferContext ?? null,
+    })
+    : null;
 
   const base = {
     ok: true,
@@ -255,6 +266,7 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
     contextUsed: contextChips.customer.map((c) => c.label),
     requiresSellerConfirmation: true,
     result: null,
+    universal,
   };
 
   if (!actionIntent.sellerInput) {

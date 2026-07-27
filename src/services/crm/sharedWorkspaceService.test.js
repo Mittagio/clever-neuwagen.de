@@ -10,6 +10,7 @@ import {
   prepareSellerWorkspacePackage,
   sendSellerWorkspacePackage,
   appendOfferCardsToThread,
+  postCleverAssistFeedCard,
 } from './sharedWorkspaceService.js';
 import { initCleverUnterlagenForLead } from '../cleverUnterlagen.js';
 
@@ -85,5 +86,30 @@ assert.ok(timelineCustomer.items.length >= 3);
 assert.equal(timelineCustomer.items.length, timelineSeller.items.length, 'gleicher Verlauf');
 assert.ok(timelineCustomer.header.title.includes('Trinkle'));
 assert.ok(/Notz/i.test(timelineSeller.header.title));
+
+const withInternal = postCleverAssistFeedCard({
+  lead: withOffers.lead,
+  title: '✨ Clever hat verstanden',
+  text: 'EV3 · Leasing · Rabatt fehlt noch',
+  ctaLabel: 'Angebot vervollständigen',
+  ctaAction: 'complete_offer',
+  visibleToCustomer: false,
+});
+assert.ok(withInternal.message);
+assert.equal(withInternal.message.kind, MESSAGE_KIND.CLEVER_MESSAGE);
+assert.equal(withInternal.message.visibleToCustomer, false);
+assert.equal(withInternal.message.payload.ctaAction, 'complete_offer');
+
+const sellerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'seller' });
+const customerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'customer' });
+assert.ok(
+  sellerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
+  'Seller sieht interne Clever-Karte',
+);
+assert.ok(
+  !customerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
+  'Kunde sieht interne Clever-Karte nicht',
+);
+assert.ok(sellerFeed.items.length > customerFeed.items.length);
 
 console.log('sharedWorkspaceService.test.js: OK');
