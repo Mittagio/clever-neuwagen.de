@@ -211,52 +211,81 @@ export function runSellerOfferAssist(lead = {}, draftText = '', options = {}) {
     });
 
   const inherited = buildInheritedFromLead(lead);
-  const known = summarizeKnown(magic, inherited);
   const ahk = buildAhkRelevance(lead, magic);
   const choices = buildChoicesForDecision(magic);
   const name = customerDisplayName(lead);
 
   const openParts = [];
-  if (magic.decision?.message) openParts.push(magic.decision.message);
   if (magic.decision?.reason === 'missing_discount') openParts.push('Rabatt');
+  else if (magic.decision?.message && !magic.canCreateOffer) openParts.push(magic.decision.message);
   if (magic.decision?.action === MAGIC_DECISION.ASK_RATE) openParts.push('Rate');
   if (magic.decision?.action === MAGIC_DECISION.ASK_OFFER_TYPE) openParts.push('Angebotsart');
 
+  const fromSeller = [];
+  const g = magic.grounded;
+  if (g) {
+    const title = [`Kia ${g.model}`, g.trimLabel].filter(Boolean).join(' ');
+    if (title) fromSeller.push(title);
+    if (g.colorLabel) fromSeller.push(g.colorLabel);
+  }
+  const c = magic.intent?.commercialInput ?? {};
+  if (c.discountPercent != null) fromSeller.push(`${c.discountPercent} % Rabatt`);
+  if (c.monthlyRate != null) fromSeller.push(`${Number(c.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+  if (/liefer|monat/i.test(text) && /\d+\s*monat/i.test(text)) {
+    const delivery = text.match(/(\d+)\s*monate?/i);
+    if (delivery && !c.durationMonths) fromSeller.push(`Lieferzeit ca. ${delivery[1]} Monate`);
+  }
+  if (/inzahlung|in zahlung|trade.?in/i.test(text)) fromSeller.push('Inzahlungnahme vorgesehen');
+
+  const knownFromCustomer = inherited.map((i) => i.label).filter(Boolean);
+  const relevanceChips = buildAttributedWishChips(lead)
+    ?.filter((chip) => /verfügbar|sofort|ahk|anhänger|kupplung/i.test(chip.label))
+    .map((chip) => chip.label)
+    .slice(0, 2) ?? [];
+
   const bodyLines = [];
-  if (known.length) bodyLines.push(known.join(' · '));
-  if (inherited.length && !followUp) {
-    bodyLines.push(`Aus Notizzettel: ${inherited.map((i) => i.label).join(' · ')}`);
+  if (fromSeller.length) bodyLines.push(fromSeller.slice(0, 4).join('\n'));
+  if (knownFromCustomer.length && !followUp) {
+    bodyLines.push(`Bereits bekannt:\n${knownFromCustomer.join('\n')}`);
   }
   if (openParts.length && !magic.canCreateOffer) {
-    bodyLines.push(`Noch offen: ${[...new Set(openParts)].join(' · ')}`);
+    bodyLines.push(`Noch offen:\n${[...new Set(openParts)].slice(0, 3).join('\n')}`);
   }
-  if (ahk) {
-    bodyLines.push(
-      ahk.towingCapacityLabel
-        ? `Für ${name} relevant: ${ahk.label} · Anhängelast ${ahk.towingCapacityLabel}`
-        : `Für ${name} relevant: ${ahk.label}`,
-    );
+  if (relevanceChips.length) {
+    bodyLines.push(`Relevant:\n${relevanceChips.join('\n')}`);
   }
   if (magic.canCreateOffer && magic.calculation?.endPrice != null) {
     bodyLines.push(`Endpreis ${Number(magic.calculation.endPrice).toLocaleString('de-DE')} €`);
   }
 
+  let primaryCta = null;
+  if (magic.canCreateOffer) primaryCta = 'Angebot vorbereiten';
+  else if (magic.decision?.reason === 'missing_discount') primaryCta = 'Rabatt ergänzen';
+  else if (openParts.length) primaryCta = 'Angebot vervollständigen';
+
   const result = {
     type: INLINE_RESULT_TYPES.OFFER_DRAFT,
-    title: magic.canCreateOffer ? '✨ Angebot bereit' : '✨ Clever bereitet vor',
-    headline: magic.headline || known[0] || 'Angebot',
-    body: bodyLines.filter(Boolean).join('\n'),
+    title: magic.canCreateOffer ? '✨ Clever hat vorbereitet' : '✨ Clever hat verstanden',
+    headline: fromSeller[0]
+      || magic.headline
+      || `${name} · Angebot`,
+    body: bodyLines.filter(Boolean).join('\n\n'),
     hint: magic.canCreateOffer
       ? null
-      : (magic.decision?.message || 'Sag Clever den fehlenden Wert – z. B. „21 %“.'),
+      : (openParts[0] === 'Rabatt'
+        ? 'Sag z. B. „21 %“ – dann ist das Angebot fertig.'
+        : null),
     magic,
     inheritedFromCustomer: inherited,
     ahkRelevance: ahk,
     choices,
-    primaryCta: magic.canCreateOffer ? 'Angebot vorbereiten' : null,
+    primaryCta,
     secondaryCta: ahk?.towingCapacityLabel ? 'Anhängelast erwähnen' : null,
     insertText: ahk?.towingCapacityLabel
       ? `Die Anhängelast beträgt ${ahk.towingCapacityLabel}.`
+      : (primaryCta === 'Rabatt ergänzen' ? '21 %' : null),
+    contextLink: relevanceChips[0]
+      ? `Passt zum Kundenwunsch: „${relevanceChips[0]}“`
       : null,
   };
 

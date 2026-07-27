@@ -46,7 +46,8 @@ const draftCtx = buildCleverActionContext({
 });
 const draftRec = recommendCleverAction(draftCtx);
 assert.equal(draftRec.actionId, CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE);
-assert.equal(draftRec.title, 'Angebot erstellen');
+assert.equal(draftRec.title, 'Angebot vervollständigen');
+assert.ok(!/angebotsrechner/i.test(draftRec.ctaLabel || ''), 'kein technischer Rechner-CTA');
 
 // Angebot erstellt → An Kunden senden
 const createdCtx = buildCleverActionContext({
@@ -180,7 +181,7 @@ const full = buildCleverActionRecommendation({
   customerName: 'Max Mustermann',
 });
 assert.ok(full.analyticsText.includes('Clever empfahl'));
-assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: Angebot erstellen');
+assert.equal(formatCleverRecommendationHistoryText(full), 'Clever empfahl: Angebot vervollständigen');
 
 // Kundenportal – Nächster guter Schritt
 const portalPreparedCtx = buildCleverActionContext({

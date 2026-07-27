@@ -19,9 +19,18 @@ Clever erkennt einen sinnvollen Terminmoment, der Verkäufer schlägt vor, der K
 
 ## UX-Philosophie
 
-Clever-Seite = **Notizzettel + Auf dem Tisch + Clever-Moment + Composer**.
+**Eine geöffnete Kundenansicht = ein scrollbarer Feed.**
 
-Nicht: zehn Menüs, Formulare, Copy/Paste, parallele ChatGPT-Nutzung, Wizard.
+| Zone | Rolle |
+|------|--------|
+| Header + Notizzettel | Kopf des Verkäufers (sticky / collapsible, semantisch gruppiert) |
+| Verlauf | Die Kundenakte (chronologisch: Chat, Clever, Angebote, Docs, Termine) |
+| Composer | Der Schreibtisch (Intent → sichtbare Clever-Result-Card → Bestätigung) |
+
+**Magic:** Jede natürliche Seller-Eingabe erzeugt, wenn sinnvoll, sofort eine sichtbare Clever-Reaktion (verstanden / bekannt / fehlt / nächste Aktion). Keine technischen CTAs wie „Angebotsrechner öffnen“ als Primärmoment.
+
+Keine permanenten Tabs Kunde | Clever | Angebote | Mehr innerhalb des Kunden.  
+Strukturierte Übersichten liegen unter **Name / •••** (Messenger-Kontaktinfos).
 
 Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar getrennt**.
 

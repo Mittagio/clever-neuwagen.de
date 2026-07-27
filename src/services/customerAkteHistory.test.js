@@ -50,13 +50,12 @@ assert.ok(commSource.includes('Verlauf anzeigen'), 'Kommunikation verlinkt Verla
 assert.ok(activitiesSource.includes('Aktivität'), 'Aktivitäten zeigen Anzahl');
 assert.ok(activitiesSource.includes('onOpenHistory'), 'Aktivitäten öffnen Verlauf');
 
-const renderBlock = followUpSource.slice(followUpSource.indexOf('return ('));
-assert.ok(renderBlock.includes('CustomerAkteCleverNotepad'), 'Notizzettel auf Clever-Seite');
-assert.ok(renderBlock.includes('CustomerAkteAufDemTisch'), 'Auf dem Tisch auf Clever-Seite');
-assert.ok(renderBlock.includes('AKTE_TABS.clever'), 'Clever-Tab als Workspace');
-assert.ok(followUpSource.includes('CustomerAkteActivityHint'), 'Hinweis in Kundenakte');
+assert.ok(followUpSource.includes('CustomerAkteCleverNotepad'), 'Notizzettel auf Clever-Seite');
+assert.ok(followUpSource.includes('CustomerAkteSharedWorkspace'), 'Feed + Composer auf Clever-Seite');
+assert.ok(followUpSource.includes('CustomerAkteContactInfoSheet'), 'Kontaktinfos über Header');
+assert.ok(followUpSource.includes('cust-akte--feed'), 'Feed-Layout');
 assert.ok(followUpSource.includes('CustomerAkteActivityTimeline'), 'Timeline-Sheet');
-assert.ok(followUpSource.includes('cust-akte-tail'), 'Kompakte Bereiche in cust-akte-tail');
+assert.ok(!followUpSource.includes('CustomerAkteFileNav'), 'Keine Tab-Navigation in der Kundenansicht');
 
 const hintSource = readFileSync(
   join(__dirname, '../components/dealer-ai/CustomerAkteActivityHint.jsx'),

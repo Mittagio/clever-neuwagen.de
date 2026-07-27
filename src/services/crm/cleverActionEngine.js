@@ -228,8 +228,8 @@ const ACTION_DEFINITIONS = {
     handlerType: 'unterlagen',
   },
   [CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE]: {
-    title: 'Angebot erstellen',
-    ctaLabel: 'Angebotsrechner öffnen',
+    title: 'Angebot vervollständigen',
+    ctaLabel: 'Angebot vervollständigen',
     handlerType: 'offer_create',
   },
   [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: {
@@ -551,7 +551,7 @@ export function evaluateCleverActions(context) {
   if (boardDraftCards.length > 0) {
     candidates.push(buildActionCandidate(CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE, {
       reason: 'Entwurf auf dem Tisch',
-      explanation: 'Es liegt noch ein Fahrzeugwunsch ohne berechnetes Angebot. Jetzt im Angebotsrechner erstellen.',
+      explanation: 'Fahrzeugwunsch liegt vor – Clever kann das Angebot jetzt mit den bekannten Konditionen vervollständigen.',
       meta: { cardId: boardDraftCards[0].id },
     }));
   } else if (boardCreatedCards.length > 0) {

@@ -19,6 +19,8 @@ const OFFER_PATTERNS = [
   /\b(angebot|leasing|finanzierung)\b.{0,40}\b(mach|vorbereiten|erstellen|anbieten)\b/i,
   /\b(mach(?:en)?|vorbereiten|erstellen|anbieten)\b.{0,40}\b(angebot|leasing|finanz|barangebot)\b/i,
   /\b(ev[2-9]|sportage|sorento).{0,40}\b(angebot|leasing|barangebot|finanz)/i,
+  /\bangebot\b.{0,80}\b(ev[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b/i,
+  /\b(ev[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b.{0,80}\bangebot\b/i,
   /\b\d{2,3}\s*%\b/,
   /\b\d{2,4}\s*(?:€|euro)\b.{0,20}\b(monat|rate|jahr)/i,
   /\bauf\s+(?:zwei|drei|vier|24|36|48|60)\s*(?:jahre|monate)?/i,

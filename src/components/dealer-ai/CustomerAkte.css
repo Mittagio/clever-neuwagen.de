@@ -4663,6 +4663,18 @@
 
 .cust-akte-compact-header__identity {
   min-width: 0;
+  flex: 1;
+}
+
+.cust-akte-compact-header__identity--btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
 .cust-akte-compact-header__name {
@@ -5045,6 +5057,70 @@
   color: var(--cust-muted, #5c6478);
 }
 
+.cust-akte-clever-notepad__group {
+  margin: 0 0 8px;
+}
+
+.cust-akte-clever-notepad__group-label {
+  margin: 0 0 4px;
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-clever-notepad__capture {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  pointer-events: none;
+}
+
+.cust-akte-clever-notepad__capture-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(109, 91, 184, 0.14);
+  color: var(--color-clever, #6d5bb8);
+  font-size: 0.75rem;
+  font-weight: 650;
+  animation: clever-magic-capture 480ms ease-out both;
+  box-shadow: 0 0 0 1px rgba(109, 91, 184, 0.2);
+}
+
+.cust-akte-clever-notepad__chip.is-magic-capture {
+  animation: clever-magic-glow 520ms ease-out;
+}
+
+@keyframes clever-magic-capture {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.04);
+  }
+  100% {
+    opacity: 0.35;
+    transform: translateY(-10px) scale(0.96);
+  }
+}
+
+@keyframes clever-magic-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(109, 91, 184, 0.45);
+    background: rgba(109, 91, 184, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 .cust-akte-clever-notepad__chips {
   display: flex;
   flex-wrap: wrap;
@@ -5052,8 +5128,8 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 76px;
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .cust-akte-clever-notepad__chip,
@@ -5326,6 +5402,144 @@
   height: 100%;
   overflow: hidden;
   background: var(--color-surface-muted, #f7f8fa);
+}
+
+.cust-akte-shell__pane--feed .cust-akte-shell__notepad-sticky-wrap {
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--color-border-subtle, #e8e8ef);
+  z-index: 3;
+}
+
+.cust-akte--feed.dai-lead-followup.cust-akte--responsive-shell {
+  padding-bottom: 0;
+}
+
+.cust-akte-contact-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.cust-akte-contact-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(11, 23, 54, 0.35);
+  cursor: pointer;
+}
+
+.cust-akte-contact-sheet__panel {
+  position: relative;
+  width: min(100%, 480px);
+  max-height: min(88vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 32px rgba(11, 23, 54, 0.12);
+}
+
+.cust-akte-contact-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cust-akte-contact-sheet__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-contact-sheet__facts {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--cust-muted, #5c6478);
+  line-height: 1.4;
+}
+
+.cust-akte-contact-sheet__close {
+  border: none;
+  background: transparent;
+  color: var(--cust-muted, #5c6478);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cust-akte-contact-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cust-akte-contact-sheet__section {
+  margin: 14px 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-contact-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle, #e8e8ef);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-contact-sheet__row-label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-contact-sheet__row-meta {
+  font-size: 0.8125rem;
+  color: var(--cust-muted, #5c6478);
+  white-space: nowrap;
+}
+
+.sw-chat__feed-top {
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sw-chat__feed-top .cust-akte-clever-notepad {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+}
+
+.sw-chat__feed-top .cn-clever-moment,
+.sw-chat__feed-top .clever-empfiehlt-card {
+  margin: 0;
+}
+
+.dai-lead-sheet-footer-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .cust-akte-shell__notepad-mobile {

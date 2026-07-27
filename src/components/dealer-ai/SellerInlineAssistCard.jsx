@@ -35,6 +35,9 @@ export default function SellerInlineAssistCard({
           </header>
 
           {result.headline ? <p className="sia-card__headline">{result.headline}</p> : null}
+          {result.contextLink ? (
+            <p className="sia-card__context-link">{result.contextLink}</p>
+          ) : null}
           {result.body ? (
             <p className="sia-card__body" style={{ whiteSpace: 'pre-line' }}>{result.body}</p>
           ) : null}
@@ -168,7 +171,25 @@ export default function SellerInlineAssistCard({
                     {result.primaryCta}
                   </button>
                 ) : null}
-                {result.secondaryCta && result.insertText ? (
+                {result.primaryCta && !result.magic?.canCreateOffer && result.insertText ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--primary"
+                    onClick={() => onInsertFact?.(result)}
+                  >
+                    {result.primaryCta}
+                  </button>
+                ) : null}
+                {result.primaryCta && !result.magic?.canCreateOffer && !result.insertText ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--primary"
+                    onClick={() => onChoice?.(result.choices?.[0] || { insertText: '21 %' })}
+                  >
+                    {result.primaryCta}
+                  </button>
+                ) : null}
+                {result.secondaryCta && result.insertText && result.magic?.canCreateOffer ? (
                   <button
                     type="button"
                     className="sia-btn sia-btn--ghost"

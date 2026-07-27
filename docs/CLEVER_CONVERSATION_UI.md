@@ -214,21 +214,23 @@ Unvollständige Profile sind erlaubt.
 
 ## Verkäufer-Kundenakte (Seller Assistant)
 
-Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md) (v2.0).
+Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md) (v2.1).
 
-Mobile-First auf der Clever-Seite:
+**Eine Kundenansicht = ein Feed** (Messenger-Logik):
 
-1. Notizzettel (Konditions-Chips → WishConditionsSheet; Wunsch-Chips → Kundenhelfer)
-2. Auf dem Tisch (Termin / Angebot / Reaktion / Unterlagen kompakt)
-3. Clever-Moment (eine Card – z. B. „Probefahrt anbieten?“)
-4. Clever-Composer („Was soll Clever … erledigen?“)
+1. Header: Name · Kontext · ☎ · •••
+2. Sticky Notizzettel (Kopf des Verkäufers)
+3. Chronologischer Verlauf (Nachrichten, Clever, Angebote, Docs, Termine)
+4. Composer unten (Schreibtisch: tippen/sprechen → Intent → Review)
+
+Strukturierte Details (Angebote, Dokumente, Termine, Stammdaten) über **Name tippen** oder ••• – nicht als permanente Tabs.
 
 Produktregeln:
 
 - Notizzettel-Chips sind direkte Arbeitsobjekte.
 - Der Verkäufer nennt das Ziel; Clever fragt nur Fehlendes nach.
 - **Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**
-- Mehr → Termine öffnet die kompakte Übersicht (CRM-Wiedervorlage), keinen Kalender-Klon.
+- Der Feed ist die Kundenakte. Keine parallele Chat-Seite.
 
 Keine Inventar-API. Kein Auto-Send. Kein Wizard. Kein stilles Termin-Booking.
 

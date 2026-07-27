@@ -48,11 +48,21 @@ assert.match(enriched, /Anzahlung|keine/i);
 const first = runSellerOfferAssist(lead, 'Barangebot für EV5 GT-Line in Schwarz erstellen.');
 assert.ok(first?.ok, 'Offer assist startet');
 assert.equal(first.results[0].type, INLINE_RESULT_TYPES.OFFER_DRAFT);
+assert.match(first.results[0].title, /verstanden|vorbereitet/i);
 assert.ok(
-  /rabatt|offen|bereit|vorbereitet/i.test(`${first.results[0].body} ${first.results[0].hint}`),
+  /rabatt|offen|bereit|vorbereitet|vervollständigen/i.test(
+    `${first.results[0].body} ${first.results[0].hint} ${first.results[0].primaryCta}`,
+  ),
   'fragt nach fehlendem Rabatt oder zeigt Status',
 );
+assert.ok(!/angebotsrechner/i.test(`${first.results[0].primaryCta} ${first.results[0].body}`));
 assert.ok(first.results[0].ahkRelevance, 'AHK aus Notizzettel situativ');
+
+assert.equal(
+  detectSellerActionIntent('angebot ev3 allrad gt line in terracotta'),
+  SELLER_ACTION_INTENTS.PREPARE_OFFER,
+  'kurze Angebotsansage → prepare_offer',
+);
 
 assert.equal(isOfferAssistFollowUp('21 %', first.previousPreparation), true);
 

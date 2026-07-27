@@ -366,12 +366,25 @@ export function runSellerInlineAssist(lead = {}, draftText = '', options = {}) {
     || options.forceMode === 'write';
   if (isWrite && text.length >= 12 && !topics.length) {
     const draft = buildInlineMessageDraft(lead, text, context.sellerFacts);
+    const wishLabels = context.reminderChips?.map((c) => c.label)
+      || (buildAttributedWishChips(lead) ?? []).map((c) => c.label);
+    const linkedWish = wishLabels.find((label) => {
+      if (/verfügbar|sofort/i.test(text) && /verfügbar|sofort/i.test(label)) return true;
+      if (/ahk|anhänger|kupplung/i.test(text) && /ahk|anhänger|kupplung/i.test(label)) return true;
+      if (/schwarz|weiß|weiss|terracotta|farbe/i.test(text) && /schwarz|weiß|weiss|terracotta|farbe/i.test(label)) {
+        return true;
+      }
+      return false;
+    }) ?? null;
+
     results.push({
       type: INLINE_RESULT_TYPES.MESSAGE_DRAFT,
-      title: '✨ Clever Vorschlag',
+      title: '✨ Nachricht vorbereitet',
+      headline: null,
       body: draft.body,
       draft,
       factChips: [],
+      contextLink: linkedWish ? `Passt zum Kundenwunsch: „${linkedWish}“` : null,
       primaryCta: 'Senden',
       secondaryCta: 'Bearbeiten',
     });

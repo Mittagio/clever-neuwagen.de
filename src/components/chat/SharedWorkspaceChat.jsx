@@ -26,6 +26,7 @@ export default function SharedWorkspaceChat({
   onClosePlus,
   micSlot = null,
   reviewSlot = null,
+  feedTopSlot = null,
   emptyHint = 'Noch kein Verlauf.\nSchreiben oder sprechen Sie einfach los.',
 }) {
   const endRef = useRef(null);
@@ -67,6 +68,9 @@ export default function SharedWorkspaceChat({
   return (
     <section className={`sw-chat sw-chat--${role}`} aria-label="Gemeinsamer Arbeitsraum">
       <div className="sw-chat__feed">
+        {feedTopSlot ? (
+          <div className="sw-chat__feed-top">{feedTopSlot}</div>
+        ) : null}
         {!items.length ? (
           <p className="sw-chat__empty">{emptyHint}</p>
         ) : (

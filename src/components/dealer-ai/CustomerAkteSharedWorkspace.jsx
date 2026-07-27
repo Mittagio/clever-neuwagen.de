@@ -45,6 +45,7 @@ export default function CustomerAkteSharedWorkspace({
   onStartSelfDisclosure = null,
   seedDraft = '',
   seedDraftToken = 0,
+  feedTopSlot = null,
 }) {
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -78,7 +79,7 @@ export default function CustomerAkteSharedWorkspace({
   const displayName = formatCustomerDisplayName(customerName) || 'dem Kunden';
 
   const placeholder = cleverMode
-    ? `Was soll Clever für ${displayName} erledigen?`
+    ? `Clever fragen oder Nachricht an ${displayName} …`
     : `Nachricht an ${displayName} …`;
 
   const confirmAssist = useMemo(() => {
@@ -383,8 +384,8 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   const emptyHint = compactEmpty
-    ? 'Noch kein Verlauf.'
-    : 'Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie die Chips oben.';
+    ? 'Noch kein Verlauf – tippen oder sprechen.'
+    : 'Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie den Notizzettel.';
 
   const assistResults = assist?.results?.length
     ? assist.results
@@ -392,8 +393,8 @@ export default function CustomerAkteSharedWorkspace({
 
   return (
     <section
-      className={`cust-akte-workspace cust-akte-workspace--chat-only${compactEmpty ? ' cust-akte-workspace--compact-empty' : ''}`}
-      aria-label="Gemeinsamer Arbeitsraum"
+      className={`cust-akte-workspace cust-akte-workspace--chat-only cust-akte-workspace--feed${compactEmpty ? ' cust-akte-workspace--compact-empty' : ''}`}
+      aria-label="Kundenverlauf"
     >
       <SharedWorkspaceChat
         role="seller"
@@ -407,6 +408,7 @@ export default function CustomerAkteSharedWorkspace({
         onOpenOffer={onOpenOffer}
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
+        feedTopSlot={feedTopSlot}
         reviewSlot={(
           <SellerInlineAssistCard
             results={assistResults}
@@ -430,34 +432,34 @@ export default function CustomerAkteSharedWorkspace({
         )}
         plusActions={[
           {
-            id: 'file',
-            icon: '📄',
-            label: 'Datei senden',
-            onClick: () => onUploadDocument?.(),
-          },
-          {
             id: 'offer',
             icon: '🚗',
-            label: 'Angebot',
+            label: 'Angebot erstellen',
             onClick: () => setDraft((prev) => (prev ? prev : 'Mach dem Kunden ein Angebot.')),
           },
           {
-            id: 'appt',
-            icon: '📅',
-            label: 'Termin',
-            onClick: () => setDraft('Probefahrt anbieten.'),
-          },
-          {
-            id: 'sa',
-            icon: '✍️',
-            label: 'Formular',
-            onClick: () => setDraft('Schick ihm bitte die Selbstauskunft.'),
+            id: 'file',
+            icon: '📄',
+            label: 'Dokument senden',
+            onClick: () => onUploadDocument?.(),
           },
           {
             id: 'req',
             icon: '📎',
-            label: 'Anfordern',
+            label: 'Unterlage anfordern',
             onClick: () => setDraft('Schreib ihm, dass noch Unterlagen fehlen.'),
+          },
+          {
+            id: 'sa',
+            icon: '✍️',
+            label: 'Selbstauskunft senden',
+            onClick: () => setDraft('Schick ihm bitte die Selbstauskunft.'),
+          },
+          {
+            id: 'appt',
+            icon: '📅',
+            label: 'Termin vorschlagen',
+            onClick: () => setDraft('Probefahrt anbieten.'),
           },
         ]}
         emptyHint={emptyHint}

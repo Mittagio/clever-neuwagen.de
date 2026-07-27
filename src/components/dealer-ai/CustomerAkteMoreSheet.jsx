@@ -10,6 +10,8 @@ export default function CustomerAkteMoreSheet({
   unterlagenOpen = 0,
   selfDisclosureLabel = 'offen',
   activitiesCount = 0,
+  offersCount = 0,
+  onOffers,
   onUnterlagen,
   onSelfDisclosure,
   onHistory,
@@ -21,6 +23,12 @@ export default function CustomerAkteMoreSheet({
   if (!open) return null;
 
   const rows = [
+    {
+      id: 'offers',
+      label: 'Angebote',
+      meta: offersCount ? String(offersCount) : null,
+      onClick: onOffers,
+    },
     {
       id: 'unterlagen',
       label: 'Unterlagen',
@@ -36,7 +44,7 @@ export default function CustomerAkteMoreSheet({
     },
     {
       id: 'history',
-      label: 'Verlauf',
+      label: 'Aktivitäten',
       meta: activitiesCount ? `${activitiesCount} neu` : null,
       onClick: onHistory,
     },

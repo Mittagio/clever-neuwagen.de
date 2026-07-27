@@ -4,7 +4,8 @@ import { IconBack, IconMoreDots, IconPhone } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
 /**
- * Kompakter Header der Kundenakte (kein CRM-Block).
+ * Kompakter Header der Kundenakte (Messenger-Stil).
+ * Name / Kontext → Kontaktinfos; ••• → seltene Aktionen.
  */
 export default function CustomerAkteCompactHeader({
   customerName = '',
@@ -13,6 +14,7 @@ export default function CustomerAkteCompactHeader({
   phone = '',
   onBack,
   onMore,
+  onOpenProfile = null,
   onMissingPhone,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,7 +47,12 @@ export default function CustomerAkteCompactHeader({
           <span className="cust-akte-compact-header__spacer" aria-hidden />
         )}
 
-        <div className="cust-akte-compact-header__identity">
+        <button
+          type="button"
+          className="cust-akte-compact-header__identity cust-akte-compact-header__identity--btn"
+          onClick={() => onOpenProfile?.()}
+          aria-label={`${displayName} – Infos öffnen`}
+        >
           <h1 className="cust-akte-compact-header__name">{displayName}</h1>
           {contextLine ? (
             <p className="cust-akte-compact-header__context">{contextLine}</p>
@@ -55,7 +62,7 @@ export default function CustomerAkteCompactHeader({
               Telefon fehlt
             </p>
           ) : null}
-        </div>
+        </button>
 
         <div className="cust-akte-compact-header__actions">
           {hasPhone ? (

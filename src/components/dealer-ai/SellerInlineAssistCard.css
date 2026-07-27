@@ -13,6 +13,15 @@
   box-shadow: none;
 }
 
+.sia-card--offer_draft,
+.sia-card--message_draft,
+.sia-card--appointment_draft,
+.sia-card--action_draft,
+.sia-card--fact_suggestion {
+  background: linear-gradient(180deg, rgba(109, 91, 184, 0.05) 0%, #fff 42%);
+  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
+}
+
 .sia-card--conflict_warning {
   background: #fffbeb;
   border-color: rgba(217, 119, 6, 0.35);
@@ -20,11 +29,6 @@
 
 .sia-card--context_reminder {
   background: var(--color-clever-soft, rgba(109, 91, 184, 0.08));
-  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
-}
-
-.sia-card--offer_draft {
-  background: var(--color-surface, #fff);
   border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
 }
 
@@ -94,11 +98,19 @@
   color: var(--color-text, #0b1736);
 }
 
+.sia-card__context-link {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-clever, #6d5bb8);
+  line-height: 1.35;
+}
+
 .sia-card__body,
 .sia-card__hint {
   margin: 0 0 6px;
-  font-size: 0.875rem;
-  line-height: 1.4;
+  font-size: 0.8125rem;
+  line-height: 1.45;
   font-weight: 400;
   color: var(--color-text-secondary, #5c6478);
 }
@@ -141,7 +153,9 @@
   border: none;
   white-space: pre-wrap;
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  max-height: 9.5rem;
+  overflow: auto;
 }
 
 .sia-card__ctas {
@@ -152,12 +166,12 @@
 }
 
 .sia-btn {
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: var(--radius-button, 12px);
   border: 1px solid var(--color-border-subtle, #e8e8ef);
   background: var(--color-surface, #fff);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 650;
   cursor: pointer;
   color: var(--color-text, #0b1736);
@@ -165,7 +179,7 @@
 
 .sia-btn--primary {
   border-color: transparent;
-  background: var(--color-brand, #0b1736);
+  background: var(--color-clever, #6d5bb8);
   color: #fff;
 }
 
