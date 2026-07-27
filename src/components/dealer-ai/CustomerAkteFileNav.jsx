@@ -15,7 +15,7 @@ const NAV_ITEMS = [
  * variant: "bottom" | "rail"
  */
 export default function CustomerAkteFileNav({
-  activeTab = AKTE_TABS.chat,
+  activeTab = AKTE_TABS.clever,
   onSelect,
   badges = {},
   variant = 'bottom',
@@ -27,8 +27,10 @@ export default function CustomerAkteFileNav({
     <nav className={rootClass} aria-label="Kundenakte">
       {NAV_ITEMS.map((item) => {
         const isActive = activeTab === item.id
-          || (item.id === AKTE_TABS.clever && activeTab === AKTE_TABS.chat && badges.cleverMode);
-        const badge = badges[item.id === AKTE_TABS.angebote ? 'angebote' : item.id];
+          || (item.id === AKTE_TABS.clever && badges.cleverMode
+            && (activeTab === AKTE_TABS.chat || activeTab === AKTE_TABS.clever));
+        const rawBadge = badges[item.id === AKTE_TABS.angebote ? 'angebote' : item.id];
+        const badge = typeof rawBadge === 'number' && rawBadge > 0 ? rawBadge : null;
         const Icon = AKTE_NAV_ICONS[item.icon];
         return (
           <button
@@ -46,7 +48,7 @@ export default function CustomerAkteFileNav({
               {Icon ? <Icon /> : null}
             </span>
             <span className={isRail ? 'cn-side-rail__label' : 'cust-akte-file-nav__label'}>{item.label}</span>
-            {!isRail && badge ? (
+            {!isRail && badge != null ? (
               <span className="cust-akte-file-nav__badge" aria-label={`${badge} offen`}>
                 {badge > 9 ? '9+' : badge}
               </span>

@@ -16,7 +16,7 @@ export default function CustomerAkteActivityHint({
 
   return (
     <section className="cust-akte-activity-hint" aria-label="Letzte Kundenaktivität">
-      <p className="cust-akte-activity-hint__eyebrow">🔥 Letzte Kundenaktivität</p>
+      <p className="cust-akte-activity-hint__eyebrow">Letzte Kundenaktivität</p>
       <p className="cust-akte-activity-hint__text">{hint}</p>
       {dashboard.hasUnread && (
         <p className="cust-akte-activity-hint__meta">

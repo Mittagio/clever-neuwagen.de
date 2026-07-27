@@ -1333,9 +1333,19 @@
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
-.cust-akte.dai-lead-followup {
+/* Legacy compact Akte – nur ohne WorkspaceShell */
+.cust-akte.dai-lead-followup:not(.cust-akte--responsive-shell) {
   max-width: 720px;
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Desktop Workspace: volle Breite, keine Phone-Column */
+.cust-akte.dai-lead-followup.cust-akte--responsive-shell {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding-bottom: 0;
+  gap: 0;
 }
 
 .dai-lead-created-flash {

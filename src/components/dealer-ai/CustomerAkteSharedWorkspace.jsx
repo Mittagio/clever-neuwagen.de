@@ -24,6 +24,7 @@ export default function CustomerAkteSharedWorkspace({
   isSaving = false,
   cleverMode = false,
   focusToken = 0,
+  compactEmpty = false,
   onOpenOffer = null,
   onUploadDocument = null,
   onStartSelfDisclosure = null,
@@ -158,8 +159,15 @@ export default function CustomerAkteSharedWorkspace({
     }
   }
 
+  const emptyHint = compactEmpty
+    ? 'Noch kein Verlauf.'
+    : 'Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie die Chips oben.';
+
   return (
-    <section className="cust-akte-workspace cust-akte-workspace--chat-only" aria-label="Gemeinsamer Arbeitsraum">
+    <section
+      className={`cust-akte-workspace cust-akte-workspace--chat-only${compactEmpty ? ' cust-akte-workspace--compact-empty' : ''}`}
+      aria-label="Gemeinsamer Arbeitsraum"
+    >
       <SharedWorkspaceChat
         role="seller"
         items={timeline.items}
@@ -216,7 +224,7 @@ export default function CustomerAkteSharedWorkspace({
             onClick: () => setDraft('Schreib ihm, dass noch Unterlagen fehlen.'),
           },
         ]}
-        emptyHint="Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie die Chips oben."
+        emptyHint={emptyHint}
       />
     </section>
   );

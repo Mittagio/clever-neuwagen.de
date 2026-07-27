@@ -4,6 +4,7 @@
  */
 export default function WorkspaceShell({
   header = null,
+  band = null,
   context = null,
   main,
   assist = null,
@@ -19,6 +20,7 @@ export default function WorkspaceShell({
     variant === 'triple' ? 'cn-workspace--triple' : '',
     variant === 'split' || variant === 'triple' ? 'cn-workspace--split' : '',
     withBottomNav ? 'cn-workspace--with-bottom-nav' : '',
+    band ? 'cn-workspace--with-band' : '',
     className,
   ].filter(Boolean).join(' ');
 
@@ -27,6 +29,7 @@ export default function WorkspaceShell({
       {desktopNav}
       <div className="cn-workspace__stack">
         {header ? <div className="cn-workspace__header">{header}</div> : null}
+        {band ? <div className="cn-workspace__band">{band}</div> : null}
         <div className="cn-workspace__body">
           {context ? (
             <aside className="cn-workspace__context" aria-label="Kundenkontext">

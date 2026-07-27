@@ -1,4 +1,4 @@
-/* Kundenakte – Mockup UI (Mobile First) */
+/* Kundenakte ? Mockup UI (Mobile First) */
 
 .visually-hidden {
   position: absolute !important;
@@ -44,7 +44,7 @@
   background: transparent;
 }
 
-/* Clever Design – visuelle Hierarchie (★★★★★ → ★) */
+/* Clever Design ? visuelle Hierarchie (????? ? ?) */
 .cust-akte-priority {
   margin: 6px 0 10px;
 }
@@ -875,7 +875,7 @@
   white-space: nowrap;
 }
 
-/* Kundenwissen – Kategorien im Profilkopf */
+/* Kundenwissen ? Kategorien im Profilkopf */
 .cust-akte-kw {
   margin-top: 10px;
   padding-top: 10px;
@@ -1207,7 +1207,7 @@
   color: var(--cust-muted, #64748b);
 }
 
-/* Kundenhelfer – Chips (legacy sheet) */
+/* Kundenhelfer ? Chips (legacy sheet) */
 .cust-akte-kh {
   display: flex;
   flex-direction: column;
@@ -1557,7 +1557,7 @@
   text-decoration: underline;
 }
 
-/* Konditionen – Mini-Karte (harte Deal-Fakten) */
+/* Konditionen ? Mini-Karte (harte Deal-Fakten) */
 .cust-akte-schnell {
   display: flex;
   flex-direction: column;
@@ -1637,7 +1637,7 @@
   transform: scale(0.98);
 }
 
-/* Wunschkonditionen – Bottom-Sheet */
+/* Wunschkonditionen ? Bottom-Sheet */
 .cust-wish-sheet {
   display: flex;
   flex-direction: column;
@@ -1766,7 +1766,7 @@
   cursor: not-allowed;
 }
 
-/* Nächster guter Schritt */
+/* N?chster guter Schritt */
 .cust-akte-nbs--focus {
   margin-top: 0;
 }
@@ -2239,7 +2239,7 @@
   cursor: pointer;
 }
 
-/* Fahrzeugkarte – Mockup */
+/* Fahrzeugkarte ? Mockup */
 .cust-akte-vcard {
   position: relative;
   display: flex;
@@ -2672,7 +2672,7 @@
   line-height: 1.4;
 }
 
-/* Auf dem Tisch – größere Karten */
+/* Auf dem Tisch ? gr??ere Karten */
 .cust-akte-vcard--board {
   border: none;
   border-radius: 18px;
@@ -3016,7 +3016,7 @@
   }
 }
 
-/* Clever Auswahl – Board-Karte */
+/* Clever Auswahl ? Board-Karte */
 .cust-akte-sgroup {
   position: relative;
   border: none;
@@ -3101,7 +3101,7 @@
   color: var(--cust-muted);
 }
 
-/* Clever Auswahl – Detail-Sheet */
+/* Clever Auswahl ? Detail-Sheet */
 .cust-akte-auswahl__variants {
   margin-top: 0;
 }
@@ -3210,7 +3210,7 @@
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Clever Beratung – Kundenakte */
+/* Clever Beratung ? Kundenakte */
 .cust-clever-beratung {
   display: flex;
   flex-direction: column;
@@ -4287,7 +4287,7 @@
   color: #0f766e;
 }
 
-/* Verkäufer-Spracharbeitsplatz – direkt am Kundenbild */
+/* Verk?ufer-Spracharbeitsplatz ? direkt am Kundenbild */
 .cust-insight-capture {
   margin: 0 0 12px;
 }
@@ -4490,6 +4490,9 @@
   flex-direction: column;
   min-height: 100dvh;
   max-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   box-sizing: border-box;
   overflow: hidden;
   background: var(--color-bg, #f7f8fa);
@@ -4501,6 +4504,9 @@
 }
 
 .cust-akte--responsive-shell .cn-workspace {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   min-height: 100dvh;
   max-height: 100dvh;
 }
@@ -4512,6 +4518,7 @@
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  width: 100%;
 }
 
 .cust-akte-context-rail__name {
@@ -4567,7 +4574,7 @@
   }
 
   .cn-hide-when-context-rail {
-    /* Desktop: Kontext links – Kunde-Tab nur für Details/Notizzettel */
+    /* Desktop: Kontext links ? Kunde-Tab nur f?r Details/Notizzettel */
   }
 
   .cust-akte-offers-grid .cust-akte-board,
@@ -4576,7 +4583,7 @@
   }
 }
 
-/* Legacy phone-column centering – ersetzt durch WorkspaceShell */
+/* Legacy phone-column centering ? ersetzt durch WorkspaceShell */
 @media (min-width: 720px) {
   .cust-akte--mobile-shell {
     max-width: var(--cn-page-max, 480px);
@@ -4592,9 +4599,10 @@
     transform: translateX(-50%);
   }
 
-  /* Responsive shell uses full workspace width – not a centered phone column */
+  /* Responsive shell uses full workspace width ? not a centered phone column */
   .cust-akte--responsive-shell {
     max-width: none;
+    width: 100%;
     margin: 0;
   }
 
@@ -5016,4 +5024,301 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--cust-muted, #64748b);
+}
+
+/* ===== Clever Verk?ufer: Notizzettel-first ===== */
+.cust-akte-clever-notepad {
+  padding: 10px 16px 12px;
+  background: var(--color-surface, #fff);
+}
+
+.cust-akte-clever-notepad__label {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-clever-notepad__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 76px;
+  overflow: hidden;
+}
+
+.cust-akte-clever-notepad__chip,
+.cust-akte-clever-notepad__more,
+.cust-akte-clever-notepad__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cust-text, #0b1736);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cust-akte-clever-notepad__chip--seller {
+  background: #f8f9fb;
+}
+
+.cust-akte-clever-notepad__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.1rem;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: #0b1736;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.cust-akte-clever-notepad__more {
+  color: var(--cust-muted, #5c6478);
+  font-weight: 600;
+}
+
+.cust-akte-clever-notepad__empty {
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-clever-notepad__sentinel {
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.cust-akte-clever-notepad__sticky {
+  position: fixed;
+  top: calc(var(--header-height, 64px) + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 16px;
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle, #e8e8ef);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-akte-clever-notepad__sticky.is-visible {
+  display: flex;
+}
+
+@media (min-width: 1100px) {
+  .cust-akte-clever-notepad__sticky {
+    display: none !important;
+  }
+}
+
+.cust-akte-clever-notepad__sticky-name {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-clever-notepad__sticky-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cust-akte-clever-notepad__sticky-chip {
+  flex: 0 0 auto;
+  max-width: 120px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--cust-text, #0b1736);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cust-akte-tisch {
+  padding: 4px 16px 12px;
+}
+
+.cust-akte-tisch__label {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-tisch__empty {
+  margin: 0;
+  padding: 10px 0;
+  font-size: 0.875rem;
+  color: var(--cust-muted, #5c6478);
+  line-height: 1.45;
+}
+
+.cust-akte-tisch__offer,
+.cust-akte-tisch__block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-tisch__offer-eyebrow,
+.cust-akte-tisch__block-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-tisch__offer-title {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-tisch__offer-rate {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-tisch__offer-meta,
+.cust-akte-tisch__offer-status,
+.cust-akte-tisch__block-text {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--cust-muted, #5c6478);
+  line-height: 1.4;
+}
+
+.cust-akte-tisch__block-text {
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-tisch__docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 2px 2px 0;
+}
+
+.cust-akte-tisch__doc-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cust-text, #0b1736);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cust-akte-shell__pane--clever {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-surface-muted, #f7f8fa);
+}
+
+.cust-akte-shell__notepad-mobile {
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.cn-hide-from-desktop {
+  display: block;
+}
+
+.cn-show-from-desktop {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .cn-hide-from-desktop {
+    display: none !important;
+  }
+
+  .cn-show-from-desktop {
+    display: block;
+  }
+}
+
+.cust-akte-shell__pane--clever .cust-akte-shell__tisch-block,
+.cust-akte-shell__pane--clever .cust-akte-shell__situativ {
+  flex-shrink: 0;
+  background: var(--color-surface, #fff);
+}
+
+.cust-akte-shell__pane--clever .cust-akte-workspace {
+  flex: 1;
+  min-height: 0;
+}
+
+.cust-akte-workspace--compact-empty .sw-chat__feed:has(.sw-chat__empty) {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.cust-akte-workspace--compact-empty .sw-chat__empty {
+  margin: 12px 16px 8px;
+  font-size: 0.8125rem;
+}
+
+.cust-akte-tail {
+  padding: 8px 16px 12px;
+}
+
+@media (min-width: 1100px) {
+  .cn-workspace__band .cust-akte-clever-notepad {
+    padding-inline: 20px;
+  }
+
+  .cn-workspace__band .cust-akte-clever-notepad__chips {
+    max-height: none;
+  }
+
+  .cust-akte-shell__pane--clever {
+    background: var(--color-surface-muted, #f4f4f7);
+  }
 }
