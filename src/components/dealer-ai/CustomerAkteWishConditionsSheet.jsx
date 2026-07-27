@@ -10,7 +10,7 @@ const PAYMENT_OPTIONS = [
 ];
 
 const TERM_OPTIONS = [24, 36, 48, 60];
-const MILEAGE_OPTIONS = [5000, 10000, 15000, 20000, 30000];
+const MILEAGE_OPTIONS = [10000, 15000, 20000, 25000, 30000];
 const DOWN_OPTIONS = [0, 1000, 3000, 5000, 10000];
 const MONTHLY_BUDGET_OPTIONS = [199, 249, 299, 349, 399, 449, 499, 599];
 
@@ -131,16 +131,6 @@ export default function CustomerAkteWishConditionsSheet({
     onApply?.(draft);
   }
 
-  const termSelectOptions = TERM_OPTIONS.map((m) => ({
-    value: String(m),
-    label: `${m} Monate`,
-  }));
-
-  const mileageSelectOptions = MILEAGE_OPTIONS.map((km) => ({
-    value: String(km),
-    label: `${km.toLocaleString('de-DE')} km/Jahr`,
-  }));
-
   const budgetSelectOptions = [
     { value: '', label: 'Offen' },
     ...budgetOptions.map((amount) => ({
@@ -215,20 +205,36 @@ export default function CustomerAkteWishConditionsSheet({
             </SheetField>
 
             <SheetField label="Laufzeit" fieldId="termMonths" focused={focusField === 'termMonths'}>
-              <SheetSelect
-                value={draft.termMonths ? String(draft.termMonths) : String(TERM_OPTIONS[2])}
-                onChange={(v) => patch({ termMonths: v })}
-                options={termSelectOptions}
-              />
+              <div className="cust-wish-sheet-segmented" role="group" aria-label="Laufzeit">
+                {TERM_OPTIONS.map((months) => (
+                  <button
+                    key={months}
+                    type="button"
+                    className={`cust-wish-sheet-segmented__btn${Number(draft.termMonths) === months ? ' is-active' : ''}`}
+                    onClick={() => patch({ termMonths: String(months) })}
+                    aria-pressed={Number(draft.termMonths) === months}
+                  >
+                    {months}
+                  </button>
+                ))}
+              </div>
             </SheetField>
 
             {isLeasing && (
-              <SheetField label="Laufleistung / Jahr" fieldId="mileagePerYear" focused={focusField === 'mileagePerYear'}>
-                <SheetSelect
-                  value={draft.mileagePerYear ? String(draft.mileagePerYear) : String(MILEAGE_OPTIONS[2])}
-                  onChange={(v) => patch({ mileagePerYear: v })}
-                  options={mileageSelectOptions}
-                />
+              <SheetField label="km/Jahr" fieldId="mileagePerYear" focused={focusField === 'mileagePerYear'}>
+                <div className="cust-wish-sheet-segmented cust-wish-sheet-segmented--wrap" role="group" aria-label="Laufleistung">
+                  {MILEAGE_OPTIONS.map((km) => (
+                    <button
+                      key={km}
+                      type="button"
+                      className={`cust-wish-sheet-segmented__btn${Number(draft.mileagePerYear) === km ? ' is-active' : ''}`}
+                      onClick={() => patch({ mileagePerYear: String(km) })}
+                      aria-pressed={Number(draft.mileagePerYear) === km}
+                    >
+                      {km.toLocaleString('de-DE')}
+                    </button>
+                  ))}
+                </div>
               </SheetField>
             )}
           </>

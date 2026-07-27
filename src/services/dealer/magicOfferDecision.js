@@ -71,7 +71,7 @@ export function decideMagicOfferAction(input = {}) {
         message: null,
       };
     }
-    if (input.hasVerifiedPrices && input.transferCost != null && !hasDiscount) {
+    if (input.hasVerifiedPrices && !hasDiscount) {
       return {
         action: MAGIC_DECISION.NEEDS_REVIEW,
         reason: 'missing_discount',

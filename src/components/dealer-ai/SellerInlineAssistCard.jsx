@@ -11,6 +11,8 @@ export default function SellerInlineAssistCard({
   onPrepareReply = null,
   onSendDraft = null,
   onSendActions = null,
+  onChoice = null,
+  onPrepareOffer = null,
   onDismiss = null,
 }) {
   if (!results?.length) return null;
@@ -32,7 +34,9 @@ export default function SellerInlineAssistCard({
           </header>
 
           {result.headline ? <p className="sia-card__headline">{result.headline}</p> : null}
-          {result.body ? <p className="sia-card__body">{result.body}</p> : null}
+          {result.body ? (
+            <p className="sia-card__body" style={{ whiteSpace: 'pre-line' }}>{result.body}</p>
+          ) : null}
           {result.hint ? <p className="sia-card__hint">{result.hint}</p> : null}
 
           {result.type === INLINE_RESULT_TYPES.CONTEXT_REMINDER && result.chips?.length ? (
@@ -59,6 +63,21 @@ export default function SellerInlineAssistCard({
 
           {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && result.body ? (
             <pre className="sia-card__draft">{result.body}</pre>
+          ) : null}
+
+          {result.type === INLINE_RESULT_TYPES.OFFER_DRAFT && result.choices?.length ? (
+            <div className="sia-card__choices" role="group" aria-label="Optionen">
+              {result.choices.map((choice) => (
+                <button
+                  key={choice.id || choice.label}
+                  type="button"
+                  className="sia-choice"
+                  onClick={() => onChoice?.(choice)}
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
           ) : null}
 
           <div className="sia-card__ctas">
@@ -129,6 +148,29 @@ export default function SellerInlineAssistCard({
               >
                 {result.primaryCta || 'Senden'}
               </button>
+            ) : null}
+
+            {result.type === INLINE_RESULT_TYPES.OFFER_DRAFT ? (
+              <>
+                {result.primaryCta && result.magic?.canCreateOffer ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--primary"
+                    onClick={() => onPrepareOffer?.(result)}
+                  >
+                    {result.primaryCta}
+                  </button>
+                ) : null}
+                {result.secondaryCta && result.insertText ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--ghost"
+                    onClick={() => onInsertFact?.(result)}
+                  >
+                    {result.secondaryCta}
+                  </button>
+                ) : null}
+              </>
             ) : null}
           </div>
         </article>

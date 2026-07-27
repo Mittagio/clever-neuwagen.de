@@ -14,8 +14,10 @@ export const SELLER_ACTION_INTENTS = {
 };
 
 const OFFER_PATTERNS = [
-  /\bmach(?:en)?\b.{0,40}\b(angebot|leasing|finanz)/i,
-  /\b(angebot|leasing|finanzierung)\b.{0,30}\b(mach|vorbereiten|erstellen)/i,
+  /\b(barangebot|kaufangebot|barkauf|bar\s*kauf)\b/i,
+  /\b(angebot|leasing|finanzierung)\b.{0,40}\b(mach|vorbereiten|erstellen|anbieten)\b/i,
+  /\b(mach(?:en)?|vorbereiten|erstellen|anbieten)\b.{0,40}\b(angebot|leasing|finanz|barangebot)\b/i,
+  /\b(ev[2-9]|sportage|sorento).{0,40}\b(angebot|leasing|barangebot|finanz)/i,
   /\b\d{2,3}\s*%\b/,
   /\b\d{2,4}\s*(?:€|euro)\b.{0,20}\b(monat|rate|jahr)/i,
   /\bauf\s+(?:zwei|drei|vier|24|36|48|60)\s*(?:jahre|monate)?/i,

@@ -214,18 +214,21 @@ Unvollständige Profile sind erlaubt.
 
 ## Verkäufer-Kundenakte (Seller Assistant)
 
-Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md).
+Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md) (v2.0).
 
-Mobile-First in der Kundenakte:
+Mobile-First auf der Clever-Seite:
 
-1. Clever-Moment aus Kundenreaktionen (falls vorhanden)
-2. Kundenkontext-Chips (customer_need) – Abschnitt „Kundenkontext“
-3. Verkäufer-Notizen (seller_input) – getrennt
-4. Clever-Composer (Tippen / Mic)
-5. Action Result (Nachricht / Angebot / Notiz) – immer mit Bestätigung
-6. Bottom Quick Actions: Angebot · Nachricht · Anrufen
+1. Notizzettel (Konditions-Chips → WishConditionsSheet; Wunsch-Chips → Kundenhelfer)
+2. Auf dem Tisch (Angebot / Reaktion / Unterlagen kompakt)
+3. Clever-Moment (eine Card)
+4. Clever-Composer („Was soll Clever … erledigen?“)
 
-Keine Inventar-API. Kein Auto-Send.
+Produktregeln:
+
+- Notizzettel-Chips sind direkte Arbeitsobjekte.
+- Der Verkäufer nennt das Ziel; Clever fragt nur Fehlendes nach.
+
+Keine Inventar-API. Kein Auto-Send. Kein Wizard.
 
 ## Live Customer Context
 
@@ -244,16 +247,18 @@ Der Kontext darf jedoch nicht dazu führen,
 dass irrelevante Kundeninformationen
 automatisch in jede Nachricht eingefügt werden.
 
-Inline im Seller-Composer (`sellerInlineComposerAssist.js`):
+Inline im Seller-Composer:
 
 | Modus | Beispiel | Result |
 |-------|----------|--------|
+| OFFER | „Barangebot EV5 …“ | `offer_draft` (`sellerOfferAssistFlow`) |
 | LOOKUP | „EV4 Anhängelast“ | `fact_suggestion` (verified only) |
 | WRITE | „Schreib ihm …“ | `message_draft` |
 | ACT | „Schick Selbstauskunft …“ | `action_draft` |
 | CONFLICT | „EV4 zieht 1500“ vs verified | `conflict_warning` |
 
 UI: `SellerInlineAssistCard` über dem Composer in `CustomerAkteSharedWorkspace`.
+Offer-Follow-ups („21 %“) nutzen `applyMagicOfferCorrection` + lokalen `previousPreparation`-State.
 
 ## Shared Customer Workspace
 

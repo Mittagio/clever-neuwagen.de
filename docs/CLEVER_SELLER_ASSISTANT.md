@@ -1,6 +1,6 @@
 # Clever Seller Assistant
 
-**Status:** v1 – Mobile-First Kundenakte  
+**Status:** v2.0 – Notizzettel-first + action-driven  
 **Stand:** Juli 2026
 
 ## Leitsatz
@@ -8,90 +8,82 @@
 Clever ist kein CRM, das der Verkäufer bedienen muss.  
 Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledigt werden soll.
 
-Der Kunde sagt Clever, was ihm wichtig ist.  
-Der Verkäufer sagt Clever, was erledigt werden soll.
+**Der Verkäufer nennt das Ziel.  
+Clever verwendet vorhandenen Kundenkontext und fragt nur nach den Informationen, die zur Ausführung wirklich fehlen.**
+
+**Notizzettel-Chips sind nicht nur Anzeige.  
+Sie sind direkte Arbeitsobjekte des Verkäufers.**
 
 ## UX-Philosophie
 
-Dashboard = **Kundenkontext + Clever + Action Result + letzte Aktivität**.
+Clever-Seite = **Notizzettel + Auf dem Tisch + Clever-Moment + Composer**.
 
-Nicht: zehn Menüs, Formulare, Copy/Paste, parallele ChatGPT-Nutzung.
+Nicht: zehn Menüs, Formulare, Copy/Paste, parallele ChatGPT-Nutzung, Wizard.
 
 Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar getrennt**.
-
-Nach Kundenreaktionen im Angebotsraum erscheint ein **Clever-Moment**  
-(„… hat den EV3 angesehen und nach der Anhängelast gefragt“) mit  
-Quick Action „Nachricht vorbereiten“ / „Angebot anpassen“.
-
-Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 
 ## Komponenten
 
 | Baustein | Datei |
 |----------|--------|
-| UI | `CustomerAkteSellerAssistant.jsx` |
-| Shared Chat | `CustomerAkteSharedWorkspace.jsx` |
+| Notizzettel | `CustomerAkteCleverNotepad.jsx` |
+| Konditionen-Sheet | `CustomerAkteWishConditionsSheet.jsx` |
+| Shared Chat / Composer | `CustomerAkteSharedWorkspace.jsx` |
+| Inline Card | `SellerInlineAssistCard.jsx` |
 | Intent | `sellerActionIntent.js` |
-| Orchestrierung | `sellerAssistantOrchestrator.js` |
-| Workspace | `sharedWorkspaceService.js` |
+| Offer Assist Flow | `sellerOfferAssistFlow.js` |
+| Magic Offer | `magicOfferService.js` |
+| Inline Assist | `sellerInlineComposerAssist.js` |
 | Einbindung | `DealerAiLeadFollowUp.jsx` |
 
-## Flow
+## Teil A – Notizzettel bearbeiten
 
-1. Verkäufer tippt oder spricht (Mic).
-2. Intent: `message_customer` | `prepare_offer` | `request_documents` | `add_note` | `prepare_callback`.
-3. Clever nutzt `buildCustomerUnderstanding` + offene Unterlagen.
-4. Action Result / **Workspace-Paket** (Nachricht + Dokument-/SA-Karten) mit Seller Confirmation.
-5. Bestehende Kanäle: Shared Workspace Thread, Portal, WhatsApp-Deep-Link, mailto, Magic Offer.
+1. Tap auf Konditions-Chip (`Leasing`, `Laufzeit offen`, …) → `WishConditionsSheet` (fokussiertes Feld).
+2. Tap auf Wunsch-Chip / `+N` → Kundenhelfer.
+3. Übernehmen speichert über bestehende Wish-/Lead-Pfade (`applyWishConditions`) – keine Chip-Doppelwelt.
+
+## Teil B – „Was soll Clever erledigen?“
+
+1. Verkäufer tippt oder spricht im Composer.
+2. Intent: `prepare_offer` | `message_customer` | `lookup_fact` | `request_documents` | …
+3. Bei `prepare_offer`: `runSellerOfferAssist` → Magic Offer + Kundenterme aus Notizzettel.
+4. Nur fehlende Slots (Rabatt, Rate, Angebotsart) als kurze Inline-Card + Choice-Chips.
+5. Follow-up im selben Composer: „21 %“, „Leasing“ → `applyMagicOfferCorrection`.
+6. Situativ: AHK/HUD aus Notizzettel nur wenn die Aktion passt (nicht bei Probefahrt).
+7. Verifizierte Facts via `getVerifiedVehicleFacts` – keine erfundenen Zahlen.
+8. Bereit → „Angebot vorbereiten“ → bestehender `onPrepareOffer` / Magic-Pfad.
 
 ## Live Customer Context
 
-Die sichtbaren Chips oben sind Clevers Gedächtnis im Moment.
+`buildSellerInlineContext(lead)` und `buildAttributedWishChips` speisen Notizzettel und Assist.
 
-`buildSellerInlineContext(lead)` nutzt dieselben attributed Chips wie der Notizzettel  
-(`buildAttributedWishChips` / needProfile + sellerInsights).
-
-Inline im Workspace-Composer:
+Inline:
 
 - Debounce ~380 ms
-- Grounded Facts via `getVerifiedVehicleFacts`
-- Ein Tap: „In Nachricht übernehmen“
-- Fact Conflicts: Verkäuferangabe ≠ verified → Warnung, kein Blind-Send
+- Offer-State: `previousPreparation` im Shared Workspace
+- Fact Conflicts: Verkäuferangabe ≠ verified → Warnung
 
-Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md#live-customer-context).
+Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md).
 
-## Shared Workspace (Verkäufer)
+## Safe Offer Boundary
 
-In der Kundenakte: `CustomerAkteSharedWorkspace` zeigt denselben Verlauf wie der Kunde.
-
-Clever Review vor Send:
-
-✨ Clever hat vorbereitet  
-Nachricht + ✓ Selbstauskunft / ✓ Gehaltsnachweis  
-[ Senden ]
-
-Siehe [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
+| Angebotsart | Clever darf |
+|-------------|-------------|
+| Barkauf | Deterministisch rechnen mit verifizierten Preisen + Rabatt |
+| Leasing / Finanzierung | Rate/PDF vom Verkäufer übernehmen – keine Bankrate erfinden |
 
 ## Source Awareness
 
 | Wert | Typische Source |
 |------|-----------------|
 | Schwarzmetallic verfügbar | `seller_input` |
-| Terracotta interessant | `customer_need` |
-| 15.000 km | `customer_need` |
-| Anhängelast kg | nur `verified_vehicle_data` – sonst keine Zahl erfinden |
+| AHK wichtig | `customer_need` |
+| 48 Monate / 10.000 km | Wish / Konditionen |
 
-Verkäufernotiz ≠ Kundenwunsch.
+## Tests
 
-## Kein Inventar
-
-„Ich habe einen schwarzen EV3 da“ = Seller Fact für diesen Vorgang.  
-Kein DMS-/Bestandsabgleich in v1.
-
-## Verwandt
-
-- [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md)
-- [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md)
-- [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md)
-- [CLEVER_MAGIC_OFFER.md](CLEVER_MAGIC_OFFER.md)
-- Seller Copilot: `runCleverSellerCopilot.js`
+```bash
+node src/services/dealer/sellerOfferAssistFlow.test.js
+node src/services/dealer/sellerInlineComposerAssist.test.js
+node src/services/dealer/magicOfferService.test.js
+```

@@ -23,10 +23,32 @@
   border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
 }
 
-.sia-card--message_draft,
-.sia-card--action_draft {
+.sia-card--offer_draft {
   background: var(--color-surface, #fff);
-  border-color: var(--color-border-subtle, #e8e8ef);
+  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.22));
+}
+
+.sia-card__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.sia-choice {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text, #0b1736);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sia-choice:hover {
+  border-color: var(--color-clever, #6d5bb8);
 }
 
 .sia-card__head {

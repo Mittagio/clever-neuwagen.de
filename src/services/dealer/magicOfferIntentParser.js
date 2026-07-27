@@ -108,7 +108,8 @@ export function parseMagicOfferIntent(text = '') {
   if (interestMatch) effectiveInterestRate = parseDeNumber(interestMatch[1]);
 
   let offerType = null;
-  if (/\bkauf\b|\bbar\b|\bbarkauf\b/.test(blob) && monthlyRate == null) {
+  if (/\bbarangebot\b|\bkaufangebot\b|\bbarkauf\b|\bbar\s*kauf\b|\bkauf\b|\bbar\b/.test(blob)
+    && monthlyRate == null) {
     offerType = 'purchase';
   }
   if (discountPercent != null && monthlyRate == null && !/\bleasing\b|\bfinanzierung\b/.test(blob)) {

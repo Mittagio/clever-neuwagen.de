@@ -125,11 +125,15 @@ Clever sorgt dafür, dass der Verkäufer **vorbereitet** startet.
 
 Wenn Clever seine Arbeit gut macht, beginnt der Verkäufer nicht mehr bei Null.
 
-**Seller Dashboard:** Clever ist kein CRM, das der Verkäufer bedienen muss.  
+**Seller Dashboard:** Clever ist kein CRM, das der Verkäufer bedienen muss.
 Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledigt werden soll.
 
 Der Kunde sagt Clever, was ihm wichtig ist.  
 Der Verkäufer sagt Clever, was erledigt werden soll.
+
+**Produktregeln (Seller Workspace):**
+- Notizzettel-Chips sind nicht nur Anzeige – sie sind direkte Arbeitsobjekte.
+- Der Verkäufer nennt das Ziel; Clever nutzt vorhandenen Kundenkontext und fragt nur Fehlendes nach.
 
 WhatsApp überträgt Nachrichten.  
 Clever versteht den Vorgang.

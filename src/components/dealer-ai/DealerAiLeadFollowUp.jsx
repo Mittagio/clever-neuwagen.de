@@ -867,9 +867,9 @@ export default function DealerAiLeadFollowUp({
     return parts.join(' · ');
   }, [vehicleCards, wishModel, wishPaymentType]);
 
-  function focusChatComposer({ clever = false } = {}) {
-    setAkteTab(clever ? AKTE_TABS.clever : AKTE_TABS.chat);
-    setCleverMode(Boolean(clever));
+  function focusChatComposer({ clever = true } = {}) {
+    setAkteTab(AKTE_TABS.clever);
+    setCleverMode(true);
     setComposerFocusToken((n) => n + 1);
     setMoreSheetOpen(false);
   }
@@ -879,16 +879,11 @@ export default function DealerAiLeadFollowUp({
       setMoreSheetOpen(true);
       return;
     }
-    if (tabId === AKTE_TABS.clever) {
+    // Chat ist in Clever aufgegangen – Legacy-Aufrufe umleiten
+    if (tabId === AKTE_TABS.chat || tabId === AKTE_TABS.clever) {
       setAkteTab(AKTE_TABS.clever);
       setCleverMode(true);
       setComposerFocusToken((n) => n + 1);
-      setMoreSheetOpen(false);
-      return;
-    }
-    if (tabId === AKTE_TABS.chat) {
-      setCleverMode(false);
-      setAkteTab(AKTE_TABS.chat);
       setMoreSheetOpen(false);
       return;
     }
@@ -1631,6 +1626,15 @@ export default function DealerAiLeadFollowUp({
   function openKundenhelferSheet(categoryId = null) {
     setKundenhelferInitialCategory(categoryId);
     openSheet(SHEETS.kundenhelfer);
+  }
+
+  /** Notizzettel: Konditionen schnell ändern, Wünsche → Kundenhelfer */
+  function handleNotepadChipClick(chip) {
+    if (chip?.kind === 'condition' || chip?.field) {
+      openWishConditionsSheet(chip.field ?? null);
+      return;
+    }
+    openKundenhelferSheet();
   }
 
   function openSheet(id) {
@@ -2420,10 +2424,9 @@ export default function DealerAiLeadFollowUp({
   }
 
   const navBadges = {
-    chat: inboxOpenCount || undefined,
+    clever: inboxOpenCount || undefined,
     angebote: boardItems.length || undefined,
     mehr: (unterlagenOpenCount || 0) + (selfDisclosureCard?.status === 'submitted' ? 1 : 0) || undefined,
-    cleverMode,
   };
 
   const contextRail = (
@@ -2505,6 +2508,7 @@ export default function DealerAiLeadFollowUp({
               conditionChips={schnellaufnahmeChips}
               customerName={name}
               onOpenFull={() => openKundenhelferSheet()}
+              onChipClick={handleNotepadChipClick}
             />
           </div>
 
@@ -2575,48 +2579,7 @@ export default function DealerAiLeadFollowUp({
             compactEmpty
             isSaving={isSaving}
             onOpenOffer={() => setAkteTab(AKTE_TABS.angebote)}
-            onUploadDocument={() => openSheet(SHEETS.unterlagen)}
-            onStartSelfDisclosure={() => openSelfDisclosureReview()}
-            onPersistLead={(nextLead) => {
-              onSave?.({
-                ...buildSavePayload({
-                  customerMessages: nextLead.crm?.customerMessages,
-                  customerMessageThreads: nextLead.crm?.customerMessageThreads,
-                }),
-                history: nextLead.history,
-              }, { silent: true, addFollowupHistory: false });
-            }}
-          />
-        </div>
-      )}
-
-      {(akteTab === AKTE_TABS.chat) && (
-        <div className="cust-akte-shell__pane cust-akte-shell__pane--chat cn-chat-readable">
-          {requestedStockVehicle && (
-            <CustomerAkteRequestedStockVehicle
-              stockVehicle={requestedStockVehicle}
-              onOpenListing={handleOpenStockListing}
-              onCreateOffer={handleCreateStockOffer}
-            />
-          )}
-
-          {lead?.crm?.hasPendingShowroomCapture && lead?.crm?.pendingShowroomCapture?.status === 'pending' && (
-            <CustomerAkteShowroomCapture
-              capture={lead.crm.pendingShowroomCapture}
-              onApply={handleApplyShowroomCapture}
-              onEdit={handleEditShowroomCapture}
-              onSuggestVehicles={handleSuggestVehiclesFromShowroom}
-              onPrepareOffer={handlePrepareOfferFromShowroom}
-            />
-          )}
-
-          <CustomerAkteSharedWorkspace
-            lead={lead}
-            customerName={name}
-            cleverMode={false}
-            focusToken={composerFocusToken}
-            isSaving={isSaving}
-            onOpenOffer={() => setAkteTab(AKTE_TABS.angebote)}
+            onPrepareOfferDraft={handleSellerAssistPrepareOffer}
             onUploadDocument={() => openSheet(SHEETS.unterlagen)}
             onStartSelfDisclosure={() => openSelfDisclosureReview()}
             onPersistLead={(nextLead) => {
@@ -2803,13 +2766,14 @@ export default function DealerAiLeadFollowUp({
               conditionChips={schnellaufnahmeChips}
               customerName={name}
               onOpenFull={() => openKundenhelferSheet()}
+              onChipClick={handleNotepadChipClick}
               sticky={false}
             />
           </div>
         ) : null}
         mobileContext={null}
         context={contextRail}
-        assist={akteTab === AKTE_TABS.clever || akteTab === AKTE_TABS.chat ? assistRail : null}
+        assist={akteTab === AKTE_TABS.clever ? assistRail : null}
         main={<div className="cust-akte-shell__workspace">{mainWorkspace}</div>}
         nav={(
           <CustomerAkteFileNav

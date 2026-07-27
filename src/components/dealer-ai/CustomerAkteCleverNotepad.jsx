@@ -10,13 +10,14 @@ function normalizeKey(label) {
 
 /**
  * Notizzettel für die Clever-Verkäuferseite – nur bestehende Wish/Need-Chips.
- * Mobile: max. ~2 Reihen, Rest als +N. Sticky-Kompaktzeile wenn der Block aus dem Viewport ist.
+ * Konditions-Chips (field) → schnell ändern; Wunsch-Chips / +N → voller Notizzettel.
  */
 export default function CustomerAkteCleverNotepad({
   lead = null,
   conditionChips = [],
   customerName = '',
   onOpenFull,
+  onChipClick,
   sticky = true,
 }) {
   const [compact, setCompact] = useState(false);
@@ -27,16 +28,24 @@ export default function CustomerAkteCleverNotepad({
     const merged = [];
     const seen = new Set();
 
-    const push = (chip) => {
+    const push = (chip, kind = 'wish') => {
       const label = typeof chip === 'string' ? chip : chip?.label;
       const key = normalizeKey(label);
       if (!key || seen.has(key)) return;
       seen.add(key);
-      merged.push(typeof chip === 'string' ? { label, origin: 'customer' } : { ...chip, label });
+      if (typeof chip === 'string') {
+        merged.push({ label, origin: 'customer', kind });
+        return;
+      }
+      merged.push({
+        ...chip,
+        label,
+        kind: chip.field ? 'condition' : kind,
+      });
     };
 
-    for (const chip of conditionChips) push(chip);
-    for (const chip of attributed) push(chip);
+    for (const chip of conditionChips) push(chip, 'condition');
+    for (const chip of attributed) push(chip, 'wish');
     return merged;
   }, [lead, conditionChips]);
 
@@ -50,6 +59,14 @@ export default function CustomerAkteCleverNotepad({
     observer.observe(node);
     return () => observer.disconnect();
   }, [sticky, chips.length]);
+
+  function handleChipClick(chip) {
+    if (onChipClick) {
+      onChipClick(chip);
+      return;
+    }
+    onOpenFull?.();
+  }
 
   const visible = chips.slice(0, MOBILE_VISIBLE);
   const overflow = Math.max(0, chips.length - MOBILE_VISIBLE);
@@ -94,11 +111,11 @@ export default function CustomerAkteCleverNotepad({
         <p className="cust-akte-clever-notepad__label">Notizzettel</p>
         <ul className="cust-akte-clever-notepad__chips">
           {visible.map((chip) => (
-            <li key={`${chip.origin}-${chip.label}`}>
+            <li key={`${chip.kind}-${chip.origin}-${chip.label}`}>
               <button
                 type="button"
                 className={`cust-akte-clever-notepad__chip${chip.origin === 'seller' ? ' cust-akte-clever-notepad__chip--seller' : ''}`}
-                onClick={() => onOpenFull?.()}
+                onClick={() => handleChipClick(chip)}
               >
                 {chip.label}
                 {chip.origin === 'seller' && chip.badge ? (

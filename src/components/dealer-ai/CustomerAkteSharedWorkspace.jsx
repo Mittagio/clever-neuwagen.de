@@ -8,6 +8,7 @@ import {
   insertInlineFactIntoDraft,
   runSellerInlineAssist,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
+import { runSellerOfferAssist } from '../../services/dealer/sellerOfferAssistFlow.js';
 import { sendSellerWorkspacePackage } from '../../services/crm/sharedWorkspaceService.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 
@@ -26,6 +27,7 @@ export default function CustomerAkteSharedWorkspace({
   focusToken = 0,
   compactEmpty = false,
   onOpenOffer = null,
+  onPrepareOfferDraft = null,
   onUploadDocument = null,
   onStartSelfDisclosure = null,
 }) {
@@ -33,8 +35,14 @@ export default function CustomerAkteSharedWorkspace({
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
+  const [offerPrep, setOfferPrep] = useState(null);
   const debounceRef = useRef(null);
   const composerInputRef = useRef(null);
+  const offerPrepRef = useRef(null);
+
+  useEffect(() => {
+    offerPrepRef.current = offerPrep;
+  }, [offerPrep]);
 
   const timeline = useMemo(
     () => buildSharedWorkspaceTimeline(lead, { role: 'seller' }),
@@ -55,6 +63,14 @@ export default function CustomerAkteSharedWorkspace({
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
+      const offer = runSellerOfferAssist(lead, text, {
+        previousPreparation: offerPrepRef.current,
+      });
+      if (offer?.ok) {
+        setOfferPrep(offer.previousPreparation ?? null);
+        setAssist(offer);
+        return;
+      }
       const result = runSellerInlineAssist(lead, text);
       setAssist(result.ok ? result : null);
     }, DEBOUNCE_MS);
@@ -91,6 +107,7 @@ export default function CustomerAkteSharedWorkspace({
       persistMessages(result.lead, 'Nachricht im gemeinsamen Arbeitsraum gesendet');
       setDraft('');
       setAssist(null);
+      setOfferPrep(null);
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -152,11 +169,34 @@ export default function CustomerAkteSharedWorkspace({
       persistMessages(sent.lead, 'Workspace-Paket gesendet');
       setDraft('');
       setAssist(null);
+      setOfferPrep(null);
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
       setSending(false);
     }
+  }
+
+  function handleChoice(choice) {
+    const insert = choice?.insertText || choice?.label;
+    if (!insert) return;
+    setDraft(insert);
+  }
+
+  function handlePrepareOffer(result) {
+    const magic = result?.magic ?? offerPrep;
+    if (onPrepareOfferDraft) {
+      onPrepareOfferDraft({ magic });
+      setFeedback('Angebot wird vorbereitet …');
+      setTimeout(() => setFeedback(''), 2500);
+      return;
+    }
+    onOpenOffer?.();
+  }
+
+  function handleDismissAssist() {
+    setAssist(null);
+    setOfferPrep(null);
   }
 
   const emptyHint = compactEmpty
@@ -188,7 +228,9 @@ export default function CustomerAkteSharedWorkspace({
             onPrepareReply={handlePrepareReply}
             onSendDraft={handleSendDraft}
             onSendActions={handleSendActions}
-            onDismiss={() => setAssist(null)}
+            onChoice={handleChoice}
+            onPrepareOffer={handlePrepareOffer}
+            onDismiss={handleDismissAssist}
           />
         )}
         micSlot={(
