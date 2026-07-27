@@ -5256,6 +5256,69 @@
   cursor: pointer;
 }
 
+.cust-akte-tisch__appt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  margin: 0 0 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(11, 23, 54, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-tisch__appt-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-akte-tisch__appt-title {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--cust-text, #0b1736);
+}
+
+.cust-akte-tisch__appt-when,
+.cust-akte-tisch__appt-status {
+  font-size: 0.8125rem;
+  color: var(--cust-muted, #5c6478);
+}
+
+.dai-lead-appt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.dai-lead-appt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(11, 23, 54, 0.03);
+  font-size: 0.8125rem;
+}
+
+.dai-lead-appt-status {
+  color: var(--cust-muted, #5c6478);
+  text-transform: lowercase;
+}
+
+.sw-card--appointment .sw-card__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .cust-akte-shell__pane--clever {
   display: flex;
   flex-direction: column;

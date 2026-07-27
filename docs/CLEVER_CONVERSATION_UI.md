@@ -219,16 +219,18 @@ Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md) (v2.0).
 Mobile-First auf der Clever-Seite:
 
 1. Notizzettel (Konditions-Chips → WishConditionsSheet; Wunsch-Chips → Kundenhelfer)
-2. Auf dem Tisch (Angebot / Reaktion / Unterlagen kompakt)
-3. Clever-Moment (eine Card)
+2. Auf dem Tisch (Termin / Angebot / Reaktion / Unterlagen kompakt)
+3. Clever-Moment (eine Card – z. B. „Probefahrt anbieten?“)
 4. Clever-Composer („Was soll Clever … erledigen?“)
 
 Produktregeln:
 
 - Notizzettel-Chips sind direkte Arbeitsobjekte.
 - Der Verkäufer nennt das Ziel; Clever fragt nur Fehlendes nach.
+- **Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**
+- Mehr → Termine öffnet die kompakte Übersicht (CRM-Wiedervorlage), keinen Kalender-Klon.
 
-Keine Inventar-API. Kein Auto-Send. Kein Wizard.
+Keine Inventar-API. Kein Auto-Send. Kein Wizard. Kein stilles Termin-Booking.
 
 ## Live Customer Context
 

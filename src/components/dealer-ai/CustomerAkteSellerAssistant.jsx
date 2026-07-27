@@ -92,8 +92,11 @@ export default function CustomerAkteSellerAssistant({
     setEditBody(null);
   }
 
-  function focusComposer(hint) {
+function focusComposer(hint) {
     setModeHint(hint);
+    if (hint === 'appointment' || hint === 'test_drive') {
+      setDraft((prev) => (prev.trim() ? prev : 'Probefahrt anbieten.'));
+    }
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -129,6 +132,22 @@ export default function CustomerAkteSellerAssistant({
     }
     if (type === 'callback') {
       onScheduleCallback?.(turn.result.text);
+      setTurn(null);
+      setDraft('');
+      return;
+    }
+    if (type === 'appointment_draft') {
+      if (turn.result.canScheduleNow) {
+        onScheduleCallback?.(turn.result.text || turn.result.messageBody);
+      } else if (turn.result.messageBody) {
+        onSendMessage?.({
+          body: editBody ?? turn.result.messageBody,
+          channel: 'preferred',
+        });
+      } else if (turn.result.choices?.length) {
+        setDraft(turn.result.choices[0].insertText || 'Probefahrt anbieten.');
+        return;
+      }
       setTurn(null);
       setDraft('');
     }

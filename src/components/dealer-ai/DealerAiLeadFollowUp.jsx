@@ -137,6 +137,12 @@ import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
+import { buildSellerCleverMoment } from '../../services/dealer/sellerAssistantOrchestrator.js';
+import {
+  appointmentTypeLabel,
+  formatAppointmentWhen,
+  listLeadAppointments,
+} from '../../services/dealer/sellerAppointmentAssistFlow.js';
 import { appendSellerInsightToLead, appendSellerInsightsFromTexts } from '../../services/dealer/sellerInsights.js';
 import {
   buildKundenhelferDisplayNotes,
@@ -364,6 +370,8 @@ export default function DealerAiLeadFollowUp({
   const [akteTab, setAkteTab] = useState(AKTE_TABS.clever);
   const [cleverMode, setCleverMode] = useState(true);
   const [composerFocusToken, setComposerFocusToken] = useState(0);
+  const [composerSeedDraft, setComposerSeedDraft] = useState('');
+  const [composerSeedToken, setComposerSeedToken] = useState(0);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(
@@ -838,6 +846,16 @@ export default function DealerAiLeadFollowUp({
     };
   }, [journeyResult, advisorNextStepHint, reminderEval, messageSuggestion, crm.followUpAt, crm.nextStepLabel, crm.journeyReminderReason]);
 
+  const sellerCleverMoment = useMemo(
+    () => buildSellerCleverMoment(lead),
+    [lead],
+  );
+
+  const leadAppointments = useMemo(
+    () => listLeadAppointments(lead),
+    [lead],
+  );
+
   const unterlagenPaymentType = wishPaymentType !== 'unknown' ? wishPaymentType : lead?.paymentType;
   const unterlagenOpenCount = useMemo(
     () => countUnterlagenOpenTasks(lead, unterlagenPaymentType),
@@ -867,10 +885,14 @@ export default function DealerAiLeadFollowUp({
     return parts.join(' · ');
   }, [vehicleCards, wishModel, wishPaymentType]);
 
-  function focusChatComposer({ clever = true } = {}) {
+  function focusChatComposer({ clever = true, seedDraft = '' } = {}) {
     setAkteTab(AKTE_TABS.clever);
     setCleverMode(true);
     setComposerFocusToken((n) => n + 1);
+    if (seedDraft) {
+      setComposerSeedDraft(seedDraft);
+      setComposerSeedToken((n) => n + 1);
+    }
     setMoreSheetOpen(false);
   }
 
@@ -2478,6 +2500,19 @@ export default function DealerAiLeadFollowUp({
           onCopyMessage={handleCopyMessageSuggestion}
           onPrepareMessage={handlePrepareMessageSuggestion}
         />
+      ) : sellerCleverMoment ? (
+        <CleverMoment
+          eyebrow="Clever"
+          title={sellerCleverMoment.summary}
+          primaryLabel={sellerCleverMoment.primaryAction?.label}
+          onPrimary={() => focusChatComposer({
+            seedDraft: sellerCleverMoment.primaryAction?.modeHint === 'appointment'
+              ? 'Probefahrt anbieten.'
+              : '',
+          })}
+          secondaryLabel={sellerCleverMoment.secondaryAction?.label}
+          onSecondary={() => focusChatComposer()}
+        />
       ) : (
         <CleverMoment
           empty
@@ -2524,6 +2559,7 @@ export default function DealerAiLeadFollowUp({
               onOpenUnterlagen={() => openSheet(SHEETS.unterlagen)}
               onOpenSelfDisclosure={() => openSelfDisclosureReview()}
               onOpenActivities={openActivitiesSheet}
+              onOpenAppointment={() => openSheet(SHEETS.next)}
             />
           </div>
 
@@ -2537,6 +2573,25 @@ export default function DealerAiLeadFollowUp({
                 onOpenOffer={handleCleverOpenOffer}
                 onCopyMessage={handleCopyMessageSuggestion}
                 onPrepareMessage={handlePrepareMessageSuggestion}
+              />
+            </div>
+          ) : sellerCleverMoment ? (
+            <div className="cust-akte-shell__situativ cn-hide-when-assist-rail">
+              <CleverMoment
+                eyebrow="Clever"
+                title={sellerCleverMoment.summary}
+                primaryLabel={sellerCleverMoment.primaryAction?.label}
+                onPrimary={() => focusChatComposer({
+                  seedDraft: sellerCleverMoment.primaryAction?.modeHint === 'appointment'
+                    ? 'Probefahrt anbieten.'
+                    : '',
+                })}
+                secondaryLabel={sellerCleverMoment.secondaryAction?.label}
+                onSecondary={() => focusChatComposer({
+                  seedDraft: sellerCleverMoment.secondaryAction?.modeHint === 'appointment'
+                    ? 'Probefahrt anbieten.'
+                    : '',
+                })}
               />
             </div>
           ) : (
@@ -2576,6 +2631,8 @@ export default function DealerAiLeadFollowUp({
             customerName={name}
             cleverMode
             focusToken={composerFocusToken}
+            seedDraft={composerSeedDraft}
+            seedDraftToken={composerSeedToken}
             compactEmpty
             isSaving={isSaving}
             onOpenOffer={() => setAkteTab(AKTE_TABS.angebote)}
@@ -2583,10 +2640,21 @@ export default function DealerAiLeadFollowUp({
             onUploadDocument={() => openSheet(SHEETS.unterlagen)}
             onStartSelfDisclosure={() => openSelfDisclosureReview()}
             onPersistLead={(nextLead) => {
+              const nextCrm = nextLead.crm ?? {};
+              if (nextCrm.followUpAt) setFollowUpAt(nextCrm.followUpAt);
+              if (nextCrm.nextStepId) setNextStepId(nextCrm.nextStepId);
+              if (nextCrm.followUpSource) setFollowUpSource(nextCrm.followUpSource);
               onSave?.({
                 ...buildSavePayload({
-                  customerMessages: nextLead.crm?.customerMessages,
-                  customerMessageThreads: nextLead.crm?.customerMessageThreads,
+                  customerMessages: nextCrm.customerMessages,
+                  customerMessageThreads: nextCrm.customerMessageThreads,
+                  cleverAppointment: nextCrm.cleverAppointment,
+                  followUpAt: nextCrm.followUpAt,
+                  nextStepId: nextCrm.nextStepId,
+                  nextStepLabel: nextCrm.nextStepLabel,
+                  followUpSource: nextCrm.followUpSource,
+                  testDriveScheduledAt: nextCrm.testDriveScheduledAt,
+                  testDriveAppointmentAt: nextCrm.testDriveAppointmentAt,
                 }),
                 history: nextLead.history,
               }, { silent: true, addFollowupHistory: false });
@@ -3119,10 +3187,24 @@ export default function DealerAiLeadFollowUp({
       <LeadDetailPanel
         open={activeSheet === SHEETS.next}
         onClose={closeSheet}
-        title="Nächster Schritt"
+        title="Termine"
         footer={<SheetFooter onCancel={closeSheet} onSave={saveNextSheet} saving={isSaving} />}
       >
-        <p className="dai-lead-tip">Ein nächster Schritt hält die Chance warm.</p>
+        {leadAppointments.length > 0 ? (
+          <div className="dai-lead-appt-list" aria-label="Geplante Termine">
+            {leadAppointments.map((appt) => (
+              <div key={appt.id || appt.startAt} className="dai-lead-appt-row">
+                <strong>{appointmentTypeLabel(appt.type) || appt.typeLabel}</strong>
+                <span>{formatAppointmentWhen(appt.startAt)}</span>
+                {appt.vehicleContext ? <span>{appt.vehicleContext}</span> : null}
+                <span className="dai-lead-appt-status">{appt.status || 'geplant'}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="dai-lead-tip">Noch keine Termine – Clever bereitet sie im Composer vor.</p>
+        )}
+        <p className="dai-lead-tip">Wiedervorlage / nächster Schritt (bestehende CRM-Logik):</p>
         <div className="dai-lead-chips dai-lead-chips--large" role="group" aria-label="Nächster Schritt">
           {FOLLOW_UP_CHIPS.map((chip) => (
             <button

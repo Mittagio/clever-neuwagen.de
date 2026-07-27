@@ -101,11 +101,53 @@ export function StatusChatCard({ payload = {}, text }) {
   );
 }
 
+export function AppointmentChatCard({
+  payload = {},
+  onConfirm = null,
+  onChangeRequest = null,
+}) {
+  const proposed = payload.status === 'proposed' || payload.status === 'draft';
+  return (
+    <article className="sw-card sw-card--appointment">
+      <p className="sw-card__eyebrow">Termin</p>
+      <h3 className="sw-card__title">{payload.title || 'Termin'}</h3>
+      {payload.vehicleLabel ? <p className="sw-card__meta">{payload.vehicleLabel}</p> : null}
+      {payload.whenLabel ? <p className="sw-card__rate">{payload.whenLabel}</p> : null}
+      {proposed ? (
+        <div className="sw-card__cta-row">
+          <button
+            type="button"
+            className="sw-card__cta"
+            onClick={() => onConfirm?.(payload)}
+          >
+            {payload.ctaConfirm || 'Ja, passt'}
+          </button>
+          <button
+            type="button"
+            className="sw-card__link"
+            onClick={() => onChangeRequest?.(payload)}
+          >
+            {payload.ctaChange || 'Anderen Termin vorschlagen'}
+          </button>
+        </div>
+      ) : (
+        <p className="sw-card__status">
+          ✓
+          {' '}
+          {payload.statusLabel || 'bestätigt'}
+        </p>
+      )}
+    </article>
+  );
+}
+
 export function WorkspaceChatItem({
   item,
   onOpenOffer,
   onUploadDocument,
   onStartSelfDisclosure,
+  onConfirmAppointment = null,
+  onChangeAppointment = null,
 }) {
   const kind = item.kind || MESSAGE_KIND.TEXT;
 
@@ -127,6 +169,15 @@ export function WorkspaceChatItem({
       />
     );
   }
+  if (kind === MESSAGE_KIND.APPOINTMENT_CARD) {
+    return (
+      <AppointmentChatCard
+        payload={item.payload}
+        onConfirm={onConfirmAppointment}
+        onChangeRequest={onChangeAppointment}
+      />
+    );
+  }
   if (kind === MESSAGE_KIND.CLEVER_MESSAGE) {
     return <CleverChatMessage text={item.text} payload={item.payload} />;
   }
@@ -144,3 +195,4 @@ export function WorkspaceChatItem({
     </div>
   );
 }
+

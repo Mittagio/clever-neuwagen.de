@@ -1,6 +1,6 @@
 # Clever Seller Assistant
 
-**Status:** v2.0 – Notizzettel-first + action-driven  
+**Status:** v2.1 – Notizzettel-first + action-driven + Termin-Assistent  
 **Stand:** Juli 2026
 
 ## Leitsatz
@@ -13,6 +13,9 @@ Clever verwendet vorhandenen Kundenkontext und fragt nur nach den Informationen,
 
 **Notizzettel-Chips sind nicht nur Anzeige.  
 Sie sind direkte Arbeitsobjekte des Verkäufers.**
+
+**Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**  
+Clever erkennt einen sinnvollen Terminmoment, der Verkäufer schlägt vor, der Kunde bestätigt, Clever übernimmt den bestätigten Termin in den Prozess (CRM-Wiedervorlage / followUpAt – kein Kalender-Klon).
 
 ## UX-Philosophie
 
@@ -32,6 +35,7 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 | Inline Card | `SellerInlineAssistCard.jsx` |
 | Intent | `sellerActionIntent.js` |
 | Offer Assist Flow | `sellerOfferAssistFlow.js` |
+| Appointment Assist Flow | `sellerAppointmentAssistFlow.js` |
 | Magic Offer | `magicOfferService.js` |
 | Inline Assist | `sellerInlineComposerAssist.js` |
 | Einbindung | `DealerAiLeadFollowUp.jsx` |
@@ -45,13 +49,15 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 ## Teil B – „Was soll Clever erledigen?“
 
 1. Verkäufer tippt oder spricht im Composer.
-2. Intent: `prepare_offer` | `message_customer` | `lookup_fact` | `request_documents` | …
+2. Intent: `prepare_offer` | `propose_appointment` | `prepare_callback` | `message_customer` | `lookup_fact` | `request_documents` | …
 3. Bei `prepare_offer`: `runSellerOfferAssist` → Magic Offer + Kundenterme aus Notizzettel.
-4. Nur fehlende Slots (Rabatt, Rate, Angebotsart) als kurze Inline-Card + Choice-Chips.
-5. Follow-up im selben Composer: „21 %“, „Leasing“ → `applyMagicOfferCorrection`.
-6. Situativ: AHK/HUD aus Notizzettel nur wenn die Aktion passt (nicht bei Probefahrt).
-7. Verifizierte Facts via `getVerifiedVehicleFacts` – keine erfundenen Zahlen.
-8. Bereit → „Angebot vorbereiten“ → bestehender `onPrepareOffer` / Magic-Pfad.
+4. Bei Termin: `runSellerAppointmentAssist` → Typ + Datum/Uhrzeit → Kundennachricht vorbereiten (Status `proposed`).
+5. Kunde bestätigt im Chat → Seller sieht „Termin eintragen“ → CRM `followUpAt` / `testDriveScheduledAt` (Status `scheduled`).
+6. Nur fehlende Slots als kurze Inline-Card + Choice-Chips.
+7. Follow-up im selben Composer: „21 %“, „Leasing“, „morgen 15 Uhr“ → Korrektur.
+8. Situativ: AHK/HUD aus Notizzettel nur wenn die Aktion passt (nicht bei Probefahrt).
+9. Verifizierte Facts via `getVerifiedVehicleFacts` – keine erfundenen Zahlen.
+10. Bereit → „Angebot vorbereiten“ / „Vorschlag senden“ / „Termin eintragen“ → bestehende Pfade.
 
 ## Live Customer Context
 
@@ -61,6 +67,7 @@ Inline:
 
 - Debounce ~380 ms
 - Offer-State: `previousPreparation` im Shared Workspace
+- Appointment-State: `crm.cleverAppointment`
 - Fact Conflicts: Verkäuferangabe ≠ verified → Warnung
 
 Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md).
@@ -84,6 +91,7 @@ Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md).
 
 ```bash
 node src/services/dealer/sellerOfferAssistFlow.test.js
+node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js
 node src/services/dealer/magicOfferService.test.js
 ```

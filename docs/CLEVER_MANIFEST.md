@@ -153,6 +153,12 @@ Der Verkäufer bestätigt.
 Der Kunde reagiert.  
 Clever bringt die Reaktion zurück in den Verkaufsprozess.
 
+**Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**  
+Clever erkennt einen sinnvollen Terminmoment,  
+der Verkäufer schlägt vor,  
+der Kunde bestätigt,  
+Clever übernimmt den bestätigten Termin in den Prozess.
+
 Siehe [Clever Seller Assistant](CLEVER_SELLER_ASSISTANT.md),  
 [Clever Customer Portal](CLEVER_CUSTOMER_PORTAL.md) und  
 [Conversation UI – Shared Workspace](CLEVER_CONVERSATION_UI.md#shared-customer-workspace).

@@ -25,6 +25,7 @@ export const INLINE_RESULT_TYPES = {
   CONFLICT_WARNING: 'conflict_warning',
   MISSING_FACT: 'missing_fact',
   OFFER_DRAFT: 'offer_draft',
+  APPOINTMENT_DRAFT: 'appointment_draft',
 };
 
 const LOOKUP_TOPICS = [

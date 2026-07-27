@@ -18,6 +18,8 @@ export default function SharedWorkspaceChat({
   onOpenOffer,
   onUploadDocument,
   onStartSelfDisclosure,
+  onConfirmAppointment = null,
+  onChangeAppointment = null,
   onPlusAction,
   plusSheetOpen = false,
   plusActions = [],
@@ -76,6 +78,8 @@ export default function SharedWorkspaceChat({
                   onOpenOffer={onOpenOffer}
                   onUploadDocument={onUploadDocument}
                   onStartSelfDisclosure={onStartSelfDisclosure}
+                  onConfirmAppointment={onConfirmAppointment}
+                  onChangeAppointment={onChangeAppointment}
                 />
               </li>
             ))}

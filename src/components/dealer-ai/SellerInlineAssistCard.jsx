@@ -13,6 +13,7 @@ export default function SellerInlineAssistCard({
   onSendActions = null,
   onChoice = null,
   onPrepareOffer = null,
+  onAppointmentPrimary = null,
   onDismiss = null,
 }) {
   if (!results?.length) return null;
@@ -21,7 +22,7 @@ export default function SellerInlineAssistCard({
     <div className="sia-stack" aria-live="polite">
       {results.map((result, index) => (
         <article
-          key={`${result.type}-${result.entity || result.modelKey || index}`}
+          key={`${result.type}-${result.entity || result.modelKey || result.appointment?.id || index}`}
           className={`sia-card sia-card--${result.type}`}
         >
           <header className="sia-card__head">
@@ -65,20 +66,26 @@ export default function SellerInlineAssistCard({
             <pre className="sia-card__draft">{result.body}</pre>
           ) : null}
 
-          {result.type === INLINE_RESULT_TYPES.OFFER_DRAFT && result.choices?.length ? (
-            <div className="sia-card__choices" role="group" aria-label="Optionen">
-              {result.choices.map((choice) => (
-                <button
-                  key={choice.id || choice.label}
-                  type="button"
-                  className="sia-choice"
-                  onClick={() => onChoice?.(choice)}
-                >
-                  {choice.label}
-                </button>
-              ))}
-            </div>
+          {result.type === INLINE_RESULT_TYPES.APPOINTMENT_DRAFT && result.messageBody ? (
+            <pre className="sia-card__draft">{result.messageBody}</pre>
           ) : null}
+
+          {(result.type === INLINE_RESULT_TYPES.OFFER_DRAFT
+            || result.type === INLINE_RESULT_TYPES.APPOINTMENT_DRAFT)
+            && result.choices?.length ? (
+              <div className="sia-card__choices" role="group" aria-label="Optionen">
+                {result.choices.map((choice) => (
+                  <button
+                    key={choice.id || choice.label}
+                    type="button"
+                    className="sia-choice"
+                    onClick={() => onChoice?.(choice)}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
           <div className="sia-card__ctas">
             {result.type === INLINE_RESULT_TYPES.FACT_SUGGESTION || result.type === INLINE_RESULT_TYPES.MISSING_FACT ? (
@@ -166,6 +173,32 @@ export default function SellerInlineAssistCard({
                     type="button"
                     className="sia-btn sia-btn--ghost"
                     onClick={() => onInsertFact?.(result)}
+                  >
+                    {result.secondaryCta}
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+
+            {result.type === INLINE_RESULT_TYPES.APPOINTMENT_DRAFT ? (
+              <>
+                {result.primaryCta ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--primary"
+                    onClick={() => onAppointmentPrimary?.(result)}
+                  >
+                    {result.primaryCta}
+                  </button>
+                ) : null}
+                {result.secondaryCta && result.messageBody ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--ghost"
+                    onClick={() => onInsertFact?.({
+                      ...result,
+                      insertText: result.messageBody,
+                    })}
                   >
                     {result.secondaryCta}
                   </button>

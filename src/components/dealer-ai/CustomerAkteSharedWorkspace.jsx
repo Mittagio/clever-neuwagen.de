@@ -3,12 +3,25 @@ import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import SellerInlineAssistCard from './SellerInlineAssistCard.jsx';
 import { buildSharedWorkspaceTimeline } from '../../services/crm/sharedWorkspaceService.js';
-import { sendCleverChannelMessage } from '../../services/crm/customerMessageService.js';
+import {
+  MESSAGE_KIND,
+  sendCleverChannelMessage,
+} from '../../services/crm/customerMessageService.js';
 import {
   insertInlineFactIntoDraft,
   runSellerInlineAssist,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
 import { runSellerOfferAssist } from '../../services/dealer/sellerOfferAssistFlow.js';
+import {
+  APPOINTMENT_STATUS,
+  applyAppointmentCrmPatch,
+  buildCrmPatchFromAppointment,
+  buildCustomerAppointmentConfirmResult,
+  detectCustomerAppointmentReply,
+  formatAppointmentWhen,
+  getOpenCleverAppointment,
+  runSellerAppointmentAssist,
+} from '../../services/dealer/sellerAppointmentAssistFlow.js';
 import { sendSellerWorkspacePackage } from '../../services/crm/sharedWorkspaceService.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 
@@ -30,19 +43,32 @@ export default function CustomerAkteSharedWorkspace({
   onPrepareOfferDraft = null,
   onUploadDocument = null,
   onStartSelfDisclosure = null,
+  seedDraft = '',
+  seedDraftToken = 0,
 }) {
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
   const [offerPrep, setOfferPrep] = useState(null);
+  const [appointmentDraft, setAppointmentDraft] = useState(null);
   const debounceRef = useRef(null);
   const composerInputRef = useRef(null);
   const offerPrepRef = useRef(null);
+  const appointmentDraftRef = useRef(null);
 
   useEffect(() => {
     offerPrepRef.current = offerPrep;
   }, [offerPrep]);
+
+  useEffect(() => {
+    appointmentDraftRef.current = appointmentDraft;
+  }, [appointmentDraft]);
+
+  useEffect(() => {
+    if (!seedDraftToken || !seedDraft) return;
+    setDraft(String(seedDraft));
+  }, [seedDraftToken, seedDraft]);
 
   const timeline = useMemo(
     () => buildSharedWorkspaceTimeline(lead, { role: 'seller' }),
@@ -55,11 +81,39 @@ export default function CustomerAkteSharedWorkspace({
     ? `Was soll Clever für ${displayName} erledigen?`
     : `Nachricht an ${displayName} …`;
 
+  const confirmAssist = useMemo(() => {
+    const open = getOpenCleverAppointment(lead);
+    if (!open) return null;
+    if (open.status === APPOINTMENT_STATUS.CUSTOMER_CONFIRMED) {
+      return buildCustomerAppointmentConfirmResult(lead, {
+        kind: 'confirm',
+        appointment: open,
+      });
+    }
+    if (open.status === APPOINTMENT_STATUS.PROPOSED && open.pendingChangeStartAt) {
+      return buildCustomerAppointmentConfirmResult(lead, {
+        kind: 'change_request',
+        appointment: open,
+        proposedStartAt: open.pendingChangeStartAt,
+      });
+    }
+    const lastInbound = [...(timeline.items ?? [])]
+      .reverse()
+      .find((item) => item.isCustomer && item.text);
+    if (!lastInbound || open.status !== APPOINTMENT_STATUS.PROPOSED) return null;
+    const reply = detectCustomerAppointmentReply(lastInbound.text, open);
+    return buildCustomerAppointmentConfirmResult(lead, reply);
+  }, [lead, timeline.items]);
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const text = String(draft ?? '').trim();
     if (text.length < 3) {
-      setAssist(null);
+      if (confirmAssist?.ok) {
+        setAssist(confirmAssist);
+      } else {
+        setAssist(null);
+      }
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
@@ -71,13 +125,22 @@ export default function CustomerAkteSharedWorkspace({
         setAssist(offer);
         return;
       }
+      const appointment = runSellerAppointmentAssist(lead, text, {
+        previousAppointment: appointmentDraftRef.current
+          || getOpenCleverAppointment(lead),
+      });
+      if (appointment?.ok) {
+        setAppointmentDraft(appointment.appointment ?? null);
+        setAssist(appointment);
+        return;
+      }
       const result = runSellerInlineAssist(lead, text);
       setAssist(result.ok ? result : null);
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [draft, lead]);
+  }, [draft, lead, confirmAssist]);
 
   useEffect(() => {
     if (!focusToken) return;
@@ -108,6 +171,7 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setAssist(null);
       setOfferPrep(null);
+      setAppointmentDraft(null);
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -170,6 +234,7 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setAssist(null);
       setOfferPrep(null);
+      setAppointmentDraft(null);
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -194,14 +259,136 @@ export default function CustomerAkteSharedWorkspace({
     onOpenOffer?.();
   }
 
+  function handleSendAppointmentProposal(result) {
+    const appointment = result?.appointment;
+    if (!appointment?.startAt || sending) return;
+    setSending(true);
+    try {
+      let nextLead = lead;
+      const messageBody = result.messageBody || result.draft?.body;
+      if (messageBody) {
+        const sent = sendCleverChannelMessage({
+          lead: nextLead,
+          text: messageBody,
+          createdByName: 'Verkäufer',
+        });
+        if (!sent.message) {
+          setFeedback('Nachricht konnte nicht gesendet werden.');
+          return;
+        }
+        nextLead = sent.lead;
+      }
+
+      const card = sendCleverChannelMessage({
+        lead: nextLead,
+        text: `${appointment.typeLabel} · ${formatAppointmentWhen(appointment.startAt)}`,
+        kind: MESSAGE_KIND.APPOINTMENT_CARD,
+        payload: {
+          title: appointment.typeLabel,
+          vehicleLabel: appointment.vehicleContext,
+          whenLabel: formatAppointmentWhen(appointment.startAt),
+          startAt: appointment.startAt,
+          status: APPOINTMENT_STATUS.PROPOSED,
+          ctaConfirm: 'Ja, passt',
+          ctaChange: 'Anderen Termin vorschlagen',
+        },
+        createdByName: 'Verkäufer',
+      });
+      if (card.message) nextLead = card.lead;
+
+      const patch = buildCrmPatchFromAppointment(appointment, { markProposed: true });
+      nextLead = applyAppointmentCrmPatch(nextLead, patch);
+      const historyText = `${appointment.typeLabel} vorgeschlagen (${formatAppointmentWhen(appointment.startAt)})`;
+      persistMessages({
+        ...nextLead,
+        history: [
+          ...(nextLead.history ?? []),
+          {
+            id: `hist-appt-${Date.now()}`,
+            at: new Date().toISOString(),
+            type: 'appointment_proposed',
+            text: historyText,
+          },
+        ],
+      }, historyText);
+
+      setDraft('');
+      setAssist(null);
+      setAppointmentDraft(null);
+      setFeedback('Vorschlag gesendet');
+      setTimeout(() => setFeedback(''), 2500);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleScheduleAppointment(result) {
+    let appointment = result?.appointment;
+    if (!appointment?.startAt || sending) return;
+
+    if (result.proposedStartAt) {
+      appointment = {
+        ...appointment,
+        startAt: result.proposedStartAt,
+        endAt: new Date(
+          new Date(result.proposedStartAt).getTime()
+            + (appointment.durationMinutes || 60) * 60_000,
+        ).toISOString(),
+        pendingChangeStartAt: null,
+      };
+    }
+
+    setSending(true);
+    try {
+      const patch = buildCrmPatchFromAppointment(appointment, { markScheduled: true });
+      let nextLead = applyAppointmentCrmPatch(lead, patch);
+      const historyText = `${appointment.typeLabel} eingetragen (${formatAppointmentWhen(appointment.startAt)})`;
+      nextLead = {
+        ...nextLead,
+        history: [
+          ...(nextLead.history ?? []),
+          {
+            id: `hist-appt-${Date.now()}`,
+            at: new Date().toISOString(),
+            type: 'appointment_scheduled',
+            text: historyText,
+          },
+        ],
+      };
+      persistMessages(nextLead, historyText);
+      setDraft('');
+      setAssist(null);
+      setAppointmentDraft(null);
+      setFeedback('Termin eingetragen');
+      setTimeout(() => setFeedback(''), 2500);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleAppointmentPrimary(result) {
+    if (result?.canScheduleNow || result?.primaryCta === 'Termin eintragen') {
+      handleScheduleAppointment(result);
+      return;
+    }
+    if (result?.messageBody || result?.draft?.body || result?.requiresCustomerMessage) {
+      handleSendAppointmentProposal(result);
+    }
+  }
+
   function handleDismissAssist() {
     setAssist(null);
     setOfferPrep(null);
+    setAppointmentDraft(null);
   }
 
   const emptyHint = compactEmpty
     ? 'Noch kein Verlauf.'
     : 'Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie die Chips oben.';
+
+  const assistResults = assist?.results?.length
+    ? assist.results
+    : (confirmAssist?.results ?? []);
 
   return (
     <section
@@ -222,7 +409,7 @@ export default function CustomerAkteSharedWorkspace({
         onStartSelfDisclosure={onStartSelfDisclosure}
         reviewSlot={(
           <SellerInlineAssistCard
-            results={assist?.results ?? []}
+            results={assistResults}
             onInsertFact={handleInsertFact}
             onUseVerified={handleUseVerified}
             onPrepareReply={handlePrepareReply}
@@ -230,6 +417,7 @@ export default function CustomerAkteSharedWorkspace({
             onSendActions={handleSendActions}
             onChoice={handleChoice}
             onPrepareOffer={handlePrepareOffer}
+            onAppointmentPrimary={handleAppointmentPrimary}
             onDismiss={handleDismissAssist}
           />
         )}
@@ -252,6 +440,12 @@ export default function CustomerAkteSharedWorkspace({
             icon: '🚗',
             label: 'Angebot',
             onClick: () => setDraft((prev) => (prev ? prev : 'Mach dem Kunden ein Angebot.')),
+          },
+          {
+            id: 'appt',
+            icon: '📅',
+            label: 'Termin',
+            onClick: () => setDraft('Probefahrt anbieten.'),
           },
           {
             id: 'sa',

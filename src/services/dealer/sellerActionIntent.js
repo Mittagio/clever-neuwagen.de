@@ -8,6 +8,7 @@ export const SELLER_ACTION_INTENTS = {
   PREPARE_OFFER: 'prepare_offer',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
+  PROPOSE_APPOINTMENT: 'propose_appointment',
   LOOKUP_FACT: 'lookup_fact',
   REQUEST_DOCUMENTS: 'request_documents',
   UNKNOWN: 'unknown',
@@ -32,6 +33,15 @@ const MESSAGE_PATTERNS = [
 
 const CALLBACK_PATTERNS = [
   /\b(rückruf|anrufen|callback|morgen\s+anrufen)\b/i,
+  /\bruf\s+(ihn|sie|ihm|den|die)\b/i,
+];
+
+const APPOINTMENT_PATTERNS = [
+  /\b(probefahrt|probe\s*fahrt|probefahren)\b/i,
+  /\b(übergabe|ubergabe|abholung)\b/i,
+  /\b(beratungsgespräch|beratungsgesprach|beratungstermin)\b/i,
+  /\b(termin).{0,40}\b(vorschlagen|anbieten|vereinbaren|eintragen)\b/i,
+  /\b(vorschlagen|anbieten|vereinbaren).{0,40}\b(termin|probefahrt)\b/i,
 ];
 
 const NOTE_PATTERNS = [
@@ -68,6 +78,9 @@ export function detectSellerActionIntent(text = '') {
     && !/\b(schreib|sag|informier|schick|anforder)\b/i.test(t);
   if (isShortLookup || (hasLookup && t.length <= 24 && !MESSAGE_PATTERNS.some((re) => re.test(t)))) {
     return SELLER_ACTION_INTENTS.LOOKUP_FACT;
+  }
+  if (APPOINTMENT_PATTERNS.some((re) => re.test(t))) {
+    return SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT;
   }
   if (CALLBACK_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.PREPARE_CALLBACK;
@@ -141,6 +154,10 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
   if (options.modeHint === 'message') intent = SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
   if (options.modeHint === 'offer') intent = SELLER_ACTION_INTENTS.PREPARE_OFFER;
   if (options.modeHint === 'documents') intent = SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
+  if (options.modeHint === 'appointment' || options.modeHint === 'test_drive') {
+    intent = SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT;
+  }
+  if (options.modeHint === 'callback') intent = SELLER_ACTION_INTENTS.PREPARE_CALLBACK;
 
   const sellerFacts = extractSellerFactsFromInput(text);
   const customerId = lead?.id ?? lead?.crm?.customerId ?? null;
@@ -157,7 +174,8 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
         : intent === SELLER_ACTION_INTENTS.ADD_NOTE
           ? 'save_note'
           : intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK
-            ? 'schedule_callback'
+            || intent === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT
+            ? 'propose_appointment'
             : intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS
               ? 'workspace_package'
               : 'draft_message',

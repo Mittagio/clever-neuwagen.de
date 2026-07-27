@@ -4,6 +4,7 @@
  */
 import { createInboxItem, INBOX_EVENT_TYPES } from './cleverInboxService.js';
 import { isSelfDisclosureSensitiveText } from './customerPortalSelfDisclosureService.js';
+import { applyCustomerAppointmentReplyToLead } from '../dealer/sellerAppointmentAssistFlow.js';
 
 export const MESSAGE_DIRECTION = {
   INBOUND: 'inbound',
@@ -41,6 +42,7 @@ export const MESSAGE_KIND = {
   CHECKLIST_CARD: 'checklist_card',
   CLEVER_MESSAGE: 'clever_message',
   SYSTEM_STATUS: 'system_status',
+  APPOINTMENT_CARD: 'appointment_card',
 };
 
 const CARD_MESSAGE_KINDS = new Set([
@@ -50,6 +52,7 @@ const CARD_MESSAGE_KINDS = new Set([
   MESSAGE_KIND.SELF_DISCLOSURE_CARD,
   MESSAGE_KIND.CHECKLIST_CARD,
   MESSAGE_KIND.SYSTEM_STATUS,
+  MESSAGE_KIND.APPOINTMENT_CARD,
 ]);
 
 const FORBIDDEN_CUSTOMER_TEXT_PATTERNS = [
@@ -372,7 +375,12 @@ export function mirrorInboundCustomerQuestion({
     createdByName: customerName || lead.contact?.name || 'Kunde',
   });
 
-  const nextLead = added.lead;
+  let nextLead = added.lead;
+  const appointmentApply = applyCustomerAppointmentReplyToLead(nextLead, trimmed);
+  if (appointmentApply.reply) {
+    nextLead = appointmentApply.lead;
+  }
+
   const inboxItem = createInbox
     ? buildInboxItemFromCustomerMessage({
       lead: nextLead,
@@ -388,6 +396,7 @@ export function mirrorInboundCustomerQuestion({
     message: added.message,
     thread: added.thread,
     inboxItem,
+    appointmentReply: appointmentApply.reply ?? null,
   };
 }
 

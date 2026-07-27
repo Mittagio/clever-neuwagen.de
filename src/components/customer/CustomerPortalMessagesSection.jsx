@@ -21,6 +21,14 @@ export default function CustomerPortalMessagesSection({
     ? items
     : threads.flatMap((thread) => thread.messages ?? []);
 
+  function handleConfirmAppointment() {
+    onSend?.('Ja, passt.');
+  }
+
+  function handleChangeAppointment() {
+    onDraftChange?.('Geht bei mir eher um 16 Uhr.');
+  }
+
   return (
     <SharedWorkspaceChat
       role="customer"
@@ -35,6 +43,8 @@ export default function CustomerPortalMessagesSection({
       onOpenOffer={onOpenOffer}
       onUploadDocument={onUploadDocument}
       onStartSelfDisclosure={onStartSelfDisclosure}
+      onConfirmAppointment={handleConfirmAppointment}
+      onChangeAppointment={handleChangeAppointment}
       plusActions={plusActions}
       emptyHint="Noch keine Nachrichten. Fragen Sie hier nach Ihrem Angebot oder laden Sie Unterlagen hoch."
     />

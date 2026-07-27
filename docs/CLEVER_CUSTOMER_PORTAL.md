@@ -14,9 +14,12 @@ Kunde und Verkäufer arbeiten mit demselben Clever-Kontext, aber mit unterschied
 
 ## Shared Customer Workspace
 
-Der Chat ist der Vorgang: Nachrichten, Angebotskarten, Dokumentanforderungen, Selbstauskunft und Status erscheinen chronologisch.
+Der Chat ist der Vorgang: Nachrichten, Angebotskarten, Terminkarten, Dokumentanforderungen, Selbstauskunft und Status erscheinen chronologisch.
 
 Strukturierte Tabs (Angebote / Unterlagen / Selbstauskunft) bleiben Übersichten über dieselben Daten.
+
+Bei Terminvorschlägen kann der Kunde im Chat mit **„Ja, passt“** oder einem Alternativvorschlag antworten.  
+Die Kalendereintragung bleibt Verkäufer-bestätigt – kein stilles Auto-Booking.
 
 ## Bottom Nav (Shell)
 

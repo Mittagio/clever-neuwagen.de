@@ -138,6 +138,7 @@ const moment = buildSellerCleverMoment(momentLead);
 assert.ok(moment);
 assert.ok(/EV3/i.test(moment.summary));
 assert.ok(/Anhängelast/i.test(moment.summary));
-assert.equal(moment.primaryAction.modeHint, 'message');
+assert.equal(moment.primaryAction.modeHint, 'appointment');
+assert.ok(/Probefahrt/i.test(moment.primaryAction.label));
 
 console.log('sellerAssistantOrchestrator.test.js: ok');

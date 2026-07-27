@@ -3,7 +3,20 @@ import { getLastCustomerActivityHint } from '../../services/customerActivityTime
 import { buildCustomerPortalStatusCardModel } from '../../services/crm/customerPortalAccessService.js';
 import { buildBoardOfferCardModel } from '../../services/dealer/boardOfferModel.js';
 import { formatVehicleCardTitle } from '../../services/customerAkte.js';
+import {
+  APPOINTMENT_STATUS,
+  appointmentTypeLabel,
+  formatAppointmentWhen,
+} from '../../services/dealer/sellerAppointmentAssistFlow.js';
 import './CustomerAkte.css';
+
+function appointmentStatusLabel(status) {
+  if (status === APPOINTMENT_STATUS.SCHEDULED) return 'eingetragen';
+  if (status === APPOINTMENT_STATUS.CUSTOMER_CONFIRMED) return 'bestätigt';
+  if (status === APPOINTMENT_STATUS.PROPOSED) return 'vorgeschlagen';
+  if (status === APPOINTMENT_STATUS.CANCELLED) return 'storniert';
+  return 'offen';
+}
 
 /**
  * „Auf dem Tisch“ – kompakter Status aus bestehenden Offer/Activity/Unterlagen-Daten.
@@ -20,6 +33,7 @@ export default function CustomerAkteAufDemTisch({
   onOpenUnterlagen,
   onOpenSelfDisclosure,
   onOpenActivities,
+  onOpenAppointment = null,
 }) {
   const primaryItem = boardItems.find((item) => item.type !== 'selection_group') ?? boardItems[0] ?? null;
   const offerModel = useMemo(() => {
@@ -36,6 +50,14 @@ export default function CustomerAkteAufDemTisch({
     () => buildCustomerPortalStatusCardModel(lead, { hasOpenInboxMessage }),
     [lead, hasOpenInboxMessage],
   );
+
+  const appointment = lead?.crm?.cleverAppointment ?? null;
+  const showAppointment = appointment?.startAt
+    && [
+      APPOINTMENT_STATUS.PROPOSED,
+      APPOINTMENT_STATUS.CUSTOMER_CONFIRMED,
+      APPOINTMENT_STATUS.SCHEDULED,
+    ].includes(appointment.status);
 
   const reactionText = activityHint
     || portalModel?.lastReactionLabel
@@ -59,7 +81,7 @@ export default function CustomerAkteAufDemTisch({
   const docsTotal = unterlagenSummary?.totalCount ?? 0;
   const hasDocs = docsTotal > 0 || unterlagenOpenCount > 0 || selfDisclosureLabel;
 
-  if (!primaryItem && !reactionText && !hasDocs) {
+  if (!primaryItem && !reactionText && !hasDocs && !showAppointment) {
     return (
       <section className="cust-akte-tisch" aria-label="Auf dem Tisch">
         <p className="cust-akte-tisch__label">Auf dem Tisch</p>
@@ -71,6 +93,29 @@ export default function CustomerAkteAufDemTisch({
   return (
     <section className="cust-akte-tisch" aria-label="Auf dem Tisch">
       <p className="cust-akte-tisch__label">Auf dem Tisch</p>
+
+      {showAppointment ? (
+        <button
+          type="button"
+          className="cust-akte-tisch__appt"
+          onClick={() => onOpenAppointment?.(appointment)}
+        >
+          <span className="cust-akte-tisch__appt-eyebrow">
+            ✓
+            {' '}
+            {appointmentTypeLabel(appointment.type)}
+          </span>
+          {appointment.vehicleContext ? (
+            <span className="cust-akte-tisch__appt-title">{appointment.vehicleContext}</span>
+          ) : null}
+          <span className="cust-akte-tisch__appt-when">
+            {formatAppointmentWhen(appointment.startAt)}
+          </span>
+          <span className="cust-akte-tisch__appt-status">
+            {appointmentStatusLabel(appointment.status)}
+          </span>
+        </button>
+      ) : null}
 
       {primaryItem ? (
         <button

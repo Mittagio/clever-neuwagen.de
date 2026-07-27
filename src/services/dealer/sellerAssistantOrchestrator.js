@@ -16,6 +16,7 @@ import { proposeSellerInsightLabels } from './sellerInsights.js';
 import { PORTFOLIO_REACTION_STATUS } from '../crm/customerOfferPortfolioService.js';
 import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
 import { runSellerInlineAssist, INLINE_RESULT_TYPES } from './sellerInlineComposerAssist.js';
+import { runSellerAppointmentAssist } from './sellerAppointmentAssistFlow.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -122,6 +123,26 @@ export function buildSellerCleverMoment(lead = {}) {
   if (!parts.length) return null;
 
   const summary = parts.join('. ').replace(/\.\./g, '.') + (parts.length ? '.' : '');
+
+  if (interested) {
+    return {
+      summary: /probefahrt/i.test(summary)
+        ? summary
+        : `${summary} Probefahrt anbieten?`,
+      primaryAction: {
+        id: 'propose_test_drive',
+        label: 'Probefahrt vorschlagen',
+        modeHint: 'appointment',
+      },
+      secondaryAction: {
+        id: 'prepare_message',
+        label: 'Nachricht vorbereiten',
+        modeHint: 'message',
+      },
+      reactions: reactions.slice(0, 5),
+    };
+  }
+
   const primaryAction = change
     ? { id: 'adapt_offer', label: 'Angebot anpassen', modeHint: 'offer' }
     : { id: 'prepare_message', label: 'Nachricht vorbereiten', modeHint: 'message' };
@@ -335,7 +356,27 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
     };
   }
 
-  if (actionIntent.intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK) {
+  if (actionIntent.intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK
+    || actionIntent.intent === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT) {
+    const appointmentAssist = runSellerAppointmentAssist(lead, actionIntent.sellerInput);
+    if (appointmentAssist?.ok && appointmentAssist.results?.[0]) {
+      const card = appointmentAssist.results[0];
+      return {
+        ...base,
+        result: {
+          type: 'appointment_draft',
+          title: card.title,
+          text: card.body,
+          headline: card.headline,
+          appointment: card.appointment,
+          draft: card.draft,
+          messageBody: card.messageBody,
+          choices: card.choices,
+          primaryCta: card.primaryCta || 'Übernehmen',
+          canScheduleNow: card.canScheduleNow,
+        },
+      };
+    }
     return {
       ...base,
       result: {
