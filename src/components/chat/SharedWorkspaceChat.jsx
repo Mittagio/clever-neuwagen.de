@@ -25,13 +25,16 @@ export default function SharedWorkspaceChat({
   plusSheetOpen = false,
   plusActions = [],
   onClosePlus,
+  onAttachFile = null,
   micSlot = null,
   reviewSlot = null,
   feedTopSlot = null,
   emptyHint = 'Noch kein Verlauf.\nSchreiben oder sprechen Sie einfach los.',
 }) {
   const endRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [localPlus, setLocalPlus] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const showPlus = plusSheetOpen || localPlus;
 
   const count = items.length;
@@ -66,8 +69,42 @@ export default function SharedWorkspaceChat({
     setLocalPlus(false);
   }
 
+  function handleFiles(fileList) {
+    const file = fileList?.[0];
+    if (!file || !onAttachFile) return;
+    onAttachFile(file);
+  }
+
+  const resolvedPlusActions = useMemo(() => {
+    const list = [...(plusActions ?? [])];
+    if (onAttachFile && !list.some((a) => a.id === 'pdf_dump')) {
+      list.unshift({
+        id: 'pdf_dump',
+        icon: '📥',
+        label: 'PDF reinwerfen',
+        onClick: () => fileInputRef.current?.click(),
+      });
+    }
+    return list;
+  }, [plusActions, onAttachFile]);
+
   return (
-    <section className={`sw-chat sw-chat--${role}`} aria-label="Gemeinsamer Arbeitsraum">
+    <section
+      className={`sw-chat sw-chat--${role}${dragOver ? ' is-dragover' : ''}`}
+      aria-label="Gemeinsamer Arbeitsraum"
+      onDragOver={(event) => {
+        if (!onAttachFile) return;
+        event.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(event) => {
+        if (!onAttachFile) return;
+        event.preventDefault();
+        setDragOver(false);
+        handleFiles(event.dataTransfer?.files);
+      }}
+    >
       <div className="sw-chat__feed">
         {feedTopSlot ? (
           <div className="sw-chat__feed-top">{feedTopSlot}</div>
@@ -97,10 +134,10 @@ export default function SharedWorkspaceChat({
       <div className="sw-chat__desk">
         {reviewSlot}
 
-        {showPlus && plusActions.length > 0 ? (
+        {showPlus && resolvedPlusActions.length > 0 ? (
           <div className="sw-plus-sheet" role="dialog" aria-label="Aktionen">
             <div className="sw-plus-sheet__grid">
-              {plusActions.map((action) => (
+              {resolvedPlusActions.map((action) => (
                 <button
                   key={action.id}
                   type="button"
@@ -157,6 +194,20 @@ export default function SharedWorkspaceChat({
           </div>
           {sendFeedback ? (
             <p className="sw-composer__feedback" role="status">{sendFeedback}</p>
+          ) : null}
+          {onAttachFile ? (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf,image/*"
+              className="sw-composer__file"
+              aria-hidden
+              tabIndex={-1}
+              onChange={(event) => {
+                handleFiles(event.target.files);
+                event.target.value = '';
+              }}
+            />
           ) : null}
         </form>
       </div>

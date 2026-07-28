@@ -22,7 +22,7 @@ export const PORTAL_NAV_IDS = {
 };
 
 export const PORTAL_NAV_SECTIONS = [
-  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat' },
+  { id: PORTAL_NAV_IDS.MESSAGES, label: 'Postfach' },
   { id: PORTAL_NAV_IDS.OFFERS, label: 'Angebote', badgeKey: 'offerCount' },
   { id: PORTAL_NAV_IDS.DOCUMENTS, label: 'Unterlagen', badgeKey: 'documentsProgress' },
   { id: PORTAL_NAV_IDS.SELF_DISCLOSURE, label: 'Selbstauskunft', badgeKey: 'selfDisclosureDot' },
@@ -503,7 +503,7 @@ export function buildCustomerPortalShellModel(lead = {}, options = {}) {
   const sdOpen = isSelfDisclosureOpenForCustomer(documents.selfDisclosure?.status);
 
   const navSections = [
-    { id: PORTAL_NAV_IDS.MESSAGES, label: 'Chat' },
+    { id: PORTAL_NAV_IDS.MESSAGES, label: 'Postfach' },
     {
       id: PORTAL_NAV_IDS.OFFERS,
       label: offerCount > 0 ? `Angebote ${offerCount}` : 'Angebote',

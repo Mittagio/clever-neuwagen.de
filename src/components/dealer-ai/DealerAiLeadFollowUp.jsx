@@ -1153,12 +1153,15 @@ export default function DealerAiLeadFollowUp({
 
   function handlePortalCardReply() {
     const item = portalCustomerMessageItem;
-    if (!item) {
-      openCleverAntworten('answer_customer_question');
-      return;
-    }
-    setInboxItemIdForAntworten(item.id);
-    openCleverAntworten(item.metadata?.suggestedIntent ?? 'answer_customer_question');
+    const question = String(item?.message ?? item?.title ?? '')
+      .replace(/^[„"]|[“"]$/g, '')
+      .trim();
+    const seed = question
+      ? `Schreib ihm zur Frage „${question.slice(0, 140)}“: `
+      : 'Schreib ihm: ';
+    focusChatComposer({ clever: true, seedDraft: seed });
+    setToast('Antwort im Composer – tippen oder sprechen, dann senden');
+    setTimeout(() => setToast(''), 3200);
   }
 
   function handleSendCustomerSelection() {
@@ -1253,12 +1256,30 @@ export default function DealerAiLeadFollowUp({
 
     if (via === 'copy') {
       const copied = recordCustomerPortalAccessLinkCopied(baseLead);
+      const withCards = appendOfferCardsToThread({
+        lead: {
+          ...baseLead,
+          crm: {
+            ...baseCrm,
+            customerPortalAccess: copied.access,
+          },
+        },
+        items: portfolioShare.portfolio.items ?? [],
+        firstName: String(name || '').split(/\s+/)[0] || null,
+        createdByName: name?.trim() || 'Verkäufer',
+      });
       setPortfolioShare({
         ...portfolioShare,
         portalAccess: copied.access,
       });
       onSave?.(buildSavePayload({
         customerPortalAccess: copied.access,
+        customerMessages: withCards.ok
+          ? withCards.lead.crm?.customerMessages
+          : undefined,
+        customerMessageThreads: withCards.ok
+          ? withCards.lead.crm?.customerMessageThreads
+          : undefined,
       }), {
         historyText: copied.historyText ?? 'Kundenlink kopiert',
         addFollowupHistory: true,
@@ -1303,7 +1324,7 @@ export default function DealerAiLeadFollowUp({
         },
       },
       items: nextPortfolio.items ?? [],
-      introText: `Guten Morgen ${String(name || '').split(/\s+/)[0] || ''},\nich habe Ihnen die Angebote eingestellt.`.replace(/\n+/g, '\n').trim(),
+      firstName: String(name || '').split(/\s+/)[0] || null,
       createdByName: name?.trim() || 'Verkäufer',
     });
 
@@ -2416,11 +2437,11 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     if (handler === 'answer_customer_question') {
-      openSheet(SHEETS.specialQuestionAnswer);
+      handlePortalCardReply();
       return;
     }
     if (handler === 'send_customer_answer') {
-      openCleverAntworten();
+      handlePortalCardReply();
       return;
     }
     if (handler === 'showroom_capture_review') {
@@ -2523,6 +2544,7 @@ export default function DealerAiLeadFollowUp({
         feedTopSlot={feedCleverBanner}
         onOpenOffer={openOffersBoard}
         onPrepareOfferDraft={handleSellerAssistPrepareOffer}
+        onSendPortfolio={handlePrepareCustomerLink}
         onUploadDocument={() => openSheet(SHEETS.unterlagen)}
         onStartSelfDisclosure={() => openSelfDisclosureReview()}
         onPersistLead={(nextLead) => {
@@ -2530,6 +2552,17 @@ export default function DealerAiLeadFollowUp({
           if (nextCrm.followUpAt) setFollowUpAt(nextCrm.followUpAt);
           if (nextCrm.nextStepId) setNextStepId(nextCrm.nextStepId);
           if (nextCrm.followUpSource) setFollowUpSource(nextCrm.followUpSource);
+          if (nextLead.desiredRate != null) setWishDesiredRate(String(nextLead.desiredRate));
+          if (nextLead.wish?.mileagePerYear != null) {
+            setWishMileage(String(nextLead.wish.mileagePerYear));
+          }
+          if (nextLead.wish?.termMonths != null) {
+            setWishTermMonths(String(nextLead.wish.termMonths));
+          }
+          if (nextLead.contact?.phone) setPhone(nextLead.contact.phone);
+          if (nextLead.contact?.name || nextLead.name) {
+            setName(nextLead.contact?.name || nextLead.name);
+          }
           onSave?.({
             ...buildSavePayload({
               customerMessages: nextCrm.customerMessages,
@@ -2541,7 +2574,22 @@ export default function DealerAiLeadFollowUp({
               followUpSource: nextCrm.followUpSource,
               testDriveScheduledAt: nextCrm.testDriveScheduledAt,
               testDriveAppointmentAt: nextCrm.testDriveAppointmentAt,
+              ...(Array.isArray(nextCrm.sellerInsights)
+                ? { sellerInsights: nextCrm.sellerInsights }
+                : {}),
+              ...(nextCrm.tradeIn ? { tradeIn: nextCrm.tradeIn } : {}),
+              ...(nextCrm.needProfile ? { needProfile: nextCrm.needProfile } : {}),
             }),
+            desiredRate: nextLead.desiredRate ?? undefined,
+            wish: nextLead.wish ?? undefined,
+            contact: nextLead.contact
+              ? {
+                name: nextLead.contact.name,
+                phone: nextLead.contact.phone,
+                email: nextLead.contact.email,
+                address: nextLead.contact.address,
+              }
+              : undefined,
             history: nextLead.history,
           }, { silent: true, addFollowupHistory: false });
         }}

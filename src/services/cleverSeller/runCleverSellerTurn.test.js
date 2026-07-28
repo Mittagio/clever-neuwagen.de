@@ -7,6 +7,7 @@ import { createEmptyNeedProfile } from '../consultation/needProfileService.js';
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS, SELLER_INPUT_MODE } from './sellerFactTypes.js';
 import { interpretSellerInput } from './interpretSellerInput.js';
 import { runCleverSellerTurn } from './runCleverSellerTurn.js';
+import { shouldShowUniversalReview } from './buildUniversalReviewModel.js';
 
 const emptyLead = {
   id: 'lead-orch-1',
@@ -112,5 +113,49 @@ const off = runCleverSellerTurn({
 assert.equal(off.ok, false);
 assert.equal(off.preparedActions.length, 0);
 assert.ok(off.extractedFacts.length > 0, 'Interpretation bleibt verfügbar');
+
+// --- 9) Outlook-Betreff-Dump (Hafner / Probefahrt / Seltos·K4 / Octavia) ---
+const outlookDump = `Eduard Hafner Urbach Interesse an PROBEFAHRT KIA SELTOS / KIA K4 SW 0179 7072736 Skoda Octavia Schalter
+Do 30.07.2026
+10:00
+10:30
+Automatik
+Schiebedach
+GT LINE / X LINE 3`;
+
+const turnOutlook = runCleverSellerTurn({ lead: emptyLead, sellerInput: outlookDump });
+assert.equal(turnOutlook.ok, true);
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'customerName' && /Hafner/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'customerPlace' && /Urbach/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'phone' && /0179/.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT && /Probefahrt/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'vehicleInterestMulti' && /Seltos/i.test(f.label) && /K4/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE && /Octavia/i.test(f.label) && /Schalter/i.test(f.label)));
+assert.ok(!turnOutlook.extractedFacts.some((f) => f.factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE && /Seltos/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'transmissionPreference' && /Automatik/i.test(f.label)));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'sunroofRequired'));
+assert.ok(turnOutlook.extractedFacts.some((f) => f.field === 'trimPreference' && /GT-Line/i.test(f.label)));
+assert.ok(turnOutlook.intents.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT));
+assert.ok(turnOutlook.intents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT));
+
+// --- 10) Freitext Dump: Lieferzeit / Farbe ---
+const liefer = interpretSellerInput('Lieferzeit bis 11.2026 wichtig');
+assert.ok(liefer.facts.some((f) => f.field === 'deliveryDeadline' && /11\.2026/i.test(f.label)));
+const farbe = interpretSellerInput('Farbe rot');
+assert.ok(farbe.facts.some((f) => f.field === 'colorPreference' && /rot/i.test(f.label)));
+const rabatt = runCleverSellerTurn({ lead: emptyLead, sellerInput: '21 %' });
+assert.ok(rabatt.extractedFacts.some((f) => f.field === 'discountPercent'));
+
+// --- 11) Explizite Kundennachricht ≠ Offer-Dump ---
+const msgLiefer = interpretSellerInput('Schreib ihm: Lieferzeit ca. 3 Monate');
+assert.equal(msgLiefer.inputMode, SELLER_INPUT_MODE.CUSTOMER_MESSAGE);
+assert.ok(msgLiefer.intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE));
+assert.ok(!msgLiefer.intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+const msgTurn = runCleverSellerTurn({
+  lead: emptyLead,
+  sellerInput: 'Schreib ihm: Lieferzeit ca. 3 Monate',
+});
+assert.equal(msgTurn.inputMode, SELLER_INPUT_MODE.CUSTOMER_MESSAGE);
+assert.equal(shouldShowUniversalReview(msgTurn), false);
 
 console.log('runCleverSellerTurn.test.js: OK');

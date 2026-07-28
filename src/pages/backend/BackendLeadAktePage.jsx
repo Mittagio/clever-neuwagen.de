@@ -44,6 +44,7 @@ import {
   buildCleverConsultationOfferPrefill,
   buildLeadPatchFromCleverPrefill,
 } from '../../services/dealer/cleverConsultationOfferPrefill.js';
+import { magicPreparationToConfigurePatch } from '../../services/dealer/magicOfferService.js';
 import '../DealerAIPage.css';
 import './BackendLeadAktePage.css';
 
@@ -208,15 +209,44 @@ export default function BackendLeadAktePage() {
     });
   }
 
-  function handlePrepareOffer(reservedModel) {
+  function handlePrepareOffer(reservedModel, options = {}) {
+    const magicPrep = options?.magicPreparation ?? null;
+    if (magicPrep && lead) {
+      const patch = magicPreparationToConfigurePatch(magicPrep);
+      const card = enrichOfferEditCardFromLead({
+        id: `magic-${Date.now()}`,
+        model: patch?.model || parsed?.fields?.model,
+        modelKey: patch?.modelKey || parsed?.fields?.modelId,
+        brand: patch?.brand || 'Kia',
+        trimId: patch?.trimId || parsed?.fields?.trimId,
+        trimLabel: patch?.trimLabel || parsed?.fields?.trimLabel,
+        paymentType: patch?.paymentType || parsed?.fields?.paymentType,
+        desiredRate: patch?.desiredRate ?? null,
+        termMonths: patch?.termMonths ?? null,
+        mileagePerYear: patch?.mileagePerYear ?? null,
+      }, lead);
+      openOfferCalculator(navigate, lead, card, {
+        returnPath: buildKundenaktePath(leadId),
+      });
+      showToast('Angebotsskizze übernommen');
+      return;
+    }
+
+    const isLeadArg = Boolean(
+      reservedModel?.crm
+      || reservedModel?.contact
+      || (reservedModel?.id && Array.isArray(reservedModel?.history)),
+    );
+    const model = isLeadArg ? null : reservedModel;
+
     if (!parsed?.ok || !leadId) return;
     let nextParsed = parsed;
-    if (reservedModel) {
+    if (model) {
       nextParsed = enrichWithSuggestions(applyDealerAiFields(parsed, {
-        model: reservedModel.name?.replace(/^Kia\s+/i, '') ?? parsed.fields?.model,
+        model: model.name?.replace(/^Kia\s+/i, '') ?? parsed.fields?.model,
         brand: 'Kia',
-        modelId: reservedModel.modelKey ?? reservedModel.id,
-        trimLabel: reservedModel.trimLabel ?? parsed.fields?.trimLabel,
+        modelId: model.modelKey ?? model.id,
+        trimLabel: model.trimLabel ?? parsed.fields?.trimLabel,
       }));
       setParsed(nextParsed);
     }

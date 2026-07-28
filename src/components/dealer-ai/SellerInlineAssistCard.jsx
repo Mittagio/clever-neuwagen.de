@@ -13,6 +13,7 @@ export default function SellerInlineAssistCard({
   onSendActions = null,
   onChoice = null,
   onPrepareOffer = null,
+  onSendPortfolio = null,
   onAppointmentPrimary = null,
   onDismiss = null,
 }) {
@@ -199,6 +200,16 @@ export default function SellerInlineAssistCard({
                   </button>
                 ) : null}
               </>
+            ) : null}
+
+            {result.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND ? (
+              <button
+                type="button"
+                className="sia-btn sia-btn--primary"
+                onClick={() => onSendPortfolio?.(result)}
+              >
+                {result.primaryCta || 'Kundenlink senden'}
+              </button>
             ) : null}
 
             {result.type === INLINE_RESULT_TYPES.APPOINTMENT_DRAFT ? (

@@ -17,6 +17,21 @@ assert.equal(filterSalesChances(leads, 'new').length, 1);
 assert.ok(matchesNewRequestsView(leads[0]));
 assert.ok(matchesFollowUpView(leads[1], new Set()));
 assert.ok(matchesFollowUpView(leads[2], new Set()));
+
+const overdueFollowUp = {
+  id: 'l-overdue',
+  status: 'inBearbeitung',
+  crm: { followUpAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+};
+const futureFollowUp = {
+  id: 'l-future',
+  status: 'inBearbeitung',
+  crm: { followUpAt: new Date(Date.now() + 5 * 86400000).toISOString() },
+};
+assert.ok(matchesFollowUpView(overdueFollowUp, new Set()));
+assert.ok(!matchesFollowUpView(futureFollowUp, new Set()));
+assert.ok(filterSalesChances([overdueFollowUp, futureFollowUp], 'followup').some((l) => l.id === 'l-overdue'));
+
 const needsOfferLead = {
   id: 'l4',
   status: 'inBearbeitung',

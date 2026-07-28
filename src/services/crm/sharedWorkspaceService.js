@@ -231,25 +231,64 @@ export function sendSellerWorkspacePackage({
 }
 
 /**
- * Angebotskarten nach Textnachricht in denselben Thread legen.
+ * Intro für Kunden-Postfach, wenn Angebote bereitliegen.
+ * @param {{ firstName?: string|null, itemCount?: number }} [options]
+ */
+export function buildOfferReadyIntroText({ firstName = null, itemCount = 1 } = {}) {
+  const name = String(firstName ?? '').trim().split(/\s+/)[0] || '';
+  const headline = itemCount > 1
+    ? 'Angebote sind da! Schau nach.'
+    : 'Angebot ist da! Schau nach.';
+  if (name) return `Hallo ${name},\n\n${headline}`;
+  return headline;
+}
+
+/**
+ * Angebotskarten nach Textnachricht in denselben Thread legen (kundenvisibel).
  */
 export function appendOfferCardsToThread({
   lead,
   threadId = null,
   items = [],
-  introText = '',
+  introText = null,
+  firstName = null,
   createdByName = 'Verkäufer',
+  ctaLabel = 'Schau nach',
 } = {}) {
   if (!lead?.id || !items.length) return { ok: false, lead, messages: [] };
+
+  const existing = getCustomerMessageStore(lead).messages ?? [];
+  const alreadyPosted = new Set(
+    existing
+      .filter((m) => m.kind === MESSAGE_KIND.OFFER_CARD && m.relatedOfferId)
+      .map((m) => m.relatedOfferId),
+  );
+  const freshItems = items.filter((item) => {
+    const id = item.vehicleCardId || item.id;
+    return id && !alreadyPosted.has(id);
+  });
+  if (!freshItems.length) {
+    return { ok: true, lead, messages: [], threadId, skipped: true };
+  }
+
+  const resolvedIntro = introText != null && String(introText).trim()
+    ? String(introText).trim()
+    : buildOfferReadyIntroText({ firstName, itemCount: freshItems.length });
+
+  const introAlreadySent = existing.some((m) => (
+    m.direction === MESSAGE_DIRECTION.OUTBOUND
+    && m.visibleToCustomer !== false
+    && /Angebot(?:e)? sind? da!\s*Schau nach/i.test(String(m.text ?? ''))
+  ));
 
   let working = lead;
   let tid = threadId;
   const messages = [];
 
-  if (introText) {
+  if (resolvedIntro && !introAlreadySent) {
     const sent = sendCleverChannelMessage({
       lead: working,
-      text: introText,
+      text: resolvedIntro,
       threadId: tid,
       createdByName,
     });
@@ -263,7 +302,7 @@ export function appendOfferCardsToThread({
     tid = created.thread?.id;
   }
 
-  for (const item of items) {
+  for (const item of freshItems) {
     const added = addCustomerMessage({
       lead: working,
       threadId: tid,
@@ -285,7 +324,7 @@ export function appendOfferCardsToThread({
         colorLabel: item.colorLabel || null,
         heroImage: item.heroImage || null,
         offerUnitId: item.id,
-        ctaLabel: 'Angebot ansehen',
+        ctaLabel,
       },
     });
     working = added.lead;

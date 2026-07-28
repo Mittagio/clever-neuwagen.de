@@ -24,7 +24,7 @@ export function OfferChatCard({ payload = {}, onOpen }) {
         {payload.rateLine ? <p className="sw-card__rate">{payload.rateLine}</p> : null}
         {payload.subtitle ? <p className="sw-card__meta">{payload.subtitle}</p> : null}
         <button type="button" className="sw-card__link" onClick={() => onOpen?.(payload)}>
-          {payload.ctaLabel || 'Angebot ansehen'}
+          {payload.ctaLabel || 'Schau nach'}
           {' →'}
         </button>
       </div>

@@ -6,6 +6,7 @@
 export const SELLER_ACTION_INTENTS = {
   MESSAGE_CUSTOMER: 'message_customer',
   PREPARE_OFFER: 'prepare_offer',
+  SEND_PORTFOLIO: 'send_portfolio',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
   PROPOSE_APPOINTMENT: 'propose_appointment',
@@ -13,6 +14,14 @@ export const SELLER_ACTION_INTENTS = {
   REQUEST_DOCUMENTS: 'request_documents',
   UNKNOWN: 'unknown',
 };
+
+const PORTFOLIO_PATTERNS = [
+  /\b(kundenlink|kunden\s*link)\b/i,
+  /\b(auswahl|angebote?|portfolio)\b.{0,50}\b(schick|senden|mailen|versend|mail)/i,
+  /\b(schick|senden|mailen|versend).{0,50}\b(auswahl|angebote?|portfolio|kundenlink|link)\b/i,
+  /\blink\s+(schick|senden|mailen)\b/i,
+  /\bper\s+(?:e-?mail|mail)\b.{0,40}\b(angebot|auswahl|link|portfolio)/i,
+];
 
 const OFFER_PATTERNS = [
   /\b(barangebot|kaufangebot|barkauf|bar\s*kauf)\b/i,
@@ -68,6 +77,9 @@ export function detectSellerActionIntent(text = '') {
   const t = String(text ?? '').trim();
   if (!t) return SELLER_ACTION_INTENTS.UNKNOWN;
 
+  if (PORTFOLIO_PATTERNS.some((re) => re.test(t))) {
+    return SELLER_ACTION_INTENTS.SEND_PORTFOLIO;
+  }
   if (OFFER_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.PREPARE_OFFER;
   }
@@ -107,7 +119,7 @@ export function extractSellerFactsFromInput(text = '') {
   const facts = [];
   const sources = [];
 
-  const model = t.match(/\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b(?:\s+(GT-Line|Spirit|Earth|Vision|Air|DriveWise))?/i);
+  const model = t.match(/\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio)\b(?:\s+(SW|GT-Line|Spirit|Earth|Vision|Air|DriveWise))?/i);
   if (model) {
     const label = [model[1], model[2]].filter(Boolean).join(' ');
     facts.push({ key: 'vehicle', label, source: 'seller_input' });
@@ -155,6 +167,7 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
   let intent = detectSellerActionIntent(text);
   if (options.modeHint === 'message') intent = SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
   if (options.modeHint === 'offer') intent = SELLER_ACTION_INTENTS.PREPARE_OFFER;
+  if (options.modeHint === 'portfolio') intent = SELLER_ACTION_INTENTS.SEND_PORTFOLIO;
   if (options.modeHint === 'documents') intent = SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
   if (options.modeHint === 'appointment' || options.modeHint === 'test_drive') {
     intent = SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT;
@@ -173,6 +186,8 @@ export function buildSellerActionIntent(lead = {}, sellerInput = '', options = {
     suggestedAction: {
       type: intent === SELLER_ACTION_INTENTS.PREPARE_OFFER
         ? 'draft_offer'
+        : intent === SELLER_ACTION_INTENTS.SEND_PORTFOLIO
+          ? 'send_portfolio'
         : intent === SELLER_ACTION_INTENTS.ADD_NOTE
           ? 'save_note'
           : intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK

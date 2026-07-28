@@ -10,9 +10,19 @@ import {
   prepareSellerWorkspacePackage,
   sendSellerWorkspacePackage,
   appendOfferCardsToThread,
+  buildOfferReadyIntroText,
   postCleverAssistFeedCard,
 } from './sharedWorkspaceService.js';
 import { initCleverUnterlagenForLead } from '../cleverUnterlagen.js';
+
+assert.equal(
+  buildOfferReadyIntroText({ firstName: 'Eduard', itemCount: 1 }),
+  'Hallo Eduard,\n\nAngebot ist da! Schau nach.',
+);
+assert.equal(
+  buildOfferReadyIntroText({ itemCount: 2 }),
+  'Angebote sind da! Schau nach.',
+);
 
 const lead = {
   id: 'lead-workspace-1',
@@ -70,11 +80,23 @@ assert.ok(sent.messages.some((m) => m.kind === MESSAGE_KIND.SELF_DISCLOSURE_CARD
 const withOffers = appendOfferCardsToThread({
   lead: sent.lead,
   items: lead.crm.customerOfferPortfolio.items,
-  introText: 'Ich habe Ihnen die beiden Angebote eingestellt.',
+  firstName: 'Herr',
   createdByName: 'Max Trinkle',
 });
 assert.ok(withOffers.ok);
+assert.ok(withOffers.messages.some((m) => m.kind === MESSAGE_KIND.TEXT && /Angebot(?:e)? sind? da!/i.test(m.text)));
 assert.ok(withOffers.messages.some((m) => m.kind === MESSAGE_KIND.OFFER_CARD));
+assert.ok(withOffers.messages.every((m) => (
+  m.kind !== MESSAGE_KIND.OFFER_CARD || m.payload?.ctaLabel === 'Schau nach'
+)));
+
+const deduped = appendOfferCardsToThread({
+  lead: withOffers.lead,
+  items: lead.crm.customerOfferPortfolio.items,
+  firstName: 'Herr',
+});
+assert.equal(deduped.skipped, true);
+assert.equal(deduped.messages.length, 0);
 
 const timelineCustomer = buildSharedWorkspaceTimeline(withOffers.lead, {
   role: 'customer',

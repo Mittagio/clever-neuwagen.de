@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   applyJourneyReminder,
+  buildSellerTodayWorklist,
   canApplyJourneyReminder,
   evaluateJourneyReminder,
   evaluateSellerReminders,
@@ -204,5 +205,31 @@ const dashboard = evaluateSellerReminders([dashLead, { ...baseLead, id: 'rem-low
 });
 assert.ok(dashboard.length >= 1);
 assert.ok(dashboard.some((item) => item.dueToday || item.dueTodayBadge === 'fällig heute'));
+
+// CRM Heute-Worklist: heute / überfällig / call_today
+const todayIso = new Date().toISOString();
+const yesterdayIso = new Date(Date.now() - MS_DAY).toISOString();
+const worklist = buildSellerTodayWorklist([
+  { ...baseLead, id: 'wl-today', crm: { followUpAt: todayIso, nextStepLabel: 'Anrufen' } },
+  { ...baseLead, id: 'wl-overdue', contact: { name: 'Überfällig' }, crm: { followUpAt: yesterdayIso } },
+  { ...baseLead, id: 'wl-call', contact: { name: 'Call' }, crm: { nextStepId: 'call_today' } },
+  { ...baseLead, id: 'wl-skip', crm: { followUpAt: new Date(Date.now() + 5 * MS_DAY).toISOString() } },
+  { ...baseLead, id: 'wl-lost', status: 'verloren', crm: { followUpAt: yesterdayIso } },
+]);
+assert.equal(worklist.length, 3);
+assert.equal(worklist[0].leadId, 'wl-overdue');
+assert.ok(worklist[0].overdue);
+assert.ok(worklist.some((i) => i.leadId === 'wl-today' && i.dueToday));
+assert.ok(worklist.some((i) => i.leadId === 'wl-call'));
+
+const overdueDash = evaluateSellerReminders([
+  {
+    ...baseLead,
+    id: 'dash-overdue',
+    contact: { name: 'WV Alt' },
+    crm: { cleverUnterlagen: { items: {} }, followUpAt: yesterdayIso, nextStepLabel: 'Nachfassen' },
+  },
+], { maxItems: 5 });
+assert.ok(overdueDash.some((item) => item.leadId === 'dash-overdue' && item.dueTodayBadge === 'überfällig'));
 
 console.log('journeyReminderService.test.js: ok');

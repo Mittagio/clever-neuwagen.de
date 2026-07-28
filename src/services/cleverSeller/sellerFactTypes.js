@@ -43,6 +43,7 @@ export const SELLER_INPUT_MODE = {
 export const SELLER_TURN_INTENTS = {
   UPDATE_CUSTOMER_CONTEXT: 'update_customer_context',
   PREPARE_OFFER: 'prepare_offer',
+  SEND_PORTFOLIO: 'send_portfolio',
   DRAFT_MESSAGE: 'draft_message',
   REQUEST_DOCUMENTS: 'request_documents',
   PREPARE_TRADE_IN: 'prepare_trade_in',

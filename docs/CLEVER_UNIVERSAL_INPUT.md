@@ -62,19 +62,60 @@ Feature-Flag: `CLEVER_SELLER_ORCHESTRATOR_ENABLED` (Default an; `false` = kein A
 | `resolveMissingInformation.js` | Missing Info |
 | `planSellerActions.js` | Tool-Anbindung |
 | `cleverSellerTurnResultSchema.js` | Result Contract |
+| `buildUniversalReviewModel.js` | „Clever hat verstanden“-UI-Model |
+| `applyAcceptedSellerTurn.js` | Übernehmen → sellerInsights / tradeIn |
+
+## Review-Flow (Priorität 1 – gebaut)
+
+```
+Composer-Eingabe
+  → runCleverSellerTurn()
+  → shouldShowUniversalReview? → SellerUniversalReviewCard
+  → [Übernehmen] → applyAcceptedSellerTurn()
+  → Persistenz über onPersistLead (sellerInsights + tradeIn + wish/contact/needProfile)
+  → Notizzettel zeigt neue Chips
+```
+
+**Kein Auto-Apply.** Verkäufer bestätigt immer die Review-Card.
+
+Nach **Übernehmen** schreibt `applyStructuredFactsToLead` u. a. Wunschrate, km, Laufzeit, Telefon/Name, needProfile (Haushalt/Finanzen/Farbe/Modell).
+
+### Review-Handoff (Schritt 1a)
+
+Nach **Übernehmen**:
+- `prepare_offer` vorbereitet → Angebotsflow öffnen
+- `draft_message` vorbereitet → Nachricht im Composer zum Senden
+- Explizit „Schreib ihm …“ → **kein** Universal-Review (Message-Pfad)
+- Portal „Antworten“ → Composer mit Seed (nicht CleverAntworten-Sheet)
+
+### CRM Heute (Schritt 2)
+
+- `buildSellerTodayWorklist` – fällig / überfällig / call_today
+- `matchesFollowUpView` inkl. überfällige `followUpAt`
+- `getDueToday` mischt Reminder + CRM-Wiedervorlagen
+- Dashboard „Clever empfiehlt heute“ priorisiert überfällige WV
+
+### Composer → Portfolio (Schritt 3)
+
+- Intent `send_portfolio` („Schick ihm die Angebote / Kundenlink“)
+- Inline-CTA → `handlePrepareCustomerLink` (bestehendes Share-Sheet)
+- Magic-Handoff: Composer/Review → `magic-offer-review` in DealerAIPage
 
 ## Was bewusst nicht gebaut wurde
 
 - Keine zweite Customer-Truth / Notizzettel-DB
 - Kein Full-Lead-JSON an OpenAI
-- Kein Auto-Send an Kunden
+- Kein Auto-Send an Kunden (weiterhin Share-Sheet mit Bestätigung)
 - Kein Slash-Command-Zwang
+- Kein großflächiges Auto-Apply (auch nicht nach Review)
+- CleverAntworten noch nicht entfernt
 
-## Nächste Schritte
+## Nächste Schritte (Launch-Loop)
 
-1. Composer UI: Universal-Result-Card (Review → Confirm → Execute)
-2. Attachment-Pipeline an bestehende Document-/SA-Services
-3. Optionale AI-Escalation über `runCleverSellerCopilot` (Safe Context)
-4. Persistenz-Adapter nur für `autoApply`-Updates über Seller Insights / Need Profile
+1. ~~Review-Handoff + Message-Pfad + Portal→Composer~~ ✓
+2. ~~Strukturierte Übernahme (wish/contact/needProfile)~~ ✓
+3. ~~Verkäufer-Alltag härten: WV / Pipeline ohne KI~~ ✓
+4. ~~Composer → Portfolio-Mail + Magic-Handoff~~ ✓
+5. Smoke laut [CLEVER_PILOT_LAUNCH_CHECKLIST.md](./CLEVER_PILOT_LAUNCH_CHECKLIST.md) – 2 Wochen Pilot
 
 Siehe auch: [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md), [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md)

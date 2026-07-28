@@ -25,6 +25,7 @@ export const INLINE_RESULT_TYPES = {
   CONFLICT_WARNING: 'conflict_warning',
   MISSING_FACT: 'missing_fact',
   OFFER_DRAFT: 'offer_draft',
+  PORTFOLIO_SEND: 'portfolio_send',
   APPOINTMENT_DRAFT: 'appointment_draft',
 };
 
@@ -310,6 +311,17 @@ export function runSellerInlineAssist(lead = {}, draftText = '', options = {}) {
   const results = [];
   const topics = context.topics;
   const modelKey = context.modelKey;
+
+  if (intent === SELLER_ACTION_INTENTS.SEND_PORTFOLIO) {
+    results.push({
+      type: INLINE_RESULT_TYPES.PORTFOLIO_SEND,
+      title: '✨ Kundenlink senden',
+      body: 'Versandbereite Angebote als Kundenlink per Mail vorbereiten.',
+      primaryCta: 'Kundenlink senden',
+      secondaryCta: null,
+    });
+    return { ok: true, mode: 'act', results, context };
+  }
 
   if (intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS || options.forceMode === 'act') {
     const pkg = prepareSellerWorkspacePackage(lead, text);

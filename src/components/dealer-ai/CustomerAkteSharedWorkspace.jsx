@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import SellerInlineAssistCard from './SellerInlineAssistCard.jsx';
+import SellerUniversalReviewCard from './SellerUniversalReviewCard.jsx';
 import {
   buildSharedWorkspaceTimeline,
   postCleverAssistFeedCard,
@@ -28,6 +29,14 @@ import {
   runSellerAppointmentAssist,
 } from '../../services/dealer/sellerAppointmentAssistFlow.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
+import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
+import {
+  buildUniversalReviewModel,
+  shouldShowUniversalReview,
+} from '../../services/cleverSeller/buildUniversalReviewModel.js';
+import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
+import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
+import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 
 const DEBOUNCE_MS = 380;
 
@@ -68,6 +77,7 @@ export default function CustomerAkteSharedWorkspace({
   compactEmpty = false,
   onOpenOffer = null,
   onPrepareOfferDraft = null,
+  onSendPortfolio = null,
   onUploadDocument = null,
   onStartSelfDisclosure = null,
   seedDraft = '',
@@ -78,6 +88,7 @@ export default function CustomerAkteSharedWorkspace({
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
+  const [universalTurn, setUniversalTurn] = useState(null);
   const [offerPrep, setOfferPrep] = useState(null);
   const [appointmentDraft, setAppointmentDraft] = useState(null);
   const debounceRef = useRef(null);
@@ -106,7 +117,7 @@ export default function CustomerAkteSharedWorkspace({
   const displayName = formatCustomerDisplayName(customerName) || 'dem Kunden';
 
   const placeholder = cleverMode
-    ? `Clever fragen oder Nachricht an ${displayName} …`
+    ? `Alles reinwerfen – tippen, sprechen oder PDF …`
     : `Nachricht an ${displayName} …`;
 
   const confirmAssist = useMemo(() => {
@@ -137,6 +148,7 @@ export default function CustomerAkteSharedWorkspace({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const text = String(draft ?? '').trim();
     if (text.length < 3) {
+      setUniversalTurn(null);
       if (confirmAssist?.ok) {
         setAssist(confirmAssist);
       } else {
@@ -145,6 +157,20 @@ export default function CustomerAkteSharedWorkspace({
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
+      const turn = runCleverSellerTurn({ lead, sellerInput: text });
+      if (shouldShowUniversalReview(turn)) {
+        setUniversalTurn(turn);
+        setAssist(null);
+        return;
+      }
+      setUniversalTurn(null);
+
+      const portfolioAssist = runSellerInlineAssist(lead, text);
+      if (portfolioAssist?.ok && portfolioAssist.results?.some((r) => r.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND)) {
+        setAssist(portfolioAssist);
+        return;
+      }
+
       const offer = runSellerOfferAssist(lead, text, {
         previousPreparation: offerPrepRef.current,
       });
@@ -162,7 +188,7 @@ export default function CustomerAkteSharedWorkspace({
         setAssist(appointment);
         return;
       }
-      const result = runSellerInlineAssist(lead, text);
+      const result = portfolioAssist?.ok ? portfolioAssist : runSellerInlineAssist(lead, text);
       setAssist(result.ok ? result : null);
     }, DEBOUNCE_MS);
     return () => {
@@ -318,8 +344,28 @@ export default function CustomerAkteSharedWorkspace({
     onOpenOffer?.();
   }
 
+  function handleSendPortfolio(result) {
+    persistCleverFeedCard(result, {
+      ctaAction: 'send_portfolio',
+      historyText: 'Kundenlink aus Composer vorbereitet',
+    });
+    setAssist(null);
+    setDraft('');
+    if (onSendPortfolio) {
+      onSendPortfolio();
+      setFeedback('Kundenlink wird vorbereitet …');
+      setTimeout(() => setFeedback(''), 2500);
+      return;
+    }
+    setFeedback('Kundenlink-Versand nicht verfügbar');
+  }
+
   function handleCleverFeedCta(payload = {}) {
     const action = payload.ctaAction;
+    if (action === 'send_portfolio') {
+      handleSendPortfolio({});
+      return;
+    }
     if (action === 'prepare_offer' || action === 'complete_offer' || action === 'open_offer') {
       if (onPrepareOfferDraft) {
         onPrepareOfferDraft({ magic: null });
@@ -456,17 +502,149 @@ export default function CustomerAkteSharedWorkspace({
 
   function handleDismissAssist() {
     setAssist(null);
+    setUniversalTurn(null);
     setOfferPrep(null);
     setAppointmentDraft(null);
   }
 
+  function handleAcceptUniversalReview() {
+    if (!universalTurn || sending) return;
+    setSending(true);
+    try {
+      const preparedActions = universalTurn.preparedActions ?? [];
+      const offerAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
+      ));
+      const messageAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
+      ));
+
+      const applied = applyAcceptedSellerTurn(lead, universalTurn, {
+        postFeedCard: true,
+      });
+      if (!applied.ok) {
+        setFeedback('Konnte nicht übernommen werden.');
+        return;
+      }
+      persistMessages(applied.lead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+
+      const offerResult = offerAction?.legacy?.results?.[0]
+        || offerAction?.legacy
+        || null;
+      const messageLegacy = messageAction?.legacy ?? null;
+      const messageResult = messageLegacy?.results?.find(
+        (r) => r.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT,
+      ) || messageLegacy?.results?.[0] || null;
+
+      setUniversalTurn(null);
+      setAppointmentDraft(null);
+
+      if (offerResult && (offerResult.magic?.canCreateOffer || offerAction?.payload?.canCreateOffer)) {
+        setDraft('');
+        setAssist(null);
+        setOfferPrep(null);
+        setFeedback(
+          applied.acceptedLabels.length === 1
+            ? '1 Angabe übernommen – Angebot wird vorbereitet'
+            : `${applied.acceptedLabels.length} Angaben übernommen – Angebot wird vorbereitet`,
+        );
+        setTimeout(() => setFeedback(''), 2800);
+        handlePrepareOffer(offerResult);
+        return;
+      }
+
+      if (messageResult) {
+        const body = messageResult.draft?.body || messageResult.body || '';
+        if (body) setDraft(body);
+        setAssist(messageLegacy?.ok ? messageLegacy : {
+          ok: true,
+          results: [messageResult],
+        });
+        setOfferPrep(null);
+        setFeedback('Angaben übernommen – Nachricht bereit zum Senden');
+        setTimeout(() => setFeedback(''), 2800);
+        return;
+      }
+
+      setDraft('');
+      setAssist(null);
+      setOfferPrep(null);
+      setFeedback(
+        applied.acceptedLabels.length === 1
+          ? '1 Angabe übernommen'
+          : `${applied.acceptedLabels.length} Angaben übernommen`,
+      );
+      setTimeout(() => setFeedback(''), 2800);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleAttachFile(file) {
+    if (!file || sending) return;
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      setFeedback('Bitte PDF reinwerfen (z. B. Konfigurator).');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    setSending(true);
+    setFeedback('PDF wird gelesen …');
+    try {
+      const extracted = await extractMagicOfferPdf(file);
+      const seed = [
+        extracted.fileName ? `PDF: ${extracted.fileName}` : null,
+        extracted.ok ? extracted.text.slice(0, 4000) : null,
+      ].filter(Boolean).join('\n\n');
+
+      if (!extracted.ok || !extracted.text) {
+        setDraft((prev) => (prev
+          ? `${prev}\nKonfigurator-PDF: ${extracted.fileName || file.name}`
+          : `Konfigurator-PDF: ${extracted.fileName || file.name}`));
+        setFeedback('PDF übernommen – bitte kurz beschreiben, was drinsteht.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      setDraft(seed);
+      const turn = runCleverSellerTurn({
+        lead,
+        sellerInput: seed,
+        attachments: [{
+          kind: 'configurator_pdf',
+          mimeType: file.type || 'application/pdf',
+          fileName: extracted.fileName,
+        }],
+      });
+      if (shouldShowUniversalReview(turn)) {
+        setUniversalTurn(turn);
+        setAssist(null);
+        setFeedback('PDF gelesen – bitte Angaben prüfen');
+      } else {
+        setUniversalTurn(null);
+        setFeedback('PDF gelesen – ergänze ggf. noch Details');
+      }
+      setTimeout(() => setFeedback(''), 3200);
+    } catch (err) {
+      setFeedback(err?.message || 'PDF konnte nicht gelesen werden');
+      setTimeout(() => setFeedback(''), 3200);
+    } finally {
+      setSending(false);
+    }
+  }
+
   const emptyHint = compactEmpty
-    ? 'Noch kein Verlauf – tippen oder sprechen.'
-    : 'Noch kein Verlauf. Tippen oder sprechen – Clever nutzt denselben Kundenkontext wie den Notizzettel.';
+    ? 'Noch kein Verlauf – tippen, sprechen oder PDF reinwerfen.'
+    : 'Noch kein Verlauf. Tippen, sprechen oder PDF reinwerfen – Clever nutzt denselben Kundenkontext wie den Notizzettel.';
 
   const assistResults = assist?.results?.length
     ? assist.results
     : (confirmAssist?.results ?? []);
+
+  const reviewModel = useMemo(
+    () => (universalTurn ? buildUniversalReviewModel(universalTurn) : null),
+    [universalTurn],
+  );
 
   return (
     <section
@@ -486,20 +664,30 @@ export default function CustomerAkteSharedWorkspace({
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
         onCleverAction={handleCleverFeedCta}
+        onAttachFile={handleAttachFile}
         feedTopSlot={feedTopSlot}
         reviewSlot={(
-          <SellerInlineAssistCard
-            results={assistResults}
-            onInsertFact={handleInsertFact}
-            onUseVerified={handleUseVerified}
-            onPrepareReply={handlePrepareReply}
-            onSendDraft={handleSendDraft}
-            onSendActions={handleSendActions}
-            onChoice={handleChoice}
-            onPrepareOffer={handlePrepareOffer}
-            onAppointmentPrimary={handleAppointmentPrimary}
-            onDismiss={handleDismissAssist}
-          />
+          reviewModel ? (
+            <SellerUniversalReviewCard
+              model={reviewModel}
+              onAccept={handleAcceptUniversalReview}
+              onDismiss={handleDismissAssist}
+            />
+          ) : (
+            <SellerInlineAssistCard
+              results={assistResults}
+              onInsertFact={handleInsertFact}
+              onUseVerified={handleUseVerified}
+              onPrepareReply={handlePrepareReply}
+              onSendDraft={handleSendDraft}
+              onSendActions={handleSendActions}
+              onChoice={handleChoice}
+              onPrepareOffer={handlePrepareOffer}
+              onSendPortfolio={handleSendPortfolio}
+              onAppointmentPrimary={handleAppointmentPrimary}
+              onDismiss={handleDismissAssist}
+            />
+          )
         )}
         micSlot={(
           <DealerAiInlineMic
@@ -518,7 +706,7 @@ export default function CustomerAkteSharedWorkspace({
           {
             id: 'file',
             icon: '📄',
-            label: 'Dokument senden',
+            label: 'Unterlage ablegen',
             onClick: () => onUploadDocument?.(),
           },
           {

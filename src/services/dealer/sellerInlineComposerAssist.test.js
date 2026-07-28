@@ -37,6 +37,20 @@ const lead = {
 };
 
 assert.equal(detectSellerActionIntent('EV4 Anhängelast'), SELLER_ACTION_INTENTS.LOOKUP_FACT);
+assert.equal(
+  detectSellerActionIntent('Schick ihm die Angebote per Mail'),
+  SELLER_ACTION_INTENTS.SEND_PORTFOLIO,
+);
+assert.equal(
+  detectSellerActionIntent('Kundenlink senden'),
+  SELLER_ACTION_INTENTS.SEND_PORTFOLIO,
+);
+
+const portfolio = runSellerInlineAssist(lead, 'Schick ihm die Auswahl per Mail');
+assert.ok(portfolio.ok);
+const portfolioCard = portfolio.results.find((r) => r.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND);
+assert.ok(portfolioCard, 'Portfolio-Send-Card');
+assert.match(portfolioCard.primaryCta || '', /Kundenlink/i);
 
 const tow = runSellerInlineAssist(lead, 'EV4 Anhängelast');
 assert.ok(tow.ok);

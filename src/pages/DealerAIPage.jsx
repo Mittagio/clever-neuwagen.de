@@ -1423,25 +1423,41 @@ export default function DealerAIPage() {
     openProposalConditionsFlow(enrichOfferEditCardFromLead(prefill.card, lead));
   }
 
-  function handlePrepareOffer(reservedModel) {
+  function handlePrepareOffer(reservedModel, options = {}) {
+    // Composer / Review-Handoff: (lead, { magicPreparation })
+    const magicPrep = options?.magicPreparation ?? null;
+    if (magicPrep) {
+      setMagicOfferPreparation(magicPrep);
+      setMagicOfferSeedText(magicPrep?.intent?.rawText || magicPrep?.seedText || '');
+      setPhase('magic-offer-review');
+      return;
+    }
+
+    const isLeadArg = Boolean(
+      reservedModel?.crm
+      || reservedModel?.contact
+      || (reservedModel?.id && Array.isArray(reservedModel?.history)),
+    );
+    const model = isLeadArg ? null : reservedModel;
+
     if (!parsed?.ok) return;
-    if (reservedModel) {
-      const full = parsed.suggestedModels?.find((m) => m.id === reservedModel.id);
+    if (model) {
+      const full = parsed.suggestedModels?.find((m) => m.id === model.id);
       const vehicle = full?.primaryMatch?.vehicle;
       if (vehicle) {
         setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, {
-          model: vehicle.model ?? reservedModel.name?.replace(/^Kia\s+/i, ''),
+          model: vehicle.model ?? model.name?.replace(/^Kia\s+/i, ''),
           brand: vehicle.brand ?? 'Kia',
-          modelId: reservedModel.modelKey ?? reservedModel.id,
-          trimLabel: vehicle.trim ?? reservedModel.trimLabel ?? prev?.fields?.trimLabel,
+          modelId: model.modelKey ?? model.id,
+          trimLabel: vehicle.trim ?? model.trimLabel ?? prev?.fields?.trimLabel,
           trimId: vehicle.trimId ?? prev?.fields?.trimId,
         })));
       } else {
         setParsed((prev) => enrichWithSuggestions(applyDealerAiFields(prev, {
-          model: reservedModel.name?.replace(/^Kia\s+/i, '') ?? prev?.fields?.model,
+          model: model.name?.replace(/^Kia\s+/i, '') ?? prev?.fields?.model,
           brand: 'Kia',
-          modelId: reservedModel.modelKey ?? reservedModel.id,
-          trimLabel: reservedModel.trimLabel ?? prev?.fields?.trimLabel,
+          modelId: model.modelKey ?? model.id,
+          trimLabel: model.trimLabel ?? prev?.fields?.trimLabel,
         })));
       }
     }

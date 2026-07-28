@@ -5682,7 +5682,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  overflow: hidden !important;
   background: var(--color-surface-muted, #f7f8fa);
 }
 
@@ -5912,10 +5912,26 @@
 .cust-akte-shell__pane--clever .cust-akte-workspace {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
+.cust-akte-shell__pane--clever .cust-akte-workspace--chat-only,
+.cust-akte-shell__pane--clever .cust-akte-workspace--feed {
+  min-height: 0;
+  height: 100%;
+}
+
+.cust-akte-shell__pane--clever .sw-chat {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Composer bleibt unten ? auch ohne Verlauf */
 .cust-akte-workspace--compact-empty .sw-chat__feed:has(.sw-chat__empty) {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 

@@ -63,6 +63,19 @@ export function planSellerActions({
     });
   }
 
+  if (intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)) {
+    actions.push({
+      id: 'send_portfolio',
+      type: SELLER_TURN_INTENTS.SEND_PORTFOLIO,
+      label: 'Kundenlink senden',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      payload: {
+        cta: 'Kundenlink senden',
+      },
+    });
+  }
+
   if (intentTypes.has(SELLER_TURN_INTENTS.REQUEST_DOCUMENTS)) {
     const pkg = prepareSellerWorkspacePackage(lead, sellerInput);
     actions.push({

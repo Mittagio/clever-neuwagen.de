@@ -209,33 +209,44 @@ export function evaluateSellerReminders(leads = [], options = {}) {
   const items = [];
 
   for (const lead of leads) {
-    if (!lead?.id || lead.status === 'verloren') continue;
+    if (!lead?.id || lead.status === 'verloren' || lead.status === 'ausgeliefert') continue;
 
     const journey = evaluateJourney(lead, options);
     const reminder = evaluateJourneyReminder(lead, { ...options, journey });
     const view = journey?.view;
-    if (!view && !reminder?.active) continue;
+    const followUpAt = lead?.crm?.followUpAt ?? null;
+    const followUpToday = followUpAt ? isToday(followUpAt) : false;
+    const followUpOverdue = followUpAt ? isDue(followUpAt) && !followUpToday : false;
+    const callToday = lead?.crm?.nextStepId === 'call_today' || lead?.crm?.nextStepId === 'reminder';
+
+    if (!view && !reminder?.active && !followUpToday && !followUpOverdue && !callToday) continue;
 
     const closureChance = journey?.scores?.abschlusschance ?? view?.closureChance ?? 0;
     const dueToday = reminder?.dueToday
       || (reminder?.dueNow && isToday(reminder?.dueAt))
-      || isToday(lead?.crm?.followUpAt);
+      || followUpToday
+      || callToday;
+    const overdue = followUpOverdue;
 
     items.push({
       leadId: lead.id,
-      customerName: lead.contact?.name ?? 'Kunde',
-      headline: view?.headline ?? reminder?.nextStepLabel ?? 'Wiedervorlage',
+      customerName: lead.contact?.name || lead.name || 'Kunde',
+      headline: view?.headline
+        ?? reminder?.nextStepLabel
+        ?? lead?.crm?.nextStepLabel
+        ?? (overdue ? 'Überfällige Wiedervorlage' : 'Wiedervorlage'),
       subline: view?.subline ?? reminder?.reason ?? '',
       closureChance,
       stars: view?.stars ?? starsFromClosure(closureChance),
       starLabel: view?.starLabel ?? starLabel(starsFromClosure(closureChance)),
       actionId: view?.actionId,
-      whySummary: view?.whySummary ?? reminder?.reason ?? '',
+      whySummary: view?.whySummary ?? reminder?.reason ?? lead?.crm?.journeyReminderReason ?? '',
       dueToday,
-      dueTodayBadge: dueToday ? 'fällig heute' : null,
+      overdue,
+      dueTodayBadge: overdue ? 'überfällig' : (dueToday ? 'fällig heute' : null),
       reminder,
       journey,
-      sortBoost: dueToday ? 1000 : 0,
+      sortBoost: overdue ? 1500 : (dueToday ? 1000 : 0),
     });
   }
 
@@ -247,6 +258,47 @@ export function evaluateSellerReminders(leads = [], options = {}) {
       return (a.reminder?.priority ?? 99) - (b.reminder?.priority ?? 99);
     })
     .slice(0, maxItems);
+}
+
+/**
+ * CRM „Heute“ – fällige / überfällige Wiedervorlagen + Call-today (ohne KI).
+ * @param {object[]} leads
+ * @param {{ now?: Date }} [options]
+ */
+export function buildSellerTodayWorklist(leads = [], options = {}) {
+  const now = options.now ?? new Date();
+  const items = [];
+
+  for (const lead of leads) {
+    if (!lead?.id) continue;
+    if (lead.status === 'verloren' || lead.status === 'ausgeliefert') continue;
+
+    const crm = lead.crm ?? {};
+    const followUpAt = crm.followUpAt ?? null;
+    const dueToday = followUpAt ? isToday(followUpAt) : false;
+    const overdue = followUpAt ? isDue(followUpAt) && !dueToday : false;
+    const callToday = crm.nextStepId === 'call_today' || crm.nextStepId === 'reminder';
+
+    if (!dueToday && !overdue && !callToday) continue;
+
+    items.push({
+      leadId: lead.id,
+      customerName: lead.contact?.name || lead.name || 'Kunde',
+      followUpAt,
+      nextStepId: crm.nextStepId ?? null,
+      nextStepLabel: crm.nextStepLabel || (callToday ? 'Heute anrufen' : 'Nachfassen'),
+      dueLabel: followUpAt ? formatReminderDueLabel(followUpAt) : 'heute',
+      overdue,
+      dueToday,
+      reason: crm.journeyReminderReason || crm.nextStepLabel || null,
+      sortKey: overdue ? 0 : (dueToday ? 1 : 2),
+    });
+  }
+
+  return items.sort((a, b) => {
+    if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+    return String(a.followUpAt || '').localeCompare(String(b.followUpAt || ''));
+  });
 }
 
 export {

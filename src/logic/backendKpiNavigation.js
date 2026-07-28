@@ -141,7 +141,13 @@ export function matchesFollowUpView(lead = {}, dueTodayLeadIds = new Set()) {
   const crm = lead.crm ?? {};
   if (crm.pipelineStatusId === 'nachfassen') return true;
   if (crm.nextStepId === 'call_today' || crm.nextStepId === 'reminder') return true;
-  if (crm.followUpAt && isToday(crm.followUpAt)) return true;
+  if (crm.followUpAt) {
+    const due = new Date(crm.followUpAt);
+    if (!Number.isNaN(due.getTime())) {
+      // Heute inkl. überfällig (Zeitpunkt bereits erreicht)
+      if (Date.now() >= due.getTime() || isToday(crm.followUpAt)) return true;
+    }
+  }
 
   if (lead.status === 'angebotVersendet' || lead.status === 'rueckfrageOffen') {
     return true;

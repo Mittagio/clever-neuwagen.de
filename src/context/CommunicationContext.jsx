@@ -15,6 +15,7 @@ import {
   sendEmailToLead,
   sendWhatsAppToLead,
 } from '../logic/communicationService.js';
+import { buildSellerTodayWorklist } from '../services/journey/journeyReminderService.js';
 import { linkOfferToLead } from '../logic/offerLeadService.js';
 import { markOfferSent } from '../logic/offerService.js';
 import { calculateRateForLead as computeLeadPricing } from '../logic/salesChancePricing.js';
@@ -457,7 +458,20 @@ export function CommunicationProvider({ children }) {
       },
 
       getDueToday() {
-        return reminders.filter((r) => isReminderDueToday(r));
+        const fromReminders = reminders.filter((r) => isReminderDueToday(r));
+        const seenLeadIds = new Set(fromReminders.map((r) => r.leadId).filter(Boolean));
+        const fromCrm = buildSellerTodayWorklist(leadsApi.leads)
+          .filter((item) => !seenLeadIds.has(item.leadId))
+          .map((item) => ({
+            id: `crm-wv-${item.leadId}`,
+            leadId: item.leadId,
+            label: `${item.customerName} – ${item.nextStepLabel}${item.overdue ? ' (überfällig)' : ''}`,
+            dueAt: item.followUpAt || new Date().toISOString(),
+            done: false,
+            source: 'crm_follow_up',
+            overdue: item.overdue,
+          }));
+        return [...fromReminders, ...fromCrm];
       },
 
       getKpis() {
