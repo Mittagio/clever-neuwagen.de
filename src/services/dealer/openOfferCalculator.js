@@ -138,10 +138,18 @@ export function openBoardOfferEntry(card, lead, { onOpenProposal, onOpenCalculat
 
 /**
  * Zentraler Einstieg: immer zum Angebotskalkulator navigieren.
+ * Optional: magicPreparation → Verkaufsassistent öffnet magic-offer-review.
  */
 export function openOfferCalculator(navigate, lead, card = null, options = {}) {
   const state = buildOfferCalculatorNavigateState(lead, card, options);
   if (!state || !navigate) return false;
+  if (options.magicPreparation) {
+    state.magicOfferPreparation = options.magicPreparation;
+    state.magicOfferSeedText = options.magicSeedText
+      || options.magicPreparation?.intent?.rawText
+      || options.magicPreparation?.seedText
+      || '';
+  }
   navigate('/verkaufsassistent', { state });
   return true;
 }

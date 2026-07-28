@@ -12,6 +12,11 @@ import {
   MESSAGE_KIND,
   sendCleverChannelMessage,
 } from '../../services/crm/customerMessageService.js';
+import { runCleverSellerTurn, shouldEscalateSellerInterpretation } from '../../services/cleverSeller/runCleverSellerTurn.js';
+import {
+  isCleverSellerOpenAiInterpretClientEnabled,
+  requestCleverSellerTurn,
+} from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
   INLINE_RESULT_TYPES,
   insertInlineFactIntoDraft,
@@ -29,7 +34,6 @@ import {
   runSellerAppointmentAssist,
 } from '../../services/dealer/sellerAppointmentAssistFlow.js';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
-import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
   buildUniversalReviewModel,
   shouldShowUniversalReview,
@@ -78,11 +82,14 @@ export default function CustomerAkteSharedWorkspace({
   onOpenOffer = null,
   onPrepareOfferDraft = null,
   onSendPortfolio = null,
+  onMessageSent = null,
   onUploadDocument = null,
   onStartSelfDisclosure = null,
   seedDraft = '',
   seedDraftToken = 0,
   feedTopSlot = null,
+  /** Thread/Frage-Kontext aus Inbox-Deep-Link oder Portal-Antwort */
+  replyContext = null,
 }) {
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -92,6 +99,7 @@ export default function CustomerAkteSharedWorkspace({
   const [offerPrep, setOfferPrep] = useState(null);
   const [appointmentDraft, setAppointmentDraft] = useState(null);
   const debounceRef = useRef(null);
+  const assistRequestIdRef = useRef(0);
   const composerInputRef = useRef(null);
   const offerPrepRef = useRef(null);
   const appointmentDraftRef = useRef(null);
@@ -148,6 +156,7 @@ export default function CustomerAkteSharedWorkspace({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const text = String(draft ?? '').trim();
     if (text.length < 3) {
+      assistRequestIdRef.current += 1;
       setUniversalTurn(null);
       if (confirmAssist?.ok) {
         setAssist(confirmAssist);
@@ -157,42 +166,89 @@ export default function CustomerAkteSharedWorkspace({
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
-      const turn = runCleverSellerTurn({ lead, sellerInput: text });
-      if (shouldShowUniversalReview(turn)) {
-        setUniversalTurn(turn);
-        setAssist(null);
-        return;
-      }
-      setUniversalTurn(null);
+      const requestId = ++assistRequestIdRef.current;
+      const isStale = () => requestId !== assistRequestIdRef.current;
 
-      const portfolioAssist = runSellerInlineAssist(lead, text);
-      if (portfolioAssist?.ok && portfolioAssist.results?.some((r) => r.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND)) {
-        setAssist(portfolioAssist);
+      const applyAssistFromTurn = (turn) => {
+        if (isStale()) return;
+        if (shouldShowUniversalReview(turn)) {
+          setUniversalTurn(turn);
+          setAssist(null);
+          return;
+        }
+        setUniversalTurn(null);
+
+        const portfolioAssist = runSellerInlineAssist(lead, text);
+        if (portfolioAssist?.ok && portfolioAssist.results?.some((r) => r.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND)) {
+          setAssist(portfolioAssist);
+          return;
+        }
+
+        const offer = runSellerOfferAssist(lead, text, {
+          previousPreparation: offerPrepRef.current,
+        });
+        if (offer?.ok) {
+          setOfferPrep(offer.previousPreparation ?? null);
+          setAssist(offer);
+          return;
+        }
+        const appointment = runSellerAppointmentAssist(lead, text, {
+          previousAppointment: appointmentDraftRef.current
+            || getOpenCleverAppointment(lead),
+        });
+        if (appointment?.ok) {
+          setAppointmentDraft(appointment.appointment ?? null);
+          setAssist(appointment);
+          return;
+        }
+        const result = portfolioAssist?.ok ? portfolioAssist : runSellerInlineAssist(lead, text);
+        setAssist(result.ok ? result : null);
+      };
+
+      const localTurn = runCleverSellerTurn({ lead, sellerInput: text });
+      const gate = shouldEscalateSellerInterpretation({
+        ...localTurn,
+        sellerInput: text,
+        facts: localTurn.extractedFacts,
+        normalized: localTurn.interpretedInput?.normalized,
+      });
+
+      if (
+        isCleverSellerOpenAiInterpretClientEnabled()
+        && gate.shouldEscalate
+        && lead?.id
+      ) {
+        setFeedback('Clever prüft …');
+        requestCleverSellerTurn({
+          leadId: lead.id,
+          sellerInput: text,
+          needProfile: lead?.crm?.needProfile ?? null,
+          sellerInsights: (lead?.crm?.sellerInsights ?? []).slice(-8).map((i) => ({
+            text: String(i.text ?? '').slice(0, 400),
+            labels: i.understoodLabels ?? i.labels ?? [],
+            context: i.context ?? null,
+          })),
+        }).then((remote) => {
+          if (isStale()) return;
+          if (remote?.extractedFacts) {
+            applyAssistFromTurn(remote);
+          } else {
+            applyAssistFromTurn(localTurn);
+          }
+          setFeedback('');
+        }).catch(() => {
+          if (isStale()) return;
+          applyAssistFromTurn(localTurn);
+          setFeedback('');
+        });
         return;
       }
 
-      const offer = runSellerOfferAssist(lead, text, {
-        previousPreparation: offerPrepRef.current,
-      });
-      if (offer?.ok) {
-        setOfferPrep(offer.previousPreparation ?? null);
-        setAssist(offer);
-        return;
-      }
-      const appointment = runSellerAppointmentAssist(lead, text, {
-        previousAppointment: appointmentDraftRef.current
-          || getOpenCleverAppointment(lead),
-      });
-      if (appointment?.ok) {
-        setAppointmentDraft(appointment.appointment ?? null);
-        setAssist(appointment);
-        return;
-      }
-      const result = portfolioAssist?.ok ? portfolioAssist : runSellerInlineAssist(lead, text);
-      setAssist(result.ok ? result : null);
+      applyAssistFromTurn(localTurn);
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      assistRequestIdRef.current += 1;
     };
   }, [draft, lead, confirmAssist]);
 
@@ -209,32 +265,55 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function persistCleverFeedCard(result, options = {}) {
+    const baseLead = options.lead ?? lead;
     const text = options.text || buildCleverFeedTextFromResult(result);
-    if (!text || !lead?.id) return lead;
+    if (!text || !baseLead?.id) return baseLead;
     const posted = postCleverAssistFeedCard({
-      lead,
+      lead: baseLead,
       title: result?.title || '✨ Clever',
       text,
       ctaLabel: options.ctaLabel ?? result?.primaryCta ?? null,
       ctaAction: options.ctaAction ?? resolveCleverFeedCtaAction(result),
       visibleToCustomer: options.visibleToCustomer === true,
     });
-    if (!posted.message) return lead;
+    if (!posted.message) return baseLead;
     persistMessages(posted.lead, options.historyText || 'Clever im Kundenverlauf');
     return posted.lead;
+  }
+
+  function resolveSendFailureFeedback(error) {
+    if (error === 'thread_not_found') {
+      return 'Thread nicht gefunden – bitte aus Clever Eingang erneut öffnen';
+    }
+    if (error === 'sensitive_or_empty') {
+      return 'Nachricht enthält sensible Daten und kann nicht gesendet werden.';
+    }
+    return 'Nachricht konnte nicht gesendet werden.';
+  }
+
+  function resolveReplyContext() {
+    return {
+      threadId: replyContext?.threadId ?? null,
+      relatedOfferId: replyContext?.relatedOfferId ?? null,
+      relatedQuestionId: replyContext?.relatedQuestionId ?? null,
+    };
   }
 
   function handleSend(text) {
     if (!text || sending) return;
     setSending(true);
     try {
+      const ctx = resolveReplyContext();
       const result = sendCleverChannelMessage({
         lead,
         text,
+        threadId: ctx.threadId,
+        relatedOfferId: ctx.relatedOfferId,
+        relatedQuestionId: ctx.relatedQuestionId,
         createdByName: 'Verkäufer',
       });
       if (!result.message) {
-        setFeedback('Nachricht konnte nicht gesendet werden.');
+        setFeedback(resolveSendFailureFeedback(result.error));
         return;
       }
       persistMessages(result.lead, 'Nachricht im gemeinsamen Arbeitsraum gesendet');
@@ -242,6 +321,7 @@ export default function CustomerAkteSharedWorkspace({
       setAssist(null);
       setOfferPrep(null);
       setAppointmentDraft(null);
+      onMessageSent?.();
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -301,14 +381,20 @@ export default function CustomerAkteSharedWorkspace({
   function handleSendActions(result) {
     setSending(true);
     try {
+      const ctx = resolveReplyContext();
       const sent = sendSellerWorkspacePackage({
         lead,
         body: result.draft?.body || result.body,
         actions: result.actions || [],
         createdByName: 'Verkäufer',
+        threadId: ctx.threadId,
+        relatedOfferId: ctx.relatedOfferId,
+        relatedQuestionId: ctx.relatedQuestionId,
       });
       if (!sent.ok) {
-        setFeedback('Paket konnte nicht gesendet werden.');
+        setFeedback(sent.error === 'thread_not_found'
+          ? resolveSendFailureFeedback(sent.error)
+          : 'Paket konnte nicht gesendet werden.');
         return;
       }
       persistMessages(sent.lead, 'Workspace-Paket gesendet');
@@ -316,6 +402,7 @@ export default function CustomerAkteSharedWorkspace({
       setAssist(null);
       setOfferPrep(null);
       setAppointmentDraft(null);
+      onMessageSent?.();
       setFeedback('Gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -329,14 +416,20 @@ export default function CustomerAkteSharedWorkspace({
     setDraft(insert);
   }
 
-  function handlePrepareOffer(result) {
-    persistCleverFeedCard(result, {
-      ctaAction: resolveCleverFeedCtaAction(result) || 'prepare_offer',
-      historyText: 'Clever Angebotsvorbereitung',
-    });
+  function handlePrepareOffer(result, options = {}) {
+    if (!options.skipFeedCard) {
+      persistCleverFeedCard(result, {
+        lead: options.lead ?? null,
+        ctaAction: resolveCleverFeedCtaAction(result) || 'prepare_offer',
+        historyText: 'Clever Angebotsvorbereitung',
+      });
+    }
     const magic = result?.magic ?? offerPrep;
     if (onPrepareOfferDraft) {
-      onPrepareOfferDraft({ magic });
+      onPrepareOfferDraft({
+        magic,
+        lead: options.lead ?? null,
+      });
       setFeedback('Angebot wird vorbereitet …');
       setTimeout(() => setFeedback(''), 2500);
       return;
@@ -345,19 +438,21 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleSendPortfolio(result) {
+    if (!onSendPortfolio) {
+      setFeedback('Kundenlink-Versand nicht verfügbar');
+      return;
+    }
+    const ok = onSendPortfolio();
+    if (ok === false) {
+      // Parent zeigt Toast (E-Mail fehlt, keine Angebote, …) – kein Feed-Eintrag
+      return;
+    }
     persistCleverFeedCard(result, {
       ctaAction: 'send_portfolio',
       historyText: 'Kundenlink aus Composer vorbereitet',
     });
     setAssist(null);
     setDraft('');
-    if (onSendPortfolio) {
-      onSendPortfolio();
-      setFeedback('Kundenlink wird vorbereitet …');
-      setTimeout(() => setFeedback(''), 2500);
-      return;
-    }
-    setFeedback('Kundenlink-Versand nicht verfügbar');
   }
 
   function handleCleverFeedCta(payload = {}) {
@@ -367,8 +462,9 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (action === 'prepare_offer' || action === 'complete_offer' || action === 'open_offer') {
-      if (onPrepareOfferDraft) {
-        onPrepareOfferDraft({ magic: null });
+      const magic = payload?.magic ?? offerPrepRef.current ?? null;
+      if (onPrepareOfferDraft && magic) {
+        onPrepareOfferDraft({ magic });
         return;
       }
       onOpenOffer?.();
@@ -381,15 +477,19 @@ export default function CustomerAkteSharedWorkspace({
     setSending(true);
     try {
       let nextLead = lead;
+      const ctx = resolveReplyContext();
       const messageBody = result.messageBody || result.draft?.body;
       if (messageBody) {
         const sent = sendCleverChannelMessage({
           lead: nextLead,
           text: messageBody,
+          threadId: ctx.threadId,
+          relatedOfferId: ctx.relatedOfferId,
+          relatedQuestionId: ctx.relatedQuestionId,
           createdByName: 'Verkäufer',
         });
         if (!sent.message) {
-          setFeedback('Nachricht konnte nicht gesendet werden.');
+          setFeedback(resolveSendFailureFeedback(sent.error));
           return;
         }
         nextLead = sent.lead;
@@ -399,6 +499,9 @@ export default function CustomerAkteSharedWorkspace({
         lead: nextLead,
         text: `${appointment.typeLabel} · ${formatAppointmentWhen(appointment.startAt)}`,
         kind: MESSAGE_KIND.APPOINTMENT_CARD,
+        threadId: ctx.threadId,
+        relatedOfferId: ctx.relatedOfferId,
+        relatedQuestionId: ctx.relatedQuestionId,
         payload: {
           title: appointment.typeLabel,
           vehicleLabel: appointment.vehicleContext,
@@ -410,7 +513,11 @@ export default function CustomerAkteSharedWorkspace({
         },
         createdByName: 'Verkäufer',
       });
-      if (card.message) nextLead = card.lead;
+      if (!card.message) {
+        setFeedback(resolveSendFailureFeedback(card.error));
+        return;
+      }
+      nextLead = card.lead;
 
       const patch = buildCrmPatchFromAppointment(appointment, { markProposed: true });
       nextLead = applyAppointmentCrmPatch(nextLead, patch);
@@ -431,6 +538,7 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setAssist(null);
       setAppointmentDraft(null);
+      onMessageSent?.();
       setFeedback('Vorschlag gesendet');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -483,6 +591,7 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setAssist(null);
       setAppointmentDraft(null);
+      onMessageSent?.();
       setFeedback('Termin eingetragen');
       setTimeout(() => setFeedback(''), 2500);
     } finally {
@@ -518,6 +627,15 @@ export default function CustomerAkteSharedWorkspace({
       const messageAction = preparedActions.find((a) => (
         a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
       ));
+      const appointmentAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'
+      ));
+      const documentsAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
+      ));
+      const portfolioAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO && a.status === 'prepared'
+      ));
 
       const applied = applyAcceptedSellerTurn(lead, universalTurn, {
         postFeedCard: true,
@@ -528,28 +646,42 @@ export default function CustomerAkteSharedWorkspace({
       }
       persistMessages(applied.lead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
 
-      const offerResult = offerAction?.legacy?.results?.[0]
+      const sellerSeed = universalTurn.interpretedInput?.normalized
+        || universalTurn.interpretedInput?.raw
+        || '';
+      const refreshedOffer = offerAction
+        ? runSellerOfferAssist(applied.lead, sellerSeed, {
+          previousPreparation: offerAction?.legacy?.results?.[0]?.magic
+            || offerAction?.legacy?.previousPreparation
+            || null,
+        })
+        : null;
+      const offerResult = refreshedOffer?.results?.[0]
+        || offerAction?.legacy?.results?.[0]
         || offerAction?.legacy
         || null;
       const messageLegacy = messageAction?.legacy ?? null;
       const messageResult = messageLegacy?.results?.find(
         (r) => r.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT,
       ) || messageLegacy?.results?.[0] || null;
+      const appointmentLegacy = appointmentAction?.legacy ?? null;
+      const appointmentResult = appointmentLegacy?.results?.[0] || appointmentLegacy || null;
+      const documentsLegacy = documentsAction?.legacy ?? null;
 
       setUniversalTurn(null);
-      setAppointmentDraft(null);
 
-      if (offerResult && (offerResult.magic?.canCreateOffer || offerAction?.payload?.canCreateOffer)) {
+      if (offerAction && offerResult) {
         setDraft('');
         setAssist(null);
         setOfferPrep(null);
+        setAppointmentDraft(null);
         setFeedback(
           applied.acceptedLabels.length === 1
             ? '1 Angabe übernommen – Angebot wird vorbereitet'
             : `${applied.acceptedLabels.length} Angaben übernommen – Angebot wird vorbereitet`,
         );
         setTimeout(() => setFeedback(''), 2800);
-        handlePrepareOffer(offerResult);
+        handlePrepareOffer(offerResult, { lead: applied.lead, skipFeedCard: true });
         return;
       }
 
@@ -561,14 +693,67 @@ export default function CustomerAkteSharedWorkspace({
           results: [messageResult],
         });
         setOfferPrep(null);
+        setAppointmentDraft(null);
         setFeedback('Angaben übernommen – Nachricht bereit zum Senden');
         setTimeout(() => setFeedback(''), 2800);
+        return;
+      }
+
+      if (appointmentResult && appointmentLegacy?.ok !== false) {
+        setAppointmentDraft(appointmentLegacy?.appointment ?? appointmentResult?.appointment ?? null);
+        setAssist(appointmentLegacy?.ok ? appointmentLegacy : {
+          ok: true,
+          results: [appointmentResult],
+        });
+        setDraft('');
+        setOfferPrep(null);
+        setFeedback('Angaben übernommen – Termin bereit');
+        setTimeout(() => setFeedback(''), 2800);
+        return;
+      }
+
+      if (documentsLegacy) {
+        const body = documentsLegacy.body || documentsLegacy.draft?.body || '';
+        const actions = documentsLegacy.actions || [];
+        setAssist({
+          ok: true,
+          results: [{
+            type: INLINE_RESULT_TYPES.ACTION_DRAFT,
+            title: '✨ Clever hat vorbereitet',
+            body,
+            actions,
+            draft: { body },
+            primaryCta: 'Senden',
+            secondaryCta: 'Bearbeiten',
+          }],
+        });
+        setDraft(body);
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback('Angaben übernommen – Unterlagen-Paket bereit');
+        setTimeout(() => setFeedback(''), 2800);
+        return;
+      }
+
+      if (portfolioAction) {
+        setDraft('');
+        setAssist(null);
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback(
+          applied.acceptedLabels.length
+            ? `${applied.acceptedLabels.length} Angabe${applied.acceptedLabels.length === 1 ? '' : 'n'} übernommen – Kundenlink`
+            : 'Kundenlink wird vorbereitet',
+        );
+        setTimeout(() => setFeedback(''), 2800);
+        handleSendPortfolio({});
         return;
       }
 
       setDraft('');
       setAssist(null);
       setOfferPrep(null);
+      setAppointmentDraft(null);
       setFeedback(
         applied.acceptedLabels.length === 1
           ? '1 Angabe übernommen'

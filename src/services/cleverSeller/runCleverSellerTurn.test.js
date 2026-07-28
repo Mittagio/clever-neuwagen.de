@@ -144,7 +144,9 @@ assert.ok(liefer.facts.some((f) => f.field === 'deliveryDeadline' && /11\.2026/i
 const farbe = interpretSellerInput('Farbe rot');
 assert.ok(farbe.facts.some((f) => f.field === 'colorPreference' && /rot/i.test(f.label)));
 const rabatt = runCleverSellerTurn({ lead: emptyLead, sellerInput: '21 %' });
-assert.ok(rabatt.extractedFacts.some((f) => f.field === 'discountPercent'));
+assert.ok(rabatt.extractedFacts.some((f) => f.field === 'discountPercent' && f.needsConfirmation));
+const rabattKlar = interpretSellerInput('21 % Rabatt Barangebot');
+assert.ok(rabattKlar.facts.some((f) => f.field === 'discountPercent' && !f.needsConfirmation));
 
 // --- 11) Explizite Kundennachricht ≠ Offer-Dump ---
 const msgLiefer = interpretSellerInput('Schreib ihm: Lieferzeit ca. 3 Monate');
@@ -156,6 +158,44 @@ const msgTurn = runCleverSellerTurn({
   sellerInput: 'Schreib ihm: Lieferzeit ca. 3 Monate',
 });
 assert.equal(msgTurn.inputMode, SELLER_INPUT_MODE.CUSTOMER_MESSAGE);
-assert.equal(shouldShowUniversalReview(msgTurn), false);
+// „Schreib ihm …“ + Lieferzeit-Fakt → Review (Fakten nicht still verwerfen)
+assert.equal(shouldShowUniversalReview(msgTurn), true);
+assert.ok(msgTurn.extractedFacts.some((f) => f.field === 'deliveryEstimateMonths' || f.field === 'deliveryDeadline'));
+
+// Reine Kundennachricht ohne CRM-Fakten → kein Review
+assert.equal(
+  shouldShowUniversalReview(runCleverSellerTurn({
+    lead: emptyLead,
+    sellerInput: 'Schreib ihm: Hallo, danke für Ihre Nachricht.',
+  })),
+  false,
+);
+
+// Portfolio-Send ist kein Message-Mode („Schick ihm die Angebote“)
+const portfolioCue = interpretSellerInput('Schick ihm die Angebote per Mail');
+assert.equal(portfolioCue.inputMode, SELLER_INPUT_MODE.CLEVER_WORK_INPUT);
+assert.ok(portfolioCue.intents.some((i) => i.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO));
+assert.ok(!portfolioCue.intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE));
+assert.equal(
+  shouldShowUniversalReview(runCleverSellerTurn({
+    lead: emptyLead,
+    sellerInput: 'Schick ihm die Angebote per Mail',
+  })),
+  false,
+);
+
+// Gemischt: Kontext + Portfolio → Review (Fakten nicht verwerfen)
+const mixedPortfolio = runCleverSellerTurn({
+  lead: emptyLead,
+  sellerInput: '300 euro Wunschrate, schick ihm die Angebote',
+});
+assert.ok(mixedPortfolio.intents.some((i) => i.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO));
+assert.ok(mixedPortfolio.intents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT));
+assert.equal(shouldShowUniversalReview(mixedPortfolio), true);
+
+// --- 12) Keine Pseudo-Namen aus Freitext ---
+const noFakeName = interpretSellerInput('Kunde hat irgendwie Interesse an was Neuem, unklar');
+assert.ok(!noFakeName.facts.some((f) => f.field === 'customerName'));
+assert.ok(!noFakeName.facts.some((f) => f.field === 'customerPlace' && /Irgendwie/i.test(f.label)));
 
 console.log('runCleverSellerTurn.test.js: OK');

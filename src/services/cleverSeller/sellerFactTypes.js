@@ -32,6 +32,7 @@ export const SELLER_FACT_SOURCE = {
   OFFER_PDF: 'offer_pdf',
   SYSTEM: 'system',
   MANUAL_EDIT: 'manual_edit',
+  OPENAI_INTERPRETATION: 'openai_interpretation',
 };
 
 export const SELLER_INPUT_MODE = {

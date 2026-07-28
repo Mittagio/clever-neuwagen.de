@@ -93,6 +93,19 @@ export function parseAppointmentDateTime(text = '', now = new Date()) {
     .replace(/[\u0300-\u036f]/g, '');
   if (!t) return { startAt: null, missing: 'datetime' };
 
+  /** Uhrzeit finden, ohne dd.mm.yyyy als Zeit zu lesen (z. B. 30.07.2026 10:00). */
+  function findClockTimeMatch(source) {
+    const re = /\b(?:um\s*)?(\d{1,2})[:.](\d{2})\b/g;
+    let match;
+    while ((match = re.exec(source))) {
+      const after = source.slice(match.index + match[0].length);
+      if (/^\.\d/.test(after)) continue; // Teil eines Datums
+      const h = Number(match[1]);
+      if (h >= 0 && h <= 23) return match;
+    }
+    return null;
+  }
+
   let base = new Date(now);
   let dateFound = false;
 
@@ -128,7 +141,7 @@ export function parseAppointmentDateTime(text = '', now = new Date()) {
   }
 
   const timeMatch = t.match(/\b(?:um\s*)?(\d{1,2})(?:[:.](\d{2}))?\s*uhr\b/)
-    || t.match(/\b(?:um\s*)?(\d{1,2})[:.](\d{2})\b/)
+    || findClockTimeMatch(t)
     || t.match(/\bum\s+(\d{1,2})\b/);
   let hour = null;
   let minute = 0;

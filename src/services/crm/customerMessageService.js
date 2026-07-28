@@ -429,6 +429,11 @@ export function sendCleverChannelMessage({
     }
     : { lead, thread: null };
 
+  // Explizite threadId muss existieren – kein stiller Fallback in einen anderen Thread
+  if (threadId && !foundThread) {
+    return { lead, message: null, historyEntry: null, error: 'thread_not_found' };
+  }
+
   const { lead: threadLead, thread } = foundThread
     ? { lead: withThread, thread: foundThread }
     : findOrCreateThreadForLead(withThread, { relatedOfferId });

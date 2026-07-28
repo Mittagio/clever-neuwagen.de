@@ -1,7 +1,7 @@
 /**
  * Clever Universal Seller Turn – Orchestrator v1.
  *
- * OpenAI interpretiert (optional später). Clever validiert und plant.
+ * Deterministisch zuerst. OpenAI optional bei Eskalation (Flag).
  * Persistenz / Versand nur über definierte Pfade nach Seller-Review.
  */
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
@@ -18,37 +18,34 @@ import {
   planSellerActions,
 } from './planSellerActions.js';
 import { SELLER_TURN_INTENTS } from './sellerFactTypes.js';
-import { isCleverSellerOrchestratorEnabled } from './cleverSellerOrchestratorConfig.js';
+import {
+  evaluateSellerInterpretEscalation,
+  isCleverSellerOrchestratorEnabled,
+} from './cleverSellerOrchestratorConfig.js';
+import { buildSellerInterpretSafeContext } from './buildSellerInterpretSafeContext.js';
+import { interpretSellerInputWithOpenAi } from './interpretSellerInputWithOpenAi.js';
+import {
+  mergeSellerIntents,
+  mergeSellerInterpretation,
+} from './mergeSellerInterpretation.js';
 
 /**
  * @param {object} params
- * @param {object} params.lead
- * @param {string} params.sellerInput
- * @param {object[]} [params.attachments]
- * @param {object} [params.conversationContext]
- * @param {object} [params.currentOfferContext]
- * @param {object} [params.sellerContext]
- * @param {object} [params.env]
  */
-export function runCleverSellerTurn({
+function finalizeSellerTurn({
   lead = {},
-  sellerInput = '',
-  attachments = [],
-  conversationContext = null,
-  currentOfferContext = null,
-  sellerContext = null,
-  env = typeof process !== 'undefined' ? process.env : {},
-} = {}) {
-  void conversationContext;
-  void currentOfferContext;
-  void sellerContext;
-
+  interpreted,
+  facts,
+  intents,
+  env = {},
+  warningsExtra = [],
+  openaiEscalation = null,
+}) {
   const enabled = isCleverSellerOrchestratorEnabled(env);
-  const interpreted = interpretSellerInput(sellerInput, { attachments });
-  const uniqueFacts = filterDuplicateFacts(interpreted.facts, lead);
+  const uniqueFacts = filterDuplicateFacts(facts, lead);
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
   const missingInformation = resolveMissingInformation({
-    intents: interpreted.intents,
+    intents,
     facts: uniqueFacts,
     lead,
   });
@@ -57,7 +54,7 @@ export function runCleverSellerTurn({
     ? planSellerActions({
       lead,
       sellerInput: interpreted.normalized,
-      intents: interpreted.intents,
+      intents,
       inputMode: interpreted.inputMode,
       facts: uniqueFacts,
       missingInformation,
@@ -90,12 +87,16 @@ export function runCleverSellerTurn({
     inputMode: interpreted.inputMode,
   });
 
-  const primaryIntent = interpreted.intents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
+  const primaryIntent = intents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
+  const warnings = [
+    ...buildWarnings(uniqueFacts, interpreted.inputMode),
+    ...warningsExtra,
+  ];
 
   return buildCleverSellerTurnResult({
     ok: Boolean(interpreted.normalized) && enabled,
     intent: primaryIntent,
-    intents: interpreted.intents,
+    intents,
     inputMode: interpreted.inputMode,
     interpretedInput: {
       raw: interpreted.raw,
@@ -114,7 +115,7 @@ export function runCleverSellerTurn({
         .map((f) => f.label),
     },
     preparedActions,
-    warnings: buildWarnings(uniqueFacts, interpreted.inputMode),
+    warnings,
     assistantReply,
     confidence: interpreted.confidence,
     pendingAction,
@@ -124,6 +125,127 @@ export function runCleverSellerTurn({
         .map((f) => ({ label: f.label, factClass: f.factClass })),
     },
     featureEnabled: enabled,
+    openaiEscalation,
+  });
+}
+
+/**
+ * Sync / deterministisch (Default für UI-Debounce).
+ * @param {object} params
+ */
+export function runCleverSellerTurn({
+  lead = {},
+  sellerInput = '',
+  attachments = [],
+  conversationContext = null,
+  currentOfferContext = null,
+  sellerContext = null,
+  env = typeof process !== 'undefined' ? process.env : {},
+} = {}) {
+  void conversationContext;
+  void currentOfferContext;
+  void sellerContext;
+
+  const interpreted = interpretSellerInput(sellerInput, { attachments });
+  return finalizeSellerTurn({
+    lead,
+    interpreted,
+    facts: interpreted.facts,
+    intents: interpreted.intents,
+    env,
+    openaiEscalation: null,
+  });
+}
+
+/**
+ * Async: deterministisch + optionale OpenAI-Eskalation.
+ * @param {object} params
+ * @param {{ fetchImpl?: typeof fetch, apiKey?: string|null, forceEscalate?: boolean }} [params.openAiOptions]
+ */
+export async function runCleverSellerTurnAsync({
+  lead = {},
+  sellerInput = '',
+  attachments = [],
+  env = typeof process !== 'undefined' ? process.env : {},
+  openAiOptions = {},
+} = {}) {
+  const interpreted = interpretSellerInput(sellerInput, { attachments });
+  const gate = openAiOptions.forceEscalate
+    ? { shouldEscalate: true, reason: 'forced' }
+    : evaluateSellerInterpretEscalation({
+      ...interpreted,
+      sellerInput,
+      facts: interpreted.facts,
+    }, env);
+
+  if (!gate.shouldEscalate) {
+    return finalizeSellerTurn({
+      lead,
+      interpreted,
+      facts: interpreted.facts,
+      intents: interpreted.intents,
+      env,
+      openaiEscalation: { used: false, reason: gate.reason },
+    });
+  }
+
+  const safeContext = buildSellerInterpretSafeContext(lead, {
+    sellerInput: interpreted.normalized || sellerInput,
+    attachmentTypes: interpreted.attachmentTypes,
+    deterministic: interpreted,
+  });
+
+  let ai;
+  try {
+    ai = await interpretSellerInputWithOpenAi(safeContext, openAiOptions);
+  } catch (err) {
+    return finalizeSellerTurn({
+      lead,
+      interpreted,
+      facts: interpreted.facts,
+      intents: interpreted.intents,
+      env,
+      warningsExtra: ['OpenAI-Eskalation fehlgeschlagen – nur Regel-Interpretation.'],
+      openaiEscalation: {
+        used: false,
+        reason: gate.reason,
+        error: err?.message || 'openai_error',
+      },
+    });
+  }
+
+  if (!ai?.ok) {
+    return finalizeSellerTurn({
+      lead,
+      interpreted,
+      facts: interpreted.facts,
+      intents: interpreted.intents,
+      env,
+      warningsExtra: ['OpenAI nicht verfügbar – nur Regel-Interpretation.'],
+      openaiEscalation: {
+        used: false,
+        reason: gate.reason,
+        error: ai?.error || 'openai_failed',
+      },
+    });
+  }
+
+  const facts = mergeSellerInterpretation(interpreted.facts, ai.facts);
+  const intents = mergeSellerIntents(interpreted.intents, ai.intents);
+  const confidence = Math.max(interpreted.confidence || 0, ai.confidence || 0);
+
+  return finalizeSellerTurn({
+    lead,
+    interpreted: { ...interpreted, confidence },
+    facts,
+    intents,
+    env,
+    warningsExtra: ['OpenAI hat ergänzt – bitte in der Review prüfen.'],
+    openaiEscalation: {
+      used: true,
+      reason: gate.reason,
+      aiFactCount: ai.facts.length,
+    },
   });
 }
 
@@ -142,4 +264,9 @@ function buildWarnings(facts, inputMode) {
 }
 
 export { interpretSellerInput } from './interpretSellerInput.js';
-export { isCleverSellerOrchestratorEnabled } from './cleverSellerOrchestratorConfig.js';
+export {
+  isCleverSellerOrchestratorEnabled,
+  isCleverSellerOpenAiInterpretEnabled,
+  evaluateSellerInterpretEscalation,
+  shouldEscalateSellerInterpretation,
+} from './cleverSellerOrchestratorConfig.js';

@@ -44,7 +44,6 @@ import {
   buildCleverConsultationOfferPrefill,
   buildLeadPatchFromCleverPrefill,
 } from '../../services/dealer/cleverConsultationOfferPrefill.js';
-import { magicPreparationToConfigurePatch } from '../../services/dealer/magicOfferService.js';
 import '../DealerAIPage.css';
 import './BackendLeadAktePage.css';
 
@@ -74,6 +73,8 @@ export default function BackendLeadAktePage() {
       ? 'antworten'
       : (searchParams.get('sheet') || null));
 
+  const initialComposerFocus = searchParams.get('composer') === '1'
+    || searchParams.get('sheet') === 'antworten';
   const initialAntwortenIntent = searchParams.get('intentId') || null;
   const initialInboxItemId = searchParams.get('inboxItemId') || null;
   const initialThreadId = searchParams.get('threadId') || null;
@@ -212,23 +213,11 @@ export default function BackendLeadAktePage() {
   function handlePrepareOffer(reservedModel, options = {}) {
     const magicPrep = options?.magicPreparation ?? null;
     if (magicPrep && lead) {
-      const patch = magicPreparationToConfigurePatch(magicPrep);
-      const card = enrichOfferEditCardFromLead({
-        id: `magic-${Date.now()}`,
-        model: patch?.model || parsed?.fields?.model,
-        modelKey: patch?.modelKey || parsed?.fields?.modelId,
-        brand: patch?.brand || 'Kia',
-        trimId: patch?.trimId || parsed?.fields?.trimId,
-        trimLabel: patch?.trimLabel || parsed?.fields?.trimLabel,
-        paymentType: patch?.paymentType || parsed?.fields?.paymentType,
-        desiredRate: patch?.desiredRate ?? null,
-        termMonths: patch?.termMonths ?? null,
-        mileagePerYear: patch?.mileagePerYear ?? null,
-      }, lead);
-      openOfferCalculator(navigate, lead, card, {
+      openOfferCalculator(navigate, lead, null, {
         returnPath: buildKundenaktePath(leadId),
+        magicPreparation: magicPrep,
       });
-      showToast('Angebotsskizze übernommen');
+      showToast('Angebotsskizze – bitte prüfen');
       return;
     }
 
@@ -239,7 +228,16 @@ export default function BackendLeadAktePage() {
     );
     const model = isLeadArg ? null : reservedModel;
 
-    if (!parsed?.ok || !leadId) return;
+    // Composer ohne Magic und ohne Parser-Kontext → Magic-Offer-Entry (kein stiller No-Op)
+    if (!parsed?.ok || !leadId) {
+      if (leadId && lead) {
+        openOfferCalculator(navigate, lead, null, {
+          returnPath: buildKundenaktePath(leadId),
+        });
+        showToast('Angebot erstellen – Clever oder manuell');
+      }
+      return;
+    }
     let nextParsed = parsed;
     if (model) {
       nextParsed = enrichWithSuggestions(applyDealerAiFields(parsed, {
@@ -511,6 +509,7 @@ export default function BackendLeadAktePage() {
             isSaving={isSavingLead}
             initialSheet={initialSheet === 'question_answer' ? 'question_answer' : initialSheet}
             initialAntwortenIntent={initialAntwortenIntent}
+            initialComposerFocus={initialComposerFocus}
             initialInboxItemId={initialInboxItemId}
             initialThreadId={initialThreadId}
             initialMessageId={initialMessageId}

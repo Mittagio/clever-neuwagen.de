@@ -36,6 +36,7 @@ export function createEmptyCleverSellerTurnResult() {
       capturedFacts: [],
     },
     legacy: null,
+    openaiEscalation: null,
   };
 }
 

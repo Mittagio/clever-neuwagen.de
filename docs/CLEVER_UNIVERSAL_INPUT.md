@@ -101,6 +101,21 @@ Nach **Übernehmen**:
 - Inline-CTA → `handlePrepareCustomerLink` (bestehendes Share-Sheet)
 - Magic-Handoff: Composer/Review → `magic-offer-review` in DealerAIPage
 
+### CleverAntworten → Composer (Schritt 4)
+
+- Inbox-Deep-Links: `composer=1&intentId=…` statt `sheet=antworten`
+- Angebotsfragen mit `offerId`+`questionId` bleiben im strukturierten Question-Answer-Sheet
+- Empfohlen/Nachfassen/Übergabe/Korrekturtexte → Composer-Seed
+- `CleverAntwortenSheet` entfernt (Greeting-/Kontext-Service `cleverAntworten.js` bleibt)
+
+### OpenAI-Eskalation (Schritt 5, optional)
+
+- Flag: `CLEVER_SELLER_OPENAI_INTERPRET_ENABLED` + `VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED` (Default aus)
+- Route: `POST /api/v1/clever/seller-turn` – nur schmaler Kontext (kein Full-Lead)
+- Nur bei Heuristik (keine Facts / unknown / low confidence)
+- AI-Facts immer `needsConfirmation: true` → Universal Review → Übernehmen
+- Deterministischer Pfad bleibt Fallback
+
 ## Was bewusst nicht gebaut wurde
 
 - Keine zweite Customer-Truth / Notizzettel-DB
@@ -108,7 +123,6 @@ Nach **Übernehmen**:
 - Kein Auto-Send an Kunden (weiterhin Share-Sheet mit Bestätigung)
 - Kein Slash-Command-Zwang
 - Kein großflächiges Auto-Apply (auch nicht nach Review)
-- CleverAntworten noch nicht entfernt
 
 ## Nächste Schritte (Launch-Loop)
 
@@ -116,6 +130,8 @@ Nach **Übernehmen**:
 2. ~~Strukturierte Übernahme (wish/contact/needProfile)~~ ✓
 3. ~~Verkäufer-Alltag härten: WV / Pipeline ohne KI~~ ✓
 4. ~~Composer → Portfolio-Mail + Magic-Handoff~~ ✓
-5. Smoke laut [CLEVER_PILOT_LAUNCH_CHECKLIST.md](./CLEVER_PILOT_LAUNCH_CHECKLIST.md) – 2 Wochen Pilot
+5. ~~CleverAntworten-Einstiege → Composer~~ ✓
+6. ~~OpenAI-Eskalation (Flag, Review-pflichtig)~~ ✓
+7. Smoke laut [CLEVER_PILOT_LAUNCH_CHECKLIST.md](./CLEVER_PILOT_LAUNCH_CHECKLIST.md) – 2 Wochen Pilot
 
 Siehe auch: [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md), [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md)

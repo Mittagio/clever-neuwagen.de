@@ -145,6 +145,8 @@ export function sendSellerWorkspacePackage({
   actions = [],
   createdByName = 'Verkäufer',
   relatedOfferId = null,
+  relatedQuestionId = null,
+  threadId = null,
 } = {}) {
   if (!lead?.id) return { ok: false, error: 'no_lead', lead };
 
@@ -156,7 +158,9 @@ export function sendSellerWorkspacePackage({
   const textResult = sendCleverChannelMessage({
     lead: working,
     text: body,
+    threadId,
     relatedOfferId,
+    relatedQuestionId,
     createdByName,
     kind: MESSAGE_KIND.TEXT,
     senderRole: 'seller',
@@ -166,7 +170,7 @@ export function sendSellerWorkspacePackage({
     return { ok: false, error: textResult.error || 'message_failed', lead: textResult.lead };
   }
   working = textResult.lead;
-  const threadId = textResult.message.threadId;
+  const packageThreadId = textResult.message.threadId;
   const messages = [textResult.message];
 
   const selected = (actions ?? []).filter((action) => action.selected !== false);
@@ -174,11 +178,13 @@ export function sendSellerWorkspacePackage({
     if (action.kind === MESSAGE_KIND.SELF_DISCLOSURE_CARD || action.slotId === 'selbstauskunft') {
       const added = addCustomerMessage({
         lead: working,
-        threadId,
+        threadId: packageThreadId,
         direction: MESSAGE_DIRECTION.OUTBOUND,
         channel: MESSAGE_CHANNEL.CLEVER,
         status: MESSAGE_STATUS.SENT,
         text: 'Selbstauskunft',
+        relatedOfferId,
+        relatedQuestionId,
         visibleToCustomer: true,
         createdByName,
         kind: MESSAGE_KIND.SELF_DISCLOSURE_CARD,
@@ -198,11 +204,13 @@ export function sendSellerWorkspacePackage({
     if (action.kind === MESSAGE_KIND.DOCUMENT_REQUEST || action.slotId) {
       const added = addCustomerMessage({
         lead: working,
-        threadId,
+        threadId: packageThreadId,
         direction: MESSAGE_DIRECTION.OUTBOUND,
         channel: MESSAGE_CHANNEL.CLEVER,
         status: MESSAGE_STATUS.SENT,
         text: action.label || 'Unterlage hochladen',
+        relatedOfferId,
+        relatedQuestionId,
         relatedDocumentIds: action.slotId ? [action.slotId] : [],
         visibleToCustomer: true,
         createdByName,
@@ -225,7 +233,7 @@ export function sendSellerWorkspacePackage({
     ok: true,
     lead: working,
     messages,
-    threadId,
+    threadId: packageThreadId,
     uploadUrl,
   };
 }

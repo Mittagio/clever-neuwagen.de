@@ -123,7 +123,7 @@ assert.equal(mirrored.inboxItem.metadata.offerId, 'card-ev3');
 const inboxItems = listInboxItems({ leadId: baseLead.id });
 assert.ok(inboxItems.some((item) => item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE));
 
-// E) Antworten auf customer_message öffnet Clever Nachrichten mit threadId
+// E) Antworten auf customer_message mit questionId → strukturiertes Question-Sheet
 const replyUrl = buildInboxActionAkteUrl('lead-msg-1', {
   id: 'inbox-cm-1',
   type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
@@ -136,14 +136,13 @@ const replyUrl = buildInboxActionAkteUrl('lead-msg-1', {
     suggestedIntent: 'answer_customer_question',
   },
 });
-assert.match(replyUrl, /sheet=antworten/);
-assert.match(replyUrl, /threadId=/);
-assert.match(replyUrl, /messageId=/);
-assert.match(replyUrl, /intentId=answer_customer_question/);
+assert.match(replyUrl, /sheet=question_answer/);
 assert.match(replyUrl, /offerId=card-ev3/);
 assert.match(replyUrl, /questionId=cq-test/);
+assert.doesNotMatch(replyUrl, /sheet=antworten/);
+assert.doesNotMatch(replyUrl, /composer=1/);
 
-// G) Allgemeine Nachricht ohne questionId öffnet freie Antwort
+// G) Allgemeine Nachricht ohne questionId öffnet Composer
 const freeReplyUrl = buildInboxActionAkteUrl('lead-msg-1', {
   id: 'inbox-cm-free',
   type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,
@@ -154,8 +153,10 @@ const freeReplyUrl = buildInboxActionAkteUrl('lead-msg-1', {
     suggestedIntent: 'free_reply',
   },
 });
+assert.match(freeReplyUrl, /composer=1/);
 assert.match(freeReplyUrl, /intentId=free_reply/);
 assert.doesNotMatch(freeReplyUrl, /questionId=/);
+assert.doesNotMatch(freeReplyUrl, /sheet=antworten/);
 
 // H) syncInboxItemsFromLead erzeugt kein offer_question bei vorhandenem customer_message
 __resetInboxStoreForTests(openInbox);
@@ -200,5 +201,15 @@ const inboxFromMessage = buildInboxItemFromCustomerMessage({
   thread: mirrored.thread,
 });
 assert.equal(inboxFromMessage.type, INBOX_EVENT_TYPES.CUSTOMER_MESSAGE);
+
+// Ungültige threadId → kein stiller Fallback
+const missingThread = sendCleverChannelMessage({
+  lead: sent.lead,
+  text: 'Antwort',
+  threadId: 'thread-does-not-exist',
+  createdByName: 'Verkäufer',
+});
+assert.equal(missingThread.message, null);
+assert.equal(missingThread.error, 'thread_not_found');
 
 console.log('customerMessageService.test.js: ok');

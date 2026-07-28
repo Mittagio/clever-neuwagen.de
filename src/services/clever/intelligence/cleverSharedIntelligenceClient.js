@@ -12,6 +12,10 @@ export function isCleverSellerCopilotClientEnabled() {
   return import.meta.env.VITE_CLEVER_SELLER_COPILOT_ENABLED === 'true';
 }
 
+export function isCleverSellerOpenAiInterpretClientEnabled() {
+  return import.meta.env.VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true';
+}
+
 /**
  * @param {object} payload
  */
@@ -33,6 +37,27 @@ export async function requestCleverLexiconQuery(payload = {}) {
  */
 export async function requestCleverSellerCopilot(payload = {}) {
   const response = await fetch(`${API_BASE}/clever/seller-copilot`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(payload.sellerId ? { 'X-Seller-Id': String(payload.sellerId) } : {}),
+      ...(payload.dealerId ? { 'X-Dealer-Id': String(payload.dealerId) } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? 'request_failed' };
+  }
+  return data;
+}
+
+/**
+ * Universal Seller Turn inkl. optionaler OpenAI-Eskalation (Server).
+ * @param {object} payload
+ */
+export async function requestCleverSellerTurn(payload = {}) {
+  const response = await fetch(`${API_BASE}/clever/seller-turn`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

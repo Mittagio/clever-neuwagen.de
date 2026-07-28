@@ -54,20 +54,21 @@ const inboxItem = {
   metadata: { questionId: 'cq-123' },
 };
 const url = buildQuestionAnswerAkteUrl('lead-1', inboxItem);
-assert.match(url, /sheet=antworten/);
-assert.match(url, /intentId=answer_customer_question/);
+assert.match(url, /sheet=question_answer/);
 assert.match(url, /offerId=vc-ev6/);
 assert.match(url, /questionId=cq-123/);
 assert.match(url, /inboxItemId=inbox-q-1/);
+assert.doesNotMatch(url, /sheet=antworten/);
 
 const fallbackUrl = buildQuestionAnswerAkteUrl('lead-1', {
   id: 'inbox-x',
   type: INBOX_EVENT_TYPES.CONTACT_REQUESTED,
   leadId: 'lead-1',
 });
-assert.match(fallbackUrl, /sheet=antworten/);
+assert.match(fallbackUrl, /composer=1/);
 assert.match(fallbackUrl, /intentId=offer_callback/);
 assert.doesNotMatch(fallbackUrl, /questionId=/);
+assert.doesNotMatch(fallbackUrl, /sheet=antworten/);
 
 assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_OPENED }), 'offer_opened_followup');
 assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_INTERESTED }), 'offer_interested_followup');
@@ -79,6 +80,8 @@ const openedUrl = buildInboxActionAkteUrl('lead-1', {
   offerId: 'vc-ev6',
 });
 assert.match(openedUrl, /intentId=offer_opened_followup/);
+assert.match(openedUrl, /composer=1/);
+assert.doesNotMatch(openedUrl, /sheet=antworten/);
 
 const kundenakteDocUrl = buildInboxKundenakteUrl('lead-1', {
   id: 'inbox-doc',
@@ -104,12 +107,12 @@ const customerMessageItem = {
 };
 assert.equal(resolveInboxReplyIntent(customerMessageItem), 'answer_customer_question');
 const customerMessageUrl = buildQuestionAnswerAkteUrl('lead-1', customerMessageItem);
-assert.match(customerMessageUrl, /sheet=antworten/);
-assert.match(customerMessageUrl, /intentId=answer_customer_question/);
-assert.match(customerMessageUrl, /threadId=thread-1/);
-assert.match(customerMessageUrl, /messageId=msg-1/);
+assert.match(customerMessageUrl, /sheet=question_answer/);
 assert.match(customerMessageUrl, /offerId=vc-ev6/);
 assert.match(customerMessageUrl, /questionId=cq-123/);
+assert.match(customerMessageUrl, /inboxItemId=inbox-cm-1/);
+assert.doesNotMatch(customerMessageUrl, /sheet=antworten/);
+assert.doesNotMatch(customerMessageUrl, /composer=1/);
 
 assert.equal(resolveInboxReplyIntent({
   type: INBOX_EVENT_TYPES.CUSTOMER_MESSAGE,

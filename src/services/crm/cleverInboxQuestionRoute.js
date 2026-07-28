@@ -1,5 +1,5 @@
 /**
- * Navigation aus Clever Eingang → Clever Nachrichten / Kundenakte
+ * Navigation aus Clever Eingang → Kundenakte / Composer
  */
 import { INBOX_EVENT_TYPES, getInboxEventMeta } from './cleverInboxService.js';
 import { buildKundenaktePath } from '../leadAkteEntry.js';
@@ -35,7 +35,7 @@ export function resolveInboxReplyIntent(item = {}) {
   }
 }
 
-function shouldOpenCleverAntworten(item = {}, { secondary = false } = {}) {
+function shouldOpenComposerReply(item = {}, { secondary = false } = {}) {
   const meta = getInboxEventMeta(item.type);
   if (secondary) {
     return meta.secondaryActionTarget === 'reply';
@@ -43,6 +43,23 @@ function shouldOpenCleverAntworten(item = {}, { secondary = false } = {}) {
   return item.actionTarget === 'reply'
     || item.actionTarget === 'followup'
     || meta.actionTarget === 'reply';
+}
+
+function buildComposerReplyParams(item = {}, intentId) {
+  const params = new URLSearchParams({
+    composer: '1',
+    intentId,
+  });
+  if (item.id) params.set('inboxItemId', item.id);
+  const offerId = item.offerId ?? item.metadata?.offerId ?? null;
+  if (offerId) params.set('offerId', offerId);
+  const questionId = item.metadata?.questionId ?? null;
+  if (questionId) params.set('questionId', questionId);
+  const threadId = item.metadata?.threadId ?? null;
+  if (threadId) params.set('threadId', threadId);
+  const messageId = item.metadata?.messageId ?? null;
+  if (messageId) params.set('messageId', messageId);
+  return params;
 }
 
 /**
@@ -74,6 +91,12 @@ export function buildInboxKundenakteUrl(leadId, item = {}) {
     return `${buildKundenaktePath(leadId)}?${params.toString()}`;
   }
 
+  if (item.type === INBOX_EVENT_TYPES.SPECIAL_QUESTION) {
+    const params = new URLSearchParams({ sheet: 'special_question_answer' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
   const questionId = item.metadata?.questionId ?? null;
   const offerId = item.offerId ?? item.metadata?.offerId ?? null;
   if (questionId && offerId && (
@@ -90,9 +113,19 @@ export function buildInboxKundenakteUrl(leadId, item = {}) {
     return `${buildKundenaktePath(leadId)}?${params.toString()}`;
   }
 
+  // Antwort-/Follow-up-Items: Composer-Kontext behalten (nicht nackte Akte)
+  if (shouldOpenComposerReply(item)) {
+    return buildInboxActionAkteUrl(leadId, item);
+  }
+
   if (offerId) {
     const params = new URLSearchParams({ offerId });
     if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  if (item.id) {
+    const params = new URLSearchParams({ inboxItemId: item.id });
     return `${buildKundenaktePath(leadId)}?${params.toString()}`;
   }
 
@@ -127,23 +160,35 @@ export function buildInboxActionAkteUrl(leadId, item = {}, options = {}) {
     return buildKundenaktePath(leadId);
   }
 
-  if (shouldOpenCleverAntworten(item, { secondary })) {
+  // Spezialfragen → Wissensbasis-Sheet (nicht Freitext-Composer)
+  if (item.type === INBOX_EVENT_TYPES.SPECIAL_QUESTION) {
+    const params = new URLSearchParams({ sheet: 'special_question_answer' });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  // Strukturierte Angebotsfrage → dediziertes Sheet (nicht Freitext-Composer)
+  const questionId = item.metadata?.questionId ?? null;
+  const offerId = item.offerId ?? item.metadata?.offerId ?? null;
+  if (!secondary && questionId && offerId && (
+    item.type === INBOX_EVENT_TYPES.OFFER_QUESTION
+    || item.type === INBOX_EVENT_TYPES.CUSTOMER_QUESTION
+    || (item.type === INBOX_EVENT_TYPES.CUSTOMER_MESSAGE && questionId)
+  )) {
+    const params = new URLSearchParams({
+      sheet: 'question_answer',
+      offerId,
+      questionId,
+    });
+    if (item.id) params.set('inboxItemId', item.id);
+    return `${buildKundenaktePath(leadId)}?${params.toString()}`;
+  }
+
+  if (shouldOpenComposerReply(item, { secondary })) {
     const intentId = secondary
       ? (meta.secondaryIntentId ?? 'request_documents')
       : (resolveInboxReplyIntent(item) ?? 'answer_customer_question');
-    const params = new URLSearchParams({
-      sheet: 'antworten',
-      intentId,
-    });
-    if (item.id) params.set('inboxItemId', item.id);
-    const offerId = item.offerId ?? item.metadata?.offerId ?? null;
-    if (offerId) params.set('offerId', offerId);
-    const questionId = item.metadata?.questionId ?? null;
-    if (questionId) params.set('questionId', questionId);
-    const threadId = item.metadata?.threadId ?? null;
-    if (threadId) params.set('threadId', threadId);
-    const messageId = item.metadata?.messageId ?? null;
-    if (messageId) params.set('messageId', messageId);
+    const params = buildComposerReplyParams(item, intentId);
     return `${buildKundenaktePath(leadId)}?${params.toString()}`;
   }
 

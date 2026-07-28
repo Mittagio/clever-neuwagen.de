@@ -11,6 +11,11 @@ import {
 } from '../consultation/needProfileService.js';
 import { SELLER_FACT_CLASS } from './sellerFactTypes.js';
 import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
+import {
+  appointmentTypeLabel,
+  applyAppointmentCrmPatch,
+  buildCrmPatchFromAppointment,
+} from '../dealer/sellerAppointmentAssistFlow.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -28,10 +33,12 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
   const wish = { ...(next.wish ?? {}) };
   const contact = { ...(next.contact ?? {}) };
   let desiredRate = next.desiredRate ?? wish.desiredRate ?? null;
+  let paymentType = next.paymentType ?? wish.paymentType ?? null;
   let profile = { ...(getNeedProfileFromLead(next) || createEmptyNeedProfile()) };
   let touchedWish = false;
   let touchedContact = false;
   let touchedProfile = false;
+  let appointmentValue = null;
 
   for (const fact of facts) {
     if (!fact || fact.needsConfirmation) continue;
@@ -62,6 +69,17 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         wish.termMonths = Number(months);
         touchedWish = true;
       }
+    }
+
+    if (field === 'paymentType' && value) {
+      paymentType = String(value);
+      wish.paymentType = paymentType;
+      profile.budget = {
+        ...(profile.budget ?? {}),
+        paymentType,
+      };
+      touchedWish = true;
+      touchedProfile = true;
     }
 
     if (field === 'phone') {
@@ -99,10 +117,85 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    if (field === 'transmissionPreference' && value) {
+      profile.transmission = String(value);
+      touchedProfile = true;
+    }
+
+    if (field === 'sunroofRequired' && value) {
+      profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], 'Schiebedach');
+      profile.priorities = pushUnique(profile.priorities ?? [], 'technology');
+      touchedProfile = true;
+    }
+
+    if (field === 'trimPreference') {
+      const trims = Array.isArray(value) ? value : [value || fact.label];
+      for (const trim of trims) {
+        const label = String(trim ?? '').trim();
+        if (label) {
+          profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], label);
+        }
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'discountPercent' && value != null) {
+      wish.customDiscountPercent = Number(value);
+      wish.customerGroup = 'custom';
+      touchedWish = true;
+    }
+
+    if (field === 'existingContractEnd') {
+      if (value?.endDate) {
+        wish.leasingEndDate = value.endDate;
+        touchedWish = true;
+      }
+      if (value?.type === 'leasing' || value?.type === 'financing' || value?.type === 'cash') {
+        paymentType = value.type;
+        wish.paymentType = value.type;
+        touchedWish = true;
+      }
+    }
+
+    if (field === 'deliveryDeadline' && value?.endDate) {
+      wish.desiredDeliveryDate = value.endDate;
+      if (value.important) wish.deliveryImportant = true;
+      touchedWish = true;
+    }
+
+    if (field === 'deliveryEstimateMonths' && value != null) {
+      const months = typeof value === 'object'
+        ? (value.months ?? value.value ?? null)
+        : value;
+      if (months != null) {
+        wish.deliveryEstimateMonths = Number(months);
+        touchedWish = true;
+      }
+    }
+
     if (field === 'vehicleInterest' && value?.modelKey) {
       profile.selectedModelKey = value.modelKey;
       profile.modelHint = value.modelKey;
       touchedProfile = true;
+    }
+
+    if (field === 'vehicleInterestMulti') {
+      const entries = Array.isArray(value) ? value : [];
+      const keys = entries
+        .map((entry) => (typeof entry === 'string' ? entry : entry?.modelKey))
+        .filter(Boolean);
+      if (keys.length) {
+        profile.modelCandidates = keys;
+      }
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      // kein selectedModelKey – Mehrdeutigkeit bewusst offen lassen
+      touchedProfile = true;
+    }
+
+    if (field === 'appointment' && value?.startAt) {
+      appointmentValue = value;
     }
 
     if (field === 'maritalStatus' || field === 'childrenCount') {
@@ -123,13 +216,15 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
   }
 
-  if (touchedWish || desiredRate != null) {
+  if (touchedWish || desiredRate != null || paymentType) {
     next = {
       ...next,
       desiredRate: desiredRate ?? next.desiredRate,
+      paymentType: paymentType ?? next.paymentType,
       wish: {
         ...wish,
         desiredRate: desiredRate ?? wish.desiredRate,
+        paymentType: paymentType ?? wish.paymentType,
       },
     };
   }
@@ -149,6 +244,20 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     next = mergeNeedProfileIntoLead(next, profile);
   }
 
+  if (appointmentValue?.startAt) {
+    const appointment = {
+      id: `appt-review-${Date.now()}`,
+      type: appointmentValue.type,
+      typeLabel: appointmentTypeLabel(appointmentValue.type),
+      startAt: appointmentValue.startAt,
+      status: appointmentValue.status,
+    };
+    next = applyAppointmentCrmPatch(
+      next,
+      buildCrmPatchFromAppointment(appointment, { markProposed: true }),
+    );
+  }
+
   return next;
 }
 
@@ -158,10 +267,15 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
  * @param {{ sellerId?: string, sellerName?: string, postFeedCard?: boolean }} [options]
  */
 export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
-  const facts = turn.extractedFacts ?? [];
-  if (!lead?.id || !facts.length) {
+  const rawFacts = turn.extractedFacts ?? [];
+  if (!lead?.id || !rawFacts.length) {
     return { ok: false, lead, acceptedLabels: [] };
   }
+
+  // „Übernehmen“ = Seller bestätigt die Review inkl. unsicherer Facts
+  const facts = rawFacts.map((f) => (
+    f?.needsConfirmation ? { ...f, needsConfirmation: false } : f
+  ));
 
   const labels = facts.map((f) => String(f.label ?? '').trim()).filter(Boolean);
   let nextLead = appendSellerInsightsFromTexts(lead, labels, {

@@ -27,11 +27,27 @@ function assertSellerPermission(req) {
   return { ok: true, sellerId, dealerId };
 }
 
+/** Kein Full-Lead / keine Kontaktdaten an die Interpretations-Pipeline. */
+function slimLeadForSellerTurn(lead = {}) {
+  return {
+    id: lead.id ?? null,
+    crm: {
+      needProfile: lead.crm?.needProfile ?? null,
+      sellerInsights: (lead.crm?.sellerInsights ?? []).slice(-8).map((insight) => ({
+        text: String(insight.text ?? '').slice(0, 400),
+        labels: (insight.understoodLabels ?? insight.labels ?? []).slice(0, 8),
+        context: insight.context ?? null,
+      })),
+    },
+  };
+}
+
 router.get('/clever/shared-intelligence/health', (_req, res) => {
   res.json({
     ok: true,
     lexiconAi: isCleverLexiconAiEnabled(),
     sellerCopilot: isCleverSellerCopilotEnabled(),
+    sellerOpenAiInterpret: process.env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true',
   });
 });
 
@@ -119,6 +135,59 @@ router.post('/clever/seller-copilot', express.json({ limit: '48kb' }), async (re
     return res.json(result);
   } catch (err) {
     console.error('[clever/seller-copilot]', err?.message ?? err);
+    return res.status(500).json({ ok: false, error: 'internal_error' });
+  }
+});
+
+router.post('/clever/seller-turn', express.json({ limit: '48kb' }), async (req, res) => {
+  try {
+    const permission = assertSellerPermission(req);
+    if (!permission.ok) {
+      return res.status(403).json(permission);
+    }
+
+    const {
+      lead = null,
+      sellerInput = '',
+      attachments = [],
+      leadId = null,
+      needProfile = null,
+      sellerInsights = null,
+    } = req.body ?? {};
+
+    const leadInput = slimLeadForSellerTurn(lead ?? {
+      id: leadId,
+      crm: {
+        needProfile,
+        sellerInsights: sellerInsights ?? [],
+      },
+    });
+
+    const { runCleverSellerTurnAsync } = await import(
+      '../src/services/cleverSeller/runCleverSellerTurn.js'
+    );
+
+    const result = await runCleverSellerTurnAsync({
+      lead: leadInput,
+      sellerInput,
+      attachments,
+      env: process.env,
+    });
+
+    appendQualityTurnMetric({
+      createdAt: new Date().toISOString(),
+      surface: 'seller_universal_input',
+      fallback: result?.openaiEscalation?.used !== true,
+      fromCache: false,
+      metrics: {
+        openaiEscalation: result?.openaiEscalation ?? null,
+        factCount: result?.extractedFacts?.length ?? 0,
+      },
+    });
+
+    return res.json(result);
+  } catch (err) {
+    console.error('[clever/seller-turn]', err?.message ?? err);
     return res.status(500).json({ ok: false, error: 'internal_error' });
   }
 });

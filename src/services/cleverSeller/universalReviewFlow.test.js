@@ -62,6 +62,12 @@ assert.ok(outlookModel.groups.some((g) => g.id === 'appointment' && /Probefahrt/
 assert.ok(outlookModel.groups.some((g) => g.id === 'wish' && /Seltos/i.test(g.line)));
 assert.ok(outlookModel.groups.some((g) => g.id === 'vehicle_current' && /Octavia/i.test(g.line)));
 
+const outlookApplied = applyAcceptedSellerTurn(emptyLead, outlookTurn, { postFeedCard: false });
+assert.ok(outlookApplied.lead.crm?.cleverAppointment?.startAt);
+assert.ok(outlookApplied.lead.crm?.needProfile?.modelCandidates?.length >= 2
+  || outlookApplied.lead.crm?.needProfile?.understoodLabels?.some((l) => /Seltos/i.test(l)));
+assert.equal(outlookApplied.lead.crm?.needProfile?.transmission, 'automatic');
+
 const applied = applyAcceptedSellerTurn(emptyLead, turn, { postFeedCard: false });
 assert.equal(applied.ok, true);
 assert.ok(applied.acceptedLabels.length >= 5);
@@ -76,6 +82,28 @@ assert.ok(/Kuga/i.test(tradeIn.vehicle || ''));
 assert.ok(/Inzahlungnahme/i.test(tradeIn.notes || ''));
 assert.equal(applied.lead.desiredRate, 300);
 assert.equal(applied.lead.wish?.desiredRate, 300);
+assert.equal(applied.lead.wish?.leasingEndDate, '2026-11');
+assert.equal(applied.lead.paymentType, 'leasing');
+assert.equal(applied.lead.wish?.paymentType, 'leasing');
+
+// Übernehmen bestätigt auch needsConfirmation-Facts strukturiert
+const moneyTurn = runCleverSellerTurn({ lead: emptyLead, sellerInput: '300 euro' });
+const moneyFact = moneyTurn.extractedFacts.find((f) => f.field === 'monthlyBudget');
+assert.ok(moneyFact?.needsConfirmation);
+const moneyApplied = applyAcceptedSellerTurn(emptyLead, moneyTurn, { postFeedCard: false });
+assert.equal(moneyApplied.lead.desiredRate, 300);
+
+// Strukturierte Felder: Rabatt, Leasingende, Automatik
+const structuredTurn = runCleverSellerTurn({
+  lead: emptyLead,
+  sellerInput: 'EV3 21 % Rabatt, Leasing läuft 11/2026 aus, Automatik und Schiebedach',
+});
+const structuredApplied = applyAcceptedSellerTurn(emptyLead, structuredTurn, { postFeedCard: false });
+assert.equal(structuredApplied.lead.wish?.customDiscountPercent, 21);
+assert.equal(structuredApplied.lead.wish?.customerGroup, 'custom');
+assert.equal(structuredApplied.lead.wish?.leasingEndDate, '2026-11');
+assert.equal(structuredApplied.lead.crm?.needProfile?.transmission, 'automatic');
+assert.ok(structuredApplied.lead.crm?.needProfile?.equipmentWishes?.includes('Schiebedach'));
 
 assert.equal(shouldShowUniversalReview({ extractedFacts: [] }), false);
 assert.equal(

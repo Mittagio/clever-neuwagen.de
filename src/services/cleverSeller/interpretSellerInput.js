@@ -41,7 +41,7 @@ const MONTH_MAP = {
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise';
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
-const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter)$/i;
+const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
 
 function titleCaseToken(token = '') {
   const s = String(token).trim();
@@ -180,27 +180,33 @@ export function extractUniversalSellerFacts(text = '') {
       let place = null;
       let nameParts = parts;
       if (parts.length >= 3) {
-        place = titleCaseToken(parts[parts.length - 1]);
-        nameParts = parts.slice(0, -1);
+        const candidatePlace = parts[parts.length - 1];
+        if (!NAME_STOP.test(candidatePlace) && candidatePlace.length >= 3) {
+          place = titleCaseToken(candidatePlace);
+          nameParts = parts.slice(0, -1);
+        }
       }
-      const name = nameParts.map(titleCaseToken).join(' ');
-      pushFact(facts, createExtractedFact({
-        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
-        field: 'customerName',
-        value: name,
-        label: name,
-        confidence: 0.82,
-        needsConfirmation: true,
-      }));
-      if (place) {
+      nameParts = nameParts.filter((p) => !NAME_STOP.test(p) && p.length >= 2);
+      if (nameParts.length >= 2) {
+        const name = nameParts.map(titleCaseToken).join(' ');
         pushFact(facts, createExtractedFact({
           factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
-          field: 'customerPlace',
-          value: place,
-          label: place,
-          confidence: 0.75,
+          field: 'customerName',
+          value: name,
+          label: name,
+          confidence: 0.82,
           needsConfirmation: true,
         }));
+        if (place) {
+          pushFact(facts, createExtractedFact({
+            factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+            field: 'customerPlace',
+            value: place,
+            label: place,
+            confidence: 0.75,
+            needsConfirmation: true,
+          }));
+        }
       }
     }
   }
@@ -333,6 +339,33 @@ export function extractUniversalSellerFacts(text = '') {
     }));
   }
 
+  // Explizite Zahlungsart
+  if (/\b(?:barangebot|barkauf|barzahlung)\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'paymentType',
+      value: 'cash',
+      label: 'Kauf / Bar',
+      confidence: 0.9,
+    }));
+  } else if (/\bfinanzierung\b/i.test(t) && !/\bleasing\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'paymentType',
+      value: 'financing',
+      label: 'Finanzierung',
+      confidence: 0.88,
+    }));
+  } else if (/\bleasingangebot\b|\bleasing\s+(?:anbieten|machen|erstellen)\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'paymentType',
+      value: 'leasing',
+      label: 'Leasing',
+      confidence: 0.88,
+    }));
+  }
+
   // Wunschrate / commercial
   const budget = t.match(/\b(\d{2,4})\s*(?:€|euro)?\s*(?:wunsch)?rate\b/i)
     || t.match(/\bwunschrate\s*(?:ca\.?\s*)?(\d{2,4})\b/i)
@@ -456,14 +489,20 @@ export function extractUniversalSellerFacts(text = '') {
   const discount = t.match(/\b(\d{1,2})\s*(?:%|prozent)\s*(?:sonder)?rabatt\b/i)
     || t.match(/\b(\d{1,2})\s*%(?!\d)/)
     || t.match(/\b(\d{1,2})\s*prozent\b/i);
-  if (discount && (/\brabatt|angebot|erstell|mach|sonder/i.test(t) || Number(discount[1]) >= 10)) {
-    pushFact(facts, createExtractedFact({
-      factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
-      field: 'discountPercent',
-      value: Number(discount[1]),
-      label: `${discount[1]} % Rabatt`,
-      confidence: 0.9,
-    }));
+  if (discount) {
+    const hasOfferCue = /\brabatt|angebot|erstell|mach|sonder|leasing|finanz/i.test(t);
+    const pct = Number(discount[1]);
+    // Isolierte %-Zahl nur mit Bestätigung (z. B. „21 %“ ohne Kontext)
+    if (hasOfferCue || pct >= 10) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+        field: 'discountPercent',
+        value: pct,
+        label: `${discount[1]} % Rabatt`,
+        confidence: hasOfferCue ? 0.9 : 0.7,
+        needsConfirmation: !hasOfferCue,
+      }));
+    }
   }
 
   const WORD_MONTHS = {
@@ -552,9 +591,14 @@ export function extractUniversalSellerFacts(text = '') {
 
 /**
  * Expliziter Kunden-Nachrichten-Cue („schreib ihm …“).
+ * Portfolio-/Link-Versand zählt nicht als Nachrichtentext.
  */
 export function isExplicitCustomerMessageCue(text = '') {
-  return /\b(schreib|sag|informier|whatsapp|mail|schick ihm|schick ihr)\b/i.test(String(text ?? ''));
+  const t = String(text ?? '');
+  if (detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.SEND_PORTFOLIO) {
+    return false;
+  }
+  return /\b(schreib|sag|informier|whatsapp|mail|schick ihm|schick ihr)\b/i.test(t);
 }
 
 /**
@@ -646,6 +690,7 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
     SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT,
     SELLER_TURN_INTENTS.PREPARE_TRADE_IN,
     SELLER_TURN_INTENTS.PREPARE_OFFER,
+    SELLER_TURN_INTENTS.SEND_PORTFOLIO,
     SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
     SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   ].includes(i.type)) || facts.length >= 3;

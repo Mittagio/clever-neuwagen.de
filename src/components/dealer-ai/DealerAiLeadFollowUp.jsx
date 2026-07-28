@@ -69,7 +69,7 @@ import {
   shouldRecalculateDistance,
 } from '../../services/location/customerDistanceService.js';
 import { buildDealerToCustomerRouteUrl } from '../../services/location/mapsRouteService.js';
-import { buildCleverAntwortenContext } from '../../services/cleverAntworten.js';
+import { buildComposerReplySeed } from '../../services/crm/composerReplySeed.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import {
   buildBoardItems,
@@ -114,7 +114,6 @@ import {
   sendCleverChannelMessage,
 } from '../../services/crm/customerMessageService.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
-import CleverAntwortenSheet from './CleverAntwortenSheet.jsx';
 import CustomerAkteCompactHeader from './CustomerAkteCompactHeader.jsx';
 import { AKTE_TABS } from './customerAkteTabs.js';
 import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
@@ -340,6 +339,7 @@ export default function DealerAiLeadFollowUp({
   onAddHistory,
   initialSheet = null,
   initialAntwortenIntent = null,
+  initialComposerFocus = false,
   initialInboxItemId = null,
   initialThreadId = null,
   initialMessageId = null,
@@ -375,15 +375,38 @@ export default function DealerAiLeadFollowUp({
   const [activeSheet, setActiveSheet] = useState(
     initialSheet === SHEETS.questionAnswer
       ? SHEETS.questionAnswer
-      : (initialSheet === SHEETS.antworten ? SHEETS.antworten : initialSheet),
+      : (initialSheet === SHEETS.antworten ? null : initialSheet),
   );
-  const [antwortenPreset, setAntwortenPreset] = useState(initialAntwortenIntent ?? null);
-  const [antwortenInitialDraft, setAntwortenInitialDraft] = useState(null);
   const [inboxItemIdForAntworten, setInboxItemIdForAntworten] = useState(initialInboxItemId ?? null);
   const [inboxItemIdForSelfDisclosure, setInboxItemIdForSelfDisclosure] = useState(
     initialSheet === SHEETS.selfDisclosureReview ? initialInboxItemId : null,
   );
   const [questionContext, setQuestionContext] = useState(initialQuestionContext);
+  const composerDeepLinkDoneRef = useRef(false);
+  const specialAnswerPendingSendRef = useRef(false);
+
+  const composerReplyContext = useMemo(() => {
+    const portal = portalCustomerMessageItem;
+    return {
+      threadId: initialThreadId
+        ?? portal?.metadata?.threadId
+        ?? null,
+      relatedOfferId: questionContext?.offerId
+        ?? initialAntwortenOfferId
+        ?? portal?.offerId
+        ?? portal?.metadata?.offerId
+        ?? null,
+      relatedQuestionId: questionContext?.questionId
+        ?? portal?.metadata?.questionId
+        ?? null,
+    };
+  }, [
+    initialThreadId,
+    initialAntwortenOfferId,
+    questionContext?.offerId,
+    questionContext?.questionId,
+    portalCustomerMessageItem,
+  ]);
 
   useEffect(() => {
     if (!initialSheet) return;
@@ -391,19 +414,13 @@ export default function DealerAiLeadFollowUp({
       setActiveSheet(SHEETS.questionAnswer);
       return;
     }
+    // Legacy sheet=antworten → Composer (kein CleverAntworten-Sheet mehr)
     if (initialSheet === SHEETS.antworten) {
-      setActiveSheet(SHEETS.antworten);
-    } else {
-      setActiveSheet(initialSheet);
+      setActiveSheet(null);
+      return;
     }
+    setActiveSheet(initialSheet);
   }, [initialSheet]);
-
-  useEffect(() => {
-    if (initialAntwortenIntent) {
-      setAntwortenPreset(initialAntwortenIntent);
-      setActiveSheet(SHEETS.antworten);
-    }
-  }, [initialAntwortenIntent]);
 
   useEffect(() => {
     if (initialInboxItemId) {
@@ -895,6 +912,48 @@ export default function DealerAiLeadFollowUp({
     setContactInfoOpen(false);
   }
 
+  useEffect(() => {
+    if (composerDeepLinkDoneRef.current) return;
+    const wantsComposer = initialComposerFocus
+      || initialSheet === SHEETS.antworten
+      || Boolean(initialAntwortenIntent);
+    if (!wantsComposer) return;
+    if (initialSheet === SHEETS.questionAnswer) return;
+    composerDeepLinkDoneRef.current = true;
+
+    let question = '';
+    if (initialInboxItemId && lead?.id && inbox?.listForCustomer) {
+      const inboxItem = inbox.listForCustomer(lead.id).find((item) => item.id === initialInboxItemId)
+        ?? null;
+      question = String(inboxItem?.message ?? inboxItem?.title ?? '').trim();
+    }
+    if (!question && initialMessageId) {
+      const msg = (lead?.crm?.customerMessages ?? []).find((entry) => entry.id === initialMessageId);
+      question = String(msg?.text ?? msg?.body ?? '').trim();
+    }
+    if (!question && initialQuestionContext?.questionId) {
+      // Frage-Text oft nur über Inbox/Messages – Fallback leer lässt generischen Seed
+      question = '';
+    }
+
+    const seed = buildComposerReplySeed(initialAntwortenIntent, { question });
+    const t = setTimeout(() => {
+      focusChatComposer({ clever: true, seedDraft: seed });
+      setToast('Antwort im Composer – tippen oder sprechen, dann senden');
+      setTimeout(() => setToast(''), 3200);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [
+    initialComposerFocus,
+    initialSheet,
+    initialAntwortenIntent,
+    initialInboxItemId,
+    initialMessageId,
+    initialQuestionContext?.questionId,
+    lead?.id,
+    inbox,
+  ]);
+
   function openOffersBoard() {
     setContactInfoOpen(false);
     setMoreSheetOpen(false);
@@ -962,11 +1021,8 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleQuestionPersonalReply(item) {
-    openCleverAntworten();
-    if (item?.cleverAnswer) {
-      setToast('Text in Clever Nachrichten übernommen – prüfen und senden.');
-      setTimeout(() => setToast(''), 3500);
-    }
+    const draft = item?.cleverAnswer ? String(item.cleverAnswer) : '';
+    openCleverAntworten('answer_customer_question', draft || null);
   }
 
   useEffect(() => {
@@ -987,15 +1043,6 @@ export default function DealerAiLeadFollowUp({
       logCustomerActivity(activity);
     }
   }, [history, lead?.id]);
-
-  const cleverAntwortenContext = useMemo(() => buildCleverAntwortenContext({
-    lead,
-    customerName: name,
-    phone,
-    email,
-    vehicleCards,
-    wishPaymentType,
-  }), [lead, name, phone, email, vehicleCards, wishPaymentType]);
 
   const primaryVehicleCard = vehicleCards[0];
   const vehicleTitleForUnterlagen = primaryVehicleCard
@@ -1151,8 +1198,10 @@ export default function DealerAiLeadFollowUp({
     setTimeout(() => setToast(''), 3000);
   }
 
-  function handlePortalCardReply() {
+  function handlePortalCardReply({ inboxItemId = null } = {}) {
     const item = portalCustomerMessageItem;
+    const resolvedInboxId = inboxItemId ?? item?.id ?? null;
+    if (resolvedInboxId) setInboxItemIdForAntworten(resolvedInboxId);
     const question = String(item?.message ?? item?.title ?? '')
       .replace(/^[„"]|[“"]$/g, '')
       .trim();
@@ -1162,6 +1211,48 @@ export default function DealerAiLeadFollowUp({
     focusChatComposer({ clever: true, seedDraft: seed });
     setToast('Antwort im Composer – tippen oder sprechen, dann senden');
     setTimeout(() => setToast(''), 3200);
+  }
+
+  function handleSendSpecialQuestionAnswer() {
+    const answer = String(lead?.specialQuestionAnswer?.answerText ?? '').trim();
+    const question = String(
+      lead?.specialCustomerQuestion?.rawText
+      || lead?.specialCustomerQuestion?.question
+      || '',
+    ).trim();
+    const seed = answer
+      || buildComposerReplySeed('answer_customer_question', { question });
+    specialAnswerPendingSendRef.current = Boolean(answer);
+    focusChatComposer({ clever: true, seedDraft: seed });
+    setToast(answer
+      ? 'Gespeicherte Antwort im Composer – prüfen und senden'
+      : 'Antwort im Composer – tippen oder sprechen, dann senden');
+    setTimeout(() => setToast(''), 3200);
+  }
+
+  function markSpecialQuestionAnswerSent() {
+    const stored = lead?.specialQuestionAnswer;
+    if (!stored?.answerText || stored.sentAt) return;
+    onSave?.({
+      specialQuestionAnswer: {
+        ...stored,
+        sentAt: new Date().toISOString(),
+      },
+      specialCustomerQuestion: {
+        ...(lead?.specialCustomerQuestion ?? {}),
+        status: 'answered_sent',
+      },
+      crm: {
+        ...crm,
+        nextStepId: null,
+        nextStepLabel: null,
+      },
+    }, {
+      historyText: 'Antwort an Kunden gesendet',
+      historyType: 'note',
+      addFollowupHistory: false,
+      silent: true,
+    });
   }
 
   function handleSendCustomerSelection() {
@@ -1179,7 +1270,7 @@ export default function DealerAiLeadFollowUp({
       setToast('Bitte zuerst E-Mail-Adresse ergänzen.');
       setTimeout(() => setToast(''), 3500);
       openSheet(SHEETS.customer);
-      return;
+      return false;
     }
 
     const storedGroups = offerSelectionGroups.length ? offerSelectionGroups : resolvedSelectionGroups;
@@ -1194,7 +1285,7 @@ export default function DealerAiLeadFollowUp({
     if (!result.ok) {
       setToast('Keine versandbereiten Angebote – bitte zuerst Angebote im Angebotsrechner erstellen.');
       setTimeout(() => setToast(''), 4000);
-      return;
+      return false;
     }
 
     const envkvCheck = validatePortfolioEnVkvForSend(result.portfolio.items);
@@ -1202,7 +1293,7 @@ export default function DealerAiLeadFollowUp({
       const labels = envkvCheck.blockers.map((b) => b.label).join(', ');
       setToast(`${envkvCheck.message} (${labels})`);
       setTimeout(() => setToast(''), 6000);
-      return;
+      return false;
     }
 
     const portalPrepared = prepareCustomerPortalAccess(lead, {
@@ -1218,7 +1309,7 @@ export default function DealerAiLeadFollowUp({
     if (!portalPrepared.ok) {
       setToast('Kundenlink konnte nicht vorbereitet werden.');
       setTimeout(() => setToast(''), 3500);
-      return;
+      return false;
     }
 
     const sanitized = sanitizeOfferSelectionGroups(result.offerSelectionGroups);
@@ -1240,6 +1331,7 @@ export default function DealerAiLeadFollowUp({
     });
     setSelectedSelectionGroup(null);
     openSheet(SHEETS.portfolioShare);
+    return true;
   }
 
   function handlePortfolioShareSent(payload) {
@@ -1351,6 +1443,7 @@ export default function DealerAiLeadFollowUp({
       ),
       addFollowupHistory: true,
     });
+    if (inboxItemIdForAntworten) handleInboxItemHandled(inboxItemIdForAntworten);
   }
 
   function handleEditSelectionVariant(group, variantSummary) {
@@ -1647,7 +1740,6 @@ export default function DealerAiLeadFollowUp({
 
   function closeSheet() {
     setActiveSheet(null);
-    setAntwortenPreset(null);
     if (activeSheet === SHEETS.questionAnswer) {
       setQuestionContext(null);
       onQuestionAnswerContextConsumed?.();
@@ -1689,10 +1781,11 @@ export default function DealerAiLeadFollowUp({
     setActiveSheet(id);
   }
 
-  function openCleverAntworten(presetType = null) {
-    setAntwortenPreset(presetType);
-    setInboxItemIdForAntworten(null);
-    openSheet(SHEETS.antworten);
+  function openCleverAntworten(presetType = null, draft = null) {
+    const seed = buildComposerReplySeed(presetType, { draft });
+    focusChatComposer({ clever: true, seedDraft: seed });
+    setToast('Antwort im Composer – tippen oder sprechen, dann senden');
+    setTimeout(() => setToast(''), 3200);
   }
 
   function handleSellerAssistSendMessage({ body } = {}) {
@@ -1753,16 +1846,19 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleSellerAssistEditMessage(body) {
-    setAntwortenInitialDraft(String(body ?? ''));
-    setAntwortenPreset('frei');
-    setInboxItemIdForAntworten(null);
-    openSheet(SHEETS.antworten);
+    openCleverAntworten('frei', String(body ?? ''));
   }
 
   function handleSellerAssistPrepareOffer(result) {
-    onPrepareOffer?.(lead, { magicPreparation: result?.magic ?? null });
-    setToast('Angebotsskizze bereit');
-    setTimeout(() => setToast(''), 2800);
+    const magic = result?.magic ?? null;
+    const handoffLead = result?.lead ?? lead;
+    if (magic) {
+      onPrepareOffer?.(handoffLead, { magicPreparation: magic });
+      setToast('Angebotsskizze bereit');
+      setTimeout(() => setToast(''), 2800);
+      return;
+    }
+    openOffersBoard();
   }
 
   function handleSellerAssistSaveNote(text) {
@@ -1799,11 +1895,8 @@ export default function DealerAiLeadFollowUp({
 
   function handlePrepareCorrectionMessage(draft) {
     if (!draft) return;
-    setAntwortenInitialDraft(draft);
-    setAntwortenPreset('free_reply');
-    setInboxItemIdForAntworten(null);
-    openSheet(SHEETS.antworten);
-    setToast('Korrekturtext in Clever Nachrichten vorbereitet.');
+    openCleverAntworten('free_reply', draft);
+    setToast('Korrekturtext im Composer vorbereitet.');
     setTimeout(() => setToast(''), 3500);
   }
 
@@ -1963,7 +2056,10 @@ export default function DealerAiLeadFollowUp({
     });
 
     closeSheet();
-    setToast('Antwort gespeichert – Clever kann daraus lernen.');
+    if (inboxItemIdForAntworten) handleInboxItemHandled(inboxItemIdForAntworten);
+    setToast(learnForClever
+      ? 'Antwort gespeichert – Clever kann daraus lernen.'
+      : 'Antwort gespeichert (ohne Clever-Lernen).');
     setTimeout(() => setToast(''), 3500);
   }
 
@@ -2003,14 +2099,31 @@ export default function DealerAiLeadFollowUp({
         label: vehicleLabel || 'Kia – Modell offen',
       },
       paymentType: wishPaymentType,
-      desiredRate: wishDesiredRate ? Number(wishDesiredRate) : null,
+      desiredRate: wishDesiredRate ? Number(wishDesiredRate) : (lead?.desiredRate ?? null),
       deliveryTime: wishDelivery,
       wish: {
-        termMonths: wishTermMonths ? Number(wishTermMonths) : null,
-        mileagePerYear: wishMileage ? Number(wishMileage) : null,
-        desiredPrice: wishDesiredPrice ? Number(wishDesiredPrice) : null,
-        downPayment: wishDownPayment ? Number(wishDownPayment) : null,
-        equipment: wishEquipment.trim(),
+        // Lead-Wish beibehalten (Rabatt, Leasingende, Liefertermin aus Review)
+        ...(lead?.wish ?? {}),
+        paymentType: wishPaymentType !== 'unknown'
+          ? wishPaymentType
+          : (lead?.wish?.paymentType ?? lead?.paymentType ?? null),
+        termMonths: wishTermMonths
+          ? Number(wishTermMonths)
+          : (lead?.wish?.termMonths ?? null),
+        mileagePerYear: wishMileage
+          ? Number(wishMileage)
+          : (lead?.wish?.mileagePerYear ?? null),
+        desiredPrice: wishDesiredPrice
+          ? Number(wishDesiredPrice)
+          : (lead?.wish?.desiredPrice ?? null),
+        downPayment: wishDownPayment
+          ? Number(wishDownPayment)
+          : (lead?.wish?.downPayment ?? null),
+        equipment: wishEquipment.trim() || lead?.wish?.equipment || '',
+        desiredRate: wishDesiredRate
+          ? Number(wishDesiredRate)
+          : (lead?.wish?.desiredRate ?? lead?.desiredRate ?? null),
+        desiredDeliveryDate: wishDelivery || lead?.wish?.desiredDeliveryDate || null,
       },
       crm: {
         ...crm,
@@ -2074,7 +2187,11 @@ export default function DealerAiLeadFollowUp({
       createdByName: name?.trim() || 'Verkäufer',
     });
     if (!result.message) {
-      setToast('Nachricht enthält sensible Daten und kann nicht gesendet werden.');
+      setToast(result.error === 'thread_not_found'
+        ? 'Thread nicht gefunden – bitte aus Clever Eingang erneut öffnen'
+        : result.error === 'sensitive_or_empty'
+          ? 'Nachricht enthält sensible Daten und kann nicht gesendet werden.'
+          : 'Nachricht konnte nicht gesendet werden.');
       setTimeout(() => setToast(''), 3500);
       return;
     }
@@ -2360,11 +2477,8 @@ export default function DealerAiLeadFollowUp({
 
   function handlePrepareMessageSuggestion(suggestion) {
     if (!suggestion?.text) return;
-    setAntwortenInitialDraft(suggestion.text);
-    setAntwortenPreset('frei');
-    setInboxItemIdForAntworten(null);
-    openCleverAntworten('frei');
-    onAddHistory?.('Clever Textvorschlag in Nachrichten vorbereitet', 'clever_message', { silent: true });
+    openCleverAntworten('frei', suggestion.text);
+    onAddHistory?.('Clever Textvorschlag im Composer vorbereitet', 'clever_message', { silent: true });
   }
 
   function handleCleverAction(actionHint) {
@@ -2436,12 +2550,14 @@ export default function DealerAiLeadFollowUp({
       openSheet(SHEETS.more);
       return;
     }
-    if (handler === 'answer_customer_question') {
-      handlePortalCardReply();
+    if (handler === 'send_customer_answer') {
+      handleSendSpecialQuestionAnswer();
       return;
     }
-    if (handler === 'send_customer_answer') {
-      handlePortalCardReply();
+    if (handler === 'answer_customer_question') {
+      handlePortalCardReply({
+        inboxItemId: actionHint?.meta?.inboxItemId ?? null,
+      });
       return;
     }
     if (handler === 'showroom_capture_review') {
@@ -2539,12 +2655,20 @@ export default function DealerAiLeadFollowUp({
         focusToken={composerFocusToken}
         seedDraft={composerSeedDraft}
         seedDraftToken={composerSeedToken}
+        replyContext={composerReplyContext}
         compactEmpty
         isSaving={isSaving}
         feedTopSlot={feedCleverBanner}
         onOpenOffer={openOffersBoard}
         onPrepareOfferDraft={handleSellerAssistPrepareOffer}
         onSendPortfolio={handlePrepareCustomerLink}
+        onMessageSent={() => {
+          if (inboxItemIdForAntworten) handleInboxItemHandled(inboxItemIdForAntworten);
+          if (specialAnswerPendingSendRef.current) {
+            markSpecialQuestionAnswerSent();
+            specialAnswerPendingSendRef.current = false;
+          }
+        }}
         onUploadDocument={() => openSheet(SHEETS.unterlagen)}
         onStartSelfDisclosure={() => openSelfDisclosureReview()}
         onPersistLead={(nextLead) => {
@@ -2553,11 +2677,17 @@ export default function DealerAiLeadFollowUp({
           if (nextCrm.nextStepId) setNextStepId(nextCrm.nextStepId);
           if (nextCrm.followUpSource) setFollowUpSource(nextCrm.followUpSource);
           if (nextLead.desiredRate != null) setWishDesiredRate(String(nextLead.desiredRate));
+          if (nextLead.paymentType && nextLead.paymentType !== 'unknown') {
+            setWishPaymentType(nextLead.paymentType);
+          }
           if (nextLead.wish?.mileagePerYear != null) {
             setWishMileage(String(nextLead.wish.mileagePerYear));
           }
           if (nextLead.wish?.termMonths != null) {
             setWishTermMonths(String(nextLead.wish.termMonths));
+          }
+          if (nextLead.wish?.desiredDeliveryDate) {
+            setWishDelivery(String(nextLead.wish.desiredDeliveryDate));
           }
           if (nextLead.contact?.phone) setPhone(nextLead.contact.phone);
           if (nextLead.contact?.name || nextLead.name) {
@@ -2581,6 +2711,7 @@ export default function DealerAiLeadFollowUp({
               ...(nextCrm.needProfile ? { needProfile: nextCrm.needProfile } : {}),
             }),
             desiredRate: nextLead.desiredRate ?? undefined,
+            paymentType: nextLead.paymentType ?? undefined,
             wish: nextLead.wish ?? undefined,
             contact: nextLead.contact
               ? {
@@ -3260,35 +3391,6 @@ export default function DealerAiLeadFollowUp({
           embedded
           onClose={closeSheet}
           onSave={saveUnterlagen}
-        />
-      </LeadDetailPanel>
-
-      <LeadDetailPanel
-        open={activeSheet === SHEETS.antworten}
-        onClose={closeSheet}
-        title="Clever Nachrichten"
-      >
-        <CleverAntwortenSheet
-          key={`${antwortenPreset ?? 'pick'}-${inboxItemIdForAntworten ?? 'none'}-${initialThreadId ?? 'thread'}`}
-          lead={lead}
-          customerName={name}
-          phone={phone}
-          email={email}
-          vehicleCards={vehicleCards}
-          offerSelectionGroups={resolvedSelectionGroups}
-          kundenhelferNotes={kundenhelferNotes}
-          wishPaymentType={wishPaymentType}
-          initialTypeId={antwortenPreset}
-          initialDraft={antwortenInitialDraft}
-          inboxItemId={inboxItemIdForAntworten}
-          initialThreadId={initialThreadId}
-          initialMessageId={initialMessageId}
-          relatedOfferId={questionContext?.offerId ?? initialAntwortenOfferId}
-          relatedQuestionId={questionContext?.questionId}
-          onInboxItemHandled={handleInboxItemHandled}
-          onSendCleverMessage={handleSendCleverMessage}
-          embedded
-          onAddHistory={(text, type, options) => onAddHistory?.(text, type, options)}
         />
       </LeadDetailPanel>
 

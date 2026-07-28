@@ -109,13 +109,9 @@ export function buildUniversalReviewModel(turn = {}) {
  * @param {object} turn
  */
 export function shouldShowUniversalReview(turn = {}) {
-  if (turn.inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE) return false;
-  if (turn.intents?.some((i) => i.type === 'send_portfolio')) return false;
-
   const facts = turn.extractedFacts ?? [];
   if (!facts.length) return false;
-  if (facts.length >= 2) return true;
-  if (turn.intents?.some((i) => i.type === 'update_customer_context')) return true;
+
   const dumpClass = new Set([
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -128,5 +124,31 @@ export function shouldShowUniversalReview(turn = {}) {
     SELLER_FACT_CLASS.CONTRACT_FACT,
     SELLER_FACT_CLASS.APPOINTMENT_FACT,
   ]);
+
+  // Reine Kundennachricht ohne CRM-Kontext → kein Review (nur Message-Draft)
+  if (turn.inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE) {
+    if (!facts.some((f) => dumpClass.has(f.factClass))) return false;
+  }
+
+  const hasPortfolio = turn.intents?.some((i) => i.type === 'send_portfolio');
+  const hasContextIntent = turn.intents?.some((i) => i.type === 'update_customer_context');
+  // Reiner Portfolio-Cue ohne Kontext-Fakten → Inline-CTA (kein Review)
+  if (hasPortfolio && !hasContextIntent && facts.length < 2) {
+    const portfolioDump = new Set([
+      SELLER_FACT_CLASS.CUSTOMER_FACT,
+      SELLER_FACT_CLASS.CUSTOMER_NEED,
+      SELLER_FACT_CLASS.VEHICLE_INTEREST,
+      SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      SELLER_FACT_CLASS.EXISTING_VEHICLE,
+      SELLER_FACT_CLASS.SELF_DISCLOSURE_FACT,
+      SELLER_FACT_CLASS.CONTRACT_FACT,
+      SELLER_FACT_CLASS.APPOINTMENT_FACT,
+    ]);
+    if (!facts.some((f) => portfolioDump.has(f.factClass))) return false;
+  }
+
+  if (facts.length >= 2) return true;
+  if (hasContextIntent) return true;
   return facts.some((f) => dumpClass.has(f.factClass));
 }

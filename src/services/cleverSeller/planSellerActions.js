@@ -117,8 +117,11 @@ export function planSellerActions({
   }
 
   if (
-    inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
-    || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)
+    && (
+      inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
+      || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    )
   ) {
     const inline = runSellerInlineAssist(lead, sellerInput);
     actions.push({

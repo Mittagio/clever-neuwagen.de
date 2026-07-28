@@ -177,6 +177,11 @@ export default function DealerAIPage() {
   const [recognitionInsight, setRecognitionInsight] = useState(null);
   const [sourceText, setSourceText] = useState('');
   const [pasteInquiryPreview, setPasteInquiryPreview] = useState(null);
+
+  const activeLead = useMemo(
+    () => (result?.leadId ? leads.find((l) => l.id === result.leadId) ?? null : null),
+    [result?.leadId, leads],
+  );
   const [pasteInquiryExtraction, setPasteInquiryExtraction] = useState(null);
   const [pasteInquiryClassification, setPasteInquiryClassification] = useState(null);
   const [pasteAppliedLeadId, setPasteAppliedLeadId] = useState(null);
@@ -374,7 +379,7 @@ export default function DealerAIPage() {
       if (!applied?.leadId) return;
     }
     const leadId = pasteAppliedLeadId ?? applied.leadId;
-    navigate(`${buildKundenaktePath(leadId)}?sheet=antworten&intentId=answer_stock_vehicle_request`);
+    navigate(`${buildKundenaktePath(leadId)}?composer=1&intentId=answer_stock_vehicle_request`);
   }
 
   function handlePasteCreateOffer() {
@@ -664,15 +669,42 @@ export default function DealerAIPage() {
   }
 
   function handleMagicOfferCreate() {
-    if (!parsed?.ok || !magicOfferPreparation?.canCreateOffer) return;
+    if (!magicOfferPreparation?.canCreateOffer) return;
+
+    const contextLead = addVehicleContext?.opportunityId
+      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+      : (activeLead ?? null);
+
+    let baseParsed = parsed?.ok
+      ? parsed
+      : enrichWithSuggestions(buildParsedFromLead(contextLead ?? {}));
+
+    if (!baseParsed?.ok || !hasRecognizedModelKey(baseParsed)) {
+      const grounded = magicOfferPreparation.grounded ?? {};
+      if (grounded.modelKey || grounded.model) {
+        baseParsed = enrichWithSuggestions(applyDealerAiFields(baseParsed ?? { ok: false, fields: {} }, {
+          modelId: grounded.modelKey,
+          model: grounded.model,
+          brand: grounded.brand || 'Kia',
+          trimLabel: grounded.trimLabel,
+          trimId: grounded.trimId,
+        }));
+      }
+    }
+
+    if (!baseParsed?.ok) {
+      showToast('Fahrzeugkontext fehlt – bitte Modell ergänzen');
+      return;
+    }
+
     const patch = magicPreparationToConfigurePatch(magicOfferPreparation);
-    if (!patch?.modelKey && !configureDraft?.modelKey) {
+    if (!patch?.modelKey && !configureDraft?.modelKey && !baseParsed.fields?.modelId) {
       showToast('Fahrzeug konnte nicht zugeordnet werden');
       return;
     }
 
     const nextDraft = {
-      ...(configureDraft ?? buildConfigureDraft(parsed, conditions)),
+      ...(configureDraft ?? buildConfigureDraft(baseParsed, conditions)),
       ...patch,
       paymentType: patch.paymentType === 'unknown'
         ? (configureDraft?.paymentType ?? 'cash')
@@ -682,13 +714,9 @@ export default function DealerAIPage() {
     const vehicleConfig = buildVehicleConfiguration(nextDraft);
     setVehicleConfiguration(vehicleConfig);
 
-    const mergedFields = fieldsFromConfigureDraft(nextDraft, parsed.fields);
-    const updatedParsed = enrichWithSuggestions(applyDealerAiFields(parsed, mergedFields));
+    const mergedFields = fieldsFromConfigureDraft(nextDraft, baseParsed.fields);
+    const updatedParsed = enrichWithSuggestions(applyDealerAiFields(baseParsed, mergedFields));
     setParsed(updatedParsed);
-
-    const contextLead = addVehicleContext?.opportunityId
-      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
-      : null;
 
     let offerDraft = buildOfferDraft({
       configureDraft: nextDraft,
@@ -1135,15 +1163,18 @@ export default function DealerAIPage() {
       : null;
     if (!lead) return;
 
+    const incomingMagic = location.state?.magicOfferPreparation ?? null;
     const bootstrapKey = [
       ctx.customerId,
       ctx.opportunityId ?? '',
       ctx.vehicleCardId ?? '',
-      ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions
-        ? 'conditions'
-        : ctx.openConditions
-          ? 'magic-offer-entry'
-          : 'configure',
+      incomingMagic
+        ? 'magic-offer-review'
+        : ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions
+          ? 'conditions'
+          : ctx.openConditions
+            ? 'magic-offer-entry'
+            : 'configure',
     ].join('::');
     if (addVehicleBootstrapKeyRef.current === bootstrapKey) return;
     addVehicleBootstrapKeyRef.current = bootstrapKey;
@@ -1153,8 +1184,6 @@ export default function DealerAIPage() {
     setCarryCustomer(carry);
     setIsReturningWish(true);
     setIsFreshLead(false);
-    setMagicOfferPreparation(null);
-    setMagicOfferSeedText('');
 
     let nextParsed = enrichWithSuggestions(buildParsedFromLead(lead));
     const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
@@ -1171,6 +1200,21 @@ export default function DealerAIPage() {
     }
     setParsed(nextParsed);
     setStartView('home');
+
+    if (incomingMagic) {
+      setMagicOfferPreparation(incomingMagic);
+      setMagicOfferSeedText(
+        location.state?.magicOfferSeedText
+        || incomingMagic?.intent?.rawText
+        || incomingMagic?.seedText
+        || '',
+      );
+      setPhase('magic-offer-review');
+      return;
+    }
+
+    setMagicOfferPreparation(null);
+    setMagicOfferSeedText('');
 
     if (ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions) {
       const draft = buildStockVehicleConfigureDraft(ctx.stockVehicle, lead, conditions);
@@ -1214,7 +1258,7 @@ export default function DealerAIPage() {
     } else {
       setPhase('input');
     }
-  }, [location.state?.addVehicleContext, location.state?.pasteText, leads, enrichWithSuggestions, bootstrapConfigureState, conditions]);
+  }, [location.state?.addVehicleContext, location.state?.magicOfferPreparation, location.state?.magicOfferSeedText, location.state?.pasteText, leads, enrichWithSuggestions, bootstrapConfigureState, conditions]);
 
   useEffect(() => {
     const pasteText = location.state?.pasteText;
@@ -1440,7 +1484,13 @@ export default function DealerAIPage() {
     );
     const model = isLeadArg ? null : reservedModel;
 
-    if (!parsed?.ok) return;
+    if (!parsed?.ok) {
+      // Composer ohne Magic und ohne Parser-Kontext → Magic-Offer-Entry
+      setMagicOfferPreparation(null);
+      setMagicOfferSeedText('');
+      setPhase('magic-offer-entry');
+      return;
+    }
     if (model) {
       const full = parsed.suggestedModels?.find((m) => m.id === model.id);
       const vehicle = full?.primaryMatch?.vehicle;
@@ -1474,10 +1524,6 @@ export default function DealerAIPage() {
     setSelectedModelIds(ids);
     setPhase('review');
   }
-
-  const activeLead = result?.leadId
-    ? leads.find((l) => l.id === result.leadId) ?? null
-    : null;
 
   const conditionsWishChips = useMemo(() => {
     const contextLead = addVehicleContext?.opportunityId
