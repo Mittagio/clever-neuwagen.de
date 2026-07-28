@@ -50,18 +50,20 @@
 
 ## Smoke (manuell, Fehler notieren)
 
-1. Dump „netto 2800, 2 kinder, ford kuga, 300 wunschrate“ → Review → Übernehmen → Notizzettel + Rate
-2. „Schreib ihm: Lieferzeit ca. 3 Monate“ → Message-Draft → Senden → Kunden-Postfach
+1. Dump „netto 2800, 2 kinder, ford kuga, 300 wunschrate“ → Review → Übernehmen → Notizzettel + Rate + Leasingende
+2. „Schreib ihm: Lieferzeit ca. 3 Monate“ → **Review** → Übernehmen → Nachricht senden → Kunden-Postfach
 3. Kundenlink senden → Postfach „Angebot ist da!“
-4. Kunde fragt → Verkäufer „Antworten“ → Composer → senden
+4. Clever Eingang „Antworten“ → Composer mit Fragentext → senden → Inbox erledigt
 5. PDF Konfigurator reinwerfen → Interesse erkannt?
 6. Verkaufschancen-Filter „Nachfassen“ zeigt WV heute/überfällig
 7. „EV3 21 % Barangebot“ → Übernehmen → Magic-Review (nicht leerer Kalkulator)
 8. Mit fertigen Board-Angeboten: „Schick ihm die Angebote per Mail“ → Share-Sheet
-9. Clever Eingang „Antworten“ → Composer (nicht CleverAntworten-Sheet)
-10. (Optional Flag an) Unklarer Freitext → „Clever prüft …“ → Review mit needsConfirmation
+9. Spezialfrage aus Eingang → Wissensbasis-Sheet (nicht nur Freitext)
+10. Backend-Kundenakte: Angebot aus Composer → Magic-Review im Verkaufsassistenten
+11. (Optional Flag an) Unklarer Freitext → „Clever prüft …“ → Review mit needsConfirmation
 
 ## Bewusst später
 
 - Auto-Apply ohne Review (bewusst nicht)
 - Weiterer Bug-Hunt nach Pilot-Tagen
+- OpenAI-Seller-Interpret in Staging aktivieren (Flag)
