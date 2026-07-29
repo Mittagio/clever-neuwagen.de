@@ -2,7 +2,7 @@
  * Action Planner – verbindet Intents mit bestehenden Assist-/CRM-Tools.
  * EXECUTE passiert erst nach Seller-Bestätigung.
  */
-import { SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
+import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { runSellerOfferAssist } from '../dealer/sellerOfferAssistFlow.js';
 import { runSellerAppointmentAssist } from '../dealer/sellerAppointmentAssistFlow.js';
 import { runSellerInlineAssist } from '../dealer/sellerInlineComposerAssist.js';
@@ -18,6 +18,7 @@ export function planSellerActions({
   inputMode = SELLER_INPUT_MODE.CLEVER_WORK_INPUT,
   facts = [],
   missingInformation = [],
+  currentOfferContext = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -49,18 +50,39 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)) {
-    const offer = runSellerOfferAssist(lead, sellerInput, {});
-    actions.push({
-      id: 'prepare_offer',
-      type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-      label: 'Angebot vorbereiten',
-      needsSellerConfirmation: true,
-      status: offer?.ok ? 'prepared' : 'blocked',
-      legacy: offer ?? null,
-      payload: {
-        canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer),
-      },
-    });
+    const commercialOnly = facts.length > 0
+      && facts.every((f) => (
+        f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+        || f.factClass === SELLER_FACT_CLASS.MESSAGE_INSTRUCTION
+        || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
+      ));
+    if (currentOfferContext?.offerId && commercialOnly) {
+      actions.push({
+        id: 'update_offer_context',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Angebot anpassen',
+        needsSellerConfirmation: true,
+        status: 'prepared',
+        payload: {
+          updateOnly: true,
+          offerId: currentOfferContext.offerId,
+          offerSummary: currentOfferContext.summary || currentOfferContext.title || null,
+        },
+      });
+    } else {
+      const offer = runSellerOfferAssist(lead, sellerInput, {});
+      actions.push({
+        id: 'prepare_offer',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Angebot vorbereiten',
+        needsSellerConfirmation: true,
+        status: offer?.ok ? 'prepared' : 'blocked',
+        legacy: offer ?? null,
+        payload: {
+          canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer),
+        },
+      });
+    }
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)) {
@@ -123,7 +145,9 @@ export function planSellerActions({
       || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     )
   ) {
-    const inline = runSellerInlineAssist(lead, sellerInput);
+    const inline = runSellerInlineAssist(lead, sellerInput, {
+      currentOfferContext,
+    });
     actions.push({
       id: 'draft_message',
       type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,

@@ -1,3 +1,7 @@
+:root {
+  --internal-test-env-offset: 0px;
+}
+
 .internal-test-env-badge {
   position: fixed;
   top: 0;
@@ -32,6 +36,7 @@ body.internal-test-env-active {
   --internal-test-env-offset: 28px;
 }
 
+/* Inhalt unter dem fixed Badge freistellen – nur einmal, nicht doppelt. */
 body.internal-test-env-active .app-layout__main {
   padding-top: var(--internal-test-env-offset);
 }
@@ -39,6 +44,23 @@ body.internal-test-env-active .app-layout__main {
 body.internal-test-env-active .dealer-page--advisor-flow,
 body.internal-test-env-active .dealer-ai-page {
   padding-top: var(--internal-test-env-offset);
+}
+
+body.internal-test-env-active .app-layout__main .dealer-page--advisor-flow,
+body.internal-test-env-active .app-layout__main .dealer-ai-page {
+  padding-top: 0;
+}
+
+/* Vollhöhen-Shells müssen den Demo-Banner abziehen, sonst wird der Composer unten abgeschnitten. */
+body.internal-test-env-active .app-layout--dealer-app {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body.internal-test-env-active .app-layout--dealer-app .app-layout__main {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .internal-test-share-warning {

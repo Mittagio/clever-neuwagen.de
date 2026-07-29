@@ -52,10 +52,14 @@ assert.ok(activitiesSource.includes('onOpenHistory'), 'Aktivitäten öffnen Verl
 
 assert.ok(followUpSource.includes('CustomerAkteCleverNotepad'), 'Notizzettel auf Clever-Seite');
 assert.ok(followUpSource.includes('CustomerAkteSharedWorkspace'), 'Feed + Composer auf Clever-Seite');
-assert.ok(followUpSource.includes('CustomerAkteContactInfoSheet'), 'Kontaktinfos über Header');
+assert.ok(followUpSource.includes('CustomerAkteMoreSheet'), 'Weitere Infos über Mehr-Menü');
+assert.ok(followUpSource.includes("openSheet(SHEETS.customer)"), 'Name öffnet schlanke Kundendaten');
+assert.ok(!followUpSource.includes('CustomerAkteContactInfoSheet'), 'Kein Kontakt-Hub am Namen');
 assert.ok(followUpSource.includes('cust-akte--feed'), 'Feed-Layout');
 assert.ok(followUpSource.includes('CustomerAkteActivityTimeline'), 'Timeline-Sheet');
 assert.ok(!followUpSource.includes('CustomerAkteFileNav'), 'Keine Tab-Navigation in der Kundenansicht');
+assert.ok(!followUpSource.includes('Mit E-Mail ist das Angebot'), 'Keine Tipps im Kunden-Sheet');
+assert.ok(!followUpSource.includes('label="Notiz"'), 'Keine Notiz im Kunden-Sheet');
 
 const hintSource = readFileSync(
   join(__dirname, '../components/dealer-ai/CustomerAkteActivityHint.jsx'),

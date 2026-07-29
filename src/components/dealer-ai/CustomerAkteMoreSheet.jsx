@@ -2,6 +2,7 @@ import './CustomerAkte.css';
 
 /**
  * „Mehr“-Bottom-Sheet: seltene Funktionen, Statuszahlen sichtbar.
+ * Alltag = Feed + schlanke Kundendaten am Namen; Rest hier.
  */
 export default function CustomerAkteMoreSheet({
   open = false,
@@ -11,12 +12,14 @@ export default function CustomerAkteMoreSheet({
   selfDisclosureLabel = 'offen',
   activitiesCount = 0,
   offersCount = 0,
+  appointmentSummary = '',
   onOffers,
   onUnterlagen,
   onSelfDisclosure,
   onHistory,
   onTermine,
   onCustomerData,
+  onNotepad,
   onPortal,
   onLexikon,
 }) {
@@ -25,13 +28,14 @@ export default function CustomerAkteMoreSheet({
   const rows = [
     {
       id: 'offers',
+      section: 'Medien & Dokumente',
       label: 'Angebote',
       meta: offersCount ? String(offersCount) : null,
       onClick: onOffers,
     },
     {
       id: 'unterlagen',
-      label: 'Unterlagen',
+      label: 'Dokumente',
       meta: unterlagenLabel,
       hint: unterlagenOpen > 0 ? `${unterlagenOpen} offen` : null,
       onClick: onUnterlagen,
@@ -43,23 +47,32 @@ export default function CustomerAkteMoreSheet({
       onClick: onSelfDisclosure,
     },
     {
+      id: 'termine',
+      section: 'Termine',
+      label: 'Termine',
+      meta: appointmentSummary || null,
+      onClick: onTermine,
+    },
+    {
       id: 'history',
       label: 'Aktivitäten',
       meta: activitiesCount ? `${activitiesCount} neu` : null,
       onClick: onHistory,
     },
     {
-      id: 'termine',
-      label: 'Termine',
-      onClick: onTermine,
-    },
-    {
       id: 'kunde',
-      label: 'Kundendaten',
+      section: 'Kundendaten',
+      label: 'Name / Telefon / E-Mail / Adresse',
       onClick: onCustomerData,
     },
     {
+      id: 'notepad',
+      label: 'Notizzettel',
+      onClick: onNotepad,
+    },
+    {
       id: 'portal',
+      section: 'Teilen',
       label: 'Kundenportal',
       onClick: onPortal,
     },
@@ -69,6 +82,8 @@ export default function CustomerAkteMoreSheet({
       onClick: onLexikon,
     },
   ].filter((row) => typeof row.onClick === 'function');
+
+  let lastSection = null;
 
   return (
     <div className="cust-akte-more-sheet" role="dialog" aria-label="Mehr">
@@ -86,24 +101,31 @@ export default function CustomerAkteMoreSheet({
           </button>
         </header>
         <ul className="cust-akte-more-sheet__list">
-          {rows.map((row) => (
-            <li key={row.id}>
-              <button
-                type="button"
-                className="cust-akte-more-sheet__row"
-                onClick={() => {
-                  row.onClick?.();
-                  onClose?.();
-                }}
-              >
-                <span className="cust-akte-more-sheet__row-label">{row.label}</span>
-                <span className="cust-akte-more-sheet__row-meta">
-                  {row.hint || row.meta || ''}
-                  <span aria-hidden> ›</span>
-                </span>
-              </button>
-            </li>
-          ))}
+          {rows.map((row) => {
+            const showSection = row.section && row.section !== lastSection;
+            if (row.section) lastSection = row.section;
+            return (
+              <li key={row.id}>
+                {showSection ? (
+                  <p className="cust-akte-more-sheet__section">{row.section}</p>
+                ) : null}
+                <button
+                  type="button"
+                  className="cust-akte-more-sheet__row"
+                  onClick={() => {
+                    row.onClick?.();
+                    onClose?.();
+                  }}
+                >
+                  <span className="cust-akte-more-sheet__row-label">{row.label}</span>
+                  <span className="cust-akte-more-sheet__row-meta">
+                    {row.hint || row.meta || ''}
+                    <span aria-hidden> ›</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

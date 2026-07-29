@@ -6,6 +6,7 @@ import SellerUniversalReviewCard from './SellerUniversalReviewCard.jsx';
 import {
   buildSharedWorkspaceTimeline,
   postCleverAssistFeedCard,
+  postOfferUpdatedStatus,
   sendSellerWorkspacePackage,
 } from '../../services/crm/sharedWorkspaceService.js';
 import {
@@ -41,8 +42,32 @@ import {
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
+import {
+  COMPOSER_PRIMARY_CHIPS,
+  COMPOSER_MORE_CHIPS,
+  buildComposerSuggestionAssist,
+  resolveComposerShortcut,
+} from '../../services/crm/composerSuggestionService.js';
+import {
+  findOfferWorkingContext,
+  toCurrentOfferContext,
+} from '../../services/crm/composerWorkingContext.js';
+import { buildVehicleOpportunityCards, formatVehicleCardConditions, formatVehicleCardPrice, formatVehicleCardTitle } from '../../services/customerAkte.js';
+import {
+  isComposerAkteSearchQuery,
+  runComposerAkteSearch,
+} from '../../services/crm/composerAkteSearch.js';
 
 const DEBOUNCE_MS = 380;
+
+function countLeadOffers(lead = {}) {
+  try {
+    const cards = buildVehicleOpportunityCards({ lead, wishFields: lead?.wish ?? {} });
+    return Array.isArray(cards) ? cards.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 function buildCleverFeedTextFromResult(result = {}) {
   if (result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT) {
@@ -90,6 +115,15 @@ export default function CustomerAkteSharedWorkspace({
   feedTopSlot = null,
   /** Thread/Frage-Kontext aus Inbox-Deep-Link oder Portal-Antwort */
   replyContext = null,
+  /** Cursor-Anhänge: aktives Angebot etc. */
+  workingContextItems = [],
+  onRemoveWorkingContext = null,
+  workspaceSlot = null,
+  scrollToMessageId = null,
+  scrollToMessageToken = 0,
+  onAttachOffer = null,
+  onAttachDocument = null,
+  onFocusFeedMessage = null,
 }) {
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -169,6 +203,25 @@ export default function CustomerAkteSharedWorkspace({
       const requestId = ++assistRequestIdRef.current;
       const isStale = () => requestId !== assistRequestIdRef.current;
 
+      const shortcut = resolveComposerShortcut(text);
+      if (shortcut) {
+        if (isStale()) return;
+        const suggestion = buildComposerSuggestionAssist(lead, shortcut.id, {
+          customerName,
+        });
+        setUniversalTurn(null);
+        setAssist(suggestion.ok ? suggestion : null);
+        return;
+      }
+
+      if (isComposerAkteSearchQuery(text)) {
+        if (isStale()) return;
+        const search = runComposerAkteSearch(lead, text, { customerName });
+        setUniversalTurn(null);
+        setAssist(search.ok ? search : null);
+        return;
+      }
+
       const applyAssistFromTurn = (turn) => {
         if (isStale()) return;
         if (shouldShowUniversalReview(turn)) {
@@ -205,7 +258,11 @@ export default function CustomerAkteSharedWorkspace({
         setAssist(result.ok ? result : null);
       };
 
-      const localTurn = runCleverSellerTurn({ lead, sellerInput: text });
+      const localTurn = runCleverSellerTurn({
+        lead,
+        sellerInput: text,
+        currentOfferContext: resolveCurrentOfferContext(),
+      });
       const gate = shouldEscalateSellerInterpretation({
         ...localTurn,
         sellerInput: text,
@@ -250,7 +307,7 @@ export default function CustomerAkteSharedWorkspace({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       assistRequestIdRef.current += 1;
     };
-  }, [draft, lead, confirmAssist]);
+  }, [draft, lead, confirmAssist, customerName, workingContextItems]);
 
   useEffect(() => {
     if (!focusToken) return;
@@ -259,6 +316,33 @@ export default function CustomerAkteSharedWorkspace({
     el.focus?.();
     composerInputRef.current = el;
   }, [focusToken, cleverMode]);
+
+  function showSuggestionDraft(chipId) {
+    const suggestion = buildComposerSuggestionAssist(lead, chipId, {
+      customerName,
+      focusOfferId: findOfferWorkingContext(workingContextItems)?.offerId ?? null,
+    });
+    if (!suggestion.ok) {
+      setFeedback('Nachricht konnte nicht vorbereitet werden');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    setUniversalTurn(null);
+    setAssist(suggestion);
+    setOfferPrep(null);
+    setAppointmentDraft(null);
+    setDraft('');
+    const isPortfolio = suggestion.results?.[0]?.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND;
+    setFeedback(isPortfolio
+      ? 'Kundenlink vorbereitet'
+      : 'Nachricht vorbereitet – prüfen und senden');
+    setTimeout(() => setFeedback(''), 2800);
+  }
+
+  function handleSuggestionChip(chip) {
+    if (!chip?.id || sending) return;
+    showSuggestionDraft(chip.id);
+  }
 
   function persistMessages(nextLead, historyText) {
     onPersistLead?.(nextLead, { historyText });
@@ -292,15 +376,36 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function resolveReplyContext() {
+    const offerCtx = findOfferWorkingContext(workingContextItems);
     return {
       threadId: replyContext?.threadId ?? null,
-      relatedOfferId: replyContext?.relatedOfferId ?? null,
+      relatedOfferId: offerCtx?.offerId
+        ?? replyContext?.relatedOfferId
+        ?? null,
       relatedQuestionId: replyContext?.relatedQuestionId ?? null,
     };
   }
 
+  function resolveCurrentOfferContext() {
+    return toCurrentOfferContext(findOfferWorkingContext(workingContextItems));
+  }
+
   function handleSend(text) {
     if (!text || sending) return;
+    const shortcut = resolveComposerShortcut(text);
+    if (shortcut) {
+      handleSuggestionChip(shortcut);
+      return;
+    }
+    if (isComposerAkteSearchQuery(text)) {
+      const search = runComposerAkteSearch(lead, text, { customerName });
+      setUniversalTurn(null);
+      setAssist(search.ok ? search : null);
+      setDraft('');
+      setFeedback(search.ok ? 'Suche im Vorgang' : 'Nichts gefunden');
+      setTimeout(() => setFeedback(''), 2500);
+      return;
+    }
     setSending(true);
     try {
       const ctx = resolveReplyContext();
@@ -376,6 +481,19 @@ export default function CustomerAkteSharedWorkspace({
   function handleSendDraft(result) {
     const body = result.draft?.body || result.body;
     if (body) handleSend(body);
+  }
+
+  async function handleCopyDraft(result) {
+    const body = result.draft?.body || result.body;
+    if (!body) return;
+    try {
+      await navigator.clipboard?.writeText?.(String(body));
+      setFeedback('Text kopiert');
+      setTimeout(() => setFeedback(''), 2200);
+    } catch {
+      setFeedback('Kopieren nicht möglich');
+      setTimeout(() => setFeedback(''), 2200);
+    }
   }
 
   function handleSendActions(result) {
@@ -638,19 +756,47 @@ export default function CustomerAkteSharedWorkspace({
       ));
 
       const applied = applyAcceptedSellerTurn(lead, universalTurn, {
-        postFeedCard: true,
+        postFeedCard: false,
       });
       if (!applied.ok) {
         setFeedback('Konnte nicht übernommen werden.');
         return;
       }
-      persistMessages(applied.lead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+      let nextLead = applied.lead;
+      persistMessages(nextLead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+
+      const offerCtx = findOfferWorkingContext(workingContextItems);
+      const commercialChange = (applied.acceptedLabels ?? []).some((label) => (
+        /km|monat|rate|anzahlung|laufzeit|schlussrate|sonderzahlung/i.test(String(label))
+      ));
+      if (offerCtx?.card && commercialChange) {
+        const card = {
+          ...offerCtx.card,
+          termMonths: nextLead?.wish?.termMonths ?? offerCtx.card.termMonths,
+          mileagePerYear: nextLead?.wish?.mileagePerYear ?? offerCtx.card.mileagePerYear,
+          desiredRate: nextLead?.desiredRate ?? offerCtx.card.desiredRate,
+          downPayment: nextLead?.wish?.downPayment ?? offerCtx.card.downPayment,
+        };
+        const posted = postOfferUpdatedStatus({
+          lead: nextLead,
+          offerId: offerCtx.offerId,
+          title: formatVehicleCardTitle(card).replace(/^Kia\s+/i, ''),
+          conditionsLine: formatVehicleCardConditions(card) || '',
+          rateLine: formatVehicleCardPrice(card) || '',
+          eventLabel: 'Angebot aktualisiert',
+          createdByName: 'Clever',
+        });
+        if (posted.message) {
+          nextLead = posted.lead;
+          persistMessages(nextLead, 'Angebot aktualisiert');
+        }
+      }
 
       const sellerSeed = universalTurn.interpretedInput?.normalized
         || universalTurn.interpretedInput?.raw
         || '';
       const refreshedOffer = offerAction
-        ? runSellerOfferAssist(applied.lead, sellerSeed, {
+        ? runSellerOfferAssist(nextLead, sellerSeed, {
           previousPreparation: offerAction?.legacy?.results?.[0]?.magic
             || offerAction?.legacy?.previousPreparation
             || null,
@@ -670,7 +816,23 @@ export default function CustomerAkteSharedWorkspace({
 
       setUniversalTurn(null);
 
-      if (offerAction && offerResult) {
+      const updateOnly = Boolean(offerAction?.payload?.updateOnly);
+      const messageBody = messageResult?.draft?.body || messageResult?.body || '';
+
+      // Multi-Aktion: Angebot anpassen + Nachricht in einem Accept
+      if (updateOnly && messageBody) {
+        setDraft('');
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setAssist(messageLegacy?.ok
+          ? messageLegacy
+          : { ok: true, results: [messageResult] });
+        setFeedback('Änderungen übernommen – Nachricht prüfen und senden');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      if (offerAction && offerResult && !updateOnly) {
         setDraft('');
         setAssist(null);
         setOfferPrep(null);
@@ -681,7 +843,17 @@ export default function CustomerAkteSharedWorkspace({
             : `${applied.acceptedLabels.length} Angaben übernommen – Angebot wird vorbereitet`,
         );
         setTimeout(() => setFeedback(''), 2800);
-        handlePrepareOffer(offerResult, { lead: applied.lead, skipFeedCard: true });
+        handlePrepareOffer(offerResult, { lead: nextLead, skipFeedCard: true });
+        return;
+      }
+
+      if (updateOnly && !messageBody) {
+        setDraft('');
+        setAssist(null);
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback('Angebot aktualisiert');
+        setTimeout(() => setFeedback(''), 2500);
         return;
       }
 
@@ -777,12 +949,17 @@ export default function CustomerAkteSharedWorkspace({
     setFeedback('PDF wird gelesen …');
     try {
       const extracted = await extractMagicOfferPdf(file);
-      const seed = [
+      const fullText = extracted.ok ? String(extracted.text || '').trim() : '';
+      const interpretSeed = [
         extracted.fileName ? `PDF: ${extracted.fileName}` : null,
-        extracted.ok ? extracted.text.slice(0, 4000) : null,
+        fullText || null,
+      ].filter(Boolean).join('\n\n');
+      const draftSeed = [
+        extracted.fileName ? `PDF: ${extracted.fileName}` : null,
+        fullText ? fullText.slice(0, 4000) : null,
       ].filter(Boolean).join('\n\n');
 
-      if (!extracted.ok || !extracted.text) {
+      if (!extracted.ok || !fullText) {
         setDraft((prev) => (prev
           ? `${prev}\nKonfigurator-PDF: ${extracted.fileName || file.name}`
           : `Konfigurator-PDF: ${extracted.fileName || file.name}`));
@@ -791,10 +968,11 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
-      setDraft(seed);
+      setDraft(draftSeed);
       const turn = runCleverSellerTurn({
         lead,
-        sellerInput: seed,
+        sellerInput: interpretSeed,
+        currentOfferContext: resolveCurrentOfferContext(),
         attachments: [{
           kind: 'configurator_pdf',
           mimeType: file.type || 'application/pdf',
@@ -851,6 +1029,14 @@ export default function CustomerAkteSharedWorkspace({
         onCleverAction={handleCleverFeedCta}
         onAttachFile={handleAttachFile}
         feedTopSlot={feedTopSlot}
+        workspaceSlot={workspaceSlot}
+        scrollToMessageId={scrollToMessageId}
+        scrollToMessageToken={scrollToMessageToken}
+        contextPills={workingContextItems}
+        onRemoveContextPill={onRemoveWorkingContext}
+        suggestionChips={COMPOSER_PRIMARY_CHIPS}
+        moreSuggestionChips={COMPOSER_MORE_CHIPS}
+        onSuggestionChip={handleSuggestionChip}
         reviewSlot={(
           reviewModel ? (
             <SellerUniversalReviewCard
@@ -865,11 +1051,33 @@ export default function CustomerAkteSharedWorkspace({
               onUseVerified={handleUseVerified}
               onPrepareReply={handlePrepareReply}
               onSendDraft={handleSendDraft}
+              onCopyDraft={handleCopyDraft}
               onSendActions={handleSendActions}
               onChoice={handleChoice}
               onPrepareOffer={handlePrepareOffer}
               onSendPortfolio={handleSendPortfolio}
               onAppointmentPrimary={handleAppointmentPrimary}
+              onOpenSearchHit={(result) => {
+                if (result?.offerId) {
+                  onOpenOffer?.({ offerId: result.offerId, id: result.offerId });
+                  setAssist(null);
+                  setDraft('');
+                  return;
+                }
+                if (result?.messageId && onFocusFeedMessage) {
+                  onFocusFeedMessage(result.messageId);
+                  setAssist(null);
+                  setDraft('');
+                  return;
+                }
+                if (result?.messageId) {
+                  setFeedback('Treffer im Verlauf – bitte nach oben scrollen');
+                  setTimeout(() => setFeedback(''), 2800);
+                  return;
+                }
+                setFeedback('Treffer im Verlauf – Filter „Nachrichten“ nutzen');
+                setTimeout(() => setFeedback(''), 2800);
+              }}
               onDismiss={handleDismissAssist}
             />
           )
@@ -883,6 +1091,33 @@ export default function CustomerAkteSharedWorkspace({
         )}
         plusActions={[
           {
+            id: 'attach_offer',
+            icon: '📎',
+            label: (() => {
+              const n = countLeadOffers(lead);
+              return n > 0 ? `Angebot anhängen (${n})` : 'Angebot anhängen';
+            })(),
+            onClick: () => {
+              if (onAttachOffer) {
+                onAttachOffer();
+                return;
+              }
+              onOpenOffer?.();
+            },
+          },
+          {
+            id: 'attach_document',
+            icon: '📄',
+            label: 'Dokument anhängen',
+            onClick: () => {
+              if (onAttachDocument) {
+                onAttachDocument();
+                return;
+              }
+              onUploadDocument?.();
+            },
+          },
+          {
             id: 'offer',
             icon: '🚗',
             label: 'Angebot erstellen',
@@ -890,13 +1125,13 @@ export default function CustomerAkteSharedWorkspace({
           },
           {
             id: 'file',
-            icon: '📄',
+            icon: '📥',
             label: 'Unterlage ablegen',
             onClick: () => onUploadDocument?.(),
           },
           {
             id: 'req',
-            icon: '📎',
+            icon: '📋',
             label: 'Unterlage anfordern',
             onClick: () => setDraft('Schreib ihm, dass noch Unterlagen fehlen.'),
           },

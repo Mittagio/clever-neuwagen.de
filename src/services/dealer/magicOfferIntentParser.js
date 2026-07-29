@@ -98,8 +98,14 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let finalPayment = null;
-  const balloonMatch = blob.match(/(?:schlussrate|schlusszahlung|ballon)\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d{4,6}(?:[.,]\d{1,2})?)\s*(?:€|euro)?/i)
-    ?? blob.match(/(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d{4,6}(?:[.,]\d{1,2})?)\s*(?:€|euro)?\s*(?:schlussrate|schlusszahlung|ballon)/i);
+  const noFinalPayment = /\b(?:keine|ohne|0)\s*(?:€|euro)?\s*(?:schlussrate|schlusszahlung|ballon)\b/.test(blob)
+    || /\b(?:schlussrate|schlusszahlung|ballon)\s*(?:keine|ohne|0)\b/.test(blob);
+  const balloonMatch = !noFinalPayment
+    ? (
+      blob.match(/(?:schlussrate|schlusszahlung|ballon)\s*(?:von\s*)?(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d{4,6}(?:[.,]\d{1,2})?)\s*(?:€|euro)?/i)
+      ?? blob.match(/(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d{4,6}(?:[.,]\d{1,2})?)\s*(?:€|euro)?\s*(?:schlussrate|schlusszahlung|ballon)/i)
+    )
+    : null;
   if (balloonMatch) finalPayment = parseEuroAmount(balloonMatch[1]);
 
   let effectiveInterestRate = null;
@@ -115,11 +121,14 @@ export function parseMagicOfferIntent(text = '') {
   if (discountPercent != null && monthlyRate == null && !/\bleasing\b|\bfinanzierung\b/.test(blob)) {
     offerType = 'purchase';
   }
-  if (/\bfinanzierung\b|\bschlussrate\b|\beffektiv/.test(blob) || finalPayment != null) {
+  if (
+    (/\bfinanzierung\b|\beffektiv/.test(blob) || finalPayment != null)
+    && !/\bleasing(?:angebot)?\b/.test(blob)
+  ) {
     offerType = 'financing';
   }
   if (
-    /\bleasing\b/.test(blob)
+    /\bleasing(?:angebot)?\b/.test(blob)
     || (monthlyRate != null && durationMonths != null && finalPayment == null && offerType !== 'financing')
     || (durationMonths != null && annualMileageKm != null && monthlyRate == null && discountPercent == null && offerType !== 'financing')
   ) {

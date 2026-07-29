@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
-import { IconBack, IconMoreDots, IconPhone } from './AkteIcons.jsx';
+import { IconBack, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
 /**
  * Kompakter Header der Kundenakte (Messenger-Stil).
- * Name / Kontext → Kontaktinfos; ••• → seltene Aktionen.
+ * Name / Kontext → Kontaktinfos; 🔍 → Suche; ••• → seltene Aktionen.
  */
 export default function CustomerAkteCompactHeader({
   customerName = '',
@@ -16,6 +16,7 @@ export default function CustomerAkteCompactHeader({
   onMore,
   onOpenProfile = null,
   onMissingPhone,
+  onSearch = null,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const displayName = formatCustomerDisplayName(customerName) || 'Kunde noch offen';
@@ -65,6 +66,16 @@ export default function CustomerAkteCompactHeader({
         </button>
 
         <div className="cust-akte-compact-header__actions">
+          {typeof onSearch === 'function' ? (
+            <button
+              type="button"
+              className="cust-akte-compact-header__icon-btn"
+              onClick={onSearch}
+              aria-label="In dieser Akte suchen"
+            >
+              <IconSearch />
+            </button>
+          ) : null}
           {hasPhone ? (
             <a
               href={telHref}

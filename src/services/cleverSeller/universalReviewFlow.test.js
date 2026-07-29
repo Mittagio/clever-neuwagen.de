@@ -114,4 +114,49 @@ assert.equal(
   true,
 );
 
+// Multi-Aktion: angehängtes Angebot + km ändern + Nachricht
+const multiTurn = runCleverSellerTurn({
+  lead: {
+    ...emptyLead,
+    wish: { paymentType: 'leasing', termMonths: 48, mileagePerYear: 15000 },
+  },
+  sellerInput: 'Mach 20000 km und schreib ihr dass ich es wie besprochen angepasst habe',
+  currentOfferContext: {
+    offerId: 'vc-ev4',
+    title: 'EV4 GT-Line',
+    termMonths: 48,
+    mileagePerYear: 15000,
+    monthlyRate: 329,
+    summary: 'EV4 · 48 M · 15.000 km',
+  },
+});
+assert.ok(
+  multiTurn.extractedFacts.some((f) => f.field === 'annualMileage'),
+  'km-Fakt erkannt',
+);
+assert.ok(
+  multiTurn.preparedActions.some((a) => a.payload?.updateOnly === true),
+  'Angebots-Update vorbereitet',
+);
+assert.ok(
+  multiTurn.preparedActions.some((a) => a.type === 'draft_message'),
+  'Nachricht vorbereitet',
+);
+const multiModel = buildUniversalReviewModel(multiTurn);
+assert.ok(multiModel);
+assert.ok(multiModel.actionSections?.some((s) => s.kind === 'offer_change'));
+assert.match(multiModel.primaryCta, /Änderungen prüfen|Übernehmen/);
+assert.ok(
+  multiModel.actionSections.some((s) => s.kind === 'offer_change' && /15\.000|15000/i.test(s.line || '')),
+);
+assert.ok(
+  !(multiTurn.missingInformation || []).some((m) => /Welches Modell/i.test(m.label || '')),
+  'kein Modell-Ask bei angehängtem Angebot',
+);
+const msgSection = multiModel.actionSections?.find((s) => s.kind === 'message_draft');
+const msgBody = msgSection?.body || '';
+assert.ok(msgBody, 'Message-Draft vorhanden');
+assert.ok(!/Mach 20000 km und schreib/i.test(msgBody), 'kein Seller-Rohtext im Draft');
+assert.ok(/angepasst|Angebot/i.test(msgBody), 'Kundentext zu Angebotsanpassung');
+
 console.log('universalReviewFlow.test.js: ok');

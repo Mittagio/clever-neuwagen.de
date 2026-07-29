@@ -21,6 +21,11 @@ import {
   formatAppointmentWhen,
   parseAppointmentDateTime,
 } from '../dealer/sellerAppointmentAssistFlow.js';
+import {
+  extractSellerFactsFromOfferPdfText,
+  mergeOfferPdfFactsIntoSellerFacts,
+  shouldEnrichSellerInputFromOfferPdf,
+} from './mapMagicOfferIntentToSellerFacts.js';
 
 const MONTH_MAP = {
   januar: '01', jan: '01',
@@ -356,13 +361,22 @@ export function extractUniversalSellerFacts(text = '') {
       label: 'Finanzierung',
       confidence: 0.88,
     }));
-  } else if (/\bleasingangebot\b|\bleasing\s+(?:anbieten|machen|erstellen)\b/i.test(t)) {
+  } else if (
+    /\bleasingangebot\b|\bleasing\s+(?:anbieten|machen|erstellen)\b/i.test(t)
+    || (
+      /\bleasing\b/i.test(t)
+      && (
+        (/\b\d{2}\s*monate?\b/i.test(t) && /\b(?:km|kilometer)\b/i.test(t))
+        || /\banzahlung|sonderzahlung\b/i.test(t)
+      )
+    )
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'paymentType',
       value: 'leasing',
       label: 'Leasing',
-      confidence: 0.88,
+      confidence: 0.9,
     }));
   }
 
@@ -712,7 +726,15 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
 export function interpretSellerInput(sellerInput = '', options = {}) {
   const raw = String(sellerInput ?? '');
   const normalized = raw.replace(/\r\n/g, '\n').trim();
-  const facts = extractUniversalSellerFacts(normalized);
+  let facts = extractUniversalSellerFacts(normalized);
+
+  if (shouldEnrichSellerInputFromOfferPdf(options.attachments, normalized)) {
+    facts = mergeOfferPdfFactsIntoSellerFacts(
+      facts,
+      extractSellerFactsFromOfferPdfText(normalized),
+    );
+  }
+
   const intents = detectSellerTurnIntents(normalized, facts);
   const inputMode = resolveSellerInputMode(normalized, intents, facts);
   const attachmentTypes = (options.attachments ?? [])

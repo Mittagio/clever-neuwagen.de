@@ -101,3 +101,67 @@
   border-color: transparent;
   color: var(--color-clever, #6d5bb8);
 }
+
+.sur-card__actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sur-card__action {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(109, 91, 184, 0.12);
+}
+
+.sur-card__action-headline {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: #1a2233;
+}
+
+.sur-card__deltas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sur-card__deltas li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+
+.sur-card__delta-label {
+  color: #8b93a7;
+  flex: 0 0 auto;
+}
+
+.sur-card__delta-value {
+  color: #1a2233;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sur-card__draft {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #334155;
+}

@@ -4,7 +4,8 @@
  */
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 
-const OPENAI_MODEL = process.env.OPENAI_QUERY_MODEL || process.env.OPENAI_CLEVER_MODEL || 'gpt-4o-mini';
+const ENV = typeof process !== 'undefined' && process.env ? process.env : {};
+const OPENAI_MODEL = ENV.OPENAI_QUERY_MODEL || ENV.OPENAI_CLEVER_MODEL || 'gpt-4o-mini';
 
 const ALLOWED_FACT_CLASSES = new Set(Object.values(SELLER_FACT_CLASS));
 const ALLOWED_INTENTS = new Set(Object.values(SELLER_TURN_INTENTS));
@@ -81,7 +82,7 @@ function sanitizeAiResult(parsed = {}) {
  * @param {{ fetchImpl?: typeof fetch, apiKey?: string|null, model?: string }} [options]
  */
 export async function interpretSellerInputWithOpenAi(safeContext = {}, options = {}) {
-  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY ?? null;
+  const apiKey = options.apiKey ?? ENV.OPENAI_API_KEY ?? null;
   if (!apiKey) {
     return { ok: false, error: 'missing_api_key', facts: [], intents: [], confidence: 0 };
   }

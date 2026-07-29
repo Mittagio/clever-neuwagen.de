@@ -16,6 +16,7 @@ import {
 } from './sellerActionIntent.js';
 import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
 import { buildCleverGreeting } from '../cleverAntworten.js';
+import { buildComposerCustomerMessage } from '../crm/composerSuggestionService.js';
 
 export const INLINE_RESULT_TYPES = {
   FACT_SUGGESTION: 'fact_suggestion',
@@ -27,6 +28,7 @@ export const INLINE_RESULT_TYPES = {
   OFFER_DRAFT: 'offer_draft',
   PORTFOLIO_SEND: 'portfolio_send',
   APPOINTMENT_DRAFT: 'appointment_draft',
+  SEARCH_HIT: 'search_hit',
 };
 
 const LOOKUP_TOPICS = [
@@ -83,11 +85,111 @@ function buildInlineContextChips(lead = {}, sellerFacts = []) {
   };
 }
 
-function buildInlineMessageDraft(lead = {}, sellerInput = '', sellerFacts = []) {
+/**
+ * Seller-Input ist Instruction – nie 1:1 als Kundentext verwenden.
+ * @returns {{ name: string|null, salutation: string|null, instruction: string|null }}
+ */
+function parseSellerMessageInstruction(sellerInput = '') {
+  const text = String(sellerInput ?? '').trim();
+  const named = text.match(
+    /\bschreib(?:e)?\s+(?:an\s+)?((?:Herrn?|Frau)\s+[A-Za-zÄÖÜäöüß-]+)\b(?:[,:]?\s*(?:dass|das|,)\s*)?(.+)?$/i,
+  );
+  const generic = text.match(
+    /\bschreib(?:e)?\s+(?:ihm|ihr|dem kunden|der kundin)\b(?:[,:]?\s*(?:dass|das|,)\s*)?(.+)?$/i,
+  );
+  if (named) {
+    const who = String(named[1] || '').trim();
+    const rest = String(named[2] || '').trim();
+    const salutation = /^frau\b/i.test(who) ? 'frau' : (/^herr/i.test(who) ? 'herr' : null);
+    const name = who.replace(/^(Herrn?|Frau)\s+/i, '').trim();
+    return { name: name || null, salutation, instruction: rest || null };
+  }
+  if (generic) {
+    return {
+      name: null,
+      salutation: null,
+      instruction: String(generic[1] || '').trim() || null,
+    };
+  }
+  return { name: null, salutation: null, instruction: null };
+}
+
+function looksLikeOfferAdjustInstruction(sellerInput = '', sellerFacts = []) {
+  const text = String(sellerInput ?? '');
+  if (/\b(angepasst|anpassung|wie besprochen)\b/i.test(text)) return true;
+  if (/\bmach(?:e)?\s+(?:das|das angebot|es)\b/i.test(text) && /\bschreib/i.test(text)) return true;
+  return (sellerFacts ?? []).some((f) => (
+    f.key === 'mileage' || f.key === 'term' || f.key === 'rate' || f.key === 'downPayment'
+  ));
+}
+
+/**
+ * @param {object} lead
+ * @param {string} sellerInput
+ * @param {object[]} sellerFacts
+ * @param {{ currentOfferContext?: object|null }} [options]
+ */
+function buildInlineMessageDraft(lead = {}, sellerInput = '', sellerFacts = [], options = {}) {
   const understanding = buildCustomerUnderstanding(lead);
   const labels = understanding?.verstaendnis?.labels ?? [];
-  const name = customerDisplayName(lead);
-  const greeting = buildCleverGreeting(name, lead?.salutation ?? null);
+  const parsed = parseSellerMessageInstruction(sellerInput);
+  const offerCtx = options.currentOfferContext || null;
+  const leadForDraft = parsed.name
+    ? {
+      ...lead,
+      name: parsed.salutation === 'frau'
+        ? `Frau ${parsed.name}`
+        : (parsed.salutation === 'herr' ? `Herr ${parsed.name}` : parsed.name),
+      contact: {
+        ...(lead?.contact || {}),
+        name: parsed.salutation === 'frau'
+          ? `Frau ${parsed.name}`
+          : (parsed.salutation === 'herr' ? `Herr ${parsed.name}` : parsed.name),
+        salutation: parsed.salutation || lead?.contact?.salutation || lead?.salutation || '',
+      },
+      salutation: parsed.salutation || lead?.salutation || lead?.contact?.salutation || '',
+    }
+    : lead;
+
+  // Bestehende Antwort-Logik: Angebot angepasst → echter Kundentext
+  if (looksLikeOfferAdjustInstruction(sellerInput, sellerFacts)) {
+    const composed = buildComposerCustomerMessage(leadForDraft, 'angebot_angepasst', {
+      customerName: parsed.name || undefined,
+      focusOfferId: offerCtx?.offerId || null,
+    });
+    let body = String(composed.body || '').trim();
+    if (offerCtx?.title && body && !new RegExp(String(offerCtx.title).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(body)) {
+      body = body.replace(
+        /ich habe das Angebot angepasst/i,
+        `ich habe Ihr ${offerCtx.title}-Angebot wie besprochen angepasst`,
+      );
+    } else if (/\bwie besprochen\b/i.test(sellerInput) && body) {
+      body = body.replace(
+        /ich habe das Angebot angepasst/i,
+        'ich habe das Angebot wie besprochen angepasst',
+      );
+    }
+    const mileageFact = (sellerFacts ?? []).find((f) => f.key === 'mileage' || f.field === 'annualMileage');
+    if (mileageFact?.label && body && !/km/i.test(body.split('\n').slice(0, 4).join(' '))) {
+      body = body.replace(
+        /(angepasst[^.]*\.)/i,
+        `$1 Die Jahresfahrleistung liegt jetzt bei ${mileageFact.label}.`,
+      );
+    }
+    if (body) {
+      return {
+        channel: 'preferred',
+        subject: offerCtx?.title ? `Ihr Angebot ${offerCtx.title}` : 'Angebot angepasst',
+        body,
+      };
+    }
+  }
+
+  const name = parsed.name || customerDisplayName(lead);
+  const greeting = buildCleverGreeting(
+    name,
+    parsed.salutation || lead?.salutation || lead?.contact?.salutation || null,
+  );
   const vehicleFact = sellerFacts.find((f) => f.key === 'vehicle');
   const colorFact = sellerFacts.find((f) => f.key === 'color');
   const availFact = sellerFacts.find((f) => f.key === 'availability');
@@ -98,8 +200,21 @@ function buildInlineMessageDraft(lead = {}, sellerInput = '', sellerFacts = []) 
   if (vehicleFact || colorFact || availFact) {
     const vehicleLine = [vehicleFact?.label, colorFact?.label, availFact?.label].filter(Boolean).join(' ');
     paragraphs.push(`ich hätte sogar einen ${vehicleLine}.`.replace(/\s+/g, ' ').trim());
-  } else if (sellerInput) {
-    paragraphs.push(`${sellerInput.trim().replace(/\.$/, '')}.`);
+  } else if (parsed.instruction) {
+    // Instruction → Kundensatz, kein Seller-Rohtext
+    const clean = parsed.instruction
+      .replace(/^(?:dass|das)\s+/i, '')
+      .replace(/\bich\s+es\b/i, 'ich es')
+      .trim();
+    if (/\bwie besprochen\b/i.test(clean) && /\bangepasst\b/i.test(clean)) {
+      paragraphs.push('wie besprochen habe ich Ihr Angebot angepasst.');
+    } else if (clean) {
+      paragraphs.push(`${clean.charAt(0).toLowerCase()}${clean.slice(1)}`.replace(/\.$/, '') + '.');
+    } else {
+      paragraphs.push('kurz eine Rückmeldung zu Ihrer Anfrage.');
+    }
+  } else {
+    paragraphs.push('kurz eine Rückmeldung zu Ihrer Anfrage.');
   }
   if (preferredColor && colorFact && !new RegExp(preferredColor.split(/\s+/)[0], 'i').test(colorFact.label)) {
     paragraphs.push(
@@ -113,7 +228,7 @@ function buildInlineMessageDraft(lead = {}, sellerInput = '', sellerFacts = []) 
       + 'Die genaue Anhängelast prüfe ich noch und gebe sie Ihnen verbindlich durch.',
     );
   }
-  paragraphs.push('Soll ich Ihnen das Fahrzeug kurz vorstellen?');
+  paragraphs.push('Bei Fragen melde ich mich gerne.');
   const sellerName = lead?.ownerName ?? 'Ihr Verkaufsteam';
   return {
     channel: 'preferred',
@@ -377,7 +492,9 @@ export function runSellerInlineAssist(lead = {}, draftText = '', options = {}) {
     || /\b(schreib|sag|informier|meld)\b/i.test(text)
     || options.forceMode === 'write';
   if (isWrite && text.length >= 12 && !topics.length) {
-    const draft = buildInlineMessageDraft(lead, text, context.sellerFacts);
+    const draft = buildInlineMessageDraft(lead, text, context.sellerFacts, {
+      currentOfferContext: options.currentOfferContext || null,
+    });
     const wishLabels = context.reminderChips?.map((c) => c.label)
       || (buildAttributedWishChips(lead) ?? []).map((c) => c.label);
     const linkedWish = wishLabels.find((label) => {

@@ -85,6 +85,15 @@ export function IconPhone(props) {
   );
 }
 
+export function IconSearch(props) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="11" cy="11" r="6.5" {...stroke} />
+      <path d="M16.5 16.5L21 21" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export function IconMoreDots(props) {
   return (
     <SvgIcon {...props}>

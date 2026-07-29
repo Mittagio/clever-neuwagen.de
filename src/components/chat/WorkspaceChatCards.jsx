@@ -111,16 +111,28 @@ export function CleverChatMessage({ text, payload = {}, onCta = null }) {
   );
 }
 
-export function StatusChatCard({ payload = {}, text }) {
+export function StatusChatCard({ payload = {}, text, onOpen = null }) {
+  const canOpen = Boolean(onOpen && (payload.offerId || payload.ctaLabel));
   return (
     <article className="sw-card sw-card--status">
       <p className="sw-card__title">
         {payload.icon ? `${payload.icon} ` : ''}
         {payload.title || text}
       </p>
+      {payload.subtitle ? <p className="sw-card__meta">{payload.subtitle}</p> : null}
       {payload.fileName ? <p className="sw-card__meta">{payload.fileName}</p> : null}
       {payload.statusLabel ? (
         <p className="sw-card__status">✓ {payload.statusLabel}</p>
+      ) : null}
+      {canOpen ? (
+        <button
+          type="button"
+          className="sw-card__link"
+          onClick={() => onOpen?.(payload)}
+        >
+          {payload.ctaLabel || 'Öffnen'}
+          {' →'}
+        </button>
       ) : null}
     </article>
   );
@@ -248,7 +260,13 @@ export function WorkspaceChatItem({
     );
   }
   if (kind === MESSAGE_KIND.SYSTEM_STATUS || kind === MESSAGE_KIND.DOCUMENT_CARD) {
-    return <StatusChatCard payload={item.payload} text={item.text} />;
+    return (
+      <StatusChatCard
+        payload={item.payload}
+        text={item.text}
+        onOpen={item.payload?.offerId ? onOpenOffer : null}
+      />
+    );
   }
 
   return <TextBubble item={item} />;

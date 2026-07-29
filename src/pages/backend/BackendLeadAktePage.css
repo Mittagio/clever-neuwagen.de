@@ -1,13 +1,20 @@
 .backend-lead-akte {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  height: 100%;
   width: 100%;
   max-width: none;
   background: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .backend-lead-akte.dealer-ai-page {
   width: 100%;
   max-width: none;
+  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
 }
 
 .backend-lead-akte .dealer-ai-main--akte {

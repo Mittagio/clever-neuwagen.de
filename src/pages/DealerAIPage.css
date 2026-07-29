@@ -11,7 +11,7 @@
   --dai-border: #e2e8f0;
   --dai-muted: #64748b;
   --dai-text: #0f172a;
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
   background: #f4f6f9;
   color: #111;
   display: flex;
@@ -22,6 +22,16 @@
 
 .dealer-ai-page:has(.dealer-ai-main--akte) {
   background: var(--color-bg, #f7f8fa);
+  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  overflow: hidden;
+}
+
+.dealer-ai-page:has(.dealer-ai-main--akte) .dealer-ai-main--akte {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dealer-ai-main--akte {

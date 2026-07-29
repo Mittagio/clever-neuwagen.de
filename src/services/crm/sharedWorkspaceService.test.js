@@ -11,7 +11,9 @@ import {
   sendSellerWorkspacePackage,
   appendOfferCardsToThread,
   buildOfferReadyIntroText,
+  buildOfferUpdatedStatusText,
   postCleverAssistFeedCard,
+  postOfferUpdatedStatus,
 } from './sharedWorkspaceService.js';
 import { initCleverUnterlagenForLead } from '../cleverUnterlagen.js';
 
@@ -96,7 +98,11 @@ const deduped = appendOfferCardsToThread({
   firstName: 'Herr',
 });
 assert.equal(deduped.skipped, true);
-assert.equal(deduped.messages.length, 0);
+assert.equal(deduped.updated, true);
+assert.ok(deduped.messages.length >= 1, 'kompakte Update-Zeilen statt erneuter OFFER_CARD');
+assert.ok(deduped.messages.every((m) => m.kind === MESSAGE_KIND.SYSTEM_STATUS));
+assert.ok(deduped.messages.some((m) => /Angebot aktualisiert/i.test(m.text)));
+assert.ok(deduped.messages.every((m) => m.kind !== MESSAGE_KIND.OFFER_CARD));
 
 const timelineCustomer = buildSharedWorkspaceTimeline(withOffers.lead, {
   role: 'customer',
@@ -125,13 +131,39 @@ assert.equal(withInternal.message.payload.ctaAction, 'complete_offer');
 const sellerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'seller' });
 const customerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'customer' });
 assert.ok(
-  sellerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
-  'Seller sieht interne Clever-Karte',
+  !sellerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
+  'Seller-Verlauf zeigt keine internen Clever-Assist-Karten',
 );
 assert.ok(
   !customerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
   'Kunde sieht interne Clever-Karte nicht',
 );
-assert.ok(sellerFeed.items.length > customerFeed.items.length);
+assert.equal(
+  sellerFeed.items.length,
+  customerFeed.items.length,
+  'Seller- und Kunden-Verlauf gleich laut für echte Kommunikation',
+);
+
+assert.equal(
+  buildOfferUpdatedStatusText({
+    title: 'EV4 GT-Line',
+    conditionsLine: '48 Monate · 20.000 km',
+    rateLine: '349 €/Monat',
+  }),
+  'Angebot aktualisiert · EV4 GT-Line · 48 Monate · 20.000 km · 349 €/Monat',
+);
+
+const compact = postOfferUpdatedStatus({
+  lead: withOffers.lead,
+  offerId: 'u-ev4',
+  title: 'EV4 GT-Line',
+  conditionsLine: '48 Monate · 20.000 km',
+  rateLine: '349 €/Monat',
+});
+assert.ok(compact.message);
+assert.equal(compact.message.kind, MESSAGE_KIND.SYSTEM_STATUS);
+assert.match(compact.message.text, /Angebot aktualisiert/);
+assert.equal(compact.message.payload.offerId, 'u-ev4');
+assert.equal(compact.message.payload.ctaLabel, 'Öffnen');
 
 console.log('sharedWorkspaceService.test.js: OK');

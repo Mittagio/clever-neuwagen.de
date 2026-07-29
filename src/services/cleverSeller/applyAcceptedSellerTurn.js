@@ -82,6 +82,19 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    if (field === 'downPayment' && value != null && value !== '') {
+      const down = Number(value);
+      if (Number.isFinite(down)) {
+        wish.downPayment = down;
+        profile.budget = {
+          ...(profile.budget ?? {}),
+          downPayment: down,
+        };
+        touchedWish = true;
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'phone') {
       const phone = String(fact.label || value || '').trim();
       if (phone) {

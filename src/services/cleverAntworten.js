@@ -280,10 +280,20 @@ function textNachfassen(ctx) {
   const lines = [buildCleverGreeting(ctx.customerName, ctx.salutation), ''];
 
   if (ctx.offerOpened) {
-    lines.push('ich habe gesehen, dass Sie sich das Angebot angeschaut haben. Passt das grundsätzlich für Sie oder soll ich noch etwas an Laufzeit, Kilometer oder Anzahlung anpassen?');
+    lines.push(
+      ctx.vehicleTitle
+        ? `ich habe gesehen, dass Sie sich das Angebot zum ${ctx.vehicleTitle} angeschaut haben. Passt das grundsätzlich für Sie oder soll ich noch etwas an Laufzeit, Kilometer oder Anzahlung anpassen?`
+        : 'ich habe gesehen, dass Sie sich das Angebot angeschaut haben. Passt das grundsätzlich für Sie oder soll ich noch etwas an Laufzeit, Kilometer oder Anzahlung anpassen?',
+    );
   } else if (ctx.offerSent) {
-    lines.push('ich wollte kurz nachfragen, ob mein Angebot bei Ihnen angekommen ist und ob ich noch etwas anpassen darf.');
+    lines.push(
+      ctx.vehicleTitle
+        ? `ich wollte kurz nachfragen, ob mein Angebot zum ${ctx.vehicleTitle} bei Ihnen angekommen ist und ob ich noch etwas anpassen darf.`
+        : 'ich wollte kurz nachfragen, ob mein Angebot bei Ihnen angekommen ist und ob ich noch etwas anpassen darf.',
+    );
     if (ctx.offerUrl) lines.push('', ctx.offerUrl);
+  } else if (ctx.vehicleTitle) {
+    lines.push(`ich wollte kurz nachfragen, ob Sie sich zum ${ctx.vehicleTitle} schon Gedanken gemacht haben oder ob ich noch etwas für Sie klären darf.`);
   } else {
     lines.push('ich wollte kurz nachfragen, ob Sie noch Fragen haben oder ob ich Ihnen bei der Entscheidung helfen kann.');
   }

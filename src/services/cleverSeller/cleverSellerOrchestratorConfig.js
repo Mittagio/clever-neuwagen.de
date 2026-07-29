@@ -3,11 +3,17 @@
  * Default: Orchestrator an (deterministisch). OpenAI-Interpretation aus.
  */
 
+function resolveEnv(env) {
+  if (env) return env;
+  return typeof process !== 'undefined' && process.env ? process.env : {};
+}
+
 /**
  * @param {object} [env]
  */
-export function isCleverSellerOrchestratorEnabled(env = process.env) {
-  const raw = env?.CLEVER_SELLER_ORCHESTRATOR_ENABLED;
+export function isCleverSellerOrchestratorEnabled(env) {
+  const resolved = resolveEnv(env);
+  const raw = resolved?.CLEVER_SELLER_ORCHESTRATOR_ENABLED;
   if (raw === 'false' || raw === '0') return false;
   return true;
 }
@@ -17,10 +23,11 @@ export function isCleverSellerOrchestratorEnabled(env = process.env) {
  * Default: aus. An: CLEVER_SELLER_OPENAI_INTERPRET_ENABLED=true + OPENAI_API_KEY
  * @param {object} [env]
  */
-export function isCleverSellerOpenAiInterpretEnabled(env = process.env) {
-  const raw = env?.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED;
+export function isCleverSellerOpenAiInterpretEnabled(env) {
+  const resolved = resolveEnv(env);
+  const raw = resolved?.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED;
   if (raw !== 'true' && raw !== '1') return false;
-  return Boolean(env?.OPENAI_API_KEY);
+  return Boolean(resolved?.OPENAI_API_KEY);
 }
 
 /**
@@ -63,8 +70,9 @@ export function shouldEscalateSellerInterpretation(interpreted = {}) {
  * @param {object} interpreted
  * @param {object} [env]
  */
-export function evaluateSellerInterpretEscalation(interpreted = {}, env = process.env) {
-  if (!isCleverSellerOpenAiInterpretEnabled(env)) {
+export function evaluateSellerInterpretEscalation(interpreted = {}, env) {
+  const resolved = resolveEnv(env);
+  if (!isCleverSellerOpenAiInterpretEnabled(resolved)) {
     return { shouldEscalate: false, reason: null };
   }
   return shouldEscalateSellerInterpretation(interpreted);

@@ -17,7 +17,7 @@ import {
   buildSellerAssistantReply,
   planSellerActions,
 } from './planSellerActions.js';
-import { SELLER_TURN_INTENTS } from './sellerFactTypes.js';
+import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import {
   evaluateSellerInterpretEscalation,
   isCleverSellerOrchestratorEnabled,
@@ -40,6 +40,7 @@ function finalizeSellerTurn({
   env = {},
   warningsExtra = [],
   openaiEscalation = null,
+  currentOfferContext = null,
 }) {
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const uniqueFacts = filterDuplicateFacts(facts, lead);
@@ -48,16 +49,34 @@ function finalizeSellerTurn({
     intents,
     facts: uniqueFacts,
     lead,
+    currentOfferContext,
   });
+
+  let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
+  const hasCommercial = uniqueFacts.some(
+    (f) => f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+  );
+  // Angehängtes Angebot + Konditionsänderung → Angebots-Update auch bei „schreib …“
+  if (
+    currentOfferContext?.offerId
+    && hasCommercial
+    && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+  ) {
+    effectiveIntents.push({
+      type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+      confidence: 0.9,
+    });
+  }
 
   const preparedActions = enabled
     ? planSellerActions({
       lead,
       sellerInput: interpreted.normalized,
-      intents,
+      intents: effectiveIntents,
       inputMode: interpreted.inputMode,
       facts: uniqueFacts,
       missingInformation,
+      currentOfferContext,
     })
     : [];
 
@@ -87,7 +106,7 @@ function finalizeSellerTurn({
     inputMode: interpreted.inputMode,
   });
 
-  const primaryIntent = intents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
+  const primaryIntent = effectiveIntents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
   const warnings = [
     ...buildWarnings(uniqueFacts, interpreted.inputMode),
     ...warningsExtra,
@@ -96,7 +115,7 @@ function finalizeSellerTurn({
   return buildCleverSellerTurnResult({
     ok: Boolean(interpreted.normalized) && enabled,
     intent: primaryIntent,
-    intents,
+    intents: effectiveIntents,
     inputMode: interpreted.inputMode,
     interpretedInput: {
       raw: interpreted.raw,
@@ -113,12 +132,14 @@ function finalizeSellerTurn({
       vehicleInterest: uniqueFacts
         .filter((f) => f.field === 'vehicleInterest' || f.field === 'vehicleInterestMulti')
         .map((f) => f.label),
+      currentOffer: currentOfferContext || null,
     },
     preparedActions,
     warnings,
     assistantReply,
     confidence: interpreted.confidence,
     pendingAction,
+    currentOfferContext: currentOfferContext || null,
     uiEffects: {
       capturedFacts: uniqueFacts
         .filter((f) => !f.needsConfirmation)
@@ -143,7 +164,6 @@ export function runCleverSellerTurn({
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
-  void currentOfferContext;
   void sellerContext;
 
   const interpreted = interpretSellerInput(sellerInput, { attachments });
@@ -154,6 +174,7 @@ export function runCleverSellerTurn({
     intents: interpreted.intents,
     env,
     openaiEscalation: null,
+    currentOfferContext,
   });
 }
 

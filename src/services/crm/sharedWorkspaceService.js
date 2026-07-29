@@ -276,7 +276,34 @@ export function appendOfferCardsToThread({
     return id && !alreadyPosted.has(id);
   });
   if (!freshItems.length) {
-    return { ok: true, lead, messages: [], threadId, skipped: true };
+    // Bereits gesendete Angebote erneut geteilt → kompakte Update-Zeilen
+    let working = lead;
+    const updateMessages = [];
+    for (const item of items) {
+      const id = item.vehicleCardId || item.id;
+      if (!id) continue;
+      const posted = postOfferUpdatedStatus({
+        lead: working,
+        offerId: id,
+        title: item.modelLabel || item.title || 'Angebot',
+        conditionsLine: item.conditionsLine || item.subtitle || '',
+        rateLine: item.rateLine || '',
+        eventLabel: 'Angebot aktualisiert',
+        createdByName,
+      });
+      if (posted.message) {
+        working = posted.lead;
+        updateMessages.push(posted.message);
+      }
+    }
+    return {
+      ok: true,
+      lead: working,
+      messages: updateMessages,
+      threadId,
+      skipped: true,
+      updated: updateMessages.length > 0,
+    };
   }
 
   const resolvedIntro = introText != null && String(introText).trim()
@@ -400,6 +427,69 @@ export function postSelfDisclosureStatusMessage({
     payload: {
       title: done ? `✓ ${title}` : title,
       statusLabel: done ? 'Erledigt' : 'In Bearbeitung',
+    },
+  });
+}
+
+/**
+ * Kompakte Feed-Zeile für Angebots-Events (aktualisiert / gesendet / geöffnet).
+ * Keine große OFFER_CARD – nur eine lesbare Statuszeile mit Öffnen.
+ */
+export function buildOfferUpdatedStatusText({
+  title = 'Angebot',
+  conditionsLine = '',
+  rateLine = '',
+  eventLabel = 'Angebot aktualisiert',
+} = {}) {
+  const parts = [eventLabel, title, conditionsLine, rateLine]
+    .map((p) => String(p ?? '').trim())
+    .filter(Boolean);
+  // eventLabel + title immer; conditions/rate optional
+  return parts.join(' · ');
+}
+
+export function postOfferUpdatedStatus({
+  lead,
+  offerId = null,
+  title = 'Angebot',
+  conditionsLine = '',
+  rateLine = '',
+  eventLabel = 'Angebot aktualisiert',
+  ctaLabel = 'Öffnen',
+  visibleToCustomer = true,
+  createdByName = 'Clever',
+} = {}) {
+  if (!lead?.id) return { lead, message: null };
+
+  const line = buildOfferUpdatedStatusText({
+    title,
+    conditionsLine,
+    rateLine,
+    eventLabel,
+  });
+  const { lead: withThread, thread } = findOrCreateThreadForLead(lead, {
+    relatedOfferId: offerId,
+  });
+
+  return addCustomerMessage({
+    lead: withThread,
+    threadId: thread?.id,
+    direction: MESSAGE_DIRECTION.OUTBOUND,
+    channel: MESSAGE_CHANNEL.CLEVER,
+    status: MESSAGE_STATUS.SENT,
+    text: line,
+    relatedOfferId: offerId,
+    visibleToCustomer: Boolean(visibleToCustomer),
+    createdByName,
+    kind: MESSAGE_KIND.SYSTEM_STATUS,
+    senderRole: 'clever',
+    payload: {
+      title: line,
+      subtitle: [conditionsLine, rateLine].filter(Boolean).join(' · ') || null,
+      offerId: offerId || null,
+      ctaLabel: offerId ? ctaLabel : null,
+      icon: '✓',
+      event: 'offer_updated',
     },
   });
 }

@@ -29,6 +29,51 @@
   margin: 0 0 6px;
 }
 
+.sw-feed-filters {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0 0 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sw-feed-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.sw-feed-filters__btn {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #6b7280;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sw-feed-filters__btn:hover:not(:disabled) {
+  color: #4c3d8f;
+  background: rgba(109, 91, 184, 0.08);
+}
+
+.sw-feed-filters__btn.is-active {
+  background: #efeafc;
+  color: #4c3d8f;
+}
+
+.sw-feed-filters__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .sw-chat__empty {
   margin: 56px 20px;
   color: #8b93a7;
@@ -50,6 +95,48 @@
 
 .sw-chat__item {
   max-width: 100%;
+  border-radius: 14px;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.sw-chat__item.is-highlighted {
+  animation: sw-feed-highlight 2.2s ease-out;
+}
+
+@keyframes sw-feed-highlight {
+  0%,
+  72% {
+    background: rgba(109, 91, 184, 0.12);
+    box-shadow: 0 0 0 2px rgba(109, 91, 184, 0.28);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.sw-card--status {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sw-card--status .sw-card__title {
+  font-size: 0.875rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.sw-card--status .sw-card__meta {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: #5b6578;
+}
+
+.sw-card--status .sw-card__link {
+  margin-top: 8px;
 }
 
 /* —— Bubbles —— */
@@ -332,6 +419,94 @@
   color: #047857;
 }
 
+.sw-chat__workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 8px;
+}
+
+.sw-chat__feed-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile: Angebot ersetzt den Verlauf; Desktop: Split */
+@media (max-width: 1023px) {
+  .sw-chat.has-workspace .sw-chat__feed-main {
+    display: none;
+  }
+
+  .sw-chat.has-workspace .sw-chat__feed {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sw-chat.has-workspace .sw-chat__workspace {
+    flex: 1 1 auto;
+  }
+}
+
+.sw-composer__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0 2px;
+}
+
+.sw-composer__context-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid rgba(109, 91, 184, 0.28);
+  border-radius: 999px;
+  background: #f8f6ff;
+  color: #4c3d8f;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.sw-composer__context-icon {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.sw-composer__context-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sw-composer__context-remove {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #6d5bb8;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sw-composer__context-remove:hover {
+  background: rgba(109, 91, 184, 0.12);
+}
+
 /* —— Sticky Clever-Desk (Review + Composer immer unten) —— */
 .sw-chat__desk {
   position: sticky;
@@ -365,10 +540,115 @@
   position: relative;
   bottom: auto;
   z-index: auto;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0));
+  padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0));
   background: transparent;
   backdrop-filter: none;
   border-top: none;
+}
+
+.sw-composer__chips {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sw-composer__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.sw-composer__chips-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sw-composer__chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sw-composer__chip {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.sw-composer__chip:hover:not(:disabled) {
+  border-color: rgba(109, 91, 184, 0.35);
+  color: #4c3d8f;
+  background: #f8f6ff;
+}
+
+.sw-composer__chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sw-composer__chip--more {
+  width: 32px;
+  min-width: 32px;
+  padding: 6px 0;
+  justify-content: center;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #4c3d8f;
+  border-color: rgba(109, 91, 184, 0.28);
+  background: #f8f6ff;
+}
+
+.sw-composer__chip--more.is-open {
+  background: var(--color-clever, #6d5bb8);
+  border-color: var(--color-clever, #6d5bb8);
+  color: #fff;
+}
+
+.sw-composer__chips-more {
+  position: relative;
+  flex: 0 0 auto;
+  margin-left: 4px;
+}
+
+.sw-composer__chips-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  padding: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+}
+
+.sw-composer__chip--pop {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 .sw-composer__label {
@@ -383,12 +663,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 4px 6px 4px 4px;
-  border: 1px solid rgba(109, 91, 184, 0.16);
-  border-radius: 999px;
-  background: #fafafc;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  min-height: 52px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 .sw-composer__plus,

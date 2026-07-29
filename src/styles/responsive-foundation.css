@@ -35,8 +35,8 @@
 .cn-workspace {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  max-height: 100dvh;
+  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
   width: 100%;
   margin-inline: auto;
   background: var(--color-bg, #f7f8fa);
@@ -115,7 +115,7 @@
     max-width: none;
     width: 100%;
     max-height: none;
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
     border-inline: none;
   }
 
@@ -143,8 +143,8 @@
     width: 100%;
     max-width: none;
     margin-inline: 0;
-    max-height: 100dvh;
-    min-height: 100dvh;
+    max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+    min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
   }
 
   .cn-workspace--triple .cn-workspace__body {

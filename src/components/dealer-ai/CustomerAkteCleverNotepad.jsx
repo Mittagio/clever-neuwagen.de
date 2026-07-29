@@ -27,6 +27,8 @@ export default function CustomerAkteCleverNotepad({
   lead = null,
   conditionChips = [],
   customerName = '',
+  workingOfferLabel = null,
+  onOpenWorkingOffer = null,
   onOpenFull,
   onChipClick,
   sticky = true,
@@ -121,7 +123,9 @@ export default function CustomerAkteCleverNotepad({
   useEffect(() => {
     if (!sticky || !blockRef.current) return undefined;
     const node = blockRef.current;
-    const root = node.closest('.sw-chat__feed') || null;
+    const root = node.closest('.sw-chat__feed-main')
+      || node.closest('.sw-chat__feed')
+      || null;
     const observer = new IntersectionObserver(
       ([entry]) => setCompact(!entry.isIntersecting),
       { root, threshold: 0, rootMargin: '-8px 0px 0px 0px' },
@@ -180,10 +184,23 @@ export default function CustomerAkteCleverNotepad({
     ...otherChips,
   ].slice(0, 5);
 
+  const workingOfferStrip = workingOfferLabel ? (
+    <button
+      type="button"
+      className="cust-akte-clever-notepad__working"
+      onClick={() => (onOpenWorkingOffer ? onOpenWorkingOffer() : onOpenFull?.())}
+      aria-label={`Arbeitskontext: ${workingOfferLabel}`}
+    >
+      <span className="cust-akte-clever-notepad__working-icon" aria-hidden="true">📎</span>
+      <span className="cust-akte-clever-notepad__working-label">{workingOfferLabel}</span>
+    </button>
+  ) : null;
+
   if (!chips.length) {
     return (
       <section className="cust-akte-clever-notepad" aria-label="Notizzettel">
         <p className="cust-akte-clever-notepad__label">Notizzettel</p>
+        {workingOfferStrip}
         <button type="button" className="cust-akte-clever-notepad__empty" onClick={() => onOpenFull?.()}>
           Wünsche ergänzen
         </button>
@@ -206,6 +223,11 @@ export default function CustomerAkteCleverNotepad({
             {customerName?.trim() || 'Kunde'}
           </span>
           <span className="cust-akte-clever-notepad__sticky-chips">
+            {workingOfferLabel ? (
+              <span className="cust-akte-clever-notepad__sticky-chip cust-akte-clever-notepad__sticky-chip--offer">
+                {workingOfferLabel}
+              </span>
+            ) : null}
             {stickyChips.map((chip) => (
               <span key={chip.label} className="cust-akte-clever-notepad__sticky-chip">
                 {chip.label}
@@ -232,6 +254,8 @@ export default function CustomerAkteCleverNotepad({
         className="cust-akte-clever-notepad cust-akte-clever-notepad--compact"
         aria-label="Notizzettel"
       >
+        {workingOfferStrip}
+
         {conditions.length ? (
           <div className="cust-akte-clever-notepad__group cust-akte-clever-notepad__group--conditions">
             <p className="cust-akte-clever-notepad__group-label">Konditionen</p>

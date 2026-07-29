@@ -11,6 +11,7 @@ export function resolveMissingInformation({
   intents = [],
   facts = [],
   lead = {},
+  currentOfferContext = null,
 } = {}) {
   const missing = [];
   const profile = getNeedProfileFromLead(lead) || {};
@@ -52,7 +53,13 @@ export function resolveMissingInformation({
 
   const wantsOffer = intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
   if (wantsOffer) {
-    const hasVehicle = has(SELLER_FACT_CLASS.VEHICLE_INTEREST)
+    const hasAttachedOffer = Boolean(
+      currentOfferContext?.offerId
+      || currentOfferContext?.title
+      || currentOfferContext?.summary,
+    );
+    const hasVehicle = hasAttachedOffer
+      || has(SELLER_FACT_CLASS.VEHICLE_INTEREST)
       || profile?.preferredModelKey
       || lead?.wish?.modelKey;
     if (!hasVehicle) {

@@ -1644,6 +1644,47 @@
   gap: 20px;
 }
 
+.cust-wish-sheet--single {
+  gap: 12px;
+}
+
+.cust-wish-sheet__hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-wish-sheet-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cust-wish-sheet-custom__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cust-muted, #5c6478);
+}
+
+.cust-wish-sheet-custom__input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--cust-border, #e2e8f0);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cust-wish-sheet-segmented--terms {
+  margin-top: 10px;
+}
+
+.cust-wish-sheet-segmented__btn.is-typical {
+  font-weight: 700;
+}
+
 .cust-wish-sheet-field {
   display: flex;
   flex-direction: column;
@@ -4492,8 +4533,8 @@
 .cust-akte--responsive-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  max-height: 100dvh;
+  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
   width: 100%;
   max-width: none;
   margin: 0;
@@ -4503,7 +4544,6 @@
 }
 
 .cust-akte--responsive-shell {
-  max-height: none;
   padding-bottom: 0;
 }
 
@@ -4511,8 +4551,9 @@
   width: 100%;
   max-width: none;
   margin-inline: 0;
-  min-height: 100dvh;
-  max-height: 100dvh;
+  min-height: 100%;
+  max-height: 100%;
+  height: 100%;
 }
 
 .cust-akte--responsive-shell .cust-akte-shell__workspace {
@@ -5221,6 +5262,15 @@
   padding: 0;
 }
 
+.cust-akte-more-sheet__section {
+  margin: 14px 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cust-muted, #5c6478);
+}
+
 .cust-akte-more-sheet__row {
   display: flex;
   align-items: center;
@@ -5248,6 +5298,48 @@
 .cust-akte-clever-notepad {
   padding: 8px 2px 10px;
   background: transparent;
+}
+
+.cust-akte-clever-notepad__working {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0 0 8px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid rgba(109, 91, 184, 0.22);
+  border-radius: 999px;
+  background: #f8f6ff;
+  color: #4c3d8f;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cust-akte-clever-notepad__working:hover {
+  border-color: rgba(109, 91, 184, 0.4);
+  background: #f3efff;
+}
+
+.cust-akte-clever-notepad__working-icon {
+  flex: 0 0 auto;
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.cust-akte-clever-notepad__working-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cust-akte-clever-notepad__sticky-chip--offer {
+  color: #4c3d8f;
+  background: #f3efff;
 }
 
 .cust-akte-clever-notepad__label {
@@ -5956,4 +6048,284 @@
   .cust-akte-shell__pane--clever {
     background: var(--color-surface-muted, #f4f4f7);
   }
+}
+
+/* ?? Angebot-Workspace im Feed (Composer bleibt App-Ebene) ?? */
+.cust-offer-ws {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 14px 20px;
+  min-height: 100%;
+}
+
+.cust-offer-ws__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cust-offer-ws__back,
+.cust-offer-ws__more {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  color: #1a2233;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cust-offer-ws__more-spacer {
+  width: 36px;
+  flex: 0 0 auto;
+}
+
+.cust-offer-ws__head-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+}
+
+.cust-offer-ws__eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8b93a7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cust-offer-ws__title {
+  margin: 2px 0 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1a2233;
+  line-height: 1.25;
+}
+
+.cust-offer-ws__hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #faf9fc 0%, #fff 100%);
+}
+
+.cust-offer-ws__visual {
+  flex: 0 0 96px;
+  width: 96px;
+}
+
+.cust-offer-ws__image-wrap {
+  width: 100%;
+}
+
+.cust-offer-ws__image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.cust-offer-ws__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cust-offer-ws__price {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a2233;
+}
+
+.cust-offer-ws__conditions {
+  margin: 4px 0 8px;
+  font-size: 0.875rem;
+  color: #5b6578;
+}
+
+.cust-offer-ws__badge {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.cust-offer-ws__badge--sent,
+.cust-offer-ws__badge--opened,
+.cust-offer-ws__badge--ready {
+  background: #eef2ff;
+  color: #4c3d8f;
+}
+
+.cust-offer-ws__facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cust-offer-ws__fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.cust-offer-ws__fact:last-child {
+  border-bottom: none;
+}
+
+.cust-offer-ws__fact dt {
+  margin: 0;
+  color: #8b93a7;
+  font-size: 0.8125rem;
+}
+
+.cust-offer-ws__fact dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a2233;
+  text-align: right;
+}
+
+.cust-offer-ws__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.cust-offer-ws__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+@media (min-width: 1024px) {
+  .sw-chat.has-workspace .sw-chat__feed {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 42%);
+    gap: 0;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .sw-chat.has-workspace .sw-chat__feed-main {
+    display: flex;
+    border-right: 1px solid rgba(15, 23, 42, 0.06);
+    padding-right: 8px;
+  }
+
+  .sw-chat.has-workspace .sw-chat__workspace {
+    max-width: none;
+    margin-left: 0;
+    border-left: none;
+    padding-left: 12px;
+    background: linear-gradient(180deg, #faf9fc 0%, #fff 48px);
+  }
+}
+
+/* ?? Angebot an Composer anh?ngen (Plus-Picker) ?? */
+.cust-attach-offer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cust-attach-offer__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cust-attach-offer__item:hover {
+  border-color: rgba(109, 91, 184, 0.35);
+  background: #f8f6ff;
+}
+
+.cust-attach-offer__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1a2233;
+}
+
+.cust-attach-offer__meta {
+  font-size: 0.8125rem;
+  color: #5b6578;
+}
+
+.cust-attach-offer__empty {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #5b6578;
+  line-height: 1.45;
+}
+
+.cust-attach-offer__link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #6d5bb8;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.cust-attach-offer__hint {
+  margin: 14px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #8b93a7;
+}
+
+/* ?? Klassische Akte-Suche ?? */
+.cust-akte-search__field {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.cust-akte-search__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: #1a2233;
+}
+
+.cust-akte-search__input:focus {
+  outline: 2px solid rgba(109, 91, 184, 0.35);
+  outline-offset: 1px;
+  background: #fff;
 }

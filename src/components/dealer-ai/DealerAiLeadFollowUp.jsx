@@ -117,7 +117,6 @@ import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CustomerAkteCompactHeader from './CustomerAkteCompactHeader.jsx';
 import { AKTE_TABS } from './customerAkteTabs.js';
 import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
-import CustomerAkteContactInfoSheet from './CustomerAkteContactInfoSheet.jsx';
 import WorkspaceShell from '../layout/WorkspaceShell.jsx';
 import CleverMoment from '../layout/CleverMoment.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
@@ -126,6 +125,7 @@ import CustomerAkteWishConditionsSheet from './CustomerAkteWishConditionsSheet.j
 import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
+import CustomerAkteOfferWorkspacePanel from './CustomerAkteOfferWorkspacePanel.jsx';
 import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
@@ -169,6 +169,15 @@ import {
   resolveBoardOfferPrimaryAction,
 } from '../../services/dealer/boardOfferModel.js';
 import { openBoardOfferEntry } from '../../services/dealer/openOfferCalculator.js';
+import {
+  buildDocumentWorkingContextItem,
+  buildOfferWorkingContextItem,
+  findOfferWorkingContext,
+  listAttachableAkteDocuments,
+  removeWorkingContextItem,
+  upsertWorkingContextItem,
+} from '../../services/crm/composerWorkingContext.js';
+import { searchAkteByQuery } from '../../services/crm/composerAkteSearch.js';
 import {
   buildStockVehicleCalculatorNavigateState,
   getPrimaryRequestedStockVehicle,
@@ -217,6 +226,9 @@ const SHEETS = {
   addProposal: 'add_proposal',
   leaseFinancePick: 'lease_finance_pick',
   boardOffers: 'board_offers',
+  attachOffer: 'attach_offer',
+  attachDocument: 'attach_document',
+  akteSearch: 'akte_search',
 };
 
 function Field({ label, id, type = 'text', value, onChange, placeholder, inputMode }) {
@@ -370,7 +382,6 @@ export default function DealerAiLeadFollowUp({
   const [composerSeedDraft, setComposerSeedDraft] = useState('');
   const [composerSeedToken, setComposerSeedToken] = useState(0);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const [contactInfoOpen, setContactInfoOpen] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState(
     initialSheet === SHEETS.questionAnswer
@@ -438,6 +449,11 @@ export default function DealerAiLeadFollowUp({
     }
   }, [initialQuestionContext]);
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
+  const [offerWorkspaceCard, setOfferWorkspaceCard] = useState(null);
+  const [workingContextItems, setWorkingContextItems] = useState([]);
+  const [akteSearchQuery, setAkteSearchQuery] = useState('');
+  const [feedFocusMessageId, setFeedFocusMessageId] = useState(null);
+  const [feedFocusToken, setFeedFocusToken] = useState(0);
   const [selectedSelectionGroup, setSelectedSelectionGroup] = useState(null);
   const [variantConfigureContext, setVariantConfigureContext] = useState(null);
   const [variantOfferContext, setVariantOfferContext] = useState(null);
@@ -706,6 +722,11 @@ export default function DealerAiLeadFollowUp({
     [wishEditValues],
   );
 
+  const workingOfferItem = useMemo(
+    () => findOfferWorkingContext(workingContextItems),
+    [workingContextItems],
+  );
+
   const hideRedundantWishChips = useMemo(() => {
     if (!hasSellerCustomerPicture || !schnellaufnahmeChips.length) return false;
     const corpus = [
@@ -880,6 +901,18 @@ export default function DealerAiLeadFollowUp({
     () => computeUnterlagenSummary(lead, unterlagenPaymentType),
     [lead, unterlagenPaymentType],
   );
+
+  const attachableDocuments = useMemo(
+    () => listAttachableAkteDocuments(lead, unterlagenSummary),
+    [lead, unterlagenSummary],
+  );
+
+  const akteSearchHits = useMemo(() => {
+    if (activeSheet !== SHEETS.akteSearch) return [];
+    const q = String(akteSearchQuery || '').trim();
+    if (q.length < 2) return [];
+    return searchAkteByQuery(lead, q, { limit: 20, freeText: true }).hits ?? [];
+  }, [activeSheet, akteSearchQuery, lead]);
   const selfDisclosureCard = useMemo(() => buildSelfDisclosureCardModel(lead), [lead]);
   const selfDisclosureLabel = selfDisclosureCard?.statusLabel || 'offen';
 
@@ -909,7 +942,6 @@ export default function DealerAiLeadFollowUp({
       setComposerSeedToken((n) => n + 1);
     }
     setMoreSheetOpen(false);
-    setContactInfoOpen(false);
   }
 
   useEffect(() => {
@@ -955,13 +987,12 @@ export default function DealerAiLeadFollowUp({
   ]);
 
   function openOffersBoard() {
-    setContactInfoOpen(false);
     setMoreSheetOpen(false);
     openSheet(SHEETS.boardOffers);
   }
 
   function handleAkteNavSelect(tabId) {
-    // Legacy: Tabs entfallen – alles läuft über Feed / Kontaktinfos / Mehr
+    // Legacy: Tabs entfallen – alles läuft über Feed / Kundendaten / Mehr
     if (tabId === AKTE_TABS.mehr) {
       setMoreSheetOpen(true);
       return;
@@ -971,7 +1002,7 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     if (tabId === AKTE_TABS.kunde) {
-      setContactInfoOpen(true);
+      openSheet(SHEETS.customer);
       return;
     }
     focusChatComposer({ clever: true });
@@ -1587,11 +1618,128 @@ export default function DealerAiLeadFollowUp({
     openSheet(SHEETS.cleverAuswahl);
   }
 
-  function openBoardOfferFromCard(card, options = {}) {
-    openBoardOfferEntry(card, lead, {
-      onOpenProposal: onOpenOfferProposal,
-      onOpenCalculator: onOpenOfferEdit,
-    }, options);
+  function openOfferInWorkspace(card) {
+    if (!card) return;
+    setMoreSheetOpen(false);
+    setActiveSheet(null);
+    setSelectedVehicleCard(null);
+    setOfferWorkspaceCard(card);
+    setWorkingContextItems((prev) => upsertWorkingContextItem(
+      prev,
+      buildOfferWorkingContextItem(card, lead),
+    ));
+    focusChatComposer({ clever: true });
+  }
+
+  /** Nur Context-Pill – wie Cursor-Anhang, ohne Workspace zu öffnen */
+  function attachOfferToComposer(card) {
+    if (!card) return;
+    setActiveSheet(null);
+    setMoreSheetOpen(false);
+    setWorkingContextItems((prev) => upsertWorkingContextItem(
+      prev,
+      buildOfferWorkingContextItem(card, lead),
+    ));
+    focusChatComposer({ clever: true });
+    setToast('Angebot angehängt – Clever kennt den Kontext');
+    setTimeout(() => setToast(''), 2800);
+  }
+
+  function attachDocumentToComposer(doc) {
+    if (!doc) return;
+    setActiveSheet(null);
+    setMoreSheetOpen(false);
+    setWorkingContextItems((prev) => upsertWorkingContextItem(
+      prev,
+      buildDocumentWorkingContextItem(doc),
+    ));
+    focusChatComposer({ clever: true });
+    setToast('Dokument angehängt');
+    setTimeout(() => setToast(''), 2500);
+  }
+
+  function openAttachOfferPicker() {
+    setMoreSheetOpen(false);
+    openSheet(SHEETS.attachOffer);
+  }
+
+  function openAttachDocumentPicker() {
+    setMoreSheetOpen(false);
+    openSheet(SHEETS.attachDocument);
+  }
+
+  function openAkteSearch() {
+    setMoreSheetOpen(false);
+    setAkteSearchQuery('');
+    openSheet(SHEETS.akteSearch);
+  }
+
+  function focusFeedMessage(messageId) {
+    if (!messageId) return;
+    // Workspace schließen → Feed sichtbar (Mobile Replace + Desktop klarer Fokus)
+    setOfferWorkspaceCard(null);
+    setFeedFocusMessageId(String(messageId));
+    setFeedFocusToken((token) => token + 1);
+  }
+
+  function handleAkteSearchHit(hit) {
+    if (!hit) return;
+    closeSheet();
+    // Nachrichten zuerst – relatedOfferId darf den Fokus nicht zum Angebot umbiegen
+    if (hit.kind === 'message' && hit.id) {
+      focusFeedMessage(hit.id);
+      return;
+    }
+    if (hit.kind === 'offer' || hit.offerId) {
+      const offerId = hit.offerId || hit.id;
+      const card = (vehicleCards ?? []).find(
+        (c) => c.id === offerId || c.configurationId === offerId,
+      );
+      if (card) {
+        openOfferInWorkspace(card);
+        return;
+      }
+    }
+    focusChatComposer({ clever: true });
+    setToast(hit.snippet
+      ? `Gefunden: ${String(hit.snippet).slice(0, 72)}`
+      : 'Treffer im Verlauf');
+    setTimeout(() => setToast(''), 3200);
+  }
+
+  function closeOfferWorkspace() {
+    setOfferWorkspaceCard(null);
+  }
+
+  function handleRemoveWorkingContext(itemId) {
+    setWorkingContextItems((prev) => removeWorkingContextItem(prev, itemId));
+    if (offerWorkspaceCard) {
+      const id = `offer:${offerWorkspaceCard.id || offerWorkspaceCard.configurationId || ''}`;
+      if (itemId === id) setOfferWorkspaceCard(null);
+    }
+  }
+
+  function openBoardOfferFromCard(card) {
+    // Bleibt in der Akte: Workspace + Context-Pill, kein Phasen-Wechsel
+    openOfferInWorkspace(card);
+  }
+
+  function handleOpenOfferFromFeed(payload = {}) {
+    const offerId = payload?.offerId
+      || payload?.vehicleCardId
+      || payload?.configurationId
+      || payload?.id
+      || null;
+    if (offerId) {
+      const card = (vehicleCards ?? []).find(
+        (c) => c.id === offerId || c.configurationId === offerId,
+      );
+      if (card) {
+        openOfferInWorkspace(card);
+        return;
+      }
+    }
+    openOffersBoard();
   }
 
   function navigateBoardOfferCard(card) {
@@ -1602,24 +1750,11 @@ export default function DealerAiLeadFollowUp({
   function handleBoardCardAction(action, card) {
     const handler = action?.handlerType ?? action?.id;
     if (handler === 'create_offer' || handler === 'edit_offer' || handler === 'configure_conditions') {
-      if (onOpenOfferEdit) {
-        onOpenOfferEdit(card);
-        return;
-      }
-      if (handler === 'create_offer' && onStartNewWish) {
-        const pt = card.paymentType ?? wishPaymentType;
-        onStartNewWish(lead, {
-          proposalIntent: pt === 'cash' ? PROPOSAL_INTENTS.CASH : PROPOSAL_INTENTS.LEASING,
-          paymentType: pt !== 'unknown' ? pt : 'leasing',
-        });
-        return;
-      }
-      setSelectedVehicleCard(card);
-      openSheet(SHEETS.vehicle);
+      openOfferInWorkspace(card);
       return;
     }
     if (handler === 'view_proposal') {
-      openBoardOfferFromCard(card);
+      openOfferInWorkspace(card);
       return;
     }
     if (handler === 'duplicate_offer') {
@@ -2593,6 +2728,10 @@ export default function DealerAiLeadFollowUp({
         lead={lead}
         conditionChips={schnellaufnahmeChips}
         customerName={name}
+        workingOfferLabel={workingOfferItem?.shortLabel || workingOfferItem?.label || null}
+        onOpenWorkingOffer={workingOfferItem?.card
+          ? () => openOfferInWorkspace(workingOfferItem.card)
+          : null}
         onOpenFull={() => openKundenhelferSheet()}
         onChipClick={handleNotepadChipClick}
         sticky
@@ -2656,10 +2795,35 @@ export default function DealerAiLeadFollowUp({
         seedDraft={composerSeedDraft}
         seedDraftToken={composerSeedToken}
         replyContext={composerReplyContext}
+        workingContextItems={workingContextItems}
+        onRemoveWorkingContext={handleRemoveWorkingContext}
+        scrollToMessageId={feedFocusMessageId}
+        scrollToMessageToken={feedFocusToken}
+        onFocusFeedMessage={focusFeedMessage}
+        workspaceSlot={offerWorkspaceCard ? (
+          <CustomerAkteOfferWorkspacePanel
+            card={offerWorkspaceCard}
+            lead={lead}
+            onBack={closeOfferWorkspace}
+            onEdit={(card) => {
+              if (onOpenOfferEdit) {
+                onOpenOfferEdit(card);
+                return;
+              }
+              openBoardOfferEntry(card, lead, {
+                onOpenProposal: onOpenOfferProposal,
+                onOpenCalculator: onOpenOfferEdit,
+              });
+            }}
+            onOpenBoard={openOffersBoard}
+          />
+        ) : null}
         compactEmpty
         isSaving={isSaving}
         feedTopSlot={feedCleverBanner}
-        onOpenOffer={openOffersBoard}
+        onOpenOffer={handleOpenOfferFromFeed}
+        onAttachOffer={openAttachOfferPicker}
+        onAttachDocument={openAttachDocumentPicker}
         onPrepareOfferDraft={handleSellerAssistPrepareOffer}
         onSendPortfolio={handlePrepareCustomerLink}
         onMessageSent={() => {
@@ -2685,6 +2849,9 @@ export default function DealerAiLeadFollowUp({
           }
           if (nextLead.wish?.termMonths != null) {
             setWishTermMonths(String(nextLead.wish.termMonths));
+          }
+          if (nextLead.wish?.downPayment != null && nextLead.wish.downPayment !== '') {
+            setWishDownPayment(String(nextLead.wish.downPayment));
           }
           if (nextLead.wish?.desiredDeliveryDate) {
             setWishDelivery(String(nextLead.wish.desiredDeliveryDate));
@@ -2749,7 +2916,8 @@ export default function DealerAiLeadFollowUp({
             phone={phone}
             telHref={telHref}
             onBack={onDiscard}
-            onOpenProfile={() => setContactInfoOpen(true)}
+            onOpenProfile={() => openSheet(SHEETS.customer)}
+            onSearch={openAkteSearch}
             onMore={() => setMoreSheetOpen(true)}
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
@@ -2770,27 +2938,6 @@ export default function DealerAiLeadFollowUp({
         nav={null}
       />
 
-      <CustomerAkteContactInfoSheet
-        open={contactInfoOpen}
-        onClose={() => setContactInfoOpen(false)}
-        customerName={name}
-        phone={phone}
-        email={email}
-        addressLine={addressLine}
-        offersCount={boardItems.length}
-        unterlagenLabel={`${unterlagenSummary.doneCount ?? 0}/${unterlagenSummary.totalCount ?? 0}`}
-        unterlagenOpen={unterlagenOpenCount}
-        selfDisclosureLabel={selfDisclosureLabel}
-        appointmentSummary={appointmentSummaryLine}
-        onOffers={openOffersBoard}
-        onUnterlagen={() => openSheet(SHEETS.unterlagen)}
-        onSelfDisclosure={() => openSelfDisclosureReview()}
-        onTermine={() => openSheet(SHEETS.next)}
-        onCustomerData={() => openSheet(SHEETS.customer)}
-        onNotepad={() => openKundenhelferSheet()}
-        onPortal={() => handleOpenPortalShare()}
-      />
-
       <CustomerAkteMoreSheet
         open={moreSheetOpen}
         onClose={() => setMoreSheetOpen(false)}
@@ -2799,12 +2946,14 @@ export default function DealerAiLeadFollowUp({
         unterlagenOpen={unterlagenOpenCount}
         selfDisclosureLabel={selfDisclosureLabel}
         activitiesCount={activityDashboard.newCustomerActivities || 0}
+        appointmentSummary={appointmentSummaryLine}
         onOffers={openOffersBoard}
         onUnterlagen={() => openSheet(SHEETS.unterlagen)}
         onSelfDisclosure={() => openSelfDisclosureReview()}
         onHistory={openActivitiesSheet}
         onTermine={() => openSheet(SHEETS.next)}
         onCustomerData={() => openSheet(SHEETS.customer)}
+        onNotepad={() => openKundenhelferSheet()}
         onPortal={() => handleOpenPortalShare()}
         onLexikon={() => openSheet(SHEETS.lexikon)}
       />
@@ -2853,6 +3002,165 @@ export default function DealerAiLeadFollowUp({
           onAddEmail={() => openSheet(SHEETS.customer)}
           disabled={isSaving}
         />
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.attachOffer}
+        onClose={closeSheet}
+        title="Angebot anhängen"
+        footer={(
+          <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
+            Schließen
+          </button>
+        )}
+      >
+        {vehicleCards.length === 0 ? (
+          <p className="cust-attach-offer__empty">
+            Noch kein Angebot in dieser Akte.
+            {' '}
+            <button
+              type="button"
+              className="cust-attach-offer__link"
+              onClick={() => { closeSheet(); handleAddVehicle(); }}
+            >
+              Angebot anlegen
+            </button>
+          </p>
+        ) : (
+          <ul className="cust-attach-offer__list" role="listbox" aria-label="Angebote">
+            {vehicleCards.map((card) => {
+              const title = formatVehicleCardTitle(card).replace(/^Kia\s+/i, '');
+              const meta = [
+                formatVehicleCardConditions(card),
+                formatVehicleCardPrice(card),
+              ].filter(Boolean).join(' · ');
+              return (
+                <li key={card.id}>
+                  <button
+                    type="button"
+                    className="cust-attach-offer__item"
+                    role="option"
+                    onClick={() => attachOfferToComposer(card)}
+                  >
+                    <span className="cust-attach-offer__title">{title}</span>
+                    {meta ? <span className="cust-attach-offer__meta">{meta}</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="cust-attach-offer__hint">
+          Angehängte Angebote erscheinen als Kontext über dem Composer – Clever weiß dann, worüber du sprichst.
+        </p>
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.attachDocument}
+        onClose={closeSheet}
+        title="Dokument anhängen"
+        footer={(
+          <button type="button" className="dai-btn dai-btn--ghost" onClick={closeSheet}>
+            Schließen
+          </button>
+        )}
+      >
+        {attachableDocuments.length === 0 ? (
+          <p className="cust-attach-offer__empty">
+            Noch keine Unterlage in dieser Akte.
+            {' '}
+            <button
+              type="button"
+              className="cust-attach-offer__link"
+              onClick={() => { closeSheet(); openSheet(SHEETS.unterlagen); }}
+            >
+              Unterlagen öffnen
+            </button>
+          </p>
+        ) : (
+          <ul className="cust-attach-offer__list" role="listbox" aria-label="Dokumente">
+            {attachableDocuments.map((doc) => (
+              <li key={doc.id}>
+                <button
+                  type="button"
+                  className="cust-attach-offer__item"
+                  role="option"
+                  onClick={() => attachDocumentToComposer(doc)}
+                >
+                  <span className="cust-attach-offer__title">{doc.label}</span>
+                  {doc.fileName ? (
+                    <span className="cust-attach-offer__meta">{doc.fileName}</span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="cust-attach-offer__hint">
+          Angehängte Dokumente sitzen als Kontext-Pill über dem Composer.
+        </p>
+      </LeadDetailPanel>
+
+      <LeadDetailPanel
+        open={activeSheet === SHEETS.akteSearch}
+        onClose={() => {
+          setAkteSearchQuery('');
+          closeSheet();
+        }}
+        title="Suche"
+        footer={(
+          <button
+            type="button"
+            className="dai-btn dai-btn--ghost"
+            onClick={() => {
+              setAkteSearchQuery('');
+              closeSheet();
+            }}
+          >
+            Schließen
+          </button>
+        )}
+      >
+        <label className="cust-akte-search__field" htmlFor="cust-akte-search-input">
+          <span className="visually-hidden">In dieser Akte suchen</span>
+          <input
+            id="cust-akte-search-input"
+            className="cust-akte-search__input"
+            type="search"
+            value={akteSearchQuery}
+            onChange={(e) => setAkteSearchQuery(e.target.value)}
+            placeholder="Lieferzeit, EV4, 20.000 …"
+            autoFocus
+          />
+        </label>
+        {String(akteSearchQuery || '').trim().length < 2 ? (
+          <p className="cust-attach-offer__hint">
+            Durchsucht Nachrichten, Angebote und Notizen in diesem Vorgang.
+          </p>
+        ) : akteSearchHits.length === 0 ? (
+          <p className="cust-attach-offer__empty">Keine Treffer.</p>
+        ) : (
+          <ul className="cust-attach-offer__list" role="listbox" aria-label="Suchtreffer">
+            {akteSearchHits.map((hit) => (
+              <li key={`${hit.kind}-${hit.id}`}>
+                <button
+                  type="button"
+                  className="cust-attach-offer__item"
+                  role="option"
+                  onClick={() => handleAkteSearchHit(hit)}
+                >
+                  <span className="cust-attach-offer__title">
+                    {hit.kind === 'offer' ? 'Angebot' : hit.kind === 'note' ? 'Notiz' : 'Nachricht'}
+                    {hit.whenLabel ? ` · ${hit.whenLabel}` : ''}
+                  </span>
+                  <span className="cust-attach-offer__meta">
+                    {hit.snippet || hit.title}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </LeadDetailPanel>
 
       {/* ── Mehr (selten) ── */}
@@ -3006,34 +3314,6 @@ export default function DealerAiLeadFollowUp({
           >
             {addressLine ? 'Adresse bearbeiten' : '+ Adresse hinzufügen'}
           </button>
-          <Field
-            label="Notiz"
-            id="lead-note"
-            type="textarea"
-            value={note}
-            onChange={setNote}
-            placeholder="Kurz notieren"
-          />
-          {!email.trim() && (
-            <p className="dai-lead-tip">
-              Mit E-Mail ist das Angebot später in Sekunden raus.
-            </p>
-          )}
-          {!phone.trim() && (
-            <p className="dai-lead-tip">
-              Telefon ergänzt? Dann ist der Rückruf nur ein Klick.
-            </p>
-          )}
-          {!name.trim() && (
-            <p className="dai-lead-tip">
-              Mit Namen wirkt die Chance persönlicher.
-            </p>
-          )}
-          {telHref && (
-            <a href={telHref} className="dai-btn dai-btn--call dai-btn--block">
-              Anrufen
-            </a>
-          )}
         </div>
       </LeadDetailPanel>
 

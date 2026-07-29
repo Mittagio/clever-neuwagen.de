@@ -583,11 +583,15 @@ export function formatPortalMessageText(message = {}) {
 }
 
 /**
- * Feed-Text für Workspace (Seller sieht auch interne Clever-Karten).
+ * Feed-Text für Workspace (Seller).
+ * Interne Clever-Assist-Karten bleiben im Store, nicht im chronologischen Verlauf.
  * @param {object} message
  */
 export function formatWorkspaceMessageText(message = {}) {
   const kind = message.kind || MESSAGE_KIND.TEXT;
+  if (kind === MESSAGE_KIND.CLEVER_MESSAGE && message.visibleToCustomer === false) {
+    return null;
+  }
   if (isCardMessageKind(kind)) {
     return String(message.text ?? message.payload?.title ?? message.payload?.label ?? ' ').trim() || ' ';
   }

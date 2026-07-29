@@ -10,11 +10,13 @@ export default function SellerInlineAssistCard({
   onUseVerified = null,
   onPrepareReply = null,
   onSendDraft = null,
+  onCopyDraft = null,
   onSendActions = null,
   onChoice = null,
   onPrepareOffer = null,
   onSendPortfolio = null,
   onAppointmentPrimary = null,
+  onOpenSearchHit = null,
   onDismiss = null,
 }) {
   if (!results?.length) return null;
@@ -148,6 +150,15 @@ export default function SellerInlineAssistCard({
                 >
                   {result.secondaryCta || 'Bearbeiten'}
                 </button>
+                {onCopyDraft ? (
+                  <button
+                    type="button"
+                    className="sia-btn sia-btn--ghost"
+                    onClick={() => onCopyDraft?.(result)}
+                  >
+                    {result.copyCta || 'Kopieren'}
+                  </button>
+                ) : null}
               </>
             ) : null}
 
@@ -236,6 +247,16 @@ export default function SellerInlineAssistCard({
                   </button>
                 ) : null}
               </>
+            ) : null}
+
+            {result.type === INLINE_RESULT_TYPES.SEARCH_HIT && result.primaryCta ? (
+              <button
+                type="button"
+                className="sia-btn sia-btn--primary"
+                onClick={() => onOpenSearchHit?.(result)}
+              >
+                {result.primaryCta}
+              </button>
             ) : null}
           </div>
         </article>
