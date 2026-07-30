@@ -16,6 +16,7 @@ import {
 import { runCleverSellerTurn, shouldEscalateSellerInterpretation } from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
   isCleverSellerOpenAiInterpretClientEnabled,
+  requestCleverMagicMessage,
   requestCleverSellerTurn,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
@@ -24,6 +25,10 @@ import {
   runSellerInlineAssist,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
 import { runSellerOfferAssist } from '../../services/dealer/sellerOfferAssistFlow.js';
+import {
+  OUTBOUND_TONES,
+  composeSellerOutboundMessageAsync,
+} from '../../services/crm/improveSellerOutboundMessage.js';
 import {
   APPOINTMENT_STATUS,
   applyAppointmentCrmPatch,
@@ -153,6 +158,13 @@ export default function CustomerAkteSharedWorkspace({
   const appointmentDraftRef = useRef(null);
   /** Clever-Arbeit-Draft, der beim Nachrichten-Edit pausiert wurde. */
   const priorWorkDraftRef = useRef('');
+  /** Rohtext / Stichworte für Magic – Ton-Wechsel regeneriert daraus. */
+  const magicSeedRef = useRef('');
+  const [outboundTone, setOutboundTone] = useState('freundlich');
+  const [magicUiHint, setMagicUiHint] = useState(null);
+  const [magicBusy, setMagicBusy] = useState(false);
+  const [hasMagicSeed, setHasMagicSeed] = useState(false);
+  const allowWithoutPackageDetailsRef = useRef(false);
   const composerModeRef = useRef(composerMode);
 
   useEffect(() => {
@@ -479,6 +491,7 @@ export default function CustomerAkteSharedWorkspace({
         setComposerMode(completed.composerMode);
         setEditingMessageDraft(null);
         priorWorkDraftRef.current = '';
+        resetMagicComposer();
         setDraft('');
         clearAssist();
         setUniversalTurn(null);
@@ -536,6 +549,100 @@ export default function CustomerAkteSharedWorkspace({
     }
   }
 
+  function resetMagicComposer() {
+    magicSeedRef.current = '';
+    setOutboundTone('freundlich');
+    setMagicUiHint(null);
+    setHasMagicSeed(false);
+    allowWithoutPackageDetailsRef.current = false;
+  }
+
+  function resolveMagicOfferContext() {
+    return toCurrentOfferContext(findOfferWorkingContext(workingContextItems));
+  }
+
+  function resolveMagicWorkingContext() {
+    const offerItem = findOfferWorkingContext(workingContextItems);
+    if (!offerItem) return null;
+    return {
+      offerId: offerItem.offerId,
+      shortLabel: offerItem.shortLabel || offerItem.label,
+      label: offerItem.label,
+      card: offerItem.card || null,
+      modelKey: offerItem.card?.modelKey || offerItem.card?.model || null,
+      trimId: offerItem.card?.trimId || offerItem.card?.trim || null,
+      color: offerItem.card?.color || null,
+    };
+  }
+
+  async function runMagicCompose(sourceText, { allowWithoutPackageDetails = false, tone = outboundTone } = {}) {
+    const source = String(sourceText ?? '').trim();
+    if (!source) return null;
+    magicSeedRef.current = source;
+    setHasMagicSeed(true);
+    allowWithoutPackageDetailsRef.current = allowWithoutPackageDetails;
+    setMagicBusy(true);
+    setFeedback('Clever schreibt …');
+    try {
+      const payload = {
+        rawSellerInput: source,
+        draftText: source,
+        lead,
+        customerName,
+        recipient: displayName,
+        tone,
+        workingContext: resolveMagicWorkingContext(),
+        offerContext: resolveMagicOfferContext(),
+        allowWithoutPackageDetails,
+        sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
+        dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
+      };
+
+      let result = null;
+      try {
+        const remote = await requestCleverMagicMessage(payload);
+        if (remote?.ok && remote.body) {
+          result = {
+            ok: true,
+            text: remote.body,
+            changed: remote.body !== source,
+            tone,
+            seed: remote.seed || source,
+            grounded: remote,
+            missingKnowledge: remote.missingKnowledge || [],
+            uiHint: remote.uiHint || null,
+            writer: remote.writer,
+          };
+        }
+      } catch {
+        result = null;
+      }
+
+      if (!result?.ok) {
+        // Client-Fallback: grounded Orchestrator ohne Server (gleiche Faktenregeln)
+        result = await composeSellerOutboundMessageAsync(payload, { forceFallback: true });
+      }
+
+      if (!result?.ok) {
+        setFeedback('Clever konnte keine Nachricht erzeugen');
+        setTimeout(() => setFeedback(''), 2000);
+        return null;
+      }
+
+      setDraft(result.text);
+      setMagicUiHint(result.uiHint || null);
+      if (result.uiHint?.message) {
+        setFeedback(result.uiHint.message);
+      } else {
+        setFeedback(result.changed ? 'Clever hat die Nachricht geschrieben' : 'Nachricht unverändert');
+        setTimeout(() => setFeedback(''), 2800);
+      }
+      return result;
+    } finally {
+      setMagicBusy(false);
+    }
+  }
+
   function handleEditMessageDraft(result) {
     if (!result || sending) return;
     const next = beginCustomerMessageEdit({
@@ -545,16 +652,16 @@ export default function CustomerAkteSharedWorkspace({
       priorWorkDraft: draft,
     });
     priorWorkDraftRef.current = next.priorWorkDraft;
+    resetMagicComposer();
     setComposerMode(next.composerMode);
     setEditingMessageDraft(next.editingMessageDraft);
     setDraft(next.draft);
     setUniversalTurn(null);
-    // Assist bleibt gepinnt (kompakte Banner-Ansicht), kein Interpret
+    // Assist bleibt gepinnt für Abbrechen-Restore – im Edit nicht gerendert
     pinAssist(assist?.ok
       ? assist
       : { ok: true, results: [result] });
-    setFeedback('Nachricht bearbeiten – Clever interpretiert nicht mit');
-    setTimeout(() => setFeedback(''), 2800);
+    setFeedback('');
     queueMicrotask(() => focusComposer());
   }
 
@@ -568,6 +675,7 @@ export default function CustomerAkteSharedWorkspace({
     setDraft(cancelled.draft);
     setUniversalTurn(null);
     priorWorkDraftRef.current = '';
+    resetMagicComposer();
     if (cancelled.sourceResult) {
       pinAssist({
         ok: true,
@@ -577,10 +685,36 @@ export default function CustomerAkteSharedWorkspace({
     setFeedback('');
   }
 
-  function handleImproveWithClever() {
-    // Expliziter Rewrite-Stub – kein auto Interpret / keine Facts
-    setFeedback('Mit Clever verbessern folgt – Text bleibt unverändert');
-    setTimeout(() => setFeedback(''), 2800);
+  function handleImproveWithClever(text) {
+    void runMagicCompose(text ?? draft);
+  }
+
+  function handleRestoreMagicSeed() {
+    const seed = String(magicSeedRef.current || '').trim();
+    if (!seed) return;
+    setDraft(seed);
+    setMagicUiHint(null);
+    setFeedback('Original wiederhergestellt');
+    setTimeout(() => setFeedback(''), 2000);
+  }
+
+  function handleMagicWriteWithoutPackageDetails() {
+    const seed = String(magicSeedRef.current || draft || '').trim();
+    if (!seed) return;
+    void runMagicCompose(seed, { allowWithoutPackageDetails: true });
+  }
+
+  function handleOutboundToneChange(toneId) {
+    const nextTone = OUTBOUND_TONES.some((t) => t.id === toneId) ? toneId : 'freundlich';
+    setOutboundTone(nextTone);
+    if (!isCustomerMessageEditMode(composerModeRef.current)) return;
+    const seed = String(magicSeedRef.current || draft || '').trim();
+    if (!seed) return;
+    if (!magicSeedRef.current) magicSeedRef.current = seed;
+    void runMagicCompose(seed, {
+      tone: nextTone,
+      allowWithoutPackageDetails: allowWithoutPackageDetailsRef.current,
+    });
   }
 
   function handleInsertFact(result) {
@@ -1191,6 +1325,17 @@ export default function CustomerAkteSharedWorkspace({
         composerEditMode={inMessageEdit}
         onCancelEdit={inMessageEdit ? handleCancelMessageEdit : null}
         onImproveWithClever={inMessageEdit ? handleImproveWithClever : null}
+        outboundTones={OUTBOUND_TONES}
+        outboundTone={outboundTone}
+        onOutboundToneChange={handleOutboundToneChange}
+        magicBusy={magicBusy}
+        magicUiHint={inMessageEdit ? magicUiHint : null}
+        onMagicWriteWithoutDetails={inMessageEdit ? handleMagicWriteWithoutPackageDetails : null}
+        onMagicReviewData={inMessageEdit && magicUiHint ? () => {
+          setFeedback('Bitte Paket-/Ausstattungsdaten in Clever prüfen');
+          setTimeout(() => setFeedback(''), 3200);
+        } : null}
+        onRestoreMagicSeed={inMessageEdit && hasMagicSeed ? handleRestoreMagicSeed : null}
         onOpenOffer={onOpenOffer}
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
@@ -1205,7 +1350,7 @@ export default function CustomerAkteSharedWorkspace({
         suggestionChips={COMPOSER_PRIMARY_CHIPS}
         moreSuggestionChips={COMPOSER_MORE_CHIPS}
         onSuggestionChip={handleSuggestionChip}
-        reviewSlot={(
+        reviewSlot={inMessageEdit ? null : (
           reviewModel ? (
             <SellerUniversalReviewCard
               model={reviewModel}
@@ -1226,8 +1371,6 @@ export default function CustomerAkteSharedWorkspace({
               onPrepareOffer={handlePrepareOffer}
               onSendPortfolio={handleSendPortfolio}
               onAppointmentPrimary={handleAppointmentPrimary}
-              compactMessageEdit={inMessageEdit}
-              messageEditHint={composerUi.compactAssistHint || ''}
               onOpenSearchHit={(result) => {
                 if (result?.offerId) {
                   onOpenOffer?.({ offerId: result.offerId, id: result.offerId });
@@ -1255,7 +1398,7 @@ export default function CustomerAkteSharedWorkspace({
         )}
         micSlot={(
           <DealerAiInlineMic
-            variant="fab"
+            variant="toolbar"
             disabled={sending || isSaving || inMessageEdit}
             onTranscript={(text) => setDraft((prev) => (prev ? `${prev} ${text}` : text))}
           />

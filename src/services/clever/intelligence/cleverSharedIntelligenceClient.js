@@ -16,6 +16,32 @@ export function isCleverSellerOpenAiInterpretClientEnabled() {
   return import.meta.env.VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true';
 }
 
+export function isCleverMagicMessageClientEnabled() {
+  return import.meta.env.VITE_CLEVER_MAGIC_MESSAGE_ENABLED === 'true'
+    || import.meta.env.VITE_CLEVER_SELLER_COPILOT_ENABLED === 'true';
+}
+
+/**
+ * Grounded Magic Message (Server).
+ * @param {object} payload
+ */
+export async function requestCleverMagicMessage(payload = {}) {
+  const response = await fetch(`${API_BASE}/clever/magic-message`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(payload.sellerId ? { 'X-Seller-Id': String(payload.sellerId) } : {}),
+      ...(payload.dealerId ? { 'X-Dealer-Id': String(payload.dealerId) } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? 'request_failed' };
+  }
+  return data;
+}
+
 /**
  * @param {object} payload
  */

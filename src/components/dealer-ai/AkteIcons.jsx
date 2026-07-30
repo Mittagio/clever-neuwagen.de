@@ -120,6 +120,31 @@ export function IconSend(props) {
   );
 }
 
+export function IconSendUp(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 19V5M5 12l7-7 7 7" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconMic(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" {...stroke} />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconChevronDown(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M6 9l6 6 6-6" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export const AKTE_NAV_ICONS = {
   kunde: IconUser,
   chat: IconChat,

@@ -2944,16 +2944,6 @@ export default function DealerAiLeadFollowUp({
     </>
   );
 
-  const desktopContextTracks = vehicleTracks.length > 0 ? (
-    <CustomerAkteVehicleTracks
-      tracks={vehicleTracks}
-      title="Spuren"
-      compact
-      onOpenTrack={openVehicleTrack}
-      onResumeTrack={resumeVehicleTrack}
-    />
-  ) : null;
-
   const mainWorkspace = (
     <div className="cust-akte-shell__pane cust-akte-shell__pane--clever cust-akte-shell__pane--feed cn-chat-readable">
       {requestedStockVehicle ? (
@@ -3099,6 +3089,16 @@ export default function DealerAiLeadFollowUp({
         className="cust-akte-workspace-shell"
         withBottomNav
         variant="triple"
+        desktopNav={(
+          <CustomerAkteFileNav
+            variant="rail"
+            activeTab={akteTab}
+            onSelect={handleAkteTabSelect}
+            badges={{
+              angebote: vehicleTracks.length || boardItems.length || 0,
+            }}
+          />
+        )}
         header={(
           <CustomerAkteCompactHeader
             customerName={name}
@@ -3114,13 +3114,13 @@ export default function DealerAiLeadFollowUp({
         )}
         band={null}
         mobileContext={null}
-        context={desktopContextTracks}
+        context={null}
         assist={(
           <CustomerAkteOfferRail
             tracks={vehicleTracks}
             goldenMoment={goldenMomentView}
             boardItems={boardItems}
-            showTracks={false}
+            showTracks
             onOpenBoard={openOffersBoard}
             onOpenTrack={openVehicleTrack}
             onResumeTrack={resumeVehicleTrack}

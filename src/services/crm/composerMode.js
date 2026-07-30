@@ -125,13 +125,13 @@ export function resolveComposerUi(mode, {
     const name = String(recipient || displayName || 'Kunde').trim() || 'Kunde';
     return {
       mode: COMPOSER_MODES.CUSTOMER_MESSAGE_EDIT,
-      label: `✉ Nachricht an ${name}`,
-      placeholder: 'Nachricht bearbeiten …',
+      label: '',
+      placeholder: `Stichworte oder Entwurf – Clever schreibt die Nachricht an ${name} …`,
       sendAriaLabel: 'Nachricht an Kunden senden',
       growTextarea: true,
       showEditActions: true,
       hideSuggestionChips: true,
-      compactAssistHint: `Nachricht an ${name} wird bearbeitet`,
+      compactAssistHint: null,
     };
   }
   return {

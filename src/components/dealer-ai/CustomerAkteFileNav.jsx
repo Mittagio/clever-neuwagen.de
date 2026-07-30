@@ -47,8 +47,11 @@ export default function CustomerAkteFileNav({
               {Icon ? <Icon /> : null}
             </span>
             <span className={isRail ? 'cn-side-rail__label' : 'cust-akte-file-nav__label'}>{item.label}</span>
-            {!isRail && badge != null ? (
-              <span className="cust-akte-file-nav__badge" aria-label={`${badge} offen`}>
+            {badge != null ? (
+              <span
+                className={isRail ? 'cn-side-rail__badge' : 'cust-akte-file-nav__badge'}
+                aria-label={`${badge} offen`}
+              >
                 {badge > 9 ? '9+' : badge}
               </span>
             ) : null}

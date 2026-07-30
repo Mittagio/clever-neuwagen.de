@@ -13,10 +13,16 @@ import {
   isCleverLexiconAiEnabled,
   isCleverSellerCopilotEnabled,
 } from '../src/services/clever/intelligence/cleverIntelligenceConfig.js';
+import { generateGroundedCleverMessage } from '../src/services/crm/magic/generateGroundedCleverMessage.js';
 import { appendKnowledgeGaps } from './knowledgeGapStore.js';
 import { appendQualityTurnMetric } from './cleverQualityStore.js';
 
 const router = express.Router();
+
+function isCleverMagicMessageEnabled(env = process.env) {
+  return env.CLEVER_MAGIC_MESSAGE_ENABLED === 'true'
+    || env.CLEVER_SELLER_COPILOT_ENABLED === 'true';
+}
 
 function assertSellerPermission(req) {
   const sellerId = req.headers['x-seller-id'] || req.body?.sellerId || null;
@@ -47,8 +53,98 @@ router.get('/clever/shared-intelligence/health', (_req, res) => {
     ok: true,
     lexiconAi: isCleverLexiconAiEnabled(),
     sellerCopilot: isCleverSellerCopilotEnabled(),
+    magicMessage: isCleverMagicMessageEnabled(),
     sellerOpenAiInterpret: process.env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true',
   });
+});
+
+router.post('/clever/magic-message', express.json({ limit: '48kb' }), async (req, res) => {
+  try {
+    const permission = assertSellerPermission(req);
+    if (!permission.ok) {
+      return res.status(403).json(permission);
+    }
+
+    const {
+      rawSellerInput = '',
+      draftText = '',
+      lead = null,
+      customerName = '',
+      recipient = '',
+      tone = 'freundlich',
+      workingContext = null,
+      offerContext = null,
+      openVehicles = [],
+      allowWithoutPackageDetails = false,
+      sellerFacts = [],
+    } = req.body ?? {};
+
+    const input = String(rawSellerInput || draftText || '').trim();
+    if (!input) {
+      return res.status(400).json({ ok: false, error: 'raw_seller_input_required' });
+    }
+
+    // Datenschutz: kein Full-Lead an den Writer – Orchestrator baut Minimal Context selbst
+    const slimLead = lead ? {
+      id: lead.id ?? null,
+      contact: lead.contact ? { name: lead.contact.name ?? null } : null,
+      wish: lead.wish ? {
+        model: lead.wish.model ?? null,
+        trim: lead.wish.trim ?? null,
+      } : null,
+      vehicle: lead.vehicle ? {
+        model: lead.vehicle.model ?? null,
+        trim: lead.vehicle.trim ?? null,
+      } : null,
+      crm: {
+        needProfile: {
+          fuel: lead.crm?.needProfile?.fuel ?? null,
+          bodyType: lead.crm?.needProfile?.bodyType ?? null,
+          budget: lead.crm?.needProfile?.budget ?? null,
+          selectedModelKey: lead.crm?.needProfile?.selectedModelKey ?? null,
+          modelHint: lead.crm?.needProfile?.modelHint ?? null,
+          towCapacityKg: lead.crm?.needProfile?.towCapacityKg ?? null,
+        },
+      },
+    } : null;
+
+    const result = await generateGroundedCleverMessage({
+      rawSellerInput: input,
+      lead: slimLead,
+      customerContext: { name: customerName || recipient },
+      recipient: recipient || customerName,
+      tone,
+      workingContext,
+      offerContext,
+      openVehicles,
+      allowWithoutPackageDetails,
+      sellerFacts,
+    });
+
+    if (result.missingKnowledge?.length) {
+      appendKnowledgeGaps(result.missingKnowledge.map((key) => ({
+        key,
+        surface: 'magic_message',
+        createdAt: new Date().toISOString(),
+      })));
+    }
+
+    appendQualityTurnMetric({
+      createdAt: new Date().toISOString(),
+      surface: 'magic_message',
+      fallback: result.writer !== 'openai',
+      metrics: { writer: result.writer, confidence: result.confidence },
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+      magicEnabled: isCleverMagicMessageEnabled(),
+    });
+  } catch (err) {
+    console.error('[clever/magic-message]', err?.message ?? err);
+    return res.status(500).json({ ok: false, error: 'internal_error' });
+  }
 });
 
 router.post('/clever/lexicon-query', express.json({ limit: '16kb' }), async (req, res) => {

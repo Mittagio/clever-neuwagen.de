@@ -136,13 +136,13 @@ assert.equal(
 const editUi = resolveComposerUi(COMPOSER_MODES.CUSTOMER_MESSAGE_EDIT, {
   recipient: 'Max Mustermann',
 });
-assert.match(editUi.label, /Nachricht an Max Mustermann/);
-assert.equal(editUi.placeholder, 'Nachricht bearbeiten …');
+assert.equal(editUi.label, '');
+assert.match(editUi.placeholder, /Stichworte|Clever schreibt/);
 assert.equal(editUi.sendAriaLabel, 'Nachricht an Kunden senden');
 assert.equal(editUi.growTextarea, true);
 assert.equal(editUi.showEditActions, true);
 assert.equal(editUi.hideSuggestionChips, true);
-assert.match(editUi.compactAssistHint, /wird bearbeitet/);
+assert.equal(editUi.compactAssistHint, null);
 
 const workUi = resolveComposerUi(COMPOSER_MODES.CLEVER_WORK, { cleverMode: true });
 assert.match(workUi.placeholder, /Alles reinwerfen/);

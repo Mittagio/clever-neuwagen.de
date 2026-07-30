@@ -5,11 +5,12 @@ import {
   countWorkspaceFeedFilters,
   filterWorkspaceFeedItems,
 } from '../../services/crm/workspaceFeedFilter.js';
+import { IconChevronDown, IconSendUp, IconSparkle } from '../dealer-ai/AkteIcons.jsx';
 import './SharedWorkspaceChat.css';
 
 /**
  * Gemeinsamer Clever-Arbeitsraum – Chat als Vorgang (Kunde & Verkäufer).
- * Composer wie Cursor: Chips darüber, Plus · Input · Mic · Senden.
+ * Composer wie Cursor: Karte mit Textarea + Toolbar (+ · Ton ▼ · Mic · Senden).
  */
 export default function SharedWorkspaceChat({
   role = 'customer',
@@ -26,6 +27,14 @@ export default function SharedWorkspaceChat({
   composerEditMode = false,
   onCancelEdit = null,
   onImproveWithClever = null,
+  outboundTones = null,
+  outboundTone = 'freundlich',
+  onOutboundToneChange = null,
+  magicBusy = false,
+  magicUiHint = null,
+  onMagicWriteWithoutDetails = null,
+  onMagicReviewData = null,
+  onRestoreMagicSeed = null,
   onOpenOffer,
   onUploadDocument,
   onStartSelfDisclosure,
@@ -61,6 +70,7 @@ export default function SharedWorkspaceChat({
   const highlightGenRef = useRef(0);
   const [localPlus, setLocalPlus] = useState(false);
   const [moreChipsOpen, setMoreChipsOpen] = useState(false);
+  const [toneMenuOpen, setToneMenuOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [feedFilter, setFeedFilter] = useState('all');
   const [highlightEpoch, setHighlightEpoch] = useState(0);
@@ -228,7 +238,20 @@ export default function SharedWorkspaceChat({
     && typeof onSuggestionChip === 'function';
   const hasMoreChips = Array.isArray(moreSuggestionChips) && moreSuggestionChips.length > 0;
   const showContextPills = Array.isArray(contextPills) && contextPills.length > 0;
-  const showEditActions = composerEditMode && typeof onCancelEdit === 'function';
+  const showToneMenu = Array.isArray(outboundTones) && outboundTones.length > 0
+    && typeof onOutboundToneChange === 'function';
+  const activeToneLabel = outboundTones?.find((t) => t.id === outboundTone)?.label
+    || 'Ton';
+
+  useEffect(() => {
+    if (!toneMenuOpen) return undefined;
+    const onDoc = (event) => {
+      if (event.target?.closest?.('.sw-composer__tone-dd')) return;
+      setToneMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onDoc);
+    return () => document.removeEventListener('pointerdown', onDoc);
+  }, [toneMenuOpen]);
 
   const feedMain = (
     <>
@@ -426,66 +449,143 @@ export default function SharedWorkspaceChat({
             </div>
           ) : null}
 
-          <div className={`sw-composer__row${composerEditMode ? ' sw-composer__row--grow' : ''}`}>
-            {!composerEditMode ? (
-              <button
-                type="button"
-                className="sw-composer__plus"
-                aria-label="Mehr Aktionen"
-                onClick={openPlus}
-              >
-                +
-              </button>
-            ) : null}
+          <div className={`sw-composer__card${composerEditMode ? ' sw-composer__card--edit' : ''}`}>
             <textarea
               id={`sw-composer-${role}`}
               className={`sw-composer__input${composerEditMode ? ' sw-composer__input--grow' : ''}`}
-              rows={composerEditMode ? 6 : 1}
+              rows={composerEditMode ? 6 : 2}
               value={draft}
               onChange={(e) => onDraftChange?.(e.target.value)}
               placeholder={resolvedPlaceholder}
               disabled={sending}
             />
-            {!composerEditMode ? micSlot : null}
-            <button
-              type="submit"
-              className="sw-composer__send"
-              disabled={sending || !draft.trim()}
-              aria-label={sendAriaLabel || 'Senden'}
-              title={sendAriaLabel || 'Senden'}
-            >
-              ➤
-            </button>
-          </div>
-          {showEditActions ? (
-            <div className="sw-composer__edit-actions" role="group" aria-label="Nachricht bearbeiten">
-              <button
-                type="button"
-                className="sw-composer__edit-btn sw-composer__edit-btn--ghost"
-                disabled={sending}
-                onClick={() => onCancelEdit?.()}
-              >
-                Abbrechen
-              </button>
-              {typeof onImproveWithClever === 'function' ? (
+            <div className="sw-composer__toolbar">
+              {!composerEditMode ? (
                 <button
                   type="button"
-                  className="sw-composer__edit-btn sw-composer__edit-btn--ghost"
-                  disabled={sending || !draft.trim()}
-                  onClick={() => onImproveWithClever?.(draft)}
+                  className="sw-composer__tool sw-composer__plus"
+                  aria-label="Mehr Aktionen"
+                  onClick={openPlus}
                 >
-                  Mit Clever verbessern
+                  +
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="sw-composer__tool sw-composer__tool--ghost"
+                  disabled={sending}
+                  onClick={() => onCancelEdit?.()}
+                >
+                  Abbrechen
+                </button>
+              )}
+
+              {showToneMenu ? (
+                <div className={`sw-composer__tone-dd${toneMenuOpen ? ' is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="sw-composer__tone-trigger"
+                    disabled={sending}
+                    aria-haspopup="listbox"
+                    aria-expanded={toneMenuOpen}
+                    aria-label="Tonalität wählen"
+                    onClick={() => setToneMenuOpen((open) => !open)}
+                  >
+                    <span>{activeToneLabel}</span>
+                    <IconChevronDown />
+                  </button>
+                  {toneMenuOpen ? (
+                    <div className="sw-composer__tone-menu" role="listbox" aria-label="Tonalität">
+                      {outboundTones.map((tone) => (
+                        <button
+                          key={tone.id}
+                          type="button"
+                          role="option"
+                          aria-selected={tone.id === outboundTone}
+                          className={`sw-composer__tone-option${tone.id === outboundTone ? ' is-active' : ''}`}
+                          onClick={() => {
+                            onOutboundToneChange?.(tone.id);
+                            setToneMenuOpen(false);
+                          }}
+                        >
+                          {tone.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="sw-composer__toolbar-spacer" />
+
+              {composerEditMode && typeof onImproveWithClever === 'function' ? (
+                <button
+                  type="button"
+                  className="sw-composer__tool sw-composer__tool--magic"
+                  disabled={sending || magicBusy || !draft.trim()}
+                  onClick={() => onImproveWithClever?.(draft)}
+                  aria-label="Magic – Clever schreibt die Nachricht"
+                  title="Magic – Clever schreibt die Nachricht"
+                >
+                  <IconSparkle />
+                  <span className="sw-composer__edit-btn-label">{magicBusy ? '…' : 'Magic'}</span>
                 </button>
               ) : null}
+
+              {composerEditMode && typeof onRestoreMagicSeed === 'function' ? (
+                <button
+                  type="button"
+                  className="sw-composer__tool sw-composer__tool--ghost"
+                  disabled={sending || magicBusy}
+                  onClick={() => onRestoreMagicSeed?.()}
+                >
+                  Original
+                </button>
+              ) : null}
+
+              {!composerEditMode ? micSlot : null}
+
               <button
                 type="submit"
-                className="sw-composer__edit-btn sw-composer__edit-btn--primary"
-                disabled={sending || !draft.trim()}
+                className="sw-composer__send"
+                disabled={sending || magicBusy || !draft.trim()}
+                aria-label={sendAriaLabel || 'Senden'}
+                title={sendAriaLabel || 'Senden'}
               >
-                Senden
+                <IconSendUp />
               </button>
             </div>
+          </div>
+
+          {magicUiHint?.message ? (
+            <div className="sw-composer__magic-hint" role="status">
+              <p>{magicUiHint.message}</p>
+              <div className="sw-composer__magic-hint-actions">
+                {typeof onMagicWriteWithoutDetails === 'function' ? (
+                  <button
+                    type="button"
+                    className="sw-composer__tool sw-composer__tool--ghost"
+                    disabled={sending || magicBusy}
+                    onClick={() => onMagicWriteWithoutDetails?.()}
+                  >
+                    Ohne Paketdetails schreiben
+                  </button>
+                ) : null}
+                {typeof onMagicReviewData === 'function' ? (
+                  <button
+                    type="button"
+                    className="sw-composer__tool sw-composer__tool--ghost"
+                    disabled={sending || magicBusy}
+                    onClick={() => onMagicReviewData?.()}
+                    title="Daten in Clever prüfen"
+                  >
+                    Daten prüfen
+                  </button>
+                ) : null}
+              </div>
+            </div>
           ) : null}
+
           {sendFeedback ? (
             <p className="sw-composer__feedback" role="status">{sendFeedback}</p>
           ) : null}

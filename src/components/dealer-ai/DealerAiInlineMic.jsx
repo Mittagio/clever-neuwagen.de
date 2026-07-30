@@ -4,6 +4,7 @@ import {
   parseConversationSpeech,
   startSpeechRecognition,
 } from '../../services/sales/conversationVoiceParser.js';
+import { IconMic } from './AkteIcons.jsx';
 
 export default function DealerAiInlineMic({
   onTranscript,
@@ -16,6 +17,7 @@ export default function DealerAiInlineMic({
 
   const supported = isSpeechRecognitionSupported();
   const isFab = variant === 'fab';
+  const isToolbar = variant === 'toolbar';
 
   const handleStart = useCallback(() => {
     if (!supported || disabled) return;
@@ -35,8 +37,14 @@ export default function DealerAiInlineMic({
     });
   }, [disabled, onParsed, onTranscript, supported]);
 
+  const rootClass = [
+    'dai-inline-mic',
+    isFab ? 'dai-inline-mic--fab' : '',
+    isToolbar ? 'dai-inline-mic--toolbar' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={`dai-inline-mic${isFab ? ' dai-inline-mic--fab' : ''}`}>
+    <div className={rootClass}>
       <button
         type="button"
         className={`dai-inline-mic__btn${listening ? ' dai-inline-mic__btn--active' : ''}`}
@@ -45,9 +53,9 @@ export default function DealerAiInlineMic({
         aria-label={listening ? 'Aufnahme läuft' : 'Spracheingabe starten'}
         title={supported ? 'Spracheingabe' : 'Spracheingabe nicht verfügbar'}
       >
-        <span aria-hidden>🎤</span>
+        {isToolbar ? <IconMic /> : <span aria-hidden>🎤</span>}
       </button>
-      {error && !isFab && <p className="dai-inline-mic__error" role="alert">{error}</p>}
+      {error && !isFab && !isToolbar && <p className="dai-inline-mic__error" role="alert">{error}</p>}
     </div>
   );
 }
