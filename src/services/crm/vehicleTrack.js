@@ -11,6 +11,10 @@ import {
   listCommercialScenariosForTrack,
 } from './commercialScenarios.js';
 import {
+  formatScenarioOfferFeedbackChip,
+  getScenarioOfferFeedback,
+} from './scenarioOfferFeedback.js';
+import {
   getOfferByCommercialScenarioId,
   isScenarioOfferReady,
   listOffersForVehicleTrack,
@@ -188,6 +192,12 @@ export function listScenarioOfferSlots(lead = {}, trackId) {
       ?? null;
     const ready = isScenarioOfferReady(offer);
     const checked = Boolean(offer?.checked || offer?.verified || ready);
+    const feedback = getScenarioOfferFeedback(lead, scenario.id)
+      || offer?.customerFeedback
+      || null;
+    const feedbackLabel = feedback
+      ? formatScenarioOfferFeedbackChip(feedback, lead)
+      : null;
 
     return {
       scenarioId: scenario.id,
@@ -204,6 +214,10 @@ export function listScenarioOfferSlots(lead = {}, trackId) {
       checked,
       statusLabel: ready ? 'Bereit' : 'Noch zu erstellen',
       pdf: offer?.pdf ?? null,
+      customerFeedback: feedback,
+      feedbackLabel,
+      feedbackReason: feedback?.reason ?? null,
+      feedbackSentiment: feedback?.sentiment ?? null,
     };
   });
 }

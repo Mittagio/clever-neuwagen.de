@@ -70,6 +70,22 @@ export default function CustomerAkteScenarioOfferSlots({
                   </p>
                 ) : null}
 
+                {slot.feedbackLabel ? (
+                  <p
+                    className={[
+                      'scenario-slot__feedback',
+                      slot.feedbackSentiment === 'positive'
+                        ? 'scenario-slot__feedback--positive'
+                        : '',
+                      slot.feedbackSentiment === 'negative'
+                        ? 'scenario-slot__feedback--negative'
+                        : '',
+                    ].filter(Boolean).join(' ')}
+                  >
+                    {slot.feedbackLabel}
+                  </p>
+                ) : null}
+
                 <div className="scenario-slot__actions">
                   {!slot.ready ? (
                     <>

@@ -20,6 +20,7 @@ import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.j
 import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
 import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
 import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
+import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -375,6 +376,14 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
   if (trackFeedback.length) {
     nextLead = applyTrackFeedbackFacts(nextLead, trackFeedback);
+  }
+
+  // Epic 4: Varianten-Feedback (commercialScenarioId) – Spur bleibt eine
+  const scenarioFeedbackFacts = facts
+    .filter((f) => f.field === 'scenarioOfferFeedback' && f.value?.commercialScenarioId && !f.needsConfirmation)
+    .map((f) => f.value);
+  if (scenarioFeedbackFacts.length) {
+    nextLead = applyScenarioOfferFeedbackFacts(nextLead, scenarioFeedbackFacts);
   }
 
   const tradeInRequested = facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT);

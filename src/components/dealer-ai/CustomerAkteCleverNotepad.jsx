@@ -200,6 +200,12 @@ export default function CustomerAkteCleverNotepad({
                   chip.kind === 'open' || chip.tone === 'open'
                     ? 'cust-akte-clever-notepad__chip--open'
                     : '',
+                  chip.kind === 'scenario_feedback' || chip.tone === 'positive'
+                    ? 'cust-akte-clever-notepad__chip--feedback-positive'
+                    : '',
+                  chip.tone === 'negative'
+                    ? 'cust-akte-clever-notepad__chip--feedback-negative'
+                    : '',
                   glowKeys.has(key) ? 'is-magic-capture' : '',
                 ].filter(Boolean).join(' ')}
                 onClick={() => handleChipClick(chip)}

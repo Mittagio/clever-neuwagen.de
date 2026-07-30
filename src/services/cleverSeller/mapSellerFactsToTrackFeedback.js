@@ -1,5 +1,6 @@
 /**
- * Bestätigte Seller-Facts → Vehicle-Track-Feedback (Brandes-Fall).
+ * Bestätigte Seller-Facts → Vehicle-Track-Feedback (Brandes-Fall)
+ * + Dual-Szenario: preferred Variante → Favorit auf derselben Spur (Epic 4).
  * Nur Mapping; Persistenz über applyTrackFeedbackFacts nach Review-Accept.
  */
 import {
@@ -7,6 +8,9 @@ import {
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
 import { SELLER_FACT_CLASS } from './sellerFactTypes.js';
+import {
+  SCENARIO_FEEDBACK_REASON,
+} from '../crm/scenarioOfferFeedback.js';
 
 function normalizeModelKey(raw = '') {
   return String(raw)
@@ -44,6 +48,9 @@ export function resolveTrackIdForModel(lead = {}, modelKeyOrLabel = '') {
  */
 export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
   const byTrack = new Map();
+  const hasScenarioFeedback = facts.some(
+    (f) => f?.field === 'scenarioOfferFeedback' && f.value?.commercialScenarioId && !f.needsConfirmation,
+  );
 
   function ensure(trackId) {
     if (!trackId) return null;
@@ -56,12 +63,30 @@ export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
   for (const fact of facts) {
     if (!fact || fact.needsConfirmation) continue;
 
+    // Epic 4: Varianten-preferred → Spur Favorit (ohne zweite Spur)
+    if (fact.field === 'scenarioOfferFeedback' && fact.value?.commercialScenarioId) {
+      const trackId = fact.value.vehicleTrackId
+        || resolveTrackIdForModel(lead, lead?.vehicle?.model || 'sportage');
+      if (
+        fact.value.reason === SCENARIO_FEEDBACK_REASON.PREFERRED
+        && trackId
+      ) {
+        const entry = ensure(trackId);
+        if (entry) entry.status = VEHICLE_TRACK_STATUS.FAVORITE;
+      }
+      continue;
+    }
+
     if (fact.field === 'vehicleTrackFeedback' && fact.value) {
       const modelKey = fact.value.modelKey || fact.value.model || '';
       const trackId = fact.value.trackId
         || resolveTrackIdForModel(lead, modelKey);
       const entry = ensure(trackId);
       if (!entry) continue;
+      // Dual: kein deferred aus Modell-Feedback wenn Varianten-Feedback vorliegt
+      if (fact.value.status === VEHICLE_TRACK_STATUS.DEFERRED && hasScenarioFeedback) {
+        continue;
+      }
       if (fact.value.status) entry.status = fact.value.status;
       if (fact.value.rejectionReason) {
         entry.rejectionReason = fact.value.rejectionReason;

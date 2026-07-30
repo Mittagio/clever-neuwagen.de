@@ -131,6 +131,7 @@
     "test:brandes-golden": "node src/services/crm/brandesGoldenCase.test.js && node src/services/crm/vehicleTrack.goldenMoment.offerInterpreter.test.js",
     "test:commercial-scenarios": "node src/services/crm/commercialScenarios.test.js",
     "test:delivery-time": "node src/services/crm/deliveryTimeQuestion.test.js",
+    "test:scenario-feedback": "node src/services/crm/scenarioOfferFeedback.test.js",
     "test:homepage-inquiry": "node src/services/crm/homepageCommercialInquiry.test.js",
     "test:clever-diktat": "node src/services/cleverDiktat.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",

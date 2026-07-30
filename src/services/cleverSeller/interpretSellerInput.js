@@ -40,6 +40,10 @@ import {
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
+import {
+  formatScenarioOfferFeedbackChip,
+  parseScenarioOfferFeedbackFromText,
+} from '../crm/scenarioOfferFeedback.js';
 
 const MONTH_MAP = {
   januar: '01', jan: '01',
@@ -119,11 +123,13 @@ function parseMonthYear(text = '') {
 /**
  * Multi-Fact Extraktion aus natürlichem Seller-Input.
  * @param {string} text
+ * @param {{ lead?: object }} [options]
  */
-export function extractUniversalSellerFacts(text = '') {
+export function extractUniversalSellerFacts(text = '', options = {}) {
   const raw = String(text ?? '');
   const t = raw.replace(/\s+/g, ' ').trim();
   const facts = [];
+  const lead = options.lead ?? {};
   if (!t) return facts;
 
   // Epic 2: Homepage Dual-Szenario zuerst – kein gemischter paymentType
@@ -399,6 +405,19 @@ export function extractUniversalSellerFacts(text = '') {
       }));
     }
     trackMatch = trackFeedbackRe.exec(t);
+  }
+
+  // Epic 4: Feedback je commercialScenario (Leasing/Finanzierung getrennt)
+  const scenarioFeedbackEntries = parseScenarioOfferFeedbackFromText(t, lead);
+  for (const entry of scenarioFeedbackEntries) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'scenarioOfferFeedback',
+      value: entry,
+      label: entry.label || formatScenarioOfferFeedbackChip(entry, lead),
+      confidence: 0.9,
+      needsConfirmation: true,
+    }));
   }
 
   // Trade-in / existing vehicle (Kia-Interesse nicht als Alt-Fzg. werten)
@@ -886,12 +905,12 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
 
 /**
  * @param {string} sellerInput
- * @param {{ attachments?: object[] }} [options]
+ * @param {{ attachments?: object[], lead?: object }} [options]
  */
 export function interpretSellerInput(sellerInput = '', options = {}) {
   const raw = String(sellerInput ?? '');
   const normalized = raw.replace(/\r\n/g, '\n').trim();
-  let facts = extractUniversalSellerFacts(normalized);
+  let facts = extractUniversalSellerFacts(normalized, { lead: options.lead });
 
   if (shouldEnrichSellerInputFromOfferPdf(options.attachments, normalized)) {
     facts = mergeOfferPdfFactsIntoSellerFacts(

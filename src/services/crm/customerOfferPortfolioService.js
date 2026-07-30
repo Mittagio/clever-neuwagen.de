@@ -1094,13 +1094,15 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     reactionStatus,
   });
 
-  // Portal-Feedback → Vehicle Tracks (Favorit / deferred), Spuren bleiben erhalten
+  // Portal-Feedback → Tracks + Varianten-Feedback (commercialScenarioId), Spuren bleiben
   if (
     itemIndex >= 0
     && (
       reactionStatus === PORTFOLIO_REACTION_STATUS.INTERESTED
       || reactionStatus === PORTFOLIO_REACTION_STATUS.CALL_REQUESTED
       || reactionStatus === PORTFOLIO_REACTION_STATUS.DECLINED
+      || reactionStatus === PORTFOLIO_REACTION_STATUS.MORE_INFO
+      || reactionStatus === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED
     )
   ) {
     const reactedItem = nextPortfolio.items[itemIndex];
@@ -1108,6 +1110,10 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       vehicleCardId: reactedItem.vehicleCardId ?? reactedItem.id,
       reactionStatus,
       declineReason,
+      commercialScenarioId: reactedItem.commercialScenarioId ?? null,
+      offerId: reactedItem.offerId ?? null,
+      declineNote,
+      questionText,
     });
   }
 

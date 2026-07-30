@@ -13,6 +13,10 @@ import {
   isDeliveryTimeOpen,
   DELIVERY_TIME_STATUS,
 } from './deliveryTimeQuestion.js';
+import {
+  formatScenarioOfferFeedbackChip,
+  listScenarioOfferFeedback,
+} from './scenarioOfferFeedback.js';
 
 export const COMMERCIAL_SCENARIO_TYPE = {
   LEASING: 'leasing',
@@ -306,6 +310,21 @@ export function buildCustomerTruthNotepadGroups(lead = {}, {
     scenarioId: scenario.id,
     field: 'commercialScenario',
   }));
+
+  // Epic 4: Feedback-Chips je Variante (unter ANGEBOTSWÜNSCHE, gebunden an scenarioId)
+  for (const feedback of listScenarioOfferFeedback(lead)) {
+    offerWishes.push({
+      id: `scenario-feedback-${feedback.commercialScenarioId}`,
+      label: formatScenarioOfferFeedbackChip(feedback, lead),
+      kind: 'scenario_feedback',
+      scenarioId: feedback.commercialScenarioId,
+      field: 'scenarioOfferFeedback',
+      tone: feedback.sentiment === 'positive'
+        ? 'positive'
+        : (feedback.sentiment === 'negative' ? 'negative' : 'feedback'),
+      reason: feedback.reason,
+    });
+  }
 
   const customerType = resolveLeadCustomerType(lead);
   const customer = [{
