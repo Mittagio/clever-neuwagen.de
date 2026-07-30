@@ -3131,7 +3131,7 @@ export default function DealerAiLeadFollowUp({
           {vehicleTracks.length > 0 ? (
             <CustomerAkteVehicleTracks
               tracks={vehicleTracks}
-              title="Fahrzeugspuren"
+              title="Angebote"
               showFilters
               filter={angeboteFilter}
               onFilterChange={setAngeboteFilter}
@@ -3143,18 +3143,6 @@ export default function DealerAiLeadFollowUp({
               onResumeTrack={resumeVehicleTrack}
             />
           ) : null}
-          <div className="cn-card-grid cn-card-grid--2 cust-akte-offers-grid">
-            <CustomerAkteBoard
-              items={boardItems}
-              lead={lead}
-              animateNew={showCardAnimation && boardItems.length > 0}
-              onCardClick={navigateBoardOfferCard}
-              onCardMenu={navigateBoardOfferCard}
-              onCardAction={handleBoardCardAction}
-              onSelectionGroupClick={openSelectionGroup}
-              onAddProposal={handleAddVehicle}
-            />
-          </div>
           <CustomerAktePortalSendCta
             boardItems={boardItems}
             email={email}
@@ -3162,6 +3150,23 @@ export default function DealerAiLeadFollowUp({
             onAddEmail={() => openSheet(SHEETS.customer)}
             disabled={isSaving}
           />
+          {boardItems.length > 0 ? (
+            <details className="cust-akte-angebote-sheet__board">
+              <summary>Klassisches Angebotsboard</summary>
+              <div className="cn-card-grid cn-card-grid--2 cust-akte-offers-grid">
+                <CustomerAkteBoard
+                  items={boardItems}
+                  lead={lead}
+                  animateNew={showCardAnimation && boardItems.length > 0}
+                  onCardClick={navigateBoardOfferCard}
+                  onCardMenu={navigateBoardOfferCard}
+                  onCardAction={handleBoardCardAction}
+                  onSelectionGroupClick={openSelectionGroup}
+                  onAddProposal={handleAddVehicle}
+                />
+              </div>
+            </details>
+          ) : null}
         </div>
       </LeadDetailPanel>
 

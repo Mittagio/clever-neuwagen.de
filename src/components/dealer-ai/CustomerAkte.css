@@ -4814,6 +4814,30 @@
   gap: 14px;
 }
 
+.cust-akte-angebote-sheet__board {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--cust-border, #e8e8ef);
+  background: #fafafc;
+}
+
+.cust-akte-angebote-sheet__board > summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--cust-muted, #5c6478);
+  list-style: none;
+}
+
+.cust-akte-angebote-sheet__board > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cust-akte-angebote-sheet__board[open] > summary {
+  margin-bottom: 10px;
+}
+
 .cust-akte-assist-rail .clever-empfiehlt {
   margin: 0;
 }
