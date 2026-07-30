@@ -1,0 +1,225 @@
+/* Vehicle Tracks – Mockup: vertikal, Rate dominant, Status-Töne, kein Horizontal-Scroll */
+
+.vt-list {
+  --vt-ink: #0b1736;
+  --vt-muted: #5c6478;
+  --vt-border: #e8e8ef;
+  --vt-bg: #fff;
+  --vt-open: #b45309;
+  --vt-open-bg: #fffbeb;
+  --vt-favorite: #6d5bb8;
+  --vt-favorite-bg: #f5f2fb;
+  --vt-deferred: #64748b;
+  --vt-deferred-bg: #f1f5f9;
+  --vt-won: #15803d;
+
+  margin: 0 0 8px;
+}
+
+.vt-list__head {
+  margin: 0 0 8px;
+}
+
+.vt-list__title {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vt-muted);
+}
+
+.vt-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vt-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--vt-bg);
+  border: 1px solid var(--vt-border);
+  box-shadow: none;
+}
+
+.vt-card--favorite {
+  border-color: rgba(109, 91, 184, 0.28);
+  background: linear-gradient(180deg, #faf9fc 0%, #fff 100%);
+  box-shadow: 0 1px 0 rgba(11, 23, 54, 0.04);
+}
+
+.vt-card--deferred {
+  background: #f8f9fb;
+  border-color: #e2e6ee;
+  opacity: 0.92;
+}
+
+.vt-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.vt-card__name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vt-ink);
+}
+
+.vt-card__badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.vt-card__badge--open,
+.vt-card__badge--active {
+  color: var(--vt-open);
+  background: var(--vt-open-bg);
+}
+
+.vt-card__badge--favorite {
+  color: var(--vt-favorite);
+  background: var(--vt-favorite-bg);
+}
+
+.vt-card__badge--deferred,
+.vt-card__badge--lost {
+  color: var(--vt-deferred);
+  background: var(--vt-deferred-bg);
+}
+
+.vt-card__badge--won {
+  color: var(--vt-won);
+  background: #ecfdf5;
+}
+
+.vt-card__rate {
+  margin: 0 0 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.vt-card__rate-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--vt-ink);
+  line-height: 1.2;
+}
+
+.vt-card--deferred .vt-card__rate-value {
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: #475569;
+}
+
+.vt-card__rate-suffix {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--vt-muted);
+}
+
+.vt-card__conditions,
+.vt-card__wishes,
+.vt-card__status {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--vt-muted);
+}
+
+.vt-card__wishes {
+  margin-top: 4px;
+  color: var(--vt-favorite);
+  font-weight: 550;
+}
+
+.vt-card__status {
+  margin-top: 4px;
+}
+
+.vt-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vt-card__action {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--vt-ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.vt-card__action--ghost {
+  margin-right: auto;
+  color: var(--vt-muted);
+  font-weight: 600;
+}
+
+.vt-list__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.vt-list__filter {
+  padding: 4px 10px;
+  border: 1px solid #e8e8ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #5c6478;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.vt-list__filter--active {
+  border-color: rgba(109, 91, 184, 0.35);
+  background: #f5f2fb;
+  color: #0b1736;
+}
+
+.vt-list__empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: 0.8125rem;
+  color: #5c6478;
+}
+
+.vt-list--compact .vt-card {
+  padding: 10px 12px;
+}
+
+.vt-list--compact .vt-card__rate-value {
+  font-size: 1.1rem;
+}
+
+.vt-list--compact .vt-list__title {
+  margin-bottom: 0;
+}

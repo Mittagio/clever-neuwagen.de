@@ -80,6 +80,7 @@ import {
   prepareMagicOffer,
 } from '../services/dealer/magicOfferService.js';
 import { extractMagicOfferPdf } from '../services/dealer/magicOfferPdfExtract.js';
+import { interpretOfferFromPdf } from '../services/dealer/interpretOfferFromPdfWithOpenAi.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
 import {
   buildCleverConsultationOfferPrefill,
@@ -567,16 +568,27 @@ export default function DealerAIPage() {
       };
 
       if (extracted.ok && extracted.text) {
+        const ctx = resolveMagicOfferContext();
+        const offerInterpretation = await interpretOfferFromPdf(extracted.text, {
+          fileName: extracted.fileName,
+          knownVehicle: ctx.modelKey
+            ? { brand: 'Kia', model: ctx.modelKey, modelKey: ctx.modelKey }
+            : null,
+        });
         const preparation = prepareMagicOffer(extracted.text, {
-          ...resolveMagicOfferContext(),
+          ...ctx,
           fromPdf: true,
           originalPdf,
+          offerInterpretation,
         });
+        const ambiguityMsg = offerInterpretation?.review?.ambiguities?.length
+          ? 'Mehrere Raten erkannt – bitte prüfen.'
+          : null;
         if (preparation.canCreateOffer) {
           setMagicOfferPreparation(preparation);
           setMagicOfferSeedText(extracted.text.slice(0, 500));
           setPhase('magic-offer-review');
-          showToast('Angebot aus PDF erkannt – bitte prüfen');
+          showToast(ambiguityMsg || 'Angebot aus PDF erkannt – bitte prüfen');
           return;
         }
         setMagicOfferPreparation({
@@ -584,6 +596,7 @@ export default function DealerAIPage() {
           originalPdf,
           fromPdf: true,
           promptMessage: preparation.promptMessage
+            ?? ambiguityMsg
             ?? 'PDF gelesen. Rate oder Konditionen bitte kurz bestätigen oder ergänzen.',
         });
         setMagicOfferSeedText(extracted.text.slice(0, 500));
@@ -606,6 +619,8 @@ export default function DealerAIPage() {
         calculation: null,
         positionLines: [],
         suggestions: [],
+        offerInterpretation: null,
+        offerReview: null,
       });
       setMagicOfferSeedText('');
       setPhase('magic-offer-review');

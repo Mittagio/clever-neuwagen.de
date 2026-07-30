@@ -48,13 +48,6 @@ export default function CleverEmpfiehltCard({
     <section className="clever-empfiehlt clever-empfiehlt--compact" aria-labelledby="clever-empfiehlt-title">
       <header className="clever-empfiehlt__header">
         <p className="clever-empfiehlt__eyebrow">Clever</p>
-        <div className="clever-empfiehlt__score" aria-hidden="true">
-          <span
-            className="clever-empfiehlt__score-dot"
-            data-level={view.closureChance >= 70 ? 'high' : view.closureChance >= 45 ? 'mid' : 'low'}
-          />
-          <strong>{view.closureLabel}</strong>
-        </div>
       </header>
 
       <h2 id="clever-empfiehlt-title" className="clever-empfiehlt__headline">

@@ -40,12 +40,43 @@ export default function MagicOfferReview({
       )}
 
       <header className="magic-offer-review__head">
-        <p className="magic-offer-review__kicker">✨ Angebot vorbereitet</p>
+        <p className="magic-offer-review__kicker">Angebot vorbereitet</p>
         <h1 className="magic-offer-review__title">{preparation.headline ?? 'Angebot'}</h1>
         {preparation.subline && (
           <p className="magic-offer-review__sub">{preparation.subline}</p>
         )}
       </header>
+
+      {preparation.offerReview?.ambiguities?.length > 0 && (
+        <div className="magic-offer-review__prompt" role="status">
+          <p>{preparation.offerReview.title || 'Bitte kurz prüfen'}</p>
+          <ul className="magic-offer-review__suggestions">
+            {preparation.offerReview.ambiguities.map((amb) => (
+              <li key={amb.field}>
+                {amb.message}
+                {amb.candidates?.length
+                  ? `: ${amb.candidates.map((c) => c.value).join(' / ')}`
+                  : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {preparation.offerReview?.lines?.length > 0
+        && !isCash
+        && calc.monthlyRate == null && (
+        <div className="magic-offer-review__rate-card">
+          <p className="magic-offer-review__rate-label">
+            {preparation.offerReview.vehicleLabel}
+          </p>
+          <ul className="magic-offer-review__meta">
+            {preparation.offerReview.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {preparation.promptMessage && !preparation.canCreateOffer && (
         <div className="magic-offer-review__prompt" role="status">

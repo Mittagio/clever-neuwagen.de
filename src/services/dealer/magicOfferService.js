@@ -19,12 +19,69 @@ function paymentTypeFromOfferType(offerType) {
 }
 
 /**
+ * Overlay Offer-Interpreter-Werte auf Intent – nur gesetzte, nicht-ambige Felder.
+ * Erfindet nichts; Ambiguities bleiben im Review.
+ */
+export function overlayOfferInterpretationOntoIntent(intent, offerInterpretationResult = null) {
+  const oi = offerInterpretationResult?.interpretation;
+  if (!intent || !oi) return intent;
+
+  const ambiguous = new Set(
+    (oi.ambiguities ?? []).map((a) => a.field).filter(Boolean),
+  );
+  const commercial = intent.commercialInput ?? {};
+
+  if (!ambiguous.has('monthlyRate') && oi.monthlyRate != null && commercial.monthlyRate == null) {
+    commercial.monthlyRate = oi.monthlyRate;
+  }
+  if (!ambiguous.has('termMonths') && oi.termMonths != null && commercial.durationMonths == null) {
+    commercial.durationMonths = oi.termMonths;
+  }
+  if (!ambiguous.has('annualMileage') && oi.annualMileage != null && commercial.annualMileageKm == null) {
+    commercial.annualMileageKm = oi.annualMileage;
+  }
+  if (!ambiguous.has('downPayment') && oi.downPayment != null) {
+    if (commercial.downPayment == null) commercial.downPayment = oi.downPayment;
+    if (commercial.specialPayment == null) commercial.specialPayment = oi.downPayment;
+  }
+  if (oi.purchasePrice != null && commercial.listPrice == null) {
+    commercial.listPrice = oi.purchasePrice;
+  }
+  if (oi.finalPayment != null && commercial.finalPayment == null) {
+    commercial.finalPayment = oi.finalPayment;
+  }
+  if (oi.transferFee != null && commercial.transferCost == null) {
+    commercial.transferCost = oi.transferFee;
+  }
+  if (oi.apr != null && commercial.effectiveInterestRate == null) {
+    commercial.effectiveInterestRate = oi.apr;
+  }
+
+  intent.commercialInput = commercial;
+
+  if (!intent.offerType && oi.offerType) {
+    intent.offerType = oi.offerType === 'cash' ? 'purchase' : oi.offerType;
+  }
+
+  const vr = intent.vehicleRequest ?? {};
+  if (!vr.modelHint && oi.vehicle?.model) vr.modelHint = oi.vehicle.model;
+  if (!vr.trimHint && oi.vehicle?.trim) vr.trimHint = oi.vehicle.trim;
+  if (!vr.colorHint && oi.vehicle?.color) vr.colorHint = oi.vehicle.color;
+  if (!vr.brandHint && oi.vehicle?.brand) vr.brandHint = oi.vehicle.brand;
+  intent.vehicleRequest = vr;
+
+  return intent;
+}
+
+/**
  * @param {string} text
  * @param {{
  *   modelKey?: string|null,
  *   trimId?: string|null,
  *   fromPdf?: boolean,
  *   previousPreparation?: object|null,
+ *   offerInterpretation?: object|null,
+ *   originalPdf?: object|null,
  * }} [context]
  */
 export function prepareMagicOffer(text, context = {}) {
@@ -44,6 +101,8 @@ export function prepareMagicOffer(text, context = {}) {
       intent.vehicleRequest.modelHint = context.previousPreparation.intent.vehicleRequest.modelHint;
     }
   }
+
+  overlayOfferInterpretationOntoIntent(intent, context.offerInterpretation);
 
   const groundedResult = groundMagicOfferIntent(intent, {
     modelKey: context.modelKey,
@@ -66,6 +125,13 @@ export function prepareMagicOffer(text, context = {}) {
     unresolvedPackages: groundedResult.unresolvedPackages,
   });
 
+  const offerInterpretation = context.offerInterpretation ?? null;
+  const offerReview = offerInterpretation?.review ?? null;
+  const hasRateAmbiguity = Boolean(
+    (offerInterpretation?.interpretation?.ambiguities ?? [])
+      .some((a) => a.field === 'monthlyRate'),
+  );
+
   const base = {
     intent,
     grounded: groundedResult.grounded,
@@ -82,6 +148,9 @@ export function prepareMagicOffer(text, context = {}) {
     paymentType: paymentTypeFromOfferType(intent.offerType),
     fromPdf: Boolean(context.fromPdf),
     originalPdf: context.originalPdf ?? null,
+    offerInterpretation,
+    offerReview,
+    hasRateAmbiguity,
   };
 
   if (decision.action === MAGIC_DECISION.CALCULATE_CASH && groundedResult.grounded) {
@@ -142,7 +211,7 @@ export function prepareMagicOffer(text, context = {}) {
         ? `Kia ${groundedResult.grounded.model}${groundedResult.grounded.trimLabel ? ` ${groundedResult.grounded.trimLabel}` : ''}`
         : 'Leasingangebot',
       subline: groundedResult.grounded?.engineLabel ?? null,
-      canCreateOffer: intent.commercialInput.monthlyRate != null,
+      canCreateOffer: intent.commercialInput.monthlyRate != null && !hasRateAmbiguity,
       endPrice: null,
       verifiedPrices: Boolean(groundedResult.grounded),
     };
@@ -176,7 +245,7 @@ export function prepareMagicOffer(text, context = {}) {
         ? `Kia ${groundedResult.grounded.model}${groundedResult.grounded.trimLabel ? ` ${groundedResult.grounded.trimLabel}` : ''}`
         : 'Finanzierung',
       subline: null,
-      canCreateOffer: intent.commercialInput.monthlyRate != null,
+      canCreateOffer: intent.commercialInput.monthlyRate != null && !hasRateAmbiguity,
       endPrice: null,
       verifiedPrices: Boolean(groundedResult.grounded),
     };

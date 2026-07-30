@@ -321,10 +321,12 @@
 }
 
 .cop-card__rate {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: #059669;
-  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #0b1736;
+  margin: 0.25rem 0 0.5rem;
 }
 
 .cop-card__pdf-hint {

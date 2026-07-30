@@ -383,12 +383,17 @@
   flex-shrink: 0;
 }
 
-/* CleverMoment – ruhige weiße Card */
+/* CleverMoment – ruhige Card; lavender Variante = Mockup Clever-Karte */
 .cn-clever-moment {
   padding: 14px 16px;
   border-radius: var(--radius-card, 14px);
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border-subtle, #e8e8ef);
+}
+
+.cn-clever-moment--lavender {
+  background: #f0edf8;
+  border-color: rgba(109, 91, 184, 0.14);
 }
 
 .cn-clever-moment--empty {

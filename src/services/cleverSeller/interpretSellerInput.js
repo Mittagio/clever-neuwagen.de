@@ -26,6 +26,10 @@ import {
   mergeOfferPdfFactsIntoSellerFacts,
   shouldEnrichSellerInputFromOfferPdf,
 } from './mapMagicOfferIntentToSellerFacts.js';
+import {
+  REJECTION_REASON,
+  VEHICLE_TRACK_STATUS,
+} from '../crm/vehicleTrack.js';
 
 const MONTH_MAP = {
   januar: '01', jan: '01',
@@ -43,7 +47,7 @@ const MONTH_MAP = {
 };
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
-const KIA_INTEREST_MODEL_RE = 'EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival';
+const KIA_INTEREST_MODEL_RE = 'EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise';
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
@@ -271,6 +275,57 @@ export function extractUniversalSellerFacts(text = '') {
 
   const hasInterest = interestHits.length > 0
     || facts.some((f) => f.factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST);
+
+  // Multi-Offer Track-Feedback (Brandes): Modell + Status / Ablehnung
+  const trackFeedbackRe = new RegExp(
+    `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})\\b([^.]{0,48}?)`
+    + '(?:\\bzu\\s+teuer\\b|\\bzu\\s+hoch\\b|\\bzur[uü]ckgestellt\\b|\\bpasst\\s+nicht\\b'
+    + '|\\bfavorit\\b|\\bgefällt\\b|\\bgefaellt\\b|\\blieblings?\\b|\\bmag\\s+(?:er|sie|kunde)\\b)',
+    'gi',
+  );
+  let trackMatch = trackFeedbackRe.exec(t);
+  while (trackMatch) {
+    const modelRaw = trackMatch[1];
+    const modelKey = modelRaw.toLowerCase();
+    const modelLabel = /^ev\d$/i.test(modelRaw)
+      ? modelRaw.toUpperCase()
+      : titleCaseToken(modelRaw);
+    const cue = trackMatch[0].toLowerCase();
+    const deferred = /zu\s+teuer|zu\s+hoch|zur[uü]ckgestellt|passt\s+nicht/.test(cue);
+    const favorite = /favorit|gefällt|gefaellt|lieblings?|mag\s+(?:er|sie|kunde)/.test(cue);
+    if (deferred) {
+      const rateCue = /rate|monat/.test(cue);
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+        field: 'vehicleTrackFeedback',
+        value: {
+          modelKey,
+          status: VEHICLE_TRACK_STATUS.DEFERRED,
+          rejectionReason: rateCue
+            ? REJECTION_REASON.RATE_TOO_HIGH
+            : REJECTION_REASON.PRICE_TOO_HIGH,
+        },
+        label: deferred && /zu\s+teuer/.test(cue)
+          ? `${modelLabel} zu teuer`
+          : `${modelLabel} zurückgestellt`,
+        confidence: 0.9,
+        needsConfirmation: true,
+      }));
+    } else if (favorite) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+        field: 'vehicleTrackFeedback',
+        value: {
+          modelKey,
+          status: VEHICLE_TRACK_STATUS.FAVORITE,
+        },
+        label: `${modelLabel} Favorit`,
+        confidence: 0.9,
+        needsConfirmation: true,
+      }));
+    }
+    trackMatch = trackFeedbackRe.exec(t);
+  }
 
   // Trade-in / existing vehicle (Kia-Interesse nicht als Alt-Fzg. werten)
   const tradeIn = /\b(in\s*zahlung|inzahlungnahme|nehmen wir in zahlung|nehmen wir mit)\b/i.test(t);

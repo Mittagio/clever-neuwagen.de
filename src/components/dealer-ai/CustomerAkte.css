@@ -4800,6 +4800,20 @@
   width: 100%;
 }
 
+.cust-akte-offer-rail__moment {
+  margin: 0 0 10px;
+}
+
+.cust-akte-offer-rail__moment .gm-card {
+  margin: 0;
+}
+
+.cust-akte-angebote-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .cust-akte-assist-rail .clever-empfiehlt {
   margin: 0;
 }
@@ -4910,7 +4924,9 @@
 }
 
 .cust-akte-compact-header__identity--btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -4918,6 +4934,26 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.cust-akte-compact-header__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #eef0f5;
+  color: #0b1736;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cust-akte-compact-header__text {
+  min-width: 0;
+  flex: 1;
 }
 
 .cust-akte-compact-header__name {

@@ -16,6 +16,8 @@ import {
   applyAppointmentCrmPatch,
   buildCrmPatchFromAppointment,
 } from '../dealer/sellerAppointmentAssistFlow.js';
+import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
+import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -298,6 +300,11 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   });
 
   nextLead = applyStructuredFactsToLead(nextLead, facts);
+
+  const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
+  if (trackFeedback.length) {
+    nextLead = applyTrackFeedbackFacts(nextLead, trackFeedback);
+  }
 
   const tradeInRequested = facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT);
   const existingVehicle = facts.find((f) => f.factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE);

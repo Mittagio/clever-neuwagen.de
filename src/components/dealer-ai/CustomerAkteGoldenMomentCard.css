@@ -1,0 +1,89 @@
+/* Golden Moment Card – Mockup: soft lavender, navy CTA, filigran */
+
+.gm-card {
+  --gm-lavender: #f0edf8;
+  --gm-lavender-border: rgba(109, 91, 184, 0.14);
+  --gm-ink: #0b1736;
+  --gm-muted: #5c6478;
+  --gm-clever: #6d5bb8;
+
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--gm-lavender);
+  border: 1px solid var(--gm-lavender-border);
+  box-shadow: none;
+}
+
+.gm-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gm-clever);
+}
+
+.gm-card__eyebrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gm-card__title {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--gm-ink);
+}
+
+.gm-card__body {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--gm-muted);
+}
+
+.gm-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.gm-card__btn--primary {
+  background: var(--gm-ink);
+  color: #fff;
+}
+
+.gm-card__btn--primary:hover {
+  background: #152347;
+}
+
+.gm-card__link {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--gm-clever);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+}

@@ -326,17 +326,17 @@ export default function CustomerOfferPortfolioPage() {
                   {item.roleLabel ? (
                     <p className="cop-card__role">{item.roleLabel}</p>
                   ) : null}
-                  {item.conditionsLine ? (
-                    <p className="cop-card__conditions">{item.conditionsLine}</p>
-                  ) : null}
-                  {item.upeLine ? (
-                    <p className="cop-card__upe">{item.upeLine}</p>
-                  ) : null}
                   {item.rateLine ? (
                     <p className="cop-card__rate">{item.rateLine}</p>
                   ) : null}
                   {!item.rateLine && item.priceLine ? (
                     <p className="cop-card__rate">{item.priceLine}</p>
+                  ) : null}
+                  {item.conditionsLine ? (
+                    <p className="cop-card__conditions">{item.conditionsLine}</p>
+                  ) : null}
+                  {item.upeLine ? (
+                    <p className="cop-card__upe">{item.upeLine}</p>
                   ) : null}
 
                   <PkwEnVkvBox

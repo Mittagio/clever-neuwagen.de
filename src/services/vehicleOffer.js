@@ -126,11 +126,23 @@ export function formatOpenedTracking(tracking = {}) {
 }
 
 export function createVehicleOfferFromCard(card = {}, existing = null) {
-  if (existing) return { ...existing };
+  if (existing) {
+    return {
+      version: 1,
+      versions: [],
+      replacedByOfferId: null,
+      vehicleTrackId: existing.vehicleTrackId ?? card.id,
+      ...existing,
+    };
+  }
   return {
     id: `vo-${card.id}`,
     vehicleCardId: card.id,
+    vehicleTrackId: card.id,
     status: VEHICLE_OFFER_STATUS.DRAFT,
+    version: 1,
+    versions: [],
+    replacedByOfferId: null,
     pdf: null,
     onlineLink: null,
     tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
@@ -139,6 +151,42 @@ export function createVehicleOfferFromCard(card = {}, existing = null) {
     downPayment: 0,
     deliveryFee: 990,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Neue Angebotsversion – überschreibt v1 nicht; Snapshot in versions[].
+ */
+export function createNextOfferVersion(offer = {}, patch = {}) {
+  const currentVersion = Number(offer.version) || 1;
+  const snapshot = {
+    version: currentVersion,
+    status: offer.status,
+    monthlyRate: offer.monthlyRate ?? offer.boardOffer?.payment?.monthlyRate ?? null,
+    termMonths: offer.termMonths ?? offer.boardOffer?.payment?.termMonths ?? null,
+    annualMileage: offer.mileagePerYear
+      ?? offer.boardOffer?.payment?.mileagePerYear
+      ?? null,
+    downPayment: offer.downPayment ?? 0,
+    pdf: offer.pdf ?? null,
+    sentAt: offer.sentAt ?? null,
+    openedAt: offer.tracking?.firstOpenedAt ?? null,
+    snapshotAt: new Date().toISOString(),
+  };
+  const nextVersion = currentVersion + 1;
+  const nextId = `${offer.id || `vo-${offer.vehicleCardId}`}-v${nextVersion}`;
+  return {
+    ...offer,
+    ...patch,
+    id: nextId,
+    version: nextVersion,
+    status: VEHICLE_OFFER_STATUS.DRAFT,
+    replacedByOfferId: null,
+    versions: [...(Array.isArray(offer.versions) ? offer.versions : []), snapshot],
+    sentAt: null,
+    sentVia: null,
+    tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
     updatedAt: new Date().toISOString(),
   };
 }

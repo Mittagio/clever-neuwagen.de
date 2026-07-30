@@ -3,9 +3,21 @@ import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
 import { IconBack, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
+function buildInitials(name = '') {
+  const cleaned = String(name)
+    .replace(/^(herr|frau)\s+/i, '')
+    .trim();
+  if (!cleaned) return '?';
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
+}
+
 /**
  * Kompakter Header der Kundenakte (Messenger-Stil).
- * Name / Kontext → Kontaktinfos; 🔍 → Suche; ••• → seltene Aktionen.
+ * Avatar + Name / Kontext → Kontaktinfos; Suche; ••• → seltene Aktionen.
  */
 export default function CustomerAkteCompactHeader({
   customerName = '',
@@ -20,6 +32,7 @@ export default function CustomerAkteCompactHeader({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const displayName = formatCustomerDisplayName(customerName) || 'Kunde noch offen';
+  const initials = buildInitials(displayName);
   const hasPhone = Boolean(String(phone ?? '').trim() && telHref);
 
   function handleCall() {
@@ -54,15 +67,20 @@ export default function CustomerAkteCompactHeader({
           onClick={() => onOpenProfile?.()}
           aria-label={`${displayName} – Infos öffnen`}
         >
-          <h1 className="cust-akte-compact-header__name">{displayName}</h1>
-          {contextLine ? (
-            <p className="cust-akte-compact-header__context">{contextLine}</p>
-          ) : null}
-          {!hasPhone ? (
-            <p className="cust-akte-compact-header__hint" role="status">
-              Telefon fehlt
-            </p>
-          ) : null}
+          <span className="cust-akte-compact-header__avatar" aria-hidden>
+            {initials}
+          </span>
+          <span className="cust-akte-compact-header__text">
+            <h1 className="cust-akte-compact-header__name">{displayName}</h1>
+            {contextLine ? (
+              <p className="cust-akte-compact-header__context">{contextLine}</p>
+            ) : null}
+            {!hasPhone ? (
+              <p className="cust-akte-compact-header__hint" role="status">
+                Telefon fehlt
+              </p>
+            ) : null}
+          </span>
         </button>
 
         <div className="cust-akte-compact-header__actions">
@@ -99,7 +117,7 @@ export default function CustomerAkteCompactHeader({
             type="button"
             className="cust-akte-compact-header__icon-btn"
             onClick={handleMore}
-            aria-label="Mehr Aktionen"
+            aria-label="Mehr"
             aria-expanded={menuOpen}
           >
             <IconMoreDots />

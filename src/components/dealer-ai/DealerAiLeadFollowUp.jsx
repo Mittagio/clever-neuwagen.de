@@ -128,11 +128,20 @@ import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
 import CustomerAkteOfferWorkspacePanel from './CustomerAkteOfferWorkspacePanel.jsx';
 import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
+import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
+import CustomerAkteVehicleTracks from './CustomerAkteVehicleTracks.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { buildSellerCleverMoment } from '../../services/dealer/sellerAssistantOrchestrator.js';
+import {
+  listCustomerVehicleTracks,
+  sortTracksForOverview,
+  VEHICLE_TRACK_STATUS,
+  patchVehicleTrackOnLead,
+} from '../../services/crm/vehicleTrack.js';
+import { buildGoldenMomentView } from '../../services/journey/goldenMoment.js';
 import {
   appointmentTypeLabel,
   formatAppointmentWhen,
@@ -383,6 +392,7 @@ export default function DealerAiLeadFollowUp({
   const [composerSeedToken, setComposerSeedToken] = useState(0);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
+  const [angeboteFilter, setAngeboteFilter] = useState('all');
   const [activeSheet, setActiveSheet] = useState(
     initialSheet === SHEETS.questionAnswer
       ? SHEETS.questionAnswer
@@ -887,6 +897,16 @@ export default function DealerAiLeadFollowUp({
     [lead],
   );
 
+  const vehicleTracks = useMemo(
+    () => sortTracksForOverview(listCustomerVehicleTracks(lead)),
+    [lead],
+  );
+
+  const goldenMomentView = useMemo(
+    () => buildGoldenMomentView(lead),
+    [lead],
+  );
+
   const leadAppointments = useMemo(
     () => listLeadAppointments(lead),
     [lead],
@@ -917,21 +937,27 @@ export default function DealerAiLeadFollowUp({
   const selfDisclosureLabel = selfDisclosureCard?.statusLabel || 'offen';
 
   const headerContextLine = useMemo(() => {
+    const paymentLabel = PAYMENT_TYPE_LABELS[wishPaymentType]
+      || (wishPaymentType === 'leasing' ? 'Leasing'
+        : wishPaymentType === 'financing' ? 'Finanzierung'
+          : wishPaymentType === 'cash' ? 'Kauf' : '');
+    const trackCount = vehicleTracks.length || vehicleCards.length;
+    if (trackCount >= 2) {
+      const parts = [`${trackCount} Fahrzeuge`];
+      if (paymentLabel) parts.push(paymentLabel);
+      return parts.join(' · ');
+    }
     const models = [...new Set(
       vehicleCards
         .map((card) => String(formatVehicleCardTitle(card) || '').replace(/^Kia\s+/i, '').trim())
         .filter(Boolean),
     )].slice(0, 2);
     if (!models.length && wishModel) models.push(String(wishModel).replace(/^Kia\s+/i, '').trim());
-    const paymentLabel = PAYMENT_TYPE_LABELS[wishPaymentType]
-      || (wishPaymentType === 'leasing' ? 'Leasing'
-        : wishPaymentType === 'financing' ? 'Finanzierung'
-          : wishPaymentType === 'cash' ? 'Kauf' : '');
     const parts = [];
     if (models.length) parts.push(models.join(' / '));
     if (paymentLabel) parts.push(paymentLabel);
     return parts.join(' · ');
-  }, [vehicleCards, wishModel, wishPaymentType]);
+  }, [vehicleCards, vehicleTracks, wishModel, wishPaymentType]);
 
   function focusChatComposer({ clever = true, seedDraft = '' } = {}) {
     setAkteTab(AKTE_TABS.clever);
@@ -988,7 +1014,47 @@ export default function DealerAiLeadFollowUp({
 
   function openOffersBoard() {
     setMoreSheetOpen(false);
+    setAngeboteFilter('all');
     openSheet(SHEETS.boardOffers);
+  }
+
+  function openVehicleTrack(track) {
+    if (!track) {
+      openOffersBoard();
+      return;
+    }
+    openOfferInWorkspace({
+      ...track.config,
+      id: track.id,
+      vehicleOffer: track.vehicleOffer,
+    });
+  }
+
+  function resumeVehicleTrack(track) {
+    if (!track?.id) return;
+    const nextLead = patchVehicleTrackOnLead(lead, track.id, {
+      status: VEHICLE_TRACK_STATUS.OPEN,
+      rejectionReason: null,
+      rejectionReasonLabel: null,
+    });
+    onSave?.({
+      ...buildSavePayload({
+        vehicleConfigurations: nextLead.crm.vehicleConfigurations,
+      }),
+    }, { silent: true, addFollowupHistory: false });
+  }
+
+  function handleGoldenMomentPrimary(moment) {
+    const track = vehicleTracks.find((t) => t.id === moment.vehicleTrackId);
+    if (track?.config) {
+      openVehicleTrack(track);
+      return;
+    }
+    focusChatComposer({
+      seedDraft: moment.recommendedAction === 'follow_up_favorite'
+        ? 'Nachfassen zum Favoriten.'
+        : '',
+    });
   }
 
   function handleAkteNavSelect(tabId) {
@@ -2736,9 +2802,19 @@ export default function DealerAiLeadFollowUp({
         onChipClick={handleNotepadChipClick}
         sticky
       />
-      {cleverEmpfiehltView ? (
+      {goldenMomentView ? (
+        <CustomerAkteGoldenMomentCard
+          moment={goldenMomentView}
+          onPrimary={handleGoldenMomentPrimary}
+          onSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
+        />
+      ) : cleverEmpfiehltView ? (
         <CleverEmpfiehltCard
-          view={cleverEmpfiehltView}
+          view={{
+            ...cleverEmpfiehltView,
+            closureChance: undefined,
+            closureLabel: undefined,
+          }}
           telHref={telHref}
           onPrimaryAction={handleCleverEmpfiehltAction}
           onMarkDone={handleCleverMarkDone}
@@ -2748,6 +2824,7 @@ export default function DealerAiLeadFollowUp({
         />
       ) : sellerCleverMoment ? (
         <CleverMoment
+          className="cn-clever-moment--lavender"
           eyebrow="Clever"
           title={sellerCleverMoment.summary}
           primaryLabel={sellerCleverMoment.primaryAction?.label}
@@ -2762,6 +2839,14 @@ export default function DealerAiLeadFollowUp({
               ? 'Probefahrt anbieten.'
               : '',
           })}
+        />
+      ) : null}
+      {vehicleTracks.length > 0 ? (
+        <CustomerAkteVehicleTracks
+          tracks={vehicleTracks}
+          title="Angebote"
+          onOpenTrack={openVehicleTrack}
+          onResumeTrack={resumeVehicleTrack}
         />
       ) : null}
     </>
@@ -2876,6 +2961,9 @@ export default function DealerAiLeadFollowUp({
                 : {}),
               ...(nextCrm.tradeIn ? { tradeIn: nextCrm.tradeIn } : {}),
               ...(nextCrm.needProfile ? { needProfile: nextCrm.needProfile } : {}),
+              ...(Array.isArray(nextCrm.vehicleConfigurations)
+                ? { vehicleConfigurations: nextCrm.vehicleConfigurations }
+                : {}),
             }),
             desiredRate: nextLead.desiredRate ?? undefined,
             paymentType: nextLead.paymentType ?? undefined,
@@ -2927,11 +3015,14 @@ export default function DealerAiLeadFollowUp({
         context={null}
         assist={(
           <CustomerAkteOfferRail
-            lead={lead}
+            tracks={vehicleTracks}
+            goldenMoment={goldenMomentView}
             boardItems={boardItems}
             onOpenBoard={openOffersBoard}
-            onCardClick={navigateBoardOfferCard}
-            onCardAction={handleBoardCardAction}
+            onOpenTrack={openVehicleTrack}
+            onResumeTrack={resumeVehicleTrack}
+            onGoldenPrimary={handleGoldenMomentPrimary}
+            onGoldenSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
           />
         )}
         main={<div className="cust-akte-shell__workspace">{mainWorkspace}</div>}
@@ -2983,25 +3074,42 @@ export default function DealerAiLeadFollowUp({
           </div>
         )}
       >
-        <div className="cn-card-grid cn-card-grid--2 cust-akte-offers-grid">
-          <CustomerAkteBoard
-            items={boardItems}
-            lead={lead}
-            animateNew={showCardAnimation && boardItems.length > 0}
-            onCardClick={navigateBoardOfferCard}
-            onCardMenu={navigateBoardOfferCard}
-            onCardAction={handleBoardCardAction}
-            onSelectionGroupClick={openSelectionGroup}
-            onAddProposal={handleAddVehicle}
+        <div className="cust-akte-angebote-sheet">
+          {vehicleTracks.length > 0 ? (
+            <CustomerAkteVehicleTracks
+              tracks={vehicleTracks}
+              title="Fahrzeugspuren"
+              showFilters
+              filter={angeboteFilter}
+              onFilterChange={setAngeboteFilter}
+              emptyLabel="Keine Spuren in diesem Filter."
+              onOpenTrack={(track) => {
+                closeSheet();
+                openVehicleTrack(track);
+              }}
+              onResumeTrack={resumeVehicleTrack}
+            />
+          ) : null}
+          <div className="cn-card-grid cn-card-grid--2 cust-akte-offers-grid">
+            <CustomerAkteBoard
+              items={boardItems}
+              lead={lead}
+              animateNew={showCardAnimation && boardItems.length > 0}
+              onCardClick={navigateBoardOfferCard}
+              onCardMenu={navigateBoardOfferCard}
+              onCardAction={handleBoardCardAction}
+              onSelectionGroupClick={openSelectionGroup}
+              onAddProposal={handleAddVehicle}
+            />
+          </div>
+          <CustomerAktePortalSendCta
+            boardItems={boardItems}
+            email={email}
+            onSend={handleSendCustomerSelection}
+            onAddEmail={() => openSheet(SHEETS.customer)}
+            disabled={isSaving}
           />
         </div>
-        <CustomerAktePortalSendCta
-          boardItems={boardItems}
-          email={email}
-          onSend={handleSendCustomerSelection}
-          onAddEmail={() => openSheet(SHEETS.customer)}
-          disabled={isSaving}
-        />
       </LeadDetailPanel>
 
       <LeadDetailPanel
