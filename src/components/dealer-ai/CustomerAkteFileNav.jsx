@@ -4,6 +4,7 @@ import { AKTE_NAV_ICONS } from './AkteIcons.jsx';
 
 const NAV_ITEMS = [
   { id: AKTE_TABS.kunde, label: 'Kunde', icon: 'kunde' },
+  { id: AKTE_TABS.chat, label: 'Chat', icon: 'chat' },
   { id: AKTE_TABS.clever, label: 'Clever', icon: 'clever', clever: true },
   { id: AKTE_TABS.angebote, label: 'Angebote', icon: 'angebote' },
   { id: AKTE_TABS.mehr, label: 'Mehr', icon: 'mehr' },
@@ -12,7 +13,7 @@ const NAV_ITEMS = [
 /**
  * Semantisch identische Navigation: Mobile Bottom Nav / Desktop Side Rail.
  * variant: "bottom" | "rail"
- * Chat ist kein eigener Tab – Verlauf + Composer leben in Clever.
+ * Mockup: Kunde / Chat / Clever / Angebote / Mehr — Clever bleibt Mitte/Default.
  */
 export default function CustomerAkteFileNav({
   activeTab = AKTE_TABS.clever,
@@ -26,8 +27,7 @@ export default function CustomerAkteFileNav({
   return (
     <nav className={rootClass} aria-label="Kundenakte">
       {NAV_ITEMS.map((item) => {
-        const isActive = activeTab === item.id
-          || (item.id === AKTE_TABS.clever && activeTab === AKTE_TABS.chat);
+        const isActive = activeTab === item.id;
         const rawBadge = badges[item.id === AKTE_TABS.angebote ? 'angebote' : item.id];
         const badge = typeof rawBadge === 'number' && rawBadge > 0 ? rawBadge : null;
         const Icon = AKTE_NAV_ICONS[item.icon];

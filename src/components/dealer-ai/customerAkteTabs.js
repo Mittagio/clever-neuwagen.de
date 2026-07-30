@@ -1,6 +1,6 @@
 export const AKTE_TABS = {
   kunde: 'kunde',
-  /** @deprecated Chat ist in Clever aufgegangen – nur noch für Legacy-Redirects */
+  /** Chat = Verlauf + Composer; Clever bleibt Default mit Notizzettel / Golden Moment / Spuren */
   chat: 'chat',
   clever: 'clever',
   angebote: 'angebote',

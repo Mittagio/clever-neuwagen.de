@@ -18,11 +18,11 @@ import { computeUnterlagenSummary } from '../cleverUnterlagen.js';
 import { getSelbstauskunft, SELBSTAUSKUNFT_STATUS } from '../cleverSelbstauskunft.js';
 import { listInboxItemsForCustomer } from '../crm/cleverInboxService.js';
 import { pipelineToLeadStatus } from '../dealerAiLeadCrm.js';
+import { CANONICAL_OFFER_RANK, CANONICAL_OFFER_STATE, getCanonicalOfferStateLabel } from './journeyTypes.js';
 import {
-  CANONICAL_OFFER_RANK,
-  CANONICAL_OFFER_STATE,
-  getCanonicalOfferStateLabel,
-} from './journeyTypes.js';
+  GOLDEN_MOMENT_TYPE,
+  buildGoldenMoment,
+} from './goldenMoment.js';
 
 const MS_PER_DAY = 86400000;
 
@@ -236,6 +236,11 @@ export function collectJourneySignals(lead = null, options = {}) {
     return interaction?.interestStatus === INTEREST_STATUS.INTERESTED;
   });
 
+  // Golden Moment andocken (keine zweite Engine) – Reminder/Signale teilen dieselbe Quelle
+  const goldenMoment = buildGoldenMoment(lead);
+  const favoriteNeedsRevisedOffer = goldenMoment?.type
+    === GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER;
+
   return {
     lead,
     crm,
@@ -256,6 +261,8 @@ export function collectJourneySignals(lead = null, options = {}) {
     vehicleFulfillmentStatus,
     leasingStatus,
     hasInterested,
+    goldenMoment,
+    favoriteNeedsRevisedOffer,
     hasTestDrive: leadStatus === 'probefahrt' || Boolean(lead.wantTestDrive),
     hasWish: Boolean(lead.wish?.model || lead.wish?.paymentType || lead.desiredRate),
     hasContact: Boolean(lead.contact?.phone || lead.contact?.email),

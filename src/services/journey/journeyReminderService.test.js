@@ -13,6 +13,11 @@ import {
 } from './journeyReminderService.js';
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 import { SELBSTAUSKUNFT_STATUS } from '../cleverSelbstauskunft.js';
+import {
+  applyTrackFeedbackFacts,
+  VEHICLE_TRACK_STATUS,
+  REJECTION_REASON,
+} from '../crm/vehicleTrack.js';
 
 const MS_DAY = 86400000;
 
@@ -231,5 +236,54 @@ const overdueDash = evaluateSellerReminders([
   },
 ], { maxItems: 5 });
 assert.ok(overdueDash.some((item) => item.leadId === 'dash-overdue' && item.dueTodayBadge === 'überfällig'));
+
+// Golden Moment dock: Favorit + Kundenwünsche ohne passendes Angebot (Brandes)
+{
+  let brandes = {
+    ...baseLead,
+    id: 'rem-brandes',
+    name: 'Herr Brandes',
+    contact: { name: 'Herr Brandes', phone: '01701112233' },
+    crm: {
+      cleverUnterlagen: { items: {} },
+      vehicleConfigurations: [
+        {
+          id: 'vc-sportage',
+          model: 'Sportage',
+          modelKey: 'sportage',
+          leasingData: { calculatedRate: 419, termMonths: 48, mileagePerYear: 15000, downPayment: 0 },
+          vehicleTrack: { status: 'open' },
+        },
+        {
+          id: 'vc-xceed',
+          model: 'XCeed',
+          modelKey: 'xceed',
+          leasingData: { calculatedRate: 347, termMonths: 48, mileagePerYear: 15000, downPayment: 0 },
+          vehicleTrack: { status: 'open' },
+        },
+      ],
+      vehicleOffers: {},
+    },
+  };
+  brandes = applyTrackFeedbackFacts(brandes, [
+    {
+      trackId: 'vc-sportage',
+      status: VEHICLE_TRACK_STATUS.DEFERRED,
+      rejectionReason: REJECTION_REASON.PRICE_TOO_HIGH,
+    },
+    {
+      trackId: 'vc-xceed',
+      status: VEHICLE_TRACK_STATUS.FAVORITE,
+      preferredColor: 'Rot',
+      deliveryTimeImportance: 'high',
+      customerRequirements: ['AHK wichtig', 'Rot', 'Lieferzeit wichtig'],
+    },
+  ]);
+  const brandesReminder = evaluateJourneyReminder(brandes);
+  assert.equal(brandesReminder.ruleId, 'favorite_needs_revised_offer');
+  assert.equal(brandesReminder.nextStepLabel, 'Angebot anpassen');
+  assert.match(brandesReminder.reason, /Favorit/i);
+  assert.ok(brandesReminder.dueNow);
+}
 
 console.log('journeyReminderService.test.js: ok');

@@ -3,6 +3,10 @@
  */
 import { CANONICAL_OFFER_STATE } from './journeyTypes.js';
 import { getSelbstauskunft, SELBSTAUSKUNFT_STATUS, needsSelbstauskunft } from '../cleverSelbstauskunft.js';
+import {
+  GOLDEN_MOMENT_TYPE,
+  buildGoldenMoment,
+} from './goldenMoment.js';
 
 const MS_PER_HOUR = 3600000;
 const MS_PER_DAY = 86400000;
@@ -10,6 +14,7 @@ const MS_PER_DAY = 86400000;
 export const JOURNEY_REMINDER_RULE_IDS = {
   OFFER_OPENED_24H: 'offer_opened_24h',
   OFFER_SENT_2D: 'offer_sent_2d',
+  FAVORITE_NEEDS_REVISED_OFFER: 'favorite_needs_revised_offer',
   DOCUMENTS_MISSING_3D: 'documents_missing_3d',
   SELF_DISCLOSURE_OPEN: 'self_disclosure_open',
   TEST_DRIVE_NO_APPOINTMENT: 'test_drive_no_appointment',
@@ -50,6 +55,22 @@ export const JOURNEY_REMINDER_RULES = [
     },
     dueAt(signals) {
       return addDays(signals.primaryCard?.vehicleOffer?.sentAt ?? Date.now(), 2);
+    },
+  },
+  {
+    id: JOURNEY_REMINDER_RULE_IDS.FAVORITE_NEEDS_REVISED_OFFER,
+    nextStepId: 'send_offer',
+    nextStepLabel: 'Angebot anpassen',
+    reason: 'Favorit mit offenen Kundenwünschen',
+    priority: 12,
+    matches(signals) {
+      if (signals.favoriteNeedsRevisedOffer) return true;
+      const moment = signals.goldenMoment
+        ?? (signals.lead ? buildGoldenMoment(signals.lead) : null);
+      return moment?.type === GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER;
+    },
+    dueAt() {
+      return startOfToday();
     },
   },
   {

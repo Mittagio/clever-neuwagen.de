@@ -1021,11 +1021,6 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleAkteTabSelect(tabId) {
-    if (tabId === AKTE_TABS.chat) {
-      setAkteTab(AKTE_TABS.clever);
-      focusChatComposer();
-      return;
-    }
     setAkteTab(tabId);
     if (tabId === AKTE_TABS.kunde) {
       openSheet(SHEETS.customer);
@@ -1039,12 +1034,13 @@ export default function DealerAiLeadFollowUp({
       setMoreSheetOpen(true);
       return;
     }
-    // Clever default
+    // Chat / Clever: Workspace + Composer; Clever behält Banner (Notizzettel / Golden / Spuren)
     setMoreSheetOpen(false);
     if (activeSheet === SHEETS.boardOffers || activeSheet === SHEETS.customer) {
       closeSheet();
     }
-    focusChatComposer();
+    setCleverMode(true);
+    setComposerFocusToken((n) => n + 1);
   }
 
   function openVehicleTrack(track) {
@@ -2817,7 +2813,8 @@ export default function DealerAiLeadFollowUp({
     closeSheet();
   }
 
-  const feedCleverBanner = (
+  const isChatTab = akteTab === AKTE_TABS.chat;
+  const feedCleverBanner = isChatTab ? null : (
     <>
       <CustomerAkteCleverNotepad
         lead={lead}
@@ -2880,6 +2877,16 @@ export default function DealerAiLeadFollowUp({
       ) : null}
     </>
   );
+
+  const desktopContextTracks = vehicleTracks.length > 0 ? (
+    <CustomerAkteVehicleTracks
+      tracks={vehicleTracks}
+      title="Spuren"
+      compact
+      onOpenTrack={openVehicleTrack}
+      onResumeTrack={resumeVehicleTrack}
+    />
+  ) : null;
 
   const mainWorkspace = (
     <div className="cust-akte-shell__pane cust-akte-shell__pane--clever cust-akte-shell__pane--feed cn-chat-readable">
@@ -3041,12 +3048,13 @@ export default function DealerAiLeadFollowUp({
         )}
         band={null}
         mobileContext={null}
-        context={null}
+        context={desktopContextTracks}
         assist={(
           <CustomerAkteOfferRail
             tracks={vehicleTracks}
             goldenMoment={goldenMomentView}
             boardItems={boardItems}
+            showTracks={false}
             onOpenBoard={openOffersBoard}
             onOpenTrack={openVehicleTrack}
             onResumeTrack={resumeVehicleTrack}

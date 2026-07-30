@@ -6,12 +6,18 @@ import {
 } from '../../services/customerAkte.js';
 import { canEditOfferInCalculator } from '../../services/dealer/openOfferCalculator.js';
 import {
+  listCustomerVehicleTracks,
+  VEHICLE_TRACK_STATUS,
+} from '../../services/crm/vehicleTrack.js';
+import {
   VEHICLE_OFFER_STATUS_UI,
 } from '../../services/vehicleOffer.js';
 import VehicleImage from '../shared/VehicleImage.jsx';
+import { IconBack } from './AkteIcons.jsx';
 
 /**
  * Angebot im Workspace über dem Verlauf – Composer bleibt App-Ebene sichtbar.
+ * Filigran: navy/lavender, Rate dominant, Kundenwünsche als Chips bei Favorit.
  */
 export default function CustomerAkteOfferWorkspacePanel({
   card,
@@ -30,9 +36,24 @@ export default function CustomerAkteOfferWorkspacePanel({
   const statusUi = VEHICLE_OFFER_STATUS_UI[offer?.status] ?? VEHICLE_OFFER_STATUS_UI.draft;
   const canEdit = canEditOfferInCalculator(card, lead);
 
+  const track = useMemo(() => {
+    const tracks = listCustomerVehicleTracks(lead);
+    return tracks.find((entry) => entry.id === card?.id || entry.id === card?.configurationId)
+      ?? null;
+  }, [lead, card?.id, card?.configurationId]);
+
+  const wishChips = track?.status === VEHICLE_TRACK_STATUS.FAVORITE
+    ? (track.requirementLabels ?? []).filter(Boolean)
+    : [];
+
+  const version = Number(offer?.version) || Number(track?.offerVersion) || 1;
+  const pdf = offer?.pdf ?? null;
+  const pdfHref = pdf?.dataUrl || pdf?.url || null;
+  const pdfLabel = pdf?.fileName || pdf?.name || 'Original-PDF';
+
   const facts = useMemo(() => {
     const rows = [];
-    if (price) rows.push({ label: 'Rate / Preis', value: price });
+    if (price) rows.push({ label: 'Rate / Preis', value: price, dominant: true });
     if (card?.termMonths) rows.push({ label: 'Laufzeit', value: `${card.termMonths} Monate` });
     if (card?.mileagePerYear) {
       rows.push({
@@ -61,11 +82,16 @@ export default function CustomerAkteOfferWorkspacePanel({
           onClick={onBack}
           aria-label="Zurück zum Verlauf"
         >
-          ←
+          <IconBack />
         </button>
         <div className="cust-offer-ws__head-main">
           <p className="cust-offer-ws__eyebrow">Angebot</p>
           <h2 className="cust-offer-ws__title">{title}</h2>
+          <p className="cust-offer-ws__version">
+            v{version}
+            {' '}
+            aktuell
+          </p>
         </div>
         {onOpenBoard ? (
           <button
@@ -74,7 +100,7 @@ export default function CustomerAkteOfferWorkspacePanel({
             onClick={onOpenBoard}
             aria-label="Alle Angebote"
           >
-            •••
+            <span aria-hidden>···</span>
           </button>
         ) : <span className="cust-offer-ws__more-spacer" aria-hidden />}
       </header>
@@ -99,15 +125,46 @@ export default function CustomerAkteOfferWorkspacePanel({
         </div>
       </div>
 
+      {wishChips.length > 0 ? (
+        <div className="cust-offer-ws__wishes" aria-label="Kundenwünsche">
+          <p className="cust-offer-ws__wishes-label">Kundenwünsche</p>
+          <ul className="cust-offer-ws__chips">
+            {wishChips.map((label) => (
+              <li key={label} className="cust-offer-ws__chip">{label}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {facts.length > 0 ? (
         <dl className="cust-offer-ws__facts">
           {facts.map((row) => (
-            <div key={row.label} className="cust-offer-ws__fact">
+            <div
+              key={row.label}
+              className={[
+                'cust-offer-ws__fact',
+                row.dominant ? 'cust-offer-ws__fact--rate' : '',
+              ].filter(Boolean).join(' ')}
+            >
               <dt>{row.label}</dt>
               <dd>{row.value}</dd>
             </div>
           ))}
         </dl>
+      ) : null}
+
+      {pdfHref ? (
+        <a
+          className="cust-offer-ws__pdf"
+          href={pdfHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Original-PDF
+          {pdfLabel && pdfLabel !== 'Original-PDF' ? (
+            <span className="cust-offer-ws__pdf-name">{pdfLabel}</span>
+          ) : null}
+        </a>
       ) : null}
 
       <p className="cust-offer-ws__hint">

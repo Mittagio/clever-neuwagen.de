@@ -2,8 +2,9 @@ import CustomerAkteVehicleTracks from './CustomerAkteVehicleTracks.jsx';
 import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
 
 /**
- * Desktop-Assist-Rail – alle Fahrzeugspuren vertikal + Golden Moment.
+ * Desktop-Assist-Rail – Golden Moment + optional Fahrzeugspuren.
  * Rate dominant, filigran; kein %-Kaufscore.
+ * Wenn Spuren links im Context stehen: showTracks=false (kein Golden-Duplikat links).
  */
 export default function CustomerAkteOfferRail({
   tracks = [],
@@ -14,13 +15,14 @@ export default function CustomerAkteOfferRail({
   onResumeTrack = null,
   onGoldenPrimary = null,
   onGoldenSecondary = null,
+  showTracks = true,
 }) {
   const count = tracks.length || boardItems.length;
 
   return (
-    <aside className="cust-akte-offer-rail cust-akte-assist-rail" aria-label="Angebote">
+    <aside className="cust-akte-offer-rail cust-akte-assist-rail" aria-label="Clever Assist">
       <header className="cust-akte-offer-rail__head">
-        <p className="cust-akte-offer-rail__label">Angebote</p>
+        <p className="cust-akte-offer-rail__label">Clever</p>
         {count > 0 ? (
           <button
             type="button"
@@ -42,7 +44,7 @@ export default function CustomerAkteOfferRail({
         </div>
       ) : null}
 
-      {tracks.length > 0 ? (
+      {showTracks && tracks.length > 0 ? (
         <CustomerAkteVehicleTracks
           tracks={tracks}
           title="Spuren"
@@ -50,7 +52,9 @@ export default function CustomerAkteOfferRail({
           onOpenTrack={onOpenTrack}
           onResumeTrack={onResumeTrack}
         />
-      ) : (
+      ) : null}
+
+      {!goldenMoment && (showTracks ? tracks.length === 0 : count === 0) ? (
         <div className="cust-akte-offer-rail__empty">
           <p>Noch kein Angebot auf dem Tisch.</p>
           <button
@@ -61,7 +65,7 @@ export default function CustomerAkteOfferRail({
             Angebot anlegen
           </button>
         </div>
-      )}
+      ) : null}
     </aside>
   );
 }
