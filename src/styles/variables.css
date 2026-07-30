@@ -92,8 +92,9 @@
   --content-reading: 720px;
   --content-workspace: 1280px;
   --content-wide: 1360px;
-  --sidebar-context: 260px;
-  --sidebar-assistant: 300px;
+  /* Desktop 3-col mockup: Spuren 280 | Workspace | Clever/Assist 320 */
+  --sidebar-context: 280px;
+  --sidebar-assistant: 320px;
   --sidebar-nav: 68px;
   --workspace-gap: 20px;
   --chat-column-max: 720px;

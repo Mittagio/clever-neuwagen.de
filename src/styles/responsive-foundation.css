@@ -184,16 +184,6 @@
   .cn-workspace {
     max-width: none;
   }
-
-  .cn-workspace--triple .cn-workspace__context {
-    width: 280px;
-    flex-basis: 280px;
-  }
-
-  .cn-workspace--triple .cn-workspace__assist {
-    width: 320px;
-    flex-basis: 320px;
-  }
 }
 
 /* Bottom nav only on mobile; desktop uses side rail / rail variant */
