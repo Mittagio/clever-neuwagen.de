@@ -181,3 +181,10 @@
   margin-top: 8px;
   align-self: flex-start;
 }
+
+.sur-card__btn--secondary {
+  background: #fff;
+  border: 1px solid var(--color-clever, #6d5bb8);
+  color: var(--color-clever, #6d5bb8);
+  font-weight: 650;
+}

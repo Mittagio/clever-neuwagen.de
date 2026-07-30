@@ -6,6 +6,7 @@ import './SellerUniversalReviewCard.css';
 export default function SellerUniversalReviewCard({
   model = null,
   onAccept = null,
+  onAcceptAndRevise = null,
   onDismiss = null,
   onOpenHistoryHit = null,
 }) {
@@ -13,6 +14,8 @@ export default function SellerUniversalReviewCard({
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const progressLines = Array.isArray(model?.progressLines) ? model.progressLines : [];
   if (!model || (!groups.length && !sections.length)) return null;
+
+  const reviseCta = model.reviseOfferCta || null;
 
   return (
     <article className="sur-card" aria-live="polite">
@@ -49,7 +52,9 @@ export default function SellerUniversalReviewCard({
               {section.line ? (
                 <p className="sur-card__group-line">{section.line}</p>
               ) : null}
-              {(section.kind === 'offer_change' || section.kind === 'offer_prepare')
+              {(section.kind === 'offer_change'
+                || section.kind === 'offer_prepare'
+                || section.kind === 'track_feedback')
                 && section.changes?.length ? (
                   <ul className="sur-card__deltas">
                     {section.changes.map((change) => (
@@ -66,7 +71,8 @@ export default function SellerUniversalReviewCard({
                 ) : null}
               {(section.kind === 'message_draft'
                 || section.kind === 'appointment_propose'
-                || section.kind === 'history_search')
+                || section.kind === 'history_search'
+                || section.kind === 'track_feedback')
                 && section.body ? (
                   <pre className="sur-card__draft">{section.body}</pre>
                 ) : null}
@@ -93,11 +99,7 @@ export default function SellerUniversalReviewCard({
         </ul>
       )}
 
-      {sections.length === 0 && groups.length > 0 ? (
-        <p className="sur-card__summary">{model.summaryLine}</p>
-      ) : (
-        <p className="sur-card__summary">{model.summaryLine}</p>
-      )}
+      <p className="sur-card__summary">{model.summaryLine}</p>
       {model.missingLine ? (
         <p className="sur-card__missing">{model.missingLine}</p>
       ) : null}
@@ -110,13 +112,22 @@ export default function SellerUniversalReviewCard({
         >
           {model.primaryCta || 'Übernehmen'}
         </button>
+        {reviseCta && onAcceptAndRevise ? (
+          <button
+            type="button"
+            className="sur-card__btn sur-card__btn--secondary"
+            onClick={() => onAcceptAndRevise?.(model)}
+          >
+            {reviseCta}
+          </button>
+        ) : null}
         {onDismiss ? (
           <button
             type="button"
             className="sur-card__btn sur-card__btn--ghost"
             onClick={onDismiss}
           >
-            {model.secondaryCta || 'Verwerfen'}
+            Verwerfen
           </button>
         ) : null}
       </div>

@@ -247,6 +247,50 @@ export function buildUniversalActionSections(turn = {}) {
     });
   }
 
+  const trackFacts = facts.filter((f) => f.field === 'vehicleTrackFeedback' && f.label);
+  if (trackFacts.length) {
+    const deferred = trackFacts.filter((f) => f.value?.status === 'deferred');
+    const favorites = trackFacts.filter((f) => f.value?.status === 'favorite');
+    const wishFacts = facts.filter((f) => (
+      f.field === 'towHitchRequired'
+      || f.field === 'colorPreference'
+      || f.field === 'deliveryTimeImportance'
+      || (f.factClass === SELLER_FACT_CLASS.CUSTOMER_NEED && /lieferzeit|ahk|rot/i.test(f.label || ''))
+      || (f.factClass === SELLER_FACT_CLASS.VEHICLE_REQUIREMENT)
+    ));
+    const revise = prepared.find((a) => a.payload?.reviseFavoriteOffer);
+    sections.push({
+      id: 'track_feedback',
+      kind: 'track_feedback',
+      title: 'Fahrzeugspuren',
+      headline: [
+        ...deferred.map((f) => `${f.label} · zurückgestellt`),
+        ...favorites.map((f) => `${f.label}`),
+      ].join(' · ') || trackFacts.map((f) => f.label).join(' · '),
+      line: wishFacts.length
+        ? `Neue Wünsche: ${wishFacts.map((f) => f.label).join(' · ')}`
+        : null,
+      changes: [
+        ...deferred.map((f) => ({
+          id: `def-${f.value?.modelKey || f.label}`,
+          label: f.value?.modelKey || 'Fahrzeug',
+          from: null,
+          to: 'zurückgestellt · zu teuer',
+        })),
+        ...favorites.map((f) => ({
+          id: `fav-${f.value?.modelKey || f.label}`,
+          label: f.value?.modelKey || 'Fahrzeug',
+          from: null,
+          to: 'Favorit',
+        })),
+      ],
+      body: wishFacts.length
+        ? `Neue Wünsche: ${wishFacts.map((f) => f.label).join(' · ')}`
+        : null,
+      reviseOfferLabel: revise?.label || null,
+    });
+  }
+
   return sections;
 }
 
@@ -319,21 +363,26 @@ export function buildUniversalReviewModel(turn = {}) {
   const multiAction = actionSections.length > 1;
   const historyOnly = actionSections.some((s) => s.kind === 'history_search') && !facts.length;
   const appointmentPrep = actionSections.some((s) => s.kind === 'appointment_propose');
+  const trackFeedback = actionSections.some((s) => s.kind === 'track_feedback');
 
   return {
     title: historyOnly
       ? '✨ Gefunden'
-      : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-        ? '✨ Clever hat vorbereitet'
-        : '✨ Clever hat verstanden'),
+      : trackFeedback
+        ? '✨ Clever hat einsortiert'
+        : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+          ? '✨ Clever hat vorbereitet'
+          : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
     summaryLine: historyOnly
       ? (actionSections[0]?.headline || 'Treffer im Verlauf')
-      : multiAction
-        ? `${actionSections.length} Aktionen vorbereitet`
-        : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
+      : trackFeedback
+        ? 'Fahrzeugspuren und Wünsche aktualisiert'
+        : multiAction
+          ? `${actionSections.length} Aktionen vorbereitet`
+          : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
@@ -341,14 +390,21 @@ export function buildUniversalReviewModel(turn = {}) {
     assistantReply: turn.assistantReply ?? null,
     primaryCta: historyOnly
       ? 'Im Verlauf öffnen'
-      : appointmentPrep && !multiAction
-        ? 'Vorschlag senden'
-        : multiAction
-          ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-            ? 'Angebot und Nachricht prüfen'
-            : 'Änderungen prüfen')
-          : 'Übernehmen',
-    secondaryCta: 'Verwerfen',
+      : trackFeedback
+        ? 'Übernehmen'
+        : appointmentPrep && !multiAction
+          ? 'Vorschlag senden'
+          : multiAction
+            ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+              ? 'Angebot und Nachricht prüfen'
+              : 'Änderungen prüfen')
+            : 'Übernehmen',
+    secondaryCta: trackFeedback
+      ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')
+      : 'Verwerfen',
+    reviseOfferCta: trackFeedback
+      ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || null)
+      : null,
     progressLines: turn.uiEffects?.progressLines ?? [],
     messageDraft: turn.messageDraft ?? null,
     resolvedCustomer: turn.resolvedCustomer ?? null,

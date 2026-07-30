@@ -1057,14 +1057,16 @@ export default function CustomerAkteSharedWorkspace({
     setAppointmentDraft(null);
   }
 
-  function handleAcceptUniversalReview() {
+  function handleAcceptUniversalReview(options = {}) {
     if (!universalTurn || sending) return;
+    const reviseAfter = Boolean(options.reviseFavoriteOffer);
     setSending(true);
     try {
       const preparedActions = universalTurn.preparedActions ?? [];
       const offerAction = preparedActions.find((a) => (
         a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
       ));
+      const reviseAction = preparedActions.find((a) => a.payload?.reviseFavoriteOffer);
       const messageAction = preparedActions.find((a) => (
         a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
       ));
@@ -1087,6 +1089,38 @@ export default function CustomerAkteSharedWorkspace({
       }
       let nextLead = applied.lead;
       persistMessages(nextLead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+
+      // Track-Feedback: Spuren übernommen, optional Favorit-Angebot anpassen
+      if (reviseAfter && reviseAction) {
+        const modelKey = reviseAction.payload?.modelKey;
+        const seed = modelKey
+          ? `${modelKey} Angebot anpassen`
+          : (universalTurn.interpretedInput?.normalized || 'Angebot anpassen');
+        const refreshedOffer = runSellerOfferAssist(nextLead, seed, {});
+        const offerResult = refreshedOffer?.results?.[0] || refreshedOffer || null;
+        setUniversalTurn(null);
+        setDraft('');
+        clearAssist();
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback('Einsortiert – Angebot wird angepasst');
+        setTimeout(() => setFeedback(''), 2800);
+        if (offerResult) {
+          handlePrepareOffer(offerResult, { lead: nextLead, skipFeedCard: true });
+        }
+        return;
+      }
+
+      if (reviseAction && !offerAction?.payload?.updateOnly && !messageAction && !appointmentAction) {
+        setUniversalTurn(null);
+        setDraft('');
+        clearAssist();
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback('Fahrzeugspuren übernommen');
+        setTimeout(() => setFeedback(''), 2800);
+        return;
+      }
 
       const offerCtx = findOfferWorkingContext(workingContextItems);
       const commercialChange = (applied.acceptedLabels ?? []).some((label) => (
@@ -1390,7 +1424,8 @@ export default function CustomerAkteSharedWorkspace({
           reviewModel ? (
             <SellerUniversalReviewCard
               model={reviewModel}
-              onAccept={handleAcceptUniversalReview}
+              onAccept={() => handleAcceptUniversalReview()}
+              onAcceptAndRevise={() => handleAcceptUniversalReview({ reviseFavoriteOffer: true })}
               onDismiss={handleDismissAssist}
               onOpenHistoryHit={(result) => {
                 if (result?.messageId && onFocusFeedMessage) {

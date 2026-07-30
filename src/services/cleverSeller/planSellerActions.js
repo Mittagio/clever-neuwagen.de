@@ -106,6 +106,37 @@ export function planSellerActions({
     });
   }
 
+  const trackFeedbackFacts = facts.filter((f) => f.field === 'vehicleTrackFeedback' && f.value);
+  const favoriteFeedback = trackFeedbackFacts.find(
+    (f) => f.value?.status === 'favorite',
+  );
+  if (favoriteFeedback || trackFeedbackFacts.some((f) => f.value?.status === 'deferred')) {
+    const favoriteLabel = favoriteFeedback?.label
+      || favoriteFeedback?.value?.modelKey
+      || 'Favorit';
+    const modelKey = favoriteFeedback?.value?.modelKey || null;
+    actions.push({
+      id: 'revise_favorite_offer',
+      type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+      label: modelKey
+        ? `${String(modelKey).replace(/^./, (c) => c.toUpperCase())}-Angebot anpassen`
+        : 'Angebot anpassen',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      toolId: 'prepare_offer',
+      payload: {
+        reviseFavoriteOffer: true,
+        modelKey,
+        favoriteLabel,
+        trackFeedback: trackFeedbackFacts.map((f) => ({
+          modelKey: f.value?.modelKey,
+          status: f.value?.status,
+          label: f.label,
+        })),
+      },
+    });
+  }
+
   if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_TRADE_IN)) {
     actions.push({
       id: 'prepare_trade_in',

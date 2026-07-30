@@ -141,6 +141,7 @@ export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
       if (
         (fact.field === 'deliveryDeadline' && fact.value?.important)
         || (fact.field === 'deliveryEstimateMonths' && /wichtig/i.test(String(fact.label || '')))
+        || fact.field === 'deliveryTimeImportance'
         || (fact.factClass === SELLER_FACT_CLASS.CUSTOMER_NEED && /lieferzeit/i.test(String(fact.label || '')))
       ) {
         favoriteEntry.deliveryTimeImportance = 'high';

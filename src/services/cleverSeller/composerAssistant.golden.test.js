@@ -8,6 +8,9 @@ import { interpretSellerInput } from './interpretSellerInput.js';
 import { shouldShowUniversalReview, buildUniversalReviewModel } from './buildUniversalReviewModel.js';
 import { SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
+import { createBrandesGoldenCaseLead } from '../crm/brandesGoldenCase.js';
+import { applyAcceptedSellerTurn } from './applyAcceptedSellerTurn.js';
+import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
 
 const leadGarritano = {
   id: 'lead-garritano',
@@ -140,5 +143,53 @@ assert.ok(turn4.preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.SEARC
 assert.ok(shouldShowUniversalReview(turn4));
 const review4 = buildUniversalReviewModel(turn4);
 assert.ok(review4?.actionSections.some((s) => s.kind === 'history_search'));
+
+// --- Golden Case Brandes: Multi-Offer Feedback ---
+const brandesInput = `Sportage ist ihm zu teuer.
+XCeed findet er gut.
+Er möchte AHK, Rot
+und Lieferzeit ist ihm wichtig.`;
+const brandesLead = createBrandesGoldenCaseLead({ phase: 'sent' });
+const interpretedBrandes = interpretSellerInput(brandesInput, { lead: brandesLead });
+assert.ok(interpretedBrandes.facts.some((f) => (
+  f.field === 'vehicleTrackFeedback'
+  && f.value?.modelKey === 'sportage'
+  && f.value?.status === 'deferred'
+)), 'sportage deferred');
+assert.ok(interpretedBrandes.facts.some((f) => (
+  f.field === 'vehicleTrackFeedback'
+  && f.value?.modelKey === 'xceed'
+  && f.value?.status === 'favorite'
+)), 'xceed favorite');
+assert.ok(interpretedBrandes.facts.some((f) => f.field === 'towHitchRequired'));
+assert.ok(interpretedBrandes.facts.some((f) => /rot/i.test(f.label || '')));
+assert.ok(interpretedBrandes.facts.some((f) => /lieferzeit/i.test(f.label || '')));
+
+const turnBrandes = runCleverSellerTurn({
+  lead: brandesLead,
+  sellerInput: brandesInput,
+  customerName: 'Brandes',
+});
+assert.ok(shouldShowUniversalReview(turnBrandes));
+assert.ok(turnBrandes.preparedActions.some((a) => a.payload?.reviseFavoriteOffer));
+const reviewBrandes = buildUniversalReviewModel(turnBrandes);
+assert.match(reviewBrandes.title, /einsortiert/i);
+assert.ok(reviewBrandes.actionSections.some((s) => s.kind === 'track_feedback'));
+assert.ok(reviewBrandes.reviseOfferCta);
+
+const appliedBrandes = applyAcceptedSellerTurn(brandesLead, {
+  ...turnBrandes,
+  extractedFacts: turnBrandes.extractedFacts,
+}, { postFeedCard: false });
+assert.ok(appliedBrandes.ok);
+const tracks = listCustomerVehicleTracks(appliedBrandes.lead);
+const sportage = tracks.find((t) => /sportage/i.test(t.modelLabel || t.id));
+const xceed = tracks.find((t) => /xceed/i.test(t.modelLabel || t.id));
+assert.equal(sportage?.status, 'deferred');
+assert.equal(xceed?.status, 'favorite');
+assert.ok(xceed?.requirementLabels?.some((l) => /ahk/i.test(l)));
+assert.ok(xceed?.requirementLabels?.some((l) => /rot/i.test(l)));
+assert.ok(xceed?.requirementLabels?.some((l) => /lieferzeit/i.test(l)));
+assert.ok(tracks.some((t) => /tivoli/i.test(t.modelLabel || t.id)), 'tivoli track kept');
 
 console.log('composerAssistant.golden.test.js: ok');

@@ -370,9 +370,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   // Multi-Offer Track-Feedback (Brandes): Modell + Status / Ablehnung
   const trackFeedbackRe = new RegExp(
-    `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})\\b([^.]{0,48}?)`
-    + '(?:\\bzu\\s+teuer\\b|\\bzu\\s+hoch\\b|\\bzur[uü]ckgestellt\\b|\\bpasst\\s+nicht\\b'
-    + '|\\bfavorit\\b|\\bgefällt\\b|\\bgefaellt\\b|\\blieblings?\\b|\\bmag\\s+(?:er|sie|kunde)\\b)',
+    `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})\\b([^.]{0,60}?)`
+    + '(?:\\bzu\\s+teuer\\b|\\bist\\s+(?:ihm|ihr)\\s+zu\\s+teuer\\b|\\bzu\\s+hoch\\b|\\bzur[uü]ckgestellt\\b|\\bpasst\\s+nicht\\b'
+    + '|\\bfavorit\\b|\\bgefällt\\b|\\bgefaellt\\b|\\blieblings?\\b|\\bmag\\s+(?:er|sie|kunde)\\b'
+    + '|\\bfindet\\s+(?:er|sie|kunde)\\s+gut\\b|\\bfindet\\s+(?:er|sie)\\s+(?:sehr\\s+)?gut\\b'
+    + '|\\bgut\\b)',
     'gi',
   );
   let trackMatch = trackFeedbackRe.exec(t);
@@ -384,7 +386,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       : titleCaseToken(modelRaw);
     const cue = trackMatch[0].toLowerCase();
     const deferred = /zu\s+teuer|zu\s+hoch|zur[uü]ckgestellt|passt\s+nicht/.test(cue);
-    const favorite = /favorit|gefällt|gefaellt|lieblings?|mag\s+(?:er|sie|kunde)/.test(cue);
+    const favorite = /favorit|gefällt|gefaellt|lieblings?|mag\s+(?:er|sie|kunde)|findet\s+(?:er|sie|kunde)\s+(?:sehr\s+)?gut|(?:^|[^\w])gut(?:$|[^\w])/.test(cue)
+      && !deferred;
     if (deferred) {
       const rateCue = /rate|monat/.test(cue);
       pushFact(facts, createExtractedFact({
@@ -397,7 +400,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
             ? REJECTION_REASON.RATE_TOO_HIGH
             : REJECTION_REASON.PRICE_TOO_HIGH,
         },
-        label: deferred && /zu\s+teuer/.test(cue)
+        label: /zu\s+teuer/.test(cue)
           ? `${modelLabel} zu teuer`
           : `${modelLabel} zurückgestellt`,
         confidence: 0.9,
@@ -626,13 +629,25 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  if (/\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t) && /\bwichtig|braucht|mit\b/i.test(t)) {
+  if (/\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t)
+    && /\bwichtig|braucht|möchte|moechte|will|mit\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'towHitchRequired',
       value: true,
       label: 'AHK wichtig',
       confidence: 0.94,
+    }));
+  }
+
+  if (/\blieferzeit\b/i.test(t) && /\bwichtig|priorit|dringend/i.test(t)
+    && !facts.some((f) => f.field === 'deliveryDeadline' || f.field === 'deliveryEstimateMonths')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'deliveryTimeImportance',
+      value: 'high',
+      label: 'Lieferzeit wichtig',
+      confidence: 0.9,
     }));
   }
 
