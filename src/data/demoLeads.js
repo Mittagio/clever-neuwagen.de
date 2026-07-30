@@ -1,7 +1,12 @@
+import { cloneBrandesGoldenCaseLead, BRANDES_LEAD_ID } from '../services/crm/brandesGoldenCase.js';
+
 const now = Date.now();
 
 /** Pilot Trinkle – 30-Sekunden End-to-End Demo (Bestellung → Auslieferung → Gutschein) */
 export const PILOT_LEAD_ID = 'lead-pilot-trinkle';
+
+/** Herr Brandes – Multi-Offer Golden Moment (nur Demo, nicht Pilot-LIVE) */
+export { BRANDES_LEAD_ID };
 
 export const PILOT_DEMO_LEAD = {
   id: PILOT_LEAD_ID,
@@ -56,6 +61,7 @@ export const PILOT_DEMO_LEAD = {
 
 export const DEMO_LEADS = [
   PILOT_DEMO_LEAD,
+  cloneBrandesGoldenCaseLead({ now, phase: 'golden' }),
   {
     id: 'lead-demo-001',
     createdAt: new Date(now - 1000 * 60 * 12).toISOString(),

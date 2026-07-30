@@ -22,79 +22,13 @@ import { buildGoldenMoment, GOLDEN_MOMENT_TYPE } from '../journey/goldenMoment.j
 import { createNextOfferVersion, createVehicleOfferFromCard } from '../vehicleOffer.js';
 import { interpretSellerInput } from '../cleverSeller/interpretSellerInput.js';
 import { applyAcceptedSellerTurn } from '../cleverSeller/applyAcceptedSellerTurn.js';
+import { createBrandesGoldenCaseLead } from './brandesGoldenCase.js';
 import { mapSellerFactsToTrackFeedback } from '../cleverSeller/mapSellerFactsToTrackFeedback.js';
 import { overlayOfferInterpretationOntoIntent } from '../dealer/magicOfferService.js';
 import { parseMagicOfferIntent } from '../dealer/magicOfferIntentParser.js';
 
 function brandesLead() {
-  return {
-    id: 'lead-brandes',
-    name: 'Herr Brandes',
-    crm: {
-      vehicleConfigurations: [
-        {
-          id: 'vc-tivoli',
-          model: 'Tivoli',
-          modelKey: 'tivoli',
-          leasingData: {
-            calculatedRate: 329,
-            termMonths: 48,
-            mileagePerYear: 15000,
-            downPayment: 0,
-          },
-          vehicleTrack: { status: VEHICLE_TRACK_STATUS.OPEN },
-        },
-        {
-          id: 'vc-xceed',
-          model: 'XCeed',
-          modelKey: 'xceed',
-          leasingData: {
-            calculatedRate: 347,
-            termMonths: 48,
-            mileagePerYear: 15000,
-            downPayment: 0,
-          },
-          vehicleTrack: { status: VEHICLE_TRACK_STATUS.OPEN },
-        },
-        {
-          id: 'vc-sportage',
-          model: 'Sportage',
-          modelKey: 'sportage',
-          leasingData: {
-            calculatedRate: 389,
-            termMonths: 48,
-            mileagePerYear: 15000,
-            downPayment: 0,
-          },
-          vehicleTrack: { status: VEHICLE_TRACK_STATUS.OPEN },
-        },
-      ],
-      vehicleOffers: {
-        'vc-tivoli': {
-          id: 'vo-tivoli',
-          status: 'sent',
-          sentAt: '2026-07-29T10:00:00.000Z',
-          version: 1,
-          pdf: { fileName: 'Tivoli_Brandes.pdf', dataUrl: 'data:application/pdf;base64,AAA' },
-        },
-        'vc-xceed': {
-          id: 'vo-xceed',
-          status: 'opened',
-          sentAt: '2026-07-29T10:00:00.000Z',
-          version: 1,
-          tracking: { openCount: 1, firstOpenedAt: '2026-07-29T12:00:00.000Z' },
-          pdf: { fileName: 'XCeed_Brandes.pdf', dataUrl: 'data:application/pdf;base64,BBB' },
-        },
-        'vc-sportage': {
-          id: 'vo-sportage',
-          status: 'sent',
-          sentAt: '2026-07-29T10:00:00.000Z',
-          version: 1,
-          pdf: { fileName: 'Sportage_Brandes.pdf', dataUrl: 'data:application/pdf;base64,CCC' },
-        },
-      },
-    },
-  };
+  return createBrandesGoldenCaseLead({ phase: 'sent', id: 'lead-brandes' });
 }
 
 // --- 3 Spuren ---

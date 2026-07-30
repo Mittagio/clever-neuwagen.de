@@ -70,6 +70,7 @@ import {
   VEHICLE_OFFER_STATUS,
 } from '../vehicleOffer.js';
 import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
+import { applyPortfolioReactionToTracks } from './mapPortfolioReactionToTrackFeedback.js';
 
 export const PORTFOLIO_STATUS = {
   PREPARED: 'prepared',
@@ -977,6 +978,23 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
     questionText,
     reactionStatus,
   });
+
+  // Portal-Feedback → Vehicle Tracks (Favorit / deferred), Spuren bleiben erhalten
+  if (
+    itemIndex >= 0
+    && (
+      reactionStatus === PORTFOLIO_REACTION_STATUS.INTERESTED
+      || reactionStatus === PORTFOLIO_REACTION_STATUS.CALL_REQUESTED
+      || reactionStatus === PORTFOLIO_REACTION_STATUS.DECLINED
+    )
+  ) {
+    const reactedItem = nextPortfolio.items[itemIndex];
+    finalLead = applyPortfolioReactionToTracks(finalLead, {
+      vehicleCardId: reactedItem.vehicleCardId ?? reactedItem.id,
+      reactionStatus,
+      declineReason,
+    });
+  }
 
   return {
     ok: true,
