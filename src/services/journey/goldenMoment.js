@@ -64,11 +64,12 @@ export function buildGoldenMoment(lead = {}) {
       );
     }
     if (reqs.length) {
-      const alreadyQualified = reqs.every((r) => /wichtig|gewünscht|offen/i.test(r));
+      const joined = reqs.join(' · ');
+      const needsSuffix = !/wichtig|gewünscht/i.test(joined);
       bodyLines.push(
-        alreadyQualified
-          ? `Beim ${favorite.modelLabel}: ${reqs.join(' · ')}.`
-          : `Beim ${favorite.modelLabel} sind ${reqs.join(', ')} wichtig.`,
+        needsSuffix
+          ? `Beim ${favorite.modelLabel} sind ${reqs.join(', ')} wichtig.`
+          : `Beim ${favorite.modelLabel}: ${joined}.`,
       );
     }
 

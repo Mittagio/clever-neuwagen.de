@@ -8,6 +8,7 @@ export default function CustomerAkteGoldenMomentCard({
   moment = null,
   onPrimary = null,
   onSecondary = null,
+  titleId = 'gm-card-title',
 }) {
   if (!moment) return null;
 
@@ -16,12 +17,12 @@ export default function CustomerAkteGoldenMomentCard({
     : [moment.headline, moment.body].filter(Boolean);
 
   return (
-    <section className="gm-card" aria-labelledby="gm-card-title">
+    <section className="gm-card" aria-labelledby={titleId}>
       <p className="gm-card__eyebrow">
         <IconSparkle />
         <span>Clever</span>
       </p>
-      <h2 id="gm-card-title" className="gm-card__title">
+      <h2 id={titleId} className="gm-card__title">
         {lines[0]}
       </h2>
       {lines.slice(1).map((line) => (

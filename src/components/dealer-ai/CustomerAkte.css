@@ -4820,7 +4820,7 @@
 
 @media (min-width: 768px) {
   .cn-hide-when-context-rail {
-    /* Kunde-Tab bleibt auf Tablet erreichbar */
+    display: none !important;
   }
 }
 

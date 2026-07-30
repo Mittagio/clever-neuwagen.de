@@ -2829,51 +2829,59 @@ export default function DealerAiLeadFollowUp({
         sticky
       />
       {goldenMomentView ? (
-        <CustomerAkteGoldenMomentCard
-          moment={goldenMomentView}
-          onPrimary={handleGoldenMomentPrimary}
-          onSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
-        />
+        <div className="cn-hide-when-assist-rail">
+          <CustomerAkteGoldenMomentCard
+            moment={goldenMomentView}
+            onPrimary={handleGoldenMomentPrimary}
+            onSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
+          />
+        </div>
       ) : cleverEmpfiehltView ? (
-        <CleverEmpfiehltCard
-          view={{
-            ...cleverEmpfiehltView,
-            closureChance: undefined,
-            closureLabel: undefined,
-          }}
-          telHref={telHref}
-          onPrimaryAction={handleCleverEmpfiehltAction}
-          onMarkDone={handleCleverMarkDone}
-          onOpenOffer={handleCleverOpenOffer}
-          onCopyMessage={handleCopyMessageSuggestion}
-          onPrepareMessage={handlePrepareMessageSuggestion}
-        />
+        <div className="cn-hide-when-assist-rail">
+          <CleverEmpfiehltCard
+            view={{
+              ...cleverEmpfiehltView,
+              closureChance: undefined,
+              closureLabel: undefined,
+            }}
+            telHref={telHref}
+            onPrimaryAction={handleCleverEmpfiehltAction}
+            onMarkDone={handleCleverMarkDone}
+            onOpenOffer={handleCleverOpenOffer}
+            onCopyMessage={handleCopyMessageSuggestion}
+            onPrepareMessage={handlePrepareMessageSuggestion}
+          />
+        </div>
       ) : sellerCleverMoment ? (
-        <CleverMoment
-          className="cn-clever-moment--lavender"
-          eyebrow="Clever"
-          title={sellerCleverMoment.summary}
-          primaryLabel={sellerCleverMoment.primaryAction?.label}
-          onPrimary={() => focusChatComposer({
-            seedDraft: sellerCleverMoment.primaryAction?.modeHint === 'appointment'
-              ? 'Probefahrt anbieten.'
-              : '',
-          })}
-          secondaryLabel={sellerCleverMoment.secondaryAction?.label}
-          onSecondary={() => focusChatComposer({
-            seedDraft: sellerCleverMoment.secondaryAction?.modeHint === 'appointment'
-              ? 'Probefahrt anbieten.'
-              : '',
-          })}
-        />
+        <div className="cn-hide-when-assist-rail">
+          <CleverMoment
+            className="cn-clever-moment--lavender"
+            eyebrow="Clever"
+            title={sellerCleverMoment.summary}
+            primaryLabel={sellerCleverMoment.primaryAction?.label}
+            onPrimary={() => focusChatComposer({
+              seedDraft: sellerCleverMoment.primaryAction?.modeHint === 'appointment'
+                ? 'Probefahrt anbieten.'
+                : '',
+            })}
+            secondaryLabel={sellerCleverMoment.secondaryAction?.label}
+            onSecondary={() => focusChatComposer({
+              seedDraft: sellerCleverMoment.secondaryAction?.modeHint === 'appointment'
+                ? 'Probefahrt anbieten.'
+                : '',
+            })}
+          />
+        </div>
       ) : null}
       {vehicleTracks.length > 0 ? (
-        <CustomerAkteVehicleTracks
-          tracks={vehicleTracks}
-          title="Angebote"
-          onOpenTrack={openVehicleTrack}
-          onResumeTrack={resumeVehicleTrack}
-        />
+        <div className="cn-hide-when-context-rail">
+          <CustomerAkteVehicleTracks
+            tracks={vehicleTracks}
+            title="Angebote"
+            onOpenTrack={openVehicleTrack}
+            onResumeTrack={resumeVehicleTrack}
+          />
+        </div>
       ) : null}
     </>
   );

@@ -38,6 +38,7 @@ export default function CustomerAkteOfferRail({
         <div className="cust-akte-offer-rail__moment">
           <CustomerAkteGoldenMomentCard
             moment={goldenMoment}
+            titleId="gm-card-title-assist"
             onPrimary={onGoldenPrimary}
             onSecondary={onGoldenSecondary}
           />
