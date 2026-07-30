@@ -587,6 +587,12 @@ export default function CustomerOfferPortfolioPage() {
           })}
         </div>
 
+            {context.deliveryTimePlaceholder ? (
+              <p className="cop-delivery-note" role="status">
+                {context.deliveryTimePlaceholder}
+              </p>
+            ) : null}
+
             {feedback ? <p className="cop-feedback" role="status">{feedback}</p> : null}
           </>
         ) : null}

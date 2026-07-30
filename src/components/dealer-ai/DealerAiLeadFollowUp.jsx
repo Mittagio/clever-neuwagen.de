@@ -130,9 +130,11 @@ import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
 import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
 import CustomerAkteVehicleTracks from './CustomerAkteVehicleTracks.jsx';
+import CustomerAkteScenarioOfferSlots from './CustomerAkteScenarioOfferSlots.jsx';
 import CustomerAkteFileNav from './CustomerAkteFileNav.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
+import { sendBothScenarioOffers } from '../../services/crm/dualScenarioSend.js';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
 import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
 import { buildSellerCleverMoment } from '../../services/dealer/sellerAssistantOrchestrator.js';
@@ -1053,6 +1055,48 @@ export default function DealerAiLeadFollowUp({
       id: track.id,
       vehicleOffer: track.vehicleOffer,
     });
+  }
+
+  function openScenarioOfferSlot(slot, track) {
+    if (!track) return;
+    openOfferInWorkspace({
+      ...track.config,
+      id: track.id,
+      vehicleOffer: slot?.offer ?? track.vehicleOffer,
+      commercialScenarioId: slot?.scenarioId ?? null,
+      monthlyRate: slot?.monthlyRate ?? track.monthlyRate,
+      termMonths: slot?.scenario?.termMonths ?? track.termMonths,
+      mileagePerYear: slot?.scenario?.annualMileage ?? track.annualMileage,
+      downPayment: slot?.scenario?.downPayment ?? track.downPayment,
+      paymentType: slot?.type ?? track.config?.paymentType,
+    });
+  }
+
+  function handleSendBothScenarioOffers(track) {
+    const result = sendBothScenarioOffers({
+      lead,
+      trackId: track?.id ?? null,
+      createdByName: name?.trim() || 'Verkäufer',
+      firstName: String(name || '').split(/\s+/)[0] || null,
+    });
+    if (!result.ok) {
+      setToast(result.error === 'no_ready_offers'
+        ? 'Beide Angebote müssen zuerst bereit sein.'
+        : 'Dual-Versand fehlgeschlagen.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    onSave?.(buildSavePayload({
+      vehicleOffers: result.lead.crm?.vehicleOffers,
+      customerMessages: result.lead.crm?.customerMessages,
+      customerMessageThreads: result.lead.crm?.customerMessageThreads,
+    }), {
+      historyText: `${result.itemCount} Angebote gesendet (Leasing + Finanzierung)`,
+      addFollowupHistory: true,
+    });
+    setToast('Beide Angebote an Kunden gesendet');
+    setTimeout(() => setToast(''), 3500);
+    closeSheet();
   }
 
   function resumeVehicleTrack(track) {
@@ -2876,6 +2920,17 @@ export default function DealerAiLeadFollowUp({
           />
         </div>
       ) : null}
+      {vehicleTracks.filter((t) => t.hasMultipleScenarios).map((track) => (
+        <div key={`mobile-slots-${track.id}`} className="cn-hide-when-context-rail">
+          <CustomerAkteScenarioOfferSlots
+            track={track}
+            disabled={isSaving}
+            onCreateOffer={(slot) => openScenarioOfferSlot(slot, track)}
+            onOpenOffer={(slot) => openScenarioOfferSlot(slot, track)}
+            onSendBoth={handleSendBothScenarioOffers}
+          />
+        </div>
+      ))}
       {vehicleTracks.length > 0 ? (
         <div className="cn-hide-when-context-rail">
           <CustomerAkteVehicleTracks
@@ -3131,6 +3186,22 @@ export default function DealerAiLeadFollowUp({
         )}
       >
         <div className="cust-akte-angebote-sheet">
+          {vehicleTracks.filter((t) => t.hasMultipleScenarios).map((track) => (
+            <CustomerAkteScenarioOfferSlots
+              key={`scenario-slots-${track.id}`}
+              track={track}
+              disabled={isSaving}
+              onCreateOffer={(slot) => {
+                closeSheet();
+                openScenarioOfferSlot(slot, track);
+              }}
+              onOpenOffer={(slot) => {
+                closeSheet();
+                openScenarioOfferSlot(slot, track);
+              }}
+              onSendBoth={handleSendBothScenarioOffers}
+            />
+          ))}
           {vehicleTracks.length > 0 ? (
             <CustomerAkteVehicleTracks
               tracks={vehicleTracks}

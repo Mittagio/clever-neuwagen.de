@@ -5503,6 +5503,16 @@
   color: var(--cust-muted, #5c6478);
 }
 
+.cust-akte-clever-notepad__group--open .cust-akte-clever-notepad__group-label {
+  color: #b45309;
+}
+
+.cust-akte-clever-notepad__chip--open {
+  border-color: rgba(180, 83, 9, 0.35);
+  background: #fffbeb;
+  color: #92400e;
+}
+
 .cust-akte-clever-notepad__capture {
   display: flex;
   flex-wrap: wrap;

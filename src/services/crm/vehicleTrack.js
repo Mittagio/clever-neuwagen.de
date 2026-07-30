@@ -1,7 +1,20 @@
 /**
  * Fahrzeugspuren (Vehicle Tracks) – Verkaufsspur pro Modell bei einem Kunden.
  * Keine zweite Wahrheit: lebt auf vehicleConfigurations (+ Verweise auf vehicleOffers).
+ * Eine Spur kann mehrere commercialScenario-gebundene Angebote haben.
  */
+
+import {
+  formatCommercialScenarioChip,
+  formatCommercialScenarioConditionsLine,
+  formatCommercialScenarioTypeLabel,
+  listCommercialScenariosForTrack,
+} from './commercialScenarios.js';
+import {
+  getOfferByCommercialScenarioId,
+  isScenarioOfferReady,
+  listOffersForVehicleTrack,
+} from '../vehicleOffer.js';
 
 export const VEHICLE_TRACK_STATUS = {
   OPEN: 'open',
@@ -99,10 +112,17 @@ export function listCustomerVehicleTracks(lead = {}) {
   return configs.filter(Boolean).map((config) => {
     const meta = getVehicleTrackMeta(config);
     const cardId = config.id;
-    const vehicleOffer = offers[cardId] ?? null;
+    const trackOffers = listOffersForVehicleTrack(lead, cardId);
+    const vehicleOffer = trackOffers[0]
+      ?? offers[cardId]
+      ?? null;
     const payment = resolveTrackPayment(config, vehicleOffer);
     const statusUi = VEHICLE_TRACK_STATUS_UI[meta.status] ?? VEHICLE_TRACK_STATUS_UI.open;
     const requirementLabels = buildRequirementLabels(meta);
+    const scenarioSlots = listScenarioOfferSlots(lead, cardId);
+    const offerIds = meta.offerIds.length
+      ? meta.offerIds
+      : trackOffers.map((o) => o.id).filter(Boolean);
 
     return {
       id: cardId,
@@ -123,8 +143,8 @@ export function listCustomerVehicleTracks(lead = {}) {
       customerRequirements: meta.customerRequirements,
       requirementLabels,
       activeOfferId: meta.activeOfferId ?? (vehicleOffer?.id ?? null),
-      offerIds: meta.offerIds.length
-        ? meta.offerIds
+      offerIds: offerIds.length
+        ? offerIds
         : (vehicleOffer ? [vehicleOffer.id] : []),
       lastCustomerReaction: meta.lastCustomerReaction,
       lastActivityAt: meta.lastActivityAt
@@ -144,6 +164,46 @@ export function listCustomerVehicleTracks(lead = {}) {
       sentAt: vehicleOffer?.sentAt ?? null,
       config,
       vehicleOffer,
+      trackOffers,
+      scenarioSlots,
+      hasMultipleScenarios: scenarioSlots.length > 1,
+    };
+  });
+}
+
+/**
+ * Seller Angebotsbereich: ein Slot pro commercialScenario an der Spur.
+ */
+export function listScenarioOfferSlots(lead = {}, trackId) {
+  const scenarios = listCommercialScenariosForTrack(lead, trackId);
+  if (!scenarios.length) return [];
+
+  return scenarios.map((scenario) => {
+    const offer = getOfferByCommercialScenarioId(lead, scenario.id, trackId);
+    const monthlyRate = offer?.monthlyRate
+      ?? offer?.boardOffer?.payment?.monthlyRate
+      ?? null;
+    const balloonPayment = offer?.balloonPayment
+      ?? offer?.boardOffer?.payment?.balloonPayment
+      ?? null;
+    const ready = isScenarioOfferReady(offer);
+    const checked = Boolean(offer?.checked || offer?.verified || ready);
+
+    return {
+      scenarioId: scenario.id,
+      scenario,
+      offer,
+      offerId: offer?.id ?? null,
+      type: scenario.type,
+      typeLabel: formatCommercialScenarioTypeLabel(scenario.type),
+      chipLabel: formatCommercialScenarioChip(scenario),
+      conditionsLine: formatCommercialScenarioConditionsLine(scenario),
+      monthlyRate,
+      balloonPayment,
+      ready,
+      checked,
+      statusLabel: ready ? 'Bereit' : 'Noch zu erstellen',
+      pdf: offer?.pdf ?? null,
     };
   });
 }
@@ -154,10 +214,18 @@ function resolveTrackPayment(config = {}, vehicleOffer = null) {
     ?? null;
   if (board) {
     return {
-      monthlyRate: board.monthlyRate ?? null,
-      termMonths: board.termMonths ?? null,
-      annualMileage: board.mileagePerYear ?? board.annualMileage ?? null,
-      downPayment: board.downPayment ?? 0,
+      monthlyRate: board.monthlyRate ?? vehicleOffer?.monthlyRate ?? null,
+      termMonths: board.termMonths ?? vehicleOffer?.termMonths ?? null,
+      annualMileage: board.mileagePerYear ?? board.annualMileage ?? vehicleOffer?.mileagePerYear ?? null,
+      downPayment: board.downPayment ?? vehicleOffer?.downPayment ?? 0,
+    };
+  }
+  if (vehicleOffer?.monthlyRate != null || vehicleOffer?.termMonths != null) {
+    return {
+      monthlyRate: vehicleOffer.monthlyRate ?? null,
+      termMonths: vehicleOffer.termMonths ?? null,
+      annualMileage: vehicleOffer.mileagePerYear ?? null,
+      downPayment: vehicleOffer.downPayment ?? 0,
     };
   }
   const leasing = config.leasingData ?? {};

@@ -129,6 +129,7 @@
     "test:clever-lexikon-query": "node src/services/clever/cleverLexiconQuery.test.js",
     "test:customer-offer-portfolio": "node src/services/crm/customerOfferPortfolioService.test.js",
     "test:brandes-golden": "node src/services/crm/brandesGoldenCase.test.js && node src/services/crm/vehicleTrack.goldenMoment.offerInterpreter.test.js",
+    "test:commercial-scenarios": "node src/services/crm/commercialScenarios.test.js",
     "test:clever-diktat": "node src/services/cleverDiktat.test.js",
     "test:vehicle-offer": "node src/services/vehicleOffer.test.js",
     "test:backend-kpi": "node src/logic/backendKpiNavigation.test.js",

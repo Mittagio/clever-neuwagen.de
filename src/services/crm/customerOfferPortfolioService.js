@@ -68,9 +68,18 @@ import {
   getVehicleOffer,
   mergeVehicleOffersPatch,
   VEHICLE_OFFER_STATUS,
+  getOfferByCommercialScenarioId,
+  isScenarioOfferReady,
 } from '../vehicleOffer.js';
 import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 import { applyPortfolioReactionToTracks } from './mapPortfolioReactionToTrackFeedback.js';
+import {
+  formatCommercialScenarioConditionsLine,
+  formatCommercialScenarioTypeLabel,
+  listCommercialScenarios,
+} from './commercialScenarios.js';
+import { listCustomerVehicleTracks } from './vehicleTrack.js';
+import { buildDualScenarioSendItems } from './dualScenarioSend.js';
 
 export const PORTFOLIO_STATUS = {
   PREPARED: 'prepared',
@@ -320,7 +329,71 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
 }
 
 /**
- * Sammelt alle Angebote aus Clever-Auswahl-Gruppen und Einzelkarten.
+ * Portfolio-Item aus commercialScenario + gebundenem Offer (eine Spur, mehrere Varianten).
+ */
+export function buildPortfolioItemFromCommercialScenario(lead, track, slot) {
+  if (!lead || !track || !slot?.ready) return null;
+  const scenario = slot.scenario;
+  const offer = slot.offer
+    ?? getOfferByCommercialScenarioId(lead, slot.scenarioId, track.id);
+  if (!isScenarioOfferReady(offer) && !slot.ready) return null;
+
+  const paymentType = scenario?.type ?? slot.type ?? 'leasing';
+  const typeLabel = slot.typeLabel || formatCommercialScenarioTypeLabel(paymentType);
+  const rate = slot.monthlyRate ?? offer?.monthlyRate ?? null;
+  const rateLine = rate != null && Number.isFinite(Number(rate))
+    ? `${Number(rate).toLocaleString('de-DE')} €/Monat`
+    : null;
+  const heroImage = resolveConfigureHeroImage({
+    modelKey: track.config?.modelKey || track.modelLabel,
+    colorId: track.config?.colorId ?? null,
+    trimId: track.config?.trimId ?? null,
+  });
+
+  return enrichPortfolioItemWithEnVkv({
+    id: nextId('pu'),
+    sourceType: 'commercial_scenario',
+    groupId: null,
+    variantId: null,
+    vehicleCardId: track.id,
+    offerId: offer?.id ?? slot.offerId ?? null,
+    commercialScenarioId: slot.scenarioId,
+    modelKey: track.config?.modelKey ?? null,
+    modelLabel: track.displayName || track.modelLabel,
+    trimLabel: track.config?.trimLabel ?? null,
+    roleLabel: typeLabel,
+    title: `${track.modelLabel} · ${typeLabel}`,
+    paymentType,
+    conditionsLine: slot.conditionsLine
+      || formatCommercialScenarioConditionsLine(scenario),
+    upeLine: null,
+    priceLine: rateLine,
+    rateLine,
+    balloonPayment: slot.balloonPayment ?? offer?.balloonPayment ?? null,
+    heroImage,
+    requiresPdf: requiresPdfForPayment(paymentType),
+    pdfFileName: offer?.pdf?.fileName ?? slot.pdf?.fileName ?? null,
+    pdfDataUrl: offer?.pdf?.dataUrl ?? slot.pdf?.dataUrl ?? null,
+    customerReaction: {
+      status: PORTFOLIO_REACTION_STATUS.NONE,
+      declineReason: null,
+      declineNote: '',
+      questionText: '',
+      reactedAt: null,
+    },
+  }, {
+    modelKey: track.config?.modelKey,
+    trimId: track.config?.trimId,
+    engineId: track.config?.engineId,
+    brand: track.config?.brand,
+    model: track.config?.model,
+    paymentType,
+    isNewPassengerCar: true,
+  });
+}
+
+/**
+ * Sammelt alle Angebote aus Clever-Auswahl-Gruppen, Szenarien und Einzelkarten.
  */
 export function buildPortfolioItems({
   lead = null,
@@ -337,8 +410,43 @@ export function buildPortfolioItems({
     }
   }
 
+  const scenarioTrackIds = new Set();
+  const explicitScenarios = listCommercialScenarios(lead)
+    .filter((s) => s.source !== 'legacy');
+  if (explicitScenarios.length > 0 && lead) {
+    const tracks = listCustomerVehicleTracks(lead);
+    for (const track of tracks) {
+      if (!track.hasMultipleScenarios && !(track.scenarioSlots?.length > 1)) continue;
+      scenarioTrackIds.add(track.id);
+      for (const slot of track.scenarioSlots ?? []) {
+        const item = buildPortfolioItemFromCommercialScenario(lead, track, slot);
+        if (item) items.push(item);
+      }
+    }
+  }
+
+  // Fallback: dual-send helper items when slots were not ready via track view
+  if (!items.some((i) => i.sourceType === 'commercial_scenario') && explicitScenarios.length > 1) {
+    for (const dual of buildDualScenarioSendItems(lead)) {
+      items.push({
+        ...dual,
+        id: dual.id || nextId('pu'),
+        sourceType: 'commercial_scenario',
+        customerReaction: {
+          status: PORTFOLIO_REACTION_STATUS.NONE,
+          declineReason: null,
+          declineNote: '',
+          questionText: '',
+          reactedAt: null,
+        },
+      });
+      if (dual.vehicleCardId) scenarioTrackIds.add(dual.vehicleCardId);
+    }
+  }
+
   const groupedModelKeys = new Set(safeGroups.map((group) => group.modelKey));
   for (const card of vehicleCards ?? []) {
+    if (scenarioTrackIds.has(card.id)) continue;
     if (groupedModelKeys.has(card.modelKey)) continue;
     if (!isBoardOfferSendable(card, lead)) continue;
     const item = buildPortfolioItemFromVehicleCard(card, lead);
@@ -438,12 +546,16 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
 
   const items = portfolio.items.map((item) => ({
     id: item.id,
-    title: item.trimLabel
-      ? `${item.modelLabel} · ${item.trimLabel}`
-      : item.modelLabel,
+    title: item.title
+      || (item.roleLabel
+        ? `${item.modelLabel} · ${item.roleLabel}`
+        : (item.trimLabel
+          ? `${item.modelLabel} · ${item.trimLabel}`
+          : item.modelLabel)),
     modelLabel: item.modelLabel,
     trimLabel: item.trimLabel,
     roleLabel: item.roleLabel,
+    commercialScenarioId: item.commercialScenarioId ?? null,
     conditionsLine: item.conditionsLine,
     upeLine: item.upeLine,
     priceLine: item.priceLine,
@@ -458,6 +570,7 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
     customerReaction: item.customerReaction ?? { status: PORTFOLIO_REACTION_STATUS.NONE },
     vehicleEnvironmentalData: item.vehicleEnvironmentalData ?? null,
     envkvLabelBlock: item.envkvLabelBlock ?? null,
+    sourceType: item.sourceType ?? null,
   }));
 
   const messageThreads = buildCustomerPortalMessageThreads(lead, { portfolioItems: portfolio.items });
@@ -511,6 +624,10 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
       ? `${items[0].modelLabel}${items.every((i) => i.trimLabel === items[0].trimLabel && i.trimLabel) ? ` · ${items[0].trimLabel}` : ''} – Ihre ${items.length} Option${items.length === 1 ? '' : 'en'}`
       : 'Ihre Angebotsauswahl',
     updatedLabel,
+    deliveryTimePlaceholder: lead?.crm?.customerTruth?.deliveryTimePlaceholder
+      || (lead?.crm?.customerTruth?.deliveryTimeOpen
+        ? 'Die Lieferzeit wird aktuell noch geprüft.'
+        : null),
     items,
     messageThreads,
     workspace,

@@ -1,0 +1,164 @@
+/* Scenario offer slots – one vehicle track, multiple commercial variants */
+
+.scenario-slots {
+  --ss-ink: #0b1736;
+  --ss-muted: #5c6478;
+  --ss-border: #e8e8ef;
+  --ss-ready: #15803d;
+  --ss-draft: #b45309;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ss-border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.scenario-slots__head {
+  margin: 0 0 10px;
+}
+
+.scenario-slots__vehicle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ss-ink);
+  letter-spacing: 0.02em;
+}
+
+.scenario-slots__sub {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--ss-muted);
+}
+
+.scenario-slots__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scenario-slot {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ss-border);
+  background: #fafbfd;
+}
+
+.scenario-slot--ready {
+  background: linear-gradient(180deg, #f7fbf8 0%, #fff 100%);
+  border-color: rgba(21, 128, 61, 0.22);
+}
+
+.scenario-slot__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scenario-slot__type {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ss-ink);
+}
+
+.scenario-slot__status {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ss-draft);
+}
+
+.scenario-slot--ready .scenario-slot__status {
+  color: var(--ss-ready);
+}
+
+.scenario-slot__conditions {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--ss-muted);
+  line-height: 1.35;
+}
+
+.scenario-slot__rate {
+  margin: 8px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.scenario-slot__rate-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ss-ink);
+  letter-spacing: -0.02em;
+}
+
+.scenario-slot__rate-suffix {
+  font-size: 0.75rem;
+  color: var(--ss-muted);
+}
+
+.scenario-slot__balloon {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--ss-muted);
+}
+
+.scenario-slot__actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scenario-slot__btn {
+  appearance: none;
+  border: 1px solid var(--ss-border);
+  background: #fff;
+  color: var(--ss-ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-slot__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scenario-slot__btn--primary {
+  background: var(--ss-ink);
+  border-color: var(--ss-ink);
+  color: #fff;
+}
+
+.scenario-slots__send {
+  margin-top: 12px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--ss-ink);
+  color: #fff;
+  cursor: pointer;
+}
+
+.scenario-slots__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scenario-slots__hint {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--ss-muted);
+}

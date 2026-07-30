@@ -4,6 +4,7 @@ import {
   buildBundledNotepadItems,
   classifyNotepadLabel,
 } from '../../services/consultation/notepadChipBundling.js';
+import { buildCustomerTruthNotepadGroups } from '../../services/crm/commercialScenarios.js';
 import './CustomerAkte.css';
 
 function normalizeKey(label) {
@@ -20,8 +21,16 @@ function classifyChip(chip) {
   return 'wish';
 }
 
+const TRUTH_GROUP_META = [
+  { key: 'vehicle', label: 'FAHRZEUG' },
+  { key: 'offerWishes', label: 'ANGEBOTSWÜNSCHE' },
+  { key: 'customer', label: 'KUNDE' },
+  { key: 'open', label: 'OFFEN' },
+];
+
 /**
  * Notizzettel – Konditionen sichtbar; Rest wie KD-Memory (Chips + Bundle-Zähler).
+ * Bei commercialScenarios: FAHRZEUG / ANGEBOTSWÜNSCHE / KUNDE / OFFEN.
  */
 export default function CustomerAkteCleverNotepad({
   lead = null,
@@ -39,6 +48,11 @@ export default function CustomerAkteCleverNotepad({
   const [expandedBundle, setExpandedBundle] = useState(null);
   const blockRef = useRef(null);
   const prevKeysRef = useRef(new Set());
+
+  const truthGroups = useMemo(
+    () => buildCustomerTruthNotepadGroups(lead),
+    [lead],
+  );
 
   const chips = useMemo(() => {
     const attributed = buildAttributedWishChips(lead) ?? [];
@@ -63,14 +77,16 @@ export default function CustomerAkteCleverNotepad({
       merged.push(next);
     };
 
-    for (const chip of conditionChips) push(chip, 'condition');
+    if (!truthGroups) {
+      for (const chip of conditionChips) push(chip, 'condition');
+    }
     for (const chip of attributed) push(chip, 'wish');
     return merged;
-  }, [lead, conditionChips]);
+  }, [lead, conditionChips, truthGroups]);
 
   const conditions = useMemo(
-    () => chips.filter((c) => c.group === 'condition'),
-    [chips],
+    () => (truthGroups ? [] : chips.filter((c) => c.group === 'condition')),
+    [chips, truthGroups],
   );
 
   const otherChips = useMemo(
@@ -83,18 +99,30 @@ export default function CustomerAkteCleverNotepad({
     [conditions],
   );
 
+  const truthLabels = useMemo(() => {
+    if (!truthGroups) return new Set();
+    const set = new Set();
+    for (const meta of TRUTH_GROUP_META) {
+      for (const chip of truthGroups[meta.key] ?? []) {
+        set.add(normalizeKey(chip.label));
+      }
+    }
+    return set;
+  }, [truthGroups]);
+
   /** KD-Bundling nur für Nicht-Konditionen (keine Doppelung). */
   const bundledRest = useMemo(() => {
     const labels = otherChips
       .map((c) => c.label)
       .filter((label) => {
         if (conditionKeys.has(normalizeKey(label))) return false;
-        // Konditionen-Gruppe ist schon sichtbar → keine zweite Payment-Bundle
+        if (truthLabels.has(normalizeKey(label))) return false;
         if (conditions.length && classifyNotepadLabel(label) === 'payment') return false;
+        if (truthGroups && classifyNotepadLabel(label) === 'payment') return false;
         return true;
       });
     return buildBundledNotepadItems(labels);
-  }, [otherChips, conditionKeys, conditions.length]);
+  }, [otherChips, conditionKeys, conditions.length, truthLabels, truthGroups]);
 
   const chipByLabel = useMemo(() => {
     const map = new Map();
@@ -102,10 +130,16 @@ export default function CustomerAkteCleverNotepad({
     return map;
   }, [otherChips]);
 
+  const allVisibleChips = useMemo(() => {
+    if (!truthGroups) return chips;
+    const fromTruth = TRUTH_GROUP_META.flatMap((meta) => truthGroups[meta.key] ?? []);
+    return [...fromTruth, ...chips];
+  }, [truthGroups, chips]);
+
   useEffect(() => {
-    const keys = new Set(chips.map((c) => normalizeKey(c.label)));
+    const keys = new Set(allVisibleChips.map((c) => normalizeKey(c.label)));
     const prev = prevKeysRef.current;
-    const added = chips.filter((c) => !prev.has(normalizeKey(c.label)));
+    const added = allVisibleChips.filter((c) => !prev.has(normalizeKey(c.label)));
     prevKeysRef.current = keys;
     if (!added.length || prev.size === 0) return undefined;
 
@@ -118,7 +152,7 @@ export default function CustomerAkteCleverNotepad({
       clearTimeout(clearCapture);
       clearTimeout(clearGlow);
     };
-  }, [chips]);
+  }, [allVisibleChips]);
 
   useEffect(() => {
     if (!sticky || !blockRef.current) return undefined;
@@ -132,7 +166,7 @@ export default function CustomerAkteCleverNotepad({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [sticky, chips.length]);
+  }, [sticky, allVisibleChips.length]);
 
   function handleChipClick(chip) {
     if (onChipClick) {
@@ -151,18 +185,21 @@ export default function CustomerAkteCleverNotepad({
     onOpenFull?.();
   }
 
-  function renderConditionChips(list) {
+  function renderChipList(list, groupKey = 'default') {
     return (
       <ul className="cust-akte-clever-notepad__chips">
         {list.map((chip) => {
           const key = normalizeKey(chip.label);
           return (
-            <li key={`condition-${chip.origin}-${chip.label}`}>
+            <li key={`${groupKey}-${chip.id || chip.origin || 'x'}-${chip.label}`}>
               <button
                 type="button"
                 className={[
                   'cust-akte-clever-notepad__chip',
                   chip.origin === 'seller' ? 'cust-akte-clever-notepad__chip--seller' : '',
+                  chip.kind === 'open' || chip.tone === 'open'
+                    ? 'cust-akte-clever-notepad__chip--open'
+                    : '',
                   glowKeys.has(key) ? 'is-magic-capture' : '',
                 ].filter(Boolean).join(' ')}
                 onClick={() => handleChipClick(chip)}
@@ -180,8 +217,9 @@ export default function CustomerAkteCleverNotepad({
   }
 
   const stickyChips = [
-    ...conditions,
-    ...otherChips,
+    ...(truthGroups
+      ? TRUTH_GROUP_META.flatMap((meta) => truthGroups[meta.key] ?? [])
+      : [...conditions, ...otherChips]),
   ].slice(0, 5);
 
   const workingOfferStrip = workingOfferLabel ? (
@@ -196,7 +234,11 @@ export default function CustomerAkteCleverNotepad({
     </button>
   ) : null;
 
-  if (!chips.length) {
+  const hasContent = truthGroups
+    || chips.length
+    || bundledRest.length;
+
+  if (!hasContent) {
     return (
       <section className="cust-akte-clever-notepad" aria-label="Notizzettel">
         <p className="cust-akte-clever-notepad__label">Notizzettel</p>
@@ -256,10 +298,30 @@ export default function CustomerAkteCleverNotepad({
       >
         {workingOfferStrip}
 
-        {conditions.length ? (
+        {truthGroups ? (
+          TRUTH_GROUP_META.map((meta) => {
+            const list = truthGroups[meta.key] ?? [];
+            if (!list.length) return null;
+            return (
+              <div
+                key={meta.key}
+                className={[
+                  'cust-akte-clever-notepad__group',
+                  `cust-akte-clever-notepad__group--${meta.key}`,
+                  meta.key === 'open' ? 'cust-akte-clever-notepad__group--open' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <p className="cust-akte-clever-notepad__group-label">{meta.label}</p>
+                {renderChipList(list, meta.key)}
+              </div>
+            );
+          })
+        ) : null}
+
+        {!truthGroups && conditions.length ? (
           <div className="cust-akte-clever-notepad__group cust-akte-clever-notepad__group--conditions">
             <p className="cust-akte-clever-notepad__group-label">Konditionen</p>
-            {renderConditionChips(conditions)}
+            {renderChipList(conditions, 'condition')}
           </div>
         ) : null}
 
@@ -328,7 +390,7 @@ export default function CustomerAkteCleverNotepad({
           </div>
         ) : null}
 
-        {!conditions.length && !bundledRest.length ? (
+        {!truthGroups && !conditions.length && !bundledRest.length ? (
           <button type="button" className="cust-akte-clever-notepad__empty" onClick={() => onOpenFull?.()}>
             Wünsche ergänzen
           </button>

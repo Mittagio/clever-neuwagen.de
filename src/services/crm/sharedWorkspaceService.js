@@ -254,6 +254,15 @@ export function buildOfferReadyIntroText({ firstName = null, itemCount = 1 } = {
 /**
  * Angebotskarten nach Textnachricht in denselben Thread legen (kundenvisibel).
  */
+/** Dedup-Key: scenario/offer-bound items must not collapse on vehicleCardId. */
+function resolveOfferCardRelatedId(item = {}) {
+  return item.offerId
+    || item.commercialScenarioId
+    || item.id
+    || item.vehicleCardId
+    || null;
+}
+
 export function appendOfferCardsToThread({
   lead,
   threadId = null,
@@ -272,7 +281,7 @@ export function appendOfferCardsToThread({
       .map((m) => m.relatedOfferId),
   );
   const freshItems = items.filter((item) => {
-    const id = item.vehicleCardId || item.id;
+    const id = resolveOfferCardRelatedId(item);
     return id && !alreadyPosted.has(id);
   });
   if (!freshItems.length) {
@@ -280,12 +289,12 @@ export function appendOfferCardsToThread({
     let working = lead;
     const updateMessages = [];
     for (const item of items) {
-      const id = item.vehicleCardId || item.id;
+      const id = resolveOfferCardRelatedId(item);
       if (!id) continue;
       const posted = postOfferUpdatedStatus({
         lead: working,
         offerId: id,
-        title: item.modelLabel || item.title || 'Angebot',
+        title: item.title || item.modelLabel || 'Angebot',
         conditionsLine: item.conditionsLine || item.subtitle || '',
         rateLine: item.rateLine || '',
         eventLabel: 'Angebot aktualisiert',
@@ -338,27 +347,32 @@ export function appendOfferCardsToThread({
   }
 
   for (const item of freshItems) {
+    const relatedOfferId = resolveOfferCardRelatedId(item);
+    const title = item.roleLabel && item.modelLabel
+      ? `${item.modelLabel} · ${item.roleLabel}`
+      : (item.trimLabel
+        ? `${item.modelLabel} · ${item.trimLabel}`
+        : (item.title || item.modelLabel || 'Angebot'));
     const added = addCustomerMessage({
       lead: working,
       threadId: tid,
       direction: MESSAGE_DIRECTION.OUTBOUND,
       channel: MESSAGE_CHANNEL.CLEVER,
       status: MESSAGE_STATUS.SENT,
-      text: item.title || item.modelLabel || 'Angebot',
-      relatedOfferId: item.vehicleCardId || item.id,
+      text: title,
+      relatedOfferId,
       visibleToCustomer: true,
       createdByName,
       kind: MESSAGE_KIND.OFFER_CARD,
       senderRole: 'seller',
       payload: {
-        title: item.trimLabel
-          ? `${item.modelLabel} · ${item.trimLabel}`
-          : (item.modelLabel || item.title),
+        title,
         subtitle: item.conditionsLine || null,
         rateLine: item.rateLine || item.displayFormatted || item.priceLine || null,
         colorLabel: item.colorLabel || null,
         heroImage: item.heroImage || null,
         offerUnitId: item.id,
+        commercialScenarioId: item.commercialScenarioId || null,
         ctaLabel,
       },
     });

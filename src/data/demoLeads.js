@@ -1,4 +1,8 @@
 import { cloneBrandesGoldenCaseLead, BRANDES_LEAD_ID } from '../services/crm/brandesGoldenCase.js';
+import {
+  cloneSportageDualScenarioLead,
+  SPORTAGE_DUAL_LEAD_ID,
+} from '../services/crm/sportageDualScenarioCase.js';
 
 const now = Date.now();
 
@@ -7,6 +11,9 @@ export const PILOT_LEAD_ID = 'lead-pilot-trinkle';
 
 /** Herr Brandes – Multi-Offer Golden Moment (nur Demo, nicht Pilot-LIVE) */
 export { BRANDES_LEAD_ID };
+
+/** Julia Weber – eine Sportage-Spur, zwei kommerzielle Szenarien */
+export { SPORTAGE_DUAL_LEAD_ID };
 
 export const PILOT_DEMO_LEAD = {
   id: PILOT_LEAD_ID,
@@ -62,6 +69,7 @@ export const PILOT_DEMO_LEAD = {
 export const DEMO_LEADS = [
   PILOT_DEMO_LEAD,
   cloneBrandesGoldenCaseLead({ now, phase: 'golden' }),
+  cloneSportageDualScenarioLead({ now, phase: 'ready' }),
   {
     id: 'lead-demo-001',
     createdAt: new Date(now - 1000 * 60 * 12).toISOString(),

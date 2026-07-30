@@ -196,6 +196,124 @@ export function getVehicleOffer(lead = {}, card = {}) {
   return createVehicleOfferFromCard(card, stored);
 }
 
+/**
+ * Flat map of all stored offers (cardId-keyed legacy + offerId-keyed scenario offers).
+ * @param {object} lead
+ * @returns {object[]}
+ */
+export function listStoredVehicleOffers(lead = {}) {
+  const map = lead?.crm?.vehicleOffers ?? {};
+  return Object.values(map).filter((offer) => offer && typeof offer === 'object');
+}
+
+/**
+ * Offers bound to a vehicle track (via vehicleTrackId / vehicleCardId / track.offerIds).
+ */
+export function listOffersForVehicleTrack(lead = {}, trackId) {
+  if (!trackId) return [];
+  const map = lead?.crm?.vehicleOffers ?? {};
+  const config = (lead?.crm?.vehicleConfigurations ?? []).find((c) => c.id === trackId);
+  const metaIds = Array.isArray(config?.vehicleTrack?.offerIds)
+    ? config.vehicleTrack.offerIds
+    : [];
+
+  const byMeta = metaIds.map((id) => map[id]).filter(Boolean);
+  if (byMeta.length) return byMeta;
+
+  const byField = listStoredVehicleOffers(lead).filter((offer) => (
+    offer.vehicleTrackId === trackId
+    || offer.vehicleCardId === trackId
+  ));
+  if (byField.length) return byField;
+
+  const legacy = map[trackId];
+  return legacy ? [legacy] : [];
+}
+
+export function getOfferByCommercialScenarioId(lead = {}, scenarioId, trackId = null) {
+  if (!scenarioId) return null;
+  const pool = trackId
+    ? listOffersForVehicleTrack(lead, trackId)
+    : listStoredVehicleOffers(lead);
+  return pool.find((offer) => offer.commercialScenarioId === scenarioId) ?? null;
+}
+
+export function getVehicleOfferById(lead = {}, offerId) {
+  if (!offerId) return null;
+  const map = lead?.crm?.vehicleOffers ?? {};
+  if (map[offerId]) return map[offerId];
+  return listStoredVehicleOffers(lead).find((o) => o.id === offerId) ?? null;
+}
+
+/**
+ * Create a scenario-bound offer shell (does not replace cardId legacy entry).
+ */
+export function createVehicleOfferForScenario({
+  trackId,
+  scenarioId,
+  offerId = null,
+  existing = null,
+  patch = {},
+} = {}) {
+  if (existing) {
+    return {
+      version: 1,
+      versions: [],
+      replacedByOfferId: null,
+      ...existing,
+      vehicleTrackId: existing.vehicleTrackId ?? trackId,
+      vehicleCardId: existing.vehicleCardId ?? trackId,
+      commercialScenarioId: existing.commercialScenarioId ?? scenarioId,
+      ...patch,
+    };
+  }
+  const id = offerId || `vo-${trackId}-${scenarioId}`;
+  return {
+    id,
+    vehicleCardId: trackId,
+    vehicleTrackId: trackId,
+    commercialScenarioId: scenarioId,
+    status: VEHICLE_OFFER_STATUS.DRAFT,
+    version: 1,
+    versions: [],
+    replacedByOfferId: null,
+    pdf: null,
+    onlineLink: null,
+    tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
+    sentVia: null,
+    sentAt: null,
+    downPayment: 0,
+    deliveryFee: 990,
+    monthlyRate: null,
+    termMonths: null,
+    mileagePerYear: null,
+    balloonPayment: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...patch,
+  };
+}
+
+/**
+ * Offer is ready for dual-send / portal (PDF or calculated rate present).
+ */
+export function isScenarioOfferReady(offer = null) {
+  if (!offer) return false;
+  if (offer.pdf?.dataUrl || offer.pdf?.url || offer.pdf?.fileName) return true;
+  const status = offer.status;
+  if (
+    status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
+    || status === VEHICLE_OFFER_STATUS.LINK_READY
+    || status === VEHICLE_OFFER_STATUS.SENT
+    || status === VEHICLE_OFFER_STATUS.OPENED
+    || status === VEHICLE_OFFER_STATUS.ACCEPTED
+  ) {
+    return true;
+  }
+  const rate = offer.monthlyRate ?? offer.boardOffer?.payment?.monthlyRate;
+  return rate != null && Number.isFinite(Number(rate));
+}
+
 export function mergeVehicleOffersPatch(lead = {}, vehicleCardId, patch) {
   const current = lead?.crm?.vehicleOffers ?? {};
   const prev = current[vehicleCardId] ?? {};
@@ -208,6 +326,67 @@ export function mergeVehicleOffersPatch(lead = {}, vehicleCardId, patch) {
       updatedAt: new Date().toISOString(),
     },
   };
+}
+
+/**
+ * Patch / upsert by offer id (preferred for scenario-bound offers).
+ * Also syncs track.offerIds when vehicleTrackId is known.
+ */
+export function mergeVehicleOfferById(lead = {}, offerId, patch = {}) {
+  if (!offerId) return lead;
+  const current = lead?.crm?.vehicleOffers ?? {};
+  const prev = current[offerId] ?? {};
+  const nextOffer = {
+    ...prev,
+    ...patch,
+    id: offerId,
+    vehicleCardId: patch.vehicleCardId ?? prev.vehicleCardId ?? patch.vehicleTrackId ?? prev.vehicleTrackId,
+    vehicleTrackId: patch.vehicleTrackId ?? prev.vehicleTrackId ?? patch.vehicleCardId ?? prev.vehicleCardId,
+    commercialScenarioId: patch.commercialScenarioId ?? prev.commercialScenarioId ?? null,
+    updatedAt: new Date().toISOString(),
+  };
+
+  let nextLead = {
+    ...lead,
+    crm: {
+      ...(lead.crm ?? {}),
+      vehicleOffers: {
+        ...current,
+        [offerId]: nextOffer,
+      },
+    },
+  };
+
+  const trackId = nextOffer.vehicleTrackId;
+  if (trackId) {
+    const configs = nextLead.crm.vehicleConfigurations ?? [];
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...nextLead.crm,
+        vehicleConfigurations: configs.map((config) => {
+          if (config.id !== trackId) return config;
+          const prevTrack = config.vehicleTrack && typeof config.vehicleTrack === 'object'
+            ? config.vehicleTrack
+            : {};
+          const offerIds = Array.isArray(prevTrack.offerIds) ? [...prevTrack.offerIds] : [];
+          if (!offerIds.includes(offerId)) offerIds.push(offerId);
+          return {
+            ...config,
+            vehicleTrack: {
+              ...prevTrack,
+              offerIds,
+              activeOfferId: prevTrack.activeOfferId ?? offerId,
+              lastActivityAt: new Date().toISOString(),
+            },
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      },
+    };
+  }
+
+  return nextLead;
 }
 
 export function attachPdfToOffer(offer, file) {
