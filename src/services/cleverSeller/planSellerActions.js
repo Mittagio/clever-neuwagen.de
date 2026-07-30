@@ -6,14 +6,21 @@ import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sel
 import { runTool } from './toolRegistry.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 
-function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
-  void sellerInput;
-  const purchase = facts.find((f) => f.field === 'purchasePrice');
-  const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+function salutationName(customerName, facts, lead) {
   const name = customerName
     || facts.find((f) => f.field === 'customerName')?.value
     || lead?.contact?.name
     || 'Kunde';
+  const salutation = String(lead?.contact?.salutation || '').toLowerCase();
+  if (/^(herr|frau)\b/i.test(name)) return name;
+  if (salutation === 'frau') return `Frau ${name}`;
+  return `Herr ${name}`;
+}
+
+function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
+  void sellerInput;
+  const purchase = facts.find((f) => f.field === 'purchasePrice');
+  const vehicle = facts.find((f) => f.field === 'vehicleInterest');
   const vehicleLabel = vehicle?.label || 'das gewünschte Fahrzeug';
   const priceLabel = purchase
     ? `${Number(purchase.value).toLocaleString('de-DE')} €`
@@ -30,7 +37,7 @@ function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
   }
 
   const lines = [
-    `Hallo ${/^(herr|frau)\b/i.test(name) ? name : `Herr ${name}`},`,
+    `Hallo ${salutationName(customerName, facts, lead)},`,
     '',
     `wie besprochen habe ich Ihnen ein Angebot für den ${vehicleLabel} vorbereitet.`,
   ];
@@ -49,6 +56,45 @@ function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
     );
   }
   lines.push('', 'Viele Grüße');
+  return lines.join('\n');
+}
+
+/** Kundennachricht bei Anpassung eines angehängten Angebots (km, Laufzeit, Rate, …). */
+function buildOfferUpdateMessageDraft({
+  lead,
+  facts = [],
+  customerName,
+  currentOfferContext = null,
+}) {
+  const offerLabel = currentOfferContext?.title
+    || currentOfferContext?.summary
+    || 'Ihr Angebot';
+  const changeBits = facts
+    .filter((f) => (
+      f.field === 'annualMileage'
+      || f.field === 'termMonths'
+      || f.field === 'desiredRate'
+      || f.field === 'downPayment'
+      || f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+      || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION
+    ))
+    .map((f) => String(f.label || '').trim())
+    .filter(Boolean);
+
+  const lines = [
+    `Hallo ${salutationName(customerName, facts, lead)},`,
+    '',
+    `wie besprochen habe ich das Angebot (${offerLabel}) angepasst.`,
+  ];
+  if (changeBits.length) {
+    lines.push('', `Konkret: ${changeBits.slice(0, 4).join(', ')}.`);
+  }
+  lines.push(
+    '',
+    'Schauen Sie gerne noch einmal rein – bei Fragen melde ich mich gerne.',
+    '',
+    'Viele Grüße',
+  );
   return lines.join('\n');
 }
 
@@ -355,6 +401,9 @@ export function planSellerActions({
       workingContext,
     }).result;
     let messageDraft = null;
+    const offerUpdateAction = actions.find((a) => (
+      a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.payload?.updateOnly
+    ));
     if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
       && facts.some((f) => f.field === 'purchasePrice' || f.field === 'vehicleInterest')) {
       messageDraft = buildOfferMessageDraft({
@@ -362,6 +411,22 @@ export function planSellerActions({
         sellerInput,
         facts,
         customerName,
+      });
+    } else if (offerUpdateAction || (
+      intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+      && currentOfferContext?.offerId
+      && facts.some((f) => (
+        f.field === 'annualMileage'
+        || f.field === 'termMonths'
+        || f.field === 'desiredRate'
+        || f.field === 'downPayment'
+      ))
+    )) {
+      messageDraft = buildOfferUpdateMessageDraft({
+        lead,
+        facts,
+        customerName,
+        currentOfferContext,
       });
     } else if (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
       const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
