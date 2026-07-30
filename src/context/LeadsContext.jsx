@@ -51,6 +51,18 @@ function ensurePilotLead(leads) {
   return [clonePilotLead(), ...leads];
 }
 
+/** Demo-Modus: fehlende Demo-Leads (z. B. Brandes Golden Case) nachziehen, ohne bestehende zu überschreiben. */
+function ensureDemoLeads(leads) {
+  if (PILOT_LIVE) return leads;
+  let next = Array.isArray(leads) ? [...leads] : [];
+  for (const demo of DEMO_LEADS) {
+    if (!demo?.id) continue;
+    if (next.some((l) => l.id === demo.id)) continue;
+    next = [JSON.parse(JSON.stringify(demo)), ...next];
+  }
+  return ensurePilotLead(next);
+}
+
 function stripDemoLeads(leads) {
   return leads.filter((l) => !DEMO_LEAD_IDS.has(l.id));
 }
@@ -78,7 +90,7 @@ function loadLeads() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length) {
-        return normalizeLeads(ensurePilotLead(parsed));
+        return normalizeLeads(ensureDemoLeads(parsed));
       }
     }
   } catch {
@@ -169,16 +181,33 @@ export function LeadsProvider({ children }) {
     saveLeads(leads);
   }, [leads]);
 
+  // Demo: fehlende Golden-Case-/Demo-Leads in State nachziehen (localStorage kann älter sein)
+  useEffect(() => {
+    if (PILOT_LIVE) return undefined;
+    setLeads((prev) => {
+      const next = ensureDemoLeads(prev);
+      if (next.length === prev.length && next.every((l, i) => l.id === prev[i]?.id)) {
+        return prev;
+      }
+      return normalizeLeads(next);
+    });
+    return undefined;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     async function syncFromServer() {
       const remote = await fetchPilotLeadsFromServer(PILOT_DEALER_ID);
       if (cancelled || !remote.length) return;
-      setLeads((prev) => mergeLeadsById(
-        PILOT_LIVE ? prev : stripDemoLeads(prev),
-        remote,
-      ));
+      setLeads((prev) => {
+        const merged = mergeLeadsById(
+          PILOT_LIVE ? prev : stripDemoLeads(prev),
+          remote,
+        );
+        // Demo-Seeds (z. B. Brandes) nach Server-Merge wiederherstellen
+        return PILOT_LIVE ? merged : normalizeLeads(ensureDemoLeads(merged));
+      });
     }
 
     syncFromServer();
