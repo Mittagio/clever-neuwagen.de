@@ -12,6 +12,9 @@ import {
   setCommercialScenariosOnLead,
 } from './commercialScenarios.js';
 import {
+  answerDeliveryTimeOnLead,
+} from './deliveryTimeQuestion.js';
+import {
   createSportageDualScenarioLead,
   SPORTAGE_DUAL_LEAD_ID,
   SPORTAGE_DUAL_OFFER_IDS,
@@ -109,6 +112,15 @@ import { MESSAGE_KIND } from './customerMessageService.js';
   assert.ok(!groups.offerWishes.some((c) => /Leasing.*Finanzierung|Finanzierung.*Leasing/i.test(c.label)));
   assert.equal(groups.customer[0].label, 'Privat');
   assert.ok(groups.open.some((c) => /Lieferzeit/i.test(c.label)));
+}
+
+// --- Notepad after Lieferzeit answered ---
+{
+  let lead = createSportageDualScenarioLead({ phase: 'ready' });
+  lead = answerDeliveryTimeOnLead(lead, { answerText: '8–12 Wochen', weeksMin: 8, weeksMax: 12 });
+  const groups = buildCustomerTruthNotepadGroups(lead);
+  assert.equal(groups.open.length, 0);
+  assert.ok(groups.vehicle.some((c) => /Lieferzeit ca\./i.test(c.label)));
 }
 
 // --- Dual send ---

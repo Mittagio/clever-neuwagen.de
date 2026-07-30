@@ -27,6 +27,7 @@ import {
   recordPortalCustomerReaction,
 } from './customerPortalAccessService.js';
 import { buildCustomerPortalShellModel } from './customerPortalShellPresenter.js';
+import { formatDeliveryTimePortalNote } from './deliveryTimeQuestion.js';
 import {
   buildSelfDisclosureInterviewModel,
   saveSelfDisclosureStep,
@@ -624,10 +625,7 @@ export function buildPortfolioCustomerContext(lead = {}, options = {}) {
       ? `${items[0].modelLabel}${items.every((i) => i.trimLabel === items[0].trimLabel && i.trimLabel) ? ` · ${items[0].trimLabel}` : ''} – Ihre ${items.length} Option${items.length === 1 ? '' : 'en'}`
       : 'Ihre Angebotsauswahl',
     updatedLabel,
-    deliveryTimePlaceholder: lead?.crm?.customerTruth?.deliveryTimePlaceholder
-      || (lead?.crm?.customerTruth?.deliveryTimeOpen
-        ? 'Die Lieferzeit wird aktuell noch geprüft.'
-        : null),
+    deliveryTimePlaceholder: formatDeliveryTimePortalNote(null, lead),
     items,
     messageThreads,
     workspace,

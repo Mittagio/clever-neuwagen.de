@@ -21,6 +21,10 @@ import {
   createVehicleOfferForScenario,
   mergeVehicleOfferById,
 } from '../vehicleOffer.js';
+import {
+  createOpenDeliveryTimeQuestion,
+  openDeliveryTimeOnLead,
+} from './deliveryTimeQuestion.js';
 
 const MODEL_RE = /\b(EV\s*[234569]|EV9|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Stonic|Soul|Carnival)\b/i;
 const CONFIG_ATTACH_RE = /konfiguration\s+(?:im\s+)?anhang|anhang(?:\s+mit)?\s+konfiguration|konfiguration\s+angehängt|beigefügt(?:e)?\s+konfiguration|config(?:uration)?\s+(?:im\s+)?anhang/i;
@@ -371,14 +375,27 @@ export function applyHomepageInquiryToLead(lead = {}, draft = null, {
         ...(next.crm?.customerTruth ?? {}),
         customerType: draft.customerType || COMMERCIAL_CUSTOMER_TYPE.PRIVATE,
         configurationAttached: Boolean(draft.configurationAttached),
-        deliveryTimeOpen: Boolean(draft.openQuestions?.some((q) => q.field === 'deliveryTime')),
-        deliveryTimePlaceholder: draft.openQuestions?.some((q) => q.field === 'deliveryTime')
-          ? 'Die Lieferzeit wird aktuell noch geprüft.'
-          : (next.crm?.customerTruth?.deliveryTimePlaceholder ?? null),
       },
       commercialScenarios: scenarios,
     },
   };
+
+  const wantsDeliveryOpen = Boolean(draft.openQuestions?.some((q) => q.field === 'deliveryTime'));
+  if (wantsDeliveryOpen) {
+    next = openDeliveryTimeOnLead(next, createOpenDeliveryTimeQuestion());
+  } else if (next.crm?.customerTruth?.deliveryTimeOpen == null) {
+    next = {
+      ...next,
+      crm: {
+        ...next.crm,
+        customerTruth: {
+          ...next.crm.customerTruth,
+          deliveryTimeOpen: false,
+          deliveryTimePlaceholder: next.crm.customerTruth.deliveryTimePlaceholder ?? null,
+        },
+      },
+    };
+  }
 
   // Patch track config: active + config attachment
   const configs = (next.crm?.vehicleConfigurations ?? []).map((config) => {

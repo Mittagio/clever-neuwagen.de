@@ -188,8 +188,22 @@ export function createSportageDualScenarioLead(options = {}) {
       customerTruth: {
         customerType: COMMERCIAL_CUSTOMER_TYPE.PRIVATE,
         configurationAttached: true,
+        // Epic 3: Lieferzeit offen – Seller schließt z. B. mit „Lieferzeit ca. 8–12 Wochen“
         deliveryTimeOpen: true,
         deliveryTimePlaceholder: 'Die Lieferzeit wird aktuell noch geprüft.',
+        deliveryTimeQuestion: {
+          id: 'delivery_time',
+          field: 'deliveryTime',
+          status: 'open',
+          question: 'Wie ist die Lieferzeit?',
+          label: 'Lieferzeit beantworten',
+          answerText: null,
+          answerDisplay: null,
+          approximate: true,
+          source: null,
+          answeredAt: null,
+          answeredBy: null,
+        },
       },
       vehicleConfigurations: [
         {

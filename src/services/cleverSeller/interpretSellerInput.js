@@ -37,6 +37,9 @@ import {
   formatCommercialScenarioChip,
   formatCustomerTypeLabel,
 } from '../crm/commercialScenarios.js';
+import {
+  parseDeliveryTimeAnswerFromText,
+} from '../crm/deliveryTimeQuestion.js';
 
 const MONTH_MAP = {
   januar: '01', jan: '01',
@@ -654,6 +657,7 @@ export function extractUniversalSellerFacts(text = '') {
   const deliveryUntil = t.match(
     /\blieferzeit\s*(?:bis\s*)?(?:ca\.?\s*)?(0?[1-9]|1[0-2])[./](20\d{2}|\d{2})\b/i,
   ) || (/\blieferzeit\b/i.test(t) && t.match(/\bbis\s+(0?[1-9]|1[0-2])[./](20\d{2}|\d{2})\b/i));
+  const deliveryAnswer = parseDeliveryTimeAnswerFromText(t);
   const delivery = t.match(/\b(?:lieferzeit|lieferbar)\s*(?:ca\.?\s*|circa\.?\s*)?(\d{1,2})\s*monate?\b/i)
     || t.match(/\bin\s*(?:ca\.?\s*)?(\d{1,2})\s*monaten?\b/i)
     || t.match(/\blieferzeit\s+(?:ca\.?\s*|circa\.?\s*)?(einem|eine|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf)\s+monate?\b/i);
@@ -671,10 +675,43 @@ export function extractUniversalSellerFacts(text = '') {
         : `Lieferzeit bis ${month}.${year}`,
       confidence: 0.9,
     }));
+  } else if (deliveryAnswer) {
+    // Epic 3: Seller beantwortet offene Lieferzeitfrage (z. B. „ca. 8–12 Wochen“)
+    const verified = /\b(?:hersteller|werk|preislist|verifiziert|stammdaten|offiziell)\b/i.test(t);
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.SELLER_FACT,
+      field: 'deliveryTimeAnswer',
+      value: {
+        ...deliveryAnswer,
+        open: false,
+        source: verified
+          ? SELLER_FACT_SOURCE.VERIFIED_VEHICLE_DATA
+          : SELLER_FACT_SOURCE.SELLER_INPUT,
+      },
+      label: `Lieferzeit ca. ${deliveryAnswer.answerText}`,
+      confidence: 0.92,
+      source: verified
+        ? SELLER_FACT_SOURCE.VERIFIED_VEHICLE_DATA
+        : SELLER_FACT_SOURCE.SELLER_INPUT,
+    }));
   } else if (delivery) {
     const raw = delivery[1];
     const months = WORD_MONTHS[String(raw).toLowerCase()] ?? Number(raw);
     if (months) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.SELLER_FACT,
+        field: 'deliveryTimeAnswer',
+        value: {
+          answerText: `${months} Monate`,
+          months,
+          approximate: true,
+          open: false,
+          source: SELLER_FACT_SOURCE.SELLER_INPUT,
+        },
+        label: `Lieferzeit ca. ${months} Monate`,
+        confidence: 0.85,
+        source: SELLER_FACT_SOURCE.SELLER_INPUT,
+      }));
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
         field: 'deliveryEstimateMonths',

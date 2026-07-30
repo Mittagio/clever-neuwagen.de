@@ -7,6 +7,12 @@
  * - Offer Object (vehicleOffers[*].commercialScenarioId)
  * - Vehicle Track (eine Spur, offerIds[])
  */
+import {
+  formatDeliveryTimeAnsweredChip,
+  getDeliveryTimeQuestion,
+  isDeliveryTimeOpen,
+  DELIVERY_TIME_STATUS,
+} from './deliveryTimeQuestion.js';
 
 export const COMMERCIAL_SCENARIO_TYPE = {
   LEASING: 'leasing',
@@ -282,6 +288,17 @@ export function buildCustomerTruthNotepadGroups(lead = {}, {
     });
   }
 
+  const deliveryQ = getDeliveryTimeQuestion(lead);
+  if (deliveryQ?.status === DELIVERY_TIME_STATUS.ANSWERED) {
+    vehicle.push({
+      id: 'delivery-answered',
+      label: formatDeliveryTimeAnsweredChip(deliveryQ),
+      kind: 'fact',
+      field: 'deliveryTime',
+      tone: 'answered',
+    });
+  }
+
   const offerWishes = scenarios.map((scenario) => ({
     id: `scenario-${scenario.id}`,
     label: formatCommercialScenarioChip(scenario),
@@ -298,13 +315,13 @@ export function buildCustomerTruthNotepadGroups(lead = {}, {
     field: 'customerType',
   }];
 
-  const deliveryOpen = lead?.crm?.customerTruth?.deliveryTimeOpen !== false;
+  const deliveryOpen = isDeliveryTimeOpen(lead);
   const open = Array.isArray(openItems) && openItems.length
     ? openItems
     : (hasExplicit && deliveryOpen
       ? [{
         id: 'open-delivery',
-        label: 'Lieferzeit beantworten',
+        label: deliveryQ?.label || 'Lieferzeit beantworten',
         kind: 'open',
         tone: 'open',
         field: 'deliveryTime',

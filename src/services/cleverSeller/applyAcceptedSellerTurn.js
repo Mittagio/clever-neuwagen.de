@@ -9,7 +9,7 @@ import {
   getNeedProfileFromLead,
   mergeNeedProfileIntoLead,
 } from '../consultation/needProfileService.js';
-import { SELLER_FACT_CLASS } from './sellerFactTypes.js';
+import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE } from './sellerFactTypes.js';
 import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
 import {
   appointmentTypeLabel,
@@ -19,6 +19,7 @@ import {
 import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
 import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
 import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
+import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -334,6 +335,42 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   }
 
   nextLead = applyStructuredFactsToLead(nextLead, facts);
+
+  // Epic 3: Lieferzeit-Antwort schließt offene Kundenfrage + Portal-Text
+  const deliveryAnswerFact = facts.find((f) => (
+    f.field === 'deliveryTimeAnswer' && f.value?.answerText && !f.needsConfirmation
+  ));
+  if (deliveryAnswerFact) {
+    nextLead = answerDeliveryTimeOnLead(nextLead, {
+      answerText: deliveryAnswerFact.value.answerText,
+      weeksMin: deliveryAnswerFact.value.weeksMin ?? null,
+      weeksMax: deliveryAnswerFact.value.weeksMax ?? null,
+      months: deliveryAnswerFact.value.months ?? null,
+      approximate: deliveryAnswerFact.value.approximate !== false,
+      source: deliveryAnswerFact.value.source
+        || deliveryAnswerFact.source
+        || SELLER_FACT_SOURCE.SELLER_INPUT,
+      answeredBy: options.sellerId || options.sellerName || null,
+    });
+  } else {
+    const monthsFact = facts.find((f) => (
+      f.field === 'deliveryEstimateMonths' && !f.needsConfirmation
+    ));
+    if (monthsFact) {
+      const months = typeof monthsFact.value === 'object'
+        ? (monthsFact.value.months ?? monthsFact.value.value)
+        : monthsFact.value;
+      if (months != null) {
+        nextLead = answerDeliveryTimeOnLead(nextLead, {
+          answerText: `${Number(months)} Monate`,
+          months: Number(months),
+          approximate: true,
+          source: monthsFact.source || SELLER_FACT_SOURCE.SELLER_INPUT,
+          answeredBy: options.sellerId || options.sellerName || null,
+        });
+      }
+    }
+  }
 
   const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
   if (trackFeedback.length) {

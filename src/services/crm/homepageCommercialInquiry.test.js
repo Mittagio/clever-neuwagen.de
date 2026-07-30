@@ -86,6 +86,7 @@ const SAMPLE = 'Ich interessiere mich für den Sportage mit der Konfiguration im
   assert.ok(slots.every((s) => !s.ready), 'Slots start empty/pending');
   assert.equal(applied.lead.crm.customerTruth.configurationAttached, true);
   assert.equal(applied.lead.crm.customerTruth.deliveryTimeOpen, true);
+  assert.equal(applied.lead.crm.customerTruth.deliveryTimeQuestion?.status, 'open');
 }
 
 // --- interpretSellerInput + Universal Review ---
