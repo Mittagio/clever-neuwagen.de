@@ -77,6 +77,9 @@ const turn = runSellerAssistantTurn(lead, intent.sellerInput);
 assert.equal(turn.result.type, 'message_draft');
 assert.equal(turn.requiresSellerConfirmation, true);
 assert.ok(turn.result.opportunity?.source === 'seller_input');
+// Universal läuft immer mit; ohne messageDraft → Legacy-Draft (path legacy), Review bleibt am Turn.
+assert.ok(turn.universal?.ok);
+assert.ok(turn.path === 'universal' || turn.path === 'legacy');
 
 assert.equal(
   detectSellerActionIntent('Schreib Herrn Notz, dass noch Gehaltsnachweis und Selbstauskunft fehlen'),
@@ -90,6 +93,7 @@ const workspaceTurn = runSellerAssistantTurn(
 assert.equal(workspaceTurn.result.type, 'workspace_package');
 assert.ok(workspaceTurn.result.actions?.length >= 1);
 assert.equal(workspaceTurn.requiresSellerConfirmation, true);
+assert.equal(workspaceTurn.path, 'universal');
 
 const offerTurn = runSellerAssistantTurn(
   lead,
@@ -98,6 +102,8 @@ const offerTurn = runSellerAssistantTurn(
 );
 assert.equal(offerTurn.actionIntent.intent, SELLER_ACTION_INTENTS.PREPARE_OFFER);
 assert.equal(offerTurn.result.type, 'offer_draft');
+assert.equal(offerTurn.path, 'universal');
+assert.ok(offerTurn.result.fromUniversal);
 assert.ok(
   offerTurn.result.inheritedFromCustomer.some((i) => /15\.000|15000/i.test(i.label)),
   'km aus Kundenwunsch',

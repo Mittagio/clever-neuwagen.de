@@ -19,6 +19,8 @@ import { runSellerInlineAssist, INLINE_RESULT_TYPES } from './sellerInlineCompos
 import { runSellerAppointmentAssist } from './sellerAppointmentAssistFlow.js';
 import { runCleverSellerTurn } from '../cleverSeller/runCleverSellerTurn.js';
 import { isCleverSellerOrchestratorEnabled } from '../cleverSeller/cleverSellerOrchestratorConfig.js';
+import { SELLER_TURN_INTENTS } from '../cleverSeller/sellerFactTypes.js';
+import { shouldShowUniversalReview } from '../cleverSeller/buildUniversalReviewModel.js';
 
 function customerDisplayName(lead = {}) {
   const raw = lead?.name
@@ -241,9 +243,155 @@ export function buildSellerMessageDraft(lead = {}, sellerInput = '', sellerFacts
 }
 
 /**
+ * Universal CleverSellerTurn → Legacy Assistant Result (kompatible Form).
+ * Bevorzugt den zentralen Turn; null = Legacy-Pfad weiter nutzen.
+ */
+export function mapUniversalTurnToAssistantResult(universal = null, lead = {}, actionIntent = {}) {
+  if (!universal?.ok) return null;
+  const actions = Array.isArray(universal.preparedActions) ? universal.preparedActions : [];
+  if (!actions.length && !universal.messageDraft) return null;
+
+  const intent = actionIntent?.intent;
+
+  const docs = actions.find((a) => a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS);
+  if (
+    (intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS || docs)
+    && docs?.legacy
+  ) {
+    const pkg = docs.legacy;
+    return {
+      type: 'workspace_package',
+      title: 'Clever hat vorbereitet',
+      draft: { body: pkg.body, channel: 'preferred' },
+      actions: pkg.actions,
+      primaryCta: 'Senden',
+      secondaryCta: 'Bearbeiten',
+      fromUniversal: true,
+    };
+  }
+
+  const offer = actions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
+  ));
+  if (
+    offer
+    && (
+      intent === SELLER_ACTION_INTENTS.PREPARE_OFFER
+      || offer.payload?.canCreateOffer
+      || offer.payload?.purchasePrice
+      || offer.legacy?.ok
+    )
+  ) {
+    const wish = lead?.wish ?? {};
+    const need = lead?.crm?.needProfile ?? {};
+    const magic = offer.legacy?.results?.[0]?.magic
+      || offer.legacy?.previousPreparation
+      || null;
+    const inherited = [];
+    const km = wish.mileagePerYear ?? need.annualKm ?? null;
+    const down = wish.downPayment ?? need.budget?.downPayment ?? null;
+    const term = wish.termMonths ?? need.leaseDurationMonths ?? null;
+    if (km) inherited.push({ label: `${Number(km).toLocaleString('de-DE')} km/Jahr`, source: 'customer_need' });
+    if (down != null && down !== '') {
+      inherited.push({ label: `Anzahlung ${Number(down).toLocaleString('de-DE')} €`, source: 'customer_need' });
+    }
+    if (term) inherited.push({ label: `${term} Monate`, source: 'customer_need' });
+
+    return {
+      type: 'offer_draft',
+      title: 'Angebot vorbereitet',
+      headline: magic?.headline
+        || offer.payload?.vehicleLabel
+        || magic?.grounded?.modelLabel
+        || 'Angebot',
+      subline: magic?.subline || (offer.payload?.purchasePrice
+        ? `Kaufpreis ${Number(offer.payload.purchasePrice).toLocaleString('de-DE')} €`
+        : null),
+      magic: magic || {
+        canCreateOffer: Boolean(offer.payload?.canCreateOffer || offer.payload?.purchasePrice),
+        purchasePrice: offer.payload?.purchasePrice ?? null,
+      },
+      inheritedFromCustomer: inherited,
+      importantForCustomer: (universal.usedCustomerContext?.labels ?? []).slice(0, 4).map((label) => ({
+        label,
+        origin: 'customer',
+      })),
+      sellerFacts: actionIntent.sellerFacts ?? [],
+      primaryCta: `Angebot an ${customerDisplayName(lead)} senden`,
+      secondaryCta: 'Details ansehen',
+      tertiaryCta: 'Bearbeiten',
+      messageDraft: universal.messageDraft || null,
+      fromUniversal: true,
+    };
+  }
+
+  const appointment = actions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.legacy?.ok
+  ));
+  if (
+    appointment
+    && (
+      intent === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT
+      || intent === SELLER_ACTION_INTENTS.PREPARE_CALLBACK
+    )
+  ) {
+    const card = appointment.legacy.results?.[0] || {};
+    return {
+      type: 'appointment_draft',
+      title: card.title || '✨ Clever hat vorbereitet',
+      text: card.body,
+      headline: card.headline,
+      appointment: card.appointment || appointment.legacy.appointment,
+      draft: card.draft,
+      messageBody: card.messageBody || appointment.payload?.messageDraft,
+      choices: card.choices,
+      primaryCta: card.primaryCta || 'Übernehmen',
+      canScheduleNow: card.canScheduleNow,
+      fromUniversal: true,
+    };
+  }
+
+  const messageBody = universal.messageDraft
+    || actions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)?.payload?.messageDraft
+    || null;
+  if (messageBody && (
+    intent === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
+    || intent === SELLER_ACTION_INTENTS.UNKNOWN
+    || shouldShowUniversalReview(universal)
+  )) {
+    const sellerFacts = actionIntent.sellerFacts ?? [];
+    const opportunity = sellerFacts.some((f) => f.key === 'vehicle' || f.key === 'availability')
+      ? {
+        title: 'Passendes Fahrzeug verfügbar',
+        vehicleLabel: sellerFacts.find((f) => f.key === 'vehicle')?.label ?? 'Fahrzeug',
+        color: sellerFacts.find((f) => f.key === 'color')?.label ?? null,
+        availability: sellerFacts.find((f) => f.key === 'availability')?.label ?? null,
+        source: 'seller_input',
+      }
+      : null;
+    return {
+      type: 'message_draft',
+      title: 'Clever Vorschlag für Ihre Nachricht',
+      draft: {
+        body: messageBody,
+        channel: 'preferred',
+        contextUsed: universal.usedCustomerContext?.labels ?? [],
+      },
+      opportunity,
+      understandingSummary: universal.usedCustomerContext?.summary ?? null,
+      primaryCta: 'Nachricht senden',
+      secondaryActions: ['whatsapp', 'email', 'edit'],
+      fromUniversal: true,
+    };
+  }
+
+  return null;
+}
+
+/**
  * @param {object} lead
  * @param {string} sellerInput
- * @param {{ modeHint?: string|null }} [options]
+ * @param {{ modeHint?: string|null, attachments?: object[], currentOfferContext?: object|null, customerName?: string, workingContextItems?: object[] }} [options]
  */
 export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}) {
   const actionIntent = buildSellerActionIntent(lead, sellerInput, options);
@@ -256,6 +404,11 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
       attachments: options.attachments ?? [],
       sellerContext: options.sellerContext ?? null,
       currentOfferContext: options.currentOfferContext ?? null,
+      workingContextItems: options.workingContextItems ?? [],
+      customerName: options.customerName
+        || lead?.contact?.name
+        || lead?.name
+        || '',
     })
     : null;
 
@@ -267,10 +420,23 @@ export function runSellerAssistantTurn(lead = {}, sellerInput = '', options = {}
     requiresSellerConfirmation: true,
     result: null,
     universal,
+    path: 'legacy',
   };
 
   if (!actionIntent.sellerInput) {
     return { ...base, ok: false, error: 'empty_input', result: null };
+  }
+
+  const mapped = mapUniversalTurnToAssistantResult(universal, lead, actionIntent);
+  if (mapped) {
+    return {
+      ...base,
+      result: mapped,
+      path: 'universal',
+      contextUsed: mapped.draft?.contextUsed?.length
+        ? mapped.draft.contextUsed
+        : base.contextUsed,
+    };
   }
 
   if (actionIntent.intent === SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS) {

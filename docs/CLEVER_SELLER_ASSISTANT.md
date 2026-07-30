@@ -78,6 +78,12 @@ Kein Full-Lead-JSON an OpenAI – nur `buildMinimalTaskContext` / `buildMinimalM
 
 Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasingbasis.
 
+**Master-Suite:** `src/services/cleverSeller/masterGoldenFlows.test.js` – alle Flows inkl. Multi-Accept-Shape und Legacy-Bridge.
+
+## Legacy-Bridge
+
+`runSellerAssistantTurn` (älterer Einstieg) ruft bei aktivem Orchestrator zuerst `runCleverSellerTurn` auf und mappt über `mapUniversalTurnToAssistantResult` auf die bisherigen Result-Typen (`offer_draft`, `message_draft`, `appointment_draft`, `workspace_package`). Rückgabe enthält immer `universal` (voller Turn) sowie `path: 'universal' | 'legacy'` – `universal`, wenn das Mapping greift (Angebot, Dokumente, Termin, Draft); sonst Legacy-Fallback (z. B. reine Verfügbarkeitsnotiz ohne `messageDraft`). Die UI im Shared Workspace nutzt bevorzugt den Universal-Turn direkt (Review + Multi-Accept).
+
 ## UX-Philosophie
 
 **Eine geöffnete Kundenansicht = ein scrollbarer Feed.**
