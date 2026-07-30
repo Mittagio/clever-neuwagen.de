@@ -130,6 +130,7 @@ import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
 import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
 import CustomerAkteVehicleTracks from './CustomerAkteVehicleTracks.jsx';
+import CustomerAkteFileNav from './CustomerAkteFileNav.jsx';
 import CustomerAkteActivityTimeline from './CustomerAkteActivityTimeline.jsx';
 import { sendSellerWorkspacePackage, appendOfferCardsToThread } from '../../services/crm/sharedWorkspaceService.js';
 import { buildCleverBeratungAkteView } from '../../services/dealer/cleverConsultationAkte.js';
@@ -1015,7 +1016,35 @@ export default function DealerAiLeadFollowUp({
   function openOffersBoard() {
     setMoreSheetOpen(false);
     setAngeboteFilter('all');
+    setAkteTab(AKTE_TABS.angebote);
     openSheet(SHEETS.boardOffers);
+  }
+
+  function handleAkteTabSelect(tabId) {
+    if (tabId === AKTE_TABS.chat) {
+      setAkteTab(AKTE_TABS.clever);
+      focusChatComposer();
+      return;
+    }
+    setAkteTab(tabId);
+    if (tabId === AKTE_TABS.kunde) {
+      openSheet(SHEETS.customer);
+      return;
+    }
+    if (tabId === AKTE_TABS.angebote) {
+      openOffersBoard();
+      return;
+    }
+    if (tabId === AKTE_TABS.mehr) {
+      setMoreSheetOpen(true);
+      return;
+    }
+    // Clever default
+    setMoreSheetOpen(false);
+    if (activeSheet === SHEETS.boardOffers || activeSheet === SHEETS.customer) {
+      closeSheet();
+    }
+    focusChatComposer();
   }
 
   function openVehicleTrack(track) {
@@ -2995,7 +3024,7 @@ export default function DealerAiLeadFollowUp({
 
       <WorkspaceShell
         className="cust-akte-workspace-shell"
-        withBottomNav={false}
+        withBottomNav
         variant="triple"
         header={(
           <CustomerAkteCompactHeader
@@ -3026,7 +3055,15 @@ export default function DealerAiLeadFollowUp({
           />
         )}
         main={<div className="cust-akte-shell__workspace">{mainWorkspace}</div>}
-        nav={null}
+        nav={(
+          <CustomerAkteFileNav
+            activeTab={akteTab}
+            onSelect={handleAkteTabSelect}
+            badges={{
+              angebote: vehicleTracks.length || boardItems.length || 0,
+            }}
+          />
+        )}
       />
 
       <CustomerAkteMoreSheet

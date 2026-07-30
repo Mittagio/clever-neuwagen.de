@@ -57,7 +57,8 @@ assert.ok(followUpSource.includes("openSheet(SHEETS.customer)"), 'Name öffnet s
 assert.ok(!followUpSource.includes('CustomerAkteContactInfoSheet'), 'Kein Kontakt-Hub am Namen');
 assert.ok(followUpSource.includes('cust-akte--feed'), 'Feed-Layout');
 assert.ok(followUpSource.includes('CustomerAkteActivityTimeline'), 'Timeline-Sheet');
-assert.ok(!followUpSource.includes('CustomerAkteFileNav'), 'Keine Tab-Navigation in der Kundenansicht');
+assert.ok(followUpSource.includes('CustomerAkteFileNav'), 'Bottom-Nav in der Kundenakte');
+assert.ok(followUpSource.includes('withBottomNav'), 'WorkspaceShell mit Bottom-Nav');
 assert.ok(!followUpSource.includes('Mit E-Mail ist das Angebot'), 'Keine Tipps im Kunden-Sheet');
 assert.ok(!followUpSource.includes('label="Notiz"'), 'Keine Notiz im Kunden-Sheet');
 
