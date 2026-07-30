@@ -53,6 +53,7 @@ import {
   buildComposerSuggestionAssist,
   resolveComposerShortcut,
 } from '../../services/crm/composerSuggestionService.js';
+import { runComposerChipThroughTurn } from '../../services/crm/runComposerChipThroughTurn.js';
 import {
   findOfferWorkingContext,
   toCurrentOfferContext,
@@ -280,6 +281,23 @@ export default function CustomerAkteSharedWorkspace({
       const shortcut = resolveComposerShortcut(text);
       if (shortcut) {
         if (isStale()) return;
+        const routed = runComposerChipThroughTurn({
+          lead,
+          chipId: shortcut.id,
+          customerName,
+          workingContextItems,
+          currentOfferContext: resolveCurrentOfferContext(),
+        });
+        if (routed.mode === 'universal_review' && routed.turn) {
+          setUniversalTurn(routed.turn);
+          setAssist(null);
+          return;
+        }
+        if (routed.assist?.ok) {
+          setUniversalTurn(routed.turn && shouldShowUniversalReview(routed.turn) ? routed.turn : null);
+          setAssist(routed.assist);
+          return;
+        }
         const suggestion = buildComposerSuggestionAssist(lead, shortcut.id, {
           customerName,
         });
@@ -411,6 +429,39 @@ export default function CustomerAkteSharedWorkspace({
   }, [focusToken, cleverMode]);
 
   function showSuggestionDraft(chipId) {
+    const routed = runComposerChipThroughTurn({
+      lead,
+      chipId,
+      customerName,
+      workingContextItems,
+      currentOfferContext: resolveCurrentOfferContext(),
+    });
+    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+    setEditingMessageDraft(null);
+    priorWorkDraftRef.current = '';
+    setOfferPrep(null);
+    setAppointmentDraft(null);
+    setDraft('');
+
+    if (routed.mode === 'universal_review' && routed.turn) {
+      setUniversalTurn(routed.turn);
+      clearAssist();
+      setFeedback('Clever hat vorbereitet – bitte prüfen');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+
+    if (routed.assist?.ok) {
+      setUniversalTurn(null);
+      pinAssist(routed.assist);
+      const isPortfolio = routed.assist.results?.[0]?.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND;
+      setFeedback(isPortfolio
+        ? 'Kundenlink vorbereitet'
+        : 'Nachricht vorbereitet – prüfen und senden');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+
     const suggestion = buildComposerSuggestionAssist(lead, chipId, {
       customerName,
       focusOfferId: findOfferWorkingContext(workingContextItems)?.offerId ?? null,
@@ -420,14 +471,8 @@ export default function CustomerAkteSharedWorkspace({
       setTimeout(() => setFeedback(''), 2800);
       return;
     }
-    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
-    setEditingMessageDraft(null);
-    priorWorkDraftRef.current = '';
     setUniversalTurn(null);
     pinAssist(suggestion);
-    setOfferPrep(null);
-    setAppointmentDraft(null);
-    setDraft('');
     const isPortfolio = suggestion.results?.[0]?.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND;
     setFeedback(isPortfolio
       ? 'Kundenlink vorbereitet'
@@ -620,8 +665,44 @@ export default function CustomerAkteSharedWorkspace({
     setHasMagicSeed(true);
     allowWithoutPackageDetailsRef.current = allowWithoutPackageDetails;
     setMagicBusy(true);
-    setFeedback('Clever schreibt …');
+    setFeedback('Clever versteht …');
     try {
+      // Zuerst Orchestrator: Aktion/Review vor reinem Textgenerator
+      if (!isCustomerMessageEditMode(composerModeRef.current)) {
+        const turn = runCleverSellerTurn({
+          lead,
+          sellerInput: source,
+          currentOfferContext: resolveCurrentOfferContext(),
+          workingContextItems,
+          customerName,
+        });
+        if (shouldShowUniversalReview(turn)) {
+          setUniversalTurn(turn);
+          clearAssist();
+          setFeedback('Clever hat vorbereitet – bitte prüfen');
+          setTimeout(() => setFeedback(''), 2800);
+          return { ok: true, turn, mode: 'universal_review' };
+        }
+        const turnDraft = turn.messageDraft
+          || turn.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+            ?.payload?.messageDraft
+          || null;
+        if (turnDraft && !turn.preparedActions?.some((a) => (
+          a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+          || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+        ))) {
+          // Reine Nachricht aus Turn – optional mit Magic glätten
+          setUniversalTurn(null);
+        } else if (turnDraft) {
+          setUniversalTurn(turn);
+          clearAssist();
+          setFeedback('Clever hat vorbereitet – bitte prüfen');
+          setTimeout(() => setFeedback(''), 2800);
+          return { ok: true, turn, mode: 'universal_review' };
+        }
+      }
+
+      setFeedback('Clever schreibt …');
       const payload = {
         rawSellerInput: source,
         draftText: source,
@@ -657,7 +738,6 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       if (!result?.ok) {
-        // Client-Fallback: grounded Orchestrator ohne Server (gleiche Faktenregeln)
         result = await composeSellerOutboundMessageAsync(payload, { forceFallback: true });
       }
 
@@ -1214,7 +1294,58 @@ export default function CustomerAkteSharedWorkspace({
       setUniversalTurn(null);
 
       const updateOnly = Boolean(offerAction?.payload?.updateOnly);
-      const messageBody = messageResult?.draft?.body || messageResult?.body || '';
+      const messageBody = universalTurn.messageDraft
+        || messageAction?.payload?.messageDraft
+        || messageResult?.draft?.body
+        || messageResult?.body
+        || '';
+
+      // Multi-Aktion: Angebot + Nachricht (+ optional Termin) in einem Accept
+      const multiWork = Boolean(
+        offerAction
+        && !updateOnly
+        && (messageBody || appointmentResult),
+      );
+      if (multiWork) {
+        if (messageBody) {
+          unpinAssist();
+          setDraft(messageBody);
+          setAssist(messageLegacy?.ok
+            ? messageLegacy
+            : {
+              ok: true,
+              results: [{
+                type: INLINE_RESULT_TYPES.MESSAGE_DRAFT,
+                title: '✨ Nachricht',
+                body: messageBody,
+                draft: { body: messageBody, channel: 'preferred' },
+                primaryCta: 'Senden',
+                secondaryCta: 'Bearbeiten',
+              }],
+            });
+        } else {
+          clearAssist();
+          setDraft('');
+        }
+        if (appointmentResult && appointmentLegacy?.ok !== false) {
+          setAppointmentDraft(
+            appointmentLegacy?.appointment ?? appointmentResult?.appointment ?? null,
+          );
+        } else {
+          setAppointmentDraft(null);
+        }
+        setOfferPrep(null);
+        const parts = [];
+        if (offerResult) parts.push('Angebot');
+        if (messageBody) parts.push('Nachricht');
+        if (appointmentResult) parts.push('Termin');
+        setFeedback(`${parts.join(' + ')} vorbereitet – bitte prüfen`);
+        setTimeout(() => setFeedback(''), 3200);
+        if (offerResult) {
+          handlePrepareOffer(offerResult, { lead: nextLead, skipFeedCard: true });
+        }
+        return;
+      }
 
       // Multi-Aktion: Angebot anpassen + Nachricht in einem Accept
       if (updateOnly && messageBody) {
@@ -1254,14 +1385,44 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
-      if (messageResult) {
-        const body = messageResult.draft?.body || messageResult.body || '';
+      // Termin + Nachricht ohne neues Angebot
+      if (messageBody && appointmentResult && appointmentLegacy?.ok !== false && !offerAction) {
+        unpinAssist();
+        setDraft(messageBody);
+        setAssist(messageLegacy?.ok
+          ? messageLegacy
+          : {
+            ok: true,
+            results: [{
+              type: INLINE_RESULT_TYPES.MESSAGE_DRAFT,
+              title: '✨ Nachricht',
+              body: messageBody,
+              draft: { body: messageBody, channel: 'preferred' },
+              primaryCta: 'Senden',
+              secondaryCta: 'Bearbeiten',
+            }],
+          });
+        setAppointmentDraft(
+          appointmentLegacy?.appointment ?? appointmentResult?.appointment ?? null,
+        );
+        setOfferPrep(null);
+        setFeedback('Termin + Nachricht vorbereitet – bitte prüfen');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      if (messageBody || messageResult) {
+        const body = messageBody || messageResult?.draft?.body || messageResult?.body || '';
         if (body) {
           unpinAssist();
           setDraft(body);
           setAssist(messageLegacy?.ok ? messageLegacy : {
             ok: true,
-            results: [messageResult],
+            results: [messageResult || {
+              type: INLINE_RESULT_TYPES.MESSAGE_DRAFT,
+              body,
+              draft: { body, channel: 'preferred' },
+            }],
           });
         } else {
           setDraft('');

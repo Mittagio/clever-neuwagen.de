@@ -65,6 +65,30 @@ export function resolveComposerShortcut(text = '') {
   return null;
 }
 
+/**
+ * Chip / Shortcut → Seller-Input für den zentralen Composer-Turn.
+ * Chips inspirieren – sie ersetzen nicht den Orchestrator.
+ */
+export function buildChipSellerInput(chipId = '', options = {}) {
+  const name = String(options.customerName || '').trim();
+  const him = name || 'dem Kunden';
+  const map = {
+    nachfassen: `Schreib ${him} eine kurze Nachfassnachricht.`,
+    lieferzeit: `Schreib ${him} kurz zur Lieferzeit und Verfügbarkeit.`,
+    angebot: `Bereite für ${him} ein Angebot vor und schreib eine kurze Kundennachricht dazu.`,
+    danke: `Schreib ${him} eine kurze Dankes-/Eingangsbestätigung.`,
+    rueckfrage: `Schreib ${him} eine höfliche Rückfrage zu offenen Punkten.`,
+    kundenlink: 'Schick ihm die Angebote per Mail / Kundenlink.',
+    selbstauskunft: `Fordere bei ${him} die Selbstauskunft / Unterlagen an.`,
+    unterlagen: `Fordere bei ${him} die fehlenden Unterlagen an.`,
+    termin: `Schlag ${him} einen Termin im Autohaus vor.`,
+    probefahrt: `Schlag ${him} eine Probefahrt vor.`,
+    nicht_erreicht: `Schreib ${him}, dass wir ihn nicht erreicht haben und melde dich.`,
+    angebot_angepasst: `Schreib ${him}, dass ich das Angebot angepasst habe.`,
+  };
+  return map[chipId] || null;
+}
+
 function textLieferzeit(ctx = {}) {
   const vehicle = ctx.vehicleTitle || 'Wunschfahrzeug';
   const seller = ctx.sellerName?.trim();
