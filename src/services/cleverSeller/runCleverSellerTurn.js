@@ -138,6 +138,7 @@ function finalizeSellerTurn({
       currentOfferContext: offerCtx,
       resolvedCustomer: assistantContext.resolvedCustomer,
       workingContext: assistantContext.resolvedWorkingContext,
+      goldenMoment: assistantContext.goldenMoment,
     })
     : [];
 
@@ -257,6 +258,12 @@ function finalizeSellerTurn({
         messageDraft ? 'Nachricht vorbereitet' : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
           ? 'Termin vorbereitet'
+          : null,
+        assistantContext.resolvedWorkingContext?.attachedDocument?.label
+          ? `Dokument: ${assistantContext.resolvedWorkingContext.attachedDocument.label}`
+          : null,
+        assistantContext.goldenMoment?.headline
+          ? 'Nächster Schritt erkannt'
           : null,
       ].filter(Boolean),
     },

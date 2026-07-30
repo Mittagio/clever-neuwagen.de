@@ -2974,6 +2974,9 @@ export default function DealerAiLeadFollowUp({
         replyContext={composerReplyContext}
         workingContextItems={workingContextItems}
         onRemoveWorkingContext={handleRemoveWorkingContext}
+        onUpsertWorkingContext={(item) => {
+          setWorkingContextItems((prev) => upsertWorkingContextItem(prev, item));
+        }}
         scrollToMessageId={feedFocusMessageId}
         scrollToMessageToken={feedFocusToken}
         onFocusFeedMessage={focusFeedMessage}

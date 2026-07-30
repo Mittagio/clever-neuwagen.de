@@ -72,6 +72,8 @@ Kein Full-Lead-JSON an OpenAI – nur `buildMinimalTaskContext` / `buildMinimalM
 | 3 | „Schlag ihm vor, Montag 15 Uhr …“ | Termin + Kundennachricht aus Working Context |
 | 4 | „Was hatte ich Garritano … Lieferzeit geschrieben?“ | Verlaufssuche, **keine** neue Kundennachricht |
 | Brandes | „Sportage zu teuer, XCeed findet er gut, AHK/Rot/Lieferzeit“ | Spuren: deferred + Favorit · Review „einsortiert“ · Angebot anpassen |
+| Golden Moment | „Was ist der nächste Schritt?“ | Erklärbarer nächster Schritt aus Journey/`buildGoldenMoment` |
+| Attachments | PDF/Dokument am Composer | Working Context (`document`/`offer`) – keine Customer Truth |
 
 Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasingbasis.
 

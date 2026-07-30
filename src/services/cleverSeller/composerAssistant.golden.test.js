@@ -8,6 +8,7 @@ import { interpretSellerInput } from './interpretSellerInput.js';
 import { shouldShowUniversalReview, buildUniversalReviewModel } from './buildUniversalReviewModel.js';
 import { SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
+import { resolveAssistantContext } from './resolveAssistantContext.js';
 import { createBrandesGoldenCaseLead } from '../crm/brandesGoldenCase.js';
 import { applyAcceptedSellerTurn } from './applyAcceptedSellerTurn.js';
 import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
@@ -191,5 +192,43 @@ assert.ok(xceed?.requirementLabels?.some((l) => /ahk/i.test(l)));
 assert.ok(xceed?.requirementLabels?.some((l) => /rot/i.test(l)));
 assert.ok(xceed?.requirementLabels?.some((l) => /lieferzeit/i.test(l)));
 assert.ok(tracks.some((t) => /tivoli/i.test(t.modelLabel || t.id)), 'tivoli track kept');
+
+// --- Golden Moment / nächster Schritt ---
+const goldenLead = createBrandesGoldenCaseLead({ phase: 'golden' });
+const turnNext = runCleverSellerTurn({
+  lead: goldenLead,
+  sellerInput: 'Was ist der nächste Schritt?',
+  customerName: 'Brandes',
+});
+assert.ok(turnNext.intents.some((i) => i.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP));
+assert.ok(turnNext.goldenMoment);
+assert.ok(turnNext.preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP));
+assert.ok(shouldShowUniversalReview(turnNext));
+const reviewNext = buildUniversalReviewModel(turnNext);
+assert.ok(reviewNext?.actionSections.some((s) => s.kind === 'golden_moment'));
+
+// --- Working Context Document ---
+const ctxDoc = resolveAssistantContext({
+  lead: leadKauf,
+  sellerInput: 'Mach das Angebot auf 20.000 km',
+  customerName: 'Garritano',
+  workingContextItems: [
+    {
+      kind: 'offer',
+      offerId: 'off-1',
+      label: 'XCeed Angebot',
+      card: { modelKey: 'xceed', title: 'XCeed', mileagePerYear: 15000 },
+    },
+    {
+      kind: 'document',
+      id: 'doc:preisliste',
+      label: 'Preisliste',
+      detail: 'preisliste.pdf',
+      document: { fileName: 'preisliste.pdf' },
+    },
+  ],
+});
+assert.ok(ctxDoc.resolvedWorkingContext.attachedDocument?.label);
+assert.ok(ctxDoc.resolvedWorkingContext.offer || ctxDoc.offerContext);
 
 console.log('composerAssistant.golden.test.js: ok');

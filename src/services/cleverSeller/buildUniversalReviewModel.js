@@ -247,6 +247,23 @@ export function buildUniversalActionSections(turn = {}) {
     });
   }
 
+  const nextStep = prepared.find((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP);
+  const moment = nextStep?.payload?.goldenMoment || turn.goldenMoment || null;
+  if (moment && (nextStep || !sections.some((s) => s.kind === 'track_feedback'))) {
+    sections.push({
+      id: 'golden_moment',
+      kind: 'golden_moment',
+      title: '✨ Clever',
+      headline: moment.headline || moment.primaryLabel || 'Nächster Schritt',
+      body: [moment.body, ...(moment.bodyLines || []).slice(1)].filter(Boolean).join('\n')
+        || (moment.reasons || []).join('\n'),
+      line: (moment.reasons || []).slice(0, 3).join(' · ') || null,
+      primaryLabel: moment.primaryLabel || 'Angebot anpassen',
+      recommendedAction: moment.recommendedAction || null,
+      vehicleTrackId: moment.vehicleTrackId || null,
+    });
+  }
+
   const trackFacts = facts.filter((f) => f.field === 'vehicleTrackFeedback' && f.label);
   if (trackFacts.length) {
     const deferred = trackFacts.filter((f) => f.value?.status === 'deferred');
@@ -364,15 +381,21 @@ export function buildUniversalReviewModel(turn = {}) {
   const historyOnly = actionSections.some((s) => s.kind === 'history_search') && !facts.length;
   const appointmentPrep = actionSections.some((s) => s.kind === 'appointment_propose');
   const trackFeedback = actionSections.some((s) => s.kind === 'track_feedback');
+  const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
+    && !trackFeedback
+    && !appointmentPrep
+    && !actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'message_draft');
 
   return {
     title: historyOnly
       ? '✨ Gefunden'
       : trackFeedback
         ? '✨ Clever hat einsortiert'
-        : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-          ? '✨ Clever hat vorbereitet'
-          : '✨ Clever hat verstanden'),
+        : goldenOnly
+          ? '✨ Clever'
+          : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+            ? '✨ Clever hat vorbereitet'
+            : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
@@ -380,9 +403,11 @@ export function buildUniversalReviewModel(turn = {}) {
       ? (actionSections[0]?.headline || 'Treffer im Verlauf')
       : trackFeedback
         ? 'Fahrzeugspuren und Wünsche aktualisiert'
-        : multiAction
-          ? `${actionSections.length} Aktionen vorbereitet`
-          : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
+        : goldenOnly
+          ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
+          : multiAction
+            ? `${actionSections.length} Aktionen vorbereitet`
+            : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
@@ -392,13 +417,15 @@ export function buildUniversalReviewModel(turn = {}) {
       ? 'Im Verlauf öffnen'
       : trackFeedback
         ? 'Übernehmen'
-        : appointmentPrep && !multiAction
-          ? 'Vorschlag senden'
-          : multiAction
-            ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-              ? 'Angebot und Nachricht prüfen'
-              : 'Änderungen prüfen')
-            : 'Übernehmen',
+        : goldenOnly
+          ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
+          : appointmentPrep && !multiAction
+            ? 'Vorschlag senden'
+            : multiAction
+              ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+                ? 'Angebot und Nachricht prüfen'
+                : 'Änderungen prüfen')
+              : 'Übernehmen',
     secondaryCta: trackFeedback
       ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')
       : 'Verwerfen',
@@ -408,6 +435,7 @@ export function buildUniversalReviewModel(turn = {}) {
     progressLines: turn.uiEffects?.progressLines ?? [],
     messageDraft: turn.messageDraft ?? null,
     resolvedCustomer: turn.resolvedCustomer ?? null,
+    goldenMoment: turn.goldenMoment ?? null,
   };
 }
 
@@ -422,6 +450,8 @@ export function shouldShowUniversalReview(turn = {}) {
   const prepared = turn.preparedActions ?? [];
   const hasHistory = prepared.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
   if (hasHistory) return true;
+
+  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP)) return true;
 
   const hasAppointmentPrep = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'

@@ -885,6 +885,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   const isHistoryQuery = /\b(was hatte|was habe|damals|verlauf|historie)\b/i.test(t)
     || /\bwas\b.{0,40}\bgeschrieben\b/i.test(t)
     || /\bwelche[snr]?\s+angebot\b/i.test(t);
+  const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
@@ -904,6 +905,10 @@ export function detectSellerTurnIntents(text = '', facts = []) {
 
   if (isHistoryQuery) {
     add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.94);
+  }
+
+  if (isNextStepQuery) {
+    add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.93);
   }
 
   if (hasAppointmentFact
@@ -926,13 +931,14 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (
         isHistoryQuery
+        || isNextStepQuery
         || hasAppointmentFact
         || (hasContextFacts && !explicitMessage)
       );
     if (!skipMessageDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage && !isHistoryQuery) {
+  if (explicitMessage && !isHistoryQuery && !isNextStepQuery) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
   } else if (hasContextFacts && !hasAppointmentFact) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
@@ -973,10 +979,11 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
   const explicitMessage = isExplicitCustomerMessageCue(t);
   const hasOffer = intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
   const hasHistory = intents.some((i) => i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
+  const hasNextStep = intents.some((i) => i.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP);
 
   // Angebot + „schreibe“ = Arbeitsauftrag mit Nachricht (kein reiner Message-Mode)
   if (explicitMessage && hasOffer) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
-  if (hasHistory) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
+  if (hasHistory || hasNextStep) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
   if (explicitMessage) return SELLER_INPUT_MODE.CUSTOMER_MESSAGE;
 
   const workHeavy = intents.some((i) => [
@@ -987,6 +994,7 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
     SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
     SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
     SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
+    SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP,
   ].includes(i.type)) || facts.length >= 3;
 
   const messageLike = intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);

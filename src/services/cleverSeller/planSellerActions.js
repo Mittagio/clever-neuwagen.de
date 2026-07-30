@@ -65,6 +65,7 @@ export function planSellerActions({
   currentOfferContext = null,
   resolvedCustomer = null,
   workingContext = null,
+  goldenMoment = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -72,6 +73,25 @@ export function planSellerActions({
     || resolvedCustomer?.namedInInput
     || lead?.contact?.name
     || '';
+
+  const moment = goldenMoment
+    || runTool('build_golden_moment', { lead }).result
+    || null;
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP) && moment) {
+    actions.push({
+      id: 'recommend_next_step',
+      type: SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP,
+      label: moment.primaryLabel || 'Nächster Schritt',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      toolId: 'build_golden_moment',
+      payload: {
+        goldenMoment: moment,
+        recommendedAction: moment.recommendedAction,
+      },
+    });
+  }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
     const { result: search } = runTool('search_customer_history', {
@@ -133,6 +153,7 @@ export function planSellerActions({
           status: f.value?.status,
           label: f.label,
         })),
+        goldenMoment: moment || null,
       },
     });
   }

@@ -52,6 +52,7 @@ export const SELLER_TURN_INTENTS = {
   LOOKUP_VEHICLE_FACT: 'lookup_vehicle_fact',
   SEARCH_CUSTOMER_HISTORY: 'search_customer_history',
   CUSTOMER_LOOKUP: 'customer_lookup',
+  RECOMMEND_NEXT_STEP: 'recommend_next_step',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
   UNKNOWN: 'unknown',

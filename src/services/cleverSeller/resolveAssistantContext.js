@@ -4,7 +4,12 @@
  */
 
 import { formatCustomerDisplayName } from '../dealerAiParser.js';
-import { findOfferWorkingContext, toCurrentOfferContext } from '../crm/composerWorkingContext.js';
+import {
+  findOfferWorkingContext,
+  findDocumentWorkingContext,
+  listWorkingContextDocuments,
+  toCurrentOfferContext,
+} from '../crm/composerWorkingContext.js';
 import { buildVehicleOpportunityCards } from '../customerAkte.js';
 import {
   buildAttributedWishChips,
@@ -125,9 +130,8 @@ export function resolveAssistantContext(params = {}) {
   const favoriteTrack = vehicleTracks.find((t) => t.status === 'favorite') || null;
   const deferredTracks = vehicleTracks.filter((t) => t.status === 'deferred');
 
-  const documentItems = workingItems.filter((item) => (
-    item?.kind === 'document' || item?.type === 'document'
-  ));
+  const documentItems = listWorkingContextDocuments(workingItems);
+  const primaryDocument = findDocumentWorkingContext(workingItems);
 
   const attachedVehicle = offerItem?.card || params.workingContext?.card || null;
   const resolvedWorkingContext = {
@@ -141,9 +145,20 @@ export function resolveAssistantContext(params = {}) {
         offerId: offerContext?.offerId || null,
       }
       : null,
+    attachedDocument: primaryDocument
+      ? {
+        id: primaryDocument.documentId || primaryDocument.id,
+        label: primaryDocument.label || primaryDocument.shortLabel,
+        fileName: primaryDocument.detail || primaryDocument.document?.fileName || null,
+      }
+      : null,
+    documents: documentItems.map((d) => ({
+      id: d.documentId || d.id,
+      label: d.label,
+    })),
     attachmentCount: workingItems.length + attachments.length,
     documentCount: documentItems.length + attachments.filter((a) => (
-      /\.pdf$/i.test(a?.name || a?.fileName || '') || a?.kind === 'pdf'
+      /\.pdf$/i.test(a?.name || a?.fileName || '') || a?.kind === 'pdf' || a?.kind === 'configurator_pdf'
     )).length,
     openVehicleCount: Array.isArray(vehicleCards) ? vehicleCards.length : 0,
     vehicleTracks: vehicleTracks.map((t) => ({

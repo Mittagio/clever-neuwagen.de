@@ -157,3 +157,11 @@ export function removeWorkingContextItem(items = [], itemId = '') {
 export function findOfferWorkingContext(items = []) {
   return (Array.isArray(items) ? items : []).find((i) => i?.kind === WORKING_CONTEXT_KINDS.OFFER) || null;
 }
+
+export function findDocumentWorkingContext(items = []) {
+  return (Array.isArray(items) ? items : []).find((i) => i?.kind === WORKING_CONTEXT_KINDS.DOCUMENT) || null;
+}
+
+export function listWorkingContextDocuments(items = []) {
+  return (Array.isArray(items) ? items : []).filter((i) => i?.kind === WORKING_CONTEXT_KINDS.DOCUMENT);
+}

@@ -72,7 +72,8 @@ export default function SellerUniversalReviewCard({
               {(section.kind === 'message_draft'
                 || section.kind === 'appointment_propose'
                 || section.kind === 'history_search'
-                || section.kind === 'track_feedback')
+                || section.kind === 'track_feedback'
+                || section.kind === 'golden_moment')
                 && section.body ? (
                   <pre className="sur-card__draft">{section.body}</pre>
                 ) : null}

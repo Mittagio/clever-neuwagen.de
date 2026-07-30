@@ -56,6 +56,7 @@ import {
 import {
   findOfferWorkingContext,
   toCurrentOfferContext,
+  buildDocumentWorkingContextItem,
 } from '../../services/crm/composerWorkingContext.js';
 import { buildVehicleOpportunityCards, formatVehicleCardConditions, formatVehicleCardPrice, formatVehicleCardTitle } from '../../services/customerAkte.js';
 import {
@@ -132,6 +133,7 @@ export default function CustomerAkteSharedWorkspace({
   /** Cursor-Anhänge: aktives Angebot etc. */
   workingContextItems = [],
   onRemoveWorkingContext = null,
+  onUpsertWorkingContext = null,
   workspaceSlot = null,
   scrollToMessageId = null,
   scrollToMessageToken = 0,
@@ -1111,7 +1113,45 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
+      const nextStepAction = preparedActions.find(
+        (a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP && a.status === 'prepared',
+      );
+      if (nextStepAction?.payload?.goldenMoment) {
+        const moment = nextStepAction.payload.goldenMoment;
+        const seed = moment.recommendedAction === 'follow_up_favorite'
+          ? 'Nachfassen zum Favoriten'
+          : (moment.primaryLabel || 'Angebot anpassen');
+        const refreshedOffer = runSellerOfferAssist(nextLead, seed, {});
+        const offerResult = refreshedOffer?.results?.[0] || refreshedOffer || null;
+        setUniversalTurn(null);
+        setDraft('');
+        clearAssist();
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setFeedback(moment.primaryLabel || 'Nächster Schritt');
+        setTimeout(() => setFeedback(''), 2800);
+        if (offerResult && moment.recommendedAction !== 'await_or_ask_feedback') {
+          handlePrepareOffer(offerResult, { lead: nextLead, skipFeedCard: true });
+        }
+        return;
+      }
+
       if (reviseAction && !offerAction?.payload?.updateOnly && !messageAction && !appointmentAction) {
+        // Nach Einsortieren: Golden Moment als Folge-Review, falls vorhanden
+        const momentTurn = runCleverSellerTurn({
+          lead: nextLead,
+          sellerInput: 'Was ist der nächste Schritt?',
+          customerName,
+          workingContextItems,
+        });
+        if (shouldShowUniversalReview(momentTurn) && momentTurn.goldenMoment) {
+          setUniversalTurn(momentTurn);
+          clearAssist();
+          setDraft('');
+          setFeedback('Fahrzeugspuren übernommen – nächster Schritt');
+          setTimeout(() => setFeedback(''), 2800);
+          return;
+        }
         setUniversalTurn(null);
         setDraft('');
         clearAssist();
@@ -1336,23 +1376,31 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       setDraft(draftSeed);
+      onUpsertWorkingContext?.(buildDocumentWorkingContextItem({
+        id: `pdf:${extracted.fileName || file.name || Date.now()}`,
+        label: extracted.fileName || file.name || 'Preislisten-PDF',
+        fileName: extracted.fileName || file.name || null,
+        status: 'attached',
+      }));
       const turn = runCleverSellerTurn({
         lead,
         sellerInput: interpretSeed,
         currentOfferContext: resolveCurrentOfferContext(),
+        workingContextItems,
         attachments: [{
           kind: 'configurator_pdf',
           mimeType: file.type || 'application/pdf',
           fileName: extracted.fileName,
         }],
+        customerName,
       });
       if (shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
         clearAssist();
-        setFeedback('PDF gelesen – bitte Angaben prüfen');
+        setFeedback('PDF gelesen – Kontext angehängt, bitte prüfen');
       } else {
         setUniversalTurn(null);
-        setFeedback('PDF gelesen – ergänze ggf. noch Details');
+        setFeedback('PDF gelesen – Kontext angehängt');
       }
       setTimeout(() => setFeedback(''), 3200);
     } catch (err) {
