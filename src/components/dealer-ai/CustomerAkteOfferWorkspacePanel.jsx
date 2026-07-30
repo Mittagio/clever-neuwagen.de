@@ -107,7 +107,7 @@ export default function CustomerAkteOfferWorkspacePanel({
         </button>
         <div className="cust-offer-ws__head-main">
           <p className="cust-offer-ws__eyebrow">Angebot</p>
-          <h2 className="cust-offer-ws__title">{title}</h2>
+          <h2 className="cust-offer-ws__title">{displayTitle}</h2>
           <p className="cust-offer-ws__version">
             v{version}
             {' '}
