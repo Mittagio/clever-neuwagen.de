@@ -58,6 +58,15 @@ import {
   runComposerAkteSearch,
 } from '../../services/crm/composerAkteSearch.js';
 import { shouldClearAssistOnEmptyDraft } from './composerAssistPin.js';
+import {
+  COMPOSER_MODES,
+  beginCustomerMessageEdit,
+  cancelCustomerMessageEdit,
+  completeCustomerMessageEditSend,
+  isCustomerMessageEditMode,
+  resolveComposerUi,
+  shouldRunSellerInterpret,
+} from '../../services/crm/composerMode.js';
 
 const DEBOUNCE_MS = 380;
 
@@ -133,6 +142,8 @@ export default function CustomerAkteSharedWorkspace({
   const [universalTurn, setUniversalTurn] = useState(null);
   const [offerPrep, setOfferPrep] = useState(null);
   const [appointmentDraft, setAppointmentDraft] = useState(null);
+  const [composerMode, setComposerMode] = useState(COMPOSER_MODES.CLEVER_WORK);
+  const [editingMessageDraft, setEditingMessageDraft] = useState(null);
   const debounceRef = useRef(null);
   const assistRequestIdRef = useRef(0);
   /** Chip-/Review-vorbereitete Karte: empty-draft-Effekt darf sie nicht verwerfen. */
@@ -140,6 +151,13 @@ export default function CustomerAkteSharedWorkspace({
   const composerInputRef = useRef(null);
   const offerPrepRef = useRef(null);
   const appointmentDraftRef = useRef(null);
+  /** Clever-Arbeit-Draft, der beim Nachrichten-Edit pausiert wurde. */
+  const priorWorkDraftRef = useRef('');
+  const composerModeRef = useRef(composerMode);
+
+  useEffect(() => {
+    composerModeRef.current = composerMode;
+  }, [composerMode]);
 
   function pinAssist(next) {
     assistPinnedRef.current = true;
@@ -153,6 +171,13 @@ export default function CustomerAkteSharedWorkspace({
   function clearAssist() {
     assistPinnedRef.current = false;
     setAssist(null);
+  }
+
+  function focusComposer() {
+    const el = document.getElementById('sw-composer-seller');
+    if (!el) return;
+    el.focus?.();
+    composerInputRef.current = el;
   }
 
   useEffect(() => {
@@ -174,10 +199,16 @@ export default function CustomerAkteSharedWorkspace({
   );
 
   const displayName = formatCustomerDisplayName(customerName) || 'dem Kunden';
-
-  const placeholder = cleverMode
-    ? `Alles reinwerfen – tippen, sprechen oder PDF …`
-    : `Nachricht an ${displayName} …`;
+  const composerUi = useMemo(
+    () => resolveComposerUi(composerMode, {
+      recipient: editingMessageDraft?.recipient || displayName,
+      displayName,
+      cleverMode,
+    }),
+    [composerMode, editingMessageDraft?.recipient, displayName, cleverMode],
+  );
+  const placeholder = composerUi.placeholder;
+  const inMessageEdit = isCustomerMessageEditMode(composerMode);
 
   const confirmAssist = useMemo(() => {
     const open = getOpenCleverAppointment(lead);
@@ -205,6 +236,10 @@ export default function CustomerAkteSharedWorkspace({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // customer_message_edit: kein Debounce-Interpret, kein Universal Review, keine Facts
+    if (!shouldRunSellerInterpret(composerMode)) {
+      return undefined;
+    }
     const text = String(draft ?? '').trim();
     if (text.length < 3) {
       assistRequestIdRef.current += 1;
@@ -226,7 +261,8 @@ export default function CustomerAkteSharedWorkspace({
       // Tippen ersetzt eine chip-/review-vorbereitete Karte.
       unpinAssist();
       const requestId = ++assistRequestIdRef.current;
-      const isStale = () => requestId !== assistRequestIdRef.current;
+      const isStale = () => requestId !== assistRequestIdRef.current
+        || !shouldRunSellerInterpret(composerModeRef.current);
 
       const shortcut = resolveComposerShortcut(text);
       if (shortcut) {
@@ -332,7 +368,7 @@ export default function CustomerAkteSharedWorkspace({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       assistRequestIdRef.current += 1;
     };
-  }, [draft, lead, confirmAssist, customerName, workingContextItems]);
+  }, [draft, lead, confirmAssist, customerName, workingContextItems, composerMode]);
 
   useEffect(() => {
     if (!focusToken) return;
@@ -352,6 +388,9 @@ export default function CustomerAkteSharedWorkspace({
       setTimeout(() => setFeedback(''), 2800);
       return;
     }
+    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+    setEditingMessageDraft(null);
+    priorWorkDraftRef.current = '';
     setUniversalTurn(null);
     pinAssist(suggestion);
     setOfferPrep(null);
@@ -417,6 +456,43 @@ export default function CustomerAkteSharedWorkspace({
 
   function handleSend(text) {
     if (!text || sending) return;
+
+    const editing = isCustomerMessageEditMode(composerModeRef.current);
+    if (editing) {
+      const completed = completeCustomerMessageEditSend({ editedBody: text });
+      setSending(true);
+      try {
+        const ctx = resolveReplyContext();
+        const result = sendCleverChannelMessage({
+          lead,
+          text: completed.sendBody,
+          threadId: ctx.threadId,
+          relatedOfferId: ctx.relatedOfferId,
+          relatedQuestionId: ctx.relatedQuestionId,
+          createdByName: 'Verkäufer',
+        });
+        if (!result.message) {
+          setFeedback(resolveSendFailureFeedback(result.error));
+          return;
+        }
+        persistMessages(result.lead, 'Nachricht im gemeinsamen Arbeitsraum gesendet');
+        setComposerMode(completed.composerMode);
+        setEditingMessageDraft(null);
+        priorWorkDraftRef.current = '';
+        setDraft('');
+        clearAssist();
+        setUniversalTurn(null);
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        onMessageSent?.();
+        setFeedback('Gesendet');
+        setTimeout(() => setFeedback(''), 2500);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     const shortcut = resolveComposerShortcut(text);
     if (shortcut) {
       handleSuggestionChip(shortcut);
@@ -458,6 +534,53 @@ export default function CustomerAkteSharedWorkspace({
     } finally {
       setSending(false);
     }
+  }
+
+  function handleEditMessageDraft(result) {
+    if (!result || sending) return;
+    const next = beginCustomerMessageEdit({
+      result,
+      recipient: displayName,
+      contextAttachments: workingContextItems,
+      priorWorkDraft: draft,
+    });
+    priorWorkDraftRef.current = next.priorWorkDraft;
+    setComposerMode(next.composerMode);
+    setEditingMessageDraft(next.editingMessageDraft);
+    setDraft(next.draft);
+    setUniversalTurn(null);
+    // Assist bleibt gepinnt (kompakte Banner-Ansicht), kein Interpret
+    pinAssist(assist?.ok
+      ? assist
+      : { ok: true, results: [result] });
+    setFeedback('Nachricht bearbeiten – Clever interpretiert nicht mit');
+    setTimeout(() => setFeedback(''), 2800);
+    queueMicrotask(() => focusComposer());
+  }
+
+  function handleCancelMessageEdit() {
+    const cancelled = cancelCustomerMessageEdit({
+      editingMessageDraft,
+      priorWorkDraft: priorWorkDraftRef.current,
+    });
+    setComposerMode(cancelled.composerMode);
+    setEditingMessageDraft(null);
+    setDraft(cancelled.draft);
+    setUniversalTurn(null);
+    priorWorkDraftRef.current = '';
+    if (cancelled.sourceResult) {
+      pinAssist({
+        ok: true,
+        results: [cancelled.sourceResult],
+      });
+    }
+    setFeedback('');
+  }
+
+  function handleImproveWithClever() {
+    // Expliziter Rewrite-Stub – kein auto Interpret / keine Facts
+    setFeedback('Mit Clever verbessern folgt – Text bleibt unverändert');
+    setTimeout(() => setFeedback(''), 2800);
   }
 
   function handleInsertFact(result) {
@@ -754,6 +877,10 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleDismissAssist() {
+    if (isCustomerMessageEditMode(composerMode)) {
+      handleCancelMessageEdit();
+      return;
+    }
     clearAssist();
     setUniversalTurn(null);
     setOfferPrep(null);
@@ -1059,6 +1186,11 @@ export default function CustomerAkteSharedWorkspace({
         sending={sending || isSaving}
         sendFeedback={feedback}
         placeholder={placeholder}
+        composerLabel={composerUi.label}
+        sendAriaLabel={composerUi.sendAriaLabel}
+        composerEditMode={inMessageEdit}
+        onCancelEdit={inMessageEdit ? handleCancelMessageEdit : null}
+        onImproveWithClever={inMessageEdit ? handleImproveWithClever : null}
         onOpenOffer={onOpenOffer}
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
@@ -1084,6 +1216,7 @@ export default function CustomerAkteSharedWorkspace({
             <SellerInlineAssistCard
               results={assistResults}
               onInsertFact={handleInsertFact}
+              onEditMessageDraft={handleEditMessageDraft}
               onUseVerified={handleUseVerified}
               onPrepareReply={handlePrepareReply}
               onSendDraft={handleSendDraft}
@@ -1093,6 +1226,8 @@ export default function CustomerAkteSharedWorkspace({
               onPrepareOffer={handlePrepareOffer}
               onSendPortfolio={handleSendPortfolio}
               onAppointmentPrimary={handleAppointmentPrimary}
+              compactMessageEdit={inMessageEdit}
+              messageEditHint={composerUi.compactAssistHint || ''}
               onOpenSearchHit={(result) => {
                 if (result?.offerId) {
                   onOpenOffer?.({ offerId: result.offerId, id: result.offerId });
@@ -1121,7 +1256,7 @@ export default function CustomerAkteSharedWorkspace({
         micSlot={(
           <DealerAiInlineMic
             variant="fab"
-            disabled={sending || isSaving}
+            disabled={sending || isSaving || inMessageEdit}
             onTranscript={(text) => setDraft((prev) => (prev ? `${prev} ${text}` : text))}
           />
         )}

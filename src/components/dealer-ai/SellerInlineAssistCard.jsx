@@ -7,6 +7,7 @@ import './SellerInlineAssistCard.css';
 export default function SellerInlineAssistCard({
   results = [],
   onInsertFact = null,
+  onEditMessageDraft = null,
   onUseVerified = null,
   onPrepareReply = null,
   onSendDraft = null,
@@ -18,6 +19,9 @@ export default function SellerInlineAssistCard({
   onAppointmentPrimary = null,
   onOpenSearchHit = null,
   onDismiss = null,
+  /** Während customer_message_edit: kein doppelter Body-Editor */
+  compactMessageEdit = false,
+  messageEditHint = '',
 }) {
   if (!results?.length) return null;
 
@@ -37,14 +41,20 @@ export default function SellerInlineAssistCard({
             ) : null}
           </header>
 
-          {result.headline ? <p className="sia-card__headline">{result.headline}</p> : null}
+          {result.headline && !(result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && compactMessageEdit) ? (
+            <p className="sia-card__headline">{result.headline}</p>
+          ) : null}
           {result.contextLink ? (
             <p className="sia-card__context-link">{result.contextLink}</p>
           ) : null}
-          {result.body ? (
-            <p className="sia-card__body" style={{ whiteSpace: 'pre-line' }}>{result.body}</p>
+          {result.body
+            && !(result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT)
+            ? (
+              <p className="sia-card__body" style={{ whiteSpace: 'pre-line' }}>{result.body}</p>
+            ) : null}
+          {result.hint && !(result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && compactMessageEdit) ? (
+            <p className="sia-card__hint">{result.hint}</p>
           ) : null}
-          {result.hint ? <p className="sia-card__hint">{result.hint}</p> : null}
 
           {result.type === INLINE_RESULT_TYPES.CONTEXT_REMINDER && result.chips?.length ? (
             <ul className="sia-card__chips">
@@ -68,7 +78,13 @@ export default function SellerInlineAssistCard({
             </ul>
           ) : null}
 
-          {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && result.body ? (
+          {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && compactMessageEdit ? (
+            <p className="sia-card__edit-banner" role="status">
+              {messageEditHint || 'Nachricht wird im Composer bearbeitet'}
+            </p>
+          ) : null}
+
+          {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && result.body && !compactMessageEdit ? (
             <pre className="sia-card__draft">{result.body}</pre>
           ) : null}
 
@@ -134,7 +150,7 @@ export default function SellerInlineAssistCard({
               </>
             ) : null}
 
-            {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT ? (
+            {result.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT && !compactMessageEdit ? (
               <>
                 <button
                   type="button"
@@ -146,7 +162,7 @@ export default function SellerInlineAssistCard({
                 <button
                   type="button"
                   className="sia-btn sia-btn--ghost"
-                  onClick={() => onInsertFact?.({ ...result, insertText: result.body })}
+                  onClick={() => onEditMessageDraft?.(result)}
                 >
                   {result.secondaryCta || 'Bearbeiten'}
                 </button>

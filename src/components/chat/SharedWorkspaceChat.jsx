@@ -21,6 +21,11 @@ export default function SharedWorkspaceChat({
   sendFeedback = '',
   placeholder = '',
   composerLabel = '',
+  sendAriaLabel = 'Senden',
+  /** customer_message_edit: größere Textarea + Edit-Aktionen */
+  composerEditMode = false,
+  onCancelEdit = null,
+  onImproveWithClever = null,
   onOpenOffer,
   onUploadDocument,
   onStartSelfDisclosure,
@@ -217,11 +222,13 @@ export default function SharedWorkspaceChat({
   }, [plusActions, onAttachFile]);
 
   const showSuggestionChips = role === 'seller'
+    && !composerEditMode
     && Array.isArray(suggestionChips)
     && suggestionChips.length > 0
     && typeof onSuggestionChip === 'function';
   const hasMoreChips = Array.isArray(moreSuggestionChips) && moreSuggestionChips.length > 0;
   const showContextPills = Array.isArray(contextPills) && contextPills.length > 0;
+  const showEditActions = composerEditMode && typeof onCancelEdit === 'function';
 
   const feedMain = (
     <>
@@ -355,7 +362,10 @@ export default function SharedWorkspaceChat({
           </div>
         ) : null}
 
-        <form className="sw-composer" onSubmit={handleSubmit}>
+        <form
+          className={`sw-composer${composerEditMode ? ' sw-composer--message-edit' : ''}`}
+          onSubmit={handleSubmit}
+        >
           {composerLabel ? (
             <label className="sw-composer__label" htmlFor={`sw-composer-${role}`}>
               {composerLabel}
@@ -416,34 +426,66 @@ export default function SharedWorkspaceChat({
             </div>
           ) : null}
 
-          <div className="sw-composer__row">
-            <button
-              type="button"
-              className="sw-composer__plus"
-              aria-label="Mehr Aktionen"
-              onClick={openPlus}
-            >
-              +
-            </button>
+          <div className={`sw-composer__row${composerEditMode ? ' sw-composer__row--grow' : ''}`}>
+            {!composerEditMode ? (
+              <button
+                type="button"
+                className="sw-composer__plus"
+                aria-label="Mehr Aktionen"
+                onClick={openPlus}
+              >
+                +
+              </button>
+            ) : null}
             <textarea
               id={`sw-composer-${role}`}
-              className="sw-composer__input"
-              rows={1}
+              className={`sw-composer__input${composerEditMode ? ' sw-composer__input--grow' : ''}`}
+              rows={composerEditMode ? 6 : 1}
               value={draft}
               onChange={(e) => onDraftChange?.(e.target.value)}
               placeholder={resolvedPlaceholder}
               disabled={sending}
             />
-            {micSlot}
+            {!composerEditMode ? micSlot : null}
             <button
               type="submit"
               className="sw-composer__send"
               disabled={sending || !draft.trim()}
-              aria-label="Senden"
+              aria-label={sendAriaLabel || 'Senden'}
+              title={sendAriaLabel || 'Senden'}
             >
               ➤
             </button>
           </div>
+          {showEditActions ? (
+            <div className="sw-composer__edit-actions" role="group" aria-label="Nachricht bearbeiten">
+              <button
+                type="button"
+                className="sw-composer__edit-btn sw-composer__edit-btn--ghost"
+                disabled={sending}
+                onClick={() => onCancelEdit?.()}
+              >
+                Abbrechen
+              </button>
+              {typeof onImproveWithClever === 'function' ? (
+                <button
+                  type="button"
+                  className="sw-composer__edit-btn sw-composer__edit-btn--ghost"
+                  disabled={sending || !draft.trim()}
+                  onClick={() => onImproveWithClever?.(draft)}
+                >
+                  Mit Clever verbessern
+                </button>
+              ) : null}
+              <button
+                type="submit"
+                className="sw-composer__edit-btn sw-composer__edit-btn--primary"
+                disabled={sending || !draft.trim()}
+              >
+                Senden
+              </button>
+            </div>
+          ) : null}
           {sendFeedback ? (
             <p className="sw-composer__feedback" role="status">{sendFeedback}</p>
           ) : null}

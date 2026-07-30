@@ -162,6 +162,16 @@
   color: #3d4558;
 }
 
+.sia-card__edit-banner {
+  margin: 6px 0 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #4b5568;
+}
+
 .sia-card__ctas {
   display: flex;
   flex-wrap: wrap;
