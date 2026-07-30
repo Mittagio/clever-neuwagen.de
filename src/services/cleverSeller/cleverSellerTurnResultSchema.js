@@ -11,6 +11,7 @@ import { SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 export function createEmptyCleverSellerTurnResult() {
   return {
     ok: false,
+    turnId: null,
     intent: SELLER_TURN_INTENTS.UNKNOWN,
     intents: [],
     inputMode: SELLER_INPUT_MODE.CLEVER_WORK_INPUT,
@@ -37,6 +38,8 @@ export function createEmptyCleverSellerTurnResult() {
     warnings: [],
     assistantReply: null,
     confidence: 0,
+    evidence: [],
+    reviewModel: null,
     pendingAction: null,
     uiEffects: {
       capturedFacts: [],
@@ -44,6 +47,7 @@ export function createEmptyCleverSellerTurnResult() {
     },
     legacy: null,
     openaiEscalation: null,
+    goldenMoment: null,
   };
 }
 

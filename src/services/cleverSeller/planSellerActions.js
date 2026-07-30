@@ -1,21 +1,9 @@
 /**
- * Action Planner – verbindet Intents mit bestehenden Assist-/CRM-Tools.
+ * Action Planner – verbindet Intents mit Tool Registry (bestehende CRM-Services).
  * EXECUTE passiert erst nach Seller-Bestätigung.
  */
 import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
-import { runSellerOfferAssist } from '../dealer/sellerOfferAssistFlow.js';
-import { runSellerAppointmentAssist } from '../dealer/sellerAppointmentAssistFlow.js';
-import { runSellerInlineAssist } from '../dealer/sellerInlineComposerAssist.js';
-import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
-import { runComposerAkteSearch } from '../crm/composerAkteSearch.js';
-import { writeGroundedMessageFallback } from '../crm/magic/generateCleverCustomerMessage.js';
-import { buildMinimalMessageContext } from '../crm/magic/buildMinimalMessageContext.js';
-import { interpretMessageInstruction } from '../crm/magic/interpretMessageInstruction.js';
-import {
-  lookupPackageContents,
-  lookupRelevantEquipment,
-  lookupVehicleVariant,
-} from '../crm/magic/magicKnowledgeTools.js';
+import { runTool } from './toolRegistry.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 
 function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
@@ -86,13 +74,18 @@ export function planSellerActions({
     || '';
 
   if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
-    const search = runComposerAkteSearch(lead, sellerInput, { customerName });
+    const { result: search } = runTool('search_customer_history', {
+      lead,
+      sellerInput,
+      customerName,
+    });
     actions.push({
       id: 'search_customer_history',
       type: SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
       label: 'Verlauf durchsuchen',
       needsSellerConfirmation: false,
       status: search?.ok ? 'prepared' : 'blocked',
+      toolId: 'search_customer_history',
       legacy: search ?? null,
       payload: {
         hitCount: search?.results?.length ?? 0,
@@ -155,6 +148,7 @@ export function planSellerActions({
         label: 'Angebot anpassen',
         needsSellerConfirmation: true,
         status: 'prepared',
+        toolId: 'modify_offer',
         payload: {
           updateOnly: true,
           offerId: currentOfferContext.offerId,
@@ -162,7 +156,12 @@ export function planSellerActions({
         },
       });
     } else {
-      const offer = runSellerOfferAssist(lead, sellerInput, {});
+      const { result: offer } = runTool('prepare_offer', {
+        lead,
+        sellerInput,
+        currentOfferContext,
+        facts,
+      });
       const purchase = facts.find((f) => f.field === 'purchasePrice');
       actions.push({
         id: 'prepare_offer',
@@ -170,6 +169,7 @@ export function planSellerActions({
         label: 'Angebot vorbereiten',
         needsSellerConfirmation: true,
         status: offer?.ok || purchase ? 'prepared' : 'blocked',
+        toolId: 'prepare_offer',
         legacy: offer ?? null,
         payload: {
           canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer) || Boolean(purchase),
@@ -196,13 +196,14 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.REQUEST_DOCUMENTS)) {
-    const pkg = prepareSellerWorkspacePackage(lead, sellerInput);
+    const { result: pkg } = runTool('request_documents', { lead, sellerInput });
     actions.push({
       id: 'request_documents',
       type: SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
       label: 'Unterlagen anfordern',
       needsSellerConfirmation: true,
       status: 'prepared',
+      toolId: 'request_documents',
       legacy: pkg,
       payload: {
         actionCount: pkg?.actions?.length ?? 0,
@@ -212,7 +213,11 @@ export function planSellerActions({
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
     || intentTypes.has(SELLER_TURN_INTENTS.PREPARE_CALLBACK)) {
-    const appointment = runSellerAppointmentAssist(lead, sellerInput, {});
+    const { result: appointment } = runTool('propose_appointment', {
+      lead,
+      sellerInput,
+      resolvedCustomer,
+    });
     const appointmentMessage = appointment?.results?.[0]?.messageBody
       || appointment?.results?.[0]?.draft?.body
       || null;
@@ -222,6 +227,7 @@ export function planSellerActions({
       label: 'Termin vorbereiten',
       needsSellerConfirmation: true,
       status: appointment?.ok ? 'prepared' : 'blocked',
+      toolId: 'propose_appointment',
       legacy: appointment ?? null,
       payload: {
         messageDraft: appointmentMessage,
@@ -235,35 +241,46 @@ export function planSellerActions({
         label: 'Nachricht vorbereiten',
         needsSellerConfirmation: true,
         status: 'prepared',
+        toolId: 'draft_customer_message',
         payload: { messageDraft: appointmentMessage },
       });
     }
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) {
-    const interpretation = interpretMessageInstruction(sellerInput);
+    const interpretation = runTool('interpret_message_instruction', { sellerInput }).result
+      || { sellerFacts: [] };
     const modelFact = facts.find((f) => f.field === 'vehicleInterest');
     const modelKey = modelFact?.value?.modelKey || workingContext?.attachedVehicle?.modelKey;
     const trimId = modelFact?.value?.trim || workingContext?.attachedVehicle?.trimId;
     let retrieved = null;
     if (modelKey) {
-      const variant = lookupVehicleVariant({ modelKey, trim: trimId });
-      const pkgName = interpretation.sellerFacts.find((f) => f.type === 'package_present')?.value;
+      const variant = runTool('lookup_vehicle_variant', { modelKey, trim: trimId }).result;
+      const pkgName = interpretation.sellerFacts?.find((f) => f.type === 'package_present')?.value;
       const pkg = pkgName
-        ? lookupPackageContents({ modelKey, trim: trimId, packageName: pkgName })
+        ? runTool('lookup_package_contents', {
+          modelKey,
+          trim: trimId,
+          packageName: pkgName,
+        }).result
         : null;
       const eq = trimId
-        ? lookupRelevantEquipment({ modelKey, trim: trimId })
+        ? runTool('lookup_vehicle_equipment', { modelKey, trim: trimId }).result
         : null;
       retrieved = { variant, package: pkg, equipment: eq };
     }
-    const inline = runSellerInlineAssist(lead, sellerInput);
+    const inline = runTool('draft_customer_message', {
+      lead,
+      sellerInput,
+      currentOfferContext,
+    }).result;
     actions.push({
       id: 'lookup_vehicle_fact',
       type: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
       label: 'Fahrzeugfakt prüfen',
       needsSellerConfirmation: false,
       status: inline?.ok || retrieved ? 'prepared' : 'blocked',
+      toolId: 'lookup_vehicle_variant',
       legacy: inline ?? null,
       payload: { retrieved },
     });
@@ -278,9 +295,13 @@ export function planSellerActions({
       || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     )
   ) {
-    const inline = runSellerInlineAssist(lead, sellerInput, {
+    const inline = runTool('draft_customer_message', {
+      lead,
+      sellerInput,
       currentOfferContext,
-    });
+      customerName,
+      workingContext,
+    }).result;
     let messageDraft = null;
     if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
       && facts.some((f) => f.field === 'purchasePrice' || f.field === 'vehicleInterest')) {
@@ -291,14 +312,18 @@ export function planSellerActions({
         customerName,
       });
     } else if (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
-      const ctx = buildMinimalMessageContext({
+      const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
+      const ctx = runTool('build_minimal_message_context', {
         recipient: customerName || 'Kunde',
         rawSellerInstruction: sellerInput,
         vehicleIdentity: workingContext?.attachedVehicle || null,
-        sellerFacts: interpretMessageInstruction(sellerInput).sellerFacts,
+        sellerFacts: instruction?.sellerFacts || [],
         tone: 'freundlich',
-      });
-      messageDraft = writeGroundedMessageFallback(ctx, {}).body;
+      }).result;
+      messageDraft = runTool('write_grounded_message', {
+        minimalContext: ctx || {},
+        options: {},
+      }).result?.body || null;
     }
 
     actions.push({
@@ -307,6 +332,7 @@ export function planSellerActions({
       label: 'Nachricht vorbereiten',
       needsSellerConfirmation: true,
       status: 'prepared',
+      toolId: 'draft_customer_message',
       legacy: inline ?? null,
       payload: {
         messageDraft,

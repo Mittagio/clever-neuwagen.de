@@ -6,7 +6,15 @@
 import { formatCustomerDisplayName } from '../dealerAiParser.js';
 import { findOfferWorkingContext, toCurrentOfferContext } from '../crm/composerWorkingContext.js';
 import { buildVehicleOpportunityCards } from '../customerAkte.js';
-import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
+import {
+  buildAttributedWishChips,
+  buildCustomerUnderstanding,
+} from '../dealer/customerUnderstanding.js';
+import {
+  listCustomerVehicleTracks,
+  sortTracksForOverview,
+} from '../crm/vehicleTrack.js';
+import { buildGoldenMoment } from '../journey/goldenMoment.js';
 
 function normalizeName(value = '') {
   return String(value ?? '').trim().toLowerCase();
@@ -33,6 +41,19 @@ export function extractNamedCustomerFromInput(sellerInput = '') {
 }
 
 /**
+ * Pronomen / Bezugswörter im Seller-Input.
+ */
+export function resolvePronounHints(sellerInput = '') {
+  const t = String(sellerInput ?? '');
+  return {
+    refersToCurrentCustomer: /\b(ihm|ihr|ihn|sie|dem\s+kunden|der\s+kunde)\b/i.test(t),
+    refersToCurrentOffer: /\b(das\s+angebot|dieses\s+angebot|das\s+da|nochmal)\b/i.test(t),
+    refersToHistory: /\b(damals|wie\s+damals|früher|verlauf)\b/i.test(t),
+    refersToPreviousTurn: /\b(nochmal|noch\s+mal|wie\s+eben|dasselbe)\b/i.test(t),
+  };
+}
+
+/**
  * @param {object} params
  * @param {object} [params.lead]
  * @param {string} [params.sellerInput]
@@ -41,6 +62,7 @@ export function extractNamedCustomerFromInput(sellerInput = '') {
  * @param {object} [params.offerContext]
  * @param {object} [params.currentOfferContext]
  * @param {string} [params.customerName]
+ * @param {object[]} [params.attachments]
  */
 export function resolveAssistantContext(params = {}) {
   const lead = params.lead || {};
@@ -48,6 +70,8 @@ export function resolveAssistantContext(params = {}) {
   const workingItems = Array.isArray(params.workingContextItems)
     ? params.workingContextItems
     : (params.workingContext ? [params.workingContext] : []);
+  const attachments = Array.isArray(params.attachments) ? params.attachments : [];
+  const pronouns = resolvePronounHints(sellerInput);
 
   const openCustomerName = formatCustomerDisplayName(
     params.customerName
@@ -71,6 +95,7 @@ export function resolveAssistantContext(params = {}) {
       ? (namedMatchesOpen || !openCustomerName ? 'input_and_open' : 'input_named')
       : (openCustomerName ? 'open_customer' : 'unknown'),
     matched: Boolean(openCustomerName && (!named || namedMatchesOpen)),
+    pronounResolved: Boolean(pronouns.refersToCurrentCustomer && openCustomerName),
   };
 
   const offerItem = findOfferWorkingContext(workingItems);
@@ -90,6 +115,20 @@ export function resolveAssistantContext(params = {}) {
     vehicleCards = [];
   }
 
+  let vehicleTracks = [];
+  try {
+    vehicleTracks = sortTracksForOverview(listCustomerVehicleTracks(lead) || []);
+  } catch {
+    vehicleTracks = [];
+  }
+
+  const favoriteTrack = vehicleTracks.find((t) => t.status === 'favorite') || null;
+  const deferredTracks = vehicleTracks.filter((t) => t.status === 'deferred');
+
+  const documentItems = workingItems.filter((item) => (
+    item?.kind === 'document' || item?.type === 'document'
+  ));
+
   const attachedVehicle = offerItem?.card || params.workingContext?.card || null;
   const resolvedWorkingContext = {
     offer: offerContext,
@@ -102,22 +141,52 @@ export function resolveAssistantContext(params = {}) {
         offerId: offerContext?.offerId || null,
       }
       : null,
-    attachmentCount: workingItems.length,
+    attachmentCount: workingItems.length + attachments.length,
+    documentCount: documentItems.length + attachments.filter((a) => (
+      /\.pdf$/i.test(a?.name || a?.fileName || '') || a?.kind === 'pdf'
+    )).length,
     openVehicleCount: Array.isArray(vehicleCards) ? vehicleCards.length : 0,
+    vehicleTracks: vehicleTracks.map((t) => ({
+      id: t.id,
+      modelLabel: t.modelLabel,
+      status: t.status,
+      statusLabel: t.statusLabel,
+      requirementLabels: t.requirementLabels ?? [],
+      activeOfferId: t.activeOfferId ?? null,
+    })),
+    favoriteTrackId: favoriteTrack?.id ?? null,
+    deferredTrackIds: deferredTracks.map((t) => t.id),
+    pronouns,
   };
 
   let understanding = null;
+  let notepadLabels = [];
   try {
     understanding = buildCustomerUnderstanding(lead);
+    notepadLabels = (buildAttributedWishChips(lead) ?? [])
+      .map((c) => c.label || c.text)
+      .filter(Boolean)
+      .slice(0, 16);
   } catch {
     understanding = null;
   }
 
+  let goldenMoment = null;
+  try {
+    goldenMoment = buildGoldenMoment(lead);
+  } catch {
+    goldenMoment = null;
+  }
+
   const usedCustomerContext = {
     labels: understanding?.verstaendnis?.labels ?? [],
+    notepadLabels,
     summary: understanding?.gespraechseinstieg ?? null,
     openPoints: understanding?.verstaendnis?.openPoints ?? [],
     vehicles: understanding?.verstaendnis?.vehicles ?? [],
+    favoriteVehicle: favoriteTrack?.modelLabel ?? null,
+    deferredVehicles: deferredTracks.map((t) => t.modelLabel),
+    goldenMomentType: goldenMoment?.type ?? null,
   };
 
   return {
@@ -126,6 +195,8 @@ export function resolveAssistantContext(params = {}) {
     usedCustomerContext,
     offerContext,
     workingContextItems: workingItems,
+    goldenMoment,
+    vehicleTracks,
   };
 }
 
@@ -146,6 +217,7 @@ export function buildInterpretedGoal({ intents = [], facts = [], resolvedCustome
   if (types.includes('draft_message')) parts.push('Nachricht vorbereiten');
   if (types.includes('propose_appointment')) parts.push('Termin vorbereiten');
   if (types.includes('search_customer_history')) parts.push('Verlauf durchsuchen');
+  if (types.includes('update_customer_context')) parts.push('Kundenkontext einsortieren');
   return {
     summary: parts.join(' · ') || 'Auftrag verstehen',
     intentTypes: types,

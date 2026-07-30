@@ -32,6 +32,47 @@ import {
   resolveAssistantContext,
   buildInterpretedGoal,
 } from './resolveAssistantContext.js';
+import {
+  buildUniversalReviewModel,
+  shouldShowUniversalReview,
+} from './buildUniversalReviewModel.js';
+
+function createTurnId() {
+  return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildEvidenceFromTurn({ facts = [], preparedActions = [], retrievedFacts = [] }) {
+  const evidence = [];
+  for (const f of facts) {
+    if (!f?.label) continue;
+    evidence.push({
+      kind: 'extracted_fact',
+      field: f.field,
+      label: f.label,
+      source: f.source || 'seller_input',
+      confidence: f.confidence ?? null,
+    });
+  }
+  for (const retrieved of retrievedFacts) {
+    if (!retrieved) continue;
+    evidence.push({
+      kind: 'retrieved_fact',
+      source: 'verified_vehicle_data',
+      payload: retrieved,
+    });
+  }
+  for (const action of preparedActions) {
+    if (action?.toolId) {
+      evidence.push({
+        kind: 'tool',
+        toolId: action.toolId,
+        type: action.type,
+        status: action.status,
+      });
+    }
+  }
+  return evidence;
+}
 
 /**
  * @param {object} params
@@ -47,6 +88,7 @@ function finalizeSellerTurn({
   currentOfferContext = null,
   workingContextItems = [],
   customerName = '',
+  attachments = [],
 }) {
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const uniqueFacts = filterDuplicateFacts(facts, lead);
@@ -57,6 +99,7 @@ function finalizeSellerTurn({
     workingContextItems,
     currentOfferContext,
     customerName,
+    attachments,
   });
   const offerCtx = currentOfferContext || assistantContext.offerContext || null;
 
@@ -150,8 +193,9 @@ function finalizeSellerTurn({
     .filter((a) => a.payload?.retrieved)
     .map((a) => a.payload.retrieved);
 
-  return buildCleverSellerTurnResult({
+  const turnPartial = {
     ok: Boolean(interpreted.normalized) && enabled,
+    turnId: createTurnId(),
     intent: primaryIntent,
     intents: effectiveIntents,
     inputMode: interpreted.inputMode,
@@ -176,15 +220,22 @@ function finalizeSellerTurn({
         .filter((f) => f.field === 'vehicleInterest' || f.field === 'vehicleInterestMulti')
         .map((f) => f.label),
       currentOffer: offerCtx || null,
+      notepadLabels: assistantContext.usedCustomerContext?.notepadLabels ?? [],
     },
     preparedActions,
     messageDraft,
     warnings,
     assistantReply,
     confidence: interpreted.confidence,
+    evidence: buildEvidenceFromTurn({
+      facts: uniqueFacts,
+      preparedActions,
+      retrievedFacts,
+    }),
     pendingAction,
     currentOfferContext: offerCtx || null,
     homepageInquiry: interpreted.homepageInquiry ?? null,
+    goldenMoment: assistantContext.goldenMoment ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
         .filter((f) => !f.needsConfirmation)
@@ -197,14 +248,29 @@ function finalizeSellerTurn({
           ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
           : null,
         uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null,
+        assistantContext.usedCustomerContext?.notepadLabels?.length
+          ? 'Kundenakte berücksichtigt'
+          : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
           ? 'Angebot vorbereitet'
           : null,
         messageDraft ? 'Nachricht vorbereitet' : null,
+        preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
+          ? 'Termin vorbereitet'
+          : null,
       ].filter(Boolean),
     },
     featureEnabled: enabled,
     openaiEscalation,
+  };
+
+  const reviewModel = shouldShowUniversalReview(turnPartial)
+    ? buildUniversalReviewModel(turnPartial)
+    : null;
+
+  return buildCleverSellerTurnResult({
+    ...turnPartial,
+    reviewModel,
   });
 }
 
@@ -237,6 +303,7 @@ export function runCleverSellerTurn({
     currentOfferContext,
     workingContextItems,
     customerName,
+    attachments,
   });
 }
 
@@ -269,6 +336,7 @@ export async function runCleverSellerTurnAsync({
       intents: interpreted.intents,
       env,
       openaiEscalation: { used: false, reason: gate.reason },
+      attachments,
     });
   }
 

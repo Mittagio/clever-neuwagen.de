@@ -48,6 +48,7 @@ OpenAI interpretiert und formuliert. Clever lädt, validiert, plant, persistiert
 |----------|--------|
 | `runCleverSellerTurn` | `src/services/cleverSeller/runCleverSellerTurn.js` |
 | Context Resolver | `resolveAssistantContext.js` |
+| Tool Registry | `toolRegistry.js` |
 | Fact-/Intent-Interpretation | `interpretSellerInput.js` |
 | proposedUpdates | `proposeSellerUpdates.js` |
 | Missing Info | `resolveMissingInformation.js` |
