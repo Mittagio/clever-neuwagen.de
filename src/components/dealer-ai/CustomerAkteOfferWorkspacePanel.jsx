@@ -28,7 +28,6 @@ export default function CustomerAkteOfferWorkspacePanel({
 }) {
   const title = formatVehicleCardTitle(card);
   const conditions = formatVehicleCardConditions(card);
-  const price = formatVehicleCardPrice(card);
   const offer = lead?.crm?.vehicleOffers?.[card?.id]
     ?? lead?.crm?.vehicleOffers?.[card?.configurationId]
     ?? card?.vehicleOffer
@@ -51,27 +50,49 @@ export default function CustomerAkteOfferWorkspacePanel({
   const pdfHref = pdf?.dataUrl || pdf?.url || null;
   const pdfLabel = pdf?.fileName || pdf?.name || 'Original-PDF';
 
+  const monthlyRate = track?.monthlyRate
+    ?? card?.leasingData?.calculatedRate
+    ?? card?.monthlyRate
+    ?? null;
+  const termMonths = track?.termMonths ?? card?.termMonths ?? card?.leasingData?.termMonths ?? null;
+  const annualMileage = track?.annualMileage
+    ?? card?.mileagePerYear
+    ?? card?.leasingData?.mileagePerYear
+    ?? null;
+  const downPayment = track?.downPayment
+    ?? card?.downPayment
+    ?? card?.leasingData?.downPayment
+    ?? null;
+
+  const price = monthlyRate != null && Number.isFinite(Number(monthlyRate))
+    ? `${Number(monthlyRate).toLocaleString('de-DE')} € / Monat`
+    : formatVehicleCardPrice(card);
+
+  const displayTitle = track?.displayName
+    || title
+    || [card?.brand, card?.model, card?.trimLabel].filter(Boolean).join(' ');
+
   const facts = useMemo(() => {
     const rows = [];
-    if (price) rows.push({ label: 'Rate / Preis', value: price, dominant: true });
-    if (card?.termMonths) rows.push({ label: 'Laufzeit', value: `${card.termMonths} Monate` });
-    if (card?.mileagePerYear) {
+    if (price) rows.push({ label: 'Rate', value: price, dominant: true });
+    if (termMonths != null) rows.push({ label: 'Laufzeit', value: `${termMonths} Monate` });
+    if (annualMileage != null) {
       rows.push({
         label: 'Fahrleistung',
-        value: `${Number(card.mileagePerYear).toLocaleString('de-DE')} km/Jahr`,
+        value: `${Number(annualMileage).toLocaleString('de-DE')} km/Jahr`,
       });
     }
-    if (card?.downPayment != null && card.downPayment !== '') {
+    if (downPayment != null && downPayment !== '') {
       rows.push({
         label: 'Sonderzahlung',
-        value: `${Number(card.downPayment).toLocaleString('de-DE')} €`,
+        value: `${Number(downPayment).toLocaleString('de-DE')} €`,
       });
     }
-    if (conditions && !card?.termMonths) {
+    if (!termMonths && !annualMileage && conditions) {
       rows.push({ label: 'Konditionen', value: conditions });
     }
     return rows;
-  }, [card, conditions, price]);
+  }, [price, termMonths, annualMileage, downPayment, conditions]);
 
   return (
     <div className="cust-offer-ws" role="region" aria-label="Angebot Workspace">

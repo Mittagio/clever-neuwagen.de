@@ -1965,6 +1965,9 @@ export default function DealerAiLeadFollowUp({
   }
 
   function closeSheet() {
+    if (activeSheet === SHEETS.boardOffers && akteTab === AKTE_TABS.angebote) {
+      setAkteTab(AKTE_TABS.clever);
+    }
     setActiveSheet(null);
     if (activeSheet === SHEETS.questionAnswer) {
       setQuestionContext(null);
