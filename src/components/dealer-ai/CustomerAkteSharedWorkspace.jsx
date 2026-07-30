@@ -57,6 +57,7 @@ import {
   isComposerAkteSearchQuery,
   runComposerAkteSearch,
 } from '../../services/crm/composerAkteSearch.js';
+import { shouldClearAssistOnEmptyDraft } from './composerAssistPin.js';
 
 const DEBOUNCE_MS = 380;
 
@@ -134,9 +135,25 @@ export default function CustomerAkteSharedWorkspace({
   const [appointmentDraft, setAppointmentDraft] = useState(null);
   const debounceRef = useRef(null);
   const assistRequestIdRef = useRef(0);
+  /** Chip-/Review-vorbereitete Karte: empty-draft-Effekt darf sie nicht verwerfen. */
+  const assistPinnedRef = useRef(false);
   const composerInputRef = useRef(null);
   const offerPrepRef = useRef(null);
   const appointmentDraftRef = useRef(null);
+
+  function pinAssist(next) {
+    assistPinnedRef.current = true;
+    setAssist(next);
+  }
+
+  function unpinAssist() {
+    assistPinnedRef.current = false;
+  }
+
+  function clearAssist() {
+    assistPinnedRef.current = false;
+    setAssist(null);
+  }
 
   useEffect(() => {
     offerPrepRef.current = offerPrep;
@@ -192,14 +209,22 @@ export default function CustomerAkteSharedWorkspace({
     if (text.length < 3) {
       assistRequestIdRef.current += 1;
       setUniversalTurn(null);
+      if (!shouldClearAssistOnEmptyDraft({
+        pinned: assistPinnedRef.current,
+        confirmAssist,
+      })) {
+        return undefined;
+      }
       if (confirmAssist?.ok) {
         setAssist(confirmAssist);
       } else {
-        setAssist(null);
+        clearAssist();
       }
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
+      // Tippen ersetzt eine chip-/review-vorbereitete Karte.
+      unpinAssist();
       const requestId = ++assistRequestIdRef.current;
       const isStale = () => requestId !== assistRequestIdRef.current;
 
@@ -328,7 +353,7 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     setUniversalTurn(null);
-    setAssist(suggestion);
+    pinAssist(suggestion);
     setOfferPrep(null);
     setAppointmentDraft(null);
     setDraft('');
@@ -400,7 +425,8 @@ export default function CustomerAkteSharedWorkspace({
     if (isComposerAkteSearchQuery(text)) {
       const search = runComposerAkteSearch(lead, text, { customerName });
       setUniversalTurn(null);
-      setAssist(search.ok ? search : null);
+      if (search.ok) pinAssist(search);
+      else clearAssist();
       setDraft('');
       setFeedback(search.ok ? 'Suche im Vorgang' : 'Nichts gefunden');
       setTimeout(() => setFeedback(''), 2500);
@@ -423,7 +449,7 @@ export default function CustomerAkteSharedWorkspace({
       }
       persistMessages(result.lead, 'Nachricht im gemeinsamen Arbeitsraum gesendet');
       setDraft('');
-      setAssist(null);
+      clearAssist();
       setOfferPrep(null);
       setAppointmentDraft(null);
       onMessageSent?.();
@@ -464,7 +490,7 @@ export default function CustomerAkteSharedWorkspace({
       return insertInlineFactIntoDraft(next, result.insertText || '');
     });
     persistCleverFeedCard(result, { ctaLabel: null, ctaAction: null });
-    setAssist(null);
+    clearAssist();
     setFeedback('Verifizierten Wert übernommen');
     setTimeout(() => setFeedback(''), 2200);
   }
@@ -472,7 +498,7 @@ export default function CustomerAkteSharedWorkspace({
   function handlePrepareReply(result) {
     if (result.insertText) {
       setDraft((prev) => insertInlineFactIntoDraft(prev, result.insertText));
-      setAssist(null);
+      clearAssist();
       return;
     }
     handleInsertFact(result);
@@ -517,7 +543,7 @@ export default function CustomerAkteSharedWorkspace({
       }
       persistMessages(sent.lead, 'Workspace-Paket gesendet');
       setDraft('');
-      setAssist(null);
+      clearAssist();
       setOfferPrep(null);
       setAppointmentDraft(null);
       onMessageSent?.();
@@ -569,7 +595,7 @@ export default function CustomerAkteSharedWorkspace({
       ctaAction: 'send_portfolio',
       historyText: 'Kundenlink aus Composer vorbereitet',
     });
-    setAssist(null);
+    clearAssist();
     setDraft('');
   }
 
@@ -654,7 +680,7 @@ export default function CustomerAkteSharedWorkspace({
       }, historyText);
 
       setDraft('');
-      setAssist(null);
+      clearAssist();
       setAppointmentDraft(null);
       onMessageSent?.();
       setFeedback('Vorschlag gesendet');
@@ -707,7 +733,7 @@ export default function CustomerAkteSharedWorkspace({
       };
       persistMessages(nextLead, historyText);
       setDraft('');
-      setAssist(null);
+      clearAssist();
       setAppointmentDraft(null);
       onMessageSent?.();
       setFeedback('Termin eingetragen');
@@ -728,7 +754,7 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleDismissAssist() {
-    setAssist(null);
+    clearAssist();
     setUniversalTurn(null);
     setOfferPrep(null);
     setAppointmentDraft(null);
@@ -824,7 +850,7 @@ export default function CustomerAkteSharedWorkspace({
         setDraft('');
         setOfferPrep(null);
         setAppointmentDraft(null);
-        setAssist(messageLegacy?.ok
+        pinAssist(messageLegacy?.ok
           ? messageLegacy
           : { ok: true, results: [messageResult] });
         setFeedback('Änderungen übernommen – Nachricht prüfen und senden');
@@ -834,7 +860,7 @@ export default function CustomerAkteSharedWorkspace({
 
       if (offerAction && offerResult && !updateOnly) {
         setDraft('');
-        setAssist(null);
+        clearAssist();
         setOfferPrep(null);
         setAppointmentDraft(null);
         setFeedback(
@@ -849,7 +875,7 @@ export default function CustomerAkteSharedWorkspace({
 
       if (updateOnly && !messageBody) {
         setDraft('');
-        setAssist(null);
+        clearAssist();
         setOfferPrep(null);
         setAppointmentDraft(null);
         setFeedback('Angebot aktualisiert');
@@ -859,11 +885,20 @@ export default function CustomerAkteSharedWorkspace({
 
       if (messageResult) {
         const body = messageResult.draft?.body || messageResult.body || '';
-        if (body) setDraft(body);
-        setAssist(messageLegacy?.ok ? messageLegacy : {
-          ok: true,
-          results: [messageResult],
-        });
+        if (body) {
+          unpinAssist();
+          setDraft(body);
+          setAssist(messageLegacy?.ok ? messageLegacy : {
+            ok: true,
+            results: [messageResult],
+          });
+        } else {
+          setDraft('');
+          pinAssist(messageLegacy?.ok ? messageLegacy : {
+            ok: true,
+            results: [messageResult],
+          });
+        }
         setOfferPrep(null);
         setAppointmentDraft(null);
         setFeedback('Angaben übernommen – Nachricht bereit zum Senden');
@@ -873,7 +908,7 @@ export default function CustomerAkteSharedWorkspace({
 
       if (appointmentResult && appointmentLegacy?.ok !== false) {
         setAppointmentDraft(appointmentLegacy?.appointment ?? appointmentResult?.appointment ?? null);
-        setAssist(appointmentLegacy?.ok ? appointmentLegacy : {
+        pinAssist(appointmentLegacy?.ok ? appointmentLegacy : {
           ok: true,
           results: [appointmentResult],
         });
@@ -887,6 +922,7 @@ export default function CustomerAkteSharedWorkspace({
       if (documentsLegacy) {
         const body = documentsLegacy.body || documentsLegacy.draft?.body || '';
         const actions = documentsLegacy.actions || [];
+        unpinAssist();
         setAssist({
           ok: true,
           results: [{
@@ -909,7 +945,7 @@ export default function CustomerAkteSharedWorkspace({
 
       if (portfolioAction) {
         setDraft('');
-        setAssist(null);
+        clearAssist();
         setOfferPrep(null);
         setAppointmentDraft(null);
         setFeedback(
@@ -923,7 +959,7 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       setDraft('');
-      setAssist(null);
+      clearAssist();
       setOfferPrep(null);
       setAppointmentDraft(null);
       setFeedback(
@@ -981,7 +1017,7 @@ export default function CustomerAkteSharedWorkspace({
       });
       if (shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
-        setAssist(null);
+        clearAssist();
         setFeedback('PDF gelesen – bitte Angaben prüfen');
       } else {
         setUniversalTurn(null);
@@ -1060,13 +1096,13 @@ export default function CustomerAkteSharedWorkspace({
               onOpenSearchHit={(result) => {
                 if (result?.offerId) {
                   onOpenOffer?.({ offerId: result.offerId, id: result.offerId });
-                  setAssist(null);
+                  clearAssist();
                   setDraft('');
                   return;
                 }
                 if (result?.messageId && onFocusFeedMessage) {
                   onFocusFeedMessage(result.messageId);
-                  setAssist(null);
+                  clearAssist();
                   setDraft('');
                   return;
                 }
