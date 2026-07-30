@@ -7,6 +7,62 @@ import { runSellerOfferAssist } from '../dealer/sellerOfferAssistFlow.js';
 import { runSellerAppointmentAssist } from '../dealer/sellerAppointmentAssistFlow.js';
 import { runSellerInlineAssist } from '../dealer/sellerInlineComposerAssist.js';
 import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
+import { runComposerAkteSearch } from '../crm/composerAkteSearch.js';
+import { writeGroundedMessageFallback } from '../crm/magic/generateCleverCustomerMessage.js';
+import { buildMinimalMessageContext } from '../crm/magic/buildMinimalMessageContext.js';
+import { interpretMessageInstruction } from '../crm/magic/interpretMessageInstruction.js';
+import {
+  lookupPackageContents,
+  lookupRelevantEquipment,
+  lookupVehicleVariant,
+} from '../crm/magic/magicKnowledgeTools.js';
+import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
+
+function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
+  void sellerInput;
+  const purchase = facts.find((f) => f.field === 'purchasePrice');
+  const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+  const name = customerName
+    || facts.find((f) => f.field === 'customerName')?.value
+    || lead?.contact?.name
+    || 'Kunde';
+  const vehicleLabel = vehicle?.label || 'das gewünschte Fahrzeug';
+  const priceLabel = purchase
+    ? `${Number(purchase.value).toLocaleString('de-DE')} €`
+    : null;
+
+  const labels = [];
+  try {
+    const u = buildCustomerUnderstanding(lead);
+    for (const l of (u?.verstaendnis?.labels ?? []).slice(0, 4)) {
+      if (l) labels.push(String(l));
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const lines = [
+    `Hallo ${/^(herr|frau)\b/i.test(name) ? name : `Herr ${name}`},`,
+    '',
+    `wie besprochen habe ich Ihnen ein Angebot für den ${vehicleLabel} vorbereitet.`,
+  ];
+  if (priceLabel) {
+    lines.push('', `Der Kaufpreis liegt bei ${priceLabel}.`);
+  }
+  if (labels.some((l) => /hund/i.test(l))) {
+    lines.push(
+      '',
+      'Da Ihnen auch ausreichend Platz für Ihren Hund wichtig ist, können wir uns das Fahrzeug gerne gemeinsam vor Ort ansehen und prüfen, ob es für Ihre Anforderungen gut passt.',
+    );
+  } else if (labels.length) {
+    lines.push(
+      '',
+      `Dabei berücksichtige ich, was uns wichtig war: ${labels.slice(0, 3).join(', ')}.`,
+    );
+  }
+  lines.push('', 'Viele Grüße');
+  return lines.join('\n');
+}
 
 /**
  * @param {object} params
@@ -19,9 +75,30 @@ export function planSellerActions({
   facts = [],
   missingInformation = [],
   currentOfferContext = null,
+  resolvedCustomer = null,
+  workingContext = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
+  const customerName = resolvedCustomer?.name
+    || resolvedCustomer?.namedInInput
+    || lead?.contact?.name
+    || '';
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
+    const search = runComposerAkteSearch(lead, sellerInput, { customerName });
+    actions.push({
+      id: 'search_customer_history',
+      type: SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
+      label: 'Verlauf durchsuchen',
+      needsSellerConfirmation: false,
+      status: search?.ok ? 'prepared' : 'blocked',
+      legacy: search ?? null,
+      payload: {
+        hitCount: search?.results?.length ?? 0,
+      },
+    });
+  }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT)) {
     actions.push({
@@ -50,13 +127,28 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)) {
+    const blockedByClarify = missingInformation.some((m) => m.id === 'clarify_purchase_vs_leasing');
     const commercialOnly = facts.length > 0
       && facts.every((f) => (
         f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
         || f.factClass === SELLER_FACT_CLASS.MESSAGE_INSTRUCTION
         || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
+        || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION
+        || f.factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST
+        || f.factClass === SELLER_FACT_CLASS.CUSTOMER_FACT
       ));
-    if (currentOfferContext?.offerId && commercialOnly) {
+    if (blockedByClarify) {
+      actions.push({
+        id: 'prepare_offer',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Angebot – Klärung nötig',
+        needsSellerConfirmation: true,
+        status: 'blocked',
+        payload: {
+          needsClarification: true,
+        },
+      });
+    } else if (currentOfferContext?.offerId && commercialOnly && !facts.some((f) => f.field === 'purchasePrice')) {
       actions.push({
         id: 'update_offer_context',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
@@ -71,15 +163,20 @@ export function planSellerActions({
       });
     } else {
       const offer = runSellerOfferAssist(lead, sellerInput, {});
+      const purchase = facts.find((f) => f.field === 'purchasePrice');
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
         label: 'Angebot vorbereiten',
         needsSellerConfirmation: true,
-        status: offer?.ok ? 'prepared' : 'blocked',
+        status: offer?.ok || purchase ? 'prepared' : 'blocked',
         legacy: offer ?? null,
         payload: {
-          canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer),
+          canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer) || Boolean(purchase),
+          purchasePrice: purchase?.value ?? null,
+          paymentType: facts.find((f) => f.field === 'paymentType')?.value ?? null,
+          vehicleLabel: facts.find((f) => f.field === 'vehicleInterest')?.label ?? null,
+          attachWorkingContext: true,
         },
       });
     }
@@ -116,6 +213,9 @@ export function planSellerActions({
   if (intentTypes.has(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
     || intentTypes.has(SELLER_TURN_INTENTS.PREPARE_CALLBACK)) {
     const appointment = runSellerAppointmentAssist(lead, sellerInput, {});
+    const appointmentMessage = appointment?.results?.[0]?.messageBody
+      || appointment?.results?.[0]?.draft?.body
+      || null;
     actions.push({
       id: 'propose_appointment',
       type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT,
@@ -123,23 +223,56 @@ export function planSellerActions({
       needsSellerConfirmation: true,
       status: appointment?.ok ? 'prepared' : 'blocked',
       legacy: appointment ?? null,
+      payload: {
+        messageDraft: appointmentMessage,
+        when: appointment?.appointment?.startAt || null,
+      },
     });
+    if (appointmentMessage && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
+      actions.push({
+        id: 'draft_message',
+        type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+        label: 'Nachricht vorbereiten',
+        needsSellerConfirmation: true,
+        status: 'prepared',
+        payload: { messageDraft: appointmentMessage },
+      });
+    }
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) {
+    const interpretation = interpretMessageInstruction(sellerInput);
+    const modelFact = facts.find((f) => f.field === 'vehicleInterest');
+    const modelKey = modelFact?.value?.modelKey || workingContext?.attachedVehicle?.modelKey;
+    const trimId = modelFact?.value?.trim || workingContext?.attachedVehicle?.trimId;
+    let retrieved = null;
+    if (modelKey) {
+      const variant = lookupVehicleVariant({ modelKey, trim: trimId });
+      const pkgName = interpretation.sellerFacts.find((f) => f.type === 'package_present')?.value;
+      const pkg = pkgName
+        ? lookupPackageContents({ modelKey, trim: trimId, packageName: pkgName })
+        : null;
+      const eq = trimId
+        ? lookupRelevantEquipment({ modelKey, trim: trimId })
+        : null;
+      retrieved = { variant, package: pkg, equipment: eq };
+    }
     const inline = runSellerInlineAssist(lead, sellerInput);
     actions.push({
       id: 'lookup_vehicle_fact',
       type: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
       label: 'Fahrzeugfakt prüfen',
       needsSellerConfirmation: false,
-      status: inline?.ok ? 'prepared' : 'blocked',
+      status: inline?.ok || retrieved ? 'prepared' : 'blocked',
       legacy: inline ?? null,
+      payload: { retrieved },
     });
   }
 
   if (
     !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)
+    && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
+    && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     && (
       inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
       || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
@@ -148,6 +281,26 @@ export function planSellerActions({
     const inline = runSellerInlineAssist(lead, sellerInput, {
       currentOfferContext,
     });
+    let messageDraft = null;
+    if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+      && facts.some((f) => f.field === 'purchasePrice' || f.field === 'vehicleInterest')) {
+      messageDraft = buildOfferMessageDraft({
+        lead,
+        sellerInput,
+        facts,
+        customerName,
+      });
+    } else if (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
+      const ctx = buildMinimalMessageContext({
+        recipient: customerName || 'Kunde',
+        rawSellerInstruction: sellerInput,
+        vehicleIdentity: workingContext?.attachedVehicle || null,
+        sellerFacts: interpretMessageInstruction(sellerInput).sellerFacts,
+        tone: 'freundlich',
+      });
+      messageDraft = writeGroundedMessageFallback(ctx, {}).body;
+    }
+
     actions.push({
       id: 'draft_message',
       type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
@@ -155,6 +308,9 @@ export function planSellerActions({
       needsSellerConfirmation: true,
       status: 'prepared',
       legacy: inline ?? null,
+      payload: {
+        messageDraft,
+      },
     });
   }
 

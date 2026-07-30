@@ -13,7 +13,7 @@ import {
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 
 const SEARCH_PATTERNS = [
-  /was\s+habe\s+ich\b/i,
+  /was\s+hab(?:e|te)\s+ich\b/i,
   /welche[snr]?\s+angebot/i,
   /wo\s+(?:steht|habe|find)/i,
   /(?:finde|such(?:e|en)?|zeig(?:e|en)?)\b/i,

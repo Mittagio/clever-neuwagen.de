@@ -60,7 +60,6 @@ import {
 import { buildVehicleOpportunityCards, formatVehicleCardConditions, formatVehicleCardPrice, formatVehicleCardTitle } from '../../services/customerAkte.js';
 import {
   isComposerAkteSearchQuery,
-  runComposerAkteSearch,
 } from '../../services/crm/composerAkteSearch.js';
 import { shouldClearAssistOnEmptyDraft } from './composerAssistPin.js';
 import {
@@ -287,54 +286,73 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
-      if (isComposerAkteSearchQuery(text)) {
-        if (isStale()) return;
-        const search = runComposerAkteSearch(lead, text, { customerName });
-        setUniversalTurn(null);
-        setAssist(search.ok ? search : null);
-        return;
-      }
-
       const applyAssistFromTurn = (turn) => {
         if (isStale()) return;
+
+        // Verlauf-Suche aus Turn
+        const historyAction = turn?.preparedActions?.find(
+          (a) => a.type === 'search_customer_history' && a.legacy,
+        );
+        if (historyAction?.legacy) {
+          setUniversalTurn(null);
+          setAssist(historyAction.legacy);
+          return;
+        }
+
         if (shouldShowUniversalReview(turn)) {
           setUniversalTurn(turn);
           setAssist(null);
           return;
         }
-        setUniversalTurn(null);
 
+        // preparedActions → Legacy-Assist nur wenn Turn kein Review zeigt
+        const offerAction = turn?.preparedActions?.find(
+          (a) => a.type === 'prepare_offer' && a.legacy?.ok,
+        );
+        if (offerAction?.legacy) {
+          setUniversalTurn(turn);
+          setOfferPrep(offerAction.legacy.previousPreparation ?? null);
+          setAssist(offerAction.legacy);
+          return;
+        }
+        const appointmentAction = turn?.preparedActions?.find(
+          (a) => a.type === 'propose_appointment' && a.legacy?.ok,
+        );
+        if (appointmentAction?.legacy) {
+          setUniversalTurn(turn);
+          setAppointmentDraft(appointmentAction.legacy.appointment ?? null);
+          setAssist(appointmentAction.legacy);
+          return;
+        }
+        const draftAction = turn?.preparedActions?.find(
+          (a) => a.type === 'draft_message' && (a.legacy?.ok || a.payload?.messageDraft),
+        );
+        if (draftAction?.payload?.messageDraft) {
+          setUniversalTurn(turn);
+          setAssist(null);
+          return;
+        }
+        if (draftAction?.legacy?.ok) {
+          setUniversalTurn(null);
+          setAssist(draftAction.legacy);
+          return;
+        }
+
+        setUniversalTurn(null);
         const portfolioAssist = runSellerInlineAssist(lead, text);
         if (portfolioAssist?.ok && portfolioAssist.results?.some((r) => r.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND)) {
           setAssist(portfolioAssist);
           return;
         }
-
-        const offer = runSellerOfferAssist(lead, text, {
-          previousPreparation: offerPrepRef.current,
-        });
-        if (offer?.ok) {
-          setOfferPrep(offer.previousPreparation ?? null);
-          setAssist(offer);
-          return;
-        }
-        const appointment = runSellerAppointmentAssist(lead, text, {
-          previousAppointment: appointmentDraftRef.current
-            || getOpenCleverAppointment(lead),
-        });
-        if (appointment?.ok) {
-          setAppointmentDraft(appointment.appointment ?? null);
-          setAssist(appointment);
-          return;
-        }
-        const result = portfolioAssist?.ok ? portfolioAssist : runSellerInlineAssist(lead, text);
-        setAssist(result.ok ? result : null);
+        setAssist(null);
       };
 
       const localTurn = runCleverSellerTurn({
         lead,
         sellerInput: text,
         currentOfferContext: resolveCurrentOfferContext(),
+        workingContextItems,
+        customerName,
       });
       const gate = shouldEscalateSellerInterpretation({
         ...localTurn,
@@ -512,12 +530,30 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (isComposerAkteSearchQuery(text)) {
-      const search = runComposerAkteSearch(lead, text, { customerName });
-      setUniversalTurn(null);
-      if (search.ok) pinAssist(search);
-      else clearAssist();
+      const turn = runCleverSellerTurn({
+        lead,
+        sellerInput: text,
+        currentOfferContext: resolveCurrentOfferContext(),
+        workingContextItems,
+        customerName,
+      });
+      const historyAction = turn?.preparedActions?.find(
+        (a) => a.type === 'search_customer_history' && a.legacy,
+      );
       setDraft('');
-      setFeedback(search.ok ? 'Suche im Vorgang' : 'Nichts gefunden');
+      if (shouldShowUniversalReview(turn)) {
+        setUniversalTurn(turn);
+        setAssist(null);
+        setFeedback('Verlauf durchsucht');
+      } else if (historyAction?.legacy?.ok) {
+        setUniversalTurn(null);
+        pinAssist(historyAction.legacy);
+        setFeedback('Suche im Vorgang');
+      } else {
+        setUniversalTurn(null);
+        clearAssist();
+        setFeedback('Nichts gefunden');
+      }
       setTimeout(() => setFeedback(''), 2500);
       return;
     }
@@ -1356,6 +1392,24 @@ export default function CustomerAkteSharedWorkspace({
               model={reviewModel}
               onAccept={handleAcceptUniversalReview}
               onDismiss={handleDismissAssist}
+              onOpenHistoryHit={(result) => {
+                if (result?.messageId && onFocusFeedMessage) {
+                  onFocusFeedMessage(result.messageId);
+                  clearAssist();
+                  setUniversalTurn(null);
+                  setDraft('');
+                  return;
+                }
+                if (result?.offerId) {
+                  onOpenOffer?.({ offerId: result.offerId, id: result.offerId });
+                  clearAssist();
+                  setUniversalTurn(null);
+                  setDraft('');
+                  return;
+                }
+                setFeedback('Treffer im Verlauf – Filter „Nachrichten“ nutzen');
+                setTimeout(() => setFeedback(''), 2800);
+              }}
             />
           ) : (
             <SellerInlineAssistCard

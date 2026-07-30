@@ -70,14 +70,20 @@ export function resolveMissingInformation({
         field: 'vehicleInterest',
       });
     }
-    // Bekannte Konditionen nicht erneut fragen
-    const hasTerm = profile?.termMonths || lead?.wish?.termMonths || lead?.wish?.months;
-    const hasKm = profile?.annualMileage || lead?.wish?.annualMileage || lead?.wish?.km;
-    // nur wenn Offer und gar kein Kontext – absichtlich keine Fragen für term/km wenn bekannt
-    if (!hasTerm && !lead?.wish?.paymentType) {
-      // still don't ask term by default if leasing already implied elsewhere
+
+    // Leasing-Kontext + Kaufpreis-Zahl → echte Ambiguity einmal nachfragen
+    const purchasePrice = facts.find((f) => f.field === 'purchasePrice');
+    const leadLeasing = String(lead?.paymentType || lead?.wish?.paymentType || profile?.paymentType || '')
+      .toLowerCase()
+      .includes('leasing');
+    if (purchasePrice && leadLeasing) {
+      missing.push({
+        id: 'clarify_purchase_vs_leasing',
+        forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: `Soll ich ein Kaufangebot über ${Number(purchasePrice.value).toLocaleString('de-DE')} € erstellen oder dienen die ${Number(purchasePrice.value).toLocaleString('de-DE')} € als Fahrzeugpreis für eine Leasingberechnung?`,
+        field: 'paymentType',
+      });
     }
-    void hasKm;
   }
 
   const ambiguousMoney = facts.find((f) => (

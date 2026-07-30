@@ -7,9 +7,12 @@ export default function SellerUniversalReviewCard({
   model = null,
   onAccept = null,
   onDismiss = null,
+  onOpenHistoryHit = null,
 }) {
-  if (!model?.groups?.length) return null;
-  const sections = Array.isArray(model.actionSections) ? model.actionSections : [];
+  const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
+  const groups = Array.isArray(model?.groups) ? model.groups : [];
+  const progressLines = Array.isArray(model?.progressLines) ? model.progressLines : [];
+  if (!model || (!groups.length && !sections.length)) return null;
 
   return (
     <article className="sur-card" aria-live="polite">
@@ -27,6 +30,14 @@ export default function SellerUniversalReviewCard({
         ) : null}
       </header>
 
+      {progressLines.length > 0 ? (
+        <ul className="sur-card__progress" aria-label="Clever Fortschritt">
+          {progressLines.map((line) => (
+            <li key={line}>{`✨ ${line}`}</li>
+          ))}
+        </ul>
+      ) : null}
+
       {sections.length > 0 ? (
         <ul className="sur-card__actions" aria-label="Vorbereitete Aktionen">
           {sections.map((section) => (
@@ -35,29 +46,45 @@ export default function SellerUniversalReviewCard({
               {section.headline ? (
                 <p className="sur-card__action-headline">{section.headline}</p>
               ) : null}
-              {section.kind === 'offer_change' && section.changes?.length ? (
-                <ul className="sur-card__deltas">
-                  {section.changes.map((change) => (
-                    <li key={change.id}>
-                      <span className="sur-card__delta-label">{change.label}</span>
-                      <span className="sur-card__delta-value">
-                        {change.from && change.to
-                          ? `${change.from} → ${change.to}`
-                          : (change.to || change.from)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {section.line ? (
+                <p className="sur-card__group-line">{section.line}</p>
               ) : null}
-              {section.kind === 'message_draft' && section.body ? (
-                <pre className="sur-card__draft">{section.body}</pre>
+              {(section.kind === 'offer_change' || section.kind === 'offer_prepare')
+                && section.changes?.length ? (
+                  <ul className="sur-card__deltas">
+                    {section.changes.map((change) => (
+                      <li key={change.id}>
+                        <span className="sur-card__delta-label">{change.label}</span>
+                        <span className="sur-card__delta-value">
+                          {change.from && change.to
+                            ? `${change.from} → ${change.to}`
+                            : (change.to || change.from)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              {(section.kind === 'message_draft'
+                || section.kind === 'appointment_propose'
+                || section.kind === 'history_search')
+                && section.body ? (
+                  <pre className="sur-card__draft">{section.body}</pre>
+                ) : null}
+              {section.kind === 'history_search' && section.hit && onOpenHistoryHit ? (
+                <button
+                  type="button"
+                  className="sur-card__btn sur-card__btn--ghost sur-card__btn--inline"
+                  onClick={() => onOpenHistoryHit(section.hit)}
+                >
+                  Im Verlauf öffnen
+                </button>
               ) : null}
             </li>
           ))}
         </ul>
       ) : (
         <ul className="sur-card__groups">
-          {model.groups.map((group) => (
+          {groups.map((group) => (
             <li key={group.id} className="sur-card__group">
               <p className="sur-card__group-title">{group.title}</p>
               <p className="sur-card__group-line">{group.line}</p>
@@ -66,7 +93,7 @@ export default function SellerUniversalReviewCard({
         </ul>
       )}
 
-      {sections.length === 0 ? (
+      {sections.length === 0 && groups.length > 0 ? (
         <p className="sur-card__summary">{model.summaryLine}</p>
       ) : (
         <p className="sur-card__summary">{model.summaryLine}</p>

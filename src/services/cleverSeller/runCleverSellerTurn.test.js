@@ -160,7 +160,11 @@ const msgTurn = runCleverSellerTurn({
 assert.equal(msgTurn.inputMode, SELLER_INPUT_MODE.CUSTOMER_MESSAGE);
 // „Schreib ihm …“ + Lieferzeit-Fakt → Review (Fakten nicht still verwerfen)
 assert.equal(shouldShowUniversalReview(msgTurn), true);
-assert.ok(msgTurn.extractedFacts.some((f) => f.field === 'deliveryEstimateMonths' || f.field === 'deliveryDeadline'));
+assert.ok(msgTurn.extractedFacts.some((f) => (
+  f.field === 'deliveryEstimateMonths'
+  || f.field === 'deliveryDeadline'
+  || f.field === 'deliveryTimeAnswer'
+)));
 
 // Reine Kundennachricht ohne CRM-Fakten → kein Review
 assert.equal(

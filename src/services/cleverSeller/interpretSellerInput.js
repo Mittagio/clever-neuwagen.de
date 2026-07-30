@@ -37,6 +37,7 @@ import {
   formatCommercialScenarioChip,
   formatCustomerTypeLabel,
 } from '../crm/commercialScenarios.js';
+import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -131,6 +132,17 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   const facts = [];
   const lead = options.lead ?? {};
   if (!t) return facts;
+
+  const namedCustomer = extractNamedCustomerFromInput(t);
+  if (namedCustomer) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'customerName',
+      value: namedCustomer,
+      label: namedCustomer,
+      confidence: 0.88,
+    }));
+  }
 
   // Epic 2: Homepage Dual-Szenario zuerst – kein gemischter paymentType
   const homepageDraft = parseHomepageCommercialInquiry(raw);
@@ -531,10 +543,37 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Wunschrate / commercial
+  const purchasePriceMatch = t.match(
+    /\b(?:für|zu|über|kaufpreis|preis)\s*(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*(?:€|euro)?\b/i,
+  ) || (
+    /\bangebot\b/i.test(t)
+      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)\b/i)
+      : null
+  );
+  if (purchasePriceMatch) {
+    const value = Number(String(purchasePriceMatch[1]).replace(/\./g, ''));
+    if (value >= 5000) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+        field: 'purchasePrice',
+        value,
+        label: `Kaufpreis: ${value.toLocaleString('de-DE')} €`,
+        confidence: 0.9,
+      }));
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'paymentType',
+        value: 'purchase',
+        label: 'Kaufangebot',
+        confidence: 0.82,
+      }));
+    }
+  }
+
   const budget = t.match(/\b(\d{2,4})\s*(?:€|euro)?\s*(?:wunsch)?rate\b/i)
     || t.match(/\bwunschrate\s*(?:ca\.?\s*)?(\d{2,4})\b/i)
     || (/\bwunschrate\b/i.test(t) ? t.match(/\b(\d{2,4})\s*(?:€|euro)\b/i) : null);
-  if (budget) {
+  if (budget && !facts.some((f) => f.field === 'purchasePrice')) {
     const value = Number(budget[1]);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
@@ -543,7 +582,12 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: `${value} € Wunschrate`,
       confidence: 0.92,
     }));
-  } else if (/\b(\d{2,4})\s*(?:€|euro)\b/i.test(t) && !net && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)) {
+  } else if (
+    !facts.some((f) => f.field === 'purchasePrice')
+    && /\b(\d{2,4})\s*(?:€|euro)\b/i.test(t)
+    && !net
+    && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)
+  ) {
     const lone = t.match(/\b(\d{2,4})\s*(?:€|euro)\b/i);
     if (lone && !/\banzahlung|az\b/i.test(t)) {
       pushFact(facts, createExtractedFact({
@@ -557,16 +601,25 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  const color = t.match(/\b(schwarzmetallic|schwarz|weiß|weiss|terracotta|blau|grau|silber|rot|grün|gruen)\b/i);
+  const color = t.match(/\b(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*)\b/i);
   if (color) {
     const raw = color[1];
+    const lower = String(raw || '').toLowerCase();
+    const base = lower.startsWith('schwarz') ? 'schwarz'
+      : lower.startsWith('weiß') || lower.startsWith('weiss') ? 'weiß'
+      : lower.startsWith('blau') ? 'blau'
+      : lower.startsWith('grau') ? 'grau'
+      : lower.startsWith('silber') ? 'silber'
+      : lower.startsWith('rot') ? 'rot'
+      : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
+      : lower;
     const label = /\bfarbe\b/i.test(t) && !/^farbe/i.test(raw)
-      ? `Farbe ${titleCaseToken(raw)}`
-      : titleCaseToken(raw);
+      ? `Farbe ${titleCaseToken(base)}`
+      : titleCaseToken(base);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
-      value: raw.toLowerCase(),
+      value: base,
       label,
       confidence: hasInterest ? 0.88 : 0.82,
       needsConfirmation: !hasInterest,
@@ -796,7 +849,7 @@ export function isExplicitCustomerMessageCue(text = '') {
   if (detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.SEND_PORTFOLIO) {
     return false;
   }
-  return /\b(schreib|sag|informier|whatsapp|mail|schick ihm|schick ihr)\b/i.test(t);
+  return /\b(schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|whatsapp|mail|schick(?:e|en)?\s+ihm|schick(?:e|en)?\s+ihr)\b/i.test(t);
 }
 
 /**
@@ -814,6 +867,10 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   };
 
   const explicitMessage = isExplicitCustomerMessageCue(t);
+  const isHistoryQuery = /\b(was hatte|was habe|damals|verlauf|historie)\b/i.test(t)
+    || /\bwas\b.{0,40}\bgeschrieben\b/i.test(t)
+    || /\bwelche[snr]?\s+angebot\b/i.test(t);
+  const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -824,12 +881,20 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     SELLER_FACT_CLASS.VEHICLE_INTEREST,
     SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
     SELLER_FACT_CLASS.TRADE_IN_FACT,
-    SELLER_FACT_CLASS.APPOINTMENT_FACT,
   ];
   // Bei „schreib ihm …“ sind Angebots-Fakten im Text oft nur Nachrichtinhalt
   if (!explicitMessage) contextClasses.push(SELLER_FACT_CLASS.OFFER_INSTRUCTION);
 
   const hasContextFacts = facts.some((f) => contextClasses.includes(f.factClass));
+
+  if (isHistoryQuery) {
+    add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.94);
+  }
+
+  if (hasAppointmentFact
+    || detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT) {
+    add(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT, 0.93);
+  }
 
   const primary = detectSellerActionIntent(t);
   const map = {
@@ -844,15 +909,25 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   };
   if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
-      && hasContextFacts
-      && !explicitMessage;
+      && (
+        isHistoryQuery
+        || hasAppointmentFact
+        || (hasContextFacts && !explicitMessage)
+      );
     if (!skipMessageDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage) {
+  if (explicitMessage && !isHistoryQuery) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
-  } else if (hasContextFacts) {
+  } else if (hasContextFacts && !hasAppointmentFact) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
+  } else if (hasAppointmentFact && hasContextFacts) {
+    add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
+  }
+
+  // „Schreibe X ein Angebot …“ = Angebot + Nachricht
+  if (explicitMessage && /\bangebot\b/i.test(t)) {
+    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.93);
   }
 
   if (facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT)) {
@@ -881,7 +956,12 @@ export function detectSellerTurnIntents(text = '', facts = []) {
 export function resolveSellerInputMode(text = '', intents = [], facts = []) {
   const t = String(text ?? '');
   const explicitMessage = isExplicitCustomerMessageCue(t);
-  // Explizite Kundennachricht hat Vorrang vor Work-Dump
+  const hasOffer = intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
+  const hasHistory = intents.some((i) => i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
+
+  // Angebot + „schreibe“ = Arbeitsauftrag mit Nachricht (kein reiner Message-Mode)
+  if (explicitMessage && hasOffer) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
+  if (hasHistory) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
   if (explicitMessage) return SELLER_INPUT_MODE.CUSTOMER_MESSAGE;
 
   const workHeavy = intents.some((i) => [
@@ -891,6 +971,7 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
     SELLER_TURN_INTENTS.SEND_PORTFOLIO,
     SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
     SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
+    SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
   ].includes(i.type)) || facts.length >= 3;
 
   const messageLike = intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);

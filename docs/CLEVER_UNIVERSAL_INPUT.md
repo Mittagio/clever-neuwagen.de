@@ -19,8 +19,13 @@ Der Composer ist **nicht nur Texteingabe**. Er ist der universelle Eingang in Cl
 | Clever | Validiert, entscheidet Persistenz, plant Actions |
 | Bestehende CRM-Pfade | Schreiben Customer Truth / Messages / Docs / Offer |
 
+**Produktgesetz:** Der Composer **ist** Clever – kein Silo aus Magic / Rechner / Kalender / Suche.
+Siehe [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md).
+
 **Nicht:** „KI schreibt alles ins CRM.“  
 **Sondern:** „KI schlägt Interpretation vor – Clever validiert und schreibt über definierte Pfade.“
+
+Context Resolution: `resolveAssistantContext.js` (geöffneter Kunde, genannter Name, Working Context, Historie nur bei Suche).
 
 ## Entry
 

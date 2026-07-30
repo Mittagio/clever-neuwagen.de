@@ -28,6 +28,10 @@ import {
   mergeSellerIntents,
   mergeSellerInterpretation,
 } from './mergeSellerInterpretation.js';
+import {
+  resolveAssistantContext,
+  buildInterpretedGoal,
+} from './resolveAssistantContext.js';
 
 /**
  * @param {object} params
@@ -41,24 +45,36 @@ function finalizeSellerTurn({
   warningsExtra = [],
   openaiEscalation = null,
   currentOfferContext = null,
+  workingContextItems = [],
+  customerName = '',
 }) {
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const uniqueFacts = filterDuplicateFacts(facts, lead);
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
+  const assistantContext = resolveAssistantContext({
+    lead,
+    sellerInput: interpreted.normalized || interpreted.raw,
+    workingContextItems,
+    currentOfferContext,
+    customerName,
+  });
+  const offerCtx = currentOfferContext || assistantContext.offerContext || null;
+
   const missingInformation = resolveMissingInformation({
     intents,
     facts: uniqueFacts,
     lead,
-    currentOfferContext,
+    currentOfferContext: offerCtx,
   });
 
   let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
   const hasCommercial = uniqueFacts.some(
-    (f) => f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+    (f) => f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+      || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION,
   );
   // Angehängtes Angebot + Konditionsänderung → Angebots-Update auch bei „schreib …“
   if (
-    currentOfferContext?.offerId
+    offerCtx?.offerId
     && hasCommercial
     && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
   ) {
@@ -76,11 +92,23 @@ function finalizeSellerTurn({
       inputMode: interpreted.inputMode,
       facts: uniqueFacts,
       missingInformation,
-      currentOfferContext,
+      currentOfferContext: offerCtx,
+      resolvedCustomer: assistantContext.resolvedCustomer,
+      workingContext: assistantContext.resolvedWorkingContext,
     })
     : [];
 
-  const understanding = buildCustomerUnderstanding(lead);
+  const messageDraft = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    ?.payload?.messageDraft
+    || null;
+
+  const understanding = (() => {
+    try {
+      return buildCustomerUnderstanding(lead);
+    } catch {
+      return { verstaendnis: { labels: [], konditionen: [], openPoints: [], vehicles: [] } };
+    }
+  })();
   const profile = getNeedProfileFromLead(lead) || {};
   const knownLabels = buildUnderstoodLabels(profile);
 
@@ -112,6 +140,16 @@ function finalizeSellerTurn({
     ...warningsExtra,
   ];
 
+  const interpretedGoal = buildInterpretedGoal({
+    intents: effectiveIntents,
+    facts: uniqueFacts,
+    resolvedCustomer: assistantContext.resolvedCustomer,
+  });
+
+  const retrievedFacts = preparedActions
+    .filter((a) => a.payload?.retrieved)
+    .map((a) => a.payload.retrieved);
+
   return buildCleverSellerTurnResult({
     ok: Boolean(interpreted.normalized) && enabled,
     intent: primaryIntent,
@@ -122,7 +160,12 @@ function finalizeSellerTurn({
       normalized: interpreted.normalized,
       attachmentTypes: interpreted.attachmentTypes,
     },
+    interpretedGoal,
+    resolvedCustomer: assistantContext.resolvedCustomer,
+    resolvedWorkingContext: assistantContext.resolvedWorkingContext,
+    usedCustomerContext: assistantContext.usedCustomerContext,
     extractedFacts: uniqueFacts,
+    retrievedFacts,
     proposedUpdates,
     missingInformation,
     relevantCustomerContext: {
@@ -132,19 +175,33 @@ function finalizeSellerTurn({
       vehicleInterest: uniqueFacts
         .filter((f) => f.field === 'vehicleInterest' || f.field === 'vehicleInterestMulti')
         .map((f) => f.label),
-      currentOffer: currentOfferContext || null,
+      currentOffer: offerCtx || null,
     },
     preparedActions,
+    messageDraft,
     warnings,
     assistantReply,
     confidence: interpreted.confidence,
     pendingAction,
-    currentOfferContext: currentOfferContext || null,
+    currentOfferContext: offerCtx || null,
     homepageInquiry: interpreted.homepageInquiry ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
         .filter((f) => !f.needsConfirmation)
         .map((f) => ({ label: f.label, factClass: f.factClass })),
+      progressLines: [
+        assistantContext.resolvedCustomer?.name || assistantContext.resolvedCustomer?.namedInInput
+          ? `Kunde erkannt: ${assistantContext.resolvedCustomer.name || assistantContext.resolvedCustomer.namedInInput}`
+          : null,
+        uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
+          ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
+          : null,
+        uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null,
+        preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+          ? 'Angebot vorbereitet'
+          : null,
+        messageDraft ? 'Nachricht vorbereitet' : null,
+      ].filter(Boolean),
     },
     featureEnabled: enabled,
     openaiEscalation,
@@ -162,12 +219,14 @@ export function runCleverSellerTurn({
   conversationContext = null,
   currentOfferContext = null,
   sellerContext = null,
+  workingContextItems = [],
+  customerName = '',
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
   void sellerContext;
 
-  const interpreted = interpretSellerInput(sellerInput, { attachments });
+  const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
   return finalizeSellerTurn({
     lead,
     interpreted,
@@ -176,6 +235,8 @@ export function runCleverSellerTurn({
     env,
     openaiEscalation: null,
     currentOfferContext,
+    workingContextItems,
+    customerName,
   });
 }
 

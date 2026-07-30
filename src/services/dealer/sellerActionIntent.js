@@ -53,6 +53,9 @@ const APPOINTMENT_PATTERNS = [
   /\b(beratungsgespräch|beratungsgesprach|beratungstermin)\b/i,
   /\b(termin).{0,40}\b(vorschlagen|anbieten|vereinbaren|eintragen)\b/i,
   /\b(vorschlagen|anbieten|vereinbaren).{0,40}\b(termin|probefahrt)\b/i,
+  /\bschlag(?:e|en)?\b.{0,60}\bvor\b/i,
+  /\b(?:komm(?:en)?|vorbeikomm(?:en)?)\s+soll\b/i,
+  /\bam\s+(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)\b.{0,40}\b\d{1,2}(?::\d{2})?\s*uhr\b/i,
 ];
 
 const NOTE_PATTERNS = [

@@ -1,7 +1,20 @@
 # Clever Seller Assistant
 
-**Status:** v2.2 – Universal Input Orchestrator + Notizzettel-first  
+**Status:** v3.0 – Composer = zentraler Verkaufsassistent  
 **Stand:** Juli 2026
+
+## Produktgesetz
+
+> **Der Composer ist nicht ein Eingabefeld in Clever. Der Composer ist Clever.**
+
+Der Verkäufer formuliert sein Ziel. Clever beschafft den Kontext, denkt mit,
+bereitet die Arbeit vor und fragt nur das wirklich Fehlende.
+
+Clever ersetzt drei klassische Assistenzen **über denselben Composer**:
+
+1. **Wissensassistent** – verifizierte Fahrzeugfakten, Pakete, Preise (keine erfundenen Zahlen)
+2. **Kommunikationsassistent** – Kundennachrichten, Ton, Erklärung
+3. **Organisationsassistent** – Akte, Angebote, Termine, Verlauf, Dokumentation
 
 ## Leitsatz
 
@@ -10,30 +23,55 @@ Clever ist der Assistent, dem der Verkäufer sagt, was für diesen Kunden erledi
 
 **„Wirf mir alles hin. Ich kümmere mich darum.“**
 
-**Der Verkäufer nennt das Ziel (oder wirft unsortierte Infos hin).  
-Clever verwendet vorhandenen Kundenkontext und fragt nur nach den Informationen, die zur Ausführung wirklich fehlen.**
+Chips (+ Angebot, + Nachfassen, …) hängen Kontext an oder inspirieren – sie ersetzen nicht den freien Composer.
 
-Der Composer ist der **universelle Eingang** – nicht nur Texteingabe. Siehe [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
+## Zentraler Datenfluss
 
-**Notizzettel-Chips sind nicht nur Anzeige.  
-Sie sind direkte Arbeitsobjekte des Verkäufers.**
+```
+SELLER INPUT
+  → Intent + Ziel verstehen
+  → Kunden- und Working-Context laden (resolveAssistantContext)
+  → Fakten / Tools bestimmen
+  → Verifizierte Daten abrufen
+  → Fehlende Infos bestimmen
+  → Aktionen planen (planSellerActions)
+  → Kompakte Review
+  → Seller bestätigt
+  → Ausführen und dokumentieren
+```
 
-**Termine sind ein Werkzeug von Clever, kein eigenes Hauptprodukt.**  
-Clever erkennt einen sinnvollen Terminmoment, der Verkäufer schlägt vor, der Kunde bestätigt, Clever übernimmt den bestätigten Termin in den Prozess (CRM-Wiedervorlage / followUpAt – kein Kalender-Klon).
+OpenAI interpretiert und formuliert. Clever lädt, validiert, plant, persistiert – und führt externe Aktionen **erst nach Freigabe** aus.
 
-## Architektur: Universal Orchestrator
+## Architektur: Central Assistant Turn
 
 | Baustein | Datei |
 |----------|--------|
 | `runCleverSellerTurn` | `src/services/cleverSeller/runCleverSellerTurn.js` |
+| Context Resolver | `resolveAssistantContext.js` |
 | Fact-/Intent-Interpretation | `interpretSellerInput.js` |
 | proposedUpdates | `proposeSellerUpdates.js` |
 | Missing Info | `resolveMissingInformation.js` |
 | Action Plan | `planSellerActions.js` |
+| Review Model | `buildUniversalReviewModel.js` |
+| Result Contract | `cleverSellerTurnResultSchema.js` |
 
-`runSellerAssistantTurn` hängt das Universal-Result unter `universal` an (Flag `CLEVER_SELLER_ORCHESTRATOR_ENABLED`).
+**Rückgabevertrag (Auszug):** `intent`, `interpretedGoal`, `resolvedCustomer`, `resolvedWorkingContext`, `extractedFacts`, `retrievedFacts`, `usedCustomerContext`, `missingInformation`, `proposedUpdates`, `preparedActions`, `messageDraft`, `warnings`, `confidence`, `uiEffects.progressLines`.
 
-**Regel:** Interpretation ≠ Persistenz. Persistenz nur über bestehende Pfade nach Review.
+Nicht nur `{ text: "..." }`.
+
+**Regel:** Interpretation ≠ Persistenz. Persistenz nur über bestehende Pfade nach Review.  
+Kein Full-Lead-JSON an OpenAI – nur `buildMinimalTaskContext` / `buildMinimalMessageContext`.
+
+## Golden Cases
+
+| Case | Input | Erwartung |
+|------|--------|-----------|
+| 1 | „Schreibe Garritano ein Angebot für den Picanto GT-Line für 17.000 €.“ | Kunde + Fahrzeug + Kaufpreis → Angebot + Nachricht in einer Review |
+| 2 | „Schreib Garritano … schwarzen Picanto … Technologie-Paket …“ | Seller-Facts + verifiziertes Paketwissen → Nachricht |
+| 3 | „Schlag ihm vor, Montag 15 Uhr …“ | Termin + Kundennachricht aus Working Context |
+| 4 | „Was hatte ich Garritano … Lieferzeit geschrieben?“ | Verlaufssuche, **keine** neue Kundennachricht |
+
+Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasingbasis.
 
 ## UX-Philosophie
 
@@ -43,9 +81,9 @@ Clever erkennt einen sinnvollen Terminmoment, der Verkäufer schlägt vor, der K
 |------|--------|
 | Header + Notizzettel | Kopf des Verkäufers (sticky / collapsible, semantisch gruppiert) |
 | Verlauf | Die Kundenakte (chronologisch: Chat, Clever, Angebote, Docs, Termine) |
-| Composer | Der Schreibtisch (Intent → sichtbare Clever-Result-Card → Bestätigung) |
+| Composer | Der Schreibtisch (Ziel → Progress → Review → Bestätigung) |
 
-**Magic:** Jede natürliche Seller-Eingabe erzeugt, wenn sinnvoll, sofort eine sichtbare Clever-Reaktion (verstanden / bekannt / fehlt / nächste Aktion). Keine technischen CTAs wie „Angebotsrechner öffnen“ als Primärmoment.
+**Magic sichtbar:** kurze Progress-Zeilen (Kunde / Fahrzeug / Preis erkannt), dann kompakte Review-Card. Keine Show ohne Inhalt.
 
 Keine permanenten Tabs Kunde | Clever | Angebote | Mehr innerhalb des Kunden.  
 Strukturierte Übersichten liegen unter **Name / •••** (Messenger-Kontaktinfos).
@@ -59,12 +97,14 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 | Notizzettel | `CustomerAkteCleverNotepad.jsx` |
 | Konditionen-Sheet | `CustomerAkteWishConditionsSheet.jsx` |
 | Shared Chat / Composer | `CustomerAkteSharedWorkspace.jsx` |
+| Universal Review | `SellerUniversalReviewCard.jsx` |
 | Inline Card | `SellerInlineAssistCard.jsx` |
 | Intent | `sellerActionIntent.js` |
 | Offer Assist Flow | `sellerOfferAssistFlow.js` |
 | Appointment Assist Flow | `sellerAppointmentAssistFlow.js` |
-| Magic Offer | `magicOfferService.js` |
+| Magic Offer / grounded Message | `src/services/crm/magic/` |
 | Inline Assist | `sellerInlineComposerAssist.js` |
+| Akte-Suche | `composerAkteSearch.js` |
 | Einbindung | `DealerAiLeadFollowUp.jsx` |
 
 ## Teil A – Notizzettel bearbeiten
@@ -76,28 +116,19 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 ## Teil B – „Was soll Clever erledigen?“
 
 1. Verkäufer tippt oder spricht im Composer.
-2. Intent: `prepare_offer` | `propose_appointment` | `prepare_callback` | `message_customer` | `lookup_fact` | `request_documents` | …
-3. Bei `prepare_offer`: `runSellerOfferAssist` → Magic Offer + Kundenterme aus Notizzettel.
-4. Bei Termin: `runSellerAppointmentAssist` → Typ + Datum/Uhrzeit → Kundennachricht vorbereiten (Status `proposed`).
-5. Kunde bestätigt im Chat → Seller sieht „Termin eintragen“ → CRM `followUpAt` / `testDriveScheduledAt` (Status `scheduled`).
-6. Nur fehlende Slots als kurze Inline-Card + Choice-Chips.
-7. Follow-up im selben Composer: „21 %“, „Leasing“, „morgen 15 Uhr“ → Korrektur.
-8. Situativ: AHK/HUD aus Notizzettel nur wenn die Aktion passt (nicht bei Probefahrt).
-9. Verifizierte Facts via `getVerifiedVehicleFacts` – keine erfundenen Zahlen.
-10. Bereit → „Angebot vorbereiten“ / „Vorschlag senden“ / „Termin eintragen“ → bestehende Pfade.
+2. Ein Turn → ggf. **mehrere** `preparedActions` (Angebot + Nachricht + Termin).
+3. Review zeigt gemeinsame Vorbereitung; keine Auto-Sendung.
+4. Follow-up im selben Composer: „21 %“, „Leasing“, „morgen 15 Uhr“ → Korrektur.
+5. Verifizierte Facts via Clever-Datenquellen – keine erfundenen Zahlen.
+6. Freigabe → bestehende Persistenz-/Sendepfade.
 
 ## Live Customer Context
 
+`resolveAssistantContext` Priorität: geöffneter Kunde → genannter Name → angehängtes Angebot/Fahrzeug → Workspace → Fahrzeugspur → letzte Aktivität → Historie (nur bei Suche).
+
 `buildSellerInlineContext(lead)` und `buildAttributedWishChips` speisen Notizzettel und Assist.
 
-Inline:
-
-- Debounce ~380 ms
-- Offer-State: `previousPreparation` im Shared Workspace
-- Appointment-State: `crm.cleverAppointment`
-- Fact Conflicts: Verkäuferangabe ≠ verified → Warnung
-
-Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md).
+Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
 
 ## Safe Offer Boundary
 
@@ -117,9 +148,10 @@ Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md).
 ## Tests
 
 ```bash
+node src/services/cleverSeller/composerAssistant.golden.test.js
+node src/services/cleverSeller/runCleverSellerTurn.test.js
 node src/services/dealer/sellerOfferAssistFlow.test.js
 node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js
-node src/services/dealer/magicOfferService.test.js
-node src/services/cleverSeller/runCleverSellerTurn.test.js
+node src/services/crm/composerAkteSearch.test.js
 ```

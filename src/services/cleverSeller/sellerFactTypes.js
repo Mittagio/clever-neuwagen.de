@@ -50,6 +50,8 @@ export const SELLER_TURN_INTENTS = {
   PREPARE_TRADE_IN: 'prepare_trade_in',
   PROPOSE_APPOINTMENT: 'propose_appointment',
   LOOKUP_VEHICLE_FACT: 'lookup_vehicle_fact',
+  SEARCH_CUSTOMER_HISTORY: 'search_customer_history',
+  CUSTOMER_LOOKUP: 'customer_lookup',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
   UNKNOWN: 'unknown',

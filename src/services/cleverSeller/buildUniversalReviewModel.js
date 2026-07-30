@@ -164,13 +164,86 @@ export function buildUniversalActionSections(turn = {}) {
   const draftResult = draftAction?.legacy?.results?.find(
     (r) => r.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT,
   ) || draftAction?.legacy?.results?.[0] || null;
-  const draftBody = draftResult?.draft?.body || draftResult?.body || null;
+  const draftBody = turn.messageDraft
+    || draftAction?.payload?.messageDraft
+    || draftResult?.draft?.body
+    || draftResult?.body
+    || null;
   if (draftBody) {
     sections.push({
       id: 'message_draft',
       kind: 'message_draft',
       title: 'Nachricht',
       body: String(draftBody).trim(),
+    });
+  }
+
+  const offerPrep = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    && a.status === 'prepared'
+    && !a.payload?.updateOnly
+  ));
+  if (offerPrep && !sections.some((s) => s.kind === 'offer_change')) {
+    const purchase = facts.find((f) => f.field === 'purchasePrice');
+    const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+    sections.unshift({
+      id: 'offer_prepare',
+      kind: 'offer_prepare',
+      title: 'Angebot',
+      headline: offerPrep.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
+      line: purchase?.label
+        || (offerPrep.payload?.purchasePrice
+          ? `Kaufpreis: ${Number(offerPrep.payload.purchasePrice).toLocaleString('de-DE')} €`
+          : 'Angebot vorbereitet'),
+      changes: [
+        purchase ? {
+          id: 'price',
+          label: 'Kaufpreis',
+          from: null,
+          to: purchase.label,
+        } : null,
+      ].filter(Boolean),
+    });
+  }
+
+  const appointmentAction = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'
+  ));
+  const appointmentFact = facts.find((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
+  if (appointmentAction || appointmentFact) {
+    const appt = appointmentAction?.legacy?.appointment
+      || appointmentAction?.legacy?.results?.[0]?.appointment
+      || null;
+    sections.push({
+      id: 'appointment_propose',
+      kind: 'appointment_propose',
+      title: 'Terminvorschlag',
+      headline: appointmentFact?.label
+        || (appt
+          ? [appt.typeLabel, appt.whenLabel, appt.timeLabel].filter(Boolean).join(' · ')
+          : 'Termin vorbereitet'),
+      line: appt?.vehicleLabel || turn.resolvedCustomer?.name || null,
+      body: appointmentAction?.legacy?.results?.[0]?.draft?.body
+        || appointmentAction?.legacy?.messageDraft
+        || null,
+    });
+  }
+
+  const historyAction = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+  ));
+  if (historyAction) {
+    const hits = historyAction.legacy?.results ?? [];
+    const top = hits[0] || null;
+    sections.push({
+      id: 'history_search',
+      kind: 'history_search',
+      title: hits.length ? '✨ Gefunden' : 'Verlauf',
+      headline: top?.whenLabel || top?.title || (hits.length ? `${hits.length} Treffer` : 'Kein Treffer'),
+      body: top?.snippet || top?.body || top?.preview || null,
+      line: hits.length > 1 ? `${hits.length} Treffer im Verlauf` : null,
+      hit: top,
+      hitCount: hits.length,
     });
   }
 
@@ -207,7 +280,8 @@ export function buildUniversalReviewModel(turn = {}) {
   }
 
   const facts = turn.extractedFacts ?? [];
-  if (!facts.length) return null;
+  const actionSectionsEarly = buildUniversalActionSections(turn);
+  if (!facts.length && !actionSectionsEarly.length) return null;
 
   const used = new Set();
   const groups = [];
@@ -238,27 +312,46 @@ export function buildUniversalReviewModel(turn = {}) {
     });
   }
 
-  if (!groups.length) return null;
+  if (!groups.length && !actionSectionsEarly.length) return null;
 
   const openMissing = (turn.missingInformation ?? []).slice(0, 3);
-  const actionSections = buildUniversalActionSections(turn);
+  const actionSections = actionSectionsEarly;
   const multiAction = actionSections.length > 1;
+  const historyOnly = actionSections.some((s) => s.kind === 'history_search') && !facts.length;
+  const appointmentPrep = actionSections.some((s) => s.kind === 'appointment_propose');
 
   return {
-    title: multiAction ? '✨ Clever hat vorbereitet' : '✨ Clever hat verstanden',
+    title: historyOnly
+      ? '✨ Gefunden'
+      : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+        ? '✨ Clever hat vorbereitet'
+        : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
-    summaryLine: multiAction
-      ? `${actionSections.length} Aktionen vorbereitet`
-      : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
+    summaryLine: historyOnly
+      ? (actionSections[0]?.headline || 'Treffer im Verlauf')
+      : multiAction
+        ? `${actionSections.length} Aktionen vorbereitet`
+        : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
     warnings: turn.warnings ?? [],
     assistantReply: turn.assistantReply ?? null,
-    primaryCta: multiAction ? 'Änderungen prüfen' : 'Übernehmen',
+    primaryCta: historyOnly
+      ? 'Im Verlauf öffnen'
+      : appointmentPrep && !multiAction
+        ? 'Vorschlag senden'
+        : multiAction
+          ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+            ? 'Angebot und Nachricht prüfen'
+            : 'Änderungen prüfen')
+          : 'Übernehmen',
     secondaryCta: 'Verwerfen',
+    progressLines: turn.uiEffects?.progressLines ?? [],
+    messageDraft: turn.messageDraft ?? null,
+    resolvedCustomer: turn.resolvedCustomer ?? null,
   };
 }
 
@@ -269,6 +362,15 @@ export function buildUniversalReviewModel(turn = {}) {
 export function shouldShowUniversalReview(turn = {}) {
   if (turn.homepageInquiry?.hasDualScenarios) return true;
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
+
+  const prepared = turn.preparedActions ?? [];
+  const hasHistory = prepared.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
+  if (hasHistory) return true;
+
+  const hasAppointmentPrep = prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'
+  ));
+  if (hasAppointmentPrep) return true;
 
   const facts = turn.extractedFacts ?? [];
   if (!facts.length) return false;
@@ -287,8 +389,23 @@ export function shouldShowUniversalReview(turn = {}) {
   ]);
 
   // Reine Kundennachricht ohne CRM-Kontext → kein Review (nur Message-Draft)
+  const hasStructuredSellerNote = facts.some((f) => (
+    f.factClass === SELLER_FACT_CLASS.SELLER_FACT
+    && /delivery|liefer|verfügbar|price|preis/i.test(`${f.field || ''} ${f.label || ''}`)
+  ));
   if (turn.inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE) {
-    if (!facts.some((f) => dumpClass.has(f.factClass))) return false;
+    const hasDump = facts.some((f) => dumpClass.has(f.factClass));
+    if (!hasDump && !hasStructuredSellerNote) return false;
+  }
+  // Strukturierte Seller-Notiz (z. B. Lieferzeit) → Review mit Bestätigung
+  if (hasStructuredSellerNote) return true;
+
+  const hasOfferPrep = turn.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+    && turn.preparedActions?.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
+  const hasDraft = turn.intents?.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    || Boolean(turn.messageDraft);
+  if (hasOfferPrep && (hasDraft || facts.some((f) => f.field === 'purchasePrice'))) {
+    return true;
   }
 
   const hasPortfolio = turn.intents?.some((i) => i.type === 'send_portfolio');
