@@ -30,6 +30,13 @@ import {
   REJECTION_REASON,
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
+import {
+  parseHomepageCommercialInquiry,
+} from '../crm/homepageCommercialInquiry.js';
+import {
+  formatCommercialScenarioChip,
+  formatCustomerTypeLabel,
+} from '../crm/commercialScenarios.js';
 
 const MONTH_MAP = {
   januar: '01', jan: '01',
@@ -115,6 +122,70 @@ export function extractUniversalSellerFacts(text = '') {
   const t = raw.replace(/\s+/g, ' ').trim();
   const facts = [];
   if (!t) return facts;
+
+  // Epic 2: Homepage Dual-Szenario zuerst – kein gemischter paymentType
+  const homepageDraft = parseHomepageCommercialInquiry(raw);
+  let skipSinglePaymentType = false;
+  if (homepageDraft?.hasDualScenarios) {
+    skipSinglePaymentType = true;
+    if (homepageDraft.model) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+        field: 'vehicleInterest',
+        value: { modelKey: homepageDraft.modelKey, model: homepageDraft.model },
+        label: homepageDraft.model,
+        source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+        confidence: homepageDraft.confidence,
+      }));
+    }
+    if (homepageDraft.configurationAttached) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+        field: 'configurationAttached',
+        value: true,
+        label: 'Konfiguration angehängt',
+        source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+        confidence: 0.92,
+      }));
+    }
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'commercialScenarios',
+      value: homepageDraft.commercialScenarios,
+      label: homepageDraft.commercialScenarios.map(formatCommercialScenarioChip).join(' · '),
+      source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+      confidence: homepageDraft.confidence,
+    }));
+    // Separate chips for review readability
+    for (const scenario of homepageDraft.commercialScenarios) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: `commercialScenario:${scenario.id}`,
+        value: scenario,
+        label: formatCommercialScenarioChip(scenario),
+        source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+        confidence: homepageDraft.confidence,
+      }));
+    }
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'customerType',
+      value: homepageDraft.customerType,
+      label: formatCustomerTypeLabel(homepageDraft.customerType),
+      source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+      confidence: 0.9,
+    }));
+    for (const q of homepageDraft.openQuestions ?? []) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+        field: q.field,
+        value: { open: true, question: q.question },
+        label: q.label,
+        source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+        confidence: 0.9,
+      }));
+    }
+  }
 
   // Self-disclosure / finance
   const net = t.match(/\b(?:netto|nettoeinkommen|einkommen)\s*(?:ca\.?\s*)?(\d{1,2}(?:[.\s]\d{3})*|\d{3,5})\b/i)
@@ -399,7 +470,8 @@ export function extractUniversalSellerFacts(text = '') {
     }));
   }
 
-  // Explizite Zahlungsart
+  // Explizite Zahlungsart (nicht bei Dual-Szenario – commercialScenarios ist Wahrheit)
+  if (!skipSinglePaymentType) {
   if (/\b(?:barangebot|barkauf|barzahlung)\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
@@ -433,6 +505,7 @@ export function extractUniversalSellerFacts(text = '') {
       label: 'Leasing',
       confidence: 0.9,
     }));
+  }
   }
 
   // Wunschrate / commercial
@@ -795,6 +868,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
   const attachmentTypes = (options.attachments ?? [])
     .map((a) => a?.mimeType || a?.type || a?.kind)
     .filter(Boolean);
+  const homepageInquiry = parseHomepageCommercialInquiry(normalized);
 
   return {
     raw,
@@ -803,6 +877,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     intents,
     inputMode,
     attachmentTypes,
+    homepageInquiry: homepageInquiry?.hasDualScenarios ? homepageInquiry : null,
     confidence: facts.length
       ? Math.min(0.99, facts.reduce((s, f) => s + (f.confidence || 0), 0) / facts.length)
       : (intents[0]?.confidence ?? 0.4),

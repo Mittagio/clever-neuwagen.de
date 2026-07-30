@@ -140,6 +140,7 @@ function finalizeSellerTurn({
     confidence: interpreted.confidence,
     pendingAction,
     currentOfferContext: currentOfferContext || null,
+    homepageInquiry: interpreted.homepageInquiry ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
         .filter((f) => !f.needsConfirmation)

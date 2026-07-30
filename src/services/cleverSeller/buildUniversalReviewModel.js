@@ -3,6 +3,7 @@
  */
 import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
+import { buildHomepageInquiryReviewModel } from '../crm/homepageCommercialInquiry.js';
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -180,6 +181,31 @@ export function buildUniversalActionSections(turn = {}) {
  * @param {object} turn – CleverSellerTurnResult
  */
 export function buildUniversalReviewModel(turn = {}) {
+  if (turn.homepageInquiry?.hasDualScenarios) {
+    return buildHomepageInquiryReviewModel(turn.homepageInquiry);
+  }
+
+  const scenarioFact = (turn.extractedFacts ?? []).find((f) => f.field === 'commercialScenarios');
+  if (scenarioFact && Array.isArray(scenarioFact.value) && scenarioFact.value.length >= 2) {
+    const fromFacts = buildHomepageInquiryReviewModel({
+      model: (turn.extractedFacts ?? []).find((f) => f.field === 'vehicleInterest')?.label
+        || turn.extractedFacts?.find((f) => f.field === 'vehicleInterest')?.value?.model
+        || null,
+      configurationAttached: (turn.extractedFacts ?? []).some((f) => f.field === 'configurationAttached'),
+      customerType: (turn.extractedFacts ?? []).find((f) => f.field === 'customerType')?.value || 'private',
+      commercialScenarios: scenarioFact.value,
+      openQuestions: (turn.extractedFacts ?? [])
+        .filter((f) => f.field === 'deliveryTime')
+        .map((f) => ({
+          id: 'delivery_time',
+          field: 'deliveryTime',
+          label: f.label || 'Lieferzeit beantworten',
+        })),
+      hasDualScenarios: true,
+    });
+    if (fromFacts) return fromFacts;
+  }
+
   const facts = turn.extractedFacts ?? [];
   if (!facts.length) return null;
 
@@ -241,6 +267,9 @@ export function buildUniversalReviewModel(turn = {}) {
  * @param {object} turn
  */
 export function shouldShowUniversalReview(turn = {}) {
+  if (turn.homepageInquiry?.hasDualScenarios) return true;
+  if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
+
   const facts = turn.extractedFacts ?? [];
   if (!facts.length) return false;
 

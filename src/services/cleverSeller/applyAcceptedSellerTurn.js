@@ -18,6 +18,7 @@ import {
 } from '../dealer/sellerAppointmentAssistFlow.js';
 import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
 import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
+import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -74,6 +75,8 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'paymentType' && value) {
+      // Dual-Szenario: nicht auf einzelnes paymentType kollabieren
+      if (facts.some((f) => f.field === 'commercialScenarios')) continue;
       paymentType = String(value);
       wish.paymentType = paymentType;
       profile.budget = {
@@ -299,6 +302,37 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     sellerName: options.sellerName,
   });
 
+  // Epic 2: Dual commercial scenarios → eine Spur + zwei Offer-Slots
+  const homepageDraft = turn.homepageInquiry?.hasDualScenarios
+    ? turn.homepageInquiry
+    : null;
+  const scenarioFact = facts.find((f) => f.field === 'commercialScenarios');
+  if (homepageDraft || (Array.isArray(scenarioFact?.value) && scenarioFact.value.length >= 2)) {
+    const draft = homepageDraft || {
+      model: facts.find((f) => f.field === 'vehicleInterest')?.value?.model
+        || facts.find((f) => f.field === 'vehicleInterest')?.label
+        || lead.vehicle?.model
+        || null,
+      modelKey: facts.find((f) => f.field === 'vehicleInterest')?.value?.modelKey || null,
+      configurationAttached: facts.some((f) => f.field === 'configurationAttached'),
+      customerType: facts.find((f) => f.field === 'customerType')?.value || 'private',
+      commercialScenarios: scenarioFact.value,
+      openQuestions: facts
+        .filter((f) => f.field === 'deliveryTime')
+        .map((f) => ({
+          id: 'delivery_time',
+          field: 'deliveryTime',
+          label: f.label || 'Lieferzeit beantworten',
+          question: f.value?.question || 'Wie ist die Lieferzeit?',
+        })),
+      hasDualScenarios: true,
+    };
+    const appliedHome = applyHomepageInquiryToLead(nextLead, draft, { createOfferShells: true });
+    if (appliedHome.ok) {
+      nextLead = appliedHome.lead;
+    }
+  }
+
   nextLead = applyStructuredFactsToLead(nextLead, facts);
 
   const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
@@ -330,9 +364,13 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
 
   if (options.postFeedCard !== false) {
     const lines = labels.slice(0, 8);
+    const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
+      || facts.some((f) => f.field === 'commercialScenarios');
     const posted = postCleverAssistFeedCard({
       lead: nextLead,
-      title: '✨ Clever hat verstanden',
+      title: isHomepageDual
+        ? '✨ Clever hat die Anfrage vorbereitet'
+        : '✨ Clever hat verstanden',
       text: `${lines.join(' · ')}\n\n${labels.length} Angabe${labels.length === 1 ? '' : 'n'} übernommen`,
       visibleToCustomer: false,
     });
