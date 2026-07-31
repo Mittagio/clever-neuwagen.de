@@ -932,7 +932,8 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isContractIntake = isCustomerContractIntakeText(resolvedIntake.text)
     || isCustomerContractIntakeText(t)
     || (
-      resolvedIntake.sourceType === 'contract_pdf'
+      (resolvedIntake.sourceType === 'contract_pdf'
+        || resolvedIntake.sourceType === 'contract_pdf_ocr')
       && resolvedIntake.needsManualDescribe
     );
   const isContractCompareMessage = !isContractIntake && isContractCompareMessageCue(t);

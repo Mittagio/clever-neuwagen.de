@@ -50,6 +50,7 @@ export function classifyComposerPdfKind(extracted = {}) {
 
 /**
  * Baut Turn-Payload aus bereits extrahiertem PDF (kein pdfjs hier).
+ * Slice 16: optional OCR-Text (`extractionMethod: 'ocr'` → sourceType contract_pdf_ocr).
  * @param {{
  *   extracted?: {
  *     ok?: boolean,
@@ -57,6 +58,9 @@ export function classifyComposerPdfKind(extracted = {}) {
  *     fileName?: string,
  *     needsManualDescribe?: boolean,
  *     mimeType?: string,
+ *     extractionMethod?: string,
+ *     sourceTypeHint?: string,
+ *     ocr?: object,
  *   },
  *   file?: { type?: string, name?: string },
  * }} params
@@ -67,12 +71,16 @@ export function prepareComposerPdfTurnInput(params = {}) {
   const fileName = extracted.fileName || file.name || 'dokument.pdf';
   const fullText = String(extracted.text || '').trim();
   const ok = Boolean(extracted.ok && fullText.length > 20);
+  const usedOcr = extracted.extractionMethod === 'ocr'
+    || extracted.sourceTypeHint === 'contract_pdf_ocr'
+    || extracted.ocr?.status === 'ocr_complete';
   const kind = classifyComposerPdfKind({
     text: fullText,
     fileName,
     ok,
     needsManualDescribe: !ok,
   });
+  const contractSourceType = usedOcr ? 'contract_pdf_ocr' : 'contract_pdf';
 
   const interpretSeed = [
     `PDF: ${fileName}`,
@@ -89,22 +97,33 @@ export function prepareComposerPdfTurnInput(params = {}) {
     mimeType: extracted.mimeType || file.type || 'application/pdf',
     fileName,
     extractedText: fullText || '',
-    sourceType: kind === 'contract_pdf' ? 'contract_pdf' : undefined,
+    sourceType: kind === 'contract_pdf' ? contractSourceType : undefined,
+    extractionMethod: usedOcr ? 'ocr' : (ok ? 'native_pdf_text' : 'scan_pending'),
+    ocrStatus: extracted.ocr?.status || null,
   };
+
+  const ocrManual = extracted.ocr?.message
+    || (kind === 'contract_pdf'
+      ? 'PDF ohne lesbaren Text – bitte Vertrag manuell beschreiben.'
+      : 'PDF übernommen – bitte kurz beschreiben, was drinsteht.');
 
   if (kind === 'contract_pdf') {
     return {
       kind,
       ok,
       needsManualDescribe: !ok,
+      usedOcr,
       interpretSeed: ok ? interpretSeed : '',
       draftSeed: ok
         ? draftSeed
         : `Vertrags-PDF: ${fileName}`,
       attachment,
       workingContextLabel: fileName,
-      feedbackOk: 'Vertrag gelesen – bitte prüfen',
-      feedbackManual: 'PDF ohne lesbaren Text – bitte Vertrag manuell beschreiben.',
+      feedbackOk: usedOcr
+        ? 'Vertrags-Scan per OCR gelesen – bitte prüfen'
+        : 'Vertrag gelesen – bitte prüfen',
+      feedbackManual: ocrManual,
+      ocr: extracted.ocr || null,
     };
   }
 
@@ -112,6 +131,7 @@ export function prepareComposerPdfTurnInput(params = {}) {
     kind,
     ok,
     needsManualDescribe: !ok,
+    usedOcr,
     interpretSeed: ok ? interpretSeed : '',
     draftSeed: ok
       ? draftSeed
@@ -120,9 +140,12 @@ export function prepareComposerPdfTurnInput(params = {}) {
       kind: 'configurator_pdf',
       mimeType: attachment.mimeType,
       fileName,
+      extractionMethod: attachment.extractionMethod,
+      ocrStatus: attachment.ocrStatus,
     },
     workingContextLabel: fileName,
     feedbackOk: 'PDF gelesen – Kontext angehängt, bitte prüfen',
-    feedbackManual: 'PDF übernommen – bitte kurz beschreiben, was drinsteht.',
+    feedbackManual: ocrManual,
+    ocr: extracted.ocr || null,
   };
 }

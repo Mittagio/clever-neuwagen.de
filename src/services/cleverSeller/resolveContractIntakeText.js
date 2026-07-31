@@ -11,6 +11,7 @@ export function isContractPdfAttachment(attachment = {}) {
   if (!attachment || typeof attachment !== 'object') return false;
   if (attachment.kind === 'contract_pdf') return true;
   if (attachment.sourceType === 'contract_pdf') return true;
+  if (attachment.sourceType === 'contract_pdf_ocr') return true;
   return false;
 }
 
@@ -47,7 +48,7 @@ export function stripPdfComposerPrefix(text = '') {
  * }} params
  * @returns {{
  *   text: string,
- *   sourceType: 'pasted_contract_text'|'contract_pdf',
+ *   sourceType: 'pasted_contract_text'|'contract_pdf'|'contract_pdf_ocr',
  *   sourceId: string|null,
  *   fileName: string|null,
  *   needsManualDescribe: boolean,
@@ -62,6 +63,10 @@ export function resolveContractIntakeText(params = {}) {
     || contractPdf?.text
     || '',
   ).trim();
+  const attachmentSourceType = contractPdf?.sourceType === 'contract_pdf_ocr'
+    || contractPdf?.extractionMethod === 'ocr'
+    ? 'contract_pdf_ocr'
+    : 'contract_pdf';
 
   const stripped = stripPdfComposerPrefix(params.sellerInput);
   const fromSeller = stripped.body;
@@ -70,7 +75,7 @@ export function resolveContractIntakeText(params = {}) {
   if (contractPdf && extractedFromAttachment) {
     return {
       text: extractedFromAttachment,
-      sourceType: 'contract_pdf',
+      sourceType: attachmentSourceType,
       sourceId: contractPdf.sourceId
         || contractPdf.fileName
         || contractPdf.id
@@ -86,7 +91,7 @@ export function resolveContractIntakeText(params = {}) {
   if (contractPdf && !extractedFromAttachment) {
     return {
       text: fromSeller,
-      sourceType: 'contract_pdf',
+      sourceType: attachmentSourceType,
       sourceId: contractPdf.fileName || contractPdf.id || stripped.fileNameHint || null,
       fileName: contractPdf.fileName || stripped.fileNameHint || null,
       needsManualDescribe: true,

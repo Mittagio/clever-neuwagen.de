@@ -39,7 +39,10 @@ export function prepareCustomerContractImport(params = {}) {
     attachments: params.attachments,
   });
 
-  if (resolved.needsManualDescribe && resolved.sourceType === 'contract_pdf') {
+  if (resolved.needsManualDescribe && (
+    resolved.sourceType === 'contract_pdf'
+    || resolved.sourceType === 'contract_pdf_ocr'
+  )) {
     return {
       ok: false,
       status: 'needs_manual_describe',
@@ -49,7 +52,9 @@ export function prepareCustomerContractImport(params = {}) {
       evidence: [],
       missingInformation: [{
         id: 'contract_pdf_text',
-        label: 'PDF ohne lesbaren Text – bitte Vertrag manuell beschreiben oder Text einfügen',
+        label: resolved.sourceType === 'contract_pdf_ocr'
+          ? 'OCR ohne brauchbaren Text – bitte Vertrag manuell beschreiben oder Text einfügen'
+          : 'PDF ohne lesbaren Text – bitte Vertrag manuell beschreiben oder Text einfügen',
       }],
       warnings: ['needs_manual_describe'],
       mutatesCustomer: false,

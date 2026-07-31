@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 15 implementiert (Dual-Accept Offer + Termin)  
+**Status:** Slice 16 implementiert (Scan-OCR-Pipeline)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -167,7 +167,8 @@ Besonders behandeln / nicht an Message Writer:
 | **13** | Global Composer PDF | Dashboard-Drop → gleicher Prepare/Turn-Pfad |
 | **14** | Offer + Termin | Dual-Prep + `offer_and_appointment_review` |
 | **15** | Dual-Accept-Execute | Dual-pending + `accept_offer_and_appointment` |
-| später | OCR | siehe unten |
+| **16** | Scan-OCR-Pipeline | Provider-Hook, `contract_pdf_ocr`, Manual-Fallback |
+| später | Produkt-OCR-Engine | z. B. Cloud-/On-Device-Provider an `window.__cleverOcrProvider` |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -513,9 +514,39 @@ Nach Slice-14-Composite:
 
 ---
 
+## Slice 16 – Scan-OCR-Pipeline
+
+**Status: implementiert**
+
+PDF-Pfad:
+
+1. Nativer PDF-Text (`extractMagicOfferPdf`)  
+2. Bei Scan (kein Text): `runComposerScanOcrPipeline`  
+3. Optionaler Provider (`ocrProvider` / `window.__cleverOcrProvider`)  
+4. Sensible Passagen minimieren (IBAN, Ausweis, Gehalt, Bonität)  
+5. Bei Erfolg → gleicher Contract-Intake mit `sourceType: contract_pdf_ocr`  
+6. Ohne Provider / leeres OCR → Manual Describe (kein Fake-Text, kein Auto-Persist)
+
+| Modul | Rolle |
+|-------|--------|
+| `runComposerScanOcrPipeline.js` | Scan-Erkennung + Provider-Hook |
+| `minimizeSensitiveOcrText.js` | Datenschutz vor Intake |
+| `runComposerPdfAttachTurn.js` | `runComposerPdfAttachTurnWithOcr` |
+| `prepareComposerPdfTurnInput.js` | `contract_pdf_ocr` Attachment |
+| `CleverGlobalComposer.jsx` / Akte | Wiring |
+| `globalComposer.slice16.test.js` | Golden + Gegenproben |
+
+### Nicht in Slice 16
+
+- Eingebaute Tesseract-/Cloud-OCR-Engine  
+- Auto-Persist ohne Review  
+- Erfundene Vertragswerte aus leeren Scans  
+
+---
+
 ## Später
 
-- OCR / Scan-Pipeline  
+- Produkt-OCR-Engine an Provider-Hook anbinden  
 
 ---
 

@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 15 (Dual-Accept Offer + Termin)  
+**Status:** Slice 16 (Scan-OCR-Pipeline)  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -45,6 +45,7 @@ Nur `runCleverSellerTurn()`:
 | Global Composer PDF-Drop → gleicher Pfad | 13 |
 | `offer_and_appointment_review` | 14–15 |
 | Dual-pending / `accept_offer_and_appointment` | 15 |
+| Scan-OCR-Pipeline / `contract_pdf_ocr` | 16 |
 
 ## Slice 5 – Golden Flow
 
@@ -72,12 +73,12 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice15.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice16.test.js`
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
-| später | OCR / Scan-Pipeline | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | Produkt-OCR-Engine am Provider-Hook | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

@@ -1,11 +1,16 @@
 /**
- * Slice 13: Global-/Akte-Composer – PDF-Attach → Turn (ohne pdfjs).
- * Extraktion bleibt async außerhalb; hier nur Prepare + runCleverSellerTurn.
+ * Slice 13/16: Global-/Akte-Composer – PDF-Attach → optional OCR → Turn.
+ * Extraktion/OCR bleiben async außerhalb des sync Orchestrators.
  */
 import { runCleverSellerTurn } from './runCleverSellerTurn.js';
 import { prepareComposerPdfTurnInput } from './prepareComposerPdfTurnInput.js';
+import {
+  mergeExtractedWithOcrPass,
+  runComposerScanOcrPipeline,
+} from './runComposerScanOcrPipeline.js';
 
 /**
+ * Sync-Pfad (nach bereits gemergtem Extract / ohne OCR).
  * @param {{
  *   extracted: object,
  *   file?: object,
@@ -37,6 +42,7 @@ export function runComposerPdfAttachTurn(params = {}) {
       turn: null,
       skipped: true,
       reason: 'needs_manual_describe',
+      ocr: prepared.ocr || params.extracted?.ocr || null,
     };
   }
 
@@ -56,5 +62,27 @@ export function runComposerPdfAttachTurn(params = {}) {
     prepared,
     turn,
     skipped: false,
+    ocr: prepared.ocr || params.extracted?.ocr || null,
+  };
+}
+
+/**
+ * Async-Pfad: natives PDF → Scan-OCR-Pipeline (Provider optional) → Turn.
+ * @param {object} params – wie runComposerPdfAttachTurn + ocrProvider?
+ */
+export async function runComposerPdfAttachTurnWithOcr(params = {}) {
+  const ocrPass = await runComposerScanOcrPipeline({
+    extracted: params.extracted,
+    file: params.file,
+    fileName: params.extracted?.fileName || params.file?.name,
+    ocrProvider: params.ocrProvider ?? null,
+  });
+  const merged = mergeExtractedWithOcrPass(params.extracted || {}, ocrPass);
+  return {
+    ...runComposerPdfAttachTurn({
+      ...params,
+      extracted: merged,
+    }),
+    ocr: ocrPass,
   };
 }
