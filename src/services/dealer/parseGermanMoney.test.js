@@ -20,6 +20,8 @@ import {
 import {
   evaluateSellerConfirmGate,
   applyCommercialConfirmPatch,
+  resolveLowConfidenceFields,
+  buildHighConfidenceConfirmedMap,
 } from './sellerOfferConfirmGate.js';
 
 // --- parseGermanMoney core ---
@@ -98,6 +100,53 @@ assert.notEqual(parseGermanMoney('6.000,00'), 600000);
   });
   assert.equal(allowed.canSave, true);
   assert.deepEqual(allowed.missing, []);
+}
+
+// Central confirm covers high-confidence required fields
+{
+  const viaCentral = evaluateSellerConfirmGate({
+    confirmed: {},
+    values: { monthlyRate: 152.36, offerType: 'leasing' },
+    centralConfirmed: true,
+    lowConfidenceFields: [],
+  });
+  assert.equal(viaCentral.canSave, true);
+}
+
+// Low-confidence still blocks even after central confirm
+{
+  const blockedLow = evaluateSellerConfirmGate({
+    confirmed: { monthlyRate: true },
+    values: { monthlyRate: 152.36, offerType: 'leasing' },
+    centralConfirmed: true,
+    lowConfidenceFields: ['offerType'],
+  });
+  assert.equal(blockedLow.canSave, false);
+  assert.deepEqual(blockedLow.missing, ['offerType']);
+}
+
+{
+  const allowedAfterLow = evaluateSellerConfirmGate({
+    confirmed: { monthlyRate: true, offerType: true },
+    values: { monthlyRate: 152.36, offerType: 'leasing' },
+    centralConfirmed: true,
+    lowConfidenceFields: ['offerType'],
+  });
+  assert.equal(allowedAfterLow.canSave, true);
+}
+
+{
+  const low = resolveLowConfidenceFields({
+    confidence: { monthlyRate: 0.95, offerType: 0.4 },
+    ambiguities: [{ field: 'offerType', message: 'Angebotsart unsicher' }],
+    values: { monthlyRate: 152.36, offerType: 'leasing' },
+  });
+  assert.ok(low.includes('offerType'));
+  assert.ok(!low.includes('monthlyRate'));
+
+  const highMap = buildHighConfidenceConfirmedMap(undefined, low);
+  assert.equal(highMap.monthlyRate, true);
+  assert.equal(highMap.offerType, undefined);
 }
 
 // applyCommercialConfirmPatch

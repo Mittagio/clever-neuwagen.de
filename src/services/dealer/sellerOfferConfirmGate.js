@@ -13,12 +13,82 @@ export const PDF_CONFIRM_FIELDS = [
 
 export const PDF_CONFIRM_REQUIRED = ['monthlyRate', 'offerType'];
 
+/** Confidence below this is treated as needing explicit attention. */
+export const LOW_CONFIDENCE_THRESHOLD = 0.7;
+
+/**
+ * Resolve which commercial fields are low-confidence / ambiguous / implausible.
+ * @param {{
+ *   confidence?: Record<string, number>,
+ *   ambiguities?: Array<{ field?: string }>,
+ *   plausibilityFlags?: Record<string, boolean>,
+ *   values?: Record<string, unknown>,
+ *   fields?: string[],
+ * }} opts
+ * @returns {string[]}
+ */
+export function resolveLowConfidenceFields(opts = {}) {
+  const fields = opts.fields ?? PDF_CONFIRM_FIELDS;
+  const confidence = opts.confidence ?? {};
+  const ambiguities = opts.ambiguities ?? [];
+  const flags = opts.plausibilityFlags ?? {};
+  const values = opts.values ?? {};
+  const ambiguous = new Set(
+    ambiguities.map((a) => a?.field).filter(Boolean),
+  );
+  const low = [];
+
+  for (const field of fields) {
+    if (ambiguous.has(field)) {
+      low.push(field);
+      continue;
+    }
+    const conf = confidence[field];
+    if (Number.isFinite(conf) && conf < LOW_CONFIDENCE_THRESHOLD) {
+      low.push(field);
+      continue;
+    }
+    if (field === 'monthlyRate' && flags.monthlyRateImplausible) {
+      low.push(field);
+      continue;
+    }
+    if (field === 'downPayment' && flags.downPaymentImplausible) {
+      low.push(field);
+      continue;
+    }
+    const required = PDF_CONFIRM_REQUIRED.includes(field);
+    const hasValue = values[field] != null && values[field] !== '';
+    if (required && !hasValue) {
+      low.push(field);
+    }
+  }
+
+  return [...new Set(low)];
+}
+
+/**
+ * Mark every field that is not low-confidence as confirmed.
+ * @param {string[]} fields
+ * @param {string[]} lowConfidenceFields
+ * @returns {Record<string, boolean>}
+ */
+export function buildHighConfidenceConfirmedMap(fields = PDF_CONFIRM_FIELDS, lowConfidenceFields = []) {
+  const low = new Set(lowConfidenceFields);
+  const next = {};
+  for (const field of fields) {
+    if (!low.has(field)) next[field] = true;
+  }
+  return next;
+}
+
 /**
  * @param {{
  *   confirmed?: Record<string, boolean>,
  *   edited?: Record<string, boolean>,
  *   values?: Record<string, unknown>,
  *   requiredFields?: string[],
+ *   centralConfirmed?: boolean,
+ *   lowConfidenceFields?: string[],
  * }} state
  * @returns {{ canSave: boolean, missing: string[] }}
  */
@@ -26,11 +96,25 @@ export function evaluateSellerConfirmGate(state = {}) {
   const required = state.requiredFields ?? PDF_CONFIRM_REQUIRED;
   const confirmed = state.confirmed ?? {};
   const values = state.values ?? {};
+  const centralConfirmed = Boolean(state.centralConfirmed);
+  const lowConfidence = new Set(state.lowConfidenceFields ?? []);
   const missing = [];
 
   for (const field of required) {
     const hasValue = values[field] != null && values[field] !== '';
-    if (!hasValue || !confirmed[field]) {
+    if (!hasValue) {
+      missing.push(field);
+      continue;
+    }
+
+    // Low-confidence fields always need an explicit confirm (or edit + confirm).
+    if (lowConfidence.has(field)) {
+      if (!confirmed[field]) missing.push(field);
+      continue;
+    }
+
+    // High-confidence: per-field confirm OR central "Alle Konditionen sind korrekt".
+    if (!confirmed[field] && !centralConfirmed) {
       missing.push(field);
     }
   }
