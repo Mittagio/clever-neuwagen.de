@@ -534,9 +534,9 @@ export default function DealerAiOfferPreview({
                 <span className="dai-opreview-pdf-doc__name">
                   {originalPdfFileName || 'Original-PDF'}
                 </span>
-                <span className="dai-opreview-pdf-doc__hint">
-                  {pdfViewUrl ? 'Bank-/Händler-Angebot' : 'PDF nicht verfügbar'}
-                </span>
+                {!pdfViewUrl && (
+                  <span className="dai-opreview-pdf-doc__hint">PDF nicht verfügbar</span>
+                )}
               </div>
             </div>
 
@@ -589,9 +589,6 @@ export default function DealerAiOfferPreview({
             >
               {isReuploading ? 'PDF wird gelesen …' : 'Korrigiertes PDF ersetzen'}
             </button>
-            <p className="dai-opreview-pdf-replace__hint">
-              Ersetzt die Erkennung mit einem neuen Bank-/Händler-PDF
-            </p>
           </div>
         )}
 
@@ -601,18 +598,6 @@ export default function DealerAiOfferPreview({
       </div>
     );
   }
-
-  const subtitle = fromPdf
-    ? 'Clever hat die Daten aus dem PDF übernommen. Prüfen und in der Kundenakte ablegen.'
-    : 'Prüfen und in der Kundenakte ablegen.';
-
-  const customerSaveLine = customer.name
-    ? `Wird in der Kundenakte von ${customer.name} abgelegt.`
-    : 'Wird in der Kundenakte abgelegt.';
-
-  const savedSupportLine = pdfViewUrl
-    ? 'Alle Daten und das Original-PDF wurden in der Kundenakte gespeichert.'
-    : 'Alle Daten wurden in der Kundenakte gespeichert.';
 
   const offerTypeAmbiguity = ambiguities.find((a) => a.field === 'offerType');
   const showOfferTypeCallout = requireConfirm
@@ -629,7 +614,6 @@ export default function DealerAiOfferPreview({
       backLabel={!saved ? '← Zurück' : null}
       onBack={!saved ? onBack : null}
       title="Angebot prüfen"
-      subtitle={subtitle}
     >
       {/* 1. Hero offer card – rate dominant; Konditionen live below (no duplicate meta) */}
       <section
@@ -705,12 +689,6 @@ export default function DealerAiOfferPreview({
               </span>
             ))}
           </div>
-        )}
-
-        {fromPdf && requireConfirm && (
-          <p className="dai-opreview-hero-card__clever-signal">
-            ✦ Aus PDF erkannt und für Sie vorbereitet
-          </p>
         )}
 
         {showPackages && (
@@ -971,9 +949,7 @@ export default function DealerAiOfferPreview({
       <FlowStickyFooter
         className={canFile && !saved ? 'dai-opreview-foot--ready' : ''}
         saved={saved ? '✓ Angebot vorbereitet' : null}
-        hint={!saved && !canFile
-          ? notReadyLabel
-          : (!saved ? customerSaveLine : savedSupportLine)}
+        hint={!saved && !canFile ? notReadyLabel : null}
       >
         <input
           ref={fileInputRef}
@@ -996,8 +972,8 @@ export default function DealerAiOfferPreview({
             disabled={isSaving || savePending || isReuploading || (requireConfirm && !gate.canSave)}
           >
             {isSaving || savePending
-              ? 'Wird abgelegt …'
-              : (canFile ? 'In Kundenakte ablegen' : notReadyLabel)}
+              ? 'Wird gespeichert …'
+              : (canFile ? 'Angebot speichern' : notReadyLabel)}
           </FlowPrimaryButton>
         )}
       </FlowStickyFooter>
