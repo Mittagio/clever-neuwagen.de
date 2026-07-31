@@ -673,11 +673,16 @@ export default function DealerAIPage() {
         fromPdf: Boolean(magicOfferPreparation.fromPdf),
         originalPdf: magicOfferPreparation.originalPdf ?? null,
       });
-      setMagicOfferPreparation({
+      const merged = {
         ...next,
         originalPdf: magicOfferPreparation.originalPdf ?? next.originalPdf ?? null,
-        fromPdf: magicOfferPreparation.fromPdf || next.fromPdf,
-      });
+        fromPdf: Boolean(magicOfferPreparation.fromPdf || next.fromPdf),
+        skipMagicReview: true,
+      };
+      setMagicOfferPreparation(merged);
+      if (merged.fromPdf && advanceMagicPreparationToPreview(merged)) {
+        return;
+      }
     } finally {
       setMagicOfferWorking(false);
     }
