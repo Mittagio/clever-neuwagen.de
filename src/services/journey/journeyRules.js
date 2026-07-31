@@ -238,13 +238,15 @@ export function collectJourneySignals(lead = null, options = {}) {
   });
 
   // Golden Moment andocken (keine zweite Engine) – Reminder/Signale teilen dieselbe Quelle
-  const goldenMoment = buildGoldenMoment(lead);
+  const goldenMoment = buildGoldenMoment(lead, { now: options.now });
   const favoriteNeedsRevisedOffer = goldenMoment?.type
-    === GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER;
+    === GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER
+    || goldenMoment?.type === GOLDEN_MOMENT_TYPE.CONTRACT_SUCCESSION;
 
   return {
     lead,
     crm,
+    now: options.now || null,
     leadStatus,
     pipelineStatusId,
     canonicalOffer,

@@ -8,6 +8,10 @@ import {
   VEHICLE_TRACK_STATUS,
   REJECTION_REASON_LABEL,
 } from '../crm/vehicleTrack.js';
+import {
+  evaluateContractGoldenSignals,
+  buildContractGoldenBodyLines,
+} from '../cleverSeller/contractGoldenSignals.js';
 
 export const GOLDEN_MOMENT_TYPE = {
   FAVORITE_NEEDS_REVISED_OFFER: 'favorite_vehicle_needs_revised_offer',
@@ -17,23 +21,55 @@ export const GOLDEN_MOMENT_TYPE = {
   CHANGE_REQUESTED: 'customer_change_requested',
   MULTI_COMPARE_READY: 'multi_offer_compare_ready',
   SEND_REVISED_OFFER: 'revised_offer_ready_to_send',
+  /** Altvertrag läuft aus + Nachfolge fehlt */
+  CONTRACT_SUCCESSION: 'contract_succession_follow_up',
 };
 
 /**
  * @param {object} lead
+ * @param {{ now?: Date|string|number }} [options]
  * @returns {object|null} goldenMoment
  */
-export function buildGoldenMoment(lead = {}) {
+export function buildGoldenMoment(lead = {}, options = {}) {
   const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
-  if (!tracks.length) return null;
+  const customerName = resolveCustomerName(lead);
+  const contractSignals = evaluateContractGoldenSignals(lead, options);
+  const contractLines = buildContractGoldenBodyLines(lead, contractSignals, options);
+
+  if (!tracks.length) {
+    if (contractSignals.active && contractLines.length) {
+      return {
+        type: GOLDEN_MOMENT_TYPE.CONTRACT_SUCCESSION,
+        customerId: lead?.id ?? null,
+        vehicleTrackId: null,
+        contractId: contractSignals.contract?.id || null,
+        reasons: contractSignals.reasons,
+        recommendedAction: contractSignals.needsReturnPrep
+          ? 'prepare_return'
+          : (contractSignals.needsMileageCheck ? 'check_mileage' : 'start_succession'),
+        primaryLabel: 'Wechselchance starten',
+        secondaryLabel: 'Vertrag öffnen',
+        headline: contractLines[0],
+        body: contractLines.slice(1).join(' '),
+        bodyLines: contractLines,
+        createdAt: new Date().toISOString(),
+        score: null,
+        closureChance: null,
+        contractSignals,
+      };
+    }
+    return null;
+  }
 
   const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE);
   const deferred = tracks.filter((t) => t.status === VEHICLE_TRACK_STATUS.DEFERRED);
-  const customerName = resolveCustomerName(lead);
 
   if (favorite) {
     const reqs = favorite.requirementLabels ?? [];
     const offerMissesReqs = reqs.length > 0;
+    const succession = contractSignals.active && (
+      contractSignals.followUpOfferMissing || offerMissesReqs
+    );
     const reasons = [
       `${favorite.modelLabel}: positive Kundenreaktion / Favorit`,
     ];
@@ -49,49 +85,66 @@ export function buildGoldenMoment(lead = {}) {
       reasons.push(`Zusätzliche Wünsche: ${reqs.join(' · ')}`);
       reasons.push('Aktuelles Angebot spiegelt die Wünsche noch nicht vollständig');
     }
-
-    const bodyLines = [
-      `${customerName} tendiert aktuell zum ${favorite.modelLabel}.`,
-    ];
-    if (deferred[0]) {
-      const reason = deferred[0].rejectionReasonLabel
-        || REJECTION_REASON_LABEL[deferred[0].rejectionReason]
-        || 'Preis';
-      bodyLines.push(
-        `Der ${deferred[0].modelLabel} wurde wegen des Preises zurückgestellt.`
-          .replace('wegen des Preises', `wegen: ${reason}`)
-          .replace('wegen: zu teuer', 'wegen des Preises'),
-      );
+    if (contractSignals.active) {
+      reasons.push(...contractSignals.reasons);
     }
-    if (reqs.length) {
-      const joined = reqs.join(' · ');
-      const needsSuffix = !/wichtig|gewünscht/i.test(joined);
-      bodyLines.push(
-        needsSuffix
-          ? `Beim ${favorite.modelLabel} sind ${reqs.join(', ')} wichtig.`
-          : `Beim ${favorite.modelLabel}: ${joined}.`,
-      );
+
+    const bodyLines = succession && contractLines.length
+      ? [...contractLines]
+      : [
+        `${customerName} tendiert aktuell zum ${favorite.modelLabel}.`,
+      ];
+    if (!succession || !contractLines.length) {
+      if (deferred[0]) {
+        const reason = deferred[0].rejectionReasonLabel
+          || REJECTION_REASON_LABEL[deferred[0].rejectionReason]
+          || 'Preis';
+        bodyLines.push(
+          `Der ${deferred[0].modelLabel} wurde wegen des Preises zurückgestellt.`
+            .replace('wegen des Preises', `wegen: ${reason}`)
+            .replace('wegen: zu teuer', 'wegen des Preises'),
+        );
+      }
+      if (reqs.length) {
+        const joined = reqs.join(' · ');
+        const needsSuffix = !/wichtig|gewünscht/i.test(joined);
+        bodyLines.push(
+          needsSuffix
+            ? `Beim ${favorite.modelLabel} sind ${reqs.join(', ')} wichtig.`
+            : `Beim ${favorite.modelLabel}: ${joined}.`,
+        );
+      }
+      if (contractLines.length && !succession) {
+        bodyLines.unshift(contractLines[0]);
+      }
     }
 
     return {
-      type: offerMissesReqs
-        ? GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER
-        : GOLDEN_MOMENT_TYPE.FAVORITE_FOLLOW_UP,
+      type: succession
+        ? GOLDEN_MOMENT_TYPE.CONTRACT_SUCCESSION
+        : (offerMissesReqs
+          ? GOLDEN_MOMENT_TYPE.FAVORITE_NEEDS_REVISED_OFFER
+          : GOLDEN_MOMENT_TYPE.FAVORITE_FOLLOW_UP),
       customerId: lead?.id ?? null,
       vehicleTrackId: favorite.id,
+      contractId: contractSignals.contract?.id || null,
       reasons,
-      recommendedAction: offerMissesReqs
-        ? 'prepare_revised_offer'
-        : 'follow_up_favorite',
-      primaryLabel: `${favorite.modelLabel}-Angebot anpassen`,
+      recommendedAction: succession
+        ? 'prepare_succession_offer'
+        : (offerMissesReqs
+          ? 'prepare_revised_offer'
+          : 'follow_up_favorite'),
+      primaryLabel: succession
+        ? `${favorite.modelLabel}-Nachfolgeangebot vorbereiten`
+        : `${favorite.modelLabel}-Angebot anpassen`,
       secondaryLabel: 'Nachfassen',
       headline: bodyLines[0],
       body: bodyLines.slice(1).join(' '),
       bodyLines,
       createdAt: new Date().toISOString(),
-      // Explizit: keine Prozentzahl
       score: null,
       closureChance: null,
+      contractSignals: contractSignals.active ? contractSignals : null,
     };
   }
 

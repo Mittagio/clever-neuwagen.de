@@ -7,6 +7,10 @@ import {
   GOLDEN_MOMENT_TYPE,
   buildGoldenMoment,
 } from './goldenMoment.js';
+import {
+  resolveContractEndDate,
+  monthsUntilContractEnd,
+} from '../cleverSeller/contractGoldenSignals.js';
 
 const MS_PER_HOUR = 3600000;
 const MS_PER_DAY = 86400000;
@@ -18,7 +22,9 @@ export const JOURNEY_REMINDER_RULE_IDS = {
   DOCUMENTS_MISSING_3D: 'documents_missing_3d',
   SELF_DISCLOSURE_OPEN: 'self_disclosure_open',
   TEST_DRIVE_NO_APPOINTMENT: 'test_drive_no_appointment',
+  LEASING_EXPIRES_3M: 'leasing_expires_3m',
   LEASING_EXPIRES_6M: 'leasing_expires_6m',
+  LEASING_EXPIRES_12M: 'leasing_expires_12m',
   VEHICLE_ARRIVING: 'vehicle_arriving',
   AFTERCARE_7D: 'aftercare_7d',
 };
@@ -132,6 +138,22 @@ export const JOURNEY_REMINDER_RULES = [
     },
   },
   {
+    id: JOURNEY_REMINDER_RULE_IDS.LEASING_EXPIRES_3M,
+    nextStepId: 'call_today',
+    nextStepLabel: 'Rückgabe / Nachfolge vorbereiten',
+    reason: 'Leasing läuft in 3 Monaten aus',
+    priority: 45,
+    matches(signals) {
+      const end = resolveLeasingEndDate(signals.lead);
+      if (!end) return false;
+      const months = monthsUntil(end, signals.now);
+      return months != null && months <= 3 && months >= 0;
+    },
+    dueAt() {
+      return startOfToday();
+    },
+  },
+  {
     id: JOURNEY_REMINDER_RULE_IDS.LEASING_EXPIRES_6M,
     nextStepId: 'call_today',
     nextStepLabel: 'Wechselchance starten',
@@ -140,8 +162,25 @@ export const JOURNEY_REMINDER_RULES = [
     matches(signals) {
       const end = resolveLeasingEndDate(signals.lead);
       if (!end) return false;
-      const months = monthsUntil(end);
-      return months != null && months <= 6 && months >= 0;
+      const months = monthsUntil(end, signals.now);
+      // 3m-Regel greift enger; hier 4–6 Monate bzw. allgemein ≤6 wenn 3m nicht separat gematcht
+      return months != null && months <= 6 && months > 3;
+    },
+    dueAt() {
+      return startOfToday();
+    },
+  },
+  {
+    id: JOURNEY_REMINDER_RULE_IDS.LEASING_EXPIRES_12M,
+    nextStepId: 'reminder',
+    nextStepLabel: 'Nachfolge frühzeitig planen',
+    reason: 'Leasing läuft in 12 Monaten aus',
+    priority: 55,
+    matches(signals) {
+      const end = resolveLeasingEndDate(signals.lead);
+      if (!end) return false;
+      const months = monthsUntil(end, signals.now);
+      return months != null && months <= 12 && months > 6;
     },
     dueAt() {
       return startOfToday();
@@ -216,11 +255,8 @@ function addDays(iso, days) {
   return startOfDay(base).toISOString();
 }
 
-function monthsUntil(iso) {
-  const end = new Date(iso);
-  if (Number.isNaN(end.getTime())) return null;
-  const now = new Date();
-  return (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+function monthsUntil(iso, now = null) {
+  return monthsUntilContractEnd(iso, now || new Date());
 }
 
 const MONTH_MAP = {
@@ -228,13 +264,22 @@ const MONTH_MAP = {
   juli: 6, august: 7, september: 8, oktober: 9, november: 10, dezember: 11,
 };
 
-function resolveLeasingEndDate(lead = {}) {
+/**
+ * Vertragsende aus Contract Memory oder Wish-Projektion.
+ * @param {object} lead
+ */
+export function resolveLeasingEndDate(lead = {}) {
+  const fromContract = resolveContractEndDate(lead);
+  if (fromContract && /^\d{4}-\d{2}/.test(String(fromContract))) {
+    return fromContract;
+  }
   const raw = lead?.wish?.leasingEndDate
     ?? lead?.leasingEndDate
     ?? lead?.crm?.leasingEndDate
+    ?? fromContract
     ?? null;
   if (!raw) return null;
-  if (/^\d{4}-\d{2}/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}/.test(String(raw))) return String(raw);
   const match = String(raw).match(/(januar|februar|märz|maerz|april|mai|juni|juli|august|september|oktober|november|dezember)\s*(\d{4})?/i);
   if (!match) return null;
   const month = MONTH_MAP[match[1].toLowerCase()];

@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 7 (Contract Memory Search)  
+**Status:** Slice 8 (Contract Golden Moments)  
 **Stand:** Juli 2026
 
 ## Produktgesetz
@@ -37,6 +37,7 @@ Nur `runCleverSellerTurn()`:
 | `resolvedDateTime`, `preparedAppointment`, `appointment_and_message_review` | 5 |
 | `documentClassification`, `contractDraft`, `contract_import_review` | 6 |
 | `contractMemoryResult`, `contract_memory_result` | 7 |
+| Contract → Golden Moment / Journey Reminder (3/6/12m) | 8 |
 
 ## Slice 5 – Golden Flow
 
@@ -64,13 +65,12 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice7.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice8.test.js`
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
-| **8** | Contract Golden Moments | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
-| später | Offer + Termin Multi-Action, Attachments, Akte-Composer-Migration, PDF-Contract-Intake | — |
+| später | Vertragsvergleich, Offer + Termin Multi-Action, Attachments, PDF-Contract-Intake, Akte-Composer-Migration | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

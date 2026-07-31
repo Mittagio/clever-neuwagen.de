@@ -917,7 +917,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     || /\bnoch\s+einmal\??\s*$/i.test(t)
     || /\b(?:kundenkontext|zusammenfassung)\b/i.test(t)
     || /\bwie\s+steht.?s\s+(?:bei|mit)\b/i.test(t);
-  const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment)\b/i.test(t);
+  const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|nachfolgeangebot|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const isContractIntake = isCustomerContractIntakeText(t);
   const isContractQuery = !isContractIntake && isCustomerContractQuery(t);

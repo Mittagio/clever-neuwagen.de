@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 7 implementiert (Contract Memory Search) – Slice 8 Roadmap  
+**Status:** Slice 8 implementiert (Contract Golden Moments)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -290,16 +290,25 @@ Keine Customer-Truth-Mutation.
 
 ---
 
-## Slice 8 – Contract Golden Moments (später)
+## Slice 8 – Contract Golden Moments
 
-Bestätigte Vertragsdaten in **bestehende** Journey-/Reminder-Systeme:
+**Status: implementiert**
 
-- Ende in 12 / 6 / 3 Monaten  
-- Kilometer prüfen, Rückgabe vorbereiten  
-- Nachfolgeangebot fehlt + bestehendes Fahrzeuginteresse  
+Bestätigte Vertragsdaten speisen **bestehende** Journey-/Reminder-/Golden-Moment-Systeme:
 
-Keine Kaufwahrscheinlichkeit. Keine erfundenen Prioritäten.  
-Keine zweite Reminder-Engine.
+- Horizonte 12 / 6 / 3 Monate (`leasing_expires_12m` / `_6m` / `_3m`)
+- Kilometer prüfen (≤6 Monate)
+- Rückgabe vorbereiten (≤3 Monate)
+- Nachfolgeangebot fehlt + Favoriteninteresse → `CONTRACT_SUCCESSION`
+
+Keine Kaufwahrscheinlichkeit. Keine zweite Reminder-Engine.
+
+| Modul | Rolle |
+|-------|--------|
+| `contractGoldenSignals.js` | Horizonte, Reasons, Body-Lines |
+| `goldenMoment.js` | Typ `contract_succession_follow_up` |
+| `journeyReminderRules.js` | 3m / 6m / 12m Regeln + Contract-Enddatum |
+| `globalComposer.slice8.test.js` | Golden + Reminder-Gegenproben |
 
 ---
 

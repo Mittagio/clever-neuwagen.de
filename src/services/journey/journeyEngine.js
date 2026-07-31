@@ -20,6 +20,7 @@ export function evaluateJourney(lead = null, options = {}) {
   const signals = collectJourneySignals(lead, {
     vehicleCards: options.vehicleCards,
     offerSelectionGroups: options.offerSelectionGroups,
+    now: options.now,
   });
 
   const { phase, phaseLabel, confidence } = resolveJourneyPhase(signals);
