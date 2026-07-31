@@ -19,6 +19,160 @@ function paymentTypeFromOfferType(offerType) {
   return 'unknown';
 }
 
+function normalizeVehicleKey(value = '') {
+  return String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+const MAGIC_MODEL_ALIASES = [
+  ['sportagephev', 'sportage-phev'],
+  ['sportagepluginhybrid', 'sportage-phev'],
+  ['sportagehybrid', 'sportage-hybrid'],
+  ['sportage', 'sportage'],
+  ['xceed', 'xceed'],
+  ['sorento', 'sorento'],
+  ['picanto', 'picanto'],
+  ['stonic', 'stonic'],
+  ['ceed', 'ceed'],
+  ['niro', 'niro'],
+  ['esoul', 'esoul'],
+  ['soul', 'esoul'],
+  ['ev9', 'ev9'],
+  ['ev6', 'ev6'],
+  ['ev5', 'ev5'],
+  ['ev4', 'ev4'],
+  ['ev3', 'ev3'],
+  ['ev2', 'ev2'],
+];
+
+const TRIM_DISPLAY = {
+  'gt-line': 'GT-Line',
+  gtline: 'GT-Line',
+  earth: 'Earth',
+  air: 'Air',
+  spirit: 'Spirit',
+  vision: 'Vision',
+};
+
+/**
+ * Sportage Vision / EV3 GT-Line etc. → catalog modelKey.
+ * @param {string|null|undefined} hint
+ * @returns {string|null}
+ */
+export function resolveMagicModelKey(hint) {
+  if (hint == null || hint === '') return null;
+  const raw = String(hint).trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (/^(ev[2-9]|sportage(?:-hybrid|-phev)?|ceed|picanto|niro|sorento|stonic|xceed|esoul)$/.test(lower)) {
+    return lower;
+  }
+  let key = normalizeVehicleKey(raw);
+  if (!key) return null;
+  // „Kia Sportage Vision“ → strip brand prefix for alias match
+  key = key.replace(/^(kia|hyundai|toyota|vw|volkswagen|bmw|audi|mercedes|mercedesbenz)+/, '');
+  if (!key) return null;
+  const ev = key.match(/^ev([234569]|9)/);
+  if (ev) return `ev${ev[1]}`;
+  for (const [needle, modelKey] of MAGIC_MODEL_ALIASES) {
+    if (key === needle || key.startsWith(needle) || key.includes(needle)) return modelKey;
+  }
+  return null;
+}
+
+function displayModelFromKey(modelKey, fallback = null) {
+  if (fallback) return fallback;
+  if (!modelKey) return null;
+  if (modelKey.startsWith('ev')) return modelKey.toUpperCase();
+  if (modelKey === 'sportage-hybrid') return 'Sportage Hybrid';
+  if (modelKey === 'sportage-phev') return 'Sportage Plug-in Hybrid';
+  if (modelKey === 'esoul') return 'e-Soul';
+  return modelKey.charAt(0).toUpperCase() + modelKey.slice(1);
+}
+
+function resolveTrimFromHints(...hints) {
+  for (const hint of hints) {
+    if (!hint) continue;
+    const raw = String(hint).trim();
+    if (!raw) continue;
+    const key = normalizeVehicleKey(raw);
+    if (key === 'gtline' || key === 'gt-line') {
+      return { trimId: 'gt-line', trimLabel: 'GT-Line' };
+    }
+    if (TRIM_DISPLAY[key] || TRIM_DISPLAY[raw.toLowerCase()]) {
+      const trimId = key === 'gtline' ? 'gt-line' : (raw.toLowerCase() === 'gt-line' ? 'gt-line' : key);
+      return {
+        trimId,
+        trimLabel: TRIM_DISPLAY[key] || TRIM_DISPLAY[raw.toLowerCase()] || raw,
+      };
+    }
+    if (/vision|spirit|earth|air|gt[\s-]?line/i.test(raw)) {
+      const id = /\bgt[\s-]?line\b/i.test(raw)
+        ? 'gt-line'
+        : (raw.match(/\b(vision|spirit|earth|air)\b/i)?.[1] ?? raw).toLowerCase();
+      return { trimId: id, trimLabel: TRIM_DISPLAY[id] || raw };
+    }
+  }
+  return { trimId: null, trimLabel: null };
+}
+
+/**
+ * Fahrzeug aus Grounding, Offer-Interpretation, Intent oder Headline ableiten.
+ * Braucht kein prior parsed.ok – PDF-Leasing ohne Katalog-UPE bleibt navigierbar.
+ */
+export function resolveMagicVehicleFields(preparation) {
+  const g = preparation?.grounded ?? {};
+  const oiRoot = preparation?.offerInterpretation?.interpretation
+    ?? preparation?.offerInterpretation
+    ?? {};
+  const oiVehicle = oiRoot.vehicle ?? {};
+  const vr = preparation?.intent?.vehicleRequest ?? {};
+  const headline = preparation?.headline ?? '';
+
+  const modelKey = g.modelKey
+    || resolveMagicModelKey(oiVehicle.modelKey)
+    || resolveMagicModelKey(oiVehicle.model)
+    || resolveMagicModelKey(vr.modelHint)
+    || resolveMagicModelKey(headline)
+    || null;
+
+  const model = g.model
+    || oiVehicle.model
+    || displayModelFromKey(modelKey)
+    || displayModelFromKey(resolveMagicModelKey(vr.modelHint));
+
+  const trimResolved = resolveTrimFromHints(
+    g.trimLabel,
+    g.trimId,
+    oiVehicle.trim,
+    vr.trimHint,
+    headline,
+  );
+
+  return {
+    modelKey,
+    model: model || null,
+    brand: g.brand || oiVehicle.brand || vr.brandHint || 'Kia',
+    trimId: g.trimId || trimResolved.trimId,
+    trimLabel: g.trimLabel || oiVehicle.trim || trimResolved.trimLabel,
+  };
+}
+
+/**
+ * Kommerzielle Felder für Direkt-Sprung zur Angebotsvorschau.
+ */
+export function magicPreparationHasCommercialPreviewFields(preparation) {
+  if (!preparation) return false;
+  const calc = preparation.calculation ?? {};
+  const commercial = preparation.intent?.commercialInput ?? {};
+  if (calc.monthlyRate != null || commercial.monthlyRate != null) return true;
+  if (preparation.mode === 'cash_magic' && calc.ok && calc.endPrice != null) return true;
+  return false;
+}
+
 /**
  * Prefer OI value when intent is missing OR intent looks like a classic DE-parse bug
  * (e.g. 152,36 → 15236) while OI has a plausible value.
@@ -204,9 +358,8 @@ export function prepareMagicOffer(text, context = {}) {
     offerReview,
     hasRateAmbiguity,
     commercialPlausibility,
-    /** PDF-Leasing/Finanzierung: Zwischen-Review überspringen → Angebotsvorschau */
-    skipMagicReview: Boolean(context.fromPdf)
-      && (intent.offerType === 'leasing' || intent.offerType === 'financing'),
+    /** PDF (außer Barkauf-Paketmath): MagicOfferReview überspringen → Angebotsvorschau */
+    skipMagicReview: Boolean(context.fromPdf),
   };
 
   if (decision.action === MAGIC_DECISION.CALCULATE_CASH && groundedResult.grounded) {
@@ -334,6 +487,11 @@ export function prepareMagicOffer(text, context = {}) {
 export function applyMagicOfferCorrection(previous, correctionText, context = {}) {
   const blob = String(correctionText ?? '').toLowerCase();
   let nextText = previous?.intent?.rawText ?? '';
+  const ctx = {
+    ...context,
+    fromPdf: Boolean(context.fromPdf ?? previous?.fromPdf),
+    originalPdf: context.originalPdf ?? previous?.originalPdf ?? null,
+  };
 
   // „P11 raus“
   const removePkg = blob.match(/(?:p\s*([1-9]\d?))\s*(?:raus|weg|entfernen|ohne)/i)
@@ -345,8 +503,8 @@ export function applyMagicOfferCorrection(previous, correctionText, context = {}
       .replace(/\s+/g, ' ')
       .trim();
     return prepareMagicOffer(nextText, {
-      ...context,
-      modelKey: previous?.grounded?.modelKey ?? context.modelKey,
+      ...ctx,
+      modelKey: previous?.grounded?.modelKey ?? ctx.modelKey,
       previousPreparation: { ...previous, intent: { ...previous.intent, rawText: nextText } },
     });
   }
@@ -359,8 +517,8 @@ export function applyMagicOfferCorrection(previous, correctionText, context = {}
       nextText = `${nextText}, ${pct[1].replace(',', '.')} %`.trim();
     }
     return prepareMagicOffer(nextText, {
-      ...context,
-      modelKey: previous?.grounded?.modelKey ?? context.modelKey,
+      ...ctx,
+      modelKey: previous?.grounded?.modelKey ?? ctx.modelKey,
       previousPreparation: previous,
     });
   }
@@ -379,15 +537,15 @@ export function applyMagicOfferCorrection(previous, correctionText, context = {}
       nextText = `${nextText}, ${amount} Überführung`;
     }
     return prepareMagicOffer(nextText, {
-      ...context,
-      modelKey: previous?.grounded?.modelKey ?? context.modelKey,
+      ...ctx,
+      modelKey: previous?.grounded?.modelKey ?? ctx.modelKey,
       previousPreparation: previous,
     });
   }
 
   return prepareMagicOffer(correctionText, {
-    ...context,
-    modelKey: previous?.grounded?.modelKey ?? context.modelKey,
+    ...ctx,
+    modelKey: previous?.grounded?.modelKey ?? ctx.modelKey,
     previousPreparation: previous,
   });
 }
@@ -399,17 +557,24 @@ export function magicPreparationToConfigurePatch(preparation) {
   const g = preparation?.grounded ?? {};
   const c = preparation?.intent?.commercialInput ?? {};
   const calc = preparation?.calculation ?? {};
-  if (!g.modelKey && !g.model && !c.monthlyRate && calc.monthlyRate == null) {
-    // still allow commercial-only patch from PDF when model hint exists on intent
+  const vehicle = resolveMagicVehicleFields(preparation);
+  if (
+    !vehicle.modelKey
+    && !vehicle.model
+    && !g.modelKey
+    && !g.model
+    && c.monthlyRate == null
+    && calc.monthlyRate == null
+  ) {
     if (!preparation?.intent?.vehicleRequest?.modelHint) return null;
   }
 
   return {
-    modelKey: g.modelKey ?? null,
-    model: g.model ?? preparation?.intent?.vehicleRequest?.modelHint ?? null,
-    brand: g.brand ?? preparation?.intent?.vehicleRequest?.brandHint ?? 'Kia',
-    trimId: g.trimId,
-    trimLabel: g.trimLabel ?? preparation?.intent?.vehicleRequest?.trimHint ?? null,
+    modelKey: vehicle.modelKey ?? g.modelKey ?? null,
+    model: vehicle.model ?? g.model ?? preparation?.intent?.vehicleRequest?.modelHint ?? null,
+    brand: vehicle.brand ?? g.brand ?? preparation?.intent?.vehicleRequest?.brandHint ?? 'Kia',
+    trimId: vehicle.trimId ?? g.trimId,
+    trimLabel: vehicle.trimLabel ?? g.trimLabel ?? preparation?.intent?.vehicleRequest?.trimHint ?? null,
     engineId: g.engineId,
     motorLabel: g.engineLabel,
     colorId: g.colorId,
@@ -418,9 +583,9 @@ export function magicPreparationToConfigurePatch(preparation) {
     paymentType: preparation.paymentType,
     desiredRate: calc.monthlyRate ?? c.monthlyRate ?? null,
     desiredPrice: preparation.mode === 'cash_magic' ? calc.endPrice ?? null : null,
-    termMonths: c.durationMonths ?? null,
-    mileagePerYear: c.annualMileageKm ?? null,
-    downPayment: c.downPayment ?? c.specialPayment ?? 0,
+    termMonths: c.durationMonths ?? calc.durationMonths ?? null,
+    mileagePerYear: c.annualMileageKm ?? calc.annualMileageKm ?? null,
+    downPayment: c.downPayment ?? c.specialPayment ?? calc.downPayment ?? calc.specialPayment ?? 0,
     preparationFee: c.transferCost ?? calc.transferCost ?? null,
     customDiscountPercent: calc.discountPercent ?? c.discountPercent ?? null,
     customerGroup: (calc.discountPercent != null || c.discountPercent != null) ? 'custom' : 'standard',
@@ -538,16 +703,19 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
 }
 
 /**
- * PDF-Leasing/Finanzierung: MagicOfferReview (Bild 2) überspringen.
+ * PDF → nie MagicOfferReview („Angebot vorbereitet“).
+ * Ausnahme: deterministischer Barkauf (cash_magic) behält Positionsreview.
  */
 export function shouldSkipMagicOfferReview(preparation) {
   if (!preparation?.fromPdf) return false;
   if (preparation.mode === 'cash_magic') return false;
-  return Boolean(
-    preparation.skipMagicReview
-    || preparation.mode === 'leasing_intake'
-    || preparation.mode === 'financing_intake',
-  );
+  if (preparation.skipMagicReview) return true;
+  if (preparation.mode === 'leasing_intake' || preparation.mode === 'financing_intake') return true;
+  // PDF mit erkannten Konditionen / Fahrzeug – auch ohne sauberes offerType
+  if (magicPreparationHasCommercialPreviewFields(preparation)) return true;
+  if (resolveMagicVehicleFields(preparation).modelKey) return true;
+  // Jedes andere fromPdf (außer cash) trotzdem skippen – Confirm sitzt auf der Vorschau
+  return true;
 }
 
 export { MAGIC_DECISION, COMMERCIAL_SOURCE };

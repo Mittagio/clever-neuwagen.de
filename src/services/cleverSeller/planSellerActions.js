@@ -112,6 +112,7 @@ export function planSellerActions({
   resolvedCustomer = null,
   workingContext = null,
   goldenMoment = null,
+  attachments = [],
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -259,6 +260,7 @@ export function planSellerActions({
         sellerInput,
         currentOfferContext,
         facts,
+        attachments,
       });
       const purchase = facts.find((f) => f.field === 'purchasePrice');
       actions.push({

@@ -11,6 +11,7 @@ import {
 } from './magicOfferService.js';
 import { getVerifiedVehicleFacts } from '../clever/openai/tools/getVerifiedVehicleFacts.js';
 import { INLINE_RESULT_TYPES } from './sellerInlineComposerAssist.js';
+import { shouldEnrichSellerInputFromOfferPdf } from '../cleverSeller/mapMagicOfferIntentToSellerFacts.js';
 
 const AHK_RE = /ahk|anhänger|anhanger|kupplung|zuglast|schwenkbar/i;
 const PROBEFAHRT_RE = /probefahrt|termin|rückruf|anrufen|bestätig/i;
@@ -202,12 +203,18 @@ export function runSellerOfferAssist(lead = {}, draftText = '', options = {}) {
   const enriched = followUp
     ? text
     : enrichOfferTextWithCustomerWish(lead, text);
+  const fromPdf = Boolean(options.fromPdf)
+    || Boolean(previous?.fromPdf)
+    || shouldEnrichSellerInputFromOfferPdf(options.attachments, text);
 
   const magic = followUp && previous
-    ? applyMagicOfferCorrection(previous, text, { modelKey })
+    ? applyMagicOfferCorrection(previous, text, { modelKey, fromPdf })
     : prepareMagicOffer(enriched, {
       modelKey,
       previousPreparation: previous ?? undefined,
+      fromPdf,
+      offerInterpretation: options.offerInterpretation ?? undefined,
+      originalPdf: options.originalPdf ?? previous?.originalPdf ?? null,
     });
 
   const inherited = buildInheritedFromLead(lead);

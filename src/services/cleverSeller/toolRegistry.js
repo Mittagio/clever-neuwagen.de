@@ -7,6 +7,7 @@ import { prepareSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js'
 import { runSellerOfferAssist } from '../dealer/sellerOfferAssistFlow.js';
 import { runSellerAppointmentAssist } from '../dealer/sellerAppointmentAssistFlow.js';
 import { runSellerInlineAssist } from '../dealer/sellerInlineComposerAssist.js';
+import { shouldEnrichSellerInputFromOfferPdf } from './mapMagicOfferIntentToSellerFacts.js';
 import {
   lookupPackageContents,
   lookupRelevantEquipment,
@@ -50,19 +51,25 @@ export const CLEVER_SELLER_TOOLS = {
     id: 'prepare_offer',
     label: 'Angebot vorbereiten',
     requiredInputs: ['lead', 'sellerInput'],
-    optionalInputs: ['currentOfferContext', 'facts'],
+    optionalInputs: ['currentOfferContext', 'facts', 'attachments'],
     needsSellerConfirmation: true,
     sourceRequirements: ['verified_vehicle_data', 'seller_input', 'offer_pdf'],
-    execute: ({ lead, sellerInput }) => runSellerOfferAssist(lead, sellerInput, {}),
+    execute: ({ lead, sellerInput, attachments }) => runSellerOfferAssist(lead, sellerInput, {
+      attachments,
+      fromPdf: shouldEnrichSellerInputFromOfferPdf(attachments, sellerInput),
+    }),
   },
   modify_offer: {
     id: 'modify_offer',
     label: 'Angebot anpassen',
     requiredInputs: ['lead', 'sellerInput', 'currentOfferContext'],
-    optionalInputs: ['facts'],
+    optionalInputs: ['facts', 'attachments'],
     needsSellerConfirmation: true,
     sourceRequirements: ['offer_pdf', 'seller_input'],
-    execute: ({ lead, sellerInput }) => runSellerOfferAssist(lead, sellerInput, {}),
+    execute: ({ lead, sellerInput, attachments }) => runSellerOfferAssist(lead, sellerInput, {
+      attachments,
+      fromPdf: shouldEnrichSellerInputFromOfferPdf(attachments, sellerInput),
+    }),
   },
   propose_appointment: {
     id: 'propose_appointment',

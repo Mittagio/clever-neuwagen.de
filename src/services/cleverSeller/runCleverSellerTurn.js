@@ -139,6 +139,7 @@ function finalizeSellerTurn({
       resolvedCustomer: assistantContext.resolvedCustomer,
       workingContext: assistantContext.resolvedWorkingContext,
       goldenMoment: assistantContext.goldenMoment,
+      attachments,
     })
     : [];
 

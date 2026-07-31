@@ -2,7 +2,14 @@
  * Magic Offer – Golden Tests (Safe Boundary)
  */
 import assert from 'node:assert/strict';
-import { prepareMagicOffer, applyMagicOfferCorrection, overlayMagicOntoOfferDraft } from './magicOfferService.js';
+import {
+  prepareMagicOffer,
+  applyMagicOfferCorrection,
+  overlayMagicOntoOfferDraft,
+  shouldSkipMagicOfferReview,
+  resolveMagicVehicleFields,
+  magicPreparationHasCommercialPreviewFields,
+} from './magicOfferService.js';
 import { computeSafeCashOffer, computePercentDiscount } from './magicOfferSafeCalculation.js';
 import { parseMagicOfferIntent } from './magicOfferIntentParser.js';
 import { decideMagicOfferAction, MAGIC_DECISION } from './magicOfferDecision.js';
@@ -112,5 +119,20 @@ const cashOverlay = overlayMagicOntoOfferDraft(
 );
 assert.equal(cashOverlay.payment.calculatedRate, 43357.5);
 assert.equal(cashOverlay.payment.discountAmount, 11182.5);
+
+// PDF leasing: skip review + vehicle bootstrap without prior parsed.ok
+{
+  const pdfLease = prepareMagicOffer(
+    'Sportage Vision 152,36 €/Monat, 48 Monate, 6.000 € Anzahlung, 15.000 km',
+    { fromPdf: true },
+  );
+  assert.equal(pdfLease.mode, 'leasing_intake');
+  assert.equal(shouldSkipMagicOfferReview(pdfLease), true);
+  assert.equal(magicPreparationHasCommercialPreviewFields(pdfLease), true);
+  assert.equal(pdfLease.calculation.monthlyRate, 152.36);
+  const vehicle = resolveMagicVehicleFields(pdfLease);
+  assert.equal(vehicle.modelKey, 'sportage');
+  assert.ok(vehicle.trimId === 'vision' || /vision/i.test(vehicle.trimLabel || ''));
+}
 
 console.log('magicOfferService.test.js: ok');

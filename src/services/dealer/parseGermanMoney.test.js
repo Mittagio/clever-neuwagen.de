@@ -12,6 +12,10 @@ import {
   prepareMagicOffer,
   shouldSkipMagicOfferReview,
   overlayMagicOntoOfferDraft,
+  resolveMagicModelKey,
+  resolveMagicVehicleFields,
+  magicPreparationHasCommercialPreviewFields,
+  magicPreparationToConfigurePatch,
 } from './magicOfferService.js';
 import {
   evaluateSellerConfirmGate,
@@ -111,6 +115,11 @@ assert.notEqual(parseGermanMoney('6.000,00'), 600000);
   assert.equal(patched.offerPreview.monthlyRate, 152.36);
 }
 
+// Model key mapping: Sportage Vision → sportage
+assert.equal(resolveMagicModelKey('Sportage Vision'), 'sportage');
+assert.equal(resolveMagicModelKey('Kia Sportage'), 'sportage');
+assert.equal(resolveMagicModelKey('EV3 GT-Line'), 'ev3');
+
 // Skip Magic intermediate for PDF leasing
 {
   const prep = prepareMagicOffer(
@@ -121,6 +130,17 @@ assert.notEqual(parseGermanMoney('6.000,00'), 600000);
   assert.equal(prep.calculation.monthlyRate, 152.36);
   assert.equal(shouldSkipMagicOfferReview(prep), true);
   assert.equal(prep.fromPdf, true);
+  assert.equal(prep.skipMagicReview, true);
+  assert.equal(magicPreparationHasCommercialPreviewFields(prep), true);
+
+  const vehicle = resolveMagicVehicleFields(prep);
+  assert.equal(vehicle.modelKey, 'sportage');
+  assert.ok(/sportage/i.test(vehicle.model || ''));
+
+  const patch = magicPreparationToConfigurePatch(prep);
+  assert.equal(patch.modelKey, 'sportage');
+  assert.equal(patch.desiredRate, 152.36);
+  assert.equal(patch.downPayment, 6000);
 
   const overlay = overlayMagicOntoOfferDraft(
     {
@@ -133,6 +153,39 @@ assert.notEqual(parseGermanMoney('6.000,00'), 600000);
   );
   assert.equal(overlay.sellerConfirm.required, true);
   assert.equal(overlay.payment.calculatedRate, 152.36);
+  assert.equal(overlay.payment.downPayment, 6000);
+}
+
+// PDF leasing without prior modelKey – vehicle still resolves from text / OI
+{
+  const prep = prepareMagicOffer(
+    'Brandes Sportage Vision Leasing 152,36 €/Monat, 48 Monate, 6.000 € Anzahlung',
+    {
+      fromPdf: true,
+      offerInterpretation: {
+        interpretation: {
+          offerType: 'leasing',
+          vehicle: { brand: 'Kia', model: 'Sportage', trim: 'Vision' },
+          monthlyRate: 152.36,
+          downPayment: 6000,
+          ambiguities: [],
+          warnings: [],
+          evidence: {},
+        },
+      },
+    },
+  );
+  assert.equal(shouldSkipMagicOfferReview(prep), true);
+  assert.equal(magicPreparationHasCommercialPreviewFields(prep), true);
+  const vehicle = resolveMagicVehicleFields({
+    ...prep,
+    grounded: null,
+  });
+  assert.equal(vehicle.modelKey, 'sportage');
+  assert.equal(vehicle.trimLabel, 'Vision');
+  const patch = magicPreparationToConfigurePatch({ ...prep, grounded: null });
+  assert.equal(patch.modelKey, 'sportage');
+  assert.equal(patch.desiredRate, 152.36);
 }
 
 // Cash magic (non-PDF package math) keeps review

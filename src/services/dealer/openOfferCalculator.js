@@ -138,7 +138,7 @@ export function openBoardOfferEntry(card, lead, { onOpenProposal, onOpenCalculat
 
 /**
  * Zentraler Einstieg: immer zum Angebotskalkulator navigieren.
- * Optional: magicPreparation → Verkaufsassistent öffnet magic-offer-review.
+ * Optional: magicPreparation → Verkaufsassistent (PDF-Leasing/Finanzierung → Angebotsvorschau).
  */
 export function openOfferCalculator(navigate, lead, card = null, options = {}) {
   const state = buildOfferCalculatorNavigateState(lead, card, options);

@@ -15,25 +15,34 @@ function resolveModelKey(hint, fallbackModelKey = null) {
   if (fallbackModelKey) return fallbackModelKey;
   if (!hint) return null;
   const key = normalizeKey(hint);
-  if (key.startsWith('ev')) return key.replace(/^ev/, 'ev');
-  const map = {
-    ev2: 'ev2',
-    ev3: 'ev3',
-    ev4: 'ev4',
-    ev5: 'ev5',
-    ev6: 'ev6',
-    ev9: 'ev9',
-    sportage: 'sportage',
-    ceed: 'ceed',
-    picanto: 'picanto',
-    niro: 'niro',
-    sorento: 'sorento',
-    stonic: 'stonic',
-    xceed: 'xceed',
-    soul: 'esoul',
-    esoul: 'esoul',
-  };
-  return map[key] ?? key;
+  if (key.startsWith('ev')) {
+    const ev = key.match(/^ev([234569]|9)/);
+    if (ev) return `ev${ev[1]}`;
+  }
+  const aliases = [
+    ['sportagephev', 'sportage-phev'],
+    ['sportagepluginhybrid', 'sportage-phev'],
+    ['sportagehybrid', 'sportage-hybrid'],
+    ['sportage', 'sportage'],
+    ['xceed', 'xceed'],
+    ['sorento', 'sorento'],
+    ['picanto', 'picanto'],
+    ['stonic', 'stonic'],
+    ['ceed', 'ceed'],
+    ['niro', 'niro'],
+    ['esoul', 'esoul'],
+    ['soul', 'esoul'],
+    ['ev9', 'ev9'],
+    ['ev6', 'ev6'],
+    ['ev5', 'ev5'],
+    ['ev4', 'ev4'],
+    ['ev3', 'ev3'],
+    ['ev2', 'ev2'],
+  ];
+  for (const [needle, modelKey] of aliases) {
+    if (key === needle || key.startsWith(needle)) return modelKey;
+  }
+  return key || null;
 }
 
 function resolvePackageId(data, codeOrAlias, trimId) {
@@ -111,7 +120,22 @@ export function groundMagicOfferIntent(intent = {}, context = {}) {
       status: 'needs_review',
       reason: 'missing_list_price',
       message: 'Preis bitte prüfen – keine verifizierte UPE gefunden.',
-      grounded: null,
+      grounded: {
+        modelKey,
+        brand: data.brand ?? 'Kia',
+        model: data.model,
+        trimId: trim?.id ?? null,
+        trimLabel: trim?.name ?? null,
+        engineId: engine?.id ?? null,
+        engineLabel: engine?.name ?? null,
+        variantId: variant?.id ?? null,
+        basePrice: null,
+        colorId: null,
+        colorLabel: null,
+        packageIds: [],
+        resolvedPackages: [],
+        lineItems: [],
+      },
       unresolvedPackages: intent.vehicleRequest?.packageKeys ?? [],
     };
   }
