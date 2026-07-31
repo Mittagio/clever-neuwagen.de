@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 12 implementiert (Akte PDF-Wiring)  
+**Status:** Slice 13 implementiert (Global Composer PDF)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -164,7 +164,8 @@ Besonders behandeln / nicht an Message Writer:
 | **10** | Vergleichsnachricht | Explizite Kundennachricht aus Compare-Deltas |
 | **11** | PDF Contract Intake | Vorextrahierter PDF-Text → gleicher Import-Pfad |
 | **12** | Akte PDF-Wiring | Klassifikation contract_pdf vs. configurator_pdf |
-| später | Offer+Termin Multi-Action, Global-Composer-PDF, OCR | siehe unten |
+| **13** | Global Composer PDF | Dashboard-Drop → gleicher Prepare/Turn-Pfad |
+| später | Offer+Termin Multi-Action, OCR | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -432,9 +433,31 @@ Nativer PDF-Text wird **vor** dem sync Turn extrahiert (Magic-Offer-Pattern `ext
 
 ---
 
+## Slice 13 – Global Composer PDF
+
+**Status: implementiert**
+
+Dashboard-Composer (`CleverGlobalComposer`) akzeptiert PDF-Drop wie die Akte:
+
+- `extractMagicOfferPdf` → `runComposerPdfAttachTurn` → Review  
+- Vertrag → `contract_import_review`; Confirm persistiert via `applyAcceptedSellerTurn` + `updateLead`, dann Akte öffnen  
+- Konfigurator bleibt `configurator_pdf`  
+
+| Modul | Rolle |
+|-------|--------|
+| `runComposerPdfAttachTurn.js` | Prepare + Turn (Dashboard/Akte) |
+| `CleverGlobalComposer.jsx` | `onAttachFile` + Contract-Accept |
+| `globalComposer.slice13.test.js` | Golden (Stub-Text, Snapshot-Resolve) |
+
+### Nicht in Slice 13
+
+- OCR  
+- Offer + Termin Multi-Action  
+
+---
+
 ## Später
 
-- Global Composer PDF-Attach  
 - Offer + Termin Multi-Action  
 - OCR / Scan-Pipeline  
 

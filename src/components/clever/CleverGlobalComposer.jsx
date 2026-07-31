@@ -1,5 +1,5 @@
 /**
- * CleverGlobalComposer – App-Shell Composer (Slice 1–2).
+ * CleverGlobalComposer – App-Shell Composer (Slice 1–2 + PDF Slice 13).
  * Orchestrierung nur über runCleverSellerTurn – keine zweite Pipeline.
  */
 import { useMemo, useState } from 'react';
@@ -7,11 +7,15 @@ import { useNavigate } from 'react-router-dom';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import SellerUniversalReviewCard from '../dealer-ai/SellerUniversalReviewCard.jsx';
 import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
+import { useLeads } from '../../context/LeadsContext.jsx';
 import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
   buildUniversalReviewModel,
   shouldShowUniversalReview,
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
+import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
+import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
+import { runComposerPdfAttachTurn } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import './CleverGlobalComposer.css';
 
@@ -34,6 +38,7 @@ function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
 
 export default function CleverGlobalComposer() {
   const ctx = useCleverComposerOptional();
+  const { updateLead } = useLeads();
   const navigate = useNavigate();
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -94,6 +99,34 @@ export default function CleverGlobalComposer() {
 
   function resolvePrimaryNavTarget(turn, model) {
     const sections = model?.actionSections || [];
+    const contractImport = sections.find((s) => (
+      s.kind === 'contract_import_review' || s.kind === 'contract_import'
+    ));
+    if (contractImport || turn?.contractDraft) {
+      const leadId = turn?.resolvedCustomer?.id
+        || contractImport?.primaryActions?.find((a) => a.leadId)?.leadId
+        || turn?.contractDraft?.customerId
+        || null;
+      if (leadId) {
+        return {
+          leadId,
+          workingContext: turn.handoffWorkingContext || null,
+        };
+      }
+    }
+    const contractMemory = sections.find((s) => (
+      s.kind === 'contract_memory_result'
+      || s.kind === 'contract_offer_compare_result'
+      || s.kind === 'contract_compare_and_message_review'
+    ));
+    if (contractMemory) {
+      const leadId = turn?.resolvedCustomer?.id
+        || contractMemory?.contractMemoryResult?.customerId
+        || contractMemory?.contractOfferCompareResult?.customerId
+        || contractMemory?.primaryActions?.find((a) => a.leadId)?.leadId
+        || null;
+      if (leadId) return { leadId };
+    }
     const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
     if (apptMsg || turn?.preparedAppointment || turn?.pendingAction?.preparedAppointment) {
       const leadId = turn?.resolvedCustomer?.id
@@ -162,6 +195,29 @@ export default function CleverGlobalComposer() {
       setLastTurn(null);
       return;
     }
+    if (action.action === 'accept_contract_import' || action.action === 'open_contract') {
+      const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
+      const leadId = target?.leadId || action.leadId || lastTurn?.resolvedCustomer?.id;
+      if (!leadId) {
+        setFeedback('Kein Kunde für den Vertrag – bitte zuerst auswählen.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      if (action.action === 'accept_contract_import') {
+        const snapshot = ctx?.leadsSnapshot || [];
+        const lead = snapshot.find((l) => l.id === leadId) || ctx?.currentCustomer;
+        if (lead?.id && typeof updateLead === 'function') {
+          const applied = applyAcceptedSellerTurn(lead, lastTurn, { postFeedCard: false });
+          if (applied.ok && applied.lead) {
+            updateLead(leadId, applied.lead);
+          }
+        }
+      }
+      handleOpenLead(leadId, target || {});
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
     if (action.action === 'check_calendar') {
       setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
       setTimeout(() => setFeedback(''), 3200);
@@ -206,6 +262,69 @@ export default function CleverGlobalComposer() {
     ) {
       const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
       if (target?.leadId) handleOpenLead(target.leadId, target);
+    }
+  }
+
+  async function handleAttachFile(file) {
+    if (!file || sending || !ctx) return;
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      setFeedback('Bitte PDF reinwerfen (Vertrag oder Konfigurator).');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    setSending(true);
+    setProgressHint('Clever liest das PDF …');
+    setFeedback('PDF wird gelesen …');
+    try {
+      const extracted = await extractMagicOfferPdf(file);
+      const { prepared, turn, skipped } = runComposerPdfAttachTurn({
+        extracted,
+        file,
+        lead: ctx.currentCustomer || {},
+        leadsSnapshot: ctx.leadsSnapshot || [],
+        scopeHint: 'dashboard',
+        workingContextItems: ctx.attachedWorkingObjects || [],
+        appContext: {
+          routeContext: ctx.routeContext,
+          attachedWorkingObjects: ctx.attachedWorkingObjects,
+          dashboardContext: ctx.dashboardContext,
+        },
+      });
+
+      if (skipped || (prepared.needsManualDescribe && prepared.kind !== 'contract_pdf')) {
+        setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
+        setFeedback(prepared.feedbackManual);
+        setProgressHint(null);
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      if (prepared.needsManualDescribe && prepared.kind === 'contract_pdf') {
+        setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
+      } else if (prepared.draftSeed) {
+        setDraft(prepared.draftSeed);
+      }
+
+      if (turn) {
+        setLastTurn(turn);
+        const model = turn.reviewModel
+          || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+        setReviewModel(model);
+        setFeedback(model
+          ? (prepared.feedbackOk || model.title || 'PDF gelesen')
+          : prepared.feedbackManual);
+      } else {
+        setFeedback(prepared.feedbackManual);
+      }
+      setProgressHint(null);
+      setTimeout(() => setFeedback(''), 3200);
+    } catch (err) {
+      setProgressHint(null);
+      setFeedback(err?.message || 'PDF konnte nicht gelesen werden');
+      setTimeout(() => setFeedback(''), 3200);
+    } finally {
+      setSending(false);
     }
   }
 
@@ -288,6 +407,13 @@ export default function CleverGlobalComposer() {
         <SellerUniversalReviewCard
           model={reviewModel}
           onAccept={() => {
+            if (reviewModel?.reviewType === 'contract_import_review') {
+              handleReviewAction({
+                action: 'accept_contract_import',
+                leadId: lastTurn?.resolvedCustomer?.id,
+              });
+              return;
+            }
             const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
             if (target?.leadId) handleOpenLead(target.leadId, target);
           }}
@@ -392,6 +518,7 @@ export default function CleverGlobalComposer() {
         contextPills={contextPills}
         suggestionChips={SUGGESTION_CHIPS}
         onSuggestionChip={handleSuggestion}
+        onAttachFile={handleAttachFile}
         emptyHint=""
       />
     </div>
