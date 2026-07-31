@@ -63,7 +63,14 @@ function buildOfferMessageDraft({
       + '.',
   ];
   if (priceLabel) {
-    lines.push('', `Die Kondition: ${priceLabel}.`);
+    const isCash = /cash|purchase|kauf/i.test(String(offerPayload?.paymentType || offerPayload?.offerType || ''))
+      || Boolean(purchase);
+    lines.push(
+      '',
+      isCash
+        ? `Der Kaufpreis für das Fahrzeug liegt bei ${priceLabel}.`
+        : `Die Kondition: ${priceLabel}.`,
+    );
   }
   const term = lead?.wish?.termMonths;
   const km = lead?.wish?.mileagePerYear;
@@ -375,7 +382,11 @@ export function planSellerActions({
     void results;
   }
 
-  if (intentTypes.has(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT)) {
+  if (
+    intentTypes.has(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT)
+    && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+    && !intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+  ) {
     actions.push({
       id: 'update_customer_context',
       type: SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT,
@@ -489,21 +500,47 @@ export function planSellerActions({
         || vehicleFromFacts?.label
         || null;
       const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchase);
+      const paymentRaw = facts.find((f) => f.field === 'paymentType')?.value
+        || magic?.paymentType
+        || null;
+      const offerType = paymentRaw === 'purchase' || paymentRaw === 'cash'
+        ? 'cash'
+        : (paymentRaw || (purchase ? 'cash' : null));
+      const vehicleInterest = facts.find((f) => f.field === 'vehicleInterest');
+      const leasingWithoutRate = offerType === 'leasing'
+        && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'desiredRate')
+        && magic?.decision?.action === 'ask_rate';
+      const profileLeasing = lead?.paymentType === 'leasing' || lead?.wish?.paymentType === 'leasing';
+      const cashVsLeasingWarning = offerType === 'cash' && profileLeasing
+        ? 'In der Kundenakte ist bisher Leasing notiert.'
+        : null;
+      const preparedOk = (offer?.ok || purchase) && !leasingWithoutRate;
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: canCreate ? 'Angebot vorbereiten' : 'Angebot prüfen',
+        label: leasingWithoutRate
+          ? 'Leasingangebot – Rate fehlt'
+          : (canCreate ? 'Angebot vorbereiten' : 'Angebot prüfen'),
         needsSellerConfirmation: true,
-        status: offer?.ok || purchase ? 'prepared' : 'blocked',
+        status: preparedOk ? 'prepared' : 'blocked',
         toolId: 'prepare_offer',
         legacy: offer ?? null,
         payload: {
-          canCreateOffer: canCreate,
+          canCreateOffer: canCreate && !leasingWithoutRate,
           purchasePrice: purchase?.value ?? magic?.calculation?.endPrice ?? grounded?.basePrice ?? null,
-          paymentType: facts.find((f) => f.field === 'paymentType')?.value
-            || magic?.paymentType
-            || null,
+          paymentType: paymentRaw,
+          offerType,
           vehicleLabel,
+          vehicle: {
+            model: vehicleInterest?.value?.modelKey
+              || vehicleInterest?.value?.model
+              || grounded?.model
+              || null,
+            trim: vehicleInterest?.value?.trim || grounded?.trimLabel || null,
+            make: 'Kia',
+          },
+          customerId: lead?.id || resolvedCustomer?.id || null,
+          customerName: customerName || lead?.contact?.name || null,
           monthlyRate: magic?.calculation?.monthlyRate
             ?? magic?.intent?.commercialInput?.monthlyRate
             ?? null,
@@ -512,8 +549,24 @@ export function planSellerActions({
           engineLabel: grounded?.engineLabel ?? null,
           variantId: grounded?.variantId ?? null,
           decisionAction: magic?.decision?.action ?? null,
-          missingRate: magic?.decision?.action === 'ask_rate',
+          missingRate: leasingWithoutRate || magic?.decision?.action === 'ask_rate',
           attachWorkingContext: true,
+          needsSellerConfirmation: true,
+          mutatesCustomer: false,
+          source: 'seller_input',
+          cashVsLeasingWarning,
+          preparedOffer: {
+            type: 'prepare_offer',
+            customerId: lead?.id || resolvedCustomer?.id || null,
+            vehicle: {
+              model: vehicleInterest?.value?.modelKey || grounded?.model || 'Picanto',
+              trim: vehicleInterest?.value?.trim || grounded?.trimLabel || 'GT-Line',
+            },
+            offerType: offerType || 'cash',
+            purchasePrice: purchase?.value ?? null,
+            source: 'seller_input',
+            needsSellerConfirmation: true,
+          },
         },
       });
     }
@@ -616,16 +669,24 @@ export function planSellerActions({
 
   // „Angebot“ allein ist kein Message-Intent – erst verstehen/vorbereiten, dann formulieren.
   const explicitWrite = /\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
+  const hasWorkAction = intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+    || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    || intentTypes.has(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT);
   const knowledgeOrDashboardOnly = (
     intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
-    || intentTypes.has(SELLER_TURN_INTENTS.FIND_CUSTOMER)
-    || intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
-    || intentTypes.has(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT)
-    || intentTypes.has(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP)
-    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
-    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
-    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)
-    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES)
+    || (
+      !hasWorkAction
+      && (
+        intentTypes.has(SELLER_TURN_INTENTS.FIND_CUSTOMER)
+        || intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
+        || intentTypes.has(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT)
+        || intentTypes.has(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP)
+        || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
+        || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+        || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)
+        || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES)
+      )
+    )
     || (
       intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
       && !intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)

@@ -36,6 +36,10 @@ import {
   buildUniversalReviewModel,
   shouldShowUniversalReview,
 } from './buildUniversalReviewModel.js';
+import {
+  resolveWorkingLeadForTurn,
+  buildPreparedOfferWorkingContext,
+} from './resolveWorkingLeadForTurn.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -95,24 +99,73 @@ function finalizeSellerTurn({
 }) {
   void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
-  const uniqueFacts = filterDuplicateFacts(facts, lead);
+
+  const leadResolve = resolveWorkingLeadForTurn({
+    lead,
+    sellerInput: interpreted.normalized || interpreted.raw,
+    leadsSnapshot,
+    intents,
+  });
+  const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
+
+  const uniqueFacts = filterDuplicateFacts(facts, workingLead);
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
   const assistantContext = resolveAssistantContext({
-    lead,
+    lead: workingLead,
     sellerInput: interpreted.normalized || interpreted.raw,
     workingContextItems,
     currentOfferContext,
-    customerName,
+    customerName: customerName
+      || workingLead?.contact?.name
+      || '',
     attachments,
   });
+  if (leadResolve.resolved && workingLead?.id) {
+    assistantContext.resolvedCustomer = {
+      ...assistantContext.resolvedCustomer,
+      id: workingLead.id,
+      name: workingLead.contact?.name || workingLead.name || assistantContext.resolvedCustomer?.name,
+      namedInInput: assistantContext.resolvedCustomer?.namedInInput
+        || leadResolve.resolution?.nameQuery
+        || null,
+      source: 'global_search',
+      matched: true,
+    };
+  }
   const offerCtx = currentOfferContext || assistantContext.offerContext || null;
 
   const missingInformation = resolveMissingInformation({
     intents,
     facts: uniqueFacts,
-    lead,
+    lead: workingLead,
     currentOfferContext: offerCtx,
   });
+
+  // Ambiguous: Angebot oder Nachricht?
+  const ambiguousOfferOrMessage = intents.some((i) => i.type === SELLER_TURN_INTENTS.UNKNOWN)
+    && uniqueFacts.some((f) => f.field === 'purchasePrice')
+    && uniqueFacts.some((f) => f.field === 'vehicleInterest')
+    && !intents.some((i) => (
+      i.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+      || i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    ));
+  if (ambiguousOfferOrMessage) {
+    missingInformation.push({
+      id: 'clarify_offer_or_message',
+      field: 'sellerGoal',
+      label: 'Soll ich daraus ein Angebot vorbereiten oder nur eine Nachricht schreiben?',
+      forIntent: SELLER_TURN_INTENTS.UNKNOWN,
+    });
+  }
+
+  if (leadResolve.ambiguous) {
+    missingInformation.push({
+      id: 'clarify_customer',
+      field: 'customerId',
+      label: 'Mehrere Kunden gefunden – bitte einen auswählen.',
+      forIntent: SELLER_TURN_INTENTS.FIND_CUSTOMER,
+    });
+  }
 
   let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
   const hasCommercial = uniqueFacts.some(
@@ -131,9 +184,21 @@ function finalizeSellerTurn({
     });
   }
 
+  // Bei Ambiguity oder mehrdeutiger Kundensuche keine Offer/Message-Ausführung
+  if (ambiguousOfferOrMessage || leadResolve.ambiguous) {
+    effectiveIntents = effectiveIntents.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+      && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    ));
+    if (leadResolve.ambiguous
+      && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.FIND_CUSTOMER)) {
+      effectiveIntents.push({ type: SELLER_TURN_INTENTS.FIND_CUSTOMER, confidence: 0.99 });
+    }
+  }
+
   const preparedActions = enabled
     ? planSellerActions({
-      lead,
+      lead: workingLead,
       sellerInput: interpreted.normalized,
       intents: effectiveIntents,
       inputMode: interpreted.inputMode,
@@ -148,6 +213,41 @@ function finalizeSellerTurn({
     })
     : [];
 
+  // Customer-search results aus Resolve oder Find-Action
+  const customerSearchAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+  ));
+  if (leadResolve.customerSearchResults?.length && customerSearchAction) {
+    customerSearchAction.payload = {
+      ...customerSearchAction.payload,
+      customerSearchResults: leadResolve.customerSearchResults,
+      status: leadResolve.ambiguous ? 'ambiguous' : (leadResolve.resolved ? 'unique' : customerSearchAction.payload?.status),
+      resolvedLeadId: workingLead?.id || null,
+      mutatesCustomer: false,
+    };
+  } else if (leadResolve.customerSearchResults?.length && !customerSearchAction
+    && effectiveIntents.some((i) => (
+      i.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+      || i.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    ))) {
+    preparedActions.unshift({
+      id: 'find_customer',
+      type: SELLER_TURN_INTENTS.FIND_CUSTOMER,
+      label: leadResolve.ambiguous ? 'Kunde auswählen' : 'Kunde gefunden',
+      needsSellerConfirmation: false,
+      status: 'prepared',
+      toolId: 'find_customer',
+      payload: {
+        customerSearchResults: leadResolve.customerSearchResults,
+        status: leadResolve.ambiguous ? 'ambiguous' : 'unique',
+        resolvedLeadId: workingLead?.id || null,
+        mutatesCustomer: false,
+      },
+    });
+  }
+
   const todayOverview = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
     ?.payload?.todayOverview
     || null;
@@ -155,11 +255,6 @@ function finalizeSellerTurn({
     ?.payload?.knowledgeResult
     || null;
 
-  const customerSearchAction = preparedActions.find((a) => (
-    a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
-    || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
-    || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
-  ));
   const customerSummaryAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
   ));
@@ -169,6 +264,9 @@ function finalizeSellerTurn({
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
   ));
+  const offerPrepareAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
+  ));
 
   const customerSearchResults = customerSearchAction?.payload?.customerSearchResults
     || (customerSummaryAction?.payload?.status === 'ambiguous_customer'
@@ -177,30 +275,35 @@ function finalizeSellerTurn({
     || (historyAction?.payload?.status === 'ambiguous_customer'
       ? historyAction?.payload?.customerSearchResults
       : null)
+    || (leadResolve.ambiguous ? leadResolve.customerSearchResults : null)
     || null;
   const customerSummary = customerSummaryAction?.payload?.customerSummary || null;
   const historySearchResults = historyAction?.payload?.historySearchResults
     || null;
   const searchResults = historySearchResults || customerSearchResults || null;
 
-  const readOnlyGlobal = Boolean(
-    todayOverview
+  const deferPersistence = Boolean(
+    offerPrepareAction
+    || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    || todayOverview
     || knowledgeResult
-    || customerSearchResults
     || customerSummary
-    || historySearchResults,
+    || historySearchResults
+    || (customerSearchResults && !offerPrepareAction),
   );
 
   const scope = scopeHint
     || (todayOverview ? 'dashboard' : null)
-    || (knowledgeResult && !lead?.id ? 'global' : null)
-    || ((customerSearchResults || customerSummary || historySearchResults) && !lead?.id
+    || (knowledgeResult && !workingLead?.id ? 'global' : null)
+    || ((customerSearchResults || customerSummary || historySearchResults || offerPrepareAction)
+      && !lead?.id
       ? 'global'
       : null)
-    || (lead?.id ? 'customer' : 'global');
+    || (workingLead?.id || lead?.id ? 'customer' : 'global');
 
   // Resolved customer from global search (ohne Akte zu mutieren)
-  const resolvedFromSearch = customerSearchAction?.payload?.resolvedLeadId
+  const resolvedFromSearch = workingLead?.id
+    || customerSearchAction?.payload?.resolvedLeadId
     || customerSummaryAction?.payload?.resolvedLeadId
     || historyAction?.legacy?.resolvedCustomer?.id
     || null;
@@ -208,10 +311,12 @@ function finalizeSellerTurn({
     assistantContext.resolvedCustomer = {
       ...assistantContext.resolvedCustomer,
       id: assistantContext.resolvedCustomer.id || resolvedFromSearch,
-      name: customerSummary?.customerName
+      name: workingLead?.contact?.name
+        || customerSummary?.customerName
         || customerSearchResults?.[0]?.customerName
         || assistantContext.resolvedCustomer.name,
       source: assistantContext.resolvedCustomer.source || 'global_search',
+      matched: true,
     };
   }
 
@@ -221,17 +326,19 @@ function finalizeSellerTurn({
 
   const understanding = (() => {
     try {
-      return buildCustomerUnderstanding(lead);
+      return buildCustomerUnderstanding(workingLead);
     } catch {
       return { verstaendnis: { labels: [], konditionen: [], openPoints: [], vehicles: [] } };
     }
   })();
-  const profile = getNeedProfileFromLead(lead) || {};
+  const profile = getNeedProfileFromLead(workingLead) || {};
   const knownLabels = buildUnderstoodLabels(profile);
 
-  const pendingAction = preparedActions.find((a) => (
-    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
-  ))
+  if (offerPrepareAction?.payload?.cashVsLeasingWarning) {
+    warningsExtra.push(offerPrepareAction.payload.cashVsLeasingWarning);
+  }
+
+  const pendingAction = offerPrepareAction
     ? {
       type: SELLER_TURN_INTENTS.PREPARE_OFFER,
       gatheredInputs: uniqueFacts
@@ -241,7 +348,21 @@ function finalizeSellerTurn({
         .filter((m) => m.forIntent === SELLER_TURN_INTENTS.PREPARE_OFFER)
         .map((m) => m.field),
       createdAt: new Date().toISOString(),
+      preparedOffer: offerPrepareAction.payload?.preparedOffer || null,
     }
+    : null;
+
+  const handoffWorkingContext = offerPrepareAction?.payload?.attachWorkingContext
+    ? buildPreparedOfferWorkingContext({
+      customerId: workingLead?.id || offerPrepareAction.payload?.customerId,
+      customerName: workingLead?.contact?.name || offerPrepareAction.payload?.customerName,
+      vehicleLabel: offerPrepareAction.payload?.vehicleLabel,
+      model: offerPrepareAction.payload?.vehicle?.model,
+      trim: offerPrepareAction.payload?.vehicle?.trim,
+      offerType: offerPrepareAction.payload?.offerType || 'cash',
+      purchasePrice: offerPrepareAction.payload?.purchasePrice,
+      messageDraft: typeof messageDraft === 'string' ? messageDraft : messageDraft?.body,
+    })
     : null;
 
   const assistantReply = buildSellerAssistantReply({
@@ -281,8 +402,8 @@ function finalizeSellerTurn({
     },
     interpretedGoal,
     resolvedCustomer: assistantContext.resolvedCustomer,
-    resolvedWorkingContext: assistantContext.resolvedWorkingContext,
-    usedCustomerContext: assistantContext.usedCustomerContext,
+    resolvedWorkingContext: assistantContext.resolvedWorkingContext
+      || (handoffWorkingContext ? { attachedOffer: handoffWorkingContext } : null),
     extractedFacts: uniqueFacts,
     retrievedFacts: [
       ...retrievedFacts,
@@ -294,7 +415,8 @@ function finalizeSellerTurn({
     customerSearchResults,
     historySearchResults,
     customerSummary,
-    proposedUpdates: readOnlyGlobal ? [] : proposedUpdates,
+    handoffWorkingContext,
+    proposedUpdates: deferPersistence ? [] : proposedUpdates,
     missingInformation,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
@@ -305,6 +427,14 @@ function finalizeSellerTurn({
         .map((f) => f.label),
       currentOffer: offerCtx || null,
       notepadLabels: assistantContext.usedCustomerContext?.notepadLabels ?? [],
+      customerNeeds: (understanding?.verstaendnis?.labels || []).slice(0, 6),
+    },
+    usedCustomerContext: {
+      ...(assistantContext.usedCustomerContext || {}),
+      customerId: workingLead?.id || null,
+      customerName: workingLead?.contact?.name || null,
+      labels: (understanding?.verstaendnis?.labels || []).slice(0, 8),
+      loaded: Boolean(workingLead?.id),
     },
     preparedActions,
     messageDraft,
@@ -331,36 +461,34 @@ function finalizeSellerTurn({
         knowledgeResult
           ? 'Clever sucht in den verifizierten Fahrzeugdaten …'
           : null,
-        customerSearchResults
-          ? 'Clever sucht in Ihren Kunden …'
-          : null,
-        customerSummary
-          ? 'Clever liest den Kundenkontext …'
-          : null,
+        (workingLead?.id || customerSearchResults?.length) && offerPrepareAction
+          ? `✓ ${workingLead?.contact?.name || customerSearchResults?.[0]?.customerName || 'Kunde'} gefunden`
+          : (customerSearchResults
+            ? 'Clever sucht in Ihren Kunden …'
+            : null),
+        offerPrepareAction && uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
+          ? `✓ ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label} erkannt`
+          : (uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
+            ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
+            : null),
+        offerPrepareAction && uniqueFacts.find((f) => f.field === 'purchasePrice')
+          ? `✓ ${uniqueFacts.find((f) => f.field === 'purchasePrice').label} erkannt`
+          : (uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null),
+        offerPrepareAction && workingLead?.id
+          ? '✓ Kundenwünsche geladen'
+          : (customerSummary
+            ? 'Clever liest den Kundenkontext …'
+            : null),
         historySearchResults
           ? 'Clever durchsucht die Kundenhistorie …'
           : null,
-        !todayOverview && !knowledgeResult && !customerSearchResults && !customerSummary && !historySearchResults && (
-          assistantContext.resolvedCustomer?.name || assistantContext.resolvedCustomer?.namedInInput
-        )
-          ? `Kunde erkannt: ${assistantContext.resolvedCustomer.name || assistantContext.resolvedCustomer.namedInInput}`
+        offerPrepareAction && messageDraft
+          ? '✓ Angebot und Nachricht vorbereitet'
           : null,
-        uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
-          ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
-          : null,
-        uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null,
-        assistantContext.usedCustomerContext?.notepadLabels?.length
-          && !knowledgeResult
-          && !todayOverview
-          && !customerSearchResults
-          && !customerSummary
-          && !historySearchResults
-          ? 'Kundenakte berücksichtigt'
-          : null,
-        preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+        !offerPrepareAction && preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
           ? 'Angebot vorbereitet'
           : null,
-        messageDraft ? 'Nachricht vorbereitet' : null,
+        !offerPrepareAction && messageDraft ? 'Nachricht vorbereitet' : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
           ? 'Termin vorbereitet'
           : null,
@@ -373,13 +501,14 @@ function finalizeSellerTurn({
         assistantContext.resolvedWorkingContext?.attachedDocument?.label
           ? `Dokument: ${assistantContext.resolvedWorkingContext.attachedDocument.label}`
           : null,
-        assistantContext.goldenMoment?.headline && !todayOverview
+        assistantContext.goldenMoment?.headline && !todayOverview && !offerPrepareAction
           ? 'Nächster Schritt erkannt'
           : null,
       ].filter(Boolean),
     },
     featureEnabled: enabled,
     openaiEscalation,
+    autoSent: false,
   };
 
   const reviewModel = shouldShowUniversalReview(turnPartial)

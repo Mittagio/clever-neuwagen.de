@@ -32,10 +32,13 @@ function normalizeName(value = '') {
 export function extractNamedCustomerFromInput(sellerInput = '') {
   const t = String(sellerInput ?? '').trim();
   const patterns = [
-    /\b(?:schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|mach(?:e|n)?|erstell(?:e|en)?)\s+(?:herrn?\s+|frau\s+)?([A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ-]{1,40})\b/i,
-    /\b(?:für|an)\s+(?:herrn?\s+|frau\s+)?([A-ZÄÖÜ][a-zäöüßA-ZÄÖÜ-]{1,40})\b.{0,40}\bangebot\b/i,
+    /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?|vorbereiten)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    /\b(?:schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    /\b(?:für|an)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b.{0,40}\bangebot\b/i,
+    /\b(?:öffne|zeige|zeig|finde)\s+(?:den\s+|die\s+)?(?:kunden?\s+)?(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    /\b(?:herrn?\s+|frau\s+)([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
   ];
-  const stop = /^(ein|eine|ihm|ihr|dem|den|das|picanto|sportage|ev\d|kia|angebot|termin|nachricht)$/i;
+  const stop = /^(ein|eine|ihm|ihr|dem|den|das|picanto|sportage|ev\d|kia|angebot|termin|nachricht|leasingangebot)$/i;
   for (const re of patterns) {
     const m = t.match(re);
     if (m?.[1] && !stop.test(m[1])) {

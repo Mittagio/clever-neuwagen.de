@@ -13,6 +13,8 @@ function pickPrimaryBody(model) {
   if (knowledge?.headline) {
     return [knowledge.title, knowledge.headline, knowledge.line].filter(Boolean).join('\n');
   }
+  const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
+  if (offerMsg?.body) return String(offerMsg.body).trim();
   const today = sections.find((s) => s.kind === 'today_overview');
   if (today?.items?.length) {
     return today.items.slice(0, 4).map((item) => (

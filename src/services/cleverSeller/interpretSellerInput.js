@@ -549,10 +549,14 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   // Wunschrate / commercial
   const purchasePriceMatch = t.match(
-    /\b(?:für|zu|über|kaufpreis|preis)\s*(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*(?:€|euro)?\b/i,
+    /\b(?:für|zu|über|kaufpreis|preis)\s*(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*(?:€|euro)?(?:\b|$)/i,
   ) || (
     /\bangebot\b/i.test(t)
-      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)\b/i)
+      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)(?:\b|$)/i)
+      : null
+  ) || (
+    /\b(picanto|sportage|xceed|ev\s*\d|ceed|niro)\b/i.test(t)
+      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)?/i)
       : null
   );
   if (purchasePriceMatch) {
@@ -568,7 +572,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
         field: 'paymentType',
-        value: 'purchase',
+        value: 'cash',
         label: 'Kaufangebot',
         confidence: 0.82,
       }));
@@ -889,8 +893,20 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     || /\bwelche[snr]?\s+angebot\b/i.test(t);
   const isOfferSentQuery = /\b(wann\s+habe\s+ich|zuletzt).{0,60}\bangebot\b/i.test(t)
     || /\bangebot\b.{0,40}\b(geschickt|gesendet|versendet)\b/i.test(t);
+  const isCreateOfferCommand = /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?)\s+(?:herrn?\s+|frau\s+|\w+\s+)?(?:ein\s+)?(?:leasing)?angebot\b/i.test(t)
+    || /\bein\s+(?:leasing)?angebot\s+(?:für|über)\b/i.test(t);
+  const isMessageOnlyPrice = /\bschreib(?:e|en)?\b/i.test(t)
+    && /\b(?:dass|das)\b/i.test(t)
+    && /\b(?:kostet|preis|€|euro)\b/i.test(t)
+    && !/\berstell|mach(?:e|en)?\s+.*angebot\b/i.test(t);
+  const isAmbiguousOfferOrMessage = !isCreateOfferCommand
+    && !isMessageOnlyPrice
+    && !/\bschreib|sag|erstell|mach|öffne|finde|was\s+wollte|was\s+hatte|wann\s+habe\b/i.test(t)
+    && /\b(picanto|sportage|xceed|ev\s*\d)\b/i.test(t)
+    && /\b\d{1,3}(?:\.\d{3})+\s*(?:€|euro)?\b/i.test(t);
   const isOpenCustomer = /(?:^|[^\wäöüÄÖÜß])(?:öffne|zeige|zeig)\s+(?:den\s+|die\s+)?(?:kunden?\s+)?(?:herrn?\s+|frau\s+)?[A-Za-zÄÖÜäöüß-]/i.test(t)
-    && !/\banhängelast|reichweite\b/i.test(t);
+    && !/\banhängelast|reichweite\b/i.test(t)
+    && !isCreateOfferCommand;
   const isFindCustomer = /(?:^|[^\wäöüÄÖÜß])(?:finde|suche)\s+(?:den\s+|die\s+)?kunden?\b/i.test(t)
     || (/\bfinde\b/i.test(t) && /\b(sportage|xceed|ahk|rot)\b/i.test(t) && !/\banhängelast\b/i.test(t));
   const isSummarizeCustomer = /\bwas\s+wollte\b/i.test(t)
@@ -914,6 +930,21 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (!explicitMessage) contextClasses.push(SELLER_FACT_CLASS.OFFER_INSTRUCTION);
 
   const hasContextFacts = facts.some((f) => contextClasses.includes(f.factClass));
+
+  if (isCreateOfferCommand) {
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.95);
+    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.97);
+    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.94);
+  }
+
+  if (isMessageOnlyPrice) {
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.9);
+    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.97);
+  }
+
+  if (isAmbiguousOfferOrMessage) {
+    add(SELLER_TURN_INTENTS.UNKNOWN, 0.55);
+  }
 
   if (isOfferSentQuery) {
     add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS, 0.96);
@@ -964,9 +995,9 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     [SELLER_ACTION_INTENTS.ADD_NOTE]: SELLER_TURN_INTENTS.ADD_NOTE,
     [SELLER_ACTION_INTENTS.LOOKUP_FACT]: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   };
-  // Bei Open/Find/Summary/History keinen Message-Default aus Primary-Action
-  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery) {
-    // Navigation / Suche hat Vorrang vor Message-/Offer-Default
+  // Bei Open/Find/Summary/History/Create-Offer keinen Message-Default aus Primary-Action
+  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage) {
+    // Navigation / Suche / Angebotsauftrag hat Vorrang vor Message-/Offer-Default
   } else if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (
@@ -978,7 +1009,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     if (!skipMessageDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer) {
+  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
   } else if (
     hasContextFacts
@@ -988,9 +1019,12 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     && !isSummarizeCustomer
     && !isHistoryQuery
     && !isOfferSentQuery
+    && !isCreateOfferCommand
+    && !isMessageOnlyPrice
+    && !isAmbiguousOfferOrMessage
   ) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
-  } else if (hasAppointmentFact && hasContextFacts) {
+  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
   }
 
@@ -1013,11 +1047,20 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (!explicitMessage && (
     facts.some((f) => f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION)
     || /\b(angebot|erstell|mach).{0,40}\b(angebot|ev\d)/i.test(t)
-  ) && !isFindCustomer && !isOpenCustomer && !isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery) {
+  ) && !isFindCustomer && !isOpenCustomer && !isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery
+    && !isMessageOnlyPrice && !isAmbiguousOfferOrMessage) {
     add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.9);
   }
 
   if (!intents.length) add(SELLER_TURN_INTENTS.UNKNOWN, 0.4);
+  // Dedup UNKNOWN if real intents exist
+  if (intents.length > 1) {
+    const filtered = intents.filter((i) => i.type !== SELLER_TURN_INTENTS.UNKNOWN);
+    if (filtered.length) {
+      intents.length = 0;
+      intents.push(...filtered);
+    }
+  }
   return intents.sort((a, b) => b.confidence - a.confidence);
 }
 

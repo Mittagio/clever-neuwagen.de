@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 2 (Customer Find · Context · History)  
+**Status:** Slice 3 (Kunde → Angebot → Nachricht)  
 **Stand:** Juli 2026
 
 ## Produktgesetz
@@ -16,58 +16,55 @@ Der Verkäufer formuliert sein Ziel. Clever wählt kontextabhängig bestehende T
 
 > **Globale Wissensfragen verändern keine Kundenakte.**
 
-> **Clever ist das Gedächtnis des Verkäufers** – Suche in CRM-, Offer-, Activity- und Conversation-Daten, nichts erfinden.
+> **Clever ist das Gedächtnis des Verkäufers.**
+
+> **Ein Verkäuferauftrag ist keine Kundennachricht** – Seller-Befehle landen nie im Kundentext.
 
 ## Surfaces
 
 | Surface | Verhalten |
 |---------|-----------|
 | Dashboard (`/backend`) | `CleverGlobalComposer` aktiv |
-| Kundenakte | bestehender Composer bleibt; Global Composer ausgeblendet (kein Doppel-Composer) |
+| Kundenakte | bestehender Composer bleibt; Global Composer ausgeblendet |
 
 ### Context Stack
 
-`CleverComposerContext` in `src/context/CleverComposerContext.jsx`:
-
-- `routeContext`, `currentCustomer`, Tracks/Offer/Document/Conversation
-- `attachedWorkingObjects`, `pendingAction`, `dashboardContext`, `leadsSnapshot`
 - Sync: Kundenakte setzt `currentCustomer` aus der Route
-- Reset beim Verlassen der Akte (Dashboard behält keinen Kunden)
+- Reset beim Verlassen der Akte
+- Handoff: Prepared Offer als `attachedWorkingObjects` (Working State, keine Customer Truth)
 
 ### Orchestrierung
 
-Nur `runCleverSellerTurn()` – erweitert um:
+Nur `runCleverSellerTurn()`:
 
-- `scope` (`dashboard` | `global` | `customer`)
-- `todayOverview`, `knowledgeResult` (Slice 1)
-- `customerSearchResults`, `customerSummary`, `historySearchResults` (Slice 2)
-- `searchResults` (Alias auf History/Customer-Treffer)
+| Feld | Slice |
+|------|-------|
+| `todayOverview`, `knowledgeResult` | 1 |
+| `customerSearchResults`, `customerSummary`, `historySearchResults` | 2 |
+| `handoffWorkingContext`, combined Offer+Message Review | 3 |
 
-## Slice 1 – Golden Flows
+## Slice 3 – Golden Flow
 
-1. **„Was liegt heute an?“** → `getTodayOverview`
-2. **„XCeed Anhängelast?“** → verifizierte Facts
+Input:
 
-## Slice 2 – Golden Flows
+> „Erstelle Herrn Garritano ein Angebot für den Picanto GT-Line für 17.000 €.“
 
-| Input | Tool / Ergebnis |
-|-------|-----------------|
-| „Öffne Herrn Brandes.“ | `open_customer` → Kundenkarte + Navigation |
-| „Was wollte Herr Brandes noch einmal?“ | `summarize_customer_context` → Understanding/Tracks |
-| „Was hatte ich Garritano zur Lieferzeit geschrieben?“ | `search_customer_history` → gesendete Nachricht |
-| „Wann habe ich Frau Deutsche zuletzt ein Angebot geschickt?“ | `search_customer_offers` → Offer-Sent-Event |
-| „Finde den Kunden mit dem roten Sportage und AHK.“ | `find_customer` → Attribute über Customer Truth |
+Ablauf:
 
-Suche ist deterministisch (`customerSearchService`, `composerAkteSearch`, Messages, `vehicleOffers`).  
-OpenAI darf Absicht/Normalisierung unterstützen – **nie** Treffer erfinden.
+1. `find_customer` → Garritano aus `leadsSnapshot`
+2. `buildCustomerUnderstanding` laden
+3. Picanto GT-Line + Kaufpreis 17.000 € (`offerType: cash`)
+4. `prepare_offer` (Prepared Action, `needsSellerConfirmation`)
+5. `draft_customer_message` (Seller-Befehl-Validator)
+6. Review `offer_and_message_review`
+7. Handoff: Kundenakte + Working Context „Picanto GT-Line · Kauf · 17.000 €“
+8. Kein Auto-Send, keine Customer-Truth-Mutation
 
-### Review-Typen (Slice 2)
+Gegenproben:
 
-`customer_search_results` · `customer_summary` · `history_search_results` · `offer_history_result` · `no_search_result`
-
-### Navigation
-
-`/backend/kundenakte/:id?messageId=&offerId=` – Highlight über bestehendes Akte-Verhalten.
+- Leasing ohne Rate → missing, keine erfundene Rate
+- „Schreib … dass … kostet“ → nur Message
+- „Picanto GT-Line 17.000 €“ → Rückfrage Angebot vs. Nachricht
 
 ## Feature-Flag
 
@@ -75,9 +72,10 @@ OpenAI darf Absicht/Normalisierung unterstützen – **nie** Treffer erfinden.
 
 ## Tests
 
-- `src/services/cleverSeller/globalComposer.slice1.test.js`
-- `src/services/cleverSeller/globalComposer.slice2.test.js`
+- `globalComposer.slice1.test.js`
+- `globalComposer.slice2.test.js`
+- `globalComposer.slice3.test.js`
 
 ## Nächste Slices
 
-Offer/Message Multi-Action, Appointment, Attachments, schrittweise Akte-Composer-Migration.
+Termine, Attachments, schrittweise Akte-Composer-Migration.

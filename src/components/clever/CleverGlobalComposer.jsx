@@ -17,8 +17,8 @@ import './CleverGlobalComposer.css';
 
 const SUGGESTION_CHIPS = [
   { id: 'today', label: 'Was liegt heute an?' },
+  { id: 'offer', label: 'Erstelle Herrn Garritano ein Angebot…' },
   { id: 'open', label: 'Öffne Herrn Brandes.' },
-  { id: 'summary', label: 'Was wollte Herr Brandes noch einmal?' },
   { id: 'tow', label: 'XCeed Anhängelast?' },
 ];
 
@@ -60,21 +60,29 @@ export default function CleverGlobalComposer() {
     else if (chip.id === 'tow') setDraft('XCeed Anhängelast?');
     else if (chip.id === 'open') setDraft('Öffne Herrn Brandes.');
     else if (chip.id === 'summary') setDraft('Was wollte Herr Brandes noch einmal?');
+    else if (chip.id === 'offer') {
+      setDraft('Erstelle Herrn Garritano ein Angebot für den Picanto GT-Line für 17.000 €.');
+    }
     else if (chip.label) setDraft(chip.label);
   }
 
   function handleOpenLead(leadId, extras = {}) {
     if (!leadId) return;
-    // Einmaliger Working Context an Akte (keine Customer Truth)
-    if (extras.hit && typeof ctx?.setAttachedWorkingObjects === 'function') {
-      ctx.setAttachedWorkingObjects([{
+    const items = [];
+    if (extras.workingContext) {
+      items.push(extras.workingContext);
+    } else if (extras.hit) {
+      items.push({
         id: extras.hit.sourceId || extras.hit.messageId || extras.hit.offerId,
         label: extras.hit.title || 'Historien-Treffer',
         kind: extras.hit.sourceType || 'history_hit',
         messageId: extras.hit.messageId || null,
         offerId: extras.hit.offerId || null,
         oneShot: true,
-      }]);
+      });
+    }
+    if (items.length && typeof ctx?.setAttachedWorkingObjects === 'function') {
+      ctx.setAttachedWorkingObjects(items);
     }
     const path = buildAkteNavPath({
       leadId,
@@ -86,6 +94,18 @@ export default function CleverGlobalComposer() {
 
   function resolvePrimaryNavTarget(turn, model) {
     const sections = model?.actionSections || [];
+    const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
+    if (offerMsg || turn?.handoffWorkingContext) {
+      const leadId = turn?.resolvedCustomer?.id
+        || turn?.handoffWorkingContext?.customerId
+        || offerMsg?.primaryActions?.[0]?.leadId;
+      if (leadId) {
+        return {
+          leadId,
+          workingContext: turn.handoffWorkingContext || null,
+        };
+      }
+    }
     const summary = sections.find((s) => s.kind === 'customer_summary');
     if (summary?.summary?.customerId) {
       return { leadId: summary.summary.customerId };
@@ -121,6 +141,8 @@ export default function CleverGlobalComposer() {
       setProgressHint('Clever prüft Ihre heutigen Vorgänge …');
     } else if (/anhängelast|reichweite|tank|wärmepumpe|kofferraum/.test(lower)) {
       setProgressHint('Clever sucht in den verifizierten Fahrzeugdaten …');
+    } else if (/erstell|angebot für|mach.*angebot/.test(lower)) {
+      setProgressHint('Clever bereitet Angebot und Nachricht vor …');
     } else if (/öffne|finde den kunden|finde den|suche/.test(lower)) {
       setProgressHint('Clever sucht in Ihren Kunden …');
     } else if (/was wollte|noch einmal|zusammenfassung/.test(lower)) {
