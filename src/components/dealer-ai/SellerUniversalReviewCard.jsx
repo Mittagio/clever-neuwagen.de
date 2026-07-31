@@ -1,136 +1,226 @@
+import { useMemo, useState } from 'react';
+import {
+  IconBranch,
+  IconCopy,
+  IconThumbDown,
+  IconThumbUp,
+} from './AkteIcons.jsx';
 import './SellerUniversalReviewCard.css';
 
+function pickPrimaryBody(model) {
+  const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
+  const draftSection = sections.find((s) => (
+    (s.kind === 'message_draft'
+      || s.kind === 'appointment_propose'
+      || s.kind === 'golden_moment'
+      || s.kind === 'history_search')
+    && s.body
+  ));
+  if (draftSection?.body) return String(draftSection.body).trim();
+
+  const lines = [];
+  for (const section of sections) {
+    if (section.headline) lines.push(section.headline);
+    if (section.line) lines.push(section.line);
+    if (section.changes?.length) {
+      for (const change of section.changes) {
+        const value = change.from && change.to
+          ? `${change.from} → ${change.to}`
+          : (change.to || change.from);
+        if (value) lines.push(`${change.label}: ${value}`);
+      }
+    }
+  }
+  if (lines.length) return lines.join('\n');
+
+  const groups = Array.isArray(model?.groups) ? model.groups : [];
+  if (groups.length) {
+    return groups.map((g) => g.line).filter(Boolean).join('\n');
+  }
+  return model?.summaryLine || '';
+}
+
+function pickMetaLine(model) {
+  const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
+  const offer = sections.find((s) => (
+    s.kind === 'offer_change' || s.kind === 'offer_prepare' || s.kind === 'track_feedback'
+  ));
+  if (offer?.headline) return offer.headline;
+  if (offer?.line) return offer.line;
+  if (model?.missingLine) return model.missingLine;
+  return null;
+}
+
 /**
- * Sichtbare Review: „Clever hat verstanden / vorbereitet“ – vor Persistenz.
+ * Cursor-artige Review: eine Antwort + schmale Icon-CTAs (Ja / Nein / Vielleicht / Kopieren).
+ * Settled (`status`): letzte übernommene/gesendete Aktion ohne Accept-CTAs.
  */
 export default function SellerUniversalReviewCard({
   model = null,
   onAccept = null,
   onAcceptAndRevise = null,
+  onMaybe = null,
   onDismiss = null,
   onOpenHistoryHit = null,
+  /** accepted | ready_to_send | sent – settled last-action mode */
+  status = null,
+  statusLabel = null,
+  onOpenChat = null,
+  /** Settled + ready_to_send: Nachricht jetzt senden */
+  onSend = null,
 }) {
+  const [copied, setCopied] = useState(false);
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const groups = Array.isArray(model?.groups) ? model.groups : [];
-  const progressLines = Array.isArray(model?.progressLines) ? model.progressLines : [];
-  if (!model || (!groups.length && !sections.length)) return null;
+  const body = useMemo(() => pickPrimaryBody(model), [model]);
+  const metaLine = useMemo(() => pickMetaLine(model), [model]);
+  const historyHit = sections.find((s) => s.kind === 'history_search' && s.hit)?.hit;
+  const settled = Boolean(status);
 
-  const reviseCta = model.reviseOfferCta || null;
+  if (!model || (!groups.length && !sections.length && !body)) return null;
+
+  const canMaybe = typeof onMaybe === 'function' || typeof onAcceptAndRevise === 'function';
+  const resolvedStatusLabel = statusLabel
+    || (status === 'ready_to_send'
+      ? 'Bereit zum Senden'
+      : status === 'sent'
+        ? 'Gesendet'
+        : status
+          ? 'Übernommen'
+          : null);
+
+  async function handleCopy() {
+    const text = body || model.summaryLine || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard?.writeText?.(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  function handleMaybe() {
+    if (typeof onMaybe === 'function') {
+      onMaybe(model);
+      return;
+    }
+    onAcceptAndRevise?.(model);
+  }
 
   return (
-    <article className="sur-card" aria-live="polite">
-      <header className="sur-card__head">
-        <p className="sur-card__title">{model.title}</p>
-        {onDismiss ? (
+    <article
+      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}`}
+      aria-live="polite"
+    >
+      <header className="sur-card__meta">
+        <span className="sur-card__when">{settled ? 'zuletzt' : 'gerade eben'}</span>
+        {model.title ? (
+          <span className="sur-card__eyebrow">{model.title.replace(/^✨\s*/, '')}</span>
+        ) : null}
+        {resolvedStatusLabel ? (
+          <span className="sur-card__status" data-status={status || 'accepted'}>
+            {resolvedStatusLabel}
+          </span>
+        ) : null}
+      </header>
+
+      {metaLine ? (
+        <p className="sur-card__context">{metaLine}</p>
+      ) : null}
+
+      {body ? (
+        <pre className="sur-card__draft">{body}</pre>
+      ) : (
+        <p className="sur-card__summary">{model.summaryLine}</p>
+      )}
+
+      {historyHit && onOpenHistoryHit ? (
+        <button
+          type="button"
+          className="sur-card__text-link"
+          onClick={() => onOpenHistoryHit(historyHit)}
+        >
+          Im Verlauf öffnen
+        </button>
+      ) : null}
+
+      {settled && onOpenChat ? (
+        <button
+          type="button"
+          className="sur-card__text-link"
+          onClick={() => onOpenChat()}
+        >
+          Im Chat ansehen
+        </button>
+      ) : null}
+
+      {settled && status === 'ready_to_send' && typeof onSend === 'function' && body ? (
+        <button
+          type="button"
+          className="sur-card__send"
+          onClick={() => onSend(body)}
+        >
+          Jetzt senden
+        </button>
+      ) : null}
+
+      <div className="sur-card__toolbar" role="group" aria-label="Clever Aktionen">
+        {!settled ? (
+          <>
+            <button
+              type="button"
+              className="sur-card__icon-btn"
+              onClick={() => onAccept?.(model)}
+              title="Ja – übernehmen"
+              aria-label="Ja – übernehmen"
+            >
+              <IconThumbUp />
+            </button>
+            <button
+              type="button"
+              className="sur-card__icon-btn"
+              onClick={() => onDismiss?.(model)}
+              title="Nein – verwerfen"
+              aria-label="Nein – verwerfen"
+            >
+              <IconThumbDown />
+            </button>
+            {canMaybe ? (
+              <button
+                type="button"
+                className="sur-card__icon-btn"
+                onClick={handleMaybe}
+                title="Vielleicht – im Composer weiterbearbeiten"
+                aria-label="Vielleicht – im Composer weiterbearbeiten"
+              >
+                <IconBranch />
+              </button>
+            ) : null}
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="sur-card__icon-btn"
+          onClick={handleCopy}
+          title={copied ? 'Kopiert' : 'Kopieren'}
+          aria-label={copied ? 'Kopiert' : 'Kopieren'}
+        >
+          <IconCopy />
+        </button>
+        {settled && onDismiss ? (
           <button
             type="button"
-            className="sur-card__dismiss"
-            onClick={onDismiss}
-            aria-label="Schließen"
+            className="sur-card__icon-btn sur-card__icon-btn--dismiss"
+            onClick={() => onDismiss?.(model)}
+            title="Ausblenden"
+            aria-label="Ausblenden"
           >
             ×
           </button>
         ) : null}
-      </header>
-
-      {progressLines.length > 0 ? (
-        <ul className="sur-card__progress" aria-label="Clever Fortschritt">
-          {progressLines.map((line) => (
-            <li key={line}>{`✨ ${line}`}</li>
-          ))}
-        </ul>
-      ) : null}
-
-      {sections.length > 0 ? (
-        <ul className="sur-card__actions" aria-label="Vorbereitete Aktionen">
-          {sections.map((section) => (
-            <li key={section.id} className={`sur-card__action sur-card__action--${section.kind}`}>
-              <p className="sur-card__group-title">{section.title}</p>
-              {section.headline ? (
-                <p className="sur-card__action-headline">{section.headline}</p>
-              ) : null}
-              {section.line ? (
-                <p className="sur-card__group-line">{section.line}</p>
-              ) : null}
-              {(section.kind === 'offer_change'
-                || section.kind === 'offer_prepare'
-                || section.kind === 'track_feedback')
-                && section.changes?.length ? (
-                  <ul className="sur-card__deltas">
-                    {section.changes.map((change) => (
-                      <li key={change.id}>
-                        <span className="sur-card__delta-label">{change.label}</span>
-                        <span className="sur-card__delta-value">
-                          {change.from && change.to
-                            ? `${change.from} → ${change.to}`
-                            : (change.to || change.from)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              {(section.kind === 'message_draft'
-                || section.kind === 'appointment_propose'
-                || section.kind === 'history_search'
-                || section.kind === 'track_feedback'
-                || section.kind === 'golden_moment')
-                && section.body ? (
-                  <pre className="sur-card__draft">{section.body}</pre>
-                ) : null}
-              {section.kind === 'history_search' && section.hit && onOpenHistoryHit ? (
-                <button
-                  type="button"
-                  className="sur-card__btn sur-card__btn--ghost sur-card__btn--inline"
-                  onClick={() => onOpenHistoryHit(section.hit)}
-                >
-                  Im Verlauf öffnen
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul className="sur-card__groups">
-          {groups.map((group) => (
-            <li key={group.id} className="sur-card__group">
-              <p className="sur-card__group-title">{group.title}</p>
-              <p className="sur-card__group-line">{group.line}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <p className="sur-card__summary">{model.summaryLine}</p>
-      {model.missingLine ? (
-        <p className="sur-card__missing">{model.missingLine}</p>
-      ) : null}
-
-      <div className="sur-card__ctas">
-        <button
-          type="button"
-          className="sur-card__btn sur-card__btn--primary"
-          onClick={() => onAccept?.(model)}
-        >
-          {model.primaryCta || 'Übernehmen'}
-        </button>
-        {reviseCta && onAcceptAndRevise ? (
-          <button
-            type="button"
-            className="sur-card__btn sur-card__btn--secondary"
-            onClick={() => onAcceptAndRevise?.(model)}
-          >
-            {reviseCta}
-          </button>
-        ) : null}
-        {onDismiss ? (
-          <button
-            type="button"
-            className="sur-card__btn sur-card__btn--ghost"
-            onClick={onDismiss}
-          >
-            Verwerfen
-          </button>
-        ) : null}
+        {copied ? <span className="sur-card__copied">Kopiert</span> : null}
       </div>
     </article>
   );

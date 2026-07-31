@@ -145,8 +145,8 @@ assert.equal(editUi.hideSuggestionChips, true);
 assert.equal(editUi.compactAssistHint, null);
 
 const workUi = resolveComposerUi(COMPOSER_MODES.CLEVER_WORK, { cleverMode: true });
-assert.match(workUi.placeholder, /Alles reinwerfen/);
-assert.equal(workUi.sendAriaLabel, 'Arbeit absenden');
+assert.match(workUi.placeholder, /Eingabe absenden|Clever schlägt vor/);
+assert.equal(workUi.sendAriaLabel, 'Clever ausführen');
 assert.equal(workUi.showEditActions, false);
 
 // --- cancel restores clever_work + source MESSAGE_DRAFT ---

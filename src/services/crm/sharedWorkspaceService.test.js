@@ -131,8 +131,8 @@ assert.equal(withInternal.message.payload.ctaAction, 'complete_offer');
 const sellerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'seller' });
 const customerFeed = buildSharedWorkspaceTimeline(withInternal.lead, { role: 'customer' });
 assert.ok(
-  !sellerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
-  'Seller-Verlauf zeigt keine internen Clever-Assist-Karten',
+  sellerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
+  'Seller-Verlauf zeigt interne Clever-Assist-Karten',
 );
 assert.ok(
   !customerFeed.items.some((item) => item.kind === MESSAGE_KIND.CLEVER_MESSAGE && /Rabatt fehlt/i.test(item.text)),
@@ -140,8 +140,8 @@ assert.ok(
 );
 assert.equal(
   sellerFeed.items.length,
-  customerFeed.items.length,
-  'Seller- und Kunden-Verlauf gleich laut für echte Kommunikation',
+  customerFeed.items.length + 1,
+  'Seller sieht interne Clever-Karte zusätzlich im Verlauf',
 );
 
 assert.equal(

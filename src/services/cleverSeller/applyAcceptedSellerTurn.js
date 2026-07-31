@@ -304,7 +304,27 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     return { ok: false, lead, acceptedLabels: [] };
   }
   if (!rawFacts.length) {
-    return { ok: true, lead, acceptedLabels: [] };
+    let nextLead = lead;
+    if (options.postFeedCard !== false) {
+      const preparedLabels = (turn.preparedActions ?? [])
+        .filter((a) => a.status === 'prepared')
+        .map((a) => a.label || a.type)
+        .filter(Boolean)
+        .slice(0, 4);
+      const text = preparedLabels.length
+        ? `Vorbereitet: ${preparedLabels.join(' · ')}`
+        : (String(turn.messageDraft ?? turn.assistantReply ?? '').trim() || 'Clever hat vorbereitet');
+      if (String(text).trim()) {
+        const posted = postCleverAssistFeedCard({
+          lead: nextLead,
+          title: '✨ Clever hat vorbereitet',
+          text,
+          visibleToCustomer: false,
+        });
+        if (posted.message) nextLead = posted.lead;
+      }
+    }
+    return { ok: true, lead: nextLead, acceptedLabels: [] };
   }
 
   // „Übernehmen“ = Seller bestätigt die Review inkl. unsicherer Facts
@@ -423,19 +443,31 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     };
   }
 
-  if (options.postFeedCard !== false && labels.length) {
+  if (options.postFeedCard !== false) {
     const lines = labels.slice(0, 8);
-    const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
-      || facts.some((f) => f.field === 'commercialScenarios');
-    const posted = postCleverAssistFeedCard({
-      lead: nextLead,
-      title: isHomepageDual
-        ? '✨ Clever hat die Anfrage vorbereitet'
-        : '✨ Clever hat verstanden',
-      text: `${lines.join(' · ')}\n\n${labels.length} Angabe${labels.length === 1 ? '' : 'n'} übernommen`,
-      visibleToCustomer: false,
-    });
-    if (posted.message) nextLead = posted.lead;
+    const preparedLabels = (turn.preparedActions ?? [])
+      .filter((a) => a.status === 'prepared')
+      .map((a) => a.label || a.type)
+      .filter(Boolean)
+      .slice(0, 4);
+    const text = lines.length
+      ? `${lines.join(' · ')}\n\n${labels.length} Angabe${labels.length === 1 ? '' : 'n'} übernommen`
+      : (preparedLabels.length
+        ? `Vorbereitet: ${preparedLabels.join(' · ')}`
+        : (String(turn.messageDraft ?? turn.assistantReply ?? '').trim() || 'Clever hat vorbereitet'));
+    if (String(text).trim()) {
+      const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
+        || facts.some((f) => f.field === 'commercialScenarios');
+      const posted = postCleverAssistFeedCard({
+        lead: nextLead,
+        title: isHomepageDual
+          ? '✨ Clever hat die Anfrage vorbereitet'
+          : '✨ Clever hat verstanden',
+        text,
+        visibleToCustomer: false,
+      });
+      if (posted.message) nextLead = posted.lead;
+    }
   }
 
   return {

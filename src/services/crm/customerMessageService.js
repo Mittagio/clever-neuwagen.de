@@ -584,12 +584,15 @@ export function formatPortalMessageText(message = {}) {
 
 /**
  * Feed-Text für Workspace (Seller).
- * Interne Clever-Assist-Karten bleiben im Store, nicht im chronologischen Verlauf.
+ * Interne Clever-Assist-Karten gehören in den Seller-Verlauf (includeInternal),
+ * nicht ins Kundenportal.
  * @param {object} message
+ * @param {{ includeInternal?: boolean }} [options]
  */
-export function formatWorkspaceMessageText(message = {}) {
+export function formatWorkspaceMessageText(message = {}, options = {}) {
   const kind = message.kind || MESSAGE_KIND.TEXT;
-  if (kind === MESSAGE_KIND.CLEVER_MESSAGE && message.visibleToCustomer === false) {
+  const includeInternal = options.includeInternal === true;
+  if (kind === MESSAGE_KIND.CLEVER_MESSAGE && message.visibleToCustomer === false && !includeInternal) {
     return null;
   }
   if (isCardMessageKind(kind)) {
@@ -654,7 +657,7 @@ export function buildCustomerPortalMessageThreads(lead = {}, options = {}) {
 
   for (const message of store.messages) {
     const text = includeInternal
-      ? formatWorkspaceMessageText(message)
+      ? formatWorkspaceMessageText(message, { includeInternal: true })
       : formatPortalMessageText(message);
     if (!text) continue;
     const bucket = visibleByThread.get(message.threadId) ?? [];

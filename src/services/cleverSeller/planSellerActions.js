@@ -98,6 +98,52 @@ function buildOfferUpdateMessageDraft({
   return lines.join('\n');
 }
 
+/** Kundennachricht: angehängtes Angebot kurz als Mail zusammenfassen. */
+function buildAttachedOfferSummaryMessageDraft({
+  lead,
+  customerName,
+  currentOfferContext = null,
+}) {
+  const offerLabel = currentOfferContext?.title
+    || currentOfferContext?.summary
+    || 'Ihr Angebot';
+  const bits = [];
+  if (currentOfferContext?.termMonths) bits.push(`${currentOfferContext.termMonths} Monate`);
+  if (currentOfferContext?.mileagePerYear) {
+    bits.push(`${Number(currentOfferContext.mileagePerYear).toLocaleString('de-DE')} km/Jahr`);
+  }
+  if (currentOfferContext?.monthlyRate != null) {
+    bits.push(`${Number(currentOfferContext.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+  }
+  const payment = currentOfferContext?.paymentType;
+  const paymentLabel = payment === 'leasing'
+    ? 'Leasing'
+    : payment === 'financing' || payment === 'threeWayFinancing'
+      ? 'Finanzierung'
+      : payment === 'cash'
+        ? 'Barkauf'
+        : null;
+
+  const lines = [
+    `Hallo ${salutationName(customerName, [], lead)},`,
+    '',
+    `anbei die Kurzfassung zu Ihrem Angebot (${offerLabel}).`,
+  ];
+  if (paymentLabel || bits.length) {
+    lines.push(
+      '',
+      [paymentLabel, bits.length ? bits.join(' · ') : null].filter(Boolean).join(' – '),
+    );
+  }
+  lines.push(
+    '',
+    'Wenn Sie möchten, schicke ich Ihnen gerne den Kundenlink oder wir sprechen die Details kurz durch.',
+    '',
+    'Viele Grüße',
+  );
+  return lines.join('\n');
+}
+
 /**
  * @param {object} params
  */
@@ -427,6 +473,15 @@ export function planSellerActions({
       messageDraft = buildOfferUpdateMessageDraft({
         lead,
         facts,
+        customerName,
+        currentOfferContext,
+      });
+    } else if (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+      && currentOfferContext?.offerId
+      && /\b(fass(?:e|en)?|zusammenfass|erkl[aä]r|angehängten?\s+angebot|kurz(?:e)?\s+zusammenfassung)\b/i.test(sellerInput)
+    ) {
+      messageDraft = buildAttachedOfferSummaryMessageDraft({
+        lead,
         customerName,
         currentOfferContext,
       });

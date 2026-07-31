@@ -864,7 +864,7 @@ export function isExplicitCustomerMessageCue(text = '') {
   if (detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.SEND_PORTFOLIO) {
     return false;
   }
-  return /\b(schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|whatsapp|mail|schick(?:e|en)?\s+ihm|schick(?:e|en)?\s+ihr)\b/i.test(t);
+  return /\b(schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|fass(?:e|en)?|zusammenfass(?:e|en)?|whatsapp|mail|e-?mail|schick(?:e|en)?\s+ihm|schick(?:e|en)?\s+ihr)\b/i.test(t);
 }
 
 /**
@@ -947,8 +947,13 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   }
 
   // „Schreibe X ein Angebot …“ = Angebot + Nachricht
+  // Aber „Fasse/Erkläre das angehängte Angebot …“ = nur Nachricht, kein neues Angebot
   if (explicitMessage && /\bangebot\b/i.test(t)) {
-    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.93);
+    const summarizeExisting = /\b(fass(?:e|en)?|zusammenfass|erkl[aä]r|angehängten?\s+angebot)\b/i.test(t)
+      && !/\b(mach|erstell|vorbereiten|anbieten|neu(?:es)?\s+angebot)\b/i.test(t);
+    if (!summarizeExisting) {
+      add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.93);
+    }
   }
 
   if (facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT)) {

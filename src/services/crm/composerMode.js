@@ -138,9 +138,9 @@ export function resolveComposerUi(mode, {
     mode: COMPOSER_MODES.CLEVER_WORK,
     label: '',
     placeholder: cleverMode
-      ? 'Alles reinwerfen – tippen, sprechen oder PDF …'
+      ? 'Eingabe absenden – Clever schlägt vor …'
       : `Nachricht an ${displayName || 'dem Kunden'} …`,
-    sendAriaLabel: 'Arbeit absenden',
+    sendAriaLabel: 'Clever ausführen',
     growTextarea: false,
     showEditActions: false,
     hideSuggestionChips: false,

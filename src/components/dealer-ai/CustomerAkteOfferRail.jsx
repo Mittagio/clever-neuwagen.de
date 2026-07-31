@@ -4,7 +4,7 @@ import CustomerAkteOfferSelectionBar from './CustomerAkteOfferSelectionBar.jsx';
 
 /**
  * Desktop-Assist-Rail – Golden Moment + Fahrzeugspuren als Angebotsgedächtnis.
- * Klick auf Spur = Composer-Kontext; „Öffnen“ = Details/PDF.
+ * Klick auf Spur = Composer-Kontext + eine Angebots-Mail vorbereiten; „Öffnen“ = Details/PDF.
  */
 export default function CustomerAkteOfferRail({
   tracks = [],

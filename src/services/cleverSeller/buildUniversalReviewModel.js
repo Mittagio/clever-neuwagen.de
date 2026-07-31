@@ -458,6 +458,14 @@ export function shouldShowUniversalReview(turn = {}) {
   ));
   if (hasAppointmentPrep) return true;
 
+  const hasPreparedMessage = prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    && a.status === 'prepared'
+    && Boolean(a.payload?.messageDraft || turn.messageDraft)
+  ));
+  // Angehängtes Angebot → Zusammenfassungs-Mail: Review ohne CRM-Facts
+  if (hasPreparedMessage && turn.currentOfferContext?.offerId) return true;
+
   const facts = turn.extractedFacts ?? [];
   if (!facts.length) return false;
 

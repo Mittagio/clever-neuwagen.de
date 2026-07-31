@@ -1,6 +1,6 @@
 export const AKTE_TABS = {
   kunde: 'kunde',
-  /** Chat = Verlauf + Composer; Clever bleibt Default mit Notizzettel / Golden Moment / Spuren */
+  /** Chat = voller Verlauf + Composer; Clever = Composer + letzte Aktion (kein Feed) */
   chat: 'chat',
   clever: 'clever',
   angebote: 'angebote',

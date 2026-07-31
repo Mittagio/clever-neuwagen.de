@@ -522,6 +522,53 @@
   box-shadow: none;
 }
 
+/* Clever: Mitte = letzte Aktion (kein Verlauf), Composer unten */
+.sw-chat--composer-only .sw-chat__feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 18px 12px;
+  background: #fafafc;
+  border: none;
+}
+
+.sw-chat--composer-only .sw-chat__feed-main {
+  display: block;
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.sw-chat--composer-only .sw-chat__last-turn {
+  min-height: 40%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sw-chat--composer-only .sw-chat__last-turn .sur-card {
+  margin: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.sw-chat--composer-only .sw-chat__empty--composer {
+  margin: 48px 12px;
+  text-align: center;
+  color: #9aa3b5;
+  font-size: 0.875rem;
+}
+
+.sw-chat--composer-only .sw-chat__desk {
+  border-top: none;
+  background: transparent;
+}
+
+.sw-chat--composer-only .sw-composer {
+  background: #fff;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
 .sw-chat__desk .sia-stack,
 .sw-chat__desk .sur-card {
   flex-shrink: 0;
@@ -532,7 +579,7 @@
 }
 
 .sw-chat__desk .sur-card {
-  max-height: min(42vh, 320px);
+  max-height: min(48vh, 360px);
   overflow-y: auto;
 }
 

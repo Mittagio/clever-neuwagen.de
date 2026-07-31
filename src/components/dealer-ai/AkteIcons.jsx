@@ -104,6 +104,44 @@ export function IconMoreDots(props) {
   );
 }
 
+export function IconThumbUp(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3z" {...stroke} />
+      <path d="M7 11l3.2-6.2A2 2 0 0 1 12 4h.3a2 2 0 0 1 1.9 2.5L13.5 11H19a2 2 0 0 1 2 2.3l-.8 5A2 2 0 0 1 18.2 20H7" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconThumbDown(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3z" {...stroke} />
+      <path d="M17 13l-3.2 6.2A2 2 0 0 1 12 20h-.3a2 2 0 0 1-1.9-2.5L10.5 13H5a2 2 0 0 1-2-2.3l.8-5A2 2 0 0 1 5.8 4H17" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconCopy(props) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" {...stroke} />
+      <path d="M5 15V6a2 2 0 0 1 2-2h9" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconBranch(props) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="6" cy="6" r="2" {...stroke} />
+      <circle cx="6" cy="18" r="2" {...stroke} />
+      <circle cx="18" cy="12" r="2" {...stroke} />
+      <path d="M6 8v8M8 6h4a4 4 0 0 1 4 4M8 18h4a4 4 0 0 0 4-4" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export function IconBack(props) {
   return (
     <SvgIcon {...props}>

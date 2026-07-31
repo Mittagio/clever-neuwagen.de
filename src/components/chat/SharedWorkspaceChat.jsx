@@ -49,6 +49,11 @@ export default function SharedWorkspaceChat({
   micSlot = null,
   reviewSlot = null,
   feedTopSlot = null,
+  /**
+   * Clever-Modus: keinen Nachrichtenverlauf über dem Composer –
+   * nur letzte Aktion (reviewSlot). Vollständiger Verlauf = Chat-Tab.
+   */
+  hideFeed = false,
   /** Ersetzt den Feed (z. B. geöffnetes Angebot) – Composer bleibt sichtbar */
   workspaceSlot = null,
   /** Cursor-artige Anhänge über dem Composer */
@@ -253,7 +258,15 @@ export default function SharedWorkspaceChat({
     return () => document.removeEventListener('pointerdown', onDoc);
   }, [toneMenuOpen]);
 
-  const feedMain = (
+  const feedMain = hideFeed ? (
+    <div className="sw-chat__last-turn" aria-label="Letzte Clever-Aktion">
+      {reviewSlot || (
+        <p className="sw-chat__empty sw-chat__empty--composer">
+          Tippen und absenden – Clever antwortet hier. Danach Ja / Nein.
+        </p>
+      )}
+    </div>
+  ) : (
     <>
       {feedTopSlot ? (
         <div className="sw-chat__feed-top">{feedTopSlot}</div>
@@ -309,7 +322,7 @@ export default function SharedWorkspaceChat({
 
   return (
     <section
-      className={`sw-chat sw-chat--${role}${dragOver ? ' is-dragover' : ''}${workspaceSlot ? ' has-workspace' : ''}`}
+      className={`sw-chat sw-chat--${role}${hideFeed ? ' sw-chat--composer-only' : ''}${dragOver ? ' is-dragover' : ''}${workspaceSlot ? ' has-workspace' : ''}`}
       aria-label="Gemeinsamer Arbeitsraum"
       onDragOver={(event) => {
         if (!onAttachFile) return;
@@ -336,7 +349,8 @@ export default function SharedWorkspaceChat({
       </div>
 
       <div className="sw-chat__desk">
-        {reviewSlot}
+        {/* Clever (hideFeed): Review sitzt in der Mitte (feed). Chat-Tab: über dem Composer. */}
+        {!hideFeed ? reviewSlot : null}
 
         {showContextPills ? (
           <div className="sw-composer__context" role="group" aria-label="Arbeitskontext">

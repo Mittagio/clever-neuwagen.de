@@ -1092,7 +1092,7 @@ export default function DealerAiLeadFollowUp({
       setMoreSheetOpen(true);
       return;
     }
-    // Chat / Clever: Workspace + Composer; Clever behält Banner (Notizzettel / Golden / Spuren)
+    // Chat = voller Verlauf; Clever = Composer + letzte Aktion (kein Feed)
     setMoreSheetOpen(false);
     if (activeSheet === SHEETS.boardOffers || activeSheet === SHEETS.customer) {
       closeSheet();
@@ -1113,18 +1113,28 @@ export default function DealerAiLeadFollowUp({
     });
   }
 
-  /** Klick auf Spur: Composer-Kontext setzen/togglen – keine Navigation */
+  /**
+   * Klick auf Spur: Composer-Kontext + eine Kundennachricht zum Angebot vorbereiten
+   * (wie „Fasse das Angebot als Mail zusammen“) – keine Navigation.
+   */
   function selectVehicleTrack(track, { replace = false } = {}) {
     if (!track) return;
     const card = trackToComposerCard(track);
     if (!card) return;
     const item = buildOfferWorkingContextItem(card, lead);
-    setWorkingContextItems((prev) => (
-      replace
-        ? upsertWorkingContextItem(prev, item)
-        : toggleOfferWorkingContext(prev, item)
-    ));
-    focusChatComposer({ clever: true });
+    const nextItems = replace
+      ? upsertWorkingContextItem(workingContextItems, item)
+      : toggleOfferWorkingContext(workingContextItems, item);
+    const selected = listOfferWorkingContexts(nextItems).some((o) => o.id === item.id);
+    setWorkingContextItems(nextItems);
+    if (!selected) {
+      focusChatComposer({ clever: true });
+      return;
+    }
+    focusChatComposer({
+      clever: true,
+      seedDraft: 'Schreib ihm eine kurze Zusammenfassung zu dem angehängten Angebot.',
+    });
   }
 
   function clearOfferSelection() {
@@ -1952,6 +1962,7 @@ export default function DealerAiLeadFollowUp({
     if (!messageId) return;
     // Workspace schließen → Feed sichtbar (Mobile Replace + Desktop klarer Fokus)
     setOfferWorkspaceCard(null);
+    setAkteTab(AKTE_TABS.chat);
     setFeedFocusMessageId(String(messageId));
     setFeedFocusToken((token) => token + 1);
   }
@@ -3011,6 +3022,8 @@ export default function DealerAiLeadFollowUp({
   }
 
   const isChatTab = akteTab === AKTE_TABS.chat;
+  /** Clever: kein Verlauf über Composer – nur letzte Aktion. Chat-Tab = voller Verlauf. */
+  const hideComposerFeed = !isChatTab;
   const feedCleverBanner = isChatTab ? null : (
     <>
       <CustomerAkteCleverNotepad
@@ -3153,8 +3166,9 @@ export default function DealerAiLeadFollowUp({
           />
         ) : null}
         compactEmpty
+        hideFeed={hideComposerFeed}
         isSaving={isSaving}
-        feedTopSlot={feedCleverBanner}
+        feedTopSlot={hideComposerFeed ? null : feedCleverBanner}
         onOpenOffer={handleOpenOfferFromFeed}
         onAttachOffer={openAttachOfferPicker}
         onAttachDocument={openAttachDocumentPicker}
