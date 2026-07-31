@@ -5,6 +5,7 @@
 import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { runTool } from './toolRegistry.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
+import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -17,14 +18,26 @@ function salutationName(customerName, facts, lead) {
   return `Herr ${name}`;
 }
 
-function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
+function buildOfferMessageDraft({
+  lead,
+  sellerInput,
+  facts,
+  customerName,
+  offerPayload = null,
+}) {
   void sellerInput;
   const purchase = facts.find((f) => f.field === 'purchasePrice');
   const vehicle = facts.find((f) => f.field === 'vehicleInterest');
-  const vehicleLabel = vehicle?.label || 'das gewünschte Fahrzeug';
+  const transmission = facts.find((f) => f.field === 'transmissionPreference');
+  const discount = facts.find((f) => f.field === 'discountPercent');
+  const vehicleLabel = offerPayload?.vehicleLabel
+    || vehicle?.label
+    || 'das gewünschte Fahrzeug';
   const priceLabel = purchase
     ? `${Number(purchase.value).toLocaleString('de-DE')} €`
-    : null;
+    : (offerPayload?.monthlyRate != null
+      ? `${Number(offerPayload.monthlyRate).toLocaleString('de-DE')} €/Monat`
+      : null);
 
   const labels = [];
   try {
@@ -36,13 +49,32 @@ function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
     /* ignore */
   }
 
+  const detailBits = [];
+  if (transmission?.label || /automatik/i.test(vehicleLabel)) {
+    detailBits.push(transmission?.label || 'Automatik');
+  }
+  if (discount?.label) detailBits.push(discount.label);
+
   const lines = [
     `Hallo ${salutationName(customerName, facts, lead)},`,
     '',
-    `wie besprochen habe ich Ihnen ein Angebot für den ${vehicleLabel} vorbereitet.`,
+    `anbei erhalten Sie das gewünschte Angebot für den ${vehicleLabel}`
+      + (detailBits.length ? ` (${detailBits.join(', ')})` : '')
+      + '.',
   ];
   if (priceLabel) {
-    lines.push('', `Der Kaufpreis liegt bei ${priceLabel}.`);
+    lines.push('', `Die Kondition: ${priceLabel}.`);
+  }
+  const term = lead?.wish?.termMonths;
+  const km = lead?.wish?.mileagePerYear;
+  const down = lead?.wish?.downPayment;
+  if (term || km != null || down != null) {
+    const cond = [
+      term ? `${term} Monate` : null,
+      km != null ? `${Number(km).toLocaleString('de-DE')} km/Jahr` : null,
+      down != null ? `${Number(down) === 0 ? '0 €' : `${Number(down).toLocaleString('de-DE')} €`} AZ` : null,
+    ].filter(Boolean);
+    if (cond.length) lines.push('', `Basis: ${cond.join(' · ')}.`);
   }
   if (labels.some((l) => /hund/i.test(l))) {
     lines.push(
@@ -57,6 +89,20 @@ function buildOfferMessageDraft({ lead, sellerInput, facts, customerName }) {
   }
   lines.push('', 'Viele Grüße');
   return lines.join('\n');
+}
+
+/** Neutraler Zwischenentwurf – nur wenn Angebot noch unvollständig (Rate fehlt). */
+function buildOfferPendingInterimDraft({ lead, facts, customerName, offerPayload = null }) {
+  const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+  const vehicleLabel = offerPayload?.vehicleLabel || vehicle?.label || 'Ihr Wunschfahrzeug';
+  return [
+    `Hallo ${salutationName(customerName, facts, lead)},`,
+    '',
+    `ich bereite das gewünschte Angebot für den ${vehicleLabel} aktuell für Sie vor`,
+    'und sende es Ihnen, sobald die Kalkulation vollständig ist.',
+    '',
+    'Viele Grüße',
+  ].join('\n');
 }
 
 /** Kundennachricht bei Anpassung eines angehängten Angebots (km, Laufzeit, Rate, …). */
@@ -309,19 +355,41 @@ export function planSellerActions({
         attachments,
       });
       const purchase = facts.find((f) => f.field === 'purchasePrice');
+      const magic = offer?.results?.[0]?.magic || null;
+      const grounded = magic?.grounded || null;
+      const vehicleFromFacts = facts.find((f) => f.field === 'vehicleInterest');
+      const vehicleLabel = [
+        grounded?.model ? `Kia ${grounded.model}` : null,
+        grounded?.trimLabel || null,
+        /automatik|dct/i.test(grounded?.engineLabel || '') ? 'Automatik' : null,
+      ].filter(Boolean).join(' ')
+        || vehicleFromFacts?.label
+        || null;
+      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchase);
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: 'Angebot vorbereiten',
+        label: canCreate ? 'Angebot vorbereiten' : 'Angebot prüfen',
         needsSellerConfirmation: true,
         status: offer?.ok || purchase ? 'prepared' : 'blocked',
         toolId: 'prepare_offer',
         legacy: offer ?? null,
         payload: {
-          canCreateOffer: Boolean(offer?.results?.[0]?.magic?.canCreateOffer) || Boolean(purchase),
-          purchasePrice: purchase?.value ?? null,
-          paymentType: facts.find((f) => f.field === 'paymentType')?.value ?? null,
-          vehicleLabel: facts.find((f) => f.field === 'vehicleInterest')?.label ?? null,
+          canCreateOffer: canCreate,
+          purchasePrice: purchase?.value ?? magic?.calculation?.endPrice ?? grounded?.basePrice ?? null,
+          paymentType: facts.find((f) => f.field === 'paymentType')?.value
+            || magic?.paymentType
+            || null,
+          vehicleLabel,
+          monthlyRate: magic?.calculation?.monthlyRate
+            ?? magic?.intent?.commercialInput?.monthlyRate
+            ?? null,
+          discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
+          listPrice: grounded?.basePrice ?? null,
+          engineLabel: grounded?.engineLabel ?? null,
+          variantId: grounded?.variantId ?? null,
+          decisionAction: magic?.decision?.action ?? null,
+          missingRate: magic?.decision?.action === 'ask_rate',
           attachWorkingContext: true,
         },
       });
@@ -432,15 +500,26 @@ export function planSellerActions({
     });
   }
 
+  const offerAction = actions.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
+  const offerIncomplete = Boolean(
+    offerAction
+    && offerAction.payload
+    && offerAction.payload.canCreateOffer === false,
+  );
+
+  // „Angebot“ allein ist kein Message-Intent – erst verstehen/vorbereiten, dann formulieren.
+  const explicitWrite = /\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
   const wantsCustomerMessage = inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
     || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    || /\b(schreib|sag(?:e|en)?\s+ihm|mail|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|g(?:ue|u|ü)nstig|r(?:ue|u|ü)ckfrage|nachfass|angebot|kundenlink)\b/i.test(sellerInput);
+    || (explicitWrite && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER))
+    || (explicitWrite && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && !offerIncomplete)
+    || (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && offerAction?.payload?.canCreateOffer);
 
   if (
     !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)
     && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
     && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    && wantsCustomerMessage
+    && (wantsCustomerMessage || (offerIncomplete && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)))
   ) {
     const inline = runTool('draft_customer_message', {
       lead,
@@ -453,13 +532,24 @@ export function planSellerActions({
     const offerUpdateAction = actions.find((a) => (
       a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.payload?.updateOnly
     ));
-    if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+
+    if (offerIncomplete && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && !explicitWrite) {
+      // Primär: Angebot vervollständigen – nur neutraler Zwischenentwurf (sekundär)
+      messageDraft = buildOfferPendingInterimDraft({
+        lead,
+        facts,
+        customerName,
+        offerPayload: offerAction?.payload,
+      });
+    } else if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+      && offerAction?.payload?.canCreateOffer
       && facts.some((f) => f.field === 'purchasePrice' || f.field === 'vehicleInterest')) {
       messageDraft = buildOfferMessageDraft({
         lead,
         sellerInput,
         facts,
         customerName,
+        offerPayload: offerAction?.payload,
       });
     } else if (offerUpdateAction || (
       intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
@@ -486,7 +576,7 @@ export function planSellerActions({
         customerName,
         currentOfferContext,
       });
-    } else {
+    } else if (wantsCustomerMessage && !offerIncomplete) {
       const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
       const offerFacts = currentOfferContext?.offerId
         ? {
@@ -522,18 +612,41 @@ export function planSellerActions({
       }).result?.body || null;
     }
 
-    actions.push({
-      id: 'draft_message',
-      type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
-      label: 'Nachricht vorbereiten',
-      needsSellerConfirmation: true,
-      status: 'prepared',
-      toolId: 'draft_customer_message',
-      legacy: inline ?? null,
-      payload: {
-        messageDraft,
-      },
-    });
+    if (messageDraft && !validateCustomerMessageNotSellerCommand(messageDraft).ok) {
+      messageDraft = offerIncomplete
+        ? buildOfferPendingInterimDraft({
+          lead,
+          facts,
+          customerName,
+          offerPayload: offerAction?.payload,
+        })
+        : buildOfferMessageDraft({
+          lead,
+          sellerInput,
+          facts,
+          customerName,
+          offerPayload: offerAction?.payload,
+        });
+      if (!validateCustomerMessageNotSellerCommand(messageDraft).ok) {
+        messageDraft = null;
+      }
+    }
+
+    if (messageDraft || inline) {
+      actions.push({
+        id: 'draft_message',
+        type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+        label: offerIncomplete ? 'Zwischenentwurf' : 'Nachricht vorbereiten',
+        needsSellerConfirmation: true,
+        status: 'prepared',
+        toolId: 'draft_customer_message',
+        legacy: inline ?? null,
+        payload: {
+          messageDraft,
+          interimOnly: offerIncomplete,
+        },
+      });
+    }
   }
 
   return actions;

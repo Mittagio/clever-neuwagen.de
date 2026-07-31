@@ -202,6 +202,22 @@ export function resolveAssistantContext(params = {}) {
     favoriteVehicle: favoriteTrack?.modelLabel ?? null,
     deferredVehicles: deferredTracks.map((t) => t.modelLabel),
     goldenMomentType: goldenMoment?.type ?? null,
+    termMonths: lead?.wish?.termMonths
+      ?? lead?.crm?.needProfile?.leaseDurationMonths
+      ?? null,
+    annualMileage: lead?.wish?.mileagePerYear
+      ?? lead?.crm?.needProfile?.annualKm
+      ?? null,
+    mileagePerYear: lead?.wish?.mileagePerYear
+      ?? lead?.crm?.needProfile?.annualKm
+      ?? null,
+    downPayment: lead?.wish?.downPayment
+      ?? lead?.crm?.needProfile?.budget?.downPayment
+      ?? null,
+    paymentType: lead?.paymentType
+      ?? lead?.wish?.paymentType
+      ?? lead?.crm?.needProfile?.paymentType
+      ?? null,
   };
 
   return {

@@ -142,11 +142,21 @@ export function parseMagicOfferIntent(text = '') {
   if (interestMatch) effectiveInterestRate = parseDeNumber(interestMatch[1]);
 
   let offerType = null;
-  if (/\bbarangebot\b|\bkaufangebot\b|\bbarkauf\b|\bbar\s*kauf\b|\bkauf\b|\bbar\b/.test(blob)
-    && monthlyRate == null) {
+  // Barkauf bei klarer Kauf-Absicht ODER reinem %-Rabatt ohne Leasing-Konditionen
+  if (
+    /\b(barangebot|kaufangebot|barkauf|bar\s*kauf)\b/.test(blob)
+    && monthlyRate == null
+    && !/\bleasing\b/.test(blob)
+  ) {
     offerType = 'purchase';
   }
-  if (discountPercent != null && monthlyRate == null && !/\bleasing\b|\bfinanzierung\b/.test(blob)) {
+  if (
+    discountPercent != null
+    && monthlyRate == null
+    && !/\bleasing\b|\bfinanzierung\b/.test(blob)
+    && durationMonths == null
+    && annualMileageKm == null
+  ) {
     offerType = 'purchase';
   }
   if (
@@ -158,7 +168,13 @@ export function parseMagicOfferIntent(text = '') {
   if (
     /\bleasing(?:angebot)?\b/.test(blob)
     || (monthlyRate != null && durationMonths != null && finalPayment == null && offerType !== 'financing')
-    || (durationMonths != null && annualMileageKm != null && monthlyRate == null && discountPercent == null && offerType !== 'financing')
+    || (
+      durationMonths != null
+      && annualMileageKm != null
+      && monthlyRate == null
+      && offerType !== 'financing'
+      && offerType !== 'purchase'
+    )
   ) {
     offerType = 'leasing';
   }
@@ -175,6 +191,14 @@ export function parseMagicOfferIntent(text = '') {
   else if (/\bair\b/.test(blob)) trimHint = 'air';
   else if (/\bspirit\b/.test(blob)) trimHint = 'spirit';
   else if (/\bvision\b/.test(blob)) trimHint = 'vision';
+  else if (/\b(?:core|cor)\b/.test(blob)) trimHint = 'core';
+
+  let transmissionRequirement = null;
+  if (/\bautomatik(?:getriebe)?\b|\bdct\b|\bdsg\b/.test(blob)) {
+    transmissionRequirement = 'automatic';
+  } else if (/\bschaltgetriebe\b|\bschalter\b|\b\bmt6?\b/.test(blob)) {
+    transmissionRequirement = 'manual';
+  }
 
   let colorHint = null;
   const colorPatterns = [
@@ -207,6 +231,7 @@ export function parseMagicOfferIntent(text = '') {
       modelHint,
       trimHint,
       motorHint,
+      transmissionRequirement,
       packageKeys,
       colorHint,
     },

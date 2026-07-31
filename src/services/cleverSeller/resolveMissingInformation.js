@@ -84,6 +84,23 @@ export function resolveMissingInformation({
         field: 'paymentType',
       });
     }
+
+    const hasRate = facts.some((f) => (
+      f.field === 'desiredRate'
+      || f.field === 'monthlyBudget'
+      || f.field === 'monthlyLeasingRate'
+    )) || currentOfferContext?.monthlyRate != null;
+    const explicitCash = facts.some((f) => (
+      f.field === 'paymentType' && /purchase|cash|kauf/i.test(String(f.value || ''))
+    ));
+    if (leadLeasing && !hasRate && !purchasePrice && !explicitCash) {
+      missing.push({
+        id: 'monthly_leasing_rate',
+        forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Leasingrate oder Bank-PDF',
+        field: 'monthlyLeasingRate',
+      });
+    }
   }
 
   const ambiguousMoney = facts.find((f) => (

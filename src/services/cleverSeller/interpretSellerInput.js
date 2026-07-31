@@ -63,7 +63,7 @@ const MONTH_MAP = {
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
-const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise';
+const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR';
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
 
@@ -326,14 +326,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const modelLabel = /^ev\d$/i.test(modelRaw)
       ? modelRaw.toUpperCase()
       : titleCaseToken(modelRaw);
-    const trimLabel = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
+    const trimLabelRaw = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
+    const trimLabel = trimLabelRaw && /^cor$/i.test(trimLabelRaw) ? 'Core' : trimLabelRaw;
+    const trimValue = trimLabel && /^core$/i.test(trimLabel) ? 'core' : trimLabel;
     const label = trimLabel ? `Kia ${modelLabel} ${trimLabel}` : `Kia ${modelLabel}`;
     if (!interestHits.some((h) => h.label === label)) {
       interestHits.push({
         modelKey,
-        trim: trimLabel,
+        trim: trimValue,
         label,
-        value: { make: 'Kia', modelKey, trim: trimLabel },
+        value: { make: 'Kia', modelKey, trim: trimValue },
       });
     }
     interestMatch = interestRe.exec(t);

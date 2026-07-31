@@ -102,17 +102,113 @@ export function groundMagicOfferIntent(intent = {}, context = {}) {
     ?? (data.trims ?? []).find((t) => normalizeKey(t.name) === normalizeKey(trimHint))
     ?? null;
 
+  const transmission = intent.vehicleRequest?.transmissionRequirement ?? null;
+  const engineIsAutomatic = (e) => /automatik|dct|dsg|\bat\b/i.test(`${e?.id || ''} ${e?.name || ''}`);
+  const engineIsManual = (e) => /schalt|\bmt\b|manual/i.test(`${e?.id || ''} ${e?.name || ''}`);
+
+  const enginesAll = data.engines ?? [];
+  const variantsAll = data.variants ?? [];
+
+  const variantMatchesTransmission = (v) => {
+    const eng = enginesAll.find((e) => e.id === v.engineId);
+    if (!eng) return false;
+    if (transmission === 'automatic') return engineIsAutomatic(eng);
+    if (transmission === 'manual') return engineIsManual(eng);
+    return true;
+  };
+
+  const candidates = variantsAll.filter((v) => {
+    if (trim && v.trimId !== trim.id) return false;
+    return variantMatchesTransmission(v);
+  });
+
+  if (transmission === 'automatic' && candidates.length === 0) {
+    return {
+      ok: false,
+      status: 'needs_review',
+      reason: 'no_automatic_variant',
+      message: 'Keine verifizierte Automatikvariante gefunden – bitte Motorisierung wählen.',
+      grounded: {
+        modelKey,
+        brand: data.brand ?? 'Kia',
+        model: data.model,
+        trimId: trim?.id ?? null,
+        trimLabel: trim?.name ?? null,
+        engineId: null,
+        engineLabel: null,
+        variantId: null,
+        basePrice: null,
+        colorId: null,
+        colorLabel: null,
+        packageIds: [],
+        resolvedPackages: [],
+        lineItems: [],
+      },
+      unresolvedPackages: intent.vehicleRequest?.packageKeys ?? [],
+      suggestions: [],
+    };
+  }
+
+  if (candidates.length > 1 && transmission === 'automatic' && !intent.vehicleRequest?.motorHint) {
+    return {
+      ok: false,
+      status: 'needs_review',
+      reason: 'ambiguous_automatic_variant',
+      message: 'Welche Automatikvariante möchten Sie anbieten?',
+      grounded: {
+        modelKey,
+        brand: data.brand ?? 'Kia',
+        model: data.model,
+        trimId: trim?.id ?? null,
+        trimLabel: trim?.name ?? null,
+        engineId: null,
+        engineLabel: null,
+        variantId: null,
+        basePrice: null,
+        colorId: null,
+        colorLabel: null,
+        packageIds: [],
+        resolvedPackages: [],
+        lineItems: [],
+      },
+      unresolvedPackages: intent.vehicleRequest?.packageKeys ?? [],
+      suggestions: candidates.slice(0, 6).map((v) => {
+        const eng = enginesAll.find((e) => e.id === v.engineId);
+        return {
+          id: v.id,
+          label: [trim?.name, eng?.name].filter(Boolean).join(' · ') || v.id,
+          priceGross: v.priceGross,
+        };
+      }),
+    };
+  }
+
   const engineHint = intent.vehicleRequest?.motorHint ?? null;
-  const engine = (data.engines ?? []).find((e) => e.id === engineHint)
-    ?? (data.engines ?? []).find((e) => /long/i.test(e.name) && (!engineHint || engineHint.includes('long')))
-    ?? (data.engines ?? [])[0]
+  let engine = enginesAll.find((e) => e.id === engineHint)
+    ?? (engineHint
+      ? enginesAll.find((e) => /long/i.test(e.name) && engineHint.includes('long'))
+      : null)
     ?? null;
 
-  const variant = (data.variants ?? []).find((v) => (
-    (!trim || v.trimId === trim.id) && (!engine || v.engineId === engine.id)
-  ))
-    ?? (data.variants ?? []).find((v) => !trim || v.trimId === trim.id)
-    ?? null;
+  let variant = null;
+  if (candidates.length === 1) {
+    variant = candidates[0];
+    engine = enginesAll.find((e) => e.id === variant.engineId) ?? engine;
+  } else if (engine) {
+    variant = candidates.find((v) => v.engineId === engine.id)
+      ?? variantsAll.find((v) => (
+        (!trim || v.trimId === trim.id) && v.engineId === engine.id
+      ))
+      ?? null;
+  } else if (transmission !== 'automatic') {
+    // Ohne Getriebe-Vorgabe: bisheriges Verhalten (erste passende Variante)
+    engine = enginesAll[0] ?? null;
+    variant = variantsAll.find((v) => (
+      (!trim || v.trimId === trim.id) && (!engine || v.engineId === engine.id)
+    ))
+      ?? variantsAll.find((v) => !trim || v.trimId === trim.id)
+      ?? null;
+  }
 
   if (!variant?.priceGross) {
     return {

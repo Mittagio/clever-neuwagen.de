@@ -286,6 +286,9 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     if (noteLines.length) {
       lines.push('');
       for (const note of noteLines.slice(0, 4)) {
+        if (/\berstell\b|\bmach(?:e|en)?\s+(?:ihm|ihr)\b|\bangebot\s+erstellen\b/i.test(note)) {
+          continue;
+        }
         lines.push(note);
       }
     } else if (extraSeller.length) {
@@ -386,6 +389,8 @@ export function extractCustomerFacingNotes(instruction = '') {
   if (!raw) return [];
   const cleaned = raw
     .replace(/^(schreib(?:e|en)?|sag(?:e|en)?|formulier(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s*,?\s*/i, '')
+    .replace(/^(erstell(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s+(ein\s+)?angebot\b[^\n.;]*/i, '')
+    .replace(/\berstell(?:e|en)?\s+(?:ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s+(?:ein\s+)?angebot\b[^\n.;]*/gi, '')
     .replace(/^bereite\s+.+?\s+vor\s+und\s+/i, '')
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?kurze\s+kundennachricht(\s+dazu)?[.!]?\s*/gi, '')
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?kurze\s+(dankes[-\/]?|nachfass|rückfrage|eingangs)[^\n.;]*/gi, '')

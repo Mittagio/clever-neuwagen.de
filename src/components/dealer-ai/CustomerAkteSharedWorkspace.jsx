@@ -44,6 +44,7 @@ import {
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
+import { containsSellerCommandInMessage } from '../../services/cleverSeller/validateSellerCommandMessage.js';
 import {
   COMPOSER_PRIMARY_CHIPS,
   COMPOSER_MORE_CHIPS,
@@ -315,6 +316,18 @@ export default function CustomerAkteSharedWorkspace({
         customerName,
       });
 
+      const offerAction = (turn.preparedActions || []).find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
+      const offerIncomplete = Boolean(
+        offerAction
+        && offerAction.payload
+        && offerAction.payload.canCreateOffer === false,
+      );
+      const skipMagicForOffer = offerIncomplete
+        || (
+          Boolean(offerAction)
+          && !/\b(schreib|nachricht|mail)\b/i.test(text)
+        );
+
       // Magic: LLM / grounded Writer ersetzt Template-Mails
       let magicBody = null;
       let magicWriter = null;
@@ -345,7 +358,7 @@ export default function CustomerAkteSharedWorkspace({
       };
 
       const magicRemoteEnabled = isCleverMagicMessageClientEnabled();
-      if (magicRemoteEnabled) {
+      if (!skipMagicForOffer && magicRemoteEnabled) {
         try {
           const remote = await requestCleverMagicMessage(magicPayload);
           if (remote?.ok && remote.body) {
@@ -358,7 +371,7 @@ export default function CustomerAkteSharedWorkspace({
         }
       }
 
-      if (!magicBody) {
+      if (!skipMagicForOffer && !magicBody) {
         try {
           const local = await composeSellerOutboundMessageAsync(magicPayload, {
             forceFallback: !magicRemoteEnabled,
@@ -371,6 +384,11 @@ export default function CustomerAkteSharedWorkspace({
         } catch {
           magicBody = null;
         }
+      }
+
+      if (magicBody && containsSellerCommandInMessage(magicBody)) {
+        magicBody = null;
+        magicWriter = null;
       }
 
       setDraft('');

@@ -169,11 +169,19 @@ export function buildUniversalActionSections(turn = {}) {
     || draftResult?.draft?.body
     || draftResult?.body
     || null;
-  if (draftBody) {
+  const interimOnly = Boolean(draftAction?.payload?.interimOnly);
+  if (draftBody && !interimOnly) {
     sections.push({
       id: 'message_draft',
       kind: 'message_draft',
       title: 'Nachricht',
+      body: String(draftBody).trim(),
+    });
+  } else if (draftBody && interimOnly) {
+    sections.push({
+      id: 'message_interim',
+      kind: 'message_interim',
+      title: 'Zwischenentwurf (optional)',
       body: String(draftBody).trim(),
     });
   }
@@ -186,15 +194,37 @@ export function buildUniversalActionSections(turn = {}) {
   if (offerPrep && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+    const discount = facts.find((f) => f.field === 'discountPercent');
+    const incomplete = offerPrep.payload?.canCreateOffer === false
+      || offerPrep.payload?.missingRate
+      || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate');
+    const wish = turn.usedCustomerContext || {};
+    const inherited = [
+      wish.termMonths != null ? `${wish.termMonths} Monate` : null,
+      wish.annualMileage != null || wish.mileagePerYear != null
+        ? `${Number(wish.annualMileage ?? wish.mileagePerYear).toLocaleString('de-DE')} km/Jahr`
+        : null,
+      wish.downPayment != null ? `${Number(wish.downPayment) === 0 ? '0 €' : `${Number(wish.downPayment).toLocaleString('de-DE')} €`} AZ` : null,
+    ].filter(Boolean);
+    const lineParts = [];
+    if (discount?.label) lineParts.push(discount.label);
+    if (offerPrep.payload?.listPrice != null) {
+      lineParts.push(`UPE ${Number(offerPrep.payload.listPrice).toLocaleString('de-DE')} €`);
+    }
+    if (incomplete) {
+      lineParts.push('Noch offen: Leasingrate / Bank-PDF');
+    } else if (purchase?.label) {
+      lineParts.push(purchase.label);
+    } else if (offerPrep.payload?.monthlyRate != null) {
+      lineParts.push(`${Number(offerPrep.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+    }
     sections.unshift({
       id: 'offer_prepare',
-      kind: 'offer_prepare',
-      title: 'Angebot',
+      kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
+      title: incomplete ? 'Angebot prüfen' : 'Angebot',
       headline: offerPrep.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
-      line: purchase?.label
-        || (offerPrep.payload?.purchasePrice
-          ? `Kaufpreis: ${Number(offerPrep.payload.purchasePrice).toLocaleString('de-DE')} €`
-          : 'Angebot vorbereitet'),
+      line: lineParts.join(' · ') || (incomplete ? 'Angebot unvollständig' : 'Angebot vorbereitet'),
+      inheritedLine: inherited.length ? `Übernommen: ${inherited.join(' · ')}` : null,
       changes: [
         purchase ? {
           id: 'price',
@@ -202,7 +232,20 @@ export function buildUniversalActionSections(turn = {}) {
           from: null,
           to: purchase.label,
         } : null,
+        discount ? {
+          id: 'discount',
+          label: 'Rabatt',
+          from: null,
+          to: discount.label,
+        } : null,
       ].filter(Boolean),
+      primaryActions: incomplete
+        ? [
+          { id: 'upload_pdf', label: 'PDF hochladen' },
+          { id: 'enter_rate', label: 'Monatsrate eingeben' },
+          { id: 'calc_cash', label: 'Als Barkauf berechnen' },
+        ]
+        : null,
     });
   }
 
@@ -384,7 +427,11 @@ export function buildUniversalReviewModel(turn = {}) {
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
     && !trackFeedback
     && !appointmentPrep
-    && !actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'message_draft');
+    && !actionSections.some((s) => (
+      s.kind === 'offer_prepare'
+      || s.kind === 'offer_incomplete'
+      || s.kind === 'message_draft'
+    ));
 
   return {
     title: historyOnly
@@ -393,9 +440,11 @@ export function buildUniversalReviewModel(turn = {}) {
         ? '✨ Clever hat einsortiert'
         : goldenOnly
           ? '✨ Clever'
-          : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-            ? '✨ Clever hat vorbereitet'
-            : '✨ Clever hat verstanden'),
+          : actionSections.some((s) => s.kind === 'offer_incomplete')
+            ? '✨ Clever prüft das Angebot'
+            : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+              ? '✨ Clever hat vorbereitet'
+              : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
@@ -405,9 +454,11 @@ export function buildUniversalReviewModel(turn = {}) {
         ? 'Fahrzeugspuren und Wünsche aktualisiert'
         : goldenOnly
           ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
-          : multiAction
-            ? `${actionSections.length} Aktionen vorbereitet`
-            : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
+          : actionSections.some((s) => s.kind === 'offer_incomplete')
+            ? 'Angebot unvollständig – Rate oder Bank-PDF benötigt'
+            : multiAction
+              ? `${actionSections.length} Aktionen vorbereitet`
+              : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
@@ -419,13 +470,15 @@ export function buildUniversalReviewModel(turn = {}) {
         ? 'Übernehmen'
         : goldenOnly
           ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
-          : appointmentPrep && !multiAction
-            ? 'Vorschlag senden'
-            : multiAction
-              ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-                ? 'Angebot und Nachricht prüfen'
-                : 'Änderungen prüfen')
-              : 'Übernehmen',
+          : actionSections.some((s) => s.kind === 'offer_incomplete')
+            ? 'Angebot vervollständigen'
+            : appointmentPrep && !multiAction
+              ? 'Vorschlag senden'
+              : multiAction
+                ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+                  ? 'Angebot und Nachricht prüfen'
+                  : 'Änderungen prüfen')
+                : 'Übernehmen',
     secondaryCta: trackFeedback
       ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')
       : 'Verwerfen',

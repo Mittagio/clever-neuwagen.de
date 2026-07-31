@@ -55,10 +55,10 @@ export function enrichOfferTextWithCustomerWish(lead = {}, text = '') {
   if (down != null && String(down).trim() !== '' && !/anzahlung|sonderzahlung/i.test(blob)) {
     parts.push(`${Number(down) === 0 ? 'keine' : Number(down).toLocaleString('de-DE')} € Anzahlung`);
   }
-  if (/leasing/i.test(blob) === false && payment === 'leasing' && /angebot|vorbereiten|erstellen/i.test(blob)) {
+  if (/leasing/i.test(blob) === false && payment === 'leasing' && /angebot|vorbereiten|erstell/i.test(blob)) {
     parts.push('Leasing');
   }
-  if (/kauf|barangebot|barkauf/i.test(blob) === false && payment === 'cash' && /angebot|vorbereiten|erstellen/i.test(blob)) {
+  if (/kauf|barangebot|barkauf/i.test(blob) === false && payment === 'cash' && /angebot|vorbereiten|erstell/i.test(blob)) {
     parts.push('Kauf');
   }
 
