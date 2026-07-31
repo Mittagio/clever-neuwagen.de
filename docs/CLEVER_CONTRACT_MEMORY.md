@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 6 implementiert (Contract Intake) – Slice 7/8 Roadmap  
+**Status:** Slice 7 implementiert (Contract Memory Search) – Slice 8 Roadmap  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -265,7 +265,9 @@ NOCH OFFEN (Vertragsnummer, Leasinggesellschaft, …)
 
 ---
 
-## Slice 7 – Contract Memory Search (später)
+## Slice 7 – Contract Memory Search
+
+**Status: implementiert**
 
 Fragen aus bestätigten Contract Facts beantworten, mit Quelle:
 
@@ -275,7 +277,16 @@ Fragen aus bestätigten Contract Facts beantworten, mit Quelle:
 - „Welche Leasinggesellschaft hat den Vertrag?“
 - „Was stand bei den Mehrkilometern?“
 
-Review sinngemäß: `contract_memory_result` + CTAs (Vertrag öffnen, Nachfolgeangebot).
+Intent: `search_customer_contracts`  
+Review: `contract_memory_result` + CTAs (Vertrag öffnen, Nachfolgeangebot)
+
+| Modul | Rolle |
+|-------|--------|
+| `searchCustomerContracts.js` | Query-Feld, Lookup, Antwort + Evidence |
+| `globalComposer.slice7.test.js` | Golden + Gegenproben |
+
+Fallback: nur `wish.leasingEndDate` als `projection_only`, klar gekennzeichnet.  
+Keine Customer-Truth-Mutation.
 
 ---
 

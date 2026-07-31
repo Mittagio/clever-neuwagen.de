@@ -120,6 +120,9 @@ function finalizeSellerTurn({
   const wantsContractImport = (intents || []).some((i) => (
     i.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
   ));
+  const wantsContractSearch = (intents || []).some((i) => (
+    i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
+  ));
 
   let appointmentCustomer = null;
   if (wantsAppointment) {
@@ -135,9 +138,20 @@ function finalizeSellerTurn({
   const contractNameHint = wantsContractImport
     ? extractContractCustomerNameHint(interpreted.normalized || interpreted.raw)
     : null;
+  const namedForContractSearch = wantsContractSearch
+    ? (interpreted.normalized || interpreted.raw).match(
+      /\b(?:wann\s+)?(?:läuft|lauft|endet)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\s+aus\b/i,
+    )?.[1]
+      || (interpreted.normalized || interpreted.raw).match(
+        /\bwas\s+zahlt\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+      )?.[1]
+      || null
+    : null;
   const contractSearchInput = contractNameHint
     ? `Öffne ${contractNameHint}`
-    : (interpreted.normalized || interpreted.raw);
+    : (namedForContractSearch
+      ? `Öffne ${namedForContractSearch}`
+      : (interpreted.normalized || interpreted.raw));
 
   const leadResolve = wantsAppointment && appointmentCustomer?.resolved && appointmentCustomer.customer?.id
     ? {
@@ -149,7 +163,9 @@ function finalizeSellerTurn({
     }
     : resolveWorkingLeadForTurn({
       lead,
-      sellerInput: wantsContractImport && !lead?.id ? contractSearchInput : (interpreted.normalized || interpreted.raw),
+      sellerInput: (wantsContractImport || wantsContractSearch) && !lead?.id
+        ? contractSearchInput
+        : (interpreted.normalized || interpreted.raw),
       leadsSnapshot,
       intents,
     });
@@ -373,6 +389,9 @@ function finalizeSellerTurn({
   const contractImportAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
   ));
+  const contractSearchAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
+  ));
   const resolvedDateTime = appointmentPrepareAction?.payload?.resolvedDateTime
     || preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME)
       ?.payload?.resolvedDateTime
@@ -385,6 +404,7 @@ function finalizeSellerTurn({
     || (historyAction?.payload?.status === 'ambiguous_customer'
       ? historyAction?.payload?.customerSearchResults
       : null)
+    || contractSearchAction?.payload?.customerSearchResults
     || (leadResolve.ambiguous ? leadResolve.customerSearchResults : null)
     || null;
   const customerSummary = customerSummaryAction?.payload?.customerSummary || null;
@@ -397,6 +417,7 @@ function finalizeSellerTurn({
     || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     || appointmentPrepareAction
     || contractImportAction
+    || contractSearchAction
     || todayOverview
     || knowledgeResult
     || groundedKnowledge
@@ -604,6 +625,7 @@ function finalizeSellerTurn({
     documentClassification: contractImportAction?.payload?.documentClassification || null,
     extractedContractFacts: contractImportAction?.payload?.extractedContractFacts || [],
     contractDraft: contractImportAction?.payload?.contractDraft || null,
+    contractMemoryResult: contractSearchAction?.payload?.contractMemoryResult || null,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
       commercialPreferences: (understanding?.verstaendnis?.konditionen ?? []).slice?.(0, 6)
@@ -677,6 +699,11 @@ function finalizeSellerTurn({
         contractImportAction?.payload?.contractDraft?.contractEndDate
           ? `✓ Vertragsende ${contractImportAction.payload.contractDraft.contractEndDate} extrahiert`
           : null,
+        contractSearchAction?.payload?.contractMemoryResult
+          ? `✓ Vertrag ${contractSearchAction.payload.contractMemoryResult.customerName || ''} nachgeschlagen`.trim()
+          : (contractSearchAction?.payload?.status === 'no_contract'
+            ? '○ Kein Altvertrag hinterlegt'
+            : null),
         groundedKnowledge?.vehicleIdentity?.modelKey
           ? `✓ ${[
             groundedKnowledge.vehicleIdentity.modelLabel || groundedKnowledge.vehicleIdentity.modelKey,

@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 6 (Contract Intake) – siehe auch Contract Memory  
+**Status:** Slice 7 (Contract Memory Search)  
 **Stand:** Juli 2026
 
 ## Produktgesetz
@@ -36,6 +36,7 @@ Nur `runCleverSellerTurn()`:
 | `sellerFacts`, grounded knowledge, `knowledge_and_message_review` | 4 |
 | `resolvedDateTime`, `preparedAppointment`, `appointment_and_message_review` | 5 |
 | `documentClassification`, `contractDraft`, `contract_import_review` | 6 |
+| `contractMemoryResult`, `contract_memory_result` | 7 |
 
 ## Slice 5 – Golden Flow
 
@@ -63,15 +64,13 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice5.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice7.test.js`
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
-| **6** | Contract Intake (Paste → Draft → Review → Confirm) | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
-| **7** | Contract Memory Search | dito |
-| **8** | Contract Golden Moments | dito |
-| später | Offer + Termin Multi-Action, Attachments, Akte-Composer-Migration | — |
+| **8** | Contract Golden Moments | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | Offer + Termin Multi-Action, Attachments, Akte-Composer-Migration, PDF-Contract-Intake | — |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

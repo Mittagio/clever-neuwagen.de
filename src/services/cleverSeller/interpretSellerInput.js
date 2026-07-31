@@ -39,6 +39,7 @@ import {
 } from '../crm/commercialScenarios.js';
 import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
 import { isCustomerContractIntakeText } from './extractCustomerContractFromText.js';
+import { isCustomerContractQuery } from './searchCustomerContracts.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -919,6 +920,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const isContractIntake = isCustomerContractIntakeText(t);
+  const isContractQuery = !isContractIntake && isCustomerContractQuery(t);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -938,6 +940,11 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (isContractIntake) {
     add(SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT, 0.98);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
+  }
+
+  if (isContractQuery) {
+    add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS, 0.97);
+    add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
   }
 
   if (isCreateOfferCommand) {
@@ -975,7 +982,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     add(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP, 0.9);
   }
 
-  if (isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery) {
+  if (isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery && !isContractQuery) {
     add(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT, 0.96);
   }
 
@@ -1031,6 +1038,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   } else if (
     hasContextFacts
     && !isContractIntake
+    && !isContractQuery
     && !hasAppointmentFact
     && !isFindCustomer
     && !isOpenCustomer
@@ -1042,7 +1050,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     && !isAmbiguousOfferOrMessage
   ) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
-  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake) {
+  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake && !isContractQuery) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
   }
 

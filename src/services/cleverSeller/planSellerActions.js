@@ -11,6 +11,7 @@ import { resolveGroundedVehicleKnowledge } from './resolveGroundedVehicleKnowled
 import { prepareContextualAppointmentProposal, isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
 import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
+import { searchCustomerContracts } from './searchCustomerContracts.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -263,6 +264,32 @@ export function planSellerActions({
         mutatesCustomer: false,
         mutatesCustomerTruth: false,
         persistOnAccept: true,
+      },
+    });
+  }
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS)) {
+    const searched = searchCustomerContracts({
+      sellerInput,
+      lead,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+      customerName,
+    });
+    actions.push({
+      id: 'search_customer_contracts',
+      type: SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS,
+      label: searched.ok ? 'Vertrag gefunden' : 'Vertrag nachschlagen',
+      needsSellerConfirmation: false,
+      status: searched.ok ? 'prepared' : 'blocked',
+      toolId: 'search_customer_contracts',
+      payload: {
+        queryField: searched.queryField,
+        status: searched.status,
+        message: searched.message,
+        contractMemoryResult: searched.contractMemoryResult,
+        contracts: searched.contracts || [],
+        customerSearchResults: searched.customerSearchResults || [],
+        mutatesCustomer: false,
       },
     });
   }

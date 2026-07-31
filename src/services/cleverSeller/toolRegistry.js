@@ -28,6 +28,7 @@ import { resolveCustomersFromInput, buildCustomerCardSummary } from './globalCus
 import { searchGlobalCustomerHistory } from './globalHistorySearch.js';
 import { summarizeCustomerContext } from './summarizeCustomerContext.js';
 import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
+import { searchCustomerContracts } from './searchCustomerContracts.js';
 
 /**
  * @typedef {object} CleverSellerToolDef
@@ -104,6 +105,20 @@ export const CLEVER_SELLER_TOOLS = {
     execute: ({ lead, sellerInput, customerName }) => prepareCustomerContractImport({
       lead,
       sellerInput,
+      customerName,
+    }),
+  },
+  search_customer_contracts: {
+    id: 'search_customer_contracts',
+    label: 'Vertrag nachschlagen',
+    requiredInputs: ['sellerInput'],
+    optionalInputs: ['lead', 'leadsSnapshot', 'customerName'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system', 'seller_input'],
+    execute: ({ lead, sellerInput, leadsSnapshot, customerName }) => searchCustomerContracts({
+      lead,
+      sellerInput,
+      leadsSnapshot,
       customerName,
     }),
   },
