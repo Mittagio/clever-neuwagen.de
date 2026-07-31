@@ -9,15 +9,13 @@ import {
   detectRateAmbiguity,
   buildOfferReviewModel,
 } from './offerInterpreterSchema.js';
+import {
+  parseGermanMoney,
+  assessCommercialPlausibility,
+} from './parseGermanMoney.js';
 
-const RATE_RE = /(?:leasing)?(?:rate|monatsrate|monatliche\s+(?:leasing)?rate)\s*[:=]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:€|eur)/gi;
-const RATE_LOOSE_RE = /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:€|eur)\s*(?:\/\s*monat|pro\s*monat|mtl\.?|monatlich)/gi;
-
-function parseDeNumber(raw) {
-  const s = String(raw).replace(/\./g, '').replace(',', '.');
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
+const RATE_RE = /(?:leasing)?(?:rate|monatsrate|monatliche\s+(?:leasing)?rate)\s*[:=]?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:€|eur)/gi;
+const RATE_LOOSE_RE = /(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:[.,]\d{2})?)\s*(?:€|eur)\s*(?:\/\s*monat|pro\s*monat|mtl\.?|monatlich)/gi;
 
 /**
  * Sammle alle Rate-Kandidaten inkl. Evidence.
@@ -28,7 +26,7 @@ export function collectMonthlyRateCandidates(text = '') {
     re.lastIndex = 0;
     let m = re.exec(text);
     while (m) {
-      const value = parseDeNumber(m[1]);
+      const value = parseGermanMoney(m[1]);
       if (value != null) {
         found.push({
           value,
@@ -105,6 +103,16 @@ export function interpretOfferFromPdfText(pdfText, context = {}) {
   }
   if (raw.annualMileage != null) {
     raw.confidence.annualMileage = 0.85;
+  }
+
+  const plausibility = assessCommercialPlausibility({
+    monthlyRate: raw.monthlyRate,
+    downPayment: raw.downPayment,
+    vehiclePrice: raw.purchasePrice,
+    offerType: raw.offerType ?? intent.offerType,
+  });
+  if (plausibility.warnings.length) {
+    raw.warnings.push(...plausibility.warnings);
   }
 
   if (context.fileName && !raw.vehicle.model) {

@@ -453,3 +453,115 @@
     max-height: 16rem;
   }
 }
+
+/* ── PDF Confirm / Edit ── */
+
+.dai-opreview-warn {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dai-opreview-warn--list ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.dai-opreview-warn--list p {
+  margin: 0;
+}
+
+.dai-opreview-confirm-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.dai-opreview-confirm-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dai-opreview-confirm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.dai-opreview-confirm-row--warn {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.dai-opreview-confirm-row--ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.dai-opreview-confirm-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+.dai-opreview-confirm-row__head label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-opreview-confirm-row__recognized {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.dai-opreview-confirm-row input[type="text"],
+.dai-opreview-confirm-row select {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+}
+
+.dai-opreview-confirm-row__evidence {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.dai-opreview-confirm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.dai-opreview-gate-hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b45309;
+  text-align: center;
+}

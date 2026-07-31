@@ -10,6 +10,7 @@ import {
   computeSafeCashOffer,
   COMMERCIAL_SOURCE,
 } from './magicOfferSafeCalculation.js';
+import { assessCommercialPlausibility } from './parseGermanMoney.js';
 
 function paymentTypeFromOfferType(offerType) {
   if (offerType === 'purchase') return 'cash';
@@ -19,8 +20,35 @@ function paymentTypeFromOfferType(offerType) {
 }
 
 /**
+ * Prefer OI value when intent is missing OR intent looks like a classic DE-parse bug
+ * (e.g. 152,36 → 15236) while OI has a plausible value.
+ */
+function preferCommercialValue(intentValue, oiValue, field) {
+  if (oiValue == null) return intentValue ?? null;
+  if (intentValue == null) return oiValue;
+  if (intentValue === oiValue) return oiValue;
+
+  if (field === 'monthlyRate') {
+    const intentBad = intentValue > 2500 || intentValue < 50;
+    const oiOk = oiValue >= 50 && oiValue <= 2500;
+    if (intentBad && oiOk) return oiValue;
+    // Classic ×100 mishandle: intent ≈ oi * 100
+    if (oiOk && Math.abs(intentValue - oiValue * 100) < 1) return oiValue;
+  }
+  if (field === 'downPayment') {
+    const intentBad = intentValue >= 100000;
+    const oiOk = oiValue >= 0 && oiValue < 100000;
+    if (intentBad && oiOk) return oiValue;
+    if (oiOk && Math.abs(intentValue - oiValue * 100) < 1) return oiValue;
+  }
+  // Intent already set and not clearly broken – keep intent (NL correction path)
+  return intentValue;
+}
+
+/**
  * Overlay Offer-Interpreter-Werte auf Intent – nur gesetzte, nicht-ambige Felder.
  * Erfindet nichts; Ambiguities bleiben im Review.
+ * PDF-OI gewinnt bei klassischem DE-Zahlen-Bug gegenüber kaputtem Intent.
  */
 export function overlayOfferInterpretationOntoIntent(intent, offerInterpretationResult = null) {
   const oi = offerInterpretationResult?.interpretation;
@@ -31,8 +59,12 @@ export function overlayOfferInterpretationOntoIntent(intent, offerInterpretation
   );
   const commercial = intent.commercialInput ?? {};
 
-  if (!ambiguous.has('monthlyRate') && oi.monthlyRate != null && commercial.monthlyRate == null) {
-    commercial.monthlyRate = oi.monthlyRate;
+  if (!ambiguous.has('monthlyRate') && oi.monthlyRate != null) {
+    commercial.monthlyRate = preferCommercialValue(
+      commercial.monthlyRate,
+      oi.monthlyRate,
+      'monthlyRate',
+    );
   }
   if (!ambiguous.has('termMonths') && oi.termMonths != null && commercial.durationMonths == null) {
     commercial.durationMonths = oi.termMonths;
@@ -41,8 +73,21 @@ export function overlayOfferInterpretationOntoIntent(intent, offerInterpretation
     commercial.annualMileageKm = oi.annualMileage;
   }
   if (!ambiguous.has('downPayment') && oi.downPayment != null) {
-    if (commercial.downPayment == null) commercial.downPayment = oi.downPayment;
-    if (commercial.specialPayment == null) commercial.specialPayment = oi.downPayment;
+    const nextDown = preferCommercialValue(
+      commercial.downPayment,
+      oi.downPayment,
+      'downPayment',
+    );
+    commercial.downPayment = nextDown;
+    if (commercial.specialPayment == null || commercial.specialPayment === commercial.downPayment) {
+      commercial.specialPayment = nextDown;
+    } else {
+      commercial.specialPayment = preferCommercialValue(
+        commercial.specialPayment,
+        oi.downPayment,
+        'downPayment',
+      );
+    }
   }
   if (oi.purchasePrice != null && commercial.listPrice == null) {
     commercial.listPrice = oi.purchasePrice;
@@ -132,6 +177,13 @@ export function prepareMagicOffer(text, context = {}) {
       .some((a) => a.field === 'monthlyRate'),
   );
 
+  const commercialPlausibility = assessCommercialPlausibility({
+    monthlyRate: intent.commercialInput.monthlyRate,
+    downPayment: intent.commercialInput.downPayment ?? intent.commercialInput.specialPayment,
+    vehiclePrice: intent.commercialInput.listPrice ?? groundedResult.grounded?.basePrice ?? null,
+    offerType: intent.offerType === 'purchase' ? 'cash' : intent.offerType,
+  });
+
   const base = {
     intent,
     grounded: groundedResult.grounded,
@@ -151,6 +203,10 @@ export function prepareMagicOffer(text, context = {}) {
     offerInterpretation,
     offerReview,
     hasRateAmbiguity,
+    commercialPlausibility,
+    /** PDF-Leasing/Finanzierung: Zwischen-Review überspringen → Angebotsvorschau */
+    skipMagicReview: Boolean(context.fromPdf)
+      && (intent.offerType === 'leasing' || intent.offerType === 'financing'),
   };
 
   if (decision.action === MAGIC_DECISION.CALCULATE_CASH && groundedResult.grounded) {
@@ -340,21 +396,24 @@ export function applyMagicOfferCorrection(previous, correctionText, context = {}
  * Magic-Ergebnis → Felder für configureDraft / buildOfferDraft.
  */
 export function magicPreparationToConfigurePatch(preparation) {
-  if (!preparation?.grounded) return null;
-  const g = preparation.grounded;
-  const c = preparation.intent?.commercialInput ?? {};
-  const calc = preparation.calculation ?? {};
+  const g = preparation?.grounded ?? {};
+  const c = preparation?.intent?.commercialInput ?? {};
+  const calc = preparation?.calculation ?? {};
+  if (!g.modelKey && !g.model && !c.monthlyRate && calc.monthlyRate == null) {
+    // still allow commercial-only patch from PDF when model hint exists on intent
+    if (!preparation?.intent?.vehicleRequest?.modelHint) return null;
+  }
 
   return {
-    modelKey: g.modelKey,
-    model: g.model,
-    brand: g.brand ?? 'Kia',
+    modelKey: g.modelKey ?? null,
+    model: g.model ?? preparation?.intent?.vehicleRequest?.modelHint ?? null,
+    brand: g.brand ?? preparation?.intent?.vehicleRequest?.brandHint ?? 'Kia',
     trimId: g.trimId,
-    trimLabel: g.trimLabel,
+    trimLabel: g.trimLabel ?? preparation?.intent?.vehicleRequest?.trimHint ?? null,
     engineId: g.engineId,
     motorLabel: g.engineLabel,
     colorId: g.colorId,
-    colorLabel: g.colorLabel,
+    colorLabel: g.colorLabel ?? preparation?.intent?.vehicleRequest?.colorHint ?? null,
     packageIds: g.packageIds ?? [],
     paymentType: preparation.paymentType,
     desiredRate: calc.monthlyRate ?? c.monthlyRate ?? null,
@@ -376,6 +435,7 @@ export function magicPreparationToConfigurePatch(preparation) {
 export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
   if (!offerDraft || !preparation) return offerDraft;
   const calc = preparation.calculation ?? {};
+  const commercial = preparation.intent?.commercialInput ?? {};
   const payment = { ...(offerDraft.payment ?? {}) };
   const offerPreview = { ...(offerDraft.offerPreview ?? {}) };
   const offerCalculation = { ...(offerDraft.offerCalculation ?? {}) };
@@ -410,24 +470,30 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
 
   if (
     (preparation.mode === 'leasing_intake' || preparation.mode === 'financing_intake')
-    && calc.monthlyRate != null
+    && (calc.monthlyRate != null || commercial.monthlyRate != null || preparation.fromPdf)
   ) {
     payment.type = preparation.mode === 'financing_intake' ? 'financing' : 'leasing';
-    payment.budget = calc.monthlyRate;
-    payment.calculatedRate = calc.monthlyRate;
-    payment.termMonths = calc.durationMonths ?? payment.termMonths;
-    payment.mileagePerYear = calc.annualMileageKm ?? payment.mileagePerYear;
-    payment.downPayment = calc.downPayment ?? calc.specialPayment ?? payment.downPayment ?? 0;
-    payment.finalRate = calc.finalPayment ?? payment.finalRate;
-    payment.transferCost = calc.transferCost ?? payment.transferCost;
-    offerPreview.monthlyRate = calc.monthlyRate;
+    const rate = calc.monthlyRate ?? commercial.monthlyRate ?? payment.calculatedRate ?? null;
+    payment.budget = rate;
+    payment.calculatedRate = rate;
+    payment.termMonths = calc.durationMonths ?? commercial.durationMonths ?? payment.termMonths;
+    payment.mileagePerYear = calc.annualMileageKm ?? commercial.annualMileageKm ?? payment.mileagePerYear;
+    payment.downPayment = calc.downPayment
+      ?? calc.specialPayment
+      ?? commercial.downPayment
+      ?? commercial.specialPayment
+      ?? payment.downPayment
+      ?? 0;
+    payment.finalRate = calc.finalPayment ?? commercial.finalPayment ?? payment.finalRate;
+    payment.transferCost = calc.transferCost ?? commercial.transferCost ?? payment.transferCost;
+    offerPreview.monthlyRate = rate;
     offerPreview.paymentType = payment.type;
-    offerCalculation.monthlyRate = calc.monthlyRate;
-    offerCalculation.termMonths = calc.durationMonths ?? offerCalculation.termMonths;
-    offerCalculation.mileagePerYear = calc.annualMileageKm ?? offerCalculation.mileagePerYear;
+    offerCalculation.monthlyRate = rate;
+    offerCalculation.termMonths = payment.termMonths ?? offerCalculation.termMonths;
+    offerCalculation.mileagePerYear = payment.mileagePerYear ?? offerCalculation.mileagePerYear;
     offerCalculation.downPayment = payment.downPayment;
-    offerCalculation.finalPayment = calc.finalPayment ?? offerCalculation.finalPayment;
-    offerCalculation.preparationFee = calc.transferCost ?? offerCalculation.preparationFee;
+    offerCalculation.finalPayment = calc.finalPayment ?? commercial.finalPayment ?? offerCalculation.finalPayment;
+    offerCalculation.preparationFee = payment.transferCost ?? offerCalculation.preparationFee;
   }
 
   return {
@@ -436,7 +502,52 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
     offerPreview,
     offerCalculation,
     source,
+    sellerConfirm: {
+      required: Boolean(preparation.fromPdf)
+        && (preparation.mode === 'leasing_intake' || preparation.mode === 'financing_intake'),
+      offerInterpretation: preparation.offerInterpretation?.interpretation
+        ?? preparation.offerInterpretation
+        ?? null,
+      evidence: preparation.offerInterpretation?.interpretation?.evidence
+        ?? preparation.offerInterpretation?.evidence
+        ?? {},
+      ambiguities: preparation.offerInterpretation?.interpretation?.ambiguities
+        ?? preparation.offerInterpretation?.ambiguities
+        ?? [],
+      warnings: [
+        ...(preparation.offerInterpretation?.interpretation?.warnings
+          ?? preparation.offerInterpretation?.warnings
+          ?? []),
+        ...(preparation.commercialPlausibility?.warnings ?? []),
+      ],
+      plausibilityFlags: preparation.commercialPlausibility?.flags ?? {},
+      recognized: {
+        monthlyRate: calc.monthlyRate ?? commercial.monthlyRate ?? null,
+        downPayment: calc.downPayment
+          ?? calc.specialPayment
+          ?? commercial.downPayment
+          ?? commercial.specialPayment
+          ?? null,
+        termMonths: calc.durationMonths ?? commercial.durationMonths ?? null,
+        annualMileage: calc.annualMileageKm ?? commercial.annualMileageKm ?? null,
+        transferFee: calc.transferCost ?? commercial.transferCost ?? null,
+        offerType: payment.type,
+      },
+    },
   };
+}
+
+/**
+ * PDF-Leasing/Finanzierung: MagicOfferReview (Bild 2) überspringen.
+ */
+export function shouldSkipMagicOfferReview(preparation) {
+  if (!preparation?.fromPdf) return false;
+  if (preparation.mode === 'cash_magic') return false;
+  return Boolean(
+    preparation.skipMagicReview
+    || preparation.mode === 'leasing_intake'
+    || preparation.mode === 'financing_intake',
+  );
 }
 
 export { MAGIC_DECISION, COMMERCIAL_SOURCE };

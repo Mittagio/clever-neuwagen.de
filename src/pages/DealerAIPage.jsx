@@ -78,7 +78,9 @@ import {
   magicPreparationToConfigurePatch,
   overlayMagicOntoOfferDraft,
   prepareMagicOffer,
+  shouldSkipMagicOfferReview,
 } from '../services/dealer/magicOfferService.js';
+import { applyCommercialConfirmPatch } from '../services/dealer/sellerOfferConfirmGate.js';
 import { extractMagicOfferPdf } from '../services/dealer/magicOfferPdfExtract.js';
 import { interpretOfferFromPdf } from '../services/dealer/interpretOfferFromPdfWithOpenAi.js';
 import { phoneTelHref } from '../services/dealerAiLeadCrm.js';
@@ -544,9 +546,13 @@ export default function DealerAIPage() {
         fromPdf: Boolean(extra.fromPdf),
         originalPdf: extra.originalPdf ?? magicOfferPreparation?.originalPdf ?? null,
         previousPreparation: extra.previousPreparation ?? magicOfferPreparation,
+        offerInterpretation: extra.offerInterpretation,
       });
       setMagicOfferPreparation(preparation);
       setMagicOfferSeedText(text);
+      if (shouldSkipMagicOfferReview(preparation) && advanceMagicPreparationToPreview(preparation)) {
+        return;
+      }
       setPhase('magic-offer-review');
     } catch (err) {
       showToast(err?.message ?? 'Angebot konnte nicht vorbereitet werden');
@@ -584,23 +590,26 @@ export default function DealerAIPage() {
         const ambiguityMsg = offerInterpretation?.review?.ambiguities?.length
           ? 'Mehrere Raten erkannt – bitte prüfen.'
           : null;
-        if (preparation.canCreateOffer) {
-          setMagicOfferPreparation(preparation);
-          setMagicOfferSeedText(extracted.text.slice(0, 500));
-          setPhase('magic-offer-review');
-          showToast(ambiguityMsg || 'Angebot aus PDF erkannt – bitte prüfen');
+        setMagicOfferPreparation(preparation);
+        setMagicOfferSeedText(extracted.text.slice(0, 500));
+
+        if (shouldSkipMagicOfferReview(preparation) && advanceMagicPreparationToPreview(preparation)) {
+          showToast(ambiguityMsg || 'PDF erkannt – bitte Konditionen bestätigen');
           return;
         }
-        setMagicOfferPreparation({
-          ...preparation,
-          originalPdf,
-          fromPdf: true,
-          promptMessage: preparation.promptMessage
-            ?? ambiguityMsg
-            ?? 'PDF gelesen. Rate oder Konditionen bitte kurz bestätigen oder ergänzen.',
-        });
-        setMagicOfferSeedText(extracted.text.slice(0, 500));
+
+        if (!preparation.canCreateOffer) {
+          setMagicOfferPreparation({
+            ...preparation,
+            originalPdf,
+            fromPdf: true,
+            promptMessage: preparation.promptMessage
+              ?? ambiguityMsg
+              ?? 'PDF gelesen. Rate oder Konditionen bitte kurz bestätigen oder ergänzen.',
+          });
+        }
         setPhase('magic-offer-review');
+        showToast(ambiguityMsg || 'Angebot aus PDF erkannt – bitte prüfen');
         return;
       }
 
@@ -683,8 +692,8 @@ export default function DealerAIPage() {
     });
   }
 
-  function handleMagicOfferCreate() {
-    if (!magicOfferPreparation?.canCreateOffer) return;
+  function advanceMagicPreparationToPreview(preparation) {
+    if (!preparation) return false;
 
     const contextLead = addVehicleContext?.opportunityId
       ? leads.find((l) => l.id === addVehicleContext.opportunityId)
@@ -695,7 +704,7 @@ export default function DealerAIPage() {
       : enrichWithSuggestions(buildParsedFromLead(contextLead ?? {}));
 
     if (!baseParsed?.ok || !hasRecognizedModelKey(baseParsed)) {
-      const grounded = magicOfferPreparation.grounded ?? {};
+      const grounded = preparation.grounded ?? {};
       if (grounded.modelKey || grounded.model) {
         baseParsed = enrichWithSuggestions(applyDealerAiFields(baseParsed ?? { ok: false, fields: {} }, {
           modelId: grounded.modelKey,
@@ -708,23 +717,26 @@ export default function DealerAIPage() {
     }
 
     if (!baseParsed?.ok) {
-      showToast('Fahrzeugkontext fehlt – bitte Modell ergänzen');
-      return;
+      return false;
     }
 
-    const patch = magicPreparationToConfigurePatch(magicOfferPreparation);
-    if (!patch?.modelKey && !configureDraft?.modelKey && !baseParsed.fields?.modelId) {
-      showToast('Fahrzeug konnte nicht zugeordnet werden');
-      return;
+    const patch = magicPreparationToConfigurePatch(preparation);
+    if (!patch?.modelKey && !configureDraft?.modelKey && !baseParsed.fields?.modelId
+      && !preparation.grounded?.modelKey) {
+      return false;
     }
 
     const nextDraft = {
       ...(configureDraft ?? buildConfigureDraft(baseParsed, conditions)),
-      ...patch,
-      paymentType: patch.paymentType === 'unknown'
-        ? (configureDraft?.paymentType ?? 'cash')
+      ...(patch ?? {}),
+      paymentType: (patch?.paymentType === 'unknown' || !patch?.paymentType)
+        ? (configureDraft?.paymentType ?? preparation.paymentType ?? 'leasing')
         : patch.paymentType,
     };
+    if (!nextDraft.modelKey && preparation.grounded?.modelKey) {
+      nextDraft.modelKey = preparation.grounded.modelKey;
+      nextDraft.model = preparation.grounded.model;
+    }
     setConfigureDraft(nextDraft);
     const vehicleConfig = buildVehicleConfiguration(nextDraft);
     setVehicleConfiguration(vehicleConfig);
@@ -742,12 +754,22 @@ export default function DealerAIPage() {
       addVehicleContext,
       lead: contextLead,
     });
-    offerDraft = overlayMagicOntoOfferDraft(offerDraft, magicOfferPreparation);
+    offerDraft = overlayMagicOntoOfferDraft(offerDraft, preparation);
 
     setConfigureOfferDraft(offerDraft);
     setOfferPreviewSaved(false);
     setOfferPreviewSaveResult(null);
     setPhase('offer-preview');
+    return true;
+  }
+
+  function handleMagicOfferCreate() {
+    if (!magicOfferPreparation?.canCreateOffer && !shouldSkipMagicOfferReview(magicOfferPreparation)) {
+      return;
+    }
+    if (!advanceMagicPreparationToPreview(magicOfferPreparation)) {
+      showToast('Fahrzeugkontext fehlt – bitte Modell ergänzen');
+    }
   }
 
   function handleMagicOfferBackToEntry() {
@@ -762,6 +784,10 @@ export default function DealerAIPage() {
     }
     setMagicOfferPreparation(null);
     setPhase('followup');
+  }
+
+  function handleOfferPreviewCommercialChange(patch) {
+    setConfigureOfferDraft((prev) => applyCommercialConfirmPatch(prev, patch));
   }
 
   function handleSelectSmartVariant(variant) {
@@ -923,6 +949,10 @@ export default function DealerAIPage() {
     setConfigureOfferDraft(null);
     setOfferPreviewSaved(false);
     setOfferPreviewSaveResult(null);
+    if (magicOfferPreparation && shouldSkipMagicOfferReview(magicOfferPreparation)) {
+      setPhase('magic-offer-entry');
+      return;
+    }
     if (magicOfferPreparation) {
       setPhase('magic-offer-review');
       return;
@@ -1224,6 +1254,9 @@ export default function DealerAIPage() {
         || incomingMagic?.seedText
         || '',
       );
+      if (shouldSkipMagicOfferReview(incomingMagic) && advanceMagicPreparationToPreview(incomingMagic)) {
+        return;
+      }
       setPhase('magic-offer-review');
       return;
     }
@@ -2207,6 +2240,7 @@ export default function DealerAIPage() {
             onSave={handleOfferPreviewSave}
             onPreparePdfLink={handleOfferPreviewPreparePdf}
             onFinish={handleOfferPreviewFinish}
+            onCommercialChange={handleOfferPreviewCommercialChange}
             isSaved={offerPreviewSaved}
             isSaving={isExecuting}
           />
