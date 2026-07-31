@@ -479,6 +479,27 @@ export function buildUniversalActionSections(turn = {}) {
     });
   }
 
+  const contractImportAction = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+    && (a.status === 'prepared' || a.status === 'blocked')
+  ));
+  if (contractImportAction?.payload?.contractDraft || turn.contractDraft) {
+    const draft = contractImportAction?.payload?.contractDraft || turn.contractDraft;
+    sections.push({
+      id: 'contract_import',
+      kind: 'contract_import',
+      title: 'Vertrag erkannt',
+      headline: draft?.vehicle?.label || draft?.contractType || 'Altvertrag',
+      line: draft?.contractEndDate
+        ? `Ende ${draft.contractEndDate}`
+        : null,
+      body: contractImportAction?.payload?.reviewBody || null,
+      contractDraft: draft,
+      missingInformation: contractImportAction?.payload?.missingInformation || [],
+      evidence: contractImportAction?.payload?.evidence || turn.evidence || [],
+    });
+  }
+
   const historyAction = prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
@@ -755,8 +776,51 @@ export function buildUniversalReviewModel(turn = {}) {
     });
   }
 
+  const hasContractImportReview = !hasOfferAndMessage
+    && !hasAppointmentAndMessage
+    && actionSections.some((s) => s.kind === 'contract_import');
+
+  if (hasContractImportReview) {
+    const contractSec = actionSections.find((s) => s.kind === 'contract_import');
+    const draft = contractSec?.contractDraft || turn.contractDraft;
+    actionSections.unshift({
+      id: 'contract_import_review',
+      kind: 'contract_import_review',
+      title: 'Clever hat den Vertrag erkannt',
+      headline: turn.resolvedCustomer?.name || draft?.customerName || draft?.vehicle?.label || null,
+      body: contractSec?.body || null,
+      contractDraft: draft,
+      missingInformation: contractSec?.missingInformation || [],
+      evidence: contractSec?.evidence || [],
+      primaryActions: [
+        {
+          id: 'accept_contract',
+          label: 'Vertrag übernehmen',
+          leadId: turn.resolvedCustomer?.id || draft?.customerId || null,
+          action: 'accept_contract_import',
+        },
+        {
+          id: 'edit_contract',
+          label: 'Werte bearbeiten',
+          action: 'edit_contract_values',
+        },
+        {
+          id: 'view_source',
+          label: 'Quelle ansehen',
+          action: 'view_contract_source',
+        },
+        {
+          id: 'discard',
+          label: 'Verwerfen',
+          action: 'discard',
+        },
+      ],
+    });
+  }
+
   const hasKnowledgeAndMessage = !hasOfferAndMessage
     && !hasAppointmentAndMessage
+    && !hasContractImportReview
     && actionSections.some((s) => s.kind === 'message_draft')
     && (
       Boolean(grounded)
@@ -897,6 +961,7 @@ export function buildUniversalReviewModel(turn = {}) {
   const offerMessageReview = actionSections.some((s) => s.kind === 'offer_and_message_review');
   const knowledgeMessageReview = actionSections.some((s) => s.kind === 'knowledge_and_message_review');
   const appointmentMessageReview = actionSections.some((s) => s.kind === 'appointment_and_message_review');
+  const contractImportReview = actionSections.some((s) => s.kind === 'contract_import_review');
   const clarifyGoal = (turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message');
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
     && !trackFeedback
@@ -904,6 +969,7 @@ export function buildUniversalReviewModel(turn = {}) {
     && !offerMessageReview
     && !knowledgeMessageReview
     && !appointmentMessageReview
+    && !contractImportReview
     && !actionSections.some((s) => (
       s.kind === 'offer_prepare'
       || s.kind === 'offer_incomplete'
@@ -913,66 +979,73 @@ export function buildUniversalReviewModel(turn = {}) {
       || s.kind === 'customer_search_results'
       || s.kind === 'customer_summary'
       || s.kind === 'history_search_results'
+      || s.kind === 'contract_import'
     ));
 
   return {
-    reviewType: appointmentMessageReview
-      ? 'appointment_and_message_review'
-      : knowledgeMessageReview
-        ? 'knowledge_and_message_review'
-        : offerMessageReview
-          ? 'offer_and_message_review'
-          : (clarifyGoal ? 'clarify_goal' : null),
+    reviewType: contractImportReview
+      ? 'contract_import_review'
+      : appointmentMessageReview
+        ? 'appointment_and_message_review'
+        : knowledgeMessageReview
+          ? 'knowledge_and_message_review'
+          : offerMessageReview
+            ? 'offer_and_message_review'
+            : (clarifyGoal ? 'clarify_goal' : null),
     title: clarifyGoal
       ? '✨ Kurze Rückfrage'
-      : appointmentMessageReview
-        ? '✨ Clever hat vorbereitet'
-        : knowledgeMessageReview
-          ? (actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.title === 'Fahrzeug erkannt'
-            ? '✨ Fahrzeug erkannt'
-            : '✨ Clever hat vorbereitet')
-          : trackFeedback
-            ? '✨ Clever hat einsortiert'
-            : offerMessageReview
-              ? '✨ Clever hat vorbereitet'
-              : historyOnly
-                ? (actionSections.some((s) => s.kind === 'no_search_result')
-                  ? '✨ Nichts gefunden'
-                  : actionSections.some((s) => s.kind === 'offer_history_result')
-                    ? '✨ Angebot gefunden'
-                    : '✨ Gefunden')
-                : customerSearchOnly
-                  ? (actionSections.find((s) => s.kind === 'customer_search_results')?.title === 'Mehrere Kunden gefunden'
-                    ? '✨ Mehrere Kunden gefunden'
-                    : '✨ Kunde gefunden')
-                  : customerSummaryOnly
-                    ? `✨ ${actionSections.find((s) => s.kind === 'customer_summary')?.title || 'Kundenkontext'}`
-                    : actionSections.some((s) => s.kind === 'today_overview')
-                      ? '✨ Heute wichtig'
-                      : actionSections.some((s) => s.kind === 'knowledge_result')
-                        ? '✨ Fahrzeugwissen'
-                        : goldenOnly
-                          ? '✨ Clever'
-                          : actionSections.some((s) => s.kind === 'offer_incomplete')
-                            ? '✨ Clever prüft das Angebot'
-                            : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-                              ? '✨ Clever hat vorbereitet'
-                              : '✨ Clever hat verstanden'),
+      : contractImportReview
+        ? '✨ Clever hat den Vertrag erkannt'
+        : appointmentMessageReview
+          ? '✨ Clever hat vorbereitet'
+          : knowledgeMessageReview
+            ? (actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.title === 'Fahrzeug erkannt'
+              ? '✨ Fahrzeug erkannt'
+              : '✨ Clever hat vorbereitet')
+            : trackFeedback
+              ? '✨ Clever hat einsortiert'
+              : offerMessageReview
+                ? '✨ Clever hat vorbereitet'
+                : historyOnly
+                  ? (actionSections.some((s) => s.kind === 'no_search_result')
+                    ? '✨ Nichts gefunden'
+                    : actionSections.some((s) => s.kind === 'offer_history_result')
+                      ? '✨ Angebot gefunden'
+                      : '✨ Gefunden')
+                  : customerSearchOnly
+                    ? (actionSections.find((s) => s.kind === 'customer_search_results')?.title === 'Mehrere Kunden gefunden'
+                      ? '✨ Mehrere Kunden gefunden'
+                      : '✨ Kunde gefunden')
+                    : customerSummaryOnly
+                      ? `✨ ${actionSections.find((s) => s.kind === 'customer_summary')?.title || 'Kundenkontext'}`
+                      : actionSections.some((s) => s.kind === 'today_overview')
+                        ? '✨ Heute wichtig'
+                        : actionSections.some((s) => s.kind === 'knowledge_result')
+                          ? '✨ Fahrzeugwissen'
+                          : goldenOnly
+                            ? '✨ Clever'
+                            : actionSections.some((s) => s.kind === 'offer_incomplete')
+                              ? '✨ Clever prüft das Angebot'
+                              : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+                                ? '✨ Clever hat vorbereitet'
+                                : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
     summaryLine: clarifyGoal
       ? (openMissing[0]?.label || 'Ziel klären')
-      : appointmentMessageReview
-        ? 'Terminvorschlag und Nachricht vorbereitet'
-        : knowledgeMessageReview
-          ? 'Fahrzeugwissen und Nachricht vorbereitet'
-          : trackFeedback
-            ? 'Fahrzeugspuren und Wünsche aktualisiert'
-            : offerMessageReview
-              ? 'Angebot und Nachricht vorbereitet'
-              : historyOnly
-                ? (actionSections.find((s) => s.kind !== 'offer_and_message_review' && s.kind !== 'knowledge_and_message_review' && s.kind !== 'appointment_and_message_review')?.headline || 'Treffer im Verlauf')
+      : contractImportReview
+        ? 'Altvertrag strukturiert – bitte prüfen'
+        : appointmentMessageReview
+          ? 'Terminvorschlag und Nachricht vorbereitet'
+          : knowledgeMessageReview
+            ? 'Fahrzeugwissen und Nachricht vorbereitet'
+            : trackFeedback
+              ? 'Fahrzeugspuren und Wünsche aktualisiert'
+              : offerMessageReview
+                ? 'Angebot und Nachricht vorbereitet'
+                : historyOnly
+                  ? (actionSections.find((s) => s.kind !== 'offer_and_message_review' && s.kind !== 'knowledge_and_message_review' && s.kind !== 'appointment_and_message_review' && s.kind !== 'contract_import_review')?.headline || 'Treffer im Verlauf')
                 : customerSearchOnly
                   ? (actionSections[0]?.headline || 'Kundentreffer')
                   : customerSummaryOnly
@@ -991,31 +1064,33 @@ export function buildUniversalReviewModel(turn = {}) {
     assistantReply: turn.assistantReply ?? null,
     primaryCta: clarifyGoal
       ? 'Angebot vorbereiten'
-      : appointmentMessageReview
-        ? 'Vorschlag senden'
-        : knowledgeMessageReview
-          ? 'Nachricht bearbeiten'
-          : offerMessageReview
-            ? 'Angebot prüfen'
-            : historyOnly
-              ? 'Im Verlauf öffnen'
-              : trackFeedback
-                ? 'Übernehmen'
-                : actionSections.some((s) => s.kind === 'today_overview')
-                  ? 'Tagesliste anzeigen'
-                  : actionSections.some((s) => s.kind === 'knowledge_result')
-                    ? 'Mehr Details'
-                    : goldenOnly
-                      ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
-                      : actionSections.some((s) => s.kind === 'offer_incomplete')
-                        ? 'Angebot vervollständigen'
-                        : appointmentPrep && !multiAction
-                          ? 'Vorschlag senden'
-                          : multiAction
-                            ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-                              ? 'Angebot und Nachricht prüfen'
-                              : 'Änderungen prüfen')
-                            : 'Übernehmen',
+      : contractImportReview
+        ? 'Vertrag übernehmen'
+        : appointmentMessageReview
+          ? 'Vorschlag senden'
+          : knowledgeMessageReview
+            ? 'Nachricht bearbeiten'
+            : offerMessageReview
+              ? 'Angebot prüfen'
+              : historyOnly
+                ? 'Im Verlauf öffnen'
+                : trackFeedback
+                  ? 'Übernehmen'
+                  : actionSections.some((s) => s.kind === 'today_overview')
+                    ? 'Tagesliste anzeigen'
+                    : actionSections.some((s) => s.kind === 'knowledge_result')
+                      ? 'Mehr Details'
+                      : goldenOnly
+                        ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
+                        : actionSections.some((s) => s.kind === 'offer_incomplete')
+                          ? 'Angebot vervollständigen'
+                          : appointmentPrep && !multiAction
+                            ? 'Vorschlag senden'
+                            : multiAction
+                              ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+                                ? 'Angebot und Nachricht prüfen'
+                                : 'Änderungen prüfen')
+                              : 'Übernehmen',
     secondaryCta: clarifyGoal
       ? 'Nur Nachricht schreiben'
       : trackFeedback
@@ -1032,6 +1107,9 @@ export function buildUniversalReviewModel(turn = {}) {
     sources: actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.sources || [],
     preparedAppointment: turn.preparedAppointment
       || actionSections.find((s) => s.kind === 'appointment_and_message_review')?.preparedAppointment
+      || null,
+    contractDraft: turn.contractDraft
+      || actionSections.find((s) => s.kind === 'contract_import_review')?.contractDraft
       || null,
   };
 }
@@ -1068,6 +1146,7 @@ export function shouldShowUniversalReview(turn = {}) {
     m.id === 'exact_technology_package_contents'
     || m.id === 'clarify_vehicle_for_knowledge'
     || m.id === 'clarify_customer_for_appointment'
+    || m.id === 'clarify_customer_for_contract'
   ))) return true;
 
   const hasGroundedMessage = prepared.some((a) => (
@@ -1084,6 +1163,11 @@ export function shouldShowUniversalReview(turn = {}) {
     a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'
   ));
   if (hasAppointmentPrep) return true;
+
+  const hasContractImport = prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+  )) || Boolean(turn.contractDraft);
+  if (hasContractImport) return true;
 
   const hasPreparedMessage = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE

@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 5 (kontextbezogene Terminvorschläge + Kundennachricht)  
+**Status:** Slice 6 (Contract Intake) – siehe auch Contract Memory  
 **Stand:** Juli 2026
 
 ## Produktgesetz
@@ -14,6 +14,8 @@
 > **Keine erfundene Kalenderverfügbarkeit.**
 
 > **Seller Facts ≠ Customer Truth**
+
+> **Contract Fact ≠ Customer Truth**
 
 ## Surfaces
 
@@ -33,6 +35,7 @@ Nur `runCleverSellerTurn()`:
 | `handoffWorkingContext`, `offer_and_message_review` | 3 |
 | `sellerFacts`, grounded knowledge, `knowledge_and_message_review` | 4 |
 | `resolvedDateTime`, `preparedAppointment`, `appointment_and_message_review` | 5 |
+| `documentClassification`, `contractDraft`, `contract_import_review` | 6 |
 
 ## Slice 5 – Golden Flow
 
@@ -64,4 +67,11 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Nächste Slices
 
-Offer + Termin Multi-Action, Attachments, Akte-Composer-Migration.
+| Slice | Thema | Spec |
+|-------|--------|------|
+| **6** | Contract Intake (Paste → Draft → Review → Confirm) | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| **7** | Contract Memory Search | dito |
+| **8** | Contract Golden Moments | dito |
+| später | Offer + Termin Multi-Action, Attachments, Akte-Composer-Migration | — |
+
+Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

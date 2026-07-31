@@ -27,6 +27,7 @@ import { lookupVehicleTechnicalFact } from './lookupVehicleTechnicalFact.js';
 import { resolveCustomersFromInput, buildCustomerCardSummary } from './globalCustomerResolve.js';
 import { searchGlobalCustomerHistory } from './globalHistorySearch.js';
 import { summarizeCustomerContext } from './summarizeCustomerContext.js';
+import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
 
 /**
  * @typedef {object} CleverSellerToolDef
@@ -92,6 +93,19 @@ export const CLEVER_SELLER_TOOLS = {
     needsSellerConfirmation: true,
     sourceRequirements: ['seller_input', 'system'],
     execute: ({ lead, sellerInput }) => runSellerAppointmentAssist(lead, sellerInput, {}),
+  },
+  import_customer_contract: {
+    id: 'import_customer_contract',
+    label: 'Altvertrag einlesen',
+    requiredInputs: ['sellerInput'],
+    optionalInputs: ['lead', 'customerName'],
+    needsSellerConfirmation: true,
+    sourceRequirements: ['seller_input', 'document'],
+    execute: ({ lead, sellerInput, customerName }) => prepareCustomerContractImport({
+      lead,
+      sellerInput,
+      customerName,
+    }),
   },
   draft_customer_message: {
     id: 'draft_customer_message',

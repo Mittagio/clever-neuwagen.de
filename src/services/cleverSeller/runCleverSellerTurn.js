@@ -42,6 +42,7 @@ import {
 } from './resolveWorkingLeadForTurn.js';
 import { resolveAppointmentCustomerContext } from './resolveAppointmentCustomerContext.js';
 import { isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
+import { extractContractCustomerNameHint } from './extractCustomerContractFromText.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -116,6 +117,10 @@ function finalizeSellerTurn({
     || i.type === SELLER_TURN_INTENTS.PREPARE_CALLBACK
   )) || isAppointmentFollowUpInput(interpreted.normalized || interpreted.raw, pendingAppointment);
 
+  const wantsContractImport = (intents || []).some((i) => (
+    i.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+  ));
+
   let appointmentCustomer = null;
   if (wantsAppointment) {
     appointmentCustomer = resolveAppointmentCustomerContext({
@@ -127,6 +132,13 @@ function finalizeSellerTurn({
     });
   }
 
+  const contractNameHint = wantsContractImport
+    ? extractContractCustomerNameHint(interpreted.normalized || interpreted.raw)
+    : null;
+  const contractSearchInput = contractNameHint
+    ? `Öffne ${contractNameHint}`
+    : (interpreted.normalized || interpreted.raw);
+
   const leadResolve = wantsAppointment && appointmentCustomer?.resolved && appointmentCustomer.customer?.id
     ? {
       workingLead: appointmentCustomer.customer,
@@ -137,7 +149,7 @@ function finalizeSellerTurn({
     }
     : resolveWorkingLeadForTurn({
       lead,
-      sellerInput: interpreted.normalized || interpreted.raw,
+      sellerInput: wantsContractImport && !lead?.id ? contractSearchInput : (interpreted.normalized || interpreted.raw),
       leadsSnapshot,
       intents,
     });
@@ -208,6 +220,17 @@ function finalizeSellerTurn({
       field: 'customerId',
       label: appointmentCustomer.question
         || 'Für welchen Kunden soll ich den Termin vorschlagen?',
+      forIntent: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT,
+    });
+  }
+
+  if (wantsContractImport && !workingLead?.id && !leadResolve.resolved) {
+    missingInformation.push({
+      id: 'clarify_customer_for_contract',
+      field: 'customerId',
+      label: contractNameHint
+        ? `Kunde „${contractNameHint}“ nicht eindeutig – bitte Akte öffnen oder auswählen.`
+        : 'Für welchen Kunden soll ich den Vertrag erfassen?',
       forIntent: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT,
     });
   }
@@ -347,6 +370,9 @@ function finalizeSellerTurn({
   const appointmentPrepareAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
   ));
+  const contractImportAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+  ));
   const resolvedDateTime = appointmentPrepareAction?.payload?.resolvedDateTime
     || preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME)
       ?.payload?.resolvedDateTime
@@ -370,6 +396,7 @@ function finalizeSellerTurn({
     offerPrepareAction
     || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     || appointmentPrepareAction
+    || contractImportAction
     || todayOverview
     || knowledgeResult
     || groundedKnowledge
@@ -574,6 +601,9 @@ function finalizeSellerTurn({
     missingInformation,
     resolvedDateTime,
     preparedAppointment: appointmentPrepareAction?.payload?.preparedAppointment || null,
+    documentClassification: contractImportAction?.payload?.documentClassification || null,
+    extractedContractFacts: contractImportAction?.payload?.extractedContractFacts || [],
+    contractDraft: contractImportAction?.payload?.contractDraft || null,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
       commercialPreferences: (understanding?.verstaendnis?.konditionen ?? []).slice?.(0, 6)
@@ -604,6 +634,7 @@ function finalizeSellerTurn({
         retrievedFacts,
       }),
       ...(appointmentPrepareAction?.payload?.evidence || []),
+      ...(contractImportAction?.payload?.evidence || []),
     ],
     pendingAction,
     currentOfferContext: offerCtx || null,
@@ -637,6 +668,15 @@ function finalizeSellerTurn({
           : (appointmentPrepareAction?.payload?.availabilityStatus === 'available'
             ? '✓ Kalender geprüft'
             : null),
+        contractImportAction?.payload?.contractDraft
+          ? `✓ ${contractImportAction.payload.documentClassification === 'leasing_contract' ? 'Leasingvertrag' : 'Vertrag'} erkannt`
+          : null,
+        contractImportAction?.payload?.contractDraft?.vehicle?.label
+          ? `✓ ${contractImportAction.payload.contractDraft.vehicle.label} übernommen`
+          : null,
+        contractImportAction?.payload?.contractDraft?.contractEndDate
+          ? `✓ Vertragsende ${contractImportAction.payload.contractDraft.contractEndDate} extrahiert`
+          : null,
         groundedKnowledge?.vehicleIdentity?.modelKey
           ? `✓ ${[
             groundedKnowledge.vehicleIdentity.modelLabel || groundedKnowledge.vehicleIdentity.modelKey,

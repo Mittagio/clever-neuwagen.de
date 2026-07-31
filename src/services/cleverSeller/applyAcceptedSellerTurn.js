@@ -21,6 +21,7 @@ import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
 import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
 import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
 import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js';
+import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -292,9 +293,44 @@ function hasPreparedCustomerFollowThrough(turn = {}) {
       a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
       || a.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO
       || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+      || a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
     )
     && a.status === 'prepared'
   ));
+}
+
+function applyContractImportIfPresent(lead, turn, options = {}) {
+  const contractAction = (turn.preparedActions ?? []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+    && a.status === 'prepared'
+  ));
+  const draft = contractAction?.payload?.contractDraft || turn.contractDraft || null;
+  if (!draft || !lead?.id) {
+    return { applied: false, lead, contract: null, duplicate: false };
+  }
+  const persisted = persistConfirmedCustomerContract(lead, draft, {
+    activityText: 'Altvertrag erfasst',
+  });
+  let nextLead = persisted.lead || lead;
+  if (options.postFeedCard !== false && persisted.ok && !persisted.duplicate) {
+    const posted = postCleverAssistFeedCard({
+      lead: nextLead,
+      title: '✨ Altvertrag erfasst',
+      text: [
+        draft.vehicle?.label || draft.contractType || 'Vertrag',
+        draft.contractEndDate ? `Ende ${draft.contractEndDate}` : null,
+        draft.monthlyRate != null ? `${draft.monthlyRate} € / Monat` : null,
+      ].filter(Boolean).join(' · '),
+      visibleToCustomer: false,
+    });
+    if (posted.message) nextLead = posted.lead;
+  }
+  return {
+    applied: persisted.ok,
+    lead: nextLead,
+    contract: persisted.contract,
+    duplicate: persisted.duplicate,
+  };
 }
 
 export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
@@ -303,8 +339,23 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   if (!lead?.id || (!rawFacts.length && !hasCustomerActions)) {
     return { ok: false, lead, acceptedLabels: [] };
   }
+
+  // Contract Import zuerst – keine Contract Facts als Customer Truth
+  const contractResult = applyContractImportIfPresent(lead, turn, options);
+  if (contractResult.applied && !rawFacts.length) {
+    return {
+      ok: true,
+      lead: contractResult.lead,
+      acceptedLabels: contractResult.duplicate
+        ? ['Vertrag bereits vorhanden']
+        : ['Altvertrag erfasst'],
+      contract: contractResult.contract,
+      duplicateContract: contractResult.duplicate,
+    };
+  }
+
   if (!rawFacts.length) {
-    let nextLead = lead;
+    let nextLead = contractResult.applied ? contractResult.lead : lead;
     if (options.postFeedCard !== false) {
       const preparedLabels = (turn.preparedActions ?? [])
         .filter((a) => a.status === 'prepared')
@@ -328,9 +379,23 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   }
 
   // „Übernehmen“ = Seller bestätigt die Review inkl. unsicherer Facts
-  const facts = rawFacts.map((f) => (
+  // Bei Contract-Import: keine Wish-/Truth-Mutation aus Contract-Paste-Facts
+  const skipTruthFromContract = Boolean(contractResult.applied);
+  const facts = (skipTruthFromContract ? [] : rawFacts).map((f) => (
     f?.needsConfirmation ? { ...f, needsConfirmation: false } : f
   ));
+
+  if (skipTruthFromContract && !facts.length) {
+    return {
+      ok: true,
+      lead: contractResult.lead,
+      acceptedLabels: contractResult.duplicate
+        ? ['Vertrag bereits vorhanden']
+        : ['Altvertrag erfasst'],
+      contract: contractResult.contract,
+      duplicateContract: contractResult.duplicate,
+    };
+  }
 
   const labels = facts.map((f) => String(f.label ?? '').trim()).filter(Boolean);
   let nextLead = appendSellerInsightsFromTexts(lead, labels, {

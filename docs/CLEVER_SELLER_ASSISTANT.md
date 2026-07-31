@@ -83,9 +83,11 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 2):** `src/services/cleverSeller/globalComposer.slice2.test.js` – Kundensuche, Kontext, Historie, Offer-Sent.  
 **Global Composer (Slice 3):** `src/services/cleverSeller/globalComposer.slice3.test.js` – Kunde + Kaufangebot + Nachricht + Handoff.  
 **Global Composer (Slice 4):** `src/services/cleverSeller/globalComposer.slice4.test.js` – verifiziertes Fahrzeugwissen + natürliche Kundennachricht.  
-**Global Composer (Slice 5):** `src/services/cleverSeller/globalComposer.slice5.test.js` – Terminvorschlag + Nachricht + Follow-ups.
+**Global Composer (Slice 5):** `src/services/cleverSeller/globalComposer.slice5.test.js` – Terminvorschlag + Nachricht + Follow-ups.  
+**Global Composer (Slice 6):** `src/services/cleverSeller/globalComposer.slice6.test.js` – Altvertrag Intake + Review + Confirm.
 
-Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
+Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).  
+**Contract Memory:** [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md).
 
 ## Legacy-Bridge
 

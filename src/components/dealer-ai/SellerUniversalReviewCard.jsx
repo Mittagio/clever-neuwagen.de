@@ -15,6 +15,8 @@ function pickPrimaryBody(model) {
   }
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
+  const contractMsg = sections.find((s) => s.kind === 'contract_import_review' || s.kind === 'contract_import');
+  if (contractMsg?.body) return String(contractMsg.body).trim();
   const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
   if (apptMsg?.body) return String(apptMsg.body).trim();
   const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
@@ -126,11 +128,16 @@ export default function SellerUniversalReviewCard({
   const metaLine = useMemo(() => pickMetaLine(model), [model]);
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
+  const contractMsg = sections.find((s) => s.kind === 'contract_import_review');
   const reviewActions = knowledgeMsg?.primaryActions
     || apptMsg?.primaryActions
+    || contractMsg?.primaryActions
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || [];
-  const sources = knowledgeMsg?.sources || model?.sources || [];
+  const sources = knowledgeMsg?.sources
+    || contractMsg?.evidence
+    || model?.sources
+    || [];
   const historyHit = sections.find((s) => (
     (s.kind === 'history_search'
       || s.kind === 'history_search_results'

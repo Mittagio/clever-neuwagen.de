@@ -1366,6 +1366,29 @@ export default function CustomerAkteSharedWorkspace({
       setTimeout(() => setFeedback(''), 3200);
       return;
     }
+    if (action.action === 'view_contract_source') {
+      const preview = universalTurn.contractDraft?.sourceDocument?.preview
+        || universalTurn.interpretedInput?.raw
+        || '';
+      setFeedback(preview
+        ? `Quelle: ${String(preview).slice(0, 160)}${preview.length > 160 ? '…' : ''}`
+        : 'Keine Quelle hinterlegt');
+      setTimeout(() => setFeedback(''), 4000);
+      return;
+    }
+    if (action.action === 'edit_contract_values') {
+      setFeedback('Werte bearbeiten – bitte im Composer korrigieren und erneut einlesen.');
+      const preview = universalTurn.contractDraft?.sourceDocument?.preview
+        || universalTurn.interpretedInput?.raw
+        || '';
+      if (preview) setDraft(preview);
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
+    if (action.action === 'accept_contract_import') {
+      handleAcceptUniversalReview();
+      return;
+    }
     if (action.action === 'edit_message') {
       const body = String(
         universalTurn.messageDraft

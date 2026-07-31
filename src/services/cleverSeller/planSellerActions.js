@@ -10,6 +10,7 @@ import { prepareGroundedCustomerMessageSync } from './prepareGroundedCustomerMes
 import { resolveGroundedVehicleKnowledge } from './resolveGroundedVehicleKnowledge.js';
 import { prepareContextualAppointmentProposal, isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
+import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -237,6 +238,34 @@ export function planSellerActions({
   const followUpAppointment = Boolean(pendingAppointment)
     && isAppointmentFollowUpInput(sellerInput, pendingAppointment)
     && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER);
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT)) {
+    const prepared = prepareCustomerContractImport({
+      sellerInput,
+      lead,
+      customerName,
+    });
+    actions.push({
+      id: 'import_customer_contract',
+      type: SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT,
+      label: 'Vertrag erkannt',
+      needsSellerConfirmation: true,
+      status: prepared.ok ? 'prepared' : 'blocked',
+      toolId: 'import_customer_contract',
+      payload: {
+        documentClassification: prepared.documentClassification,
+        contractDraft: prepared.contractDraft,
+        extractedContractFacts: prepared.extractedContractFacts,
+        evidence: prepared.evidence,
+        missingInformation: prepared.missingInformation,
+        reviewBody: prepared.reviewBody,
+        warnings: prepared.warnings,
+        mutatesCustomer: false,
+        mutatesCustomerTruth: false,
+        persistOnAccept: true,
+      },
+    });
+  }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) {
     const overview = runTool('get_today_overview', {
