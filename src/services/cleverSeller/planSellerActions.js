@@ -6,6 +6,8 @@ import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sel
 import { runTool } from './toolRegistry.js';
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
+import { prepareGroundedCustomerMessageSync } from './prepareGroundedCustomerMessageSync.js';
+import { resolveGroundedVehicleKnowledge } from './resolveGroundedVehicleKnowledge.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -660,6 +662,74 @@ export function planSellerActions({
     });
   }
 
+  const needsGroundedKnowledge = intentTypes.has(SELLER_TURN_INTENTS.RESOLVE_VEHICLE)
+    || intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE)
+    || intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT)
+    || (
+      intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+      && /\b(technologie[-\s]?paket|technik[-\s]?paket|schiebedach|ausstattung)\b/i.test(sellerInput)
+      && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+    );
+
+  if (needsGroundedKnowledge
+    && (
+      intentTypes.has(SELLER_TURN_INTENTS.RESOLVE_VEHICLE)
+      || intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE)
+      || intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT)
+    )) {
+    const knowledgePreview = resolveGroundedVehicleKnowledge({
+      sellerInput,
+      lead,
+      workingContext,
+      offerContext: currentOfferContext,
+    });
+    if (intentTypes.has(SELLER_TURN_INTENTS.RESOLVE_VEHICLE)) {
+      actions.push({
+        id: 'resolve_vehicle',
+        type: SELLER_TURN_INTENTS.RESOLVE_VEHICLE,
+        label: knowledgePreview.vehicleIdentity?.modelLabel
+          || knowledgePreview.vehicleIdentity?.modelKey
+          || 'Fahrzeug auflösen',
+        needsSellerConfirmation: false,
+        status: knowledgePreview.vehicleIdentity?.modelKey ? 'prepared' : 'blocked',
+        toolId: 'resolve_grounded_vehicle_knowledge',
+        payload: {
+          vehicleIdentity: knowledgePreview.vehicleIdentity,
+          mutatesCustomer: false,
+        },
+      });
+    }
+    if (intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE)) {
+      actions.push({
+        id: 'lookup_vehicle_package',
+        type: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE,
+        label: 'Technologie-Paket prüfen',
+        needsSellerConfirmation: false,
+        status: knowledgePreview.verifiedPackageFacts ? 'prepared' : 'blocked',
+        toolId: 'lookup_vehicle_package',
+        payload: {
+          package: knowledgePreview.verifiedPackageFacts,
+          missingKnowledge: knowledgePreview.missingKnowledge,
+          mutatesCustomer: false,
+        },
+      });
+    }
+    if (intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT)) {
+      actions.push({
+        id: 'lookup_vehicle_equipment',
+        type: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT,
+        label: 'Ausstattung laden',
+        needsSellerConfirmation: false,
+        status: knowledgePreview.verifiedEquipmentFacts ? 'prepared' : 'blocked',
+        toolId: 'lookup_vehicle_equipment',
+        payload: {
+          equipment: knowledgePreview.verifiedEquipmentFacts,
+          mutatesCustomer: false,
+        },
+      });
+    }
+  }
+
   const offerAction = actions.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
   const offerIncomplete = Boolean(
     offerAction
@@ -766,6 +836,43 @@ export function planSellerActions({
         customerName,
         currentOfferContext,
       });
+    } else if (wantsCustomerMessage && !offerIncomplete && needsGroundedKnowledge) {
+      const grounded = prepareGroundedCustomerMessageSync({
+        sellerInput,
+        lead,
+        customerName: customerName || resolvedCustomer?.name || null,
+        workingContext,
+        offerContext: currentOfferContext,
+        allowWithoutPackageDetails: /\bohne\s+paketdetails\b/i.test(sellerInput),
+      });
+      messageDraft = grounded.messageDraft;
+      actions.push({
+        id: 'draft_message',
+        type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+        label: grounded.status === 'missing_package_knowledge'
+          ? 'Nachricht (Paket unvollständig)'
+          : 'Nachricht vorbereiten',
+        needsSellerConfirmation: true,
+        status: grounded.messageDraft ? 'prepared' : 'blocked',
+        toolId: 'draft_customer_message',
+        payload: {
+          messageDraft: grounded.messageDraft,
+          sendable: grounded.sendable,
+          knowledgeResult: grounded.knowledge,
+          sellerFacts: grounded.knowledge?.sellerFacts || [],
+          usedFacts: grounded.usedFacts || [],
+          retrievedFacts: grounded.knowledge?.facts || [],
+          missingKnowledge: grounded.knowledge?.missingKnowledge || [],
+          conflicts: grounded.knowledge?.conflicts || [],
+          warnings: grounded.warnings || [],
+          uiHint: grounded.uiHint,
+          handoff: grounded.handoff,
+          mutatesCustomer: false,
+          groundedStatus: grounded.status,
+        },
+      });
+      // bereits gepusht – Skip duplicate push unten
+      return actions;
     } else if (wantsCustomerMessage && !offerIncomplete) {
       const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
       const offerFacts = currentOfferContext?.offerId

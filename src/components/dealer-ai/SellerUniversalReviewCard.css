@@ -102,6 +102,30 @@
   cursor: pointer;
 }
 
+.sur-card__text-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 8px;
+}
+
+.sur-card__text-actions .sur-card__text-link {
+  margin: 0;
+}
+
+.sur-card__sources {
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  list-style: none;
+  font-size: 0.75rem;
+  color: #6b7280;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sur-card__sources li {
+  margin: 4px 0;
+}
+
 .sur-card__send {
   display: inline-flex;
   align-items: center;

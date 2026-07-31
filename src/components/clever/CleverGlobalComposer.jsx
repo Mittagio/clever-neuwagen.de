@@ -94,6 +94,18 @@ export default function CleverGlobalComposer() {
 
   function resolvePrimaryNavTarget(turn, model) {
     const sections = model?.actionSections || [];
+    const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
+    if (knowledgeMsg || (turn?.handoffWorkingContext?.composerMode === 'customer_message_edit')) {
+      const leadId = turn?.resolvedCustomer?.id
+        || turn?.handoffWorkingContext?.customerId
+        || knowledgeMsg?.primaryActions?.find((a) => a.leadId)?.leadId;
+      if (leadId) {
+        return {
+          leadId,
+          workingContext: turn.handoffWorkingContext || null,
+        };
+      }
+    }
     const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
     if (offerMsg || turn?.handoffWorkingContext) {
       const leadId = turn?.resolvedCustomer?.id
@@ -130,6 +142,53 @@ export default function CleverGlobalComposer() {
     return null;
   }
 
+  function handleReviewAction(action) {
+    if (!action || !lastTurn) return;
+    if (action.action === 'discard') {
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+    if (action.action === 'write_without_package_details') {
+      const base = String(lastTurn.interpretedInput?.raw || draft || '').trim();
+      const nextInput = /ohne\s+paketdetails/i.test(base)
+        ? base
+        : `${base}\n(Ohne Paketdetails schreiben)`;
+      setSending(true);
+      try {
+        const turn = runCleverSellerTurn({
+          lead: ctx.currentCustomer || {},
+          sellerInput: nextInput,
+          leadsSnapshot: ctx.leadsSnapshot || [],
+          scopeHint: 'dashboard',
+          appContext: {
+            routeContext: ctx.routeContext,
+            attachedWorkingObjects: ctx.attachedWorkingObjects,
+            dashboardContext: ctx.dashboardContext,
+          },
+          workingContextItems: ctx.attachedWorkingObjects || [],
+        });
+        setLastTurn(turn);
+        const model = turn.reviewModel
+          || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+        setReviewModel(model);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    if (
+      action.action === 'edit_message'
+      || action.action === 'send_handoff'
+      || action.action === 'open_offer_handoff'
+      || action.action === 'approve_handoff'
+      || action.action === 'review_data'
+    ) {
+      const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
+      if (target?.leadId) handleOpenLead(target.leadId, target);
+    }
+  }
+
   function handleSend() {
     const text = String(draft || '').trim();
     if (!text || sending) return;
@@ -139,6 +198,8 @@ export default function CleverGlobalComposer() {
     const lower = text.toLowerCase();
     if (/heute an|heute liegt|tages/.test(lower)) {
       setProgressHint('Clever prüft Ihre heutigen Vorgänge …');
+    } else if (/technologie|ausstattung|schiebedach|picanto|gt-line/.test(lower) && /schreib|erklär/.test(lower)) {
+      setProgressHint('Clever prüft Fahrzeugwissen und bereitet die Nachricht vor …');
     } else if (/anhängelast|reichweite|tank|wärmepumpe|kofferraum/.test(lower)) {
       setProgressHint('Clever sucht in den verifizierten Fahrzeugdaten …');
     } else if (/erstell|angebot für|mach.*angebot/.test(lower)) {
@@ -207,7 +268,12 @@ export default function CleverGlobalComposer() {
             const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
             if (target?.leadId) handleOpenLead(target.leadId, target);
           }}
+          onReviewAction={handleReviewAction}
           onReject={() => {
+            setReviewModel(null);
+            setLastTurn(null);
+          }}
+          onDismiss={() => {
             setReviewModel(null);
             setLastTurn(null);
           }}

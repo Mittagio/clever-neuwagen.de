@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 3 (Kunde → Angebot → Nachricht)  
+**Status:** Slice 4 (verifiziertes Fahrzeugwissen + natürliche Kundennachricht)  
 **Stand:** Juli 2026
 
 ## Produktgesetz
@@ -14,11 +14,15 @@ Der Verkäufer formuliert sein Ziel. Clever wählt kontextabhängig bestehende T
 
 > **Das Lexikon ist ein Werkzeug hinter Clever**, kein notwendiger separater Arbeitsweg.
 
+> **OpenAI schreibt. Clever beschafft und validiert die Fakten.**
+
 > **Globale Wissensfragen verändern keine Kundenakte.**
 
 > **Clever ist das Gedächtnis des Verkäufers.**
 
 > **Ein Verkäuferauftrag ist keine Kundennachricht** – Seller-Befehle landen nie im Kundentext.
+
+> **Seller Facts ≠ Customer Truth** – Farbe, Paket und Schiebedach aus dem Verkäuferbefehl werden nicht automatisch als Kundenwunsch gespeichert.
 
 ## Surfaces
 
@@ -31,7 +35,8 @@ Der Verkäufer formuliert sein Ziel. Clever wählt kontextabhängig bestehende T
 
 - Sync: Kundenakte setzt `currentCustomer` aus der Route
 - Reset beim Verlassen der Akte
-- Handoff: Prepared Offer als `attachedWorkingObjects` (Working State, keine Customer Truth)
+- Handoff: Prepared Offer / Knowledge-Message als `attachedWorkingObjects` (Working State, keine Customer Truth)
+- Message-Edit: `customer_message_edit` – kein erneuter Universal-Turn beim Tippen
 
 ### Orchestrierung
 
@@ -42,29 +47,33 @@ Nur `runCleverSellerTurn()`:
 | `todayOverview`, `knowledgeResult` | 1 |
 | `customerSearchResults`, `customerSummary`, `historySearchResults` | 2 |
 | `handoffWorkingContext`, combined Offer+Message Review | 3 |
+| `sellerFacts`, grounded `knowledgeResult`, `knowledge_and_message_review` | 4 |
 
-## Slice 3 – Golden Flow
+## Slice 4 – Golden Flow
 
 Input:
 
-> „Erstelle Herrn Garritano ein Angebot für den Picanto GT-Line für 17.000 €.“
+> „Schreib Garritano, dass wir einen schwarzen Picanto GT-Line mit Technologie-Paket und Schiebedach da haben. Erklär ihm kurz das Technologie-Paket und die Ausstattung.“
 
 Ablauf:
 
-1. `find_customer` → Garritano aus `leadsSnapshot`
-2. `buildCustomerUnderstanding` laden
-3. Picanto GT-Line + Kaufpreis 17.000 € (`offerType: cash`)
-4. `prepare_offer` (Prepared Action, `needsSellerConfirmation`)
-5. `draft_customer_message` (Seller-Befehl-Validator)
-6. Review `offer_and_message_review`
-7. Handoff: Kundenakte + Working Context „Picanto GT-Line · Kauf · 17.000 €“
-8. Kein Auto-Send, keine Customer-Truth-Mutation
+1. `find_customer` → Garritano
+2. `resolve_vehicle` → Picanto GT-Line
+3. Seller Facts (Farbe, Verfügbarkeit, Paket, Schiebedach) getrennt von Customer Truth
+4. `lookup_vehicle_package` / `lookup_vehicle_equipment` über verifizierte Quellen
+5. Fehlendes Paketwissen → Warnung, keine erfundenen Inhalte
+6. Grounded Message Writer (Fallback / OpenAI)
+7. Fact-Preservation + Seller-Befehl-Validator
+8. Review `knowledge_and_message_review`
+9. Handoff: Kundenakte + `customer_message_edit`
+10. Kein Auto-Send
 
 Gegenproben:
 
-- Leasing ohne Rate → missing, keine erfundene Rate
-- „Schreib … dass … kostet“ → nur Message
-- „Picanto GT-Line 17.000 €“ → Rückfrage Angebot vs. Nachricht
+- Kurze Verfügbarkeit ohne Paket → keine Paketdetails erfinden
+- Technologie-Paket ohne Fahrzeug → gezielte Variantenfrage
+- „serienmäßig Schiebedach“ gegen verifizierte Daten → Warnung
+- „wegen der Unterlagen“ → keine irrelevanten Fahrzeugdetails
 
 ## Feature-Flag
 
@@ -75,7 +84,8 @@ Gegenproben:
 - `globalComposer.slice1.test.js`
 - `globalComposer.slice2.test.js`
 - `globalComposer.slice3.test.js`
+- `globalComposer.slice4.test.js`
 
 ## Nächste Slices
 
-Termine, Attachments, schrittweise Akte-Composer-Migration.
+Termine, Kaufangebot parallel, Attachments, schrittweise Akte-Composer-Migration.

@@ -214,6 +214,32 @@ export default function CustomerAkteSharedWorkspace({
     workingContextRef.current = workingContextItems;
   }, [workingContextItems]);
 
+  // Global-Composer-Handoff: Nachricht in customer_message_edit öffnen (kein zweiter Composer / kein Neu-Interpret)
+  const messageEditHandoffConsumedRef = useRef(null);
+  useEffect(() => {
+    if (isCustomerMessageEditMode(composerMode)) return;
+    const handoff = (workingContextItems || []).find((item) => (
+      item
+      && item.composerMode === COMPOSER_MODES.CUSTOMER_MESSAGE_EDIT
+      && (item.messageDraft || item.draft)
+    ));
+    if (!handoff) return;
+    const fingerprint = `${handoff.id || 'handoff'}|${String(handoff.messageDraft || handoff.draft || '').slice(0, 120)}`;
+    if (messageEditHandoffConsumedRef.current === fingerprint) return;
+    messageEditHandoffConsumedRef.current = fingerprint;
+    const next = beginCustomerMessageEdit({
+      result: { body: handoff.messageDraft || handoff.draft, draft: { body: handoff.messageDraft || handoff.draft } },
+      recipient: handoff.recipient || handoff.customerName || customerName || 'Kunde',
+      contextAttachments: workingContextItems,
+      priorWorkDraft: '',
+    });
+    priorWorkDraftRef.current = next.priorWorkDraft;
+    setEditingMessageDraft(next.editingMessageDraft);
+    setComposerMode(next.composerMode);
+    setDraft(next.draft);
+    setUniversalTurn(null);
+  }, [workingContextItems, composerMode, customerName]);
+
   /**
    * Nachricht-Entwurf bewusst in den Seller-Verlauf spiegeln (Chip / Übernehmen).
    * Nicht aus dem Debounce-Interpret aufrufen – sonst Feed-Spam bei jedem Lead-Update.

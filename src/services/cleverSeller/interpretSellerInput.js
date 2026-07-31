@@ -1028,6 +1028,54 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
   }
 
+  // Benannter Kunde + Nachricht → Kundensuche
+  const namedInMessage = facts.some((f) => f.field === 'customerName')
+    || /\b(herrn?\s+|frau\s+)?[A-ZÄÖÜ][a-zäöüß-]{2,}\b/.test(t);
+  if (
+    (explicitMessage || intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE))
+    && namedInMessage
+    && !isHistoryQuery
+    && !isOfferSentQuery
+    && !isOpenCustomer
+    && !isSummarizeCustomer
+  ) {
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.93);
+  }
+
+  // Grounded Vehicle Knowledge + Kundennachricht (Slice 4)
+  const wantsPackageExplain = /\b(technologie[-\s]?paket|technik[-\s]?paket)\b/i.test(t)
+    && /\b(erklär|erkläre|erklären|umfasst|inhalt|enthalten|was\s+(ist|im)|schreib)\b/i.test(t);
+  const wantsEquipmentExplain = /\b(ausstattung|serienausstattung)\b/i.test(t);
+  const hasVehicleCue = /\b(picanto|sportage|xceed|ev\s?\d|ceed|niro|sorento|gt[-\s]?line)\b/i.test(t)
+    || facts.some((f) => f.field === 'vehicleInterest');
+  const hasSellerVehicleFeatures = /\b(technologie[-\s]?paket|technik[-\s]?paket|schiebedach)\b/i.test(t);
+  const groundedMessage = (
+    wantsPackageExplain
+    || wantsEquipmentExplain
+    || (explicitMessage && hasSellerVehicleFeatures)
+  ) && (hasVehicleCue || wantsPackageExplain);
+
+  if (groundedMessage && !isCreateOfferCommand && !isHistoryQuery) {
+    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.97);
+    if (hasVehicleCue || wantsPackageExplain) {
+      add(SELLER_TURN_INTENTS.RESOLVE_VEHICLE, 0.94);
+    }
+    if (wantsPackageExplain || /\btechnologie[-\s]?paket\b/i.test(t)) {
+      add(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE, 0.93);
+    }
+    if (wantsEquipmentExplain) {
+      add(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT, 0.92);
+    }
+  }
+
+  // „Erklär Garritano das Technologie-Paket“ ohne klares Fahrzeug → Resolve + Package
+  if (wantsPackageExplain && !hasVehicleCue && !isCreateOfferCommand) {
+    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.9);
+    add(SELLER_TURN_INTENTS.RESOLVE_VEHICLE, 0.95);
+    add(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE, 0.94);
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.9);
+  }
+
   // „Schreibe X ein Angebot …“ = Angebot + Nachricht
   // Aber „Fasse/Erkläre das angehängte Angebot …“ = nur Nachricht, kein neues Angebot
   if (explicitMessage && /\bangebot\b/i.test(t)) {

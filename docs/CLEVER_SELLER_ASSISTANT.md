@@ -81,7 +81,8 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Master-Suite:** `src/services/cleverSeller/masterGoldenFlows.test.js` – alle Flows inkl. Multi-Accept-Shape und Legacy-Bridge.  
 **Global Composer (Slice 1):** `src/services/cleverSeller/globalComposer.slice1.test.js` – Dashboard „Was liegt heute an?“ + „XCeed Anhängelast?“.  
 **Global Composer (Slice 2):** `src/services/cleverSeller/globalComposer.slice2.test.js` – Kundensuche, Kontext, Historie, Offer-Sent.  
-**Global Composer (Slice 3):** `src/services/cleverSeller/globalComposer.slice3.test.js` – Kunde + Kaufangebot + Nachricht + Handoff.
+**Global Composer (Slice 3):** `src/services/cleverSeller/globalComposer.slice3.test.js` – Kunde + Kaufangebot + Nachricht + Handoff.  
+**Global Composer (Slice 4):** `src/services/cleverSeller/globalComposer.slice4.test.js` – verifiziertes Fahrzeugwissen + natürliche Kundennachricht.
 
 Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 

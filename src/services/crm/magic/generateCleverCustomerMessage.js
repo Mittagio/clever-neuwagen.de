@@ -289,6 +289,17 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
         if (/\berstell\b|\bmach(?:e|en)?\s+(?:ihm|ihr)\b|\bangebot\s+erstellen\b/i.test(note)) {
           continue;
         }
+        if (/\bschreib(?:e|en)?\b/i.test(note) && /\b(dass|das|wegen)\b/i.test(note)) {
+          continue;
+        }
+        // Konflikte: keine ungeprüften Serien-Aussagen aus dem Seller-Befehl übernehmen
+        if (/\bserienm[aä](?:ss|ß)ig\b/i.test(note) && /schiebedach|panorama|glasdach/i.test(note)) {
+          continue;
+        }
+        if ((options.warnings || []).some((w) => /sunroof|standard_equipment/i.test(String(w)))
+          && /\bserienm[aä](?:ss|ß)ig\b/i.test(note)) {
+          continue;
+        }
         lines.push(note);
       }
     } else if (extraSeller.length) {
@@ -388,13 +399,14 @@ export function extractCustomerFacingNotes(instruction = '') {
   const raw = String(instruction || '').trim();
   if (!raw) return [];
   const cleaned = raw
-    .replace(/^(schreib(?:e|en)?|sag(?:e|en)?|formulier(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s*,?\s*/i, '')
+    .replace(/^(schreib(?:e|en)?|sag(?:e|en)?|formulier(?:e|en)?|informier(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+|[A-Za-zÄÖÜäöüß-]{2,})\s*,?\s*/i, '')
     .replace(/^(erstell(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s+(ein\s+)?angebot\b[^\n.;]*/i, '')
     .replace(/\berstell(?:e|en)?\s+(?:ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s+(?:ein\s+)?angebot\b[^\n.;]*/gi, '')
     .replace(/^bereite\s+.+?\s+vor\s+und\s+/i, '')
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?kurze\s+kundennachricht(\s+dazu)?[.!]?\s*/gi, '')
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?kurze\s+(dankes[-\/]?|nachfass|rückfrage|eingangs)[^\n.;]*/gi, '')
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?höfliche\s+rückfrage[^\n.;]*/gi, '')
+    .replace(/\b(erklär|erkläre|erklären)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)?\s*/gi, '')
     .replace(/\bschick(?:e|en)?\s+(ihm|ihr)?\s*(die\s+)?angebote\s+per\s+mail\s*\/?\s*kundenlink[.!]?\s*/gi, '')
     .replace(/^(eine?\s+kurze\s+)?(dankes[-\/]?|eingangs)?(nachricht|bestätigung|mail)\s*(dazu|an\s+ihn)?[.!]?\s*/i, '')
     .replace(/\bkurz zur lieferzeit und verf[uü]gbarkeit[.!]?\s*/gi, '')
@@ -407,6 +419,8 @@ export function extractCustomerFacingNotes(instruction = '') {
     .map((part) => part.trim())
     .filter((part) => part.length >= 4)
     .filter((part) => !isChipMetaOnlyPart(part))
+    .filter((part) => !/\b(schreib(?:e|en)?|erklär(?:e|en)?)\s+(ihm|ihr|dem kunden|[A-Za-zÄÖÜäöüß-]+)\b/i.test(part))
+    .filter((part) => !/^dass\s+wir\b/i.test(part))
     .map((part) => {
       const p = part.charAt(0).toUpperCase() + part.slice(1);
       return /[.!?]$/.test(p) ? p : `${p}.`;

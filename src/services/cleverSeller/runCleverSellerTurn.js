@@ -251,9 +251,25 @@ function finalizeSellerTurn({
   const todayOverview = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
     ?.payload?.todayOverview
     || null;
+  const draftMessageAction = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  const groundedKnowledge = draftMessageAction?.payload?.knowledgeResult || null;
   const knowledgeResult = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
     ?.payload?.knowledgeResult
-    || null;
+    || (groundedKnowledge
+      ? {
+        ok: Boolean(groundedKnowledge.vehicleIdentity?.modelKey),
+        modelKey: groundedKnowledge.vehicleIdentity?.modelKey,
+        modelLabel: groundedKnowledge.vehicleIdentity?.modelLabel,
+        factLabel: 'Fahrzeugwissen',
+        displayValue: [
+          groundedKnowledge.vehicleIdentity?.modelLabel,
+          groundedKnowledge.vehicleIdentity?.trimLabel,
+          groundedKnowledge.vehicleIdentity?.color,
+        ].filter(Boolean).join(' · '),
+        sourceLabel: 'verified_vehicle_data + seller_input',
+        grounded: groundedKnowledge,
+      }
+      : null);
 
   const customerSummaryAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
@@ -287,6 +303,7 @@ function finalizeSellerTurn({
     || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     || todayOverview
     || knowledgeResult
+    || groundedKnowledge
     || customerSummary
     || historySearchResults
     || (customerSearchResults && !offerPrepareAction),
@@ -295,7 +312,7 @@ function finalizeSellerTurn({
   const scope = scopeHint
     || (todayOverview ? 'dashboard' : null)
     || (knowledgeResult && !workingLead?.id ? 'global' : null)
-    || ((customerSearchResults || customerSummary || historySearchResults || offerPrepareAction)
+    || ((customerSearchResults || customerSummary || historySearchResults || offerPrepareAction || groundedKnowledge)
       && !lead?.id
       ? 'global'
       : null)
@@ -320,9 +337,12 @@ function finalizeSellerTurn({
     };
   }
 
-  const messageDraft = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    ?.payload?.messageDraft
+  const messageDraft = draftMessageAction?.payload?.messageDraft
     || null;
+
+  const sellerFacts = draftMessageAction?.payload?.sellerFacts
+    || groundedKnowledge?.sellerFacts
+    || [];
 
   const understanding = (() => {
     try {
@@ -336,6 +356,14 @@ function finalizeSellerTurn({
 
   if (offerPrepareAction?.payload?.cashVsLeasingWarning) {
     warningsExtra.push(offerPrepareAction.payload.cashVsLeasingWarning);
+  }
+  if (Array.isArray(draftMessageAction?.payload?.warnings)) {
+    warningsExtra.push(...draftMessageAction.payload.warnings);
+  }
+  if (Array.isArray(groundedKnowledge?.conflicts)) {
+    for (const c of groundedKnowledge.conflicts) {
+      if (c?.message) warningsExtra.push(c.message);
+    }
   }
 
   const pendingAction = offerPrepareAction
@@ -363,7 +391,36 @@ function finalizeSellerTurn({
       purchasePrice: offerPrepareAction.payload?.purchasePrice,
       messageDraft: typeof messageDraft === 'string' ? messageDraft : messageDraft?.body,
     })
-    : null;
+    : (draftMessageAction?.payload?.handoff
+      ? {
+        ...draftMessageAction.payload.handoff,
+        customerId: workingLead?.id || draftMessageAction.payload.handoff.customerId || null,
+        customerName: workingLead?.contact?.name
+          || draftMessageAction.payload.handoff.recipient
+          || null,
+      }
+      : null);
+
+  // Missing package / vehicle clarification → missingInformation
+  if (draftMessageAction?.payload?.groundedStatus === 'missing_package_knowledge') {
+    missingInformation.push({
+      id: 'exact_technology_package_contents',
+      field: 'packageContents',
+      label: 'Inhalt des Technologie-Pakets für diese Variante noch nicht eindeutig verifiziert',
+      forIntent: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE,
+    });
+  }
+  if (draftMessageAction?.payload?.groundedStatus === 'needs_vehicle_clarification'
+    || groundedKnowledge?.vehicleAmbiguity) {
+    missingInformation.push({
+      id: 'clarify_vehicle_for_knowledge',
+      field: 'vehicleIdentity',
+      label: groundedKnowledge?.vehicleAmbiguity?.question
+        || draftMessageAction?.payload?.uiHint?.message
+        || 'Für welches Fahrzeug / welche Variante gilt das?',
+      forIntent: SELLER_TURN_INTENTS.RESOLVE_VEHICLE,
+    });
+  }
 
   const assistantReply = buildSellerAssistantReply({
     facts: uniqueFacts,
@@ -384,9 +441,13 @@ function finalizeSellerTurn({
     resolvedCustomer: assistantContext.resolvedCustomer,
   });
 
-  const retrievedFacts = preparedActions
-    .filter((a) => a.payload?.retrieved)
-    .map((a) => a.payload.retrieved);
+  const retrievedFacts = [
+    ...preparedActions
+      .filter((a) => a.payload?.retrieved)
+      .map((a) => a.payload.retrieved),
+    ...(draftMessageAction?.payload?.retrievedFacts || []),
+    ...(groundedKnowledge?.facts || []),
+  ];
 
   const turnPartial = {
     ok: Boolean(interpreted.normalized) && enabled,
@@ -405,9 +466,10 @@ function finalizeSellerTurn({
     resolvedWorkingContext: assistantContext.resolvedWorkingContext
       || (handoffWorkingContext ? { attachedOffer: handoffWorkingContext } : null),
     extractedFacts: uniqueFacts,
+    sellerFacts,
     retrievedFacts: [
       ...retrievedFacts,
-      ...(knowledgeResult ? [knowledgeResult] : []),
+      ...(knowledgeResult && !groundedKnowledge ? [knowledgeResult] : []),
     ],
     knowledgeResult,
     todayOverview,
@@ -458,19 +520,35 @@ function finalizeSellerTurn({
         todayOverview
           ? 'Clever prüft Ihre heutigen Vorgänge …'
           : null,
-        knowledgeResult
-          ? 'Clever sucht in den verifizierten Fahrzeugdaten …'
-          : null,
-        (workingLead?.id || customerSearchResults?.length) && offerPrepareAction
+        (workingLead?.id || customerSearchResults?.length) && (offerPrepareAction || groundedKnowledge || messageDraft)
           ? `✓ ${workingLead?.contact?.name || customerSearchResults?.[0]?.customerName || 'Kunde'} gefunden`
           : (customerSearchResults
             ? 'Clever sucht in Ihren Kunden …'
             : null),
-        offerPrepareAction && uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
-          ? `✓ ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label} erkannt`
-          : (uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
-            ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
+        groundedKnowledge?.vehicleIdentity?.modelKey
+          ? `✓ ${[
+            groundedKnowledge.vehicleIdentity.modelLabel || groundedKnowledge.vehicleIdentity.modelKey,
+            groundedKnowledge.vehicleIdentity.trimLabel || groundedKnowledge.vehicleIdentity.trimId,
+          ].filter(Boolean).join(' ')} erkannt`
+          : (offerPrepareAction && uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
+            ? `✓ ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label} erkannt`
             : null),
+        sellerFacts.length
+          ? '✓ Seller Facts übernommen'
+          : null,
+        groundedKnowledge?.verifiedPackageFacts
+          ? '✓ Technologie-Paket geprüft'
+          : (effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE)
+            ? 'Technologie-Paket geprüft'
+            : null),
+        groundedKnowledge?.verifiedEquipmentFacts
+          ? '✓ Ausstattung geladen'
+          : (effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT)
+            ? 'Ausstattung geladen'
+            : null),
+        knowledgeResult && !groundedKnowledge
+          ? 'Clever sucht in den verifizierten Fahrzeugdaten …'
+          : null,
         offerPrepareAction && uniqueFacts.find((f) => f.field === 'purchasePrice')
           ? `✓ ${uniqueFacts.find((f) => f.field === 'purchasePrice').label} erkannt`
           : (uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null),
@@ -485,23 +563,25 @@ function finalizeSellerTurn({
         offerPrepareAction && messageDraft
           ? '✓ Angebot und Nachricht vorbereitet'
           : null,
+        !offerPrepareAction && messageDraft
+          ? '✓ Nachricht vorbereitet'
+          : null,
         !offerPrepareAction && preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
           ? 'Angebot vorbereitet'
           : null,
-        !offerPrepareAction && messageDraft ? 'Nachricht vorbereitet' : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
           ? 'Termin vorbereitet'
           : null,
-        knowledgeResult?.ok
+        knowledgeResult?.ok && !groundedKnowledge
           ? `${knowledgeResult.factLabel || 'Fakt'} verifiziert`
-          : (knowledgeResult ? 'Keine sichere Quelle' : null),
+          : (knowledgeResult && !groundedKnowledge ? 'Keine sichere Quelle' : null),
         todayOverview
           ? `${todayOverview.itemCount || 0} Vorgänge gefunden`
           : null,
         assistantContext.resolvedWorkingContext?.attachedDocument?.label
           ? `Dokument: ${assistantContext.resolvedWorkingContext.attachedDocument.label}`
           : null,
-        assistantContext.goldenMoment?.headline && !todayOverview && !offerPrepareAction
+        assistantContext.goldenMoment?.headline && !todayOverview && !offerPrepareAction && !groundedKnowledge
           ? 'Nächster Schritt erkannt'
           : null,
       ].filter(Boolean),

@@ -50,6 +50,9 @@ export const SELLER_TURN_INTENTS = {
   PREPARE_TRADE_IN: 'prepare_trade_in',
   PROPOSE_APPOINTMENT: 'propose_appointment',
   LOOKUP_VEHICLE_FACT: 'lookup_vehicle_fact',
+  RESOLVE_VEHICLE: 'resolve_vehicle',
+  LOOKUP_VEHICLE_PACKAGE: 'lookup_vehicle_package',
+  LOOKUP_VEHICLE_EQUIPMENT: 'lookup_vehicle_equipment',
   GET_TODAY_OVERVIEW: 'get_today_overview',
   SEARCH_CUSTOMER_HISTORY: 'search_customer_history',
   SEARCH_CUSTOMER_MESSAGES: 'search_customer_messages',
@@ -63,5 +66,7 @@ export const SELLER_TURN_INTENTS = {
   RECOMMEND_NEXT_STEP: 'recommend_next_step',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
+  /** Alias für Tool-/Result-Contract */
+  DRAFT_CUSTOMER_MESSAGE: 'draft_customer_message',
   UNKNOWN: 'unknown',
 };

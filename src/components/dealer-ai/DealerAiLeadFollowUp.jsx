@@ -126,6 +126,7 @@ import CustomerAkteEquipmentWishes from './CustomerAkteEquipmentWishes.jsx';
 import CustomerAkteCleverGespraech from './CustomerAkteCleverGespraech.jsx';
 import CustomerAkteSharedWorkspace from './CustomerAkteSharedWorkspace.jsx';
 import CustomerAkteOfferWorkspacePanel from './CustomerAkteOfferWorkspacePanel.jsx';
+import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
 import CustomerAkteOfferRail from './CustomerAkteOfferRail.jsx';
 import CustomerAkteCleverNotepad from './CustomerAkteCleverNotepad.jsx';
 import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
@@ -473,6 +474,25 @@ export default function DealerAiLeadFollowUp({
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [offerWorkspaceCard, setOfferWorkspaceCard] = useState(null);
   const [workingContextItems, setWorkingContextItems] = useState([]);
+  const cleverComposerCtx = useCleverComposerOptional();
+  const globalHandoffConsumedRef = useRef(null);
+
+  // Handoff vom Global Composer (Working Context + Message-Edit)
+  useEffect(() => {
+    const items = cleverComposerCtx?.attachedWorkingObjects;
+    if (!Array.isArray(items) || !items.length) return;
+    const fingerprint = items.map((i) => i.id || i.label || i.messageDraft || '').join('|');
+    if (globalHandoffConsumedRef.current === fingerprint) return;
+    globalHandoffConsumedRef.current = fingerprint;
+    setWorkingContextItems((prev) => {
+      let next = prev;
+      for (const item of items) {
+        next = upsertWorkingContextItem(next, item);
+      }
+      return next;
+    });
+  }, [cleverComposerCtx?.attachedWorkingObjects]);
+
   const [freshTrackId, setFreshTrackId] = useState(null);
   const [akteSearchQuery, setAkteSearchQuery] = useState('');
   const [feedFocusMessageId, setFeedFocusMessageId] = useState(null);

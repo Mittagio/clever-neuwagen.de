@@ -669,6 +669,137 @@ export function buildUniversalReviewModel(turn = {}) {
     });
   }
 
+  const draftAction = (turn.preparedActions || []).find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  const grounded = draftAction?.payload?.knowledgeResult
+    || turn.knowledgeResult?.grounded
+    || null;
+  const hasKnowledgeAndMessage = !hasOfferAndMessage
+    && actionSections.some((s) => s.kind === 'message_draft')
+    && (
+      Boolean(grounded)
+      || (turn.sellerFacts || []).length > 0
+      || (turn.intents || []).some((i) => (
+        i.type === SELLER_TURN_INTENTS.RESOLVE_VEHICLE
+        || i.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE
+        || i.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT
+      ))
+    );
+
+  if (hasKnowledgeAndMessage) {
+    const msgSec = actionSections.find((s) => s.kind === 'message_draft');
+    const vehicleLabel = [
+      grounded?.vehicleIdentity?.modelLabel || grounded?.vehicleIdentity?.modelKey,
+      grounded?.vehicleIdentity?.trimLabel || grounded?.vehicleIdentity?.trimId,
+      grounded?.vehicleIdentity?.color
+        || (turn.sellerFacts || []).find((f) => f.type === 'color')?.value,
+    ].filter(Boolean).join(' · ');
+    const sellerLines = (turn.sellerFacts || grounded?.sellerFacts || [])
+      .filter((f) => ['availability', 'package_present', 'sunroof', 'color'].includes(f.type))
+      .map((f) => {
+        if (f.type === 'availability') return 'Fahrzeug vorhanden';
+        if (f.type === 'package_present') return String(f.value);
+        if (f.type === 'sunroof') return String(f.value);
+        return null;
+      })
+      .filter(Boolean);
+    const packageHighlights = grounded?.packageHighlights
+      || grounded?.verifiedPackageFacts?.items?.slice(0, 5)
+      || [];
+    const equipmentHighlights = grounded?.equipmentHighlights
+      || grounded?.verifiedEquipmentFacts?.items?.slice(0, 5)
+      || [];
+    const missingPkg = (grounded?.missingKnowledge || []).includes('exact_technology_package_contents')
+      || (turn.missingInformation || []).some((m) => m.id === 'exact_technology_package_contents');
+    const sources = [
+      packageHighlights.length
+        ? {
+          id: 'package',
+          label: 'Technologie-Paket',
+          source: grounded?.verifiedPackageFacts?.source || 'verified_vehicle_data',
+          evidenceId: grounded?.verifiedPackageFacts?.evidenceId || null,
+        }
+        : null,
+      equipmentHighlights.length
+        ? {
+          id: 'equipment',
+          label: 'GT-Line Ausstattung',
+          source: grounded?.verifiedEquipmentFacts?.source || 'verified_vehicle_data',
+          evidenceId: grounded?.verifiedEquipmentFacts?.evidenceId || null,
+        }
+        : null,
+      sellerLines.includes('Fahrzeug vorhanden')
+        ? { id: 'availability', label: 'Verfügbarkeit', source: 'seller_input' }
+        : null,
+      sellerLines.some((l) => /schiebedach/i.test(l))
+        ? { id: 'sunroof', label: 'Schiebedach', source: 'seller_input' }
+        : null,
+    ].filter(Boolean);
+
+    actionSections.unshift({
+      id: 'knowledge_and_message_review',
+      kind: 'knowledge_and_message_review',
+      title: missingPkg ? 'Fahrzeug erkannt' : 'Clever hat vorbereitet',
+      headline: turn.resolvedCustomer?.name || vehicleLabel || null,
+      body: [
+        turn.resolvedCustomer?.name ? `KUNDE\n${turn.resolvedCustomer.name}` : null,
+        vehicleLabel ? `FAHRZEUG\n${vehicleLabel}` : null,
+        sellerLines.length ? `LAUT VERKÄUFER\n${sellerLines.join('\n')}` : null,
+        packageHighlights.length
+          ? `VERIFIZIERT\nTechnologie-Paket:\n${packageHighlights.join(' · ')}`
+          : (missingPkg
+            ? 'Noch nicht eindeutig verifiziert:\nInhalt des Technologie-Pakets für diese Variante'
+            : null),
+        equipmentHighlights.length
+          ? `GT-Line:\n${equipmentHighlights.join(' · ')}`
+          : null,
+        msgSec?.body ? `NACHRICHT\n„${String(msgSec.body).trim()}“` : null,
+      ].filter(Boolean).join('\n\n'),
+      sources,
+      sellerFacts: turn.sellerFacts || grounded?.sellerFacts || [],
+      packageHighlights,
+      equipmentHighlights,
+      messageSection: msgSec,
+      knowledgeResult: grounded,
+      primaryActions: missingPkg
+        ? [
+          {
+            id: 'write_without_package_details',
+            label: 'Ohne Paketdetails schreiben',
+            action: 'write_without_package_details',
+          },
+          {
+            id: 'review_vehicle_data',
+            label: 'Fahrzeugdaten prüfen',
+            action: 'review_data',
+          },
+        ]
+        : [
+          {
+            id: 'edit_message',
+            label: 'Nachricht bearbeiten',
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'edit_message',
+          },
+          {
+            id: 'view_sources',
+            label: 'Quellen ansehen',
+            action: 'view_sources',
+          },
+          {
+            id: 'send_message',
+            label: 'Senden',
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'send_handoff',
+          },
+          {
+            id: 'discard',
+            label: 'Verwerfen',
+            action: 'discard',
+          },
+        ],
+    });
+  }
+
   const multiAction = actionSections.length > 1;
   const historyOnly = actionSections.some((s) => (
     s.kind === 'history_search'
@@ -681,11 +812,13 @@ export function buildUniversalReviewModel(turn = {}) {
   const appointmentPrep = actionSections.some((s) => s.kind === 'appointment_propose');
   const trackFeedback = actionSections.some((s) => s.kind === 'track_feedback');
   const offerMessageReview = actionSections.some((s) => s.kind === 'offer_and_message_review');
+  const knowledgeMessageReview = actionSections.some((s) => s.kind === 'knowledge_and_message_review');
   const clarifyGoal = (turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message');
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
     && !trackFeedback
     && !appointmentPrep
     && !offerMessageReview
+    && !knowledgeMessageReview
     && !actionSections.some((s) => (
       s.kind === 'offer_prepare'
       || s.kind === 'offer_incomplete'
@@ -698,60 +831,68 @@ export function buildUniversalReviewModel(turn = {}) {
     ));
 
   return {
-    reviewType: offerMessageReview
-      ? 'offer_and_message_review'
-      : (clarifyGoal ? 'clarify_goal' : null),
+    reviewType: knowledgeMessageReview
+      ? 'knowledge_and_message_review'
+      : offerMessageReview
+        ? 'offer_and_message_review'
+        : (clarifyGoal ? 'clarify_goal' : null),
     title: clarifyGoal
       ? '✨ Kurze Rückfrage'
-      : offerMessageReview
-        ? '✨ Clever hat vorbereitet'
-        : historyOnly
-          ? (actionSections.some((s) => s.kind === 'no_search_result')
-            ? '✨ Nichts gefunden'
-            : actionSections.some((s) => s.kind === 'offer_history_result')
-              ? '✨ Angebot gefunden'
-              : '✨ Gefunden')
-          : customerSearchOnly
-            ? (actionSections.find((s) => s.kind === 'customer_search_results')?.title === 'Mehrere Kunden gefunden'
-              ? '✨ Mehrere Kunden gefunden'
-              : '✨ Kunde gefunden')
-            : customerSummaryOnly
-              ? `✨ ${actionSections.find((s) => s.kind === 'customer_summary')?.title || 'Kundenkontext'}`
-              : trackFeedback
-                ? '✨ Clever hat einsortiert'
-                : actionSections.some((s) => s.kind === 'today_overview')
-                  ? '✨ Heute wichtig'
-                  : actionSections.some((s) => s.kind === 'knowledge_result')
-                    ? '✨ Fahrzeugwissen'
-                    : goldenOnly
-                      ? '✨ Clever'
-                      : actionSections.some((s) => s.kind === 'offer_incomplete')
-                        ? '✨ Clever prüft das Angebot'
-                        : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-                          ? '✨ Clever hat vorbereitet'
-                          : '✨ Clever hat verstanden'),
+      : knowledgeMessageReview
+        ? (actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.title === 'Fahrzeug erkannt'
+          ? '✨ Fahrzeug erkannt'
+          : '✨ Clever hat vorbereitet')
+        : offerMessageReview
+          ? '✨ Clever hat vorbereitet'
+          : historyOnly
+            ? (actionSections.some((s) => s.kind === 'no_search_result')
+              ? '✨ Nichts gefunden'
+              : actionSections.some((s) => s.kind === 'offer_history_result')
+                ? '✨ Angebot gefunden'
+                : '✨ Gefunden')
+            : customerSearchOnly
+              ? (actionSections.find((s) => s.kind === 'customer_search_results')?.title === 'Mehrere Kunden gefunden'
+                ? '✨ Mehrere Kunden gefunden'
+                : '✨ Kunde gefunden')
+              : customerSummaryOnly
+                ? `✨ ${actionSections.find((s) => s.kind === 'customer_summary')?.title || 'Kundenkontext'}`
+                : trackFeedback
+                  ? '✨ Clever hat einsortiert'
+                  : actionSections.some((s) => s.kind === 'today_overview')
+                    ? '✨ Heute wichtig'
+                    : actionSections.some((s) => s.kind === 'knowledge_result')
+                      ? '✨ Fahrzeugwissen'
+                      : goldenOnly
+                        ? '✨ Clever'
+                        : actionSections.some((s) => s.kind === 'offer_incomplete')
+                          ? '✨ Clever prüft das Angebot'
+                          : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+                            ? '✨ Clever hat vorbereitet'
+                            : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
     summaryLine: clarifyGoal
       ? (openMissing[0]?.label || 'Ziel klären')
-      : offerMessageReview
-        ? 'Angebot und Nachricht vorbereitet'
-        : historyOnly
-          ? (actionSections.find((s) => s.kind !== 'offer_and_message_review')?.headline || 'Treffer im Verlauf')
-          : customerSearchOnly
-            ? (actionSections[0]?.headline || 'Kundentreffer')
-            : customerSummaryOnly
-              ? (actionSections[0]?.body || actionSections[0]?.headline || 'Kundenkontext')
-              : trackFeedback
-                ? 'Fahrzeugspuren und Wünsche aktualisiert'
-                : goldenOnly
-                  ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
-                  : actionSections.some((s) => s.kind === 'offer_incomplete')
-                    ? 'Angebot unvollständig – Rate oder Bank-PDF benötigt'
-                    : multiAction
-                      ? `${actionSections.length} Aktionen vorbereitet`
-                      : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
+      : knowledgeMessageReview
+        ? 'Fahrzeugwissen und Nachricht vorbereitet'
+        : offerMessageReview
+          ? 'Angebot und Nachricht vorbereitet'
+          : historyOnly
+            ? (actionSections.find((s) => s.kind !== 'offer_and_message_review' && s.kind !== 'knowledge_and_message_review')?.headline || 'Treffer im Verlauf')
+            : customerSearchOnly
+              ? (actionSections[0]?.headline || 'Kundentreffer')
+              : customerSummaryOnly
+                ? (actionSections[0]?.body || actionSections[0]?.headline || 'Kundenkontext')
+                : trackFeedback
+                  ? 'Fahrzeugspuren und Wünsche aktualisiert'
+                  : goldenOnly
+                    ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
+                    : actionSections.some((s) => s.kind === 'offer_incomplete')
+                      ? 'Angebot unvollständig – Rate oder Bank-PDF benötigt'
+                      : multiAction
+                        ? `${actionSections.length} Aktionen vorbereitet`
+                        : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
@@ -759,27 +900,29 @@ export function buildUniversalReviewModel(turn = {}) {
     assistantReply: turn.assistantReply ?? null,
     primaryCta: clarifyGoal
       ? 'Angebot vorbereiten'
-      : offerMessageReview
-        ? 'Angebot prüfen'
-        : historyOnly
-          ? 'Im Verlauf öffnen'
-          : trackFeedback
-            ? 'Übernehmen'
-            : actionSections.some((s) => s.kind === 'today_overview')
-              ? 'Tagesliste anzeigen'
-              : actionSections.some((s) => s.kind === 'knowledge_result')
-                ? 'Mehr Details'
-                : goldenOnly
-                  ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
-                  : actionSections.some((s) => s.kind === 'offer_incomplete')
-                    ? 'Angebot vervollständigen'
-                    : appointmentPrep && !multiAction
-                      ? 'Vorschlag senden'
-                      : multiAction
-                        ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-                          ? 'Angebot und Nachricht prüfen'
-                          : 'Änderungen prüfen')
-                        : 'Übernehmen',
+      : knowledgeMessageReview
+        ? 'Nachricht bearbeiten'
+        : offerMessageReview
+          ? 'Angebot prüfen'
+          : historyOnly
+            ? 'Im Verlauf öffnen'
+            : trackFeedback
+              ? 'Übernehmen'
+              : actionSections.some((s) => s.kind === 'today_overview')
+                ? 'Tagesliste anzeigen'
+                : actionSections.some((s) => s.kind === 'knowledge_result')
+                  ? 'Mehr Details'
+                  : goldenOnly
+                    ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
+                    : actionSections.some((s) => s.kind === 'offer_incomplete')
+                      ? 'Angebot vervollständigen'
+                      : appointmentPrep && !multiAction
+                        ? 'Vorschlag senden'
+                        : multiAction
+                          ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+                            ? 'Angebot und Nachricht prüfen'
+                            : 'Änderungen prüfen')
+                          : 'Übernehmen',
     secondaryCta: clarifyGoal
       ? 'Nur Nachricht schreiben'
       : trackFeedback
@@ -793,6 +936,7 @@ export function buildUniversalReviewModel(turn = {}) {
     resolvedCustomer: turn.resolvedCustomer ?? null,
     goldenMoment: turn.goldenMoment ?? null,
     handoffWorkingContext: turn.handoffWorkingContext ?? null,
+    sources: actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.sources || [],
   };
 }
 
@@ -824,6 +968,20 @@ export function shouldShowUniversalReview(turn = {}) {
 
   if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP)) return true;
   if ((turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message')) return true;
+  if ((turn.missingInformation || []).some((m) => (
+    m.id === 'exact_technology_package_contents'
+    || m.id === 'clarify_vehicle_for_knowledge'
+  ))) return true;
+
+  const hasGroundedMessage = prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    && a.payload?.knowledgeResult
+  )) || prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.RESOLVE_VEHICLE
+    || a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE
+    || a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT
+  ));
+  if (hasGroundedMessage) return true;
 
   const hasAppointmentPrep = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT && a.status === 'prepared'

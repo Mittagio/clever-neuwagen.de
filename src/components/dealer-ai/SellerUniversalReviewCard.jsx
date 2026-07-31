@@ -13,6 +13,8 @@ function pickPrimaryBody(model) {
   if (knowledge?.headline) {
     return [knowledge.title, knowledge.headline, knowledge.line].filter(Boolean).join('\n');
   }
+  const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
+  if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
   const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
   if (offerMsg?.body) return String(offerMsg.body).trim();
   const today = sections.find((s) => s.kind === 'today_overview');
@@ -106,6 +108,7 @@ export default function SellerUniversalReviewCard({
   onMaybe = null,
   onDismiss = null,
   onOpenHistoryHit = null,
+  onReviewAction = null,
   /** accepted | ready_to_send | sent – settled last-action mode */
   status = null,
   statusLabel = null,
@@ -114,10 +117,16 @@ export default function SellerUniversalReviewCard({
   onSend = null,
 }) {
   const [copied, setCopied] = useState(false);
+  const [showSources, setShowSources] = useState(false);
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const body = useMemo(() => pickPrimaryBody(model), [model]);
   const metaLine = useMemo(() => pickMetaLine(model), [model]);
+  const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
+  const reviewActions = knowledgeMsg?.primaryActions
+    || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
+    || [];
+  const sources = knowledgeMsg?.sources || model?.sources || [];
   const historyHit = sections.find((s) => (
     (s.kind === 'history_search'
       || s.kind === 'history_search_results'
@@ -158,6 +167,23 @@ export default function SellerUniversalReviewCard({
     onAcceptAndRevise?.(model);
   }
 
+  function handleReviewAction(action) {
+    if (!action) return;
+    if (action.action === 'view_sources') {
+      setShowSources((v) => !v);
+      return;
+    }
+    if (typeof onReviewAction === 'function') {
+      onReviewAction(action, model);
+      return;
+    }
+    if (action.action === 'discard') {
+      onDismiss?.(model);
+      return;
+    }
+    onAccept?.(model, action);
+  }
+
   return (
     <article
       className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}`}
@@ -184,6 +210,33 @@ export default function SellerUniversalReviewCard({
       ) : (
         <p className="sur-card__summary">{model.summaryLine}</p>
       )}
+
+      {showSources && sources.length > 0 ? (
+        <ul className="sur-card__sources" aria-label="Quellen">
+          {sources.map((src) => (
+            <li key={src.id || src.label}>
+              <strong>{src.label}</strong>
+              {' → '}
+              Quelle: {src.source === 'seller_input' ? 'Verkäuferangabe' : (src.source || 'verifiziert')}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {!settled && reviewActions.length > 0 ? (
+        <div className="sur-card__text-actions" role="group" aria-label="Review-Aktionen">
+          {reviewActions.map((action) => (
+            <button
+              key={action.id || action.label}
+              type="button"
+              className="sur-card__text-link"
+              onClick={() => handleReviewAction(action)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {historyHit && onOpenHistoryHit ? (
         <button
