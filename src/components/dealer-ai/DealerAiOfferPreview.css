@@ -582,12 +582,12 @@
 .dai-opreview-pdf-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.65rem;
   margin: 0.35rem 0 0.85rem;
   padding: 0.85rem 0.95rem;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f7f5fc 0%, #f3f1f9 100%);
-  border: 1px solid rgba(109, 91, 184, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(165deg, #f8f7fb 0%, #f2f0f8 100%);
+  border: 1px solid rgba(109, 91, 184, 0.14);
 }
 
 .dai-opreview-pdf-actions--footer {
@@ -598,45 +598,126 @@
   width: 100%;
 }
 
-.dai-opreview-pdf-link {
+.dai-opreview-pdf-doc {
   display: flex;
   flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dai-opreview-pdf-doc__meta {
+  display: flex;
   align-items: flex-start;
-  gap: 0.15rem;
-  width: 100%;
-  padding: 0.55rem 0.65rem;
-  border: none;
-  border-radius: 10px;
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
+  gap: 0.65rem;
+  padding: 0.15rem 0.1rem;
+}
+
+.dai-opreview-pdf-doc__icon {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+.dai-opreview-pdf-doc__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.dai-opreview-pdf-doc__name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--op-navy, #0b1736);
-  box-shadow: 0 1px 0 rgba(11, 23, 54, 0.04);
+  word-break: break-word;
+  line-height: 1.3;
 }
 
-.dai-opreview-pdf-link:hover:not(:disabled) {
-  background: #faf9fd;
+.dai-opreview-pdf-doc__hint {
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: #94a3b8;
 }
 
-.dai-opreview-pdf-link.is-disabled {
-  opacity: 0.85;
-}
-
-.dai-opreview-pdf-link__name {
-  font-size: 0.95rem;
+.dai-opreview-pdf-preview-toggle {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--op-navy, #0b1736);
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  word-break: break-word;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(11, 23, 54, 0.04);
+  border: 1px solid rgba(109, 91, 184, 0.18);
 }
 
-.dai-opreview-pdf-link__action {
-  font-size: 0.78rem;
-  font-weight: 600;
+.dai-opreview-pdf-preview-toggle:hover:not(:disabled) {
+  background: #faf9fd;
+  border-color: rgba(109, 91, 184, 0.32);
+}
+
+.dai-opreview-pdf-preview-toggle.is-open {
+  background: var(--op-lavender, #f0edf8);
+  border-color: rgba(109, 91, 184, 0.28);
   color: var(--op-clever, #6d5bb8);
 }
 
-.dai-opreview-pdf-link.is-disabled .dai-opreview-pdf-link__action {
+.dai-opreview-pdf-frame-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(11, 23, 54, 0.1);
+  background: #fff;
+  max-height: 320px;
+}
+
+.dai-opreview-pdf-frame {
+  display: block;
+  width: 100%;
+  height: 300px;
+  max-height: 320px;
+  border: none;
+  background: #f8fafc;
+}
+
+.dai-opreview-pdf-open-tab {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  padding: 0.15rem 0.1rem;
+  color: var(--op-clever, #6d5bb8);
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dai-opreview-pdf-open-tab:hover:not(:disabled) {
+  color: #5648a0;
+}
+
+.dai-opreview-pdf-open-tab:disabled,
+.dai-opreview-pdf-preview-toggle:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.dai-opreview-pdf-missing {
+  margin: 0;
+  padding: 0.35rem 0.1rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: #c2410c;
+  line-height: 1.35;
+}
+
+.dai-opreview-pdf-replace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .dai-opreview-pdf-reupload {
@@ -646,7 +727,7 @@
   border: 1px dashed rgba(109, 91, 184, 0.35);
   background: transparent;
   color: var(--op-navy, #0b1736);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 650;
   cursor: pointer;
 }
@@ -660,10 +741,30 @@
   cursor: wait;
 }
 
+.dai-opreview-pdf-replace__hint {
+  margin: 0;
+  padding: 0 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
 .dai-opreview-pdf-toast {
   margin: 0;
   font-size: 0.78rem;
   color: #c2410c;
+}
+
+@media (min-width: 640px) {
+  .dai-opreview-pdf-frame-wrap {
+    max-height: 360px;
+  }
+
+  .dai-opreview-pdf-frame {
+    height: 340px;
+    max-height: 360px;
+  }
 }
 
 /* ── Desktop ── */

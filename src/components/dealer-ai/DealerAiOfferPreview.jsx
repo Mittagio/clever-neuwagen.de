@@ -121,6 +121,44 @@ function pickOriginalPdf(...candidates) {
   return best;
 }
 
+/** data:application/pdf;base64,… → blob: URL (zuverlässiger für iframe / window.open). */
+function createBlobUrlFromPdfDataUrl(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  if (!dataUrl.startsWith('data:')) return null;
+  try {
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) return null;
+    const header = dataUrl.slice(0, comma);
+    const payload = dataUrl.slice(comma + 1);
+    const mimeMatch = header.match(/^data:([^;,]+)/i);
+    const mime = mimeMatch?.[1] || 'application/pdf';
+    const isBase64 = /;base64/i.test(header);
+    let bytes;
+    if (isBase64) {
+      const binary = atob(payload);
+      bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    } else {
+      const decoded = decodeURIComponent(payload);
+      bytes = new Uint8Array(decoded.length);
+      for (let i = 0; i < decoded.length; i += 1) bytes[i] = decoded.charCodeAt(i);
+    }
+    return URL.createObjectURL(new Blob([bytes], { type: mime.includes('pdf') ? mime : 'application/pdf' }));
+  } catch {
+    return null;
+  }
+}
+
+function triggerPdfDownload(href, fileName) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = fileName || 'angebot.pdf';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function StatusIcon({ status }) {
   if (status === 'ok') {
     return (
@@ -156,7 +194,18 @@ export default function DealerAiOfferPreview({
 }) {
   const [savePending, setSavePending] = useState(false);
   const [pdfToast, setPdfToast] = useState('');
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [draftValues, setDraftValues] = useState(() => buildInitialConfirmValues(offerDraft));
+  const [confirmed, setConfirmed] = useState({});
+  const [edited, setEdited] = useState({});
+  const [centralConfirmed, setCentralConfirmed] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+  const [editMode, setEditMode] = useState(false);
   const fileInputRef = useRef(null);
+  const firstRowRef = useRef(null);
+  const conditionsRef = useRef(null);
+  const editInputRef = useRef(null);
   const sellerConfirm = offerDraft?.sellerConfirm;
   const requireConfirm = Boolean(sellerConfirm?.required) && !isSaved;
   const recognized = sellerConfirm?.recognized ?? {};
@@ -170,19 +219,24 @@ export default function DealerAiOfferPreview({
   const originalPdfHref = resolveOriginalPdfHref(originalPdf);
   const originalPdfFileName = originalPdf?.fileName || null;
   const showPdfBlock = Boolean(fromPdf || originalPdfFileName || onReuploadPdf);
-  const originalPdfLabel = originalPdfFileName
-    ? `📎 ${originalPdfFileName}`
-    : '📎 Original-PDF ansehen';
+  const pdfViewUrl = pdfBlobUrl || originalPdfHref;
 
-  const [draftValues, setDraftValues] = useState(() => buildInitialConfirmValues(offerDraft));
-  const [confirmed, setConfirmed] = useState({});
-  const [edited, setEdited] = useState({});
-  const [centralConfirmed, setCentralConfirmed] = useState(false);
-  const [editingField, setEditingField] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const firstRowRef = useRef(null);
-  const conditionsRef = useRef(null);
-  const editInputRef = useRef(null);
+  useEffect(() => {
+    const dataUrl = originalPdf?.dataUrl;
+    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+      setPdfBlobUrl(null);
+      return undefined;
+    }
+    const blobUrl = createBlobUrlFromPdfDataUrl(dataUrl);
+    setPdfBlobUrl(blobUrl);
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [originalPdf?.dataUrl]);
+
+  useEffect(() => {
+    setPdfPreviewOpen(false);
+  }, [originalPdf?.fileName, originalPdf?.dataUrl, originalPdf?.url]);
 
   const draftKey = [
     offerDraft?.source?.originalPdf?.fileName ?? '',
@@ -425,12 +479,31 @@ export default function DealerAiOfferPreview({
   }
 
   function handleOpenOriginalPdf() {
-    if (originalPdfHref) {
-      window.open(originalPdfHref, '_blank', 'noopener,noreferrer');
+    const href = pdfViewUrl;
+    if (!href) {
+      setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
+      window.setTimeout(() => setPdfToast(''), 3200);
       return;
     }
-    setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
-    window.setTimeout(() => setPdfToast(''), 3200);
+    const win = window.open(href, '_blank', 'noopener,noreferrer');
+    if (win) return;
+    try {
+      triggerPdfDownload(href, originalPdfFileName || 'angebot.pdf');
+      setPdfToast('Popup blockiert – Download gestartet.');
+      window.setTimeout(() => setPdfToast(''), 3200);
+    } catch {
+      setPdfToast('PDF konnte nicht geöffnet werden – bitte erneut hochladen.');
+      window.setTimeout(() => setPdfToast(''), 3200);
+    }
+  }
+
+  function handleTogglePdfPreview() {
+    if (!pdfViewUrl) {
+      setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
+      window.setTimeout(() => setPdfToast(''), 3200);
+      return;
+    }
+    setPdfPreviewOpen((open) => !open);
   }
 
   function handleReuploadClick() {
@@ -447,35 +520,81 @@ export default function DealerAiOfferPreview({
 
   function renderPdfActions({ inFooter = false } = {}) {
     if (!showPdfBlock) return null;
+    const hasPdfSource = Boolean(originalPdfFileName || fromPdf || originalPdfHref);
     return (
       <div
         className={inFooter ? 'dai-opreview-pdf-actions dai-opreview-pdf-actions--footer' : 'dai-opreview-pdf-actions'}
         aria-label="Original-PDF"
       >
-        {(originalPdfFileName || fromPdf) && (
-          <button
-            type="button"
-            className={`dai-opreview-pdf-link${originalPdfHref ? '' : ' is-disabled'}`}
-            onClick={handleOpenOriginalPdf}
-            disabled={isReuploading}
-            title={originalPdfHref ? 'Original-PDF öffnen' : 'PDF nicht verfügbar – bitte erneut hochladen'}
-          >
-            <span className="dai-opreview-pdf-link__name">{originalPdfLabel}</span>
-            <span className="dai-opreview-pdf-link__action">
-              {originalPdfHref ? 'Original-PDF ansehen' : 'PDF fehlt – erneut hochladen'}
-            </span>
-          </button>
+        {hasPdfSource && (
+          <div className="dai-opreview-pdf-doc">
+            <div className="dai-opreview-pdf-doc__meta">
+              <span className="dai-opreview-pdf-doc__icon" aria-hidden>📄</span>
+              <div className="dai-opreview-pdf-doc__text">
+                <span className="dai-opreview-pdf-doc__name">
+                  {originalPdfFileName || 'Original-PDF'}
+                </span>
+                <span className="dai-opreview-pdf-doc__hint">
+                  {pdfViewUrl ? 'Bank-/Händler-Angebot' : 'PDF nicht verfügbar'}
+                </span>
+              </div>
+            </div>
+
+            {pdfViewUrl ? (
+              <>
+                <button
+                  type="button"
+                  className={`dai-opreview-pdf-preview-toggle${pdfPreviewOpen ? ' is-open' : ''}`}
+                  onClick={handleTogglePdfPreview}
+                  disabled={isReuploading}
+                  aria-expanded={pdfPreviewOpen}
+                >
+                  {pdfPreviewOpen ? 'Vorschau ausblenden' : 'PDF-Vorschau'}
+                </button>
+
+                {pdfPreviewOpen && (
+                  <div className="dai-opreview-pdf-frame-wrap">
+                    <iframe
+                      className="dai-opreview-pdf-frame"
+                      src={pdfViewUrl}
+                      title={originalPdfFileName ? `Vorschau: ${originalPdfFileName}` : 'PDF-Vorschau'}
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="dai-opreview-pdf-open-tab"
+                  onClick={handleOpenOriginalPdf}
+                  disabled={isReuploading}
+                >
+                  In neuem Tab öffnen
+                </button>
+              </>
+            ) : (
+              <p className="dai-opreview-pdf-missing" role="status">
+                PDF fehlt – bitte korrigiertes Angebot ersetzen
+              </p>
+            )}
+          </div>
         )}
+
         {onReuploadPdf && !saved && (
-          <button
-            type="button"
-            className="dai-opreview-pdf-reupload"
-            onClick={handleReuploadClick}
-            disabled={isReuploading || isSaving}
-          >
-            {isReuploading ? 'PDF wird gelesen …' : 'Neues PDF hochladen'}
-          </button>
+          <div className="dai-opreview-pdf-replace">
+            <button
+              type="button"
+              className="dai-opreview-pdf-reupload"
+              onClick={handleReuploadClick}
+              disabled={isReuploading || isSaving}
+            >
+              {isReuploading ? 'PDF wird gelesen …' : 'Korrigiertes PDF ersetzen'}
+            </button>
+            <p className="dai-opreview-pdf-replace__hint">
+              Ersetzt die Erkennung mit einem neuen Bank-/Händler-PDF
+            </p>
+          </div>
         )}
+
         {pdfToast && (
           <p className="dai-opreview-pdf-toast" role="status">{pdfToast}</p>
         )}
@@ -491,7 +610,7 @@ export default function DealerAiOfferPreview({
     ? `Wird in der Kundenakte von ${customer.name} abgelegt.`
     : 'Wird in der Kundenakte abgelegt.';
 
-  const savedSupportLine = originalPdfHref
+  const savedSupportLine = pdfViewUrl
     ? 'Alle Daten und das Original-PDF wurden in der Kundenakte gespeichert.'
     : 'Alle Daten wurden in der Kundenakte gespeichert.';
 
