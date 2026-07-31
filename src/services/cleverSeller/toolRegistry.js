@@ -24,6 +24,9 @@ import {
 import { buildGoldenMoment } from '../journey/goldenMoment.js';
 import { getTodayOverview } from './getTodayOverview.js';
 import { lookupVehicleTechnicalFact } from './lookupVehicleTechnicalFact.js';
+import { resolveCustomersFromInput, buildCustomerCardSummary } from './globalCustomerResolve.js';
+import { searchGlobalCustomerHistory } from './globalHistorySearch.js';
+import { summarizeCustomerContext } from './summarizeCustomerContext.js';
 
 /**
  * @typedef {object} CleverSellerToolDef
@@ -41,13 +44,21 @@ export const CLEVER_SELLER_TOOLS = {
   search_customer_history: {
     id: 'search_customer_history',
     label: 'Verlauf durchsuchen',
-    requiredInputs: ['lead', 'sellerInput'],
-    optionalInputs: ['customerName'],
+    requiredInputs: [],
+    optionalInputs: ['lead', 'sellerInput', 'customerName', 'leadsSnapshot'],
     needsSellerConfirmation: false,
     sourceRequirements: ['customer_message', 'system'],
-    execute: ({ lead, sellerInput, customerName }) => (
-      runComposerAkteSearch(lead, sellerInput, { customerName })
-    ),
+    execute: ({ lead, sellerInput, leadsSnapshot = [] }) => {
+      if (Array.isArray(leadsSnapshot) && leadsSnapshot.length) {
+        return searchGlobalCustomerHistory({
+          lead: lead?.id ? lead : null,
+          sellerInput,
+          leadsSnapshot,
+          mode: 'auto',
+        });
+      }
+      return runComposerAkteSearch(lead || {}, sellerInput, {});
+    },
   },
   prepare_offer: {
     id: 'prepare_offer',
@@ -152,6 +163,98 @@ export const CLEVER_SELLER_TOOLS = {
     needsSellerConfirmation: false,
     sourceRequirements: ['system'],
     execute: ({ leadsSnapshot = [], now }) => getTodayOverview(leadsSnapshot, { now }),
+  },
+  find_customer: {
+    id: 'find_customer',
+    label: 'Kunde finden',
+    requiredInputs: [],
+    optionalInputs: ['sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system'],
+    execute: ({ sellerInput, leadsSnapshot = [] }) => {
+      const resolution = resolveCustomersFromInput(sellerInput, leadsSnapshot, { limit: 6 });
+      return {
+        ...resolution,
+        cards: (resolution.results || []).map((r) => ({
+          ...r,
+          card: r.lead ? buildCustomerCardSummary(r.lead) : null,
+        })),
+      };
+    },
+  },
+  open_customer: {
+    id: 'open_customer',
+    label: 'Kunde öffnen',
+    requiredInputs: [],
+    optionalInputs: ['sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system'],
+    execute: ({ sellerInput, leadsSnapshot = [] }) => {
+      const resolution = resolveCustomersFromInput(sellerInput, leadsSnapshot, { limit: 6 });
+      return {
+        ...resolution,
+        action: 'open_customer',
+        cards: (resolution.results || []).map((r) => ({
+          ...r,
+          card: r.lead ? buildCustomerCardSummary(r.lead) : null,
+        })),
+      };
+    },
+  },
+  summarize_customer_context: {
+    id: 'summarize_customer_context',
+    label: 'Kundenkontext',
+    requiredInputs: [],
+    optionalInputs: ['lead', 'sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['customer_message', 'system'],
+    execute: ({ lead, sellerInput, leadsSnapshot = [] }) => summarizeCustomerContext({
+      lead,
+      sellerInput,
+      leadsSnapshot,
+    }),
+  },
+  search_customer_messages: {
+    id: 'search_customer_messages',
+    label: 'Nachrichten suchen',
+    requiredInputs: [],
+    optionalInputs: ['lead', 'sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['customer_message', 'system'],
+    execute: ({ lead, sellerInput, leadsSnapshot = [] }) => searchGlobalCustomerHistory({
+      lead,
+      sellerInput,
+      leadsSnapshot,
+      mode: 'messages',
+    }),
+  },
+  search_customer_offers: {
+    id: 'search_customer_offers',
+    label: 'Angebote suchen',
+    requiredInputs: [],
+    optionalInputs: ['lead', 'sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system'],
+    execute: ({ lead, sellerInput, leadsSnapshot = [] }) => searchGlobalCustomerHistory({
+      lead,
+      sellerInput,
+      leadsSnapshot,
+      mode: 'offers',
+    }),
+  },
+  search_customer_activities: {
+    id: 'search_customer_activities',
+    label: 'Aktivitäten suchen',
+    requiredInputs: [],
+    optionalInputs: ['lead', 'sellerInput', 'leadsSnapshot'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system'],
+    execute: ({ lead, sellerInput, leadsSnapshot = [] }) => searchGlobalCustomerHistory({
+      lead,
+      sellerInput,
+      leadsSnapshot,
+      mode: 'activities',
+    }),
   },
   build_customer_understanding: {
     id: 'build_customer_understanding',

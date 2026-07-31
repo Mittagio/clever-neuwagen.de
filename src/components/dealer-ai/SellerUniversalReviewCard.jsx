@@ -21,6 +21,35 @@ function pickPrimaryBody(model) {
         .join('\n')
     )).join('\n\n');
   }
+  const customerSearch = sections.find((s) => s.kind === 'customer_search_results');
+  if (customerSearch?.results?.length) {
+    if (customerSearch.results.length === 1) {
+      return [
+        customerSearch.headline,
+        customerSearch.line,
+        customerSearch.body,
+      ].filter(Boolean).join('\n');
+    }
+    return customerSearch.results.slice(0, 4).map((r) => (
+      [r.customerName, r.vehicleLabel, r.matchReason ? `Grund: ${r.matchReason}` : null]
+        .filter(Boolean)
+        .join('\n')
+    )).join('\n\n');
+  }
+  const customerSummary = sections.find((s) => s.kind === 'customer_summary');
+  if (customerSummary?.body) return String(customerSummary.body).trim();
+  const historyResults = sections.find((s) => (
+    s.kind === 'history_search_results' || s.kind === 'offer_history_result'
+  ));
+  if (historyResults) {
+    return [
+      historyResults.headline,
+      historyResults.body,
+      historyResults.line,
+    ].filter(Boolean).join('\n');
+  }
+  const noResult = sections.find((s) => s.kind === 'no_search_result');
+  if (noResult?.body) return String(noResult.body).trim();
   const draftSection = sections.find((s) => (
     (s.kind === 'message_draft'
       || s.kind === 'appointment_propose'
@@ -87,7 +116,12 @@ export default function SellerUniversalReviewCard({
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const body = useMemo(() => pickPrimaryBody(model), [model]);
   const metaLine = useMemo(() => pickMetaLine(model), [model]);
-  const historyHit = sections.find((s) => s.kind === 'history_search' && s.hit)?.hit;
+  const historyHit = sections.find((s) => (
+    (s.kind === 'history_search'
+      || s.kind === 'history_search_results'
+      || s.kind === 'offer_history_result')
+    && s.hit
+  ))?.hit;
   const settled = Boolean(status);
 
   if (!model || (!groups.length && !sections.length && !body)) return null;

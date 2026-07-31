@@ -120,6 +120,150 @@ export function buildUniversalActionSections(turn = {}) {
     });
   }
 
+  const customerSearchAction = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+  ));
+  const customerSearch = customerSearchAction
+    ? (turn.customerSearchResults || customerSearchAction.payload?.customerSearchResults)
+    : null;
+  if (Array.isArray(customerSearch) && customerSearch.length && !turn.customerSummary) {
+    const unique = customerSearch.length === 1;
+    const top = customerSearch[0];
+    const card = top.card || null;
+    sections.push({
+      id: 'customer_search_results',
+      kind: 'customer_search_results',
+      title: unique ? 'Kunde gefunden' : 'Mehrere Kunden gefunden',
+      headline: unique
+        ? (top.customerName || 'Kunde')
+        : `${customerSearch.length} Treffer`,
+      line: unique
+        ? (card?.headline || top.vehicleLabel || top.matchReason || null)
+        : null,
+      body: unique
+        ? ([
+          card?.favoriteLine ? `Aktuell: ${card.favoriteLine}` : null,
+          ...(card?.deferredLines || []).map((l) => l),
+          top.matchReason ? `Grund: ${top.matchReason}` : null,
+        ].filter(Boolean).join('\n') || null)
+        : null,
+      results: customerSearch.map((r) => ({
+        leadId: r.leadId || r.customerId,
+        customerName: r.customerName,
+        vehicleLabel: r.vehicleLabel || r.card?.headline,
+        matchReason: r.matchReason || (r.matchReasons || []).join(' · '),
+        matchReasons: r.matchReasons || [],
+        card: r.card || null,
+      })),
+      primaryActions: customerSearch.slice(0, 4).map((r) => ({
+        id: `open-${r.leadId || r.customerId}`,
+        label: `${r.customerName || 'Kunde'} öffnen`,
+        leadId: r.leadId || r.customerId,
+        action: 'open_customer',
+      })),
+    });
+  }
+
+  const summary = turn.customerSummary
+    || prepared.find((a) => a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT)
+      ?.payload?.customerSummary;
+  if (summary) {
+    sections.push({
+      id: 'customer_summary',
+      kind: 'customer_summary',
+      title: summary.customerName || 'Kundenkontext',
+      headline: summary.favorite || summary.paymentLabel || null,
+      body: (summary.lines || []).join('\n'),
+      line: summary.important?.length
+        ? `Wichtig: ${summary.important.join(' · ')}`
+        : null,
+      summary,
+      primaryActions: [
+        {
+          id: 'open_customer',
+          label: 'Kundenakte öffnen',
+          leadId: summary.customerId,
+          action: 'open_customer',
+        },
+      ],
+    });
+  }
+
+  const historyResults = turn.historySearchResults
+    || prepared.find((a) => (
+      a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+      || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+      || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
+      || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
+    ))?.payload?.historySearchResults;
+
+  if (Array.isArray(historyResults)) {
+    const offerHistory = historyResults.some((h) => (
+      h.sourceType === 'offer_event' || h.kind === 'offer_event'
+    ));
+    if (!historyResults.length) {
+      sections.push({
+        id: 'no_search_result',
+        kind: 'no_search_result',
+        title: 'Nichts gefunden',
+        headline: 'Keine Treffer in der Historie',
+        body: prepared.find((a) => a.payload?.message)?.payload?.message
+          || 'Ich habe dazu in der Kundenhistorie nichts gefunden.',
+      });
+    } else if (offerHistory && historyResults[0]?.sourceType === 'offer_event') {
+      const top = historyResults[0];
+      sections.push({
+        id: 'offer_history_result',
+        kind: 'offer_history_result',
+        title: 'Angebot gefunden',
+        headline: top.whenLabel || top.title,
+        body: [
+          top.vehicleLabel ? `Fahrzeug: ${top.vehicleLabel}` : null,
+          top.version ? `Version: ${top.version}` : null,
+          top.sourceLabel ? `Quelle: ${top.sourceLabel}` : null,
+        ].filter(Boolean).join('\n'),
+        line: top.matchedText || null,
+        hit: top,
+        results: historyResults,
+        primaryActions: top.offerId
+          ? [{
+            id: 'open_offer',
+            label: 'Angebot öffnen',
+            leadId: top.customerId,
+            offerId: top.offerId,
+            action: 'open_offer',
+          }]
+          : [],
+      });
+    } else {
+      const top = historyResults[0];
+      sections.push({
+        id: 'history_search_results',
+        kind: 'history_search_results',
+        title: historyResults.length === 1 ? 'Gefunden' : `${historyResults.length} Treffer`,
+        headline: top.whenLabel || top.title || 'Treffer',
+        body: top.matchedText || top.snippet || null,
+        line: top.sourceLabel ? `Quelle: ${top.sourceLabel}` : null,
+        hit: top,
+        results: historyResults,
+        hitCount: historyResults.length,
+        primaryActions: [
+          top.messageId || top.sourceId
+            ? {
+              id: 'open_history',
+              label: 'Im Verlauf öffnen',
+              leadId: top.customerId,
+              messageId: top.messageId || top.sourceId,
+              action: 'open_history',
+            }
+            : null,
+        ].filter(Boolean),
+      });
+    }
+  }
+
   const offerUpdate = prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
     && a.status === 'prepared'
@@ -325,19 +469,26 @@ export function buildUniversalActionSections(turn = {}) {
 
   const historyAction = prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
   ));
-  if (historyAction) {
-    const hits = historyAction.legacy?.results ?? [];
-    const top = hits[0] || null;
+  // Legacy INLINE_RESULT shape nur wenn noch keine history_search_results Section
+  if (historyAction && !sections.some((s) => (
+    s.kind === 'history_search_results'
+    || s.kind === 'offer_history_result'
+    || s.kind === 'no_search_result'
+  ))) {
+    const legacyHits = historyAction.legacy?.results ?? [];
+    const top = legacyHits[0] || null;
+    const inlineHits = top?.hits || [];
     sections.push({
       id: 'history_search',
       kind: 'history_search',
-      title: hits.length ? '✨ Gefunden' : 'Verlauf',
-      headline: top?.whenLabel || top?.title || (hits.length ? `${hits.length} Treffer` : 'Kein Treffer'),
+      title: inlineHits.length || legacyHits.length ? '✨ Gefunden' : 'Verlauf',
+      headline: top?.whenLabel || top?.title || (legacyHits.length ? `${legacyHits.length} Treffer` : 'Kein Treffer'),
       body: top?.snippet || top?.body || top?.preview || null,
-      line: hits.length > 1 ? `${hits.length} Treffer im Verlauf` : null,
+      line: legacyHits.length > 1 ? `${legacyHits.length} Treffer im Verlauf` : null,
       hit: top,
-      hitCount: hits.length,
+      hitCount: legacyHits.length,
     });
   }
 
@@ -472,7 +623,14 @@ export function buildUniversalReviewModel(turn = {}) {
   const openMissing = (turn.missingInformation ?? []).slice(0, 3);
   const actionSections = actionSectionsEarly;
   const multiAction = actionSections.length > 1;
-  const historyOnly = actionSections.some((s) => s.kind === 'history_search') && !facts.length;
+  const historyOnly = actionSections.some((s) => (
+    s.kind === 'history_search'
+    || s.kind === 'history_search_results'
+    || s.kind === 'offer_history_result'
+    || s.kind === 'no_search_result'
+  )) && !facts.length;
+  const customerSearchOnly = actionSections.some((s) => s.kind === 'customer_search_results') && !facts.length;
+  const customerSummaryOnly = actionSections.some((s) => s.kind === 'customer_summary') && !facts.length;
   const appointmentPrep = actionSections.some((s) => s.kind === 'appointment_propose');
   const trackFeedback = actionSections.some((s) => s.kind === 'track_feedback');
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
@@ -484,31 +642,48 @@ export function buildUniversalReviewModel(turn = {}) {
       || s.kind === 'message_draft'
       || s.kind === 'today_overview'
       || s.kind === 'knowledge_result'
+      || s.kind === 'customer_search_results'
+      || s.kind === 'customer_summary'
+      || s.kind === 'history_search_results'
     ));
 
   return {
     title: historyOnly
-      ? '✨ Gefunden'
-      : trackFeedback
-        ? '✨ Clever hat einsortiert'
-        : actionSections.some((s) => s.kind === 'today_overview')
-          ? '✨ Heute wichtig'
-          : actionSections.some((s) => s.kind === 'knowledge_result')
-            ? '✨ Fahrzeugwissen'
-            : goldenOnly
-              ? '✨ Clever'
-              : actionSections.some((s) => s.kind === 'offer_incomplete')
-                ? '✨ Clever prüft das Angebot'
-                : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-                  ? '✨ Clever hat vorbereitet'
-                  : '✨ Clever hat verstanden'),
+      ? (actionSections.some((s) => s.kind === 'no_search_result')
+        ? '✨ Nichts gefunden'
+        : actionSections.some((s) => s.kind === 'offer_history_result')
+          ? '✨ Angebot gefunden'
+          : '✨ Gefunden')
+      : customerSearchOnly
+        ? (actionSections.find((s) => s.kind === 'customer_search_results')?.title === 'Mehrere Kunden gefunden'
+          ? '✨ Mehrere Kunden gefunden'
+          : '✨ Kunde gefunden')
+        : customerSummaryOnly
+          ? `✨ ${actionSections.find((s) => s.kind === 'customer_summary')?.title || 'Kundenkontext'}`
+          : trackFeedback
+            ? '✨ Clever hat einsortiert'
+            : actionSections.some((s) => s.kind === 'today_overview')
+              ? '✨ Heute wichtig'
+              : actionSections.some((s) => s.kind === 'knowledge_result')
+                ? '✨ Fahrzeugwissen'
+                : goldenOnly
+                  ? '✨ Clever'
+                  : actionSections.some((s) => s.kind === 'offer_incomplete')
+                    ? '✨ Clever prüft das Angebot'
+                    : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+                      ? '✨ Clever hat vorbereitet'
+                      : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
     summaryLine: historyOnly
       ? (actionSections[0]?.headline || 'Treffer im Verlauf')
-      : trackFeedback
-        ? 'Fahrzeugspuren und Wünsche aktualisiert'
+      : customerSearchOnly
+        ? (actionSections[0]?.headline || 'Kundentreffer')
+        : customerSummaryOnly
+          ? (actionSections[0]?.body || actionSections[0]?.headline || 'Kundenkontext')
+          : trackFeedback
+            ? 'Fahrzeugspuren und Wünsche aktualisiert'
         : goldenOnly
           ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
           : actionSections.some((s) => s.kind === 'offer_incomplete')
@@ -565,8 +740,18 @@ export function shouldShowUniversalReview(turn = {}) {
   if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) return true;
   if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) return true;
   if (turn.todayOverview || turn.knowledgeResult) return true;
+  if (turn.customerSearchResults?.length || turn.customerSummary || turn.historySearchResults) return true;
 
-  const hasHistory = prepared.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
+  const hasHistory = prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
+    || a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
+    || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+  ));
   if (hasHistory) return true;
 
   if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP)) return true;

@@ -887,6 +887,16 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   const isHistoryQuery = /\b(was hatte|was habe|damals|verlauf|historie)\b/i.test(t)
     || /\bwas\b.{0,40}\bgeschrieben\b/i.test(t)
     || /\bwelche[snr]?\s+angebot\b/i.test(t);
+  const isOfferSentQuery = /\b(wann\s+habe\s+ich|zuletzt).{0,60}\bangebot\b/i.test(t)
+    || /\bangebot\b.{0,40}\b(geschickt|gesendet|versendet)\b/i.test(t);
+  const isOpenCustomer = /(?:^|[^\wäöüÄÖÜß])(?:öffne|zeige|zeig)\s+(?:den\s+|die\s+)?(?:kunden?\s+)?(?:herrn?\s+|frau\s+)?[A-Za-zÄÖÜäöüß-]/i.test(t)
+    && !/\banhängelast|reichweite\b/i.test(t);
+  const isFindCustomer = /(?:^|[^\wäöüÄÖÜß])(?:finde|suche)\s+(?:den\s+|die\s+)?kunden?\b/i.test(t)
+    || (/\bfinde\b/i.test(t) && /\b(sportage|xceed|ahk|rot)\b/i.test(t) && !/\banhängelast\b/i.test(t));
+  const isSummarizeCustomer = /\bwas\s+wollte\b/i.test(t)
+    || /\bnoch\s+einmal\??\s*$/i.test(t)
+    || /\b(?:kundenkontext|zusammenfassung)\b/i.test(t)
+    || /\bwie\s+steht.?s\s+(?:bei|mit)\b/i.test(t);
   const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const contextClasses = [
@@ -905,8 +915,28 @@ export function detectSellerTurnIntents(text = '', facts = []) {
 
   const hasContextFacts = facts.some((f) => contextClasses.includes(f.factClass));
 
-  if (isHistoryQuery) {
+  if (isOfferSentQuery) {
+    add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS, 0.96);
+    add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.9);
+  } else if (isHistoryQuery) {
     add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.94);
+    if (/\bgeschrieben|nachricht\b/i.test(t)) {
+      add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES, 0.92);
+    }
+  }
+
+  if (isOpenCustomer && !isHistoryQuery && !isOfferSentQuery && !isSummarizeCustomer) {
+    add(SELLER_TURN_INTENTS.OPEN_CUSTOMER, 0.97);
+    add(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP, 0.9);
+  }
+
+  if (isFindCustomer && !isHistoryQuery && !isOfferSentQuery) {
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.96);
+    add(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP, 0.9);
+  }
+
+  if (isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery) {
+    add(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT, 0.96);
   }
 
   if (/\b(was liegt heute|heute an\b|tages(?:überblick|ueberblick|übersicht|uebersicht)|was steht heute|heutige vorgänge|heutige vorgaenge)\b/i.test(t)
@@ -934,7 +964,10 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     [SELLER_ACTION_INTENTS.ADD_NOTE]: SELLER_TURN_INTENTS.ADD_NOTE,
     [SELLER_ACTION_INTENTS.LOOKUP_FACT]: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   };
-  if (map[primary]) {
+  // Bei Open/Find/Summary/History keinen Message-Default aus Primary-Action
+  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery) {
+    // Navigation / Suche hat Vorrang vor Message-/Offer-Default
+  } else if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (
         isHistoryQuery
@@ -945,9 +978,17 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     if (!skipMessageDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage && !isHistoryQuery && !isNextStepQuery) {
+  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
-  } else if (hasContextFacts && !hasAppointmentFact) {
+  } else if (
+    hasContextFacts
+    && !hasAppointmentFact
+    && !isFindCustomer
+    && !isOpenCustomer
+    && !isSummarizeCustomer
+    && !isHistoryQuery
+    && !isOfferSentQuery
+  ) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
   } else if (hasAppointmentFact && hasContextFacts) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
@@ -972,7 +1013,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (!explicitMessage && (
     facts.some((f) => f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION)
     || /\b(angebot|erstell|mach).{0,40}\b(angebot|ev\d)/i.test(t)
-  )) {
+  ) && !isFindCustomer && !isOpenCustomer && !isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery) {
     add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.9);
   }
 
@@ -990,12 +1031,23 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
   const t = String(text ?? '');
   const explicitMessage = isExplicitCustomerMessageCue(t);
   const hasOffer = intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
-  const hasHistory = intents.some((i) => i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
+  const hasHistory = intents.some((i) => (
+    i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+    || i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+    || i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
+    || i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
+  ));
+  const hasCustomerNav = intents.some((i) => (
+    i.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+    || i.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
+    || i.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
+    || i.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+  ));
   const hasNextStep = intents.some((i) => i.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP);
 
   // Angebot + „schreibe“ = Arbeitsauftrag mit Nachricht (kein reiner Message-Mode)
   if (explicitMessage && hasOffer) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
-  if (hasHistory || hasNextStep) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
+  if (hasHistory || hasNextStep || hasCustomerNav) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
   if (explicitMessage) return SELLER_INPUT_MODE.CUSTOMER_MESSAGE;
 
   const workHeavy = intents.some((i) => [
@@ -1006,6 +1058,9 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
     SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
     SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
     SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
+    SELLER_TURN_INTENTS.FIND_CUSTOMER,
+    SELLER_TURN_INTENTS.OPEN_CUSTOMER,
+    SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT,
     SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP,
   ].includes(i.type)) || facts.length >= 3;
 

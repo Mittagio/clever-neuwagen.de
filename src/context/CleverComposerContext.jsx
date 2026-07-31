@@ -57,12 +57,19 @@ export function CleverComposerProvider({ children }) {
     setPendingAction(null);
   }, []);
 
-  // Context Reset: Dashboard / Navigation ohne Akte → keinen Kunden behalten
+  // Context Sync: Kundenakte → Lead aus Route; sonst Reset
   useEffect(() => {
-    if (surface !== 'customer_akte' && surface !== 'verkaufsassistent') {
+    if (surface === 'customer_akte') {
+      const match = String(pathname).match(/\/backend\/kundenakte\/([^/?#]+)/);
+      const leadId = match?.[1] ? decodeURIComponent(match[1]) : null;
+      const lead = (Array.isArray(leads) ? leads : []).find((l) => l.id === leadId) || null;
+      setCurrentCustomer(lead);
+      return;
+    }
+    if (surface !== 'verkaufsassistent') {
       clearWorkspaceContext();
     }
-  }, [surface, clearWorkspaceContext]);
+  }, [surface, pathname, leads, clearWorkspaceContext]);
 
   const shouldShowGlobalComposer = Boolean(
     enabled && surface === 'dashboard',

@@ -52,6 +52,13 @@ export const SELLER_TURN_INTENTS = {
   LOOKUP_VEHICLE_FACT: 'lookup_vehicle_fact',
   GET_TODAY_OVERVIEW: 'get_today_overview',
   SEARCH_CUSTOMER_HISTORY: 'search_customer_history',
+  SEARCH_CUSTOMER_MESSAGES: 'search_customer_messages',
+  SEARCH_CUSTOMER_OFFERS: 'search_customer_offers',
+  SEARCH_CUSTOMER_ACTIVITIES: 'search_customer_activities',
+  FIND_CUSTOMER: 'find_customer',
+  OPEN_CUSTOMER: 'open_customer',
+  SUMMARIZE_CUSTOMER_CONTEXT: 'summarize_customer_context',
+  /** @deprecated Alias – prefer FIND_CUSTOMER / OPEN_CUSTOMER */
   CUSTOMER_LOOKUP: 'customer_lookup',
   RECOMMEND_NEXT_STEP: 'recommend_next_step',
   ADD_NOTE: 'add_note',

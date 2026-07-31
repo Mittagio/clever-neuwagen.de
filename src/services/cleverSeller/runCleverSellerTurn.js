@@ -155,10 +155,65 @@ function finalizeSellerTurn({
     ?.payload?.knowledgeResult
     || null;
 
+  const customerSearchAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
+    || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+  ));
+  const customerSummaryAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
+  ));
+  const historyAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
+  ));
+
+  const customerSearchResults = customerSearchAction?.payload?.customerSearchResults
+    || (customerSummaryAction?.payload?.status === 'ambiguous_customer'
+      ? customerSummaryAction?.payload?.customerSearchResults
+      : null)
+    || (historyAction?.payload?.status === 'ambiguous_customer'
+      ? historyAction?.payload?.customerSearchResults
+      : null)
+    || null;
+  const customerSummary = customerSummaryAction?.payload?.customerSummary || null;
+  const historySearchResults = historyAction?.payload?.historySearchResults
+    || null;
+  const searchResults = historySearchResults || customerSearchResults || null;
+
+  const readOnlyGlobal = Boolean(
+    todayOverview
+    || knowledgeResult
+    || customerSearchResults
+    || customerSummary
+    || historySearchResults,
+  );
+
   const scope = scopeHint
     || (todayOverview ? 'dashboard' : null)
     || (knowledgeResult && !lead?.id ? 'global' : null)
+    || ((customerSearchResults || customerSummary || historySearchResults) && !lead?.id
+      ? 'global'
+      : null)
     || (lead?.id ? 'customer' : 'global');
+
+  // Resolved customer from global search (ohne Akte zu mutieren)
+  const resolvedFromSearch = customerSearchAction?.payload?.resolvedLeadId
+    || customerSummaryAction?.payload?.resolvedLeadId
+    || historyAction?.legacy?.resolvedCustomer?.id
+    || null;
+  if (resolvedFromSearch && assistantContext.resolvedCustomer) {
+    assistantContext.resolvedCustomer = {
+      ...assistantContext.resolvedCustomer,
+      id: assistantContext.resolvedCustomer.id || resolvedFromSearch,
+      name: customerSummary?.customerName
+        || customerSearchResults?.[0]?.customerName
+        || assistantContext.resolvedCustomer.name,
+      source: assistantContext.resolvedCustomer.source || 'global_search',
+    };
+  }
 
   const messageDraft = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     ?.payload?.messageDraft
@@ -235,8 +290,11 @@ function finalizeSellerTurn({
     ],
     knowledgeResult,
     todayOverview,
-    searchResults: null,
-    proposedUpdates: todayOverview || knowledgeResult ? [] : proposedUpdates,
+    searchResults,
+    customerSearchResults,
+    historySearchResults,
+    customerSummary,
+    proposedUpdates: readOnlyGlobal ? [] : proposedUpdates,
     missingInformation,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
@@ -273,7 +331,16 @@ function finalizeSellerTurn({
         knowledgeResult
           ? 'Clever sucht in den verifizierten Fahrzeugdaten …'
           : null,
-        !todayOverview && !knowledgeResult && (
+        customerSearchResults
+          ? 'Clever sucht in Ihren Kunden …'
+          : null,
+        customerSummary
+          ? 'Clever liest den Kundenkontext …'
+          : null,
+        historySearchResults
+          ? 'Clever durchsucht die Kundenhistorie …'
+          : null,
+        !todayOverview && !knowledgeResult && !customerSearchResults && !customerSummary && !historySearchResults && (
           assistantContext.resolvedCustomer?.name || assistantContext.resolvedCustomer?.namedInInput
         )
           ? `Kunde erkannt: ${assistantContext.resolvedCustomer.name || assistantContext.resolvedCustomer.namedInInput}`
@@ -282,7 +349,12 @@ function finalizeSellerTurn({
           ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
           : null,
         uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null,
-        assistantContext.usedCustomerContext?.notepadLabels?.length && !knowledgeResult && !todayOverview
+        assistantContext.usedCustomerContext?.notepadLabels?.length
+          && !knowledgeResult
+          && !todayOverview
+          && !customerSearchResults
+          && !customerSummary
+          && !historySearchResults
           ? 'Kundenakte berücksichtigt'
           : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)

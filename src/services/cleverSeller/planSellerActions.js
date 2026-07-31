@@ -251,24 +251,128 @@ export function planSellerActions({
     });
   }
 
-  if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
-    const { result: search } = runTool('search_customer_history', {
+  if (
+    intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
+    || intentTypes.has(SELLER_TURN_INTENTS.FIND_CUSTOMER)
+    || intentTypes.has(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP)
+  ) {
+    const toolId = intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
+      ? 'open_customer'
+      : 'find_customer';
+    const { result: found } = runTool(toolId, {
+      sellerInput,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+    });
+    actions.push({
+      id: toolId,
+      type: intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
+        ? SELLER_TURN_INTENTS.OPEN_CUSTOMER
+        : SELLER_TURN_INTENTS.FIND_CUSTOMER,
+      label: intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER) ? 'Kunde öffnen' : 'Kunde finden',
+      needsSellerConfirmation: false,
+      status: found?.status === 'none' || found?.status === 'missing_query' ? 'blocked' : 'prepared',
+      toolId,
+      payload: {
+        customerSearchResults: found?.cards || found?.results || [],
+        status: found?.status || null,
+        message: found?.message || null,
+        resolvedLeadId: found?.lead?.id || null,
+        mutatesCustomer: false,
+      },
+    });
+  }
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT)) {
+    const { result: summary } = runTool('summarize_customer_context', {
+      lead,
+      sellerInput,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+    });
+    actions.push({
+      id: 'summarize_customer_context',
+      type: SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT,
+      label: 'Kundenkontext',
+      needsSellerConfirmation: false,
+      status: summary?.ok && summary?.customerSummary ? 'prepared' : 'blocked',
+      toolId: 'summarize_customer_context',
+      payload: {
+        customerSummary: summary?.customerSummary || null,
+        customerSearchResults: summary?.customerSearchResults || [],
+        status: summary?.status || null,
+        message: summary?.message || null,
+        resolvedLeadId: summary?.resolvedCustomer?.id || null,
+        mutatesCustomer: false,
+      },
+    });
+  }
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)) {
+    const { result: search } = runTool('search_customer_offers', {
+      lead,
+      sellerInput,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+    });
+    actions.push({
+      id: 'search_customer_offers',
+      type: SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS,
+      label: 'Angebotshistorie',
+      needsSellerConfirmation: false,
+      status: search?.ok ? 'prepared' : 'blocked',
+      toolId: 'search_customer_offers',
+      legacy: search ?? null,
+      payload: {
+        historySearchResults: search?.results || [],
+        customerSearchResults: search?.customerSearchResults || [],
+        status: search?.status || null,
+        message: search?.message || null,
+        hitCount: search?.results?.length ?? 0,
+        mutatesCustomer: false,
+      },
+    });
+  } else if (
+    intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES)
+  ) {
+    const toolId = intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+      ? 'search_customer_messages'
+      : intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES)
+        ? 'search_customer_activities'
+        : 'search_customer_history';
+    const { result: search } = runTool(toolId, {
       lead,
       sellerInput,
       customerName,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
     });
+    const results = search?.results
+      || search?.results?.[0]?.hits
+      || [];
+    // Legacy runComposerAkteSearch shape
+    const normalizedResults = Array.isArray(search?.results) && search.results[0]?.hits
+      ? search.results[0].hits
+      : (Array.isArray(search?.results) ? search.results : []);
     actions.push({
-      id: 'search_customer_history',
-      type: SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
+      id: toolId,
+      type: intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+        ? SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+        : SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY,
       label: 'Verlauf durchsuchen',
       needsSellerConfirmation: false,
       status: search?.ok ? 'prepared' : 'blocked',
-      toolId: 'search_customer_history',
+      toolId,
       legacy: search ?? null,
       payload: {
-        hitCount: search?.results?.length ?? 0,
+        historySearchResults: normalizedResults.filter((r) => r.sourceType || r.matchedText || r.snippet),
+        customerSearchResults: search?.customerSearchResults || [],
+        status: search?.status || null,
+        message: search?.message || null,
+        hitCount: (search?.results?.length ?? search?.payload?.hitCount ?? 0)
+          || normalizedResults.length,
+        mutatesCustomer: false,
       },
     });
+    void results;
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT)) {
@@ -514,6 +618,14 @@ export function planSellerActions({
   const explicitWrite = /\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
   const knowledgeOrDashboardOnly = (
     intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
+    || intentTypes.has(SELLER_TURN_INTENTS.FIND_CUSTOMER)
+    || intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
+    || intentTypes.has(SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT)
+    || intentTypes.has(SELLER_TURN_INTENTS.CUSTOMER_LOOKUP)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)
+    || intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES)
     || (
       intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
       && !intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
@@ -533,6 +645,8 @@ export function planSellerActions({
   if (
     !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)
     && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
+    && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
+    && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)
     && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     && (wantsCustomerMessage || (offerIncomplete && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)))
   ) {
