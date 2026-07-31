@@ -1,9 +1,17 @@
 /**
  * Fahrzeug-Angebot (Online-PDF) – Status & Hilfen pro Karte in der Kundenakte
+ *
+ * Internal prep lifecycle (Angebot prüfen / PDF-Confirm):
+ *   draft → prepared (seller confirms & saves from preview)
+ * Later customer-facing steps (Composer owns messaging):
+ *   selected_for_customer / sent — do not invent parallel systems here.
+ * Existing link_ready / sent / opened remain for legacy online-link flows.
  */
 
 export const VEHICLE_OFFER_STATUS = {
   DRAFT: 'draft',
+  /** Seller confirmed commercial data and filed offer in Kundenakte */
+  PREPARED: 'prepared',
   PDF_UPLOADED: 'pdf_uploaded',
   LINK_READY: 'link_ready',
   SENT: 'sent',
@@ -15,9 +23,15 @@ export const VEHICLE_OFFER_STATUS = {
 export const VEHICLE_OFFER_STATUS_UI = {
   draft: {
     badge: 'Entwurf',
-    banner: 'Das Angebot ist noch nicht gesendet.',
+    banner: 'Das Angebot ist noch nicht geprüft.',
     tone: 'draft',
     bannerTone: 'draft',
+  },
+  prepared: {
+    badge: 'Vorbereitet',
+    banner: 'Angebot geprüft und in der Kundenakte abgelegt.',
+    tone: 'ready',
+    bannerTone: 'ready',
   },
   pdf_uploaded: {
     badge: 'PDF hochgeladen',
@@ -58,6 +72,7 @@ export const VEHICLE_OFFER_STATUS_UI = {
 };
 
 export const VEHICLE_OFFER_HISTORY = {
+  prepared: 'Angebot geprüft und abgelegt',
   pdf_uploaded: 'Angebot-PDF hochgeladen',
   link_created: 'Online-Link erstellt',
   sent_email: 'Angebot per E-Mail gesendet',
@@ -295,14 +310,15 @@ export function createVehicleOfferForScenario({
 }
 
 /**
- * Offer is ready for dual-send / portal (PDF or calculated rate present).
+ * Offer is ready for dual-send / portal (PDF, prepared, or calculated rate present).
  */
 export function isScenarioOfferReady(offer = null) {
   if (!offer) return false;
   if (offer.pdf?.dataUrl || offer.pdf?.url || offer.pdf?.fileName) return true;
   const status = offer.status;
   if (
-    status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
+    status === VEHICLE_OFFER_STATUS.PREPARED
+    || status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
     || status === VEHICLE_OFFER_STATUS.LINK_READY
     || status === VEHICLE_OFFER_STATUS.SENT
     || status === VEHICLE_OFFER_STATUS.OPENED
@@ -312,6 +328,16 @@ export function isScenarioOfferReady(offer = null) {
   }
   const rate = offer.monthlyRate ?? offer.boardOffer?.payment?.monthlyRate;
   return rate != null && Number.isFinite(Number(rate));
+}
+
+/** Mark offer as prepared after seller confirm & save from Angebot prüfen. */
+export function markOfferPrepared(offer = {}) {
+  return {
+    ...offer,
+    status: VEHICLE_OFFER_STATUS.PREPARED,
+    preparedAt: offer.preparedAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function mergeVehicleOffersPatch(lead = {}, vehicleCardId, patch) {

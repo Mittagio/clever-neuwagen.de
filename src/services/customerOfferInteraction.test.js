@@ -39,5 +39,7 @@ assert.equal(openedBadge.label, 'Geöffnet');
 
 assert.equal(resolveLinkStatusLabel({ status: VEHICLE_OFFER_STATUS.SENT }), 'Gesendet');
 assert.equal(resolveLinkStatusLabel({ onlineLink: { url: 'https://x.de' }, status: VEHICLE_OFFER_STATUS.LINK_READY }), 'Link vorbereitet');
+assert.equal(resolveLinkStatusLabel({ status: VEHICLE_OFFER_STATUS.PREPARED }), 'Vorbereitet');
+assert.equal(resolveBoardBadge({}, null, { status: VEHICLE_OFFER_STATUS.PREPARED }).label, 'Vorbereitet');
 
 console.log('customerOfferInteraction.test.js: ok');

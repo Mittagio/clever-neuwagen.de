@@ -42,6 +42,7 @@ function mapVehicleOfferStatusToCanonical(status) {
   if (
     status === VEHICLE_OFFER_STATUS.LINK_READY
     || status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
+    || status === VEHICLE_OFFER_STATUS.PREPARED
   ) {
     return CANONICAL_OFFER_STATE.CREATED;
   }

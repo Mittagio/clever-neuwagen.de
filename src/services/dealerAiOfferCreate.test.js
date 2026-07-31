@@ -163,7 +163,7 @@ assert.ok(attachUpdated.patch.crm.vehicleConfigurations.length >= 1);
 assert.ok(attachUpdated.patch.crm.reservedModels.some((m) => m.badge === 'Clever Empfehlung'));
 assert.equal(
   attachUpdated.patch.crm.vehicleOffers[attachResult.card.id].status,
-  VEHICLE_OFFER_STATUS.DRAFT,
+  VEHICLE_OFFER_STATUS.PREPARED,
 );
 assert.equal(attachUpdated.patch.crm.kundenhelfer?.notes, undefined, 'kundenhelfer.notes nicht neu geschrieben');
 assert.ok(attachResult.activityText.includes('Clever Empfehlung gespeichert'));
@@ -239,7 +239,7 @@ const enrichment = buildKundenakteEnrichmentFromOfferDraft(altOfferDraft, {
 assert.equal(enrichment.crmPatch.pipelineStatusId, 'angebot_erstellt');
 assert.equal(enrichment.crmPatch.nextStepId, 'send_offer');
 assert.equal(enrichment.crmPatch.offers[0].status, 'draft');
-assert.equal(enrichment.crmPatch.vehicleOffers['vc-test-1'].status, VEHICLE_OFFER_STATUS.DRAFT);
+assert.equal(enrichment.crmPatch.vehicleOffers['vc-test-1'].status, VEHICLE_OFFER_STATUS.PREPARED);
 assert.ok(enrichment.historyEntry.text.includes('EV4'));
 
 const finalized = finalizeLeadWithOfferDraft(sampleLead, attachOfferDraft, {

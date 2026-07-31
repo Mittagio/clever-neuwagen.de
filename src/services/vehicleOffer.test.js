@@ -4,12 +4,15 @@
 import assert from 'node:assert/strict';
 import {
   VEHICLE_OFFER_STATUS,
+  VEHICLE_OFFER_STATUS_UI,
   buildOnlineOfferUrl,
   createOnlineLinkForOffer,
   createVehicleOfferFromCard,
   enrichCardWithVehicleOffer,
   formatOpenedTracking,
   formatUploadWhen,
+  isScenarioOfferReady,
+  markOfferPrepared,
   markOfferSent,
   mergeVehicleOffersPatch,
   recordOfferOpened,
@@ -34,6 +37,14 @@ const card = { id: 'ev3-1', modelName: 'Kia EV3', paymentType: 'leasing' };
 const offer = createVehicleOfferFromCard(card);
 assert.equal(offer.status, VEHICLE_OFFER_STATUS.DRAFT);
 assert.equal(offer.vehicleCardId, 'ev3-1');
+
+assert.equal(VEHICLE_OFFER_STATUS.PREPARED, 'prepared');
+assert.equal(VEHICLE_OFFER_STATUS_UI.prepared.badge, 'Vorbereitet');
+
+const prepared = markOfferPrepared(offer);
+assert.equal(prepared.status, VEHICLE_OFFER_STATUS.PREPARED);
+assert.ok(prepared.preparedAt);
+assert.equal(isScenarioOfferReady(prepared), true);
 
 const withLink = createOnlineLinkForOffer(
   { ...offer, pdf: { fileName: 'test.pdf', uploadedAt: new Date().toISOString() } },

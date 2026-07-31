@@ -1025,10 +1025,6 @@ export default function DealerAIPage() {
     setPhase(smartOfferVariants.length ? 'offer-variants' : 'conditions');
   }
 
-  function handleOfferPreviewPreparePdf() {
-    showToast('PDF / Kundenlink – Vorbereitung folgt in Kürze');
-  }
-
   function handleOfferPreviewSave() {
     if (!configureOfferDraft || offerPreviewSaved) return false;
 
@@ -2339,7 +2335,6 @@ export default function DealerAIPage() {
             offerDraft={configureOfferDraft}
             onBack={handleOfferPreviewBack}
             onSave={handleOfferPreviewSave}
-            onPreparePdfLink={handleOfferPreviewPreparePdf}
             onFinish={handleOfferPreviewFinish}
             onCommercialChange={handleOfferPreviewCommercialChange}
             isSaved={offerPreviewSaved}

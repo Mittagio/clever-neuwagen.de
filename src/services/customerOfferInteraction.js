@@ -14,6 +14,7 @@ export const INTEREST_STATUS = {
 
 export const BOARD_BADGE = {
   draft: { label: 'Entwurf', tone: 'muted' },
+  prepared: { label: 'Vorbereitet', tone: 'muted' },
   sent: { label: 'Gesendet', tone: 'muted' },
   opened: { label: 'Geöffnet', tone: 'accent' },
   interested: { label: 'Interessiert', tone: 'accent' },
@@ -197,6 +198,7 @@ function resolveBadgeFromOffer(vehicleOffer = {}) {
   if (status === VEHICLE_OFFER_STATUS.ACCEPTED) return BOARD_BADGE.interested;
   if (status === VEHICLE_OFFER_STATUS.OPENED) return BOARD_BADGE.opened;
   if (status === VEHICLE_OFFER_STATUS.SENT) return BOARD_BADGE.sent;
+  if (status === VEHICLE_OFFER_STATUS.PREPARED) return BOARD_BADGE.prepared;
   if (
     status === VEHICLE_OFFER_STATUS.DRAFT
     || status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
@@ -302,6 +304,7 @@ export function resolveLinkStatusLabel(vehicleOffer = null) {
   if (status === VEHICLE_OFFER_STATUS.ACCEPTED) return 'Kunde interessiert';
   if (status === VEHICLE_OFFER_STATUS.REJECTED) return 'Kunde abgelehnt';
   if (vehicleOffer.onlineLink?.url) return 'Link vorbereitet';
+  if (status === VEHICLE_OFFER_STATUS.PREPARED) return 'Vorbereitet';
   if (status === VEHICLE_OFFER_STATUS.PDF_UPLOADED) return 'PDF hinterlegt';
   return 'Entwurf';
 }

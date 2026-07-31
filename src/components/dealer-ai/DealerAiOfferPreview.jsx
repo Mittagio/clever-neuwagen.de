@@ -103,18 +103,9 @@ function formatConfirmDisplayValue(field, value) {
   return formatEuroDe(Number(value));
 }
 
-function buildHeroMetaParts(draftValues, isCash) {
-  const parts = [];
-  if (draftValues.termMonths != null && !isCash) {
-    parts.push(`${Number(draftValues.termMonths).toLocaleString('de-DE')} Monate`);
-  }
-  if (draftValues.annualMileage != null && !isCash) {
-    parts.push(`${Number(draftValues.annualMileage).toLocaleString('de-DE')} km/Jahr`);
-  }
-  if (draftValues.downPayment != null && Number(draftValues.downPayment) > 0) {
-    parts.push(`${formatEuroDe(Number(draftValues.downPayment))} Sonderzahlung`);
-  }
-  return parts;
+function resolveOriginalPdfHref(originalPdf) {
+  if (!originalPdf) return null;
+  return originalPdf.dataUrl || originalPdf.url || null;
 }
 
 function StatusIcon({ status }) {
@@ -137,12 +128,11 @@ function StatusIcon({ status }) {
   );
 }
 
-/** Schritt 3 – Angebotsvorschau (+ PDF-Confirm/Edit) */
+/** Schritt 3 – Angebot prüfen (interne Vorbereitung, kein Kundenversand) */
 export default function DealerAiOfferPreview({
   offerDraft,
   onBack,
   onSave,
-  onPreparePdfLink,
   onFinish,
   onCommercialChange,
   isSaving = false,
@@ -154,6 +144,8 @@ export default function DealerAiOfferPreview({
   const recognized = sellerConfirm?.recognized ?? {};
   const fromPdf = offerDraft?.source?.createdFrom === 'magic_offer_pdf'
     || Boolean(sellerConfirm?.required);
+  const originalPdf = offerDraft?.source?.originalPdf ?? null;
+  const originalPdfHref = resolveOriginalPdfHref(originalPdf);
 
   const [draftValues, setDraftValues] = useState(() => buildInitialConfirmValues(offerDraft));
   const [confirmed, setConfirmed] = useState({});
@@ -162,6 +154,7 @@ export default function DealerAiOfferPreview({
   const [editingField, setEditingField] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const firstRowRef = useRef(null);
+  const conditionsRef = useRef(null);
   const editInputRef = useRef(null);
 
   const draftKey = [
@@ -338,16 +331,8 @@ export default function DealerAiOfferPreview({
   const rateImplausible = livePlausibility.flags?.monthlyRateImplausible
     || sellerConfirm?.plausibilityFlags?.monthlyRateImplausible;
 
-  const heroMetaParts = requireConfirm
-    ? buildHeroMetaParts(draftValues, isCash)
-    : buildHeroMetaParts({
-      termMonths: payment.termMonths,
-      annualMileage: payment.mileagePerYear,
-      downPayment: payment.downPayment,
-    }, isCash);
-
   const missingCount = gate.missing.length;
-  const canRelease = !requireConfirm || gate.canSave;
+  const canFile = !requireConfirm || gate.canSave;
 
   function fieldStatus(field) {
     if (confirmed[field]) return 'ok';
@@ -370,7 +355,6 @@ export default function DealerAiOfferPreview({
     setCentralConfirmed(true);
     setEditMode(false);
     setEditingField(null);
-    // If low-confidence remains, focus the first one for attention
     const firstLow = lowConfidenceFields[0];
     if (firstLow) {
       setEditingField(firstLow);
@@ -384,6 +368,7 @@ export default function DealerAiOfferPreview({
     setEditingField(target);
     requestAnimationFrame(() => {
       firstRowRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      conditionsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     });
   }
 
@@ -412,30 +397,41 @@ export default function DealerAiOfferPreview({
     }
   }
 
-  const subtitle = requireConfirm
-    ? (fromPdf
-      ? 'Von Clever aus dem PDF vorbereitet'
-      : 'Clever hat die Konditionen vorbereitet – einmal prüfen und freigeben.')
-    : 'Prüfen und Angebot freigeben.';
+  function handleOpenOriginalPdf() {
+    if (!originalPdfHref) return;
+    window.open(originalPdfHref, '_blank', 'noopener,noreferrer');
+  }
+
+  const subtitle = fromPdf
+    ? 'Clever hat die Daten aus dem PDF übernommen. Prüfen und in der Kundenakte ablegen.'
+    : 'Prüfen und in der Kundenakte ablegen.';
 
   const customerSaveLine = customer.name
-    ? `Wird in der Kundenakte von ${customer.name} gespeichert.`
-    : 'Wird in der Kundenakte gespeichert.';
+    ? `Wird in der Kundenakte von ${customer.name} abgelegt.`
+    : 'Wird in der Kundenakte abgelegt.';
+
+  const savedSupportLine = originalPdfHref
+    ? 'Alle Daten und das Original-PDF wurden in der Kundenakte gespeichert.'
+    : 'Alle Daten wurden in der Kundenakte gespeichert.';
 
   const offerTypeAmbiguity = ambiguities.find((a) => a.field === 'offerType');
   const showOfferTypeCallout = requireConfirm
     && lowConfidenceSet.has('offerType')
     && !confirmed.offerType;
 
+  const notReadyLabel = missingCount === 1
+    ? 'Noch 1 Angabe prüfen'
+    : `Noch ${missingCount} Angaben prüfen`;
+
   return (
     <OfferFlowLayout
       className="dai-offer-preview"
       backLabel={!saved ? '← Zurück' : null}
       onBack={!saved ? onBack : null}
-      title="Angebotsvorschau"
+      title="Angebot prüfen"
       subtitle={subtitle}
     >
-      {/* 1. Hero offer card */}
+      {/* 1. Hero offer card – rate dominant; Konditionen live below (no duplicate meta) */}
       <section
         className={`dai-opreview-hero-card${requireConfirm ? ' dai-opreview-hero-card--glow' : ''}`}
         aria-label="Fahrzeug und Preis"
@@ -498,12 +494,6 @@ export default function DealerAiOfferPreview({
           </div>
         )}
 
-        {heroMetaParts.length > 0 && (
-          <p className="dai-opreview-hero-card__meta">
-            {heroMetaParts.join(' · ')}
-          </p>
-        )}
-
         {heroBadges.length > 0 && (
           <div className="dai-opreview-hero-card__badges">
             {heroBadges.map((badge) => (
@@ -551,7 +541,11 @@ export default function DealerAiOfferPreview({
 
       {/* 2 + 3. Erkannte Konditionen + zentrale Bestätigung */}
       {requireConfirm ? (
-        <section className="dai-opreview-conditions" aria-label="Erkannte Konditionen">
+        <section
+          ref={conditionsRef}
+          className="dai-opreview-conditions"
+          aria-label="Erkannte Konditionen"
+        >
           <h3 className="dai-opreview-conditions__title">Erkannte Konditionen</h3>
 
           {showOfferTypeCallout && (
@@ -686,7 +680,7 @@ export default function DealerAiOfferPreview({
                     className="dai-opreview-central__secondary"
                     onClick={handleEnableEdit}
                   >
-                    Werte bearbeiten
+                    Erkannte Daten bearbeiten
                   </button>
                 </>
               ) : gate.canSave ? (
@@ -703,7 +697,7 @@ export default function DealerAiOfferPreview({
                     className="dai-opreview-central__secondary"
                     onClick={handleEnableEdit}
                   >
-                    Werte bearbeiten
+                    Erkannte Daten bearbeiten
                   </button>
                 </>
               )}
@@ -770,34 +764,32 @@ export default function DealerAiOfferPreview({
         </details>
       )}
 
-      {/* 5. CTA */}
+      {/* 5. CTA – internal file only; Composer owns customer messaging */}
       <FlowStickyFooter
-        className={canRelease && !saved ? 'dai-opreview-foot--ready' : ''}
-        saved={saved ? '✓ Angebot gespeichert' : null}
-        hint={!saved && !canRelease
-          ? (missingCount === 1
-            ? 'Noch 1 Angabe prüfen'
-            : `Noch ${missingCount} Angaben prüfen`)
-          : (!saved ? customerSaveLine : null)}
+        className={canFile && !saved ? 'dai-opreview-foot--ready' : ''}
+        saved={saved ? '✓ Angebot vorbereitet' : null}
+        hint={!saved && !canFile
+          ? notReadyLabel
+          : (!saved ? customerSaveLine : savedSupportLine)}
       >
         {saved ? (
           <>
-            <FlowPrimaryButton onClick={onFinish}>Zur Kundenakte</FlowPrimaryButton>
-            {onPreparePdfLink && (
-              <FlowGhostButton onClick={onPreparePdfLink}>
-                PDF / Kundenlink vorbereiten
+            <FlowPrimaryButton onClick={onFinish}>In Kundenakte öffnen</FlowPrimaryButton>
+            {originalPdfHref && (
+              <FlowGhostButton onClick={handleOpenOriginalPdf}>
+                Original-PDF ansehen
               </FlowGhostButton>
             )}
           </>
         ) : (
           <FlowPrimaryButton
-            className={canRelease ? 'dai-opreview-cta--glow' : 'dai-opreview-cta--calm'}
+            className={canFile ? 'dai-opreview-cta--glow' : 'dai-opreview-cta--calm'}
             onClick={handleSaveClick}
             disabled={isSaving || savePending || (requireConfirm && !gate.canSave)}
           >
             {isSaving || savePending
-              ? 'Wird gespeichert …'
-              : (canRelease ? 'Angebot freigeben' : (missingCount === 1 ? 'Noch 1 Angabe prüfen' : `Noch ${missingCount} Angaben prüfen`))}
+              ? 'Wird abgelegt …'
+              : (canFile ? 'In Kundenakte ablegen' : notReadyLabel)}
           </FlowPrimaryButton>
         )}
       </FlowStickyFooter>

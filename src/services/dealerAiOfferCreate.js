@@ -481,7 +481,8 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
         [cardId]: {
           id: `vo-${cardId}`,
           vehicleCardId: cardId,
-          status: pdfPayload ? VEHICLE_OFFER_STATUS.PDF_UPLOADED : VEHICLE_OFFER_STATUS.DRAFT,
+          // Seller confirmed on Angebot prüfen → prepared (Composer owns selected_for_customer / sent later)
+          status: VEHICLE_OFFER_STATUS.PREPARED,
           boardStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : BOARD_OFFER_STATUS.DRAFT,
           boardOffer,
           downPayment: offerDraft.payment.downPayment ?? 0,
@@ -491,6 +492,7 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
           tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
           sentVia: null,
           sentAt: null,
+          preparedAt: now,
           createdAt: now,
           updatedAt: now,
         },

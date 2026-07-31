@@ -652,10 +652,12 @@ export function resolveVehicleStatus(card = {}, { lead = null } = {}) {
   }
   if (
     voStatus === VEHICLE_OFFER_STATUS.DRAFT
+    || voStatus === VEHICLE_OFFER_STATUS.PREPARED
     || voStatus === VEHICLE_OFFER_STATUS.PDF_UPLOADED
     || voStatus === VEHICLE_OFFER_STATUS.LINK_READY
     || hasVehicleOffer(card)
     || voStatus === 'draft'
+    || voStatus === 'prepared'
   ) {
     return TABLE_VEHICLE_STATUS.offer_prepared;
   }
@@ -700,6 +702,9 @@ export function resolveVehicleFooter(card = {}, index = 0) {
   }
   if (status === 'pdf_uploaded') {
     return { label: 'PDF hinterlegt', tone: 'alt', icon: 'clock' };
+  }
+  if (status === 'prepared' || status === VEHICLE_OFFER_STATUS.PREPARED) {
+    return { label: 'Vorbereitet', tone: 'alt', icon: 'clock' };
   }
   if (status === 'link_ready') {
     return { label: 'Link bereit zum Senden', tone: 'alt', icon: 'clock' };

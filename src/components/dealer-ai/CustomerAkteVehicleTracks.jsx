@@ -29,6 +29,9 @@ function offerStatusLine(track) {
   if (track.sentAt || track.offerStatus === 'sent' || track.offerStatus === 'opened') {
     return 'Gesendet';
   }
+  if (track.offerStatus === 'prepared') {
+    return 'Vorbereitet';
+  }
   if (track.offerStatus === 'draft' || track.offerStatus === 'pdf_uploaded') {
     return 'Entwurf';
   }
