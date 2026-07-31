@@ -707,9 +707,12 @@ export default function DealerAIPage() {
   function advanceMagicPreparationToPreview(preparation, options = {}) {
     if (!preparation) return false;
 
-    const contextLead = addVehicleContext?.opportunityId
-      ? leads.find((l) => l.id === addVehicleContext.opportunityId)
-      : (activeLead ?? null);
+    // options.* überschreibt State – nötig beim Bootstrap (setState noch nicht committed)
+    const effectiveAddVehicleContext = options.addVehicleContext ?? addVehicleContext;
+    const contextLead = options.lead
+      ?? (effectiveAddVehicleContext?.opportunityId
+        ? leads.find((l) => l.id === effectiveAddVehicleContext.opportunityId)
+        : (activeLead ?? null));
 
     const vehicle = resolveMagicVehicleFields(preparation);
     const hasCommercial = magicPreparationHasCommercialPreviewFields(preparation);
@@ -803,13 +806,14 @@ export default function DealerAIPage() {
     const updatedParsed = enrichWithSuggestions(applyDealerAiFields(baseParsed, mergedFields));
     setParsed(updatedParsed);
 
+    const effectiveCarryCustomer = options.carryCustomer ?? carryCustomer;
     let offerDraft = buildOfferDraft({
       configureDraft: nextDraft,
       vehicleConfiguration: vehicleConfig,
       parsed: updatedParsed,
       conditions,
-      carryCustomer,
-      addVehicleContext,
+      carryCustomer: effectiveCarryCustomer,
+      addVehicleContext: effectiveAddVehicleContext,
       lead: contextLead,
     });
     offerDraft = overlayMagicOntoOfferDraft(offerDraft, preparation);
@@ -933,6 +937,7 @@ export default function DealerAIPage() {
         getExistingCodes,
         selectedModelIds,
         addVehicleContext,
+        lead: contextLead,
       });
 
       if (saveResult.activityText && saveResult.leadId) {
@@ -1031,6 +1036,9 @@ export default function DealerAIPage() {
     setIsExecuting(true);
 
     try {
+      const contextLead = addVehicleContext?.opportunityId
+        ? leads.find((l) => l.id === addVehicleContext.opportunityId)
+        : null;
       const saveResult = executeSaveOfferDraft(configureOfferDraft, {
         parsed,
         conditions,
@@ -1040,6 +1048,7 @@ export default function DealerAIPage() {
         getExistingCodes,
         selectedModelIds,
         addVehicleContext,
+        lead: contextLead,
       });
 
       setOfferPreviewSaved(true);
@@ -1096,6 +1105,10 @@ export default function DealerAIPage() {
     const saveResult = offerPreviewSaveResult;
     if (!saveResult) return;
 
+    // Bestehender Kundenkontext (Akte) → nie Capture-Dialog, immer zurück zur Akte
+    const hasExistingCustomerContext = Boolean(
+      addVehicleContext?.opportunityId || addVehicleContext?.returnPath,
+    );
     const aktePath = addVehicleContext?.returnPath
       || (saveResult.leadId ? buildKundenaktePath(saveResult.leadId) : null);
 
@@ -1109,13 +1122,13 @@ export default function DealerAIPage() {
     setMagicOfferPreparation(null);
     setMagicOfferSeedText('');
 
-    if (aktePath && !saveResult.needsCapture) {
+    if (aktePath && (hasExistingCustomerContext || !saveResult.needsCapture)) {
       clearAddVehicleFlow();
       navigate(aktePath, { replace: true });
       return;
     }
 
-    if (saveResult.needsCapture) {
+    if (saveResult.needsCapture && !hasExistingCustomerContext) {
       setPhase('capture');
       setIsFreshLead(true);
       setIsReturningWish(Boolean(carryCustomer));
@@ -1327,7 +1340,12 @@ export default function DealerAIPage() {
         || '',
       );
       if (shouldSkipMagicOfferReview(incomingMagic)) {
-        if (advanceMagicPreparationToPreview(incomingMagic, { baseParsed: nextParsed })) {
+        if (advanceMagicPreparationToPreview(incomingMagic, {
+          baseParsed: nextParsed,
+          addVehicleContext: ctx,
+          lead,
+          carryCustomer: carry,
+        })) {
           return;
         }
         showToast('Angebotsvorschau konnte nicht geöffnet werden – bitte Rate und Modell prüfen');

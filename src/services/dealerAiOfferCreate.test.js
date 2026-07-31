@@ -168,6 +168,33 @@ assert.equal(
 assert.equal(attachUpdated.patch.crm.kundenhelfer?.notes, undefined, 'kundenhelfer.notes nicht neu geschrieben');
 assert.ok(attachResult.activityText.includes('Clever Empfehlung gespeichert'));
 
+// Draft ohne IDs, aber addVehicleContext.opportunityId vorhanden → attach ohne Capture
+const orphanDraft = {
+  ...altOfferDraft,
+  customerId: null,
+  opportunityId: null,
+};
+let orphanUpdated = null;
+const orphanAttachResult = executeSaveOfferDraft(orphanDraft, {
+  parsed,
+  conditions,
+  leads: [sampleLead],
+  updateLead: (id, patch) => {
+    orphanUpdated = { id, patch };
+  },
+  addLead: () => { throw new Error('addLead darf bei Context-Attach nicht aufgerufen werden'); },
+  getExistingCodes: () => [],
+  selectedModelIds: ['ev4'],
+  addVehicleContext: { customerId: 'cust-existing', opportunityId: 'lead-existing' },
+});
+assert.equal(orphanAttachResult.mode, 'attached_to_opportunity');
+assert.equal(orphanAttachResult.needsCapture, undefined);
+assert.equal(orphanAttachResult.customerId, 'cust-existing');
+assert.equal(orphanAttachResult.leadId, 'lead-existing');
+assert.equal(orphanUpdated.id, 'lead-existing');
+assert.equal(orphanAttachResult.offerDraft.opportunityId, 'lead-existing');
+assert.equal(orphanAttachResult.offerDraft.customerId, 'cust-existing');
+
 let newOppLead = null;
 const newOppDraft = buildOfferDraft({
   configureDraft: changedTermDraft,

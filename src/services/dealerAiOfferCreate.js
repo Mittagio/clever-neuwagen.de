@@ -658,6 +658,37 @@ function buildParsedFromOfferDraft(offerDraft, parsed = {}) {
 /**
  * Speichert den Offer-Draft anhand des Kundenkontexts.
  */
+/**
+ * Kontext-IDs aus addVehicleContext / lead auf den Draft legen,
+ * falls der Draft sie (z. B. durch stale Closure beim Magic-Bootstrap) verloren hat.
+ */
+export function mergeOfferDraftContextIds(offerDraft, deps = {}) {
+  if (!offerDraft) return offerDraft;
+  const ctx = deps.addVehicleContext ?? null;
+  const lead = deps.lead ?? null;
+  const opportunityId = offerDraft.opportunityId
+    ?? ctx?.opportunityId
+    ?? lead?.id
+    ?? null;
+  let customerId = offerDraft.customerId
+    ?? ctx?.customerId
+    ?? lead?.customerId
+    ?? lead?.id
+    ?? null;
+  if (!customerId && opportunityId && Array.isArray(deps.leads)) {
+    const oppLead = deps.leads.find((entry) => entry?.id === opportunityId);
+    customerId = oppLead?.customerId ?? oppLead?.id ?? null;
+  }
+  if (customerId === offerDraft.customerId && opportunityId === offerDraft.opportunityId) {
+    return offerDraft;
+  }
+  return {
+    ...offerDraft,
+    customerId,
+    opportunityId,
+  };
+}
+
 export function executeSaveOfferDraft(offerDraft, deps) {
   const {
     parsed,
@@ -673,20 +704,21 @@ export function executeSaveOfferDraft(offerDraft, deps) {
     throw new Error('Kein Angebotsentwurf vorhanden');
   }
 
-  const mode = resolveOfferSaveMode(offerDraft);
-  const fields = offerDraftToParserFields(offerDraft);
+  const draft = mergeOfferDraftContextIds(offerDraft, deps);
+  const mode = resolveOfferSaveMode(draft);
+  const fields = offerDraftToParserFields(draft);
   const existingConfigId = deps.addVehicleContext?.vehicleCardId ?? null;
-  const config = offerDraftToVehicleConfiguration(offerDraft, existingConfigId);
-  const card = offerDraftToVehicleCard(offerDraft, { configId: config.id, cardId: config.id });
-  const enrichedParsed = buildParsedFromOfferDraft(offerDraft, parsed);
+  const config = offerDraftToVehicleConfiguration(draft, existingConfigId);
+  const card = offerDraftToVehicleCard(draft, { configId: config.id, cardId: config.id });
+  const enrichedParsed = buildParsedFromOfferDraft(draft, parsed);
 
   if (mode === 'attach_to_opportunity') {
-    const targetLead = leads.find((l) => l.id === offerDraft.opportunityId);
+    const targetLead = leads.find((l) => l.id === draft.opportunityId);
     if (!targetLead) {
       throw new Error('Verkaufschance nicht gefunden');
     }
 
-    const finalized = finalizeLeadWithOfferDraft(targetLead, offerDraft, {
+    const finalized = finalizeLeadWithOfferDraft(targetLead, draft, {
       config,
       card,
       enrichedParsed,
@@ -700,9 +732,9 @@ export function executeSaveOfferDraft(offerDraft, deps) {
       type: 'offer_saved',
       mode: 'attached_to_opportunity',
       leadId: targetLead.id,
-      customerId: offerDraft.customerId,
+      customerId: draft.customerId,
       card,
-      offerDraft,
+      offerDraft: draft,
       historyEntry,
       activityText,
       message: 'Kundenakte aktualisiert – Angebot auf dem Tisch',
@@ -712,18 +744,18 @@ export function executeSaveOfferDraft(offerDraft, deps) {
   if (mode === 'new_opportunity_for_customer') {
     const referenceCode = generateOfferNumber(collectReferenceCodes(getExistingCodes, leads));
     const baseLead = buildLeadForExistingCustomer(fields, enrichedParsed, conditions, {
-      customerId: offerDraft.customerId,
+      customerId: draft.customerId,
       referenceCode,
       contact: {
-        name: offerDraft.customer.name ?? 'Kunde (offen)',
-        phone: offerDraft.customer.phone ?? '',
-        email: offerDraft.customer.email ?? '',
+        name: draft.customer.name ?? 'Kunde (offen)',
+        phone: draft.customer.phone ?? '',
+        email: draft.customer.email ?? '',
       },
       selectedModelIds,
     });
     const finalized = finalizeLeadWithOfferDraft(
-      { ...baseLead, ...buildLeadPatchFromOfferDraft(offerDraft) },
-      offerDraft,
+      { ...baseLead, ...buildLeadPatchFromOfferDraft(draft) },
+      draft,
       {
         config,
         card,
@@ -743,9 +775,9 @@ export function executeSaveOfferDraft(offerDraft, deps) {
       type: 'offer_saved',
       mode: 'new_opportunity_for_customer',
       leadId: lead.id,
-      customerId: offerDraft.customerId,
+      customerId: draft.customerId,
       card,
-      offerDraft,
+      offerDraft: draft,
       historyEntry,
       activityText,
       message: 'Kundenakte für bestehenden Kunden angelegt',
@@ -753,11 +785,11 @@ export function executeSaveOfferDraft(offerDraft, deps) {
   }
 
   const referenceCode = generateOfferNumber(collectReferenceCodes(getExistingCodes, leads));
-  const baseLead = buildLeadFromOfferDraft(offerDraft, enrichedParsed, conditions, {
+  const baseLead = buildLeadFromOfferDraft(draft, enrichedParsed, conditions, {
     referenceCode,
     selectedModelIds,
   });
-  const finalized = finalizeLeadWithOfferDraft(baseLead, offerDraft, {
+  const finalized = finalizeLeadWithOfferDraft(baseLead, draft, {
     config,
     card,
     enrichedParsed,
@@ -776,10 +808,11 @@ export function executeSaveOfferDraft(offerDraft, deps) {
     leadId: lead.id,
     customerId: lead.customerId,
     card,
-    offerDraft,
+    offerDraft: draft,
     historyEntry,
     activityText,
-    needsCapture: true,
+    // Capture nur bei echtem Cold-Start ohne Kundenkontext
+    needsCapture: mode === 'needs_customer_selection',
     message: 'Kundenakte vorbereitet – Kunde zuordnen',
   };
 }
