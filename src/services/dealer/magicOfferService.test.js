@@ -6,6 +6,7 @@ import {
   prepareMagicOffer,
   applyMagicOfferCorrection,
   overlayMagicOntoOfferDraft,
+  ensureOriginalPdfOnOfferDraft,
   shouldSkipMagicOfferReview,
   resolveMagicVehicleFields,
   magicPreparationHasCommercialPreviewFields,
@@ -133,6 +134,44 @@ assert.equal(cashOverlay.payment.discountAmount, 11182.5);
   const vehicle = resolveMagicVehicleFields(pdfLease);
   assert.equal(vehicle.modelKey, 'sportage');
   assert.ok(vehicle.trimId === 'vision' || /vision/i.test(vehicle.trimLabel || ''));
+}
+
+// originalPdf (fileName + dataUrl) überlebt overlay
+{
+  const pdfMeta = {
+    fileName: 'Sportage_Leasing.pdf',
+    dataUrl: 'data:application/pdf;base64,JVBERi0x',
+    uploadedAt: '2026-07-31T10:00:00.000Z',
+    sizeBytes: 12000,
+  };
+  const pdfPrep = prepareMagicOffer(
+    'EV6 Earth 329 € Leasing 48 Monate 15000 km',
+    { fromPdf: true, originalPdf: pdfMeta, modelKey: 'ev6' },
+  );
+  assert.equal(pdfPrep.originalPdf?.fileName, 'Sportage_Leasing.pdf');
+  assert.ok(pdfPrep.originalPdf?.dataUrl?.startsWith('data:application/pdf'));
+
+  const withPdf = overlayMagicOntoOfferDraft(
+    {
+      payment: { type: 'leasing' },
+      offerPreview: {},
+      offerCalculation: {},
+      source: { createdFrom: 'dealer_ai_mail' },
+    },
+    pdfPrep,
+  );
+  assert.equal(withPdf.source.createdFrom, 'magic_offer_pdf');
+  assert.equal(withPdf.source.originalPdf?.fileName, 'Sportage_Leasing.pdf');
+  assert.equal(withPdf.source.originalPdf?.dataUrl, pdfMeta.dataUrl);
+
+  const healed = ensureOriginalPdfOnOfferDraft(
+    {
+      ...withPdf,
+      source: { ...withPdf.source, originalPdf: { fileName: 'Sportage_Leasing.pdf' } },
+    },
+    pdfPrep.originalPdf,
+  );
+  assert.equal(healed.source.originalPdf?.dataUrl, pdfMeta.dataUrl);
 }
 
 console.log('magicOfferService.test.js: ok');

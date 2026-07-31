@@ -6,6 +6,7 @@ import {
   VEHICLE_OFFER_STATUS,
   VEHICLE_OFFER_STATUS_UI,
   buildOnlineOfferUrl,
+  createNextOfferVersion,
   createOnlineLinkForOffer,
   createVehicleOfferFromCard,
   enrichCardWithVehicleOffer,
@@ -16,6 +17,7 @@ import {
   markOfferSent,
   mergeVehicleOffersPatch,
   recordOfferOpened,
+  shouldBumpOfferVersionOnSave,
 } from './vehicleOffer.js';
 import {
   buildVehicleOpportunityCards,
@@ -91,5 +93,39 @@ assert.equal(cards[0].vehicleOffer?.status, VEHICLE_OFFER_STATUS.OPENED);
 
 const when = formatUploadWhen(new Date().toISOString());
 assert.ok(when.startsWith('Heute'));
+
+// Version bump behält PDF im Snapshot
+{
+  const v1 = createVehicleOfferFromCard({ id: 'ev3-pdf' }, {
+    id: 'vo-ev3-pdf',
+    vehicleCardId: 'ev3-pdf',
+    status: VEHICLE_OFFER_STATUS.PREPARED,
+    version: 1,
+    monthlyRate: 399,
+    pdf: { fileName: 'EV3_v1.pdf', dataUrl: 'data:application/pdf;base64,AAA' },
+    source: {
+      createdFrom: 'magic_offer_pdf',
+      originalPdf: { fileName: 'EV3_v1.pdf', dataUrl: 'data:application/pdf;base64,AAA' },
+    },
+    preparedAt: '2026-07-30T10:00:00.000Z',
+  });
+  assert.equal(shouldBumpOfferVersionOnSave(v1), true);
+  const v2 = createNextOfferVersion(v1, {
+    monthlyRate: 379,
+    pdf: { fileName: 'EV3_v2.pdf', dataUrl: 'data:application/pdf;base64,BBB' },
+    source: {
+      createdFrom: 'magic_offer_pdf',
+      originalPdf: { fileName: 'EV3_v2.pdf', dataUrl: 'data:application/pdf;base64,BBB' },
+    },
+  });
+  assert.equal(v2.version, 2);
+  assert.equal(v2.versions.length, 1);
+  assert.equal(v2.versions[0].pdf?.fileName, 'EV3_v1.pdf');
+  assert.equal(v2.versions[0].originalPdf?.fileName, 'EV3_v1.pdf');
+  assert.ok(v2.versions[0].pdf?.dataUrl);
+  const preparedV2 = markOfferPrepared(v2);
+  assert.equal(preparedV2.status, VEHICLE_OFFER_STATUS.PREPARED);
+  assert.equal(preparedV2.pdf?.fileName, 'EV3_v2.pdf');
+}
 
 console.log('vehicleOffer.test.js: OK');

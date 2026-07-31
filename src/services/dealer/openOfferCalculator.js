@@ -1,6 +1,7 @@
 /**
  * Einheitlicher Einstieg zur Angebotserstellung (Magic Offer · PDF · Legacy-Kalkulator).
- * Primär: magic-offer-entry. Legacy: DealerAiConditionsStep („Manuell erfassen“).
+ * Bearbeiten / Angebot bearbeiten → immer Angebot prüfen (offer-preview).
+ * Neu erstellen: magic-offer-entry / Legacy-Kalkulator („Manuell erfassen“).
  */
 import { buildKundenaktePath } from '../leadAkteEntry.js';
 import { buildAddProposalNavigateContext } from './customerAddProposalFlow.js';
@@ -18,6 +19,8 @@ export const OFFER_ENTRY_TARGET = {
   CALCULATOR: 'calculator',
   PROPOSAL: 'proposal',
   ANSWER_QUESTION: 'answer_question',
+  /** Bestehendes Angebot prüfen / bearbeiten */
+  OFFER_PREVIEW: 'offer_preview',
 };
 
 function readStoredVehicleOffer(card = {}, lead = null) {
@@ -150,6 +153,37 @@ export function openOfferCalculator(navigate, lead, card = null, options = {}) {
       || options.magicPreparation?.seedText
       || '';
   }
+  navigate('/verkaufsassistent', { state });
+  return true;
+}
+
+/**
+ * Navigation-State für einheitliches „Angebot prüfen“ (Bearbeiten-Einstieg).
+ */
+export function buildOfferReviewNavigateState(lead, card = null, options = {}) {
+  const base = buildOfferCalculatorNavigateState(lead, card, options);
+  if (!base) return null;
+  base.openOfferPreview = true;
+  base.addVehicleContext = {
+    ...base.addVehicleContext,
+    openOfferPreview: true,
+    openConditions: false,
+    openCalculator: false,
+  };
+  if (options.requireConfirm != null) {
+    base.requireConfirm = Boolean(options.requireConfirm);
+  }
+  return base;
+}
+
+/**
+ * Einheitlicher Bearbeiten-Einstieg: immer Angebot prüfen (DealerAiOfferPreview).
+ * Navigiert zum Verkaufsassistenten mit openOfferPreview-State.
+ * Für In-Place auf DealerAIPage: openOfferForReviewInPlace nutzen / Callback.
+ */
+export function openOfferForReview(navigate, lead, card = null, options = {}) {
+  const state = buildOfferReviewNavigateState(lead, card, options);
+  if (!state || !navigate) return false;
   navigate('/verkaufsassistent', { state });
   return true;
 }

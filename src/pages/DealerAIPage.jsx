@@ -75,6 +75,7 @@ import {
 } from '../services/dealerAiOfferCreate.js';
 import {
   applyMagicOfferCorrection,
+  ensureOriginalPdfOnOfferDraft,
   magicPreparationHasCommercialPreviewFields,
   magicPreparationToConfigurePatch,
   overlayMagicOntoOfferDraft,
@@ -102,6 +103,7 @@ import {
   openBoardOfferEntry,
   shouldOpenOfferProposalView,
 } from '../services/dealer/openOfferCalculator.js';
+import { buildOfferDraftFromExistingCard } from '../services/dealer/buildOfferDraftFromExistingCard.js';
 import {
   shouldForceConfigureFlow,
 } from '../services/dealer/customerAddProposalFlow.js';
@@ -817,8 +819,24 @@ export default function DealerAIPage() {
       lead: contextLead,
     });
     offerDraft = overlayMagicOntoOfferDraft(offerDraft, preparation);
+    // dataUrl darf nicht verloren gehen (State/Navigation/Overlay)
+    offerDraft = ensureOriginalPdfOnOfferDraft(
+      offerDraft,
+      preparation.originalPdf
+        ?? options.originalPdf
+        ?? magicOfferPreparation?.originalPdf
+        ?? null,
+    );
 
     setConfigureOfferDraft(offerDraft);
+    // Preparation behält ggf. reicheres originalPdf (dataUrl) – State synchron halten
+    if (preparation.originalPdf?.dataUrl || preparation.originalPdf?.url) {
+      setMagicOfferPreparation((prev) => (
+        prev
+          ? { ...prev, originalPdf: preparation.originalPdf, fromPdf: true }
+          : preparation
+      ));
+    }
     setOfferPreviewSaved(false);
     setOfferPreviewSaveResult(null);
     setPhase('offer-preview');
@@ -1012,12 +1030,18 @@ export default function DealerAIPage() {
     setConfigureOfferDraft(null);
     setOfferPreviewSaved(false);
     setOfferPreviewSaveResult(null);
-    // PDF-Flow: nie zurück auf MagicOfferReview
-    if (magicOfferPreparation?.fromPdf || shouldSkipMagicOfferReview(magicOfferPreparation)) {
+    // Bearbeiten bestehendes Angebot / PDF-Flow: zurück zur Akte oder Magic-Entry
+    if (offerEditCard || magicOfferPreparation?.fromPdf || shouldSkipMagicOfferReview(magicOfferPreparation)) {
       if (addVehicleContext?.returnPath) {
         navigate(addVehicleContext.returnPath);
         clearAddVehicleFlow();
         setMagicOfferPreparation(null);
+        setOfferEditCard(null);
+        return;
+      }
+      if (offerEditCard) {
+        setOfferEditCard(null);
+        setPhase('followup');
         return;
       }
       setPhase('magic-offer-entry');
@@ -1294,17 +1318,22 @@ export default function DealerAIPage() {
     if (!lead) return;
 
     const incomingMagic = location.state?.magicOfferPreparation ?? null;
+    const openOfferPreview = Boolean(
+      location.state?.openOfferPreview || ctx.openOfferPreview,
+    );
     const bootstrapKey = [
       ctx.customerId,
       ctx.opportunityId ?? '',
       ctx.vehicleCardId ?? '',
       incomingMagic
         ? 'magic-offer-review'
-        : ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions
-          ? 'conditions'
-          : ctx.openConditions
-            ? 'magic-offer-entry'
-            : 'configure',
+        : openOfferPreview
+          ? 'offer-preview'
+          : ctx.stockVehicle && ctx.skipConfigure && ctx.openConditions
+            ? 'conditions'
+            : ctx.openConditions
+              ? 'magic-offer-entry'
+              : 'configure',
     ].join('::');
     if (addVehicleBootstrapKeyRef.current === bootstrapKey) return;
     addVehicleBootstrapKeyRef.current = bootstrapKey;
@@ -1330,6 +1359,52 @@ export default function DealerAIPage() {
     }
     setParsed(nextParsed);
     setStartView('home');
+
+    if (openOfferPreview && ctx.vehicleCardId) {
+      const card = {
+        id: ctx.vehicleCardId,
+        configurationId: ctx.vehicleCardId,
+        modelKey: ctx.focusModelKey ?? null,
+      };
+      const configs = lead.crm?.vehicleConfigurations ?? [];
+      const matched = configs.find((entry) => entry.id === ctx.vehicleCardId);
+      const enrichedCard = enrichOfferEditCardFromLead(
+        matched
+          ? {
+            id: matched.id,
+            configurationId: matched.id,
+            modelKey: matched.modelKey,
+            modelName: matched.model,
+            trimLabel: matched.trimLabel,
+            paymentType: matched.paymentType,
+          }
+          : card,
+        lead,
+      );
+      const built = buildOfferDraftFromExistingCard({
+        lead,
+        card: enrichedCard,
+        conditions,
+        carryCustomer: carry,
+        addVehicleContext: ctx,
+        parsed: nextParsed,
+      });
+      if (built?.offerDraft) {
+        setConfigureDraft(built.configureDraft);
+        setVehicleConfiguration(built.vehicleConfiguration);
+        setConfigureOfferDraft(built.offerDraft);
+        setOfferPreviewSaved(false);
+        setOfferPreviewSaveResult(null);
+        setOfferEditCard(enrichedCard);
+        setMagicOfferPreparation(null);
+        setMagicOfferSeedText('');
+        setSmartOfferVariants([]);
+        setResult({ type: 'lead', leadId: lead.id, customerId: lead.customerId ?? null });
+        setPhase('offer-preview');
+        return;
+      }
+      showToast('Angebot prüfen konnte nicht geöffnet werden – Fallback Konfiguration');
+    }
 
     if (incomingMagic) {
       setMagicOfferPreparation(incomingMagic);
@@ -1798,13 +1873,147 @@ export default function DealerAIPage() {
     setIsFreshLead(false);
   }
 
+  async function handleOfferPreviewReuploadPdf(file) {
+    if (!file || !configureOfferDraft) return;
+    setMagicOfferWorking(true);
+    try {
+      const extracted = await extractMagicOfferPdf(file);
+      const previousPdf = configureOfferDraft.source?.originalPdf ?? null;
+      const previousPdfs = [
+        ...(Array.isArray(configureOfferDraft.source?.previousPdfs)
+          ? configureOfferDraft.source.previousPdfs
+          : []),
+        ...(previousPdf ? [previousPdf] : []),
+      ];
+      const originalPdf = {
+        fileName: extracted.fileName,
+        sizeBytes: extracted.sizeBytes,
+        dataUrl: extracted.dataUrl,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      if (!extracted.ok || !extracted.text) {
+        setConfigureOfferDraft((prev) => ({
+          ...prev,
+          source: {
+            ...(prev.source ?? {}),
+            createdFrom: 'magic_offer_pdf',
+            originalPdf,
+            previousPdfs,
+          },
+        }));
+        setOfferPreviewSaved(false);
+        showToast('PDF gespeichert – bitte Rate prüfen oder ergänzen');
+        return;
+      }
+
+      const ctx = resolveMagicOfferContext();
+      const offerInterpretation = await interpretOfferFromPdf(extracted.text, {
+        fileName: extracted.fileName,
+        knownVehicle: ctx.modelKey
+          ? { brand: 'Kia', model: ctx.modelKey, modelKey: ctx.modelKey }
+          : null,
+      });
+      const preparation = prepareMagicOffer(extracted.text, {
+        ...ctx,
+        fromPdf: true,
+        originalPdf,
+        offerInterpretation,
+        previousPreparation: magicOfferPreparation,
+      });
+      setMagicOfferPreparation(preparation);
+      setMagicOfferSeedText(extracted.text.slice(0, 500));
+
+      let nextDraft = overlayMagicOntoOfferDraft(configureOfferDraft, preparation);
+      nextDraft = {
+        ...nextDraft,
+        source: {
+          ...(nextDraft.source ?? {}),
+          createdFrom: 'magic_offer_pdf',
+          originalPdf,
+          previousPdfs,
+        },
+      };
+      setConfigureOfferDraft(nextDraft);
+      setOfferPreviewSaved(false);
+      setOfferPreviewSaveResult(null);
+      setPhase('offer-preview');
+      showToast(
+        offerInterpretation?.review?.ambiguities?.length
+          ? 'Neues PDF erkannt – bitte unsichere Angaben bestätigen'
+          : 'Neues PDF erkannt – bitte Konditionen bestätigen',
+      );
+    } catch (err) {
+      showToast(err?.message ?? 'PDF konnte nicht gelesen werden');
+    } finally {
+      setMagicOfferWorking(false);
+    }
+  }
+
+  /**
+   * Einheitlicher Bearbeiten-Einstieg: immer Angebot prüfen (offer-preview).
+   */
+  function openOfferForReviewInPlace(card, options = {}) {
+    const lead = options.lead ?? activeLead;
+    if (!card || !lead) {
+      showToast('Angebot konnte nicht geöffnet werden');
+      return false;
+    }
+
+    const enriched = enrichOfferEditCardFromLead(card, lead);
+    const vehicleCardId = enriched.configurationId ?? enriched.id ?? null;
+    const returnPath = options.returnPath
+      ?? addVehicleContext?.returnPath
+      ?? (lead.id ? buildKundenaktePath(lead.id) : null);
+
+    const nextAddCtx = {
+      ...(addVehicleContext ?? buildAddVehicleContextFromLead(lead)),
+      vehicleCardId,
+      openOfferPreview: true,
+      openConditions: false,
+      openCalculator: false,
+      returnPath: returnPath ?? addVehicleContext?.returnPath,
+      wishFields: buildWishFieldsFromLead(lead),
+    };
+    setAddVehicleContext(nextAddCtx);
+
+    const built = buildOfferDraftFromExistingCard({
+      lead,
+      card: enriched,
+      conditions,
+      carryCustomer: carryCustomer ?? extractCarryCustomerFromLead(lead),
+      addVehicleContext: nextAddCtx,
+      parsed,
+    });
+
+    if (!built?.offerDraft) {
+      // Fallback: Magic-Entry nur wenn Draft nicht baubar
+      openProposalConditionsFlow(enriched);
+      return false;
+    }
+
+    setConfigureDraft(built.configureDraft);
+    setVehicleConfiguration(built.vehicleConfiguration);
+    setConfigureOfferDraft(built.offerDraft);
+    setOfferPreviewSaved(false);
+    setOfferPreviewSaveResult(null);
+    setOfferEditCard(enriched);
+    setOfferEditFromProposal(Boolean(options.fromProposal));
+    setOfferProposalCard(null);
+    setMagicOfferPreparation(null);
+    setMagicOfferSeedText('');
+    setSmartOfferVariants([]);
+    setPhase('offer-preview');
+    return true;
+  }
+
   function handleOpenOfferProposal(card) {
     openBoardOfferEntry(card, activeLead, {
       onOpenProposal: (targetCard) => {
         setOfferProposalCard(targetCard);
         setPhase('offer-proposal');
       },
-      onOpenCalculator: (targetCard) => handleOpenOfferEdit(targetCard),
+      onOpenCalculator: (targetCard) => openOfferForReviewInPlace(targetCard),
     });
   }
 
@@ -1885,9 +2094,8 @@ export default function DealerAIPage() {
     setPhase('configure');
   }
 
-  function handleOpenOfferEdit(card) {
-    const enriched = enrichOfferEditCardFromLead(card, activeLead);
-    openProposalConditionsFlow(enriched);
+  function handleOpenOfferEdit(card, options = {}) {
+    openOfferForReviewInPlace(card, options);
   }
 
   useEffect(() => {
@@ -1895,11 +2103,11 @@ export default function DealerAIPage() {
     if (shouldOpenOfferProposalView(offerProposalCard, activeLead)) return;
     setOfferProposalCard(null);
     setPhase('followup');
-    openProposalConditionsFlow(offerProposalCard);
+    openOfferForReviewInPlace(offerProposalCard);
   }, [phase, offerProposalCard, activeLead]);
 
   function handleEditOfferConditions(card) {
-    openProposalConditionsFlow(card);
+    openOfferForReviewInPlace(card);
   }
 
   function handleBackFromOffer() {
@@ -2355,8 +2563,11 @@ export default function DealerAIPage() {
             onSave={handleOfferPreviewSave}
             onFinish={handleOfferPreviewFinish}
             onCommercialChange={handleOfferPreviewCommercialChange}
+            onReuploadPdf={handleOfferPreviewReuploadPdf}
+            fallbackOriginalPdf={magicOfferPreparation?.originalPdf ?? null}
             isSaved={offerPreviewSaved}
             isSaving={isExecuting}
+            isReuploading={magicOfferWorking}
           />
         )}
 

@@ -172,6 +172,7 @@ export function createVehicleOfferFromCard(card = {}, existing = null) {
 
 /**
  * Neue Angebotsversion – überschreibt v1 nicht; Snapshot in versions[].
+ * PDF / originalPdf der alten Version bleiben in versions[] erhalten.
  */
 export function createNextOfferVersion(offer = {}, patch = {}) {
   const currentVersion = Number(offer.version) || 1;
@@ -185,12 +186,31 @@ export function createNextOfferVersion(offer = {}, patch = {}) {
       ?? null,
     downPayment: offer.downPayment ?? 0,
     pdf: offer.pdf ?? null,
+    originalPdf: offer.source?.originalPdf ?? offer.pdf ?? null,
+    source: offer.source ?? null,
     sentAt: offer.sentAt ?? null,
     openedAt: offer.tracking?.firstOpenedAt ?? null,
     snapshotAt: new Date().toISOString(),
   };
   const nextVersion = currentVersion + 1;
-  const nextId = `${offer.id || `vo-${offer.vehicleCardId}`}-v${nextVersion}`;
+  const baseId = String(offer.id || `vo-${offer.vehicleCardId || 'offer'}`).replace(/-v\d+$/, '');
+  const nextId = `${baseId}-v${nextVersion}`;
+  const previousPdfs = [
+    ...(Array.isArray(offer.source?.previousPdfs) ? offer.source.previousPdfs : []),
+    ...(offer.source?.originalPdf || offer.pdf
+      ? [offer.source?.originalPdf ?? offer.pdf]
+      : []),
+  ];
+  const nextSource = patch.source
+    ? {
+      ...offer.source,
+      ...patch.source,
+      previousPdfs: patch.source.previousPdfs ?? previousPdfs,
+    }
+    : {
+      ...(offer.source ?? {}),
+      previousPdfs,
+    };
   return {
     ...offer,
     ...patch,
@@ -199,11 +219,39 @@ export function createNextOfferVersion(offer = {}, patch = {}) {
     status: VEHICLE_OFFER_STATUS.DRAFT,
     replacedByOfferId: null,
     versions: [...(Array.isArray(offer.versions) ? offer.versions : []), snapshot],
+    source: nextSource,
     sentAt: null,
     sentVia: null,
     tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Bestehendes vorbereitetes Angebot erneut speichern → Version + prepared.
+ */
+export function improvePreparedOffer(existingOffer = {}, patch = {}) {
+  const bumped = createNextOfferVersion(existingOffer, patch);
+  return markOfferPrepared(bumped);
+}
+
+/** Angebot gilt als „bereits abgelegt“ und braucht bei erneutem Speichern eine Version. */
+export function shouldBumpOfferVersionOnSave(existingOffer = null) {
+  if (!existingOffer || typeof existingOffer !== 'object') return false;
+  const status = existingOffer.status;
+  if (
+    status === VEHICLE_OFFER_STATUS.PREPARED
+    || status === VEHICLE_OFFER_STATUS.PDF_UPLOADED
+    || status === VEHICLE_OFFER_STATUS.LINK_READY
+    || status === VEHICLE_OFFER_STATUS.SENT
+    || status === VEHICLE_OFFER_STATUS.OPENED
+    || status === VEHICLE_OFFER_STATUS.ACCEPTED
+  ) {
+    return true;
+  }
+  if (Number(existingOffer.version) > 1) return true;
+  if (Array.isArray(existingOffer.versions) && existingOffer.versions.length > 0) return true;
+  return Boolean(existingOffer.pdf?.dataUrl || existingOffer.pdf?.url || existingOffer.preparedAt);
 }
 
 export function getVehicleOffer(lead = {}, card = {}) {

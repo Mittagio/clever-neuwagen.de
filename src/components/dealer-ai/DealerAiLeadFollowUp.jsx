@@ -1884,7 +1884,18 @@ export default function DealerAiLeadFollowUp({
 
   function handleBoardCardAction(action, card) {
     const handler = action?.handlerType ?? action?.id;
-    if (handler === 'create_offer' || handler === 'edit_offer' || handler === 'configure_conditions') {
+    if (handler === 'edit_offer') {
+      if (onOpenOfferEdit) {
+        onOpenOfferEdit(card);
+        return;
+      }
+      openBoardOfferEntry(card, lead, {
+        onOpenProposal: onOpenOfferProposal,
+        onOpenCalculator: onOpenOfferEdit,
+      });
+      return;
+    }
+    if (handler === 'create_offer' || handler === 'configure_conditions') {
       openOfferInWorkspace(card);
       return;
     }

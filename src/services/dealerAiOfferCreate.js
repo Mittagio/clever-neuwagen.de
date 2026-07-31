@@ -30,7 +30,7 @@ import {
   appendSellerInsightsFromTexts,
   SELLER_INSIGHT_CONTEXT,
 } from './dealer/sellerInsights.js';
-import { VEHICLE_OFFER_STATUS } from './vehicleOffer.js';
+import { VEHICLE_OFFER_STATUS, createNextOfferVersion, markOfferPrepared, shouldBumpOfferVersionOnSave } from './vehicleOffer.js';
 import { buildBoardOfferFromDraft, BOARD_OFFER_STATUS } from './dealer/boardOfferModel.js';
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 
@@ -455,14 +455,68 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
   const boardOffer = buildBoardOfferFromDraft(offerDraft, { configId, now });
   const hasCalculated = boardOffer.status === BOARD_OFFER_STATUS.OFFER_CREATED;
   const originalPdf = offerDraft.source?.originalPdf ?? null;
-  const pdfPayload = originalPdf?.dataUrl
+  const pdfPayload = (originalPdf?.dataUrl || originalPdf?.url)
     ? {
       fileName: originalPdf.fileName ?? 'angebot.pdf',
       uploadedAt: originalPdf.uploadedAt ?? now,
       sizeBytes: originalPdf.sizeBytes ?? null,
-      dataUrl: originalPdf.dataUrl,
+      dataUrl: originalPdf.dataUrl ?? null,
+      url: originalPdf.url ?? null,
     }
     : null;
+
+  const existingOffer = existingLead?.crm?.vehicleOffers?.[cardId] ?? null;
+  const sourcePayload = {
+    createdFrom: offerDraft.source?.createdFrom ?? 'dealer_ai_mail',
+    originalPdf: originalPdf ?? null,
+    previousPdfs: Array.isArray(offerDraft.source?.previousPdfs)
+      ? offerDraft.source.previousPdfs
+      : (existingOffer?.source?.previousPdfs ?? []),
+  };
+
+  const baseVehicleOffer = {
+    id: existingOffer?.id ?? `vo-${cardId}`,
+    vehicleCardId: cardId,
+    // Seller confirmed on Angebot prüfen → prepared (Composer owns selected_for_customer / sent later)
+    status: VEHICLE_OFFER_STATUS.PREPARED,
+    version: existingOffer?.version ?? 1,
+    versions: Array.isArray(existingOffer?.versions) ? existingOffer.versions : [],
+    boardStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : BOARD_OFFER_STATUS.DRAFT,
+    boardOffer,
+    monthlyRate: offerDraft.payment.calculatedRate ?? null,
+    termMonths: offerDraft.payment.termMonths ?? null,
+    mileagePerYear: offerDraft.payment.mileagePerYear ?? null,
+    downPayment: offerDraft.payment.downPayment ?? 0,
+    deliveryFee: offerDraft.payment.transferCost ?? 990,
+    pdf: pdfPayload,
+    source: sourcePayload,
+    onlineLink: null,
+    tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
+    sentVia: null,
+    sentAt: null,
+    preparedAt: now,
+    createdAt: existingOffer?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  let vehicleOfferEntry = baseVehicleOffer;
+  if (shouldBumpOfferVersionOnSave(existingOffer)) {
+    const bumped = createNextOfferVersion(existingOffer, {
+      boardStatus: baseVehicleOffer.boardStatus,
+      boardOffer,
+      monthlyRate: baseVehicleOffer.monthlyRate,
+      termMonths: baseVehicleOffer.termMonths,
+      mileagePerYear: baseVehicleOffer.mileagePerYear,
+      downPayment: baseVehicleOffer.downPayment,
+      deliveryFee: baseVehicleOffer.deliveryFee,
+      pdf: pdfPayload,
+      source: sourcePayload,
+      onlineLink: null,
+      sentVia: null,
+      sentAt: null,
+    });
+    vehicleOfferEntry = markOfferPrepared(bumped);
+  }
 
   return {
     crmPatch: {
@@ -478,24 +532,7 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
       },
       offers: mergeCrmOffers(existingLead?.crm?.offers ?? [], crmOffer),
       vehicleOffers: {
-        [cardId]: {
-          id: `vo-${cardId}`,
-          vehicleCardId: cardId,
-          // Seller confirmed on Angebot prüfen → prepared (Composer owns selected_for_customer / sent later)
-          status: VEHICLE_OFFER_STATUS.PREPARED,
-          boardStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : BOARD_OFFER_STATUS.DRAFT,
-          boardOffer,
-          downPayment: offerDraft.payment.downPayment ?? 0,
-          deliveryFee: offerDraft.payment.transferCost ?? 990,
-          pdf: pdfPayload,
-          onlineLink: null,
-          tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
-          sentVia: null,
-          sentAt: null,
-          preparedAt: now,
-          createdAt: now,
-          updatedAt: now,
-        },
+        [cardId]: vehicleOfferEntry,
       },
       lastOfferAt: now,
       lastOfferStatus: hasCalculated ? BOARD_OFFER_STATUS.OFFER_CREATED : 'draft',

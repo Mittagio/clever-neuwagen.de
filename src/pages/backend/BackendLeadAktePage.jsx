@@ -23,6 +23,7 @@ import {
 } from '../../services/dealer/offerEditWishMerge.js';
 import {
   openOfferCalculator,
+  openOfferForReview,
   openBoardOfferEntry,
   shouldOpenOfferProposalView,
 } from '../../services/dealer/openOfferCalculator.js';
@@ -314,12 +315,12 @@ export default function BackendLeadAktePage() {
     setOfferProposalCard(null);
     setPhase('followup');
     const enriched = enrichOfferEditCardFromLead(card, lead);
-    const ok = openOfferCalculator(navigate, lead, enriched, {
+    const ok = openOfferForReview(navigate, lead, enriched, {
       returnPath: buildKundenaktePath(leadId),
       fromProposal,
     });
     if (!ok) {
-      showToast('Angebotskalkulator konnte nicht geöffnet werden');
+      showToast('Angebot prüfen konnte nicht geöffnet werden');
     }
   }
 

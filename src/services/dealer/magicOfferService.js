@@ -597,6 +597,51 @@ export function magicPreparationToConfigurePatch(preparation) {
  * Magic-Werte über bestehende Offer-Draft-Pipeline legen
  * (Seller-/PDF-Rate bzw. deterministischer Barkauf – nicht Engine-Schätzung).
  */
+export function pickRichestOriginalPdf(...candidates) {
+  let best = null;
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const hasData = Boolean(candidate.dataUrl || candidate.url);
+    if (!best) {
+      best = candidate;
+      continue;
+    }
+    const bestHasData = Boolean(best.dataUrl || best.url);
+    if (hasData && !bestHasData) {
+      best = candidate;
+      continue;
+    }
+    if (hasData === bestHasData && candidate.fileName && !best.fileName) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+export function ensureOriginalPdfOnOfferDraft(offerDraft, originalPdf = null) {
+  if (!offerDraft) return offerDraft;
+  const merged = pickRichestOriginalPdf(
+    originalPdf,
+    offerDraft.source?.originalPdf,
+  );
+  if (!merged) return offerDraft;
+  const fromPdf = Boolean(
+    offerDraft.source?.createdFrom === 'magic_offer_pdf'
+    || originalPdf
+    || merged.dataUrl
+    || merged.url
+    || merged.fileName,
+  );
+  return {
+    ...offerDraft,
+    source: {
+      ...(offerDraft.source ?? {}),
+      ...(fromPdf ? { createdFrom: 'magic_offer_pdf' } : {}),
+      originalPdf: merged,
+    },
+  };
+}
+
 export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
   if (!offerDraft || !preparation) return offerDraft;
   const calc = preparation.calculation ?? {};
@@ -604,12 +649,16 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
   const payment = { ...(offerDraft.payment ?? {}) };
   const offerPreview = { ...(offerDraft.offerPreview ?? {}) };
   const offerCalculation = { ...(offerDraft.offerCalculation ?? {}) };
+  const originalPdf = pickRichestOriginalPdf(
+    preparation.originalPdf,
+    offerDraft.source?.originalPdf,
+  );
   const source = {
     ...(offerDraft.source ?? {}),
     createdFrom: preparation.fromPdf ? 'magic_offer_pdf' : 'magic_offer',
     magicMode: preparation.mode,
     magicDecision: preparation.decision?.action ?? null,
-    originalPdf: preparation.originalPdf ?? offerDraft.source?.originalPdf ?? null,
+    originalPdf,
   };
 
   if (preparation.mode === 'cash_magic' && calc.ok) {

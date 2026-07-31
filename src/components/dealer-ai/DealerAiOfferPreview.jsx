@@ -23,7 +23,6 @@ import {
 } from '../../services/dealer/parseGermanMoney.js';
 import {
   FlowCard,
-  FlowGhostButton,
   FlowPriceDetails,
   FlowPrimaryButton,
   FlowSectionHeader,
@@ -108,6 +107,20 @@ function resolveOriginalPdfHref(originalPdf) {
   return originalPdf.dataUrl || originalPdf.url || null;
 }
 
+function pickOriginalPdf(...candidates) {
+  let best = null;
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const hasData = Boolean(candidate.dataUrl || candidate.url);
+    if (!best) {
+      best = candidate;
+      continue;
+    }
+    if (hasData && !(best.dataUrl || best.url)) best = candidate;
+  }
+  return best;
+}
+
 function StatusIcon({ status }) {
   if (status === 'ok') {
     return (
@@ -135,17 +148,31 @@ export default function DealerAiOfferPreview({
   onSave,
   onFinish,
   onCommercialChange,
+  onReuploadPdf = null,
+  fallbackOriginalPdf = null,
   isSaving = false,
   isSaved = false,
+  isReuploading = false,
 }) {
   const [savePending, setSavePending] = useState(false);
+  const [pdfToast, setPdfToast] = useState('');
+  const fileInputRef = useRef(null);
   const sellerConfirm = offerDraft?.sellerConfirm;
   const requireConfirm = Boolean(sellerConfirm?.required) && !isSaved;
   const recognized = sellerConfirm?.recognized ?? {};
+  const originalPdf = pickOriginalPdf(
+    offerDraft?.source?.originalPdf,
+    fallbackOriginalPdf,
+  );
   const fromPdf = offerDraft?.source?.createdFrom === 'magic_offer_pdf'
-    || Boolean(sellerConfirm?.required);
-  const originalPdf = offerDraft?.source?.originalPdf ?? null;
+    || Boolean(sellerConfirm?.required)
+    || Boolean(originalPdf);
   const originalPdfHref = resolveOriginalPdfHref(originalPdf);
+  const originalPdfFileName = originalPdf?.fileName || null;
+  const showPdfBlock = Boolean(fromPdf || originalPdfFileName || onReuploadPdf);
+  const originalPdfLabel = originalPdfFileName
+    ? `📎 ${originalPdfFileName}`
+    : '📎 Original-PDF ansehen';
 
   const [draftValues, setDraftValues] = useState(() => buildInitialConfirmValues(offerDraft));
   const [confirmed, setConfirmed] = useState({});
@@ -398,8 +425,62 @@ export default function DealerAiOfferPreview({
   }
 
   function handleOpenOriginalPdf() {
-    if (!originalPdfHref) return;
-    window.open(originalPdfHref, '_blank', 'noopener,noreferrer');
+    if (originalPdfHref) {
+      window.open(originalPdfHref, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
+    window.setTimeout(() => setPdfToast(''), 3200);
+  }
+
+  function handleReuploadClick() {
+    if (saved || isReuploading || !onReuploadPdf) return;
+    fileInputRef.current?.click();
+  }
+
+  async function handleReuploadFileChange(event) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file || !onReuploadPdf) return;
+    await onReuploadPdf(file);
+  }
+
+  function renderPdfActions({ inFooter = false } = {}) {
+    if (!showPdfBlock) return null;
+    return (
+      <div
+        className={inFooter ? 'dai-opreview-pdf-actions dai-opreview-pdf-actions--footer' : 'dai-opreview-pdf-actions'}
+        aria-label="Original-PDF"
+      >
+        {(originalPdfFileName || fromPdf) && (
+          <button
+            type="button"
+            className={`dai-opreview-pdf-link${originalPdfHref ? '' : ' is-disabled'}`}
+            onClick={handleOpenOriginalPdf}
+            disabled={isReuploading}
+            title={originalPdfHref ? 'Original-PDF öffnen' : 'PDF nicht verfügbar – bitte erneut hochladen'}
+          >
+            <span className="dai-opreview-pdf-link__name">{originalPdfLabel}</span>
+            <span className="dai-opreview-pdf-link__action">
+              {originalPdfHref ? 'Original-PDF ansehen' : 'PDF fehlt – erneut hochladen'}
+            </span>
+          </button>
+        )}
+        {onReuploadPdf && !saved && (
+          <button
+            type="button"
+            className="dai-opreview-pdf-reupload"
+            onClick={handleReuploadClick}
+            disabled={isReuploading || isSaving}
+          >
+            {isReuploading ? 'PDF wird gelesen …' : 'Neues PDF hochladen'}
+          </button>
+        )}
+        {pdfToast && (
+          <p className="dai-opreview-pdf-toast" role="status">{pdfToast}</p>
+        )}
+      </div>
+    );
   }
 
   const subtitle = fromPdf
@@ -726,6 +807,9 @@ export default function DealerAiOfferPreview({
         </FlowCard>
       )}
 
+      {/* Original-PDF – während Prüfung sichtbar, nicht erst nach Speichern */}
+      {renderPdfActions()}
+
       {/* 4. Umwelt compact accordion */}
       {envkvSummary && (
         <details className="dai-opreview-envkv">
@@ -772,20 +856,25 @@ export default function DealerAiOfferPreview({
           ? notReadyLabel
           : (!saved ? customerSaveLine : savedSupportLine)}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="dai-opreview-file-input"
+          onChange={handleReuploadFileChange}
+          tabIndex={-1}
+          aria-hidden
+        />
         {saved ? (
           <>
             <FlowPrimaryButton onClick={onFinish}>In Kundenakte öffnen</FlowPrimaryButton>
-            {originalPdfHref && (
-              <FlowGhostButton onClick={handleOpenOriginalPdf}>
-                Original-PDF ansehen
-              </FlowGhostButton>
-            )}
+            {renderPdfActions({ inFooter: true })}
           </>
         ) : (
           <FlowPrimaryButton
             className={canFile ? 'dai-opreview-cta--glow' : 'dai-opreview-cta--calm'}
             onClick={handleSaveClick}
-            disabled={isSaving || savePending || (requireConfirm && !gate.canSave)}
+            disabled={isSaving || savePending || isReuploading || (requireConfirm && !gate.canSave)}
           >
             {isSaving || savePending
               ? 'Wird abgelegt …'

@@ -567,6 +567,105 @@
   color: #5c6478;
 }
 
+.dai-opreview-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dai-opreview-pdf-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.35rem 0 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7f5fc 0%, #f3f1f9 100%);
+  border: 1px solid rgba(109, 91, 184, 0.16);
+}
+
+.dai-opreview-pdf-actions--footer {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  width: 100%;
+}
+
+.dai-opreview-pdf-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  color: var(--op-navy, #0b1736);
+  box-shadow: 0 1px 0 rgba(11, 23, 54, 0.04);
+}
+
+.dai-opreview-pdf-link:hover:not(:disabled) {
+  background: #faf9fd;
+}
+
+.dai-opreview-pdf-link.is-disabled {
+  opacity: 0.85;
+}
+
+.dai-opreview-pdf-link__name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.dai-opreview-pdf-link__action {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--op-clever, #6d5bb8);
+}
+
+.dai-opreview-pdf-link.is-disabled .dai-opreview-pdf-link__action {
+  color: #c2410c;
+}
+
+.dai-opreview-pdf-reupload {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px dashed rgba(109, 91, 184, 0.35);
+  background: transparent;
+  color: var(--op-navy, #0b1736);
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dai-opreview-pdf-reupload:hover:not(:disabled) {
+  background: rgba(109, 91, 184, 0.06);
+}
+
+.dai-opreview-pdf-reupload:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.dai-opreview-pdf-toast {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #c2410c;
+}
+
 /* ── Desktop ── */
 
 @media (min-width: 640px) {
