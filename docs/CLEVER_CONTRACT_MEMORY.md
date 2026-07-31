@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 11 implementiert (PDF Contract Intake)  
+**Status:** Slice 12 implementiert (Akte PDF-Wiring)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -163,7 +163,8 @@ Besonders behandeln / nicht an Message Writer:
 | **9** | Vertragsvergleich | Altvertrag vs. neues Angebot (strukturiert) |
 | **10** | Vergleichsnachricht | Explizite Kundennachricht aus Compare-Deltas |
 | **11** | PDF Contract Intake | Vorextrahierter PDF-Text → gleicher Import-Pfad |
-| später | Offer+Termin Multi-Action, Attachments/Akte-UI | siehe unten |
+| **12** | Akte PDF-Wiring | Klassifikation contract_pdf vs. configurator_pdf |
+| später | Offer+Termin Multi-Action, Global-Composer-PDF, OCR | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -407,11 +408,35 @@ Nativer PDF-Text wird **vor** dem sync Turn extrahiert (Magic-Offer-Pattern `ext
 
 ---
 
+## Slice 12 – Akte PDF-Wiring
+
+**Status: implementiert**
+
+`CustomerAkteSharedWorkspace.handleAttachFile` klassifiziert nach Extraktion:
+
+- Vertrags-Signale / Dateiname → `kind: contract_pdf` + `extractedText` → Slice-11-Intake  
+- Angebots-/Konfigurator-Signale → `kind: configurator_pdf` (bisheriges Offer-Verhalten)  
+- Leerer Vertrags-PDF → Manual-Describe + blocked Import-Review  
+
+| Modul | Rolle |
+|-------|--------|
+| `prepareComposerPdfTurnInput.js` | Klassifikation + Turn-Payload |
+| `CustomerAkteSharedWorkspace.jsx` | `handleAttachFile` nutzt Prepare |
+| `globalComposer.slice12.test.js` | Golden ohne React/pdfjs |
+
+### Nicht in Slice 12
+
+- OCR  
+- Global Composer Drag&Drop  
+- Offer + Termin Multi-Action  
+
+---
+
 ## Später
 
-- UI: Akte/Composer → `extractMagicOfferPdf` → `kind: contract_pdf`  
+- Global Composer PDF-Attach  
 - Offer + Termin Multi-Action  
-- Attachments / Akte-Composer-Migration  
+- OCR / Scan-Pipeline  
 
 ---
 

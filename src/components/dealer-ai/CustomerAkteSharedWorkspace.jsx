@@ -43,6 +43,7 @@ import {
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
+import { prepareComposerPdfTurnInput } from '../../services/cleverSeller/prepareComposerPdfTurnInput.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { containsSellerCommandInMessage } from '../../services/cleverSeller/validateSellerCommandMessage.js';
 import {
@@ -1552,7 +1553,7 @@ export default function CustomerAkteSharedWorkspace({
     if (!file || sending) return;
     const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
     if (!isPdf) {
-      setFeedback('Bitte PDF reinwerfen (z. B. Konfigurator).');
+      setFeedback('Bitte PDF reinwerfen (Vertrag oder Konfigurator).');
       setTimeout(() => setFeedback(''), 2800);
       return;
     }
@@ -1560,51 +1561,56 @@ export default function CustomerAkteSharedWorkspace({
     setFeedback('PDF wird gelesen …');
     try {
       const extracted = await extractMagicOfferPdf(file);
-      const fullText = extracted.ok ? String(extracted.text || '').trim() : '';
-      const interpretSeed = [
-        extracted.fileName ? `PDF: ${extracted.fileName}` : null,
-        fullText || null,
-      ].filter(Boolean).join('\n\n');
-      const draftSeed = [
-        extracted.fileName ? `PDF: ${extracted.fileName}` : null,
-        fullText ? fullText.slice(0, 4000) : null,
-      ].filter(Boolean).join('\n\n');
+      const prepared = prepareComposerPdfTurnInput({ extracted, file });
 
-      if (!extracted.ok || !fullText) {
+      if (prepared.needsManualDescribe || !prepared.ok) {
         setDraft((prev) => (prev
-          ? `${prev}\nKonfigurator-PDF: ${extracted.fileName || file.name}`
-          : `Konfigurator-PDF: ${extracted.fileName || file.name}`));
-        setFeedback('PDF übernommen – bitte kurz beschreiben, was drinsteht.');
+          ? `${prev}\n${prepared.draftSeed}`
+          : prepared.draftSeed));
+        if (prepared.kind === 'contract_pdf') {
+          const turn = runCleverSellerTurn({
+            lead,
+            sellerInput: prepared.draftSeed || `Lies den Vertrag ${prepared.attachment.fileName} ein.`,
+            currentOfferContext: resolveCurrentOfferContext(),
+            workingContextItems,
+            attachments: [prepared.attachment],
+            customerName,
+          });
+          if (shouldShowUniversalReview(turn)) {
+            setUniversalTurn(turn);
+            clearAssist();
+          }
+        }
+        setFeedback(prepared.feedbackManual);
         setTimeout(() => setFeedback(''), 3200);
         return;
       }
 
-      setDraft(draftSeed);
+      setDraft(prepared.draftSeed);
       onUpsertWorkingContext?.(buildDocumentWorkingContextItem({
-        id: `pdf:${extracted.fileName || file.name || Date.now()}`,
-        label: extracted.fileName || file.name || 'Preislisten-PDF',
-        fileName: extracted.fileName || file.name || null,
+        id: `pdf:${prepared.attachment.fileName || file.name || Date.now()}`,
+        label: prepared.workingContextLabel || prepared.attachment.fileName || 'PDF',
+        fileName: prepared.attachment.fileName || file.name || null,
         status: 'attached',
+        kind: prepared.kind,
       }));
       const turn = runCleverSellerTurn({
         lead,
-        sellerInput: interpretSeed,
+        sellerInput: prepared.interpretSeed,
         currentOfferContext: resolveCurrentOfferContext(),
         workingContextItems,
-        attachments: [{
-          kind: 'configurator_pdf',
-          mimeType: file.type || 'application/pdf',
-          fileName: extracted.fileName,
-        }],
+        attachments: [prepared.attachment],
         customerName,
       });
       if (shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
         clearAssist();
-        setFeedback('PDF gelesen – Kontext angehängt, bitte prüfen');
+        setFeedback(prepared.feedbackOk);
       } else {
         setUniversalTurn(null);
-        setFeedback('PDF gelesen – Kontext angehängt');
+        setFeedback(prepared.kind === 'contract_pdf'
+          ? 'Vertrag gelesen – Kontext angehängt'
+          : 'PDF gelesen – Kontext angehängt');
       }
       setTimeout(() => setFeedback(''), 3200);
     } catch (err) {
