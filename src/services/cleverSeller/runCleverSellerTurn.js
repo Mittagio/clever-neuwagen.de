@@ -123,6 +123,9 @@ function finalizeSellerTurn({
   const wantsContractSearch = (intents || []).some((i) => (
     i.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
   ));
+  const wantsContractCompare = (intents || []).some((i) => (
+    i.type === SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER
+  ));
 
   let appointmentCustomer = null;
   if (wantsAppointment) {
@@ -147,10 +150,19 @@ function finalizeSellerTurn({
       )?.[1]
       || null
     : null;
+  const namedForContractCompare = wantsContractCompare
+    ? (interpreted.normalized || interpreted.raw).match(
+      /\bvertrag\s+(?:von|für)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    )?.[1]
+      || (interpreted.normalized || interpreted.raw).match(
+        /\b(?:herrn?\s+|frau\s+)([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+      )?.[1]
+      || null
+    : null;
   const contractSearchInput = contractNameHint
     ? `Öffne ${contractNameHint}`
-    : (namedForContractSearch
-      ? `Öffne ${namedForContractSearch}`
+    : (namedForContractSearch || namedForContractCompare
+      ? `Öffne ${namedForContractSearch || namedForContractCompare}`
       : (interpreted.normalized || interpreted.raw));
 
   const leadResolve = wantsAppointment && appointmentCustomer?.resolved && appointmentCustomer.customer?.id
@@ -163,7 +175,7 @@ function finalizeSellerTurn({
     }
     : resolveWorkingLeadForTurn({
       lead,
-      sellerInput: (wantsContractImport || wantsContractSearch) && !lead?.id
+      sellerInput: (wantsContractImport || wantsContractSearch || wantsContractCompare) && !lead?.id
         ? contractSearchInput
         : (interpreted.normalized || interpreted.raw),
       leadsSnapshot,
@@ -392,6 +404,9 @@ function finalizeSellerTurn({
   const contractSearchAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
   ));
+  const contractCompareAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER
+  ));
   const resolvedDateTime = appointmentPrepareAction?.payload?.resolvedDateTime
     || preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME)
       ?.payload?.resolvedDateTime
@@ -405,6 +420,7 @@ function finalizeSellerTurn({
       ? historyAction?.payload?.customerSearchResults
       : null)
     || contractSearchAction?.payload?.customerSearchResults
+    || contractCompareAction?.payload?.customerSearchResults
     || (leadResolve.ambiguous ? leadResolve.customerSearchResults : null)
     || null;
   const customerSummary = customerSummaryAction?.payload?.customerSummary || null;
@@ -418,6 +434,7 @@ function finalizeSellerTurn({
     || appointmentPrepareAction
     || contractImportAction
     || contractSearchAction
+    || contractCompareAction
     || todayOverview
     || knowledgeResult
     || groundedKnowledge
@@ -626,6 +643,7 @@ function finalizeSellerTurn({
     extractedContractFacts: contractImportAction?.payload?.extractedContractFacts || [],
     contractDraft: contractImportAction?.payload?.contractDraft || null,
     contractMemoryResult: contractSearchAction?.payload?.contractMemoryResult || null,
+    contractOfferCompareResult: contractCompareAction?.payload?.contractOfferCompareResult || null,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
       commercialPreferences: (understanding?.verstaendnis?.konditionen ?? []).slice?.(0, 6)
@@ -704,6 +722,13 @@ function finalizeSellerTurn({
           : (contractSearchAction?.payload?.status === 'no_contract'
             ? '○ Kein Altvertrag hinterlegt'
             : null),
+        contractCompareAction?.payload?.contractOfferCompareResult
+          ? '✓ Vertrag mit Angebot verglichen'
+          : (contractCompareAction?.payload?.status === 'no_contract'
+            ? '○ Kein Altvertrag hinterlegt'
+            : (contractCompareAction?.payload?.status === 'no_offer'
+              ? '○ Kein Angebot zum Vergleich'
+              : null)),
         groundedKnowledge?.vehicleIdentity?.modelKey
           ? `✓ ${[
             groundedKnowledge.vehicleIdentity.modelLabel || groundedKnowledge.vehicleIdentity.modelKey,

@@ -40,6 +40,7 @@ import {
 import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
 import { isCustomerContractIntakeText } from './extractCustomerContractFromText.js';
 import { isCustomerContractQuery } from './searchCustomerContracts.js';
+import { isContractOfferCompareQuery } from './compareContractWithOffer.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -920,7 +921,8 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|nachfolgeangebot|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const isContractIntake = isCustomerContractIntakeText(t);
-  const isContractQuery = !isContractIntake && isCustomerContractQuery(t);
+  const isContractCompare = !isContractIntake && isContractOfferCompareQuery(t);
+  const isContractQuery = !isContractIntake && !isContractCompare && isCustomerContractQuery(t);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -940,6 +942,11 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (isContractIntake) {
     add(SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT, 0.98);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
+  }
+
+  if (isContractCompare) {
+    add(SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER, 0.98);
+    add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
   }
 
   if (isContractQuery) {
@@ -1020,8 +1027,8 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     [SELLER_ACTION_INTENTS.LOOKUP_FACT]: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   };
   // Bei Open/Find/Summary/History/Create-Offer keinen Message-Default aus Primary-Action
-  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage) {
-    // Navigation / Suche / Angebotsauftrag hat Vorrang vor Message-/Offer-Default
+  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage || isContractIntake || isContractCompare || isContractQuery) {
+    // Navigation / Suche / Angebotsauftrag / Contract Memory hat Vorrang vor Message-/Offer-Default
   } else if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (

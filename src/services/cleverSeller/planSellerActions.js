@@ -12,6 +12,7 @@ import { prepareContextualAppointmentProposal, isAppointmentFollowUpInput } from
 import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
 import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
 import { searchCustomerContracts } from './searchCustomerContracts.js';
+import { compareContractWithOffer } from './compareContractWithOffer.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -290,6 +291,32 @@ export function planSellerActions({
         contracts: searched.contracts || [],
         customerSearchResults: searched.customerSearchResults || [],
         mutatesCustomer: false,
+      },
+    });
+  }
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER)) {
+    const compared = compareContractWithOffer({
+      sellerInput,
+      lead,
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+      customerName,
+      currentOfferContext,
+    });
+    actions.push({
+      id: 'compare_contract_with_offer',
+      type: SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER,
+      label: compared.ok ? 'Vergleich bereit' : 'Vertragsvergleich',
+      needsSellerConfirmation: false,
+      status: compared.ok ? 'prepared' : 'blocked',
+      toolId: 'compare_contract_with_offer',
+      payload: {
+        status: compared.status,
+        message: compared.message,
+        contractOfferCompareResult: compared.contractOfferCompareResult,
+        customerSearchResults: compared.customerSearchResults || [],
+        mutatesCustomer: false,
+        mutatesCustomerTruth: false,
       },
     });
   }

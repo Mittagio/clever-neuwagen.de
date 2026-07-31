@@ -72,6 +72,8 @@ export const SELLER_TURN_INTENTS = {
   IMPORT_CUSTOMER_CONTRACT: 'import_customer_contract',
   /** Altvertrag nachschlagen (Contract Memory Slice 7) */
   SEARCH_CUSTOMER_CONTRACTS: 'search_customer_contracts',
+  /** Altvertrag vs. Angebot vergleichen (Contract Memory Slice 9) */
+  COMPARE_CONTRACT_WITH_OFFER: 'compare_contract_with_offer',
   /** Alias für Tool-/Result-Contract */
   DRAFT_CUSTOMER_MESSAGE: 'draft_customer_message',
   UNKNOWN: 'unknown',

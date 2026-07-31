@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 8 implementiert (Contract Golden Moments)  
+**Status:** Slice 9 implementiert (Vertragsvergleich)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -82,7 +82,7 @@ Wunschraten sind **keine** Vertragswerte.
 |------|--------|
 | `evaluateJourneyReminder` | vorhanden |
 | `extractMagicOfferPdf` / Offer-Interpret | wiederverwendbar (Pattern) |
-| `parseDocument`, `extractDocumentText`, `createCustomerContractDraft`, `validateCustomerContract`, `persistCustomerContract`, `searchCustomerContracts`, `compareContractWithOffer` | fehlen / Slice 6+ |
+| `parseDocument`, `extractDocumentText`, `createCustomerContractDraft`, `validateCustomerContract`, `persistCustomerContract`, `searchCustomerContracts`, `compareContractWithOffer` | Slice 6–9 (teilweise; PDF-Parse noch offen) |
 
 ---
 
@@ -160,7 +160,8 @@ Besonders behandeln / nicht an Message Writer:
 | **6** | Contract Intake | Text/Paste → Draft → Review → Confirm |
 | **7** | Contract Memory Search | „Wann läuft Brandes aus?“ aus Contract Facts |
 | **8** | Contract Golden Moments | Vertragsende → bestehende Journey/Reminder + Nachfolge-CTA |
-| später | Vertragsvergleich | Altvertrag vs. neues Angebot + Nachricht |
+| **9** | Vertragsvergleich | Altvertrag vs. neues Angebot (strukturiert) |
+| später | PDF-Intake, Offer+Termin Multi-Action, Attachments | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -312,10 +313,44 @@ Keine Kaufwahrscheinlichkeit. Keine zweite Reminder-Engine.
 
 ---
 
-## Später: Vertragsvergleich
+## Slice 9 – Vertragsvergleich
 
-Nur strukturierte Werte vergleichen; Abweichungen bei Laufzeit/km klar markieren.  
-Danach optional natürliche Kundennachricht – ohne ungefilterten Vollvertrag an den Writer.
+**Status: implementiert**
+
+Strukturierter Vergleich bestätigter Contract Facts mit einem vorhandenen Angebot:
+
+- Intent: `compare_contract_with_offer`
+- Review: `contract_offer_compare_result`
+- Felder: Fahrzeug, Rate, Laufzeit, Kilometer (nur vorhandene Werte)
+- Angebot aus `currentOfferContext` oder Favoriten-/Fahrzeugspur (`leasingData`) – **nicht** aus `wish.*`
+- Keine Kundennachricht, kein Auto-Send, keine Truth-Mutation
+
+| Modul | Rolle |
+|-------|--------|
+| `compareContractWithOffer.js` | Detection, Offer-Resolve, Diff-Rows, Review-Body |
+| `globalComposer.slice9.test.js` | Golden + Gegenproben |
+
+### Golden Input
+
+> „Vergleiche den Vertrag mit meinem neuen Angebot.“
+
+Erwartung (Brandes + XCeed-Favorit 347 € vs. Altvertrag 329 €): Rate Δ +18 €, Laufzeit/km gleich wenn gesetzt.
+
+### Nicht in Slice 9
+
+- Automatische Vergleichsnachricht an den Kunden  
+- PDF-/OCR-Intake  
+- Wunschrate (`wish.desiredRate`) als Angebot behandeln  
+- Erfundene Konditionen  
+
+---
+
+## Später
+
+- PDF-/Scan-Contract-Intake  
+- Optional: natürliche Kundennachricht aus Vergleichsdeltas (nur nach explizitem Auftrag)  
+- Offer + Termin Multi-Action  
+- Attachments / Akte-Composer-Migration  
 
 ---
 

@@ -29,6 +29,7 @@ import { searchGlobalCustomerHistory } from './globalHistorySearch.js';
 import { summarizeCustomerContext } from './summarizeCustomerContext.js';
 import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
 import { searchCustomerContracts } from './searchCustomerContracts.js';
+import { compareContractWithOffer } from './compareContractWithOffer.js';
 
 /**
  * @typedef {object} CleverSellerToolDef
@@ -121,6 +122,23 @@ export const CLEVER_SELLER_TOOLS = {
       leadsSnapshot,
       customerName,
     }),
+  },
+  compare_contract_with_offer: {
+    id: 'compare_contract_with_offer',
+    label: 'Vertrag mit Angebot vergleichen',
+    requiredInputs: ['sellerInput'],
+    optionalInputs: ['lead', 'leadsSnapshot', 'customerName', 'currentOfferContext'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system', 'seller_input'],
+    execute: ({ lead, sellerInput, leadsSnapshot, customerName, currentOfferContext }) => (
+      compareContractWithOffer({
+        lead,
+        sellerInput,
+        leadsSnapshot,
+        customerName,
+        currentOfferContext,
+      })
+    ),
   },
   draft_customer_message: {
     id: 'draft_customer_message',

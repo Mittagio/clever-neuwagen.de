@@ -31,6 +31,10 @@ export function isCustomerContractQuery(text = '') {
     return false;
   }
   if (/\b(lies|lese|importier|erfasse).{0,40}\bvertrag\b/i.test(t)) return false;
+  // Vertrag ↔ Angebot Vergleich → Slice 9, nicht Search
+  if (/\bvergleich\w*\b/i.test(t) && /\bvertrag\b|\baltvertrag\b/i.test(t) && /\bangebot\b/i.test(t)) {
+    return false;
+  }
 
   const asksContract = /\bvertrag\b|\bleasing\b|\baltvertrag\b|\bkondition/i.test(t)
     || /\bläuft?\b.{0,40}\baus\b|\blauft\b.{0,40}\baus\b|\bausläuft\b|\bendet\b/i.test(t)
