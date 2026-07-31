@@ -902,7 +902,9 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isOfferSentQuery = /\b(wann\s+habe\s+ich|zuletzt).{0,60}\bangebot\b/i.test(t)
     || /\bangebot\b.{0,40}\b(geschickt|gesendet|versendet)\b/i.test(t);
   const isCreateOfferCommand = /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?)\s+(?:herrn?\s+|frau\s+|\w+\s+)?(?:ein\s+)?(?:leasing)?angebot\b/i.test(t)
-    || /\bein\s+(?:leasing)?angebot\s+(?:für|über)\b/i.test(t);
+    || /\bein\s+(?:leasing)?angebot\s+(?:für|über)\b/i.test(t)
+    // „Erstelle Brandes ein XCeed-Angebot …“
+    || /(?:erstell(?:e|en)?|mach(?:e|en)?)\b.{0,60}\b(?:ein\s+)?[\wÄÖÜäöüß-]+-?angebot\b/i.test(t);
   const isMessageOnlyPrice = /\bschreib(?:e|en)?\b/i.test(t)
     && /\b(?:dass|das)\b/i.test(t)
     && /\b(?:kostet|preis|€|euro)\b/i.test(t)

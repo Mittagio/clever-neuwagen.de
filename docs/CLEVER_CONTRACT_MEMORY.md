@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 13 implementiert (Global Composer PDF)  
+**Status:** Slice 14 implementiert (Offer + Termin)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -165,7 +165,8 @@ Besonders behandeln / nicht an Message Writer:
 | **11** | PDF Contract Intake | Vorextrahierter PDF-Text → gleicher Import-Pfad |
 | **12** | Akte PDF-Wiring | Klassifikation contract_pdf vs. configurator_pdf |
 | **13** | Global Composer PDF | Dashboard-Drop → gleicher Prepare/Turn-Pfad |
-| später | Offer+Termin Multi-Action, OCR | siehe unten |
+| **14** | Offer + Termin | Dual-Prep + `offer_and_appointment_review` |
+| später | OCR, Dual-Accept-Execute | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -456,10 +457,38 @@ Dashboard-Composer (`CleverGlobalComposer`) akzeptiert PDF-Drop wie die Akte:
 
 ---
 
+## Slice 14 – Offer + Termin Multi-Action
+
+**Status: implementiert**
+
+Ein Seller-Satz bereitet **Angebot und Terminvorschlag** gemeinsam vor:
+
+> „Erstelle Brandes ein XCeed-Angebot für 28.000 € und schlag ihm Montag 15 Uhr einen Termin vor.“
+
+- Beide Intents `prepare_offer` + `propose_appointment`
+- Review: `offer_and_appointment_review` (auch wenn Brandes als Leasing-Kunde Kauf/Leasing-Klärung braucht)
+- Cash-Happy-Path: Garritano + 17.000 € → Angebot und Termin beide `prepared`
+- CTAs getrennt: Angebot prüfen / Vorschlag senden / Nachricht bearbeiten
+- Eine Kundennachricht = Terminvorschlag (kein Auto-Send, kein Auto-Book)
+
+| Modul | Rolle |
+|-------|--------|
+| `buildUniversalReviewModel.js` | Composite `offer_and_appointment_review` |
+| `interpretSellerInput.js` | Create-Offer auch für `XCeed-Angebot` |
+| `globalComposer.slice14.test.js` | Golden + Gegenproben |
+
+### Nicht in Slice 14
+
+- OCR  
+- Dual-Nachricht mergen / Dual-Accept in einem Klick  
+- Kalender als Wahrheit  
+
+---
+
 ## Später
 
-- Offer + Termin Multi-Action  
 - OCR / Scan-Pipeline  
+- Dual-Accept-Execute / Dual-pendingAction  
 
 ---
 

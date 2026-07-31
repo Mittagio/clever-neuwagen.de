@@ -152,7 +152,10 @@ export default function CleverGlobalComposer() {
         };
       }
     }
-    const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
+    const offerMsg = sections.find((s) => (
+      s.kind === 'offer_and_message_review'
+      || s.kind === 'offer_and_appointment_review'
+    ));
     if (offerMsg || turn?.handoffWorkingContext) {
       const leadId = turn?.resolvedCustomer?.id
         || turn?.handoffWorkingContext?.customerId
