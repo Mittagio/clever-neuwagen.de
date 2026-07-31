@@ -1172,15 +1172,33 @@ export default function CustomerAkteSharedWorkspace({
         a.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO && a.status === 'prepared'
       ));
 
+      const messageLegacyEarly = messageAction?.legacy ?? null;
+      const messageResultEarly = messageLegacyEarly?.results?.find(
+        (r) => r.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT,
+      ) || messageLegacyEarly?.results?.[0] || null;
+      const messageBody = universalTurn.messageDraft
+        || messageAction?.payload?.messageDraft
+        || messageResultEarly?.draft?.body
+        || messageResultEarly?.body
+        || '';
+      const sellerSeed = universalTurn.interpretedInput?.normalized
+        || universalTurn.interpretedInput?.raw
+        || '';
+      const wantsPortfolio = Boolean(portfolioAction)
+        || /kundenlink|portfolio|angebote?\s+(per\s+)?mail|mail\s+schicken|link\s+schicken/i.test(sellerSeed);
+      const hasCustomerFollowThrough = Boolean(messageBody || messageResultEarly || wantsPortfolio);
+
       const applied = applyAcceptedSellerTurn(lead, universalTurn, {
-        postFeedCard: false,
+        postFeedCard: true,
       });
       if (!applied.ok) {
         setFeedback('Konnte nicht übernommen werden.');
         return;
       }
       let nextLead = applied.lead;
-      persistMessages(nextLead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+      if (applied.acceptedLabels.length) {
+        persistMessages(nextLead, `Clever: ${applied.acceptedLabels.length} Angaben übernommen`);
+      }
 
       // Track-Feedback: Spuren übernommen, optional Favorit-Angebot anpassen
       if (reviseAfter && reviseAction) {
@@ -1206,7 +1224,7 @@ export default function CustomerAkteSharedWorkspace({
       const nextStepAction = preparedActions.find(
         (a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP && a.status === 'prepared',
       );
-      if (nextStepAction?.payload?.goldenMoment) {
+      if (nextStepAction?.payload?.goldenMoment && !hasCustomerFollowThrough) {
         const moment = nextStepAction.payload.goldenMoment;
         const seed = moment.recommendedAction === 'follow_up_favorite'
           ? 'Nachfassen zum Favoriten'
@@ -1226,7 +1244,14 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
-      if (reviseAction && !offerAction?.payload?.updateOnly && !messageAction && !appointmentAction) {
+      if (
+        reviseAction
+        && !offerAction?.payload?.updateOnly
+        && !messageAction
+        && !appointmentAction
+        && !portfolioAction
+        && !hasCustomerFollowThrough
+      ) {
         // Nach Einsortieren: Golden Moment als Folge-Review, falls vorhanden
         const momentTurn = runCleverSellerTurn({
           lead: nextLead,
@@ -1279,9 +1304,6 @@ export default function CustomerAkteSharedWorkspace({
         }
       }
 
-      const sellerSeed = universalTurn.interpretedInput?.normalized
-        || universalTurn.interpretedInput?.raw
-        || '';
       const refreshedOffer = offerAction
         ? runSellerOfferAssist(nextLead, sellerSeed, {
           previousPreparation: offerAction?.legacy?.results?.[0]?.magic
@@ -1293,10 +1315,8 @@ export default function CustomerAkteSharedWorkspace({
         || offerAction?.legacy?.results?.[0]
         || offerAction?.legacy
         || null;
-      const messageLegacy = messageAction?.legacy ?? null;
-      const messageResult = messageLegacy?.results?.find(
-        (r) => r.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT,
-      ) || messageLegacy?.results?.[0] || null;
+      const messageLegacy = messageLegacyEarly;
+      const messageResult = messageResultEarly;
       const appointmentLegacy = appointmentAction?.legacy ?? null;
       const appointmentResult = appointmentLegacy?.results?.[0] || appointmentLegacy || null;
       const documentsLegacy = documentsAction?.legacy ?? null;
@@ -1304,11 +1324,6 @@ export default function CustomerAkteSharedWorkspace({
       setUniversalTurn(null);
 
       const updateOnly = Boolean(offerAction?.payload?.updateOnly);
-      const messageBody = universalTurn.messageDraft
-        || messageAction?.payload?.messageDraft
-        || messageResult?.draft?.body
-        || messageResult?.body
-        || '';
 
       // Multi-Aktion: Angebot + Nachricht (+ optional Termin) in einem Accept
       const multiWork = Boolean(
@@ -1386,6 +1401,20 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       if (updateOnly && !messageBody) {
+        if (wantsPortfolio) {
+          setDraft('');
+          clearAssist();
+          setOfferPrep(null);
+          setAppointmentDraft(null);
+          setFeedback(
+            applied.acceptedLabels.length
+              ? `${applied.acceptedLabels.length} Angabe${applied.acceptedLabels.length === 1 ? '' : 'n'} übernommen – Kundenlink`
+              : 'Angebot aktualisiert – Kundenlink wird vorbereitet',
+          );
+          setTimeout(() => setFeedback(''), 2800);
+          handleSendPortfolio({});
+          return;
+        }
         setDraft('');
         clearAssist();
         setOfferPrep(null);
@@ -1485,7 +1514,7 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
 
-      if (portfolioAction) {
+      if (wantsPortfolio) {
         setDraft('');
         clearAssist();
         setOfferPrep(null);

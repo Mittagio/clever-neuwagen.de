@@ -9,7 +9,7 @@ import {
   getNeedProfileFromLead,
   mergeNeedProfileIntoLead,
 } from '../consultation/needProfileService.js';
-import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE } from './sellerFactTypes.js';
+import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
 import {
   appointmentTypeLabel,
@@ -286,10 +286,25 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
  * @param {object} turn – CleverSellerTurnResult
  * @param {{ sellerId?: string, sellerName?: string, postFeedCard?: boolean }} [options]
  */
+function hasPreparedCustomerFollowThrough(turn = {}) {
+  return (turn.preparedActions ?? []).some((a) => (
+    (
+      a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+      || a.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO
+      || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    )
+    && a.status === 'prepared'
+  ));
+}
+
 export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   const rawFacts = turn.extractedFacts ?? [];
-  if (!lead?.id || !rawFacts.length) {
+  const hasCustomerActions = hasPreparedCustomerFollowThrough(turn);
+  if (!lead?.id || (!rawFacts.length && !hasCustomerActions)) {
     return { ok: false, lead, acceptedLabels: [] };
+  }
+  if (!rawFacts.length) {
+    return { ok: true, lead, acceptedLabels: [] };
   }
 
   // „Übernehmen“ = Seller bestätigt die Review inkl. unsicherer Facts
@@ -408,7 +423,7 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     };
   }
 
-  if (options.postFeedCard !== false) {
+  if (options.postFeedCard !== false && labels.length) {
     const lines = labels.slice(0, 8);
     const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
       || facts.some((f) => f.field === 'commercialScenarios');

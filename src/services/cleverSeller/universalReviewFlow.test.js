@@ -159,4 +159,38 @@ assert.ok(msgBody, 'Message-Draft vorhanden');
 assert.ok(!/Mach 20000 km und schreib/i.test(msgBody), 'kein Seller-Rohtext im Draft');
 assert.ok(/angepasst|Angebot/i.test(msgBody), 'Kundentext zu Angebotsanpassung');
 
+// Portfolio-only Accept ohne Facts (nur vorbereitete Kundenaktion)
+const portfolioOnlyApplied = applyAcceptedSellerTurn(emptyLead, {
+  extractedFacts: [],
+  preparedActions: [{
+    type: 'send_portfolio',
+    status: 'prepared',
+    payload: { cta: 'Kundenlink senden' },
+  }],
+}, { postFeedCard: false });
+assert.equal(portfolioOnlyApplied.ok, true, 'Portfolio-only Accept ohne Facts');
+assert.deepEqual(portfolioOnlyApplied.acceptedLabels, []);
+
+// km-Änderung + Kundenlink: Facts vorhanden, beide Aktionen vorbereitet
+const kmPortfolioTurn = runCleverSellerTurn({
+  lead: {
+    ...emptyLead,
+    wish: { paymentType: 'leasing', termMonths: 48, mileagePerYear: 15000 },
+  },
+  sellerInput: 'Mach 20000 km und schick ihm die Angebote per Kundenlink',
+  currentOfferContext: {
+    offerId: 'vc-ev4',
+    title: 'EV4 GT-Line',
+    termMonths: 48,
+    mileagePerYear: 15000,
+    monthlyRate: 329,
+    summary: 'EV4 · 48 M · 15.000 km',
+  },
+});
+assert.ok(kmPortfolioTurn.extractedFacts.some((f) => f.field === 'annualMileage'));
+assert.ok(kmPortfolioTurn.preparedActions.some((a) => a.payload?.updateOnly === true));
+assert.ok(kmPortfolioTurn.preparedActions.some((a) => a.type === 'send_portfolio'));
+const kmPortfolioApplied = applyAcceptedSellerTurn(emptyLead, kmPortfolioTurn, { postFeedCard: false });
+assert.equal(kmPortfolioApplied.ok, true);
+
 console.log('universalReviewFlow.test.js: ok');
