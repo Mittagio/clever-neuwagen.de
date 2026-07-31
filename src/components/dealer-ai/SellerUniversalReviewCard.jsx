@@ -9,6 +9,18 @@ import './SellerUniversalReviewCard.css';
 
 function pickPrimaryBody(model) {
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
+  const knowledge = sections.find((s) => s.kind === 'knowledge_result');
+  if (knowledge?.headline) {
+    return [knowledge.title, knowledge.headline, knowledge.line].filter(Boolean).join('\n');
+  }
+  const today = sections.find((s) => s.kind === 'today_overview');
+  if (today?.items?.length) {
+    return today.items.slice(0, 4).map((item) => (
+      [item.customerName, item.headline, item.reasons?.[0] ? `Grund: ${item.reasons[0]}` : null]
+        .filter(Boolean)
+        .join('\n')
+    )).join('\n\n');
+  }
   const draftSection = sections.find((s) => (
     (s.kind === 'message_draft'
       || s.kind === 'appointment_propose'
@@ -22,6 +34,7 @@ function pickPrimaryBody(model) {
   for (const section of sections) {
     if (section.headline) lines.push(section.headline);
     if (section.line) lines.push(section.line);
+    if (section.inheritedLine) lines.push(section.inheritedLine);
     if (section.changes?.length) {
       for (const change of section.changes) {
         const value = change.from && change.to

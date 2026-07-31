@@ -78,7 +78,10 @@ Kein Full-Lead-JSON an OpenAI – nur `buildMinimalTaskContext` / `buildMinimalM
 
 Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasingbasis.
 
-**Master-Suite:** `src/services/cleverSeller/masterGoldenFlows.test.js` – alle Flows inkl. Multi-Accept-Shape und Legacy-Bridge.
+**Master-Suite:** `src/services/cleverSeller/masterGoldenFlows.test.js` – alle Flows inkl. Multi-Accept-Shape und Legacy-Bridge.  
+**Global Composer (Slice 1):** `src/services/cleverSeller/globalComposer.slice1.test.js` – Dashboard „Was liegt heute an?“ + „XCeed Anhängelast?“.
+
+Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
 ## Legacy-Bridge
 

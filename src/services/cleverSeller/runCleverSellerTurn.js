@@ -89,7 +89,11 @@ function finalizeSellerTurn({
   workingContextItems = [],
   customerName = '',
   attachments = [],
+  leadsSnapshot = [],
+  scopeHint = null,
+  appContext = null,
 }) {
+  void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const uniqueFacts = filterDuplicateFacts(facts, lead);
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
@@ -140,8 +144,21 @@ function finalizeSellerTurn({
       workingContext: assistantContext.resolvedWorkingContext,
       goldenMoment: assistantContext.goldenMoment,
       attachments,
+      leadsSnapshot,
     })
     : [];
+
+  const todayOverview = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
+    ?.payload?.todayOverview
+    || null;
+  const knowledgeResult = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
+    ?.payload?.knowledgeResult
+    || null;
+
+  const scope = scopeHint
+    || (todayOverview ? 'dashboard' : null)
+    || (knowledgeResult && !lead?.id ? 'global' : null)
+    || (lead?.id ? 'customer' : 'global');
 
   const messageDraft = preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     ?.payload?.messageDraft
@@ -198,6 +215,7 @@ function finalizeSellerTurn({
   const turnPartial = {
     ok: Boolean(interpreted.normalized) && enabled,
     turnId: createTurnId(),
+    scope,
     intent: primaryIntent,
     intents: effectiveIntents,
     inputMode: interpreted.inputMode,
@@ -211,8 +229,14 @@ function finalizeSellerTurn({
     resolvedWorkingContext: assistantContext.resolvedWorkingContext,
     usedCustomerContext: assistantContext.usedCustomerContext,
     extractedFacts: uniqueFacts,
-    retrievedFacts,
-    proposedUpdates,
+    retrievedFacts: [
+      ...retrievedFacts,
+      ...(knowledgeResult ? [knowledgeResult] : []),
+    ],
+    knowledgeResult,
+    todayOverview,
+    searchResults: null,
+    proposedUpdates: todayOverview || knowledgeResult ? [] : proposedUpdates,
     missingInformation,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
@@ -243,14 +267,22 @@ function finalizeSellerTurn({
         .filter((f) => !f.needsConfirmation)
         .map((f) => ({ label: f.label, factClass: f.factClass })),
       progressLines: [
-        assistantContext.resolvedCustomer?.name || assistantContext.resolvedCustomer?.namedInInput
+        todayOverview
+          ? 'Clever prüft Ihre heutigen Vorgänge …'
+          : null,
+        knowledgeResult
+          ? 'Clever sucht in den verifizierten Fahrzeugdaten …'
+          : null,
+        !todayOverview && !knowledgeResult && (
+          assistantContext.resolvedCustomer?.name || assistantContext.resolvedCustomer?.namedInInput
+        )
           ? `Kunde erkannt: ${assistantContext.resolvedCustomer.name || assistantContext.resolvedCustomer.namedInInput}`
           : null,
         uniqueFacts.find((f) => f.field === 'vehicleInterest')?.label
           ? `Fahrzeug erkannt: ${uniqueFacts.find((f) => f.field === 'vehicleInterest').label}`
           : null,
         uniqueFacts.find((f) => f.field === 'purchasePrice')?.label || null,
-        assistantContext.usedCustomerContext?.notepadLabels?.length
+        assistantContext.usedCustomerContext?.notepadLabels?.length && !knowledgeResult && !todayOverview
           ? 'Kundenakte berücksichtigt'
           : null,
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
@@ -260,10 +292,16 @@ function finalizeSellerTurn({
         preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
           ? 'Termin vorbereitet'
           : null,
+        knowledgeResult?.ok
+          ? `${knowledgeResult.factLabel || 'Fakt'} verifiziert`
+          : (knowledgeResult ? 'Keine sichere Quelle' : null),
+        todayOverview
+          ? `${todayOverview.itemCount || 0} Vorgänge gefunden`
+          : null,
         assistantContext.resolvedWorkingContext?.attachedDocument?.label
           ? `Dokument: ${assistantContext.resolvedWorkingContext.attachedDocument.label}`
           : null,
-        assistantContext.goldenMoment?.headline
+        assistantContext.goldenMoment?.headline && !todayOverview
           ? 'Nächster Schritt erkannt'
           : null,
       ].filter(Boolean),
@@ -295,6 +333,9 @@ export function runCleverSellerTurn({
   sellerContext = null,
   workingContextItems = [],
   customerName = '',
+  leadsSnapshot = [],
+  scopeHint = null,
+  appContext = null,
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
@@ -312,6 +353,9 @@ export function runCleverSellerTurn({
     workingContextItems,
     customerName,
     attachments,
+    leadsSnapshot,
+    scopeHint,
+    appContext,
   });
 }
 

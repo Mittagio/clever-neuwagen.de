@@ -22,6 +22,8 @@ import {
   sortTracksForOverview,
 } from '../crm/vehicleTrack.js';
 import { buildGoldenMoment } from '../journey/goldenMoment.js';
+import { getTodayOverview } from './getTodayOverview.js';
+import { lookupVehicleTechnicalFact } from './lookupVehicleTechnicalFact.js';
 
 /**
  * @typedef {object} CleverSellerToolDef
@@ -128,6 +130,28 @@ export const CLEVER_SELLER_TOOLS = {
     needsSellerConfirmation: false,
     sourceRequirements: ['verified_vehicle_data'],
     execute: ({ modelKey, trim }) => lookupRelevantEquipment({ modelKey, trim }),
+  },
+  lookup_vehicle_technical_fact: {
+    id: 'lookup_vehicle_technical_fact',
+    label: 'Technischer Fahrzeugfakt',
+    requiredInputs: [],
+    optionalInputs: ['modelKey', 'factKey', 'sellerInput'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['verified_vehicle_data'],
+    execute: ({ modelKey, factKey, sellerInput }) => lookupVehicleTechnicalFact({
+      modelKey,
+      factKey,
+      sellerInput,
+    }),
+  },
+  get_today_overview: {
+    id: 'get_today_overview',
+    label: 'Was liegt heute an?',
+    requiredInputs: [],
+    optionalInputs: ['leadsSnapshot', 'now'],
+    needsSellerConfirmation: false,
+    sourceRequirements: ['system'],
+    execute: ({ leadsSnapshot = [], now }) => getTodayOverview(leadsSnapshot, { now }),
   },
   build_customer_understanding: {
     id: 'build_customer_understanding',

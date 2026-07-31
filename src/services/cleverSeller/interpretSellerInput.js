@@ -909,6 +909,11 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     add(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.94);
   }
 
+  if (/\b(was liegt heute|heute an\b|tages(?:überblick|ueberblick|übersicht|uebersicht)|was steht heute|heutige vorgänge|heutige vorgaenge)\b/i.test(t)
+    || /^was liegt heute an\??$/i.test(t)) {
+    add(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW, 0.96);
+  }
+
   if (isNextStepQuery) {
     add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.93);
   }

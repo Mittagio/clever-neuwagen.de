@@ -15,6 +15,7 @@ Es soll auch in fünf Jahren noch gültig sein.
 Verwandte Dokumente:
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)** ← verbindlich für UX, Produkt und Architektur
 - **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
+- **[Global Composer – Der Composer ist Clever](CLEVER_GLOBAL_COMPOSER.md)** ← App-weiter Verkäuferassistent
 - **[UI Filigree – Premium Visual Law](CLEVER_UI_FILIGREE.md)** ← verbindlich für Desktop/Mobile-Optik (Polish only)
 - **[Responsive Design](CLEVER_RESPONSIVE_DESIGN.md)** ← Breakpoints & Workspace-Composition
 - **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
@@ -263,15 +264,18 @@ Sondern dort, wo der Kunde gerade ist.
 ## Universal Seller Input (Verkäufer)
 
 1. **Der Verkäufer muss Informationen nicht vorsortieren.**
-2. **Der Composer ist der universelle Eingang in Clever.**
-3. **Clever versteht, sortiert, ergänzt und bereitet Aktionen vor.**
-4. **Bekannte Informationen werden nicht erneut abgefragt.**
-5. **Clever fragt nur nach dem, was für die aktuelle Aufgabe wirklich fehlt.**
-6. **Customer Truth, Seller Working State und Prepared Actions bleiben getrennt.**
-7. **OpenAI interpretiert. Clever entscheidet und persistiert.**
-8. **Sensible Daten werden nur minimal an externe AI-Dienste übermittelt.**
+2. **Der Composer ist Clever** – universelle Bedienoberfläche für das Verkäufer-CRM.
+3. **Der globale Composer wählt bestehende Tools kontextabhängig aus.**
+4. **Das Lexikon ist ein Werkzeug hinter Clever**, kein notwendiger separater Arbeitsweg.
+5. **Globale Wissensfragen verändern keine Kundenakte.**
+6. **Clever versteht, sortiert, ergänzt und bereitet Aktionen vor.**
+7. **Bekannte Informationen werden nicht erneut abgefragt.**
+8. **Clever fragt nur nach dem, was für die aktuelle Aufgabe wirklich fehlt.**
+9. **Customer Truth, Seller Working State und Prepared Actions bleiben getrennt.**
+10. **OpenAI interpretiert. Clever entscheidet und persistiert.**
+11. **Sensible Daten werden nur minimal an externe AI-Dienste übermittelt.**
 
-Details: [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md)
+Details: [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md) · [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md)
 
 ---
 

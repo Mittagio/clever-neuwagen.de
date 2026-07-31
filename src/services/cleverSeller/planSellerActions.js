@@ -205,6 +205,7 @@ export function planSellerActions({
   workingContext = null,
   goldenMoment = null,
   attachments = [],
+  leadsSnapshot = [],
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -216,6 +217,24 @@ export function planSellerActions({
   const moment = goldenMoment
     || runTool('build_golden_moment', { lead }).result
     || null;
+
+  if (intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) {
+    const overview = runTool('get_today_overview', {
+      leadsSnapshot: Array.isArray(leadsSnapshot) ? leadsSnapshot : [],
+    }).result;
+    actions.push({
+      id: 'get_today_overview',
+      type: SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW,
+      label: 'Heute wichtig',
+      needsSellerConfirmation: false,
+      status: overview?.ok ? 'prepared' : 'blocked',
+      toolId: 'get_today_overview',
+      payload: {
+        todayOverview: overview,
+        itemCount: overview?.itemCount ?? 0,
+      },
+    });
+  }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP) && moment) {
     actions.push({
@@ -462,41 +481,25 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) {
-    const interpretation = runTool('interpret_message_instruction', { sellerInput }).result
-      || { sellerFacts: [] };
     const modelFact = facts.find((f) => f.field === 'vehicleInterest');
-    const modelKey = modelFact?.value?.modelKey || workingContext?.attachedVehicle?.modelKey;
-    const trimId = modelFact?.value?.trim || workingContext?.attachedVehicle?.trimId;
-    let retrieved = null;
-    if (modelKey) {
-      const variant = runTool('lookup_vehicle_variant', { modelKey, trim: trimId }).result;
-      const pkgName = interpretation.sellerFacts?.find((f) => f.type === 'package_present')?.value;
-      const pkg = pkgName
-        ? runTool('lookup_package_contents', {
-          modelKey,
-          trim: trimId,
-          packageName: pkgName,
-        }).result
-        : null;
-      const eq = trimId
-        ? runTool('lookup_vehicle_equipment', { modelKey, trim: trimId }).result
-        : null;
-      retrieved = { variant, package: pkg, equipment: eq };
-    }
-    const inline = runTool('draft_customer_message', {
-      lead,
+    const modelKey = modelFact?.value?.modelKey
+      || workingContext?.attachedVehicle?.modelKey
+      || null;
+    const knowledge = runTool('lookup_vehicle_technical_fact', {
+      modelKey,
       sellerInput,
-      currentOfferContext,
     }).result;
     actions.push({
       id: 'lookup_vehicle_fact',
       type: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
-      label: 'Fahrzeugfakt prüfen',
+      label: knowledge?.factLabel || 'Fahrzeugfakt prüfen',
       needsSellerConfirmation: false,
-      status: inline?.ok || retrieved ? 'prepared' : 'blocked',
-      toolId: 'lookup_vehicle_variant',
-      legacy: inline ?? null,
-      payload: { retrieved },
+      status: knowledge?.ok || knowledge?.status === 'unverified_or_missing' ? 'prepared' : 'blocked',
+      toolId: 'lookup_vehicle_technical_fact',
+      payload: {
+        knowledgeResult: knowledge,
+        mutatesCustomer: false,
+      },
     });
   }
 
@@ -509,11 +512,23 @@ export function planSellerActions({
 
   // „Angebot“ allein ist kein Message-Intent – erst verstehen/vorbereiten, dann formulieren.
   const explicitWrite = /\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
-  const wantsCustomerMessage = inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
-    || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    || (explicitWrite && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER))
-    || (explicitWrite && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && !offerIncomplete)
-    || (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && offerAction?.payload?.canCreateOffer);
+  const knowledgeOrDashboardOnly = (
+    intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)
+    || (
+      intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
+      && !intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+      && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+      && !explicitWrite
+    )
+  );
+  const wantsCustomerMessage = !knowledgeOrDashboardOnly
+    && (
+      inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
+      || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+      || (explicitWrite && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER))
+      || (explicitWrite && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && !offerIncomplete)
+      || (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && offerAction?.payload?.canCreateOffer)
+    );
 
   if (
     !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)

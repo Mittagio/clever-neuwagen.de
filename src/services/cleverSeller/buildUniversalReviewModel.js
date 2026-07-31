@@ -69,6 +69,57 @@ export function buildUniversalActionSections(turn = {}) {
     || null;
   const prepared = turn.preparedActions ?? [];
 
+  const todayAction = prepared.find((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW);
+  const todayOverview = turn.todayOverview || todayAction?.payload?.todayOverview;
+  if (todayOverview) {
+    const items = Array.isArray(todayOverview.items) ? todayOverview.items : [];
+    sections.push({
+      id: 'today_overview',
+      kind: 'today_overview',
+      title: 'Heute wichtig',
+      headline: items.length
+        ? `${items.length} Vorgang${items.length === 1 ? '' : 'e'} heute`
+        : 'Keine fälligen Vorgänge',
+      line: items.slice(0, 3).map((i) => i.customerName).filter(Boolean).join(' · ') || null,
+      items: items.map((item) => ({
+        leadId: item.leadId,
+        customerName: item.customerName,
+        headline: item.headline,
+        detail: item.detail,
+        reasons: item.reasons || [],
+        overdue: item.overdue,
+        dueToday: item.dueToday,
+      })),
+      primaryActions: items[0]?.leadId
+        ? [
+          { id: 'open_first', label: `${items[0].customerName} öffnen`, leadId: items[0].leadId },
+          { id: 'show_list', label: 'Tagesliste anzeigen' },
+        ]
+        : [{ id: 'show_list', label: 'Tagesliste anzeigen' }],
+    });
+  }
+
+  const knowledge = turn.knowledgeResult
+    || prepared.find((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)?.payload?.knowledgeResult;
+  if (knowledge) {
+    const modelLabel = knowledge.modelLabel
+      || (knowledge.modelKey ? `Kia ${knowledge.modelKey}` : 'Fahrzeug');
+    sections.push({
+      id: 'knowledge_result',
+      kind: 'knowledge_result',
+      title: `${modelLabel} · ${knowledge.factLabel || 'Fakt'}`,
+      headline: knowledge.ok
+        ? knowledge.displayValue
+        : (knowledge.message || 'Nicht verifiziert'),
+      line: knowledge.sourceLabel || null,
+      body: knowledge.ok
+        ? null
+        : (knowledge.message || 'Diesen Wert habe ich noch nicht eindeutig verifiziert.'),
+      knowledgeResult: knowledge,
+      primaryActions: [{ id: 'more_details', label: 'Mehr Details' }],
+    });
+  }
+
   const offerUpdate = prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
     && a.status === 'prepared'
@@ -431,6 +482,8 @@ export function buildUniversalReviewModel(turn = {}) {
       s.kind === 'offer_prepare'
       || s.kind === 'offer_incomplete'
       || s.kind === 'message_draft'
+      || s.kind === 'today_overview'
+      || s.kind === 'knowledge_result'
     ));
 
   return {
@@ -438,13 +491,17 @@ export function buildUniversalReviewModel(turn = {}) {
       ? '✨ Gefunden'
       : trackFeedback
         ? '✨ Clever hat einsortiert'
-        : goldenOnly
-          ? '✨ Clever'
-          : actionSections.some((s) => s.kind === 'offer_incomplete')
-            ? '✨ Clever prüft das Angebot'
-            : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-              ? '✨ Clever hat vorbereitet'
-              : '✨ Clever hat verstanden'),
+        : actionSections.some((s) => s.kind === 'today_overview')
+          ? '✨ Heute wichtig'
+          : actionSections.some((s) => s.kind === 'knowledge_result')
+            ? '✨ Fahrzeugwissen'
+            : goldenOnly
+              ? '✨ Clever'
+              : actionSections.some((s) => s.kind === 'offer_incomplete')
+                ? '✨ Clever prüft das Angebot'
+                : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
+                  ? '✨ Clever hat vorbereitet'
+                  : '✨ Clever hat verstanden'),
     groups,
     actionSections,
     factCount: facts.length,
@@ -468,17 +525,21 @@ export function buildUniversalReviewModel(turn = {}) {
       ? 'Im Verlauf öffnen'
       : trackFeedback
         ? 'Übernehmen'
-        : goldenOnly
-          ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
-          : actionSections.some((s) => s.kind === 'offer_incomplete')
-            ? 'Angebot vervollständigen'
-            : appointmentPrep && !multiAction
-              ? 'Vorschlag senden'
-              : multiAction
-                ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
-                  ? 'Angebot und Nachricht prüfen'
-                  : 'Änderungen prüfen')
-                : 'Übernehmen',
+        : actionSections.some((s) => s.kind === 'today_overview')
+          ? 'Tagesliste anzeigen'
+          : actionSections.some((s) => s.kind === 'knowledge_result')
+            ? 'Mehr Details'
+            : goldenOnly
+              ? (actionSections.find((s) => s.kind === 'golden_moment')?.primaryLabel || 'Angebot anpassen')
+              : actionSections.some((s) => s.kind === 'offer_incomplete')
+                ? 'Angebot vervollständigen'
+                : appointmentPrep && !multiAction
+                  ? 'Vorschlag senden'
+                  : multiAction
+                    ? (actionSections.some((s) => s.kind === 'offer_prepare') && actionSections.some((s) => s.kind === 'message_draft')
+                      ? 'Angebot und Nachricht prüfen'
+                      : 'Änderungen prüfen')
+                    : 'Übernehmen',
     secondaryCta: trackFeedback
       ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')
       : 'Verwerfen',
@@ -501,6 +562,10 @@ export function shouldShowUniversalReview(turn = {}) {
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
 
   const prepared = turn.preparedActions ?? [];
+  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) return true;
+  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) return true;
+  if (turn.todayOverview || turn.knowledgeResult) return true;
+
   const hasHistory = prepared.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY);
   if (hasHistory) return true;
 
