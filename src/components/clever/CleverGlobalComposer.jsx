@@ -16,6 +16,7 @@ import {
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurn } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
+import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/executeDualOfferAppointmentAccept.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import './CleverGlobalComposer.css';
 
@@ -224,6 +225,33 @@ export default function CleverGlobalComposer() {
     if (action.action === 'check_calendar') {
       setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
       setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
+    if (action.action === 'accept_offer_and_appointment') {
+      const executed = executeDualOfferAppointmentAccept({
+        lead: ctx?.currentCustomer || null,
+        turn: lastTurn,
+      });
+      if (!executed.ok) {
+        setFeedback('Angebot und Termin sind noch nicht gemeinsam übernehmbar.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      const leadId = executed.leadId
+        || action.leadId
+        || lastTurn?.resolvedCustomer?.id;
+      if (!leadId) {
+        setFeedback('Kein Kunde für Angebot & Termin.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      handleOpenLead(leadId, {
+        workingContext: executed.handoffWorkingContext || lastTurn?.handoffWorkingContext || null,
+      });
+      setFeedback('Angebot & Terminvorschlag übernommen – noch nicht gesendet.');
+      setTimeout(() => setFeedback(''), 3200);
+      setReviewModel(null);
+      setLastTurn(null);
       return;
     }
     if (action.action === 'write_without_package_details') {

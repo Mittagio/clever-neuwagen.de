@@ -92,7 +92,8 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 11):** `src/services/cleverSeller/globalComposer.slice11.test.js` – PDF-Text → Contract Intake (`contract_pdf`).  
 **Global Composer (Slice 12):** `src/services/cleverSeller/globalComposer.slice12.test.js` – Akte-PDF Klassifikation Vertrag vs. Konfigurator.  
 **Global Composer (Slice 13):** `src/services/cleverSeller/globalComposer.slice13.test.js` – Dashboard-PDF → Contract Intake + Snapshot-Resolve.  
-**Global Composer (Slice 14):** `src/services/cleverSeller/globalComposer.slice14.test.js` – Angebot + Terminvorschlag gemeinsam.
+**Global Composer (Slice 14):** `src/services/cleverSeller/globalComposer.slice14.test.js` – Angebot + Terminvorschlag gemeinsam.  
+**Global Composer (Slice 15):** `src/services/cleverSeller/globalComposer.slice15.test.js` – Dual-pending + Dual-Accept ohne Auto-Send/Book.
 
 Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).  
 **Contract Memory:** [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md).

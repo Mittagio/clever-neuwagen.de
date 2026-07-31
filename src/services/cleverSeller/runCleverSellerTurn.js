@@ -507,29 +507,50 @@ function finalizeSellerTurn({
     }
   }
 
-  const pendingAction = offerPrepareAction
-    ? {
-      type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-      gatheredInputs: uniqueFacts
-        .filter((f) => f.factClass === 'offer_instruction' || f.field === 'vehicleInterest')
-        .map((f) => ({ field: f.field, value: f.value })),
-      missingInputs: missingInformation
-        .filter((m) => m.forIntent === SELLER_TURN_INTENTS.PREPARE_OFFER)
-        .map((m) => m.field),
-      createdAt: new Date().toISOString(),
-      preparedOffer: offerPrepareAction.payload?.preparedOffer || null,
-    }
-    : (appointmentPrepareAction?.payload?.preparedAppointment
-      ? {
-        type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT,
-        customerId: workingLead?.id || appointmentPrepareAction.payload.preparedAppointment.customerId,
-        preparedAppointment: appointmentPrepareAction.payload.preparedAppointment,
-        messageDraft: appointmentPrepareAction.payload.messageDraft || messageDraft,
-        createdAt: new Date().toISOString(),
-      }
-      : null);
+  const preparedAppointmentPayload = appointmentPrepareAction?.payload?.preparedAppointment || null;
+  const offerGatheredInputs = uniqueFacts
+    .filter((f) => f.factClass === 'offer_instruction' || f.field === 'vehicleInterest')
+    .map((f) => ({ field: f.field, value: f.value }));
+  const offerMissingInputs = missingInformation
+    .filter((m) => m.forIntent === SELLER_TURN_INTENTS.PREPARE_OFFER)
+    .map((m) => m.field);
+  const pendingCreatedAt = new Date().toISOString();
 
-  const handoffWorkingContext = offerPrepareAction?.payload?.attachWorkingContext
+  // Slice 15: Dual-pending – Angebot und Termin gemeinsam (Follow-ups wie „Lieber 16 Uhr“)
+  const pendingAction = (offerPrepareAction && preparedAppointmentPayload)
+    ? {
+      type: 'offer_and_appointment',
+      customerId: workingLead?.id
+        || preparedAppointmentPayload.customerId
+        || offerPrepareAction.payload?.customerId
+        || null,
+      gatheredInputs: offerGatheredInputs,
+      missingInputs: offerMissingInputs,
+      preparedOffer: offerPrepareAction.payload?.preparedOffer || null,
+      preparedAppointment: preparedAppointmentPayload,
+      messageDraft: appointmentPrepareAction.payload?.messageDraft || messageDraft,
+      needsSellerConfirmation: true,
+      createdAt: pendingCreatedAt,
+    }
+    : (offerPrepareAction
+      ? {
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        gatheredInputs: offerGatheredInputs,
+        missingInputs: offerMissingInputs,
+        createdAt: pendingCreatedAt,
+        preparedOffer: offerPrepareAction.payload?.preparedOffer || null,
+      }
+      : (preparedAppointmentPayload
+        ? {
+          type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT,
+          customerId: workingLead?.id || preparedAppointmentPayload.customerId,
+          preparedAppointment: preparedAppointmentPayload,
+          messageDraft: appointmentPrepareAction.payload?.messageDraft || messageDraft,
+          createdAt: pendingCreatedAt,
+        }
+        : null));
+
+  const offerHandoffBase = offerPrepareAction?.payload?.attachWorkingContext
     ? buildPreparedOfferWorkingContext({
       customerId: workingLead?.id || offerPrepareAction.payload?.customerId,
       customerName: workingLead?.contact?.name || offerPrepareAction.payload?.customerName,
@@ -540,17 +561,37 @@ function finalizeSellerTurn({
       purchasePrice: offerPrepareAction.payload?.purchasePrice,
       messageDraft: typeof messageDraft === 'string' ? messageDraft : messageDraft?.body,
     })
-    : (appointmentPrepareAction?.payload?.handoff
-      ? {
-        ...appointmentPrepareAction.payload.handoff,
-        customerId: workingLead?.id
-          || appointmentPrepareAction.payload.preparedAppointment?.customerId
-          || null,
-        customerName: workingLead?.contact?.name
-          || appointmentPrepareAction.payload.preparedAppointment?.customerName
-          || null,
-      }
-      : (draftMessageAction?.payload?.handoff
+    : null;
+  const appointmentHandoffBase = appointmentPrepareAction?.payload?.handoff
+    ? {
+      ...appointmentPrepareAction.payload.handoff,
+      customerId: workingLead?.id
+        || preparedAppointmentPayload?.customerId
+        || null,
+      customerName: workingLead?.contact?.name
+        || preparedAppointmentPayload?.customerName
+        || null,
+    }
+    : null;
+
+  const handoffWorkingContext = (offerHandoffBase && preparedAppointmentPayload)
+    ? {
+      ...offerHandoffBase,
+      kind: 'offer_and_appointment',
+      dual: true,
+      composerMode: appointmentHandoffBase?.composerMode || offerHandoffBase.composerMode || null,
+      messageDraft: appointmentHandoffBase?.messageDraft
+        || appointmentPrepareAction?.payload?.messageDraft
+        || (typeof messageDraft === 'string' ? messageDraft : messageDraft?.body)
+        || offerHandoffBase.preparedOffer?.messageDraft
+        || null,
+      preparedAppointment: preparedAppointmentPayload,
+      editingMessageDraft: appointmentHandoffBase?.editingMessageDraft || null,
+      draft: appointmentHandoffBase?.draft || appointmentHandoffBase?.messageDraft || null,
+    }
+    : (offerHandoffBase
+      || appointmentHandoffBase
+      || (draftMessageAction?.payload?.handoff
         ? {
           ...draftMessageAction.payload.handoff,
           customerId: workingLead?.id || draftMessageAction.payload.handoff.customerId || null,

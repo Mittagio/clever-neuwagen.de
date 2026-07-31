@@ -853,6 +853,14 @@ export function buildUniversalReviewModel(turn = {}) {
       messageDraft: msgBody,
       availabilityStatus: avail,
       primaryActions: [
+        ...(offerSec?.kind === 'offer_prepare'
+          ? [{
+            id: 'accept_both',
+            label: 'Angebot & Termin übernehmen',
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'accept_offer_and_appointment',
+          }]
+          : []),
         {
           id: 'review_offer',
           label: 'Angebot prüfen',

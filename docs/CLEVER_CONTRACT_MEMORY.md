@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 14 implementiert (Offer + Termin)  
+**Status:** Slice 15 implementiert (Dual-Accept Offer + Termin)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -166,7 +166,8 @@ Besonders behandeln / nicht an Message Writer:
 | **12** | Akte PDF-Wiring | Klassifikation contract_pdf vs. configurator_pdf |
 | **13** | Global Composer PDF | Dashboard-Drop → gleicher Prepare/Turn-Pfad |
 | **14** | Offer + Termin | Dual-Prep + `offer_and_appointment_review` |
-| später | OCR, Dual-Accept-Execute | siehe unten |
+| **15** | Dual-Accept-Execute | Dual-pending + `accept_offer_and_appointment` |
+| später | OCR | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -485,10 +486,36 @@ Ein Seller-Satz bereitet **Angebot und Terminvorschlag** gemeinsam vor:
 
 ---
 
+## Slice 15 – Dual-Accept-Execute / Dual-pendingAction
+
+**Status: implementiert**
+
+Nach Slice-14-Composite:
+
+1. **`pendingAction.type = offer_and_appointment`** trägt Angebot *und* Terminvorschlag (Follow-up „Lieber 16 Uhr“ bleibt möglich).
+2. **CTA** `accept_offer_and_appointment` („Angebot & Termin übernehmen“) – nur wenn Angebot wirklich `prepared`.
+3. **`executeDualOfferAppointmentAccept`** – expliziter Seller-Klick, `autoSent: false`, `autoBooked: false`.
+4. Getrennte CTAs bleiben (Angebot prüfen / Vorschlag senden).
+
+| Modul | Rolle |
+|-------|--------|
+| `runCleverSellerTurn.js` | Dual-pending + dual Handoff |
+| `executeDualOfferAppointmentAccept.js` | Accept ohne Auto-Send/Book |
+| `buildUniversalReviewModel.js` | Dual-Accept-CTA |
+| `CleverGlobalComposer.jsx` | Action-Wiring |
+| `globalComposer.slice15.test.js` | Golden + Gegenproben |
+
+### Nicht in Slice 15
+
+- OCR / Scan-Pipeline  
+- Eine gemergte Dual-Kundennachricht (Angebotstext + Termin in einem Body)  
+- Kalender als Wahrheit  
+
+---
+
 ## Später
 
 - OCR / Scan-Pipeline  
-- Dual-Accept-Execute / Dual-pendingAction  
 
 ---
 

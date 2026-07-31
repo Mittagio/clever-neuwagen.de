@@ -1,7 +1,7 @@
 # Clever Global Composer
 
-**Status:** Slice 14 (Offer + Termin Multi-Action)  
-**Stand:** Juli 2026
+**Status:** Slice 15 (Dual-Accept Offer + Termin)  
+**Stand:** August 2026
 
 ## Produktgesetz
 
@@ -43,7 +43,8 @@ Nur `runCleverSellerTurn()`:
 | PDF → `contract_pdf` / `import_customer_contract` | 11 |
 | Akte Attach → classify → contract_pdf \| configurator_pdf | 12 |
 | Global Composer PDF-Drop → gleicher Pfad | 13 |
-| `offer_and_appointment_review` | 14 |
+| `offer_and_appointment_review` | 14–15 |
+| Dual-pending / `accept_offer_and_appointment` | 15 |
 
 ## Slice 5 – Golden Flow
 
@@ -71,12 +72,12 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice14.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice15.test.js`
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
-| später | OCR / Scan-Pipeline, Dual-Accept-Execute | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | OCR / Scan-Pipeline | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.
