@@ -1,8 +1,25 @@
 .app-layout {
+  flex: 1;
+  min-height: 100%;
   min-height: 100dvh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
+}
+
+/* Vollhöhen-Akte unter Header: Shell füllt Main, kein Overflow durch gestapelte 100dvh. */
+.app-layout--dealer-app:has(.backend-lead-akte),
+.app-layout--dealer-app:has(.dealer-ai-main--akte),
+.app-layout--dealer-app:has(.cust-akte--responsive-shell) {
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.app-layout--dealer-app:has(.backend-lead-akte) .site-footer,
+.app-layout--dealer-app:has(.dealer-ai-main--akte) .site-footer,
+.app-layout--dealer-app:has(.cust-akte--responsive-shell) .site-footer {
+  display: none !important;
 }
 
 .app-layout__main {

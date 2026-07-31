@@ -32,11 +32,14 @@
 }
 
 /* ── Conversational Workspace Shell (Seitentyp A) ── */
+/* Fills flex parent (e.g. .app-layout__main) — do not re-claim 100dvh under header. */
 .cn-workspace {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
-  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   width: 100%;
   margin-inline: auto;
   background: var(--color-bg, #f7f8fa);
@@ -115,7 +118,8 @@
     max-width: none;
     width: 100%;
     max-height: none;
-    min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+    min-height: 0;
+    height: 100%;
     border-inline: none;
   }
 
@@ -135,7 +139,7 @@
   }
 }
 
-/* Desktop: Side rail | Context | Main | Assist – Viewport füllen */
+/* Desktop: Side rail | Context | Main | Assist – Parent füllen */
 @media (min-width: 1100px) {
   .cn-workspace {
     flex-direction: row;
@@ -143,8 +147,9 @@
     width: 100%;
     max-width: none;
     margin-inline: 0;
-    max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
-    min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+    max-height: none;
+    min-height: 0;
+    height: 100%;
   }
 
   .cn-workspace--triple .cn-workspace__body {

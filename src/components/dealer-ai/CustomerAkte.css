@@ -4529,8 +4529,7 @@
 }
 
 /* ===== Mobile Kundenakte Shell (Declutter) ===== */
-.cust-akte--mobile-shell,
-.cust-akte--responsive-shell {
+.cust-akte--mobile-shell {
   display: flex;
   flex-direction: column;
   min-height: calc(100dvh - var(--internal-test-env-offset, 0px));
@@ -4543,8 +4542,21 @@
   background: var(--color-bg, #f7f8fa);
 }
 
+/* Under .app-layout__main: fill parent flex space, do not stack 100dvh. */
 .cust-akte--responsive-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding-bottom: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--color-bg, #f7f8fa);
 }
 
 .cust-akte--responsive-shell .cn-workspace {
@@ -4860,7 +4872,8 @@
 
 @media (min-width: 1100px) {
   .cust-akte--responsive-shell .cn-workspace {
-    max-height: calc(100dvh - 0px);
+    max-height: none;
+    height: 100%;
   }
 
   .cn-hide-when-assist-rail {

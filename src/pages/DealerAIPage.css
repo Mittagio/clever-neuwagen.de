@@ -22,7 +22,10 @@
 
 .dealer-ai-page:has(.dealer-ai-main--akte) {
   background: var(--color-bg, #f7f8fa);
-  max-height: calc(100dvh - var(--internal-test-env-offset, 0px));
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   overflow: hidden;
 }
 
