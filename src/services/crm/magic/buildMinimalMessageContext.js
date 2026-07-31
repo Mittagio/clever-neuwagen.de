@@ -16,6 +16,8 @@ export function buildMinimalMessageContext(params = {}) {
     verifiedEquipmentFacts = null,
     offerFacts = null,
     tone = 'freundlich',
+    akteContext = null,
+    chipIntent = null,
   } = params;
 
   const safeNeeds = (Array.isArray(relevantCustomerNeeds) ? relevantCustomerNeeds : [])
@@ -23,11 +25,53 @@ export function buildMinimalMessageContext(params = {}) {
     .filter(Boolean)
     .slice(0, 8);
 
+  const akte = akteContext && typeof akteContext === 'object'
+    ? {
+      chipIntent: akteContext.chipIntent || chipIntent || null,
+      cleverSummary: akteContext.cleverSummary
+        ? String(akteContext.cleverSummary).slice(0, 600)
+        : null,
+      customerNotes: (akteContext.customerNotes || [])
+        .map((n) => String(n ?? '').trim())
+        .filter(Boolean)
+        .slice(0, 4),
+      inclination: akteContext.inclination
+        ? {
+          modelKey: akteContext.inclination.modelKey || null,
+          modelLabel: akteContext.inclination.modelLabel || null,
+          source: akteContext.inclination.source || null,
+        }
+        : null,
+      vehicleTracks: (akteContext.vehicleTracks || []).slice(0, 8).map((t) => ({
+        modelKey: t.modelKey || null,
+        modelLabel: t.modelLabel || null,
+        status: t.status || null,
+        statusLabel: t.statusLabel || null,
+      })),
+      selectedWorkingChip: akteContext.selectedWorkingChip
+        ? {
+          shortLabel: akteContext.selectedWorkingChip.shortLabel || null,
+          label: akteContext.selectedWorkingChip.label || null,
+          modelKey: akteContext.selectedWorkingChip.modelKey || null,
+        }
+        : null,
+    }
+    : {
+      chipIntent: chipIntent || null,
+      cleverSummary: null,
+      customerNotes: [],
+      inclination: null,
+      vehicleTracks: [],
+      selectedWorkingChip: null,
+    };
+
   // AHK / sensible Needs nicht ungefragt mitschicken – Caller filtert bereits
   return {
     recipient: String(recipient || 'Kunde').slice(0, 120),
     rawSellerInstruction: String(rawSellerInstruction || '').slice(0, 2000),
     relevantCustomerNeeds: safeNeeds,
+    chipIntent: akte.chipIntent,
+    akteContext: akte,
     vehicleIdentity: vehicleIdentity
       ? {
         modelKey: vehicleIdentity.modelKey ?? null,
@@ -74,6 +118,9 @@ export function buildMinimalMessageContext(params = {}) {
       'Seller Facts und verified Facts getrennt behandeln.',
       'Verfügbarkeit nur nennen, wenn als seller_input vorhanden.',
       'Keine IBAN, Ausweis-, Gehalts- oder Selbstauskunftsdaten verwenden.',
+      'Kein Boilerplate wie „kurze Rückfrage“ ohne echte Frage.',
+      'Konditionen nur einmal nennen (nicht doppelt aus Summary und Einzelwerten).',
+      'Modellname korrekt: Chip/Working-Context vor generischem Kia-Kontext; Akte-Neigung (z. B. XCeed) erwähnen wenn sinnvoll.',
     ],
   };
 }

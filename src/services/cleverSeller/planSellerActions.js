@@ -432,14 +432,15 @@ export function planSellerActions({
     });
   }
 
+  const wantsCustomerMessage = inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
+    || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    || /\b(schreib|sag(?:e|en)?\s+ihm|mail|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|g(?:ue|u|ü)nstig|r(?:ue|u|ü)ckfrage|nachfass|angebot|kundenlink)\b/i.test(sellerInput);
+
   if (
     !intentTypes.has(SELLER_TURN_INTENTS.SEND_PORTFOLIO)
     && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)
     && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    && (
-      inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
-      || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    )
+    && wantsCustomerMessage
   ) {
     const inline = runTool('draft_customer_message', {
       lead,
@@ -485,13 +486,34 @@ export function planSellerActions({
         customerName,
         currentOfferContext,
       });
-    } else if (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
+    } else {
       const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
+      const offerFacts = currentOfferContext?.offerId
+        ? {
+          offerId: currentOfferContext.offerId,
+          title: currentOfferContext.title || currentOfferContext.summary || currentOfferContext.shortLabel || null,
+          monthlyRate: currentOfferContext.monthlyRate ?? null,
+          termMonths: currentOfferContext.termMonths ?? null,
+          mileagePerYear: currentOfferContext.mileagePerYear ?? null,
+          paymentType: currentOfferContext.paymentType ?? null,
+          summary: currentOfferContext.summary || currentOfferContext.shortLabel || null,
+        }
+        : null;
+      const vehicleIdentity = workingContext?.attachedVehicle
+        || (currentOfferContext
+          ? {
+            modelKey: currentOfferContext.modelKey || null,
+            modelLabel: currentOfferContext.title || currentOfferContext.modelKey || null,
+            trimId: currentOfferContext.trimId || null,
+            color: currentOfferContext.color || null,
+          }
+          : null);
       const ctx = runTool('build_minimal_message_context', {
         recipient: customerName || 'Kunde',
         rawSellerInstruction: sellerInput,
-        vehicleIdentity: workingContext?.attachedVehicle || null,
+        vehicleIdentity,
         sellerFacts: instruction?.sellerFacts || [],
+        offerFacts,
         tone: 'freundlich',
       }).result;
       messageDraft = runTool('write_grounded_message', {

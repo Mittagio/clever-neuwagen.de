@@ -77,6 +77,8 @@ router.post('/clever/magic-message', express.json({ limit: '48kb' }), async (req
       openVehicles = [],
       allowWithoutPackageDetails = false,
       sellerFacts = [],
+      akteContext = null,
+      chipIntent = null,
     } = req.body ?? {};
 
     const input = String(rawSellerInput || draftText || '').trim();
@@ -104,7 +106,21 @@ router.post('/clever/magic-message', express.json({ limit: '48kb' }), async (req
           selectedModelKey: lead.crm?.needProfile?.selectedModelKey ?? null,
           modelHint: lead.crm?.needProfile?.modelHint ?? null,
           towCapacityKg: lead.crm?.needProfile?.towCapacityKg ?? null,
+          understoodLabels: (lead.crm?.needProfile?.understoodLabels ?? []).slice(0, 12),
         },
+        sellerInsights: (lead.crm?.sellerInsights ?? []).slice(-6).map((insight) => ({
+          text: String(insight.text ?? '').slice(0, 240),
+          understoodLabels: (insight.understoodLabels ?? insight.labels ?? []).slice(0, 8),
+        })),
+        vehicleConfigurations: (lead.crm?.vehicleConfigurations ?? []).slice(0, 8).map((vc) => ({
+          id: vc.id ?? null,
+          model: vc.model ?? null,
+          modelKey: vc.modelKey ?? null,
+          trimLabel: vc.trimLabel ?? null,
+          vehicleTrack: vc.vehicleTrack
+            ? { status: vc.vehicleTrack.status ?? null }
+            : null,
+        })),
       },
     } : null;
 
@@ -119,6 +135,8 @@ router.post('/clever/magic-message', express.json({ limit: '48kb' }), async (req
       openVehicles,
       allowWithoutPackageDetails,
       sellerFacts,
+      akteContext,
+      chipIntent,
     });
 
     if (result.missingKnowledge?.length) {

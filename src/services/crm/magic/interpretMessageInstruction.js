@@ -4,10 +4,10 @@
 
 const COLOR_RE = /\b(schwarz\w*|wei(?:ss|ß)\w*|grau\w*|silber\w*|blau\w*|rot\w*|gr[uü]n\w*|beige\w*)\b/i;
 const TRIM_RE = /\b(gt[-\s]?line|core|vision|spirit|earth|air|black[-\s]?edition)\b/i;
-const MODEL_RE = /\b(picanto|sportage|ev\s?[2-9]|ceed|niro|sorento|stonic|rio)\b/i;
+const MODEL_RE = /\b(picanto|sportage|ev\s?[2-9]|x?ceed|tivoli|niro|sorento|stonic|rio)\b/i;
 const PACKAGE_RE = /\b(technologie[-\s]?paket|technik[-\s]?paket|drivewise(?:[-\s]?paket)?|komfort[-\s]?paket|premium[-\s]?paket)\b/i;
 const SUNROOF_RE = /\b(schiebedach|panorama(?:dach)?|glasdach)\b/i;
-const AVAIL_RE = /\b(da haben|haben wir|sofort verfügbar|verfügbar|auf lager|steht hier|beim händler)\b/i;
+const AVAIL_RE = /\b(da haben|haben wir|sofort verf(?:ue|u|ü)gbar|bald verf(?:ue|u|ü)gbar|verf(?:ue|u|ü)gbar|auf lager|steht hier|beim händler)\b/i;
 const EXPLAIN_PACKAGE_RE = /\b(erklär|erkläre|erklären|was (ist |im )?.*(paket)|inhalt|umfasst|enthalten)\b/i;
 const EXPLAIN_EQUIP_RE = /\b(ausstattung|serienausstattung|welche ausstattung)\b/i;
 const DOCS_ONLY_RE = /\b(unterlagen|selbstauskunft|dokumente|formulare)\b/i;

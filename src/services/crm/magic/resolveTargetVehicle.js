@@ -14,6 +14,9 @@ function normalizeModelKey(value = '') {
     .replace(/picanto.*/, 'picanto')
     .replace(/sportage.*hybrid/, 'sportage-hybrid')
     .replace(/sportage.*/, 'sportage')
+    .replace(/x[-\s]?ceed.*/, 'xceed')
+    .replace(/ceed.*/, 'ceed')
+    .replace(/tivoli.*/, 'tivoli')
     .replace(/ev\s?([2-9])/, 'ev$1');
 }
 
@@ -41,12 +44,56 @@ function fromOfferCard(card = {}) {
  * @param {object[]} [params.sellerFacts]
  * @param {object} [params.lead]
  * @param {object[]} [params.openVehicles]
+ * @param {string} [params.rawSellerInput]
  */
 export function resolveTargetVehicle(params = {}) {
   const working = params.workingContext || {};
   const offer = params.offerContext || {};
   const sellerFacts = Array.isArray(params.sellerFacts) ? params.sellerFacts : [];
   const openVehicles = Array.isArray(params.openVehicles) ? params.openVehicles : [];
+  const raw = String(params.rawSellerInput || '').toLowerCase();
+
+  // 0) Explizites Modell im Freitext schlägt falschen Anhang
+  const mentioned = raw.match(/\b(xceed|tivoli|sportage|picanto|niro|sorento|stonic|ceed|ev\s?[2-9])\b/i)?.[1];
+  if (mentioned) {
+    const want = normalizeModelKey(mentioned);
+    const hit = openVehicles.find((v) => {
+      const key = normalizeModelKey(v.modelKey || v.model || v.label || '');
+      return key && (key === want || key.includes(want) || want.includes(key));
+    });
+    if (hit) {
+      return {
+        ok: true,
+        vehicle: {
+          modelKey: normalizeModelKey(hit.modelKey || hit.model || want),
+          trimId: normalizeTrim(hit.trimId || hit.trim || ''),
+          color: hit.color || null,
+          label: hit.label || hit.shortLabel || want,
+          source: 'seller_input_model',
+          offerId: hit.offerId || hit.id || null,
+          monthlyRate: hit.monthlyRate ?? null,
+          termMonths: hit.termMonths ?? null,
+          mileagePerYear: hit.mileagePerYear ?? null,
+          paymentType: hit.paymentType ?? null,
+          summary: hit.summary || hit.shortLabel || null,
+          shortLabel: hit.shortLabel || null,
+        },
+        ambiguity: null,
+      };
+    }
+    return {
+      ok: true,
+      vehicle: {
+        modelKey: want,
+        trimId: null,
+        color: null,
+        label: want,
+        source: 'seller_input_model',
+        offerId: null,
+      },
+      ambiguity: null,
+    };
+  }
 
   // 1) Angehängtes Angebot / Working Context
   if (working.card || working.offerId || working.modelKey || working.shortLabel) {
@@ -129,7 +176,13 @@ export function resolveTargetVehicle(params = {}) {
         color: only.color || null,
         label: only.label || null,
         source: 'open_vehicle',
-        offerId: only.offerId || null,
+        offerId: only.offerId || only.id || null,
+        monthlyRate: only.monthlyRate ?? null,
+        termMonths: only.termMonths ?? null,
+        mileagePerYear: only.mileagePerYear ?? null,
+        paymentType: only.paymentType ?? null,
+        summary: only.summary || only.shortLabel || null,
+        shortLabel: only.shortLabel || null,
       },
       ambiguity: null,
     };

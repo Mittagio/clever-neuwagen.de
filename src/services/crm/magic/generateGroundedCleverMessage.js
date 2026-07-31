@@ -15,6 +15,7 @@ import {
   buildMinimalMessageContext,
   selectRelevantCustomerNeeds,
 } from './buildMinimalMessageContext.js';
+import { buildMagicAkteContext } from './buildMagicAkteContext.js';
 import { generateCleverCustomerMessage, writeGroundedMessageFallback } from './generateCleverCustomerMessage.js';
 import { validateMessageFactPreservation } from './validateMessageFactPreservation.js';
 
@@ -83,8 +84,33 @@ function retrieveVerifiedVehicleFacts({
     }
   }
 
-  if (offerContext?.offerId || offerContext?.monthlyRate != null) {
-    const offer = tools.lookupCurrentOffer({ offerContext });
+  const preferVehicleOffer = vehicle?.source === 'seller_input_model'
+    && (vehicle.offerId || vehicle.monthlyRate != null || vehicle.summary);
+  const effectiveOffer = preferVehicleOffer
+    ? {
+      offerId: vehicle.offerId || null,
+      title: vehicle.label || vehicle.modelKey || null,
+      monthlyRate: vehicle.monthlyRate ?? null,
+      termMonths: vehicle.termMonths ?? null,
+      mileagePerYear: vehicle.mileagePerYear ?? null,
+      paymentType: vehicle.paymentType ?? null,
+      summary: vehicle.summary || vehicle.shortLabel || null,
+    }
+    : (offerContext?.offerId || offerContext?.monthlyRate != null || offerContext?.summary
+      ? offerContext
+      : (vehicle?.offerId || vehicle?.monthlyRate != null || vehicle?.summary
+        ? {
+          offerId: vehicle.offerId || null,
+          title: vehicle.label || vehicle.modelKey || null,
+          monthlyRate: vehicle.monthlyRate ?? null,
+          termMonths: vehicle.termMonths ?? null,
+          mileagePerYear: vehicle.mileagePerYear ?? null,
+          paymentType: vehicle.paymentType ?? null,
+          summary: vehicle.summary || vehicle.shortLabel || null,
+        }
+        : null));
+  if (effectiveOffer?.offerId || effectiveOffer?.monthlyRate != null || effectiveOffer?.summary) {
+    const offer = tools.lookupCurrentOffer({ offerContext: effectiveOffer });
     if (offer.ok) offerFacts = offer.offer;
   }
 
@@ -147,6 +173,7 @@ export async function generateGroundedCleverMessage(params = {}, deps = {}) {
     sellerFacts: interpretation.sellerFacts,
     lead: params.lead,
     openVehicles: params.openVehicles,
+    rawSellerInput,
   });
 
   if (!resolved.ok && resolved.ambiguity) {
@@ -204,6 +231,14 @@ export async function generateGroundedCleverMessage(params = {}, deps = {}) {
     mentionedAhk: interpretation.mentionedAhk,
   });
 
+  const akteContext = params.akteContext || buildMagicAkteContext({
+    lead: params.lead,
+    rawSellerInput,
+    workingContext: params.workingContext,
+    offerContext: params.offerContext,
+    openVehicles: params.openVehicles,
+  });
+
   const minimalContext = buildMinimalMessageContext({
     recipient: params.recipient
       || params.customerContext?.name
@@ -217,6 +252,8 @@ export async function generateGroundedCleverMessage(params = {}, deps = {}) {
     verifiedEquipmentFacts: retrieved.verifiedEquipmentFacts,
     offerFacts: retrieved.offerFacts,
     tone: params.tone || 'freundlich',
+    akteContext,
+    chipIntent: params.chipIntent || akteContext.chipIntent,
   });
 
   // G

@@ -86,6 +86,7 @@ function applyTonePolish(text, toneId, context) {
  */
 export async function composeSellerOutboundMessageAsync({
   draftText = '',
+  rawSellerInput = '',
   lead = null,
   customerName = '',
   tone = 'freundlich',
@@ -94,8 +95,10 @@ export async function composeSellerOutboundMessageAsync({
   openVehicles = [],
   allowWithoutPackageDetails = false,
   recipient = '',
+  akteContext = null,
+  chipIntent = null,
 } = {}, deps = {}) {
-  const seed = String(draftText ?? '').trim();
+  const seed = String(rawSellerInput || draftText || '').trim();
   const toneId = OUTBOUND_TONES.some((t) => t.id === tone) ? tone : 'freundlich';
 
   const grounded = await generateGroundedCleverMessage({
@@ -108,6 +111,8 @@ export async function composeSellerOutboundMessageAsync({
     tone: toneId,
     recipient: recipient || customerName,
     allowWithoutPackageDetails,
+    akteContext,
+    chipIntent,
   }, deps);
 
   if (!grounded?.ok || !grounded.body) {

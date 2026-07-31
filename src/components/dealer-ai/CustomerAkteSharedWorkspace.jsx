@@ -14,6 +14,7 @@ import {
 } from '../../services/crm/customerMessageService.js';
 import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
+  isCleverMagicMessageClientEnabled,
   requestCleverMagicMessage,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
@@ -46,10 +47,9 @@ import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes
 import {
   COMPOSER_PRIMARY_CHIPS,
   COMPOSER_MORE_CHIPS,
-  buildComposerSuggestionAssist,
+  buildChipSellerInput,
   resolveComposerShortcut,
 } from '../../services/crm/composerSuggestionService.js';
-import { runComposerChipThroughTurn } from '../../services/crm/runComposerChipThroughTurn.js';
 import {
   findOfferWorkingContext,
   toCurrentOfferContext,
@@ -72,6 +72,14 @@ import {
   buildComposerLastActionFromReviewModel,
   buildComposerLastActionFromText,
 } from '../../services/crm/composerLastAction.js';
+import {
+  buildMagicAkteContext,
+  detectChipIntent,
+} from '../../services/crm/magic/buildMagicAkteContext.js';
+import {
+  getVehicleTrackMeta,
+  VEHICLE_TRACK_STATUS_UI,
+} from '../../services/crm/vehicleTrack.js';
 
 function countLeadOffers(lead = {}) {
   try {
@@ -249,22 +257,154 @@ export default function CustomerAkteSharedWorkspace({
     setLastComposerAction(next);
   }
 
-  /** Clever-Arbeit: Input → Vorschlag in der Mitte (noch nichts persistiert). */
-  function runCleverProposeFromInput(rawText) {
+  /** Clever-Arbeit: Input → Magic-Nachricht oben (Cursor-ähnlich). */
+  async function runCleverProposeFromInput(rawText) {
     const text = String(rawText ?? '').trim();
     if (!text || sending) return false;
     setSending(true);
+    setFeedback('Clever schreibt …');
     try {
+      if (onResolveOfferReference) {
+        onResolveOfferReference(text);
+      }
+
+      const offerCtx = resolveCurrentOfferContext();
+      const workingCtx = resolveMagicWorkingContext();
+      const openVehicles = (() => {
+        try {
+          return (buildVehicleOpportunityCards({ lead, wishFields: lead?.wish ?? {} }) || [])
+            .map((card) => {
+              const title = formatVehicleCardTitle(card) || card.shortLabel || card.label || null;
+              const conditions = formatVehicleCardConditions(card);
+              const price = formatVehicleCardPrice(card);
+              const summary = [conditions, price].filter(Boolean).join(' · ') || null;
+              const config = (lead?.crm?.vehicleConfigurations ?? []).find((vc) => (
+                vc.id === card.id || vc.id === card.configurationId
+              ));
+              const trackMeta = config ? getVehicleTrackMeta(config) : null;
+              return {
+                modelKey: card.modelKey || card.model || null,
+                model: card.modelName || card.model || null,
+                trimId: card.trimId || card.trim || card.trimLabel || null,
+                color: card.color || card.colorId || null,
+                label: title,
+                shortLabel: summary ? `${String(title || '').replace(/^Kia\s+/i, '')} · ${summary}` : title,
+                offerId: card.id || card.configurationId || card.offerId || null,
+                id: card.id || null,
+                monthlyRate: card.desiredRate ?? null,
+                termMonths: card.termMonths ?? null,
+                mileagePerYear: card.mileagePerYear ?? null,
+                paymentType: card.paymentType ?? null,
+                summary,
+                status: trackMeta?.status || null,
+                statusLabel: trackMeta?.status
+                  ? (VEHICLE_TRACK_STATUS_UI[trackMeta.status]?.label || trackMeta.status)
+                  : null,
+              };
+            });
+        } catch {
+          return [];
+        }
+      })();
+
       const turn = runCleverSellerTurn({
         lead,
         sellerInput: text,
-        currentOfferContext: resolveCurrentOfferContext(),
+        currentOfferContext: offerCtx,
         workingContextItems,
         customerName,
       });
+
+      // Magic: LLM / grounded Writer ersetzt Template-Mails
+      let magicBody = null;
+      let magicWriter = null;
+      let magicWarnings = [];
+      const chipIntent = detectChipIntent(text);
+      const akteContext = buildMagicAkteContext({
+        lead,
+        rawSellerInput: text,
+        workingContext: workingCtx,
+        offerContext: offerCtx,
+        openVehicles,
+      });
+      const magicPayload = {
+        rawSellerInput: text,
+        draftText: text,
+        lead,
+        customerName,
+        recipient: displayName,
+        tone: outboundTone || 'freundlich',
+        workingContext: workingCtx,
+        offerContext: offerCtx,
+        openVehicles,
+        akteContext,
+        chipIntent: chipIntent || akteContext.chipIntent,
+        allowWithoutPackageDetails: true,
+        sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
+        dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
+      };
+
+      const magicRemoteEnabled = isCleverMagicMessageClientEnabled();
+      if (magicRemoteEnabled) {
+        try {
+          const remote = await requestCleverMagicMessage(magicPayload);
+          if (remote?.ok && remote.body) {
+            magicBody = String(remote.body).trim();
+            magicWriter = remote.writer || 'openai';
+            magicWarnings = remote.warnings || [];
+          }
+        } catch {
+          /* local fallback */
+        }
+      }
+
+      if (!magicBody) {
+        try {
+          const local = await composeSellerOutboundMessageAsync(magicPayload, {
+            forceFallback: !magicRemoteEnabled,
+          });
+          if (local?.ok && local.text) {
+            magicBody = String(local.text).trim();
+            magicWriter = local.writer || 'grounded_fallback';
+            magicWarnings = local.grounded?.warnings || [];
+          }
+        } catch {
+          magicBody = null;
+        }
+      }
+
       setDraft('');
       setOfferPrep(null);
       setAppointmentDraft(null);
+
+      if (magicBody) {
+        const enriched = enrichTurnWithMagicMessage(turn, magicBody);
+        if (shouldShowUniversalReview(enriched)) {
+          showUniversalReview(enriched);
+        } else {
+          setUniversalTurn(null);
+          clearAssist();
+          rememberLastComposerAction(buildComposerLastActionFromText({
+            body: magicBody,
+            title: 'Nachricht',
+            status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
+          }));
+        }
+        if (magicWriter === 'openai') {
+          setFeedback('Clever hat geschrieben – bitte prüfen');
+        } else if (!magicRemoteEnabled) {
+          setFeedback('Offline-Entwurf (Magic/OpenAI aus) – bitte prüfen und anpassen');
+        } else if (
+          magicWarnings.some((w) => /openai|key_missing|magic_flag|fallback/i.test(String(w)))
+        ) {
+          setFeedback('Fallback-Entwurf (OpenAI nicht verfügbar) – bitte prüfen und anpassen');
+        } else {
+          setFeedback('Geprüfter Entwurf – bitte Inhalt kurz gegenlesen');
+        }
+        setTimeout(() => setFeedback(''), 3200);
+        return true;
+      }
+
       if (shouldShowUniversalReview(turn)) {
         showUniversalReview(turn);
         setFeedback('Clever hat vorbereitet');
@@ -291,12 +431,36 @@ export default function CustomerAkteSharedWorkspace({
       }
       clearAssist();
       setUniversalTurn(null);
+      setLastComposerAction(null);
       setFeedback('Clever hat nichts vorbereitet – bitte anders formulieren');
       setTimeout(() => setFeedback(''), 2800);
       return false;
     } finally {
       setSending(false);
     }
+  }
+
+  function enrichTurnWithMagicMessage(turn, body) {
+    const text = String(body || '').trim();
+    if (!turn || !text) return turn;
+    const prepared = Array.isArray(turn.preparedActions) ? [...turn.preparedActions] : [];
+    const idx = prepared.findIndex((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+    const draftAction = {
+      id: 'draft_message',
+      type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+      label: 'Nachricht vorbereiten',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      toolId: 'write_grounded_message',
+      payload: { messageDraft: text },
+    };
+    if (idx >= 0) prepared[idx] = { ...prepared[idx], ...draftAction, payload: { messageDraft: text } };
+    else prepared.push(draftAction);
+    return {
+      ...turn,
+      messageDraft: text,
+      preparedActions: prepared,
+    };
   }
 
   function snapshotAcceptedReview(options = {}) {
@@ -335,7 +499,7 @@ export default function CustomerAkteSharedWorkspace({
     if (!text) return;
     if (seedAutoRun) {
       // Spur / „Nachricht vorbereiten“: sofort vorschlagen (Cursor-Vertrag).
-      runCleverProposeFromInput(text);
+      void runCleverProposeFromInput(text);
       return;
     }
     setDraft(text);
@@ -402,80 +566,33 @@ export default function CustomerAkteSharedWorkspace({
     composerInputRef.current = el;
   }, [focusToken, cleverMode]);
 
+  /**
+   * Chip: nur Composer befüllen (Cursor-Vertrag).
+   * Absenden → Vorschlag oben. Kein sofortiges Propose.
+   */
   function showSuggestionDraft(chipId) {
-    const routed = runComposerChipThroughTurn({
-      lead,
-      chipId,
-      customerName,
-      workingContextItems,
-      currentOfferContext: resolveCurrentOfferContext(),
-    });
+    const seed = buildChipSellerInput(chipId, { customerName });
+    if (!seed) {
+      setFeedback('Chip unbekannt');
+      setTimeout(() => setFeedback(''), 2000);
+      return;
+    }
     setComposerMode(COMPOSER_MODES.CLEVER_WORK);
     setEditingMessageDraft(null);
     priorWorkDraftRef.current = '';
     setOfferPrep(null);
     setAppointmentDraft(null);
-    setDraft('');
-
-    if (routed.mode === 'universal_review' && routed.turn) {
-      showUniversalReview(routed.turn);
-      clearAssist();
-      setFeedback('Clever hat vorbereitet – bitte prüfen');
-      setTimeout(() => setFeedback(''), 2800);
-      return;
-    }
-
-    if (routed.assist?.ok) {
-      setUniversalTurn(null);
-      clearAssist();
-      const first = routed.assist.results?.[0];
-      const isPortfolio = first?.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND;
-      const draftBody = first?.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT
-        ? (first.body || first.draft?.body || '')
-        : (first?.body || first?.draft?.body || '');
-      if (draftBody) {
-        mirrorMessageDraftToFeed(draftBody);
-        rememberLastComposerAction(buildComposerLastActionFromText({
-          body: draftBody,
-          title: isPortfolio ? 'Kundenlink' : 'Nachricht',
-          status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
-        }));
-      }
-      setFeedback(isPortfolio
-        ? 'Kundenlink vorbereitet – bitte prüfen'
-        : 'Nachricht vorbereitet – bitte prüfen');
-      setTimeout(() => setFeedback(''), 2800);
-      return;
-    }
-
-    const suggestion = buildComposerSuggestionAssist(lead, chipId, {
-      customerName,
-      focusOfferId: findOfferWorkingContext(workingContextItems)?.offerId ?? null,
-    });
-    if (!suggestion.ok) {
-      setFeedback('Nachricht konnte nicht vorbereitet werden');
-      setTimeout(() => setFeedback(''), 2800);
-      return;
-    }
-    setUniversalTurn(null);
     clearAssist();
-    const first = suggestion.results?.[0];
-    const isPortfolio = first?.type === INLINE_RESULT_TYPES.PORTFOLIO_SEND;
-    const suggestionBody = first?.type === INLINE_RESULT_TYPES.MESSAGE_DRAFT
-      ? (first.body || first.draft?.body || '')
-      : (first?.body || first?.draft?.body || '');
-    if (suggestionBody) {
-      mirrorMessageDraftToFeed(suggestionBody);
-      rememberLastComposerAction(buildComposerLastActionFromText({
-        body: suggestionBody,
-        title: isPortfolio ? 'Kundenlink' : 'Nachricht',
-        status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
-      }));
-    }
-    setFeedback(isPortfolio
-      ? 'Kundenlink vorbereitet – bitte prüfen'
-      : 'Nachricht vorbereitet – bitte prüfen');
+    // Bestehenden Freitext behalten und Chip-Auftrag anhängen, sonst ersetzen.
+    setDraft((prev) => {
+      const cur = String(prev ?? '').trim();
+      if (!cur) return seed;
+      if (cur === seed) return cur;
+      return `${cur}\n${seed}`;
+    });
+    setFeedback('Ergänzen und absenden – Clever schlägt oben vor');
     setTimeout(() => setFeedback(''), 2800);
+    focusComposer();
   }
 
   function handleSuggestionChip(chip) {
@@ -589,7 +706,8 @@ export default function CustomerAkteSharedWorkspace({
 
     const shortcut = resolveComposerShortcut(text);
     if (shortcut) {
-      handleSuggestionChip(shortcut);
+      const sellerInput = buildChipSellerInput(shortcut.id, { customerName }) || text;
+      void runCleverProposeFromInput(sellerInput);
       return;
     }
     if (isComposerAkteSearchQuery(text)) {
@@ -631,7 +749,7 @@ export default function CustomerAkteSharedWorkspace({
     }
     // Clever-Arbeit: Absenden = Clever ausführen (Antwort in der Mitte),
     // nicht die Arbeitsanweisung als Kundennachricht schicken.
-    runCleverProposeFromInput(text);
+    void runCleverProposeFromInput(text);
   }
 
   function resetMagicComposer() {
@@ -649,14 +767,20 @@ export default function CustomerAkteSharedWorkspace({
   function resolveMagicWorkingContext() {
     const offerItem = findOfferWorkingContext(workingContextItems);
     if (!offerItem) return null;
+    const card = offerItem.card || null;
     return {
       offerId: offerItem.offerId,
       shortLabel: offerItem.shortLabel || offerItem.label,
       label: offerItem.label,
-      card: offerItem.card || null,
-      modelKey: offerItem.card?.modelKey || offerItem.card?.model || null,
-      trimId: offerItem.card?.trimId || offerItem.card?.trim || null,
-      color: offerItem.card?.color || null,
+      card,
+      modelKey: card?.modelKey || card?.model || offerItem.modelKey || null,
+      trimId: card?.trimId || card?.trim || offerItem.trimId || null,
+      color: card?.color || null,
+      monthlyRate: card?.desiredRate ?? card?.monthlyRate ?? offerItem.monthlyRate ?? null,
+      termMonths: card?.termMonths ?? offerItem.termMonths ?? null,
+      mileagePerYear: card?.mileagePerYear ?? offerItem.mileagePerYear ?? null,
+      paymentType: card?.paymentType ?? offerItem.paymentType ?? null,
+      summary: offerItem.shortLabel || offerItem.label || null,
     };
   }
 
@@ -705,6 +829,14 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       setFeedback('Clever schreibt …');
+      const workingCtx = resolveMagicWorkingContext();
+      const offerCtx = resolveMagicOfferContext();
+      const akteContext = buildMagicAkteContext({
+        lead,
+        rawSellerInput: source,
+        workingContext: workingCtx,
+        offerContext: offerCtx,
+      });
       const payload = {
         rawSellerInput: source,
         draftText: source,
@@ -712,35 +844,42 @@ export default function CustomerAkteSharedWorkspace({
         customerName,
         recipient: displayName,
         tone,
-        workingContext: resolveMagicWorkingContext(),
-        offerContext: resolveMagicOfferContext(),
+        workingContext: workingCtx,
+        offerContext: offerCtx,
+        akteContext,
+        chipIntent: detectChipIntent(source) || akteContext.chipIntent,
         allowWithoutPackageDetails,
         sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
         dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
       };
 
       let result = null;
-      try {
-        const remote = await requestCleverMagicMessage(payload);
-        if (remote?.ok && remote.body) {
-          result = {
-            ok: true,
-            text: remote.body,
-            changed: remote.body !== source,
-            tone,
-            seed: remote.seed || source,
-            grounded: remote,
-            missingKnowledge: remote.missingKnowledge || [],
-            uiHint: remote.uiHint || null,
-            writer: remote.writer,
-          };
+      const magicRemoteEnabled = isCleverMagicMessageClientEnabled();
+      if (magicRemoteEnabled) {
+        try {
+          const remote = await requestCleverMagicMessage(payload);
+          if (remote?.ok && remote.body) {
+            result = {
+              ok: true,
+              text: remote.body,
+              changed: remote.body !== source,
+              tone,
+              seed: remote.seed || source,
+              grounded: remote,
+              missingKnowledge: remote.missingKnowledge || [],
+              uiHint: remote.uiHint || null,
+              writer: remote.writer,
+            };
+          }
+        } catch {
+          result = null;
         }
-      } catch {
-        result = null;
       }
 
       if (!result?.ok) {
-        result = await composeSellerOutboundMessageAsync(payload, { forceFallback: true });
+        result = await composeSellerOutboundMessageAsync(payload, {
+          forceFallback: !magicRemoteEnabled,
+        });
       }
 
       if (!result?.ok) {
