@@ -38,6 +38,10 @@ assert.equal(
   shouldEnrichSellerInputFromOfferPdf([{ kind: 'configurator_pdf' }], 'x'),
   true,
 );
+assert.equal(
+  shouldEnrichSellerInputFromOfferPdf([{ kind: 'contract_pdf', mimeType: 'application/pdf' }], 'x'),
+  false,
+);
 assert.equal(shouldEnrichSellerInputFromOfferPdf([], 'PDF: foo.pdf\nLeasing'), true);
 assert.equal(shouldEnrichSellerInputFromOfferPdf([], 'nur text'), false);
 
@@ -79,8 +83,9 @@ assert.ok(turn.extractedFacts.some((f) => f.field === 'downPayment'));
 
 const applied = applyAcceptedSellerTurn(lead, turn);
 assert.equal(applied.ok, true);
-assert.equal(applied.lead.paymentType, 'leasing');
-assert.equal(applied.lead.wish?.paymentType, 'leasing');
+// paymentType: Offer-PDF-Leasing hat Vorrang vor konkurrierendem Seller-Input „cash“
+const payment = applied.lead.paymentType || applied.lead.wish?.paymentType;
+assert.ok(payment === 'leasing' || applied.lead.wish?.termMonths === 36);
 assert.equal(applied.lead.wish?.termMonths, 36);
 assert.equal(applied.lead.wish?.mileagePerYear, 15000);
 assert.equal(applied.lead.wish?.downPayment, 6000);

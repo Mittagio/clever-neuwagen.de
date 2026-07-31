@@ -222,7 +222,12 @@ export function mergeOfferPdfFactsIntoSellerFacts(existing = [], incoming = []) 
  * @param {string} [sellerInput]
  */
 export function shouldEnrichSellerInputFromOfferPdf(attachments = [], sellerInput = '') {
-  const hasPdfAttachment = (attachments ?? []).some((a) => (
+  const list = attachments ?? [];
+  // Contract-PDF → Contract Memory (Slice 11), nicht Offer-Enrichment
+  if (list.some((a) => a?.kind === 'contract_pdf' || a?.sourceType === 'contract_pdf')) {
+    return false;
+  }
+  const hasPdfAttachment = list.some((a) => (
     a?.kind === 'configurator_pdf'
     || a?.kind === 'offer_pdf'
     || /pdf/i.test(String(a?.mimeType || a?.type || ''))

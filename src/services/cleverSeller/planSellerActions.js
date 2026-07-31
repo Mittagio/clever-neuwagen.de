@@ -247,11 +247,14 @@ export function planSellerActions({
       sellerInput,
       lead,
       customerName,
+      attachments,
     });
     actions.push({
       id: 'import_customer_contract',
       type: SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT,
-      label: 'Vertrag erkannt',
+      label: prepared.status === 'needs_manual_describe'
+        ? 'PDF ohne Text'
+        : 'Vertrag erkannt',
       needsSellerConfirmation: true,
       status: prepared.ok ? 'prepared' : 'blocked',
       toolId: 'import_customer_contract',
@@ -263,6 +266,7 @@ export function planSellerActions({
         missingInformation: prepared.missingInformation,
         reviewBody: prepared.reviewBody,
         warnings: prepared.warnings,
+        intakeSource: prepared.intakeSource || null,
         mutatesCustomer: false,
         mutatesCustomerTruth: false,
         persistOnAccept: true,

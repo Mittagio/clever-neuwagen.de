@@ -100,13 +100,14 @@ export const CLEVER_SELLER_TOOLS = {
     id: 'import_customer_contract',
     label: 'Altvertrag einlesen',
     requiredInputs: ['sellerInput'],
-    optionalInputs: ['lead', 'customerName'],
+    optionalInputs: ['lead', 'customerName', 'attachments'],
     needsSellerConfirmation: true,
     sourceRequirements: ['seller_input', 'document'],
-    execute: ({ lead, sellerInput, customerName }) => prepareCustomerContractImport({
+    execute: ({ lead, sellerInput, customerName, attachments }) => prepareCustomerContractImport({
       lead,
       sellerInput,
       customerName,
+      attachments,
     }),
   },
   search_customer_contracts: {

@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 10 implementiert (Vergleichsnachricht)  
+**Status:** Slice 11 implementiert (PDF Contract Intake)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -82,7 +82,7 @@ Wunschraten sind **keine** Vertragswerte.
 |------|--------|
 | `evaluateJourneyReminder` | vorhanden |
 | `extractMagicOfferPdf` / Offer-Interpret | wiederverwendbar (Pattern) |
-| `parseDocument`, `extractDocumentText`, `createCustomerContractDraft`, `validateCustomerContract`, `persistCustomerContract`, `searchCustomerContracts`, `compareContractWithOffer` | Slice 6–9 (teilweise; PDF-Parse noch offen) |
+| `parseDocument`, `extractDocumentText`, `createCustomerContractDraft`, `validateCustomerContract`, `persistCustomerContract`, `searchCustomerContracts`, `compareContractWithOffer` | Slice 6–11 (PDF-Text-Intake ja; OCR/UI-Wiring noch offen) |
 
 ---
 
@@ -162,7 +162,8 @@ Besonders behandeln / nicht an Message Writer:
 | **8** | Contract Golden Moments | Vertragsende → bestehende Journey/Reminder + Nachfolge-CTA |
 | **9** | Vertragsvergleich | Altvertrag vs. neues Angebot (strukturiert) |
 | **10** | Vergleichsnachricht | Explizite Kundennachricht aus Compare-Deltas |
-| später | PDF-Intake, Offer+Termin Multi-Action, Attachments | siehe unten |
+| **11** | PDF Contract Intake | Vorextrahierter PDF-Text → gleicher Import-Pfad |
+| später | Offer+Termin Multi-Action, Attachments/Akte-UI | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -378,9 +379,37 @@ Erwartung: Draft mit Rate 329 → 347 €, `autoSend: false`, Review `contract_c
 
 ---
 
+## Slice 11 – PDF Contract Intake
+
+**Status: implementiert**
+
+Nativer PDF-Text wird **vor** dem sync Turn extrahiert (Magic-Offer-Pattern `extractMagicOfferPdf`). Der Turn selbst ruft kein pdfjs auf.
+
+- Attachment `kind: 'contract_pdf'` + `extractedText` **oder** Composer `PDF: name.pdf\\n\\n…`
+- Intent unverändert: `import_customer_contract`
+- Evidence / `sourceDocument.sourceType`: `contract_pdf`
+- Review: `contract_import_review` (kein neuer Review-Kind)
+- Leerer/Scan-PDF → `needs_manual_describe` (blocked), keine erfundenen Felder
+- `contract_pdf` wird **nicht** als Offer-PDF enriched
+
+| Modul | Rolle |
+|-------|--------|
+| `resolveContractIntakeText.js` | Text + sourceType aus Input/Attachment |
+| `prepareCustomerContractImport.js` | nutzt Resolve + `sourceType: contract_pdf` |
+| `globalComposer.slice11.test.js` | Golden (Stub-Text, kein pdfjs) |
+
+### Nicht in Slice 11
+
+- OCR / Scan-Pipeline  
+- pdfjs innerhalb von `runCleverSellerTurn`  
+- UI Big Bang (Composer Drag&Drop / Akte-Branch) – Follow-up  
+- Offer + Termin Multi-Action  
+
+---
+
 ## Später
 
-- PDF-/Scan-Contract-Intake  
+- UI: Akte/Composer → `extractMagicOfferPdf` → `kind: contract_pdf`  
 - Offer + Termin Multi-Action  
 - Attachments / Akte-Composer-Migration  
 

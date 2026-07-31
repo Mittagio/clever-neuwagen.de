@@ -5,6 +5,7 @@ import {
   extractCustomerContractFromText,
   isCustomerContractIntakeText,
 } from './extractCustomerContractFromText.js';
+import { resolveContractIntakeText } from './resolveContractIntakeText.js';
 
 function formatDeDate(iso) {
   if (!iso) return null;
@@ -29,11 +30,36 @@ function formatCt(rate) {
  *   sellerInput?: string,
  *   lead?: object,
  *   customerName?: string,
+ *   attachments?: object[],
  * }} params
  */
 export function prepareCustomerContractImport(params = {}) {
-  const sellerInput = String(params.sellerInput || '').trim();
-  if (!isCustomerContractIntakeText(sellerInput)) {
+  const resolved = resolveContractIntakeText({
+    sellerInput: params.sellerInput,
+    attachments: params.attachments,
+  });
+
+  if (resolved.needsManualDescribe && resolved.sourceType === 'contract_pdf') {
+    return {
+      ok: false,
+      status: 'needs_manual_describe',
+      documentClassification: null,
+      contractDraft: null,
+      extractedContractFacts: [],
+      evidence: [],
+      missingInformation: [{
+        id: 'contract_pdf_text',
+        label: 'PDF ohne lesbaren Text – bitte Vertrag manuell beschreiben oder Text einfügen',
+      }],
+      warnings: ['needs_manual_describe'],
+      mutatesCustomer: false,
+      reviewBody: null,
+      intakeSource: resolved,
+    };
+  }
+
+  const intakeText = resolved.text;
+  if (!isCustomerContractIntakeText(intakeText)) {
     return {
       ok: false,
       status: 'not_contract_intake',
@@ -43,10 +69,14 @@ export function prepareCustomerContractImport(params = {}) {
       missingInformation: [],
       warnings: [],
       mutatesCustomer: false,
+      intakeSource: resolved,
     };
   }
 
-  const extracted = extractCustomerContractFromText(sellerInput);
+  const extracted = extractCustomerContractFromText(intakeText, {
+    sourceType: resolved.sourceType,
+    sourceId: resolved.sourceId,
+  });
   const draft = extracted.contractDraft;
   const customerName = params.customerName
     || params.lead?.contact?.name
@@ -57,6 +87,14 @@ export function prepareCustomerContractImport(params = {}) {
   if (draft) {
     draft.customerId = params.lead?.id || null;
     draft.customerName = customerName;
+    if (resolved.sourceType === 'contract_pdf') {
+      draft.sourceDocument = {
+        ...(draft.sourceDocument || {}),
+        sourceType: 'contract_pdf',
+        sourceId: resolved.sourceId,
+        fileName: resolved.fileName,
+      };
+    }
   }
 
   const extractedContractFacts = (extracted.evidence || []).map((e) => ({
@@ -85,10 +123,13 @@ export function prepareCustomerContractImport(params = {}) {
     missingInformation: extracted.missingInformation || [],
     warnings,
     mutatesCustomer: false,
+    intakeSource: resolved,
     reviewBody: buildContractImportReviewBody({
       customerName,
       draft,
       missingInformation: extracted.missingInformation || [],
+      sourceType: resolved.sourceType,
+      fileName: resolved.fileName,
     }),
   };
 }
@@ -97,10 +138,15 @@ export function buildContractImportReviewBody({
   customerName = null,
   draft = null,
   missingInformation = [],
+  sourceType = null,
+  fileName = null,
 } = {}) {
   if (!draft) return '';
   const lines = [];
   if (customerName) lines.push(`KUNDE\n${customerName}`);
+  if (sourceType === 'contract_pdf' || fileName) {
+    lines.push(`QUELLE\n${fileName || 'Vertrags-PDF'}`);
+  }
   if (draft.contractType) {
     lines.push(`VERTRAG\n${draft.contractType === 'leasing' ? 'Leasing' : draft.contractType}`);
   }

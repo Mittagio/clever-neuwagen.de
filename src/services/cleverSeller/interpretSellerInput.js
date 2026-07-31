@@ -42,6 +42,7 @@ import { isCustomerContractIntakeText } from './extractCustomerContractFromText.
 import { isCustomerContractQuery } from './searchCustomerContracts.js';
 import { isContractOfferCompareQuery } from './compareContractWithOffer.js';
 import { isContractCompareMessageCue } from './draftContractCompareCustomerMessage.js';
+import { resolveContractIntakeText } from './resolveContractIntakeText.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -883,8 +884,9 @@ export function isExplicitCustomerMessageCue(text = '') {
  * Multi-Intent Detection (kein Single-Intent-Zwang).
  * @param {string} text
  * @param {object[]} facts
+ * @param {{ attachments?: object[] }} [options]
  */
-export function detectSellerTurnIntents(text = '', facts = []) {
+export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const t = String(text ?? '').trim();
   const intents = [];
   const add = (intent, confidence = 0.8) => {
@@ -921,7 +923,16 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     || /\bwie\s+steht.?s\s+(?:bei|mit)\b/i.test(t);
   const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|nachfolgeangebot|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
-  const isContractIntake = isCustomerContractIntakeText(t);
+  const resolvedIntake = resolveContractIntakeText({
+    sellerInput: t,
+    attachments: options.attachments,
+  });
+  const isContractIntake = isCustomerContractIntakeText(resolvedIntake.text)
+    || isCustomerContractIntakeText(t)
+    || (
+      resolvedIntake.sourceType === 'contract_pdf'
+      && resolvedIntake.needsManualDescribe
+    );
   const isContractCompareMessage = !isContractIntake && isContractCompareMessageCue(t);
   const isContractCompare = !isContractIntake && (
     isContractOfferCompareQuery(t) || isContractCompareMessage
@@ -1222,7 +1233,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     );
   }
 
-  const intents = detectSellerTurnIntents(normalized, facts);
+  const intents = detectSellerTurnIntents(normalized, facts, { attachments: options.attachments });
   const inputMode = resolveSellerInputMode(normalized, intents, facts);
   const attachmentTypes = (options.attachments ?? [])
     .map((a) => a?.mimeType || a?.type || a?.kind)
