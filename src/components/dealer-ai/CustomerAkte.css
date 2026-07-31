@@ -4830,6 +4830,59 @@
   margin: 0;
 }
 
+.cust-akte-offer-select {
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cust-akte-offer-select__count {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0b1736;
+}
+
+.cust-akte-offer-select__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cust-akte-offer-select__btn {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cust-akte-offer-select__btn--primary {
+  background: #0b1736;
+  border-color: #0b1736;
+  color: #fff;
+}
+
+.cust-akte-offer-select__clear {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .cust-akte-angebote-sheet {
   display: flex;
   flex-direction: column;

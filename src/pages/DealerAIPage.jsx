@@ -963,7 +963,13 @@ export default function DealerAIPage() {
       }
 
       if (addVehicleContext?.returnPath) {
-        navigate(addVehicleContext.returnPath, {
+        const offerId = saveResult.card?.id;
+        const parts = ['composer=1'];
+        if (offerId) parts.push(`offerId=${encodeURIComponent(String(offerId))}`);
+        const returnWithComposer = `${addVehicleContext.returnPath}${
+          addVehicleContext.returnPath.includes('?') ? '&' : '?'
+        }${parts.join('&')}`;
+        navigate(returnWithComposer, {
           state: { toast: saveResult.message ?? 'Angebot gespeichert' },
         });
         clearAddVehicleFlow();
@@ -1075,10 +1081,6 @@ export default function DealerAIPage() {
         lead: contextLead,
       });
 
-      setOfferPreviewSaved(true);
-      setOfferPreviewSaveResult(saveResult);
-      showToast(saveResult.message);
-
       if (saveResult.offerDraft) {
         setParsed((prev) => enrichWithSuggestions(
           applyDealerAiFields(prev, offerDraftToParserFields(saveResult.offerDraft)),
@@ -1116,6 +1118,12 @@ export default function DealerAIPage() {
         }
       }
 
+      // Sofort zur Kundenakte – kein Zwischenschritt „In Kundenakte öffnen“
+      leaveOfferPreviewAfterSave(saveResult, {
+        toast: saveResult.message ?? 'Angebot gespeichert',
+        focusComposer: true,
+        offerId: saveResult.card?.id ?? null,
+      });
       return true;
     } catch (err) {
       showToast(err.message ?? 'Angebot konnte nicht gespeichert werden');
@@ -1125,16 +1133,28 @@ export default function DealerAIPage() {
     }
   }
 
-  function handleOfferPreviewFinish() {
-    const saveResult = offerPreviewSaveResult;
+  /**
+   * Nach Speichern: intern vorbereitet → Kundenakte (Composer bereit zum Senden).
+   * Capture nur wenn wirklich neuer Kunde ohne Akte-Kontext.
+   */
+  function leaveOfferPreviewAfterSave(saveResult, options = {}) {
     if (!saveResult) return;
 
-    // Bestehender Kundenkontext (Akte) → nie Capture-Dialog, immer zurück zur Akte
     const hasExistingCustomerContext = Boolean(
       addVehicleContext?.opportunityId || addVehicleContext?.returnPath,
     );
-    const aktePath = addVehicleContext?.returnPath
+    const baseAktePath = addVehicleContext?.returnPath
       || (saveResult.leadId ? buildKundenaktePath(saveResult.leadId) : null);
+    const offerId = options.offerId
+      || saveResult.card?.id
+      || saveResult.offerDraft?.vehicleCardId
+      || null;
+    const queryParts = [];
+    if (options.focusComposer) queryParts.push('composer=1');
+    if (offerId) queryParts.push(`offerId=${encodeURIComponent(String(offerId))}`);
+    const aktePath = baseAktePath && queryParts.length
+      ? `${baseAktePath}${baseAktePath.includes('?') ? '&' : '?'}${queryParts.join('&')}`
+      : baseAktePath;
 
     setResult({ type: 'lead', leadId: saveResult.leadId, customerId: saveResult.customerId });
     setOfferEditCard(saveResult.card);
@@ -1148,19 +1168,27 @@ export default function DealerAIPage() {
 
     if (aktePath && (hasExistingCustomerContext || !saveResult.needsCapture)) {
       clearAddVehicleFlow();
-      navigate(aktePath, { replace: true });
+      navigate(aktePath, {
+        replace: true,
+        state: {
+          toast: options.toast ?? 'Angebot gespeichert',
+        },
+      });
       return;
     }
 
     if (saveResult.needsCapture && !hasExistingCustomerContext) {
+      setOfferPreviewSaveResult(saveResult);
       setPhase('capture');
       setIsFreshLead(true);
       setIsReturningWish(Boolean(carryCustomer));
+      if (options.toast) showToast(options.toast);
     } else {
       setPhase('followup');
       setIsFreshLead(saveResult.mode !== 'attached_to_opportunity');
       setIsReturningWish(Boolean(saveResult.customerId && carryCustomer));
       clearAddVehicleFlow();
+      if (options.toast) showToast(options.toast);
     }
   }
 
@@ -2561,7 +2589,6 @@ export default function DealerAIPage() {
             offerDraft={configureOfferDraft}
             onBack={handleOfferPreviewBack}
             onSave={handleOfferPreviewSave}
-            onFinish={handleOfferPreviewFinish}
             onCommercialChange={handleOfferPreviewCommercialChange}
             onReuploadPdf={handleOfferPreviewReuploadPdf}
             fallbackOriginalPdf={magicOfferPreparation?.originalPdf ?? null}

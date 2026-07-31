@@ -182,13 +182,20 @@ import {
 } from '../../services/dealer/boardOfferModel.js';
 import { openBoardOfferEntry } from '../../services/dealer/openOfferCalculator.js';
 import {
+  WORKING_CONTEXT_KINDS,
   buildDocumentWorkingContextItem,
   buildOfferWorkingContextItem,
   findOfferWorkingContext,
   listAttachableAkteDocuments,
+  listOfferWorkingContexts,
   removeWorkingContextItem,
+  toggleOfferWorkingContext,
   upsertWorkingContextItem,
 } from '../../services/crm/composerWorkingContext.js';
+import {
+  resolveOfferReferenceFromText,
+  trackToComposerCard,
+} from '../../services/crm/resolveOfferReference.js';
 import { searchAkteByQuery } from '../../services/crm/composerAkteSearch.js';
 import {
   buildStockVehicleCalculatorNavigateState,
@@ -407,6 +414,7 @@ export default function DealerAiLeadFollowUp({
   );
   const [questionContext, setQuestionContext] = useState(initialQuestionContext);
   const composerDeepLinkDoneRef = useRef(false);
+  const focusOfferAttachedRef = useRef(false);
   const specialAnswerPendingSendRef = useRef(false);
 
   const composerReplyContext = useMemo(() => {
@@ -464,6 +472,7 @@ export default function DealerAiLeadFollowUp({
   const [selectedVehicleCard, setSelectedVehicleCard] = useState(null);
   const [offerWorkspaceCard, setOfferWorkspaceCard] = useState(null);
   const [workingContextItems, setWorkingContextItems] = useState([]);
+  const [freshTrackId, setFreshTrackId] = useState(null);
   const [akteSearchQuery, setAkteSearchQuery] = useState('');
   const [feedFocusMessageId, setFeedFocusMessageId] = useState(null);
   const [feedFocusToken, setFeedFocusToken] = useState(0);
@@ -498,6 +507,12 @@ export default function DealerAiLeadFollowUp({
       setOfferSelectionGroups(sanitizeOfferSelectionGroups(lead.crm.offerSelectionGroups));
     }
   }, [lead?.crm?.offerSelectionGroups]);
+
+  useEffect(() => {
+    if (!freshTrackId) return undefined;
+    const timer = setTimeout(() => setFreshTrackId(null), 12000);
+    return () => clearTimeout(timer);
+  }, [freshTrackId]);
 
   const [name, setName] = useState(lead?.contact?.name?.replace('Kunde (offen)', '') ?? fields.customerName ?? '');
   const [phone, setPhone] = useState(lead?.contact?.phone ?? '');
@@ -740,6 +755,16 @@ export default function DealerAiLeadFollowUp({
     [workingContextItems],
   );
 
+  const selectedOfferContexts = useMemo(
+    () => listOfferWorkingContexts(workingContextItems),
+    [workingContextItems],
+  );
+
+  const selectedTrackIds = useMemo(
+    () => selectedOfferContexts.map((item) => item.offerId).filter(Boolean),
+    [selectedOfferContexts],
+  );
+
   const hideRedundantWishChips = useMemo(() => {
     if (!hasSellerCustomerPicture || !schnellaufnahmeChips.length) return false;
     const corpus = [
@@ -900,10 +925,18 @@ export default function DealerAiLeadFollowUp({
     [lead],
   );
 
-  const vehicleTracks = useMemo(
-    () => sortTracksForOverview(listCustomerVehicleTracks(lead)),
-    [lead],
-  );
+  const vehicleTracks = useMemo(() => {
+    const sorted = sortTracksForOverview(listCustomerVehicleTracks(lead));
+    if (!freshTrackId) return sorted;
+    const idx = sorted.findIndex((track) => (
+      String(track.id) === String(freshTrackId)
+      || track.offerIds?.some((id) => String(id) === String(freshTrackId))
+    ));
+    if (idx <= 0) return sorted;
+    const next = [...sorted];
+    const [pinned] = next.splice(idx, 1);
+    return [pinned, ...next];
+  }, [lead, freshTrackId]);
 
   const goldenMomentView = useMemo(
     () => buildGoldenMomentView(lead),
@@ -977,7 +1010,8 @@ export default function DealerAiLeadFollowUp({
     if (composerDeepLinkDoneRef.current) return;
     const wantsComposer = initialComposerFocus
       || initialSheet === SHEETS.antworten
-      || Boolean(initialAntwortenIntent);
+      || Boolean(initialAntwortenIntent)
+      || Boolean(initialAntwortenOfferId);
     if (!wantsComposer) return;
     if (initialSheet === SHEETS.questionAnswer) return;
     composerDeepLinkDoneRef.current = true;
@@ -993,27 +1027,49 @@ export default function DealerAiLeadFollowUp({
       question = String(msg?.text ?? msg?.body ?? '').trim();
     }
     if (!question && initialQuestionContext?.questionId) {
-      // Frage-Text oft nur über Inbox/Messages – Fallback leer lässt generischen Seed
       question = '';
     }
 
     const seed = buildComposerReplySeed(initialAntwortenIntent, { question });
     const t = setTimeout(() => {
       focusChatComposer({ clever: true, seedDraft: seed });
-      setToast('Antwort im Composer – tippen oder sprechen, dann senden');
-      setTimeout(() => setToast(''), 3200);
+      if (!initialAntwortenOfferId) {
+        setToast('Antwort im Composer – tippen oder sprechen, dann senden');
+        setTimeout(() => setToast(''), 3200);
+      }
     }, 0);
     return () => clearTimeout(t);
   }, [
     initialComposerFocus,
     initialSheet,
     initialAntwortenIntent,
+    initialAntwortenOfferId,
     initialInboxItemId,
     initialMessageId,
     initialQuestionContext?.questionId,
     lead?.id,
     inbox,
   ]);
+
+  useEffect(() => {
+    if (!initialAntwortenOfferId || focusOfferAttachedRef.current) return;
+    const focusOfferId = String(initialAntwortenOfferId);
+    const track = listCustomerVehicleTracks(lead).find((entry) => (
+      String(entry.id) === focusOfferId
+      || entry.offerIds?.some((id) => String(id) === focusOfferId)
+      || String(entry.vehicleOffer?.id || '') === focusOfferId
+    ));
+    const card = track
+      ? trackToComposerCard(track)
+      : (vehicleCards.find((c) => String(c.id) === focusOfferId) ?? null);
+    if (!card) return;
+    focusOfferAttachedRef.current = true;
+    setFreshTrackId(String(track?.id || card.id));
+    setWorkingContextItems((prev) => upsertWorkingContextItem(
+      prev,
+      buildOfferWorkingContextItem(card, lead),
+    ));
+  }, [initialAntwortenOfferId, lead, vehicleCards]);
 
   function openOffersBoard() {
     setMoreSheetOpen(false);
@@ -1055,6 +1111,87 @@ export default function DealerAiLeadFollowUp({
       id: track.id,
       vehicleOffer: track.vehicleOffer,
     });
+  }
+
+  /** Klick auf Spur: Composer-Kontext setzen/togglen – keine Navigation */
+  function selectVehicleTrack(track, { replace = false } = {}) {
+    if (!track) return;
+    const card = trackToComposerCard(track);
+    if (!card) return;
+    const item = buildOfferWorkingContextItem(card, lead);
+    setWorkingContextItems((prev) => (
+      replace
+        ? upsertWorkingContextItem(prev, item)
+        : toggleOfferWorkingContext(prev, item)
+    ));
+    focusChatComposer({ clever: true });
+  }
+
+  function clearOfferSelection() {
+    setWorkingContextItems((prev) => prev.filter((item) => item.kind !== WORKING_CONTEXT_KINDS.OFFER));
+  }
+
+  function handlePrepareMessageFromSelection() {
+    const offers = listOfferWorkingContexts(workingContextItems);
+    if (!offers.length) {
+      focusChatComposer({ clever: true });
+      return;
+    }
+    const labels = offers.map((o) => o.shortLabel || o.label).join(', ');
+    focusChatComposer({
+      clever: true,
+      seedDraft: offers.length > 1
+        ? `Erkläre dem Kunden diese Angebote und bereite den Kundenlink vor: ${labels}.`
+        : `Erkläre ihm das Angebot und schicke den Kundenlink per E-Mail: ${labels}.`,
+    });
+  }
+
+  function handleCompareSelectedOffers() {
+    const offers = listOfferWorkingContexts(workingContextItems);
+    if (offers.length < 2) return;
+    const labels = offers.map((o) => o.shortLabel || o.label).join(' vs. ');
+    focusChatComposer({
+      clever: true,
+      seedDraft: `Vergleiche kurz diese Angebote für den Kunden: ${labels}.`,
+    });
+  }
+
+  function handleCreateCustomerOfferFromSelection() {
+    const offers = listOfferWorkingContexts(workingContextItems);
+    if (!offers.length) {
+      handleSendCustomerSelection();
+      return;
+    }
+    focusChatComposer({
+      clever: true,
+      seedDraft: offers.length > 1
+        ? `Erstelle ein Kundenangebot aus diesen Auswahl: ${offers.map((o) => o.shortLabel || o.label).join(', ')}.`
+        : `Bereite den Kundenlink für ${offers[0].shortLabel || offers[0].label} vor.`,
+    });
+  }
+
+  function applyOfferReferenceFromComposer(text) {
+    const result = resolveOfferReferenceFromText(lead, text);
+    if (result.status === 'resolved' && result.tracks.length) {
+      let nextItems = workingContextItems.filter((item) => item.kind !== WORKING_CONTEXT_KINDS.OFFER);
+      for (const track of result.tracks) {
+        const card = trackToComposerCard(track);
+        if (!card) continue;
+        nextItems = upsertWorkingContextItem(
+          nextItems,
+          buildOfferWorkingContextItem(card, lead),
+          { allowMultipleOffers: true },
+        );
+      }
+      setWorkingContextItems(nextItems);
+      return result;
+    }
+    if (result.status === 'ambiguous' && result.options.length) {
+      setToast(result.question || 'Welches Angebot meinst du?');
+      setTimeout(() => setToast(''), 4200);
+      return result;
+    }
+    return result;
   }
 
   function openScenarioOfferSlot(slot, track) {
@@ -1767,7 +1904,7 @@ export default function DealerAiLeadFollowUp({
   }
 
   /** Nur Context-Pill – wie Cursor-Anhang, ohne Workspace zu öffnen */
-  function attachOfferToComposer(card) {
+  function attachOfferToComposer(card, { quiet = false } = {}) {
     if (!card) return;
     setActiveSheet(null);
     setMoreSheetOpen(false);
@@ -1776,8 +1913,10 @@ export default function DealerAiLeadFollowUp({
       buildOfferWorkingContextItem(card, lead),
     ));
     focusChatComposer({ clever: true });
-    setToast('Angebot angehängt – Clever kennt den Kontext');
-    setTimeout(() => setToast(''), 2800);
+    if (!quiet) {
+      setToast('Ausgewählt – Clever kennt den Kontext');
+      setTimeout(() => setToast(''), 2800);
+    }
   }
 
   function attachDocumentToComposer(doc) {
@@ -2948,7 +3087,10 @@ export default function DealerAiLeadFollowUp({
             tracks={vehicleTracks}
             title="Angebote"
             onOpenTrack={openVehicleTrack}
+            onSelectTrack={selectVehicleTrack}
             onResumeTrack={resumeVehicleTrack}
+            selectedTrackIds={selectedTrackIds}
+            freshTrackId={freshTrackId}
           />
         </div>
       ) : null}
@@ -2985,6 +3127,7 @@ export default function DealerAiLeadFollowUp({
         replyContext={composerReplyContext}
         workingContextItems={workingContextItems}
         onRemoveWorkingContext={handleRemoveWorkingContext}
+        onResolveOfferReference={applyOfferReferenceFromComposer}
         onUpsertWorkingContext={(item) => {
           setWorkingContextItems((prev) => upsertWorkingContextItem(prev, item));
         }}
@@ -3137,7 +3280,14 @@ export default function DealerAiLeadFollowUp({
             showTracks
             onOpenBoard={openOffersBoard}
             onOpenTrack={openVehicleTrack}
+            onSelectTrack={selectVehicleTrack}
             onResumeTrack={resumeVehicleTrack}
+            selectedTrackIds={selectedTrackIds}
+            freshTrackId={freshTrackId}
+            onCompareSelected={handleCompareSelectedOffers}
+            onCreateCustomerOffer={handleCreateCustomerOfferFromSelection}
+            onPrepareMessage={handlePrepareMessageFromSelection}
+            onClearSelection={clearOfferSelection}
             onGoldenPrimary={handleGoldenMomentPrimary}
             onGoldenSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
           />
@@ -3228,7 +3378,13 @@ export default function DealerAiLeadFollowUp({
                 closeSheet();
                 openVehicleTrack(track);
               }}
+              onSelectTrack={(track) => {
+                closeSheet();
+                selectVehicleTrack(track);
+              }}
               onResumeTrack={resumeVehicleTrack}
+              selectedTrackIds={selectedTrackIds}
+              freshTrackId={freshTrackId}
             />
           ) : null}
           <CustomerAktePortalSendCta

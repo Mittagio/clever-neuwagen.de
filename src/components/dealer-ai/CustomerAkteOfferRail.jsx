@@ -1,10 +1,10 @@
 import CustomerAkteVehicleTracks from './CustomerAkteVehicleTracks.jsx';
 import CustomerAkteGoldenMomentCard from './CustomerAkteGoldenMomentCard.jsx';
+import CustomerAkteOfferSelectionBar from './CustomerAkteOfferSelectionBar.jsx';
 
 /**
- * Desktop-Assist-Rail – Golden Moment + optional Fahrzeugspuren.
- * Rate dominant, filigran; kein %-Kaufscore.
- * Wenn Spuren links im Context stehen: showTracks=false (kein Golden-Duplikat links).
+ * Desktop-Assist-Rail – Golden Moment + Fahrzeugspuren als Angebotsgedächtnis.
+ * Klick auf Spur = Composer-Kontext; „Öffnen“ = Details/PDF.
  */
 export default function CustomerAkteOfferRail({
   tracks = [],
@@ -12,12 +12,20 @@ export default function CustomerAkteOfferRail({
   boardItems = [],
   onOpenBoard = null,
   onOpenTrack = null,
+  onSelectTrack = null,
   onResumeTrack = null,
   onGoldenPrimary = null,
   onGoldenSecondary = null,
+  selectedTrackIds = [],
+  freshTrackId = null,
+  onCompareSelected = null,
+  onCreateCustomerOffer = null,
+  onPrepareMessage = null,
+  onClearSelection = null,
   showTracks = true,
 }) {
   const count = tracks.length || boardItems.length;
+  const selectedCount = selectedTrackIds?.length ?? 0;
 
   return (
     <aside className="cust-akte-offer-rail cust-akte-assist-rail" aria-label="Clever Assist">
@@ -46,13 +54,25 @@ export default function CustomerAkteOfferRail({
       ) : null}
 
       {showTracks && tracks.length > 0 ? (
-        <CustomerAkteVehicleTracks
-          tracks={tracks}
-          title="Spuren"
-          compact
-          onOpenTrack={onOpenTrack}
-          onResumeTrack={onResumeTrack}
-        />
+        <>
+          <CustomerAkteVehicleTracks
+            tracks={tracks}
+            title="Spuren"
+            compact
+            onOpenTrack={onOpenTrack}
+            onSelectTrack={onSelectTrack}
+            onResumeTrack={onResumeTrack}
+            selectedTrackIds={selectedTrackIds}
+            freshTrackId={freshTrackId}
+          />
+          <CustomerAkteOfferSelectionBar
+            selectedCount={selectedCount}
+            onCompare={onCompareSelected}
+            onCreateCustomerOffer={onCreateCustomerOffer}
+            onPrepareMessage={onPrepareMessage}
+            onClear={onClearSelection}
+          />
+        </>
       ) : null}
 
       {!goldenMoment && (showTracks ? tracks.length === 0 : count === 0) ? (

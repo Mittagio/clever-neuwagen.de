@@ -8,8 +8,10 @@ import {
   buildOfferWorkingContextItem,
   findOfferWorkingContext,
   listAttachableAkteDocuments,
+  listOfferWorkingContexts,
   removeWorkingContextItem,
   toCurrentOfferContext,
+  toggleOfferWorkingContext,
   upsertWorkingContextItem,
 } from './composerWorkingContext.js';
 
@@ -51,6 +53,21 @@ const other = buildOfferWorkingContextItem({
 list = upsertWorkingContextItem(list, other);
 assert.equal(list.length, 1, 'zweites Angebot ersetzt das erste');
 assert.equal(list[0].offerId, 'vc-ev3');
+
+list = upsertWorkingContextItem(list, other, { allowMultipleOffers: true });
+assert.equal(list.length, 1, 'gleiches Angebot nicht doppelt');
+
+const multi = upsertWorkingContextItem([], item, { allowMultipleOffers: true });
+const multi2 = upsertWorkingContextItem(multi, other, { allowMultipleOffers: true });
+assert.equal(multi2.length, 2, 'Mehrfachauswahl erlaubt zwei Angebote');
+
+let toggled = toggleOfferWorkingContext([], item);
+assert.equal(toggled.length, 1);
+toggled = toggleOfferWorkingContext(toggled, other);
+assert.equal(listOfferWorkingContexts(toggled).length, 2);
+toggled = toggleOfferWorkingContext(toggled, item);
+assert.equal(listOfferWorkingContexts(toggled).length, 1);
+assert.equal(listOfferWorkingContexts(toggled)[0].offerId, 'vc-ev3');
 
 list = upsertWorkingContextItem(list, {
   id: 'doc:1',

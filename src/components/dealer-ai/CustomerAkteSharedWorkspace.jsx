@@ -134,6 +134,7 @@ export default function CustomerAkteSharedWorkspace({
   /** Cursor-Anhänge: aktives Angebot etc. */
   workingContextItems = [],
   onRemoveWorkingContext = null,
+  onResolveOfferReference = null,
   onUpsertWorkingContext = null,
   workspaceSlot = null,
   scrollToMessageId = null,
@@ -278,6 +279,15 @@ export default function CustomerAkteSharedWorkspace({
       const isStale = () => requestId !== assistRequestIdRef.current
         || !shouldRunSellerInterpret(composerModeRef.current);
 
+      if (onResolveOfferReference) {
+        const refResult = onResolveOfferReference(text);
+        if (refResult?.status === 'ambiguous' && refResult.question) {
+          if (isStale()) return;
+          setFeedback(refResult.question);
+          setTimeout(() => setFeedback(''), 4500);
+        }
+      }
+
       const shortcut = resolveComposerShortcut(text);
       if (shortcut) {
         if (isStale()) return;
@@ -418,7 +428,7 @@ export default function CustomerAkteSharedWorkspace({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       assistRequestIdRef.current += 1;
     };
-  }, [draft, lead, confirmAssist, customerName, workingContextItems, composerMode]);
+  }, [draft, lead, confirmAssist, customerName, workingContextItems, composerMode, onResolveOfferReference]);
 
   useEffect(() => {
     if (!focusToken) return;

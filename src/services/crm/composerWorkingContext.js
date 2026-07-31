@@ -136,18 +136,40 @@ export function toCurrentOfferContext(item = null) {
 
 /**
  * Ersetzt gleichartigen Kontext oder hängt an (max. 4).
+ * Angebote: standardmäßig ersetzen; mit allowMultipleOffers toggeln/anhängen.
  * @param {object[]} items
  * @param {object} next
+ * @param {{ allowMultipleOffers?: boolean }} [options]
  */
-export function upsertWorkingContextItem(items = [], next = null) {
+export function upsertWorkingContextItem(items = [], next = null, options = {}) {
   if (!next?.id) return Array.isArray(items) ? items : [];
   const list = Array.isArray(items) ? items.filter((i) => i?.id !== next.id) : [];
   if (next.kind === WORKING_CONTEXT_KINDS.OFFER) {
+    if (options.allowMultipleOffers) {
+      const offers = list.filter((i) => i.kind === WORKING_CONTEXT_KINDS.OFFER);
+      const others = list.filter((i) => i.kind !== WORKING_CONTEXT_KINDS.OFFER);
+      return [next, ...offers, ...others].slice(0, 4);
+    }
     // Ein aktives Angebot als Primärkontext – ältere Offer-Pills ersetzen
     const withoutOffers = list.filter((i) => i.kind !== WORKING_CONTEXT_KINDS.OFFER);
     return [next, ...withoutOffers].slice(0, 4);
   }
   return [next, ...list].slice(0, 4);
+}
+
+/**
+ * Angebot an-/abwählen (Mehrfachauswahl in der rechten Spalte).
+ * @param {object[]} items
+ * @param {object} nextOfferItem
+ */
+export function toggleOfferWorkingContext(items = [], nextOfferItem = null) {
+  if (!nextOfferItem?.id) return Array.isArray(items) ? items : [];
+  const list = Array.isArray(items) ? items : [];
+  const exists = list.some((i) => i.id === nextOfferItem.id);
+  if (exists) {
+    return list.filter((i) => i.id !== nextOfferItem.id);
+  }
+  return upsertWorkingContextItem(list, nextOfferItem, { allowMultipleOffers: true });
 }
 
 export function removeWorkingContextItem(items = [], itemId = '') {
@@ -156,6 +178,10 @@ export function removeWorkingContextItem(items = [], itemId = '') {
 
 export function findOfferWorkingContext(items = []) {
   return (Array.isArray(items) ? items : []).find((i) => i?.kind === WORKING_CONTEXT_KINDS.OFFER) || null;
+}
+
+export function listOfferWorkingContexts(items = []) {
+  return (Array.isArray(items) ? items : []).filter((i) => i?.kind === WORKING_CONTEXT_KINDS.OFFER);
 }
 
 export function findDocumentWorkingContext(items = []) {

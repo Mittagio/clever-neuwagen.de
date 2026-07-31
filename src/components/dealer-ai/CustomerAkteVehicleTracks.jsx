@@ -45,14 +45,16 @@ const FILTER_OPTIONS = [
 ];
 
 /**
- * Vertikale Fahrzeugspuren – Mockup Clever-Hauptseite / Angebote-Tab.
- * Rate dominant, Status-Badge, Favorit leicht hervorgehoben, Deferred grau.
+ * Vertikale Fahrzeugspuren – Klick setzt Composer-Kontext, „Öffnen“ zeigt Details/PDF.
  */
 export default function CustomerAkteVehicleTracks({
   tracks = [],
   title = 'Angebote',
   onOpenTrack = null,
+  onSelectTrack = null,
   onResumeTrack = null,
+  selectedTrackIds = [],
+  freshTrackId = null,
   filter = 'all',
   showFilters = false,
   onFilterChange = null,
@@ -60,6 +62,7 @@ export default function CustomerAkteVehicleTracks({
   compact = false,
 }) {
   const filtered = filterTracksByStatus(tracks, filter);
+  const selectedSet = new Set((selectedTrackIds || []).map(String));
 
   if (!filtered.length && !showFilters) return null;
 
@@ -101,6 +104,9 @@ export default function CustomerAkteVehicleTracks({
             const statusLine = offerStatusLine(track);
             const isFavorite = track.status === VEHICLE_TRACK_STATUS.FAVORITE;
             const isDeferred = track.status === VEHICLE_TRACK_STATUS.DEFERRED;
+            const isSelected = selectedSet.has(String(track.id));
+            const isFresh = freshTrackId && String(freshTrackId) === String(track.id);
+            const selectable = Boolean(onSelectTrack) && !isDeferred;
 
             return (
               <li key={track.id}>
@@ -109,13 +115,41 @@ export default function CustomerAkteVehicleTracks({
                     'vt-card',
                     isFavorite ? 'vt-card--favorite' : '',
                     isDeferred ? 'vt-card--deferred' : '',
+                    isSelected ? 'vt-card--selected' : '',
+                    isFresh ? 'vt-card--fresh' : '',
+                    selectable ? 'vt-card--selectable' : '',
                   ].filter(Boolean).join(' ')}
+                  onClick={selectable ? () => onSelectTrack(track) : undefined}
+                  onKeyDown={selectable ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelectTrack(track);
+                    }
+                  } : undefined}
+                  role={selectable ? 'button' : undefined}
+                  tabIndex={selectable ? 0 : undefined}
+                  aria-pressed={selectable ? isSelected : undefined}
                 >
                   <div className="vt-card__top">
-                    <h3 className="vt-card__name">{track.modelLabel}</h3>
-                    <span className={`vt-card__badge vt-card__badge--${track.statusTone}`}>
-                      {track.statusLabel}
-                    </span>
+                    <div className="vt-card__title-row">
+                      {selectable ? (
+                        <span
+                          className={`vt-card__check${isSelected ? ' is-on' : ''}`}
+                          aria-hidden
+                        >
+                          {isSelected ? '✓' : ''}
+                        </span>
+                      ) : null}
+                      <h3 className="vt-card__name">{track.modelLabel}</h3>
+                    </div>
+                    <div className="vt-card__badges">
+                      {isFresh ? (
+                        <span className="vt-card__badge vt-card__badge--new">Neu</span>
+                      ) : null}
+                      <span className={`vt-card__badge vt-card__badge--${track.statusTone}`}>
+                        {track.statusLabel}
+                      </span>
+                    </div>
                   </div>
 
                   {rate ? (
@@ -144,7 +178,10 @@ export default function CustomerAkteVehicleTracks({
                       <button
                         type="button"
                         className="vt-card__action vt-card__action--ghost"
-                        onClick={() => onResumeTrack?.(track)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onResumeTrack?.(track);
+                        }}
                       >
                         Wieder aufnehmen
                       </button>
@@ -152,7 +189,10 @@ export default function CustomerAkteVehicleTracks({
                     <button
                       type="button"
                       className="vt-card__action"
-                      onClick={() => onOpenTrack?.(track)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenTrack?.(track);
+                      }}
                     >
                       Öffnen
                       <span aria-hidden> ›</span>

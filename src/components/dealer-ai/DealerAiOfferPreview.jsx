@@ -184,7 +184,6 @@ export default function DealerAiOfferPreview({
   offerDraft,
   onBack,
   onSave,
-  onFinish,
   onCommercialChange,
   onReuploadPdf = null,
   fallbackOriginalPdf = null,
@@ -948,7 +947,7 @@ export default function DealerAiOfferPreview({
       {/* 5. CTA – internal file only; Composer owns customer messaging */}
       <FlowStickyFooter
         className={canFile && !saved ? 'dai-opreview-foot--ready' : ''}
-        saved={saved ? '✓ Angebot vorbereitet' : null}
+        saved={null}
         hint={!saved && !canFile ? notReadyLabel : null}
       >
         <input
@@ -960,22 +959,15 @@ export default function DealerAiOfferPreview({
           tabIndex={-1}
           aria-hidden
         />
-        {saved ? (
-          <>
-            <FlowPrimaryButton onClick={onFinish}>In Kundenakte öffnen</FlowPrimaryButton>
-            {renderPdfActions({ inFooter: true })}
-          </>
-        ) : (
-          <FlowPrimaryButton
-            className={canFile ? 'dai-opreview-cta--glow' : 'dai-opreview-cta--calm'}
-            onClick={handleSaveClick}
-            disabled={isSaving || savePending || isReuploading || (requireConfirm && !gate.canSave)}
-          >
-            {isSaving || savePending
-              ? 'Wird gespeichert …'
-              : (canFile ? 'Angebot speichern' : notReadyLabel)}
-          </FlowPrimaryButton>
-        )}
+        <FlowPrimaryButton
+          className={canFile ? 'dai-opreview-cta--glow' : 'dai-opreview-cta--calm'}
+          onClick={handleSaveClick}
+          disabled={saved || isSaving || savePending || isReuploading || (requireConfirm && !gate.canSave)}
+        >
+          {isSaving || savePending
+            ? 'Wird gespeichert …'
+            : (canFile ? 'Angebot speichern' : notReadyLabel)}
+        </FlowPrimaryButton>
       </FlowStickyFooter>
     </OfferFlowLayout>
   );
