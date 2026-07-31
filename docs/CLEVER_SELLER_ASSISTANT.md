@@ -87,7 +87,8 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 6):** `src/services/cleverSeller/globalComposer.slice6.test.js` – Altvertrag Intake + Review + Confirm.  
 **Global Composer (Slice 7):** `src/services/cleverSeller/globalComposer.slice7.test.js` – Vertrag nachschlagen aus Contract Memory.  
 **Global Composer (Slice 8):** `src/services/cleverSeller/globalComposer.slice8.test.js` – Vertragsende → Golden Moment / Journey Reminder.  
-**Global Composer (Slice 9):** `src/services/cleverSeller/globalComposer.slice9.test.js` – Altvertrag vs. Angebot vergleichen.
+**Global Composer (Slice 9):** `src/services/cleverSeller/globalComposer.slice9.test.js` – Altvertrag vs. Angebot vergleichen.  
+**Global Composer (Slice 10):** `src/services/cleverSeller/globalComposer.slice10.test.js` – Vergleichsnachricht aus Diffs (kein Auto-Send).
 
 Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).  
 **Contract Memory:** [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md).

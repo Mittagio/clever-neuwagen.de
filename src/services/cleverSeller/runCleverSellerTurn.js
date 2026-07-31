@@ -31,6 +31,7 @@ import {
 import {
   resolveAssistantContext,
   buildInterpretedGoal,
+  extractNamedCustomerFromInput,
 } from './resolveAssistantContext.js';
 import {
   buildUniversalReviewModel,
@@ -157,6 +158,7 @@ function finalizeSellerTurn({
       || (interpreted.normalized || interpreted.raw).match(
         /\b(?:herrn?\s+|frau\s+)([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
       )?.[1]
+      || extractNamedCustomerFromInput(interpreted.normalized || interpreted.raw)
       || null
     : null;
   const contractSearchInput = contractNameHint

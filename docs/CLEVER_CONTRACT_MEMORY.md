@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 9 implementiert (Vertragsvergleich)  
+**Status:** Slice 10 implementiert (Vergleichsnachricht)  
 **Stand:** Juli 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -161,6 +161,7 @@ Besonders behandeln / nicht an Message Writer:
 | **7** | Contract Memory Search | „Wann läuft Brandes aus?“ aus Contract Facts |
 | **8** | Contract Golden Moments | Vertragsende → bestehende Journey/Reminder + Nachfolge-CTA |
 | **9** | Vertragsvergleich | Altvertrag vs. neues Angebot (strukturiert) |
+| **10** | Vergleichsnachricht | Explizite Kundennachricht aus Compare-Deltas |
 | später | PDF-Intake, Offer+Termin Multi-Action, Attachments | siehe unten |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
@@ -345,10 +346,41 @@ Erwartung (Brandes + XCeed-Favorit 347 € vs. Altvertrag 329 €): Rate Δ +18 
 
 ---
 
+## Slice 10 – Vergleichsnachricht
+
+**Status: implementiert**
+
+Nur nach **explizitem** Schreibauftrag entsteht eine Kundennachricht aus den Compare-Rows:
+
+- Cue: `isContractCompareMessageCue` („Schreib … Nachricht zum Vergleich …“)
+- Intents: `compare_contract_with_offer` + `draft_message`
+- Modul: `draftContractCompareCustomerMessage.js` (deterministisch, validiert)
+- Review: `contract_compare_and_message_review`
+- Handoff: `customer_message_edit` – **kein Auto-Send**
+- Reiner Vergleich (Slice 9) bleibt **ohne** Nachricht
+
+| Modul | Rolle |
+|-------|--------|
+| `draftContractCompareCustomerMessage.js` | Cue + Draft aus Diff-Rows |
+| `globalComposer.slice10.test.js` | Golden + Gegenproben |
+
+### Golden Input
+
+> „Schreib Brandes eine Nachricht zum Vergleich mit dem neuen Angebot.“
+
+Erwartung: Draft mit Rate 329 → 347 €, `autoSend: false`, Review `contract_compare_and_message_review`.
+
+### Nicht in Slice 10
+
+- Auto-Nachricht bei reinem Vergleich  
+- PDF-/OCR-Intake  
+- Offer + Termin Multi-Action  
+
+---
+
 ## Später
 
 - PDF-/Scan-Contract-Intake  
-- Optional: natürliche Kundennachricht aus Vergleichsdeltas (nur nach explizitem Auftrag)  
 - Offer + Termin Multi-Action  
 - Attachments / Akte-Composer-Migration  
 

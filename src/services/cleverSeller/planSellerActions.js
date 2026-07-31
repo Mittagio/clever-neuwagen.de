@@ -13,6 +13,7 @@ import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
 import { prepareCustomerContractImport } from './prepareCustomerContractImport.js';
 import { searchCustomerContracts } from './searchCustomerContracts.js';
 import { compareContractWithOffer } from './compareContractWithOffer.js';
+import { draftContractCompareCustomerMessage } from './draftContractCompareCustomerMessage.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -319,6 +320,38 @@ export function planSellerActions({
         mutatesCustomerTruth: false,
       },
     });
+
+    // Slice 10: Nachricht nur bei explizitem DRAFT_MESSAGE + erfolgreichem Vergleich
+    if (
+      intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+      && compared.ok
+      && compared.contractOfferCompareResult
+      && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    ) {
+      const drafted = draftContractCompareCustomerMessage({
+        compareResult: compared.contractOfferCompareResult,
+        lead,
+        customerName,
+      });
+      if (drafted.ok && drafted.messageDraft) {
+        actions.push({
+          id: 'draft_message',
+          type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+          label: 'Vergleichsnachricht',
+          needsSellerConfirmation: true,
+          status: 'prepared',
+          toolId: 'draft_customer_message',
+          payload: {
+            messageDraft: drafted.messageDraft,
+            handoff: drafted.handoff,
+            contractCompareLinked: true,
+            autoSend: false,
+            mutatesCustomer: false,
+            mutatesCustomerTruth: false,
+          },
+        });
+      }
+    }
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) {

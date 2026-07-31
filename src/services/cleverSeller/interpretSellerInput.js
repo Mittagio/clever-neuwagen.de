@@ -41,6 +41,7 @@ import { extractNamedCustomerFromInput } from './resolveAssistantContext.js';
 import { isCustomerContractIntakeText } from './extractCustomerContractFromText.js';
 import { isCustomerContractQuery } from './searchCustomerContracts.js';
 import { isContractOfferCompareQuery } from './compareContractWithOffer.js';
+import { isContractCompareMessageCue } from './draftContractCompareCustomerMessage.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -921,7 +922,10 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|nachfolgeangebot|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const isContractIntake = isCustomerContractIntakeText(t);
-  const isContractCompare = !isContractIntake && isContractOfferCompareQuery(t);
+  const isContractCompareMessage = !isContractIntake && isContractCompareMessageCue(t);
+  const isContractCompare = !isContractIntake && (
+    isContractOfferCompareQuery(t) || isContractCompareMessage
+  );
   const isContractQuery = !isContractIntake && !isContractCompare && isCustomerContractQuery(t);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
@@ -947,6 +951,9 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (isContractCompare) {
     add(SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER, 0.98);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
+    if (isContractCompareMessage || explicitMessage) {
+      add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.97);
+    }
   }
 
   if (isContractQuery) {
@@ -1040,12 +1047,13 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     if (!skipMessageDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand) {
+  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand && !isContractCompare) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
   } else if (
     hasContextFacts
     && !isContractIntake
     && !isContractQuery
+    && !isContractCompare
     && !hasAppointmentFact
     && !isFindCustomer
     && !isOpenCustomer
@@ -1057,7 +1065,7 @@ export function detectSellerTurnIntents(text = '', facts = []) {
     && !isAmbiguousOfferOrMessage
   ) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
-  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake && !isContractQuery) {
+  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake && !isContractQuery && !isContractCompare) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
   }
 
