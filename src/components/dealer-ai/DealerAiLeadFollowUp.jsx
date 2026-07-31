@@ -400,6 +400,7 @@ export default function DealerAiLeadFollowUp({
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [composerSeedDraft, setComposerSeedDraft] = useState('');
   const [composerSeedToken, setComposerSeedToken] = useState(0);
+  const [composerSeedAutoRun, setComposerSeedAutoRun] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [angeboteFilter, setAngeboteFilter] = useState('all');
@@ -995,11 +996,12 @@ export default function DealerAiLeadFollowUp({
     return parts.join(' · ');
   }, [vehicleCards, vehicleTracks, wishModel, wishPaymentType]);
 
-  function focusChatComposer({ clever = true, seedDraft = '' } = {}) {
+  function focusChatComposer({ clever = true, seedDraft = '', autoRun = false } = {}) {
     setAkteTab(AKTE_TABS.clever);
     setCleverMode(true);
     setComposerFocusToken((n) => n + 1);
     if (seedDraft) {
+      setComposerSeedAutoRun(Boolean(autoRun));
       setComposerSeedDraft(seedDraft);
       setComposerSeedToken((n) => n + 1);
     }
@@ -1134,6 +1136,7 @@ export default function DealerAiLeadFollowUp({
     focusChatComposer({
       clever: true,
       seedDraft: 'Schreib ihm eine kurze Zusammenfassung zu dem angehängten Angebot.',
+      autoRun: true,
     });
   }
 
@@ -1150,6 +1153,7 @@ export default function DealerAiLeadFollowUp({
     const labels = offers.map((o) => o.shortLabel || o.label).join(', ');
     focusChatComposer({
       clever: true,
+      autoRun: true,
       seedDraft: offers.length > 1
         ? `Erkläre dem Kunden diese Angebote und bereite den Kundenlink vor: ${labels}.`
         : `Erkläre ihm das Angebot und schicke den Kundenlink per E-Mail: ${labels}.`,
@@ -1162,6 +1166,7 @@ export default function DealerAiLeadFollowUp({
     const labels = offers.map((o) => o.shortLabel || o.label).join(' vs. ');
     focusChatComposer({
       clever: true,
+      autoRun: true,
       seedDraft: `Vergleiche kurz diese Angebote für den Kunden: ${labels}.`,
     });
   }
@@ -1174,6 +1179,7 @@ export default function DealerAiLeadFollowUp({
     }
     focusChatComposer({
       clever: true,
+      autoRun: true,
       seedDraft: offers.length > 1
         ? `Erstelle ein Kundenangebot aus diesen Auswahl: ${offers.map((o) => o.shortLabel || o.label).join(', ')}.`
         : `Bereite den Kundenlink für ${offers[0].shortLabel || offers[0].label} vor.`,
@@ -3137,6 +3143,7 @@ export default function DealerAiLeadFollowUp({
         focusToken={composerFocusToken}
         seedDraft={composerSeedDraft}
         seedDraftToken={composerSeedToken}
+        seedAutoRun={composerSeedAutoRun}
         replyContext={composerReplyContext}
         workingContextItems={workingContextItems}
         onRemoveWorkingContext={handleRemoveWorkingContext}

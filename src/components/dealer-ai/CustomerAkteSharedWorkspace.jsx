@@ -126,6 +126,8 @@ export default function CustomerAkteSharedWorkspace({
   onStartSelfDisclosure = null,
   seedDraft = '',
   seedDraftToken = 0,
+  /** Mit seedDraftToken: nach Seed sofort Clever-Vorschlag (wie Absenden) */
+  seedAutoRun = false,
   feedTopSlot = null,
   /** Clever-Tab: kein Nachrichtenverlauf über dem Composer (Verlauf = Chat-Tab) */
   hideFeed = false,
@@ -247,6 +249,56 @@ export default function CustomerAkteSharedWorkspace({
     setLastComposerAction(next);
   }
 
+  /** Clever-Arbeit: Input → Vorschlag in der Mitte (noch nichts persistiert). */
+  function runCleverProposeFromInput(rawText) {
+    const text = String(rawText ?? '').trim();
+    if (!text || sending) return false;
+    setSending(true);
+    try {
+      const turn = runCleverSellerTurn({
+        lead,
+        sellerInput: text,
+        currentOfferContext: resolveCurrentOfferContext(),
+        workingContextItems,
+        customerName,
+      });
+      setDraft('');
+      setOfferPrep(null);
+      setAppointmentDraft(null);
+      if (shouldShowUniversalReview(turn)) {
+        showUniversalReview(turn);
+        setFeedback('Clever hat vorbereitet');
+        setTimeout(() => setFeedback(''), 2400);
+        return true;
+      }
+      const draftBody = String(
+        turn?.messageDraft
+        || turn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+          ?.payload?.messageDraft
+        || '',
+      ).trim();
+      if (draftBody) {
+        setUniversalTurn(null);
+        clearAssist();
+        rememberLastComposerAction(buildComposerLastActionFromText({
+          body: draftBody,
+          title: 'Nachricht',
+          status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
+        }));
+        setFeedback('Nachricht vorbereitet');
+        setTimeout(() => setFeedback(''), 2400);
+        return true;
+      }
+      clearAssist();
+      setUniversalTurn(null);
+      setFeedback('Clever hat nichts vorbereitet – bitte anders formulieren');
+      setTimeout(() => setFeedback(''), 2800);
+      return false;
+    } finally {
+      setSending(false);
+    }
+  }
+
   function snapshotAcceptedReview(options = {}) {
     const model = universalTurn ? buildUniversalReviewModel(universalTurn) : null;
     const status = options.status || (
@@ -279,8 +331,15 @@ export default function CustomerAkteSharedWorkspace({
 
   useEffect(() => {
     if (!seedDraftToken || !seedDraft) return;
-    setDraft(String(seedDraft));
-  }, [seedDraftToken, seedDraft]);
+    const text = String(seedDraft).trim();
+    if (!text) return;
+    if (seedAutoRun) {
+      // Spur / „Nachricht vorbereiten“: sofort vorschlagen (Cursor-Vertrag).
+      runCleverProposeFromInput(text);
+      return;
+    }
+    setDraft(text);
+  }, [seedDraftToken, seedDraft, seedAutoRun]);
 
   const timeline = useMemo(
     () => buildSharedWorkspaceTimeline(lead, { role: 'seller' }),
@@ -572,49 +631,7 @@ export default function CustomerAkteSharedWorkspace({
     }
     // Clever-Arbeit: Absenden = Clever ausführen (Antwort in der Mitte),
     // nicht die Arbeitsanweisung als Kundennachricht schicken.
-    setSending(true);
-    try {
-      const turn = runCleverSellerTurn({
-        lead,
-        sellerInput: text,
-        currentOfferContext: resolveCurrentOfferContext(),
-        workingContextItems,
-        customerName,
-      });
-      setDraft('');
-      setOfferPrep(null);
-      setAppointmentDraft(null);
-      if (shouldShowUniversalReview(turn)) {
-        showUniversalReview(turn);
-        setFeedback('Clever hat vorbereitet');
-        setTimeout(() => setFeedback(''), 2400);
-        return;
-      }
-      const draftBody = String(
-        turn?.messageDraft
-        || turn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-          ?.payload?.messageDraft
-        || '',
-      ).trim();
-      if (draftBody) {
-        setUniversalTurn(null);
-        clearAssist();
-        rememberLastComposerAction(buildComposerLastActionFromText({
-          body: draftBody,
-          title: 'Nachricht',
-          status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
-        }));
-        setFeedback('Nachricht vorbereitet');
-        setTimeout(() => setFeedback(''), 2400);
-        return;
-      }
-      clearAssist();
-      setUniversalTurn(null);
-      setFeedback('Clever hat nichts vorbereitet – bitte anders formulieren');
-      setTimeout(() => setFeedback(''), 2800);
-    } finally {
-      setSending(false);
-    }
+    runCleverProposeFromInput(text);
   }
 
   function resetMagicComposer() {
