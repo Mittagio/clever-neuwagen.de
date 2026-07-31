@@ -982,6 +982,14 @@ export function detectSellerTurnIntents(text = '', facts = []) {
   if (hasAppointmentFact
     || detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT) {
     add(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT, 0.93);
+    add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
+    if (/\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|morgen|übermorgen|heute|uhr)\b/i.test(t)
+      || /\b\d{1,2}([:.]\d{2})?\s*uhr\b/i.test(t)) {
+      add(SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME, 0.92);
+    }
+    if (!/\b(trag|trage|eintragen)\b/i.test(t) || /\bvorschlag|vorschlagen|schlag/i.test(t)) {
+      add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.9);
+    }
   }
 
   const primary = detectSellerActionIntent(t);

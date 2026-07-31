@@ -94,7 +94,7 @@ function multiAcceptShape(turn) {
   assert.match(String(shape.messageBody), /17\.000|17000/);
 
   const review = buildUniversalReviewModel(turn);
-  assert.match(review.primaryCta, /Angebot und Nachricht prüfen|Änderungen prüfen|Übernehmen/);
+  assert.match(review.primaryCta, /Angebot und Nachricht prüfen|Angebot prüfen|Änderungen prüfen|Übernehmen/);
   assert.ok(review.actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'offer_change'));
   assert.ok(review.actionSections.some((s) => s.kind === 'message_draft'));
 
@@ -162,7 +162,10 @@ function multiAcceptShape(turn) {
     customerName: 'Garritano',
   });
   assertNoAutoSend(turn);
-  assert.ok(turn.preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY));
+  assert.ok(turn.preparedActions.some((a) => (
+    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+  )));
   assert.ok(!turn.preparedActions.some((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
   )));

@@ -40,6 +40,8 @@ import {
   resolveWorkingLeadForTurn,
   buildPreparedOfferWorkingContext,
 } from './resolveWorkingLeadForTurn.js';
+import { resolveAppointmentCustomerContext } from './resolveAppointmentCustomerContext.js';
+import { isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -96,16 +98,50 @@ function finalizeSellerTurn({
   leadsSnapshot = [],
   scopeHint = null,
   appContext = null,
+  pendingAction: incomingPendingAction = null,
+  now = null,
+  calendarAvailability = null,
 }) {
   void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
 
-  const leadResolve = resolveWorkingLeadForTurn({
-    lead,
-    sellerInput: interpreted.normalized || interpreted.raw,
-    leadsSnapshot,
-    intents,
-  });
+  const pendingAppointment = incomingPendingAction?.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    || incomingPendingAction?.preparedAppointment
+    ? (incomingPendingAction.preparedAppointment || incomingPendingAction)
+    : (appContext?.pendingAppointment || null);
+
+  // Appointment: Pronomen / Kontextkunde
+  const wantsAppointment = (intents || []).some((i) => (
+    i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    || i.type === SELLER_TURN_INTENTS.PREPARE_CALLBACK
+  )) || isAppointmentFollowUpInput(interpreted.normalized || interpreted.raw, pendingAppointment);
+
+  let appointmentCustomer = null;
+  if (wantsAppointment) {
+    appointmentCustomer = resolveAppointmentCustomerContext({
+      sellerInput: interpreted.normalized || interpreted.raw,
+      lead,
+      leadsSnapshot,
+      pendingAction: incomingPendingAction,
+      workingContextItems,
+    });
+  }
+
+  const leadResolve = wantsAppointment && appointmentCustomer?.resolved && appointmentCustomer.customer?.id
+    ? {
+      workingLead: appointmentCustomer.customer,
+      resolution: { source: appointmentCustomer.source },
+      customerSearchResults: null,
+      ambiguous: false,
+      resolved: true,
+    }
+    : resolveWorkingLeadForTurn({
+      lead,
+      sellerInput: interpreted.normalized || interpreted.raw,
+      leadsSnapshot,
+      intents,
+    });
+
   const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
 
   const uniqueFacts = filterDuplicateFacts(facts, workingLead);
@@ -128,7 +164,7 @@ function finalizeSellerTurn({
       namedInInput: assistantContext.resolvedCustomer?.namedInInput
         || leadResolve.resolution?.nameQuery
         || null,
-      source: 'global_search',
+      source: appointmentCustomer?.source || 'global_search',
       matched: true,
     };
   }
@@ -158,16 +194,34 @@ function finalizeSellerTurn({
     });
   }
 
-  if (leadResolve.ambiguous) {
+  if (leadResolve.ambiguous || appointmentCustomer?.ambiguous) {
     missingInformation.push({
       id: 'clarify_customer',
       field: 'customerId',
-      label: 'Mehrere Kunden gefunden – bitte einen auswählen.',
+      label: appointmentCustomer?.question
+        || 'Mehrere Kunden gefunden – bitte einen auswählen.',
       forIntent: SELLER_TURN_INTENTS.FIND_CUSTOMER,
+    });
+  } else if (wantsAppointment && appointmentCustomer && !appointmentCustomer.resolved) {
+    missingInformation.push({
+      id: 'clarify_customer_for_appointment',
+      field: 'customerId',
+      label: appointmentCustomer.question
+        || 'Für welchen Kunden soll ich den Termin vorschlagen?',
+      forIntent: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT,
     });
   }
 
   let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
+  if (wantsAppointment && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)) {
+    effectiveIntents.push({ type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT, confidence: 0.95 });
+    effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, confidence: 0.9 });
+    effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME, confidence: 0.9 });
+    if (!effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
+      effectiveIntents.push({ type: SELLER_TURN_INTENTS.DRAFT_MESSAGE, confidence: 0.9 });
+    }
+  }
+
   const hasCommercial = uniqueFacts.some(
     (f) => f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
       || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION,
@@ -185,14 +239,17 @@ function finalizeSellerTurn({
   }
 
   // Bei Ambiguity oder mehrdeutiger Kundensuche keine Offer/Message-Ausführung
-  if (ambiguousOfferOrMessage || leadResolve.ambiguous) {
+  if (ambiguousOfferOrMessage || leadResolve.ambiguous
+    || (wantsAppointment && appointmentCustomer && !appointmentCustomer.resolved)) {
     effectiveIntents = effectiveIntents.filter((i) => (
       i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
       && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+      && i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
     ));
-    if (leadResolve.ambiguous
+    if ((leadResolve.ambiguous || (appointmentCustomer && !appointmentCustomer.resolved))
       && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.FIND_CUSTOMER)) {
       effectiveIntents.push({ type: SELLER_TURN_INTENTS.FIND_CUSTOMER, confidence: 0.99 });
+      effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, confidence: 0.99 });
     }
   }
 
@@ -207,9 +264,13 @@ function finalizeSellerTurn({
       currentOfferContext: offerCtx,
       resolvedCustomer: assistantContext.resolvedCustomer,
       workingContext: assistantContext.resolvedWorkingContext,
+      workingContextItems,
       goldenMoment: assistantContext.goldenMoment,
       attachments,
       leadsSnapshot,
+      pendingAppointment,
+      now,
+      calendarAvailability,
     })
     : [];
 
@@ -283,6 +344,13 @@ function finalizeSellerTurn({
   const offerPrepareAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.status === 'prepared'
   ));
+  const appointmentPrepareAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+  ));
+  const resolvedDateTime = appointmentPrepareAction?.payload?.resolvedDateTime
+    || preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME)
+      ?.payload?.resolvedDateTime
+    || null;
 
   const customerSearchResults = customerSearchAction?.payload?.customerSearchResults
     || (customerSummaryAction?.payload?.status === 'ambiguous_customer'
@@ -301,6 +369,7 @@ function finalizeSellerTurn({
   const deferPersistence = Boolean(
     offerPrepareAction
     || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+    || appointmentPrepareAction
     || todayOverview
     || knowledgeResult
     || groundedKnowledge
@@ -311,10 +380,11 @@ function finalizeSellerTurn({
 
   const scope = scopeHint
     || (todayOverview ? 'dashboard' : null)
+    || (workingLead?.id && appointmentPrepareAction ? 'customer' : null)
     || (knowledgeResult && !workingLead?.id ? 'global' : null)
-    || ((customerSearchResults || customerSummary || historySearchResults || offerPrepareAction || groundedKnowledge)
+    || ((customerSearchResults || customerSummary || historySearchResults || offerPrepareAction || groundedKnowledge || appointmentPrepareAction)
       && !lead?.id
-      ? 'global'
+      ? (appointmentPrepareAction && workingLead?.id ? 'contextual_global' : 'global')
       : null)
     || (workingLead?.id || lead?.id ? 'customer' : 'global');
 
@@ -338,6 +408,7 @@ function finalizeSellerTurn({
   }
 
   const messageDraft = draftMessageAction?.payload?.messageDraft
+    || appointmentPrepareAction?.payload?.messageDraft
     || null;
 
   const sellerFacts = draftMessageAction?.payload?.sellerFacts
@@ -360,6 +431,9 @@ function finalizeSellerTurn({
   if (Array.isArray(draftMessageAction?.payload?.warnings)) {
     warningsExtra.push(...draftMessageAction.payload.warnings);
   }
+  if (Array.isArray(appointmentPrepareAction?.payload?.warnings)) {
+    warningsExtra.push(...appointmentPrepareAction.payload.warnings);
+  }
   if (Array.isArray(groundedKnowledge?.conflicts)) {
     for (const c of groundedKnowledge.conflicts) {
       if (c?.message) warningsExtra.push(c.message);
@@ -378,7 +452,15 @@ function finalizeSellerTurn({
       createdAt: new Date().toISOString(),
       preparedOffer: offerPrepareAction.payload?.preparedOffer || null,
     }
-    : null;
+    : (appointmentPrepareAction?.payload?.preparedAppointment
+      ? {
+        type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT,
+        customerId: workingLead?.id || appointmentPrepareAction.payload.preparedAppointment.customerId,
+        preparedAppointment: appointmentPrepareAction.payload.preparedAppointment,
+        messageDraft: appointmentPrepareAction.payload.messageDraft || messageDraft,
+        createdAt: new Date().toISOString(),
+      }
+      : null);
 
   const handoffWorkingContext = offerPrepareAction?.payload?.attachWorkingContext
     ? buildPreparedOfferWorkingContext({
@@ -391,15 +473,25 @@ function finalizeSellerTurn({
       purchasePrice: offerPrepareAction.payload?.purchasePrice,
       messageDraft: typeof messageDraft === 'string' ? messageDraft : messageDraft?.body,
     })
-    : (draftMessageAction?.payload?.handoff
+    : (appointmentPrepareAction?.payload?.handoff
       ? {
-        ...draftMessageAction.payload.handoff,
-        customerId: workingLead?.id || draftMessageAction.payload.handoff.customerId || null,
+        ...appointmentPrepareAction.payload.handoff,
+        customerId: workingLead?.id
+          || appointmentPrepareAction.payload.preparedAppointment?.customerId
+          || null,
         customerName: workingLead?.contact?.name
-          || draftMessageAction.payload.handoff.recipient
+          || appointmentPrepareAction.payload.preparedAppointment?.customerName
           || null,
       }
-      : null);
+      : (draftMessageAction?.payload?.handoff
+        ? {
+          ...draftMessageAction.payload.handoff,
+          customerId: workingLead?.id || draftMessageAction.payload.handoff.customerId || null,
+          customerName: workingLead?.contact?.name
+            || draftMessageAction.payload.handoff.recipient
+            || null,
+        }
+        : null));
 
   // Missing package / vehicle clarification → missingInformation
   if (draftMessageAction?.payload?.groundedStatus === 'missing_package_knowledge') {
@@ -480,6 +572,8 @@ function finalizeSellerTurn({
     handoffWorkingContext,
     proposedUpdates: deferPersistence ? [] : proposedUpdates,
     missingInformation,
+    resolvedDateTime,
+    preparedAppointment: appointmentPrepareAction?.payload?.preparedAppointment || null,
     relevantCustomerContext: {
       knownLabels: knownLabels.slice(0, 12),
       commercialPreferences: (understanding?.verstaendnis?.konditionen ?? []).slice?.(0, 6)
@@ -503,11 +597,14 @@ function finalizeSellerTurn({
     warnings,
     assistantReply,
     confidence: interpreted.confidence,
-    evidence: buildEvidenceFromTurn({
-      facts: uniqueFacts,
-      preparedActions,
-      retrievedFacts,
-    }),
+    evidence: [
+      ...buildEvidenceFromTurn({
+        facts: uniqueFacts,
+        preparedActions,
+        retrievedFacts,
+      }),
+      ...(appointmentPrepareAction?.payload?.evidence || []),
+    ],
     pendingAction,
     currentOfferContext: offerCtx || null,
     homepageInquiry: interpreted.homepageInquiry ?? null,
@@ -520,10 +617,25 @@ function finalizeSellerTurn({
         todayOverview
           ? 'Clever prüft Ihre heutigen Vorgänge …'
           : null,
-        (workingLead?.id || customerSearchResults?.length) && (offerPrepareAction || groundedKnowledge || messageDraft)
-          ? `✓ ${workingLead?.contact?.name || customerSearchResults?.[0]?.customerName || 'Kunde'} gefunden`
+        (workingLead?.id || customerSearchResults?.length)
+          && (offerPrepareAction || groundedKnowledge || messageDraft || appointmentPrepareAction)
+          ? `✓ ${workingLead?.contact?.name || customerSearchResults?.[0]?.customerName || 'Kunde'} ${appointmentPrepareAction ? 'erkannt' : 'gefunden'}`
           : (customerSearchResults
             ? 'Clever sucht in Ihren Kunden …'
+            : null),
+        resolvedDateTime?.ok
+          ? `✓ ${resolvedDateTime.dateLabel || resolvedDateTime.whenLabel || 'Datum'} aufgelöst`
+          : null,
+        resolvedDateTime?.ok && resolvedDateTime.timeLabel
+          ? `✓ ${resolvedDateTime.timeLabel} Uhr erkannt`
+          : null,
+        appointmentPrepareAction?.payload?.preparedAppointment?.vehicleContext?.label
+          ? `✓ ${String(appointmentPrepareAction.payload.preparedAppointment.vehicleContext.label).replace(/^Kia\s+/i, '')}-Kontext übernommen`
+          : null,
+        appointmentPrepareAction?.payload?.availabilityStatus === 'not_checked'
+          ? '○ Kalender noch nicht geprüft'
+          : (appointmentPrepareAction?.payload?.availabilityStatus === 'available'
+            ? '✓ Kalender geprüft'
             : null),
         groundedKnowledge?.vehicleIdentity?.modelKey
           ? `✓ ${[
@@ -563,14 +675,14 @@ function finalizeSellerTurn({
         offerPrepareAction && messageDraft
           ? '✓ Angebot und Nachricht vorbereitet'
           : null,
-        !offerPrepareAction && messageDraft
+        appointmentPrepareAction?.status === 'prepared' && messageDraft
+          ? '✓ Terminvorschlag und Nachricht vorbereitet'
+          : null,
+        !offerPrepareAction && !appointmentPrepareAction && messageDraft
           ? '✓ Nachricht vorbereitet'
           : null,
         !offerPrepareAction && preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
           ? 'Angebot vorbereitet'
-          : null,
-        preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
-          ? 'Termin vorbereitet'
           : null,
         knowledgeResult?.ok && !groundedKnowledge
           ? `${knowledgeResult.factLabel || 'Fakt'} verifiziert`
@@ -581,7 +693,7 @@ function finalizeSellerTurn({
         assistantContext.resolvedWorkingContext?.attachedDocument?.label
           ? `Dokument: ${assistantContext.resolvedWorkingContext.attachedDocument.label}`
           : null,
-        assistantContext.goldenMoment?.headline && !todayOverview && !offerPrepareAction && !groundedKnowledge
+        assistantContext.goldenMoment?.headline && !todayOverview && !offerPrepareAction && !groundedKnowledge && !appointmentPrepareAction
           ? 'Nächster Schritt erkannt'
           : null,
       ].filter(Boolean),
@@ -589,6 +701,7 @@ function finalizeSellerTurn({
     featureEnabled: enabled,
     openaiEscalation,
     autoSent: false,
+    autoBooked: false,
   };
 
   const reviewModel = shouldShowUniversalReview(turnPartial)
@@ -617,6 +730,9 @@ export function runCleverSellerTurn({
   leadsSnapshot = [],
   scopeHint = null,
   appContext = null,
+  pendingAction = null,
+  now = null,
+  calendarAvailability = null,
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
@@ -637,6 +753,9 @@ export function runCleverSellerTurn({
     leadsSnapshot,
     scopeHint,
     appContext,
+    pendingAction: pendingAction || appContext?.pendingAction || null,
+    now: now || appContext?.now || null,
+    calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
   });
 }
 

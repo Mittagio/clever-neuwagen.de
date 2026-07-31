@@ -340,6 +340,7 @@ export default function CustomerAkteSharedWorkspace({
         currentOfferContext: offerCtx,
         workingContextItems,
         customerName,
+        pendingAction: universalTurn?.pendingAction || null,
       });
 
       const offerAction = (turn.preparedActions || []).find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
@@ -845,6 +846,7 @@ export default function CustomerAkteSharedWorkspace({
           currentOfferContext: resolveCurrentOfferContext(),
           workingContextItems,
           customerName,
+          pendingAction: universalTurn?.pendingAction || null,
         });
         if (shouldShowUniversalReview(turn)) {
           setUniversalTurn(turn);
@@ -1353,6 +1355,55 @@ export default function CustomerAkteSharedWorkspace({
     setTimeout(() => setFeedback(''), 2400);
   }
 
+  function handleUniversalReviewAction(action) {
+    if (!action || !universalTurn) return;
+    if (action.action === 'discard') {
+      handleDismissAssist();
+      return;
+    }
+    if (action.action === 'check_calendar') {
+      setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
+    if (action.action === 'edit_message') {
+      const body = String(
+        universalTurn.messageDraft
+        || universalTurn.handoffWorkingContext?.messageDraft
+        || universalTurn.pendingAction?.messageDraft
+        || '',
+      ).trim();
+      if (!body) {
+        setFeedback('Keine Nachricht zum Bearbeiten');
+        setTimeout(() => setFeedback(''), 2400);
+        return;
+      }
+      const next = beginCustomerMessageEdit({
+        result: { body, draft: { body } },
+        recipient: customerName || universalTurn.resolvedCustomer?.name || 'Kunde',
+        contextAttachments: [
+          ...(workingContextItems || []),
+          ...(universalTurn.handoffWorkingContext
+            ? [universalTurn.handoffWorkingContext]
+            : []),
+        ],
+        priorWorkDraft: '',
+      });
+      priorWorkDraftRef.current = next.priorWorkDraft;
+      setEditingMessageDraft(next.editingMessageDraft);
+      setComposerMode(next.composerMode);
+      setDraft(next.draft);
+      setUniversalTurn(null);
+      clearAssist();
+      setFeedback('Nachricht bearbeiten – Senden erst nach Bestätigung');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    if (action.action === 'send_appointment_proposal' || action.action === 'send_handoff') {
+      handleAcceptUniversalReview();
+    }
+  }
+
   function handleAcceptUniversalReview(options = {}) {
     if (!universalTurn || sending) return;
     const reviseAfter = Boolean(options.reviseFavoriteOffer);
@@ -1615,6 +1666,7 @@ export default function CustomerAkteSharedWorkspace({
               onAcceptAndRevise={() => handleAcceptUniversalReview({ reviseFavoriteOffer: true })}
               onMaybe={handleMaybeUniversalReview}
               onDismiss={handleDismissAssist}
+              onReviewAction={handleUniversalReviewAction}
               onOpenHistoryHit={(result) => {
                 if (result?.messageId && onFocusFeedMessage) {
                   onFocusFeedMessage(result.messageId);

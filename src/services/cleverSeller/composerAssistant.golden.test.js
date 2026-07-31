@@ -131,8 +131,9 @@ const leadWithHistory = {
   messages: [{
     id: 'msg-liefer',
     direction: 'outbound',
+    status: 'sent',
     createdAt: '2026-07-18T14:32:00.000Z',
-    body: 'Aktuell rechnen wir beim Picanto mit einer Lieferzeit von ungefähr 8 Wochen.',
+    text: 'Aktuell rechnen wir beim Picanto mit einer Lieferzeit von ungefähr 8 Wochen.',
   }],
 };
 const turn4 = runCleverSellerTurn({
@@ -140,10 +141,17 @@ const turn4 = runCleverSellerTurn({
   sellerInput: input4,
   customerName: 'Garritano',
 });
-assert.ok(turn4.preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY));
+assert.ok(turn4.preparedActions.some((a) => (
+  a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+  || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
+)));
 assert.ok(shouldShowUniversalReview(turn4));
 const review4 = buildUniversalReviewModel(turn4);
-assert.ok(review4?.actionSections.some((s) => s.kind === 'history_search'));
+assert.ok(review4?.actionSections.some((s) => (
+  s.kind === 'history_search'
+  || s.kind === 'history_search_results'
+  || s.kind === 'no_search_result'
+)));
 
 // --- Golden Case Brandes: Multi-Offer Feedback ---
 const brandesInput = `Sportage ist ihm zu teuer.

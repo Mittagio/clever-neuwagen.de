@@ -8,6 +8,8 @@ import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
 import { prepareGroundedCustomerMessageSync } from './prepareGroundedCustomerMessageSync.js';
 import { resolveGroundedVehicleKnowledge } from './resolveGroundedVehicleKnowledge.js';
+import { prepareContextualAppointmentProposal, isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
+import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -212,9 +214,13 @@ export function planSellerActions({
   currentOfferContext = null,
   resolvedCustomer = null,
   workingContext = null,
+  workingContextItems = [],
   goldenMoment = null,
   attachments = [],
   leadsSnapshot = [],
+  pendingAppointment = null,
+  now = null,
+  calendarAvailability = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -226,6 +232,11 @@ export function planSellerActions({
   const moment = goldenMoment
     || runTool('build_golden_moment', { lead }).result
     || null;
+
+  // Follow-up auf Pending Appointment (ohne neuen Propose-Intent)
+  const followUpAppointment = Boolean(pendingAppointment)
+    && isAppointmentFollowUpInput(sellerInput, pendingAppointment)
+    && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER);
 
   if (intentTypes.has(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) {
     const overview = runTool('get_today_overview', {
@@ -604,29 +615,78 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)
-    || intentTypes.has(SELLER_TURN_INTENTS.PREPARE_CALLBACK)) {
-    const { result: appointment } = runTool('propose_appointment', {
-      lead,
+    || intentTypes.has(SELLER_TURN_INTENTS.PREPARE_CALLBACK)
+    || followUpAppointment) {
+    if (intentTypes.has(SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME) || followUpAppointment) {
+      const dt = resolveRelativeDateTime(sellerInput, {
+        now: now || undefined,
+        previousStartsAt: pendingAppointment?.startsAt || pendingAppointment?.startAt || null,
+      });
+      actions.push({
+        id: 'resolve_relative_datetime',
+        type: SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME,
+        label: dt.ok ? (dt.whenLabel || 'Datum aufgelöst') : 'Datum klären',
+        needsSellerConfirmation: false,
+        status: dt.ok ? 'prepared' : 'blocked',
+        toolId: 'resolve_relative_datetime',
+        payload: { resolvedDateTime: dt, mutatesCustomer: false },
+      });
+    }
+
+    const prepared = prepareContextualAppointmentProposal({
       sellerInput,
-      resolvedCustomer,
+      lead,
+      customerName,
+      workingContextItems: workingContextItems.length
+        ? workingContextItems
+        : (workingContext ? [workingContext] : []),
+      pendingAppointment,
+      now: now || undefined,
+      calendarAvailability,
+      sellerClaimsAvailable: /\b(ist frei|frei ist|kalender ist frei)\b/i.test(sellerInput),
+      customerConfirmed: Boolean(pendingAppointment?.customerConfirmed),
     });
-    const appointmentMessage = appointment?.results?.[0]?.messageBody
-      || appointment?.results?.[0]?.draft?.body
-      || null;
+
+    const appointmentReady = prepared.status === 'prepared'
+      || prepared.status === 'message_rewritten';
     actions.push({
       id: 'propose_appointment',
       type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT,
-      label: 'Termin vorbereiten',
+      label: prepared.status === 'needs_customer_confirmation_first'
+        ? 'Termin erst vorschlagen'
+        : 'Terminvorschlag',
       needsSellerConfirmation: true,
-      status: appointment?.ok ? 'prepared' : 'blocked',
+      status: appointmentReady ? 'prepared' : 'blocked',
       toolId: 'propose_appointment',
-      legacy: appointment ?? null,
+      legacy: prepared.legacyAppointment
+        ? {
+          ok: appointmentReady,
+          appointment: prepared.legacyAppointment,
+          results: [{
+            draft: { body: prepared.messageDraft },
+            messageBody: prepared.messageDraft,
+            appointment: prepared.legacyAppointment,
+          }],
+        }
+        : null,
       payload: {
-        messageDraft: appointmentMessage,
-        when: appointment?.appointment?.startAt || null,
+        preparedAppointment: prepared.preparedAppointment,
+        messageDraft: prepared.messageDraft,
+        when: prepared.preparedAppointment?.startsAt || null,
+        resolvedDateTime: prepared.resolvedDateTime,
+        availabilityStatus: prepared.availabilityStatus || 'not_checked',
+        handoff: prepared.handoff,
+        sendable: prepared.sendable,
+        bookable: false,
+        mutatesCustomer: false,
+        status: prepared.status,
+        warnings: prepared.warnings || [],
+        uiHint: prepared.uiHint || null,
+        evidence: prepared.evidence || [],
       },
     });
-    if (appointmentMessage && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY)) {
+
+    if (prepared.messageDraft && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
       actions.push({
         id: 'draft_message',
         type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
@@ -634,7 +694,12 @@ export function planSellerActions({
         needsSellerConfirmation: true,
         status: 'prepared',
         toolId: 'draft_customer_message',
-        payload: { messageDraft: appointmentMessage },
+        payload: {
+          messageDraft: prepared.messageDraft,
+          handoff: prepared.handoff,
+          mutatesCustomer: false,
+          appointmentLinked: true,
+        },
       });
     }
   }

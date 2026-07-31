@@ -17,6 +17,7 @@ export const APPOINTMENT_TYPES = {
   CALLBACK: 'callback',
   HANDOVER: 'handover',
   CONSULTATION: 'consultation',
+  SHOWROOM_VISIT: 'showroom_visit',
 };
 
 export const APPOINTMENT_STATUS = {
@@ -33,6 +34,7 @@ const DURATION_MINUTES = {
   [APPOINTMENT_TYPES.CALLBACK]: 15,
   [APPOINTMENT_TYPES.HANDOVER]: 60,
   [APPOINTMENT_TYPES.CONSULTATION]: 60,
+  [APPOINTMENT_TYPES.SHOWROOM_VISIT]: 60,
 };
 
 const TYPE_LABELS = {
@@ -40,6 +42,7 @@ const TYPE_LABELS = {
   [APPOINTMENT_TYPES.CALLBACK]: 'Rückruf',
   [APPOINTMENT_TYPES.HANDOVER]: 'Fahrzeugübergabe',
   [APPOINTMENT_TYPES.CONSULTATION]: 'Beratungsgespräch',
+  [APPOINTMENT_TYPES.SHOWROOM_VISIT]: 'Termin im Autohaus',
 };
 
 const WEEKDAYS = {
@@ -181,9 +184,12 @@ function nextWeekday(from, weekday) {
   return d;
 }
 
-export function detectAppointmentType(text = '') {
+export function detectAppointmentType(text = '', options = {}) {
   const t = String(text ?? '').toLowerCase();
-  if (/\bprobefahrt\b|\bprobe\s*fahrt\b|\bprobefahren\b/.test(t)) {
+  if (/\bprobefahrt\b|\bprobe\s*fahrt\b|\bprobefahren\b|\bfahren\b.{0,30}\b(anbieten|vorschlagen)\b/.test(t)) {
+    return APPOINTMENT_TYPES.TEST_DRIVE;
+  }
+  if (options.forceTestDrive || options.activeTestDriveJourney) {
     return APPOINTMENT_TYPES.TEST_DRIVE;
   }
   if (/\bubergabe\b|\bübergabe\b|\babholung\b/.test(t)) {
@@ -195,7 +201,10 @@ export function detectAppointmentType(text = '') {
   if (/\bruckruf\b|\brückruf\b|\banrufen\b|\bcallback\b|\bruf\s+(ihn|sie|ihm)/.test(t)) {
     return APPOINTMENT_TYPES.CALLBACK;
   }
-  if (/\btermin\b/.test(t)) return APPOINTMENT_TYPES.CONSULTATION;
+  // Generischer Termin / „kommen“ → Showroom, keine Probefahrt aus Fahrzeugkontext
+  if (/\btermin\b|\bkommen\b|\bvorbeikomm/.test(t) || /\bschlag(?:e|en)?\b.{0,80}\bvor\b/.test(t)) {
+    return APPOINTMENT_TYPES.SHOWROOM_VISIT;
+  }
   return null;
 }
 

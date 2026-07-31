@@ -94,6 +94,19 @@ export default function CleverGlobalComposer() {
 
   function resolvePrimaryNavTarget(turn, model) {
     const sections = model?.actionSections || [];
+    const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
+    if (apptMsg || turn?.preparedAppointment || turn?.pendingAction?.preparedAppointment) {
+      const leadId = turn?.resolvedCustomer?.id
+        || turn?.handoffWorkingContext?.customerId
+        || turn?.preparedAppointment?.customerId
+        || apptMsg?.primaryActions?.find((a) => a.leadId)?.leadId;
+      if (leadId) {
+        return {
+          leadId,
+          workingContext: turn.handoffWorkingContext || null,
+        };
+      }
+    }
     const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
     if (knowledgeMsg || (turn?.handoffWorkingContext?.composerMode === 'customer_message_edit')) {
       const leadId = turn?.resolvedCustomer?.id
@@ -149,6 +162,11 @@ export default function CleverGlobalComposer() {
       setLastTurn(null);
       return;
     }
+    if (action.action === 'check_calendar') {
+      setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
     if (action.action === 'write_without_package_details') {
       const base = String(lastTurn.interpretedInput?.raw || draft || '').trim();
       const nextInput = /ohne\s+paketdetails/i.test(base)
@@ -167,6 +185,7 @@ export default function CleverGlobalComposer() {
             dashboardContext: ctx.dashboardContext,
           },
           workingContextItems: ctx.attachedWorkingObjects || [],
+          pendingAction: lastTurn?.pendingAction || null,
         });
         setLastTurn(turn);
         const model = turn.reviewModel
@@ -180,6 +199,7 @@ export default function CleverGlobalComposer() {
     if (
       action.action === 'edit_message'
       || action.action === 'send_handoff'
+      || action.action === 'send_appointment_proposal'
       || action.action === 'open_offer_handoff'
       || action.action === 'approve_handoff'
       || action.action === 'review_data'
@@ -198,6 +218,8 @@ export default function CleverGlobalComposer() {
     const lower = text.toLowerCase();
     if (/heute an|heute liegt|tages/.test(lower)) {
       setProgressHint('Clever prüft Ihre heutigen Vorgänge …');
+    } else if (/termin|montag|dienstag|mittwoch|donnerstag|freitag|schlag.*vor|probefahrt/.test(lower)) {
+      setProgressHint('Clever bereitet Terminvorschlag und Nachricht vor …');
     } else if (/technologie|ausstattung|schiebedach|picanto|gt-line/.test(lower) && /schreib|erklär/.test(lower)) {
       setProgressHint('Clever prüft Fahrzeugwissen und bereitet die Nachricht vor …');
     } else if (/anhängelast|reichweite|tank|wärmepumpe|kofferraum/.test(lower)) {
@@ -227,6 +249,7 @@ export default function CleverGlobalComposer() {
         },
         workingContextItems: ctx.attachedWorkingObjects || [],
         customerName: '',
+        pendingAction: lastTurn?.pendingAction || null,
       });
       setLastTurn(turn);
       const model = turn.reviewModel

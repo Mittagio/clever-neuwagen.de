@@ -15,6 +15,8 @@ function pickPrimaryBody(model) {
   }
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
+  const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
+  if (apptMsg?.body) return String(apptMsg.body).trim();
   const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
   if (offerMsg?.body) return String(offerMsg.body).trim();
   const today = sections.find((s) => s.kind === 'today_overview');
@@ -123,7 +125,9 @@ export default function SellerUniversalReviewCard({
   const body = useMemo(() => pickPrimaryBody(model), [model]);
   const metaLine = useMemo(() => pickMetaLine(model), [model]);
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
+  const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
   const reviewActions = knowledgeMsg?.primaryActions
+    || apptMsg?.primaryActions
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || [];
   const sources = knowledgeMsg?.sources || model?.sources || [];

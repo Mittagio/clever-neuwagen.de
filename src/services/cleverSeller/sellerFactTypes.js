@@ -49,6 +49,8 @@ export const SELLER_TURN_INTENTS = {
   REQUEST_DOCUMENTS: 'request_documents',
   PREPARE_TRADE_IN: 'prepare_trade_in',
   PROPOSE_APPOINTMENT: 'propose_appointment',
+  RESOLVE_CUSTOMER_CONTEXT: 'resolve_customer_context',
+  RESOLVE_RELATIVE_DATETIME: 'resolve_relative_datetime',
   LOOKUP_VEHICLE_FACT: 'lookup_vehicle_fact',
   RESOLVE_VEHICLE: 'resolve_vehicle',
   LOOKUP_VEHICLE_PACKAGE: 'lookup_vehicle_package',
