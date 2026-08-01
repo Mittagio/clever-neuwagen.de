@@ -48,6 +48,7 @@ import {
   mergeExtractedWithOcrPass,
   runComposerScanOcrPipeline,
 } from '../../services/cleverSeller/runComposerScanOcrPipeline.js';
+import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { containsSellerCommandInMessage } from '../../services/cleverSeller/validateSellerCommandMessage.js';
 import {
@@ -1565,11 +1566,12 @@ export default function CustomerAkteSharedWorkspace({
     setFeedback('PDF wird gelesen …');
     try {
       const extracted = await extractMagicOfferPdf(file);
+      const ocrProvider = await resolveCleverOcrProvider();
       const ocrPass = await runComposerScanOcrPipeline({
         extracted,
         file,
         fileName: file?.name || extracted.fileName,
-        ocrProvider: typeof window !== 'undefined' ? window.__cleverOcrProvider : null,
+        ocrProvider,
       });
       const prepared = prepareComposerPdfTurnInput({
         extracted: mergeExtractedWithOcrPass(extracted, ocrPass),

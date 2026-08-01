@@ -1,7 +1,7 @@
 # Clever Contract Memory
 
-**Status:** Slice 16 implementiert (Scan-OCR-Pipeline)  
-**Stand:** Juli 2026  
+**Status:** Slice 17 implementiert (Produkt-OCR-Provider)  
+**Stand:** August 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
 ---
@@ -70,7 +70,7 @@ Wunschraten sind **keine** Vertragswerte.
 | **C** | `leasingEndDate` kanonisch unter `lead.wish.leasingEndDate` (+ Fallbacks). |
 | **D** | Dokumente via `leadId` / Unterlagen / Attachments – keine Contract-Verknüpfung. |
 | **E** | Offer-PDF-Interpreter inkl. Evidence wiederverwendbar; Schema nicht als Contract-SoT missbrauchen. |
-| **F** | Keine Produkt-OCR. Scans → manuell beschreiben. |
+| **F** | Scan-OCR-Pipeline + Provider (Slice 16/17). Default ohne Engine → manuell beschreiben. |
 | **G** | Evidence reif bei Knowledge + Offer; Contract Memory noch ohne Persistenz. |
 | **H** | Reminder: `leasing_expires_6m` über `evaluateJourneyReminder` / `wish.leasingEndDate`. |
 | **I** | Speichern: `lead.crm.customerContracts[]` + Projektion `wish.leasingEndDate`. Keine zweite Wahrheit. |
@@ -168,7 +168,8 @@ Besonders behandeln / nicht an Message Writer:
 | **14** | Offer + Termin | Dual-Prep + `offer_and_appointment_review` |
 | **15** | Dual-Accept-Execute | Dual-pending + `accept_offer_and_appointment` |
 | **16** | Scan-OCR-Pipeline | Provider-Hook, `contract_pdf_ocr`, Manual-Fallback |
-| später | Produkt-OCR-Engine | z. B. Cloud-/On-Device-Provider an `window.__cleverOcrProvider` |
+| **17** | Produkt-OCR-Provider | pdfjs-Seiten + Engine-Hook (Tesseract optional) |
+| später | Tesseract/Cloud produktiv | `npm i tesseract.js` + `VITE_CLEVER_CONTRACT_OCR=true` |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -544,9 +545,45 @@ PDF-Pfad:
 
 ---
 
+## Slice 17 – Produkt-OCR-Provider
+
+**Status: implementiert**
+
+Anbindung der Scan-Pipeline an eine echte Engine-Schicht:
+
+1. Feature-Flag `VITE_CLEVER_CONTRACT_OCR=true`  
+2. `resolveCleverOcrProvider()` – Vorrang `window.__cleverOcrProvider`, sonst Default-Provider  
+3. `createCleverContractOcrProvider` – PDF-Seiten rendern (pdfjs) → `engine.recognize`  
+4. Optional: `tryCreateTesseractOcrEngine()` (dynamischer Import von `tesseract.js`, falls installiert)  
+5. Ohne Engine: kontrollierter Fehler → Manual Describe (kein Fake-Text)
+
+| Modul | Rolle |
+|-------|--------|
+| `renderPdfPagesForOcr.js` | max. 2 Seiten → DataURL |
+| `createCleverContractOcrProvider.js` | Provider + Tesseract-Loader |
+| `resolveCleverOcrProvider.js` | Flag + window-Hook |
+| `CleverGlobalComposer.jsx` / Akte | `resolveCleverOcrProvider()` |
+| `globalComposer.slice17.test.js` | Mock-Engine Golden |
+
+### Aktivierung (optional)
+
+```bash
+npm i tesseract.js
+# .env / .env.local
+VITE_CLEVER_CONTRACT_OCR=true
+```
+
+### Nicht in Slice 17
+
+- Bundled Tesseract als Pflicht-Dependency  
+- Cloud-OCR-API  
+- Auto-Persist ohne Review  
+
+---
+
 ## Später
 
-- Produkt-OCR-Engine an Provider-Hook anbinden  
+- Tesseract/Cloud produktiv betreiben und messen  
 
 ---
 

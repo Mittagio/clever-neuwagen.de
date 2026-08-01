@@ -100,6 +100,7 @@ export async function runComposerScanOcrPipeline(params = {}) {
     });
     const payload = typeof raw === 'string' ? { text: raw } : (raw || {});
     if (payload.error) {
+      const engineMissing = /ocr_engine_not_configured/i.test(String(payload.error));
       return {
         status: OCR_PIPELINE_STATUS.OCR_FAILED,
         usedOcr: true,
@@ -109,7 +110,9 @@ export async function runComposerScanOcrPipeline(params = {}) {
         redacted: [],
         fileName,
         suggestsContract,
-        message: 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
+        message: engineMissing
+          ? 'OCR-Engine nicht konfiguriert (tesseract.js / Flag). Bitte Vertrag manuell beschreiben.'
+          : 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
         error: String(payload.error),
       };
     }

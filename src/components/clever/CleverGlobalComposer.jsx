@@ -17,6 +17,7 @@ import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAccept
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/executeDualOfferAppointmentAccept.js';
+import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import './CleverGlobalComposer.css';
 
@@ -310,6 +311,7 @@ export default function CleverGlobalComposer() {
     try {
       const extracted = await extractMagicOfferPdf(file);
       setProgressHint('Clever prüft Scan / OCR …');
+      const ocrProvider = await resolveCleverOcrProvider();
       const { prepared, turn, skipped } = await runComposerPdfAttachTurnWithOcr({
         extracted,
         file,
@@ -317,8 +319,7 @@ export default function CleverGlobalComposer() {
         leadsSnapshot: ctx.leadsSnapshot || [],
         scopeHint: 'dashboard',
         workingContextItems: ctx.attachedWorkingObjects || [],
-        // Produkt-OCR-Engine optional injizierbar; Default = unavailable → Manual Describe
-        ocrProvider: typeof window !== 'undefined' ? window.__cleverOcrProvider : null,
+        ocrProvider,
         appContext: {
           routeContext: ctx.routeContext,
           attachedWorkingObjects: ctx.attachedWorkingObjects,
