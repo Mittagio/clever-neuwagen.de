@@ -19,6 +19,10 @@ import {
 } from './planSellerActions.js';
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import {
+  isPrepareSuccessionOfferCue,
+  prepareSuccessionOfferFromLead,
+} from './prepareSuccessionOfferFromLead.js';
+import {
   evaluateSellerInterpretEscalation,
   isCleverSellerOrchestratorEnabled,
 } from './cleverSellerOrchestratorConfig.js';
@@ -186,7 +190,7 @@ function finalizeSellerTurn({
 
   const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
 
-  const uniqueFacts = filterDuplicateFacts(facts, workingLead);
+  let uniqueFacts = filterDuplicateFacts(facts, workingLead);
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
   const assistantContext = resolveAssistantContext({
     lead: workingLead,
@@ -210,7 +214,26 @@ function finalizeSellerTurn({
       matched: true,
     };
   }
-  const offerCtx = currentOfferContext || assistantContext.offerContext || null;
+
+  // Slice 18: Nachfolgeangebot – Favoriten-/Vertragsdaten als Offer-Facts injizieren
+  const successionCue = isPrepareSuccessionOfferCue(interpreted.normalized || interpreted.raw);
+  let successionPrep = null;
+  if (successionCue && workingLead?.id) {
+    successionPrep = prepareSuccessionOfferFromLead(workingLead, {
+      now,
+      goldenMoment: assistantContext.goldenMoment,
+    });
+    if (successionPrep.ok && successionPrep.facts?.length) {
+      uniqueFacts = filterDuplicateFacts(
+        [...uniqueFacts, ...successionPrep.facts],
+        workingLead,
+      );
+    }
+  }
+
+  const offerCtx = (successionCue && successionPrep?.ok)
+    ? null
+    : (currentOfferContext || assistantContext.offerContext || null);
 
   const missingInformation = resolveMissingInformation({
     intents,
@@ -218,6 +241,18 @@ function finalizeSellerTurn({
     lead: workingLead,
     currentOfferContext: offerCtx,
   });
+
+  if (successionCue && successionPrep && !successionPrep.ok) {
+    missingInformation.push({
+      id: successionPrep.reason === 'missing_rate'
+        ? 'monthly_leasing_rate'
+        : 'succession_favorite',
+      forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+      label: successionPrep.message
+        || 'Nachfolgeangebot: Favorit oder Rate fehlt.',
+      field: successionPrep.reason === 'missing_rate' ? 'monthlyLeasingRate' : 'vehicleInterest',
+    });
+  }
 
   // Ambiguous: Angebot oder Nachricht?
   const ambiguousOfferOrMessage = intents.some((i) => i.type === SELLER_TURN_INTENTS.UNKNOWN)
@@ -266,6 +301,12 @@ function finalizeSellerTurn({
   }
 
   let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
+  if (successionCue && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)) {
+    effectiveIntents.push({ type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.98 });
+    if (!effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)) {
+      effectiveIntents.push({ type: SELLER_TURN_INTENTS.DRAFT_MESSAGE, confidence: 0.9 });
+    }
+  }
   if (wantsAppointment && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT)) {
     effectiveIntents.push({ type: SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT, confidence: 0.95 });
     effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, confidence: 0.9 });

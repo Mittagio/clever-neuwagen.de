@@ -667,6 +667,8 @@ export function buildUniversalActionSections(turn = {}) {
   const nextStep = prepared.find((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP);
   const moment = nextStep?.payload?.goldenMoment || turn.goldenMoment || null;
   if (moment && (nextStep || !sections.some((s) => s.kind === 'track_feedback'))) {
+    const successionCta = moment.recommendedAction === 'prepare_succession_offer'
+      || moment.type === 'contract_succession_follow_up';
     sections.push({
       id: 'golden_moment',
       kind: 'golden_moment',
@@ -678,6 +680,23 @@ export function buildUniversalActionSections(turn = {}) {
       primaryLabel: moment.primaryLabel || 'Angebot anpassen',
       recommendedAction: moment.recommendedAction || null,
       vehicleTrackId: moment.vehicleTrackId || null,
+      primaryActions: successionCta
+        ? [
+          {
+            id: 'prepare_followup_offer',
+            label: moment.primaryLabel || 'Nachfolgeangebot vorbereiten',
+            leadId: moment.customerId || turn.resolvedCustomer?.id || null,
+            action: 'prepare_followup_offer',
+          },
+          {
+            id: 'open_contract',
+            label: 'Vertrag öffnen',
+            leadId: moment.customerId || turn.resolvedCustomer?.id || null,
+            contractId: moment.contractId || null,
+            action: 'open_contract',
+          },
+        ]
+        : null,
     });
   }
 

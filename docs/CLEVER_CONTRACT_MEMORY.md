@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 17 implementiert (Produkt-OCR-Provider)  
+**Status:** Slice 18 implementiert (Nachfolgeangebot vorbereiten)  
 **Stand:** August 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -169,6 +169,7 @@ Besonders behandeln / nicht an Message Writer:
 | **15** | Dual-Accept-Execute | Dual-pending + `accept_offer_and_appointment` |
 | **16** | Scan-OCR-Pipeline | Provider-Hook, `contract_pdf_ocr`, Manual-Fallback |
 | **17** | Produkt-OCR-Provider | pdfjs-Seiten + Engine-Hook (Tesseract optional) |
+| **18** | Nachfolgeangebot | Favorit + Vertrag → `prepare_offer` (kein Auto-Send) |
 | später | Tesseract/Cloud produktiv | `npm i tesseract.js` + `VITE_CLEVER_CONTRACT_OCR=true` |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
@@ -578,6 +579,38 @@ VITE_CLEVER_CONTRACT_OCR=true
 - Bundled Tesseract als Pflicht-Dependency  
 - Cloud-OCR-API  
 - Auto-Persist ohne Review  
+
+---
+
+## Slice 18 – Nachfolgeangebot vorbereiten
+
+**Status: implementiert**
+
+Golden Input:
+
+> „Bereite ein Nachfolgeangebot vor.“
+
+Ablauf:
+
+1. Intent `prepare_offer` (+ Kontext)  
+2. `prepareSuccessionOfferFromLead` liest Favoriten-Spur (Rate/Laufzeit/km) + Altvertrag  
+3. Angebot + Kundennachricht vorbereitet (`offer_and_message_review`)  
+4. CTA `prepare_followup_offer` auf Golden Moment / Contract Memory verdrahtet  
+5. **Kein** Auto-Send, **keine** Truth-Mutation  
+
+| Modul | Rolle |
+|-------|--------|
+| `prepareSuccessionOfferFromLead.js` | Cue + Facts aus Favorit |
+| `runCleverSellerTurn.js` | Fact-Injection |
+| `planSellerActions.js` | Leasing+Rate → `canCreateOffer` |
+| `CleverGlobalComposer.jsx` | CTA-Wiring |
+| `globalComposer.slice18.test.js` | Golden + Gegenproben |
+
+### Nicht in Slice 18
+
+- Automatisches Speichern/Senden des Angebots  
+- Erfundene Raten ohne Track-/PDF-Quelle  
+- Tesseract-Pflicht  
 
 ---
 

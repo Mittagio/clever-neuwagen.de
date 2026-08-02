@@ -255,6 +255,43 @@ export default function CleverGlobalComposer() {
       setLastTurn(null);
       return;
     }
+    if (action.action === 'prepare_followup_offer') {
+      const leadId = action.leadId
+        || lastTurn?.resolvedCustomer?.id
+        || lastTurn?.goldenMoment?.customerId;
+      if (!leadId) {
+        setFeedback('Kein Kunde für das Nachfolgeangebot.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      setSending(true);
+      try {
+        const snapshot = ctx?.leadsSnapshot || [];
+        const lead = snapshot.find((l) => l.id === leadId) || ctx?.currentCustomer || {};
+        const turn = runCleverSellerTurn({
+          lead,
+          sellerInput: 'Bereite ein Nachfolgeangebot vor.',
+          leadsSnapshot: snapshot,
+          customerName: lead?.contact?.name || lead?.name || '',
+          scopeHint: 'dashboard',
+          workingContextItems: ctx.attachedWorkingObjects || [],
+          appContext: {
+            routeContext: ctx.routeContext,
+            attachedWorkingObjects: ctx.attachedWorkingObjects,
+            dashboardContext: ctx.dashboardContext,
+          },
+        });
+        setLastTurn(turn);
+        const model = turn.reviewModel
+          || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+        setReviewModel(model);
+        setFeedback(model?.title || 'Nachfolgeangebot vorbereitet – bitte prüfen');
+        setTimeout(() => setFeedback(''), 3200);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     if (action.action === 'write_without_package_details') {
       const base = String(lastTurn.interpretedInput?.raw || draft || '').trim();
       const nextInput = /ohne\s+paketdetails/i.test(base)

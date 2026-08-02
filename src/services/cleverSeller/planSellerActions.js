@@ -622,6 +622,9 @@ export function planSellerActions({
         attachments,
       });
       const purchase = facts.find((f) => f.field === 'purchasePrice');
+      const rateFact = facts.find((f) => (
+        f.field === 'desiredRate' || f.field === 'monthlyBudget' || f.field === 'monthlyLeasingRate'
+      ));
       const magic = offer?.results?.[0]?.magic || null;
       const grounded = magic?.grounded || null;
       const vehicleFromFacts = facts.find((f) => f.field === 'vehicleInterest');
@@ -632,22 +635,23 @@ export function planSellerActions({
       ].filter(Boolean).join(' ')
         || vehicleFromFacts?.label
         || null;
-      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchase);
       const paymentRaw = facts.find((f) => f.field === 'paymentType')?.value
         || magic?.paymentType
         || null;
       const offerType = paymentRaw === 'purchase' || paymentRaw === 'cash'
         ? 'cash'
         : (paymentRaw || (purchase ? 'cash' : null));
+      const hasLeasingRate = offerType === 'leasing' && rateFact?.value != null;
+      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchase) || hasLeasingRate;
       const vehicleInterest = facts.find((f) => f.field === 'vehicleInterest');
       const leasingWithoutRate = offerType === 'leasing'
-        && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'desiredRate')
+        && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'desiredRate' || f.field === 'monthlyLeasingRate')
         && magic?.decision?.action === 'ask_rate';
       const profileLeasing = lead?.paymentType === 'leasing' || lead?.wish?.paymentType === 'leasing';
       const cashVsLeasingWarning = offerType === 'cash' && profileLeasing
         ? 'In der Kundenakte ist bisher Leasing notiert.'
         : null;
-      const preparedOk = (offer?.ok || purchase) && !leasingWithoutRate;
+      const preparedOk = (offer?.ok || purchase || hasLeasingRate) && !leasingWithoutRate;
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
@@ -676,6 +680,7 @@ export function planSellerActions({
           customerName: customerName || lead?.contact?.name || null,
           monthlyRate: magic?.calculation?.monthlyRate
             ?? magic?.intent?.commercialInput?.monthlyRate
+            ?? rateFact?.value
             ?? null,
           discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
           listPrice: grounded?.basePrice ?? null,

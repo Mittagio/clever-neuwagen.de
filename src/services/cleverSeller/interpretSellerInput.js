@@ -43,6 +43,7 @@ import { isCustomerContractQuery } from './searchCustomerContracts.js';
 import { isContractOfferCompareQuery } from './compareContractWithOffer.js';
 import { isContractCompareMessageCue } from './draftContractCompareCustomerMessage.js';
 import { resolveContractIntakeText } from './resolveContractIntakeText.js';
+import { isPrepareSuccessionOfferCue } from './prepareSuccessionOfferFromLead.js';
 import {
   parseDeliveryTimeAnswerFromText,
 } from '../crm/deliveryTimeQuestion.js';
@@ -923,7 +924,9 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     || /\bnoch\s+einmal\??\s*$/i.test(t)
     || /\b(?:kundenkontext|zusammenfassung)\b/i.test(t)
     || /\bwie\s+steht.?s\s+(?:bei|mit)\b/i.test(t);
-  const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|nachfolgeangebot|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t);
+  const isSuccessionOfferPrepare = isPrepareSuccessionOfferCue(t);
+  const isNextStepQuery = /\b(?:was\b.{0,40}\bnächste[rsn]?\b|nächste[rsn]?\s+schritt|was\s+jetzt|was\s+soll\s+ich|worauf\s+fokuss|golden\s+moment|wechselchance|rückgabe\s+vorbereiten)\b/i.test(t)
+    || (/\bnachfolgeangebot\b/i.test(t) && !isSuccessionOfferPrepare);
   const hasAppointmentFact = facts.some((f) => f.factClass === SELLER_FACT_CLASS.APPOINTMENT_FACT);
   const resolvedIntake = resolveContractIntakeText({
     sellerInput: t,
@@ -1017,6 +1020,13 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   if (/\b(was liegt heute|heute an\b|tages(?:überblick|ueberblick|übersicht|uebersicht)|was steht heute|heutige vorgänge|heutige vorgaenge)\b/i.test(t)
     || /^was liegt heute an\??$/i.test(t)) {
     add(SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW, 0.96);
+  }
+
+  if (isSuccessionOfferPrepare) {
+    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.98);
+    add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
+    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.9);
+    add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.88);
   }
 
   if (isNextStepQuery) {

@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 17 (Produkt-OCR-Provider)  
+**Status:** Slice 18 (Nachfolgeangebot vorbereiten)  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -47,6 +47,7 @@ Nur `runCleverSellerTurn()`:
 | Dual-pending / `accept_offer_and_appointment` | 15 |
 | Scan-OCR-Pipeline / `contract_pdf_ocr` | 16 |
 | Produkt-OCR-Provider (`VITE_CLEVER_CONTRACT_OCR`) | 17 |
+| Nachfolgeangebot (`prepare_followup_offer`) | 18 |
 
 ## Slice 5 – Golden Flow
 
@@ -74,7 +75,7 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice17.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice18.test.js`
 
 ## Nächste Slices
 
