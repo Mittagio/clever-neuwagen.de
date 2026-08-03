@@ -1039,10 +1039,17 @@ export default function DealerAiLeadFollowUp({
     composerDeepLinkDoneRef.current = true;
 
     let question = '';
+    let vehicleLabel = '';
     if (initialInboxItemId && lead?.id && inbox?.listForCustomer) {
       const inboxItem = inbox.listForCustomer(lead.id).find((item) => item.id === initialInboxItemId)
         ?? null;
-      question = String(inboxItem?.message ?? inboxItem?.title ?? '').trim();
+      question = String(
+        inboxItem?.metadata?.questionText
+          ?? inboxItem?.message
+          ?? inboxItem?.title
+          ?? '',
+      ).trim();
+      vehicleLabel = String(inboxItem?.vehicleLabel ?? '').trim();
     }
     if (!question && initialMessageId) {
       const msg = (lead?.crm?.customerMessages ?? []).find((entry) => entry.id === initialMessageId);
@@ -1052,11 +1059,14 @@ export default function DealerAiLeadFollowUp({
       question = '';
     }
 
-    const seed = buildComposerReplySeed(initialAntwortenIntent, { question });
+    const seed = buildComposerReplySeed(initialAntwortenIntent, { question, vehicleLabel });
     const t = setTimeout(() => {
       focusChatComposer({ clever: true, seedDraft: seed });
       if (!initialAntwortenOfferId) {
-        setToast('Antwort im Composer – tippen oder sprechen, dann senden');
+        const toastText = initialAntwortenIntent === 'offer_change_request'
+          ? 'Änderungswunsch im Composer – prüfen, dann übernehmen'
+          : 'Antwort im Composer – tippen oder sprechen, dann senden';
+        setToast(toastText);
         setTimeout(() => setToast(''), 3200);
       }
     }, 0);

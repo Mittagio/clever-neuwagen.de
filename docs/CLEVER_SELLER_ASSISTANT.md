@@ -165,6 +165,16 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 
 `buildSellerInlineContext(lead)` und `buildAttributedWishChips` speisen Notizzettel und Assist.
 
+### Golden Path (Portal → Composer)
+
+Portal-Öffnung / -Reaktion landen in Inbox; Deep-Link setzt Composer-Seed (`buildComposerReplySeed`):
+
+- geöffnet → `offer_opened_followup`
+- interessiert → `offer_interested_followup`
+- Änderungswunsch → `offer_change_request` („Passe das XCeed-Angebot an: …“)
+
+Kein Auto-Send. Details: [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
+
 Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
 
 ## Safe Offer Boundary
@@ -191,4 +201,5 @@ node src/services/dealer/sellerOfferAssistFlow.test.js
 node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js
 node src/services/crm/composerAkteSearch.test.js
+node src/services/crm/goldenSalesPath.test.js
 ```

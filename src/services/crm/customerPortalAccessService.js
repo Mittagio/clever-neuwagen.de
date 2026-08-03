@@ -251,6 +251,7 @@ export function buildPortalReactionSummary(lead = {}) {
     call_requested: 'Rückruf gewünscht',
     declined: 'Angebot abgelehnt',
     more_info: 'Rückfrage gestellt',
+    change_requested: 'Änderung gewünscht',
   };
   return map[reacted.customerReaction.status]
     ?? reacted.customerReaction.status;

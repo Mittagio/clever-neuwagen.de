@@ -16,6 +16,7 @@ export const ANSWER_INTENTS = [
   { id: 'offer_followup', label: 'Angebot nachfassen', groupId: 'angebot', generatorId: 'nachfassen' },
   { id: 'offer_opened_followup', label: 'Kunde hat Angebot geöffnet', groupId: 'angebot', generatorId: 'offer_opened_followup' },
   { id: 'offer_interested_followup', label: 'Kunde interessiert sich', groupId: 'angebot', generatorId: 'offer_interested_followup' },
+  { id: 'offer_change_request', label: 'Angebot anpassen (Kundenwunsch)', groupId: 'angebot', generatorId: 'offer_change_request' },
   { id: 'no_response_followup', label: 'Kunde hat nicht reagiert', groupId: 'angebot', generatorId: 'no_response_followup' },
   { id: 'explain_selection', label: 'Auswahl erklären', groupId: 'angebot', generatorId: 'auswahl_erklaeren' },
   { id: 'compare_cash_leasing', label: 'Bar / Leasing vergleichen', groupId: 'angebot', generatorId: 'bar_leasing_vergleichen' },

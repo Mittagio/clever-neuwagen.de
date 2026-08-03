@@ -1,7 +1,7 @@
 # Clever Customer Portal – Persönlicher Angebotsraum & Shared Workspace
 
 **Status:** v1 – Shared Conversational Workspace  
-**Stand:** Juli 2026
+**Stand:** August 2026
 
 ## Leitsatz
 
@@ -11,6 +11,25 @@ Er hat einen **persönlichen Clever-Angebotsraum**.
 **WhatsApp überträgt Nachrichten. Clever versteht den Vorgang.**
 
 Kunde und Verkäufer arbeiten mit demselben Clever-Kontext, aber mit unterschiedlichen Oberflächen.
+
+## Golden Path Status (Phase 2, schmal)
+
+Geschlossener Verkaufspfad (ein Loop, kein Big-Bang):
+
+`Angebot vorbereiten → speichern → Kundenlink → Kunde öffnet/reagiert → Inbox/Composer-Seed → anpassen / nachfassen`
+
+| Schritt | Status |
+|---------|--------|
+| Kundenlink / Portfolio senden | fertig |
+| Öffnung → Portfolio `opened` + VehicleOffer `opened` + Inbox „Auswahl geöffnet“ | fertig |
+| Reaktion Interesse / Ablehnung → Track + Inbox | fertig |
+| Änderungswunsch → Inbox `offer_change_request` + Composer-Seed „Passe X an“ + Track-Feedback | fertig |
+| Propose → Confirm → Action (kein Auto-Send) | Vertrag bleibt |
+| WhatsApp-API / Admin-Leitstand / DMS | bewusst später |
+
+Manuell (Brandes): Angebot → Link senden → Portal öffnen → „Änderung“ am XCeed → Clever Eingang „Angebot anpassen“ → Composer mit Seed → Review → Übernehmen.
+
+Siehe auch [CLEVER_SELLER_ASSISTANT.md](CLEVER_SELLER_ASSISTANT.md) und Test `src/services/crm/goldenSalesPath.test.js`.
 
 ## Shared Customer Workspace
 

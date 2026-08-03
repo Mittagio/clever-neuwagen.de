@@ -72,6 +72,7 @@ assert.doesNotMatch(fallbackUrl, /sheet=antworten/);
 
 assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_OPENED }), 'offer_opened_followup');
 assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_INTERESTED }), 'offer_interested_followup');
+assert.equal(resolveInboxReplyIntent({ type: INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST }), 'offer_change_request');
 
 const openedUrl = buildInboxActionAkteUrl('lead-1', {
   id: 'inbox-open',
@@ -82,6 +83,18 @@ const openedUrl = buildInboxActionAkteUrl('lead-1', {
 assert.match(openedUrl, /intentId=offer_opened_followup/);
 assert.match(openedUrl, /composer=1/);
 assert.doesNotMatch(openedUrl, /sheet=antworten/);
+
+const changeUrl = buildInboxActionAkteUrl('lead-1', {
+  id: 'inbox-change',
+  type: INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST,
+  leadId: 'lead-1',
+  offerId: 'vc-xceed',
+  vehicleLabel: 'Kia XCeed',
+  metadata: { questionText: 'Lieber 36 Monate.' },
+});
+assert.match(changeUrl, /intentId=offer_change_request/);
+assert.match(changeUrl, /composer=1/);
+assert.match(changeUrl, /offerId=vc-xceed/);
 
 const kundenakteDocUrl = buildInboxKundenakteUrl('lead-1', {
   id: 'inbox-doc',

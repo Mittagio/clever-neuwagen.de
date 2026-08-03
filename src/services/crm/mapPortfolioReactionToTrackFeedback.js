@@ -116,6 +116,23 @@ export function mapPortfolioReactionBundle({
       }
       trackFacts.push(fact);
     }
+  } else if (reactionStatus === REACTION.CHANGE_REQUESTED) {
+    const wish = String(questionText ?? '').trim();
+    const existing = getVehicleTrackMeta(
+      (lead?.crm?.vehicleConfigurations ?? []).find((c) => c.id === trackId),
+    );
+    const keepFavorite = existing.status === VEHICLE_TRACK_STATUS.FAVORITE;
+    trackFacts.push({
+      trackId,
+      ...(dualOnTrack || keepFavorite ? {} : { status: VEHICLE_TRACK_STATUS.ACTIVE }),
+      lastCustomerReaction: REACTION.CHANGE_REQUESTED,
+      ...(wish ? { addRequirement: wish } : {}),
+    });
+  } else if (reactionStatus === REACTION.MORE_INFO) {
+    trackFacts.push({
+      trackId,
+      lastCustomerReaction: REACTION.MORE_INFO,
+    });
   }
 
   return { trackFacts, scenarioFeedback };

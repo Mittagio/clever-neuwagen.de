@@ -71,6 +71,7 @@ import {
   VEHICLE_OFFER_STATUS,
   getOfferByCommercialScenarioId,
   isScenarioOfferReady,
+  recordOfferOpened,
 } from '../vehicleOffer.js';
 import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 import { applyPortfolioReactionToTracks } from './mapPortfolioReactionToTrackFeedback.js';
@@ -775,6 +776,7 @@ function buildInboxForPortfolioEvent({
   item,
   eventType,
   message,
+  questionText = '',
 }) {
   const customerName = lead.contact?.name ?? '';
   const vehicleLabel = item.trimLabel
@@ -800,6 +802,8 @@ function buildInboxForPortfolioEvent({
     [PORTFOLIO_EVENTS.OPENED]: 'Auswahl geöffnet',
   };
 
+  const trimmedQuestion = String(questionText ?? '').trim();
+
   return createInboxItem({
     type,
     title: titleMap[eventType] ?? 'Kundenrückmeldung',
@@ -811,6 +815,7 @@ function buildInboxForPortfolioEvent({
     vehicleLabel,
     sourceArea: INBOX_SOURCE_AREA.CUSTOMER_LINK,
     priority: eventType === PORTFOLIO_EVENTS.OFFER_CALL_REQUEST
+      || eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST
       ? INBOX_PRIORITY.HIGH
       : INBOX_PRIORITY.NORMAL,
     status: INBOX_STATUS.OPEN,
@@ -818,6 +823,12 @@ function buildInboxForPortfolioEvent({
       dedupeKey: `portfolio:${lead.id}:${item.id}:${eventType}`,
       portfolioItemId: item.id,
       portfolioId: lead.crm?.customerOfferPortfolio?.id,
+      ...(trimmedQuestion ? { questionText: trimmedQuestion } : {}),
+      suggestedIntent: eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST
+        ? 'offer_change_request'
+        : eventType === PORTFOLIO_EVENTS.OPENED
+          ? 'offer_opened_followup'
+          : undefined,
     },
   });
 }
@@ -1031,7 +1042,18 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
   let offerSelectionGroups = lead?.crm?.offerSelectionGroups ?? [];
   let vehicleOffers = lead?.crm?.vehicleOffers ?? {};
 
-  if (eventType !== PORTFOLIO_EVENTS.OPENED && itemIndex >= 0) {
+  if (eventType === PORTFOLIO_EVENTS.OPENED) {
+    // Portfolio-Öffnung → verknüpfte VehicleOffers auf „geöffnet“ (Status für Journey/Composer)
+    const nextVos = { ...vehicleOffers };
+    let vosChanged = false;
+    for (const entry of nextPortfolio.items ?? []) {
+      const cardId = entry.vehicleCardId ?? entry.id;
+      if (!cardId || !nextVos[cardId]) continue;
+      nextVos[cardId] = recordOfferOpened(nextVos[cardId]);
+      vosChanged = true;
+    }
+    if (vosChanged) vehicleOffers = nextVos;
+  } else if (itemIndex >= 0) {
     const reactedItem = nextPortfolio.items[itemIndex];
     offerSelectionGroups = applyReactionToSelectionGroups(
       offerSelectionGroups,
@@ -1083,6 +1105,7 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
         item: reactedItem,
         eventType,
         message: historyText,
+        questionText: trimmed,
       })
       : mirrored.inboxItem;
   }

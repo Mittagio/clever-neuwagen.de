@@ -23,6 +23,8 @@ export function resolveInboxReplyIntent(item = {}) {
       return 'offer_opened_followup';
     case INBOX_EVENT_TYPES.OFFER_INTERESTED:
       return 'offer_interested_followup';
+    case INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST:
+      return 'offer_change_request';
     case INBOX_EVENT_TYPES.OFFER_DECLINED:
       return 'suggest_alternative';
     case INBOX_EVENT_TYPES.CONTACT_REQUESTED:
