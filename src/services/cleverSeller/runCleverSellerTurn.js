@@ -51,6 +51,12 @@ import {
   proposeInboundNextAction,
   resolveInboundCustomer,
 } from './inboundLeadIntake.js';
+import {
+  buildCustomerReplyProposal,
+  extractCustomerReplyBody,
+  proposeCustomerReplyNextActions,
+  resolveCustomerReplyCustomer,
+} from './customerReplyIntake.js';
 import { resolveAppointmentCustomerContext } from './resolveAppointmentCustomerContext.js';
 import { isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 import { extractContractCustomerNameHint } from './extractCustomerContractFromText.js';
@@ -194,9 +200,59 @@ function finalizeSellerTurn({
       intents,
     });
 
+  const wantsCustomerReply = (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY);
   const wantsInbound = (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD);
+  let customerReply = null;
   let inboundLead = null;
-  if (wantsInbound && !lead?.id) {
+
+  if (wantsCustomerReply) {
+    const contact = interpreted.inboundContact
+      || extractInboundContact(interpreted.normalized || interpreted.raw);
+    const replyBody = extractCustomerReplyBody(
+      interpreted.normalized || interpreted.raw,
+      contact,
+    );
+    const replyResolution = resolveCustomerReplyCustomer({
+      contact,
+      leads: leadsSnapshot,
+      openLead: lead?.id ? lead : null,
+    });
+    const nextActions = proposeCustomerReplyNextActions({
+      text: replyBody || interpreted.normalized || interpreted.raw,
+      facts,
+    });
+    customerReply = buildCustomerReplyProposal({
+      contact,
+      resolution: replyResolution,
+      facts,
+      nextActions,
+      rawText: interpreted.normalized || interpreted.raw,
+      replyBody,
+    });
+
+    if (replyResolution.status === 'unique' && replyResolution.lead?.id) {
+      leadResolve.workingLead = replyResolution.lead;
+      leadResolve.resolution = replyResolution;
+      leadResolve.customerSearchResults = replyResolution.results;
+      leadResolve.ambiguous = false;
+      leadResolve.resolved = true;
+    } else if (replyResolution.status === 'ambiguous') {
+      leadResolve.workingLead = lead?.id ? lead : {};
+      leadResolve.resolution = replyResolution;
+      leadResolve.customerSearchResults = replyResolution.results;
+      leadResolve.ambiguous = true;
+      leadResolve.resolved = Boolean(lead?.id);
+    } else {
+      leadResolve.customerSearchResults = replyResolution.results?.length
+        ? replyResolution.results
+        : null;
+      if (!lead?.id) {
+        leadResolve.workingLead = {};
+        leadResolve.ambiguous = false;
+        leadResolve.resolved = false;
+      }
+    }
+  } else if (wantsInbound && !lead?.id) {
     const contact = interpreted.inboundContact
       || extractInboundContact(interpreted.normalized || interpreted.raw);
     const inboundResolution = resolveInboundCustomer(contact, leadsSnapshot);
@@ -258,7 +314,9 @@ function finalizeSellerTurn({
       namedInInput: assistantContext.resolvedCustomer?.namedInInput
         || leadResolve.resolution?.nameQuery
         || null,
-      source: appointmentCustomer?.source || (inboundLead?.detected ? 'inbound_match' : 'global_search'),
+      source: appointmentCustomer?.source
+        || (customerReply?.detected ? 'customer_reply_match' : null)
+        || (inboundLead?.detected ? 'inbound_match' : 'global_search'),
       matched: true,
     };
   } else if (inboundLead?.proposeCreateCustomer) {
@@ -837,6 +895,7 @@ function finalizeSellerTurn({
     currentOfferContext: offerCtx || null,
     homepageInquiry: interpreted.homepageInquiry ?? null,
     inboundLead,
+    customerReply,
     goldenMoment: assistantContext.goldenMoment ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
@@ -857,13 +916,17 @@ function finalizeSellerTurn({
           : (documentsPrepareAction && !documentsPrepareAction.payload?.complete
             ? '✓ Fehlende Unterlagen erkannt'
             : null),
-        inboundLead?.detected
-          ? (inboundLead.proposeCreateCustomer
-            ? '○ Kein Treffer – neuen Kunden vorschlagen'
-            : (inboundLead.matchedLeadName
-              ? `✓ ${inboundLead.matchedLeadName} aus Anfrage erkannt`
-              : 'Clever liest die Anfrage …'))
-          : null,
+        customerReply?.detected
+          ? (customerReply.matchedLeadName
+            ? `✓ ${customerReply.matchedLeadName} – Kundenantwort erkannt`
+            : '○ Kundenantwort erkannt – Kunde zuordnen')
+          : (inboundLead?.detected
+            ? (inboundLead.proposeCreateCustomer
+              ? '○ Kein Treffer – neuen Kunden vorschlagen'
+              : (inboundLead.matchedLeadName
+                ? `✓ ${inboundLead.matchedLeadName} aus Anfrage erkannt`
+                : 'Clever liest die Anfrage …'))
+            : null),
         resolvedDateTime?.ok
           ? `✓ ${resolvedDateTime.dateLabel || resolvedDateTime.whenLabel || 'Datum'} aufgelöst`
           : null,

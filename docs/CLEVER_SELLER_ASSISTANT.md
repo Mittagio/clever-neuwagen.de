@@ -181,6 +181,10 @@ Kein Auto-Send. Details: [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 
 Dashboard-Composer: E-Mail/Forward einfügen → Intent `inbound_lead` → Kunde finden oder „neu anlegen?“ → Review → Confirm. Persistenz nur nach Accept. Siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md#inbound-leicht-pasteforward).
 
+### Zwei-Wege-Mail leicht (Kundenantwort → Composer)
+
+Kundenantwort per Paste/Forward → Intent `customer_reply` → Kunde zuordnen → Facts + Aktionen (Wünsche, Termin, Angebot anpassen) → Universal Review → Confirm. Kein Auto-Send, kein IMAP. Siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md#zwei-wege-mail-leicht-kundenantwort-pasteforward).
+
 Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
 
 ## Safe Offer Boundary
@@ -204,6 +208,7 @@ Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERS
 node src/services/cleverSeller/composerAssistant.golden.test.js
 node src/services/cleverSeller/runCleverSellerTurn.test.js
 node src/services/cleverSeller/inboundLead.golden.test.js
+node src/services/cleverSeller/customerReply.golden.test.js
 node src/services/dealer/sellerOfferAssistFlow.test.js
 node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js

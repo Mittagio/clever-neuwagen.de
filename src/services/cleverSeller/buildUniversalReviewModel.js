@@ -5,6 +5,7 @@ import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sel
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 import { buildHomepageInquiryReviewModel } from '../crm/homepageCommercialInquiry.js';
 import { buildInboundLeadReviewModel } from './inboundLeadIntake.js';
+import { buildCustomerReplyReviewModel } from './customerReplyIntake.js';
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -857,6 +858,10 @@ export function buildUniversalActionSections(turn = {}) {
  * @param {object} turn – CleverSellerTurnResult
  */
 export function buildUniversalReviewModel(turn = {}) {
+  if (turn.customerReply?.detected) {
+    return buildCustomerReplyReviewModel(turn.customerReply, turn);
+  }
+
   if (turn.inboundLead?.detected) {
     return buildInboundLeadReviewModel(turn.inboundLead, turn);
   }
@@ -1646,6 +1651,7 @@ export function buildUniversalReviewModel(turn = {}) {
  * @param {object} turn
  */
 export function shouldShowUniversalReview(turn = {}) {
+  if (turn.customerReply?.detected) return true;
   if (turn.inboundLead?.detected) return true;
   if (turn.homepageInquiry?.hasDualScenarios) return true;
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;

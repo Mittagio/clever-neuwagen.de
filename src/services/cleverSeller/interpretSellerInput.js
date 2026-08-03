@@ -33,6 +33,10 @@ import {
   proposeInboundNextAction,
 } from './inboundLeadIntake.js';
 import {
+  isCustomerReplyPaste,
+  proposeCustomerReplyNextActions,
+} from './customerReplyIntake.js';
+import {
   REJECTION_REASON,
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
@@ -955,12 +959,15 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isContractCompare = !isContractIntake && (
     isContractOfferCompareQuery(t) || isContractCompareMessage
   );
-  const isInboundPaste = !isContractIntake && !isContractCompare && isInboundLeadPaste(t);
+  const isReplyPaste = !isContractIntake && !isContractCompare && isCustomerReplyPaste(t);
+  const isInboundPaste = !isContractIntake && !isContractCompare && !isReplyPaste
+    && isInboundLeadPaste(t);
   const looksLikeContractLookup = isCustomerContractQuery(t)
     && !/\b(kinder|verheiratet|wunschrate|netto|in\s+zahlung|nehmen\s+wir)\b/i.test(t);
-  const isContractQuery = !isContractIntake && !isContractCompare && !isInboundPaste
+  const isContractQuery = !isContractIntake && !isContractCompare && !isInboundPaste && !isReplyPaste
     && looksLikeContractLookup;
   const isInboundLead = isInboundPaste && !isContractQuery;
+  const isCustomerReply = isReplyPaste && !isContractQuery;
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -982,7 +989,14 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
   }
 
-  if (isInboundLead) {
+  if (isCustomerReply) {
+    add(SELLER_TURN_INTENTS.CUSTOMER_REPLY, 0.98);
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.94);
+    add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.92);
+    for (const next of proposeCustomerReplyNextActions({ text: t, facts })) {
+      if (next?.intent) add(next.intent, 0.88);
+    }
+  } else if (isInboundLead) {
     add(SELLER_TURN_INTENTS.INBOUND_LEAD, 0.97);
     add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.94);
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.9);
@@ -1278,7 +1292,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
   }
 
   let inboundContact = null;
-  if (isInboundLeadPaste(normalized)) {
+  if (isCustomerReplyPaste(normalized) || isInboundLeadPaste(normalized)) {
     inboundContact = extractInboundContact(normalized);
     const contactFacts = buildInboundContactFacts(inboundContact);
     for (const fact of contactFacts) {

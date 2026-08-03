@@ -395,6 +395,21 @@ export function planSellerActions({
     });
   }
 
+  if (intentTypes.has(SELLER_TURN_INTENTS.CUSTOMER_REPLY)) {
+    actions.push({
+      id: 'customer_reply',
+      type: SELLER_TURN_INTENTS.CUSTOMER_REPLY,
+      label: 'Kundenantwort zuordnen',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      payload: {
+        mutatesCustomer: true,
+        requiresAccept: true,
+        factCount: facts.filter((f) => f.factClass !== SELLER_FACT_CLASS.MESSAGE_INSTRUCTION).length,
+      },
+    });
+  }
+
   if (intentTypes.has(SELLER_TURN_INTENTS.INBOUND_LEAD)) {
     actions.push({
       id: 'inbound_lead',

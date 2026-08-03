@@ -312,6 +312,7 @@ function hasPreparedCustomerFollowThrough(turn = {}) {
       || a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
       || a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS
       || a.type === SELLER_TURN_INTENTS.INBOUND_LEAD
+      || a.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY
       || a.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT
     )
     && a.status === 'prepared'
@@ -687,14 +688,17 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     if (String(text).trim()) {
       const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
         || facts.some((f) => f.field === 'commercialScenarios');
+      const isCustomerReply = Boolean(turn.customerReply?.detected);
       const isInbound = Boolean(turn.inboundLead?.detected);
       const posted = postCleverAssistFeedCard({
         lead: nextLead,
-        title: isInbound
-          ? '✨ Clever hat die Anfrage erkannt'
-          : isHomepageDual
-            ? '✨ Clever hat die Anfrage vorbereitet'
-            : '✨ Clever hat verstanden',
+        title: isCustomerReply
+          ? '✨ Clever hat die Kundenantwort erkannt'
+          : isInbound
+            ? '✨ Clever hat die Anfrage erkannt'
+            : isHomepageDual
+              ? '✨ Clever hat die Anfrage vorbereitet'
+              : '✨ Clever hat verstanden',
         text,
         visibleToCustomer: false,
       });

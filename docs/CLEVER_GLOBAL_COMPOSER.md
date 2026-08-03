@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR · Inbound leicht  
+**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR · Inbound leicht · Zwei-Wege-Mail leicht  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -51,6 +51,7 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 | Nachfolgeangebot (`prepare_followup_offer`) – Heute/Golden → Composer → Confirm | 18 (betrieblich) |
 | Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
 | `inboundLead` / `inbound_lead_review` (Paste/Forward) | Inbound leicht |
+| `customerReply` / `customer_reply_review` (Paste/Forward) | Zwei-Wege-Mail leicht |
 
 ## Slice 5 – Golden Flow
 
@@ -89,6 +90,26 @@ Eingang im Dashboard-Composer (E-Mail-Paste / Weiterleitung):
 Modul: `inboundLeadIntake.js` · Test: `inboundLead.golden.test.js`  
 Kundenwelt-Intake (Soft Wish / Portal) bleibt getrennt: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md).
 
+## Zwei-Wege-Mail leicht (Kundenantwort Paste/Forward)
+
+**Status:** Composer-Eingang · Propose → Confirm → Action  
+**Nicht:** echte IMAP-/WhatsApp-API (Paste/Forward als Kanal-Adapter; Hook `adaptInboundChannelToPaste` für spätere Inbox)
+
+Golden-Beispiel:
+
+> „Der XCeed gefällt mir, aber bitte in Rot und mit AHK. Montag 16 Uhr passt.“
+
+Ablauf:
+
+1. Intent `customer_reply` (Cue „Kundenantwort“, Betreff `Re:`/`AW:`, oder Antwort-Signale im Mail-Paste)
+2. Resolve Kunde (offene Akte → E-Mail → Telefon → Name) – **kein** Propose-Create
+3. Facts: Favorit / Farbe / AHK / Termin (+ Universal Facts)
+4. Prepared Actions: Wünsche übernehmen · Terminvorschlag · Angebot anpassen
+5. Review `customer_reply_review` → Persistenz **nur nach Confirm**
+
+Modul: `customerReplyIntake.js` · Test: `customerReply.golden.test.js`  
+Abgrenzung: Erst-Anfrage bleibt `inbound_lead` („Hier eine Anfrage:“ ohne Antwort-Signale).
+
 ## Unterlagen-Leitprozess (schlank)
 
 **Status:** Composer · Propose → Confirm → Action  
@@ -110,6 +131,7 @@ Test: `documentsChecklist.golden.test.js`
 - `globalComposer.slice1.test.js` … `globalComposer.slice19.test.js`
 - `composerSurfaces.akte.test.js` – Akte-Surface (fester Lead): Nachfassen, PDF/Contract, Termin
 - `inboundLead.golden.test.js` – Paste Brandes (Match) / neuer Kunde (Propose-Create)
+- `customerReply.golden.test.js` – Kundenantwort Brandes (Favorit/Rot/AHK/Termin) → Review → Confirm
 - `documentsChecklist.golden.test.js` – Unterlagen fehlen Brandes → Review → Confirm → Paket
 
 ## Nächste Slices
@@ -118,6 +140,7 @@ Test: `documentsChecklist.golden.test.js`
 |-------|--------|------|
 | Phase 4 Kern | Admin-Leitstand (Flags/Magic/OCR/Mail) | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) · `/admin/system` |
 | später | OCR messen / Cloud-API | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | Inbox/IMAP an `adaptInboundChannelToPaste` | echte Mail-Inbox – bewusst nicht jetzt |
 | später | weitere Inbound-Kanäle | WhatsApp / Telefonie – bewusst nicht jetzt |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

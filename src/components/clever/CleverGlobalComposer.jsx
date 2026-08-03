@@ -230,6 +230,34 @@ export default function CleverGlobalComposer() {
       setLastTurn(null);
       return;
     }
+    if (action.action === 'accept_customer_reply') {
+      const reply = lastTurn?.customerReply;
+      const snapshot = ctx?.leadsSnapshot || [];
+      const matchedId = action.leadId
+        || reply?.matchedLeadId
+        || lastTurn?.resolvedCustomer?.id
+        || ctx?.currentCustomer?.id;
+      const existing = matchedId
+        ? (snapshot.find((l) => l.id === matchedId) || ctx?.currentCustomer || null)
+        : null;
+
+      if (!existing?.id) {
+        setFeedback('Bitte zuerst einen Kunden wählen.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      const applied = applyAcceptedSellerTurn(existing, lastTurn, { postFeedCard: true });
+      if (applied.ok && applied.lead && typeof updateLead === 'function') {
+        updateLead(existing.id, applied.lead);
+      }
+      handleOpenLead(existing.id);
+      setFeedback('Kundenantwort übernommen – Angaben gespeichert.');
+      setTimeout(() => setFeedback(''), 3200);
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
     if (action.action === 'accept_inbound_lead') {
       const inbound = lastTurn?.inboundLead;
       const snapshot = ctx?.leadsSnapshot || [];
@@ -650,6 +678,15 @@ export default function CleverGlobalComposer() {
               handleReviewAction({
                 action: 'accept_contract_import',
                 leadId: lastTurn?.resolvedCustomer?.id,
+              });
+              return;
+            }
+            if (reviewModel?.reviewType === 'customer_reply_review' || lastTurn?.customerReply?.detected) {
+              handleReviewAction({
+                action: 'accept_customer_reply',
+                leadId: lastTurn?.customerReply?.matchedLeadId
+                  || lastTurn?.resolvedCustomer?.id
+                  || null,
               });
               return;
             }
