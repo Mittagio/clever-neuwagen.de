@@ -386,7 +386,21 @@ export function buildUniversalActionSections(turn = {}) {
     && a.status === 'prepared'
     && !a.payload?.updateOnly
   ));
-  const offerClarify = !offerPrep && prepared.find((a) => (
+  const offerBlockedIncomplete = !offerPrep && prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    && a.status === 'blocked'
+    && !a.payload?.updateOnly
+    && (
+      a.payload?.canCreateOffer === false
+      || a.payload?.missingRate
+      || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate')
+    )
+    && !(
+      a.payload?.needsClarification
+      || (turn.missingInformation || []).some((m) => m.id === 'clarify_purchase_vs_leasing')
+    )
+  ));
+  const offerClarify = !offerPrep && !offerBlockedIncomplete && prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
     && a.status === 'blocked'
     && (
@@ -394,13 +408,15 @@ export function buildUniversalActionSections(turn = {}) {
       || (turn.missingInformation || []).some((m) => m.id === 'clarify_purchase_vs_leasing')
     )
   ));
-  if (offerPrep && !sections.some((s) => s.kind === 'offer_change')) {
+  const offerSectionSource = offerPrep || offerBlockedIncomplete;
+  if (offerSectionSource && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
     const discount = facts.find((f) => f.field === 'discountPercent');
-    const incomplete = offerPrep.payload?.canCreateOffer === false
-      || offerPrep.payload?.missingRate
-      || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate');
+    const incomplete = offerSectionSource.payload?.canCreateOffer === false
+      || offerSectionSource.payload?.missingRate
+      || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate')
+      || offerSectionSource.status === 'blocked';
     const wish = turn.usedCustomerContext || {};
     const inherited = [
       wish.termMonths != null ? `${wish.termMonths} Monate` : null,
@@ -411,21 +427,21 @@ export function buildUniversalActionSections(turn = {}) {
     ].filter(Boolean);
     const lineParts = [];
     if (discount?.label) lineParts.push(discount.label);
-    if (offerPrep.payload?.listPrice != null) {
-      lineParts.push(`UPE ${Number(offerPrep.payload.listPrice).toLocaleString('de-DE')} €`);
+    if (offerSectionSource.payload?.listPrice != null) {
+      lineParts.push(`UPE ${Number(offerSectionSource.payload.listPrice).toLocaleString('de-DE')} €`);
     }
     if (incomplete) {
       lineParts.push('Noch offen: Leasingrate / Bank-PDF');
     } else if (purchase?.label) {
       lineParts.push(purchase.label);
-    } else if (offerPrep.payload?.monthlyRate != null) {
-      lineParts.push(`${Number(offerPrep.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+    } else if (offerSectionSource.payload?.monthlyRate != null) {
+      lineParts.push(`${Number(offerSectionSource.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
     }
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
       title: incomplete ? 'Angebot prüfen' : 'Angebot',
-      headline: offerPrep.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
+      headline: offerSectionSource.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
       line: lineParts.join(' · ') || (incomplete ? 'Angebot unvollständig' : 'Angebot vorbereitet'),
       inheritedLine: inherited.length ? `Übernommen: ${inherited.join(' · ')}` : null,
       changes: [
@@ -1288,7 +1304,10 @@ export function buildUniversalReviewModel(turn = {}) {
   const appointmentMessageReview = actionSections.some((s) => s.kind === 'appointment_and_message_review');
   const contractImportReview = actionSections.some((s) => s.kind === 'contract_import_review');
   const contractCompareAndMessageReview = actionSections.some((s) => s.kind === 'contract_compare_and_message_review');
-  const contractMemoryResult = actionSections.some((s) => s.kind === 'contract_memory_result');
+  const contractMemorySection = actionSections.find((s) => s.kind === 'contract_memory_result');
+  // Leeres „Kein Vertrag“ darf Fakt-Dumps nicht als Contract-Memory-Review überschreiben
+  const contractMemoryResult = Boolean(contractMemorySection)
+    && !(contractMemorySection.title === 'Kein Vertrag' && facts.length > 0);
   const contractOfferCompareResult = actionSections.some((s) => s.kind === 'contract_offer_compare_result')
     && !contractCompareAndMessageReview;
   const clarifyGoal = (turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message');

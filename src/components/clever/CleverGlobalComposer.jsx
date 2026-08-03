@@ -18,7 +18,10 @@ import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/executeDualOfferAppointmentAccept.js';
 import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
+import { enrichSellerTurnWithMagicPropose } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
+import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
+import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
 import './CleverGlobalComposer.css';
 
 const SUGGESTION_CHIPS = [
@@ -400,7 +403,7 @@ export default function CleverGlobalComposer() {
     }
   }
 
-  function handleSend() {
+  async function handleSend() {
     const text = String(draft || '').trim();
     if (!text || sending) return;
     setSending(true);
@@ -423,12 +426,14 @@ export default function CleverGlobalComposer() {
       setProgressHint('Clever liest den Kundenkontext …');
     } else if (/geschrieben|angebot geschickt|historie|verlauf/.test(lower)) {
       setProgressHint('Clever durchsucht die Kundenhistorie …');
+    } else if (/nachfass|kundenlink|schreib|nachricht|mail/.test(lower)) {
+      setProgressHint('Clever schreibt die Kundennachricht …');
     } else {
       setProgressHint('Clever denkt mit …');
     }
 
     try {
-      const turn = runCleverSellerTurn({
+      let turn = runCleverSellerTurn({
         lead: ctx.currentCustomer || {},
         sellerInput: text,
         leadsSnapshot: ctx.leadsSnapshot || [],
@@ -442,6 +447,81 @@ export default function CleverGlobalComposer() {
         customerName: '',
         pendingAction: lastTurn?.pendingAction || null,
       });
+
+      // Magic: bei Kundennachricht Async-LLM/Akte-Kontext (Confirm-Vertrag bleibt)
+      const hasMessageDraft = Boolean(
+        turn?.messageDraft
+        || (turn?.preparedActions || []).some((a) => (
+          a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.payload?.messageDraft
+        )),
+      );
+      const leadId = turn?.resolvedCustomer?.id || ctx.currentCustomer?.id || null;
+      const snapshot = ctx.leadsSnapshot || [];
+      const magicLead = (leadId && snapshot.find((l) => l.id === leadId))
+        || ctx.currentCustomer
+        || null;
+      if (hasMessageDraft && magicLead?.id) {
+        setProgressHint('Clever schreibt die Kundennachricht …');
+        const working = turn.handoffWorkingContext
+          || (ctx.attachedWorkingObjects || [])[0]
+          || null;
+        let openVehicles = [];
+        try {
+          openVehicles = (buildVehicleOpportunityCards({
+            lead: magicLead,
+            wishFields: magicLead?.wish ?? {},
+          }) || []).map((card) => ({
+            modelKey: card.modelKey || card.model || null,
+            model: card.modelName || card.model || null,
+            label: card.shortLabel || card.label || null,
+            shortLabel: card.shortLabel || card.label || null,
+            offerId: card.id || card.configurationId || null,
+            monthlyRate: card.desiredRate ?? null,
+            termMonths: card.termMonths ?? null,
+            summary: null,
+          }));
+        } catch {
+          openVehicles = [];
+        }
+        const enriched = await enrichSellerTurnWithMagicPropose({
+          turn,
+          sellerInput: text,
+          lead: magicLead,
+          customerName: magicLead?.contact?.name || magicLead?.name || turn?.resolvedCustomer?.name || '',
+          displayName: magicLead?.contact?.name || magicLead?.name || turn?.resolvedCustomer?.name || '',
+          workingContext: working,
+          offerContext: working?.offerId
+            ? {
+              offerId: working.offerId,
+              title: working.label || working.shortLabel,
+              monthlyRate: working.monthlyRate ?? null,
+              termMonths: working.termMonths ?? null,
+              mileagePerYear: working.mileagePerYear ?? null,
+              paymentType: working.paymentType ?? null,
+              summary: working.summary || working.shortLabel || null,
+              modelKey: working.modelKey || null,
+            }
+            : null,
+          openVehicles,
+        });
+        turn = enriched.turn;
+        setLastTurn(turn);
+        const model = turn.reviewModel
+          || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+        setReviewModel(model);
+        setDraft('');
+        setProgressHint(null);
+        if (enriched.magicBody && enriched.feedback) {
+          setFeedback(enriched.feedback);
+        } else if (model) {
+          setFeedback(model.title || 'Clever hat vorbereitet');
+        } else {
+          setFeedback('Clever hat nichts Sicheres gefunden');
+        }
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
       setLastTurn(turn);
       const model = turn.reviewModel
         || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);

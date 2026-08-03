@@ -14,6 +14,10 @@ import { prepareCustomerContractImport } from './prepareCustomerContractImport.j
 import { searchCustomerContracts } from './searchCustomerContracts.js';
 import { compareContractWithOffer } from './compareContractWithOffer.js';
 import { draftContractCompareCustomerMessage } from './draftContractCompareCustomerMessage.js';
+import {
+  buildMagicAkteContext,
+  detectChipIntent,
+} from '../crm/magic/buildMagicAkteContext.js';
 
 function salutationName(customerName, facts, lead) {
   const name = customerName
@@ -1085,6 +1089,13 @@ export function planSellerActions({
             color: currentOfferContext.color || null,
           }
           : null);
+      const chipIntent = detectChipIntent(sellerInput);
+      const akteContext = buildMagicAkteContext({
+        lead,
+        rawSellerInput: sellerInput,
+        workingContext,
+        offerContext: currentOfferContext,
+      });
       const ctx = runTool('build_minimal_message_context', {
         recipient: customerName || 'Kunde',
         rawSellerInstruction: sellerInput,
@@ -1092,6 +1103,8 @@ export function planSellerActions({
         sellerFacts: instruction?.sellerFacts || [],
         offerFacts,
         tone: 'freundlich',
+        akteContext,
+        chipIntent: chipIntent || akteContext.chipIntent,
       }).result;
       messageDraft = runTool('write_grounded_message', {
         minimalContext: ctx || {},

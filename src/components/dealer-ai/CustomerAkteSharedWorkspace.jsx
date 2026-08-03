@@ -50,7 +50,9 @@ import {
 } from '../../services/cleverSeller/runComposerScanOcrPipeline.js';
 import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
-import { containsSellerCommandInMessage } from '../../services/cleverSeller/validateSellerCommandMessage.js';
+import {
+  enrichSellerTurnWithMagicPropose,
+} from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
 import {
   COMPOSER_PRIMARY_CHIPS,
   COMPOSER_MORE_CHIPS,
@@ -349,109 +351,36 @@ export default function CustomerAkteSharedWorkspace({
         pendingAction: universalTurn?.pendingAction || null,
       });
 
-      const offerAction = (turn.preparedActions || []).find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
-      const offerIncomplete = Boolean(
-        offerAction
-        && offerAction.payload
-        && offerAction.payload.canCreateOffer === false,
-      );
-      const skipMagicForOffer = offerIncomplete
-        || (
-          Boolean(offerAction)
-          && !/\b(schreib|nachricht|mail)\b/i.test(text)
-        );
-
       // Magic: LLM / grounded Writer ersetzt Template-Mails
-      let magicBody = null;
-      let magicWriter = null;
-      let magicWarnings = [];
-      const chipIntent = detectChipIntent(text);
-      const akteContext = buildMagicAkteContext({
-        lead,
-        rawSellerInput: text,
-        workingContext: workingCtx,
-        offerContext: offerCtx,
-        openVehicles,
-      });
-      const magicPayload = {
-        rawSellerInput: text,
-        draftText: text,
+      const enriched = await enrichSellerTurnWithMagicPropose({
+        turn,
+        sellerInput: text,
         lead,
         customerName,
-        recipient: displayName,
-        tone: outboundTone || 'freundlich',
+        displayName,
         workingContext: workingCtx,
         offerContext: offerCtx,
         openVehicles,
-        akteContext,
-        chipIntent: chipIntent || akteContext.chipIntent,
-        allowWithoutPackageDetails: true,
-        sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
-        dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
-      };
-
-      const magicRemoteEnabled = isCleverMagicMessageClientEnabled();
-      if (!skipMagicForOffer && magicRemoteEnabled) {
-        try {
-          const remote = await requestCleverMagicMessage(magicPayload);
-          if (remote?.ok && remote.body) {
-            magicBody = String(remote.body).trim();
-            magicWriter = remote.writer || 'openai';
-            magicWarnings = remote.warnings || [];
-          }
-        } catch {
-          /* local fallback */
-        }
-      }
-
-      if (!skipMagicForOffer && !magicBody) {
-        try {
-          const local = await composeSellerOutboundMessageAsync(magicPayload, {
-            forceFallback: !magicRemoteEnabled,
-          });
-          if (local?.ok && local.text) {
-            magicBody = String(local.text).trim();
-            magicWriter = local.writer || 'grounded_fallback';
-            magicWarnings = local.grounded?.warnings || [];
-          }
-        } catch {
-          magicBody = null;
-        }
-      }
-
-      if (magicBody && containsSellerCommandInMessage(magicBody)) {
-        magicBody = null;
-        magicWriter = null;
-      }
+        tone: outboundTone || 'freundlich',
+      });
 
       setDraft('');
       setOfferPrep(null);
       setAppointmentDraft(null);
 
-      if (magicBody) {
-        const enriched = enrichTurnWithMagicMessage(turn, magicBody);
-        if (shouldShowUniversalReview(enriched)) {
-          showUniversalReview(enriched);
+      if (enriched.magicBody) {
+        if (shouldShowUniversalReview(enriched.turn)) {
+          showUniversalReview(enriched.turn);
         } else {
           setUniversalTurn(null);
           clearAssist();
           rememberLastComposerAction(buildComposerLastActionFromText({
-            body: magicBody,
+            body: enriched.magicBody,
             title: 'Nachricht',
             status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
           }));
         }
-        if (magicWriter === 'openai') {
-          setFeedback('Clever hat geschrieben – bitte prüfen');
-        } else if (!magicRemoteEnabled) {
-          setFeedback('Offline-Entwurf (Magic/OpenAI aus) – bitte prüfen und anpassen');
-        } else if (
-          magicWarnings.some((w) => /openai|key_missing|magic_flag|fallback/i.test(String(w)))
-        ) {
-          setFeedback('Fallback-Entwurf (OpenAI nicht verfügbar) – bitte prüfen und anpassen');
-        } else {
-          setFeedback('Geprüfter Entwurf – bitte Inhalt kurz gegenlesen');
-        }
+        setFeedback(enriched.feedback || 'Geprüfter Entwurf – bitte Inhalt kurz gegenlesen');
         setTimeout(() => setFeedback(''), 3200);
         return true;
       }
@@ -489,29 +418,6 @@ export default function CustomerAkteSharedWorkspace({
     } finally {
       setSending(false);
     }
-  }
-
-  function enrichTurnWithMagicMessage(turn, body) {
-    const text = String(body || '').trim();
-    if (!turn || !text) return turn;
-    const prepared = Array.isArray(turn.preparedActions) ? [...turn.preparedActions] : [];
-    const idx = prepared.findIndex((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE);
-    const draftAction = {
-      id: 'draft_message',
-      type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
-      label: 'Nachricht vorbereiten',
-      needsSellerConfirmation: true,
-      status: 'prepared',
-      toolId: 'write_grounded_message',
-      payload: { messageDraft: text },
-    };
-    if (idx >= 0) prepared[idx] = { ...prepared[idx], ...draftAction, payload: { messageDraft: text } };
-    else prepared.push(draftAction);
-    return {
-      ...turn,
-      messageDraft: text,
-      preparedActions: prepared,
-    };
   }
 
   function snapshotAcceptedReview(options = {}) {

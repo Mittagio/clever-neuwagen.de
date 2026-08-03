@@ -6,6 +6,10 @@ import {
   buildMinimalMessageContext,
   selectRelevantCustomerNeeds,
 } from '../crm/magic/buildMinimalMessageContext.js';
+import {
+  buildMagicAkteContext,
+  detectChipIntent,
+} from '../crm/magic/buildMagicAkteContext.js';
 import { writeGroundedMessageFallback } from '../crm/magic/generateCleverCustomerMessage.js';
 import { validateMessageFactPreservation } from '../crm/magic/validateMessageFactPreservation.js';
 import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
@@ -19,6 +23,9 @@ import { beginCustomerMessageEdit } from '../crm/composerMode.js';
  *   customerName?: string,
  *   workingContext?: object,
  *   offerContext?: object,
+ *   openVehicles?: object[],
+ *   akteContext?: object,
+ *   chipIntent?: string|null,
  *   allowWithoutPackageDetails?: boolean,
  * }} params
  */
@@ -62,6 +69,30 @@ export function prepareGroundedCustomerMessageSync(params = {}) {
     || params.lead?.name
     || 'Kunde';
 
+  const chipIntent = params.chipIntent || detectChipIntent(sellerInput);
+  const akteContext = params.akteContext || buildMagicAkteContext({
+    lead: params.lead,
+    rawSellerInput: sellerInput,
+    workingContext: params.workingContext,
+    offerContext: params.offerContext,
+    openVehicles: params.openVehicles || [],
+  });
+
+  const offerFacts = params.offerContext?.offerId
+    ? {
+      offerId: params.offerContext.offerId,
+      title: params.offerContext.title
+        || params.offerContext.summary
+        || params.offerContext.shortLabel
+        || null,
+      monthlyRate: params.offerContext.monthlyRate ?? null,
+      termMonths: params.offerContext.termMonths ?? null,
+      mileagePerYear: params.offerContext.mileagePerYear ?? null,
+      paymentType: params.offerContext.paymentType ?? null,
+      summary: params.offerContext.summary || params.offerContext.shortLabel || null,
+    }
+    : null;
+
   const minimalContext = buildMinimalMessageContext({
     recipient,
     rawSellerInstruction: sellerInput,
@@ -70,8 +101,10 @@ export function prepareGroundedCustomerMessageSync(params = {}) {
     sellerFacts: knowledge.sellerFacts,
     verifiedPackageFacts: knowledge.verifiedPackageFacts,
     verifiedEquipmentFacts: knowledge.verifiedEquipmentFacts,
-    offerFacts: null,
+    offerFacts,
     tone: 'freundlich',
+    akteContext,
+    chipIntent: chipIntent || akteContext.chipIntent,
   });
 
   let body = writeGroundedMessageFallback(minimalContext, {
