@@ -48,7 +48,7 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 | Dual-pending / `accept_offer_and_appointment` | 15 |
 | Scan-OCR-Pipeline / `contract_pdf_ocr` | 16 |
 | Produkt-OCR-Provider (`VITE_CLEVER_CONTRACT_OCR`) | 17 |
-| Nachfolgeangebot (`prepare_followup_offer`) | 18 |
+| Nachfolgeangebot (`prepare_followup_offer`) – Heute/Golden → Composer → Confirm | 18 (betrieblich) |
 | Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
 | `inboundLead` / `inbound_lead_review` (Paste/Forward) | Inbound leicht |
 

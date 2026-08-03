@@ -1297,6 +1297,17 @@ export default function DealerAiLeadFollowUp({
   }
 
   function handleGoldenMomentPrimary(moment) {
+    // Slice 18 / Phase 3: Nachfolge-CTA → Composer Propose (nicht Fahrzeugspur)
+    if (
+      moment?.recommendedAction === 'prepare_succession_offer'
+      || moment?.type === 'contract_succession_follow_up'
+    ) {
+      focusChatComposer({
+        seedDraft: 'Bereite ein Nachfolgeangebot vor.',
+        autoRun: true,
+      });
+      return;
+    }
     const track = vehicleTracks.find((t) => t.id === moment.vehicleTrackId);
     if (track?.config) {
       openVehicleTrack(track);

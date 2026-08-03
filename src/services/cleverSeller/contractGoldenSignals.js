@@ -85,6 +85,10 @@ function formatDeDate(iso) {
  */
 export function isFollowUpOfferMissing(lead = {}, favorite = null) {
   if (!favorite) return false;
+  // Propose→Confirm: Nachfolgeangebot vorbereitet zählt als vorhanden (kein Auto-Send)
+  if (favorite.successionOfferPreparedAt || favorite.offerStatus === 'prepared') {
+    return false;
+  }
   const reqs = favorite.requirementLabels ?? [];
   const hasLiveOffer = Boolean(
     favorite.sentAt

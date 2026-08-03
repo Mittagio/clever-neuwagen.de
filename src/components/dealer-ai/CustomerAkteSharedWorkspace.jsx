@@ -1273,6 +1273,21 @@ export default function CustomerAkteSharedWorkspace({
       handleDismissAssist();
       return;
     }
+    if (action.action === 'prepare_followup_offer') {
+      setSending(true);
+      try {
+        const turn = runCleverSellerTurn({
+          ...buildAkteSellerTurnParams(),
+          sellerInput: 'Bereite ein Nachfolgeangebot vor.',
+        });
+        setUniversalTurn(turn);
+        setFeedback(turn.reviewModel?.title || 'Nachfolgeangebot vorbereitet – bitte prüfen');
+        setTimeout(() => setFeedback(''), 3200);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     if (action.action === 'check_calendar') {
       setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
       setTimeout(() => setFeedback(''), 3200);

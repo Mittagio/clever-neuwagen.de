@@ -17,12 +17,19 @@ import {
   buildCrmPatchFromAppointment,
 } from '../dealer/sellerAppointmentAssistFlow.js';
 import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
-import { applyTrackFeedbackFacts } from '../crm/vehicleTrack.js';
+import {
+  applyTrackFeedbackFacts,
+  listCustomerVehicleTracks,
+  patchVehicleTrackOnLead,
+  sortTracksForOverview,
+  VEHICLE_TRACK_STATUS,
+} from '../crm/vehicleTrack.js';
 import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
 import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
 import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js';
 import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
 import { buildInboundLeadDraft } from './inboundLeadIntake.js';
+import { isPrepareSuccessionOfferCue } from './prepareSuccessionOfferFromLead.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -613,6 +620,26 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
   if (trackFeedback.length) {
     nextLead = applyTrackFeedbackFacts(nextLead, trackFeedback);
+  }
+
+  // Slice 18: Nach Confirm Nachfolgeangebot auf Favoriten-Spur markieren (kein Auto-Send)
+  const successionCue = isPrepareSuccessionOfferCue(
+    turn?.interpretedInput?.normalized || turn?.interpretedInput?.raw || '',
+  );
+  const successionFact = facts.some((f) => (
+    f.field === 'paymentType' && /nachfolge/i.test(String(f.label || ''))
+  ));
+  if (successionCue || successionFact) {
+    const tracks = sortTracksForOverview(listCustomerVehicleTracks(nextLead));
+    const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE);
+    if (favorite?.id) {
+      nextLead = patchVehicleTrackOnLead(nextLead, favorite.id, {
+        successionOfferPreparedAt: new Date().toISOString(),
+      });
+      if (!labels.includes('Nachfolgeangebot vorbereitet')) {
+        labels.push('Nachfolgeangebot vorbereitet');
+      }
+    }
   }
 
   // Epic 4: Varianten-Feedback (commercialScenarioId) – Spur bleibt eine

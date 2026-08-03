@@ -88,6 +88,8 @@ export function getVehicleTrackMeta(config = {}) {
     lastActivityAt: track.lastActivityAt ?? null,
     preferredColor: track.preferredColor ?? null,
     deliveryTimeImportance: track.deliveryTimeImportance ?? null,
+    /** Nachfolgeangebot nach Propose→Confirm vorbereitet (noch nicht gesendet) */
+    successionOfferPreparedAt: track.successionOfferPreparedAt ?? null,
   };
 }
 
@@ -160,6 +162,7 @@ export function listCustomerVehicleTracks(lead = {}) {
       annualMileage: payment.annualMileage,
       downPayment: payment.downPayment,
       offerStatus: vehicleOffer?.status ?? null,
+      successionOfferPreparedAt: meta.successionOfferPreparedAt ?? null,
       offerVersion: vehicleOffer?.version ?? 1,
       sourcePdfName: vehicleOffer?.pdf?.name ?? vehicleOffer?.pdf?.fileName ?? null,
       openedAt: vehicleOffer?.tracking?.firstOpenedAt

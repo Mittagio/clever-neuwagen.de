@@ -74,6 +74,10 @@ export function buildUniversalActionSections(turn = {}) {
   const todayOverview = turn.todayOverview || todayAction?.payload?.todayOverview;
   if (todayOverview) {
     const items = Array.isArray(todayOverview.items) ? todayOverview.items : [];
+    const successionItem = items.find((i) => (
+      i.actionId === 'prepare_succession_offer'
+      || i.composerAction === 'prepare_followup_offer'
+    ));
     sections.push({
       id: 'today_overview',
       kind: 'today_overview',
@@ -90,13 +94,30 @@ export function buildUniversalActionSections(turn = {}) {
         reasons: item.reasons || [],
         overdue: item.overdue,
         dueToday: item.dueToday,
+        actionId: item.actionId || null,
+        composerAction: item.composerAction || null,
+        primaryCtaLabel: item.primaryCtaLabel || null,
       })),
-      primaryActions: items[0]?.leadId
+      primaryActions: successionItem?.leadId
         ? [
-          { id: 'open_first', label: `${items[0].customerName} öffnen`, leadId: items[0].leadId },
-          { id: 'show_list', label: 'Tagesliste anzeigen' },
+          {
+            id: 'prepare_followup_offer',
+            label: successionItem.primaryCtaLabel || 'Nachfolgeangebot vorbereiten',
+            leadId: successionItem.leadId,
+            action: 'prepare_followup_offer',
+          },
+          {
+            id: 'open_first',
+            label: `${successionItem.customerName} öffnen`,
+            leadId: successionItem.leadId,
+          },
         ]
-        : [{ id: 'show_list', label: 'Tagesliste anzeigen' }],
+        : (items[0]?.leadId
+          ? [
+            { id: 'open_first', label: `${items[0].customerName} öffnen`, leadId: items[0].leadId },
+            { id: 'show_list', label: 'Tagesliste anzeigen' },
+          ]
+          : [{ id: 'show_list', label: 'Tagesliste anzeigen' }]),
     });
   }
 

@@ -22,6 +22,7 @@ import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/e
 import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { enrichSellerTurnWithMagicPropose } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
+import { isPrepareSuccessionOfferCue } from '../../services/cleverSeller/prepareSuccessionOfferFromLead.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
 import './CleverGlobalComposer.css';
@@ -414,6 +415,10 @@ export default function CleverGlobalComposer() {
     ) {
       const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
       if (target?.leadId) handleOpenLead(target.leadId, target);
+      return;
+    }
+    if (action.id === 'open_first' || (action.leadId && !action.action)) {
+      handleOpenLead(action.leadId);
     }
   }
 
@@ -665,7 +670,23 @@ export default function CleverGlobalComposer() {
               return;
             }
             const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
+            // Slice 18: Nachfolge Confirm → Spur markieren (kein Auto-Send)
+            const successionAccept = isPrepareSuccessionOfferCue(
+              lastTurn?.interpretedInput?.normalized || lastTurn?.interpretedInput?.raw || '',
+            ) || (lastTurn?.extractedFacts || []).some((f) => (
+              f.field === 'paymentType' && /nachfolge/i.test(String(f.label || ''))
+            ));
+            if (successionAccept && target?.leadId && typeof updateLead === 'function') {
+              const snapshot = ctx?.leadsSnapshot || [];
+              const lead = snapshot.find((l) => l.id === target.leadId) || ctx?.currentCustomer;
+              if (lead?.id) {
+                const applied = applyAcceptedSellerTurn(lead, lastTurn, { postFeedCard: false });
+                if (applied.ok && applied.lead) updateLead(lead.id, applied.lead);
+              }
+            }
             if (target?.leadId) handleOpenLead(target.leadId, target);
+            setReviewModel(null);
+            setLastTurn(null);
           }}
           onReviewAction={handleReviewAction}
           onReject={() => {
@@ -732,10 +753,24 @@ export default function CleverGlobalComposer() {
                 key={item.leadId}
                 type="button"
                 className="clever-global-composer__today-item"
-                onClick={() => handleOpenLead(item.leadId)}
+                onClick={() => {
+                  if (
+                    item.composerAction === 'prepare_followup_offer'
+                    || item.actionId === 'prepare_succession_offer'
+                  ) {
+                    handleReviewAction({
+                      action: 'prepare_followup_offer',
+                      leadId: item.leadId,
+                    });
+                    return;
+                  }
+                  handleOpenLead(item.leadId);
+                }}
               >
                 <strong>{item.customerName}</strong>
-                <span>{item.headline}</span>
+                <span>
+                  {item.primaryCtaLabel || item.headline}
+                </span>
                 {item.reasons?.[0] && (
                   <em>Grund: {item.reasons[0]}</em>
                 )}

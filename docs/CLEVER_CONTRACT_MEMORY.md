@@ -1,6 +1,6 @@
 # Clever Contract Memory
 
-**Status:** Slice 18 implementiert (Nachfolgeangebot vorbereiten)  
+**Status:** Slice 18 betrieblich (Phase 3 Nachfolge, schlank)  
 **Stand:** August 2026  
 **Orchestrator:** ausschließlich `runCleverSellerTurn`
 
@@ -586,33 +586,37 @@ VITE_CLEVER_CONTRACT_OCR=true
 
 ## Slice 18 – Nachfolgeangebot vorbereiten
 
-**Status: implementiert**
+**Status: betrieblich (Phase 3 Nachfolge, schlank)**
 
 Golden Input:
 
 > „Bereite ein Nachfolgeangebot vor.“
 
-Ablauf:
+Operativer Pfad (Propose → Confirm → Action):
 
-1. Intent `prepare_offer` (+ Kontext)  
-2. `prepareSuccessionOfferFromLead` liest Favoriten-Spur (Rate/Laufzeit/km) + Altvertrag  
-3. Angebot + Kundennachricht vorbereitet (`offer_and_message_review`)  
-4. CTA `prepare_followup_offer` auf Golden Moment / Contract Memory verdrahtet  
-5. **Kein** Auto-Send, **keine** Truth-Mutation  
+1. Vertrag / Leasingende → Journey-Reminder + Golden Moment `CONTRACT_SUCCESSION`  
+2. **Heute**-Worklist trägt `composerAction: prepare_followup_offer`  
+3. Akte-Golden-CTA / Heute-CTA / Review-CTA → Composer-Seed (kein Auto-Send)  
+4. `prepareSuccessionOfferFromLead` → Angebot + Nachricht (`offer_and_message_review`)  
+5. Confirm → Favoriten-Spur `successionOfferPreparedAt` (Status spürbar; Succession-CTA entfällt)  
+6. Offene Wünsche → ggf. `FAVORITE_NEEDS_REVISED_OFFER` (nicht stilles Senden)
 
 | Modul | Rolle |
 |-------|--------|
 | `prepareSuccessionOfferFromLead.js` | Cue + Facts aus Favorit |
 | `runCleverSellerTurn.js` | Fact-Injection |
 | `planSellerActions.js` | Leasing+Rate → `canCreateOffer` |
-| `CleverGlobalComposer.jsx` | CTA-Wiring |
-| `globalComposer.slice18.test.js` | Golden + Gegenproben |
+| `getTodayOverview.js` | Succession → Heute-CTA |
+| `DealerAiLeadFollowUp.jsx` | Golden-Primary → Composer-Seed |
+| `CleverGlobalComposer.jsx` / Akte | CTA `prepare_followup_offer` |
+| `applyAcceptedSellerTurn.js` | Confirm → Spur markieren |
+| `globalComposer.slice18.test.js` | Golden + Heute + Confirm-Status |
 
-### Nicht in Slice 18
+### Nicht in Slice 18 / Phase 3 schlank
 
-- Automatisches Speichern/Senden des Angebots  
+- Automatisches Senden des Angebots / WhatsApp-API  
+- DMS, Auslieferungs-Vollstrecke, Admin-Leitstand  
 - Erfundene Raten ohne Track-/PDF-Quelle  
-- Tesseract-Pflicht  
 
 ---
 

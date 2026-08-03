@@ -140,8 +140,11 @@ export default function SellerUniversalReviewCard({
     || apptMsg?.primaryActions
     || contractMsg?.primaryActions
     || contractMem?.primaryActions
+    || sections.find((s) => s.kind === 'contract_offer_compare_result')?.primaryActions
     || docsSec?.primaryActions
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
+    || sections.find((s) => s.kind === 'today_overview')?.primaryActions
+    || sections.find((s) => s.kind === 'golden_moment')?.primaryActions
     || [];
   const sources = knowledgeMsg?.sources
     || contractMsg?.evidence

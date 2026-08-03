@@ -17,6 +17,12 @@ import {
 } from './prepareSuccessionOfferFromLead.js';
 import { createBrandesGoldenCaseLead } from '../crm/brandesGoldenCase.js';
 import { containsSellerCommandInMessage } from './validateSellerCommandMessage.js';
+import { getTodayOverview } from './getTodayOverview.js';
+import {
+  buildGoldenMoment,
+  GOLDEN_MOMENT_TYPE,
+} from '../journey/goldenMoment.js';
+import { evaluateContractGoldenSignals } from './contractGoldenSignals.js';
 
 const NOW = new Date('2026-07-31T10:00:00+02:00');
 const GOLDEN_CONTRACT = `Leasingvertrag
@@ -139,6 +145,47 @@ function brandesWithContract() {
   const review = buildUniversalReviewModel(turn);
   const golden = review.actionSections.find((s) => s.kind === 'golden_moment');
   assert.ok(golden?.primaryActions?.some((a) => a.action === 'prepare_followup_offer'));
+}
+
+// --- Heute-Worklist: Succession → Composer-CTA ---
+{
+  const lead = brandesWithContract();
+  const overview = getTodayOverview([lead], { now: NOW, maxItems: 12 });
+  const brandesItem = overview.items.find((i) => i.leadId === lead.id);
+  assert.ok(brandesItem, 'Brandes in Heute');
+  assert.equal(brandesItem.composerAction, 'prepare_followup_offer');
+  assert.equal(brandesItem.actionId, 'prepare_succession_offer');
+  assert.match(String(brandesItem.primaryCtaLabel || ''), /Nachfolgeangebot/i);
+
+  const todayTurn = runCleverSellerTurn({
+    lead: {},
+    sellerInput: 'Was liegt heute an?',
+    leadsSnapshot: [lead],
+    now: NOW,
+  });
+  const todayReview = buildUniversalReviewModel(todayTurn);
+  const todaySec = todayReview.actionSections.find((s) => s.kind === 'today_overview');
+  assert.ok(todaySec?.primaryActions?.some((a) => a.action === 'prepare_followup_offer'));
+}
+
+// --- Confirm: Status Nachfolge vorbereitet, kein Auto-Send ---
+{
+  const lead = brandesWithContract();
+  const turn = runCleverSellerTurn({
+    lead,
+    sellerInput: GOLDEN,
+    customerName: 'Brandes',
+    now: NOW,
+  });
+  assert.equal(turn.autoSent, false);
+  const applied = applyAcceptedSellerTurn(lead, turn, { postFeedCard: false });
+  assert.ok(applied.ok);
+  assert.ok(applied.acceptedLabels?.some((l) => /Nachfolgeangebot vorbereitet/i.test(l)));
+  const signals = evaluateContractGoldenSignals(applied.lead, { now: NOW });
+  assert.equal(signals.followUpOfferMissing, false);
+  const moment = buildGoldenMoment(applied.lead, { now: NOW });
+  assert.ok(moment);
+  assert.notEqual(moment.type, GOLDEN_MOMENT_TYPE.CONTRACT_SUCCESSION);
 }
 
 console.log('globalComposer.slice18.test.js: ok');

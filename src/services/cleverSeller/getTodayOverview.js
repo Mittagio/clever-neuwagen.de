@@ -93,6 +93,8 @@ export function getTodayOverview(leads = [], options = {}) {
       golden = null;
     }
     if (golden?.headline) {
+      const succession = golden.recommendedAction === 'prepare_succession_offer'
+        || golden.type === 'contract_succession_follow_up';
       const existing = byLead.get(lead.id) || {
         leadId: lead.id,
         customerName: customerName(lead),
@@ -105,6 +107,10 @@ export function getTodayOverview(leads = [], options = {}) {
         hasCustomerReaction: false,
         openSellerAction: true,
         actionId: golden.recommendedAction || null,
+        composerAction: succession ? 'prepare_followup_offer' : null,
+        primaryCtaLabel: succession
+          ? (golden.primaryLabel || 'Nachfolgeangebot vorbereiten')
+          : null,
         sortRank: 4,
       };
       const reasonBits = [
@@ -116,6 +122,14 @@ export function getTodayOverview(leads = [], options = {}) {
       if (!byLead.has(lead.id)) {
         existing.headline = golden.headline;
         existing.detail = golden.subline || golden.reason || existing.detail;
+      }
+      if (succession) {
+        existing.actionId = 'prepare_succession_offer';
+        existing.composerAction = 'prepare_followup_offer';
+        existing.primaryCtaLabel = golden.primaryLabel || 'Nachfolgeangebot vorbereiten';
+        if (golden.headline) existing.headline = golden.headline;
+      } else if (!existing.actionId && golden.recommendedAction) {
+        existing.actionId = golden.recommendedAction;
       }
       existing.openSellerAction = true;
       existing.sortRank = Math.min(existing.sortRank, 4);

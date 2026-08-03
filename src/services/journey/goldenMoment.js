@@ -67,9 +67,8 @@ export function buildGoldenMoment(lead = {}, options = {}) {
   if (favorite) {
     const reqs = favorite.requirementLabels ?? [];
     const offerMissesReqs = reqs.length > 0;
-    const succession = contractSignals.active && (
-      contractSignals.followUpOfferMissing || offerMissesReqs
-    );
+    // Nachfolge nur solange kein vorbereitetes/live Nachfolgeangebot – offene Wünsche → revised
+    const succession = contractSignals.active && contractSignals.followUpOfferMissing;
     const reasons = [
       `${favorite.modelLabel}: positive Kundenreaktion / Favorit`,
     ];
