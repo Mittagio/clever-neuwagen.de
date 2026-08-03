@@ -85,6 +85,7 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 3):** `src/services/cleverSeller/globalComposer.slice3.test.js` – Kunde + Kaufangebot + Nachricht + Handoff.  
 **Global Composer (Slice 4):** `src/services/cleverSeller/globalComposer.slice4.test.js` – verifiziertes Fahrzeugwissen + natürliche Kundennachricht.  
 **Global Composer (Slice 5):** `src/services/cleverSeller/globalComposer.slice5.test.js` – Terminvorschlag + Nachricht + Follow-ups.  
+**Kalender Availability:** `src/services/cleverSeller/globalComposer.calendar.test.js` – Flag/`window.__cleverCalendarProvider`, Status im Review, Draft ≠ Booking (`VITE_CLEVER_CALENDAR`).  
 **Global Composer (Slice 6):** `src/services/cleverSeller/globalComposer.slice6.test.js` – Altvertrag Intake + Review + Confirm.  
 **Global Composer (Slice 7):** `src/services/cleverSeller/globalComposer.slice7.test.js` – Vertrag nachschlagen aus Contract Memory.  
 **Global Composer (Slice 8):** `src/services/cleverSeller/globalComposer.slice8.test.js` – Vertragsende → Golden Moment / Journey Reminder.  

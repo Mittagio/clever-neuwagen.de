@@ -205,9 +205,8 @@ export function prepareContextualAppointmentProposal(params = {}) {
   const sellerClaimsAvailable = Boolean(params.sellerClaimsAvailable)
     || /\b(ist frei|frei ist|kalender ist frei|termin ist frei)\b/i.test(sellerInput);
   const calendarAvailability = params.calendarAvailability || null;
-  const availabilityStatus = calendarAvailability?.checked
-    ? (calendarAvailability.available ? 'available' : 'busy')
-    : (sellerClaimsAvailable ? 'seller_claimed' : 'not_checked');
+  const availabilityStatus = resolveAvailabilityStatus(calendarAvailability, sellerClaimsAvailable);
+  const durationMinutes = getAppointmentDurationMinutes(finalType);
 
   const slots = dualSlots.length >= 2
     ? dualSlots
@@ -221,7 +220,7 @@ export function prepareContextualAppointmentProposal(params = {}) {
     appointmentType: finalType,
     appointmentTypeLabel: appointmentTypeLabel(finalType),
     startsAt: primary.startsAt,
-    durationMinutes: null,
+    durationMinutes,
     vehicleContext: vehicleContext
       ? {
         model: vehicleContext.model,
@@ -232,8 +231,8 @@ export function prepareContextualAppointmentProposal(params = {}) {
       : null,
     status: 'proposed',
     availabilityStatus,
-    availabilitySource: calendarAvailability?.checked
-      ? 'calendar_check'
+    availabilitySource: calendarAvailability?.checked || calendarAvailability?.status
+      ? (calendarAvailability.source || 'calendar_check')
       : (sellerClaimsAvailable ? 'seller_input' : 'not_checked'),
     needsSellerConfirmation: true,
     dateLabel: primary.dateLabel || primary.shortDateLabel,
@@ -313,7 +312,12 @@ export function prepareContextualAppointmentProposal(params = {}) {
     sellerClaimsAvailable,
     warnings: [
       availabilityStatus === 'not_checked' ? 'calendar_availability_not_checked' : null,
-      sellerClaimsAvailable ? 'availability_is_seller_claim_not_calendar_check' : null,
+      sellerClaimsAvailable && availabilityStatus === 'seller_claimed'
+        ? 'availability_is_seller_claim_not_calendar_check'
+        : null,
+      availabilityStatus === 'busy' ? 'calendar_slot_busy' : null,
+      availabilityStatus === 'unknown' ? 'calendar_availability_unknown' : null,
+      availabilityStatus === 'error' ? 'calendar_availability_error' : null,
     ].filter(Boolean),
     handoff: {
       ...handoff,
@@ -332,6 +336,26 @@ export function prepareContextualAppointmentProposal(params = {}) {
       { kind: 'availability', source: preparedAppointment.availabilitySource, value: availabilityStatus },
     ].filter(Boolean),
   };
+}
+
+/**
+ * Mit Adapter: available | busy | unknown | error.
+ * Ohne Adapter: not_checked (Default) bzw. seller_claimed.
+ */
+function resolveAvailabilityStatus(calendarAvailability, sellerClaimsAvailable) {
+  const checkedStatus = calendarAvailability?.status
+    ? String(calendarAvailability.status).trim().toLowerCase()
+    : '';
+  if (['available', 'busy', 'unknown', 'error'].includes(checkedStatus)) {
+    return checkedStatus;
+  }
+  if (calendarAvailability?.checked === true) {
+    if (calendarAvailability.available === true) return 'available';
+    if (calendarAvailability.available === false) return 'busy';
+    return 'unknown';
+  }
+  if (sellerClaimsAvailable) return 'seller_claimed';
+  return 'not_checked';
 }
 
 function buildSuggestionMessage({

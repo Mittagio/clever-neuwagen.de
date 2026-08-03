@@ -60,6 +60,9 @@ import {
 import { resolveAppointmentCustomerContext } from './resolveAppointmentCustomerContext.js';
 import { isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 import { extractContractCustomerNameHint } from './extractCustomerContractFromText.js';
+import { resolveCleverCalendarProvider } from './resolveCleverCalendarProvider.js';
+import { checkCalendarAvailability } from './checkCalendarAvailability.js';
+import { getAppointmentDurationMinutes } from '../dealer/sellerAppointmentAssistFlow.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -936,11 +939,17 @@ function finalizeSellerTurn({
         appointmentPrepareAction?.payload?.preparedAppointment?.vehicleContext?.label
           ? `✓ ${String(appointmentPrepareAction.payload.preparedAppointment.vehicleContext.label).replace(/^Kia\s+/i, '')}-Kontext übernommen`
           : null,
-        appointmentPrepareAction?.payload?.availabilityStatus === 'not_checked'
-          ? '○ Kalender noch nicht geprüft'
-          : (appointmentPrepareAction?.payload?.availabilityStatus === 'available'
-            ? '✓ Kalender geprüft'
-            : null),
+        (() => {
+          const avail = appointmentPrepareAction?.payload?.availabilityStatus;
+          if (!avail || avail === 'not_checked' || avail === 'seller_claimed') {
+            return appointmentPrepareAction ? '○ Kalender noch nicht geprüft' : null;
+          }
+          if (avail === 'available') return '✓ Kalender: verfügbar';
+          if (avail === 'busy') return '○ Kalender: belegt';
+          if (avail === 'unknown') return '○ Kalender: unbekannt';
+          if (avail === 'error') return '○ Kalenderprüfung fehlgeschlagen';
+          return null;
+        })(),
         contractImportAction?.payload?.contractDraft
           ? `✓ ${contractImportAction.payload.documentClassification === 'leasing_contract' ? 'Leasingvertrag' : 'Vertrag'} erkannt`
           : null,
@@ -1189,6 +1198,70 @@ function buildWarnings(facts, inputMode) {
     warnings.push('Mehrere Modellinteressen – nicht automatisch auf eines reduziert.');
   }
   return warnings;
+}
+
+/**
+ * Orchestrator + optionaler Kalender-Check (Flag / window.__cleverCalendarProvider).
+ * Ohne Provider: identisch zu runCleverSellerTurn (availabilityStatus: not_checked).
+ * Kein Auto-Booking – nur Status für Review.
+ *
+ * @param {object} params – wie runCleverSellerTurn, plus:
+ *   calendarProvider?, windowRef?, skipCalendarCheck?
+ */
+export async function runCleverSellerTurnWithCalendar(params = {}) {
+  const {
+    calendarProvider: injectedProvider,
+    windowRef = null,
+    skipCalendarCheck = false,
+    stubOptions = undefined,
+    ...rest
+  } = params;
+
+  let calendarAvailability = rest.calendarAvailability
+    ?? rest.appContext?.calendarAvailability
+    ?? null;
+
+  if (skipCalendarCheck || calendarAvailability) {
+    return runCleverSellerTurn({ ...rest, calendarAvailability });
+  }
+
+  const provider = injectedProvider !== undefined
+    ? injectedProvider
+    : resolveCleverCalendarProvider({
+      env: rest.env,
+      windowRef,
+      stubOptions,
+    });
+
+  if (!provider) {
+    return runCleverSellerTurn(rest);
+  }
+
+  const draftTurn = runCleverSellerTurn(rest);
+  const appt = draftTurn.preparedAppointment
+    || (draftTurn.preparedActions || []).find((a) => (
+      a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    ))?.payload?.preparedAppointment
+    || null;
+
+  if (!appt?.startsAt) {
+    return draftTurn;
+  }
+
+  calendarAvailability = await checkCalendarAvailability({
+    provider,
+    startsAt: appt.startsAt,
+    durationMinutes: appt.durationMinutes
+      || getAppointmentDurationMinutes(appt.appointmentType),
+    lead: draftTurn.resolvedCustomer || rest.lead || null,
+    title: appt.appointmentTypeLabel || null,
+    alternativeSlots: appt.alternativeSlots || [],
+  });
+
+  return runCleverSellerTurn({
+    ...rest,
+    calendarAvailability,
+  });
 }
 
 export { interpretSellerInput } from './interpretSellerInput.js';

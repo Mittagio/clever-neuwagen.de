@@ -1,6 +1,7 @@
 /**
  * Clever Termin-Assistent – Probefahrt / Rückruf / Übergabe / Beratung.
- * Kein Kalender-Klon: CRM-Appointment + followUpAt + Nachricht.
+ * Kein Kalender-Klon / kein Auto-Booking: CRM-Appointment + followUpAt + Nachricht.
+ * Availability optional über resolveCleverCalendarProvider (VITE_CLEVER_CALENDAR).
  */
 import { buildCleverGreeting } from '../cleverAntworten.js';
 import {

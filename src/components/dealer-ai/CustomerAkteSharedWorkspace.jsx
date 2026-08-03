@@ -12,7 +12,13 @@ import {
   MESSAGE_KIND,
   sendCleverChannelMessage,
 } from '../../services/crm/customerMessageService.js';
-import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
+import {
+  runCleverSellerTurn,
+  runCleverSellerTurnWithCalendar,
+} from '../../services/cleverSeller/runCleverSellerTurn.js';
+import { resolveCleverCalendarProvider } from '../../services/cleverSeller/resolveCleverCalendarProvider.js';
+import { maybeCreateCalendarDraftEvent } from '../../services/cleverSeller/checkCalendarAvailability.js';
+import { refreshSellerTurnCalendarCheck } from '../../services/cleverSeller/refreshSellerTurnCalendarCheck.js';
 import {
   isCleverMagicMessageClientEnabled,
   requestCleverMagicMessage,
@@ -353,7 +359,7 @@ export default function CustomerAkteSharedWorkspace({
         }
       })();
 
-      const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
+      const turn = await runCleverSellerTurnWithCalendar(buildAkteSellerTurnParams({
         sellerInput: text,
         currentOfferContext: offerCtx,
         pendingAction: universalTurn?.pendingAction || null,
@@ -756,7 +762,7 @@ export default function CustomerAkteSharedWorkspace({
     try {
       // Zuerst Orchestrator: Aktion/Review vor reinem Textgenerator
       if (!isCustomerMessageEditMode(composerModeRef.current)) {
-        const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
+        const turn = await runCleverSellerTurnWithCalendar(buildAkteSellerTurnParams({
           sellerInput: source,
           pendingAction: universalTurn?.pendingAction || null,
         }));
@@ -1289,8 +1295,27 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (action.action === 'check_calendar') {
-      setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
-      setTimeout(() => setFeedback(''), 3200);
+      void (async () => {
+        const refreshed = await refreshSellerTurnCalendarCheck({
+          turn: universalTurn,
+          turnParams: buildAkteSellerTurnParams({
+            pendingAction: universalTurn?.pendingAction || null,
+          }),
+        });
+        if (refreshed.providerMissing) {
+          setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
+          setTimeout(() => setFeedback(''), 3200);
+          return;
+        }
+        if (!refreshed.ok || !refreshed.turn) {
+          setFeedback(refreshed.label || 'Kalenderprüfung nicht möglich.');
+          setTimeout(() => setFeedback(''), 3200);
+          return;
+        }
+        setUniversalTurn(refreshed.turn);
+        setFeedback(`Kalender: ${refreshed.label}`);
+        setTimeout(() => setFeedback(''), 3200);
+      })();
       return;
     }
     if (action.action === 'view_contract_source') {
@@ -1392,6 +1417,18 @@ export default function CustomerAkteSharedWorkspace({
       if (!applied.ok) {
         setFeedback('Konnte nicht übernommen werden.');
         return;
+      }
+      const appointmentForDraft = universalTurn.preparedAppointment
+        || (universalTurn.preparedActions || []).find((a) => (
+          a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+        ))?.payload?.preparedAppointment
+        || null;
+      if (appointmentForDraft?.startsAt) {
+        void maybeCreateCalendarDraftEvent({
+          provider: resolveCleverCalendarProvider(),
+          appointment: appointmentForDraft,
+          lead: applied.lead || lead,
+        });
       }
       let nextLead = applied.lead;
       // Immer persistieren – sonst landet die Feed-Karte nur im flüchtigen nextLead

@@ -10,7 +10,10 @@ import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import SellerUniversalReviewCard from '../dealer-ai/SellerUniversalReviewCard.jsx';
 import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
-import { runCleverSellerTurn } from '../../services/cleverSeller/runCleverSellerTurn.js';
+import {
+  runCleverSellerTurn,
+  runCleverSellerTurnWithCalendar,
+} from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
   buildUniversalReviewModel,
   shouldShowUniversalReview,
@@ -20,6 +23,9 @@ import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/executeDualOfferAppointmentAccept.js';
 import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
+import { resolveCleverCalendarProvider } from '../../services/cleverSeller/resolveCleverCalendarProvider.js';
+import { maybeCreateCalendarDraftEvent } from '../../services/cleverSeller/checkCalendarAvailability.js';
+import { refreshSellerTurnCalendarCheck } from '../../services/cleverSeller/refreshSellerTurnCalendarCheck.js';
 import { enrichSellerTurnWithMagicPropose } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { isPrepareSuccessionOfferCue } from '../../services/cleverSeller/prepareSuccessionOfferFromLead.js';
@@ -336,8 +342,40 @@ export default function CleverGlobalComposer() {
       return;
     }
     if (action.action === 'check_calendar') {
-      setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
-      setTimeout(() => setFeedback(''), 3200);
+      void (async () => {
+        const refreshed = await refreshSellerTurnCalendarCheck({
+          turn: lastTurn,
+          turnParams: {
+            lead: ctx?.currentCustomer || {},
+            leadsSnapshot: ctx?.leadsSnapshot || [],
+            scopeHint: 'dashboard',
+            workingContextItems: ctx?.attachedWorkingObjects || [],
+            pendingAction: lastTurn?.pendingAction || null,
+            appContext: {
+              routeContext: ctx?.routeContext,
+              attachedWorkingObjects: ctx?.attachedWorkingObjects,
+              dashboardContext: ctx?.dashboardContext,
+            },
+          },
+        });
+        if (refreshed.providerMissing) {
+          setFeedback('Kalenderverfügbarkeit noch nicht geprüft.');
+          setTimeout(() => setFeedback(''), 3200);
+          return;
+        }
+        if (!refreshed.ok || !refreshed.turn) {
+          setFeedback(refreshed.label || 'Kalenderprüfung nicht möglich.');
+          setTimeout(() => setFeedback(''), 3200);
+          return;
+        }
+        setLastTurn(refreshed.turn);
+        setReviewModel(
+          refreshed.turn.reviewModel
+          || buildUniversalReviewModel(refreshed.turn),
+        );
+        setFeedback(`Kalender: ${refreshed.label}`);
+        setTimeout(() => setFeedback(''), 3200);
+      })();
       return;
     }
     if (action.action === 'accept_offer_and_appointment') {
@@ -363,6 +401,18 @@ export default function CleverGlobalComposer() {
       });
       setFeedback('Angebot & Terminvorschlag übernommen – noch nicht gesendet.');
       setTimeout(() => setFeedback(''), 3200);
+      const snapshot = ctx?.leadsSnapshot || [];
+      const draftLead = snapshot.find((l) => l.id === leadId) || ctx?.currentCustomer || null;
+      const calendarProvider = resolveCleverCalendarProvider();
+      void maybeCreateCalendarDraftEvent({
+        provider: calendarProvider,
+        appointment: lastTurn?.preparedAppointment
+          || (lastTurn?.preparedActions || []).find((a) => (
+            a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+          ))?.payload?.preparedAppointment
+          || null,
+        lead: draftLead,
+      });
       setReviewModel(null);
       setLastTurn(null);
       return;
@@ -548,7 +598,7 @@ export default function CleverGlobalComposer() {
     }
 
     try {
-      let turn = runCleverSellerTurn({
+      let turn = await runCleverSellerTurnWithCalendar({
         lead: ctx.currentCustomer || {},
         sellerInput: text,
         leadsSnapshot: ctx.leadsSnapshot || [],

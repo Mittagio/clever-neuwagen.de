@@ -6,6 +6,7 @@ import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 import { buildHomepageInquiryReviewModel } from '../crm/homepageCommercialInquiry.js';
 import { buildInboundLeadReviewModel } from './inboundLeadIntake.js';
 import { buildCustomerReplyReviewModel } from './customerReplyIntake.js';
+import { calendarAvailabilityLabel } from './checkCalendarAvailability.js';
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -975,9 +976,7 @@ export function buildUniversalReviewModel(turn = {}) {
           preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
           preparedAppt?.vehicleContext?.label || offerSec?.headline || null,
         ].filter(Boolean).join('\n'),
-        `KALENDER\n${avail === 'not_checked' || avail === 'seller_claimed'
-          ? 'Noch nicht geprüft'
-          : (avail === 'available' ? 'Verfügbar' : String(avail))}`,
+        `KALENDER\n${calendarAvailabilityLabel(avail)}`,
         msgBody ? `NACHRICHT\n„${String(msgBody).trim()}“` : null,
       ].filter(Boolean).join('\n\n'),
       offerSection: offerSec,
@@ -1110,9 +1109,7 @@ export function buildUniversalReviewModel(turn = {}) {
           preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
           preparedAppt?.vehicleContext?.label || null,
         ].filter(Boolean).join('\n'),
-        `KALENDER\n${avail === 'not_checked' || avail === 'seller_claimed'
-          ? 'Noch nicht geprüft'
-          : (avail === 'available' ? 'Verfügbar' : String(avail))}`,
+        `KALENDER\n${calendarAvailabilityLabel(avail)}`,
         msgBody ? `NACHRICHT\n„${String(msgBody).trim()}“` : null,
       ].filter(Boolean).join('\n\n'),
       preparedAppointment: preparedAppt,

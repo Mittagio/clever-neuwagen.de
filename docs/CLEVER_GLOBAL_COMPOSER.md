@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR · Inbound leicht · Zwei-Wege-Mail leicht  
+**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR · Kalender Availability-Hook · Inbound leicht · Zwei-Wege-Mail leicht  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -11,7 +11,9 @@
 
 > **Ein vorgeschlagener Termin ist noch kein bestätigter Termin.**
 
-> **Keine erfundene Kalenderverfügbarkeit.**
+> **Kein Auto-Booking ohne Verkäufer-Confirm.** Propose → Confirm → Action.
+
+> **Kalender:** ohne Adapter `availabilityStatus: not_checked`; mit Adapter nur Status (`available` / `busy` / `unknown` / `error`) – nie stille Buchung.
 
 > **Seller Facts ≠ Customer Truth**
 
@@ -50,6 +52,7 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 | Produkt-OCR-Provider (`VITE_CLEVER_CONTRACT_OCR`) | 17 |
 | Nachfolgeangebot (`prepare_followup_offer`) – Heute/Golden → Composer → Confirm | 18 (betrieblich) |
 | Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
+| Kalender Availability / Draft (`VITE_CLEVER_CALENDAR`) | Calendar |
 | `inboundLead` / `inbound_lead_review` (Paste/Forward) | Inbound leicht |
 | `customerReply` / `customer_reply_review` (Paste/Forward) | Zwei-Wege-Mail leicht |
 
@@ -65,13 +68,25 @@ Ablauf:
 2. `resolve_relative_datetime` → nächster Montag 15:00 (injizierbare Clock)
 3. Terminart: `showroom_visit` (keine Probefahrt aus Fahrzeugkontext)
 4. Working Context (z. B. Picanto GT-Line) als Anlass, nicht als Customer Truth
-5. `availabilityStatus: not_checked` solange keine echte Kalenderprüfung
-6. Prepared Appointment + Vorschlagsnachricht
-7. Review `appointment_and_message_review`
+5. `availabilityStatus: not_checked` ohne Adapter (`VITE_CLEVER_CALENDAR` aus); mit Adapter / `window.__cleverCalendarProvider`: `available` \| `busy` \| `unknown` \| `error`
+6. Prepared Appointment + Vorschlagsnachricht (`bookable: false`)
+7. Review `appointment_and_message_review` (CTA „Kalender prüfen“ nutzt denselben Provider)
 8. Follow-ups: „Lieber 16 Uhr.“ / „Dann Dienstag.“ über `pendingAction`
 9. Handoff `customer_message_edit` – kein Auto-Send, kein Auto-Booking
+10. Nach Confirm: bestehender CRM-Persist-Pfad; optional `createDraftEvent` (Entwurf, nicht gebucht)
 
-Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ ≠ Kalendercheck; direkt eintragen ohne Zusage.
+Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ ≠ Kalendercheck; direkt eintragen ohne Zusage; Flag aus → `not_checked`.
+
+### Kalender-Adapter (schlank)
+
+| Baustein | Rolle |
+|----------|--------|
+| `resolveCleverCalendarProvider` | Flag + `window.__cleverCalendarProvider` + Local-Stub |
+| `runCleverSellerTurnWithCalendar` | Orchestrator: Propose + optional Availability |
+| `checkCalendarAvailability` / `maybeCreateCalendarDraftEvent` | Normalize Status · Draft-Hook |
+| `refreshSellerTurnCalendarCheck` | Review-CTA „Kalender prüfen“ |
+
+Kein Google-/Microsoft-OAuth in der Produktpflicht – Hook oder Local-Stub reicht. Test: `globalComposer.calendar.test.js`.
 
 ## Inbound leicht (Paste/Forward)
 
@@ -126,9 +141,13 @@ Test: `documentsChecklist.golden.test.js`
 
 `VITE_CLEVER_GLOBAL_COMPOSER=false` deaktiviert den Global Composer.
 
+`VITE_CLEVER_CALENDAR=true` aktiviert Availability-Check / Local-Stub (sonst `not_checked`).  
+Cloud-Kalender nur über `window.__cleverCalendarProvider` – kein OAuth-Key in `.env`.
+
 ## Tests
 
 - `globalComposer.slice1.test.js` … `globalComposer.slice19.test.js`
+- `globalComposer.calendar.test.js` – Flag aus → `not_checked`; Mock-Provider → `available`/`busy`; Draft ≠ Booking
 - `composerSurfaces.akte.test.js` – Akte-Surface (fester Lead): Nachfassen, PDF/Contract, Termin
 - `inboundLead.golden.test.js` – Paste Brandes (Match) / neuer Kunde (Propose-Create)
 - `customerReply.golden.test.js` – Kundenantwort Brandes (Favorit/Rot/AHK/Termin) → Review → Confirm
