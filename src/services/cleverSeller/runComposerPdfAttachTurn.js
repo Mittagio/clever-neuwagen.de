@@ -1,6 +1,7 @@
 /**
  * Slice 13/16: Global-/Akte-Composer – PDF-Attach → optional OCR → Turn.
  * Extraktion/OCR bleiben async außerhalb des sync Orchestrators.
+ * Surfaces: scopeHint `dashboard` | `customer_akte` – gleicher Service.
  */
 import { runCleverSellerTurn } from './runCleverSellerTurn.js';
 import { prepareComposerPdfTurnInput } from './prepareComposerPdfTurnInput.js';

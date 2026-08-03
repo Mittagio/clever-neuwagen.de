@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 19 (Tesseract/Cloud OCR produktiv)  
+**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -19,14 +19,15 @@
 
 ## Surfaces
 
-| Surface | Verhalten |
-|---------|-----------|
-| Dashboard (`/backend`) | `CleverGlobalComposer` aktiv |
-| Kundenakte | bestehender Composer; Global Composer ausgeblendet |
+| Surface | UI | Orchestrator / Kontext |
+|---------|-----|------------------------|
+| Dashboard (`/backend`) | `CleverGlobalComposer` aktiv | `runCleverSellerTurn` – Kunde per Suche / Snapshot |
+| Kundenakte (`/backend/kundenakte/:id`) | `CustomerAkteSharedWorkspace` (Clever-Tab: `hideFeed`) | **derselbe** Orchestrator + Universal Review + Magic-Enricher – fester `lead` / Working Context |
+| — | Global Composer in Akte **nicht** gerendert (`shouldShowGlobalComposer` nur Dashboard) | ein Gehirn, zwei Surfaces |
 
 ### Orchestrierung
 
-Nur `runCleverSellerTurn()`:
+Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUniversalReviewModel`, `applyAcceptedSellerTurn`; PDF/OCR über `runComposerPdfAttachTurnWithOcr`):
 
 | Feld | Slice |
 |------|-------|
@@ -77,6 +78,7 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 ## Tests
 
 - `globalComposer.slice1.test.js` … `globalComposer.slice19.test.js`
+- `composerSurfaces.akte.test.js` – Akte-Surface (fester Lead): Nachfassen, PDF/Contract, Termin
 
 ## Nächste Slices
 

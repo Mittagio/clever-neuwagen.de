@@ -1,6 +1,8 @@
 /**
- * CleverGlobalComposer – App-Shell Composer (Slice 1–2 + PDF Slice 13).
+ * CleverGlobalComposer – Dashboard-Surface des Clever-Composers.
  * Orchestrierung nur über runCleverSellerTurn – keine zweite Pipeline.
+ * Kundenakte: gleicher Orchestrator in CustomerAkteSharedWorkspace (fester Lead);
+ * dieser Global Composer wird dort nicht gerendert.
  */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

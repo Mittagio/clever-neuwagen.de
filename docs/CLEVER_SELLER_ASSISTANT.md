@@ -97,7 +97,8 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 16):** `src/services/cleverSeller/globalComposer.slice16.test.js` – Scan-OCR-Pipeline + `contract_pdf_ocr`.  
 **Global Composer (Slice 17):** `src/services/cleverSeller/globalComposer.slice17.test.js` – Produkt-OCR-Provider + Feature-Flag.  
 **Global Composer (Slice 18):** `src/services/cleverSeller/globalComposer.slice18.test.js` – Nachfolgeangebot aus Favorit + Vertrag.  
-**Global Composer (Slice 19):** `src/services/cleverSeller/globalComposer.slice19.test.js` – Tesseract/Cloud OCR produktiv (Flag + Fallback).
+**Global Composer (Slice 19):** `src/services/cleverSeller/globalComposer.slice19.test.js` – Tesseract/Cloud OCR produktiv (Flag + Fallback).  
+**Akte-Surface (vereinheitlicht):** `src/services/cleverSeller/composerSurfaces.akte.test.js` – fester Lead Brandes: Nachfassen + PDF + Termin (gleicher Orchestrator).
 
 Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).  
 **Contract Memory:** [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md).
@@ -129,7 +130,8 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 |----------|--------|
 | Notizzettel | `CustomerAkteCleverNotepad.jsx` |
 | Konditionen-Sheet | `CustomerAkteWishConditionsSheet.jsx` |
-| Shared Chat / Composer | `CustomerAkteSharedWorkspace.jsx` |
+| Shared Chat / Composer (Akte-Surface) | `CustomerAkteSharedWorkspace.jsx` |
+| Global Composer (Dashboard-Surface) | `CleverGlobalComposer.jsx` + `CleverComposerContext.jsx` |
 | Universal Review | `SellerUniversalReviewCard.jsx` |
 | Inline Card | `SellerInlineAssistCard.jsx` |
 | Intent | `sellerActionIntent.js` |
@@ -139,6 +141,8 @@ Kundenkontext (customer_need) und Verkäufer-Notizen (seller_input) sind **klar 
 | Inline Assist | `sellerInlineComposerAssist.js` |
 | Akte-Suche | `composerAkteSearch.js` |
 | Einbindung | `DealerAiLeadFollowUp.jsx` |
+
+**Surfaces:** Akte und Dashboard teilen denselben Orchestrator (`runCleverSellerTurn` + Universal Review + Magic-Enricher + PDF/OCR-Service). Die Akte übergibt den festen Lead; der Global Composer löst den Kunden per Suche. Global Composer wird in der Akte nicht zusätzlich gerendert. Details: [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
 ## Teil A – Notizzettel bearbeiten
 

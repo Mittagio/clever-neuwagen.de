@@ -1,6 +1,8 @@
 /**
  * CleverComposerContext – App-weiter Context Stack für den Global Composer.
- * Slice 1: Dashboard-Mount; Kundenakte behält bestehenden Composer.
+ * Surfaces: Dashboard rendert Global Composer; Kundenakte nutzt denselben
+ * Orchestrator (`runCleverSellerTurn`) im Akte-Composer mit festem Lead –
+ * Global Composer dort ausgeblendet (kein Doppel-Render).
  */
 import {
   createContext,

@@ -43,11 +43,7 @@ import {
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
-import { prepareComposerPdfTurnInput } from '../../services/cleverSeller/prepareComposerPdfTurnInput.js';
-import {
-  mergeExtractedWithOcrPass,
-  runComposerScanOcrPipeline,
-} from '../../services/cleverSeller/runComposerScanOcrPipeline.js';
+import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import {
@@ -89,6 +85,9 @@ import {
   getVehicleTrackMeta,
   VEHICLE_TRACK_STATUS_UI,
 } from '../../services/crm/vehicleTrack.js';
+
+/** Surface-Hint für denselben Orchestrator wie Global Composer (fester Lead). */
+const AKTE_COMPOSER_SCOPE = 'customer_akte';
 
 function countLeadOffers(lead = {}) {
   try {
@@ -292,6 +291,18 @@ export default function CustomerAkteSharedWorkspace({
     setLastComposerAction(next);
   }
 
+  /** Gemeinsamer Orchestrator-Input: fester Lead, Surface Akte (kein zweiter Brain). */
+  function buildAkteSellerTurnParams(extra = {}) {
+    return {
+      lead,
+      customerName,
+      workingContextItems,
+      currentOfferContext: toCurrentOfferContext(findOfferWorkingContext(workingContextItems)),
+      scopeHint: AKTE_COMPOSER_SCOPE,
+      ...extra,
+    };
+  }
+
   /** Clever-Arbeit: Input → Magic-Nachricht oben (Cursor-ähnlich). */
   async function runCleverProposeFromInput(rawText) {
     const text = String(rawText ?? '').trim();
@@ -342,14 +353,11 @@ export default function CustomerAkteSharedWorkspace({
         }
       })();
 
-      const turn = runCleverSellerTurn({
-        lead,
+      const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
         sellerInput: text,
         currentOfferContext: offerCtx,
-        workingContextItems,
-        customerName,
         pendingAction: universalTurn?.pendingAction || null,
-      });
+      }));
 
       // Magic: LLM / grounded Writer ersetzt Template-Mails
       const enriched = await enrichSellerTurnWithMagicPropose({
@@ -668,13 +676,9 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (isComposerAkteSearchQuery(text)) {
-      const turn = runCleverSellerTurn({
-        lead,
+      const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
         sellerInput: text,
-        currentOfferContext: resolveCurrentOfferContext(),
-        workingContextItems,
-        customerName,
-      });
+      }));
       const historyAction = turn?.preparedActions?.find(
         (a) => a.type === 'search_customer_history' && a.legacy,
       );
@@ -752,14 +756,10 @@ export default function CustomerAkteSharedWorkspace({
     try {
       // Zuerst Orchestrator: Aktion/Review vor reinem Textgenerator
       if (!isCustomerMessageEditMode(composerModeRef.current)) {
-        const turn = runCleverSellerTurn({
-          lead,
+        const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
           sellerInput: source,
-          currentOfferContext: resolveCurrentOfferContext(),
-          workingContextItems,
-          customerName,
           pendingAction: universalTurn?.pendingAction || null,
-        });
+        }));
         if (shouldShowUniversalReview(turn)) {
           setUniversalTurn(turn);
           clearAssist();
@@ -1473,65 +1473,48 @@ export default function CustomerAkteSharedWorkspace({
     try {
       const extracted = await extractMagicOfferPdf(file);
       const ocrProvider = await resolveCleverOcrProvider();
-      const ocrPass = await runComposerScanOcrPipeline({
+      // Gleicher PDF/OCR-Service wie Global Composer – Surface mit festem Lead.
+      const { prepared, turn, skipped } = await runComposerPdfAttachTurnWithOcr({
+        ...buildAkteSellerTurnParams(),
         extracted,
         file,
-        fileName: file?.name || extracted.fileName,
         ocrProvider,
       });
-      const prepared = prepareComposerPdfTurnInput({
-        extracted: mergeExtractedWithOcrPass(extracted, ocrPass),
-        file,
-      });
 
-      if (prepared.needsManualDescribe || !prepared.ok) {
-        setDraft((prev) => (prev
-          ? `${prev}\n${prepared.draftSeed}`
-          : prepared.draftSeed));
-        if (prepared.kind === 'contract_pdf') {
-          const turn = runCleverSellerTurn({
-            lead,
-            sellerInput: prepared.draftSeed || `Lies den Vertrag ${prepared.attachment.fileName} ein.`,
-            currentOfferContext: resolveCurrentOfferContext(),
-            workingContextItems,
-            attachments: [prepared.attachment],
-            customerName,
-          });
-          if (shouldShowUniversalReview(turn)) {
-            setUniversalTurn(turn);
-            clearAssist();
-          }
-        }
+      if (skipped || (prepared.needsManualDescribe && prepared.kind !== 'contract_pdf')) {
+        setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
         setFeedback(prepared.feedbackManual);
         setTimeout(() => setFeedback(''), 3200);
         return;
       }
 
-      setDraft(prepared.draftSeed);
-      onUpsertWorkingContext?.(buildDocumentWorkingContextItem({
-        id: `pdf:${prepared.attachment.fileName || file.name || Date.now()}`,
-        label: prepared.workingContextLabel || prepared.attachment.fileName || 'PDF',
-        fileName: prepared.attachment.fileName || file.name || null,
-        status: 'attached',
-        kind: prepared.kind,
-      }));
-      const turn = runCleverSellerTurn({
-        lead,
-        sellerInput: prepared.interpretSeed,
-        currentOfferContext: resolveCurrentOfferContext(),
-        workingContextItems,
-        attachments: [prepared.attachment],
-        customerName,
-      });
-      if (shouldShowUniversalReview(turn)) {
+      if (prepared.needsManualDescribe && prepared.kind === 'contract_pdf') {
+        setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
+      } else if (prepared.draftSeed) {
+        setDraft(prepared.draftSeed);
+      }
+
+      if (prepared.ok && !prepared.needsManualDescribe) {
+        onUpsertWorkingContext?.(buildDocumentWorkingContextItem({
+          id: `pdf:${prepared.attachment.fileName || file.name || Date.now()}`,
+          label: prepared.workingContextLabel || prepared.attachment.fileName || 'PDF',
+          fileName: prepared.attachment.fileName || file.name || null,
+          status: 'attached',
+          kind: prepared.kind,
+        }));
+      }
+
+      if (turn && shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
         clearAssist();
-        setFeedback(prepared.feedbackOk);
-      } else {
+        setFeedback(prepared.feedbackOk || 'PDF gelesen');
+      } else if (turn) {
         setUniversalTurn(null);
         setFeedback(prepared.kind === 'contract_pdf'
-          ? 'Vertrag gelesen – Kontext angehängt'
+          ? (prepared.feedbackManual || 'Vertrag gelesen – Kontext angehängt')
           : 'PDF gelesen – Kontext angehängt');
+      } else {
+        setFeedback(prepared.feedbackManual);
       }
       setTimeout(() => setFeedback(''), 3200);
     } catch (err) {
