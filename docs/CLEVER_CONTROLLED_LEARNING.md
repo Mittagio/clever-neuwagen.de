@@ -139,7 +139,8 @@ Enthält Controlled-Learning-Tests ohne Live-OpenAI-API.
 - Mail-Outbox / fehlgeschlagene Sendungen
 - OCR-/Dokument-Fehler und letzte Clever-Warnungen
 - OpenAI/Magic-Ausfall → Fallback erkennbar
-- Preislisten-/Import-Status kurz
+- **Preislisten / Datenpflege (schlank):** letzter Stand, Quelle/Version, offene & fehlgeschlagene Imports, Overrides, Konflikte/Prüfung, Freigabe nötig vs. ok – Verkäufer pflegt Stammdaten nicht
+- Optional: Grounding-/Preisliste-Lücke → Clever-Warnung an Leitstand (ohne Verkäufer-Flow zu brechen)
 
 **Datenprüfung → Clever Qualität**
 

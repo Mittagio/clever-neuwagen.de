@@ -70,6 +70,19 @@ export function buildAdminTaskQueue({
     });
   }
 
+  const failedImports = (importMetrics.rejected ?? 0) + (importMetrics.analyzeFailed ?? 0);
+  if (failedImports > 0) {
+    tasks.push({
+      id: 'import-failed',
+      priority: 'today',
+      title: 'Preislistenimport fehlgeschlagen',
+      subtitle: `${failedImports} abgelehnt oder Analysefehler`,
+      category: 'Import',
+      href: '/admin/system#import',
+      actionLabel: 'Datenpflege prüfen',
+    });
+  }
+
   for (const mail of mailOutbox.filter((m) => m.status === 'failed')) {
     const leadId = mail.leadId ?? mail.meta?.leadId ?? null;
     const leadHint = leadId ? `Lead ${leadId} · ` : '';

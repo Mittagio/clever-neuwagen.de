@@ -10,6 +10,11 @@ import {
   collectCleverWarnings,
   readClientFeatureFlags,
 } from './adminLeitstandCoreStatus.js';
+import {
+  buildPriceListCareStatus,
+  computeImportMetricsFromRecords,
+  readPriceListCatalogStand,
+} from './buildPriceListCareStatus.js';
 
 // KPIs
 const kpis = computeTodayKpis({
@@ -123,5 +128,93 @@ assert.ok(health.sections.length >= 5);
 assert.ok(health.sections.some((s) => s.id === 'flags'));
 assert.ok(health.core?.signals?.length >= 4);
 console.log('System-Health – OK');
+
+// Preislisten-/Datenpflege-Status
+const importComputed = computeImportMetricsFromRecords([
+  {
+    id: 'i1',
+    brand: 'Kia',
+    model: 'EV4',
+    version: '2026.07',
+    status: 'approved',
+    approvedAt: '2026-07-15T15:20:00.000Z',
+    uploadedAt: '2026-07-15T14:00:00.000Z',
+    sourceFile: { name: 'Kia_EV4.pdf' },
+  },
+  {
+    id: 'i2',
+    brand: 'Kia',
+    model: 'Sportage',
+    version: '2027.01',
+    status: 'review',
+    uploadedAt: '2026-08-01T10:00:00.000Z',
+    sourceFile: { name: 'Sportage.pdf' },
+  },
+  {
+    id: 'i3',
+    status: 'rejected',
+    uploadedAt: '2026-08-02T10:00:00.000Z',
+  },
+]);
+assert.equal(importComputed.pending, 1);
+assert.equal(importComputed.rejected, 1);
+assert.match(importComputed.lastLabel ?? '', /EV4/);
+
+const careOk = buildPriceListCareStatus({
+  importMetrics: {
+    pending: 0,
+    rejected: 0,
+    analyzeFailed: 0,
+    lastUpdate: '2026-07-15T15:20:00.000Z',
+    lastLabel: 'Kia EV4 2026.07',
+    lastSource: 'Kia_EV4.pdf',
+  },
+  overrideCount: 0,
+  pendingReleases: 0,
+  brandReview: { review: 0, outdated: 0, total: 0 },
+  catalogStand: readPriceListCatalogStand(),
+});
+assert.equal(careOk.approvalLabel, 'ok');
+assert.equal(careOk.overall, 'ok');
+assert.ok(careOk.items.some((i) => i.id === 'approval' && i.detail === 'ok'));
+assert.ok(careOk.items.some((i) => i.id === 'catalog-source'));
+
+const careWarn = buildPriceListCareStatus({
+  importMetrics: {
+    pending: 2,
+    rejected: 1,
+    analyzeFailed: 0,
+    lastUpdate: '2026-07-15T15:20:00.000Z',
+    lastLabel: 'Kia EV4 2026.07',
+  },
+  overrideCount: 3,
+  pendingReleases: 1,
+  brandReview: { review: 2, outdated: 0, total: 2 },
+  catalogStand: {
+    sourceLabel: 'Kia Preislisten',
+    importedAt: '2026-05-29',
+    validUntil: '2026-06-30',
+    pdfModelCount: 19,
+  },
+});
+assert.equal(careWarn.approvalLabel, 'Freigabe nötig');
+assert.ok(['warn', 'error'].includes(careWarn.overall));
+assert.match(careWarn.signal.detail, /Freigabe nötig|Import offen/i);
+assert.ok(careWarn.items.some((i) => i.id === 'overrides' && i.status === 'warn'));
+assert.ok(careWarn.items.some((i) => i.id === 'failed-imports' && i.status === 'error'));
+
+const healthWithCare = buildSystemHealthModel({
+  mailOutbox: [],
+  importMetrics: careWarn.summary,
+  magicHealth: null,
+  clientFlags: flagsOn,
+  priceListCare: careWarn,
+});
+const importSection = healthWithCare.sections.find((s) => s.id === 'import');
+assert.ok(importSection);
+assert.ok(importSection.items.length >= 6);
+assert.ok(importSection.title.includes('Preislisten'));
+assert.equal(healthWithCare.core.signals.find((s) => s.id === 'prices')?.status, careWarn.signal.status);
+console.log('Preislisten-Datenpflege – OK');
 
 console.log('\nAdmin-Leitstand-Tests bestanden.');

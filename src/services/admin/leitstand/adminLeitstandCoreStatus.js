@@ -7,6 +7,7 @@ import {
   resolveCleverOcrEnginePreference,
   resolveCleverOcrLang,
 } from '../../cleverSeller/resolveCleverOcrProvider.js';
+import { buildPriceListCareStatus } from './buildPriceListCareStatus.js';
 
 const API_HEALTH = '/api/v1/clever/shared-intelligence/health';
 
@@ -114,7 +115,7 @@ export function collectCleverWarnings(sources = {}, limit = 8) {
     .filter((e) => e.severity === 'urgent' || e.severity === 'warn')
     .filter((e) => {
       const blob = `${e.action ?? ''} ${e.detail ?? ''} ${e.entityType ?? ''}`.toLowerCase();
-      return /ocr|scan|dokument|vertrag|magic|openai|fallback|mail|wltp|clever/i.test(blob);
+      return /ocr|scan|dokument|vertrag|magic|openai|fallback|mail|wltp|clever|preislist|grounding|stammdaten/i.test(blob);
     })
     .map((e) => ({
       id: e.id,
@@ -158,6 +159,7 @@ export function buildLeitstandCoreStatus({
   activityFeed = [],
   cleverWarnings = [],
   systemIssues = [],
+  priceListCare = null,
 } = {}) {
   const flags = clientFlags ?? readClientFeatureFlags();
   const server = magicHealth?.flags ?? null;
@@ -214,13 +216,9 @@ export function buildLeitstandCoreStatus({
       ? 'warn'
       : 'ok';
 
-  const pendingImports = importMetrics.pending ?? 0;
-  const priceStatus = pendingImports > 0 ? 'warn' : importMetrics.lastUpdate ? 'ok' : 'unknown';
-  const priceDetail = pendingImports > 0
-    ? `${pendingImports} Import(e) offen`
-    : importMetrics.lastUpdate
-      ? `letzter Stand ${new Date(importMetrics.lastUpdate).toLocaleString('de-DE')}`
-      : 'kein Import-Stand';
+  const care = priceListCare ?? buildPriceListCareStatus({ importMetrics });
+  const priceStatus = care.signal.status;
+  const priceDetail = care.signal.detail;
 
   const signals = [
     {
@@ -256,7 +254,7 @@ export function buildLeitstandCoreStatus({
       label: 'Preislisten',
       status: priceStatus,
       detail: priceDetail,
-      href: '/admin/daten',
+      href: '/admin/system#import',
     },
   ];
 
@@ -314,5 +312,6 @@ export function buildLeitstandCoreStatus({
     warnings,
     flags,
     magicHealth,
+    priceListCare: care,
   };
 }

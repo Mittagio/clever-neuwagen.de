@@ -5,6 +5,7 @@ import {
   probeMagicIntelligenceHealth,
   readClientFeatureFlags,
 } from './adminLeitstandCoreStatus.js';
+import { buildPriceListCareStatus } from './buildPriceListCareStatus.js';
 
 /**
  * System-Health für Admin Leitstand „System“.
@@ -36,6 +37,7 @@ export function buildSystemHealthModel({
   activityFeed = [],
   cleverWarnings = [],
   clientFlags = null,
+  priceListCare = null,
 } = {}) {
   const failedMails = mailOutbox.filter((m) => m.status === 'failed').length;
   const queuedMails = mailOutbox.filter((m) => m.status === 'queued').length;
@@ -43,8 +45,8 @@ export function buildSystemHealthModel({
   const criticalIssues = systemIssues.filter((i) => i.type === 'critical').length;
 
   const mailStatus = failedMails > 0 ? 'error' : queuedMails > 2 ? 'warn' : 'ok';
-  const importStatus = importMetrics.pending > 0 ? 'warn' : 'ok';
   const apiStatus = apiHealth?.status === 'ok' ? 'ok' : apiHealth ? 'error' : 'unknown';
+  const care = priceListCare ?? buildPriceListCareStatus({ importMetrics });
 
   const core = buildLeitstandCoreStatus({
     clientFlags,
@@ -54,6 +56,7 @@ export function buildSystemHealthModel({
     activityFeed,
     cleverWarnings,
     systemIssues,
+    priceListCare: care,
   });
 
   const magicSignal = core.signals.find((s) => s.id === 'magic');
@@ -61,6 +64,7 @@ export function buildSystemHealthModel({
 
   return {
     core,
+    priceListCare: care,
     sections: [
       {
         id: 'flags',
@@ -128,23 +132,8 @@ export function buildSystemHealthModel({
       },
       {
         id: 'import',
-        title: 'Preislisten / Import',
-        items: [
-          {
-            id: 'last-import',
-            label: 'Letzter Import',
-            status: importStatus,
-            detail: importMetrics.lastUpdate
-              ? new Date(importMetrics.lastUpdate).toLocaleString('de-DE')
-              : '–',
-          },
-          {
-            id: 'import-errors',
-            label: 'Offen',
-            status: importMetrics.pending ? 'warn' : 'ok',
-            detail: importMetrics.pending ? `${importMetrics.pending} zur Freigabe` : 'Keine',
-          },
-        ],
+        title: 'Preislisten / Datenpflege',
+        items: care.items,
       },
       {
         id: 'website',

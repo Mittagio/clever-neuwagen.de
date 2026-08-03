@@ -674,11 +674,13 @@ Zentrale sieht warum Magic/OCR/Mail hängt – Verkäufer-Workflow unverändert.
 | Surface | Inhalt |
 |---------|--------|
 | `/admin` | Kern-Signalstreifen (Magic, OCR, Mail, Warnungen, Preislisten) |
-| `/admin/system` | Flags, Health, Warnungsliste, Mail-Outbox |
+| `/admin/system` | Flags, Health, Warnungsliste, Mail-Outbox, Preislisten/Datenpflege |
 
 - Keine Secrets im UI (`openaiConfigured` nur boolean)  
 - OCR-/Magic-Fallback → Leitstand-Warnung (Bridge, fire-and-forget)  
-- Nicht in diesem Slice: Rollen/Mandanten/Billing-Vollausbau  
+- Preislisten-Karte: Stand, Quelle, offene/fehlgeschlagene Imports, Overrides, Freigabe-Status  
+- Grounding-/Preisliste-Lücke → Admin-Warnung (optional Bridge)  
+- Nicht in diesem Slice: CMS-Datenredaktion, Rollen/Mandanten/Billing-Vollausbau  
 
 ---
 
@@ -686,6 +688,7 @@ Zentrale sieht warum Magic/OCR/Mail hängt – Verkäufer-Workflow unverändert.
 
 - OCR-Qualität messen und echte Cloud-API anbinden  
 - Leitstand: Rollen / Mandanten / Billing vertiefen  
+- Vollständige CMS-Datenredaktion (nicht schlanker Leitstand)  
 
 ---
 

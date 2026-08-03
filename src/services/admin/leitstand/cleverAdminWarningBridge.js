@@ -45,3 +45,22 @@ export function logMagicFallbackAdminWarning(payload = {}) {
     mirrorActivity: false,
   });
 }
+
+/**
+ * Grounding/Preisliste fehlt – nur Admin-Hinweis, kein Einfluss auf Verkäufer-Return.
+ * @param {{ reason?: string|null, message?: string|null, modelKey?: string|null }} payload
+ */
+export function logPriceListGroundingAdminWarning(payload = {}) {
+  tryRecord({
+    kind: 'pricelist',
+    title: 'Grounding / Preisliste unvollständig',
+    detail: [
+      payload.modelKey ? `Modell ${payload.modelKey}` : null,
+      payload.reason || null,
+      payload.message || null,
+    ].filter(Boolean).join(' · ') || 'Preisliste oder Modellzuordnung fehlt',
+    severity: 'warn',
+    entityType: 'pricelist',
+    mirrorActivity: false,
+  });
+}

@@ -136,7 +136,10 @@ export function PriceListImportProvider({ children }) {
         : imports;
 
       const approved = allRecords.filter((i) => i.status === 'approved');
-      const pending = reviewImport ? 1 : allRecords.filter((i) => i.status === 'review').length;
+      const pending = reviewImport
+        ? 1
+        : allRecords.filter((i) => i.status === 'review' || i.status === 'pending' || i.status === 'analyzing').length;
+      const rejected = allRecords.filter((i) => i.status === 'rejected').length;
       const todayCount = allRecords.filter((i) => isToday(i.uploadedAt)).length;
       const lastApproved = [...approved].sort(
         (a, b) => new Date(b.approvedAt ?? b.uploadedAt) - new Date(a.approvedAt ?? a.uploadedAt),
@@ -146,7 +149,13 @@ export function PriceListImportProvider({ children }) {
         total: allRecords.length,
         today: todayCount,
         pending,
+        rejected,
+        analyzeFailed: analyzeError ? 1 : 0,
         lastUpdate: lastApproved?.approvedAt ?? lastApproved?.uploadedAt ?? null,
+        lastLabel: lastApproved
+          ? [lastApproved.brand, lastApproved.model, lastApproved.version].filter(Boolean).join(' ')
+          : null,
+        lastSource: lastApproved?.sourceFile?.name ?? null,
       };
     },
   }), [imports, reviewImport, analyzing, analyzeError, lastApplyResult]);

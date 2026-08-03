@@ -128,9 +128,9 @@ export function AlTaskCard({ task, onAction }) {
   );
 }
 
-export function AlHealthCard({ title, items = [] }) {
+export function AlHealthCard({ title, items = [], id }) {
   return (
-    <article className="al-health-card">
+    <article className="al-health-card" id={id}>
       <h3 className="al-health-card__title">{title}</h3>
       <ul className="al-health-card__list">
         {items.map((item) => (

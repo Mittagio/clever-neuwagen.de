@@ -60,7 +60,7 @@ export default function AdminSystemLeitstandPage() {
 
   usePageSeo({
     title: 'Admin · System',
-    description: 'Leitstand-Kern: Flags, Magic/OCR, Mail-Outbox, Warnungen.',
+    description: 'Leitstand-Kern: Flags, Magic/OCR, Mail-Outbox, Warnungen, Preislisten/Datenpflege.',
     path: '/admin/system',
   });
 
@@ -101,7 +101,12 @@ export default function AdminSystemLeitstandPage() {
       <AlCoreSignalStrip signals={core.signals} overall={core.overall} />
 
       {health.sections.map((section) => (
-        <AlHealthCard key={section.id} title={section.title} items={section.items} />
+        <AlHealthCard
+          key={section.id}
+          id={section.id}
+          title={section.title}
+          items={section.items}
+        />
       ))}
 
       <AlSection title="OCR- / Clever-Warnungen" id="warnungen">

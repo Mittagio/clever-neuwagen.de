@@ -308,6 +308,25 @@ export function prepareMagicOffer(text, context = {}) {
     trimId: context.trimId,
   });
 
+  const groundingReason = groundedResult.reason ?? '';
+  const isPriceListGap = groundingReason === 'unknown_model'
+    || groundingReason === 'no_automatic_variant'
+    || (
+      !groundedResult.grounded?.basePrice
+      && groundingReason !== 'unknown_package'
+      && groundingReason !== 'unknown_color'
+      && groundingReason !== 'package_trim_mismatch'
+    );
+  if (isPriceListGap) {
+    import('../admin/leitstand/cleverAdminWarningBridge.js')
+      .then(({ logPriceListGroundingAdminWarning }) => logPriceListGroundingAdminWarning({
+        reason: groundingReason || 'missing_list_price',
+        message: groundedResult.message ?? null,
+        modelKey: groundedResult.grounded?.modelKey ?? context.modelKey ?? null,
+      }))
+      .catch(() => {});
+  }
+
   const decision = decideMagicOfferAction({
     offerType: intent.offerType,
     groundedOk: groundedResult.ok,
