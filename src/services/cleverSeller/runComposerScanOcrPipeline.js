@@ -112,7 +112,9 @@ export async function runComposerScanOcrPipeline(params = {}) {
         suggestsContract,
         message: engineMissing
           ? 'OCR-Engine nicht konfiguriert (tesseract.js / Flag). Bitte Vertrag manuell beschreiben.'
-          : 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
+          : /ocr_cloud_provider_not_configured/i.test(String(payload.error))
+            ? 'Cloud-OCR nicht angebunden (window.__cleverOcrProvider). Bitte Vertrag manuell beschreiben.'
+            : 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
         error: String(payload.error),
       };
     }

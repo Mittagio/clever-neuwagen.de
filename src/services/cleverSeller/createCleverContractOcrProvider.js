@@ -1,7 +1,7 @@
 /**
- * Slice 17: Clever Contract OCR Provider (Produkt-Engine-Anbindung).
- * Rendert Scan-Seiten und erkennt Text über injizierbare Engine (z. B. Tesseract).
- * Kein Fake-Text, keine Persistenz.
+ * Slice 17/19: Clever Contract OCR Provider (Produkt-Engine-Anbindung).
+ * Rendert Scan-Seiten und erkennt Text über injizierbare Engine (Tesseract / Cloud-Hook).
+ * Kein Fake-Text, keine Persistenz ohne Confirm.
  */
 import { renderPdfPagesForOcr } from './renderPdfPagesForOcr.js';
 
@@ -28,7 +28,7 @@ export function createCleverContractOcrProvider(options = {}) {
       return {
         text: '',
         confidence: null,
-        error: 'ocr_engine_not_configured',
+        error: engine?.error || 'ocr_engine_not_configured',
       };
     }
 
@@ -92,15 +92,36 @@ export function createCleverContractOcrProvider(options = {}) {
 }
 
 /**
- * Optional: Tesseract.js dynamisch laden (nur wenn installiert).
- * @param {{ lang?: string }} [options]
+ * Marker-Engine wenn Cloud gewählt, aber kein Provider injiziert wurde.
+ * Ohne recognize → Provider liefert kontrollierten Fehler (kein Fake-Text).
+ * @returns {{ id: string, error: string }}
+ */
+export function createCloudOcrEnginePlaceholder() {
+  return {
+    id: 'cloud',
+    error: 'ocr_cloud_provider_not_configured',
+  };
+}
+
+/**
+ * Tesseract.js laden (Slice 19: Dependency vorhanden; createWorker injizierbar für Tests).
+ * @param {{
+ *   lang?: string,
+ *   createWorker?: Function,
+ *   importTesseract?: () => Promise<object>,
+ * }} [options]
  * @returns {Promise<object|null>}
  */
 export async function tryCreateTesseractOcrEngine(options = {}) {
   const lang = options.lang || 'deu';
   try {
-    const mod = await import('tesseract.js');
-    const createWorker = mod.createWorker || mod.default?.createWorker;
+    let createWorker = options.createWorker;
+    if (typeof createWorker !== 'function') {
+      const importer = options.importTesseract
+        || (() => import('tesseract.js'));
+      const mod = await importer();
+      createWorker = mod.createWorker || mod.default?.createWorker;
+    }
     if (typeof createWorker !== 'function') return null;
     let workerPromise = null;
     const getWorker = () => {

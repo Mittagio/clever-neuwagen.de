@@ -70,7 +70,7 @@ Wunschraten sind **keine** Vertragswerte.
 | **C** | `leasingEndDate` kanonisch unter `lead.wish.leasingEndDate` (+ Fallbacks). |
 | **D** | Dokumente via `leadId` / Unterlagen / Attachments – keine Contract-Verknüpfung. |
 | **E** | Offer-PDF-Interpreter inkl. Evidence wiederverwendbar; Schema nicht als Contract-SoT missbrauchen. |
-| **F** | Scan-OCR-Pipeline + Provider (Slice 16/17). Default ohne Engine → manuell beschreiben. |
+| **F** | Scan-OCR produktiv (Slice 16/17/19). Default ohne Flag → manuell beschreiben. |
 | **G** | Evidence reif bei Knowledge + Offer; Contract Memory noch ohne Persistenz. |
 | **H** | Reminder: `leasing_expires_6m` über `evaluateJourneyReminder` / `wish.leasingEndDate`. |
 | **I** | Speichern: `lead.crm.customerContracts[]` + Projektion `wish.leasingEndDate`. Keine zweite Wahrheit. |
@@ -170,7 +170,8 @@ Besonders behandeln / nicht an Message Writer:
 | **16** | Scan-OCR-Pipeline | Provider-Hook, `contract_pdf_ocr`, Manual-Fallback |
 | **17** | Produkt-OCR-Provider | pdfjs-Seiten + Engine-Hook (Tesseract optional) |
 | **18** | Nachfolgeangebot | Favorit + Vertrag → `prepare_offer` (kein Auto-Send) |
-| später | Tesseract/Cloud produktiv | `npm i tesseract.js` + `VITE_CLEVER_CONTRACT_OCR=true` |
+| **19** | Tesseract/Cloud OCR produktiv | `tesseract.js` + Flag; Cloud via Hook |
+| später | OCR messen / Cloud-API | Qualität, Metriken, echte Cloud-Anbindung |
 
 Global Composer bleibt der Einstieg; siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).
 
@@ -568,16 +569,17 @@ Anbindung der Scan-Pipeline an eine echte Engine-Schicht:
 
 ### Aktivierung (optional)
 
+Siehe **Slice 19** (`tesseract.js` ist Dependency; Flag setzen).
+
 ```bash
-npm i tesseract.js
 # .env / .env.local
 VITE_CLEVER_CONTRACT_OCR=true
 ```
 
 ### Nicht in Slice 17
 
-- Bundled Tesseract als Pflicht-Dependency  
-- Cloud-OCR-API  
+- Bundled Tesseract als Pflicht-Dependency (→ Slice 19)  
+- Cloud-OCR-API (→ Hook in Slice 19)  
 - Auto-Persist ohne Review  
 
 ---
@@ -614,9 +616,54 @@ Ablauf:
 
 ---
 
+## Slice 19 – Tesseract/Cloud OCR produktiv
+
+**Status: implementiert**
+
+Macht die Scan-Pipeline aus Slice 16/17 mit echter Engine betreibbar:
+
+1. Dependency `tesseract.js` (dynamischer Import, Code-Split)  
+2. Feature-Flag `VITE_CLEVER_CONTRACT_OCR=true` (Server-Pendant `CLEVER_CONTRACT_OCR`)  
+3. Default ohne Flag → Manual-Fallback (kein Breaking Change)  
+4. Mit Flag + Engine `tesseract` → pdfjs-Seiten → Tesseract → Contract Intake / Review  
+5. Engine `cloud` → nur mit `window.__cleverOcrProvider` (keine eingebaute Cloud-API/Secrets)  
+6. **Kein** Auto-Persist ohne Confirm  
+
+| Modul | Rolle |
+|-------|--------|
+| `createCleverContractOcrProvider.js` | Provider + Tesseract-Loader + Cloud-Placeholder |
+| `resolveCleverOcrProvider.js` | Flag, Engine-Wahl, Lang |
+| `runComposerScanOcrPipeline.js` | Scan → OCR / Manual |
+| `globalComposer.slice19.test.js` | Flag an/aus, Fallback, Happy Path (Mock) |
+
+### Aktivierung
+
+```bash
+# .env / .env.local
+VITE_CLEVER_CONTRACT_OCR=true
+# optional:
+# VITE_CLEVER_CONTRACT_OCR_ENGINE=tesseract
+# VITE_CLEVER_CONTRACT_OCR_LANG=deu
+# CLEVER_CONTRACT_OCR=true
+```
+
+Cloud (ohne API-Key im Repo):
+
+```js
+window.__cleverOcrProvider = async ({ file }) => ({ text, confidence });
+```
+
+### Nicht in Slice 19
+
+- Eingebaute Cloud-OCR-API / API-Keys  
+- Auto-Persist ohne Review  
+- Qualitäts-Metriken / A/B  
+
+---
+
 ## Später
 
-- Tesseract/Cloud produktiv betreiben und messen  
+- OCR-Qualität messen und echte Cloud-API anbinden  
 
 ---
 

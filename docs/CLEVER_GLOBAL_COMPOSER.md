@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Slice 18 (Nachfolgeangebot vorbereiten)  
+**Status:** Slice 19 (Tesseract/Cloud OCR produktiv)  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -48,6 +48,7 @@ Nur `runCleverSellerTurn()`:
 | Scan-OCR-Pipeline / `contract_pdf_ocr` | 16 |
 | Produkt-OCR-Provider (`VITE_CLEVER_CONTRACT_OCR`) | 17 |
 | Nachfolgeangebot (`prepare_followup_offer`) | 18 |
+| Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
 
 ## Slice 5 – Golden Flow
 
@@ -75,12 +76,12 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 ## Tests
 
-- `globalComposer.slice1.test.js` … `globalComposer.slice18.test.js`
+- `globalComposer.slice1.test.js` … `globalComposer.slice19.test.js`
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
-| später | Tesseract/Cloud produktiv | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | OCR messen / Cloud-API | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.
