@@ -665,9 +665,27 @@ window.__cleverOcrProvider = async ({ file }) => ({ text, confidence });
 
 ---
 
+## Phase 4 schlank – Admin-Leitstand Kern
+
+**Status: implementiert (Kern)**
+
+Zentrale sieht warum Magic/OCR/Mail hängt – Verkäufer-Workflow unverändert.
+
+| Surface | Inhalt |
+|---------|--------|
+| `/admin` | Kern-Signalstreifen (Magic, OCR, Mail, Warnungen, Preislisten) |
+| `/admin/system` | Flags, Health, Warnungsliste, Mail-Outbox |
+
+- Keine Secrets im UI (`openaiConfigured` nur boolean)  
+- OCR-/Magic-Fallback → Leitstand-Warnung (Bridge, fire-and-forget)  
+- Nicht in diesem Slice: Rollen/Mandanten/Billing-Vollausbau  
+
+---
+
 ## Später
 
 - OCR-Qualität messen und echte Cloud-API anbinden  
+- Leitstand: Rollen / Mandanten / Billing vertiefen  
 
 ---
 

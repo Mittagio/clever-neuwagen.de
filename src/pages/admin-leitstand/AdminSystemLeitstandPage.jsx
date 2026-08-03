@@ -9,9 +9,16 @@ import {
   AlHealthCard,
   AlMailRow,
   AlLinkGrid,
+  AlCoreSignalStrip,
+  AlWarningList,
 } from '../../components/admin/leitstand/AdminLeitstandShell.jsx';
 import '../../components/admin/leitstand/adminLeitstand.css';
-import { buildSystemHealthModel, probeApiHealth } from '../../services/admin/leitstand/adminSystemHealth.js';
+import {
+  buildSystemHealthModel,
+  probeApiHealth,
+  probeMagicIntelligenceHealth,
+  readClientFeatureFlags,
+} from '../../services/admin/leitstand/adminSystemHealth.js';
 import {
   loadMailOutboxForAdmin,
   retryMail,
@@ -28,6 +35,7 @@ export default function AdminSystemLeitstandPage() {
   const importMetrics = getMetrics();
   const [leitstand, setLeitstand] = useState(getAdminLeitstandState);
   const [apiHealth, setApiHealth] = useState(null);
+  const [magicHealth, setMagicHealth] = useState(null);
   const [outboxSnapshot, setOutboxSnapshot] = useState({
     items: [],
     source: OUTBOX_SOURCE.DEMO,
@@ -47,26 +55,33 @@ export default function AdminSystemLeitstandPage() {
 
   useEffect(() => {
     probeApiHealth().then(setApiHealth);
+    probeMagicIntelligenceHealth().then(setMagicHealth);
   }, []);
 
   usePageSeo({
     title: 'Admin · System',
-    description: 'Systemstatus, Mail-Outbox und Aktivitätsfeed.',
+    description: 'Leitstand-Kern: Flags, Magic/OCR, Mail-Outbox, Warnungen.',
     path: '/admin/system',
   });
 
   const mailItems = outboxSnapshot.items ?? [];
   const isDemoOutbox = outboxSnapshot.isDemo || outboxSnapshot.source === OUTBOX_SOURCE.DEMO;
+  const clientFlags = readClientFeatureFlags();
 
   const health = buildSystemHealthModel({
     apiHealth,
+    magicHealth,
     mailOutbox: mailItems,
     importMetrics,
     systemIssues,
+    activityFeed: leitstand.activityFeed,
+    cleverWarnings: leitstand.cleverWarnings,
+    clientFlags,
   });
 
   const activity = buildActivityFeedGrouped(leitstand.activityFeed);
   const mailStats = getMailOutboxStats();
+  const core = health.core;
 
   async function handleRetry(mailId) {
     await retryMail(mailId);
@@ -77,15 +92,21 @@ export default function AdminSystemLeitstandPage() {
     <>
       <AlPageHeader
         title="System"
-        subtitle={`Kommunikations-Hub: ${MAIL_FROM.email}`}
+        subtitle={`Leitstand-Kern · ${MAIL_FROM.email}`}
         action={(
           <Link to="/admin/email" className="al-btn al-btn--ghost">Vorlagen →</Link>
         )}
       />
 
+      <AlCoreSignalStrip signals={core.signals} overall={core.overall} />
+
       {health.sections.map((section) => (
         <AlHealthCard key={section.id} title={section.title} items={section.items} />
       ))}
+
+      <AlSection title="OCR- / Clever-Warnungen" id="warnungen">
+        <AlWarningList warnings={core.warnings} />
+      </AlSection>
 
       <AlSection title="Mail-Outbox" id="mail">
         {isDemoOutbox ? (

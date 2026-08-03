@@ -116,6 +116,7 @@ Test: `documentsChecklist.golden.test.js`
 
 | Slice | Thema | Spec |
 |-------|--------|------|
+| Phase 4 Kern | Admin-Leitstand (Flags/Magic/OCR/Mail) | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) · `/admin/system` |
 | später | OCR messen / Cloud-API | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
 | später | weitere Inbound-Kanäle | WhatsApp / Telefonie – bewusst nicht jetzt |
 

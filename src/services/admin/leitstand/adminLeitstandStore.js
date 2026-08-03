@@ -6,6 +6,7 @@ const STORAGE_KEY = 'clever-neuwagen-admin-leitstand';
 const DEFAULT_STATE = {
   activityFeed: [],
   releases: [],
+  cleverWarnings: [],
 };
 
 function loadState() {
@@ -18,6 +19,7 @@ function loadState() {
         ...parsed,
         activityFeed: parsed.activityFeed ?? [],
         releases: parsed.releases ?? [],
+        cleverWarnings: parsed.cleverWarnings ?? [],
       };
     }
   } catch {
@@ -61,6 +63,38 @@ export function appendActivityFeed(entry) {
     activityFeed: [item, ...memoryState.activityFeed].slice(0, 200),
   };
   persist();
+  return item;
+}
+
+/**
+ * OCR-/Magic-/Dokument-Warnung für Leitstand-Kern (keine Secrets).
+ * @param {object} entry
+ */
+export function recordAdminCleverWarning(entry = {}) {
+  const item = {
+    id: entry.id ?? `cw-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    kind: entry.kind ?? 'clever',
+    title: entry.title ?? 'Clever-Warnung',
+    detail: entry.detail ?? null,
+    severity: entry.severity ?? 'warn',
+    entityType: entry.entityType ?? entry.kind ?? null,
+    createdAt: entry.createdAt ?? new Date().toISOString(),
+  };
+  memoryState = {
+    ...memoryState,
+    cleverWarnings: [item, ...(memoryState.cleverWarnings ?? [])].slice(0, 50),
+  };
+  persist();
+  if (entry.mirrorActivity !== false) {
+    appendActivityFeed({
+      actor: 'System',
+      action: item.title,
+      detail: item.detail,
+      entityType: item.entityType,
+      severity: item.severity === 'urgent' || item.severity === 'error' ? 'urgent' : 'warn',
+      createdAt: item.createdAt,
+    });
+  }
   return item;
 }
 
@@ -123,6 +157,26 @@ export function seedAdminLeitstandDemo() {
       { id: 'act-5', actor: 'System', action: 'Anfrage eingegangen', detail: 'Kia Sportage · Autohaus Trinkle', severity: 'info', createdAt: mins(18) },
       { id: 'act-6', actor: 'Mike', action: 'hat EV4 Daten zur Prüfung freigegeben', detail: '8 Änderungen', severity: 'info', createdAt: mins(16) },
       { id: 'act-7', actor: 'System', action: 'Händler registriert', detail: 'Autohaus Müller', severity: 'info', createdAt: mins(11) },
+    ],
+    cleverWarnings: [
+      {
+        id: 'cw-demo-ocr',
+        kind: 'ocr',
+        title: 'OCR-/Dokument-Fehler',
+        detail: 'Scan · ocr_engine_not_configured',
+        severity: 'urgent',
+        entityType: 'ocr',
+        createdAt: mins(28),
+      },
+      {
+        id: 'cw-demo-magic',
+        kind: 'magic',
+        title: 'Magic / OpenAI Fallback',
+        detail: 'openai_key_missing · lokaler Fallback',
+        severity: 'warn',
+        entityType: 'magic',
+        createdAt: mins(22),
+      },
     ],
     releases: [
       {

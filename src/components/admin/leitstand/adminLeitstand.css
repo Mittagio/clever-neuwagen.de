@@ -303,6 +303,111 @@
   color: #9ca3af;
 }
 
+.al-core-strip {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.al-core-strip--warn {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), #fff);
+}
+
+.al-core-strip--error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), #fff);
+}
+
+.al-core-strip__kicker {
+  margin: 0 0 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+.al-core-strip__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.al-core-strip__item {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  text-decoration: none;
+  color: inherit;
+  align-items: start;
+}
+
+.al-core-strip__item .al-health-card__dot {
+  grid-row: 1 / span 2;
+  margin-top: 5px;
+}
+
+.al-core-strip__label {
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.al-core-strip__detail {
+  grid-column: 2;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.al-warning-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.al-warning-list__item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.al-warning-list__item--error,
+.al-warning-list__item--urgent {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.al-warning-list__item--warn {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.al-warning-list__title {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.al-warning-list__detail {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+  color: #6b7280;
+}
+
+.al-warning-list__time {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+
 .al-release-card {
   padding: 16px;
   border-radius: 14px;

@@ -229,6 +229,13 @@ export async function enrichSellerTurnWithMagicPropose({
   }
 
   if (!magicBody) {
+    import('../admin/leitstand/cleverAdminWarningBridge.js')
+      .then(({ logMagicFallbackAdminWarning }) => logMagicFallbackAdminWarning({
+        writer: magicWriter,
+        warnings: magicWarnings,
+        remoteEnabled: magicRemoteEnabled,
+      }))
+      .catch(() => {});
     return {
       turn,
       magicBody: null,
@@ -239,6 +246,14 @@ export async function enrichSellerTurnWithMagicPropose({
       feedback: null,
     };
   }
+
+  import('../admin/leitstand/cleverAdminWarningBridge.js')
+    .then(({ logMagicFallbackAdminWarning }) => logMagicFallbackAdminWarning({
+      writer: magicWriter,
+      warnings: magicWarnings,
+      remoteEnabled: magicRemoteEnabled,
+    }))
+    .catch(() => {});
 
   return {
     turn: applyMagicBodyToTurn(turn, magicBody),

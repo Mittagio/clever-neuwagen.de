@@ -24,6 +24,11 @@ function isCleverMagicMessageEnabled(env = process.env) {
     || env.CLEVER_SELLER_COPILOT_ENABLED === 'true';
 }
 
+function isContractOcrEnabled(env = process.env) {
+  const raw = env.CLEVER_CONTRACT_OCR ?? env.VITE_CLEVER_CONTRACT_OCR ?? '';
+  return /^(1|true|yes|on)$/i.test(String(raw).trim());
+}
+
 function assertSellerPermission(req) {
   const sellerId = req.headers['x-seller-id'] || req.body?.sellerId || null;
   const dealerId = req.headers['x-dealer-id'] || req.body?.dealerId || null;
@@ -55,6 +60,9 @@ router.get('/clever/shared-intelligence/health', (_req, res) => {
     sellerCopilot: isCleverSellerCopilotEnabled(),
     magicMessage: isCleverMagicMessageEnabled(),
     sellerOpenAiInterpret: process.env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true',
+    /** boolean only – never expose the key */
+    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+    contractOcr: isContractOcrEnabled(),
   });
 });
 

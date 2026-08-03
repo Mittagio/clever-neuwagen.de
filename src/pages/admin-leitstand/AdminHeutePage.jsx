@@ -14,12 +14,19 @@ import {
   AlKpiTile,
   AlSection,
   AlTimeline,
+  AlCoreSignalStrip,
 } from '../../components/admin/leitstand/AdminLeitstandShell.jsx';
 import '../../components/admin/leitstand/adminLeitstand.css';
 import { computeTodayKpis, formatProvisionEuro } from '../../services/admin/leitstand/adminTodayKpis.js';
 import { buildAdminTaskQueue } from '../../services/admin/leitstand/adminTaskQueue.js';
 import { buildAdminTimeline } from '../../services/admin/leitstand/adminActivityFeed.js';
 import { getAdminLeitstandState, subscribeAdminLeitstand } from '../../services/admin/leitstand/adminLeitstandStore.js';
+import {
+  buildLeitstandCoreStatus,
+  probeMagicIntelligenceHealth,
+  readClientFeatureFlags,
+} from '../../services/admin/leitstand/adminLeitstandCoreStatus.js';
+import { listMailOutbox } from '../../services/admin/leitstand/mailOutboxService.js';
 
 export default function AdminHeutePage() {
   const { dealers, approvals, activities } = useDealerAdmin();
@@ -28,11 +35,15 @@ export default function AdminHeutePage() {
   const { offers } = useOffers();
   const { deliveries, invoices } = useBilling();
   const { getMetrics } = usePriceListImport();
-  const { auditLog } = useLaunchAdmin();
+  const { auditLog, systemIssues } = useLaunchAdmin();
   const importMetrics = getMetrics();
   const [leitstand, setLeitstand] = useState(getAdminLeitstandState);
+  const [magicHealth, setMagicHealth] = useState(null);
 
   useEffect(() => subscribeAdminLeitstand(setLeitstand), []);
+  useEffect(() => {
+    probeMagicIntelligenceHealth().then(setMagicHealth);
+  }, []);
 
   usePageSeo({
     title: 'Admin · Heute',
@@ -65,6 +76,16 @@ export default function AdminHeutePage() {
     limit: 12,
   }), [leitstand.activityFeed, activities, auditLog]);
 
+  const core = useMemo(() => buildLeitstandCoreStatus({
+    clientFlags: readClientFeatureFlags(),
+    magicHealth,
+    mailOutbox: listMailOutbox(),
+    importMetrics,
+    activityFeed: leitstand.activityFeed,
+    cleverWarnings: leitstand.cleverWarnings,
+    systemIssues,
+  }), [magicHealth, importMetrics, leitstand.activityFeed, leitstand.cleverWarnings, systemIssues]);
+
   return (
     <>
       <AlPageHeader
@@ -76,6 +97,8 @@ export default function AdminHeutePage() {
           </Link>
         )}
       />
+
+      <AlCoreSignalStrip signals={core.signals} overall={core.overall} />
 
       <div className="al-kpi-grid">
         <AlKpiTile emoji="🟢" value={kpis.activeDealers} label="Aktive Händler" hint={`${kpis.totalDealers} gesamt`} to="/admin/haendler" />

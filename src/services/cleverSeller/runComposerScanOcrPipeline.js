@@ -101,7 +101,7 @@ export async function runComposerScanOcrPipeline(params = {}) {
     const payload = typeof raw === 'string' ? { text: raw } : (raw || {});
     if (payload.error) {
       const engineMissing = /ocr_engine_not_configured/i.test(String(payload.error));
-      return {
+      const failed = {
         status: OCR_PIPELINE_STATUS.OCR_FAILED,
         usedOcr: true,
         text: '',
@@ -117,10 +117,14 @@ export async function runComposerScanOcrPipeline(params = {}) {
             : 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
         error: String(payload.error),
       };
+      import('../admin/leitstand/cleverAdminWarningBridge.js')
+        .then(({ logOcrAdminWarning }) => logOcrAdminWarning(failed))
+        .catch(() => {});
+      return failed;
     }
     const minimized = minimizeSensitiveOcrText(payload.text || '');
     if (minimized.text.length <= 20) {
-      return {
+      const empty = {
         status: OCR_PIPELINE_STATUS.OCR_EMPTY,
         usedOcr: true,
         text: minimized.text,
@@ -132,6 +136,10 @@ export async function runComposerScanOcrPipeline(params = {}) {
         message: 'OCR lieferte keinen brauchbaren Text – bitte manuell beschreiben.',
         error: null,
       };
+      import('../admin/leitstand/cleverAdminWarningBridge.js')
+        .then(({ logOcrAdminWarning }) => logOcrAdminWarning(empty))
+        .catch(() => {});
+      return empty;
     }
     return {
       status: OCR_PIPELINE_STATUS.OCR_COMPLETE,
@@ -146,7 +154,7 @@ export async function runComposerScanOcrPipeline(params = {}) {
       error: null,
     };
   } catch (err) {
-    return {
+    const failed = {
       status: OCR_PIPELINE_STATUS.OCR_FAILED,
       usedOcr: true,
       text: '',
@@ -158,6 +166,10 @@ export async function runComposerScanOcrPipeline(params = {}) {
       message: 'OCR fehlgeschlagen – bitte Vertrag manuell beschreiben.',
       error: err?.message || 'ocr_provider_failed',
     };
+    import('../admin/leitstand/cleverAdminWarningBridge.js')
+      .then(({ logOcrAdminWarning }) => logOcrAdminWarning(failed))
+      .catch(() => {});
+    return failed;
   }
 }
 

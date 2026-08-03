@@ -133,6 +133,14 @@ Enthält Controlled-Learning-Tests ohne Live-OpenAI-API.
 
 ## Admin-Leitstand
 
+**Phase 4 schlank – Kern (`/admin`, `/admin/system`)**
+
+- Feature-Flags Magic + OCR (Client + Server-Health, ohne Secrets)
+- Mail-Outbox / fehlgeschlagene Sendungen
+- OCR-/Dokument-Fehler und letzte Clever-Warnungen
+- OpenAI/Magic-Ausfall → Fallback erkennbar
+- Preislisten-/Import-Status kurz
+
 **Datenprüfung → Clever Qualität**
 
 - Neues Verkäuferfeedback

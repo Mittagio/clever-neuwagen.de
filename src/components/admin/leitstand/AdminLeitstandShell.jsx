@@ -147,6 +147,62 @@ export function AlHealthCard({ title, items = [] }) {
   );
 }
 
+/** Schlanker Kern-Status (Magic/OCR/Mail/Warnungen/Preise) */
+export function AlCoreSignalStrip({ signals = [], overall = 'unknown' }) {
+  if (!signals.length) return null;
+  return (
+    <div className={`al-core-strip al-core-strip--${overall}`} id="kern">
+      <p className="al-core-strip__kicker">Leitstand-Kern</p>
+      <ul className="al-core-strip__list">
+        {signals.map((signal) => {
+          const inner = (
+            <>
+              <span className={`al-health-card__dot al-health-card__dot--${signal.status}`} aria-hidden />
+              <span className="al-core-strip__label">{signal.label}</span>
+              <span className="al-core-strip__detail">{signal.detail}</span>
+            </>
+          );
+          if (signal.href) {
+            return (
+              <li key={signal.id}>
+                <NavLink to={signal.href} className="al-core-strip__item">
+                  {inner}
+                </NavLink>
+              </li>
+            );
+          }
+          return (
+            <li key={signal.id}>
+              <div className="al-core-strip__item">{inner}</div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+export function AlWarningList({ warnings = [], emptyLabel = 'Keine aktuellen Clever-Warnungen.' }) {
+  if (!warnings.length) {
+    return <p className="al-empty">{emptyLabel}</p>;
+  }
+  return (
+    <ul className="al-warning-list">
+      {warnings.map((w) => (
+        <li key={w.id} className={`al-warning-list__item al-warning-list__item--${w.severity}`}>
+          <p className="al-warning-list__title">{w.title}</p>
+          {w.detail ? <p className="al-warning-list__detail">{w.detail}</p> : null}
+          {w.createdAt ? (
+            <time className="al-warning-list__time" dateTime={w.createdAt}>
+              {new Date(w.createdAt).toLocaleString('de-DE')}
+            </time>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function AlReleaseCard({ release, onPublish }) {
   const done = release.checklist?.filter((c) => c.done).length ?? 0;
   const total = release.checklist?.length ?? 0;
