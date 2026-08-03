@@ -264,7 +264,7 @@ export function mapUniversalTurnToAssistantResult(universal = null, lead = {}, a
       title: 'Clever hat vorbereitet',
       draft: { body: pkg.body, channel: 'preferred' },
       actions: pkg.actions,
-      primaryCta: 'Senden',
+      primaryCta: pkg.ctaLabel || 'Sicheren Upload-Link senden',
       secondaryCta: 'Bearbeiten',
       fromUniversal: true,
     };

@@ -10,7 +10,7 @@ import {
   mergeNeedProfileIntoLead,
 } from '../consultation/needProfileService.js';
 import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
-import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
+import { postCleverAssistFeedCard, sendSellerWorkspacePackage } from '../crm/sharedWorkspaceService.js';
 import {
   appointmentTypeLabel,
   applyAppointmentCrmPatch,
@@ -22,6 +22,7 @@ import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js'
 import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
 import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js';
 import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
+import { buildInboundLeadDraft } from './inboundLeadIntake.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -107,6 +108,14 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       const phone = String(fact.label || value || '').trim();
       if (phone) {
         contact.phone = phone;
+        touchedContact = true;
+      }
+    }
+
+    if (field === 'email') {
+      const email = String(fact.label || value || '').trim();
+      if (email && email.includes('@')) {
+        contact.email = email;
         touchedContact = true;
       }
     }
@@ -294,9 +303,53 @@ function hasPreparedCustomerFollowThrough(turn = {}) {
       || a.type === SELLER_TURN_INTENTS.SEND_PORTFOLIO
       || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
       || a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+      || a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS
+      || a.type === SELLER_TURN_INTENTS.INBOUND_LEAD
+      || a.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT
     )
     && a.status === 'prepared'
   ));
+}
+
+function applyDocumentsPackageIfPresent(lead, turn, options = {}) {
+  if (options.sendDocumentsPackage === false) {
+    return { applied: false, lead, uploadUrl: null };
+  }
+  const docsAction = (turn.preparedActions ?? []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS
+    && a.status === 'prepared'
+    && !a.payload?.complete
+  ));
+  if (!docsAction) return { applied: false, lead, uploadUrl: null };
+
+  const pkg = docsAction.legacy
+    || docsAction.payload?.workspacePackage
+    || null;
+  const body = pkg?.body
+    || docsAction.payload?.messageDraft
+    || turn.messageDraft
+    || '';
+  const actions = Array.isArray(pkg?.actions) ? pkg.actions : [];
+  if (!lead?.id || (!String(body).trim() && !actions.length)) {
+    return { applied: false, lead, uploadUrl: null };
+  }
+
+  const sent = sendSellerWorkspacePackage({
+    lead,
+    body,
+    actions,
+    createdByName: options.sellerName || 'Verkäufer',
+    threadId: options.threadId || null,
+    relatedOfferId: options.relatedOfferId || null,
+    relatedQuestionId: options.relatedQuestionId || null,
+  });
+  return {
+    applied: Boolean(sent.ok),
+    lead: sent.lead || lead,
+    uploadUrl: sent.uploadUrl || null,
+    messages: sent.messages || [],
+    error: sent.error || null,
+  };
 }
 
 function applyContractImportIfPresent(lead, turn, options = {}) {
@@ -336,13 +389,60 @@ function applyContractImportIfPresent(lead, turn, options = {}) {
 export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   const rawFacts = turn.extractedFacts ?? [];
   const hasCustomerActions = hasPreparedCustomerFollowThrough(turn);
-  if (!lead?.id || (!rawFacts.length && !hasCustomerActions)) {
-    return { ok: false, lead, acceptedLabels: [] };
+  const inbound = turn.inboundLead || null;
+
+  // Inbound: neuen Kunden nur nach Accept anlegen (kein Auto-Persist vorher)
+  let workingLead = lead;
+  let createdFromInbound = false;
+  if (
+    inbound?.proposeCreateCustomer
+    && !lead?.id
+    && options.allowCreateCustomer !== false
+  ) {
+    workingLead = buildInboundLeadDraft(inbound.contact || {}, {
+      dealerId: options.dealerId,
+    });
+    createdFromInbound = true;
+  }
+
+  if (!workingLead?.id || (!rawFacts.length && !hasCustomerActions && !createdFromInbound)) {
+    return { ok: false, lead: workingLead, acceptedLabels: [], created: false };
   }
 
   // Contract Import zuerst – keine Contract Facts als Customer Truth
-  const contractResult = applyContractImportIfPresent(lead, turn, options);
+  const contractResult = applyContractImportIfPresent(workingLead, turn, options);
   if (contractResult.applied && !rawFacts.length) {
+    // Unterlagen ggf. im selben Accept (ohne weitere Facts)
+    const docsAfterContract = applyDocumentsPackageIfPresent(contractResult.lead, turn, options);
+    if (docsAfterContract.applied) {
+      let nextLead = docsAfterContract.lead;
+      if (options.postFeedCard !== false) {
+        const summary = (turn.preparedActions ?? [])
+          .find((a) => a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS)
+          ?.payload?.sellerSummary
+          || 'Sicheren Upload-Link gesendet';
+        const posted = postCleverAssistFeedCard({
+          lead: nextLead,
+          title: '✨ Unterlagen-Link gesendet',
+          text: summary,
+          visibleToCustomer: false,
+        });
+        if (posted.message) nextLead = posted.lead;
+      }
+      return {
+        ok: true,
+        lead: nextLead,
+        acceptedLabels: [
+          contractResult.duplicate ? 'Vertrag bereits vorhanden' : 'Altvertrag erfasst',
+          'Sicheren Upload-Link gesendet',
+        ],
+        contract: contractResult.contract,
+        duplicateContract: contractResult.duplicate,
+        documentsPackageSent: true,
+        uploadUrl: docsAfterContract.uploadUrl || null,
+        created: createdFromInbound,
+      };
+    }
     return {
       ok: true,
       lead: contractResult.lead,
@@ -354,8 +454,39 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     };
   }
 
+  // Unterlagen-Paket allein: erst nach Confirm senden (Propose → Confirm → Action)
   if (!rawFacts.length) {
-    let nextLead = contractResult.applied ? contractResult.lead : lead;
+    const docsResult = applyDocumentsPackageIfPresent(
+      contractResult.applied ? contractResult.lead : workingLead,
+      turn,
+      options,
+    );
+    if (docsResult.applied) {
+      let nextLead = docsResult.lead;
+      if (options.postFeedCard !== false) {
+        const summary = (turn.preparedActions ?? [])
+          .find((a) => a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS)
+          ?.payload?.sellerSummary
+          || 'Sicheren Upload-Link gesendet';
+        const posted = postCleverAssistFeedCard({
+          lead: nextLead,
+          title: '✨ Unterlagen-Link gesendet',
+          text: summary,
+          visibleToCustomer: false,
+        });
+        if (posted.message) nextLead = posted.lead;
+      }
+      return {
+        ok: true,
+        lead: nextLead,
+        acceptedLabels: ['Sicheren Upload-Link gesendet'],
+        documentsPackageSent: true,
+        uploadUrl: docsResult.uploadUrl || null,
+        created: createdFromInbound,
+      };
+    }
+
+    let nextLead = contractResult.applied ? contractResult.lead : workingLead;
     if (options.postFeedCard !== false) {
       const preparedLabels = (turn.preparedActions ?? [])
         .filter((a) => a.status === 'prepared')
@@ -375,7 +506,12 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
         if (posted.message) nextLead = posted.lead;
       }
     }
-    return { ok: true, lead: nextLead, acceptedLabels: [] };
+    return {
+      ok: true,
+      lead: nextLead,
+      acceptedLabels: createdFromInbound ? ['Kunde aus Anfrage angelegt'] : [],
+      created: createdFromInbound,
+    };
   }
 
   // „Übernehmen“ = Seller bestätigt die Review inkl. unsicherer Facts
@@ -394,11 +530,12 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
         : ['Altvertrag erfasst'],
       contract: contractResult.contract,
       duplicateContract: contractResult.duplicate,
+      created: createdFromInbound,
     };
   }
 
   const labels = facts.map((f) => String(f.label ?? '').trim()).filter(Boolean);
-  let nextLead = appendSellerInsightsFromTexts(lead, labels, {
+  let nextLead = appendSellerInsightsFromTexts(workingLead, labels, {
     context: 'universal_review',
     sellerId: options.sellerId,
     sellerName: options.sellerName,
@@ -413,7 +550,7 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     const draft = homepageDraft || {
       model: facts.find((f) => f.field === 'vehicleInterest')?.value?.model
         || facts.find((f) => f.field === 'vehicleInterest')?.label
-        || lead.vehicle?.model
+        || workingLead.vehicle?.model
         || null,
       modelKey: facts.find((f) => f.field === 'vehicleInterest')?.value?.modelKey || null,
       configurationAttached: facts.some((f) => f.field === 'configurationAttached'),
@@ -523,11 +660,14 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     if (String(text).trim()) {
       const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
         || facts.some((f) => f.field === 'commercialScenarios');
+      const isInbound = Boolean(turn.inboundLead?.detected);
       const posted = postCleverAssistFeedCard({
         lead: nextLead,
-        title: isHomepageDual
-          ? '✨ Clever hat die Anfrage vorbereitet'
-          : '✨ Clever hat verstanden',
+        title: isInbound
+          ? '✨ Clever hat die Anfrage erkannt'
+          : isHomepageDual
+            ? '✨ Clever hat die Anfrage vorbereitet'
+            : '✨ Clever hat verstanden',
         text,
         visibleToCustomer: false,
       });
@@ -535,9 +675,19 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     }
   }
 
+  // Facts + Unterlagen-Paket in einem Accept
+  const docsWithFacts = applyDocumentsPackageIfPresent(nextLead, turn, options);
+  if (docsWithFacts.applied) {
+    nextLead = docsWithFacts.lead;
+    labels.push('Sicheren Upload-Link gesendet');
+  }
+
   return {
     ok: true,
     lead: nextLead,
     acceptedLabels: labels,
+    created: createdFromInbound,
+    documentsPackageSent: Boolean(docsWithFacts.applied),
+    uploadUrl: docsWithFacts.uploadUrl || null,
   };
 }

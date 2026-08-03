@@ -30,6 +30,7 @@ const SUGGESTION_CHIPS = [
   { id: 'today', label: 'Was liegt heute an?' },
   { id: 'offer', label: 'Erstelle Herrn Garritano ein Angebot…' },
   { id: 'open', label: 'Öffne Herrn Brandes.' },
+  { id: 'docs', label: 'Welche Unterlagen fehlen bei Brandes?' },
   { id: 'tow', label: 'XCeed Anhängelast?' },
 ];
 
@@ -45,7 +46,7 @@ function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
 
 export default function CleverGlobalComposer() {
   const ctx = useCleverComposerOptional();
-  const { updateLead } = useLeads();
+  const { updateLead, addLead } = useLeads();
   const navigate = useNavigate();
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -224,6 +225,83 @@ export default function CleverGlobalComposer() {
         }
       }
       handleOpenLead(leadId, target || {});
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+    if (action.action === 'accept_inbound_lead') {
+      const inbound = lastTurn?.inboundLead;
+      const snapshot = ctx?.leadsSnapshot || [];
+      const matchedId = action.leadId
+        || inbound?.matchedLeadId
+        || lastTurn?.resolvedCustomer?.id;
+      const existing = matchedId
+        ? (snapshot.find((l) => l.id === matchedId) || null)
+        : null;
+
+      if (inbound?.proposeCreateCustomer && !existing?.id) {
+        const applied = applyAcceptedSellerTurn({}, lastTurn, {
+          postFeedCard: false,
+          allowCreateCustomer: true,
+        });
+        if (!applied.ok || !applied.lead?.id) {
+          setFeedback('Kunde konnte noch nicht angelegt werden.');
+          setTimeout(() => setFeedback(''), 3200);
+          return;
+        }
+        if (typeof addLead === 'function') addLead(applied.lead);
+        handleOpenLead(applied.lead.id);
+        setFeedback('Kunde angelegt – Angaben übernommen.');
+        setTimeout(() => setFeedback(''), 3200);
+        setReviewModel(null);
+        setLastTurn(null);
+        return;
+      }
+
+      if (!existing?.id) {
+        setFeedback('Bitte zuerst einen Kunden wählen.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+
+      const applied = applyAcceptedSellerTurn(existing, lastTurn, { postFeedCard: false });
+      if (applied.ok && applied.lead && typeof updateLead === 'function') {
+        updateLead(existing.id, applied.lead);
+      }
+      handleOpenLead(existing.id);
+      setFeedback('Anfrage verknüpft – Angaben übernommen.');
+      setTimeout(() => setFeedback(''), 3200);
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+    if (action.action === 'send_documents_package') {
+      const snapshot = ctx?.leadsSnapshot || [];
+      const leadId = action.leadId
+        || lastTurn?.resolvedCustomer?.id
+        || resolvePrimaryNavTarget(lastTurn, reviewModel)?.leadId;
+      const lead = leadId
+        ? (snapshot.find((l) => l.id === leadId) || ctx?.currentCustomer)
+        : null;
+      if (!lead?.id) {
+        setFeedback('Bitte zuerst einen Kunden öffnen.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      const applied = applyAcceptedSellerTurn(lead, lastTurn, { postFeedCard: true });
+      if (!applied.ok) {
+        setFeedback('Upload-Link konnte noch nicht gesendet werden.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
+      if (applied.lead && typeof updateLead === 'function') {
+        updateLead(lead.id, applied.lead);
+      }
+      handleOpenLead(lead.id);
+      setFeedback(applied.documentsPackageSent
+        ? 'Sicheren Upload-Link gesendet'
+        : 'Übernommen');
+      setTimeout(() => setFeedback(''), 3200);
       setReviewModel(null);
       setLastTurn(null);
       return;
@@ -424,6 +502,8 @@ export default function CleverGlobalComposer() {
       setProgressHint('Clever bereitet Angebot und Nachricht vor …');
     } else if (/öffne|finde den kunden|finde den|suche/.test(lower)) {
       setProgressHint('Clever sucht in Ihren Kunden …');
+    } else if (/anfrage|betreff:|ursprüngliche nachricht|forwarded|weitergeleitet|von:/.test(lower)) {
+      setProgressHint('Clever liest die Anfrage und sucht den Kunden …');
     } else if (/was wollte|noch einmal|zusammenfassung/.test(lower)) {
       setProgressHint('Clever liest den Kundenkontext …');
     } else if (/geschrieben|angebot geschickt|historie|verlauf/.test(lower)) {
@@ -565,6 +645,22 @@ export default function CleverGlobalComposer() {
               handleReviewAction({
                 action: 'accept_contract_import',
                 leadId: lastTurn?.resolvedCustomer?.id,
+              });
+              return;
+            }
+            if (reviewModel?.reviewType === 'inbound_lead_review' || lastTurn?.inboundLead?.detected) {
+              handleReviewAction({
+                action: 'accept_inbound_lead',
+                leadId: lastTurn?.inboundLead?.matchedLeadId
+                  || lastTurn?.resolvedCustomer?.id
+                  || null,
+              });
+              return;
+            }
+            if (reviewModel?.reviewType === 'request_documents') {
+              handleReviewAction({
+                action: 'send_documents_package',
+                leadId: lastTurn?.resolvedCustomer?.id || null,
               });
               return;
             }

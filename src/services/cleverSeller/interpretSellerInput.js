@@ -27,6 +27,12 @@ import {
   shouldEnrichSellerInputFromOfferPdf,
 } from './mapMagicOfferIntentToSellerFacts.js';
 import {
+  buildInboundContactFacts,
+  extractInboundContact,
+  isInboundLeadPaste,
+  proposeInboundNextAction,
+} from './inboundLeadIntake.js';
+import {
   REJECTION_REASON,
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
@@ -838,14 +844,20 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  // Document request hint
-  if (/\bfahrzeugschein|gehaltsnachweis|ausweis|selbstauskunft|unterlagen?\b/i.test(t)
-    && /\b(frag|anforder|fehl|brauch|schick)\b/i.test(t)) {
+  // Document request / checklist hint
+  if (
+    (
+      /\bfahrzeugschein|gehaltsnachweis|ausweis|selbstauskunft|unterlagen?\b/i.test(t)
+      && /\b(frag|anforder|fehl|brauch|schick|welche|upload)\b/i.test(t)
+    )
+    || /\bwelche\s+unterlagen?\b/i.test(t)
+    || /\bsicheren?\s+upload[-\s]?link\b/i.test(t)
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.DOCUMENT_FACT,
       field: 'documentRequest',
       value: true,
-      label: 'Unterlage anfordern',
+      label: 'Unterlagen prüfen',
       confidence: 0.9,
     }));
   }
@@ -943,7 +955,12 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isContractCompare = !isContractIntake && (
     isContractOfferCompareQuery(t) || isContractCompareMessage
   );
-  const isContractQuery = !isContractIntake && !isContractCompare && isCustomerContractQuery(t);
+  const isInboundPaste = !isContractIntake && !isContractCompare && isInboundLeadPaste(t);
+  const looksLikeContractLookup = isCustomerContractQuery(t)
+    && !/\b(kinder|verheiratet|wunschrate|netto|in\s+zahlung|nehmen\s+wir)\b/i.test(t);
+  const isContractQuery = !isContractIntake && !isContractCompare && !isInboundPaste
+    && looksLikeContractLookup;
+  const isInboundLead = isInboundPaste && !isContractQuery;
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -963,6 +980,14 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   if (isContractIntake) {
     add(SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT, 0.98);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
+  }
+
+  if (isInboundLead) {
+    add(SELLER_TURN_INTENTS.INBOUND_LEAD, 0.97);
+    add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.94);
+    add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.9);
+    const next = proposeInboundNextAction({ text: t, facts });
+    if (next?.intent) add(next.intent, 0.86);
   }
 
   if (isContractCompare) {
@@ -1087,15 +1112,18 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     && !isCreateOfferCommand
     && !isMessageOnlyPrice
     && !isAmbiguousOfferOrMessage
+    && !isInboundLead
   ) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
-  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake && !isContractQuery && !isContractCompare) {
+  } else if (hasAppointmentFact && hasContextFacts && !isCreateOfferCommand && !isContractIntake && !isContractQuery && !isContractCompare && !isInboundLead) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
+  } else if (isInboundLead && hasContextFacts) {
+    add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.9);
   }
 
-  // Benannter Kunde + Nachricht → Kundensuche
+  // Benannter Kunde + Nachricht → Kundensuche (nicht jedes „Schreib …“ mit Großbuchstaben)
   const namedInMessage = facts.some((f) => f.field === 'customerName')
-    || /\b(herrn?\s+|frau\s+)?[A-ZÄÖÜ][a-zäöüß-]{2,}\b/.test(t);
+    || /\b(?:herrn?\s+|frau\s+)([A-Za-zÄÖÜäöüß-]{2,40})\b/i.test(t);
   if (
     (explicitMessage || intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE))
     && namedInMessage
@@ -1203,7 +1231,10 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
 
   // Angebot + „schreibe“ = Arbeitsauftrag mit Nachricht (kein reiner Message-Mode)
   if (explicitMessage && hasOffer) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
-  if (hasHistory || hasNextStep || hasCustomerNav) return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
+  // Explizite Kundennachricht hat Vorrang vor schwachem FIND_CUSTOMER („Schreib …“)
+  if (hasHistory || hasNextStep || (hasCustomerNav && !explicitMessage)) {
+    return SELLER_INPUT_MODE.CLEVER_WORK_INPUT;
+  }
   if (explicitMessage) return SELLER_INPUT_MODE.CUSTOMER_MESSAGE;
 
   const workHeavy = intents.some((i) => [
@@ -1246,6 +1277,18 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     );
   }
 
+  let inboundContact = null;
+  if (isInboundLeadPaste(normalized)) {
+    inboundContact = extractInboundContact(normalized);
+    const contactFacts = buildInboundContactFacts(inboundContact);
+    for (const fact of contactFacts) {
+      const key = `${fact.field}:${String(fact.label).toLowerCase()}`;
+      if (!facts.some((f) => `${f.field}:${String(f.label).toLowerCase()}` === key)) {
+        facts.push(fact);
+      }
+    }
+  }
+
   const intents = detectSellerTurnIntents(normalized, facts, { attachments: options.attachments });
   const inputMode = resolveSellerInputMode(normalized, intents, facts);
   const attachmentTypes = (options.attachments ?? [])
@@ -1261,6 +1304,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     inputMode,
     attachmentTypes,
     homepageInquiry: homepageInquiry?.hasDualScenarios ? homepageInquiry : null,
+    inboundContact,
     confidence: facts.length
       ? Math.min(0.99, facts.reduce((s, f) => s + (f.confidence || 0), 0) / facts.length)
       : (intents[0]?.confidence ?? 0.4),

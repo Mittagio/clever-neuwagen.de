@@ -1,6 +1,6 @@
 # Clever Global Composer
 
-**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR  
+**Status:** Surfaces vereinheitlicht (ein Orchestrator; Dashboard + Akte) · Slice 19 OCR · Inbound leicht  
 **Stand:** August 2026
 
 ## Produktgesetz
@@ -50,6 +50,7 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 | Produkt-OCR-Provider (`VITE_CLEVER_CONTRACT_OCR`) | 17 |
 | Nachfolgeangebot (`prepare_followup_offer`) | 18 |
 | Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
+| `inboundLead` / `inbound_lead_review` (Paste/Forward) | Inbound leicht |
 
 ## Slice 5 – Golden Flow
 
@@ -71,6 +72,35 @@ Ablauf:
 
 Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ ≠ Kalendercheck; direkt eintragen ohne Zusage.
 
+## Inbound leicht (Paste/Forward)
+
+**Status:** Composer-Eingang · Propose → Confirm → Action  
+**Nicht:** WhatsApp Business API, Telefonie, mobile.de-API, Big Intake Hub
+
+Eingang im Dashboard-Composer (E-Mail-Paste / Weiterleitung):
+
+1. Intent `inbound_lead` (Mail-Header / „Hier eine Anfrage:“ / Forward)
+2. Kontakt aus Forward-Rohtext (E-Mail vor HTML-Strip)
+3. Resolve per E-Mail → Telefon → Name gegen `leadsSnapshot`
+4. Review: erkannter Kunde **oder** „neuen Kunden anlegen?“ + Facts + nächste Aktion
+5. Dubletten-Hinweis bei Mehrfachtreffern
+6. Übernehmen: verknüpfen / anlegen **nur nach Accept** (`applyAcceptedSellerTurn` + `addLead`)
+
+Modul: `inboundLeadIntake.js` · Test: `inboundLead.golden.test.js`  
+Kundenwelt-Intake (Soft Wish / Portal) bleibt getrennt: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md).
+
+## Unterlagen-Leitprozess (schlank)
+
+**Status:** Composer · Propose → Confirm → Action  
+**Nicht:** WhatsApp-API, Bank-/Vollmachten-Vollsuite, Admin/DMS
+
+1. Seller-Input / Chip („Welche Unterlagen fehlen …?“ / „Unterlagen“)
+2. `request_documents` via `cleverUnterlagen` + `prepareSellerWorkspacePackage`
+3. Review: fehlende Items + Draft-Nachricht + CTA **Sicheren Upload-Link senden**
+4. Accept → `sendSellerWorkspacePackage` (Upload-Link + Karten im Shared Workspace)
+
+Test: `documentsChecklist.golden.test.js`
+
 ## Feature-Flag
 
 `VITE_CLEVER_GLOBAL_COMPOSER=false` deaktiviert den Global Composer.
@@ -79,11 +109,14 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 - `globalComposer.slice1.test.js` … `globalComposer.slice19.test.js`
 - `composerSurfaces.akte.test.js` – Akte-Surface (fester Lead): Nachfassen, PDF/Contract, Termin
+- `inboundLead.golden.test.js` – Paste Brandes (Match) / neuer Kunde (Propose-Create)
+- `documentsChecklist.golden.test.js` – Unterlagen fehlen Brandes → Review → Confirm → Paket
 
 ## Nächste Slices
 
 | Slice | Thema | Spec |
 |-------|--------|------|
 | später | OCR messen / Cloud-API | [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md) |
+| später | weitere Inbound-Kanäle | WhatsApp / Telefonie – bewusst nicht jetzt |
 
 Contract Memory Vision: **Customer Truth ≠ Contract Fact ≠ Seller Fact ≠ Prepared Action**.

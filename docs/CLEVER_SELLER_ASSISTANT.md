@@ -72,6 +72,7 @@ Kein Full-Lead-JSON an OpenAI – nur `buildMinimalTaskContext` / `buildMinimalM
 | 3 | „Schlag ihm vor, Montag 15 Uhr …“ | Termin + Kundennachricht aus Working Context |
 | 4 | „Was hatte ich Garritano … Lieferzeit geschrieben?“ | Verlaufssuche, **keine** neue Kundennachricht |
 | Brandes | „Sportage zu teuer, XCeed findet er gut, AHK/Rot/Lieferzeit“ | Spuren: deferred + Favorit · Review „einsortiert“ · Angebot anpassen |
+| Unterlagen | „Welche Unterlagen fehlen bei Herrn Brandes?“ | Review fehlende Items + Draft · CTA **Sicheren Upload-Link senden** · erst nach Confirm |
 | Golden Moment | „Was ist der nächste Schritt?“ | Erklärbarer nächster Schritt aus Journey/`buildGoldenMoment` |
 | Attachments | PDF/Dokument am Composer | Working Context (`document`/`offer`) – keine Customer Truth |
 | Chips / Magic | Inspiration → zentraler Turn | Kein paralleler Text-Silo; Multi-Accept für Angebot+Nachricht+Termin |
@@ -98,7 +99,8 @@ Ambiguity: Leasing-Lead + „17.000 €“ → einmalige Klärung Kauf vs. Leasi
 **Global Composer (Slice 17):** `src/services/cleverSeller/globalComposer.slice17.test.js` – Produkt-OCR-Provider + Feature-Flag.  
 **Global Composer (Slice 18):** `src/services/cleverSeller/globalComposer.slice18.test.js` – Nachfolgeangebot aus Favorit + Vertrag.  
 **Global Composer (Slice 19):** `src/services/cleverSeller/globalComposer.slice19.test.js` – Tesseract/Cloud OCR produktiv (Flag + Fallback).  
-**Akte-Surface (vereinheitlicht):** `src/services/cleverSeller/composerSurfaces.akte.test.js` – fester Lead Brandes: Nachfassen + PDF + Termin (gleicher Orchestrator).
+**Akte-Surface (vereinheitlicht):** `src/services/cleverSeller/composerSurfaces.akte.test.js` – fester Lead Brandes: Nachfassen + PDF + Termin (gleicher Orchestrator).  
+**Unterlagen-Leitprozess:** `src/services/cleverSeller/documentsChecklist.golden.test.js` – fehlende Items (Brandes) → Review → Confirm → Workspace-Paket/`sendSellerWorkspacePackage` (kein Auto-Send).
 
 Siehe auch [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md).  
 **Contract Memory:** [CLEVER_CONTRACT_MEMORY.md](CLEVER_CONTRACT_MEMORY.md).
@@ -175,6 +177,10 @@ Portal-Öffnung / -Reaktion landen in Inbox; Deep-Link setzt Composer-Seed (`bui
 
 Kein Auto-Send. Details: [CLEVER_CUSTOMER_PORTAL.md](CLEVER_CUSTOMER_PORTAL.md).
 
+### Inbound leicht (Paste/Forward → Composer)
+
+Dashboard-Composer: E-Mail/Forward einfügen → Intent `inbound_lead` → Kunde finden oder „neu anlegen?“ → Review → Confirm. Persistenz nur nach Accept. Siehe [CLEVER_GLOBAL_COMPOSER.md](CLEVER_GLOBAL_COMPOSER.md#inbound-leicht-pasteforward).
+
 Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERSAL_INPUT.md](CLEVER_UNIVERSAL_INPUT.md).
 
 ## Safe Offer Boundary
@@ -197,6 +203,7 @@ Siehe [CLEVER_CONVERSATION_UI.md](CLEVER_CONVERSATION_UI.md) und [CLEVER_UNIVERS
 ```bash
 node src/services/cleverSeller/composerAssistant.golden.test.js
 node src/services/cleverSeller/runCleverSellerTurn.test.js
+node src/services/cleverSeller/inboundLead.golden.test.js
 node src/services/dealer/sellerOfferAssistFlow.test.js
 node src/services/dealer/sellerAppointmentAssistFlow.test.js
 node src/services/dealer/sellerInlineComposerAssist.test.js

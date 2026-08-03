@@ -15,6 +15,9 @@ function pickPrimaryBody(model) {
   }
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
+  const docsSec = sections.find((s) => s.kind === 'request_documents');
+  if (docsSec?.body) return String(docsSec.body).trim();
+  if (docsSec?.headline) return String(docsSec.headline).trim();
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
   if (contractMem?.body) return String(contractMem.body).trim();
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review' || s.kind === 'contract_import');
@@ -132,10 +135,12 @@ export default function SellerUniversalReviewCard({
   const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review');
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
+  const docsSec = sections.find((s) => s.kind === 'request_documents');
   const reviewActions = knowledgeMsg?.primaryActions
     || apptMsg?.primaryActions
     || contractMsg?.primaryActions
     || contractMem?.primaryActions
+    || docsSec?.primaryActions
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || [];
   const sources = knowledgeMsg?.sources

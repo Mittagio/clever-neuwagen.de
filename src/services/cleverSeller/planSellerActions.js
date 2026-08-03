@@ -395,6 +395,21 @@ export function planSellerActions({
     });
   }
 
+  if (intentTypes.has(SELLER_TURN_INTENTS.INBOUND_LEAD)) {
+    actions.push({
+      id: 'inbound_lead',
+      type: SELLER_TURN_INTENTS.INBOUND_LEAD,
+      label: 'Anfrage zuordnen',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      payload: {
+        mutatesCustomer: true,
+        requiresAccept: true,
+        factCount: facts.filter((f) => f.factClass !== SELLER_FACT_CLASS.MESSAGE_INSTRUCTION).length,
+      },
+    });
+  }
+
   if (
     intentTypes.has(SELLER_TURN_INTENTS.OPEN_CUSTOMER)
     || intentTypes.has(SELLER_TURN_INTENTS.FIND_CUSTOMER)
@@ -729,16 +744,26 @@ export function planSellerActions({
 
   if (intentTypes.has(SELLER_TURN_INTENTS.REQUEST_DOCUMENTS)) {
     const { result: pkg } = runTool('request_documents', { lead, sellerInput });
+    const slots = Array.isArray(pkg?.slots) ? pkg.slots : [];
+    const complete = Boolean(pkg?.complete) || slots.length === 0;
     actions.push({
       id: 'request_documents',
       type: SELLER_TURN_INTENTS.REQUEST_DOCUMENTS,
-      label: 'Unterlagen anfordern',
-      needsSellerConfirmation: true,
+      label: complete ? 'Unterlagen vollständig' : 'Sicheren Upload-Link senden',
+      needsSellerConfirmation: !complete,
       status: 'prepared',
       toolId: 'request_documents',
       legacy: pkg,
       payload: {
         actionCount: pkg?.actions?.length ?? 0,
+        slots,
+        missingLabels: slots.map((s) => s.label).filter(Boolean),
+        sellerSummary: pkg?.sellerSummary || null,
+        messageDraft: pkg?.body || null,
+        ctaLabel: pkg?.ctaLabel || (complete ? null : 'Sicheren Upload-Link senden'),
+        workspacePackage: pkg,
+        complete,
+        mutatesCustomer: !complete,
       },
     });
   }

@@ -68,6 +68,8 @@ export const SELLER_TURN_INTENTS = {
   RECOMMEND_NEXT_STEP: 'recommend_next_step',
   ADD_NOTE: 'add_note',
   PREPARE_CALLBACK: 'prepare_callback',
+  /** Paste/Forward Kundenanfrage (leichter Inbound) */
+  INBOUND_LEAD: 'inbound_lead',
   /** Altvertrag einlesen (Contract Memory Slice 6) */
   IMPORT_CUSTOMER_CONTRACT: 'import_customer_contract',
   /** Altvertrag nachschlagen (Contract Memory Slice 7) */

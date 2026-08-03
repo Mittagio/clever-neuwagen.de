@@ -66,6 +66,8 @@ const DOCUMENT_REQUEST_PATTERNS = [
   /\b(unterlagen?|gehaltsnachweis|bankverbindung|ausweis|selbstauskunft)\b/i,
   /\b(anforder|schick.{0,20}selbstauskunft|fehl(?:en|t)|hochladen)\b/i,
   /\bschreib.{0,40}(fehlt|fehlen|unterlage|selbstauskunft|gehalt)/i,
+  /\bwelche\s+unterlagen?\b/i,
+  /\b(upload[-\s]?link|sicheren?\s+upload)\b/i,
 ];
 
 const LOOKUP_FACT_PATTERNS = [

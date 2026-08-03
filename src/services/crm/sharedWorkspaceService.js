@@ -82,6 +82,44 @@ export function buildDocumentRequestMessageBody(lead = {}, slots = []) {
   return `Hallo ${first},\n\nfür die weitere Bearbeitung fehlen mir nur noch ${head} und ${last}.\n\nSie können beides direkt hier hochladen bzw. ausfüllen.\n\nViele Grüße`;
 }
 
+/** Seller-facing Label (Review), nicht Kundenwortlaut. */
+export function sellerFacingDocumentLabel(slot = {}) {
+  if (slot.id === 'ausweis') return 'Ausweisvorderseite';
+  if (slot.id === 'selbstauskunft') return 'unterschriebene Selbstauskunft';
+  return slot.label || slot.id || 'Unterlage';
+}
+
+function toDativeCustomerName(name = '') {
+  const raw = String(name || '').trim();
+  if (!raw) return 'den Kunden';
+  if (/^herr\b/i.test(raw)) return raw.replace(/^herr\b/i, 'Herrn');
+  return raw;
+}
+
+function joinGermanList(items = []) {
+  const list = items.filter(Boolean);
+  if (!list.length) return '';
+  if (list.length === 1) return list[0];
+  if (list.length === 2) return `${list[0]} und ${list[1]}`;
+  return `${list.slice(0, -1).join(', ')} und ${list[list.length - 1]}`;
+}
+
+/**
+ * Kompakte Seller-Zusammenfassung der offenen Unterlagen.
+ * z. B. „Für Herrn Brandes fehlen noch Ausweisvorderseite und unterschriebene Selbstauskunft.“
+ */
+export function buildMissingDocumentsSellerSummary(lead = {}, slots = []) {
+  const whom = toDativeCustomerName(lead?.contact?.name || lead?.name || '');
+  const labels = slots.map(sellerFacingDocumentLabel);
+  if (!labels.length) {
+    return `Für ${whom} sind alle Unterlagen erledigt.`;
+  }
+  if (labels.length === 1) {
+    return `Für ${whom} fehlt noch ${labels[0]}.`;
+  }
+  return `Für ${whom} fehlen noch ${joinGermanList(labels)}.`;
+}
+
 /**
  * Workspace-Paket vorbereiten (ohne Senden).
  */
@@ -106,10 +144,16 @@ export function prepareSellerWorkspacePackage(lead = {}, sellerInput = '') {
     };
   });
 
+  const body = buildDocumentRequestMessageBody(lead, slots);
+  const sellerSummary = buildMissingDocumentsSellerSummary(lead, slots);
+
   return {
-    body: buildDocumentRequestMessageBody(lead, slots),
+    body,
     actions,
     slots,
+    sellerSummary,
+    ctaLabel: slots.length ? 'Sicheren Upload-Link senden' : null,
+    complete: slots.length === 0,
   };
 }
 

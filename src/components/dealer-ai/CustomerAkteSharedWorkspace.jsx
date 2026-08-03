@@ -1337,6 +1337,9 @@ export default function CustomerAkteSharedWorkspace({
     if (action.action === 'send_appointment_proposal' || action.action === 'send_handoff') {
       handleAcceptUniversalReview();
     }
+    if (action.action === 'send_documents_package') {
+      handleAcceptUniversalReview({ sendDocuments: true });
+    }
   }
 
   function handleAcceptUniversalReview(options = {}) {
@@ -1348,6 +1351,9 @@ export default function CustomerAkteSharedWorkspace({
       const messageAction = preparedActions.find((a) => (
         a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
       ));
+      const docsAction = preparedActions.find((a) => (
+        a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
+      ));
       const reviseAction = preparedActions.find((a) => a.payload?.reviseFavoriteOffer);
 
       const messageLegacyEarly = messageAction?.legacy ?? null;
@@ -1356,12 +1362,17 @@ export default function CustomerAkteSharedWorkspace({
       ) || messageLegacyEarly?.results?.[0] || null;
       const messageBody = universalTurn.messageDraft
         || messageAction?.payload?.messageDraft
+        || docsAction?.payload?.messageDraft
         || messageResultEarly?.draft?.body
         || messageResultEarly?.body
         || '';
 
+      const replyCtx = resolveReplyContext();
       const applied = applyAcceptedSellerTurn(lead, universalTurn, {
         postFeedCard: true,
+        threadId: replyCtx.threadId,
+        relatedOfferId: replyCtx.relatedOfferId,
+        relatedQuestionId: replyCtx.relatedQuestionId,
       });
       if (!applied.ok) {
         setFeedback('Konnte nicht übernommen werden.');
@@ -1436,7 +1447,7 @@ export default function CustomerAkteSharedWorkspace({
         }
       }
 
-      if (messageBody) {
+      if (messageBody && !applied.documentsPackageSent) {
         mirrorMessageDraftToFeed(messageBody, { lead: nextLead });
       }
 
@@ -1446,14 +1457,17 @@ export default function CustomerAkteSharedWorkspace({
       setOfferPrep(null);
       setAppointmentDraft(null);
       setFeedback(
-        (messageBody || messageResultEarly)
-          ? 'Übernommen – Nachricht bereit zum Senden'
-          : (applied.acceptedLabels.length === 1
-            ? '1 Angabe übernommen'
-            : (applied.acceptedLabels.length
-              ? `${applied.acceptedLabels.length} Angaben übernommen`
-              : 'Übernommen')),
+        applied.documentsPackageSent
+          ? 'Upload-Link gesendet'
+          : (messageBody || messageResultEarly)
+            ? 'Übernommen – Nachricht bereit zum Senden'
+            : (applied.acceptedLabels.length === 1
+              ? '1 Angabe übernommen'
+              : (applied.acceptedLabels.length
+                ? `${applied.acceptedLabels.length} Angaben übernommen`
+                : 'Übernommen')),
       );
+      if (applied.documentsPackageSent) onMessageSent?.();
       setTimeout(() => setFeedback(''), 2800);
     } finally {
       setSending(false);
@@ -1676,7 +1690,7 @@ export default function CustomerAkteSharedWorkspace({
             id: 'req',
             icon: '📋',
             label: 'Unterlage anfordern',
-            onClick: () => setDraft('Schreib ihm, dass noch Unterlagen fehlen.'),
+            onClick: () => setDraft('Welche Unterlagen fehlen noch?'),
           },
           {
             id: 'sa',

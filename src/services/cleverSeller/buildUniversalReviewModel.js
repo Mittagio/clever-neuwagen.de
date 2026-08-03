@@ -4,6 +4,7 @@
 import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 import { buildHomepageInquiryReviewModel } from '../crm/homepageCommercialInquiry.js';
+import { buildInboundLeadReviewModel } from './inboundLeadIntake.js';
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -353,6 +354,13 @@ export function buildUniversalActionSections(turn = {}) {
     }
   }
 
+  const docsActionEarly = prepared.find((a) => (
+    a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
+  ));
+  const docsPackageBody = docsActionEarly?.payload?.messageDraft
+    || docsActionEarly?.legacy?.body
+    || null;
+
   const draftAction = prepared.find((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
   ));
@@ -365,7 +373,13 @@ export function buildUniversalActionSections(turn = {}) {
     || draftResult?.body
     || null;
   const interimOnly = Boolean(draftAction?.payload?.interimOnly);
-  if (draftBody && !interimOnly) {
+  const draftCoveredByDocs = Boolean(
+    docsActionEarly
+    && docsPackageBody
+    && draftBody
+    && String(draftBody).trim() === String(docsPackageBody).trim(),
+  );
+  if (draftBody && !interimOnly && !draftCoveredByDocs) {
     sections.push({
       id: 'message_draft',
       kind: 'message_draft',
@@ -378,6 +392,61 @@ export function buildUniversalActionSections(turn = {}) {
       kind: 'message_interim',
       title: 'Zwischenentwurf (optional)',
       body: String(draftBody).trim(),
+    });
+  }
+
+  const docsAction = docsActionEarly;
+  if (docsAction) {
+    const pkg = docsAction.legacy || docsAction.payload?.workspacePackage || {};
+    const slots = Array.isArray(docsAction.payload?.slots)
+      ? docsAction.payload.slots
+      : (pkg.slots || []);
+    const complete = Boolean(docsAction.payload?.complete) || slots.length === 0;
+    const sellerSummary = docsAction.payload?.sellerSummary
+      || pkg.sellerSummary
+      || null;
+    const messageBody = docsAction.payload?.messageDraft
+      || pkg.body
+      || null;
+    const missingLabels = (docsAction.payload?.missingLabels
+      || slots.map((s) => s.label).filter(Boolean));
+    sections.push({
+      id: 'request_documents',
+      kind: 'request_documents',
+      title: complete ? 'Unterlagen vollständig' : 'Fehlende Unterlagen',
+      headline: sellerSummary || (complete
+        ? 'Alles erledigt'
+        : `${slots.length} Unterlage${slots.length === 1 ? '' : 'n'} offen`),
+      line: missingLabels.length ? missingLabels.join(' · ') : null,
+      body: [
+        sellerSummary,
+        messageBody ? `\n${String(messageBody).trim()}` : null,
+      ].filter(Boolean).join('\n').trim() || sellerSummary,
+      slots,
+      messageDraft: messageBody,
+      sellerSummary,
+      complete,
+      primaryActions: complete
+        ? []
+        : [
+          {
+            id: 'send_upload_link',
+            label: docsAction.payload?.ctaLabel || 'Sicheren Upload-Link senden',
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'send_documents_package',
+          },
+          {
+            id: 'edit_documents_message',
+            label: 'Nachricht bearbeiten',
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'edit_message',
+          },
+          {
+            id: 'discard_documents',
+            label: 'Verwerfen',
+            action: 'discard',
+          },
+        ],
     });
   }
 
@@ -767,6 +836,10 @@ export function buildUniversalActionSections(turn = {}) {
  * @param {object} turn – CleverSellerTurnResult
  */
 export function buildUniversalReviewModel(turn = {}) {
+  if (turn.inboundLead?.detected) {
+    return buildInboundLeadReviewModel(turn.inboundLead, turn);
+  }
+
   if (turn.homepageInquiry?.hasDualScenarios) {
     return buildHomepageInquiryReviewModel(turn.homepageInquiry);
   }
@@ -1310,6 +1383,13 @@ export function buildUniversalReviewModel(turn = {}) {
     && !(contractMemorySection.title === 'Kein Vertrag' && facts.length > 0);
   const contractOfferCompareResult = actionSections.some((s) => s.kind === 'contract_offer_compare_result')
     && !contractCompareAndMessageReview;
+  const documentsReview = actionSections.some((s) => s.kind === 'request_documents')
+    && !offerMessageReview
+    && !offerAppointmentReview
+    && !appointmentMessageReview
+    && !knowledgeMessageReview
+    && !contractImportReview
+    && !contractCompareAndMessageReview;
   const clarifyGoal = (turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message');
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
     && !trackFeedback
@@ -1322,6 +1402,7 @@ export function buildUniversalReviewModel(turn = {}) {
     && !contractCompareAndMessageReview
     && !contractMemoryResult
     && !contractOfferCompareResult
+    && !documentsReview
     && !actionSections.some((s) => (
       s.kind === 'offer_prepare'
       || s.kind === 'offer_incomplete'
@@ -1332,10 +1413,13 @@ export function buildUniversalReviewModel(turn = {}) {
       || s.kind === 'customer_summary'
       || s.kind === 'history_search_results'
       || s.kind === 'contract_import'
+      || s.kind === 'request_documents'
     ));
 
   return {
-    reviewType: contractImportReview
+    reviewType: documentsReview
+      ? 'request_documents'
+      : contractImportReview
       ? 'contract_import_review'
       : contractCompareAndMessageReview
         ? 'contract_compare_and_message_review'
@@ -1352,7 +1436,11 @@ export function buildUniversalReviewModel(turn = {}) {
                   : offerMessageReview
                     ? 'offer_and_message_review'
                     : (clarifyGoal ? 'clarify_goal' : null),
-    title: clarifyGoal
+    title: documentsReview
+      ? (actionSections.find((s) => s.kind === 'request_documents')?.complete
+        ? '✨ Unterlagen vollständig'
+        : '✨ Fehlende Unterlagen')
+      : clarifyGoal
       ? '✨ Kurze Rückfrage'
       : contractImportReview
         ? '✨ Clever hat den Vertrag erkannt'
@@ -1408,6 +1496,10 @@ export function buildUniversalReviewModel(turn = {}) {
     factCount: facts.length,
     summaryLine: clarifyGoal
       ? (openMissing[0]?.label || 'Ziel klären')
+      : documentsReview
+        ? (actionSections.find((s) => s.kind === 'request_documents')?.headline
+          || actionSections.find((s) => s.kind === 'request_documents')?.sellerSummary
+          || 'Unterlagen prüfen')
       : contractImportReview
         ? 'Altvertrag strukturiert – bitte prüfen'
         : contractCompareAndMessageReview
@@ -1451,6 +1543,11 @@ export function buildUniversalReviewModel(turn = {}) {
     assistantReply: turn.assistantReply ?? null,
     primaryCta: clarifyGoal
       ? 'Angebot vorbereiten'
+      : documentsReview
+        ? (actionSections.find((s) => s.kind === 'request_documents')?.complete
+          ? 'Schließen'
+          : (actionSections.find((s) => s.kind === 'request_documents')?.primaryActions?.[0]?.label
+            || 'Sicheren Upload-Link senden'))
       : contractImportReview
         ? 'Vertrag übernehmen'
         : contractCompareAndMessageReview
@@ -1528,6 +1625,7 @@ export function buildUniversalReviewModel(turn = {}) {
  * @param {object} turn
  */
 export function shouldShowUniversalReview(turn = {}) {
+  if (turn.inboundLead?.detected) return true;
   if (turn.homepageInquiry?.hasDualScenarios) return true;
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
 
@@ -1550,6 +1648,9 @@ export function shouldShowUniversalReview(turn = {}) {
   if (hasHistory) return true;
 
   if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP)) return true;
+  if (prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
+  ))) return true;
   if ((turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message')) return true;
   if ((turn.missingInformation || []).some((m) => (
     m.id === 'exact_technology_package_contents'

@@ -45,6 +45,12 @@ import {
   resolveWorkingLeadForTurn,
   buildPreparedOfferWorkingContext,
 } from './resolveWorkingLeadForTurn.js';
+import {
+  buildInboundLeadProposal,
+  extractInboundContact,
+  proposeInboundNextAction,
+  resolveInboundCustomer,
+} from './inboundLeadIntake.js';
 import { resolveAppointmentCustomerContext } from './resolveAppointmentCustomerContext.js';
 import { isAppointmentFollowUpInput } from './prepareContextualAppointmentProposal.js';
 import { extractContractCustomerNameHint } from './extractCustomerContractFromText.js';
@@ -188,6 +194,48 @@ function finalizeSellerTurn({
       intents,
     });
 
+  const wantsInbound = (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD);
+  let inboundLead = null;
+  if (wantsInbound && !lead?.id) {
+    const contact = interpreted.inboundContact
+      || extractInboundContact(interpreted.normalized || interpreted.raw);
+    const inboundResolution = resolveInboundCustomer(contact, leadsSnapshot);
+    const nextAction = proposeInboundNextAction({
+      text: interpreted.normalized || interpreted.raw,
+      facts,
+    });
+    inboundLead = buildInboundLeadProposal({
+      contact,
+      resolution: inboundResolution,
+      facts,
+      nextAction,
+      rawText: interpreted.normalized || interpreted.raw,
+    });
+
+    if (inboundResolution.status === 'unique' && inboundResolution.lead?.id) {
+      leadResolve.workingLead = inboundResolution.lead;
+      leadResolve.resolution = inboundResolution;
+      leadResolve.customerSearchResults = inboundResolution.results;
+      leadResolve.ambiguous = false;
+      leadResolve.resolved = true;
+    } else if (inboundResolution.status === 'ambiguous') {
+      leadResolve.workingLead = {};
+      leadResolve.resolution = inboundResolution;
+      leadResolve.customerSearchResults = inboundResolution.results;
+      leadResolve.ambiguous = true;
+      leadResolve.resolved = false;
+    } else if (inboundLead.proposeCreateCustomer) {
+      // Kein Treffer per E-Mail/Telefon/Name – false-positive „Leasing“/Sportage verwerfen
+      leadResolve.workingLead = {};
+      leadResolve.resolution = inboundResolution;
+      leadResolve.customerSearchResults = null;
+      leadResolve.ambiguous = false;
+      leadResolve.resolved = false;
+    } else if (inboundResolution.status === 'none' && inboundResolution.results?.length) {
+      leadResolve.customerSearchResults = inboundResolution.results;
+    }
+  }
+
   const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
 
   let uniqueFacts = filterDuplicateFacts(facts, workingLead);
@@ -210,8 +258,17 @@ function finalizeSellerTurn({
       namedInInput: assistantContext.resolvedCustomer?.namedInInput
         || leadResolve.resolution?.nameQuery
         || null,
-      source: appointmentCustomer?.source || 'global_search',
+      source: appointmentCustomer?.source || (inboundLead?.detected ? 'inbound_match' : 'global_search'),
       matched: true,
+    };
+  } else if (inboundLead?.proposeCreateCustomer) {
+    assistantContext.resolvedCustomer = {
+      ...(assistantContext.resolvedCustomer || {}),
+      id: null,
+      name: inboundLead.contact?.fullName || null,
+      namedInInput: inboundLead.contact?.fullName || null,
+      source: 'inbound_propose_create',
+      matched: false,
     };
   }
 
@@ -297,6 +354,17 @@ function finalizeSellerTurn({
         ? `Kunde „${contractNameHint}“ nicht eindeutig – bitte Akte öffnen oder auswählen.`
         : 'Für welchen Kunden soll ich den Vertrag erfassen?',
       forIntent: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT,
+    });
+  }
+
+  if (inboundLead?.proposeCreateCustomer && !workingLead?.id) {
+    missingInformation.push({
+      id: 'confirm_create_customer',
+      field: 'createCustomer',
+      label: inboundLead.contact?.fullName
+        ? `Neuen Kunden „${inboundLead.contact.fullName}“ anlegen?`
+        : 'Neuen Kunden aus der Anfrage anlegen?',
+      forIntent: SELLER_TURN_INTENTS.INBOUND_LEAD,
     });
   }
 
@@ -441,6 +509,9 @@ function finalizeSellerTurn({
   const appointmentPrepareAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
   ));
+  const documentsPrepareAction = preparedActions.find((a) => (
+    a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
+  ));
   const contractImportAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
   ));
@@ -475,6 +546,7 @@ function finalizeSellerTurn({
     offerPrepareAction
     || preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     || appointmentPrepareAction
+    || documentsPrepareAction
     || contractImportAction
     || contractSearchAction
     || contractCompareAction
@@ -517,6 +589,7 @@ function finalizeSellerTurn({
 
   const messageDraft = draftMessageAction?.payload?.messageDraft
     || appointmentPrepareAction?.payload?.messageDraft
+    || documentsPrepareAction?.payload?.messageDraft
     || null;
 
   const sellerFacts = draftMessageAction?.payload?.sellerFacts
@@ -763,6 +836,7 @@ function finalizeSellerTurn({
     pendingAction,
     currentOfferContext: offerCtx || null,
     homepageInquiry: interpreted.homepageInquiry ?? null,
+    inboundLead,
     goldenMoment: assistantContext.goldenMoment ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
@@ -773,11 +847,23 @@ function finalizeSellerTurn({
           ? 'Clever prüft Ihre heutigen Vorgänge …'
           : null,
         (workingLead?.id || customerSearchResults?.length)
-          && (offerPrepareAction || groundedKnowledge || messageDraft || appointmentPrepareAction)
+          && (offerPrepareAction || groundedKnowledge || messageDraft || appointmentPrepareAction || documentsPrepareAction)
           ? `✓ ${workingLead?.contact?.name || customerSearchResults?.[0]?.customerName || 'Kunde'} ${appointmentPrepareAction ? 'erkannt' : 'gefunden'}`
           : (customerSearchResults
             ? 'Clever sucht in Ihren Kunden …'
             : null),
+        documentsPrepareAction?.payload?.sellerSummary
+          ? `✓ ${documentsPrepareAction.payload.sellerSummary}`
+          : (documentsPrepareAction && !documentsPrepareAction.payload?.complete
+            ? '✓ Fehlende Unterlagen erkannt'
+            : null),
+        inboundLead?.detected
+          ? (inboundLead.proposeCreateCustomer
+            ? '○ Kein Treffer – neuen Kunden vorschlagen'
+            : (inboundLead.matchedLeadName
+              ? `✓ ${inboundLead.matchedLeadName} aus Anfrage erkannt`
+              : 'Clever liest die Anfrage …'))
+          : null,
         resolvedDateTime?.ok
           ? `✓ ${resolvedDateTime.dateLabel || resolvedDateTime.whenLabel || 'Datum'} aufgelöst`
           : null,
