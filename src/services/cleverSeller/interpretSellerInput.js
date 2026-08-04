@@ -30,12 +30,21 @@ import {
   buildInboundContactFacts,
   extractInboundContact,
   isInboundLeadPaste,
-  proposeInboundNextAction,
 } from './inboundLeadIntake.js';
 import {
   isCustomerReplyPaste,
   proposeCustomerReplyNextActions,
 } from './customerReplyIntake.js';
+import {
+  extractPurchasePriceUnitAware,
+  parseTermAndMileageShorthand,
+} from './normalizeSellerUnits.js';
+import {
+  extractTradeInCandidates,
+  isSecondVehicleInterestCue,
+  tradeInModelKeys,
+} from './detectTradeInFromSellerInput.js';
+import { enrichFactsForMultiSource } from './multiSource/buildMultiSourceIntake.js';
 import {
   REJECTION_REASON,
   VEHICLE_TRACK_STATUS,
@@ -328,7 +337,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  // Vehicle interest (Kia Neuwagen, inkl. Seltos / K4)
+  // Vehicle interest (Kia Neuwagen) – Trade-in-Modelle (GW …) ausschließen
+  const tradeInKeys = tradeInModelKeys(raw);
   const interestHits = [];
   const interestRe = new RegExp(
     `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})(?:\\s+(${KIA_INTEREST_TRIM_RE}))?\\b`,
@@ -339,6 +349,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const modelRaw = interestMatch[1];
     const trimRaw = interestMatch[2] || null;
     const modelKey = modelRaw.toLowerCase();
+    // „GW Picanto“ → kein Interesse; „außerdem Picanto“ bleibt Interesse
+    if (tradeInKeys.has(modelKey) && !isSecondVehicleInterestCue(raw, modelRaw)) {
+      interestMatch = interestRe.exec(t);
+      continue;
+    }
     const modelLabel = /^ev\d$/i.test(modelRaw)
       ? modelRaw.toUpperCase()
       : titleCaseToken(modelRaw);
@@ -565,34 +580,42 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
   }
 
-  // Wunschrate / commercial
-  const purchasePriceMatch = t.match(
-    /\b(?:für|zu|über|kaufpreis|preis)\s*(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*(?:€|euro)?(?:\b|$)/i,
-  ) || (
-    /\bangebot\b/i.test(t)
-      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)(?:\b|$)/i)
-      : null
-  ) || (
-    /\b(picanto|sportage|xceed|ev\s*\d|ceed|niro)\b/i.test(t)
-      ? t.match(/\b(\d{1,3}\.\d{3})\s*(?:€|euro)?/i)
-      : null
-  );
-  if (purchasePriceMatch) {
-    const value = Number(String(purchasePriceMatch[1]).replace(/\./g, ''));
-    if (value >= 5000) {
-      pushFact(facts, createExtractedFact({
-        factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
-        field: 'purchasePrice',
-        value,
-        label: `Kaufpreis: ${value.toLocaleString('de-DE')} €`,
-        confidence: 0.9,
-      }));
+  // Wunschrate / commercial – unit-aware (km ≠ Kaufpreis)
+  const purchasePrice = extractPurchasePriceUnitAware(raw);
+  if (purchasePrice) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+      field: 'purchasePrice',
+      value: purchasePrice.value,
+      label: purchasePrice.label,
+      confidence: purchasePrice.confidence,
+    }));
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'paymentType',
+      value: 'cash',
+      label: 'Kaufangebot',
+      confidence: 0.82,
+    }));
+  }
+
+  const termMileage = parseTermAndMileageShorthand(raw);
+  if (termMileage.termMonths != null && !facts.some((f) => f.field === 'termMonths')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'termMonths',
+      value: termMileage.termMonths,
+      label: `${termMileage.termMonths} Monate`,
+      confidence: 0.92,
+    }));
+    if (!facts.some((f) => f.field === 'paymentType')) {
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
         field: 'paymentType',
-        value: 'cash',
-        label: 'Kaufangebot',
-        confidence: 0.82,
+        value: 'leasing',
+        label: 'Leasing',
+        confidence: 0.78,
+        needsConfirmation: true,
       }));
     }
   }
@@ -833,10 +856,10 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  // Mileage correction
+  // Mileage – nur unit-aware; Shorthand setzt annualMileage ggf. schon
   const km = t.match(/\b(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km)\b/i)
     || t.match(/\bdoch\s+(\d{4,6})\s*km\b/i);
-  if (km) {
+  if (km && !facts.some((f) => f.field === 'annualMileage')) {
     const value = Number(String(km[1]).replace(/\./g, '')) * (/tkm/i.test(km[0]) && Number(km[1]) < 100 ? 1000 : 1);
     const normalized = value < 1000 ? value * 1000 : value;
     pushFact(facts, createExtractedFact({
@@ -845,6 +868,26 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value: normalized,
       label: `${normalized.toLocaleString('de-DE')} km`,
       confidence: /\bdoch\b|statt/i.test(t) ? 0.95 : 0.88,
+    }));
+  } else if (termMileage.annualMileage != null && !facts.some((f) => f.field === 'annualMileage')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'annualMileage',
+      value: termMileage.annualMileage,
+      label: `${termMileage.annualMileage.toLocaleString('de-DE')} km`,
+      confidence: 0.9,
+    }));
+  }
+
+  // Trade-in / Name / Housing Enrichment (Multi-Source vorbereitet)
+  for (const ti of extractTradeInCandidates(raw)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.TRADE_IN_FACT,
+      field: 'tradeInVehicle',
+      value: { make: ti.make, model: ti.model },
+      label: `Inzahlungnahme: ${ti.label}`,
+      confidence: ti.ambiguous ? 0.7 : 0.94,
+      needsConfirmation: ti.ambiguous,
     }));
   }
 
@@ -882,7 +925,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  return facts;
+  return enrichFactsForMultiSource(facts, raw);
 }
 
 /**
@@ -1000,8 +1043,7 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.INBOUND_LEAD, 0.97);
     add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.94);
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.9);
-    const next = proposeInboundNextAction({ text: t, facts });
-    if (next?.intent) add(next.intent, 0.86);
+    // Nächste Aktion nur als Review-Proposal (runCleverSellerTurn) – kein DRAFT/OFFER vor Confirm
   }
 
   if (isContractCompare) {
@@ -1096,9 +1138,9 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     [SELLER_ACTION_INTENTS.ADD_NOTE]: SELLER_TURN_INTENTS.ADD_NOTE,
     [SELLER_ACTION_INTENTS.LOOKUP_FACT]: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   };
-  // Bei Open/Find/Summary/History/Create-Offer keinen Message-Default aus Primary-Action
-  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage || isContractIntake || isContractCompare || isContractQuery) {
-    // Navigation / Suche / Angebotsauftrag / Contract Memory hat Vorrang vor Message-/Offer-Default
+  // Bei Open/Find/Summary/History/Create-Offer/Inbound keinen Message-Default aus Primary-Action
+  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage || isContractIntake || isContractCompare || isContractQuery || isInboundLead || isCustomerReply) {
+    // Navigation / Suche / Angebotsauftrag / Contract Memory / Intake hat Vorrang vor Message-/Offer-Default
   } else if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (

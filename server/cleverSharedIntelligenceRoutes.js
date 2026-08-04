@@ -53,6 +53,48 @@ function slimLeadForSellerTurn(lead = {}) {
   };
 }
 
+/** Attachment-Excerpts für Multi-Source (cap); keine IBAN-Volltexte zusätzlich hier. */
+function slimAttachmentsForSellerTurn(attachments = []) {
+  if (!Array.isArray(attachments)) return [];
+  return attachments.slice(0, 4).map((att, idx) => ({
+    id: att?.id || `att_${idx}`,
+    kind: att?.kind || null,
+    sourceType: att?.sourceType || null,
+    fileName: String(att?.fileName || att?.name || '').slice(0, 120) || null,
+    mimeType: att?.mimeType || null,
+    extractedText: String(att?.extractedText || att?.text || '').slice(0, 24000),
+  }));
+}
+
+/** Diagnose ohne PII / Full-Text. */
+function sanitizeInterpreterDiagnostics(diag = null) {
+  if (!diag || typeof diag !== 'object') return null;
+  const source = diag.interpreterSource === 'openai_fallback_deterministic'
+    ? 'fallback'
+    : (diag.interpreterSource ?? null);
+  return {
+    interpreterSource: source,
+    responseId: diag.responseId ?? null,
+    model: diag.model ?? null,
+    attachmentCount: Number.isFinite(diag.attachmentCount) ? diag.attachmentCount : null,
+    attachmentContextMode: diag.attachmentContextMode ?? null,
+    complexityReasons: Array.isArray(diag.complexityReasons)
+      ? diag.complexityReasons.slice(0, 12).map((r) => String(r).slice(0, 48))
+      : [],
+    schemaValid: typeof diag.schemaValid === 'boolean' ? diag.schemaValid : null,
+    validatorWarningsCount: Number.isFinite(diag.validatorWarningsCount)
+      ? diag.validatorWarningsCount
+      : 0,
+    toolCalls: Number.isFinite(diag.toolCalls) ? diag.toolCalls : 0,
+    fallbackReason: diag.fallbackReason ? String(diag.fallbackReason).slice(0, 80) : null,
+    durationMs: diag.durationMs ?? diag.latencyMs ?? null,
+    reason: diag.reason ?? null,
+    latencyMs: diag.latencyMs ?? null,
+    used: Boolean(diag.used),
+    error: diag.error ? String(diag.error).slice(0, 80) : null,
+  };
+}
+
 router.get('/clever/shared-intelligence/health', (_req, res) => {
   res.json({
     ok: true,
@@ -261,7 +303,7 @@ router.post('/clever/seller-copilot', express.json({ limit: '48kb' }), async (re
   }
 });
 
-router.post('/clever/seller-turn', express.json({ limit: '48kb' }), async (req, res) => {
+router.post('/clever/seller-turn', express.json({ limit: '128kb' }), async (req, res) => {
   try {
     const permission = assertSellerPermission(req);
     if (!permission.ok) {
@@ -275,6 +317,8 @@ router.post('/clever/seller-turn', express.json({ limit: '48kb' }), async (req, 
       leadId = null,
       needProfile = null,
       sellerInsights = null,
+      scopeHint = null,
+      now = null,
     } = req.body ?? {};
 
     const leadInput = slimLeadForSellerTurn(lead ?? {
@@ -285,6 +329,8 @@ router.post('/clever/seller-turn', express.json({ limit: '48kb' }), async (req, 
       },
     });
 
+    const slimAttachments = slimAttachmentsForSellerTurn(attachments);
+
     const { runCleverSellerTurnAsync } = await import(
       '../src/services/cleverSeller/runCleverSellerTurn.js'
     );
@@ -292,18 +338,25 @@ router.post('/clever/seller-turn', express.json({ limit: '48kb' }), async (req, 
     const result = await runCleverSellerTurnAsync({
       lead: leadInput,
       sellerInput,
-      attachments,
+      attachments: slimAttachments,
+      scopeHint: scopeHint || 'dashboard',
+      now: now || null,
       env: process.env,
     });
 
     appendQualityTurnMetric({
       createdAt: new Date().toISOString(),
       surface: 'seller_universal_input',
-      fallback: result?.openaiEscalation?.used !== true,
+      fallback: result?.interpreterDiagnostics?.interpreterSource !== 'openai'
+        && result?.openaiEscalation?.used !== true,
       fromCache: false,
       metrics: {
         openaiEscalation: result?.openaiEscalation ?? null,
+        interpreterDiagnostics: sanitizeInterpreterDiagnostics(
+          result?.interpreterDiagnostics ?? null,
+        ),
         factCount: result?.extractedFacts?.length ?? 0,
+        multiSource: Boolean(result?.multiSourceIntake?.detected),
       },
     });
 

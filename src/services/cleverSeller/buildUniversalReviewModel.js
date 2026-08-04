@@ -6,6 +6,7 @@ import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 import { buildHomepageInquiryReviewModel } from '../crm/homepageCommercialInquiry.js';
 import { buildInboundLeadReviewModel } from './inboundLeadIntake.js';
 import { buildCustomerReplyReviewModel } from './customerReplyIntake.js';
+import { buildMultiSourceIntakeReviewModel } from './multiSource/buildMultiSourceIntakeReview.js';
 import { calendarAvailabilityLabel } from './checkCalendarAvailability.js';
 
 const GROUP_ORDER = [
@@ -868,6 +869,10 @@ export function buildUniversalReviewModel(turn = {}) {
     return buildInboundLeadReviewModel(turn.inboundLead, turn);
   }
 
+  if (turn.multiSourceIntake?.detected) {
+    return buildMultiSourceIntakeReviewModel(turn.multiSourceIntake, turn);
+  }
+
   if (turn.homepageInquiry?.hasDualScenarios) {
     return buildHomepageInquiryReviewModel(turn.homepageInquiry);
   }
@@ -1651,6 +1656,7 @@ export function buildUniversalReviewModel(turn = {}) {
 export function shouldShowUniversalReview(turn = {}) {
   if (turn.customerReply?.detected) return true;
   if (turn.inboundLead?.detected) return true;
+  if (turn.multiSourceIntake?.detected) return true;
   if (turn.homepageInquiry?.hasDualScenarios) return true;
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
 

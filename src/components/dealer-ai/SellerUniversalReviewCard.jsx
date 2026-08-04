@@ -17,6 +17,21 @@ function pickPrimaryBody(model) {
   }
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
+  const intakeSec = sections.find((s) => (
+    s.kind === 'customer_intake_review'
+    || s.kind === 'inbound_lead_review'
+    || s.kind === 'customer_contract_tradein_intake_review'
+  ));
+  if (intakeSec?.body) return String(intakeSec.body).trim();
+  if (model?.body && (
+    model.reviewType === 'customer_intake_review'
+    || model.kind === 'customer_intake'
+    || model.reviewType === 'customer_contract_tradein_intake_review'
+  )) {
+    return String(model.body).trim();
+  }
+  const replySec = sections.find((s) => s.kind === 'customer_reply_review');
+  if (replySec?.body) return String(replySec.body).trim();
   const docsSec = sections.find((s) => s.kind === 'request_documents');
   if (docsSec?.body) return String(docsSec.body).trim();
   if (docsSec?.headline) return String(docsSec.headline).trim();
@@ -139,7 +154,9 @@ export default function SellerUniversalReviewCard({
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
   const docsSec = sections.find((s) => s.kind === 'request_documents');
   const intakeSec = sections.find((s) => (
-    s.kind === 'customer_intake_review' || s.kind === 'inbound_lead_review'
+    s.kind === 'customer_intake_review'
+    || s.kind === 'inbound_lead_review'
+    || s.kind === 'customer_contract_tradein_intake_review'
   ));
   const replySec = sections.find((s) => s.kind === 'customer_reply_review');
   const reviewActions = knowledgeMsg?.primaryActions

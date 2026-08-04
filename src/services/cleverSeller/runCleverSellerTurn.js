@@ -25,9 +25,17 @@ import {
 import {
   evaluateSellerInterpretEscalation,
   isCleverSellerOrchestratorEnabled,
+  isCleverSellerOpenAiInterpretEnabled,
+  evaluateComplexSellerTurn,
 } from './cleverSellerOrchestratorConfig.js';
 import { buildSellerInterpretSafeContext } from './buildSellerInterpretSafeContext.js';
 import { interpretSellerInputWithOpenAi } from './interpretSellerInputWithOpenAi.js';
+import {
+  buildMultiSourceIntake,
+  shouldBuildMultiSourceIntake,
+} from './multiSource/buildMultiSourceIntake.js';
+import { interpretMultiSourceWithOpenAi } from './multiSource/interpretMultiSourceWithOpenAi.js';
+import { minimizeSensitiveOcrText } from './minimizeSensitiveOcrText.js';
 import {
   mergeSellerIntents,
   mergeSellerInterpretation,
@@ -112,6 +120,8 @@ function finalizeSellerTurn({
   env = {},
   warningsExtra = [],
   openaiEscalation = null,
+  interpreterDiagnostics = null,
+  multiSourceIntakeOverride = null,
   currentOfferContext = null,
   workingContextItems = [],
   customerName = '',
@@ -427,6 +437,13 @@ function finalizeSellerTurn({
         : 'Neuen Kunden aus der Anfrage anlegen?',
       forIntent: SELLER_TURN_INTENTS.INBOUND_LEAD,
     });
+  } else if (inboundLead?.detected && inboundLead.resolutionStatus === 'ambiguous') {
+    missingInformation.push({
+      id: 'clarify_customer_for_intake',
+      field: 'customerId',
+      label: 'Mehrere Kunden passen – bitte die richtige Akte wählen.',
+      forIntent: SELLER_TURN_INTENTS.INBOUND_LEAD,
+    });
   }
 
   let effectiveIntents = Array.isArray(intents) ? [...intents] : [];
@@ -474,6 +491,26 @@ function finalizeSellerTurn({
       effectiveIntents.push({ type: SELLER_TURN_INTENTS.FIND_CUSTOMER, confidence: 0.99 });
       effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, confidence: 0.99 });
     }
+  }
+
+  // Intake/Reply/Multi-Source: keine parallele Nachrichten-/Angebotsvorbereitung vor Confirm
+  if (inboundLead?.detected || customerReply?.detected) {
+    effectiveIntents = effectiveIntents.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+      && i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+      && i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    ));
+  }
+
+  const multiSourceCandidate = shouldBuildMultiSourceIntake({
+    sellerInput: interpreted.normalized || interpreted.raw,
+    attachments,
+    facts: uniqueFacts,
+  });
+  if (multiSourceCandidate) {
+    effectiveIntents = effectiveIntents.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    ));
   }
 
   const preparedActions = enabled
@@ -899,6 +936,7 @@ function finalizeSellerTurn({
     homepageInquiry: interpreted.homepageInquiry ?? null,
     inboundLead,
     customerReply,
+    multiSourceIntake: null,
     goldenMoment: assistantContext.goldenMoment ?? null,
     uiEffects: {
       capturedFacts: uniqueFacts
@@ -925,11 +963,11 @@ function finalizeSellerTurn({
             : '○ Kundenantwort erkannt – Kunde zuordnen')
           : (inboundLead?.detected
             ? (inboundLead.proposeCreateCustomer
-              ? '○ Kein Treffer – neue Kundenakte vorschlagen'
+              ? '○ Erkannt als neue Anfrage – Kundenakte anlegen?'
               : (inboundLead.matchedLeadName
-                ? `✓ ${inboundLead.matchedLeadName} – Anfrage erkannt`
+                ? `✓ Erkannt: ${inboundLead.matchedLeadName}`
                 : inboundLead.resolutionStatus === 'ambiguous'
-                  ? '○ Mehrere mögliche Kunden – bitte wählen'
+                  ? '○ Erkannt, aber unsicher – bitte Kunde wählen'
                   : 'Clever liest die Kundenanfrage …'))
             : null),
         resolvedDateTime?.ok
@@ -1036,9 +1074,65 @@ function finalizeSellerTurn({
     },
     featureEnabled: enabled,
     openaiEscalation,
+    interpreterDiagnostics: interpreterDiagnostics || {
+      interpreterSource: 'deterministic',
+      responseId: null,
+      model: null,
+      reason: null,
+      latencyMs: null,
+      used: false,
+    },
     autoSent: false,
     autoBooked: false,
   };
+
+  if (multiSourceCandidate || multiSourceIntakeOverride?.detected) {
+    const safeAttachments = attachments.map((a) => {
+      if (!a?.extractedText) return a;
+      const minimized = minimizeSensitiveOcrText(a.extractedText);
+      return {
+        ...a,
+        extractedText: minimized?.text ?? a.extractedText,
+      };
+    });
+    const intake = multiSourceIntakeOverride?.detected
+      ? multiSourceIntakeOverride
+      : buildMultiSourceIntake({
+        sellerInput: interpreted.normalized || interpreted.raw,
+        attachments: safeAttachments,
+        facts: uniqueFacts,
+        lead: workingLead,
+        now: now || Date.now(),
+      });
+    turnPartial.multiSourceIntake = intake;
+    if (intake?.missingInformation?.length) {
+      turnPartial.missingInformation = [
+        ...(turnPartial.missingInformation || []),
+        ...intake.missingInformation.filter((m) => (
+          !(turnPartial.missingInformation || []).some((x) => x.id === m.id)
+        )),
+      ];
+    }
+    turnPartial.uiEffects = {
+      ...turnPartial.uiEffects,
+      progressLines: [
+        '✓ Seller-Dump und Dokument zusammengeführt',
+        intake.resolvedCustomerCandidate?.fullName
+          ? `✓ Kunde: ${intake.resolvedCustomerCandidate.fullName}`
+          : null,
+        intake.currentVehicleInterest
+          ? `✓ Wunsch: ${intake.currentVehicleInterest.label}`
+          : null,
+        intake.tradeInCandidate
+          ? `✓ Inzahlungnahme: ${intake.tradeInCandidate.label}`
+          : null,
+        intake.historicalContract?.statusLabel
+          ? `✓ ${intake.historicalContract.statusLabel}`
+          : (intake.historicalContract ? '✓ Altvertrag erkannt' : null),
+        ...(turnPartial.uiEffects?.progressLines || []),
+      ].filter(Boolean),
+    };
+  }
 
   const reviewModel = shouldShowUniversalReview(turnPartial)
     ? buildUniversalReviewModel(turnPartial)
@@ -1082,6 +1176,14 @@ export function runCleverSellerTurn({
     intents: interpreted.intents,
     env,
     openaiEscalation: null,
+    interpreterDiagnostics: {
+      interpreterSource: 'deterministic',
+      responseId: null,
+      model: null,
+      reason: null,
+      latencyMs: null,
+      used: false,
+    },
     currentOfferContext,
     workingContextItems,
     customerName,
@@ -1096,9 +1198,15 @@ export function runCleverSellerTurn({
 }
 
 /**
- * Async: deterministisch + optionale OpenAI-Eskalation.
+ * Async: deterministisch + optionale OpenAI-Eskalation (Facts oder Multi-Source).
  * @param {object} params
- * @param {{ fetchImpl?: typeof fetch, apiKey?: string|null, forceEscalate?: boolean }} [params.openAiOptions]
+ * @param {{
+ *   fetchImpl?: typeof fetch,
+ *   apiKey?: string|null,
+ *   forceEscalate?: boolean,
+ *   createResponse?: Function,
+ *   model?: string,
+ * }} [params.openAiOptions]
  */
 export async function runCleverSellerTurnAsync({
   lead = {},
@@ -1106,64 +1214,269 @@ export async function runCleverSellerTurnAsync({
   attachments = [],
   env = typeof process !== 'undefined' ? process.env : {},
   openAiOptions = {},
+  currentOfferContext = null,
+  workingContextItems = [],
+  customerName = '',
+  leadsSnapshot = [],
+  scopeHint = null,
+  appContext = null,
+  pendingAction = null,
+  now = null,
+  calendarAvailability = null,
 } = {}) {
-  const interpreted = interpretSellerInput(sellerInput, { attachments });
+  const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
   const gate = openAiOptions.forceEscalate
-    ? { shouldEscalate: true, reason: 'forced' }
+    ? {
+      shouldEscalate: true,
+      reason: 'forced',
+      path: evaluateComplexSellerTurn({
+        sellerInput: interpreted.normalized || sellerInput,
+        attachments,
+        facts: interpreted.facts,
+      }).isComplex
+        ? 'multi_source'
+        : 'facts',
+      complexity: evaluateComplexSellerTurn({
+        sellerInput: interpreted.normalized || sellerInput,
+        attachments,
+        facts: interpreted.facts,
+      }),
+    }
     : evaluateSellerInterpretEscalation({
       ...interpreted,
       sellerInput,
       facts: interpreted.facts,
-    }, env);
+    }, env, { attachments, sellerInput });
+
+  const baseFinalize = (extra = {}) => finalizeSellerTurn({
+    lead,
+    interpreted,
+    facts: interpreted.facts,
+    intents: interpreted.intents,
+    env,
+    currentOfferContext,
+    workingContextItems,
+    customerName,
+    attachments,
+    leadsSnapshot,
+    scopeHint,
+    appContext,
+    pendingAction: pendingAction || appContext?.pendingAction || null,
+    now: now || appContext?.now || null,
+    calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
+    ...extra,
+  });
 
   if (!gate.shouldEscalate) {
-    return finalizeSellerTurn({
-      lead,
-      interpreted,
-      facts: interpreted.facts,
-      intents: interpreted.intents,
-      env,
+    return baseFinalize({
       openaiEscalation: { used: false, reason: gate.reason },
-      attachments,
+      interpreterDiagnostics: {
+        interpreterSource: 'deterministic',
+        responseId: null,
+        model: null,
+        attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+        attachmentContextMode: 'none',
+        complexityReasons: gate.complexity?.complexityReasons || [],
+        schemaValid: null,
+        validatorWarningsCount: 0,
+        toolCalls: 0,
+        fallbackReason: null,
+        durationMs: null,
+        reason: gate.reason,
+        latencyMs: null,
+        used: false,
+      },
     });
   }
 
+  // --- Multi-Source OpenAI path (OpenAI = primäres Sprachverständnis) ---
+  if (gate.path === 'multi_source') {
+    const complexityReasons = gate.complexity?.complexityReasons
+      || evaluateComplexSellerTurn({
+        sellerInput: interpreted.normalized || sellerInput,
+        attachments,
+        facts: interpreted.facts,
+      }).complexityReasons
+      || [];
+    const safeAttachments = (attachments || []).map((a) => {
+      if (!a?.extractedText) return a;
+      const minimized = minimizeSensitiveOcrText(a.extractedText);
+      return { ...a, extractedText: minimized?.text ?? a.extractedText };
+    });
+    const baselineIntake = buildMultiSourceIntake({
+      sellerInput: interpreted.normalized || sellerInput,
+      attachments: safeAttachments,
+      facts: interpreted.facts,
+      lead,
+      now: now || Date.now(),
+    });
+    const safeContext = buildSellerInterpretSafeContext(lead, {
+      sellerInput: interpreted.normalized || sellerInput,
+      attachmentTypes: interpreted.attachmentTypes,
+      attachments: safeAttachments,
+      deterministic: interpreted,
+      includeAttachmentExcerpts: true,
+    });
+
+    const buildMsDiagnostics = (partial = {}) => ({
+      interpreterSource: partial.interpreterSource || 'fallback',
+      responseId: partial.responseId ?? null,
+      model: partial.model ?? null,
+      attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+      attachmentContextMode: partial.attachmentContextMode || 'none',
+      complexityReasons,
+      schemaValid: partial.schemaValid ?? null,
+      validatorWarningsCount: partial.validatorWarningsCount ?? 0,
+      toolCalls: partial.toolCalls ?? 0,
+      fallbackReason: partial.fallbackReason ?? null,
+      durationMs: partial.durationMs ?? partial.latencyMs ?? null,
+      latencyMs: partial.latencyMs ?? partial.durationMs ?? null,
+      reason: gate.reason,
+      used: Boolean(partial.used),
+      error: partial.error ?? null,
+    });
+
+    let aiMs;
+    try {
+      aiMs = await interpretMultiSourceWithOpenAi(safeContext, {
+        apiKey: openAiOptions.apiKey,
+        model: openAiOptions.model,
+        createResponse: openAiOptions.createResponse,
+        runStructured: openAiOptions.runStructured,
+        OpenAI: openAiOptions.OpenAI,
+        baselineIntake,
+        sellerInput: interpreted.normalized || sellerInput,
+        attachments: safeAttachments,
+        facts: interpreted.facts,
+        lead,
+        now: now || Date.now(),
+        routeScope: scopeHint || appContext?.routeContext?.scope || null,
+        workingContext: workingContextItems,
+        customerRefId: lead?.id || null,
+      });
+    } catch (err) {
+      return baseFinalize({
+        multiSourceIntakeOverride: baselineIntake,
+        warningsExtra: [
+          'Clever konnte den gesamten Fall nicht vollständig mit dem Sprachmodell interpretieren. Bitte prüfen Sie die erkannten Angaben.',
+        ],
+        openaiEscalation: {
+          used: false,
+          reason: gate.reason,
+          error: err?.message || 'openai_error',
+          interpreterSource: 'fallback',
+        },
+        interpreterDiagnostics: buildMsDiagnostics({
+          interpreterSource: 'fallback',
+          fallbackReason: err?.message || 'openai_error',
+          error: err?.message || 'openai_error',
+          used: false,
+          attachmentContextMode: attachments?.length ? 'minimized_text' : 'none',
+        }),
+      });
+    }
+
+    const diagnostics = buildMsDiagnostics({
+      interpreterSource: aiMs.interpreterSource || (aiMs.ok ? 'openai' : 'fallback'),
+      responseId: aiMs.responseId || null,
+      model: aiMs.model || null,
+      latencyMs: aiMs.latencyMs ?? null,
+      durationMs: aiMs.durationMs ?? aiMs.latencyMs ?? null,
+      attachmentContextMode: aiMs.attachmentContextMode || 'none',
+      schemaValid: aiMs.schemaValid ?? null,
+      validatorWarningsCount: aiMs.validatorWarningsCount ?? 0,
+      toolCalls: aiMs.toolCalls ?? 0,
+      fallbackReason: aiMs.ok ? null : (aiMs.fallbackReason || aiMs.error || 'openai_failed'),
+      used: Boolean(aiMs.ok),
+      error: aiMs.ok ? null : (aiMs.error || null),
+    });
+
+    return baseFinalize({
+      multiSourceIntakeOverride: aiMs.intake || baselineIntake,
+      warningsExtra: aiMs.ok
+        ? ['Semantische Interpretation – bitte in der Review prüfen.']
+        : [
+          'Clever konnte den gesamten Fall nicht vollständig mit dem Sprachmodell interpretieren. Bitte prüfen Sie die erkannten Angaben.',
+        ],
+      openaiEscalation: {
+        used: Boolean(aiMs.ok),
+        reason: gate.reason,
+        path: 'multi_source',
+        responseId: diagnostics.responseId,
+        model: diagnostics.model,
+        latencyMs: diagnostics.latencyMs,
+        interpreterSource: diagnostics.interpreterSource,
+        error: diagnostics.error,
+      },
+      interpreterDiagnostics: diagnostics,
+    });
+  }
+
+  // --- Schwache Facts-Eskalation (bestehend) ---
   const safeContext = buildSellerInterpretSafeContext(lead, {
     sellerInput: interpreted.normalized || sellerInput,
     attachmentTypes: interpreted.attachmentTypes,
+    attachments,
     deterministic: interpreted,
+    includeAttachmentExcerpts: false,
   });
 
   let ai;
   try {
     ai = await interpretSellerInputWithOpenAi(safeContext, openAiOptions);
   } catch (err) {
-    return finalizeSellerTurn({
-      lead,
-      interpreted,
-      facts: interpreted.facts,
-      intents: interpreted.intents,
-      env,
+    return baseFinalize({
       warningsExtra: ['OpenAI-Eskalation fehlgeschlagen – nur Regel-Interpretation.'],
       openaiEscalation: {
         used: false,
         reason: gate.reason,
+        error: err?.message || 'openai_error',
+        interpreterSource: 'fallback',
+      },
+      interpreterDiagnostics: {
+        interpreterSource: 'fallback',
+        responseId: null,
+        model: null,
+        attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+        attachmentContextMode: 'none',
+        complexityReasons: gate.complexity?.complexityReasons || [],
+        schemaValid: null,
+        validatorWarningsCount: 0,
+        toolCalls: 0,
+        fallbackReason: err?.message || 'openai_error',
+        durationMs: null,
+        reason: gate.reason,
+        latencyMs: null,
+        used: false,
         error: err?.message || 'openai_error',
       },
     });
   }
 
   if (!ai?.ok) {
-    return finalizeSellerTurn({
-      lead,
-      interpreted,
-      facts: interpreted.facts,
-      intents: interpreted.intents,
-      env,
+    return baseFinalize({
       warningsExtra: ['OpenAI nicht verfügbar – nur Regel-Interpretation.'],
       openaiEscalation: {
         used: false,
         reason: gate.reason,
+        error: ai?.error || 'openai_failed',
+        interpreterSource: 'fallback',
+      },
+      interpreterDiagnostics: {
+        interpreterSource: 'fallback',
+        responseId: null,
+        model: null,
+        attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+        attachmentContextMode: 'none',
+        complexityReasons: gate.complexity?.complexityReasons || [],
+        schemaValid: null,
+        validatorWarningsCount: 0,
+        toolCalls: 0,
+        fallbackReason: ai?.error || 'openai_failed',
+        durationMs: null,
+        reason: gate.reason,
+        latencyMs: null,
+        used: false,
         error: ai?.error || 'openai_failed',
       },
     });
@@ -1183,8 +1496,28 @@ export async function runCleverSellerTurnAsync({
     openaiEscalation: {
       used: true,
       reason: gate.reason,
+      path: 'facts',
       aiFactCount: ai.facts.length,
+      interpreterSource: 'openai',
     },
+    interpreterDiagnostics: {
+      interpreterSource: 'openai',
+      responseId: null,
+      model: null,
+      reason: gate.reason,
+      latencyMs: null,
+      used: true,
+    },
+    currentOfferContext,
+    workingContextItems,
+    customerName,
+    attachments,
+    leadsSnapshot,
+    scopeHint,
+    appContext,
+    pendingAction: pendingAction || appContext?.pendingAction || null,
+    now: now || appContext?.now || null,
+    calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
   });
 }
 
@@ -1216,15 +1549,37 @@ export async function runCleverSellerTurnWithCalendar(params = {}) {
     windowRef = null,
     skipCalendarCheck = false,
     stubOptions = undefined,
+    openAiOptions = {},
+    forceAsyncInterpret = false,
     ...rest
   } = params;
+
+  const complexity = evaluateComplexSellerTurn({
+    sellerInput: rest.sellerInput,
+    attachments: rest.attachments || [],
+  });
+  const preferAsync = Boolean(
+    forceAsyncInterpret
+    || (complexity.isComplex && isCleverSellerOpenAiInterpretEnabled(rest.env))
+    || openAiOptions?.forceEscalate
+  );
+
+  const executeTurn = async (turnParams) => {
+    if (preferAsync) {
+      return runCleverSellerTurnAsync({
+        ...turnParams,
+        openAiOptions,
+      });
+    }
+    return runCleverSellerTurn(turnParams);
+  };
 
   let calendarAvailability = rest.calendarAvailability
     ?? rest.appContext?.calendarAvailability
     ?? null;
 
   if (skipCalendarCheck || calendarAvailability) {
-    return runCleverSellerTurn({ ...rest, calendarAvailability });
+    return executeTurn({ ...rest, calendarAvailability });
   }
 
   const provider = injectedProvider !== undefined
@@ -1236,10 +1591,10 @@ export async function runCleverSellerTurnWithCalendar(params = {}) {
     });
 
   if (!provider) {
-    return runCleverSellerTurn(rest);
+    return executeTurn(rest);
   }
 
-  const draftTurn = runCleverSellerTurn(rest);
+  const draftTurn = await executeTurn(rest);
   const appt = draftTurn.preparedAppointment
     || (draftTurn.preparedActions || []).find((a) => (
       a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
@@ -1260,7 +1615,7 @@ export async function runCleverSellerTurnWithCalendar(params = {}) {
     alternativeSlots: appt.alternativeSlots || [],
   });
 
-  return runCleverSellerTurn({
+  return executeTurn({
     ...rest,
     calendarAvailability,
   });
@@ -1272,4 +1627,6 @@ export {
   isCleverSellerOpenAiInterpretEnabled,
   evaluateSellerInterpretEscalation,
   shouldEscalateSellerInterpretation,
+  evaluateComplexSellerTurn,
+  shouldUseSemanticInterpreter,
 } from './cleverSellerOrchestratorConfig.js';

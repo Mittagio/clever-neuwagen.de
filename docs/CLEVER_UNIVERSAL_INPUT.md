@@ -116,10 +116,10 @@ Nach **Übernehmen**:
 ### OpenAI-Eskalation (Schritt 5, optional)
 
 - Flag: `CLEVER_SELLER_OPENAI_INTERPRET_ENABLED` + `VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED` (Default aus)
-- Route: `POST /api/v1/clever/seller-turn` – nur schmaler Kontext (kein Full-Lead)
-- Nur bei Heuristik (keine Facts / unknown / low confidence)
-- AI-Facts immer `needsConfirmation: true` → Universal Review → Übernehmen
-- Deterministischer Pfad bleibt Fallback
+- Multi-Source: `shouldUseSemanticInterpreter` / Complexity Router → minimierter Vertragskontext → Responses API `CleverMultiSourceIntakePlan` (primäres Sprachverständnis) → Post-AI-Validatoren → eine Review
+- Route: `POST /api/v1/clever/seller-turn` – kein Full-Lead, kein Full-PDF
+- Einfache Turns bleiben deterministisch; schwache Facts-Eskalation unverändert
+- Fallback ehrlich (`interpreterSource: fallback`) mit UI-Warnung; Diagnose ohne PII
 
 ## Was bewusst nicht gebaut wurde
 

@@ -16,6 +16,30 @@ export function isCleverSellerOpenAiInterpretClientEnabled() {
   return import.meta.env.VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true';
 }
 
+/**
+ * UI-Routing: komplexer Turn → Server (kein Browser-API-Key).
+ * Nutzt dieselbe Heuristik wie der Orchestrator.
+ */
+export async function shouldRequestServerSellerTurn({
+  sellerInput = '',
+  attachments = [],
+  facts = [],
+  appContext = null,
+  workingContext = null,
+} = {}) {
+  if (!isCleverSellerOpenAiInterpretClientEnabled()) return false;
+  const { shouldUseSemanticInterpreter } = await import(
+    '../../cleverSeller/multiSource/evaluateComplexSellerTurn.js'
+  );
+  return shouldUseSemanticInterpreter({
+    sellerInput,
+    attachments,
+    facts,
+    appContext,
+    workingContext,
+  }).use;
+}
+
 export function isCleverMagicMessageClientEnabled() {
   return import.meta.env.VITE_CLEVER_MAGIC_MESSAGE_ENABLED === 'true'
     || import.meta.env.VITE_CLEVER_SELLER_COPILOT_ENABLED === 'true';

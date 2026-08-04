@@ -56,6 +56,7 @@ export function createEmptyCleverSellerTurnResult() {
     },
     legacy: null,
     openaiEscalation: null,
+    interpreterDiagnostics: null,
     goldenMoment: null,
   };
 }

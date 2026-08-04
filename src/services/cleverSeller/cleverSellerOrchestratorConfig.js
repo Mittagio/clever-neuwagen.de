@@ -2,6 +2,10 @@
  * Feature-Flags für Clever Universal Seller Orchestrator.
  * Default: Orchestrator an (deterministisch). OpenAI-Interpretation aus.
  */
+import {
+  evaluateComplexSellerTurn,
+  shouldUseSemanticInterpreter,
+} from './multiSource/evaluateComplexSellerTurn.js';
 
 function resolveEnv(env) {
   if (env) return env;
@@ -31,7 +35,7 @@ export function isCleverSellerOpenAiInterpretEnabled(env) {
 }
 
 /**
- * Reine Heuristik – wann OpenAI nachziehen sinnvoll ist.
+ * Reine Heuristik – wann OpenAI nachziehen sinnvoll ist (schwache Eskalation).
  * @param {object} interpreted
  */
 export function shouldEscalateSellerInterpretation(interpreted = {}) {
@@ -67,13 +71,45 @@ export function shouldEscalateSellerInterpretation(interpreted = {}) {
 
 /**
  * Wann deterministische Interpretation OpenAI nachziehen soll.
+ * Komplex (Multi-Source) hat Vorrang vor schwacher Eskalation.
  * @param {object} interpreted
  * @param {object} [env]
+ * @param {{ attachments?: object[], sellerInput?: string }} [options]
  */
-export function evaluateSellerInterpretEscalation(interpreted = {}, env) {
+export function evaluateSellerInterpretEscalation(interpreted = {}, env, options = {}) {
   const resolved = resolveEnv(env);
   if (!isCleverSellerOpenAiInterpretEnabled(resolved)) {
-    return { shouldEscalate: false, reason: null };
+    return {
+      shouldEscalate: false,
+      reason: null,
+      path: null,
+      complexity: { isComplex: false, reason: null, path: null },
+    };
   }
-  return shouldEscalateSellerInterpretation(interpreted);
+
+  const complexity = evaluateComplexSellerTurn({
+    sellerInput: options.sellerInput ?? interpreted.normalized ?? interpreted.raw ?? interpreted.sellerInput,
+    attachments: options.attachments || [],
+    facts: interpreted.facts ?? interpreted.extractedFacts ?? [],
+    interpreted,
+  });
+
+  if (complexity.isComplex) {
+    return {
+      shouldEscalate: true,
+      reason: complexity.reason,
+      path: complexity.path || 'multi_source',
+      complexity,
+    };
+  }
+
+  const weak = shouldEscalateSellerInterpretation(interpreted);
+  return {
+    shouldEscalate: weak.shouldEscalate,
+    reason: weak.reason,
+    path: weak.shouldEscalate ? 'facts' : null,
+    complexity,
+  };
 }
+
+export { evaluateComplexSellerTurn, shouldUseSemanticInterpreter };

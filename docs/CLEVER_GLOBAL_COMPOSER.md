@@ -70,6 +70,42 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 
 **Intake-Review:** `reviewType: customer_intake_review` mit `legacyReviewType: inbound_lead_review`. Accept bleibt `accept_inbound_lead` (Handler akzeptiert beide Review-Typen).
 
+**Erkennung:** Forward/Mail-Header, Cue `Hier eine Anfrage:`, **oder strukturierte Händler-Notiz** (Name + Kunden-Mail/Tel + Fahrzeug/Kondition) – ohne dass daraus eine Kundennachricht vorbereitet wird. Review-Copy trennt **Erkannt** / **Bitte prüfen**; bei Ambiguous fehlt `clarify_customer_for_intake`.
+
+### Multi-Source Intake (Dump + Altvertrag)
+
+**Leitsatz:** Text, Dokument und Arbeitskontext bilden **einen** Clever-Turn.
+
+| Baustein | Rolle |
+|----------|--------|
+| `normalizeSellerUnits.js` | Unit-first: `10.000 km` ≠ Kaufpreis; `48 10.000 km` → Laufzeit + Jahres-km |
+| `detectTradeInFromSellerInput.js` | `GW` / Inzahlungnahme → Trade-in, nicht Vehicle Interest |
+| `multiSource/contractKindRegistry.js` | Erweiterbare Vertragsarten (Leasing, Finanzierung, **3-Wege**, Kauf, …) |
+| `multiSource/buildMultiSourceIntake.js` | Merge Seller-Dump + Attachment → Action Plan (deterministisch) |
+| `multiSource/evaluateComplexSellerTurn.js` | Complexity Router → OpenAI nur bei komplexen Turns |
+| `multiSource/interpretMultiSourceWithOpenAi.js` | Optional: Responses API + Schema `CleverMultiSourceIntakePlan` |
+| Review `customer_contract_tradein_intake_review` | Eine Karte: Kunde, Wunsch, Konditionen, GW, Altvertrag, Konflikte, Offen |
+
+Trigger eng: `Abgleich` **oder** Wunsch + GW + Vertrags-PDF. Inbound/Reply/reiner Contract-Import bleiben eigene Pfade. Kein Auto-Persist.
+
+Neue Vertragsart: Eintrag in `CONTRACT_KIND_REGISTRY` (+ optional `enrichExtracted`) – kein Mazzei-/Picanto-Hardcode im Core.
+
+#### OpenAI Multi-Source Interpret (optional)
+
+Default **aus**. Aktivierung:
+
+| Env | Rolle |
+|-----|--------|
+| `CLEVER_SELLER_OPENAI_INTERPRET_ENABLED=true` | Server: OpenAI-Pfad freischalten |
+| `OPENAI_API_KEY` | Pflicht für Server-Interpret |
+| `VITE_CLEVER_SELLER_OPENAI_INTERPRET_ENABLED=true` | UI: komplexe Turns via `POST /api/v1/clever/seller-turn` (kein Browser-Key) |
+
+**Ablauf:** `shouldUseSemanticInterpreter` / Complexity Router (`complexityReasons`) → bei komplex: Async `runCleverSellerTurnAsync` → `extractMinimalContractContext` (kein Full-PDF) → OpenAI Structured Plan (`CleverMultiSourceIntakePlan` via `openAiResponsesClient`) als **primäres Sprachverständnis** → Post-AI-Validatoren → Review aus validiertem Plan. Einfache Turns bleiben sync/deterministisch.
+
+Bei Flag aus, fehlendem Key oder AI-Fehler: deterministischer Fallback (`interpreterSource: fallback`) mit **sichtbarer** UI-Warnung – kein stiller Erfolg. Diagnose ohne PII: `interpreterSource`, `attachmentContextMode`, `complexityReasons`, `schemaValid`, `validatorWarningsCount`, `toolCalls`, `fallbackReason`, `durationMs`, `responseId`, `model`.
+
+Tests: `multiSourceOpenAiInterpret.golden.test.js` · Smoke: `scripts/smoke-multi-source-openai.mjs`
+
 ## Slice 5 – Golden Flow
 
 Input (in Akte / mit aktuellem Kunden):

@@ -127,3 +127,73 @@ export function buildToolEvidence(toolResults = []) {
     toolResults,
   };
 }
+
+/**
+ * Structured JSON via Responses API – ohne Tool-Loop (Multi-Source Interpret).
+ * Wiederverwendet denselben OpenAI-Client; kein zweiter Integrationspfad.
+ *
+ * @param {object} params
+ * @param {object} [deps]
+ */
+export async function runOpenAiStructuredJsonResponse(params = {}, deps = {}) {
+  const {
+    instructions,
+    input,
+    model,
+    apiKey,
+    timeoutMs = 25000,
+    jsonSchema,
+    store = false,
+  } = params;
+
+  if (!apiKey) {
+    return { ok: false, error: 'missing_api_key', parsed: null, responseId: null };
+  }
+  if (!jsonSchema?.name || !jsonSchema?.schema) {
+    return { ok: false, error: 'missing_json_schema', parsed: null, responseId: null };
+  }
+
+  const OpenAiCtor = deps.OpenAI ?? OpenAI;
+  const client = new OpenAiCtor({
+    apiKey,
+    timeout: timeoutMs,
+  });
+
+  const response = await client.responses.create({
+    model,
+    store,
+    instructions,
+    input,
+    text: {
+      format: {
+        type: 'json_schema',
+        name: jsonSchema.name,
+        schema: jsonSchema.schema,
+        strict: jsonSchema.strict !== false,
+      },
+    },
+  });
+
+  const parsed = response?.output_parsed
+    ?? tryParseJson(response?.output_text)
+    ?? null;
+
+  return {
+    ok: Boolean(parsed),
+    error: parsed ? null : 'empty_or_invalid_response',
+    parsed,
+    rawText: response?.output_text ?? null,
+    responseId: response?.id || null,
+    usage: response?.usage ?? null,
+    toolCallCount: 0,
+  };
+}
+
+function tryParseJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}

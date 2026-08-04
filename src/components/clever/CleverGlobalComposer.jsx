@@ -12,6 +12,7 @@ import { useCleverComposerOptional } from '../../context/CleverComposerContext.j
 import { useLeads } from '../../context/LeadsContext.jsx';
 import {
   runCleverSellerTurn,
+  runCleverSellerTurnAsync,
   runCleverSellerTurnWithCalendar,
 } from '../../services/cleverSeller/runCleverSellerTurn.js';
 import {
@@ -29,9 +30,21 @@ import { refreshSellerTurnCalendarCheck } from '../../services/cleverSeller/refr
 import { enrichSellerTurnWithMagicPropose } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { isPrepareSuccessionOfferCue } from '../../services/cleverSeller/prepareSuccessionOfferFromLead.js';
+import { shouldUseSemanticInterpreter } from '../../services/cleverSeller/multiSource/evaluateComplexSellerTurn.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
+import {
+  isCleverSellerOpenAiInterpretClientEnabled,
+  requestCleverSellerTurn,
+  shouldRequestServerSellerTurn,
+} from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import './CleverGlobalComposer.css';
+
+const FALLBACK_INTERPRET_WARNING = [
+  'Clever konnte den gesamten Fall nicht vollständig',
+  'mit dem Sprachmodell interpretieren.',
+  'Bitte prüfen Sie die erkannten Angaben.',
+].join(' ');
 
 const SUGGESTION_CHIPS = [
   { id: 'showroom', label: 'Showroom starten' },
@@ -50,6 +63,49 @@ function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
   if (offerId) params.set('offerId', offerId);
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
+}
+
+/** PDF/Vertrag aus letztem Turn oder Working Context für Multi-Source. */
+function collectComposerAttachments({ lastTurn = null, workingContextItems = [] } = {}) {
+  const out = [];
+  const push = (att) => {
+    if (!att) return;
+    const text = String(att.extractedText || att.text || '').trim();
+    const kind = att.kind || att.sourceType || null;
+    if (!text && kind !== 'contract_pdf') return;
+    out.push({
+      id: att.id || att.fileName || `att_${out.length}`,
+      kind: kind || 'contract_pdf',
+      sourceType: att.sourceType || kind || 'contract_pdf',
+      fileName: att.fileName || att.name || 'dokument.pdf',
+      extractedText: text.slice(0, 24000),
+      mimeType: att.mimeType || 'application/pdf',
+    });
+  };
+
+  const contractAction = (lastTurn?.preparedActions || []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+  ));
+  if (contractAction?.payload) {
+    push({
+      id: contractAction.payload.attachmentId || 'last-contract',
+      kind: 'contract_pdf',
+      sourceType: contractAction.payload.sourceType || 'contract_pdf',
+      fileName: contractAction.payload.fileName || 'vertrag.pdf',
+      extractedText: contractAction.payload.extractedText
+        || contractAction.payload.rawText
+        || contractAction.payload.attachment?.extractedText
+        || '',
+    });
+  }
+
+  for (const item of workingContextItems || []) {
+    if (item?.extractedText || item?.kind === 'contract_pdf' || item?.type === 'contract_pdf') {
+      push(item);
+    }
+  }
+
+  return out;
 }
 
 export default function CleverGlobalComposer() {
@@ -603,8 +659,25 @@ export default function CleverGlobalComposer() {
     setSending(true);
     setFeedback('');
 
+    const composerAttachments = collectComposerAttachments({
+      lastTurn,
+      workingContextItems: ctx.attachedWorkingObjects || [],
+    });
+    const semantic = shouldUseSemanticInterpreter({
+      sellerInput: text,
+      attachments: composerAttachments,
+      appContext: {
+        routeContext: ctx?.routeContext,
+        attachedWorkingObjects: ctx?.attachedWorkingObjects,
+        dashboardContext: ctx?.dashboardContext,
+      },
+      workingContext: ctx?.attachedWorkingObjects || [],
+    });
+
     const lower = text.toLowerCase();
-    if (/heute an|heute liegt|tages/.test(lower)) {
+    if (semantic.use) {
+      setProgressHint('Clever analysiert Dump und Dokument …');
+    } else if (/heute an|heute liegt|tages/.test(lower)) {
       setProgressHint('Clever prüft Ihre heutigen Vorgänge …');
     } else if (/termin|montag|dienstag|mittwoch|donnerstag|freitag|schlag.*vor|probefahrt/.test(lower)) {
       setProgressHint('Clever bereitet Terminvorschlag und Nachricht vor …');
@@ -629,9 +702,17 @@ export default function CleverGlobalComposer() {
     }
 
     try {
-      let turn = await runCleverSellerTurnWithCalendar({
+      const useServerInterpret = semantic.use
+        && isCleverSellerOpenAiInterpretClientEnabled()
+        && await shouldRequestServerSellerTurn({
+          sellerInput: text,
+          attachments: composerAttachments,
+        });
+
+      const localTurnParams = {
         lead: ctx.currentCustomer || {},
         sellerInput: text,
+        attachments: composerAttachments,
         leadsSnapshot: ctx.leadsSnapshot || [],
         scopeHint: 'dashboard',
         appContext: {
@@ -642,7 +723,36 @@ export default function CleverGlobalComposer() {
         workingContextItems: ctx.attachedWorkingObjects || [],
         customerName: '',
         pendingAction: lastTurn?.pendingAction || null,
-      });
+      };
+
+      let turn;
+      if (useServerInterpret) {
+        setProgressHint('Clever analysiert Dump und Dokument …');
+        const serverTurn = await requestCleverSellerTurn({
+          lead: ctx.currentCustomer || {},
+          sellerInput: text,
+          attachments: composerAttachments,
+          scopeHint: 'dashboard',
+          sellerId: ctx.sellerId || null,
+          dealerId: ctx.dealerId || null,
+        });
+        if (serverTurn?.turnId || serverTurn?.ok || serverTurn?.multiSourceIntake) {
+          turn = serverTurn;
+        } else {
+          turn = await runCleverSellerTurnWithCalendar({
+            ...localTurnParams,
+            forceAsyncInterpret: semantic.use,
+          });
+        }
+      } else if (semantic.use && isCleverSellerOpenAiInterpretClientEnabled()) {
+        // Komplex + Flag, aber kein Server: Async-Pfad (Key nur serverseitig sinnvoll)
+        turn = await runCleverSellerTurnAsync(localTurnParams);
+      } else {
+        turn = await runCleverSellerTurnWithCalendar({
+          ...localTurnParams,
+          forceAsyncInterpret: false,
+        });
+      }
 
       // Magic: bei Kundennachricht Async-LLM/Akte-Kontext (Confirm-Vertrag bleibt)
       const hasMessageDraft = Boolean(
@@ -724,16 +834,23 @@ export default function CleverGlobalComposer() {
       setReviewModel(model);
       setDraft('');
       setProgressHint(null);
-      if (model) {
+      const source = turn?.interpreterDiagnostics?.interpreterSource
+        || turn?.openaiEscalation?.interpreterSource
+        || null;
+      const isFallback = source === 'fallback' || source === 'openai_fallback';
+      if (isFallback) {
+        setFeedback(FALLBACK_INTERPRET_WARNING);
+      } else if (model) {
         setFeedback(model.title || 'Clever hat vorbereitet');
       } else {
         setFeedback('Clever hat nichts Sicheres gefunden');
       }
-      setTimeout(() => setFeedback(''), 2800);
+      setTimeout(() => setFeedback(''), isFallback ? 5200 : 2800);
     } catch {
+      // Draft behalten – Seller Input nicht verlieren
       setProgressHint(null);
-      setFeedback('Clever konnte das gerade nicht prüfen');
-      setTimeout(() => setFeedback(''), 2800);
+      setFeedback(FALLBACK_INTERPRET_WARNING);
+      setTimeout(() => setFeedback(''), 5200);
     } finally {
       setSending(false);
     }
@@ -921,6 +1038,15 @@ export default function CleverGlobalComposer() {
       <p className="clever-global-composer__leitfrage">{COMPOSER_LEITFRAGE}</p>
       {progressHint && (
         <p className="clever-global-composer__hint" role="status">{progressHint}</p>
+      )}
+      {(
+        lastTurn?.interpreterDiagnostics?.interpreterSource === 'fallback'
+        || lastTurn?.interpreterDiagnostics?.interpreterSource === 'openai_fallback'
+        || lastTurn?.openaiEscalation?.interpreterSource === 'fallback'
+      ) && (
+        <p className="clever-global-composer__hint" role="alert">
+          {FALLBACK_INTERPRET_WARNING}
+        </p>
       )}
       <SharedWorkspaceChat
         role="seller"
