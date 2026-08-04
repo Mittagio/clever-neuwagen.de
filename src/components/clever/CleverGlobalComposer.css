@@ -1,79 +1,171 @@
+/* Feste Clever-Fußleiste – primäre Verkäufer-Arbeitsfläche. */
 .clever-global-composer {
-  position: sticky;
+  --clever-global-composer-pad: 11.5rem;
+
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 40;
-  margin-top: 1.25rem;
-  padding: 0.75rem 0 0.25rem;
-  background: linear-gradient(180deg, transparent, rgba(248, 250, 252, 0.96) 28%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  max-height: min(78vh, 620px);
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.1);
+}
+
+.clever-global-composer__leitfrage {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.55rem 1rem 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #0f172a;
 }
 
 .clever-global-composer__hint {
-  margin: 0 0 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
   color: #334155;
   background: #f1f5f9;
-  border-radius: 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
 .clever-global-composer__review {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0;
+  overflow-y: auto;
+  max-height: min(42vh, 320px);
 }
 
 .clever-global-composer__progress {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.65rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.8rem;
+  gap: 0.2rem;
+  font-size: 0.78rem;
   color: #475569;
   background: #f8fafc;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .clever-global-composer__today-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+}
+
+.clever-global-composer__pick-label {
+  margin: 0.15rem 0 0;
+  padding: 0 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #64748b;
 }
 
 .clever-global-composer__today-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
+  gap: 0.1rem;
   width: 100%;
-  padding: 0.75rem 0.9rem;
+  padding: 0.55rem 0.75rem;
   text-align: left;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
   cursor: pointer;
 }
 
 .clever-global-composer__today-item strong {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #0f172a;
 }
 
 .clever-global-composer__today-item span {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #334155;
 }
 
 .clever-global-composer__today-item em {
   font-style: normal;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #64748b;
+}
+
+/* SharedWorkspaceChat im Footer: kein leerer Riesen-Feed */
+.clever-global-composer .sw-chat--composer-only {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: transparent;
+}
+
+.clever-global-composer .sw-chat--composer-only .sw-chat__feed {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(42vh, 320px);
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem 0;
+  background: transparent;
+  border: none;
+}
+
+.clever-global-composer .sw-chat--composer-only .sw-chat__feed:has(.sw-chat__empty--composer) {
+  display: none;
+}
+
+.clever-global-composer .sw-chat--composer-only .sw-chat__empty--composer {
+  display: none;
+}
+
+.clever-global-composer .sw-chat--composer-only .sw-chat__desk {
+  flex: 0 0 auto;
+  margin: 0;
+  border-top: none;
+  background: #fff;
+}
+
+.clever-global-composer .sw-chat--composer-only .sw-composer {
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0));
 }
 
 @media (min-width: 900px) {
   .clever-global-composer {
-    max-width: 720px;
+    --clever-global-composer-pad: 8.75rem;
   }
+
+  .clever-global-composer .sw-chat--composer-only .sw-chat__feed-main,
+  .clever-global-composer .sw-composer {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Dashboard-Inhalt nicht unter der Leiste verstecken */
+.app-layout:has(.clever-global-composer) .app-layout__main {
+  padding-bottom: calc(var(--clever-global-composer-pad, 9.5rem) + env(safe-area-inset-bottom, 0px));
+}
+
+.app-layout:has(.clever-global-composer) .site-footer {
+  display: none;
+}
+
+.app-layout:has(.clever-global-composer) .backend-home {
+  padding-bottom: 0.5rem;
 }

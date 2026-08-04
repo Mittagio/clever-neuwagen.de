@@ -10,8 +10,10 @@ import './SellerUniversalReviewCard.css';
 function pickPrimaryBody(model) {
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const knowledge = sections.find((s) => s.kind === 'knowledge_result');
-  if (knowledge?.headline) {
-    return [knowledge.title, knowledge.headline, knowledge.line].filter(Boolean).join('\n');
+  if (knowledge) {
+    // Beratungsantwort zuerst – nicht nur Meta (Titel / Quelle)
+    if (knowledge.body) return String(knowledge.body).trim();
+    return [knowledge.headline, knowledge.line].filter(Boolean).join('\n');
   }
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   if (knowledgeMsg?.body) return String(knowledgeMsg.body).trim();
@@ -136,6 +138,10 @@ export default function SellerUniversalReviewCard({
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review');
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
   const docsSec = sections.find((s) => s.kind === 'request_documents');
+  const intakeSec = sections.find((s) => (
+    s.kind === 'customer_intake_review' || s.kind === 'inbound_lead_review'
+  ));
+  const replySec = sections.find((s) => s.kind === 'customer_reply_review');
   const reviewActions = knowledgeMsg?.primaryActions
     || apptMsg?.primaryActions
     || contractMsg?.primaryActions
@@ -145,7 +151,10 @@ export default function SellerUniversalReviewCard({
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || sections.find((s) => s.kind === 'today_overview')?.primaryActions
     || sections.find((s) => s.kind === 'golden_moment')?.primaryActions
+    || intakeSec?.primaryActions
+    || replySec?.primaryActions
     || [];
+  const secondaryReviewActions = intakeSec?.secondaryActions || replySec?.secondaryActions || [];
   const sources = knowledgeMsg?.sources
     || contractMsg?.evidence
     || contractMem?.evidence
@@ -247,9 +256,19 @@ export default function SellerUniversalReviewCard({
         </ul>
       ) : null}
 
-      {!settled && reviewActions.length > 0 ? (
+      {!settled && (reviewActions.length > 0 || secondaryReviewActions.length > 0) ? (
         <div className="sur-card__text-actions" role="group" aria-label="Review-Aktionen">
           {reviewActions.map((action) => (
+            <button
+              key={action.id || action.label}
+              type="button"
+              className="sur-card__text-link"
+              onClick={() => handleReviewAction(action)}
+            >
+              {action.label}
+            </button>
+          ))}
+          {secondaryReviewActions.map((action) => (
             <button
               key={action.id || action.label}
               type="button"

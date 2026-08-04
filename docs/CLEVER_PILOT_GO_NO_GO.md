@@ -24,7 +24,7 @@ Vor Launch alle Checkboxen grün (manuell prüfbar; Smoke aus Launch-Checkliste 
 - [ ] **Magic Flags / OpenAI-Fallback** – Magic-Handoff öffnet Review; unklarer Freitext mit Flag → „Clever prüft …“ → Review; ohne Flag kein Absturz.
 - [ ] **Kein Stillstand ohne OpenAI** – OpenAI aus/Fehler: Kernpfade (Review, Nachricht, Magic-Entry, Inbox) bleiben bedienbar.
 - [ ] **Golden Path Portal** – Kundenlink → Portal-Reaktion → Composer mit Seed → Senden → zugehöriges Inbox-Item erledigt.
-- [ ] **Inbound Paste** – Forward/Paste → `inbound_lead_review` → Übernehmen → Lead/Akte nutzbar.
+- [ ] **Inbound Paste** – Forward/Paste → `customer_intake_review` (Alias `inbound_lead_review`) → Übernehmen → Lead/Akte nutzbar. Composer ist Dashboard-Einstieg (Showroom/Modell via Chips).
 - [ ] **Kundenantwort Paste** – Paste/Forward → `customer_reply_review` → Composer/Antwort-Flow ohne Auto-Send.
 - [ ] **Unterlagen fehlt-noch** – CTA „Unterlagen fehlen“ / Paket → Composer → Confirm → Versand/Inbox-Update.
 - [ ] **Nachfolge Heute / Golden** – Heute-Worklist bzw. Golden → `prepare_followup_offer` → Composer → Confirm (kein Auto-Send).

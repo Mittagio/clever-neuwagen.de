@@ -97,8 +97,13 @@ assert.ok(contact.phone);
   assert.equal(turn.resolvedCustomer?.id, brandes.id);
   assert.equal(shouldShowUniversalReview(turn), true);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
-  assert.equal(review.reviewType, 'inbound_lead_review');
+  assert.equal(review.reviewType, 'customer_intake_review');
+  assert.equal(review.legacyReviewType, 'inbound_lead_review');
+  assert.equal(review.kind, 'customer_intake');
   assert.match(review.title, /Anfrage erkannt/i);
+  assert.ok(review.actionSections?.some((s) => (
+    s.id === 'customer_intake_review' && s.kind === 'customer_intake_review' && s.title === 'Kundenanfrage'
+  )));
   assert.ok(review.groups.some((g) => g.title === 'KUNDE'));
   assert.ok(review.groups.some((g) => g.title === 'NÄCHSTE AKTION'));
   assert.match(review.primaryCta, /Verknüpfen|Übernehmen/i);
@@ -125,7 +130,10 @@ assert.ok(contact.phone);
   assert.equal(turn.inboundLead.proposeCreateCustomer, true);
   assert.ok(!turn.resolvedCustomer?.id);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
-  assert.match(review.primaryCta, /anlegen/i);
+  assert.equal(review.reviewType, 'customer_intake_review');
+  assert.equal(review.legacyReviewType, 'inbound_lead_review');
+  assert.match(review.primaryCta, /Neue Kundenakte anlegen|anlegen/i);
+  assert.match(review.secondaryCta, /Erneut suchen|Verwerfen/i);
   assert.ok(review.groups.some((g) => /Neu anlegen|neuen Kunden/i.test(g.line || '')));
 
   // Ohne Accept: Snapshot unverändert (kein Side-Effect im Turn)

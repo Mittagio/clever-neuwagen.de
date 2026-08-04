@@ -23,7 +23,7 @@ import {
 } from '../crm/vehicleTrack.js';
 import { buildGoldenMoment } from '../journey/goldenMoment.js';
 import { getTodayOverview } from './getTodayOverview.js';
-import { lookupVehicleTechnicalFact } from './lookupVehicleTechnicalFact.js';
+import { answerSellerVehicleKnowledge } from './answerSellerVehicleKnowledge.js';
 import { resolveCustomersFromInput, buildCustomerCardSummary } from './globalCustomerResolve.js';
 import { searchGlobalCustomerHistory } from './globalHistorySearch.js';
 import { summarizeCustomerContext } from './summarizeCustomerContext.js';
@@ -197,7 +197,7 @@ export const CLEVER_SELLER_TOOLS = {
     optionalInputs: ['modelKey', 'factKey', 'sellerInput'],
     needsSellerConfirmation: false,
     sourceRequirements: ['verified_vehicle_data'],
-    execute: ({ modelKey, factKey, sellerInput }) => lookupVehicleTechnicalFact({
+    execute: ({ modelKey, factKey, sellerInput }) => answerSellerVehicleKnowledge({
       modelKey,
       factKey,
       sellerInput,

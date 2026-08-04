@@ -82,7 +82,16 @@ export function parseAdvisoryQuestion(query) {
     }
   }
 
-  if (/\b(wie\s+(lang|groß|gross|hoch|breit)|abmessungen|maße|masse)\b/i.test(text) && modelKey) {
+  // Kein trailing \b nach „groß/maße“: in JS ist ß kein \w, sonst matched „Wie groß …“ nie.
+  if (
+    modelKey
+    && (
+      /\bwie\s+(?:lang|gross|hoch|breit)\b/i.test(text)
+      || /\bwie\s+gro[ßs](?=\s|$|[?!.:,])/i.test(text)
+      || /\babmessungen\b/i.test(text)
+      || /ma(?:ße|sse)/i.test(text)
+    )
+  ) {
     return { kind: 'advisory', topic: 'dimensions', modelKey, query: text };
   }
 

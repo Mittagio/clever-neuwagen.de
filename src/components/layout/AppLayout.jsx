@@ -18,8 +18,9 @@ export default function AppLayout({ children }) {
         <InternalTestEnvBadge />
         <div className="app-layout__main">
           {children}
-          {dealerApp ? <CleverGlobalComposer /> : null}
         </div>
+        {/* Außerhalb von __main: feste Fußleiste, kein flex:1-Konflikt */}
+        {dealerApp ? <CleverGlobalComposer /> : null}
         <Footer variant={footerVariant} />
         <CookieConsentBanner />
       </div>

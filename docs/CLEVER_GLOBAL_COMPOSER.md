@@ -23,9 +23,9 @@
 
 | Surface | UI | Orchestrator / Kontext |
 |---------|-----|------------------------|
-| Dashboard (`/backend`) | `CleverGlobalComposer` aktiv | `runCleverSellerTurn` – Kunde per Suche / Snapshot |
+| Dashboard (`/backend`) | `CleverGlobalComposer` als **feste Fußleiste** (fixed bottom); Dashboard: Kacheln → Heute → Suche | `runCleverSellerTurn` – Kunde per Suche / Snapshot |
 | Kundenakte (`/backend/kundenakte/:id`) | `CustomerAkteSharedWorkspace` (Clever-Tab: `hideFeed`) | **derselbe** Orchestrator + Universal Review + Magic-Enricher – fester `lead` / Working Context |
-| — | Global Composer in Akte **nicht** gerendert (`shouldShowGlobalComposer` nur Dashboard) | ein Gehirn, zwei Surfaces |
+| — | Global Composer in Akte **nicht** gerendert (`shouldShowGlobalComposer` nur Dashboard); kein paralleler „Clever Beratung“-Hero auf dem Dashboard | ein Gehirn, zwei Surfaces |
 
 ### Orchestrierung
 
@@ -53,8 +53,22 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 | Nachfolgeangebot (`prepare_followup_offer`) – Heute/Golden → Composer → Confirm | 18 (betrieblich) |
 | Tesseract/Cloud OCR produktiv (`VITE_CLEVER_CONTRACT_OCR`) | 19 |
 | Kalender Availability / Draft (`VITE_CLEVER_CALENDAR`) | Calendar |
-| `inboundLead` / `inbound_lead_review` (Paste/Forward) | Inbound leicht |
+| Lexikon/Vergleich = Landing-Pipeline (`buildAdvisoryAnswer`) | Seller Knowledge |
+| `inboundLead` / `customer_intake_review` (Alias `inbound_lead_review`) | Kundenanfrage / Inbound leicht |
 | `customerReply` / `customer_reply_review` (Paste/Forward) | Zwei-Wege-Mail leicht |
+
+## Migration: Composer ersetzt Verkaufen-Hub-Einstieg
+
+**Stand:** Dashboard ohne Verkaufen-Kachel – Composer ist der primäre Einstieg (Lexikon + Manager + Organizer).
+
+| Einstieg | Pfad |
+|----------|------|
+| Composer (Dashboard-Fußleiste) | Chips: Showroom starten · Modell auswählen · Neue Anfrage |
+| Showroom-Workspace | `/verkaufsassistent?view=showroom` |
+| Modell-Workspace | `/verkaufsassistent?view=model` |
+| Verkaufen-Hub (Deep-Link) | Backend-Area `verkaufen` / `BackendVerkaufenHub` – **bleibt**, kein Dashboard-Tile |
+
+**Intake-Review:** `reviewType: customer_intake_review` mit `legacyReviewType: inbound_lead_review`. Accept bleibt `accept_inbound_lead` (Handler akzeptiert beide Review-Typen).
 
 ## Slice 5 – Golden Flow
 
@@ -88,19 +102,19 @@ Gegenproben: kein Kunde; kein Fahrzeug; Probefahrt XCeed; Seller „ist frei“ 
 
 Kein Google-/Microsoft-OAuth in der Produktpflicht – Hook oder Local-Stub reicht. Test: `globalComposer.calendar.test.js`.
 
-## Inbound leicht (Paste/Forward)
+## Inbound leicht (Paste/Forward) → Kundenanfrage
 
 **Status:** Composer-Eingang · Propose → Confirm → Action  
 **Nicht:** WhatsApp Business API, Telefonie, mobile.de-API, Big Intake Hub
 
-Eingang im Dashboard-Composer (E-Mail-Paste / Weiterleitung):
+Eingang im Dashboard-Composer (E-Mail-Paste / Weiterleitung / Chip „Neue Anfrage“):
 
 1. Intent `inbound_lead` (Mail-Header / „Hier eine Anfrage:“ / Forward)
 2. Kontakt aus Forward-Rohtext (E-Mail vor HTML-Strip)
 3. Resolve per E-Mail → Telefon → Name gegen `leadsSnapshot`
-4. Review: erkannter Kunde **oder** „neuen Kunden anlegen?“ + Facts + nächste Aktion
-5. Dubletten-Hinweis bei Mehrfachtreffern
-6. Übernehmen: verknüpfen / anlegen **nur nach Accept** (`applyAcceptedSellerTurn` + `addLead`)
+4. Review `customer_intake_review` (Alias `inbound_lead_review`): erkannter Kunde **oder** „Neue Kundenakte anlegen“ + Facts + nächste Aktion
+5. Dubletten-Hinweis bei Mehrfachtreffern; Secondary: Erneut suchen / Verwerfen
+6. Übernehmen: verknüpfen / anlegen **nur nach Accept** (`accept_inbound_lead` → `applyAcceptedSellerTurn` + `addLead`)
 
 Modul: `inboundLeadIntake.js` · Test: `inboundLead.golden.test.js`  
 Kundenwelt-Intake (Soft Wish / Portal) bleibt getrennt: [CLEVER_CUSTOMER_INTAKE_MANIFEST.md](CLEVER_CUSTOMER_INTAKE_MANIFEST.md).

@@ -39,3 +39,8 @@
 .app-layout--dealer-app .app-layout__main {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Mit Global-Composer: Fuß-Padding kommt aus CleverGlobalComposer.css (:has) */
+.app-layout--dealer-app:has(.clever-global-composer) .app-layout__main {
+  padding-bottom: 0;
+}

@@ -8,7 +8,6 @@ import {
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { evaluateSellerReminders } from '../../services/journey/journeyReminderService.js';
 import CleverEmpfiehltToday from './CleverEmpfiehltToday.jsx';
-import BackendAdvisorHero from './BackendAdvisorHero.jsx';
 import BackendCustomerSearch from './BackendCustomerSearch.jsx';
 import BackendMainTiles from './BackendMainTiles.jsx';
 import './BackendHome.css';
@@ -45,8 +44,6 @@ export default function BackendHome({ onNavigateArea }) {
       <BackendMainTiles onNavigateArea={handleNavigateArea} />
 
       <CleverEmpfiehltToday items={cleverTodayItems} />
-
-      <BackendAdvisorHero />
 
       <BackendCustomerSearch
         leads={leads}

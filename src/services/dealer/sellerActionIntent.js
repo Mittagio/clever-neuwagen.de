@@ -71,8 +71,26 @@ const DOCUMENT_REQUEST_PATTERNS = [
 ];
 
 const LOOKUP_FACT_PATTERNS = [
-  /\b(anhängelast|reichweite|wltp|hud|head-?\s*up|ladeleistung|kofferraum)\b/i,
+  /\b(anhängelast|reichweite|wltp|hud|head-?\s*up|ladeleistung|kofferraum|batterie|sitze|dimension)\b/i,
+  /gr(?:ö|oe)(?:ß|ss)e|\bgross\b|groß/i,
+  /\b(l(?:ä|ae)nge|breite|h(?:ö|oe)he|ma(?:ß|ss)e)\b/i,
+  /\b(welcher|welche|was)\b[\s\S]{0,40}\b(mehr|besser|weiter)\b/i,
+  /\b(oder|vs\.?|versus|gegen)\b/i,
 ];
+
+const VEHICLE_MODEL_RE = /\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b/i;
+
+/** Nur Marke + Modell → Lexikon-Kurzprofil (nicht Kundennachricht). */
+function isBareVehicleModelQuery(text = '') {
+  const t = String(text ?? '').trim();
+  if (!t || !VEHICLE_MODEL_RE.test(t)) return false;
+  const stripped = t
+    .replace(/\bkia\b/gi, '')
+    .replace(VEHICLE_MODEL_RE, '')
+    .replace(/[?.!,]/g, '')
+    .trim();
+  return stripped.length === 0;
+}
 
 /**
  * @param {string} text
@@ -91,11 +109,20 @@ export function detectSellerActionIntent(text = '') {
   if (DOCUMENT_REQUEST_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
   }
+  // Lexikon/Vergleich vor Message-Default (sonst matcht „liegt/ist“ o. Ä. falsch)
   const hasLookup = LOOKUP_FACT_PATTERNS.some((re) => re.test(t));
-  const hasVehicle = /\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b/i.test(t);
-  const isShortLookup = hasLookup && hasVehicle && t.length <= 48
-    && !/\b(schreib|sag|informier|schick|anforder)\b/i.test(t);
-  if (isShortLookup || (hasLookup && t.length <= 24 && !MESSAGE_PATTERNS.some((re) => re.test(t)))) {
+  const hasVehicle = VEHICLE_MODEL_RE.test(t);
+  const isQuestion = /\?/.test(t) || /\b(wie|was|welche[rs]?|welcher|hat\s+mehr)\b/i.test(t);
+  const hasMessageVerb = /\b(schreib|sag|informier|schick|anforder|nachricht|whatsapp)\b/i.test(t);
+  if (
+    hasLookup
+    && hasVehicle
+    && !hasMessageVerb
+    && (isQuestion || t.length <= 96)
+  ) {
+    return SELLER_ACTION_INTENTS.LOOKUP_FACT;
+  }
+  if (isBareVehicleModelQuery(t) && !hasMessageVerb) {
     return SELLER_ACTION_INTENTS.LOOKUP_FACT;
   }
   if (APPOINTMENT_PATTERNS.some((re) => re.test(t))) {

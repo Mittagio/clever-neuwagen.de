@@ -925,10 +925,12 @@ function finalizeSellerTurn({
             : '○ Kundenantwort erkannt – Kunde zuordnen')
           : (inboundLead?.detected
             ? (inboundLead.proposeCreateCustomer
-              ? '○ Kein Treffer – neuen Kunden vorschlagen'
+              ? '○ Kein Treffer – neue Kundenakte vorschlagen'
               : (inboundLead.matchedLeadName
-                ? `✓ ${inboundLead.matchedLeadName} aus Anfrage erkannt`
-                : 'Clever liest die Anfrage …'))
+                ? `✓ ${inboundLead.matchedLeadName} – Anfrage erkannt`
+                : inboundLead.resolutionStatus === 'ambiguous'
+                  ? '○ Mehrere mögliche Kunden – bitte wählen'
+                  : 'Clever liest die Kundenanfrage …'))
             : null),
         resolvedDateTime?.ok
           ? `✓ ${resolvedDateTime.dateLabel || resolvedDateTime.whenLabel || 'Datum'} aufgelöst`

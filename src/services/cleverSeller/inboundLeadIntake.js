@@ -475,22 +475,32 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
   }
 
   const primaryCta = inbound.proposeCreateCustomer
-    ? 'Kunden anlegen & übernehmen'
+    ? 'Neue Kundenakte anlegen'
     : inbound.resolutionStatus === 'unique'
       ? 'Verknüpfen & übernehmen'
       : inbound.resolutionStatus === 'ambiguous'
         ? 'Kunde wählen'
         : 'Übernehmen';
 
+  const showResearchSecondary = inbound.proposeCreateCustomer
+    || inbound.resolutionStatus === 'ambiguous';
+  const secondaryCta = showResearchSecondary ? 'Erneut suchen' : 'Verwerfen';
+  const secondaryActions = showResearchSecondary
+    ? [
+      { id: 'research_customer', label: 'Erneut suchen', action: 'open_customer_search' },
+      { id: 'discard_intake', label: 'Verwerfen', action: 'discard' },
+    ]
+    : [{ id: 'discard_intake', label: 'Verwerfen', action: 'discard' }];
+
   return {
-    title: '✨ Clever hat die Anfrage erkannt',
+    title: '✨ Clever hat eine Anfrage erkannt',
     groups,
     actionSections: [{
-      id: 'inbound_lead_review',
-      kind: 'inbound_lead_review',
-      title: 'Inbound',
+      id: 'customer_intake_review',
+      kind: 'customer_intake_review',
+      title: 'Kundenanfrage',
       headline: inbound.proposeCreateCustomer
-        ? 'Neuen Kunden vorschlagen'
+        ? 'Neue Kundenakte vorschlagen'
         : (inbound.matchedLeadName || 'Anfrage zuordnen'),
       body: [
         contactLines.join('\n'),
@@ -498,31 +508,31 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
         inbound.nextAction?.label ? `Nächste Aktion: ${inbound.nextAction.label}` : null,
       ].filter(Boolean).join('\n\n'),
       inboundLead: inbound,
+      // Ambiguous: Kundenwahl nur über Composer-Pills (keine doppelten Text-Links)
       primaryActions: inbound.resolutionStatus === 'ambiguous'
-        ? (inbound.customerSearchResults || []).slice(0, 4).map((r) => ({
-          id: `open-${r.leadId || r.customerId}`,
-          label: `${r.customerName || 'Kunde'} öffnen`,
-          leadId: r.leadId || r.customerId,
-          action: 'open_customer',
-        }))
+        ? []
         : [{
           id: 'accept_inbound',
           label: primaryCta,
           action: 'accept_inbound_lead',
           leadId: inbound.matchedLeadId || null,
         }],
+      secondaryActions,
     }],
     factCount: factLabels.length,
     summaryLine: inbound.proposeCreateCustomer
-      ? 'Kein Treffer – neuen Kunden anlegen? Erst nach Bestätigung.'
+      ? 'Kein bestehender Kunde gefunden – neue Kundenakte vorschlagen. Erst nach Bestätigung.'
       : inbound.resolutionStatus === 'unique'
-        ? 'Bestehenden Kunden verknüpfen – Fakten erst nach Bestätigung.'
-        : 'Anfrage erkannt – bitte prüfen',
+        ? 'Bestehenden Kunden gefunden – Anfrage verknüpfen. Fakten erst nach Bestätigung.'
+        : inbound.resolutionStatus === 'ambiguous'
+          ? 'Mehrere mögliche Kunden – bitte den richtigen wählen.'
+          : 'Kundenanfrage erkannt – bitte prüfen',
     missingLine: inbound.duplicateHint || null,
     primaryCta,
-    secondaryCta: 'Verwerfen',
-    reviewType: 'inbound_lead_review',
-    kind: 'inbound_lead',
+    secondaryCta,
+    reviewType: 'customer_intake_review',
+    legacyReviewType: 'inbound_lead_review',
+    kind: 'customer_intake',
     inboundLead: inbound,
     resolvedCustomer: inbound.matchedLeadId
       ? { id: inbound.matchedLeadId, name: inbound.matchedLeadName }

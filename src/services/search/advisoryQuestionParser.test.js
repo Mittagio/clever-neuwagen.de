@@ -5,6 +5,10 @@ const ev3len = parseAdvisoryQuestion('Wie lang ist der EV3?');
 assert.equal(ev3len?.topic, 'dimensions');
 assert.equal(ev3len?.modelKey, 'ev3');
 
+const ev6size = parseAdvisoryQuestion('Wie groß ist der EV6?');
+assert.equal(ev6size?.topic, 'dimensions');
+assert.equal(ev6size?.modelKey, 'ev6');
+
 const ev9range = parseAdvisoryQuestion('ev9 reichweite');
 assert.equal(ev9range?.topic, 'attribute');
 assert.equal(ev9range?.modelKey, 'ev9');

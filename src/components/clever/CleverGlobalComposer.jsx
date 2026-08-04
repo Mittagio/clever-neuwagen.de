@@ -34,12 +34,13 @@ import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
 import './CleverGlobalComposer.css';
 
 const SUGGESTION_CHIPS = [
-  { id: 'today', label: 'Was liegt heute an?' },
-  { id: 'offer', label: 'Erstelle Herrn Garritano ein Angebot…' },
-  { id: 'open', label: 'Öffne Herrn Brandes.' },
-  { id: 'docs', label: 'Welche Unterlagen fehlen bei Brandes?' },
-  { id: 'tow', label: 'XCeed Anhängelast?' },
+  { id: 'showroom', label: 'Showroom starten' },
+  { id: 'model', label: 'Modell auswählen' },
+  { id: 'intake', label: 'Neue Anfrage' },
 ];
+
+const COMPOSER_PLACEHOLDER = 'Frage etwas, diktiere eine Notiz, füge eine Anfrage ein oder lade ein Dokument hoch …';
+const COMPOSER_LEITFRAGE = 'Was soll Clever heute für dich erledigen?';
 
 function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
   if (!leadId) return null;
@@ -76,6 +77,20 @@ export default function CleverGlobalComposer() {
 
   function handleSuggestion(chip) {
     if (!chip) return;
+    if (chip.id === 'showroom') {
+      navigate('/verkaufsassistent?view=showroom');
+      return;
+    }
+    if (chip.id === 'model') {
+      navigate('/verkaufsassistent?view=model');
+      return;
+    }
+    if (chip.id === 'intake') {
+      setDraft('Hier eine Anfrage:\n\n');
+      setFeedback('Anfrage einfügen oder diktieren – dann absenden');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
     if (chip.id === 'today') setDraft('Was liegt heute an?');
     else if (chip.id === 'tow') setDraft('XCeed Anhängelast?');
     else if (chip.id === 'open') setDraft('Öffne Herrn Brandes.');
@@ -209,6 +224,22 @@ export default function CleverGlobalComposer() {
   function handleReviewAction(action) {
     if (!action || !lastTurn) return;
     if (action.action === 'discard') {
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+    if (action.action === 'open_customer_search') {
+      const contact = lastTurn?.inboundLead?.contact || lastTurn?.customerReply?.contact || {};
+      const hint = contact.fullName || contact.email || contact.phone || '';
+      setReviewModel(null);
+      setLastTurn(null);
+      if (hint) setDraft(`Öffne ${hint}`);
+      setFeedback('Erneut suchen – Absenden oder Kundensuche nutzen');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
+    if (action.action === 'open_customer' && action.leadId) {
+      handleOpenLead(action.leadId);
       setReviewModel(null);
       setLastTurn(null);
       return;
@@ -714,7 +745,9 @@ export default function CleverGlobalComposer() {
   const reviewSlot = reviewModel
     ? (
       <div className="clever-global-composer__review">
-        {Array.isArray(reviewModel.progressLines) && reviewModel.progressLines.length > 0 && (
+        {Array.isArray(reviewModel.progressLines) && reviewModel.progressLines.length > 0
+          && customerResults.length === 0
+          && (
           <ul className="clever-global-composer__progress" aria-label="Clever Fortschritt">
             {reviewModel.progressLines.map((line) => (
               <li key={line}>{line}</li>
@@ -740,7 +773,11 @@ export default function CleverGlobalComposer() {
               });
               return;
             }
-            if (reviewModel?.reviewType === 'inbound_lead_review' || lastTurn?.inboundLead?.detected) {
+            if (
+              reviewModel?.reviewType === 'customer_intake_review'
+              || reviewModel?.reviewType === 'inbound_lead_review'
+              || lastTurn?.inboundLead?.detected
+            ) {
               handleReviewAction({
                 action: 'accept_inbound_lead',
                 leadId: lastTurn?.inboundLead?.matchedLeadId
@@ -796,21 +833,31 @@ export default function CleverGlobalComposer() {
           }}
         />
         {customerResults.length > 0 && (
-          <div className="clever-global-composer__today-list">
-            {customerResults.slice(0, 6).map((item) => (
-              <button
-                key={item.leadId || item.customerId}
-                type="button"
-                className="clever-global-composer__today-item"
-                onClick={() => handleOpenLead(item.leadId || item.customerId)}
-              >
-                <strong>{item.customerName}</strong>
-                <span>{item.vehicleLabel || item.card?.headline || item.matchReason}</span>
-                {item.matchReasons?.[0] && (
-                  <em>Grund: {item.matchReasons[0]}</em>
-                )}
-              </button>
-            ))}
+          <div className="clever-global-composer__today-list" aria-label="Kundenakte wählen">
+            <p className="clever-global-composer__pick-label">Kundenakte wählen</p>
+            {customerResults.slice(0, 6).map((item) => {
+              const detail = [
+                item.email,
+                item.phone,
+                item.vehicleLabel,
+                item.referenceCode ? `Ref. ${item.referenceCode}` : null,
+              ].filter(Boolean).join(' · ');
+              const reason = Array.isArray(item.matchReasons)
+                ? item.matchReasons[0]
+                : (item.matchReason || item.lastActivityLabel || null);
+              return (
+                <button
+                  key={item.leadId || item.customerId}
+                  type="button"
+                  className="clever-global-composer__today-item"
+                  onClick={() => handleOpenLead(item.leadId || item.customerId)}
+                >
+                  <strong>{item.customerName || 'Kundenakte'}</strong>
+                  {detail ? <span>{detail}</span> : null}
+                  {reason ? <em>{reason}</em> : null}
+                </button>
+              );
+            })}
           </div>
         )}
         {historyResults.length > 0 && (
@@ -871,6 +918,7 @@ export default function CleverGlobalComposer() {
 
   return (
     <div className="clever-global-composer" data-testid="clever-global-composer">
+      <p className="clever-global-composer__leitfrage">{COMPOSER_LEITFRAGE}</p>
       {progressHint && (
         <p className="clever-global-composer__hint" role="status">{progressHint}</p>
       )}
@@ -883,7 +931,7 @@ export default function CleverGlobalComposer() {
         onSend={handleSend}
         sending={sending}
         sendFeedback={feedback}
-        placeholder="Was möchten Sie wissen oder erledigen?"
+        placeholder={COMPOSER_PLACEHOLDER}
         composerLabel="Clever"
         sendAriaLabel="An Clever senden"
         reviewSlot={reviewSlot}

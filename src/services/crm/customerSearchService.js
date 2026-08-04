@@ -180,6 +180,8 @@ export function buildCustomerSearchResult(lead = {}) {
     leadId: lead.id,
     customerId: lead.customerId ?? null,
     customerName: formatInquiryCustomerName(lead),
+    email: lead.contact?.email || null,
+    phone: lead.contact?.phone || null,
     vehicleLabel: formatVehicleWishLine(lead),
     statusLabel: resolveLeadStatusLabel(lead),
     warningLabel: resolveLeadWarningLabel(lead),

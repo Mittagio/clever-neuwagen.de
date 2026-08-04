@@ -128,16 +128,26 @@ export function buildUniversalActionSections(turn = {}) {
   if (knowledge) {
     const modelLabel = knowledge.modelLabel
       || (knowledge.modelKey ? `Kia ${knowledge.modelKey}` : 'Fahrzeug');
+    const factLines = Array.isArray(knowledge.facts) && knowledge.facts.length
+      ? knowledge.facts.map((f) => `${f.label}: ${f.value}`).join('\n')
+      : null;
+    const advisoryBody = knowledge.body || knowledge.message || null;
+    // body enthält bei Advisory oft schon die Facts – nicht doppelt anhängen
+    const okBody = advisoryBody
+      || factLines
+      || null;
     sections.push({
       id: 'knowledge_result',
       kind: 'knowledge_result',
-      title: `${modelLabel} · ${knowledge.factLabel || 'Fakt'}`,
+      title: knowledge.status === 'advisory'
+        ? (knowledge.factLabel || modelLabel)
+        : `${modelLabel} · ${knowledge.factLabel || 'Fakt'}`,
       headline: knowledge.ok
-        ? knowledge.displayValue
+        ? (knowledge.displayValue || knowledge.factLabel || 'Antwort')
         : (knowledge.message || 'Nicht verifiziert'),
       line: knowledge.sourceLabel || null,
       body: knowledge.ok
-        ? null
+        ? okBody
         : (knowledge.message || 'Diesen Wert habe ich noch nicht eindeutig verifiziert.'),
       knowledgeResult: knowledge,
       primaryActions: [{ id: 'more_details', label: 'Mehr Details' }],
@@ -155,7 +165,6 @@ export function buildUniversalActionSections(turn = {}) {
   if (Array.isArray(customerSearch) && customerSearch.length && !turn.customerSummary) {
     const unique = customerSearch.length === 1;
     const top = customerSearch[0];
-    const card = top.card || null;
     sections.push({
       id: 'customer_search_results',
       kind: 'customer_search_results',
@@ -163,22 +172,14 @@ export function buildUniversalActionSections(turn = {}) {
       headline: unique
         ? (top.customerName || 'Kunde')
         : `${customerSearch.length} Treffer`,
-      line: unique
-        ? (card?.headline || top.vehicleLabel || top.matchReason || null)
-        : null,
-      body: unique
-        ? ([
-          card?.favoriteLine ? `Aktuell: ${card.favoriteLine}` : null,
-          ...(card?.deferredLines || []).map((l) => l),
-          top.matchReason ? `Grund: ${top.matchReason}` : null,
-        ].filter(Boolean).join('\n') || null)
-        : null,
+      line: null,
+      body: null,
       results: customerSearch.map((r) => ({
         leadId: r.leadId || r.customerId,
         customerName: r.customerName,
-        vehicleLabel: r.vehicleLabel || r.card?.headline,
-        matchReason: r.matchReason || (r.matchReasons || []).join(' · '),
-        matchReasons: r.matchReasons || [],
+        vehicleLabel: null,
+        matchReason: null,
+        matchReasons: [],
         card: r.card || null,
       })),
       primaryActions: customerSearch.slice(0, 4).map((r) => ({

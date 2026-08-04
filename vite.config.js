@@ -33,6 +33,10 @@ function internalTestRobotsPlugin() {
 
 export default defineConfig({
   plugins: [react(), internalTestRobotsPlugin()],
+  optimizeDeps: {
+    // tesseract.js ist groß und blockiert sonst den Vite-Dep-Optimizer (schwarze Seite).
+    exclude: ['tesseract.js'],
+  },
   server: {
     host: true,
     proxy: {

@@ -207,6 +207,8 @@ export function narrateAttribute(record, attribute, query = '') {
         facts: l ? [{ label: 'Kofferraum', value: `${l} Liter` }] : [],
       };
     }
+    case 'size':
+      return narrateDimensionsOverview(record, query);
     case 'tow': {
       const t = formatTon(record.towing?.brakedKg);
       return {
@@ -299,6 +301,7 @@ export function narrateDimensionsOverview(record, query = '') {
   const name = shortModelName(record.modelKey);
   const len = formatMm(record.dimensions?.lengthMm);
   const asksLength = /\bwie\s+lang\b/i.test(query);
+  const asksSize = /\bwie\s+gro[ßs]/i.test(query);
   const facts = [];
   if (record.dimensions?.lengthMm) facts.push({ label: 'Länge', value: formatMm(record.dimensions.lengthMm) });
   if (record.dimensions?.widthMm) facts.push({ label: 'Breite', value: formatMm(record.dimensions.widthMm) });
@@ -308,7 +311,11 @@ export function narrateDimensionsOverview(record, query = '') {
 
   return {
     kicker: SMART_ANSWER_KICKER,
-    title: asksLength ? `Wie lang ist der ${name}?` : `Wie groß ist der ${name}?`,
+    title: asksLength
+      ? `Wie lang ist der ${name}?`
+      : asksSize
+        ? `Wie groß ist der ${name}?`
+        : `Kia ${name}`,
     lead: len
       ? (asksLength
         ? `Der Kia ${name} ist ${len} lang.`

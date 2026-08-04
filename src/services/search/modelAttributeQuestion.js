@@ -3,7 +3,7 @@
  */
 import { KIA_MODEL_ATTRIBUTES } from '../../data/kia/kiaModelAttributes.js';
 
-/** @typedef {'range'|'trunk'|'tow'|'vertical_load'|'seats'|'isofix'|'charging'|'length'|'height'|'price'|'battery'} ModelAttributeId */
+/** @typedef {'range'|'trunk'|'tow'|'vertical_load'|'seats'|'isofix'|'charging'|'length'|'height'|'size'|'price'|'battery'} ModelAttributeId */
 
 /** @type {{ id: ModelAttributeId, patterns: RegExp[] }[]} */
 const ATTRIBUTE_DETECTORS = [

@@ -330,13 +330,9 @@ export function buildCustomerReplyReviewModel(reply = null, turn = {}) {
         actionLabels.length ? `Aktionen: ${actionLabels.join(' · ')}` : null,
       ].filter(Boolean).join('\n\n'),
       customerReply: reply,
+      // Ambiguous: Kundenwahl nur über Composer-Pills (keine doppelten Text-Links)
       primaryActions: reply.resolutionStatus === 'ambiguous'
-        ? (reply.customerSearchResults || []).slice(0, 4).map((r) => ({
-          id: `open-${r.leadId || r.customerId}`,
-          label: `${r.customerName || 'Kunde'} öffnen`,
-          leadId: r.leadId || r.customerId,
-          action: 'open_customer',
-        }))
+        ? []
         : reply.resolutionStatus === 'unique'
           ? [{
             id: 'accept_customer_reply',

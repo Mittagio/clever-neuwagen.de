@@ -689,13 +689,16 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
       const isHomepageDual = Boolean(turn.homepageInquiry?.hasDualScenarios)
         || facts.some((f) => f.field === 'commercialScenarios');
       const isCustomerReply = Boolean(turn.customerReply?.detected);
-      const isInbound = Boolean(turn.inboundLead?.detected);
+      const reviewType = turn.reviewModel?.reviewType || turn.reviewType || null;
+      const isInbound = Boolean(turn.inboundLead?.detected)
+        || reviewType === 'customer_intake_review'
+        || reviewType === 'inbound_lead_review';
       const posted = postCleverAssistFeedCard({
         lead: nextLead,
         title: isCustomerReply
           ? '✨ Clever hat die Kundenantwort erkannt'
           : isInbound
-            ? '✨ Clever hat die Anfrage erkannt'
+            ? '✨ Clever hat eine Anfrage erkannt'
             : isHomepageDual
               ? '✨ Clever hat die Anfrage vorbereitet'
               : '✨ Clever hat verstanden',

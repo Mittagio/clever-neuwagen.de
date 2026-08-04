@@ -3,6 +3,10 @@
   flex-direction: column;
   gap: 18px;
   max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 16px 8px;
+  box-sizing: border-box;
 }
 
 .backend-home--calm {
@@ -13,15 +17,21 @@
   margin-bottom: 0;
 }
 
-/* Vier Hauptkacheln */
+/* Drei Hauptkacheln (Verkaufen-Einstieg → Composer) */
 .backend-home__main-tiles {
   margin-bottom: 2px;
 }
 
 .backend-home__main-tiles-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .backend-home__main-tiles-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .backend-home__main-tile {
