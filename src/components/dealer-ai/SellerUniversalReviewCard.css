@@ -82,6 +82,53 @@
   color: #1a2233;
 }
 
+.sur-card__facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sur-card__fact {
+  margin: 0;
+  padding: 0;
+}
+
+.sur-card__fact-title {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #9aa3b5;
+  text-transform: uppercase;
+}
+
+.sur-card__fact-line {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: #1a2233;
+  font-weight: 500;
+}
+
+.sur-card__fact-items {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.65rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.sur-card__fact-item--open {
+  color: #9a6b2f;
+}
+
 .sur-card__summary {
   margin: 0;
   font-size: 0.875rem;

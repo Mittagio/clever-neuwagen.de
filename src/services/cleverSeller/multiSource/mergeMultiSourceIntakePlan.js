@@ -6,6 +6,8 @@
  * Deterministik ist NICHT mehr Hauptwahrheit – nur Validator/Safety/Fallback.
  */
 import { SELLER_TURN_INTENTS } from '../sellerFactTypes.js';
+import { extractPersonNameFromDump } from './buildMultiSourceIntake.js';
+import { formatWishLabel } from './buildMultiSourceProgressLines.js';
 import { resolveContractTemporalStatus } from './resolveContractTemporalStatus.js';
 import { validateMultiSourceIntakePlan } from './validateMultiSourceIntakePlan.js';
 
@@ -279,7 +281,7 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
     });
   }
 
-  const resolvedCustomerCandidate = customer?.fullName
+  let resolvedCustomerCandidate = customer?.fullName
     ? {
       fullName: String(customer.fullName).trim().slice(0, 80),
       firstName: customer.firstName || null,
@@ -291,19 +293,61 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
     }
     : null;
 
-  const currentVehicleInterest = interest?.model
+  // Lokale Safety: Name aus Baseline / Seller-Dump, wenn AI Kundenkandidat weglässt
+  if (!resolvedCustomerCandidate?.fullName) {
+    const fallbackName = baseline?.resolvedCustomerCandidate?.fullName
+      || extractPersonNameFromDump(sellerInput);
+    if (fallbackName) {
+      resolvedCustomerCandidate = baseline?.resolvedCustomerCandidate?.fullName
+        ? { ...baseline.resolvedCustomerCandidate }
+        : {
+          fullName: String(fallbackName).trim().slice(0, 80),
+          firstName: null,
+          lastName: null,
+          email: null,
+          phone: null,
+          source: ['seller_input'],
+          missingContact: true,
+        };
+    }
+  }
+
+  const ahkFromDump = /\bahk\b/i.test(sellerInput);
+  const equipmentFromAi = Array.isArray(interest?.equipment) ? interest.equipment.slice(0, 8) : [];
+  const equipmentFromBaseline = baseline?.currentVehicleInterest?.requestedEquipment || [];
+  const requestedEquipment = [
+    ...equipmentFromAi,
+    ...equipmentFromBaseline,
+    ...(ahkFromDump ? ['AHK'] : []),
+  ].filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+  let currentVehicleInterest = interest?.model
     ? {
       make: interest.make || 'Kia',
       model: interest.model,
       trim: interest.trim || null,
-      color: interest.color || null,
-      requestedEquipment: Array.isArray(interest.equipment) ? interest.equipment.slice(0, 8) : [],
+      color: interest.color || baseline?.currentVehicleInterest?.color || null,
+      requestedEquipment,
       role: interest.role || 'desired_vehicle',
-      label: interest.label
-        || [interest.make, interest.model, interest.trim, interest.color].filter(Boolean).join(' · '),
+      label: formatWishLabel({
+        label: interest.label
+          || [interest.make, interest.model, interest.trim, interest.color].filter(Boolean).join(' · '),
+        requestedEquipment,
+      }),
       source: 'openai_interpretation',
     }
     : null;
+
+  if (!currentVehicleInterest && baseline?.currentVehicleInterest) {
+    currentVehicleInterest = {
+      ...baseline.currentVehicleInterest,
+      requestedEquipment: [
+        ...(baseline.currentVehicleInterest.requestedEquipment || []),
+        ...(ahkFromDump ? ['AHK'] : []),
+      ].filter((v, i, arr) => v && arr.indexOf(v) === i),
+    };
+    currentVehicleInterest.label = formatWishLabel(currentVehicleInterest);
+  }
 
   const commercialScenario = commercial && (commercial.termMonths != null || commercial.annualMileage != null)
     ? {

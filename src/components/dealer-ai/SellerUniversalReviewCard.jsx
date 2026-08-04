@@ -184,6 +184,10 @@ export default function SellerUniversalReviewCard({
     && s.hit
   ))?.hit;
   const settled = Boolean(status);
+  const showFactGroups = groups.length > 0 && (
+    model.reviewType === 'customer_contract_tradein_intake_review'
+    || model.kind === 'multi_source_intake'
+  );
 
   if (!model || (!groups.length && !sections.length && !body)) return null;
 
@@ -255,7 +259,28 @@ export default function SellerUniversalReviewCard({
         <p className="sur-card__context">{metaLine}</p>
       ) : null}
 
-      {body ? (
+      {showFactGroups ? (
+        <ul className="sur-card__facts" aria-label="Erkannte Angaben">
+          {groups.map((group) => (
+            <li key={group.id || group.title} className="sur-card__fact">
+              <span className="sur-card__fact-title">{group.title}</span>
+              <span className="sur-card__fact-line">{group.line}</span>
+              {Array.isArray(group.items) && group.items.length > 1 ? (
+                <ul className="sur-card__fact-items">
+                  {group.items.map((item) => (
+                    <li
+                      key={`${group.id}-${item.label}`}
+                      className={item.tone === 'open' ? 'sur-card__fact-item--open' : undefined}
+                    >
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : body ? (
         <pre className="sur-card__draft">{body}</pre>
       ) : (
         <p className="sur-card__summary">{model.summaryLine}</p>

@@ -27,39 +27,15 @@ import {
   extractTradeInCandidates,
   isSecondVehicleInterestCue,
 } from '../detectTradeInFromSellerInput.js';
+import {
+  MAZZEI_CONTRACT_REDACT_TEST_EXTRACT,
+  MAZZEI_SELLER_DUMP,
+  buildMazzeiContractAttachment,
+} from './fixtures/mazzeiContractFixture.js';
 
-const MAZZEI_DUMP = [
-  'Mazzei Sandro',
-  'EV4 Air weiß mit AHK',
-  '48 10.000 km',
-  '2 Kinder Haus',
-  'GW Kia Picanto',
-].join('\n');
-
-const CONTRACT_FIXTURE = `
-Finanzierungsvertrag / 3-Wege-Finanzierung
-Kunde: Sandro Mazzei
-Fahrzeug: Kia Picanto
-Vertragsbeginn: 30.11.2021
-Vertragsende: 01.11.2025
-Laufzeit 48 Monate
-Gesamtkilometer 40.000 km
-Monatliche Rate 83,07 €
-Schlussrate 7.796,96 €
-Mehrkilometer 0,05 €
-Minderkilometer 0,03 €
-Kinder: 1
-IBAN DE89 3704 0044 0532 0130 00
-Ausweisnr. L01X00T47
-`.trim();
-
-const ATTACHMENTS = [{
-  id: 'att-contract-1',
-  kind: 'contract_pdf',
-  sourceType: 'contract_pdf',
-  fileName: 'Vertrag_Bank_100000518962.pdf',
-  extractedText: CONTRACT_FIXTURE,
-}];
+const MAZZEI_DUMP = MAZZEI_SELLER_DUMP;
+const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
+const ATTACHMENTS = [buildMazzeiContractAttachment({ extractedText: CONTRACT_FIXTURE })];
 
 /** Vollständiger CleverMultiSourceIntakePlan (Mock OpenAI) */
 const MOCK_PLAN = {
@@ -348,16 +324,63 @@ const MOCK_PLAN = {
   const intake = turnOk.multiSourceIntake;
   assert.match(intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
   assert.match(String(intake.currentVehicleInterest?.model || ''), /EV4/i);
+  assert.ok((intake.currentVehicleInterest?.requestedEquipment || []).includes('AHK'));
+  assert.match(intake.currentVehicleInterest?.label || '', /AHK/i);
   assert.equal(intake.commercialScenario?.annualMileage, 10000);
   assert.ok(!intake.commercialScenario?.purchasePrice);
   assert.match(intake.tradeInCandidate?.label || '', /Picanto/i);
   assert.equal(intake.historicalContract?.status, 'historical_or_ended');
+
+  const customerGroup = (review.groups || []).find((g) => g.id === 'customer');
+  const wishGroup = (review.groups || []).find((g) => g.id === 'wish');
+  assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
+  assert.match(wishGroup?.line || '', /AHK/i);
+  assert.ok((review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
+
   assert.equal(turnOk.autoSent, false);
   const applied = applyAcceptedSellerTurn({}, turnOk, {
     postFeedCard: false,
     allowCreateCustomer: false,
   });
   assert.ok(applied);
+}
+
+// Merge-Safety: Name/AHK aus Dump, auch wenn AI sie weglässt
+{
+  const baseline = buildMultiSourceIntake({
+    sellerInput: MAZZEI_DUMP,
+    attachments: ATTACHMENTS,
+    facts: interpretSellerInput(MAZZEI_DUMP).facts,
+    now: new Date('2026-08-04T12:00:00Z'),
+  });
+  const thinPlan = {
+    ...MOCK_PLAN,
+    customerCandidates: [],
+    vehicleInterests: [{
+      make: 'Kia',
+      model: 'EV4',
+      trim: 'Air',
+      color: 'weiß',
+      equipment: [],
+      role: 'desired_vehicle',
+      label: 'Kia EV4 Air · weiß',
+      sourceType: 'seller_input',
+      confidence: 0.9,
+    }],
+  };
+  const merged = mergeMultiSourceIntakePlan(thinPlan, baseline, {
+    sellerInput: MAZZEI_DUMP,
+    now: new Date('2026-08-04T12:00:00Z'),
+  });
+  assert.match(merged.intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
+  assert.ok((merged.intake.currentVehicleInterest?.requestedEquipment || []).includes('AHK'));
+  assert.match(merged.intake.currentVehicleInterest?.label || '', /AHK/i);
+  const review = buildUniversalReviewModel({
+    multiSourceIntake: merged.intake,
+    interpreterDiagnostics: { attachmentCount: 1 },
+  });
+  assert.match((review.groups || []).find((g) => g.id === 'customer')?.line || '', /Sandro|Mazzei/i);
+  assert.match((review.groups || []).find((g) => g.id === 'wish')?.line || '', /AHK/i);
 }
 
 // --- Flag aus → deterministic ---

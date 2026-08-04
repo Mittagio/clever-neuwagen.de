@@ -26,6 +26,10 @@ import {
   shouldShowUniversalReview,
 } from '../buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../applyAcceptedSellerTurn.js';
+import {
+  MAZZEI_CONTRACT_REDACT_TEST_EXTRACT,
+  buildMazzeiContractAttachment,
+} from './fixtures/mazzeiContractFixture.js';
 
 const ENV = {
   VITE_CLEVER_SELLER_ORCHESTRATOR: 'true',
@@ -42,23 +46,8 @@ const MAZZEI_DUMP = [
   'GW Kia Picanto',
 ].join('\n');
 
-/** Fixture: generische 3-Wege-Finanzierung – erweiterbar, kein Picanto-Hardcode im Core */
-const CONTRACT_FIXTURE = `
-Finanzierungsvertrag / 3-Wege-Finanzierung
-Kunde: Sandro Mazzei
-Fahrzeug: Kia Picanto
-Vertragsbeginn: 30.11.2021
-Vertragsende: 01.11.2025
-Laufzeit 48 Monate
-Gesamtkilometer 40.000 km
-Monatliche Rate 83,07 €
-Schlussrate 7.796,96 €
-Mehrkilometer 0,05 €
-Minderkilometer 0,03 €
-Kinder: 1
-IBAN DE89 3704 0044 0532 0130 00
-Ausweisnr. L01X00T47
-`.trim();
+/** Fixture inkl. sensibler Muster – nur Redact-/Body-Assertions */
+const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
 
 // --- A/B Unit-aware ---
 {
@@ -130,13 +119,7 @@ Ausweisnr. L01X00T47
   const turn = runCleverSellerTurn({
     lead: {},
     sellerInput: MAZZEI_DUMP,
-    attachments: [{
-      id: 'att-contract-1',
-      kind: 'contract_pdf',
-      sourceType: 'contract_pdf',
-      fileName: 'Vertrag_Bank_100000518962.pdf',
-      extractedText: CONTRACT_FIXTURE,
-    }],
+    attachments: [buildMazzeiContractAttachment({ extractedText: CONTRACT_FIXTURE })],
     leadsSnapshot: [],
     scopeHint: 'dashboard',
     now: new Date('2026-08-04T12:00:00Z'),
@@ -154,6 +137,8 @@ Ausweisnr. L01X00T47
   assert.match(intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
   assert.ok(intake.currentVehicleInterest?.model);
   assert.match(String(intake.currentVehicleInterest.model), /EV4/i);
+  assert.ok((intake.currentVehicleInterest.requestedEquipment || []).includes('AHK')
+    || /AHK/i.test(intake.currentVehicleInterest.label || ''));
   assert.equal(intake.commercialScenario?.termMonths, 48);
   assert.equal(intake.commercialScenario?.annualMileage, 10000);
   assert.equal(intake.currentHouseholdFacts?.childrenCount, 2);
@@ -162,6 +147,14 @@ Ausweisnr. L01X00T47
   assert.equal(intake.historicalContract.status, 'historical_or_ended');
   assert.ok(intake.conflicts?.some((c) => c.id === 'children_count_temporal')
     || intake.historicalHousehold?.childrenCount === 1);
+
+  // Review Fact-Cards: Name + AHK sichtbar
+  const customerGroup = (review.groups || []).find((g) => g.id === 'customer' || g.title === 'KUNDE');
+  const wishGroup = (review.groups || []).find((g) => g.id === 'wish' || g.title === 'NEUER WUNSCH');
+  assert.match(customerGroup?.line || review.body || '', /Sandro|Mazzei/i);
+  assert.match(wishGroup?.line || review.body || '', /AHK/i);
+  assert.ok((review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
+  assert.ok((review.progressLines || []).some((l) => /Kunde:.*(?:Sandro|Mazzei)/i.test(l)));
 
   // keine Auto-Persistenz
   assert.equal(turn.autoSent, false);
@@ -178,6 +171,30 @@ Ausweisnr. L01X00T47
   assert.ok((intake.preparedActions || []).some((a) => a.id === 'import_historical_contract'));
   assert.ok((intake.preparedActions || []).some((a) => a.id === 'create_trade_in_candidate'));
   assert.ok((intake.preparedActions || []).every((a) => a.mutatesCustomer === false));
+}
+
+// Text-only: Checkliste ohne falschen Dokument-Claim; Name + AHK bleiben sichtbar
+{
+  const turn = runCleverSellerTurn({
+    lead: {},
+    sellerInput: MAZZEI_DUMP,
+    attachments: [],
+    leadsSnapshot: [],
+    scopeHint: 'dashboard',
+    now: new Date('2026-08-04T12:00:00Z'),
+    env: ENV,
+  });
+  assert.ok(turn.multiSourceIntake?.detected);
+  const review = turn.reviewModel || buildUniversalReviewModel(turn);
+  assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
+  assert.ok((review.progressLines || []).some((l) => /Seller-Dump ausgewertet/i.test(l)));
+  assert.ok(!(review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
+  assert.match(review.body || '', /Sandro|Mazzei/i);
+  assert.match(review.body || '', /AHK/i);
+  const customerGroup = (review.groups || []).find((g) => g.id === 'customer');
+  const wishGroup = (review.groups || []).find((g) => g.id === 'wish');
+  assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
+  assert.match(wishGroup?.line || '', /AHK/i);
 }
 
 // Missing contact does not block review

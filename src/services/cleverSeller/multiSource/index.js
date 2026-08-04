@@ -16,6 +16,19 @@ export {
 } from './buildMultiSourceIntake.js';
 export { buildMultiSourceIntakeReviewModel } from './buildMultiSourceIntakeReview.js';
 export {
+  buildMultiSourceProgressLines,
+  formatWishLabel,
+  hasMultiSourceDocumentContext,
+} from './buildMultiSourceProgressLines.js';
+export {
+  MAZZEI_CONTRACT_FILE_NAME,
+  MAZZEI_CONTRACT_EXTRACTED_TEXT,
+  MAZZEI_CONTRACT_REDACT_TEST_EXTRACT,
+  MAZZEI_SELLER_DUMP,
+  MAZZEI_CONTRACT_DUMMY_PDF_RELATIVE,
+  buildMazzeiContractAttachment,
+} from './fixtures/mazzeiContractFixture.js';
+export {
   evaluateComplexSellerTurn,
   shouldRouteComplexSellerTurnToServer,
   shouldUseSemanticInterpreter,

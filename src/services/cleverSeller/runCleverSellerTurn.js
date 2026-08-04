@@ -34,6 +34,7 @@ import {
   buildMultiSourceIntake,
   shouldBuildMultiSourceIntake,
 } from './multiSource/buildMultiSourceIntake.js';
+import { buildMultiSourceProgressLines } from './multiSource/buildMultiSourceProgressLines.js';
 import { interpretMultiSourceWithOpenAi } from './multiSource/interpretMultiSourceWithOpenAi.js';
 import { minimizeSensitiveOcrText } from './minimizeSensitiveOcrText.js';
 import {
@@ -1113,22 +1114,12 @@ function finalizeSellerTurn({
         )),
       ];
     }
+    const attachmentCount = Array.isArray(attachments) ? attachments.length : 0;
+    const multiSourceProgress = buildMultiSourceProgressLines(intake, { attachmentCount });
     turnPartial.uiEffects = {
       ...turnPartial.uiEffects,
       progressLines: [
-        '✓ Seller-Dump und Dokument zusammengeführt',
-        intake.resolvedCustomerCandidate?.fullName
-          ? `✓ Kunde: ${intake.resolvedCustomerCandidate.fullName}`
-          : null,
-        intake.currentVehicleInterest
-          ? `✓ Wunsch: ${intake.currentVehicleInterest.label}`
-          : null,
-        intake.tradeInCandidate
-          ? `✓ Inzahlungnahme: ${intake.tradeInCandidate.label}`
-          : null,
-        intake.historicalContract?.statusLabel
-          ? `✓ ${intake.historicalContract.statusLabel}`
-          : (intake.historicalContract ? '✓ Altvertrag erkannt' : null),
+        ...multiSourceProgress,
         ...(turnPartial.uiEffects?.progressLines || []),
       ].filter(Boolean),
     };
