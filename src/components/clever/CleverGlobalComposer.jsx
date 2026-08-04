@@ -31,6 +31,8 @@ import { enrichSellerTurnWithMagicPropose } from '../../services/cleverSeller/en
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { isPrepareSuccessionOfferCue } from '../../services/cleverSeller/prepareSuccessionOfferFromLead.js';
 import { shouldUseSemanticInterpreter } from '../../services/cleverSeller/multiSource/evaluateComplexSellerTurn.js';
+import { applyConfirmedMultiSourceIntakePlan } from '../../services/cleverSeller/multiSource/applyConfirmedMultiSourceIntakePlan.js';
+import { buildMultiSourceApplyResultReview } from '../../services/cleverSeller/multiSource/buildMultiSourceApplyResultReview.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
 import {
@@ -277,6 +279,57 @@ export default function CleverGlobalComposer() {
     return null;
   }
 
+  function handleAcceptMultiSourceIntake(action = {}) {
+    if (!lastTurn?.multiSourceIntake?.detected) {
+      setFeedback('Kein Multi-Source-Plan zur Übernahme.');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
+    const snapshot = ctx?.leadsSnapshot || [];
+    const selectedId = action.leadId
+      || lastTurn?.resolvedCustomer?.id
+      || null;
+    const existing = selectedId
+      ? (snapshot.find((l) => l.id === selectedId) || ctx?.currentCustomer || null)
+      : (ctx?.currentCustomer?.id ? ctx.currentCustomer : null);
+
+    const applied = applyConfirmedMultiSourceIntakePlan(existing || {}, lastTurn, {
+      allowCreateCustomer: true,
+      leadsSnapshot: snapshot,
+      selectedLeadId: selectedId,
+      postFeedCard: false,
+    });
+
+    if (applied.needsSellerChoice) {
+      setReviewModel(buildMultiSourceApplyResultReview(applied, lastTurn.multiSourceIntake));
+      setFeedback(applied.needsSellerChoice.reason || 'Bitte Kundenakte wählen.');
+      setTimeout(() => setFeedback(''), 4200);
+      return;
+    }
+
+    if (!applied.ok || !applied.lead?.id) {
+      setReviewModel(buildMultiSourceApplyResultReview(applied, lastTurn.multiSourceIntake));
+      setFeedback(applied.errors?.[0] || 'Übernahme fehlgeschlagen.');
+      setTimeout(() => setFeedback(''), 4200);
+      return;
+    }
+
+    if (applied.created && typeof addLead === 'function') {
+      addLead(applied.lead);
+    } else if (typeof updateLead === 'function') {
+      updateLead(applied.lead.id, applied.lead);
+    }
+
+    const resultReview = buildMultiSourceApplyResultReview(applied, lastTurn.multiSourceIntake);
+    setReviewModel(resultReview);
+    setFeedback(applied.partialFailure
+      ? 'Vorgang teilweise angelegt – bitte prüfen.'
+      : applied.status === 'idempotent_replay'
+        ? 'Bereits übernommen – keine Dublette.'
+        : 'Vorgang angelegt.');
+    setTimeout(() => setFeedback(''), 3600);
+  }
+
   function handleReviewAction(action) {
     if (!action || !lastTurn) return;
     if (action.action === 'discard') {
@@ -395,6 +448,28 @@ export default function CleverGlobalComposer() {
       setTimeout(() => setFeedback(''), 3200);
       setReviewModel(null);
       setLastTurn(null);
+      return;
+    }
+    if (action.action === 'accept_multi_source_intake') {
+      handleAcceptMultiSourceIntake(action);
+      return;
+    }
+    if (action.action === 'prepare_ev4_offer') {
+      const leadId = action.leadId || lastTurn?.resolvedCustomer?.id;
+      if (leadId) {
+        handleOpenLead(leadId, { focus: 'offer', modelHint: 'ev4' });
+        setFeedback('Kundenakte geöffnet – Angebot vorbereiten.');
+        setTimeout(() => setFeedback(''), 3200);
+      }
+      return;
+    }
+    if (action.action === 'enrich_trade_in') {
+      const leadId = action.leadId || lastTurn?.resolvedCustomer?.id;
+      if (leadId) {
+        handleOpenLead(leadId, { focus: 'trade_in' });
+        setFeedback('Kundenakte geöffnet – Inzahlungnahme ergänzen.');
+        setTimeout(() => setFeedback(''), 3200);
+      }
       return;
     }
     if (action.action === 'send_documents_package') {
@@ -900,6 +975,17 @@ export default function CleverGlobalComposer() {
                 leadId: lastTurn?.inboundLead?.matchedLeadId
                   || lastTurn?.resolvedCustomer?.id
                   || null,
+              });
+              return;
+            }
+            if (
+              reviewModel?.reviewType === 'customer_contract_tradein_intake_review'
+              || reviewModel?.kind === 'multi_source_intake'
+              || lastTurn?.multiSourceIntake?.detected
+            ) {
+              handleReviewAction({
+                action: 'accept_multi_source_intake',
+                leadId: lastTurn?.resolvedCustomer?.id || null,
               });
               return;
             }

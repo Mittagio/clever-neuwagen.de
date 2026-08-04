@@ -21,12 +21,14 @@ function pickPrimaryBody(model) {
     s.kind === 'customer_intake_review'
     || s.kind === 'inbound_lead_review'
     || s.kind === 'customer_contract_tradein_intake_review'
+    || s.kind === 'multi_source_apply_result'
   ));
   if (intakeSec?.body) return String(intakeSec.body).trim();
   if (model?.body && (
     model.reviewType === 'customer_intake_review'
     || model.kind === 'customer_intake'
     || model.reviewType === 'customer_contract_tradein_intake_review'
+    || model.reviewType === 'multi_source_apply_result'
   )) {
     return String(model.body).trim();
   }
@@ -158,6 +160,7 @@ export default function SellerUniversalReviewCard({
     || s.kind === 'inbound_lead_review'
     || s.kind === 'customer_contract_tradein_intake_review'
   ));
+  const applyResultSec = sections.find((s) => s.kind === 'multi_source_apply_result');
   const replySec = sections.find((s) => s.kind === 'customer_reply_review');
   const reviewActions = knowledgeMsg?.primaryActions
     || apptMsg?.primaryActions
@@ -168,10 +171,14 @@ export default function SellerUniversalReviewCard({
     || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || sections.find((s) => s.kind === 'today_overview')?.primaryActions
     || sections.find((s) => s.kind === 'golden_moment')?.primaryActions
+    || applyResultSec?.primaryActions
     || intakeSec?.primaryActions
     || replySec?.primaryActions
     || [];
-  const secondaryReviewActions = intakeSec?.secondaryActions || replySec?.secondaryActions || [];
+  const secondaryReviewActions = applyResultSec?.secondaryActions
+    || intakeSec?.secondaryActions
+    || replySec?.secondaryActions
+    || [];
   const sources = knowledgeMsg?.sources
     || contractMsg?.evidence
     || contractMem?.evidence
@@ -183,23 +190,28 @@ export default function SellerUniversalReviewCard({
       || s.kind === 'offer_history_result')
     && s.hit
   ))?.hit;
-  const settled = Boolean(status);
+  const isApplyResult = model.reviewType === 'multi_source_apply_result'
+    || model.kind === 'multi_source_apply_result';
+  const settled = Boolean(status) || isApplyResult;
   const showFactGroups = groups.length > 0 && (
     model.reviewType === 'customer_contract_tradein_intake_review'
     || model.kind === 'multi_source_intake'
+    || isApplyResult
   );
 
   if (!model || (!groups.length && !sections.length && !body)) return null;
 
   const canMaybe = typeof onMaybe === 'function' || typeof onAcceptAndRevise === 'function';
   const resolvedStatusLabel = statusLabel
-    || (status === 'ready_to_send'
-      ? 'Bereit zum Senden'
-      : status === 'sent'
-        ? 'Gesendet'
-        : status
-          ? 'Übernommen'
-          : null);
+    || (isApplyResult
+      ? (model.partialFailure ? 'Teilweise' : 'Angelegt')
+      : status === 'ready_to_send'
+        ? 'Bereit zum Senden'
+        : status === 'sent'
+          ? 'Gesendet'
+          : status
+            ? 'Übernommen'
+            : null);
 
   async function handleCopy() {
     const text = body || model.summaryLine || '';
@@ -298,7 +310,7 @@ export default function SellerUniversalReviewCard({
         </ul>
       ) : null}
 
-      {!settled && (reviewActions.length > 0 || secondaryReviewActions.length > 0) ? (
+      {((!settled || isApplyResult) && (reviewActions.length > 0 || secondaryReviewActions.length > 0)) ? (
         <div className="sur-card__text-actions" role="group" aria-label="Review-Aktionen">
           {reviewActions.map((action) => (
             <button

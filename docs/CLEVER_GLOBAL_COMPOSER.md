@@ -88,6 +88,8 @@ Nur `runCleverSellerTurn()` (+ `enrichSellerTurnWithMagicPropose`, `buildUnivers
 
 Trigger eng: `Abgleich` **oder** Wunsch + GW + Vertrags-PDF. Inbound/Reply/reiner Contract-Import bleiben eigene Pfade. Kein Auto-Persist.
 
+**Confirm → Apply:** Nach „Alles übernehmen“ (`accept_multi_source_intake`) schreibt `applyConfirmedMultiSourceIntakePlan` nur den **validierten Review-Plan** über bestehende Persistenz (Lead/Wish/Track/Trade-in/`persistConfirmedCustomerContract`/Offer-Shell/Activities). OpenAI-Rohdaten werden nicht direkt persistiert. Idempotenz über `idempotencyKey` + Ledger; Dubletten → Seller-Auswahl statt Auto-Duplikat. Ergebnis-Review: `multi_source_apply_result`.
+
 Neue Vertragsart: Eintrag in `CONTRACT_KIND_REGISTRY` (+ optional `enrichExtracted`) – kein Mazzei-/Picanto-Hardcode im Core.
 
 #### OpenAI Multi-Source Interpret (optional)
@@ -104,7 +106,7 @@ Default **aus**. Aktivierung:
 
 Bei Flag aus, fehlendem Key oder AI-Fehler: deterministischer Fallback (`interpreterSource: fallback`) mit **sichtbarer** UI-Warnung – kein stiller Erfolg. Diagnose ohne PII: `interpreterSource`, `attachmentContextMode`, `complexityReasons`, `schemaValid`, `validatorWarningsCount`, `toolCalls`, `fallbackReason`, `durationMs`, `responseId`, `model`.
 
-Tests: `multiSourceOpenAiInterpret.golden.test.js` · Smoke: `scripts/smoke-multi-source-openai.mjs`
+Tests: `multiSourceOpenAiInterpret.golden.test.js` · `multiSourceApply.golden.test.js` · Smoke: `scripts/smoke-multi-source-openai.mjs`
 
 ## Slice 5 – Golden Flow
 

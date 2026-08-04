@@ -1380,6 +1380,9 @@ export default function CustomerAkteSharedWorkspace({
     if (action.action === 'send_documents_package') {
       handleAcceptUniversalReview({ sendDocuments: true });
     }
+    if (action.action === 'accept_multi_source_intake') {
+      handleAcceptUniversalReview();
+    }
   }
 
   function handleAcceptUniversalReview(options = {}) {

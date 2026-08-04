@@ -365,13 +365,24 @@ function buildVehicleInterest(facts, sellerInput) {
   const label = interest?.label || '';
   const ev = label.match(/\bEV\s*(\d)\s*(\w+)?/i)
     || String(sellerInput).match(/\bEV\s*(\d)\s*(\w+)?/i);
+  // „weiß“: kein \b nach ß (JS \w kennt ß nicht) – Text-Fallback
+  const colorFromText = String(sellerInput).match(
+    /(?:^|[\s,;])(schwarz\w*|weiss\w*|weiß\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*)(?=$|[\s,;.])/i,
+  );
+  let colorValue = color?.value || null;
+  if (!colorValue && colorFromText?.[1]) {
+    const lower = colorFromText[1].toLowerCase();
+    colorValue = lower.startsWith('weiß') || lower.startsWith('weiss') ? 'weiß' : lower;
+  }
   return {
     make: 'Kia',
     model: ev ? `EV${ev[1]}` : (interest?.value?.model || label),
     trim: ev?.[2] || interest?.value?.trim || null,
-    color: color?.value || null,
-    requestedEquipment: ahk ? ['AHK'] : [],
-    label: [ev ? `Kia EV${ev[1]}` : label, ev?.[2], color?.value, ahk ? 'AHK' : null].filter(Boolean).join(' · '),
+    color: colorValue,
+    requestedEquipment: ahk || /\bahk\b/i.test(sellerInput) ? ['AHK'] : [],
+    label: [ev ? `Kia EV${ev[1]}` : label, ev?.[2], colorValue, (ahk || /\bahk\b/i.test(sellerInput)) ? 'AHK' : null]
+      .filter(Boolean)
+      .join(' · '),
     source: 'seller_input',
   };
 }

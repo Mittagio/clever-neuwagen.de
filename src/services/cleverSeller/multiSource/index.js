@@ -63,3 +63,11 @@ export {
   validateSourcesAndEvidence,
   redactSensitiveEvidence,
 } from './validateMultiSourceIntakePlan.js';
+export {
+  applyConfirmedMultiSourceIntakePlan,
+  buildMultiSourceIdempotencyKey,
+  buildPersistableContractDraft,
+  MULTI_SOURCE_APPLY_OPS,
+  MULTI_SOURCE_APPLY_ORDER,
+} from './applyConfirmedMultiSourceIntakePlan.js';
+export { buildMultiSourceApplyResultReview } from './buildMultiSourceApplyResultReview.js';

@@ -30,6 +30,7 @@ import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js
 import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
 import { buildInboundLeadDraft } from './inboundLeadIntake.js';
 import { isPrepareSuccessionOfferCue } from './prepareSuccessionOfferFromLead.js';
+import { applyConfirmedMultiSourceIntakePlan } from './multiSource/applyConfirmedMultiSourceIntakePlan.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -395,6 +396,16 @@ function applyContractImportIfPresent(lead, turn, options = {}) {
 }
 
 export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
+  // Multi-Source: dedizierter Confirm-Apply (validierter Intake, kein OpenAI-Direktpersist)
+  if (turn?.multiSourceIntake?.detected) {
+    return applyConfirmedMultiSourceIntakePlan(lead, turn, {
+      ...options,
+      allowCreateCustomer: options.allowCreateCustomer === true,
+      leadsSnapshot: options.leadsSnapshot || [],
+      selectedLeadId: options.selectedLeadId || null,
+    });
+  }
+
   const rawFacts = turn.extractedFacts ?? [];
   const hasCustomerActions = hasPreparedCustomerFollowThrough(turn);
   const inbound = turn.inboundLead || null;
