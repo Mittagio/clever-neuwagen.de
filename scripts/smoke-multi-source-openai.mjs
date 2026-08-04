@@ -70,11 +70,16 @@ const safe = {
   complexityReasons: diag.complexityReasons ?? [],
   validatorWarningsCount: diag.validatorWarningsCount ?? 0,
   durationMs: diag.durationMs ?? diag.latencyMs ?? null,
+  responseIdPresent: Boolean(diag.responseId),
+  model: diag.model || null,
   reviewType: turn.reviewModel?.reviewType || turn.multiSourceIntake?.reviewType || null,
   detected: Boolean(turn.multiSourceIntake?.detected),
   hasPurchasePrice: Boolean(turn.multiSourceIntake?.commercialScenario?.purchasePrice),
   tradeInOk: /picanto/i.test(turn.multiSourceIntake?.tradeInCandidate?.label || ''),
   wishOk: /ev4/i.test(turn.multiSourceIntake?.currentVehicleInterest?.label || ''),
+  householdKids: turn.multiSourceIntake?.currentHouseholdFacts?.childrenCount ?? null,
+  childrenConflict: Boolean((turn.multiSourceIntake?.conflicts || [])
+    .some((c) => c.field === 'childrenCount')),
 };
 
 console.log(JSON.stringify(safe, null, 2));
@@ -84,11 +89,14 @@ const pass = safe.interpreterSource === 'openai'
   && ['minimized_text', 'structured_extract'].includes(safe.attachmentContextMode)
   && safe.schemaValid === true
   && !safe.fallbackReason
+  && safe.responseIdPresent
   && safe.reviewType === 'customer_contract_tradein_intake_review'
   && safe.detected
   && !safe.hasPurchasePrice
   && safe.tradeInOk
-  && safe.wishOk;
+  && safe.wishOk
+  && safe.householdKids === 2
+  && safe.childrenConflict === true;
 
 if (!pass) {
   console.error('Smoke fehlgeschlagen (keine PII geloggt).');

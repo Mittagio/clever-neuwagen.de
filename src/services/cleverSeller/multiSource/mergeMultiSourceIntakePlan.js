@@ -168,7 +168,7 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
   }
 
   const histChildren = (plan.historicalCustomerFacts || []).find((f) => f.field === 'childrenCount');
-  const historicalHousehold = histChildren
+  let historicalHousehold = histChildren
     ? {
       childrenCount: numOrNull(histChildren.value),
       observedAt: 'Altvertrag',
@@ -176,7 +176,7 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
     }
     : null;
 
-  const currentHouseholdFacts = (children || housing)
+  let currentHouseholdFacts = (children || housing)
     ? {
       childrenCount: children ? numOrNull(children.value) : null,
       housingType: housing
@@ -194,6 +194,43 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
       ].filter(Boolean).join(' · '),
     }
     : null;
+
+  // Lokale Safety: wenn AI Household-Facts (teilweise) weglässt → Baseline / Seller-Dump
+  const localHousehold = baseline?.currentHouseholdFacts
+    || extractHouseholdFromSellerInput(sellerInput, observedAt);
+  if (!currentHouseholdFacts) {
+    currentHouseholdFacts = localHousehold;
+  } else if (localHousehold) {
+    const mergedHousing = currentHouseholdFacts.housingType || localHousehold.housingType || null;
+    const mergedChildren = currentHouseholdFacts.childrenCount ?? localHousehold.childrenCount ?? null;
+    currentHouseholdFacts = {
+      ...currentHouseholdFacts,
+      childrenCount: mergedChildren,
+      housingType: mergedHousing,
+      label: [
+        mergedChildren != null ? `${mergedChildren} Kinder` : null,
+        mergedHousing === 'own_house' ? 'Eigenes Haus' : null,
+      ].filter(Boolean).join(' · ') || currentHouseholdFacts.label,
+    };
+  }
+  if (!historicalHousehold && baseline?.historicalHousehold?.childrenCount != null) {
+    historicalHousehold = baseline.historicalHousehold;
+  }
+
+  // 3-Wege: lokale Kind-Erkennung behalten, wenn AI nur generisch „financing“ liefert
+  if (
+    historicalContract
+    && historicalContract.contractKindId !== 'financing_three_way'
+    && baseline?.historicalContract?.contractKindId === 'financing_three_way'
+  ) {
+    historicalContract = {
+      ...historicalContract,
+      contractType: 'financing',
+      contractTypeLabel: '3-Wege-Finanzierung',
+      contractKindId: 'financing_three_way',
+      contractKindLabel: '3-Wege-Finanzierung',
+    };
+  }
 
   const conflicts = (plan.conflicts || [])
     .filter((c) => c?.id && c?.label && !SENSITIVE_FIELD_BLOCKLIST.has(c.field))
@@ -309,7 +346,9 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
       ? {
         fields: sanitizeFields({
           contractType: historicalContract.contractType,
-          contractSubtype: KIND_TO_SUBTYPE[aiContract?.kind]?.contractSubtype || null,
+          contractSubtype: historicalContract.contractKindId === 'financing_three_way'
+            ? 'three_way_financing'
+            : (KIND_TO_SUBTYPE[aiContract?.kind]?.contractSubtype || null),
           contractTypeLabel: historicalContract.contractTypeLabel,
           vehicleMake: aiContract?.vehicleMake || null,
           vehicleModel: aiContract?.vehicleModel || null,
@@ -442,6 +481,28 @@ function numOrNull(v) {
   if (v == null || v === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Seller-Dump Safety, wenn AI currentCustomerFacts auslässt. */
+function extractHouseholdFromSellerInput(sellerInput = '', observedAt = null) {
+  const t = String(sellerInput || '');
+  if (!t.trim()) return null;
+  const childM = t.match(/\b(\d{1,2})\s*kinder?\b/i) || t.match(/\bzwei\s*kinder\b/i);
+  const childrenCount = childM
+    ? (/zwei/i.test(childM[0]) ? 2 : Number(childM[1]))
+    : null;
+  const hasHouse = /\bhaus\b/i.test(t) && !/\bhaushalt\b/i.test(t);
+  if (childrenCount == null && !hasHouse) return null;
+  return {
+    childrenCount: Number.isFinite(childrenCount) ? childrenCount : null,
+    housingType: hasHouse ? 'own_house' : null,
+    source: 'seller_input',
+    observedAt,
+    label: [
+      childrenCount != null ? `${childrenCount} Kinder` : null,
+      hasHouse ? 'Eigenes Haus' : null,
+    ].filter(Boolean).join(' · '),
+  };
 }
 
 function clamp01(n) {

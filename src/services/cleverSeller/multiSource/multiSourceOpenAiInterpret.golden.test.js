@@ -466,6 +466,32 @@ const MOCK_PLAN = {
   assert.equal(priceGuard.intake?.commercialScenario?.purchasePrice ?? null, null);
   assert.equal(priceGuard.intake?.commercialScenario?.annualMileage, 10000);
 
+  // AI lässt Household/3-Wege weg → lokale Safety aus Seller-Dump + Baseline
+  const sparsePlan = {
+    ...MOCK_PLAN,
+    currentCustomerFacts: [],
+    historicalCustomerFacts: [],
+    conflicts: [],
+    historicalContracts: [{
+      ...MOCK_PLAN.historicalContracts[0],
+      kind: 'financing',
+    }],
+  };
+  const baselineWithFacts = buildMultiSourceIntake({
+    sellerInput: MAZZEI_DUMP,
+    attachments: ATTACHMENTS,
+    facts: interpretSellerInput(MAZZEI_DUMP).facts,
+    now: new Date('2026-08-04T12:00:00Z'),
+  });
+  const sparseMerged = mergeMultiSourceIntakePlan(sparsePlan, baselineWithFacts, {
+    sellerInput: MAZZEI_DUMP,
+    now: new Date('2026-08-04T12:00:00Z'),
+  });
+  assert.equal(sparseMerged.intake?.currentHouseholdFacts?.childrenCount, 2);
+  assert.equal(sparseMerged.intake?.currentHouseholdFacts?.housingType, 'own_house');
+  assert.ok(sparseMerged.intake?.conflicts?.some((c) => c.field === 'childrenCount'));
+  assert.equal(sparseMerged.intake?.historicalContract?.contractKindId, 'financing_three_way');
+
   const interpGw = interpretSellerInput('GW Kia Picanto und EV4 Air');
   assert.ok(interpGw.facts.some((f) => f.field === 'tradeInVehicle'));
   assert.ok(!interpGw.facts.some((f) => (
