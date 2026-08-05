@@ -63,13 +63,13 @@ export const KPI_TILES = [
   },
   {
     key: 'newLeads',
-    label: 'Neue Anfragen',
-    hint: 'Von Landingpage & Assistent',
+    label: 'Clever Eingang',
+    hint: 'Neue Vorgänge vorbereitet',
     to: '/backend/neue-anfragen',
-    ariaLabel: 'Neue Anfragen öffnen',
+    ariaLabel: 'Clever Eingang öffnen',
     accent: '#2563eb',
-    listTitle: 'Neue Anfragen',
-    listSubtitle: 'Von Landingpage & Assistent',
+    listTitle: 'Clever Eingang',
+    listSubtitle: 'Clever hat neue Kundeninformationen erkannt und für dich vorbereitet.',
   },
 ];
 
@@ -177,7 +177,10 @@ export function filterSalesChances(leads = [], viewFilter = null, dueToday = [],
 
 export function getSalesChanceViewMeta(viewFilter) {
   if (viewFilter === 'new' || viewFilter === 'new-requests') {
-    return { title: 'Neue Anfragen', subtitle: 'Von Landingpage & Assistent' };
+    return {
+      title: 'Clever Eingang',
+      subtitle: 'Clever hat neue Kundeninformationen erkannt und für dich vorbereitet.',
+    };
   }
   if (viewFilter === 'followup') {
     return { title: 'Nachfassen', subtitle: 'Heute heiß' };

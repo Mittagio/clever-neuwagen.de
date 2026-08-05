@@ -46,7 +46,7 @@ export default function PrepareOfferQueuePage() {
         <div className="new-inq__empty">
           <p>Sobald ein Fahrzeug auf dem Tisch liegt, kann hier das Angebot vorbereitet werden.</p>
           <Link to="/backend/neue-anfragen" className="new-inq__cta">
-            Neue Anfragen prüfen
+            Clever Eingang prüfen
           </Link>
         </div>
       ) : (

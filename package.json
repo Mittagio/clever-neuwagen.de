@@ -108,6 +108,7 @@
     "test:journey": "node src/services/journey/journeyEngine.test.js && node src/services/journey/journeyReminderService.test.js",
     "test:clever-message": "node src/services/communication/cleverMessageSuggestionService.test.js",
     "test:clever-inbox": "node src/services/crm/cleverInboxService.test.js && node src/services/crm/inboxWorkCardModel.test.js",
+    "test:clever-eingang": "node src/services/crm/cleverEingangItems.test.js",
     "test:customer-offer-link": "node src/services/crm/customerLinkOfferService.test.js",
     "test:customer-message": "node src/services/crm/customerMessageService.test.js",
     "test:customer-portal-messages": "node src/services/crm/customerPortalMessages.test.js",
