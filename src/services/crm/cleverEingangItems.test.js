@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   buildCleverInboxItems,
   buildCleverInboxSummary,
+  buildDuplicateReason,
   CLEVER_EINGANG_STATUS,
   filterCleverInboxItems,
   formatInboxRelativeTime,
@@ -110,11 +111,10 @@ assert.ok(dupItem, 'Gruppenkarte für mögliche Dublette vorhanden');
 assert.equal(dupItem.memberCount, 2);
 assert.equal(dupItem.isGroup, true);
 assert.equal(dupItem.statusLabel, 'Mögliche Dublette');
-assert.match(dupItem.contextHint, /2 ähnliche Vorgänge/);
-assert.match(dupItem.contextHint, /29\.07\./);
-assert.match(dupItem.contextHint, /28\.07\./);
+assert.equal(dupItem.contextHint, '2 ähnliche Vorgänge · gleicher Kunde und Sportage');
 assert.equal(dupItem.nextAction.label, 'Vorgänge prüfen');
 assert.equal(dupItem.title, 'Thomas Weber');
+assert.match(dupItem.sourceLabel, /^aus /);
 assert.match(dupItem.sourceLabel, /Verkaufsassistent/);
 assert.match(dupItem.sourceLabel, /Clever Composer/);
 
@@ -150,29 +150,61 @@ assert.deepEqual(
   ],
 );
 
-// --- Filter-Counts: „Möglich doppelt“ = Gruppenanzahl ---
+// --- Filter-Counts: Alle = Summe der Kategorien inkl. Zugeordnet ---
 assert.equal(summary.total, 4);
 assert.equal(summary.duplicates, 1);
 assert.equal(summary.duplicateMemberCount, 2);
 assert.equal(summary.ready, 1);
 assert.equal(summary.incomplete, 1);
+assert.equal(summary.assigned, 1);
 assert.ok(summary.groupHint);
-assert.match(summary.groupHint, /2 ähnliche Vorgänge in 1 Gruppe/);
+assert.match(summary.groupHint, /1 Gruppe mit möglichen Dubletten erkannt/);
+assert.ok(!summary.groupHint.includes('2 ähnliche'));
 
 const filterAll = summary.filters.find((f) => f.id === 'all');
 const filterDup = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE);
 const filterReady = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.READY);
 const filterInc = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.INCOMPLETE);
+const filterAssigned = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.ASSIGNED);
+const categorySum = summary.filters
+  .filter((f) => f.id !== 'all')
+  .reduce((sum, f) => sum + f.count, 0);
 assert.equal(filterAll.count, 4);
-assert.equal(filterDup.label, 'Möglich doppelt');
+assert.equal(filterAll.count, categorySum, 'Alle = Summe der Filter-Counts');
+assert.equal(filterDup.label, 'Mögliche Dubletten');
 assert.equal(filterDup.count, 1, 'Filter zählt Gruppenkarten, nicht Roh-Einträge');
 assert.equal(filterReady.count, 1);
 assert.equal(filterInc.count, 1);
+assert.ok(filterAssigned, 'Filter Zugeordnet vorhanden');
+assert.equal(filterAssigned.count, 1);
 
 assert.equal(filterCleverInboxItems(items, '', CLEVER_EINGANG_STATUS.DUPLICATE).length, 1);
 assert.equal(filterCleverInboxItems(items, '', CLEVER_EINGANG_STATUS.READY).length, 1);
+assert.equal(filterCleverInboxItems(items, '', CLEVER_EINGANG_STATUS.ASSIGNED).length, 1);
 assert.equal(filterCleverInboxItems(items, 'thomas', 'all').length, 1);
 assert.equal(buildCleverInboxSummary([]).line, 'Keine neuen Vorgänge');
+
+// --- Ähnlichkeitsgrund: Name + Fahrzeug ---
+const nameOnlyA = {
+  id: 'name-a',
+  status: 'neu',
+  source: 'seller_note',
+  createdAt: '2026-08-05T11:00:00.000Z',
+  contact: { name: 'Eva Air', email: 'eva.air@test.de', phone: '01701110001' },
+  vehicle: { brand: 'Kia', model: 'EV4', trim: 'Air', label: 'Kia EV4 Air' },
+};
+const nameOnlyB = {
+  id: 'name-b',
+  status: 'neu',
+  source: 'composer_multi_source',
+  createdAt: '2026-08-04T11:00:00.000Z',
+  contact: { name: 'Eva Air', email: 'eva.air@test.de', phone: '01701110001' },
+  vehicle: { brand: 'Kia', model: 'EV4', trim: 'Air', label: 'Kia EV4 Air' },
+};
+assert.equal(
+  buildDuplicateReason([nameOnlyA, nameOnlyB], nameOnlyA),
+  'gleicher Kunde und EV4 Air',
+);
 
 // --- N ähnliche → genau 1 Listen-Item ---
 const manySimilar = Array.from({ length: 5 }, (_, i) => ({
@@ -200,6 +232,23 @@ assert.equal(bulkItems.length, 2, '5 ähnliche + 1 allein → 2 Gruppen in der L
 assert.equal(bulkSummary.duplicates, 1);
 assert.equal(bulkSummary.duplicateMemberCount, 5);
 assert.equal(bulkSummary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE).count, 1);
+assert.match(bulkItems[0].contextHint, /5 ähnliche Vorgänge · gleicher Kunde und EV3/);
+
+// --- Große Gruppen (7+): ruhige Copy + Quellenzeile ---
+const largeGroup = Array.from({ length: 7 }, (_, i) => ({
+  id: `large-${i}`,
+  status: 'neu',
+  source: i % 2 === 0 ? 'composer_multi_source' : 'seller_note',
+  createdAt: `2026-08-0${1 + (i % 5)}T10:00:00.000Z`,
+  contact: { name: 'Groß Gruppe', email: 'gross@test.de', phone: '01704445566' },
+  vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line', label: 'Kia EV2 GT-Line' },
+  notes: 'Leasing Anfrage',
+}));
+const { items: largeItems } = buildCleverInboxItems(largeGroup, { nowMs: NOW });
+assert.equal(largeItems.length, 1);
+assert.equal(largeItems[0].contextHint, '7 Vorgänge gebündelt');
+assert.equal(largeItems[0].statusLabel, 'Mögliche Dublette');
+assert.match(largeItems[0].sourceLabel, /^aus Clever Composer \+ Gesprächsnotiz$|^aus Gesprächsnotiz \+ Clever Composer$/);
 
 // --- relatives Alter ---
 assert.equal(formatInboxRelativeTime('2026-08-05T11:45:00.000Z', NOW), 'vor 15 Min.');

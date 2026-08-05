@@ -221,13 +221,6 @@ export function formatInboxRelativeTime(iso, nowMs = Date.now()) {
   return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
-function formatShortDayMonth(iso) {
-  if (!iso) return '';
-  const ts = new Date(iso).getTime();
-  if (Number.isNaN(ts)) return '';
-  return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-}
-
 function vehicleKey(lead = {}) {
   const model = normalizeText(lead.vehicle?.model || lead.vehicle?.label || '');
   const brand = normalizeText(lead.vehicle?.brand || 'kia');
@@ -409,29 +402,6 @@ function buildDisplayTitle(lead = {}, status) {
   return 'Neuer Vorgang';
 }
 
-function buildGroupDateHint(members = []) {
-  const dated = members
-    .map((m) => ({
-      ts: leadTimestamp(m),
-      label: formatShortDayMonth(m.createdAt ?? m.updatedAt),
-    }))
-    .filter((entry) => entry.label)
-    .sort((a, b) => b.ts - a.ts);
-
-  const dates = [];
-  const seen = new Set();
-  for (const entry of dated) {
-    if (seen.has(entry.label)) continue;
-    seen.add(entry.label);
-    dates.push(entry.label);
-  }
-
-  if (dates.length === 0) return '';
-  if (dates.length === 1) return dates[0];
-  if (dates.length === 2) return `${dates[0]} und ${dates[1]}`;
-  return `${dates[0]}, ${dates[1]} u. a.`;
-}
-
 function buildGroupSourceLabel(members = []) {
   const labels = [];
   const seen = new Set();
@@ -448,11 +418,53 @@ function buildGroupSourceLabel(members = []) {
   return labels.join(' + ') || 'Unbekannte Quelle';
 }
 
+/** Kurzes Fahrzeuglabel für Ähnlichkeitsgrund (ohne Markenpräfix). */
+function shortVehicleForHint(lead = {}) {
+  const model = String(lead.vehicle?.model ?? '').trim();
+  const trim = String(lead.vehicle?.trim ?? '').trim();
+  if (model && trim) return `${model} ${trim}`;
+  if (model) return model;
+  const label = String(lead.vehicle?.label ?? '').trim();
+  if (!label) return '';
+  return label.replace(/^(kia|hyundai)\s+/i, '').trim() || label;
+}
+
+/**
+ * Einzeiliger Grund, warum Vorgänge gruppiert wurden (Name/Kunde + Fahrzeug).
+ */
+export function buildDuplicateReason(members = [], primary = {}) {
+  const names = members.map((m) => normalizeText(resolveLeadContactName(m))).filter(Boolean);
+  const sameName = names.length >= 2 && names.every((n) => n === names[0]);
+
+  const emails = members.map((m) => normalizeEmail(m.contact?.email)).filter(Boolean);
+  const phones = members.map((m) => normalizePhone(m.contact?.phone)).filter(Boolean);
+  const sameEmail = emails.length >= 2 && emails.every((e) => e === emails[0]);
+  const samePhone = phones.length >= 2 && phones.every((p) => {
+    const ref = phones[0];
+    return p === ref || p.endsWith(ref) || ref.endsWith(p);
+  });
+  const sameCustomer = sameEmail || samePhone;
+
+  const vehicleKeys = members.map((m) => vehicleKey(m)).filter(Boolean);
+  const commonVehicle = vehicleKeys.length > 0 && vehicleKeys.every((v) => v === vehicleKeys[0]);
+  const vehicleLead = commonVehicle
+    ? (members.find((m) => vehicleKey(m)) || primary)
+    : primary;
+  const vehiclePart = shortVehicleForHint(vehicleLead);
+
+  const identity = sameCustomer ? 'gleicher Kunde' : (sameName ? 'gleicher Name' : 'ähnliche Angaben');
+  if (vehiclePart) return `${identity} und ${vehiclePart}`;
+  return identity;
+}
+
 function buildContextHint(status, lead = {}, groupSize = 1, members = []) {
   if (status === CLEVER_EINGANG_STATUS.DUPLICATE && groupSize > 1) {
-    const dateHint = buildGroupDateHint(members);
-    const base = `${groupSize} ähnliche Vorgänge`;
-    return dateHint ? `${base} · ${dateHint}` : base;
+    // Große Gruppen: ruhig bundeln, ohne Alarm-Rhetorik
+    if (groupSize >= 7) {
+      return `${groupSize} Vorgänge gebündelt`;
+    }
+    const reason = buildDuplicateReason(members, lead);
+    return `${groupSize} ähnliche Vorgänge · ${reason}`;
   }
   if (status === CLEVER_EINGANG_STATUS.INCOMPLETE) {
     return 'Name oder Kontaktdaten fehlen';
@@ -479,7 +491,7 @@ function buildItemFromGroup(members = [], nowMs = Date.now()) {
   const nextAction = resolveNextAction(status, primary);
   const createdAt = primary.createdAt ?? primary.updatedAt ?? null;
   const sourceLabel = isDuplicateGroup
-    ? buildGroupSourceLabel(members)
+    ? `aus ${buildGroupSourceLabel(members)}`
     : mapInboxSourceLabel(primary.source);
 
   return {
@@ -518,7 +530,8 @@ export function sortCleverInboxItems(items = []) {
 
 /**
  * Filter-Pills + Meta für den Clever-Eingang-Header.
- * „Möglich doppelt“ = Anzahl Gruppenkarten (nicht Roh-Einträge).
+ * „Mögliche Dubletten“ = Anzahl Gruppenkarten (nicht Roh-Einträge).
+ * „Alle“ = Summe der sichtbaren Kategorie-Counts (jede Karte genau eine Kategorie).
  */
 export function buildCleverInboxSummary(items = []) {
   const total = items.length;
@@ -533,13 +546,16 @@ export function buildCleverInboxSummary(items = []) {
   const filters = [
     { id: 'all', label: 'Alle', count: total },
     { id: CLEVER_EINGANG_STATUS.REVIEW, label: 'Prüfen', count: review },
-    { id: CLEVER_EINGANG_STATUS.DUPLICATE, label: 'Möglich doppelt', count: duplicates },
+    { id: CLEVER_EINGANG_STATUS.DUPLICATE, label: 'Mögliche Dubletten', count: duplicates },
     { id: CLEVER_EINGANG_STATUS.READY, label: 'Bereit', count: ready },
     { id: CLEVER_EINGANG_STATUS.INCOMPLETE, label: 'Unvollständig', count: incomplete },
+    { id: CLEVER_EINGANG_STATUS.ASSIGNED, label: 'Zugeordnet', count: assigned },
   ];
 
   const groupHint = duplicates > 0
-    ? `Clever hat ${duplicateMemberCount} ähnliche Vorgänge in ${duplicates} ${duplicates === 1 ? 'Gruppe' : 'Gruppen'} erkannt.`
+    ? (duplicates === 1
+      ? '1 Gruppe mit möglichen Dubletten erkannt.'
+      : `${duplicates} Gruppen mit möglichen Dubletten erkannt.`)
     : null;
 
   if (total === 0) {

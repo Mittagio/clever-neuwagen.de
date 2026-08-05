@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import {
@@ -7,10 +7,29 @@ import {
 } from '../../services/crm/cleverEingangItems.js';
 import './NewInquiriesQueue.css';
 
-function stopAndNavigate(event, navigate, href) {
-  event.preventDefault();
-  event.stopPropagation();
-  if (href) navigate(href);
+const VISITED_STORAGE_KEY = 'clever-eingang-visited';
+
+function loadVisitedIds() {
+  try {
+    const raw = localStorage.getItem(VISITED_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistVisitedIds(ids) {
+  try {
+    localStorage.setItem(VISITED_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function itemLooksVisited(item, visited) {
+  if (visited.has(String(item.id))) return true;
+  return (item.memberLeadIds || []).some((id) => visited.has(String(id)));
 }
 
 export default function NewInquiriesQueuePage() {
@@ -18,6 +37,7 @@ export default function NewInquiriesQueuePage() {
   const { leads } = useLeads();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [visitedIds, setVisitedIds] = useState(() => loadVisitedIds());
 
   const { items, summary } = useMemo(
     () => buildCleverInboxItems(leads),
@@ -28,6 +48,19 @@ export default function NewInquiriesQueuePage() {
     () => filterCleverInboxItems(items, query, statusFilter),
     [items, query, statusFilter],
   );
+
+  const markVisitedAndOpen = useCallback((item, href) => {
+    setVisitedIds((prev) => {
+      const next = new Set(prev);
+      next.add(String(item.id));
+      for (const leadId of item.memberLeadIds || []) {
+        next.add(String(leadId));
+      }
+      persistVisitedIds(next);
+      return next;
+    });
+    if (href) navigate(href);
+  }, [navigate]);
 
   return (
     <div className="new-inq">
@@ -97,61 +130,68 @@ export default function NewInquiriesQueuePage() {
         </div>
       ) : (
         <ul className="new-inq__list">
-          {visibleItems.map((item) => (
-            <li key={item.id}>
-              <article
-                className={`new-inq__card new-inq__card--${item.status}${item.isUnread ? ' is-unread' : ''}${item.isGroup ? ' new-inq__card--group' : ''}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(item.nextAction.href)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    navigate(item.nextAction.href);
-                  }
-                }}
-                aria-label={`${item.title}: ${item.nextAction.label}`}
-              >
-                <div className="new-inq__card-top">
-                  <div className="new-inq__title-row">
-                    {item.isUnread && (
-                      <span className="new-inq__unread" title="Ungelesen" aria-label="Ungelesen" />
-                    )}
-                    <h2 className="new-inq__name">{item.title}</h2>
-                  </div>
-                  <span className={`new-inq__status new-inq__status--${item.status}`}>
-                    {item.statusLabel}
-                  </span>
-                </div>
-
-                <p className="new-inq__vehicle">{item.vehicleLabel}</p>
-
-                {item.contextHint && (
-                  <p className={`new-inq__hint${item.isGroup ? ' new-inq__hint--group' : ''}`}>
-                    {item.contextHint}
-                  </p>
-                )}
-
-                <p className="new-inq__meta">
-                  <span>{item.sourceLabel}</span>
-                  {!item.isGroup && item.relativeTime ? (
-                    <>
-                      <span className="new-inq__meta-sep" aria-hidden="true">·</span>
-                      <time dateTime={item.createdAt || undefined}>{item.relativeTime}</time>
-                    </>
-                  ) : null}
-                </p>
-
-                <button
-                  type="button"
-                  className="new-inq__action"
-                  onClick={(event) => stopAndNavigate(event, navigate, item.nextAction.href)}
+          {visibleItems.map((item) => {
+            const isUnread = item.isUnread && !itemLooksVisited(item, visitedIds);
+            return (
+              <li key={item.id}>
+                <article
+                  className={`new-inq__card new-inq__card--${item.status}${isUnread ? ' is-unread' : ''}${item.isGroup ? ' new-inq__card--group' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => markVisitedAndOpen(item, item.nextAction.href)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      markVisitedAndOpen(item, item.nextAction.href);
+                    }
+                  }}
+                  aria-label={`${item.title}: ${item.nextAction.label}`}
                 >
-                  {item.nextAction.label}
-                </button>
-              </article>
-            </li>
-          ))}
+                  <div className="new-inq__card-top">
+                    <div className="new-inq__title-row">
+                      {isUnread && (
+                        <span className="new-inq__unread" title="Ungelesen" aria-label="Ungelesen" />
+                      )}
+                      <h2 className="new-inq__name">{item.title}</h2>
+                    </div>
+                    <span className={`new-inq__status new-inq__status--${item.status}`}>
+                      {item.statusLabel}
+                    </span>
+                  </div>
+
+                  <p className="new-inq__vehicle">{item.vehicleLabel}</p>
+
+                  {item.contextHint && (
+                    <p className={`new-inq__hint${item.isGroup ? ' new-inq__hint--group' : ''}`}>
+                      {item.contextHint}
+                    </p>
+                  )}
+
+                  <p className="new-inq__meta">
+                    <span>{item.sourceLabel}</span>
+                    {!item.isGroup && item.relativeTime ? (
+                      <>
+                        <span className="new-inq__meta-sep" aria-hidden="true">·</span>
+                        <time dateTime={item.createdAt || undefined}>{item.relativeTime}</time>
+                      </>
+                    ) : null}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="new-inq__action"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      markVisitedAndOpen(item, item.nextAction.href);
+                    }}
+                  >
+                    {item.nextAction.label}
+                  </button>
+                </article>
+              </li>
+            );
+          })}
         </ul>
       )}
 
