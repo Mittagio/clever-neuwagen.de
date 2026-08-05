@@ -1,6 +1,7 @@
 /**
  * Clever Eingang – intelligente Arbeitsqueue aus neuen Leads/Intakes.
  * Interne Source-Keys bleiben im Modell; die UI zeigt nur Labels.
+ * Produktregel: Clever zeigt keine Dubletten-Flut – wenige prüfbare Vorgangsgruppen.
  */
 import {
   buildKundenaktePath,
@@ -17,7 +18,7 @@ export const CLEVER_EINGANG_STATUS = {
 };
 
 export const CLEVER_EINGANG_STATUS_LABELS = {
-  [CLEVER_EINGANG_STATUS.DUPLICATE]: 'Dublette',
+  [CLEVER_EINGANG_STATUS.DUPLICATE]: 'Mögliche Dublette',
   [CLEVER_EINGANG_STATUS.READY]: 'Bereit',
   [CLEVER_EINGANG_STATUS.REVIEW]: 'Prüfen',
   [CLEVER_EINGANG_STATUS.INCOMPLETE]: 'Unvollständig',
@@ -63,6 +64,16 @@ const SOURCE_LABELS = {
   seller_note: 'Aus Gesprächsnotiz',
 };
 
+/** Kurze Quellenlabels für Gruppenkarten („Verkaufsassistent + Clever Composer“) */
+const SOURCE_SHORT_LABELS = {
+  composer_multi_source: 'Clever Composer',
+  sales_assistant: 'Verkaufsassistent',
+  email: 'E-Mail',
+  homepage: 'Händlerhomepage',
+  document: 'Dokument',
+  seller_note: 'Gesprächsnotiz',
+};
+
 const PLACEHOLDER_NAMES = new Set([
   '',
   'neuer kunde',
@@ -103,6 +114,12 @@ function looksLikeInternalKey(value) {
   return /^[a-z][a-z0-9-]{2,}$/.test(raw) && !/\s/.test(raw);
 }
 
+function resolveCanonicalSource(sourceKey) {
+  const raw = String(sourceKey ?? '').trim();
+  if (!raw) return null;
+  return SOURCE_CANONICAL[raw] ?? SOURCE_CANONICAL[normalizeText(raw).replace(/\s+/g, '_')] ?? null;
+}
+
 /**
  * Menschlich lesbares Quellenlabel – nie interne Keys in der UI.
  * @param {string} sourceKey
@@ -112,7 +129,7 @@ export function mapInboxSourceLabel(sourceKey) {
   const raw = String(sourceKey ?? '').trim();
   if (!raw) return 'Unbekannte Quelle';
 
-  const canonical = SOURCE_CANONICAL[raw] ?? SOURCE_CANONICAL[normalizeText(raw).replace(/\s+/g, '_')] ?? null;
+  const canonical = resolveCanonicalSource(raw);
   if (canonical && SOURCE_LABELS[canonical]) {
     return SOURCE_LABELS[canonical];
   }
@@ -121,6 +138,29 @@ export function mapInboxSourceLabel(sourceKey) {
 
   if (looksLikeInternalKey(raw)) {
     return 'Über Clever erfasst';
+  }
+
+  return raw;
+}
+
+/**
+ * Kurzes Quellenlabel für Gruppenkarten.
+ * @param {string} sourceKey
+ * @returns {string}
+ */
+export function mapInboxSourceShortLabel(sourceKey) {
+  const raw = String(sourceKey ?? '').trim();
+  if (!raw) return 'Unbekannt';
+
+  const canonical = resolveCanonicalSource(raw);
+  if (canonical && SOURCE_SHORT_LABELS[canonical]) {
+    return SOURCE_SHORT_LABELS[canonical];
+  }
+
+  if (SOURCE_SHORT_LABELS[raw]) return SOURCE_SHORT_LABELS[raw];
+
+  if (looksLikeInternalKey(raw)) {
+    return 'Clever Composer';
   }
 
   return raw;
@@ -181,6 +221,13 @@ export function formatInboxRelativeTime(iso, nowMs = Date.now()) {
   return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
+function formatShortDayMonth(iso) {
+  if (!iso) return '';
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return '';
+  return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
 function vehicleKey(lead = {}) {
   const model = normalizeText(lead.vehicle?.model || lead.vehicle?.label || '');
   const brand = normalizeText(lead.vehicle?.brand || 'kia');
@@ -225,8 +272,8 @@ export function scoreLeadDuplicateMatch(a = {}, b = {}) {
   const timeDiff = Math.abs(leadTimestamp(a) - leadTimestamp(b));
   if (timeDiff > 0 && timeDiff <= DUPLICATE_WINDOW_MS) score += 1;
 
-  const sourceA = SOURCE_CANONICAL[a.source] ?? a.source;
-  const sourceB = SOURCE_CANONICAL[b.source] ?? b.source;
+  const sourceA = resolveCanonicalSource(a.source) ?? a.source;
+  const sourceB = resolveCanonicalSource(b.source) ?? b.source;
   if (sourceA && sourceB && sourceA === sourceB) score += 1;
 
   const snippetA = contentSnippet(a);
@@ -250,30 +297,46 @@ export function leadsAreLikelyDuplicates(a, b) {
   return score >= 5 || (score >= 4 && (nameMatch || contactMatch));
 }
 
+/**
+ * Union-Find-Gruppierung: ähnliche Leads → eine Vorgangsgruppe.
+ * Transitiv: A~B und B~C → eine Gruppe.
+ */
 function groupDuplicateLeads(leads = []) {
-  const groups = [];
-  const assigned = new Set();
+  const n = leads.length;
+  if (n === 0) return [];
 
-  for (let i = 0; i < leads.length; i += 1) {
-    const lead = leads[i];
-    if (assigned.has(lead.id)) continue;
+  const parent = Array.from({ length: n }, (_, i) => i);
 
-    const members = [lead];
-    assigned.add(lead.id);
-
-    for (let j = i + 1; j < leads.length; j += 1) {
-      const other = leads[j];
-      if (assigned.has(other.id)) continue;
-      if (leadsAreLikelyDuplicates(lead, other)) {
-        members.push(other);
-        assigned.add(other.id);
-      }
+  function find(i) {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
     }
-
-    groups.push(members);
+    return i;
   }
 
-  return groups;
+  function union(i, j) {
+    const rootI = find(i);
+    const rootJ = find(j);
+    if (rootI !== rootJ) parent[rootJ] = rootI;
+  }
+
+  for (let i = 0; i < n; i += 1) {
+    for (let j = i + 1; j < n; j += 1) {
+      if (leadsAreLikelyDuplicates(leads[i], leads[j])) {
+        union(i, j);
+      }
+    }
+  }
+
+  const buckets = new Map();
+  for (let i = 0; i < n; i += 1) {
+    const root = find(i);
+    if (!buckets.has(root)) buckets.set(root, []);
+    buckets.get(root).push(leads[i]);
+  }
+
+  return [...buckets.values()];
 }
 
 function resolveBaseStatus(lead = {}) {
@@ -283,24 +346,24 @@ function resolveBaseStatus(lead = {}) {
   return CLEVER_EINGANG_STATUS.READY;
 }
 
-function resolveNextAction(status, lead = {}, groupSize = 1) {
+function resolveNextAction(status, lead = {}) {
   switch (status) {
     case CLEVER_EINGANG_STATUS.DUPLICATE:
       return {
-        id: 'merge_review',
-        label: groupSize > 1 ? 'Zusammenführen und prüfen' : 'Akte prüfen',
+        id: 'review_group',
+        label: 'Vorgänge prüfen',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.INCOMPLETE:
       return {
         id: 'complete_details',
-        label: 'Angaben prüfen',
+        label: 'Angaben ergänzen',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.ASSIGNED:
       return {
-        id: 'review_akte',
-        label: 'Akte prüfen',
+        id: 'open_customer',
+        label: 'Zur Kundenakte',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.REVIEW:
@@ -326,8 +389,8 @@ function resolveNextAction(status, lead = {}, groupSize = 1) {
         };
       }
       return {
-        id: 'open_akte',
-        label: 'Zur Kundenakte',
+        id: 'take_over',
+        label: 'Übernehmen',
         href: buildKundenaktePath(lead.id),
       };
   }
@@ -346,9 +409,50 @@ function buildDisplayTitle(lead = {}, status) {
   return 'Neuer Vorgang';
 }
 
-function buildContextHint(status, lead = {}, groupSize = 1) {
+function buildGroupDateHint(members = []) {
+  const dated = members
+    .map((m) => ({
+      ts: leadTimestamp(m),
+      label: formatShortDayMonth(m.createdAt ?? m.updatedAt),
+    }))
+    .filter((entry) => entry.label)
+    .sort((a, b) => b.ts - a.ts);
+
+  const dates = [];
+  const seen = new Set();
+  for (const entry of dated) {
+    if (seen.has(entry.label)) continue;
+    seen.add(entry.label);
+    dates.push(entry.label);
+  }
+
+  if (dates.length === 0) return '';
+  if (dates.length === 1) return dates[0];
+  if (dates.length === 2) return `${dates[0]} und ${dates[1]}`;
+  return `${dates[0]}, ${dates[1]} u. a.`;
+}
+
+function buildGroupSourceLabel(members = []) {
+  const labels = [];
+  const seen = new Set();
+  const ordered = [...members].sort((a, b) => leadTimestamp(b) - leadTimestamp(a));
+
+  for (const member of ordered) {
+    const short = mapInboxSourceShortLabel(member.source);
+    if (!seen.has(short)) {
+      seen.add(short);
+      labels.push(short);
+    }
+  }
+
+  return labels.join(' + ') || 'Unbekannte Quelle';
+}
+
+function buildContextHint(status, lead = {}, groupSize = 1, members = []) {
   if (status === CLEVER_EINGANG_STATUS.DUPLICATE && groupSize > 1) {
-    return `${groupSize} ähnliche Eingänge erkannt`;
+    const dateHint = buildGroupDateHint(members);
+    const base = `${groupSize} ähnliche Vorgänge`;
+    return dateHint ? `${base} · ${dateHint}` : base;
   }
   if (status === CLEVER_EINGANG_STATUS.INCOMPLETE) {
     return 'Name oder Kontaktdaten fehlen';
@@ -372,14 +476,18 @@ function buildItemFromGroup(members = [], nowMs = Date.now()) {
   const isDuplicateGroup = members.length > 1;
   const baseStatus = resolveBaseStatus(primary);
   const status = isDuplicateGroup ? CLEVER_EINGANG_STATUS.DUPLICATE : baseStatus;
-  const nextAction = resolveNextAction(status, primary, members.length);
+  const nextAction = resolveNextAction(status, primary);
   const createdAt = primary.createdAt ?? primary.updatedAt ?? null;
+  const sourceLabel = isDuplicateGroup
+    ? buildGroupSourceLabel(members)
+    : mapInboxSourceLabel(primary.source);
 
   return {
     id: isDuplicateGroup ? `group:${members.map((m) => m.id).sort().join('+')}` : primary.id,
     leadId: primary.id,
     memberLeadIds: members.map((m) => m.id),
     memberCount: members.length,
+    isGroup: isDuplicateGroup,
     primaryLead: primary,
     members,
     status,
@@ -387,10 +495,13 @@ function buildItemFromGroup(members = [], nowMs = Date.now()) {
     title: buildDisplayTitle(primary, status),
     vehicleLabel: formatInquiryVehicleLine(primary),
     sourceKey: primary.source ?? null,
-    sourceLabel: mapInboxSourceLabel(primary.source),
+    sourceLabel,
+    sourceLabels: isDuplicateGroup
+      ? [...new Set(members.map((m) => mapInboxSourceShortLabel(m.source)))]
+      : [mapInboxSourceLabel(primary.source)],
     createdAt,
     relativeTime: formatInboxRelativeTime(createdAt, nowMs),
-    contextHint: buildContextHint(status, primary, members.length),
+    contextHint: buildContextHint(status, primary, members.length, members),
     nextAction,
     isUnread: members.some((m) => isUnreadLead(m)),
     hasCustomerFile: Boolean(primary.customerId) && !isLeadIdentityIncomplete(primary),
@@ -405,28 +516,40 @@ export function sortCleverInboxItems(items = []) {
   });
 }
 
-function countLabel(count, singular, plural) {
-  if (count === 1) return `1 ${singular}`;
-  return `${count} ${plural}`;
-}
-
 /**
- * Summary-Zeile für den Header, z. B.
- * „5 neue Vorgänge · 1 Dublette · 2 bereit · 2 unvollständig“
+ * Filter-Pills + Meta für den Clever-Eingang-Header.
+ * „Möglich doppelt“ = Anzahl Gruppenkarten (nicht Roh-Einträge).
  */
 export function buildCleverInboxSummary(items = []) {
   const total = items.length;
-  const duplicates = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.DUPLICATE).length;
+  const duplicateItems = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.DUPLICATE);
+  const duplicates = duplicateItems.length;
+  const duplicateMemberCount = duplicateItems.reduce((sum, item) => sum + (item.memberCount || 0), 0);
   const ready = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.READY).length;
   const incomplete = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.INCOMPLETE).length;
   const review = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.REVIEW).length;
   const assigned = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.ASSIGNED).length;
 
+  const filters = [
+    { id: 'all', label: 'Alle', count: total },
+    { id: CLEVER_EINGANG_STATUS.REVIEW, label: 'Prüfen', count: review },
+    { id: CLEVER_EINGANG_STATUS.DUPLICATE, label: 'Möglich doppelt', count: duplicates },
+    { id: CLEVER_EINGANG_STATUS.READY, label: 'Bereit', count: ready },
+    { id: CLEVER_EINGANG_STATUS.INCOMPLETE, label: 'Unvollständig', count: incomplete },
+  ];
+
+  const groupHint = duplicates > 0
+    ? `Clever hat ${duplicateMemberCount} ähnliche Vorgänge in ${duplicates} ${duplicates === 1 ? 'Gruppe' : 'Gruppen'} erkannt.`
+    : null;
+
   if (total === 0) {
     return {
       line: 'Keine neuen Vorgänge',
+      groupHint: null,
+      filters,
       total,
       duplicates,
+      duplicateMemberCount: 0,
       ready,
       incomplete,
       review,
@@ -434,17 +557,13 @@ export function buildCleverInboxSummary(items = []) {
     };
   }
 
-  const parts = [countLabel(total, 'neuer Vorgang', 'neue Vorgänge')];
-  if (duplicates > 0) parts.push(countLabel(duplicates, 'Dublette', 'Dubletten'));
-  if (review > 0) parts.push(countLabel(review, 'zum Prüfen', 'zum Prüfen'));
-  if (ready > 0) parts.push(countLabel(ready, 'bereit', 'bereit'));
-  if (incomplete > 0) parts.push(countLabel(incomplete, 'unvollständig', 'unvollständig'));
-  if (assigned > 0) parts.push(countLabel(assigned, 'zugeordnet', 'zugeordnet'));
-
   return {
-    line: parts.join(' · '),
+    line: filters.map((f) => `${f.label} ${f.count}`).join(' · '),
+    groupHint,
+    filters,
     total,
     duplicates,
+    duplicateMemberCount,
     ready,
     incomplete,
     review,
@@ -452,10 +571,16 @@ export function buildCleverInboxSummary(items = []) {
   };
 }
 
-export function filterCleverInboxItems(items = [], query = '') {
+export function filterCleverInboxItems(items = [], query = '', statusFilter = 'all') {
+  let result = items;
+  if (statusFilter && statusFilter !== 'all') {
+    result = result.filter((item) => item.status === statusFilter);
+  }
+
   const q = normalizeText(query);
-  if (!q) return items;
-  return items.filter((item) => {
+  if (!q) return result;
+
+  return result.filter((item) => {
     const haystack = [
       item.title,
       item.vehicleLabel,
@@ -464,6 +589,7 @@ export function filterCleverInboxItems(items = [], query = '') {
       item.contextHint,
       item.leadId,
       ...(item.memberLeadIds || []),
+      ...(item.sourceLabels || []),
     ].map(normalizeText).join(' ');
     return haystack.includes(q);
   });
@@ -471,7 +597,7 @@ export function filterCleverInboxItems(items = [], query = '') {
 
 /**
  * Baut die Clever-Eingang-Arbeitsqueue aus Leads/Intakes.
- * Dubletten werden gruppiert (keine Auto-Merge).
+ * Ähnliche Einträge → wenige Gruppenkarten (keine Auto-Merge).
  *
  * @param {object[]} leads
  * @param {{ nowMs?: number, includeAllStatuses?: boolean }} [options]

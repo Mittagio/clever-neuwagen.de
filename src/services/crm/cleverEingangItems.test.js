@@ -1,14 +1,16 @@
 /**
- * Clever Eingang – Queue-Modell (Sources, Dubletten, Status, Sortierung)
+ * Clever Eingang – Queue-Modell (Sources, Gruppen, Status, Filter)
  */
 import assert from 'node:assert/strict';
 import {
   buildCleverInboxItems,
   buildCleverInboxSummary,
   CLEVER_EINGANG_STATUS,
+  filterCleverInboxItems,
   formatInboxRelativeTime,
   leadsAreLikelyDuplicates,
   mapInboxSourceLabel,
+  mapInboxSourceShortLabel,
   resolveLeadContactName,
   scoreLeadDuplicateMatch,
   sortCleverInboxItems,
@@ -29,6 +31,8 @@ assert.equal(mapInboxSourceLabel('multi_source_intake'), 'Über Clever erfasst')
 assert.equal(mapInboxSourceLabel(''), 'Unbekannte Quelle');
 assert.notEqual(mapInboxSourceLabel('composer_multi_source'), 'composer_multi_source');
 assert.ok(!mapInboxSourceLabel('some_weird_internal_key').includes('_'));
+assert.equal(mapInboxSourceShortLabel('sales_assistant'), 'Verkaufsassistent');
+assert.equal(mapInboxSourceShortLabel('composer_multi_source'), 'Clever Composer');
 
 // --- Unbekannter Kunde → Neuer Vorgang ---
 assert.equal(resolveLeadContactName({ contact: { name: 'Neuer Kunde' } }), '');
@@ -49,16 +53,16 @@ assert.equal(incompleteItems.length, 1);
 assert.equal(incompleteItems[0].title, 'Neuer Vorgang');
 assert.equal(incompleteItems[0].status, CLEVER_EINGANG_STATUS.INCOMPLETE);
 assert.equal(incompleteItems[0].contextHint, 'Name oder Kontaktdaten fehlen');
-assert.equal(incompleteItems[0].nextAction.label, 'Angaben prüfen');
+assert.equal(incompleteItems[0].nextAction.label, 'Angaben ergänzen');
 assert.equal(incompleteItems[0].sourceLabel, 'Über Clever erfasst');
 assert.ok(!String(incompleteItems[0].sourceLabel).includes('composer'));
 
-// --- Dubletten gruppieren ---
+// --- Dubletten als echte Gruppenkarte ---
 const dupA = {
   id: 'dup-a',
   status: 'neu',
-  source: 'email',
-  createdAt: '2026-08-05T11:00:00.000Z',
+  source: 'sales_assistant',
+  createdAt: '2026-07-29T11:00:00.000Z',
   contact: { name: 'Thomas Weber', email: 't.weber@firma.de', phone: '01719876543' },
   vehicle: { brand: 'Kia', model: 'Sportage', label: 'Kia Sportage' },
   notes: 'Interessiert an Leasing',
@@ -66,8 +70,8 @@ const dupA = {
 const dupB = {
   id: 'dup-b',
   status: 'neu',
-  source: 'homepage',
-  createdAt: '2026-08-05T10:30:00.000Z',
+  source: 'composer_multi_source',
+  createdAt: '2026-07-28T10:30:00.000Z',
   contact: { name: 'Thomas Weber', email: 't.weber@firma.de', phone: '+49 171 9876543' },
   vehicle: { brand: 'Kia', model: 'Sportage', label: 'Sportage Pulse' },
   notes: 'Interessiert an Leasing Variante',
@@ -100,38 +104,44 @@ const { items, summary } = buildCleverInboxItems(
   { nowMs: NOW },
 );
 
-assert.equal(items.length, 4, 'Dubletten als eine Karte, keine N Einzelkarten');
+assert.equal(items.length, 4, 'N ähnliche → 1 Gruppenkarte in der Liste');
 const dupItem = items.find((item) => item.status === CLEVER_EINGANG_STATUS.DUPLICATE);
-assert.ok(dupItem, 'Dubletten-Gruppe vorhanden');
+assert.ok(dupItem, 'Gruppenkarte für mögliche Dublette vorhanden');
 assert.equal(dupItem.memberCount, 2);
-assert.match(dupItem.contextHint, /2 ähnliche Eingänge/);
-assert.equal(dupItem.nextAction.label, 'Zusammenführen und prüfen');
+assert.equal(dupItem.isGroup, true);
+assert.equal(dupItem.statusLabel, 'Mögliche Dublette');
+assert.match(dupItem.contextHint, /2 ähnliche Vorgänge/);
+assert.match(dupItem.contextHint, /29\.07\./);
+assert.match(dupItem.contextHint, /28\.07\./);
+assert.equal(dupItem.nextAction.label, 'Vorgänge prüfen');
 assert.equal(dupItem.title, 'Thomas Weber');
+assert.match(dupItem.sourceLabel, /Verkaufsassistent/);
+assert.match(dupItem.sourceLabel, /Clever Composer/);
 
 const readyItem = items.find((item) => item.status === CLEVER_EINGANG_STATUS.READY);
 assert.ok(readyItem);
-assert.equal(readyItem.nextAction.label, 'Zur Kundenakte');
+assert.equal(readyItem.nextAction.label, 'Übernehmen');
 assert.equal(readyItem.sourceLabel, 'Über Verkaufsassistent erfasst');
 
 const assignedItem = items.find((item) => item.status === CLEVER_EINGANG_STATUS.ASSIGNED);
 assert.ok(assignedItem);
-assert.equal(assignedItem.nextAction.label, 'Akte prüfen');
+assert.equal(assignedItem.nextAction.label, 'Zur Kundenakte');
 assert.equal(assignedItem.sourceLabel, 'Aus Dokument erkannt');
 
-// --- Sortierung: Konflikte/Dubletten → bereit → unvollständig → zugeordnet ---
+// --- Sortierung: mögliche Dublette → bereit → unvollständig → zugeordnet ---
 assert.equal(items[0].status, CLEVER_EINGANG_STATUS.DUPLICATE);
 assert.equal(items[1].status, CLEVER_EINGANG_STATUS.READY);
 assert.equal(items[2].status, CLEVER_EINGANG_STATUS.INCOMPLETE);
 assert.equal(items[3].status, CLEVER_EINGANG_STATUS.ASSIGNED);
 
-const resorted = sortCleverInboxItems([
+const resort = sortCleverInboxItems([
   { ...assignedItem, sortRank: 4 },
   { ...readyItem, sortRank: 2 },
   { ...dupItem, sortRank: 1 },
   { ...incompleteItems[0], sortRank: 3 },
 ]);
 assert.deepEqual(
-  resorted.map((item) => item.status),
+  resort.map((item) => item.status),
   [
     CLEVER_EINGANG_STATUS.DUPLICATE,
     CLEVER_EINGANG_STATUS.READY,
@@ -140,13 +150,56 @@ assert.deepEqual(
   ],
 );
 
-// --- Summary ohne Fake-%-Scores ---
-assert.match(summary.line, /4 neue Vorgänge/);
-assert.match(summary.line, /1 Dublette/);
-assert.match(summary.line, /1 bereit/);
-assert.match(summary.line, /1 unvollständig/);
-assert.ok(!/%/.test(summary.line));
+// --- Filter-Counts: „Möglich doppelt“ = Gruppenanzahl ---
+assert.equal(summary.total, 4);
+assert.equal(summary.duplicates, 1);
+assert.equal(summary.duplicateMemberCount, 2);
+assert.equal(summary.ready, 1);
+assert.equal(summary.incomplete, 1);
+assert.ok(summary.groupHint);
+assert.match(summary.groupHint, /2 ähnliche Vorgänge in 1 Gruppe/);
+
+const filterAll = summary.filters.find((f) => f.id === 'all');
+const filterDup = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE);
+const filterReady = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.READY);
+const filterInc = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.INCOMPLETE);
+assert.equal(filterAll.count, 4);
+assert.equal(filterDup.label, 'Möglich doppelt');
+assert.equal(filterDup.count, 1, 'Filter zählt Gruppenkarten, nicht Roh-Einträge');
+assert.equal(filterReady.count, 1);
+assert.equal(filterInc.count, 1);
+
+assert.equal(filterCleverInboxItems(items, '', CLEVER_EINGANG_STATUS.DUPLICATE).length, 1);
+assert.equal(filterCleverInboxItems(items, '', CLEVER_EINGANG_STATUS.READY).length, 1);
+assert.equal(filterCleverInboxItems(items, 'thomas', 'all').length, 1);
 assert.equal(buildCleverInboxSummary([]).line, 'Keine neuen Vorgänge');
+
+// --- N ähnliche → genau 1 Listen-Item ---
+const manySimilar = Array.from({ length: 5 }, (_, i) => ({
+  id: `bulk-${i}`,
+  status: 'neu',
+  source: i % 2 === 0 ? 'sales_assistant' : 'email',
+  createdAt: `2026-08-0${1 + i}T10:00:00.000Z`,
+  contact: { name: 'Anna Bulk', email: 'anna.bulk@test.de', phone: '01701112233' },
+  vehicle: { brand: 'Kia', model: 'EV3', label: 'Kia EV3' },
+  notes: 'Leasing Anfrage',
+}));
+const lonely = {
+  id: 'lonely-1',
+  status: 'neu',
+  source: 'homepage',
+  createdAt: '2026-08-05T11:00:00.000Z',
+  contact: { name: 'Max Einsam', email: 'max@test.de', phone: '01709998877' },
+  vehicle: { brand: 'Kia', model: 'Picanto', label: 'Kia Picanto' },
+};
+const { items: bulkItems, summary: bulkSummary } = buildCleverInboxItems(
+  [...manySimilar, lonely],
+  { nowMs: NOW },
+);
+assert.equal(bulkItems.length, 2, '5 ähnliche + 1 allein → 2 Gruppen in der Liste');
+assert.equal(bulkSummary.duplicates, 1);
+assert.equal(bulkSummary.duplicateMemberCount, 5);
+assert.equal(bulkSummary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE).count, 1);
 
 // --- relatives Alter ---
 assert.equal(formatInboxRelativeTime('2026-08-05T11:45:00.000Z', NOW), 'vor 15 Min.');
@@ -155,5 +208,18 @@ assert.equal(formatInboxRelativeTime('2026-08-04T12:00:00.000Z', NOW), 'gestern'
 
 // Keine Auto-Merge: Gruppe behält beide IDs
 assert.deepEqual(dupItem.memberLeadIds.sort(), ['dup-a', 'dup-b']);
+
+// Vertrag / Review CTAs
+const contractLead = {
+  id: 'ctr-1',
+  status: 'neu',
+  source: 'email',
+  createdAt: '2026-08-05T11:30:00.000Z',
+  contractPending: true,
+  contact: { name: 'Vera Vertrag', email: 'vera@test.de', phone: '01705556677' },
+  vehicle: { brand: 'Kia', model: 'Niro', label: 'Kia Niro' },
+};
+const { items: contractItems } = buildCleverInboxItems([contractLead], { nowMs: NOW });
+assert.equal(contractItems[0].nextAction.label, 'Vertrag prüfen');
 
 console.log('cleverEingangItems.test.js: OK');

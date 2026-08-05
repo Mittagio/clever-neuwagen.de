@@ -17,6 +17,7 @@ export default function NewInquiriesQueuePage() {
   const navigate = useNavigate();
   const { leads } = useLeads();
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const { items, summary } = useMemo(
     () => buildCleverInboxItems(leads),
@@ -24,8 +25,8 @@ export default function NewInquiriesQueuePage() {
   );
 
   const visibleItems = useMemo(
-    () => filterCleverInboxItems(items, query),
-    [items, query],
+    () => filterCleverInboxItems(items, query, statusFilter),
+    [items, query, statusFilter],
   );
 
   return (
@@ -39,11 +40,32 @@ export default function NewInquiriesQueuePage() {
           <p className="new-inq__sub">
             Clever hat neue Kundeninformationen erkannt und für dich vorbereitet.
           </p>
-          <p className="new-inq__summary" aria-live="polite">
-            {summary.line}
-          </p>
         </div>
       </header>
+
+      {items.length > 0 && (
+        <>
+          <div className="new-inq__filters" role="toolbar" aria-label="Vorgänge filtern">
+            {summary.filters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={`new-inq__filter${statusFilter === filter.id ? ' is-active' : ''}`}
+                aria-pressed={statusFilter === filter.id}
+                onClick={() => setStatusFilter(filter.id)}
+              >
+                <span className="new-inq__filter-label">{filter.label}</span>
+                <span className="new-inq__filter-count">{filter.count}</span>
+              </button>
+            ))}
+          </div>
+          {summary.groupHint ? (
+            <p className="new-inq__group-hint" aria-live="polite">
+              {summary.groupHint}
+            </p>
+          ) : null}
+        </>
+      )}
 
       {items.length > 0 && (
         <div className="new-inq__toolbar">
@@ -71,14 +93,14 @@ export default function NewInquiriesQueuePage() {
         </div>
       ) : visibleItems.length === 0 ? (
         <div className="new-inq__empty">
-          <p>Keine Vorgänge passen zur Suche.</p>
+          <p>Keine Vorgänge passen zum Filter oder zur Suche.</p>
         </div>
       ) : (
         <ul className="new-inq__list">
           {visibleItems.map((item) => (
             <li key={item.id}>
               <article
-                className={`new-inq__card new-inq__card--${item.status}${item.isUnread ? ' is-unread' : ''}`}
+                className={`new-inq__card new-inq__card--${item.status}${item.isUnread ? ' is-unread' : ''}${item.isGroup ? ' new-inq__card--group' : ''}`}
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(item.nextAction.href)}
@@ -104,19 +126,21 @@ export default function NewInquiriesQueuePage() {
 
                 <p className="new-inq__vehicle">{item.vehicleLabel}</p>
 
+                {item.contextHint && (
+                  <p className={`new-inq__hint${item.isGroup ? ' new-inq__hint--group' : ''}`}>
+                    {item.contextHint}
+                  </p>
+                )}
+
                 <p className="new-inq__meta">
                   <span>{item.sourceLabel}</span>
-                  {item.relativeTime ? (
+                  {!item.isGroup && item.relativeTime ? (
                     <>
                       <span className="new-inq__meta-sep" aria-hidden="true">·</span>
                       <time dateTime={item.createdAt || undefined}>{item.relativeTime}</time>
                     </>
                   ) : null}
                 </p>
-
-                {item.contextHint && (
-                  <p className="new-inq__hint">{item.contextHint}</p>
-                )}
 
                 <button
                   type="button"
