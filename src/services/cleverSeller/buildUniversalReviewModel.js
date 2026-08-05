@@ -531,6 +531,10 @@ export function buildUniversalActionSections(turn = {}) {
     } else if (offerSectionSource.payload?.monthlyRate != null) {
       lineParts.push(`${Number(offerSectionSource.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
     }
+    const offerEdit = Boolean(offerCtx?.offerId);
+    const offerPrimaryLabel = incomplete
+      ? 'Angebot vervollständigen'
+      : (offerEdit ? 'Angebot bearbeiten' : 'Angebot erstellen');
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
@@ -554,11 +558,26 @@ export function buildUniversalActionSections(turn = {}) {
       ].filter(Boolean),
       primaryActions: incomplete
         ? [
-          { id: 'upload_pdf', label: 'PDF hochladen' },
-          { id: 'enter_rate', label: 'Monatsrate eingeben' },
-          { id: 'calc_cash', label: 'Als Barkauf berechnen' },
+          {
+            id: 'create_offer',
+            label: offerPrimaryLabel,
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'open_offer_handoff',
+            tone: 'primary',
+          },
+          { id: 'upload_pdf', label: 'PDF hochladen', tone: 'secondary' },
+          { id: 'enter_rate', label: 'Monatsrate eingeben', tone: 'compact' },
+          { id: 'calc_cash', label: 'Als Barkauf berechnen', tone: 'compact' },
         ]
-        : null,
+        : [
+          {
+            id: 'create_offer',
+            label: offerPrimaryLabel,
+            leadId: turn.resolvedCustomer?.id || null,
+            action: 'open_offer_handoff',
+            tone: 'primary',
+          },
+        ],
     });
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
@@ -927,6 +946,7 @@ export function buildUniversalReviewModel(turn = {}) {
         needsConfirmation: Boolean(f.needsConfirmation),
         confidence: f.confidence,
       })),
+      chips: items.map((f) => f.label).filter(Boolean).slice(0, 6),
       line: items.map((f) => f.label).join(' · '),
     });
   }
@@ -998,30 +1018,37 @@ export function buildUniversalReviewModel(turn = {}) {
             label: 'Angebot & Termin übernehmen',
             leadId: turn.resolvedCustomer?.id || null,
             action: 'accept_offer_and_appointment',
+            tone: 'primary',
           }]
           : []),
         {
           id: 'review_offer',
-          label: 'Angebot prüfen',
+          label: (turn.currentOfferContext?.offerId || turn.relevantCustomerContext?.currentOffer?.offerId)
+            ? 'Angebot bearbeiten'
+            : 'Angebot erstellen',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'open_offer_handoff',
+          tone: offerSec?.kind === 'offer_prepare' ? 'secondary' : 'primary',
         },
         {
           id: 'edit_message',
           label: 'Nachricht bearbeiten',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'edit_message',
+          tone: 'secondary',
         },
         {
           id: 'send_proposal',
           label: 'Vorschlag senden',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'send_appointment_proposal',
+          tone: 'compact',
         },
         {
           id: 'discard',
           label: 'Verwerfen',
           action: 'discard',
+          tone: 'compact',
         },
       ],
     });
@@ -1056,20 +1083,25 @@ export function buildUniversalReviewModel(turn = {}) {
       primaryActions: [
         {
           id: 'review_offer',
-          label: 'Angebot prüfen',
+          label: (turn.currentOfferContext?.offerId || turn.relevantCustomerContext?.currentOffer?.offerId)
+            ? 'Angebot bearbeiten'
+            : 'Angebot erstellen',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'open_offer_handoff',
+          tone: 'primary',
         },
         {
           id: 'edit_message',
           label: 'Nachricht bearbeiten',
           action: 'edit_message',
+          tone: 'secondary',
         },
         {
           id: 'approve_send',
           label: 'Freigeben und senden',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'approve_handoff',
+          tone: 'compact',
         },
       ],
     });
@@ -1123,26 +1155,30 @@ export function buildUniversalReviewModel(turn = {}) {
       availabilityStatus: avail,
       primaryActions: [
         {
-          id: 'check_calendar',
-          label: 'Kalender prüfen',
-          action: 'check_calendar',
+          id: 'send_proposal',
+          label: 'Vorschlag senden',
+          leadId: turn.resolvedCustomer?.id || null,
+          action: 'send_appointment_proposal',
+          tone: 'primary',
         },
         {
           id: 'edit_message',
           label: 'Nachricht bearbeiten',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'edit_message',
+          tone: 'secondary',
         },
         {
-          id: 'send_proposal',
-          label: 'Vorschlag senden',
-          leadId: turn.resolvedCustomer?.id || null,
-          action: 'send_appointment_proposal',
+          id: 'check_calendar',
+          label: 'Kalender prüfen',
+          action: 'check_calendar',
+          tone: 'compact',
         },
         {
           id: 'discard',
           label: 'Verwerfen',
           action: 'discard',
+          tone: 'compact',
         },
       ],
     });
@@ -1420,6 +1456,12 @@ export function buildUniversalReviewModel(turn = {}) {
     && !contractImportReview
     && !contractCompareAndMessageReview;
   const clarifyGoal = (turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message');
+  const offerPrepareReview = !offerMessageReview
+    && !offerAppointmentReview
+    && actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'offer_incomplete');
+  const offerIncompleteOnly = offerPrepareReview
+    && actionSections.some((s) => s.kind === 'offer_incomplete')
+    && !actionSections.some((s) => s.kind === 'offer_prepare');
   const goldenOnly = actionSections.some((s) => s.kind === 'golden_moment')
     && !trackFeedback
     && !appointmentPrep
@@ -1432,6 +1474,7 @@ export function buildUniversalReviewModel(turn = {}) {
     && !contractMemoryResult
     && !contractOfferCompareResult
     && !documentsReview
+    && !offerPrepareReview
     && !actionSections.some((s) => (
       s.kind === 'offer_prepare'
       || s.kind === 'offer_incomplete'
@@ -1444,6 +1487,19 @@ export function buildUniversalReviewModel(turn = {}) {
       || s.kind === 'contract_import'
       || s.kind === 'request_documents'
     ));
+
+  const compactOfferOrAppointment = offerAppointmentReview
+    || offerMessageReview
+    || appointmentMessageReview
+    || offerPrepareReview;
+  const offerHeroLabel = actionSections.find((s) => (
+    s.kind === 'offer_prepare'
+    || s.kind === 'offer_incomplete'
+    || s.kind === 'offer_and_message_review'
+    || s.kind === 'offer_and_appointment_review'
+  ))?.headline
+    || groups.find((g) => g.id === 'wish')?.line
+    || null;
 
   return {
     reviewType: documentsReview
@@ -1464,7 +1520,27 @@ export function buildUniversalReviewModel(turn = {}) {
                   ? 'knowledge_and_message_review'
                   : offerMessageReview
                     ? 'offer_and_message_review'
-                    : (clarifyGoal ? 'clarify_goal' : null),
+                    : offerIncompleteOnly
+                      ? 'offer_incomplete'
+                      : offerPrepareReview
+                        ? 'offer_prepare'
+                        : (clarifyGoal ? 'clarify_goal' : null),
+    compactUi: compactOfferOrAppointment || undefined,
+    hero: compactOfferOrAppointment
+      ? {
+        name: turn.resolvedCustomer?.name || offerHeroLabel || 'Angebot',
+        eyebrow: offerAppointmentReview
+          ? 'Angebot & Termin'
+          : offerMessageReview
+            ? 'Angebot & Nachricht'
+            : appointmentMessageReview
+              ? 'Terminvorschlag'
+              : offerIncompleteOnly
+                ? 'Angebot unvollständig'
+                : 'Angebot erkannt',
+        subtitle: offerHeroLabel && turn.resolvedCustomer?.name ? offerHeroLabel : null,
+      }
+      : undefined,
     title: documentsReview
       ? (actionSections.find((s) => s.kind === 'request_documents')?.complete
         ? '✨ Unterlagen vollständig'
@@ -1586,13 +1662,17 @@ export function buildUniversalReviewModel(turn = {}) {
             : contractMemoryResult
               ? 'Vertrag öffnen'
               : offerAppointmentReview
-                ? 'Angebot prüfen'
+                ? (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen')
                 : appointmentMessageReview
                   ? 'Vorschlag senden'
                   : knowledgeMessageReview
                     ? 'Nachricht bearbeiten'
                     : offerMessageReview
-                      ? 'Angebot prüfen'
+                      ? (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen')
+                      : offerPrepareReview
+                        ? (offerIncompleteOnly
+                          ? 'Angebot vervollständigen'
+                          : (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen'))
                       : historyOnly
                         ? 'Im Verlauf öffnen'
                         : trackFeedback

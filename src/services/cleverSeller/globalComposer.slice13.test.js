@@ -90,6 +90,36 @@ Keine Schlussrate`;
   assert.ok(!turn?.preparedActions?.some((a) => (
     a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT && a.status === 'prepared'
   )));
+  assert.ok(turn?.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+  assert.ok(!turn?.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT));
+  const offerReview = buildUniversalReviewModel(turn);
+  assert.notEqual(offerReview?.reviewType, 'appointment_and_message_review');
+  assert.ok(
+    ['offer_prepare', 'offer_incomplete', 'offer_and_message_review'].includes(offerReview?.reviewType),
+  );
+}
+
+// --- Offer-PDF mit Beratungs-Boilerplate → Angebot, kein Termin-Primary ---
+{
+  const brandes = createBrandesGoldenCaseLead({ phase: 'golden' });
+  const boilerplate = `${OFFER_PDF}
+Wir laden Sie zur Beratung ein.
+Gültig bis 15.08.2026 10:00 Uhr`;
+  const { prepared, turn } = runComposerPdfAttachTurn({
+    extracted: { ok: true, text: boilerplate, fileName: 'EV2 Air 36 15.000 km.pdf' },
+    file: { type: 'application/pdf', name: 'EV2 Air 36 15.000 km.pdf' },
+    lead: brandes,
+    leadsSnapshot: [brandes],
+    scopeHint: 'customer_akte',
+    customerName: 'Brandes',
+  });
+  assert.equal(prepared.kind, 'configurator_pdf');
+  assert.ok(turn?.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+  assert.ok(!turn?.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT));
+  const review = buildUniversalReviewModel(turn);
+  assert.notEqual(review?.reviewType, 'appointment_and_message_review');
+  assert.equal(review?.compactUi, true);
+  assert.ok(review?.groups?.length > 0);
 }
 
 // --- Empty contract scan → blocked import ---

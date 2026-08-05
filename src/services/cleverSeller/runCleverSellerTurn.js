@@ -7,7 +7,14 @@
 import { buildCustomerUnderstanding } from '../dealer/customerUnderstanding.js';
 import { buildUnderstoodLabels, getNeedProfileFromLead } from '../consultation/needProfileService.js';
 import { buildCleverSellerTurnResult } from './cleverSellerTurnResultSchema.js';
-import { interpretSellerInput } from './interpretSellerInput.js';
+import {
+  interpretSellerInput,
+  isExplicitCustomerMessageCue,
+} from './interpretSellerInput.js';
+import {
+  hasExplicitAppointmentSellerCue,
+  isOfferPdfDropContext,
+} from './mapMagicOfferIntentToSellerFacts.js';
 import {
   buildProposedUpdatesFromFacts,
   filterDuplicateFacts,
@@ -116,8 +123,8 @@ function buildEvidenceFromTurn({ facts = [], preparedActions = [], retrievedFact
 function finalizeSellerTurn({
   lead = {},
   interpreted,
-  facts,
-  intents,
+  facts: factsIn = [],
+  intents: intentsIn = [],
   env = {},
   warningsExtra = [],
   openaiEscalation = null,
@@ -137,6 +144,27 @@ function finalizeSellerTurn({
   void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
 
+  const sellerText = interpreted?.normalized || interpreted?.raw || '';
+  let facts = Array.isArray(factsIn) ? [...factsIn] : [];
+  let intents = Array.isArray(intentsIn) ? [...intentsIn] : [];
+  // Offer-/Konfigurator-PDF: kein Auto-Termin; Angebot hat Vorrang
+  if (
+    isOfferPdfDropContext(attachments, sellerText)
+    && !hasExplicitAppointmentSellerCue(sellerText)
+  ) {
+    facts = facts.filter((f) => f.factClass !== SELLER_FACT_CLASS.APPOINTMENT_FACT);
+    intents = intents.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+      && i.type !== SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME
+    ));
+    if (!intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)) {
+      intents.push({ type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.96 });
+    }
+    if (!isExplicitCustomerMessageCue(sellerText)) {
+      intents = intents.filter((i) => i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+    }
+  }
+
   const pendingAppointment = incomingPendingAction?.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
     || incomingPendingAction?.preparedAppointment
     ? (incomingPendingAction.preparedAppointment || incomingPendingAction)
@@ -146,7 +174,7 @@ function finalizeSellerTurn({
   const wantsAppointment = (intents || []).some((i) => (
     i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
     || i.type === SELLER_TURN_INTENTS.PREPARE_CALLBACK
-  )) || isAppointmentFollowUpInput(interpreted.normalized || interpreted.raw, pendingAppointment);
+  )) || isAppointmentFollowUpInput(sellerText, pendingAppointment);
 
   const wantsContractImport = (intents || []).some((i) => (
     i.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT

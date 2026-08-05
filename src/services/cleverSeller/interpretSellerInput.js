@@ -23,6 +23,8 @@ import {
 } from '../dealer/sellerAppointmentAssistFlow.js';
 import {
   extractSellerFactsFromOfferPdfText,
+  hasExplicitAppointmentSellerCue,
+  isOfferPdfDropContext,
   mergeOfferPdfFactsIntoSellerFacts,
   shouldEnrichSellerInputFromOfferPdf,
 } from './mapMagicOfferIntentToSellerFacts.js';
@@ -1114,8 +1116,21 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.93);
   }
 
-  if (hasAppointmentFact
-    || detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT) {
+  const offerPdfDrop = isOfferPdfDropContext(options.attachments, t);
+  const explicitAppointmentCue = hasExplicitAppointmentSellerCue(t);
+  // Reiner Offer-/Konfigurator-PDF-Drop: kein Auto-Termin aus Boilerplate
+  const allowAppointmentIntent = !offerPdfDrop || explicitAppointmentCue;
+
+  if (offerPdfDrop && !isContractIntake && !isContractQuery && !isContractCompare) {
+    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.96);
+    add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
+  }
+
+  if (
+    allowAppointmentIntent
+    && (hasAppointmentFact
+      || detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.PROPOSE_APPOINTMENT)
+  ) {
     add(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT, 0.93);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.9);
     if (/\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|morgen|übermorgen|heute|uhr)\b/i.test(t)
@@ -1331,6 +1346,14 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
       facts,
       extractSellerFactsFromOfferPdfText(normalized),
     );
+  }
+
+  // Offer-PDF: Gültigkeitsdatum / „Beratung“ / „kommen“ ≠ Terminvorschlag
+  if (
+    isOfferPdfDropContext(options.attachments, normalized)
+    && !hasExplicitAppointmentSellerCue(normalized)
+  ) {
+    facts = facts.filter((f) => f.factClass !== SELLER_FACT_CLASS.APPOINTMENT_FACT);
   }
 
   let inboundContact = null;

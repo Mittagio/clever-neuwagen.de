@@ -94,7 +94,7 @@ function multiAcceptShape(turn) {
   assert.match(String(shape.messageBody), /17\.000|17000/);
 
   const review = buildUniversalReviewModel(turn);
-  assert.match(review.primaryCta, /Angebot und Nachricht prüfen|Angebot prüfen|Änderungen prüfen|Übernehmen/);
+  assert.match(review.primaryCta, /Angebot und Nachricht prüfen|Angebot (prüfen|erstellen|bearbeiten)|Änderungen prüfen|Übernehmen/);
   assert.ok(review.actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'offer_change'));
   assert.ok(review.actionSections.some((s) => s.kind === 'message_draft'));
 

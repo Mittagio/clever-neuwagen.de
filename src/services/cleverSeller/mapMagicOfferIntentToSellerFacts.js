@@ -219,6 +219,16 @@ export function mergeOfferPdfFactsIntoSellerFacts(existing = [], incoming = []) 
 
 /**
  * @param {object[]} [attachments]
+ */
+export function hasOfferOrConfiguratorPdfAttachment(attachments = []) {
+  return (attachments || []).some((a) => (
+    a?.kind === 'configurator_pdf'
+    || a?.kind === 'offer_pdf'
+  ));
+}
+
+/**
+ * @param {object[]} [attachments]
  * @param {string} [sellerInput]
  */
 export function shouldEnrichSellerInputFromOfferPdf(attachments = [], sellerInput = '') {
@@ -234,4 +244,47 @@ export function shouldEnrichSellerInputFromOfferPdf(attachments = [], sellerInpu
   ));
   if (hasPdfAttachment) return true;
   return /^\s*PDF\s*:/i.test(String(sellerInput ?? ''));
+}
+
+/**
+ * Offer-/Konfigurator-PDF-Drop (nicht Altvertrag) – inkl. „PDF:“-Seed aus Attach-Pfad.
+ * @param {object[]} [attachments]
+ * @param {string} [sellerInput]
+ */
+export function isOfferPdfDropContext(attachments = [], sellerInput = '') {
+  const list = attachments ?? [];
+  if (list.some((a) => (
+    a?.kind === 'contract_pdf'
+    || a?.sourceType === 'contract_pdf'
+    || a?.sourceType === 'contract_pdf_ocr'
+  ))) {
+    return false;
+  }
+  if (hasOfferOrConfiguratorPdfAttachment(list)) return true;
+  return shouldEnrichSellerInputFromOfferPdf(list, sellerInput)
+    && /^\s*PDF\s*:/i.test(String(sellerInput ?? ''));
+}
+
+/**
+ * Expliziter Verkäufer-Terminbefehl – nicht PDF-Boilerplate
+ * („Beratung“, „Termin nach Vereinbarung“, „kommen Sie vorbei“, Gültigkeitsdatum).
+ * @param {string} [text]
+ */
+export function hasExplicitAppointmentSellerCue(text = '') {
+  const t = String(text ?? '');
+  if (!t.trim()) return false;
+  if (/\b(schlag(?:e|en)?|biet(?:e|en)?|trag(?:e|en)?)\b[\s\S]{0,80}\b(termin|probefahrt|beratung(?:sgespräch|sgesprach)?)\b/i.test(t)) {
+    return true;
+  }
+  if (/\b(termin|probefahrt)\b[\s\S]{0,60}\b(vor(?:schlagen)?|anbieten|eintragen)\b/i.test(t)) {
+    return true;
+  }
+  if (
+    /\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|morgen|übermorgen|uebermorgen)\b/i.test(t)
+    && /\b\d{1,2}([:.]\d{2})?\s*uhr\b/i.test(t)
+    && /\b(schlag|biet|trag|termin|probefahrt|vor)\b/i.test(t)
+  ) {
+    return true;
+  }
+  return false;
 }

@@ -7,6 +7,22 @@ import {
 } from './AkteIcons.jsx';
 import './SellerUniversalReviewCard.css';
 
+const COMPACT_REVIEW_TYPES = new Set([
+  'customer_contract_tradein_intake_review',
+  'multi_source_apply_result',
+  'offer_prepare',
+  'offer_incomplete',
+  'offer_and_message_review',
+  'offer_and_appointment_review',
+  'appointment_and_message_review',
+]);
+
+function isCompactReviewModel(model) {
+  if (!model) return false;
+  if (model.compactUi || model.kind === 'multi_source_intake') return true;
+  return COMPACT_REVIEW_TYPES.has(model.reviewType) || COMPACT_REVIEW_TYPES.has(model.kind);
+}
+
 function pickPrimaryBody(model) {
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const knowledge = sections.find((s) => s.kind === 'knowledge_result');
@@ -23,7 +39,14 @@ function pickPrimaryBody(model) {
     || s.kind === 'customer_contract_tradein_intake_review'
     || s.kind === 'multi_source_apply_result'
   ));
-  // Multi-Source mit Fact-Groups: kein langer Body-Text
+  // Compact Fact-Group Reviews: kein langer Body-/Bericht-Text
+  if (
+    isCompactReviewModel(model)
+    && Array.isArray(model?.groups)
+    && model.groups.length
+  ) {
+    return '';
+  }
   if (
     intakeSec?.kind === 'customer_contract_tradein_intake_review'
     && Array.isArray(model?.groups)
@@ -49,6 +72,8 @@ function pickPrimaryBody(model) {
   if (contractMem?.body) return String(contractMem.body).trim();
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review' || s.kind === 'contract_import');
   if (contractMsg?.body) return String(contractMsg.body).trim();
+  // Offer/Appointment-Composites: Struktur über Groups/Hero, nicht <pre>-Bericht
+  if (isCompactReviewModel(model)) return '';
   const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
   if (apptMsg?.body) return String(apptMsg.body).trim();
   const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
@@ -169,6 +194,11 @@ export default function SellerUniversalReviewCard({
   const metaLine = useMemo(() => pickMetaLine(model), [model]);
   const knowledgeMsg = sections.find((s) => s.kind === 'knowledge_and_message_review');
   const apptMsg = sections.find((s) => s.kind === 'appointment_and_message_review');
+  const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
+  const offerAppt = sections.find((s) => s.kind === 'offer_and_appointment_review');
+  const offerPrep = sections.find((s) => (
+    s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
+  ));
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review');
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
   const docsSec = sections.find((s) => s.kind === 'request_documents');
@@ -180,12 +210,14 @@ export default function SellerUniversalReviewCard({
   const applyResultSec = sections.find((s) => s.kind === 'multi_source_apply_result');
   const replySec = sections.find((s) => s.kind === 'customer_reply_review');
   const reviewActions = knowledgeMsg?.primaryActions
+    || offerAppt?.primaryActions
+    || offerMsg?.primaryActions
     || apptMsg?.primaryActions
+    || offerPrep?.primaryActions
     || contractMsg?.primaryActions
     || contractMem?.primaryActions
     || sections.find((s) => s.kind === 'contract_offer_compare_result')?.primaryActions
     || docsSec?.primaryActions
-    || sections.find((s) => s.kind === 'offer_and_message_review')?.primaryActions
     || sections.find((s) => s.kind === 'today_overview')?.primaryActions
     || sections.find((s) => s.kind === 'golden_moment')?.primaryActions
     || applyResultSec?.primaryActions
@@ -195,6 +227,10 @@ export default function SellerUniversalReviewCard({
   const secondaryReviewActions = applyResultSec?.secondaryActions
     || intakeSec?.secondaryActions
     || replySec?.secondaryActions
+    || offerAppt?.secondaryActions
+    || offerMsg?.secondaryActions
+    || apptMsg?.secondaryActions
+    || offerPrep?.secondaryActions
     || [];
   const sources = knowledgeMsg?.sources
     || contractMsg?.evidence
@@ -209,12 +245,10 @@ export default function SellerUniversalReviewCard({
   ))?.hit;
   const isApplyResult = model.reviewType === 'multi_source_apply_result'
     || model.kind === 'multi_source_apply_result';
-  const isMultiSourceIntake = model.reviewType === 'customer_contract_tradein_intake_review'
-    || model.kind === 'multi_source_intake'
-    || Boolean(model.compactUi);
+  const isCompactReview = isCompactReviewModel(model);
   const settled = Boolean(status) || isApplyResult;
   const showFactGroups = groups.length > 0 && (
-    isMultiSourceIntake
+    isCompactReview
     || isApplyResult
   );
   const hero = model?.hero || null;
@@ -281,19 +315,19 @@ export default function SellerUniversalReviewCard({
 
   const primaryBtnActions = [];
   const compactFromPrimary = [];
-  if (isMultiSourceIntake) {
+  if (isCompactReview) {
     reviewActions.forEach((action, index) => {
       if (actionTone(action, index) === 'compact') compactFromPrimary.push(action);
       else primaryBtnActions.push(action);
     });
   }
-  const compactBtnActions = isMultiSourceIntake
+  const compactBtnActions = isCompactReview
     ? [...compactFromPrimary, ...secondaryReviewActions]
     : [];
 
   return (
     <article
-      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}${isMultiSourceIntake ? ' sur-card--multi' : ''}`}
+      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}${isCompactReview ? ' sur-card--multi' : ''}`}
       aria-live="polite"
     >
       <header className="sur-card__meta">
@@ -308,7 +342,7 @@ export default function SellerUniversalReviewCard({
         ) : null}
       </header>
 
-      {isMultiSourceIntake && (heroName || hero?.eyebrow) ? (
+      {isCompactReview && (heroName || hero?.eyebrow) ? (
         <div className="sur-card__hero">
           {hero?.eyebrow ? (
             <span className="sur-card__hero-eyebrow">{hero.eyebrow}</span>
@@ -322,32 +356,32 @@ export default function SellerUniversalReviewCard({
         </div>
       ) : null}
 
-      {isMultiSourceIntake && statusLines.length > 0 ? (
+      {isCompactReview && statusLines.length > 0 ? (
         <p className="sur-card__status-line" aria-label="Clever Status">
           {statusLines.join(' · ')}
         </p>
       ) : null}
 
-      {!isMultiSourceIntake && metaLine ? (
+      {!isCompactReview && metaLine ? (
         <p className="sur-card__context">{metaLine}</p>
       ) : null}
 
       {showFactGroups ? (
-        <ul className={`sur-card__facts${isMultiSourceIntake ? ' sur-card__facts--compact' : ''}`} aria-label="Erkannte Angaben">
+        <ul className={`sur-card__facts${isCompactReview ? ' sur-card__facts--compact' : ''}`} aria-label="Erkannte Angaben">
           {groups
-            .filter((group) => !(isMultiSourceIntake && group.id === 'customer' && heroName))
+            .filter((group) => !(isCompactReview && group.id === 'customer' && heroName))
             .map((group) => {
               const chips = Array.isArray(group.chips) && group.chips.length
                 ? group.chips
                 : null;
-              const showItemList = !isMultiSourceIntake
+              const showItemList = !isCompactReview
                 && Array.isArray(group.items)
                 && group.items.length > 1
                 && !chips;
               return (
                 <li key={group.id || group.title} className="sur-card__fact">
                   <span className="sur-card__fact-title">{group.title}</span>
-                  {isMultiSourceIntake && chips ? (
+                  {isCompactReview && chips ? (
                     <span className="sur-card__chips">
                       {chips.map((chip) => (
                         <span key={`${group.id}-${chip}`} className="sur-card__chip">{chip}</span>
@@ -391,7 +425,7 @@ export default function SellerUniversalReviewCard({
       ) : null}
 
       {((!settled || isApplyResult) && (reviewActions.length > 0 || secondaryReviewActions.length > 0)) ? (
-        isMultiSourceIntake ? (
+        isCompactReview ? (
           <div className="sur-card__actions" role="group" aria-label="Review-Aktionen">
             <div className="sur-card__actions-main">
               {primaryBtnActions.map((action, index) => {
