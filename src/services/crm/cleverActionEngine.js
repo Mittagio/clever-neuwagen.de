@@ -144,7 +144,7 @@ const ACTION_DEFINITIONS = {
   },
   [CLEVER_ACTION_IDS.OFFER_SEND]: {
     title: 'Angebot senden',
-    ctaLabel: 'Angebot senden',
+    ctaLabel: 'Angebot prüfen und senden',
     handlerType: 'offer_send',
   },
   [CLEVER_ACTION_IDS.OFFER_FOLLOWUP]: {
@@ -234,7 +234,7 @@ const ACTION_DEFINITIONS = {
   },
   [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: {
     title: 'Angebot senden',
-    ctaLabel: 'An Kunden senden',
+    ctaLabel: 'Angebot prüfen und senden',
     handlerType: 'offer_send_portfolio',
   },
 };

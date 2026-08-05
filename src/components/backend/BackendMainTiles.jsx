@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useCleverInboxOptional } from '../../context/CleverInboxContext.jsx';
-import { buildInboxDashboardSummary } from '../../services/crm/cleverInboxService.js';
+import { IconCar, IconInbox, IconMegaphone } from '../dealer-ai/AkteIcons.jsx';
+import { buildCleverEingangDashboardCounts } from '../../services/crm/cleverEingangItems.js';
 import './BackendHome.css';
 
 const MAIN_TILES = [
@@ -10,7 +11,7 @@ const MAIN_TILES = [
     to: '/backend/clever-eingang',
     title: 'Clever Eingang',
     subtitle: 'Neue Aktivitäten',
-    icon: '📥',
+    Icon: IconInbox,
   },
   {
     id: 'vehicles',
@@ -18,7 +19,7 @@ const MAIN_TILES = [
     area: 'fahrzeuge',
     title: 'Fahrzeugverwaltung',
     subtitle: 'Modelle, Bestand und Konditionen',
-    icon: '🚗',
+    Icon: IconCar,
   },
   {
     id: 'ads',
@@ -26,21 +27,20 @@ const MAIN_TILES = [
     area: 'marketing',
     title: 'Inseratsgenerator',
     subtitle: 'Anzeigen und Texte erstellen',
-    icon: '📝',
+    Icon: IconMegaphone,
   },
 ];
 
-function resolveInboxMeta(openCount) {
-  if (!openCount) return 'Keine neuen Aktivitäten';
-  return `${openCount} neue Aktivität${openCount === 1 ? '' : 'en'}`;
+export function formatCleverEingangTileMeta({ unreadCount = 0, openCount = 0 } = {}) {
+  return `${unreadCount} ungelesen · ${openCount} offene Vorgänge`;
 }
 
-export default function BackendMainTiles({ onNavigateArea }) {
-  const inbox = useCleverInboxOptional();
-  const summary = inbox
-    ? { openCount: inbox.openCount }
-    : buildInboxDashboardSummary();
-  const inboxMeta = resolveInboxMeta(summary.openCount);
+export default function BackendMainTiles({ onNavigateArea, leads = [] }) {
+  const eingangCounts = useMemo(
+    () => buildCleverEingangDashboardCounts(leads),
+    [leads],
+  );
+  const inboxMeta = formatCleverEingangTileMeta(eingangCounts);
 
   function handleTileClick(tile) {
     if (tile.section) {
@@ -52,14 +52,17 @@ export default function BackendMainTiles({ onNavigateArea }) {
 
   function renderTile(tile) {
     const isInbox = tile.id === 'inbox';
+    const Icon = tile.Icon;
     const classes = [
       'backend-home__main-tile',
-      isInbox && summary.openCount > 0 ? ' backend-home__main-tile--alert' : '',
+      isInbox && eingangCounts.unreadCount > 0 ? ' backend-home__main-tile--alert' : '',
     ].join('');
 
     const content = (
       <>
-        <span className="backend-home__main-tile-icon" aria-hidden>{tile.icon}</span>
+        <span className="backend-home__main-tile-icon" aria-hidden>
+          {Icon ? <Icon /> : null}
+        </span>
         <span className="backend-home__main-tile-title">{tile.title}</span>
         <span className="backend-home__main-tile-sub">{tile.subtitle}</span>
         {isInbox && (

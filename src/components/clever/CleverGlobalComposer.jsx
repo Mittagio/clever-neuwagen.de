@@ -4,7 +4,8 @@
  * Kundenakte: gleicher Orchestrator in CustomerAkteSharedWorkspace (fester Lead);
  * dieser Global Composer wird dort nicht gerendert.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import SellerUniversalReviewCard from '../dealer-ai/SellerUniversalReviewCard.jsx';
@@ -40,6 +41,12 @@ import {
   requestCleverSellerTurn,
   shouldRequestServerSellerTurn,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
+import {
+  COMPOSER_SOFT_PLACEHOLDERS,
+  resolveComposerDockMode,
+  resolveComposerPlaceholder,
+  resolveComposerSurfaceState,
+} from '../../services/cleverSeller/composerSurfaceState.js';
 import './CleverGlobalComposer.css';
 
 const FALLBACK_INTERPRET_WARNING = [
@@ -50,12 +57,11 @@ const FALLBACK_INTERPRET_WARNING = [
 
 const SUGGESTION_CHIPS = [
   { id: 'showroom', label: 'Showroom starten' },
-  { id: 'model', label: 'Modell auswählen' },
-  { id: 'intake', label: 'Neue Anfrage' },
+  { id: 'model', label: 'Modellwelt öffnen' },
 ];
 
-const COMPOSER_PLACEHOLDER = 'Frage etwas, diktiere eine Notiz, füge eine Anfrage ein oder lade ein Dokument hoch …';
 const COMPOSER_LEITFRAGE = 'Was soll Clever heute für dich erledigen?';
+const DOCK_SCROLL_THRESHOLD = 96;
 
 function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
   if (!leadId) return null;
@@ -114,14 +120,20 @@ export default function CleverGlobalComposer() {
   const ctx = useCleverComposerOptional();
   const { updateLead, addLead } = useLeads();
   const navigate = useNavigate();
+  const photoInputRef = useRef(null);
+  const documentInputRef = useRef(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [reviewModel, setReviewModel] = useState(null);
   const [lastTurn, setLastTurn] = useState(null);
   const [progressHint, setProgressHint] = useState(null);
+  const [focused, setFocused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   const visible = Boolean(ctx?.shouldShowGlobalComposer);
+  const docked = Boolean(ctx?.composerDocked);
+  const heroSlotEl = ctx?.composerHeroSlotEl || null;
 
   const contextPills = useMemo(() => {
     if (!ctx) return [];
@@ -130,6 +142,43 @@ export default function CleverGlobalComposer() {
       label: obj.label || 'Arbeitsobjekt',
     }));
   }, [ctx]);
+
+  const surfaceState = resolveComposerSurfaceState({
+    focused,
+    draft,
+    hasAttachment: contextPills.length > 0,
+    dictating: false,
+    reviewOpen: Boolean(reviewModel),
+  });
+  const isIdle = surfaceState === 'idle';
+  const dockMode = resolveComposerDockMode({ scrolledPastHero: docked });
+  const useHeroPortal = dockMode === 'hero' && heroSlotEl;
+  const composerPlaceholder = resolveComposerPlaceholder({
+    draft,
+    hintIndex: placeholderIndex,
+    placeholders: COMPOSER_SOFT_PLACEHOLDERS,
+  });
+
+  const setComposerDocked = ctx?.setComposerDocked;
+  useEffect(() => {
+    if (!visible || typeof window === 'undefined' || typeof setComposerDocked !== 'function') {
+      return undefined;
+    }
+    const onScroll = () => {
+      setComposerDocked(window.scrollY > DOCK_SCROLL_THRESHOLD);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [visible, setComposerDocked]);
+
+  useEffect(() => {
+    if (!isIdle || String(draft || '').trim()) return undefined;
+    const timer = window.setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % COMPOSER_SOFT_PLACEHOLDERS.length);
+    }, 5200);
+    return () => window.clearInterval(timer);
+  }, [isIdle, draft]);
 
   if (!visible) return null;
 
@@ -144,7 +193,7 @@ export default function CleverGlobalComposer() {
       return;
     }
     if (chip.id === 'intake') {
-      setDraft('Hier eine Anfrage:\n\n');
+      setFocused(true);
       setFeedback('Anfrage einfügen oder diktieren – dann absenden');
       setTimeout(() => setFeedback(''), 3200);
       return;
@@ -158,6 +207,46 @@ export default function CleverGlobalComposer() {
     }
     else if (chip.label) setDraft(chip.label);
   }
+
+  function handleSoftAttach(file, kind) {
+    if (!file) return;
+    const name = file.name || (kind === 'photo' ? 'foto.jpg' : 'dokument');
+    const prefix = kind === 'photo' ? 'Foto angehängt' : 'Dokument angehängt';
+    setFocused(true);
+    setDraft((prev) => {
+      const note = `${prefix}: ${name}`;
+      return prev ? `${prev}\n${note}` : note;
+    });
+    setFeedback(`${prefix} – Beschreibung ergänzen und absenden`);
+    setTimeout(() => setFeedback(''), 3200);
+  }
+
+  const plusActions = [
+    {
+      id: 'intake',
+      icon: '📋',
+      label: 'Anfrage einfügen',
+      onClick: () => handleSuggestion({ id: 'intake' }),
+    },
+    {
+      id: 'pdf_dump',
+      icon: '📄',
+      label: 'PDF',
+      onClick: null,
+    },
+    {
+      id: 'photo',
+      icon: '🖼',
+      label: 'Foto',
+      onClick: () => photoInputRef.current?.click(),
+    },
+    {
+      id: 'document',
+      icon: '📎',
+      label: 'Dokument',
+      onClick: () => documentInputRef.current?.click(),
+    },
+  ];
 
   function handleOpenLead(leadId, extras = {}) {
     if (!leadId) return;
@@ -665,11 +754,13 @@ export default function CleverGlobalComposer() {
   async function handleAttachFile(file) {
     if (!file || sending || !ctx) return;
     const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+    const isImage = /^image\//i.test(file.type || '')
+      || /\.(png|jpe?g|webp|gif|heic)$/i.test(file.name || '');
     if (!isPdf) {
-      setFeedback('Bitte PDF reinwerfen (Vertrag oder Konfigurator).');
-      setTimeout(() => setFeedback(''), 2800);
+      handleSoftAttach(file, isImage ? 'photo' : 'document');
       return;
     }
+    setFocused(true);
     setSending(true);
     setProgressHint('Clever liest das PDF …');
     setFeedback('PDF wird gelesen …');
@@ -1122,40 +1213,121 @@ export default function CleverGlobalComposer() {
     )
     : null;
 
-  return (
-    <div className="clever-global-composer" data-testid="clever-global-composer">
-      <p className="clever-global-composer__leitfrage">{COMPOSER_LEITFRAGE}</p>
-      {progressHint && (
-        <p className="clever-global-composer__hint" role="status">{progressHint}</p>
-      )}
-      {(
-        lastTurn?.interpreterDiagnostics?.interpreterSource === 'fallback'
-        || lastTurn?.interpreterDiagnostics?.interpreterSource === 'openai_fallback'
-        || lastTurn?.openaiEscalation?.interpreterSource === 'fallback'
-      ) && (
-        <p className="clever-global-composer__hint" role="alert">
-          {FALLBACK_INTERPRET_WARNING}
-        </p>
-      )}
-      <SharedWorkspaceChat
-        role="seller"
-        hideFeed
-        items={[]}
-        draft={draft}
-        onDraftChange={setDraft}
-        onSend={handleSend}
-        sending={sending}
-        sendFeedback={feedback}
-        placeholder={COMPOSER_PLACEHOLDER}
-        composerLabel="Clever"
-        sendAriaLabel="An Clever senden"
-        reviewSlot={reviewSlot}
-        contextPills={contextPills}
-        suggestionChips={reviewModel?.reviewType === 'appointment_and_message_review' ? [] : SUGGESTION_CHIPS}
-        onSuggestionChip={handleSuggestion}
-        onAttachFile={handleAttachFile}
-        emptyHint=""
-      />
-    </div>
+  const shellClass = [
+    'clever-global-composer',
+    isIdle ? 'clever-global-composer--idle' : 'clever-global-composer--expanded',
+    useHeroPortal ? 'clever-global-composer--hero' : 'clever-global-composer--docked',
+  ].join(' ');
+
+  const hideInlineChips = isIdle
+    || reviewModel?.reviewType === 'appointment_and_message_review';
+  const showQuickOutside = Boolean(useHeroPortal && isIdle);
+
+  const node = (
+    <>
+      <div
+        className={shellClass}
+        data-testid="clever-global-composer"
+        data-composer-state={surfaceState}
+        data-composer-dock={useHeroPortal ? 'hero' : 'docked'}
+      >
+        {!useHeroPortal ? (
+          <p className="clever-global-composer__leitfrage">{COMPOSER_LEITFRAGE}</p>
+        ) : null}
+        {progressHint && (
+          <p className="clever-global-composer__hint" role="status">{progressHint}</p>
+        )}
+        {(
+          lastTurn?.interpreterDiagnostics?.interpreterSource === 'fallback'
+          || lastTurn?.interpreterDiagnostics?.interpreterSource === 'openai_fallback'
+          || lastTurn?.openaiEscalation?.interpreterSource === 'fallback'
+        ) && (
+          <p className="clever-global-composer__hint" role="alert">
+            {FALLBACK_INTERPRET_WARNING}
+          </p>
+        )}
+        <SharedWorkspaceChat
+          role="seller"
+          hideFeed
+          items={[]}
+          draft={draft}
+          onDraftChange={(value) => {
+            setDraft(value);
+            if (value) setFocused(true);
+          }}
+          onSend={handleSend}
+          sending={sending}
+          sendFeedback={feedback}
+          placeholder={composerPlaceholder}
+          composerLabel=""
+          sendAriaLabel="An Clever senden"
+          reviewSlot={isIdle ? null : reviewSlot}
+          contextPills={contextPills}
+          suggestionChips={reviewModel?.reviewType === 'appointment_and_message_review' ? [] : SUGGESTION_CHIPS}
+          onSuggestionChip={handleSuggestion}
+          hideSuggestionChips={hideInlineChips}
+          compactMode={isIdle}
+          autoGrow={!isIdle}
+          onComposerFocus={() => setFocused(true)}
+          onComposerBlur={() => {
+            if (!String(draft || '').trim() && !reviewModel && contextPills.length === 0) {
+              setFocused(false);
+            }
+          }}
+          plusActions={plusActions}
+          onAttachFile={handleAttachFile}
+          emptyHint=""
+        />
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="sw-composer__file"
+          aria-hidden
+          tabIndex={-1}
+          onChange={(event) => {
+            handleSoftAttach(event.target.files?.[0], 'photo');
+            event.target.value = '';
+          }}
+        />
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,image/*,.png,.jpg,.jpeg"
+          className="sw-composer__file"
+          aria-hidden
+          tabIndex={-1}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file && (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name || ''))) {
+              void handleAttachFile(file);
+            } else {
+              handleSoftAttach(file, 'document');
+            }
+            event.target.value = '';
+          }}
+        />
+      </div>
+      {showQuickOutside ? (
+        <div className="clever-global-composer__quick" role="group" aria-label="Schnelle Schritte">
+          {SUGGESTION_CHIPS.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className="clever-global-composer__quick-chip"
+              disabled={sending}
+              onClick={() => handleSuggestion(chip)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </>
   );
+
+  if (useHeroPortal) {
+    return createPortal(node, heroSlotEl);
+  }
+  return node;
 }

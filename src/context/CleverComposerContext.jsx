@@ -45,9 +45,15 @@ export function CleverComposerProvider({ children }) {
   const [attachedWorkingObjects, setAttachedWorkingObjects] = useState([]);
   const [pendingAction, setPendingAction] = useState(null);
   const [dashboardContext, setDashboardContext] = useState({ surface: 'home' });
+  const [composerHeroSlotEl, setComposerHeroSlotEl] = useState(null);
+  const [composerDocked, setComposerDocked] = useState(false);
 
   const surface = resolveSurface(pathname);
   const enabled = readGlobalComposerFlag();
+
+  const registerComposerHeroSlot = useCallback((el) => {
+    setComposerHeroSlotEl(el || null);
+  }, []);
 
   const clearWorkspaceContext = useCallback(() => {
     setCurrentCustomer(null);
@@ -72,6 +78,14 @@ export function CleverComposerProvider({ children }) {
       clearWorkspaceContext();
     }
   }, [surface, pathname, leads, clearWorkspaceContext]);
+
+  // Außerhalb Dashboard: Dock-State und Hero-Slot zurücksetzen
+  useEffect(() => {
+    if (surface !== 'dashboard') {
+      setComposerDocked(false);
+      setComposerHeroSlotEl(null);
+    }
+  }, [surface]);
 
   const shouldShowGlobalComposer = Boolean(
     enabled && surface === 'dashboard',
@@ -99,6 +113,10 @@ export function CleverComposerProvider({ children }) {
     clearWorkspaceContext,
     shouldShowGlobalComposer,
     globalComposerEnabled: enabled,
+    composerHeroSlotEl,
+    registerComposerHeroSlot,
+    composerDocked,
+    setComposerDocked,
   }), [
     pathname,
     surface,
@@ -114,6 +132,9 @@ export function CleverComposerProvider({ children }) {
     clearWorkspaceContext,
     shouldShowGlobalComposer,
     enabled,
+    composerHeroSlotEl,
+    registerComposerHeroSlot,
+    composerDocked,
   ]);
 
   return (

@@ -183,6 +183,25 @@ export function IconChevronDown(props) {
   );
 }
 
+export function IconInbox(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" {...stroke} />
+      <path d="M4 10h4.2l1.3 2h5l1.3-2H20" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconMegaphone(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 11v2a3 3 0 0 0 3 3h1" {...stroke} />
+      <path d="M8 8l11-3v14L8 16V8z" {...stroke} />
+      <path d="M8 12h3" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export const AKTE_NAV_ICONS = {
   kunde: IconUser,
   chat: IconChat,

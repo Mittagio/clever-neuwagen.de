@@ -66,9 +66,17 @@ export default function SharedWorkspaceChat({
   scrollToMessageId = null,
   scrollToMessageToken = 0,
   emptyHint = 'Noch kein Verlauf.\nSchreiben oder sprechen Sie einfach los.',
+  /** Kompakte Idle-Leiste (eine Zeile, ohne Chips) */
+  compactMode = false,
+  hideSuggestionChips = false,
+  onComposerFocus = null,
+  onComposerBlur = null,
+  /** Auto-grow Textarea im Expanded-Zustand */
+  autoGrow = false,
 }) {
   const endRef = useRef(null);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const focusingMessageRef = useRef(false);
   const highlightIdRef = useRef(null);
   const highlightClearRef = useRef(null);
@@ -188,6 +196,18 @@ export default function SharedWorkspaceChat({
       : 'Nachricht an Ihr Autohaus …';
   }, [placeholder, role]);
 
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    if (!autoGrow || compactMode || composerEditMode) {
+      el.style.height = '';
+      return;
+    }
+    el.style.height = '0px';
+    const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.42));
+    el.style.height = `${Math.max(44, next)}px`;
+  }, [draft, autoGrow, compactMode, composerEditMode]);
+
   const showFeedFilters = role === 'seller' && Array.isArray(items) && items.length > 0;
   const filterCounts = useMemo(() => countWorkspaceFeedFilters(items), [items]);
   const visibleItems = useMemo(
@@ -226,18 +246,29 @@ export default function SharedWorkspaceChat({
   const resolvedPlusActions = useMemo(() => {
     const list = [...(plusActions ?? [])];
     if (onAttachFile && !list.some((a) => a.id === 'pdf_dump')) {
-      list.unshift({
+      const pdfAction = {
         id: 'pdf_dump',
-        icon: '📥',
-        label: 'PDF reinwerfen',
+        icon: '📄',
+        label: 'PDF',
         onClick: () => fileInputRef.current?.click(),
-      });
+      };
+      // Wenn der Caller schon Aktionen liefert: PDF nach „Anfrage“ einordnen, sonst vorne.
+      const intakeIdx = list.findIndex((a) => a.id === 'intake');
+      if (intakeIdx >= 0) list.splice(intakeIdx + 1, 0, pdfAction);
+      else if (list.length) list.push(pdfAction);
+      else list.unshift(pdfAction);
     }
-    return list;
+    return list.map((action) => (
+      action.id === 'pdf_dump' && !action.onClick
+        ? { ...action, onClick: () => fileInputRef.current?.click() }
+        : action
+    ));
   }, [plusActions, onAttachFile]);
 
   const showSuggestionChips = role === 'seller'
     && !composerEditMode
+    && !hideSuggestionChips
+    && !compactMode
     && Array.isArray(suggestionChips)
     && suggestionChips.length > 0
     && typeof onSuggestionChip === 'function';
@@ -400,7 +431,12 @@ export default function SharedWorkspaceChat({
         ) : null}
 
         <form
-          className={`sw-composer${composerEditMode ? ' sw-composer--message-edit' : ''}`}
+          className={[
+            'sw-composer',
+            composerEditMode ? 'sw-composer--message-edit' : '',
+            compactMode ? 'sw-composer--compact' : '',
+            autoGrow && !compactMode ? 'sw-composer--autogrow' : '',
+          ].filter(Boolean).join(' ')}
           onSubmit={handleSubmit}
         >
           {composerLabel ? (
@@ -463,13 +499,20 @@ export default function SharedWorkspaceChat({
             </div>
           ) : null}
 
-          <div className={`sw-composer__card${composerEditMode ? ' sw-composer__card--edit' : ''}`}>
+          <div className={`sw-composer__card${composerEditMode ? ' sw-composer__card--edit' : ''}${compactMode ? ' sw-composer__card--compact' : ''}`}>
             <textarea
+              ref={textareaRef}
               id={`sw-composer-${role}`}
-              className={`sw-composer__input${composerEditMode ? ' sw-composer__input--grow' : ''}`}
-              rows={composerEditMode ? 6 : 2}
+              className={[
+                'sw-composer__input',
+                composerEditMode || (autoGrow && !compactMode) ? 'sw-composer__input--grow' : '',
+                compactMode ? 'sw-composer__input--compact' : '',
+              ].filter(Boolean).join(' ')}
+              rows={composerEditMode ? 6 : (compactMode ? 1 : 2)}
               value={draft}
               onChange={(e) => onDraftChange?.(e.target.value)}
+              onFocus={() => onComposerFocus?.()}
+              onBlur={() => onComposerBlur?.()}
               placeholder={resolvedPlaceholder}
               disabled={sending}
             />

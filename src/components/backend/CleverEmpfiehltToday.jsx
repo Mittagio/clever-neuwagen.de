@@ -7,7 +7,7 @@ export default function CleverEmpfiehltToday({ items = [] }) {
     return (
       <section className="clever-today" aria-labelledby="clever-today-title">
         <h2 id="clever-today-title" className="clever-today__title">Clever empfiehlt heute</h2>
-        <p className="clever-today__empty">Aktuell keine priorisierten Empfehlungen – neue Anfragen erscheinen hier.</p>
+        <p className="clever-today__empty">Aktuell keine offenen Aufgaben – neue Anfragen erscheinen hier.</p>
       </section>
     );
   }
@@ -16,36 +16,33 @@ export default function CleverEmpfiehltToday({ items = [] }) {
     <section className="clever-today" aria-labelledby="clever-today-title">
       <div className="clever-today__head">
         <h2 id="clever-today-title" className="clever-today__title">Clever empfiehlt heute</h2>
-        <p className="clever-today__sub">Von oben nach unten – die wichtigsten Abschlüsse zuerst.</p>
+        <p className="clever-today__sub">Von oben nach unten – die wichtigste Arbeit zuerst.</p>
       </div>
 
       <ol className="clever-today__list">
-        {items.map((item, index) => (
-          <li key={item.leadId}>
-            <Link to={buildKundenaktePath(item.leadId)} className="clever-today__card">
-              <span className="clever-today__rank" aria-hidden>{index + 1}</span>
-              <div className="clever-today__body">
-                <div className="clever-today__row">
-                  <span className="clever-today__stars" aria-label={`${item.stars} von 5 Sternen`}>
-                    {item.starLabel}
-                  </span>
-                  <span className="clever-today__meta">
+        {items.map((item, index) => {
+          const why = item.whySummary
+            || (Array.isArray(item.reasons) ? item.reasons.join(' · ') : '');
+          const cta = item.ctaLabel || item.headline || 'Öffnen und erledigen';
+          return (
+            <li key={item.leadId}>
+              <Link to={buildKundenaktePath(item.leadId)} className="clever-today__card">
+                <span className="clever-today__rank" aria-hidden>{index + 1}</span>
+                <div className="clever-today__body">
+                  <div className="clever-today__row">
+                    <p className="clever-today__name">{item.customerName}</p>
                     {item.dueTodayBadge ? (
                       <span className="clever-today__due-badge">{item.dueTodayBadge}</span>
                     ) : null}
-                    <span className="clever-today__chance">{item.closureChance} %</span>
-                  </span>
+                  </div>
+                  {why ? <p className="clever-today__why">{why}</p> : null}
+                  <p className="clever-today__action">{cta}</p>
                 </div>
-                <p className="clever-today__name">{item.customerName}</p>
-                <p className="clever-today__action">{item.headline}</p>
-                {item.whySummary ? (
-                  <p className="clever-today__why">{item.whySummary}</p>
-                ) : null}
-              </div>
-              <span className="clever-today__chevron" aria-hidden>→</span>
-            </Link>
-          </li>
-        ))}
+                <span className="clever-today__chevron" aria-hidden>→</span>
+              </Link>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

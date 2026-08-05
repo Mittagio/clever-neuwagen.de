@@ -35,8 +35,8 @@ function starLabel(count) {
 const HEADLINE_BY_ACTION = {
   [CLEVER_ACTION_IDS.OFFER_OPENED_CALL]: 'Heute anrufen',
   [CLEVER_ACTION_IDS.OFFER_FOLLOWUP]: 'Heute nachfassen',
-  [CLEVER_ACTION_IDS.OFFER_SEND]: 'Angebot jetzt senden',
-  [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: 'Angebot an Kunden senden',
+  [CLEVER_ACTION_IDS.OFFER_SEND]: 'Angebot prüfen und senden',
+  [CLEVER_ACTION_IDS.OFFER_CREATED_SEND]: 'Angebot prüfen und senden',
   [CLEVER_ACTION_IDS.DOCUMENTS_MISSING]: 'Unterlagen anfordern',
   [CLEVER_ACTION_IDS.DOCUMENTS_INBOX_CHECK]: 'Unterlagen prüfen',
   [CLEVER_ACTION_IDS.LEASING_READY]: 'Leasingantrag starten',
@@ -357,6 +357,8 @@ export function buildCleverEmpfiehltView({
 
 /**
  * Verkäufer-Dashboard: priorisierte Liste über alle Leads.
+ * Sortierung nach echter Aktionspriorität (nicht Abschluss-%).
+ * Deduplizierung nach Kundenidentität.
  */
 export function buildCleverEmpfiehltToday(leads = [], { maxItems = 12 } = {}) {
   const items = [];
@@ -385,16 +387,33 @@ export function buildCleverEmpfiehltToday(leads = [], { maxItems = 12 } = {}) {
       starLabel: view.starLabel,
       actionId: view.actionId,
       whySummary: view.whySummary,
+      ctaLabel: view.ctaLabel || view.headline,
       priority: view.recommendation?.priority ?? 99,
     });
   }
 
-  return items
-    .sort((a, b) => {
-      if (b.closureChance !== a.closureChance) return b.closureChance - a.closureChance;
-      return a.priority - b.priority;
-    })
-    .slice(0, maxItems);
+  const sorted = items.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return String(a.customerName).localeCompare(String(b.customerName), 'de');
+  });
+
+  // Lazy import vermeiden: Dedup lokal nach Name/Telefon/E-Mail
+  const seen = new Set();
+  const deduped = [];
+  for (const item of sorted) {
+    const lead = leads.find((l) => l.id === item.leadId) || {};
+    const email = String(lead?.contact?.email || '').trim().toLowerCase();
+    const phone = String(lead?.contact?.phone || '').replace(/\D+/g, '');
+    const name = String(item.customerName || '').trim().toLowerCase();
+    const key = email
+      ? `e:${email}`
+      : (phone.length >= 8 ? `p:${phone}` : `n:${name || item.leadId}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+    if (deduped.length >= maxItems) break;
+  }
+  return deduped;
 }
 
 export function buildLeadEmpfiehltContext(lead) {

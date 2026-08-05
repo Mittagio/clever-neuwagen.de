@@ -254,8 +254,11 @@ export function evaluateSellerReminders(leads = [], options = {}) {
     .sort((a, b) => {
       const boostDiff = b.sortBoost - a.sortBoost;
       if (boostDiff !== 0) return boostDiff;
-      if (b.closureChance !== a.closureChance) return b.closureChance - a.closureChance;
-      return (a.reminder?.priority ?? 99) - (b.reminder?.priority ?? 99);
+      // Echte Arbeit / Reminder-Priorität – kein Abschluss-%-Scoring
+      const priorityDiff = (a.reminder?.priority ?? a.journey?.recommendation?.priority ?? 99)
+        - (b.reminder?.priority ?? b.journey?.recommendation?.priority ?? 99);
+      if (priorityDiff !== 0) return priorityDiff;
+      return String(a.customerName || '').localeCompare(String(b.customerName || ''), 'de');
     })
     .slice(0, maxItems);
 }

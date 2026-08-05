@@ -535,6 +535,7 @@ export function sortCleverInboxItems(items = []) {
  */
 export function buildCleverInboxSummary(items = []) {
   const total = items.length;
+  const unreadCount = items.filter((item) => item.isUnread).length;
   const duplicateItems = items.filter((item) => item.status === CLEVER_EINGANG_STATUS.DUPLICATE);
   const duplicates = duplicateItems.length;
   const duplicateMemberCount = duplicateItems.reduce((sum, item) => sum + (item.memberCount || 0), 0);
@@ -564,6 +565,7 @@ export function buildCleverInboxSummary(items = []) {
       groupHint: null,
       filters,
       total,
+      unreadCount: 0,
       duplicates,
       duplicateMemberCount: 0,
       ready,
@@ -578,12 +580,31 @@ export function buildCleverInboxSummary(items = []) {
     groupHint,
     filters,
     total,
+    unreadCount,
     duplicates,
     duplicateMemberCount,
     ready,
     incomplete,
     review,
     assigned,
+  };
+}
+
+/**
+ * Dashboard-Kachel: „X ungelesen · Y offene Vorgänge“
+ * @param {object[]} [leads]
+ */
+export function buildCleverEingangDashboardCounts(leads = []) {
+  const { items, summary } = buildCleverInboxItems(leads);
+  const unreadCount = summary?.unreadCount
+    ?? items.filter((item) => item.isUnread).length;
+  const openCount = summary?.total ?? items.length;
+  return {
+    unreadCount,
+    openCount,
+    label: `${unreadCount} ungelesen · ${openCount} offene Vorgänge`,
+    items,
+    summary,
   };
 }
 

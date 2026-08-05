@@ -739,13 +739,44 @@
   color: #1a2233;
   outline: none;
   box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sw-composer__input::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.sw-composer__input--compact {
+  min-height: 28px;
+  max-height: 36px;
+  padding: 2px 4px;
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.sw-composer__card--compact {
+  padding: 8px 10px 6px;
+}
+
+.sw-composer--compact {
+  padding-top: 4px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0));
 }
 
 .sw-composer__input--grow {
-  min-height: 120px;
-  max-height: 280px;
-  resize: vertical;
+  min-height: 72px;
+  max-height: min(42vh, 280px);
+  resize: none;
   white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+.sw-composer--autogrow .sw-composer__input--grow {
+  max-height: min(42vh, 320px);
 }
 
 .sw-composer__toolbar {
