@@ -178,9 +178,15 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'discountPercent' && value != null) {
-      wish.customDiscountPercent = Number(value);
-      wish.customerGroup = 'custom';
-      touchedWish = true;
+      const pct = Number(value);
+      if (Number.isFinite(pct) && pct >= 0 && pct <= 100) {
+        wish.customDiscountPercent = pct;
+        wish.customerGroup = 'custom';
+        touchedWish = true;
+      }
+    }
+    if (field === 'discountPercentInvalid') {
+      continue;
     }
 
     if (field === 'existingContractEnd') {

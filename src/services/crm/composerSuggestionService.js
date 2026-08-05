@@ -20,6 +20,34 @@ export const COMPOSER_PRIMARY_CHIPS = [
   { id: 'kundenlink', label: 'Kundenlink', action: 'portfolio' },
 ];
 
+/** Bei offener Appointment-Review – keine generischen Alltagschips */
+export const APPOINTMENT_REVIEW_CHIPS = [
+  { id: 'appt_change_time', label: 'Uhrzeit ändern' },
+  { id: 'appt_other_day', label: 'Anderen Tag' },
+  { id: 'appt_personal', label: 'Persönlicher schreiben' },
+  { id: 'appt_calendar', label: 'Kalender prüfen' },
+];
+
+/**
+ * @param {object|null} reviewModel
+ * @returns {{ chips: object[], moreChips: object[] }}
+ */
+export function resolveComposerChipsForReview(reviewModel = null) {
+  if (reviewModel?.reviewType === 'appointment_and_message_review') {
+    // Review hat klare Primary-Actions → generische Chips ausblenden
+    if (Array.isArray(reviewModel?.actionSections)
+      && reviewModel.actionSections.some((s) => (
+        s.kind === 'appointment_and_message_review'
+        && Array.isArray(s.primaryActions)
+        && s.primaryActions.length > 0
+      ))) {
+      return { chips: [], moreChips: [] };
+    }
+    return { chips: APPOINTMENT_REVIEW_CHIPS, moreChips: [] };
+  }
+  return { chips: COMPOSER_PRIMARY_CHIPS, moreChips: COMPOSER_MORE_CHIPS };
+}
+
 /** Seltener – hinter „+“ rechts */
 export const COMPOSER_MORE_CHIPS = [
   { id: 'selbstauskunft', label: 'Selbstauskunft', antwortType: 'unterlagen' },
@@ -85,6 +113,10 @@ export function buildChipSellerInput(chipId = '', options = {}) {
     probefahrt: `Schlag ${him} eine Probefahrt vor.`,
     nicht_erreicht: `Schreib ${him}, dass wir ihn nicht erreicht haben und melde dich.`,
     angebot_angepasst: `Schreib ${him}, dass ich das Angebot angepasst habe.`,
+    appt_change_time: 'Lieber um 16 Uhr.',
+    appt_other_day: 'Lieber einen anderen Tag.',
+    appt_personal: 'Schreib die Terminnachricht persönlicher.',
+    appt_calendar: 'Prüfe den Kalender für den Terminvorschlag.',
   };
   return map[chipId] || null;
 }

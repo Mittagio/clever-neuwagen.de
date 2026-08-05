@@ -14,6 +14,11 @@ import {
 import { resolveRelativeDateTime, resolveMultipleRelativeDateTimes } from './resolveRelativeDateTime.js';
 import { beginCustomerMessageEdit } from '../crm/composerMode.js';
 import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
+import { detectVehicleTrimConflict } from './detectVehicleTrimConflict.js';
+import {
+  normalizeTrimToken,
+  normalizeVehicleDisplayLabel,
+} from './normalizeVehicleDisplayLabel.js';
 
 /**
  * Fahrzeugkontext aus Working Context – keine Customer Truth.
@@ -43,14 +48,23 @@ export function extractVehicleContextFromWorking(workingContextItems = [], lead 
         .replace(/\s+gt-?line.*/i, '')
         .split(/[·,]/)[0]
         .trim();
-      const trimClean = trim
-        || (/gt-?line/i.test(String(label)) ? 'GT-Line' : null);
-      return {
-        model: modelClean || null,
+      const trimClean = normalizeTrimToken(trim)
+        || (/\bgt-?line\b/i.test(String(label)) ? 'GT-Line' : null)
+        || (/\bair\b/i.test(String(label)) ? 'Air' : null)
+        || (/\bearth\b/i.test(String(label)) ? 'Earth' : null);
+      const modelNorm = modelClean
+        ? (/^ev\d$/i.test(modelClean) ? modelClean.toUpperCase() : modelClean)
+        : null;
+      const niceLabel = normalizeVehicleDisplayLabel({
+        make: 'Kia',
+        model: modelNorm,
         trim: trimClean,
-        label: label
-          ? (String(label).startsWith('Kia') ? String(label) : `Kia ${String(label).replace(/^kia\s+/i, '')}`)
-          : null,
+        label,
+      });
+      return {
+        model: modelNorm || null,
+        trim: trimClean,
+        label: niceLabel,
         source: 'working_context',
       };
     }
@@ -64,9 +78,11 @@ export function extractVehicleFromSellerInput(sellerInput = '') {
   const t = String(sellerInput);
   const m = t.match(/\b(picanto|sportage|xceed|ev\s?[2-9]|ceed|niro|sorento|tivoli)\b/i);
   if (!m) return null;
-  const model = m[1].toLowerCase().replace(/\s+/g, '');
-  const trim = /\bgt[-\s]?line\b/i.test(t) ? 'GT-Line' : null;
-  const label = [`Kia ${model.charAt(0).toUpperCase()}${model.slice(1)}`, trim].filter(Boolean).join(' ');
+  const modelRaw = m[1].toLowerCase().replace(/\s+/g, '');
+  const model = /^ev\d$/i.test(modelRaw) ? modelRaw.toUpperCase() : modelRaw;
+  const trimMatch = t.match(/\b(gt[-\s]?line|air|earth|spirit|vision|core)\b/i);
+  const trim = normalizeTrimToken(trimMatch?.[1] || null);
+  const label = normalizeVehicleDisplayLabel({ make: 'Kia', model, trim });
   return { model, trim, label, source: 'seller_input' };
 }
 
@@ -200,7 +216,28 @@ export function prepareContextualAppointmentProposal(params = {}) {
     lead,
   );
   const vehicleFromInput = extractVehicleFromSellerInput(sellerInput);
-  const vehicleContext = vehicleFromInput || vehicleFromWorking || pending?.vehicleContext || null;
+  const vehicleFromLead = lead?.wish?.model
+    ? {
+      model: lead.wish.model,
+      trim: lead.wish.trim || null,
+      label: normalizeVehicleDisplayLabel({
+        make: 'Kia',
+        model: lead.wish.model,
+        trim: lead.wish.trim,
+        color: lead.wish.color || lead.wish.colorPreference,
+      }),
+      source: 'lead',
+    }
+    : null;
+  const vehicleTrimConflict = detectVehicleTrimConflict([
+    vehicleFromInput,
+    vehicleFromWorking,
+    vehicleFromLead,
+    pending?.vehicleContext || null,
+  ]);
+  const vehicleContext = vehicleTrimConflict.conflict
+    ? null
+    : (vehicleFromInput || vehicleFromWorking || vehicleFromLead || pending?.vehicleContext || null);
 
   const sellerClaimsAvailable = Boolean(params.sellerClaimsAvailable)
     || /\b(ist frei|frei ist|kalender ist frei|termin ist frei)\b/i.test(sellerInput);
@@ -248,6 +285,8 @@ export function prepareContextualAppointmentProposal(params = {}) {
       : [],
     mutatesCustomer: false,
     bookable: false,
+    vehicleTrimConflict: vehicleTrimConflict.conflict ? vehicleTrimConflict : null,
+    sendBlocked: Boolean(vehicleTrimConflict.conflict),
   };
 
   // Legacy-kompatibler Appointment-Record für bestehende Pfade
@@ -264,15 +303,17 @@ export function prepareContextualAppointmentProposal(params = {}) {
   legacyRecord.vehicleContext = vehicleContext?.label || legacyRecord.vehicleContext;
   legacyRecord.availabilityStatus = availabilityStatus;
 
-  let messageDraft = buildSuggestionMessage({
-    recipient: params.customerName || lead.contact?.name || lead.name || 'Kunde',
-    slots,
-    appointmentType: finalType,
-    vehicleContext,
-    tonePersonal: /\bpersönlicher\b/i.test(sellerInput),
-  });
+  let messageDraft = vehicleTrimConflict.conflict
+    ? null
+    : buildSuggestionMessage({
+      recipient: params.customerName || lead.contact?.name || lead.name || 'Kunde',
+      slots,
+      appointmentType: finalType,
+      vehicleContext,
+      tonePersonal: /\bpersönlicher\b/i.test(sellerInput),
+    });
 
-  if (!validateCustomerMessageNotSellerCommand(messageDraft).ok) {
+  if (messageDraft && !validateCustomerMessageNotSellerCommand(messageDraft).ok) {
     messageDraft = buildSuggestionMessage({
       recipient: params.customerName || lead.contact?.name || lead.name || 'Kunde',
       slots,
@@ -282,26 +323,28 @@ export function prepareContextualAppointmentProposal(params = {}) {
     });
   }
 
-  const handoff = beginCustomerMessageEdit({
-    result: { body: messageDraft },
-    recipient: preparedAppointment.customerName || 'Kunde',
-    contextAttachments: [
-      ...(params.workingContextItems || []),
-      {
-        id: 'appointment-proposal',
-        kind: 'appointment_proposal',
-        label: `${preparedAppointment.appointmentTypeLabel} · ${preparedAppointment.whenLabel}`,
-        shortLabel: preparedAppointment.whenLabel,
-        preparedAppointment,
-        oneShot: true,
-      },
-    ],
-  });
+  const handoff = messageDraft
+    ? beginCustomerMessageEdit({
+      result: { body: messageDraft },
+      recipient: preparedAppointment.customerName || 'Kunde',
+      contextAttachments: [
+        ...(params.workingContextItems || []),
+        {
+          id: 'appointment-proposal',
+          kind: 'appointment_proposal',
+          label: `${preparedAppointment.appointmentTypeLabel} · ${preparedAppointment.whenLabel}`,
+          shortLabel: preparedAppointment.whenLabel,
+          preparedAppointment,
+          oneShot: true,
+        },
+      ],
+    })
+    : null;
 
   return {
     ok: true,
     status: 'prepared',
-    sendable: Boolean(messageDraft),
+    sendable: Boolean(messageDraft) && !vehicleTrimConflict.conflict,
     bookable: false,
     resolvedDateTime: primary,
     resolvedDateTimes: slots,
@@ -310,6 +353,7 @@ export function prepareContextualAppointmentProposal(params = {}) {
     messageDraft,
     availabilityStatus,
     sellerClaimsAvailable,
+    vehicleTrimConflict: vehicleTrimConflict.conflict ? vehicleTrimConflict : null,
     warnings: [
       availabilityStatus === 'not_checked' ? 'calendar_availability_not_checked' : null,
       sellerClaimsAvailable && availabilityStatus === 'seller_claimed'
@@ -318,14 +362,18 @@ export function prepareContextualAppointmentProposal(params = {}) {
       availabilityStatus === 'busy' ? 'calendar_slot_busy' : null,
       availabilityStatus === 'unknown' ? 'calendar_availability_unknown' : null,
       availabilityStatus === 'error' ? 'calendar_availability_error' : null,
+      vehicleTrimConflict.conflict ? 'vehicle_trim_conflict' : null,
+      vehicleTrimConflict.conflict ? vehicleTrimConflict.warning : null,
     ].filter(Boolean),
-    handoff: {
-      ...handoff,
-      kind: 'appointment_message',
-      messageDraft,
-      preparedAppointment,
-      composerMode: handoff.composerMode,
-    },
+    handoff: handoff
+      ? {
+        ...handoff,
+        kind: 'appointment_message',
+        messageDraft,
+        preparedAppointment,
+        composerMode: handoff.composerMode,
+      }
+      : null,
     mutatesCustomer: false,
     evidence: [
       { kind: 'date_phrase', source: 'seller_input', value: sellerInput },

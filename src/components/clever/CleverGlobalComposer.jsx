@@ -1151,7 +1151,7 @@ export default function CleverGlobalComposer() {
         sendAriaLabel="An Clever senden"
         reviewSlot={reviewSlot}
         contextPills={contextPills}
-        suggestionChips={SUGGESTION_CHIPS}
+        suggestionChips={reviewModel?.reviewType === 'appointment_and_message_review' ? [] : SUGGESTION_CHIPS}
         onSuggestionChip={handleSuggestion}
         onAttachFile={handleAttachFile}
         emptyHint=""

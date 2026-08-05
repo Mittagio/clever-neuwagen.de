@@ -3,6 +3,8 @@
  * Extraktion bleibt async außerhalb (extractMagicOfferPdf) – hier nur Text → kind.
  */
 import { isCustomerContractIntakeText } from './extractCustomerContractFromText.js';
+import { buildOfferAttachmentLabel } from './buildOfferAttachmentLabel.js';
+import { extractSellerFactsFromOfferPdfText } from './mapMagicOfferIntentToSellerFacts.js';
 
 /**
  * @param {string} [fileName]
@@ -127,6 +129,13 @@ export function prepareComposerPdfTurnInput(params = {}) {
     };
   }
 
+  const offerFacts = ok ? extractSellerFactsFromOfferPdfText(fullText) : [];
+  const offerLabel = buildOfferAttachmentLabel({
+    fileName,
+    text: fullText,
+    facts: offerFacts,
+  });
+
   return {
     kind,
     ok,
@@ -142,8 +151,10 @@ export function prepareComposerPdfTurnInput(params = {}) {
       fileName,
       extractionMethod: attachment.extractionMethod,
       ocrStatus: attachment.ocrStatus,
+      detailLabel: offerLabel.detailLabel,
     },
-    workingContextLabel: fileName,
+    workingContextLabel: ok ? offerLabel.label : fileName,
+    workingContextDetailLabel: fileName,
     feedbackOk: 'PDF gelesen – Kontext angehängt, bitte prüfen',
     feedbackManual: ocrManual,
     ocr: extracted.ocr || null,

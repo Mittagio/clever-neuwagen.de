@@ -60,7 +60,9 @@ import {
   COMPOSER_MORE_CHIPS,
   buildChipSellerInput,
   resolveComposerShortcut,
+  resolveComposerChipsForReview,
 } from '../../services/crm/composerSuggestionService.js';
+import { normalizeVehicleDisplayLabel } from '../../services/cleverSeller/normalizeVehicleDisplayLabel.js';
 import {
   findOfferWorkingContext,
   toCurrentOfferContext,
@@ -1374,7 +1376,100 @@ export default function CustomerAkteSharedWorkspace({
       setTimeout(() => setFeedback(''), 2800);
       return;
     }
+    if (action.action === 'resolve_vehicle_trim') {
+      const prepared = universalTurn.preparedAppointment
+        || (universalTurn.preparedActions || []).find((a) => a.payload?.preparedAppointment)
+          ?.payload?.preparedAppointment
+        || null;
+      if (!prepared?.startsAt) {
+        setFeedback('Kein Terminvorschlag zum Anpassen');
+        setTimeout(() => setFeedback(''), 2400);
+        return;
+      }
+      const vehicleLabel = normalizeVehicleDisplayLabel({
+        make: 'Kia',
+        model: action.model,
+        trim: action.trim,
+        label: action.vehicleLabel,
+      }) || action.vehicleLabel || action.trim;
+      const nextAppt = {
+        ...prepared,
+        vehicleContext: {
+          model: action.model || prepared.vehicleContext?.model || null,
+          trim: action.trim || null,
+          label: vehicleLabel,
+          source: 'seller_resolution',
+        },
+        vehicleTrimConflict: null,
+        sendBlocked: false,
+      };
+      const rebuilt = {
+        ...universalTurn,
+        preparedAppointment: nextAppt,
+        warnings: (universalTurn.warnings || []).filter((w) => (
+          w !== 'vehicle_trim_conflict'
+          && !/Fahrzeugvariante unklar/i.test(String(w))
+        )),
+        extractedFacts: (universalTurn.extractedFacts || [])
+          .filter((f) => f.field !== 'vehicleTrimConflict')
+          .concat([{
+            factClass: 'vehicle_interest',
+            field: 'vehicleInterest',
+            value: { make: 'Kia', modelKey: String(action.model || '').toLowerCase(), trim: action.trim },
+            label: vehicleLabel,
+            confidence: 1,
+          }]),
+        preparedActions: (universalTurn.preparedActions || []).map((a) => (
+          a.payload?.preparedAppointment
+            ? {
+              ...a,
+              payload: {
+                ...a.payload,
+                preparedAppointment: nextAppt,
+                sendable: true,
+              },
+            }
+            : a
+        )),
+      };
+      // Nachricht neu anstoßen mit geklärter Variante
+      setSending(true);
+      try {
+        const turn = runCleverSellerTurn({
+          ...buildAkteSellerTurnParams({
+            pendingAction: {
+              ...(universalTurn.pendingAction || {}),
+              preparedAppointment: nextAppt,
+            },
+            workingContextItems: [
+              ...(workingContextItems || []),
+              {
+                id: 'resolved-vehicle-trim',
+                kind: 'vehicle',
+                model: action.model,
+                trim: action.trim,
+                label: vehicleLabel,
+                vehicleLabel,
+              },
+            ],
+          }),
+          sellerInput: `Terminvorschlag mit ${vehicleLabel} bestätigen.`,
+        });
+        setUniversalTurn(turn?.preparedAppointment ? turn : rebuilt);
+        setFeedback(`${String(vehicleLabel).replace(/^Kia\s+/i, '')} übernommen`);
+        setTimeout(() => setFeedback(''), 2800);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     if (action.action === 'send_appointment_proposal' || action.action === 'send_handoff') {
+      if (universalTurn?.preparedAppointment?.sendBlocked
+        || buildUniversalReviewModel(universalTurn)?.sendBlocked) {
+        setFeedback('Bitte Fahrzeugvariante klären, bevor der Vorschlag gesendet wird.');
+        setTimeout(() => setFeedback(''), 3200);
+        return;
+      }
       handleAcceptUniversalReview();
     }
     if (action.action === 'send_documents_package') {
@@ -1602,6 +1697,10 @@ export default function CustomerAkteSharedWorkspace({
     () => (universalTurn ? buildUniversalReviewModel(universalTurn) : null),
     [universalTurn],
   );
+  const composerChips = useMemo(
+    () => resolveComposerChipsForReview(reviewModel),
+    [reviewModel],
+  );
 
   const lastActionSlot = lastComposerAction ? (
     <SellerUniversalReviewCard
@@ -1657,8 +1756,8 @@ export default function CustomerAkteSharedWorkspace({
         scrollToMessageToken={hideFeed ? 0 : scrollToMessageToken}
         contextPills={workingContextItems}
         onRemoveContextPill={onRemoveWorkingContext}
-        suggestionChips={COMPOSER_PRIMARY_CHIPS}
-        moreSuggestionChips={COMPOSER_MORE_CHIPS}
+        suggestionChips={composerChips.chips}
+        moreSuggestionChips={composerChips.moreChips}
         onSuggestionChip={handleSuggestionChip}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (

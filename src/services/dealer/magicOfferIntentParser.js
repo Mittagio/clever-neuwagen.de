@@ -48,8 +48,9 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let discountPercent = null;
-  const pctMatch = blob.match(/(\d{1,2}(?:[.,]\d+)?)\s*(?:%|prozent)/i)
-    ?? blob.match(/(?:rabatt|nachlass)\s*(?:von\s*)?(\d{1,2}(?:[.,]\d+)?)/i);
+  // Bis 3 Vorkommastellen, damit ungültige Werte (z. B. 449 %) erkannt und später verworfen werden
+  const pctMatch = blob.match(/(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)/i)
+    ?? blob.match(/(?:rabatt|nachlass)\s*(?:von\s*)?(\d{1,3}(?:[.,]\d+)?)/i);
   if (pctMatch) discountPercent = parseDeNumber(pctMatch[1]);
 
   let discountAmount = null;

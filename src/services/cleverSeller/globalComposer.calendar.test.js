@@ -59,7 +59,10 @@ const brandes = createBrandesGoldenCaseLead({ phase: 'golden' });
   const apptSec = (review?.actionSections || []).find((s) => (
     s.kind === 'appointment_and_message_review'
   ));
-  assert.match(String(apptSec?.body || ''), /Noch nicht geprüft/);
+  const calendarText = String(
+    apptSec?.appointmentReview?.calendarLabel || apptSec?.body || '',
+  );
+  assert.match(calendarText, /noch nicht gepr/i);
 }
 
 // --- window.__cleverCalendarProvider hat Vorrang (auch ohne Flag) ---
@@ -96,7 +99,10 @@ const brandes = createBrandesGoldenCaseLead({ phase: 'golden' });
   const apptSec = (review?.actionSections || []).find((s) => (
     s.kind === 'appointment_and_message_review'
   ));
-  assert.match(String(apptSec?.body || ''), /Verfügbar/);
+  const calendarText = String(
+    apptSec?.appointmentReview?.calendarLabel || apptSec?.body || '',
+  );
+  assert.match(calendarText, /Verf[uü]gbar/i);
   assert.ok((turn.uiEffects?.progressLines || []).some((l) => /Kalender:\s*verfügbar/i.test(l)));
 }
 

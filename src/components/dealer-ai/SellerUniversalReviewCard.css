@@ -360,3 +360,61 @@
   outline: 2px solid rgba(15, 23, 42, 0.28);
   outline-offset: 1px;
 }
+
+.sur-card__btn.is-disabled,
+.sur-card__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sur-card__appt-meta {
+  margin-top: 0.15rem;
+}
+
+.sur-card__message-block {
+  margin: 0 0 8px;
+}
+
+.sur-card__message-block .sur-card__draft {
+  margin-top: 0.2rem;
+}
+
+.sur-card__used-context {
+  margin: 8px 0 0;
+}
+
+.sur-card__used-context-line {
+  margin: 0 0 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #6b7280;
+}
+
+.sur-card__warnings {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sur-card__warnings li {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #8a5a2b;
+}
+
+@media (max-width: 640px) {
+  .sur-card--multi .sur-card__actions-main {
+    flex-direction: column;
+  }
+
+  .sur-card--multi .sur-card__btn--primary {
+    width: 100%;
+  }
+
+  .sur-card__chips {
+    display: none;
+  }
+}

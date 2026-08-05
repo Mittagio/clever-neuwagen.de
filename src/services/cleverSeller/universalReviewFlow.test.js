@@ -57,10 +57,24 @@ const outlookTurn = runCleverSellerTurn({ lead: emptyLead, sellerInput: outlookD
 assert.equal(shouldShowUniversalReview(outlookTurn), true);
 const outlookModel = buildUniversalReviewModel(outlookTurn);
 assert.ok(outlookModel);
-assert.ok(outlookModel.groups.some((g) => g.id === 'customer' && /Hafner/i.test(g.line)));
-assert.ok(outlookModel.groups.some((g) => g.id === 'appointment' && /Probefahrt/i.test(g.line)));
-assert.ok(outlookModel.groups.some((g) => g.id === 'wish' && /Seltos/i.test(g.line)));
-assert.ok(outlookModel.groups.some((g) => g.id === 'vehicle_current' && /Octavia/i.test(g.line)));
+// Appointment-Review: Fact-Gruppen sind eingeklappt (collapsedContext), nicht offen
+const outlookGroups = outlookModel.reviewType === 'appointment_and_message_review'
+  ? (outlookModel.collapsedContext?.groups || [])
+  : (outlookModel.groups || []);
+if (outlookModel.reviewType === 'appointment_and_message_review') {
+  assert.equal((outlookModel.groups || []).length, 0);
+  assert.ok(outlookModel.appointmentReview);
+}
+assert.ok(
+  outlookGroups.some((g) => g.id === 'customer' && /Hafner/i.test(g.line))
+  || /Hafner/i.test(String(outlookModel.appointmentReview?.customerName || '')),
+);
+assert.ok(
+  outlookGroups.some((g) => g.id === 'appointment' && /Probefahrt/i.test(g.line))
+  || /Probefahrt|Beratung|Autohaus/i.test(String(outlookModel.appointmentReview?.appointmentTypeLabel || '')),
+);
+assert.ok(outlookGroups.some((g) => g.id === 'wish' && /Seltos/i.test(g.line)));
+assert.ok(outlookGroups.some((g) => g.id === 'vehicle_current' && /Octavia/i.test(g.line)));
 
 const outlookApplied = applyAcceptedSellerTurn(emptyLead, outlookTurn, { postFeedCard: false });
 assert.ok(outlookApplied.lead.crm?.cleverAppointment?.startAt);

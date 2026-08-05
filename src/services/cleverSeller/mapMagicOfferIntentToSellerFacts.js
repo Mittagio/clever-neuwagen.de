@@ -8,6 +8,10 @@ import {
   SELLER_FACT_SOURCE,
 } from './sellerFactTypes.js';
 import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
+import {
+  INVALID_DISCOUNT_WARNING,
+  validateDiscountPercent,
+} from './validateDiscountPercent.js';
 
 const PAYMENT_LABEL = {
   leasing: 'Leasing',
@@ -114,13 +118,25 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
   }
 
   if (commercial.discountPercent != null) {
-    push({
-      factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
-      field: 'discountPercent',
-      value: Number(commercial.discountPercent),
-      label: `${commercial.discountPercent} % Rabatt`,
-      confidence: 0.9,
-    });
+    const checked = validateDiscountPercent(commercial.discountPercent);
+    if (checked.ok) {
+      push({
+        factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+        field: 'discountPercent',
+        value: checked.value,
+        label: `${checked.value} % Rabatt`,
+        confidence: 0.9,
+      });
+    } else if (checked.conflict) {
+      push({
+        factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+        field: 'discountPercentInvalid',
+        value: { raw: commercial.discountPercent, conflict: true },
+        label: INVALID_DISCOUNT_WARNING,
+        confidence: 0.95,
+        needsConfirmation: true,
+      });
+    }
   }
 
   if (commercial.transferCost != null) {

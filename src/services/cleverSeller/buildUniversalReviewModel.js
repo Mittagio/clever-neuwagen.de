@@ -8,6 +8,9 @@ import { buildInboundLeadReviewModel } from './inboundLeadIntake.js';
 import { buildCustomerReplyReviewModel } from './customerReplyIntake.js';
 import { buildMultiSourceIntakeReviewModel } from './multiSource/buildMultiSourceIntakeReview.js';
 import { calendarAvailabilityLabel } from './checkCalendarAvailability.js';
+import { INVALID_DISCOUNT_WARNING } from './validateDiscountPercent.js';
+import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
+import { detectVehicleTrimConflict } from './detectVehicleTrimConflict.js';
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -917,18 +920,22 @@ export function buildUniversalReviewModel(turn = {}) {
     if (fromFacts) return fromFacts;
   }
 
-  const facts = turn.extractedFacts ?? [];
+  const facts = (turn.extractedFacts ?? []).filter((f) => f.field !== 'discountPercentInvalid');
   const actionSectionsEarly = buildUniversalActionSections(turn);
   if (!facts.length && !actionSectionsEarly.length) return null;
 
   const used = new Set();
   const groups = [];
+  const discountWarnings = (turn.extractedFacts ?? [])
+    .filter((f) => f.field === 'discountPercentInvalid')
+    .map((f) => f.label || INVALID_DISCOUNT_WARNING);
 
   for (const def of GROUP_ORDER) {
     const items = [];
     for (const factClass of def.classes) {
       for (const f of facts) {
         if (f.factClass !== factClass || !f.label) continue;
+        if (f.field === 'vehicleTrimConflict') continue;
         const key = `${f.factClass}:${f.field}:${f.label}`;
         if (used.has(key)) continue;
         used.add(key);
@@ -1132,34 +1139,83 @@ export function buildUniversalReviewModel(turn = {}) {
       || turn.messageDraft
       || preparedAppt?.messageDraft
       || null;
-    actionSections.unshift({
-      id: 'appointment_and_message_review',
-      kind: 'appointment_and_message_review',
-      title: 'Clever hat vorbereitet',
-      headline: turn.resolvedCustomer?.name || preparedAppt?.whenLabel || null,
-      body: [
-        turn.resolvedCustomer?.name ? `KUNDE\n${turn.resolvedCustomer.name}` : null,
-        preparedAppt
-          ? `TERMINVORSCHLAG\n${preparedAppt.dateLabel || preparedAppt.whenLabel || ''}\n${preparedAppt.timeLabel ? `${preparedAppt.timeLabel} Uhr` : ''}`
-          : (apptSec?.headline ? `TERMINVORSCHLAG\n${apptSec.headline}` : null),
-        [
-          'ANLASS',
-          preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
-          preparedAppt?.vehicleContext?.label || null,
-        ].filter(Boolean).join('\n'),
-        `KALENDER\n${calendarAvailabilityLabel(avail)}`,
-        msgBody ? `NACHRICHT\n„${String(msgBody).trim()}“` : null,
-      ].filter(Boolean).join('\n\n'),
-      preparedAppointment: preparedAppt,
-      messageSection: msgSec,
-      availabilityStatus: avail,
-      primaryActions: [
+    const factTrimConflict = (turn.extractedFacts ?? []).find((f) => f.field === 'vehicleTrimConflict');
+    const apptTrimConflict = preparedAppt?.vehicleTrimConflict
+      || (factTrimConflict?.value?.options
+        ? {
+          conflict: true,
+          model: factTrimConflict.value.model,
+          options: factTrimConflict.value.options,
+          warning: factTrimConflict.label,
+        }
+        : null)
+      || detectVehicleTrimConflict([
+        preparedAppt?.vehicleContext,
+        ...(turn.extractedFacts || [])
+          .filter((f) => f.field === 'vehicleInterest' || f.field === 'trimPreference')
+          .map((f) => ({
+            model: f.value?.modelKey || f.value?.model,
+            trim: f.value?.trim || (Array.isArray(f.value) ? f.value[0] : null),
+            label: f.label,
+          })),
+      ]);
+    const vehicleLabel = normalizeVehicleDisplayLabel(
+      preparedAppt?.vehicleContext
+      || (turn.extractedFacts || []).find((f) => f.field === 'vehicleInterest')?.label
+      || null,
+    );
+    const calendarLine = avail === 'not_checked'
+      ? 'Kalender noch nicht geprüft'
+      : `Kalender: ${calendarAvailabilityLabel(avail)}`;
+    const usedContextParts = [
+      vehicleLabel?.replace(/^Kia\s+/i, '') || null,
+      (turn.extractedFacts || []).find((f) => f.field === 'colorPreference')?.label
+        || (turn.extractedFacts || []).find((f) => /rot|schwarz|weiß|weiss|blau/i.test(f.label || ''))?.label
+        || null,
+      (turn.extractedFacts || []).find((f) => f.field === 'paymentType')?.label || null,
+    ].filter(Boolean);
+    // Dedupliziere Teilstrings (kein „EV2 Air · EV2 Air“)
+    const usedContextSummary = [...new Set(usedContextParts.map((p) => String(p).trim()))]
+      .filter((part, idx, arr) => !arr.some((other, j) => j !== idx && other.includes(part) && other.length > part.length))
+      .join(' · ') || null;
+    const sendBlocked = Boolean(
+      apptTrimConflict?.conflict
+      || preparedAppt?.sendBlocked
+      || !msgBody,
+    );
+    const conflictActions = (apptTrimConflict?.conflict ? apptTrimConflict.options : []).map((opt) => ({
+      id: opt.id || `use_${opt.trim}`,
+      label: opt.actionLabel || `${opt.trim} verwenden`,
+      action: 'resolve_vehicle_trim',
+      trim: opt.trim,
+      model: apptTrimConflict.model,
+      vehicleLabel: opt.label,
+      tone: 'secondary',
+    }));
+    const primaryActions = sendBlocked && conflictActions.length
+      ? [
+        ...conflictActions,
+        {
+          id: 'check_calendar',
+          label: 'Kalender prüfen',
+          action: 'check_calendar',
+          tone: 'compact',
+        },
+        {
+          id: 'discard',
+          label: 'Verwerfen',
+          action: 'discard',
+          tone: 'compact',
+        },
+      ]
+      : [
         {
           id: 'send_proposal',
           label: 'Vorschlag senden',
           leadId: turn.resolvedCustomer?.id || null,
           action: 'send_appointment_proposal',
           tone: 'primary',
+          disabled: sendBlocked,
         },
         {
           id: 'edit_message',
@@ -1180,7 +1236,55 @@ export function buildUniversalReviewModel(turn = {}) {
           action: 'discard',
           tone: 'compact',
         },
-      ],
+      ];
+    actionSections.unshift({
+      id: 'appointment_and_message_review',
+      kind: 'appointment_and_message_review',
+      title: 'TERMINVORSCHLAG VORBEREITET',
+      headline: [
+        preparedAppt?.dateLabel || preparedAppt?.whenLabel || null,
+        preparedAppt?.timeLabel ? `${preparedAppt.timeLabel} Uhr` : null,
+      ].filter(Boolean).join(' · ') || turn.resolvedCustomer?.name || null,
+      body: [
+        preparedAppt
+          ? [
+            preparedAppt.dateLabel || preparedAppt.whenLabel || '',
+            preparedAppt.timeLabel ? `${preparedAppt.timeLabel} Uhr` : '',
+          ].filter(Boolean).join(' · ')
+          : (apptSec?.headline || null),
+        preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
+        vehicleLabel,
+        calendarLine,
+        msgBody ? `NACHRICHT\n„${String(msgBody).trim()}“` : null,
+        usedContextSummary ? `Verwendeter Kontext: ${usedContextSummary}` : null,
+      ].filter(Boolean).join('\n'),
+      appointmentReview: {
+        customerName: turn.resolvedCustomer?.name || preparedAppt?.customerName || null,
+        dateLabel: preparedAppt?.dateLabel || null,
+        timeLabel: preparedAppt?.timeLabel || null,
+        whenLine: [
+          preparedAppt?.dateLabel || preparedAppt?.whenLabel || null,
+          preparedAppt?.timeLabel ? `${preparedAppt.timeLabel} Uhr` : null,
+        ].filter(Boolean).join(' · ') || null,
+        appointmentTypeLabel: preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
+        vehicleLabel,
+        calendarLabel: calendarLine,
+        message: msgBody ? String(msgBody).trim() : null,
+        usedContextSummary,
+      },
+      preparedAppointment: preparedAppt,
+      messageSection: msgSec,
+      availabilityStatus: avail,
+      sendBlocked,
+      vehicleTrimConflict: apptTrimConflict?.conflict ? apptTrimConflict : null,
+      warnings: [
+        ...discountWarnings,
+        apptTrimConflict?.conflict ? apptTrimConflict.warning : null,
+      ].filter(Boolean),
+      primaryActions,
+      secondaryActions: usedContextSummary
+        ? [{ id: 'toggle_context', label: 'Kontext anzeigen', action: 'toggle_context', tone: 'compact' }]
+        : [],
     });
   }
 
@@ -1492,6 +1596,7 @@ export function buildUniversalReviewModel(turn = {}) {
     || offerMessageReview
     || appointmentMessageReview
     || offerPrepareReview;
+  const apptReviewSec = actionSections.find((s) => s.kind === 'appointment_and_message_review');
   const offerHeroLabel = actionSections.find((s) => (
     s.kind === 'offer_prepare'
     || s.kind === 'offer_incomplete'
@@ -1500,6 +1605,15 @@ export function buildUniversalReviewModel(turn = {}) {
   ))?.headline
     || groups.find((g) => g.id === 'wish')?.line
     || null;
+
+  // Appointment-Review: Fact-Chips einklappen – nur Entscheidungsfelder offen
+  const appointmentCollapsedContext = appointmentMessageReview
+    ? {
+      summary: apptReviewSec?.appointmentReview?.usedContextSummary || null,
+      groups,
+    }
+    : null;
+  const visibleGroups = appointmentMessageReview ? [] : groups;
 
   return {
     reviewType: documentsReview
@@ -1526,18 +1640,27 @@ export function buildUniversalReviewModel(turn = {}) {
                         ? 'offer_prepare'
                         : (clarifyGoal ? 'clarify_goal' : null),
     compactUi: compactOfferOrAppointment || undefined,
-    hero: compactOfferOrAppointment
+    hero: appointmentMessageReview
+      ? {
+        name: apptReviewSec?.appointmentReview?.whenLine
+          || turn.resolvedCustomer?.name
+          || 'Terminvorschlag',
+        eyebrow: 'Terminvorschlag vorbereitet',
+        subtitle: [
+          apptReviewSec?.appointmentReview?.appointmentTypeLabel,
+          apptReviewSec?.appointmentReview?.vehicleLabel,
+        ].filter(Boolean).join(' · ') || null,
+      }
+      : compactOfferOrAppointment
       ? {
         name: turn.resolvedCustomer?.name || offerHeroLabel || 'Angebot',
         eyebrow: offerAppointmentReview
           ? 'Angebot & Termin'
           : offerMessageReview
             ? 'Angebot & Nachricht'
-            : appointmentMessageReview
-              ? 'Terminvorschlag'
-              : offerIncompleteOnly
-                ? 'Angebot unvollständig'
-                : 'Angebot erkannt',
+            : offerIncompleteOnly
+              ? 'Angebot unvollständig'
+              : 'Angebot erkannt',
         subtitle: offerHeroLabel && turn.resolvedCustomer?.name ? offerHeroLabel : null,
       }
       : undefined,
@@ -1564,7 +1687,7 @@ export function buildUniversalReviewModel(turn = {}) {
               : offerAppointmentReview
                 ? '✨ Clever hat vorbereitet'
                 : appointmentMessageReview
-                  ? '✨ Clever hat vorbereitet'
+                  ? '✨ TERMINVORSCHLAG VORBEREITET'
                   : knowledgeMessageReview
                     ? (actionSections.find((s) => s.kind === 'knowledge_and_message_review')?.title === 'Fahrzeug erkannt'
                       ? '✨ Fahrzeug erkannt'
@@ -1596,7 +1719,10 @@ export function buildUniversalReviewModel(turn = {}) {
                                       : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
                                         ? '✨ Clever hat vorbereitet'
                                         : '✨ Clever hat verstanden'),
-    groups,
+    groups: visibleGroups,
+    collapsedContext: appointmentCollapsedContext,
+    appointmentReview: apptReviewSec?.appointmentReview || null,
+    sendBlocked: Boolean(apptReviewSec?.sendBlocked),
     actionSections,
     factCount: facts.length,
     summaryLine: clarifyGoal
@@ -1644,7 +1770,11 @@ export function buildUniversalReviewModel(turn = {}) {
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
-    warnings: turn.warnings ?? [],
+    warnings: [
+      ...(turn.warnings ?? []),
+      ...discountWarnings,
+      ...(apptReviewSec?.warnings || []),
+    ].filter((w, i, arr) => w && arr.indexOf(w) === i),
     assistantReply: turn.assistantReply ?? null,
     primaryCta: clarifyGoal
       ? 'Angebot vorbereiten'

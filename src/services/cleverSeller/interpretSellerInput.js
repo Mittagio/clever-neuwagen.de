@@ -29,6 +29,13 @@ import {
   shouldEnrichSellerInputFromOfferPdf,
 } from './mapMagicOfferIntentToSellerFacts.js';
 import {
+  INVALID_DISCOUNT_WARNING,
+  validateDiscountPercent,
+} from './validateDiscountPercent.js';
+import { formatContractEndLabel } from './formatContractEndLabel.js';
+import { detectInterestTrimConflict } from './detectVehicleTrimConflict.js';
+import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
+import {
   buildInboundContactFacts,
   extractInboundContact,
   isInboundLeadPaste,
@@ -362,7 +369,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const trimLabelRaw = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
     const trimLabel = trimLabelRaw && /^cor$/i.test(trimLabelRaw) ? 'Core' : trimLabelRaw;
     const trimValue = trimLabel && /^core$/i.test(trimLabel) ? 'core' : trimLabel;
-    const label = trimLabel ? `Kia ${modelLabel} ${trimLabel}` : `Kia ${modelLabel}`;
+    const label = normalizeVehicleDisplayLabel({
+      make: 'Kia',
+      model: modelLabel,
+      trim: trimLabel,
+    }) || (trimLabel ? `Kia ${modelLabel} ${trimLabel}` : `Kia ${modelLabel}`);
     if (!interestHits.some((h) => h.label === label)) {
       interestHits.push({
         modelKey,
@@ -374,7 +385,20 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     interestMatch = interestRe.exec(t);
   }
 
-  if (interestHits.length >= 2) {
+  const interestTrimConflict = detectInterestTrimConflict(interestHits);
+  if (interestTrimConflict.conflict) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+      field: 'vehicleTrimConflict',
+      value: {
+        model: interestTrimConflict.model,
+        options: interestTrimConflict.options,
+      },
+      label: interestTrimConflict.warning,
+      confidence: 0.95,
+      needsConfirmation: true,
+    }));
+  } else if (interestHits.length >= 2) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'vehicleInterestMulti',
@@ -538,7 +562,9 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       factClass: SELLER_FACT_CLASS.CONTRACT_FACT,
       field: 'existingContractEnd',
       value: endDate ? { type: 'leasing', endDate } : { type: 'leasing' },
-      label: endDate ? `Leasingende ${endDate}` : 'Leasingvertrag vorhanden',
+      label: endDate
+        ? (formatContractEndLabel(endDate, { type: 'leasing' }) || `Leasingende ${endDate}`)
+        : 'Leasingvertrag vorhanden',
       confidence: endDate ? 0.93 : 0.8,
       needsConfirmation: !endDate,
     }));
@@ -766,20 +792,31 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  // Offer instructions
-  const discount = t.match(/\b(\d{1,2})\s*(?:%|prozent)\s*(?:sonder)?rabatt\b/i)
-    || t.match(/\b(\d{1,2})\s*%(?!\d)/)
-    || t.match(/\b(\d{1,2})\s*prozent\b/i);
+  // Offer instructions – ungültige %-Werte (z. B. 449) nicht als Rabatt übernehmen
+  const discount = t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)\s*(?:sonder)?rabatt\b/i)
+    || t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*%(?!\d)/)
+    || t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*prozent\b/i);
   if (discount) {
     const hasOfferCue = /\brabatt|angebot|erstell|mach|sonder|leasing|finanz/i.test(t);
-    const pct = Number(discount[1]);
-    // Isolierte %-Zahl nur mit Bestätigung (z. B. „21 %“ ohne Kontext)
-    if (hasOfferCue || pct >= 10) {
+    const checked = validateDiscountPercent(discount[1]);
+    if (!checked.ok) {
+      if (checked.conflict) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+          field: 'discountPercentInvalid',
+          value: { raw: discount[1], conflict: true },
+          label: INVALID_DISCOUNT_WARNING,
+          confidence: 0.95,
+          needsConfirmation: true,
+        }));
+      }
+    } else if (hasOfferCue || checked.value >= 10) {
+      // Isolierte %-Zahl nur mit Bestätigung (z. B. „21 %“ ohne Kontext)
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
         field: 'discountPercent',
-        value: pct,
-        label: `${discount[1]} % Rabatt`,
+        value: checked.value,
+        label: `${checked.value} % Rabatt`,
         confidence: hasOfferCue ? 0.9 : 0.7,
         needsConfirmation: !hasOfferCue,
       }));

@@ -144,15 +144,19 @@ export function parseAppointmentDateTime(text = '', now = new Date()) {
     }
   }
 
-  const timeMatch = t.match(/\b(?:um\s*)?(\d{1,2})(?:[:.](\d{2}))?\s*uhr\b/)
-    || findClockTimeMatch(t)
-    || t.match(/\bum\s+(\d{1,2})\b/);
+  const uhrMatch = t.match(/\b(?:um\s*)?(\d{1,2})(?:[:.](\d{2}))?\s*uhr\b/);
+  const clockMatch = !uhrMatch ? findClockTimeMatch(t) : null;
+  const umMatch = !uhrMatch && !clockMatch ? t.match(/\bum\s+(\d{1,2})\b/) : null;
+  const timeMatch = uhrMatch || clockMatch || umMatch;
   let hour = null;
   let minute = 0;
   if (timeMatch) {
     hour = Number(timeMatch[1]);
-    minute = timeMatch[2] != null ? Number(timeMatch[2]) : 0;
+    // „15 Uhr“ / „um 15“ → :00; Minuten nur bei explizitem 15:30 / 15.30
+    const explicitMinutes = timeMatch[2] != null && String(timeMatch[2]).length > 0;
+    minute = explicitMinutes ? Number(timeMatch[2]) : 0;
     if (hour >= 0 && hour <= 23) {
+      // Nie Restminuten von „now“ übernehmen
       base.setHours(hour, minute, 0, 0);
     } else {
       hour = null;

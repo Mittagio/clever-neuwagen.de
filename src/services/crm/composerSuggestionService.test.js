@@ -9,6 +9,7 @@ import {
   buildComposerCustomerMessage,
   buildComposerSuggestionAssist,
   resolveComposerShortcut,
+  resolveComposerChipsForReview,
 } from './composerSuggestionService.js';
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
 
@@ -61,5 +62,15 @@ assert.equal(link.results[0].type, INLINE_RESULT_TYPES.PORTFOLIO_SEND);
 
 const delivery = buildComposerCustomerMessage(lead, 'lieferzeit');
 assert.match(delivery.body, /Verfügbarkeit|Lieferzeit/i);
+
+const apptChips = resolveComposerChipsForReview({
+  reviewType: 'appointment_and_message_review',
+  actionSections: [{
+    kind: 'appointment_and_message_review',
+    primaryActions: [{ id: 'send', action: 'send_appointment_proposal' }],
+  }],
+});
+assert.equal(apptChips.chips.length, 0);
+assert.ok(!apptChips.chips.some((c) => c.id === 'nachfassen'));
 
 console.log('composerSuggestionService.test.js: OK');
