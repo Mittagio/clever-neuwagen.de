@@ -8,7 +8,6 @@ const homeSource = readFileSync(join(__dirname, 'BackendHome.jsx'), 'utf8');
 const tilesSource = readFileSync(join(__dirname, 'BackendMainTiles.jsx'), 'utf8');
 const sellSource = readFileSync(join(__dirname, 'BackendVerkaufenHub.jsx'), 'utf8');
 const heroSource = readFileSync(join(__dirname, 'BackendAdvisorHero.jsx'), 'utf8');
-const searchSource = readFileSync(join(__dirname, 'BackendCustomerSearch.jsx'), 'utf8');
 const headerSource = readFileSync(join(__dirname, '../layout/Header.jsx'), 'utf8');
 const backendPageSource = readFileSync(join(__dirname, '../../pages/BackendPage.jsx'), 'utf8');
 const composerSource = readFileSync(join(__dirname, '../clever/CleverGlobalComposer.jsx'), 'utf8');
@@ -69,20 +68,19 @@ assert.ok(backendPageSource.includes('BackendVerkaufenHub'), 'Backend bindet Ver
 
 assert.ok(!homeSource.includes('BackendAdvisorHero'), 'Kein paralleler Clever-Beratung-Hero auf Dashboard');
 assert.ok(homeSource.includes('CleverEmpfiehltToday'), 'Clever empfiehlt heute auf Dashboard');
-assert.ok(homeSource.includes('BackendCustomerSearch'), 'Kundensuche auf Dashboard');
+assert.ok(!homeSource.includes('BackendCustomerSearch'), 'Keine Kundensuche-Karte auf Dashboard');
+assert.ok(!homeSource.includes('Kundenakte finden'), 'Keine Kundenakte-finden-Sektion auf Dashboard');
 assert.ok(homeSource.includes('Guten Tag'), 'Begrüßung oben');
 assert.ok(homeSource.includes('composer-hero-slot') || homeSource.includes('composerSlotRef'), 'Composer-Hero-Slot');
 assert.ok(homeSource.includes('buildDashboardTodayRecommendations'), 'Empfehlungen ohne Score-Engine');
 assert.ok(heroSource.includes('Clever Beratung'), 'Advisor-Hero-Komponente bleibt für Verkaufen-Pfad');
-assert.ok(searchSource.includes('BackendCustomerSearch') || searchSource.length > 0, 'Kundensuche-Modul vorhanden');
 
 const renderBlock = homeSource.slice(homeSource.indexOf('return ('));
 assert.ok(
   renderBlock.indexOf('backend-home__greeting') < renderBlock.indexOf('composerSlotRef')
   && renderBlock.indexOf('composerSlotRef') < renderBlock.indexOf('<BackendMainTiles')
-  && renderBlock.indexOf('<BackendMainTiles') < renderBlock.indexOf('<CleverEmpfiehltToday')
-  && renderBlock.indexOf('<CleverEmpfiehltToday') < renderBlock.indexOf('<BackendCustomerSearch'),
-  'Reihenfolge: Greeting → Composer-Slot → Kacheln → Clever heute → Suche',
+  && renderBlock.indexOf('<BackendMainTiles') < renderBlock.indexOf('<CleverEmpfiehltToday'),
+  'Reihenfolge: Greeting → Composer-Slot → Kacheln → Clever heute',
 );
 
 console.log('BackendHome.test.js: ok');

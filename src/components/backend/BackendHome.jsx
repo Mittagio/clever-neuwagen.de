@@ -2,14 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
-import {
-  recordRecentCustomerOpen,
-  resolveCustomerOpenAction,
-} from '../../services/crm/customerSearchService.js';
-import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { buildDashboardTodayRecommendations } from '../../services/journey/buildDashboardTodayRecommendations.js';
 import CleverEmpfiehltToday from './CleverEmpfiehltToday.jsx';
-import BackendCustomerSearch from './BackendCustomerSearch.jsx';
 import BackendMainTiles from './BackendMainTiles.jsx';
 import './BackendHome.css';
 
@@ -30,14 +24,6 @@ export default function BackendHome({ onNavigateArea }) {
     register(composerSlotRef.current);
     return () => register(null);
   }, [composerCtx?.registerComposerHeroSlot]);
-
-  function handleOpenCustomerRecord(leadId) {
-    const { action, leadId: resolvedId } = resolveCustomerOpenAction(leadId, leads);
-    if (action !== 'open' || !resolvedId) return;
-    const lead = leads.find((item) => item.id === resolvedId);
-    if (lead) recordRecentCustomerOpen(lead);
-    navigate(buildKundenaktePath(resolvedId));
-  }
 
   function handleNavigateArea(areaId, sectionId) {
     if (onNavigateArea) {
@@ -65,12 +51,6 @@ export default function BackendHome({ onNavigateArea }) {
       <BackendMainTiles onNavigateArea={handleNavigateArea} leads={leads} />
 
       <CleverEmpfiehltToday items={cleverTodayItems} />
-
-      <BackendCustomerSearch
-        leads={leads}
-        onOpenCustomerRecord={handleOpenCustomerRecord}
-        variant="standalone"
-      />
     </div>
   );
 }
