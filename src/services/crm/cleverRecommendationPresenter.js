@@ -336,7 +336,14 @@ export function buildCleverEmpfiehltView({
     stars: starsFromClosure(closureChance),
     starLabel: starLabel(starsFromClosure(closureChance)),
     whyBullets,
-    whySummary: whyBullets.slice(0, 3).map((b) => b.text).join(' · '),
+    // Natürliche Kurzfassung (max. 2 Sätze); whyBullets bleiben für Audit/Detail
+    whySummary: whyBullets.slice(0, 2).map((b) => {
+      const t = String(b.text || '')
+        .trim()
+        .replace(/sind hinterlegt$/i, 'sind bekannt');
+      if (!t) return '';
+      return /[.!?…]$/.test(t) ? t : `${t}.`;
+    }).filter(Boolean).join(' '),
     actions: buildContactActions({
       recommendation,
       phone,

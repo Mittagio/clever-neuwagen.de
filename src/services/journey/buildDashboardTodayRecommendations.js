@@ -71,6 +71,55 @@ function resolveCtaLabel(item = {}, view = null) {
   return 'Öffnen und erledigen';
 }
 
+function ensureSentence(text = '') {
+  const t = String(text || '').trim().replace(/\s+/g, ' ');
+  if (!t) return '';
+  return /[.!?…]$/.test(t) ? t : `${t}.`;
+}
+
+function softenReasonPhrase(text = '') {
+  return String(text || '')
+    .trim()
+    .replace(/\s*·\s*/g, '. ')
+    .replace(/sind hinterlegt$/i, 'sind bekannt')
+    .replace(/^Budget und Wunschrate sind hinterlegt$/i, 'Budget und Wunschrate sind bekannt');
+}
+
+/**
+ * Natürliche Kurzfassung für die UI – keine technischen Reason-Ketten.
+ * reasons[] bleiben separat für Audit.
+ */
+export function buildNaturalRecommendationSummary({
+  reasons = [],
+  whyBullets = [],
+  detail = '',
+} = {}) {
+  const texts = [];
+  const push = (raw) => {
+    const softened = softenReasonPhrase(raw);
+    if (!softened) return;
+    // Keine bereits gejointen Ketten als ein Block übernehmen
+    if (softened.includes(' · ')) {
+      for (const part of softened.split(/\s*·\s*/)) push(part);
+      return;
+    }
+    if (!texts.some((t) => t.toLowerCase() === softened.toLowerCase())) {
+      texts.push(softened);
+    }
+  };
+
+  for (const bullet of whyBullets || []) {
+    push(bullet?.text || bullet);
+  }
+  for (const reason of reasons || []) {
+    push(reason);
+  }
+  if (!texts.length) push(detail);
+
+  const picked = texts.slice(0, 2).map(ensureSentence).filter(Boolean);
+  return picked.join(' ');
+}
+
 function workSortRank(item = {}) {
   if (item.overdue) return 0;
   if (item.dueToday || item.hasAppointmentToday) return 1;
@@ -152,13 +201,16 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
       const reasons = [...new Set([
         ...(item.reasons || []),
         ...(view?.whyBullets || []).map((b) => b.text),
-        view?.whySummary,
         view?.subline,
         item.detail,
-      ].filter(Boolean))].slice(0, 3);
+      ].filter(Boolean))].slice(0, 4);
 
       const ctaLabel = resolveCtaLabel(item, view);
-      const whySummary = reasons.join(' · ');
+      const whySummary = buildNaturalRecommendationSummary({
+        reasons,
+        whyBullets: view?.whyBullets || [],
+        detail: item.detail,
+      });
 
       return {
         leadId: item.leadId,

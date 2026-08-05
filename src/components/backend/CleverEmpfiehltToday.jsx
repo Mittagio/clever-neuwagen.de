@@ -21,8 +21,7 @@ export default function CleverEmpfiehltToday({ items = [] }) {
 
       <ol className="clever-today__list">
         {items.map((item, index) => {
-          const why = item.whySummary
-            || (Array.isArray(item.reasons) ? item.reasons.join(' · ') : '');
+          const why = item.whySummary || '';
           const cta = item.ctaLabel || item.headline || 'Öffnen und erledigen';
           return (
             <li key={item.leadId}>

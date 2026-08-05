@@ -9,6 +9,7 @@ import { IconMic } from './AkteIcons.jsx';
 export default function DealerAiInlineMic({
   onTranscript,
   onParsed,
+  onListeningChange = null,
   disabled = false,
   variant = 'side',
 }) {
@@ -19,10 +20,15 @@ export default function DealerAiInlineMic({
   const isFab = variant === 'fab';
   const isToolbar = variant === 'toolbar';
 
+  const setListeningState = useCallback((next) => {
+    setListening(next);
+    onListeningChange?.(next);
+  }, [onListeningChange]);
+
   const handleStart = useCallback(() => {
     if (!supported || disabled) return;
     setError('');
-    setListening(true);
+    setListeningState(true);
     startSpeechRecognition({
       onResult: ({ finalText }) => {
         if (!finalText) return;
@@ -31,11 +37,11 @@ export default function DealerAiInlineMic({
       },
       onError: (msg) => {
         setError(msg);
-        setListening(false);
+        setListeningState(false);
       },
-      onEnd: () => setListening(false),
+      onEnd: () => setListeningState(false),
     });
-  }, [disabled, onParsed, onTranscript, supported]);
+  }, [disabled, onParsed, onTranscript, setListeningState, supported]);
 
   const rootClass = [
     'dai-inline-mic',

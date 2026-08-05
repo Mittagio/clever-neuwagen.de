@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   buildDashboardTodayRecommendations,
+  buildNaturalRecommendationSummary,
   customerDedupeKey,
   dedupeRecommendationsByCustomer,
 } from './buildDashboardTodayRecommendations.js';
@@ -61,7 +62,23 @@ for (const item of items) {
   assert.equal(item.closureChance, undefined, 'Keine Abschluss-% im Dashboard-Item');
   assert.ok(item.ctaLabel, 'CTA vorhanden');
   assert.ok(item.whySummary || item.reasons?.length, 'Nachvollziehbarer Grund');
+  assert.ok(
+    !String(item.whySummary || '').includes(' · '),
+    'whySummary ist natürliche Copy, keine Reason-Kette',
+  );
+  assert.ok(Array.isArray(item.reasons), 'reasons[] bleiben für Audit');
 }
+
+assert.equal(
+  buildNaturalRecommendationSummary({
+    whyBullets: [
+      { text: 'Budget und Wunschrate sind hinterlegt' },
+      { text: 'Unterlagen fehlen noch' },
+      { text: 'Angebot wurde gestern geöffnet' },
+    ],
+  }),
+  'Budget und Wunschrate sind bekannt. Unterlagen fehlen noch.',
+);
 
 const deduped = dedupeRecommendationsByCustomer([
   { leadId: 'brandes-a', customerName: 'Herr Brandes', priority: 80, whySummary: 'A' },

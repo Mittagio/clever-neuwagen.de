@@ -1,7 +1,8 @@
-/* Clever Global Composer – Hero oben, nach Scroll Dock unten; Idle kompakt. */
+/* Clever Global Composer – Hybrid: Hero oben, nach Scroll kompaktes Dock unten. */
 
 .clever-global-composer {
-  --clever-global-composer-pad: 7.5rem;
+  --clever-composer-motion: 220ms ease;
+  --docked-composer-height: 72px;
 
   z-index: 60;
   display: flex;
@@ -12,6 +13,11 @@
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.1);
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  transition:
+    max-height var(--clever-composer-motion),
+    box-shadow var(--clever-composer-motion),
+    border-radius var(--clever-composer-motion),
+    opacity var(--clever-composer-motion);
 }
 
 .clever-global-composer--hero {
@@ -30,7 +36,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: min(45vh, 420px);
+  max-height: min(40vh, 400px);
   border-radius: 0;
   border-left: none;
   border-right: none;
@@ -39,35 +45,18 @@
   box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.1);
 }
 
+/* Dock Idle: nur Plus · einzeiliger Placeholder · Voice/Send */
 .clever-global-composer--idle.clever-global-composer--docked {
-  max-height: 110px;
+  min-height: 68px;
+  max-height: 76px;
 }
 
-.clever-global-composer--idle.clever-global-composer--hero {
-  max-height: 110px;
-}
-
-.clever-global-composer--expanded {
-  max-height: min(45vh, 420px);
+.clever-global-composer--expanded.clever-global-composer--docked {
+  max-height: min(40vh, 400px);
 }
 
 .clever-global-composer--expanded.clever-global-composer--hero {
   max-height: min(45vh, 480px);
-}
-
-.clever-global-composer__leitfrage {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0.55rem 1rem 0.1rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #0f172a;
-}
-
-.clever-global-composer--idle .clever-global-composer__leitfrage {
-  padding: 0.45rem 1rem 0.05rem;
-  font-size: 0.8rem;
 }
 
 .clever-global-composer__hint {
@@ -85,7 +74,7 @@
   flex-wrap: wrap;
   gap: 8px;
   margin: 0;
-  padding: 0.35rem 1rem 0.65rem;
+  padding: 0.35rem 0 0.15rem;
 }
 
 .clever-global-composer__quick-chip {
@@ -102,6 +91,7 @@
   white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
 }
 
 .clever-global-composer__quick-chip:hover:not(:disabled) {
@@ -220,9 +210,42 @@
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0));
 }
 
-.clever-global-composer--idle .sw-chat--composer-only .sw-composer {
+/* Dock Idle: flache einzeilige Leiste */
+.clever-global-composer--idle.clever-global-composer--docked .sw-chat--composer-only .sw-composer {
   border-top: none;
-  padding: 4px 12px calc(6px + env(safe-area-inset-bottom, 0));
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0));
+}
+
+.clever-global-composer--idle.clever-global-composer--docked .sw-composer__card--compact {
+  padding: 4px 8px;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.clever-global-composer--idle.clever-global-composer--docked .sw-composer__input--compact {
+  min-height: 28px;
+  max-height: 32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hero: große ruhige Eingabefläche */
+.clever-global-composer--hero .sw-composer__input {
+  min-height: 88px;
+  max-height: min(36vh, 220px);
+}
+
+.clever-global-composer--hero.clever-global-composer--expanded .sw-composer__input--grow {
+  min-height: 96px;
+  max-height: min(40vh, 280px);
+}
+
+.clever-global-composer--docked.clever-global-composer--expanded .sw-composer__input--grow {
+  min-height: 56px;
+  max-height: min(32vh, 240px);
+  overflow-y: auto;
 }
 
 .clever-global-composer .sw-composer__input {
@@ -236,11 +259,22 @@
   display: none;
 }
 
-@media (min-width: 900px) {
-  .clever-global-composer--docked {
-    --clever-global-composer-pad: 6.5rem;
+@media (max-width: 899px) {
+  .clever-global-composer--idle.clever-global-composer--docked {
+    min-height: 76px;
+    max-height: 88px;
   }
 
+  .clever-global-composer--expanded.clever-global-composer--docked {
+    max-height: 45vh;
+  }
+
+  .clever-global-composer--docked {
+    max-height: 45vh;
+  }
+}
+
+@media (min-width: 900px) {
   .clever-global-composer .sw-chat--composer-only .sw-chat__feed-main,
   .clever-global-composer .sw-composer {
     max-width: 720px;
@@ -249,9 +283,12 @@
   }
 }
 
-/* Nur im Dock: Inhalt nicht unter der Leiste verstecken */
+/* Spacer: gemessene Dock-Höhe + 16px (JS setzt --docked-composer-spacer; Höhe inkl. Safe-Area-Pad) */
 .app-layout:has(.clever-global-composer--docked) .app-layout__main {
-  padding-bottom: calc(var(--clever-global-composer-pad, 7.5rem) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(
+    --docked-composer-spacer,
+    calc(var(--docked-composer-height, 72px) + 16px)
+  );
 }
 
 .app-layout:has(.clever-global-composer--hero) .app-layout__main {

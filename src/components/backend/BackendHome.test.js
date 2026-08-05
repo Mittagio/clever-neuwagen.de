@@ -42,11 +42,22 @@ assert.ok(composerSource.includes("/verkaufsassistent?view=showroom"), 'Showroom
 assert.ok(composerSource.includes("/verkaufsassistent?view=model"), 'Modell-Workspace-Pfad');
 assert.ok(composerSource.includes('createPortal'), 'Ein Composer, Hero via Portal');
 assert.ok(composerSource.includes('resolveComposerSurfaceState'), 'Idle/Expanded State');
+assert.ok(composerSource.includes('resolveComposerDockMode'), 'Hero/Dock Mode');
+assert.ok(composerSource.includes('data-composer-instance="global"'), 'Eine Composer-Instanz');
+assert.ok(composerSource.includes('DealerAiInlineMic'), 'Voice im Dock/Hero');
+assert.ok(composerSource.includes('hideSuggestionChips'), 'Keine Suggestion-Chips im Dock');
+assert.ok(!composerSource.includes('COMPOSER_LEITFRAGE'), 'Keine Clever-Überschrift im Dock');
 assert.ok(
   composerSource.includes("reviewType === 'customer_intake_review'")
   && composerSource.includes("reviewType === 'inbound_lead_review'"),
   'Accept akzeptiert customer_intake_review + Alias',
 );
+
+const composerCss = readFileSync(join(__dirname, '../clever/CleverGlobalComposer.css'), 'utf8');
+assert.ok(composerCss.includes('--docked-composer-spacer') || composerCss.includes('docked-composer'), 'Spacer bei Dock');
+assert.ok(composerCss.includes('max-height: 76px') || composerCss.includes('76px'), 'Dock-Idle Desktop-Höhe');
+assert.ok(composerCss.includes('88px'), 'Dock-Idle Mobile-Höhe');
+assert.ok(composerCss.includes('220ms') || composerCss.includes('180ms'), 'Subtile Hero↔Dock Animation');
 
 assert.ok(!todaySource.includes('starLabel'), 'Keine Sterne in Clever empfiehlt heute');
 assert.ok(!todaySource.includes('closureChance'), 'Keine Prozentwerte in Clever empfiehlt heute');

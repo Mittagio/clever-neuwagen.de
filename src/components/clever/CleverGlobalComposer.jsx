@@ -4,11 +4,12 @@
  * Kundenakte: gleicher Orchestrator in CustomerAkteSharedWorkspace (fester Lead);
  * dieser Global Composer wird dort nicht gerendert.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import SellerUniversalReviewCard from '../dealer-ai/SellerUniversalReviewCard.jsx';
+import DealerAiInlineMic from '../dealer-ai/DealerAiInlineMic.jsx';
 import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import {
@@ -42,10 +43,11 @@ import {
   shouldRequestServerSellerTurn,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
-  COMPOSER_SOFT_PLACEHOLDERS,
+  COMPOSER_HERO_PLACEHOLDERS,
   resolveComposerDockMode,
   resolveComposerPlaceholder,
   resolveComposerSurfaceState,
+  resolveDockedContentSpacerPx,
 } from '../../services/cleverSeller/composerSurfaceState.js';
 import './CleverGlobalComposer.css';
 
@@ -60,7 +62,6 @@ const SUGGESTION_CHIPS = [
   { id: 'model', label: 'Modellwelt öffnen' },
 ];
 
-const COMPOSER_LEITFRAGE = 'Was soll Clever heute für dich erledigen?';
 const DOCK_SCROLL_THRESHOLD = 96;
 
 function buildAkteNavPath({ leadId, messageId = null, offerId = null }) {
@@ -122,6 +123,9 @@ export default function CleverGlobalComposer() {
   const navigate = useNavigate();
   const photoInputRef = useRef(null);
   const documentInputRef = useRef(null);
+  const shellRef = useRef(null);
+  const surfaceExpandedRef = useRef(false);
+  const dockModeRef = useRef('hero');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -129,10 +133,11 @@ export default function CleverGlobalComposer() {
   const [lastTurn, setLastTurn] = useState(null);
   const [progressHint, setProgressHint] = useState(null);
   const [focused, setFocused] = useState(false);
+  const [dictating, setDictating] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [scrolledPastHero, setScrolledPastHero] = useState(false);
 
   const visible = Boolean(ctx?.shouldShowGlobalComposer);
-  const docked = Boolean(ctx?.composerDocked);
   const heroSlotEl = ctx?.composerHeroSlotEl || null;
 
   const contextPills = useMemo(() => {
@@ -143,42 +148,122 @@ export default function CleverGlobalComposer() {
     }));
   }, [ctx]);
 
+  const customerMessageEdit = Boolean(
+    lastTurn?.handoffWorkingContext?.composerMode === 'customer_message_edit'
+    || ctx?.attachedWorkingObjects?.some((item) => item?.composerMode === 'customer_message_edit'),
+  );
+  const hasPendingAction = Boolean(lastTurn?.pendingAction || ctx?.pendingAction);
+
   const surfaceState = resolveComposerSurfaceState({
     focused,
     draft,
     hasAttachment: contextPills.length > 0,
-    dictating: false,
+    dictating,
     reviewOpen: Boolean(reviewModel),
+    pendingAction: hasPendingAction,
+    customerMessageEdit,
   });
   const isIdle = surfaceState === 'idle';
-  const dockMode = resolveComposerDockMode({ scrolledPastHero: docked });
+  const surfaceExpanded = surfaceState === 'expanded';
+  surfaceExpandedRef.current = surfaceExpanded;
+
+  const dockMode = resolveComposerDockMode({
+    scrolledPastHero,
+    surfaceExpanded,
+    currentlyDocked: scrolledPastHero || dockModeRef.current === 'docked',
+  });
+  dockModeRef.current = dockMode;
   const useHeroPortal = dockMode === 'hero' && heroSlotEl;
   const composerPlaceholder = resolveComposerPlaceholder({
     draft,
     hintIndex: placeholderIndex,
-    placeholders: COMPOSER_SOFT_PLACEHOLDERS,
+    dockMode,
+    placeholders: COMPOSER_HERO_PLACEHOLDERS,
   });
 
   const setComposerDocked = ctx?.setComposerDocked;
   useEffect(() => {
-    if (!visible || typeof window === 'undefined' || typeof setComposerDocked !== 'function') {
+    if (typeof setComposerDocked !== 'function') return;
+    setComposerDocked(dockMode === 'docked');
+  }, [dockMode, setComposerDocked]);
+
+  useEffect(() => {
+    if (!visible || typeof window === 'undefined') {
       return undefined;
     }
     const onScroll = () => {
-      setComposerDocked(window.scrollY > DOCK_SCROLL_THRESHOLD);
+      const past = window.scrollY > DOCK_SCROLL_THRESHOLD;
+      setScrolledPastHero((prev) => {
+        if (past) return true;
+        // Während Tippen/Attachment/Review nicht zurück zum Hero springen
+        if (surfaceExpandedRef.current) return prev;
+        return false;
+      });
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [visible, setComposerDocked]);
+  }, [visible]);
+
+  // Idle + bereits oben: Hero wiederherstellen (ohne auf neues Scroll-Event zu warten)
+  useEffect(() => {
+    if (!visible || typeof window === 'undefined' || surfaceExpanded) return;
+    if (window.scrollY <= DOCK_SCROLL_THRESHOLD) {
+      setScrolledPastHero(false);
+    }
+  }, [surfaceExpanded, visible]);
 
   useEffect(() => {
-    if (!isIdle || String(draft || '').trim()) return undefined;
+    if (!isIdle || dockMode !== 'hero' || String(draft || '').trim()) return undefined;
     const timer = window.setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % COMPOSER_SOFT_PLACEHOLDERS.length);
+      setPlaceholderIndex((prev) => (prev + 1) % COMPOSER_HERO_PLACEHOLDERS.length);
     }, 5200);
     return () => window.clearInterval(timer);
-  }, [isIdle, draft]);
+  }, [isIdle, draft, dockMode]);
+
+  // Fokus nach Hero↔Dock halten (kein Remount der Instanz; Draft bleibt in State)
+  useLayoutEffect(() => {
+    if (!focused || !visible) return;
+    const input = shellRef.current?.querySelector?.('.sw-composer__input');
+    if (input && document.activeElement !== input) {
+      input.focus({ preventScroll: true });
+    }
+  }, [dockMode, focused, visible]);
+
+  // Content-Spacer: gemessene Dock-Höhe + Safe-Area + 16px
+  useEffect(() => {
+    if (!visible || dockMode !== 'docked' || typeof document === 'undefined') {
+      document.documentElement?.style?.removeProperty?.('--docked-composer-height');
+      document.documentElement?.style?.removeProperty?.('--docked-composer-spacer');
+      return undefined;
+    }
+    const el = shellRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      const fallback = resolveDockedContentSpacerPx({ dockedComposerHeight: 72 });
+      document.documentElement.style.setProperty('--docked-composer-height', '72px');
+      document.documentElement.style.setProperty('--docked-composer-spacer', `${fallback}px`);
+      return undefined;
+    }
+    const update = () => {
+      // Gemessene Höhe enthält bereits Composer-Safe-Area-Padding
+      const height = Math.ceil(el.getBoundingClientRect().height || 72);
+      const spacer = resolveDockedContentSpacerPx({
+        dockedComposerHeight: height,
+        safeAreaInsetBottom: 0,
+        extraGap: 16,
+      });
+      document.documentElement.style.setProperty('--docked-composer-height', `${height}px`);
+      document.documentElement.style.setProperty('--docked-composer-spacer', `${spacer}px`);
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty('--docked-composer-height');
+      document.documentElement.style.removeProperty('--docked-composer-spacer');
+    };
+  }, [visible, dockMode, surfaceState, reviewModel]);
 
   if (!visible) return null;
 
@@ -1202,9 +1287,9 @@ export default function CleverGlobalComposer() {
                 <span>
                   {item.primaryCtaLabel || item.headline}
                 </span>
-                {item.reasons?.[0] && (
-                  <em>Grund: {item.reasons[0]}</em>
-                )}
+                {(item.whySummary || item.reasons?.[0]) ? (
+                  <em>{item.whySummary || item.reasons[0]}</em>
+                ) : null}
               </button>
             ))}
           </div>
@@ -1219,21 +1304,20 @@ export default function CleverGlobalComposer() {
     useHeroPortal ? 'clever-global-composer--hero' : 'clever-global-composer--docked',
   ].join(' ');
 
-  const hideInlineChips = isIdle
-    || reviewModel?.reviewType === 'appointment_and_message_review';
-  const showQuickOutside = Boolean(useHeroPortal && isIdle);
+  // Quick Actions nur im Hero; Dock nie mit Chips/Leitfrage
+  const showQuickOutside = Boolean(useHeroPortal);
+  const dockCompact = !useHeroPortal && isIdle;
 
   const node = (
     <>
       <div
+        ref={shellRef}
         className={shellClass}
         data-testid="clever-global-composer"
         data-composer-state={surfaceState}
         data-composer-dock={useHeroPortal ? 'hero' : 'docked'}
+        data-composer-instance="global"
       >
-        {!useHeroPortal ? (
-          <p className="clever-global-composer__leitfrage">{COMPOSER_LEITFRAGE}</p>
-        ) : null}
         {progressHint && (
           <p className="clever-global-composer__hint" role="status">{progressHint}</p>
         )}
@@ -1262,20 +1346,41 @@ export default function CleverGlobalComposer() {
           composerLabel=""
           sendAriaLabel="An Clever senden"
           reviewSlot={isIdle ? null : reviewSlot}
-          contextPills={contextPills}
-          suggestionChips={reviewModel?.reviewType === 'appointment_and_message_review' ? [] : SUGGESTION_CHIPS}
+          contextPills={isIdle && !useHeroPortal ? [] : contextPills}
+          suggestionChips={[]}
           onSuggestionChip={handleSuggestion}
-          hideSuggestionChips={hideInlineChips}
-          compactMode={isIdle}
-          autoGrow={!isIdle}
+          hideSuggestionChips
+          compactMode={dockCompact}
+          autoGrow={!dockCompact}
           onComposerFocus={() => setFocused(true)}
           onComposerBlur={() => {
-            if (!String(draft || '').trim() && !reviewModel && contextPills.length === 0) {
+            if (
+              !String(draft || '').trim()
+              && !reviewModel
+              && contextPills.length === 0
+              && !dictating
+              && !hasPendingAction
+              && !customerMessageEdit
+            ) {
               setFocused(false);
             }
           }}
           plusActions={plusActions}
           onAttachFile={handleAttachFile}
+          micSlot={(
+            <DealerAiInlineMic
+              variant="toolbar"
+              disabled={sending}
+              onListeningChange={(active) => {
+                setDictating(Boolean(active));
+                if (active) setFocused(true);
+              }}
+              onTranscript={(text) => {
+                setFocused(true);
+                setDraft((prev) => (prev ? `${prev} ${text}` : text));
+              }}
+            />
+          )}
           emptyHint=""
         />
         <input
