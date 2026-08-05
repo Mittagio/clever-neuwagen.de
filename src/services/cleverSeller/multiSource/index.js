@@ -12,6 +12,8 @@ export {
   buildMultiSourceIntake,
   enrichFactsForMultiSource,
   extractPersonNameFromDump,
+  formatTradeInCaptureLabel,
+  normalizeDumpPersonName,
   shouldBuildMultiSourceIntake,
 } from './buildMultiSourceIntake.js';
 export { buildMultiSourceIntakeReviewModel } from './buildMultiSourceIntakeReview.js';

@@ -939,6 +939,9 @@ export default function CleverGlobalComposer() {
       <div className="clever-global-composer__review">
         {Array.isArray(reviewModel.progressLines) && reviewModel.progressLines.length > 0
           && customerResults.length === 0
+          && reviewModel.reviewType !== 'customer_contract_tradein_intake_review'
+          && reviewModel.kind !== 'multi_source_intake'
+          && !reviewModel.compactUi
           && (
           <ul className="clever-global-composer__progress" aria-label="Clever Fortschritt">
             {reviewModel.progressLines.map((line) => (

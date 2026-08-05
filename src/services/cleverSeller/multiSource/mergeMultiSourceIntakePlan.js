@@ -6,7 +6,11 @@
  * Deterministik ist NICHT mehr Hauptwahrheit – nur Validator/Safety/Fallback.
  */
 import { SELLER_TURN_INTENTS } from '../sellerFactTypes.js';
-import { extractPersonNameFromDump } from './buildMultiSourceIntake.js';
+import {
+  extractPersonNameFromDump,
+  formatTradeInCaptureLabel,
+  normalizeDumpPersonName,
+} from './buildMultiSourceIntake.js';
 import { formatWishLabel } from './buildMultiSourceProgressLines.js';
 import { resolveContractTemporalStatus } from './resolveContractTemporalStatus.js';
 import { validateMultiSourceIntakePlan } from './validateMultiSourceIntakePlan.js';
@@ -295,8 +299,8 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
 
   // Lokale Safety: Name aus Baseline / Seller-Dump, wenn AI Kundenkandidat weglässt
   if (!resolvedCustomerCandidate?.fullName) {
-    const fallbackName = baseline?.resolvedCustomerCandidate?.fullName
-      || extractPersonNameFromDump(sellerInput);
+    const dumpName = normalizeDumpPersonName(extractPersonNameFromDump(sellerInput) || '');
+    const fallbackName = baseline?.resolvedCustomerCandidate?.fullName || dumpName || null;
     if (fallbackName) {
       resolvedCustomerCandidate = baseline?.resolvedCustomerCandidate?.fullName
         ? { ...baseline.resolvedCustomerCandidate }
@@ -309,6 +313,17 @@ export function planToIntake(plan = {}, { sellerInput = '', now = Date.now(), ba
           source: ['seller_input'],
           missingContact: true,
         };
+    }
+  } else {
+    // Dump-Name behalten, wenn AI nur Platzhalter liefert
+    const dumpName = normalizeDumpPersonName(extractPersonNameFromDump(sellerInput) || '');
+    const aiName = String(resolvedCustomerCandidate.fullName || '').trim();
+    if (dumpName && (!aiName || /^(?:kunde|unbekannt|n\.?\s*a\.?|–|-)$/i.test(aiName))) {
+      resolvedCustomerCandidate = {
+        ...resolvedCustomerCandidate,
+        fullName: dumpName.slice(0, 80),
+        source: [...new Set([...(resolvedCustomerCandidate.source || []), 'seller_input'])],
+      };
     }
   }
 
@@ -468,7 +483,7 @@ function buildPreparedActions(plan, parts = {}) {
     defaults.push({
       id: 'create_trade_in_candidate',
       type: SELLER_TURN_INTENTS.PREPARE_TRADE_IN,
-      label: `${parts.tradeIns[0].label} als Inzahlungnahme`,
+      label: formatTradeInCaptureLabel(parts.tradeIns[0]),
       persistOnAccept: true,
       mutatesCustomer: false,
     });

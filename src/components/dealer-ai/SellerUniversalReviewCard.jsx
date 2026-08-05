@@ -23,6 +23,14 @@ function pickPrimaryBody(model) {
     || s.kind === 'customer_contract_tradein_intake_review'
     || s.kind === 'multi_source_apply_result'
   ));
+  // Multi-Source mit Fact-Groups: kein langer Body-Text
+  if (
+    intakeSec?.kind === 'customer_contract_tradein_intake_review'
+    && Array.isArray(model?.groups)
+    && model.groups.length
+  ) {
+    return '';
+  }
   if (intakeSec?.body) return String(intakeSec.body).trim();
   if (model?.body && (
     model.reviewType === 'customer_intake_review'
@@ -125,6 +133,15 @@ function pickMetaLine(model) {
   return null;
 }
 
+function actionTone(action, index) {
+  if (action?.tone === 'primary' || action?.tone === 'secondary' || action?.tone === 'compact') {
+    return action.tone;
+  }
+  if (index === 0) return 'primary';
+  if (index === 1) return 'secondary';
+  return 'compact';
+}
+
 /**
  * Cursor-artige Review: eine Antwort + schmale Icon-CTAs (Ja / Nein / Vielleicht / Kopieren).
  * Settled (`status`): letzte übernommene/gesendete Aktion ohne Accept-CTAs.
@@ -192,12 +209,21 @@ export default function SellerUniversalReviewCard({
   ))?.hit;
   const isApplyResult = model.reviewType === 'multi_source_apply_result'
     || model.kind === 'multi_source_apply_result';
+  const isMultiSourceIntake = model.reviewType === 'customer_contract_tradein_intake_review'
+    || model.kind === 'multi_source_intake'
+    || Boolean(model.compactUi);
   const settled = Boolean(status) || isApplyResult;
   const showFactGroups = groups.length > 0 && (
-    model.reviewType === 'customer_contract_tradein_intake_review'
-    || model.kind === 'multi_source_intake'
+    isMultiSourceIntake
     || isApplyResult
   );
+  const hero = model?.hero || null;
+  const heroName = hero?.name
+    || groups.find((g) => g.id === 'customer')?.line
+    || null;
+  const statusLines = Array.isArray(model?.progressLines)
+    ? model.progressLines.slice(0, 2)
+    : [];
 
   if (!model || (!groups.length && !sections.length && !body)) return null;
 
@@ -214,7 +240,10 @@ export default function SellerUniversalReviewCard({
             : null);
 
   async function handleCopy() {
-    const text = body || model.summaryLine || '';
+    const text = body
+      || model.summaryLine
+      || groups.map((g) => g.line).filter(Boolean).join('\n')
+      || '';
     if (!text) return;
     try {
       await navigator.clipboard?.writeText?.(text);
@@ -250,9 +279,21 @@ export default function SellerUniversalReviewCard({
     onAccept?.(model, action);
   }
 
+  const primaryBtnActions = [];
+  const compactFromPrimary = [];
+  if (isMultiSourceIntake) {
+    reviewActions.forEach((action, index) => {
+      if (actionTone(action, index) === 'compact') compactFromPrimary.push(action);
+      else primaryBtnActions.push(action);
+    });
+  }
+  const compactBtnActions = isMultiSourceIntake
+    ? [...compactFromPrimary, ...secondaryReviewActions]
+    : [];
+
   return (
     <article
-      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}`}
+      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}${isMultiSourceIntake ? ' sur-card--multi' : ''}`}
       aria-live="polite"
     >
       <header className="sur-card__meta">
@@ -267,30 +308,69 @@ export default function SellerUniversalReviewCard({
         ) : null}
       </header>
 
-      {metaLine ? (
+      {isMultiSourceIntake && (heroName || hero?.eyebrow) ? (
+        <div className="sur-card__hero">
+          {hero?.eyebrow ? (
+            <span className="sur-card__hero-eyebrow">{hero.eyebrow}</span>
+          ) : null}
+          <h3 className="sur-card__hero-name">
+            {heroName || 'Neuer Kunde'}
+          </h3>
+          {hero?.subtitle ? (
+            <p className="sur-card__hero-sub">{hero.subtitle}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isMultiSourceIntake && statusLines.length > 0 ? (
+        <p className="sur-card__status-line" aria-label="Clever Status">
+          {statusLines.join(' · ')}
+        </p>
+      ) : null}
+
+      {!isMultiSourceIntake && metaLine ? (
         <p className="sur-card__context">{metaLine}</p>
       ) : null}
 
       {showFactGroups ? (
-        <ul className="sur-card__facts" aria-label="Erkannte Angaben">
-          {groups.map((group) => (
-            <li key={group.id || group.title} className="sur-card__fact">
-              <span className="sur-card__fact-title">{group.title}</span>
-              <span className="sur-card__fact-line">{group.line}</span>
-              {Array.isArray(group.items) && group.items.length > 1 ? (
-                <ul className="sur-card__fact-items">
-                  {group.items.map((item) => (
-                    <li
-                      key={`${group.id}-${item.label}`}
-                      className={item.tone === 'open' ? 'sur-card__fact-item--open' : undefined}
-                    >
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </li>
-          ))}
+        <ul className={`sur-card__facts${isMultiSourceIntake ? ' sur-card__facts--compact' : ''}`} aria-label="Erkannte Angaben">
+          {groups
+            .filter((group) => !(isMultiSourceIntake && group.id === 'customer' && heroName))
+            .map((group) => {
+              const chips = Array.isArray(group.chips) && group.chips.length
+                ? group.chips
+                : null;
+              const showItemList = !isMultiSourceIntake
+                && Array.isArray(group.items)
+                && group.items.length > 1
+                && !chips;
+              return (
+                <li key={group.id || group.title} className="sur-card__fact">
+                  <span className="sur-card__fact-title">{group.title}</span>
+                  {isMultiSourceIntake && chips ? (
+                    <span className="sur-card__chips">
+                      {chips.map((chip) => (
+                        <span key={`${group.id}-${chip}`} className="sur-card__chip">{chip}</span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="sur-card__fact-line">{group.line}</span>
+                  )}
+                  {showItemList ? (
+                    <ul className="sur-card__fact-items">
+                      {group.items.map((item) => (
+                        <li
+                          key={`${group.id}-${item.label}`}
+                          className={item.tone === 'open' ? 'sur-card__fact-item--open' : undefined}
+                        >
+                          {item.label}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
         </ul>
       ) : body ? (
         <pre className="sur-card__draft">{body}</pre>
@@ -311,28 +391,62 @@ export default function SellerUniversalReviewCard({
       ) : null}
 
       {((!settled || isApplyResult) && (reviewActions.length > 0 || secondaryReviewActions.length > 0)) ? (
-        <div className="sur-card__text-actions" role="group" aria-label="Review-Aktionen">
-          {reviewActions.map((action) => (
-            <button
-              key={action.id || action.label}
-              type="button"
-              className="sur-card__text-link"
-              onClick={() => handleReviewAction(action)}
-            >
-              {action.label}
-            </button>
-          ))}
-          {secondaryReviewActions.map((action) => (
-            <button
-              key={action.id || action.label}
-              type="button"
-              className="sur-card__text-link"
-              onClick={() => handleReviewAction(action)}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
+        isMultiSourceIntake ? (
+          <div className="sur-card__actions" role="group" aria-label="Review-Aktionen">
+            <div className="sur-card__actions-main">
+              {primaryBtnActions.map((action, index) => {
+                const tone = actionTone(action, index);
+                return (
+                  <button
+                    key={action.id || action.label}
+                    type="button"
+                    className={`sur-card__btn sur-card__btn--${tone}`}
+                    onClick={() => handleReviewAction(action)}
+                  >
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
+            {compactBtnActions.length > 0 ? (
+              <div className="sur-card__actions-more">
+                {compactBtnActions.map((action) => (
+                  <button
+                    key={action.id || action.label}
+                    type="button"
+                    className="sur-card__text-link"
+                    onClick={() => handleReviewAction(action)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="sur-card__text-actions" role="group" aria-label="Review-Aktionen">
+            {reviewActions.map((action) => (
+              <button
+                key={action.id || action.label}
+                type="button"
+                className="sur-card__text-link"
+                onClick={() => handleReviewAction(action)}
+              >
+                {action.label}
+              </button>
+            ))}
+            {secondaryReviewActions.map((action) => (
+              <button
+                key={action.id || action.label}
+                type="button"
+                className="sur-card__text-link"
+                onClick={() => handleReviewAction(action)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )
       ) : null}
 
       {historyHit && onOpenHistoryHit ? (

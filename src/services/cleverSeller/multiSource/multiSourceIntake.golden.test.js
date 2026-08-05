@@ -131,7 +131,6 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
   assert.match(review.title, /Beratungsfall/i);
-  assert.match(review.body || '', /EV4|Sandro|Mazzei|Picanto|Inzahlungnahme|Altvertrag|2 Kinder/i);
 
   const intake = turn.multiSourceIntake;
   assert.match(intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
@@ -148,13 +147,21 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.ok(intake.conflicts?.some((c) => c.id === 'children_count_temporal')
     || intake.historicalHousehold?.childrenCount === 1);
 
-  // Review Fact-Cards: Name + AHK sichtbar
+  // Review Fact-Cards + Hero: Name + AHK sichtbar
   const customerGroup = (review.groups || []).find((g) => g.id === 'customer' || g.title === 'KUNDE');
   const wishGroup = (review.groups || []).find((g) => g.id === 'wish' || g.title === 'NEUER WUNSCH');
-  assert.match(customerGroup?.line || review.body || '', /Sandro|Mazzei/i);
-  assert.match(wishGroup?.line || review.body || '', /AHK/i);
+  assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
+  assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
+  assert.match(wishGroup?.line || '', /AHK/i);
+  assert.ok((review.progressLines || []).length <= 2);
   assert.ok((review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
-  assert.ok((review.progressLines || []).some((l) => /Kunde:.*(?:Sandro|Mazzei)/i.test(l)));
+  assert.ok((review.progressLines || []).some((l) => /Kunde.*(?:Sandro|Mazzei)/i.test(l)));
+
+  // Primary Actions: Alles übernehmen zuerst, dann GW … erfassen
+  const primary = review.actionSections?.[0]?.primaryActions || [];
+  assert.equal(primary[0]?.action, 'accept_multi_source_intake');
+  assert.match(primary[0]?.label || '', /Alles übernehmen/i);
+  assert.ok(primary.some((a) => /GW.*Picanto.*erfassen/i.test(a.label || '')));
 
   // keine Auto-Persistenz
   assert.equal(turn.autoSent, false);
@@ -163,13 +170,22 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.ok(applied);
   assert.ok(!(applied.created && !applied.ok === undefined));
 
-  // Sensible Daten nicht im Review-Body
-  assert.ok(!/DE89 3704|L01X00T47/i.test(review.body || ''));
+  // Sensible Daten nicht in Review-Surfaces
+  const reviewBlob = JSON.stringify({
+    body: review.body,
+    groups: review.groups,
+    summaryLine: review.summaryLine,
+  });
+  assert.ok(!/DE89 3704|L01X00T47/i.test(reviewBlob));
 
   // Prepared actions vorhanden, nichts auto
   assert.ok((intake.preparedActions || []).some((a) => a.id === 'create_customer_candidate'));
   assert.ok((intake.preparedActions || []).some((a) => a.id === 'import_historical_contract'));
   assert.ok((intake.preparedActions || []).some((a) => a.id === 'create_trade_in_candidate'));
+  assert.match(
+    (intake.preparedActions || []).find((a) => a.id === 'create_trade_in_candidate')?.label || '',
+    /GW.*Picanto.*erfassen/i,
+  );
   assert.ok((intake.preparedActions || []).every((a) => a.mutatesCustomer === false));
 }
 
@@ -189,12 +205,34 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
   assert.ok((review.progressLines || []).some((l) => /Seller-Dump ausgewertet/i.test(l)));
   assert.ok(!(review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
-  assert.match(review.body || '', /Sandro|Mazzei/i);
-  assert.match(review.body || '', /AHK/i);
+  assert.ok((review.progressLines || []).length <= 2);
+  assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
   const customerGroup = (review.groups || []).find((g) => g.id === 'customer');
   const wishGroup = (review.groups || []).find((g) => g.id === 'wish');
   assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
   assert.match(wishGroup?.line || '', /AHK/i);
+  const primary = review.actionSections?.[0]?.primaryActions || [];
+  assert.equal(primary[0]?.label, 'Alles übernehmen');
+  assert.ok(primary.some((a) => /GW.*Picanto.*erfassen/i.test(a.label || '')));
+}
+
+// Deterministischer Fallback ohne Facts: Dump-Zeile „Mazzei Sandro“ → Review-Name
+{
+  const intake = buildMultiSourceIntake({
+    sellerInput: MAZZEI_DUMP,
+    attachments: [],
+    facts: [],
+    now: new Date('2026-08-04'),
+  });
+  assert.match(intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
+  const review = buildUniversalReviewModel({
+    multiSourceIntake: intake,
+    extractedFacts: [],
+    interpretedInput: { raw: MAZZEI_DUMP, normalized: MAZZEI_DUMP },
+  });
+  assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
+  assert.match((review.groups || []).find((g) => g.id === 'customer')?.line || '', /Sandro|Mazzei/i);
+  assert.ok((review.progressLines || []).some((l) => /Kunde.*(?:Sandro|Mazzei)/i.test(l)));
 }
 
 // Missing contact does not block review

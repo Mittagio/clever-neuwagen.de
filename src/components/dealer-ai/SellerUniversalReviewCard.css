@@ -229,3 +229,134 @@
   font-size: 0.75rem;
   color: #9aa3b5;
 }
+
+/* Multi-Source: Hero + Chips + klare Buttons */
+.sur-card--multi {
+  max-height: min(52vh, 420px);
+}
+
+.sur-card__hero {
+  margin: 0 0 8px;
+}
+
+.sur-card__hero-eyebrow {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa3b5;
+}
+
+.sur-card__hero-name {
+  margin: 0.15rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  font-weight: 650;
+  color: #1a2233;
+}
+
+.sur-card__hero-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #6b7280;
+}
+
+.sur-card__status-line {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #6b7280;
+}
+
+.sur-card__facts--compact {
+  gap: 0.4rem;
+}
+
+.sur-card__facts--compact .sur-card__fact-title {
+  margin-bottom: 0.15rem;
+}
+
+.sur-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.sur-card__chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #1a2233;
+  font-weight: 500;
+}
+
+.sur-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 10px;
+}
+
+.sur-card__actions-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.sur-card__actions-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+}
+
+.sur-card__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #1a2233;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sur-card__btn:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.sur-card__btn--primary {
+  border-color: transparent;
+  background: #1a2233;
+  color: #fff;
+}
+
+.sur-card__btn--primary:hover {
+  background: #2a3347;
+}
+
+.sur-card__btn--secondary {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.sur-card__btn--secondary:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.sur-card__btn:focus-visible {
+  outline: 2px solid rgba(15, 23, 42, 0.28);
+  outline-offset: 1px;
+}

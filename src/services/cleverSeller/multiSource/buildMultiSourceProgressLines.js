@@ -1,6 +1,6 @@
 /**
- * Ehrliche Fortschritts-/Checklisten-Zeilen für Multi-Source Review.
- * „Dokument zusammengeführt“ nur bei echtem Attachment-/Contract-Extract-Kontext.
+ * Ehrliche Fortschritts-/Statuszeilen für Multi-Source Review.
+ * Kompakt (max. 1–2 Zeilen) – keine Checklisten-Wand im Composer.
  */
 
 /**
@@ -25,20 +25,32 @@ export function buildMultiSourceProgressLines(intake = {}, options = {}) {
   const hist = intake?.historicalContract;
   const missing = intake?.missingInformation || [];
 
+  const bits = [
+    c?.fullName ? `Kunde ${c.fullName}` : null,
+    wishLabel ? `Wunsch ${shortWish(wishLabel)}` : null,
+    trade?.label ? `GW ${shortWish(trade.label)}` : null,
+    hist ? (hist.statusLabel || 'Altvertrag') : null,
+  ].filter(Boolean);
+
+  const head = hasDocument
+    ? 'Dump und Dokument zusammengeführt'
+    : 'Seller-Dump ausgewertet';
+  const summary = bits.length
+    ? `✓ ${head} · ${bits.slice(0, 3).join(' · ')}`
+    : `✓ ${head}`;
+
   return [
-    hasDocument
-      ? '✓ Seller-Dump und Dokument zusammengeführt'
-      : '✓ Seller-Dump ausgewertet',
-    c?.fullName ? `✓ Kunde: ${c.fullName}` : null,
-    wishLabel ? `✓ Wunsch: ${wishLabel}` : null,
-    trade?.label ? `✓ Inzahlungnahme: ${trade.label}` : null,
-    hist
-      ? (hist.statusLabel
-        ? `✓ ${hist.statusLabel}`
-        : `✓ Altvertrag: ${hist.contractTypeLabel || hist.contractKindLabel || 'erkannt'}`)
-      : null,
+    summary,
     missing.length ? `○ ${missing.length} Punkte noch offen` : null,
   ].filter(Boolean);
+}
+
+function shortWish(label = '') {
+  return String(label)
+    .replace(/^Kia\s+/i, '')
+    .replace(/\s*·\s*/g, ' ')
+    .trim()
+    .slice(0, 42);
 }
 
 /**

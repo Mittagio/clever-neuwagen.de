@@ -228,7 +228,7 @@ export function buildMultiSourceIntake(params = {}) {
     tradeIns[0] ? {
       id: 'create_trade_in_candidate',
       type: SELLER_TURN_INTENTS.PREPARE_TRADE_IN,
-      label: `${tradeIns[0].label} als Inzahlungnahme`,
+      label: formatTradeInCaptureLabel(tradeIns[0]),
       persistOnAccept: true,
       mutatesCustomer: false,
     } : null,
@@ -306,10 +306,12 @@ function buildCustomerCandidate({ sellerInput, nameFact, contractName, facts }) 
     fullName = extractPersonNameFromDump(sellerInput);
   }
   if (!fullName && contractName) fullName = contractName;
-
   if (!fullName) return null;
 
-  const parts = String(fullName).trim().split(/\s+/);
+  fullName = normalizeDumpPersonName(String(fullName).trim());
+  if (!fullName) return null;
+
+  const parts = fullName.split(/\s+/);
   const sources = [];
   if (nameFact || extractPersonNameFromDump(sellerInput)) sources.push('seller_input');
   if (contractName) sources.push('contract_pdf');
@@ -330,30 +332,45 @@ function buildCustomerCandidate({ sellerInput, nameFact, contractName, facts }) 
 
 /**
  * „Mazzei Sandro“ / „Sandro Mazzei“ – Name-Zeile ohne Fahrzeug-Tokens.
+ * Funktioniert zeilenweise und als Inline-Fallback (auch ohne Newlines).
  */
 export function extractPersonNameFromDump(text = '') {
-  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n').map((l) => l.trim()).filter(Boolean);
+  const raw = String(text || '').replace(/\r\n/g, '\n');
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
     if (/^(?:test|abgleich|gw|name)\b/i.test(line)) continue;
     if (/\b(?:ev\s*\d|ahk|km|kinder|haus|leasing|finanz|weiß|weiss|schwarz)\b/i.test(line)) continue;
     if (/\d/.test(line)) continue;
-    if (/^[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+){1,2}$/.test(line)) {
-      // „Mazzei Sandro“ (Nachname Vorname) vs „Sandro Mazzei“
-      const parts = line.split(/\s+/);
-      if (parts.length === 2) {
-        // Heuristik: wenn zweites Wort typischer Vorname-Länge und erstes länger → ggf. umdrehen
-        // Behalte Dump-Reihenfolge, split first/last in buildCustomerCandidate
-        return parts.join(' ');
-      }
-      return line;
+    if (/^[A-ZÄÖÜ][a-zäöüß'-]+(?:\s+[A-ZÄÖÜ][a-zäöüß'-]+){1,2}$/.test(line)) {
+      return line.split(/\s+/).join(' ');
     }
   }
-  // Inline „Mazzei Sandro EV4“
-  const inline = String(text || '').match(
-    /\b([A-ZÄÖÜ][a-zäöüß]+)\s+([A-ZÄÖÜ][a-zäöüß]+)\s+(?:EV\s*\d|Kia|Sportage|Picanto)/i,
+  // Inline „Mazzei Sandro EV4“ / einzeiliger Dump
+  const inline = raw.match(
+    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?:EV\s*\d|Kia|Sportage|Picanto|XCeed|Ceed|Niro)/i,
   );
   if (inline) return `${inline[1]} ${inline[2]}`;
+
+  // Letzter Versuch: Name vor GW-/Wunsch-Cue im Fließtext
+  const beforeCue = raw.match(
+    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?=(?:GW\b|Inzahlung|EV\s*\d))/i,
+  );
+  if (beforeCue) return `${beforeCue[1]} ${beforeCue[2]}`;
   return null;
+}
+
+/**
+ * Label für Secondary-CTA: „GW Kia Picanto erfassen“.
+ * @param {{ label?: string, make?: string, model?: string }|null|undefined} trade
+ */
+export function formatTradeInCaptureLabel(trade) {
+  if (!trade) return 'GW erfassen';
+  const base = String(trade.label || [trade.make, trade.model].filter(Boolean).join(' '))
+    .trim()
+    .replace(/^(?:inzahlungnahme:\s*)/i, '');
+  if (!base) return 'GW erfassen';
+  const withGw = /^gw\b/i.test(base) ? base : `GW ${base}`;
+  return /erfassen$/i.test(withGw) ? withGw : `${withGw} erfassen`;
 }
 
 function buildVehicleInterest(facts, sellerInput) {
@@ -499,12 +516,13 @@ export function enrichFactsForMultiSource(facts = [], sellerInput = '') {
   return list;
 }
 
-function normalizeDumpPersonName(name = '') {
-  const parts = String(name).trim().split(/\s+/);
-  if (parts.length !== 2) return name;
-  // Heuristik Nachname Vorname: zweites Token kürzer/üblich als Vorname
+export function normalizeDumpPersonName(name = '') {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length !== 2) return parts.join(' ');
+  // Heuristik Nachname Vorname: zweites Token typischer Vorname
   const [a, b] = parts;
-  const firstNameLike = /^(?:Sandro|Marco|Luca|Giulia|Anna|Lisa|Thomas|Michael|Andreas|Stefan|Peter|Klaus|Hans|Maria|Julia|Nina|Paul|Max|Tim|Jan)$/i;
+  const firstNameLike = /^(?:Sandro|Marco|Luca|Giulia|Anna|Lisa|Thomas|Michael|Andreas|Stefan|Peter|Klaus|Hans|Maria|Julia|Nina|Paul|Max|Tim|Jan|Alexander|Sebastian|Christian|Daniel|Markus|Oliver|Martin|Tobias|Matthias|Johannes|Felix|Lukas|Jonas|Simon|David|Patrick|Robert|Frank|Jürgen|Juergen|Wolfgang|Dieter|Uwe|Ralf|Sven|Nils|Erik|Kevin|Dennis|Marcel|Philipp|Benjamin|Florian|Christina|Sandra|Sabine|Petra|Monika|Andrea|Stefanie|Katharina|Laura|Sarah|Jessica|Melanie|Nicole|Claudia|Birgit|Heike|Susanne|Martina|Anja|Katrin|Elena|Sofia|Chiara|Giovanni|Antonio|Giuseppe|Francesco|Alessandro|Roberto|Paolo)$/i;
   if (firstNameLike.test(b) && !firstNameLike.test(a)) return `${b} ${a}`;
   if (firstNameLike.test(a)) return `${a} ${b}`;
   return `${a} ${b}`;
