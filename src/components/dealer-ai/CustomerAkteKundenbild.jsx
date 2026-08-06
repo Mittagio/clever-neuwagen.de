@@ -1,8 +1,17 @@
 import { useId } from 'react';
-import { IconCar, IconChevronDown, IconUser } from './AkteIcons.jsx';
 import {
+  IconCar,
+  IconChevronDown,
+  IconClock,
+  IconEuro,
+  IconUser,
+} from './AkteIcons.jsx';
+import {
+  EQUIPMENT_WISH_PRIORITY,
+  EQUIPMENT_WISH_PRIORITY_LABEL,
   flattenSnapshotChips,
   SOFT_SNAPSHOT_GROUP,
+  stripEquipmentPrioritySuffix,
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
 
@@ -14,6 +23,25 @@ function ChipIcon({ icon }) {
   }
   if (icon === 'alltag' || icon === 'users') {
     return <IconUser className="cust-kundenbild__chip-icon" />;
+  }
+  if (icon === 'vertrag' || icon === 'clock') {
+    return <IconClock className="cust-kundenbild__chip-icon" />;
+  }
+  if (icon === 'budget' || icon === 'euro') {
+    return <IconEuro className="cust-kundenbild__chip-icon" />;
+  }
+  return null;
+}
+
+function chipPriorityMeta(chip) {
+  const raw = chip?.priority
+    || (/·\s*muss\s*$/i.test(chip?.label || '') ? EQUIPMENT_WISH_PRIORITY.REQUIRED : null)
+    || (/·\s*wichtig\s*$/i.test(chip?.label || '') ? EQUIPMENT_WISH_PRIORITY.IMPORTANT : null);
+  if (raw === EQUIPMENT_WISH_PRIORITY.REQUIRED || raw === 'required') {
+    return { key: 'required', label: EQUIPMENT_WISH_PRIORITY_LABEL[EQUIPMENT_WISH_PRIORITY.REQUIRED] };
+  }
+  if (raw === EQUIPMENT_WISH_PRIORITY.IMPORTANT || raw === 'important') {
+    return { key: 'important', label: EQUIPMENT_WISH_PRIORITY_LABEL[EQUIPMENT_WISH_PRIORITY.IMPORTANT] };
   }
   return null;
 }
@@ -87,21 +115,31 @@ function buildCollapsedSummaryLines(soft) {
 
 function SnapshotChip({ chip, onFactTap }) {
   const category = chip.category || chip.tint || 'alltag';
+  const priority = chipPriorityMeta(chip);
+  const displayLabel = stripEquipmentPrioritySuffix(chip.label || '') || chip.label;
   return (
     <button
       type="button"
       className={[
         'cust-kundenbild__chip',
         `cust-kundenbild__chip--${category}`,
+        priority ? `cust-kundenbild__chip--prio-${priority.key}` : '',
         chip.relevant || chip.highlighted ? 'is-relevant' : '',
         chip.highlighted ? 'is-highlight' : '',
       ].filter(Boolean).join(' ')}
       data-category={category}
+      data-priority={priority?.key || undefined}
       onClick={() => onFactTap?.(chip)}
       aria-label={`${chip.label} bearbeiten`}
     >
       <ChipIcon icon={chip.icon || category} />
-      <span className="cust-kundenbild__chip-label">{chip.label}</span>
+      <span className="cust-kundenbild__chip-label">{displayLabel}</span>
+      {priority ? (
+        <span className="cust-kundenbild__chip-prio" aria-hidden>
+          <span className="cust-kundenbild__chip-prio-dot" />
+          {priority.label}
+        </span>
+      ) : null}
     </button>
   );
 }

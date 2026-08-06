@@ -1,16 +1,66 @@
 # Clever UI Filigree – Premium Visual Law
 
-**Stand:** 2026-07-24  
+**Stand:** 2026-08-06  
 **Status:** verbindlich für Desktop und Mobile  
 **Scope:** Visual Polish only – **keine neuen Features**, keine neue Business-Logik
 
-Referenz-Mockup: Kundenakte „Herr Notz“ (filigrane Premium-SaaS-Richtung).
+Referenz-Mockups:
+- Kundenakte „Herr Notz“ (filigrane Premium-SaaS-Richtung, allgemein)
+- Kundenakte **„Kai Drechsel“** (Kundenbild-Layout: Kern → Wissen → Clever → Composer)
 
 ---
 
 ## Leitsatz
 
 > **Nicht mehr Features sichtbar machen, sondern vorhandene Informationen filigraner, ruhiger und näher an einem Premium-SaaS darstellen.**
+
+---
+
+## Kundenakte Kundenbild – Kai-Drechsel-Vorlage (verbindlich)
+
+Visuelle Vorlage für die Kundenakte. **Kein Feature-Umbau** – nur Optik/Layout an bestehender Architektur.
+
+### Vertikale Reihenfolge (strikt)
+
+```text
+Header (Name · Kontaktwarnung)
+↓
+1  Kernkonditionen     – warmer Beige-Strip, immer sichtbar
+↓
+2  Kundenwissen        – Lavendel-Zone, klappbar, editierbare Chips
+↓
+   ~22–28px Weißraum
+↓
+4  Clever empfiehlt    – eigene Action-Card (Lavendel-Akzent, lila CTA)
+↓
+5  Composer + Bottom-Nav
+```
+
+### Zwei Zonen (Farbtrennung)
+
+| Zone | Fläche | Inhalt |
+|------|--------|--------|
+| **Kernkonditionen** | Warm/Beige `#f8f3ea` … `#faf6ef` | Deal-Fakten (Laufzeit, km, Anzahlung, Ende) |
+| **Kundenwissen** | Lavendel `#ece8f8` / `#f0ecfa` | Mensch, Fahrzeugpräferenz, Ausstattung, Prioritäten |
+
+### Chip-Regeln
+
+- Klein, ruhig, editierbar (Tap → Mini-Editor)
+- Priorität als Punkt + Label (`muss` / `wichtig`), nicht als dicke Badge
+- Line-Icons statt Emojis
+- Keine große Outer-Card um Kern + Wissen
+
+### Clever-Action
+
+- Optisch **getrennt** vom Infoblock (Abstand, eigene Card)
+- Primär-CTA in Clever-Lavender (`#6d5bb8`), nicht Navy-Schwarz
+- 1 Hinweis, 1 Primäraktion – kein Copilot-Roman
+
+### Code-Anker
+
+- `CustomerAkteKundenbild.jsx` / `.css` – Kern + Soft
+- `CleverEmpfiehltCard.jsx` / `.css` + `SharedWorkspaceChat` Empty-Recommend
+- Daten: `buildCustomerSnapshotModel.js` (unverändert in der Logik)
 
 ---
 
@@ -102,6 +152,8 @@ Optik: exakt so fein wie das Mockup – kaum visuelle Schwere.
 ## Status
 
 **Visual Quality Reset v1.0 (2026-07-25):** Tokens auf Navy + dezentes Lavender, Line-Icons in File-Nav/Header, Desktop-Shell `flex-direction: row`, Score in Clever-Card ausgeblendet, Chat/Composer/Assist beruhigt.
+
+**Kundenbild Kai-Drechsel-Vorlage (2026-08-06):** Kern warm/beige, Kundenwissen Lavendel, Prioritäts-Dots, Clever-CTA in Lavender, Abstand Wissen → Clever.
 
 ## Verwandte Docs
 

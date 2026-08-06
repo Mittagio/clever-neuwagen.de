@@ -5178,7 +5178,7 @@
 
 .cust-akte-shell__situativ {
   flex-shrink: 0;
-  padding: 8px 12px 0;
+  padding: 16px 12px 0;
 }
 
 .cust-akte-shell__situativ .clever-empfiehlt {
@@ -6056,15 +6056,15 @@
   gap: 6px;
 }
 
-/* Wissen → Clever: ~20–24px Luft; Clever inset, nicht full-bleed */
+/* Wissen → Clever: ~26px Luft; Clever inset, nicht full-bleed */
 .sw-chat__feed-top .clever-empfiehlt,
 .sw-chat__feed-top .cn-clever-moment {
-  margin: 22px 16px 8px;
+  margin: 26px 16px 10px;
 }
 
 .cust-akte-shell__pane--clever > .cust-kundenbild--panel + .cust-akte-workspace .sw-chat__empty-recommend,
 .cust-akte-workspace--compact-empty .sw-chat__empty-recommend {
-  margin-top: 22px;
+  margin-top: 26px;
 }
 
 .sw-chat__feed-top .cust-akte-clever-notepad {

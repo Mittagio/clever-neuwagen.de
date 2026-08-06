@@ -1,17 +1,17 @@
 .clever-empfiehlt {
   margin: 0;
-  padding: 12px 14px 12px 13px;
-  border-radius: 12px;
-  background: var(--color-surface, #fff);
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 14px 14px 14px 13px;
+  border-radius: 14px;
+  background: #faf9ff;
+  border: 1px solid rgba(109, 91, 184, 0.12);
   border-left: 3px solid var(--color-clever, #6d5bb8);
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 6px 18px rgba(109, 91, 184, 0.08);
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 8px 22px rgba(109, 91, 184, 0.07);
 }
 
 .clever-empfiehlt--compact {
-  padding: 11px 13px 11px 12px;
+  padding: 13px 14px 13px 12px;
 }
 
 .clever-empfiehlt__loading {
@@ -25,7 +25,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .clever-empfiehlt__eyebrow {
@@ -46,7 +46,7 @@
 }
 
 .clever-empfiehlt__headline {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 1rem;
   font-weight: 650;
   line-height: 1.3;
@@ -55,8 +55,8 @@
 }
 
 .clever-empfiehlt--compact .clever-empfiehlt__headline {
-  font-size: 0.875rem;
-  margin-bottom: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
 }
 
 .clever-empfiehlt__reminder--compact {
@@ -68,11 +68,11 @@
 .clever-empfiehlt__more {
   display: block;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 8px;
   padding: 8px;
   border: 0;
   background: transparent;
-  color: #1d4ed8;
+  color: var(--color-clever, #6d5bb8);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -82,7 +82,7 @@
 .clever-empfiehlt__details {
   margin-top: 8px;
   padding-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  border-top: 1px solid rgba(109, 91, 184, 0.12);
 }
 
 .clever-empfiehlt__subline {
@@ -167,9 +167,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 11px;
   font-size: 0.8125rem;
   font-weight: 650;
   text-decoration: none;
@@ -179,14 +179,19 @@
 }
 
 .clever-empfiehlt__btn--primary {
-  background: #0f172a;
+  background: var(--color-clever, #6d5bb8);
   color: #fff;
+  box-shadow: 0 6px 16px rgba(109, 91, 184, 0.22);
+}
+
+.clever-empfiehlt__btn--primary:active {
+  filter: brightness(0.96);
 }
 
 .clever-empfiehlt__btn--secondary {
-  background: #fff;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
+  background: transparent;
+  color: #5b4f8a;
+  border: 1px solid rgba(109, 91, 184, 0.18);
 }
 
 .clever-empfiehlt__btn--compact {
