@@ -24,8 +24,15 @@ import {
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
+import { runComposerScreenshotAttachTurnWithInterpret } from '../../services/cleverSeller/runComposerScreenshotAttachTurn.js';
+import { isCleverScreenshotInterpretClientEnabled } from '../../services/cleverSeller/isCleverScreenshotInterpretEnabled.js';
 import { executeDualOfferAppointmentAccept } from '../../services/cleverSeller/executeDualOfferAppointmentAccept.js';
-import { resolveCleverOcrProvider } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
+import {
+  isCleverContractOcrEnabled,
+  resolveCleverOcrLang,
+  resolveCleverOcrProvider,
+} from '../../services/cleverSeller/resolveCleverOcrProvider.js';
+import { tryCreateTesseractOcrEngine } from '../../services/cleverSeller/createCleverContractOcrProvider.js';
 import { resolveCleverCalendarProvider } from '../../services/cleverSeller/resolveCleverCalendarProvider.js';
 import { maybeCreateCalendarDraftEvent } from '../../services/cleverSeller/checkCalendarAvailability.js';
 import { refreshSellerTurnCalendarCheck } from '../../services/cleverSeller/refreshSellerTurnCalendarCheck.js';
@@ -39,6 +46,7 @@ import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import { buildVehicleOpportunityCards } from '../../services/customerAkte.js';
 import {
   isCleverSellerOpenAiInterpretClientEnabled,
+  requestCleverScreenshotInterpret,
   requestCleverSellerTurn,
   shouldRequestServerSellerTurn,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
@@ -836,13 +844,86 @@ export default function CleverGlobalComposer() {
     }
   }
 
+  async function handleAttachScreenshot(file) {
+    if (!file || sending || !ctx) return;
+    if (!isCleverScreenshotInterpretClientEnabled()) {
+      handleSoftAttach(file, 'photo');
+      return;
+    }
+    setFocused(true);
+    setSending(true);
+    setProgressHint('Clever liest den Screenshot …');
+    setFeedback('Screenshot wird gelesen …');
+    try {
+      let ocrEngine = null;
+      if (isCleverContractOcrEnabled()) {
+        ocrEngine = await tryCreateTesseractOcrEngine({
+          lang: resolveCleverOcrLang(),
+        });
+      }
+      const requestVision = isCleverSellerOpenAiInterpretClientEnabled()
+        ? (payload) => requestCleverScreenshotInterpret(payload)
+        : null;
+
+      const { prepared, turn, softAttach } = await runComposerScreenshotAttachTurnWithInterpret({
+        file,
+        lead: ctx.currentCustomer || {},
+        leadsSnapshot: ctx.leadsSnapshot || [],
+        scopeHint: 'dashboard',
+        workingContextItems: ctx.attachedWorkingObjects || [],
+        requestVision,
+        ocrEngine,
+        // Client-Flag bereits geprüft (Vite); Server-Env hat oft keinen Browser-Key
+        force: true,
+        appContext: {
+          routeContext: ctx.routeContext,
+          attachedWorkingObjects: ctx.attachedWorkingObjects,
+          dashboardContext: ctx.dashboardContext,
+        },
+      });
+
+      if (softAttach || !turn) {
+        handleSoftAttach(file, 'photo');
+        setFeedback(prepared?.feedbackManual
+          || 'Screenshot konnte nicht gelesen werden – bitte beschreiben.');
+        setProgressHint(null);
+        setTimeout(() => setFeedback(''), 3600);
+        return;
+      }
+
+      if (prepared.draftSeed) {
+        setDraft(prepared.draftSeed);
+      }
+      setLastTurn(turn);
+      const model = turn.reviewModel
+        || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+      setReviewModel(model);
+      setFeedback(model
+        ? (prepared.feedbackOk || model.title || 'Screenshot gelesen')
+        : (prepared.feedbackOk || 'Screenshot gelesen – bitte prüfen'));
+      setProgressHint(null);
+      setTimeout(() => setFeedback(''), 3200);
+    } catch (err) {
+      setProgressHint(null);
+      handleSoftAttach(file, 'photo');
+      setFeedback(err?.message || 'Screenshot konnte nicht gelesen werden');
+      setTimeout(() => setFeedback(''), 3600);
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function handleAttachFile(file) {
     if (!file || sending || !ctx) return;
     const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
     const isImage = /^image\//i.test(file.type || '')
       || /\.(png|jpe?g|webp|gif|heic)$/i.test(file.name || '');
+    if (isImage) {
+      await handleAttachScreenshot(file);
+      return;
+    }
     if (!isPdf) {
-      handleSoftAttach(file, isImage ? 'photo' : 'document');
+      handleSoftAttach(file, 'document');
       return;
     }
     setFocused(true);
@@ -1391,7 +1472,8 @@ export default function CleverGlobalComposer() {
           aria-hidden
           tabIndex={-1}
           onChange={(event) => {
-            handleSoftAttach(event.target.files?.[0], 'photo');
+            const file = event.target.files?.[0];
+            if (file) void handleAttachFile(file);
             event.target.value = '';
           }}
         />
@@ -1404,11 +1486,7 @@ export default function CleverGlobalComposer() {
           tabIndex={-1}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file && (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name || ''))) {
-              void handleAttachFile(file);
-            } else {
-              handleSoftAttach(file, 'document');
-            }
+            if (file) void handleAttachFile(file);
             event.target.value = '';
           }}
         />

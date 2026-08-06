@@ -95,6 +95,17 @@ function sanitizeInterpreterDiagnostics(diag = null) {
   };
 }
 
+function isScreenshotInterpretEnabled(env = process.env) {
+  const raw = env.CLEVER_SCREENSHOT_INTERPRET_ENABLED
+    ?? env.VITE_CLEVER_SCREENSHOT_INTERPRET_ENABLED
+    ?? '';
+  if (/^(0|false|no|off)$/i.test(String(raw).trim())) return false;
+  if (/^(1|true|yes|on)$/i.test(String(raw).trim())) return true;
+  return env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true'
+    || env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === '1'
+    || isContractOcrEnabled(env);
+}
+
 router.get('/clever/shared-intelligence/health', (_req, res) => {
   res.json({
     ok: true,
@@ -102,10 +113,100 @@ router.get('/clever/shared-intelligence/health', (_req, res) => {
     sellerCopilot: isCleverSellerCopilotEnabled(),
     magicMessage: isCleverMagicMessageEnabled(),
     sellerOpenAiInterpret: process.env.CLEVER_SELLER_OPENAI_INTERPRET_ENABLED === 'true',
+    screenshotInterpret: isScreenshotInterpretEnabled(),
     /** boolean only – never expose the key */
     openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
     contractOcr: isContractOcrEnabled(),
   });
+});
+
+/**
+ * Screenshot/WhatsApp-Vision-Interpret (Server – kein Browser-API-Key).
+ * Body: imageBase64 + mimeType. Kein Full-Bild-Log.
+ */
+router.post('/clever/screenshot-interpret', express.json({ limit: '4mb' }), async (req, res) => {
+  try {
+    const permission = assertSellerPermission(req);
+    if (!permission.ok) {
+      return res.status(403).json(permission);
+    }
+
+    if (!isScreenshotInterpretEnabled()) {
+      return res.status(200).json({
+        ok: false,
+        error: 'screenshot_interpret_disabled',
+        softAttach: true,
+      });
+    }
+
+    const {
+      imageBase64 = '',
+      mimeType = 'image/jpeg',
+      fileName = 'screenshot.jpg',
+    } = req.body ?? {};
+
+    const base64 = String(imageBase64 || '').replace(/^data:[^;]+;base64,/, '');
+    if (!base64 || base64.length < 32) {
+      return res.status(400).json({ ok: false, error: 'missing_image', softAttach: true });
+    }
+    if (base64.length > 3_500_000) {
+      return res.status(413).json({ ok: false, error: 'image_too_large', softAttach: true });
+    }
+
+    const { interpretComposerScreenshot } = await import(
+      '../src/services/cleverSeller/interpretComposerScreenshot.js'
+    );
+
+    const safeMime = /^image\//i.test(String(mimeType)) ? String(mimeType) : 'image/jpeg';
+    const dataUrl = `data:${safeMime};base64,${base64}`;
+
+    const result = await interpretComposerScreenshot({
+      dataUrl,
+      mimeType: safeMime,
+      fileName: String(fileName || 'screenshot.jpg').slice(0, 120),
+      env: process.env,
+      apiKey: process.env.OPENAI_API_KEY || null,
+      force: true,
+    });
+
+    // Response ohne Bilddaten; Diagnose ohne Kundendaten
+    return res.json({
+      ok: Boolean(result?.ok),
+      error: result?.error || null,
+      softAttach: Boolean(result?.softAttach),
+      parsed: result?.ok
+        ? {
+          sourceKind: result.sourceKind,
+          phone: result.phone,
+          email: result.email,
+          customerName: result.customerName,
+          as24OfferId: result.as24OfferId,
+          vehicleLabel: result.vehicleLabel,
+          paymentType: result.paymentType,
+          termMonths: result.termMonths,
+          annualMileage: result.annualMileage,
+          openQuestions: result.openQuestions || [],
+          transcript: String(result.transcript || '').slice(0, 4000),
+          confidence: result.confidence ?? null,
+        }
+        : null,
+      extract: result?.ok
+        ? {
+          sourceKind: result.sourceKind,
+          sourceLabel: result.sourceLabel,
+          facts: result.facts || [],
+          method: result.method,
+        }
+        : null,
+      method: result?.method || null,
+      responseId: result?.responseId || null,
+      diagnostics: result?.diagnostics || null,
+      latencyMs: result?.latencyMs ?? null,
+    });
+  } catch (err) {
+    console.error('[clever/screenshot-interpret]', err?.message ?? 'error');
+    return res.status(500).json({ ok: false, error: 'internal_error', softAttach: true });
+  }
 });
 
 router.post('/clever/magic-message', express.json({ limit: '48kb' }), async (req, res) => {

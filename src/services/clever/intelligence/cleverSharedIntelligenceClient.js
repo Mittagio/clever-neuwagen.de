@@ -103,6 +103,31 @@ export async function requestCleverSellerCopilot(payload = {}) {
 }
 
 /**
+ * Screenshot/WhatsApp Vision-Interpret (Server – kein Browser-API-Key).
+ * @param {{ imageBase64?: string, mimeType?: string, fileName?: string, sellerId?: string, dealerId?: string }} payload
+ */
+export async function requestCleverScreenshotInterpret(payload = {}) {
+  const response = await fetch(`${API_BASE}/clever/screenshot-interpret`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(payload.sellerId ? { 'X-Seller-Id': String(payload.sellerId) } : {}),
+      ...(payload.dealerId ? { 'X-Dealer-Id': String(payload.dealerId) } : {}),
+    },
+    body: JSON.stringify({
+      imageBase64: payload.imageBase64,
+      mimeType: payload.mimeType || 'image/jpeg',
+      fileName: payload.fileName || 'screenshot.jpg',
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, error: data.error ?? 'request_failed', softAttach: true };
+  }
+  return data;
+}
+
+/**
  * Universal Seller Turn inkl. optionaler OpenAI-Eskalation (Server).
  * @param {object} payload
  */
