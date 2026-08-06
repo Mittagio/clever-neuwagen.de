@@ -148,10 +148,23 @@ function finalizeSellerTurn({
   now = null,
   calendarAvailability = null,
   intentConstraint: intentConstraintIn = null,
+  messagePurpose: messagePurposeIn = null,
+  memoryCategory: memoryCategoryIn = null,
+  offerAction: offerActionIn = null,
+  purpose: purposeIn = null,
 }) {
   void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const intentConstraint = normalizeIntentConstraint(intentConstraintIn);
+  const messagePurpose = messagePurposeIn
+    || (intentConstraint === COMPOSER_INTENT_CONSTRAINT.MESSAGE ? purposeIn : null)
+    || null;
+  const memoryCategory = memoryCategoryIn
+    || (intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER ? purposeIn : null)
+    || null;
+  const offerAction = offerActionIn
+    || (intentConstraint === COMPOSER_INTENT_CONSTRAINT.OFFER ? purposeIn : null)
+    || null;
 
   const sellerText = interpreted?.normalized || interpreted?.raw || '';
   let facts = Array.isArray(factsIn) ? [...factsIn] : [];
@@ -180,6 +193,9 @@ function finalizeSellerTurn({
     facts = filterFactsForIntentConstraint(facts, intentConstraint);
     intents = applyIntentConstraintToIntents(intents, intentConstraint, {
       sellerInput: sellerText,
+      messagePurpose,
+      memoryCategory,
+      offerAction,
     });
   }
 
@@ -567,6 +583,9 @@ function finalizeSellerTurn({
   if (intentConstraint) {
     effectiveIntents = applyIntentConstraintToIntents(effectiveIntents, intentConstraint, {
       sellerInput: interpreted.normalized || interpreted.raw,
+      messagePurpose,
+      memoryCategory,
+      offerAction,
     });
   }
 
@@ -930,6 +949,9 @@ function finalizeSellerTurn({
     intent: primaryIntent,
     intents: effectiveIntents,
     intentConstraint,
+    messagePurpose,
+    memoryCategory,
+    offerAction,
     rememberDecision,
     inputMode: interpreted.inputMode,
     interpretedInput: {
@@ -1240,6 +1262,10 @@ export function runCleverSellerTurn({
   now = null,
   calendarAvailability = null,
   intentConstraint = null,
+  messagePurpose = null,
+  memoryCategory = null,
+  offerAction = null,
+  purpose = null,
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
@@ -1272,6 +1298,10 @@ export function runCleverSellerTurn({
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
     intentConstraint,
+    messagePurpose,
+    memoryCategory,
+    offerAction,
+    purpose,
   });
 }
 
@@ -1302,6 +1332,10 @@ export async function runCleverSellerTurnAsync({
   now = null,
   calendarAvailability = null,
   intentConstraint = null,
+  messagePurpose = null,
+  memoryCategory = null,
+  offerAction = null,
+  purpose = null,
 } = {}) {
   const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
   const gate = openAiOptions.forceEscalate
@@ -1344,6 +1378,10 @@ export async function runCleverSellerTurnAsync({
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
     intentConstraint,
+    messagePurpose,
+    memoryCategory,
+    offerAction,
+    purpose,
     ...extra,
   });
 

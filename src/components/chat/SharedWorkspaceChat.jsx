@@ -66,7 +66,7 @@ export default function SharedWorkspaceChat({
   onSuggestionChip = null,
   /**
    * Optional Intent-Chips (One-Turn Constraint) – eine Hauptzeile.
-   * @type {{ id: string, label: string, intentConstraint?: string|null }[]}
+   * @type {{ id: string, label: string, intentConstraint?: string|null, title?: string }[]}
    */
   intentChips = [],
   /** Chips unter „Mehr“ (Termin, Suchen, …) */
@@ -74,11 +74,17 @@ export default function SharedWorkspaceChat({
   selectedIntentChipId = null,
   onIntentChip = null,
   /**
-   * Kontextuelle Sekundäraktionen in derselben Scroll-Zeile (keine 2. permanente Reihe).
+   * Quick Actions eines Modus – Menü/Bottom-Sheet, keine 2. Chip-Zeile.
    * @type {{ id: string, label: string, draftSeed?: string }[]}
    */
   secondaryIntentActions = [],
   onSecondaryIntentAction = null,
+  /** Aktive Quick-Action-ID (Untermodus) */
+  selectedPurposeId = null,
+  /** Mobile-Erklärung unter den Chips */
+  intentModeHint = '',
+  /** Desktop-Tooltips je Chip-ID */
+  intentChipTooltips = null,
   /** Bei offener Review: Intent-Chips ausblenden/deaktivieren */
   hideIntentChips = false,
   /** Nach Suche: Message im Feed anspringen */
@@ -105,6 +111,7 @@ export default function SharedWorkspaceChat({
   const [localPlus, setLocalPlus] = useState(false);
   const [moreChipsOpen, setMoreChipsOpen] = useState(false);
   const [moreIntentOpen, setMoreIntentOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [toneMenuOpen, setToneMenuOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [feedFilter, setFeedFilter] = useState('all');
@@ -311,6 +318,30 @@ export default function SharedWorkspaceChat({
     && typeof onSecondaryIntentAction === 'function';
   const moreIntentSelected = hasMoreIntentChips
     && moreIntentChips.some((c) => c.id === selectedIntentChipId);
+  const selectedPrimaryHasQuickActions = showSecondaryActions
+    && !moreIntentSelected
+    && intentChips.some((c) => c.id === selectedIntentChipId && c.intentConstraint != null);
+
+  function tooltipForChip(chipId) {
+    if (intentChipTooltips && intentChipTooltips[chipId]) return intentChipTooltips[chipId];
+    return '';
+  }
+
+  function closeIntentMenus() {
+    setMoreIntentOpen(false);
+    setQuickActionsOpen(false);
+  }
+
+  function selectIntentChip(chip) {
+    closeIntentMenus();
+    onIntentChip?.(chip);
+  }
+
+  function toggleQuickActionsForSelected() {
+    if (!selectedPrimaryHasQuickActions) return;
+    setMoreIntentOpen(false);
+    setQuickActionsOpen((open) => !open);
+  }
   const showContextPills = Array.isArray(contextPills) && contextPills.length > 0;
   const showToneMenu = Array.isArray(outboundTones) && outboundTones.length > 0
     && typeof onOutboundToneChange === 'function';
@@ -328,14 +359,31 @@ export default function SharedWorkspaceChat({
   }, [toneMenuOpen]);
 
   useEffect(() => {
-    if (!moreIntentOpen) return undefined;
+    if (!moreIntentOpen && !quickActionsOpen) return undefined;
     const onDoc = (event) => {
       if (event.target?.closest?.('.sw-composer__intent-more')) return;
+      if (event.target?.closest?.('.sw-composer__intent-chip-wrap')) return;
+      if (event.target?.closest?.('.sw-composer__qa-sheet')) return;
       setMoreIntentOpen(false);
+      setQuickActionsOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        setMoreIntentOpen(false);
+        setQuickActionsOpen(false);
+      }
     };
     document.addEventListener('pointerdown', onDoc);
-    return () => document.removeEventListener('pointerdown', onDoc);
-  }, [moreIntentOpen]);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [moreIntentOpen, quickActionsOpen]);
+
+  useEffect(() => {
+    if (!showSecondaryActions) setQuickActionsOpen(false);
+  }, [showSecondaryActions, selectedIntentChipId]);
 
   useEffect(() => {
     if (!showIntentChips) setMoreIntentOpen(false);
@@ -493,59 +541,106 @@ export default function SharedWorkspaceChat({
           ].filter(Boolean).join(' ')}
           onSubmit={handleSubmit}
         >
-          {composerLabel ? (
-            <label className="sw-composer__label" htmlFor={`sw-composer-${role}`}>
-              {composerLabel}
-            </label>
-          ) : null}
-
           {showIntentChips ? (
-            <div className="sw-composer__intent-chips" role="group" aria-label="Clever Intent">
+            <div className="sw-composer__intent-chips" role="group" aria-label="Clever Arbeitsmodus">
               <div className="sw-composer__chips-scroll">
                 {intentChips.map((chip) => {
                   const selected = selectedIntentChipId
                     ? chip.id === selectedIntentChipId
                     : chip.intentConstraint == null;
+                  const tip = tooltipForChip(chip.id) || chip.title || '';
+                  const showChevron = selected
+                    && chip.intentConstraint != null
+                    && showSecondaryActions
+                    && !moreIntentSelected;
                   return (
-                    <button
+                    <div
                       key={chip.id}
-                      type="button"
-                      className={`sw-composer__chip sw-composer__chip--intent${selected ? ' is-selected' : ''}`}
-                      aria-pressed={selected}
-                      disabled={sending}
-                      onClick={() => {
-                        setMoreIntentOpen(false);
-                        // Erneuter Klick auf aktiven Intent → zurück zu Clever
-                        if (selected && chip.intentConstraint != null) {
-                          onIntentChip?.({
-                            id: 'clever_decides',
-                            label: 'Clever',
-                            intentConstraint: null,
-                          });
-                          return;
-                        }
-                        onIntentChip?.(chip);
-                      }}
+                      className={`sw-composer__intent-chip-wrap${selected ? ' is-selected' : ''}${showChevron && quickActionsOpen ? ' is-open' : ''}`}
                     >
-                      {selected && chip.intentConstraint != null ? `✓ ${chip.label}` : chip.label}
-                    </button>
+                      <button
+                        type="button"
+                        className={`sw-composer__chip sw-composer__chip--intent${selected ? ' is-selected' : ''}`}
+                        aria-pressed={selected}
+                        title={tip || undefined}
+                        disabled={sending}
+                        onClick={() => {
+                          if (selected && chip.intentConstraint != null && showSecondaryActions) {
+                            toggleQuickActionsForSelected();
+                            return;
+                          }
+                          selectIntentChip(chip);
+                        }}
+                      >
+                        {chip.label}
+                      </button>
+                      {showChevron ? (
+                        <button
+                          type="button"
+                          className={`sw-composer__intent-chevron${quickActionsOpen ? ' is-open' : ''}`}
+                          aria-label={`${chip.label}: Mehr Optionen`}
+                          aria-expanded={quickActionsOpen}
+                          aria-haspopup="menu"
+                          disabled={sending}
+                          title="Quick Actions"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleQuickActionsForSelected();
+                          }}
+                        >
+                          ▾
+                        </button>
+                      ) : null}
+                      {showChevron && quickActionsOpen ? (
+                        <div
+                          className="sw-composer__chips-pop sw-composer__chips-pop--qa"
+                          role="menu"
+                          aria-label={`${chip.label} Quick Actions`}
+                        >
+                          {secondaryIntentActions.map((action) => {
+                            const actionSelected = selectedPurposeId === action.id;
+                            return (
+                              <button
+                                key={action.id}
+                                type="button"
+                                role="menuitem"
+                                className={`sw-composer__chip sw-composer__chip--pop${actionSelected ? ' is-selected' : ''}`}
+                                disabled={sending}
+                                onClick={() => {
+                                  setQuickActionsOpen(false);
+                                  onSecondaryIntentAction?.(action);
+                                }}
+                              >
+                                {action.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
                 {hasMoreIntentChips ? (
-                  <div className="sw-composer__intent-more">
+                  <div className={`sw-composer__intent-more${moreIntentSelected ? ' is-mode-active' : ''}`}>
                     <button
                       type="button"
-                      className={`sw-composer__chip sw-composer__chip--intent sw-composer__chip--intent-more${moreIntentOpen || moreIntentSelected ? ' is-selected' : ''}${moreIntentOpen ? ' is-open' : ''}`}
+                      className={`sw-composer__chip sw-composer__chip--intent sw-composer__chip--intent-more${moreIntentSelected ? ' is-selected' : ''}${moreIntentOpen ? ' is-open' : ''}`}
                       disabled={sending}
                       aria-expanded={moreIntentOpen}
                       aria-haspopup="menu"
-                      aria-label="Mehr Intent"
-                      onClick={() => setMoreIntentOpen((open) => !open)}
+                      aria-pressed={moreIntentSelected}
+                      aria-label="Mehr"
+                      title={tooltipForChip('mehr') || 'Termin, Suche, Dokumente, Inzahlungnahme und Aufgaben.'}
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        setMoreIntentOpen((open) => !open);
+                      }}
                     >
                       Mehr
+                      <span className="sw-composer__intent-more-chevron" aria-hidden>▾</span>
                     </button>
                     {moreIntentOpen ? (
-                      <div className="sw-composer__chips-pop" role="menu" aria-label="Weitere Intents">
+                      <div className="sw-composer__chips-pop" role="menu" aria-label="Weitere Modi">
                         {moreIntentChips.map((chip) => {
                           const selected = chip.id === selectedIntentChipId;
                           return (
@@ -554,13 +649,13 @@ export default function SharedWorkspaceChat({
                               type="button"
                               role="menuitem"
                               className={`sw-composer__chip sw-composer__chip--pop${selected ? ' is-selected' : ''}`}
+                              title={tooltipForChip(chip.id) || undefined}
                               disabled={sending}
                               onClick={() => {
-                                setMoreIntentOpen(false);
-                                onIntentChip?.(chip);
+                                selectIntentChip(chip);
                               }}
                             >
-                              {selected ? `✓ ${chip.label}` : chip.label}
+                              {chip.label}
                             </button>
                           );
                         })}
@@ -568,24 +663,19 @@ export default function SharedWorkspaceChat({
                     ) : null}
                   </div>
                 ) : null}
-                {showSecondaryActions ? (
-                  <>
-                    <span className="sw-composer__intent-sep" aria-hidden="true" />
-                    {secondaryIntentActions.map((action) => (
-                      <button
-                        key={action.id}
-                        type="button"
-                        className="sw-composer__chip sw-composer__chip--secondary"
-                        disabled={sending}
-                        onClick={() => onSecondaryIntentAction?.(action)}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </>
-                ) : null}
               </div>
             </div>
+          ) : null}
+
+          {showIntentChips && intentModeHint ? (
+            <p className="sw-composer__mode-hint">
+              {String(intentModeHint).split('\n').map((line, idx) => (
+                <span key={`${idx}-${line}`} className={idx === 0 ? 'sw-composer__mode-hint-title' : 'sw-composer__mode-hint-body'}>
+                  {idx > 0 ? <br /> : null}
+                  {line}
+                </span>
+              ))}
+            </p>
           ) : null}
 
           {showSuggestionChips ? (
@@ -642,10 +732,49 @@ export default function SharedWorkspaceChat({
             </div>
           ) : null}
 
-          <div className={`sw-composer__card${composerEditMode ? ' sw-composer__card--edit' : ''}${compactMode ? ' sw-composer__card--compact' : ''}`}>
+          {showSecondaryActions && quickActionsOpen ? (
+            <div className="sw-composer__qa-sheet" role="dialog" aria-label="Quick Actions">
+              <div className="sw-composer__qa-sheet-inner">
+                <p className="sw-composer__qa-sheet-title">Optionen</p>
+                <div className="sw-composer__qa-sheet-list">
+                  {secondaryIntentActions.slice(0, 6).map((action) => (
+                    <button
+                      key={`sheet-${action.id}`}
+                      type="button"
+                      className={`sw-composer__qa-sheet-btn${selectedPurposeId === action.id ? ' is-selected' : ''}`}
+                      disabled={sending}
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        onSecondaryIntentAction?.(action);
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="sw-composer__qa-sheet-close"
+                  onClick={() => setQuickActionsOpen(false)}
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className={`sw-composer__card${composerEditMode ? ' sw-composer__card--edit' : ''}${compactMode ? ' sw-composer__card--compact' : ''}${composerLabel ? ' sw-composer__card--mode' : ''}`}>
+            {composerLabel ? (
+              <div className="sw-composer__mode-banner">
+                <p className="sw-composer__mode-banner-label" id={`sw-composer-mode-${role}`}>
+                  {composerLabel}
+                </p>
+              </div>
+            ) : null}
             <textarea
               ref={textareaRef}
               id={`sw-composer-${role}`}
+              aria-labelledby={composerLabel ? `sw-composer-mode-${role}` : undefined}
               className={[
                 'sw-composer__input',
                 composerEditMode || (autoGrow && !compactMode) ? 'sw-composer__input--grow' : '',

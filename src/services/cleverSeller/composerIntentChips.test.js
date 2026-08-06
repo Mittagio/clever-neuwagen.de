@@ -43,7 +43,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   COMPOSER_INTENT_MORE_CHIPS.map((c) => c.label),
-  ['Termin', 'Suchen', 'Dokumente', 'Inzahlungnahme'],
+  ['Termin', 'Suchen', 'Dokumente', 'Inzahlungnahme', 'Aufgabe / Wiedervorlage'],
 );
 assert.ok(COMPOSER_INTENT_CHIPS.some((c) => (
   c.intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
@@ -63,13 +63,13 @@ assert.equal(
   COMPOSER_INTENT_CONSTRAINT.OFFER,
 );
 
-// --- Sichtbare Hauptzeile nach Merken ---
+// --- Sichtbare Hauptzeile: feste Reihenfolge (Clever bleibt sichtbar) ---
 const afterMerken = resolveVisiblePrimaryIntentChips('merken');
-assert.equal(afterMerken[0].id, 'merken');
-assert.ok(!afterMerken.some((c) => c.id === 'clever_decides'));
+assert.equal(afterMerken[0].id, 'clever_decides');
+assert.ok(afterMerken.some((c) => c.id === 'merken'));
 assert.deepEqual(
   afterMerken.map((c) => c.label),
-  ['Merken', 'Nachricht', 'Angebot'],
+  ['Clever', 'Merken', 'Nachricht', 'Angebot'],
 );
 
 // --- Modus-Labels ---
@@ -83,45 +83,72 @@ const msgLabels = resolveIntentComposerLabels(
   COMPOSER_INTENT_CONSTRAINT.MESSAGE,
   'Herr Brandes',
 );
-assert.equal(msgLabels.label, 'Nachricht an Herr Brandes');
+assert.equal(msgLabels.label, 'Nachricht · An Herr Brandes');
 assert.equal(msgLabels.sendLabel, 'Entwurf erstellen');
 const offerLabels = resolveIntentComposerLabels(
   COMPOSER_INTENT_CONSTRAINT.OFFER,
   'Herr Brandes',
 );
-assert.equal(offerLabels.label, 'Angebot für Herr Brandes');
+assert.equal(offerLabels.label, 'Angebot · Für Herr Brandes');
 assert.equal(offerLabels.sendLabel, 'Angebot vorbereiten');
+assert.equal(
+  resolveIntentComposerLabels(null, 'Herr Brandes').sendAriaLabel,
+  'Clever ausführen',
+);
 
-// --- Sekundäraktionen ---
+// --- Sekundäraktionen / Quick Actions ---
 const cleverSecondary = resolveIntentSecondaryActions(null, { customerName: 'Herr Brandes' });
 assert.deepEqual(cleverSecondary, [], 'Clever-Default: keine Secondary neben Merken');
 assert.ok(!cleverSecondary.some((a) => /merken/i.test(a.label)));
+const rememberSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.REMEMBER);
 assert.deepEqual(
-  resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.REMEMBER),
-  [],
+  rememberSecondary.map((a) => a.label),
+  [
+    'Kundeninfo',
+    'Fahrzeugwunsch',
+    'Budget & Konditionen',
+    'Bestandsfahrzeug / Inzahlungnahme',
+    'Ausstattung & Technik',
+    'Persönliche Notiz',
+  ],
 );
+assert.equal(rememberSecondary[0].memoryCategory, 'customer_info');
 const msgSecondary = resolveIntentSecondaryActions(
   COMPOSER_INTENT_CONSTRAINT.MESSAGE,
   { customerName: 'Herr Brandes' },
 );
-assert.deepEqual(
-  msgSecondary.map((a) => a.label),
-  ['Freundlich', 'Kürzer', 'Persönlicher', 'Nachfassen'],
+assert.ok(msgSecondary.some((a) => a.label === 'Unterlagen anfordern'));
+assert.ok(msgSecondary.some((a) => a.messagePurpose === 'request_documents'));
+assert.ok(msgSecondary.some((a) => a.label === 'Nachfassen'));
+const msgDocsFirst = resolveIntentSecondaryActions(
+  COMPOSER_INTENT_CONSTRAINT.MESSAGE,
+  { customerName: 'Herr Brandes', missingDocuments: true },
 );
+assert.equal(msgDocsFirst[0].id, 'msg_docs');
 const offerSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.OFFER);
 assert.deepEqual(
   offerSecondary.map((a) => a.label),
-  ['Neu erstellen', 'Vorhandenes ändern', 'PDF einlesen'],
+  [
+    'Neues Angebot',
+    'Vorhandenes ändern',
+    'PDF einlesen',
+    'Angebote vergleichen',
+    'Kundenangebot zusammenstellen',
+  ],
 );
-const terminSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.APPOINTMENT);
-assert.deepEqual(
-  terminSecondary.map((a) => a.label),
-  ['Heute', 'Morgen', 'Kalender prüfen'],
+const offerChangeFirst = resolveIntentSecondaryActions(
+  COMPOSER_INTENT_CONSTRAINT.OFFER,
+  { hasOpenOffer: true },
 );
-const searchSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.SEARCH);
+assert.equal(offerChangeFirst[0].id, 'offer_change');
 assert.deepEqual(
-  searchSecondary.map((a) => a.label),
-  ['Nachrichten', 'Angebote', 'Fahrzeugwissen'],
+  resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.APPOINTMENT),
+  [],
+  'Mehr-Untermodi: keine dritte Ebene',
+);
+assert.deepEqual(
+  resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.SEARCH),
+  [],
 );
 
 // --- Constraint routing (unit) ---
@@ -187,6 +214,18 @@ const messageTurn = runCleverSellerTurn({
 assert.ok(messageTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE));
 assert.ok(!messageTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT));
 assert.ok(!messageTurn.autoSent);
+
+const docsMessageTurn = runCleverSellerTurn({
+  lead,
+  sellerInput: 'Unterlagen anfordern',
+  intentConstraint: COMPOSER_INTENT_CONSTRAINT.MESSAGE,
+  messagePurpose: 'request_documents',
+});
+assert.ok(docsMessageTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE));
+assert.ok(docsMessageTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS));
+assert.equal(docsMessageTurn.messagePurpose, 'request_documents');
+assert.ok(!docsMessageTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT));
+assert.ok(!docsMessageTurn.autoSent);
 
 // --- Orchestrator: Termin constraint ---
 const terminTurn = runCleverSellerTurn({

@@ -64,11 +64,14 @@ import {
   resetIntentConstraintToDefault,
   resolveAttachmentIntentActions,
   resolveIntentChipById,
+  resolveIntentChipTooltip,
   resolveIntentComposerLabels,
+  resolveIntentModeHint,
   resolveIntentPlaceholder,
   resolveIntentSecondaryActions,
   resolveVisiblePrimaryIntentChips,
 } from '../../services/cleverSeller/composerIntentChips.js';
+import { findOfferWorkingContext } from '../../services/crm/composerWorkingContext.js';
 import './CleverGlobalComposer.css';
 
 const FALLBACK_INTERPRET_WARNING = [
@@ -159,6 +162,7 @@ export default function CleverGlobalComposer() {
   const [selectedIntentChipId, setSelectedIntentChipId] = useState(
     COMPOSER_INTENT_CHIPS[0].id,
   );
+  const [intentPurpose, setIntentPurpose] = useState(null);
   const [rememberUndo, setRememberUndo] = useState(null);
   const [attachmentActions, setAttachmentActions] = useState(null);
 
@@ -204,17 +208,66 @@ export default function CleverGlobalComposer() {
   const customerDisplayName = ctx?.currentCustomer?.contact?.name
     || ctx?.currentCustomer?.name
     || '';
-  const intentPlaceholder = resolveIntentPlaceholder(intentConstraint, customerDisplayName);
-  const intentLabels = resolveIntentComposerLabels(intentConstraint, customerDisplayName);
+  const intentPurposeOptions = useMemo(() => ({
+    messagePurpose: intentPurpose?.messagePurpose || null,
+    memoryCategory: intentPurpose?.memoryCategory || null,
+    offerAction: intentPurpose?.offerAction || null,
+    purposeLabel: intentPurpose?.label || null,
+  }), [intentPurpose]);
+  const intentPlaceholder = resolveIntentPlaceholder(
+    intentConstraint,
+    customerDisplayName,
+    intentPurposeOptions,
+  );
+  const intentLabels = resolveIntentComposerLabels(
+    intentConstraint,
+    customerDisplayName,
+    intentPurposeOptions,
+  );
+  const intentModeHint = useMemo(
+    () => (intentConstraint
+      ? resolveIntentModeHint(intentConstraint, {
+        customerName: customerDisplayName,
+        purposeLabel: intentPurpose?.label || '',
+      })
+      : ''),
+    [intentConstraint, customerDisplayName, intentPurpose],
+  );
+  const intentChipTooltips = useMemo(() => {
+    const map = {};
+    COMPOSER_INTENT_CHIPS.forEach((chip) => {
+      map[chip.id] = resolveIntentChipTooltip(chip.id);
+    });
+    map.mehr = resolveIntentChipTooltip('mehr');
+    return map;
+  }, []);
   const visibleIntentChips = useMemo(
     () => resolveVisiblePrimaryIntentChips(selectedIntentChipId),
     [selectedIntentChipId],
   );
+  const workingObjects = ctx?.attachedWorkingObjects || [];
+  const currentLead = ctx?.currentCustomer || null;
+  const hasOpenOffer = Boolean(
+    findOfferWorkingContext(workingObjects)
+    || workingObjects.some((item) => item?.offerId),
+  );
+  const missingDocuments = Boolean(
+    currentLead?.crm?.missingDocuments?.length
+    || currentLead?.missingDocuments?.length
+    || /unterlagen|dokumente|fehlt/i.test(String(currentLead?.crm?.nextStep || '')),
+  );
+  const hasOpenAppointment = Boolean(
+    lastTurn?.pendingAction?.type === 'propose_appointment'
+    || currentLead?.crm?.nextAppointment,
+  );
   const secondaryIntentActions = useMemo(
     () => resolveIntentSecondaryActions(intentConstraint, {
       customerName: customerDisplayName,
+      missingDocuments,
+      hasOpenOffer,
+      hasOpenAppointment,
     }),
-    [intentConstraint, customerDisplayName],
+    [intentConstraint, customerDisplayName, missingDocuments, hasOpenOffer, hasOpenAppointment],
   );
   const composerPlaceholder = intentPlaceholder || resolveComposerPlaceholder({
     draft,
@@ -225,18 +278,28 @@ export default function CleverGlobalComposer() {
 
   function resetIntentChipsToDefault() {
     setSelectedIntentChipId(resetIntentConstraintToDefault().id);
+    setIntentPurpose(null);
   }
 
   function handleSecondaryIntentAction(action) {
-    const seed = String(action?.draftSeed || '');
-    if (!seed.trim()) return;
+    if (!action || sending) return;
     setFocused(true);
-    setDraft((prev) => {
-      const cur = String(prev ?? '').trim();
-      if (!cur || /:\s*$/.test(seed)) return seed;
-      if (cur === seed.trim()) return seed;
-      return `${cur}\n${seed}`;
+    setIntentPurpose({
+      id: action.id,
+      label: action.label,
+      messagePurpose: action.messagePurpose || null,
+      memoryCategory: action.memoryCategory || null,
+      offerAction: action.offerAction || null,
     });
+    const seed = String(action?.draftSeed || '');
+    if (seed.trim()) {
+      setDraft((prev) => {
+        const cur = String(prev ?? '').trim();
+        if (!cur || /:\s*$/.test(seed)) return seed;
+        if (cur === seed.trim()) return seed;
+        return `${cur}\n${seed}`;
+      });
+    }
   }
 
   const setComposerDocked = ctx?.setComposerDocked;
@@ -1148,6 +1211,9 @@ export default function CleverGlobalComposer() {
         customerName: '',
         pendingAction: lastTurn?.pendingAction || null,
         intentConstraint,
+        messagePurpose: intentPurpose?.messagePurpose || null,
+        memoryCategory: intentPurpose?.memoryCategory || null,
+        offerAction: intentPurpose?.offerAction || null,
       };
 
       let turn;
@@ -1161,6 +1227,9 @@ export default function CleverGlobalComposer() {
           sellerId: ctx.sellerId || null,
           dealerId: ctx.dealerId || null,
           intentConstraint,
+          messagePurpose: intentPurpose?.messagePurpose || null,
+          memoryCategory: intentPurpose?.memoryCategory || null,
+          offerAction: intentPurpose?.offerAction || null,
         });
         if (serverTurn?.turnId || serverTurn?.ok || serverTurn?.multiSourceIntake) {
           turn = serverTurn;
@@ -1243,7 +1312,9 @@ export default function CleverGlobalComposer() {
         setReviewModel(model);
         setDraft('');
         setProgressHint(null);
-        resetIntentChipsToDefault();
+        if (enriched.magicBody || model) {
+          resetIntentChipsToDefault();
+        }
         if (enriched.magicBody && enriched.feedback) {
           setFeedback(enriched.feedback);
         } else if (model) {
@@ -1281,11 +1352,13 @@ export default function CleverGlobalComposer() {
       setReviewModel(model);
       setDraft('');
       setProgressHint(null);
-      resetIntentChipsToDefault();
       const source = turn?.interpreterDiagnostics?.interpreterSource
         || turn?.openaiEscalation?.interpreterSource
         || null;
       const isFallback = source === 'fallback' || source === 'openai_fallback';
+      if (model) {
+        resetIntentChipsToDefault();
+      }
       if (isFallback) {
         setFeedback(FALLBACK_INTERPRET_WARNING);
       } else if (model) {
@@ -1588,11 +1661,15 @@ export default function CleverGlobalComposer() {
           selectedIntentChipId={selectedIntentChipId}
           onIntentChip={(chip) => {
             setSelectedIntentChipId(chip.id);
+            setIntentPurpose(null);
             setFocused(true);
             setAttachmentActions(null);
           }}
           secondaryIntentActions={secondaryIntentActions}
           onSecondaryIntentAction={handleSecondaryIntentAction}
+          selectedPurposeId={intentPurpose?.id || null}
+          intentModeHint={intentModeHint}
+          intentChipTooltips={intentChipTooltips}
           hideIntentChips={Boolean(reviewModel) || dockCompact}
           compactMode={dockCompact}
           autoGrow={!dockCompact}

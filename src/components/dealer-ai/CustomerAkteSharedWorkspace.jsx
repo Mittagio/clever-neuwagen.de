@@ -79,7 +79,9 @@ import {
   resolveAttachmentIntentActions,
   resolveIntentChipByConstraint,
   resolveIntentChipById,
+  resolveIntentChipTooltip,
   resolveIntentComposerLabels,
+  resolveIntentModeHint,
   resolveIntentPlaceholder,
   resolveIntentSecondaryActions,
   resolveVisiblePrimaryIntentChips,
@@ -208,6 +210,7 @@ export default function CustomerAkteSharedWorkspace({
   const [selectedIntentChipId, setSelectedIntentChipId] = useState(
     COMPOSER_INTENT_CHIPS[0].id,
   );
+  const [intentPurpose, setIntentPurpose] = useState(null);
   const [rememberUndo, setRememberUndo] = useState(null);
   const [attachmentActions, setAttachmentActions] = useState(null);
   /** Clever-Tab (hideFeed): letzte Accept-/Send-Aktion über dem Composer, kein leerer Weißraum. */
@@ -338,39 +341,97 @@ export default function CustomerAkteSharedWorkspace({
   const selectedIntentChip = resolveIntentChipById(selectedIntentChipId);
   const intentConstraint = selectedIntentChip?.intentConstraint ?? null;
   const intentCustomerLabel = formatCustomerDisplayName(customerName) || customerName || '';
-  const intentPlaceholder = resolveIntentPlaceholder(intentConstraint, intentCustomerLabel);
-  const intentLabels = resolveIntentComposerLabels(intentConstraint, intentCustomerLabel);
+  const intentPurposeOptions = useMemo(() => ({
+    messagePurpose: intentPurpose?.messagePurpose || null,
+    memoryCategory: intentPurpose?.memoryCategory || null,
+    offerAction: intentPurpose?.offerAction || null,
+    purposeLabel: intentPurpose?.label || null,
+    offerLabel: intentPurpose?.offerLabel || null,
+  }), [intentPurpose]);
+  const intentPlaceholder = resolveIntentPlaceholder(
+    intentConstraint,
+    intentCustomerLabel,
+    intentPurposeOptions,
+  );
+  const intentLabels = resolveIntentComposerLabels(
+    intentConstraint,
+    intentCustomerLabel,
+    intentPurposeOptions,
+  );
+  const intentModeHint = useMemo(
+    () => (intentConstraint
+      ? resolveIntentModeHint(intentConstraint, {
+        customerName: intentCustomerLabel,
+        purposeLabel: intentPurpose?.label || '',
+      })
+      : ''),
+    [intentConstraint, intentCustomerLabel, intentPurpose],
+  );
+  const intentChipTooltips = useMemo(() => {
+    const map = {};
+    COMPOSER_INTENT_CHIPS.forEach((chip) => {
+      map[chip.id] = resolveIntentChipTooltip(chip.id);
+    });
+    map.mehr = resolveIntentChipTooltip('mehr');
+    return map;
+  }, []);
   const visibleIntentChips = useMemo(
     () => resolveVisiblePrimaryIntentChips(selectedIntentChipId),
     [selectedIntentChipId],
   );
+  const hasOpenOffer = Boolean(
+    findOfferWorkingContext(workingContextItems)
+    || offerPrep,
+  );
+  const missingDocuments = Boolean(
+    lead?.crm?.missingDocuments?.length
+    || lead?.missingDocuments?.length
+    || /unterlagen|dokumente|fehlt/i.test(String(lead?.crm?.nextStep || '')),
+  );
+  const hasOpenAppointment = Boolean(
+    universalTurn?.pendingAction?.type === 'propose_appointment'
+    || appointmentDraft
+    || lead?.crm?.nextAppointment,
+  );
   const secondaryIntentActions = useMemo(
     () => resolveIntentSecondaryActions(intentConstraint, {
       customerName: intentCustomerLabel,
+      missingDocuments,
+      hasOpenOffer,
+      hasOpenAppointment,
     }),
-    [intentConstraint, intentCustomerLabel],
+    [intentConstraint, intentCustomerLabel, missingDocuments, hasOpenOffer, hasOpenAppointment],
   );
 
   function resetIntentChipsToDefault() {
     setSelectedIntentChipId(resetIntentConstraintToDefault().id);
+    setIntentPurpose(null);
   }
 
   function handleSecondaryIntentAction(action) {
-    const seed = String(action?.draftSeed || '');
-    if (!seed.trim() || sending) return;
+    if (!action || sending) return;
     setComposerMode(COMPOSER_MODES.CLEVER_WORK);
     setEditingMessageDraft(null);
     priorWorkDraftRef.current = '';
     setOfferPrep(null);
     setAppointmentDraft(null);
     clearAssist();
-    setDraft((prev) => {
-      const cur = String(prev ?? '').trim();
-      // Prompt-Seeds mit „: “ ersetzen den Draft (User tippt weiter)
-      if (!cur || /:\s*$/.test(seed)) return seed;
-      if (cur === seed.trim()) return seed;
-      return `${cur}\n${seed}`;
+    setIntentPurpose({
+      id: action.id,
+      label: action.label,
+      messagePurpose: action.messagePurpose || null,
+      memoryCategory: action.memoryCategory || null,
+      offerAction: action.offerAction || null,
     });
+    const seed = String(action?.draftSeed || '');
+    if (seed.trim()) {
+      setDraft((prev) => {
+        const cur = String(prev ?? '').trim();
+        if (!cur || /:\s*$/.test(seed)) return seed;
+        if (cur === seed.trim()) return seed;
+        return `${cur}\n${seed}`;
+      });
+    }
     focusComposer();
   }
 
@@ -470,6 +531,9 @@ export default function CustomerAkteSharedWorkspace({
         currentOfferContext: offerCtx,
         pendingAction: universalTurn?.pendingAction || null,
         intentConstraint,
+        messagePurpose: intentPurpose?.messagePurpose || null,
+        memoryCategory: intentPurpose?.memoryCategory || null,
+        offerAction: intentPurpose?.offerAction || null,
       }));
 
       // Merken: sichere Facts sofort speichern + Undo
@@ -503,9 +567,9 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setOfferPrep(null);
       setAppointmentDraft(null);
-      resetIntentChipsToDefault();
 
       if (enriched.magicBody) {
+        resetIntentChipsToDefault();
         if (shouldShowUniversalReview(enriched.turn)) {
           showUniversalReview(enriched.turn);
         } else {
@@ -523,6 +587,7 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       if (shouldShowUniversalReview(turn)) {
+        resetIntentChipsToDefault();
         showUniversalReview(turn);
         setFeedback('Clever hat vorbereitet');
         setTimeout(() => setFeedback(''), 2400);
@@ -535,6 +600,7 @@ export default function CustomerAkteSharedWorkspace({
         || '',
       ).trim();
       if (draftBody) {
+        resetIntentChipsToDefault();
         setUniversalTurn(null);
         clearAssist();
         rememberLastComposerAction(buildComposerLastActionFromText({
@@ -669,6 +735,7 @@ export default function CustomerAkteSharedWorkspace({
     if (!intentFocusToken) return;
     const chip = resolveIntentChipByConstraint(intentFocusConstraint);
     setSelectedIntentChipId(chip.id);
+    setIntentPurpose(null);
     setComposerMode(COMPOSER_MODES.CLEVER_WORK);
     setEditingMessageDraft(null);
     priorWorkDraftRef.current = '';
@@ -2117,10 +2184,14 @@ export default function CustomerAkteSharedWorkspace({
         selectedIntentChipId={selectedIntentChipId}
         onIntentChip={(chip) => {
           setSelectedIntentChipId(chip.id);
+          setIntentPurpose(null);
           setAttachmentActions(null);
         }}
         secondaryIntentActions={secondaryIntentActions}
         onSecondaryIntentAction={handleSecondaryIntentAction}
+        selectedPurposeId={intentPurpose?.id || null}
+        intentModeHint={intentModeHint}
+        intentChipTooltips={intentChipTooltips}
         hideIntentChips={Boolean(reviewModel) || inMessageEdit}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (

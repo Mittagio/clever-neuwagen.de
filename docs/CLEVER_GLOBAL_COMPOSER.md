@@ -19,6 +19,10 @@
 
 > **Contract Fact ≠ Customer Truth**
 
+> **Clever ist kein Hauptbutton. Clever ist der freie Standardmodus.**
+
+> **Hauptmodus → konkreter Anlass → Clever (ein Turn). Keine dritte Menüebene.**
+
 ## Surfaces
 
 | Surface | UI | Orchestrator / Kontext |
