@@ -119,7 +119,8 @@ Gültig bis 15.08.2026 10:00 Uhr`;
   const review = buildUniversalReviewModel(turn);
   assert.notEqual(review?.reviewType, 'appointment_and_message_review');
   assert.equal(review?.compactUi, true);
-  assert.ok(review?.groups?.length > 0);
+  assert.equal(review?.groups?.length || 0, 0);
+  assert.ok((review?.collapsedContext?.groups || []).length > 0);
 }
 
 // --- Empty contract scan → blocked import ---

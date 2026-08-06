@@ -95,7 +95,11 @@ assert.ok(
 );
 assert.notEqual(pdfReview?.reviewType, 'appointment_and_message_review');
 assert.equal(pdfReview?.compactUi, true);
-assert.ok(pdfReview?.groups?.length > 0);
+assert.equal(pdfReview?.groups?.length || 0, 0, 'Fact-Gruppen sind eingeklappt');
+assert.ok(
+  (pdfReview?.collapsedContext?.groups || []).length > 0,
+  'Erkannte Angaben liegen in collapsedContext',
+);
 assert.ok(
   pdfReview?.actionSections?.some((s) => (
     (s.primaryActions || []).some((a) => (

@@ -64,6 +64,116 @@ function formatKm(value) {
   return `${n.toLocaleString('de-DE')} km/Jahr`;
 }
 
+function groupHasContent(group) {
+  if (!group) return false;
+  if (Array.isArray(group.items) && group.items.length > 0) return true;
+  if (Array.isArray(group.chips) && group.chips.length > 0) return true;
+  return Boolean(String(group.line || '').trim());
+}
+
+function pickFactByField(facts = [], field) {
+  return facts.find((f) => f.field === field) || null;
+}
+
+/**
+ * Kompakte Offer-Hero-Zeilen: Fahrzeug · Zahlungsart + Konditionen.
+ */
+function buildOfferHeroPresentation(facts = [], offerSec = null, turn = {}) {
+  const vehicle = pickFactByField(facts, 'vehicleInterest');
+  const payment = pickFactByField(facts, 'paymentType');
+  const term = pickFactByField(facts, 'termMonths');
+  const km = pickFactByField(facts, 'annualMileage');
+  const purchase = pickFactByField(facts, 'purchasePrice');
+  const wish = turn.usedCustomerContext || {};
+
+  const vehicleLabel = normalizeVehicleDisplayLabel(
+    offerSec?.headline || vehicle?.label || null,
+  ) || null;
+
+  let paymentLabel = null;
+  if (payment?.label) paymentLabel = payment.label.replace(/^Zahlungsart:\s*/i, '');
+  else if (payment?.value === 'leasing') paymentLabel = 'Leasing';
+  else if (payment?.value === 'cash' || payment?.value === 'purchase') paymentLabel = 'Kauf';
+  else if (payment?.value === 'financing') paymentLabel = 'Finanzierung';
+  else if (/leasing/i.test(String(offerSec?.line || ''))) paymentLabel = 'Leasing';
+
+  const heroLine = [vehicleLabel, paymentLabel].filter(Boolean).join(' · ')
+    || vehicleLabel
+    || offerSec?.headline
+    || 'Angebot';
+
+  const conditions = [];
+  if (term?.label) conditions.push(term.label);
+  else if (term?.value != null) conditions.push(`${Number(term.value)} Monate`);
+  else if (wish.termMonths != null) conditions.push(`${wish.termMonths} Monate`);
+
+  if (km?.label) {
+    conditions.push(/km/i.test(km.label) ? km.label : formatKm(km.value));
+  } else if (km?.value != null) {
+    conditions.push(formatKm(km.value));
+  } else if (wish.annualMileage != null || wish.mileagePerYear != null) {
+    conditions.push(formatKm(wish.annualMileage ?? wish.mileagePerYear));
+  }
+
+  if (purchase?.label) conditions.push(purchase.label);
+  else if (offerSec?.payload?.monthlyRate != null) {
+    conditions.push(`${Number(offerSec.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+  }
+
+  if (!conditions.length && offerSec?.inheritedLine) {
+    const inherited = String(offerSec.inheritedLine).replace(/^Übernommen:\s*/i, '');
+    conditions.push(...inherited.split(/\s*·\s*/).filter(Boolean).slice(0, 3));
+  }
+  if (!conditions.length && offerSec?.line) {
+    conditions.push(
+      ...String(offerSec.line).split(/\s*·\s*/)
+        .filter((p) => p && !/ungültig|offen/i.test(p))
+        .slice(0, 3),
+    );
+  }
+
+  return {
+    vehicleLabel,
+    paymentLabel,
+    heroLine,
+    conditionsLine: [...new Set(conditions.filter(Boolean))].slice(0, 3).join(' · ') || null,
+  };
+}
+
+/**
+ * Eine kompakte Prüfbox statt mehrerer Warnzeilen.
+ */
+function buildOfferConflictBox(discountWarnings = [], turnWarnings = []) {
+  const discount = discountWarnings.find(Boolean)
+    || turnWarnings.find((w) => /Rabatt/i.test(String(w || '')));
+  if (discount) {
+    return {
+      title: 'Rabattwert bitte prüfen',
+      body: String(discount),
+      action: {
+        id: 'check_discount',
+        label: 'Rabatt prüfen',
+        action: 'check_discount',
+        tone: 'secondary',
+      },
+    };
+  }
+  const other = turnWarnings.find((w) => (
+    w
+    && !/Mindestens ein Wert braucht kurze Bestätigung/i.test(w)
+  ));
+  if (!other) return null;
+  return {
+    title: 'Angaben bitte prüfen',
+    body: String(other),
+    action: null,
+  };
+}
+
+function isCustomerAkteScope(turn = {}) {
+  return /customer/i.test(String(turn.scope || turn.scopeHint || ''));
+}
+
 /**
  * Offer-Delta + Nachrichten-Entwurf aus Turn ableiten.
  * @param {object} turn
@@ -581,6 +691,20 @@ export function buildUniversalActionSections(turn = {}) {
             tone: 'primary',
           },
         ],
+      secondaryActions: [
+        {
+          id: 'toggle_context',
+          label: 'Erkannte Angaben anzeigen',
+          action: 'toggle_context',
+          tone: 'compact',
+        },
+        {
+          id: 'discard',
+          label: 'Verwerfen',
+          action: 'discard',
+          tone: 'compact',
+        },
+      ],
     });
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
@@ -984,34 +1108,16 @@ export function buildUniversalReviewModel(turn = {}) {
       || preparedAppt?.messageDraft
       || apptSec?.body
       || null;
-    const needs = turn.relevantCustomerContext?.customerNeeds
-      || turn.usedCustomerContext?.labels
-      || [];
+    const offerHero = buildOfferHeroPresentation(facts, offerSec, turn);
     actionSections.unshift({
       id: 'offer_and_appointment_review',
       kind: 'offer_and_appointment_review',
       title: 'Clever hat vorbereitet',
-      headline: turn.resolvedCustomer?.name
+      headline: offerHero.heroLine
         || offerSec?.headline
         || preparedAppt?.whenLabel
         || null,
-      body: [
-        turn.resolvedCustomer?.name ? `KUNDE\n${turn.resolvedCustomer.name}` : null,
-        offerSec?.headline || offerSec?.line
-          ? `ANGEBOT\n${[offerSec?.headline, offerSec?.line].filter(Boolean).join('\n')}`
-          : null,
-        needs.length ? `BERÜCKSICHTIGT\n${needs.slice(0, 3).join(' · ')}` : null,
-        preparedAppt
-          ? `TERMINVORSCHLAG\n${preparedAppt.dateLabel || preparedAppt.whenLabel || ''}\n${preparedAppt.timeLabel ? `${preparedAppt.timeLabel} Uhr` : ''}`
-          : (apptSec?.headline ? `TERMINVORSCHLAG\n${apptSec.headline}` : null),
-        [
-          'ANLASS',
-          preparedAppt?.appointmentTypeLabel || 'Beratung im Autohaus',
-          preparedAppt?.vehicleContext?.label || offerSec?.headline || null,
-        ].filter(Boolean).join('\n'),
-        `KALENDER\n${calendarAvailabilityLabel(avail)}`,
-        msgBody ? `NACHRICHT\n„${String(msgBody).trim()}“` : null,
-      ].filter(Boolean).join('\n\n'),
+      body: null,
       offerSection: offerSec,
       appointmentSection: apptSec,
       preparedAppointment: preparedAppt,
@@ -1051,6 +1157,14 @@ export function buildUniversalReviewModel(turn = {}) {
           action: 'send_appointment_proposal',
           tone: 'compact',
         },
+      ],
+      secondaryActions: [
+        {
+          id: 'toggle_context',
+          label: 'Erkannte Angaben anzeigen',
+          action: 'toggle_context',
+          tone: 'compact',
+        },
         {
           id: 'discard',
           label: 'Verwerfen',
@@ -1068,23 +1182,13 @@ export function buildUniversalReviewModel(turn = {}) {
   if (hasOfferAndMessage) {
     const offerSec = actionSections.find((s) => s.kind === 'offer_prepare');
     const msgSec = actionSections.find((s) => s.kind === 'message_draft');
-    const needs = turn.relevantCustomerContext?.customerNeeds
-      || turn.usedCustomerContext?.labels
-      || [];
+    const offerHero = buildOfferHeroPresentation(facts, offerSec, turn);
     actionSections.unshift({
       id: 'offer_and_message_review',
       kind: 'offer_and_message_review',
       title: 'Clever hat vorbereitet',
-      headline: turn.resolvedCustomer?.name || offerSec?.headline || null,
-      body: [
-        turn.resolvedCustomer?.name ? `KUNDE\n${turn.resolvedCustomer.name}` : null,
-        offerSec?.headline ? `FAHRZEUG\n${offerSec.headline}` : null,
-        offerSec?.line || facts.find((f) => f.field === 'purchasePrice')?.label
-          ? `ANGEBOT\n${offerSec?.line || facts.find((f) => f.field === 'purchasePrice')?.label}`
-          : null,
-        needs.length ? `BERÜCKSICHTIGT\n${needs.slice(0, 3).join(' · ')}` : null,
-        msgSec?.body ? `NACHRICHT\n„${String(msgSec.body).trim()}“` : null,
-      ].filter(Boolean).join('\n\n'),
+      headline: offerHero.heroLine || offerSec?.headline || null,
+      body: null,
       offerSection: offerSec,
       messageSection: msgSec,
       primaryActions: [
@@ -1103,11 +1207,18 @@ export function buildUniversalReviewModel(turn = {}) {
           action: 'edit_message',
           tone: 'secondary',
         },
+      ],
+      secondaryActions: [
         {
-          id: 'approve_send',
-          label: 'Freigeben und senden',
-          leadId: turn.resolvedCustomer?.id || null,
-          action: 'approve_handoff',
+          id: 'toggle_context',
+          label: 'Erkannte Angaben anzeigen',
+          action: 'toggle_context',
+          tone: 'compact',
+        },
+        {
+          id: 'discard',
+          label: 'Verwerfen',
+          action: 'discard',
           tone: 'compact',
         },
       ],
@@ -1596,24 +1707,87 @@ export function buildUniversalReviewModel(turn = {}) {
     || offerMessageReview
     || appointmentMessageReview
     || offerPrepareReview;
+  const compactOfferReview = offerAppointmentReview
+    || offerMessageReview
+    || offerPrepareReview;
   const apptReviewSec = actionSections.find((s) => s.kind === 'appointment_and_message_review');
-  const offerHeroLabel = actionSections.find((s) => (
+  const offerSecForHero = actionSections.find((s) => (
     s.kind === 'offer_prepare'
     || s.kind === 'offer_incomplete'
-    || s.kind === 'offer_and_message_review'
+  )) || actionSections.find((s) => (
+    s.kind === 'offer_and_message_review'
     || s.kind === 'offer_and_appointment_review'
-  ))?.headline
+  ))?.offerSection
+    || null;
+  const offerHero = compactOfferReview
+    ? buildOfferHeroPresentation(facts, offerSecForHero, turn)
+    : null;
+  const offerHeroLabel = offerHero?.heroLine
+    || offerSecForHero?.headline
     || groups.find((g) => g.id === 'wish')?.line
     || null;
+  const inCustomerAkte = Boolean(
+    turn.resolvedCustomer?.id && isCustomerAkteScope(turn),
+  );
+  const contentGroups = groups.filter(groupHasContent);
+  // In geöffneter Akte: Kundengruppe nicht doppelt (steht schon im Header)
+  const collapsedGroups = (inCustomerAkte
+    ? contentGroups.filter((g) => g.id !== 'customer')
+    : contentGroups);
 
-  // Appointment-Review: Fact-Chips einklappen – nur Entscheidungsfelder offen
+  const offerConflictBox = compactOfferReview
+    ? buildOfferConflictBox(discountWarnings, turn.warnings || [])
+    : null;
+
+  // Offer-/Appointment-Review: Fact-Chips einklappen – nur Ergebnis + Konflikt offen
   const appointmentCollapsedContext = appointmentMessageReview
     ? {
       summary: apptReviewSec?.appointmentReview?.usedContextSummary || null,
-      groups,
+      groups: contentGroups,
     }
     : null;
-  const visibleGroups = appointmentMessageReview ? [] : groups;
+  const offerCollapsedContext = compactOfferReview
+    ? {
+      summary: offerHero?.conditionsLine || null,
+      groups: collapsedGroups,
+    }
+    : null;
+  const visibleGroups = (appointmentMessageReview || compactOfferReview)
+    ? []
+    : contentGroups;
+
+  const offerReviewModel = compactOfferReview
+    ? {
+      vehicleLabel: offerHero?.vehicleLabel || null,
+      paymentLabel: offerHero?.paymentLabel || null,
+      heroLine: offerHeroLabel,
+      conditionsLine: offerHero?.conditionsLine || null,
+      inCustomerAkte,
+      conflict: offerConflictBox,
+    }
+    : null;
+
+  // Toggle-Label an Offer-Sections anhängen, falls noch nicht gesetzt
+  if (compactOfferReview && collapsedGroups.length) {
+    for (const sec of actionSections) {
+      if (
+        sec.kind === 'offer_prepare'
+        || sec.kind === 'offer_incomplete'
+        || sec.kind === 'offer_and_message_review'
+        || sec.kind === 'offer_and_appointment_review'
+      ) {
+        if (!Array.isArray(sec.secondaryActions)) sec.secondaryActions = [];
+        if (!sec.secondaryActions.some((a) => a.action === 'toggle_context')) {
+          sec.secondaryActions.unshift({
+            id: 'toggle_context',
+            label: 'Erkannte Angaben anzeigen',
+            action: 'toggle_context',
+            tone: 'compact',
+          });
+        }
+      }
+    }
+  }
 
   return {
     reviewType: documentsReview
@@ -1651,17 +1825,13 @@ export function buildUniversalReviewModel(turn = {}) {
           apptReviewSec?.appointmentReview?.vehicleLabel,
         ].filter(Boolean).join(' · ') || null,
       }
-      : compactOfferOrAppointment
+      : compactOfferReview
       ? {
-        name: turn.resolvedCustomer?.name || offerHeroLabel || 'Angebot',
-        eyebrow: offerAppointmentReview
-          ? 'Angebot & Termin'
-          : offerMessageReview
-            ? 'Angebot & Nachricht'
-            : offerIncompleteOnly
-              ? 'Angebot unvollständig'
-              : 'Angebot erkannt',
-        subtitle: offerHeroLabel && turn.resolvedCustomer?.name ? offerHeroLabel : null,
+        name: offerHeroLabel || 'Angebot',
+        eyebrow: offerIncompleteOnly
+          ? 'Angebot unvollständig'
+          : 'Angebot vorbereitet',
+        subtitle: offerHero?.conditionsLine || null,
       }
       : undefined,
     title: documentsReview
@@ -1720,8 +1890,10 @@ export function buildUniversalReviewModel(turn = {}) {
                                         ? '✨ Clever hat vorbereitet'
                                         : '✨ Clever hat verstanden'),
     groups: visibleGroups,
-    collapsedContext: appointmentCollapsedContext,
+    collapsedContext: appointmentCollapsedContext || offerCollapsedContext,
     appointmentReview: apptReviewSec?.appointmentReview || null,
+    offerReview: offerReviewModel,
+    conflictBox: offerConflictBox,
     sendBlocked: Boolean(apptReviewSec?.sendBlocked),
     actionSections,
     factCount: facts.length,
@@ -1770,11 +1942,13 @@ export function buildUniversalReviewModel(turn = {}) {
     missingLine: openMissing.length
       ? `Noch offen: ${openMissing.map((m) => m.label).join('; ')}`
       : null,
-    warnings: [
-      ...(turn.warnings ?? []),
-      ...discountWarnings,
-      ...(apptReviewSec?.warnings || []),
-    ].filter((w, i, arr) => w && arr.indexOf(w) === i),
+    warnings: offerConflictBox
+      ? []
+      : [
+        ...(turn.warnings ?? []),
+        ...discountWarnings,
+        ...(apptReviewSec?.warnings || []),
+      ].filter((w, i, arr) => w && arr.indexOf(w) === i),
     assistantReply: turn.assistantReply ?? null,
     primaryCta: clarifyGoal
       ? 'Angebot vorbereiten'
@@ -1830,7 +2004,10 @@ export function buildUniversalReviewModel(turn = {}) {
     reviseOfferCta: trackFeedback
       ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || null)
       : null,
-    progressLines: turn.uiEffects?.progressLines ?? [],
+    // Compact Offer/Appointment: keine Diagnose-Progress-Zeilen („gefunden/erkannt“)
+    progressLines: (compactOfferReview || appointmentMessageReview)
+      ? []
+      : (turn.uiEffects?.progressLines ?? []),
     messageDraft: turn.messageDraft
       ?? actionSections.find((s) => s.kind === 'offer_and_appointment_review')?.messageDraft
       ?? actionSections.find((s) => s.kind === 'contract_compare_and_message_review')?.messageDraft

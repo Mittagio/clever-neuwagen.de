@@ -21,21 +21,28 @@ export function buildOfferAttachmentLabel(params = {}) {
   const termFact = facts.find((f) => f.field === 'termMonths');
   const kmFact = facts.find((f) => f.field === 'annualMileage');
 
+  const MODEL_RE = /\b(EV\s?[2-9]|Picanto|Sportage|XCeed|Ceed|Niro|Sorento)\b/i;
+  const normalizeModel = (raw) => {
+    if (!raw) return null;
+    let m = String(raw).replace(/\s+/g, '').replace(/^ev/i, 'EV');
+    m = m.replace(/^EV(\d)/, 'EV$1');
+    if (/^ev\d$/i.test(m)) m = m.toUpperCase();
+    return MODEL_RE.test(m) || /^EV\d$/i.test(m) ? m.replace(/^ev/i, 'EV') : null;
+  };
+
   let model = null;
   if (vehicleFact?.label) {
-    model = parseVehicleLabelParts(vehicleFact.label).model
-      || String(vehicleFact.label).replace(/^Kia\s+/i, '').split(/\s+/)[0];
+    model = normalizeModel(parseVehicleLabelParts(vehicleFact.label).model)
+      || normalizeModel(String(vehicleFact.label).replace(/^Kia\s+/i, '').split(/\s+/)[0]);
+  }
+  // Text vor Dateiname: „Freibleibende Kalkulation.pdf“ enthält kein Modell
+  if (!model) {
+    const fromText = text.match(MODEL_RE);
+    if (fromText) model = normalizeModel(fromText[1]);
   }
   if (!model) {
     const fromName = parseVehicleLabelParts(fileName.replace(/[_.-]+/g, ' '));
-    model = fromName.model;
-  }
-  if (!model) {
-    const fromText = text.match(/\b(EV\s?[2-9]|Picanto|Sportage|XCeed|Ceed|Niro|Sorento)\b/i);
-    if (fromText) {
-      model = fromText[1].replace(/\s+/g, '').replace(/^ev/i, 'EV').replace(/^EV(\d)/, 'EV$1');
-      if (/^ev\d$/i.test(model)) model = model.toUpperCase();
-    }
+    model = normalizeModel(fromName.model);
   }
 
   let months = termFact?.value != null ? Number(termFact.value) : null;

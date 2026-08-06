@@ -73,4 +73,14 @@ const apptChips = resolveComposerChipsForReview({
 assert.equal(apptChips.chips.length, 0);
 assert.ok(!apptChips.chips.some((c) => c.id === 'nachfassen'));
 
+const offerChips = resolveComposerChipsForReview({
+  reviewType: 'offer_and_message_review',
+  actionSections: [{
+    kind: 'offer_and_message_review',
+    primaryActions: [{ id: 'create', action: 'open_offer_handoff' }],
+  }],
+});
+assert.equal(offerChips.chips.length, 0);
+assert.ok(!offerChips.chips.some((c) => c.id === 'nachfassen'));
+
 console.log('composerSuggestionService.test.js: OK');

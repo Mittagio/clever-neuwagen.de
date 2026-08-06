@@ -58,6 +58,8 @@ export function buildDocumentWorkingContextItem(doc = {}) {
   const docId = String(doc.id || doc.slotId || '').trim();
   const label = String(doc.label || doc.fileName || 'Dokument').trim();
   const fileName = doc.fileName ? String(doc.fileName) : null;
+  // Angebots-PDF-Chips bleiben ruhig („EV2-Angebot · 36 Monate · 15.000 km“)
+  const quietOfferChip = /Angebot|Monate|\bkm\b/i.test(label);
   return {
     id: docId.startsWith('doc:') || docId.startsWith('slot:')
       ? docId
@@ -66,7 +68,10 @@ export function buildDocumentWorkingContextItem(doc = {}) {
     documentId: docId || null,
     slotId: doc.slotId || null,
     label,
-    shortLabel: fileName && fileName !== label ? `${label} · ${fileName}` : label,
+    shortLabel: doc.shortLabel
+      || (quietOfferChip || !fileName || fileName === label
+        ? label
+        : `${label} · ${fileName}`),
     detail: fileName || doc.status || null,
     document: doc,
   };

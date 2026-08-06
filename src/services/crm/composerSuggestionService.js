@@ -28,6 +28,29 @@ export const APPOINTMENT_REVIEW_CHIPS = [
   { id: 'appt_calendar', label: 'Kalender prüfen' },
 ];
 
+/** Bei offener Offer-Review – kontextuelle Alternativen statt Alltagschips */
+export const OFFER_REVIEW_CHIPS = [
+  { id: 'offer_fix_discount', label: 'Rabatt korrigieren' },
+  { id: 'offer_shorter_msg', label: 'Nachricht kürzer' },
+  { id: 'offer_check', label: 'Angebot prüfen' },
+];
+
+const OFFER_REVIEW_TYPES = new Set([
+  'offer_and_message_review',
+  'offer_and_appointment_review',
+  'offer_prepare',
+  'offer_incomplete',
+]);
+
+function reviewHasPrimaryActions(reviewModel, kinds = []) {
+  if (!Array.isArray(reviewModel?.actionSections)) return false;
+  return reviewModel.actionSections.some((s) => (
+    kinds.includes(s.kind)
+    && Array.isArray(s.primaryActions)
+    && s.primaryActions.length > 0
+  ));
+}
+
 /**
  * @param {object|null} reviewModel
  * @returns {{ chips: object[], moreChips: object[] }}
@@ -35,15 +58,16 @@ export const APPOINTMENT_REVIEW_CHIPS = [
 export function resolveComposerChipsForReview(reviewModel = null) {
   if (reviewModel?.reviewType === 'appointment_and_message_review') {
     // Review hat klare Primary-Actions → generische Chips ausblenden
-    if (Array.isArray(reviewModel?.actionSections)
-      && reviewModel.actionSections.some((s) => (
-        s.kind === 'appointment_and_message_review'
-        && Array.isArray(s.primaryActions)
-        && s.primaryActions.length > 0
-      ))) {
+    if (reviewHasPrimaryActions(reviewModel, ['appointment_and_message_review'])) {
       return { chips: [], moreChips: [] };
     }
     return { chips: APPOINTMENT_REVIEW_CHIPS, moreChips: [] };
+  }
+  if (OFFER_REVIEW_TYPES.has(reviewModel?.reviewType)) {
+    if (reviewHasPrimaryActions(reviewModel, [...OFFER_REVIEW_TYPES])) {
+      return { chips: [], moreChips: [] };
+    }
+    return { chips: OFFER_REVIEW_CHIPS, moreChips: [] };
   }
   return { chips: COMPOSER_PRIMARY_CHIPS, moreChips: COMPOSER_MORE_CHIPS };
 }
@@ -117,6 +141,9 @@ export function buildChipSellerInput(chipId = '', options = {}) {
     appt_other_day: 'Lieber einen anderen Tag.',
     appt_personal: 'Schreib die Terminnachricht persönlicher.',
     appt_calendar: 'Prüfe den Kalender für den Terminvorschlag.',
+    offer_fix_discount: 'Bitte den Rabattwert korrigieren – der erkannte Wert war nicht eindeutig.',
+    offer_shorter_msg: 'Schreib die Kundennachricht kürzer und klarer.',
+    offer_check: 'Prüfe das vorbereitete Angebot noch einmal.',
   };
   return map[chipId] || null;
 }

@@ -1352,6 +1352,12 @@ export default function CustomerAkteSharedWorkspace({
       handleAcceptUniversalReview();
       return;
     }
+    if (action.action === 'check_discount') {
+      setDraft('Bitte Rabatt korrigieren: ');
+      setFeedback('Rabattwert prüfen – bitte korrekten Prozentsatz eintragen.');
+      setTimeout(() => setFeedback(''), 3200);
+      return;
+    }
     if (action.action === 'edit_message') {
       const body = String(
         universalTurn.messageDraft
@@ -1752,6 +1758,7 @@ export default function CustomerAkteSharedWorkspace({
           id: `pdf:${prepared.attachment.fileName || file.name || Date.now()}`,
           label: prepared.workingContextLabel || prepared.attachment.fileName || 'PDF',
           fileName: prepared.attachment.fileName || file.name || null,
+          shortLabel: prepared.workingContextLabel || prepared.attachment.fileName || 'PDF',
           status: 'attached',
           kind: prepared.kind,
         }));

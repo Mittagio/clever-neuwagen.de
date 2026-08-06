@@ -405,6 +405,37 @@
   color: #8a5a2b;
 }
 
+.sur-card__check {
+  margin: 0 0 10px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(138, 90, 43, 0.08);
+  border: 1px solid rgba(138, 90, 43, 0.18);
+}
+
+.sur-card__check-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: #8a5a2b;
+}
+
+.sur-card__check-body {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #6b5340;
+}
+
+.sur-card__check-btn {
+  margin-top: 0.55rem;
+}
+
+.sur-card__chips--always {
+  display: flex;
+}
+
 @media (max-width: 640px) {
   .sur-card--multi .sur-card__actions-main {
     flex-direction: column;
@@ -414,7 +445,8 @@
     width: 100%;
   }
 
-  .sur-card__chips {
+  /* Offene Compact-Reviews: Chips nur im eingeklappten Kontext */
+  .sur-card__chips:not(.sur-card__chips--always) {
     display: none;
   }
 }

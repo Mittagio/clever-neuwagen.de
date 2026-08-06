@@ -204,6 +204,13 @@ export default function SellerUniversalReviewCard({
   const offerPrep = sections.find((s) => (
     s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
   ));
+  const offerReview = model?.offerReview || null;
+  const isOfferReview = Boolean(offerReview)
+    || model?.reviewType === 'offer_and_message_review'
+    || model?.reviewType === 'offer_and_appointment_review'
+    || model?.reviewType === 'offer_prepare'
+    || model?.reviewType === 'offer_incomplete';
+  const conflictBox = model?.conflictBox || offerReview?.conflict || null;
   const contractMsg = sections.find((s) => s.kind === 'contract_import_review');
   const contractMem = sections.find((s) => s.kind === 'contract_memory_result');
   const docsSec = sections.find((s) => s.kind === 'request_documents');
@@ -252,19 +259,32 @@ export default function SellerUniversalReviewCard({
     || model.kind === 'multi_source_apply_result';
   const isCompactReview = isCompactReviewModel(model);
   const settled = Boolean(status) || isApplyResult;
-  const showFactGroups = !isAppointmentReview && groups.length > 0 && (
+  const showFactGroups = !isAppointmentReview && !isOfferReview && groups.length > 0 && (
     isCompactReview
     || isApplyResult
   );
   const hero = model?.hero || null;
   const heroName = isAppointmentReview
     ? (appointmentReview?.whenLine || hero?.name || null)
-    : (hero?.name
-      || groups.find((g) => g.id === 'customer')?.line
-      || null);
-  const statusLines = Array.isArray(model?.progressLines)
-    ? model.progressLines.slice(0, 2)
-    : [];
+    : isOfferReview
+      ? (offerReview?.heroLine || hero?.name || null)
+      : (hero?.name
+        || groups.find((g) => g.id === 'customer')?.line
+        || null);
+  const statusLines = (isAppointmentReview || isOfferReview)
+    ? []
+    : (Array.isArray(model?.progressLines)
+      ? model.progressLines.slice(0, 2)
+      : []);
+  const collapsedGroups = (Array.isArray(collapsedContext?.groups)
+    ? collapsedContext.groups
+    : []
+  ).filter((group) => (
+    (Array.isArray(group.items) && group.items.length > 0)
+    || (Array.isArray(group.chips) && group.chips.length > 0)
+    || Boolean(String(group.line || '').trim())
+  ));
+  const hasCollapsedFacts = collapsedGroups.length > 0;
 
   if (!model || (!groups.length && !sections.length && !body)) return null;
 
@@ -335,7 +355,10 @@ export default function SellerUniversalReviewCard({
   }
   const compactBtnActions = isCompactReview
     ? [...compactFromPrimary, ...secondaryReviewActions]
-      .filter((action) => action?.action !== 'toggle_context')
+      .filter((action) => (
+        // Appointment hat eigenen Kontext-Toggle; Offer zeigt „Erkannte Angaben“ als Link
+        isOfferReview || action?.action !== 'toggle_context'
+      ))
     : [];
 
   return (
@@ -363,7 +386,9 @@ export default function SellerUniversalReviewCard({
           <h3 className="sur-card__hero-name">
             {isAppointmentReview
               ? (appointmentReview?.whenLine || heroName || 'Terminvorschlag')
-              : (heroName || 'Neuer Kunde')}
+              : isOfferReview
+                ? (offerReview?.heroLine || heroName || 'Angebot')
+                : (heroName || 'Neuer Kunde')}
           </h3>
           {isAppointmentReview ? (
             <div className="sur-card__appt-meta">
@@ -377,13 +402,19 @@ export default function SellerUniversalReviewCard({
                 <p className="sur-card__status-line">{appointmentReview.calendarLabel}</p>
               ) : null}
             </div>
+          ) : isOfferReview ? (
+            (offerReview?.conditionsLine || hero?.subtitle) ? (
+              <p className="sur-card__hero-sub">
+                {offerReview?.conditionsLine || hero.subtitle}
+              </p>
+            ) : null
           ) : hero?.subtitle ? (
             <p className="sur-card__hero-sub">{hero.subtitle}</p>
           ) : null}
         </div>
       ) : null}
 
-      {isCompactReview && !isAppointmentReview && statusLines.length > 0 ? (
+      {isCompactReview && !isAppointmentReview && !isOfferReview && statusLines.length > 0 ? (
         <p className="sur-card__status-line" aria-label="Clever Status">
           {statusLines.join(' · ')}
         </p>
@@ -393,13 +424,29 @@ export default function SellerUniversalReviewCard({
         <p className="sur-card__context">{metaLine}</p>
       ) : null}
 
-      {Array.isArray(model?.warnings) && model.warnings.length > 0 ? (
+      {conflictBox ? (
+        <div className="sur-card__check" role="status">
+          <p className="sur-card__check-title">⚠ {conflictBox.title}</p>
+          {conflictBox.body ? (
+            <p className="sur-card__check-body">{conflictBox.body}</p>
+          ) : null}
+          {conflictBox.action?.label ? (
+            <button
+              type="button"
+              className="sur-card__btn sur-card__btn--secondary sur-card__check-btn"
+              onClick={() => handleReviewAction(conflictBox.action)}
+            >
+              {conflictBox.action.label}
+            </button>
+          ) : null}
+        </div>
+      ) : (Array.isArray(model?.warnings) && model.warnings.length > 0 ? (
         <ul className="sur-card__warnings" aria-label="Hinweise">
           {model.warnings.slice(0, 3).map((warning) => (
             <li key={warning}>{warning}</li>
           ))}
         </ul>
-      ) : null}
+      ) : null)}
 
       {isAppointmentReview && appointmentReview?.message ? (
         <div className="sur-card__message-block">
@@ -411,7 +458,15 @@ export default function SellerUniversalReviewCard({
       {showFactGroups ? (
         <ul className={`sur-card__facts${isCompactReview ? ' sur-card__facts--compact' : ''}`} aria-label="Erkannte Angaben">
           {groups
-            .filter((group) => !(isCompactReview && group.id === 'customer' && heroName))
+            .filter((group) => {
+              const hasContent = (
+                (Array.isArray(group.items) && group.items.length > 0)
+                || (Array.isArray(group.chips) && group.chips.length > 0)
+                || Boolean(String(group.line || '').trim())
+              );
+              if (!hasContent) return false;
+              return !(isCompactReview && group.id === 'customer' && heroName);
+            })
             .map((group) => {
               const chips = Array.isArray(group.chips) && group.chips.length
                 ? group.chips
@@ -469,17 +524,6 @@ export default function SellerUniversalReviewCard({
         </div>
       ) : null}
 
-      {showCollapsedContext && collapsedContext?.groups?.length ? (
-        <ul className="sur-card__facts sur-card__facts--compact" aria-label="Eingeklappter Kontext">
-          {collapsedContext.groups.map((group) => (
-            <li key={group.id || group.title} className="sur-card__fact">
-              <span className="sur-card__fact-title">{group.title}</span>
-              <span className="sur-card__fact-line">{group.line}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
       {showSources && sources.length > 0 ? (
         <ul className="sur-card__sources" aria-label="Quellen">
           {sources.map((src) => (
@@ -513,16 +557,23 @@ export default function SellerUniversalReviewCard({
             </div>
             {compactBtnActions.length > 0 ? (
               <div className="sur-card__actions-more">
-                {compactBtnActions.map((action) => (
-                  <button
-                    key={action.id || action.label}
-                    type="button"
-                    className="sur-card__text-link"
-                    onClick={() => handleReviewAction(action)}
-                  >
-                    {action.label}
-                  </button>
-                ))}
+                {compactBtnActions.map((action) => {
+                  const label = action.action === 'toggle_context'
+                    ? (showCollapsedContext
+                      ? (isOfferReview ? 'Erkannte Angaben ausblenden' : 'Kontext ausblenden')
+                      : (isOfferReview ? 'Erkannte Angaben anzeigen' : (action.label || 'Kontext anzeigen')))
+                    : action.label;
+                  return (
+                    <button
+                      key={action.id || action.label}
+                      type="button"
+                      className="sur-card__text-link"
+                      onClick={() => handleReviewAction(action)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
           </div>
@@ -550,6 +601,36 @@ export default function SellerUniversalReviewCard({
             ))}
           </div>
         )
+      ) : null}
+
+      {showCollapsedContext && collapsedGroups.length ? (
+        <ul className="sur-card__facts sur-card__facts--compact" aria-label="Erkannte Angaben">
+          {collapsedGroups.map((group) => (
+            <li key={group.id || group.title} className="sur-card__fact">
+              <span className="sur-card__fact-title">{group.title}</span>
+              {Array.isArray(group.chips) && group.chips.length ? (
+                <span className="sur-card__chips sur-card__chips--always">
+                  {group.chips.map((chip) => (
+                    <span key={`${group.id}-${chip}`} className="sur-card__chip">{chip}</span>
+                  ))}
+                </span>
+              ) : (
+                <span className="sur-card__fact-line">{group.line}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {isOfferReview && hasCollapsedFacts
+        && !compactBtnActions.some((a) => a.action === 'toggle_context') ? (
+        <button
+          type="button"
+          className="sur-card__text-link"
+          onClick={() => setShowCollapsedContext((v) => !v)}
+        >
+          {showCollapsedContext ? 'Erkannte Angaben ausblenden' : 'Erkannte Angaben anzeigen'}
+        </button>
       ) : null}
 
       {historyHit && onOpenHistoryHit ? (

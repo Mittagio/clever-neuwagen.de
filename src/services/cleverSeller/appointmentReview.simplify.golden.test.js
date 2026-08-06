@@ -183,8 +183,17 @@ const kaiLead = {
   assert.ok(COMPOSER_PRIMARY_CHIPS.some((c) => c.id === 'nachfassen'));
   assert.ok(APPOINTMENT_REVIEW_CHIPS.length >= 3);
 
-  const normal = resolveComposerChipsForReview({ reviewType: 'offer_prepare' });
+  const normal = resolveComposerChipsForReview({ reviewType: null });
   assert.ok(normal.chips.some((c) => c.id === 'nachfassen'));
+
+  const offerOpen = resolveComposerChipsForReview({
+    reviewType: 'offer_prepare',
+    actionSections: [{
+      kind: 'offer_prepare',
+      primaryActions: [{ id: 'create', action: 'open_offer_handoff' }],
+    }],
+  });
+  assert.equal(offerOpen.chips.length, 0);
 }
 
 // --- Vertragsende Format ---
