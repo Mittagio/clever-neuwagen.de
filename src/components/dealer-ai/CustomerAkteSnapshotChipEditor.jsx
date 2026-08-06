@@ -294,7 +294,7 @@ export default function CustomerAkteSnapshotChipEditor({
               {[
                 { id: 'leasing', label: 'Leasing' },
                 { id: 'financing', label: 'Finanzierung' },
-                { id: 'cash', label: 'Kauf' },
+                { id: 'cash', label: 'Bar' },
               ].map((opt) => (
                 <button
                   key={opt.id}

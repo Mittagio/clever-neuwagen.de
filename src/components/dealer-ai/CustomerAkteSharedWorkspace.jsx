@@ -167,7 +167,7 @@ export default function CustomerAkteSharedWorkspace({
   isSaving = false,
   cleverMode = false,
   focusToken = 0,
-  /** Focus Composer + Intent (z. B. remember_customer_information von + Merken) */
+  /** Focus Composer + Intent (z. B. remember_customer_information vom Composer-Tab Merken) */
   intentFocusToken = 0,
   intentFocusConstraint = null,
   onRememberApplied = null,

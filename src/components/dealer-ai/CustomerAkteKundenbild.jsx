@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import {
   IconCar,
   IconChevronDown,
@@ -46,7 +46,7 @@ function chipPriorityMeta(chip) {
   return null;
 }
 
-/** Collapsed summary: max. zwei fachliche Zeilen aus bestehenden Soft-Gruppen (keine Taxonomie-Änderung). */
+/** Collapsed summary: max. zwei fachliche Zeilen. */
 function buildCollapsedSummaryLines(soft) {
   const groups = soft?.groups ?? [];
   const byId = new Map(groups.map((g) => [g.id, g]));
@@ -65,31 +65,35 @@ function buildCollapsedSummaryLines(soft) {
     return { prefix, body };
   }
 
+  const personGroup = byId.get(SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG);
   const fahrzeugGroup = byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
-  const wichtigGroup = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK);
+  const ausstattungGroup = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK);
 
   const lines = [];
+  const personLine = lineFromFacts('Person', personGroup?.facts);
+  if (personLine) lines.push(personLine);
+
   const fahrzeugLine = lineFromFacts('Fahrzeug', fahrzeugGroup?.facts);
-  if (fahrzeugLine) lines.push(fahrzeugLine);
+  if (fahrzeugLine && lines.length < 2) lines.push(fahrzeugLine);
 
-  // Ausstattung / entscheidend → „Wichtig“ (kein Taxonomie-Umbau)
-  let wichtigFacts = wichtigGroup?.facts ?? [];
-  if (!wichtigFacts.length) {
-    wichtigFacts = groups
-      .flatMap((g) => g.facts || [])
-      .filter((f) => (
-        f.priority === 'required'
-        || f.priority === 'important'
-        || f.tint === 'wichtig'
-        || f.category === 'wichtig'
-      ));
+  if (lines.length < 2) {
+    let wichtigFacts = ausstattungGroup?.facts ?? [];
+    if (!wichtigFacts.length) {
+      wichtigFacts = groups
+        .flatMap((g) => g.facts || [])
+        .filter((f) => (
+          f.priority === 'required'
+          || f.priority === 'important'
+          || f.tint === 'wichtig'
+          || f.category === 'wichtig'
+        ));
+    }
+    const wichtigLine = lineFromFacts('Ausstattung', wichtigFacts);
+    if (wichtigLine) lines.push(wichtigLine);
   }
-  const wichtigLine = lineFromFacts('Wichtig', wichtigFacts);
-  if (wichtigLine) lines.push(wichtigLine);
 
-  if (lines.length) return lines;
+  if (lines.length) return lines.slice(0, 2);
 
-  // Fallback: bestehende Summary, max. zwei Zeilen ohne falsches Fach-Label
   const tokens = (soft?.summary?.tokens ?? [])
     .map((t) => String(t.label || '').trim())
     .filter(Boolean);
@@ -117,6 +121,7 @@ function SnapshotChip({ chip, onFactTap }) {
   const category = chip.category || chip.tint || 'alltag';
   const priority = chipPriorityMeta(chip);
   const displayLabel = stripEquipmentPrioritySuffix(chip.label || '') || chip.label;
+  const isEmpty = Boolean(chip.empty);
   return (
     <button
       type="button"
@@ -124,17 +129,19 @@ function SnapshotChip({ chip, onFactTap }) {
         'cust-kundenbild__chip',
         `cust-kundenbild__chip--${category}`,
         priority ? `cust-kundenbild__chip--prio-${priority.key}` : '',
+        isEmpty ? 'is-empty' : '',
         chip.relevant || chip.highlighted ? 'is-relevant' : '',
         chip.highlighted ? 'is-highlight' : '',
       ].filter(Boolean).join(' ')}
       data-category={category}
       data-priority={priority?.key || undefined}
+      data-empty={isEmpty ? 'true' : undefined}
       onClick={() => onFactTap?.(chip)}
-      aria-label={`${chip.label} bearbeiten`}
+      aria-label={isEmpty ? `${chip.label} ergänzen` : `${chip.label} bearbeiten`}
     >
       <ChipIcon icon={chip.icon || category} />
       <span className="cust-kundenbild__chip-label">{displayLabel}</span>
-      {priority ? (
+      {priority && !isEmpty ? (
         <span className="cust-kundenbild__chip-prio" aria-hidden>
           <span className="cust-kundenbild__chip-prio-dot" />
           {priority.label}
@@ -145,22 +152,124 @@ function SnapshotChip({ chip, onFactTap }) {
 }
 
 /**
- * Zone 1 – immer sichtbare Kernkonditionen (Tap → Mini-Editor).
+ * Eine Soft-Kategorie: klappbar, auch leer, mit Plus → vordefinierte Chips.
+ */
+function SoftKnowledgeGroup({
+  group,
+  onFactTap = null,
+  onAddToGroup = null,
+}) {
+  const facts = group?.facts ?? [];
+  const hasFacts = facts.length > 0;
+  const [open, setOpen] = useState(hasFacts);
+  const panelId = useId();
+  const count = facts.length;
+  const canAdd = typeof onAddToGroup === 'function' && (group?.showAddCta !== false);
+
+  function handleToggle() {
+    setOpen((v) => !v);
+  }
+
+  return (
+    <div className={`cust-kundenbild__group${open ? ' is-open' : ' is-closed'}${hasFacts ? '' : ' is-empty'}`}>
+      <div className="cust-kundenbild__group-head">
+        <button
+          type="button"
+          className="cust-kundenbild__group-toggle"
+          onClick={handleToggle}
+          aria-expanded={open}
+          aria-controls={panelId}
+        >
+          <span className="cust-kundenbild__group-title">{group.title}</span>
+          {count > 0 ? (
+            <span className="cust-kundenbild__group-count">{count}</span>
+          ) : null}
+          <span className={`cust-kundenbild__group-chevron${open ? ' is-open' : ''}`} aria-hidden>
+            <IconChevronDown />
+          </span>
+        </button>
+        {canAdd ? (
+          <button
+            type="button"
+            className="cust-kundenbild__group-add"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToGroup(group);
+            }}
+            aria-label={`${group.title} ergänzen`}
+            title="Vordefinierte Chips"
+          >
+            +
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div id={panelId} className="cust-kundenbild__group-body" role="region" aria-label={group.title}>
+          {hasFacts ? (
+            <ul className="cust-kundenbild__chips">
+              {facts.map((chip) => (
+                <li key={chip.id}>
+                  <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                </li>
+              ))}
+              {canAdd ? (
+                <li>
+                  <button
+                    type="button"
+                    className="cust-kundenbild__chip cust-kundenbild__chip--add"
+                    onClick={() => onAddToGroup(group)}
+                    aria-label={`${group.title}: Chip hinzufügen`}
+                  >
+                    <span className="cust-kundenbild__chip-label">+</span>
+                  </button>
+                </li>
+              ) : null}
+            </ul>
+          ) : (
+            <p className="cust-kundenbild__group-empty">
+              Noch nichts gemerkt.
+              {canAdd ? (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="cust-kundenbild__group-empty-add"
+                    onClick={() => onAddToGroup(group)}
+                  >
+                    Chips wählen
+                  </button>
+                  {' '}
+                  oder Composer (Merken).
+                </>
+              ) : (
+                ' Über Composer (Merken) ergänzen.'
+              )}
+            </p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Zone 1 – immer sichtbare Konditionen (Tap → Mini-Editor).
  */
 export function CustomerAkteKernkonditionen({
   kern = null,
   onFactTap = null,
 }) {
-  if (!kern?.hasData && !kern?.line) return null;
+  if (!kern) return null;
   const chips = kern.chips ?? [];
+  if (!kern.hasData && !kern.line && chips.length === 0) return null;
 
   return (
     <div
       className="cust-kundenbild__kern"
-      aria-label={kern.title || 'Kernkonditionen'}
+      aria-label={kern.title || 'Konditionen'}
     >
       <p className="cust-kundenbild__kern-title">
-        {kern.title || 'Kernkonditionen'}
+        {kern.title || 'Konditionen'}
       </p>
       {chips.length > 0 ? (
         <ul className="cust-kundenbild__kern-chips">
@@ -178,15 +287,14 @@ export function CustomerAkteKernkonditionen({
 }
 
 /**
- * Zone 2 – eine klappbare Soft-Sektion „Kundenwissen“ (A/B/C).
+ * Zone 2 – klappbare Soft-Sektion „Kundenwissen“ mit 4 Unterkategorien.
  */
 export function CustomerAkteKundeninfos({
   soft = null,
   expanded = false,
   onToggle = null,
   onFactTap = null,
-  onMerken = null,
-  onAusstattungErgaenzen = null,
+  onAddToGroup = null,
   panelId = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
@@ -219,18 +327,6 @@ export function CustomerAkteKundeninfos({
               <span className="cust-kundenbild__title">{sectionTitle}</span>
             </button>
             <div className="cust-kundenbild__head-actions">
-              {typeof onMerken === 'function' ? (
-                <button
-                  type="button"
-                  className="cust-kundenbild__merken"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMerken();
-                  }}
-                >
-                  + Merken
-                </button>
-              ) : null}
               <button
                 type="button"
                 className="cust-kundenbild__chevron-btn"
@@ -274,27 +370,12 @@ export function CustomerAkteKundeninfos({
           aria-label={`${sectionTitle} Details`}
         >
           {groups.map((group) => (
-            <div key={group.id} className="cust-kundenbild__group">
-              <p className="cust-kundenbild__group-title">{group.title}</p>
-              {group.facts?.length ? (
-                <ul className="cust-kundenbild__chips">
-                  {group.facts.map((chip) => (
-                    <li key={chip.id}>
-                      <SnapshotChip chip={chip} onFactTap={onFactTap} />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {group.showEquipmentCta && typeof onAusstattungErgaenzen === 'function' ? (
-                <button
-                  type="button"
-                  className="cust-kundenbild__equip-cta"
-                  onClick={onAusstattungErgaenzen}
-                >
-                  + Ausstattung ergänzen
-                </button>
-              ) : null}
-            </div>
+            <SoftKnowledgeGroup
+              key={group.id}
+              group={group}
+              onFactTap={onFactTap}
+              onAddToGroup={onAddToGroup}
+            />
           ))}
         </div>
       ) : null}
@@ -303,15 +384,16 @@ export function CustomerAkteKundeninfos({
 }
 
 /**
- * Kundenbild: Kernkonditionen (immer) + eine Soft-Sektion darunter.
- * Motto: Composer erfassen · Chips erkennen/korrigieren.
+ * Kundenbild: Kernkonditionen (immer) + Soft-Sektion darunter.
+ * Motto: Composer merken · Plus-Chip wählen · Chips erkennen/korrigieren.
  */
 export default function CustomerAkteKundenbild({
   model = null,
   expanded = false,
   onToggle = null,
   onFactTap = null,
-  onMerken = null,
+  onAddToGroup = null,
+  /** @deprecated use onAddToGroup */
   onAusstattungErgaenzen = null,
   /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Soft-Details, full=beides */
   variant = 'full',
@@ -331,17 +413,30 @@ export default function CustomerAkteKundenbild({
   );
   const workingContext = model?.workingContext || null;
 
-  const hasKern = Boolean(kern?.hasData || kern?.line);
+  const hasKern = Boolean(kern);
   const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
   if (!hasKern && !hasSoft && !workingContext) return null;
 
   const showKern = hasKern && (variant === 'full' || variant === 'bar');
   const showSoft = hasSoft && (variant === 'full' || variant === 'bar' || variant === 'panel');
-  // Working-Strip nur in Bar/Full (nicht doppelt im Panel)
   const showWorking = Boolean(workingContext?.line) && (
     variant === 'full'
     || (variant === 'bar' && !expanded)
   );
+
+  function handleAddToGroup(group) {
+    if (typeof onAddToGroup === 'function') {
+      onAddToGroup(group);
+      return;
+    }
+    // Legacy-Fallback: Ausstattung → alter CTA
+    if (
+      group?.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK
+      && typeof onAusstattungErgaenzen === 'function'
+    ) {
+      onAusstattungErgaenzen();
+    }
+  }
 
   return (
     <section
@@ -358,8 +453,7 @@ export default function CustomerAkteKundenbild({
           expanded={expanded}
           onToggle={onToggle}
           onFactTap={onFactTap}
-          onMerken={onMerken}
-          onAusstattungErgaenzen={onAusstattungErgaenzen}
+          onAddToGroup={handleAddToGroup}
           panelId={panelId}
           variant={variant}
         />

@@ -1,10 +1,10 @@
 /**
  * Kundenbild – kanonische Informationshierarchie:
- * Header: Name · Fahrzeugtrack · Zahlungsart · Kontaktstatus
- * Kern: Laufzeit · Jahreskilometer · Anzahlung · Vertragsende (nur bestätigt)
- * Soft „Kundenwissen“ (nur nicht-leere Gruppen):
- *   1 Mensch & Alltag · 2 Fahrzeugpräferenz · 3 Ausstattung & Technik
- *   4 Bestandsfahrzeug · 5 Persönlich
+ * Header: Name · Fahrzeugtrack · Kontaktstatus
+ * Kern „Konditionen“: Zahlungsart · Laufzeit · km · AZ · Vertragsende
+ * Soft „Kundenwissen“ (4 Gruppen, auch leer sichtbar):
+ *   1 Person & Alltag · 2 Fahrzeug & Bestand · 3 Ausstattung · 4 Persönliches
+ * Befüllen: Plus-Chip (vordefinierte Chips) oder Composer (Merken).
  * Strukturierte Fakten nie als Freinotizen; Offer/PDF überschreibt Customer Truth nicht.
  */
 import { getNeedProfileFromLead, modelDisplayLabel } from '../consultation/needProfileService.js';
@@ -42,21 +42,32 @@ export const SOFT_SNAPSHOT_GROUP = {
 };
 
 export const SOFT_SNAPSHOT_GROUP_TITLE = {
-  [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'Mensch & Alltag',
-  [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: 'Fahrzeugpräferenz',
-  [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: 'Ausstattung & Technik',
-  [SOFT_SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
-  [SOFT_SNAPSHOT_GROUP.PERSOENLICH]: 'Persönlich',
+  [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'Person & Alltag',
+  [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: 'Fahrzeug & Bestand',
+  [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: 'Ausstattung',
+  /** @deprecated Anzeige läuft über FAHRZEUGPRAEFERENZ („Fahrzeug & Bestand“) */
+  [SOFT_SNAPSHOT_GROUP.BESTAND]: 'Fahrzeug & Bestand',
+  [SOFT_SNAPSHOT_GROUP.PERSOENLICH]: 'Persönliches',
 };
 
-/** Render-Reihenfolge Soft-Gruppen (nur nicht-leere). */
+/** Render-Reihenfolge Soft-Gruppen (auch leer). Bestand ist in Fahrzeug gemerged. */
 export const SOFT_SNAPSHOT_GROUP_ORDER = Object.freeze([
   SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
   SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
   SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
-  SOFT_SNAPSHOT_GROUP.BESTAND,
   SOFT_SNAPSHOT_GROUP.PERSOENLICH,
 ]);
+
+/**
+ * Soft-Gruppe → Kundenhelfer-/Picker-Einstieg (Plus-Chip).
+ * `equipment` = Soft-Sektion Ausstattung; sonst Life-Kategorie mit vordefinierten Chips.
+ */
+export const SOFT_GROUP_ADD_CATEGORY = Object.freeze({
+  [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'familie',
+  [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: 'auto',
+  [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: 'equipment',
+  [SOFT_SNAPSHOT_GROUP.PERSOENLICH]: 'vorlieben',
+});
 
 /** Ausstattungs-Priorität (optional). */
 export const EQUIPMENT_WISH_PRIORITY = Object.freeze({
@@ -112,8 +123,9 @@ export const SNAPSHOT_GROUP_EDIT_KEY = {
   [SNAPSHOT_GROUP.VERTRAG]: 'termMonths',
 };
 
-/** Kernkonditionen: nur diese bestätigten Vertragsfelder. */
+/** Konditionen: Zahlungsart + Vertragsfelder (fehlend = Placeholder). */
 export const KERN_SNAPSHOT_FACT_IDS = Object.freeze([
+  'paymentType',
   'termMonths',
   'mileagePerYear',
   'downPayment',
@@ -365,7 +377,7 @@ const PAYMENT_LABELS = {
   leasing: 'Leasing',
   financing: 'Finanzierung',
   threeWayFinancing: 'Finanzierung',
-  cash: 'Kauf',
+  cash: 'Bar',
 };
 
 /**
@@ -978,99 +990,134 @@ function resolveConfirmedKernWishValue(kind, wishValue, offerTerms) {
 }
 
 /**
- * Immer sichtbare Kernkonditionen – nur Laufzeit · km · AZ · Vertragsende.
- * Zahlungsart + Fahrzeugtrack liegen im Header; Offer/PDF überschreibt nicht.
+ * Immer sichtbare Konditionen – Zahlungsart + feste Slots (Laufzeit · km · AZ · ggf. Ende).
+ * Fehlende Werte als ausgegraute, editierbare Placeholder-Chips.
+ * Fahrzeugtrack bleibt im Header; Offer/PDF überschreibt nicht.
  */
 export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
   const workingContextItems = options.workingContextItems ?? [];
   const offerTerms = collectOfferCommercialTerms(lead, workingContextItems);
   const chips = [];
   const sources = new Set();
+  const payment = resolvePaymentType(lead, profile);
+  const isLeasing = payment === 'leasing' || payment == null;
+
+  function pushKernSlot({
+    id,
+    filledLabel,
+    emptyLabel,
+    editKey,
+    miniEditor,
+    summaryPriority,
+    source = null,
+    icon = 'vertrag',
+  }) {
+    const filled = Boolean(filledLabel);
+    if (filled && source) sources.add(source);
+    pushFact(chips, {
+      ...fact(id, filled ? filledLabel : emptyLabel, {
+        editKey,
+        groupId: 'kern',
+        tint: SNAPSHOT_TINT.VERTRAG,
+        miniEditor,
+        summaryPriority,
+        icon,
+      }),
+      empty: !filled,
+    });
+  }
+
+  const paymentLabel = payment && PAYMENT_LABELS[payment] ? PAYMENT_LABELS[payment] : null;
+  pushKernSlot({
+    id: 'paymentType',
+    filledLabel: paymentLabel,
+    emptyLabel: 'Zahlungsart',
+    editKey: 'paymentType',
+    miniEditor: SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE,
+    summaryPriority: 1,
+    source: paymentLabel ? 'wish' : null,
+    icon: 'budget',
+  });
 
   const termResolved = resolveConfirmedKernWishValue(
     'termMonths',
     lead?.wish?.termMonths ?? profile?.leaseDurationMonths ?? null,
     offerTerms,
   );
-  const termLabel = termResolved ? formatMonths(termResolved.value) : null;
-  if (termLabel) {
-    sources.add(termResolved.source);
-    pushFact(chips, fact('termMonths', termLabel, {
-      editKey: 'termMonths',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.VERTRAG,
-      miniEditor: SNAPSHOT_MINI_EDITOR.TERM_MONTHS,
-      summaryPriority: 2,
-      icon: 'vertrag',
-    }));
-  }
+  pushKernSlot({
+    id: 'termMonths',
+    filledLabel: termResolved ? formatMonths(termResolved.value) : null,
+    emptyLabel: 'Laufzeit',
+    editKey: 'termMonths',
+    miniEditor: SNAPSHOT_MINI_EDITOR.TERM_MONTHS,
+    summaryPriority: 2,
+    source: termResolved?.source,
+  });
 
   const kmResolved = resolveConfirmedKernWishValue(
     'mileage',
     lead?.wish?.mileagePerYear ?? profile?.annualKm ?? null,
     offerTerms,
   );
-  const kmLabel = kmResolved ? formatKm(kmResolved.value) : null;
-  if (kmLabel) {
-    sources.add(kmResolved.source);
-    pushFact(chips, fact('mileagePerYear', kmLabel, {
-      editKey: 'mileagePerYear',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.VERTRAG,
-      miniEditor: SNAPSHOT_MINI_EDITOR.MILEAGE,
-      summaryPriority: 3,
-      icon: 'vertrag',
-    }));
-  }
+  pushKernSlot({
+    id: 'mileagePerYear',
+    filledLabel: kmResolved ? formatKm(kmResolved.value) : null,
+    emptyLabel: 'km/Jahr',
+    editKey: 'mileagePerYear',
+    miniEditor: SNAPSHOT_MINI_EDITOR.MILEAGE,
+    summaryPriority: 3,
+    source: kmResolved?.source,
+  });
 
   const downResolved = resolveConfirmedKernWishValue(
     'downPayment',
     lead?.wish?.downPayment ?? profile?.budget?.downPayment ?? null,
     offerTerms,
   );
-  const downLabel = downResolved
-    ? formatDownPayment(downResolved.value, { compact: true })
-    : null;
-  if (downLabel) {
-    sources.add(downResolved.source);
-    pushFact(chips, fact('downPayment', downLabel, {
-      editKey: 'downPayment',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.VERTRAG,
-      miniEditor: SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT,
-      summaryPriority: 4,
-      icon: 'vertrag',
-    }));
-  }
+  pushKernSlot({
+    id: 'downPayment',
+    filledLabel: downResolved
+      ? formatDownPayment(downResolved.value, { compact: true })
+      : null,
+    emptyLabel: 'Anzahlung',
+    editKey: 'downPayment',
+    miniEditor: SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT,
+    summaryPriority: 4,
+    source: downResolved?.source,
+  });
 
+  // Vertragsende: bei Leasing immer Slot; sonst nur wenn gesetzt
   const endResolved = resolveConfirmedKernWishValue(
     'endDate',
     lead?.wish?.leasingEndDate ?? lead?.leasingEndDate ?? lead?.crm?.leasingEndDate ?? null,
     offerTerms,
   );
   const endLabel = endResolved ? formatLeasingEndLabel(endResolved.value) : null;
-  if (endLabel) {
-    sources.add(endResolved.source);
-    pushFact(chips, fact('leasingEndDate', endLabel, {
+  if (isLeasing || endLabel) {
+    pushKernSlot({
+      id: 'leasingEndDate',
+      filledLabel: endLabel,
+      emptyLabel: 'Vertragsende',
       editKey: 'leasingEndDate',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.VERTRAG,
       miniEditor: SNAPSHOT_MINI_EDITOR.LEASING_END,
       summaryPriority: 5,
-      icon: 'vertrag',
-    }));
+      source: endResolved?.source,
+    });
   }
 
-  const lineParts = chips.map((c) => c.label);
+  const filledChips = chips.filter((c) => c && !c.empty);
+  const lineParts = filledChips.map((c) => c.label);
 
   return {
-    title: 'Kernkonditionen',
+    title: 'Konditionen',
     source: sources.size ? 'wish' : 'none',
     line: lineParts.join(' · '),
     parts: lineParts,
     chips,
     vehicleLabel: null,
-    hasData: chips.length > 0,
+    /** Zone immer anzeigen – auch wenn alle Slots noch leer sind */
+    hasData: true,
+    paymentType: payment,
   };
 }
 
@@ -1595,15 +1642,21 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
     },
     {
       id: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
-      facts: omitFactsByDedupe(praeferenzFacts, kernOmitLabels, kernOmitIds),
+      facts: omitFactsByDedupe(
+        [
+          ...praeferenzFacts,
+          ...bestandFacts.map((f) => ({
+            ...f,
+            groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+          })),
+        ],
+        kernOmitLabels,
+        kernOmitIds,
+      ),
     },
     {
       id: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
       facts: omitFactsByDedupe(ausstattungFacts, kernOmitLabels, kernOmitIds),
-    },
-    {
-      id: SOFT_SNAPSHOT_GROUP.BESTAND,
-      facts: omitFactsByDedupe(bestandFacts, kernOmitLabels, kernOmitIds),
     },
     {
       id: SOFT_SNAPSHOT_GROUP.PERSOENLICH,
@@ -1622,19 +1675,21 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       .filter(Boolean),
   );
 
-  const softGroups = softGroupsSpec
-    .filter((g) => g.facts.length > 0)
-    .map((g) => {
-      const facts = annotateFacts(g.facts, relevantSet, highlightSet);
-      return {
-        id: g.id,
-        title: SOFT_SNAPSHOT_GROUP_TITLE[g.id] || SNAPSHOT_GROUP_TITLE[g.id],
-        editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
-        relevant: facts.some((f) => f.relevant),
-        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
-        facts,
-      };
-    });
+  const softGroups = softGroupsSpec.map((g) => {
+    const facts = annotateFacts(g.facts, relevantSet, highlightSet);
+    return {
+      id: g.id,
+      title: SOFT_SNAPSHOT_GROUP_TITLE[g.id] || SNAPSHOT_GROUP_TITLE[g.id],
+      editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
+      relevant: facts.some((f) => f.relevant),
+      empty: facts.length === 0,
+      showAddCta: true,
+      /** @deprecated use showAddCta */
+      showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      addCategory: SOFT_GROUP_ADD_CATEGORY[g.id] || null,
+      facts,
+    };
+  });
 
   const softFacts = softGroups.flatMap((g) => g.facts);
   const softSummary = buildSnapshotSummary(
@@ -1648,8 +1703,8 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   // Working Context = Angebots-Kontext, überschreibt Customer Truth nicht
   const showWorkingStrip = Boolean(workingContext?.line);
 
-  const hasSoft = softFacts.length > 0
-    || softGroups.some((g) => g.showEquipmentCta);
+  // Kundenwissen immer sichtbar (4 Buckets, auch leer) – Befüllen via + oder Composer
+  const hasSoft = true;
   const hasKern = Boolean(kern.hasData);
 
   return {
@@ -1658,7 +1713,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       hasSoft,
       hasKern,
       factCount: softFacts.length + kernChips.length,
-      source: understanding?.meta?.source ?? ((hasSoft || hasKern) ? 'lead' : 'none'),
+      source: understanding?.meta?.source ?? ((softFacts.length > 0 || hasKern) ? 'lead' : 'none'),
       updatedAt: understanding?.meta?.updatedAt ?? profile.updatedAt ?? lead?.updatedAt ?? null,
     },
     kern: {
@@ -1670,11 +1725,11 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       summary: softSummary,
       groups: softGroups,
       chips: softChips,
-      hasData: hasSoft,
+      hasData: true,
     },
     /** @deprecated use soft.summary */
     summary: softSummary,
-    /** Soft-Gruppen (Mensch · Präferenz · Ausstattung · Bestand · Persönlich) */
+    /** Soft-Gruppen (Person · Fahrzeug · Ausstattung · Persönliches) */
     groups: softGroups,
     /** Soft-Chips – keine Header-/Kern-Duplikate */
     chips: softChips,

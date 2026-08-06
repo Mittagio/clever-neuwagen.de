@@ -6,7 +6,7 @@ import './CustomerAkte.css';
 const PAYMENT_OPTIONS = [
   { id: 'leasing', label: 'Leasing' },
   { id: 'financing', label: 'Finanzierung', aliases: ['threeWayFinancing'] },
-  { id: 'cash', label: 'Kauf' },
+  { id: 'cash', label: 'Bar' },
 ];
 
 const TYPICAL_TERMS = [24, 36, 48];

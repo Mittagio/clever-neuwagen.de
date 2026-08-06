@@ -124,6 +124,8 @@ import {
   buildCustomerSnapshotModel,
   SNAPSHOT_MINI_EDITOR,
   SNAPSHOT_RATE_MODES,
+  SOFT_GROUP_ADD_CATEGORY,
+  SOFT_SNAPSHOT_GROUP,
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import { COMPOSER_INTENT_CONSTRAINT } from '../../services/cleverSeller/composerIntentChips.js';
 import {
@@ -1035,15 +1037,9 @@ export default function DealerAiLeadFollowUp({
   const selfDisclosureLabel = selfDisclosureCard?.statusLabel || 'offen';
 
   const headerContextLine = useMemo(() => {
-    const paymentLabel = PAYMENT_TYPE_LABELS[wishPaymentType]
-      || (wishPaymentType === 'leasing' ? 'Leasing'
-        : wishPaymentType === 'financing' ? 'Finanzierung'
-          : wishPaymentType === 'cash' ? 'Kauf' : '');
     const trackCount = vehicleTracks.length || vehicleCards.length;
     if (trackCount >= 2) {
-      const parts = [`${trackCount} Fahrzeuge`];
-      if (paymentLabel) parts.push(paymentLabel);
-      return parts.join(' · ');
+      return `${trackCount} Fahrzeuge`;
     }
     const models = [...new Set(
       vehicleCards
@@ -1051,11 +1047,8 @@ export default function DealerAiLeadFollowUp({
         .filter(Boolean),
     )].slice(0, 2);
     if (!models.length && wishModel) models.push(String(wishModel).replace(/^Kia\s+/i, '').trim());
-    const parts = [];
-    if (models.length) parts.push(models.join(' / '));
-    if (paymentLabel) parts.push(paymentLabel);
-    return parts.join(' · ');
-  }, [vehicleCards, vehicleTracks, wishModel, wishPaymentType]);
+    return models.length ? models.join(' / ') : '';
+  }, [vehicleCards, vehicleTracks, wishModel]);
 
   function focusChatComposer({
     clever = true,
@@ -1078,17 +1071,20 @@ export default function DealerAiLeadFollowUp({
     setMoreSheetOpen(false);
   }
 
-  function handleKundenbildMerken() {
+  function handleAddToSoftGroup(group) {
     setKundenbildExpanded(true);
-    focusChatComposer({
-      clever: true,
-      intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
-    });
+    const categoryId = group?.addCategory
+      || SOFT_GROUP_ADD_CATEGORY[group?.id]
+      || null;
+    openKundenhelferSheet(categoryId);
   }
 
+  /** @deprecated use handleAddToSoftGroup */
   function handleAusstattungErgaenzen() {
-    setKundenbildExpanded(true);
-    openKundenhelferSheet('equipment');
+    handleAddToSoftGroup({
+      id: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      addCategory: 'equipment',
+    });
   }
 
   function handleRememberApplied({ labels = [] } = {}) {
@@ -3458,7 +3454,7 @@ export default function DealerAiLeadFollowUp({
           expanded
           variant="panel"
           onFactTap={handleKundenbildFactTap}
-          onMerken={handleKundenbildMerken}
+          onAddToGroup={handleAddToSoftGroup}
           onAusstattungErgaenzen={handleAusstattungErgaenzen}
         />
       ) : null}
@@ -3647,7 +3643,7 @@ export default function DealerAiLeadFollowUp({
             variant="bar"
             onToggle={setKundenbildExpanded}
             onFactTap={handleKundenbildFactTap}
-            onMerken={handleKundenbildMerken}
+            onAddToGroup={handleAddToSoftGroup}
             onAusstattungErgaenzen={handleAusstattungErgaenzen}
           />
         ) : null}

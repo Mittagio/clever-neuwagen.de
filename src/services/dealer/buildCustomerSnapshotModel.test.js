@@ -19,7 +19,6 @@ import {
   SNAPSHOT_MINI_EDITOR,
   SNAPSHOT_TINT,
   SOFT_SNAPSHOT_GROUP,
-  SOFT_SNAPSHOT_GROUP_TITLE,
   KERN_SNAPSHOT_FACT_IDS,
 } from './buildCustomerSnapshotModel.js';
 import {
@@ -93,18 +92,19 @@ function baseLead(overrides = {}) {
   });
   const snap = buildCustomerSnapshotModel(lead);
 
-  assert.ok(snap.kern?.hasData, 'Kernkonditionen vorhanden');
+  assert.ok(snap.kern?.hasData, 'Konditionen vorhanden');
+  assert.equal(snap.kern.title, 'Konditionen');
   assert.match(snap.kern.line, /48 Monate/);
   assert.match(snap.kern.line, /20\.000 km/);
   assert.match(snap.kern.line, /6\.000 € AZ/);
   assert.match(snap.kern.line, /Ende Juli 2026/);
-  assert.ok(!/Finanzierung|Leasing/i.test(snap.kern.line), 'Zahlungsart nicht im Kern (Header)');
+  assert.ok(snap.kernChips.some((c) => c.id === 'paymentType'), 'Zahlungsart in Konditionen');
   assert.ok(!/EV2|GT-Line/i.test(snap.kern.line), 'Fahrzeugtrack nicht im Kern (Header)');
   assert.deepEqual(
     snap.kernChips.map((c) => c.id).sort(),
     [...KERN_SNAPSHOT_FACT_IDS].sort(),
   );
-  assert.ok(!snap.kernChips.some((c) => c.id === 'paymentType'));
+  assert.ok(snap.kernChips.every((c) => !c.empty), 'gefüllte Konditionen nicht empty');
   assert.ok(!snap.kernChips.some((c) => c.id === 'rate'));
   assert.ok(!snap.kernChips.some((c) => c.id === 'vehicleWish'));
 
@@ -156,26 +156,32 @@ function baseLead(overrides = {}) {
   const snap = buildCustomerSnapshotModel(lead);
   assert.equal(snap.soft.title, 'Kundenwissen');
   const ids = snap.soft.groups.map((g) => g.id);
-  assert.ok(ids.includes(SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG));
-  assert.ok(ids.includes(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ));
-  assert.ok(ids.includes(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK));
-  assert.ok(ids.includes(SOFT_SNAPSHOT_GROUP.BESTAND));
-  assert.ok(ids.includes(SOFT_SNAPSHOT_GROUP.PERSOENLICH));
+  assert.deepEqual(ids, [
+    SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+    SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+    SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+    SOFT_SNAPSHOT_GROUP.PERSOENLICH,
+  ]);
   assert.equal(
     snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG)?.title,
-    SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG],
+    'Person & Alltag',
   );
   assert.equal(
     snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.title,
-    'Fahrzeugpräferenz',
+    'Fahrzeug & Bestand',
   );
   assert.equal(
     snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.title,
-    'Ausstattung & Technik',
+    'Ausstattung',
+  );
+  assert.equal(
+    snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICH)?.title,
+    'Persönliches',
   );
   const persoenlich = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICH);
   assert.ok(persoenlich.facts.some((f) => /samstags/i.test(f.label)), 'Freinotiz in Persönlich');
   assert.ok(persoenlich.facts.some((f) => /Kaffee/i.test(f.label)), 'Kaffee schwarz als Persönlich');
+  assert.ok(snap.soft.groups.every((g) => g.showAddCta), 'Plus-CTA je Gruppe');
   console.log('✓ Soft taxonomy groups + Kundenwissen title');
 }
 
@@ -425,7 +431,7 @@ function baseLead(overrides = {}) {
   const snapWish = buildCustomerSnapshotModel(withWish, { workingContextItems: working });
   assert.ok(snapWish.kernChips.some((c) => c.id === 'termMonths' && /48/.test(c.label)));
   assert.ok(snapWish.kernChips.some((c) => c.id === 'mileagePerYear' && /20\.000/.test(c.label)));
-  assert.ok(!snapWish.kernChips.some((c) => c.id === 'paymentType'));
+  assert.ok(snapWish.kernChips.some((c) => c.id === 'paymentType' && /Leasing/i.test(c.label)));
   assert.ok(!snapWish.softChips.some((c) => c.id === 'termMonths'));
   console.log('✓ Offer does not overwrite customer truth');
 }
@@ -571,9 +577,47 @@ function baseLead(overrides = {}) {
 {
   const kern = buildKernKonditionen(baseLead(), getNeedProfileLike());
   assert.ok(kern.hasData);
+  assert.equal(kern.title, 'Konditionen');
   assert.match(kern.line, /Monate|km/i);
-  assert.ok(!/Leasing|Finanzierung/i.test(kern.line));
+  assert.match(kern.line, /Finanzierung|Leasing|Bar/i);
   console.log('✓ buildKernKonditionen');
+}
+
+// --- Konditionen: leere Slots ausgegraut, editierbar ---
+{
+  const emptyLead = {
+    id: 'lead-empty-kern',
+    name: 'Garritano',
+    wish: { paymentType: 'leasing' },
+    crm: { needProfile: createEmptyNeedProfile() },
+  };
+  const kern = buildKernKonditionen(emptyLead, createEmptyNeedProfile());
+  assert.equal(kern.title, 'Konditionen');
+  assert.equal(kern.hasData, true);
+  assert.ok(kern.chips.some((c) => c.id === 'termMonths' && c.empty && c.label === 'Laufzeit'));
+  assert.ok(kern.chips.some((c) => c.id === 'mileagePerYear' && c.empty && c.label === 'km/Jahr'));
+  assert.ok(kern.chips.some((c) => c.id === 'downPayment' && c.empty));
+  assert.ok(kern.chips.some((c) => c.id === 'leasingEndDate' && c.empty));
+  assert.ok(kern.chips.some((c) => c.id === 'paymentType' && !c.empty && c.label === 'Leasing'));
+  assert.ok(kern.chips.every((c) => c.miniEditor || c.editKey));
+  console.log('✓ Konditionen empty slots');
+}
+
+// --- Konditionen auch bei Bar immer sichtbar ---
+{
+  const cashLead = {
+    id: 'lead-cash-kern',
+    wish: { paymentType: 'cash' },
+    crm: { needProfile: createEmptyNeedProfile() },
+  };
+  const kern = buildKernKonditionen(cashLead, createEmptyNeedProfile());
+  assert.equal(kern.hasData, true);
+  assert.ok(kern.chips.some((c) => c.id === 'termMonths'));
+  assert.ok(kern.chips.some((c) => c.id === 'mileagePerYear'));
+  assert.ok(kern.chips.some((c) => c.id === 'downPayment'));
+  assert.ok(kern.chips.some((c) => c.id === 'paymentType' && c.label === 'Bar'));
+  assert.ok(!kern.chips.some((c) => c.id === 'leasingEndDate'), 'Bar: kein leeres Vertragsende');
+  console.log('✓ Konditionen cash always visible');
 }
 
 function getNeedProfileLike() {

@@ -25,7 +25,7 @@ Visuelle Vorlage für die Kundenakte. **Kein Feature-Umbau** – nur Optik/Layou
 ```text
 Header (Name · Kontaktwarnung)
 ↓
-1  Kernkonditionen     – warmer Beige-Strip, immer sichtbar
+1  Konditionen         – warmer Beige-Strip, immer sichtbar (auch leere Slots)
 ↓
 2  Kundenwissen        – Lavendel-Zone, klappbar, editierbare Chips
 ↓
@@ -36,12 +36,29 @@ Header (Name · Kontaktwarnung)
 5  Composer + Bottom-Nav
 ```
 
+### Kundenwissen – Struktur (verbindlich)
+
+Vier Soft-Buckets unter „Kundenwissen“ (auch leer sichtbar, einzeln klappbar):
+
+```text
+Person & Alltag
+Fahrzeug & Bestand   ← Präferenz + Bestandsfahrzeug gemerged
+Ausstattung
+Persönliches
+```
+
+**Befüllen (zwei Wege):**
+1. **Plus-Chip** je Kategorie → Kundenhelfer mit vordefinierten Chips (Familie / Auto / Ausstattung / Vorlieben)
+2. **Composer** Tab „Merken“ → Freitext, Clever sortiert
+
+**Nicht im Header:** kein „+ Merken“ – Capturing nur über Gruppen-Plus oder Composer.
+
 ### Zwei Zonen (Farbtrennung)
 
 | Zone | Fläche | Inhalt |
 |------|--------|--------|
-| **Kernkonditionen** | Warm/Beige `#f8f3ea` … `#faf6ef` | Deal-Fakten (Laufzeit, km, Anzahlung, Ende) |
-| **Kundenwissen** | Lavendel `#ece8f8` / `#f0ecfa` | Mensch, Fahrzeugpräferenz, Ausstattung, Prioritäten |
+| **Konditionen** | Warm/Beige `#f8f3ea` … `#faf6ef` | Deal-Fakten (Zahlungsart, Laufzeit, km, AZ, Ende); fehlend = ausgegraut + editierbar |
+| **Kundenwissen** | Lavendel `#ece8f8` / `#f0ecfa` | Person, Fahrzeug & Bestand, Ausstattung, Persönliches |
 
 ### Chip-Regeln
 
