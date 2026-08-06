@@ -404,22 +404,28 @@
   flex-shrink: 0;
 }
 
-/* CleverMoment – ruhige Card; lavender Variante = Mockup Clever-Karte */
+/* CleverMoment – kleinere Action-Card; Lavendel-Akzent links */
 .cn-clever-moment {
-  padding: 14px 16px;
-  border-radius: var(--radius-card, 14px);
+  padding: 12px 14px 12px 13px;
+  border-radius: 12px;
   background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border-subtle, #e8e8ef);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-left: 3px solid var(--color-clever, #6d5bb8);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 18px rgba(109, 91, 184, 0.08);
 }
 
 .cn-clever-moment--lavender {
-  background: #f0edf8;
-  border-color: rgba(109, 91, 184, 0.14);
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.06);
+  border-left-color: var(--color-clever, #6d5bb8);
 }
 
 .cn-clever-moment--empty {
   background: var(--color-surface, #fff);
-  border-color: var(--color-border-subtle, #e8e8ef);
+  border-color: rgba(15, 23, 42, 0.06);
+  border-left-color: var(--color-clever, #6d5bb8);
 }
 
 .cn-clever-moment__eyebrow {

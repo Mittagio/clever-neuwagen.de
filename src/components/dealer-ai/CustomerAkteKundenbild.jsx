@@ -1,7 +1,12 @@
 import { useId } from 'react';
 import { IconCar, IconChevronDown, IconUser } from './AkteIcons.jsx';
-import { flattenSnapshotChips } from '../../services/dealer/buildCustomerSnapshotModel.js';
+import {
+  flattenSnapshotChips,
+  SOFT_SNAPSHOT_GROUP,
+} from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
+
+const COLLAPSED_LINE_MAX = 3;
 
 function ChipIcon({ icon }) {
   if (icon === 'car' || icon === 'fahrzeug' || icon === 'inzahlungnahme') {
@@ -11,6 +16,73 @@ function ChipIcon({ icon }) {
     return <IconUser className="cust-kundenbild__chip-icon" />;
   }
   return null;
+}
+
+/** Collapsed summary: max. zwei fachliche Zeilen aus bestehenden Soft-Gruppen (keine Taxonomie-Änderung). */
+function buildCollapsedSummaryLines(soft) {
+  const groups = soft?.groups ?? [];
+  const byId = new Map(groups.map((g) => [g.id, g]));
+
+  function lineFromFacts(prefix, facts = [], max = COLLAPSED_LINE_MAX) {
+    const labels = facts
+      .map((f) => String(f.label || '').trim())
+      .filter(Boolean);
+    if (!labels.length) return null;
+    const shown = labels.slice(0, max);
+    const overflow = labels.length - shown.length;
+    const body = [
+      ...shown,
+      overflow > 0 ? `+${overflow}` : null,
+    ].filter(Boolean).join(' · ');
+    return { prefix, body };
+  }
+
+  const fahrzeugGroup = byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+  const wichtigGroup = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK);
+
+  const lines = [];
+  const fahrzeugLine = lineFromFacts('Fahrzeug', fahrzeugGroup?.facts);
+  if (fahrzeugLine) lines.push(fahrzeugLine);
+
+  // Ausstattung / entscheidend → „Wichtig“ (kein Taxonomie-Umbau)
+  let wichtigFacts = wichtigGroup?.facts ?? [];
+  if (!wichtigFacts.length) {
+    wichtigFacts = groups
+      .flatMap((g) => g.facts || [])
+      .filter((f) => (
+        f.priority === 'required'
+        || f.priority === 'important'
+        || f.tint === 'wichtig'
+        || f.category === 'wichtig'
+      ));
+  }
+  const wichtigLine = lineFromFacts('Wichtig', wichtigFacts);
+  if (wichtigLine) lines.push(wichtigLine);
+
+  if (lines.length) return lines;
+
+  // Fallback: bestehende Summary, max. zwei Zeilen ohne falsches Fach-Label
+  const tokens = (soft?.summary?.tokens ?? [])
+    .map((t) => String(t.label || '').trim())
+    .filter(Boolean);
+  if (tokens.length) {
+    const first = tokens.slice(0, COLLAPSED_LINE_MAX);
+    const rest = tokens.slice(COLLAPSED_LINE_MAX);
+    const out = [{ prefix: null, body: first.join(' · ') }];
+    if (rest.length) {
+      const shown = rest.slice(0, COLLAPSED_LINE_MAX);
+      const overflow = rest.length - shown.length;
+      out.push({
+        prefix: null,
+        body: [...shown, overflow > 0 ? `+${overflow}` : null].filter(Boolean).join(' · '),
+      });
+    } else if ((soft?.summary?.overflow ?? 0) > 0) {
+      out[0].body = `${out[0].body} · +${soft.summary.overflow}`;
+    }
+    return out;
+  }
+  const raw = String(soft?.summary?.line || '').trim();
+  return raw ? [{ prefix: null, body: raw }] : [];
 }
 
 function SnapshotChip({ chip, onFactTap }) {
@@ -85,7 +157,7 @@ export function CustomerAkteKundeninfos({
   if (!hasSoft) return null;
 
   const sectionTitle = soft?.title || 'Kundenwissen';
-  const summaryLine = soft?.summary?.line || '';
+  const summaryLines = buildCollapsedSummaryLines(soft);
   const groups = soft?.groups ?? [];
   const showBar = variant === 'full' || variant === 'bar';
   const showPanel = (variant === 'full' || variant === 'panel') && expanded;
@@ -135,10 +207,23 @@ export function CustomerAkteKundeninfos({
               </button>
             </div>
           </div>
-          {!expanded && summaryLine ? (
-            <p className="cust-kundenbild__summary" title={summaryLine}>
-              {summaryLine}
-            </p>
+          {!expanded && summaryLines.length > 0 ? (
+            <div
+              className="cust-kundenbild__summary"
+              title={summaryLines.map((l) => (l.prefix ? `${l.prefix}: ${l.body}` : l.body)).join('\n')}
+            >
+              {summaryLines.map((line) => (
+                <p key={line.prefix || line.body} className="cust-kundenbild__summary-line">
+                  {line.prefix ? (
+                    <>
+                      <span className="cust-kundenbild__summary-prefix">{line.prefix}:</span>
+                      {' '}
+                      {line.body}
+                    </>
+                  ) : line.body}
+                </p>
+              ))}
+            </div>
           ) : null}
         </div>
       ) : null}

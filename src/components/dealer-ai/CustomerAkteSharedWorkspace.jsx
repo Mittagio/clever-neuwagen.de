@@ -1973,11 +1973,11 @@ export default function CustomerAkteSharedWorkspace({
           ) : null}
           {emptyRecommend.actions.length ? (
             <div className="sw-chat__empty-recommend-actions">
-              {emptyRecommend.actions.map((action) => (
+              {emptyRecommend.actions.map((action, index) => (
                 <button
                   key={action.id}
                   type="button"
-                  className="sw-chat__empty-recommend-btn"
+                  className={`sw-chat__empty-recommend-btn${index === 0 ? '' : ' sw-chat__empty-recommend-btn--ghost'}`}
                   onClick={() => handleEmptyRecommendAction(action)}
                 >
                   {action.label}

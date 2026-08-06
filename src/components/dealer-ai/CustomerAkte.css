@@ -6056,6 +6056,17 @@
   gap: 6px;
 }
 
+/* Wissen → Clever: ~20–24px Luft; Clever inset, nicht full-bleed */
+.sw-chat__feed-top .clever-empfiehlt,
+.sw-chat__feed-top .cn-clever-moment {
+  margin: 22px 16px 8px;
+}
+
+.cust-akte-shell__pane--clever > .cust-kundenbild--panel + .cust-akte-workspace .sw-chat__empty-recommend,
+.cust-akte-workspace--compact-empty .sw-chat__empty-recommend {
+  margin-top: 22px;
+}
+
 .sw-chat__feed-top .cust-akte-clever-notepad {
   margin: 0;
   padding: 6px 8px;
