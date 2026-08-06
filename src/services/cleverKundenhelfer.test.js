@@ -52,15 +52,18 @@ assert.equal(
 assert.ok(sheetSource.includes('+ Info hinzufügen'), 'Sheet zeigt + Info hinzufügen');
 assert.ok(sheetSource.includes('dai-kh-hub'), 'Soft-Wish-Hub statt reines Kategorie-Grid');
 assert.ok(sheetSource.includes('Leben & Alltag'), 'Kundenhelfer-Kategorien gebündelt');
-assert.ok(sheetSource.includes('Ausstattung'), 'Soft-Wish Ausstattung');
+assert.ok(sheetSource.includes('Ausstattungswünsche'), 'Soft-Wish Ausstattungswünsche');
+assert.ok(sheetSource.includes('beim Fahrzeug wichtig'), 'Ausstattung-Picker Subtitle');
 assert.ok(sheetSource.includes('Verfügbarkeit'), 'Soft-Wish Verfügbarkeit');
 assert.ok(!sheetSource.includes("label: 'Anschaffung'"), 'Anschaffung nur in Konditionen');
 assert.ok(sheetSource.includes('Übernehmen'), 'Akte-Footer wie Konditionen');
-assert.ok(sheetSource.includes('Mehr Notizen'), 'Gespräch/Sprache eingeklappt');
+assert.ok(sheetSource.includes('Mehr Notizen'), 'Gespräch/Sprache eingeklappt (nicht im Equipment-Picker)');
+assert.ok(sheetSource.includes('!isEquipmentPicker'), 'Mehr Notizen im Ausstattung-Picker ausgeblendet');
 assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Leben-&-Alltag behält Kategorie-Grid');
 assert.ok(!sheetSource.includes('Kleine Details fürs nächste Gespräch'), 'alte Chip-Wand entfernt');
 assert.ok(sheetSource.includes('resolveKundenhelferSheetNotes'), 'lokaler notes-State gewinnt beim Editieren');
 assert.ok(sheetSource.includes('HANDOFF_EQUIPMENT_CATEGORIES'), 'Ausstattung-Kategorien mit Icons');
+assert.ok(sheetSource.includes('EQUIPMENT_AREA_ICONS'), 'Line-Icons statt Emoji');
 assert.ok(sheetSource.includes('chip.selected'), 'Equipment-Toggle nutzt chip.selected');
 assert.ok(sheetSource.includes('setExclusiveChipInGroup'), 'exklusive Soft-Wish-Gruppen');
 

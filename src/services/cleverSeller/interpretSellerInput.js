@@ -679,10 +679,24 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  const isRememberCue = /\bmerk(?:e|en)?\s*dir\b|\bmerken\b|\bnotier(?:e|en)?\b/i.test(t);
+  const equipmentPriority = /m[uü]ssen\s+drin|muss\s+drin|pflicht|zwingend/i.test(t)
+    ? 'required'
+    : /w[äa]re\s+sch[öo]n|nice\s*to\s*have/i.test(t)
+      ? 'preferred'
+      : /\bwichtig\b|\bpriorit/i.test(t)
+        ? 'important'
+        : 'preferred';
+  const prioritySuffix = equipmentPriority === 'required'
+    ? 'muss'
+    : equipmentPriority === 'important'
+      ? 'wichtig'
+      : null;
+
   const color = t.match(/\b(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*)\b/i);
   if (color) {
-    const raw = color[1];
-    const lower = String(raw || '').toLowerCase();
+    const rawColor = color[1];
+    const lower = String(rawColor || '').toLowerCase();
     const base = lower.startsWith('schwarz') ? 'schwarz'
       : lower.startsWith('weiß') || lower.startsWith('weiss') ? 'weiß'
       : lower.startsWith('blau') ? 'blau'
@@ -691,26 +705,26 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       : lower.startsWith('rot') ? 'rot'
       : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
       : lower;
-    const label = /\bfarbe\b/i.test(t) && !/^farbe/i.test(raw)
+    const label = /\bfarbe\b/i.test(t) && !/^farbe/i.test(rawColor)
       ? `Farbe ${titleCaseToken(base)}`
       : titleCaseToken(base);
     pushFact(facts, createExtractedFact({
-      factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+      factClass: isRememberCue ? SELLER_FACT_CLASS.VEHICLE_REQUIREMENT : SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
       value: base,
       label,
-      confidence: hasInterest ? 0.88 : 0.82,
-      needsConfirmation: !hasInterest,
+      confidence: isRememberCue || hasInterest ? 0.94 : 0.82,
+      needsConfirmation: !(isRememberCue || hasInterest),
     }));
   }
 
   if (/\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t)
-    && /\bwichtig|braucht|möchte|moechte|will|mit\b/i.test(t)) {
+    && /\bwichtig|braucht|möchte|moechte|will|mit\b|m[uü]ssen\s+drin|muss\s+drin/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'towHitchRequired',
       value: true,
-      label: 'AHK wichtig',
+      label: prioritySuffix ? `AHK · ${prioritySuffix}` : 'AHK wichtig',
       confidence: 0.94,
     }));
   }
@@ -733,7 +747,41 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       field: 'transmissionPreference',
       value: 'automatic',
       label: 'Automatik',
-      confidence: existingPick?.gear && /schalter/i.test(existingPick.gear) ? 0.88 : 0.9,
+      confidence: existingPick?.gear && /schalter/i.test(existingPick.gear) ? 0.88 : 0.94,
+    }));
+  }
+
+  if (/\belektro\b|\belektrisch\b/i.test(t) && !/\bhybrid\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'fuelPreference',
+      value: 'electric',
+      label: 'Elektro',
+      confidence: isRememberCue ? 0.94 : 0.9,
+    }));
+  }
+
+  const equipmentWishRules = [
+    { re: /\btotwinkel(?:assistent)?\b/i, label: 'Totwinkelassistent', id: 'blind_spot' },
+    { re: /\bspurhalte(?:assistent)?\b/i, label: 'Spurhalteassistent', id: 'lane_assist' },
+    { re: /\bverkehrszeichenerkennung\b|\bvze\b/i, label: 'Verkehrszeichenerkennung', id: 'traffic_sign' },
+    { re: /\bw[äa]rmepumpe\b/i, label: 'Wärmepumpe', id: 'heat_pump' },
+    { re: /\bsitzheizung\b/i, label: 'Sitzheizung', id: 'heated_seats' },
+    { re: /\bpanorama(?:dach)?\b/i, label: 'Panoramadach', id: 'panorama_roof' },
+  ];
+  for (const rule of equipmentWishRules) {
+    if (!rule.re.test(t)) continue;
+    const display = prioritySuffix ? `${rule.label} · ${prioritySuffix}` : rule.label;
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'equipmentWish',
+      value: {
+        id: rule.id,
+        label: rule.label,
+        priority: equipmentPriority,
+      },
+      label: display,
+      confidence: isRememberCue || equipmentPriority === 'required' ? 0.95 : 0.9,
     }));
   }
 
@@ -742,7 +790,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'sunroofRequired',
       value: true,
-      label: 'Schiebedach',
+      label: prioritySuffix ? `Schiebedach · ${prioritySuffix}` : 'Schiebedach',
       confidence: 0.92,
     }));
   }

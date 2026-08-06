@@ -64,12 +64,12 @@ export const HANDOFF_EQUIPMENT_CHIPS = [
   { id: 'foldingMirrors', label: 'Elektr. Spiegel', category: 'daily' },
 ];
 
-/** Soft-UI: Komfort · Technik · Sicherheit · Alltag */
+/** Soft-UI: Komfort · Technik · Sicherheit · Alltag (iconId → Line-Icons in UI) */
 export const HANDOFF_EQUIPMENT_CATEGORIES = [
-  { id: 'comfort', label: 'Komfort', icon: '💺' },
-  { id: 'tech', label: 'Technik', icon: '⚙️' },
-  { id: 'safety', label: 'Sicherheit', icon: '🛡️' },
-  { id: 'daily', label: 'Alltag', icon: '🪝' },
+  { id: 'comfort', label: 'Komfort', iconId: 'comfort' },
+  { id: 'tech', label: 'Technik', iconId: 'tech' },
+  { id: 'safety', label: 'Sicherheit', iconId: 'safety' },
+  { id: 'daily', label: 'Alltag', iconId: 'daily' },
 ];
 
 /** Kategorie-Chips direkt unter „Ausstattung“ */

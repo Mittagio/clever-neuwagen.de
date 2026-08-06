@@ -247,10 +247,59 @@ export function IconMegaphone(props) {
   );
 }
 
+/** Ausstattungs-Picker: Komfort */
+export function IconSeat(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 11v7M17 11v7" {...stroke} />
+      <path d="M5 18h14" {...stroke} />
+      <path d="M6 11c0-3 2.5-5 6-5s6 2 6 5" {...stroke} />
+      <path d="M8 11h8v3H8z" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+/** Ausstattungs-Picker: Technik */
+export function IconCpu(props) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="7" y="7" width="10" height="10" rx="1.5" {...stroke} />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.5 1.5M17 17l1.5 1.5M18.5 5.5L17 7M7 17l-1.5 1.5" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+/** Ausstattungs-Picker: Sicherheit */
+export function IconShield(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+/** Ausstattungs-Picker: Alltag / AHK */
+export function IconHook(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M8 4v8a4 4 0 0 0 8 0V9" {...stroke} />
+      <path d="M12 4V2" {...stroke} />
+      <path d="M16 13c1.5 0 3 1 3 3s-1.5 3-3 3" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export const AKTE_NAV_ICONS = {
   kunde: IconUser,
   chat: IconChat,
   clever: IconSparkle,
   angebote: IconCar,
   mehr: IconMore,
+};
+
+export const EQUIPMENT_AREA_ICONS = {
+  comfort: IconSeat,
+  tech: IconCpu,
+  safety: IconShield,
+  daily: IconHook,
 };

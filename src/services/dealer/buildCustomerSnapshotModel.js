@@ -2,7 +2,9 @@
  * Kundenbild – kanonische Informationshierarchie:
  * Header: Name · Fahrzeugtrack · Zahlungsart · Kontaktstatus
  * Kern: Laufzeit · Jahreskilometer · Anzahlung · Vertragsende (nur bestätigt)
- * Soft „Kundenwissen“: A Mensch & Alltag · B Anforderungen · C Bestandsfahrzeug
+ * Soft „Kundenwissen“ (nur nicht-leere Gruppen):
+ *   1 Mensch & Alltag · 2 Fahrzeugpräferenz · 3 Ausstattung & Technik
+ *   4 Bestandsfahrzeug · 5 Persönlich
  * Strukturierte Fakten nie als Freinotizen; Offer/PDF überschreibt Customer Truth nicht.
  */
 import { getNeedProfileFromLead, modelDisplayLabel } from '../consultation/needProfileService.js';
@@ -15,33 +17,66 @@ import {
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
 
-/** Soft-Gruppen unter „Kundenwissen“ – genau A/B/C. Legacy-Keys als Alias. */
+/** Soft-Gruppen unter „Kundenwissen“ – kanonische Taxonomie. Legacy-Keys als Alias. */
 export const SOFT_SNAPSHOT_GROUP = {
+  /** HUMAN_AND_USAGE */
   MENSCH_ALLTAG: 'menschAlltag',
-  ANFORDERUNGEN: 'anforderungen',
+  /** VEHICLE_PREFERENCE */
+  FAHRZEUGPRAEFERENZ: 'fahrzeugpraeferenz',
+  /** EQUIPMENT_AND_TECH */
+  AUSSTATTUNG_TECHNIK: 'ausstattungTechnik',
+  /** EXISTING_VEHICLE */
   BESTAND: 'bestand',
+  /** PERSONAL_NOTE */
+  PERSOENLICH: 'persoenlich',
+  /** @deprecated → FAHRZEUGPRAEFERENZ (Anzeige-Split) */
+  ANFORDERUNGEN: 'fahrzeugpraeferenz',
   /** @deprecated → MENSCH_ALLTAG */
   KUNDE_ALLTAG: 'menschAlltag',
-  /** @deprecated → ANFORDERUNGEN */
-  FAHRZEUGWUNSCH: 'anforderungen',
-  /** @deprecated → ANFORDERUNGEN */
-  WICHTIG_AUSWAHL: 'anforderungen',
-  /** @deprecated Freinotizen leben in MENSCH_ALLTAG */
-  NOTIZEN: 'menschAlltag',
+  /** @deprecated → FAHRZEUGPRAEFERENZ */
+  FAHRZEUGWUNSCH: 'fahrzeugpraeferenz',
+  /** @deprecated → AUSSTATTUNG_TECHNIK */
+  WICHTIG_AUSWAHL: 'ausstattungTechnik',
+  /** @deprecated → PERSOENLICH */
+  NOTIZEN: 'persoenlich',
 };
 
 export const SOFT_SNAPSHOT_GROUP_TITLE = {
   [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'Mensch & Alltag',
-  [SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN]: 'Anforderungen',
+  [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: 'Fahrzeugpräferenz',
+  [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: 'Ausstattung & Technik',
   [SOFT_SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
+  [SOFT_SNAPSHOT_GROUP.PERSOENLICH]: 'Persönlich',
 };
+
+/** Render-Reihenfolge Soft-Gruppen (nur nicht-leere). */
+export const SOFT_SNAPSHOT_GROUP_ORDER = Object.freeze([
+  SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+  SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+  SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+  SOFT_SNAPSHOT_GROUP.BESTAND,
+  SOFT_SNAPSHOT_GROUP.PERSOENLICH,
+]);
+
+/** Ausstattungs-Priorität (optional). */
+export const EQUIPMENT_WISH_PRIORITY = Object.freeze({
+  PREFERRED: 'preferred',
+  IMPORTANT: 'important',
+  REQUIRED: 'required',
+});
+
+export const EQUIPMENT_WISH_PRIORITY_LABEL = Object.freeze({
+  [EQUIPMENT_WISH_PRIORITY.REQUIRED]: 'muss',
+  [EQUIPMENT_WISH_PRIORITY.IMPORTANT]: 'wichtig',
+  [EQUIPMENT_WISH_PRIORITY.PREFERRED]: null,
+});
 
 /** @deprecated – Alias: Soft-Gruppen + Legacy-IDs für ältere Imports */
 export const SNAPSHOT_GROUP = {
   BEDARF: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
   BESTAND: SOFT_SNAPSHOT_GROUP.BESTAND,
   BUDGET: 'budget',
-  WUNSCH: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+  WUNSCH: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
   VERTRAG: 'vertrag',
   BUDGET_VERTRAG: 'budget',
   ...SOFT_SNAPSHOT_GROUP,
@@ -62,15 +97,17 @@ export const SNAPSHOT_GROUP_TITLE = {
   ...SOFT_SNAPSHOT_GROUP_TITLE,
   [SNAPSHOT_GROUP.BEDARF]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG],
   [SNAPSHOT_GROUP.BUDGET]: 'Budget',
-  [SNAPSHOT_GROUP.WUNSCH]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN],
+  [SNAPSHOT_GROUP.WUNSCH]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ],
   [SNAPSHOT_GROUP.VERTRAG]: 'Vertragskonditionen',
 };
 
 /** Primärer editKey je Soft-Gruppe (Fallback). */
 export const SNAPSHOT_GROUP_EDIT_KEY = {
   [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'bedarf',
-  [SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN]: 'bedarf',
+  [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: 'vehicleTrack',
+  [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: 'equipment',
   [SOFT_SNAPSHOT_GROUP.BESTAND]: 'tradeIn',
+  [SOFT_SNAPSHOT_GROUP.PERSOENLICH]: 'bedarf',
   [SNAPSHOT_GROUP.BUDGET]: 'desiredRate',
   [SNAPSHOT_GROUP.VERTRAG]: 'termMonths',
 };
@@ -89,17 +126,59 @@ const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\
 const DATE_IN_TEXT_RE = /\d{1,2}\.\d{1,2}\.\d{2,4}/;
 const MODEL_TRIM_RE = /\bev\s*[0-9]\b|\bsportage\b|\bceed\b|\bniro\b|\bsorento\b|\bpicanto\b|\bstonic\b|\bproceed\b|gt-?\s*line|\bspirit\b|\bplatinum\b|\bedition\b|\binteressant\b/i;
 const COMMERCIAL_NOTE_RE = /leasing|finanzierung|\bkauf\b|budget|\brate\b|\b\d+\s*monate?\b|\bkm\b|anzahlung|jahreskilometer|vertragsende|down\s*payment/i;
-const EQUIPMENT_NOTE_RE = /w[äa]rmepumpe|\bhud\b|kamera|ahk|anh[äa]nger|panorama|sitzheizung|matrix|ausstattung|kofferraum|head-?up/i;
+const EQUIPMENT_NOTE_RE = /totwinkel|spurhalte|verkehrszeichen|blind\s*spot|lane\s*keep|w[äa]rmepumpe|\bhud\b|kamera|ahk|anh[äa]nger|panorama|sitzheizung|matrix|ausstattung|kofferraum|head-?up|800\s*v|ladeleistung|assistent|tempomat|notbrems|parkassistent|keyless|induktiv/i;
 const BESTAND_NOTE_RE = /inzahlung|gebraucht|\(gw\)|bestands|r[üu]ckl[äa]ufer|trade-?\s*in/i;
+const HUMAN_USAGE_NOTE_RE = /^(familie|kinder|\d+\s*kinder?|hund|haustier|haus|wohnung|platz|langstrecke|pendeln|erstwagen|zweitwagen)$/i;
+const PRIORITY_SUFFIX_RE = /\s*[·|]\s*(muss|wichtig|nice|preferred|important|required)\s*$/i;
+const REQUIRED_PHRASE_RE = /m[uü]ssen\s+drin|muss\s+drin|pflicht|zwingend|unbedingt\s+drin/i;
+const IMPORTANT_PHRASE_RE = /\bwichtig\b|\bpriorit/i;
+const PREFERRED_PHRASE_RE = /w[äa]re\s+sch[öo]n|nice\s*to\s*have|wenn\s+m[öo]glich/i;
+
+/**
+ * Liest optionale Priorität aus Label-Suffix oder Seller-Phrase.
+ * @returns {'preferred'|'important'|'required'}
+ */
+export function parseEquipmentWishPriority(label = '', contextText = '') {
+  const text = String(label ?? '').trim();
+  const suffix = text.match(PRIORITY_SUFFIX_RE);
+  if (suffix) {
+    const token = suffix[1].toLowerCase();
+    if (token === 'muss' || token === 'required') return EQUIPMENT_WISH_PRIORITY.REQUIRED;
+    if (token === 'wichtig' || token === 'important') return EQUIPMENT_WISH_PRIORITY.IMPORTANT;
+    return EQUIPMENT_WISH_PRIORITY.PREFERRED;
+  }
+  const blob = `${text} ${contextText || ''}`.toLowerCase();
+  if (REQUIRED_PHRASE_RE.test(blob)) return EQUIPMENT_WISH_PRIORITY.REQUIRED;
+  if (PREFERRED_PHRASE_RE.test(blob)) return EQUIPMENT_WISH_PRIORITY.PREFERRED;
+  if (IMPORTANT_PHRASE_RE.test(blob)) return EQUIPMENT_WISH_PRIORITY.IMPORTANT;
+  return EQUIPMENT_WISH_PRIORITY.PREFERRED;
+}
+
+/** Basis-Label ohne Prioritäts-Suffix. */
+export function stripEquipmentPrioritySuffix(label = '') {
+  return String(label ?? '').replace(PRIORITY_SUFFIX_RE, '').trim();
+}
+
+/** Anzeige-Label inkl. optionaler Priorität (preferred → ohne Suffix). */
+export function formatEquipmentWishLabel(baseLabel = '', priority = EQUIPMENT_WISH_PRIORITY.PREFERRED) {
+  const base = stripEquipmentPrioritySuffix(baseLabel);
+  if (!base) return '';
+  const suffix = EQUIPMENT_WISH_PRIORITY_LABEL[priority] ?? null;
+  return suffix ? `${base} · ${suffix}` : base;
+}
 
 /**
  * Klassifiziert Seller-/Notiz-Labels für Display-Migration.
- * structured → kanonischer Slot (nie Freinotiz); activity → Chat/Termine; free → Mensch & Alltag.
- * @returns {{ kind: 'empty'|'activity'|'structured'|'free', slot?: string, remapLabel?: string|null }}
+ * structured → kanonischer Slot (nie Freinotiz); activity → Chat/Termine; free → Persönlich.
+ * @returns {{ kind: 'empty'|'activity'|'structured'|'free', slot?: string, remapLabel?: string|null, priority?: string|null, groupId?: string }}
  */
 export function classifySnapshotNoteLabel(label = '') {
-  const text = String(label ?? '').trim();
-  if (!text) return { kind: 'empty' };
+  const raw = String(label ?? '').trim();
+  if (!raw) return { kind: 'empty' };
+  const priorityFromSuffix = PRIORITY_SUFFIX_RE.test(raw)
+    ? parseEquipmentWishPriority(raw)
+    : null;
+  const text = stripEquipmentPrioritySuffix(raw);
   const lower = text.toLowerCase();
 
   if (
@@ -115,33 +194,72 @@ export function classifySnapshotNoteLabel(label = '') {
 
   if (DRIVE_WORD_RE.test(lower) || /\bantrieb\b|\bgetriebe\b/i.test(text)) {
     const remap = lower.charAt(0).toUpperCase() + lower.slice(1);
-    return { kind: 'structured', slot: 'drive', remapLabel: remap };
+    return {
+      kind: 'structured',
+      slot: 'drive',
+      remapLabel: remap,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+    };
   }
 
   if (COLOR_WORD_RE.test(lower) || (/^farbe\b|lackierung/i.test(text) && text.length < 28)) {
     const remap = COLOR_WORD_RE.test(lower)
       ? lower.charAt(0).toUpperCase() + lower.slice(1)
       : text;
-    return { kind: 'structured', slot: 'color', remapLabel: remap };
+    return {
+      kind: 'structured',
+      slot: 'color',
+      remapLabel: remap,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+    };
   }
 
   if (MODEL_TRIM_RE.test(text) && !/kaffee|frau|kommt|samstag|entscheid/i.test(text)) {
-    return { kind: 'structured', slot: 'vehicleTrack', remapLabel: null };
+    return {
+      kind: 'structured',
+      slot: 'vehicleTrack',
+      remapLabel: null,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+    };
   }
 
   if (EQUIPMENT_NOTE_RE.test(text)) {
-    return { kind: 'structured', slot: 'equipment', remapLabel: text };
+    const priority = priorityFromSuffix || parseEquipmentWishPriority(raw);
+    return {
+      kind: 'structured',
+      slot: 'equipment',
+      remapLabel: text,
+      priority,
+      groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+    };
   }
 
   if (BESTAND_NOTE_RE.test(text)) {
-    return { kind: 'structured', slot: 'bestand', remapLabel: text };
+    return {
+      kind: 'structured',
+      slot: 'bestand',
+      remapLabel: text,
+      groupId: SOFT_SNAPSHOT_GROUP.BESTAND,
+    };
+  }
+
+  if (HUMAN_USAGE_NOTE_RE.test(lower) || /^\d+\s*kinder?\b/i.test(text)) {
+    return {
+      kind: 'structured',
+      slot: 'human',
+      remapLabel: text,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+    };
   }
 
   if (/termin|probefahrt|übergabe/i.test(text) && DATE_IN_TEXT_RE.test(text)) {
     return { kind: 'activity', slot: 'activity' };
   }
 
-  return { kind: 'free' };
+  return {
+    kind: 'free',
+    groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICH,
+  };
 }
 
 export function isActivitySnapshotNote(label = '') {
@@ -221,6 +339,26 @@ const EQUIPMENT_LABELS = {
   power_tailgate: 'Heckklappe el.',
   large_navi: 'Großes Navi',
   large_trunk: 'Großer Kofferraum',
+  blind_spot: 'Totwinkelassistent',
+  lane_assist: 'Spurhalteassistent',
+  traffic_sign: 'Verkehrszeichenerkennung',
+  towbar: 'AHK',
+};
+
+const FUEL_DISPLAY = {
+  electric: 'Elektro',
+  elektro: 'Elektro',
+  hybrid: 'Hybrid',
+  phev: 'Plug-in-Hybrid',
+  diesel: 'Diesel',
+  benzin: 'Benziner',
+  verbrenner: 'Benziner',
+};
+
+const TRANSMISSION_DISPLAY = {
+  automatic: 'Automatik',
+  manual: 'Schalter',
+  automatik: 'Automatik',
 };
 
 const PAYMENT_LABELS = {
@@ -241,6 +379,7 @@ function fact(id, label, {
   miniEditor = null,
   summaryPriority = 50,
   icon = null,
+  priority = null,
 } = {}) {
   const text = String(label ?? '').trim();
   if (!text) return null;
@@ -256,6 +395,7 @@ function fact(id, label, {
     miniEditor,
     summaryPriority,
     icon: icon || category,
+    ...(priority ? { priority } : {}),
   };
 }
 
@@ -608,9 +748,16 @@ function collectConfirmedSellerLabels(lead = {}) {
   return labels;
 }
 
+function resolveProfileChildren(profile = {}) {
+  if (profile.children != null && profile.children !== false) return profile.children;
+  const fromHousehold = profile.household?.childrenCount;
+  if (fromHousehold != null && fromHousehold !== false) return fromHousehold;
+  return null;
+}
+
 function buildMenschAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new Set()) {
   const facts = [];
-  const childrenLabel = formatChildren(profile.children);
+  const childrenLabel = formatChildren(resolveProfileChildren(profile));
   if (childrenLabel) {
     pushFact(facts, fact('children', childrenLabel, {
       editKey: 'children',
@@ -621,10 +768,12 @@ function buildMenschAlltagFacts(profile = {}, sellerLabels = [], usedLabels = ne
       icon: 'alltag',
     }));
     usedLabels.add(childrenLabel.toLowerCase());
+    usedLabels.add('familie');
+    usedLabels.add('kinder');
   }
 
   const hasFamily = profile.priorities?.includes('family')
-    || Boolean(profile.children)
+    || Boolean(resolveProfileChildren(profile))
     || (profile.persons ?? 0) >= 5;
   if (hasFamily && !childrenLabel) {
     pushFact(facts, fact('family', 'Familie', {
@@ -655,42 +804,10 @@ function buildMenschAlltagFacts(profile = {}, sellerLabels = [], usedLabels = ne
       editKey: 'bedarf',
       groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
-      summaryPriority: 36,
+      summaryPriority: 14,
     }));
     usedLabels.add('haus');
     usedLabels.add('laden zuhause');
-  }
-
-  for (const tag of profile.usage ?? []) {
-    const label = USAGE_LABELS[tag];
-    if (!label) continue;
-    pushFact(facts, fact(`usage:${tag}`, label, {
-      editKey: 'usage',
-      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
-      tint: SNAPSHOT_TINT.ALLTAG,
-      summaryPriority: 40,
-    }));
-    usedLabels.add(label.toLowerCase());
-  }
-
-  return facts;
-}
-
-function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = new Set()) {
-  const facts = [];
-
-  for (const key of profile.priorities ?? []) {
-    if (key === 'family' || key === 'towing' || key === 'budget') continue;
-    const label = SELECTION_PRIORITY_LABELS[key];
-    if (!label) continue;
-    if (usedLabels.has(label.toLowerCase())) continue;
-    pushFact(facts, fact(`priority:${key}`, label, {
-      editKey: 'bedarf',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: SNAPSHOT_TINT.WICHTIG,
-      summaryPriority: key === 'charging' ? 22 : key === 'range' ? 24 : 26,
-    }));
-    usedLabels.add(label.toLowerCase());
   }
 
   if (
@@ -705,9 +822,9 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
         : 'Platz';
     pushFact(facts, fact('space', spaceLabel, {
       editKey: 'space',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: SNAPSHOT_TINT.WICHTIG,
-      summaryPriority: 26,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 16,
     }));
     usedLabels.add(spaceLabel.toLowerCase());
   }
@@ -716,17 +833,50 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
     if (!usedLabels.has('langstrecke') && !usedLabels.has('reichweite')) {
       pushFact(facts, fact('usage:langstrecke', 'Langstrecke', {
         editKey: 'usage',
-        groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-        tint: SNAPSHOT_TINT.WICHTIG,
-        summaryPriority: 28,
+        groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+        tint: SNAPSHOT_TINT.ALLTAG,
+        summaryPriority: 17,
       }));
       usedLabels.add('langstrecke');
     }
   }
 
+  for (const tag of profile.usage ?? []) {
+    const label = USAGE_LABELS[tag];
+    if (!label) continue;
+    pushFact(facts, fact(`usage:${tag}`, label, {
+      editKey: 'usage',
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 18,
+    }));
+    usedLabels.add(label.toLowerCase());
+  }
+
+  return facts;
+}
+
+/** Entscheidende Auswahl-Prioritäten (Ladezeit/Reichweite) → Ausstattung & Technik. */
+function buildDecisiveRequirementFacts(profile = {}, sellerLabels = [], usedLabels = new Set()) {
+  const facts = [];
+
+  for (const key of profile.priorities ?? []) {
+    if (key === 'family' || key === 'towing' || key === 'budget' || key === 'space') continue;
+    const label = SELECTION_PRIORITY_LABELS[key];
+    if (!label) continue;
+    if (usedLabels.has(label.toLowerCase())) continue;
+    pushFact(facts, fact(`priority:${key}`, label, {
+      editKey: 'bedarf',
+      groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      tint: SNAPSHOT_TINT.WICHTIG,
+      // Summary: nach Bestand, vor Fahrzeugpräferenz
+      summaryPriority: key === 'charging' ? 25 : key === 'range' ? 26 : 28,
+    }));
+    usedLabels.add(label.toLowerCase());
+  }
+
   for (const label of sellerLabels) {
     const classified = classifySnapshotNoteLabel(label);
-    // Freinotizen / Activity / Color-Drive-Remap nicht hier
     if (classified.kind !== 'structured') continue;
     if (classified.slot === 'color' || classified.slot === 'drive' || classified.slot === 'equipment') {
       continue;
@@ -736,13 +886,13 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
     }
     const lower = label.toLowerCase();
     if (usedLabels.has(lower)) continue;
-    if (/ladezeit|reichweite|platz|wichtig|priorit/i.test(label)
-      && !/leasing|finanz|rate|km|monat/i.test(label)) {
+    if (/ladezeit|reichweite|wichtig|priorit/i.test(label)
+      && !/leasing|finanz|rate|km|monat|platz/i.test(label)) {
       pushFact(facts, fact(`seller-wichtig:${label}`, label, {
         editKey: 'bedarf',
-        groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+        groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
         tint: SNAPSHOT_TINT.WICHTIG,
-        summaryPriority: 25,
+        summaryPriority: 27,
       }));
       usedLabels.add(lower);
     }
@@ -752,15 +902,21 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
 }
 
 /**
- * Strukturierte Seller-Labels → Anforderungen (Farbe, Antrieb, …).
+ * Strukturierte Seller-Labels → Fahrzeugpräferenz oder Ausstattung.
  * Modell/Trim/Activity/Commercial werden ausgeschlossen (Header/Kern/Chat).
  */
-function buildRemappedAnforderungFacts(sellerLabels = [], usedLabels = new Set()) {
-  const facts = [];
+function buildRemappedStructuredFacts(sellerLabels = [], usedLabels = new Set()) {
+  const preferenceFacts = [];
+  const equipmentFacts = [];
   for (const label of sellerLabels) {
     const classified = classifySnapshotNoteLabel(label);
     if (classified.kind !== 'structured') continue;
-    if (classified.slot === 'vehicleTrack' || classified.slot === 'commercial' || classified.slot === 'bestand') {
+    if (
+      classified.slot === 'vehicleTrack'
+      || classified.slot === 'commercial'
+      || classified.slot === 'bestand'
+      || classified.slot === 'human'
+    ) {
       usedLabels.add(label.toLowerCase());
       continue;
     }
@@ -768,33 +924,47 @@ function buildRemappedAnforderungFacts(sellerLabels = [], usedLabels = new Set()
       usedLabels.add(label.toLowerCase());
       continue;
     }
-    const remap = String(classified.remapLabel || label).trim();
+    const remap = String(classified.remapLabel || stripEquipmentPrioritySuffix(label)).trim();
     if (!remap) {
       usedLabels.add(label.toLowerCase());
       continue;
     }
     const lower = remap.toLowerCase();
     if (usedLabels.has(lower)) continue;
-    const idPrefix = classified.slot === 'color'
-      ? 'color'
-      : classified.slot === 'drive'
-        ? 'drive'
-        : 'equip-note';
-    pushFact(facts, fact(`${idPrefix}:${remap}`, remap, {
-      editKey: classified.slot === 'color' ? 'vehicleTrack' : 'equipment',
-      relevanceKey: classified.slot === 'color' ? 'preferredColor' : classified.slot,
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: classified.slot === 'color' || classified.slot === 'drive'
-        ? SNAPSHOT_TINT.FAHRZEUG
-        : SNAPSHOT_TINT.WICHTIG,
-      miniEditor: classified.slot === 'color' ? SNAPSHOT_MINI_EDITOR.COLOR : null,
-      summaryPriority: classified.slot === 'color' ? 20 : classified.slot === 'drive' ? 21 : 55,
-      icon: 'car',
-    }));
+
+    if (classified.slot === 'equipment') {
+      const priority = classified.priority || parseEquipmentWishPriority(label);
+      const display = formatEquipmentWishLabel(remap, priority);
+      pushFact(equipmentFacts, fact(`equip-note:${remap}`, display, {
+        editKey: 'equipment',
+        relevanceKey: 'equipment',
+        groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+        tint: SNAPSHOT_TINT.WICHTIG,
+        summaryPriority: priority === EQUIPMENT_WISH_PRIORITY.REQUIRED
+          ? 28
+          : priority === EQUIPMENT_WISH_PRIORITY.IMPORTANT
+            ? 48
+            : 55,
+        icon: 'car',
+        priority,
+      }));
+    } else {
+      const idPrefix = classified.slot === 'color' ? 'color' : 'drive';
+      pushFact(preferenceFacts, fact(`${idPrefix}:${remap}`, remap, {
+        editKey: classified.slot === 'color' ? 'vehicleTrack' : 'equipment',
+        relevanceKey: classified.slot === 'color' ? 'preferredColor' : classified.slot,
+        groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+        tint: SNAPSHOT_TINT.FAHRZEUG,
+        miniEditor: classified.slot === 'color' ? SNAPSHOT_MINI_EDITOR.COLOR : null,
+        summaryPriority: classified.slot === 'color' ? 35 : 36,
+        icon: 'car',
+      }));
+    }
     usedLabels.add(lower);
     usedLabels.add(label.toLowerCase());
+    usedLabels.add(stripEquipmentPrioritySuffix(label).toLowerCase());
   }
-  return facts;
+  return { preferenceFacts, equipmentFacts };
 }
 
 /**
@@ -914,7 +1084,7 @@ function buildBestandFacts(lead = {}, profile = {}, usedLabels = new Set()) {
       groupId: SOFT_SNAPSHOT_GROUP.BESTAND,
       tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
       miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
-      summaryPriority: 16,
+      summaryPriority: 22,
       icon: 'car',
     }));
     usedLabels.add(existingLabel.toLowerCase());
@@ -932,7 +1102,7 @@ function buildBestandFacts(lead = {}, profile = {}, usedLabels = new Set()) {
       groupId: SOFT_SNAPSHOT_GROUP.BESTAND,
       tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
       miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
-      summaryPriority: 48,
+      summaryPriority: 23,
     }));
     usedLabels.add('inzahlungnahme');
   }
@@ -944,7 +1114,7 @@ function buildBestandFacts(lead = {}, profile = {}, usedLabels = new Set()) {
       groupId: SOFT_SNAPSHOT_GROUP.BESTAND,
       tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
       miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
-      summaryPriority: 46,
+      summaryPriority: 24,
     }));
     usedLabels.add(label.toLowerCase());
   }
@@ -986,9 +1156,9 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact('vehicleWish', combined, {
       editKey: 'vehicleTrack',
       relevanceKey: 'favoriteVehicle',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 18,
+      summaryPriority: 34,
       icon: 'car',
     });
   }
@@ -996,9 +1166,9 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact(favorite ? `track-fav:${favorite.id}` : 'modelHint', modelLabel, {
       editKey: 'vehicleTrack',
       relevanceKey: favorite ? 'favoriteVehicle' : 'preferredModel',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 18,
+      summaryPriority: 34,
       icon: 'car',
     });
   }
@@ -1006,9 +1176,9 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact('trim', trimLabel, {
       editKey: 'equipment',
       relevanceKey: 'trim',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 18,
+      summaryPriority: 34,
       icon: 'car',
     });
   }
@@ -1041,10 +1211,15 @@ export function resolveHeaderDedupeLabels(lead = {}, profile = {}) {
 }
 
 /**
- * Anforderungen – Farbe, Antrieb, Prioritäten, Ausstattung.
+ * Fahrzeugpräferenz – Farbe, Antrieb, Getriebe, Karosserie/Design.
  * Kein Fahrzeugtrack/Trim (Header), keine Kernkonditionen.
  */
-function buildAnforderungenFacts(lead = {}, profile = {}, sellerLabels = [], usedLabels = new Set()) {
+function buildFahrzeugpraeferenzFacts(
+  lead = {},
+  profile = {},
+  usedLabels = new Set(),
+  remappedPreferenceFacts = [],
+) {
   const facts = [];
   const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
 
@@ -1058,86 +1233,66 @@ function buildAnforderungenFacts(lead = {}, profile = {}, sellerLabels = [], use
     }
   }
 
-  const colors = [...new Set(
-    tracks.map((t) => t.config?.vehicleTrack?.preferredColor).filter(Boolean),
-  )];
+  const colors = [...new Set([
+    ...tracks.map((t) => t.config?.vehicleTrack?.preferredColor).filter(Boolean),
+    profile.colorPreference,
+    profile.colorHint,
+  ].filter(Boolean))];
   for (const color of colors.slice(0, 2)) {
-    pushFact(facts, fact(`color:${color}`, String(color), {
+    const colorLabel = String(color).trim();
+    const display = COLOR_WORD_RE.test(colorLabel)
+      ? colorLabel.charAt(0).toUpperCase() + colorLabel.slice(1).toLowerCase()
+      : colorLabel;
+    pushFact(facts, fact(`color:${display}`, display, {
       editKey: 'vehicleTrack',
       relevanceKey: 'preferredColor',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.COLOR,
-      summaryPriority: 20,
+      summaryPriority: 35,
       icon: 'car',
     }));
-    usedLabels.add(String(color).toLowerCase());
+    usedLabels.add(display.toLowerCase());
   }
 
-  // Remap strukturierte Seller-Labels (Grau, Automatik, Elektro, …)
-  for (const remapped of buildRemappedAnforderungFacts(sellerLabels, usedLabels)) {
+  const fuelLabel = FUEL_DISPLAY[profile.fuel] || null;
+  if (fuelLabel && !usedLabels.has(fuelLabel.toLowerCase())) {
+    pushFact(facts, fact('fuel', fuelLabel, {
+      editKey: 'equipment',
+      relevanceKey: 'drive',
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      summaryPriority: 36,
+      icon: 'car',
+    }));
+    usedLabels.add(fuelLabel.toLowerCase());
+  }
+
+  const transmissionLabel = TRANSMISSION_DISPLAY[profile.transmission] || null;
+  if (transmissionLabel && !usedLabels.has(transmissionLabel.toLowerCase())) {
+    pushFact(facts, fact('transmission', transmissionLabel, {
+      editKey: 'equipment',
+      relevanceKey: 'drive',
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      summaryPriority: 36,
+      icon: 'car',
+    }));
+    usedLabels.add(transmissionLabel.toLowerCase());
+  }
+
+  for (const remapped of remappedPreferenceFacts) {
     pushFact(facts, remapped);
-  }
-
-  for (const f of buildWichtigAuswahlFacts(profile, sellerLabels, usedLabels)) {
-    pushFact(facts, f);
-  }
-
-  if (profile.towbar || profile.towing === 'yes' || profile.towing === 'braked'
-    || (profile.towCapacityKg ?? 0) >= 750
-    || profile.priorities?.includes('towing')) {
-    pushFact(facts, fact('towbar', 'AHK', {
-      editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 42,
-      icon: 'car',
-    }));
-    usedLabels.add('ahk');
-  }
-
-  for (const wishId of profile.equipmentWishes ?? []) {
-    const label = EQUIPMENT_LABELS[wishId] || (
-      /800\s*v/i.test(String(wishId)) ? String(wishId).trim() : null
-    );
-    if (!label) continue;
-    if (/line|spirit|platinum|edition/i.test(label)) continue;
-    pushFact(facts, fact(`equip:${wishId}`, label, {
-      editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 55,
-      icon: 'car',
-    }));
-    usedLabels.add(label.toLowerCase());
-  }
-
-  for (const tech of profile.technology ?? []) {
-    const text = String(tech ?? '').trim();
-    if (!text) continue;
-    if (classifySnapshotNoteLabel(text).kind === 'structured'
-      && classifySnapshotNoteLabel(text).slot === 'vehicleTrack') {
-      usedLabels.add(text.toLowerCase());
-      continue;
-    }
-    pushFact(facts, fact(`tech:${text}`, text, {
-      editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 54,
-      icon: 'car',
-    }));
-    usedLabels.add(text.toLowerCase());
   }
 
   const delivery = lead?.wish?.desiredDeliveryDate || lead?.deliveryTime || '';
   if (String(delivery).trim()) {
     pushFact(facts, fact('delivery', `Lieferzeit ${String(delivery).trim()}`, {
       editKey: 'delivery',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
-      summaryPriority: 44,
+      summaryPriority: 38,
     }));
   } else if (tracks.some((t) => (
     t.config?.vehicleTrack?.deliveryTimeImportance === 'high'
@@ -1145,30 +1300,121 @@ function buildAnforderungenFacts(lead = {}, profile = {}, sellerLabels = [], use
   ))) {
     pushFact(facts, fact('delivery', 'Lieferzeit wichtig', {
       editKey: 'delivery',
-      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
-      summaryPriority: 44,
+      summaryPriority: 38,
     }));
   }
 
   return facts;
 }
 
-/** Freie Notizen – nur unstrukturiert; Activity/strukturiert ausgeschlossen. */
-function buildFreeNoteFacts(lead = {}, sellerLabels = [], usedLabels = new Set()) {
+/**
+ * Ausstattung & Technik – inkl. entscheidender Anforderungen und Priorität.
+ */
+function buildAusstattungTechnikFacts(
+  lead = {},
+  profile = {},
+  sellerLabels = [],
+  usedLabels = new Set(),
+  remappedEquipmentFacts = [],
+) {
+  const facts = [];
+
+  for (const f of buildDecisiveRequirementFacts(profile, sellerLabels, usedLabels)) {
+    pushFact(facts, f);
+  }
+
+  for (const remapped of remappedEquipmentFacts) {
+    pushFact(facts, remapped);
+  }
+
+  if (profile.towbar || profile.towing === 'yes' || profile.towing === 'braked'
+    || (profile.towCapacityKg ?? 0) >= 750
+    || profile.priorities?.includes('towing')) {
+    pushFact(facts, fact('towbar', 'AHK', {
+      editKey: 'equipment',
+      groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      summaryPriority: 50,
+      icon: 'car',
+    }));
+    usedLabels.add('ahk');
+  }
+
+  const priorities = profile.equipmentWishPriorities || {};
+  for (const wishId of profile.equipmentWishes ?? []) {
+    const raw = String(wishId ?? '').trim();
+    if (!raw) continue;
+    const mapped = EQUIPMENT_LABELS[raw] || (
+      /800\s*v/i.test(raw) || EQUIPMENT_NOTE_RE.test(raw) ? stripEquipmentPrioritySuffix(raw) : null
+    );
+    if (!mapped) continue;
+    if (/line|spirit|platinum|edition/i.test(mapped)) continue;
+    const priority = priorities[raw]
+      || priorities[mapped]
+      || parseEquipmentWishPriority(raw);
+    const display = formatEquipmentWishLabel(mapped, priority);
+    if (usedLabels.has(mapped.toLowerCase())) continue;
+    pushFact(facts, fact(`equip:${mapped}`, display, {
+      editKey: 'equipment',
+      groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      summaryPriority: priority === EQUIPMENT_WISH_PRIORITY.REQUIRED
+        ? 28
+        : priority === EQUIPMENT_WISH_PRIORITY.IMPORTANT
+          ? 48
+          : 55,
+      icon: 'car',
+      priority,
+    }));
+    usedLabels.add(mapped.toLowerCase());
+  }
+
+  for (const tech of profile.technology ?? []) {
+    const text = String(tech ?? '').trim();
+    if (!text) continue;
+    const classified = classifySnapshotNoteLabel(text);
+    if (classified.kind === 'structured' && classified.slot === 'vehicleTrack') {
+      usedLabels.add(text.toLowerCase());
+      continue;
+    }
+    if (classified.kind === 'structured' && (classified.slot === 'color' || classified.slot === 'drive')) {
+      usedLabels.add(text.toLowerCase());
+      continue;
+    }
+    const base = stripEquipmentPrioritySuffix(classified.remapLabel || text);
+    if (usedLabels.has(base.toLowerCase())) continue;
+    const priority = classified.priority || parseEquipmentWishPriority(text);
+    const display = formatEquipmentWishLabel(base, priority);
+    pushFact(facts, fact(`tech:${base}`, display, {
+      editKey: 'equipment',
+      groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      summaryPriority: priority === EQUIPMENT_WISH_PRIORITY.REQUIRED ? 28 : 54,
+      icon: 'car',
+      priority,
+    }));
+    usedLabels.add(base.toLowerCase());
+  }
+
+  return facts;
+}
+
+/** Persönlich – nur unstrukturierte Notizen; Activity/strukturiert ausgeschlossen. */
+function buildPersoenlichFacts(lead = {}, sellerLabels = [], usedLabels = new Set()) {
   const facts = [];
 
   for (const label of sellerLabels) {
     const classified = classifySnapshotNoteLabel(label);
-    // structured/activity: nie als Freinotiz; Remap passiert in Anforderungen
     if (classified.kind !== 'free') continue;
     const lower = label.toLowerCase();
     if (usedLabels.has(lower)) continue;
     if (label.length < 3) continue;
     pushFact(facts, fact(`note:${label}`, label, {
       editKey: 'bedarf',
-      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICH,
       tint: SNAPSHOT_TINT.NOTIZ,
       summaryPriority: 70,
     }));
@@ -1190,7 +1436,7 @@ function buildFreeNoteFacts(lead = {}, sellerLabels = [], usedLabels = new Set()
       if (usedLabels.has(lower)) continue;
       pushFact(facts, fact(`cnote:${short}`, short, {
         editKey: 'bedarf',
-        groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+        groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICH,
         tint: SNAPSHOT_TINT.NOTIZ,
         summaryPriority: 72,
       }));
@@ -1323,13 +1569,24 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
 
   for (const label of headerLabels) usedLabels.add(label);
 
-  // Zuerst strukturierte Remaps (Farbe/Antrieb), dann Freinotizen
-  const anforderungenFacts = buildAnforderungenFacts(lead, profile, sellerLabels, usedLabels);
+  // Strukturierte Remaps einmalig (Farbe/Antrieb → Präferenz, Equipment → Ausstattung)
+  const remapped = buildRemappedStructuredFacts(sellerLabels, usedLabels);
+  const menschFacts = buildMenschAlltagFacts(profile, sellerLabels, usedLabels);
+  const praeferenzFacts = buildFahrzeugpraeferenzFacts(
+    lead,
+    profile,
+    usedLabels,
+    remapped.preferenceFacts,
+  );
+  const ausstattungFacts = buildAusstattungTechnikFacts(
+    lead,
+    profile,
+    sellerLabels,
+    usedLabels,
+    remapped.equipmentFacts,
+  );
   const bestandFacts = buildBestandFacts(lead, profile, usedLabels);
-  const menschFacts = [
-    ...buildMenschAlltagFacts(profile, sellerLabels, usedLabels),
-    ...buildFreeNoteFacts(lead, sellerLabels, usedLabels),
-  ];
+  const persoenlichFacts = buildPersoenlichFacts(lead, sellerLabels, usedLabels);
 
   const softGroupsSpec = [
     {
@@ -1337,12 +1594,20 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       facts: omitFactsByDedupe(menschFacts, kernOmitLabels, kernOmitIds),
     },
     {
-      id: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
-      facts: omitFactsByDedupe(anforderungenFacts, kernOmitLabels, kernOmitIds),
+      id: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+      facts: omitFactsByDedupe(praeferenzFacts, kernOmitLabels, kernOmitIds),
+    },
+    {
+      id: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+      facts: omitFactsByDedupe(ausstattungFacts, kernOmitLabels, kernOmitIds),
     },
     {
       id: SOFT_SNAPSHOT_GROUP.BESTAND,
       facts: omitFactsByDedupe(bestandFacts, kernOmitLabels, kernOmitIds),
+    },
+    {
+      id: SOFT_SNAPSHOT_GROUP.PERSOENLICH,
+      facts: omitFactsByDedupe(persoenlichFacts, kernOmitLabels, kernOmitIds),
     },
   ];
 
@@ -1366,7 +1631,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
         title: SOFT_SNAPSHOT_GROUP_TITLE[g.id] || SNAPSHOT_GROUP_TITLE[g.id],
         editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
         relevant: facts.some((f) => f.relevant),
-        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
         facts,
       };
     });
@@ -1409,7 +1674,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
     },
     /** @deprecated use soft.summary */
     summary: softSummary,
-    /** Soft-Gruppen A/B/C */
+    /** Soft-Gruppen (Mensch · Präferenz · Ausstattung · Bestand · Persönlich) */
     groups: softGroups,
     /** Soft-Chips – keine Header-/Kern-Duplikate */
     chips: softChips,

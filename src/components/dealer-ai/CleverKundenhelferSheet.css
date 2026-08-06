@@ -136,8 +136,48 @@
 }
 
 .dai-kh-soft-cat__icon {
-  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+  color: currentColor;
+}
+
+.dai-kh-soft-cat__icon .cn-line-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.dai-kh-equip-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+}
+
+.dai-kh-equip-intro__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dai-kh-equip-intro__sub {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.dai-kh-hub__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.dai-kh-hub__icon .cn-line-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .dai-kh-soft-cat__label {

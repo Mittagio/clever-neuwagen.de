@@ -160,6 +160,30 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    if (field === 'fuelPreference' && value) {
+      profile.fuel = String(value) === 'electric' || String(value) === 'elektro'
+        ? 'electric'
+        : String(value);
+      touchedProfile = true;
+    }
+
+    if (field === 'equipmentWish') {
+      const wishLabel = String(value?.label || fact.label || '')
+        .replace(/\s*[·|]\s*(muss|wichtig|nice)\s*$/i, '')
+        .trim();
+      const wishId = String(value?.id || wishLabel || '').trim();
+      const priority = value?.priority || 'preferred';
+      if (wishId) {
+        profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], wishId);
+        profile.equipmentWishPriorities = {
+          ...(profile.equipmentWishPriorities ?? {}),
+          [wishId]: priority,
+          ...(wishLabel && wishLabel !== wishId ? { [wishLabel]: priority } : {}),
+        };
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'sunroofRequired' && value) {
       profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], 'Schiebedach');
       profile.priorities = pushUnique(profile.priorities ?? [], 'technology');
@@ -248,6 +272,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         ...(field === 'maritalStatus' ? { maritalStatus: value } : {}),
         ...(field === 'childrenCount' ? { childrenCount: value } : {}),
       };
+      if (field === 'childrenCount' && value != null) {
+        profile.children = value;
+      }
       touchedProfile = true;
     }
 

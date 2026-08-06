@@ -215,6 +215,38 @@ const freeRemember = runCleverSellerTurn({
 assert.ok(freeRemember.intents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT));
 assert.equal(freeRemember.intentConstraint, null);
 
+// --- Merken Golden: Kinder · Präferenz · Ausstattung · muss → save_with_undo ---
+{
+  const merkenInput = 'Merk dir: zwei Kinder, Grau, Automatik, Totwinkel und Spurhalteassistent müssen drin sein.';
+  const merkenTurn = runCleverSellerTurn({
+    lead: {
+      id: 'lead-merken-golden',
+      name: 'Kai Drechsel',
+      crm: { needProfile: createEmptyNeedProfile(), sellerInsights: [] },
+    },
+    sellerInput: merkenInput,
+    intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
+  });
+  const fields = (merkenTurn.extractedFacts || []).map((f) => f.field);
+  assert.ok(fields.includes('childrenCount'), 'Kinder extrahiert');
+  assert.ok(fields.includes('colorPreference'), 'Grau extrahiert');
+  assert.ok(fields.includes('transmissionPreference'), 'Automatik extrahiert');
+  assert.ok(
+    (merkenTurn.extractedFacts || []).some((f) => f.field === 'equipmentWish' && /Totwinkel/i.test(f.label)),
+    'Totwinkel extrahiert',
+  );
+  assert.ok(
+    (merkenTurn.extractedFacts || []).some((f) => f.field === 'equipmentWish' && /Spurhalte/i.test(f.label)),
+    'Spurhalte extrahiert',
+  );
+  assert.ok(
+    (merkenTurn.extractedFacts || []).filter((f) => f.field === 'equipmentWish')
+      .every((f) => f.value?.priority === 'required' || /·\s*muss/i.test(f.label)),
+    'Equipment-Priorität required',
+  );
+  assert.equal(merkenTurn.rememberDecision?.mode, 'save_with_undo', 'kompakt merken ohne Review');
+}
+
 // --- Merken: sensitive → Review ---
 const sensitive = evaluateRememberDecision([
   {

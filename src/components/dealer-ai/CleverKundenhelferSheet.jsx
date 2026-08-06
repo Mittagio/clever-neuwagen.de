@@ -31,13 +31,20 @@ import {
   labelsFromEquipmentIds,
 } from '../../services/consultation/wishHandoffEquipment.js';
 import CustomerAkteConversationNotes from './CustomerAkteConversationNotes.jsx';
+import {
+  EQUIPMENT_AREA_ICONS,
+  IconCar,
+  IconClock,
+  IconUser,
+  IconChat,
+} from './AkteIcons.jsx';
 import './CleverKundenhelferSheet.css';
 
 const HUB_SECTIONS = [
-  { id: 'equipment', label: 'Ausstattung', icon: '💺' },
-  { id: 'availability', label: 'Verfügbarkeit', icon: '📅' },
-  { id: 'life', label: 'Leben & Alltag', icon: '🏠' },
-  { id: 'freetext', label: 'Freitext', icon: '✏️' },
+  { id: 'equipment', label: 'Ausstattungswünsche', Icon: IconCar },
+  { id: 'availability', label: 'Verfügbarkeit', Icon: IconClock },
+  { id: 'life', label: 'Leben & Alltag', Icon: IconUser },
+  { id: 'freetext', label: 'Freitext', Icon: IconChat },
 ];
 
 const LIFE_CATEGORY_IDS = KUNDENWISSEN_CATEGORY_ORDER.filter((id) => id !== 'unterlagen');
@@ -618,13 +625,19 @@ export default function CleverKundenhelferSheet({
   }
 
   const softTitle = HUB_SECTIONS.find((s) => s.id === softSection)?.label;
+  const customerFirstName = String(lead?.contact?.name || lead?.name || '')
+    .trim()
+    .split(/\s+/)[0] || 'dem Kunden';
+  const isEquipmentPicker = sheetView === 'soft' && softSection === 'equipment';
   const panelTitle = sheetView === 'detail' && activeCategory
     ? activeCategory.label
-    : sheetView === 'soft' && softTitle
-      ? softTitle
-      : sheetView === 'life'
-        ? 'Leben & Alltag'
-        : 'Clever Kundenhelfer';
+    : isEquipmentPicker
+      ? 'Ausstattungswünsche'
+      : sheetView === 'soft' && softTitle
+        ? softTitle
+        : sheetView === 'life'
+          ? 'Leben & Alltag'
+          : 'Clever Kundenhelfer';
 
   const moreNotesCount = (conversationNotes?.length ?? 0) + (voiceMemos?.length ?? 0);
 
@@ -655,6 +668,7 @@ export default function CleverKundenhelferSheet({
             <div className="dai-kh-hub" role="list">
               {HUB_SECTIONS.map((section) => {
                 const count = hubCounts[section.id];
+                const HubIcon = section.Icon;
                 return (
                   <button
                     key={section.id}
@@ -663,7 +677,9 @@ export default function CleverKundenhelferSheet({
                     role="listitem"
                     onClick={() => openHubSection(section.id)}
                   >
-                    <span className="dai-kh-hub__icon" aria-hidden>{section.icon}</span>
+                    <span className="dai-kh-hub__icon" aria-hidden>
+                      {HubIcon ? <HubIcon /> : null}
+                    </span>
                     <span className="dai-kh-hub__label">{section.label}</span>
                     {count > 0 && (
                       <span className="dai-kh-hub__count">{count}</span>
@@ -680,20 +696,31 @@ export default function CleverKundenhelferSheet({
             <button type="button" className="dai-kh-back" onClick={backToHub}>
               ← Bereiche
             </button>
+            <div className="dai-kh-equip-intro">
+              <p className="dai-kh-equip-intro__title">Ausstattungswünsche</p>
+              <p className="dai-kh-equip-intro__sub">
+                {`Was ist ${customerFirstName} beim Fahrzeug wichtig?`}
+              </p>
+            </div>
             <div className="dai-kh-soft-group">
               <div className="dai-kh-soft-cats" role="group" aria-label="Ausstattungsbereich">
-                {HANDOFF_EQUIPMENT_CATEGORIES.map((category) => (
-                  <button
-                    key={category.id}
-                    type="button"
-                    className={`dai-kh-soft-cat${equipCategory === category.id ? ' is-active' : ''}`}
-                    aria-pressed={equipCategory === category.id}
-                    onClick={() => setEquipCategory(category.id)}
-                  >
-                    <span className="dai-kh-soft-cat__icon" aria-hidden>{category.icon}</span>
-                    <span className="dai-kh-soft-cat__label">{category.label}</span>
-                  </button>
-                ))}
+                {HANDOFF_EQUIPMENT_CATEGORIES.map((category) => {
+                  const AreaIcon = EQUIPMENT_AREA_ICONS[category.iconId || category.id];
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className={`dai-kh-soft-cat${equipCategory === category.id ? ' is-active' : ''}`}
+                      aria-pressed={equipCategory === category.id}
+                      onClick={() => setEquipCategory(category.id)}
+                    >
+                      <span className="dai-kh-soft-cat__icon" aria-hidden>
+                        {AreaIcon ? <AreaIcon /> : null}
+                      </span>
+                      <span className="dai-kh-soft-cat__label">{category.label}</span>
+                    </button>
+                  );
+                })}
               </div>
               {equipmentChips.length > 0 ? (
                 <div className="dai-kh-chips" role="group" aria-label={equipCategory}>
@@ -877,47 +904,49 @@ export default function CleverKundenhelferSheet({
           </div>
         )}
 
-        <div className="dai-kh-more">
-          <button
-            type="button"
-            className="dai-kh-more__toggle"
-            aria-expanded={moreNotesOpen}
-            onClick={() => setMoreNotesOpen((prev) => !prev)}
-          >
-            {moreNotesOpen ? '▾' : '▸'}
-            {' '}
-            Mehr Notizen
-            {moreNotesCount > 0 ? ` (${moreNotesCount})` : ''}
-          </button>
-          {moreNotesOpen && (
-            <div className="dai-kh-more__body">
-              <CustomerAkteConversationNotes
-                notes={conversationNotes}
-                onChange={onConversationNotesChange}
-                vehicleCards={vehicleCards}
-                disabled={isSaving}
-              />
+        {!isEquipmentPicker && (
+          <div className="dai-kh-more">
+            <button
+              type="button"
+              className="dai-kh-more__toggle"
+              aria-expanded={moreNotesOpen}
+              onClick={() => setMoreNotesOpen((prev) => !prev)}
+            >
+              {moreNotesOpen ? '▾' : '▸'}
+              {' '}
+              Mehr Notizen
+              {moreNotesCount > 0 ? ` (${moreNotesCount})` : ''}
+            </button>
+            {moreNotesOpen && (
+              <div className="dai-kh-more__body">
+                <CustomerAkteConversationNotes
+                  notes={conversationNotes}
+                  onChange={onConversationNotesChange}
+                  vehicleCards={vehicleCards}
+                  disabled={isSaving}
+                />
 
-              <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
+                <VoiceMemoRecorder onSave={handleMemoSaved} disabled={isSaving} />
 
-              {voiceMemos.length > 0 ? (
-                <div className="dai-kh-memo-list">
-                  <p className="dai-kh-memo-list__title">Gespeicherte Memos</p>
-                  {voiceMemos.map((memo) => (
-                    <VoiceMemoItem
-                      key={memo.id}
-                      memo={memo}
-                      isPlaying={playingId === memo.id}
-                      onPlay={handlePlayMemo}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="dai-kh-memo-empty">Noch kein Memo</p>
-              )}
-            </div>
-          )}
-        </div>
+                {voiceMemos.length > 0 ? (
+                  <div className="dai-kh-memo-list">
+                    <p className="dai-kh-memo-list__title">Gespeicherte Memos</p>
+                    {voiceMemos.map((memo) => (
+                      <VoiceMemoItem
+                        key={memo.id}
+                        memo={memo}
+                        isPlaying={playingId === memo.id}
+                        onPlay={handlePlayMemo}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="dai-kh-memo-empty">Noch kein Memo</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </LeadDetailPanel>
   );

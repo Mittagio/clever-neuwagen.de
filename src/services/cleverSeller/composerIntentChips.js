@@ -389,6 +389,11 @@ const SAFE_REMEMBER_FACT_CLASSES = new Set([
   SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
 ]);
 
+/** VEHICLE_INTEREST nur für eindeutige Präferenz-Felder (Farbe), nicht Modellwahl. */
+const SAFE_REMEMBER_VEHICLE_INTEREST_FIELDS = new Set([
+  'colorPreference',
+]);
+
 const SENSITIVE_REMEMBER_FACT_CLASSES = new Set([
   SELLER_FACT_CLASS.SELF_DISCLOSURE_FACT,
   SELLER_FACT_CLASS.FINANCE_FACT,
@@ -579,7 +584,9 @@ export function evaluateRememberDecision(facts = [], lead = {}) {
       reason = 'sensitive_or_business_critical';
       continue;
     }
-    if (!SAFE_REMEMBER_FACT_CLASSES.has(factClass)) {
+    const safeVehicleInterest = factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST
+      && SAFE_REMEMBER_VEHICLE_INTEREST_FIELDS.has(fact.field);
+    if (!SAFE_REMEMBER_FACT_CLASSES.has(factClass) && !safeVehicleInterest) {
       reviewFacts.push(fact);
       reason = 'unsupported_fact_class';
       continue;
