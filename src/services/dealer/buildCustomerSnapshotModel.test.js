@@ -177,4 +177,30 @@ function baseLead(overrides = {}) {
   console.log('✓ Tap target editKeys present');
 }
 
+// --- Trim/Ausstattung → Fahrzeugwunsch, nicht Bedarf ---
+{
+  const lead = baseLead({
+    vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },
+    wish: {
+      ...baseLead().wish,
+      equipment: 'GT-Line',
+    },
+    crm: {
+      ...baseLead().crm,
+      needProfile: {
+        ...mergeTextIntoNeedProfile('Hund', createEmptyNeedProfile()),
+        equipmentWishes: ['GT-Line', 'heat_pump'],
+        modelHint: 'ev2',
+      },
+    },
+  });
+  const snap = buildCustomerSnapshotModel(lead);
+  const bedarf = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BEDARF);
+  const wunsch = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.WUNSCH);
+  assert.ok(wunsch?.facts.some((f) => f.label === 'GT-Line'), 'GT-Line im Wunsch');
+  assert.ok(!bedarf?.facts.some((f) => f.label === 'GT-Line'), 'GT-Line nicht im Bedarf');
+  assert.ok(bedarf?.facts.some((f) => f.label === 'Wärmepumpe'), 'echte Ausstattung im Bedarf');
+  console.log('✓ Trim routed to Fahrzeugwunsch');
+}
+
 console.log('\nbuildCustomerSnapshotModel.test.js: OK');

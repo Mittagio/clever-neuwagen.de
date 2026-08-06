@@ -235,7 +235,9 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
   }
 
   for (const wishId of profile.equipmentWishes ?? []) {
-    const label = EQUIPMENT_LABELS[wishId] || String(wishId).replace(/_/g, ' ');
+    // Nur bekannte Ausstattungs-Wünsche im Bedarf – Trim/Linie gehört zum Fahrzeugwunsch
+    const label = EQUIPMENT_LABELS[wishId];
+    if (!label) continue;
     pushFact(facts, fact(`equip:${wishId}`, label, {
       editKey: 'equipment',
       groupId: SNAPSHOT_GROUP.BEDARF,
@@ -367,6 +369,19 @@ function buildBestandFacts(lead = {}, profile = {}) {
   return facts;
 }
 
+function resolveTrimLabel(lead = {}, profile = {}) {
+  const fromWish = String(lead?.wish?.equipment ?? '').trim();
+  if (fromWish) return fromWish;
+  const fromVehicle = String(lead?.vehicle?.trim ?? '').trim();
+  if (fromVehicle) return fromVehicle;
+  for (const wishId of profile.equipmentWishes ?? []) {
+    if (EQUIPMENT_LABELS[wishId]) continue;
+    const text = String(wishId ?? '').trim();
+    if (text && /line|spirit|platinum|edition|ausstattung/i.test(text)) return text;
+  }
+  return null;
+}
+
 function buildWunschFacts(lead = {}, profile = {}) {
   const facts = [];
   const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
@@ -389,6 +404,16 @@ function buildWunschFacts(lead = {}, profile = {}) {
         summaryPriority: 22,
       }));
     }
+  }
+
+  const trimLabel = resolveTrimLabel(lead, profile);
+  if (trimLabel) {
+    pushFact(facts, fact('trim', trimLabel, {
+      editKey: 'equipment',
+      relevanceKey: 'trim',
+      groupId: SNAPSHOT_GROUP.WUNSCH,
+      summaryPriority: 28,
+    }));
   }
 
   const openTracks = tracks.filter((t) => (
