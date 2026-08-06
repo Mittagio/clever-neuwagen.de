@@ -43,30 +43,18 @@ export function CustomerAkteKernkonditionen({
 }) {
   if (!kern?.hasData && !kern?.line) return null;
   const chips = kern.chips ?? [];
-  const lineChips = chips.filter((c) => (
-    c.id !== 'vehicleWish'
-    && !String(c.id).startsWith('track-fav')
-    && c.id !== 'modelHint'
-    && c.id !== 'trim'
-  ));
-  const vehicleChip = chips.find((c) => (
-    c.id === 'vehicleWish'
-    || String(c.id).startsWith('track-fav')
-    || c.id === 'modelHint'
-    || c.id === 'trim'
-  ));
 
   return (
     <div
-      className={`cust-kundenbild__kern${kern.source === 'deal' ? ' is-deal' : ''}`}
+      className="cust-kundenbild__kern"
       aria-label={kern.title || 'Kernkonditionen'}
     >
       <p className="cust-kundenbild__kern-title">
         {kern.title || 'Kernkonditionen'}
       </p>
-      {lineChips.length > 0 ? (
+      {chips.length > 0 ? (
         <ul className="cust-kundenbild__kern-chips">
-          {lineChips.map((chip) => (
+          {chips.map((chip) => (
             <li key={chip.id}>
               <SnapshotChip chip={chip} onFactTap={onFactTap} />
             </li>
@@ -75,19 +63,12 @@ export function CustomerAkteKernkonditionen({
       ) : kern.line ? (
         <p className="cust-kundenbild__kern-line">{kern.line}</p>
       ) : null}
-      {vehicleChip ? (
-        <ul className="cust-kundenbild__kern-vehicle">
-          <li>
-            <SnapshotChip chip={vehicleChip} onFactTap={onFactTap} />
-          </li>
-        </ul>
-      ) : null}
     </div>
   );
 }
 
 /**
- * Zone 2 – eine klappbare Soft-Sektion „Kundeninfos & Wünsche“.
+ * Zone 2 – eine klappbare Soft-Sektion „Kundenwissen“ (A/B/C).
  */
 export function CustomerAkteKundeninfos({
   soft = null,
@@ -103,6 +84,7 @@ export function CustomerAkteKundeninfos({
   const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
   if (!hasSoft) return null;
 
+  const sectionTitle = soft?.title || 'Kundenwissen';
   const summaryLine = soft?.summary?.line || '';
   const groups = soft?.groups ?? [];
   const showBar = variant === 'full' || variant === 'bar';
@@ -124,7 +106,7 @@ export function CustomerAkteKundeninfos({
               aria-expanded={expanded}
               aria-controls={panelId || undefined}
             >
-              <span className="cust-kundenbild__title">Kundeninfos & Wünsche</span>
+              <span className="cust-kundenbild__title">{sectionTitle}</span>
             </button>
             <div className="cust-kundenbild__head-actions">
               {typeof onMerken === 'function' ? (
@@ -145,7 +127,7 @@ export function CustomerAkteKundeninfos({
                 onClick={handleToggle}
                 aria-expanded={expanded}
                 aria-controls={panelId || undefined}
-                aria-label={expanded ? 'Kundeninfos einklappen' : 'Kundeninfos ausklappen'}
+                aria-label={expanded ? 'Kundenwissen einklappen' : 'Kundenwissen ausklappen'}
               >
                 <span className={`cust-kundenbild__chevron${expanded ? ' is-open' : ''}`} aria-hidden>
                   <IconChevronDown />
@@ -166,7 +148,7 @@ export function CustomerAkteKundeninfos({
           id={panelId || undefined}
           className="cust-kundenbild__panel"
           role="region"
-          aria-label="Kundeninfos & Wünsche Details"
+          aria-label={`${sectionTitle} Details`}
         >
           {groups.map((group) => (
             <div key={group.id} className="cust-kundenbild__group">

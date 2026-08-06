@@ -1,8 +1,9 @@
 /**
- * Kundenbild – Snapshot-Modell mit zwei Zonen:
- * 1) Kernkonditionen (immer sichtbar) – harte Deal-Werte
- * 2) Kundeninfos & Wünsche (klappbar) – soft, person-first
- * Soft-Chips nur aus Customer Truth; Offer-PDF nie in Soft mischen.
+ * Kundenbild – kanonische Informationshierarchie:
+ * Header: Name · Fahrzeugtrack · Zahlungsart · Kontaktstatus
+ * Kern: Laufzeit · Jahreskilometer · Anzahlung · Vertragsende (nur bestätigt)
+ * Soft „Kundenwissen“: A Mensch & Alltag · B Anforderungen · C Bestandsfahrzeug
+ * Strukturierte Fakten nie als Freinotizen; Offer/PDF überschreibt Customer Truth nicht.
  */
 import { getNeedProfileFromLead, modelDisplayLabel } from '../consultation/needProfileService.js';
 import { getSellerInsightsFromLead } from './sellerInsights.js';
@@ -14,29 +15,33 @@ import {
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
 
-/** Soft-Gruppen unter „Kundeninfos & Wünsche“ (Notizen zuletzt). */
+/** Soft-Gruppen unter „Kundenwissen“ – genau A/B/C. Legacy-Keys als Alias. */
 export const SOFT_SNAPSHOT_GROUP = {
-  KUNDE_ALLTAG: 'kundeAlltag',
-  FAHRZEUGWUNSCH: 'fahrzeugwunsch',
-  WICHTIG_AUSWAHL: 'wichtigAuswahl',
+  MENSCH_ALLTAG: 'menschAlltag',
+  ANFORDERUNGEN: 'anforderungen',
   BESTAND: 'bestand',
-  NOTIZEN: 'notizen',
+  /** @deprecated → MENSCH_ALLTAG */
+  KUNDE_ALLTAG: 'menschAlltag',
+  /** @deprecated → ANFORDERUNGEN */
+  FAHRZEUGWUNSCH: 'anforderungen',
+  /** @deprecated → ANFORDERUNGEN */
+  WICHTIG_AUSWAHL: 'anforderungen',
+  /** @deprecated Freinotizen leben in MENSCH_ALLTAG */
+  NOTIZEN: 'menschAlltag',
 };
 
 export const SOFT_SNAPSHOT_GROUP_TITLE = {
-  [SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG]: 'Kunde & Alltag',
-  [SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH]: 'Fahrzeugwunsch',
-  [SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL]: 'Wichtig bei der Auswahl',
+  [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'Mensch & Alltag',
+  [SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN]: 'Anforderungen',
   [SOFT_SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
-  [SOFT_SNAPSHOT_GROUP.NOTIZEN]: 'Notizen',
 };
 
 /** @deprecated – Alias: Soft-Gruppen + Legacy-IDs für ältere Imports */
 export const SNAPSHOT_GROUP = {
-  BEDARF: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+  BEDARF: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
   BESTAND: SOFT_SNAPSHOT_GROUP.BESTAND,
   BUDGET: 'budget',
-  WUNSCH: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+  WUNSCH: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
   VERTRAG: 'vertrag',
   BUDGET_VERTRAG: 'budget',
   ...SOFT_SNAPSHOT_GROUP,
@@ -55,22 +60,97 @@ export const SNAPSHOT_TINT = {
 
 export const SNAPSHOT_GROUP_TITLE = {
   ...SOFT_SNAPSHOT_GROUP_TITLE,
-  [SNAPSHOT_GROUP.BEDARF]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG],
+  [SNAPSHOT_GROUP.BEDARF]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG],
   [SNAPSHOT_GROUP.BUDGET]: 'Budget',
-  [SNAPSHOT_GROUP.WUNSCH]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH],
+  [SNAPSHOT_GROUP.WUNSCH]: SOFT_SNAPSHOT_GROUP_TITLE[SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN],
   [SNAPSHOT_GROUP.VERTRAG]: 'Vertragskonditionen',
 };
 
 /** Primärer editKey je Soft-Gruppe (Fallback). */
 export const SNAPSHOT_GROUP_EDIT_KEY = {
-  [SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG]: 'bedarf',
-  [SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH]: 'vehicleTrack',
-  [SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL]: 'bedarf',
+  [SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG]: 'bedarf',
+  [SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN]: 'bedarf',
   [SOFT_SNAPSHOT_GROUP.BESTAND]: 'tradeIn',
-  [SOFT_SNAPSHOT_GROUP.NOTIZEN]: 'bedarf',
   [SNAPSHOT_GROUP.BUDGET]: 'desiredRate',
   [SNAPSHOT_GROUP.VERTRAG]: 'termMonths',
 };
+
+/** Kernkonditionen: nur diese bestätigten Vertragsfelder. */
+export const KERN_SNAPSHOT_FACT_IDS = Object.freeze([
+  'termMonths',
+  'mileagePerYear',
+  'downPayment',
+  'leasingEndDate',
+]);
+
+const COLOR_WORD_RE = /^(grau|blau|wei[sß]{1,2}|schwarz|rot|silber|gr[üu]n|beige|bronze|orange|gelb|pearl|ivory|cream|green|blue|grey|gray|white|black|red|silver)$/i;
+const DRIVE_WORD_RE = /^(elektro|elektrisch|automatik|schaltgetriebe|benziner|diesel|hybrid|plug-?in|allrad|fwd|rwd|awd)$/i;
+const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\btermin\b|probefahrt|übergabe|\bgespr[äa]ch\b\s*·/i;
+const DATE_IN_TEXT_RE = /\d{1,2}\.\d{1,2}\.\d{2,4}/;
+const MODEL_TRIM_RE = /\bev\s*[0-9]\b|\bsportage\b|\bceed\b|\bniro\b|\bsorento\b|\bpicanto\b|\bstonic\b|\bproceed\b|gt-?\s*line|\bspirit\b|\bplatinum\b|\bedition\b|\binteressant\b/i;
+const COMMERCIAL_NOTE_RE = /leasing|finanzierung|\bkauf\b|budget|\brate\b|\b\d+\s*monate?\b|\bkm\b|anzahlung|jahreskilometer|vertragsende|down\s*payment/i;
+const EQUIPMENT_NOTE_RE = /w[äa]rmepumpe|\bhud\b|kamera|ahk|anh[äa]nger|panorama|sitzheizung|matrix|ausstattung|kofferraum|head-?up/i;
+const BESTAND_NOTE_RE = /inzahlung|gebraucht|\(gw\)|bestands|r[üu]ckl[äa]ufer|trade-?\s*in/i;
+
+/**
+ * Klassifiziert Seller-/Notiz-Labels für Display-Migration.
+ * structured → kanonischer Slot (nie Freinotiz); activity → Chat/Termine; free → Mensch & Alltag.
+ * @returns {{ kind: 'empty'|'activity'|'structured'|'free', slot?: string, remapLabel?: string|null }}
+ */
+export function classifySnapshotNoteLabel(label = '') {
+  const text = String(label ?? '').trim();
+  if (!text) return { kind: 'empty' };
+  const lower = text.toLowerCase();
+
+  if (
+    ACTIVITY_NOTE_RE.test(text)
+    || (DATE_IN_TEXT_RE.test(text) && /gespr[äa]ch|termin|uhr|besuch|beratung/i.test(text))
+  ) {
+    return { kind: 'activity', slot: 'activity' };
+  }
+
+  if (COMMERCIAL_NOTE_RE.test(text)) {
+    return { kind: 'structured', slot: 'commercial', remapLabel: null };
+  }
+
+  if (DRIVE_WORD_RE.test(lower) || /\bantrieb\b|\bgetriebe\b/i.test(text)) {
+    const remap = lower.charAt(0).toUpperCase() + lower.slice(1);
+    return { kind: 'structured', slot: 'drive', remapLabel: remap };
+  }
+
+  if (COLOR_WORD_RE.test(lower) || (/^farbe\b|lackierung/i.test(text) && text.length < 28)) {
+    const remap = COLOR_WORD_RE.test(lower)
+      ? lower.charAt(0).toUpperCase() + lower.slice(1)
+      : text;
+    return { kind: 'structured', slot: 'color', remapLabel: remap };
+  }
+
+  if (MODEL_TRIM_RE.test(text) && !/kaffee|frau|kommt|samstag|entscheid/i.test(text)) {
+    return { kind: 'structured', slot: 'vehicleTrack', remapLabel: null };
+  }
+
+  if (EQUIPMENT_NOTE_RE.test(text)) {
+    return { kind: 'structured', slot: 'equipment', remapLabel: text };
+  }
+
+  if (BESTAND_NOTE_RE.test(text)) {
+    return { kind: 'structured', slot: 'bestand', remapLabel: text };
+  }
+
+  if (/termin|probefahrt|übergabe/i.test(text) && DATE_IN_TEXT_RE.test(text)) {
+    return { kind: 'activity', slot: 'activity' };
+  }
+
+  return { kind: 'free' };
+}
+
+export function isActivitySnapshotNote(label = '') {
+  return classifySnapshotNoteLabel(label).kind === 'activity';
+}
+
+export function isStructuredSnapshotNote(label = '') {
+  return classifySnapshotNoteLabel(label).kind === 'structured';
+}
 
 /** Prioritäts-Labels für „Wichtig bei der Auswahl“. */
 const SELECTION_PRIORITY_LABELS = {
@@ -497,22 +577,6 @@ export function buildWorkingContextStrip(workingContextItems = [], lead = {}) {
   };
 }
 
-/**
- * Kern-Feld: Wunsch wenn bestätigt, sonst Offer/Deal (sichtbar fürs Gespräch).
- * @returns {{ value: *, source: 'wish'|'deal' }|null}
- */
-function resolveKernCommercialValue(kind, wishValue, offerTerms, dealValue) {
-  const hasWish = wishValue != null && String(wishValue).trim() !== '';
-  if (hasWish) {
-    const offerOnly = isOfferOnlyCommercialValue(kind, wishValue, offerTerms);
-    return { value: wishValue, source: offerOnly ? 'deal' : 'wish' };
-  }
-  if (dealValue != null && String(dealValue).trim() !== '') {
-    return { value: dealValue, source: 'deal' };
-  }
-  return null;
-}
-
 function resolveExistingVehicleLabel(lead = {}) {
   const tradeIn = getTradeIn(lead);
   if (tradeIn.vehicle?.trim()) {
@@ -544,13 +608,13 @@ function collectConfirmedSellerLabels(lead = {}) {
   return labels;
 }
 
-function buildKundeAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new Set()) {
+function buildMenschAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new Set()) {
   const facts = [];
   const childrenLabel = formatChildren(profile.children);
   if (childrenLabel) {
     pushFact(facts, fact('children', childrenLabel, {
       editKey: 'children',
-      groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
       miniEditor: SNAPSHOT_MINI_EDITOR.CHILDREN,
       summaryPriority: 10,
@@ -565,7 +629,7 @@ function buildKundeAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new
   if (hasFamily && !childrenLabel) {
     pushFact(facts, fact('family', 'Familie', {
       editKey: 'family',
-      groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
       miniEditor: SNAPSHOT_MINI_EDITOR.CHILDREN,
       summaryPriority: 15,
@@ -577,7 +641,7 @@ function buildKundeAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new
   if (profile.dog) {
     pushFact(facts, fact('dog', 'Hund', {
       editKey: 'dog',
-      groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
       miniEditor: SNAPSHOT_MINI_EDITOR.DOG,
       summaryPriority: 12,
@@ -589,7 +653,7 @@ function buildKundeAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new
   if (profile.chargingAtHome === 'yes') {
     pushFact(facts, fact('chargingAtHome', 'Haus', {
       editKey: 'bedarf',
-      groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 36,
     }));
@@ -602,29 +666,11 @@ function buildKundeAlltagFacts(profile = {}, sellerLabels = [], usedLabels = new
     if (!label) continue;
     pushFact(facts, fact(`usage:${tag}`, label, {
       editKey: 'usage',
-      groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 40,
     }));
     usedLabels.add(label.toLowerCase());
-  }
-
-  for (const label of sellerLabels) {
-    const lower = label.toLowerCase();
-    if (usedLabels.has(lower)) continue;
-    if (/leasing|finanz|kauf|budget|rate|km|monat|anzahlung/i.test(label)) continue;
-    if (/favorit|ablehn|liefer|inzahlung|gebraucht|\(gw\)|rückläufer|bestands/i.test(label)) continue;
-    if (/ladezeit|reichweite|wichtig|entscheid/i.test(label)) continue;
-    if (/wärmepumpe|hud|kamera|ahk|anhänger|gt-line|800\s*v/i.test(label)) continue;
-    if (/kind|hund|familie|haus|kaffee|wohnen|schwarz|partner|hobby|golf|pferd/i.test(label)) {
-      pushFact(facts, fact(`seller:${label}`, label, {
-        editKey: 'bedarf',
-        groupId: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG,
-        tint: SNAPSHOT_TINT.ALLTAG,
-        summaryPriority: 45,
-      }));
-      usedLabels.add(lower);
-    }
   }
 
   return facts;
@@ -640,7 +686,7 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
     if (usedLabels.has(label.toLowerCase())) continue;
     pushFact(facts, fact(`priority:${key}`, label, {
       editKey: 'bedarf',
-      groupId: SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.WICHTIG,
       summaryPriority: key === 'charging' ? 22 : key === 'range' ? 24 : 26,
     }));
@@ -659,7 +705,7 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
         : 'Platz';
     pushFact(facts, fact('space', spaceLabel, {
       editKey: 'space',
-      groupId: SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.WICHTIG,
       summaryPriority: 26,
     }));
@@ -670,7 +716,7 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
     if (!usedLabels.has('langstrecke') && !usedLabels.has('reichweite')) {
       pushFact(facts, fact('usage:langstrecke', 'Langstrecke', {
         editKey: 'usage',
-        groupId: SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL,
+        groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
         tint: SNAPSHOT_TINT.WICHTIG,
         summaryPriority: 28,
       }));
@@ -679,13 +725,22 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
   }
 
   for (const label of sellerLabels) {
+    const classified = classifySnapshotNoteLabel(label);
+    // Freinotizen / Activity / Color-Drive-Remap nicht hier
+    if (classified.kind !== 'structured') continue;
+    if (classified.slot === 'color' || classified.slot === 'drive' || classified.slot === 'equipment') {
+      continue;
+    }
+    if (classified.slot === 'vehicleTrack' || classified.slot === 'commercial' || classified.slot === 'bestand') {
+      continue;
+    }
     const lower = label.toLowerCase();
     if (usedLabels.has(lower)) continue;
-    if (/ladezeit|reichweite|platz|entscheid|wichtig|priorit/i.test(label)
+    if (/ladezeit|reichweite|platz|wichtig|priorit/i.test(label)
       && !/leasing|finanz|rate|km|monat/i.test(label)) {
       pushFact(facts, fact(`seller-wichtig:${label}`, label, {
         editKey: 'bedarf',
-        groupId: SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL,
+        groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
         tint: SNAPSHOT_TINT.WICHTIG,
         summaryPriority: 25,
       }));
@@ -697,49 +752,75 @@ function buildWichtigAuswahlFacts(profile = {}, sellerLabels = [], usedLabels = 
 }
 
 /**
- * Immer sichtbare Kernkonditionen – Wunsch bevorzugt, sonst aktueller Deal.
+ * Strukturierte Seller-Labels → Anforderungen (Farbe, Antrieb, …).
+ * Modell/Trim/Activity/Commercial werden ausgeschlossen (Header/Kern/Chat).
+ */
+function buildRemappedAnforderungFacts(sellerLabels = [], usedLabels = new Set()) {
+  const facts = [];
+  for (const label of sellerLabels) {
+    const classified = classifySnapshotNoteLabel(label);
+    if (classified.kind !== 'structured') continue;
+    if (classified.slot === 'vehicleTrack' || classified.slot === 'commercial' || classified.slot === 'bestand') {
+      usedLabels.add(label.toLowerCase());
+      continue;
+    }
+    if (classified.slot !== 'color' && classified.slot !== 'drive' && classified.slot !== 'equipment') {
+      usedLabels.add(label.toLowerCase());
+      continue;
+    }
+    const remap = String(classified.remapLabel || label).trim();
+    if (!remap) {
+      usedLabels.add(label.toLowerCase());
+      continue;
+    }
+    const lower = remap.toLowerCase();
+    if (usedLabels.has(lower)) continue;
+    const idPrefix = classified.slot === 'color'
+      ? 'color'
+      : classified.slot === 'drive'
+        ? 'drive'
+        : 'equip-note';
+    pushFact(facts, fact(`${idPrefix}:${remap}`, remap, {
+      editKey: classified.slot === 'color' ? 'vehicleTrack' : 'equipment',
+      relevanceKey: classified.slot === 'color' ? 'preferredColor' : classified.slot,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      tint: classified.slot === 'color' || classified.slot === 'drive'
+        ? SNAPSHOT_TINT.FAHRZEUG
+        : SNAPSHOT_TINT.WICHTIG,
+      miniEditor: classified.slot === 'color' ? SNAPSHOT_MINI_EDITOR.COLOR : null,
+      summaryPriority: classified.slot === 'color' ? 20 : classified.slot === 'drive' ? 21 : 55,
+      icon: 'car',
+    }));
+    usedLabels.add(lower);
+    usedLabels.add(label.toLowerCase());
+  }
+  return facts;
+}
+
+/**
+ * Nur bestätigter Kundenwunsch für Kern – kein Offer/PDF-Fallback.
+ * @returns {{ value: *, source: 'wish' }|null}
+ */
+function resolveConfirmedKernWishValue(kind, wishValue, offerTerms) {
+  if (wishValue == null || String(wishValue).trim() === '') return null;
+  if (isOfferOnlyCommercialValue(kind, wishValue, offerTerms)) return null;
+  return { value: wishValue, source: 'wish' };
+}
+
+/**
+ * Immer sichtbare Kernkonditionen – nur Laufzeit · km · AZ · Vertragsende.
+ * Zahlungsart + Fahrzeugtrack liegen im Header; Offer/PDF überschreibt nicht.
  */
 export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
   const workingContextItems = options.workingContextItems ?? [];
   const offerTerms = collectOfferCommercialTerms(lead, workingContextItems);
-  const { card, primary } = resolvePrimaryOfferCard(workingContextItems, lead);
   const chips = [];
   const sources = new Set();
 
-  const dealPayment = card?.paymentType ?? primary?.paymentType
-    ?? card?.payment?.type ?? card?.leasingData?.paymentType ?? null;
-  const dealTerm = card?.termMonths ?? primary?.termMonths
-    ?? card?.leasingData?.termMonths ?? card?.payment?.termMonths ?? null;
-  const dealKm = card?.mileagePerYear ?? primary?.mileagePerYear
-    ?? card?.annualMileage ?? card?.payment?.mileagePerYear ?? null;
-  const dealDown = card?.downPayment ?? primary?.downPayment
-    ?? card?.payment?.downPayment ?? card?.leasingData?.downPayment ?? null;
-  const dealEnd = card?.leasingEndDate ?? primary?.leasingEndDate
-    ?? card?.contractEndDate ?? card?.payment?.leasingEndDate ?? null;
-
-  const paymentResolved = resolveKernCommercialValue(
-    'paymentType',
-    resolvePaymentType(lead, profile),
-    offerTerms,
-    dealPayment && dealPayment !== 'unknown' ? dealPayment : null,
-  );
-  if (paymentResolved && PAYMENT_LABELS[paymentResolved.value]) {
-    sources.add(paymentResolved.source);
-    pushFact(chips, fact('paymentType', PAYMENT_LABELS[paymentResolved.value], {
-      editKey: 'paymentType',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.VERTRAG,
-      miniEditor: SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE,
-      summaryPriority: 1,
-      icon: 'vertrag',
-    }));
-  }
-
-  const termResolved = resolveKernCommercialValue(
+  const termResolved = resolveConfirmedKernWishValue(
     'termMonths',
     lead?.wish?.termMonths ?? profile?.leaseDurationMonths ?? null,
     offerTerms,
-    dealTerm,
   );
   const termLabel = termResolved ? formatMonths(termResolved.value) : null;
   if (termLabel) {
@@ -754,11 +835,10 @@ export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
     }));
   }
 
-  const kmResolved = resolveKernCommercialValue(
+  const kmResolved = resolveConfirmedKernWishValue(
     'mileage',
     lead?.wish?.mileagePerYear ?? profile?.annualKm ?? null,
     offerTerms,
-    dealKm,
   );
   const kmLabel = kmResolved ? formatKm(kmResolved.value) : null;
   if (kmLabel) {
@@ -773,11 +853,10 @@ export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
     }));
   }
 
-  const downResolved = resolveKernCommercialValue(
+  const downResolved = resolveConfirmedKernWishValue(
     'downPayment',
     lead?.wish?.downPayment ?? profile?.budget?.downPayment ?? null,
     offerTerms,
-    dealDown,
   );
   const downLabel = downResolved
     ? formatDownPayment(downResolved.value, { compact: true })
@@ -794,11 +873,10 @@ export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
     }));
   }
 
-  const endResolved = resolveKernCommercialValue(
+  const endResolved = resolveConfirmedKernWishValue(
     'endDate',
     lead?.wish?.leasingEndDate ?? lead?.leasingEndDate ?? lead?.crm?.leasingEndDate ?? null,
     offerTerms,
-    dealEnd,
   );
   const endLabel = endResolved ? formatLeasingEndLabel(endResolved.value) : null;
   if (endLabel) {
@@ -813,49 +891,15 @@ export function buildKernKonditionen(lead = {}, profile = {}, options = {}) {
     }));
   }
 
-  const rate = resolveConfirmedWishRate(lead, profile, options);
-  const rateMode = resolveRateMode(lead, profile);
-  const rateLabel = formatEuroApprox(rate, rateMode);
-  if (rateLabel) {
-    sources.add('wish');
-    pushFact(chips, fact('rate', rateLabel, {
-      editKey: 'desiredRate',
-      relevanceKey: 'desiredRate',
-      groupId: 'kern',
-      tint: SNAPSHOT_TINT.BUDGET,
-      miniEditor: SNAPSHOT_MINI_EDITOR.DESIRED_RATE,
-      summaryPriority: 6,
-      icon: 'budget',
-    }));
-  }
-
-  // Optionales Fahrzeug im Kern (bestätigter Wunsch)
-  const vehicleChip = buildConfirmedVehicleWishChip(lead, profile);
-  if (vehicleChip) {
-    sources.add('wish');
-    pushFact(chips, { ...vehicleChip, groupId: 'kern', summaryPriority: 7 });
-  }
-
-  const lineParts = chips
-    .filter((c) => c.id !== 'rate' && c.id !== 'vehicleWish' && !String(c.id).startsWith('track-fav'))
-    .map((c) => c.label);
-  // Rate nicht in der Kernzeile – separat als Chip; Fahrzeug optional als Zusatz
-  const vehiclePart = chips.find((c) => c.id === 'vehicleWish' || String(c.id).startsWith('track-fav'));
-  const source = sources.has('wish') && !sources.has('deal')
-    ? 'wish'
-    : sources.has('deal') && !sources.has('wish')
-      ? 'deal'
-      : sources.size
-        ? 'mixed'
-        : 'none';
+  const lineParts = chips.map((c) => c.label);
 
   return {
-    title: source === 'deal' ? 'Aktueller Deal' : 'Kernkonditionen',
-    source,
+    title: 'Kernkonditionen',
+    source: sources.size ? 'wish' : 'none',
     line: lineParts.join(' · '),
     parts: lineParts,
     chips,
-    vehicleLabel: vehiclePart?.label || null,
+    vehicleLabel: null,
     hasData: chips.length > 0,
   };
 }
@@ -921,7 +965,7 @@ function resolveTrimLabel(lead = {}, profile = {}) {
   return null;
 }
 
-/** Bestätigter Fahrzeugwunsch-Chip (Modell · Trim) – für Kern optional + Soft. */
+/** Bestätigter Fahrzeugwunsch-Chip – nur für Header-Dedupe, nicht Soft/Kern. */
 function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
   const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
   const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE);
@@ -942,7 +986,7 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact('vehicleWish', combined, {
       editKey: 'vehicleTrack',
       relevanceKey: 'favoriteVehicle',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 18,
       icon: 'car',
@@ -952,7 +996,7 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact(favorite ? `track-fav:${favorite.id}` : 'modelHint', modelLabel, {
       editKey: 'vehicleTrack',
       relevanceKey: favorite ? 'favoriteVehicle' : 'preferredModel',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 18,
       icon: 'car',
@@ -962,7 +1006,7 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
     return fact('trim', trimLabel, {
       editKey: 'equipment',
       relevanceKey: 'trim',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 18,
       icon: 'car',
@@ -971,35 +1015,46 @@ function buildConfirmedVehicleWishChip(lead = {}, profile = {}) {
   return null;
 }
 
-function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set()) {
+/**
+ * Header-Fakten (Fahrzeugtrack + Zahlungsart) – zur Deduplizierung gegen Soft/Kern.
+ */
+export function resolveHeaderDedupeLabels(lead = {}, profile = {}) {
+  const labels = new Set();
+  const payment = resolvePaymentType(lead, profile);
+  if (payment && PAYMENT_LABELS[payment]) {
+    labels.add(PAYMENT_LABELS[payment].toLowerCase());
+  }
+  const vehicleChip = buildConfirmedVehicleWishChip(lead, profile);
+  if (vehicleChip?.label) {
+    labels.add(vehicleChip.label.toLowerCase());
+    for (const part of String(vehicleChip.label).split(/\s*[·|/]\s*/)) {
+      const p = part.trim().toLowerCase();
+      if (p) labels.add(p);
+    }
+  }
+  const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
+  for (const track of tracks) {
+    const name = String(track.displayName || track.modelLabel || '').trim().toLowerCase();
+    if (name) labels.add(name);
+  }
+  return labels;
+}
+
+/**
+ * Anforderungen – Farbe, Antrieb, Prioritäten, Ausstattung.
+ * Kein Fahrzeugtrack/Trim (Header), keine Kernkonditionen.
+ */
+function buildAnforderungenFacts(lead = {}, profile = {}, sellerLabels = [], usedLabels = new Set()) {
   const facts = [];
   const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
-  const vehicleChip = buildConfirmedVehicleWishChip(lead, profile);
-  if (vehicleChip) {
-    pushFact(facts, vehicleChip);
-    usedLabels.add(vehicleChip.label.toLowerCase());
-  }
 
-  const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE);
-  const modelLabel = vehicleChip?.label || null;
-  const openTracks = tracks.filter((t) => (
-    t.status === VEHICLE_TRACK_STATUS.ACTIVE
-    || t.status === VEHICLE_TRACK_STATUS.OPEN
-    || t.status === VEHICLE_TRACK_STATUS.DEFERRED
-  ));
-  if (openTracks.length && !favorite && !modelLabel) {
-    const labels = openTracks
-      .slice(0, 3)
-      .map((t) => t.displayName || t.modelLabel)
-      .filter(Boolean);
-    if (labels.length) {
-      pushFact(facts, fact('tracks', labels.join(' · '), {
-        editKey: 'vehicleTrack',
-        groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
-        tint: SNAPSHOT_TINT.FAHRZEUG,
-        summaryPriority: 50,
-        icon: 'car',
-      }));
+  // Modell/Trim nur als usedLabels markieren (Header), nie als Soft-Chip
+  const vehicleChip = buildConfirmedVehicleWishChip(lead, profile);
+  if (vehicleChip?.label) {
+    usedLabels.add(vehicleChip.label.toLowerCase());
+    for (const part of String(vehicleChip.label).split(/\s*[·|/]\s*/)) {
+      const p = part.trim().toLowerCase();
+      if (p) usedLabels.add(p);
     }
   }
 
@@ -1010,7 +1065,7 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
     pushFact(facts, fact(`color:${color}`, String(color), {
       editKey: 'vehicleTrack',
       relevanceKey: 'preferredColor',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.COLOR,
       summaryPriority: 20,
@@ -1019,12 +1074,21 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
     usedLabels.add(String(color).toLowerCase());
   }
 
+  // Remap strukturierte Seller-Labels (Grau, Automatik, Elektro, …)
+  for (const remapped of buildRemappedAnforderungFacts(sellerLabels, usedLabels)) {
+    pushFact(facts, remapped);
+  }
+
+  for (const f of buildWichtigAuswahlFacts(profile, sellerLabels, usedLabels)) {
+    pushFact(facts, f);
+  }
+
   if (profile.towbar || profile.towing === 'yes' || profile.towing === 'braked'
     || (profile.towCapacityKg ?? 0) >= 750
     || profile.priorities?.includes('towing')) {
     pushFact(facts, fact('towbar', 'AHK', {
       editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 42,
       icon: 'car',
@@ -1032,7 +1096,6 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
     usedLabels.add('ahk');
   }
 
-  // Nur bestätigte Ausstattung als Chips (kein großer Modal-Default)
   for (const wishId of profile.equipmentWishes ?? []) {
     const label = EQUIPMENT_LABELS[wishId] || (
       /800\s*v/i.test(String(wishId)) ? String(wishId).trim() : null
@@ -1041,7 +1104,7 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
     if (/line|spirit|platinum|edition/i.test(label)) continue;
     pushFact(facts, fact(`equip:${wishId}`, label, {
       editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 55,
       icon: 'car',
@@ -1052,9 +1115,14 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
   for (const tech of profile.technology ?? []) {
     const text = String(tech ?? '').trim();
     if (!text) continue;
+    if (classifySnapshotNoteLabel(text).kind === 'structured'
+      && classifySnapshotNoteLabel(text).slot === 'vehicleTrack') {
+      usedLabels.add(text.toLowerCase());
+      continue;
+    }
     pushFact(facts, fact(`tech:${text}`, text, {
       editKey: 'equipment',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 54,
       icon: 'car',
@@ -1066,7 +1134,7 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
   if (String(delivery).trim()) {
     pushFact(facts, fact('delivery', `Lieferzeit ${String(delivery).trim()}`, {
       editKey: 'delivery',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
       summaryPriority: 44,
@@ -1077,41 +1145,30 @@ function buildFahrzeugwunschFacts(lead = {}, profile = {}, usedLabels = new Set(
   ))) {
     pushFact(facts, fact('delivery', 'Lieferzeit wichtig', {
       editKey: 'delivery',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+      groupId: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
       tint: SNAPSHOT_TINT.FAHRZEUG,
       miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
       summaryPriority: 44,
     }));
   }
 
-  const rejections = tracks.filter((t) => (
-    t.status === VEHICLE_TRACK_STATUS.LOST && (t.rejectionReasonLabel || t.rejectionReason)
-  ));
-  for (const track of rejections.slice(0, 3)) {
-    const reason = track.rejectionReasonLabel || 'abgelehnt';
-    pushFact(facts, fact(`reject:${track.id}`, `${track.modelLabel}: ${reason}`, {
-      editKey: 'vehicleTrack',
-      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
-      tint: SNAPSHOT_TINT.FAHRZEUG,
-      summaryPriority: 60,
-    }));
-  }
-
   return facts;
 }
 
-/** Freie Notizen – nur was nicht in Kategorien passt. */
-function buildNotizenFacts(lead = {}, sellerLabels = [], usedLabels = new Set()) {
+/** Freie Notizen – nur unstrukturiert; Activity/strukturiert ausgeschlossen. */
+function buildFreeNoteFacts(lead = {}, sellerLabels = [], usedLabels = new Set()) {
   const facts = [];
 
   for (const label of sellerLabels) {
+    const classified = classifySnapshotNoteLabel(label);
+    // structured/activity: nie als Freinotiz; Remap passiert in Anforderungen
+    if (classified.kind !== 'free') continue;
     const lower = label.toLowerCase();
     if (usedLabels.has(lower)) continue;
-    if (/leasing|finanz|kauf|budget|rate|\bkm\b|monat|anzahlung/i.test(label)) continue;
     if (label.length < 3) continue;
     pushFact(facts, fact(`note:${label}`, label, {
       editKey: 'bedarf',
-      groupId: SOFT_SNAPSHOT_GROUP.NOTIZEN,
+      groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
       tint: SNAPSHOT_TINT.NOTIZ,
       summaryPriority: 70,
     }));
@@ -1124,11 +1181,16 @@ function buildNotizenFacts(lead = {}, sellerLabels = [], usedLabels = new Set())
       const text = String(note?.text ?? note?.body ?? note ?? '').trim();
       if (!text || text.length < 3) continue;
       const short = text.length > 48 ? `${text.slice(0, 46)}…` : text;
+      const classified = classifySnapshotNoteLabel(short);
+      if (classified.kind !== 'free') {
+        usedLabels.add(short.toLowerCase());
+        continue;
+      }
       const lower = short.toLowerCase();
       if (usedLabels.has(lower)) continue;
       pushFact(facts, fact(`cnote:${short}`, short, {
         editKey: 'bedarf',
-        groupId: SOFT_SNAPSHOT_GROUP.NOTIZEN,
+        groupId: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
         tint: SNAPSHOT_TINT.NOTIZ,
         summaryPriority: 72,
       }));
@@ -1137,6 +1199,20 @@ function buildNotizenFacts(lead = {}, sellerLabels = [], usedLabels = new Set())
   }
 
   return facts;
+}
+
+function omitFactsByDedupe(facts = [], omitLabels = new Set(), omitIds = new Set()) {
+  return facts.filter((f) => {
+    if (omitIds.has(f.id)) return false;
+    const lower = String(f.label || '').toLowerCase();
+    if (omitLabels.has(lower)) return false;
+    if (KERN_SNAPSHOT_FACT_IDS.includes(f.id)) return false;
+    if (f.id === 'paymentType' || f.id === 'vehicleWish' || f.id === 'trim'
+      || String(f.id).startsWith('track-fav') || f.id === 'modelHint' || f.id === 'tracks') {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
@@ -1236,21 +1312,38 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   const sellerLabels = collectConfirmedSellerLabels(lead);
   const understanding = buildCustomerUnderstanding(lead);
   const usedLabels = new Set();
+  const headerLabels = resolveHeaderDedupeLabels(lead, profile);
 
   const kern = buildKernKonditionen(lead, profile, { workingContextItems });
+  const kernOmitLabels = new Set([
+    ...headerLabels,
+    ...kern.chips.map((c) => String(c.label).toLowerCase()),
+  ]);
+  const kernOmitIds = new Set(kern.chips.map((c) => c.id));
 
-  const kundeAlltagFacts = buildKundeAlltagFacts(profile, sellerLabels, usedLabels);
-  const fahrzeugFacts = buildFahrzeugwunschFacts(lead, profile, usedLabels);
-  const wichtigFacts = buildWichtigAuswahlFacts(profile, sellerLabels, usedLabels);
+  for (const label of headerLabels) usedLabels.add(label);
+
+  // Zuerst strukturierte Remaps (Farbe/Antrieb), dann Freinotizen
+  const anforderungenFacts = buildAnforderungenFacts(lead, profile, sellerLabels, usedLabels);
   const bestandFacts = buildBestandFacts(lead, profile, usedLabels);
-  const notizenFacts = buildNotizenFacts(lead, sellerLabels, usedLabels);
+  const menschFacts = [
+    ...buildMenschAlltagFacts(profile, sellerLabels, usedLabels),
+    ...buildFreeNoteFacts(lead, sellerLabels, usedLabels),
+  ];
 
   const softGroupsSpec = [
-    { id: SOFT_SNAPSHOT_GROUP.KUNDE_ALLTAG, facts: kundeAlltagFacts },
-    { id: SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH, facts: fahrzeugFacts },
-    { id: SOFT_SNAPSHOT_GROUP.WICHTIG_AUSWAHL, facts: wichtigFacts },
-    { id: SOFT_SNAPSHOT_GROUP.BESTAND, facts: bestandFacts },
-    { id: SOFT_SNAPSHOT_GROUP.NOTIZEN, facts: notizenFacts },
+    {
+      id: SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG,
+      facts: omitFactsByDedupe(menschFacts, kernOmitLabels, kernOmitIds),
+    },
+    {
+      id: SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
+      facts: omitFactsByDedupe(anforderungenFacts, kernOmitLabels, kernOmitIds),
+    },
+    {
+      id: SOFT_SNAPSHOT_GROUP.BESTAND,
+      facts: omitFactsByDedupe(bestandFacts, kernOmitLabels, kernOmitIds),
+    },
   ];
 
   const relevantSet = new Set(
@@ -1264,15 +1357,8 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       .filter(Boolean),
   );
 
-  const hasAnySoftFacts = softGroupsSpec.some(
-    (g) => g.id !== SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH && g.facts.length > 0,
-  ) || fahrzeugFacts.length > 0;
-
   const softGroups = softGroupsSpec
-    .filter((g) => (
-      g.facts.length > 0
-      || (g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH && hasAnySoftFacts)
-    ))
+    .filter((g) => g.facts.length > 0)
     .map((g) => {
       const facts = annotateFacts(g.facts, relevantSet, highlightSet);
       return {
@@ -1280,7 +1366,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
         title: SOFT_SNAPSHOT_GROUP_TITLE[g.id] || SNAPSHOT_GROUP_TITLE[g.id],
         editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
         relevant: facts.some((f) => f.relevant),
-        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGWUNSCH,
+        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.ANFORDERUNGEN,
         facts,
       };
     });
@@ -1294,9 +1380,8 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   const kernChips = annotateFacts(kern.chips, relevantSet, highlightSet);
   const workingContext = buildWorkingContextStrip(workingContextItems, lead);
 
-  // Soft-only: kein Duplikat der Kernzeile als Arbeitskontext, wenn Kern schon Deal zeigt
-  const showWorkingStrip = Boolean(workingContext?.line)
-    && !(kern.hasData && (kern.source === 'deal' || kern.source === 'mixed'));
+  // Working Context = Angebots-Kontext, überschreibt Customer Truth nicht
+  const showWorkingStrip = Boolean(workingContext?.line);
 
   const hasSoft = softFacts.length > 0
     || softGroups.some((g) => g.showEquipmentCta);
@@ -1316,7 +1401,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       chips: kernChips,
     },
     soft: {
-      title: 'Kundeninfos & Wünsche',
+      title: 'Kundenwissen',
       summary: softSummary,
       groups: softGroups,
       chips: softChips,
@@ -1324,9 +1409,9 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
     },
     /** @deprecated use soft.summary */
     summary: softSummary,
-    /** Soft-Gruppen (Notizen zuletzt) */
+    /** Soft-Gruppen A/B/C */
     groups: softGroups,
-    /** Soft-Chips – keine Kernkonditionen */
+    /** Soft-Chips – keine Header-/Kern-Duplikate */
     chips: softChips,
     softChips,
     kernChips,
