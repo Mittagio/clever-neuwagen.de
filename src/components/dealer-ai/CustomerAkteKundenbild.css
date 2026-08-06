@@ -1,4 +1,4 @@
-/* Kundenbild – Person-first Soft-Tint Chips (Mobile-first) */
+/* Kundenbild – Kernkonditionen + Soft Kundeninfos (Mobile-first) */
 
 .cust-kundenbild {
   --kb-text: var(--cust-text, #0b1736);
@@ -12,7 +12,56 @@
   --kb-tint-vertrag: #f6f2ec;
   --kb-tint-fahrzeug: #f1eef6;
   --kb-tint-inzahlungnahme: #eef0f3;
+  --kb-tint-wichtig: #f3f0ea;
+  --kb-tint-notiz: #f2f3f5;
   background: #fff;
+}
+
+/* Zone 1: immer sichtbare Kernkonditionen */
+.cust-kundenbild__kern {
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  background: #faf9f6;
+}
+
+.cust-kundenbild__kern.is-deal {
+  background: #f7f6f3;
+}
+
+.cust-kundenbild__kern-title {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #7a8499;
+}
+
+.cust-kundenbild__kern-line {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--kb-text);
+}
+
+.cust-kundenbild__kern-chips,
+.cust-kundenbild__kern-vehicle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cust-kundenbild__kern-chips .cust-kundenbild__chip {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.1);
+  font-weight: 600;
+}
+
+.cust-kundenbild__kern-vehicle {
+  margin-top: 4px;
 }
 
 .cust-kundenbild--bar,
@@ -154,7 +203,23 @@
   flex-shrink: 0;
 }
 
-/* Flat flex-wrap chip cloud – keine Sektionsüberschriften */
+.cust-kundenbild__group {
+  margin: 0 0 12px;
+}
+
+.cust-kundenbild__group:last-child {
+  margin-bottom: 0;
+}
+
+.cust-kundenbild__group-title {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a8499;
+}
+
 .cust-kundenbild__chips {
   display: flex;
   flex-wrap: wrap;
@@ -162,6 +227,21 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.cust-kundenbild__equip-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 6px 0 0;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: #3a4660;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .cust-kundenbild__chip {
@@ -226,6 +306,16 @@
 .cust-kundenbild__chip--inzahlungnahme {
   background: var(--kb-tint-inzahlungnahme);
   border-color: rgba(80, 100, 120, 0.1);
+}
+
+.cust-kundenbild__chip--wichtig {
+  background: var(--kb-tint-wichtig);
+  border-color: rgba(140, 110, 70, 0.12);
+}
+
+.cust-kundenbild__chip--notiz {
+  background: var(--kb-tint-notiz);
+  border-color: rgba(80, 90, 110, 0.1);
 }
 
 .cust-kundenbild__chip:active {
@@ -303,7 +393,8 @@
 @media (min-width: 1100px) {
   .cn-workspace__band .cust-kundenbild__compact,
   .cn-workspace__band .cust-kundenbild__panel,
-  .cn-workspace__band .cust-kundenbild__working {
+  .cn-workspace__band .cust-kundenbild__working,
+  .cn-workspace__band .cust-kundenbild__kern {
     padding-inline: 20px;
   }
 }

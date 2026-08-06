@@ -1,10 +1,6 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { IconCar, IconChevronDown, IconUser } from './AkteIcons.jsx';
-import {
-  SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
-  flattenSnapshotChips,
-  splitExpandedChips,
-} from '../../services/dealer/buildCustomerSnapshotModel.js';
+import { flattenSnapshotChips } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
 
 function ChipIcon({ icon }) {
@@ -17,60 +13,108 @@ function ChipIcon({ icon }) {
   return null;
 }
 
+function SnapshotChip({ chip, onFactTap }) {
+  const category = chip.category || chip.tint || 'alltag';
+  return (
+    <button
+      type="button"
+      className={[
+        'cust-kundenbild__chip',
+        `cust-kundenbild__chip--${category}`,
+        chip.relevant || chip.highlighted ? 'is-relevant' : '',
+        chip.highlighted ? 'is-highlight' : '',
+      ].filter(Boolean).join(' ')}
+      data-category={category}
+      onClick={() => onFactTap?.(chip)}
+      aria-label={`${chip.label} bearbeiten`}
+    >
+      <ChipIcon icon={chip.icon || category} />
+      <span className="cust-kundenbild__chip-label">{chip.label}</span>
+    </button>
+  );
+}
+
 /**
- * Kompakte Chip-Übersicht (Customer Truth) – Person zuerst.
- * Motto: Composer erfassen · Chips erkennen/korrigieren.
- * Offer-Konditionen liegen im Arbeitskontext-Strip darunter.
+ * Zone 1 – immer sichtbare Kernkonditionen (Tap → Mini-Editor).
  */
-export default function CustomerAkteKundenbild({
-  model = null,
+export function CustomerAkteKernkonditionen({
+  kern = null,
+  onFactTap = null,
+}) {
+  if (!kern?.hasData && !kern?.line) return null;
+  const chips = kern.chips ?? [];
+  const lineChips = chips.filter((c) => (
+    c.id !== 'vehicleWish'
+    && !String(c.id).startsWith('track-fav')
+    && c.id !== 'modelHint'
+    && c.id !== 'trim'
+  ));
+  const vehicleChip = chips.find((c) => (
+    c.id === 'vehicleWish'
+    || String(c.id).startsWith('track-fav')
+    || c.id === 'modelHint'
+    || c.id === 'trim'
+  ));
+
+  return (
+    <div
+      className={`cust-kundenbild__kern${kern.source === 'deal' ? ' is-deal' : ''}`}
+      aria-label={kern.title || 'Kernkonditionen'}
+    >
+      <p className="cust-kundenbild__kern-title">
+        {kern.title || 'Kernkonditionen'}
+      </p>
+      {lineChips.length > 0 ? (
+        <ul className="cust-kundenbild__kern-chips">
+          {lineChips.map((chip) => (
+            <li key={chip.id}>
+              <SnapshotChip chip={chip} onFactTap={onFactTap} />
+            </li>
+          ))}
+        </ul>
+      ) : kern.line ? (
+        <p className="cust-kundenbild__kern-line">{kern.line}</p>
+      ) : null}
+      {vehicleChip ? (
+        <ul className="cust-kundenbild__kern-vehicle">
+          <li>
+            <SnapshotChip chip={vehicleChip} onFactTap={onFactTap} />
+          </li>
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Zone 2 – eine klappbare Soft-Sektion „Kundeninfos & Wünsche“.
+ */
+export function CustomerAkteKundeninfos({
+  soft = null,
   expanded = false,
   onToggle = null,
   onFactTap = null,
   onMerken = null,
-  /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Chips, full=beides */
+  onAusstattungErgaenzen = null,
+  panelId = null,
+  /** 'full' | 'bar' | 'panel' */
   variant = 'full',
 }) {
-  const panelId = useId();
-  const [chipsExpanded, setChipsExpanded] = useState(false);
+  const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
+  if (!hasSoft) return null;
 
-  const hasChips = Boolean(model?.meta?.hasData);
-  const workingContext = model?.workingContext || null;
-  if (!hasChips && !workingContext) return null;
-
-  const groups = model?.groups ?? [];
-  const summaryLine = model?.summary?.line || '';
-  const allChips = model?.chips ?? flattenSnapshotChips(groups);
-  const { visible, overflow } = splitExpandedChips(
-    allChips,
-    SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
-    chipsExpanded,
-  );
-
+  const summaryLine = soft?.summary?.line || '';
+  const groups = soft?.groups ?? [];
   const showBar = variant === 'full' || variant === 'bar';
-  const showPanel = (variant === 'full' || variant === 'panel') && expanded && hasChips;
-  // Strip einmal: collapsed Bar, Expanded Panel, oder Full – nie doppelt Bar+Panel
-  const showWorking = Boolean(workingContext?.line) && (
-    variant === 'full'
-    || variant === 'panel'
-    || (variant === 'bar' && !expanded)
-  );
+  const showPanel = (variant === 'full' || variant === 'panel') && expanded;
 
   function handleToggle() {
-    if (expanded) setChipsExpanded(false);
     onToggle?.(!expanded);
   }
 
-  function handleChipClick(chip) {
-    onFactTap?.(chip);
-  }
-
   return (
-    <section
-      className={`cust-kundenbild${expanded ? ' is-expanded' : ' is-collapsed'}${variant !== 'full' ? ` cust-kundenbild--${variant}` : ''}`}
-      aria-label="Kundenbild"
-    >
-      {showBar && hasChips ? (
+    <div className={`cust-kundenbild__soft${expanded ? ' is-expanded' : ' is-collapsed'}`}>
+      {showBar ? (
         <div className="cust-kundenbild__compact">
           <div className="cust-kundenbild__head">
             <button
@@ -78,9 +122,9 @@ export default function CustomerAkteKundenbild({
               className="cust-kundenbild__toggle"
               onClick={handleToggle}
               aria-expanded={expanded}
-              aria-controls={panelId}
+              aria-controls={panelId || undefined}
             >
-              <span className="cust-kundenbild__title">Kundenbild</span>
+              <span className="cust-kundenbild__title">Kundeninfos & Wünsche</span>
             </button>
             <div className="cust-kundenbild__head-actions">
               {typeof onMerken === 'function' ? (
@@ -100,8 +144,8 @@ export default function CustomerAkteKundenbild({
                 className="cust-kundenbild__chevron-btn"
                 onClick={handleToggle}
                 aria-expanded={expanded}
-                aria-controls={panelId}
-                aria-label={expanded ? 'Kundenbild einklappen' : 'Kundenbild ausklappen'}
+                aria-controls={panelId || undefined}
+                aria-label={expanded ? 'Kundeninfos einklappen' : 'Kundeninfos ausklappen'}
               >
                 <span className={`cust-kundenbild__chevron${expanded ? ' is-open' : ''}`} aria-hidden>
                   <IconChevronDown />
@@ -119,54 +163,101 @@ export default function CustomerAkteKundenbild({
 
       {showPanel ? (
         <div
-          id={panelId}
+          id={panelId || undefined}
           className="cust-kundenbild__panel"
           role="region"
-          aria-label="Kundenbild Details"
+          aria-label="Kundeninfos & Wünsche Details"
         >
-          <ul className="cust-kundenbild__chips">
-            {visible.map((chip) => {
-              const category = chip.category || chip.tint || 'alltag';
-              return (
-                <li key={chip.id}>
-                  <button
-                    type="button"
-                    className={[
-                      'cust-kundenbild__chip',
-                      `cust-kundenbild__chip--${category}`,
-                      chip.relevant || chip.highlighted ? 'is-relevant' : '',
-                      chip.highlighted ? 'is-highlight' : '',
-                    ].filter(Boolean).join(' ')}
-                    data-category={category}
-                    onClick={() => handleChipClick(chip)}
-                    aria-label={`${chip.label} bearbeiten`}
-                  >
-                    <ChipIcon icon={chip.icon || category} />
-                    <span className="cust-kundenbild__chip-label">{chip.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {overflow > 0 && !chipsExpanded ? (
-            <button
-              type="button"
-              className="cust-kundenbild__more"
-              onClick={() => setChipsExpanded(true)}
-            >
-              {`+ ${overflow} weitere`}
-            </button>
-          ) : null}
-          {chipsExpanded && allChips.length > SNAPSHOT_EXPANDED_VISIBLE_CHIPS ? (
-            <button
-              type="button"
-              className="cust-kundenbild__more cust-kundenbild__more--less"
-              onClick={() => setChipsExpanded(false)}
-            >
-              Weniger
-            </button>
-          ) : null}
+          {groups.map((group) => (
+            <div key={group.id} className="cust-kundenbild__group">
+              <p className="cust-kundenbild__group-title">{group.title}</p>
+              {group.facts?.length ? (
+                <ul className="cust-kundenbild__chips">
+                  {group.facts.map((chip) => (
+                    <li key={chip.id}>
+                      <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {group.showEquipmentCta && typeof onAusstattungErgaenzen === 'function' ? (
+                <button
+                  type="button"
+                  className="cust-kundenbild__equip-cta"
+                  onClick={onAusstattungErgaenzen}
+                >
+                  + Ausstattung ergänzen
+                </button>
+              ) : null}
+            </div>
+          ))}
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Kundenbild: Kernkonditionen (immer) + eine Soft-Sektion darunter.
+ * Motto: Composer erfassen · Chips erkennen/korrigieren.
+ */
+export default function CustomerAkteKundenbild({
+  model = null,
+  expanded = false,
+  onToggle = null,
+  onFactTap = null,
+  onMerken = null,
+  onAusstattungErgaenzen = null,
+  /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Soft-Details, full=beides */
+  variant = 'full',
+}) {
+  const panelId = useId();
+
+  const kern = model?.kern ?? null;
+  const soft = model?.soft ?? (
+    model?.groups || model?.chips
+      ? {
+        hasData: Boolean(model?.meta?.hasSoft ?? model?.meta?.hasData),
+        summary: model?.summary,
+        groups: model?.groups,
+        chips: model?.chips ?? flattenSnapshotChips(model?.groups ?? []),
+      }
+      : null
+  );
+  const workingContext = model?.workingContext || null;
+
+  const hasKern = Boolean(kern?.hasData || kern?.line);
+  const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
+  if (!hasKern && !hasSoft && !workingContext) return null;
+
+  const showKern = hasKern && (variant === 'full' || variant === 'bar');
+  const showSoft = hasSoft && (variant === 'full' || variant === 'bar' || variant === 'panel');
+  // Working-Strip nur in Bar/Full (nicht doppelt im Panel)
+  const showWorking = Boolean(workingContext?.line) && (
+    variant === 'full'
+    || (variant === 'bar' && !expanded)
+  );
+
+  return (
+    <section
+      className={`cust-kundenbild${expanded ? ' is-expanded' : ' is-collapsed'}${variant !== 'full' ? ` cust-kundenbild--${variant}` : ''}`}
+      aria-label="Kundenbild"
+    >
+      {showKern ? (
+        <CustomerAkteKernkonditionen kern={kern} onFactTap={onFactTap} />
+      ) : null}
+
+      {showSoft ? (
+        <CustomerAkteKundeninfos
+          soft={soft}
+          expanded={expanded}
+          onToggle={onToggle}
+          onFactTap={onFactTap}
+          onMerken={onMerken}
+          onAusstattungErgaenzen={onAusstattungErgaenzen}
+          panelId={panelId}
+          variant={variant}
+        />
       ) : null}
 
       {showWorking ? (

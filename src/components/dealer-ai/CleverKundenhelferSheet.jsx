@@ -394,7 +394,13 @@ export default function CleverKundenhelferSheet({
       resetSheetNav();
       return;
     }
-    if (initialCategoryId && LIFE_CATEGORY_IDS.includes(initialCategoryId)) {
+    if (initialCategoryId === 'equipment') {
+      setSheetView('soft');
+      setSoftSection('equipment');
+      setActiveCategoryId(null);
+      setAddMode(false);
+      setEditingChip(null);
+    } else if (initialCategoryId && LIFE_CATEGORY_IDS.includes(initialCategoryId)) {
       setActiveCategoryId(initialCategoryId);
       setSheetView('detail');
       setSoftSection(null);

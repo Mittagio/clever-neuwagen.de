@@ -1072,6 +1072,11 @@ export default function DealerAiLeadFollowUp({
     });
   }
 
+  function handleAusstattungErgaenzen() {
+    setKundenbildExpanded(true);
+    openKundenhelferSheet('equipment');
+  }
+
   function handleRememberApplied({ labels = [] } = {}) {
     const next = (labels || []).filter(Boolean).slice(0, 6);
     setSnapshotHighlightLabels(next);
@@ -3426,13 +3431,14 @@ export default function DealerAiLeadFollowUp({
 
   const mainWorkspace = (
     <div className="cust-akte-shell__pane cust-akte-shell__pane--clever cust-akte-shell__pane--feed cn-chat-readable">
-      {kundenbildExpanded && (customerSnapshot?.meta?.hasData || customerSnapshot?.workingContext) ? (
+      {kundenbildExpanded && (customerSnapshot?.meta?.hasSoft || customerSnapshot?.meta?.hasData) ? (
         <CustomerAkteKundenbild
           model={customerSnapshot}
           expanded
           variant="panel"
           onFactTap={handleKundenbildFactTap}
           onMerken={handleKundenbildMerken}
+          onAusstattungErgaenzen={handleAusstattungErgaenzen}
         />
       ) : null}
 
@@ -3613,7 +3619,7 @@ export default function DealerAiLeadFollowUp({
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
         )}
-        band={(customerSnapshot?.meta?.hasData || customerSnapshot?.workingContext) ? (
+        band={(customerSnapshot?.meta?.hasData || customerSnapshot?.meta?.hasKern || customerSnapshot?.workingContext) ? (
           <CustomerAkteKundenbild
             model={customerSnapshot}
             expanded={kundenbildExpanded}
@@ -3621,6 +3627,7 @@ export default function DealerAiLeadFollowUp({
             onToggle={setKundenbildExpanded}
             onFactTap={handleKundenbildFactTap}
             onMerken={handleKundenbildMerken}
+            onAusstattungErgaenzen={handleAusstattungErgaenzen}
           />
         ) : null}
         mobileContext={null}
