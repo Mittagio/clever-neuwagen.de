@@ -73,11 +73,14 @@ import {
 } from '../../services/crm/composerSuggestionService.js';
 import {
   COMPOSER_INTENT_CHIPS,
-  COMPOSER_INTENT_CONSTRAINT,
+  COMPOSER_INTENT_MORE_CHIPS,
   resetIntentConstraintToDefault,
   resolveAttachmentIntentActions,
   resolveIntentChipById,
+  resolveIntentComposerLabels,
   resolveIntentPlaceholder,
+  resolveIntentSecondaryActions,
+  resolveVisiblePrimaryIntentChips,
 } from '../../services/cleverSeller/composerIntentChips.js';
 import { normalizeVehicleDisplayLabel } from '../../services/cleverSeller/normalizeVehicleDisplayLabel.js';
 import {
@@ -325,9 +328,39 @@ export default function CustomerAkteSharedWorkspace({
   const intentConstraint = selectedIntentChip?.intentConstraint ?? null;
   const intentCustomerLabel = formatCustomerDisplayName(customerName) || customerName || '';
   const intentPlaceholder = resolveIntentPlaceholder(intentConstraint, intentCustomerLabel);
+  const intentLabels = resolveIntentComposerLabels(intentConstraint, intentCustomerLabel);
+  const visibleIntentChips = useMemo(
+    () => resolveVisiblePrimaryIntentChips(selectedIntentChipId),
+    [selectedIntentChipId],
+  );
+  const secondaryIntentActions = useMemo(
+    () => resolveIntentSecondaryActions(intentConstraint, {
+      customerName: intentCustomerLabel,
+    }),
+    [intentConstraint, intentCustomerLabel],
+  );
 
   function resetIntentChipsToDefault() {
     setSelectedIntentChipId(resetIntentConstraintToDefault().id);
+  }
+
+  function handleSecondaryIntentAction(action) {
+    const seed = String(action?.draftSeed || '');
+    if (!seed.trim() || sending) return;
+    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+    setEditingMessageDraft(null);
+    priorWorkDraftRef.current = '';
+    setOfferPrep(null);
+    setAppointmentDraft(null);
+    clearAssist();
+    setDraft((prev) => {
+      const cur = String(prev ?? '').trim();
+      // Prompt-Seeds mit „: “ ersetzen den Draft (User tippt weiter)
+      if (!cur || /:\s*$/.test(seed)) return seed;
+      if (cur === seed.trim()) return seed;
+      return `${cur}\n${seed}`;
+    });
+    focusComposer();
   }
 
   function applyRememberWithUndo(turn) {
@@ -1940,8 +1973,11 @@ export default function CustomerAkteSharedWorkspace({
         sending={sending || isSaving}
         sendFeedback={feedback}
         placeholder={placeholder}
-        composerLabel={composerUi.label}
-        sendAriaLabel={composerUi.sendAriaLabel}
+        composerLabel={inMessageEdit ? composerUi.label : (intentLabels.label || composerUi.label)}
+        sendAriaLabel={inMessageEdit
+          ? composerUi.sendAriaLabel
+          : (intentLabels.sendAriaLabel || composerUi.sendAriaLabel)}
+        sendLabel={inMessageEdit ? '' : intentLabels.sendLabel}
         composerEditMode={inMessageEdit}
         onCancelEdit={inMessageEdit ? handleCancelMessageEdit : null}
         onImproveWithClever={inMessageEdit ? handleImproveWithClever : null}
@@ -1971,12 +2007,16 @@ export default function CustomerAkteSharedWorkspace({
         suggestionChips={composerChips.chips}
         moreSuggestionChips={composerChips.moreChips}
         onSuggestionChip={handleSuggestionChip}
-        intentChips={COMPOSER_INTENT_CHIPS}
+        hideSuggestionChips={!reviewModel}
+        intentChips={visibleIntentChips}
+        moreIntentChips={COMPOSER_INTENT_MORE_CHIPS}
         selectedIntentChipId={selectedIntentChipId}
         onIntentChip={(chip) => {
           setSelectedIntentChipId(chip.id);
           setAttachmentActions(null);
         }}
+        secondaryIntentActions={secondaryIntentActions}
+        onSecondaryIntentAction={handleSecondaryIntentAction}
         hideIntentChips={Boolean(reviewModel) || inMessageEdit}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (

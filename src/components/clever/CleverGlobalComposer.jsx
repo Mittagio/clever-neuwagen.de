@@ -60,10 +60,14 @@ import {
 import {
   COMPOSER_INTENT_CHIPS,
   COMPOSER_INTENT_CONSTRAINT,
+  COMPOSER_INTENT_MORE_CHIPS,
   resetIntentConstraintToDefault,
   resolveAttachmentIntentActions,
   resolveIntentChipById,
+  resolveIntentComposerLabels,
   resolveIntentPlaceholder,
+  resolveIntentSecondaryActions,
+  resolveVisiblePrimaryIntentChips,
 } from '../../services/cleverSeller/composerIntentChips.js';
 import './CleverGlobalComposer.css';
 
@@ -201,6 +205,17 @@ export default function CleverGlobalComposer() {
     || ctx?.currentCustomer?.name
     || '';
   const intentPlaceholder = resolveIntentPlaceholder(intentConstraint, customerDisplayName);
+  const intentLabels = resolveIntentComposerLabels(intentConstraint, customerDisplayName);
+  const visibleIntentChips = useMemo(
+    () => resolveVisiblePrimaryIntentChips(selectedIntentChipId),
+    [selectedIntentChipId],
+  );
+  const secondaryIntentActions = useMemo(
+    () => resolveIntentSecondaryActions(intentConstraint, {
+      customerName: customerDisplayName,
+    }),
+    [intentConstraint, customerDisplayName],
+  );
   const composerPlaceholder = intentPlaceholder || resolveComposerPlaceholder({
     draft,
     hintIndex: placeholderIndex,
@@ -210,6 +225,18 @@ export default function CleverGlobalComposer() {
 
   function resetIntentChipsToDefault() {
     setSelectedIntentChipId(resetIntentConstraintToDefault().id);
+  }
+
+  function handleSecondaryIntentAction(action) {
+    const seed = String(action?.draftSeed || '');
+    if (!seed.trim()) return;
+    setFocused(true);
+    setDraft((prev) => {
+      const cur = String(prev ?? '').trim();
+      if (!cur || /:\s*$/.test(seed)) return seed;
+      if (cur === seed.trim()) return seed;
+      return `${cur}\n${seed}`;
+    });
   }
 
   const setComposerDocked = ctx?.setComposerDocked;
@@ -1548,20 +1575,24 @@ export default function CleverGlobalComposer() {
           sending={sending}
           sendFeedback={feedback}
           placeholder={composerPlaceholder}
-          composerLabel=""
-          sendAriaLabel="An Clever senden"
+          composerLabel={intentLabels.label}
+          sendAriaLabel={intentLabels.sendAriaLabel}
+          sendLabel={intentLabels.sendLabel}
           reviewSlot={isIdle ? null : reviewSlot}
           contextPills={isIdle && !useHeroPortal ? [] : contextPills}
           suggestionChips={[]}
           onSuggestionChip={handleSuggestion}
           hideSuggestionChips
-          intentChips={COMPOSER_INTENT_CHIPS}
+          intentChips={visibleIntentChips}
+          moreIntentChips={COMPOSER_INTENT_MORE_CHIPS}
           selectedIntentChipId={selectedIntentChipId}
           onIntentChip={(chip) => {
             setSelectedIntentChipId(chip.id);
             setFocused(true);
             setAttachmentActions(null);
           }}
+          secondaryIntentActions={secondaryIntentActions}
+          onSecondaryIntentAction={handleSecondaryIntentAction}
           hideIntentChips={Boolean(reviewModel) || dockCompact}
           compactMode={dockCompact}
           autoGrow={!dockCompact}

@@ -1,5 +1,5 @@
 /**
- * Optional Intent-Chips – Constraint-Routing + Reset.
+ * Optional Intent-Chips – Constraint-Routing + UI-Hierarchie.
  * node src/services/cleverSeller/composerIntentChips.test.js
  */
 import assert from 'node:assert/strict';
@@ -9,12 +9,17 @@ import { runCleverSellerTurn } from './runCleverSellerTurn.js';
 import {
   COMPOSER_INTENT_CHIPS,
   COMPOSER_INTENT_CONSTRAINT,
+  COMPOSER_INTENT_MORE_CHIPS,
+  COMPOSER_INTENT_PRIMARY_CHIPS,
   applyIntentConstraintToIntents,
   evaluateRememberDecision,
   normalizeIntentConstraint,
   resetIntentConstraintToDefault,
   resolveAttachmentIntentActions,
+  resolveIntentComposerLabels,
   resolveIntentPlaceholder,
+  resolveIntentSecondaryActions,
+  resolveVisiblePrimaryIntentChips,
 } from './composerIntentChips.js';
 
 const lead = {
@@ -29,9 +34,17 @@ const lead = {
   },
 };
 
-// --- Config map ---
-assert.equal(COMPOSER_INTENT_CHIPS[0].label, 'Clever entscheidet');
+// --- Config map / Hauptzeile ---
+assert.equal(COMPOSER_INTENT_CHIPS[0].label, 'Clever');
 assert.equal(COMPOSER_INTENT_CHIPS[0].intentConstraint, null);
+assert.deepEqual(
+  COMPOSER_INTENT_PRIMARY_CHIPS.map((c) => c.label),
+  ['Clever', 'Merken', 'Nachricht', 'Angebot'],
+);
+assert.deepEqual(
+  COMPOSER_INTENT_MORE_CHIPS.map((c) => c.label),
+  ['Termin', 'Suchen', 'Dokumente', 'Inzahlungnahme'],
+);
 assert.ok(COMPOSER_INTENT_CHIPS.some((c) => (
   c.intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
 )));
@@ -48,6 +61,67 @@ assert.equal(normalizeIntentConstraint('clever_decides'), null);
 assert.equal(
   normalizeIntentConstraint(COMPOSER_INTENT_CONSTRAINT.OFFER),
   COMPOSER_INTENT_CONSTRAINT.OFFER,
+);
+
+// --- Sichtbare Hauptzeile nach Merken ---
+const afterMerken = resolveVisiblePrimaryIntentChips('merken');
+assert.equal(afterMerken[0].id, 'merken');
+assert.ok(!afterMerken.some((c) => c.id === 'clever_decides'));
+assert.deepEqual(
+  afterMerken.map((c) => c.label),
+  ['Merken', 'Nachricht', 'Angebot'],
+);
+
+// --- Modus-Labels ---
+const merkenLabels = resolveIntentComposerLabels(
+  COMPOSER_INTENT_CONSTRAINT.REMEMBER,
+  'Herr Brandes',
+);
+assert.equal(merkenLabels.label, 'Merken · Für Herr Brandes');
+assert.equal(merkenLabels.sendLabel, 'Für Herr Brandes merken');
+const msgLabels = resolveIntentComposerLabels(
+  COMPOSER_INTENT_CONSTRAINT.MESSAGE,
+  'Herr Brandes',
+);
+assert.equal(msgLabels.label, 'Nachricht an Herr Brandes');
+assert.equal(msgLabels.sendLabel, 'Entwurf erstellen');
+const offerLabels = resolveIntentComposerLabels(
+  COMPOSER_INTENT_CONSTRAINT.OFFER,
+  'Herr Brandes',
+);
+assert.equal(offerLabels.label, 'Angebot für Herr Brandes');
+assert.equal(offerLabels.sendLabel, 'Angebot vorbereiten');
+
+// --- Sekundäraktionen ---
+const cleverSecondary = resolveIntentSecondaryActions(null, { customerName: 'Herr Brandes' });
+assert.ok(cleverSecondary.length >= 2 && cleverSecondary.length <= 3);
+assert.ok(!cleverSecondary.some((a) => /angebot/i.test(a.label)));
+assert.deepEqual(
+  resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.REMEMBER),
+  [],
+);
+const msgSecondary = resolveIntentSecondaryActions(
+  COMPOSER_INTENT_CONSTRAINT.MESSAGE,
+  { customerName: 'Herr Brandes' },
+);
+assert.deepEqual(
+  msgSecondary.map((a) => a.label),
+  ['Freundlich', 'Kürzer', 'Persönlicher', 'Nachfassen'],
+);
+const offerSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.OFFER);
+assert.deepEqual(
+  offerSecondary.map((a) => a.label),
+  ['Neu erstellen', 'Vorhandenes ändern', 'PDF einlesen'],
+);
+const terminSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.APPOINTMENT);
+assert.deepEqual(
+  terminSecondary.map((a) => a.label),
+  ['Heute', 'Morgen', 'Kalender prüfen'],
+);
+const searchSecondary = resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.SEARCH);
+assert.deepEqual(
+  searchSecondary.map((a) => a.label),
+  ['Nachrichten', 'Angebote', 'Fahrzeugwissen'],
 );
 
 // --- Constraint routing (unit) ---
@@ -78,6 +152,18 @@ const offerOnly = applyIntentConstraintToIntents(
 );
 assert.ok(offerOnly.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
 assert.ok(!offerOnly.some((i) => i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT));
+
+const docsOnly = applyIntentConstraintToIntents(
+  mixed,
+  COMPOSER_INTENT_CONSTRAINT.DOCUMENTS,
+);
+assert.ok(docsOnly.some((i) => i.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS));
+
+const tradeOnly = applyIntentConstraintToIntents(
+  mixed,
+  COMPOSER_INTENT_CONSTRAINT.TRADE_IN,
+);
+assert.ok(tradeOnly.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_TRADE_IN));
 
 // --- Orchestrator: Merken constraint ---
 const rememberTurn = runCleverSellerTurn({
@@ -166,6 +252,7 @@ assert.equal(contradictory.mode, 'review');
 const reset = resetIntentConstraintToDefault();
 assert.equal(reset.intentConstraint, null);
 assert.equal(reset.id, 'clever_decides');
+assert.equal(reset.label, 'Clever');
 
 // --- Attachment actions stub ---
 const contractActions = resolveAttachmentIntentActions({

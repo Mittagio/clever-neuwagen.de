@@ -1,6 +1,9 @@
 /**
  * Optional Intent-Chips für den Clever Composer.
  * One-Turn-Constraint für denselben runCleverSellerTurn – kein zweites Gehirn.
+ *
+ * UI-Hierarchie: eine Hauptzeile (Was soll Clever tun?) + optionale
+ * kontextuelle Sekundäraktionen (keine permanente zweite Chip-Reihe).
  */
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 
@@ -12,6 +15,8 @@ export const COMPOSER_INTENT_CONSTRAINT = {
   OFFER: 'prepare_or_modify_offer',
   APPOINTMENT: 'propose_appointment',
   SEARCH: 'search_or_knowledge_lookup',
+  DOCUMENTS: 'request_documents',
+  TRADE_IN: 'prepare_trade_in',
 };
 
 export const COMPOSER_INTENT_CHIP_IDS = {
@@ -21,16 +26,18 @@ export const COMPOSER_INTENT_CHIP_IDS = {
   OFFER: 'angebot',
   APPOINTMENT: 'termin',
   SEARCH: 'suchen',
+  DOCUMENTS: 'dokumente',
+  TRADE_IN: 'inzahlungnahme',
 };
 
 /**
- * UI-Chips (horizontal scroll). Default = Clever entscheidet (kein Constraint).
+ * Hauptzeile (default): Clever | Merken | Nachricht | Angebot | (+ Mehr in UI)
  * @type {{ id: string, label: string, intentConstraint: string|null }[]}
  */
-export const COMPOSER_INTENT_CHIPS = [
+export const COMPOSER_INTENT_PRIMARY_CHIPS = [
   {
     id: COMPOSER_INTENT_CHIP_IDS.AUTO,
-    label: 'Clever entscheidet',
+    label: 'Clever',
     intentConstraint: COMPOSER_INTENT_CONSTRAINT.AUTO,
   },
   {
@@ -48,6 +55,13 @@ export const COMPOSER_INTENT_CHIPS = [
     label: 'Angebot',
     intentConstraint: COMPOSER_INTENT_CONSTRAINT.OFFER,
   },
+];
+
+/**
+ * Unter „Mehr“: Termin, Suchen, Dokumente, Inzahlungnahme
+ * @type {{ id: string, label: string, intentConstraint: string|null }[]}
+ */
+export const COMPOSER_INTENT_MORE_CHIPS = [
   {
     id: COMPOSER_INTENT_CHIP_IDS.APPOINTMENT,
     label: 'Termin',
@@ -58,6 +72,25 @@ export const COMPOSER_INTENT_CHIPS = [
     label: 'Suchen',
     intentConstraint: COMPOSER_INTENT_CONSTRAINT.SEARCH,
   },
+  {
+    id: COMPOSER_INTENT_CHIP_IDS.DOCUMENTS,
+    label: 'Dokumente',
+    intentConstraint: COMPOSER_INTENT_CONSTRAINT.DOCUMENTS,
+  },
+  {
+    id: COMPOSER_INTENT_CHIP_IDS.TRADE_IN,
+    label: 'Inzahlungnahme',
+    intentConstraint: COMPOSER_INTENT_CONSTRAINT.TRADE_IN,
+  },
+];
+
+/**
+ * Alle Constraint-Chips (Lookup / Reset / Attachment).
+ * @type {{ id: string, label: string, intentConstraint: string|null }[]}
+ */
+export const COMPOSER_INTENT_CHIPS = [
+  ...COMPOSER_INTENT_PRIMARY_CHIPS,
+  ...COMPOSER_INTENT_MORE_CHIPS,
 ];
 
 const VALID_CONSTRAINTS = new Set(
@@ -100,6 +133,24 @@ export function resolveIntentChipById(chipId) {
 }
 
 /**
+ * Sichtbare Hauptzeile: bei aktivem Intent ohne „Clever“, Selected vorne.
+ * Wireframe nach Merken: [✓ Merken] [Nachricht] [Angebot] (+ Mehr in UI)
+ *
+ * @param {string|null|undefined} selectedChipId
+ * @returns {{ id: string, label: string, intentConstraint: string|null }[]}
+ */
+export function resolveVisiblePrimaryIntentChips(selectedChipId) {
+  const selected = resolveIntentChipById(selectedChipId);
+  const isAuto = selected.intentConstraint == null;
+  if (isAuto) return [...COMPOSER_INTENT_PRIMARY_CHIPS];
+
+  const rest = COMPOSER_INTENT_PRIMARY_CHIPS.filter(
+    (c) => c.intentConstraint != null && c.id !== selected.id,
+  );
+  return [selected, ...rest];
+}
+
+/**
  * Platzhalter je Chip – {Name} wird ersetzt.
  * @param {string|null|undefined} constraint
  * @param {string} [customerName]
@@ -118,9 +169,187 @@ export function resolveIntentPlaceholder(constraint, customerName = '') {
       return `Welchen Termin soll Clever für ${name} vorschlagen?`;
     case COMPOSER_INTENT_CONSTRAINT.SEARCH:
       return `Was soll Clever zu ${name} nachschlagen?`;
+    case COMPOSER_INTENT_CONSTRAINT.DOCUMENTS:
+      return `Welche Unterlagen fehlen bei ${name}?`;
+    case COMPOSER_INTENT_CONSTRAINT.TRADE_IN:
+      return `Was soll Clever zur Inzahlungnahme von ${name} erfassen?`;
     default:
       return null;
   }
+}
+
+/**
+ * Modus-Label + Send-Label am Composer.
+ * @param {string|null|undefined} constraint
+ * @param {string} [customerName]
+ * @returns {{ label: string, sendLabel: string, sendAriaLabel: string }}
+ */
+export function resolveIntentComposerLabels(constraint, customerName = '') {
+  const name = String(customerName || '').trim() || 'den Kunden';
+  const normalized = normalizeIntentConstraint(constraint);
+  switch (normalized) {
+    case COMPOSER_INTENT_CONSTRAINT.REMEMBER:
+      return {
+        label: `Merken · Für ${name}`,
+        sendLabel: `Für ${name} merken`,
+        sendAriaLabel: `Für ${name} merken`,
+      };
+    case COMPOSER_INTENT_CONSTRAINT.MESSAGE:
+      return {
+        label: `Nachricht an ${name}`,
+        sendLabel: 'Entwurf erstellen',
+        sendAriaLabel: 'Entwurf erstellen',
+      };
+    case COMPOSER_INTENT_CONSTRAINT.OFFER:
+      return {
+        label: `Angebot für ${name}`,
+        sendLabel: 'Angebot vorbereiten',
+        sendAriaLabel: 'Angebot vorbereiten',
+      };
+    case COMPOSER_INTENT_CONSTRAINT.APPOINTMENT:
+      return {
+        label: `Termin für ${name}`,
+        sendLabel: 'Termin vorschlagen',
+        sendAriaLabel: 'Termin vorschlagen',
+      };
+    case COMPOSER_INTENT_CONSTRAINT.SEARCH:
+      return {
+        label: `Suchen · ${name}`,
+        sendLabel: 'Nachschlagen',
+        sendAriaLabel: 'Nachschlagen',
+      };
+    case COMPOSER_INTENT_CONSTRAINT.DOCUMENTS:
+      return {
+        label: `Dokumente · ${name}`,
+        sendLabel: 'Unterlagen vorbereiten',
+        sendAriaLabel: 'Unterlagen vorbereiten',
+      };
+    case COMPOSER_INTENT_CONSTRAINT.TRADE_IN:
+      return {
+        label: `Inzahlungnahme · ${name}`,
+        sendLabel: 'Inzahlungnahme vorbereiten',
+        sendAriaLabel: 'Inzahlungnahme vorbereiten',
+      };
+    default:
+      return {
+        label: '',
+        sendLabel: '',
+        sendAriaLabel: 'An Clever senden',
+      };
+  }
+}
+
+/**
+ * Kontextuelle Sekundäraktionen – nicht als permanente zweite Chip-Reihe.
+ * @param {string|null|undefined} constraint
+ * @param {{ customerName?: string }} [options]
+ * @returns {{ id: string, label: string, draftSeed?: string }[]}
+ */
+export function resolveIntentSecondaryActions(constraint, options = {}) {
+  const name = String(options.customerName || '').trim() || 'den Kunden';
+  const him = name === 'den Kunden' ? 'ihm' : name;
+  const normalized = normalizeIntentConstraint(constraint);
+
+  if (!normalized) {
+    // Clever: max 2–3 hilfreiche Beispiele, kein Angebot (bereits in Hauptzeile)
+    return [
+      {
+        id: 'ex_nachfassen',
+        label: 'Nachfassen',
+        draftSeed: `Schreib ${him} eine kurze Nachfassnachricht.`,
+      },
+      {
+        id: 'ex_merken',
+        label: 'Fakten merken',
+        draftSeed: `Merk dir über ${name}: `,
+      },
+      {
+        id: 'ex_suche',
+        label: 'Verlauf suchen',
+        draftSeed: `Was habe ich ${him} zuletzt geschrieben?`,
+      },
+    ];
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.REMEMBER) {
+    // Keine generischen Quick-Texts – nur Placeholder
+    return [];
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.MESSAGE) {
+    return [
+      { id: 'msg_freundlich', label: 'Freundlich', draftSeed: 'Schreib freundlich: ' },
+      { id: 'msg_kuerzer', label: 'Kürzer', draftSeed: 'Schreib kürzer: ' },
+      { id: 'msg_persoenlicher', label: 'Persönlicher', draftSeed: 'Schreib persönlicher: ' },
+      {
+        id: 'msg_nachfassen',
+        label: 'Nachfassen',
+        draftSeed: `Schreib ${him} eine kurze Nachfassnachricht.`,
+      },
+    ];
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.OFFER) {
+    return [
+      {
+        id: 'offer_new',
+        label: 'Neu erstellen',
+        draftSeed: `Erstelle ein neues Angebot für ${name}.`,
+      },
+      {
+        id: 'offer_change',
+        label: 'Vorhandenes ändern',
+        draftSeed: `Ändere das vorhandene Angebot für ${name}: `,
+      },
+      {
+        id: 'offer_pdf',
+        label: 'PDF einlesen',
+        draftSeed: 'Lies das Angebots-PDF ein und übernimm die Werte.',
+      },
+    ];
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.APPOINTMENT) {
+    return [
+      {
+        id: 'term_today',
+        label: 'Heute',
+        draftSeed: `Schlag ${him} heute einen Termin vor.`,
+      },
+      {
+        id: 'term_tomorrow',
+        label: 'Morgen',
+        draftSeed: `Schlag ${him} morgen einen Termin vor.`,
+      },
+      {
+        id: 'term_calendar',
+        label: 'Kalender prüfen',
+        draftSeed: 'Prüfe den Kalender für den Terminvorschlag.',
+      },
+    ];
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.SEARCH) {
+    return [
+      {
+        id: 'search_msgs',
+        label: 'Nachrichten',
+        draftSeed: `Suche in den Nachrichten mit ${name}.`,
+      },
+      {
+        id: 'search_offers',
+        label: 'Angebote',
+        draftSeed: `Suche die Angebote für ${name}.`,
+      },
+      {
+        id: 'search_vehicle',
+        label: 'Fahrzeugwissen',
+        draftSeed: 'Schlage Fahrzeugwissen nach: ',
+      },
+    ];
+  }
+
+  return [];
 }
 
 /** Intents, die „Merken“ nie auslösen darf */
@@ -231,6 +460,10 @@ export function mapIntentConstraintToTurnIntentTypes(constraint) {
         SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS,
         SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW,
       ];
+    case COMPOSER_INTENT_CONSTRAINT.DOCUMENTS:
+      return [SELLER_TURN_INTENTS.REQUEST_DOCUMENTS];
+    case COMPOSER_INTENT_CONSTRAINT.TRADE_IN:
+      return [SELLER_TURN_INTENTS.PREPARE_TRADE_IN];
     default:
       return [];
   }
@@ -292,6 +525,26 @@ export function applyIntentConstraintToIntents(intents = [], constraint = null, 
       pushIntent(next, SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY, 0.95);
       pushIntent(next, SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT, 0.9);
     }
+    return next;
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.DOCUMENTS) {
+    next = next.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+      && i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
+      && i.type !== SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT
+    ));
+    pushIntent(next, SELLER_TURN_INTENTS.REQUEST_DOCUMENTS, 0.99);
+    return next;
+  }
+
+  if (normalized === COMPOSER_INTENT_CONSTRAINT.TRADE_IN) {
+    next = next.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+      && i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
+      && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    ));
+    pushIntent(next, SELLER_TURN_INTENTS.PREPARE_TRADE_IN, 0.99);
     return next;
   }
 

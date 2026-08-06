@@ -23,6 +23,8 @@ export default function SharedWorkspaceChat({
   placeholder = '',
   composerLabel = '',
   sendAriaLabel = 'Senden',
+  /** Sichtbarer Send-Text (Intent-Modus); sonst Icon */
+  sendLabel = '',
   /** customer_message_edit: größere Textarea + Edit-Aktionen */
   composerEditMode = false,
   onCancelEdit = null,
@@ -63,12 +65,20 @@ export default function SharedWorkspaceChat({
   moreSuggestionChips = [],
   onSuggestionChip = null,
   /**
-   * Optional Intent-Chips (One-Turn Constraint) – getrennt von Suggestion-Chips.
+   * Optional Intent-Chips (One-Turn Constraint) – eine Hauptzeile.
    * @type {{ id: string, label: string, intentConstraint?: string|null }[]}
    */
   intentChips = [],
+  /** Chips unter „Mehr“ (Termin, Suchen, …) */
+  moreIntentChips = [],
   selectedIntentChipId = null,
   onIntentChip = null,
+  /**
+   * Kontextuelle Sekundäraktionen in derselben Scroll-Zeile (keine 2. permanente Reihe).
+   * @type {{ id: string, label: string, draftSeed?: string }[]}
+   */
+  secondaryIntentActions = [],
+  onSecondaryIntentAction = null,
   /** Bei offener Review: Intent-Chips ausblenden/deaktivieren */
   hideIntentChips = false,
   /** Nach Suche: Message im Feed anspringen */
@@ -92,6 +102,7 @@ export default function SharedWorkspaceChat({
   const highlightGenRef = useRef(0);
   const [localPlus, setLocalPlus] = useState(false);
   const [moreChipsOpen, setMoreChipsOpen] = useState(false);
+  const [moreIntentOpen, setMoreIntentOpen] = useState(false);
   const [toneMenuOpen, setToneMenuOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [feedFilter, setFeedFilter] = useState('all');
@@ -274,13 +285,6 @@ export default function SharedWorkspaceChat({
     ));
   }, [plusActions, onAttachFile]);
 
-  const showSuggestionChips = role === 'seller'
-    && !composerEditMode
-    && !hideSuggestionChips
-    && !compactMode
-    && Array.isArray(suggestionChips)
-    && suggestionChips.length > 0
-    && typeof onSuggestionChip === 'function';
   const showIntentChips = role === 'seller'
     && !composerEditMode
     && !hideIntentChips
@@ -288,7 +292,23 @@ export default function SharedWorkspaceChat({
     && Array.isArray(intentChips)
     && intentChips.length > 0
     && typeof onIntentChip === 'function';
+  // Intent-Chips ersetzen permanente Outbound-/Suggestion-Chips (eine klare Ebene)
+  const showSuggestionChips = role === 'seller'
+    && !composerEditMode
+    && !hideSuggestionChips
+    && !compactMode
+    && !showIntentChips
+    && Array.isArray(suggestionChips)
+    && suggestionChips.length > 0
+    && typeof onSuggestionChip === 'function';
   const hasMoreChips = Array.isArray(moreSuggestionChips) && moreSuggestionChips.length > 0;
+  const hasMoreIntentChips = Array.isArray(moreIntentChips) && moreIntentChips.length > 0;
+  const showSecondaryActions = showIntentChips
+    && Array.isArray(secondaryIntentActions)
+    && secondaryIntentActions.length > 0
+    && typeof onSecondaryIntentAction === 'function';
+  const moreIntentSelected = hasMoreIntentChips
+    && moreIntentChips.some((c) => c.id === selectedIntentChipId);
   const showContextPills = Array.isArray(contextPills) && contextPills.length > 0;
   const showToneMenu = Array.isArray(outboundTones) && outboundTones.length > 0
     && typeof onOutboundToneChange === 'function';
@@ -304,6 +324,20 @@ export default function SharedWorkspaceChat({
     document.addEventListener('pointerdown', onDoc);
     return () => document.removeEventListener('pointerdown', onDoc);
   }, [toneMenuOpen]);
+
+  useEffect(() => {
+    if (!moreIntentOpen) return undefined;
+    const onDoc = (event) => {
+      if (event.target?.closest?.('.sw-composer__intent-more')) return;
+      setMoreIntentOpen(false);
+    };
+    document.addEventListener('pointerdown', onDoc);
+    return () => document.removeEventListener('pointerdown', onDoc);
+  }, [moreIntentOpen]);
+
+  useEffect(() => {
+    if (!showIntentChips) setMoreIntentOpen(false);
+  }, [showIntentChips, selectedIntentChipId]);
 
   const feedMain = hideFeed ? (
     <div className="sw-chat__last-turn" aria-label="Letzte Clever-Aktion">
@@ -475,12 +509,77 @@ export default function SharedWorkspaceChat({
                       className={`sw-composer__chip sw-composer__chip--intent${selected ? ' is-selected' : ''}`}
                       aria-pressed={selected}
                       disabled={sending}
-                      onClick={() => onIntentChip?.(chip)}
+                      onClick={() => {
+                        setMoreIntentOpen(false);
+                        // Erneuter Klick auf aktiven Intent → zurück zu Clever
+                        if (selected && chip.intentConstraint != null) {
+                          onIntentChip?.({
+                            id: 'clever_decides',
+                            label: 'Clever',
+                            intentConstraint: null,
+                          });
+                          return;
+                        }
+                        onIntentChip?.(chip);
+                      }}
                     >
-                      {chip.label}
+                      {selected && chip.intentConstraint != null ? `✓ ${chip.label}` : chip.label}
                     </button>
                   );
                 })}
+                {hasMoreIntentChips ? (
+                  <div className="sw-composer__intent-more">
+                    <button
+                      type="button"
+                      className={`sw-composer__chip sw-composer__chip--intent sw-composer__chip--intent-more${moreIntentOpen || moreIntentSelected ? ' is-selected' : ''}${moreIntentOpen ? ' is-open' : ''}`}
+                      disabled={sending}
+                      aria-expanded={moreIntentOpen}
+                      aria-haspopup="menu"
+                      aria-label="Mehr Intent"
+                      onClick={() => setMoreIntentOpen((open) => !open)}
+                    >
+                      Mehr
+                    </button>
+                    {moreIntentOpen ? (
+                      <div className="sw-composer__chips-pop" role="menu" aria-label="Weitere Intents">
+                        {moreIntentChips.map((chip) => {
+                          const selected = chip.id === selectedIntentChipId;
+                          return (
+                            <button
+                              key={chip.id}
+                              type="button"
+                              role="menuitem"
+                              className={`sw-composer__chip sw-composer__chip--pop${selected ? ' is-selected' : ''}`}
+                              disabled={sending}
+                              onClick={() => {
+                                setMoreIntentOpen(false);
+                                onIntentChip?.(chip);
+                              }}
+                            >
+                              {selected ? `✓ ${chip.label}` : chip.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {showSecondaryActions ? (
+                  <>
+                    <span className="sw-composer__intent-sep" aria-hidden="true" />
+                    {secondaryIntentActions.map((action) => (
+                      <button
+                        key={action.id}
+                        type="button"
+                        className="sw-composer__chip sw-composer__chip--secondary"
+                        disabled={sending}
+                        onClick={() => onSecondaryIntentAction?.(action)}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -644,12 +743,16 @@ export default function SharedWorkspaceChat({
 
               <button
                 type="submit"
-                className="sw-composer__send"
+                className={`sw-composer__send${sendLabel ? ' sw-composer__send--labeled' : ''}`}
                 disabled={sending || magicBusy || !draft.trim()}
-                aria-label={sendAriaLabel || 'Senden'}
-                title={sendAriaLabel || 'Senden'}
+                aria-label={sendAriaLabel || sendLabel || 'Senden'}
+                title={sendAriaLabel || sendLabel || 'Senden'}
               >
-                <IconSendUp />
+                {sendLabel ? (
+                  <span className="sw-composer__send-label">{sendLabel}</span>
+                ) : (
+                  <IconSendUp />
+                )}
               </button>
             </div>
           </div>
