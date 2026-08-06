@@ -90,6 +90,8 @@ import {
   toCurrentOfferContext,
   buildDocumentWorkingContextItem,
 } from '../../services/crm/composerWorkingContext.js';
+import { buildCleverEmptyRecommend } from '../../services/dealer/buildCleverEmptyRecommend.js';
+import { IconSparkle } from './AkteIcons.jsx';
 import { buildVehicleOpportunityCards, formatVehicleCardConditions, formatVehicleCardPrice, formatVehicleCardTitle } from '../../services/customerAkte.js';
 import {
   isComposerAkteSearchQuery,
@@ -168,6 +170,9 @@ export default function CustomerAkteSharedWorkspace({
   intentFocusConstraint = null,
   onRememberApplied = null,
   compactEmpty = false,
+  /** Telefon für Empty-Recommend (Clever-Pane) */
+  contactPhone = '',
+  onOpenContact = null,
   onOpenOffer = null,
   onPrepareOfferDraft = null,
   onSendPortfolio = null,
@@ -1925,6 +1930,84 @@ export default function CustomerAkteSharedWorkspace({
     ? 'Noch kein Verlauf – tippen, sprechen oder PDF reinwerfen.'
     : 'Noch kein Verlauf. Tippen, sprechen oder PDF reinwerfen – Clever nutzt denselben Kundenkontext wie den Notizzettel.';
 
+  const emptyRecommend = useMemo(
+    () => buildCleverEmptyRecommend(lead, {
+      phone: contactPhone,
+      workingContextItems,
+    }),
+    [lead, contactPhone, workingContextItems],
+  );
+
+  function handleEmptyRecommendAction(action) {
+    if (action?.action === 'open_contact') {
+      onOpenContact?.();
+      return;
+    }
+    if (action?.action === 'check_offer') {
+      const offerItem = findOfferWorkingContext(workingContextItems);
+      if (offerItem?.card) {
+        onOpenOffer?.(offerItem.card);
+        return;
+      }
+      onAttachOffer?.();
+    }
+  }
+
+  function handleEmptySuggestion(suggestion) {
+    const seed = String(suggestion?.draftSeed || '').trim();
+    if (!seed) return;
+    setDraft(seed);
+    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+  }
+
+  const emptySlot = (
+    <div className="sw-chat__empty-recommend" aria-label="Clever Empfehlung">
+      {emptyRecommend.mode === 'recommend' ? (
+        <>
+          <p className="sw-chat__empty-recommend-title">
+            <IconSparkle className="sw-chat__empty-recommend-icon" />
+            <span>{emptyRecommend.title}</span>
+          </p>
+          {emptyRecommend.summary ? (
+            <p className="sw-chat__empty-recommend-summary">{emptyRecommend.summary}</p>
+          ) : null}
+          {emptyRecommend.actions.length ? (
+            <div className="sw-chat__empty-recommend-actions">
+              {emptyRecommend.actions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="sw-chat__empty-recommend-btn"
+                  onClick={() => handleEmptyRecommendAction(action)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <p className="sw-chat__empty-recommend-idle">{emptyRecommend.summary}</p>
+          {emptyRecommend.suggestions.length ? (
+            <div className="sw-chat__empty-recommend-actions">
+              {emptyRecommend.suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  className="sw-chat__empty-recommend-btn sw-chat__empty-recommend-btn--ghost"
+                  onClick={() => handleEmptySuggestion(suggestion)}
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+
   const reviewModel = useMemo(
     () => (universalTurn ? buildUniversalReviewModel(universalTurn) : null),
     [universalTurn],
@@ -2140,6 +2223,7 @@ export default function CustomerAkteSharedWorkspace({
           },
         ]}
         emptyHint={emptyHint}
+        emptySlot={emptySlot}
       />
     </section>
   );

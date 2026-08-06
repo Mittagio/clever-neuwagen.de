@@ -21,6 +21,7 @@ const EDITOR_TITLES = {
   [SNAPSHOT_MINI_EDITOR.DOG]: 'Hund',
   [SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE]: 'Zahlungsart',
   [SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT]: 'Anzahlung',
+  [SNAPSHOT_MINI_EDITOR.LEASING_END]: 'Leasingende',
 };
 
 /**
@@ -320,6 +321,22 @@ export default function CustomerAkteSnapshotChipEditor({
               onChange={(e) => patch({ downPayment: e.target.value })}
               autoFocus
             />
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.LEASING_END ? (
+            <>
+              <label className="cust-snap-editor__label" htmlFor="snap-leasing-end">
+                Monat / Jahr
+              </label>
+              <input
+                id="snap-leasing-end"
+                className="cust-snap-editor__input"
+                type="month"
+                value={String(draft.leasingEndDate || '').slice(0, 7)}
+                onChange={(e) => patch({ leasingEndDate: e.target.value })}
+                autoFocus
+              />
+            </>
           ) : null}
         </div>
 

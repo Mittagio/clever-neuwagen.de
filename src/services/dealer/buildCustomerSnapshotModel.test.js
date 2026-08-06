@@ -5,8 +5,10 @@ import assert from 'node:assert/strict';
 import {
   buildCustomerSnapshotModel,
   buildSnapshotSummary,
+  buildWorkingContextStrip,
   collectOfferCommercialRates,
   flattenSnapshotChips,
+  formatLeasingEndLabel,
   resolveConfirmedWishRate,
   splitExpandedChips,
   SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
@@ -64,11 +66,11 @@ function baseLead(overrides = {}) {
   assert.ok(labels.some((l) => /Hund/i.test(l)), 'Hund aus needProfile');
   assert.ok(labels.some((l) => /300/i.test(l)), 'Rate aus wish');
   assert.ok(labels.some((l) => /Ford Focus/i.test(l)), 'GW aus tradeIn');
-  assert.ok(labels.some((l) => /Leasing/i.test(l)), 'Zahlungsart');
+  assert.ok(labels.some((l) => /Leasing/i.test(l)), 'Zahlungsart ohne Offer-Kontext');
   console.log('✓ Snapshot nur confirmed facts');
 }
 
-// --- Category order (feste Gruppen-Reihenfolge) ---
+// --- Category order (Mensch → Bestand → Budget → Wunsch → Vertrag) ---
 {
   const lead = baseLead({
     vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },
@@ -95,19 +97,23 @@ function baseLead(overrides = {}) {
   assert.deepEqual(ids, [
     SNAPSHOT_GROUP.BEDARF,
     SNAPSHOT_GROUP.BESTAND,
-    SNAPSHOT_GROUP.BUDGET_VERTRAG,
+    SNAPSHOT_GROUP.BUDGET,
     SNAPSHOT_GROUP.WUNSCH,
-  ], 'Gruppen-Reihenfolge: Alltag → Bestand → Budget/Vertrag → Wunsch');
+    SNAPSHOT_GROUP.VERTRAG,
+  ], 'Gruppen-Reihenfolge: Mensch → Bestand → Budget → Wunsch → Vertrag');
   assert.equal(snap.groups[0].title, SNAPSHOT_GROUP_TITLE[SNAPSHOT_GROUP.BEDARF]);
   assert.equal(snap.groups[1].title, 'Bestandsfahrzeug');
-  assert.equal(snap.groups[2].title, 'Budget und Vertrag');
+  assert.equal(snap.groups[2].title, 'Budget');
   assert.equal(snap.groups[3].title, 'Fahrzeugwunsch');
+  assert.equal(snap.groups[4].title, 'Vertragskonditionen');
   const flat = flattenSnapshotChips(snap.groups);
   const firstBedarf = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.BEDARF);
   const firstBestand = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.BESTAND);
-  const firstBudget = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.BUDGET_VERTRAG);
+  const firstBudget = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.BUDGET);
   const firstWunsch = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.WUNSCH);
-  assert.ok(firstBedarf < firstBestand && firstBestand < firstBudget && firstBudget < firstWunsch);
+  const firstVertrag = flat.findIndex((c) => c.groupId === SNAPSHOT_GROUP.VERTRAG);
+  assert.ok(firstBedarf < firstBestand && firstBestand < firstBudget);
+  assert.ok(firstBudget < firstWunsch && firstWunsch < firstVertrag);
   console.log('✓ Category order fixed');
 }
 
@@ -145,17 +151,18 @@ function baseLead(overrides = {}) {
   console.log('✓ Overflow +N weitere');
 }
 
-// --- Offer-rate must NOT leak into Wunschrate ---
+// --- Offer-rate / Offer-Konditionen must NOT leak into Kundenbild ---
 {
   const lead = {
     id: 'lead-offer-leak',
     name: 'Test',
-    // Top-level equals offer PDF rate – ohne wish.desiredRate
     desiredRate: 132,
     wish: {
       paymentType: 'leasing',
-      termMonths: 48,
+      termMonths: 36,
       mileagePerYear: 15000,
+      downPayment: 6000,
+      leasingEndDate: '2026-07',
       // kein desiredRate = kein bestätigter Kundenwunsch
     },
     crm: {
@@ -163,8 +170,14 @@ function baseLead(overrides = {}) {
       vehicleConfigurations: [
         {
           id: 'vc-pdf',
-          model: 'EV3',
+          model: 'EV2',
+          modelName: 'EV2',
           monthlyRate: 132,
+          termMonths: 36,
+          mileagePerYear: 15000,
+          downPayment: 6000,
+          paymentType: 'leasing',
+          leasingEndDate: '2026-07',
           vehicleOffer: { monthlyRate: 132 },
           source: { createdFrom: 'magic_offer_pdf' },
         },
@@ -174,12 +187,13 @@ function baseLead(overrides = {}) {
   const working = [
     buildOfferWorkingContextItem({
       id: 'vc-pdf',
-      modelName: 'EV3',
+      modelName: 'EV2',
       desiredRate: 132,
-      termMonths: 48,
+      termMonths: 36,
       mileagePerYear: 15000,
       paymentType: 'leasing',
-      downPayment: 0,
+      downPayment: 6000,
+      leasingEndDate: '2026-07',
     }),
   ];
   const offerRates = collectOfferCommercialRates(lead, working);
@@ -187,10 +201,16 @@ function baseLead(overrides = {}) {
   assert.equal(resolveConfirmedWishRate(lead, {}, { workingContextItems: working }), null);
 
   const snap = buildCustomerSnapshotModel(lead, { workingContextItems: working });
-  const blob = JSON.stringify(snap);
+  const blob = JSON.stringify(snap.chips);
   assert.ok(!/\b132\b/.test(blob), 'Offer-PDF-Rate 132 € darf nicht als Wunschrate erscheinen');
-  assert.ok(!snap.groups.flatMap((g) => g.facts).some((f) => f.id === 'rate'));
-  assert.ok(!snap.chips.some((c) => c.id === 'rate' || /132/.test(c.label)));
+  assert.ok(!snap.chips.some((c) => c.id === 'rate'));
+  assert.ok(!snap.chips.some((c) => c.id === 'termMonths'), '36 Monate aus Offer nicht im Kundenbild');
+  assert.ok(!snap.chips.some((c) => c.id === 'mileagePerYear'), '15.000 km aus Offer nicht im Kundenbild');
+  assert.ok(!snap.chips.some((c) => c.id === 'downPayment'), '6.000 AZ aus Offer nicht im Kundenbild');
+  assert.ok(!snap.chips.some((c) => c.id === 'leasingEndDate'), 'Ende aus Offer nicht im Kundenbild');
+  assert.ok(!snap.chips.some((c) => c.id === 'paymentType'), 'Leasing aus Offer nicht im Kundenbild');
+  assert.ok(snap.workingContext?.line, 'Arbeitskontext-Strip vorhanden');
+  assert.match(snap.workingContext.line, /EV2|36|15\.000|6\.000/i);
 
   // Auch wenn Offer-Rate fälschlich in wish.desiredRate gespiegelt wurde
   const contaminatedWish = {
@@ -221,7 +241,7 @@ function baseLead(overrides = {}) {
   const withWish = {
     ...lead,
     desiredRate: 300,
-    wish: { ...lead.wish, desiredRate: 300 },
+    wish: { ...lead.wish, desiredRate: 300, termMonths: 48, mileagePerYear: 20000 },
     crm: {
       ...lead.crm,
       needProfile: {
@@ -236,7 +256,10 @@ function baseLead(overrides = {}) {
   assert.match(rateFact.label, /300/);
   assert.ok(!/132/.test(rateFact.label));
   assert.equal(rateFact.category, SNAPSHOT_TINT.BUDGET);
-  console.log('✓ No offer-rate leak into wish');
+  // Bestätigte abweichende Konditionen bleiben sichtbar
+  assert.ok(snapWish.chips.some((c) => c.id === 'termMonths' && /48/.test(c.label)));
+  assert.ok(snapWish.chips.some((c) => c.id === 'mileagePerYear' && /20\.000/.test(c.label)));
+  console.log('✓ No offer-rate / offer-terms leak into wish');
 }
 
 // --- Flat chips array with category tint ---
@@ -281,6 +304,11 @@ function baseLead(overrides = {}) {
     snap.chips.some((c) => c.category === SNAPSHOT_TINT.FAHRZEUG),
     'Fahrzeug-Chip vorhanden',
   );
+  assert.ok(
+    snap.chips.some((c) => /EV2\s*·\s*GT-Line/i.test(c.label)),
+    'EV2 · GT-Line kombiniert',
+  );
+  assert.ok(!snap.chips.some((c) => c.id === 'trim'), 'kein separater Trim-Chip');
   // Kein joined Summary-Blob als einzelner Chip
   assert.ok(
     !snap.chips.some((c) => /Leasing.*Monate|€.*AZ.*Leasing/i.test(c.label)),
@@ -305,10 +333,12 @@ function baseLead(overrides = {}) {
     }),
   ];
   const snap = buildCustomerSnapshotModel(lead, { workingContextItems: working });
-  const blob = JSON.stringify(snap);
-  assert.ok(!/Geheim-Modell|XYZ|999/i.test(blob), 'Working Context darf nicht leaken');
-  assert.ok(!/vc-secret/i.test(blob));
-  console.log('✓ Working context does not leak into snapshot');
+  const chipBlob = JSON.stringify(snap.chips);
+  assert.ok(!/Geheim-Modell|XYZ|999/i.test(chipBlob), 'Working Context darf nicht in Chips leaken');
+  assert.ok(!/vc-secret/i.test(chipBlob));
+  assert.ok(snap.workingContext?.line, 'Strip enthält Offer');
+  assert.match(snap.workingContext.line, /Geheim|XYZ|12|5\.000/i);
+  console.log('✓ Working context does not leak into snapshot chips');
 }
 
 // --- Mini-editor keys ---
@@ -360,7 +390,7 @@ function baseLead(overrides = {}) {
   console.log('✓ Soft category tints');
 }
 
-// --- Collapsed summary ---
+// --- Collapsed summary (human-first) ---
 {
   const lead = baseLead({
     vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },
@@ -384,29 +414,30 @@ function baseLead(overrides = {}) {
   const snap = buildCustomerSnapshotModel(lead);
   assert.ok(snap.summary.line.length > 0);
   assert.ok(snap.summary.tokens.length <= SNAPSHOT_SUMMARY_MAX_TOKENS);
-  assert.match(snap.summary.line, /Kinder|Hund|300|Ford|EV2/i);
+  assert.match(snap.summary.line, /Kinder/i);
+  assert.match(snap.summary.line, /Hund/i);
+  assert.match(snap.summary.line, /300/);
+  assert.match(snap.summary.line, /Ford Focus/i);
+  assert.match(snap.summary.line, /EV2/i);
+  // Human-first: Kinder/Hund vor Rate vor GW vor Fahrzeug
+  const ids = snap.summary.tokens.map((t) => t.id);
+  const idxChildren = ids.indexOf('children');
+  const idxDog = ids.indexOf('dog');
+  const idxRate = ids.indexOf('rate');
+  const idxGw = ids.indexOf('existingVehicle');
+  const idxWish = ids.findIndex((id) => id === 'vehicleWish' || id.startsWith('track-fav'));
+  assert.ok(idxChildren >= 0 && idxDog >= 0 && idxRate >= 0);
+  assert.ok(idxChildren < idxRate && idxDog < idxRate);
+  if (idxGw >= 0) assert.ok(idxRate < idxGw);
+  if (idxWish >= 0 && idxGw >= 0) assert.ok(idxGw < idxWish);
   if (snap.meta.factCount > SNAPSHOT_SUMMARY_MAX_TOKENS) {
     assert.match(snap.summary.line, /\+\d+/);
-  }
-  // Kategorie-Reihenfolge in Summary: Bedarf vor Bestand vor Budget vor Wunsch
-  const tokenGroups = snap.summary.tokens.map((t) => t.groupId);
-  for (let i = 1; i < tokenGroups.length; i += 1) {
-    const order = [
-      SNAPSHOT_GROUP.BEDARF,
-      SNAPSHOT_GROUP.BESTAND,
-      SNAPSHOT_GROUP.BUDGET_VERTRAG,
-      SNAPSHOT_GROUP.WUNSCH,
-    ];
-    assert.ok(
-      order.indexOf(tokenGroups[i - 1]) <= order.indexOf(tokenGroups[i]),
-      'Summary folgt Kategorie-Reihenfolge',
-    );
   }
   const short = buildSnapshotSummary(snap.groups, 2);
   assert.equal(short.tokens.length, 2);
   assert.ok(short.overflow >= 1);
   assert.match(short.line, /\+\d+/);
-  console.log('✓ Collapsed summary');
+  console.log('✓ Collapsed summary human-first');
 }
 
 // --- Seller insights ---
@@ -437,7 +468,8 @@ function baseLead(overrides = {}) {
   const snap = buildCustomerSnapshotModel(emptyish);
   assert.ok(!snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BEDARF), 'leerer Bedarf weggelassen');
   assert.ok(!snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BESTAND), 'leerer Bestand weggelassen');
-  assert.ok(snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BUDGET_VERTRAG), 'Budget/Vertrag mit Inhalt');
+  assert.ok(snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BUDGET), 'Budget mit Inhalt');
+  assert.ok(snap.groups.some((g) => g.id === SNAPSHOT_GROUP.VERTRAG), 'Vertrag mit Inhalt');
   assert.ok(snap.groups.every((g) => g.facts.length > 0), 'keine leeren Gruppen');
   console.log('✓ Empty groups omitted');
 }
@@ -457,7 +489,7 @@ function baseLead(overrides = {}) {
   console.log('✓ Relevance / highlight keys');
 }
 
-// --- Trim → Fahrzeugwunsch ---
+// --- Trim → Fahrzeugwunsch (kombiniert mit Modell) ---
 {
   const lead = baseLead({
     vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },
@@ -477,10 +509,38 @@ function baseLead(overrides = {}) {
   const snap = buildCustomerSnapshotModel(lead);
   const bedarf = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BEDARF);
   const wunsch = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.WUNSCH);
-  assert.ok(wunsch?.facts.some((f) => f.label === 'GT-Line'), 'GT-Line im Wunsch');
+  assert.ok(wunsch?.facts.some((f) => /EV2\s*·\s*GT-Line/i.test(f.label)), 'EV2 · GT-Line im Wunsch');
   assert.ok(!bedarf?.facts.some((f) => f.label === 'GT-Line'), 'GT-Line nicht im Bedarf');
   assert.ok(bedarf?.facts.some((f) => f.label === 'Wärmepumpe'), 'echte Ausstattung im Bedarf');
-  console.log('✓ Trim routed to Fahrzeugwunsch');
+  console.log('✓ Trim routed to Fahrzeugwunsch (combined)');
+}
+
+// --- Leasingende Format ---
+{
+  assert.equal(formatLeasingEndLabel('2026-07'), 'Ende Juli 2026');
+  assert.equal(formatLeasingEndLabel('2026-07-15'), 'Ende Juli 2026');
+  assert.equal(formatLeasingEndLabel('Ende Q3'), 'Ende Q3');
+  console.log('✓ Leasingende Format');
+}
+
+// --- Working context strip builder ---
+{
+  const strip = buildWorkingContextStrip([
+    buildOfferWorkingContextItem({
+      id: 'o1',
+      modelName: 'EV2',
+      termMonths: 36,
+      mileagePerYear: 15000,
+      downPayment: 6000,
+    }),
+  ]);
+  assert.ok(strip);
+  assert.equal(strip.title, 'Aktueller Arbeitskontext');
+  assert.match(strip.line, /EV2-Angebot/);
+  assert.match(strip.line, /36 Monate/);
+  assert.match(strip.line, /15\.000 km/);
+  assert.match(strip.line, /6\.000 € AZ/);
+  console.log('✓ Working context strip');
 }
 
 console.log('\nbuildCustomerSnapshotModel.test.js: OK');

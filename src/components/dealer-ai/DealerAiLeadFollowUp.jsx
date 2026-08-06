@@ -2337,6 +2337,7 @@ export default function DealerAiLeadFollowUp({
         || '',
       paymentType: wishPaymentType || 'leasing',
       downPayment: wishDownPayment || '',
+      leasingEndDate: lead?.wish?.leasingEndDate || lead?.leasingEndDate || '',
     };
   }, [
     lead,
@@ -2356,6 +2357,7 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     const key = String(fact?.editKey ?? '').trim();
+    const relevance = String(fact?.relevanceKey ?? '').trim();
     if (!key) return;
     if (key === 'desiredRate' || key === 'downPayment' || key === 'paymentType'
       || key === 'termMonths' || key === 'mileagePerYear' || key === 'delivery'
@@ -2367,12 +2369,12 @@ export default function DealerAiLeadFollowUp({
         termMonths: SNAPSHOT_MINI_EDITOR.TERM_MONTHS,
         mileagePerYear: SNAPSHOT_MINI_EDITOR.MILEAGE,
         delivery: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
-        leasingEndDate: SNAPSHOT_MINI_EDITOR.DESIRED_RATE,
+        leasingEndDate: SNAPSHOT_MINI_EDITOR.LEASING_END,
       };
       setSnapshotChipEditor({ key: editorMap[key], factId: fact?.id || null });
       return;
     }
-    if (key === 'children' || key === 'dog') {
+    if (key === 'children' || key === 'dog' || key === 'family') {
       setSnapshotChipEditor({
         key: key === 'dog' ? SNAPSHOT_MINI_EDITOR.DOG : SNAPSHOT_MINI_EDITOR.CHILDREN,
         factId: fact?.id || null,
@@ -2383,11 +2385,12 @@ export default function DealerAiLeadFollowUp({
       setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.TRADE_IN, factId: fact?.id || null });
       return;
     }
-    if (key === 'vehicleTrack') {
+    // Farbe nur bei Farb-Chips – Modell/Trim nicht in Color-Editor
+    if (key === 'vehicleTrack' && (relevance === 'preferredColor' || String(fact?.id || '').startsWith('color:'))) {
       setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.COLOR, factId: fact?.id || null });
       return;
     }
-    openKundenhelferSheet();
+    // Kein generisches Offen-Sheet für übrige Chips
   }
 
   function applySnapshotChipEdit(editorKey, draft = {}) {
@@ -2472,6 +2475,18 @@ export default function DealerAiLeadFollowUp({
         setSnapshotHighlightLabels([color]);
         window.setTimeout(() => setSnapshotHighlightLabels([]), 2200);
       }
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.LEASING_END) {
+      const end = String(draft.leasingEndDate ?? '').trim().slice(0, 7);
+      onSave?.({
+        ...buildSavePayload(),
+        leasingEndDate: end || null,
+        wish: {
+          ...(lead?.wish ?? {}),
+          leasingEndDate: end || null,
+        },
+      }, { historyText: 'Leasingende aktualisiert', addFollowupHistory: false });
       setSnapshotChipEditor(null);
       return;
     } else if (editorKey === SNAPSHOT_MINI_EDITOR.TRADE_IN) {
@@ -3411,7 +3426,7 @@ export default function DealerAiLeadFollowUp({
 
   const mainWorkspace = (
     <div className="cust-akte-shell__pane cust-akte-shell__pane--clever cust-akte-shell__pane--feed cn-chat-readable">
-      {kundenbildExpanded && customerSnapshot?.meta?.hasData ? (
+      {kundenbildExpanded && (customerSnapshot?.meta?.hasData || customerSnapshot?.workingContext) ? (
         <CustomerAkteKundenbild
           model={customerSnapshot}
           expanded
@@ -3481,6 +3496,8 @@ export default function DealerAiLeadFollowUp({
         compactEmpty
         hideFeed={hideComposerFeed}
         isSaving={isSaving}
+        contactPhone={phone}
+        onOpenContact={() => openSheet(SHEETS.customer)}
         feedTopSlot={hideComposerFeed ? null : feedCleverBanner}
         onOpenOffer={handleOpenOfferFromFeed}
         onAttachOffer={openAttachOfferPicker}
@@ -3596,7 +3613,7 @@ export default function DealerAiLeadFollowUp({
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
         )}
-        band={customerSnapshot?.meta?.hasData ? (
+        band={(customerSnapshot?.meta?.hasData || customerSnapshot?.workingContext) ? (
           <CustomerAkteKundenbild
             model={customerSnapshot}
             expanded={kundenbildExpanded}

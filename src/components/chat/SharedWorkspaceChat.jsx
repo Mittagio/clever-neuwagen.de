@@ -85,6 +85,8 @@ export default function SharedWorkspaceChat({
   scrollToMessageId = null,
   scrollToMessageToken = 0,
   emptyHint = 'Noch kein Verlauf.\nSchreiben oder sprechen Sie einfach los.',
+  /** Rich Empty-State (z. B. Clever empfiehlt) – ersetzt emptyHint-Text */
+  emptySlot = null,
   /** Kompakte Idle-Leiste (eine Zeile, ohne Chips) */
   compactMode = false,
   hideSuggestionChips = false,
@@ -339,13 +341,15 @@ export default function SharedWorkspaceChat({
     if (!showIntentChips) setMoreIntentOpen(false);
   }, [showIntentChips, selectedIntentChipId]);
 
+  const defaultComposerEmpty = emptySlot || (
+    <p className="sw-chat__empty sw-chat__empty--composer">
+      Tippen und absenden – Clever antwortet hier. Danach Ja / Nein.
+    </p>
+  );
+
   const feedMain = hideFeed ? (
     <div className="sw-chat__last-turn" aria-label="Letzte Clever-Aktion">
-      {reviewSlot || (
-        <p className="sw-chat__empty sw-chat__empty--composer">
-          Tippen und absenden – Clever antwortet hier. Danach Ja / Nein.
-        </p>
-      )}
+      {reviewSlot || defaultComposerEmpty}
     </div>
   ) : (
     <>
@@ -375,7 +379,7 @@ export default function SharedWorkspaceChat({
         </div>
       ) : null}
       {!visibleItems.length ? (
-        <p className="sw-chat__empty">{emptyFilterHint}</p>
+        emptySlot || <p className="sw-chat__empty">{emptyFilterHint}</p>
       ) : (
         <ul className="sw-chat__list">
           {visibleItems.map((item) => (

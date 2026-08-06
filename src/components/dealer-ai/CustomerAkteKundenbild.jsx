@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { IconChevronDown } from './AkteIcons.jsx';
+import { IconCar, IconChevronDown, IconUser } from './AkteIcons.jsx';
 import {
   SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
   flattenSnapshotChips,
@@ -7,10 +7,20 @@ import {
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
 
+function ChipIcon({ icon }) {
+  if (icon === 'car' || icon === 'fahrzeug' || icon === 'inzahlungnahme') {
+    return <IconCar className="cust-kundenbild__chip-icon" />;
+  }
+  if (icon === 'alltag' || icon === 'users') {
+    return <IconUser className="cust-kundenbild__chip-icon" />;
+  }
+  return null;
+}
+
 /**
- * Kompakte Chip-Übersicht (Customer Truth).
+ * Kompakte Chip-Übersicht (Customer Truth) – Person zuerst.
  * Motto: Composer erfassen · Chips erkennen/korrigieren.
- * Expanded: flache Soft-Tint-Pills ohne ALL-CAPS-Sektionsüberschriften.
+ * Offer-Konditionen liegen im Arbeitskontext-Strip darunter.
  */
 export default function CustomerAkteKundenbild({
   model = null,
@@ -24,11 +34,13 @@ export default function CustomerAkteKundenbild({
   const panelId = useId();
   const [chipsExpanded, setChipsExpanded] = useState(false);
 
-  if (!model?.meta?.hasData) return null;
+  const hasChips = Boolean(model?.meta?.hasData);
+  const workingContext = model?.workingContext || null;
+  if (!hasChips && !workingContext) return null;
 
-  const groups = model.groups ?? [];
-  const summaryLine = model.summary?.line || '';
-  const allChips = model.chips ?? flattenSnapshotChips(groups);
+  const groups = model?.groups ?? [];
+  const summaryLine = model?.summary?.line || '';
+  const allChips = model?.chips ?? flattenSnapshotChips(groups);
   const { visible, overflow } = splitExpandedChips(
     allChips,
     SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
@@ -36,7 +48,13 @@ export default function CustomerAkteKundenbild({
   );
 
   const showBar = variant === 'full' || variant === 'bar';
-  const showPanel = (variant === 'full' || variant === 'panel') && expanded;
+  const showPanel = (variant === 'full' || variant === 'panel') && expanded && hasChips;
+  // Strip einmal: collapsed Bar, Expanded Panel, oder Full – nie doppelt Bar+Panel
+  const showWorking = Boolean(workingContext?.line) && (
+    variant === 'full'
+    || variant === 'panel'
+    || (variant === 'bar' && !expanded)
+  );
 
   function handleToggle() {
     if (expanded) setChipsExpanded(false);
@@ -52,7 +70,7 @@ export default function CustomerAkteKundenbild({
       className={`cust-kundenbild${expanded ? ' is-expanded' : ' is-collapsed'}${variant !== 'full' ? ` cust-kundenbild--${variant}` : ''}`}
       aria-label="Kundenbild"
     >
-      {showBar ? (
+      {showBar && hasChips ? (
         <div className="cust-kundenbild__compact">
           <div className="cust-kundenbild__head">
             <button
@@ -123,7 +141,8 @@ export default function CustomerAkteKundenbild({
                     onClick={() => handleChipClick(chip)}
                     aria-label={`${chip.label} bearbeiten`}
                   >
-                    {chip.label}
+                    <ChipIcon icon={chip.icon || category} />
+                    <span className="cust-kundenbild__chip-label">{chip.label}</span>
                   </button>
                 </li>
               );
@@ -147,6 +166,15 @@ export default function CustomerAkteKundenbild({
               Weniger
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {showWorking ? (
+        <div className="cust-kundenbild__working" aria-label={workingContext.title || 'Aktueller Arbeitskontext'}>
+          <p className="cust-kundenbild__working-title">
+            {workingContext.title || 'Aktueller Arbeitskontext'}
+          </p>
+          <p className="cust-kundenbild__working-line">{workingContext.line}</p>
         </div>
       ) : null}
     </section>

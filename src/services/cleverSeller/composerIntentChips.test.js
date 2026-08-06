@@ -94,8 +94,8 @@ assert.equal(offerLabels.sendLabel, 'Angebot vorbereiten');
 
 // --- Sekundäraktionen ---
 const cleverSecondary = resolveIntentSecondaryActions(null, { customerName: 'Herr Brandes' });
-assert.ok(cleverSecondary.length >= 2 && cleverSecondary.length <= 3);
-assert.ok(!cleverSecondary.some((a) => /angebot/i.test(a.label)));
+assert.deepEqual(cleverSecondary, [], 'Clever-Default: keine Secondary neben Merken');
+assert.ok(!cleverSecondary.some((a) => /merken/i.test(a.label)));
 assert.deepEqual(
   resolveIntentSecondaryActions(COMPOSER_INTENT_CONSTRAINT.REMEMBER),
   [],

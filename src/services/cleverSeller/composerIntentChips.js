@@ -251,24 +251,9 @@ export function resolveIntentSecondaryActions(constraint, options = {}) {
   const normalized = normalizeIntentConstraint(constraint);
 
   if (!normalized) {
-    // Clever: max 2–3 hilfreiche Beispiele, kein Angebot (bereits in Hauptzeile)
-    return [
-      {
-        id: 'ex_nachfassen',
-        label: 'Nachfassen',
-        draftSeed: `Schreib ${him} eine kurze Nachfassnachricht.`,
-      },
-      {
-        id: 'ex_merken',
-        label: 'Fakten merken',
-        draftSeed: `Merk dir über ${name}: `,
-      },
-      {
-        id: 'ex_suche',
-        label: 'Verlauf suchen',
-        draftSeed: `Was habe ich ${him} zuletzt geschrieben?`,
-      },
-    ];
+    // Clever-Default: nur Hauptzeile (Clever · Merken · Nachricht · Angebot · Mehr).
+    // Keine doppelten Secondary wie „Fakten merken“ neben Merken.
+    return [];
   }
 
   if (normalized === COMPOSER_INTENT_CONSTRAINT.REMEMBER) {
