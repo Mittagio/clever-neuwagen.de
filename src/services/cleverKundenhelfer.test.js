@@ -59,8 +59,9 @@ assert.ok(sheetSource.includes('Übernehmen'), 'Akte-Footer wie Konditionen');
 assert.ok(sheetSource.includes('Mehr Notizen'), 'Gespräch/Sprache eingeklappt');
 assert.ok(sheetSource.includes('dai-kh-cat-grid'), 'Leben-&-Alltag behält Kategorie-Grid');
 assert.ok(!sheetSource.includes('Kleine Details fürs nächste Gespräch'), 'alte Chip-Wand entfernt');
-assert.ok(sheetSource.includes('buildKundenhelferDisplayNotes'), 'Chips aus sellerInsights/Understanding');
-assert.ok(sheetSource.includes('buildCustomerUnderstanding'), 'Understanding statt notes als Wahrheit');
+assert.ok(sheetSource.includes('resolveKundenhelferSheetNotes'), 'lokaler notes-State gewinnt beim Editieren');
+assert.ok(sheetSource.includes('HANDOFF_EQUIPMENT_CATEGORIES'), 'Ausstattung-Kategorien mit Icons');
+assert.ok(sheetSource.includes('chip.selected'), 'Equipment-Toggle nutzt chip.selected');
 assert.ok(sheetSource.includes('setExclusiveChipInGroup'), 'exklusive Soft-Wish-Gruppen');
 
 assert.deepEqual(

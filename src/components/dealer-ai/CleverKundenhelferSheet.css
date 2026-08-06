@@ -101,24 +101,47 @@
 .dai-kh-soft-cats {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: #eef2f7;
 }
 
 .dai-kh-soft-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: #fff;
-  font-size: 0.8125rem;
+  border: 0;
+  border-radius: 8px;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dai-kh-soft-cat.is-active {
-  border-color: #0f172a;
-  background: #f1f5f9;
+  background: #fff;
   color: #0f172a;
+  border-bottom-color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.dai-kh-soft-cat__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dai-kh-soft-cat__label {
+  white-space: nowrap;
 }
 
 .dai-kh-more {

@@ -625,7 +625,21 @@ export default function DealerAiLeadFollowUp({
     setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
     setConversationNotes(normalizeConversationNotes(lead?.crm?.kundenhelfer?.conversationNotes));
     setTradeInData(getTradeIn(lead));
+  }, [lead?.id]);
+
+  useEffect(() => {
+    // Offenes Sheet: lokale Toggles nicht durch CRM-Updates überschreiben.
+    if (activeSheet === SHEETS.kundenhelfer) return;
+    setKundenhelferNotes(buildKundenhelferDisplayNotes(lead));
+    setKundenhelferChipCategories(sanitizeKundenhelferChipCategories(
+      lead?.crm?.kundenhelfer?.chipCategories,
+      lead?.crm?.kundenhelfer?.notes ?? '',
+    ));
+    setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
+    setConversationNotes(normalizeConversationNotes(lead?.crm?.kundenhelfer?.conversationNotes));
+    setTradeInData(getTradeIn(lead));
   }, [
+    activeSheet,
     lead?.crm?.kundenhelfer?.notes,
     lead?.crm?.sellerInsights,
     lead?.crm?.migration?.kundenhelferV1At,
@@ -2303,6 +2317,13 @@ export default function DealerAiLeadFollowUp({
   }
 
   function openKundenhelferSheet(categoryId = null) {
+    setKundenhelferNotes(buildKundenhelferDisplayNotes(lead));
+    setKundenhelferChipCategories(sanitizeKundenhelferChipCategories(
+      lead?.crm?.kundenhelfer?.chipCategories,
+      lead?.crm?.kundenhelfer?.notes ?? '',
+    ));
+    setKundenhelferMemos(lead?.crm?.kundenhelfer?.voiceMemos ?? []);
+    setConversationNotes(normalizeConversationNotes(lead?.crm?.kundenhelfer?.conversationNotes));
     setKundenhelferInitialCategory(categoryId);
     openSheet(SHEETS.kundenhelfer);
   }

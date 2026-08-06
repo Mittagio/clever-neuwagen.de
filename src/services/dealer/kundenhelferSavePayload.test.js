@@ -7,8 +7,10 @@ import {
   buildKundenhelferDisplayNotes,
   buildKundenhelferSavePatch,
   collectNewKundenhelferChips,
+  resolveKundenhelferSheetNotes,
 } from './kundenhelferSavePayload.js';
 import { appendSellerInsightsFromTexts } from './sellerInsights.js';
+import { parseKundenhelferNotes, toggleKundenhelferChip } from '../cleverKundenhelfer.js';
 
 // A: Allgemeiner Save reicht bestehende notes unverändert durch.
 const existing = {
@@ -95,5 +97,42 @@ assert.ok(
   'G: Lexikon-Chip in sellerInsights',
 );
 assert.deepEqual(lexResult.crm.needProfile, lexLead.crm.needProfile, 'G: needProfile unverändert');
+
+// H: Sheet-Display = lokaler notes-State; Toggle gegen dieselbe Quelle (Sitzheizung).
+const toggleLead = {
+  crm: {
+    kundenhelfer: { notes: '' },
+    sellerInsights: [{
+      id: 'si-sitz',
+      text: 'Sitzheizung',
+      source: 'seller',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }],
+  },
+};
+const baselineDisplay = buildKundenhelferDisplayNotes(toggleLead);
+assert.ok(baselineDisplay.includes('Sitzheizung'), 'H: Display enthält Sitzheizung');
+assert.equal(
+  resolveKundenhelferSheetNotes(baselineDisplay, toggleLead),
+  baselineDisplay,
+  'H: lokaler notes-State gewinnt',
+);
+assert.equal(
+  resolveKundenhelferSheetNotes(undefined, toggleLead),
+  baselineDisplay,
+  'H: ohne notes → Lead-Display',
+);
+let editingNotes = resolveKundenhelferSheetNotes(baselineDisplay, toggleLead);
+editingNotes = toggleKundenhelferChip(editingNotes, 'Sitzheizung');
+assert.ok(
+  !parseKundenhelferNotes(resolveKundenhelferSheetNotes(editingNotes, toggleLead)).includes('Sitzheizung'),
+  'H: Toggle-off gegen displayNotes entfernt Sitzheizung',
+);
+editingNotes = toggleKundenhelferChip(editingNotes, 'Sitzheizung');
+assert.ok(
+  parseKundenhelferNotes(resolveKundenhelferSheetNotes(editingNotes, toggleLead)).includes('Sitzheizung'),
+  'H: Toggle-on setzt Sitzheizung sofort aktiv',
+);
 
 console.log('kundenhelferSavePayload.test.js: ok');

@@ -21,6 +21,17 @@ export function buildKundenhelferDisplayNotes(lead = {}) {
 }
 
 /**
+ * Notes im offenen Kundenhelfer-Sheet: lokaler Edit-State hat Vorrang
+ * (inkl. leerer String), sonst Lead-Display aus sellerInsights.
+ * @param {string|null|undefined} notes
+ * @param {object} [lead]
+ */
+export function resolveKundenhelferSheetNotes(notes, lead = {}) {
+  if (typeof notes === 'string') return notes;
+  return buildKundenhelferDisplayNotes(lead);
+}
+
+/**
  * Neue Chips/Freitexte zwischen zwei Notes-Strings (nur hinzugefügte, kein Toggle-off).
  * @param {string} beforeNotes
  * @param {string} afterNotes

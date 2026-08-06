@@ -12,8 +12,7 @@ import {
   setExclusiveChipInGroup,
   toggleKundenhelferChip,
 } from '../../services/cleverKundenhelfer.js';
-import { buildKundenhelferDisplayNotes } from '../../services/dealer/kundenhelferSavePayload.js';
-import { buildCustomerUnderstanding } from '../../services/dealer/customerUnderstanding.js';
+import { resolveKundenhelferSheetNotes } from '../../services/dealer/kundenhelferSavePayload.js';
 import {
   KUNDENWISSEN_CATEGORY_ORDER,
   buildKundenwissenOverview,
@@ -26,8 +25,8 @@ import {
   VEHICLE_NEED_TIMING_OPTIONS,
 } from '../../services/consultation/wishHandoffEnrichment.js';
 import {
+  HANDOFF_EQUIPMENT_CATEGORIES,
   HANDOFF_EQUIPMENT_CHIPS,
-  SOFT_EQUIPMENT_CATEGORY_CHIPS,
   buildEquipmentChipsForCategory,
   labelsFromEquipmentIds,
 } from '../../services/consultation/wishHandoffEquipment.js';
@@ -322,14 +321,11 @@ export default function CleverKundenhelferSheet({
   const playerRef = useRef(null);
   const addInputRef = useRef(null);
 
-  const displayNotes = useMemo(() => {
-    const legacyNotes = lead?.crm?.kundenhelfer?.notes ?? '';
-    if (lead && buildCustomerUnderstanding(lead)) {
-      const insightNotes = buildKundenhelferDisplayNotes(lead);
-      return notes !== legacyNotes ? notes : insightNotes;
-    }
-    return notes || legacyNotes;
-  }, [lead, notes]);
+  // Lokaler notes-State gewinnt beim Editieren (Parent initialisiert aus Display-Notes).
+  const displayNotes = useMemo(
+    () => resolveKundenhelferSheetNotes(notes, lead),
+    [lead, notes],
+  );
 
   const activeChips = useMemo(
     () => parseKundenhelferNotes(displayNotes),
@@ -494,7 +490,7 @@ export default function CleverKundenhelferSheet({
       return;
     }
     if (editingChip) {
-      onNotesChange?.(replaceKundenhelferChip(notes, editingChip, trimmed));
+      onNotesChange?.(replaceKundenhelferChip(displayNotes, editingChip, trimmed));
       if (editingChip !== trimmed) {
         onChipCategoriesChange?.((prev) => {
           const next = { ...(prev ?? {}) };
@@ -509,7 +505,7 @@ export default function CleverKundenhelferSheet({
         }));
       }
     } else {
-      onNotesChange?.(addCustomKundenhelferChip(notes, trimmed));
+      onNotesChange?.(addCustomKundenhelferChip(displayNotes, trimmed));
       onChipCategoriesChange?.((prev) => ({
         ...(prev ?? {}),
         [trimmed]: addCategoryId,
@@ -530,8 +526,8 @@ export default function CleverKundenhelferSheet({
   }
 
   function applyExclusive(groupLabels, nextLabel, categoryId) {
-    const before = new Set(parseKundenhelferNotes(notes));
-    const nextNotes = setExclusiveChipInGroup(notes, groupLabels, nextLabel);
+    const before = new Set(parseKundenhelferNotes(displayNotes));
+    const nextNotes = setExclusiveChipInGroup(displayNotes, groupLabels, nextLabel);
     const after = new Set(parseKundenhelferNotes(nextNotes));
     const removed = [...before].filter((label) => !after.has(label));
     const added = [...after].filter((label) => !before.has(label));
@@ -553,7 +549,7 @@ export default function CleverKundenhelferSheet({
 
   function toggleEquipmentLabel(label) {
     const wasActive = activeChips.includes(label);
-    onNotesChange?.(toggleKundenhelferChip(notes, label));
+    onNotesChange?.(toggleKundenhelferChip(displayNotes, label));
     if (wasActive) {
       patchChipCategories(onChipCategoriesChange, [label], {});
     } else {
@@ -563,7 +559,7 @@ export default function CleverKundenhelferSheet({
 
   function toggleChip(chip) {
     const wasActive = activeChips.includes(chip);
-    onNotesChange?.(toggleKundenhelferChip(notes, chip));
+    onNotesChange?.(toggleKundenhelferChip(displayNotes, chip));
     if (wasActive) {
       onChipCategoriesChange?.((prev) => {
         const next = { ...(prev ?? {}) };
@@ -686,7 +682,7 @@ export default function CleverKundenhelferSheet({
             </button>
             <div className="dai-kh-soft-group">
               <div className="dai-kh-soft-cats" role="group" aria-label="Ausstattungsbereich">
-                {SOFT_EQUIPMENT_CATEGORY_CHIPS.map((category) => (
+                {HANDOFF_EQUIPMENT_CATEGORIES.map((category) => (
                   <button
                     key={category.id}
                     type="button"
@@ -694,26 +690,24 @@ export default function CleverKundenhelferSheet({
                     aria-pressed={equipCategory === category.id}
                     onClick={() => setEquipCategory(category.id)}
                   >
-                    {category.label}
+                    <span className="dai-kh-soft-cat__icon" aria-hidden>{category.icon}</span>
+                    <span className="dai-kh-soft-cat__label">{category.label}</span>
                   </button>
                 ))}
               </div>
               {equipmentChips.length > 0 ? (
                 <div className="dai-kh-chips" role="group" aria-label={equipCategory}>
-                  {equipmentChips.map((chip) => {
-                    const active = activeChips.includes(chip.label);
-                    return (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        className={`dai-kh-chip${active ? ' is-active' : ''}`}
-                        aria-pressed={active}
-                        onClick={() => toggleEquipmentLabel(chip.label)}
-                      >
-                        {chip.label}
-                      </button>
-                    );
-                  })}
+                  {equipmentChips.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={`dai-kh-chip${chip.selected ? ' is-active' : ''}`}
+                      aria-pressed={chip.selected}
+                      onClick={() => toggleEquipmentLabel(chip.label)}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
                 </div>
               ) : (
                 <p className="dai-kh-sheet__empty">Bereits notiert oder keine Vorschläge.</p>
