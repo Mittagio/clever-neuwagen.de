@@ -1,7 +1,7 @@
 /**
  * Kundenbild – kompaktes Snapshot-Modell aus bestätigter Customer Truth.
  * Nur Lead-Daten (needProfile, sellerInsights, wish, tradeIn, tracks).
- * Working Context / Review-Pending fließen nicht ein.
+ * Working Context / Offer-PDF-Konditionen fließen nicht als Wunsch ein.
  */
 import { getNeedProfileFromLead, modelDisplayLabel } from '../consultation/needProfileService.js';
 import { getSellerInsightsFromLead } from './sellerInsights.js';
@@ -13,33 +13,69 @@ import {
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
 
+/** Display-Gruppen (feste Reihenfolge). */
 export const SNAPSHOT_GROUP = {
   BEDARF: 'bedarf',
+  BESTAND: 'bestand',
+  BUDGET_VERTRAG: 'budget_vertrag',
+  WUNSCH: 'wunsch',
+};
+
+/** Tint-/Fakten-Kategorien (Budget ≠ Vertrag für Soft-Tint). */
+export const SNAPSHOT_TINT = {
+  ALLTAG: 'alltag',
   BUDGET: 'budget',
   VERTRAG: 'vertrag',
-  WUNSCH: 'wunsch',
-  BESTAND: 'bestand',
+  FAHRZEUG: 'fahrzeug',
+  INZAHLUNGNAHME: 'inzahlungnahme',
 };
 
 export const SNAPSHOT_GROUP_TITLE = {
-  [SNAPSHOT_GROUP.BEDARF]: 'Alltag & Bedarf',
-  [SNAPSHOT_GROUP.BUDGET]: 'Budget',
-  [SNAPSHOT_GROUP.VERTRAG]: 'Vertrag',
-  [SNAPSHOT_GROUP.WUNSCH]: 'Fahrzeugwunsch',
+  [SNAPSHOT_GROUP.BEDARF]: 'Alltag und Bedarf',
   [SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
+  [SNAPSHOT_GROUP.BUDGET_VERTRAG]: 'Budget und Vertrag',
+  [SNAPSHOT_GROUP.WUNSCH]: 'Fahrzeugwunsch',
 };
 
-/** Primärer editKey je Gruppe → öffnet den relevanten Sheet. */
+/** Primärer editKey je Display-Gruppe (Fallback). */
 export const SNAPSHOT_GROUP_EDIT_KEY = {
   [SNAPSHOT_GROUP.BEDARF]: 'bedarf',
-  [SNAPSHOT_GROUP.BUDGET]: 'desiredRate',
-  [SNAPSHOT_GROUP.VERTRAG]: 'paymentType',
-  [SNAPSHOT_GROUP.WUNSCH]: 'vehicleTrack',
   [SNAPSHOT_GROUP.BESTAND]: 'tradeIn',
+  [SNAPSHOT_GROUP.BUDGET_VERTRAG]: 'desiredRate',
+  [SNAPSHOT_GROUP.WUNSCH]: 'vehicleTrack',
+};
+
+/** Mini-Editor Keys (feld-spezifisch, kein generisches Offen-Sheet). */
+export const SNAPSHOT_MINI_EDITOR = {
+  DESIRED_RATE: 'desiredRate',
+  CHILDREN: 'children',
+  TERM_MONTHS: 'termMonths',
+  MILEAGE: 'mileagePerYear',
+  COLOR: 'preferredColor',
+  PRIORITY_DELIVERY: 'delivery',
+  TRADE_IN: 'tradeInYesNo',
+  DOG: 'dog',
+  PAYMENT_TYPE: 'paymentType',
+  DOWN_PAYMENT: 'downPayment',
+};
+
+export const SNAPSHOT_RATE_MODES = {
+  APPROX: 'approx',
+  MAX: 'max',
+  TARGET: 'target',
+};
+
+export const SNAPSHOT_RATE_MODE_LABELS = {
+  [SNAPSHOT_RATE_MODES.APPROX]: 'ungefähr',
+  [SNAPSHOT_RATE_MODES.MAX]: 'maximal',
+  [SNAPSHOT_RATE_MODES.TARGET]: 'Zielrate',
 };
 
 /** Max. Tokens in der eingeklappten Summary-Zeile (Rest als +N). */
-export const SNAPSHOT_SUMMARY_MAX_TOKENS = 4;
+export const SNAPSHOT_SUMMARY_MAX_TOKENS = 5;
+
+/** ~2–3 Chip-Zeilen Mobile, Rest hinter „+ N weitere“. */
+export const SNAPSHOT_EXPANDED_VISIBLE_CHIPS = 8;
 
 const USAGE_LABELS = {
   erstwagen: 'Erstwagen',
@@ -76,47 +112,27 @@ const PAYMENT_LABELS = {
 
 /**
  * @param {object} fact
- * @param {string} groupId
  */
 function fact(id, label, {
   editKey = null,
   relevanceKey = null,
   groupId,
+  tint = null,
+  miniEditor = null,
   summaryPriority = 50,
-  cardLabel = null,
-  cardLine = 1,
 } = {}) {
   const text = String(label ?? '').trim();
   if (!text) return null;
   return {
     id,
     label: text,
-    cardLabel: cardLabel ? String(cardLabel).trim() : text,
-    cardLine: cardLine === 2 ? 2 : 1,
     editKey,
     relevanceKey: relevanceKey || editKey || id,
     groupId,
+    tint: tint || SNAPSHOT_TINT.ALLTAG,
+    miniEditor,
     summaryPriority,
   };
-}
-
-/**
- * Compact card summaries for expanded group rows (1–2 lines).
- * @param {object[]} facts
- */
-export function buildGroupSummaryLines(facts = []) {
-  const line1 = [];
-  const line2 = [];
-  for (const f of facts) {
-    const text = String(f.cardLabel || f.label || '').trim();
-    if (!text) continue;
-    if (f.cardLine === 2) line2.push(text);
-    else line1.push(text);
-  }
-  return [
-    line1.length ? line1.join(' · ') : null,
-    line2.length ? line2.join(' · ') : null,
-  ].filter(Boolean);
 }
 
 function pushFact(list, item) {
@@ -125,10 +141,13 @@ function pushFact(list, item) {
   list.push(item);
 }
 
-function formatEuroApprox(amount) {
+function formatEuroApprox(amount, rateMode = null) {
   const num = Number(amount);
   if (!Number.isFinite(num) || num <= 0) return null;
-  return `ca. ${Math.round(num).toLocaleString('de-DE')} €`;
+  const base = `${Math.round(num).toLocaleString('de-DE')} €`;
+  if (rateMode === SNAPSHOT_RATE_MODES.MAX) return `max. ${base}`;
+  if (rateMode === SNAPSHOT_RATE_MODES.TARGET) return `Ziel ${base}`;
+  return `ca. ${base}`;
 }
 
 function formatKm(km) {
@@ -151,6 +170,13 @@ function formatChildren(children) {
   return 'Kinder';
 }
 
+function formatDownPayment(down) {
+  const downNum = Number(down);
+  if (!Number.isFinite(downNum) || downNum < 0) return null;
+  if (downNum === 0) return '0 € AZ';
+  return `${downNum.toLocaleString('de-DE')} € AZ`;
+}
+
 function resolvePaymentType(lead = {}, profile = {}) {
   const raw = lead?.wish?.paymentType
     ?? lead?.paymentType
@@ -160,12 +186,69 @@ function resolvePaymentType(lead = {}, profile = {}) {
   return raw;
 }
 
-function resolveRate(lead = {}, profile = {}) {
-  const wishRate = Number(lead?.desiredRate ?? lead?.wish?.desiredRate);
+function resolveRateMode(lead = {}, profile = {}) {
+  const raw = lead?.wish?.desiredRateMode
+    ?? profile?.budget?.rateMode
+    ?? null;
+  if (raw && SNAPSHOT_RATE_MODE_LABELS[raw]) return raw;
+  return SNAPSHOT_RATE_MODES.APPROX;
+}
+
+/**
+ * Raten aus offenen Angeboten / Working Context (kein Kundenwunsch).
+ */
+export function collectOfferCommercialRates(lead = {}, workingContextItems = []) {
+  const rates = new Set();
+  const push = (value) => {
+    const num = Number(value);
+    if (Number.isFinite(num) && num > 0) rates.add(Math.round(num));
+  };
+
+  for (const config of lead?.crm?.vehicleConfigurations ?? []) {
+    push(config.monthlyRate);
+    push(config.desiredRate);
+    push(config.leasingData?.calculatedRate);
+    push(config.vehicleOffer?.monthlyRate);
+    push(config.boardOffer?.payment?.monthlyRate);
+    push(config.payment?.monthlyRate);
+    push(config.payment?.calculatedRate);
+  }
+
+  for (const offer of lead?.crm?.offers ?? []) {
+    push(offer.monthlyRate);
+    push(offer.desiredRate);
+    push(offer.payment?.monthlyRate);
+    push(offer.payment?.calculatedRate);
+  }
+
+  for (const item of workingContextItems ?? []) {
+    push(item?.monthlyRate);
+    push(item?.desiredRate);
+    push(item?.card?.monthlyRate);
+    push(item?.card?.desiredRate);
+    push(item?.card?.payment?.monthlyRate);
+  }
+
+  return rates;
+}
+
+/**
+ * Nur bestätigter Kundenwunsch – Offer-PDF-Raten (z. B. 132 €) nicht als Wunschrate.
+ */
+export function resolveConfirmedWishRate(lead = {}, profile = {}, options = {}) {
+  const offerRates = collectOfferCommercialRates(lead, options.workingContextItems);
+
+  const wishRate = Number(lead?.wish?.desiredRate);
   if (Number.isFinite(wishRate) && wishRate > 0) return wishRate;
+
   const budgetRate = Number(profile?.budget?.maxMonthlyRate);
   if (Number.isFinite(budgetRate) && budgetRate > 0) return budgetRate;
-  return null;
+
+  // Top-Level nur, wenn nicht ausschließlich eine offene Offer-Rate
+  const topRate = Number(lead?.desiredRate);
+  if (!Number.isFinite(topRate) || topRate <= 0) return null;
+  if (offerRates.has(Math.round(topRate))) return null;
+  return topRate;
 }
 
 function resolveExistingVehicleLabel(lead = {}) {
@@ -208,6 +291,7 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('family', 'Familie', {
       editKey: 'family',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 15,
     }));
   }
@@ -217,6 +301,8 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('children', childrenLabel, {
       editKey: 'children',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.CHILDREN,
       summaryPriority: 10,
     }));
   }
@@ -225,6 +311,8 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('dog', 'Hund', {
       editKey: 'dog',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.DOG,
       summaryPriority: 12,
     }));
   }
@@ -233,6 +321,7 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('chargingAtHome', 'Laden zuhause', {
       editKey: 'bedarf',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 36,
     }));
   }
@@ -241,12 +330,14 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('space', profile.bodyType === 'suv' ? 'SUV / Platz' : 'Platz', {
       editKey: 'space',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 35,
     }));
   } else if ((profile.persons ?? 0) >= 7) {
     pushFact(facts, fact('space', '7 Sitze', {
       editKey: 'space',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 35,
     }));
   }
@@ -257,6 +348,7 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact(`usage:${tag}`, label, {
       editKey: 'usage',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 40,
     }));
   }
@@ -264,6 +356,7 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('usage:langstrecke', 'Langstrecke', {
       editKey: 'usage',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 40,
     }));
   }
@@ -272,31 +365,32 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     pushFact(facts, fact('towbar', 'Anhängerkupplung', {
       editKey: 'equipment',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 42,
     }));
   }
 
   for (const wishId of profile.equipmentWishes ?? []) {
-    // Nur bekannte Ausstattungs-Wünsche im Bedarf – Trim/Linie gehört zum Fahrzeugwunsch
     const label = EQUIPMENT_LABELS[wishId];
     if (!label) continue;
     pushFact(facts, fact(`equip:${wishId}`, label, {
       editKey: 'equipment',
       groupId: SNAPSHOT_GROUP.BEDARF,
+      tint: SNAPSHOT_TINT.ALLTAG,
       summaryPriority: 55,
     }));
   }
 
-  // Bestätigte Seller-Labels, die Bedarf betreffen (ohne Budget/Fahrzeug-Duplikate)
   for (const label of sellerLabels) {
     if (/leasing|finanz|kauf|budget|rate|km|monat|anzahlung/i.test(label)) continue;
     if (/favorit|ablehn|farbe|liefer/i.test(label)) continue;
     if (/inzahlung|gebraucht|\(gw\)|rückläufer|bestands/i.test(label)) continue;
     if (facts.some((f) => f.label.toLowerCase() === label.toLowerCase())) continue;
-    if (/kind|hund|familie|platz|sitz|anhänger|urlaub|pendel|langstrecke|koffer|wärmepumpe|hud|kamera/i.test(label)) {
+    if (/kind|hund|familie|platz|sitz|anhänger|urlaub|pendel|langstrecke|koffer|wärmepumpe|hud|kamera|haus/i.test(label)) {
       pushFact(facts, fact(`seller:${label}`, label, {
         editKey: 'bedarf',
         groupId: SNAPSHOT_GROUP.BEDARF,
+        tint: SNAPSHOT_TINT.ALLTAG,
         summaryPriority: 45,
       }));
     }
@@ -305,30 +399,32 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
   return facts;
 }
 
-function buildBudgetFacts(lead = {}, profile = {}) {
+function buildBudgetFacts(lead = {}, profile = {}, options = {}) {
   const facts = [];
-  const rate = resolveRate(lead, profile);
-  const rateLabel = formatEuroApprox(rate);
+  const rate = resolveConfirmedWishRate(lead, profile, options);
+  const rateMode = resolveRateMode(lead, profile);
+  const rateLabel = formatEuroApprox(rate, rateMode);
   if (rateLabel) {
     pushFact(facts, fact('rate', rateLabel, {
       editKey: 'desiredRate',
       relevanceKey: 'desiredRate',
-      groupId: SNAPSHOT_GROUP.BUDGET,
+      groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+      tint: SNAPSHOT_TINT.BUDGET,
+      miniEditor: SNAPSHOT_MINI_EDITOR.DESIRED_RATE,
       summaryPriority: 20,
-      cardLabel: `Wunschrate ${rateLabel}`,
     }));
   }
 
   const down = lead?.wish?.downPayment ?? profile?.budget?.downPayment;
   if (down != null && String(down).trim() !== '') {
-    const downNum = Number(down);
-    if (Number.isFinite(downNum) && downNum > 0) {
-      const short = `AZ ${downNum.toLocaleString('de-DE')} €`;
+    const short = formatDownPayment(down);
+    if (short) {
       pushFact(facts, fact('downPayment', short, {
         editKey: 'downPayment',
-        groupId: SNAPSHOT_GROUP.BUDGET,
+        groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+        tint: SNAPSHOT_TINT.BUDGET,
+        miniEditor: SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT,
         summaryPriority: 34,
-        cardLabel: `${downNum.toLocaleString('de-DE')} € Anzahlung`,
       }));
     }
   }
@@ -342,7 +438,9 @@ function buildVertragFacts(lead = {}, profile = {}) {
   if (payment && PAYMENT_LABELS[payment]) {
     pushFact(facts, fact('paymentType', PAYMENT_LABELS[payment], {
       editKey: 'paymentType',
-      groupId: SNAPSHOT_GROUP.VERTRAG,
+      groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+      tint: SNAPSHOT_TINT.VERTRAG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE,
       summaryPriority: 25,
     }));
   }
@@ -352,7 +450,9 @@ function buildVertragFacts(lead = {}, profile = {}) {
   if (termLabel) {
     pushFact(facts, fact('termMonths', termLabel, {
       editKey: 'termMonths',
-      groupId: SNAPSHOT_GROUP.VERTRAG,
+      groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+      tint: SNAPSHOT_TINT.VERTRAG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.TERM_MONTHS,
       summaryPriority: 30,
     }));
   }
@@ -362,7 +462,9 @@ function buildVertragFacts(lead = {}, profile = {}) {
   if (kmLabel) {
     pushFact(facts, fact('mileagePerYear', kmLabel, {
       editKey: 'mileagePerYear',
-      groupId: SNAPSHOT_GROUP.VERTRAG,
+      groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+      tint: SNAPSHOT_TINT.VERTRAG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.MILEAGE,
       summaryPriority: 32,
     }));
   }
@@ -375,10 +477,9 @@ function buildVertragFacts(lead = {}, profile = {}) {
     const endText = String(end).trim();
     pushFact(facts, fact('leasingEndDate', `Ende ${endText}`, {
       editKey: 'leasingEndDate',
-      groupId: SNAPSHOT_GROUP.VERTRAG,
+      groupId: SNAPSHOT_GROUP.BUDGET_VERTRAG,
+      tint: SNAPSHOT_TINT.VERTRAG,
       summaryPriority: 38,
-      cardLabel: `Vertragsende ${endText}`,
-      cardLine: 2,
     }));
   }
 
@@ -389,13 +490,13 @@ function buildBestandFacts(lead = {}, profile = {}) {
   const facts = [];
   const existingLabel = resolveExistingVehicleLabel(lead);
   if (existingLabel) {
-    const cardVehicle = existingLabel.replace(/\s*\((?:GW|Gebraucht)\)\s*$/i, '').trim();
     pushFact(facts, fact('existingVehicle', existingLabel, {
       editKey: 'tradeIn',
       relevanceKey: 'existingVehicle',
       groupId: SNAPSHOT_GROUP.BESTAND,
+      tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
+      miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
       summaryPriority: 18,
-      cardLabel: cardVehicle || existingLabel,
     }));
   }
 
@@ -409,8 +510,9 @@ function buildBestandFacts(lead = {}, profile = {}) {
     pushFact(facts, fact('tradeIn', 'Inzahlungnahme', {
       editKey: 'tradeIn',
       groupId: SNAPSHOT_GROUP.BESTAND,
+      tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
+      miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
       summaryPriority: 48,
-      cardLabel: 'Inzahlungnahme vorgesehen',
     }));
   }
 
@@ -418,6 +520,8 @@ function buildBestandFacts(lead = {}, profile = {}) {
     pushFact(facts, fact('returner', profile.timelineLabel?.trim() || 'Rückläufer', {
       editKey: 'tradeIn',
       groupId: SNAPSHOT_GROUP.BESTAND,
+      tint: SNAPSHOT_TINT.INZAHLUNGNAHME,
+      miniEditor: SNAPSHOT_MINI_EDITOR.TRADE_IN,
       summaryPriority: 46,
     }));
   }
@@ -444,10 +548,11 @@ function buildWunschFacts(lead = {}, profile = {}) {
 
   const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE);
   if (favorite) {
-    pushFact(facts, fact(`track-fav:${favorite.id}`, `Favorit ${favorite.displayName || favorite.modelLabel}`, {
+    pushFact(facts, fact(`track-fav:${favorite.id}`, favorite.displayName || favorite.modelLabel, {
       editKey: 'vehicleTrack',
       relevanceKey: 'favoriteVehicle',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 22,
     }));
   } else {
@@ -457,6 +562,7 @@ function buildWunschFacts(lead = {}, profile = {}) {
         editKey: 'vehicleTrack',
         relevanceKey: 'preferredModel',
         groupId: SNAPSHOT_GROUP.WUNSCH,
+        tint: SNAPSHOT_TINT.FAHRZEUG,
         summaryPriority: 22,
       }));
     }
@@ -468,6 +574,7 @@ function buildWunschFacts(lead = {}, profile = {}) {
       editKey: 'equipment',
       relevanceKey: 'trim',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 28,
     }));
   }
@@ -477,7 +584,7 @@ function buildWunschFacts(lead = {}, profile = {}) {
     || t.status === VEHICLE_TRACK_STATUS.OPEN
     || t.status === VEHICLE_TRACK_STATUS.DEFERRED
   ));
-  if (openTracks.length) {
+  if (openTracks.length && !favorite) {
     const labels = openTracks
       .slice(0, 3)
       .map((t) => t.displayName || t.modelLabel)
@@ -486,6 +593,7 @@ function buildWunschFacts(lead = {}, profile = {}) {
       pushFact(facts, fact('tracks', labels.join(' · '), {
         editKey: 'vehicleTrack',
         groupId: SNAPSHOT_GROUP.WUNSCH,
+        tint: SNAPSHOT_TINT.FAHRZEUG,
         summaryPriority: 50,
       }));
     }
@@ -499,6 +607,8 @@ function buildWunschFacts(lead = {}, profile = {}) {
       editKey: 'vehicleTrack',
       relevanceKey: 'preferredColor',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.COLOR,
       summaryPriority: 52,
     }));
   }
@@ -508,6 +618,8 @@ function buildWunschFacts(lead = {}, profile = {}) {
     pushFact(facts, fact('delivery', `Lieferzeit ${String(delivery).trim()}`, {
       editKey: 'delivery',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
       summaryPriority: 44,
     }));
   } else if (tracks.some((t) => (
@@ -517,6 +629,8 @@ function buildWunschFacts(lead = {}, profile = {}) {
     pushFact(facts, fact('delivery', 'Lieferzeit wichtig', {
       editKey: 'delivery',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
       summaryPriority: 44,
     }));
   }
@@ -529,6 +643,7 @@ function buildWunschFacts(lead = {}, profile = {}) {
     pushFact(facts, fact(`reject:${track.id}`, `${track.modelLabel}: ${reason}`, {
       editKey: 'vehicleTrack',
       groupId: SNAPSHOT_GROUP.WUNSCH,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
       summaryPriority: 60,
     }));
   }
@@ -537,14 +652,52 @@ function buildWunschFacts(lead = {}, profile = {}) {
 }
 
 /**
- * Summary-Tokens: priorisierte Fakten, Rest als Overflow.
- * @param {object[]} allFacts
+ * Flat chip list in category order (for overflow +N).
+ * @param {object[]} groups
+ */
+export function flattenSnapshotChips(groups = []) {
+  return groups.flatMap((g) => (g.facts || []).map((f) => ({
+    ...f,
+    groupId: g.id,
+    groupTitle: g.title,
+  })));
+}
+
+/**
+ * Visible vs overflow chips for expanded mobile view.
+ * @param {object[]} chips
+ * @param {number} [maxVisible]
+ * @param {boolean} [expanded]
+ */
+export function splitExpandedChips(chips = [], maxVisible = SNAPSHOT_EXPANDED_VISIBLE_CHIPS, expanded = false) {
+  if (expanded || chips.length <= maxVisible) {
+    return { visible: chips, overflow: 0, hidden: [] };
+  }
+  return {
+    visible: chips.slice(0, maxVisible),
+    overflow: chips.length - maxVisible,
+    hidden: chips.slice(maxVisible),
+  };
+}
+
+/**
+ * Summary-Tokens: Kategorie-Reihenfolge, innerhalb Priorität. Rest als +N.
+ * @param {object[]} groupsOrFacts
  * @param {number} [maxTokens]
  */
-export function buildSnapshotSummary(allFacts = [], maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS) {
-  const ranked = [...allFacts].sort((a, b) => (
-    (a.summaryPriority ?? 50) - (b.summaryPriority ?? 50)
-  ));
+export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS) {
+  let ranked;
+  if (groupsOrFacts[0]?.facts) {
+    ranked = groupsOrFacts.flatMap((g) => (
+      [...(g.facts || [])].sort((a, b) => (
+        (a.summaryPriority ?? 50) - (b.summaryPriority ?? 50)
+      ))
+    ));
+  } else {
+    ranked = [...groupsOrFacts].sort((a, b) => (
+      (a.summaryPriority ?? 50) - (b.summaryPriority ?? 50)
+    ));
+  }
   const tokens = ranked.slice(0, Math.max(0, maxTokens));
   const overflow = Math.max(0, ranked.length - tokens.length);
   return {
@@ -557,29 +710,41 @@ export function buildSnapshotSummary(allFacts = [], maxTokens = SNAPSHOT_SUMMARY
   };
 }
 
+/** @deprecated – wireframe card lines; kept for compatibility */
+export function buildGroupSummaryLines(facts = []) {
+  const labels = facts.map((f) => String(f.label || '').trim()).filter(Boolean);
+  return labels.length ? [labels.join(' · ')] : [];
+}
+
 /**
  * @param {object} lead
  * @param {{
  *   relevantKeys?: string[],
  *   workingContextItems?: object[],
  *   maxSummaryTokens?: number,
+ *   highlightLabels?: string[],
  * }} [options]
- * workingContextItems werden bewusst ignoriert (keine zweite Truth).
  */
 export function buildCustomerSnapshotModel(lead = {}, options = {}) {
-  // Explizit: Working Context darf nicht einfließen
-  void options.workingContextItems;
+  // Working Context nur zur Offer-Leak-Erkennung – nie als Truth-Quelle für Chips
+  const workingContextItems = options.workingContextItems ?? [];
 
   const profile = getNeedProfileFromLead(lead) ?? {};
   const sellerLabels = collectConfirmedSellerLabels(lead);
   const understanding = buildCustomerUnderstanding(lead);
+  const rateOptions = { workingContextItems };
+
+  const bedarfFacts = buildBedarfFacts(profile, sellerLabels);
+  const bestandFacts = buildBestandFacts(lead, profile);
+  const budgetFacts = buildBudgetFacts(lead, profile, rateOptions);
+  const vertragFacts = buildVertragFacts(lead, profile);
+  const wunschFacts = buildWunschFacts(lead, profile);
 
   const groupsSpec = [
-    { id: SNAPSHOT_GROUP.BEDARF, facts: buildBedarfFacts(profile, sellerLabels) },
-    { id: SNAPSHOT_GROUP.BUDGET, facts: buildBudgetFacts(lead, profile) },
-    { id: SNAPSHOT_GROUP.VERTRAG, facts: buildVertragFacts(lead, profile) },
-    { id: SNAPSHOT_GROUP.WUNSCH, facts: buildWunschFacts(lead, profile) },
-    { id: SNAPSHOT_GROUP.BESTAND, facts: buildBestandFacts(lead, profile) },
+    { id: SNAPSHOT_GROUP.BEDARF, facts: bedarfFacts },
+    { id: SNAPSHOT_GROUP.BESTAND, facts: bestandFacts },
+    { id: SNAPSHOT_GROUP.BUDGET_VERTRAG, facts: [...budgetFacts, ...vertragFacts] },
+    { id: SNAPSHOT_GROUP.WUNSCH, facts: wunschFacts },
   ];
 
   const relevantSet = new Set(
@@ -587,23 +752,36 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       .map((k) => String(k ?? '').trim())
       .filter(Boolean),
   );
+  const highlightSet = new Set(
+    (options.highlightLabels ?? [])
+      .map((l) => String(l ?? '').trim().toLowerCase())
+      .filter(Boolean),
+  );
 
   const groups = groupsSpec
     .filter((g) => g.facts.length > 0)
     .map((g) => {
-      const facts = g.facts.map((f) => ({
-        ...f,
-        relevant: relevantSet.size > 0 && (
+      const facts = g.facts.map((f) => {
+        const relevant = relevantSet.size > 0 && (
           relevantSet.has(f.relevanceKey)
           || relevantSet.has(f.editKey)
           || relevantSet.has(f.id)
-        ),
-      }));
+        );
+        const highlighted = highlightSet.size > 0 && (
+          highlightSet.has(String(f.label).toLowerCase())
+          || highlightSet.has(String(f.id).toLowerCase())
+          || [...highlightSet].some((h) => String(f.label).toLowerCase().includes(h))
+        );
+        return {
+          ...f,
+          relevant: relevant || highlighted,
+          highlighted,
+        };
+      });
       return {
         id: g.id,
         title: SNAPSHOT_GROUP_TITLE[g.id],
         editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
-        summaryLines: buildGroupSummaryLines(facts),
         relevant: facts.some((f) => f.relevant),
         facts,
       };
@@ -611,9 +789,10 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
 
   const allFacts = groups.flatMap((g) => g.facts);
   const summary = buildSnapshotSummary(
-    allFacts,
+    groups,
     options.maxSummaryTokens ?? SNAPSHOT_SUMMARY_MAX_TOKENS,
   );
+  const chips = flattenSnapshotChips(groups);
 
   return {
     meta: {
@@ -624,5 +803,6 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
     },
     summary,
     groups,
+    chips,
   };
 }

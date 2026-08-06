@@ -73,9 +73,11 @@ import {
 } from '../../services/crm/composerSuggestionService.js';
 import {
   COMPOSER_INTENT_CHIPS,
+  COMPOSER_INTENT_CONSTRAINT,
   COMPOSER_INTENT_MORE_CHIPS,
   resetIntentConstraintToDefault,
   resolveAttachmentIntentActions,
+  resolveIntentChipByConstraint,
   resolveIntentChipById,
   resolveIntentComposerLabels,
   resolveIntentPlaceholder,
@@ -161,6 +163,10 @@ export default function CustomerAkteSharedWorkspace({
   isSaving = false,
   cleverMode = false,
   focusToken = 0,
+  /** Focus Composer + Intent (z. B. remember_customer_information von + Merken) */
+  intentFocusToken = 0,
+  intentFocusConstraint = null,
+  onRememberApplied = null,
   compactEmpty = false,
   onOpenOffer = null,
   onPrepareOfferDraft = null,
@@ -372,12 +378,13 @@ export default function CustomerAkteSharedWorkspace({
     const labels = (applied.acceptedLabels || turn.extractedFacts || [])
       .map((x) => (typeof x === 'string' ? x : x?.label))
       .filter(Boolean)
-      .slice(0, 3);
+      .slice(0, 6);
     setRememberUndo({ previousLead, leadId: lead.id });
     setFeedback(labels.length
       ? `Gemerkt: ${labels.join(' · ')} · Rückgängig möglich`
       : 'Gemerkt · Rückgängig möglich');
     setTimeout(() => setFeedback(''), 4200);
+    onRememberApplied?.({ labels, lead: applied.lead });
     return true;
   }
 
@@ -652,6 +659,20 @@ export default function CustomerAkteSharedWorkspace({
     el.focus?.();
     composerInputRef.current = el;
   }, [focusToken, cleverMode]);
+
+  useEffect(() => {
+    if (!intentFocusToken) return;
+    const chip = resolveIntentChipByConstraint(intentFocusConstraint);
+    setSelectedIntentChipId(chip.id);
+    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+    setEditingMessageDraft(null);
+    priorWorkDraftRef.current = '';
+    const el = document.getElementById('sw-composer-seller');
+    if (el) {
+      el.focus?.();
+      composerInputRef.current = el;
+    }
+  }, [intentFocusToken, intentFocusConstraint]);
 
   /**
    * Chip: nur Composer befüllen (Cursor-Vertrag).

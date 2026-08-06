@@ -116,10 +116,20 @@ import {
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CustomerAkteCompactHeader from './CustomerAkteCompactHeader.jsx';
 import CustomerAkteKundenbild from './CustomerAkteKundenbild.jsx';
+import CustomerAkteSnapshotChipEditor from './CustomerAkteSnapshotChipEditor.jsx';
 import { AKTE_TABS } from './customerAkteTabs.js';
 import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
 import WorkspaceShell from '../layout/WorkspaceShell.jsx';
-import { buildCustomerSnapshotModel } from '../../services/dealer/buildCustomerSnapshotModel.js';
+import {
+  buildCustomerSnapshotModel,
+  SNAPSHOT_MINI_EDITOR,
+  SNAPSHOT_RATE_MODES,
+} from '../../services/dealer/buildCustomerSnapshotModel.js';
+import { COMPOSER_INTENT_CONSTRAINT } from '../../services/cleverSeller/composerIntentChips.js';
+import {
+  getNeedProfileFromLead,
+  mergeNeedProfileIntoLead,
+} from '../../services/consultation/needProfileService.js';
 import CleverMoment from '../layout/CleverMoment.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteRequestedStockVehicle from './CustomerAkteRequestedStockVehicle.jsx';
@@ -404,6 +414,10 @@ export default function DealerAiLeadFollowUp({
   const [composerSeedDraft, setComposerSeedDraft] = useState('');
   const [composerSeedToken, setComposerSeedToken] = useState(0);
   const [composerSeedAutoRun, setComposerSeedAutoRun] = useState(false);
+  const [composerIntentFocusToken, setComposerIntentFocusToken] = useState(0);
+  const [composerIntentFocusConstraint, setComposerIntentFocusConstraint] = useState(null);
+  const [snapshotHighlightLabels, setSnapshotHighlightLabels] = useState([]);
+  const [snapshotChipEditor, setSnapshotChipEditor] = useState(null);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
@@ -716,10 +730,12 @@ export default function DealerAiLeadFollowUp({
 
   const customerSnapshot = useMemo(
     () => (lead ? buildCustomerSnapshotModel(lead, {
-      // Working Context bewusst nicht übergeben – keine zweite Truth
+      // Working Context nur zur Offer-Leak-Erkennung – keine zweite Truth
+      workingContextItems,
       relevantKeys: wishConditionsFocusField ? [wishConditionsFocusField] : [],
+      highlightLabels: snapshotHighlightLabels,
     }) : null),
-    [lead, wishConditionsFocusField],
+    [lead, wishConditionsFocusField, workingContextItems, snapshotHighlightLabels],
   );
 
   const hasSellerCustomerPicture = Boolean(customerUnderstanding?.meta?.hasData);
@@ -1027,16 +1043,42 @@ export default function DealerAiLeadFollowUp({
     return parts.join(' · ');
   }, [vehicleCards, vehicleTracks, wishModel, wishPaymentType]);
 
-  function focusChatComposer({ clever = true, seedDraft = '', autoRun = false } = {}) {
+  function focusChatComposer({
+    clever = true,
+    seedDraft = '',
+    autoRun = false,
+    intentConstraint = undefined,
+  } = {}) {
     setAkteTab(AKTE_TABS.clever);
     setCleverMode(true);
     setComposerFocusToken((n) => n + 1);
+    if (intentConstraint !== undefined) {
+      setComposerIntentFocusConstraint(intentConstraint);
+      setComposerIntentFocusToken((n) => n + 1);
+    }
     if (seedDraft) {
       setComposerSeedAutoRun(Boolean(autoRun));
       setComposerSeedDraft(seedDraft);
       setComposerSeedToken((n) => n + 1);
     }
     setMoreSheetOpen(false);
+  }
+
+  function handleKundenbildMerken() {
+    setKundenbildExpanded(true);
+    focusChatComposer({
+      clever: true,
+      intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
+    });
+  }
+
+  function handleRememberApplied({ labels = [] } = {}) {
+    const next = (labels || []).filter(Boolean).slice(0, 6);
+    setSnapshotHighlightLabels(next);
+    setKundenbildExpanded(true);
+    if (next.length) {
+      window.setTimeout(() => setSnapshotHighlightLabels([]), 2800);
+    }
   }
 
   useEffect(() => {
@@ -2269,33 +2311,203 @@ export default function DealerAiLeadFollowUp({
     openKundenhelferSheet();
   }
 
-  const WISH_SNAPSHOT_EDIT_KEYS = new Set([
-    'desiredRate',
-    'paymentType',
-    'termMonths',
-    'mileagePerYear',
-    'downPayment',
-    'delivery',
-    'leasingEndDate',
+  const snapshotChipEditorValues = useMemo(() => {
+    const profile = getNeedProfileFromLead(lead) ?? {};
+    const tradeIn = getTradeIn(lead);
+    const hasExisting = Boolean(
+      tradeIn.vehicle?.trim()
+      || lead?.crm?.existingVehicle?.label
+      || lead?.crm?.existingVehicle?.make,
+    );
+    const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
+    const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
+    return {
+      desiredRate: wishDesiredRate || '',
+      desiredRateMode: lead?.wish?.desiredRateMode || profile?.budget?.rateMode || SNAPSHOT_RATE_MODES.APPROX,
+      children: profile.children ?? 0,
+      dog: Boolean(profile.dog),
+      termMonths: wishTermMonths || '',
+      mileagePerYear: wishMileage || '',
+      preferredColor: favorite?.config?.vehicleTrack?.preferredColor || '',
+      delivery: wishDelivery || '',
+      hasExistingVehicle: hasExisting,
+      existingVehicle: tradeIn.vehicle
+        || lead?.crm?.existingVehicle?.label
+        || [lead?.crm?.existingVehicle?.make, lead?.crm?.existingVehicle?.model].filter(Boolean).join(' ')
+        || '',
+      paymentType: wishPaymentType || 'leasing',
+      downPayment: wishDownPayment || '',
+    };
+  }, [
+    lead,
+    wishDesiredRate,
+    wishTermMonths,
+    wishMileage,
+    wishDelivery,
+    wishPaymentType,
+    wishDownPayment,
   ]);
 
-  /** Kundenbild-Fakt antippen → kompakter Editor (Konditionen / Kundenhelfer / Spuren) */
+  /** Kundenbild-Chip → feld-spezifischer Mini-Editor (kein generisches Offen-Sheet). */
   function handleKundenbildFactTap(fact) {
-    const key = String(fact?.editKey ?? '').trim();
-    if (!key) return;
-    if (WISH_SNAPSHOT_EDIT_KEYS.has(key)) {
-      openWishConditionsSheet(key === 'leasingEndDate' ? 'desiredRate' : key);
+    const mini = String(fact?.miniEditor ?? '').trim();
+    if (mini && Object.values(SNAPSHOT_MINI_EDITOR).includes(mini)) {
+      setSnapshotChipEditor({ key: mini, factId: fact?.id || null });
       return;
     }
-    if (key === 'vehicleTrack') {
-      openOffersBoard();
+    const key = String(fact?.editKey ?? '').trim();
+    if (!key) return;
+    if (key === 'desiredRate' || key === 'downPayment' || key === 'paymentType'
+      || key === 'termMonths' || key === 'mileagePerYear' || key === 'delivery'
+      || key === 'leasingEndDate') {
+      const editorMap = {
+        desiredRate: SNAPSHOT_MINI_EDITOR.DESIRED_RATE,
+        downPayment: SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT,
+        paymentType: SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE,
+        termMonths: SNAPSHOT_MINI_EDITOR.TERM_MONTHS,
+        mileagePerYear: SNAPSHOT_MINI_EDITOR.MILEAGE,
+        delivery: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
+        leasingEndDate: SNAPSHOT_MINI_EDITOR.DESIRED_RATE,
+      };
+      setSnapshotChipEditor({ key: editorMap[key], factId: fact?.id || null });
+      return;
+    }
+    if (key === 'children' || key === 'dog') {
+      setSnapshotChipEditor({
+        key: key === 'dog' ? SNAPSHOT_MINI_EDITOR.DOG : SNAPSHOT_MINI_EDITOR.CHILDREN,
+        factId: fact?.id || null,
+      });
       return;
     }
     if (key === 'tradeIn') {
-      openSheet(SHEETS.unterlagen);
+      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.TRADE_IN, factId: fact?.id || null });
+      return;
+    }
+    if (key === 'vehicleTrack') {
+      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.COLOR, factId: fact?.id || null });
       return;
     }
     openKundenhelferSheet();
+  }
+
+  function applySnapshotChipEdit(editorKey, draft = {}) {
+    const profile = { ...(getNeedProfileFromLead(lead) || {}) };
+    let nextLead = lead;
+    let historyText = 'Kundenbild aktualisiert';
+
+    if (editorKey === SNAPSHOT_MINI_EDITOR.DESIRED_RATE) {
+      const rate = draft.desiredRate !== '' && draft.desiredRate != null
+        ? Number(draft.desiredRate)
+        : null;
+      const mode = draft.desiredRateMode || SNAPSHOT_RATE_MODES.APPROX;
+      setWishDesiredRate(rate != null && Number.isFinite(rate) ? String(rate) : '');
+      profile.budget = {
+        ...(profile.budget ?? {}),
+        maxMonthlyRate: rate != null && Number.isFinite(rate) ? rate : null,
+        rateMode: mode,
+      };
+      nextLead = mergeNeedProfileIntoLead(lead, profile);
+      nextLead = {
+        ...nextLead,
+        desiredRate: rate != null && Number.isFinite(rate) ? rate : null,
+        wish: {
+          ...(nextLead.wish ?? {}),
+          desiredRate: rate != null && Number.isFinite(rate) ? rate : null,
+          desiredRateMode: mode,
+        },
+      };
+      historyText = 'Wunschrate aktualisiert';
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.CHILDREN) {
+      profile.children = Math.max(0, Number(draft.children) || 0);
+      if (profile.children > 0 && !profile.priorities?.includes('family')) {
+        profile.priorities = [...(profile.priorities ?? []), 'family'];
+      }
+      nextLead = mergeNeedProfileIntoLead(lead, profile);
+      historyText = 'Kinder aktualisiert';
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.DOG) {
+      profile.dog = Boolean(draft.dog);
+      nextLead = mergeNeedProfileIntoLead(lead, profile);
+      historyText = 'Hund aktualisiert';
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.TERM_MONTHS) {
+      applyWishConditions({ termMonths: draft.termMonths });
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.MILEAGE) {
+      applyWishConditions({ mileagePerYear: draft.mileagePerYear });
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE) {
+      applyWishConditions({ paymentType: draft.paymentType });
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT) {
+      applyWishConditions({ downPayment: draft.downPayment });
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY) {
+      const delivery = draft.delivery === 'wichtig' ? 'wichtig' : (draft.delivery ?? '');
+      applyWishConditions({ delivery });
+      if (delivery === 'wichtig') {
+        const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
+        const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
+        if (favorite?.id) {
+          nextLead = patchVehicleTrackOnLead(lead, favorite.id, { deliveryTimeImportance: 'high' });
+          onSave?.(buildSavePayload({
+            vehicleConfigurations: nextLead.crm?.vehicleConfigurations,
+            needProfile: nextLead.crm?.needProfile,
+          }), { historyText: 'Lieferzeit-Priorität gesetzt', addFollowupHistory: false });
+        }
+      }
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.COLOR) {
+      const color = String(draft.preferredColor ?? '').trim();
+      const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
+      const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
+      if (favorite?.id && color) {
+        nextLead = patchVehicleTrackOnLead(lead, favorite.id, { preferredColor: color });
+        onSave?.(buildSavePayload({
+          vehicleConfigurations: nextLead.crm?.vehicleConfigurations,
+        }), { historyText: 'Farbe aktualisiert', addFollowupHistory: false });
+        setSnapshotHighlightLabels([color]);
+        window.setTimeout(() => setSnapshotHighlightLabels([]), 2200);
+      }
+      setSnapshotChipEditor(null);
+      return;
+    } else if (editorKey === SNAPSHOT_MINI_EDITOR.TRADE_IN) {
+      if (!draft.hasExistingVehicle) {
+        const cleared = patchTradeIn(getTradeIn(lead), { vehicle: '', datValue: null });
+        setTradeInData(cleared);
+        onSave?.(buildSavePayload({
+          tradeIn: cleared,
+          existingVehicle: null,
+        }), { historyText: 'Bestandsfahrzeug entfernt', addFollowupHistory: false });
+      } else {
+        const vehicle = String(draft.existingVehicle ?? '').trim();
+        const nextTrade = patchTradeIn(getTradeIn(lead), { vehicle });
+        setTradeInData(nextTrade);
+        onSave?.(buildSavePayload({
+          tradeIn: nextTrade,
+          existingVehicle: vehicle
+            ? { label: vehicle, tradeInCandidate: true }
+            : lead?.crm?.existingVehicle,
+        }), { historyText: 'Bestandsfahrzeug aktualisiert', addFollowupHistory: false });
+      }
+      setSnapshotChipEditor(null);
+      return;
+    } else {
+      setSnapshotChipEditor(null);
+      return;
+    }
+
+    onSave?.({
+      ...buildSavePayload({
+        needProfile: nextLead.crm?.needProfile,
+      }),
+      desiredRate: nextLead.desiredRate,
+      wish: nextLead.wish,
+    }, { historyText, addFollowupHistory: false });
+    setSnapshotChipEditor(null);
   }
 
   function openSheet(id) {
@@ -3205,6 +3417,7 @@ export default function DealerAiLeadFollowUp({
           expanded
           variant="panel"
           onFactTap={handleKundenbildFactTap}
+          onMerken={handleKundenbildMerken}
         />
       ) : null}
 
@@ -3231,6 +3444,9 @@ export default function DealerAiLeadFollowUp({
         customerName={name}
         cleverMode
         focusToken={composerFocusToken}
+        intentFocusToken={composerIntentFocusToken}
+        intentFocusConstraint={composerIntentFocusConstraint}
+        onRememberApplied={handleRememberApplied}
         seedDraft={composerSeedDraft}
         seedDraftToken={composerSeedToken}
         seedAutoRun={composerSeedAutoRun}
@@ -3387,6 +3603,7 @@ export default function DealerAiLeadFollowUp({
             variant="bar"
             onToggle={setKundenbildExpanded}
             onFactTap={handleKundenbildFactTap}
+            onMerken={handleKundenbildMerken}
           />
         ) : null}
         mobileContext={null}
@@ -3451,6 +3668,15 @@ export default function DealerAiLeadFollowUp({
         getBudgetFieldLabel={getBudgetFieldLabel}
         saving={isSaving}
         focusField={wishConditionsFocusField}
+      />
+
+      <CustomerAkteSnapshotChipEditor
+        open={Boolean(snapshotChipEditor?.key)}
+        editorKey={snapshotChipEditor?.key || null}
+        values={snapshotChipEditorValues}
+        onClose={() => setSnapshotChipEditor(null)}
+        onApply={applySnapshotChipEdit}
+        saving={isSaving}
       />
 
       <LeadDetailPanel
