@@ -10,6 +10,7 @@ import './CustomerAkteKundenbild.css';
 /**
  * Kompakte Chip-Übersicht (Customer Truth).
  * Motto: Composer erfassen · Chips erkennen/korrigieren.
+ * Expanded: flache Soft-Tint-Pills ohne ALL-CAPS-Sektionsüberschriften.
  */
 export default function CustomerAkteKundenbild({
   model = null,
@@ -17,7 +18,7 @@ export default function CustomerAkteKundenbild({
   onToggle = null,
   onFactTap = null,
   onMerken = null,
-  /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Gruppen, full=beides */
+  /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Chips, full=beides */
   variant = 'full',
 }) {
   const panelId = useId();
@@ -33,13 +34,6 @@ export default function CustomerAkteKundenbild({
     SNAPSHOT_EXPANDED_VISIBLE_CHIPS,
     chipsExpanded,
   );
-  const visibleIds = new Set(visible.map((c) => c.id));
-  const visibleByGroup = groups
-    .map((g) => ({
-      ...g,
-      facts: (g.facts || []).filter((f) => visibleIds.has(f.id)),
-    }))
-    .filter((g) => g.facts.length > 0);
 
   const showBar = variant === 'full' || variant === 'bar';
   const showPanel = (variant === 'full' || variant === 'panel') && expanded;
@@ -49,8 +43,8 @@ export default function CustomerAkteKundenbild({
     onToggle?.(!expanded);
   }
 
-  function handleFactClick(fact) {
-    onFactTap?.(fact);
+  function handleChipClick(chip) {
+    onFactTap?.(chip);
   }
 
   return (
@@ -112,30 +106,29 @@ export default function CustomerAkteKundenbild({
           role="region"
           aria-label="Kundenbild Details"
         >
-          {visibleByGroup.map((group) => (
-            <div key={group.id} className="cust-kundenbild__group">
-              <h3 className="cust-kundenbild__group-title">{group.title}</h3>
-              <ul className="cust-kundenbild__facts">
-                {group.facts.map((fact) => (
-                  <li key={fact.id}>
-                    <button
-                      type="button"
-                      className={[
-                        'cust-kundenbild__fact',
-                        fact.tint ? `cust-kundenbild__fact--${fact.tint}` : '',
-                        fact.relevant || fact.highlighted ? ' is-relevant' : '',
-                        fact.highlighted ? ' is-highlight' : '',
-                      ].filter(Boolean).join('')}
-                      onClick={() => handleFactClick(fact)}
-                      aria-label={`${fact.label} bearbeiten`}
-                    >
-                      {fact.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <ul className="cust-kundenbild__chips">
+            {visible.map((chip) => {
+              const category = chip.category || chip.tint || 'alltag';
+              return (
+                <li key={chip.id}>
+                  <button
+                    type="button"
+                    className={[
+                      'cust-kundenbild__chip',
+                      `cust-kundenbild__chip--${category}`,
+                      chip.relevant || chip.highlighted ? 'is-relevant' : '',
+                      chip.highlighted ? 'is-highlight' : '',
+                    ].filter(Boolean).join(' ')}
+                    data-category={category}
+                    onClick={() => handleChipClick(chip)}
+                    aria-label={`${chip.label} bearbeiten`}
+                  >
+                    {chip.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
           {overflow > 0 && !chipsExpanded ? (
             <button
               type="button"

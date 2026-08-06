@@ -190,6 +190,32 @@ function baseLead(overrides = {}) {
   const blob = JSON.stringify(snap);
   assert.ok(!/\b132\b/.test(blob), 'Offer-PDF-Rate 132 € darf nicht als Wunschrate erscheinen');
   assert.ok(!snap.groups.flatMap((g) => g.facts).some((f) => f.id === 'rate'));
+  assert.ok(!snap.chips.some((c) => c.id === 'rate' || /132/.test(c.label)));
+
+  // Auch wenn Offer-Rate fälschlich in wish.desiredRate gespiegelt wurde
+  const contaminatedWish = {
+    ...lead,
+    desiredRate: 132,
+    wish: { ...lead.wish, desiredRate: 132 },
+    crm: {
+      ...lead.crm,
+      needProfile: {
+        ...createEmptyNeedProfile(),
+        budget: { paymentType: 'leasing', maxMonthlyRate: 132, maxPrice: null },
+      },
+    },
+  };
+  const snapContam = buildCustomerSnapshotModel(contaminatedWish, { workingContextItems: working });
+  assert.ok(
+    !snapContam.chips.some((c) => c.id === 'rate' || /\b132\b/.test(c.label)),
+    'gespiegelte Offer-Rate 132 € darf kein Wunschrate-Chip sein',
+  );
+  assert.equal(
+    resolveConfirmedWishRate(contaminatedWish, contaminatedWish.crm.needProfile, {
+      workingContextItems: working,
+    }),
+    null,
+  );
 
   // Mit bestätigtem Wunsch: 300 bleibt, 132 bleibt draußen
   const withWish = {
@@ -209,7 +235,58 @@ function baseLead(overrides = {}) {
   assert.ok(rateFact, 'Wunschrate vorhanden');
   assert.match(rateFact.label, /300/);
   assert.ok(!/132/.test(rateFact.label));
+  assert.equal(rateFact.category, SNAPSHOT_TINT.BUDGET);
   console.log('✓ No offer-rate leak into wish');
+}
+
+// --- Flat chips array with category tint ---
+{
+  const lead = baseLead({
+    vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },
+    wish: { ...baseLead().wish, equipment: 'GT-Line' },
+    crm: {
+      ...baseLead().crm,
+      needProfile: {
+        ...mergeTextIntoNeedProfile('2 Kinder Hund', createEmptyNeedProfile()),
+        modelHint: 'ev2',
+      },
+      vehicleConfigurations: [
+        {
+          id: 'vc-1',
+          model: 'EV2',
+          modelKey: 'ev2',
+          vehicleTrack: { status: VEHICLE_TRACK_STATUS.FAVORITE, preferredColor: 'Blau' },
+        },
+      ],
+    },
+  });
+  const snap = buildCustomerSnapshotModel(lead);
+  assert.ok(Array.isArray(snap.chips) && snap.chips.length > 0, 'chips flat array');
+  assert.equal(snap.chips.length, snap.groups.flatMap((g) => g.facts).length);
+  for (const chip of snap.chips) {
+    assert.ok(chip.category, `chip ${chip.id} has category`);
+    assert.ok(chip.tint, `chip ${chip.id} has tint`);
+    assert.equal(chip.category, chip.tint);
+    assert.ok(
+      Object.values(SNAPSHOT_TINT).includes(chip.category),
+      `chip ${chip.id} tint is known category`,
+    );
+  }
+  const byId = Object.fromEntries(snap.chips.map((c) => [c.id, c]));
+  assert.equal(byId.children?.category, SNAPSHOT_TINT.ALLTAG);
+  assert.equal(byId.rate?.category, SNAPSHOT_TINT.BUDGET);
+  assert.equal(byId.termMonths?.category, SNAPSHOT_TINT.VERTRAG);
+  assert.equal(byId.existingVehicle?.category, SNAPSHOT_TINT.INZAHLUNGNAHME);
+  assert.ok(
+    snap.chips.some((c) => c.category === SNAPSHOT_TINT.FAHRZEUG),
+    'Fahrzeug-Chip vorhanden',
+  );
+  // Kein joined Summary-Blob als einzelner Chip
+  assert.ok(
+    !snap.chips.some((c) => /Leasing.*Monate|€.*AZ.*Leasing/i.test(c.label)),
+    'keine zusammengeklebten Gruppen-Texte als Chip',
+  );
+  console.log('✓ Flat chips with category tint');
 }
 
 // --- Working context model leak ---

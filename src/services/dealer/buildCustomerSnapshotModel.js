@@ -123,13 +123,15 @@ function fact(id, label, {
 } = {}) {
   const text = String(label ?? '').trim();
   if (!text) return null;
+  const category = tint || SNAPSHOT_TINT.ALLTAG;
   return {
     id,
     label: text,
     editKey,
     relevanceKey: relevanceKey || editKey || id,
     groupId,
-    tint: tint || SNAPSHOT_TINT.ALLTAG,
+    tint: category,
+    category,
     miniEditor,
     summaryPriority,
   };
@@ -194,8 +196,15 @@ function resolveRateMode(lead = {}, profile = {}) {
   return SNAPSHOT_RATE_MODES.APPROX;
 }
 
+function isMagicOfferSource(source = null) {
+  const from = String(source?.createdFrom ?? source ?? '').toLowerCase();
+  return from.includes('magic_offer') || from.includes('offer_pdf');
+}
+
 /**
- * Raten aus offenen Angeboten / Working Context (kein Kundenwunsch).
+ * Kommerzielle Offer-Raten (berechnet / PDF) – kein Kundenwunsch.
+ * config.desiredRate nur wenn Magic/PDF oder identisch zur berechneten Monatrate
+ * (sonst wäre ein Wunschziel auf dem Config fälschlich als Leak markiert).
  */
 export function collectOfferCommercialRates(lead = {}, workingContextItems = []) {
   const rates = new Set();
@@ -206,49 +215,78 @@ export function collectOfferCommercialRates(lead = {}, workingContextItems = [])
 
   for (const config of lead?.crm?.vehicleConfigurations ?? []) {
     push(config.monthlyRate);
-    push(config.desiredRate);
     push(config.leasingData?.calculatedRate);
+    push(config.leasingData?.monthlyRate);
     push(config.vehicleOffer?.monthlyRate);
+    push(config.vehicleOffer?.payment?.monthlyRate);
     push(config.boardOffer?.payment?.monthlyRate);
     push(config.payment?.monthlyRate);
     push(config.payment?.calculatedRate);
+    const commercial = Number(config.monthlyRate ?? config.leasingData?.calculatedRate);
+    const desiredOnConfig = Number(config.desiredRate);
+    if (
+      Number.isFinite(desiredOnConfig)
+      && desiredOnConfig > 0
+      && (
+        isMagicOfferSource(config.source)
+        || isMagicOfferSource(config.vehicleOffer?.source)
+        || (Number.isFinite(commercial) && Math.round(commercial) === Math.round(desiredOnConfig))
+      )
+    ) {
+      push(desiredOnConfig);
+    }
   }
 
   for (const offer of lead?.crm?.offers ?? []) {
     push(offer.monthlyRate);
-    push(offer.desiredRate);
     push(offer.payment?.monthlyRate);
     push(offer.payment?.calculatedRate);
+    const commercial = Number(offer.monthlyRate ?? offer.payment?.monthlyRate);
+    const desiredOnOffer = Number(offer.desiredRate);
+    if (
+      Number.isFinite(desiredOnOffer)
+      && desiredOnOffer > 0
+      && (
+        isMagicOfferSource(offer.source)
+        || (Number.isFinite(commercial) && Math.round(commercial) === Math.round(desiredOnOffer))
+      )
+    ) {
+      push(desiredOnOffer);
+    }
   }
 
   for (const item of workingContextItems ?? []) {
     push(item?.monthlyRate);
-    push(item?.desiredRate);
     push(item?.card?.monthlyRate);
-    push(item?.card?.desiredRate);
     push(item?.card?.payment?.monthlyRate);
+    push(item?.card?.payment?.calculatedRate);
+    // Working-Context desiredRate ist bei Offer-Karten die Angebotsrate
+    if (item?.kind === 'offer' || item?.card?.monthlyRate != null || item?.monthlyRate != null) {
+      push(item?.desiredRate);
+      push(item?.card?.desiredRate);
+    }
   }
 
   return rates;
 }
 
 /**
- * Nur bestätigter Kundenwunsch – Offer-PDF-Raten (z. B. 132 €) nicht als Wunschrate.
+ * Nur bestätigter Kundenwunsch – Offer-PDF-Raten (z. B. 132 €) nicht als Wunschrate,
+ * auch wenn sie in wish.desiredRate / Budget / Top-Level gespiegelt wurden.
  */
 export function resolveConfirmedWishRate(lead = {}, profile = {}, options = {}) {
   const offerRates = collectOfferCommercialRates(lead, options.workingContextItems);
 
-  const wishRate = Number(lead?.wish?.desiredRate);
-  if (Number.isFinite(wishRate) && wishRate > 0) return wishRate;
+  const pickConfirmed = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    if (offerRates.has(Math.round(num))) return null;
+    return num;
+  };
 
-  const budgetRate = Number(profile?.budget?.maxMonthlyRate);
-  if (Number.isFinite(budgetRate) && budgetRate > 0) return budgetRate;
-
-  // Top-Level nur, wenn nicht ausschließlich eine offene Offer-Rate
-  const topRate = Number(lead?.desiredRate);
-  if (!Number.isFinite(topRate) || topRate <= 0) return null;
-  if (offerRates.has(Math.round(topRate))) return null;
-  return topRate;
+  return pickConfirmed(lead?.wish?.desiredRate)
+    ?? pickConfirmed(profile?.budget?.maxMonthlyRate)
+    ?? pickConfirmed(lead?.desiredRate);
 }
 
 function resolveExistingVehicleLabel(lead = {}) {
@@ -660,6 +698,8 @@ export function flattenSnapshotChips(groups = []) {
     ...f,
     groupId: g.id,
     groupTitle: g.title,
+    category: f.category || f.tint || SNAPSHOT_TINT.ALLTAG,
+    tint: f.tint || f.category || SNAPSHOT_TINT.ALLTAG,
   })));
 }
 
