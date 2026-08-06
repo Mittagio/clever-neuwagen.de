@@ -115,9 +115,11 @@ import {
 } from '../../services/crm/customerMessageService.js';
 import CleverKundenhelferSheet from './CleverKundenhelferSheet.jsx';
 import CustomerAkteCompactHeader from './CustomerAkteCompactHeader.jsx';
+import CustomerAkteKundenbild from './CustomerAkteKundenbild.jsx';
 import { AKTE_TABS } from './customerAkteTabs.js';
 import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
 import WorkspaceShell from '../layout/WorkspaceShell.jsx';
+import { buildCustomerSnapshotModel } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import CleverMoment from '../layout/CleverMoment.jsx';
 import CustomerAkteKundenhelfer from './CustomerAkteKundenhelfer.jsx';
 import CustomerAkteRequestedStockVehicle from './CustomerAkteRequestedStockVehicle.jsx';
@@ -403,6 +405,7 @@ export default function DealerAiLeadFollowUp({
   const [composerSeedToken, setComposerSeedToken] = useState(0);
   const [composerSeedAutoRun, setComposerSeedAutoRun] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [angeboteFilter, setAngeboteFilter] = useState('all');
   const [activeSheet, setActiveSheet] = useState(
@@ -709,6 +712,14 @@ export default function DealerAiLeadFollowUp({
   const customerUnderstanding = useMemo(
     () => (lead ? buildCustomerUnderstanding(lead) : null),
     [lead],
+  );
+
+  const customerSnapshot = useMemo(
+    () => (lead ? buildCustomerSnapshotModel(lead, {
+      // Working Context bewusst nicht übergeben – keine zweite Truth
+      relevantKeys: wishConditionsFocusField ? [wishConditionsFocusField] : [],
+    }) : null),
+    [lead, wishConditionsFocusField],
   );
 
   const hasSellerCustomerPicture = Boolean(customerUnderstanding?.meta?.hasData);
@@ -2258,6 +2269,35 @@ export default function DealerAiLeadFollowUp({
     openKundenhelferSheet();
   }
 
+  const WISH_SNAPSHOT_EDIT_KEYS = new Set([
+    'desiredRate',
+    'paymentType',
+    'termMonths',
+    'mileagePerYear',
+    'downPayment',
+    'delivery',
+    'leasingEndDate',
+  ]);
+
+  /** Kundenbild-Fakt antippen → kompakter Editor (Konditionen / Kundenhelfer / Spuren) */
+  function handleKundenbildFactTap(fact) {
+    const key = String(fact?.editKey ?? '').trim();
+    if (!key) return;
+    if (WISH_SNAPSHOT_EDIT_KEYS.has(key)) {
+      openWishConditionsSheet(key === 'leasingEndDate' ? 'desiredRate' : key);
+      return;
+    }
+    if (key === 'vehicleTrack') {
+      openOffersBoard();
+      return;
+    }
+    if (key === 'tradeIn') {
+      openSheet(SHEETS.unterlagen);
+      return;
+    }
+    openKundenhelferSheet();
+  }
+
   function openSheet(id) {
     setActiveSheet(id);
   }
@@ -3159,6 +3199,15 @@ export default function DealerAiLeadFollowUp({
 
   const mainWorkspace = (
     <div className="cust-akte-shell__pane cust-akte-shell__pane--clever cust-akte-shell__pane--feed cn-chat-readable">
+      {kundenbildExpanded && customerSnapshot?.meta?.hasData ? (
+        <CustomerAkteKundenbild
+          model={customerSnapshot}
+          expanded
+          variant="panel"
+          onFactTap={handleKundenbildFactTap}
+        />
+      ) : null}
+
       {requestedStockVehicle ? (
         <CustomerAkteRequestedStockVehicle
           stockVehicle={requestedStockVehicle}
@@ -3331,7 +3380,15 @@ export default function DealerAiLeadFollowUp({
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
         )}
-        band={null}
+        band={customerSnapshot?.meta?.hasData ? (
+          <CustomerAkteKundenbild
+            model={customerSnapshot}
+            expanded={kundenbildExpanded}
+            variant="bar"
+            onToggle={setKundenbildExpanded}
+            onFactTap={handleKundenbildFactTap}
+          />
+        ) : null}
         mobileContext={null}
         context={null}
         assist={(

@@ -1,0 +1,176 @@
+/* Kundenbild – kompakter Truth-Überblick (Mobile-first) */
+
+.cust-kundenbild {
+  --kb-text: var(--cust-text, #0b1736);
+  --kb-muted: var(--cust-muted, #5c6478);
+  --kb-border: var(--cust-border, #e8e8ef);
+  --kb-chip: var(--cust-chip-bg, #eef1f5);
+  --kb-soft: #f7f8fa;
+  background: #fff;
+}
+
+.cust-kundenbild--bar,
+.cust-kundenbild__compact {
+  background: #fff;
+}
+
+/* Sticky nur die kompakte Zeile unter dem Header (band / scroll-ancestor) */
+.cust-kundenbild__compact {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.cust-kundenbild--bar .cust-kundenbild__compact {
+  position: static;
+}
+
+.cust-kundenbild__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--kb-text);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cust-kundenbild__title {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--kb-text);
+}
+
+.cust-kundenbild__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--kb-muted);
+  transition: transform 0.18s ease;
+}
+
+.cust-kundenbild__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.cust-kundenbild__chevron .cn-line-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Max. 2 Zeilen Mobile, kein Horizontal-Scroll */
+.cust-kundenbild__summary {
+  margin: 2px 0 0;
+  padding-right: 4px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--kb-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.cust-kundenbild__panel {
+  padding: 4px 14px 12px;
+  background: var(--kb-soft);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  /* Wächst nach unten; begrenzt, damit Composer/Review sichtbar bleiben */
+  max-height: min(42vh, 320px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cust-kundenbild--panel .cust-kundenbild__panel {
+  /* Im Main über Composer: begrenzt, damit Review/Composer nicht verdeckt werden */
+  max-height: min(38vh, 280px);
+}
+
+.cust-akte-shell__pane > .cust-kundenbild--panel {
+  flex-shrink: 0;
+}
+
+.cust-kundenbild__group + .cust-kundenbild__group {
+  margin-top: 12px;
+}
+
+.cust-kundenbild__group-title {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8b93a7;
+}
+
+.cust-kundenbild__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cust-kundenbild__fact {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 11px;
+  margin: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--kb-text);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cust-kundenbild__fact:active {
+  background: var(--kb-chip);
+}
+
+.cust-kundenbild__fact.is-relevant {
+  border-color: rgba(11, 23, 54, 0.22);
+  background: #f0f3f8;
+  box-shadow: inset 0 0 0 1px rgba(11, 23, 54, 0.06);
+}
+
+/* Band-Einbindung: keine doppelte Sticky-Lage */
+.cn-workspace__band .cust-kundenbild {
+  border-bottom: none;
+}
+
+.cn-workspace__band .cust-kundenbild__compact {
+  padding-inline: 16px;
+}
+
+@media (min-width: 1100px) {
+  .cn-workspace__band .cust-kundenbild__compact,
+  .cn-workspace__band .cust-kundenbild__panel {
+    padding-inline: 20px;
+  }
+}
