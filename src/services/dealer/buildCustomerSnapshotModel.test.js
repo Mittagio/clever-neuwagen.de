@@ -4,8 +4,10 @@
 import assert from 'node:assert/strict';
 import {
   buildCustomerSnapshotModel,
+  buildGroupSummaryLines,
   buildSnapshotSummary,
   SNAPSHOT_GROUP,
+  SNAPSHOT_GROUP_TITLE,
   SNAPSHOT_SUMMARY_MAX_TOKENS,
 } from './buildCustomerSnapshotModel.js';
 import {
@@ -89,8 +91,68 @@ function baseLead(overrides = {}) {
   assert.ok(!snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BEDARF), 'leerer Bedarf weggelassen');
   assert.ok(!snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BESTAND), 'leerer Bestand weggelassen');
   assert.ok(snap.groups.some((g) => g.id === SNAPSHOT_GROUP.BUDGET), 'Budget mit Inhalt');
+  assert.ok(snap.groups.some((g) => g.id === SNAPSHOT_GROUP.VERTRAG), 'Vertrag mit Inhalt');
   assert.ok(snap.groups.every((g) => g.facts.length > 0), 'keine leeren Gruppen');
   console.log('✓ Empty groups omitted');
+}
+
+// --- Wireframe groups: ids, titles, Budget ≠ Vertrag ---
+{
+  const lead = baseLead({
+    wish: {
+      ...baseLead().wish,
+      downPayment: 6000,
+      termMonths: 36,
+      leasingEndDate: 'Juli 2026',
+    },
+  });
+  const snap = buildCustomerSnapshotModel(lead);
+  const ids = snap.groups.map((g) => g.id);
+  assert.deepEqual(
+    ids.filter((id) => [
+      SNAPSHOT_GROUP.BEDARF,
+      SNAPSHOT_GROUP.BUDGET,
+      SNAPSHOT_GROUP.VERTRAG,
+      SNAPSHOT_GROUP.BESTAND,
+    ].includes(id)),
+    [
+      SNAPSHOT_GROUP.BEDARF,
+      SNAPSHOT_GROUP.BUDGET,
+      SNAPSHOT_GROUP.VERTRAG,
+      SNAPSHOT_GROUP.BESTAND,
+    ],
+    'Gruppen-Reihenfolge Wireframe',
+  );
+  const bedarf = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BEDARF);
+  const budget = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BUDGET);
+  const vertrag = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.VERTRAG);
+  assert.equal(bedarf.title, SNAPSHOT_GROUP_TITLE[SNAPSHOT_GROUP.BEDARF]);
+  assert.equal(bedarf.title, 'Alltag & Bedarf');
+  assert.equal(budget.title, 'Budget');
+  assert.equal(vertrag.title, 'Vertrag');
+  assert.ok(budget.facts.every((f) => ['rate', 'downPayment'].includes(f.id)));
+  assert.ok(vertrag.facts.some((f) => f.id === 'paymentType'));
+  assert.ok(vertrag.facts.some((f) => f.id === 'termMonths'));
+  assert.ok(!budget.facts.some((f) => f.id === 'paymentType'), 'Zahlungsart nicht in Budget');
+  assert.ok(budget.editKey === 'desiredRate');
+  assert.ok(vertrag.editKey === 'paymentType');
+  assert.ok(budget.summaryLines?.[0]?.includes('Wunschrate'));
+  assert.ok(budget.summaryLines?.[0]?.includes('Anzahlung'));
+  assert.ok(vertrag.summaryLines?.length >= 1);
+  assert.ok(vertrag.summaryLines.some((l) => /Vertragsende/i.test(l)));
+  console.log('✓ Wireframe groups split/titles/summaries');
+}
+
+// --- Group summary lines helper ---
+{
+  const lines = buildGroupSummaryLines([
+    { label: 'Leasing', cardLabel: 'Leasing', cardLine: 1 },
+    { label: '36 Monate', cardLabel: '36 Monate', cardLine: 1 },
+    { label: 'Ende Juli 2026', cardLabel: 'Vertragsende Juli 2026', cardLine: 2 },
+  ]);
+  assert.equal(lines[0], 'Leasing · 36 Monate');
+  assert.equal(lines[1], 'Vertragsende Juli 2026');
+  console.log('✓ buildGroupSummaryLines');
 }
 
 // --- Summary length / +N overflow ---
@@ -162,6 +224,10 @@ function baseLead(overrides = {}) {
   assert.equal(children?.relevant, true);
   const payment = snap.groups.flatMap((g) => g.facts).find((f) => f.id === 'paymentType');
   assert.equal(payment?.relevant, false);
+  const budget = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BUDGET);
+  const bedarf = snap.groups.find((g) => g.id === SNAPSHOT_GROUP.BEDARF);
+  assert.equal(budget?.relevant, true);
+  assert.equal(bedarf?.relevant, true);
   console.log('✓ Relevance keys mark facts');
 }
 

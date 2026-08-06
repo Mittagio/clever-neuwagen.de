@@ -183,6 +183,51 @@ export function IconChevronDown(props) {
   );
 }
 
+export function IconChevronRight(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M9 6l6 6-6 6" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconUsers(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" {...stroke} />
+      <circle cx="9" cy="7" r="3.5" {...stroke} />
+      <path d="M22 21v-2a3.5 3.5 0 0 0-2.5-3.35" {...stroke} />
+      <path d="M16.5 3.7a3.5 3.5 0 0 1 0 6.6" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconEuro(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 10h8M4 14h8" {...stroke} />
+      <path d="M18 5.5A7.5 7.5 0 1 0 18 18.5" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconClock(props) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" {...stroke} />
+      <path d="M12 7.5V12l3 2" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconSwap(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 7h11l-3-3M17 17H6l3 3" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export function IconInbox(props) {
   return (
     <SvgIcon {...props}>

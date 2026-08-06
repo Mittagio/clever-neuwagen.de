@@ -1,10 +1,26 @@
 import { useId } from 'react';
-import { IconChevronDown } from './AkteIcons.jsx';
+import {
+  IconCar,
+  IconChevronDown,
+  IconChevronRight,
+  IconClock,
+  IconEuro,
+  IconSwap,
+  IconUsers,
+} from './AkteIcons.jsx';
 import './CustomerAkteKundenbild.css';
+
+const GROUP_ICONS = {
+  bedarf: IconUsers,
+  budget: IconEuro,
+  vertrag: IconClock,
+  wunsch: IconCar,
+  bestand: IconSwap,
+};
 
 /**
  * Kompakter aufklappbarer Kundenüberblick (Customer Truth).
- * Compact-Zeile sticky unter dem Header; Expanded wächst nach unten und scrollt mit.
+ * Compact-Zeile sticky unter dem Header; Expanded = tappable Gruppen-Cards.
  */
 export default function CustomerAkteKundenbild({
   model = null,
@@ -26,8 +42,15 @@ export default function CustomerAkteKundenbild({
     onToggle?.(!expanded);
   }
 
-  function handleFactClick(fact) {
-    onFactTap?.(fact);
+  function handleGroupTap(group) {
+    const editKey = group?.editKey || group?.facts?.[0]?.editKey || null;
+    if (!editKey) return;
+    onFactTap?.({
+      id: group.id,
+      label: group.title,
+      editKey,
+      groupId: group.id,
+    });
   }
 
   return (
@@ -64,25 +87,41 @@ export default function CustomerAkteKundenbild({
           role="region"
           aria-label="Kundenbild Details"
         >
-          {groups.map((group) => (
-            <div key={group.id} className="cust-kundenbild__group">
-              <h3 className="cust-kundenbild__group-title">{group.title}</h3>
-              <ul className="cust-kundenbild__facts">
-                {group.facts.map((fact) => (
-                  <li key={fact.id}>
-                    <button
-                      type="button"
-                      className={`cust-kundenbild__fact${fact.relevant ? ' is-relevant' : ''}`}
-                      onClick={() => handleFactClick(fact)}
-                      aria-label={`${fact.label} bearbeiten`}
-                    >
-                      {fact.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <ul className="cust-kundenbild__groups">
+            {groups.map((group) => {
+              const Icon = GROUP_ICONS[group.id] || IconUsers;
+              const lines = group.summaryLines?.length
+                ? group.summaryLines
+                : [(group.facts || []).map((f) => f.cardLabel || f.label).filter(Boolean).join(' · ')].filter(Boolean);
+              return (
+                <li key={group.id}>
+                  <button
+                    type="button"
+                    className={`cust-kundenbild__row${group.relevant ? ' is-relevant' : ''}`}
+                    onClick={() => handleGroupTap(group)}
+                    aria-label={`${group.title} bearbeiten`}
+                  >
+                    <span className="cust-kundenbild__row-icon" aria-hidden>
+                      <Icon />
+                    </span>
+                    <span className="cust-kundenbild__row-body">
+                      <span className="cust-kundenbild__row-head">
+                        <span className="cust-kundenbild__group-title">{group.title}</span>
+                        <span className="cust-kundenbild__row-chevron" aria-hidden>
+                          <IconChevronRight />
+                        </span>
+                      </span>
+                      {lines.map((line) => (
+                        <span key={line} className="cust-kundenbild__row-summary">
+                          {line}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : null}
     </section>

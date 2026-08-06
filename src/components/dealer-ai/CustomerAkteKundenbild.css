@@ -108,12 +108,77 @@
   flex-shrink: 0;
 }
 
-.cust-kundenbild__group + .cust-kundenbild__group {
-  margin-top: 12px;
+.cust-kundenbild__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+}
+
+.cust-kundenbild__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--kb-text);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cust-kundenbild__row:active {
+  background: var(--kb-chip);
+}
+
+.cust-kundenbild__row.is-relevant {
+  border-color: rgba(11, 23, 54, 0.22);
+  background: #f0f3f8;
+  box-shadow: inset 0 0 0 1px rgba(11, 23, 54, 0.06);
+}
+
+.cust-kundenbild__row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  color: var(--kb-muted);
+}
+
+.cust-kundenbild__row-icon .cn-line-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.cust-kundenbild__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cust-kundenbild__row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
 }
 
 .cust-kundenbild__group-title {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 0.6875rem;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -121,42 +186,27 @@
   color: #8b93a7;
 }
 
-.cust-kundenbild__facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.cust-kundenbild__fact {
+.cust-kundenbild__row-chevron {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 6px 11px;
-  margin: 0;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--kb-text);
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: #a0a7b8;
+}
+
+.cust-kundenbild__row-chevron .cn-line-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.cust-kundenbild__row-summary {
   font-size: 0.8125rem;
   font-weight: 550;
-  line-height: 1.25;
-  cursor: pointer;
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.cust-kundenbild__fact:active {
-  background: var(--kb-chip);
-}
-
-.cust-kundenbild__fact.is-relevant {
-  border-color: rgba(11, 23, 54, 0.22);
-  background: #f0f3f8;
-  box-shadow: inset 0 0 0 1px rgba(11, 23, 54, 0.06);
+  line-height: 1.35;
+  color: var(--kb-text);
+  word-break: break-word;
 }
 
 /* Band-Einbindung: keine doppelte Sticky-Lage */

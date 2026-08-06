@@ -16,15 +16,26 @@ import {
 export const SNAPSHOT_GROUP = {
   BEDARF: 'bedarf',
   BUDGET: 'budget',
-  BESTAND: 'bestand',
+  VERTRAG: 'vertrag',
   WUNSCH: 'wunsch',
+  BESTAND: 'bestand',
 };
 
 export const SNAPSHOT_GROUP_TITLE = {
-  [SNAPSHOT_GROUP.BEDARF]: 'Bedarf',
-  [SNAPSHOT_GROUP.BUDGET]: 'Budget und Vertrag',
-  [SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
+  [SNAPSHOT_GROUP.BEDARF]: 'Alltag & Bedarf',
+  [SNAPSHOT_GROUP.BUDGET]: 'Budget',
+  [SNAPSHOT_GROUP.VERTRAG]: 'Vertrag',
   [SNAPSHOT_GROUP.WUNSCH]: 'Fahrzeugwunsch',
+  [SNAPSHOT_GROUP.BESTAND]: 'Bestandsfahrzeug',
+};
+
+/** Primärer editKey je Gruppe → öffnet den relevanten Sheet. */
+export const SNAPSHOT_GROUP_EDIT_KEY = {
+  [SNAPSHOT_GROUP.BEDARF]: 'bedarf',
+  [SNAPSHOT_GROUP.BUDGET]: 'desiredRate',
+  [SNAPSHOT_GROUP.VERTRAG]: 'paymentType',
+  [SNAPSHOT_GROUP.WUNSCH]: 'vehicleTrack',
+  [SNAPSHOT_GROUP.BESTAND]: 'tradeIn',
 };
 
 /** Max. Tokens in der eingeklappten Summary-Zeile (Rest als +N). */
@@ -72,17 +83,40 @@ function fact(id, label, {
   relevanceKey = null,
   groupId,
   summaryPriority = 50,
+  cardLabel = null,
+  cardLine = 1,
 } = {}) {
   const text = String(label ?? '').trim();
   if (!text) return null;
   return {
     id,
     label: text,
+    cardLabel: cardLabel ? String(cardLabel).trim() : text,
+    cardLine: cardLine === 2 ? 2 : 1,
     editKey,
     relevanceKey: relevanceKey || editKey || id,
     groupId,
     summaryPriority,
   };
+}
+
+/**
+ * Compact card summaries for expanded group rows (1–2 lines).
+ * @param {object[]} facts
+ */
+export function buildGroupSummaryLines(facts = []) {
+  const line1 = [];
+  const line2 = [];
+  for (const f of facts) {
+    const text = String(f.cardLabel || f.label || '').trim();
+    if (!text) continue;
+    if (f.cardLine === 2) line2.push(text);
+    else line1.push(text);
+  }
+  return [
+    line1.length ? line1.join(' · ') : null,
+    line2.length ? line2.join(' · ') : null,
+  ].filter(Boolean);
 }
 
 function pushFact(list, item) {
@@ -195,6 +229,14 @@ function buildBedarfFacts(profile = {}, sellerLabels = []) {
     }));
   }
 
+  if (profile.chargingAtHome === 'yes') {
+    pushFact(facts, fact('chargingAtHome', 'Laden zuhause', {
+      editKey: 'bedarf',
+      groupId: SNAPSHOT_GROUP.BEDARF,
+      summaryPriority: 36,
+    }));
+  }
+
   if (profile.priorities?.includes('space') || profile.bodyType === 'suv') {
     pushFact(facts, fact('space', profile.bodyType === 'suv' ? 'SUV / Platz' : 'Platz', {
       editKey: 'space',
@@ -273,14 +315,34 @@ function buildBudgetFacts(lead = {}, profile = {}) {
       relevanceKey: 'desiredRate',
       groupId: SNAPSHOT_GROUP.BUDGET,
       summaryPriority: 20,
+      cardLabel: `Wunschrate ${rateLabel}`,
     }));
   }
 
+  const down = lead?.wish?.downPayment ?? profile?.budget?.downPayment;
+  if (down != null && String(down).trim() !== '') {
+    const downNum = Number(down);
+    if (Number.isFinite(downNum) && downNum > 0) {
+      const short = `AZ ${downNum.toLocaleString('de-DE')} €`;
+      pushFact(facts, fact('downPayment', short, {
+        editKey: 'downPayment',
+        groupId: SNAPSHOT_GROUP.BUDGET,
+        summaryPriority: 34,
+        cardLabel: `${downNum.toLocaleString('de-DE')} € Anzahlung`,
+      }));
+    }
+  }
+
+  return facts;
+}
+
+function buildVertragFacts(lead = {}, profile = {}) {
+  const facts = [];
   const payment = resolvePaymentType(lead, profile);
   if (payment && PAYMENT_LABELS[payment]) {
     pushFact(facts, fact('paymentType', PAYMENT_LABELS[payment], {
       editKey: 'paymentType',
-      groupId: SNAPSHOT_GROUP.BUDGET,
+      groupId: SNAPSHOT_GROUP.VERTRAG,
       summaryPriority: 25,
     }));
   }
@@ -290,7 +352,7 @@ function buildBudgetFacts(lead = {}, profile = {}) {
   if (termLabel) {
     pushFact(facts, fact('termMonths', termLabel, {
       editKey: 'termMonths',
-      groupId: SNAPSHOT_GROUP.BUDGET,
+      groupId: SNAPSHOT_GROUP.VERTRAG,
       summaryPriority: 30,
     }));
   }
@@ -300,21 +362,9 @@ function buildBudgetFacts(lead = {}, profile = {}) {
   if (kmLabel) {
     pushFact(facts, fact('mileagePerYear', kmLabel, {
       editKey: 'mileagePerYear',
-      groupId: SNAPSHOT_GROUP.BUDGET,
+      groupId: SNAPSHOT_GROUP.VERTRAG,
       summaryPriority: 32,
     }));
-  }
-
-  const down = lead?.wish?.downPayment ?? profile?.budget?.downPayment;
-  if (down != null && String(down).trim() !== '') {
-    const downNum = Number(down);
-    if (Number.isFinite(downNum)) {
-      pushFact(facts, fact('downPayment', `AZ ${downNum.toLocaleString('de-DE')} €`, {
-        editKey: 'downPayment',
-        groupId: SNAPSHOT_GROUP.BUDGET,
-        summaryPriority: 34,
-      }));
-    }
   }
 
   const end = lead?.wish?.leasingEndDate
@@ -322,10 +372,13 @@ function buildBudgetFacts(lead = {}, profile = {}) {
     ?? lead?.crm?.leasingEndDate
     ?? null;
   if (end && String(end).trim()) {
-    pushFact(facts, fact('leasingEndDate', `Ende ${String(end).trim()}`, {
+    const endText = String(end).trim();
+    pushFact(facts, fact('leasingEndDate', `Ende ${endText}`, {
       editKey: 'leasingEndDate',
-      groupId: SNAPSHOT_GROUP.BUDGET,
+      groupId: SNAPSHOT_GROUP.VERTRAG,
       summaryPriority: 38,
+      cardLabel: `Vertragsende ${endText}`,
+      cardLine: 2,
     }));
   }
 
@@ -336,11 +389,13 @@ function buildBestandFacts(lead = {}, profile = {}) {
   const facts = [];
   const existingLabel = resolveExistingVehicleLabel(lead);
   if (existingLabel) {
+    const cardVehicle = existingLabel.replace(/\s*\((?:GW|Gebraucht)\)\s*$/i, '').trim();
     pushFact(facts, fact('existingVehicle', existingLabel, {
       editKey: 'tradeIn',
       relevanceKey: 'existingVehicle',
       groupId: SNAPSHOT_GROUP.BESTAND,
       summaryPriority: 18,
+      cardLabel: cardVehicle || existingLabel,
     }));
   }
 
@@ -355,6 +410,7 @@ function buildBestandFacts(lead = {}, profile = {}) {
       editKey: 'tradeIn',
       groupId: SNAPSHOT_GROUP.BESTAND,
       summaryPriority: 48,
+      cardLabel: 'Inzahlungnahme vorgesehen',
     }));
   }
 
@@ -521,8 +577,9 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   const groupsSpec = [
     { id: SNAPSHOT_GROUP.BEDARF, facts: buildBedarfFacts(profile, sellerLabels) },
     { id: SNAPSHOT_GROUP.BUDGET, facts: buildBudgetFacts(lead, profile) },
-    { id: SNAPSHOT_GROUP.BESTAND, facts: buildBestandFacts(lead, profile) },
+    { id: SNAPSHOT_GROUP.VERTRAG, facts: buildVertragFacts(lead, profile) },
     { id: SNAPSHOT_GROUP.WUNSCH, facts: buildWunschFacts(lead, profile) },
+    { id: SNAPSHOT_GROUP.BESTAND, facts: buildBestandFacts(lead, profile) },
   ];
 
   const relevantSet = new Set(
@@ -533,18 +590,24 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
 
   const groups = groupsSpec
     .filter((g) => g.facts.length > 0)
-    .map((g) => ({
-      id: g.id,
-      title: SNAPSHOT_GROUP_TITLE[g.id],
-      facts: g.facts.map((f) => ({
+    .map((g) => {
+      const facts = g.facts.map((f) => ({
         ...f,
         relevant: relevantSet.size > 0 && (
           relevantSet.has(f.relevanceKey)
           || relevantSet.has(f.editKey)
           || relevantSet.has(f.id)
         ),
-      })),
-    }));
+      }));
+      return {
+        id: g.id,
+        title: SNAPSHOT_GROUP_TITLE[g.id],
+        editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
+        summaryLines: buildGroupSummaryLines(facts),
+        relevant: facts.some((f) => f.relevant),
+        facts,
+      };
+    });
 
   const allFacts = groups.flatMap((g) => g.facts);
   const summary = buildSnapshotSummary(
