@@ -79,6 +79,13 @@ import { extractContractCustomerNameHint } from './extractCustomerContractFromTe
 import { resolveCleverCalendarProvider } from './resolveCleverCalendarProvider.js';
 import { checkCalendarAvailability } from './checkCalendarAvailability.js';
 import { getAppointmentDurationMinutes } from '../dealer/sellerAppointmentAssistFlow.js';
+import {
+  applyIntentConstraintToIntents,
+  evaluateRememberDecision,
+  filterFactsForIntentConstraint,
+  normalizeIntentConstraint,
+  COMPOSER_INTENT_CONSTRAINT,
+} from './composerIntentChips.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -140,9 +147,11 @@ function finalizeSellerTurn({
   pendingAction: incomingPendingAction = null,
   now = null,
   calendarAvailability = null,
+  intentConstraint: intentConstraintIn = null,
 }) {
   void appContext;
   const enabled = isCleverSellerOrchestratorEnabled(env);
+  const intentConstraint = normalizeIntentConstraint(intentConstraintIn);
 
   const sellerText = interpreted?.normalized || interpreted?.raw || '';
   let facts = Array.isArray(factsIn) ? [...factsIn] : [];
@@ -151,6 +160,7 @@ function finalizeSellerTurn({
   if (
     isOfferPdfDropContext(attachments, sellerText)
     && !hasExplicitAppointmentSellerCue(sellerText)
+    && intentConstraint !== COMPOSER_INTENT_CONSTRAINT.APPOINTMENT
   ) {
     facts = facts.filter((f) => f.factClass !== SELLER_FACT_CLASS.APPOINTMENT_FACT);
     intents = intents.filter((i) => (
@@ -163,6 +173,14 @@ function finalizeSellerTurn({
     if (!isExplicitCustomerMessageCue(sellerText)) {
       intents = intents.filter((i) => i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE);
     }
+  }
+
+  // Optional One-Turn Intent-Chip (vor Appointment-/Inbound-Ableitungen)
+  if (intentConstraint) {
+    facts = filterFactsForIntentConstraint(facts, intentConstraint);
+    intents = applyIntentConstraintToIntents(intents, intentConstraint, {
+      sellerInput: sellerText,
+    });
   }
 
   const pendingAppointment = incomingPendingAction?.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
@@ -536,10 +554,25 @@ function finalizeSellerTurn({
     attachments,
     facts: uniqueFacts,
   });
-  if (multiSourceCandidate) {
+  // Intent-Chip: Multi-Source-Intake nicht gegen Chip-Fokus laufen lassen
+  const multiSourceAllowed = multiSourceCandidate
+    && !intentConstraint;
+  if (multiSourceAllowed) {
     effectiveIntents = effectiveIntents.filter((i) => (
       i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
     ));
+  }
+
+  // Constraint erneut (nach Heuristik-Boosts) – Chip gewinnt für diesen Turn
+  if (intentConstraint) {
+    effectiveIntents = applyIntentConstraintToIntents(effectiveIntents, intentConstraint, {
+      sellerInput: interpreted.normalized || interpreted.raw,
+    });
+  }
+
+  let rememberDecision = null;
+  if (intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER) {
+    rememberDecision = evaluateRememberDecision(uniqueFacts, workingLead);
   }
 
   const preparedActions = enabled
@@ -896,6 +929,8 @@ function finalizeSellerTurn({
     scope,
     intent: primaryIntent,
     intents: effectiveIntents,
+    intentConstraint,
+    rememberDecision,
     inputMode: interpreted.inputMode,
     interpretedInput: {
       raw: interpreted.raw,
@@ -1115,7 +1150,7 @@ function finalizeSellerTurn({
     autoBooked: false,
   };
 
-  if (multiSourceCandidate || multiSourceIntakeOverride?.detected) {
+  if ((multiSourceAllowed || multiSourceIntakeOverride?.detected) && !intentConstraint) {
     const safeAttachments = attachments.map((a) => {
       if (!a?.extractedText) return a;
       const minimized = minimizeSensitiveOcrText(a.extractedText);
@@ -1153,9 +1188,31 @@ function finalizeSellerTurn({
     };
   }
 
-  const reviewModel = shouldShowUniversalReview(turnPartial)
+  // Merken sicher → kein Review (UI speichert + Undo); unsicher → kompakte Review
+  const skipReviewForRememberAuto = rememberDecision?.mode === 'save_with_undo';
+  let reviewModel = (!skipReviewForRememberAuto && shouldShowUniversalReview(turnPartial))
     ? buildUniversalReviewModel(turnPartial)
     : null;
+  if (
+    reviewModel
+    && intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
+    && rememberDecision?.mode === 'review'
+  ) {
+    reviewModel = {
+      ...reviewModel,
+      reviewType: reviewModel.reviewType || 'remember_customer_review',
+      compactUi: true,
+      title: reviewModel.title || 'Angaben prüfen',
+      summaryLine: reviewModel.summaryLine
+        || (rememberDecision.reason === 'contradictory'
+          ? 'Widersprüchliche Angabe – bitte prüfen'
+          : rememberDecision.reason === 'sensitive_or_business_critical'
+            ? 'Sensible Angabe – bitte prüfen'
+            : 'Bitte kurz prüfen, bevor Clever speichert'),
+      primaryCta: reviewModel.primaryCta || 'Übernehmen',
+      secondaryCta: reviewModel.secondaryCta || 'Verwerfen',
+    };
+  }
 
   return buildCleverSellerTurnResult({
     ...turnPartial,
@@ -1182,6 +1239,7 @@ export function runCleverSellerTurn({
   pendingAction = null,
   now = null,
   calendarAvailability = null,
+  intentConstraint = null,
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
   void conversationContext;
@@ -1213,6 +1271,7 @@ export function runCleverSellerTurn({
     pendingAction: pendingAction || appContext?.pendingAction || null,
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
+    intentConstraint,
   });
 }
 
@@ -1242,6 +1301,7 @@ export async function runCleverSellerTurnAsync({
   pendingAction = null,
   now = null,
   calendarAvailability = null,
+  intentConstraint = null,
 } = {}) {
   const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
   const gate = openAiOptions.forceEscalate
@@ -1283,6 +1343,7 @@ export async function runCleverSellerTurnAsync({
     pendingAction: pendingAction || appContext?.pendingAction || null,
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
+    intentConstraint,
     ...extra,
   });
 

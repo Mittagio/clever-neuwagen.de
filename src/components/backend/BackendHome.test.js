@@ -45,6 +45,8 @@ assert.ok(composerSource.includes('resolveComposerDockMode'), 'Hero/Dock Mode');
 assert.ok(composerSource.includes('data-composer-instance="global"'), 'Eine Composer-Instanz');
 assert.ok(composerSource.includes('DealerAiInlineMic'), 'Voice im Dock/Hero');
 assert.ok(composerSource.includes('hideSuggestionChips'), 'Keine Suggestion-Chips im Dock');
+assert.ok(composerSource.includes('COMPOSER_INTENT_CHIPS'), 'Optional Intent-Chips im Global Composer');
+assert.ok(composerSource.includes('intentConstraint'), 'intentConstraint an Seller-Turn');
 assert.ok(!composerSource.includes('COMPOSER_LEITFRAGE'), 'Keine Clever-Überschrift im Dock');
 assert.ok(
   composerSource.includes("reviewType === 'customer_intake_review'")

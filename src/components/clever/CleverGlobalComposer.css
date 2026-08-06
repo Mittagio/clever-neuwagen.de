@@ -69,6 +69,53 @@
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
+.clever-global-composer__undo {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #4c3d8f;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.clever-global-composer__attach-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0.35rem 0.9rem 0.15rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.clever-global-composer__attach-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.clever-global-composer__attach-action {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid rgba(109, 91, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(109, 91, 184, 0.08);
+  color: #4c3d8f;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.clever-global-composer__attach-action.is-preselect {
+  border-color: rgba(109, 91, 184, 0.45);
+  background: rgba(109, 91, 184, 0.14);
+}
+
 .clever-global-composer__quick {
   display: flex;
   flex-wrap: wrap;

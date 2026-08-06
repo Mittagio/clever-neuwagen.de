@@ -71,6 +71,14 @@ import {
   resolveComposerShortcut,
   resolveComposerChipsForReview,
 } from '../../services/crm/composerSuggestionService.js';
+import {
+  COMPOSER_INTENT_CHIPS,
+  COMPOSER_INTENT_CONSTRAINT,
+  resetIntentConstraintToDefault,
+  resolveAttachmentIntentActions,
+  resolveIntentChipById,
+  resolveIntentPlaceholder,
+} from '../../services/cleverSeller/composerIntentChips.js';
 import { normalizeVehicleDisplayLabel } from '../../services/cleverSeller/normalizeVehicleDisplayLabel.js';
 import {
   findOfferWorkingContext,
@@ -183,6 +191,11 @@ export default function CustomerAkteSharedWorkspace({
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
   const [universalTurn, setUniversalTurn] = useState(null);
+  const [selectedIntentChipId, setSelectedIntentChipId] = useState(
+    COMPOSER_INTENT_CHIPS[0].id,
+  );
+  const [rememberUndo, setRememberUndo] = useState(null);
+  const [attachmentActions, setAttachmentActions] = useState(null);
   /** Clever-Tab (hideFeed): letzte Accept-/Send-Aktion über dem Composer, kein leerer Weißraum. */
   const [lastComposerAction, setLastComposerAction] = useState(null);
   const [offerPrep, setOfferPrep] = useState(null);
@@ -308,6 +321,42 @@ export default function CustomerAkteSharedWorkspace({
     setLastComposerAction(next);
   }
 
+  const selectedIntentChip = resolveIntentChipById(selectedIntentChipId);
+  const intentConstraint = selectedIntentChip?.intentConstraint ?? null;
+  const intentCustomerLabel = formatCustomerDisplayName(customerName) || customerName || '';
+  const intentPlaceholder = resolveIntentPlaceholder(intentConstraint, intentCustomerLabel);
+
+  function resetIntentChipsToDefault() {
+    setSelectedIntentChipId(resetIntentConstraintToDefault().id);
+  }
+
+  function applyRememberWithUndo(turn) {
+    if (!lead?.id || typeof onPersistLead !== 'function') return false;
+    const previousLead = JSON.parse(JSON.stringify(lead));
+    const applied = applyAcceptedSellerTurn(lead, turn, { postFeedCard: false });
+    if (!applied.ok || !applied.lead) return false;
+    onPersistLead(applied.lead, { historyText: 'Clever hat gemerkt' });
+    const labels = (applied.acceptedLabels || turn.extractedFacts || [])
+      .map((x) => (typeof x === 'string' ? x : x?.label))
+      .filter(Boolean)
+      .slice(0, 3);
+    setRememberUndo({ previousLead, leadId: lead.id });
+    setFeedback(labels.length
+      ? `Gemerkt: ${labels.join(' · ')} · Rückgängig möglich`
+      : 'Gemerkt · Rückgängig möglich');
+    setTimeout(() => setFeedback(''), 4200);
+    return true;
+  }
+
+  function handleRememberUndo() {
+    if (!rememberUndo?.previousLead || typeof onPersistLead !== 'function') return;
+    onPersistLead(rememberUndo.previousLead, { historyText: 'Merken rückgängig' });
+    setRememberUndo(null);
+    setFeedback('Merken rückgängig gemacht');
+    setTimeout(() => setFeedback(''), 2800);
+    resetIntentChipsToDefault();
+  }
+
   /** Gemeinsamer Orchestrator-Input: fester Lead, Surface Akte (kein zweiter Brain). */
   function buildAkteSellerTurnParams(extra = {}) {
     return {
@@ -316,6 +365,7 @@ export default function CustomerAkteSharedWorkspace({
       workingContextItems,
       currentOfferContext: toCurrentOfferContext(findOfferWorkingContext(workingContextItems)),
       scopeHint: AKTE_COMPOSER_SCOPE,
+      intentConstraint,
       ...extra,
     };
   }
@@ -374,7 +424,23 @@ export default function CustomerAkteSharedWorkspace({
         sellerInput: text,
         currentOfferContext: offerCtx,
         pendingAction: universalTurn?.pendingAction || null,
+        intentConstraint,
       }));
+
+      // Merken: sichere Facts sofort speichern + Undo
+      if (
+        intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
+        && turn?.rememberDecision?.mode === 'save_with_undo'
+      ) {
+        setDraft('');
+        setOfferPrep(null);
+        setAppointmentDraft(null);
+        setUniversalTurn(null);
+        clearAssist();
+        applyRememberWithUndo(turn);
+        resetIntentChipsToDefault();
+        return true;
+      }
 
       // Magic: LLM / grounded Writer ersetzt Template-Mails
       const enriched = await enrichSellerTurnWithMagicPropose({
@@ -392,6 +458,7 @@ export default function CustomerAkteSharedWorkspace({
       setDraft('');
       setOfferPrep(null);
       setAppointmentDraft(null);
+      resetIntentChipsToDefault();
 
       if (enriched.magicBody) {
         if (shouldShowUniversalReview(enriched.turn)) {
@@ -439,6 +506,11 @@ export default function CustomerAkteSharedWorkspace({
       setLastComposerAction(null);
       setFeedback('Clever hat nichts vorbereitet – bitte anders formulieren');
       setTimeout(() => setFeedback(''), 2800);
+      return false;
+    } catch {
+      // Draft + Intent behalten bei technischem Fehler
+      setFeedback('Clever konnte den Turn nicht abschließen – Entwurf bleibt erhalten');
+      setTimeout(() => setFeedback(''), 4200);
       return false;
     } finally {
       setSending(false);
@@ -501,7 +573,7 @@ export default function CustomerAkteSharedWorkspace({
     }),
     [composerMode, editingMessageDraft?.recipient, displayName, cleverMode],
   );
-  const placeholder = composerUi.placeholder;
+  const placeholder = intentPlaceholder || composerUi.placeholder;
   const inMessageEdit = isCustomerMessageEditMode(composerMode);
 
   const confirmAssist = useMemo(() => {
@@ -1254,6 +1326,7 @@ export default function CustomerAkteSharedWorkspace({
     setLastComposerAction(null);
     setOfferPrep(null);
     setAppointmentDraft(null);
+    resetIntentChipsToDefault();
   }
 
   /** Vielleicht: Entwurf in den Composer, ohne zu übernehmen */
@@ -1562,6 +1635,7 @@ export default function CustomerAkteSharedWorkspace({
           ? 'Bereit zum Senden'
           : (applied.acceptedLabels.length ? 'Übernommen' : 'Übernommen'),
       });
+      resetIntentChipsToDefault();
 
       // Cursor-Vertrag: nach Ja stoppen – kein stilles Auto-Weiter.
       // Ausnahme: explizit „Anpassen“ (reviseAfter).
@@ -1734,7 +1808,7 @@ export default function CustomerAkteSharedWorkspace({
       const ocrProvider = await resolveCleverOcrProvider();
       // Gleicher PDF/OCR-Service wie Global Composer – Surface mit festem Lead.
       const { prepared, turn, skipped } = await runComposerPdfAttachTurnWithOcr({
-        ...buildAkteSellerTurnParams(),
+        ...buildAkteSellerTurnParams({ intentConstraint: null }),
         extracted,
         file,
         ocrProvider,
@@ -1752,6 +1826,14 @@ export default function CustomerAkteSharedWorkspace({
       } else if (prepared.draftSeed) {
         setDraft(prepared.draftSeed);
       }
+
+      const attachmentMeta = prepared.attachment || {
+        kind: prepared.kind,
+        fileName: extracted?.fileName || file.name,
+        extractedText: extracted?.text || '',
+      };
+      const actions = resolveAttachmentIntentActions(attachmentMeta);
+      setAttachmentActions(actions.suggestedActions.length ? actions : null);
 
       if (prepared.ok && !prepared.needsManualDescribe) {
         onUpsertWorkingContext?.(buildDocumentWorkingContextItem({
@@ -1810,11 +1892,45 @@ export default function CustomerAkteSharedWorkspace({
     />
   ) : null;
 
+  const attachActionsSlot = attachmentActions?.suggestedActions?.length && !reviewModel ? (
+    <div className="cust-akte-workspace__attach-actions" role="group" aria-label="Dokument-Aktionen">
+      {attachmentActions.suggestedActions.map((action) => (
+        <button
+          key={action.id}
+          type="button"
+          className="cust-akte-workspace__attach-action"
+          onClick={() => {
+            const chip = COMPOSER_INTENT_CHIPS.find(
+              (c) => c.intentConstraint === action.intentConstraint,
+            );
+            if (chip) setSelectedIntentChipId(chip.id);
+            setFeedback(`${action.label} – bitte prüfen, dann absenden`);
+            setTimeout(() => setFeedback(''), 3200);
+          }}
+        >
+          {action.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const rememberUndoSlot = rememberUndo ? (
+    <p className="cust-akte-workspace__remember-undo" role="status">
+      Gespeichert.
+      {' '}
+      <button type="button" onClick={handleRememberUndo}>
+        Rückgängig
+      </button>
+    </p>
+  ) : null;
+
   return (
     <section
       className={`cust-akte-workspace cust-akte-workspace--chat-only cust-akte-workspace--feed${hideFeed ? ' cust-akte-workspace--composer-only' : ''}${compactEmpty ? ' cust-akte-workspace--compact-empty' : ''}`}
       aria-label={hideFeed ? 'Clever Composer' : 'Kundenverlauf'}
     >
+      {rememberUndoSlot}
+      {attachActionsSlot}
       <SharedWorkspaceChat
         role="seller"
         items={timeline.items}
@@ -1855,6 +1971,13 @@ export default function CustomerAkteSharedWorkspace({
         suggestionChips={composerChips.chips}
         moreSuggestionChips={composerChips.moreChips}
         onSuggestionChip={handleSuggestionChip}
+        intentChips={COMPOSER_INTENT_CHIPS}
+        selectedIntentChipId={selectedIntentChipId}
+        onIntentChip={(chip) => {
+          setSelectedIntentChipId(chip.id);
+          setAttachmentActions(null);
+        }}
+        hideIntentChips={Boolean(reviewModel) || inMessageEdit}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (
             <SellerUniversalReviewCard

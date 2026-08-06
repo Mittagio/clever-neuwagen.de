@@ -1,3 +1,53 @@
+.cust-akte-workspace__remember-undo {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.cust-akte-workspace__remember-undo button {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #4c3d8f;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cust-akte-workspace__attach-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0.35rem 1rem 0.1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.cust-akte-workspace__attach-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.cust-akte-workspace__attach-action {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid rgba(109, 91, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(109, 91, 184, 0.08);
+  color: #4c3d8f;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .cust-akte-workspace__live-chips {
   display: flex;
   flex-wrap: wrap;

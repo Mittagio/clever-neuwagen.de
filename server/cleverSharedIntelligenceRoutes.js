@@ -420,6 +420,7 @@ router.post('/clever/seller-turn', express.json({ limit: '128kb' }), async (req,
       sellerInsights = null,
       scopeHint = null,
       now = null,
+      intentConstraint = null,
     } = req.body ?? {};
 
     const leadInput = slimLeadForSellerTurn(lead ?? {
@@ -442,6 +443,7 @@ router.post('/clever/seller-turn', express.json({ limit: '128kb' }), async (req,
       attachments: slimAttachments,
       scopeHint: scopeHint || 'dashboard',
       now: now || null,
+      intentConstraint: intentConstraint || null,
       env: process.env,
     });
 

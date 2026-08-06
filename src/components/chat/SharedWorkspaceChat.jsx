@@ -62,6 +62,15 @@ export default function SharedWorkspaceChat({
   suggestionChips = [],
   moreSuggestionChips = [],
   onSuggestionChip = null,
+  /**
+   * Optional Intent-Chips (One-Turn Constraint) – getrennt von Suggestion-Chips.
+   * @type {{ id: string, label: string, intentConstraint?: string|null }[]}
+   */
+  intentChips = [],
+  selectedIntentChipId = null,
+  onIntentChip = null,
+  /** Bei offener Review: Intent-Chips ausblenden/deaktivieren */
+  hideIntentChips = false,
   /** Nach Suche: Message im Feed anspringen */
   scrollToMessageId = null,
   scrollToMessageToken = 0,
@@ -272,6 +281,13 @@ export default function SharedWorkspaceChat({
     && Array.isArray(suggestionChips)
     && suggestionChips.length > 0
     && typeof onSuggestionChip === 'function';
+  const showIntentChips = role === 'seller'
+    && !composerEditMode
+    && !hideIntentChips
+    && !compactMode
+    && Array.isArray(intentChips)
+    && intentChips.length > 0
+    && typeof onIntentChip === 'function';
   const hasMoreChips = Array.isArray(moreSuggestionChips) && moreSuggestionChips.length > 0;
   const showContextPills = Array.isArray(contextPills) && contextPills.length > 0;
   const showToneMenu = Array.isArray(outboundTones) && outboundTones.length > 0
@@ -443,6 +459,30 @@ export default function SharedWorkspaceChat({
             <label className="sw-composer__label" htmlFor={`sw-composer-${role}`}>
               {composerLabel}
             </label>
+          ) : null}
+
+          {showIntentChips ? (
+            <div className="sw-composer__intent-chips" role="group" aria-label="Clever Intent">
+              <div className="sw-composer__chips-scroll">
+                {intentChips.map((chip) => {
+                  const selected = selectedIntentChipId
+                    ? chip.id === selectedIntentChipId
+                    : chip.intentConstraint == null;
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={`sw-composer__chip sw-composer__chip--intent${selected ? ' is-selected' : ''}`}
+                      aria-pressed={selected}
+                      disabled={sending}
+                      onClick={() => onIntentChip?.(chip)}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
 
           {showSuggestionChips ? (
