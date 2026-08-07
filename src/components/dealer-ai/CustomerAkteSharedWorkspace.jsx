@@ -26,6 +26,16 @@ import {
   requestCleverScreenshotInterpret,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
+  isCleverAgentClientEnabled,
+  requestCleverAgent,
+} from '../../services/cleverAgent/cleverAgentClient.js';
+import { applyCleverAgentMutations } from '../../services/cleverAgent/applyCleverAgentMutations.js';
+import {
+  createEmptyAgentWorkingMemory,
+  updateAgentWorkingMemory,
+} from '../../services/cleverAgent/cleverAgentWorkingMemory.js';
+import { routeSellerRequest } from '../../services/cleverAgent/routeSellerRequest.js';
+import {
   INLINE_RESULT_TYPES,
   insertInlineFactIntoDraft,
 } from '../../services/dealer/sellerInlineComposerAssist.js';
@@ -196,6 +206,10 @@ export default function CustomerAkteSharedWorkspace({
   onResolveOfferReference = null,
   onUpsertWorkingContext = null,
   workspaceSlot = null,
+  /** Optional: konkreter Clever-Schritt statt Empty-Recommend (Golden Moment / Empfiehlt) */
+  cleverStageSlot = null,
+  /** Soft-Labels aus Kundenbild für kontextuelle Next-Step-Copy */
+  cleverHintLabels = null,
   scrollToMessageId = null,
   scrollToMessageToken = 0,
   onAttachOffer = null,
@@ -217,6 +231,7 @@ export default function CustomerAkteSharedWorkspace({
   const [lastComposerAction, setLastComposerAction] = useState(null);
   const [offerPrep, setOfferPrep] = useState(null);
   const [appointmentDraft, setAppointmentDraft] = useState(null);
+  const [agentWorkingMemory, setAgentWorkingMemory] = useState(() => createEmptyAgentWorkingMemory());
   const [composerMode, setComposerMode] = useState(COMPOSER_MODES.CLEVER_WORK);
   const [editingMessageDraft, setEditingMessageDraft] = useState(null);
   const debounceRef = useRef(null);
@@ -489,6 +504,102 @@ export default function CustomerAkteSharedWorkspace({
 
       const offerCtx = resolveCurrentOfferContext();
       const workingCtx = resolveMagicWorkingContext();
+
+      // Clever Agent (OpenAI → Tools → Business-Logik) – gleicher Pfad für Text + Chips
+      if (isCleverAgentClientEnabled()) {
+        const route = routeSellerRequest(text, { workingMemory: agentWorkingMemory });
+        if (route === 'clever_agent') {
+          setFeedback('Clever arbeitet …');
+          const agentResult = await requestCleverAgent({
+            sellerMessage: text,
+            lead,
+            workingContext: workingCtx || offerCtx,
+            currentOffer: offerCtx || workingCtx,
+            conversationHistory: [],
+            workingMemory: agentWorkingMemory,
+            previousOfferPreparation: agentWorkingMemory?.previousOfferPreparation || null,
+          }, {
+            sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
+            dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
+          });
+
+          setAgentWorkingMemory((prev) => updateAgentWorkingMemory(prev, agentResult, text));
+
+          if (agentResult?.ok || (agentResult?.mutations?.length > 0) || agentResult?.confirmationRequired) {
+            setDraft('');
+            setOfferPrep(null);
+            setAppointmentDraft(null);
+            setUniversalTurn(null);
+            clearAssist();
+            resetIntentChipsToDefault();
+
+            let nextLead = lead;
+            let messageDraft = null;
+            if (agentResult.mutations?.length) {
+              const applied = applyCleverAgentMutations(lead, agentResult.mutations);
+              nextLead = applied.lead;
+              messageDraft = applied.messageDraft;
+            }
+
+            if (messageDraft) {
+              rememberLastComposerAction(buildComposerLastActionFromText({
+                body: messageDraft,
+                title: agentResult.intendSend || agentResult.confirmationRequired
+                  ? 'Nachricht · Senden bestätigen'
+                  : 'Nachricht',
+                status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
+              }));
+            }
+
+            // Prepared Offer: nicht blind persistieren – Review-Hinweis
+            if (agentResult.confirmationRequired && agentResult.pendingAction?.type === 'prepare_offer') {
+              setOfferPrep({
+                source: 'clever_agent',
+                agentSource: agentResult.agentSource || 'openai',
+                pendingAction: agentResult.pendingAction,
+                offer: agentResult.offerSummary,
+                message: agentResult.message,
+              });
+            }
+
+            const feedText = String(agentResult.message || '').trim();
+            if (feedText && nextLead) {
+              try {
+                const posted = postCleverAssistFeedCard({
+                  lead: nextLead,
+                  title: '✨ Clever',
+                  text: feedText,
+                });
+                if (posted?.lead) nextLead = posted.lead;
+              } catch {
+                /* feed optional */
+              }
+            }
+
+            if (typeof onPersistLead === 'function' && nextLead !== lead) {
+              onPersistLead(nextLead);
+            }
+
+            setFeedback(agentResult.message?.slice(0, 140) || 'Erledigt');
+            setTimeout(() => setFeedback(''), 4500);
+            return true;
+          }
+
+          if (agentResult?.fallbackReason === 'feature_disabled'
+            || agentResult?.fallbackReason === 'api_key_missing'
+            || agentResult?.error === 'request_failed') {
+            setFeedback('Clever Agent nicht bereit – klassischer Pfad …');
+          } else if (agentResult?.message) {
+            setDraft('');
+            setUniversalTurn(null);
+            clearAssist();
+            setFeedback(agentResult.message.slice(0, 140));
+            setTimeout(() => setFeedback(''), 4000);
+            return true;
+          }
+        }
+      }
+
       const openVehicles = (() => {
         try {
           return (buildVehicleOpportunityCards({ lead, wishFields: lead?.wish ?? {} }) || [])
@@ -2001,8 +2112,9 @@ export default function CustomerAkteSharedWorkspace({
     () => buildCleverEmptyRecommend(lead, {
       phone: contactPhone,
       workingContextItems,
+      hintLabels: cleverHintLabels,
     }),
-    [lead, contactPhone, workingContextItems],
+    [lead, contactPhone, workingContextItems, cleverHintLabels],
   );
 
   function handleEmptyRecommendAction(action) {
@@ -2017,61 +2129,45 @@ export default function CustomerAkteSharedWorkspace({
         return;
       }
       onAttachOffer?.();
+      return;
+    }
+    if (action?.action === 'prepare_offer' || action?.action === 'seed_draft') {
+      const seed = String(action.draftSeed || '').trim();
+      if (!seed) return;
+      setDraft(seed);
+      setComposerMode(COMPOSER_MODES.CLEVER_WORK);
+      if (action.action === 'prepare_offer') {
+        setSelectedIntentChipId(
+          COMPOSER_INTENT_CHIPS.find((c) => /angebot/i.test(c.id) || /angebot/i.test(c.label))?.id
+          || selectedIntentChipId,
+        );
+      }
     }
   }
 
-  function handleEmptySuggestion(suggestion) {
-    const seed = String(suggestion?.draftSeed || '').trim();
-    if (!seed) return;
-    setDraft(seed);
-    setComposerMode(COMPOSER_MODES.CLEVER_WORK);
-  }
-
-  const emptySlot = (
-    <div className="sw-chat__empty-recommend" aria-label="Clever Empfehlung">
-      {emptyRecommend.mode === 'recommend' ? (
-        <>
-          <p className="sw-chat__empty-recommend-title">
-            <IconSparkle className="sw-chat__empty-recommend-icon" />
-            <span>{emptyRecommend.title}</span>
-          </p>
-          {emptyRecommend.summary ? (
-            <p className="sw-chat__empty-recommend-summary">{emptyRecommend.summary}</p>
-          ) : null}
-          {emptyRecommend.actions.length ? (
-            <div className="sw-chat__empty-recommend-actions">
-              {emptyRecommend.actions.map((action, index) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className={`sw-chat__empty-recommend-btn${index === 0 ? '' : ' sw-chat__empty-recommend-btn--ghost'}`}
-                  onClick={() => handleEmptyRecommendAction(action)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <p className="sw-chat__empty-recommend-idle">{emptyRecommend.summary}</p>
-          {emptyRecommend.suggestions.length ? (
-            <div className="sw-chat__empty-recommend-actions">
-              {emptyRecommend.suggestions.map((suggestion) => (
-                <button
-                  key={suggestion.id}
-                  type="button"
-                  className="sw-chat__empty-recommend-btn sw-chat__empty-recommend-btn--ghost"
-                  onClick={() => handleEmptySuggestion(suggestion)}
-                >
-                  {suggestion.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </>
-      )}
+  const emptySlot = cleverStageSlot || (
+    <div className="sw-chat__empty-recommend" aria-label="Clever nächster Schritt">
+      <p className="sw-chat__empty-recommend-title">
+        <IconSparkle className="sw-chat__empty-recommend-icon" />
+        <span>{emptyRecommend.title || 'Clever'}</span>
+      </p>
+      {emptyRecommend.summary ? (
+        <p className="sw-chat__empty-recommend-summary">{emptyRecommend.summary}</p>
+      ) : null}
+      {emptyRecommend.actions?.length ? (
+        <div className="sw-chat__empty-recommend-actions">
+          {emptyRecommend.actions.slice(0, 1).map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className="sw-chat__empty-recommend-btn"
+              onClick={() => handleEmptyRecommendAction(action)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 

@@ -57,6 +57,14 @@ assert.deepEqual(
   [],
 );
 assert.deepEqual(
+  extractCustomerFacingNotes('Angebot mail an kunde'),
+  [],
+);
+assert.deepEqual(
+  extractCustomerFacingNotes('Angebto mail an kunde.'),
+  [],
+);
+assert.deepEqual(
   extractCustomerFacingNotes('Schreib dem Kunden eine höfliche Rückfrage zu offenen Punkten.'),
   [],
 );
@@ -78,6 +86,40 @@ assert.match(chipAngebot.body, /Tivoli|289/i);
 // Konditionen nicht doppelt
 const condHits = chipAngebot.body.match(/289/g) || [];
 assert.ok(condHits.length <= 2, `duplicate rate mentions: ${condHits.length}`);
+
+// Stenogramm / Tippfehler darf nie in die Kundennachricht
+const offerShorthand = writeGroundedMessageFallback({
+  recipient: 'Herr Müller',
+  rawSellerInstruction: 'Angebto mail an kunde.',
+  chipIntent: 'angebot',
+  vehicleIdentity: { modelKey: 'ev6', modelLabel: 'EV6', trimLabel: 'Air' },
+  offerFacts: {
+    summary: '48 Monate · 35.000 km · 437,26 € / Monat',
+    monthlyRate: 437.26,
+    termMonths: 48,
+    mileagePerYear: 35000,
+  },
+  akteContext: {
+    selectedWorkingChip: { shortLabel: 'Air · 48 M', modelKey: 'ev6' },
+  },
+});
+assert.doesNotMatch(offerShorthand.body, /angebto|mail an kunde/i);
+assert.doesNotMatch(offerShorthand.body, /Bezugnehmend auf/i);
+assert.match(offerShorthand.body, /EV6/i);
+assert.match(offerShorthand.body, /Angebot/i);
+assert.match(offerShorthand.body, /437/);
+assert.equal(detectChipIntent('Angebto mail an kunde.'), 'angebot');
+assert.equal(detectChipIntent('Angebot mail an kunde'), 'angebot');
+
+// Unvollständige Akte → neutrale Anrede
+const incompleteName = writeGroundedMessageFallback({
+  recipient: 'Kunde',
+  rawSellerInstruction: 'Angebot mail an kunde',
+  vehicleIdentity: { modelKey: 'ev9', modelLabel: 'EV9' },
+  offerFacts: { summary: '48 Monate · 350 € mtl.', monthlyRate: 350 },
+}).body;
+assert.match(incompleteName, /^Guten Tag,/);
+assert.doesNotMatch(incompleteName, /Hallo Aalen/i);
 
 // Keine doppelte Lieferzeit-Zeile
 const deliveryBody = writeGroundedMessageFallback({

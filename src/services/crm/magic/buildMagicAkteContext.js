@@ -27,7 +27,10 @@ export function detectChipIntent(rawSellerInput = '') {
   if (/danke|eingangsbestätigung|eingangsbestaetigung/.test(t)) return 'danke';
   if (/lieferzeit|verf[uü]gbar/.test(t)) return 'lieferzeit';
   if (/angebot\s+angepasst|anpassung/.test(t)) return 'angebot_angepasst';
-  if (/\bangebot\b/.test(t) && /schreib|bereit|schick|mail|nachricht/.test(t)) return 'angebot';
+  if (/\bangeb[o0]t[eo]?\b/.test(t) && /schreib|bereit|schick|mail|nachricht|senden|kunde/.test(t)) {
+    return 'angebot';
+  }
+  if (/mail\s+an\s+(kunde|ihm|ihr|den\s+kunden)/.test(t) && /angeb|offer/.test(t)) return 'angebot';
   if (/selbstauskunft|unterlagen/.test(t)) return 'unterlagen';
   if (/termin|probefahrt/.test(t)) return /probefahrt/.test(t) ? 'probefahrt' : 'termin';
   return null;

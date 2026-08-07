@@ -18,16 +18,38 @@ import {
   buildMagicAkteContext,
   detectChipIntent,
 } from '../crm/magic/buildMagicAkteContext.js';
+import { isSellerOfferMailShorthand } from '../crm/magic/generateCleverCustomerMessage.js';
+import { deriveContactIdentity } from '../dealer/customerContactIdentity.js';
 
 function salutationName(customerName, facts, lead) {
+  const identity = deriveContactIdentity(
+    lead?.contact || {},
+    customerName
+      || facts.find((f) => f.field === 'customerName')?.value
+      || lead?.contact?.name
+      || lead?.name
+      || '',
+  );
+  if (identity.salutation && identity.lastName) {
+    return `${identity.salutation} ${identity.lastName}`;
+  }
+  if (identity.firstName && identity.lastName) {
+    return `${identity.firstName} ${identity.lastName}`;
+  }
   const name = customerName
     || facts.find((f) => f.field === 'customerName')?.value
     || lead?.contact?.name
-    || 'Kunde';
-  const salutation = String(lead?.contact?.salutation || '').toLowerCase();
+    || '';
+  if (!name || /^kunde(\s*\(offen\))?$/i.test(String(name).trim())) return 'Kunde';
   if (/^(herr|frau)\b/i.test(name)) return name;
-  if (salutation === 'frau') return `Frau ${name}`;
-  return `Herr ${name}`;
+  if (/\s/.test(String(name).trim())) return String(name).trim();
+  // Einzelname ohne Anrede → kein „Herr Aalen“
+  return 'Kunde';
+}
+
+function messageGreetingLine(customerName, facts, lead) {
+  const target = salutationName(customerName, facts || [], lead);
+  return target === 'Kunde' ? 'Guten Tag,' : `Hallo ${target},`;
 }
 
 function buildOfferMessageDraft({
@@ -45,10 +67,13 @@ function buildOfferMessageDraft({
   const vehicleLabel = offerPayload?.vehicleLabel
     || vehicle?.label
     || 'das gewünschte Fahrzeug';
+  const monthlyRate = offerPayload?.monthlyRate != null
+    ? Number(offerPayload.monthlyRate)
+    : null;
   const priceLabel = purchase
     ? `${Number(purchase.value).toLocaleString('de-DE')} €`
-    : (offerPayload?.monthlyRate != null
-      ? `${Number(offerPayload.monthlyRate).toLocaleString('de-DE')} €/Monat`
+    : (monthlyRate != null && Number.isFinite(monthlyRate)
+      ? `${monthlyRate.toLocaleString('de-DE')} €/Monat`
       : null);
 
   const labels = [];
@@ -68,7 +93,7 @@ function buildOfferMessageDraft({
   if (discount?.label) detailBits.push(discount.label);
 
   const lines = [
-    `Hallo ${salutationName(customerName, facts, lead)},`,
+    messageGreetingLine(customerName, facts, lead),
     '',
     `anbei erhalten Sie das gewünschte Angebot für den ${vehicleLabel}`
       + (detailBits.length ? ` (${detailBits.join(', ')})` : '')
@@ -84,9 +109,9 @@ function buildOfferMessageDraft({
         : `Die Kondition: ${priceLabel}.`,
     );
   }
-  const term = lead?.wish?.termMonths;
-  const km = lead?.wish?.mileagePerYear;
-  const down = lead?.wish?.downPayment;
+  const term = offerPayload?.termMonths ?? lead?.wish?.termMonths;
+  const km = offerPayload?.mileagePerYear ?? lead?.wish?.mileagePerYear;
+  const down = offerPayload?.downPayment ?? lead?.wish?.downPayment;
   if (term || km != null || down != null) {
     const cond = [
       term ? `${term} Monate` : null,
@@ -115,7 +140,7 @@ function buildOfferPendingInterimDraft({ lead, facts, customerName, offerPayload
   const vehicle = facts.find((f) => f.field === 'vehicleInterest');
   const vehicleLabel = offerPayload?.vehicleLabel || vehicle?.label || 'Ihr Wunschfahrzeug';
   return [
-    `Hallo ${salutationName(customerName, facts, lead)},`,
+    messageGreetingLine(customerName, facts, lead),
     '',
     `ich bereite das gewünschte Angebot für den ${vehicleLabel} aktuell für Sie vor`,
     'und sende es Ihnen, sobald die Kalkulation vollständig ist.',
@@ -147,7 +172,7 @@ function buildOfferUpdateMessageDraft({
     .filter(Boolean);
 
   const lines = [
-    `Hallo ${salutationName(customerName, facts, lead)},`,
+    messageGreetingLine(customerName, facts, lead),
     '',
     `wie besprochen habe ich das Angebot (${offerLabel}) angepasst.`,
   ];
@@ -190,7 +215,7 @@ function buildAttachedOfferSummaryMessageDraft({
         : null;
 
   const lines = [
-    `Hallo ${salutationName(customerName, [], lead)},`,
+    messageGreetingLine(customerName, [], lead),
     '',
     `anbei die Kurzfassung zu Ihrem Angebot (${offerLabel}).`,
   ];
@@ -1044,6 +1069,32 @@ export function planSellerActions({
         facts,
         customerName,
         offerPayload: offerAction?.payload,
+      });
+    } else if (
+      currentOfferContext?.offerId
+      && (
+        detectChipIntent(sellerInput) === 'angebot'
+        || isSellerOfferMailShorthand(sellerInput)
+      )
+    ) {
+      messageDraft = buildOfferMessageDraft({
+        lead,
+        sellerInput,
+        facts,
+        customerName,
+        offerPayload: {
+          vehicleLabel: currentOfferContext.title
+            || currentOfferContext.modelLabel
+            || currentOfferContext.modelKey
+            || offerAction?.payload?.vehicleLabel
+            || null,
+          monthlyRate: currentOfferContext.monthlyRate ?? offerAction?.payload?.monthlyRate ?? null,
+          termMonths: currentOfferContext.termMonths ?? null,
+          mileagePerYear: currentOfferContext.mileagePerYear ?? null,
+          downPayment: currentOfferContext.downPayment ?? null,
+          paymentType: currentOfferContext.paymentType ?? null,
+          ...(offerAction?.payload || {}),
+        },
       });
     } else if (offerUpdateAction || (
       intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)

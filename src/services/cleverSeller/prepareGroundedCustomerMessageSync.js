@@ -15,6 +15,39 @@ import { validateMessageFactPreservation } from '../crm/magic/validateMessageFac
 import { validateCustomerMessageNotSellerCommand } from './validateSellerCommandMessage.js';
 import { resolveGroundedVehicleKnowledge } from './resolveGroundedVehicleKnowledge.js';
 import { beginCustomerMessageEdit } from '../crm/composerMode.js';
+import { deriveContactIdentity } from '../dealer/customerContactIdentity.js';
+
+/**
+ * Anrede für Kundennachricht aus strukturierter Identität.
+ * Unvollständige Einzel-Namen (z. B. nur Stadt/Platzhalter) → leer → „Guten Tag,“
+ */
+export function resolveMessageRecipient(lead = null, customerName = '') {
+  const identity = deriveContactIdentity(lead?.contact || {}, customerName || lead?.name || '');
+  if (identity.salutation && identity.lastName) {
+    return `${identity.salutation} ${identity.lastName}`;
+  }
+  if (identity.firstName && identity.lastName) {
+    return `${identity.firstName} ${identity.lastName}`;
+  }
+  if (identity.lastName && identity.salutation) {
+    return `${identity.salutation} ${identity.lastName}`;
+  }
+  if (identity.firstName && identity.lastName === '' && identity.salutation) {
+    return `${identity.salutation} ${identity.firstName}`;
+  }
+  if (identity.kind === 'business' && identity.companyName) {
+    const person = [identity.firstName, identity.lastName].filter(Boolean).join(' ');
+    if (person && identity.salutation) return `${identity.salutation} ${identity.lastName || person}`;
+    return '';
+  }
+  const raw = String(customerName || lead?.contact?.name || lead?.name || '').trim();
+  if (!raw || /^kunde(\s*\(offen\))?$/i.test(raw)) return '';
+  if (/^(herr|frau)\b/i.test(raw)) return raw;
+  // Voller Name mit Leerzeichen ok
+  if (/\s/.test(raw)) return raw;
+  // Einzelnes Token ohne Vor/Nach/Anrede → unvollständig
+  return '';
+}
 
 /**
  * @param {{
@@ -64,9 +97,7 @@ export function prepareGroundedCustomerMessageSync(params = {}) {
     mentionedAhk: knowledge.interpretation?.mentionedAhk,
   });
 
-  const recipient = params.customerName
-    || params.lead?.contact?.name
-    || params.lead?.name
+  const recipient = resolveMessageRecipient(params.lead, params.customerName)
     || 'Kunde';
 
   const chipIntent = params.chipIntent || detectChipIntent(sellerInput);

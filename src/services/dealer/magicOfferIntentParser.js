@@ -187,12 +187,21 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let trimHint = null;
-  if (/\bgt[\s-]?line\b/.test(blob)) trimHint = 'gt-line';
+  if (/\bgt[\s-]?line\b|\bgtl\b/.test(blob)) trimHint = 'gt-line';
   else if (/\bearth\b/.test(blob)) trimHint = 'earth';
-  else if (/\bair\b/.test(blob)) trimHint = 'air';
-  else if (/\bspirit\b/.test(blob)) trimHint = 'spirit';
+  else if (/\bair\b/.test(blob) || (modelHint && /\bev\d/.test(modelHint) && /\bar\b/.test(blob))) {
+    trimHint = 'air';
+  } else if (/\bspirit\b/.test(blob)) trimHint = 'spirit';
   else if (/\bvision\b/.test(blob)) trimHint = 'vision';
   else if (/\b(?:core|cor)\b/.test(blob)) trimHint = 'core';
+
+  const equipmentKeys = [];
+  if (/\bwarmepumpe\b/.test(blob) || /(^|[^a-z0-9])wp([^a-z0-9]|$)/.test(blob)) {
+    equipmentKeys.push('heat_pump');
+  }
+  if (/\bahk\b|\banhaenger(?:kupplung)?\b|\banhänger(?:kupplung)?\b/.test(blob)) {
+    equipmentKeys.push('towbar');
+  }
 
   let transmissionRequirement = null;
   if (/\bautomatik(?:getriebe)?\b|\bdct\b|\bdsg\b/.test(blob)) {
@@ -206,9 +215,10 @@ export function parseMagicOfferIntent(text = '') {
     [/terracotta/, 'terracotta'],
     [/snow\s*white(?:\s*pearl)?|schneeweiss/, 'snowwhitepearl'],
     [/clear\s*white|klarweiss|clearwhite/, 'clearwhite'],
+    [/(?:^|[^a-z])(weiss|weiß|white)(?:[^a-z]|$)/i, 'white'],
     [/aurora\s*black|schwarz/, 'aurorablackpearl'],
     [/shale\s*grey|schiefergrau/, 'shalegrey'],
-    [/frost\s*blue/, 'frostblue'],
+    [/frost\s*blue|\bblau\b/, 'frostblue'],
     [/ivory\s*silver/, 'ivorysilver'],
     [/aventurine\s*green/, 'aventurinegreen'],
     [/wolf\s*gr[ae]y|wolfgray/, 'wolfgray'],
@@ -234,6 +244,7 @@ export function parseMagicOfferIntent(text = '') {
       motorHint,
       transmissionRequirement,
       packageKeys,
+      equipmentKeys,
       colorHint,
     },
     commercialInput: {

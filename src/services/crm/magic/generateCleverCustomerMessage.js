@@ -31,7 +31,8 @@ QUALITÄT:
 - Kein Boilerplate „kurze Rückfrage:“ ohne echte Frage oder konkreten CTA.
 - Bei chipIntent „nachfassen“: echte Frage zum richtigen Fahrzeug (Working-Chip vor generischem Kontext; Akte-Neigung z. B. XCeed erwähnen wenn sinnvoll).
 - Bei chipIntent „kundenlink“: sinnvolle Mail mit Link-/Portfolio-Absicht, kein leeres Template.
-- rawSellerInstruction enthält oft Chip-Meta („Schreib eine kurze Nachfassnachricht“) – NIEMALS im Body wiedergeben.
+- rawSellerInstruction enthält oft Chip-Meta („Schreib eine kurze Nachfassnachricht“, „Angebot mail an Kunde“) – NIEMALS im Body wiedergeben.
+- Bei chipIntent „angebot“: sendefähige Angebotsmail, kein Stenogramm des Verkäufers.
 - Modellname korrekt und konsistent; keine doppelten Konditionszeilen.
 
 Wenn verifiedPackageFacts fehlt oder items leer: KEINE Paketinhalte aufzählen.
@@ -41,7 +42,9 @@ Antworte ausschließlich als MagicMessageResult JSON (mode, body, usedFacts, …
 
 function greeting(recipient = '') {
   const name = String(recipient || '').trim();
-  if (!name || name === 'Kunde' || name === 'dem Kunden') return 'Guten Tag,';
+  if (!name || name === 'Kunde' || name === 'dem Kunden' || /^kunde\s*\(offen\)$/i.test(name)) {
+    return 'Guten Tag,';
+  }
   if (/^(herr|frau)\b/i.test(name)) return `Hallo ${name},`;
   return `Hallo ${name},`;
 }
@@ -102,25 +105,56 @@ export function cleanVehicleDisplayName(value = '') {
     .replace(/^kia\s+/i, '')
     .replace(/\s*·\s*.*$/, '')
     .replace(/\s*[-–]\s*\d+\s*(€|euro|mtl|monate|km).*$/i, '')
+    .replace(/\s+angebot$/i, '')
     .trim();
+}
+
+const MODEL_NAME_RE = /\b(xceed|tivoli|sportage|picanto|niro|sorento|stonic|ceed|ev\s?[2-9]|ev\d)\b/i;
+const TRIM_ONLY_RE = /^(air|earth|gt-line|gt|vision|style|winter|connect|spirit|platinum|edition)$/i;
+
+function looksLikeFullModel(label = '') {
+  return MODEL_NAME_RE.test(String(label || ''));
 }
 
 function resolveFocusVehicleLabel(context = {}) {
   const vehicle = context.vehicleIdentity || {};
   const chip = context.akteContext?.selectedWorkingChip;
   const inclination = context.akteContext?.inclination;
-  const fromVehicle = cleanVehicleDisplayName(
-    vehicle.modelLabel || vehicle.label || vehicle.modelKey || '',
-  );
-  const fromChip = cleanVehicleDisplayName(chip?.shortLabel || chip?.label || chip?.modelKey || '');
-  const fromInclination = cleanVehicleDisplayName(inclination?.modelLabel || inclination?.modelKey || '');
+  const offer = context.offerFacts || {};
 
-  // Working-Chip hat Vorrang, wenn er ein konkretes Modell trägt
-  if (fromChip && /\b(xceed|tivoli|sportage|picanto|niro|sorento|stonic|ceed|ev\s?[2-9]|sorento)\b/i.test(fromChip)) {
-    return fromChip;
+  const fromVehicle = cleanVehicleDisplayName(
+    [vehicle.modelLabel, vehicle.trimLabel].filter(Boolean).join(' ')
+      || vehicle.label
+      || vehicle.modelKey
+      || '',
+  );
+  const fromChipFull = cleanVehicleDisplayName(
+    chip?.label || chip?.modelLabel || [chip?.modelKey, chip?.trimLabel].filter(Boolean).join(' ') || '',
+  );
+  const fromChipShort = cleanVehicleDisplayName(chip?.shortLabel || chip?.modelKey || '');
+  const fromOffer = cleanVehicleDisplayName(offer.title || offer.summary || '');
+  const fromInclination = cleanVehicleDisplayName(
+    inclination?.modelLabel || inclination?.modelKey || '',
+  );
+
+  // Volle Modellnamen vor Trim-only Shortlabels („Air · 48M“)
+  const fullCandidates = [fromChipFull, fromVehicle, fromOffer, fromChipShort, fromInclination]
+    .filter((label) => label && looksLikeFullModel(label));
+  if (fullCandidates.length) {
+    // Längeres Label bevorzugen (EV6 Air vor EV6)
+    return fullCandidates.sort((a, b) => b.length - a.length)[0];
   }
+
+  if (fromVehicle && !TRIM_ONLY_RE.test(fromVehicle)) return fromVehicle;
+  if (fromChipFull && !TRIM_ONLY_RE.test(fromChipFull)) return fromChipFull;
+  if (fromOffer && !TRIM_ONLY_RE.test(fromOffer)) return fromOffer;
+  if (fromInclination && !TRIM_ONLY_RE.test(fromInclination)) return fromInclination;
+
+  // Trim-only nur als letzter Fallback
+  if (fromChipShort) return fromChipShort;
   if (fromVehicle) return fromVehicle;
-  if (fromChip) return fromChip;
+  if (fromChipFull) return fromChipFull;
+  if (fromOffer) return fromOffer;
   if (fromInclination) return fromInclination;
   return null;
 }
@@ -168,10 +202,18 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
   const sunroof = seller.find((f) => f.type === 'sunroof')?.value;
   const packagePresent = seller.find((f) => f.type === 'package_present')?.value;
   const focusLabel = resolveFocusVehicleLabel(context);
+  const trimPart = String(vehicle.trimLabel || vehicle.trimId || '').trim();
+  const baseVehicle = focusLabel
+    || cleanVehicleDisplayName(vehicle.modelLabel || vehicle.modelKey);
+  const trimAlreadyIn = Boolean(
+    trimPart
+    && baseVehicle
+    && new RegExp(`\\b${trimPart.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(baseVehicle),
+  );
   const vehicleLabel = [
     color,
-    focusLabel || cleanVehicleDisplayName(vehicle.modelLabel || vehicle.modelKey),
-    vehicle.trimLabel || vehicle.trimId,
+    baseVehicle,
+    !trimAlreadyIn && trimPart && !TRIM_ONLY_RE.test(baseVehicle || '') ? trimPart : null,
   ].filter(Boolean).join(' ');
 
   const instruction = String(context.rawSellerInstruction || '').trim();
@@ -179,7 +221,9 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     || context.akteContext?.chipIntent
     || detectChipIntent(instruction);
   const kind = detectInstructionKind(instruction, chipIntent);
-  const noteLines = extractCustomerFacingNotes(instruction);
+  const noteLines = (kind === 'offer' || kind === 'offer_update')
+    ? []
+    : extractCustomerFacingNotes(instruction);
   const inclination = context.akteContext?.inclination;
   const inclinationLabel = cleanVehicleDisplayName(
     inclination?.modelLabel || inclination?.modelKey || '',
@@ -190,6 +234,15 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
 
   if (kind === 'thanks') {
     lines.push('vielen Dank für Ihre Nachricht – ich habe Ihre Anfrage erhalten und melde mich in Kürze bei Ihnen.');
+  } else if (kind === 'offer' || kind === 'offer_update') {
+    const target = vehicleLabel || focusLabel || 'Ihr Wunschfahrzeug';
+    if (kind === 'offer_update') {
+      lines.push(`ich habe das Angebot zum ${target} angepasst.`);
+    } else if (offerLine) {
+      lines.push(`anbei erhalten Sie das aktuelle Angebot zum ${target}.`);
+    } else {
+      lines.push(`ich habe Ihnen ein passendes Angebot zum ${target} vorbereitet.`);
+    }
   } else if (kind === 'kundenlink') {
     const target = focusLabel || 'Ihre Angebote';
     lines.push(
@@ -245,8 +298,13 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     lines.push('kurz zu Ihrem Anliegen:');
   }
 
-  // Kundenlink/Followup/Question: Fahrzeug-/Konditionsblock nur wenn noch nicht inhaltlich abgedeckt
-  const skipGenericVehicleBlock = kind === 'kundenlink' || kind === 'followup' || kind === 'question' || kind === 'thanks';
+  // Kundenlink/Followup/Question/Offer: kein „Bezugnehmend auf …“-Block
+  const skipGenericVehicleBlock = kind === 'kundenlink'
+    || kind === 'followup'
+    || kind === 'question'
+    || kind === 'thanks'
+    || kind === 'offer'
+    || kind === 'offer_update';
 
   if (!skipGenericVehicleBlock) {
     const bits = [];
@@ -267,7 +325,7 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
       lines.push('');
       lines.push(`Zur Verfügbarkeit: ${availability}.`);
     }
-  } else if (availability && kind !== 'thanks') {
+  } else if (availability && kind !== 'thanks' && kind !== 'offer' && kind !== 'offer_update') {
     lines.push('');
     lines.push(`Zur Verfügbarkeit: ${availability}.`);
   }
@@ -282,11 +340,14 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     && f.type !== 'trim'
     && f.value
   ));
-  if (kind !== 'question' && kind !== 'followup' && kind !== 'kundenlink') {
+  if (kind !== 'question' && kind !== 'followup' && kind !== 'kundenlink' && kind !== 'offer' && kind !== 'offer_update') {
     if (noteLines.length) {
       lines.push('');
       for (const note of noteLines.slice(0, 4)) {
         if (/\berstell\b|\bmach(?:e|en)?\s+(?:ihm|ihr)\b|\bangebot\s+erstellen\b/i.test(note)) {
+          continue;
+        }
+        if (isSellerOfferMailShorthand(note)) {
           continue;
         }
         if (/\bschreib(?:e|en)?\b/i.test(note) && /\b(dass|das|wegen)\b/i.test(note)) {
@@ -346,6 +407,8 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     lines.push('Bei Fragen zum Link oder zu den Fahrzeugen melde ich mich gerne.');
   } else if (kind === 'followup' || kind === 'question') {
     lines.push('Ich freue mich auf Ihre kurze Rückmeldung.');
+  } else if (kind === 'offer' || kind === 'offer_update') {
+    lines.push('Passt das so für Sie, oder soll ich Laufzeit, Kilometer oder Anzahlung anpassen?');
   } else {
     lines.push('Gerne schicke ich Ihnen noch Bilder und die genauen Fahrzeugdaten oder stelle Ihnen das Fahrzeug persönlich vor.');
   }
@@ -371,26 +434,50 @@ function detectInstructionKind(instruction = '', chipIntent = null) {
   if (chipIntent === 'rueckfrage') return 'question';
   if (chipIntent === 'danke') return 'thanks';
   if (chipIntent === 'lieferzeit') return 'delivery';
+  if (chipIntent === 'angebot_angepasst') return 'offer_update';
+  if (chipIntent === 'angebot') return 'offer';
   const t = String(instruction).toLowerCase();
   if (/kundenlink|portfolio|angebote per mail|link\s+senden/.test(t)) return 'kundenlink';
   if (/danke|eingangsbestätigung|eingangsbestaetigung/.test(t)) return 'thanks';
   if (/nachfass|follow[\s-]?up|nachhaken/.test(t)) return 'followup';
   if (/lieferzeit|verf[uü]gbar/.test(t)) return 'delivery';
   if (/r[uü]ckfrage|nachfrage|ob (sie|du) noch|offene\s+punkte/.test(t)) return 'question';
+  if (isSellerOfferMailShorthand(t)) return 'offer';
+  if (/angebot\s+angepasst|anpassung/.test(t)) return 'offer_update';
+  if (/\bangeb[o0]t[eo]?\b/.test(t) && /schreib|bereit|schick|mail|nachricht|senden|kunde/.test(t)) {
+    return 'offer';
+  }
   return 'general';
+}
+
+/** Verkäufer-Stenogramm: Angebot per Mail / an Kunde schicken (inkl. Tippfehler). */
+export function isSellerOfferMailShorthand(text = '') {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return false;
+  if (/angeb[o0]t[eo]?\s*(mail|senden|schick|per\s*mail)/i.test(t)) return true;
+  if (/mail\s+an\s+(kunde|ihm|ihr|den\s+kunden)/i.test(t) && /angeb|offer/i.test(t)) return true;
+  if (/^(angeb[o0]t[eo]?|offer)\b.{0,40}\b(mail|kunde|schick|send)/i.test(t) && t.length < 80) {
+    return true;
+  }
+  if (/^(mail|schick).{0,30}\b(angebot|kunde)/i.test(t) && t.length < 80) return true;
+  return false;
 }
 
 function isChipMetaOnlyPart(part = '') {
   const t = String(part || '').trim().toLowerCase();
   if (!t) return true;
+  if (isSellerOfferMailShorthand(t)) return true;
   if (/^(eine?\s+)?kurze\s+(dankes|nachfass|rückfrage|eingangs|kunden)/i.test(t)) return true;
-  if (/^(dankes|nachfass|rückfrage|angebot|eingangs|kundennachricht)\b/i.test(t) && t.length < 70) return true;
+  if (/^(dankes|nachfass|rückfrage|angeb[o0]t[eo]?|eingangs|kundennachricht)\b/i.test(t) && t.length < 80) {
+    return true;
+  }
   if (/schreib.{0,50}(kundennachricht|nachricht(\s+dazu)?)/i.test(t) && t.length < 90) return true;
   if (/kurz zur lieferzeit/i.test(t)) return true;
   if (/^bereite\b.+\bvor$/i.test(t)) return true;
   if (/^eine?\s+höfliche\s+rückfrage/i.test(t)) return true;
   if (/schick.{0,40}(angebote|kundenlink|portfolio|per mail)/i.test(t) && t.length < 90) return true;
   if (/^angebote per mail/i.test(t)) return true;
+  if (/mail\s+an\s+(kunde|ihm|ihr|den\s+kunden)/i.test(t) && t.length < 80) return true;
   return false;
 }
 
@@ -398,6 +485,7 @@ function isChipMetaOnlyPart(part = '') {
 export function extractCustomerFacingNotes(instruction = '') {
   const raw = String(instruction || '').trim();
   if (!raw) return [];
+  if (isSellerOfferMailShorthand(raw)) return [];
   const cleaned = raw
     .replace(/^(schreib(?:e|en)?|sag(?:e|en)?|formulier(?:e|en)?|informier(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+|[A-Za-zÄÖÜäöüß-]{2,})\s*,?\s*/i, '')
     .replace(/^(erstell(?:e|en)?)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)\s+(ein\s+)?angebot\b[^\n.;]*/i, '')
@@ -408,6 +496,8 @@ export function extractCustomerFacingNotes(instruction = '') {
     .replace(/\bschreib(?:e|en)?\s+(eine?\s+)?höfliche\s+rückfrage[^\n.;]*/gi, '')
     .replace(/\b(erklär|erkläre|erklären)\s+(ihm|ihr|dem kunden|herrn?\s+\w+|frau\s+\w+)?\s*/gi, '')
     .replace(/\bschick(?:e|en)?\s+(ihm|ihr)?\s*(die\s+)?angebote\s+per\s+mail\s*\/?\s*kundenlink[.!]?\s*/gi, '')
+    .replace(/\bangeb[o0]t[eo]?\s*(mail|senden|schick|per\s*mail)[^\n.;]*/gi, '')
+    .replace(/\bmail\s+an\s+(kunde|ihm|ihr|den\s+kunden)[^\n.;]*/gi, '')
     .replace(/^(eine?\s+kurze\s+)?(dankes[-\/]?|eingangs)?(nachricht|bestätigung|mail)\s*(dazu|an\s+ihn)?[.!]?\s*/i, '')
     .replace(/\bkurz zur lieferzeit und verf[uü]gbarkeit[.!]?\s*/gi, '')
     .trim();
@@ -419,6 +509,7 @@ export function extractCustomerFacingNotes(instruction = '') {
     .map((part) => part.trim())
     .filter((part) => part.length >= 4)
     .filter((part) => !isChipMetaOnlyPart(part))
+    .filter((part) => !isSellerOfferMailShorthand(part))
     .filter((part) => !/\b(schreib(?:e|en)?|erklär(?:e|en)?)\s+(ihm|ihr|dem kunden|[A-Za-zÄÖÜäöüß-]+)\b/i.test(part))
     .filter((part) => !/^dass\s+wir\b/i.test(part))
     .map((part) => {

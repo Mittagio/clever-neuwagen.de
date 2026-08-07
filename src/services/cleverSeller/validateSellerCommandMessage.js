@@ -22,6 +22,12 @@ export function containsSellerCommandInMessage(body = '') {
     && /\b(dass|das|wegen)\b/i.test(text)) {
     return true;
   }
+  // Stenogramm / Tippfehler: „Angebto mail an kunde“
+  if (/\bangeb[o0]t[eo]?\s+mail\b/i.test(text)) return true;
+  if (/\bmail\s+an\s+(kunde|ihm|ihr|den\s+kunden)\b/i.test(text)
+    && /\bangeb|\boffer\b/i.test(text)) {
+    return true;
+  }
   return false;
 }
 
