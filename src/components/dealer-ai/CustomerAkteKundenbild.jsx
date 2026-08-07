@@ -203,51 +203,62 @@ function SoftKnowledgeGroup({
           </button>
         ) : null}
       </div>
-      {open ? (
-        <div id={panelId} className="cust-kundenbild__group-body" role="region" aria-label={group.title}>
-          {hasFacts ? (
-            <ul className="cust-kundenbild__chips">
-              {facts.map((chip) => (
-                <li key={chip.id}>
-                  <SnapshotChip chip={chip} onFactTap={onFactTap} />
-                </li>
-              ))}
-              {canAdd ? (
-                <li>
-                  <button
-                    type="button"
-                    className="cust-kundenbild__chip cust-kundenbild__chip--add"
-                    onClick={() => onAddToGroup(group)}
-                    aria-label={`${group.title}: Chip hinzufügen`}
-                  >
-                    <span className="cust-kundenbild__chip-label">+</span>
-                  </button>
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <p className="cust-kundenbild__group-empty">
-              Noch nichts gemerkt.
-              {canAdd ? (
-                <>
-                  {' '}
-                  <button
-                    type="button"
-                    className="cust-kundenbild__group-empty-add"
-                    onClick={() => onAddToGroup(group)}
-                  >
-                    Chips wählen
-                  </button>
-                  {' '}
-                  oder Composer (Merken).
-                </>
-              ) : (
-                ' Über Composer (Merken) ergänzen.'
-              )}
-            </p>
-          )}
+      <div
+        className={`cust-kundenbild__group-collapse${open ? ' is-open' : ''}`}
+        aria-hidden={!open}
+      >
+        <div className="cust-kundenbild__group-collapse-inner">
+          <div
+            id={panelId}
+            className="cust-kundenbild__group-body"
+            role="region"
+            aria-label={group.title}
+            {...(!open ? { inert: true } : {})}
+          >
+            {hasFacts ? (
+              <ul className="cust-kundenbild__chips">
+                {facts.map((chip) => (
+                  <li key={chip.id}>
+                    <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                  </li>
+                ))}
+                {canAdd ? (
+                  <li>
+                    <button
+                      type="button"
+                      className="cust-kundenbild__chip cust-kundenbild__chip--add"
+                      onClick={() => onAddToGroup(group)}
+                      aria-label={`${group.title}: Chip hinzufügen`}
+                    >
+                      <span className="cust-kundenbild__chip-label">+</span>
+                    </button>
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <p className="cust-kundenbild__group-empty">
+                Noch nichts gemerkt.
+                {canAdd ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="cust-kundenbild__group-empty-add"
+                      onClick={() => onAddToGroup(group)}
+                    >
+                      Chips wählen
+                    </button>
+                    {' '}
+                    oder Composer (Merken).
+                  </>
+                ) : (
+                  ' Über Composer (Merken) ergänzen.'
+                )}
+              </p>
+            )}
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -306,7 +317,7 @@ export function CustomerAkteKundeninfos({
   const summaryLines = buildCollapsedSummaryLines(soft);
   const groups = soft?.groups ?? [];
   const showBar = variant === 'full' || variant === 'bar';
-  const showPanel = (variant === 'full' || variant === 'panel') && expanded;
+  const showPanel = variant === 'full' || variant === 'panel';
 
   function handleToggle() {
     onToggle?.(!expanded);
@@ -341,10 +352,11 @@ export function CustomerAkteKundeninfos({
               </button>
             </div>
           </div>
-          {!expanded && summaryLines.length > 0 ? (
+          {summaryLines.length > 0 ? (
             <div
-              className="cust-kundenbild__summary"
+              className={`cust-kundenbild__summary${expanded ? ' is-hidden' : ''}`}
               title={summaryLines.map((l) => (l.prefix ? `${l.prefix}: ${l.body}` : l.body)).join('\n')}
+              aria-hidden={expanded}
             >
               {summaryLines.map((line) => (
                 <p key={line.prefix || line.body} className="cust-kundenbild__summary-line">
@@ -364,19 +376,27 @@ export function CustomerAkteKundeninfos({
 
       {showPanel ? (
         <div
-          id={panelId || undefined}
-          className="cust-kundenbild__panel"
-          role="region"
-          aria-label={`${sectionTitle} Details`}
+          className={`cust-kundenbild__panel-collapse${expanded ? ' is-open' : ''}`}
+          aria-hidden={!expanded}
         >
-          {groups.map((group) => (
-            <SoftKnowledgeGroup
-              key={group.id}
-              group={group}
-              onFactTap={onFactTap}
-              onAddToGroup={onAddToGroup}
-            />
-          ))}
+          <div className="cust-kundenbild__panel-collapse-inner">
+            <div
+              id={panelId || undefined}
+              className="cust-kundenbild__panel"
+              role="region"
+              aria-label={`${sectionTitle} Details`}
+              {...(!expanded ? { inert: true } : {})}
+            >
+              {groups.map((group) => (
+                <SoftKnowledgeGroup
+                  key={group.id}
+                  group={group}
+                  onFactTap={onFactTap}
+                  onAddToGroup={onAddToGroup}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

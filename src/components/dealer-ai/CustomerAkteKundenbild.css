@@ -1,5 +1,4 @@
-/* Kundenbild – Kai-Drechsel-Vorlage (CLEVER_UI_FILIGREE)
-   Zone 1 warm Konditionen · Zone 2 Lavendel Wissen · keine große Outer-Card. */
+/* Kundenbild – product stage (depth + air, no form boxes) */
 
 .cust-kundenbild {
   --kb-text: var(--cust-text, #0b1736);
@@ -7,10 +6,10 @@
   --kb-border: var(--cust-border, #e8e8ef);
   --kb-chip: var(--cust-chip-bg, #eef1f5);
   --kb-soft: #f0ecfa;
-  --kb-kern-bg: #f8f3ea;
-  --kb-kern-line: rgba(140, 110, 70, 0.16);
-  --kb-wissen-bg: #f0ecfa;
-  --kb-wissen-line: rgba(109, 91, 184, 0.12);
+  --kb-kern-bg: linear-gradient(180deg, #faf6ef 0%, #f6f0e6 100%);
+  --kb-kern-line: rgba(140, 110, 70, 0.12);
+  --kb-wissen-bg: transparent;
+  --kb-wissen-line: rgba(109, 91, 184, 0.1);
   --kb-tint-alltag: #eef2f8;
   --kb-tint-budget: #eaf6f0;
   --kb-tint-vertrag: #f7f1e8;
@@ -20,19 +19,20 @@
   --kb-tint-notiz: #f2f3f7;
   --kb-prio-muss: #b45309;
   --kb-prio-wichtig: #7c6db5;
+  --kb-motion: 220ms ease;
   background: transparent;
 }
 
-/* Zone 1: Konditionen – warmer Beige-Strip, immer sichtbar */
+/* Zone 1: Konditionen – warmer Strip, Tokens floating */
 .cust-kundenbild__kern {
-  padding: 8px 14px 10px;
+  padding: 10px 16px 12px;
   border-top: 1px solid var(--kb-kern-line);
   border-bottom: 1px solid var(--kb-kern-line);
   background: var(--kb-kern-bg);
 }
 
 .cust-kundenbild__kern.is-deal {
-  background: #f5efe4;
+  background: linear-gradient(180deg, #f7f1e6 0%, #f3ebe0 100%);
 }
 
 .cust-kundenbild__kern-title {
@@ -56,17 +56,20 @@
 .cust-kundenbild__kern-vehicle {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0 0;
+  gap: 8px;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .cust-kundenbild__kern-chips .cust-kundenbild__chip {
-  background: #fffcf7;
-  border-color: rgba(140, 110, 70, 0.14);
+  background: rgba(255, 253, 249, 0.96);
+  border-color: rgba(140, 110, 70, 0.1);
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: 11px;
+  box-shadow:
+    0 1px 2px rgba(90, 70, 40, 0.05),
+    0 4px 12px rgba(90, 70, 40, 0.06);
 }
 
 .cust-kundenbild__kern-chips .cust-kundenbild__chip.is-empty {
@@ -76,6 +79,7 @@
   color: #9a9080;
   font-weight: 550;
   opacity: 0.72;
+  box-shadow: none;
 }
 
 .cust-kundenbild__kern-chips .cust-kundenbild__chip.is-empty .cust-kundenbild__chip-icon {
@@ -94,7 +98,7 @@
   margin-top: 4px;
 }
 
-/* Zone 2: Kundenwissen – Lavendel-Bereich */
+/* Zone 2: Kundenwissen – flat rows, hairlines, air */
 .cust-kundenbild__soft {
   background: var(--kb-wissen-bg);
   border-bottom: 1px solid var(--kb-wissen-line);
@@ -113,7 +117,7 @@
   position: sticky;
   top: 0;
   z-index: 6;
-  padding: 8px 14px 10px;
+  padding: 10px 16px 12px;
   border-bottom: none;
   background: transparent;
 }
@@ -127,7 +131,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 32px;
+  min-height: 34px;
 }
 
 .cust-kundenbild__toggle {
@@ -178,7 +182,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.18s ease;
+  transition: transform var(--kb-motion);
 }
 
 .cust-kundenbild__chevron.is-open {
@@ -197,6 +201,20 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  max-height: 3.2em;
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    opacity var(--kb-motion),
+    max-height var(--kb-motion),
+    margin var(--kb-motion);
+}
+
+.cust-kundenbild__summary.is-hidden {
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cust-kundenbild__summary-line {
@@ -215,8 +233,31 @@
   color: #6a5f8a;
 }
 
+/* Animated expand: height + opacity ~220ms */
+.cust-kundenbild__panel-collapse,
+.cust-kundenbild__group-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--kb-motion),
+    opacity var(--kb-motion);
+}
+
+.cust-kundenbild__panel-collapse.is-open,
+.cust-kundenbild__group-collapse.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.cust-kundenbild__panel-collapse-inner,
+.cust-kundenbild__group-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .cust-kundenbild__panel {
-  padding: 2px 14px 12px;
+  padding: 4px 16px 14px;
   background: transparent;
   border-bottom: none;
   max-height: min(52vh, 420px);
@@ -231,31 +272,38 @@
 
 .cust-akte-shell__pane > .cust-kundenbild--panel {
   flex-shrink: 0;
-  background: var(--kb-wissen-bg);
+  background: transparent;
   border-bottom: 1px solid var(--kb-wissen-line);
 }
 
 .cust-kundenbild__group {
-  margin: 0 0 8px;
+  margin: 0;
   padding: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.42);
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid rgba(109, 91, 184, 0.08);
+  transition: background-color 0.18s ease;
 }
 
 .cust-kundenbild__group:last-child {
   margin-bottom: 0;
+  border-bottom: none;
+}
+
+.cust-kundenbild__group:hover {
+  background: rgba(109, 91, 184, 0.035);
 }
 
 .cust-kundenbild__group.is-empty {
-  background: rgba(255, 255, 255, 0.28);
+  background: transparent;
 }
 
 .cust-kundenbild__group-head {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 36px;
-  padding: 2px 4px 2px 8px;
+  min-height: 44px;
+  padding: 6px 2px 6px 4px;
 }
 
 .cust-kundenbild__group-toggle {
@@ -265,7 +313,7 @@
   flex: 1;
   min-width: 0;
   margin: 0;
-  padding: 6px 4px;
+  padding: 8px 4px;
   border: none;
   background: transparent;
   color: #5c5678;
@@ -291,7 +339,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(109, 91, 184, 0.12);
+  background: rgba(109, 91, 184, 0.1);
   color: #5b4f8a;
   font-size: 0.625rem;
   font-weight: 700;
@@ -301,7 +349,7 @@
   display: inline-flex;
   margin-left: auto;
   color: #9a93b5;
-  transition: transform 0.18s ease;
+  transition: transform var(--kb-motion);
 }
 
 .cust-kundenbild__group-chevron.is-open {
@@ -319,9 +367,9 @@
   height: 32px;
   margin: 0;
   padding: 0;
-  border: 1px dashed rgba(109, 91, 184, 0.28);
+  border: 1px dashed rgba(109, 91, 184, 0.22);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
+  background: transparent;
   color: #5b4f8a;
   font-size: 1.125rem;
   font-weight: 500;
@@ -331,11 +379,11 @@
 }
 
 .cust-kundenbild__group-add:active {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .cust-kundenbild__group-body {
-  padding: 0 8px 8px;
+  padding: 0 4px 12px;
 }
 
 .cust-kundenbild__group-empty {
@@ -422,7 +470,11 @@
   white-space: nowrap;
   max-width: 100%;
   -webkit-tap-highlight-color: transparent;
-  transition: filter 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+  transition:
+    filter 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
 }
 
 .cust-kundenbild__chip-icon {
@@ -502,6 +554,7 @@
 
 .cust-kundenbild__chip:active {
   filter: brightness(0.97);
+  transform: scale(0.97);
 }
 
 .cust-kundenbild__chip.is-relevant,
@@ -542,9 +595,9 @@
 
 /* Offer-Konditionen unter Kundenbild – keine Customer Truth */
 .cust-kundenbild__working {
-  padding: 6px 14px 8px;
+  padding: 6px 16px 8px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
-  background: #fafbfc;
+  background: transparent;
 }
 
 .cust-kundenbild__working-title {
@@ -585,5 +638,22 @@
   .cn-workspace__band .cust-kundenbild__working,
   .cn-workspace__band .cust-kundenbild__kern {
     padding-inline: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cust-kundenbild__chevron,
+  .cust-kundenbild__group-chevron,
+  .cust-kundenbild__summary,
+  .cust-kundenbild__panel-collapse,
+  .cust-kundenbild__group-collapse,
+  .cust-kundenbild__chip,
+  .cust-kundenbild__group {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .cust-kundenbild__chip:active {
+    transform: none;
   }
 }

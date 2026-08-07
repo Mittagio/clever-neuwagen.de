@@ -4556,7 +4556,10 @@
   padding-bottom: 0;
   box-sizing: border-box;
   overflow: hidden;
-  background: var(--color-bg, #f7f8fa);
+  background:
+    radial-gradient(120% 80% at 100% -10%, rgba(109, 91, 184, 0.06) 0%, transparent 42%),
+    radial-gradient(90% 60% at 0% 100%, rgba(180, 140, 70, 0.05) 0%, transparent 45%),
+    linear-gradient(180deg, #f8f7fb 0%, #f4f3f8 48%, #f6f5f2 100%);
 }
 
 .cust-akte--responsive-shell .cn-workspace {
@@ -4976,9 +4979,11 @@
 
 .cust-akte-compact-header {
   flex-shrink: 0;
-  min-height: var(--header-height, 64px);
-  padding: 12px 18px;
-  background: #fff;
+  min-height: var(--header-height, 68px);
+  padding: 14px 18px 13px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
   box-sizing: border-box;
 }
@@ -4987,8 +4992,8 @@
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
+  gap: 10px;
+  min-height: 46px;
 }
 
 .cust-akte-compact-header__back,
@@ -5058,17 +5063,18 @@
 
 .cust-akte-compact-header__name {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 650;
-  line-height: 1.2;
-  color: #1a2233;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: #121a2b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cust-akte-compact-header__context {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 0.75rem;
   font-weight: 500;
   color: #8b93a7;
@@ -5935,7 +5941,7 @@
   min-height: 0;
   height: 100%;
   overflow: hidden !important;
-  background: var(--color-surface-muted, #f7f8fa);
+  background: transparent;
 }
 
 .cust-akte-shell__pane--feed .cust-akte-shell__notepad-sticky-wrap {
@@ -6169,7 +6175,7 @@
 .cust-akte-shell__pane--clever .cust-akte-shell__tisch-block,
 .cust-akte-shell__pane--clever .cust-akte-shell__situativ {
   flex-shrink: 0;
-  background: var(--color-surface, #fff);
+  background: transparent;
 }
 
 .cust-akte-shell__pane--clever .cust-akte-workspace {
@@ -6218,7 +6224,7 @@
   }
 
   .cust-akte-shell__pane--clever {
-    background: var(--color-surface-muted, #f4f4f7);
+    background: transparent;
   }
 }
 
