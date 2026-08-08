@@ -94,14 +94,23 @@ const sentLead = {
   },
 };
 const sentCards = buildVehicleOpportunityCards({ lead: sentLead });
-assert.equal(resolveOfferEntryTarget(sentCards[0], sentLead), OFFER_ENTRY_TARGET.PROPOSAL);
-assert.equal(shouldOpenOfferProposalView(sentCards[0], sentLead), true);
+assert.equal(resolveOfferEntryTarget(sentCards[0], sentLead), OFFER_ENTRY_TARGET.CALCULATOR);
+assert.equal(shouldOpenOfferProposalView(sentCards[0], sentLead), false);
 
 const navState = buildOfferCalculatorNavigateState(createdLead, createdCards[0]);
-assert.equal(navState.addVehicleContext.openConditions, true);
-assert.equal(navState.addVehicleContext.openCalculator, true);
+assert.equal(navState.addVehicleContext.openOfferPreview, true);
+assert.equal(navState.addVehicleContext.openConditions, false);
+assert.ok(navState.addVehicleContext.vehicleCardId);
+assert.equal(navState.addVehicleContext.openCalculator, false);
 assert.equal(navState.addVehicleContext.vehicleCardId, 'vc-ev6');
 assert.ok(navState.addVehicleContext.returnPath.includes('lead-created'));
+
+const newOfferNav = buildOfferCalculatorNavigateState(createdLead, null, {
+  paymentType: 'leasing',
+});
+assert.equal(newOfferNav.addVehicleContext.preferOfferPreview, true);
+assert.equal(newOfferNav.addVehicleContext.openConditions, true);
+assert.ok(!newOfferNav.addVehicleContext.vehicleCardId);
 
 assert.ok(followUpSource.includes('openBoardOfferEntry'));
 assert.ok(backendAkteSource.includes('openOfferCalculator'));
@@ -142,8 +151,8 @@ assert.equal(partialAction.label, 'Konditionen ergänzen');
 // E) Internes Angebot aus Vorschlag → Kalkulator (canEditOfferInCalculator)
 assert.equal(canEditOfferInCalculator(createdCards[0], createdLead), true);
 
-// F) offer_sent → Vorschlag (nur wenn Kundenlink aktiv)
-assert.equal(resolveOfferEntryTarget(sentCards[0], sentLead), OFFER_ENTRY_TARGET.PROPOSAL);
+// F) offer_sent → auch Erstellung/Vorschau (kein getrennter Proposal-Zwang)
+assert.equal(resolveOfferEntryTarget(sentCards[0], sentLead), OFFER_ENTRY_TARGET.CALCULATOR);
 
 // EV6-E2E: Interesse/Status ohne gesendeten Link → trotzdem Kalkulator
 const interestedDraftLead = {

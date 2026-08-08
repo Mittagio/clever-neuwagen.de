@@ -5,6 +5,9 @@
 
 const SIMPLE_FACT_RE = /^(?:was\s+(?:ist|hat|liegt)|anhängelast|wltp|reichweite|heute\s+an|öffne\s+\w+)/i;
 const COMPLEX_HINT_RE = /etstell|erstell|angebot|schreib|schick|merk|gleiche|wp\b|wärmepumpe|und\s+schreib|for\s+|with\s+/i;
+const OFFER_FOLLOW_UP_RE = /gleich|lieber|doch|km|weiß|weiss|wp|rot|blau|schwarz|grau/i;
+const APPOINTMENT_FOLLOW_UP_RE = /lieber|doch|montag|dienstag|mittwoch|donnerstag|freitag|uhr|\d{1,2}\s*:\s*\d{2}/i;
+const MESSAGE_FOLLOW_UP_RE = /kürzer|länger|formeller|lockerer|umformulier|nochmal|senden|abschicken|schick\s*(?:ihm|ihr|es)?/i;
 
 /**
  * @returns {'deterministic_fast_path'|'clever_agent'}
@@ -14,8 +17,15 @@ export function routeSellerRequest(sellerMessage = '', options = {}) {
   if (!text) return 'clever_agent';
 
   if (options.forceAgent) return 'clever_agent';
-  if (options.workingMemory?.pendingAction) return 'clever_agent';
-  if (options.workingMemory?.previousOfferPreparation && /gleich|lieber|doch|km|weiß|weiss|wp/i.test(text)) {
+  const memory = options.workingMemory || null;
+  if (memory?.pendingAction) return 'clever_agent';
+  if (memory?.previousOfferPreparation && OFFER_FOLLOW_UP_RE.test(text)) {
+    return 'clever_agent';
+  }
+  if (memory?.lastAppointmentProposal && APPOINTMENT_FOLLOW_UP_RE.test(text)) {
+    return 'clever_agent';
+  }
+  if (memory?.lastMessageDraft?.body && MESSAGE_FOLLOW_UP_RE.test(text)) {
     return 'clever_agent';
   }
 

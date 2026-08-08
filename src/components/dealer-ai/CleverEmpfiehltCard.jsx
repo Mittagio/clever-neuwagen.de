@@ -47,7 +47,7 @@ export default function CleverEmpfiehltCard({
   return (
     <section className="clever-empfiehlt clever-empfiehlt--compact" aria-labelledby="clever-empfiehlt-title">
       <header className="clever-empfiehlt__header">
-        <p className="clever-empfiehlt__eyebrow">Clever</p>
+        <p className="clever-empfiehlt__eyebrow">Clever empfiehlt</p>
       </header>
 
       <h2 id="clever-empfiehlt-title" className="clever-empfiehlt__headline">
@@ -55,7 +55,7 @@ export default function CleverEmpfiehltCard({
       </h2>
 
       {view.reminderLine ? (
-        <p className="clever-empfiehlt__reminder clever-empfiehlt__reminder--compact">
+        <p className="clever-empfiehlt__reminder clever-empfiehlt__reminder--compact" role="status">
           {view.reminderLine}
         </p>
       ) : null}

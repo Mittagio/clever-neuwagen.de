@@ -27,19 +27,38 @@ const OFFER_PATTERNS = [
   /\b(barangebot|kaufangebot|barkauf|bar\s*kauf)\b/i,
   /\b(angebot|leasing|finanzierung)\b.{0,40}\b(mach|vorbereiten|erstellen|anbieten)\b/i,
   /\b(mach(?:en)?|vorbereiten|erstellen|anbieten)\b.{0,40}\b(angebot|leasing|finanz|barangebot)\b/i,
-  /\b(ev[2-9]|sportage|sorento).{0,40}\b(angebot|leasing|barangebot|finanz)/i,
-  /\bangebot\b.{0,80}\b(ev[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b/i,
-  /\b(ev[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b.{0,80}\bangebot\b/i,
+  // „EV2 Angebot …“ / „Ev 2 Angebot Air in weiß“ (Leerzeichen zwischen EV und Ziffer)
+  /\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b.{0,40}\b(angebot|leasing|barangebot|finanz)/i,
+  /\bangebot\b.{0,80}\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b/i,
+  /\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b.{0,80}\bangebot\b/i,
   /\b\d{2,3}\s*%\b/,
   /\b\d{2,4}\s*(?:€|euro)\b.{0,20}\b(monat|rate|jahr)/i,
   /\bauf\s+(?:zwei|drei|vier|24|36|48|60)\s*(?:jahre|monate)?/i,
   /\b\d{2}\s*%\s*(?:rabatt)?/i,
 ];
 
+/** Bestand/Lager dem Kunden mitteilen – nicht Angebotsvorbereitung */
+function isStockAvailabilityMessage(text = '') {
+  const t = String(text ?? '');
+  if (/\bangebot\b/i.test(t)) return false;
+  return (
+    (/\b(habe|hätt(?:e|en)?)\b/i.test(t) && /\b(verfügbar|sofort|\bda\b)\b/i.test(t))
+    || /\bsofort\s+verfügbar\b/i.test(t)
+  );
+}
+
+/** Kurzbefehl: „EV2 Air in weiß“ ohne Schreib-Verb → Angebot vorbereiten */
+function isOfferShorthandWithoutWriteCue(text = '') {
+  const t = String(text ?? '');
+  if (!VEHICLE_MODEL_RE.test(t)) return false;
+  if (/\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|whatsapp)\b/i.test(t)) return false;
+  if (isStockAvailabilityMessage(t)) return false;
+  return /\b(air|earth|gt[-\s]?line|vision|spirit|weiß|weiss|schwarz|rot|grau|blau|terracotta|angebot|leasing|finanz)\b/i.test(t);
+}
+
 const MESSAGE_PATTERNS = [
-  /\b(habe|hätt[e]?|liegt|verfügbar|sofort)\b/i,
-  /\b(nachricht|whatsapp|mail|schreib|informier|meld)/i,
-  /\b(fahrzeug|wagen|ev\d|sportage|sorento).{0,40}\b(da|verfügbar|lager)/i,
+  /\b(nachricht|whatsapp|mail|schreib|informier|meld)\b/i,
+  /\b(schick(?:e|en)?\s+(?:ihm|ihr|dem|der)|sag(?:e|en)?\s+(?:ihm|ihr))\b/i,
 ];
 
 const CALLBACK_PATTERNS = [
@@ -78,7 +97,7 @@ const LOOKUP_FACT_PATTERNS = [
   /\b(oder|vs\.?|versus|gegen)\b/i,
 ];
 
-const VEHICLE_MODEL_RE = /\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b/i;
+const VEHICLE_MODEL_RE = /\b(EV\s*[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto)\b/i;
 
 /** Nur Marke + Modell → Lexikon-Kurzprofil (nicht Kundennachricht). */
 function isBareVehicleModelQuery(text = '') {
@@ -103,8 +122,11 @@ export function detectSellerActionIntent(text = '') {
   if (PORTFOLIO_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.SEND_PORTFOLIO;
   }
-  if (OFFER_PATTERNS.some((re) => re.test(t))) {
+  if (OFFER_PATTERNS.some((re) => re.test(t)) || isOfferShorthandWithoutWriteCue(t)) {
     return SELLER_ACTION_INTENTS.PREPARE_OFFER;
+  }
+  if (isStockAvailabilityMessage(t)) {
+    return SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
   }
   if (DOCUMENT_REQUEST_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.REQUEST_DOCUMENTS;
@@ -137,8 +159,8 @@ export function detectSellerActionIntent(text = '') {
   if (MESSAGE_PATTERNS.some((re) => re.test(t))) {
     return SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
   }
-  // Default: wenn der Verkäufer etwas Konkretes sagt → Nachricht vorbereiten
-  if (t.length >= 12) return SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER;
+  // Kein Default „alles ≥12 Zeichen = Nachricht“ – das erzwingt Template-Mails
+  // (Bilder-Satz) bevor Clever das Arbeitsziel entscheiden konnte.
   return SELLER_ACTION_INTENTS.UNKNOWN;
 }
 
@@ -151,7 +173,7 @@ export function extractSellerFactsFromInput(text = '') {
   const facts = [];
   const sources = [];
 
-  const model = t.match(/\b(EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio)\b(?:\s+(SW|GT-Line|Spirit|Earth|Vision|Air|DriveWise))?/i);
+  const model = t.match(/\b(EV\s*[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio)\b(?:\s+(SW|GT-Line|Spirit|Earth|Vision|Air|DriveWise))?/i);
   if (model) {
     const label = [model[1], model[2]].filter(Boolean).join(' ');
     facts.push({ key: 'vehicle', label, source: 'seller_input' });

@@ -771,13 +771,16 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
 }
 
 /**
- * PDF → nie MagicOfferReview („Angebot vorbereitet“).
+ * Nie MagicOfferReview („Angebot vorbereitet“), wenn skipMagicReview oder PDF-Intake.
  * Ausnahme: deterministischer Barkauf (cash_magic) behält Positionsreview.
+ * Clever-Handoff / Angebot bearbeiten setzt skipMagicReview und springt direkt zur Vorschau.
  */
 export function shouldSkipMagicOfferReview(preparation) {
-  if (!preparation?.fromPdf) return false;
+  if (!preparation) return false;
   if (preparation.mode === 'cash_magic') return false;
+  // Expliziter Skip (auch ohne PDF) – z. B. Clever „Angebot bearbeiten“
   if (preparation.skipMagicReview) return true;
+  if (!preparation.fromPdf) return false;
   if (preparation.mode === 'leasing_intake' || preparation.mode === 'financing_intake') return true;
   // PDF mit erkannten Konditionen / Fahrzeug – auch ohne sauberes offerType
   if (magicPreparationHasCommercialPreviewFields(preparation)) return true;

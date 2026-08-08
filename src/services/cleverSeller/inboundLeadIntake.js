@@ -23,8 +23,83 @@ import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
 
 const SELLER_COMMAND_START = /^(?:öffne|zeige|zeig|finde|suche|erstell|mach|schreib|sag|was\s+|wann\s+|wie\s+|schlag|bereite)/i;
 
+/** Händler-Notiz / Lead-Dump: Fahrzeug- oder Konditions-Signale */
+const STRUCTURED_LEAD_VEHICLE_CUE = /\b(?:ev\s?[3469]|picanto|sportage|xceed|ceed|niro|sorento|soul|stonic|kia|suzuki|vitara|swift|s-?cross|corporate\s+benefits|leasing|finanzierung|barzahlung|\bbar\b|liefertermin|wunschtermin|november|dezember|januar|februar)\b/i;
+
+const STRUCTURED_LEAD_NAME_LABEL = /^(?:Name|Kunde|Interessent|Kontakt)\s*:\s*(.+)$/im;
+
 function normalizeEmail(value = '') {
   return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * Name aus strukturierter Lead-Notiz (Name:-Label, „Vorname Nachname“ &lt;mail&gt;, erste Namenszeile).
+ * @param {string} raw
+ */
+export function extractStructuredLeadName(raw = '') {
+  const text = String(raw || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return null;
+
+  const labeled = text.match(STRUCTURED_LEAD_NAME_LABEL);
+  if (labeled?.[1]) {
+    const cleaned = labeled[1].replace(/<[^>]+>/g, '').trim();
+    if (cleaned.length >= 3) return cleaned;
+  }
+
+  const angle = text.match(
+    /['"]([A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+)+)['"]\s*<[^>\s]+@[^>\s]+>/,
+  ) || text.match(
+    /\b([A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+)+)\s*<[^>\s]+@[^>\s]+>/,
+  );
+  if (angle?.[1]) return angle[1].trim();
+
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8);
+  for (const line of lines) {
+    if (/^(?:von|from|betreff|subject|an|to|gesendet|sent|email|e-?mail|tel|telefon|phone)\b/i.test(line)) {
+      continue;
+    }
+    if (STRUCTURED_LEAD_NAME_LABEL.test(line)) continue;
+    if (/@/.test(line) || /\d{5,}/.test(line)) continue;
+    if (STRUCTURED_LEAD_VEHICLE_CUE.test(line) && !/\s/.test(line.trim())) continue;
+    // „Alexander Schlayer“ oder „Schlayer Alexander Aalen“
+    if (/^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+){1,3}$/.test(line)
+      && line.length <= 60) {
+      return line;
+    }
+  }
+  return null;
+}
+
+/**
+ * Händler-Lead-Notiz ohne Mail-Header (Name + Kontakt + Fahrzeug/Kondition).
+ * @param {string} text
+ */
+export function isStructuredLeadNote(text = '') {
+  const raw = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (raw.length < 50) return false;
+  if (SELLER_COMMAND_START.test(raw)) return false;
+
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 4) return false;
+
+  const emails = [...raw.matchAll(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g)]
+    .map((m) => m[1].toLowerCase());
+  const hasCustomerEmail = emails.some((e) => !isLikelyDealerEmail(e));
+  const hasPhone = Boolean(
+    parseCustomerPhone(raw)
+    || /(?:^|[^\d])(\+49[\s/-]?\d{2,5}[\s/-]?\d{3,10}|0\d{2,4}[\s/-]?\d{3,10})\b/m.test(raw),
+  );
+  const hasName = Boolean(
+    STRUCTURED_LEAD_NAME_LABEL.test(raw) || extractStructuredLeadName(raw),
+  );
+  const hasVehicleOrDeal = STRUCTURED_LEAD_VEHICLE_CUE.test(raw);
+
+  // Mindestens Kontakt + (Name oder Deal-Signal), damit reine Mail-Signaturen nicht greifen
+  if (!(hasCustomerEmail || hasPhone)) return false;
+  if (!(hasName || hasVehicleOrDeal)) return false;
+  // Mindestens zwei der drei Signale (Name / Kontakt schon, + Deal oder Label-Struktur)
+  const score = Number(hasName) + Number(hasCustomerEmail || hasPhone) + Number(hasVehicleOrDeal);
+  return score >= 2 && (hasName || hasVehicleOrDeal);
 }
 
 function normalizePhoneDigits(value = '') {
@@ -55,6 +130,9 @@ export function isInboundLeadPaste(text = '') {
   const explicitCue = /\b(?:hier\s+(?:eine\s+)?(?:anfrage|e-?mail|mail)|weitergeleitet|fwd:|wg:)\b/i.test(raw);
   if (hasForward || hasMailHeaders || explicitCue) return true;
 
+  // Händler-Notizblatt (Name + Mail/Tel + Fahrzeug/Kondition) ohne klassischen Forward
+  if (isStructuredLeadNote(raw)) return true;
+
   // Fallback nur bei klarer Mail (Adresse + Gruß), nicht bei Notizzettel-Dumps mit „Leasing“
   const hasEmail = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(raw);
   const hasGreeting = /mit freundlichen grüßen|viele grüße|beste grüße|guten tag[,!]|hallo[,!]/i.test(raw);
@@ -80,7 +158,8 @@ export function extractInboundContact(text = '') {
       return digits.length >= 10 && digits.length <= 13 ? m[1].trim() : null;
     })()
     || null;
-  const name = mail.customerName || forwardRaw?.fromName || null;
+  const structuredName = extractStructuredLeadName(raw);
+  const name = mail.customerName || forwardRaw?.fromName || structuredName || null;
   const nameParts = splitCustomerName(name);
 
   let email = forwardRaw?.fromEmail || mail.customerEmail || null;
@@ -89,6 +168,12 @@ export function extractInboundContact(text = '') {
       .map((m) => m[1].toLowerCase());
     email = emails.find((e) => !isLikelyDealerEmail(e)) || null;
   }
+
+  const sourceHint = (mail.isForwarded || forwardRaw)
+    ? 'forwarded_mail'
+    : (isStructuredLeadNote(raw)
+      ? 'structured_lead_note'
+      : (email ? 'customer_mail' : 'pasted_inquiry'));
 
   return {
     fullName: name || nameParts.fullName || null,
@@ -100,7 +185,7 @@ export function extractInboundContact(text = '') {
     subject: mail.subject || forwardRaw?.subject || null,
     inquiryText: mail.inquiryText || raw,
     isForwarded: Boolean(mail.isForwarded || forwardRaw),
-    sourceHint: (mail.isForwarded || forwardRaw) ? 'forwarded_mail' : (email ? 'customer_mail' : 'pasted_inquiry'),
+    sourceHint,
   };
 }
 
@@ -492,21 +577,43 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     ]
     : [{ id: 'discard_intake', label: 'Verwerfen', action: 'discard' }];
 
+  const unsureLines = [
+    inbound.duplicateHint,
+    inbound.resolutionStatus === 'ambiguous'
+      ? 'Unsicher: Mehrere Kundenakten passen – bitte eine wählen.'
+      : null,
+    inbound.proposeCreateCustomer
+      ? 'Unsicher: Kein bestehender Treffer – erst nach Bestätigung anlegen.'
+      : null,
+    (turn.missingInformation || []).find((m) => m.id === 'clarify_customer_for_intake')?.label || null,
+    (turn.missingInformation || []).find((m) => m.id === 'confirm_create_customer')?.label || null,
+  ].filter(Boolean);
+
+  const recognizedBlock = [
+    'Erkannt:',
+    ...contactLines,
+    factLabels.length ? `Angaben: ${factLabels.join(' · ')}` : null,
+    inbound.nextAction?.label ? `Vorschlag: ${inbound.nextAction.label}` : null,
+  ].filter(Boolean).join('\n');
+
+  const unsureBlock = unsureLines.length
+    ? ['Bitte prüfen:', ...unsureLines].join('\n')
+    : null;
+
   return {
     title: '✨ Clever hat eine Anfrage erkannt',
     groups,
+    body: [recognizedBlock, unsureBlock].filter(Boolean).join('\n\n'),
     actionSections: [{
       id: 'customer_intake_review',
       kind: 'customer_intake_review',
       title: 'Kundenanfrage',
       headline: inbound.proposeCreateCustomer
         ? 'Neue Kundenakte vorschlagen'
-        : (inbound.matchedLeadName || 'Anfrage zuordnen'),
-      body: [
-        contactLines.join('\n'),
-        inbound.duplicateHint,
-        inbound.nextAction?.label ? `Nächste Aktion: ${inbound.nextAction.label}` : null,
-      ].filter(Boolean).join('\n\n'),
+        : inbound.resolutionStatus === 'ambiguous'
+          ? 'Anfrage erkannt – Kunde wählen'
+          : (inbound.matchedLeadName || 'Anfrage zuordnen'),
+      body: [recognizedBlock, unsureBlock].filter(Boolean).join('\n\n'),
       inboundLead: inbound,
       // Ambiguous: Kundenwahl nur über Composer-Pills (keine doppelten Text-Links)
       primaryActions: inbound.resolutionStatus === 'ambiguous'
@@ -521,15 +628,27 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     }],
     factCount: factLabels.length,
     summaryLine: inbound.proposeCreateCustomer
-      ? 'Kein bestehender Kunde gefunden – neue Kundenakte vorschlagen. Erst nach Bestätigung.'
+      ? 'Erkannt als neue Anfrage – Kundenakte erst nach Bestätigung.'
       : inbound.resolutionStatus === 'unique'
-        ? 'Bestehenden Kunden gefunden – Anfrage verknüpfen. Fakten erst nach Bestätigung.'
+        ? `Erkannt: ${inbound.matchedLeadName || 'Kunde'} – verknüpfen nach Bestätigung.`
         : inbound.resolutionStatus === 'ambiguous'
-          ? 'Mehrere mögliche Kunden – bitte den richtigen wählen.'
+          ? 'Erkannt, aber unsicher – bitte die richtige Kundenakte wählen.'
           : 'Kundenanfrage erkannt – bitte prüfen',
-    missingLine: inbound.duplicateHint || null,
+    missingLine: unsureLines[0] || null,
     primaryCta,
     secondaryCta,
+    progressLines: turn.uiEffects?.progressLines?.length
+      ? turn.uiEffects.progressLines
+      : [
+        '✓ Kundenanfrage erkannt',
+        inbound.proposeCreateCustomer
+          ? '○ Kein Treffer – neue Kundenakte vorschlagen?'
+          : inbound.resolutionStatus === 'unique'
+            ? `✓ ${inbound.matchedLeadName || 'Kunde'} zugeordnet`
+            : inbound.resolutionStatus === 'ambiguous'
+              ? '○ Unsicher – bitte Kunde wählen'
+              : null,
+      ].filter(Boolean),
     reviewType: 'customer_intake_review',
     legacyReviewType: 'inbound_lead_review',
     kind: 'customer_intake',

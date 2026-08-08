@@ -5,7 +5,13 @@
 
 const TRADE_IN_CUE = /\b(?:gw|gebrauchtwagen|in\s*zahlung|inzahlungnahme|nehmen\s+wir\s+in\s+zahlung|nehmen\s+wir\s+mit|aktuelles?\s+fahrzeug|altes?\s+fahrzeug|kommt\s+zurück|rückläufer|ruecklaeufer|vertrag\s+zum\s+bisherigen)\b/i;
 
-const MAKE_RE = 'Kia|Ford|VW|Volkswagen|BMW|Mercedes(?:-Benz)?|Audi|Opel|Toyota|Hyundai|Skoda|Škoda|Seat|SEAT|Renault|Peugeot|Suzuki|Dacia|Cupra|Mazda|Nissan|Volvo|Mini|Fiat|Jeep';
+const MAKE_RE = 'Kia|Ford|VW|Volkswagen|BMW|Mercedes(?:-Benz)?|Audi|Opel|Toyota|Hyundai|Skoda|Škoda|Seat|SEAT|Renault|Peugeot|Suzuki|Dacia|Cupra|Mazda|Nissan|Volvo|Mini|Fiat|Jeep|Smart';
+
+/** Mehrwort-Modelle (Marke optional bereits matchend). */
+const MULTIWORD_MODELS = [
+  { re: /\b(smart)\s+(fortwo|forfour)\b/i, make: 'Smart', modelFrom: 2 },
+  { re: /\b(mercedes(?:-benz)?)\s+(a|b|c|e|s|gla|glb|glc|gle)\s*-?\s*klasse\b/i, make: 'Mercedes', modelFrom: 2 },
+];
 
 /**
  * @param {string} text
@@ -29,6 +35,28 @@ export function extractTradeInCandidates(text = '') {
   /** @type {{ make: string|null, model: string|null, label: string, cue: string|null, span: string, ambiguous: boolean }[]} */
   const out = [];
 
+  // Mehrwort zuerst: „GW Smart fortwo“ / „fährt einen Smart fortwo“
+  for (const mw of MULTIWORD_MODELS) {
+    const hit = raw.match(mw.re);
+    if (!hit) continue;
+    const nearCue = hasTradeInCue(raw)
+      || /\b(?:fährt|faehrt|fahren|aktuelles?\s+fahrzeug|altes?\s+fahrzeug|gw)\b/i.test(raw);
+    if (!nearCue) continue;
+    const make = mw.make;
+    const modelRaw = String(hit[mw.modelFrom] || hit[2] || '').toLowerCase();
+    const model = modelRaw || title(hit[1]);
+    if (!isStopModel(model)) {
+      out.push({
+        make,
+        model,
+        label: `${make} ${model}`,
+        cue: hasTradeInCue(raw) ? 'gw' : 'faehrt',
+        span: hit[0],
+        ambiguous: false,
+      });
+    }
+  }
+
   // „GW Kia Picanto“ / „GW: Picanto“ / „Inzahlungnahme Ford Kuga“
   const labeled = new RegExp(
     `\\b(?:gw|gebrauchtwagen|in\\s*zahlung(?:nahme)?|aktuelles?\\s+fahrzeug|altes?\\s+fahrzeug)\\s*[:\\-]?\\s*((?:${MAKE_RE})\\s+)?([A-Za-zÄÖÜäöüß0-9-]{2,20})\\b`,
@@ -36,8 +64,33 @@ export function extractTradeInCandidates(text = '') {
   );
   let m = labeled.exec(raw);
   while (m) {
+    // Skip if already captured as multiword (e.g. GW Smart → only "Smart")
+    if (out.some((o) => /smart/i.test(o.make || '') && /smart/i.test(m[0]))) {
+      m = labeled.exec(raw);
+      continue;
+    }
     const make = m[1] ? title(m[1].trim()) : inferMakeNear(raw, m.index) || null;
-    const model = title(m[2]);
+    let model = title(m[2]);
+    // „GW Smart fortwo“ wenn Make=Smart und nächstes Token fortwo
+    if (/^smart$/i.test(make || m[2] || '') || /^smart$/i.test(m[2] || '')) {
+      const after = raw.slice(m.index + m[0].length).match(/^\s*(fortwo|forfour)\b/i);
+      if (after) {
+        model = after[1].toLowerCase();
+        const resolvedMake = make || 'Smart';
+        if (!isStopModel(model)) {
+          out.push({
+            make: resolvedMake,
+            model,
+            label: `Smart ${model}`,
+            cue: m[0].split(/\s+/)[0],
+            span: `${m[0]} ${after[1]}`,
+            ambiguous: false,
+          });
+        }
+        m = labeled.exec(raw);
+        continue;
+      }
+    }
     if (!isStopModel(model)) {
       out.push({
         make,

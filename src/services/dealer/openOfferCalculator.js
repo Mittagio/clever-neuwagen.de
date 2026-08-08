@@ -1,7 +1,7 @@
 /**
- * Einheitlicher Einstieg zur Angebotserstellung (Magic Offer · PDF · Legacy-Kalkulator).
- * Bearbeiten / Angebot bearbeiten → immer Angebot prüfen (offer-preview).
- * Neu erstellen: magic-offer-entry / Legacy-Kalkulator („Manuell erfassen“).
+ * Einheitlicher Einstieg zur Angebotserstellung (PDF · Legacy-Kalkulator · Vorschau).
+ * Bearbeiten / Angebot bearbeiten → immer direkt Angebot prüfen (offer-preview).
+ * Keine Zwischenseiten magic-offer-entry / magic-offer-review.
  */
 import { buildKundenaktePath } from '../leadAkteEntry.js';
 import { buildAddProposalNavigateContext } from './customerAddProposalFlow.js';
@@ -44,25 +44,17 @@ export function isCustomerVisibleOfferState(card = {}, lead = null) {
 
 /**
  * Zielansicht für einen Angebots-Einstieg.
- * Entwurf, offer_created und vorbereitete Links → immer Kalkulator.
- * Vorschlag nur bei tatsächlich gesendetem Kundenangebot.
+ * Alle Angebote → Erstellung/Vorschau (Kalkulator).
+ * Nur offene Kundenfrage bleibt eigener Einstieg.
  */
 export function resolveOfferEntryTarget(card = {}, lead = null) {
   const status = resolveBoardOfferStatus(card, lead);
-  const sentToCustomer = isCustomerVisibleOfferState(card, lead);
-
-  if (!sentToCustomer) {
-    if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
-      return OFFER_ENTRY_TARGET.ANSWER_QUESTION;
-    }
-    return OFFER_ENTRY_TARGET.CALCULATOR;
-  }
 
   if (status === BOARD_OFFER_STATUS.QUESTION_OPEN) {
     return OFFER_ENTRY_TARGET.ANSWER_QUESTION;
   }
 
-  return OFFER_ENTRY_TARGET.PROPOSAL;
+  return OFFER_ENTRY_TARGET.CALCULATOR;
 }
 
 export function shouldOpenOfferProposalView(card = {}, lead = null) {
@@ -105,8 +97,17 @@ export function buildOfferCalculatorNavigateState(lead, card = null, options = {
 
   if (!addVehicleContext) return null;
 
-  addVehicleContext.openConditions = true;
-  addVehicleContext.openCalculator = true;
+  // Alle Angebote (mit/ohne Karte) → direkt Erstellung: Vorschau wenn Karte, sonst Konditionen
+  if (vehicleCardId || options.openOfferPreview) {
+    addVehicleContext.openOfferPreview = true;
+    addVehicleContext.openConditions = false;
+    addVehicleContext.openCalculator = false;
+  } else {
+    addVehicleContext.openConditions = true;
+    addVehicleContext.openCalculator = true;
+    // Neues Angebot: nach Bootstrap möglichst in die Vorschau heben
+    addVehicleContext.preferOfferPreview = true;
+  }
   if (vehicleCardId) {
     addVehicleContext.vehicleCardId = vehicleCardId;
   }

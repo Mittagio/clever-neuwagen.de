@@ -136,6 +136,19 @@ assert.equal(cashOverlay.payment.discountAmount, 11182.5);
   assert.ok(vehicle.trimId === 'vision' || /vision/i.test(vehicle.trimLabel || ''));
 }
 
+// Clever-Handoff: skipMagicReview ohne PDF → kein MagicOfferReview
+{
+  const handoff = {
+    ok: true,
+    mode: 'voice_magic',
+    fromPdf: false,
+    skipMagicReview: true,
+    canCreateOffer: true,
+  };
+  assert.equal(shouldSkipMagicOfferReview(handoff), true);
+  assert.equal(shouldSkipMagicOfferReview({ ...handoff, skipMagicReview: false }), false);
+}
+
 // originalPdf (fileName + dataUrl) überlebt overlay
 {
   const pdfMeta = {

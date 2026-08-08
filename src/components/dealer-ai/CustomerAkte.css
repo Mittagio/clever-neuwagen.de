@@ -2219,10 +2219,17 @@
 }
 
 .cust-akte-add-proposal__sub {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 0.875rem;
   color: #475569;
   line-height: 1.45;
+}
+
+.cust-akte-add-proposal__hint {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 .cust-akte-add-proposal__list {
@@ -4892,6 +4899,17 @@
   gap: 14px;
 }
 
+.cust-akte-angebote-sheet__empty {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--cust-border, #e2e8f0);
+  background: #fafafa;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
 .cust-akte-angebote-sheet__board {
   margin: 4px 0 0;
   padding: 10px 12px;
@@ -6583,4 +6601,56 @@
   outline: 2px solid rgba(109, 91, 184, 0.35);
   outline-offset: 1px;
   background: #fff;
+}
+
+/* Arbeitsobjekt rechts � nur wenn ge�ffnet; sonst volle Clever-Breite */
+.cust-akte-work-object {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cust-akte-work-object .cust-akte-offer-workspace {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 1100px) {
+  .cust-akte-workspace-shell--with-work-object .sw-chat__workspace {
+    display: none !important;
+  }
+
+  .cust-akte-workspace-shell--with-work-object .sw-chat.has-workspace .sw-chat__feed-main {
+    display: flex;
+  }
+
+  .cust-akte-workspace-shell--with-work-object .cn-workspace__assist {
+    background: #fafafc;
+    padding: 12px 12px 16px;
+  }
+}
+
+/* Verkaufsb�hne: klare Zonen Fakten ? Clever ? Composer */
+.cn-workspace__band:has(.cust-kundenbild) {
+  background: #f7f6f9;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.cust-akte-shell__pane--clever {
+  background: #fafafc;
+}
+
+.cust-akte-shell__pane--clever .sw-chat__empty-recommend,
+.cust-akte-shell__pane--clever .clever-empfiehlt,
+.cust-akte-shell__pane--clever .cn-clever-moment {
+  margin-inline: 16px;
+  margin-top: 20px;
+}
+
+.cust-akte-shell__pane--clever .sw-chat__desk {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.04);
 }

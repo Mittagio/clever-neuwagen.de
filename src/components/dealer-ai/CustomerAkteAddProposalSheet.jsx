@@ -1,25 +1,24 @@
 import LeadDetailPanel from './LeadDetailPanel.jsx';
 
-const MAIN_OPTIONS = [
+/**
+ * Flow-Freeze: + Neues Angebot bleibt in der Akte.
+ * Angebot prüfen / Kalkulator ist das Ergebnis – nicht der Einstieg.
+ */
+export const NEW_OFFER_OPTIONS = [
   {
-    id: 'leasing',
-    title: 'Leasing',
-    description: 'Fahrzeug wählen, Rate berechnen und Angebot speichern.',
+    id: 'other_vehicle',
+    title: 'Anderes Fahrzeug',
+    description: 'Zweite Fahrzeugoption für denselben Kunden – bestehendes Angebot bleibt erhalten.',
   },
   {
-    id: 'financing',
-    title: 'Finanzierung',
-    description: 'Laufzeit, Anzahlung und Monatsrate im Angebotsrechner festlegen.',
+    id: 'vary_offer',
+    title: 'Angebot variieren',
+    description: 'Laufzeit, Kilometer, Anzahlung oder Ausstattung am bestehenden Fahrzeug ändern.',
   },
   {
-    id: 'cash',
-    title: 'Bar / Kauf',
-    description: 'UPE, Rabatt und Kaufpreis berechnen.',
-  },
-  {
-    id: 'selection_group',
-    title: 'Clever Auswahl',
-    description: 'Mehrere Varianten eines Modells vorbereiten (z. B. Air / Earth / GT-Line).',
+    id: 'pdf_import',
+    title: 'PDF einlesen',
+    description: 'Fertige Kalkulation (Händler/Bank/DMS) übernehmen und prüfen.',
   },
 ];
 
@@ -27,12 +26,14 @@ export default function CustomerAkteAddProposalSheet({
   open,
   onClose,
   onSelect,
+  customerName = '',
 }) {
+  const name = String(customerName || '').trim();
   return (
     <LeadDetailPanel
       open={open}
       onClose={onClose}
-      title="Angebot erstellen"
+      title="Neues Angebot"
       footer={(
         <button type="button" className="dai-btn dai-btn--ghost" onClick={onClose}>
           Abbrechen
@@ -41,11 +42,18 @@ export default function CustomerAkteAddProposalSheet({
     >
       <div className="cust-akte-add-proposal">
         <p className="cust-akte-add-proposal__sub">
-          Angebotsrechner öffnen – Fahrzeug konfigurieren, Konditionen berechnen und auf dem Tisch speichern.
+          {name
+            ? `Was möchtest du für ${name} vorbereiten?`
+            : 'Was möchtest du vorbereiten?'}
+        </p>
+        <p className="cust-akte-add-proposal__hint">
+          Clever bleibt beim Kunden. Du kannst auch unten einfach tippen:
+          {' '}
+          „EV2 Air in Rot“
         </p>
 
         <ul className="cust-akte-add-proposal__list">
-          {MAIN_OPTIONS.map((option) => (
+          {NEW_OFFER_OPTIONS.map((option) => (
             <li key={option.id}>
               <button
                 type="button"
@@ -64,6 +72,19 @@ export default function CustomerAkteAddProposalSheet({
 }
 
 /** @deprecated LeaseFinanceSheet bleibt für Abwärtskompatibilität erhalten. */
+const LEGACY_LEASE_FINANCE_OPTIONS = [
+  {
+    id: 'leasing',
+    title: 'Leasing',
+    description: 'Laufzeit und Rate festlegen.',
+  },
+  {
+    id: 'financing',
+    title: 'Finanzierung',
+    description: 'Laufzeit, Anzahlung und Rate.',
+  },
+];
+
 export function CustomerAkteLeaseFinanceSheet({
   open,
   onClose,
@@ -91,7 +112,7 @@ export function CustomerAkteLeaseFinanceSheet({
           Welche Zahlungsart soll berechnet werden?
         </p>
         <ul className="cust-akte-add-proposal__list">
-          {MAIN_OPTIONS.filter((option) => option.id === 'leasing' || option.id === 'financing').map((option) => (
+          {LEGACY_LEASE_FINANCE_OPTIONS.map((option) => (
             <li key={option.id}>
               <button
                 type="button"

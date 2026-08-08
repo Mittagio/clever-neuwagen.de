@@ -593,6 +593,11 @@ export function postCleverAssistFeedCard({
   text = '',
   ctaLabel = null,
   ctaAction = null,
+  leadId = null,
+  responseKind = null,
+  chips = null,
+  undoAvailable = false,
+  undoToken = null,
   visibleToCustomer = false,
   relatedOfferId = null,
 } = {}) {
@@ -600,6 +605,7 @@ export function postCleverAssistFeedCard({
   if (!lead?.id || !trimmed) return { lead, message: null };
 
   const { lead: withThread, thread } = findOrCreateThreadForLead(lead, { relatedOfferId });
+  const canUndo = Boolean(undoAvailable);
   return addCustomerMessage({
     lead: withThread,
     threadId: thread?.id,
@@ -617,6 +623,11 @@ export function postCleverAssistFeedCard({
       title,
       ctaLabel,
       ctaAction,
+      leadId: leadId || null,
+      responseKind: responseKind || null,
+      chips: Array.isArray(chips) ? chips : null,
+      undoAvailable: canUndo,
+      undoToken: canUndo && undoToken ? String(undoToken) : null,
     },
   });
 }

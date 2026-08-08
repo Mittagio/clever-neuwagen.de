@@ -151,4 +151,49 @@ assert.ok(contact.phone);
   assert.equal(applied.lead.source, 'composer_inbound');
 }
 
+// --- Strukturierte Händler-Notiz ohne „Hier eine Anfrage:“ → Intake, keine Nachricht ---
+{
+  const SCHLAYER_NOTE = [
+    'Schlayer Alexander Aalen',
+    'Name: Alexander Schlayer',
+    'S_Alexander1@hotmail.de',
+    'EV3 AIR',
+    'November 2026',
+    'Bar',
+    'Corporate Benefits',
+    'ledig, keine Kinder',
+    'aktuell Audi A4',
+    '+49 7181 9987780',
+    '+49 1575 0484494',
+  ].join('\n');
+
+  assert.equal(isInboundLeadPaste(SCHLAYER_NOTE), true);
+  assert.equal(isInboundLeadPaste('Schreib ihm eine Mail zum EV3 Leasing.'), false);
+
+  const noteContact = extractInboundContact(SCHLAYER_NOTE);
+  assert.match(noteContact.fullName || '', /Alexander Schlayer/i);
+  assert.equal(noteContact.email, 's_alexander1@hotmail.de');
+  assert.equal(noteContact.sourceHint, 'structured_lead_note');
+
+  const interpreted = interpretSellerInput(SCHLAYER_NOTE);
+  assert.ok(interpreted.intents.some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD));
+  assert.ok(!interpreted.intents.some((i) => i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE));
+
+  const turn = runCleverSellerTurn({
+    lead: {},
+    sellerInput: SCHLAYER_NOTE,
+    leadsSnapshot: [brandes],
+    scopeHint: 'dashboard',
+    env: ENV,
+  });
+  assert.ok(turn.inboundLead?.detected);
+  assert.equal(turn.inboundLead.proposeCreateCustomer, true);
+  assert.ok(!turn.messageDraft);
+  const review = turn.reviewModel || buildUniversalReviewModel(turn);
+  assert.equal(review.reviewType, 'customer_intake_review');
+  assert.match(review.body || '', /Erkannt:/i);
+  assert.match(review.primaryCta, /anlegen/i);
+  assert.ok((turn.missingInformation || []).some((m) => m.id === 'confirm_create_customer'));
+}
+
 console.log('inboundLead.golden.test.js: OK');

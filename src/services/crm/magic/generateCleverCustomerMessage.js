@@ -409,9 +409,9 @@ export function writeGroundedMessageFallback(context = {}, options = {}) {
     lines.push('Ich freue mich auf Ihre kurze Rückmeldung.');
   } else if (kind === 'offer' || kind === 'offer_update') {
     lines.push('Passt das so für Sie, oder soll ich Laufzeit, Kilometer oder Anzahlung anpassen?');
-  } else {
-    lines.push('Gerne schicke ich Ihnen noch Bilder und die genauen Fahrzeugdaten oder stelle Ihnen das Fahrzeug persönlich vor.');
   }
+  // Kein universeller „Bilder …“-else: erzeugt starres Template-Gefühl und
+  // maskiert falsche Orchestrierung (Nachricht statt Arbeitsziel).
   lines.push('');
   lines.push('Viele Grüße');
 

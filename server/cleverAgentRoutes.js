@@ -123,11 +123,18 @@ router.post('/clever-agent', express.json({ limit: '512kb' }), async (req, res) 
       currentOffer = null,
       previousOfferPreparation = null,
       workingMemory = null,
+      leadsSnapshot = [],
+      attachments = [],
       debug = false,
       forcedTools = null,
     } = req.body ?? {};
 
     const slim = hydrateContactSecrets(slimLeadForAgent(lead || {}));
+    // Snapshot für find/open/today – gekappt, kein Full-CRM-Dump
+    const slimSnapshot = (Array.isArray(leadsSnapshot) ? leadsSnapshot : [])
+      .slice(0, 40)
+      .map((entry) => slimLeadForAgent(entry));
+
     const result = await runCleverAgent({
       sellerMessage: sellerMessage || message,
       lead: slim,
@@ -138,6 +145,8 @@ router.post('/clever-agent', express.json({ limit: '512kb' }), async (req, res) 
         || workingMemory?.previousOfferPreparation
         || null,
       workingMemory,
+      leadsSnapshot: slimSnapshot,
+      attachments: Array.isArray(attachments) ? attachments.slice(0, 4) : [],
       debug: debug || getCleverAgentConfig().debug,
       forcedTools: Array.isArray(forcedTools) ? forcedTools : null,
     });
@@ -153,6 +162,11 @@ router.post('/clever-agent', express.json({ limit: '512kb' }), async (req, res) 
       confirmationRequired: Boolean(result.confirmationRequired),
       resolvedVehicle: result.resolvedVehicle || null,
       offerSummary: result.offerSummary || null,
+      intendSend: Boolean(result.intendSend),
+      preparedAppointment: result.preparedAppointment || null,
+      extractedFacts: result.extractedFacts || [],
+      knowledgeResult: result.knowledgeResult || null,
+      todayOverview: result.todayOverview || null,
       toolCalls: result.toolCalls || [],
       previousOfferPreparation: result.previousOfferPreparation || null,
       lead: result.lead || null,
@@ -175,6 +189,7 @@ router.post('/clever-agent', express.json({ limit: '512kb' }), async (req, res) 
       ok: false,
       message: 'Clever ist gerade nicht erreichbar. Bitte erneut versuchen.',
       error: 'internal_error',
+      fallbackReason: 'agent_error',
       artifacts: [],
       suggestedActions: [],
       mutations: [],

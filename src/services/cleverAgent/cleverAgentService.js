@@ -91,6 +91,11 @@ export async function runCleverAgentDeterministic(params = {}, deps = {}) {
     workingContext: params.workingContext,
     currentOffer: params.currentOffer,
     previousOfferPreparation: params.previousOfferPreparation || null,
+    workingMemory: params.workingMemory || null,
+    sellerMessage: params.sellerMessage || params.message || '',
+    leadsSnapshot: params.leadsSnapshot || [],
+    attachments: params.attachments || [],
+    calendarProvider: params.calendarProvider || null,
   }, { ...deps, applyCleverAgentMutations });
 }
 
@@ -167,6 +172,16 @@ function buildDeterministicFromForced(params, runtime, deps) {
     confirmationRequired,
     resolvedVehicle: effects.resolvedVehicle || last.resolvedVehicle || null,
     offerSummary: effects.offerSummary || last.offer || null,
+    intendSend: Boolean(effects.intendSend || last.intendSend),
+    preparedAppointment: effects.preparedAppointment || last.preparedAppointment || null,
+    extractedFacts: effects.extractedFacts || last.extractedFacts || [],
+    knowledgeResult: effects.knowledgeResult || last.knowledgeResult || null,
+    todayOverview: effects.todayOverview || last.todayOverview || null,
+    resolvedCustomer: effects.resolvedCustomer || last.resolvedCustomer || null,
+    customerSearchResults: effects.customerSearchResults?.length
+      ? effects.customerSearchResults
+      : (last.customerSearchResults || []),
+    messageDraft: effects.messageDraft || last.messageDraft || null,
     toolCalls: allExecutions.map((e) => ({
       name: e.name,
       arguments: e.arguments,
@@ -206,6 +221,9 @@ export async function runCleverAgent(params = {}, deps = {}) {
         || null,
       workingMemory: params.workingMemory || null,
       sellerMessage: params.sellerMessage || params.message || '',
+      leadsSnapshot: params.leadsSnapshot || [],
+      attachments: params.attachments || [],
+      calendarProvider: params.calendarProvider || null,
     }, { ...deps, applyCleverAgentMutations });
     return {
       ...forcedResult,
@@ -267,7 +285,9 @@ export async function runCleverAgent(params = {}, deps = {}) {
       || null,
     workingMemory: params.workingMemory || null,
     sellerMessage,
-    leadsSnapshot: params.leadsSnapshot || [],
+    leadsSnapshot: Array.isArray(params.leadsSnapshot) ? params.leadsSnapshot : [],
+    attachments: Array.isArray(params.attachments) ? params.attachments : [],
+    calendarProvider: params.calendarProvider || null,
   };
 
   const instructions = [
@@ -275,7 +295,8 @@ export async function runCleverAgent(params = {}, deps = {}) {
     `Prompt-Version: ${CLEVER_AGENT_PROMPT_VERSION}`,
     'Antworte ausschließlich als JSON gemäß Schema (message, artifacts, suggestedActions).',
     'Nutze Tools für Fakten und Aktionen. Nach erfolgreichen Write-Tools die Ergebnisdaten aus dem Tool-Output übernehmen.',
-    'prepare_offer ohne confirm=true erzeugen – Persist erst nach Seller-Bestätigung.',
+    'prepare_offer / modify_offer / Termine / Verträge / Trade-in ohne Blind-Persistenz – Confirmation zuerst.',
+    'Lesen (Knowledge, Today, Search, Find) → direkte Antwort, kein Review.',
   ].join('\n\n');
 
   const input = [
@@ -449,6 +470,14 @@ export async function runCleverAgent(params = {}, deps = {}) {
     confirmationRequired,
     resolvedVehicle: effects.resolvedVehicle || null,
     offerSummary: effects.offerSummary || null,
+    intendSend: Boolean(effects.intendSend),
+    preparedAppointment: effects.preparedAppointment || null,
+    extractedFacts: effects.extractedFacts || [],
+    knowledgeResult: effects.knowledgeResult || null,
+    todayOverview: effects.todayOverview || null,
+    resolvedCustomer: effects.resolvedCustomer || null,
+    customerSearchResults: effects.customerSearchResults || [],
+    messageDraft: effects.messageDraft || null,
     toolCalls: allExecutions.map((e) => ({
       name: e.name,
       arguments: e.arguments,

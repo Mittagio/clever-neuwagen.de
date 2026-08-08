@@ -59,6 +59,14 @@ export function mergeToolSideEffects(toolExecutions = []) {
   let confirmationRequired = false;
   let resolvedVehicle = null;
   let offerSummary = null;
+  let intendSend = false;
+  let preparedAppointment = null;
+  let extractedFacts = [];
+  let knowledgeResult = null;
+  let todayOverview = null;
+  let resolvedCustomer = null;
+  let customerSearchResults = [];
+  let messageDraft = null;
 
   for (const exec of toolExecutions) {
     const out = exec.output || {};
@@ -70,6 +78,18 @@ export function mergeToolSideEffects(toolExecutions = []) {
     if (out.confirmationRequired) confirmationRequired = true;
     if (out.resolvedVehicle) resolvedVehicle = out.resolvedVehicle;
     if (out.offer) offerSummary = out.offer;
+    if (out.intendSend) intendSend = true;
+    if (out.preparedAppointment) preparedAppointment = out.preparedAppointment;
+    if (Array.isArray(out.extractedFacts) && out.extractedFacts.length) {
+      extractedFacts = [...extractedFacts, ...out.extractedFacts];
+    }
+    if (out.knowledgeResult) knowledgeResult = out.knowledgeResult;
+    if (out.todayOverview) todayOverview = out.todayOverview;
+    if (out.resolvedCustomer) resolvedCustomer = out.resolvedCustomer;
+    if (Array.isArray(out.customerSearchResults) && out.customerSearchResults.length) {
+      customerSearchResults = out.customerSearchResults;
+    }
+    if (out.messageDraft) messageDraft = out.messageDraft;
     if (out.leadPatch) {
       mutations.push({ type: 'apply_lead_patch', leadPatch: out.leadPatch });
     }
@@ -84,5 +104,13 @@ export function mergeToolSideEffects(toolExecutions = []) {
     confirmationRequired,
     resolvedVehicle,
     offerSummary,
+    intendSend,
+    preparedAppointment,
+    extractedFacts,
+    knowledgeResult,
+    todayOverview,
+    resolvedCustomer,
+    customerSearchResults,
+    messageDraft,
   };
 }

@@ -50,9 +50,14 @@ import {
 } from './normalizeSellerUnits.js';
 import {
   extractTradeInCandidates,
+  hasTradeInCue,
   isSecondVehicleInterestCue,
   tradeInModelKeys,
 } from './detectTradeInFromSellerInput.js';
+import {
+  ensureZeroLossCoverage,
+  resolveSellerModelAlias,
+} from './zeroLossIntake.js';
 import { enrichFactsForMultiSource } from './multiSource/buildMultiSourceIntake.js';
 import {
   REJECTION_REASON,
@@ -96,7 +101,7 @@ const MONTH_MAP = {
 };
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
-const KIA_INTEREST_MODEL_RE = 'EV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
+const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR';
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
@@ -284,6 +289,26 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value,
       label: `${value} Kinder`,
       confidence: 0.97,
+      rawExpression: children[0],
+      span: children[0],
+    }));
+  }
+
+  const pet = t.match(/\b(\d)\s*hund(?:e)?\b/i)
+    || t.match(/\b(?:einen?\s+)?hund(?:e)?\b/i)
+    || t.match(/\b(\d)\s*katzen?\b/i)
+    || t.match(/\b(?:eine?\s+)?katze\b/i);
+  if (pet) {
+    const isDog = /hund/i.test(pet[0]);
+    const count = pet[1] ? Number(pet[1]) : 1;
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'pet',
+      value: { type: isDog ? 'dog' : 'cat', count },
+      label: isDog ? (count > 1 ? `${count} Hunde` : '1 Hund') : (count > 1 ? `${count} Katzen` : '1 Katze'),
+      confidence: 0.95,
+      rawExpression: pet[0],
+      span: pet[0],
     }));
   }
 
@@ -357,14 +382,15 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   while (interestMatch) {
     const modelRaw = interestMatch[1];
     const trimRaw = interestMatch[2] || null;
-    const modelKey = modelRaw.toLowerCase();
+    const alias = resolveSellerModelAlias(modelRaw);
+    const modelKey = (alias.canonical || modelRaw).toLowerCase();
     // „GW Picanto“ → kein Interesse; „außerdem Picanto“ bleibt Interesse
     if (tradeInKeys.has(modelKey) && !isSecondVehicleInterestCue(raw, modelRaw)) {
       interestMatch = interestRe.exec(t);
       continue;
     }
-    const modelLabel = /^ev\d$/i.test(modelRaw)
-      ? modelRaw.toUpperCase()
+    const modelLabel = /^ev\d$/i.test(modelKey)
+      ? modelKey.toUpperCase()
       : titleCaseToken(modelRaw);
     const trimLabelRaw = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
     const trimLabel = trimLabelRaw && /^cor$/i.test(trimLabelRaw) ? 'Core' : trimLabelRaw;
@@ -380,6 +406,9 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         trim: trimValue,
         label,
         value: { make: 'Kia', modelKey, trim: trimValue },
+        rawExpression: modelRaw,
+        canonicalValue: alias.canonical ? modelKey.toUpperCase() : null,
+        aliasAmbiguous: alias.ambiguous && !alias.canonical,
       });
     }
     interestMatch = interestRe.exec(t);
@@ -407,12 +436,17 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       confidence: 0.93,
     }));
   } else if (interestHits.length === 1) {
+    const hit = interestHits[0];
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'vehicleInterest',
-      value: interestHits[0].value,
-      label: interestHits[0].label,
-      confidence: 0.95,
+      value: hit.value,
+      label: hit.label,
+      confidence: hit.canonicalValue ? 0.93 : 0.95,
+      needsConfirmation: Boolean(hit.aliasAmbiguous),
+      rawExpression: hit.rawExpression || null,
+      canonicalValue: hit.canonicalValue || null,
+      span: hit.rawExpression || null,
     }));
   } else if (/\bev3\s+oder\s+ev5\b/i.test(t) || /\bev5\s+oder\s+ev3\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
@@ -659,6 +693,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value,
       label: `${value} € Wunschrate`,
       confidence: 0.92,
+      rawExpression: budget[0],
+      span: budget[0],
     }));
   } else if (
     !facts.some((f) => f.field === 'purchasePrice')
@@ -677,6 +713,36 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         needsConfirmation: true,
       }));
     }
+  }
+
+  const downPayment = t.match(/\banzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]?\d{3})|\d{3,5})\s*(?:€|euro)?\b/i)
+    || t.match(/\b(\d{1,3}(?:[.\s]?\d{3})|\d{3,5})\s*(?:€|euro)?\s*(?:az|anzahlung)\b/i);
+  if (downPayment) {
+    const rawNum = String(downPayment[1]).replace(/[.\s]/g, '');
+    const value = Number(rawNum);
+    if (Number.isFinite(value) && value >= 500) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'downPayment',
+        value,
+        label: `${value.toLocaleString('de-DE')} € AZ`,
+        confidence: 0.93,
+        rawExpression: downPayment[0],
+        span: downPayment[0],
+      }));
+    }
+  }
+
+  if (/\bsofort(?:\s+verfügbar|\s+verfuegbar)?\b/i.test(t) || /\bverfügbar(?:keit)?\s+sofort\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'availabilityPreference',
+      value: 'immediate',
+      label: 'sofort verfügbar',
+      confidence: 0.94,
+      rawExpression: 'sofort verfügbar',
+      span: 'sofort',
+    }));
   }
 
   const isRememberCue = /\bmerk(?:e|en)?\s*dir\b|\bmerken\b|\bnotier(?:e|en)?\b/i.test(t);
@@ -966,15 +1032,24 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  // Trade-in / Name / Housing Enrichment (Multi-Source vorbereitet)
+  // Trade-in / Bestandsfahrzeug (Multi-Source vorbereitet)
   for (const ti of extractTradeInCandidates(raw)) {
+    const isDriveCue = /faehrt|fährt/i.test(ti.cue || '');
+    const factClass = isDriveCue && !hasTradeInCue(raw)
+      ? SELLER_FACT_CLASS.EXISTING_VEHICLE
+      : SELLER_FACT_CLASS.TRADE_IN_FACT;
+    const label = factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE
+      ? (ti.label || [ti.make, ti.model].filter(Boolean).join(' '))
+      : `Inzahlungnahme: ${ti.label}`;
     pushFact(facts, createExtractedFact({
-      factClass: SELLER_FACT_CLASS.TRADE_IN_FACT,
-      field: 'tradeInVehicle',
+      factClass,
+      field: factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE ? 'existingVehicle' : 'tradeInVehicle',
       value: { make: ti.make, model: ti.model },
-      label: `Inzahlungnahme: ${ti.label}`,
+      label,
       confidence: ti.ambiguous ? 0.7 : 0.94,
       needsConfirmation: ti.ambiguous,
+      rawExpression: ti.span || ti.label,
+      span: ti.span || null,
     }));
   }
 
@@ -1051,7 +1126,13 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isCreateOfferCommand = /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?)\s+(?:herrn?\s+|frau\s+|\w+\s+)?(?:ein\s+)?(?:leasing)?angebot\b/i.test(t)
     || /\bein\s+(?:leasing)?angebot\s+(?:für|über)\b/i.test(t)
     // „Erstelle Brandes ein XCeed-Angebot …“
-    || /(?:erstell(?:e|en)?|mach(?:e|en)?)\b.{0,60}\b(?:ein\s+)?[\wÄÖÜäöüß-]+-?angebot\b/i.test(t);
+    || /(?:erstell(?:e|en)?|mach(?:e|en)?)\b.{0,60}\b(?:ein\s+)?[\wÄÖÜäöüß-]+-?angebot\b/i.test(t)
+    // Freier Clever-Kurzbefehl: „EV2 Angebot Air in weiß“ / „Ev 2 angebot …“
+    || (
+      /\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b/i.test(t)
+      && /\bangebot\b/i.test(t)
+      && !/\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|whatsapp)\b/i.test(t)
+    );
   const isMessageOnlyPrice = /\bschreib(?:e|en)?\b/i.test(t)
     && /\b(?:dass|das)\b/i.test(t)
     && /\b(?:kostet|preis|€|euro)\b/i.test(t)
@@ -1149,7 +1230,10 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   if (isCreateOfferCommand) {
     add(SELLER_TURN_INTENTS.FIND_CUSTOMER, 0.95);
     add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.97);
-    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.94);
+    // Nachricht nur bei explizitem Schreib-Cue – nicht weil „Angebot“ im Text steht
+    if (explicitMessage) {
+      add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.94);
+    }
   }
 
   if (isMessageOnlyPrice) {
@@ -1193,7 +1277,9 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   if (isSuccessionOfferPrepare) {
     add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.98);
     add(SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, 0.92);
-    add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.9);
+    if (explicitMessage) {
+      add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.9);
+    }
     add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.88);
   }
 
@@ -1343,10 +1429,24 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   }
   if (!explicitMessage && (
     facts.some((f) => f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION)
-    || /\b(angebot|erstell|mach).{0,40}\b(angebot|ev\d)/i.test(t)
+    || /\b(angebot|erstell|mach).{0,40}\b(angebot|ev\s*\d)\b/i.test(t)
+    || /\b(ev\s*\d|sportage|sorento|ceed|xceed|niro|picanto)\b.{0,40}\bangebot\b/i.test(t)
   ) && !isFindCustomer && !isOpenCustomer && !isSummarizeCustomer && !isHistoryQuery && !isOfferSentQuery
     && !isMessageOnlyPrice && !isAmbiguousOfferOrMessage) {
     add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.9);
+  }
+
+  // Orchestrierung: Im freien Clever-Modus gewinnt Arbeitsziel vor Message-Template.
+  // DRAFT_MESSAGE nur bei explizitem Schreib-Cue (oder Chip „Nachricht“ via Constraint).
+  if (
+    intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+    && !explicitMessage
+  ) {
+    const withoutDraft = intents.filter((i) => i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+    if (withoutDraft.length) {
+      intents.length = 0;
+      intents.push(...withoutDraft);
+    }
   }
 
   if (!intents.length) add(SELLER_TURN_INTENTS.UNKNOWN, 0.4);
@@ -1460,17 +1560,33 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     .filter(Boolean);
   const homepageInquiry = parseHomepageCommercialInquiry(normalized);
 
+  const zeroLoss = ensureZeroLossCoverage({
+    sellerInput: normalized,
+    facts,
+    customerName: options.customerName
+      || options.lead?.contact?.name
+      || options.lead?.name
+      || null,
+  });
+
   return {
     raw,
     normalized,
-    facts,
+    facts: zeroLoss.facts,
     intents,
     inputMode,
     attachmentTypes,
     homepageInquiry: homepageInquiry?.hasDualScenarios ? homepageInquiry : null,
     inboundContact,
-    confidence: facts.length
-      ? Math.min(0.99, facts.reduce((s, f) => s + (f.confidence || 0), 0) / facts.length)
+    zeroLossIntake: {
+      unresolvedNotes: zeroLoss.unresolvedNotes,
+      unconsumedInputSpans: zeroLoss.unconsumedInputSpans,
+      groups: zeroLoss.groups,
+      summary: zeroLoss.summary,
+      consumedFactCount: zeroLoss.consumedFactCount,
+    },
+    confidence: zeroLoss.facts.length
+      ? Math.min(0.99, zeroLoss.facts.reduce((s, f) => s + (f.confidence || 0), 0) / zeroLoss.facts.length)
       : (intents[0]?.confidence ?? 0.4),
   };
 }

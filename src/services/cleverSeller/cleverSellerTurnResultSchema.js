@@ -101,6 +101,11 @@ export function createExtractedFact({
   source = 'seller_input',
   confidence = 0.9,
   needsConfirmation = false,
+  rawExpression = null,
+  observedAt = null,
+  preserveAsNote = false,
+  span = null,
+  canonicalValue = null,
 } = {}) {
   return {
     factClass,
@@ -110,6 +115,11 @@ export function createExtractedFact({
     source,
     confidence: Number(confidence) || 0,
     needsConfirmation: Boolean(needsConfirmation),
+    ...(rawExpression != null ? { rawExpression: String(rawExpression) } : {}),
+    ...(observedAt ? { observedAt } : {}),
+    ...(preserveAsNote ? { preserveAsNote: true } : {}),
+    ...(span != null ? { span: String(span) } : {}),
+    ...(canonicalValue != null ? { canonicalValue } : {}),
   };
 }
 

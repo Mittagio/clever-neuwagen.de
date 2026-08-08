@@ -29,9 +29,16 @@ Das bleibt als Fallback; der neue Agent ersetzt die Interpretation.
 |------|------------------|
 | `get_customer_context` | `buildCustomerUnderstanding`, Wish/NeedProfile, Snapshot-Fakten |
 | `list_offers` / `get_offer` | `crm.vehicleOffers`, Board-/Kartenfelder, Working Context |
-| `create_offer` | `enrichOfferTextWithCustomerWish` → `prepareMagicOffer` → `finalizeLeadWithOfferDraft` |
-| `create_message` | `prepareGroundedCustomerMessageSync` (Prepare, kein Send) |
+| `create_offer` / `prepare_offer` / `modify_offer` | Magic Offer / `runSellerOfferAssist` (Confirmation) |
+| `create_message` / `rewrite_message` / `intend_send` | Grounded Message (Prepare, kein Auto-Send) |
 | `create_customer_link` | `prepareCustomerOfferPortfolio` |
+| `find_customer` / `open_customer` / `update_customer_facts` | `CLEVER_SELLER_TOOLS` + `applyStructuredFactsToLead` |
+| `lookup_*` / `compare_vehicles` | `answerSellerVehicleKnowledge` / magicKnowledgeTools |
+| `propose_appointment` / `modify_appointment` / `check_availability` | Appointment-Assist / Calendar |
+| `import_contract` / `classify_attachment` / `compare_contract_offer` | Contract intake / PDF classify |
+| `prepare_trade_in` | `detectTradeInFromSellerInput` |
+| `get_today_overview` / `create_follow_up` | Today overview / Callback |
+| `search_offers` / `search_contracts` / `search_documents` | History / Contract search |
 
 ## C. UI-gekoppelt (dünne Schicht nötig)
 

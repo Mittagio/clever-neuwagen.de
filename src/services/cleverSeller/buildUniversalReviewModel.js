@@ -678,9 +678,9 @@ export function buildUniversalActionSections(turn = {}) {
             action: 'open_offer_handoff',
             tone: 'primary',
           },
-          { id: 'upload_pdf', label: 'PDF hochladen', tone: 'secondary' },
-          { id: 'enter_rate', label: 'Monatsrate eingeben', tone: 'compact' },
-          { id: 'calc_cash', label: 'Als Barkauf berechnen', tone: 'compact' },
+          { id: 'upload_pdf', label: 'PDF hochladen', action: 'upload_pdf', tone: 'secondary' },
+          { id: 'enter_rate', label: 'Monatsrate eingeben', action: 'enter_rate', tone: 'compact' },
+          { id: 'calc_cash', label: 'Als Barkauf berechnen', action: 'calc_cash', tone: 'compact' },
         ]
         : [
           {
@@ -1885,9 +1885,9 @@ export function buildUniversalReviewModel(turn = {}) {
                                   : goldenOnly
                                     ? '✨ Clever'
                                     : actionSections.some((s) => s.kind === 'offer_incomplete')
-                                      ? '✨ Clever prüft das Angebot'
+                                      ? '✨ Angebot'
                                       : (multiAction || appointmentPrep || actionSections.some((s) => s.kind === 'offer_prepare')
-                                        ? '✨ Clever hat vorbereitet'
+                                        ? '✨ Angebot'
                                         : '✨ Clever hat verstanden'),
     groups: visibleGroups,
     collapsedContext: appointmentCollapsedContext || offerCollapsedContext,
@@ -2041,6 +2041,8 @@ export function buildUniversalReviewModel(turn = {}) {
  * @param {object} turn
  */
 export function shouldShowUniversalReview(turn = {}) {
+  // Clever 2.0: Direct answers (Wissen/Suche/Heute/Summary) → kein Review
+  // Response Policy: resolveSellerResponsePolicy() für seller-facing Kind.
   if (turn.customerReply?.detected) return true;
   if (turn.inboundLead?.detected) return true;
   if (turn.multiSourceIntake?.detected) return true;
@@ -2048,13 +2050,12 @@ export function shouldShowUniversalReview(turn = {}) {
   if ((turn.extractedFacts ?? []).some((f) => f.field === 'commercialScenarios')) return true;
 
   const prepared = turn.preparedActions ?? [];
-  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW)) return true;
-  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)) return true;
-  if (turn.todayOverview || turn.knowledgeResult) return true;
-  if (turn.customerSearchResults?.length || turn.customerSummary || turn.historySearchResults) return true;
 
-  const hasHistory = prepared.some((a) => (
-    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
+  // Lesen / Suchen / Briefing → Direct Answer (kein Review)
+  const readOnlyPrepared = prepared.length > 0 && prepared.every((a) => (
+    a.type === SELLER_TURN_INTENTS.GET_TODAY_OVERVIEW
+    || a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS
     || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_ACTIVITIES
@@ -2062,28 +2063,50 @@ export function shouldShowUniversalReview(turn = {}) {
     || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER
     || a.type === SELLER_TURN_INTENTS.SUMMARIZE_CUSTOMER_CONTEXT
     || a.type === SELLER_TURN_INTENTS.CUSTOMER_LOOKUP
+    || a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP
+    || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
   ));
-  if (hasHistory) return true;
+  if (readOnlyPrepared) return false;
+  if (
+    (turn.todayOverview || turn.knowledgeResult || turn.customerSummary
+      || turn.historySearchResults?.length || turn.customerSearchResults?.length
+      || turn.searchResults?.length || turn.contractMemoryResult)
+    && !prepared.some((a) => (
+      a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+      || a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+      || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+      || a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
+      || a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS
+    ))
+  ) {
+    return false;
+  }
 
-  if (prepared.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP)) return true;
   if (prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.REQUEST_DOCUMENTS && a.status === 'prepared'
   ))) return true;
+  // Multi-Offer-Feedback / Favoriten anpassen → Review
+  if (prepared.some((a) => a.payload?.reviseFavoriteOffer)) return true;
+  if ((turn.extractedFacts || []).some((f) => f.field === 'vehicleTrackFeedback')) return true;
   if ((turn.missingInformation || []).some((m) => m.id === 'clarify_offer_or_message')) return true;
+  // Klärungen: Review nur wenn zusätzlich Business-Action – sonst Clarification-Message
   if ((turn.missingInformation || []).some((m) => (
     m.id === 'exact_technology_package_contents'
     || m.id === 'clarify_vehicle_for_knowledge'
     || m.id === 'clarify_customer_for_appointment'
     || m.id === 'clarify_customer_for_contract'
-  ))) return true;
+  ))) {
+    const hasBiz = prepared.some((a) => (
+      a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+      || a.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+      || a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    ));
+    if (hasBiz) return true;
+  }
 
   const hasGroundedMessage = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
     && a.payload?.knowledgeResult
-  )) || prepared.some((a) => (
-    a.type === SELLER_TURN_INTENTS.RESOLVE_VEHICLE
-    || a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_PACKAGE
-    || a.type === SELLER_TURN_INTENTS.LOOKUP_VEHICLE_EQUIPMENT
   ));
   if (hasGroundedMessage) return true;
 
@@ -2092,15 +2115,22 @@ export function shouldShowUniversalReview(turn = {}) {
   ));
   if (hasAppointmentPrep) return true;
 
+  // Inzahlungnahme / Trade-in → Review (auch aus Agent-Tools)
+  if (prepared.some((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_TRADE_IN && a.status === 'prepared'
+  ))) return true;
+  if ((turn.extractedFacts || []).some((f) => (
+    f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT
+    || f.field === 'tradeInRequested'
+    || f.field === 'tradeInVehicle'
+  )) && prepared.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_TRADE_IN)) {
+    return true;
+  }
+
   const hasContractImport = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.IMPORT_CUSTOMER_CONTRACT
   )) || Boolean(turn.contractDraft);
   if (hasContractImport) return true;
-
-  const hasContractSearch = prepared.some((a) => (
-    a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_CONTRACTS
-  )) || Boolean(turn.contractMemoryResult);
-  if (hasContractSearch) return true;
 
   const hasContractCompare = prepared.some((a) => (
     a.type === SELLER_TURN_INTENTS.COMPARE_CONTRACT_WITH_OFFER
@@ -2112,11 +2142,26 @@ export function shouldShowUniversalReview(turn = {}) {
     && a.status === 'prepared'
     && Boolean(a.payload?.messageDraft || turn.messageDraft)
   ));
-  // Angehängtes Angebot → Zusammenfassungs-Mail: Review ohne CRM-Facts
+  const hasIntendSend = prepared.some((a) => a.payload?.intendSend)
+    || turn.pendingAction?.type === 'intend_send'
+    || Boolean(turn.intendSend);
+  // Senden vorbereiten → immer Confirmation Review (kein stilles Senden)
+  if (hasPreparedMessage && hasIntendSend) return true;
+  // Angehängtes Angebot → Zusammenfassungs-Mail: Review
   if (hasPreparedMessage && turn.currentOfferContext?.offerId) return true;
+  // Reine Message-Draft ohne Send-Intent → Compact (kein Review)
+  if (hasPreparedMessage && !hasIntendSend) {
+    // weiter prüfen – Offer-Prep kann trotzdem Review brauchen
+  }
 
   const facts = turn.extractedFacts ?? [];
-  if (!facts.length) return false;
+  if (!facts.length) {
+    // Offer prepare / Send-Confirm allein
+    return prepared.some((a) => (
+      a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+      || (a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.payload?.intendSend)
+    )) || turn.pendingAction?.type === 'intend_send';
+  }
 
   const dumpClass = new Set([
     SELLER_FACT_CLASS.CUSTOMER_FACT,
@@ -2131,7 +2176,6 @@ export function shouldShowUniversalReview(turn = {}) {
     SELLER_FACT_CLASS.APPOINTMENT_FACT,
   ]);
 
-  // Reine Kundennachricht ohne CRM-Kontext → kein Review (nur Message-Draft)
   const hasStructuredSellerNote = facts.some((f) => (
     f.factClass === SELLER_FACT_CLASS.SELLER_FACT
     && /delivery|liefer|verfügbar|price|preis/i.test(`${f.field || ''} ${f.label || ''}`)
@@ -2140,8 +2184,6 @@ export function shouldShowUniversalReview(turn = {}) {
     const hasDump = facts.some((f) => dumpClass.has(f.factClass));
     if (!hasDump && !hasStructuredSellerNote) return false;
   }
-  // Strukturierte Seller-Notiz (z. B. Lieferzeit) → Review mit Bestätigung
-  if (hasStructuredSellerNote) return true;
 
   const hasOfferPrep = turn.intents?.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
     && turn.preparedActions?.some((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
@@ -2150,10 +2192,24 @@ export function shouldShowUniversalReview(turn = {}) {
   if (hasOfferPrep && (hasDraft || facts.some((f) => f.field === 'purchasePrice'))) {
     return true;
   }
+  if (hasOfferPrep) return true;
+
+  // Multi-Aktion (Offer-Update + Nachricht) immer als Review
+  if (buildUniversalActionSections(turn).length > 1) return true;
+
+  // Sichere interne Dumps → Compact Confirmation (kein Review), außer sensitive Confirmation
+  const rememberMode = turn.rememberDecision?.mode;
+  if (rememberMode === 'save_with_undo') return false;
+  if (rememberMode === 'partial_save_with_undo') {
+    return (turn.rememberDecision?.reviewFacts || []).length > 0;
+  }
+
+  // Unsichere / geschäftskritische Facts weiterhin Review
+  if (facts.some((f) => f.needsConfirmation)) return true;
+  if (hasStructuredSellerNote) return true;
 
   const hasPortfolio = turn.intents?.some((i) => i.type === 'send_portfolio');
   const hasContextIntent = turn.intents?.some((i) => i.type === 'update_customer_context');
-  // Reiner Portfolio-Cue ohne Kontext-Fakten → Inline-CTA (kein Review)
   if (hasPortfolio && !hasContextIntent && facts.length < 2) {
     const portfolioDump = new Set([
       SELLER_FACT_CLASS.CUSTOMER_FACT,
@@ -2169,10 +2225,22 @@ export function shouldShowUniversalReview(turn = {}) {
     if (!facts.some((f) => portfolioDump.has(f.factClass))) return false;
   }
 
-  // Multi-Aktion (Offer-Update + Nachricht) immer als Review
-  if (buildUniversalActionSections(turn).length > 1) return true;
+  // Reiner Wissens-/Merken-Dump ohne Offer/Termin: Compact (kein Universal Review)
+  if (
+    hasContextIntent
+    && !hasOfferPrep
+    && !hasAppointmentPrep
+    && !hasContractImport
+    && !hasPreparedMessage
+  ) {
+    return false;
+  }
 
-  if (facts.length >= 2) return true;
-  if (hasContextIntent) return true;
-  return facts.some((f) => dumpClass.has(f.factClass));
+  if (facts.length >= 2 && (hasOfferPrep || hasDraft || hasAppointmentPrep)) return true;
+  // Zero-Loss: viele Facts allein ⇒ Compact Confirmation, nicht Review
+  if (facts.length >= 2 && !hasOfferPrep && !hasDraft && !hasAppointmentPrep) {
+    return facts.some((f) => f.needsConfirmation);
+  }
+  if (hasContextIntent) return false;
+  return false;
 }

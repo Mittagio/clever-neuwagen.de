@@ -672,20 +672,28 @@ const SAFE_REMEMBER_FACT_CLASSES = new Set([
   SELLER_FACT_CLASS.SELLER_NOTE,
   SELLER_FACT_CLASS.SELLER_FACT,
   SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+  SELLER_FACT_CLASS.EXISTING_VEHICLE,
+  SELLER_FACT_CLASS.TRADE_IN_FACT,
 ]);
 
-/** VEHICLE_INTEREST nur für eindeutige Präferenz-Felder (Farbe), nicht Modellwahl. */
+/** VEHICLE_INTEREST / Commercial – Zero-Loss: sichere Felder auto-merken. */
 const SAFE_REMEMBER_VEHICLE_INTEREST_FIELDS = new Set([
   'colorPreference',
+  'vehicleInterest',
+]);
+
+const SAFE_REMEMBER_COMMERCIAL_FIELDS = new Set([
+  'monthlyBudget',
+  'downPayment',
+  'annualMileage',
+  'termMonths',
+  'paymentType',
 ]);
 
 const SENSITIVE_REMEMBER_FACT_CLASSES = new Set([
   SELLER_FACT_CLASS.SELF_DISCLOSURE_FACT,
   SELLER_FACT_CLASS.FINANCE_FACT,
-  SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
   SELLER_FACT_CLASS.CONTRACT_FACT,
-  SELLER_FACT_CLASS.TRADE_IN_FACT,
-  SELLER_FACT_CLASS.EXISTING_VEHICLE,
   SELLER_FACT_CLASS.APPOINTMENT_FACT,
   SELLER_FACT_CLASS.DOCUMENT_FACT,
   SELLER_FACT_CLASS.OFFER_INSTRUCTION,
@@ -843,9 +851,10 @@ export function applyIntentConstraintToIntents(intents = [], constraint = null, 
 
 /**
  * Prüft, ob Merken-Facts sicher auto-speicherbar sind.
+ * Zero-Loss: Partial Success – sichere Facts speichern, Unsichere separat.
  * @param {object[]} facts
  * @param {object} [lead]
- * @returns {{ mode: 'save_with_undo'|'review', reason: string, safeFacts: object[], reviewFacts: object[] }}
+ * @returns {{ mode: 'save_with_undo'|'partial_save_with_undo'|'review', reason: string, safeFacts: object[], reviewFacts: object[] }}
  */
 export function evaluateRememberDecision(facts = [], lead = {}) {
   const list = Array.isArray(facts) ? facts.filter(Boolean) : [];
@@ -874,6 +883,12 @@ export function evaluateRememberDecision(facts = [], lead = {}) {
     const factClass = fact.factClass;
     const label = String(fact.label || '').toLowerCase();
 
+    // Unresolved notes immer behalten / auto-merken (Zero-Loss)
+    if (fact.field === 'unresolvedNote' || fact.preserveAsNote) {
+      safeFacts.push(fact);
+      continue;
+    }
+
     if (fact.needsConfirmation) {
       reviewFacts.push(fact);
       reason = 'needs_confirmation';
@@ -886,17 +901,23 @@ export function evaluateRememberDecision(facts = [], lead = {}) {
     }
     const safeVehicleInterest = factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST
       && SAFE_REMEMBER_VEHICLE_INTEREST_FIELDS.has(fact.field);
-    if (!SAFE_REMEMBER_FACT_CLASSES.has(factClass) && !safeVehicleInterest) {
+    const safeCommercial = factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+      && SAFE_REMEMBER_COMMERCIAL_FIELDS.has(fact.field)
+      && confidence >= SAFE_REMEMBER_MIN_CONFIDENCE;
+    if (
+      !SAFE_REMEMBER_FACT_CLASSES.has(factClass)
+      && !safeVehicleInterest
+      && !safeCommercial
+    ) {
       reviewFacts.push(fact);
       reason = 'unsupported_fact_class';
       continue;
     }
-    if (confidence < SAFE_REMEMBER_MIN_CONFIDENCE) {
+    if (confidence < SAFE_REMEMBER_MIN_CONFIDENCE && fact.field !== 'unresolvedNote') {
       reviewFacts.push(fact);
       reason = 'low_confidence';
       continue;
     }
-    // Widerspruch zu bekannten Labels / Insights
     if (label && (
       (fact.field === 'childrenCount' && [...labels].some((l) => /\bkinder\b/.test(l) && !l.includes(String(fact.value))))
       || insightTexts.some((t) => t.includes(label) === false && conflictingHouseholdHint(t, fact))
@@ -906,6 +927,15 @@ export function evaluateRememberDecision(facts = [], lead = {}) {
       continue;
     }
     safeFacts.push(fact);
+  }
+
+  if (safeFacts.length && reviewFacts.length) {
+    return {
+      mode: 'partial_save_with_undo',
+      reason: reason || 'partial_success',
+      safeFacts,
+      reviewFacts,
+    };
   }
 
   if (reviewFacts.length) {

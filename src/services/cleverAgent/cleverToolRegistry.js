@@ -30,6 +30,7 @@ import {
   rememberCustomerInformationToolDef,
   executeRememberCustomerInformation,
 } from './tools/rememberCustomerInformation.js';
+import { SELLER_COVERAGE_AGENT_TOOLS } from './tools/sellerCoverageTools.js';
 import { summarizeCustomerContext } from '../cleverSeller/summarizeCustomerContext.js';
 import { searchGlobalCustomerHistory } from '../cleverSeller/globalHistorySearch.js';
 import { runComposerAkteSearch } from '../crm/composerAkteSearch.js';
@@ -66,6 +67,23 @@ function executeSearchCustomerHistory(runtime = {}, args = {}) {
     ...runComposerAkteSearch(runtime.lead || {}, query, {}),
   };
 }
+
+function kindFromCoverage(kind) {
+  if (kind === 'write') return CLEVER_AGENT_TOOL_KIND.WRITE;
+  if (kind === 'external') return CLEVER_AGENT_TOOL_KIND.EXTERNAL;
+  return CLEVER_AGENT_TOOL_KIND.READ;
+}
+
+const coverageEntries = Object.fromEntries(
+  Object.entries(SELLER_COVERAGE_AGENT_TOOLS).map(([name, tool]) => ([
+    name,
+    {
+      def: tool.def,
+      kind: kindFromCoverage(tool.kind),
+      execute: tool.execute,
+    },
+  ])),
+);
 
 export const CLEVER_AGENT_TOOLS = {
   get_customer_context: {
@@ -135,6 +153,8 @@ export const CLEVER_AGENT_TOOLS = {
     kind: CLEVER_AGENT_TOOL_KIND.WRITE,
     execute: executeCreateCustomerLink,
   },
+  // Sprint 2 – Legacy Seller-Capabilitys als Agent-Tools
+  ...coverageEntries,
 };
 
 export function listCleverAgentToolNames() {

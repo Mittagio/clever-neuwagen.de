@@ -15,22 +15,30 @@ import {
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
 
-const COLLAPSED_LINE_MAX = 3;
+const COLLAPSED_SUMMARY_MAX = 4;
+const KERN_CHIP_MAX = 6;
 
 function ChipIcon({ icon }) {
-  if (icon === 'car' || icon === 'fahrzeug' || icon === 'inzahlungnahme') {
+  const key = String(icon || '').toLowerCase();
+  if (
+    key === 'car'
+    || key === 'fahrzeug'
+    || key === 'inzahlungnahme'
+    || key === 'equipment'
+    || key === 'wichtig'
+  ) {
     return <IconCar className="cust-kundenbild__chip-icon" />;
   }
-  if (icon === 'alltag' || icon === 'users') {
+  if (key === 'alltag' || key === 'users' || key === 'notiz' || key === 'persoenlich') {
     return <IconUser className="cust-kundenbild__chip-icon" />;
   }
-  if (icon === 'vertrag' || icon === 'clock') {
+  if (key === 'vertrag' || key === 'clock') {
     return <IconClock className="cust-kundenbild__chip-icon" />;
   }
-  if (icon === 'budget' || icon === 'euro') {
+  if (key === 'budget' || key === 'euro') {
     return <IconEuro className="cust-kundenbild__chip-icon" />;
   }
-  return null;
+  return <IconCar className="cust-kundenbild__chip-icon" />;
 }
 
 function chipPriorityMeta(chip) {
@@ -46,38 +54,49 @@ function chipPriorityMeta(chip) {
   return null;
 }
 
-/** Collapsed summary: max. zwei fachliche Zeilen. */
-function buildCollapsedSummaryLines(soft) {
+function urgencyFirst(facts = []) {
+  const urgent = [];
+  const rest = [];
+  for (const f of facts) {
+    if (
+      f.priority === 'required'
+      || f.priority === 'important'
+      || /sofort|unfall|ersatz|dringend/i.test(String(f.label || ''))
+    ) {
+      urgent.push(f);
+    } else {
+      rest.push(f);
+    }
+  }
+  return [...urgent, ...rest];
+}
+
+/**
+ * Collapsed summary chips under Konditionen (soft facts only).
+ */
+function buildCollapsedSummaryChips(soft, max = COLLAPSED_SUMMARY_MAX) {
   const groups = soft?.groups ?? [];
   const byId = new Map(groups.map((g) => [g.id, g]));
+  const picked = [];
+  const seen = new Set();
 
-  function lineFromFacts(prefix, facts = [], max = COLLAPSED_LINE_MAX) {
-    const labels = facts
-      .map((f) => String(f.label || '').trim())
-      .filter(Boolean);
-    if (!labels.length) return null;
-    const shown = labels.slice(0, max);
-    const overflow = labels.length - shown.length;
-    const body = [
-      ...shown,
-      overflow > 0 ? `+${overflow}` : null,
-    ].filter(Boolean).join(' · ');
-    return { prefix, body };
+  function takeFacts(facts = [], limit = max) {
+    for (const fact of facts) {
+      if (picked.length >= limit) break;
+      const id = fact?.id || fact?.label;
+      const label = String(fact?.label || '').trim();
+      if (!id || !label || seen.has(id)) continue;
+      seen.add(id);
+      picked.push(fact);
+    }
   }
 
-  const personGroup = byId.get(SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG);
-  const fahrzeugGroup = byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
-  const ausstattungGroup = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK);
+  takeFacts(urgencyFirst(byId.get(SOFT_SNAPSHOT_GROUP.PERSOENLICH)?.facts));
+  takeFacts(urgencyFirst(byId.get(SOFT_SNAPSHOT_GROUP.MENSCH_ALLTAG)?.facts));
+  takeFacts(byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts);
 
-  const lines = [];
-  const personLine = lineFromFacts('Person', personGroup?.facts);
-  if (personLine) lines.push(personLine);
-
-  const fahrzeugLine = lineFromFacts('Fahrzeug', fahrzeugGroup?.facts);
-  if (fahrzeugLine && lines.length < 2) lines.push(fahrzeugLine);
-
-  if (lines.length < 2) {
-    let wichtigFacts = ausstattungGroup?.facts ?? [];
+  if (picked.length < max) {
+    let wichtigFacts = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.facts ?? [];
     if (!wichtigFacts.length) {
       wichtigFacts = groups
         .flatMap((g) => g.facts || [])
@@ -88,47 +107,33 @@ function buildCollapsedSummaryLines(soft) {
           || f.category === 'wichtig'
         ));
     }
-    const wichtigLine = lineFromFacts('Ausstattung', wichtigFacts);
-    if (wichtigLine) lines.push(wichtigLine);
+    takeFacts(urgencyFirst(wichtigFacts));
   }
 
-  if (lines.length) return lines.slice(0, 2);
+  if (!picked.length) takeFacts(soft?.summary?.tokens ?? []);
+  if (!picked.length && soft?.chips?.length) takeFacts(urgencyFirst(soft.chips));
 
-  const tokens = (soft?.summary?.tokens ?? [])
-    .map((t) => String(t.label || '').trim())
-    .filter(Boolean);
-  if (tokens.length) {
-    const first = tokens.slice(0, COLLAPSED_LINE_MAX);
-    const rest = tokens.slice(COLLAPSED_LINE_MAX);
-    const out = [{ prefix: null, body: first.join(' · ') }];
-    if (rest.length) {
-      const shown = rest.slice(0, COLLAPSED_LINE_MAX);
-      const overflow = rest.length - shown.length;
-      out.push({
-        prefix: null,
-        body: [...shown, overflow > 0 ? `+${overflow}` : null].filter(Boolean).join(' · '),
-      });
-    } else if ((soft?.summary?.overflow ?? 0) > 0) {
-      out[0].body = `${out[0].body} · +${soft.summary.overflow}`;
-    }
-    return out;
-  }
-  const raw = String(soft?.summary?.line || '').trim();
-  return raw ? [{ prefix: null, body: raw }] : [];
+  const allSoft = flattenSnapshotChips(groups);
+  const overflow = Math.max(0, allSoft.length - picked.length);
+  return { chips: picked.slice(0, max), overflow };
 }
 
-function SnapshotChip({ chip, onFactTap }) {
+function SnapshotChip({ chip, onFactTap, compact = false }) {
   const category = chip.category || chip.tint || 'alltag';
   const priority = chipPriorityMeta(chip);
   const displayLabel = stripEquipmentPrioritySuffix(chip.label || '') || chip.label;
   const isEmpty = Boolean(chip.empty);
+  const isSalesCritical = Boolean(priority)
+    || /sofort|unfall|ersatz|dringend|eilig/i.test(String(chip.label || ''));
   return (
     <button
       type="button"
       className={[
         'cust-kundenbild__chip',
+        compact ? 'cust-kundenbild__chip--compact' : '',
         `cust-kundenbild__chip--${category}`,
         priority ? `cust-kundenbild__chip--prio-${priority.key}` : '',
+        isSalesCritical ? 'is-sales-critical' : 'is-soft-fact',
         isEmpty ? 'is-empty' : '',
         chip.relevant || chip.highlighted ? 'is-relevant' : '',
         chip.highlighted ? 'is-highlight' : '',
@@ -139,9 +144,9 @@ function SnapshotChip({ chip, onFactTap }) {
       onClick={() => onFactTap?.(chip)}
       aria-label={isEmpty ? `${chip.label} ergänzen` : `${chip.label} bearbeiten`}
     >
-      <ChipIcon icon={chip.icon || category} />
+      {!compact ? <ChipIcon icon={chip.icon || category} /> : null}
       <span className="cust-kundenbild__chip-label">{displayLabel}</span>
-      {priority && !isEmpty ? (
+      {priority && !isEmpty && !compact ? (
         <span className="cust-kundenbild__chip-prio" aria-hidden>
           <span className="cust-kundenbild__chip-prio-dot" />
           {priority.label}
@@ -152,7 +157,8 @@ function SnapshotChip({ chip, onFactTap }) {
 }
 
 /**
- * Eine Soft-Kategorie: klappbar, auch leer, mit Plus → vordefinierte Chips.
+ * Soft-Gruppe wie zuvor: Titel, Zähler, +, Chips mit Icons.
+ * Leere Gruppen werden nicht gerendert.
  */
 function SoftKnowledgeGroup({
   group,
@@ -161,7 +167,7 @@ function SoftKnowledgeGroup({
 }) {
   const facts = group?.facts ?? [];
   const hasFacts = facts.length > 0;
-  const [open, setOpen] = useState(hasFacts);
+  const [open, setOpen] = useState(true);
   const panelId = useId();
   const count = facts.length;
   const canAdd = typeof onAddToGroup === 'function' && (group?.showAddCta !== false);
@@ -170,8 +176,10 @@ function SoftKnowledgeGroup({
     setOpen((v) => !v);
   }
 
+  if (!hasFacts) return null;
+
   return (
-    <div className={`cust-kundenbild__group${open ? ' is-open' : ' is-closed'}${hasFacts ? '' : ' is-empty'}`}>
+    <div className={`cust-kundenbild__group${open ? ' is-open' : ' is-closed'}`}>
       <div className="cust-kundenbild__group-head">
         <button
           type="button"
@@ -215,47 +223,25 @@ function SoftKnowledgeGroup({
             aria-label={group.title}
             {...(!open ? { inert: true } : {})}
           >
-            {hasFacts ? (
-              <ul className="cust-kundenbild__chips">
-                {facts.map((chip) => (
-                  <li key={chip.id}>
-                    <SnapshotChip chip={chip} onFactTap={onFactTap} />
-                  </li>
-                ))}
-                {canAdd ? (
-                  <li>
-                    <button
-                      type="button"
-                      className="cust-kundenbild__chip cust-kundenbild__chip--add"
-                      onClick={() => onAddToGroup(group)}
-                      aria-label={`${group.title}: Chip hinzufügen`}
-                    >
-                      <span className="cust-kundenbild__chip-label">+</span>
-                    </button>
-                  </li>
-                ) : null}
-              </ul>
-            ) : (
-              <p className="cust-kundenbild__group-empty">
-                Noch nichts gemerkt.
-                {canAdd ? (
-                  <>
-                    {' '}
-                    <button
-                      type="button"
-                      className="cust-kundenbild__group-empty-add"
-                      onClick={() => onAddToGroup(group)}
-                    >
-                      Chips wählen
-                    </button>
-                    {' '}
-                    oder Composer (Merken).
-                  </>
-                ) : (
-                  ' Über Composer (Merken) ergänzen.'
-                )}
-              </p>
-            )}
+            <ul className="cust-kundenbild__chips">
+              {facts.map((chip) => (
+                <li key={chip.id || chip.label}>
+                  <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                </li>
+              ))}
+              {canAdd ? (
+                <li>
+                  <button
+                    type="button"
+                    className="cust-kundenbild__chip cust-kundenbild__chip--add"
+                    onClick={() => onAddToGroup(group)}
+                    aria-label={`${group.title}: Chip hinzufügen`}
+                  >
+                    <span className="cust-kundenbild__chip-label">+</span>
+                  </button>
+                </li>
+              ) : null}
+            </ul>
           </div>
         </div>
       </div>
@@ -271,7 +257,7 @@ export function CustomerAkteKernkonditionen({
   onFactTap = null,
 }) {
   if (!kern) return null;
-  const chips = kern.chips ?? [];
+  const chips = (kern.chips ?? []).slice(0, KERN_CHIP_MAX);
   if (!kern.hasData && !kern.line && chips.length === 0) return null;
 
   return (
@@ -298,7 +284,7 @@ export function CustomerAkteKernkonditionen({
 }
 
 /**
- * Zone 2 – klappbare Soft-Sektion „Kundenwissen“ mit 4 Unterkategorien.
+ * Zone 2 – kompaktes Kundenwissen (Summary + optional Detail).
  */
 export function CustomerAkteKundeninfos({
   soft = null,
@@ -306,6 +292,7 @@ export function CustomerAkteKundeninfos({
   onToggle = null,
   onFactTap = null,
   onAddToGroup = null,
+  onMerken = null,
   panelId = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
@@ -314,13 +301,24 @@ export function CustomerAkteKundeninfos({
   if (!hasSoft) return null;
 
   const sectionTitle = soft?.title || 'Kundenwissen';
-  const summaryLines = buildCollapsedSummaryLines(soft);
-  const groups = soft?.groups ?? [];
+  const { chips: summaryChips, overflow: summaryOverflow } = buildCollapsedSummaryChips(soft);
+  const groups = (soft?.groups ?? []).filter((g) => (g?.facts?.length ?? 0) > 0);
   const showBar = variant === 'full' || variant === 'bar';
   const showPanel = variant === 'full' || variant === 'panel';
+  const showCollapsedSummary = !expanded && showBar;
 
   function handleToggle() {
     onToggle?.(!expanded);
+  }
+
+  function handleMerken(e) {
+    e?.stopPropagation?.();
+    if (typeof onMerken === 'function') {
+      onMerken();
+      return;
+    }
+    const first = groups[0];
+    if (first) onAddToGroup?.(first);
   }
 
   return (
@@ -340,6 +338,13 @@ export function CustomerAkteKundeninfos({
             <div className="cust-kundenbild__head-actions">
               <button
                 type="button"
+                className="cust-kundenbild__merken-btn"
+                onClick={handleMerken}
+              >
+                + Merken
+              </button>
+              <button
+                type="button"
                 className="cust-kundenbild__chevron-btn"
                 onClick={handleToggle}
                 aria-expanded={expanded}
@@ -352,24 +357,34 @@ export function CustomerAkteKundeninfos({
               </button>
             </div>
           </div>
-          {summaryLines.length > 0 ? (
-            <div
-              className={`cust-kundenbild__summary${expanded ? ' is-hidden' : ''}`}
-              title={summaryLines.map((l) => (l.prefix ? `${l.prefix}: ${l.body}` : l.body)).join('\n')}
-              aria-hidden={expanded}
-            >
-              {summaryLines.map((line) => (
-                <p key={line.prefix || line.body} className="cust-kundenbild__summary-line">
-                  {line.prefix ? (
-                    <>
-                      <span className="cust-kundenbild__summary-prefix">{line.prefix}:</span>
-                      {' '}
-                      {line.body}
-                    </>
-                  ) : line.body}
-                </p>
-              ))}
-            </div>
+
+          {showCollapsedSummary ? (
+            summaryChips.length > 0 ? (
+              <ul
+                className="cust-kundenbild__summary-chips"
+                aria-label="Kundenwissen Zusammenfassung"
+              >
+                {summaryChips.map((chip) => (
+                  <li key={chip.id || chip.label}>
+                    <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                  </li>
+                ))}
+                {summaryOverflow > 0 ? (
+                  <li>
+                    <button
+                      type="button"
+                      className="cust-kundenbild__chip cust-kundenbild__chip--overflow"
+                      onClick={handleToggle}
+                      aria-label={`${summaryOverflow} weitere Infos anzeigen`}
+                    >
+                      <span className="cust-kundenbild__chip-label">+{summaryOverflow}</span>
+                    </button>
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <p className="cust-kundenbild__summary-empty">Noch nichts gemerkt</p>
+            )
           ) : null}
         </div>
       ) : null}
@@ -387,14 +402,20 @@ export function CustomerAkteKundeninfos({
               aria-label={`${sectionTitle} Details`}
               {...(!expanded ? { inert: true } : {})}
             >
-              {groups.map((group) => (
-                <SoftKnowledgeGroup
-                  key={group.id}
-                  group={group}
-                  onFactTap={onFactTap}
-                  onAddToGroup={onAddToGroup}
-                />
-              ))}
+              {groups.length > 0 ? (
+                groups.map((group) => (
+                  <SoftKnowledgeGroup
+                    key={group.id}
+                    group={group}
+                    onFactTap={onFactTap}
+                    onAddToGroup={onAddToGroup}
+                  />
+                ))
+              ) : (
+                <p className="cust-kundenbild__panel-empty">
+                  Noch keine Details – über „+ Merken“ ergänzen.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -405,7 +426,6 @@ export function CustomerAkteKundeninfos({
 
 /**
  * Kundenbild: Kernkonditionen (immer) + Soft-Sektion darunter.
- * Motto: Composer merken · Plus-Chip wählen · Chips erkennen/korrigieren.
  */
 export default function CustomerAkteKundenbild({
   model = null,
@@ -413,9 +433,10 @@ export default function CustomerAkteKundenbild({
   onToggle = null,
   onFactTap = null,
   onAddToGroup = null,
+  onMerken = null,
   /** @deprecated use onAddToGroup */
   onAusstattungErgaenzen = null,
-  /** 'full' | 'bar' | 'panel' – bar=sticky Compact, panel=nur Soft-Details, full=beides */
+  /** 'full' | 'bar' | 'panel' */
   variant = 'full',
 }) {
   const panelId = useId();
@@ -431,25 +452,19 @@ export default function CustomerAkteKundenbild({
       }
       : null
   );
-  const workingContext = model?.workingContext || null;
-
   const hasKern = Boolean(kern);
   const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
-  if (!hasKern && !hasSoft && !workingContext) return null;
+  // Arbeitskontext nur noch im Composer-Pill – kein Fließtext-Doppel unter Kundenwissen
+  if (!hasKern && !hasSoft) return null;
 
   const showKern = hasKern && (variant === 'full' || variant === 'bar');
   const showSoft = hasSoft && (variant === 'full' || variant === 'bar' || variant === 'panel');
-  const showWorking = Boolean(workingContext?.line) && (
-    variant === 'full'
-    || (variant === 'bar' && !expanded)
-  );
 
   function handleAddToGroup(group) {
     if (typeof onAddToGroup === 'function') {
       onAddToGroup(group);
       return;
     }
-    // Legacy-Fallback: Ausstattung → alter CTA
     if (
       group?.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK
       && typeof onAusstattungErgaenzen === 'function'
@@ -474,18 +489,10 @@ export default function CustomerAkteKundenbild({
           onToggle={onToggle}
           onFactTap={onFactTap}
           onAddToGroup={handleAddToGroup}
+          onMerken={onMerken}
           panelId={panelId}
           variant={variant}
         />
-      ) : null}
-
-      {showWorking ? (
-        <div className="cust-kundenbild__working" aria-label={workingContext.title || 'Aktueller Arbeitskontext'}>
-          <p className="cust-kundenbild__working-title">
-            {workingContext.title || 'Aktueller Arbeitskontext'}
-          </p>
-          <p className="cust-kundenbild__working-line">{workingContext.line}</p>
-        </div>
       ) : null}
     </section>
   );

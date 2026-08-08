@@ -997,8 +997,9 @@ export function planSellerActions({
   );
 
   // „Angebot“ allein ist kein Message-Intent – erst verstehen/vorbereiten, dann formulieren.
-  const explicitWrite = /\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
-  const hasWorkAction = intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+  const explicitWrite = /\b(schreib(?:e|en)?|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);
+  const hasPrepareOffer = intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER);
+  const hasWorkAction = hasPrepareOffer
     || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
     || intentTypes.has(SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT);
   const knowledgeOrDashboardOnly = (
@@ -1019,17 +1020,21 @@ export function planSellerActions({
     || (
       intentTypes.has(SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT)
       && !intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-      && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)
+      && !hasPrepareOffer
       && !explicitWrite
     )
   );
+  // Unvollständiges Angebot → kein Kundennachricht-Template (kein Bilder-Satz).
+  // Nachricht nur bei explizitem Schreib-Cue oder fertigem Angebot + Write.
   const wantsCustomerMessage = !knowledgeOrDashboardOnly
+    && !(hasPrepareOffer && offerIncomplete && !explicitWrite)
     && (
       inputMode === SELLER_INPUT_MODE.CUSTOMER_MESSAGE
-      || intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-      || (explicitWrite && !intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER))
-      || (explicitWrite && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && !offerIncomplete)
-      || (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER) && offerAction?.payload?.canCreateOffer)
+      || (intentTypes.has(SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+        && (explicitWrite || !hasPrepareOffer))
+      || (explicitWrite && !hasPrepareOffer)
+      || (explicitWrite && hasPrepareOffer && !offerIncomplete)
+      || (hasPrepareOffer && offerAction?.payload?.canCreateOffer && explicitWrite)
     );
 
   if (
@@ -1038,7 +1043,7 @@ export function planSellerActions({
     && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES)
     && !intentTypes.has(SELLER_TURN_INTENTS.SEARCH_CUSTOMER_OFFERS)
     && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
-    && (wantsCustomerMessage || (offerIncomplete && intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)))
+    && wantsCustomerMessage
   ) {
     const inline = runTool('draft_customer_message', {
       lead,

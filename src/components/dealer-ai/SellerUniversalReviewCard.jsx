@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react';
 import {
   IconBranch,
   IconCopy,
-  IconThumbDown,
-  IconThumbUp,
 } from './AkteIcons.jsx';
 import './SellerUniversalReviewCard.css';
 
@@ -288,7 +286,6 @@ export default function SellerUniversalReviewCard({
 
   if (!model || (!groups.length && !sections.length && !body)) return null;
 
-  const canMaybe = typeof onMaybe === 'function' || typeof onAcceptAndRevise === 'function';
   const resolvedStatusLabel = statusLabel
     || (isApplyResult
       ? (model.partialFailure ? 'Teilweise' : 'Angelegt')
@@ -664,38 +661,25 @@ export default function SellerUniversalReviewCard({
       ) : null}
 
       <div className="sur-card__toolbar" role="group" aria-label="Clever Aktionen">
-        {!settled ? (
-          <>
-            <button
-              type="button"
-              className="sur-card__icon-btn"
-              onClick={() => onAccept?.(model)}
-              title="Ja – übernehmen"
-              aria-label="Ja – übernehmen"
-            >
-              <IconThumbUp />
-            </button>
-            <button
-              type="button"
-              className="sur-card__icon-btn"
-              onClick={() => onDismiss?.(model)}
-              title="Nein – verwerfen"
-              aria-label="Nein – verwerfen"
-            >
-              <IconThumbDown />
-            </button>
-            {canMaybe ? (
-              <button
-                type="button"
-                className="sur-card__icon-btn"
-                onClick={handleMaybe}
-                title="Vielleicht – im Composer weiterbearbeiten"
-                aria-label="Vielleicht – im Composer weiterbearbeiten"
-              >
-                <IconBranch />
-              </button>
-            ) : null}
-          </>
+        {!settled && typeof onMaybe === 'function' ? (
+          <button
+            type="button"
+            className="sur-card__icon-btn"
+            onClick={handleMaybe}
+            title="Im Composer weiterarbeiten"
+            aria-label="Im Composer weiterarbeiten"
+          >
+            <IconBranch />
+          </button>
+        ) : null}
+        {!settled && !reviewActions.length && typeof onAccept === 'function' ? (
+          <button
+            type="button"
+            className="sur-card__text-link sur-card__toolbar-accept"
+            onClick={() => onAccept?.(model)}
+          >
+            Übernehmen
+          </button>
         ) : null}
         <button
           type="button"

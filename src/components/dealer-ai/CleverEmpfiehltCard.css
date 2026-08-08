@@ -64,9 +64,33 @@
 }
 
 .clever-empfiehlt__reminder--compact {
+  display: inline-flex;
+  align-items: center;
   margin: 0 0 12px;
-  padding: 6px 10px;
+  padding: 4px 10px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgba(109, 91, 184, 0.07);
+  border: 1px solid rgba(109, 91, 184, 0.12);
+  font-size: 0.75rem;
+  font-weight: 550;
+  line-height: 1.35;
+  color: #5c5678;
+}
+
+.clever-empfiehlt__reminder {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 5px 11px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgba(109, 91, 184, 0.07);
+  border: 1px solid rgba(109, 91, 184, 0.12);
   font-size: 0.78rem;
+  font-weight: 550;
+  line-height: 1.4;
+  color: #5c5678;
 }
 
 .clever-empfiehlt__more {
@@ -94,18 +118,6 @@
   font-size: 0.9rem;
   line-height: 1.45;
   color: #475569;
-}
-
-.clever-empfiehlt__reminder {
-  margin: -6px 0 14px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: #92400e;
 }
 
 .clever-empfiehlt__why {

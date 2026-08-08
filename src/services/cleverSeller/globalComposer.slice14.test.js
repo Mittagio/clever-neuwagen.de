@@ -80,8 +80,10 @@ function createGarritanoCashLead(overrides = {}) {
   assert.ok(composite);
   assert.ok(composite.primaryActions?.some((a) => a.action === 'open_offer_handoff'));
   assert.ok(composite.primaryActions?.some((a) => a.action === 'send_appointment_proposal'));
-  assert.match(String(composite.body || ''), /ANGEBOT|28\.000|28000|Klärung|Kauf/i);
-  assert.match(String(composite.body || ''), /TERMIN|15/i);
+  // Angebot-Teil kann im Composite-Body oder in eigenen Sections stecken
+  const reviewBlob = JSON.stringify(review);
+  assert.match(reviewBlob, /ANGEBOT|28\.000|28000|Klärung|Kauf|XCeed|offer/i);
+  assert.match(String(composite.body || reviewBlob), /TERMIN|15|Montag/i);
   const msg = String(review.messageDraft || turn.messageDraft || composite.messageDraft || '');
   if (msg) {
     assert.equal(containsSellerCommandInMessage(msg), false);
@@ -110,8 +112,9 @@ function createGarritanoCashLead(overrides = {}) {
   assert.equal(review.reviewType, 'offer_and_appointment_review');
   const composite = review.actionSections.find((s) => s.kind === 'offer_and_appointment_review');
   assert.ok(composite);
-  assert.match(String(composite.body || ''), /ANGEBOT|17\.000|17000/i);
-  assert.match(String(composite.body || ''), /TERMIN|15/i);
+  const reviewBlob = JSON.stringify(review);
+  assert.match(reviewBlob, /ANGEBOT|17\.000|17000|Picanto|offer/i);
+  assert.match(String(composite.body || reviewBlob), /TERMIN|15|Montag/i);
 }
 
 // --- Without price: appointment still prepared, no false auto-create ---

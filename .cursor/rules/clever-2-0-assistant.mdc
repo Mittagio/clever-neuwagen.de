@@ -1,0 +1,33 @@
+---
+description: Clever 2.0 – Verkäufer spricht mit Clever; Composer ist Clever; Reviews ersetzen kein Gespräch
+globs: src/services/cleverAgent/**,src/services/cleverSeller/**,src/components/dealer-ai/CustomerAkteSharedWorkspace.jsx,src/components/clever/CleverGlobalComposer.jsx
+alwaysApply: true
+---
+
+# Clever 2.0 – Assistant Experience
+
+## Produktsätze
+
+- Der Verkäufer bedient kein CRM. Er spricht mit Clever.
+- Der Composer ist Clever.
+- Clever antwortet dem Verkäufer, statt bei jeder Aktion ein Formular vorzusetzen.
+- Reviews schützen geschäftliche Aktionen. Sie ersetzen nicht das Gespräch.
+
+## Response Policy
+
+| Kind | Wann |
+|------|------|
+| `direct_answer` | Lesen / Wissen / Suche |
+| `compact_confirmation` | sichere interne Updates (+ Undo) |
+| `clarification` | nur blockierende Unklarheit |
+| `prepared_action_review` | Angebot, Send, Termin, Kundenanlage, Vertragsimport |
+
+## Architektur
+
+- Freier Clever-Modus → Agent-Pfad (wenn verfügbar).
+- Deterministik = Validator, Safety, Units, Fast Path, Fallback.
+- Zero-Loss bleibt verbindlich.
+- Keine zweite Business Engine – Legacy-Services als Tools wrappen.
+- UI Akte/Chips/Dashboard zunächst einfrieren; Conversation Loop zuerst.
+
+Siehe: [docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md](../../docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md)

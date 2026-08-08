@@ -1,0 +1,51 @@
+---
+description: PRODUKT-FREEZE Clever Zero-Loss Intake – kein bedeutungstragender Seller-Input darf verloren gehen
+globs: src/services/cleverSeller/**,src/services/cleverAgent/**,src/components/dealer-ai/CustomerAkteSharedWorkspace.jsx,src/components/dealer-ai/CustomerAkteKundenbild.*
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: CLEVER ZERO-LOSS INTAKE
+
+Clever ist ein echter Verkäuferassistent. Der Verkäufer darf beliebige Informationen in den Composer sprechen, tippen, einfügen oder hochladen. Clever muss versuchen, sämtliche Bedeutung daraus zu erhalten.
+
+## Verbindliche Regel
+
+**Kein bedeutungstragender Teil einer Verkäufer-Eingabe darf still verworfen werden.**
+
+Jeder erkannte Informationsbaustein endet in genau einem Zustand:
+
+1. `structured_customer_fact`
+2. `vehicle_preference`
+3. `commercial_preference`
+4. `existing_vehicle_or_trade_in`
+5. `equipment_or_technical_need`
+6. `personal_note`
+7. `prepared_action`
+8. `unresolved_note`
+
+Wenn ein Inhalt nicht zuverlässig klassifizierbar ist:
+
+- nicht ignorieren
+- nicht den gesamten Turn blockieren
+- unverändert als `unresolved_note` erhalten
+
+## Produktsatz
+
+> Clever muss nicht jeden Satz perfekt klassifizieren. Aber Clever darf niemals vergessen, was der Verkäufer ihm gesagt hat.
+
+## Partial Success
+
+Unsicherheit bei einem Fakt darf niemals den gesamten Turn blockieren. Sichere Facts übernehmen; nur Unsicheres nachfragen oder als Notiz halten.
+
+## OpenAI
+
+Im freien Clever-Modus ist OpenAI primärer Semantic Interpreter. Es soll Tippfehler, Abkürzungen, Umgangssprache und Multi-Facts verstehen, Unsicherheit erhalten und nicht klassifizierbare Inhalte mit `preserveAsNote` / `unresolvedNotes` markieren. Kein bedeutungstragender Input-Span darf verworfen werden (`consumedInputSpans` + `unconsumedInputSpans`).
+
+## UI
+
+Kompakt: „Für … aufgenommen“ + Chips. Unklassifiziertes unter **Notizen** („Noch nicht strukturiert“). Keine große technische Review nur wegen sicherer interner Facts. Undo möglich.
+
+## Code
+
+- Kern: `src/services/cleverSeller/zeroLossIntake.js`
+- Doc: `docs/CLEVER_ZERO_LOSS_INTAKE.md`

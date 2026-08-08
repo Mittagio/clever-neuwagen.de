@@ -78,7 +78,8 @@ const INPUT_COR = 'XCeed COR Automatik 13 %';
 
   assert.ok(shouldShowUniversalReview(turn));
   const review = buildUniversalReviewModel(turn);
-  assert.match(review.title, /prüft|verstanden|vorbereitet/i);
+  // Compact Offer-Review-Titel (Clever 2.0) – Review bleibt Pflicht bei incomplete prep
+  assert.match(review.title, /prüft|verstanden|vorbereitet|angebot/i);
   assert.ok(review.actionSections.some((s) => s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'));
   assert.ok(!review.actionSections.some((s) => s.kind === 'message_draft'));
   assert.ok(
@@ -91,7 +92,7 @@ const INPUT_COR = 'XCeed COR Automatik 13 %';
   }
 }
 
-// --- 4. Verifizierte Rate → vollständiges Review + natürliche Nachricht ---
+// --- 4. Verifizierte Rate → Angebot prepared (Nachricht nur mit Schreib-Cue) ---
 {
   const lead = createBrandesGoldenCaseLead({ phase: 'golden' });
   const withRate = `${INPUT} 329 Euro / Monat`;
@@ -102,11 +103,22 @@ const INPUT_COR = 'XCeed COR Automatik 13 %';
   });
   const offer = turn.preparedActions.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
   assert.equal(offer?.payload?.canCreateOffer, true);
-  assert.ok(turn.messageDraft);
-  assert.ok(validateCustomerMessageNotSellerCommand(turn.messageDraft).ok);
-  assert.match(turn.messageDraft, /Hallo Herr Brandes/i);
-  assert.match(turn.messageDraft, /XCeed|Angebot/i);
-  assert.ok(!containsSellerCommandInMessage(turn.messageDraft));
+  assert.ok(
+    !turn.preparedActions.some((a) => (
+      a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
+    )),
+    'ohne „schreib …“ keine Kundennachricht',
+  );
+
+  const turnWrite = runCleverSellerTurn({
+    lead,
+    sellerInput: `Schreib ihm: ${withRate}`,
+    customerName: 'Herr Brandes',
+  });
+  assert.ok(turnWrite.messageDraft);
+  assert.ok(validateCustomerMessageNotSellerCommand(turnWrite.messageDraft).ok);
+  assert.match(turnWrite.messageDraft, /Hallo Herr Brandes|XCeed|Angebot/i);
+  assert.ok(!containsSellerCommandInMessage(turnWrite.messageDraft));
 }
 
 // --- 5. Validator lehnt Seller-Befehl ab ---

@@ -590,7 +590,30 @@ function finalizeSellerTurn({
   }
 
   let rememberDecision = null;
-  if (intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER) {
+  const zeroLossIntake = interpreted.zeroLossIntake || null;
+  // Zero-Loss: Merken-Chip ODER freier Clever-Dump mit Kundenwissen
+  const looksLikeKnowledgeDump = uniqueFacts.some((f) => (
+    f.factClass === SELLER_FACT_CLASS.CUSTOMER_FACT
+    || f.factClass === SELLER_FACT_CLASS.CUSTOMER_NEED
+    || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
+    || f.factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE
+    || f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT
+    || f.factClass === SELLER_FACT_CLASS.VEHICLE_REQUIREMENT
+    || (f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE && !f.needsConfirmation)
+    || (f.factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST && !f.needsConfirmation)
+  ));
+  const hasHardActionIntent = effectiveIntents.some((i) => (
+    i.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    || i.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE
+    || i.type === SELLER_TURN_INTENTS.DRAFT_CUSTOMER_MESSAGE
+    || i.type === SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
+    || i.type === SELLER_TURN_INTENTS.INBOUND_LEAD
+    || i.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY
+  ));
+  if (
+    intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
+    || (looksLikeKnowledgeDump && !hasHardActionIntent)
+  ) {
     rememberDecision = evaluateRememberDecision(uniqueFacts, workingLead);
   }
 
@@ -953,6 +976,7 @@ function finalizeSellerTurn({
     memoryCategory,
     offerAction,
     rememberDecision,
+    zeroLossIntake,
     inputMode: interpreted.inputMode,
     interpretedInput: {
       raw: interpreted.raw,
@@ -1211,7 +1235,8 @@ function finalizeSellerTurn({
   }
 
   // Merken sicher → kein Review (UI speichert + Undo); unsicher → kompakte Review
-  const skipReviewForRememberAuto = rememberDecision?.mode === 'save_with_undo';
+  const skipReviewForRememberAuto = rememberDecision?.mode === 'save_with_undo'
+    || rememberDecision?.mode === 'partial_save_with_undo';
   let reviewModel = (!skipReviewForRememberAuto && shouldShowUniversalReview(turnPartial))
     ? buildUniversalReviewModel(turnPartial)
     : null;

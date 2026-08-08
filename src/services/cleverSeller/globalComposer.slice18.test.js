@@ -75,7 +75,7 @@ function brandesWithContract() {
   assert.ok(prep.facts.some((f) => f.field === 'desiredRate' && f.value === 347));
 }
 
-// --- Golden turn: prepare offer + message, no auto-send ---
+// --- Golden turn: prepare offer (Nachricht nur bei explizitem Schreib-Cue) ---
 {
   const lead = brandesWithContract();
   const before = JSON.stringify(lead.crm?.customerContracts || []);
@@ -97,18 +97,21 @@ function brandesWithContract() {
   assert.match(String(offer.payload?.vehicleLabel), /XCeed/i);
   assert.equal(offer.payload?.mutatesCustomer, false);
 
-  const body = typeof turn.messageDraft === 'string'
-    ? turn.messageDraft
-    : turn.messageDraft?.body;
-  assert.ok(body);
-  assert.match(body, /XCeed/i);
-  assert.match(body, /347/);
-  assert.equal(containsSellerCommandInMessage(body), false);
+  assert.ok(
+    !turn.preparedActions.some((a) => (
+      a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.status === 'prepared'
+    )),
+    'Nachfolgeangebot ohne „schreib …“ erzeugt keine Kundennachricht',
+  );
 
   assert.ok(shouldShowUniversalReview(turn));
   const review = buildUniversalReviewModel(turn);
-  assert.equal(review.reviewType, 'offer_and_message_review');
-  assert.ok(review.actionSections.some((s) => s.kind === 'offer_prepare' || s.kind === 'offer_and_message_review'));
+  assert.ok(review);
+  assert.ok(review.actionSections.some((s) => (
+    s.kind === 'offer_prepare'
+    || s.kind === 'offer_change'
+    || s.kind === 'offer_and_message_review'
+  )));
 }
 
 // --- Ohne Favorit: blocked / missing ---

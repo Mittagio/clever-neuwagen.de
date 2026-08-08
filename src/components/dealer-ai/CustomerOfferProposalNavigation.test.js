@@ -20,6 +20,9 @@ assert.ok(followUp.includes('resolveBoardOfferPrimaryAction'), 'FollowUp löst P
 assert.ok(followUp.includes("handler === 'view_proposal'"), 'Vorschlag nur bei view_proposal');
 assert.ok(followUp.includes('onOpenOfferEdit(card)'), 'Entwurf/erstellt öffnet Editor');
 assert.ok(followUp.includes('startProposalNavigateFlow'), '+ Angebot erstellen startet Rechner');
+assert.ok(followUp.includes("openSheet(SHEETS.addProposal)"), '+ Neues Angebot öffnet Sheet in Akte');
+assert.ok(followUp.includes('+ Neues Angebot'), 'CTA heißt + Neues Angebot');
+assert.ok(!followUp.includes('Klassisches Angebotsboard'), 'Klassisches Angebotsboard entfernt');
 assert.ok(vehicleCard.includes('handleCardClick'), 'Karte löst Primäraktion beim Klick aus');
 assert.ok(vehicleCard.includes('budgetHint'), 'Entwurf zeigt Budget-Hinweis');
 assert.ok(dealerAiPage.includes("phase === 'offer-proposal'"), 'DealerAIPage hat offer-proposal Phase');
@@ -28,8 +31,22 @@ assert.ok(dealerAiPage.includes('handleConditionsSave'), 'Direktes Speichern aus
 assert.ok(dealerAiPage.includes('openOfferForReviewInPlace'), 'Bearbeiten öffnet Angebot prüfen');
 assert.ok(dealerAiPage.includes("phase === 'offer-preview'"), 'DealerAIPage hat offer-preview Phase');
 assert.ok(dealerAiPage.includes('fallbackOriginalPdf'), 'Preview bekommt Fallback-PDF');
+assert.ok(
+  !dealerAiPage.includes("setPhase('magic-offer-entry')"),
+  'Angebot bearbeiten/erstellen setzt kein magic-offer-entry mehr',
+);
+assert.ok(
+  !dealerAiPage.includes("setPhase('magic-offer-review')"),
+  'Angebot bearbeiten setzt kein magic-offer-review mehr',
+);
 assert.ok(backendAkte.includes('openOfferForReview'), 'Backend-Akte nutzt openOfferForReview');
-assert.ok(followUp.includes("handler === 'edit_offer'"), 'Board edit_offer getrennt geroutet');
+assert.ok(followUp.includes("handler === 'edit_offer'"), 'Board edit_offer geroutet');
+assert.ok(followUp.includes("handler === 'create_offer'"), 'Board create_offer geroutet');
+assert.ok(followUp.includes("handler === 'view_proposal'"), 'Board view_proposal geroutet');
+assert.ok(
+  followUp.includes('openOfferInWorkspace(card)'),
+  'Öffnen bleibt in der Akte (Workspace)',
+);
 assert.ok(conditionsStep.includes('buildConditionsFooterAction'));
 assert.ok(conditionsStep.includes('onEditConfiguration'), 'Bearbeiten öffnet Konfiguration, nicht Akte');
 assert.ok(dealerAiPage.includes('handleConditionsEditConfiguration'), 'DealerAIPage: Edit → configure');

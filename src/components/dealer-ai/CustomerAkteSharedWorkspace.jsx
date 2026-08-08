@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SharedWorkspaceChat from '../chat/SharedWorkspaceChat.jsx';
 import DealerAiInlineMic from './DealerAiInlineMic.jsx';
 import SellerUniversalReviewCard from './SellerUniversalReviewCard.jsx';
@@ -8,6 +9,17 @@ import {
   postOfferUpdatedStatus,
   sendSellerWorkspacePackage,
 } from '../../services/crm/sharedWorkspaceService.js';
+import {
+  createRememberUndoToken,
+  postAssistantConversationFeedCard,
+  resolveContextSwitchFromAgent,
+} from '../../services/cleverAgent/cleverAssistantFeed.js';
+import {
+  CLEVER_LONG_JOB,
+  createProgressHintScheduler,
+} from '../../services/cleverAgent/cleverProgressHint.js';
+import { CleverChatMessage } from '../chat/WorkspaceChatCards.jsx';
+import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
 import {
   MESSAGE_KIND,
   sendCleverChannelMessage,
@@ -28,13 +40,22 @@ import {
 import {
   isCleverAgentClientEnabled,
   requestCleverAgent,
+  shouldFallbackToSellerTurn,
 } from '../../services/cleverAgent/cleverAgentClient.js';
 import { applyCleverAgentMutations } from '../../services/cleverAgent/applyCleverAgentMutations.js';
 import {
   createEmptyAgentWorkingMemory,
+  getConversationHistoryForAgent,
   updateAgentWorkingMemory,
+  updateMemoryFromSellerTurn,
 } from '../../services/cleverAgent/cleverAgentWorkingMemory.js';
+import {
+  resolveAgentResponsePolicy,
+  resolveSellerResponsePolicy,
+} from '../../services/cleverAgent/cleverAssistantResponse.js';
+import { buildAgentReviewTurn } from '../../services/cleverAgent/buildAgentReviewTurn.js';
 import { routeSellerRequest } from '../../services/cleverAgent/routeSellerRequest.js';
+import { useLeads } from '../../context/LeadsContext.jsx';
 import {
   INLINE_RESULT_TYPES,
   insertInlineFactIntoDraft,
@@ -216,8 +237,11 @@ export default function CustomerAkteSharedWorkspace({
   onAttachDocument = null,
   onFocusFeedMessage = null,
 }) {
+  const { leads: leadsFromContext = [] } = useLeads();
+  const navigate = useNavigate();
   const [draft, setDraft] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [progressHint, setProgressHint] = useState(null);
   const [sending, setSending] = useState(false);
   const [assist, setAssist] = useState(null);
   const [universalTurn, setUniversalTurn] = useState(null);
@@ -226,6 +250,12 @@ export default function CustomerAkteSharedWorkspace({
   );
   const [intentPurpose, setIntentPurpose] = useState(null);
   const [rememberUndo, setRememberUndo] = useState(null);
+  const progressHintSchedulerRef = useRef(null);
+  if (!progressHintSchedulerRef.current) {
+    progressHintSchedulerRef.current = createProgressHintScheduler({
+      setHint: setProgressHint,
+    });
+  }
   const [attachmentActions, setAttachmentActions] = useState(null);
   /** Clever-Tab (hideFeed): letzte Accept-/Send-Aktion über dem Composer, kein leerer Weißraum. */
   const [lastComposerAction, setLastComposerAction] = useState(null);
@@ -450,23 +480,37 @@ export default function CustomerAkteSharedWorkspace({
     focusComposer();
   }
 
-  function applyRememberWithUndo(turn) {
+  function applyRememberWithUndo(turn, options = {}) {
     if (!lead?.id || typeof onPersistLead !== 'function') return false;
     const previousLead = JSON.parse(JSON.stringify(lead));
-    const applied = applyAcceptedSellerTurn(lead, turn, { postFeedCard: false });
+    const factsToApply = options.facts
+      || turn?.rememberDecision?.safeFacts
+      || turn?.extractedFacts
+      || [];
+    const applyTurn = {
+      ...turn,
+      extractedFacts: factsToApply,
+    };
+    const applied = applyAcceptedSellerTurn(lead, applyTurn, { postFeedCard: false });
     if (!applied.ok || !applied.lead) return false;
-    onPersistLead(applied.lead, { historyText: 'Clever hat gemerkt' });
-    const labels = (applied.acceptedLabels || turn.extractedFacts || [])
-      .map((x) => (typeof x === 'string' ? x : x?.label))
-      .filter(Boolean)
-      .slice(0, 6);
-    setRememberUndo({ previousLead, leadId: lead.id });
-    setFeedback(labels.length
-      ? `Gemerkt: ${labels.join(' · ')} · Rückgängig möglich`
-      : 'Gemerkt · Rückgängig möglich');
-    setTimeout(() => setFeedback(''), 4200);
-    onRememberApplied?.({ labels, lead: applied.lead });
-    return true;
+    onPersistLead(applied.lead, { historyText: 'Clever hat aufgenommen' });
+    const summary = turn?.zeroLossIntake?.summary;
+    const labels = summary?.chips?.length
+      ? summary.chips.slice(0, 8)
+      : (applied.acceptedLabels || factsToApply)
+        .map((x) => (typeof x === 'string' ? x : x?.label))
+        .filter(Boolean)
+        .slice(0, 8);
+    const undoToken = createRememberUndoToken();
+    setRememberUndo({
+      previousLead,
+      leadId: lead.id,
+      undoToken,
+      message: options.message || null,
+      chips: labels,
+    });
+    onRememberApplied?.({ labels, lead: applied.lead, zeroLoss: summary || null });
+    return { ok: true, undoToken, lead: applied.lead };
   }
 
   function handleRememberUndo() {
@@ -496,7 +540,7 @@ export default function CustomerAkteSharedWorkspace({
     const text = String(rawText ?? '').trim();
     if (!text || sending) return false;
     setSending(true);
-    setFeedback('Clever schreibt …');
+    progressHintSchedulerRef.current?.clear();
     try {
       if (onResolveOfferReference) {
         onResolveOfferReference(text);
@@ -509,50 +553,69 @@ export default function CustomerAkteSharedWorkspace({
       if (isCleverAgentClientEnabled()) {
         const route = routeSellerRequest(text, { workingMemory: agentWorkingMemory });
         if (route === 'clever_agent') {
-          setFeedback('Clever arbeitet …');
+          progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.AGENT);
           const agentResult = await requestCleverAgent({
             sellerMessage: text,
             lead,
             workingContext: workingCtx || offerCtx,
             currentOffer: offerCtx || workingCtx,
-            conversationHistory: [],
+            conversationHistory: getConversationHistoryForAgent(agentWorkingMemory),
             workingMemory: agentWorkingMemory,
             previousOfferPreparation: agentWorkingMemory?.previousOfferPreparation || null,
+            leadsSnapshot: Array.isArray(leadsFromContext) ? leadsFromContext : [],
           }, {
             sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
             dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
           });
+          progressHintSchedulerRef.current?.clear();
 
           setAgentWorkingMemory((prev) => updateAgentWorkingMemory(prev, agentResult, text));
+          const agentPolicy = resolveAgentResponsePolicy(agentResult);
+          const contextSwitch = resolveContextSwitchFromAgent(agentResult);
 
           if (agentResult?.ok || (agentResult?.mutations?.length > 0) || agentResult?.confirmationRequired) {
             setDraft('');
             setOfferPrep(null);
             setAppointmentDraft(null);
-            setUniversalTurn(null);
             clearAssist();
             resetIntentChipsToDefault();
 
             let nextLead = lead;
-            let messageDraft = null;
+            let messageDraft = agentResult.messageDraft || null;
+            let rememberUndoToken = null;
             if (agentResult.mutations?.length) {
+              const previousLead = JSON.parse(JSON.stringify(lead));
               const applied = applyCleverAgentMutations(lead, agentResult.mutations);
               nextLead = applied.lead;
-              messageDraft = applied.messageDraft;
+              messageDraft = applied.messageDraft || messageDraft;
+              if (agentPolicy.undoAvailable && applied.lead) {
+                rememberUndoToken = createRememberUndoToken();
+                setRememberUndo({
+                  previousLead,
+                  leadId: lead.id,
+                  undoToken: rememberUndoToken,
+                  message: agentPolicy.message || null,
+                  chips: agentPolicy.chips || [],
+                });
+              }
             }
 
             if (messageDraft) {
               rememberLastComposerAction(buildComposerLastActionFromText({
                 body: messageDraft,
-                title: agentResult.intendSend || agentResult.confirmationRequired
+                title: agentResult.intendSend
+                  || agentResult.pendingAction?.type === 'intend_send'
+                  || (agentResult.confirmationRequired && /send|nachricht/i.test(String(agentResult.pendingAction?.type || '')))
                   ? 'Nachricht · Senden bestätigen'
                   : 'Nachricht',
                 status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
               }));
             }
 
-            // Prepared Offer: nicht blind persistieren – Review-Hinweis
-            if (agentResult.confirmationRequired && agentResult.pendingAction?.type === 'prepare_offer') {
+            if (agentResult.confirmationRequired && (
+              agentResult.pendingAction?.type === 'prepare_offer'
+              || agentResult.pendingAction?.type === 'modify_offer'
+            )) {
               setOfferPrep({
                 source: 'clever_agent',
                 agentSource: agentResult.agentSource || 'openai',
@@ -562,39 +625,73 @@ export default function CustomerAkteSharedWorkspace({
               });
             }
 
-            const feedText = String(agentResult.message || '').trim();
-            if (feedText && nextLead) {
+            if (agentPolicy.showReview && agentResult.confirmationRequired) {
+              const reviewTurn = buildAgentReviewTurn(agentResult);
+              if (reviewTurn) showUniversalReview(reviewTurn);
+              else setUniversalTurn(null);
+            } else {
+              setUniversalTurn(null);
+            }
+
+            // Context-Switch: andere Akte → Hinweis + CTA (kein stiller Modulbruch)
+            if (
+              contextSwitch?.autoOpen
+              && contextSwitch.leadId
+              && contextSwitch.leadId !== lead?.id
+            ) {
               try {
-                const posted = postCleverAssistFeedCard({
+                const posted = postAssistantConversationFeedCard({
                   lead: nextLead,
-                  title: '✨ Clever',
-                  text: feedText,
+                  policy: {
+                    ...agentPolicy,
+                    message: contextSwitch.hint || agentPolicy.message,
+                  },
+                  agentResult,
+                  contextSwitch,
                 });
                 if (posted?.lead) nextLead = posted.lead;
-              } catch {
-                /* feed optional */
+              } catch { /* feed optional */ }
+              if (typeof onPersistLead === 'function' && nextLead !== lead) {
+                onPersistLead(nextLead);
               }
+              navigate(buildKundenaktePath(contextSwitch.leadId));
+              return true;
+            }
+
+            try {
+              const posted = postAssistantConversationFeedCard({
+                lead: nextLead,
+                policy: agentPolicy,
+                agentResult,
+                contextSwitch,
+                undoToken: rememberUndoToken,
+              });
+              if (posted?.lead) nextLead = posted.lead;
+            } catch {
+              /* feed optional */
             }
 
             if (typeof onPersistLead === 'function' && nextLead !== lead) {
               onPersistLead(nextLead);
             }
 
-            setFeedback(agentResult.message?.slice(0, 140) || 'Erledigt');
-            setTimeout(() => setFeedback(''), 4500);
             return true;
           }
 
-          if (agentResult?.fallbackReason === 'feature_disabled'
-            || agentResult?.fallbackReason === 'api_key_missing'
-            || agentResult?.error === 'request_failed') {
-            setFeedback('Clever Agent nicht bereit – klassischer Pfad …');
+          if (shouldFallbackToSellerTurn(agentResult)) {
+            /* sauberer Fallback auf klassischen Seller-Turn */
           } else if (agentResult?.message) {
             setDraft('');
             setUniversalTurn(null);
             clearAssist();
-            setFeedback(agentResult.message.slice(0, 140));
-            setTimeout(() => setFeedback(''), 4000);
+            try {
+              postAssistantConversationFeedCard({
+                lead,
+                policy: agentPolicy,
+                agentResult,
+                contextSwitch,
+              });
+            } catch { /* optional */ }
             return true;
           }
         }
@@ -640,29 +737,71 @@ export default function CustomerAkteSharedWorkspace({
       const turn = await runCleverSellerTurnWithCalendar(buildAkteSellerTurnParams({
         sellerInput: text,
         currentOfferContext: offerCtx,
-        pendingAction: universalTurn?.pendingAction || null,
+        pendingAction: universalTurn?.pendingAction
+          || agentWorkingMemory?.pendingAction
+          || null,
         intentConstraint,
         messagePurpose: intentPurpose?.messagePurpose || null,
         memoryCategory: intentPurpose?.memoryCategory || null,
         offerAction: intentPurpose?.offerAction || null,
       }));
 
-      // Merken: sichere Facts sofort speichern + Undo
+      const policy = resolveSellerResponsePolicy(turn);
+      setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
+
+      // Zero-Loss Merken: sichere Facts sofort speichern (+ Partial Success)
+      const rememberMode = turn?.rememberDecision?.mode;
       if (
-        intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
-        && turn?.rememberDecision?.mode === 'save_with_undo'
+        rememberMode === 'save_with_undo'
+        || rememberMode === 'partial_save_with_undo'
       ) {
         setDraft('');
         setOfferPrep(null);
         setAppointmentDraft(null);
+        if (
+          rememberMode === 'partial_save_with_undo'
+          && turn.rememberDecision.reviewFacts?.length
+          && shouldShowUniversalReview({
+            ...turn,
+            extractedFacts: turn.rememberDecision.reviewFacts,
+            rememberDecision: { ...turn.rememberDecision, mode: 'review' },
+          })
+        ) {
+          applyRememberWithUndo(turn, { facts: turn.rememberDecision.safeFacts });
+          showUniversalReview({
+            ...turn,
+            extractedFacts: turn.rememberDecision.reviewFacts,
+          });
+          resetIntentChipsToDefault();
+          return true;
+        }
         setUniversalTurn(null);
         clearAssist();
-        applyRememberWithUndo(turn);
+        const remembered = applyRememberWithUndo(turn, {
+          facts: turn.rememberDecision.safeFacts,
+          message: policy.message,
+        });
+        // Compact confirmation in Feed (+ Undo-Link)
+        try {
+          const posted = postCleverAssistFeedCard({
+            lead,
+            title: '✨ Clever',
+            text: policy.message,
+            responseKind: policy.kind,
+            chips: policy.chips,
+            undoAvailable: policy.undoAvailable,
+            undoToken: remembered?.undoToken || null,
+          });
+          if (posted?.lead && typeof onPersistLead === 'function') {
+            onPersistLead(posted.lead);
+          }
+        } catch { /* optional */ }
         resetIntentChipsToDefault();
         return true;
       }
 
       // Magic: LLM / grounded Writer ersetzt Template-Mails
+      progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.MAGIC_PROPOSE);
       const enriched = await enrichSellerTurnWithMagicPropose({
         turn,
         sellerInput: text,
@@ -674,6 +813,7 @@ export default function CustomerAkteSharedWorkspace({
         openVehicles,
         tone: outboundTone || 'freundlich',
       });
+      progressHintSchedulerRef.current?.clear();
 
       setDraft('');
       setOfferPrep(null);
@@ -681,7 +821,7 @@ export default function CustomerAkteSharedWorkspace({
 
       if (enriched.magicBody) {
         resetIntentChipsToDefault();
-        if (shouldShowUniversalReview(enriched.turn)) {
+        if (shouldShowUniversalReview(enriched.turn) || resolveSellerResponsePolicy(enriched.turn).showReview) {
           showUniversalReview(enriched.turn);
         } else {
           setUniversalTurn(null);
@@ -692,18 +832,49 @@ export default function CustomerAkteSharedWorkspace({
             status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
           }));
         }
-        setFeedback(enriched.feedback || 'Geprüfter Entwurf – bitte Inhalt kurz gegenlesen');
-        setTimeout(() => setFeedback(''), 3200);
         return true;
       }
 
-      if (shouldShowUniversalReview(turn)) {
+      if (policy.showReview || shouldShowUniversalReview(turn)) {
         resetIntentChipsToDefault();
         showUniversalReview(turn);
-        setFeedback('Clever hat vorbereitet');
-        setTimeout(() => setFeedback(''), 2400);
         return true;
       }
+
+      // Direct / Clarification / Compact → Feed-Antwort, Gespräch geht weiter
+      if (policy.message) {
+        resetIntentChipsToDefault();
+        setUniversalTurn(null);
+        clearAssist();
+        try {
+          const posted = postCleverAssistFeedCard({
+            lead,
+            title: '✨ Clever',
+            text: policy.message,
+            responseKind: policy.kind,
+            chips: policy.chips,
+            undoAvailable: policy.undoAvailable,
+          });
+          if (posted?.lead && typeof onPersistLead === 'function') {
+            onPersistLead(posted.lead);
+          }
+        } catch { /* optional */ }
+        const draftBody = String(
+          turn?.messageDraft
+          || turn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+            ?.payload?.messageDraft
+          || '',
+        ).trim();
+        if (draftBody) {
+          rememberLastComposerAction(buildComposerLastActionFromText({
+            body: draftBody,
+            title: 'Nachricht',
+            status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
+          }));
+        }
+        return true;
+      }
+
       const draftBody = String(
         turn?.messageDraft
         || turn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
@@ -719,22 +890,18 @@ export default function CustomerAkteSharedWorkspace({
           title: 'Nachricht',
           status: COMPOSER_LAST_ACTION_STATUS.READY_TO_SEND,
         }));
-        setFeedback('Nachricht vorbereitet');
-        setTimeout(() => setFeedback(''), 2400);
         return true;
       }
       clearAssist();
       setUniversalTurn(null);
       setLastComposerAction(null);
-      setFeedback('Clever hat nichts vorbereitet – bitte anders formulieren');
-      setTimeout(() => setFeedback(''), 2800);
       return false;
     } catch {
-      // Draft + Intent behalten bei technischem Fehler
-      setFeedback('Clever konnte den Turn nicht abschließen – Entwurf bleibt erhalten');
-      setTimeout(() => setFeedback(''), 4200);
+      progressHintSchedulerRef.current?.clear();
+      setFeedback('');
       return false;
     } finally {
+      progressHintSchedulerRef.current?.clear();
       setSending(false);
     }
   }
@@ -1002,35 +1169,43 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (isComposerAkteSearchQuery(text)) {
+      // Clever 2.0: mit Agent → einheitlicher Propose-Pfad (History + Cross-Customer + Memory)
+      if (isCleverAgentClientEnabled()) {
+        void runCleverProposeFromInput(text);
+        return;
+      }
       const turn = runCleverSellerTurn(buildAkteSellerTurnParams({
         sellerInput: text,
       }));
-      const historyAction = turn?.preparedActions?.find(
-        (a) => a.type === 'search_customer_history' && a.legacy,
-      );
+      const policy = resolveSellerResponsePolicy(turn);
+      setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
       setDraft('');
-      if (shouldShowUniversalReview(turn)) {
+      if (policy.showReview || shouldShowUniversalReview(turn)) {
         showUniversalReview(turn);
         setFeedback('Verlauf durchsucht');
-      } else if (historyAction?.legacy?.ok) {
-        // Cursor-UI: Treffer als Vorschlag, kein SellerInlineAssistCard
-        setUniversalTurn(null);
-        clearAssist();
-        const hitText = historyAction.legacy?.results?.[0]?.body
-          || historyAction.legacy?.results?.[0]?.headline
-          || 'Treffer im Verlauf';
-        rememberLastComposerAction(buildComposerLastActionFromText({
-          body: String(hitText),
-          title: 'Verlauf',
-          status: COMPOSER_LAST_ACTION_STATUS.ACCEPTED,
-          summaryLine: 'Im Chat ansehen',
-        }));
-        setFeedback('Suche im Vorgang');
-      } else {
-        setUniversalTurn(null);
-        clearAssist();
-        setFeedback('Nichts gefunden');
+        setTimeout(() => setFeedback(''), 2500);
+        return;
       }
+      if (policy.message) {
+        setUniversalTurn(null);
+        clearAssist();
+        try {
+          const posted = postCleverAssistFeedCard({
+            lead,
+            title: '✨ Clever',
+            text: policy.message,
+            responseKind: policy.kind,
+            chips: policy.chips,
+          });
+          if (posted?.lead && typeof onPersistLead === 'function') {
+            onPersistLead(posted.lead);
+          }
+        } catch { /* feed optional */ }
+        return;
+      }
+      setUniversalTurn(null);
+      clearAssist();
+      setFeedback('Nichts gefunden');
       setTimeout(() => setFeedback(''), 2500);
       return;
     }
@@ -1078,7 +1253,7 @@ export default function CustomerAkteSharedWorkspace({
     setHasMagicSeed(true);
     allowWithoutPackageDetailsRef.current = allowWithoutPackageDetails;
     setMagicBusy(true);
-    setFeedback('Clever versteht …');
+    setFeedback('');
     try {
       // Zuerst Orchestrator: Aktion/Review vor reinem Textgenerator
       if (!isCustomerMessageEditMode(composerModeRef.current)) {
@@ -1089,8 +1264,7 @@ export default function CustomerAkteSharedWorkspace({
         if (shouldShowUniversalReview(turn)) {
           setUniversalTurn(turn);
           clearAssist();
-          setFeedback('Clever hat vorbereitet – bitte prüfen');
-          setTimeout(() => setFeedback(''), 2800);
+          setFeedback('');
           return { ok: true, turn, mode: 'universal_review' };
         }
         const turnDraft = turn.messageDraft
@@ -1106,13 +1280,12 @@ export default function CustomerAkteSharedWorkspace({
         } else if (turnDraft) {
           setUniversalTurn(turn);
           clearAssist();
-          setFeedback('Clever hat vorbereitet – bitte prüfen');
-          setTimeout(() => setFeedback(''), 2800);
+          setFeedback('');
           return { ok: true, turn, mode: 'universal_review' };
         }
       }
 
-      setFeedback('Clever schreibt …');
+      setFeedback('');
       const workingCtx = resolveMagicWorkingContext();
       const offerCtx = resolveMagicOfferContext();
       const akteContext = buildMagicAkteContext({
@@ -1400,7 +1573,16 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleCleverFeedCta(payload = {}) {
-    const action = payload.ctaAction;
+    const action = typeof payload.ctaAction === 'object'
+      ? payload.ctaAction?.action
+      : payload.ctaAction;
+    const targetLeadId = payload.leadId
+      || (typeof payload.ctaAction === 'object' ? payload.ctaAction?.leadId : null)
+      || null;
+    if (action === 'open_customer' && targetLeadId) {
+      navigate(buildKundenaktePath(targetLeadId));
+      return;
+    }
     if (action === 'send_portfolio') {
       handleSendPortfolio({});
       return;
@@ -1598,6 +1780,43 @@ export default function CustomerAkteSharedWorkspace({
     if (!action || !universalTurn) return;
     if (action.action === 'discard') {
       handleDismissAssist();
+      return;
+    }
+    if (action.action === 'open_offer_handoff' || action.id === 'create_offer') {
+      const magic = offerPrep
+        || universalTurn.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+          ?.payload
+        || universalTurn.pendingAction
+        || null;
+      clearAssist();
+      setUniversalTurn(null);
+      if (onPrepareOfferDraft && magic) {
+        onPrepareOfferDraft({ magic, lead });
+        return;
+      }
+      onOpenOffer?.();
+      return;
+    }
+    if (action.action === 'upload_pdf' || action.id === 'upload_pdf') {
+      const input = document.querySelector('.sw-composer__file');
+      if (input && typeof input.click === 'function') {
+        input.click();
+        return;
+      }
+      setDraft((prev) => (prev ? prev : ''));
+      setFeedback('Bitte PDF über + im Composer wählen.');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    if (action.action === 'enter_rate' || action.id === 'enter_rate') {
+      setDraft('Monatsrate ');
+      setUniversalTurn(null);
+      clearAssist();
+      focusComposer();
+      return;
+    }
+    if (action.action === 'calc_cash' || action.id === 'calc_cash') {
+      void runCleverProposeFromInput('Als Barkauf berechnen');
       return;
     }
     if (action.action === 'prepare_followup_offer') {
@@ -1965,7 +2184,8 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     setSending(true);
-    setFeedback('Clever liest den Screenshot …');
+    setFeedback('');
+    progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.SCREENSHOT_OCR);
     try {
       let ocrEngine = null;
       if (isCleverContractOcrEnabled()) {
@@ -2006,6 +2226,7 @@ export default function CustomerAkteSharedWorkspace({
         kind: 'screenshot',
       }));
 
+      progressHintSchedulerRef.current?.clear();
       if (shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
         clearAssist();
@@ -2016,10 +2237,12 @@ export default function CustomerAkteSharedWorkspace({
       }
       setTimeout(() => setFeedback(''), 3200);
     } catch (err) {
+      progressHintSchedulerRef.current?.clear();
       softAttachPhotoNote(file);
       setFeedback(err?.message || 'Screenshot konnte nicht gelesen werden');
       setTimeout(() => setFeedback(''), 3600);
     } finally {
+      progressHintSchedulerRef.current?.clear();
       setSending(false);
     }
   }
@@ -2039,7 +2262,8 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     setSending(true);
-    setFeedback('PDF wird gelesen …');
+    setFeedback('');
+    progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.PDF_OCR);
     try {
       const extracted = await extractMagicOfferPdf(file);
       const ocrProvider = await resolveCleverOcrProvider();
@@ -2052,6 +2276,7 @@ export default function CustomerAkteSharedWorkspace({
       });
 
       if (skipped || (prepared.needsManualDescribe && prepared.kind !== 'contract_pdf')) {
+        progressHintSchedulerRef.current?.clear();
         setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
         setFeedback(prepared.feedbackManual);
         setTimeout(() => setFeedback(''), 3200);
@@ -2083,6 +2308,7 @@ export default function CustomerAkteSharedWorkspace({
         }));
       }
 
+      progressHintSchedulerRef.current?.clear();
       if (turn && shouldShowUniversalReview(turn)) {
         setUniversalTurn(turn);
         clearAssist();
@@ -2097,9 +2323,11 @@ export default function CustomerAkteSharedWorkspace({
       }
       setTimeout(() => setFeedback(''), 3200);
     } catch (err) {
+      progressHintSchedulerRef.current?.clear();
       setFeedback(err?.message || 'PDF konnte nicht gelesen werden');
       setTimeout(() => setFeedback(''), 3200);
     } finally {
+      progressHintSchedulerRef.current?.clear();
       setSending(false);
     }
   }
@@ -2180,7 +2408,25 @@ export default function CustomerAkteSharedWorkspace({
     [reviewModel],
   );
 
-  const lastActionSlot = lastComposerAction ? (
+  // Clever-Tab (hideFeed): Compact Confirmation + Undo im Slot; Chat-Tab nutzt Feed-Card.
+  const rememberConfirmSlot = (hideFeed && rememberUndo?.message) ? (
+    <div className="cust-akte-workspace__assistant-card">
+      <CleverChatMessage
+        text={rememberUndo.message}
+        payload={{
+          title: '✨ Clever',
+          responseKind: 'compact_confirmation',
+          chips: rememberUndo.chips || [],
+          undoAvailable: true,
+          undoToken: rememberUndo.undoToken,
+        }}
+        onUndo={handleRememberUndo}
+        activeUndoToken={rememberUndo.undoToken}
+      />
+    </div>
+  ) : null;
+
+  const lastActionSlot = rememberConfirmSlot || (lastComposerAction ? (
     <SellerUniversalReviewCard
       model={lastComposerAction.model}
       status={lastComposerAction.status}
@@ -2190,7 +2436,7 @@ export default function CustomerAkteSharedWorkspace({
         ? (body) => sendCustomerMessage(body)
         : null}
     />
-  ) : null;
+  ) : null);
 
   const attachActionsSlot = attachmentActions?.suggestedActions?.length && !reviewModel ? (
     <div className="cust-akte-workspace__attach-actions" role="group" aria-label="Dokument-Aktionen">
@@ -2214,22 +2460,11 @@ export default function CustomerAkteSharedWorkspace({
     </div>
   ) : null;
 
-  const rememberUndoSlot = rememberUndo ? (
-    <p className="cust-akte-workspace__remember-undo" role="status">
-      Gespeichert.
-      {' '}
-      <button type="button" onClick={handleRememberUndo}>
-        Rückgängig
-      </button>
-    </p>
-  ) : null;
-
   return (
     <section
       className={`cust-akte-workspace cust-akte-workspace--chat-only cust-akte-workspace--feed${hideFeed ? ' cust-akte-workspace--composer-only' : ''}${compactEmpty ? ' cust-akte-workspace--compact-empty' : ''}`}
       aria-label={hideFeed ? 'Clever Composer' : 'Kundenverlauf'}
     >
-      {rememberUndoSlot}
       {attachActionsSlot}
       <SharedWorkspaceChat
         role="seller"
@@ -2238,7 +2473,7 @@ export default function CustomerAkteSharedWorkspace({
         onDraftChange={setDraft}
         onSend={handleSend}
         sending={sending || isSaving}
-        sendFeedback={feedback}
+        sendFeedback={progressHint || feedback}
         placeholder={placeholder}
         composerLabel={inMessageEdit ? composerUi.label : (intentLabels.label || composerUi.label)}
         sendAriaLabel={inMessageEdit
@@ -2263,6 +2498,8 @@ export default function CustomerAkteSharedWorkspace({
         onUploadDocument={onUploadDocument}
         onStartSelfDisclosure={onStartSelfDisclosure}
         onCleverAction={handleCleverFeedCta}
+        onCleverUndo={rememberUndo ? handleRememberUndo : null}
+        activeUndoToken={rememberUndo?.undoToken || null}
         onAttachFile={handleAttachFile}
         hideFeed={hideFeed}
         feedTopSlot={hideFeed ? null : feedTopSlot}

@@ -43,6 +43,8 @@ export default function SharedWorkspaceChat({
   onConfirmAppointment = null,
   onChangeAppointment = null,
   onCleverAction = null,
+  onCleverUndo = null,
+  activeUndoToken = null,
   onPlusAction,
   plusSheetOpen = false,
   plusActions = [],
@@ -444,6 +446,8 @@ export default function SharedWorkspaceChat({
                 onConfirmAppointment={onConfirmAppointment}
                 onChangeAppointment={onChangeAppointment}
                 onCleverAction={onCleverAction}
+                onCleverUndo={onCleverUndo}
+                activeUndoToken={activeUndoToken}
               />
             </li>
           ))}

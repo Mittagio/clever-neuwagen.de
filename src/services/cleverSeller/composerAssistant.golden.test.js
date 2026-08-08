@@ -145,13 +145,15 @@ assert.ok(turn4.preparedActions.some((a) => (
   a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_HISTORY
   || a.type === SELLER_TURN_INTENTS.SEARCH_CUSTOMER_MESSAGES
 )));
-assert.ok(shouldShowUniversalReview(turn4));
-const review4 = buildUniversalReviewModel(turn4);
-assert.ok(review4?.actionSections.some((s) => (
-  s.kind === 'history_search'
-  || s.kind === 'history_search_results'
-  || s.kind === 'no_search_result'
-)));
+// Clever 2.0: History-Suche = Direct Answer, kein Universal Review
+assert.equal(shouldShowUniversalReview(turn4), false);
+assert.ok(
+  turn4.historySearchResults?.length
+  || turn4.searchResults?.length
+  || turn4.assistantReply
+  || turn4.preparedActions.some((a) => a.payload?.results?.length),
+  'history results or reply present',
+);
 
 // --- Golden Case Brandes: Multi-Offer Feedback ---
 const brandesInput = `Sportage ist ihm zu teuer.
@@ -211,9 +213,9 @@ const turnNext = runCleverSellerTurn({
 assert.ok(turnNext.intents.some((i) => i.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP));
 assert.ok(turnNext.goldenMoment);
 assert.ok(turnNext.preparedActions.some((a) => a.type === SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP));
-assert.ok(shouldShowUniversalReview(turnNext));
-const reviewNext = buildUniversalReviewModel(turnNext);
-assert.ok(reviewNext?.actionSections.some((s) => s.kind === 'golden_moment'));
+// Clever 2.0: Next-Step = Direct Answer
+assert.equal(shouldShowUniversalReview(turnNext), false);
+assert.ok(turnNext.goldenMoment?.primaryLabel || turnNext.assistantReply);
 
 // --- Working Context Document ---
 const ctxDoc = resolveAssistantContext({

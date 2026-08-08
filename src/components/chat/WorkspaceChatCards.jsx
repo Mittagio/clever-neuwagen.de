@@ -84,28 +84,67 @@ export function ChecklistChatCard({ payload = {}, onUpload, onStartSa }) {
   );
 }
 
-export function CleverChatMessage({ text, payload = {}, onCta = null }) {
+export function CleverChatMessage({
+  text,
+  payload = {},
+  onCta = null,
+  onUndo = null,
+  activeUndoToken = null,
+}) {
   const hasCta = Boolean(payload.ctaLabel && onCta);
   const rawTitle = String(payload.title || 'Clever').replace(/^✨\s*/, '').trim() || 'Clever';
+  const chips = Array.isArray(payload.chips) ? payload.chips.filter(Boolean).slice(0, 8) : [];
+  const kindClass = payload.responseKind
+    ? ` sw-card--clever-${String(payload.responseKind).replace(/_/g, '-')}`
+    : '';
+  const showUndo = Boolean(
+    payload.undoAvailable
+    && typeof onUndo === 'function'
+    && (
+      !activeUndoToken
+      || !payload.undoToken
+      || payload.undoToken === activeUndoToken
+    ),
+  );
   return (
-    <article className={`sw-card sw-card--clever${hasCta ? ' sw-card--clever-banner' : ''}`}>
+    <article className={`sw-card sw-card--clever${hasCta ? ' sw-card--clever-banner' : ''}${kindClass}`}>
       <div className="sw-card__clever-head">
         <span className="sw-card__clever-spark" aria-hidden>✨</span>
         <p className="sw-card__clever-label">{rawTitle}</p>
       </div>
       <p className="sw-card__text">{text}</p>
+      {chips.length > 0 ? (
+        <ul className="sw-card__clever-chips" aria-label="Aufgenommen">
+          {chips.map((chip) => (
+            <li key={chip}>{chip}</li>
+          ))}
+        </ul>
+      ) : null}
       {payload.sourceLabel ? (
         <p className="sw-card__source">{payload.sourceLabel}</p>
       ) : null}
-      {hasCta ? (
-        <button
-          type="button"
-          className="sw-card__cta sw-card__cta--clever"
-          onClick={() => onCta(payload)}
-        >
-          {payload.ctaLabel}
-          {' ›'}
-        </button>
+      {(hasCta || showUndo) ? (
+        <div className="sw-card__clever-actions">
+          {hasCta ? (
+            <button
+              type="button"
+              className="sw-card__cta sw-card__cta--clever"
+              onClick={() => onCta(payload)}
+            >
+              {payload.ctaLabel}
+              {' ›'}
+            </button>
+          ) : null}
+          {showUndo ? (
+            <button
+              type="button"
+              className="sw-card__undo"
+              onClick={() => onUndo(payload)}
+            >
+              Rückgängig
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );
@@ -220,6 +259,8 @@ export function WorkspaceChatItem({
   onConfirmAppointment = null,
   onChangeAppointment = null,
   onCleverAction = null,
+  onCleverUndo = null,
+  activeUndoToken = null,
 }) {
   const kind = item.kind || MESSAGE_KIND.TEXT;
 
@@ -256,6 +297,8 @@ export function WorkspaceChatItem({
         text={item.text}
         payload={item.payload}
         onCta={onCleverAction}
+        onUndo={onCleverUndo}
+        activeUndoToken={activeUndoToken}
       />
     );
   }
