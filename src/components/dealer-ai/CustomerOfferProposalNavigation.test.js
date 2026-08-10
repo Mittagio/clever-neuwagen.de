@@ -45,7 +45,39 @@ assert.ok(followUp.includes("handler === 'create_offer'"), 'Board create_offer g
 assert.ok(followUp.includes("handler === 'view_proposal'"), 'Board view_proposal geroutet');
 assert.ok(
   followUp.includes('openOfferInWorkspace(card)'),
-  'Öffnen bleibt in der Akte (Workspace)',
+  'Workspace-Öffnen bleibt für andere Einstiege verfügbar',
+);
+assert.ok(
+  followUp.includes('trackToComposerCard(track)'),
+  'Spur→Card für Öffnen',
+);
+assert.ok(
+  followUp.includes('openVehicleTrack(track)'),
+  'Angebote-Sheet Öffnen → openVehicleTrack',
+);
+{
+  const openFnStart = followUp.indexOf('function openVehicleTrack(track)');
+  assert.ok(openFnStart > 0, 'openVehicleTrack definiert');
+  const openFnSlice = followUp.slice(openFnStart, openFnStart + 700);
+  assert.ok(
+    openFnSlice.includes('onOpenOfferEdit(card)'),
+    'Öffnen bestehendes Angebot → Angebot prüfen',
+  );
+}
+
+const vehicleTracks = readFileSync(join(__dirname, 'CustomerAkteVehicleTracks.jsx'), 'utf8');
+assert.ok(vehicleTracks.includes('vt-card__body--selectable'), 'Select-Zone getrennt von Öffnen');
+assert.ok(
+  vehicleTracks.includes('onClick={() => onOpenTrack?.(track)}'),
+  'Öffnen-Button hat direkten Handler',
+);
+const articleBlock = vehicleTracks.slice(
+  vehicleTracks.indexOf('<article'),
+  vehicleTracks.indexOf('vt-card__body'),
+);
+assert.ok(
+  !articleBlock.includes("role={selectable ? 'button'"),
+  'Keine role=button auf der ganzen Karte (nested interactive)',
 );
 assert.ok(conditionsStep.includes('buildConditionsFooterAction'));
 assert.ok(conditionsStep.includes('onEditConfiguration'), 'Bearbeiten öffnet Konfiguration, nicht Akte');

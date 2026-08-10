@@ -6,6 +6,7 @@ import {
   VEHICLE_OFFER_STATUS,
   VEHICLE_OFFER_STATUS_UI,
   buildOnlineOfferUrl,
+  buildOfferVersionHistory,
   createNextOfferVersion,
   createOnlineLinkForOffer,
   createVehicleOfferFromCard,
@@ -126,6 +127,12 @@ assert.ok(when.startsWith('Heute'));
   const preparedV2 = markOfferPrepared(v2);
   assert.equal(preparedV2.status, VEHICLE_OFFER_STATUS.PREPARED);
   assert.equal(preparedV2.pdf?.fileName, 'EV3_v2.pdf');
+
+  const history = buildOfferVersionHistory(preparedV2);
+  assert.equal(history[0].label, 'v2');
+  assert.equal(history[0].isCurrent, true);
+  assert.equal(history[1].label, 'v1');
+  assert.equal(history[1].isCurrent, false);
 }
 
 console.log('vehicleOffer.test.js: OK');

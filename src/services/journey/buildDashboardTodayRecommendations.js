@@ -184,6 +184,10 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
     .slice(0, maxItems)
     .map((item) => {
       const lead = leadById.get(item.leadId) || null;
+      const phone = String(lead?.contact?.phone || lead?.phone || '').trim();
+      const telHref = phone
+        ? `tel:${phone.replace(/[^\d+]/g, '')}`
+        : null;
       let view = null;
       if (lead) {
         try {
@@ -192,6 +196,7 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
             vehicleCards: buildVehicleOpportunityCards({ lead }),
             offerSelectionGroups: resolveOfferSelectionGroups({ lead }),
             customerName: item.customerName,
+            telHref,
           });
         } catch {
           view = null;
@@ -212,6 +217,12 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
         detail: item.detail,
       });
 
+      const callAction = (view?.actions || []).find((a) => a.type === 'call' && a.href) || null;
+      const wantsCall = /anrufen/i.test(String(ctaLabel || ''))
+        || item.actionId === 'offer_opened_call'
+        || callAction?.primary === true;
+      const ctaHref = wantsCall ? (callAction?.href || telHref) : null;
+
       return {
         leadId: item.leadId,
         customerName: item.customerName || 'Kunde',
@@ -220,6 +231,8 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
         reasons,
         ctaLabel,
         actionId: item.actionId || view?.actionId || null,
+        ctaHref,
+        phone: phone || null,
         dueTodayBadge: item.overdue
           ? 'überfällig'
           : (item.dueToday || item.hasAppointmentToday ? 'fällig heute' : null),

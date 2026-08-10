@@ -137,3 +137,17 @@ export function labelsFromEquipmentIds(ids = []) {
     .map((id) => CHIP_BY_ID[id]?.label)
     .filter(Boolean);
 }
+
+const LABEL_BY_LOWER = new Map(
+  HANDOFF_EQUIPMENT_CHIPS.map((chip) => [String(chip.label).toLowerCase(), chip.label]),
+);
+
+/** Exact catalog match (case-insensitive) for Ausstattung-Picker chips. */
+export function isHandoffEquipmentLabel(label = '') {
+  return LABEL_BY_LOWER.has(String(label ?? '').trim().toLowerCase());
+}
+
+/** Canonical catalog label casing, or null if unknown. */
+export function canonicalHandoffEquipmentLabel(label = '') {
+  return LABEL_BY_LOWER.get(String(label ?? '').trim().toLowerCase()) ?? null;
+}

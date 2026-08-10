@@ -33,6 +33,7 @@ import {
 import { VEHICLE_OFFER_STATUS, createNextOfferVersion, markOfferPrepared, shouldBumpOfferVersionOnSave } from './vehicleOffer.js';
 import { buildBoardOfferFromDraft, BOARD_OFFER_STATUS } from './dealer/boardOfferModel.js';
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
+import { mergeOfferCommercialIntoWish } from './sales/wishConditionsSync.js';
 
 export function normalizeOfferPaymentType(paymentType = 'leasing') {
   if (paymentType === 'financing' || paymentType === 'threeWayFinancing') return 'financing';
@@ -580,7 +581,7 @@ export function finalizeLeadWithOfferDraft(lead, offerDraft, {
   };
 
   return {
-    ...buildLeadPatchFromOfferDraft(offerDraft),
+    ...buildLeadPatchFromOfferDraft(offerDraft, lead),
     status: pipelineToLeadStatus(enrichment.crmPatch.pipelineStatusId),
     crm: mergedCrm,
     updatedAt: new Date().toISOString(),
@@ -602,9 +603,21 @@ function collectReferenceCodes(getExistingCodes, leads = []) {
   return codes;
 }
 
-function buildLeadPatchFromOfferDraft(offerDraft) {
+function buildLeadPatchFromOfferDraft(offerDraft, existingLead = null) {
   const fields = offerDraftToParserFields(offerDraft);
   const vehicleLabel = [fields.brand, fields.model, fields.trimLabel].filter(Boolean).join(' ').trim();
+  const paymentType = fields.paymentType ?? 'unknown';
+  const wish = mergeOfferCommercialIntoWish(existingLead?.wish, {
+    paymentType,
+    termMonths: fields.termMonths ?? null,
+    mileagePerYear: fields.mileagePerYear ?? null,
+    downPayment: fields.downPayment ?? 0,
+    desiredPrice: fields.desiredPrice ?? null,
+    leasingEndDate: offerDraft?.timing?.leasingEnd ?? fields.leasingEndDate ?? null,
+  }, { forceFromActiveOffer: true });
+  if (fields.desiredDeliveryDate) {
+    wish.desiredDeliveryDate = fields.desiredDeliveryDate;
+  }
   return {
     contact: {
       name: offerDraft.customer.name ?? 'Kunde (offen)',
@@ -618,16 +631,9 @@ function buildLeadPatchFromOfferDraft(offerDraft) {
       engine: fields.batteryLabel ?? fields.motorLabel ?? '',
       label: vehicleLabel || 'Kia – Modell offen',
     },
-    paymentType: fields.paymentType ?? 'unknown',
+    paymentType,
     desiredRate: offerDraft.payment.calculatedRate ?? fields.desiredRate ?? null,
-    wish: {
-      termMonths: fields.termMonths ?? null,
-      mileagePerYear: fields.mileagePerYear ?? null,
-      downPayment: fields.downPayment ?? 0,
-      paymentType: fields.paymentType ?? 'unknown',
-      desiredPrice: fields.desiredPrice ?? null,
-      desiredDeliveryDate: fields.desiredDeliveryDate ?? null,
-    },
+    wish,
     deliveryTime: fields.desiredDeliveryDate ?? null,
     notes: fields.rawText?.slice(0, 500) ?? '',
   };
@@ -791,7 +797,7 @@ export function executeSaveOfferDraft(offerDraft, deps) {
       selectedModelIds,
     });
     const finalized = finalizeLeadWithOfferDraft(
-      { ...baseLead, ...buildLeadPatchFromOfferDraft(draft) },
+      { ...baseLead, ...buildLeadPatchFromOfferDraft(draft, baseLead) },
       draft,
       {
         config,

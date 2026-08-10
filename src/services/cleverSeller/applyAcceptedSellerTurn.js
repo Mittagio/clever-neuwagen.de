@@ -31,6 +31,7 @@ import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
 import { buildInboundLeadDraft } from './inboundLeadIntake.js';
 import { isPrepareSuccessionOfferCue } from './prepareSuccessionOfferFromLead.js';
 import { applyConfirmedMultiSourceIntakePlan } from './multiSource/applyConfirmedMultiSourceIntakePlan.js';
+import { mergeOfferCommercialIntoWish } from '../sales/wishConditionsSync.js';
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -625,6 +626,43 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   }
 
   nextLead = applyStructuredFactsToLead(nextLead, facts);
+
+  // Offer-/PDF-Konditionen → Wish/Konditionen-Strip (nur konkrete Werte, behutsam mergen)
+  const offerCommercialFacts = facts.filter((f) => (
+    f?.source === SELLER_FACT_SOURCE.OFFER_PDF
+    || f?.field === 'termMonths'
+    || f?.field === 'durationMonths'
+    || f?.field === 'annualMileage'
+    || f?.field === 'downPayment'
+    || f?.field === 'paymentType'
+  ));
+  if (offerCommercialFacts.length) {
+    const commercial = {};
+    for (const fact of offerCommercialFacts) {
+      if (fact.field === 'paymentType' && fact.value) commercial.paymentType = fact.value;
+      if ((fact.field === 'termMonths' || fact.field === 'durationMonths') && fact.value != null) {
+        commercial.termMonths = typeof fact.value === 'object' ? fact.value.value : fact.value;
+      }
+      if (fact.field === 'annualMileage' && fact.value != null) {
+        commercial.mileagePerYear = fact.value;
+      }
+      if (fact.field === 'downPayment' && fact.value != null && fact.value !== '') {
+        commercial.downPayment = fact.value;
+      }
+      if (fact.field === 'existingContractEnd' && fact.value?.endDate) {
+        commercial.leasingEndDate = fact.value.endDate;
+      }
+    }
+    const fromOfferPdf = offerCommercialFacts.some((f) => f.source === SELLER_FACT_SOURCE.OFFER_PDF);
+    const mergedWish = mergeOfferCommercialIntoWish(nextLead.wish, commercial, {
+      forceFromActiveOffer: fromOfferPdf,
+    });
+    nextLead = {
+      ...nextLead,
+      wish: mergedWish,
+      paymentType: mergedWish.paymentType ?? nextLead.paymentType,
+    };
+  }
 
   // Epic 3: Lieferzeit-Antwort schließt offene Kundenfrage + Portal-Text
   const deliveryAnswerFact = facts.find((f) => (

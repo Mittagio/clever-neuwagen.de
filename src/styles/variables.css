@@ -92,6 +92,9 @@
   --content-reading: 720px;
   --content-workspace: 1280px;
   --content-wide: 1360px;
+  /* Kundenakte Clever-Tab: gemeinsame Maßbreite (Stage, Wissen, Composer) */
+  --akte-clever-measure: 1320px;
+  --akte-clever-pad-x: 16px;
   /* Desktop 3-col mockup: Spuren 280 | Workspace | Clever/Assist 320 */
   --sidebar-context: 280px;
   --sidebar-assistant: 320px;

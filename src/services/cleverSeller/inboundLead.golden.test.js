@@ -100,6 +100,8 @@ assert.ok(contact.phone);
   assert.equal(review.reviewType, 'customer_intake_review');
   assert.equal(review.legacyReviewType, 'inbound_lead_review');
   assert.equal(review.kind, 'customer_intake');
+  assert.equal(review.compactUi, true, 'Intake-Review compact – Accept-CTA als Primary-Button');
+  assert.ok(review.hero?.name, 'Hero-Name für sichtbaren Accept-Flow');
   assert.match(review.title, /Anfrage erkannt/i);
   assert.ok(review.actionSections?.some((s) => (
     s.id === 'customer_intake_review' && s.kind === 'customer_intake_review' && s.title === 'Kundenanfrage'
@@ -107,6 +109,10 @@ assert.ok(contact.phone);
   assert.ok(review.groups.some((g) => g.title === 'KUNDE'));
   assert.ok(review.groups.some((g) => g.title === 'NÄCHSTE AKTION'));
   assert.match(review.primaryCta, /Verknüpfen|Übernehmen/i);
+  assert.equal(
+    review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.tone,
+    'primary',
+  );
 
   // Confirm → Fakten auf bestehenden Lead, kein neuer Lead
   const applied = applyAcceptedSellerTurn(brandes, turn, { postFeedCard: false });
@@ -132,9 +138,15 @@ assert.ok(contact.phone);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_intake_review');
   assert.equal(review.legacyReviewType, 'inbound_lead_review');
+  assert.equal(review.compactUi, true);
+  assert.match(review.hero?.name || '', /Neumann/i);
   assert.match(review.primaryCta, /Neue Kundenakte anlegen|anlegen/i);
   assert.match(review.secondaryCta, /Erneut suchen|Verwerfen/i);
   assert.ok(review.groups.some((g) => /Neu anlegen|neuen Kunden/i.test(g.line || '')));
+  assert.equal(
+    review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.action,
+    'accept_inbound_lead',
+  );
 
   // Ohne Accept: Snapshot unverändert (kein Side-Effect im Turn)
   assert.equal([brandes].length, 1);

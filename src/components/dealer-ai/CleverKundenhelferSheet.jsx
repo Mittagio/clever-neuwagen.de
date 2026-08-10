@@ -71,6 +71,7 @@ function SoftChipRow({ label = null, options, value, onSelect, getOptionLabel = 
               aria-pressed={selected}
               onClick={() => onSelect(option)}
             >
+              {selected ? <span className="dai-kh-chip__check" aria-hidden>✓</span> : null}
               {optionLabel}
             </button>
           );
@@ -732,6 +733,7 @@ export default function CleverKundenhelferSheet({
                       aria-pressed={chip.selected}
                       onClick={() => toggleEquipmentLabel(chip.label)}
                     >
+                      {chip.selected ? <span className="dai-kh-chip__check" aria-hidden>✓</span> : null}
                       {chip.label}
                     </button>
                   ))}
@@ -841,6 +843,7 @@ export default function CleverKundenhelferSheet({
                         onClick={() => toggleChip(chip)}
                         aria-pressed={active}
                       >
+                        {active ? <span className="dai-kh-chip__check" aria-hidden>✓</span> : null}
                         {chip}
                       </button>
                     );

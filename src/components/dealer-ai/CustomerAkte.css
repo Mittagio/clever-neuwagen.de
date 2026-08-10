@@ -4997,21 +4997,21 @@
 
 .cust-akte-compact-header {
   flex-shrink: 0;
-  min-height: var(--header-height, 68px);
-  padding: 14px 18px 13px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  min-height: var(--header-height, 64px);
+  padding: 12px 20px 12px;
+  background: rgba(248, 249, 251, 0.92);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  border-bottom: 1px solid #e2e8f0;
   box-sizing: border-box;
 }
 
 .cust-akte-compact-header__row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 44px;
 }
 
 .cust-akte-compact-header__back,
@@ -5019,15 +5019,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid #e2e8f0;
   background: #fff;
   border-radius: 999px;
-  color: #3d4558;
+  color: #475569;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: none;
 }
 
 .cust-akte-compact-header__icon-btn--muted {
@@ -5038,7 +5038,43 @@
 .cust-akte-compact-header__actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
+}
+
+.cust-akte-compact-header__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-clever, #5e44a5);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.cust-akte-compact-header__cta-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.cust-akte-compact-header__cta:active {
+  filter: brightness(0.96);
+}
+
+@media (max-width: 720px) {
+  .cust-akte-compact-header__cta {
+    padding: 0 10px;
+    font-size: 0.7rem;
+  }
 }
 
 .cust-akte-compact-header__identity {
@@ -5064,13 +5100,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #eef0f5;
+  background: #fff;
+  border: 1px solid #e2e8f0;
   color: #0b1736;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 650;
   letter-spacing: 0.02em;
 }
 
@@ -5081,21 +5118,21 @@
 
 .cust-akte-compact-header__name {
   margin: 0;
-  font-size: 1.1875rem;
-  font-weight: 700;
-  line-height: 1.18;
-  letter-spacing: -0.02em;
-  color: #121a2b;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cust-akte-compact-header__context {
-  margin: 3px 0 0;
-  font-size: 0.75rem;
+  margin: 2px 0 0;
+  font-size: 0.72rem;
   font-weight: 500;
-  color: #8b93a7;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5105,7 +5142,7 @@
   margin: 2px 0 0;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: var(--cust-muted, #8b93a7);
+  color: var(--cust-muted, #94a3b8);
 }
 
 .cust-akte-smart-chips {
@@ -6080,15 +6117,15 @@
   gap: 6px;
 }
 
-/* Wissen → Clever: ~26px Luft; Clever inset, nicht full-bleed */
+/* Wissen → Clever: mehr Luft; Clever inset, nicht full-bleed */
 .sw-chat__feed-top .clever-empfiehlt,
 .sw-chat__feed-top .cn-clever-moment {
-  margin: 26px 16px 10px;
+  margin: 20px 20px 12px;
 }
 
 .cust-akte-shell__pane--clever > .cust-kundenbild--panel + .cust-akte-workspace .sw-chat__empty-recommend,
 .cust-akte-workspace--compact-empty .sw-chat__empty-recommend {
-  margin-top: 26px;
+  margin-top: 20px;
 }
 
 .sw-chat__feed-top .cust-akte-clever-notepad {
@@ -6631,26 +6668,90 @@
   }
 }
 
-/* Verkaufsb�hne: klare Zonen Fakten ? Clever ? Composer */
+/* Verkaufsbühne: klare Zonen Fakten → Clever → Composer */
 .cn-workspace__band:has(.cust-kundenbild) {
-  background: #f7f6f9;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  background: #f8f9fb;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: none;
+}
+
+/* Gemeinsames horizontales Measure: Header, Kundenbild, Stage, Composer */
+.cust-akte--responsive-shell {
+  --akte-clever-measure: 1320px;
+  --akte-clever-pad-x: 16px;
+  --sw-composer-only-measure: min(100%, var(--akte-clever-measure));
+}
+
+@media (min-width: 1100px) {
+  .cust-akte--responsive-shell {
+    --akte-clever-pad-x: 28px;
+  }
+}
+
+.cust-akte--responsive-shell .cust-akte-compact-header {
+  padding-inline: 0;
+}
+
+.cust-akte--responsive-shell .cust-akte-compact-header__row {
+  width: 100%;
+  max-width: var(--akte-clever-measure);
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding-inline: var(--akte-clever-pad-x);
+}
+
+.cust-akte--responsive-shell .cn-workspace__band .cust-kundenbild__compact,
+.cust-akte--responsive-shell .cn-workspace__band .cust-kundenbild__panel,
+.cust-akte--responsive-shell .cn-workspace__band .cust-kundenbild__working,
+.cust-akte--responsive-shell .cn-workspace__band .cust-kundenbild__kern {
+  width: 100%;
+  max-width: var(--akte-clever-measure);
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding-inline: var(--akte-clever-pad-x);
 }
 
 .cust-akte-shell__pane--clever {
-  background: #fafafc;
+  background: #f8f9fb;
+}
+
+.cust-akte-shell__pane--clever .sw-chat--composer-only .sw-chat__feed {
+  padding-inline: 0;
+}
+
+.cust-akte-shell__pane--clever .sw-chat--composer-only .sw-chat__feed-main {
+  max-width: var(--sw-composer-only-measure);
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--akte-clever-pad-x);
+  box-sizing: border-box;
+}
+
+.cust-akte-shell__pane--clever .sw-chat--composer-only .sw-composer,
+.cust-akte-shell__pane--clever .sw-chat--composer-only .sw-composer__context {
+  max-width: var(--sw-composer-only-measure);
+  width: 100%;
+  margin-inline: auto;
+  padding-left: var(--akte-clever-pad-x);
+  padding-right: var(--akte-clever-pad-x);
+  box-sizing: border-box;
 }
 
 .cust-akte-shell__pane--clever .sw-chat__empty-recommend,
 .cust-akte-shell__pane--clever .clever-empfiehlt,
 .cust-akte-shell__pane--clever .cn-clever-moment {
-  margin-inline: 16px;
-  margin-top: 20px;
+  margin-inline: 0;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.cust-akte-shell__pane--clever .clever-empfiehlt--stage {
+  max-width: none;
+  width: 100%;
 }
 
 .cust-akte-shell__pane--clever .sw-chat__desk {
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid #e2e8f0;
   background: #fff;
   box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.04);
 }

@@ -48,17 +48,54 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let discountPercent = null;
-  // Bis 3 Vorkommastellen, damit ungültige Werte (z. B. 449 %) erkannt und später verworfen werden
-  const pctMatch = blob.match(/(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)/i)
-    ?? blob.match(/(?:rabatt|nachlass)\s*(?:von\s*)?(\d{1,3}(?:[.,]\d+)?)/i);
-  if (pctMatch) discountPercent = parseDeNumber(pctMatch[1]);
-
   let discountAmount = null;
+  // Zinsen/Steuern nicht als Rabatt-% lesen
+  const interestOrTaxPct = blob.match(
+    /(\d{1,2}(?:[.,]\d{1,2})?)\s*(?:%|prozent)\s*(?:effektiv|p\.?\s*a\.?|jahreszins|mwst|ust|mehrwert)/i,
+  ) || blob.match(
+    /(?:effektiv(?:er)?\s*(?:jahres)?zins|sollzins|mwst|ust)\s*(?:von\s*)?(\d{1,2}(?:[.,]\d{1,2})?)/i,
+  );
+
+  const rabattPctMatch = blob.match(
+    /(?:rabatt|nachlass)\s*(?:von\s*)?(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)/i,
+  ) || blob.match(
+    /(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)\s*(?:rabatt|nachlass)/i,
+  );
+  const genericPctMatch = !rabattPctMatch
+    ? blob.match(/(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)/i)
+    : null;
+  const pctMatch = rabattPctMatch || genericPctMatch;
+  if (pctMatch) {
+    const rawPct = pctMatch[0] || '';
+    const isInterestOrTax = Boolean(interestOrTaxPct)
+      && String(interestOrTaxPct[1]) === String(pctMatch[1]);
+    const nearTaxOrInterest = /(?:effektiv|jahreszins|sollzins|mwst|ust|mehrwert)/i.test(rawPct)
+      || (
+        interestOrTaxPct
+        && blob.indexOf(rawPct) >= 0
+        && Math.abs(blob.indexOf(rawPct) - blob.indexOf(interestOrTaxPct[0])) < 24
+      );
+    if (!isInterestOrTax && !nearTaxOrInterest) {
+      const n = parseDeNumber(pctMatch[1]);
+      // Nur plausible Rabatt-% (0–100); größere Zahlen sind kein discountPercent
+      if (n != null && n >= 0 && n <= 100) discountPercent = n;
+    }
+  }
+
   const absDiscount = blob.match(
     new RegExp(`(?:rabatt|nachlass)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)`, 'i'),
   );
   if (absDiscount && discountPercent == null) {
     discountAmount = parseEuroAmount(absDiscount[1]);
+  }
+  // „Rabatt 449“ ohne %/€ und Wert > 100 → Euro-Betrag, nicht Prozent
+  if (discountPercent == null && discountAmount == null) {
+    const rabattBare = blob.match(/(?:rabatt|nachlass)\s*(?:von\s*)?(\d{1,3}(?:[.,]\d+)?)/i);
+    if (rabattBare) {
+      const n = parseDeNumber(rabattBare[1]);
+      if (n != null && n > 100) discountAmount = n;
+      else if (n != null && n >= 0 && n <= 100) discountPercent = n;
+    }
   }
 
   let transferCost = null;

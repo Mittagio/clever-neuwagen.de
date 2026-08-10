@@ -36,7 +36,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: min(40vh, 400px);
+  max-height: min(72vh, 640px);
   border-radius: 0;
   border-left: none;
   border-right: none;
@@ -52,11 +52,11 @@
 }
 
 .clever-global-composer--expanded.clever-global-composer--docked {
-  max-height: min(40vh, 400px);
+  max-height: min(72vh, 640px);
 }
 
 .clever-global-composer--expanded.clever-global-composer--hero {
-  max-height: min(45vh, 480px);
+  max-height: min(70vh, 620px);
 }
 
 .clever-global-composer__hint {
@@ -159,7 +159,7 @@
   margin: 0;
   padding: 0.5rem 0.75rem 0;
   overflow-y: auto;
-  max-height: min(28vh, 240px);
+  max-height: min(52vh, 420px);
 }
 
 .clever-global-composer__progress {
@@ -230,11 +230,21 @@
 .clever-global-composer .sw-chat--composer-only .sw-chat__feed {
   flex: 0 1 auto;
   min-height: 0;
-  max-height: min(28vh, 220px);
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   padding: 0.5rem 0.75rem 0;
   background: transparent;
   border: none;
+}
+
+/* Accept-CTA der Intake-Review bleibt über dem Composer sichtbar */
+.clever-global-composer .sw-chat--composer-only .sur-card__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 28%);
 }
 
 .clever-global-composer .sw-chat--composer-only .sw-chat__feed:has(.sw-chat__empty--composer) {
@@ -313,11 +323,11 @@
   }
 
   .clever-global-composer--expanded.clever-global-composer--docked {
-    max-height: 45vh;
+    max-height: min(78vh, 680px);
   }
 
   .clever-global-composer--docked {
-    max-height: 45vh;
+    max-height: min(78vh, 680px);
   }
 }
 

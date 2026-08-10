@@ -65,7 +65,17 @@ assert.ok(sheetSource.includes('resolveKundenhelferSheetNotes'), 'lokaler notes-
 assert.ok(sheetSource.includes('HANDOFF_EQUIPMENT_CATEGORIES'), 'Ausstattung-Kategorien mit Icons');
 assert.ok(sheetSource.includes('EQUIPMENT_AREA_ICONS'), 'Line-Icons statt Emoji');
 assert.ok(sheetSource.includes('chip.selected'), 'Equipment-Toggle nutzt chip.selected');
+assert.ok(sheetSource.includes('dai-kh-chip__check'), 'ausgewählte Chips mit Check-Mark');
 assert.ok(sheetSource.includes('setExclusiveChipInGroup'), 'exklusive Soft-Wish-Gruppen');
+
+const sheetCss = readFileSync(
+  join(__dirname, '../components/dealer-ai/CleverKundenhelferSheet.css'),
+  'utf8',
+);
+assert.ok(
+  /dai-kh-chip\.is-active[\s\S]*color-clever|#6d5bb8|rgba\(109,\s*91,\s*184/i.test(sheetCss),
+  'aktive Ausstattungs-Chips mit starkem Lila-Feedback',
+);
 
 assert.deepEqual(
   parseKundenhelferNotes(

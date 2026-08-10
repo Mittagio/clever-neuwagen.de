@@ -106,9 +106,11 @@ import {
   buildVariantViewedActivity,
   detectCleverInsights,
   extractLexiconQuestionAnswer,
+  pickRecentStageActivities,
   getActivityDashboard,
   mergeInsightActivities,
 } from '../../services/customerActivityTimeline.js';
+import { sortHistoryNewestFirst } from '../../services/customerAkteHistory.js';
 import {
   buildCustomerMessageHistoryEntries,
   sendCleverChannelMessage,
@@ -426,7 +428,7 @@ export default function DealerAiLeadFollowUp({
   const [snapshotHighlightLabels, setSnapshotHighlightLabels] = useState([]);
   const [snapshotChipEditor, setSnapshotChipEditor] = useState(null);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
+  const [kundenbildExpanded, setKundenbildExpanded] = useState(true);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [angeboteFilter, setAngeboteFilter] = useState('all');
   const [activeSheet, setActiveSheet] = useState(
@@ -1074,6 +1076,11 @@ export default function DealerAiLeadFollowUp({
     return models.length ? models.join(' / ') : '';
   }, [vehicleCards, vehicleTracks, wishModel]);
 
+  const recentStageActivities = useMemo(
+    () => pickRecentStageActivities(history, 3),
+    [history],
+  );
+
   function focusChatComposer({
     clever = true,
     seedDraft = '',
@@ -1230,12 +1237,20 @@ export default function DealerAiLeadFollowUp({
       openOffersBoard();
       return;
     }
-    // In der Akte bleiben – Kalkulator nur über „Bearbeiten“ im Workspace
-    openOfferInWorkspace({
-      ...track.config,
-      id: track.id,
-      vehicleOffer: track.vehicleOffer,
-    });
+    // Bestehendes Angebot öffnen → Angebot prüfen (nicht nur Akte-Workspace)
+    const card = trackToComposerCard(track);
+    if (!card) {
+      openOffersBoard();
+      return;
+    }
+    if (onOpenOfferEdit) {
+      setMoreSheetOpen(false);
+      setActiveSheet(null);
+      onOpenOfferEdit(card);
+      return;
+    }
+    // Fallback ohne Prüfen-Handler: Akte-Workspace
+    openOfferInWorkspace(card);
   }
 
   /**
@@ -3315,16 +3330,59 @@ export default function DealerAiLeadFollowUp({
     handleCleverAction(hint);
   }
 
-  function handleCleverOpenOffer(view) {
-    const cardId = view?.recommendation?.meta?.cardId;
-    const card = cardId
-      ? vehicleCards.find((item) => item.id === cardId)
-      : vehicleCards[0];
+  function resolveStageOfferCard(view) {
+    const cardId = view?.offerSnapshot?.cardId
+      || view?.recommendation?.meta?.cardId
+      || view?.meta?.cardId;
+    if (cardId) {
+      return vehicleCards.find((item) => item.id === cardId) || null;
+    }
+    return vehicleCards[0] || null;
+  }
+
+  function openStageOfferReview(view) {
+    const card = resolveStageOfferCard(view);
+    if (card && onOpenOfferEdit) {
+      setMoreSheetOpen(false);
+      setActiveSheet(null);
+      onOpenOfferEdit(card);
+      return;
+    }
     if (card) {
       openBoardOfferFromCard(card);
       return;
     }
     handleCleverAction(cleverActionToHint(view?.recommendation ?? cleverRecommendation, { telHref }));
+  }
+
+  function handleCleverOpenOffer(view) {
+    openStageOfferReview(view);
+  }
+
+  function handleCleverOpenOfferDetails(view) {
+    const card = resolveStageOfferCard(view);
+    if (card) {
+      openOfferInWorkspace(card);
+      return;
+    }
+    openStageOfferReview(view);
+  }
+
+  function handleCleverSendToCustomer(view) {
+    const handler = view?.handlerType || view?.recommendation?.handlerType;
+    if (handler === 'offer_send_portfolio' || handler === 'selection_send') {
+      handleSendCustomerSelection();
+      return;
+    }
+    if (view?.messageSuggestion?.text) {
+      handlePrepareMessageSuggestion(view.messageSuggestion);
+      return;
+    }
+    focusChatComposer({
+      clever: true,
+      intentConstraint: COMPOSER_INTENT_CONSTRAINT.MESSAGE,
+      seedDraft: '',
+    });
   }
 
   async function handleCopyMessageSuggestion(suggestion) {
@@ -3456,24 +3514,30 @@ export default function DealerAiLeadFollowUp({
   /** Clever: kein Verlauf über Composer – nur letzte Aktion. Chat-Tab = voller Verlauf. */
   const hideComposerFeed = !isChatTab;
 
-  const offerWorkPanel = offerWorkspaceCard ? (
-    <CustomerAkteOfferWorkspacePanel
-      card={offerWorkspaceCard}
-      lead={lead}
-      onBack={closeOfferWorkspace}
-      onEdit={(card) => {
-        if (onOpenOfferEdit) {
-          onOpenOfferEdit(card);
-          return;
-        }
-        openBoardOfferEntry(card, lead, {
-          onOpenProposal: onOpenOfferProposal,
-          onOpenCalculator: onOpenOfferEdit,
-        });
-      }}
-      onOpenBoard={openOffersBoard}
-    />
-  ) : null;
+  function renderOfferWorkPanel() {
+    if (!offerWorkspaceCard) return null;
+    return (
+      <CustomerAkteOfferWorkspacePanel
+        card={offerWorkspaceCard}
+        lead={lead}
+        onBack={closeOfferWorkspace}
+        onEdit={(card) => {
+          if (onOpenOfferEdit) {
+            onOpenOfferEdit(card);
+            return;
+          }
+          openBoardOfferEntry(card, lead, {
+            onOpenProposal: onOpenOfferProposal,
+            onOpenCalculator: onOpenOfferEdit,
+          });
+        }}
+        onOpenBoard={openOffersBoard}
+      />
+    );
+  }
+
+  const offerWorkPanel = renderOfferWorkPanel();
+  const offerWorkAssist = renderOfferWorkPanel();
 
   /** Mitte: konkreter Clever-Schritt (kein generischer Idle), nur Clever-Tab. */
   const cleverStageSlot = hideComposerFeed ? (
@@ -3496,8 +3560,12 @@ export default function DealerAiLeadFollowUp({
         onPrimaryAction={handleCleverEmpfiehltAction}
         onMarkDone={handleCleverMarkDone}
         onOpenOffer={handleCleverOpenOffer}
+        onOpenOfferDetails={handleCleverOpenOfferDetails}
+        onSendToCustomer={handleCleverSendToCustomer}
         onCopyMessage={handleCopyMessageSuggestion}
         onPrepareMessage={handlePrepareMessageSuggestion}
+        recentActivities={recentStageActivities}
+        onOpenAllActivities={openActivitiesSheet}
       />
     ) : sellerCleverMoment ? (
       <CleverMoment
@@ -3733,6 +3801,7 @@ export default function DealerAiLeadFollowUp({
             onToggle={setKundenbildExpanded}
             onFactTap={handleKundenbildFactTap}
             onAddToGroup={handleAddToSoftGroup}
+            onEditConditions={() => openWishConditionsSheet()}
             onMerken={() => focusChatComposer({
               clever: true,
               intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
@@ -3742,9 +3811,9 @@ export default function DealerAiLeadFollowUp({
         ) : null}
         mobileContext={null}
         context={null}
-        assist={offerWorkPanel ? (
+        assist={offerWorkAssist ? (
           <aside className="cust-akte-work-object" aria-label="Arbeitsobjekt">
-            {offerWorkPanel}
+            {offerWorkAssist}
           </aside>
         ) : null}
         main={<div className="cust-akte-shell__workspace">{mainWorkspace}</div>}
@@ -3839,6 +3908,7 @@ export default function DealerAiLeadFollowUp({
               onFilterChange={setAngeboteFilter}
               emptyLabel="Keine Spuren in diesem Filter."
               onOpenTrack={(track) => {
+                // Sheet schließen → Angebot prüfen (openVehicleTrack → onOpenOfferEdit)
                 closeSheet();
                 openVehicleTrack(track);
               }}

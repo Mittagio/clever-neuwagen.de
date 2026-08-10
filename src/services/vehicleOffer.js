@@ -254,6 +254,75 @@ export function shouldBumpOfferVersionOnSave(existingOffer = null) {
   return Boolean(existingOffer.pdf?.dataUrl || existingOffer.pdf?.url || existingOffer.preparedAt);
 }
 
+function formatVersionRateSummary(entry = {}) {
+  const rate = entry.monthlyRate;
+  if (rate == null || !Number.isFinite(Number(rate))) return null;
+  return `${Number(rate).toLocaleString('de-DE')} €/Monat`;
+}
+
+function formatVersionWhen(iso) {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Kompakte Angebotsversionen für die Prüfen-UI (keine Fake-Diffs).
+ * Quelle: offer.version + offer.versions[] (+ updatedAt/preparedAt).
+ * @returns {{ version: number, label: string, isCurrent: boolean, at: string|null, atLabel: string|null, summary: string|null }[]}
+ */
+export function buildOfferVersionHistory(offer = null) {
+  if (!offer || typeof offer !== 'object') return [];
+  const snapshots = Array.isArray(offer.versions) ? offer.versions : [];
+  const currentVersion = Number(offer.version) || (snapshots.length ? snapshots.length + 1 : 0);
+  if (!currentVersion && snapshots.length === 0) return [];
+
+  const entries = [];
+  if (currentVersion) {
+    const at = offer.updatedAt || offer.preparedAt || offer.createdAt || null;
+    entries.push({
+      version: currentVersion,
+      label: `v${currentVersion}`,
+      isCurrent: true,
+      at,
+      atLabel: formatVersionWhen(at),
+      summary: formatVersionRateSummary({
+        monthlyRate: offer.monthlyRate
+          ?? offer.payment?.calculatedRate
+          ?? offer.offerPreview?.monthlyRate
+          ?? null,
+      }),
+    });
+  }
+
+  for (let i = snapshots.length - 1; i >= 0; i -= 1) {
+    const snap = snapshots[i] || {};
+    const version = Number(snap.version) || i + 1;
+    const at = snap.snapshotAt || snap.updatedAt || null;
+    entries.push({
+      version,
+      label: `v${version}`,
+      isCurrent: false,
+      at,
+      atLabel: formatVersionWhen(at),
+      summary: formatVersionRateSummary(snap),
+    });
+  }
+
+  return entries;
+}
+
 export function getVehicleOffer(lead = {}, card = {}) {
   const stored = lead?.crm?.vehicleOffers?.[card.id];
   return createVehicleOfferFromCard(card, stored);

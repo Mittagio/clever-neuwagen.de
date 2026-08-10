@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
-import { IconBack, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
+import { IconBack, IconFolder, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
 function buildInitials(name = '') {
@@ -122,6 +122,16 @@ export default function CustomerAkteCompactHeader({
           >
             <IconMoreDots />
           </button>
+          {typeof onOpenProfile === 'function' ? (
+            <button
+              type="button"
+              className="cust-akte-compact-header__cta"
+              onClick={() => onOpenProfile()}
+            >
+              <IconFolder className="cust-akte-compact-header__cta-icon" />
+              <span>Kundenakte öffnen</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </header>

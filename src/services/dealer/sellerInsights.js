@@ -8,6 +8,10 @@ import {
   buildUnderstoodLabels,
   mergeTextIntoNeedProfile,
 } from '../consultation/needProfileService.js';
+import {
+  canonicalHandoffEquipmentLabel,
+  isHandoffEquipmentLabel,
+} from '../consultation/wishHandoffEquipment.js';
 import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 
 export const SELLER_INSIGHT_SOURCE = 'seller';
@@ -261,9 +265,16 @@ export function createSellerInsight(text = '', options = {}) {
 
   const now = options.createdAt ?? new Date().toISOString();
   const attribution = resolveSellerAttribution(options);
+  // Picker-Ausstattung: exaktes Label behalten (mergeText würde z. B. Klimaautomatik→Automatik)
+  const equipmentLabel = isHandoffEquipmentLabel(trimmed)
+    ? (canonicalHandoffEquipmentLabel(trimmed) || trimmed)
+    : null;
+  const understoodLabels = options.understoodLabels?.length
+    ? options.understoodLabels
+    : (equipmentLabel ? [equipmentLabel] : undefined);
   return normalizeSellerInsight({
     id: createSellerInsightId(),
-    text: trimmed,
+    text: equipmentLabel || trimmed,
     source: SELLER_INSIGHT_SOURCE,
     context: options.context ?? null,
     createdAt: now,
@@ -271,7 +282,7 @@ export function createSellerInsight(text = '', options = {}) {
     sellerId: attribution.sellerId,
     sellerName: attribution.sellerName,
     sellerInitials: attribution.sellerInitials,
-    understoodLabels: options.understoodLabels,
+    understoodLabels,
     attachment: options.attachment ?? null,
   });
 }

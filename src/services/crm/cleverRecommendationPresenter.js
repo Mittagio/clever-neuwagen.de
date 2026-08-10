@@ -2,7 +2,11 @@
  * Clever empfiehlt 2.0 – Präsentationsschicht (keine doppelte Regellogik).
  * Baut auf cleverActionEngine auf: Abschlusschance, Warum-Bullets, Headlines, Dashboard.
  */
-import { buildVehicleOpportunityCards } from '../customerAkte.js';
+import {
+  buildVehicleOpportunityCards,
+  formatVehicleCardPrice,
+  formatVehicleCardTitle,
+} from '../customerAkte.js';
 import { resolveOfferSelectionGroups } from '../sales/offerSelectionGroup.js';
 import {
   buildCleverActionContext,
@@ -14,6 +18,7 @@ import {
 import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 import { PORTAL_ACCESS_STATUS, getCustomerPortalAccess } from './customerPortalAccessService.js';
 import { INTEREST_STATUS, getCustomerOfferInteraction } from '../customerOfferInteraction.js';
+import { getVehicleImageUrl } from '../vehicle/vehicleImageService.js';
 
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -234,14 +239,161 @@ function resolveDoneOption(recommendation) {
   return DONE_OPTIONS_BY_HANDLER.default;
 }
 
+function isOfferRecommendedAction(recommendation = null) {
+  const handler = recommendation?.handlerType;
+  const actionId = recommendation?.actionId;
+  return handler === 'offer_send'
+    || handler === 'offer_send_portfolio'
+    || handler === 'offer_create'
+    || handler === 'offer_proposal'
+    || actionId === CLEVER_ACTION_IDS.OFFER_SEND
+    || actionId === CLEVER_ACTION_IDS.OFFER_CREATED_SEND
+    || actionId === CLEVER_ACTION_IDS.OFFER_DRAFT_CREATE;
+}
+
+function paymentTypeLabel(paymentType) {
+  if (paymentType === 'leasing') return 'Leasing';
+  if (paymentType === 'cash') return 'Kauf';
+  if (paymentType === 'financing' || paymentType === 'finance' || paymentType === 'threeWayFinancing') {
+    return 'Finanzierung';
+  }
+  return null;
+}
+
+function resolveAvailabilityLabel(context = {}) {
+  const status = context.vehicleFulfillmentStatus;
+  if (status === 'delivery_ready' || status === 'ready_for_handover') return 'Verfügbar';
+  if (status === 'in_transit' || status === 'arriving') return 'Unterwegs';
+  const delivery = context.lead?.wish?.desiredDeliveryDate || context.lead?.desiredDeliveryDate;
+  if (delivery && /sofort|lager|verfügbar/i.test(String(delivery))) return 'Verfügbar';
+  return null;
+}
+
+/**
+ * Angebots-Snapshot für die mittlere Stage-Karte (nur echte Kartendaten).
+ */
+function resolveOfferTitle(card = {}) {
+  const fromFormatter = String(formatVehicleCardTitle(card) || '').replace(/^Kia\s+/i, '').trim();
+  if (fromFormatter && fromFormatter.toLowerCase() !== 'kia') return fromFormatter;
+  const model = String(card.model || card.modelKey || '').replace(/^Kia\s+/i, '').trim();
+  const trim = String(card.trimLabel || card.trim || '').trim();
+  const combined = [model, trim].filter(Boolean).join(' ').trim();
+  return combined || null;
+}
+
+export function buildOfferSnapshot(context = {}) {
+  const card = context.primaryCard;
+  if (!card) return null;
+
+  const title = resolveOfferTitle(card);
+  const termMonths = Number(card.termMonths || context.lead?.wish?.termMonths || 0) || null;
+  const mileage = Number(card.mileagePerYear || context.lead?.wish?.mileagePerYear || 0) || null;
+  const rateLabel = formatVehicleCardPrice(card);
+  const paymentLabel = paymentTypeLabel(card.paymentType || context.paymentType);
+  const availabilityLabel = resolveAvailabilityLabel(context);
+  const brand = card.brand || card.make || 'Kia';
+  const model = card.model || card.modelName || card.modelKey || title;
+  const imageUrl = card.imageUrl
+    || card.image
+    || getVehicleImageUrl({
+      brand,
+      model,
+      trim: card.trim || card.trimLabel || card.trimId,
+      variant: 'hero',
+      dealerImageUrl: card.dealerImageUrl || null,
+    })
+    || getVehicleImageUrl({
+      brand,
+      model,
+      trim: card.trim || card.trimLabel || card.trimId,
+      variant: 'card',
+      dealerImageUrl: card.dealerImageUrl || null,
+    })
+    || null;
+
+  const rateRaw = String(rateLabel || '').trim();
+  const rateParts = rateRaw.match(/^(.*?)\s*(\/\s*Monat.*)$/i);
+  const rateValue = rateParts ? rateParts[1].trim() : (rateRaw || null);
+  const rateUnit = rateParts ? rateParts[2].replace(/\s+/g, '') : null;
+
+  return {
+    cardId: card.id || null,
+    title,
+    modelLabel: title,
+    paymentLabel,
+    termLabel: termMonths ? `${termMonths} M` : null,
+    termMonths,
+    mileageLabel: mileage ? `${Number(mileage).toLocaleString('de-DE')} km` : null,
+    // Kein „Laufleistung“-Hinweis – Grid bleibt LAUFZEIT / KM / RATE
+    mileageHint: null,
+    mileagePerYear: mileage,
+    rateLabel,
+    rateValue,
+    rateUnit,
+    availabilityLabel,
+    imageUrl,
+    // Kein „Leasingangebot“-Untertitel – Titel + Verfügbar-Badge reichen
+    subtitle: null,
+  };
+}
+
+/**
+ * Status-Chips nur aus echten Signalen – keine Fake-Claims.
+ */
+export function buildStatusSignals(context = {}, closureChance = 0, whyBullets = []) {
+  const signals = [];
+  const chance = Number(closureChance) || 0;
+
+  if (chance >= 72) {
+    signals.push({ id: 'closure_high', label: 'Hohe Abschlusschance', tone: 'positive' });
+  } else if (chance >= 55) {
+    signals.push({ id: 'closure_mid', label: `${chance} % Abschlusschance`, tone: 'neutral' });
+  }
+
+  const availabilityLabel = resolveAvailabilityLabel(context);
+  if (availabilityLabel === 'Verfügbar') {
+    signals.push({ id: 'availability', label: 'Verfügbarkeit gesichert', tone: 'info' });
+  } else if (availabilityLabel === 'Unterwegs') {
+    signals.push({ id: 'availability', label: 'Fahrzeug unterwegs', tone: 'info' });
+  } else if (whyBullets.some((b) => b.id === 'vehicle_arriving' || b.id === 'delivery_ready')) {
+    const bullet = whyBullets.find((b) => b.id === 'vehicle_arriving' || b.id === 'delivery_ready');
+    signals.push({ id: 'availability', label: bullet.text, tone: 'info' });
+  }
+
+  const insightLabels = (context.lead?.crm?.sellerInsights || [])
+    .flatMap((item) => [
+      item?.text,
+      item?.label,
+      ...(Array.isArray(item?.understoodLabels) ? item.understoodLabels : []),
+    ]);
+  const urgencyText = [
+    context.lead?.crm?.nextStepLabel,
+    context.lead?.wish?.desiredDeliveryDate,
+    context.lead?.notes,
+    context.lead?.crm?.notes,
+    context.lead?.kundenhelfer?.notes,
+    ...(whyBullets.map((b) => b.text)),
+    ...((context.lead?.history || []).slice(-16).map((h) => h?.text)),
+    ...insightLabels,
+  ].filter(Boolean).join(' ');
+
+  if (/sofort|unfall|ersatz|dringend|eilig|zeitdruck/i.test(urgencyText)) {
+    signals.push({ id: 'urgency', label: 'Kunde hat Zeitdruck', tone: 'urgent' });
+  }
+
+  return signals.slice(0, 3);
+}
+
 function buildContactActions({ recommendation, phone, email, telHref, offerPath, portalUrl }) {
   const actions = [];
   const canCall = Boolean(telHref || phone);
-
-  if (portalUrl && (
+  const offerPrimary = isOfferRecommendedAction(recommendation);
+  const portalPrimary = Boolean(portalUrl && (
     recommendation?.handlerType?.startsWith('portal')
-    || recommendation?.actionId?.includes('PORTAL')
-  )) {
+    || String(recommendation?.actionId || '').includes('PORTAL')
+  ));
+
+  if (portalPrimary) {
     actions.push({
       id: 'portal',
       label: '🔗 Kundenlink',
@@ -251,13 +403,25 @@ function buildContactActions({ recommendation, phone, email, telHref, offerPath,
     });
   }
 
+  if (offerPrimary || offerPath) {
+    actions.push({
+      id: 'offer',
+      label: offerPrimary
+        ? (recommendation?.ctaLabel || HEADLINE_BY_ACTION[recommendation?.actionId] || 'Angebot prüfen und senden')
+        : '📄 Angebot öffnen',
+      type: 'offer',
+      href: offerPath || null,
+      primary: offerPrimary && !portalPrimary,
+    });
+  }
+
   if (canCall) {
     actions.push({
       id: 'call',
       label: '📞 Anrufen',
       type: 'call',
       href: telHref ?? (phone ? `tel:${phone.replace(/\s/g, '')}` : null),
-      primary: recommendation?.handlerType === 'call',
+      primary: recommendation?.handlerType === 'call' && !offerPrimary && !portalPrimary,
     });
   }
 
@@ -282,15 +446,6 @@ function buildContactActions({ recommendation, phone, email, telHref, offerPath,
       label: '✉️ Mail',
       type: 'email',
       href: `mailto:${email}?subject=${subject}&body=${body}`,
-    });
-  }
-
-  if (offerPath) {
-    actions.push({
-      id: 'offer',
-      label: '📄 Angebot öffnen',
-      type: 'offer',
-      href: offerPath,
     });
   }
 
@@ -326,6 +481,9 @@ export function buildCleverEmpfiehltView({
   const phone = lead?.contact?.phone ?? '';
   const email = lead?.contact?.email ?? '';
   const portalUrl = getCustomerPortalAccess(lead)?.portfolioUrl ?? null;
+  const offerSnapshot = buildOfferSnapshot(context);
+  const statusSignals = buildStatusSignals(context, closureChance, whyBullets);
+  const offerPrimary = isOfferRecommendedAction(recommendation);
 
   return {
     actionId: recommendation.actionId,
@@ -359,6 +517,16 @@ export function buildCleverEmpfiehltView({
     meta: recommendation.meta,
     title: recommendation.title,
     ctaLabel: recommendation.ctaLabel,
+    offerSnapshot,
+    statusSignals,
+    stage: {
+      primaryReviewLabel: offerPrimary ? 'Angebot prüfen' : (recommendation.ctaLabel || resolveHeadline(recommendation)),
+      sendLabel: 'An Kunden senden',
+      detailsLabel: 'Details öffnen',
+      detailsLinkLabel: 'Angebotsdetails anzeigen',
+      canSend: Boolean(phone || email || portalUrl || offerSnapshot),
+      canOpenOffer: Boolean(offerSnapshot?.cardId || offerPath),
+    },
   };
 }
 

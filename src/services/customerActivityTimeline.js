@@ -128,30 +128,123 @@ export function extractLexiconQuestionAnswer(searchState) {
   };
 }
 
+/**
+ * Clever-Empfehlungs-Historie → kurze Karten-Titel (nie „Clever empfahl…“ als Headline).
+ */
+function resolveCleverActionActivityMeta(entry = {}) {
+  const raw = String(entry.text ?? '').trim();
+  const payload = raw
+    .replace(/^Clever empfahl:\s*/i, '')
+    .replace(/^Clever-Empfehlung befolgt:\s*/i, '')
+    .replace(/^✓\s*Clever-Empfehlung erledigt\s*/i, '')
+    .trim();
+  const hay = `${payload} ${raw}`.toLowerCase();
+
+  if (/angebot/.test(hay) && /erstell|vervollst|prüf|send|link/.test(hay)) {
+    return { icon: '📄', label: 'Angebot erstellt' };
+  }
+  if (/chat|zusammengefasst|zusammenfassung/.test(hay)) {
+    return { icon: '✨', label: 'Chat zusammengefasst' };
+  }
+  if (/notiz/.test(hay)) {
+    return { icon: '📝', label: 'Notiz hinzugefügt' };
+  }
+  if (/nachricht|whatsapp|e-?mail|message/.test(hay)) {
+    return { icon: '💬', label: 'Nachricht vorbereitet' };
+  }
+  if (/anruf|anrufen|telefon|rückruf|kontakt aufnehmen/.test(hay)) {
+    return { icon: '📞', label: 'Anruf empfohlen' };
+  }
+  if (/unterlagen|dokument/.test(hay)) {
+    return { icon: '📎', label: 'Unterlagen angefragt' };
+  }
+  if (/portal|kundenlink|zugangscode/.test(hay)) {
+    return { icon: '🔗', label: 'Kundenlink' };
+  }
+  if (payload) {
+    const short = payload.length > 34 ? `${payload.slice(0, 31)}…` : payload;
+    return { icon: '✨', label: short };
+  }
+  return { icon: '✨', label: 'Clever-Empfehlung' };
+}
+
 function resolveKindMeta(entry) {
   if (entry.activityKind && KIND_META[entry.activityKind]) {
     return KIND_META[entry.activityKind];
   }
-  const text = String(entry.text ?? '').toLowerCase();
-  if (/favorit|favorisiert/i.test(text)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.FAVORITE_DETECTED];
-  if (/ausgeschlossen/i.test(text)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.VARIANT_EXCLUDED];
-  if (/frage:/i.test(text)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.CLEVER_QUESTION];
-  if (/angesehen/i.test(text)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.VARIANT_VIEWED];
-  if (/geöffnet|pdf|broschüre|preisliste/i.test(text)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.DOCUMENT_OPENED];
-  if (/kunde (vergleicht|interessiert|beschäftigt)/i.test(text)) {
+  const text = String(entry.text ?? '');
+  const textLower = text.toLowerCase();
+
+  if (
+    entry.type === 'clever_action'
+    || /^Clever empfahl:/i.test(text)
+    || /^Clever-Empfehlung/i.test(text)
+  ) {
+    return resolveCleverActionActivityMeta(entry);
+  }
+
+  if (/favorit|favorisiert/i.test(textLower)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.FAVORITE_DETECTED];
+  if (/ausgeschlossen/i.test(textLower)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.VARIANT_EXCLUDED];
+  if (/frage:/i.test(textLower)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.CLEVER_QUESTION];
+  if (/angesehen/i.test(textLower)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.VARIANT_VIEWED];
+  if (/geöffnet|pdf|broschüre|preisliste/i.test(textLower)) return KIND_META[CUSTOMER_ACTIVITY_KINDS.DOCUMENT_OPENED];
+  if (/kunde (vergleicht|interessiert|beschäftigt)/i.test(textLower)) {
     return KIND_META[CUSTOMER_ACTIVITY_KINDS.CLEVER_INSIGHT];
+  }
+  if (/angebot/i.test(textLower) && /erstellt|gesendet|geprüft|prüfen|vervollst/i.test(textLower)) {
+    return { icon: '📄', label: 'Angebot erstellt' };
+  }
+  if (/chat|zusammengefasst|zusammenfassung/i.test(textLower)) {
+    return { icon: '✨', label: 'Chat zusammengefasst' };
+  }
+  if (/notiz/i.test(textLower) || entry.type === 'note') {
+    return { icon: '📝', label: 'Notiz hinzugefügt' };
   }
   if (entry.type === 'call') return { icon: '📞', label: 'Anruf' };
   if (entry.type === 'communication') return { icon: '💬', label: 'Kommunikation' };
-  if (entry.type === 'offer' || entry.type === 'offer_dialog') return { icon: '📄', label: 'Angebot' };
-  if (entry.type === 'note') return { icon: '📝', label: 'Notiz' };
+  if (entry.type === 'offer' || entry.type === 'offer_dialog') return { icon: '📄', label: 'Angebot erstellt' };
+  if (entry.type === 'note') return { icon: '📝', label: 'Notiz hinzugefügt' };
   return { icon: '•', label: 'Aktivität' };
+}
+
+function buildActivityInitials(label = '') {
+  const cleaned = String(label || '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .trim();
+  if (!cleaned) return 'CL';
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
+}
+
+function resolveActivityTone(entry = {}, meta = {}) {
+  const kind = entry.activityKind || entry.type || '';
+  const text = String(entry.text || meta.label || '').toLowerCase();
+  if (kind === CUSTOMER_ACTIVITY_KINDS.FAVORITE_DETECTED || /favorit/.test(text)) return 'rose';
+  if (kind === CUSTOMER_ACTIVITY_KINDS.CLEVER_QUESTION || /frage|nachricht/.test(text)) return 'blue';
+  if (kind === CUSTOMER_ACTIVITY_KINDS.CLEVER_INSIGHT || /chat|zusammengefasst|erkenntnis/.test(text)) return 'amber';
+  if (kind === 'offer' || kind === 'offer_dialog' || /angebot/.test(text)) return 'blue';
+  if (kind === 'note' || /notiz/.test(text)) return 'green';
+  if (kind === 'call') return 'purple';
+  return 'slate';
+}
+
+function withActivityCardFields(presentation, entry, meta) {
+  const headline = presentation.headline || meta.label || 'Aktivität';
+  return {
+    ...presentation,
+    avatarInitials: buildActivityInitials(headline),
+    avatarTone: resolveActivityTone(entry, meta),
+  };
 }
 
 export function formatTimelinePresentation(entry = {}) {
   const meta = resolveKindMeta(entry);
   const time = formatClockTime(entry.at);
   const whenLabel = formatHistoryWhen(entry.at);
+  const isCleverActionEntry = entry.type === 'clever_action'
+    || /^Clever empfahl:/i.test(String(entry.text ?? ''))
+    || /^Clever-Empfehlung/i.test(String(entry.text ?? ''));
 
   if (entry.type === 'customer_message' || entry.meta?.isCustomerMessage) {
     const inbound = entry.direction === 'inbound' || entry.meta?.direction === 'inbound';
@@ -171,7 +264,7 @@ export function formatTimelinePresentation(entry = {}) {
       .replace(/“$/, '')
       .trim();
 
-    return {
+    return withActivityCardFields({
       id: entry.id,
       icon: inbound ? '💬' : '📤',
       time,
@@ -182,11 +275,11 @@ export function formatTimelinePresentation(entry = {}) {
       cleverAnswer: null,
       isQuestion: false,
       entry,
-    };
+    }, entry, { label: inbound ? 'Nachricht vom Kunden' : 'Clever Nachricht gesendet' });
   }
 
   if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.CLEVER_QUESTION) {
-    return {
+    return withActivityCardFields({
       id: entry.id,
       icon: meta.icon,
       time,
@@ -196,11 +289,11 @@ export function formatTimelinePresentation(entry = {}) {
       cleverAnswer: entry.cleverAnswer ?? null,
       isQuestion: true,
       entry,
-    };
+    }, entry, meta);
   }
 
   if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.CLEVER_INSIGHT) {
-    return {
+    return withActivityCardFields({
       id: entry.id,
       icon: meta.icon,
       time,
@@ -209,26 +302,84 @@ export function formatTimelinePresentation(entry = {}) {
       body: entry.insightText ?? entry.text,
       isInsight: true,
       entry,
-    };
+    }, entry, meta);
   }
 
-  let body = entry.text;
+  let detail = entry.text;
   if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.VARIANT_VIEWED) {
-    body = [entry.modelLabel, entry.trimLabel].filter(Boolean).join(' ') || entry.text;
-    body = body.includes('angesehen') ? body : `${body} angesehen`;
+    detail = [entry.modelLabel, entry.trimLabel].filter(Boolean).join(' ') || entry.text;
+    detail = detail.includes('angesehen') ? detail : `${detail} angesehen`;
+  } else if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.FAVORITE_DETECTED) {
+    detail = [entry.modelLabel, entry.trimLabel].filter(Boolean).join(' ') || entry.text;
+  } else if (entry.activityKind === CUSTOMER_ACTIVITY_KINDS.DOCUMENT_OPENED) {
+    detail = entry.documentLabel || entry.text;
+  } else if (isCleverActionEntry) {
+    // Payload als Body, nie als Karten-Titel (Titel = kurzes Meta-Label)
+    detail = String(entry.text ?? '')
+      .replace(/^Clever empfahl:\s*/i, '')
+      .replace(/^Clever-Empfehlung befolgt:\s*/i, '')
+      .trim() || null;
   }
 
-  return {
+  const shortTitle = meta.label && meta.label !== 'Aktivität'
+    ? meta.label
+    : (detail || 'Aktivität');
+  const bodyText = detail && detail !== shortTitle ? detail : null;
+
+  return withActivityCardFields({
     id: entry.id,
     icon: meta.icon,
     time,
     whenLabel,
-    headline: body,
-    body: null,
+    headline: shortTitle,
+    body: bodyText,
     cleverAnswer: null,
     isQuestion: false,
     entry,
-  };
+  }, entry, meta);
+}
+
+/**
+ * Kompakte Stage-Aktivitäten: neueste zuerst, doppelte Titel entdoppeln,
+ * Analytics-Spam („Clever empfahl“) nicht die ganze Reihe füllen.
+ */
+export function pickRecentStageActivities(history = [], limit = 3) {
+  const sorted = sortHistoryNewestFirst(history);
+  const preferred = [];
+  const fallback = [];
+  const seenHeadlines = new Set();
+  const seenFallback = new Set();
+
+  for (const entry of sorted) {
+    const presentation = formatTimelinePresentation(entry);
+    if (!presentation?.headline) continue;
+    const key = String(presentation.headline).trim().toLowerCase();
+    if (seenHeadlines.has(key)) continue;
+
+    const isAnalytics = entry.type === 'clever_action'
+      || /^Clever empfahl:/i.test(String(entry.text ?? ''));
+    if (isAnalytics) {
+      if (seenFallback.has(key)) continue;
+      fallback.push(presentation);
+      seenFallback.add(key);
+      continue;
+    }
+    preferred.push(presentation);
+    seenHeadlines.add(key);
+    if (preferred.length >= limit) break;
+  }
+
+  if (preferred.length < limit) {
+    for (const item of fallback) {
+      const key = String(item.headline).trim().toLowerCase();
+      if (seenHeadlines.has(key)) continue;
+      preferred.push(item);
+      seenHeadlines.add(key);
+      if (preferred.length >= limit) break;
+    }
+  }
+
+  return preferred.slice(0, limit);
 }
 
 export function getActivityDashboard(history = [], lastSeenAt = null) {

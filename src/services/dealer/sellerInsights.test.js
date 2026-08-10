@@ -220,4 +220,16 @@ assert.equal(
   'B3: Duplikate übersprungen, nur neues AHK ergänzt',
 );
 
+// Ausstattungs-Picker: Katalog-Label als understoodLabels behalten
+const b4Result = appendSellerInsightsFromTexts(
+  { id: 'b4', crm: {} },
+  ['Klimaautomatik', 'Leder', 'Navigationssystem'],
+);
+const b4Klima = b4Result.crm.sellerInsights.find((i) => /Klimaautomatik/i.test(i.text));
+const b4Leder = b4Result.crm.sellerInsights.find((i) => i.text === 'Leder');
+const b4Navi = b4Result.crm.sellerInsights.find((i) => i.text === 'Navigationssystem');
+assert.deepEqual(b4Klima?.understoodLabels, ['Klimaautomatik'], 'B4: Klimaautomatik nicht → Automatik');
+assert.deepEqual(b4Leder?.understoodLabels, ['Leder'], 'B4: Leder bleibt Label');
+assert.deepEqual(b4Navi?.understoodLabels, ['Navigationssystem'], 'B4: Navi nicht → Großes Navi');
+
 console.log('sellerInsights.test.js: ok');

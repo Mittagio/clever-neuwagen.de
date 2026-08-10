@@ -216,12 +216,20 @@
   padding: 10px 12px;
 }
 
-.vt-card--selectable {
+.vt-card__body--selectable {
   cursor: pointer;
+  border-radius: 8px;
+  margin: -2px -2px 0;
+  padding: 2px 2px 0;
 }
 
 .vt-card--selectable:hover {
   border-color: #c5c9d6;
+}
+
+.vt-card__body--selectable:focus-visible {
+  outline: 2px solid rgba(11, 23, 54, 0.35);
+  outline-offset: 2px;
 }
 
 .vt-card--selected {

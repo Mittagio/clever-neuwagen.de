@@ -8,6 +8,7 @@ import {
   buildWishConditionsFromSources,
   formatWishConditionsBanner,
   hasMeaningfulWishConditions,
+  mergeOfferCommercialIntoWish,
   syncOfferSelectionGroupsWithWish,
 } from './wishConditionsSync.js';
 import { getDealerSeed } from '../../data/dealers/index.js';
@@ -66,5 +67,33 @@ const lockedGroup = { ...group, variants: [lockedVariant, ...group.variants.slic
 const syncedLocked = syncOfferSelectionGroupsWithWish([lockedGroup], { termMonths: 24 });
 assert.equal(syncedLocked[0].variants[0].payment.termMonths, 48, 'Gesperrte Variante bleibt');
 assert.equal(syncedLocked[0].variants[1].payment.termMonths, 24, 'Offene Variante wird aktualisiert');
+
+const mergedEmpty = mergeOfferCommercialIntoWish({}, {
+  paymentType: 'leasing',
+  termMonths: 48,
+  mileagePerYear: 35000,
+  downPayment: 2000,
+});
+assert.equal(mergedEmpty.termMonths, 48);
+assert.equal(mergedEmpty.mileagePerYear, 35000);
+assert.equal(mergedEmpty.downPayment, 2000);
+assert.equal(mergedEmpty.paymentType, 'leasing');
+
+const keepManual = mergeOfferCommercialIntoWish(
+  { termMonths: 36, mileagePerYear: 10000, paymentType: 'leasing' },
+  { termMonths: 48, mileagePerYear: 35000, downPayment: 2000 },
+);
+assert.equal(keepManual.termMonths, 36, 'manuelle Laufzeit bleibt ohne force');
+assert.equal(keepManual.mileagePerYear, 10000, 'manuelle km bleiben ohne force');
+assert.equal(keepManual.downPayment, 2000, 'leere AZ wird gefüllt');
+
+const forced = mergeOfferCommercialIntoWish(
+  { termMonths: 36, mileagePerYear: 10000 },
+  { termMonths: 48, mileagePerYear: 35000, downPayment: 2000, paymentType: 'leasing' },
+  { forceFromActiveOffer: true },
+);
+assert.equal(forced.termMonths, 48, 'aktives Angebot überschreibt Laufzeit');
+assert.equal(forced.mileagePerYear, 35000);
+assert.equal(forced.downPayment, 2000);
 
 console.log('wishConditionsSync.test.js: ok');

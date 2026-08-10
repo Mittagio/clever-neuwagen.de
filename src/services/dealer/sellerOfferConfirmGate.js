@@ -13,6 +13,20 @@ export const PDF_CONFIRM_FIELDS = [
 
 export const PDF_CONFIRM_REQUIRED = ['monthlyRate', 'offerType'];
 
+/**
+ * Editable commercial fields on Angebot prüfen (manual Preisdetails path).
+ * @param {string} [offerType]
+ * @returns {string[]}
+ */
+export function editablePriceDetailFields(offerType) {
+  const type = String(offerType || 'leasing');
+  if (type === 'cash') return ['offerType', 'transferFee', 'monthlyRate'];
+  if (type === 'financing' || type === 'threeWayFinancing') {
+    return ['offerType', 'termMonths', 'downPayment', 'transferFee', 'monthlyRate'];
+  }
+  return ['offerType', 'termMonths', 'annualMileage', 'downPayment', 'transferFee', 'monthlyRate'];
+}
+
 /** Confidence below this is treated as needing explicit attention. */
 export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 

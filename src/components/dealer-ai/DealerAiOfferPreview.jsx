@@ -1,31 +1,23 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { PAYMENT_TYPE_LABELS } from '../../services/dealerAiParser.js';
-import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
-import PkwEnVkvBox from '../compliance/PkwEnVkvBox.jsx';
-import {
-  ENVKV_CHANNEL,
-  buildDefaultNewPassengerCarRef,
-  requiresPkwEnVkv,
-} from '../../services/vehicle/requiresPkwEnVkv.js';
-import { buildVehicleRefFromOfferContext } from '../../services/vehicle/pkwEnVkvPublishGate.js';
-import { buildPkwEnVkvCompactLines } from '../../services/vehicle/pkwEnVkvPresentation.js';
-import { resolveVehicleEnvironmentalData } from '../../services/vehicle/vehicleEnvironmentalData.js';
 import {
   evaluateSellerConfirmGate,
   PDF_CONFIRM_FIELDS,
   resolveLowConfidenceFields,
   buildHighConfidenceConfirmedMap,
+  editablePriceDetailFields,
 } from '../../services/dealer/sellerOfferConfirmGate.js';
 import {
   assessCommercialPlausibility,
   formatEuroDe,
   parseGermanMoney,
 } from '../../services/dealer/parseGermanMoney.js';
+import { buildOfferVersionHistory, VEHICLE_OFFER_STATUS } from '../../services/vehicleOffer.js';
+import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
+import { IconChevronRight } from './AkteIcons.jsx';
 import {
   FlowCard,
-  FlowPriceDetails,
   FlowPrimaryButton,
-  FlowSectionHeader,
   FlowStickyFooter,
   OfferFlowLayout,
 } from './flow/OfferFlowComponents.jsx';
@@ -54,6 +46,20 @@ function collectPackagesAndExtras(vehicleConfiguration, payment) {
   return [...new Set(items)];
 }
 
+function resolveColorSwatch(colorId, colorLabel) {
+  const haystack = `${colorId || ''} ${colorLabel || ''}`.toLowerCase();
+  if (!haystack.trim()) return null;
+  if (/black|schwarz|pearl.*black|aurora/.test(haystack)) return '#1a1a1a';
+  if (/white|weiss|weiß|snow|carrara|deluxe|clear/.test(haystack)) return '#f4f4f0';
+  if (/red|rot|magma|runway|terracotta|signal/.test(haystack)) return '#8b1e2f';
+  if (/blue|blau|frost|ocean|yacht|smoke/.test(haystack)) return '#2d4a6e';
+  if (/green|grün|gruen|aventurine|experience|adventurous/.test(haystack)) return '#3d5c4a';
+  if (/grey|gray|grau|wolf|shale|pentametal|astro|sparkling|ivory|lunar|silver/.test(haystack)) {
+    return '#8b939e';
+  }
+  return '#cbd5e1';
+}
+
 const OFFER_TYPE_OPTIONS = [
   { value: 'leasing', label: 'Leasing' },
   { value: 'financing', label: 'Finanzierung' },
@@ -62,11 +68,117 @@ const OFFER_TYPE_OPTIONS = [
 
 const FIELD_LABELS = {
   monthlyRate: 'Monatliche Rate',
-  downPayment: 'Sonderzahlung',
+  downPayment: 'Anzahlung',
   termMonths: 'Laufzeit',
-  annualMileage: 'Fahrleistung',
+  annualMileage: 'Kilometer',
   transferFee: 'Überführung',
   offerType: 'Angebotsart',
+};
+
+function OpIcon({ children, className = '' }) {
+  return (
+    <svg
+      className={`dai-opreview-icon ${className}`.trim()}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
+
+const stroke = {
+  stroke: 'currentColor',
+  strokeWidth: 1.75,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+};
+
+function IconCalendar() {
+  return (
+    <OpIcon>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" {...stroke} />
+      <path d="M8 3.5v3M16 3.5v3M3.5 10h17" {...stroke} />
+    </OpIcon>
+  );
+}
+
+function IconGauge() {
+  return (
+    <OpIcon>
+      <path d="M5.5 17a7.5 7.5 0 1 1 13 0" {...stroke} />
+      <path d="M12 14l3.5-3.5" {...stroke} />
+      <circle cx="12" cy="14" r="1.2" fill="currentColor" stroke="none" />
+    </OpIcon>
+  );
+}
+
+function IconWallet() {
+  return (
+    <OpIcon>
+      <rect x="3" y="7" width="18" height="12" rx="2" {...stroke} />
+      <path d="M3 10h18" {...stroke} />
+      <circle cx="16.5" cy="14" r="1.1" fill="currentColor" stroke="none" />
+    </OpIcon>
+  );
+}
+
+function IconTruck() {
+  return (
+    <OpIcon>
+      <path d="M3 7h11v10H3z" {...stroke} />
+      <path d="M14 10h4l3 3v4h-7v-7z" {...stroke} />
+      <circle cx="7.5" cy="18.5" r="1.5" {...stroke} />
+      <circle cx="17.5" cy="18.5" r="1.5" {...stroke} />
+    </OpIcon>
+  );
+}
+
+function IconPencil() {
+  return (
+    <OpIcon>
+      <path d="M13.5 5.5l5 5L8 21H3v-5L13.5 5.5z" {...stroke} />
+      <path d="M11.5 7.5l5 5" {...stroke} />
+    </OpIcon>
+  );
+}
+
+function IconEye() {
+  return (
+    <OpIcon>
+      <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" {...stroke} />
+      <circle cx="12" cy="12" r="2.5" {...stroke} />
+    </OpIcon>
+  );
+}
+
+function IconUpload() {
+  return (
+    <OpIcon>
+      <path d="M12 16V5M7.5 9.5L12 5l4.5 4.5" {...stroke} />
+      <path d="M4 18.5h16" {...stroke} />
+    </OpIcon>
+  );
+}
+
+function IconFile() {
+  return (
+    <OpIcon className="dai-opreview-icon--file">
+      <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z" {...stroke} />
+      <path d="M14 3.5V8h4.5" {...stroke} />
+    </OpIcon>
+  );
+}
+
+const DETAIL_ICONS = {
+  termMonths: IconCalendar,
+  annualMileage: IconGauge,
+  downPayment: IconWallet,
+  transferFee: IconTruck,
 };
 
 function buildInitialConfirmValues(offerDraft) {
@@ -121,7 +233,7 @@ function pickOriginalPdf(...candidates) {
   return best;
 }
 
-/** data:application/pdf;base64,… → blob: URL (zuverlässiger für iframe / window.open). */
+/** data:application/pdf;base64,… → blob: URL (zuverlässiger für iframe). */
 function createBlobUrlFromPdfDataUrl(dataUrl) {
   if (!dataUrl || typeof dataUrl !== 'string') return null;
   if (!dataUrl.startsWith('data:')) return null;
@@ -149,16 +261,6 @@ function createBlobUrlFromPdfDataUrl(dataUrl) {
   }
 }
 
-function triggerPdfDownload(href, fileName) {
-  const a = document.createElement('a');
-  a.href = href;
-  a.download = fileName || 'angebot.pdf';
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
 function StatusIcon({ status }) {
   if (status === 'ok') {
     return (
@@ -176,6 +278,16 @@ function StatusIcon({ status }) {
   }
   return (
     <span className="dai-opreview-status dai-opreview-status--pending" aria-label="Noch nicht geprüft" />
+  );
+}
+
+function PriceDetailIcon({ field }) {
+  const Icon = DETAIL_ICONS[field];
+  if (!Icon) return <span className="dai-opreview-detail__icon-dot" aria-hidden />;
+  return (
+    <span className="dai-opreview-detail__icon" aria-hidden>
+      <Icon />
+    </span>
   );
 }
 
@@ -237,10 +349,13 @@ export default function DealerAiOfferPreview({
     setPdfPreviewOpen(false);
   }, [originalPdf?.fileName, originalPdf?.dataUrl, originalPdf?.url]);
 
+  // Identity of the preview draft (not live commercial values – edits must not reset editMode).
   const draftKey = [
     offerDraft?.source?.originalPdf?.fileName ?? '',
+    offerDraft?.source?.originalPdf?.uploadedAt ?? '',
     offerDraft?.source?.createdFrom ?? '',
-    offerDraft?.payment?.calculatedRate ?? '',
+    offerDraft?.vehicle?.modelKey ?? offerDraft?.vehicleConfiguration?.modelKey ?? '',
+    offerDraft?.vehicleCardId ?? offerDraft?.id ?? '',
     requireConfirm ? '1' : '0',
   ].join('|');
 
@@ -313,43 +428,28 @@ export default function DealerAiOfferPreview({
   const vehicle = offerDraft?.vehicle ?? {};
   const vehicleConfiguration = offerDraft?.vehicleConfiguration;
   const payment = offerDraft?.payment ?? {};
-  const customer = offerDraft?.customer ?? {};
   const offerCalculation = offerDraft?.offerCalculation ?? {};
   const offerPreview = offerDraft?.offerPreview ?? {};
 
+  const versionHistory = useMemo(
+    () => buildOfferVersionHistory(offerDraft),
+    [offerDraft],
+  );
+
   const heroImage = useMemo(() => resolveConfigureHeroImage({
-    modelKey: vehicle.modelKey,
-    colorId: vehicle.colorId ?? vehicleConfiguration?.colorId,
-    trimId: vehicle.trimId ?? vehicleConfiguration?.trimId,
-  }), [vehicle.modelKey, vehicle.colorId, vehicle.trimId, vehicleConfiguration?.colorId, vehicleConfiguration?.trimId]);
+    modelKey: vehicleConfiguration?.modelKey ?? vehicle?.modelKey ?? null,
+    colorId: vehicleConfiguration?.colorId ?? vehicle?.colorId ?? null,
+    trimId: vehicleConfiguration?.trimId ?? vehicle?.trimId ?? null,
+  }), [
+    vehicleConfiguration?.modelKey,
+    vehicleConfiguration?.colorId,
+    vehicleConfiguration?.trimId,
+    vehicle?.modelKey,
+    vehicle?.colorId,
+    vehicle?.trimId,
+  ]);
 
-  const activeOfferType = requireConfirm ? draftValues.offerType : payment.type;
-  const envkvVehicleRef = useMemo(() => buildVehicleRefFromOfferContext({
-    modelKey: vehicle?.modelKey ?? vehicleConfiguration?.modelKey,
-    trimId: vehicle?.trimId ?? vehicleConfiguration?.trimId,
-    engineId: vehicle?.engineId ?? vehicleConfiguration?.engineId,
-    brand: vehicleConfiguration?.brand ?? vehicle?.brand,
-    model: vehicle?.model ?? vehicleConfiguration?.model,
-    trimLabel: vehicleConfiguration?.trimLabel ?? vehicle?.trimLabel,
-    paymentType: activeOfferType,
-    isNewPassengerCar: vehicle?.isNewPassengerCar,
-    mileageKm: vehicle?.mileageKm ?? vehicle?.mileage,
-    vehicleState: vehicle?.vehicleState,
-    registrationDate: vehicle?.registrationDate,
-    envkvExempt: vehicle?.envkvExempt,
-  }), [vehicle, vehicleConfiguration, activeOfferType]);
-
-  const envkvSummary = useMemo(() => {
-    const ref = buildDefaultNewPassengerCarRef(envkvVehicleRef ?? {});
-    if (!requiresPkwEnVkv(ref, { channel: ENVKV_CHANNEL.OFFER, paymentType: ref.paymentType })) {
-      return null;
-    }
-    const envData = resolveVehicleEnvironmentalData(ref);
-    if (!envData?.publishable) return { missing: true, line: null };
-    const lines = buildPkwEnVkvCompactLines(envData);
-    const parts = lines.map((row) => row.value).filter(Boolean);
-    return { missing: false, line: parts.join(' · ') };
-  }, [envkvVehicleRef]);
+  const activeOfferType = draftValues.offerType || payment.type;
 
   if (!offerDraft) return null;
 
@@ -367,6 +467,8 @@ export default function DealerAiOfferPreview({
     ?? vehicle?.battery
     ?? null;
   const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle?.color ?? null;
+  const colorId = vehicleConfiguration?.colorId ?? vehicle?.colorId ?? null;
+  const colorSwatch = resolveColorSwatch(colorId, colorLabel);
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
@@ -376,17 +478,23 @@ export default function DealerAiOfferPreview({
   const discountPercent = preview.discountPercent ?? calculation.discountPercent ?? null;
   const discountAmount = preview.discountAmount ?? calculation.discountAmount ?? null;
   const housePrice = preview.housePrice ?? calculation.housePrice ?? null;
-  const transferCost = requireConfirm
-    ? (draftValues.transferFee ?? payment.transferCost ?? calculation.preparationFee ?? null)
-    : (payment.transferCost ?? calculation.preparationFee ?? null);
+  const transferCost = draftValues.transferFee
+    ?? payment.transferCost
+    ?? calculation.preparationFee
+    ?? null;
+  const displayTermMonths = draftValues.termMonths ?? payment.termMonths ?? null;
+  const displayMileage = draftValues.annualMileage ?? payment.mileagePerYear ?? null;
+  const displayDownPayment = draftValues.downPayment ?? payment.downPayment ?? null;
 
   const isCash = activeOfferType === 'cash';
   const isLeasing = activeOfferType === 'leasing';
   const isFinance = activeOfferType === 'financing' || activeOfferType === 'threeWayFinancing';
 
-  const calculatedRate = requireConfirm
-    ? (draftValues.monthlyRate ?? payment.calculatedRate ?? preview.monthlyRate ?? calculation.monthlyRate ?? null)
-    : (payment.calculatedRate ?? preview.monthlyRate ?? calculation.monthlyRate ?? null);
+  const calculatedRate = draftValues.monthlyRate
+    ?? payment.calculatedRate
+    ?? preview.monthlyRate
+    ?? calculation.monthlyRate
+    ?? null;
   const offerPrice = isCash
     ? (calculatedRate ?? (housePrice != null && transferCost != null ? housePrice + transferCost : null))
     : calculatedRate;
@@ -397,7 +505,6 @@ export default function DealerAiOfferPreview({
   const paymentLabel = PAYMENT_TYPE_LABELS[activeOfferType] ?? activeOfferType;
   const packageItems = collectPackagesAndExtras(vehicleConfiguration, payment);
   const showPackages = packageItems.length > 0;
-  const hasCustomer = Boolean(customer.name || customer.phone || customer.email);
   const saved = isSaved;
 
   const heroBadges = [];
@@ -413,6 +520,9 @@ export default function DealerAiOfferPreview({
 
   const missingCount = gate.missing.length;
   const canFile = !requireConfirm || gate.canSave;
+  const showCheckedBadge = saved
+    || offerDraft?.status === VEHICLE_OFFER_STATUS.PREPARED
+    || (requireConfirm && centralConfirmed && gate.canSave);
 
   function fieldStatus(field) {
     if (confirmed[field]) return 'ok';
@@ -443,13 +553,22 @@ export default function DealerAiOfferPreview({
   }
 
   function handleEnableEdit() {
+    if (saved) return;
     setEditMode(true);
-    const target = lowConfidenceFields[0] ?? PDF_CONFIRM_FIELDS[0];
+    const target = requireConfirm
+      ? (lowConfidenceFields[0] ?? PDF_CONFIRM_FIELDS[0])
+      : (editablePriceDetailFields(activeOfferType)[0] ?? 'monthlyRate');
     setEditingField(target);
     requestAnimationFrame(() => {
       firstRowRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       conditionsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     });
+  }
+
+  function handleFinishManualEdit() {
+    setEditMode(false);
+    setEditingField(null);
+    onCommercialChange?.(draftValues);
   }
 
   function openInlineEdit(field) {
@@ -467,9 +586,8 @@ export default function DealerAiOfferPreview({
     if (requireConfirm && !gate.canSave) return;
     setSavePending(true);
     try {
-      if (requireConfirm && onCommercialChange) {
-        onCommercialChange(draftValues);
-      }
+      // Persist manual edits into the same draft that „Angebot speichern“ uses (with or without PDF confirm).
+      onCommercialChange?.(draftValues);
       const ok = await onSave?.();
       if (ok === false) return;
     } finally {
@@ -477,28 +595,9 @@ export default function DealerAiOfferPreview({
     }
   }
 
-  function handleOpenOriginalPdf() {
-    const href = pdfViewUrl;
-    if (!href) {
-      setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
-      window.setTimeout(() => setPdfToast(''), 3200);
-      return;
-    }
-    const win = window.open(href, '_blank', 'noopener,noreferrer');
-    if (win) return;
-    try {
-      triggerPdfDownload(href, originalPdfFileName || 'angebot.pdf');
-      setPdfToast('Popup blockiert – Download gestartet.');
-      window.setTimeout(() => setPdfToast(''), 3200);
-    } catch {
-      setPdfToast('PDF konnte nicht geöffnet werden – bitte erneut hochladen.');
-      window.setTimeout(() => setPdfToast(''), 3200);
-    }
-  }
-
   function handleTogglePdfPreview() {
     if (!pdfViewUrl) {
-      setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte erneut hochladen.');
+      setPdfToast('PDF-Datei ist nicht mehr im Browser verfügbar – bitte aktuelles PDF ersetzen.');
       window.setTimeout(() => setPdfToast(''), 3200);
       return;
     }
@@ -517,86 +616,328 @@ export default function DealerAiOfferPreview({
     await onReuploadPdf(file);
   }
 
-  function renderPdfActions({ inFooter = false } = {}) {
-    if (!showPdfBlock) return null;
-    const hasPdfSource = Boolean(originalPdfFileName || fromPdf || originalPdfHref);
+  function renderPriceDetailsHeader({ title, showEdit }) {
     return (
-      <div
-        className={inFooter ? 'dai-opreview-pdf-actions dai-opreview-pdf-actions--footer' : 'dai-opreview-pdf-actions'}
-        aria-label="Original-PDF"
-      >
-        {hasPdfSource && (
-          <div className="dai-opreview-pdf-doc">
-            <div className="dai-opreview-pdf-doc__meta">
-              <span className="dai-opreview-pdf-doc__icon" aria-hidden>📄</span>
-              <div className="dai-opreview-pdf-doc__text">
-                <span className="dai-opreview-pdf-doc__name">
-                  {originalPdfFileName || 'Original-PDF'}
-                </span>
-                {!pdfViewUrl && (
-                  <span className="dai-opreview-pdf-doc__hint">PDF nicht verfügbar</span>
-                )}
-              </div>
-            </div>
-
-            {pdfViewUrl ? (
-              <>
-                <button
-                  type="button"
-                  className={`dai-opreview-pdf-preview-toggle${pdfPreviewOpen ? ' is-open' : ''}`}
-                  onClick={handleTogglePdfPreview}
-                  disabled={isReuploading}
-                  aria-expanded={pdfPreviewOpen}
-                >
-                  {pdfPreviewOpen ? 'Vorschau ausblenden' : 'PDF-Vorschau'}
-                </button>
-
-                {pdfPreviewOpen && (
-                  <div className="dai-opreview-pdf-frame-wrap">
-                    <iframe
-                      className="dai-opreview-pdf-frame"
-                      src={pdfViewUrl}
-                      title={originalPdfFileName ? `Vorschau: ${originalPdfFileName}` : 'PDF-Vorschau'}
-                    />
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="dai-opreview-pdf-open-tab"
-                  onClick={handleOpenOriginalPdf}
-                  disabled={isReuploading}
-                >
-                  In neuem Tab öffnen
-                </button>
-              </>
-            ) : (
-              <p className="dai-opreview-pdf-missing" role="status">
-                PDF fehlt – bitte korrigiertes Angebot ersetzen
-              </p>
-            )}
-          </div>
-        )}
-
-        {onReuploadPdf && !saved && (
-          <div className="dai-opreview-pdf-replace">
-            <button
-              type="button"
-              className="dai-opreview-pdf-reupload"
-              onClick={handleReuploadClick}
-              disabled={isReuploading || isSaving}
-            >
-              {isReuploading ? 'PDF wird gelesen …' : 'Korrigiertes PDF ersetzen'}
-            </button>
-          </div>
-        )}
-
-        {pdfToast && (
-          <p className="dai-opreview-pdf-toast" role="status">{pdfToast}</p>
+      <div className="dai-opreview-card__head">
+        <h3 className="dai-opreview-card__eyebrow">{title}</h3>
+        {showEdit && (
+          <button
+            type="button"
+            className="dai-opreview-card__edit"
+            onClick={editMode ? handleFinishManualEdit : handleEnableEdit}
+          >
+            <IconPencil />
+            <span>{editMode ? 'Fertig' : 'Werte bearbeiten'}</span>
+          </button>
         )}
       </div>
     );
   }
+
+  function renderReadonlyPriceRows() {
+    const rows = [];
+    if (isCash) {
+      if (uvpTotal != null) rows.push({ key: 'uvp', label: 'UVP', value: formatCurrency(uvpTotal) });
+      if (discountPercent != null) {
+        rows.push({ key: 'discountPct', label: 'Rabatt', value: `${discountPercent} %` });
+      }
+      if (discountAmount != null) {
+        rows.push({
+          key: 'discountAmt',
+          label: 'Rabattbetrag',
+          value: `− ${Number(discountAmount).toLocaleString('de-DE')} €`,
+        });
+      }
+      if (housePrice != null) {
+        rows.push({ key: 'house', label: 'Händlerpreis', value: formatCurrency(housePrice) });
+      }
+      if (transferCost != null) {
+        rows.push({
+          key: 'transferFee',
+          label: 'Überführung',
+          value: formatCurrency(transferCost),
+          field: 'transferFee',
+        });
+      }
+    } else {
+      if (displayTermMonths != null) {
+        rows.push({
+          key: 'termMonths',
+          label: 'Laufzeit',
+          value: `${Number(displayTermMonths).toLocaleString('de-DE')} Monate`,
+          field: 'termMonths',
+        });
+      }
+      if (isLeasing && displayMileage != null) {
+        rows.push({
+          key: 'annualMileage',
+          label: 'Kilometer',
+          value: `${Number(displayMileage).toLocaleString('de-DE')} km/Jahr`,
+          field: 'annualMileage',
+        });
+      }
+      if (displayDownPayment != null) {
+        rows.push({
+          key: 'downPayment',
+          label: 'Anzahlung',
+          value: formatCurrency(displayDownPayment),
+          field: 'downPayment',
+        });
+      }
+      if (transferCost != null) {
+        rows.push({
+          key: 'transferFee',
+          label: 'Überführung',
+          value: formatCurrency(transferCost),
+          field: 'transferFee',
+        });
+      }
+    }
+
+    const footerLabel = isCash ? 'Endpreis' : 'Rate';
+    const footerValue = isCash
+      ? (offerPrice != null ? formatCurrency(offerPrice) : '–')
+      : (offerPrice != null
+        ? `${Number(offerPrice).toLocaleString('de-DE', {
+          minimumFractionDigits: Number.isInteger(Number(offerPrice)) ? 0 : 2,
+          maximumFractionDigits: 2,
+        })} €/Monat`
+        : '–');
+
+    return (
+      <>
+        {paymentLabel && <p className="dai-opreview-detail__type">{paymentLabel}</p>}
+        <ul className="dai-opreview-detail__list" aria-label="Preisdetails">
+          {rows.map((row) => (
+            <li key={row.key} className="dai-opreview-detail__row">
+              <PriceDetailIcon field={row.field} />
+              <span className="dai-opreview-detail__label">{row.label}</span>
+              <span className="dai-opreview-detail__value">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="dai-opreview-detail__footer">
+          <span>{footerLabel}</span>
+          <strong>{footerValue}</strong>
+        </div>
+      </>
+    );
+  }
+
+  function renderEditableFieldRow(field, index, { showStatus = false } = {}) {
+    const status = showStatus ? fieldStatus(field) : null;
+    const isEditing = editingField === field;
+    const current = draftValues[field];
+    const ev = evidence[field];
+
+    return (
+      <li
+        key={field}
+        ref={index === 0 ? firstRowRef : undefined}
+        className={[
+          'dai-opreview-review-row',
+          'dai-opreview-review-row--edit-mode',
+          status === 'warn' ? 'dai-opreview-review-row--warn' : '',
+          status === 'ok' ? 'dai-opreview-review-row--ok' : '',
+          isEditing ? 'dai-opreview-review-row--editing' : '',
+        ].filter(Boolean).join(' ')}
+      >
+        <div className="dai-opreview-review-row__main">
+          <PriceDetailIcon field={field} />
+          <span className="dai-opreview-review-row__label">
+            {FIELD_LABELS[field]}
+          </span>
+          <span className="dai-opreview-review-row__value">
+            {formatConfirmDisplayValue(field, current)}
+          </span>
+          {showStatus && <StatusIcon status={status} />}
+          {!saved && (
+            <button
+              type="button"
+              className="dai-opreview-review-row__edit"
+              onClick={() => openInlineEdit(field)}
+              aria-label={`${FIELD_LABELS[field]} bearbeiten`}
+            >
+              <IconPencil />
+            </button>
+          )}
+        </div>
+
+        {isEditing && !saved && (
+          <div className="dai-opreview-review-row__editor">
+            {field === 'offerType' ? (
+              <div className="dai-opreview-callout__chips">
+                {OFFER_TYPE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`dai-opreview-chip${current === opt.value ? ' is-selected' : ''}`}
+                    onClick={() => {
+                      updateField(field, opt.value);
+                      closeInlineEdit();
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <input
+                key={`edit-${field}`}
+                ref={editInputRef}
+                id={`confirm-${field}`}
+                type="text"
+                inputMode="decimal"
+                className="dai-opreview-inline-input"
+                defaultValue={current == null ? '' : String(current)}
+                placeholder={recognized[field] != null ? String(recognized[field]) : ''}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateField(field, e.currentTarget.value);
+                    closeInlineEdit();
+                  }
+                  if (e.key === 'Escape') closeInlineEdit();
+                }}
+                onBlur={(e) => {
+                  updateField(field, e.currentTarget.value);
+                  closeInlineEdit();
+                }}
+              />
+            )}
+            {ev?.sourceText && (
+              <p className="dai-opreview-review-row__evidence">
+                PDF: „{ev.sourceText}“
+              </p>
+            )}
+          </div>
+        )}
+      </li>
+    );
+  }
+
+  function renderPdfActions() {
+    if (!showPdfBlock) return null;
+    const hasPdfSource = Boolean(originalPdfFileName || fromPdf || originalPdfHref);
+    const replaceLabel = hasPdfSource && pdfViewUrl
+      ? 'Aktuelles PDF ersetzen'
+      : 'PDF hochladen';
+    return (
+      <FlowCard className="dai-opreview-pdf-card">
+        <div className="dai-opreview-pdf-actions" aria-label="Angebots-PDF">
+          {hasPdfSource && (
+            <div className="dai-opreview-pdf-doc">
+              <div className="dai-opreview-pdf-doc__meta">
+                <span className="dai-opreview-pdf-doc__icon" aria-hidden>
+                  <IconFile />
+                </span>
+                <div className="dai-opreview-pdf-doc__text">
+                  <span className="dai-opreview-pdf-doc__name">
+                    {originalPdfFileName || 'Aktuelles PDF'}
+                  </span>
+                  <span className="dai-opreview-pdf-doc__hint">
+                    Eine aktuelle PDF-Datei – Ersetzen aktualisiert sie jederzeit
+                  </span>
+                  {!pdfViewUrl && (
+                    <span className="dai-opreview-pdf-doc__hint">PDF nicht verfügbar</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="dai-opreview-pdf-btn-row">
+            {hasPdfSource && (
+              <button
+                type="button"
+                className={`dai-opreview-pdf-btn dai-opreview-pdf-btn--outline${pdfPreviewOpen ? ' is-open' : ''}`}
+                onClick={handleTogglePdfPreview}
+                disabled={isReuploading || !pdfViewUrl}
+                aria-expanded={pdfPreviewOpen}
+              >
+                <IconEye />
+                <span>{pdfPreviewOpen ? 'Vorschau ausblenden' : 'PDF-Vorschau'}</span>
+              </button>
+            )}
+
+            {!saved && onReuploadPdf && (
+              <button
+                type="button"
+                className="dai-opreview-pdf-btn dai-opreview-pdf-btn--solid"
+                onClick={handleReuploadClick}
+                disabled={isReuploading || isSaving}
+              >
+                <IconUpload />
+                <span>{isReuploading ? 'PDF wird gelesen …' : replaceLabel}</span>
+              </button>
+            )}
+          </div>
+
+          {hasPdfSource && pdfViewUrl && pdfPreviewOpen && (
+            <div className="dai-opreview-pdf-frame-wrap">
+              <iframe
+                className="dai-opreview-pdf-frame"
+                src={pdfViewUrl}
+                title={originalPdfFileName ? `Vorschau: ${originalPdfFileName}` : 'PDF-Vorschau'}
+              />
+            </div>
+          )}
+
+          {hasPdfSource && !pdfViewUrl && (
+            <p className="dai-opreview-pdf-missing" role="status">
+              PDF fehlt – bitte aktuelles PDF ersetzen
+            </p>
+          )}
+
+          {!saved && onReuploadPdf && (
+            <p className="dai-opreview-pdf-replace__hint">
+              Ersetzt die aktuelle PDF-Datei (kein Einmal-Limit)
+            </p>
+          )}
+
+          {pdfToast && (
+            <p className="dai-opreview-pdf-toast" role="status">{pdfToast}</p>
+          )}
+        </div>
+      </FlowCard>
+    );
+  }
+
+  function renderVersionHistory() {
+    if (!versionHistory.length) return null;
+    return (
+      <section className="dai-opreview-history" aria-label="Angebotsversionen">
+        <p className="dai-opreview-history__eyebrow">Historie</p>
+        <h3 className="dai-opreview-history__title">Angebotsversionen</h3>
+        <ol className="dai-opreview-history__list">
+          {versionHistory.map((entry) => (
+            <li
+              key={`${entry.label}-${entry.at || 'now'}-${entry.isCurrent ? 'c' : 'p'}`}
+              className={`dai-opreview-history__item${entry.isCurrent ? ' is-current' : ''}`}
+            >
+              <div className="dai-opreview-history__body">
+                <div className="dai-opreview-history__row">
+                  <span className="dai-opreview-history__version">{entry.label}</span>
+                  {entry.isCurrent && (
+                    <span className="dai-opreview-history__badge">Aktuell</span>
+                  )}
+                </div>
+                {(entry.atLabel || entry.summary) && (
+                  <p className="dai-opreview-history__meta">
+                    {[entry.atLabel, entry.summary].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+              <span className="dai-opreview-history__chevron" aria-hidden>
+                <IconChevronRight />
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
+
+  const priceDetailFields = editablePriceDetailFields(activeOfferType);
 
   const offerTypeAmbiguity = ambiguities.find((a) => a.field === 'offerType');
   const showOfferTypeCallout = requireConfirm
@@ -607,6 +948,12 @@ export default function DealerAiOfferPreview({
     ? 'Noch 1 Angabe prüfen'
     : `Noch ${missingCount} Angaben prüfen`;
 
+  const rateMain = isCash
+    ? formatCurrency(offerPrice)
+    : (offerPrice != null ? formatEuroDe(Number(offerPrice)) : '–');
+  const rateSuffix = !isCash && offerPrice != null ? ' / Monat' : '';
+  const rateLabel = isCash ? 'Angebotspreis' : 'Monatliche Rate';
+
   return (
     <OfferFlowLayout
       className="dai-offer-preview"
@@ -614,89 +961,71 @@ export default function DealerAiOfferPreview({
       onBack={!saved ? onBack : null}
       title="Angebot prüfen"
     >
-      {/* 1. Hero offer card – rate dominant; Konditionen live below (no duplicate meta) */}
+      {/* 1. Fahrzeug-Summary-Card (Mockup: Titel | Bild | Rate) */}
       <section
-        className={`dai-opreview-hero-card${requireConfirm ? ' dai-opreview-hero-card--glow' : ''}`}
+        className={`dai-opreview-summary${requireConfirm ? ' dai-opreview-summary--confirm' : ''}`}
         aria-label="Fahrzeug und Preis"
       >
-        <div className="dai-opreview-hero-card__vehicle">
-          <p className="dai-opreview-hero-card__model">{vehicleMainLine || '–'}</p>
+        <div className="dai-opreview-summary__info">
+          <p className="dai-opreview-summary__model">{vehicleMainLine || '–'}</p>
           {vehicleMotorLine && (
-            <p className="dai-opreview-hero-card__motor">{vehicleMotorLine}</p>
+            <p className="dai-opreview-summary__motor">{vehicleMotorLine}</p>
           )}
           {colorLabel && (
-            <p className="dai-opreview-hero-card__color">{colorLabel}</p>
+            <p className="dai-opreview-summary__color">
+              {colorSwatch && (
+                <span
+                  className="dai-opreview-summary__swatch"
+                  style={{ background: colorSwatch }}
+                  aria-hidden
+                />
+              )}
+              <span>{colorLabel}</span>
+            </p>
+          )}
+          {showCheckedBadge && (
+            <span className="dai-opreview-summary__checked">Angebot geprüft</span>
+          )}
+          {heroBadges.length > 0 && (
+            <div className="dai-opreview-summary__badges">
+              {heroBadges.map((badge) => (
+                <span
+                  key={badge.label}
+                  className={`cn-badge cn-badge--${badge.tone ?? 'discount'}`}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          )}
+          {showPackages && (
+            <ul className="dai-opreview-summary__packages">
+              {packageItems.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
           )}
         </div>
 
         {heroImage && (
-          <div className="dai-opreview-hero-card__glow-zone">
-            <div className="dai-opreview-hero-card__image-wrap">
-              <img
-                className="dai-opreview-hero-card__image"
-                src={heroImage}
-                alt={vehicleMainLine || 'Fahrzeug'}
-              />
-            </div>
-
-            <div className="dai-opreview-hero-card__price-block">
-              <p className="dai-opreview-hero-card__price">
-                {isCash
-                  ? formatCurrency(offerPrice)
-                  : offerPrice != null
-                    ? formatEuroDe(Number(offerPrice))
-                    : '–'}
-                {!isCash && offerPrice != null && (
-                  <span className="dai-opreview-hero-card__price-suffix">/ Monat</span>
-                )}
-              </p>
-              <p className="dai-opreview-hero-card__price-label">
-                {isCash ? 'Angebotspreis' : 'Monatliche Rate'}
-              </p>
-            </div>
+          <div className="dai-opreview-summary__media">
+            <img
+              className="dai-opreview-summary__image"
+              src={heroImage}
+              alt={vehicleMainLine || 'Fahrzeug'}
+            />
           </div>
         )}
 
-        {!heroImage && (
-          <div className="dai-opreview-hero-card__glow-zone dai-opreview-hero-card__glow-zone--price-only">
-            <div className="dai-opreview-hero-card__price-block">
-              <p className="dai-opreview-hero-card__price">
-                {isCash
-                  ? formatCurrency(offerPrice)
-                  : offerPrice != null
-                    ? formatEuroDe(Number(offerPrice))
-                    : '–'}
-                {!isCash && offerPrice != null && (
-                  <span className="dai-opreview-hero-card__price-suffix">/ Monat</span>
-                )}
-              </p>
-              <p className="dai-opreview-hero-card__price-label">
-                {isCash ? 'Angebotspreis' : 'Monatliche Rate'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {heroBadges.length > 0 && (
-          <div className="dai-opreview-hero-card__badges">
-            {heroBadges.map((badge) => (
-              <span
-                key={badge.label}
-                className={`cn-badge cn-badge--${badge.tone ?? 'discount'}`}
-              >
-                {badge.label}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {showPackages && (
-          <ul className="dai-opreview-hero-card__packages">
-            {packageItems.map((label) => (
-              <li key={label}>{label}</li>
-            ))}
-          </ul>
-        )}
+        <div className="dai-opreview-summary__rate" aria-label={rateLabel}>
+          <p className="dai-opreview-summary__rate-label">{rateLabel}</p>
+          <p className="dai-opreview-summary__rate-value">
+            {rateMain}
+            {rateSuffix && (
+              <span className="dai-opreview-summary__rate-suffix">{rateSuffix}</span>
+            )}
+          </p>
+        </div>
       </section>
 
       {rateImplausible && !isCash && (
@@ -716,235 +1045,123 @@ export default function DealerAiOfferPreview({
         </div>
       )}
 
-      {/* 2 + 3. Erkannte Konditionen + zentrale Bestätigung */}
+      {/* 2. Preisdetails / Erkannte Konditionen */}
       {requireConfirm ? (
-        <section
-          ref={conditionsRef}
-          className="dai-opreview-conditions"
-          aria-label="Erkannte Konditionen"
-        >
-          <h3 className="dai-opreview-conditions__title">Erkannte Konditionen</h3>
-
-          {showOfferTypeCallout && (
-            <div className="dai-opreview-callout" role="status">
-              <p className="dai-opreview-callout__text">
-                ⚠ {offerTypeAmbiguity?.message || 'Angebotsart unsicher'}
-              </p>
-              <div className="dai-opreview-callout__chips">
-                {OFFER_TYPE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`dai-opreview-chip${draftValues.offerType === opt.value ? ' is-selected' : ''}`}
-                    onClick={() => {
-                      updateField('offerType', opt.value);
-                      setConfirmed((prev) => ({ ...prev, offerType: true }));
-                    }}
-                    disabled={saved}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <ul className="dai-opreview-review-list">
-            {PDF_CONFIRM_FIELDS.map((field, index) => {
-              const status = fieldStatus(field);
-              const isEditing = editingField === field;
-              const current = draftValues[field];
-              const ev = evidence[field];
-
-              return (
-                <li
-                  key={field}
-                  ref={index === 0 ? firstRowRef : undefined}
-                  className={[
-                    'dai-opreview-review-row',
-                    status === 'warn' ? 'dai-opreview-review-row--warn' : '',
-                    status === 'ok' ? 'dai-opreview-review-row--ok' : '',
-                    isEditing ? 'dai-opreview-review-row--editing' : '',
-                    editMode ? 'dai-opreview-review-row--edit-mode' : '',
-                  ].filter(Boolean).join(' ')}
-                >
-                  <div className="dai-opreview-review-row__main">
-                    <span className="dai-opreview-review-row__label">
-                      {FIELD_LABELS[field]}
-                    </span>
-                    <span className="dai-opreview-review-row__value">
-                      {formatConfirmDisplayValue(field, current)}
-                    </span>
-                    <StatusIcon status={status} />
-                    {!saved && (
-                      <button
-                        type="button"
-                        className="dai-opreview-review-row__edit"
-                        onClick={() => openInlineEdit(field)}
-                        aria-label={`${FIELD_LABELS[field]} bearbeiten`}
-                      >
-                        ✎
-                      </button>
-                    )}
-                  </div>
-
-                  {isEditing && !saved && (
-                    <div className="dai-opreview-review-row__editor">
-                      {field === 'offerType' ? (
-                        <div className="dai-opreview-callout__chips">
-                          {OFFER_TYPE_OPTIONS.map((opt) => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              className={`dai-opreview-chip${current === opt.value ? ' is-selected' : ''}`}
-                              onClick={() => {
-                                updateField(field, opt.value);
-                                closeInlineEdit();
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <input
-                          key={`edit-${field}`}
-                          ref={editInputRef}
-                          id={`confirm-${field}`}
-                          type="text"
-                          inputMode="decimal"
-                          className="dai-opreview-inline-input"
-                          defaultValue={current == null ? '' : String(current)}
-                          placeholder={recognized[field] != null ? String(recognized[field]) : ''}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              updateField(field, e.currentTarget.value);
-                              closeInlineEdit();
-                            }
-                            if (e.key === 'Escape') closeInlineEdit();
-                          }}
-                          onBlur={(e) => {
-                            updateField(field, e.currentTarget.value);
-                            closeInlineEdit();
-                          }}
-                        />
-                      )}
-                      {ev?.sourceText && (
-                        <p className="dai-opreview-review-row__evidence">
-                          PDF: „{ev.sourceText}“
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
+        <FlowCard className="dai-opreview-price-card">
+          <section
+            ref={conditionsRef}
+            className="dai-opreview-conditions"
+            aria-label="Erkannte Konditionen"
+          >
+            {renderPriceDetailsHeader({
+              title: 'Preisdetails',
+              showEdit: !saved,
             })}
-          </ul>
 
-          {!saved && (
-            <div className="dai-opreview-central">
-              {!centralConfirmed ? (
-                <>
-                  <button
-                    type="button"
-                    className="dai-opreview-central__primary"
-                    onClick={handleCentralConfirm}
-                  >
-                    ✓ Alle Konditionen sind korrekt
-                  </button>
-                  <button
-                    type="button"
-                    className="dai-opreview-central__secondary"
-                    onClick={handleEnableEdit}
-                  >
-                    Erkannte Daten bearbeiten
-                  </button>
-                </>
-              ) : gate.canSave ? (
-                <p className="dai-opreview-central__done" role="status">
-                  ✓ Konditionen geprüft
+            {showOfferTypeCallout && (
+              <div className="dai-opreview-callout" role="status">
+                <p className="dai-opreview-callout__text">
+                  Angebotsart unsicher – bitte wählen
+                  {offerTypeAmbiguity?.message ? `: ${offerTypeAmbiguity.message}` : ''}
                 </p>
-              ) : (
-                <>
-                  <p className="dai-opreview-central__remain" role="status">
-                    Bitte unsichere Angaben noch prüfen
+                <div className="dai-opreview-callout__chips">
+                  {OFFER_TYPE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`dai-opreview-chip${draftValues.offerType === opt.value ? ' is-selected' : ''}`}
+                      onClick={() => {
+                        updateField('offerType', opt.value);
+                        setConfirmed((prev) => ({ ...prev, offerType: true }));
+                      }}
+                      disabled={saved}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <ul
+              className="dai-opreview-review-list"
+              aria-label="Preisdetails bearbeiten"
+            >
+              {PDF_CONFIRM_FIELDS.map((field, index) => (
+                renderEditableFieldRow(field, index, { showStatus: true })
+              ))}
+            </ul>
+
+            {!saved && (
+              <div className="dai-opreview-central">
+                {!centralConfirmed ? (
+                  <>
+                    <button
+                      type="button"
+                      className="dai-opreview-central__primary"
+                      onClick={handleCentralConfirm}
+                    >
+                      Alle Konditionen sind korrekt
+                    </button>
+                    <button
+                      type="button"
+                      className="dai-opreview-central__secondary"
+                      onClick={handleEnableEdit}
+                    >
+                      <IconPencil />
+                      <span>Werte bearbeiten</span>
+                    </button>
+                  </>
+                ) : gate.canSave ? (
+                  <p className="dai-opreview-central__done" role="status">
+                    Konditionen geprüft
                   </p>
-                  <button
-                    type="button"
-                    className="dai-opreview-central__secondary"
-                    onClick={handleEnableEdit}
-                  >
-                    Erkannte Daten bearbeiten
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </section>
+                ) : (
+                  <>
+                    <p className="dai-opreview-central__remain" role="status">
+                      Bitte unsichere Angaben noch prüfen
+                    </p>
+                    <button
+                      type="button"
+                      className="dai-opreview-central__secondary"
+                      onClick={handleEnableEdit}
+                    >
+                      <IconPencil />
+                      <span>Werte bearbeiten</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+        </FlowCard>
       ) : (
-        <FlowCard>
-          <FlowSectionHeader title="Preisdetails" />
-          <FlowPriceDetails
-            paymentLabel={paymentLabel}
-            isCash={isCash}
-            isLeasing={isLeasing}
-            isFinance={isFinance}
-            uvpTotal={uvpTotal}
-            discountPercent={discountPercent}
-            discountAmount={discountAmount}
-            housePrice={housePrice}
-            transferCost={transferCost}
-            offerPrice={offerPrice}
-            termMonths={payment.termMonths}
-            mileagePerYear={payment.mileagePerYear}
-            downPayment={payment.downPayment}
-            formatCurrency={formatCurrency}
-          />
+        <FlowCard className="dai-opreview-price-card">
+          {renderPriceDetailsHeader({
+            title: 'Preisdetails',
+            showEdit: !saved && Boolean(onCommercialChange),
+          })}
+          {editMode && !saved ? (
+            <ul
+              ref={conditionsRef}
+              className="dai-opreview-review-list"
+              aria-label="Preisdetails bearbeiten"
+            >
+              {priceDetailFields.map((field, index) => (
+                renderEditableFieldRow(field, index)
+              ))}
+            </ul>
+          ) : (
+            renderReadonlyPriceRows()
+          )}
         </FlowCard>
       )}
 
-      {/* Original-PDF – während Prüfung sichtbar, nicht erst nach Speichern */}
       {renderPdfActions()}
 
-      {/* 4. Umwelt compact accordion */}
-      {envkvSummary && (
-        <details className="dai-opreview-envkv">
-          <summary className="dai-opreview-envkv__summary">
-            <span className="dai-opreview-envkv__label">Verbrauch &amp; CO₂</span>
-            <span className="dai-opreview-envkv__compact">
-              {envkvSummary.missing
-                ? 'Angaben fehlen'
-                : (envkvSummary.line || 'Details')}
-            </span>
-            <span className="dai-opreview-envkv__more">Details</span>
-          </summary>
-          <div className="dai-opreview-envkv__body">
-            <PkwEnVkvBox
-              variant="detail"
-              audience="internal"
-              channel={ENVKV_CHANNEL.OFFER}
-              vehicleRef={envkvVehicleRef}
-            />
-          </div>
-        </details>
-      )}
+      {renderVersionHistory()}
 
-      {hasCustomer && (
-        <details className="cn-customer-fold">
-          <summary>
-            <span className="cn-customer-fold__label">Kunde</span>
-            <span className="cn-customer-fold__name">{customer.name ?? '–'}</span>
-          </summary>
-          {(customer.phone || customer.email) && (
-            <div className="cn-customer-fold__body">
-              {customer.phone && <p>{customer.phone}</p>}
-              {customer.email && <p>{customer.email}</p>}
-            </div>
-          )}
-        </details>
-      )}
-
-      {/* 5. CTA – internal file only; Composer owns customer messaging */}
+      {/* CTA – internal file only; Composer owns customer messaging */}
       <FlowStickyFooter
         className={canFile && !saved ? 'dai-opreview-foot--ready' : ''}
         saved={null}

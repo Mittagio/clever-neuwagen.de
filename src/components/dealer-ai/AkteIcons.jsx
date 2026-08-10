@@ -278,6 +278,61 @@ export function IconShield(props) {
   );
 }
 
+export function IconPencil(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 20h9" {...stroke} />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconFolder(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconExternalLink(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M14 5h5v5" {...stroke} />
+      <path d="M10 14L19 5" {...stroke} />
+      <path d="M19 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconGauge(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z" {...stroke} />
+      <path d="M12 12l4.5-4.5" {...stroke} />
+      <path d="M7 14h.01M12 16h.01M17 14h.01" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconCalendar(props) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" {...stroke} />
+      <path d="M8 3v4M16 3v4M4 10h16" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconPaperPlane(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M21 3L10.5 13.5" {...stroke} />
+      <path d="M21 3l-7 18-3.5-7.5L3 10l18-7z" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 /** Ausstattungs-Picker: Alltag / AHK */
 export function IconHook(props) {
   return (

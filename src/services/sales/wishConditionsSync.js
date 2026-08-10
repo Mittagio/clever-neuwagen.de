@@ -115,3 +115,60 @@ export function syncOfferSelectionGroupsWithWish(groups = [], wishPatch = {}) {
     };
   });
 }
+
+function isWishCommercialFieldEmpty(key, current) {
+  if (current == null || current === '') return true;
+  if (key === 'paymentType') return current === 'unknown';
+  if (key === 'downPayment') return String(current).trim() === '';
+  if (key === 'leasingEndDate') return !String(current).trim();
+  return !(Number(current) > 0);
+}
+
+/**
+ * Angebots-/PDF-Konditionen behutsam in lead.wish mergen.
+ * Standard: nur leere/offene Wish-Felder. Mit forceFromActiveOffer: aktive Offer-Werte gewinnen.
+ */
+export function mergeOfferCommercialIntoWish(existingWish = {}, offerCommercial = {}, options = {}) {
+  const force = options.forceFromActiveOffer === true;
+  const next = { ...(existingWish && typeof existingWish === 'object' ? existingWish : {}) };
+  const patch = buildWishConditionsFromSources(offerCommercial);
+  const endDate = offerCommercial?.leasingEndDate
+    ?? offerCommercial?.contractEndDate
+    ?? offerCommercial?.endDate
+    ?? null;
+
+  const assign = (key, value) => {
+    if (value == null || value === '') return;
+    if (key === 'paymentType' && value === 'unknown') return;
+    if (force || isWishCommercialFieldEmpty(key, next[key])) {
+      next[key] = value;
+    }
+  };
+
+  assign('paymentType', patch.paymentType);
+  assign('termMonths', patch.termMonths);
+  assign('mileagePerYear', patch.mileagePerYear);
+  assign('downPayment', patch.downPayment);
+  assign('desiredRate', patch.desiredRate);
+  assign('desiredPrice', patch.desiredPrice);
+  if (endDate != null && String(endDate).trim()) {
+    assign('leasingEndDate', String(endDate).trim());
+  }
+
+  return next;
+}
+
+/**
+ * Lead-Patch: Wish + Top-Level paymentType aus Offer-Konditionen.
+ */
+export function applyOfferCommercialToLeadWish(lead = {}, offerCommercial = {}, options = {}) {
+  const mergedWish = mergeOfferCommercialIntoWish(lead?.wish, offerCommercial, options);
+  const paymentType = mergedWish.paymentType && mergedWish.paymentType !== 'unknown'
+    ? mergedWish.paymentType
+    : (lead?.paymentType ?? null);
+  return {
+    ...lead,
+    paymentType: paymentType ?? lead?.paymentType,
+    wish: mergedWish,
+  };
+}

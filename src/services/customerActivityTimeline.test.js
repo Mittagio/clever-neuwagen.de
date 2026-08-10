@@ -9,6 +9,7 @@ import {
   getLastCustomerActivityHint,
   isCustomerEngagementEntry,
   mergeInsightActivities,
+  pickRecentStageActivities,
 } from './customerActivityTimeline.js';
 
 const history = [
@@ -78,5 +79,67 @@ const qa = buildCleverQuestionActivity({
   cleverAnswer: 'Ja, im Winter-Connect-Paket.',
 });
 assert.equal(qa.meta.question, 'Hat der EV2 eine Wärmepumpe?');
+
+// Clever-Empfehlungs-Historie → kurze, unterscheidbare Titel (kein „Clever empfahl…“)
+{
+  const offerRec = formatTimelinePresentation({
+    id: 'ca-1',
+    at: '2026-08-10T13:11:00.000Z',
+    type: 'clever_action',
+    text: 'Clever empfahl: Angebot prüfen und senden',
+  });
+  assert.equal(offerRec.headline, 'Angebot erstellt');
+  assert.ok(!/^Clever empfahl/i.test(offerRec.headline));
+  assert.ok(!/^Clever empfiehlt/i.test(offerRec.headline));
+
+  const noteRec = formatTimelinePresentation({
+    id: 'n-1',
+    at: '2026-08-10T13:10:00.000Z',
+    type: 'note',
+    text: 'Kunde braucht Ersatzfahrzeug nach Unfall',
+  });
+  assert.equal(noteRec.headline, 'Notiz hinzugefügt');
+
+  const chatRec = formatTimelinePresentation({
+    id: 'c-1',
+    at: '2026-08-10T13:09:00.000Z',
+    type: 'note',
+    text: 'Chat zusammengefasst: Interesse an EV3 Air',
+  });
+  assert.equal(chatRec.headline, 'Chat zusammengefasst');
+
+  const stageItems = pickRecentStageActivities([
+    {
+      id: 'a1',
+      at: '2026-08-10T13:11:00.000Z',
+      type: 'clever_action',
+      text: 'Clever empfahl: Angebot prüfen und senden',
+    },
+    {
+      id: 'a2',
+      at: '2026-08-10T13:10:30.000Z',
+      type: 'clever_action',
+      text: 'Clever empfahl: Angebot prüfen und senden',
+    },
+    {
+      id: 'a3',
+      at: '2026-08-10T13:10:00.000Z',
+      type: 'note',
+      text: 'Notiz: Sofortbedarf besprochen',
+    },
+    {
+      id: 'a4',
+      at: '2026-08-10T13:09:00.000Z',
+      type: 'system',
+      text: 'Chat zusammengefasst für Übergabe',
+    },
+  ], 3);
+  assert.equal(stageItems.length, 3);
+  assert.equal(stageItems[0].headline, 'Notiz hinzugefügt');
+  assert.equal(stageItems[1].headline, 'Chat zusammengefasst');
+  assert.equal(stageItems[2].headline, 'Angebot erstellt');
+  const headlines = stageItems.map((i) => i.headline);
+  assert.equal(new Set(headlines).size, headlines.length, 'keine doppelten Stage-Titel');
+}
 
 console.log('customerActivityTimeline.test.js: ok');

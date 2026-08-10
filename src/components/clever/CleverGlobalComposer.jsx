@@ -440,8 +440,20 @@ export default function CleverGlobalComposer() {
     }
     if (chip.id === 'intake') {
       setFocused(true);
-      setFeedback('Anfrage einfügen oder diktieren – dann absenden');
-      setTimeout(() => setFeedback(''), 3200);
+      // Bereits erkannte Anfrage: nicht nochmal „einfügen“, sondern Accept-CTA nutzen
+      if (
+        reviewModel?.reviewType === 'customer_intake_review'
+        || reviewModel?.reviewType === 'inbound_lead_review'
+        || lastTurn?.inboundLead?.detected
+      ) {
+        const cta = reviewModel?.primaryCta || 'Übernehmen';
+        setFeedback(`Anfrage erkannt – bitte „${cta}“ tippen`);
+        setTimeout(() => setFeedback(''), 4200);
+        return;
+      }
+      setDraft('');
+      setFeedback('Anfrage hier einfügen und absenden – Clever erkennt den Kunden');
+      setTimeout(() => setFeedback(''), 4200);
       return;
     }
     if (chip.id === 'today') setDraft('Was liegt heute an?');

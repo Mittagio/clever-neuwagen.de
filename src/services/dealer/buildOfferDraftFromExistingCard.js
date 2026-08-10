@@ -197,6 +197,14 @@ export function buildOfferDraftFromExistingCard({
     ...offerDraft,
     vehicleCardId,
     existingVehicleOfferId: vehicleOffer?.id ?? `vo-${vehicleCardId}`,
+    version: Number(vehicleOffer?.version) || 1,
+    versions: Array.isArray(vehicleOffer?.versions) ? vehicleOffer.versions : [],
+    updatedAt: vehicleOffer?.updatedAt ?? null,
+    preparedAt: vehicleOffer?.preparedAt ?? null,
+    createdAt: vehicleOffer?.createdAt ?? null,
+    monthlyRate: vehicleOffer?.monthlyRate
+      ?? offerDraft.payment?.calculatedRate
+      ?? null,
     source: {
       ...offerDraft.source,
       createdFrom: createdFromPdf

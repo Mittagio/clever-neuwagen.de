@@ -37,6 +37,11 @@ assert.ok(composerSource.includes("label: 'Modellwelt öffnen'"), 'Composer-Chip
 assert.ok(!composerSource.includes("label: 'Modell auswählen'"), 'Kein Chip Modell auswählen');
 assert.ok(!composerSource.includes("label: 'Neue Anfrage'"), 'Keine Chip Neue Anfrage');
 assert.ok(composerSource.includes('Anfrage einfügen'), 'Plus-Menü Anfrage einfügen');
+assert.ok(
+  composerSource.includes('Anfrage hier einfügen und absenden')
+  || composerSource.includes('Anfrage erkannt – bitte'),
+  'Anfrage einfügen führt zu Paste/Accept-Hinweis (kein No-Op)',
+);
 assert.ok(composerSource.includes("/verkaufsassistent?view=showroom"), 'Showroom-Workspace-Pfad');
 assert.ok(composerSource.includes("/verkaufsassistent?view=model"), 'Modell-Workspace-Pfad');
 assert.ok(composerSource.includes('createPortal'), 'Ein Composer, Hero via Portal');
@@ -63,6 +68,8 @@ assert.ok(composerCss.includes('220ms') || composerCss.includes('180ms'), 'Subti
 assert.ok(!todaySource.includes('starLabel'), 'Keine Sterne in Clever empfiehlt heute');
 assert.ok(!todaySource.includes('closureChance'), 'Keine Prozentwerte in Clever empfiehlt heute');
 assert.ok(todaySource.includes('ctaLabel') || todaySource.includes('cta'), 'Klare CTA');
+assert.ok(todaySource.includes('ctaHref') || todaySource.includes('tel:'), 'Anruf-CTA nutzt tel: wenn möglich');
+assert.ok(todaySource.includes('clever-today__action--cta'), 'CTA ist eigenständiger Link/Button');
 
 assert.ok(headerSource.includes('header-settings'), 'Header Zahnrad');
 assert.ok(headerSource.includes('/backend/verwaltung'), 'Zahnrad öffnet Verwaltung');

@@ -297,13 +297,13 @@ export function buildZeroLossIntakeSummary(facts = [], opts = {}) {
  */
 export function groupFactsForIntakeUi(facts = []) {
   const buckets = {
-    mensch: { id: 'mensch', title: 'Mensch & Alltag', items: [] },
+    mensch: { id: 'persoenliches', title: 'Persönliches', items: [] },
     bestand: { id: 'bestand', title: 'Bestandsfahrzeug', items: [] },
     budget: { id: 'budget', title: 'Budget', items: [] },
     wunsch: { id: 'wunsch', title: 'Fahrzeugwunsch', items: [] },
-    wichtig: { id: 'wichtig', title: 'Wichtig', items: [] },
-    notizen: { id: 'notizen', title: 'Notizen', items: [] },
-  };
+    wichtig: { id: 'wichtig', title: 'Ausstattung', items: [] },
+    notizen: { id: 'sonstiges', title: 'Sonstiges', items: [] },
+  }
 
   for (const f of facts) {
     const label = String(f.label || '').trim();

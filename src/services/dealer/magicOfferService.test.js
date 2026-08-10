@@ -83,6 +83,15 @@ assert.deepEqual(intent.vehicleRequest.packageKeys, ['P10', 'P11', 'P12']);
 assert.equal(intent.commercialInput.discountPercent, 21);
 assert.equal(intent.commercialInput.transferCost, 1290);
 
+// Rabatt-False-Positive: große Zahl ohne % → Amount, nicht discountPercent
+const bareRabatt = parseMagicOfferIntent('EV3 Barkauf, Rabatt 449');
+assert.equal(bareRabatt.commercialInput.discountPercent, null);
+assert.equal(bareRabatt.commercialInput.discountAmount, 449);
+// Effektivzins nicht als Rabatt-%
+const zinsOnly = parseMagicOfferIntent('EV3 Finanzierung 349 Euro, 48 Monate, 5,99 Prozent effektiv');
+assert.equal(zinsOnly.commercialInput.discountPercent, null);
+assert.equal(zinsOnly.commercialInput.effectiveInterestRate, 5.99);
+
 const cashOnly = computeSafeCashOffer({
   lineItems: [
     { label: 'base', amount: 48690 },

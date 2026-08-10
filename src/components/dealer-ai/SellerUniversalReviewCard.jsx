@@ -7,6 +7,9 @@ import './SellerUniversalReviewCard.css';
 
 const COMPACT_REVIEW_TYPES = new Set([
   'customer_contract_tradein_intake_review',
+  'customer_intake_review',
+  'inbound_lead_review',
+  'customer_intake',
   'multi_source_apply_result',
   'offer_prepare',
   'offer_incomplete',
@@ -17,7 +20,13 @@ const COMPACT_REVIEW_TYPES = new Set([
 
 function isCompactReviewModel(model) {
   if (!model) return false;
-  if (model.compactUi || model.kind === 'multi_source_intake') return true;
+  if (
+    model.compactUi
+    || model.kind === 'multi_source_intake'
+    || model.kind === 'customer_intake'
+  ) {
+    return true;
+  }
   return COMPACT_REVIEW_TYPES.has(model.reviewType) || COMPACT_REVIEW_TYPES.has(model.kind);
 }
 

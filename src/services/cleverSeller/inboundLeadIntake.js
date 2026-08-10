@@ -600,10 +600,50 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     ? ['Bitte prüfen:', ...unsureLines].join('\n')
     : null;
 
+  const heroName = inbound.matchedLeadName
+    || inbound.contact?.fullName
+    || contactLines[0]
+    || 'Neue Anfrage';
+  const heroEyebrow = inbound.proposeCreateCustomer
+    ? 'Neue Kundenakte'
+    : inbound.resolutionStatus === 'ambiguous'
+      ? 'Kunde wählen'
+      : 'Anfrage erkannt';
+  const heroSubtitle = [
+    inbound.proposeCreateCustomer
+      ? 'Kein bestehender Treffer – erst nach Bestätigung anlegen'
+      : inbound.resolutionStatus === 'ambiguous'
+        ? 'Mehrere Treffer – bitte Kundenakte wählen'
+        : null,
+    inbound.contact?.email,
+    inbound.contact?.phone,
+    inbound.nextAction?.label,
+  ].filter(Boolean).join(' · ') || null;
+
+  // Compact Fact-Groups: Chips statt langer Body – Accept-CTA bleibt sichtbar im Dock
+  const compactGroups = groups.map((group) => {
+    if (group.id === 'facts' && Array.isArray(group.items) && group.items.length) {
+      return {
+        ...group,
+        chips: group.items.map((item) => item.label).filter(Boolean).slice(0, 8),
+      };
+    }
+    if (group.id === 'next' && group.line) {
+      return { ...group, chips: [group.line] };
+    }
+    return group;
+  });
+
   return {
     title: '✨ Clever hat eine Anfrage erkannt',
-    groups,
+    groups: compactGroups,
     body: [recognizedBlock, unsureBlock].filter(Boolean).join('\n\n'),
+    hero: {
+      name: heroName,
+      eyebrow: heroEyebrow,
+      subtitle: heroSubtitle,
+    },
+    compactUi: true,
     actionSections: [{
       id: 'customer_intake_review',
       kind: 'customer_intake_review',
@@ -623,6 +663,7 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
           label: primaryCta,
           action: 'accept_inbound_lead',
           leadId: inbound.matchedLeadId || null,
+          tone: 'primary',
         }],
       secondaryActions,
     }],

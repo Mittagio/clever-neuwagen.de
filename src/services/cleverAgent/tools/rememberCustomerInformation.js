@@ -94,15 +94,15 @@ export function executeRememberCustomerInformation(runtime = {}, args = {}) {
   });
 
   const groups = [];
-  if (cats.human.length) groups.push({ id: 'mensch', title: 'Mensch & Alltag', items: cats.human });
+  if (cats.human.length) groups.push({ id: 'persoenliches', title: 'Persönliches', items: cats.human });
   if (cats.tradeIn?.length) groups.push({ id: 'bestand', title: 'Bestandsfahrzeug', items: cats.tradeIn });
   if (cats.budget?.length) groups.push({ id: 'budget', title: 'Budget', items: cats.budget });
   if (cats.vehicle.length) groups.push({ id: 'fahrzeug', title: 'Fahrzeugwunsch', items: cats.vehicle });
-  if (cats.criteria.length) groups.push({ id: 'kriterien', title: 'Wichtig', items: cats.criteria });
+  if (cats.criteria.length) groups.push({ id: 'kriterien', title: 'Ausstattung', items: cats.criteria });
   if (cats.notes?.length) {
     groups.push({
-      id: 'notizen',
-      title: 'Notizen',
+      id: 'sonstiges',
+      title: 'Sonstiges',
       items: cats.notes.map((n) => `${n} · Noch nicht strukturiert`),
     });
   }

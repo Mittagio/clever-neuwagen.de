@@ -67,7 +67,14 @@ for (const item of items) {
     'whySummary ist natürliche Copy, keine Reason-Kette',
   );
   assert.ok(Array.isArray(item.reasons), 'reasons[] bleiben für Audit');
+  if (item.actionId === 'offer_opened_call' || /anrufen/i.test(String(item.ctaLabel || ''))) {
+    assert.ok(item.ctaHref && /^tel:/i.test(item.ctaHref), 'Anruf-CTA liefert tel:-Href');
+  }
 }
+
+const callItem = items.find((i) => i.actionId === 'offer_opened_call');
+assert.ok(callItem, 'Mindestens eine Anruf-Empfehlung im Fixture');
+assert.match(callItem.ctaHref, /^tel:/i);
 
 assert.equal(
   buildNaturalRecommendationSummary({
