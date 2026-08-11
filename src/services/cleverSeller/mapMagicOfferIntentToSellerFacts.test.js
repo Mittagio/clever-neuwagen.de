@@ -158,4 +158,41 @@ Gültig bis 15.08.2026 10:00 Uhr`;
   );
 }
 
+// Offer-PDF mit Institutions-Mail → PREPARE_OFFER, kein Inbound Treffer prüfen
+{
+  const withBankContact = `PDF: EV2 36 Monate Leasingangebot.pdf
+
+Kia EV2 Earth Leasingangebot
+Laufzeit 36 Monate
+15.000 km / Jahr
+Monatsrate 329 €
+kundenservice@lease.kiafinance.de
+Mit freundlichen Grüßen
+Kia Finance`;
+  const interpretedOffer = interpretSellerInput(withBankContact, {
+    attachments: [{ kind: 'configurator_pdf', mimeType: 'application/pdf' }],
+  });
+  assert.ok(interpretedOffer.intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+  assert.ok(!interpretedOffer.intents.some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD));
+  assert.ok(!interpretedOffer.inboundContact?.email);
+
+  const offerTurn = runCleverSellerTurn({
+    lead: {},
+    sellerInput: withBankContact,
+    attachments: [{ kind: 'configurator_pdf', mimeType: 'application/pdf', fileName: 'EV2 36 Monate Leasingangebot.pdf' }],
+    leadsSnapshot: [
+      lead,
+      { id: 'rambo', contact: { name: 'Rambo Gartenbau', email: 'a@b.de', phone: '0711' } },
+    ],
+    scopeHint: 'dashboard',
+  });
+  assert.ok(!offerTurn.inboundLead?.detected);
+  assert.ok(offerTurn.intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+  const offerReview = offerTurn.reviewModel || buildUniversalReviewModel(offerTurn);
+  assert.ok(
+    ['offer_prepare', 'offer_incomplete', 'offer_and_message_review'].includes(offerReview?.reviewType),
+    `offerPdf reviewType=${offerReview?.reviewType}`,
+  );
+}
+
 console.log('mapMagicOfferIntentToSellerFacts.test.js: OK');

@@ -15,8 +15,18 @@ import {
 import { buildAdvisorInitials } from '../crm/customerPortalAdvisorService.js';
 
 export const SELLER_INSIGHT_SOURCE = 'seller';
+/** Clever-erkannt (Inbound/Extraktion) – Chip-Optik „magical“, nicht VK-Picker */
+export const CLEVER_INSIGHT_SOURCE = 'clever';
 export const MIGRATED_FROM_KUNDENHELFER = 'kundenhelfer';
 export const SELLER_BADGE_FALLBACK = 'VK';
+
+function normalizeInsightSource(raw = null) {
+  const key = String(raw ?? '').trim().toLowerCase();
+  if (key === CLEVER_INSIGHT_SOURCE || key === 'openai_interpretation' || key === 'customer_message') {
+    return CLEVER_INSIGHT_SOURCE;
+  }
+  return SELLER_INSIGHT_SOURCE;
+}
 
 export const SELLER_INSIGHT_CONTEXT = {
   PHONE: 'phone_call',
@@ -74,7 +84,7 @@ export function normalizeSellerInsight(insight = {}) {
   return {
     id: insight.id ?? createSellerInsightId(),
     text,
-    source: SELLER_INSIGHT_SOURCE,
+    source: normalizeInsightSource(insight.source),
     context: insight.context ?? null,
     createdAt: insight.createdAt ?? insight.updatedAt ?? new Date().toISOString(),
     updatedAt: insight.updatedAt ?? insight.createdAt ?? new Date().toISOString(),
@@ -256,6 +266,7 @@ export function hasSellerInsights(lead = {}) {
  *   sellerName?: string,
  *   sellerInitials?: string,
  *   understoodLabels?: string[],
+ *   source?: 'seller'|'clever'|string,
  *   attachment?: { type?: string, dataUrl?: string, createdAt?: string }|null,
  * }} [options]
  */
@@ -275,7 +286,7 @@ export function createSellerInsight(text = '', options = {}) {
   return normalizeSellerInsight({
     id: createSellerInsightId(),
     text: equipmentLabel || trimmed,
-    source: SELLER_INSIGHT_SOURCE,
+    source: normalizeInsightSource(options.source),
     context: options.context ?? null,
     createdAt: now,
     updatedAt: now,

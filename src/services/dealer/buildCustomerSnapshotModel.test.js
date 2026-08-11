@@ -892,6 +892,8 @@ function getNeedProfileLike() {
   assert.equal(normalizeKnowledgeChipSource('customerAdvisor'), 'customer');
   assert.equal(normalizeKnowledgeChipSource('seller'), 'seller');
   assert.equal(normalizeKnowledgeChipSource('document'), 'document');
+  assert.equal(normalizeKnowledgeChipSource('clever'), 'clever');
+  assert.equal(normalizeKnowledgeChipSource('openai_interpretation'), 'clever');
   assert.equal(normalizeKnowledgeChipSource('wish'), 'seller', 'wish/kern → seller-neutral');
   assert.equal(resolveCustomerSourceChannelLabel({ source: 'landing' }), 'Landingpage');
 
@@ -934,6 +936,18 @@ function getNeedProfileLike() {
   assert.equal(equip?.priority, EQUIPMENT_WISH_PRIORITY.REQUIRED);
   assert.match(equip?.label || '', /·\s*muss/i, 'internes Fact-Label darf Suffix tragen');
   assert.equal(stripEquipmentPrioritySuffix(equip.label), 'Totwinkelassistent');
+
+  let withClever = appendSellerInsightToLead(lead, 'Anhängerkupplung wichtig', {
+    source: 'clever',
+  });
+  const snapClever = buildCustomerSnapshotModel(withClever);
+  const ahk = snapClever.softChips.find((f) => /Anhänger|AHK/i.test(f.label || ''));
+  assert.ok(ahk, 'Clever-Insight landet als Soft-Chip');
+  assert.equal(ahk?.source, 'clever');
+  assert.match(
+    buildKnowledgeChipProvenanceTitle(ahk) || '',
+    /Von Clever erkannt/,
+  );
   console.log('✓ Knowledge source + equipment strip');
 }
 

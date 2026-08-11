@@ -3,11 +3,15 @@
  * Interne Source-Keys bleiben im Modell; die UI zeigt nur Labels.
  * Produktregel: Clever zeigt keine Dubletten-Flut – wenige prüfbare Vorgangsgruppen.
  */
+import { PAYMENT_TYPES } from '../../data/leadTypes.js';
 import {
   buildKundenaktePath,
   formatInquiryVehicleLine,
   getNewInquiryLeads,
 } from '../leadAkteEntry.js';
+
+export const CLEVER_EINGANG_DUPLICATE_BANNER =
+  'Clever vermutet eine Dublette und empfiehlt die Zusammenführung der Vorgänge.';
 
 export const CLEVER_EINGANG_STATUS = {
   DUPLICATE: 'duplicate',
@@ -339,30 +343,44 @@ function resolveBaseStatus(lead = {}) {
   return CLEVER_EINGANG_STATUS.READY;
 }
 
-function resolveNextAction(status, lead = {}) {
+function resolveNextAction(status, lead = {}, groupSize = 1) {
   switch (status) {
     case CLEVER_EINGANG_STATUS.DUPLICATE:
+      if (groupSize >= 7) {
+        return {
+          id: 'review_group',
+          label: 'Vorgänge prüfen →',
+          href: buildKundenaktePath(lead.id),
+        };
+      }
+      if (groupSize >= 3) {
+        return {
+          id: 'review_group',
+          label: 'Zusammenführen prüfen →',
+          href: buildKundenaktePath(lead.id),
+        };
+      }
       return {
         id: 'review_group',
-        label: 'Vorgänge prüfen',
+        label: 'Dublette prüfen →',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.INCOMPLETE:
       return {
         id: 'complete_details',
-        label: 'Angaben ergänzen',
+        label: 'Angaben ergänzen →',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.ASSIGNED:
       return {
         id: 'open_customer',
-        label: 'Zur Kundenakte',
+        label: 'Zur Kundenakte →',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.REVIEW:
       return {
         id: 'review_akte',
-        label: 'Akte prüfen',
+        label: 'Akte prüfen →',
         href: buildKundenaktePath(lead.id),
       };
     case CLEVER_EINGANG_STATUS.READY:
@@ -370,20 +388,20 @@ function resolveNextAction(status, lead = {}) {
       if (lead.contractPending || lead.crm?.contractPending) {
         return {
           id: 'review_contract',
-          label: 'Vertrag prüfen',
+          label: 'Vertrag prüfen →',
           href: buildKundenaktePath(lead.id),
         };
       }
       if (lead.needsOffer === true) {
         return {
           id: 'prepare_offer',
-          label: 'Angebot vorbereiten',
+          label: 'Angebot vorbereiten →',
           href: buildKundenaktePath(lead.id),
         };
       }
       return {
         id: 'take_over',
-        label: 'Übernehmen',
+        label: 'Übernehmen →',
         href: buildKundenaktePath(lead.id),
       };
   }
@@ -461,10 +479,9 @@ function buildContextHint(status, lead = {}, groupSize = 1, members = []) {
   if (status === CLEVER_EINGANG_STATUS.DUPLICATE && groupSize > 1) {
     // Große Gruppen: ruhig bundeln, ohne Alarm-Rhetorik
     if (groupSize >= 7) {
-      return `${groupSize} Vorgänge gebündelt`;
+      return `${groupSize} Vorgänge bereits gebündelt`;
     }
-    const reason = buildDuplicateReason(members, lead);
-    return `${groupSize} ähnliche Vorgänge · ${reason}`;
+    return `${groupSize} ähnliche Vorgänge gefunden`;
   }
   if (status === CLEVER_EINGANG_STATUS.INCOMPLETE) {
     return 'Name oder Kontaktdaten fehlen';
@@ -473,9 +490,87 @@ function buildContextHint(status, lead = {}, groupSize = 1, members = []) {
     return 'Ergänzung zu bestehendem Kunden';
   }
   if (status === CLEVER_EINGANG_STATUS.REVIEW) {
-    return 'Angaben prüfen, bevor die Akte weitergeht';
+    return 'Angaben brauchen deine Prüfung';
   }
   return null;
+}
+
+/** Problematische Vorgänge brauchen visuelle Aufmerksamkeit – Bereit/Zugeordnet bleiben ruhig. */
+export function isCleverEingangAttentionStatus(status) {
+  return (
+    status === CLEVER_EINGANG_STATUS.DUPLICATE
+    || status === CLEVER_EINGANG_STATUS.REVIEW
+    || status === CLEVER_EINGANG_STATUS.INCOMPLETE
+  );
+}
+
+function formatEuroAmount(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '';
+  return `${num.toLocaleString('de-DE')} €`;
+}
+
+/**
+ * Erkannte Angaben für die Detail-Pane (Chip-Grid).
+ * Nutzt vorhandene Lead-/Wish-Felder; fehlende Werte werden weggelassen.
+ * @param {object} lead
+ * @returns {{ id: string, icon: string, label: string }[]}
+ */
+export function buildRecognizedFactChips(lead = {}) {
+  const chips = [];
+  const wish = lead.wish ?? {};
+
+  const vehicle = formatInquiryVehicleLine(lead);
+  if (vehicle && vehicle !== 'Fahrzeug offen') {
+    chips.push({ id: 'vehicle', icon: 'vehicle', label: vehicle });
+  }
+
+  const paymentType = lead.paymentType ?? wish.paymentType ?? null;
+  if (paymentType && PAYMENT_TYPES[paymentType]?.label) {
+    chips.push({ id: 'payment', icon: 'document', label: PAYMENT_TYPES[paymentType].label });
+  }
+
+  const termMonths = wish.termMonths ?? lead.termMonths ?? null;
+  if (termMonths != null && Number(termMonths) > 0) {
+    chips.push({ id: 'term', icon: 'calendar', label: `${Number(termMonths)} Monate` });
+  }
+
+  const transmission = lead.vehicle?.transmission
+    ?? wish.transmission
+    ?? lead.transmission
+    ?? null;
+  if (transmission) {
+    chips.push({ id: 'transmission', icon: 'gear', label: String(transmission).trim() });
+  }
+
+  const downPayment = wish.downPayment ?? lead.downPayment;
+  if (downPayment != null && downPayment !== '' && Number.isFinite(Number(downPayment))) {
+    chips.push({
+      id: 'downPayment',
+      icon: 'money',
+      label: `Anzahlung ${formatEuroAmount(downPayment)}`,
+    });
+  }
+
+  const mileage = wish.mileagePerYear ?? lead.mileagePerYear ?? null;
+  if (mileage != null && Number(mileage) > 0) {
+    chips.push({
+      id: 'mileage',
+      icon: 'calendar',
+      label: `${Number(mileage).toLocaleString('de-DE')} km/Jahr`,
+    });
+  }
+
+  const desiredRate = lead.desiredRate ?? wish.desiredRate ?? null;
+  if (desiredRate != null && Number(desiredRate) > 0 && !chips.some((c) => c.id === 'downPayment')) {
+    chips.push({
+      id: 'rate',
+      icon: 'money',
+      label: `${formatEuroAmount(desiredRate)} / Monat`,
+    });
+  }
+
+  return chips;
 }
 
 function isUnreadLead(lead = {}) {
@@ -488,11 +583,16 @@ function buildItemFromGroup(members = [], nowMs = Date.now()) {
   const isDuplicateGroup = members.length > 1;
   const baseStatus = resolveBaseStatus(primary);
   const status = isDuplicateGroup ? CLEVER_EINGANG_STATUS.DUPLICATE : baseStatus;
-  const nextAction = resolveNextAction(status, primary);
+  const nextAction = resolveNextAction(status, primary, members.length);
   const createdAt = primary.createdAt ?? primary.updatedAt ?? null;
   const sourceLabel = isDuplicateGroup
-    ? `aus ${buildGroupSourceLabel(members)}`
-    : mapInboxSourceLabel(primary.source);
+    ? buildGroupSourceLabel(members)
+    : mapInboxSourceShortLabel(primary.source);
+  const displayName = buildDisplayTitle(primary, status);
+  const title = isDuplicateGroup && members.length > 1
+    ? `${displayName} · ${members.length} Vorgänge`
+    : displayName;
+  const memberCountLabel = members.length > 1 ? `${members.length} Vorgänge` : null;
 
   return {
     id: isDuplicateGroup ? `group:${members.map((m) => m.id).sort().join('+')}` : primary.id,
@@ -504,16 +604,24 @@ function buildItemFromGroup(members = [], nowMs = Date.now()) {
     members,
     status,
     statusLabel: CLEVER_EINGANG_STATUS_LABELS[status],
-    title: buildDisplayTitle(primary, status),
+    needsAttention: isCleverEingangAttentionStatus(status),
+    displayName,
+    title,
+    memberCountLabel,
     vehicleLabel: formatInquiryVehicleLine(primary),
     sourceKey: primary.source ?? null,
     sourceLabel,
     sourceLabels: isDuplicateGroup
       ? [...new Set(members.map((m) => mapInboxSourceShortLabel(m.source)))]
-      : [mapInboxSourceLabel(primary.source)],
+      : [mapInboxSourceShortLabel(primary.source)],
     createdAt,
     relativeTime: formatInboxRelativeTime(createdAt, nowMs),
     contextHint: buildContextHint(status, primary, members.length, members),
+    duplicateReason: isDuplicateGroup ? buildDuplicateReason(members, primary) : null,
+    detailBanner: status === CLEVER_EINGANG_STATUS.DUPLICATE
+      ? CLEVER_EINGANG_DUPLICATE_BANNER
+      : null,
+    recognizedFacts: buildRecognizedFactChips(primary),
     nextAction,
     isUnread: members.some((m) => isUnreadLead(m)),
     hasCustomerFile: Boolean(primary.customerId) && !isLeadIdentityIncomplete(primary),
@@ -555,15 +663,24 @@ export function buildCleverInboxSummary(items = []) {
 
   const groupHint = duplicates > 0
     ? (duplicates === 1
-      ? '1 Gruppe mit möglichen Dubletten erkannt.'
-      : `${duplicates} Gruppen mit möglichen Dubletten erkannt.`)
+      ? '1 Gruppe mit möglichen Dubletten erkannt'
+      : `${duplicates} Gruppen mit möglichen Dubletten erkannt`)
     : null;
+
+  const stats = [
+    { id: 'open', label: 'offen', count: total, icon: 'inbox', tone: 'lavender' },
+    { id: 'review', label: 'prüfen', count: review, icon: 'search', tone: 'blue' },
+    { id: 'duplicate', label: 'mögliche Dubletten', count: duplicates, icon: 'people', tone: 'lavender' },
+    { id: 'ready', label: 'bereit', count: ready, icon: 'check', tone: 'green' },
+    { id: 'incomplete', label: 'unvollständig', count: incomplete, icon: 'warning', tone: 'orange' },
+  ];
 
   if (total === 0) {
     return {
       line: 'Keine neuen Vorgänge',
       groupHint: null,
       filters,
+      stats,
       total,
       unreadCount: 0,
       duplicates,
@@ -575,10 +692,19 @@ export function buildCleverInboxSummary(items = []) {
     };
   }
 
+  const lineParts = [
+    `${total} offen`,
+    `${review} prüfen`,
+    `${duplicates} mögliche Dubletten`,
+    `${ready} bereit`,
+    `${incomplete} unvollständig`,
+  ];
+
   return {
-    line: filters.map((f) => `${f.label} ${f.count}`).join(' · '),
+    line: lineParts.join(' · '),
     groupHint,
     filters,
+    stats,
     total,
     unreadCount,
     duplicates,

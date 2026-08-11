@@ -947,8 +947,19 @@
   display: none;
 }
 
+/* Secondary next-actions: quieter than Soft Need (no equal toolbar weight) */
 .sw-composer__chip--secondary {
-  display: none;
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #64748b;
+  background: #f8fafc;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.sw-composer__chip--secondary:hover:not(:disabled) {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #475569;
+  background: #f1f5f9;
 }
 
 @media (max-width: 720px) {
@@ -1101,6 +1112,12 @@
   border-color: rgba(109, 91, 184, 0.35);
   color: #4c3d8f;
   background: #f8f6ff;
+}
+
+.sw-composer__chip--important {
+  border-color: rgba(109, 91, 184, 0.4);
+  color: #3f3278;
+  background: #f3f0ff;
 }
 
 .sw-composer__chip:disabled {
@@ -1491,7 +1508,16 @@
 .sw-composer__feedback {
   margin: 8px 0 0;
   font-size: 0.8125rem;
-  color: #047857;
+  color: #5b5278;
+}
+
+/* Feedback-Freeze: kein Success-Grün – neutral/lavender; Fehler klar */
+.sw-composer__feedback--neutral {
+  color: #5b5278;
+}
+
+.sw-composer__feedback--error {
+  color: #8a5a2b;
 }
 
 .sw-composer__file {

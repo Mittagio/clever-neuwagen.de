@@ -113,8 +113,46 @@ Rabatt 449 %
   const review = buildUniversalReviewModel(turn);
   if (review?.reviewType === 'offer_and_message_review' || review?.reviewType === 'offer_prepare') {
     assert.equal((review.groups || []).length, 0);
-    assert.match(String(review.hero?.eyebrow || ''), /Angebot vorbereitet|unvollständig/i);
+    assert.doesNotMatch(String(review.hero?.eyebrow || ''), /unvollständig/i);
+    if (review.reviewType !== 'offer_incomplete') {
+      assert.match(String(review.hero?.eyebrow || ''), /Angebot vorbereitet/i);
+    }
     assert.doesNotMatch(String(review.hero?.name || ''), /^Kai Drechsel$/);
+  }
+}
+
+// --- Incomplete Offer: kein Status-Spam, CTAs für Rate/PDF ---
+{
+  const incompleteLead = {
+    ...kaiLead,
+    wish: {
+      ...kaiLead.wish,
+      model: 'EV3',
+      trim: 'Air',
+      paymentType: 'leasing',
+      termMonths: 36,
+      mileagePerYear: 15000,
+      downPayment: 0,
+    },
+  };
+  const turn = runCleverSellerTurn({
+    lead: incompleteLead,
+    sellerInput: 'Erstelle ein Leasingangebot Kia EV3 Air mit 10 % Rabatt.',
+    customerName: 'Kai Drechsel',
+    scopeHint: 'dashboard',
+  });
+  const review = buildUniversalReviewModel(turn);
+  if (review?.reviewType === 'offer_incomplete' || review?.actionSections?.some((s) => s.kind === 'offer_incomplete')) {
+    assert.equal(review.hero?.eyebrow || null, null);
+    assert.doesNotMatch(String(review.summaryLine || ''), /unvollständig/i);
+    assert.doesNotMatch(String(review.hero?.eyebrow || ''), /unvollständig/i);
+    const offerSec = (review.actionSections || []).find((s) => (
+      s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'
+    ));
+    assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'open_offer_handoff'));
+    assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'upload_pdf'));
+    assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'enter_rate'));
+    assert.doesNotMatch(String(offerSec?.line || ''), /unvollständig/i);
   }
 }
 

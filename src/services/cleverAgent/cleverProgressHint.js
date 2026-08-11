@@ -18,7 +18,8 @@ const HINT_BY_KIND = Object.freeze({
   [CLEVER_LONG_JOB.AGENT]: 'Clever denkt nach …',
   [CLEVER_LONG_JOB.PDF_OCR]: 'PDF wird gelesen …',
   [CLEVER_LONG_JOB.SCREENSHOT_OCR]: 'Screenshot wird gelesen …',
-  [CLEVER_LONG_JOB.SERVER_INTERPRET]: 'Clever wertet aus …',
+  // Home-Intake: kein „Clever wertet aus“-Spam – stille Wartezeit
+  [CLEVER_LONG_JOB.SERVER_INTERPRET]: null,
   [CLEVER_LONG_JOB.MAGIC_PROPOSE]: 'Nachricht wird vorbereitet …',
 });
 

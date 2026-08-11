@@ -622,6 +622,35 @@
   font-weight: inherit;
 }
 
+/* Clever erkannt: zartes Lavendel + feiner Purple-Rand, optional einmal Glow */
+.cust-kundenbild__chip--source-clever {
+  background: rgba(109, 91, 184, 0.07);
+  border: 1px solid rgba(109, 91, 184, 0.22);
+  font-weight: 500;
+  animation: cust-kb-chip-clever-glow 1.15s ease 1;
+}
+
+.cust-kundenbild__chip-sparkle {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: rgba(109, 91, 184, 0.72);
+  opacity: 0.85;
+}
+
+.cust-kundenbild__chip-source-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.62;
+  color: rgba(109, 91, 184, 0.75);
+}
+
+.cust-kundenbild__chip-source-icon.cn-line-icon {
+  width: 13px;
+  height: 13px;
+}
+
 .cust-kundenbild__chip--source-customer {
   background: var(--color-clever-tint, #ece8f8);
   border: 1.5px solid var(--color-clever-border, rgba(109, 91, 184, 0.28));
@@ -643,10 +672,21 @@
   border-color: #e2e8f0;
 }
 
-/* Customer-Quelle überschreibt Kategorie-Neutral nach dem Category-Block */
+/* Customer-/Clever-Quelle überschreibt Kategorie-Neutral nach dem Category-Block */
 .cust-kundenbild__chip.cust-kundenbild__chip--source-customer {
   background: var(--color-clever-tint, #ece8f8);
   border: 1.5px solid var(--color-clever-border, rgba(109, 91, 184, 0.28));
+}
+
+.cust-kundenbild__chip.cust-kundenbild__chip--source-clever {
+  background: rgba(109, 91, 184, 0.07);
+  border: 1px solid rgba(109, 91, 184, 0.22);
+}
+
+@keyframes cust-kb-chip-clever-glow {
+  0% { box-shadow: 0 0 0 0 rgba(109, 91, 184, 0.16); }
+  65% { box-shadow: 0 0 0 4px rgba(109, 91, 184, 0); }
+  100% { box-shadow: none; }
 }
 
 .cust-kundenbild__chip:active {

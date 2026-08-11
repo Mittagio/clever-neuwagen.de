@@ -317,7 +317,8 @@ const MOCK_PLAN = {
   assert.equal(shouldShowUniversalReview(turnOk), true);
   const review = turnOk.reviewModel || buildUniversalReviewModel(turnOk);
   assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
-  assert.match(review.title || '', /Beratungsfall|Abgleich|Multi/i);
+  assert.equal(String(review.title || '').trim(), '');
+  assert.equal(review.quietIntake, true);
   assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
   assert.ok(!/DE89 3704|L01X00T47/i.test(JSON.stringify(review.groups || [])));
 
@@ -335,8 +336,9 @@ const MOCK_PLAN = {
   const wishGroup = (review.groups || []).find((g) => g.id === 'wish');
   assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
   assert.match(wishGroup?.line || '', /AHK/i);
-  assert.ok((review.progressLines || []).length <= 2);
-  assert.ok((review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
+  assert.equal((review.progressLines || []).length, 0, 'keine Protokoll-Statuszeilen in Seller-UI');
+  assert.ok(!/Seller-Dump|zusammengeführt|Clever hat einen Beratungsfall/i.test(String(review.title || '')));
+  assert.ok((review.debugDetails?.progressLines || []).some((l) => /Dokument zusammengeführt|Dump.*zusammengeführt/i.test(l)));
   const primary = review.actionSections?.[0]?.primaryActions || [];
   assert.equal(primary[0]?.action, 'accept_multi_source_intake');
   assert.ok(primary.some((a) => /GW.*Picanto.*erfassen/i.test(a.label || '')));

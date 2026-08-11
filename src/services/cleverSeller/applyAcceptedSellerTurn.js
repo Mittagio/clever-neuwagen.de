@@ -588,10 +588,13 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   }
 
   const labels = facts.map((f) => String(f.label ?? '').trim()).filter(Boolean);
+  // Inbound-/Extraktions-Accept → Clever-Quelle (nicht Merken/Picker)
+  const insightSource = inbound?.detected ? 'clever' : 'seller';
   let nextLead = appendSellerInsightsFromTexts(workingLead, labels, {
     context: 'universal_review',
     sellerId: options.sellerId,
     sellerName: options.sellerName,
+    source: insightSource,
   });
 
   // Epic 2: Dual commercial scenarios → eine Spur + zwei Offer-Slots
@@ -778,12 +781,12 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
       const posted = postCleverAssistFeedCard({
         lead: nextLead,
         title: isCustomerReply
-          ? '✨ Clever hat die Kundenantwort erkannt'
+          ? 'Kundenantwort übernommen'
           : isInbound
-            ? '✨ Clever hat eine Anfrage erkannt'
+            ? 'Anfrage übernommen'
             : isHomepageDual
-              ? '✨ Clever hat die Anfrage vorbereitet'
-              : '✨ Clever hat verstanden',
+              ? 'Anfrage übernommen'
+              : 'Übernommen',
         text,
         visibleToCustomer: false,
       });

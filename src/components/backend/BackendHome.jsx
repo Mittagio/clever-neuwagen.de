@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLeads } from '../../context/LeadsContext.jsx';
 import { useCleverComposerOptional } from '../../context/CleverComposerContext.jsx';
 import { buildDashboardTodayRecommendations } from '../../services/journey/buildDashboardTodayRecommendations.js';
-import CleverEmpfiehltToday from './CleverEmpfiehltToday.jsx';
-import BackendMainTiles from './BackendMainTiles.jsx';
+import BackendHomeWidgets from './BackendHomeWidgets.jsx';
+import BackendHomeTools from './BackendHomeTools.jsx';
 import './BackendHome.css';
 
 export default function BackendHome({ onNavigateArea }) {
@@ -14,7 +14,7 @@ export default function BackendHome({ onNavigateArea }) {
   const composerSlotRef = useRef(null);
 
   const cleverTodayItems = useMemo(
-    () => buildDashboardTodayRecommendations(leads, { maxItems: 10 }),
+    () => buildDashboardTodayRecommendations(leads, { maxItems: 3 }),
     [leads],
   );
 
@@ -48,9 +48,9 @@ export default function BackendHome({ onNavigateArea }) {
         data-testid="composer-hero-slot"
       />
 
-      <BackendMainTiles onNavigateArea={handleNavigateArea} leads={leads} />
+      <BackendHomeWidgets leads={leads} empfiehltItems={cleverTodayItems} />
 
-      <CleverEmpfiehltToday items={cleverTodayItems} />
+      <BackendHomeTools onNavigateArea={handleNavigateArea} />
     </div>
   );
 }

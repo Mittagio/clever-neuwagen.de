@@ -45,7 +45,32 @@ assert.ok(model.groups.some((g) => g.id === 'customer'));
 assert.ok(model.groups.some((g) => g.id === 'finance'));
 assert.ok(model.groups.some((g) => g.id === 'vehicle_current'));
 assert.ok(model.groups.some((g) => g.id === 'contract'));
-assert.equal(model.primaryCta, 'Übernehmen');
+// Understanding freeze: keine generische Bestätigungs-Warnung
+assert.ok(
+  !(model.warnings || []).some((w) => /Mindestens ein Wert braucht kurze Bestätigung/i.test(w)),
+);
+assert.ok(
+  !(turn.warnings || []).some((w) => /Mindestens ein Wert braucht kurze Bestätigung/i.test(w)),
+);
+const uncertainChips = (model.groups || [])
+  .flatMap((g) => g.chips || [])
+  .filter((c) => c && typeof c === 'object' && c.needsConfirmation);
+if (uncertainChips.length === 1 || (
+  uncertainChips.length > 0
+  && uncertainChips.length < (model.groups || []).flatMap((g) => g.chips || []).length
+)) {
+  assert.equal(model.hideGlobalAccept, true);
+  assert.equal(model.primaryCta, null);
+} else {
+  assert.equal(model.primaryCta, 'Übernehmen');
+}
+// Unsichere Werte als Chip-Objekte mit needsConfirmation
+assert.ok(
+  (model.groups || []).some((g) => (g.chips || []).some((c) => (
+    c && typeof c === 'object' && Object.prototype.hasOwnProperty.call(c, 'needsConfirmation')
+  ))),
+  'Chips tragen needsConfirmation für Unsicherheits-Style',
+);
 
 // Outlook-Dump → Review-Gruppen
 const outlookDump = `Eduard Hafner Urbach Interesse an PROBEFAHRT KIA SELTOS / KIA K4 SW 0179 7072736 Skoda Octavia Schalter
@@ -120,13 +145,40 @@ assert.equal(structuredApplied.lead.crm?.needProfile?.transmission, 'automatic')
 assert.ok(structuredApplied.lead.crm?.needProfile?.equipmentWishes?.includes('Schiebedach'));
 
 assert.equal(shouldShowUniversalReview({ extractedFacts: [] }), false);
+// Clever 2.0: sicherer Context-Dump → Compact Confirmation, kein Universal-Review
 assert.equal(
   shouldShowUniversalReview({
     extractedFacts: [{ label: 'x', factClass: 'customer_fact' }],
     intents: [{ type: 'update_customer_context' }],
   }),
+  false,
+);
+// Unsicherer Fakt → Review (ohne generische Banner-Warnung)
+assert.equal(
+  shouldShowUniversalReview({
+    extractedFacts: [{ label: '300 €', factClass: 'commercial_preference', needsConfirmation: true }],
+    intents: [{ type: 'update_customer_context' }],
+  }),
   true,
 );
+{
+  const uncertainModel = buildUniversalReviewModel({
+    extractedFacts: [
+      { label: 'Leasing', field: 'paymentType', factClass: 'commercial_preference', needsConfirmation: false },
+      { label: '300 €', field: 'monthlyBudget', factClass: 'commercial_preference', needsConfirmation: true },
+    ],
+  });
+  assert.equal(uncertainModel.hideGlobalAccept, true);
+  assert.equal(uncertainModel.primaryCta, null);
+  assert.ok(
+    !(uncertainModel.warnings || []).some((w) => /kurze Bestätigung/i.test(w)),
+  );
+  const uncertainChip = (uncertainModel.groups || [])
+    .flatMap((g) => g.chips || [])
+    .find((c) => c?.needsConfirmation);
+  assert.ok(uncertainChip, 'unsicherer Chip im Model');
+  assert.equal(uncertainChip.needsConfirmation, true);
+}
 
 // Multi-Aktion: angehängtes Angebot + km ändern + Nachricht
 const multiTurn = runCleverSellerTurn({

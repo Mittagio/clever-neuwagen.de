@@ -1170,8 +1170,12 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const isContractCompare = !isContractIntake && (
     isContractOfferCompareQuery(t) || isContractCompareMessage
   );
-  const isReplyPaste = !isContractIntake && !isContractCompare && isCustomerReplyPaste(t);
+  // Offer-/Konfigurator-PDF: kein Inbound-/Reply-Intake (Bank-/Leasing-Kontakte ≠ Kunde)
+  const offerPdfDrop = isOfferPdfDropContext(options.attachments, t);
+  const isReplyPaste = !isContractIntake && !isContractCompare && !offerPdfDrop
+    && isCustomerReplyPaste(t);
   const isInboundPaste = !isContractIntake && !isContractCompare && !isReplyPaste
+    && !offerPdfDrop
     && isInboundLeadPaste(t);
   const looksLikeContractLookup = isCustomerContractQuery(t)
     && !/\b(kinder|verheiratet|wunschrate|netto|in\s+zahlung|nehmen\s+wir)\b/i.test(t);
@@ -1287,7 +1291,6 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.RECOMMEND_NEXT_STEP, 0.93);
   }
 
-  const offerPdfDrop = isOfferPdfDropContext(options.attachments, t);
   const explicitAppointmentCue = hasExplicitAppointmentSellerCue(t);
   // Reiner Offer-/Konfigurator-PDF-Drop: kein Auto-Termin aus Boilerplate
   const allowAppointmentIntent = !offerPdfDrop || explicitAppointmentCue;
@@ -1542,7 +1545,11 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
   }
 
   let inboundContact = null;
-  if (isCustomerReplyPaste(normalized) || isInboundLeadPaste(normalized)) {
+  // Offer-PDF: Institutionskontakte nicht als Inbound-Kundenfacts extrahieren
+  if (
+    !isOfferPdfDropContext(options.attachments, normalized)
+    && (isCustomerReplyPaste(normalized) || isInboundLeadPaste(normalized))
+  ) {
     inboundContact = extractInboundContact(normalized);
     const contactFacts = buildInboundContactFacts(inboundContact);
     for (const fact of contactFacts) {

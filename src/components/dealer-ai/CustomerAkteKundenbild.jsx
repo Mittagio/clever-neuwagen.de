@@ -132,7 +132,8 @@ function chipTitle(chip) {
 function chipSourceClass(chip) {
   const style = normalizeKnowledgeChipSource(chip?.source);
   if (style === 'customer') return 'cust-kundenbild__chip--source-customer';
-  if (style === 'seller' || style === 'document' || style === 'clever') {
+  if (style === 'clever') return 'cust-kundenbild__chip--source-clever';
+  if (style === 'seller' || style === 'document') {
     return 'cust-kundenbild__chip--source-seller';
   }
   return 'cust-kundenbild__chip--source-seller';
@@ -218,7 +219,11 @@ function SnapshotChip({ chip, onFactTap, compact = false }) {
       onClick={() => onFactTap?.(chip)}
       aria-label={isEmpty ? `${displayLabel} ergänzen` : `${displayLabel} bearbeiten`}
     >
-      {!compact ? <ChipIcon icon={chip.icon || category} /> : null}
+      {sourceStyle === 'clever' ? (
+        <span className="cust-kundenbild__chip-sparkle" aria-hidden>✦</span>
+      ) : sourceStyle === 'customer' ? (
+        <IconUser className="cust-kundenbild__chip-source-icon" aria-hidden />
+      ) : (!compact ? <ChipIcon icon={chip.icon || category} /> : null)}
       <span className="cust-kundenbild__chip-label">{displayLabel}</span>
     </button>
   );

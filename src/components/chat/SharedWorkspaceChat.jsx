@@ -20,6 +20,8 @@ export default function SharedWorkspaceChat({
   onSend,
   sending = false,
   sendFeedback = '',
+  /** error | neutral | '' – Freeze: kein Success-Grün unter dem Composer */
+  sendFeedbackKind = '',
   placeholder = '',
   composerLabel = '',
   sendAriaLabel = 'Senden',
@@ -689,7 +691,11 @@ export default function SharedWorkspaceChat({
                   <button
                     key={chip.id}
                     type="button"
-                    className="sw-composer__chip"
+                    className={[
+                      'sw-composer__chip',
+                      chip.important ? 'sw-composer__chip--important' : '',
+                      chip.secondary ? 'sw-composer__chip--secondary' : '',
+                    ].filter(Boolean).join(' ')}
                     disabled={sending}
                     onClick={() => {
                       setMoreChipsOpen(false);
@@ -924,7 +930,19 @@ export default function SharedWorkspaceChat({
           ) : null}
 
           {sendFeedback ? (
-            <p className="sw-composer__feedback" role="status">{sendFeedback}</p>
+            <p
+              className={[
+                'sw-composer__feedback',
+                sendFeedbackKind === 'error' ? 'sw-composer__feedback--error' : '',
+                sendFeedbackKind === 'neutral' || !sendFeedbackKind
+                  ? 'sw-composer__feedback--neutral'
+                  : '',
+              ].filter(Boolean).join(' ')}
+              role="status"
+              data-feedback-kind={sendFeedbackKind || 'neutral'}
+            >
+              {sendFeedback}
+            </p>
           ) : null}
           {onAttachFile ? (
             <input

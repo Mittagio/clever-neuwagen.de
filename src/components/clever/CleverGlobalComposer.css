@@ -27,8 +27,9 @@
   bottom: auto;
   width: 100%;
   max-height: none;
-  border-radius: 18px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
 }
 
 .clever-global-composer--docked {
@@ -119,26 +120,40 @@
 .clever-global-composer__quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   margin: 0;
-  padding: 0.35rem 0 0.15rem;
+  padding: 0.55rem 0 0.15rem;
 }
 
 .clever-global-composer__quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   flex: 0 0 auto;
-  min-height: 32px;
-  padding: 6px 12px;
+  min-height: 38px;
+  padding: 8px 14px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 999px;
   background: #fff;
   color: #334155;
   font: inherit;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 650;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
+}
+
+.clever-global-composer__quick-icon {
+  display: inline-flex;
+  color: var(--color-clever, #6d5bb8);
+}
+
+.clever-global-composer__quick-icon .cn-line-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .clever-global-composer__quick-chip:hover:not(:disabled) {
@@ -155,11 +170,11 @@
 .clever-global-composer__review {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
   margin: 0;
-  padding: 0.5rem 0.75rem 0;
+  padding: 0.35rem 0.75rem 0;
   overflow-y: auto;
-  max-height: min(52vh, 420px);
+  max-height: min(48vh, 380px);
 }
 
 .clever-global-composer__progress {
@@ -230,9 +245,9 @@
 .clever-global-composer .sw-chat--composer-only .sw-chat__feed {
   flex: 0 1 auto;
   min-height: 0;
-  max-height: min(52vh, 420px);
+  max-height: min(48vh, 380px);
   overflow-y: auto;
-  padding: 0.5rem 0.75rem 0;
+  padding: 0.35rem 0.75rem 0;
   background: transparent;
   border: none;
 }
@@ -242,9 +257,23 @@
   position: sticky;
   bottom: 0;
   z-index: 2;
-  margin-top: 0.35rem;
-  padding-top: 0.35rem;
+  margin-top: 0.2rem;
+  padding-top: 0.2rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 28%);
+}
+
+/* Quiet Intake: weniger Luft zwischen Verwerfen und Suggest/Composer */
+.clever-global-composer .sw-chat--composer-only:has(.sur-card--quiet-intake) .sw-chat__desk {
+  margin-top: 0;
+}
+
+.clever-global-composer .sw-chat--composer-only:has(.sur-card--quiet-intake) .sw-composer {
+  padding-top: 4px;
+}
+
+.clever-global-composer .sw-chat--composer-only:has(.sur-card--quiet-intake) .sw-composer__chips {
+  margin-top: 0;
+  padding-top: 2px;
 }
 
 .clever-global-composer .sw-chat--composer-only .sw-chat__feed:has(.sw-chat__empty--composer) {
@@ -331,12 +360,22 @@
   }
 }
 
+/* Docked: keep a readable measure across the full viewport.
+   Hero on BackendHome fills the shared content shell (same as 3-col widgets). */
 @media (min-width: 900px) {
-  .clever-global-composer .sw-chat--composer-only .sw-chat__feed-main,
-  .clever-global-composer .sw-composer {
+  .clever-global-composer--docked .sw-chat--composer-only .sw-chat__feed-main,
+  .clever-global-composer--docked .sw-composer {
     max-width: 720px;
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .clever-global-composer--hero .sw-chat--composer-only .sw-chat__feed-main,
+  .clever-global-composer--hero .sw-composer {
+    max-width: none;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 

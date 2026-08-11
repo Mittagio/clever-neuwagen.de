@@ -24,14 +24,21 @@ assert.ok(jsx.includes('stripEquipmentPrioritySuffix'), 'Anzeige strippt Equipme
 assert.ok(jsx.includes('chipSourceClass'), 'Source-CSS-Klasse');
 assert.ok(jsx.includes('cust-kundenbild__chip--source-customer'), 'Customer-Source-Klasse');
 assert.ok(jsx.includes('cust-kundenbild__chip--source-seller'), 'Seller-Source-Klasse');
+assert.ok(jsx.includes('cust-kundenbild__chip--source-clever'), 'Clever-Source-Klasse');
+assert.ok(jsx.includes('cust-kundenbild__chip-sparkle'), 'Clever-Sparkle am Chip');
 assert.ok(jsx.includes('buildKnowledgeChipProvenanceTitle'), 'Hover-Provenance');
 
 assert.ok(css.includes('.cust-kundenbild__chip--source-customer'), 'Customer-Optik in CSS');
 assert.ok(css.includes('.cust-kundenbild__chip--source-seller'), 'Seller-Optik in CSS');
+assert.ok(css.includes('.cust-kundenbild__chip--source-clever'), 'Clever-Optik in CSS');
+assert.ok(css.includes('cust-kb-chip-clever-glow'), 'Clever einmal-Glow');
 assert.ok(!css.includes('.cust-kundenbild__chip-prio'), 'Prio-Badge-Styles entfernt');
 
 assert.equal(normalizeKnowledgeChipSource('portal'), 'customer');
 assert.equal(normalizeKnowledgeChipSource('seller'), 'seller');
+assert.equal(normalizeKnowledgeChipSource('clever'), 'clever');
+assert.equal(normalizeKnowledgeChipSource('openai_interpretation'), 'clever');
+assert.equal(normalizeKnowledgeChipSource('customer_message'), 'clever');
 
 const display = stripEquipmentPrioritySuffix(
   formatEquipmentWishLabel('Sitzheizung', EQUIPMENT_WISH_PRIORITY.PREFERRED, {
@@ -48,5 +55,8 @@ const title = buildKnowledgeChipProvenanceTitle({
 });
 assert.match(title, /Vom Kunden angegeben/);
 assert.ok(!/Quelle:\s*Kunde/.test(title), 'kein altes Quellen-Badge-Wording');
+
+const cleverTitle = buildKnowledgeChipProvenanceTitle({ source: 'clever' });
+assert.match(cleverTitle, /Von Clever erkannt/);
 
 console.log('CustomerAkteKundenbild.test.js: ok');

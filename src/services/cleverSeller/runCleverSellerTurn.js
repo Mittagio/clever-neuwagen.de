@@ -57,6 +57,7 @@ import {
   buildUniversalReviewModel,
   shouldShowUniversalReview,
 } from './buildUniversalReviewModel.js';
+import { isQuietIntakeReview } from './quietIntakeReview.js';
 import {
   resolveWorkingLeadForTurn,
   buildPreparedOfferWorkingContext,
@@ -169,9 +170,10 @@ function finalizeSellerTurn({
   const sellerText = interpreted?.normalized || interpreted?.raw || '';
   let facts = Array.isArray(factsIn) ? [...factsIn] : [];
   let intents = Array.isArray(intentsIn) ? [...intentsIn] : [];
-  // Offer-/Konfigurator-PDF: kein Auto-Termin; Angebot hat Vorrang
+  const offerPdfDropContext = isOfferPdfDropContext(attachments, sellerText);
+  // Offer-/Konfigurator-PDF: kein Auto-Termin / kein Inbound-Treffer; Angebot hat Vorrang
   if (
-    isOfferPdfDropContext(attachments, sellerText)
+    offerPdfDropContext
     && !hasExplicitAppointmentSellerCue(sellerText)
     && intentConstraint !== COMPOSER_INTENT_CONSTRAINT.APPOINTMENT
   ) {
@@ -179,12 +181,23 @@ function finalizeSellerTurn({
     intents = intents.filter((i) => (
       i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
       && i.type !== SELLER_TURN_INTENTS.RESOLVE_RELATIVE_DATETIME
+      && i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
+      && i.type !== SELLER_TURN_INTENTS.CUSTOMER_REPLY
     ));
     if (!intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)) {
       intents.push({ type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.96 });
     }
     if (!isExplicitCustomerMessageCue(sellerText)) {
       intents = intents.filter((i) => i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+    }
+  } else if (offerPdfDropContext) {
+    // Auch mit explizitem Termin-Cue: Inbound nicht primär aus Offer-PDF
+    intents = intents.filter((i) => (
+      i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
+      && i.type !== SELLER_TURN_INTENTS.CUSTOMER_REPLY
+    ));
+    if (!intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)) {
+      intents.push({ type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.96 });
     }
   }
 
@@ -276,8 +289,10 @@ function finalizeSellerTurn({
       intents,
     });
 
-  const wantsCustomerReply = (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY);
-  const wantsInbound = (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD);
+  const wantsCustomerReply = !offerPdfDropContext
+    && (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY);
+  const wantsInbound = !offerPdfDropContext
+    && (intents || []).some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD);
   let customerReply = null;
   let inboundLead = null;
 
@@ -542,14 +557,17 @@ function finalizeSellerTurn({
   }
 
   // Bei Ambiguity oder mehrdeutiger Kundensuche keine Offer/Message-Ausführung
+  // Offer-PDF behält PREPARE_OFFER (Review-Karte), auch ohne eindeutigen Kunden
   if (ambiguousOfferOrMessage || leadResolve.ambiguous
     || (wantsAppointment && appointmentCustomer && !appointmentCustomer.resolved)) {
-    effectiveIntents = effectiveIntents.filter((i) => (
-      i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
-      && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
-      && i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT
-    ));
+    effectiveIntents = effectiveIntents.filter((i) => {
+      if (offerPdfDropContext && i.type === SELLER_TURN_INTENTS.PREPARE_OFFER) return true;
+      return i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+        && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+        && i.type !== SELLER_TURN_INTENTS.PROPOSE_APPOINTMENT;
+    });
     if ((leadResolve.ambiguous || (appointmentCustomer && !appointmentCustomer.resolved))
+      && !offerPdfDropContext
       && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.FIND_CUSTOMER)) {
       effectiveIntents.push({ type: SELLER_TURN_INTENTS.FIND_CUSTOMER, confidence: 0.99 });
       effectiveIntents.push({ type: SELLER_TURN_INTENTS.RESOLVE_CUSTOMER_CONTEXT, confidence: 0.99 });
@@ -557,7 +575,8 @@ function finalizeSellerTurn({
   }
 
   // Intake/Reply/Multi-Source: keine parallele Nachrichten-/Angebotsvorbereitung vor Confirm
-  if (inboundLead?.detected || customerReply?.detected) {
+  // Offer-PDF: Inbound nie primär – Angebots-Review behalten
+  if ((inboundLead?.detected || customerReply?.detected) && !offerPdfDropContext) {
     effectiveIntents = effectiveIntents.filter((i) => (
       i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
       && i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
@@ -1261,6 +1280,33 @@ function finalizeSellerTurn({
     };
   }
 
+  // Intake: Protokoll-Zeilen aus Seller-UI entfernen (Debug behalten)
+  if (
+    isQuietIntakeReview(reviewModel)
+    || inboundLead?.detected
+    || turnPartial.multiSourceIntake?.detected
+  ) {
+    const protocol = (turnPartial.uiEffects?.progressLines || []).filter(Boolean);
+    turnPartial.uiEffects = {
+      ...turnPartial.uiEffects,
+      progressLines: [],
+      debugProgressLines: protocol,
+    };
+    if (reviewModel) {
+      reviewModel = {
+        ...reviewModel,
+        progressLines: [],
+        quietIntake: true,
+        debugDetails: {
+          ...(reviewModel.debugDetails || {}),
+          progressLines: reviewModel.debugDetails?.progressLines?.length
+            ? reviewModel.debugDetails.progressLines
+            : protocol,
+        },
+      };
+    }
+  }
+
   return buildCleverSellerTurnResult({
     ...turnPartial,
     reviewModel,
@@ -1666,9 +1712,8 @@ export async function runCleverSellerTurnAsync({
 
 function buildWarnings(facts, inputMode) {
   const warnings = [];
-  if (facts.some((f) => f.needsConfirmation)) {
-    warnings.push('Mindestens ein Wert braucht kurze Bestätigung.');
-  }
+  // Understanding freeze: keine generische Bestätigungs-Banner-Warnung –
+  // Unsicherheit nur am unsicheren Chip (needsConfirmation), nicht als Textzeile.
   if (inputMode === 'ambiguous') {
     warnings.push('Unklar, ob Kundennachricht oder interne Arbeitsnotiz.');
   }

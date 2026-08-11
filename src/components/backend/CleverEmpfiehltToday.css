@@ -6,7 +6,23 @@
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
 }
 
+.clever-today--home {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 16px 16px 14px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
 .clever-today__head {
+  margin-bottom: 12px;
+}
+
+.clever-today--home .clever-today__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
@@ -38,6 +54,11 @@
   gap: 8px;
 }
 
+.clever-today__list--home {
+  gap: 8px;
+  flex: 1;
+}
+
 .clever-today__card {
   display: flex;
   align-items: center;
@@ -51,8 +72,8 @@
 }
 
 .clever-today__card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.1);
+  border-color: #c4b5fd;
+  box-shadow: 0 4px 14px rgba(109, 91, 184, 0.12);
 }
 
 .clever-today__name-link,
@@ -62,7 +83,7 @@
 }
 
 .clever-today__name-link:hover .clever-today__name {
-  color: #1d4ed8;
+  color: var(--color-clever, #6d5bb8);
 }
 
 .clever-today__rank {
@@ -115,10 +136,21 @@
 .clever-today__action {
   display: inline-flex;
   margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: 0.84rem;
   font-weight: 700;
-  color: #1d4ed8;
+  color: var(--color-clever, #6d5bb8);
   text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clever-today--home .clever-today__action {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
 }
 
 .clever-today__action--cta:hover {
@@ -145,5 +177,60 @@
 }
 
 .clever-today__chevron:hover {
-  color: #1d4ed8;
+  color: var(--color-clever, #6d5bb8);
+}
+
+.clever-today__home-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: #f8f7fc;
+  border: 1px solid rgba(109, 91, 184, 0.08);
+}
+
+.clever-today__home-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--color-clever, #6d5bb8);
+  background: var(--color-clever-soft, rgba(109, 91, 184, 0.12));
+}
+
+.clever-today__home-icon .cn-line-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.clever-today__home-icon--orange {
+  color: #c2410c;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.clever-today__home-icon--green {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.clever-today__home-icon--purple {
+  color: var(--color-clever, #6d5bb8);
+  background: var(--color-clever-soft, rgba(109, 91, 184, 0.12));
+}
+
+.clever-today__home-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.clever-today__home-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
 }

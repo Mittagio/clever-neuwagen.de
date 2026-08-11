@@ -2,10 +2,15 @@
  * Clever Eingang – Queue-Modell (Sources, Gruppen, Status, Filter)
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   buildCleverInboxItems,
   buildCleverInboxSummary,
   buildDuplicateReason,
+  buildRecognizedFactChips,
+  CLEVER_EINGANG_DUPLICATE_BANNER,
   CLEVER_EINGANG_STATUS,
   filterCleverInboxItems,
   formatInboxRelativeTime,
@@ -16,6 +21,8 @@ import {
   scoreLeadDuplicateMatch,
   sortCleverInboxItems,
 } from './cleverEingangItems.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const NOW = Date.parse('2026-08-05T12:00:00.000Z');
 
@@ -54,9 +61,9 @@ assert.equal(incompleteItems.length, 1);
 assert.equal(incompleteItems[0].title, 'Neuer Vorgang');
 assert.equal(incompleteItems[0].status, CLEVER_EINGANG_STATUS.INCOMPLETE);
 assert.equal(incompleteItems[0].contextHint, 'Name oder Kontaktdaten fehlen');
-assert.equal(incompleteItems[0].nextAction.label, 'Angaben ergänzen');
-assert.equal(incompleteItems[0].sourceLabel, 'Über Clever erfasst');
-assert.ok(!String(incompleteItems[0].sourceLabel).includes('composer'));
+assert.equal(incompleteItems[0].nextAction.label, 'Angaben ergänzen →');
+assert.equal(incompleteItems[0].sourceLabel, 'Clever Composer');
+assert.ok(!String(incompleteItems[0].sourceLabel).includes('composer_multi'));
 
 // --- Dubletten als echte Gruppenkarte ---
 const dupA = {
@@ -111,22 +118,30 @@ assert.ok(dupItem, 'Gruppenkarte für mögliche Dublette vorhanden');
 assert.equal(dupItem.memberCount, 2);
 assert.equal(dupItem.isGroup, true);
 assert.equal(dupItem.statusLabel, 'Mögliche Dublette');
-assert.equal(dupItem.contextHint, '2 ähnliche Vorgänge · gleicher Kunde und Sportage');
-assert.equal(dupItem.nextAction.label, 'Vorgänge prüfen');
-assert.equal(dupItem.title, 'Thomas Weber');
-assert.match(dupItem.sourceLabel, /^aus /);
+assert.equal(dupItem.needsAttention, true);
+assert.equal(dupItem.contextHint, '2 ähnliche Vorgänge gefunden');
+assert.equal(dupItem.duplicateReason, 'gleicher Kunde und Sportage');
+assert.equal(dupItem.nextAction.label, 'Dublette prüfen →');
+assert.equal(dupItem.title, 'Thomas Weber · 2 Vorgänge');
+assert.equal(dupItem.displayName, 'Thomas Weber');
+assert.equal(dupItem.memberCountLabel, '2 Vorgänge');
+assert.equal(dupItem.detailBanner, CLEVER_EINGANG_DUPLICATE_BANNER);
+assert.ok(Array.isArray(dupItem.recognizedFacts));
 assert.match(dupItem.sourceLabel, /Verkaufsassistent/);
 assert.match(dupItem.sourceLabel, /Clever Composer/);
+assert.ok(!dupItem.sourceLabel.startsWith('aus '));
 
 const readyItem = items.find((item) => item.status === CLEVER_EINGANG_STATUS.READY);
 assert.ok(readyItem);
-assert.equal(readyItem.nextAction.label, 'Übernehmen');
-assert.equal(readyItem.sourceLabel, 'Über Verkaufsassistent erfasst');
+assert.equal(readyItem.nextAction.label, 'Übernehmen →');
+assert.equal(readyItem.sourceLabel, 'Verkaufsassistent');
+assert.equal(readyItem.needsAttention, false);
 
 const assignedItem = items.find((item) => item.status === CLEVER_EINGANG_STATUS.ASSIGNED);
 assert.ok(assignedItem);
-assert.equal(assignedItem.nextAction.label, 'Zur Kundenakte');
-assert.equal(assignedItem.sourceLabel, 'Aus Dokument erkannt');
+assert.equal(assignedItem.nextAction.label, 'Zur Kundenakte →');
+assert.equal(assignedItem.sourceLabel, 'Dokument');
+assert.equal(assignedItem.needsAttention, false);
 
 // --- Sortierung: mögliche Dublette → bereit → unvollständig → zugeordnet ---
 assert.equal(items[0].status, CLEVER_EINGANG_STATUS.DUPLICATE);
@@ -160,6 +175,11 @@ assert.equal(summary.assigned, 1);
 assert.ok(summary.groupHint);
 assert.match(summary.groupHint, /1 Gruppe mit möglichen Dubletten erkannt/);
 assert.ok(!summary.groupHint.includes('2 ähnliche'));
+assert.ok(Array.isArray(summary.stats));
+assert.equal(summary.stats.length, 5);
+assert.equal(summary.stats.find((s) => s.id === 'open')?.count, 4);
+assert.equal(summary.stats.find((s) => s.id === 'duplicate')?.count, 1);
+assert.equal(summary.stats.find((s) => s.id === 'incomplete')?.count, 1);
 
 const filterAll = summary.filters.find((f) => f.id === 'all');
 const filterDup = summary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE);
@@ -232,7 +252,9 @@ assert.equal(bulkItems.length, 2, '5 ähnliche + 1 allein → 2 Gruppen in der L
 assert.equal(bulkSummary.duplicates, 1);
 assert.equal(bulkSummary.duplicateMemberCount, 5);
 assert.equal(bulkSummary.filters.find((f) => f.id === CLEVER_EINGANG_STATUS.DUPLICATE).count, 1);
-assert.match(bulkItems[0].contextHint, /5 ähnliche Vorgänge · gleicher Kunde und EV3/);
+assert.match(bulkItems[0].contextHint, /5 ähnliche Vorgänge gefunden/);
+assert.equal(bulkItems[0].nextAction.label, 'Zusammenführen prüfen →');
+assert.match(bulkItems[0].title, /Anna Bulk · 5 Vorgänge/);
 
 // --- Große Gruppen (7+): ruhige Copy + Quellenzeile ---
 const largeGroup = Array.from({ length: 7 }, (_, i) => ({
@@ -246,9 +268,10 @@ const largeGroup = Array.from({ length: 7 }, (_, i) => ({
 }));
 const { items: largeItems } = buildCleverInboxItems(largeGroup, { nowMs: NOW });
 assert.equal(largeItems.length, 1);
-assert.equal(largeItems[0].contextHint, '7 Vorgänge gebündelt');
+assert.equal(largeItems[0].contextHint, '7 Vorgänge bereits gebündelt');
 assert.equal(largeItems[0].statusLabel, 'Mögliche Dublette');
-assert.match(largeItems[0].sourceLabel, /^aus Clever Composer \+ Gesprächsnotiz$|^aus Gesprächsnotiz \+ Clever Composer$/);
+assert.equal(largeItems[0].nextAction.label, 'Vorgänge prüfen →');
+assert.match(largeItems[0].sourceLabel, /^Clever Composer \+ Gesprächsnotiz$|^Gesprächsnotiz \+ Clever Composer$/);
 
 // --- relatives Alter ---
 assert.equal(formatInboxRelativeTime('2026-08-05T11:45:00.000Z', NOW), 'vor 15 Min.');
@@ -269,6 +292,61 @@ const contractLead = {
   vehicle: { brand: 'Kia', model: 'Niro', label: 'Kia Niro' },
 };
 const { items: contractItems } = buildCleverInboxItems([contractLead], { nowMs: NOW });
-assert.equal(contractItems[0].nextAction.label, 'Vertrag prüfen');
+assert.equal(contractItems[0].nextAction.label, 'Vertrag prüfen →');
+
+// --- Summary-Zeile für Header ---
+assert.match(summary.line, /4 offen/);
+assert.match(summary.line, /mögliche Dubletten/);
+assert.match(summary.line, /bereit/);
+assert.match(summary.line, /unvollständig/);
+
+// --- Erkannte Angaben (Detail-Pane Chips) ---
+const richLead = {
+  id: 'facts-1',
+  status: 'neu',
+  source: 'sales_assistant',
+  createdAt: '2026-08-05T11:20:00.000Z',
+  paymentType: 'leasing',
+  contact: { name: 'Christina Deuschle', email: 'c.deuschle@test.de', phone: '01701112233' },
+  vehicle: { brand: 'Kia', model: 'EV6', trim: 'Air', label: 'Kia EV6 Air', transmission: 'Automatik' },
+  wish: { termMonths: 48, downPayment: 6000 },
+};
+const factChips = buildRecognizedFactChips(richLead);
+assert.ok(factChips.some((c) => c.id === 'vehicle' && /EV6 Air/.test(c.label)));
+assert.ok(factChips.some((c) => c.id === 'payment' && c.label === 'Leasing'));
+assert.ok(factChips.some((c) => c.id === 'term' && c.label === '48 Monate'));
+assert.ok(factChips.some((c) => c.id === 'transmission' && c.label === 'Automatik'));
+assert.ok(factChips.some((c) => c.id === 'downPayment' && /6\.000/.test(c.label)));
+
+const { items: richItems } = buildCleverInboxItems([richLead], { nowMs: NOW });
+assert.ok(richItems[0].recognizedFacts.length >= 4);
+assert.equal(richItems[0].detailBanner, null);
+
+// --- Arbeitslisten-UI: Zwei-Spalten-Workspace, Zeilen statt Karten ---
+const queuePageSource = readFileSync(
+  join(__dirname, '../../pages/backend/NewInquiriesQueuePage.jsx'),
+  'utf8',
+);
+const queueCssSource = readFileSync(
+  join(__dirname, '../../pages/backend/NewInquiriesQueue.css'),
+  'utf8',
+);
+assert.ok(queuePageSource.includes('new-inq--worklist'), 'Worklist-Modifier');
+assert.ok(queuePageSource.includes('new-inq__row'), 'Zeilen statt Karten');
+assert.ok(queuePageSource.includes('new-inq__dot'), 'Status als Punkt');
+assert.ok(queuePageSource.includes('new-inq__workspace'), 'Zwei-Spalten-Workspace');
+assert.ok(queuePageSource.includes('new-inq__detail'), 'Detail-Pane');
+assert.ok(queuePageSource.includes('new-inq__stats'), 'Stats-Chips');
+assert.ok(queuePageSource.includes('Erkannte Angaben'), 'Detail-Fakten');
+assert.ok(queuePageSource.includes('is-selected'), 'Zeilen-Selektion');
+assert.ok(!queuePageSource.includes('new-inq__card'), 'Keine Karten-Chrome in Clever Eingang');
+assert.ok(!queuePageSource.includes('new-inq__status'), 'Keine Status-Pills in Clever Eingang');
+assert.ok(
+  queueCssSource.includes('max-width: 1180px') || queueCssSource.includes('max-width: 1200px'),
+  'Breitere Work-Spalte',
+);
+assert.ok(queueCssSource.includes('new-inq__row--attention'), 'Attention-Hierarchie');
+assert.ok(queueCssSource.includes('new-inq__row--quiet'), 'Ruhige Bereit-Zeilen');
+assert.ok(queueCssSource.includes('grid-template-columns'), 'Desktop Zwei-Spalten');
 
 console.log('cleverEingangItems.test.js: OK');

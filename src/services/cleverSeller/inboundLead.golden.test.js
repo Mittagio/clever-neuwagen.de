@@ -13,10 +13,19 @@ import {
 import { applyAcceptedSellerTurn } from './applyAcceptedSellerTurn.js';
 import { SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import {
+  buildInboundIntakePresentation,
   extractInboundContact,
+  formatIntakeDownPaymentLabel,
+  formatIntakeMileageChipLabel,
+  formatIntakeMileageLabel,
+  formatIntakeTermChipLabel,
+  formatIntakeTermLabel,
   isInboundLeadPaste,
+  isInstitutionalContactEmail,
   resolveInboundCustomer,
 } from './inboundLeadIntake.js';
+import { runComposerPdfAttachTurn } from './runComposerPdfAttachTurn.js';
+import { prepareComposerPdfTurnInput } from './prepareComposerPdfTurnInput.js';
 
 const ENV = {
   VITE_CLEVER_SELLER_ORCHESTRATOR: 'true',
@@ -58,6 +67,69 @@ const NEW_CUSTOMER_MAIL = [
   'Lisa Neumann',
   '0171 9988776',
 ].join('\n');
+
+// --- Format helpers: immer gelabelte Zahlen ---
+assert.equal(formatIntakeTermLabel(48), '48 Monate');
+assert.equal(formatIntakeTermChipLabel(48), '48 M');
+assert.equal(formatIntakeMileageLabel(12500), '12.500 km/Jahr');
+assert.equal(formatIntakeMileageChipLabel(12500), '12.500 km');
+assert.equal(formatIntakeDownPaymentLabel(5000), '5.000 € AZ');
+assert.equal(formatIntakeTermLabel(null), null);
+
+{
+  const presentation = buildInboundIntakePresentation(
+    { proposeCreateCustomer: true, contact: { email: 'a@b.de' } },
+    {
+      extractedFacts: [
+        { field: 'vehicleInterest', label: 'EV2 Earth', value: 'EV2 Earth' },
+        { field: 'paymentType', label: 'Leasing', value: 'leasing' },
+        { field: 'termMonths', label: '48', value: 48 },
+        { field: 'annualMileage', label: '12500 km', value: 12500 },
+        { field: 'downPayment', label: '5000', value: 5000 },
+      ],
+    },
+  );
+  assert.match(presentation.conditionLine || '', /48 Monate/);
+  assert.match(presentation.conditionLine || '', /12\.500 km\/Jahr/);
+  assert.match(presentation.conditionLine || '', /5\.000 € AZ/);
+  assert.ok(presentation.recognizedChips.includes('48 M'));
+  assert.ok(presentation.recognizedChips.includes('12.500 km'));
+  assert.ok(presentation.recognizedChips.includes('Leasing'));
+  assert.ok(presentation.recognizedChips.includes('5.000 € AZ'));
+  assert.ok(presentation.recognizedChips.includes('a@b.de'));
+  assert.ok(!presentation.recognizedChips.includes('Neu anlegen'));
+  assert.ok(!/^\d+\s+\d/.test(presentation.conditionLine || ''), 'kein Roh-Zahlenblob');
+}
+
+// --- noteChips ≠ recognizedChips (Meta nicht als Erkannt-Facts) ---
+{
+  const presentation = buildInboundIntakePresentation(
+    {
+      proposeCreateCustomer: false,
+      resolutionStatus: 'ambiguous',
+      duplicateHint: 'Mehrere Treffer',
+      contact: { email: 'a@b.de', fullName: 'Max' },
+    },
+    {
+      extractedFacts: [
+        { field: 'vehicleInterest', label: 'EV2', value: 'EV2' },
+        { field: 'paymentType', label: 'Leasing', value: 'leasing' },
+        { field: 'unresolvedNote', label: 'irgendwas', preserveAsNote: true },
+      ],
+      unresolvedNotes: [{ text: 'Freitext' }],
+    },
+  );
+  assert.ok(presentation.noteChips.includes('Unsicher erkannt'));
+  assert.ok(presentation.noteChips.includes('Mehrere Treffer'));
+  assert.ok(presentation.noteChips.includes('Notiz übernommen'));
+  for (const meta of presentation.noteChips) {
+    assert.ok(
+      !presentation.recognizedChips.includes(meta),
+      `Meta-Chip „${meta}“ darf nicht in recognizedChips`,
+    );
+  }
+  assert.ok(!presentation.recognizedChips.includes('Kunde noch offen'));
+}
 
 // --- Detect + extract ---
 assert.equal(isInboundLeadPaste(BRANDES_MAIL), true);
@@ -102,17 +174,44 @@ assert.ok(contact.phone);
   assert.equal(review.kind, 'customer_intake');
   assert.equal(review.compactUi, true, 'Intake-Review compact – Accept-CTA als Primary-Button');
   assert.ok(review.hero?.name, 'Hero-Name für sichtbaren Accept-Flow');
-  assert.match(review.title, /Anfrage erkannt/i);
+  assert.equal(review.hero?.headline, null, 'CTA nur als Button, nicht als Hero-Headline');
+  assert.match(review.hero?.name || '', /Kundenakte öffnen/i);
+  assert.equal(review.hero?.subtitle, 'Von Clever erkannt');
+  assert.equal(String(review.title || '').trim(), '', 'kein Narrations-Titel');
+  assert.equal(review.quietIntake, true);
+  assert.equal(review.progressLines?.length || 0, 0, 'keine Protokoll-Statuszeilen');
+  assert.equal(turn.uiEffects?.progressLines?.length || 0, 0, 'keine Protokoll-Zeilen in uiEffects');
+  assert.ok(
+    !/Seller-Dump|zusammengeführt|sucht in Kunden|Clever wertet aus|Clever hat erkannt|Clever hat eine Anfrage|Erkannt als neue Anfrage|Neu anlegen\?/i
+      .test(JSON.stringify({
+        title: review.title,
+        progressLines: review.progressLines,
+        summaryLine: review.summaryLine,
+        hero: review.hero,
+        groups: review.groups,
+      })),
+    'keine Protokoll-Phrasen in seller-facing Review',
+  );
   assert.ok(review.actionSections?.some((s) => (
     s.id === 'customer_intake_review' && s.kind === 'customer_intake_review' && s.title === 'Kundenanfrage'
   )));
-  assert.ok(review.groups.some((g) => g.title === 'KUNDE'));
-  assert.ok(review.groups.some((g) => g.title === 'NÄCHSTE AKTION'));
-  assert.match(review.primaryCta, /Verknüpfen|Übernehmen/i);
+  assert.ok(!review.groups.some((g) => /^(KONTAKT|ERKANNT|ERKANNTE ANGABEN|NÄCHSTE AKTION)$/i.test(g.title || '')));
+  assert.match(review.primaryCta, /In Kundenakte weitermachen/i);
+  const erkannt = review.groups.find((g) => g.id === 'facts');
+  if (erkannt?.chips?.length) {
+    assert.ok(
+      erkannt.chips.every((c) => (typeof c === 'string' ? false : c.source === 'clever')),
+      'Erkannt-Chips mit Clever-Source',
+    );
+  }
   assert.equal(
     review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.tone,
     'primary',
   );
+  const secondary = review.actionSections.find((s) => s.kind === 'customer_intake_review')?.secondaryActions || [];
+  assert.ok(secondary.some((a) => a.label === 'Korrigieren' && a.action === 'revise_intake'));
+  assert.ok(secondary.some((a) => a.label === 'Erneut suchen'));
+  assert.ok(secondary.some((a) => a.label === 'Verwerfen'));
 
   // Confirm → Fakten auf bestehenden Lead, kein neuer Lead
   const applied = applyAcceptedSellerTurn(brandes, turn, { postFeedCard: false });
@@ -139,14 +238,30 @@ assert.ok(contact.phone);
   assert.equal(review.reviewType, 'customer_intake_review');
   assert.equal(review.legacyReviewType, 'inbound_lead_review');
   assert.equal(review.compactUi, true);
-  assert.match(review.hero?.name || '', /Neumann/i);
-  assert.match(review.primaryCta, /Neue Kundenakte anlegen|anlegen/i);
-  assert.match(review.secondaryCta, /Erneut suchen|Verwerfen/i);
-  assert.ok(review.groups.some((g) => /Neu anlegen|neuen Kunden/i.test(g.line || '')));
+  assert.match(review.hero?.name || '', /Neumann.*neue Kundenakte/i);
+  assert.equal(review.hero?.headline, null);
+  assert.equal(review.hero?.subtitle, 'Von Clever erkannt');
+  assert.match(review.primaryCta, /anlegen & weitermachen/i);
+  assert.match(review.secondaryCta, /Korrigieren|Erneut suchen|Verwerfen/i);
+  assert.match(review.summaryLine || '', /neue Kundenakte/i);
+  const factGroup = review.groups.find((g) => g.id === 'facts');
+  const chipLabel = (c) => (typeof c === 'string' ? c : c?.label || '');
+  assert.ok(
+    !(factGroup?.chips || []).some((c) => /Neu anlegen/i.test(chipLabel(c))),
+    'kein technisches Chip „Neu anlegen“',
+  );
+  assert.ok(
+    (factGroup?.chips || []).every((c) => typeof c === 'object' && c.source === 'clever'),
+    'Erkannt-Chips Clever-Source bei neuem Lead',
+  );
   assert.equal(
     review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.action,
     'accept_inbound_lead',
   );
+  // Hero-Subline: gelabelte Konditionen wenn vorhanden
+  if (review.hero?.subtitle) {
+    assert.ok(!/\b\d{2}\s+\d{1,2}\.\d{3}\s+km\s+\d+\s*€\b/i.test(review.hero.subtitle));
+  }
 
   // Ohne Accept: Snapshot unverändert (kein Side-Effect im Turn)
   assert.equal([brandes].length, 1);
@@ -161,6 +276,9 @@ assert.ok(contact.phone);
   assert.match(applied.lead.contact?.name || '', /Neumann/i);
   assert.match(applied.lead.contact?.email || '', /lisa\.neumann@example\.org/i);
   assert.equal(applied.lead.source, 'composer_inbound');
+  const cleverInsights = (applied.lead.crm?.sellerInsights || [])
+    .filter((i) => i.source === 'clever');
+  assert.ok(cleverInsights.length > 0, 'Inbound-Accept schreibt Clever-Source auf Insights');
 }
 
 // --- Strukturierte Händler-Notiz ohne „Hier eine Anfrage:“ → Intake, keine Nachricht ---
@@ -203,9 +321,129 @@ assert.ok(contact.phone);
   assert.ok(!turn.messageDraft);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_intake_review');
-  assert.match(review.body || '', /Erkannt:/i);
-  assert.match(review.primaryCta, /anlegen/i);
+  assert.match(review.hero?.name || '', /Schlayer.*neue Kundenakte/i);
+  assert.match(review.primaryCta || '', /anlegen & weitermachen/i);
+  assert.ok(review.groups.some((g) => g.id === 'facts' || g.id === 'notes'));
+  assert.ok(!/Seller-Dump|zusammengeführt|sucht in Kunden|Clever wertet aus|Clever hat erkannt|Erkannt als neue Anfrage|Neu anlegen\?/i
+    .test(JSON.stringify({
+      title: review.title,
+      progressLines: review.progressLines,
+      summaryLine: review.summaryLine,
+      hero: review.hero,
+      groups: review.groups,
+    })));
+  assert.equal(review.progressLines?.length || 0, 0);
   assert.ok((turn.missingInformation || []).some((m) => m.id === 'confirm_create_customer'));
+}
+
+// --- Institutions-Mail (Kia Finance) nie als Inbound-Kunden-Match-Key ---
+{
+  assert.equal(isInstitutionalContactEmail('kundenservice@lease.kiafinance.de'), true);
+  assert.equal(isInstitutionalContactEmail('service@kiafinance.de'), true);
+  assert.equal(isInstitutionalContactEmail('herr.brandes@demo-mail.de'), false);
+
+  const offerBlob = [
+    'PDF: EV2 36 Monate Leasingangebot.pdf',
+    '',
+    'Kia EV2 Earth Leasingangebot',
+    'Laufzeit 36 Monate',
+    '15.000 km / Jahr',
+    'Monatsrate 329 €',
+    'Anzahlung 0 €',
+    'Kundenservice: kundenservice@lease.kiafinance.de',
+    'Telefon +49 800 1234567',
+    'Mit freundlichen Grüßen',
+    'Kia Finance',
+  ].join('\n');
+
+  const contact = extractInboundContact(offerBlob);
+  assert.notEqual(contact.email, 'kundenservice@lease.kiafinance.de');
+  assert.ok(!contact.email || !isInstitutionalContactEmail(contact.email));
+
+  const fakeLeads = [
+    brandes,
+    {
+      id: 'lead-bank',
+      contact: {
+        name: 'Kia Finance Phantom',
+        email: 'kundenservice@lease.kiafinance.de',
+        phone: '08001234567',
+      },
+    },
+  ];
+  const resolution = resolveInboundCustomer(
+    { email: 'kundenservice@lease.kiafinance.de' },
+    fakeLeads,
+  );
+  assert.equal(resolution.status, 'none', 'Institutions-Mail kein E-Mail-Match');
+  assert.equal(resolution.results?.length || 0, 0);
+  assert.equal(resolution.proposeCreateCustomer, false);
+}
+
+// --- Offer-PDF mit Kia-Finance-Mail → Offer-Review, kein Treffer-prüfen-Inbound ---
+{
+  const EV2_OFFER_PDF = [
+    'Kia EV2 Earth Leasingangebot',
+    'Laufzeit 36 Monate',
+    '15.000 km / Jahr',
+    'Anzahlung 0 €',
+    'Monatsrate 329 €',
+    'Keine Schlussrate',
+    'Fragen? kundenservice@lease.kiafinance.de',
+    'Hotline +49 711 2223344',
+    'Mit freundlichen Grüßen',
+    'Ihr Kia Finance Team',
+  ].join('\n');
+
+  const prepared = prepareComposerPdfTurnInput({
+    extracted: {
+      ok: true,
+      text: EV2_OFFER_PDF,
+      fileName: 'EV2 36 Monate Leasingangebot.pdf',
+    },
+    file: { type: 'application/pdf', name: 'EV2 36 Monate Leasingangebot.pdf' },
+  });
+  assert.equal(prepared.kind, 'configurator_pdf');
+  assert.equal(prepared.draftSeed, 'PDF: EV2 36 Monate Leasingangebot.pdf');
+  assert.ok(!prepared.draftSeed.includes('kundenservice@'));
+  assert.match(prepared.interpretSeed, /Leasingangebot/);
+
+  const ambiguousLeads = [
+    brandes,
+    {
+      id: 'lead-rambo',
+      contact: { name: 'Rambo Gartenbau', email: 'rambo@example.de', phone: '07112223344' },
+    },
+    {
+      id: 'lead-offen',
+      contact: { name: 'Kunde noch offen', email: 'offen@example.de', phone: '07112223344' },
+    },
+  ];
+
+  const { turn } = runComposerPdfAttachTurn({
+    extracted: {
+      ok: true,
+      text: EV2_OFFER_PDF,
+      fileName: 'EV2 36 Monate Leasingangebot.pdf',
+    },
+    file: { type: 'application/pdf', name: 'EV2 36 Monate Leasingangebot.pdf' },
+    lead: {},
+    leadsSnapshot: ambiguousLeads,
+    scopeHint: 'dashboard',
+  });
+
+  assert.ok(turn);
+  assert.ok(!turn.inboundLead?.detected, 'kein Inbound aus Offer-PDF');
+  assert.ok(turn.intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER));
+  assert.ok(!turn.intents.some((i) => i.type === SELLER_TURN_INTENTS.INBOUND_LEAD));
+  const review = turn.reviewModel || buildUniversalReviewModel(turn);
+  assert.notEqual(review?.reviewType, 'customer_intake_review');
+  assert.notEqual(review?.legacyReviewType, 'inbound_lead_review');
+  assert.ok(
+    ['offer_prepare', 'offer_incomplete', 'offer_and_message_review'].includes(review?.reviewType),
+    `erwartet Offer-Review, got ${review?.reviewType}`,
+  );
+  assert.ok(!/Treffer prüfen/i.test(JSON.stringify(review || {})));
 }
 
 console.log('inboundLead.golden.test.js: OK');

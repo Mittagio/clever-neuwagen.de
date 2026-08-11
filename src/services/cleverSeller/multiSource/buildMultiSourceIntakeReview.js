@@ -221,7 +221,8 @@ export function buildMultiSourceIntakeReviewModel(intake = {}, turn = {}) {
   const isNewCustomerCandidate = Boolean(heroName && !turn?.resolvedCustomer?.id);
 
   return {
-    title: 'Clever hat einen Beratungsfall erkannt',
+    // Kein Clever-Narrations-Titel – Seller sieht nur die Karte
+    title: '',
     groups,
     body,
     hero: {
@@ -241,6 +242,7 @@ export function buildMultiSourceIntakeReviewModel(intake = {}, turn = {}) {
     reviewType: 'customer_contract_tradein_intake_review',
     kind: 'multi_source_intake',
     compactUi: true,
+    quietIntake: true,
     actionSections: [{
       id: 'customer_contract_tradein_intake_review',
       kind: 'customer_contract_tradein_intake_review',
@@ -255,7 +257,11 @@ export function buildMultiSourceIntakeReviewModel(intake = {}, turn = {}) {
       multiSourceIntake: reviewIntake,
     }],
     multiSourceIntake: reviewIntake,
-    progressLines,
+    // Keine Protokoll-Statuszeilen in der Seller-UI (Debug behalten)
+    progressLines: [],
+    debugDetails: {
+      progressLines,
+    },
     factCount: groups.reduce((n, g) => n + (g.items?.length || 0), 0)
       || (turn.extractedFacts || []).length,
   };

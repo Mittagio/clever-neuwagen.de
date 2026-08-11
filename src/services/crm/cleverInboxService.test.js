@@ -206,8 +206,8 @@ const syncedLead = {
 const synced = syncInboxItemsFromLead(syncedLead);
 assert.ok(synced.length >= 1, 'syncInboxItemsFromLead erzeugt Meldungen');
 
-const mainTilesSource = readFileSync(
-  join(__dirname, '../../components/backend/BackendMainTiles.jsx'),
+const homeWidgetsSource = readFileSync(
+  join(__dirname, '../../components/backend/BackendHomeWidgets.jsx'),
   'utf8',
 );
 const inboxTileSource = readFileSync(
@@ -215,8 +215,8 @@ const inboxTileSource = readFileSync(
   'utf8',
 );
 assert.ok(inboxTileSource.includes('Clever Eingang'), 'Dashboard-Kachel Clever Eingang');
-assert.ok(mainTilesSource.includes('BackendCleverInboxTile') || mainTilesSource.includes('Clever Eingang'), 'Hauptkacheln binden Clever Eingang ein');
-assert.ok(mainTilesSource.includes('/backend/clever-eingang'), 'Clever Eingang verlinkt Nachrichtenzentrum');
+assert.ok(homeWidgetsSource.includes('Clever Eingang'), 'Home-Widget Clever Eingang');
+assert.ok(homeWidgetsSource.includes('/backend/clever-eingang'), 'Clever Eingang verlinkt Nachrichtenzentrum');
 
 __clearInboxTestMode();
 console.log('cleverInboxService.test.js: ok');

@@ -81,6 +81,13 @@ const INPUT_COR = 'XCeed COR Automatik 13 %';
   // Compact Offer-Review-Titel (Clever 2.0) – Review bleibt Pflicht bei incomplete prep
   assert.match(review.title, /prüft|verstanden|vorbereitet|angebot/i);
   assert.ok(review.actionSections.some((s) => s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'));
+  assert.doesNotMatch(String(review.hero?.eyebrow || ''), /unvollständig/i);
+  assert.doesNotMatch(String(review.summaryLine || ''), /unvollständig|Rate oder Bank-PDF/i);
+  const incompleteSec = review.actionSections.find((s) => (
+    s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'
+  ));
+  assert.ok(incompleteSec?.primaryActions?.some((a) => a.action === 'open_offer_handoff'));
+  assert.ok(incompleteSec?.primaryActions?.some((a) => a.action === 'upload_pdf'));
   assert.ok(!review.actionSections.some((s) => s.kind === 'message_draft'));
   assert.ok(
     !containsSellerCommandInMessage(turn.messageDraft || ''),

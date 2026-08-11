@@ -47,12 +47,26 @@ export function CleverComposerProvider({ children }) {
   const [dashboardContext, setDashboardContext] = useState({ surface: 'home' });
   const [composerHeroSlotEl, setComposerHeroSlotEl] = useState(null);
   const [composerDocked, setComposerDocked] = useState(false);
+  /** Dashboard-Karten → Composer (Today / Empfiehlt / Tasks) */
+  const [composerRequest, setComposerRequest] = useState(null);
 
   const surface = resolveSurface(pathname);
   const enabled = readGlobalComposerFlag();
 
   const registerComposerHeroSlot = useCallback((el) => {
     setComposerHeroSlotEl(el || null);
+  }, []);
+
+  const requestComposerAction = useCallback((action = {}) => {
+    if (!action || typeof action !== 'object') return null;
+    const id = `cr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    const next = { id, ...action };
+    setComposerRequest(next);
+    return id;
+  }, []);
+
+  const consumeComposerRequest = useCallback((id) => {
+    setComposerRequest((prev) => (prev && prev.id === id ? null : prev));
   }, []);
 
   const clearWorkspaceContext = useCallback(() => {
@@ -111,6 +125,9 @@ export function CleverComposerProvider({ children }) {
     setPendingAction,
     setDashboardContext,
     clearWorkspaceContext,
+    composerRequest,
+    requestComposerAction,
+    consumeComposerRequest,
     shouldShowGlobalComposer,
     globalComposerEnabled: enabled,
     composerHeroSlotEl,
@@ -130,6 +147,9 @@ export function CleverComposerProvider({ children }) {
     dashboardContext,
     leads,
     clearWorkspaceContext,
+    composerRequest,
+    requestComposerAction,
+    consumeComposerRequest,
     shouldShowGlobalComposer,
     enabled,
     composerHeroSlotEl,

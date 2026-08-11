@@ -18,6 +18,7 @@ assert.equal(isCleverLongJob(''), false);
 assert.match(resolveCleverProgressHint(CLEVER_LONG_JOB.AGENT), /denkt/i);
 assert.match(resolveCleverProgressHint(CLEVER_LONG_JOB.PDF_OCR), /PDF/i);
 assert.match(resolveCleverProgressHint(CLEVER_LONG_JOB.SCREENSHOT_OCR), /Screenshot/i);
+assert.equal(resolveCleverProgressHint(CLEVER_LONG_JOB.SERVER_INTERPRET), null, 'kein „Clever wertet aus“');
 assert.equal(resolveCleverProgressHint('merk_dir'), null);
 assert.equal(resolveCleverProgressHint('direct_answer'), null);
 
@@ -50,9 +51,9 @@ assert.equal(resolveCleverProgressHint('direct_answer'), null);
     delayMs: 80,
   });
   scheduler.start(CLEVER_LONG_JOB.SERVER_INTERPRET);
-  scheduler.clear();
   await new Promise((r) => setTimeout(r, 100));
-  assert.ok(!hints.includes(resolveCleverProgressHint(CLEVER_LONG_JOB.SERVER_INTERPRET)));
+  assert.ok(!hints.some((h) => /wertet aus/i.test(String(h || ''))));
+  assert.ok(hints.every((h) => h == null));
 }
 
 assert.ok(CLEVER_PROGRESS_HINT_DELAY_MS >= 500);

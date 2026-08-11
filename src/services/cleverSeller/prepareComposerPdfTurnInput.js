@@ -141,10 +141,9 @@ export function prepareComposerPdfTurnInput(params = {}) {
     ok,
     needsManualDescribe: !ok,
     usedOcr,
+    // Full text nur für interpretSeed – Composer-Draft bleibt kurz (kein OCR-Dump)
     interpretSeed: ok ? interpretSeed : '',
-    draftSeed: ok
-      ? draftSeed
-      : `Konfigurator-PDF: ${fileName}`,
+    draftSeed: `PDF: ${fileName}`,
     attachment: {
       kind: 'configurator_pdf',
       mimeType: attachment.mimeType,

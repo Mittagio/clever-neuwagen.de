@@ -324,6 +324,55 @@ export function IconCalendar(props) {
   );
 }
 
+export function IconTag(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M20 13l-7 7-9-9V4h7l9 9z" {...stroke} />
+      <circle cx="8.5" cy="8.5" r="1.25" fill="currentColor" stroke="none" />
+    </SvgIcon>
+  );
+}
+
+export function IconBriefcase(props) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="3" y="7" width="18" height="13" rx="2" {...stroke} />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" {...stroke} />
+      <path d="M3 12h18" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconHome(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 11.5L12 4l8 7.5" {...stroke} />
+      <path d="M6.5 10.5V20h11V10.5" {...stroke} />
+      <path d="M10 20v-5h4v5" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconGlobe(props) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" {...stroke} />
+      <path d="M3.5 12h17" {...stroke} />
+      <path d="M12 3.5a14 14 0 0 1 0 17" {...stroke} />
+      <path d="M12 3.5a14 14 0 0 0 0 17" {...stroke} />
+    </SvgIcon>
+  );
+}
+
+export function IconFile(props) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6z" {...stroke} />
+      <path d="M14 3v6h6" {...stroke} />
+    </SvgIcon>
+  );
+}
+
 export function IconPaperPlane(props) {
   return (
     <SvgIcon {...props}>

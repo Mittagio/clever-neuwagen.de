@@ -478,7 +478,15 @@ export function normalizeKnowledgeChipSource(raw = null) {
   }
   if (key === 'seller' || key === 'verkaeufer' || key === 'verkäufer') return 'seller';
   if (key === 'document' || key === 'dokument' || key === 'pdf') return 'document';
-  if (key === 'clever') return 'clever';
+  if (
+    key === 'clever'
+    || key === 'openai_interpretation'
+    || key === 'customer_message'
+    || key === 'inbound'
+    || key === 'composer_inbound'
+  ) {
+    return 'clever';
+  }
   // wish/offer/kern und Unbekanntes: ruhig seller-neutral (keine Customer-Optik)
   return 'seller';
 }
@@ -540,7 +548,7 @@ export function buildKnowledgeChipProvenanceTitle(chip = {}) {
     const date = formatChipProvenanceDate(at, { withTime: true });
     if (date) lines.push(date);
   } else if (style === 'clever') {
-    lines.push('Von Clever ergänzt');
+    lines.push('Von Clever erkannt');
     const date = formatChipProvenanceDate(at, { withTime: true });
     if (date) lines.push(date);
   } else if (style === 'seller' || chip.source) {
@@ -618,12 +626,13 @@ function customerFactProvenance(lead = {}, profile = {}) {
   };
 }
 
-/** Seller-Provenance aus Label-Map (letztes Matching gewinnt). */
+/** Seller-/Clever-Provenance aus Label-Map (letztes Matching gewinnt). */
 function sellerFactProvenance(label = '', provenanceByLabel = new Map()) {
   const meta = provenanceByLabel.get(String(label ?? '').trim().toLowerCase()) || null;
+  const source = normalizeKnowledgeChipSource(meta?.source) || 'seller';
   return {
-    source: 'seller',
-    actorType: 'seller',
+    source,
+    actorType: source === 'clever' ? 'clever' : 'seller',
     actorId: meta?.actorId || null,
     actorName: meta?.actorName || null,
     createdAt: meta?.createdAt || null,
@@ -961,9 +970,10 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
     const text = String(value ?? '').trim();
     if (!text) return;
     const key = text.toLowerCase();
+    const source = normalizeKnowledgeChipSource(meta.source) || 'seller';
     provenanceByLabel.set(key, {
-      source: 'seller',
-      actorType: 'seller',
+      source,
+      actorType: source === 'clever' ? 'clever' : 'seller',
       actorId: meta.actorId || null,
       actorName: meta.actorName || null,
       createdAt: meta.createdAt || null,
@@ -983,6 +993,7 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
 
   for (const insight of insights) {
     const meta = {
+      source: insight.source || 'seller',
       actorId: insight.sellerId || null,
       actorName: insight.sellerName || null,
       createdAt: insight.createdAt || null,

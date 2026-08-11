@@ -130,7 +130,11 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.equal(shouldShowUniversalReview(turn), true);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
-  assert.match(review.title, /Beratungsfall/i);
+  assert.equal(String(review.title || '').trim(), '');
+  assert.ok(
+    (review.actionSections || []).some((s) => /Beratungsfall/i.test(s.title || '')),
+    'interne Section behält Beratungsfall-Label',
+  );
 
   const intake = turn.multiSourceIntake;
   assert.match(intake.resolvedCustomerCandidate?.fullName || '', /Sandro|Mazzei/i);
@@ -153,9 +157,24 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.match(customerGroup?.line || '', /Sandro|Mazzei/i);
   assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
   assert.match(wishGroup?.line || '', /AHK/i);
-  assert.ok((review.progressLines || []).length <= 2);
-  assert.ok((review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
-  assert.ok((review.progressLines || []).some((l) => /Kunde.*(?:Sandro|Mazzei)/i.test(l)));
+  assert.equal((review.progressLines || []).length, 0, 'keine Protokoll-Statuszeilen in Seller-UI');
+  assert.equal(String(review.title || '').trim(), '', 'kein Clever-Narrations-Titel');
+  assert.equal(review.quietIntake, true);
+  assert.ok(
+    !/Seller-Dump|zusammengeführt|sucht in Kunden|Clever wertet aus|Clever hat erkannt|Beratungsfall erkannt/i
+      .test(JSON.stringify({
+        title: review.title,
+        progressLines: review.progressLines,
+        summaryLine: review.summaryLine,
+        hero: review.hero,
+        groups: review.groups,
+      })),
+    'keine Protokoll-Phrasen in seller-facing Review',
+  );
+  assert.ok(
+    (review.debugDetails?.progressLines || []).some((l) => /Dokument zusammengeführt|Dump.*zusammengeführt/i.test(l)),
+    'Protokoll bleibt in debugDetails',
+  );
 
   // Primary Actions: Alles übernehmen zuerst, dann GW … erfassen
   const primary = review.actionSections?.[0]?.primaryActions || [];
@@ -203,9 +222,9 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   assert.ok(turn.multiSourceIntake?.detected);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_contract_tradein_intake_review');
-  assert.ok((review.progressLines || []).some((l) => /Seller-Dump ausgewertet/i.test(l)));
-  assert.ok(!(review.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
-  assert.ok((review.progressLines || []).length <= 2);
+  assert.equal((review.progressLines || []).length, 0, 'keine Protokoll-Statuszeilen');
+  assert.ok((review.debugDetails?.progressLines || []).some((l) => /Seller-Dump ausgewertet|Dump ausgewertet/i.test(l)));
+  assert.ok(!(review.debugDetails?.progressLines || []).some((l) => /Dokument zusammengeführt/i.test(l)));
   assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
   const customerGroup = (review.groups || []).find((g) => g.id === 'customer');
   const wishGroup = (review.groups || []).find((g) => g.id === 'wish');
@@ -232,7 +251,8 @@ const CONTRACT_FIXTURE = MAZZEI_CONTRACT_REDACT_TEST_EXTRACT;
   });
   assert.match(review.hero?.name || '', /Sandro|Mazzei/i);
   assert.match((review.groups || []).find((g) => g.id === 'customer')?.line || '', /Sandro|Mazzei/i);
-  assert.ok((review.progressLines || []).some((l) => /Kunde.*(?:Sandro|Mazzei)/i.test(l)));
+  assert.equal((review.progressLines || []).length, 0);
+  assert.ok((review.debugDetails?.progressLines || []).some((l) => /Kunde.*(?:Sandro|Mazzei)/i.test(l)));
 }
 
 // Missing contact does not block review
