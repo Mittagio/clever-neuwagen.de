@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
+import { isQuietIntakeReview } from '../../services/cleverSeller/quietIntakeReview.js';
+import { GENERIC_CONFIRMATION_WARNING_RE } from '../../services/cleverSeller/buildUniversalReviewModel.js';
+import { isLiveEditableField, resolveLiveEditEditor } from '../../services/cleverSeller/liveEditFactMeta.js';
 import {
   IconBranch,
   IconCopy,
 } from './AkteIcons.jsx';
+import SellerReviewFactChipEditor from './SellerReviewFactChipEditor.jsx';
 import './SellerUniversalReviewCard.css';
 
 const COMPACT_REVIEW_TYPES = new Set([
@@ -24,10 +28,153 @@ function isCompactReviewModel(model) {
     model.compactUi
     || model.kind === 'multi_source_intake'
     || model.kind === 'customer_intake'
+    || model.understandingFactReview
   ) {
     return true;
   }
   return COMPACT_REVIEW_TYPES.has(model.reviewType) || COMPACT_REVIEW_TYPES.has(model.kind);
+}
+
+/** Chip kann String oder { label, source, title, needsConfirmation, field, editable } sein. */
+function normalizeSurChip(chip) {
+  if (chip == null) return null;
+  if (typeof chip === 'string') {
+    const label = chip.trim();
+    return label
+      ? {
+        label,
+        source: null,
+        title: undefined,
+        needsConfirmation: false,
+        field: null,
+        value: label,
+        editable: false,
+        editor: null,
+      }
+      : null;
+  }
+  const label = String(chip.label || chip.text || '').trim();
+  if (!label) return null;
+  const source = String(chip.source || '').trim().toLowerCase() || null;
+  const needsConfirmation = Boolean(chip.needsConfirmation);
+  const field = chip.field || null;
+  const editor = chip.editor || resolveLiveEditEditor(field);
+  const editable = chip.editable != null
+    ? Boolean(chip.editable)
+    : Boolean(editor || isLiveEditableField(field));
+  return {
+    label,
+    source,
+    field,
+    value: chip.value != null ? chip.value : label,
+    needsConfirmation,
+    editable,
+    editor,
+    title: chip.title
+      || (needsConfirmation
+        ? 'Unsicher – antippen zum Korrigieren'
+        : (editable
+          ? 'Antippen zum Korrigieren'
+          : (source === 'clever' ? 'Von Clever erkannt' : undefined))),
+  };
+}
+
+function surChipClassName(chip, { justChanged = false, editing = false } = {}) {
+  const classes = ['sur-card__chip'];
+  if (chip?.needsConfirmation) classes.push('sur-card__chip--uncertain');
+  else if (chip?.source === 'clever') classes.push('sur-card__chip--source-clever');
+  if (chip?.source === 'customer') classes.push('sur-card__chip--source-customer');
+  if (chip?.source === 'seller') classes.push('sur-card__chip--source-seller');
+  if (chip?.editable) classes.push('sur-card__chip--editable');
+  if (editing) classes.push('sur-card__chip--editing');
+  if (justChanged) classes.push('sur-card__chip--just-changed');
+  return classes.join(' ');
+}
+
+function chipKey(groupId, chip) {
+  return `${groupId}-${chip.field || 'x'}-${chip.label}`;
+}
+
+function renderSurChips(chips, groupId, {
+  highlightLabels = [],
+  onConfirmChip = null,
+  onCorrectChip = null,
+  onEditChip = null,
+  editingKey = null,
+  liveEditEnabled = false,
+} = {}) {
+  const list = (Array.isArray(chips) ? chips : [])
+    .map(normalizeSurChip)
+    .filter(Boolean);
+  if (!list.length) return null;
+  const highlightSet = new Set(
+    (Array.isArray(highlightLabels) ? highlightLabels : [])
+      .map((l) => String(l || '').trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return list.map((chip) => {
+    const key = chipKey(groupId, chip);
+    const justChanged = highlightSet.has(chip.label.toLowerCase());
+    const editing = editingKey === key;
+    const canEdit = liveEditEnabled && chip.editable && typeof onEditChip === 'function';
+    const ChipTag = canEdit ? 'button' : 'span';
+    return (
+      <ChipTag
+        key={key}
+        type={canEdit ? 'button' : undefined}
+        className={surChipClassName(chip, { justChanged, editing })}
+        title={chip.title}
+        data-source={chip.source || undefined}
+        data-uncertain={chip.needsConfirmation ? 'true' : undefined}
+        data-field={chip.field || undefined}
+        onClick={canEdit ? (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onEditChip(chip, key);
+        } : undefined}
+      >
+        {chip.source === 'clever' && !chip.needsConfirmation ? (
+          <span className="sur-card__chip-sparkle" aria-hidden>✦</span>
+        ) : null}
+        {chip.needsConfirmation ? (
+          <span className="sur-card__chip-uncertain-mark" aria-hidden>?</span>
+        ) : null}
+        <span className="sur-card__chip-label">{chip.label}</span>
+        {canEdit ? (
+          <span className="sur-card__chip-edit" aria-hidden title="Korrigieren">✎</span>
+        ) : null}
+        {chip.needsConfirmation && (onConfirmChip || onCorrectChip) ? (
+          <span className="sur-card__chip-actions">
+            {typeof onConfirmChip === 'function' ? (
+              <button
+                type="button"
+                className="sur-card__chip-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConfirmChip(chip);
+                }}
+              >
+                Bestätigen
+              </button>
+            ) : null}
+            {typeof onCorrectChip === 'function' || canEdit ? (
+              <button
+                type="button"
+                className="sur-card__chip-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (canEdit) onEditChip(chip, key);
+                  else onCorrectChip?.(chip);
+                }}
+              >
+                Korrigieren
+              </button>
+            ) : null}
+          </span>
+        ) : null}
+      </ChipTag>
+    );
+  });
 }
 
 function pickPrimaryBody(model) {
@@ -186,6 +333,14 @@ export default function SellerUniversalReviewCard({
   onDismiss = null,
   onOpenHistoryHit = null,
   onReviewAction = null,
+  /** Bestätigt einen unsicheren Chip-Fakt */
+  onConfirmChip = null,
+  /** Korrigieren eines unsicheren Chip-Fakts (Composer) */
+  onCorrectChip = null,
+  /** Live-Edit: Inline-Speichern am Chip */
+  onLiveEditChip = null,
+  /** Micro-Confirm Undo (z. B. Telefon ergänzt) */
+  onUndo = null,
   /** accepted | ready_to_send | sent – settled last-action mode */
   status = null,
   statusLabel = null,
@@ -196,6 +351,8 @@ export default function SellerUniversalReviewCard({
   const [copied, setCopied] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [showCollapsedContext, setShowCollapsedContext] = useState(false);
+  const [editingChip, setEditingChip] = useState(null);
+  const [editingKey, setEditingKey] = useState(null);
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const body = useMemo(() => pickPrimaryBody(model), [model]);
@@ -265,12 +422,28 @@ export default function SellerUniversalReviewCard({
   const isApplyResult = model.reviewType === 'multi_source_apply_result'
     || model.kind === 'multi_source_apply_result';
   const isCompactReview = isCompactReviewModel(model);
+  const isCustomerIntakeReview = model?.reviewType === 'customer_intake_review'
+    || model?.reviewType === 'inbound_lead_review'
+    || model?.kind === 'customer_intake';
+  const isSilentIntake = isQuietIntakeReview(model)
+    || isCustomerIntakeReview
+    || model?.kind === 'multi_source_intake'
+    || model?.reviewType === 'customer_contract_tradein_intake_review';
+  const liveEditEnabled = Boolean(
+    model?.liveEditEnabled
+    || isSilentIntake
+    || isCustomerIntakeReview,
+  ) && typeof onLiveEditChip === 'function';
+  const quickCorrectActions = Array.isArray(model?.quickCorrectActions)
+    ? model.quickCorrectActions.slice(0, 3)
+    : [];
   const settled = Boolean(status) || isApplyResult;
   const showFactGroups = !isAppointmentReview && !isOfferReview && groups.length > 0 && (
     isCompactReview
     || isApplyResult
   );
   const hero = model?.hero || null;
+  const heroHeadline = hero?.headline || null;
   const heroName = isAppointmentReview
     ? (appointmentReview?.whenLine || hero?.name || null)
     : isOfferReview
@@ -278,7 +451,8 @@ export default function SellerUniversalReviewCard({
       : (hero?.name
         || groups.find((g) => g.id === 'customer')?.line
         || null);
-  const statusLines = (isAppointmentReview || isOfferReview)
+  // Intake / Multi-Source: keine Protokoll-Statuszeilen (Seller-Dump / „sucht…“)
+  const statusLines = (isAppointmentReview || isOfferReview || isSilentIntake)
     ? []
     : (Array.isArray(model?.progressLines)
       ? model.progressLines.slice(0, 2)
@@ -329,6 +503,41 @@ export default function SellerUniversalReviewCard({
     onAcceptAndRevise?.(model);
   }
 
+  function handleEditChip(chip, key) {
+    setEditingChip(chip);
+    setEditingKey(key);
+  }
+
+  function handleLiveEditSave({ field, value, label }) {
+    const result = onLiveEditChip?.({ field, value, label, chip: editingChip });
+    if (result && result.ok === false) return result;
+    setEditingChip(null);
+    setEditingKey(null);
+    return result || { ok: true };
+  }
+
+  function handleQuickCorrect(action) {
+    if (!action?.field) return;
+    const chip = {
+      field: action.field,
+      label: '',
+      value: '',
+      editor: action.editor || resolveLiveEditEditor(action.field),
+      editable: true,
+    };
+    // Prefer existing chip value from groups
+    for (const group of groups) {
+      const found = (group.chips || [])
+        .map(normalizeSurChip)
+        .find((c) => c?.field === action.field);
+      if (found) {
+        handleEditChip(found, chipKey(group.id || group.title || 'facts', found));
+        return;
+      }
+    }
+    handleEditChip(chip, `quick-${action.field}`);
+  }
+
   function handleReviewAction(action) {
     if (!action) return;
     if (action.action === 'view_sources') {
@@ -369,54 +578,78 @@ export default function SellerUniversalReviewCard({
 
   return (
     <article
-      className={`sur-card sur-card--cursor${settled ? ' sur-card--settled' : ''}${isCompactReview ? ' sur-card--multi' : ''}`}
+      className={[
+        'sur-card',
+        'sur-card--cursor',
+        settled ? 'sur-card--settled' : '',
+        isCompactReview ? 'sur-card--multi' : '',
+        isSilentIntake ? 'sur-card--quiet-intake' : '',
+      ].filter(Boolean).join(' ')}
       aria-live="polite"
     >
-      <header className="sur-card__meta">
-        <span className="sur-card__when">{settled ? 'zuletzt' : 'gerade eben'}</span>
-        {model.title ? (
-          <span className="sur-card__eyebrow">{model.title.replace(/^✨\s*/, '')}</span>
-        ) : null}
-        {resolvedStatusLabel ? (
-          <span className="sur-card__status" data-status={status || 'accepted'}>
-            {resolvedStatusLabel}
-          </span>
-        ) : null}
-      </header>
+      {!isSilentIntake || settled || resolvedStatusLabel ? (
+        <header className="sur-card__meta">
+          {!isSilentIntake ? (
+            <span className="sur-card__when">{settled ? 'zuletzt' : 'gerade eben'}</span>
+          ) : null}
+          {!isSilentIntake && model.title ? (
+            <span className="sur-card__eyebrow">{model.title.replace(/^✨\s*/, '')}</span>
+          ) : null}
+          {resolvedStatusLabel ? (
+            <span className="sur-card__status" data-status={status || 'accepted'}>
+              {resolvedStatusLabel}
+            </span>
+          ) : null}
+        </header>
+      ) : null}
 
-      {isCompactReview && (heroName || hero?.eyebrow) ? (
-        <div className="sur-card__hero">
-          {hero?.eyebrow ? (
-            <span className="sur-card__hero-eyebrow">{hero.eyebrow}</span>
-          ) : null}
-          <h3 className="sur-card__hero-name">
-            {isAppointmentReview
-              ? (appointmentReview?.whenLine || heroName || 'Terminvorschlag')
-              : isOfferReview
-                ? (offerReview?.heroLine || heroName || 'Angebot')
-                : (heroName || 'Neuer Kunde')}
-          </h3>
-          {isAppointmentReview ? (
-            <div className="sur-card__appt-meta">
-              {appointmentReview?.appointmentTypeLabel ? (
-                <p className="sur-card__hero-sub">{appointmentReview.appointmentTypeLabel}</p>
+      {isCompactReview && (heroHeadline || heroName || hero?.eyebrow) ? (
+        <div className={`sur-card__hero${heroHeadline ? ' sur-card__hero--action-first' : ''}`}>
+          {heroHeadline && !isAppointmentReview && !isOfferReview ? (
+            <>
+              <h3 className="sur-card__hero-name">{heroHeadline}</h3>
+              {heroName ? (
+                <p className="sur-card__hero-customer">{heroName}</p>
               ) : null}
-              {appointmentReview?.vehicleLabel ? (
-                <p className="sur-card__hero-sub">{appointmentReview.vehicleLabel}</p>
+              {hero?.subtitle ? (
+                <p className="sur-card__hero-sub">{hero.subtitle}</p>
               ) : null}
-              {appointmentReview?.calendarLabel ? (
-                <p className="sur-card__status-line">{appointmentReview.calendarLabel}</p>
+            </>
+          ) : (
+            <>
+              {hero?.eyebrow ? (
+                <span className="sur-card__hero-eyebrow">{hero.eyebrow}</span>
               ) : null}
-            </div>
-          ) : isOfferReview ? (
-            (offerReview?.conditionsLine || hero?.subtitle) ? (
-              <p className="sur-card__hero-sub">
-                {offerReview?.conditionsLine || hero.subtitle}
-              </p>
-            ) : null
-          ) : hero?.subtitle ? (
-            <p className="sur-card__hero-sub">{hero.subtitle}</p>
-          ) : null}
+              <h3 className="sur-card__hero-name">
+                {isAppointmentReview
+                  ? (appointmentReview?.whenLine || heroName || 'Terminvorschlag')
+                  : isOfferReview
+                    ? (offerReview?.heroLine || heroName || 'Angebot')
+                    : (heroName || 'Neuer Kunde')}
+              </h3>
+              {isAppointmentReview ? (
+                <div className="sur-card__appt-meta">
+                  {appointmentReview?.appointmentTypeLabel ? (
+                    <p className="sur-card__hero-sub">{appointmentReview.appointmentTypeLabel}</p>
+                  ) : null}
+                  {appointmentReview?.vehicleLabel ? (
+                    <p className="sur-card__hero-sub">{appointmentReview.vehicleLabel}</p>
+                  ) : null}
+                  {appointmentReview?.calendarLabel ? (
+                    <p className="sur-card__status-line">{appointmentReview.calendarLabel}</p>
+                  ) : null}
+                </div>
+              ) : isOfferReview ? (
+                (offerReview?.conditionsLine || hero?.subtitle) ? (
+                  <p className="sur-card__hero-sub">
+                    {offerReview?.conditionsLine || hero.subtitle}
+                  </p>
+                ) : null
+              ) : hero?.subtitle ? (
+                <p className="sur-card__hero-sub">{hero.subtitle}</p>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
 
@@ -446,13 +679,18 @@ export default function SellerUniversalReviewCard({
             </button>
           ) : null}
         </div>
-      ) : (Array.isArray(model?.warnings) && model.warnings.length > 0 ? (
-        <ul className="sur-card__warnings" aria-label="Hinweise">
-          {model.warnings.slice(0, 3).map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      ) : null)}
+      ) : (() => {
+        const sellerWarnings = (Array.isArray(model?.warnings) ? model.warnings : [])
+          .filter((w) => w && !GENERIC_CONFIRMATION_WARNING_RE.test(String(w)))
+          .slice(0, 3);
+        return sellerWarnings.length > 0 ? (
+          <ul className="sur-card__warnings" aria-label="Hinweise">
+            {sellerWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        ) : null;
+      })()}
 
       {isAppointmentReview && appointmentReview?.message ? (
         <div className="sur-card__message-block">
@@ -477,18 +715,46 @@ export default function SellerUniversalReviewCard({
               const chips = Array.isArray(group.chips) && group.chips.length
                 ? group.chips
                 : null;
+              const chipNodes = chips
+                ? renderSurChips(chips, group.id || group.title, {
+                  highlightLabels: model?.highlightChipLabels || [],
+                  liveEditEnabled,
+                  editingKey,
+                  onEditChip: liveEditEnabled ? handleEditChip : null,
+                  onConfirmChip: typeof onConfirmChip === 'function' ? onConfirmChip : null,
+                  onCorrectChip: typeof onCorrectChip === 'function' ? onCorrectChip : (
+                    typeof onReviewAction === 'function'
+                      ? (chip) => onReviewAction({
+                        action: 'revise_fact',
+                        field: chip.field,
+                        label: chip.label,
+                      })
+                      : null
+                  ),
+                })
+                : null;
               const showItemList = !isCompactReview
                 && Array.isArray(group.items)
                 && group.items.length > 1
                 && !chips;
+              const chipsAlways = isCustomerIntakeReview
+                || group.id === 'facts'
+                || group.id === 'contact'
+                || group.id === 'notes'
+                || group.id === 'open'
+                || group.id === 'matches';
+              const factTitle = String(group.title || '').trim();
               return (
-                <li key={group.id || group.title} className="sur-card__fact">
-                  <span className="sur-card__fact-title">{group.title}</span>
-                  {isCompactReview && chips ? (
-                    <span className="sur-card__chips">
-                      {chips.map((chip) => (
-                        <span key={`${group.id}-${chip}`} className="sur-card__chip">{chip}</span>
-                      ))}
+                <li
+                  key={group.id || group.title || group.line}
+                  className={`sur-card__fact${group.id === 'open' ? ' sur-card__fact--open' : ''}`}
+                >
+                  {factTitle ? (
+                    <span className="sur-card__fact-title">{factTitle}</span>
+                  ) : null}
+                  {isCompactReview && chipNodes ? (
+                    <span className={`sur-card__chips${chipsAlways || isSilentIntake ? ' sur-card__chips--always' : ''}`}>
+                      {chipNodes}
                     </span>
                   ) : (
                     <span className="sur-card__fact-line">{group.line}</span>
@@ -509,11 +775,47 @@ export default function SellerUniversalReviewCard({
               );
             })}
         </ul>
-      ) : (!isAppointmentReview && body) ? (
+      ) : (!isAppointmentReview && !isOfferReview && body) ? (
         <pre className="sur-card__draft">{body}</pre>
-      ) : (!isAppointmentReview ? (
+      ) : (!isAppointmentReview && !isOfferReview && model.summaryLine ? (
         <p className="sur-card__summary">{model.summaryLine}</p>
       ) : null)}
+
+      {liveEditEnabled && editingChip ? (
+        <SellerReviewFactChipEditor
+          chip={editingChip}
+          onSave={handleLiveEditSave}
+          onCancel={() => {
+            setEditingChip(null);
+            setEditingKey(null);
+          }}
+        />
+      ) : null}
+
+      {liveEditEnabled && !editingChip && quickCorrectActions.length > 0 ? (
+        <div className="sur-card__quick-correct" aria-label="Schnell korrigieren">
+          <span className="sur-card__quick-correct-label">Schnell korrigieren</span>
+          <div className="sur-card__quick-correct-actions">
+            {quickCorrectActions.map((action) => (
+              <button
+                key={action.id || action.field}
+                type="button"
+                className="sur-card__quick-correct-btn"
+                onClick={() => handleQuickCorrect(action)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {model?.matchHint?.text ? (
+        <p className="sur-card__match-hint" role="status">
+          {model.matchHint.text}
+          {model.matchHint.name ? ` · ${model.matchHint.name}` : ''}
+        </p>
+      ) : null}
 
       {isAppointmentReview && appointmentReview?.usedContextSummary ? (
         <div className="sur-card__used-context">
@@ -616,9 +918,9 @@ export default function SellerUniversalReviewCard({
               <span className="sur-card__fact-title">{group.title}</span>
               {Array.isArray(group.chips) && group.chips.length ? (
                 <span className="sur-card__chips sur-card__chips--always">
-                  {group.chips.map((chip) => (
-                    <span key={`${group.id}-${chip}`} className="sur-card__chip">{chip}</span>
-                  ))}
+                  {renderSurChips(group.chips, group.id || group.title, {
+                    highlightLabels: model?.highlightChipLabels || [],
+                  })}
                 </span>
               ) : (
                 <span className="sur-card__fact-line">{group.line}</span>
@@ -669,49 +971,81 @@ export default function SellerUniversalReviewCard({
         </button>
       ) : null}
 
-      <div className="sur-card__toolbar" role="group" aria-label="Clever Aktionen">
-        {!settled && typeof onMaybe === 'function' ? (
+      {model?.microConfirm ? (
+        <p className="sur-card__micro-confirm" role="status">
+          <span>{model.microConfirm.text || model.microConfirm}</span>
+          {(model.microConfirm.undoLabel || /rückgängig/i.test(String(model.microConfirm)))
+            && typeof onUndo === 'function' ? (
+            <>
+              <span aria-hidden> · </span>
+              <button
+                type="button"
+                className="sur-card__micro-confirm-undo"
+                onClick={() => onUndo()}
+              >
+                {model.microConfirm.undoLabel || 'Rückgängig'}
+              </button>
+            </>
+          ) : (
+            model.microConfirm.undoLabel ? (
+              <>
+                <span aria-hidden> · </span>
+                <span>{model.microConfirm.undoLabel}</span>
+              </>
+            ) : null
+          )}
+        </p>
+      ) : null}
+
+      {/* Quiet Intake: Primary/Secondary reichen – Toolbar nur Lärm/Whitespace */}
+      {!isSilentIntake || settled ? (
+        <div className="sur-card__toolbar" role="group" aria-label="Clever Aktionen">
+          {!settled && typeof onMaybe === 'function' ? (
+            <button
+              type="button"
+              className="sur-card__icon-btn"
+              onClick={handleMaybe}
+              title="Im Composer weiterarbeiten"
+              aria-label="Im Composer weiterarbeiten"
+            >
+              <IconBranch />
+            </button>
+          ) : null}
+          {!settled
+            && !model?.hideGlobalAccept
+            && !reviewActions.length
+            && typeof onAccept === 'function' ? (
+            <button
+              type="button"
+              className="sur-card__text-link sur-card__toolbar-accept"
+              onClick={() => onAccept?.(model)}
+            >
+              Übernehmen
+            </button>
+          ) : null}
           <button
             type="button"
             className="sur-card__icon-btn"
-            onClick={handleMaybe}
-            title="Im Composer weiterarbeiten"
-            aria-label="Im Composer weiterarbeiten"
+            onClick={handleCopy}
+            title={copied ? 'Kopiert' : 'Kopieren'}
+            aria-label={copied ? 'Kopiert' : 'Kopieren'}
           >
-            <IconBranch />
+            <IconCopy />
           </button>
-        ) : null}
-        {!settled && !reviewActions.length && typeof onAccept === 'function' ? (
-          <button
-            type="button"
-            className="sur-card__text-link sur-card__toolbar-accept"
-            onClick={() => onAccept?.(model)}
-          >
-            Übernehmen
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="sur-card__icon-btn"
-          onClick={handleCopy}
-          title={copied ? 'Kopiert' : 'Kopieren'}
-          aria-label={copied ? 'Kopiert' : 'Kopieren'}
-        >
-          <IconCopy />
-        </button>
-        {settled && onDismiss ? (
-          <button
-            type="button"
-            className="sur-card__icon-btn sur-card__icon-btn--dismiss"
-            onClick={() => onDismiss?.(model)}
-            title="Ausblenden"
-            aria-label="Ausblenden"
-          >
-            ×
-          </button>
-        ) : null}
-        {copied ? <span className="sur-card__copied">Kopiert</span> : null}
-      </div>
+          {settled && onDismiss ? (
+            <button
+              type="button"
+              className="sur-card__icon-btn sur-card__icon-btn--dismiss"
+              onClick={() => onDismiss?.(model)}
+              title="Ausblenden"
+              aria-label="Ausblenden"
+            >
+              ×
+            </button>
+          ) : null}
+          {copied ? <span className="sur-card__copied">Kopiert</span> : null}
+        </div>
+      ) : null}
     </article>
   );
 }

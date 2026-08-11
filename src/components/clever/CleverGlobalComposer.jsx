@@ -87,7 +87,9 @@ import {
   resolveComposerSurfaceState,
   resolveDockedContentSpacerPx,
 } from '../../services/cleverSeller/composerSurfaceState.js';
+import { buildHomePrepareOfferComposerTask } from '../../logic/backendHomeEmpfiehltActions.js';
 import {
+  COMPOSER_INTENT_CHIP_IDS,
   COMPOSER_INTENT_CHIPS,
   COMPOSER_INTENT_MORE_CHIPS,
   resetIntentConstraintToDefault,
@@ -101,6 +103,21 @@ import {
   resolveVisiblePrimaryIntentChips,
 } from '../../services/cleverSeller/composerIntentChips.js';
 import { findOfferWorkingContext } from '../../services/crm/composerWorkingContext.js';
+import {
+  applyQuietIntakeSubtaskResult,
+  isQuietIntakeReview,
+  isQuietIntakeTurn,
+  resolveQuietIntakeSuggestChips,
+} from '../../services/cleverSeller/quietIntakeReview.js';
+import {
+  patchSellerReviewFact,
+  undoSellerReviewFactPatch,
+} from '../../services/cleverSeller/patchSellerReviewFact.js';
+import {
+  IconCalendar,
+  IconFile,
+  IconTag,
+} from '../dealer-ai/AkteIcons.jsx';
 import './CleverGlobalComposer.css';
 
 const FALLBACK_INTERPRET_WARNING = [
@@ -109,9 +126,34 @@ const FALLBACK_INTERPRET_WARNING = [
   'Bitte prüfen Sie die erkannten Angaben.',
 ].join(' ');
 
-const SUGGESTION_CHIPS = [
-  { id: 'showroom', label: 'Showroom starten' },
-  { id: 'model', label: 'Modellwelt öffnen' },
+/**
+ * Feedback-Freeze: kein grüner Erfolgs-/Narrations-Hint unter dem Composer
+ * für Intake + Understanding. Fehler/Warnungen bleiben erlaubt.
+ */
+function quietReviewFeedback(model, turn, fallback = '') {
+  if (isQuietIntakeReview(model) || isQuietIntakeTurn(turn)) return '';
+  if (model?.understandingFactReview || model?.hideGlobalAccept) return '';
+  const text = String(fallback || '').trim();
+  if (!text) return '';
+  // Titel-Echo („Clever hat verstanden“) nie als Composer-Statuszeile
+  if (/Clever hat verstanden|Clever hat vorbereitet|Clever hat einsortiert/i.test(text)) {
+    return '';
+  }
+  return text;
+}
+
+function isComposerErrorFeedback(text = '') {
+  const t = String(text || '').trim();
+  if (!t) return false;
+  return /fehlgeschlagen|nicht möglich|konnte noch nicht|bitte zuerst|Fehler|prüfen Sie|nicht verfügbar|nicht geprüft|block|Warnung/i.test(t)
+    || t === FALLBACK_INTERPRET_WARNING;
+}
+
+/** Home-Hero Quick Actions (Showroom/Modellwelt → Werkzeuge) */
+const HOME_QUICK_CHIPS = [
+  { id: 'today', label: 'Was liegt heute an?', Icon: IconCalendar },
+  { id: 'intake', label: 'Neue Anfrage', Icon: IconFile },
+  { id: 'prepare_offer', label: 'Angebot vorbereiten', Icon: IconTag },
 ];
 
 const DOCK_SCROLL_THRESHOLD = 96;
@@ -181,6 +223,7 @@ export default function CleverGlobalComposer() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [feedbackKind, setFeedbackKind] = useState('');
   const [reviewModel, setReviewModel] = useState(null);
   const [lastTurn, setLastTurn] = useState(null);
   const [progressHint, setProgressHint] = useState(null);
@@ -192,9 +235,15 @@ export default function CleverGlobalComposer() {
     COMPOSER_INTENT_CHIPS[0].id,
   );
   const [intentPurpose, setIntentPurpose] = useState(null);
+  /** Suggest-Chip-Aufgabe unter quiet Intake (task-spezifischer Composer-Titel) */
+  const [quietIntakeTask, setQuietIntakeTask] = useState(null);
   const [rememberUndo, setRememberUndo] = useState(null);
+  /** Live-Edit Undo (Chip-Korrektur) – lokal, kein Composer-Erfolg */
+  const [liveEditUndo, setLiveEditUndo] = useState(null);
   const [attachmentActions, setAttachmentActions] = useState(null);
   const [agentWorkingMemory, setAgentWorkingMemory] = useState(() => createEmptyAgentWorkingMemory());
+  /** Work-Context-Karte bleibt stehen, während Composer-Subtasks laufen */
+  const quietIntakeContextRef = useRef(null);
   const progressHintSchedulerRef = useRef(null);
   if (!progressHintSchedulerRef.current) {
     progressHintSchedulerRef.current = createProgressHintScheduler({
@@ -309,16 +358,94 @@ export default function CleverGlobalComposer() {
     }),
     [intentConstraint, customerDisplayName, missingDocuments, hasOpenOffer, hasOpenAppointment],
   );
-  const composerPlaceholder = intentPlaceholder || resolveComposerPlaceholder({
-    draft,
-    hintIndex: placeholderIndex,
-    dockMode,
-    placeholders: COMPOSER_HERO_PLACEHOLDERS,
-  });
+  const quietIntakeOpen = Boolean(
+    isQuietIntakeReview(reviewModel) || isQuietIntakeTurn(lastTurn),
+  );
+  const quietIntakeSuggestChips = useMemo(() => {
+    // Subtask aktiv: nur Choice-Chips (z. B. Modell), keine konkurrierende Toolbar
+    if (quietIntakeTask?.choiceChips?.length) {
+      return quietIntakeTask.choiceChips;
+    }
+    if (quietIntakeTask) return [];
+    if (!quietIntakeOpen) return [];
+    return resolveQuietIntakeSuggestChips(lastTurn);
+  }, [quietIntakeOpen, quietIntakeTask, lastTurn]);
+
+  const composerPlaceholder = quietIntakeTask?.placeholder
+    || intentPlaceholder
+    || resolveComposerPlaceholder({
+      draft,
+      hintIndex: placeholderIndex,
+      dockMode,
+      placeholders: COMPOSER_HERO_PLACEHOLDERS,
+      quietIntake: quietIntakeOpen && !quietIntakeTask,
+    });
+  const composerLabel = quietIntakeTask?.title || intentLabels.label;
+
+  useEffect(() => {
+    if (quietIntakeOpen && reviewModel && lastTurn) {
+      quietIntakeContextRef.current = { reviewModel, lastTurn };
+      return;
+    }
+    if (!reviewModel && !lastTurn) {
+      quietIntakeContextRef.current = null;
+      setQuietIntakeTask(null);
+    }
+  }, [quietIntakeOpen, reviewModel, lastTurn]);
 
   function resetIntentChipsToDefault() {
     setSelectedIntentChipId(resetIntentConstraintToDefault().id);
     setIntentPurpose(null);
+  }
+
+  /** Composer-Feedback: Fehler sichtbar, Erfolgs-Grün für Intake/Understanding unterdrückt */
+  function pushComposerFeedback(text, { kind = null, ms = 3200 } = {}) {
+    const value = String(text || '').trim();
+    if (!value) {
+      setFeedback('');
+      setFeedbackKind('');
+      return;
+    }
+    const resolvedKind = kind
+      || (isComposerErrorFeedback(value) ? 'error' : 'neutral');
+    // Freeze: keine Success-Zeilen unter dem Composer
+    if (resolvedKind === 'success') {
+      setFeedback('');
+      setFeedbackKind('');
+      return;
+    }
+    setFeedback(value);
+    setFeedbackKind(resolvedKind);
+    setTimeout(() => {
+      setFeedback('');
+      setFeedbackKind('');
+    }, ms);
+  }
+
+  /** Nach Subtask: Composer zurück zu Clever, Intake-Karte behalten */
+  function restoreQuietIntakeWorkContext(completedTurn = null) {
+    const task = quietIntakeTask;
+    setQuietIntakeTask(null);
+    resetIntentChipsToDefault();
+    const preserved = quietIntakeContextRef.current;
+    if (!preserved?.reviewModel && !preserved?.lastTurn) return;
+
+    const merged = applyQuietIntakeSubtaskResult({
+      preservedTurn: preserved.lastTurn,
+      completedTurn,
+      taskId: task?.id || null,
+    });
+    const nextReview = merged.reviewModel || preserved.reviewModel;
+    const nextTurn = merged.lastTurn || preserved.lastTurn;
+    // Erfolg = State-Change (Chip/Glow/Micro-Confirm) – kein Composer-Feedback
+    setFeedback('');
+    setFeedbackKind('');
+    if (nextReview) setReviewModel(nextReview);
+    if (nextTurn) setLastTurn(nextTurn);
+    quietIntakeContextRef.current = {
+      reviewModel: nextReview,
+      lastTurn: nextTurn,
+    };
   }
 
   function handleSecondaryIntentAction(action) {
@@ -426,10 +553,113 @@ export default function CleverGlobalComposer() {
     };
   }, [visible, dockMode, surfaceState, reviewModel]);
 
+  /** Dashboard-Karten / Home-Chips → Composer-Turn oder Task */
+  const applyDashboardComposerRequestRef = useRef(async () => {});
+
+  useEffect(() => {
+    const req = ctx?.composerRequest;
+    if (!req?.id || !visible) return;
+    ctx.consumeComposerRequest?.(req.id);
+    void applyDashboardComposerRequestRef.current?.(req);
+  }, [ctx?.composerRequest?.id, visible, ctx?.consumeComposerRequest]);
+
   if (!visible) return null;
+
+  function startComposerTaskFromChip(chip = {}) {
+    if (chip.composerTitle || chip.placeholder) {
+      setQuietIntakeTask({
+        id: chip.id || null,
+        title: chip.composerTitle || '',
+        placeholder: chip.placeholder || '',
+        choiceChips: Array.isArray(chip.choiceChips) ? chip.choiceChips : null,
+      });
+    }
+    if (chip.intentChipId) {
+      const intentId = chip.intentChipId === 'angebot'
+        ? COMPOSER_INTENT_CHIP_IDS.OFFER
+        : chip.intentChipId === 'merken'
+          ? COMPOSER_INTENT_CHIP_IDS.REMEMBER
+          : chip.intentChipId;
+      if (resolveIntentChipById(intentId)) {
+        setSelectedIntentChipId(intentId);
+        setIntentPurpose(null);
+      }
+    }
+    setFocused(true);
+    if (typeof chip.draft === 'string') setDraft(chip.draft);
+    else setDraft('');
+  }
+
+  async function applyDashboardComposerRequest(req = {}) {
+    if (!req) return;
+    if (req.type === 'prepare_offer_task' || req.type === 'start_task') {
+      startComposerTaskFromChip(req.task || buildHomePrepareOfferComposerTask());
+      return;
+    }
+
+    const sellerInput = req.type === 'today_overview'
+      ? String(req.sellerInput || 'Was liegt heute an?').trim()
+      : String(req.sellerInput || '').trim();
+    if (!sellerInput || sending) return;
+
+    setFocused(true);
+    setSending(true);
+    setFeedback('');
+    setDraft('');
+    try {
+      const snapshot = ctx?.leadsSnapshot || [];
+      const lead = req.leadId
+        ? (snapshot.find((l) => l.id === req.leadId) || {})
+        : (ctx?.currentCustomer || {});
+      const turn = runCleverSellerTurn({
+        lead,
+        sellerInput,
+        leadsSnapshot: snapshot,
+        customerName: lead?.contact?.name || lead?.name || '',
+        scopeHint: 'dashboard',
+        workingContextItems: ctx?.attachedWorkingObjects || [],
+        appContext: {
+          routeContext: ctx?.routeContext,
+          attachedWorkingObjects: ctx?.attachedWorkingObjects,
+          dashboardContext: ctx?.dashboardContext,
+        },
+      });
+      setLastTurn(turn);
+      const model = turn.reviewModel
+        || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+      setReviewModel(model);
+      const hint = quietReviewFeedback(
+        model,
+        turn,
+        model?.summaryLine || model?.title || (req.type === 'today_overview' ? 'Heute wichtig' : ''),
+      );
+      if (hint) {
+        setFeedback(hint);
+        setTimeout(() => setFeedback(''), 3600);
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+  applyDashboardComposerRequestRef.current = applyDashboardComposerRequest;
 
   function handleSuggestion(chip) {
     if (!chip) return;
+    // Choice-Chip während Subtask (z. B. Modell): nur Draft setzen, kein neuer Task
+    if (
+      quietIntakeTask
+      && !chip.composerTitle
+      && !chip.intentChipId
+      && (chip.id?.startsWith?.('qi_model_') || typeof chip.draft === 'string')
+    ) {
+      setFocused(true);
+      if (typeof chip.draft === 'string') setDraft(chip.draft);
+      return;
+    }
+    if (chip.composerTitle || chip.placeholder || chip.intentChipId) {
+      startComposerTaskFromChip(chip);
+      return;
+    }
     if (chip.id === 'showroom') {
       navigate('/verkaufsassistent?view=showroom');
       return;
@@ -438,26 +668,36 @@ export default function CleverGlobalComposer() {
       navigate('/verkaufsassistent?view=model');
       return;
     }
+    if (chip.id === 'prepare_offer') {
+      startComposerTaskFromChip(buildHomePrepareOfferComposerTask());
+      return;
+    }
     if (chip.id === 'intake') {
       setFocused(true);
-      // Bereits erkannte Anfrage: nicht nochmal „einfügen“, sondern Accept-CTA nutzen
+      // Bereits erkannte Anfrage: Fokus auf Karte, kein Clever-Narrations-Hint
       if (
-        reviewModel?.reviewType === 'customer_intake_review'
+        isQuietIntakeReview(reviewModel)
+        || reviewModel?.reviewType === 'customer_intake_review'
         || reviewModel?.reviewType === 'inbound_lead_review'
         || lastTurn?.inboundLead?.detected
+        || lastTurn?.multiSourceIntake?.detected
       ) {
-        const cta = reviewModel?.primaryCta || 'Übernehmen';
-        setFeedback(`Anfrage erkannt – bitte „${cta}“ tippen`);
-        setTimeout(() => setFeedback(''), 4200);
+        setFeedback('');
         return;
       }
       setDraft('');
-      setFeedback('Anfrage hier einfügen und absenden – Clever erkennt den Kunden');
+      setFeedback('Anfrage hier einfügen und absenden');
       setTimeout(() => setFeedback(''), 4200);
       return;
     }
-    if (chip.id === 'today') setDraft('Was liegt heute an?');
-    else if (chip.id === 'tow') setDraft('XCeed Anhängelast?');
+    if (chip.id === 'today') {
+      void applyDashboardComposerRequest({
+        type: 'today_overview',
+        sellerInput: 'Was liegt heute an?',
+      });
+      return;
+    }
+    if (chip.id === 'tow') setDraft('XCeed Anhängelast?');
     else if (chip.id === 'open') setDraft('Öffne Herrn Brandes.');
     else if (chip.id === 'summary') setDraft('Was wollte Herr Brandes noch einmal?');
     else if (chip.id === 'offer') {
@@ -590,11 +830,15 @@ export default function CleverGlobalComposer() {
     const offerMsg = sections.find((s) => (
       s.kind === 'offer_and_message_review'
       || s.kind === 'offer_and_appointment_review'
+      || s.kind === 'offer_prepare'
+      || s.kind === 'offer_incomplete'
     ));
     if (offerMsg || turn?.handoffWorkingContext) {
       const leadId = turn?.resolvedCustomer?.id
         || turn?.handoffWorkingContext?.customerId
-        || offerMsg?.primaryActions?.[0]?.leadId;
+        || offerMsg?.primaryActions?.find((a) => a.leadId)?.leadId
+        || offerMsg?.primaryActions?.[0]?.leadId
+        || null;
       if (leadId) {
         return {
           leadId,
@@ -700,14 +944,102 @@ export default function CleverGlobalComposer() {
   }
 
   function handleRememberUndo() {
+    if (liveEditUndo?.undoSnapshot && lastTurn) {
+      const restored = undoSellerReviewFactPatch({
+        turn: lastTurn,
+        undoSnapshot: liveEditUndo.undoSnapshot,
+      });
+      if (restored.ok) {
+        setLastTurn(restored.lastTurn);
+        setReviewModel(restored.reviewModel);
+        setLiveEditUndo(null);
+        setFeedback('');
+        setFeedbackKind('');
+        return;
+      }
+    }
     if (!rememberUndo?.leadId || !rememberUndo?.previousLead) return;
     if (typeof updateLead === 'function') {
       updateLead(rememberUndo.leadId, rememberUndo.previousLead);
     }
     setRememberUndo(null);
-    setFeedback('Merken rückgängig gemacht');
-    setTimeout(() => setFeedback(''), 2800);
+    // Micro-Undo: kurze neutrale Zeile, kein Erfolg-Grün
+    pushComposerFeedback('Merken rückgängig gemacht', { kind: 'neutral', ms: 2200 });
     resetIntentChipsToDefault();
+  }
+
+  /** Live-Edit am Chip – gleicher Result-State wie NL-Korrektur */
+  function handleLiveEditChip({ field, value, label } = {}) {
+    if (!lastTurn || !field) return { ok: false, error: 'Kein Kontext' };
+    const snapshot = ctx?.leadsSnapshot || [];
+    const patched = patchSellerReviewFact({
+      turn: lastTurn,
+      field,
+      value,
+      label,
+      leads: snapshot,
+      correctionSource: 'seller',
+    });
+    if (!patched.ok) return patched;
+    setLastTurn(patched.lastTurn);
+    setReviewModel(patched.reviewModel);
+    setLiveEditUndo({
+      undoSnapshot: patched.undoSnapshot,
+      at: Date.now(),
+    });
+    setFeedback('');
+    setFeedbackKind('');
+    // Micro-Confirm auto-fade (1.5s) – Erfolg = Chip + Glow, kein Composer-Grün
+    window.setTimeout(() => {
+      setReviewModel((prev) => (
+        prev?.microConfirm
+          ? { ...prev, microConfirm: null }
+          : prev
+      ));
+    }, 1500);
+    return { ok: true };
+  }
+
+  /** Unsicheren Chip bestätigen – Unsicherheit lokal auflösen, kein Composer-Erfolg */
+  function handleConfirmUncertainChip(chip) {
+    if (!chip || !lastTurn) return;
+    const field = chip.field || null;
+    const label = String(chip.label || '').trim();
+    const nextFacts = (lastTurn.extractedFacts || []).map((f) => {
+      const match = (field && f.field === field)
+        || (!field && String(f.label || '').trim() === label);
+      return match ? { ...f, needsConfirmation: false } : f;
+    });
+    const nextTurn = {
+      ...lastTurn,
+      extractedFacts: nextFacts,
+      warnings: (lastTurn.warnings || []).filter(
+        (w) => !/Mindestens ein Wert braucht kurze Bestätigung/i.test(String(w || '')),
+      ),
+    };
+    const stillUncertain = nextFacts.some((f) => f.needsConfirmation);
+    if (!stillUncertain) {
+      applyRememberWithUndo(nextTurn, { facts: nextFacts });
+      const model = buildUniversalReviewModel(nextTurn);
+      setLastTurn(nextTurn);
+      setReviewModel(model
+        ? {
+          ...model,
+          highlightChipLabels: label ? [label] : [],
+          hideGlobalAccept: false,
+        }
+        : null);
+      setFeedback('');
+      setFeedbackKind('');
+      return;
+    }
+    const model = buildUniversalReviewModel(nextTurn);
+    setLastTurn(nextTurn);
+    setReviewModel(model
+      ? { ...model, highlightChipLabels: label ? [label] : [] }
+      : reviewModel);
+    setFeedback('');
+    setFeedbackKind('');
   }
 
   function handleReviewAction(action) {
@@ -715,7 +1047,30 @@ export default function CleverGlobalComposer() {
     if (action.action === 'discard') {
       setReviewModel(null);
       setLastTurn(null);
+      setQuietIntakeTask(null);
+      quietIntakeContextRef.current = null;
       resetIntentChipsToDefault();
+      return;
+    }
+    if (action.action === 'revise_fact') {
+      const label = String(action.label || '').trim();
+      setFocused(true);
+      setDraft(label ? `${label} – ` : '');
+      pushComposerFeedback('Wert korrigieren und absenden', { kind: 'neutral', ms: 2800 });
+      return;
+    }
+    if (action.action === 'revise_intake') {
+      const raw = lastTurn?.sellerInput
+        || lastTurn?.interpretedInput?.raw
+        || lastTurn?.interpretedInput?.normalized
+        || '';
+      setReviewModel(null);
+      setLastTurn(null);
+      setQuietIntakeTask(null);
+      quietIntakeContextRef.current = null;
+      if (raw) setDraft(String(raw));
+      setFeedback('Korrigieren – Text anpassen und erneut senden');
+      setTimeout(() => setFeedback(''), 3200);
       return;
     }
     if (action.action === 'open_customer_search') {
@@ -723,6 +1078,8 @@ export default function CleverGlobalComposer() {
       const hint = contact.fullName || contact.email || contact.phone || '';
       setReviewModel(null);
       setLastTurn(null);
+      setQuietIntakeTask(null);
+      quietIntakeContextRef.current = null;
       if (hint) setDraft(`Öffne ${hint}`);
       setFeedback('Erneut suchen – Absenden oder Kundensuche nutzen');
       setTimeout(() => setFeedback(''), 3200);
@@ -807,7 +1164,7 @@ export default function CleverGlobalComposer() {
         }
         if (typeof addLead === 'function') addLead(applied.lead);
         handleOpenLead(applied.lead.id);
-        setFeedback('Kunde angelegt – Angaben übernommen.');
+        setFeedback('Kundenakte angelegt – weitermachen.');
         setTimeout(() => setFeedback(''), 3200);
         setReviewModel(null);
         setLastTurn(null);
@@ -825,7 +1182,7 @@ export default function CleverGlobalComposer() {
         updateLead(existing.id, applied.lead);
       }
       handleOpenLead(existing.id);
-      setFeedback('Anfrage verknüpft – Angaben übernommen.');
+      setFeedback('In Kundenakte weitermachen – Angaben übernommen.');
       setTimeout(() => setFeedback(''), 3200);
       setReviewModel(null);
       setLastTurn(null);
@@ -1026,11 +1383,93 @@ export default function CleverGlobalComposer() {
       }
       return;
     }
+    if (action.action === 'upload_pdf' || action.id === 'upload_pdf') {
+      setFocused(true);
+      if (documentInputRef.current && typeof documentInputRef.current.click === 'function') {
+        documentInputRef.current.click();
+        return;
+      }
+      pushComposerFeedback('Bitte PDF über + im Composer wählen.', { kind: 'neutral', ms: 2800 });
+      return;
+    }
+    if (action.action === 'enter_rate' || action.id === 'enter_rate') {
+      setFocused(true);
+      setDraft('Monatsrate ');
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+    if (action.action === 'calc_cash' || action.id === 'calc_cash') {
+      setFocused(true);
+      setSending(true);
+      try {
+        const turn = runCleverSellerTurn({
+          lead: ctx?.currentCustomer || {},
+          sellerInput: 'Als Barkauf berechnen',
+          leadsSnapshot: ctx?.leadsSnapshot || [],
+          scopeHint: 'dashboard',
+          workingContextItems: ctx?.attachedWorkingObjects || [],
+          pendingAction: lastTurn?.pendingAction || null,
+          appContext: {
+            routeContext: ctx?.routeContext,
+            attachedWorkingObjects: ctx?.attachedWorkingObjects,
+            dashboardContext: ctx?.dashboardContext,
+          },
+        });
+        setLastTurn(turn);
+        const model = turn.reviewModel
+          || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
+        setReviewModel(model);
+        pushComposerFeedback(
+          quietReviewFeedback(model, turn, model?.title || 'Barkauf geprüft'),
+          { kind: 'neutral', ms: 3200 },
+        );
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    if (action.action === 'check_discount' || action.id === 'check_discount') {
+      setFocused(true);
+      setDraft('Bitte Rabatt korrigieren: ');
+      pushComposerFeedback('Rabattwert prüfen – bitte korrekten Prozentsatz eintragen.', {
+        kind: 'neutral',
+        ms: 3200,
+      });
+      return;
+    }
+    if (
+      action.action === 'open_offer_handoff'
+      || action.id === 'create_offer'
+    ) {
+      const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
+      const leadId = action.leadId
+        || target?.leadId
+        || lastTurn?.resolvedCustomer?.id
+        || lastTurn?.handoffWorkingContext?.customerId
+        || null;
+      if (leadId) {
+        handleOpenLead(leadId, {
+          ...(target || {}),
+          workingContext: lastTurn?.handoffWorkingContext || target?.workingContext || null,
+        });
+        setReviewModel(null);
+        setLastTurn(null);
+        return;
+      }
+      // Incomplete Offer ohne Kundenakte: Rate/PDF statt stillem No-op
+      setFocused(true);
+      setDraft('Monatsrate ');
+      pushComposerFeedback('Monatsrate eingeben oder Bank-PDF hochladen.', {
+        kind: 'neutral',
+        ms: 3200,
+      });
+      return;
+    }
     if (
       action.action === 'edit_message'
       || action.action === 'send_handoff'
       || action.action === 'send_appointment_proposal'
-      || action.action === 'open_offer_handoff'
       || action.action === 'approve_handoff'
       || action.action === 'review_data'
     ) {
@@ -1157,6 +1596,11 @@ export default function CleverGlobalComposer() {
 
       if (prepared.needsManualDescribe && prepared.kind === 'contract_pdf') {
         setDraft((prev) => (prev ? `${prev}\n${prepared.draftSeed}` : prepared.draftSeed));
+      } else if (prepared.kind === 'configurator_pdf' || prepared.kind === 'offer_pdf') {
+        // Offer-PDF: kurzer Seed statt OCR-/Text-Dump im Composer
+        const shortSeed = prepared.draftSeed
+          || `PDF: ${extracted?.fileName || file.name || 'dokument.pdf'}`;
+        setDraft(shortSeed);
       } else if (prepared.draftSeed) {
         setDraft(prepared.draftSeed);
       }
@@ -1175,6 +1619,13 @@ export default function CleverGlobalComposer() {
         const model = turn.reviewModel
           || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
         setReviewModel(model);
+        // Nach Offer-Review keinen langen PDF-Dump als editierbaren Draft belassen
+        if (
+          model
+          && (prepared.kind === 'configurator_pdf' || prepared.kind === 'offer_pdf')
+        ) {
+          setDraft(`PDF: ${extracted?.fileName || file.name || 'dokument.pdf'}`);
+        }
         setFeedback(model
           ? (prepared.feedbackOk || model.title || 'PDF gelesen')
           : prepared.feedbackManual);
@@ -1198,6 +1649,10 @@ export default function CleverGlobalComposer() {
     setSending(true);
     setFeedback('');
     progressHintSchedulerRef.current?.clear();
+    const completeQuietIntakeSubtask = Boolean(
+      quietIntakeTask
+      && (quietIntakeOpen || quietIntakeContextRef.current?.reviewModel),
+    );
 
     const composerAttachments = collectComposerAttachments({
       lastTurn,
@@ -1280,6 +1735,20 @@ export default function CleverGlobalComposer() {
               } catch { /* feed optional */ }
             }
 
+            if (completeQuietIntakeSubtask) {
+              restoreQuietIntakeWorkContext({
+                sellerInput: text,
+                extractedFacts: agentResult?.extractedFacts || [],
+                facts: agentResult?.facts || [],
+                rememberDecision: agentResult?.rememberDecision || null,
+              });
+              if (contextSwitch?.autoOpen && contextSwitch.leadId) {
+                handleOpenLead(contextSwitch.leadId);
+              }
+              setSending(false);
+              return;
+            }
+
             if (agentPolicy.showReview && agentResult.confirmationRequired) {
               const reviewTurn = buildAgentReviewTurn(agentResult);
               setLastTurn({
@@ -1346,17 +1815,25 @@ export default function CleverGlobalComposer() {
           } else if (agentResult?.message || agentPolicy.message) {
             setDraft('');
             progressHintSchedulerRef.current?.clear();
-            setReviewModel(null);
-            setLastTurn({
-              ok: true,
-              assistantReply: agentPolicy.message || agentResult.message,
-              agentDirect: true,
-              conversationCard: true,
-              assistantPolicy: agentPolicy,
-              customerSearchResults: searchResults,
-              resolvedCustomer: agentResult.resolvedCustomer || null,
-            });
-            setFeedback('');
+            if (completeQuietIntakeSubtask) {
+              restoreQuietIntakeWorkContext({
+                sellerInput: text,
+                extractedFacts: agentResult?.extractedFacts || [],
+                facts: agentResult?.facts || [],
+              });
+            } else {
+              setReviewModel(null);
+              setLastTurn({
+                ok: true,
+                assistantReply: agentPolicy.message || agentResult.message,
+                agentDirect: true,
+                conversationCard: true,
+                assistantPolicy: agentPolicy,
+                customerSearchResults: searchResults,
+                resolvedCustomer: agentResult.resolvedCustomer || null,
+              });
+              setFeedback('');
+            }
             if (contextSwitch?.autoOpen && contextSwitch.leadId) {
               handleOpenLead(contextSwitch.leadId);
             }
@@ -1451,6 +1928,11 @@ export default function CleverGlobalComposer() {
           }))
         ) {
           const remembered = applyRememberWithUndo(turn, { facts: safeFacts });
+          if (completeQuietIntakeSubtask) {
+            restoreQuietIntakeWorkContext(turn);
+            setSending(false);
+            return;
+          }
           const model = turn.reviewModel
             || buildUniversalReviewModel({
               ...turn,
@@ -1466,25 +1948,16 @@ export default function CleverGlobalComposer() {
             },
             assistantReply: policy.message,
           });
-          setFeedback(model?.title || policy.message || 'Bitte Angaben prüfen');
-          setTimeout(() => setFeedback(''), 3200);
+          pushComposerFeedback(quietReviewFeedback(
+            model,
+            turn,
+            model?.title || policy.message || 'Bitte Angaben prüfen',
+          ));
           resetIntentChipsToDefault();
           return;
         }
-        setReviewModel(null);
         const remembered = applyRememberWithUndo(turn, { facts: safeFacts });
         if (remembered) {
-          setLastTurn({
-            ...turn,
-            conversationCard: true,
-            agentDirect: false,
-            assistantPolicy: {
-              ...policy,
-              undoAvailable: true,
-              undoToken: remembered.undoToken || null,
-            },
-            assistantReply: policy.message,
-          });
           // Lead-Feed wenn Akte aktiv
           if (remembered.lead && policy.message) {
             try {
@@ -1498,22 +1971,47 @@ export default function CleverGlobalComposer() {
               }
             } catch { /* optional */ }
           }
+        }
+        if (completeQuietIntakeSubtask) {
+          restoreQuietIntakeWorkContext(turn);
+          setSending(false);
+          return;
+        }
+        if (remembered) {
+          setReviewModel(null);
+          setLastTurn({
+            ...turn,
+            conversationCard: true,
+            agentDirect: false,
+            assistantPolicy: {
+              ...policy,
+              undoAvailable: true,
+              undoToken: remembered.undoToken || null,
+            },
+            assistantReply: policy.message,
+          });
           setFeedback('');
+          setFeedbackKind('');
         } else if (policy.showReview || shouldShowUniversalReview(turn)) {
           const model = turn.reviewModel || buildUniversalReviewModel(turn);
           setReviewModel(model);
           setLastTurn(turn);
-          setFeedback(model?.title || 'Bitte Angaben prüfen');
-          setTimeout(() => setFeedback(''), 3200);
+          pushComposerFeedback(quietReviewFeedback(
+            model,
+            turn,
+            model?.title || 'Bitte Angaben prüfen',
+          ));
         } else {
+          setReviewModel(null);
           setLastTurn({
             ...turn,
             conversationCard: true,
             assistantPolicy: policy,
             assistantReply: policy.message,
           });
-          setFeedback((policy.message || 'Verstanden.').slice(0, 160));
-          setTimeout(() => setFeedback(''), 3200);
+          // Compact confirmation ohne grüne Composer-Zeile
+          setFeedback('');
+          setFeedbackKind('');
         }
         resetIntentChipsToDefault();
         return;
@@ -1580,18 +2078,24 @@ export default function CleverGlobalComposer() {
         policy = resolveSellerResponsePolicy(turn);
         setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
         setDraft('');
+        if (completeQuietIntakeSubtask) {
+          restoreQuietIntakeWorkContext(turn);
+          return;
+        }
         const showReview = policy.showReview || shouldShowUniversalReview(turn);
         if (showReview) {
           setLastTurn(turn);
           const model = turn.reviewModel || buildUniversalReviewModel(turn);
           setReviewModel(model);
           resetIntentChipsToDefault();
-          setFeedback(
+          pushComposerFeedback(quietReviewFeedback(
+            model,
+            turn,
             enriched.feedback
-            || model?.title
-            || policy.message
-            || 'Clever hat vorbereitet',
-          );
+              || model?.title
+              || policy.message
+              || 'Clever hat vorbereitet',
+          ));
         } else {
           setReviewModel(null);
           setLastTurn({
@@ -1602,13 +2106,17 @@ export default function CleverGlobalComposer() {
           });
           resetIntentChipsToDefault();
           setFeedback('');
+          setFeedbackKind('');
         }
-        if (showReview) setTimeout(() => setFeedback(''), 3200);
         return;
       }
 
       // Clever 2.0 Response Policy: Review nur für Business-Actions / prepared_action
       setDraft('');
+      if (completeQuietIntakeSubtask) {
+        restoreQuietIntakeWorkContext(turn);
+        return;
+      }
       const source = turn?.interpreterDiagnostics?.interpreterSource
         || turn?.openaiEscalation?.interpreterSource
         || null;
@@ -1621,11 +2129,14 @@ export default function CleverGlobalComposer() {
         setReviewModel(model);
         resetIntentChipsToDefault();
         if (isFallback) {
-          setFeedback(FALLBACK_INTERPRET_WARNING);
+          pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
         } else {
-          setFeedback(model?.title || policy.message || 'Clever hat vorbereitet');
+          pushComposerFeedback(quietReviewFeedback(
+            model,
+            turn,
+            model?.title || policy.message || 'Clever hat vorbereitet',
+          ));
         }
-        setTimeout(() => setFeedback(''), isFallback ? 5200 : 2800);
         return;
       }
 
@@ -1639,16 +2150,15 @@ export default function CleverGlobalComposer() {
       });
       resetIntentChipsToDefault();
       if (isFallback) {
-        setFeedback(FALLBACK_INTERPRET_WARNING);
-        setTimeout(() => setFeedback(''), 5200);
+        pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
       } else {
         setFeedback('');
+        setFeedbackKind('');
       }
     } catch {
       // Draft + Intent behalten – technischer Fehler, One-Turn nicht verbrauchen
       progressHintSchedulerRef.current?.clear();
-      setFeedback(FALLBACK_INTERPRET_WARNING);
-      setTimeout(() => setFeedback(''), 5200);
+      pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
     } finally {
       progressHintSchedulerRef.current?.clear();
       setSending(false);
@@ -1727,8 +2237,7 @@ export default function CleverGlobalComposer() {
         ) : null}
         {reviewModel && Array.isArray(reviewModel.progressLines) && reviewModel.progressLines.length > 0
           && customerResults.length === 0
-          && reviewModel.reviewType !== 'customer_contract_tradein_intake_review'
-          && reviewModel.kind !== 'multi_source_intake'
+          && !isQuietIntakeReview(reviewModel)
           && !reviewModel.compactUi
           && (
           <ul className="clever-global-composer__progress" aria-label="Clever Fortschritt">
@@ -1808,6 +2317,14 @@ export default function CleverGlobalComposer() {
             setLastTurn(null);
           }}
           onReviewAction={handleReviewAction}
+          onConfirmChip={handleConfirmUncertainChip}
+          onCorrectChip={(chip) => handleReviewAction({
+            action: 'revise_fact',
+            field: chip?.field,
+            label: chip?.label,
+          })}
+          onLiveEditChip={handleLiveEditChip}
+          onUndo={(rememberUndo || liveEditUndo) ? handleRememberUndo : null}
           onReject={() => {
             setReviewModel(null);
             setLastTurn(null);
@@ -1978,15 +2495,16 @@ export default function CleverGlobalComposer() {
           onSend={handleSend}
           sending={sending}
           sendFeedback={feedback}
+          sendFeedbackKind={feedbackKind}
           placeholder={composerPlaceholder}
-          composerLabel={intentLabels.label}
+          composerLabel={composerLabel}
           sendAriaLabel={intentLabels.sendAriaLabel}
           sendLabel={intentLabels.sendLabel}
           reviewSlot={isIdle ? null : reviewSlot}
           contextPills={isIdle && !useHeroPortal ? [] : contextPills}
-          suggestionChips={[]}
+          suggestionChips={quietIntakeSuggestChips}
           onSuggestionChip={handleSuggestion}
-          hideSuggestionChips
+          hideSuggestionChips={!quietIntakeSuggestChips.length}
           intentChips={visibleIntentChips}
           moreIntentChips={COMPOSER_INTENT_MORE_CHIPS}
           selectedIntentChipId={selectedIntentChipId}
@@ -2001,7 +2519,7 @@ export default function CleverGlobalComposer() {
           selectedPurposeId={intentPurpose?.id || null}
           intentModeHint={intentModeHint}
           intentChipTooltips={intentChipTooltips}
-          hideIntentChips={Boolean(reviewModel) || dockCompact}
+          hideIntentChips={Boolean(reviewModel) || dockCompact || useHeroPortal}
           compactMode={dockCompact}
           autoGrow={!dockCompact}
           onComposerFocus={() => setFocused(true)}
@@ -2064,17 +2582,25 @@ export default function CleverGlobalComposer() {
       </div>
       {showQuickOutside ? (
         <div className="clever-global-composer__quick" role="group" aria-label="Schnelle Schritte">
-          {SUGGESTION_CHIPS.map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              className="clever-global-composer__quick-chip"
-              disabled={sending}
-              onClick={() => handleSuggestion(chip)}
-            >
-              {chip.label}
-            </button>
-          ))}
+          {HOME_QUICK_CHIPS.map((chip) => {
+            const Icon = chip.Icon;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                className="clever-global-composer__quick-chip"
+                disabled={sending}
+                onClick={() => handleSuggestion(chip)}
+              >
+                {Icon ? (
+                  <span className="clever-global-composer__quick-icon" aria-hidden>
+                    <Icon />
+                  </span>
+                ) : null}
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </>

@@ -106,6 +106,9 @@ export function createExtractedFact({
   preserveAsNote = false,
   span = null,
   canonicalValue = null,
+  previousValue = null,
+  correctionSource = null,
+  correctedAt = null,
 } = {}) {
   return {
     factClass,
@@ -120,6 +123,9 @@ export function createExtractedFact({
     ...(preserveAsNote ? { preserveAsNote: true } : {}),
     ...(span != null ? { span: String(span) } : {}),
     ...(canonicalValue != null ? { canonicalValue } : {}),
+    ...(previousValue != null ? { previousValue } : {}),
+    ...(correctionSource != null ? { correctionSource } : {}),
+    ...(correctedAt ? { correctedAt } : {}),
   };
 }
 

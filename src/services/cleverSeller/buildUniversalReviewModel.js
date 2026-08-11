@@ -1,5 +1,6 @@
 /**
  * Review-Model für „Clever hat verstanden“ (Display only).
+ * Understanding feedback freeze: Unsicherheit nur am Chip, keine generische Banner-Warnung.
  */
 import { SELLER_FACT_CLASS, SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { INLINE_RESULT_TYPES } from '../dealer/sellerInlineComposerAssist.js';
@@ -11,6 +12,14 @@ import { calendarAvailabilityLabel } from './checkCalendarAvailability.js';
 import { INVALID_DISCOUNT_WARNING } from './validateDiscountPercent.js';
 import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
 import { detectVehicleTrimConflict } from './detectVehicleTrimConflict.js';
+
+/** Generische Unsicherheits-Narration – nie seller-facing anzeigen. */
+export const GENERIC_CONFIRMATION_WARNING_RE = /Mindestens ein Wert braucht kurze Bestätigung/i;
+
+function filterSellerFacingWarnings(warnings = []) {
+  return (Array.isArray(warnings) ? warnings : [])
+    .filter((w) => w && !GENERIC_CONFIRMATION_WARNING_RE.test(String(w)));
+}
 
 const GROUP_ORDER = [
   { id: 'customer', title: 'Kunde', classes: [SELLER_FACT_CLASS.CUSTOMER_FACT] },
@@ -160,7 +169,7 @@ function buildOfferConflictBox(discountWarnings = [], turnWarnings = []) {
   }
   const other = turnWarnings.find((w) => (
     w
-    && !/Mindestens ein Wert braucht kurze Bestätigung/i.test(w)
+    && !GENERIC_CONFIRMATION_WARNING_RE.test(w)
   ));
   if (!other) return null;
   return {
@@ -637,11 +646,9 @@ export function buildUniversalActionSections(turn = {}) {
     if (offerSectionSource.payload?.listPrice != null) {
       lineParts.push(`UPE ${Number(offerSectionSource.payload.listPrice).toLocaleString('de-DE')} €`);
     }
-    if (incomplete) {
-      lineParts.push('Noch offen: Leasingrate / Bank-PDF');
-    } else if (purchase?.label) {
+    if (!incomplete && purchase?.label) {
       lineParts.push(purchase.label);
-    } else if (offerSectionSource.payload?.monthlyRate != null) {
+    } else if (!incomplete && offerSectionSource.payload?.monthlyRate != null) {
       lineParts.push(`${Number(offerSectionSource.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
     }
     const offerEdit = Boolean(offerCtx?.offerId);
@@ -651,9 +658,9 @@ export function buildUniversalActionSections(turn = {}) {
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
-      title: incomplete ? 'Angebot prüfen' : 'Angebot',
+      title: 'Angebot',
       headline: offerSectionSource.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
-      line: lineParts.join(' · ') || (incomplete ? 'Angebot unvollständig' : 'Angebot vorbereitet'),
+      line: lineParts.join(' · ') || null,
       inheritedLine: inherited.length ? `Übernommen: ${inherited.join(' · ')}` : null,
       changes: [
         purchase ? {
@@ -1077,7 +1084,18 @@ export function buildUniversalReviewModel(turn = {}) {
         needsConfirmation: Boolean(f.needsConfirmation),
         confidence: f.confidence,
       })),
-      chips: items.map((f) => f.label).filter(Boolean).slice(0, 6),
+      // Sichere Clever-Chips; Unsichere mit needsConfirmation für Chip-Style (? / dashed)
+      chips: items.map((f) => ({
+        label: f.label,
+        field: f.field,
+        value: f.value ?? f.label,
+        source: f.source === 'manual_edit' ? 'seller' : 'clever',
+        needsConfirmation: Boolean(f.needsConfirmation),
+        editable: Boolean(f.field),
+        title: f.needsConfirmation
+          ? 'Unsicher – bitte diesen Wert prüfen'
+          : 'Antippen zum Korrigieren',
+      })).filter((c) => c.label).slice(0, 6),
       line: items.map((f) => f.label).join(' · '),
     });
   }
@@ -1703,10 +1721,47 @@ export function buildUniversalReviewModel(turn = {}) {
       || s.kind === 'request_documents'
     ));
 
+  const uncertainFacts = facts.filter((f) => f.needsConfirmation);
+  const uncertainFactCount = uncertainFacts.length;
+  const isBusinessActionReview = Boolean(
+    documentsReview
+    || clarifyGoal
+    || contractImportReview
+    || contractCompareAndMessageReview
+    || contractOfferCompareResult
+    || contractMemoryResult
+    || offerAppointmentReview
+    || appointmentMessageReview
+    || knowledgeMessageReview
+    || trackFeedback
+    || offerMessageReview
+    || offerPrepareReview
+    || offerIncompleteOnly
+    || historyOnly
+    || customerSearchOnly
+    || customerSummaryOnly
+    || goldenOnly
+    || multiAction
+    || appointmentPrep
+    || actionSections.some((s) => (
+      s.kind === 'today_overview'
+      || s.kind === 'knowledge_result'
+      || s.kind === 'offer_incomplete'
+    )),
+  );
+  // Pure Understanding / Fact-Confirm: Chips + Unsicherheit lokal, kein Banner
+  const isUnderstandingFactReview = !isBusinessActionReview
+    && facts.length > 0
+    && (uncertainFactCount > 0 || actionSections.length === 0);
+  // Kein globales Übernehmen bei genau einem unsicheren Wert oder Mix sicher/unsicher
+  const hideGlobalAccept = uncertainFactCount === 1
+    || (uncertainFactCount > 0 && uncertainFactCount < facts.length);
+
   const compactOfferOrAppointment = offerAppointmentReview
     || offerMessageReview
     || appointmentMessageReview
-    || offerPrepareReview;
+    || offerPrepareReview
+    || isUnderstandingFactReview;
   const compactOfferReview = offerAppointmentReview
     || offerMessageReview
     || offerPrepareReview;
@@ -1814,6 +1869,8 @@ export function buildUniversalReviewModel(turn = {}) {
                         ? 'offer_prepare'
                         : (clarifyGoal ? 'clarify_goal' : null),
     compactUi: compactOfferOrAppointment || undefined,
+    hideGlobalAccept: hideGlobalAccept || undefined,
+    understandingFactReview: isUnderstandingFactReview || undefined,
     hero: appointmentMessageReview
       ? {
         name: apptReviewSec?.appointmentReview?.whenLine
@@ -1828,9 +1885,8 @@ export function buildUniversalReviewModel(turn = {}) {
       : compactOfferReview
       ? {
         name: offerHeroLabel || 'Angebot',
-        eyebrow: offerIncompleteOnly
-          ? 'Angebot unvollständig'
-          : 'Angebot vorbereitet',
+        // Incomplete: kein Status-Eyebrow – CTAs tragen den nächsten Schritt
+        eyebrow: offerIncompleteOnly ? null : 'Angebot vorbereitet',
         subtitle: offerHero?.conditionsLine || null,
       }
       : undefined,
@@ -1935,7 +1991,9 @@ export function buildUniversalReviewModel(turn = {}) {
                               : goldenOnly
                                 ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
                                 : actionSections.some((s) => s.kind === 'offer_incomplete')
-                                  ? 'Angebot unvollständig – Rate oder Bank-PDF benötigt'
+                                  ? (offerHero?.conditionsLine
+                                    || offerHeroLabel
+                                    || 'Angebot')
                                   : multiAction
                                     ? `${actionSections.length} Aktionen vorbereitet`
                                     : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
@@ -1944,13 +2002,15 @@ export function buildUniversalReviewModel(turn = {}) {
       : null,
     warnings: offerConflictBox
       ? []
-      : [
+      : filterSellerFacingWarnings([
         ...(turn.warnings ?? []),
         ...discountWarnings,
         ...(apptReviewSec?.warnings || []),
-      ].filter((w, i, arr) => w && arr.indexOf(w) === i),
+      ].filter((w, i, arr) => w && arr.indexOf(w) === i)),
     assistantReply: turn.assistantReply ?? null,
-    primaryCta: clarifyGoal
+    primaryCta: hideGlobalAccept
+      ? null
+      : clarifyGoal
       ? 'Angebot vorbereiten'
       : documentsReview
         ? (actionSections.find((s) => s.kind === 'request_documents')?.complete
@@ -1996,7 +2056,9 @@ export function buildUniversalReviewModel(turn = {}) {
                                         ? 'Angebot und Nachricht prüfen'
                                         : 'Änderungen prüfen')
                                       : 'Übernehmen',
-    secondaryCta: clarifyGoal
+    secondaryCta: hideGlobalAccept
+      ? null
+      : clarifyGoal
       ? 'Nur Nachricht schreiben'
       : trackFeedback
         ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')

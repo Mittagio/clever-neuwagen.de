@@ -20,6 +20,9 @@ import {
 } from '../crm/customerSearchService.js';
 import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
+import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
+import { buildComposerTaskTitle } from './composerSurfaceState.js';
+import { buildEditableFactChip, isLiveEditableField } from './liveEditFactMeta.js';
 
 const SELLER_COMMAND_START = /^(?:öffne|zeige|zeig|finde|suche|erstell|mach|schreib|sag|was\s+|wann\s+|wie\s+|schlag|bereite)/i;
 
@@ -28,8 +31,39 @@ const STRUCTURED_LEAD_VEHICLE_CUE = /\b(?:ev\s?[3469]|picanto|sportage|xceed|cee
 
 const STRUCTURED_LEAD_NAME_LABEL = /^(?:Name|Kunde|Interessent|Kontakt)\s*:\s*(.+)$/im;
 
+/** Meta-/Status-Labels – nie als Clever-„Erkannt“-Fact-Chips */
+export const INTAKE_META_CHIP_LABELS = new Set([
+  'Unsicher erkannt',
+  'Mehrere Treffer',
+  'Notiz übernommen',
+  'Neu anlegen',
+  'Kunde noch offen',
+  'Kunde (offen)',
+]);
+
+/** Bank-/Leasing-/Service-Mails aus Angebots-PDFs – nie Kunden-Match-Key */
+const INSTITUTIONAL_EMAIL_RE = [
+  /@lease\.kiafinance\./i,
+  /kiafinance/i,
+  /^kundenservice@/i,
+  /@(?:vwfs|volkswagenbank|santander(?:-?consumer)?|aldautomotive|leaseplan|arval|alphabet(?:-?leasing)?|sixt-?leasing|deutsche-?leasing)\b/i,
+  /@(?:[^@]+\.)?(?:lease|leasing)\.[a-z]{2,}$/i,
+  /^(?:noreply|no-reply)@/i,
+];
+
 function normalizeEmail(value = '') {
   return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * Institutions-/Bank-/Leasing-Kontakt (kein Endkunde).
+ * @param {string} [email]
+ */
+export function isInstitutionalContactEmail(email = '') {
+  const lower = normalizeEmail(email);
+  if (!lower || !lower.includes('@')) return false;
+  if (isLikelyDealerEmail(lower)) return true;
+  return INSTITUTIONAL_EMAIL_RE.some((re) => re.test(lower));
 }
 
 /**
@@ -84,7 +118,7 @@ export function isStructuredLeadNote(text = '') {
 
   const emails = [...raw.matchAll(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g)]
     .map((m) => m[1].toLowerCase());
-  const hasCustomerEmail = emails.some((e) => !isLikelyDealerEmail(e));
+  const hasCustomerEmail = emails.some((e) => !isInstitutionalContactEmail(e));
   const hasPhone = Boolean(
     parseCustomerPhone(raw)
     || /(?:^|[^\d])(\+49[\s/-]?\d{2,5}[\s/-]?\d{3,10}|0\d{2,4}[\s/-]?\d{3,10})\b/m.test(raw),
@@ -163,10 +197,13 @@ export function extractInboundContact(text = '') {
   const nameParts = splitCustomerName(name);
 
   let email = forwardRaw?.fromEmail || mail.customerEmail || null;
+  if (email && isInstitutionalContactEmail(email)) {
+    email = null;
+  }
   if (!email) {
     const emails = [...raw.matchAll(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g)]
       .map((m) => m[1].toLowerCase());
-    email = emails.find((e) => !isLikelyDealerEmail(e)) || null;
+    email = emails.find((e) => !isInstitutionalContactEmail(e)) || null;
   }
 
   const sourceHint = (mail.isForwarded || forwardRaw)
@@ -239,7 +276,9 @@ export function buildInboundContactFacts(contact = {}) {
  */
 export function resolveInboundCustomer(contact = {}, leads = []) {
   const list = Array.isArray(leads) ? leads : [];
-  const email = normalizeEmail(contact.email);
+  const rawEmail = normalizeEmail(contact.email);
+  // Institutions-/Bank-Mails nie als Kunden-Match-Key
+  const email = rawEmail && !isInstitutionalContactEmail(rawEmail) ? rawEmail : '';
   const phone = contact.phone;
   const name = String(contact.fullName || contact.lastName || '').trim();
 
@@ -354,7 +393,8 @@ export function resolveInboundCustomer(contact = {}, leads = []) {
     lead: null,
     results: [],
     duplicateHint: null,
-    proposeCreateCustomer: Boolean(contact.fullName || contact.email || contact.phone),
+    // Institutions-Mail zählt nicht als Kundenkontakt für „Neu anlegen“
+    proposeCreateCustomer: Boolean(contact.fullName || email || contact.phone),
   };
 }
 
@@ -474,186 +514,679 @@ export function buildInboundLeadDraft(contact = {}, options = {}) {
   });
 }
 
+const INTAKE_CONTACT_FIELDS = new Set(['customerName', 'email', 'phone', 'salutation']);
+const INTAKE_CORE_FIELDS = new Set([
+  'vehicleInterest',
+  'vehicleInterestMulti',
+  'paymentType',
+  'termMonths',
+  'durationMonths',
+  'annualMileage',
+  'mileagePerYear',
+  'downPayment',
+]);
+
+function pickIntakeFact(facts = [], field) {
+  return (facts || []).find((f) => f?.field === field) || null;
+}
+
+/** Max. kontextuelle Suggest-Actions (Soft Need / Unsicherheit / Business Step). */
+export const INTAKE_NEXT_ACTION_MAX = 3;
+
+const MODEL_CHECK_CONFIDENCE = 0.85;
+
+function resolveIntakeTurnFacts(turn = {}) {
+  if (Array.isArray(turn.extractedFacts) && turn.extractedFacts.length) {
+    return turn.extractedFacts;
+  }
+  if (Array.isArray(turn.sellerFacts) && turn.sellerFacts.length) {
+    return turn.sellerFacts;
+  }
+  return [];
+}
+
+function hasIntakePhone(inbound = {}, facts = []) {
+  return Boolean(String(inbound?.contact?.phone || '').trim())
+    || facts.some((f) => f?.field === 'phone' || f?.field === 'mobile');
+}
+
+function pickIntakeVehicleFact(facts = []) {
+  return pickIntakeFact(facts, 'vehicleInterest')
+    || pickIntakeFact(facts, 'vehicleInterestMulti');
+}
+
+/** Modell prüfen nur bei Unsicherheit – nicht bei klar erkanntem EV2 Earth o. ä. */
+export function intakeVehicleNeedsModelCheck(fact) {
+  if (!fact) return false;
+  const confidence = Number(fact.confidence ?? 1);
+  if (fact.value?.ambiguous || fact.ambiguous) return true;
+  if (fact.field === 'vehicleInterestMulti') {
+    const vals = Array.isArray(fact.value) ? fact.value : [];
+    if (vals.length > 1) return true;
+    if (/\boder\b|\//i.test(String(fact.label || ''))) return true;
+  }
+  if (fact.needsConfirmation && confidence < MODEL_CHECK_CONFIDENCE) return true;
+  if (confidence < 0.75) return true;
+  return false;
+}
+
+function hasEnoughDealFactsForOffer(facts = []) {
+  if (!pickIntakeVehicleFact(facts)) return false;
+  return facts.some((f) => (
+    f?.field === 'paymentType'
+    || f?.field === 'termMonths'
+    || f?.field === 'durationMonths'
+    || f?.field === 'annualMileage'
+    || f?.field === 'mileagePerYear'
+    || f?.field === 'monthlyBudget'
+    || f?.field === 'commercialScenarios'
+    || f?.field === 'downPayment'
+    || f?.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+  ));
+}
+
+function resolveIntakeActionCustomerName(inbound = {}, turn = {}) {
+  return String(
+    inbound?.matchedLeadName
+    || inbound?.contact?.fullName
+    || turn?.resolvedCustomer?.name
+    || '',
+  ).trim() || 'den Kunden';
+}
+
 /**
- * Review-Model für Inbound (Gruppen wie Homepage-Inquiry).
+ * Optional choice chips above composer for model_fix (Quick decisions only).
+ * @param {object|null} vehicle
+ * @returns {{ id: string, label: string, draft: string }[]}
+ */
+export function buildIntakeModelChoiceChips(vehicle = null) {
+  if (!vehicle) return [];
+  const labels = [];
+  if (vehicle.field === 'vehicleInterestMulti') {
+    const vals = Array.isArray(vehicle.value) ? vehicle.value : [];
+    for (const item of vals) {
+      const label = normalizeVehicleDisplayLabel(
+        typeof item === 'string' ? item : (item?.label || item?.model || ''),
+      );
+      if (label && !labels.includes(label)) labels.push(label);
+    }
+  }
+  if (!labels.length) {
+    const raw = String(vehicle.label || '').trim();
+    const parts = raw.split(/\s*(?:oder|\/|,|;)\s*/i).map((p) => (
+      normalizeVehicleDisplayLabel(p)
+    )).filter(Boolean);
+    for (const label of parts) {
+      if (label && !labels.includes(label)) labels.push(label);
+    }
+  }
+  if (labels.length < 2) return [];
+  const chips = labels.slice(0, 3).map((label) => ({
+    id: `qi_model_opt_${label.replace(/\s+/g, '_').toLowerCase()}`,
+    label,
+    draft: label,
+  }));
+  chips.push({ id: 'qi_model_other', label: 'Anderes', draft: '' });
+  return chips;
+}
+
+/**
+ * Kontextuelle Clever-Next-Actions aus Intake-Fallstand.
+ * Universal grammar: Soft Need prominent → Unsicherheit → Business Step secondary.
+ * Permanent „Notiz merken“ / „Modell korrigieren“ bei High-Confidence entfallen.
+ * Primary CTA „Kundenakte anlegen & weitermachen“ bleibt auf der Review-Karte.
+ * Keine gleichgewichtigen Toolbar-Chips für Telefon + Angebot.
+ *
+ * @param {object|null} inbound
+ * @param {object} turn
+ * @returns {object[]}
+ */
+export function buildIntakeNextActions(inbound = null, turn = {}) {
+  const inboundLead = inbound?.detected
+    ? inbound
+    : (turn?.inboundLead?.detected ? turn.inboundLead : null);
+  if (!inboundLead?.detected) return [];
+
+  const facts = resolveIntakeTurnFacts(turn);
+  const name = resolveIntakeActionCustomerName(inboundLead, turn);
+  const actions = [];
+  let hasBlockingNeed = false;
+
+  if (!hasIntakePhone(inboundLead, facts)) {
+    hasBlockingNeed = true;
+    actions.push({
+      id: 'qi_phone',
+      kind: 'soft_need',
+      label: 'Telefon ergänzen',
+      openLabel: 'Telefon fehlt → Ergänzen',
+      intentChipId: 'merken',
+      draft: '',
+      composerTitle: buildComposerTaskTitle({ kind: 'phone_add', name }),
+      placeholder: 'Telefonnummer eingeben oder sprechen …',
+      important: true,
+      secondary: false,
+      weight: 'important',
+    });
+  }
+
+  const vehicle = pickIntakeVehicleFact(facts);
+  if (intakeVehicleNeedsModelCheck(vehicle)) {
+    hasBlockingNeed = true;
+    const choiceChips = buildIntakeModelChoiceChips(vehicle);
+    actions.push({
+      id: 'qi_model',
+      kind: 'uncertainty',
+      label: 'Modell korrigieren',
+      openLabel: 'Modell unsicher → Korrigieren',
+      intentChipId: 'merken',
+      draft: '',
+      composerTitle: buildComposerTaskTitle({ kind: 'model_fix', name }),
+      placeholder: 'Korrektes Modell eingeben oder sprechen …',
+      important: true,
+      secondary: false,
+      weight: 'important',
+      choiceChips,
+    });
+  }
+
+  if (hasEnoughDealFactsForOffer(facts)) {
+    // Angebot nie gleichgewichtig zu Soft Need / Unsicherheit
+    const demote = hasBlockingNeed;
+    actions.push({
+      id: 'qi_offer',
+      kind: 'business_step',
+      label: 'Angebot vorbereiten',
+      intentChipId: 'angebot',
+      composerTitle: buildComposerTaskTitle({ kind: 'offer_prepare', name }),
+      placeholder: 'Fahrzeug und Konditionen nennen oder sprechen …',
+      important: !demote,
+      secondary: demote,
+      weight: demote ? 'secondary' : 'important',
+    });
+  }
+
+  return actions.slice(0, INTAKE_NEXT_ACTION_MAX);
+}
+
+/** @param {number|string|null|undefined} value */
+export function formatIntakeTermLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n} Monate`;
+}
+
+/** Kompakter Chip: „48 M“ */
+export function formatIntakeTermChipLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n} M`;
+}
+
+/** @param {number|string|null|undefined} value */
+export function formatIntakeMileageLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n.toLocaleString('de-DE')} km/Jahr`;
+}
+
+/** Kompakter Chip: „12.500 km“ */
+export function formatIntakeMileageChipLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n.toLocaleString('de-DE')} km`;
+}
+
+/** @param {number|string|null|undefined} value */
+export function formatIntakeDownPaymentLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return `${n.toLocaleString('de-DE')} € AZ`;
+}
+
+function formatIntakePaymentLabel(fact) {
+  if (!fact) return null;
+  if (fact.value === 'leasing' || /leasing/i.test(String(fact.label || ''))) return 'Leasing';
+  if (fact.value === 'financing' || /finanz/i.test(String(fact.label || ''))) return 'Finanzierung';
+  if (fact.value === 'cash' || fact.value === 'purchase' || /\b(kauf|bar)\b/i.test(String(fact.label || ''))) {
+    return 'Kauf';
+  }
+  const cleaned = String(fact.label || '')
+    .replace(/^Zahlungsart:\s*/i, '')
+    .trim();
+  return cleaned || null;
+}
+
+function formatIntakeVehicleLabel(fact) {
+  if (!fact) return null;
+  const raw = fact.label || fact.value?.label || [
+    fact.value?.make,
+    fact.value?.model,
+    fact.value?.trim,
+  ].filter(Boolean).join(' ');
+  const normalized = normalizeVehicleDisplayLabel(raw);
+  if (!normalized) return null;
+  return normalized.replace(/^Fahrzeug:\s*/i, '').trim() || null;
+}
+
+function ensureLabeledMileage(label) {
+  const text = String(label || '').trim();
+  if (!text) return null;
+  if (/km\s*\/\s*jahr|km\/jahr|km\s*pro\s*jahr/i.test(text)) return text;
+  if (/\bkm\b/i.test(text)) return text.replace(/\s*km\b/i, ' km/Jahr');
+  return text;
+}
+
+function ensureLabeledDownPayment(label) {
+  const text = String(label || '').trim();
+  if (!text) return null;
+  if (/\b(az|anzahlung)\b/i.test(text)) return text.replace(/\banzahlung\b/i, 'AZ');
+  if (/€/.test(text)) return `${text} AZ`;
+  return text;
+}
+
+function truncateStreetLine(value = '', max = 28) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
+}
+
+/**
+ * Kompakte Konditions-/Wunschzeile + Erkannt-Chips aus Facts.
+ * Roh-Zahlenblobs („48 12.500 km 5000 €“) werden immer gelabelt.
+ */
+export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
+  const facts = Array.isArray(turn.extractedFacts) && turn.extractedFacts.length
+    ? turn.extractedFacts
+    : Array.isArray(turn.sellerFacts) ? turn.sellerFacts : [];
+
+  const vehicle = formatIntakeVehicleLabel(
+    pickIntakeFact(facts, 'vehicleInterest') || pickIntakeFact(facts, 'vehicleInterestMulti'),
+  );
+  const payment = formatIntakePaymentLabel(pickIntakeFact(facts, 'paymentType'));
+
+  const termFact = pickIntakeFact(facts, 'termMonths') || pickIntakeFact(facts, 'durationMonths');
+  const term = formatIntakeTermLabel(termFact?.value)
+    || (termFact?.label && /\bmonat/i.test(termFact.label)
+      ? String(termFact.label).replace(/^Laufzeit:\s*/i, '').trim()
+      : null);
+
+  const kmFact = pickIntakeFact(facts, 'annualMileage') || pickIntakeFact(facts, 'mileagePerYear');
+  const mileage = formatIntakeMileageLabel(kmFact?.value)
+    || ensureLabeledMileage(kmFact?.label);
+
+  const downFact = pickIntakeFact(facts, 'downPayment');
+  const downPayment = formatIntakeDownPaymentLabel(downFact?.value)
+    || ensureLabeledDownPayment(downFact?.label);
+
+  const termChip = formatIntakeTermChipLabel(termFact?.value)
+    || (term ? String(term).replace(/\s*Monate?\b/i, ' M').trim() : null);
+  const mileageChip = formatIntakeMileageChipLabel(kmFact?.value)
+    || (mileage
+      ? String(mileage).replace(/\s*\/\s*Jahr\b/i, '').replace(/\s*km\/Jahr\b/i, ' km').trim()
+      : null);
+
+  const conditionParts = [vehicle, payment, term, mileage, downPayment].filter(Boolean);
+  const conditionLine = conditionParts.join(' · ') || null;
+
+  // Clever-Chips: kompakt, ohne Meta-/Status-Labels
+  const isFactChipLabel = (label) => {
+    const t = String(label || '').trim();
+    if (!t) return false;
+    if (INTAKE_META_CHIP_LABELS.has(t)) return false;
+    if (/^(unsicher|mehrere treffer|notiz übernommen|neu anlegen)/i.test(t)) return false;
+    return true;
+  };
+
+  const vehicleFact = pickIntakeFact(facts, 'vehicleInterest')
+    || pickIntakeFact(facts, 'vehicleInterestMulti');
+  const paymentFact = pickIntakeFact(facts, 'paymentType');
+
+  /** @type {object[]} */
+  const recognizedFactChips = [];
+  const pushFactChip = (field, label, fact, value = null) => {
+    if (!isFactChipLabel(label)) return;
+    if (recognizedFactChips.some((c) => c.label === label)) return;
+    const chip = buildEditableFactChip({
+      field,
+      label,
+      value: value != null ? value : (fact?.value ?? label),
+      fact,
+      source: 'clever',
+    }) || {
+      label,
+      field: field || null,
+      value: value != null ? value : (fact?.value ?? label),
+      source: 'clever',
+      needsConfirmation: Boolean(fact?.needsConfirmation),
+      editable: isLiveEditableField(field),
+      title: 'Von Clever erkannt',
+    };
+    recognizedFactChips.push(chip);
+  };
+
+  if (vehicle) pushFactChip(vehicleFact?.field || 'vehicleInterest', vehicle, vehicleFact);
+  if (payment) pushFactChip('paymentType', payment, paymentFact, paymentFact?.value);
+  if (termChip) pushFactChip(termFact?.field || 'termMonths', termChip, termFact, termFact?.value);
+  if (mileageChip) {
+    pushFactChip(kmFact?.field || 'annualMileage', mileageChip, kmFact, kmFact?.value);
+  }
+  if (downPayment) {
+    pushFactChip('downPayment', downPayment, downFact, downFact?.value);
+  }
+
+  const cityFact = pickIntakeFact(facts, 'city') || pickIntakeFact(facts, 'postalCode');
+  const streetFact = pickIntakeFact(facts, 'street') || pickIntakeFact(facts, 'address');
+  const cityLine = [
+    cityFact?.value?.postalCode || cityFact?.value?.zip || null,
+    cityFact?.value?.city || cityFact?.label || null,
+  ].filter(Boolean).join(' ')
+    || (cityFact?.label ? String(cityFact.label).trim() : null)
+    || null;
+
+  const contactEmail = inbound.contact?.email && !isInstitutionalContactEmail(inbound.contact.email)
+    ? inbound.contact.email
+    : null;
+  const emailFact = pickIntakeFact(facts, 'email');
+  const phoneFact = pickIntakeFact(facts, 'phone') || pickIntakeFact(facts, 'mobile');
+  const contactChips = [
+    contactEmail,
+    inbound.contact?.phone || null,
+    cityLine,
+    streetFact ? truncateStreetLine(streetFact.label || streetFact.value) : null,
+  ].filter(isFactChipLabel);
+
+  if (contactEmail) {
+    pushFactChip('email', contactEmail, emailFact, contactEmail);
+  }
+  if (inbound.contact?.phone) {
+    pushFactChip('phone', inbound.contact.phone, phoneFact, inbound.contact.phone);
+  }
+  if (cityLine && cityFact) {
+    pushFactChip(cityFact.field || 'city', cityLine, cityFact);
+  }
+  if (streetFact) {
+    const streetLabel = truncateStreetLine(streetFact.label || streetFact.value);
+    if (streetLabel) pushFactChip(streetFact.field || 'street', streetLabel, streetFact);
+  }
+
+  // Name als Chip nur wenn unsicher / prüfenswert (Titel trägt den Namen bereits)
+  const nameFact = pickIntakeFact(facts, 'customerName');
+  if (nameFact?.needsConfirmation || inbound.resolutionStatus === 'ambiguous') {
+    const nameLabel = String(
+      inbound.contact?.fullName || nameFact?.label || nameFact?.value || '',
+    ).trim();
+    if (nameLabel) pushFactChip('customerName', nameLabel, nameFact, nameLabel);
+  }
+
+  // Weitere sichere Wish-/Deal-Chips, ohne Kontakt/Kern-Duplikate
+  for (const fact of facts) {
+    if (!fact?.label) continue;
+    if (INTAKE_CONTACT_FIELDS.has(fact.field) || INTAKE_CORE_FIELDS.has(fact.field)) continue;
+    if (fact.field === 'unresolvedNote' || fact.preserveAsNote) continue;
+    if (fact.factClass === SELLER_FACT_CLASS.MESSAGE_INSTRUCTION) continue;
+    if (fact.factClass === SELLER_FACT_CLASS.SELLER_NOTE) continue;
+    if (fact.needsConfirmation && Number(fact.confidence || 0) < 0.75) continue;
+    const label = String(fact.label).trim();
+    if (!isFactChipLabel(label)) continue;
+    if (/^betreff:/i.test(label)) continue;
+    pushFactChip(fact.field, label, fact);
+    if (recognizedFactChips.length >= 8) break;
+  }
+
+  const noteChips = [];
+  if (inbound.duplicateHint) noteChips.push('Unsicher erkannt');
+  if (inbound.resolutionStatus === 'ambiguous') noteChips.push('Mehrere Treffer');
+
+  const unresolved = [
+    ...(Array.isArray(turn.unresolvedNotes) ? turn.unresolvedNotes : []),
+    ...(Array.isArray(turn.interpretedInput?.unresolvedNotes)
+      ? turn.interpretedInput.unresolvedNotes
+      : []),
+  ];
+  for (const note of unresolved) {
+    const text = String(note?.text || note?.label || note || '').trim();
+    if (!text) continue;
+    noteChips.push('Notiz übernommen');
+    break;
+  }
+  for (const fact of facts) {
+    if (!(fact?.field === 'unresolvedNote' || fact?.preserveAsNote
+      || fact?.factClass === SELLER_FACT_CLASS.SELLER_NOTE)) {
+      continue;
+    }
+    const text = String(fact.label || '').trim();
+    if (!text) continue;
+    if (!noteChips.includes('Notiz übernommen')) noteChips.push('Notiz übernommen');
+    break;
+  }
+  // Unklare Adresse / Bedarf Bestätigung → nicht in den Hero
+  if (streetFact?.needsConfirmation || (streetFact && Number(streetFact.confidence || 1) < 0.75)) {
+    if (!noteChips.includes('Unsicher erkannt')) noteChips.push('Unsicher erkannt');
+  }
+
+  const uniqueNoteChips = [...new Set(noteChips)].slice(0, 4);
+  // Meta-Chips strikt getrennt von Erkannt-Fact-Chips
+  const uniqueFactChips = recognizedFactChips
+    .filter((chip) => (
+      isFactChipLabel(chip.label) && !uniqueNoteChips.includes(chip.label)
+    ))
+    .slice(0, 8);
+  const uniqueRecognized = uniqueFactChips.map((c) => c.label);
+
+  const nextActions = buildIntakeNextActions(inbound, turn);
+  // Soft Need + Unsicherheit → „Noch offen“; Business Steps bleiben secondary/CTA
+  const openNeeds = nextActions
+    .filter((a) => a.kind === 'soft_need' || a.kind === 'uncertainty')
+    .map((a) => a.openLabel || a.label)
+    .filter(Boolean);
+
+  const quickCorrectActions = buildIntakeQuickCorrectActions(inbound, turn);
+
+  return {
+    conditionLine,
+    recognizedChips: uniqueRecognized,
+    recognizedFactChips: uniqueFactChips,
+    contactChips: [...new Set(contactChips)].slice(0, 4),
+    noteChips: uniqueNoteChips,
+    openNeeds: [...new Set(openNeeds)].slice(0, 3),
+    nextActions,
+    quickCorrectActions,
+    cityLine,
+  };
+}
+
+/**
+ * Kontextuelle Schnell-Korrekturen (max 3) – nur bei Soft Need / Unsicherheit.
+ * Keine permanente Toolbar gleicher Aktionen.
+ */
+export function buildIntakeQuickCorrectActions(inbound = null, turn = {}) {
+  const inboundLead = inbound?.detected
+    ? inbound
+    : (turn?.inboundLead?.detected ? turn.inboundLead : null);
+  if (!inboundLead?.detected) return [];
+
+  const facts = resolveIntakeTurnFacts(turn);
+  const actions = [];
+
+  if (!hasIntakePhone(inboundLead, facts)) {
+    actions.push({
+      id: 'qc_phone',
+      field: 'phone',
+      label: 'Telefon korrigieren',
+      editor: 'phone',
+      mode: 'inline',
+    });
+  } else {
+    const phoneFact = pickIntakeFact(facts, 'phone') || pickIntakeFact(facts, 'mobile');
+    if (phoneFact?.needsConfirmation) {
+      actions.push({
+        id: 'qc_phone',
+        field: 'phone',
+        label: 'Telefon prüfen',
+        editor: 'phone',
+        mode: 'inline',
+      });
+    }
+  }
+
+  const vehicle = pickIntakeVehicleFact(facts);
+  if (intakeVehicleNeedsModelCheck(vehicle)) {
+    actions.push({
+      id: 'qc_model',
+      field: vehicle?.field || 'vehicleInterest',
+      label: 'Modell ändern',
+      editor: 'vehicle',
+      mode: 'inline',
+    });
+  }
+
+  const nameFact = pickIntakeFact(facts, 'customerName');
+  if (
+    inboundLead.resolutionStatus === 'ambiguous'
+    || nameFact?.needsConfirmation
+    || (nameFact && Number(nameFact.confidence || 1) < 0.75)
+  ) {
+    actions.push({
+      id: 'qc_name',
+      field: 'customerName',
+      label: 'Name prüfen',
+      editor: 'name',
+      mode: 'inline',
+    });
+  }
+
+  return actions.slice(0, INTAKE_NEXT_ACTION_MAX);
+}
+
+/**
+ * Review-Model für Inbound – kompakt: Status · Ergebnis · nächster Klick.
  */
 export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
   if (!inbound?.detected) return null;
 
+  const presentation = buildInboundIntakePresentation(inbound, turn);
   const groups = [];
-  const contactLines = [
-    inbound.contact?.fullName,
-    inbound.contact?.email,
-    inbound.contact?.phone,
-    inbound.contact?.subject ? `Betreff: ${inbound.contact.subject}` : null,
-  ].filter(Boolean);
 
-  if (inbound.resolutionStatus === 'unique' && inbound.matchedLeadName) {
-    groups.push({
-      id: 'customer',
-      title: 'KUNDE',
-      line: `${inbound.matchedLeadName} · bestehend`,
-      items: [
-        { label: inbound.matchedLeadName, tone: 'match' },
-        ...(inbound.customerSearchResults?.[0]?.matchReasons || []).map((r) => ({ label: r })),
-      ],
-    });
-  } else if (inbound.resolutionStatus === 'ambiguous') {
-    groups.push({
-      id: 'customer',
-      title: 'KUNDE',
-      line: `${inbound.customerSearchResults?.length || 0} mögliche Treffer`,
-      items: (inbound.customerSearchResults || []).slice(0, 4).map((r) => ({
-        label: r.customerName || 'Kunde',
-        tone: 'open',
-      })),
-    });
-  } else if (inbound.proposeCreateCustomer) {
-    groups.push({
-      id: 'customer',
-      title: 'KUNDE',
-      line: contactLines[0]
-        ? `Neu anlegen? · ${contactLines[0]}`
-        : 'Neuen Kunden anlegen?',
-      items: [
-        { label: 'Noch kein Treffer – neuen Kunden anlegen?', tone: 'open' },
-        ...contactLines.slice(0, 3).map((label) => ({ label })),
-      ],
-    });
-  } else if (contactLines.length) {
-    groups.push({
-      id: 'customer',
-      title: 'KUNDE',
-      line: contactLines.join(' · '),
-      items: contactLines.map((label) => ({ label })),
-    });
+  const customerName = inbound.matchedLeadName
+    || inbound.contact?.fullName
+    || 'Neue Anfrage';
+
+  const workTitle = inbound.proposeCreateCustomer
+    ? `${customerName} · neue Kundenakte`
+    : inbound.resolutionStatus === 'unique'
+      ? `${customerName} · Kundenakte öffnen`
+      : inbound.resolutionStatus === 'ambiguous'
+        ? (customerName && customerName !== 'Neue Anfrage'
+          ? `${customerName} · Treffer prüfen…`
+          : 'Treffer prüfen…')
+        : customerName;
+
+  if (inbound.resolutionStatus === 'ambiguous') {
+    const candidates = (inbound.customerSearchResults || []).slice(0, 4)
+      .map((r) => r.customerName || 'Kunde')
+      .filter((label) => label && !INTAKE_META_CHIP_LABELS.has(label));
+    if (candidates.length) {
+      groups.push({
+        id: 'matches',
+        title: '',
+        line: 'Mehrere Treffer',
+        chips: candidates.map((label) => ({
+          label,
+          source: 'meta',
+          title: 'Treffer zur Auswahl',
+          tone: 'meta',
+        })),
+        items: candidates.map((label) => ({ label, tone: 'open' })),
+      });
+    }
   }
 
-  if (inbound.duplicateHint) {
-    groups.push({
-      id: 'duplicate',
-      title: 'DUBLETTE',
-      line: inbound.duplicateHint,
-      items: [{ label: inbound.duplicateHint, tone: 'open' }],
-    });
-  }
-
-  const factLabels = inbound.factLabels?.length
-    ? inbound.factLabels
-    : (turn.extractedFacts || []).map((f) => f.label).filter(Boolean).slice(0, 8);
-  if (factLabels.length) {
+  if (presentation.recognizedChips.length) {
+    const factChips = Array.isArray(presentation.recognizedFactChips)
+      && presentation.recognizedFactChips.length
+      ? presentation.recognizedFactChips
+      : presentation.recognizedChips.map((label) => ({
+        label,
+        source: 'clever',
+        title: 'Von Clever erkannt',
+        editable: false,
+      }));
     groups.push({
       id: 'facts',
-      title: 'ERKANNTE ANGABEN',
-      line: factLabels.join(' · '),
-      items: factLabels.map((label) => ({ label })),
+      // Kein „ERKANNT“-Lärm – Chips sprechen für sich
+      title: '',
+      line: presentation.conditionLine || presentation.recognizedChips.join(' · '),
+      chips: factChips,
+      items: factChips.map((chip) => ({
+        label: chip.label,
+        field: chip.field || null,
+        source: chip.source || 'clever',
+        needsConfirmation: Boolean(chip.needsConfirmation),
+      })),
     });
   }
 
-  if (inbound.nextAction?.label) {
+  const nextActions = presentation.nextActions || buildIntakeNextActions(inbound, turn);
+  if (presentation.openNeeds?.length) {
     groups.push({
-      id: 'next',
-      title: 'NÄCHSTE AKTION',
-      line: inbound.nextAction.label,
-      items: [{ label: inbound.nextAction.label }],
+      id: 'open',
+      title: 'Noch offen',
+      line: presentation.openNeeds.join(' · '),
+      chips: presentation.openNeeds.map((label) => ({
+        label,
+        source: 'meta',
+        title: 'Noch offen',
+        tone: 'open',
+      })),
+      items: presentation.openNeeds.map((label) => ({
+        label,
+        tone: 'open',
+      })),
     });
   }
 
   const primaryCta = inbound.proposeCreateCustomer
-    ? 'Neue Kundenakte anlegen'
+    ? 'Kundenakte anlegen & weitermachen'
     : inbound.resolutionStatus === 'unique'
-      ? 'Verknüpfen & übernehmen'
+      ? 'In Kundenakte weitermachen'
       : inbound.resolutionStatus === 'ambiguous'
-        ? 'Kunde wählen'
-        : 'Übernehmen';
+        ? 'Treffer prüfen & weitermachen'
+        : 'Übernehmen & weitermachen';
 
-  const showResearchSecondary = inbound.proposeCreateCustomer
-    || inbound.resolutionStatus === 'ambiguous';
-  const secondaryCta = showResearchSecondary ? 'Erneut suchen' : 'Verwerfen';
-  const secondaryActions = showResearchSecondary
-    ? [
-      { id: 'research_customer', label: 'Erneut suchen', action: 'open_customer_search' },
-      { id: 'discard_intake', label: 'Verwerfen', action: 'discard' },
-    ]
-    : [{ id: 'discard_intake', label: 'Verwerfen', action: 'discard' }];
+  const secondaryActions = [
+    { id: 'revise_intake', label: 'Korrigieren', action: 'revise_intake', tone: 'compact' },
+    { id: 'research_customer', label: 'Erneut suchen', action: 'open_customer_search', tone: 'compact' },
+    { id: 'discard_intake', label: 'Verwerfen', action: 'discard', tone: 'compact' },
+  ];
 
-  const unsureLines = [
-    inbound.duplicateHint,
-    inbound.resolutionStatus === 'ambiguous'
-      ? 'Unsicher: Mehrere Kundenakten passen – bitte eine wählen.'
-      : null,
-    inbound.proposeCreateCustomer
-      ? 'Unsicher: Kein bestehender Treffer – erst nach Bestätigung anlegen.'
-      : null,
-    (turn.missingInformation || []).find((m) => m.id === 'clarify_customer_for_intake')?.label || null,
-    (turn.missingInformation || []).find((m) => m.id === 'confirm_create_customer')?.label || null,
-  ].filter(Boolean);
-
-  const recognizedBlock = [
-    'Erkannt:',
-    ...contactLines,
-    factLabels.length ? `Angaben: ${factLabels.join(' · ')}` : null,
-    inbound.nextAction?.label ? `Vorschlag: ${inbound.nextAction.label}` : null,
-  ].filter(Boolean).join('\n');
-
-  const unsureBlock = unsureLines.length
-    ? ['Bitte prüfen:', ...unsureLines].join('\n')
-    : null;
-
-  const heroName = inbound.matchedLeadName
-    || inbound.contact?.fullName
-    || contactLines[0]
-    || 'Neue Anfrage';
-  const heroEyebrow = inbound.proposeCreateCustomer
-    ? 'Neue Kundenakte'
-    : inbound.resolutionStatus === 'ambiguous'
-      ? 'Kunde wählen'
-      : 'Anfrage erkannt';
-  const heroSubtitle = [
-    inbound.proposeCreateCustomer
-      ? 'Kein bestehender Treffer – erst nach Bestätigung anlegen'
+  const summaryLine = inbound.proposeCreateCustomer
+    ? `${customerName} · neue Kundenakte`
+    : inbound.resolutionStatus === 'unique'
+      ? `${inbound.matchedLeadName || customerName} · Kundenakte öffnen`
       : inbound.resolutionStatus === 'ambiguous'
-        ? 'Mehrere Treffer – bitte Kundenakte wählen'
-        : null,
-    inbound.contact?.email,
-    inbound.contact?.phone,
-    inbound.nextAction?.label,
-  ].filter(Boolean).join(' · ') || null;
-
-  // Compact Fact-Groups: Chips statt langer Body – Accept-CTA bleibt sichtbar im Dock
-  const compactGroups = groups.map((group) => {
-    if (group.id === 'facts' && Array.isArray(group.items) && group.items.length) {
-      return {
-        ...group,
-        chips: group.items.map((item) => item.label).filter(Boolean).slice(0, 8),
-      };
-    }
-    if (group.id === 'next' && group.line) {
-      return { ...group, chips: [group.line] };
-    }
-    return group;
-  });
+        ? 'Treffer prüfen…'
+        : null;
 
   return {
-    title: '✨ Clever hat eine Anfrage erkannt',
-    groups: compactGroups,
-    body: [recognizedBlock, unsureBlock].filter(Boolean).join('\n\n'),
+    // Kein Clever-Narrations-Titel – Seller sieht nur die Karte
+    title: '',
+    groups,
+    body: null,
     hero: {
-      name: heroName,
-      eyebrow: heroEyebrow,
-      subtitle: heroSubtitle,
+      // Name · Kontext oben; CTA nur als Primary-Button
+      headline: null,
+      name: workTitle,
+      subtitle: 'Von Clever erkannt',
     },
     compactUi: true,
+    quietIntake: true,
     actionSections: [{
       id: 'customer_intake_review',
       kind: 'customer_intake_review',
       title: 'Kundenanfrage',
-      headline: inbound.proposeCreateCustomer
-        ? 'Neue Kundenakte vorschlagen'
-        : inbound.resolutionStatus === 'ambiguous'
-          ? 'Anfrage erkannt – Kunde wählen'
-          : (inbound.matchedLeadName || 'Anfrage zuordnen'),
-      body: [recognizedBlock, unsureBlock].filter(Boolean).join('\n\n'),
+      headline: primaryCta,
+      body: null,
       inboundLead: inbound,
       // Ambiguous: Kundenwahl nur über Composer-Pills (keine doppelten Text-Links)
       primaryActions: inbound.resolutionStatus === 'ambiguous'
@@ -667,29 +1200,23 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
         }],
       secondaryActions,
     }],
-    factCount: factLabels.length,
-    summaryLine: inbound.proposeCreateCustomer
-      ? 'Erkannt als neue Anfrage – Kundenakte erst nach Bestätigung.'
-      : inbound.resolutionStatus === 'unique'
-        ? `Erkannt: ${inbound.matchedLeadName || 'Kunde'} – verknüpfen nach Bestätigung.`
-        : inbound.resolutionStatus === 'ambiguous'
-          ? 'Erkannt, aber unsicher – bitte die richtige Kundenakte wählen.'
-          : 'Kundenanfrage erkannt – bitte prüfen',
-    missingLine: unsureLines[0] || null,
+    factCount: presentation.recognizedChips.length,
+    summaryLine,
+    missingLine: presentation.openNeeds?.[0] || presentation.noteChips[0] || null,
+    nextActions,
+    quickCorrectActions: presentation.quickCorrectActions || [],
+    liveEditEnabled: true,
     primaryCta,
-    secondaryCta,
-    progressLines: turn.uiEffects?.progressLines?.length
-      ? turn.uiEffects.progressLines
-      : [
-        '✓ Kundenanfrage erkannt',
-        inbound.proposeCreateCustomer
-          ? '○ Kein Treffer – neue Kundenakte vorschlagen?'
-          : inbound.resolutionStatus === 'unique'
-            ? `✓ ${inbound.matchedLeadName || 'Kunde'} zugeordnet`
-            : inbound.resolutionStatus === 'ambiguous'
-              ? '○ Unsicher – bitte Kunde wählen'
-              : null,
-      ].filter(Boolean),
+    secondaryCta: 'Korrigieren',
+    // Keine Protokoll-Statuszeilen in der Seller-UI (Debug behalten)
+    progressLines: [],
+    debugDetails: {
+      progressLines: turn.uiEffects?.progressLines || [],
+      resolutionStatus: inbound.resolutionStatus,
+      sourceHint: inbound.contact?.sourceHint || null,
+      nextAction: inbound.nextAction?.label || null,
+      nextActions: nextActions.map((a) => a.id),
+    },
     reviewType: 'customer_intake_review',
     legacyReviewType: 'inbound_lead_review',
     kind: 'customer_intake',
