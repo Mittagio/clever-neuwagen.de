@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatCustomerDisplayName } from '../../services/dealerAiParser.js';
-import { IconBack, IconFolder, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
+import { IconBack, IconMoreDots, IconPhone, IconSearch } from './AkteIcons.jsx';
 import './CustomerAkte.css';
 
 function buildInitials(name = '') {
@@ -17,7 +17,8 @@ function buildInitials(name = '') {
 
 /**
  * Kompakter Header der Kundenakte (Messenger-Stil).
- * Avatar + Name / Kontext → Kontaktinfos; Suche; ••• → seltene Aktionen.
+ * Nur in der Akte gerendert – kein redundanter Öffnen-CTA.
+ * Avatar + Name / Kontext → Kundendaten-Sheet; Suche; ••• → seltene Aktionen.
  */
 export default function CustomerAkteCompactHeader({
   customerName = '',
@@ -122,16 +123,6 @@ export default function CustomerAkteCompactHeader({
           >
             <IconMoreDots />
           </button>
-          {typeof onOpenProfile === 'function' ? (
-            <button
-              type="button"
-              className="cust-akte-compact-header__cta"
-              onClick={() => onOpenProfile()}
-            >
-              <IconFolder className="cust-akte-compact-header__cta-icon" />
-              <span>Kundenakte öffnen</span>
-            </button>
-          ) : null}
         </div>
       </div>
     </header>

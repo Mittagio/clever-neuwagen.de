@@ -108,27 +108,37 @@ assert.ok(
   'Kein Kundenwissen-Stift über den Buckets',
 );
 assert.ok(!/>\s*Konditionen bearbeiten\s*</.test(kundenbildSource), 'Kein sichtbarer Konditionen-Text');
-assert.ok(!/>\s*Bearbeiten\s*</.test(kundenbildSource), 'Kein sichtbares Bearbeiten');
-assert.ok(!kundenbildSource.includes('IconChevronRight'), 'Kein Edit-Chevron am Textlink');
-assert.ok(kundenbildSource.includes('GroupCategoryIcon'), 'Kundenwissen Kategorie-Icons');
+assert.ok(kundenbildSource.includes('Alles anzeigen'), 'Alles-anzeigen-Link');
+assert.ok(kundenbildSource.includes('Bearbeiten'), 'Bearbeiten-Link wenn leer');
+assert.ok(kundenbildSource.includes('+ Wissen ergänzen'), 'Wissen ergänzen statt Chip-Picker');
+assert.ok(!kundenbildSource.includes('GroupCategoryIcon'), 'Keine Soft-Kategorie-Icons');
+assert.ok(!kundenbildSource.includes('SoftKnowledgeGroup'), 'Keine Soft-Bucket-Boxen');
 assert.ok(kundenbildSource.includes('title={ariaLabel}'), 'Edit-Links mit Hover-Tooltip');
 assert.ok(!kundenbildSource.includes('cust-kundenbild__soft-footer'), 'Kein Footer-Zähler');
 assert.ok(!kundenbildSource.includes('cust-kundenbild__kern-title'), 'Kein Konditionen-Eyebrow');
-assert.ok(!kundenbildSource.includes('cust-kundenbild__title'), 'Kein Kundenwissen-Eyebrow');
+assert.ok(kundenbildSource.includes('cust-kundenbild__title'), 'Kundenwissen-Titel bleibt sichtbar');
+assert.ok(kundenbildSource.includes('SoftKnowledgeEmptyState'), 'Leerer Soft-Zustand');
+assert.ok(!kundenbildSource.includes('contactChips'), 'Kein Kontakt in Kundenwissen');
 assert.ok(kundenbildSource.includes('IconPencil'), 'Konditionen-Stift bleibt');
 assert.ok(kundenbildSource.includes('cust-kundenbild__kern-row'), 'Konditionen Chip-Zeile mit Stift');
 assert.ok(kundenbildSource.includes('leanHeaderActive'), 'Lean-Header unterdrückt laute Kern-Chips');
 assert.ok(kundenbildSource.includes('cust-kundenbild--hierarchy'), 'Hierarchy-Band-Klasse');
 assert.ok(kundenbildSource.includes('cust-kundenbild__soft-row'), 'Kundenwissen kompakte Aktionszeile');
-assert.ok(kundenbildSource.includes('cust-kundenbild__chevron-btn'), 'Kundenwissen Collapse-Chevron');
+assert.ok(kundenbildSource.includes('cust-kundenbild__soft-link'), 'Ruhiger Alles-anzeigen-Link');
+assert.ok(kundenbildSource.includes('cust-kundenbild__summary-chips'), 'Summary-Chips light');
+assert.ok(kundenbildSource.includes('SummaryChipLight'), 'SummaryChipLight-Komponente');
+assert.ok(kundenbildSource.includes('SoftTopicLine'), 'Themenzeilen im Panel');
+assert.ok(kundenbildSource.includes('ProvenanceFact'), 'Provenance auf Fakten');
+assert.ok(kundenbildSource.includes('showProvenanceMeta'), 'Provenance im Expanded-Detail');
+assert.ok(!kundenbildSource.includes('LONG_PRESS_MS'), 'Kein Long-Press in Summary');
 assert.ok(
-  kundenbildSource.includes('if (!facts.length) return null'),
-  'Leere Soft-Buckets ausgeblendet',
+  !kundenbildSource.includes('is-empty-scaffold'),
+  'Kein leeres Soft-Gerüst',
 );
 assert.ok(
   kundenbildSource.includes('cust-kundenbild__soft-row-spacer')
   || kundenbildSource.includes('head-actions'),
-  'Chevron-Anker in Soft-Zeile',
+  'Link-Anker in Soft-Zeile',
 );
 const kundenbildCss = readFileSync(
   join(__dirname, 'CustomerAkteKundenbild.css'),
@@ -136,7 +146,7 @@ const kundenbildCss = readFileSync(
 );
 assert.ok(
   kundenbildCss.includes('margin-left: auto'),
-  'Chevron fest rechts (margin-left auto)',
+  'Link fest rechts (margin-left auto)',
 );
 assert.ok(
   !kundenbildSource.includes('Person & Alltag'),
@@ -148,23 +158,25 @@ assert.ok(
 );
 assert.ok(
   kundenbildSource.includes('SOFT_SNAPSHOT_GROUP.PERSOENLICHES'),
-  'Neue Taxonomie Persönliches verdrahtet',
+  'Taxonomie Persönliches verdrahtet (Fallback Merken)',
 );
 assert.ok(
-  kundenbildSource.includes('SOFT_SNAPSHOT_GROUP.SONSTIGES'),
-  'Neue Taxonomie Sonstiges verdrahtet',
-);
-assert.ok(
-  kundenbildSource.includes('GROUP_CHIP_VISIBLE_MAX'),
-  'Bucket-Chip-Limit +N',
+  kundenbildSource.includes('buildSoftPanelTopics'),
+  'Panel-Topics verdrahtet',
 );
 
 const headerSource = readFileSync(
   join(__dirname, 'CustomerAkteCompactHeader.jsx'),
   'utf8',
 );
-assert.ok(headerSource.includes('Kundenakte öffnen'), 'Header CTA Kundenakte öffnen');
-assert.ok(headerSource.includes('IconFolder'), 'Header CTA mit Ordner-Icon');
+assert.ok(!/>\s*Kundenakte öffnen\s*</.test(headerSource), 'Kein CTA Kundenakte öffnen in der Akte');
+assert.ok(!headerSource.includes('IconFolder'), 'Kein Ordner-CTA im Akte-Header');
+assert.ok(headerSource.includes('Telefon fehlt'), 'Telefon-fehlt-Hint bleibt');
+assert.ok(headerSource.includes('onOpenProfile'), 'Identity öffnet Kundendaten-Sheet');
+assert.ok(
+  !headerSource.includes('cust-akte-compact-header__cta'),
+  'Keine CTA-Button-Klasse im Akte-Header',
+);
 
 const followUpStage = readFileSync(
   join(__dirname, 'DealerAiLeadFollowUp.jsx'),
@@ -176,6 +188,10 @@ assert.ok(followUpStage.includes('onEditConditions'), 'Konditionen-Sheet verdrah
 assert.ok(followUpStage.includes('recentActivities'), 'Aktivitäten an Stage');
 assert.ok(followUpStage.includes('buildAkteLeanContextLine'), 'Lean Header-Kontextzeile');
 assert.ok(followUpStage.includes('leanHeaderActive'), 'Kundenbild ohne Kern-Chip-Duplikate');
+assert.ok(
+  /kundenbildExpanded,\s*setKundenbildExpanded\]\s*=\s*useState\(false\)/.test(followUpStage),
+  'Kundenwissen startet collapsed (Summary-Chips light sichtbar)',
+);
 
 assert.ok(typeof buildUnterlagenKundenwissenItems === 'function');
 

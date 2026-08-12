@@ -1,20 +1,19 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import {
   IconCalendar,
   IconCar,
-  IconChevronDown,
   IconClock,
   IconEuro,
   IconGauge,
   IconPencil,
-  IconSeat,
-  IconUser,
-  IconUsers,
 } from './AkteIcons.jsx';
 import {
   EQUIPMENT_WISH_PRIORITY,
   EQUIPMENT_WISH_PRIORITY_LABEL,
+  SNAPSHOT_SUMMARY_MAX_TOKENS,
   buildKnowledgeChipProvenanceTitle,
+  buildSnapshotSummary,
+  buildSoftPanelTopics,
   flattenSnapshotChips,
   normalizeKnowledgeChipSource,
   SOFT_SNAPSHOT_GROUP,
@@ -22,10 +21,15 @@ import {
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteKundenbild.css';
 
-const COLLAPSED_SUMMARY_MAX = 4;
+/**
+ * Kundenwissen = Hybrid: Summary-Chips light (collapsed) + Themenpanel (expanded).
+ * Default: 3–5 Soft-Facts als dezente Pills + Overflow/+N + „Alles anzeigen“.
+ * Panel: Themenzeilen (kein Bucket-Chrome); Erfassung primär Composer (Merken).
+ * Provenance: Desktop title/hover; Mobile nur im Expanded-Detail (kein Long-Press).
+ * Kontakt-Missing gehört in den Header, nicht hier.
+ */
+
 const KERN_CHIP_MAX = 6;
-/** Pro Bucket in der erweiterten Karte: max. Chips, Rest als +N. */
-const GROUP_CHIP_VISIBLE_MAX = 4;
 
 function ChipIcon({ icon }) {
   const key = String(icon || '').toLowerCase();
@@ -37,16 +41,6 @@ function ChipIcon({ icon }) {
     || key === 'wichtig'
   ) {
     return <IconCar className="cust-kundenbild__chip-icon" />;
-  }
-  if (
-    key === 'alltag'
-    || key === 'users'
-    || key === 'notiz'
-    || key === 'persoenlich'
-    || key === 'persoenliches'
-    || key === 'sonstiges'
-  ) {
-    return <IconUser className="cust-kundenbild__chip-icon" />;
   }
   if (key === 'vertrag' || key === 'clock' || key === 'term' || key === 'laufzeit') {
     return <IconClock className="cust-kundenbild__chip-icon" />;
@@ -61,20 +55,6 @@ function ChipIcon({ icon }) {
     return <IconEuro className="cust-kundenbild__chip-icon" />;
   }
   return <IconCar className="cust-kundenbild__chip-icon" />;
-}
-
-function GroupCategoryIcon({ groupId }) {
-  if (groupId === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK) {
-    return <IconSeat className="cust-kundenbild__group-icon" />;
-  }
-  if (groupId === SOFT_SNAPSHOT_GROUP.SONSTIGES) {
-    return <IconUser className="cust-kundenbild__group-icon" />;
-  }
-  if (groupId === SOFT_SNAPSHOT_GROUP.PERSOENLICHES) {
-    return <IconUsers className="cust-kundenbild__group-icon" />;
-  }
-  // Fahrzeugwunsch
-  return <IconCar className="cust-kundenbild__group-icon" />;
 }
 
 function EditLink({ onClick, ariaLabel }) {
@@ -108,91 +88,133 @@ function chipPriorityMeta(chip) {
   return null;
 }
 
-function urgencyFirst(facts = []) {
-  const urgent = [];
-  const rest = [];
-  for (const f of facts) {
-    if (
-      f.priority === 'required'
-      || f.priority === 'important'
-      || /sofort|unfall|ersatz|dringend/i.test(String(f.label || ''))
-    ) {
-      urgent.push(f);
-    } else {
-      rest.push(f);
-    }
-  }
-  return [...urgent, ...rest];
-}
-
 function chipTitle(chip) {
   return buildKnowledgeChipProvenanceTitle(chip);
 }
 
-function chipSourceClass(chip) {
-  const style = normalizeKnowledgeChipSource(chip?.source);
-  if (style === 'customer') return 'cust-kundenbild__chip--source-customer';
-  if (style === 'clever') return 'cust-kundenbild__chip--source-clever';
-  if (style === 'seller' || style === 'document') {
-    return 'cust-kundenbild__chip--source-seller';
-  }
-  return 'cust-kundenbild__chip--source-seller';
+function formatProvenanceInline(title) {
+  if (!title) return '';
+  return String(title).replace(/\n/g, ' · ');
 }
 
 /**
- * Collapsed summary chips under Konditionen (soft facts only).
+ * Collapsed Summary-Tokens: bevorzugt soft.summary.tokens;
+ * Fallback aus soft.chips / groups wenn Soft-Facts existieren aber Tokens leer.
  */
-function buildCollapsedSummaryChips(soft, max = COLLAPSED_SUMMARY_MAX) {
-  const groups = soft?.groups ?? [];
-  const byId = new Map(groups.map((g) => [g.id, g]));
-  const picked = [];
-  const seen = new Set();
-
-  function takeFacts(facts = [], limit = max) {
-    for (const fact of facts) {
-      if (picked.length >= limit) break;
-      const id = fact?.id || fact?.label;
-      const label = String(fact?.label || '').trim();
-      if (!id || !label || seen.has(id)) continue;
-      seen.add(id);
-      picked.push(fact);
-    }
+function resolveCollapsedSummaryTokens(soft, maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS) {
+  const fromSummary = Array.isArray(soft?.summary?.tokens)
+    ? soft.summary.tokens.filter((t) => !t.empty && String(t.label || '').trim())
+    : [];
+  const summaryOverflow = Number(soft?.summary?.overflow) > 0
+    ? Number(soft.summary.overflow)
+    : 0;
+  if (fromSummary.length > 0) {
+    return { tokens: fromSummary, overflow: summaryOverflow };
   }
-
-  takeFacts(urgencyFirst(byId.get(SOFT_SNAPSHOT_GROUP.PERSOENLICHES)?.facts));
-  // Fahrzeugwunsch nur bei echten Zusatzinfos (Farbe/Antrieb/…), nie Header-Modell-Duplikat
-  takeFacts(
-    (byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts || [])
-      .filter((f) => !f.empty && String(f.label || '').trim()),
-  );
-
-  if (picked.length < max) {
-    let wichtigFacts = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.facts ?? [];
-    if (!wichtigFacts.length) {
-      wichtigFacts = groups
-        .flatMap((g) => g.facts || [])
-        .filter((f) => (
-          f.priority === 'required'
-          || f.priority === 'important'
-          || f.tint === 'wichtig'
-          || f.category === 'wichtig'
-        ));
-    }
-    takeFacts(urgencyFirst(wichtigFacts));
-  }
-
-  if (picked.length < max) {
-    takeFacts(byId.get(SOFT_SNAPSHOT_GROUP.SONSTIGES)?.facts);
-  }
-
-  if (!picked.length) takeFacts(soft?.summary?.tokens ?? []);
-  if (!picked.length && soft?.chips?.length) takeFacts(urgencyFirst(soft.chips));
-
-  const allSoft = flattenSnapshotChips(groups);
-  const overflow = Math.max(0, allSoft.length - picked.length);
-  return { chips: picked.slice(0, max), overflow };
+  const chipSource = Array.isArray(soft?.chips) && soft.chips.length
+    ? soft.chips
+    : (soft?.groups ?? []);
+  const built = buildSnapshotSummary(chipSource, maxTokens);
+  return {
+    tokens: (built.tokens || []).filter((t) => !t.empty && String(t.label || '').trim()),
+    overflow: Number(built.overflow) > 0 ? Number(built.overflow) : 0,
+  };
 }
 
+/**
+ * Expanded-Detail: Fact tippbar; Desktop title/hover; Mobile Provenance inline.
+ * Kein Long-Press.
+ */
+function ProvenanceFact({
+  fact,
+  className = '',
+  onFactTap = null,
+  as = 'span',
+  /** Im Expanded-Panel: Herkunft auch ohne Hover sichtbar (Mobile). */
+  showProvenanceMeta = false,
+}) {
+  const title = chipTitle(fact);
+  const displayLabel = stripEquipmentPrioritySuffix(fact?.label || '') || fact?.label;
+  const Tag = as === 'button' ? 'button' : 'span';
+  const inlineTitle = formatProvenanceInline(title);
+
+  const props = {
+    className: [
+      'cust-kundenbild__fact',
+      showProvenanceMeta ? 'cust-kundenbild__fact--with-meta' : '',
+      className,
+    ].filter(Boolean).join(' '),
+    title: title || undefined,
+    'data-source': normalizeKnowledgeChipSource(fact?.source) || fact?.source || undefined,
+    'data-confirmed': fact?.confirmed === false ? 'false' : 'true',
+    onClick: () => onFactTap?.(fact),
+  };
+
+  if (Tag === 'button') {
+    props.type = 'button';
+    props['aria-label'] = displayLabel
+      ? `${displayLabel}${inlineTitle ? ` – ${inlineTitle}` : ''}`
+      : undefined;
+  }
+
+  return (
+    <Tag {...props}>
+      <span className="cust-kundenbild__fact-label">{displayLabel}</span>
+      {showProvenanceMeta && inlineTitle ? (
+        <span className="cust-kundenbild__fact-meta" aria-hidden>
+          {inlineTitle}
+        </span>
+      ) : null}
+    </Tag>
+  );
+}
+
+/**
+ * Collapsed: dezente Summary-Pills (nicht schwere CRM-Chips).
+ * Click → expand; Desktop: Provenance nur via native title.
+ */
+function SummaryChipLight({
+  fact,
+  onActivate = null,
+  overflow = false,
+}) {
+  const displayLabel = overflow
+    ? `+${fact?.overflow ?? fact?.label ?? ''}`
+    : (stripEquipmentPrioritySuffix(fact?.label || '') || fact?.label);
+  const title = overflow
+    ? `${fact?.overflow || ''} weitere Infos anzeigen`
+    : chipTitle(fact);
+
+  return (
+    <button
+      type="button"
+      className={[
+        'cust-kundenbild__summary-chip',
+        overflow ? 'cust-kundenbild__summary-chip--overflow' : '',
+      ].filter(Boolean).join(' ')}
+      title={title || undefined}
+      data-source={overflow
+        ? undefined
+        : (normalizeKnowledgeChipSource(fact?.source) || fact?.source || undefined)}
+      data-confirmed={overflow
+        ? undefined
+        : (fact?.confirmed === false ? 'false' : 'true')}
+      onClick={(event) => {
+        event.stopPropagation();
+        onActivate?.(fact, { overflow: Boolean(overflow) });
+      }}
+      aria-label={overflow
+        ? `${fact?.overflow || ''} weitere Infos anzeigen`
+        : (displayLabel ? `${displayLabel} – Kundenwissen öffnen` : 'Kundenwissen öffnen')}
+    >
+      <span className="cust-kundenbild__summary-chip-label">{displayLabel}</span>
+    </button>
+  );
+}
+
+/**
+ * Konditionen-Chips (nicht Soft) – bleiben tappable Mini-Editor-Einstieg.
+ */
 function SnapshotChip({ chip, onFactTap, compact = false }) {
   const category = chip.category || chip.tint || 'alltag';
   const priority = chipPriorityMeta(chip);
@@ -201,7 +223,6 @@ function SnapshotChip({ chip, onFactTap, compact = false }) {
   const isSalesCritical = Boolean(priority && priority.key !== 'preferred')
     || /sofort|unfall|ersatz|dringend|eilig/i.test(String(chip.label || ''));
   const title = chipTitle(chip);
-  const sourceStyle = normalizeKnowledgeChipSource(chip.source) || undefined;
   return (
     <button
       type="button"
@@ -209,7 +230,6 @@ function SnapshotChip({ chip, onFactTap, compact = false }) {
         'cust-kundenbild__chip',
         compact ? 'cust-kundenbild__chip--compact' : '',
         `cust-kundenbild__chip--${category}`,
-        chipSourceClass(chip),
         isSalesCritical ? 'is-sales-critical' : 'is-soft-fact',
         isEmpty ? 'is-empty' : '',
         chip.relevant || chip.highlighted ? 'is-relevant' : '',
@@ -218,92 +238,13 @@ function SnapshotChip({ chip, onFactTap, compact = false }) {
       data-category={category}
       data-priority={priority?.key || undefined}
       data-empty={isEmpty ? 'true' : undefined}
-      data-source={sourceStyle || chip.source || undefined}
       title={title}
       onClick={() => onFactTap?.(chip)}
       aria-label={isEmpty ? `${displayLabel} ergänzen` : `${displayLabel} bearbeiten`}
     >
-      {sourceStyle === 'clever' ? (
-        <span className="cust-kundenbild__chip-sparkle" aria-hidden>✦</span>
-      ) : sourceStyle === 'customer' ? (
-        <IconUser className="cust-kundenbild__chip-source-icon" aria-hidden />
-      ) : (!compact ? <ChipIcon icon={chip.icon || category} /> : null)}
+      {!compact ? <ChipIcon icon={chip.icon || category} /> : null}
       <span className="cust-kundenbild__chip-label">{displayLabel}</span>
     </button>
-  );
-}
-
-/**
- * Soft-Gruppe wie Mockup: Kategorie-Icon, Titel, Zähler, +, Tags.
- * Leere Gruppen werden nicht gerendert (Taxonomie-Freeze).
- * Max. 3–4 Chips, Rest als +N.
- */
-function SoftKnowledgeGroup({
-  group,
-  onFactTap = null,
-  onAddToGroup = null,
-}) {
-  const panelId = useId();
-  const [showAll, setShowAll] = useState(false);
-  const facts = urgencyFirst(group?.facts ?? []);
-  if (!facts.length) return null;
-  const count = facts.length;
-  const canAdd = typeof onAddToGroup === 'function' && (group?.showAddCta !== false);
-  const visible = showAll ? facts : facts.slice(0, GROUP_CHIP_VISIBLE_MAX);
-  const overflow = Math.max(0, count - visible.length);
-
-  return (
-    <div className="cust-kundenbild__group is-open">
-      <div className="cust-kundenbild__group-head">
-        <div className="cust-kundenbild__group-identity">
-          <span className="cust-kundenbild__group-icon-wrap" aria-hidden>
-            <GroupCategoryIcon groupId={group.id} />
-          </span>
-          <span className="cust-kundenbild__group-title">{group.title}</span>
-          {count > 0 ? (
-            <span className="cust-kundenbild__group-count">{count}</span>
-          ) : null}
-        </div>
-        {canAdd ? (
-          <button
-            type="button"
-            className="cust-kundenbild__group-add"
-            onClick={() => onAddToGroup(group)}
-            aria-label={`${group.title} ergänzen`}
-            title="Vordefinierte Chips"
-          >
-            +
-          </button>
-        ) : null}
-      </div>
-      <div
-        id={panelId}
-        className="cust-kundenbild__group-body"
-        role="region"
-        aria-label={group.title}
-      >
-        <ul className="cust-kundenbild__chips">
-          {visible.map((chip) => (
-            <li key={chip.id || chip.label}>
-              <SnapshotChip chip={chip} onFactTap={onFactTap} />
-            </li>
-          ))}
-          {overflow > 0 ? (
-            <li>
-              <button
-                type="button"
-                className="cust-kundenbild__chip cust-kundenbild__chip--overflow"
-                onClick={() => setShowAll(true)}
-                aria-label={`${overflow} weitere anzeigen`}
-                title={`${overflow} weitere anzeigen`}
-              >
-                <span className="cust-kundenbild__chip-label">+{overflow}</span>
-              </button>
-            </li>
-          ) : null}
-        </ul>
-      </div>
-    </div>
   );
 }
 
@@ -369,121 +310,214 @@ export function CustomerAkteKernkonditionen({
   );
 }
 
+/** Leerzustand im geöffneten Panel – kein Chip-Picker. */
+function SoftKnowledgeEmptyState({ onMerken = null }) {
+  return (
+    <div className="cust-kundenbild__soft-empty" data-kundenwissen-empty="true">
+      <p className="cust-kundenbild__panel-empty">
+        Noch nichts gemerkt – im Composer erzählen oder unten ergänzen.
+      </p>
+      {typeof onMerken === 'function' ? (
+        <button
+          type="button"
+          className="cust-kundenbild__wissen-add"
+          onClick={onMerken}
+        >
+          + Wissen ergänzen
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * Zone 2 – kompaktes Kundenwissen (Summary + optional Detail).
+ * Ruhige Themenzeile: Label + einzeln tippbare Facts (kein Bucket-Chrome).
+ */
+function SoftTopicLine({ topic, onFactTap = null }) {
+  const facts = topic?.facts ?? [];
+  if (!facts.length) return null;
+  return (
+    <div className="cust-kundenbild__topic" data-topic={topic.id}>
+      <span className="cust-kundenbild__topic-label">{topic.title}</span>
+      <ul className="cust-kundenbild__topic-list" aria-label={topic.title}>
+        {facts.map((fact) => (
+          <li key={fact.id || fact.label} className="cust-kundenbild__topic-item">
+            <ProvenanceFact
+              fact={fact}
+              onFactTap={onFactTap}
+              as="button"
+              showProvenanceMeta
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Zone 2 – Kundenwissen (Summary-Chips light + ruhiges Themenpanel).
  */
 export function CustomerAkteKundeninfos({
   soft = null,
   expanded = false,
   onToggle = null,
   onFactTap = null,
-  onAddToGroup = null,
-  /** @deprecated Kundenwissen-Stift entfernt – Buckets + Composer */
-  onMerken: _onMerken = null,
+  /** @deprecated Chip-Picker nicht mehr Primary – Composer/Merken */
+  onAddToGroup: _onAddToGroup = null,
+  onMerken = null,
   panelId = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
 }) {
-  const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
+  const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length || soft?.summary);
   if (!hasSoft) return null;
 
   const sectionTitle = soft?.title || 'Kundenwissen';
-  const { chips: summaryChips, overflow: summaryOverflow } = buildCollapsedSummaryChips(soft);
-  // Nur Buckets mit Facts; Fahrzeugwunsch nur bei echter Zusatzinformation
-  const groups = (soft?.groups ?? []).filter((g) => {
-    const facts = (g?.facts ?? []).filter((f) => !f.empty && String(f.label || '').trim());
-    if (!facts.length) return false;
-    if (g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ) return facts.length > 0;
-    return true;
-  });
+  const { tokens: summaryTokens, overflow: summaryOverflow } = resolveCollapsedSummaryTokens(soft);
+  const summaryLine = soft?.summary?.line
+    || summaryTokens
+      .map((t) => stripEquipmentPrioritySuffix(t.label) || t.label)
+      .filter(Boolean)
+      .join(' · ');
+  const topics = Array.isArray(soft?.topics) && soft.topics.length
+    ? soft.topics
+    : buildSoftPanelTopics(soft?.groups ?? []);
+  const hasSoftFacts = topics.some((t) => (t.facts?.length || 0) > 0)
+    || Boolean(soft?.hasSoftFacts)
+    || summaryTokens.length > 0
+    || Boolean(soft?.chips?.some((c) => !c.empty && String(c.label || '').trim()));
   const showBar = variant === 'full' || variant === 'bar';
   const showPanel = variant === 'full' || variant === 'panel';
   const showCollapsedSummary = !expanded && showBar;
-  const expandLabel = expanded ? 'Kundenwissen einklappen' : 'Kundenwissen ausklappen';
+  const linkLabel = expanded
+    ? 'Weniger'
+    : (hasSoftFacts ? 'Alles anzeigen' : 'Bearbeiten');
 
-  function handleToggle() {
+  function handleToggle(event) {
+    event?.stopPropagation?.();
     onToggle?.(!expanded);
+  }
+
+  function handleExpandFromRow(event) {
+    if (expanded) return;
+    // Link / Buttons in der Zeile handeln selbst (stopPropagation)
+    const target = event?.target;
+    if (target?.closest?.('button, a, input, textarea, select')) return;
+    onToggle?.(true);
+  }
+
+  function handleSummaryChipActivate(fact, { overflow = false } = {}) {
+    if (!expanded) {
+      onToggle?.(true);
+      return;
+    }
+    if (!overflow) onFactTap?.(fact);
+  }
+
+  function handleMerken() {
+    if (typeof onMerken === 'function') {
+      onMerken();
+      return;
+    }
+    // Fallback: Panel offen halten
+    if (!expanded) onToggle?.(true);
   }
 
   return (
     <div
-      className={`cust-kundenbild__soft${expanded ? ' is-expanded' : ' is-collapsed'}`}
+      className={`cust-kundenbild__soft${expanded ? ' is-expanded' : ' is-collapsed'}${hasSoftFacts ? '' : ' is-empty-soft'}`}
       aria-label={sectionTitle}
     >
       {showBar ? (
         <div className="cust-kundenbild__compact">
-          <div className="cust-kundenbild__soft-row">
-            {showCollapsedSummary && summaryChips.length > 0 ? (
+          <div
+            className={[
+              'cust-kundenbild__soft-row',
+              showCollapsedSummary && !expanded ? 'is-expandable' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={handleExpandFromRow}
+          >
+            <span className="cust-kundenbild__title">{sectionTitle}</span>
+            {showCollapsedSummary && summaryTokens.length > 0 ? (
               <ul
                 className="cust-kundenbild__summary-chips"
                 aria-label="Kundenwissen Zusammenfassung"
               >
-                {summaryChips.map((chip) => (
-                  <li key={chip.id || chip.label}>
-                    <SnapshotChip chip={chip} onFactTap={onFactTap} />
+                {summaryTokens.map((fact) => (
+                  <li key={fact.id || fact.label}>
+                    <SummaryChipLight
+                      fact={fact}
+                      onActivate={handleSummaryChipActivate}
+                    />
                   </li>
                 ))}
                 {summaryOverflow > 0 ? (
                   <li>
-                    <button
-                      type="button"
-                      className="cust-kundenbild__chip cust-kundenbild__chip--overflow"
-                      onClick={handleToggle}
-                      aria-label={`${summaryOverflow} weitere Infos anzeigen`}
-                      title={`${summaryOverflow} weitere Infos anzeigen`}
-                    >
-                      <span className="cust-kundenbild__chip-label">+{summaryOverflow}</span>
-                    </button>
+                    <SummaryChipLight
+                      fact={{ overflow: summaryOverflow, label: String(summaryOverflow) }}
+                      overflow
+                      onActivate={handleSummaryChipActivate}
+                    />
                   </li>
                 ) : null}
               </ul>
+            ) : showCollapsedSummary && !hasSoftFacts ? (
+              <span className="cust-kundenbild__summary-empty-inline">Noch nichts gemerkt</span>
             ) : (
               <span className="cust-kundenbild__soft-row-spacer" aria-hidden />
             )}
             <div className="cust-kundenbild__head-actions">
               <button
                 type="button"
-                className="cust-kundenbild__chevron-btn"
+                className="cust-kundenbild__soft-link"
                 onClick={handleToggle}
                 aria-expanded={expanded}
                 aria-controls={panelId || undefined}
-                aria-label={expandLabel}
-                title={expandLabel}
               >
-                <span className={`cust-kundenbild__chevron${expanded ? ' is-open' : ''}`} aria-hidden>
-                  <IconChevronDown />
-                </span>
+                {linkLabel}
               </button>
             </div>
           </div>
+          {showCollapsedSummary && summaryLine && summaryTokens.length === 0 ? (
+            <p className="cust-kundenbild__summary-line cust-kundenbild__summary-line--fallback">
+              {summaryLine}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
-      {showPanel ? (
+      {showPanel && expanded ? (
         <div
-          className={`cust-kundenbild__panel-collapse${expanded ? ' is-open' : ''}`}
-          aria-hidden={!expanded}
+          id={panelId || undefined}
+          className="cust-kundenbild__panel"
+          role="region"
+          aria-label={`${sectionTitle} Details`}
         >
-          <div className="cust-kundenbild__panel-collapse-inner">
-            <div
-              id={panelId || undefined}
-              className="cust-kundenbild__panel"
-              role="region"
-              aria-label={`${sectionTitle} Details`}
-              {...(!expanded ? { inert: true } : {})}
-            >
-              {groups.length > 0 ? (
-                groups.map((group) => (
-                  <SoftKnowledgeGroup
-                    key={group.id}
-                    group={group}
+          {topics.length > 0 ? (
+            <>
+              <div className="cust-kundenbild__topics">
+                {topics.map((topic) => (
+                  <SoftTopicLine
+                    key={topic.id}
+                    topic={topic}
                     onFactTap={onFactTap}
-                    onAddToGroup={onAddToGroup}
                   />
-                ))
+                ))}
+              </div>
+              {typeof onMerken === 'function' ? (
+                <button
+                  type="button"
+                  className="cust-kundenbild__wissen-add"
+                  onClick={handleMerken}
+                >
+                  + Wissen ergänzen
+                </button>
               ) : null}
-            </div>
-          </div>
+            </>
+          ) : (
+            <SoftKnowledgeEmptyState onMerken={typeof onMerken === 'function' ? handleMerken : null} />
+          )}
         </div>
       ) : null}
     </div>
@@ -501,7 +535,7 @@ export default function CustomerAkteKundenbild({
   onAddToGroup = null,
   onMerken = null,
   onEditConditions = null,
-  /** @deprecated use onAddToGroup */
+  /** @deprecated use onMerken / onAddToGroup */
   onAusstattungErgaenzen = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
@@ -517,28 +551,42 @@ export default function CustomerAkteKundenbild({
         hasData: Boolean(model?.meta?.hasSoft ?? model?.meta?.hasData),
         summary: model?.summary,
         groups: model?.groups,
+        topics: model?.topics,
         chips: model?.chips ?? flattenSnapshotChips(model?.groups ?? []),
+        hasSoftFacts: Boolean(model?.meta?.hasSoftFacts),
       }
       : null
   );
   const hasKern = Boolean(kern);
-  const hasSoft = Boolean(soft?.hasData || soft?.groups?.length || soft?.chips?.length);
+  const hasSoft = Boolean(
+    soft?.hasData
+    || soft?.groups?.length
+    || soft?.chips?.length
+    || soft?.summary
+    || soft?.topics?.length,
+  );
   // Arbeitskontext nur noch im Composer-Pill – kein Fließtext-Doppel unter Kundenwissen
   if (!hasKern && !hasSoft) return null;
 
   const showKern = hasKern && (variant === 'full' || variant === 'bar');
   const showSoft = hasSoft && (variant === 'full' || variant === 'bar' || variant === 'panel');
 
-  function handleAddToGroup(group) {
-    if (typeof onAddToGroup === 'function') {
-      onAddToGroup(group);
+  function handleMerken() {
+    if (typeof onMerken === 'function') {
+      onMerken();
       return;
     }
-    if (
-      group?.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK
-      && typeof onAusstattungErgaenzen === 'function'
-    ) {
+    // Legacy: Ausstattung-Picker nur als letzter Fallback
+    if (typeof onAusstattungErgaenzen === 'function') {
       onAusstattungErgaenzen();
+      return;
+    }
+    if (typeof onAddToGroup === 'function') {
+      onAddToGroup({
+        id: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
+        title: 'Persönliches',
+        addCategory: 'familie',
+      });
     }
   }
 
@@ -567,8 +615,8 @@ export default function CustomerAkteKundenbild({
           expanded={expanded}
           onToggle={onToggle}
           onFactTap={onFactTap}
-          onAddToGroup={handleAddToGroup}
-          onMerken={onMerken}
+          onAddToGroup={onAddToGroup}
+          onMerken={handleMerken}
           panelId={panelId}
           variant={variant}
         />

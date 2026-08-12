@@ -2,12 +2,14 @@
  * Kundenbild – kanonische Informationshierarchie:
  * Header: Name · Fahrzeugtrack · Kontaktstatus
  * Kern „Budget & Konditionen“: Zahlungsart · Laufzeit · km · AZ · Vertragsende
- * Soft „Kundenwissen“ (nur gefüllte Buckets, Freeze):
- *   1 Persönliches · 2 Fahrzeugwunsch · 3 Ausstattung · 4 Sonstiges
+ * Soft „Kundenwissen“ = Zusammenfassung, kein Formular:
+ *   Default: 3–5 Summary-Tokens als light Chips (+ Overflow/+N, „Alles anzeigen“)
+ *   Panel: Themenzeilen (Persönlich · Entscheidung · Fahrzeugwunsch · Wichtig · …)
+ *   Erfassung primär Composer-NL / Merken (Zero-Loss); kein Kontakt-Missing in Soft
+ *   Provenance: Desktop title/hover; Mobile im Expanded-Detail
  * Fahrzeug & Bestand (GW/Vertrag/Inzahlungnahme) bleibt im Lead-Modell,
  * erscheint aber nicht als sichtbarer Kundenwissen-Bucket.
  * Unfall/Ersatz → Persönliches (Warum gesucht wird).
- * Befüllen: Plus-Chip (vordefinierte Chips) oder Composer (Merken).
  * Current Truth: ein aktueller Slot-Wert; ältere Werte → historical (nicht als Chip).
  * Strukturierte Fakten nie als Freinotizen. Offer-Raten ≠ Wunschrate;
  * Deal-Konditionen (Laufzeit/km/AZ) dürfen aus Wish oder aktivem Offer-Kontext kommen.
@@ -64,13 +66,35 @@ export const SOFT_SNAPSHOT_GROUP_TITLE = {
   [SOFT_SNAPSHOT_GROUP.SONSTIGES]: 'Sonstiges',
 };
 
-/** Render-Reihenfolge Soft-Gruppen (leere werden ausgeblendet). Bestand bewusst nicht sichtbar. */
+/** Ruhige Panel-Themenzeilen (Anzeige, kein Formular-Gerüst). */
+export const SOFT_PANEL_TOPIC_TITLE = Object.freeze({
+  persoenlich: 'Persönlich',
+  entscheidung: 'Entscheidung',
+  fahrzeugwunsch: 'Fahrzeugwunsch',
+  wichtig: 'Wichtig',
+  sonstiges: 'Sonstiges',
+});
+
+/** Render-Reihenfolge Soft-Gruppen. Nur mit Facts sichtbar. Bestand off-UI. */
 export const SOFT_SNAPSHOT_GROUP_ORDER = Object.freeze([
   SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
   SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
   SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
   SOFT_SNAPSHOT_GROUP.SONSTIGES,
 ]);
+
+/**
+ * @deprecated Kernel waren früher leeres Gerüst; Kundenwissen zeigt nur Groups mit Facts.
+ * Beibehalten für Legacy-Imports.
+ */
+export const SOFT_SNAPSHOT_CORE_GROUPS = Object.freeze([
+  SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
+  SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+  SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+]);
+
+/** Entscheidung / Mitentscheider – aus Persönlichem in eigenes Panel-Thema. */
+const DECISION_SOFT_FACT_RE = /entscheidet|mit\s+(seiner\s+|ihrer\s+)?(partner|frau|mann|freundin|freund)\b|gemeinsam\s+entscheid|mitentscheider/i;
 
 /**
  * Soft-Gruppe → Kundenhelfer-/Picker-Einstieg (Plus-Chip).
@@ -155,9 +179,36 @@ export const KERN_SNAPSHOT_FACT_IDS = Object.freeze([
   'leasingEndDate',
 ]);
 
-const COLOR_WORD_RE = /^(grau|blau|wei[sß]{1,2}|schwarz|rot|silber|gr[üu]n|beige|bronze|orange|gelb|pearl|ivory|cream|green|blue|grey|gray|white|black|red|silver)$/i;
+/** Kia-/Alltags-Farben inkl. Sonderlacke (Terracotta). */
+const COLOR_TOKEN_CORE = 'grau|blau|wei[sß]{1,2}|schwarz|rot|silber|gr[üu]n|beige|bronze|orange|gelb|pearl|ivory|cream|green|blue|grey|gray|white|black|red|silver|terracotta|magma|runway';
+const COLOR_TOKEN_RE = new RegExp(`\\b(${COLOR_TOKEN_CORE})\\b`, 'i');
+const COLOR_WORD_RE = new RegExp(`^(${COLOR_TOKEN_CORE})$`, 'i');
+/** „in schwarz“, „in terracotta“ in Timeline-/Nachrichtentext. */
+const IN_COLOR_RE = new RegExp(`\\bin\\s+(${COLOR_TOKEN_CORE})\\b`, 'i');
+/** Getränk + Farbe (Kaffee schwarz) ≠ Fahrzeugfarbe. */
+const BEVERAGE_COLOR_RE = /\b(kaffee|tee|espresso|milchkaffee|cappuccino)\b/i;
+const COLOR_CONTEXT_RE = /wunschfarbe|farbton|lackierung|\bfarbe\b/i;
 const DRIVE_WORD_RE = /^(elektro|elektrisch|automatik|schaltgetriebe|benziner|diesel|hybrid|plug-?in|allrad|fwd|rwd|awd)$/i;
+const DRIVE_IN_TEXT_RE = /\b(allrad|awd|fwd|rwd|automatik|schaltgetriebe|elektro|elektrisch|hybrid|plug-?in|benziner|diesel)\b/i;
 const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\btermin\b|probefahrt|übergabe|\bgespr[äa]ch\b\s*·/i;
+/**
+ * Timeline-/System-Bestätigungen – nie Soft/Sonstiges.
+ * Deckt u. a. „Wunschkonditionen aktualisiert“, „Clever Kundenhelfer aktualisiert“.
+ */
+const HISTORY_NOISE_RE = /^(clever empfahl|clever-empfehlung|angebot |anruf\b|pdf\b|rückruf|✓|kunde hat|geöffnet|angesehen|nachricht |clever hat aufgenommen|wunschkonditionen aktualisiert|clever kundenhelfer aktualisiert|kundenbild aktualisiert|wunschrate aktualisiert|farbe aktualisiert|leasingende aktualisiert|bestandsfahrzeug aktualisiert|kinder aktualisiert|hund aktualisiert|rate aktualisiert)/i;
+/** Kurze System-Bestätigung „… aktualisiert“ / „… aktualisiert: …“ – kein Kundenfakt. */
+const SYSTEM_UPDATE_UPDATE_RE = /^(?:[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*(?:\s+[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*){0,4})\s+aktualisiert(?:\s*:.*)?\.?$/i;
+/** Kompakt-Bestätigung ohne Chip-Liste („Für X aufgenommen“) – kein Soft-Fakt. */
+const HISTORY_BARE_CONFIRM_RE = /^für\s+.+\s+aufgenommen\.?$/i;
+
+/** True wenn Label Timeline-/System-Rauschen ist (nie Soft-Fakt). */
+export function isSnapshotSystemNoiseLabel(label = '') {
+  const text = String(label ?? '').trim();
+  if (!text) return true;
+  if (HISTORY_NOISE_RE.test(text) || HISTORY_BARE_CONFIRM_RE.test(text)) return true;
+  if (text.length <= 72 && SYSTEM_UPDATE_UPDATE_RE.test(text)) return true;
+  return false;
+}
 const DATE_IN_TEXT_RE = /\d{1,2}\.\d{1,2}\.\d{2,4}/;
 const MODEL_TRIM_RE = /\bev\s*[0-9]\b|\bsportage\b|\bceed\b|\bniro\b|\bsorento\b|\bpicanto\b|\bstonic\b|\bproceed\b|gt-?\s*line|\bspirit\b|\bplatinum\b|\bedition\b|\binteressant\b/i;
 const COMMERCIAL_NOTE_RE = /leasing|finanzierung|\bkauf\b|budget|\brate\b|\b\d+\s*monate?\b|\bkm\b|anzahlung|jahreskilometer|vertragsende|down\s*payment/i;
@@ -246,6 +297,11 @@ export function classifySnapshotNoteLabel(label = '') {
   const text = stripEquipmentPrioritySuffix(raw);
   const lower = text.toLowerCase();
 
+  // System-/Timeline-Rauschen zuerst – nie Free/Sonstiges
+  if (isSnapshotSystemNoiseLabel(text) || isSnapshotSystemNoiseLabel(raw)) {
+    return { kind: 'activity', slot: 'activity' };
+  }
+
   if (
     ACTIVITY_NOTE_RE.test(text)
     || (DATE_IN_TEXT_RE.test(text) && /gespr[äa]ch|termin|uhr|besuch|beratung/i.test(text))
@@ -267,10 +323,24 @@ export function classifySnapshotNoteLabel(label = '') {
     };
   }
 
-  if (COLOR_WORD_RE.test(lower) || (/^farbe\b|lackierung/i.test(text) && text.length < 28)) {
-    const remap = COLOR_WORD_RE.test(lower)
-      ? lower.charAt(0).toUpperCase() + lower.slice(1)
-      : text;
+  // Farbe: exakt „schwarz“, „in schwarz“, „Wunschfarbe schwarz“ / „Farbe: grau“
+  // (nicht „Kaffee schwarz“). Vor MODEL_TRIM, sonst verlieren Clever-Nachrichten die Farbe.
+  const inColorToken = text.match(IN_COLOR_RE)?.[1];
+  const colorToken = text.match(COLOR_TOKEN_RE)?.[1];
+  if (
+    !BEVERAGE_COLOR_RE.test(text)
+    && (
+      COLOR_WORD_RE.test(lower)
+      || Boolean(inColorToken)
+      || (colorToken && COLOR_CONTEXT_RE.test(text) && text.length < 64)
+    )
+  ) {
+    const rawColor = (
+      COLOR_WORD_RE.test(lower)
+        ? lower
+        : String(inColorToken || colorToken).toLowerCase()
+    ).replace(/weiss/g, 'weiß');
+    const remap = rawColor.charAt(0).toUpperCase() + rawColor.slice(1);
     return {
       kind: 'structured',
       slot: 'color',
@@ -526,39 +596,79 @@ function formatChipProvenanceDate(iso = null, { withTime = false } = {}) {
 
 /**
  * Hover-/Tap-Provenance (deutsch). Kein permanentes Badge.
+ * Format: „… · TT.MM.JJJJ“ bzw. Clever-Vermutung ohne Datum.
  * @param {object} chip
  */
 export function buildKnowledgeChipProvenanceTitle(chip = {}) {
   const style = normalizeKnowledgeChipSource(chip.source);
   const actor = String(chip.actorName || chip.sellerName || '').trim();
   const at = chip.updatedAt || chip.createdAt || null;
+  const date = formatChipProvenanceDate(at, { withTime: false });
   const history = Array.isArray(chip.historicalValues) && chip.historicalValues.length
     ? `Früher: ${chip.historicalValues.join(' · ')}`
     : null;
 
-  const lines = [];
+  const withDate = (head) => (date ? `${head} · ${date}` : head);
+  // Clever: nur explizit confirmed → „aus Gespräch“; sonst Vermutung
+  const cleverConfirmed = chip.confirmed === true;
+
+  let primary = null;
   if (style === 'customer') {
-    lines.push('Vom Kunden angegeben');
-    const second = [chip.sourceChannel || null, formatChipProvenanceDate(at, { withTime: false })]
-      .filter(Boolean)
-      .join(' · ');
-    if (second) lines.push(second);
+    primary = withDate('Vom Kunden angegeben');
   } else if (style === 'document') {
-    lines.push('Aus Dokument');
-    const date = formatChipProvenanceDate(at, { withTime: true });
-    if (date) lines.push(date);
+    primary = withDate('Aus Dokument');
   } else if (style === 'clever') {
-    lines.push('Von Clever erkannt');
-    const date = formatChipProvenanceDate(at, { withTime: true });
-    if (date) lines.push(date);
+    primary = cleverConfirmed
+      ? withDate('Von Clever aus Gespräch erkannt')
+      : 'Von Clever erkannt · noch nicht bestätigt';
   } else if (style === 'seller' || chip.source) {
-    lines.push(actor ? `Von ${actor} ergänzt` : 'Vom Verkäufer ergänzt');
-    const date = formatChipProvenanceDate(at, { withTime: true });
-    if (date) lines.push(date);
+    primary = withDate(actor ? `Von ${actor} ergänzt` : 'Vom Verkäufer ergänzt');
   }
 
-  if (history) lines.push(history);
-  return lines.filter(Boolean).join('\n') || undefined;
+  return [primary, history].filter(Boolean).join('\n') || undefined;
+}
+
+/** True wenn Label Entscheidungs-/Mitentscheider-Fakt ist. */
+export function isDecisionSoftFactLabel(label = '') {
+  return DECISION_SOFT_FACT_RE.test(String(label ?? '').trim());
+}
+
+/**
+ * Ruhige Panel-Themenzeilen aus Soft-Groups (nur mit Facts).
+ * Persönliches wird in Persönlich + Entscheidung gesplittet.
+ * @param {object[]} groups
+ * @returns {{ id: string, title: string, facts: object[], line: string }[]}
+ */
+export function buildSoftPanelTopics(groups = []) {
+  const byId = new Map((groups || []).map((g) => [g.id, g]));
+  const personalFacts = (byId.get(SOFT_SNAPSHOT_GROUP.PERSOENLICHES)?.facts || [])
+    .filter((f) => !f.empty && String(f.label || '').trim());
+  const decisionFacts = personalFacts.filter((f) => isDecisionSoftFactLabel(f.label));
+  const persoenlichFacts = personalFacts.filter((f) => !isDecisionSoftFactLabel(f.label));
+  const vehicleFacts = (byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts || [])
+    .filter((f) => !f.empty && String(f.label || '').trim());
+  const importantFacts = (byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.facts || [])
+    .filter((f) => !f.empty && String(f.label || '').trim());
+  const otherFacts = (byId.get(SOFT_SNAPSHOT_GROUP.SONSTIGES)?.facts || [])
+    .filter((f) => !f.empty && String(f.label || '').trim());
+
+  const topics = [
+    { id: 'persoenlich', title: SOFT_PANEL_TOPIC_TITLE.persoenlich, facts: persoenlichFacts },
+    { id: 'entscheidung', title: SOFT_PANEL_TOPIC_TITLE.entscheidung, facts: decisionFacts },
+    { id: 'fahrzeugwunsch', title: SOFT_PANEL_TOPIC_TITLE.fahrzeugwunsch, facts: vehicleFacts },
+    { id: 'wichtig', title: SOFT_PANEL_TOPIC_TITLE.wichtig, facts: importantFacts },
+    { id: 'sonstiges', title: SOFT_PANEL_TOPIC_TITLE.sonstiges, facts: otherFacts },
+  ];
+
+  return topics
+    .filter((t) => t.facts.length > 0)
+    .map((t) => ({
+      ...t,
+      line: t.facts
+        .map((f) => stripEquipmentPrioritySuffix(f.label) || f.label)
+        .filter(Boolean)
+        .join(' · '),
+    }));
 }
 
 /**
@@ -583,12 +693,23 @@ function fact(id, label, {
   updatedAt = null,
   sourceChannel = null,
   historicalValues = null,
+  confirmed = null,
+  empty = false,
 } = {}) {
   const text = String(label ?? '').trim();
   if (!text) return null;
   const category = tint || SNAPSHOT_TINT.ALLTAG;
   const normalizedSource = normalizeKnowledgeChipSource(source) || source || null;
   const resolvedActorName = actorName || sellerName || null;
+  const isClever = normalizedSource === 'clever';
+  const resolvedConfirmed = typeof confirmed === 'boolean'
+    ? confirmed
+    : isClever
+      ? false
+      : (
+        state !== SNAPSHOT_FACT_STATE.INFERRED
+        && state !== SNAPSHOT_FACT_STATE.CONFLICTING
+      );
   return {
     id,
     label: text,
@@ -601,6 +722,8 @@ function fact(id, label, {
     summaryPriority,
     icon: icon || category,
     state,
+    confirmed: resolvedConfirmed,
+    ...(empty ? { empty: true } : {}),
     ...(priority ? { priority } : {}),
     ...(normalizedSource ? { source: normalizedSource } : {}),
     ...(actorType ? { actorType } : {}),
@@ -957,6 +1080,216 @@ function resolveExistingVehicleLabel(lead = {}) {
 }
 
 /**
+ * Entpackt Timeline-Bodies: Clever-Nachricht-Quote / Kunden-Nachricht-Prefix.
+ * @param {string} text
+ * @returns {string}
+ */
+export function unwrapHistoryKnowledgePayload(text = '') {
+  const raw = String(text ?? '').trim();
+  if (!raw) return '';
+  const quoted = raw.match(/[„"]([^"„”]+)[“"]/);
+  if (quoted?.[1]) return String(quoted[1]).trim();
+  return raw
+    .replace(/^Nachricht vom Kunden:\s*/i, '')
+    .replace(/^Clever Nachricht gesendet:\s*/i, '')
+    .replace(/^[„"]|[“"]$/g, '')
+    .trim() || raw;
+}
+
+function formatSoftColorLabel(token = '') {
+  const raw = String(token ?? '').trim().toLowerCase().replace(/weiss/g, 'weiß');
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function formatSoftDriveLabel(token = '') {
+  const raw = String(token ?? '').trim().toLowerCase();
+  if (!raw) return '';
+  if (raw === 'awd') return 'Allrad';
+  if (raw === 'plug-in' || raw === 'plugin') return 'Plug-in';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+/**
+ * Atomare Soft-Facts aus Timeline-/Nachrichten-Zeilen
+ * (z. B. „… ev5 gt line in schwarz“ → Schwarz; Allrad).
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function harvestHistoryKnowledgeAtoms(text = '') {
+  const raw = String(text ?? '').trim();
+  if (!raw) return [];
+  const isCleverOrQuoted = /^Clever Nachricht/i.test(raw)
+    || /^Nachricht vom Kunden/i.test(raw)
+    || /[„"]/.test(raw);
+  // Reine System-Zeilen ohne Quote/Payload nie harvesten
+  if (isSnapshotSystemNoiseLabel(raw) && !isCleverOrQuoted) return [];
+
+  const payload = unwrapHistoryKnowledgePayload(raw);
+  if (!payload) return [];
+
+  const atoms = [];
+  const seen = new Set();
+  const pushAtom = (value) => {
+    const label = String(value ?? '').trim();
+    if (!label || label.length < 2 || label.length > 80) return;
+    if (isSnapshotSystemNoiseLabel(label)) return;
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    atoms.push(label);
+  };
+
+  if (!BEVERAGE_COLOR_RE.test(payload)) {
+    const inColor = payload.match(IN_COLOR_RE)?.[1];
+    const wunschfarbe = payload.match(
+      new RegExp(`(?:wunschfarbe|farbton|lackierung|\\bfarbe\\b)\\s*[:=]?\\s*(${COLOR_TOKEN_CORE})\\b`, 'i'),
+    )?.[1];
+    const colorToken = inColor || wunschfarbe;
+    if (colorToken) {
+      pushAtom(formatSoftColorLabel(colorToken));
+    } else if (COLOR_WORD_RE.test(payload.trim())) {
+      pushAtom(formatSoftColorLabel(payload.trim()));
+    }
+  }
+
+  const driveToken = payload.match(DRIVE_IN_TEXT_RE)?.[1];
+  if (driveToken && !/gt\s*line|ev\s*\d/i.test(driveToken)) {
+    pushAtom(formatSoftDriveLabel(driveToken));
+  }
+
+  // Kurze, bereits strukturierte Notizen (ohne Fahrzeugtrack/Commercial).
+  // Free-Notes nur aus echten Timeline-Notizen – nie aus Clever-Nachricht-Quotes
+  // (sonst landet Fließtext wie „schrieb ihm … sofort verfügbar“ in Soft).
+  const shortPayload = payload.length <= 80 ? payload : '';
+  if (shortPayload) {
+    const stripped = shortPayload
+      .replace(/\s+gemerkt\.?$/i, '')
+      .replace(/^gemerkt:\s*/i, '')
+      .trim();
+    if (stripped && !isSnapshotSystemNoiseLabel(stripped)) {
+      const classified = classifySnapshotNoteLabel(stripped);
+      if (classified.kind === 'structured') {
+        if (
+          classified.slot !== 'commercial'
+          && classified.slot !== 'vehicleTrack'
+          && classified.slot !== 'activity'
+        ) {
+          pushAtom(classified.remapLabel || stripped);
+        }
+      } else if (
+        !isCleverOrQuoted
+        && classified.kind === 'free'
+        && stripped.length <= 64
+      ) {
+        pushAtom(stripped);
+      }
+    }
+  }
+
+  return atoms;
+}
+
+/**
+ * Knowledge-Spans aus Timeline/History – sonst wirkt Kundenwissen leer,
+ * obwohl z. B. „Wunschfarbe schwarz“ nur als Aktivität sichtbar ist.
+ * @param {object} lead
+ * @returns {string[]}
+ */
+export function collectHistoryKnowledgeLabels(lead = {}) {
+  const entries = [
+    ...(Array.isArray(lead?.history) ? lead.history : []),
+    ...(Array.isArray(lead?.crm?.activities) ? lead.crm.activities : []),
+  ];
+  const out = [];
+  const seen = new Set();
+  const push = (value) => {
+    const text = String(value ?? '').trim();
+    if (!text || text.length < 2 || text.length > 80) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(text);
+  };
+
+  for (const entry of entries.slice(0, 48)) {
+    const text = String(entry?.meta?.insightText || entry?.text || '').trim();
+    if (!text) continue;
+
+    const isCleverOrQuoted = /^Clever Nachricht/i.test(text)
+      || /^Nachricht vom Kunden/i.test(text)
+      || /[„"]/.test(text);
+    if (isSnapshotSystemNoiseLabel(text) && !isCleverOrQuoted) continue;
+
+    // Atom-Harvest zuerst (Clever-Nachricht / „in schwarz“ / Allrad)
+    for (const atom of harvestHistoryKnowledgeAtoms(text)) {
+      push(atom);
+    }
+
+    const aufgenommen = text.match(/aufgenommen\s*:\s*(.+)$/i);
+    if (aufgenommen) {
+      for (const part of aufgenommen[1].split(/\s*[·|,;]\s*/)) {
+        if (!isSnapshotSystemNoiseLabel(part)) push(part);
+      }
+      continue;
+    }
+
+    // Lange Clever-Nachrichten: nur Atome, kein Full-Text als Soft
+    if (isCleverOrQuoted || text.length > 80) continue;
+
+    const stripped = text
+      .replace(/\s+gemerkt\.?$/i, '')
+      .replace(/^gemerkt:\s*/i, '')
+      .trim();
+    if (isSnapshotSystemNoiseLabel(stripped)) continue;
+    const classified = classifySnapshotNoteLabel(stripped);
+    if (classified.kind === 'activity' || classified.kind === 'empty') continue;
+    if (classified.kind === 'structured' && (
+      classified.slot === 'commercial' || classified.slot === 'vehicleTrack'
+    )) {
+      continue;
+    }
+    if (classified.kind === 'free' && stripped.length > 64) continue;
+    if (classified.slot === 'color' && classified.remapLabel) {
+      push(classified.remapLabel);
+    } else {
+      push(stripped);
+    }
+  }
+  return out;
+}
+
+/**
+ * @deprecated Kontakt-Vollständigkeit gehört in den Header/Systemstatus,
+ * nicht in Kundenwissen. Beibehalten nur für Legacy-Aufrufe.
+ * @param {object} lead
+ */
+export function buildContactFallbackChips(lead = {}) {
+  const phone = String(lead?.contact?.phone || lead?.phone || '').trim();
+  const email = String(lead?.contact?.email || lead?.email || '').trim();
+  return [
+    fact('contact-phone', phone || 'Telefon fehlt', {
+      editKey: 'contact',
+      relevanceKey: 'phone',
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 90,
+      icon: 'persoenlich',
+      empty: !phone,
+      source: phone ? 'customer' : 'seller',
+    }),
+    fact('contact-email', email || 'E-Mail fehlt', {
+      editKey: 'contact',
+      relevanceKey: 'email',
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 91,
+      icon: 'persoenlich',
+      empty: !email,
+      source: email ? 'customer' : 'seller',
+    }),
+  ];
+}
+
+/**
  * Bestätigte Seller-/Kundenhelfer-Labels inkl. Provenance (letzter Eintrag gewinnt).
  * @returns {{ labels: string[], provenanceByLabel: Map<string, object> }}
  */
@@ -983,7 +1316,9 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
 
   const pushUnique = (value, meta = {}) => {
     const text = String(value ?? '').trim();
-    if (!text) return;
+    if (!text || isSnapshotSystemNoiseLabel(text)) return;
+    // Activity/System nie als Seller-Label in Soft schleusen
+    if (classifySnapshotNoteLabel(text).kind === 'activity') return;
     const key = text.toLowerCase();
     rememberProvenance(text, meta);
     if (seen.has(key)) return;
@@ -1005,11 +1340,27 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
       pushUnique(canonicalHandoffEquipmentLabel(rawText) || rawText, meta);
       continue;
     }
+    // Merken: insight.text oft spezifischer als understoodLabels („1 Hund“ > „Hund“)
+    const rawIsSpecificHuman = Boolean(
+      rawText && (isChildrenFactLabel(rawText) || isDogFactLabel(rawText)),
+    );
+    if (rawIsSpecificHuman) {
+      pushUnique(rawText, meta);
+    }
     const fromInsight = insight.understoodLabels?.length
       ? insight.understoodLabels
       : [rawText].filter(Boolean);
     for (const label of fromInsight) {
-      pushUnique(label, meta);
+      const display = String(label ?? '').trim();
+      if (!display) continue;
+      // Generisches Familie/Hund nicht neben spezifischem Merken-Label
+      if (rawIsSpecificHuman && isChildrenFactLabel(rawText) && /^familie$/i.test(display)) {
+        continue;
+      }
+      if (rawIsSpecificHuman && isDogFactLabel(rawText) && /^hund$/i.test(display)) {
+        continue;
+      }
+      pushUnique(display, meta);
     }
   }
 
@@ -1019,6 +1370,11 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
     for (const part of String(notesRaw).split(/[,;\n]+/)) {
       pushUnique(part, { actorName: null });
     }
+  }
+
+  // Timeline-Wissen (Zero-Loss): nicht nur in der Aktivität „stecken lassen“
+  for (const label of collectHistoryKnowledgeLabels(lead)) {
+    pushUnique(label, { source: 'seller', actorName: null });
   }
 
   return { labels, provenanceByLabel };
@@ -1034,6 +1390,46 @@ function isChildrenFactLabel(label = '') {
 
 function isDogFactLabel(label = '') {
   return /^\d+\s*hunde?$|^hund$/i.test(String(label ?? '').trim());
+}
+
+/**
+ * Current Truth für Hund: Seller-Labels (z. B. „1 Hund“) vor needProfile.dog („Hund“).
+ */
+function resolveCurrentDogTruth(
+  profile = {},
+  sellerLabels = [],
+  provenanceByLabel = new Map(),
+  lead = {},
+) {
+  const sellerDogs = [];
+  for (const label of sellerLabels) {
+    const classified = classifySnapshotNoteLabel(label);
+    if (classified.kind !== 'structured' || classified.slot !== 'human') continue;
+    const display = String(classified.remapLabel || label).trim();
+    if (!isDogFactLabel(display)) continue;
+    sellerDogs.push(display);
+  }
+
+  if (sellerDogs.length) {
+    const specific = sellerDogs.filter((l) => /^\d+\s*hunde?$/i.test(l));
+    const pool = specific.length ? specific : sellerDogs;
+    const current = pool[pool.length - 1];
+    return {
+      label: current,
+      state: SNAPSHOT_FACT_STATE.CONFIRMED,
+      historicalValues: [],
+      ...sellerFactProvenance(current, provenanceByLabel),
+    };
+  }
+  if (profile.dog) {
+    return {
+      label: 'Hund',
+      state: SNAPSHOT_FACT_STATE.CONFIRMED,
+      historicalValues: [],
+      ...customerFactProvenance(lead, profile),
+    };
+  }
+  return null;
 }
 
 /**
@@ -1149,16 +1545,31 @@ function buildMenschAlltagFacts(
     usedLabels.add('familie');
   }
 
-  if (profile.dog) {
-    pushFact(facts, fact('dog', 'Hund', {
+  const dogTruth = resolveCurrentDogTruth(
+    profile,
+    sellerLabels,
+    provenanceByLabel,
+    lead,
+  );
+  if (dogTruth?.label) {
+    pushFact(facts, fact('dog', dogTruth.label, {
       editKey: 'dog',
       groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
       tint: SNAPSHOT_TINT.ALLTAG,
       miniEditor: SNAPSHOT_MINI_EDITOR.DOG,
       summaryPriority: 12,
       icon: 'alltag',
-      ...customerProv,
+      state: dogTruth.state,
+      historicalValues: dogTruth.historicalValues,
+      source: dogTruth.source,
+      actorType: dogTruth.actorType,
+      actorId: dogTruth.actorId,
+      actorName: dogTruth.actorName,
+      createdAt: dogTruth.createdAt,
+      updatedAt: dogTruth.updatedAt,
+      sourceChannel: dogTruth.sourceChannel,
     }));
+    usedLabels.add(String(dogTruth.label).toLowerCase());
     usedLabels.add('hund');
   }
 
@@ -1796,6 +2207,8 @@ function buildFahrzeugpraeferenzFacts(
     ...tracks.map((t) => t.config?.vehicleTrack?.preferredColor).filter(Boolean),
     profile.colorPreference,
     profile.colorHint,
+    lead?.wish?.preferredColor,
+    lead?.wish?.color,
   ].filter(Boolean))];
   for (const color of colors.slice(0, 2)) {
     const colorLabel = String(color).trim();
@@ -2079,8 +2492,8 @@ export function splitExpandedChips(chips = [], maxVisible = SNAPSHOT_EXPANDED_VI
 }
 
 /**
- * Summary-Tokens: globale Human-first Priorität (Kinder · Hund · Rate · GW · Wunsch).
- * Rest als +N. Chip-Reihenfolge bleibt gruppenbasiert.
+ * Summary-Tokens: 3–5 wichtigste Soft-Facts (ohne empty / Kontakt-Missing / System-Noise).
+ * Ranking über summaryPriority (niedriger = wichtiger).
  * @param {object[]} groupsOrFacts
  * @param {number} [maxTokens]
  */
@@ -2088,7 +2501,15 @@ export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SU
   const facts = groupsOrFacts[0]?.facts
     ? groupsOrFacts.flatMap((g) => g.facts || [])
     : [...groupsOrFacts];
-  const ranked = [...facts].sort((a, b) => (
+  const usable = facts.filter((f) => {
+    if (!f || f.empty) return false;
+    const label = String(f.label || '').trim();
+    if (!label) return false;
+    if (/telefon fehlt|e-?mail fehlt/i.test(label)) return false;
+    if (isSnapshotSystemNoiseLabel(label)) return false;
+    return true;
+  });
+  const ranked = [...usable].sort((a, b) => (
     (a.summaryPriority ?? 50) - (b.summaryPriority ?? 50)
   ));
   const tokens = ranked.slice(0, Math.max(0, maxTokens));
@@ -2096,10 +2517,10 @@ export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SU
   return {
     tokens,
     overflow,
-    line: [
-      ...tokens.map((t) => t.label),
-      overflow > 0 ? `+${overflow}` : null,
-    ].filter(Boolean).join(' · '),
+    line: tokens
+      .map((t) => stripEquipmentPrioritySuffix(t.label) || t.label)
+      .filter(Boolean)
+      .join(' · '),
   };
 }
 
@@ -2228,14 +2649,15 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
         editKey: SNAPSHOT_GROUP_EDIT_KEY[g.id] || facts[0]?.editKey || null,
         relevant: facts.some((f) => f.relevant),
         empty: facts.length === 0,
-        showAddCta: true,
+        /** @deprecated Panel nutzt + Wissen ergänzen statt per-Group Chip-Picker */
+        showAddCta: false,
         /** @deprecated use showAddCta */
-        showEquipmentCta: g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
+        showEquipmentCta: false,
         addCategory: SOFT_GROUP_ADD_CATEGORY[g.id] || null,
         facts,
       };
     })
-    // Keine leeren Buckets – Kategorie erscheint erst mit Facts
+    // Nur Themen mit echten Facts – kein leeres Formular-Gerüst
     .filter((g) => g.facts.length > 0);
 
   const softFacts = softGroups.flatMap((g) => g.facts);
@@ -2246,14 +2668,17 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   const softChips = flattenSnapshotChips(softGroups);
   const kernChips = annotateFacts(kern.chips, relevantSet, highlightSet);
   const workingContext = buildWorkingContextStrip(workingContextItems, lead);
+  const panelTopics = buildSoftPanelTopics(softGroups);
 
   // Working Context = Angebots-Kontext, überschreibt Customer Truth nicht
   const showWorkingStrip = Boolean(workingContext?.line);
 
   const hasSoftFacts = softFacts.length > 0;
-  // Soft-Zeile (Chevron) bleibt erreichbar; leere Buckets erscheinen nicht
+  // Soft-Zeile immer sichtbar (Summary oder Leerhinweis); Kontakt fehlt ≠ Kundenwissen
   const hasSoft = true;
   const hasKern = Boolean(kern.hasData);
+  /** @deprecated Kontakt-Missing gehört in den Header, nicht in Soft */
+  const contactChips = [];
 
   return {
     meta: {
@@ -2273,12 +2698,16 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
       title: 'Kundenwissen',
       summary: softSummary,
       groups: softGroups,
+      topics: panelTopics,
       chips: softChips,
       hasData: true,
+      hasSoftFacts,
+      /** @deprecated Kontakt-Missing gehört in den Header, nicht in Soft */
+      contactChips,
     },
     /** @deprecated use soft.summary */
     summary: softSummary,
-    /** Soft-Gruppen (Persönliches · Fahrzeugwunsch · Ausstattung · Sonstiges) */
+    /** Soft-Gruppen (nur mit Facts) */
     groups: softGroups,
     /** Soft-Chips – keine Header-/Kern-Duplikate */
     chips: softChips,

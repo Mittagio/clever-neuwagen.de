@@ -5070,16 +5070,8 @@
   filter: brightness(0.96);
 }
 
-@media (max-width: 720px) {
-  /* Identity click opens profile — hide redundant CTA so Name + Lean-Context stay visible. */
-  .cust-akte-compact-header__cta {
-    display: none;
-  }
-
-  .cust-akte-compact-header__hint {
-    display: none;
-  }
-}
+/* „Kundenakte öffnen“-CTA entfernt (Header nur in der Akte).
+   Telefon-fehlt-Hint bleibt auf allen Viewports sichtbar. */
 
 .cust-akte-compact-header__identity {
   min-width: 0;

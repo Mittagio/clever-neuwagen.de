@@ -7,14 +7,19 @@ import {
   buildKernKonditionen,
   buildKnowledgeChipProvenanceTitle,
   buildSnapshotSummary,
+  buildSoftPanelTopics,
   buildWorkingContextStrip,
+  isDecisionSoftFactLabel,
   classifySnapshotNoteLabel,
+  collectHistoryKnowledgeLabels,
   collectOfferCommercialRates,
+  harvestHistoryKnowledgeAtoms,
   EQUIPMENT_WISH_PRIORITY,
   flattenSnapshotChips,
   formatEquipmentWishLabel,
   formatLeasingEndLabel,
   isActivitySnapshotNote,
+  isSnapshotSystemNoiseLabel,
   isStructuredSnapshotNote,
   normalizeKnowledgeChipSource,
   resolveConfirmedWishRate,
@@ -200,12 +205,15 @@ function baseLead(overrides = {}) {
     SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
     'bevorzugt Samstag → Persönliches',
   );
-  assert.ok(snap.soft.groups.every((g) => g.showAddCta), 'Plus-CTA je Gruppe');
-  assert.ok(snap.soft.groups.every((g) => g.facts.length > 0), 'keine leeren Buckets');
+  assert.ok(snap.soft.groups.every((g) => g.facts.length > 0), 'nur Groups mit Facts');
+  assert.ok(
+    Array.isArray(snap.soft.topics) && snap.soft.topics.length > 0,
+    'Panel-Topics aus Soft-Facts',
+  );
   console.log('✓ Soft taxonomy groups + Kundenwissen title');
 }
 
-// --- Leere Buckets ausgeblendet ---
+// --- Kein leeres Soft-Gerüst; kein Kontakt-Fallback in Kundenwissen ---
 {
   const emptyLead = {
     id: 'lead-empty-soft',
@@ -214,9 +222,168 @@ function baseLead(overrides = {}) {
     crm: { needProfile: createEmptyNeedProfile(), sellerInsights: [] },
   };
   const snap = buildCustomerSnapshotModel(emptyLead);
-  assert.equal(snap.soft.groups.length, 0, 'ohne Facts keine Soft-Buckets');
+  assert.deepEqual(snap.soft.groups.map((g) => g.id), [], 'keine Soft-Groups ohne Facts');
+  assert.deepEqual(snap.soft.topics || [], [], 'keine Panel-Topics ohne Facts');
   assert.ok(snap.kern?.hasData, 'Konditionen bleiben');
-  console.log('✓ Empty soft buckets hidden');
+  assert.equal(snap.meta.hasSoftFacts, false);
+  assert.equal(snap.soft.contactChips?.length || 0, 0, 'kein Kontakt in Kundenwissen');
+  assert.ok(
+    !(snap.soft.summary?.line || '').match(/Telefon fehlt|E-Mail fehlt/i),
+    'kein Telefon/E-Mail-fehlt in Summary',
+  );
+  assert.equal(snap.soft.summary?.tokens?.length || 0, 0);
+  console.log('✓ Empty soft without contact fallback');
+}
+
+// --- System-Noise nie in Soft/Sonstiges (Norz) ---
+{
+  const norzNoise = {
+    id: 'lead-norz-noise',
+    name: 'R Norz',
+    wish: { paymentType: 'financing' },
+    history: [
+      { text: 'Wunschkonditionen aktualisiert', type: 'note' },
+      { text: 'Clever Kundenhelfer aktualisiert', type: 'note' },
+      { text: 'Kundenbild aktualisiert', type: 'note' },
+      { text: 'Wunschfarbe schwarz gemerkt', type: 'note' },
+    ],
+    crm: {
+      needProfile: createEmptyNeedProfile(),
+      sellerInsights: [],
+      kundenhelfer: {
+        notes: 'Wunschkonditionen aktualisiert, Clever Kundenhelfer aktualisiert',
+      },
+    },
+  };
+  assert.equal(classifySnapshotNoteLabel('Wunschkonditionen aktualisiert').kind, 'activity');
+  assert.equal(classifySnapshotNoteLabel('Clever Kundenhelfer aktualisiert').kind, 'activity');
+  assert.equal(classifySnapshotNoteLabel('schwarz').slot, 'color');
+  assert.equal(classifySnapshotNoteLabel('schwarz').groupId, SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+
+  const snap = buildCustomerSnapshotModel(norzNoise);
+  const softBlob = JSON.stringify(snap.softChips);
+  assert.ok(!/Wunschkonditionen aktualisiert/i.test(softBlob), 'Wunschkonditionen-Noise nicht in Soft');
+  assert.ok(!/Kundenhelfer aktualisiert/i.test(softBlob), 'Kundenhelfer-Noise nicht in Soft');
+  assert.ok(!/Kundenbild aktualisiert/i.test(softBlob), 'Kundenbild-Noise nicht in Soft');
+  const sonstiges = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.SONSTIGES);
+  assert.ok(
+    !sonstiges?.facts?.some((f) => /aktualisiert/i.test(f.label)),
+    'System-Noise nicht unter Sonstiges',
+  );
+  const praef = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+  assert.ok(praef?.facts.some((f) => /schwarz/i.test(f.label)), 'schwarz → Fahrzeugwunsch');
+  assert.ok(
+    snap.soft.groups.every((g) => g.facts.length > 0),
+    'nur Soft-Groups mit Facts',
+  );
+  console.log('✓ System noise filtered; Farbe → Fahrzeugwunsch; keine leeren Soft-Groups');
+}
+
+// --- History/Activity → Soft (Norz: Wunschfarbe nur in Timeline) ---
+{
+  const norzLike = {
+    id: 'lead-norz-history',
+    name: 'R Norz',
+    wish: { model: 'EV3', equipment: 'GT-Line', paymentType: 'financing' },
+    contact: { name: 'R Norz' },
+    history: [
+      { text: 'Wunschfarbe schwarz gemerkt', type: 'note' },
+      { text: 'Clever empfahl: Angebot erstellen', type: 'clever_action' },
+    ],
+    crm: {
+      needProfile: createEmptyNeedProfile(),
+      sellerInsights: [],
+      vehicleConfigurations: [
+        {
+          id: 'vc-ev3',
+          model: 'EV3',
+          modelKey: 'ev3',
+          paymentType: 'financing',
+          vehicleTrack: { status: VEHICLE_TRACK_STATUS.FAVORITE },
+        },
+      ],
+    },
+  };
+  const snap = buildCustomerSnapshotModel(norzLike);
+  const praef = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+  assert.ok(praef, 'Fahrzeugwunsch-Bucket aus History');
+  assert.ok(
+    praef.facts.some((f) => /schwarz/i.test(f.label)),
+    'Wunschfarbe schwarz → Soft Farbe',
+  );
+  assert.equal(snap.meta.hasSoftFacts, true);
+  assert.equal(snap.soft.contactChips?.length || 0, 0, 'kein Kontakt-Fallback wenn Soft-Facts da');
+  const summaryLabels = (snap.soft.summary?.tokens || []).map((t) => t.label);
+  assert.ok(
+    summaryLabels.some((l) => /schwarz/i.test(l)),
+    'Summary-Token enthält Schwarz',
+  );
+  console.log('✓ History Wunschfarbe → Fahrzeugwunsch Soft + Summary');
+}
+
+// --- Clever-Nachricht „in schwarz“ / „in terracotta“ → Soft (Norz Live) ---
+{
+  assert.equal(classifySnapshotNoteLabel('in schwarz').slot, 'color');
+  assert.equal(classifySnapshotNoteLabel('in schwarz').remapLabel, 'Schwarz');
+  assert.ok(
+    harvestHistoryKnowledgeAtoms(
+      'Clever Nachricht gesendet: „telefongespräch. kd möchte ein angebot für einen ev5 gt line in schwarz“',
+    ).some((l) => /schwarz/i.test(l)),
+    'Atom-Harvest: in schwarz',
+  );
+
+  const norzLive = {
+    id: 'lead-1784903226019-ofgz9',
+    name: 'R Norz',
+    wish: { equipment: 'GT-Line', paymentType: 'financing' },
+    contact: { name: 'R Norz' },
+    history: [
+      { text: 'Wunschkonditionen aktualisiert', type: 'note' },
+      {
+        type: 'customer_message',
+        text: 'Clever Nachricht gesendet: „angebot ev3 allrad gt line in terracotta“',
+      },
+      {
+        type: 'customer_message',
+        text: 'Clever Nachricht gesendet: „schrieb ihm, dass ein fahrzeug sofort verfügbar ist“',
+      },
+      {
+        type: 'customer_message',
+        text: 'Clever Nachricht gesendet: „telefongespräch. kd möchte ein angebot für einen ev5 gt line in schwarz“',
+      },
+      { text: 'Wunschkonditionen aktualisiert', type: 'note' },
+    ],
+    crm: {
+      needProfile: createEmptyNeedProfile(),
+      sellerInsights: [],
+      kundenhelfer: { notes: '' },
+    },
+  };
+
+  const labels = collectHistoryKnowledgeLabels(norzLive);
+  assert.ok(labels.some((l) => /schwarz/i.test(l)), 'History-Labels: Schwarz');
+  assert.ok(labels.some((l) => /terracotta/i.test(l)), 'History-Labels: Terracotta');
+  assert.ok(labels.some((l) => /allrad/i.test(l)), 'History-Labels: Allrad');
+  assert.ok(
+    !labels.some((l) => /wunschkonditionen|sofort verfügbar/i.test(l)),
+    'kein System-Noise / Fließtext in History-Labels',
+  );
+
+  const snap = buildCustomerSnapshotModel(norzLive);
+  assert.equal(snap.meta.hasSoftFacts, true);
+  const praef = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+  assert.ok(praef?.facts.some((f) => /schwarz/i.test(f.label)), 'Soft: Schwarz');
+  assert.ok(praef?.facts.some((f) => /terracotta/i.test(f.label)), 'Soft: Terracotta');
+  assert.ok(praef?.facts.some((f) => /allrad/i.test(f.label)), 'Soft: Allrad');
+  const softBlob = JSON.stringify(snap.softChips);
+  assert.ok(!/Wunschkonditionen aktualisiert/i.test(softBlob), 'Noise nicht in Soft');
+  assert.ok(!/sofort verfügbar/i.test(softBlob), 'Fließtext-Nachricht nicht in Soft');
+  const summaryLabels = (snap.soft.summary?.tokens || []).map((t) => t.label);
+  assert.ok(
+    summaryLabels.some((l) => /schwarz|terracotta|allrad/i.test(l)),
+    'Summary-Chips light aus Soft-Facts',
+  );
+  console.log('✓ Clever-Nachricht in schwarz/terracotta → Soft + Summary');
 }
 
 // --- Current Truth Kinder: nur letzter Wert ---
@@ -269,6 +436,14 @@ function baseLead(overrides = {}) {
   assert.ok(isActivitySnapshotNote('Beratungsgespräch · 27.07.2026 · 14:44'));
   assert.ok(isStructuredSnapshotNote('Grau'));
   assert.equal(classifySnapshotNoteLabel('Kaffee schwarz').kind, 'free');
+  assert.equal(classifySnapshotNoteLabel('Wunschfarbe schwarz').slot, 'color');
+  assert.equal(classifySnapshotNoteLabel('Wunschfarbe schwarz').remapLabel, 'Schwarz');
+  assert.equal(classifySnapshotNoteLabel('schwarz').slot, 'color');
+  assert.equal(classifySnapshotNoteLabel('schwarz').remapLabel, 'Schwarz');
+  assert.equal(classifySnapshotNoteLabel('Farbe: grau').slot, 'color');
+  assert.ok(isSnapshotSystemNoiseLabel('Wunschkonditionen aktualisiert'));
+  assert.ok(isSnapshotSystemNoiseLabel('Clever Kundenhelfer aktualisiert'));
+  assert.ok(isActivitySnapshotNote('Wunschkonditionen aktualisiert'));
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').slot, 'human');
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').groupId, SOFT_SNAPSHOT_GROUP.PERSOENLICHES);
 
@@ -372,7 +547,7 @@ function baseLead(overrides = {}) {
   const sonstiges = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.SONSTIGES);
 
   assert.ok(persoenliches?.facts.some((f) => /2\s*Kinder/i.test(f.label)), '2 Kinder in Persönliches');
-  assert.ok(persoenliches?.facts.some((f) => /Hund/i.test(f.label)), 'Hund in Persönliches');
+  assert.ok(persoenliches?.facts.some((f) => /^1\s*Hund$/i.test(f.label)), '1 Hund (nicht nur Hund) in Persönliches');
   assert.ok(persoenliches?.facts.some((f) => /braucht Auto sofort/i.test(f.label)),
     'braucht Auto sofort → Persönliches');
   assert.ok(!persoenliches?.facts.some((f) => /^Familie$/i.test(f.label)),
@@ -382,6 +557,18 @@ function baseLead(overrides = {}) {
   assert.ok(!bestand, 'kein sichtbarer Bestand-Bucket');
   assert.ok(!sonstiges?.facts?.some((f) => /Kinder|Hund|Unfall|sofort/i.test(f.label)),
     'strukturierte Facts nicht unter Sonstiges');
+
+  const persoTopic = (snap.soft.topics || []).find((t) => t.id === 'persoenlich');
+  assert.match(persoTopic?.line || '', /2\s*Kinder/i, 'Expanded Themenzeile Persönlich: Kinder');
+  assert.match(persoTopic?.line || '', /1\s*Hund/i, 'Expanded Themenzeile Persönlich: 1 Hund');
+  assert.ok(
+    (snap.soft.summary?.tokens || []).some((t) => /2\s*Kinder/i.test(t.label)),
+    'Collapsed Summary: 2 Kinder',
+  );
+  assert.ok(
+    (snap.soft.summary?.tokens || []).some((t) => /Hund/i.test(t.label)),
+    'Collapsed Summary: Hund',
+  );
 
   // Undo-Simulation: Insights entfernen → Kinder/Hund weg; Notizen aus kundenhelfer bleiben
   const undone = buildCustomerSnapshotModel({
@@ -446,14 +633,17 @@ function baseLead(overrides = {}) {
   const snap = buildCustomerSnapshotModel(lead);
   const equip = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK);
   assert.ok(equip, 'Ausstattung-Gruppe');
-  assert.equal(equip.showEquipmentCta, true, 'Ausstattung-CTA Flag');
+  assert.equal(equip.showEquipmentCta, false, 'kein per-Group Chip-Picker-CTA');
+  assert.equal(equip.showAddCta, false, 'Erfassung über Composer/+ Wissen ergänzen');
   assert.equal(equip.title, 'Ausstattung');
   assert.ok(equip.facts.some((f) => f.label === 'Wärmepumpe'), 'confirmed equipment chip');
   assert.ok(!equip.facts.some((f) => f.label === 'GT-Line' && f.id.startsWith('equip:')),
     'Trim nicht als Ausstattungs-Chip');
   const persoenliches = snap.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICHES);
   assert.ok(!persoenliches?.facts.some((f) => f.label === 'Wärmepumpe'), 'Equipment nicht in Persönliches');
-  console.log('✓ Ausstattung confirmed-only + CTA');
+  const wichtig = (snap.soft.topics || []).find((t) => t.id === 'wichtig');
+  assert.ok(wichtig?.facts?.some((f) => f.label === 'Wärmepumpe'), 'Panel-Thema Wichtig');
+  console.log('✓ Ausstattung confirmed-only + Panel-Thema');
 }
 
 // --- Ausstattungswünsche-Picker → Ausstattung-Bucket (auch früher korrumpierte Labels) ---
@@ -872,7 +1062,21 @@ function getNeedProfileLike() {
     { facts: [{ id: 'a', label: 'A', summaryPriority: 1 }, { id: 'b', label: 'B', summaryPriority: 2 }] },
   ], 1);
   assert.equal(short.tokens.length, 1);
-  assert.match(short.line, /\+\d+/);
+  assert.equal(short.overflow, 1);
+  assert.equal(short.line, 'A');
+  assert.ok(!/\+\d+/.test(short.line), 'kein +N in Summary-Zeile (Rest über Alles anzeigen)');
+
+  // Fallback-Pfad: flat chips ohne summary.tokens (wie UI resolveCollapsedSummaryTokens)
+  const fromChips = buildSnapshotSummary([
+    { id: 'c1', label: '2 Kinder', empty: false, summaryPriority: 10 },
+    { id: 'c2', label: 'Hund', empty: false, summaryPriority: 11 },
+    { id: 'c3', label: 'Sitzheizung', empty: false, summaryPriority: 40 },
+    { id: 'c4', label: '', empty: false },
+    { id: 'c5', label: 'Telefon fehlt', empty: false },
+  ], 3);
+  assert.equal(fromChips.tokens.length, 3);
+  assert.deepEqual(fromChips.tokens.map((t) => t.label), ['2 Kinder', 'Hund', 'Sitzheizung']);
+  assert.equal(fromChips.overflow, 0);
   console.log('✓ Summary helper');
 }
 
@@ -912,8 +1116,27 @@ function getNeedProfileLike() {
     sourceChannel: 'Landingpage',
     createdAt: '2026-05-28T12:00:00.000Z',
   });
-  assert.match(customerTitle || '', /Vom Kunden angegeben/);
-  assert.match(customerTitle || '', /Landingpage/);
+  assert.match(customerTitle || '', /Vom Kunden angegeben · \d{2}\.\d{2}\.\d{4}/);
+  assert.ok(!/Landingpage/.test(customerTitle || ''), 'Kanal nicht in Hover-Zeile');
+
+  assert.equal(isDecisionSoftFactLabel('entscheidet mit Partner'), true);
+  assert.equal(isDecisionSoftFactLabel('2 Kinder'), false);
+  const panelTopics = buildSoftPanelTopics([
+    {
+      id: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
+      facts: [
+        { id: 'c', label: '2 Kinder' },
+        { id: 'd', label: 'entscheidet mit Partner' },
+      ],
+    },
+    {
+      id: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+      facts: [{ id: 'e', label: 'Elektro' }],
+    },
+  ]);
+  assert.deepEqual(panelTopics.map((t) => t.id), ['persoenlich', 'entscheidung', 'fahrzeugwunsch']);
+  assert.match(panelTopics.find((t) => t.id === 'persoenlich')?.line || '', /2 Kinder/);
+  assert.match(panelTopics.find((t) => t.id === 'entscheidung')?.line || '', /Partner/);
 
   const lead = baseLead({
     source: 'landing',
@@ -931,8 +1154,10 @@ function getNeedProfileLike() {
   const children = snap.softChips.find((f) => f.id === 'children');
   const equip = snap.softChips.find((f) => /Totwinkel/i.test(f.label));
   assert.equal(dog?.source, 'customer');
+  assert.equal(dog?.confirmed, true);
   assert.equal(children?.source, 'customer');
   assert.equal(equip?.source, 'seller');
+  assert.equal(equip?.confirmed, true);
   assert.equal(equip?.priority, EQUIPMENT_WISH_PRIORITY.REQUIRED);
   assert.match(equip?.label || '', /·\s*muss/i, 'internes Fact-Label darf Suffix tragen');
   assert.equal(stripEquipmentPrioritySuffix(equip.label), 'Totwinkelassistent');
@@ -944,11 +1169,20 @@ function getNeedProfileLike() {
   const ahk = snapClever.softChips.find((f) => /Anhänger|AHK/i.test(f.label || ''));
   assert.ok(ahk, 'Clever-Insight landet als Soft-Chip');
   assert.equal(ahk?.source, 'clever');
+  assert.equal(ahk?.confirmed, false, 'Clever-Vermutung unconfirmed');
   assert.match(
     buildKnowledgeChipProvenanceTitle(ahk) || '',
-    /Von Clever erkannt/,
+    /Von Clever erkannt · noch nicht bestätigt/,
   );
-  console.log('✓ Knowledge source + equipment strip');
+  assert.match(
+    buildKnowledgeChipProvenanceTitle({
+      source: 'clever',
+      confirmed: true,
+      createdAt: '2026-05-28T12:00:00.000Z',
+    }) || '',
+    /Von Clever aus Gespräch erkannt · \d{2}\.\d{2}\.\d{4}/,
+  );
+  console.log('✓ Knowledge source + equipment strip + provenance');
 }
 
 console.log('\nbuildCustomerSnapshotModel.test.js: OK');

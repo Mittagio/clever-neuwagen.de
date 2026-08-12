@@ -13,6 +13,13 @@ import {
 import { applyAcceptedSellerTurn } from './applyAcceptedSellerTurn.js';
 import { runComposerPdfAttachTurn } from './runComposerPdfAttachTurn.js';
 import { createBrandesGoldenCaseLead } from '../crm/brandesGoldenCase.js';
+import { COMPOSER_INTENT_CONSTRAINT } from './composerIntentChips.js';
+import {
+  buildCustomerSnapshotModel,
+  SOFT_SNAPSHOT_GROUP,
+} from '../dealer/buildCustomerSnapshotModel.js';
+import { createEmptyNeedProfile } from '../consultation/needProfileService.js';
+import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
 
 const AKTE_SCOPE = 'customer_akte';
 const NOW = new Date('2026-07-31T10:00:00+02:00');
@@ -128,6 +135,78 @@ function akteTurn(params = {}) {
   assert.ok(applied.ok);
   // Accept bereitet vor / dokumentiert – kein stiller Kalender-Commit ohne Confirm-Pfad
   assert.ok(!containsAutoBookFlag(turn));
+}
+
+// --- Merken: Kinder/Hund → Soft Persönlich; Feed darf applied Lead nicht mit stale Lead überschreiben ---
+{
+  const lead = {
+    id: 'lead-norz-merken',
+    name: 'R Norz',
+    contact: { name: 'R Norz' },
+    crm: {
+      needProfile: {
+        ...createEmptyNeedProfile(),
+        colorPreference: 'terracotta',
+        drivePreference: 'awd',
+        understoodLabels: ['Terracotta', 'Allrad', 'Schwarz'],
+      },
+      sellerInsights: [],
+    },
+  };
+
+  const turn = akteTurn({
+    lead,
+    sellerInput: '2 Kinder, 1 Hund',
+    intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
+  });
+  assert.equal(turn.rememberDecision?.mode, 'save_with_undo');
+  const safeFacts = turn.rememberDecision?.safeFacts || [];
+  assert.ok(safeFacts.some((f) => f.field === 'childrenCount'));
+  assert.ok(safeFacts.some((f) => f.field === 'pet'));
+
+  const applied = applyAcceptedSellerTurn(lead, {
+    ...turn,
+    extractedFacts: safeFacts,
+  }, { postFeedCard: false });
+  assert.ok(applied.ok);
+  assert.equal(applied.lead.crm?.needProfile?.children, 2);
+  assert.equal(applied.lead.crm?.needProfile?.dog, true, 'pet → needProfile.dog');
+
+  const softOk = buildCustomerSnapshotModel(applied.lead);
+  const perso = softOk.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICHES);
+  assert.ok(perso?.facts.some((f) => /2\s*Kinder/i.test(f.label)), 'Kinder in Soft nach Apply');
+  assert.ok(perso?.facts.some((f) => /Hund/i.test(f.label)), 'Hund in Soft nach Apply');
+  assert.match(
+    (softOk.soft.topics || []).find((t) => t.id === 'persoenlich')?.line || '',
+    /2\s*Kinder/i,
+  );
+
+  // Regression: Feed mit stale Lead würde Merken-Facts verwerfen
+  const wiped = postCleverAssistFeedCard({
+    lead,
+    title: 'Clever',
+    text: 'Für Herrn R Norz aufgenommen: 2 Kinder · 1 Hund',
+    responseKind: 'compact_confirmation',
+  });
+  const softWiped = buildCustomerSnapshotModel(wiped.lead);
+  assert.ok(
+    !(softWiped.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICHES)
+      ?.facts || []).some((f) => /Kinder|Hund/i.test(f.label)),
+    'stale Feed-Lead ohne Merken-Facts (Bug-Repro)',
+  );
+
+  const kept = postCleverAssistFeedCard({
+    lead: applied.lead,
+    title: 'Clever',
+    text: 'Für Herrn R Norz aufgenommen: 2 Kinder · 1 Hund',
+    responseKind: 'compact_confirmation',
+  });
+  const softKept = buildCustomerSnapshotModel(kept.lead);
+  assert.ok(
+    (softKept.soft.groups.find((g) => g.id === SOFT_SNAPSHOT_GROUP.PERSOENLICHES)
+      ?.facts || []).some((f) => /2\s*Kinder/i.test(f.label)),
+    'Feed mit applied Lead behält Persönliches',
+  );
 }
 
 function containsAutoBookFlag(turn) {

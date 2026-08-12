@@ -279,6 +279,16 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    if (field === 'pet' || field === 'hasPet') {
+      const petType = value?.type
+        || (typeof value === 'string' ? value : null)
+        || (/hund/i.test(String(fact.label || '')) ? 'dog' : null);
+      if (petType === 'dog' || petType === 'hund') {
+        profile.dog = true;
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'monthlyNetIncome' && value != null) {
       profile.finance = {
         ...(profile.finance ?? {}),

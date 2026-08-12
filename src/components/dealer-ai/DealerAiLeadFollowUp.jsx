@@ -430,7 +430,8 @@ export default function DealerAiLeadFollowUp({
   const [snapshotHighlightLabels, setSnapshotHighlightLabels] = useState([]);
   const [snapshotChipEditor, setSnapshotChipEditor] = useState(null);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const [kundenbildExpanded, setKundenbildExpanded] = useState(true);
+  /** Freeze: Kundenwissen startet collapsed → light Summary-Chips sichtbar */
+  const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
   const [angeboteFilter, setAngeboteFilter] = useState('all');
   const [activeSheet, setActiveSheet] = useState(
@@ -2525,6 +2526,10 @@ export default function DealerAiLeadFollowUp({
     }
     const key = String(fact?.editKey ?? '').trim();
     const relevance = String(fact?.relevanceKey ?? '').trim();
+    if (key === 'contact') {
+      openSheet(SHEETS.customer);
+      return;
+    }
     if (!key) return;
     if (key === 'desiredRate' || key === 'downPayment' || key === 'paymentType'
       || key === 'termMonths' || key === 'mileagePerYear' || key === 'delivery'
@@ -3830,7 +3835,7 @@ export default function DealerAiLeadFollowUp({
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
         )}
-        band={(customerSnapshot?.meta?.hasData || customerSnapshot?.meta?.hasKern || customerSnapshot?.workingContext) ? (
+        band={customerSnapshot ? (
           <CustomerAkteKundenbild
             model={customerSnapshot}
             expanded={kundenbildExpanded}

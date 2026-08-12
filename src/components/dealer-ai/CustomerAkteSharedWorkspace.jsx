@@ -781,11 +781,13 @@ export default function CustomerAkteSharedWorkspace({
           facts: turn.rememberDecision.safeFacts,
           message: policy.message,
         });
-        // Compact confirmation in Feed (+ Undo-Link)
+        // Compact confirmation in Feed (+ Undo). Wichtig: applied Lead nutzen –
+        // Feed mit stale `lead` würde sellerInsights/needProfile wieder überschreiben.
         try {
+          const feedLead = remembered?.lead || lead;
           const posted = postCleverAssistFeedCard({
-            lead,
-            title: '✨ Clever',
+            lead: feedLead,
+            title: 'Clever',
             text: policy.message,
             responseKind: policy.kind,
             chips: policy.chips,
@@ -1810,8 +1812,6 @@ export default function CustomerAkteSharedWorkspace({
     }
     if (action.action === 'enter_rate' || action.id === 'enter_rate') {
       setDraft('Monatsrate ');
-      setUniversalTurn(null);
-      clearAssist();
       focusComposer();
       return;
     }
@@ -2414,7 +2414,7 @@ export default function CustomerAkteSharedWorkspace({
       <CleverChatMessage
         text={rememberUndo.message}
         payload={{
-          title: '✨ Clever',
+          title: 'Clever',
           responseKind: 'compact_confirmation',
           chips: rememberUndo.chips || [],
           undoAvailable: true,
