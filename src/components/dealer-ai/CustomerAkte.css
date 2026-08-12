@@ -5071,9 +5071,13 @@
 }
 
 @media (max-width: 720px) {
+  /* Identity click opens profile — hide redundant CTA so Name + Lean-Context stay visible. */
   .cust-akte-compact-header__cta {
-    padding: 0 10px;
-    font-size: 0.7rem;
+    display: none;
+  }
+
+  .cust-akte-compact-header__hint {
+    display: none;
   }
 }
 
@@ -5118,21 +5122,22 @@
 
 .cust-akte-compact-header__name {
   margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 650;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+  font-weight: 550;
   line-height: 1.2;
-  letter-spacing: -0.015em;
-  color: #0f172a;
+  letter-spacing: -0.02em;
+  color: #1c1b19;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cust-akte-compact-header__context {
-  margin: 2px 0 0;
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #94a3b8;
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  font-weight: 450;
+  color: #6f6b64;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -52,6 +52,7 @@ import {
   CLEVER_ACTION_IDS,
   formatCleverActionFollowedHistoryText,
 } from '../../services/crm/cleverActionEngine.js';
+import { buildAkteLeanContextLine } from '../../services/crm/buildAkteNextStepSurface.js';
 import { computeUnterlagenSummary, countUnterlagenOpenTasks } from '../../services/cleverUnterlagen.js';
 import { buildSelfDisclosureCardModel } from '../../services/crm/customerPortalSelfDisclosureService.js';
 import {
@@ -124,6 +125,7 @@ import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
 import WorkspaceShell from '../layout/WorkspaceShell.jsx';
 import {
   buildCustomerSnapshotModel,
+  formatLeasingEndLabel,
   SNAPSHOT_MINI_EDITOR,
   SNAPSHOT_RATE_MODES,
   SOFT_GROUP_ADD_CATEGORY,
@@ -1067,14 +1069,49 @@ export default function DealerAiLeadFollowUp({
     if (trackCount >= 2) {
       return `${trackCount} Fahrzeuge`;
     }
-    const models = [...new Set(
-      vehicleCards
-        .map((card) => String(formatVehicleCardTitle(card) || '').replace(/^Kia\s+/i, '').trim())
-        .filter(Boolean),
-    )].slice(0, 2);
-    if (!models.length && wishModel) models.push(String(wishModel).replace(/^Kia\s+/i, '').trim());
-    return models.length ? models.join(' / ') : '';
-  }, [vehicleCards, vehicleTracks, wishModel]);
+    const primaryCard = vehicleCards[0] || null;
+    const vehicleLabel = String(
+      formatVehicleCardTitle(primaryCard)
+      || wishModel
+      || '',
+    ).replace(/^Kia\s+/i, '').trim();
+    const paymentType = wishPaymentType !== 'unknown'
+      ? wishPaymentType
+      : (primaryCard?.paymentType || lead?.paymentType || lead?.wish?.paymentType || '');
+    const termMonths = wishTermMonths
+      ? Number(wishTermMonths)
+      : (primaryCard?.termMonths ?? lead?.wish?.termMonths ?? null);
+    const mileagePerYear = wishMileage
+      ? Number(wishMileage)
+      : (primaryCard?.mileagePerYear ?? lead?.wish?.mileagePerYear ?? null);
+    const downRaw = wishDownPayment !== '' && wishDownPayment != null
+      ? Number(wishDownPayment)
+      : (primaryCard?.downPayment ?? lead?.wish?.downPayment ?? null);
+    const leasingEndRaw = lead?.wish?.leasingEndDate || lead?.leasingEndDate || '';
+    return buildAkteLeanContextLine({
+      vehicleLabel,
+      paymentType,
+      termMonths: Number.isFinite(Number(termMonths)) ? Number(termMonths) : null,
+      mileagePerYear: Number.isFinite(Number(mileagePerYear)) ? Number(mileagePerYear) : null,
+      downPayment: Number.isFinite(Number(downRaw)) ? Number(downRaw) : null,
+      leasingEndLabel: formatLeasingEndLabel(leasingEndRaw) || '',
+    });
+  }, [
+    vehicleCards,
+    vehicleTracks,
+    wishModel,
+    wishPaymentType,
+    wishTermMonths,
+    wishMileage,
+    wishDownPayment,
+    lead?.paymentType,
+    lead?.wish?.paymentType,
+    lead?.wish?.termMonths,
+    lead?.wish?.mileagePerYear,
+    lead?.wish?.downPayment,
+    lead?.wish?.leasingEndDate,
+    lead?.leasingEndDate,
+  ]);
 
   const recentStageActivities = useMemo(
     () => pickRecentStageActivities(history, 3),
@@ -3798,6 +3835,7 @@ export default function DealerAiLeadFollowUp({
             model={customerSnapshot}
             expanded={kundenbildExpanded}
             variant="full"
+            leanHeaderActive={Boolean(headerContextLine)}
             onToggle={setKundenbildExpanded}
             onFactTap={handleKundenbildFactTap}
             onAddToGroup={handleAddToSoftGroup}

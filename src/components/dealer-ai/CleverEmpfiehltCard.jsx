@@ -5,45 +5,22 @@ import {
 } from './AkteIcons.jsx';
 import './CleverEmpfiehltCard.css';
 
-function StatusChip({ signal }) {
-  if (!signal?.label) return null;
-  return (
-    <li>
-      <span
-        className={`clever-empfiehlt__signal clever-empfiehlt__signal--${signal.tone || 'neutral'}`}
-      >
-        {signal.label}
-      </span>
-    </li>
-  );
-}
-
 function ActivityItem({ item, onOpen }) {
   if (!item) return null;
-  const initials = item.avatarInitials || 'CL';
-  const tone = item.avatarTone || 'slate';
   const content = (
     <>
-      <span
-        className={`clever-empfiehlt__activity-avatar clever-empfiehlt__activity-avatar--${tone}`}
-        aria-hidden
-      >
-        {initials}
-      </span>
+      <span className="clever-empfiehlt__activity-dot" aria-hidden />
       <span className="clever-empfiehlt__activity-body">
         <span className="clever-empfiehlt__activity-title">{item.headline}</span>
         {item.body ? (
           <span className="clever-empfiehlt__activity-sub">{item.body}</span>
         ) : null}
-        {item.whenLabel || item.time ? (
-          <span className="clever-empfiehlt__activity-when">
-            {item.whenLabel || item.time}
-          </span>
-        ) : null}
       </span>
-      <span className="clever-empfiehlt__activity-chevron" aria-hidden>
-        <IconChevronRight />
-      </span>
+      {item.whenLabel || item.time ? (
+        <span className="clever-empfiehlt__activity-when">
+          {item.whenLabel || item.time}
+        </span>
+      ) : null}
     </>
   );
 
@@ -55,7 +32,6 @@ function ActivityItem({ item, onOpen }) {
           className="clever-empfiehlt__activity"
           onClick={() => onOpen(item)}
           aria-label={item.headline || 'Aktivität öffnen'}
-          title={item.headline || 'Aktivität öffnen'}
         >
           {content}
         </button>
@@ -81,31 +57,19 @@ function splitRate(snapshot) {
   return { value: raw || null, unit: null };
 }
 
-/** Headline redundant with primary CTA → hide headline (less text). */
-function isHeadlineRedundantWithCta(headline, ctaLabel) {
-  const normalize = (value) => String(value || '')
-    .toLowerCase()
-    .replace(/[^\wäöüß]+/gi, ' ')
-    .trim();
-  const h = normalize(headline);
-  const c = normalize(ctaLabel);
-  if (!h || !c) return false;
-  if (h === c) return true;
-  if (h.includes(c) || c.includes(h)) return true;
-  const hTokens = new Set(h.split(/\s+/).filter((t) => t.length > 2));
-  const cTokens = c.split(/\s+/).filter((t) => t.length > 2);
-  return cTokens.length > 0 && cTokens.every((t) => hTokens.has(t));
-}
-
+/**
+ * Clever-Stage der Kundenakte:
+ * 1 Angebotskontext · 1 dynamischer Primär-CTA · max. 1 Sekundär · Timeline.
+ */
 export default function CleverEmpfiehltCard({
   view,
   telHref,
   onPrimaryAction,
-  onMarkDone,
+  onMarkDone: _onMarkDone,
   onOpenOffer,
   onOpenOfferDetails,
   onSendToCustomer,
-  onCopyMessage,
+  onCopyMessage: _onCopyMessage,
   onPrepareMessage,
   recentActivities = [],
   onOpenAllActivities = null,
@@ -123,116 +87,88 @@ export default function CleverEmpfiehltCard({
     );
   }
 
-  const primaryAction = view.actions?.find((a) => a.primary)
-    ?? view.actions?.[0];
-  const snapshot = view.offerSnapshot || null;
-  const signals = Array.isArray(view.statusSignals) ? view.statusSignals : [];
+  const nextStep = view.nextStep || null;
   const stage = view.stage || {};
+  const primaryAction = nextStep?.primary
+    || view.actions?.find((a) => a.primary)
+    || view.actions?.[0];
+  const secondary = nextStep?.secondary || stage.secondaryAction || null;
+  const snapshot = view.offerSnapshot || null;
   const canOpenOffer = Boolean(stage.canOpenOffer || snapshot?.cardId);
-  const canSend = stage.canSend !== false;
   const activities = Array.isArray(recentActivities) ? recentActivities.slice(0, 3) : [];
   const rate = splitRate(snapshot);
+  const recommendLabel = stage.recommendLabel || nextStep?.recommendLabel || 'Clever empfiehlt';
+  const primaryLabel = nextStep?.primary?.label
+    || stage.primaryReviewLabel
+    || primaryAction?.label
+    || view.ctaLabel
+    || 'Weiter';
+  const reasonTitle = nextStep?.reasonSource?.detail || primaryLabel;
 
   function handlePrimaryClick() {
-    if (primaryAction?.type === 'call' && primaryAction.href) {
+    if (primaryAction?.type === 'call' && (primaryAction.href || telHref)) {
       onPrimaryAction?.(view, primaryAction);
       return;
     }
-    if (canOpenOffer && (primaryAction?.type === 'offer' || stage.primaryReviewLabel)) {
+    if (canOpenOffer && (
+      primaryAction?.type === 'offer'
+      || stage.primaryReviewLabel
+      || /angebot/i.test(primaryLabel)
+    )) {
       onOpenOffer?.(view);
       return;
     }
     onPrimaryAction?.(view, primaryAction);
   }
 
-  function handleOpenDetails() {
-    if (typeof onOpenOfferDetails === 'function') {
-      onOpenOfferDetails(view);
+  function handleSecondary() {
+    if (!secondary) return;
+    if (secondary.type === 'call') {
+      onPrimaryAction?.(view, {
+        ...secondary,
+        href: secondary.href || telHref,
+        type: 'call',
+        label: secondary.label,
+      });
       return;
     }
-    onOpenOffer?.(view);
-  }
-
-  function handleSend() {
-    if (typeof onSendToCustomer === 'function') {
-      onSendToCustomer(view);
-      return;
-    }
-    if (view.messageSuggestion) {
-      onPrepareMessage?.(view.messageSuggestion);
+    if (secondary.type === 'send') {
+      if (typeof onSendToCustomer === 'function') {
+        onSendToCustomer(view);
+        return;
+      }
+      if (view.messageSuggestion) onPrepareMessage?.(view.messageSuggestion);
     }
   }
-
-  const primaryLabel = stage.primaryReviewLabel
-    || primaryAction?.label
-    || view.ctaLabel
-    || 'Weiter';
-  const sendLabel = stage.sendLabel || 'An Kunden senden';
-  const detailsLabel = stage.detailsLinkLabel || 'Angebotsdetails anzeigen';
-  const helpText = String(view.subline || view.reminderLine || '').trim();
-  const showHeadline = Boolean(view.headline)
-    && !isHeadlineRedundantWithCta(view.headline, primaryLabel);
-  const sectionLabel = view.headline || primaryLabel || 'Empfehlung';
-  const primaryHelp = helpText || primaryLabel;
-  const sendHelp = helpText || sendLabel;
-  const doneLabel = view.doneOption?.label?.replace(/^✓\s*/, '') || 'Erledigt';
 
   return (
     <section
-      className="clever-empfiehlt clever-empfiehlt--stage"
-      aria-label={sectionLabel}
+      className="clever-empfiehlt clever-empfiehlt--stage clever-empfiehlt--hierarchy"
+      aria-label={primaryLabel}
     >
       <div className="clever-empfiehlt__stage">
-        <div className="clever-empfiehlt__stage-grid">
-          <div className="clever-empfiehlt__col clever-empfiehlt__col--recommend">
-            {showHeadline ? (
-              <h2 id="clever-empfiehlt-title" className="clever-empfiehlt__headline">
-                {view.headline}
-              </h2>
-            ) : null}
+        <div className={`clever-empfiehlt__work${snapshot?.imageUrl ? '' : ' clever-empfiehlt__work--no-media'}`}>
+          {snapshot?.imageUrl ? (
+            <div className="clever-empfiehlt__media" data-testid="clever-empfiehlt-media">
+              <img
+                src={snapshot.imageUrl}
+                alt={snapshot.title ? `${snapshot.title}` : ''}
+                className="clever-empfiehlt__media-img"
+                loading="lazy"
+              />
+            </div>
+          ) : null}
 
-            {snapshot?.imageUrl ? (
-              <div className="clever-empfiehlt__media" data-testid="clever-empfiehlt-media">
-                <img
-                  src={snapshot.imageUrl}
-                  alt={snapshot.title ? `${snapshot.title}` : ''}
-                  className="clever-empfiehlt__media-img"
-                  loading="lazy"
-                />
-              </div>
-            ) : null}
-
-            {signals.length > 0 ? (
-              <ul className="clever-empfiehlt__signals" aria-label="Signale">
-                {signals.map((signal) => (
-                  <StatusChip key={signal.id || signal.label} signal={signal} />
-                ))}
-              </ul>
-            ) : null}
-          </div>
-
-          <div className="clever-empfiehlt__col clever-empfiehlt__col--offer">
+          <div className="clever-empfiehlt__work-main">
             {snapshot ? (
               <>
                 <header className="clever-empfiehlt__offer-head">
-                  <div className="clever-empfiehlt__offer-titles">
-                    <div className="clever-empfiehlt__offer-title-row">
-                      <h3 className="clever-empfiehlt__offer-title">
-                        {snapshot.title || 'Angebot'}
-                      </h3>
-                      {snapshot.availabilityLabel ? (
-                        <span
-                          className="clever-empfiehlt__badge"
-                          data-testid="clever-empfiehlt-availability"
-                        >
-                          {snapshot.availabilityLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    {snapshot.subtitle ? (
-                      <p className="clever-empfiehlt__offer-sub">{snapshot.subtitle}</p>
-                    ) : null}
-                  </div>
+                  <h3 className="clever-empfiehlt__offer-title">
+                    {snapshot.title || 'Angebot'}
+                  </h3>
+                  {snapshot.subtitle ? (
+                    <p className="clever-empfiehlt__offer-sub">{snapshot.subtitle}</p>
+                  ) : null}
                 </header>
 
                 <dl className="clever-empfiehlt__terms">
@@ -246,9 +182,6 @@ export default function CleverEmpfiehltCard({
                     <div>
                       <dt>km</dt>
                       <dd>{snapshot.mileageLabel}</dd>
-                      {snapshot.mileageHint ? (
-                        <span className="clever-empfiehlt__terms-hint">{snapshot.mileageHint}</span>
-                      ) : null}
                     </div>
                   ) : null}
                   {rate.value ? (
@@ -259,18 +192,21 @@ export default function CleverEmpfiehltCard({
                         <span className="clever-empfiehlt__terms-hint">{rate.unit}</span>
                       ) : null}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="clever-empfiehlt__terms-rate">
+                      <dt>Rate</dt>
+                      <dd className="is-missing">offen</dd>
+                    </div>
+                  )}
                 </dl>
 
-                {canOpenOffer ? (
+                {canOpenOffer && typeof onOpenOfferDetails === 'function' ? (
                   <button
                     type="button"
-                    className="clever-empfiehlt__link"
-                    onClick={handleOpenDetails}
-                    aria-label={detailsLabel}
-                    title={detailsLabel}
+                    className="clever-empfiehlt__link clever-empfiehlt__link--quiet"
+                    onClick={() => onOpenOfferDetails(view)}
                   >
-                    <span>{detailsLabel}</span>
+                    <span>{stage.detailsLinkLabel || 'Angebotsdetails'}</span>
                     <IconChevronRight />
                   </button>
                 ) : null}
@@ -280,91 +216,60 @@ export default function CleverEmpfiehltCard({
                 <h3 className="clever-empfiehlt__offer-title">Noch kein Angebot</h3>
               </div>
             )}
-          </div>
 
-          <div className="clever-empfiehlt__col clever-empfiehlt__col--next">
-            <div className="clever-empfiehlt__next-actions">
+            <div className="clever-empfiehlt__next">
+              <p className="clever-empfiehlt__recommend-label">{recommendLabel}</p>
+
               {primaryAction?.type === 'call' && (primaryAction.href || telHref) ? (
                 <a
                   href={primaryAction.href || telHref}
                   className="clever-empfiehlt__btn clever-empfiehlt__btn--primary"
                   onClick={() => onPrimaryAction?.(view, primaryAction)}
-                  aria-label={primaryAction.label}
-                  title={primaryHelp}
+                  title={reasonTitle}
                 >
                   <IconSparkle />
-                  <span>{primaryAction.label}</span>
+                  <span>{primaryLabel}</span>
                 </a>
               ) : (
                 <button
                   type="button"
                   className="clever-empfiehlt__btn clever-empfiehlt__btn--primary"
                   onClick={handlePrimaryClick}
-                  aria-label={primaryLabel}
-                  title={primaryHelp}
+                  title={reasonTitle}
                 >
                   <IconSparkle />
                   <span>{primaryLabel}</span>
                 </button>
               )}
 
-              {canSend ? (
-                <button
-                  type="button"
-                  className="clever-empfiehlt__btn clever-empfiehlt__btn--secondary"
-                  onClick={handleSend}
-                  aria-label={sendLabel}
-                  title={sendHelp}
-                >
-                  <IconPaperPlane />
-                  <span>{sendLabel}</span>
-                </button>
+              {secondary ? (
+                secondary.type === 'call' && (secondary.href || telHref) ? (
+                  <a
+                    href={secondary.href || telHref}
+                    className="clever-empfiehlt__secondary-link"
+                    onClick={() => handleSecondary()}
+                  >
+                    {secondary.label}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="clever-empfiehlt__secondary-link"
+                    onClick={handleSecondary}
+                  >
+                    {secondary.type === 'send' ? <IconPaperPlane /> : null}
+                    <span>{secondary.label}</span>
+                  </button>
+                )
               ) : null}
             </div>
-
-            {view.doneOption ? (
-              <div className="clever-empfiehlt__meta-row">
-                <button
-                  type="button"
-                  className="clever-empfiehlt__done-btn clever-empfiehlt__done-btn--quiet"
-                  onClick={() => onMarkDone?.(view)}
-                  aria-label={doneLabel}
-                  title={doneLabel}
-                >
-                  {doneLabel}
-                </button>
-              </div>
-            ) : null}
-
-            {view.messageSuggestion?.text && !canSend ? (
-              <div className="clever-empfiehlt__message-actions">
-                <button
-                  type="button"
-                  className="clever-empfiehlt__btn clever-empfiehlt__btn--secondary clever-empfiehlt__btn--compact"
-                  onClick={() => onPrepareMessage?.(view.messageSuggestion)}
-                  aria-label="Nachricht vorbereiten"
-                  title="Nachricht vorbereiten"
-                >
-                  Nachricht vorbereiten
-                </button>
-                <button
-                  type="button"
-                  className="clever-empfiehlt__btn clever-empfiehlt__btn--secondary clever-empfiehlt__btn--compact"
-                  onClick={() => onCopyMessage?.(view.messageSuggestion)}
-                  aria-label="Kopieren"
-                  title="Kopieren"
-                >
-                  Kopieren
-                </button>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
 
       {activities.length > 0 ? (
         <div
-          className="clever-empfiehlt__activities"
+          className="clever-empfiehlt__activities clever-empfiehlt__activities--timeline"
           aria-label="Letzte Aktivitäten"
           data-testid="clever-empfiehlt-activities"
         >
@@ -375,8 +280,6 @@ export default function CleverEmpfiehltCard({
                 type="button"
                 className="clever-empfiehlt__activities-all"
                 onClick={onOpenAllActivities}
-                aria-label="Alle Aktivitäten"
-                title="Alle Aktivitäten"
               >
                 Alle Aktivitäten
               </button>

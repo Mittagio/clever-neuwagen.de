@@ -160,7 +160,11 @@ function buildCollapsedSummaryChips(soft, max = COLLAPSED_SUMMARY_MAX) {
   }
 
   takeFacts(urgencyFirst(byId.get(SOFT_SNAPSHOT_GROUP.PERSOENLICHES)?.facts));
-  takeFacts(byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts);
+  // Fahrzeugwunsch nur bei echten Zusatzinfos (Farbe/Antrieb/…), nie Header-Modell-Duplikat
+  takeFacts(
+    (byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts || [])
+      .filter((f) => !f.empty && String(f.label || '').trim()),
+  );
 
   if (picked.length < max) {
     let wichtigFacts = byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.facts ?? [];
@@ -304,12 +308,15 @@ function SoftKnowledgeGroup({
 }
 
 /**
- * Zone 1 – immer sichtbare Konditionen (Tap → Mini-Editor).
+ * Zone 1 – Konditionen (Tap → Mini-Editor).
+ * Bei lean Header: keine lauten Chip-Duplikate, nur ruhiger Edit-Zugang.
  */
 export function CustomerAkteKernkonditionen({
   kern = null,
   onFactTap = null,
   onEditConditions = null,
+  /** Header zeigt bereits Fahrzeug + Konditionen → keine Chip-Duplikate */
+  leanHeaderActive = false,
 }) {
   if (!kern) return null;
   const chips = (kern.chips ?? []).slice(0, KERN_CHIP_MAX);
@@ -318,6 +325,21 @@ export function CustomerAkteKernkonditionen({
   const editControl = typeof onEditConditions === 'function' ? (
     <EditLink onClick={onEditConditions} ariaLabel="Konditionen bearbeiten" />
   ) : null;
+
+  if (leanHeaderActive) {
+    if (!editControl) return null;
+    return (
+      <div
+        className="cust-kundenbild__kern cust-kundenbild__kern--lean"
+        aria-label={kern.title || 'Konditionen'}
+      >
+        <div className="cust-kundenbild__kern-row cust-kundenbild__kern-row--lean">
+          <span className="cust-kundenbild__kern-lean-hint">Konditionen</span>
+          {editControl}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -367,8 +389,13 @@ export function CustomerAkteKundeninfos({
 
   const sectionTitle = soft?.title || 'Kundenwissen';
   const { chips: summaryChips, overflow: summaryOverflow } = buildCollapsedSummaryChips(soft);
-  // Nur Buckets mit Facts (leere ausgeblendet)
-  const groups = (soft?.groups ?? []).filter((g) => (g?.facts?.length ?? 0) > 0);
+  // Nur Buckets mit Facts; Fahrzeugwunsch nur bei echter Zusatzinformation
+  const groups = (soft?.groups ?? []).filter((g) => {
+    const facts = (g?.facts ?? []).filter((f) => !f.empty && String(f.label || '').trim());
+    if (!facts.length) return false;
+    if (g.id === SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ) return facts.length > 0;
+    return true;
+  });
   const showBar = variant === 'full' || variant === 'bar';
   const showPanel = variant === 'full' || variant === 'panel';
   const showCollapsedSummary = !expanded && showBar;
@@ -478,6 +505,8 @@ export default function CustomerAkteKundenbild({
   onAusstattungErgaenzen = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
+  /** Header trägt bereits Lean-Konditionen → keine lauten Kern-Chips */
+  leanHeaderActive = false,
 }) {
   const panelId = useId();
 
@@ -515,7 +544,12 @@ export default function CustomerAkteKundenbild({
 
   return (
     <section
-      className={`cust-kundenbild${expanded ? ' is-expanded' : ' is-collapsed'}${variant !== 'full' ? ` cust-kundenbild--${variant}` : ''}`}
+      className={[
+        'cust-kundenbild',
+        expanded ? 'is-expanded' : 'is-collapsed',
+        variant !== 'full' ? `cust-kundenbild--${variant}` : '',
+        leanHeaderActive ? 'cust-kundenbild--hierarchy' : '',
+      ].filter(Boolean).join(' ')}
       aria-label="Kundenbild"
     >
       {showKern ? (
@@ -523,6 +557,7 @@ export default function CustomerAkteKundenbild({
           kern={kern}
           onFactTap={onFactTap}
           onEditConditions={onEditConditions}
+          leanHeaderActive={leanHeaderActive}
         />
       ) : null}
 

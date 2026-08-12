@@ -777,6 +777,37 @@
   }
 }
 
+/* Hierarchy v2: ruhigeres Band, keine lauten Kern-Chips wenn Header lean ist */
+.cust-kundenbild--hierarchy .cust-kundenbild__kern--lean {
+  padding: 6px 16px;
+  background: transparent;
+  border-bottom: 1px solid rgba(28, 27, 25, 0.06);
+}
+
+.cust-kundenbild__kern-row--lean {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cust-kundenbild__kern-lean-hint {
+  margin-right: auto;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #8f8a82;
+}
+
+.cust-kundenbild--hierarchy .cust-kundenbild__summary-chips .cust-kundenbild__chip {
+  background: transparent;
+  border-color: rgba(28, 27, 25, 0.08);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.cust-kundenbild--hierarchy .cust-kundenbild__soft {
+  opacity: 0.98;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cust-kundenbild__chevron,
   .cust-kundenbild__group-chevron,

@@ -69,7 +69,13 @@ assert.ok(view.headline, 'Headline vorhanden');
 assert.ok(view.closureChance >= 0 && view.closureChance <= 100, 'Abschlusschance 0-100');
 assert.ok(view.whyBullets.length > 0, 'Warum-Bullets vorhanden');
 assert.ok(view.actions.some((a) => a.id === 'call'), 'Anrufen-Action vorhanden');
-assert.ok(view.doneOption?.label.includes('✓'), 'Erledigt-Option vorhanden');
+assert.equal(view.doneOption, null, 'Erledigt nicht auf erster Ebene');
+assert.ok(view.doneOptionHidden?.label?.includes('✓'), 'Erledigt nur in doneOptionHidden');
+assert.ok(view.nextStep?.primary?.label, 'nextStep Primary vorhanden');
+assert.ok(view.nextStep?.reasonSource?.kind, 'reasonSource aus realem Status');
+assert.equal(view.stage?.recommendLabel, 'Clever empfiehlt');
+assert.equal(view.subline, '', 'Keine Erklär-Subline auf der Stage');
+assert.deepEqual(view.statusSignals, [], 'Keine Signal-Chips auf der Stage');
 
 // Erledigt → nächste Empfehlung
 const firstActionId = view.actionId;
@@ -155,6 +161,15 @@ assert.ok(rec, 'Alternative Empfehlung nach Ausschluss');
   assert.match(String(sendView.offerSnapshot.title || ''), /EV4/i, 'Snapshot-Titel enthält Modell');
   assert.ok(sendView.stage?.primaryReviewLabel, 'Stage: Primary-Review-Label');
   assert.ok(Array.isArray(sendView.statusSignals), 'Stage: Status-Signale Array');
+  assert.equal(sendView.doneOption, null, 'doneOption nicht auf Stage');
+  assert.ok(sendView.nextStep?.reasonSource?.kind, 'nextStep reasonSource');
+  assert.equal(sendView.stage?.recommendLabel, 'Clever empfiehlt');
+  assert.ok(
+    sendView.nextStep?.secondary == null
+    || sendView.nextStep.secondary.type === 'call'
+    || sendView.nextStep.secondary.type === 'send',
+    'Max. 1 sinnvoller Sekundär-CTA',
+  );
 }
 
 // Snapshot + Signale nur aus echten Daten

@@ -65,26 +65,35 @@ const empfiehltSource = readFileSync(
   join(__dirname, 'CleverEmpfiehltCard.jsx'),
   'utf8',
 );
-assert.ok(empfiehltSource.includes('Angebotsdetails anzeigen'), 'Stage: Angebotsdetails-Link');
+assert.ok(
+  empfiehltSource.includes('Angebotsdetails')
+  || empfiehltSource.includes('detailsLinkLabel'),
+  'Stage: Angebotsdetails-Link',
+);
 assert.ok(empfiehltSource.includes('Letzte Aktivitäten'), 'Stage: Aktivitäten-Strip');
+assert.ok(empfiehltSource.includes('Alle Aktivitäten'), 'Timeline: Alle Aktivitäten');
 assert.ok(empfiehltSource.includes('clever-empfiehlt--stage'), 'Stage-Klasse');
+assert.ok(empfiehltSource.includes('clever-empfiehlt--hierarchy'), 'Hierarchy-Klasse');
 assert.ok(empfiehltSource.includes('clever-empfiehlt__stage'), 'Eine Stage-Karte');
-assert.ok(empfiehltSource.includes('clever-empfiehlt__col--recommend'), 'Empfehlungs-Spalte');
-assert.ok(empfiehltSource.includes('clever-empfiehlt__col--offer'), 'Angebots-Spalte');
-assert.ok(empfiehltSource.includes('clever-empfiehlt__col--next'), 'Nächster-Schritt-Spalte');
+assert.ok(empfiehltSource.includes('clever-empfiehlt__work'), 'Ein Arbeitsblock');
+assert.ok(empfiehltSource.includes('clever-empfiehlt__next'), 'Next-Step-Block');
+assert.ok(empfiehltSource.includes('clever-empfiehlt__recommend-label'), 'Ruhiges Clever-empfiehlt-Label');
+assert.ok(empfiehltSource.includes('clever-empfiehlt__secondary-link'), 'Max. 1 sekundärer Link');
 assert.ok(empfiehltSource.includes('clever-empfiehlt__media'), 'Stage: Fahrzeugbild-Region');
 assert.ok(empfiehltSource.includes('clever-empfiehlt-activities'), 'Aktivitäten-Zeile unter Stage');
-assert.ok(empfiehltSource.includes('clever-empfiehlt__activity-avatar'), 'Aktivitäts-Avatare');
-assert.ok(empfiehltSource.includes('clever-empfiehlt-availability'), 'Verfügbar-Badge Region');
+assert.ok(empfiehltSource.includes('activities--timeline'), 'Aktivitäten als Timeline');
+assert.ok(empfiehltSource.includes('slice(0, 3)'), 'Timeline max. 3 Aktivitäten');
 assert.ok(empfiehltSource.includes('IconSparkle'), 'Primary CTA mit Sparkles');
 assert.ok(empfiehltSource.includes('IconPaperPlane'), 'Send-CTA mit Paper-Plane');
-assert.ok(empfiehltSource.includes('title={primaryHelp}'), 'Erklärung als Button-Tooltip');
-assert.ok(empfiehltSource.includes('isHeadlineRedundantWithCta'), 'Doppel-Headline wird unterdrückt');
-assert.ok(!empfiehltSource.includes('Clever empfiehlt'), 'Kein Clever-empfiehlt-Eyebrow');
+assert.ok(empfiehltSource.includes('title={reasonTitle}'), 'reasonSource als Button-Tooltip');
+assert.ok(empfiehltSource.includes('nextStep'), 'nextStep Surface verdrahtet');
 assert.ok(!empfiehltSource.includes('Nächster Schritt'), 'Kein Nächster-Schritt-Eyebrow');
 assert.ok(!empfiehltSource.includes('Dein digitaler Verkaufsassistent'), 'Keine Trust-Zeile');
 assert.ok(!empfiehltSource.includes('clever-empfiehlt__subline'), 'Keine sichtbare Subline');
 assert.ok(!empfiehltSource.includes('clever-empfiehlt__card--recommend'), 'Keine getrennten Glob-Karten');
+assert.ok(!empfiehltSource.includes('clever-empfiehlt__col--recommend'), 'Keine 3-Spalten-Chrome');
+assert.ok(!empfiehltSource.includes('activity-avatar'), 'Keine Aktivitäts-Avatare');
+assert.ok(!empfiehltSource.includes('clever-empfiehlt-availability'), 'Kein Verfügbar-Badge');
 
 const kundenbildSource = readFileSync(
   join(__dirname, 'CustomerAkteKundenbild.jsx'),
@@ -108,6 +117,8 @@ assert.ok(!kundenbildSource.includes('cust-kundenbild__kern-title'), 'Kein Kondi
 assert.ok(!kundenbildSource.includes('cust-kundenbild__title'), 'Kein Kundenwissen-Eyebrow');
 assert.ok(kundenbildSource.includes('IconPencil'), 'Konditionen-Stift bleibt');
 assert.ok(kundenbildSource.includes('cust-kundenbild__kern-row'), 'Konditionen Chip-Zeile mit Stift');
+assert.ok(kundenbildSource.includes('leanHeaderActive'), 'Lean-Header unterdrückt laute Kern-Chips');
+assert.ok(kundenbildSource.includes('cust-kundenbild--hierarchy'), 'Hierarchy-Band-Klasse');
 assert.ok(kundenbildSource.includes('cust-kundenbild__soft-row'), 'Kundenwissen kompakte Aktionszeile');
 assert.ok(kundenbildSource.includes('cust-kundenbild__chevron-btn'), 'Kundenwissen Collapse-Chevron');
 assert.ok(
@@ -163,6 +174,8 @@ assert.ok(followUpStage.includes('onOpenOfferDetails'), 'Stage Details verdrahte
 assert.ok(followUpStage.includes('onSendToCustomer'), 'Stage Senden verdrahtet');
 assert.ok(followUpStage.includes('onEditConditions'), 'Konditionen-Sheet verdrahtet');
 assert.ok(followUpStage.includes('recentActivities'), 'Aktivitäten an Stage');
+assert.ok(followUpStage.includes('buildAkteLeanContextLine'), 'Lean Header-Kontextzeile');
+assert.ok(followUpStage.includes('leanHeaderActive'), 'Kundenbild ohne Kern-Chip-Duplikate');
 
 assert.ok(typeof buildUnterlagenKundenwissenItems === 'function');
 

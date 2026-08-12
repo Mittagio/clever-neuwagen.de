@@ -19,6 +19,7 @@ import { VEHICLE_OFFER_STATUS } from '../vehicleOffer.js';
 import { PORTAL_ACCESS_STATUS, getCustomerPortalAccess } from './customerPortalAccessService.js';
 import { INTEREST_STATUS, getCustomerOfferInteraction } from '../customerOfferInteraction.js';
 import { getVehicleImageUrl } from '../vehicle/vehicleImageService.js';
+import { buildAkteNextStepSurface } from './buildAkteNextStepSurface.js';
 
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -485,16 +486,35 @@ export function buildCleverEmpfiehltView({
   const statusSignals = buildStatusSignals(context, closureChance, whyBullets);
   const offerPrimary = isOfferRecommendedAction(recommendation);
 
+  const actions = buildContactActions({
+    recommendation,
+    phone,
+    email,
+    telHref,
+    offerPath,
+    portalUrl,
+  });
+  const canSend = Boolean(phone || email || portalUrl || offerSnapshot);
+  const canCall = Boolean(phone || telHref);
+  const nextStep = buildAkteNextStepSurface({
+    recommendation,
+    actions,
+    canSend,
+    canCall,
+    telHref,
+  });
+
   return {
     actionId: recommendation.actionId,
     headline: resolveHeadline(recommendation),
-    subline: recommendation.explanation ?? recommendation.reason ?? '',
+    // Keine Erklärbox auf der Stage – Subline nur Audit
+    subline: '',
+    reminderLine: '',
     closureChance,
     closureLabel: `${closureChance} %`,
     stars: starsFromClosure(closureChance),
     starLabel: starLabel(starsFromClosure(closureChance)),
     whyBullets,
-    // Natürliche Kurzfassung (max. 2 Sätze); whyBullets bleiben für Audit/Detail
     whySummary: whyBullets.slice(0, 2).map((b) => {
       const t = String(b.text || '')
         .trim()
@@ -502,30 +522,32 @@ export function buildCleverEmpfiehltView({
       if (!t) return '';
       return /[.!?…]$/.test(t) ? t : `${t}.`;
     }).filter(Boolean).join(' '),
-    actions: buildContactActions({
-      recommendation,
-      phone,
-      email,
-      telHref,
-      offerPath,
-      portalUrl,
-    }),
-    doneOption: resolveDoneOption(recommendation),
+    actions,
+    // Erledigt nicht auf erster Ebene
+    doneOption: null,
+    doneOptionHidden: resolveDoneOption(recommendation),
     recommendation,
     analyticsText: formatCleverRecommendationHistoryText(recommendation),
     handlerType: recommendation.handlerType,
     meta: recommendation.meta,
     title: recommendation.title,
-    ctaLabel: recommendation.ctaLabel,
+    ctaLabel: nextStep?.primary?.label || recommendation.ctaLabel,
     offerSnapshot,
-    statusSignals,
+    // Keine Signal-Chips auf der Stage
+    statusSignals: [],
+    statusSignalsHidden: statusSignals,
+    nextStep,
     stage: {
-      primaryReviewLabel: offerPrimary ? 'Angebot prüfen' : (recommendation.ctaLabel || resolveHeadline(recommendation)),
+      primaryReviewLabel: nextStep?.primary?.label
+        || (offerPrimary ? 'Angebot prüfen' : (recommendation.ctaLabel || resolveHeadline(recommendation))),
       sendLabel: 'An Kunden senden',
       detailsLabel: 'Details öffnen',
-      detailsLinkLabel: 'Angebotsdetails anzeigen',
-      canSend: Boolean(phone || email || portalUrl || offerSnapshot),
+      detailsLinkLabel: 'Angebotsdetails',
+      canSend,
       canOpenOffer: Boolean(offerSnapshot?.cardId || offerPath),
+      recommendLabel: nextStep?.recommendLabel || 'Clever empfiehlt',
+      secondaryAction: nextStep?.secondary || null,
+      reasonSource: nextStep?.reasonSource || null,
     },
   };
 }
