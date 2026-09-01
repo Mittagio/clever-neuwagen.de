@@ -1,0 +1,34 @@
+---
+description: Clever Composer Brain — Design Freeze; DoD Gehirn+Manager; kein UI-Polish in diesem Track
+alwaysApply: true
+---
+
+# Clever Composer Brain (DoD)
+
+## Produktgesetz
+
+- Der Composer ist Clever (wie Cursor Composer für den Verkäufer).
+- **Design Freeze:** Keine Layout-/Visual-/Hierarchy-Redesigns. Akte / Kundenwissen / Konditionen / CTA bleiben.
+- Arbeit = **Gehirn** (ein Agent-Loop) + **Manager** (Orchestrierung, Memory, Apply). Nicht mehr UI.
+
+## DoD (messbar) — Agents müssen darauf hinsteuern
+
+1. **Ein Gehirn** — Dashboard + Akte denselben Agent-/Orchestrator-Pfad; keine parallelen Gehirne ohne Memory.
+2. **Session-Gedächtnis** — Folgeanweisungen („EV4“, „schreib ihm das“, „10k km“) wirken auf denselben Job; History nicht hardcoded leer.
+3. **Dump First-Class** — Mail/Zettel/PDF/Paste → Review → echte Kundenfacts in Akte/Kundenwissen (keine Prozess-Chips). Zero-Loss bleibt.
+4. **Auftrag = sichtbares Ergebnis** — nach Confirm ändert sich Angebot/Track/Nachricht/Name; kein Kleben (EV3 bei EV4), kein Name-Verlust.
+5. **Confirm nur bei Risiko** — Geschäftliches mit Review; sichere interne Updates kompakt; Clever führt, Verkäufer bestätigt Risiken.
+
+## Explizit NICHT
+
+- Kein Design-Polish, keine neuen Boxen, kein Dashboard-Redesign
+- Kein zweites Carwow / Marktplatz
+- Nicht „mehr UI“ — zuverlässige Ausführung
+
+## Verweis
+
+- Doc: `docs/CLEVER_COMPOSER_BRAIN_DOD.md`
+- `docs/CLEVER_GLOBAL_COMPOSER.md`
+- `docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md`
+- `docs/CLEVER_ZERO_LOSS_INTAKE.md`
+- Rules: `clever-2-0-assistant.mdc`, `clever-zero-loss-intake.mdc`
