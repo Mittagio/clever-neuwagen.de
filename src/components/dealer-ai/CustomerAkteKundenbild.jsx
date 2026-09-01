@@ -250,14 +250,12 @@ function SnapshotChip({ chip, onFactTap, compact = false }) {
 
 /**
  * Zone 1 – Konditionen (Tap → Mini-Editor).
- * Bei lean Header: keine lauten Chip-Duplikate, nur ruhiger Edit-Zugang.
+ * Deal-Konditionen (Leasing, Laufzeit, km, AZ) gehören hierher – nicht in den Header.
  */
 export function CustomerAkteKernkonditionen({
   kern = null,
   onFactTap = null,
   onEditConditions = null,
-  /** Header zeigt bereits Fahrzeug + Konditionen → keine Chip-Duplikate */
-  leanHeaderActive = false,
 }) {
   if (!kern) return null;
   const chips = (kern.chips ?? []).slice(0, KERN_CHIP_MAX);
@@ -266,21 +264,6 @@ export function CustomerAkteKernkonditionen({
   const editControl = typeof onEditConditions === 'function' ? (
     <EditLink onClick={onEditConditions} ariaLabel="Konditionen bearbeiten" />
   ) : null;
-
-  if (leanHeaderActive) {
-    if (!editControl) return null;
-    return (
-      <div
-        className="cust-kundenbild__kern cust-kundenbild__kern--lean"
-        aria-label={kern.title || 'Konditionen'}
-      >
-        <div className="cust-kundenbild__kern-row cust-kundenbild__kern-row--lean">
-          <span className="cust-kundenbild__kern-lean-hint">Konditionen</span>
-          {editControl}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -539,7 +522,7 @@ export default function CustomerAkteKundenbild({
   onAusstattungErgaenzen = null,
   /** 'full' | 'bar' | 'panel' */
   variant = 'full',
-  /** Header trägt bereits Lean-Konditionen → keine lauten Kern-Chips */
+  /** Header zeigt Fahrzeug-Kontext → Hierarchy-Styling (Soft ruhiger); Kern-Chips bleiben sichtbar */
   leanHeaderActive = false,
 }) {
   const panelId = useId();
@@ -605,7 +588,6 @@ export default function CustomerAkteKundenbild({
           kern={kern}
           onFactTap={onFactTap}
           onEditConditions={onEditConditions}
-          leanHeaderActive={leanHeaderActive}
         />
       ) : null}
 

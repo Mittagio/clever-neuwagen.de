@@ -211,6 +211,16 @@ export function applyConfirmedMultiSourceIntakePlan(lead = {}, turn = {}, option
         text: 'Kundenakte aus Multi-Source-Intake vorgeschlagen und bestätigt',
       }],
     };
+    // Kein System-Default preferredContact=email (sonst Soft „lieber E-Mail“)
+    if (candidate.phone) {
+      nextLead = {
+        ...nextLead,
+        contact: { ...(nextLead.contact || {}), preferredContact: 'phone' },
+      };
+    } else if (nextLead.contact && 'preferredContact' in nextLead.contact) {
+      const { preferredContact: _omit, ...contactRest } = nextLead.contact;
+      nextLead = { ...nextLead, contact: contactRest };
+    }
     createdIds.leadId = nextLead.id;
     createdIds.customerCreated = true;
     setOp(ops, OP.CREATE_OR_LINK_CUSTOMER, 'applied', `created:${nextLead.id}`);
@@ -274,8 +284,17 @@ export function applyConfirmedMultiSourceIntakePlan(lead = {}, turn = {}, option
       let profile = { ...(getNeedProfileFromLead(nextLead) || createEmptyNeedProfile()) };
       profile.selectedModelKey = modelKey;
       profile.modelHint = modelKey;
+      if (modelKey.startsWith('ev')) {
+        profile.fuel = 'electric';
+      }
       if (wish.trim) {
         profile.equipmentWishes = pushUnique(profile.equipmentWishes || [], wish.trim);
+      }
+      for (const eq of wish.requestedEquipment || []) {
+        if (eq) profile.equipmentWishes = pushUnique(profile.equipmentWishes || [], eq);
+      }
+      if (wish.color) {
+        profile.colorPreference = String(wish.color).toLowerCase();
       }
       nextLead = mergeNeedProfileIntoLead(nextLead, profile);
       setOp(ops, OP.APPLY_VEHICLE_INTEREST, 'applied', trackId);
@@ -307,9 +326,18 @@ export function applyConfirmedMultiSourceIntakePlan(lead = {}, turn = {}, option
         profile.colorPreference = String(wish.color).toLowerCase();
         touched = true;
       }
+      for (const eq of wish.requestedEquipment || []) {
+        if (!eq) continue;
+        profile.equipmentWishes = pushUnique(profile.equipmentWishes || [], eq);
+        touched = true;
+      }
       if ((wish.requestedEquipment || []).some((e) => /ahk/i.test(e))) {
         profile.towbar = true;
         profile.priorities = pushUnique(profile.priorities || [], 'towing');
+        touched = true;
+      }
+      if (String(guessModelKey(wish) || '').startsWith('ev')) {
+        profile.fuel = 'electric';
         touched = true;
       }
       if (touched) nextLead = mergeNeedProfileIntoLead(nextLead, profile);
@@ -607,13 +635,19 @@ export function applyConfirmedMultiSourceIntakePlan(lead = {}, turn = {}, option
   }
 
   // 11) Audit activity + seller insights (no sensitive fields)
+  // Soft/sellerInsights: nur echte Kundenfacts – nie Prozess-Status („Kunde angelegt“, …).
+  // Confirm/Activity/Summary behalten Status über activity + buildSummaryLabels.
   try {
-    const labels = buildAcceptedLabels(intake, createdIds, skippedDuplicates);
-    nextLead = appendSellerInsightsFromTexts(nextLead, labels, {
-      context: 'multi_source_apply',
-      sellerId: options.sellerId,
-      sellerName: options.sellerName,
-    });
+    const factLabels = buildCustomerFactInsightLabels(intake, createdIds);
+    for (const label of factLabels) {
+      nextLead = appendSellerInsightsFromTexts(nextLead, [label], {
+        context: 'multi_source_apply',
+        sellerId: options.sellerId,
+        sellerName: options.sellerName,
+        // Exaktes Soft-Label behalten (kein mergeText→„Picanto interessant“ / Modell-Chips)
+        understoodLabels: [label],
+      });
+    }
     const activityText = [
       'Multi-Source Intake übernommen',
       intake.resolvedCustomerCandidate?.fullName,
@@ -674,7 +708,7 @@ export function applyConfirmedMultiSourceIntakePlan(lead = {}, turn = {}, option
     lead: nextLead,
     intake,
     nowIso,
-    acceptedLabels: buildAcceptedLabels(intake, createdIds, skippedDuplicates),
+    acceptedLabels: buildCustomerFactInsightLabels(intake, createdIds),
     contract: contractRecord,
   });
 }
@@ -1052,24 +1086,88 @@ function scrubSensitiveFromLead(lead = {}) {
   };
 }
 
-function buildAcceptedLabels(intake, createdIds, skippedDuplicates) {
+function buildCustomerFactInsightLabels(intake = {}, createdIds = {}) {
   const labels = [];
-  if (createdIds.customerCreated) labels.push('Kunde angelegt');
-  else if (createdIds.customerLinked) labels.push('Kunde verknüpft');
-  if (intake.currentVehicleInterest?.model) {
-    labels.push([
-      intake.currentVehicleInterest.make || 'Kia',
-      intake.currentVehicleInterest.model,
-      intake.currentVehicleInterest.trim,
-    ].filter(Boolean).join(' '));
+  const seen = new Set();
+  const push = (value) => {
+    const text = String(value ?? '').trim();
+    if (!text) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    labels.push(text);
+  };
+
+  const hh = intake.currentHouseholdFacts;
+  if (hh?.childrenCount != null && Number.isFinite(Number(hh.childrenCount))) {
+    const n = Number(hh.childrenCount);
+    push(n === 1 ? '1 Kind' : `${n} Kinder`);
   }
-  if (intake.commercialScenario?.label) labels.push(intake.commercialScenario.label);
-  if (intake.currentHouseholdFacts?.label) labels.push(intake.currentHouseholdFacts.label);
-  if (createdIds.tradeInVehicle) labels.push(`GW ${createdIds.tradeInVehicle}`);
-  if (createdIds.contractId) labels.push('Altvertrag erfasst');
-  else if (skippedDuplicates.some((d) => d.kind === 'contract')) labels.push('Vertrag bereits vorhanden');
-  if (createdIds.offerShellId) labels.push('Angebotsauftrag vorbereitet');
+  if (hh?.housingType === 'own_house') {
+    push('Haus');
+  } else if (hh?.housingType === 'apartment' || hh?.housingType === 'wohnung') {
+    push('Wohnung');
+  } else if (hh?.label) {
+    // Fallback: Label-Teile (ohne Prozess-Wörter)
+    for (const part of String(hh.label).split(/\s*[·|,;]\s*/)) {
+      const p = part.trim();
+      if (!p) continue;
+      if (/kunde|angelegt|vorbereitet|vertrag|intake|akte/i.test(p)) continue;
+      push(p);
+    }
+  }
+
+  const wish = intake.currentVehicleInterest;
+  if (wish?.color) {
+    const color = String(wish.color).trim();
+    push(color.charAt(0).toUpperCase() + color.slice(1));
+  }
+  for (const eq of wish?.requestedEquipment || []) {
+    if (eq) push(String(eq).trim());
+  }
+  // Antrieb nur wenn explizit am Interest – EV-Modell setzt fuel im Apply separat
+  if (wish?.drive || wish?.fuel || wish?.powertrain) {
+    const drive = String(wish.drive || wish.fuel || wish.powertrain).trim();
+    if (drive) {
+      push(drive.charAt(0).toUpperCase() + drive.slice(1));
+    }
+  } else if (wish?.model && /\bev\s*\d/i.test(String(wish.model))) {
+    push('Elektro');
+  }
+
+  if (createdIds.tradeInVehicle) {
+    push(`Altes Auto: ${createdIds.tradeInVehicle}`);
+  }
+
+  const contactPref = resolveExplicitContactPreferenceLabel(intake);
+  if (contactPref) push(contactPref);
+
   return labels;
+}
+
+/** Nur echte Kunden-Kontaktpräferenz aus Intake-Facts – kein System-Default. */
+function resolveExplicitContactPreferenceLabel(intake = {}) {
+  const facts = [
+    ...(intake.semanticPlan?.currentCustomerFacts || []),
+    ...(Array.isArray(intake.currentCustomerFacts) ? intake.currentCustomerFacts : []),
+  ];
+  for (const fact of facts) {
+    const field = String(fact?.field || '').toLowerCase();
+    const value = String(fact?.value ?? fact?.evidence ?? '').toLowerCase();
+    const evidence = String(fact?.evidence || '').toLowerCase();
+    const blob = `${field} ${value} ${evidence}`;
+    if (!/contact|kontakt|channel|kommunikation|email|e-?mail|whatsapp|telefon|phone/i.test(blob)) {
+      continue;
+    }
+    if (/whatsapp/i.test(blob)) return 'bevorzugt WhatsApp';
+    if (/e-?mail|mail/i.test(blob) && /lieber|bevorzug|prefer|wunsch/i.test(blob)) {
+      return 'lieber E-Mail';
+    }
+    if (/telefon|phone|anruf/i.test(blob) && /lieber|bevorzug|prefer|wunsch/i.test(blob)) {
+      return 'lieber telefonisch';
+    }
+  }
+  return null;
 }
 
 function buildSummaryLabels(createdIds = {}, replay = false) {

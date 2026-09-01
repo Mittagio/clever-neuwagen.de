@@ -49,6 +49,12 @@ import {
   parseTermAndMileageShorthand,
 } from './normalizeSellerUnits.js';
 import {
+  hasCommercialOfferSlots,
+  isBareMonthlyRateCue,
+  parseCommercialDownPayment,
+  parseCommercialMonthlyRate,
+} from './commercialOfferNl.js';
+import {
   extractTradeInCandidates,
   hasTradeInCue,
   isSecondVehicleInterestCue,
@@ -682,28 +688,28 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  const budget = t.match(/\b(\d{2,4})\s*(?:€|euro)?\s*(?:wunsch)?rate\b/i)
-    || t.match(/\bwunschrate\s*(?:ca\.?\s*)?(\d{2,4})\b/i)
-    || (/\bwunschrate\b/i.test(t) ? t.match(/\b(\d{2,4})\s*(?:€|euro)\b/i) : null);
-  if (budget && !facts.some((f) => f.field === 'purchasePrice')) {
-    const value = Number(budget[1]);
+  const commercialRate = parseCommercialMonthlyRate(raw);
+  if (
+    commercialRate != null
+    && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+  ) {
+    const isWunsch = /\bwunschrate\b/i.test(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'monthlyBudget',
-      value,
-      label: `${value} € Wunschrate`,
-      confidence: 0.92,
-      rawExpression: budget[0],
-      span: budget[0],
+      value: commercialRate,
+      label: isWunsch ? `${commercialRate} € Wunschrate` : `${commercialRate} €/Monat`,
+      confidence: 0.94,
     }));
   } else if (
-    !facts.some((f) => f.field === 'purchasePrice')
+    !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
     && /\b(\d{2,4})\s*(?:€|euro)\b/i.test(t)
     && !net
     && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)
+    && !/\banzahlung|az\b/i.test(t)
   ) {
     const lone = t.match(/\b(\d{2,4})\s*(?:€|euro)\b/i);
-    if (lone && !/\banzahlung|az\b/i.test(t)) {
+    if (lone) {
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
         field: 'monthlyBudget',
@@ -715,20 +721,38 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  const downPayment = t.match(/\banzahlung\s*(?:von\s*)?(\d{1,3}(?:[.\s]?\d{3})|\d{3,5})\s*(?:€|euro)?\b/i)
-    || t.match(/\b(\d{1,3}(?:[.\s]?\d{3})|\d{3,5})\s*(?:€|euro)?\s*(?:az|anzahlung)\b/i);
-  if (downPayment) {
-    const rawNum = String(downPayment[1]).replace(/[.\s]/g, '');
-    const value = Number(rawNum);
-    if (Number.isFinite(value) && value >= 500) {
+  const commercialDown = parseCommercialDownPayment(raw);
+  if (commercialDown != null && !facts.some((f) => f.field === 'downPayment')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'downPayment',
+      value: commercialDown,
+      label: commercialDown === 0 ? '0 € AZ' : `${commercialDown.toLocaleString('de-DE')} € AZ`,
+      confidence: 0.94,
+    }));
+  }
+
+  // Nach AZ: freistehende Rate (z. B. „… 0 € Anzahlung, 399 €“)
+  if (
+    !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+    && (facts.some((f) => f.field === 'downPayment') || facts.some((f) => f.field === 'termMonths'))
+  ) {
+    const rateAfterCommercial = [...t.matchAll(/\b(\d{2,4})\s*(?:€|euro)(?!\w)/gi)]
+      .map((m) => ({ raw: m[0], value: Number(m[1]), index: m.index || 0 }))
+      .filter((m) => Number.isFinite(m.value) && m.value >= 50 && m.value <= 5000)
+      .filter((m) => {
+        // „0 € Anzahlung“ ausfiltern – nicht benachbarte andere Beträge
+        const after = t.slice(m.index + m.raw.length, m.index + m.raw.length + 16);
+        return !/^\s*(?:anzahlung|az|sonderzahlung)\b/i.test(after);
+      });
+    const pick = rateAfterCommercial[rateAfterCommercial.length - 1];
+    if (pick) {
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
-        field: 'downPayment',
-        value,
-        label: `${value.toLocaleString('de-DE')} € AZ`,
-        confidence: 0.93,
-        rawExpression: downPayment[0],
-        span: downPayment[0],
+        field: 'monthlyBudget',
+        value: pick.value,
+        label: `${pick.value} €/Monat`,
+        confidence: 0.88,
       }));
     }
   }
@@ -1429,6 +1453,27 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   }
   if (facts.some((f) => f.factClass === SELLER_FACT_CLASS.DOCUMENT_FACT)) {
     add(SELLER_TURN_INTENTS.REQUEST_DOCUMENTS, 0.9);
+  }
+  // Agent: reine Konditions-Sätze → Angebotspfad (nicht bei gemischtem Understanding-Dump)
+  const onlyCommercialSlots = facts.length > 0
+    && facts.every((f) => (
+      f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+      || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION
+      || f.factClass === SELLER_FACT_CLASS.MESSAGE_INSTRUCTION
+      || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
+    ))
+    && hasCommercialOfferSlots(facts);
+  if (
+    (onlyCommercialSlots || isBareMonthlyRateCue(t))
+    && !isInboundLead
+    && !isCustomerReply
+    && !isFindCustomer
+    && !isOpenCustomer
+    && !isSummarizeCustomer
+    && !isHistoryQuery
+    && !isContractIntake
+  ) {
+    add(SELLER_TURN_INTENTS.PREPARE_OFFER, 0.92);
   }
   if (!explicitMessage && (
     facts.some((f) => f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION)

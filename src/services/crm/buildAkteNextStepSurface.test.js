@@ -9,7 +9,7 @@ import {
 } from './buildAkteNextStepSurface.js';
 import { CLEVER_ACTION_IDS } from './cleverActionEngine.js';
 
-// Lean context line: Fahrzeug + Konditionen
+// Lean context line: nur Fahrzeug/Modell (keine Deal-Konditionen im Header)
 {
   const line = buildAkteLeanContextLine({
     vehicleLabel: 'Kia EV4 Earth',
@@ -18,12 +18,9 @@ import { CLEVER_ACTION_IDS } from './cleverActionEngine.js';
     mileagePerYear: 15000,
     downPayment: 0,
   });
-  assert.match(line, /EV4 Earth/);
+  assert.equal(line, 'EV4 Earth');
   assert.ok(!/^Kia\s/i.test(line), 'Kia-Prefix wird gestrippt');
-  assert.match(line, /Leasing/);
-  assert.match(line, /48 Monate/);
-  assert.match(line, /15\.000 km/);
-  assert.match(line, /0 € AZ/);
+  assert.ok(!/Leasing|Monate|km|AZ/i.test(line), 'Keine Konditionen im Header');
 }
 
 {
@@ -32,7 +29,7 @@ import { CLEVER_ACTION_IDS } from './cleverActionEngine.js';
     paymentType: 'financing',
     termMonths: 60,
   });
-  assert.equal(line, 'Sportage · Finanzierung · 60 Monate');
+  assert.equal(line, 'Sportage');
 }
 
 {

@@ -10,6 +10,8 @@ import { listCustomerContracts } from '../../crm/customerContracts.js';
 import { getTradeIn } from '../../customerAkteTradeIn.js';
 import { getNeedProfileFromLead } from '../../consultation/needProfileService.js';
 import { listCustomerVehicleTracks } from '../../crm/vehicleTrack.js';
+import { getSellerInsightsFromLead } from '../../dealer/sellerInsights.js';
+import { buildCustomerSnapshotModel } from '../../dealer/buildCustomerSnapshotModel.js';
 import {
   applyConfirmedMultiSourceIntakePlan,
   buildMultiSourceIdempotencyKey,
@@ -156,6 +158,22 @@ function runMazzeiTurn(overrides = {}) {
   assert.ok(resultReview.actionSections?.[0]?.primaryActions?.some((a) => (
     a.action === 'prepare_ev4_offer'
   )));
+
+  // Soft/sellerInsights: Kundenfacts, keine Prozess-Labels
+  const insightTexts = getSellerInsightsFromLead(applied.lead).map((i) => i.text);
+  assert.ok(!insightTexts.some((t) => /Kunde angelegt|Angebotsauftrag vorbereitet|Kunde verknüpft|Altvertrag erfasst/i.test(t)),
+    `Prozess-Labels in sellerInsights: ${insightTexts.join(' | ')}`);
+  assert.ok(insightTexts.some((t) => /Kinder|Haus|Weiß|AHK|Elektro|Altes Auto/i.test(t)),
+    `erwartete Kundenfacts fehlen: ${insightTexts.join(' | ')}`);
+  assert.ok(!applied.acceptedLabels.some((l) => /Kunde angelegt|Angebotsauftrag vorbereitet/i.test(l)));
+
+  const snap = buildCustomerSnapshotModel(applied.lead);
+  const summaryLabels = (snap.soft?.summary?.tokens || []).map((t) => t.label);
+  assert.ok(!summaryLabels.some((l) => (
+    /Kunde angelegt|Angebotsauftrag vorbereitet|Kundenakte aus Multi-Source|Altvertrag erfasst/i.test(l)
+  )), `Prozess in soft.summary: ${summaryLabels.join(' · ')}`);
+  assert.ok(summaryLabels.some((l) => /Kinder|Haus|Weiß|Elektro|AHK/i.test(l)),
+    `Kundenfacts fehlen in Summary: ${summaryLabels.join(' · ')}`);
 }
 
 // --- Idempotency: second apply does not duplicate ---

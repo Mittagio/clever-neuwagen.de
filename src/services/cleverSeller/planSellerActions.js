@@ -687,12 +687,13 @@ export function planSellerActions({
       const magic = offer?.results?.[0]?.magic || null;
       const grounded = magic?.grounded || null;
       const vehicleFromFacts = facts.find((f) => f.field === 'vehicleInterest');
-      const vehicleLabel = [
-        grounded?.model ? `Kia ${grounded.model}` : null,
-        grounded?.trimLabel || null,
-        /automatik|dct/i.test(grounded?.engineLabel || '') ? 'Automatik' : null,
-      ].filter(Boolean).join(' ')
-        || vehicleFromFacts?.label
+      // Explizites Seller-Modell schlägt Magic-Grounding (EV4 statt klebendem EV3).
+      const vehicleLabel = vehicleFromFacts?.label
+        || [
+          grounded?.model ? `Kia ${grounded.model}` : null,
+          grounded?.trimLabel || null,
+          /automatik|dct/i.test(grounded?.engineLabel || '') ? 'Automatik' : null,
+        ].filter(Boolean).join(' ')
         || null;
       const paymentRaw = facts.find((f) => f.field === 'paymentType')?.value
         || magic?.paymentType

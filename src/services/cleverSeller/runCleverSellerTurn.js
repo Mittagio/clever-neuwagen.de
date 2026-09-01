@@ -20,6 +20,7 @@ import {
   filterDuplicateFacts,
 } from './proposeSellerUpdates.js';
 import { resolveMissingInformation } from './resolveMissingInformation.js';
+import { hasCommercialOfferSlots } from './commercialOfferNl.js';
 import {
   buildSellerAssistantReply,
   planSellerActions,
@@ -141,6 +142,7 @@ function finalizeSellerTurn({
   currentOfferContext = null,
   workingContextItems = [],
   customerName = '',
+  sellerInput = '',
   attachments = [],
   leadsSnapshot = [],
   scopeHint = null,
@@ -441,11 +443,24 @@ function finalizeSellerTurn({
     ? null
     : (currentOfferContext || assistantContext.offerContext || null);
 
+  // Agent: bei aktivem Offer-Kontext + Konditions-Facts → PREPARE_OFFER ergänzen
+  if (
+    offerCtx
+    && hasCommercialOfferSlots(uniqueFacts)
+    && !intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+  ) {
+    intents = [
+      ...intents,
+      { type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.93 },
+    ].sort((a, b) => b.confidence - a.confidence);
+  }
+
   const missingInformation = resolveMissingInformation({
     intents,
     facts: uniqueFacts,
     lead: workingLead,
     currentOfferContext: offerCtx,
+    sellerInput,
   });
 
   if (successionCue && successionPrep && !successionPrep.ok) {
@@ -1361,6 +1376,7 @@ export function runCleverSellerTurn({
     currentOfferContext,
     workingContextItems,
     customerName,
+    sellerInput,
     attachments,
     leadsSnapshot,
     scopeHint,
@@ -1441,6 +1457,7 @@ export async function runCleverSellerTurnAsync({
     currentOfferContext,
     workingContextItems,
     customerName,
+    sellerInput,
     attachments,
     leadsSnapshot,
     scopeHint,
@@ -1700,6 +1717,7 @@ export async function runCleverSellerTurnAsync({
     currentOfferContext,
     workingContextItems,
     customerName,
+    sellerInput,
     attachments,
     leadsSnapshot,
     scopeHint,

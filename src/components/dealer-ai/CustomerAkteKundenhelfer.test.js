@@ -121,7 +121,8 @@ assert.ok(kundenbildSource.includes('SoftKnowledgeEmptyState'), 'Leerer Soft-Zus
 assert.ok(!kundenbildSource.includes('contactChips'), 'Kein Kontakt in Kundenwissen');
 assert.ok(kundenbildSource.includes('IconPencil'), 'Konditionen-Stift bleibt');
 assert.ok(kundenbildSource.includes('cust-kundenbild__kern-row'), 'Konditionen Chip-Zeile mit Stift');
-assert.ok(kundenbildSource.includes('leanHeaderActive'), 'Lean-Header unterdrückt laute Kern-Chips');
+assert.ok(kundenbildSource.includes('leanHeaderActive'), 'Lean-Header steuert Hierarchy-Styling');
+assert.ok(!kundenbildSource.includes('cust-kundenbild__kern--lean'), 'Kern-Chips nicht durch Lean-Header geleert');
 assert.ok(kundenbildSource.includes('cust-kundenbild--hierarchy'), 'Hierarchy-Band-Klasse');
 assert.ok(kundenbildSource.includes('cust-kundenbild__soft-row'), 'Kundenwissen kompakte Aktionszeile');
 assert.ok(kundenbildSource.includes('cust-kundenbild__soft-link'), 'Ruhiger Alles-anzeigen-Link');
@@ -187,7 +188,15 @@ assert.ok(followUpStage.includes('onSendToCustomer'), 'Stage Senden verdrahtet')
 assert.ok(followUpStage.includes('onEditConditions'), 'Konditionen-Sheet verdrahtet');
 assert.ok(followUpStage.includes('recentActivities'), 'Aktivitäten an Stage');
 assert.ok(followUpStage.includes('buildAkteLeanContextLine'), 'Lean Header-Kontextzeile');
-assert.ok(followUpStage.includes('leanHeaderActive'), 'Kundenbild ohne Kern-Chip-Duplikate');
+assert.ok(followUpStage.includes('leanHeaderActive'), 'Kundenbild Hierarchy-Styling');
+assert.ok(
+  /buildAkteLeanContextLine\(\{\s*vehicleLabel\s*\}\)/.test(followUpStage),
+  'Header-Kontext nur Fahrzeug/Modell',
+);
+assert.ok(
+  !/return buildAkteLeanContextLine\(\{[^}]*paymentType/.test(followUpStage),
+  'Header bekommt keine payment/term/km/AZ',
+);
 assert.ok(
   /kundenbildExpanded,\s*setKundenbildExpanded\]\s*=\s*useState\(false\)/.test(followUpStage),
   'Kundenwissen startet collapsed (Summary-Chips light sichtbar)',

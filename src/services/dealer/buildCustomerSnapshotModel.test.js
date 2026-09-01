@@ -443,9 +443,17 @@ function baseLead(overrides = {}) {
   assert.equal(classifySnapshotNoteLabel('Farbe: grau').slot, 'color');
   assert.ok(isSnapshotSystemNoiseLabel('Wunschkonditionen aktualisiert'));
   assert.ok(isSnapshotSystemNoiseLabel('Clever Kundenhelfer aktualisiert'));
+  assert.ok(isSnapshotSystemNoiseLabel('Kunde angelegt'));
+  assert.ok(isSnapshotSystemNoiseLabel('Angebotsauftrag vorbereitet'));
+  assert.ok(isSnapshotSystemNoiseLabel('Kunde verknüpft'));
+  assert.ok(isSnapshotSystemNoiseLabel('Kundenakte aus Multi-Source-Intake vorgeschlagen und bestätigt'));
+  assert.ok(isSnapshotSystemNoiseLabel('Altvertrag erfasst'));
+  assert.ok(isSnapshotSystemNoiseLabel('Vertrag bereits vorhanden'));
   assert.ok(isActivitySnapshotNote('Wunschkonditionen aktualisiert'));
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').slot, 'human');
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').groupId, SOFT_SNAPSHOT_GROUP.PERSOENLICHES);
+  assert.equal(classifySnapshotNoteLabel('Altes Auto: Kia Picanto').slot, 'human');
+  assert.equal(classifySnapshotNoteLabel('Altes Auto: Kia Picanto').groupId, SOFT_SNAPSHOT_GROUP.PERSOENLICHES);
 
   let lead = baseLead({
     vehicle: { brand: 'Kia', model: 'EV2', trim: 'GT-Line' },

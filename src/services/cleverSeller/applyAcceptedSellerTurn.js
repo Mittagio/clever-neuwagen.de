@@ -19,6 +19,7 @@ import {
 import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
 import {
   applyTrackFeedbackFacts,
+  focusVehicleInterestOnLead,
   listCustomerVehicleTracks,
   patchVehicleTrackOnLead,
   sortTracksForOverview,
@@ -55,6 +56,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
   let touchedContact = false;
   let touchedProfile = false;
   let appointmentValue = null;
+  let vehicleInterestFocus = null;
 
   for (const fact of facts) {
     if (!fact || fact.needsConfirmation) continue;
@@ -245,6 +247,16 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     if (field === 'vehicleInterest' && value?.modelKey) {
       profile.selectedModelKey = value.modelKey;
       profile.modelHint = value.modelKey;
+      if (String(value.modelKey).toLowerCase().startsWith('ev')) {
+        profile.fuel = 'electric';
+      }
+      vehicleInterestFocus = {
+        modelKey: value.modelKey,
+        model: value.model || value.modelKey,
+        trim: value.trim || null,
+        make: value.make || 'Kia',
+        label: fact.label || null,
+      };
       touchedProfile = true;
     }
 
@@ -324,6 +336,11 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
 
   if (touchedProfile) {
     next = mergeNeedProfileIntoLead(next, profile);
+  }
+
+  if (vehicleInterestFocus?.modelKey) {
+    const focused = focusVehicleInterestOnLead(next, vehicleInterestFocus);
+    next = focused.lead;
   }
 
   if (appointmentValue?.startAt) {

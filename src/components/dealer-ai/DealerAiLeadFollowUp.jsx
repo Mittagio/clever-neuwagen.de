@@ -125,7 +125,6 @@ import CustomerAkteMoreSheet from './CustomerAkteMoreSheet.jsx';
 import WorkspaceShell from '../layout/WorkspaceShell.jsx';
 import {
   buildCustomerSnapshotModel,
-  formatLeasingEndLabel,
   SNAPSHOT_MINI_EDITOR,
   SNAPSHOT_RATE_MODES,
   SOFT_GROUP_ADD_CATEGORY,
@@ -1075,43 +1074,13 @@ export default function DealerAiLeadFollowUp({
       formatVehicleCardTitle(primaryCard)
       || wishModel
       || '',
-    ).replace(/^Kia\s+/i, '').trim();
-    const paymentType = wishPaymentType !== 'unknown'
-      ? wishPaymentType
-      : (primaryCard?.paymentType || lead?.paymentType || lead?.wish?.paymentType || '');
-    const termMonths = wishTermMonths
-      ? Number(wishTermMonths)
-      : (primaryCard?.termMonths ?? lead?.wish?.termMonths ?? null);
-    const mileagePerYear = wishMileage
-      ? Number(wishMileage)
-      : (primaryCard?.mileagePerYear ?? lead?.wish?.mileagePerYear ?? null);
-    const downRaw = wishDownPayment !== '' && wishDownPayment != null
-      ? Number(wishDownPayment)
-      : (primaryCard?.downPayment ?? lead?.wish?.downPayment ?? null);
-    const leasingEndRaw = lead?.wish?.leasingEndDate || lead?.leasingEndDate || '';
-    return buildAkteLeanContextLine({
-      vehicleLabel,
-      paymentType,
-      termMonths: Number.isFinite(Number(termMonths)) ? Number(termMonths) : null,
-      mileagePerYear: Number.isFinite(Number(mileagePerYear)) ? Number(mileagePerYear) : null,
-      downPayment: Number.isFinite(Number(downRaw)) ? Number(downRaw) : null,
-      leasingEndLabel: formatLeasingEndLabel(leasingEndRaw) || '',
-    });
+    ).trim();
+    // Nur Fahrzeug/Modell im Header – Konditionen bleiben im Kundenbild-Band
+    return buildAkteLeanContextLine({ vehicleLabel });
   }, [
     vehicleCards,
     vehicleTracks,
     wishModel,
-    wishPaymentType,
-    wishTermMonths,
-    wishMileage,
-    wishDownPayment,
-    lead?.paymentType,
-    lead?.wish?.paymentType,
-    lead?.wish?.termMonths,
-    lead?.wish?.mileagePerYear,
-    lead?.wish?.downPayment,
-    lead?.wish?.leasingEndDate,
-    lead?.leasingEndDate,
   ]);
 
   const recentStageActivities = useMemo(
@@ -3010,6 +2979,19 @@ export default function DealerAiLeadFollowUp({
           email,
           address: addressStorage.address,
         });
+        const keepName = String(name || '').trim();
+        if (
+          keepName
+          && keepName !== 'Kunde (offen)'
+          && keepName !== 'Kunde noch offen'
+          && (
+            !built.name
+            || built.name === 'Kunde (offen)'
+            || built.name === 'Kunde noch offen'
+          )
+        ) {
+          return { ...built, name: keepName };
+        }
         return built;
       })(),
       notes: note.trim(),
@@ -3753,15 +3735,31 @@ export default function DealerAiLeadFollowUp({
             setWishDelivery(String(nextLead.wish.desiredDeliveryDate));
           }
           if (nextLead.contact?.phone) setPhone(nextLead.contact.phone);
-          if (nextLead.contact?.name || nextLead.name) {
-            setName(nextLead.contact?.name || nextLead.name);
+          const incomingName = String(nextLead.contact?.name || nextLead.name || '').trim();
+          const isPlaceholderName = !incomingName
+            || incomingName === 'Kunde (offen)'
+            || incomingName === 'Kunde noch offen'
+            || incomingName === 'Neuer Kunde';
+          if (!isPlaceholderName) {
+            setName(incomingName);
             setContactIdentity(deriveContactIdentity(
               nextLead.contact,
-              nextLead.contact?.name || nextLead.name || '',
+              incomingName,
+            ));
+          } else if (String(name || '').trim()) {
+            // Bekannten Namen nicht durch Placeholder aus Offer/Track-Updates überschreiben
+            setContactIdentity((prev) => (
+              composeContactDisplayName(prev)
+                ? prev
+                : deriveContactIdentity(
+                  { ...(nextLead.contact || {}), name: name },
+                  name,
+                )
             ));
           }
           onSave?.({
-            ...buildSavePayload({
+            ...(() => {
+              const payload = buildSavePayload({
               customerMessages: nextCrm.customerMessages,
               customerMessageThreads: nextCrm.customerMessageThreads,
               cleverAppointment: nextCrm.cleverAppointment,
@@ -3779,18 +3777,74 @@ export default function DealerAiLeadFollowUp({
               ...(Array.isArray(nextCrm.vehicleConfigurations)
                 ? { vehicleConfigurations: nextCrm.vehicleConfigurations }
                 : {}),
-            }),
+              ...(nextCrm.vehicleOffers ? { vehicleOffers: nextCrm.vehicleOffers } : {}),
+              ...(Array.isArray(nextCrm.openOfferOrders)
+                ? { openOfferOrders: nextCrm.openOfferOrders }
+                : {}),
+              ...(nextCrm.focusedVehicleTrackId
+                ? { focusedVehicleTrackId: nextCrm.focusedVehicleTrackId }
+                : {}),
+            });
+              // Persistenz: Display-Name nie auf Placeholder zurückfallen lassen
+              const keepName = String(name || '').trim();
+              if (
+                keepName
+                && keepName !== 'Kunde (offen)'
+                && keepName !== 'Kunde noch offen'
+                && (
+                  !payload.contact?.name
+                  || payload.contact.name === 'Kunde (offen)'
+                  || payload.contact.name === 'Kunde noch offen'
+                )
+              ) {
+                payload.contact = {
+                  ...(payload.contact || {}),
+                  name: keepName,
+                };
+              }
+              if (!isPlaceholderName && incomingName) {
+                payload.contact = {
+                  ...(payload.contact || {}),
+                  name: incomingName,
+                  ...(nextLead.contact?.firstName != null
+                    ? { firstName: nextLead.contact.firstName }
+                    : {}),
+                  ...(nextLead.contact?.lastName != null
+                    ? { lastName: nextLead.contact.lastName }
+                    : {}),
+                };
+              }
+              return payload;
+            })(),
             desiredRate: nextLead.desiredRate ?? undefined,
             paymentType: nextLead.paymentType ?? undefined,
             wish: nextLead.wish ?? undefined,
-            contact: nextLead.contact
-              ? {
-                name: nextLead.contact.name,
-                phone: nextLead.contact.phone,
-                email: nextLead.contact.email,
-                address: nextLead.contact.address,
-              }
-              : undefined,
+            contact: (() => {
+              const fromLead = nextLead.contact || {};
+              const keepName = String(name || incomingName || '').trim();
+              const leadName = String(fromLead.name || '').trim();
+              const resolvedName = (
+                (!isPlaceholderName && incomingName)
+                  ? incomingName
+                  : (
+                    leadName
+                    && leadName !== 'Kunde (offen)'
+                    && leadName !== 'Kunde noch offen'
+                      ? leadName
+                      : keepName
+                  )
+              );
+              if (!resolvedName && !fromLead.phone && !fromLead.email) return undefined;
+              return {
+                name: resolvedName || keepName || fromLead.name,
+                phone: fromLead.phone,
+                email: fromLead.email,
+                address: fromLead.address,
+                ...(fromLead.firstName != null ? { firstName: fromLead.firstName } : {}),
+                ...(fromLead.lastName != null ? { lastName: fromLead.lastName } : {}),
+                ...(fromLead.kind ? { kind: fromLead.kind } : {}),
+              };
+            })(),
             history: nextLead.history,
           }, { silent: true, addFollowupHistory: false });
         }}

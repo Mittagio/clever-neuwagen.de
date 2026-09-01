@@ -260,11 +260,43 @@ function normalizeOfferStatus(card = {}) {
   return card.vehicleOffer?.status ?? card.offer?.status ?? null;
 }
 
-function getPrimaryOfferCard(vehicleCards = []) {
+function getPrimaryOfferCard(vehicleCards = [], lead = null) {
+  const selectedKey = String(
+    lead?.crm?.needProfile?.selectedModelKey
+    || lead?.crm?.focusedVehicleTrackId
+    || lead?.vehicle?.modelKey
+    || '',
+  ).toLowerCase();
+  const focusedId = lead?.crm?.focusedVehicleTrackId || null;
+
+  const rankMatch = (card) => {
+    if (!card) return false;
+    if (focusedId && (card.id === focusedId || card.configurationId === focusedId)) return true;
+    if (!selectedKey) return false;
+    const keys = [
+      card.modelKey,
+      card.model,
+      card.modelName,
+    ].filter(Boolean).map((k) => String(k).toLowerCase().replace(/^kia\s+/, ''));
+    return keys.some((k) => k === selectedKey || k.includes(selectedKey) || selectedKey.includes(k));
+  };
+
   const opened = vehicleCards.find((c) => normalizeOfferStatus(c) === VEHICLE_OFFER_STATUS.OPENED);
   if (opened) return opened;
   const sent = vehicleCards.find((c) => normalizeOfferStatus(c) === VEHICLE_OFFER_STATUS.SENT);
   if (sent) return sent;
+
+  const readyMatched = vehicleCards.find((c) => {
+    if (!rankMatch(c)) return false;
+    const status = normalizeOfferStatus(c);
+    return [
+      VEHICLE_OFFER_STATUS.DRAFT,
+      VEHICLE_OFFER_STATUS.PDF_UPLOADED,
+      VEHICLE_OFFER_STATUS.LINK_READY,
+    ].includes(status) || !status;
+  });
+  if (readyMatched) return readyMatched;
+
   const ready = vehicleCards.find((c) => {
     const status = normalizeOfferStatus(c);
     return [
@@ -274,6 +306,9 @@ function getPrimaryOfferCard(vehicleCards = []) {
     ].includes(status);
   });
   if (ready) return ready;
+
+  const focused = vehicleCards.find(rankMatch);
+  if (focused) return focused;
   return vehicleCards[0] ?? null;
 }
 
@@ -382,7 +417,7 @@ export function buildCleverActionContext({
     ? offerSelectionGroups
     : (crm.offerSelectionGroups ?? []);
   const paymentType = vehicleCards[0]?.paymentType ?? lead?.paymentType ?? lead?.wish?.paymentType ?? 'leasing';
-  const primaryCard = getPrimaryOfferCard(vehicleCards);
+  const primaryCard = getPrimaryOfferCard(vehicleCards, lead);
   const offerStatus = normalizeOfferStatus(primaryCard);
   const unterlagenSummary = lead ? computeUnterlagenSummary(lead, paymentType) : null;
   const selbstauskunft = lead ? getSelbstauskunft(crm.cleverUnterlagen) : null;

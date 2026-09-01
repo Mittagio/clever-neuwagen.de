@@ -110,36 +110,12 @@ export function buildAkteNextStepSurface({
 }
 
 /**
- * Schlanke Konditionszeile für den Akte-Kopf (max. ~5 Teile).
+ * Schlanke Kontextzeile für den Akte-Kopf: nur Fahrzeug/Modell.
+ * Deal-Konditionen (Leasing, Laufzeit, km, AZ) gehören ins Konditionen-Band.
+ * Extra-Args (paymentType, termMonths, …) werden ignoriert (API-Kompatibilität).
  */
 export function buildAkteLeanContextLine({
   vehicleLabel = '',
-  paymentType = '',
-  termMonths = null,
-  mileagePerYear = null,
-  downPayment = null,
-  leasingEndLabel = '',
 } = {}) {
-  const parts = [];
-  const vehicle = String(vehicleLabel || '').replace(/^Kia\s+/i, '').trim();
-  if (vehicle) parts.push(vehicle);
-
-  const pay = String(paymentType || '').toLowerCase();
-  if (pay.includes('leas')) parts.push('Leasing');
-  else if (pay.includes('finanz') || pay.includes('financ')) parts.push('Finanzierung');
-  else if (pay.includes('bar') || pay.includes('kauf') || pay.includes('cash')) parts.push('Barkauf');
-
-  if (termMonths != null && Number(termMonths) > 0) {
-    parts.push(`${Number(termMonths)} Monate`);
-  }
-  if (mileagePerYear != null && Number(mileagePerYear) > 0) {
-    parts.push(`${Number(mileagePerYear).toLocaleString('de-DE')} km`);
-  }
-  if (downPayment != null && Number.isFinite(Number(downPayment))) {
-    const n = Number(downPayment);
-    parts.push(n === 0 ? '0 € AZ' : `${n.toLocaleString('de-DE')} € AZ`);
-  }
-  if (leasingEndLabel) parts.push(String(leasingEndLabel).trim());
-
-  return parts.slice(0, 6).join(' · ');
+  return String(vehicleLabel || '').replace(/^Kia\s+/i, '').trim();
 }

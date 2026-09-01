@@ -306,6 +306,113 @@ export function patchVehicleTrackOnLead(lead = {}, configId, trackPatch = {}) {
 }
 
 /**
+ * Explizites Modellinteresse → Spur anlegen/fokussieren + lead.vehicle setzen.
+ * Demoted andere ACTIVE/FAVORITE auf OPEN (kein Löschen).
+ */
+export function focusVehicleInterestOnLead(lead = {}, {
+  modelKey,
+  model = null,
+  trim = null,
+  make = 'Kia',
+  label = null,
+  status = VEHICLE_TRACK_STATUS.ACTIVE,
+} = {}) {
+  const key = String(modelKey || model || '')
+    .toLowerCase()
+    .replace(/^kia\s+/i, '')
+    .trim();
+  if (!key) return { lead, trackId: null, created: false };
+
+  const modelLabel = /^ev\d$/i.test(key)
+    ? key.toUpperCase()
+    : (model || key);
+  const displayName = label
+    || [make, modelLabel, trim].filter(Boolean).join(' ');
+  const vehicleKey = buildVehicleKey({
+    brand: 'kia',
+    model: modelLabel,
+    modelKey: key,
+  });
+
+  const ensured = ensureVehicleTrack(lead, {
+    vehicleKey,
+    displayName,
+    model: modelLabel,
+    modelKey: key,
+    trimLabel: trim || '',
+  });
+  let next = ensured.lead;
+  const trackId = ensured.trackId;
+
+  const configs = next?.crm?.vehicleConfigurations ?? [];
+  for (const config of configs) {
+    if (!config?.id || config.id === trackId) continue;
+    const meta = getVehicleTrackMeta(config);
+    if (
+      meta.status === VEHICLE_TRACK_STATUS.FAVORITE
+      || meta.status === VEHICLE_TRACK_STATUS.ACTIVE
+    ) {
+      next = patchVehicleTrackOnLead(next, config.id, {
+        status: VEHICLE_TRACK_STATUS.OPEN,
+      });
+    }
+  }
+
+  next = patchVehicleTrackOnLead(next, trackId, {
+    status: status === VEHICLE_TRACK_STATUS.FAVORITE
+      ? VEHICLE_TRACK_STATUS.FAVORITE
+      : VEHICLE_TRACK_STATUS.ACTIVE,
+    lastActivityAt: new Date().toISOString(),
+  });
+
+  // Fokussierte Spur nach vorne – primaryCard / Header / CleverEmpfiehlt folgen dem Modell.
+  const ordered = [...(next.crm?.vehicleConfigurations ?? [])].sort((a, b) => {
+    if (a.id === trackId) return -1;
+    if (b.id === trackId) return 1;
+    return 0;
+  });
+
+  const openOrders = Array.isArray(next.crm?.openOfferOrders)
+    ? next.crm.openOfferOrders
+    : [];
+  const focusedOrder = {
+    id: `oor-focus-${trackId}`,
+    offerId: null,
+    trackId,
+    model: modelLabel,
+    trim: trim || null,
+    status: 'prepared',
+    label: `Angebotsauftrag ${displayName}`,
+    createdAt: new Date().toISOString(),
+    source: 'vehicle_interest_focus',
+  };
+  const nextOrders = [
+    focusedOrder,
+    ...openOrders.filter((o) => o?.trackId !== trackId),
+  ];
+
+  next = {
+    ...next,
+    vehicle: {
+      ...(next.vehicle || {}),
+      brand: make || 'Kia',
+      model: modelLabel,
+      trim: trim || next.vehicle?.trim || '',
+      modelKey: key,
+      label: displayName,
+    },
+    crm: {
+      ...(next.crm || {}),
+      vehicleConfigurations: ordered,
+      openOfferOrders: nextOrders,
+      focusedVehicleTrackId: trackId,
+    },
+  };
+
+  return { lead: next, trackId, created: ensured.created };
+}
+
+/**
  * Ensure a track exists for a vehicle key; create config shell if missing.
  * Does not invent offer numbers – only structural track.
  */

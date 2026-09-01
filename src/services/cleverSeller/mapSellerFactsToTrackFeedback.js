@@ -109,15 +109,16 @@ export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
       continue;
     }
 
-    // Favorit ohne explizites Track-Fact: vehicleInterest + favorit-Label
-    if (
-      fact.field === 'vehicleInterest'
-      && fact.value?.modelKey
-      && /favorit|gefällt|gefaellt|lieblings/i.test(String(fact.label || ''))
-    ) {
+    // Explizites Modellinteresse → Spur fokussieren (Favorit nur bei Favorit-Cue)
+    if (fact.field === 'vehicleInterest' && fact.value?.modelKey) {
       const trackId = resolveTrackIdForModel(lead, fact.value.modelKey);
       const entry = ensure(trackId);
-      if (entry) entry.status = VEHICLE_TRACK_STATUS.FAVORITE;
+      if (entry) {
+        const favoritCue = /favorit|gefällt|gefaellt|lieblings/i.test(String(fact.label || ''));
+        entry.status = favoritCue
+          ? VEHICLE_TRACK_STATUS.FAVORITE
+          : VEHICLE_TRACK_STATUS.ACTIVE;
+      }
     }
   }
 

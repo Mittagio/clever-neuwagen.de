@@ -3,6 +3,10 @@
  */
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { getNeedProfileFromLead } from '../consultation/needProfileService.js';
+import {
+  isBareMonthlyRateCue,
+  MONTHLY_RATE_CLARIFY_PROMPT,
+} from './commercialOfferNl.js';
 
 /**
  * @param {object} params
@@ -12,6 +16,7 @@ export function resolveMissingInformation({
   facts = [],
   lead = {},
   currentOfferContext = null,
+  sellerInput = '',
 } = {}) {
   const missing = [];
   const profile = getNeedProfileFromLead(lead) || {};
@@ -97,10 +102,28 @@ export function resolveMissingInformation({
       missing.push({
         id: 'monthly_leasing_rate',
         forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: 'Leasingrate oder Bank-PDF',
+        label: MONTHLY_RATE_CLARIFY_PROMPT,
         field: 'monthlyLeasingRate',
       });
     }
+  }
+
+  // „Monatsrate“ ohne Betrag → eine klare Rückfrage (auch ohne Lead-Leasing-Flag)
+  if (
+    isBareMonthlyRateCue(sellerInput)
+    && !facts.some((f) => (
+      f.field === 'desiredRate'
+      || f.field === 'monthlyBudget'
+      || f.field === 'monthlyLeasingRate'
+    ))
+    && !missing.some((m) => m.id === 'monthly_leasing_rate')
+  ) {
+    missing.push({
+      id: 'monthly_leasing_rate',
+      forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+      label: MONTHLY_RATE_CLARIFY_PROMPT,
+      field: 'monthlyLeasingRate',
+    });
   }
 
   const ambiguousMoney = facts.find((f) => (

@@ -357,7 +357,25 @@ export function buildVehicleOpportunityCards({
   const vehicleConfigurations = lead?.crm?.vehicleConfigurations ?? [];
 
   if (vehicleConfigurations.length > 0) {
-    vehicleConfigurations.filter(Boolean).forEach((vc, index) => {
+    const focusedId = lead?.crm?.focusedVehicleTrackId || null;
+    const selectedKey = String(
+      lead?.crm?.needProfile?.selectedModelKey
+      || lead?.vehicle?.modelKey
+      || '',
+    ).toLowerCase();
+    const orderedConfigs = [...vehicleConfigurations].filter(Boolean).sort((a, b) => {
+      const score = (vc) => {
+        if (focusedId && vc.id === focusedId) return 0;
+        const key = String(vc.modelKey || vc.model || '').toLowerCase();
+        if (selectedKey && (key === selectedKey || key.includes(selectedKey))) return 1;
+        const status = vc.vehicleTrack?.status;
+        if (status === 'favorite') return 2;
+        if (status === 'active') return 3;
+        return 9;
+      };
+      return score(a) - score(b);
+    });
+    orderedConfigs.forEach((vc, index) => {
       const modelName = /^kia\b/i.test(vc.model ?? '')
         ? vc.model
         : `Kia ${vc.model ?? ''}`.trim();
@@ -392,7 +410,7 @@ export function buildVehicleOpportunityCards({
         desiredPrice,
         offer: findOfferForVehicle(offers, { modelName, name: modelName }),
         isPrimary: index === 0,
-        isFavorite: false,
+        isFavorite: vc.vehicleTrack?.status === 'favorite',
         badge: index === 0 ? 'Empfehlung' : 'Weiterer Wunsch',
         source: 'configuration',
         configurationId: vc.id,

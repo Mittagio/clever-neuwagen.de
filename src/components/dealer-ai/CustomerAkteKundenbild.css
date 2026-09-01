@@ -906,26 +906,7 @@ button.cust-kundenbild__fact--with-meta:focus-visible {
   }
 }
 
-/* Hierarchy v2: ruhigeres Band, keine lauten Kern-Chips wenn Header lean ist */
-.cust-kundenbild--hierarchy .cust-kundenbild__kern--lean {
-  padding: 6px 16px;
-  background: transparent;
-  border-bottom: 1px solid rgba(28, 27, 25, 0.06);
-}
-
-.cust-kundenbild__kern-row--lean {
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.cust-kundenbild__kern-lean-hint {
-  margin-right: auto;
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: #8f8a82;
-}
-
+/* Hierarchy v2: Header nur Fahrzeug; Soft-Band etwas ruhiger */
 .cust-kundenbild--hierarchy .cust-kundenbild__summary-chips {
   font-weight: 500;
   color: #1c1b19;

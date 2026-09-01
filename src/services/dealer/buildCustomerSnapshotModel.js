@@ -193,9 +193,12 @@ const DRIVE_IN_TEXT_RE = /\b(allrad|awd|fwd|rwd|automatik|schaltgetriebe|elektro
 const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\btermin\b|probefahrt|übergabe|\bgespr[äa]ch\b\s*·/i;
 /**
  * Timeline-/System-Bestätigungen – nie Soft/Sonstiges.
- * Deckt u. a. „Wunschkonditionen aktualisiert“, „Clever Kundenhelfer aktualisiert“.
+ * Deckt u. a. „Wunschkonditionen aktualisiert“, „Clever Kundenhelfer aktualisiert“,
+ * Multi-Source-Apply-Prozesslabels („Kunde angelegt“, „Angebotsauftrag vorbereitet“).
  */
 const HISTORY_NOISE_RE = /^(clever empfahl|clever-empfehlung|angebot |anruf\b|pdf\b|rückruf|✓|kunde hat|geöffnet|angesehen|nachricht |clever hat aufgenommen|wunschkonditionen aktualisiert|clever kundenhelfer aktualisiert|kundenbild aktualisiert|wunschrate aktualisiert|farbe aktualisiert|leasingende aktualisiert|bestandsfahrzeug aktualisiert|kinder aktualisiert|hund aktualisiert|rate aktualisiert)/i;
+/** Apply-/Intake-Prozessstatus – nie Soft-Summary (Confirm/Activity behalten Status). */
+const APPLY_PROCESS_NOISE_RE = /kunde angelegt|kunde verknüpft|angebotsauftrag vorbereitet|multi-source-intake|kundenakte aus multi-source|vertrag bereits vorhanden|neue kundenakte|bereits vorhandene übernahme|altvertrag erfasst|bestehende kundenakte ergänzt|offener angebotsauftrag|idempotenz|bereits übernommen/i;
 /** Kurze System-Bestätigung „… aktualisiert“ / „… aktualisiert: …“ – kein Kundenfakt. */
 const SYSTEM_UPDATE_UPDATE_RE = /^(?:[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*(?:\s+[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*){0,4})\s+aktualisiert(?:\s*:.*)?\.?$/i;
 /** Kompakt-Bestätigung ohne Chip-Liste („Für X aufgenommen“) – kein Soft-Fakt. */
@@ -206,6 +209,7 @@ export function isSnapshotSystemNoiseLabel(label = '') {
   const text = String(label ?? '').trim();
   if (!text) return true;
   if (HISTORY_NOISE_RE.test(text) || HISTORY_BARE_CONFIRM_RE.test(text)) return true;
+  if (APPLY_PROCESS_NOISE_RE.test(text)) return true;
   if (text.length <= 72 && SYSTEM_UPDATE_UPDATE_RE.test(text)) return true;
   return false;
 }
@@ -346,6 +350,16 @@ export function classifySnapshotNoteLabel(label = '') {
       slot: 'color',
       remapLabel: remap,
       groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+    };
+  }
+
+  // Altes Auto / GW als Kundenfakt (vor MODEL_TRIM, sonst „Picanto“ → Header-Track)
+  if (/^altes\s+auto\b/i.test(text) || /^\(gw\)/i.test(text)) {
+    return {
+      kind: 'structured',
+      slot: 'human',
+      remapLabel: text,
+      groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
     };
   }
 
@@ -1583,6 +1597,35 @@ function buildMenschAlltagFacts(
     }));
     usedLabels.add('haus');
     usedLabels.add('laden zuhause');
+  } else if (
+    profile.household?.housingType === 'own_house'
+    && !usedLabels.has('haus')
+    && !usedLabels.has('eigenes haus')
+    && !usedLabels.has('eigenheim')
+  ) {
+    pushFact(facts, fact('housing', 'Haus', {
+      editKey: 'bedarf',
+      groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 14,
+      ...customerProv,
+    }));
+    usedLabels.add('haus');
+    usedLabels.add('eigenes haus');
+    usedLabels.add('eigenheim');
+  } else if (
+    (profile.household?.housingType === 'apartment'
+      || profile.household?.housingType === 'wohnung')
+    && !usedLabels.has('wohnung')
+  ) {
+    pushFact(facts, fact('housing', 'Wohnung', {
+      editKey: 'bedarf',
+      groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
+      tint: SNAPSHOT_TINT.ALLTAG,
+      summaryPriority: 14,
+      ...customerProv,
+    }));
+    usedLabels.add('wohnung');
   }
 
   if (
