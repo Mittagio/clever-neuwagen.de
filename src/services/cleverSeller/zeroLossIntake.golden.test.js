@@ -25,6 +25,19 @@ const FAHRWERK = 'Er will nicht wieder so ein komisches Fahrwerk wie sein alter.
   const alias = resolveSellerModelAlias('EQ2');
   assert.equal(alias.canonical, 'ev2');
   assert.equal(alias.rawExpression, 'EQ2');
+  assert.equal(alias.ambiguous, false);
+}
+
+{
+  // Kanonische Modelle ohne Tippfehler-Alias sind nicht unsicher
+  const ev4 = resolveSellerModelAlias('EV4');
+  assert.equal(ev4.canonical, null);
+  assert.equal(ev4.ambiguous, false);
+  const interpreted = interpretSellerInput('EV4');
+  const interest = interpreted.facts.find((f) => f.field === 'vehicleInterest');
+  assert.ok(interest, 'EV4 → vehicleInterest');
+  assert.equal(interest.needsConfirmation, false, 'EV4 braucht keine Confirm nur wegen Alias-Lücke');
+  assert.match(String(interest.label || ''), /EV4/i);
 }
 
 {

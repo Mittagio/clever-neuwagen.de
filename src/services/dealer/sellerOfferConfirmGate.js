@@ -149,6 +149,9 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
   const payment = { ...(offerDraft.payment ?? {}) };
   const offerPreview = { ...(offerDraft.offerPreview ?? {}) };
   const offerCalculation = { ...(offerDraft.offerCalculation ?? {}) };
+  let rateNeedsReview = Boolean(offerDraft.rateNeedsReview);
+  let rateCalibratedFor = offerDraft.rateCalibratedFor ?? null;
+  let rateTouched = false;
 
   if ('monthlyRate' in patch && patch.monthlyRate != null) {
     const rate = Number(patch.monthlyRate);
@@ -157,6 +160,9 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
       payment.budget = rate;
       offerPreview.monthlyRate = rate;
       offerCalculation.monthlyRate = rate;
+      rateTouched = true;
+      // PDF / Bank / manuelle Rate → wieder belastbar
+      rateNeedsReview = false;
     }
   }
   if ('downPayment' in patch && patch.downPayment != null) {
@@ -193,10 +199,95 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
     offerPreview.paymentType = payment.type;
   }
 
+  const vehicle = { ...(offerDraft.vehicle ?? {}) };
+  const vehicleConfiguration = { ...(offerDraft.vehicleConfiguration ?? {}) };
+  let identityTouched = false;
+  if ('model' in patch && patch.model != null && String(patch.model).trim()) {
+    vehicle.model = String(patch.model).trim();
+    vehicleConfiguration.model = vehicle.model;
+    identityTouched = true;
+  }
+  if ('modelKey' in patch && patch.modelKey != null && String(patch.modelKey).trim()) {
+    vehicle.modelKey = String(patch.modelKey).trim().toLowerCase();
+    vehicleConfiguration.modelKey = vehicle.modelKey;
+    identityTouched = true;
+  }
+  if ('trimLabel' in patch && patch.trimLabel != null) {
+    const trim = String(patch.trimLabel).trim();
+    vehicle.trimLabel = trim || null;
+    vehicleConfiguration.trimLabel = trim || null;
+    if (trim) {
+      vehicleConfiguration.trimId = trim.toLowerCase().replace(/\s+/g, '-');
+    } else {
+      vehicleConfiguration.trimId = null;
+      vehicle.trimId = null;
+    }
+    identityTouched = true;
+  }
+  if ('trimId' in patch) {
+    vehicleConfiguration.trimId = patch.trimId != null && String(patch.trimId).trim()
+      ? String(patch.trimId)
+      : null;
+    identityTouched = true;
+  }
+  if ('colorLabel' in patch && patch.colorLabel != null) {
+    const color = String(patch.colorLabel).trim();
+    vehicle.color = color || null;
+    vehicleConfiguration.colorLabel = color || null;
+    if (!color) {
+      vehicle.colorId = null;
+      vehicleConfiguration.colorId = null;
+    }
+    identityTouched = true;
+  }
+  if ('colorId' in patch) {
+    const nextColorId = patch.colorId != null && String(patch.colorId).trim()
+      ? String(patch.colorId)
+      : null;
+    vehicle.colorId = nextColorId;
+    vehicleConfiguration.colorId = nextColorId;
+    identityTouched = true;
+  }
+
+  // Identity-Wechsel: bestehende Rate nicht als sicher gültig stehen lassen (keine Neuberechnung).
+  if (identityTouched && !rateTouched) {
+    if (!rateNeedsReview) {
+      rateCalibratedFor = offerDraft.vehicleConfiguration?.trimLabel
+        || offerDraft.vehicle?.trimLabel
+        || offerDraft.vehicleConfiguration?.model
+        || offerDraft.vehicle?.model
+        || rateCalibratedFor
+        || null;
+    }
+    rateNeedsReview = true;
+  }
+  if (rateTouched) {
+    rateCalibratedFor = vehicle.trimLabel
+      || vehicleConfiguration.trimLabel
+      || vehicle.model
+      || vehicleConfiguration.model
+      || rateCalibratedFor
+      || null;
+  }
+  if ('rateNeedsReview' in patch) {
+    rateNeedsReview = Boolean(patch.rateNeedsReview);
+  }
+  if ('rateCalibratedFor' in patch) {
+    rateCalibratedFor = patch.rateCalibratedFor || null;
+  }
+
   return {
     ...offerDraft,
     payment,
     offerPreview,
     offerCalculation,
+    rateNeedsReview,
+    rateCalibratedFor,
+    ...(identityTouched
+      ? {
+        vehicle,
+        vehicleConfiguration,
+      }
+      : {}),
   };
 }

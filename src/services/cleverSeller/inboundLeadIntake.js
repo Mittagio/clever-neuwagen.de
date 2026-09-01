@@ -23,6 +23,10 @@ import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
 import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
 import { buildComposerTaskTitle } from './composerSurfaceState.js';
 import { buildEditableFactChip, isLiveEditableField } from './liveEditFactMeta.js';
+import {
+  buildContactPayloadFromIdentity,
+  deriveContactIdentity,
+} from '../dealer/customerContactIdentity.js';
 
 const SELLER_COMMAND_START = /^(?:öffne|zeige|zeig|finde|suche|erstell|mach|schreib|sag|was\s+|wann\s+|wie\s+|schlag|bereite)/i;
 
@@ -449,6 +453,9 @@ export function buildInboundLeadProposal({
     detected: true,
     contact: {
       fullName: contact.fullName || null,
+      firstName: contact.firstName || null,
+      lastName: contact.lastName || null,
+      salutation: contact.salutation || null,
       email: contact.email || null,
       phone: contact.phone || null,
       subject: contact.subject || null,
@@ -475,7 +482,20 @@ export function buildInboundLeadProposal({
  */
 export function buildInboundLeadDraft(contact = {}, options = {}) {
   const now = new Date().toISOString();
-  const name = contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Neuer Kunde';
+  const identity = deriveContactIdentity(
+    {
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      salutation: contact.salutation,
+      name: contact.fullName,
+    },
+    contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(' '),
+  );
+  const contactPayload = buildContactPayloadFromIdentity(identity, {
+    phone: contact.phone || '',
+    email: contact.email || '',
+  });
+  const name = contactPayload.name || 'Neuer Kunde';
   const customerId = options.customerId || createCustomerId();
   return normalizeLead({
     id: options.id || `lead-inbound-${Date.now()}`,
@@ -487,9 +507,7 @@ export function buildInboundLeadDraft(contact = {}, options = {}) {
     dealerId: options.dealerId || 'autohaus-trinkle',
     name,
     contact: {
-      name,
-      email: contact.email || '',
-      phone: contact.phone || '',
+      ...contactPayload,
       preferredContact: contact.phone ? 'phone' : 'email',
     },
     vehicle: {

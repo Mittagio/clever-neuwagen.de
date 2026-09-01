@@ -55,14 +55,15 @@ assert.ok(
 const uncertainChips = (model.groups || [])
   .flatMap((g) => g.chips || [])
   .filter((c) => c && typeof c === 'object' && c.needsConfirmation);
-if (uncertainChips.length === 1 || (
-  uncertainChips.length > 0
-  && uncertainChips.length < (model.groups || []).flatMap((g) => g.chips || []).length
-)) {
+const allChips = (model.groups || []).flatMap((g) => g.chips || []);
+const safeChipCount = allChips.length - uncertainChips.length;
+// Partial Success: Übernehmen bleibt, solange sichere Facts da sind
+if (uncertainChips.length > 0 && safeChipCount === 0) {
   assert.equal(model.hideGlobalAccept, true);
   assert.equal(model.primaryCta, null);
 } else {
   assert.equal(model.primaryCta, 'Übernehmen');
+  assert.ok(!model.hideGlobalAccept);
 }
 // Unsichere Werte als Chip-Objekte mit needsConfirmation
 assert.ok(
@@ -168,8 +169,9 @@ assert.equal(
       { label: '300 €', field: 'monthlyBudget', factClass: 'commercial_preference', needsConfirmation: true },
     ],
   });
-  assert.equal(uncertainModel.hideGlobalAccept, true);
-  assert.equal(uncertainModel.primaryCta, null);
+  // Partial Success: sichere Facts → Übernehmen bleibt sichtbar
+  assert.equal(uncertainModel.hideGlobalAccept, undefined);
+  assert.equal(uncertainModel.primaryCta, 'Übernehmen');
   assert.ok(
     !(uncertainModel.warnings || []).some((w) => /kurze Bestätigung/i.test(w)),
   );

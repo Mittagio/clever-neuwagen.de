@@ -14,6 +14,11 @@ import {
 } from '../../services/dealer/parseGermanMoney.js';
 import { buildOfferVersionHistory, VEHICLE_OFFER_STATUS } from '../../services/vehicleOffer.js';
 import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigureFlow.js';
+import {
+  listOfferIdentityColorChoices,
+  listOfferIdentityModelChoices,
+  listOfferIdentityTrimChoices,
+} from '../../services/cleverSeller/offerVehicleIdentity.js';
 import { IconChevronRight } from './AkteIcons.jsx';
 import {
   FlowCard,
@@ -291,6 +296,96 @@ function PriceDetailIcon({ field }) {
   );
 }
 
+/** Drei anklickbare Identity-Facts – Popover-Choices, kein Freitext-Default. */
+function IdentityFactPopover({
+  field,
+  label,
+  open,
+  choices,
+  selectedId,
+  selectedLabel,
+  onToggle,
+  onSelect,
+  disabled,
+  showSwatch = false,
+  swatchColor = null,
+}) {
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function handlePointer(event) {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        onToggle(null);
+      }
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape') onToggle(null);
+    }
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open, onToggle]);
+
+  return (
+    <div
+      ref={rootRef}
+      className={`dai-opreview-identity__fact${open ? ' is-open' : ''}${showSwatch ? ' dai-opreview-identity__fact--color' : ''}`}
+    >
+      <button
+        type="button"
+        className="dai-opreview-identity__chip"
+        onClick={() => onToggle(open ? null : field)}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`${label}: ${selectedLabel || 'wählen'}`}
+      >
+        {showSwatch && (
+          <span
+            className="dai-opreview-summary__swatch"
+            style={{ background: swatchColor || '#cbd5e1' }}
+            aria-hidden
+          />
+        )}
+        <span>{selectedLabel || label}</span>
+      </button>
+      {open && !disabled && (
+        <ul className="dai-opreview-identity__popover" role="listbox" aria-label={`${label} wählen`}>
+          {choices.map((choice) => {
+            const isSelected = selectedId
+              ? choice.id === selectedId
+              : String(choice.label || '').toLowerCase() === String(selectedLabel || '').toLowerCase();
+            return (
+              <li key={choice.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={`dai-opreview-identity__option${isSelected ? ' is-selected' : ''}`}
+                  onClick={() => onSelect(choice)}
+                >
+                  {choice.swatch && (
+                    <span
+                      className="dai-opreview-summary__swatch"
+                      style={{ background: choice.swatch }}
+                      aria-hidden
+                    />
+                  )}
+                  <span>{choice.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Schritt 3 – Angebot prüfen (interne Vorbereitung, kein Kundenversand) */
 export default function DealerAiOfferPreview({
   offerDraft,
@@ -313,6 +408,7 @@ export default function DealerAiOfferPreview({
   const [centralConfirmed, setCentralConfirmed] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [identityPopover, setIdentityPopover] = useState(null);
   const fileInputRef = useRef(null);
   const firstRowRef = useRef(null);
   const conditionsRef = useRef(null);
@@ -367,6 +463,7 @@ export default function DealerAiOfferPreview({
     setCentralConfirmed(false);
     setEditingField(null);
     setEditMode(false);
+    setIdentityPopover(null);
   }, [draftKey, isSaved, offerDraft]);
 
   useEffect(() => {
@@ -469,6 +566,15 @@ export default function DealerAiOfferPreview({
   const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle?.color ?? null;
   const colorId = vehicleConfiguration?.colorId ?? vehicle?.colorId ?? null;
   const colorSwatch = resolveColorSwatch(colorId, colorLabel);
+  const modelKey = vehicleConfiguration?.modelKey ?? vehicle?.modelKey ?? null;
+  const modelLabel = vehicleConfiguration?.model ?? vehicle?.model ?? null;
+  const trimLabel = vehicleConfiguration?.trimLabel ?? vehicle?.trimLabel ?? null;
+  const trimId = vehicleConfiguration?.trimId ?? vehicle?.trimId ?? null;
+  const rateNeedsReview = Boolean(offerDraft?.rateNeedsReview);
+  const rateCalibratedFor = offerDraft?.rateCalibratedFor || null;
+  const modelChoices = listOfferIdentityModelChoices({ currentModelKey: modelKey });
+  const trimChoices = listOfferIdentityTrimChoices(modelKey);
+  const colorChoices = listOfferIdentityColorChoices(modelKey);
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
@@ -579,6 +685,50 @@ export default function DealerAiOfferPreview({
 
   function closeInlineEdit() {
     setEditingField(null);
+  }
+
+  function closeIdentityPopover() {
+    setIdentityPopover(null);
+  }
+
+  function applyIdentityChoice(field, choice) {
+    if (!onCommercialChange || !choice) {
+      closeIdentityPopover();
+      return;
+    }
+    const patch = {};
+    if (field === 'model') {
+      patch.model = choice.label;
+      patch.modelKey = choice.id;
+      const nextTrims = listOfferIdentityTrimChoices(choice.id);
+      const currentTrim = vehicleConfiguration?.trimLabel ?? vehicle?.trimLabel ?? '';
+      const trimStillValid = nextTrims.some((t) => (
+        t.id === (vehicleConfiguration?.trimId || '')
+        || String(t.label).toLowerCase() === String(currentTrim).toLowerCase()
+      ));
+      if (!trimStillValid) {
+        patch.trimLabel = '';
+        patch.trimId = null;
+      }
+      const nextColors = listOfferIdentityColorChoices(choice.id);
+      const currentColor = vehicleConfiguration?.colorLabel ?? vehicle?.color ?? '';
+      const colorStillValid = nextColors.some((c) => (
+        c.id === (vehicleConfiguration?.colorId || vehicle?.colorId || '')
+        || String(c.label).toLowerCase() === String(currentColor).toLowerCase()
+      ));
+      if (!colorStillValid) {
+        patch.colorLabel = '';
+        patch.colorId = null;
+      }
+    } else if (field === 'trim') {
+      patch.trimLabel = choice.label;
+      patch.trimId = choice.id;
+    } else if (field === 'color') {
+      patch.colorLabel = choice.label;
+      patch.colorId = choice.id;
+    }
+    onCommercialChange(patch);
+    closeIdentityPopover();
   }
 
   async function handleSaveClick() {
@@ -953,6 +1103,7 @@ export default function DealerAiOfferPreview({
     : (offerPrice != null ? formatEuroDe(Number(offerPrice)) : '–');
   const rateSuffix = !isCash && offerPrice != null ? ' / Monat' : '';
   const rateLabel = isCash ? 'Angebotspreis' : 'Monatliche Rate';
+  const showRateStale = rateNeedsReview && !isCash;
 
   return (
     <OfferFlowLayout
@@ -967,21 +1118,48 @@ export default function DealerAiOfferPreview({
         aria-label="Fahrzeug und Preis"
       >
         <div className="dai-opreview-summary__info">
-          <p className="dai-opreview-summary__model">{vehicleMainLine || '–'}</p>
+          <div className="dai-opreview-identity" aria-label="Fahrzeugidentität">
+            <p className="dai-opreview-identity__eyebrow">Fahrzeug</p>
+            <div className="dai-opreview-identity__row">
+              <IdentityFactPopover
+                field="model"
+                label="Modell"
+                open={identityPopover === 'model'}
+                choices={modelChoices}
+                selectedId={modelKey}
+                selectedLabel={modelLabel}
+                onToggle={setIdentityPopover}
+                onSelect={(choice) => applyIdentityChoice('model', choice)}
+                disabled={saved || !onCommercialChange}
+              />
+              <IdentityFactPopover
+                field="trim"
+                label="Linie"
+                open={identityPopover === 'trim'}
+                choices={trimChoices}
+                selectedId={trimId}
+                selectedLabel={trimLabel}
+                onToggle={setIdentityPopover}
+                onSelect={(choice) => applyIdentityChoice('trim', choice)}
+                disabled={saved || !onCommercialChange}
+              />
+              <IdentityFactPopover
+                field="color"
+                label="Farbe"
+                open={identityPopover === 'color'}
+                choices={colorChoices}
+                selectedId={colorId}
+                selectedLabel={colorLabel}
+                onToggle={setIdentityPopover}
+                onSelect={(choice) => applyIdentityChoice('color', choice)}
+                disabled={saved || !onCommercialChange}
+                showSwatch
+                swatchColor={colorSwatch}
+              />
+            </div>
+          </div>
           {vehicleMotorLine && (
             <p className="dai-opreview-summary__motor">{vehicleMotorLine}</p>
-          )}
-          {colorLabel && (
-            <p className="dai-opreview-summary__color">
-              {colorSwatch && (
-                <span
-                  className="dai-opreview-summary__swatch"
-                  style={{ background: colorSwatch }}
-                  aria-hidden
-                />
-              )}
-              <span>{colorLabel}</span>
-            </p>
           )}
           {showCheckedBadge && (
             <span className="dai-opreview-summary__checked">Angebot geprüft</span>
@@ -1017,14 +1195,35 @@ export default function DealerAiOfferPreview({
           </div>
         )}
 
-        <div className="dai-opreview-summary__rate" aria-label={rateLabel}>
+        <div
+          className={`dai-opreview-summary__rate${showRateStale ? ' dai-opreview-summary__rate--stale' : ''}`}
+          aria-label={rateLabel}
+        >
           <p className="dai-opreview-summary__rate-label">{rateLabel}</p>
-          <p className="dai-opreview-summary__rate-value">
-            {rateMain}
-            {rateSuffix && (
-              <span className="dai-opreview-summary__rate-suffix">{rateSuffix}</span>
-            )}
-          </p>
+          {showRateStale ? (
+            <>
+              <p className="dai-opreview-summary__rate-value dai-opreview-summary__rate-value--stale">
+                Rate prüfen
+              </p>
+              <p className="dai-opreview-summary__rate-stale-hint">
+                Fahrzeug wurde geändert
+                {rateCalibratedFor ? ` · zuvor ${rateCalibratedFor}` : ''}
+              </p>
+              {offerPrice != null && (
+                <p className="dai-opreview-summary__rate-previous">
+                  bisher {rateMain}
+                  {rateSuffix}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="dai-opreview-summary__rate-value">
+              {rateMain}
+              {rateSuffix && (
+                <span className="dai-opreview-summary__rate-suffix">{rateSuffix}</span>
+              )}
+            </p>
+          )}
         </div>
       </section>
 

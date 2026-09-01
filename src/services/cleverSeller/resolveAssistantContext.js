@@ -31,18 +31,20 @@ function normalizeName(value = '') {
  */
 export function extractNamedCustomerFromInput(sellerInput = '') {
   const t = String(sellerInput ?? '').trim();
+  const nameToken = '([A-Za-zÄÖÜäöüß-]{2,40}(?:\\s+[A-Za-zÄÖÜäöüß-]{2,40})?)';
   const patterns = [
-    /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?|vorbereiten)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
-    /\b(?:schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
-    /\b(?:für|an)\s+(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b.{0,40}\bangebot\b/i,
-    /\b(?:öffne|zeige|zeig|finde)\s+(?:den\s+|die\s+)?(?:kunden?\s+)?(?:herrn?\s+|frau\s+)?([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
-    /\b(?:herrn?\s+|frau\s+)([A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    new RegExp(`(?:^|[^\\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?|vorbereiten)\\s+(?:herrn?\\s+|frau\\s+)?${nameToken}\\b`, 'i'),
+    new RegExp(`\\b(?:schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?)\\s+(?:herrn?\\s+|frau\\s+)?${nameToken}\\b`, 'i'),
+    new RegExp(`\\b(?:für|an)\\s+(?:herrn?\\s+|frau\\s+)?${nameToken}\\b.{0,40}\\bangebot\\b`, 'i'),
+    new RegExp(`\\b(?:öffne|zeige|zeig|finde)\\s+(?:den\\s+|die\\s+)?(?:kunden?\\s+)?(?:herrn?\\s+|frau\\s+)?${nameToken}\\b`, 'i'),
+    // „Herr Marcel Grube“ → voller Name (nicht nur Vorname)
+    new RegExp(`\\b(?:herrn?\\s+|frau\\s+)${nameToken}\\b`, 'i'),
   ];
   const stop = /^(ein|eine|ihm|ihr|dem|den|das|picanto|sportage|ev\d|kia|angebot|termin|nachricht|leasingangebot)$/i;
   for (const re of patterns) {
     const m = t.match(re);
-    if (m?.[1] && !stop.test(m[1])) {
-      return m[1];
+    if (m?.[1] && !stop.test(m[1].split(/\s+/)[0])) {
+      return m[1].trim();
     }
   }
   return null;
@@ -137,6 +139,12 @@ export function resolveAssistantContext(params = {}) {
   const primaryDocument = findDocumentWorkingContext(workingItems);
 
   const attachedVehicle = offerItem?.card || params.workingContext?.card || null;
+  const focusedTrackId = lead?.crm?.focusedVehicleTrackId
+    || favoriteTrack?.id
+    || null;
+  const focusedTrack = focusedTrackId
+    ? vehicleTracks.find((t) => t.id === focusedTrackId)
+    : null;
   const resolvedWorkingContext = {
     offer: offerContext,
     attachedVehicle: attachedVehicle
@@ -146,8 +154,23 @@ export function resolveAssistantContext(params = {}) {
         color: attachedVehicle.color || null,
         label: offerItem?.shortLabel || offerItem?.label || attachedVehicle.title || null,
         offerId: offerContext?.offerId || null,
+        vehicleTrackId: offerItem?.vehicleTrackId
+          || offerItem?.vehicleCardId
+          || attachedVehicle.vehicleTrackId
+          || focusedTrackId
+          || null,
       }
-      : null,
+      : (focusedTrack
+        ? {
+          modelKey: focusedTrack.config?.modelKey || focusedTrack.modelLabel || null,
+          trimId: focusedTrack.config?.trimId || null,
+          color: focusedTrack.config?.colorLabel || null,
+          label: focusedTrack.displayName || null,
+          offerId: focusedTrack.activeOfferId || null,
+          vehicleTrackId: focusedTrack.id,
+        }
+        : null),
+    focusedVehicleTrackId: focusedTrackId,
     attachedDocument: primaryDocument
       ? {
         id: primaryDocument.documentId || primaryDocument.id,

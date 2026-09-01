@@ -22,6 +22,10 @@ export const SELLER_MODEL_ALIASES = Object.freeze({
   eq3: 'ev3',
   eq4: 'ev4',
   eq5: 'ev5',
+  pv2: 'ev2',
+  pv3: 'ev3',
+  pv4: 'ev4',
+  pv5: 'ev5',
   'e v2': 'ev2',
   'e-v2': 'ev2',
 });
@@ -46,7 +50,9 @@ export function resolveSellerModelAlias(rawMention = '') {
   const key = rawExpression.toLowerCase().replace(/\s+/g, ' ');
   const canonical = SELLER_MODEL_ALIASES[key] || null;
   if (!canonical) {
-    return { canonical: null, ambiguous: Boolean(rawExpression), rawExpression };
+    // Kein Alias-Treffer ≠ Unsicherheit: „EV4“/„Sportage“ sind kanonisch und
+    // brauchen keine Confirm nur weil sie nicht in der Tippfehler-Tabelle stehen.
+    return { canonical: null, ambiguous: false, rawExpression };
   }
   return { canonical, ambiguous: false, rawExpression };
 }
@@ -121,7 +127,27 @@ export function findUnconsumedMeaningSpans(sellerInput = '', facts = []) {
     if (fact.field === 'monthlyBudget' && fact.value != null) {
       remaining = remaining.replace(
         new RegExp(
-          `\\b${fact.value}\\s*(?:€|euro)?\\s*(?:wunsch)?rate\\b|\\bwunschrate\\s*(?:ca\\.?\\s*)?${fact.value}\\b`,
+          `\\b${fact.value}\\s*(?:€|euro)?\\s*(?:wunsch)?rate\\b|\\bwunschrate\\s*(?:ca\\.?\\s*)?${fact.value}\\s*(?:€|euro)?\\b|\\b${fact.value}\\s*(?:€|euro)\\b`,
+          'ig',
+        ),
+        ' ',
+      );
+    }
+    if (fact.field === 'termMonths' && fact.value != null) {
+      remaining = remaining.replace(
+        new RegExp(`\\b${fact.value}\\s*(?:monate?|mts?)?\\b`, 'ig'),
+        ' ',
+      );
+    }
+    if (
+      (fact.field === 'annualMileage' || fact.field === 'mileagePerYear')
+      && fact.value != null
+    ) {
+      const plain = String(fact.value);
+      const de = Number(fact.value).toLocaleString('de-DE');
+      remaining = remaining.replace(
+        new RegExp(
+          `\\b(?:${escapeRegExp(de)}|${escapeRegExp(plain)})\\s*(?:tkm|km)\\b`,
           'ig',
         ),
         ' ',
@@ -139,6 +165,14 @@ export function findUnconsumedMeaningSpans(sellerInput = '', facts = []) {
     }
     if (fact.field === 'vehicleInterest' || fact.field === 'vehicleInterestAlias') {
       remaining = remaining.replace(/\beq[2-9]\b|\bev[2-9]\b/ig, ' ');
+      const trim = fact.value?.trim || fact.value?.trimLabel;
+      if (trim) {
+        remaining = remaining.replace(new RegExp(`\\b${escapeRegExp(String(trim))}\\b`, 'ig'), ' ');
+      }
+      const modelKey = fact.value?.modelKey || fact.value?.model;
+      if (modelKey) {
+        remaining = remaining.replace(new RegExp(`\\b${escapeRegExp(String(modelKey))}\\b`, 'ig'), ' ');
+      }
     }
     if (fact.field === 'colorPreference') {
       remaining = remaining.replace(/\b(rot|blau|schwarz|weiß|weiss|grau|grün|gruen)\w*\b/ig, ' ');
@@ -158,9 +192,17 @@ export function findUnconsumedMeaningSpans(sellerInput = '', facts = []) {
   }
 
   remaining = remaining
-    .replace(/\bherrn?\s+\w+\b/ig, ' ')
-    .replace(/\bfrau\s+\w+\b/ig, ' ')
-    .replace(/[.,;:!?\-–—'"„“()]/g, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\bwww\.\S+/gi, ' ')
+    .replace(/\bquelle\s*:/gi, ' ')
+    .replace(/\bes ist eine kontaktanfrage\b[^.!?\n]*/gi, ' ')
+    .replace(/\b(?:über\s+das\s+)?kontaktformular\b/gi, ' ')
+    .replace(/-----.*?-----/g, ' ')
+    .replace(/^(?:von|from|gesendet|sent|an|to|betreff|subject)\s*:.*$/gim, ' ')
+    .replace(/\bherrn?\s+\w+(?:\s+\w+)?\b/ig, ' ')
+    .replace(/\bfrau\s+\w+(?:\s+\w+)?\b/ig, ' ')
+    .replace(/\b(?:leasing|finanzierung|kauf)\b/ig, ' ')
+    .replace(/[.,;:!?\-–—'"„“()€]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 

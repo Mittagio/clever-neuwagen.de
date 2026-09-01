@@ -2526,6 +2526,7 @@ export default function CustomerAkteSharedWorkspace({
         intentModeHint={intentModeHint}
         intentChipTooltips={intentChipTooltips}
         hideIntentChips={Boolean(reviewModel) || inMessageEdit}
+        autoGrow={!inMessageEdit}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (
             <SellerUniversalReviewCard

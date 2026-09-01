@@ -3,6 +3,7 @@
  * ERKENNEN ≠ ERFINDEN – nur gesetzte Intent-Felder werden Facts.
  */
 import { parseMagicOfferIntent } from '../dealer/magicOfferIntentParser.js';
+import { resolveActiveSellerModelInterest } from '../crm/vehicleTrack.js';
 import {
   SELLER_FACT_CLASS,
   SELLER_FACT_SOURCE,
@@ -107,13 +108,41 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
 
   if (commercial.monthlyRate != null) {
     const rate = Number(commercial.monthlyRate);
+    const basis = commercial.monthlyRateBasis || null;
+    const basisLabel = basis === 'net'
+      ? 'Netto'
+      : (basis === 'gross' ? 'Brutto' : null);
     push({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'monthlyBudget',
-      value: rate,
-      label: `${formatEuro(rate)} Rate`,
-      confidence: 0.88,
+      value: basis
+        ? { amount: rate, basis }
+        : rate,
+      label: basisLabel
+        ? `${formatEuro(rate)} Rate (${basisLabel}${basis === 'net' ? ' – bitte prüfen' : ''})`
+        : `${formatEuro(rate)} Rate`,
+      confidence: basis === 'net' ? 0.72 : 0.88,
       needsConfirmation: true,
+    });
+  }
+
+  if (commercial.listPrice != null) {
+    const upe = Number(commercial.listPrice);
+    const basis = commercial.listPriceBasis || null;
+    const basisLabel = basis === 'net'
+      ? 'Netto'
+      : (basis === 'gross' ? 'Brutto' : null);
+    push({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'purchasePrice',
+      value: basis
+        ? { amount: upe, basis }
+        : upe,
+      label: basisLabel
+        ? `UPE ${formatEuro(upe)} (${basisLabel}${basis === 'net' ? ' – bitte prüfen' : ''})`
+        : `UPE ${formatEuro(upe)}`,
+      confidence: basis === 'net' ? 0.7 : 0.86,
+      needsConfirmation: basis === 'net',
     });
   }
 
@@ -205,6 +234,63 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
  */
 export function extractSellerFactsFromOfferPdfText(text = '') {
   return mapMagicOfferIntentToSellerFacts(parseMagicOfferIntent(text));
+}
+
+/**
+ * PDF-Modell vs. aktives Akte-/Seller-Modell: kein stilles Überschreiben.
+ * Konditionen bleiben; Fokus-Wechsel nur nach Confirm (acceptModelSwitch).
+ * @param {object[]} facts
+ * @param {object} [lead]
+ * @returns {object[]}
+ */
+export function reconcileOfferPdfVehicleInterestWithLead(facts = [], lead = {}) {
+  const active = resolveActiveSellerModelInterest(lead);
+  if (!active?.modelKey) return Array.isArray(facts) ? [...facts] : [];
+
+  const normalizeKey = (raw) => String(raw || '')
+    .toLowerCase()
+    .replace(/^kia\s+/i, '')
+    .replace(/\s+/g, '')
+    .trim();
+
+  return (facts || []).map((fact) => {
+    if (!fact || fact.field !== 'vehicleInterest') return fact;
+    const fromPdf = fact.source === SELLER_FACT_SOURCE.OFFER_PDF
+      || fact.value?.fromOfferPdf === true;
+    if (!fromPdf) return fact;
+
+    const pdfKey = normalizeKey(fact.value?.modelKey || fact.value?.model || fact.label);
+    if (!pdfKey || pdfKey === active.modelKey) return fact;
+
+    const pdfLabel = fact.value?.label
+      || fact.label
+      || (fact.value?.trim
+        ? `${String(pdfKey).toUpperCase().replace(/^EV/, 'EV')} ${fact.value.trim}`
+        : String(pdfKey).toUpperCase().replace(/^EV/, 'EV'));
+    const activeLabel = active.label
+      || `Kia ${active.model || active.modelKey.toUpperCase()}`;
+
+    return {
+      ...fact,
+      needsConfirmation: true,
+      confidence: Math.min(Number(fact.confidence) || 0.9, 0.68),
+      label: `PDF: ${pdfLabel} vs Akte: ${activeLabel}`,
+      value: {
+        ...(typeof fact.value === 'object' && fact.value ? fact.value : {}),
+        modelKey: pdfKey,
+        model: fact.value?.model || pdfKey,
+        trim: fact.value?.trim || null,
+        label: pdfLabel,
+        conflictWithActive: true,
+        preserveActiveFocus: true,
+        activeModelKey: active.modelKey,
+        activeModel: active.model,
+        activeLabel,
+        pdfLabel,
+        fromOfferPdf: true,
+      },
+    };
+  });
 }
 
 /**

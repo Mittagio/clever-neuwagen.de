@@ -111,13 +111,51 @@ export function parseMagicOfferIntent(text = '') {
   if (transferMatch) transferCost = parseEuroAmount(transferMatch[1]);
 
   let monthlyRate = null;
+  let monthlyRateBasis = null;
   const rateMatch = blob.match(
     new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)`, 'i'),
   )
     ?? blob.match(
+      new RegExp(`(?:brutto|netto)[\\s-]*(?:monats)?rate\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`(?:monats)?rate\\s*(?:brutto|netto)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+    )
+    ?? blob.match(
       new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:brutto|netto)\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)?`, 'i'),
     );
-  if (rateMatch) monthlyRate = parseEuroAmount(rateMatch[1]);
+  if (rateMatch) {
+    monthlyRate = parseEuroAmount(rateMatch[1]);
+    const rateCtx = String(rateMatch[0] || '');
+    if (/\bnetto\b/i.test(rateCtx)) monthlyRateBasis = 'net';
+    else if (/\bbrutto\b/i.test(rateCtx)) monthlyRateBasis = 'gross';
+  }
+  // Kontext um die Rate: „Monatsrate 329 € netto“ / „Netto-Rate“
+  if (monthlyRate != null && monthlyRateBasis == null) {
+    if (/\b(?:netto[\s-]*(?:monats)?rate|(?:monats)?rate[\s\S]{0,24}netto)\b/i.test(blob)) {
+      monthlyRateBasis = 'net';
+    } else if (/\b(?:brutto[\s-]*(?:monats)?rate|(?:monats)?rate[\s\S]{0,24}brutto)\b/i.test(blob)) {
+      monthlyRateBasis = 'gross';
+    }
+  }
+
+  let listPrice = null;
+  let listPriceBasis = null;
+  const upeMatch = blob.match(
+    new RegExp(`(?:upe|uvp|listenpreis|fahrzeugpreis|barpreis)\\s*(?:brutto|netto)?\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+  )
+    ?? blob.match(
+      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:upe|uvp|listenpreis)\\s*(?:brutto|netto)?`, 'i'),
+    );
+  if (upeMatch) {
+    listPrice = parseEuroAmount(upeMatch[1] || upeMatch[2]);
+    const upeCtx = String(upeMatch[0] || '');
+    if (/\bnetto\b/i.test(upeCtx)) listPriceBasis = 'net';
+    else if (/\bbrutto\b/i.test(upeCtx)) listPriceBasis = 'gross';
+  }
 
   let durationMonths = null;
   const termMatch = blob.match(/(\d{2})\s*monate?/i);
@@ -289,6 +327,9 @@ export function parseMagicOfferIntent(text = '') {
       discountAmount,
       transferCost,
       monthlyRate,
+      monthlyRateBasis,
+      listPrice,
+      listPriceBasis,
       durationMonths,
       annualMileageKm,
       specialPayment: downPayment,

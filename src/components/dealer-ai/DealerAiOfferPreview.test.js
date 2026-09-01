@@ -1,5 +1,5 @@
 /**
- * Angebot prüfen – Mockup-UI, PDF-Ersatz, Edit-Pfad, Historie.
+ * Angebot prüfen – Identity Fact-Chips, Rate-Stale, PDF/Edit/Historie.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,6 +9,11 @@ import {
   applyCommercialConfirmPatch,
   editablePriceDetailFields,
 } from '../../services/dealer/sellerOfferConfirmGate.js';
+import {
+  listOfferIdentityColorChoices,
+  listOfferIdentityModelChoices,
+  listOfferIdentityTrimChoices,
+} from '../../services/cleverSeller/offerVehicleIdentity.js';
 import {
   buildOfferVersionHistory,
   createNextOfferVersion,
@@ -20,7 +25,23 @@ const source = readFileSync(join(__dirname, 'DealerAiOfferPreview.jsx'), 'utf8')
 const css = readFileSync(join(__dirname, 'DealerAiOfferPreview.css'), 'utf8');
 
 assert.ok(source.includes('Aktuelles PDF ersetzen'), 'PDF-Replace-Pfad bleibt erhalten');
+assert.ok(source.includes('dai-opreview-identity'), 'Identity-Zeile in Angebot prüfen');
+assert.ok(source.includes('Fahrzeugidentität'), 'Identity aria-label');
+assert.ok(source.includes('IdentityFactPopover'), 'Identity nutzt Fact-Popover');
+assert.ok(source.includes('listOfferIdentityModelChoices'), 'Modell-Choices aus Lexikon-Pfad');
+assert.ok(source.includes('listOfferIdentityTrimChoices'), 'Linien-Choices modellbezogen');
+assert.ok(source.includes('listOfferIdentityColorChoices'), 'Farb-Choices mit Swatch');
+assert.ok(source.includes('applyIdentityChoice'), 'Identity-Choice schreibt denselben State');
+assert.ok(source.includes('Rate prüfen'), 'Stale-Rate Copy');
+assert.ok(source.includes('Fahrzeug wurde geändert'), 'Identity-Change Hinweis');
+assert.ok(source.includes('rateNeedsReview'), 'Rate-Stale-Flag in Preview');
+assert.ok(!source.includes('Klicken zum Bearbeiten'), 'Kein Freitext-Hilfetext');
+assert.ok(!source.includes('openIdentityEdit'), 'Kein Freitext-Identity-Edit als Default');
+assert.ok(!source.includes('identityDraft'), 'Kein Freitext-Identity-Draft');
 assert.ok(source.includes('Werte bearbeiten'), 'Manueller Edit-Pfad ist sichtbar');
+assert.ok(css.includes('dai-opreview-identity'), 'Identity Styles');
+assert.ok(css.includes('dai-opreview-identity__popover'), 'Popover Styles');
+assert.ok(css.includes('dai-opreview-summary__rate--stale'), 'Stale-Rate Styles');
 assert.ok(source.includes('editablePriceDetailFields'), 'Preisdetails nutzen editierbare Felder');
 assert.ok(source.includes("editMode ? 'Fertig' : 'Werte bearbeiten'"), 'Preisdetails-Header toggelt Bearbeiten');
 assert.ok(source.includes('aria-label="Preisdetails bearbeiten"'), 'Preisdetails haben Edit-Modus');
@@ -104,6 +125,50 @@ assert.deepEqual(
   assert.equal(patched.payment.downPayment, 0);
   assert.equal(patched.payment.transferCost, 990);
   assert.equal(patched.offerPreview.monthlyRate, 299);
+  assert.equal(patched.rateNeedsReview, false);
+}
+
+// Identity-Change → Rate stale, keine erfundene Neuberechnung
+{
+  const base = {
+    payment: { type: 'leasing', calculatedRate: 233 },
+    offerPreview: { monthlyRate: 233 },
+    offerCalculation: { monthlyRate: 233 },
+    vehicle: { model: 'EV2', modelKey: 'ev2', trimLabel: 'Earth', color: 'Schwarz' },
+    vehicleConfiguration: {
+      model: 'EV2',
+      modelKey: 'ev2',
+      trimLabel: 'Earth',
+      trimId: 'earth',
+      colorLabel: 'Schwarz',
+      colorId: 'schwarz',
+    },
+  };
+  const afterTrim = applyCommercialConfirmPatch(base, {
+    trimLabel: 'Air',
+    trimId: 'air',
+  });
+  assert.equal(afterTrim.vehicleConfiguration.trimLabel, 'Air');
+  assert.equal(afterTrim.payment.calculatedRate, 233, 'Rate bleibt zahlenmäßig, wird nicht neu erfunden');
+  assert.equal(afterTrim.rateNeedsReview, true, 'Identity-Change markiert Rate stale');
+  assert.equal(afterTrim.rateCalibratedFor, 'Earth');
+
+  const afterRate = applyCommercialConfirmPatch(afterTrim, { monthlyRate: 219 });
+  assert.equal(afterRate.payment.calculatedRate, 219);
+  assert.equal(afterRate.rateNeedsReview, false, 'PDF/Bank/manuelle Rate hebt Stale auf');
+  assert.equal(afterRate.rateCalibratedFor, 'Air');
+}
+
+{
+  const models = listOfferIdentityModelChoices({ currentModelKey: 'ev2' });
+  assert.ok(models.some((m) => m.id === 'ev2'), 'EV2 in Modell-Choices');
+  assert.ok(models.some((m) => m.id === 'ev3'), 'EV3 in Modell-Choices');
+  const trims = listOfferIdentityTrimChoices('ev2');
+  assert.ok(trims.length >= 2, 'EV2 hat Linien-Choices');
+  assert.ok(trims.some((t) => /air|earth|gt/i.test(t.label)), 'Bekannte Linien für EV2');
+  const colors = listOfferIdentityColorChoices('ev3');
+  assert.ok(colors.length >= 2, 'Farben für EV3');
+  assert.ok(colors.every((c) => c.swatch), 'Farb-Choices haben Swatch');
 }
 
 {

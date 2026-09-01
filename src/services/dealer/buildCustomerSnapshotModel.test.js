@@ -19,6 +19,7 @@ import {
   formatEquipmentWishLabel,
   formatLeasingEndLabel,
   isActivitySnapshotNote,
+  isSnapshotContactIdentityLabel,
   isSnapshotSystemNoiseLabel,
   isStructuredSnapshotNote,
   normalizeKnowledgeChipSource,
@@ -449,6 +450,23 @@ function baseLead(overrides = {}) {
   assert.ok(isSnapshotSystemNoiseLabel('Kundenakte aus Multi-Source-Intake vorgeschlagen und bestätigt'));
   assert.ok(isSnapshotSystemNoiseLabel('Altvertrag erfasst'));
   assert.ok(isSnapshotSystemNoiseLabel('Vertrag bereits vorhanden'));
+  assert.ok(isSnapshotSystemNoiseLabel('Quelle: https://www.kia-trinkle-schorndorf.de/angebote'));
+  assert.ok(isSnapshotSystemNoiseLabel('Es ist eine Kontaktanfrage über das Kontaktformular'));
+  assert.ok(isSnapshotContactIdentityLabel('07151 1234567'));
+  assert.ok(isSnapshotContactIdentityLabel('marcel.grube@example.org'));
+  assert.ok(isSnapshotContactIdentityLabel('Herr Marcel Grube'));
+  assert.ok(isSnapshotContactIdentityLabel('Marcel', {
+    contact: { name: 'Marcel Grube', firstName: 'Marcel', lastName: 'Grube' },
+  }));
+  assert.ok(isSnapshotContactIdentityLabel('Marcel', {
+    contact: { name: 'Marcel Grube' },
+  }), 'Vorname aus contact.name ohne firstName-Feld');
+  {
+    const visionClass = classifySnapshotNoteLabel('Vision');
+    assert.equal(visionClass.kind, 'structured');
+    assert.equal(visionClass.groupId, SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ);
+  }
+  assert.equal(classifySnapshotNoteLabel('Kundenservice in der Leasingrate').kind, 'free');
   assert.ok(isActivitySnapshotNote('Wunschkonditionen aktualisiert'));
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').slot, 'human');
   assert.equal(classifySnapshotNoteLabel('Frau entscheidet mit').groupId, SOFT_SNAPSHOT_GROUP.PERSOENLICHES);

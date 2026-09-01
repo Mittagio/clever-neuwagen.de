@@ -12,6 +12,7 @@ import {
 import { getVerifiedVehicleFacts } from '../clever/openai/tools/getVerifiedVehicleFacts.js';
 import { INLINE_RESULT_TYPES } from './sellerInlineComposerAssist.js';
 import { shouldEnrichSellerInputFromOfferPdf } from '../cleverSeller/mapMagicOfferIntentToSellerFacts.js';
+import { resolveActiveSellerModelInterest } from '../crm/vehicleTrack.js';
 
 const AHK_RE = /ahk|anhänger|anhanger|kupplung|zuglast|schwenkbar/i;
 const PROBEFAHRT_RE = /probefahrt|termin|rückruf|anrufen|bestätig/i;
@@ -25,7 +26,10 @@ function customerDisplayName(lead = {}) {
 }
 
 function resolveModelKey(lead = {}, magic = null) {
+  // Freeze: aktiver Track / Fokus vor Wish-/Need-Profile – kein stilles EV3-Default
+  const active = resolveActiveSellerModelInterest(lead);
   return magic?.grounded?.modelKey
+    || active?.modelKey
     || lead?.crm?.needProfile?.selectedModelKey
     || lead?.wish?.modelKey
     || null;

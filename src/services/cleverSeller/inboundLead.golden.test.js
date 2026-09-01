@@ -26,6 +26,7 @@ import {
 } from './inboundLeadIntake.js';
 import { runComposerPdfAttachTurn } from './runComposerPdfAttachTurn.js';
 import { prepareComposerPdfTurnInput } from './prepareComposerPdfTurnInput.js';
+import { buildCustomerSnapshotModel } from '../dealer/buildCustomerSnapshotModel.js';
 
 const ENV = {
   VITE_CLEVER_SELLER_ORCHESTRATOR: 'true',
@@ -444,6 +445,102 @@ assert.ok(contact.phone);
     `erwartet Offer-Review, got ${review?.reviewType}`,
   );
   assert.ok(!/Treffer prüfen/i.test(JSON.stringify(review || {})));
+}
+
+// --- Grube-Inbound: Soft ohne Quelle/Tel/Name; voller Name; km/AZ/Kundenservice ---
+{
+  const GRUBE_MAIL = [
+    'Hier eine Anfrage:',
+    '',
+    '-----Ursprüngliche Nachricht-----',
+    'Von: Herr Marcel Grube <marcel.grube@example.org>',
+    'Gesendet: Montag, 1. September 2026 10:12',
+    'An: vertrieb@autohaus-trinkle.de',
+    'Betreff: Kia Sportage GT-Line AWD Leasing',
+    '',
+    'Hallo,',
+    'Quelle: https://www.kia-trinkle-schorndorf.de/angebote/sportage',
+    'Es ist eine Kontaktanfrage über das Kontaktformular.',
+    '',
+    'Name: Herr Marcel Grube',
+    'Telefon: 07151 1234567',
+    'E-Mail: marcel.grube@example.org',
+    '',
+    'Nachricht:',
+    'Ich interessiere mich für den Sportage GT-Line AWD.',
+    'Leasing ohne Anzahlung, 15.000 km/Jahr.',
+    'Kundenservice soll in der Leasingrate enthalten sein.',
+    '',
+    'Mit freundlichen Grüßen',
+    'Herr Marcel Grube',
+    '07151 1234567',
+  ].join('\n');
+
+  const contact = extractInboundContact(GRUBE_MAIL);
+  assert.equal(contact.firstName, 'Marcel');
+  assert.equal(contact.lastName, 'Grube');
+  assert.match(contact.fullName || '', /Marcel\s+Grube/i);
+
+  const interpreted = interpretSellerInput(GRUBE_MAIL);
+  assert.ok(interpreted.facts.some((f) => f.field === 'downPayment' && Number(f.value) === 0));
+  assert.ok(interpreted.facts.some((f) => (
+    (f.field === 'annualMileage' || f.field === 'mileagePerYear') && Number(f.value) === 15000
+  )));
+  assert.ok(interpreted.facts.some((f) => (
+    f.field === 'serviceInclusionWish'
+    || /Kundenservice.*Leasingrate/i.test(String(f.label || ''))
+  )));
+  const nameLabels = interpreted.facts
+    .filter((f) => f.field === 'customerName')
+    .map((f) => String(f.label || ''));
+  assert.ok(nameLabels.some((n) => /Marcel\s+Grube/i.test(n)));
+  assert.ok(!nameLabels.some((n) => /^Marcel$/i.test(n.trim())), 'kein Nur-Vorname-Fact');
+
+  const turn = runCleverSellerTurn({
+    lead: {},
+    sellerInput: GRUBE_MAIL,
+    leadsSnapshot: [],
+    scopeHint: 'dashboard',
+    env: ENV,
+  });
+  assert.ok(turn.inboundLead?.detected);
+  assert.equal(turn.inboundLead.proposeCreateCustomer, true);
+
+  const applied = applyAcceptedSellerTurn({}, turn, {
+    postFeedCard: false,
+    allowCreateCustomer: true,
+  });
+  assert.equal(applied.ok, true);
+  assert.equal(applied.created, true);
+  assert.equal(applied.lead.contact?.firstName, 'Marcel');
+  assert.equal(applied.lead.contact?.lastName, 'Grube');
+  assert.match(applied.lead.contact?.name || '', /^Marcel\s+Grube$/i);
+  assert.equal(Number(applied.lead.wish?.downPayment), 0);
+  assert.equal(Number(applied.lead.wish?.mileagePerYear), 15000);
+
+  const snap = buildCustomerSnapshotModel(applied.lead);
+  const summaryLabels = (snap.soft?.summary?.tokens || []).map((t) => t.label);
+  const softBlob = summaryLabels.join(' · ');
+  assert.ok(!/Quelle:/i.test(softBlob), `keine Quelle in Soft: ${softBlob}`);
+  assert.ok(!/https?:\/\//i.test(softBlob), `keine URL in Soft: ${softBlob}`);
+  assert.ok(!/Kontaktanfrage|Kontaktformular/i.test(softBlob), `kein Formular in Soft: ${softBlob}`);
+  assert.ok(!/@/.test(softBlob), `keine E-Mail in Soft: ${softBlob}`);
+  assert.ok(
+    !summaryLabels.some((l) => /07151|1234567/.test(String(l))),
+    `kein Telefon in Soft: ${softBlob}`,
+  );
+  assert.ok(
+    !summaryLabels.some((l) => /^(?:Herr\s+)?Marcel(?:\s+Grube)?$/i.test(String(l).trim())),
+    `kein Name-Chip in Soft: ${softBlob}`,
+  );
+  assert.ok(
+    summaryLabels.some((l) => /Kundenservice/i.test(String(l))),
+    `Kundenservice-Wunsch in Soft erwartet: ${softBlob}`,
+  );
+  // Telefon nicht doppelt in Insights
+  const phoneInsights = (applied.lead.crm?.sellerInsights || [])
+    .filter((i) => /07151|1234567/.test(String(i.text || '')));
+  assert.equal(phoneInsights.length, 0, 'Telefon nicht als Soft-Insight');
 }
 
 console.log('inboundLead.golden.test.js: OK');

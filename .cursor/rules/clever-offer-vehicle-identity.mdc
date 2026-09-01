@@ -1,0 +1,35 @@
+---
+description: PRODUKT-FREEZE Clever Offer Vehicle Identity – kein stilles Default-Modell; Track-gebundenes Angebot
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: CLEVER OFFER · VEHICLE IDENTITY
+
+Clever = sagen/klicken → Clever konfiguriert → Angebot. **Kein Carwow-Konfigurator**, aber editierbare Fahrzeug-Identität.
+
+## Verbindlich
+
+1. **Kein stilles Default-Modell** — „EV Angebot“ ≠ still EV3 Earth (kein Picanto/GT-Line-Fallback als Absicht).
+2. Jedes Angebot hat eindeutige **`vehicleTrackId`**.
+3. **Fahrzeugidentität** = Modell + Linie/Variante + Farbe (+ Optionen) — getrennt von **Konditionen** (Zahlungsart, Laufzeit, km, AZ, Rate).
+4. Klick und Composer → **derselbe State**.
+5. Fahrzeugwechsel überschreibt kein altes Angebot, wenn zweite Alternative gemeint („noch einen EV2“ = neu; „änder EV3 auf Air“ = bestehend).
+6. OpenAI/Interpret Intent; Clever validiert gegen verifizierte Daten wo vorhanden.
+
+## Angebots-Cue
+
+- Aktiver Track vorhanden → Target = dieser Track.
+- Mehrere Spuren ohne klaren Fokus → Clarification `Für welches Fahrzeug?` mit Track-Choices — **kein stilles Raten**.
+
+## Composer am offenen Angebot
+
+„Mach Earth zu Air.“ / „schwarz.“ / „Doch EV2 Earth.“ → ändert **dieses** Angebot/Track (Working Context).
+
+## UI
+
+Angebot prüfen: oben **drei Fact-Chips** (Modell · Linie · Farbe) mit **Popover-Choices** – **keine Freitext-Linie als Default**. Farbe mit Swatch. Composer und Klick → derselbe State. Bei Identity-Wechsel Rate stale („Rate prüfen“), keine Fake-Neuberechnung. Getrennt: Konditionen. Kein Akte-Hierarchy-Redesign. Kein Carwow-Stepper.
+
+## Code / Doc
+
+- Kern: `src/services/cleverSeller/offerVehicleIdentity.js`
+- Doc: `docs/CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md`

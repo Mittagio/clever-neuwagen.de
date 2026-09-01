@@ -20,6 +20,16 @@ import {
 } from '../crm/magic/buildMagicAkteContext.js';
 import { isSellerOfferMailShorthand } from '../crm/magic/generateCleverCustomerMessage.js';
 import { deriveContactIdentity } from '../dealer/customerContactIdentity.js';
+import { isBatchOfferCue, hasCommercialOfferSlots } from './commercialOfferNl.js';
+import {
+  OFFER_MUTATION_MODE,
+  OFFER_VEHICLE_TARGET_STATUS,
+  resolveOfferVehicleTarget,
+} from './offerVehicleIdentity.js';
+import {
+  listCustomerVehicleTracks,
+  VEHICLE_TRACK_STATUS,
+} from '../crm/vehicleTrack.js';
 
 function salutationName(customerName, facts, lead) {
   const identity = deriveContactIdentity(
@@ -637,7 +647,63 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)) {
-    const blockedByClarify = missingInformation.some((m) => m.id === 'clarify_purchase_vs_leasing');
+    const blockedByClarify = missingInformation.some((m) => (
+      m.id === 'clarify_purchase_vs_leasing'
+      || m.id === 'clarify_vehicle_for_offer'
+    ));
+    const batchCue = isBatchOfferCue(sellerInput);
+    const openTracks = listCustomerVehicleTracks(lead).filter((t) => (
+      t.status === VEHICLE_TRACK_STATUS.OPEN
+      || t.status === VEHICLE_TRACK_STATUS.ACTIVE
+      || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+    ));
+    const offerVehicleTarget = resolveOfferVehicleTarget({
+      lead,
+      sellerInput,
+      facts,
+      currentOfferContext,
+      workingContext,
+    });
+    // Telefon Ende: „mach die 3 Angebote“ → eine Batch-Action mit Shells je Spur (kein Multi-UI)
+    if (batchCue && openTracks.length >= 2 && !blockedByClarify) {
+      actions.push({
+        id: 'prepare_offers_batch',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: `${openTracks.length} Angebote vorbereiten`,
+        needsSellerConfirmation: true,
+        status: 'prepared',
+        toolId: 'prepare_offer',
+        payload: {
+          batch: true,
+          trackIds: openTracks.map((t) => t.id),
+          models: openTracks.map((t) => ({
+            trackId: t.id,
+            modelKey: t.config?.modelKey || t.modelLabel,
+            displayName: t.displayName,
+          })),
+          canCreateOffer: false,
+          attachWorkingContext: true,
+          needsSellerConfirmation: true,
+          mutatesCustomer: false,
+          source: 'seller_input_batch',
+          nextStepHint: 'Angebote vorbereiten',
+        },
+      });
+    } else if (offerVehicleTarget.status === OFFER_VEHICLE_TARGET_STATUS.NEEDS_CLARIFICATION) {
+      actions.push({
+        id: 'prepare_offer',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Angebot – Fahrzeug klären',
+        needsSellerConfirmation: true,
+        status: 'blocked',
+        payload: {
+          needsClarification: true,
+          clarifyVehicleForOffer: true,
+          question: offerVehicleTarget.question,
+          choices: offerVehicleTarget.choices || [],
+        },
+      });
+    } else {
     const commercialOnly = facts.length > 0
       && facts.every((f) => (
         f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
@@ -645,8 +711,16 @@ export function planSellerActions({
         || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
         || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION
         || f.factClass === SELLER_FACT_CLASS.VEHICLE_INTEREST
+        || f.factClass === SELLER_FACT_CLASS.VEHICLE_REQUIREMENT
         || f.factClass === SELLER_FACT_CLASS.CUSTOMER_FACT
       ));
+    const identityOnOpenOffer = facts.some((f) => (
+      (f.field === 'trimPreference' || f.field === 'colorPreference')
+      && (
+        f.value?.targetScope === 'offer_vehicle'
+        || Boolean(currentOfferContext?.offerId)
+      )
+    ));
     if (blockedByClarify) {
       actions.push({
         id: 'prepare_offer',
@@ -658,11 +732,28 @@ export function planSellerActions({
           needsClarification: true,
         },
       });
-    } else if (currentOfferContext?.offerId && commercialOnly && !facts.some((f) => f.field === 'purchasePrice')) {
+    } else if (
+      currentOfferContext?.offerId
+      && (commercialOnly || identityOnOpenOffer)
+      && !facts.some((f) => f.field === 'purchasePrice')
+    ) {
+      const trimFact = facts.find((f) => f.field === 'trimPreference');
+      const colorFact = facts.find((f) => f.field === 'colorPreference');
+      const trimValue = trimFact?.value?.trim
+        || (Array.isArray(trimFact?.value) ? trimFact.value[0] : null)
+        || (typeof trimFact?.value === 'string' ? trimFact.value : null)
+        || trimFact?.label
+        || null;
+      const colorValue = colorFact?.value?.color
+        || (typeof colorFact?.value === 'string' ? colorFact.value : null)
+        || colorFact?.label
+        || null;
       actions.push({
         id: 'update_offer_context',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: 'Angebot anpassen',
+          label: identityOnOpenOffer && !hasCommercialOfferSlots(facts)
+            ? 'Fahrzeugidentität anpassen'
+            : 'Angebot anpassen',
         needsSellerConfirmation: true,
         status: 'prepared',
         toolId: 'modify_offer',
@@ -670,6 +761,18 @@ export function planSellerActions({
           updateOnly: true,
           offerId: currentOfferContext.offerId,
           offerSummary: currentOfferContext.summary || currentOfferContext.title || null,
+          vehicleTrackId: offerVehicleTarget.vehicleTrackId
+            || currentOfferContext.vehicleTrackId
+            || currentOfferContext.vehicleCardId
+            || null,
+          identityPatch: (trimValue || colorValue)
+            ? {
+              trim: trimValue,
+              color: colorValue,
+              modelKey: offerVehicleTarget.modelKey || currentOfferContext.modelKey || null,
+              mutationMode: OFFER_MUTATION_MODE.UPDATE_EXISTING,
+            }
+            : null,
         },
       });
     } else {
@@ -681,29 +784,73 @@ export function planSellerActions({
         attachments,
       });
       const purchase = facts.find((f) => f.field === 'purchasePrice');
+      const purchaseAmount = typeof purchase?.value === 'object' && purchase?.value
+        ? (purchase.value.amount ?? purchase.value.value ?? null)
+        : (purchase?.value ?? null);
       const rateFact = facts.find((f) => (
         f.field === 'desiredRate' || f.field === 'monthlyBudget' || f.field === 'monthlyLeasingRate'
       ));
+      const rateAmount = typeof rateFact?.value === 'object' && rateFact?.value
+        ? (rateFact.value.amount ?? rateFact.value.value ?? null)
+        : (rateFact?.value ?? null);
       const magic = offer?.results?.[0]?.magic || null;
       const grounded = magic?.grounded || null;
       const vehicleFromFacts = facts.find((f) => f.field === 'vehicleInterest');
+      const vehicleConflict = Boolean(vehicleFromFacts?.value?.conflictWithActive);
       // Explizites Seller-Modell schlägt Magic-Grounding (EV4 statt klebendem EV3).
-      const vehicleLabel = vehicleFromFacts?.label
-        || [
-          grounded?.model ? `Kia ${grounded.model}` : null,
-          grounded?.trimLabel || null,
-          /automatik|dct/i.test(grounded?.engineLabel || '') ? 'Automatik' : null,
-        ].filter(Boolean).join(' ')
-        || null;
+      // PDF-Konflikt: aktives Akte-Modell behalten (Focus nicht still auf PDF-Modell).
+      const groundedVehicleLabel = [
+        grounded?.model ? `Kia ${grounded.model}` : null,
+        grounded?.trimLabel || null,
+        /automatik|dct/i.test(grounded?.engineLabel || '') ? 'Automatik' : null,
+      ].filter(Boolean).join(' ') || null;
+      const vehicleLabel = vehicleConflict
+        ? (vehicleFromFacts.value?.activeLabel
+          || `Kia ${vehicleFromFacts.value?.activeModel || vehicleFromFacts.value?.activeModelKey || ''}`.trim()
+          || groundedVehicleLabel)
+        : (vehicleFromFacts?.label || groundedVehicleLabel || null);
       const paymentRaw = facts.find((f) => f.field === 'paymentType')?.value
         || magic?.paymentType
         || null;
       const offerType = paymentRaw === 'purchase' || paymentRaw === 'cash'
         ? 'cash'
         : (paymentRaw || (purchase ? 'cash' : null));
-      const hasLeasingRate = offerType === 'leasing' && rateFact?.value != null;
-      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchase) || hasLeasingRate;
+      const hasLeasingRate = offerType === 'leasing' && rateAmount != null;
+      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchaseAmount != null) || hasLeasingRate;
       const vehicleInterest = facts.find((f) => f.field === 'vehicleInterest');
+      const targetModel = offerVehicleTarget.modelKey
+        || (vehicleConflict
+          ? (vehicleInterest?.value?.activeModelKey || vehicleInterest?.value?.activeModel)
+          : (vehicleInterest?.value?.modelKey || vehicleInterest?.value?.model));
+      // Kein stilles Magic-Default-Trim (Earth) – nur Seller-Fact / Track / explizit geparstes Trim
+      const targetTrim = vehicleConflict
+        ? null
+        : (
+          vehicleInterest?.value?.trim
+          || offerVehicleTarget.trim
+          || facts.find((f) => f.field === 'trimPreference')?.value?.trim
+          || (Array.isArray(facts.find((f) => f.field === 'trimPreference')?.value)
+            ? facts.find((f) => f.field === 'trimPreference').value[0]
+            : null)
+          || null
+        );
+      // Magic-Grounding nur wenn Modell zum Target passt – sonst klebt EV3 nicht über EV2
+      const groundedMatchesTarget = grounded?.modelKey
+        && targetModel
+        && String(grounded.modelKey).toLowerCase() === String(targetModel).toLowerCase();
+      const focusModel = targetModel
+        || (groundedMatchesTarget ? grounded?.model : null)
+        || null;
+      const focusTrim = targetTrim
+        || (groundedMatchesTarget ? grounded?.trimLabel : null)
+        || null;
+      const resolvedVehicleLabel = [
+        focusModel ? `Kia ${String(focusModel).replace(/^kia\s*/i, '')}` : null,
+        focusTrim,
+      ].filter(Boolean).join(' ')
+        || vehicleLabel
+        || offerVehicleTarget.label
+        || null;
       const leasingWithoutRate = offerType === 'leasing'
         && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'desiredRate' || f.field === 'monthlyLeasingRate')
         && magic?.decision?.action === 'ask_rate';
@@ -711,7 +858,7 @@ export function planSellerActions({
       const cashVsLeasingWarning = offerType === 'cash' && profileLeasing
         ? 'In der Kundenakte ist bisher Leasing notiert.'
         : null;
-      const preparedOk = (offer?.ok || purchase || hasLeasingRate) && !leasingWithoutRate;
+      const preparedOk = (offer?.ok || purchaseAmount != null || hasLeasingRate) && !leasingWithoutRate;
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
@@ -724,49 +871,61 @@ export function planSellerActions({
         legacy: offer ?? null,
         payload: {
           canCreateOffer: canCreate && !leasingWithoutRate,
-          purchasePrice: purchase?.value ?? magic?.calculation?.endPrice ?? grounded?.basePrice ?? null,
+          purchasePrice: purchaseAmount ?? magic?.calculation?.endPrice ?? grounded?.basePrice ?? null,
           paymentType: paymentRaw,
           offerType,
-          vehicleLabel,
+          vehicleLabel: resolvedVehicleLabel,
+          vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
+          createNewAlternative: offerVehicleTarget.createNew === true
+            || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
+          mutationMode: offerVehicleTarget.mutationMode || null,
           vehicle: {
-            model: vehicleInterest?.value?.modelKey
-              || vehicleInterest?.value?.model
-              || grounded?.model
-              || null,
-            trim: vehicleInterest?.value?.trim || grounded?.trimLabel || null,
+            model: focusModel || null,
+            trim: focusTrim,
             make: 'Kia',
+            modelKey: offerVehicleTarget.modelKey || focusModel || null,
           },
           customerId: lead?.id || resolvedCustomer?.id || null,
           customerName: customerName || lead?.contact?.name || null,
           monthlyRate: magic?.calculation?.monthlyRate
             ?? magic?.intent?.commercialInput?.monthlyRate
-            ?? rateFact?.value
+            ?? rateAmount
             ?? null,
           discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
-          listPrice: grounded?.basePrice ?? null,
-          engineLabel: grounded?.engineLabel ?? null,
-          variantId: grounded?.variantId ?? null,
+          listPrice: groundedMatchesTarget ? (grounded?.basePrice ?? null) : null,
+          engineLabel: groundedMatchesTarget ? (grounded?.engineLabel ?? null) : null,
+          variantId: groundedMatchesTarget ? (grounded?.variantId ?? null) : null,
           decisionAction: magic?.decision?.action ?? null,
           missingRate: leasingWithoutRate || magic?.decision?.action === 'ask_rate',
           attachWorkingContext: true,
           needsSellerConfirmation: true,
           mutatesCustomer: false,
-          source: 'seller_input',
+          source: offerVehicleTarget.source || 'seller_input',
           cashVsLeasingWarning,
+          vehicleModelConflict: vehicleConflict
+            ? {
+              pdfLabel: vehicleInterest?.value?.pdfLabel || vehicleInterest?.label,
+              activeLabel: vehicleInterest?.value?.activeLabel,
+              warning: vehicleInterest?.label,
+            }
+            : null,
           preparedOffer: {
             type: 'prepare_offer',
             customerId: lead?.id || resolvedCustomer?.id || null,
+            vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
             vehicle: {
-              model: vehicleInterest?.value?.modelKey || grounded?.model || 'Picanto',
-              trim: vehicleInterest?.value?.trim || grounded?.trimLabel || 'GT-Line',
+              model: focusModel || null,
+              trim: focusTrim || null,
+              modelKey: offerVehicleTarget.modelKey || focusModel || null,
             },
-            offerType: offerType || 'cash',
-            purchasePrice: purchase?.value ?? null,
+            offerType: offerType || null,
+            purchasePrice: purchaseAmount ?? null,
             source: 'seller_input',
             needsSellerConfirmation: true,
           },
         },
       });
+    }
     }
   }
 

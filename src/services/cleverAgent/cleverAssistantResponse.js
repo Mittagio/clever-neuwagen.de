@@ -61,6 +61,7 @@ export function resolveSellerResponsePolicy(turn = {}) {
   // Blockierende Klärung
   const clarify = missing.find((m) => (
     m.id === 'clarify_vehicle_for_knowledge'
+    || m.id === 'clarify_vehicle_for_offer'
     || m.id === 'clarify_offer_or_message'
     || m.id === 'clarify_customer_for_appointment'
     || m.id === 'clarify_customer_for_contract'
@@ -76,7 +77,9 @@ export function resolveSellerResponsePolicy(turn = {}) {
       chips: [],
       undoAvailable: false,
       showReview: false,
-      clarificationOptions: turn.knowledgeResult?.vehicleAmbiguity?.candidates || [],
+      clarificationOptions: clarify?.choices
+        || turn.knowledgeResult?.vehicleAmbiguity?.candidates
+        || [],
     };
   }
 

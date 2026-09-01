@@ -7,6 +7,11 @@ import {
   isBareMonthlyRateCue,
   MONTHLY_RATE_CLARIFY_PROMPT,
 } from './commercialOfferNl.js';
+import {
+  CLARIFY_VEHICLE_FOR_OFFER_PROMPT,
+  OFFER_VEHICLE_TARGET_STATUS,
+  resolveOfferVehicleTarget,
+} from './offerVehicleIdentity.js';
 
 /**
  * @param {object} params
@@ -16,6 +21,7 @@ export function resolveMissingInformation({
   facts = [],
   lead = {},
   currentOfferContext = null,
+  workingContext = null,
   sellerInput = '',
 } = {}) {
   const missing = [];
@@ -58,22 +64,39 @@ export function resolveMissingInformation({
 
   const wantsOffer = intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER);
   if (wantsOffer) {
-    const hasAttachedOffer = Boolean(
-      currentOfferContext?.offerId
-      || currentOfferContext?.title
-      || currentOfferContext?.summary,
-    );
-    const hasVehicle = hasAttachedOffer
-      || has(SELLER_FACT_CLASS.VEHICLE_INTEREST)
-      || profile?.preferredModelKey
-      || lead?.wish?.modelKey;
-    if (!hasVehicle) {
+    const offerTarget = resolveOfferVehicleTarget({
+      lead,
+      sellerInput,
+      facts,
+      currentOfferContext,
+      workingContext,
+    });
+    if (offerTarget.status === OFFER_VEHICLE_TARGET_STATUS.NEEDS_CLARIFICATION) {
       missing.push({
-        id: 'offer_vehicle',
+        id: 'clarify_vehicle_for_offer',
         forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: 'Welches Modell soll angeboten werden?',
+        label: offerTarget.question || CLARIFY_VEHICLE_FOR_OFFER_PROMPT,
         field: 'vehicleInterest',
+        choices: offerTarget.choices || [],
       });
+    } else if (offerTarget.status === OFFER_VEHICLE_TARGET_STATUS.UNRESOLVED) {
+      const hasAttachedOffer = Boolean(
+        currentOfferContext?.offerId
+        || currentOfferContext?.title
+        || currentOfferContext?.summary,
+      );
+      const hasVehicle = hasAttachedOffer
+        || has(SELLER_FACT_CLASS.VEHICLE_INTEREST)
+        || profile?.preferredModelKey
+        || lead?.wish?.modelKey;
+      if (!hasVehicle) {
+        missing.push({
+          id: 'offer_vehicle',
+          forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+          label: offerTarget.question || 'Welches Modell soll angeboten werden?',
+          field: 'vehicleInterest',
+        });
+      }
     }
 
     // Leasing-Kontext + Kaufpreis-Zahl → echte Ambiguity einmal nachfragen

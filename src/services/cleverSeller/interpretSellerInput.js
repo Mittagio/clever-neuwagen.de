@@ -51,8 +51,13 @@ import {
 import {
   hasCommercialOfferSlots,
   isBareMonthlyRateCue,
+  isBareOrGenericOfferCue,
+  isBatchOfferCue,
   parseCommercialDownPayment,
   parseCommercialMonthlyRate,
+  parseOfferIdentityFollowUp,
+  shouldBindIdentityToOpenOffer,
+  validateOfferVehicleIdentity,
 } from './commercialOfferNl.js';
 import {
   extractTradeInCandidates,
@@ -107,7 +112,7 @@ const MONTH_MAP = {
 };
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
-const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
+const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR';
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
@@ -169,7 +174,7 @@ function parseMonthYear(text = '') {
 /**
  * Multi-Fact Extraktion aus natürlichem Seller-Input.
  * @param {string} text
- * @param {{ lead?: object }} [options]
+ * @param {{ lead?: object, currentOfferContext?: object|null, workingContext?: object|null }} [options]
  */
 export function extractUniversalSellerFacts(text = '', options = {}) {
   const raw = String(text ?? '');
@@ -177,6 +182,22 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   const facts = [];
   const lead = options.lead ?? {};
   if (!t) return facts;
+
+  const bindToOpenOffer = shouldBindIdentityToOpenOffer({
+    sellerInput: t,
+    currentOfferContext: options.currentOfferContext,
+    workingContext: options.workingContext,
+  });
+  const offerTrackId = options.currentOfferContext?.vehicleTrackId
+    || options.currentOfferContext?.vehicleCardId
+    || options.workingContext?.attachedVehicle?.vehicleTrackId
+    || null;
+  const offerIdentityMeta = bindToOpenOffer
+    ? {
+      targetScope: 'offer_vehicle',
+      vehicleTrackId: offerTrackId,
+    }
+    : null;
 
   const namedCustomer = extractNamedCustomerFromInput(t);
   if (namedCustomer) {
@@ -300,6 +321,35 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
+  // Telefon: „entscheidet mit Frau/Partner“ → Soft-Fact, nicht unresolved
+  const decidesWith = t.match(
+    /\bentscheidet?\s+mit\s+(?:der\s+|seiner\s+|ihrer\s+)?(frau|mann|partner(?:in)?|ehefrau|ehemann|freund(?:in)?)\b/i,
+  ) || t.match(
+    /\bmit\s+(?:der\s+|seiner\s+|ihrer\s+)?(frau|mann|partner(?:in)?)\s+(?:entscheiden|absprechen|klären|klaeren)\b/i,
+  );
+  if (decidesWith) {
+    const roleRaw = String(decidesWith[1] || 'partner').toLowerCase();
+    const role = /frau|ehefrau|partnerin|freundin/.test(roleRaw)
+      ? 'partner'
+      : /mann|ehemann|freund/.test(roleRaw)
+        ? 'partner'
+        : 'partner';
+    const roleLabel = /frau|ehefrau|partnerin|freundin/.test(roleRaw)
+      ? 'Frau'
+      : /mann|ehemann/.test(roleRaw)
+        ? 'Mann'
+        : 'Partner';
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'decisionPartner',
+      value: { role, raw: roleRaw },
+      label: `entscheidet mit ${roleLabel}`,
+      confidence: 0.94,
+      rawExpression: decidesWith[0],
+      span: decidesWith[0],
+    }));
+  }
+
   const pet = t.match(/\b(\d)\s*hund(?:e)?\b/i)
     || t.match(/\b(?:einen?\s+)?hund(?:e)?\b/i)
     || t.match(/\b(\d)\s*katzen?\b/i)
@@ -412,7 +462,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         trim: trimValue,
         label,
         value: { make: 'Kia', modelKey, trim: trimValue },
-        rawExpression: modelRaw,
+        rawExpression: interestMatch[0],
+        span: interestMatch[0],
         canonicalValue: alias.canonical ? modelKey.toUpperCase() : null,
         aliasAmbiguous: alias.ambiguous && !alias.canonical,
       });
@@ -594,9 +645,10 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Contract end (kurz) – kein Vollimport; Vollimport = import_customer_contract
+  // Nur bei klaren End-Cues – nicht „Gesendet: … September“ + Leasing-Wunsch
   if (!isCustomerContractIntakeText(t)
     && /\bleasing\b/i.test(t)
-    && (/\b(auslauf|läuft|laeuft|ende|bis)\b/i.test(t) || parseMonthYear(t))) {
+    && /\b(auslauf|läuft|laeuft|vertragsende|leasingende|endet\b|läuft\s+aus|laeuft\s+aus|bis\s+\d|ende\s+(?:im|am|zum|der|des)?\s*\d|leasing\s+(?:ende|bis))\b/i.test(t)) {
     const endDate = parseMonthYear(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.CONTRACT_FACT,
@@ -675,21 +727,50 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value: termMileage.termMonths,
       label: `${termMileage.termMonths} Monate`,
       confidence: 0.92,
+      rawExpression: String(termMileage.termMonths),
+      span: String(termMileage.termMonths),
     }));
     if (!facts.some((f) => f.field === 'paymentType')) {
+      // Wunschrate / km / Rate im Satz → Leasing-Kontext stark genug, nicht den Turn blockieren
+      const strongLeaseCue = /\b(?:wunsch)?rate\b|\bkm\b|\bleasing\b/i.test(t)
+        || termMileage.annualMileage != null;
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
         field: 'paymentType',
         value: 'leasing',
         label: 'Leasing',
-        confidence: 0.78,
-        needsConfirmation: true,
+        confidence: strongLeaseCue ? 0.88 : 0.78,
+        needsConfirmation: !strongLeaseCue,
       }));
     }
   }
 
   const commercialRate = parseCommercialMonthlyRate(raw);
+  const maxRateMatch = t.match(
+    /\b(?:max(?:imal)?\.?|höchstens|hoechstens|bis\s+zu)\s*(\d{2,4})\s*(?:€|euro)?\b/i,
+  ) || t.match(
+    /\b(\d{2,4})\s*(?:€|euro)?\s*(?:max(?:imal)?\.?|höchstens|hoechstens)\b/i,
+  );
+  const maxRateValue = maxRateMatch
+    ? Number(String(maxRateMatch[1]).replace(/\D/g, ''))
+    : null;
   if (
+    maxRateValue != null
+    && Number.isFinite(maxRateValue)
+    && maxRateValue >= 50
+    && maxRateValue <= 5000
+    && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'monthlyBudget',
+      value: maxRateValue,
+      label: `max. ${maxRateValue} €`,
+      confidence: 0.95,
+      rawExpression: maxRateMatch[0],
+      span: maxRateMatch[0],
+    }));
+  } else if (
     commercialRate != null
     && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
   ) {
@@ -729,6 +810,21 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value: commercialDown,
       label: commercialDown === 0 ? '0 € AZ' : `${commercialDown.toLocaleString('de-DE')} € AZ`,
       confidence: 0.94,
+    }));
+  }
+
+  // Soft-Wunsch: Kundenservice in der Leasingrate (nicht Formular-/Quelle-Blob)
+  if (
+    /kundenservice.{0,60}(?:in\s+der\s+)?(?:leasing)?rate|(?:service|wartung).{0,40}in\s+der\s+(?:leasing)?rate/i.test(t)
+    && !facts.some((f) => f.field === 'serviceInclusionWish')
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'serviceInclusionWish',
+      value: { kind: 'kundenservice_in_rate' },
+      label: 'Kundenservice in der Leasingrate',
+      source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+      confidence: 0.9,
     }));
   }
 
@@ -798,24 +894,33 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const label = /\bfarbe\b/i.test(t) && !/^farbe/i.test(rawColor)
       ? `Farbe ${titleCaseToken(base)}`
       : titleCaseToken(base);
+    const colorConfidence = bindToOpenOffer || isRememberCue || hasInterest ? 0.94 : 0.82;
     pushFact(facts, createExtractedFact({
-      factClass: isRememberCue ? SELLER_FACT_CLASS.VEHICLE_REQUIREMENT : SELLER_FACT_CLASS.VEHICLE_INTEREST,
+      factClass: (bindToOpenOffer || isRememberCue)
+        ? SELLER_FACT_CLASS.VEHICLE_REQUIREMENT
+        : SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
-      value: base,
+      value: offerIdentityMeta
+        ? { color: base, ...offerIdentityMeta }
+        : base,
       label,
-      confidence: isRememberCue || hasInterest ? 0.94 : 0.82,
-      needsConfirmation: !(isRememberCue || hasInterest),
+      confidence: colorConfidence,
+      needsConfirmation: !(bindToOpenOffer || isRememberCue || hasInterest),
     }));
   }
 
-  if (/\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t)
-    && /\bwichtig|braucht|möchte|moechte|will|mit\b|m[uü]ssen\s+drin|muss\s+drin/i.test(t)) {
+  const hasAhkToken = /\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t);
+  const ahkListCue = /(?:^|[—–\-,;:/|])\s*ahk\b|\bahk\s*[,;./|—–-]/i.test(t);
+  const ahkIntentCue = /\bwichtig|braucht|möchte|moechte|will|mit\b|m[uü]ssen\s+drin|muss\s+drin/i.test(t);
+  if (hasAhkToken && (ahkIntentCue || ahkListCue || hasInterest)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'towHitchRequired',
       value: true,
       label: prioritySuffix ? `AHK · ${prioritySuffix}` : 'AHK wichtig',
-      confidence: 0.94,
+      confidence: ahkListCue || hasInterest ? 0.95 : 0.94,
+      rawExpression: 'AHK',
+      span: 'AHK',
     }));
   }
 
@@ -885,19 +990,41 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  const trimWish = t.match(/\b(GT-?\s*Line|X-?\s*Line(?:\s*\d+)?)\b/gi);
+  const trimWish = t.match(/\b(GT-?\s*Line|X-?\s*Line(?:\s*\d+)?|Earth|Air|Spirit|Vision|Core|Drive\s*Wise)\b/gi);
   if (trimWish?.length) {
-    const unique = [...new Set(trimWish.map((x) => titleCaseToken(x.replace(/\s+/g, ' '))))];
+    const unique = [...new Set(trimWish.map((x) => {
+      const cleaned = titleCaseToken(x.replace(/\s+/g, ' '));
+      return /^cor$/i.test(cleaned) ? 'Core' : cleaned;
+    }))];
     const alreadyOnInterest = interestHits.some((h) => (
       h.trim && unique.some((u) => new RegExp(u.replace(/\s/g, '\\s*'), 'i').test(h.trim))
     ));
-    if (!alreadyOnInterest || unique.length > 1) {
+    if (!alreadyOnInterest || unique.length > 1 || bindToOpenOffer) {
+      const identityFollowUp = parseOfferIdentityFollowUp(t);
+      const primaryTrim = identityFollowUp?.trim || unique[0];
+      const modelKeyForValidation = options.currentOfferContext?.modelKey
+        || options.workingContext?.attachedVehicle?.modelKey
+        || null;
+      const validated = modelKeyForValidation
+        ? validateOfferVehicleIdentity({ modelKey: modelKeyForValidation, trim: primaryTrim })
+        : null;
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
         field: 'trimPreference',
-        value: unique,
+        value: offerIdentityMeta
+          ? {
+            trims: unique,
+            trim: primaryTrim,
+            ...offerIdentityMeta,
+            validated: validated?.ok === true,
+            uncertainty: validated?.uncertainty === true,
+          }
+          : unique,
         label: unique.join(' / '),
-        confidence: 0.86,
+        confidence: bindToOpenOffer
+          ? (validated?.trimOk === false ? 0.7 : 0.93)
+          : 0.86,
+        needsConfirmation: Boolean(validated?.uncertainty),
       }));
     }
   }
@@ -1045,14 +1172,19 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value: normalized,
       label: `${normalized.toLocaleString('de-DE')} km`,
       confidence: /\bdoch\b|statt/i.test(t) ? 0.95 : 0.88,
+      rawExpression: km[0],
+      span: km[0],
     }));
   } else if (termMileage.annualMileage != null && !facts.some((f) => f.field === 'annualMileage')) {
+    const kmLabel = `${termMileage.annualMileage.toLocaleString('de-DE')} km`;
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'annualMileage',
       value: termMileage.annualMileage,
-      label: `${termMileage.annualMileage.toLocaleString('de-DE')} km`,
+      label: kmLabel,
       confidence: 0.9,
+      rawExpression: kmLabel,
+      span: kmLabel,
     }));
   }
 
@@ -1147,7 +1279,12 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     || /\bwelche[snr]?\s+angebot\b/i.test(t);
   const isOfferSentQuery = /\b(wann\s+habe\s+ich|zuletzt).{0,60}\bangebot\b/i.test(t)
     || /\bangebot\b.{0,40}\b(geschickt|gesendet|versendet)\b/i.test(t);
-  const isCreateOfferCommand = /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?)\s+(?:herrn?\s+|frau\s+|\w+\s+)?(?:ein\s+)?(?:leasing)?angebot\b/i.test(t)
+  // Batch: „mach die 3 Angebote“ / „Angebote für alle“ → PREPARE_OFFER (Shells je Spur)
+  const isBatchOfferCommand = isBatchOfferCue(t);
+  const isBareOfferCommand = isBareOrGenericOfferCue(t);
+  const isCreateOfferCommand = isBatchOfferCommand
+    || isBareOfferCommand
+    || /(?:^|[^\wäöüÄÖÜß])(?:erstell(?:e|en)?|mach(?:e|en)?)\s+(?:herrn?\s+|frau\s+|\w+\s+)?(?:ein\s+)?(?:leasing)?angebot\b/i.test(t)
     || /\bein\s+(?:leasing)?angebot\s+(?:für|über)\b/i.test(t)
     // „Erstelle Brandes ein XCeed-Angebot …“
     || /(?:erstell(?:e|en)?|mach(?:e|en)?)\b.{0,60}\b(?:ein\s+)?[\wÄÖÜäöüß-]+-?angebot\b/i.test(t)
@@ -1362,7 +1499,13 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
         || hasAppointmentFact
         || (hasContextFacts && !explicitMessage)
       );
-    if (!skipMessageDefault) add(map[primary], 0.85);
+    // Telefon-Capture: reicher Merken-Dump (Kinder/AHK/…) + schwaches Rate-/Trim-Signal
+    // darf nicht still auf PREPARE_OFFER eskalieren (sonst Stuck-Review statt compact).
+    const skipWeakOfferDefault = primary === SELLER_ACTION_INTENTS.PREPARE_OFFER
+      && hasContextFacts
+      && !isCreateOfferCommand
+      && !explicitMessage;
+    if (!skipMessageDefault && !skipWeakOfferDefault) add(map[primary], 0.85);
   }
 
   if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand && !isContractCompare) {
@@ -1567,12 +1710,22 @@ export function resolveSellerInputMode(text = '', intents = [], facts = []) {
 
 /**
  * @param {string} sellerInput
- * @param {{ attachments?: object[], lead?: object }} [options]
+ * @param {{
+ *   attachments?: object[],
+ *   lead?: object,
+ *   customerName?: string,
+ *   currentOfferContext?: object|null,
+ *   workingContext?: object|null,
+ * }} [options]
  */
 export function interpretSellerInput(sellerInput = '', options = {}) {
   const raw = String(sellerInput ?? '');
   const normalized = raw.replace(/\r\n/g, '\n').trim();
-  let facts = extractUniversalSellerFacts(normalized, { lead: options.lead });
+  let facts = extractUniversalSellerFacts(normalized, {
+    lead: options.lead,
+    currentOfferContext: options.currentOfferContext,
+    workingContext: options.workingContext,
+  });
 
   if (shouldEnrichSellerInputFromOfferPdf(options.attachments, normalized)) {
     facts = mergeOfferPdfFactsIntoSellerFacts(
@@ -1601,6 +1754,33 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
       const key = `${fact.field}:${String(fact.label).toLowerCase()}`;
       if (!facts.some((f) => `${f.field}:${String(f.label).toLowerCase()}` === key)) {
         facts.push(fact);
+      }
+    }
+    // Voller Inbound-Name schlägt Einzelwort „Marcel“ aus extractNamedCustomerFromInput
+    if (inboundContact?.fullName || inboundContact?.lastName) {
+      const full = String(
+        inboundContact.fullName
+        || [inboundContact.firstName, inboundContact.lastName].filter(Boolean).join(' '),
+      ).trim();
+      facts = facts.filter((f) => {
+        if (f.field !== 'customerName') return true;
+        const label = String(f.label || f.value || '').trim();
+        if (!label) return false;
+        if (!/\s/.test(label) && full.toLowerCase().includes(label.toLowerCase())) {
+          return false;
+        }
+        return true;
+      });
+      if (full && !facts.some((f) => f.field === 'customerName')) {
+        facts.push(createExtractedFact({
+          factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+          field: 'customerName',
+          value: full,
+          label: full,
+          source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+          confidence: 0.9,
+          needsConfirmation: true,
+        }));
       }
     }
   }

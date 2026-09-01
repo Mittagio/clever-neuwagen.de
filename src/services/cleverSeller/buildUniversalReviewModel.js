@@ -95,8 +95,11 @@ function buildOfferHeroPresentation(facts = [], offerSec = null, turn = {}) {
   const purchase = pickFactByField(facts, 'purchasePrice');
   const wish = turn.usedCustomerContext || {};
 
+  // Bei PDF↔Akte-Konflikt: Hero folgt bestätigtem Akte-Fokus, nicht PDF-Modell
   const vehicleLabel = normalizeVehicleDisplayLabel(
-    offerSec?.headline || vehicle?.label || null,
+    vehicle?.value?.conflictWithActive
+      ? (vehicle.value.activeLabel || offerSec?.payload?.vehicleLabel || null)
+      : (offerSec?.headline || offerSec?.payload?.vehicleLabel || vehicle?.label || null),
   ) || null;
 
   let paymentLabel = null;
@@ -152,7 +155,33 @@ function buildOfferHeroPresentation(facts = [], offerSec = null, turn = {}) {
 /**
  * Eine kompakte Prüfbox statt mehrerer Warnzeilen.
  */
-function buildOfferConflictBox(discountWarnings = [], turnWarnings = []) {
+function buildOfferConflictBox(discountWarnings = [], turnWarnings = [], facts = []) {
+  const modelConflict = (facts || []).find((f) => (
+    f.field === 'vehicleInterest' && f.value?.conflictWithActive
+  ));
+  if (modelConflict) {
+    return {
+      title: 'Modellkonflikt – bitte bestätigen',
+      body: String(modelConflict.label || 'PDF-Modell weicht vom aktiven Akte-Modell ab.'),
+      action: {
+        id: 'resolve_model_conflict',
+        label: 'Modell prüfen',
+        action: 'resolve_model_conflict',
+        tone: 'secondary',
+      },
+    };
+  }
+  const netAmount = (facts || []).find((f) => (
+    (f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+    && (f.value?.basis === 'net' || /netto/i.test(String(f.label || '')))
+  ));
+  if (netAmount) {
+    return {
+      title: 'Netto-Betrag bitte prüfen',
+      body: String(netAmount.label || 'Netto erkannt – nicht still als Brutto übernehmen.'),
+      action: null,
+    };
+  }
   const discount = discountWarnings.find(Boolean)
     || turnWarnings.find((w) => /Rabatt/i.test(String(w || '')));
   if (discount) {
@@ -621,7 +650,11 @@ export function buildUniversalActionSections(turn = {}) {
     && a.status === 'blocked'
     && (
       a.payload?.needsClarification
-      || (turn.missingInformation || []).some((m) => m.id === 'clarify_purchase_vs_leasing')
+      || a.payload?.clarifyVehicleForOffer
+      || (turn.missingInformation || []).some((m) => (
+        m.id === 'clarify_purchase_vs_leasing'
+        || m.id === 'clarify_vehicle_for_offer'
+      ))
     )
   ));
   const offerSectionSource = offerPrep || offerBlockedIncomplete;
@@ -686,8 +719,6 @@ export function buildUniversalActionSections(turn = {}) {
             tone: 'primary',
           },
           { id: 'upload_pdf', label: 'PDF hochladen', action: 'upload_pdf', tone: 'secondary' },
-          { id: 'enter_rate', label: 'Monatsrate eingeben', action: 'enter_rate', tone: 'compact' },
-          { id: 'calc_cash', label: 'Als Barkauf berechnen', action: 'calc_cash', tone: 'compact' },
         ]
         : [
           {
@@ -712,28 +743,56 @@ export function buildUniversalActionSections(turn = {}) {
           tone: 'compact',
         },
       ],
+      // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
+      clarifyPrompt: incomplete
+        ? ((turn.missingInformation || []).find((m) => m.id === 'monthly_leasing_rate')?.label
+          || 'Welche Monatsrate möchtest du hinterlegen?')
+        : null,
     });
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
+    const clarifyVehicle = (turn.missingInformation || []).find((m) => m.id === 'clarify_vehicle_for_offer');
     const clarify = (turn.missingInformation || []).find((m) => m.id === 'clarify_purchase_vs_leasing');
-    sections.unshift({
-      id: 'offer_prepare',
-      kind: 'offer_incomplete',
-      title: 'Angebot – Klärung nötig',
-      headline: vehicle?.label || offerClarify.payload?.vehicleLabel || 'Angebot',
-      line: purchase?.label
-        || (purchase?.value != null
-          ? `Kaufpreis: ${Number(purchase.value).toLocaleString('de-DE')} €`
-          : null)
-        || 'Kauf vs. Leasing klären',
-      body: clarify?.label || null,
-      needsClarification: true,
-      primaryActions: [
-        { id: 'clarify_cash', label: 'Als Kaufangebot' },
-        { id: 'clarify_leasing', label: 'Als Leasingpreis' },
-      ],
-    });
+    if (clarifyVehicle || offerClarify.payload?.clarifyVehicleForOffer) {
+      const choices = clarifyVehicle?.choices
+        || offerClarify.payload?.choices
+        || [];
+      sections.unshift({
+        id: 'offer_prepare',
+        kind: 'offer_incomplete',
+        title: 'Angebot – Fahrzeug klären',
+        headline: 'Für welches Fahrzeug?',
+        line: null,
+        body: clarifyVehicle?.label || offerClarify.payload?.question || 'Für welches Fahrzeug?',
+        needsClarification: true,
+        primaryActions: choices.slice(0, 6).map((c) => ({
+          id: `offer-track-${c.vehicleTrackId || c.id}`,
+          label: c.label,
+          action: 'clarify_offer_vehicle',
+          vehicleTrackId: c.vehicleTrackId || c.id,
+          insertText: c.insertText || c.label,
+        })),
+      });
+    } else {
+      sections.unshift({
+        id: 'offer_prepare',
+        kind: 'offer_incomplete',
+        title: 'Angebot – Klärung nötig',
+        headline: vehicle?.label || offerClarify.payload?.vehicleLabel || 'Angebot',
+        line: purchase?.label
+          || (purchase?.value != null
+            ? `Kaufpreis: ${Number(purchase.value).toLocaleString('de-DE')} €`
+            : null)
+          || 'Kauf vs. Leasing klären',
+        body: clarify?.label || null,
+        needsClarification: true,
+        primaryActions: [
+          { id: 'clarify_cash', label: 'Als Kaufangebot' },
+          { id: 'clarify_leasing', label: 'Als Leasingpreis' },
+        ],
+      });
+    }
   }
 
   const appointmentAction = prepared.find((a) => (
@@ -1723,6 +1782,7 @@ export function buildUniversalReviewModel(turn = {}) {
 
   const uncertainFacts = facts.filter((f) => f.needsConfirmation);
   const uncertainFactCount = uncertainFacts.length;
+  const safeFactCount = facts.length - uncertainFactCount;
   const isBusinessActionReview = Boolean(
     documentsReview
     || clarifyGoal
@@ -1753,9 +1813,9 @@ export function buildUniversalReviewModel(turn = {}) {
   const isUnderstandingFactReview = !isBusinessActionReview
     && facts.length > 0
     && (uncertainFactCount > 0 || actionSections.length === 0);
-  // Kein globales Übernehmen bei genau einem unsicheren Wert oder Mix sicher/unsicher
-  const hideGlobalAccept = uncertainFactCount === 1
-    || (uncertainFactCount > 0 && uncertainFactCount < facts.length);
+  // Partial Success: Übernehmen bleibt, sobald sichere Facts da sind.
+  // Nur wenn ALLES unsicher ist (nichts sicher übernehmbar), Hide + Chip-Bestätigung.
+  const hideGlobalAccept = uncertainFactCount > 0 && safeFactCount === 0;
 
   const compactOfferOrAppointment = offerAppointmentReview
     || offerMessageReview
@@ -1791,7 +1851,7 @@ export function buildUniversalReviewModel(turn = {}) {
     : contentGroups);
 
   const offerConflictBox = compactOfferReview
-    ? buildOfferConflictBox(discountWarnings, turn.warnings || [])
+    ? buildOfferConflictBox(discountWarnings, turn.warnings || [], facts)
     : null;
 
   // Offer-/Appointment-Review: Fact-Chips einklappen – nur Ergebnis + Konflikt offen
@@ -1991,9 +2051,10 @@ export function buildUniversalReviewModel(turn = {}) {
                               : goldenOnly
                                 ? (actionSections.find((s) => s.kind === 'golden_moment')?.headline || 'Nächster Verkaufsschritt')
                                 : actionSections.some((s) => s.kind === 'offer_incomplete')
-                                  ? (offerHero?.conditionsLine
+                                  ? (actionSections.find((s) => s.kind === 'offer_incomplete')?.clarifyPrompt
+                                    || offerHero?.conditionsLine
                                     || offerHeroLabel
-                                    || 'Angebot')
+                                    || 'Welche Monatsrate möchtest du hinterlegen?')
                                   : multiAction
                                     ? `${actionSections.length} Aktionen vorbereitet`
                                     : `Neu erkannt: ${facts.length} Angabe${facts.length === 1 ? '' : 'n'}`,
@@ -2155,6 +2216,7 @@ export function shouldShowUniversalReview(turn = {}) {
   if ((turn.missingInformation || []).some((m) => (
     m.id === 'exact_technology_package_contents'
     || m.id === 'clarify_vehicle_for_knowledge'
+    || m.id === 'clarify_vehicle_for_offer'
     || m.id === 'clarify_customer_for_appointment'
     || m.id === 'clarify_customer_for_contract'
   ))) {

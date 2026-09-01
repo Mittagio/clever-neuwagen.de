@@ -19,6 +19,7 @@ import {
 import { mapSellerFactsToTrackFeedback } from './mapSellerFactsToTrackFeedback.js';
 import {
   applyTrackFeedbackFacts,
+  ensureMultiVehicleInterestTracksOnLead,
   focusVehicleInterestOnLead,
   listCustomerVehicleTracks,
   patchVehicleTrackOnLead,
@@ -33,6 +34,78 @@ import { buildInboundLeadDraft } from './inboundLeadIntake.js';
 import { isPrepareSuccessionOfferCue } from './prepareSuccessionOfferFromLead.js';
 import { applyConfirmedMultiSourceIntakePlan } from './multiSource/applyConfirmedMultiSourceIntakePlan.js';
 import { mergeOfferCommercialIntoWish } from '../sales/wishConditionsSync.js';
+import {
+  buildContactPayloadFromIdentity,
+  deriveContactIdentity,
+} from '../dealer/customerContactIdentity.js';
+import {
+  classifySnapshotNoteLabel,
+  isSnapshotContactIdentityLabel,
+  isSnapshotSystemNoiseLabel,
+} from '../dealer/buildCustomerSnapshotModel.js';
+
+/** Kontakt-/Identity-Felder → Header, nicht Soft-Insights. */
+const INSIGHT_SKIP_FIELDS = new Set([
+  'customerName',
+  'email',
+  'phone',
+  'mobile',
+  'salutation',
+  'firstName',
+  'lastName',
+]);
+
+function scoreCustomerNameCandidate(name = '') {
+  const text = String(name || '').trim();
+  if (!text) return -1;
+  const parts = text.replace(/^(?:herr|frau|hr\.|fr\.)\s+/i, '').trim().split(/\s+/).filter(Boolean);
+  return parts.length * 10 + Math.min(text.length, 40);
+}
+
+function pickBestCustomerName(facts = [], inboundContact = null) {
+  const candidates = [];
+  if (inboundContact?.fullName) candidates.push(String(inboundContact.fullName).trim());
+  if (inboundContact?.firstName || inboundContact?.lastName) {
+    candidates.push(
+      [inboundContact.firstName, inboundContact.lastName].filter(Boolean).join(' ').trim(),
+    );
+  }
+  for (const fact of facts) {
+    if (fact?.field !== 'customerName') continue;
+    const name = String(fact.value || fact.label || '').trim();
+    if (name) candidates.push(name);
+  }
+  let best = '';
+  let bestScore = -1;
+  for (const name of candidates) {
+    const score = scoreCustomerNameCandidate(name);
+    if (score > bestScore) {
+      best = name;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function shouldPersistSellerInsightLabel(fact = {}, lead = {}) {
+  const field = String(fact?.field || '');
+  if (INSIGHT_SKIP_FIELDS.has(field)) return false;
+  const label = String(fact?.label || fact?.value?.text || '').trim();
+  if (!label) return false;
+  if (isSnapshotSystemNoiseLabel(label)) return false;
+  if (isSnapshotContactIdentityLabel(label, lead)) return false;
+  // Mail-/Formular-Reste als unresolvedNote nie Soft
+  if (field === 'unresolvedNote' || fact?.preserveAsNote) {
+    if (/quelle\s*:|https?:\/\/|kontaktanfrage|kontaktformular|urspr[uü]ngliche nachricht/i.test(label)) {
+      return false;
+    }
+    // Lange Mail-Dumps ohne klaren Kundenfakt
+    if (label.length > 96 && /@(?:[^\s]+)|telefon|e-?mail|betreff/i.test(label)) {
+      return false;
+    }
+  }
+  return true;
+}
 
 function pushUnique(list, item) {
   if (!item) return list;
@@ -57,6 +130,10 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
   let touchedProfile = false;
   let appointmentValue = null;
   let vehicleInterestFocus = null;
+  let multiVehicleInterests = null;
+  const sharedTrackRequirements = [];
+  const nextLeadColorPatches = [];
+  const nextLeadTrimPatches = [];
 
   for (const fact of facts) {
     if (!fact || fact.needsConfirmation) continue;
@@ -64,8 +141,25 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     const value = fact.value;
 
     if (field === 'monthlyBudget' && value != null) {
-      desiredRate = Number(value);
+      const amount = typeof value === 'object'
+        ? (value.amount ?? value.value ?? null)
+        : value;
+      const basis = typeof value === 'object' ? value.basis : null;
+      if (amount == null || !Number.isFinite(Number(amount))) continue;
+      // Netto-Rate nie still als Brutto-Wunschrate übernehmen
+      if (basis === 'net' && value?.acceptNetAsGross !== true) {
+        profile.finance = {
+          ...(profile.finance ?? {}),
+          monthlyRateNet: Number(amount),
+        };
+        touchedProfile = true;
+        continue;
+      }
+      desiredRate = Number(amount);
       wish.desiredRate = desiredRate;
+      if (basis === 'gross') {
+        wish.desiredRateBasis = 'gross';
+      }
       profile.budget = {
         ...(profile.budget ?? {}),
         maxMonthlyRate: desiredRate,
@@ -132,11 +226,8 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'customerName') {
-      const name = String(value || fact.label || '').trim();
-      if (name && !String(contact.name || next.name || '').trim()) {
-        contact.name = name;
-        touchedContact = true;
-      }
+      // Bewusst leer lassen – Preferenz über pickBestCustomerName nach der Schleife
+      continue;
     }
 
     if (field === 'customerPlace') {
@@ -150,12 +241,35 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     if (field === 'towHitchRequired' && value) {
       profile.towbar = true;
       profile.priorities = pushUnique(profile.priorities ?? [], 'towing');
+      sharedTrackRequirements.push('AHK wichtig');
+      touchedProfile = true;
+    }
+
+    if (field === 'decisionPartner') {
+      const role = value?.role || 'partner';
+      profile.household = {
+        ...(profile.household ?? {}),
+        decidesWith: role,
+      };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
       touchedProfile = true;
     }
 
     if (field === 'colorPreference' && (value || fact.label)) {
-      profile.colorPreference = String(value || fact.label).toLowerCase();
+      const colorRaw = typeof value === 'object' && value
+        ? (value.color || fact.label)
+        : (value || fact.label);
+      profile.colorPreference = String(colorRaw || '').toLowerCase();
       touchedProfile = true;
+      const trackId = (typeof value === 'object' && value?.vehicleTrackId)
+        || (value?.targetScope === 'offer_vehicle'
+          ? (lead?.crm?.focusedVehicleTrackId || null)
+          : null);
+      if (trackId && colorRaw) {
+        nextLeadColorPatches.push({ trackId, preferredColor: String(colorRaw) });
+      }
     }
 
     if (field === 'transmissionPreference' && value) {
@@ -194,10 +308,21 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'trimPreference') {
-      const trims = Array.isArray(value) ? value : [value || fact.label];
+      const trims = Array.isArray(value)
+        ? value
+        : (value?.trims || (value?.trim ? [value.trim] : [value || fact.label]));
+      const trackId = (typeof value === 'object' && !Array.isArray(value) && value?.vehicleTrackId)
+        || null;
+      const focusId = trackId
+        || (value?.targetScope === 'offer_vehicle'
+          ? (lead?.crm?.focusedVehicleTrackId || null)
+          : null);
       for (const trim of trims) {
         const label = String(trim ?? '').trim();
-        if (label) {
+        if (!label) continue;
+        if (focusId) {
+          nextLeadTrimPatches.push({ trackId: focusId, trimLabel: label });
+        } else {
           profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], label);
         }
       }
@@ -245,6 +370,12 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'vehicleInterest' && value?.modelKey) {
+      // PDF-Modell ≠ aktives Akte-Modell: Fokus nur nach explizitem Switch
+      if (value.conflictWithActive || value.preserveActiveFocus) {
+        if (value.acceptModelSwitch !== true) {
+          continue;
+        }
+      }
       profile.selectedModelKey = value.modelKey;
       profile.modelHint = value.modelKey;
       if (String(value.modelKey).toLowerCase().startsWith('ev')) {
@@ -262,16 +393,41 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
 
     if (field === 'vehicleInterestMulti') {
       const entries = Array.isArray(value) ? value : [];
-      const keys = entries
-        .map((entry) => (typeof entry === 'string' ? entry : entry?.modelKey))
+      const normalized = entries
+        .map((entry) => {
+          if (typeof entry === 'string') {
+            const key = String(entry).toLowerCase().replace(/^kia\s+/i, '').trim();
+            if (!key) return null;
+            const model = /^ev\d$/i.test(key) ? key.toUpperCase() : key;
+            return { modelKey: key, model, make: 'Kia', label: `Kia ${model}` };
+          }
+          const key = String(entry?.modelKey || entry?.model || '')
+            .toLowerCase()
+            .replace(/^kia\s+/i, '')
+            .trim();
+          if (!key) return null;
+          const model = /^ev\d$/i.test(key)
+            ? key.toUpperCase()
+            : (entry.model || key);
+          return {
+            modelKey: key,
+            model,
+            trim: entry.trim || null,
+            make: entry.make || 'Kia',
+            label: entry.label
+              || [entry.make || 'Kia', model, entry.trim].filter(Boolean).join(' '),
+          };
+        })
         .filter(Boolean);
+      const keys = normalized.map((e) => e.modelKey).filter(Boolean);
       if (keys.length) {
         profile.modelCandidates = keys;
+        multiVehicleInterests = normalized;
       }
       if (fact.label) {
         profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
       }
-      // kein selectedModelKey – Mehrdeutigkeit bewusst offen lassen
+      // kein selectedModelKey – Mehrdeutigkeit bewusst offen lassen (Tracks werden unten angelegt)
       touchedProfile = true;
     }
 
@@ -323,6 +479,40 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     };
   }
 
+  const bestName = pickBestCustomerName(facts);
+  if (bestName) {
+    const identity = deriveContactIdentity(
+      {
+        ...contact,
+        name: contact.name || bestName,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        salutation: contact.salutation,
+      },
+      bestName,
+    );
+    // Nur anreichern / ersetzen wenn vollständiger als bisher (Vor+Nachname)
+    const currentDisplay = String(contact.name || next.name || '').trim();
+    const nextPayload = buildContactPayloadFromIdentity(identity, {
+      phone: contact.phone || '',
+      email: contact.email || '',
+      address: contact.address,
+    });
+    const shouldReplaceName = !currentDisplay
+      || scoreCustomerNameCandidate(nextPayload.name) >= scoreCustomerNameCandidate(currentDisplay);
+    if (shouldReplaceName) {
+      Object.assign(contact, {
+        name: nextPayload.name,
+        firstName: nextPayload.firstName,
+        lastName: nextPayload.lastName,
+        salutation: nextPayload.salutation,
+        kind: nextPayload.kind,
+        companyName: nextPayload.companyName,
+      });
+      touchedContact = true;
+    }
+  }
+
   if (touchedContact) {
     next = {
       ...next,
@@ -338,9 +528,77 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     next = mergeNeedProfileIntoLead(next, profile);
   }
 
-  if (vehicleInterestFocus?.modelKey) {
+  for (const patch of nextLeadTrimPatches) {
+    if (!patch?.trackId || !patch.trimLabel) continue;
+    const configs = next?.crm?.vehicleConfigurations ?? [];
+    next = {
+      ...next,
+      crm: {
+        ...(next.crm || {}),
+        vehicleConfigurations: configs.map((config) => (
+          config?.id === patch.trackId
+            ? {
+              ...config,
+              trimLabel: patch.trimLabel,
+              updatedAt: new Date().toISOString(),
+            }
+            : config
+        )),
+      },
+    };
+  }
+  for (const patch of nextLeadColorPatches) {
+    if (!patch?.trackId || !patch.preferredColor) continue;
+    next = patchVehicleTrackOnLead(next, patch.trackId, {
+      preferredColor: patch.preferredColor,
+    });
+    const configs = next?.crm?.vehicleConfigurations ?? [];
+    next = {
+      ...next,
+      crm: {
+        ...(next.crm || {}),
+        vehicleConfigurations: configs.map((config) => (
+          config?.id === patch.trackId
+            ? {
+              ...config,
+              colorLabel: patch.preferredColor,
+              updatedAt: new Date().toISOString(),
+            }
+            : config
+        )),
+      },
+    };
+  }
+
+  if (multiVehicleInterests?.length) {
+    const multi = ensureMultiVehicleInterestTracksOnLead(next, multiVehicleInterests, {
+      sharedRequirements: [...new Set(sharedTrackRequirements)],
+    });
+    next = multi.lead;
+  } else if (vehicleInterestFocus?.modelKey) {
     const focused = focusVehicleInterestOnLead(next, vehicleInterestFocus);
     next = focused.lead;
+    if (sharedTrackRequirements.length && focused.trackId) {
+      const meta = (next.crm?.vehicleConfigurations || [])
+        .find((c) => c?.id === focused.trackId);
+      const prevReqs = meta?.vehicleTrack?.customerRequirements || [];
+      next = patchVehicleTrackOnLead(next, focused.trackId, {
+        customerRequirements: [...new Set([...prevReqs, ...sharedTrackRequirements])],
+      });
+    }
+  } else if (sharedTrackRequirements.length) {
+    // Soft-Wünsche (AHK) auf alle offenen/aktiven Spuren spiegeln
+    const tracks = listCustomerVehicleTracks(next).filter((t) => (
+      t.status === VEHICLE_TRACK_STATUS.OPEN
+      || t.status === VEHICLE_TRACK_STATUS.ACTIVE
+      || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+    ));
+    for (const track of tracks) {
+      const prev = track.customerRequirements || [];
+      next = patchVehicleTrackOnLead(next, track.id, {
+        customerRequirements: [...new Set([...prev, ...sharedTrackRequirements])],
+      });
+    }
   }
 
   if (appointmentValue?.startAt) {
@@ -376,9 +634,69 @@ function hasPreparedCustomerFollowThrough(turn = {}) {
       || a.type === SELLER_TURN_INTENTS.INBOUND_LEAD
       || a.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY
       || a.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT
+      || (
+        a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+        && a.payload?.batch === true
+        && Array.isArray(a.payload?.trackIds)
+        && a.payload.trackIds.length >= 2
+      )
     )
     && a.status === 'prepared'
   ));
+}
+
+function applyBatchOfferOrdersIfPresent(lead, turn) {
+  const batchOfferAction = (turn.preparedActions ?? []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    && a.status === 'prepared'
+    && a.payload?.batch === true
+    && Array.isArray(a.payload?.trackIds)
+    && a.payload.trackIds.length >= 2
+  ));
+  if (!batchOfferAction) {
+    return { lead, applied: false, labels: [] };
+  }
+  const nowIso = new Date().toISOString();
+  const existingOrders = Array.isArray(lead.crm?.openOfferOrders)
+    ? lead.crm.openOfferOrders
+    : [];
+  const models = Array.isArray(batchOfferAction.payload.models)
+    ? batchOfferAction.payload.models
+    : [];
+  const batchOrders = batchOfferAction.payload.trackIds.map((trackId, index) => {
+    const modelMeta = models.find((m) => m?.trackId === trackId) || {};
+    const track = listCustomerVehicleTracks(lead).find((t) => t.id === trackId);
+    const displayName = modelMeta.displayName
+      || track?.displayName
+      || modelMeta.modelKey
+      || 'Fahrzeug';
+    return {
+      id: `oor-batch-${trackId}-${index}`,
+      offerId: null,
+      trackId,
+      model: modelMeta.modelKey || track?.modelLabel || null,
+      trim: track?.config?.trimLabel || null,
+      status: 'prepared',
+      label: `Angebotsauftrag ${displayName}`,
+      createdAt: nowIso,
+      source: 'seller_batch_offers',
+    };
+  });
+  const kept = existingOrders.filter((o) => (
+    !batchOfferAction.payload.trackIds.includes(o?.trackId)
+    || o?.source !== 'seller_batch_offers'
+  ));
+  return {
+    lead: {
+      ...lead,
+      crm: {
+        ...(lead.crm || {}),
+        openOfferOrders: [...batchOrders, ...kept],
+      },
+    },
+    applied: true,
+    labels: [`${batchOrders.length} Angebotsaufträge vorbereitet`],
+  };
 }
 
 function applyDocumentsPackageIfPresent(lead, turn, options = {}) {
@@ -567,6 +885,26 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     }
 
     let nextLead = contractResult.applied ? contractResult.lead : workingLead;
+    const batchOnly = applyBatchOfferOrdersIfPresent(nextLead, turn);
+    if (batchOnly.applied) {
+      nextLead = batchOnly.lead;
+      if (options.postFeedCard !== false) {
+        const posted = postCleverAssistFeedCard({
+          lead: nextLead,
+          title: '✨ Clever hat vorbereitet',
+          text: batchOnly.labels.join(' · ') || 'Angebotsaufträge vorbereitet',
+          visibleToCustomer: false,
+        });
+        if (posted.message) nextLead = posted.lead;
+      }
+      return {
+        ok: true,
+        lead: nextLead,
+        acceptedLabels: batchOnly.labels,
+        created: createdFromInbound,
+      };
+    }
+
     if (options.postFeedCard !== false) {
       const preparedLabels = (turn.preparedActions ?? [])
         .filter((a) => a.status === 'prepared')
@@ -614,15 +952,58 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     };
   }
 
-  const labels = facts.map((f) => String(f.label ?? '').trim()).filter(Boolean);
+  const labels = facts
+    .filter((f) => shouldPersistSellerInsightLabel(f, workingLead))
+    .map((f) => String(f.label ?? '').trim())
+    .filter(Boolean);
   // Inbound-/Extraktions-Accept → Clever-Quelle (nicht Merken/Picker)
   const insightSource = inbound?.detected ? 'clever' : 'seller';
-  let nextLead = appendSellerInsightsFromTexts(workingLead, labels, {
-    context: 'universal_review',
-    sellerId: options.sellerId,
-    sellerName: options.sellerName,
-    source: insightSource,
-  });
+  let nextLead = workingLead;
+  for (const fact of facts) {
+    if (!shouldPersistSellerInsightLabel(fact, nextLead)) continue;
+    const label = String(fact.label ?? '').trim();
+    if (!label) continue;
+    const understoodLabels = fact.field === 'serviceInclusionWish'
+      || classifySnapshotNoteLabel(label).slot === 'serviceWish'
+      ? [label]
+      : undefined;
+    nextLead = appendSellerInsightsFromTexts(nextLead, [label], {
+      context: 'universal_review',
+      sellerId: options.sellerId,
+      sellerName: options.sellerName,
+      source: insightSource,
+      ...(understoodLabels ? { understoodLabels } : {}),
+    });
+  }
+
+  // Inbound-Kontakt: voller Name vor Fact-Apply (nicht nur „Marcel“)
+  if (inbound?.detected && inbound?.contact) {
+    const bestInboundName = pickBestCustomerName(facts, inbound.contact);
+    if (bestInboundName) {
+      const identity = deriveContactIdentity(
+        {
+          ...(nextLead.contact || {}),
+          firstName: inbound.contact.firstName,
+          lastName: inbound.contact.lastName,
+          salutation: inbound.contact.salutation,
+        },
+        bestInboundName,
+      );
+      const payload = buildContactPayloadFromIdentity(identity, {
+        phone: inbound.contact.phone || nextLead.contact?.phone || '',
+        email: inbound.contact.email || nextLead.contact?.email || '',
+        address: nextLead.contact?.address,
+      });
+      nextLead = {
+        ...nextLead,
+        name: payload.name || nextLead.name,
+        contact: {
+          ...(nextLead.contact || {}),
+          ...payload,
+        },
+      };
+    }
+  }
 
   // Epic 2: Dual commercial scenarios → eine Spur + zwei Offer-Slots
   const homepageDraft = turn.homepageInquiry?.hasDualScenarios
@@ -733,6 +1114,14 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   const trackFeedback = mapSellerFactsToTrackFeedback(facts, nextLead);
   if (trackFeedback.length) {
     nextLead = applyTrackFeedbackFacts(nextLead, trackFeedback);
+  }
+
+  const batchApplied = applyBatchOfferOrdersIfPresent(nextLead, turn);
+  if (batchApplied.applied) {
+    nextLead = batchApplied.lead;
+    for (const label of batchApplied.labels) {
+      if (!labels.includes(label)) labels.push(label);
+    }
   }
 
   // Slice 18: Nach Confirm Nachfolgeangebot auf Favoriten-Spur markieren (kein Auto-Send)

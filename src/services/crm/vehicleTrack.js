@@ -306,6 +306,153 @@ export function patchVehicleTrackOnLead(lead = {}, configId, trackPatch = {}) {
 }
 
 /**
+ * Mehrere Modellinteressen in einem Turn (Telefon-Capture) → Spuren anlegen.
+ * Kein Fokus-Steal: bestehende ACTIVE/FAVORITE bleiben; neue Spuren OPEN
+ * (erste wird ACTIVE nur wenn noch keine aktive Spur existiert).
+ * Shared Requirements (AHK, …) landen auf allen betroffenen Spuren.
+ *
+ * @param {object} lead
+ * @param {Array<{ modelKey?: string, model?: string, trim?: string, make?: string, label?: string }|string>} interests
+ * @param {{ sharedRequirements?: string[] }} [options]
+ * @returns {{ lead: object, trackIds: string[], createdCount: number }}
+ */
+export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = [], options = {}) {
+  const sharedRequirements = Array.isArray(options.sharedRequirements)
+    ? options.sharedRequirements.filter(Boolean)
+    : [];
+  const entries = (Array.isArray(interests) ? interests : [])
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        const key = String(entry).toLowerCase().replace(/^kia\s+/i, '').trim();
+        if (!key) return null;
+        const modelLabel = /^ev\d$/i.test(key) ? key.toUpperCase() : key;
+        return {
+          modelKey: key,
+          model: modelLabel,
+          trim: null,
+          make: 'Kia',
+          label: `Kia ${modelLabel}`,
+        };
+      }
+      const key = String(entry?.modelKey || entry?.model || '')
+        .toLowerCase()
+        .replace(/^kia\s+/i, '')
+        .trim();
+      if (!key) return null;
+      const modelLabel = /^ev\d$/i.test(key)
+        ? key.toUpperCase()
+        : (entry.model || key);
+      return {
+        modelKey: key,
+        model: modelLabel,
+        trim: entry.trim || null,
+        make: entry.make || 'Kia',
+        label: entry.label
+          || [entry.make || 'Kia', modelLabel, entry.trim].filter(Boolean).join(' '),
+      };
+    })
+    .filter(Boolean);
+
+  if (!entries.length) {
+    return { lead, trackIds: [], createdCount: 0 };
+  }
+
+  let next = lead;
+  const trackIds = [];
+  let createdCount = 0;
+  const existingTracks = listCustomerVehicleTracks(next);
+  const hasActive = existingTracks.some((t) => (
+    t.status === VEHICLE_TRACK_STATUS.ACTIVE
+    || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+  ));
+
+  entries.forEach((interest, index) => {
+    const vehicleKey = buildVehicleKey({
+      brand: 'kia',
+      model: interest.model,
+      modelKey: interest.modelKey,
+    });
+    const ensured = ensureVehicleTrack(next, {
+      vehicleKey,
+      displayName: interest.label,
+      model: interest.model,
+      modelKey: interest.modelKey,
+      trimLabel: interest.trim || '',
+    });
+    next = ensured.lead;
+    if (ensured.created) createdCount += 1;
+    trackIds.push(ensured.trackId);
+
+    const shouldActivate = !hasActive && index === 0;
+    const meta = getVehicleTrackMeta(
+      (next.crm?.vehicleConfigurations || []).find((c) => c?.id === ensured.trackId) || {},
+    );
+    const reqs = new Set([
+      ...(meta.customerRequirements || []),
+      ...sharedRequirements,
+    ]);
+    next = patchVehicleTrackOnLead(next, ensured.trackId, {
+      status: shouldActivate ? VEHICLE_TRACK_STATUS.ACTIVE : (
+        meta.status === VEHICLE_TRACK_STATUS.FAVORITE
+        || meta.status === VEHICLE_TRACK_STATUS.ACTIVE
+          ? meta.status
+          : VEHICLE_TRACK_STATUS.OPEN
+      ),
+      customerRequirements: [...reqs],
+      lastActivityAt: new Date().toISOString(),
+    });
+  });
+
+  const firstId = trackIds[0] || null;
+  const first = entries[0];
+  const focusId = next.crm?.focusedVehicleTrackId
+    || (hasActive
+      ? existingTracks.find((t) => (
+        t.status === VEHICLE_TRACK_STATUS.ACTIVE
+        || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+      ))?.id
+      : firstId);
+
+  if (first && firstId) {
+    const modelLabel = first.model;
+    next = {
+      ...next,
+      // Nur setzen wenn bisher kein Fokus-Fahrzeug – sonst Multi-Capture klebt nicht um
+      vehicle: next.vehicle?.modelKey && hasActive
+        ? next.vehicle
+        : {
+          ...(next.vehicle || {}),
+          brand: first.make || 'Kia',
+          model: modelLabel,
+          trim: first.trim || next.vehicle?.trim || '',
+          modelKey: first.modelKey,
+          label: first.label,
+        },
+      crm: {
+        ...(next.crm || {}),
+        focusedVehicleTrackId: focusId || firstId,
+        needProfile: {
+          ...(next.crm?.needProfile || {}),
+          modelCandidates: [
+            ...new Set([
+              ...(next.crm?.needProfile?.modelCandidates || []),
+              ...entries.map((e) => e.modelKey),
+            ]),
+          ],
+          ...(!hasActive ? {
+            selectedModelKey: first.modelKey,
+            modelHint: first.modelKey,
+            ...(String(first.modelKey).startsWith('ev') ? { fuel: 'electric' } : {}),
+          } : {}),
+        },
+      },
+    };
+  }
+
+  return { lead: next, trackIds, createdCount };
+}
+
+/**
  * Explizites Modellinteresse → Spur anlegen/fokussieren + lead.vehicle setzen.
  * Demoted andere ACTIVE/FAVORITE auf OPEN (kein Löschen).
  */
@@ -406,10 +553,95 @@ export function focusVehicleInterestOnLead(lead = {}, {
       vehicleConfigurations: ordered,
       openOfferOrders: nextOrders,
       focusedVehicleTrackId: trackId,
+      needProfile: {
+        ...(next.crm?.needProfile || {}),
+        selectedModelKey: key,
+        modelHint: key,
+        ...(key.startsWith('ev') ? { fuel: 'electric' } : {}),
+      },
     },
   };
 
   return { lead: next, trackId, created: ensured.created };
+}
+
+/**
+ * Aktives Seller-/Akte-Modell (Fokus-Spur → ACTIVE/FAVORITE → Need-Profile → lead.vehicle).
+ * @param {object} [lead]
+ * @returns {{ modelKey: string, model: string, label: string, trim: string|null }|null}
+ */
+export function resolveActiveSellerModelInterest(lead = {}) {
+  const normalizeKey = (raw) => String(raw || '')
+    .toLowerCase()
+    .replace(/^kia\s+/i, '')
+    .replace(/\s+/g, '')
+    .trim();
+
+  const fromConfig = (config) => {
+    if (!config) return null;
+    const key = normalizeKey(config.modelKey || config.model);
+    if (!key) return null;
+    const model = /^ev\d$/i.test(key)
+      ? key.toUpperCase()
+      : String(config.model || key).replace(/^kia\s+/i, '');
+    return {
+      modelKey: key,
+      model,
+      trim: config.trimLabel || null,
+      label: buildTrackDisplayName(config),
+    };
+  };
+
+  const configs = lead?.crm?.vehicleConfigurations ?? [];
+  const focusedId = lead?.crm?.focusedVehicleTrackId;
+  if (focusedId) {
+    const focused = fromConfig(configs.find((c) => c?.id === focusedId));
+    if (focused) return focused;
+  }
+
+  const tracks = listCustomerVehicleTracks(lead);
+  const active = tracks.find((t) => (
+    t.status === VEHICLE_TRACK_STATUS.ACTIVE
+    || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+  ));
+  if (active) {
+    const key = normalizeKey(active.modelKey || active.modelLabel || active.vehicleKey?.replace(/^kia-/, ''));
+    if (key) {
+      return {
+        modelKey: key,
+        model: /^ev\d$/i.test(key) ? key.toUpperCase() : String(active.modelLabel || key),
+        trim: active.trimLabel || null,
+        label: active.displayName || active.modelLabel || key,
+      };
+    }
+  }
+
+  const profile = lead?.crm?.needProfile || {};
+  const profileKey = normalizeKey(profile.selectedModelKey || profile.modelHint);
+  if (profileKey) {
+    const model = /^ev\d$/i.test(profileKey) ? profileKey.toUpperCase() : profileKey;
+    return {
+      modelKey: profileKey,
+      model,
+      trim: null,
+      label: `Kia ${model}`,
+    };
+  }
+
+  const vehicleKey = normalizeKey(lead?.vehicle?.modelKey || lead?.vehicle?.model);
+  if (vehicleKey) {
+    const model = /^ev\d$/i.test(vehicleKey)
+      ? vehicleKey.toUpperCase()
+      : String(lead.vehicle.model || vehicleKey).replace(/^kia\s+/i, '');
+    return {
+      modelKey: vehicleKey,
+      model,
+      trim: lead.vehicle.trim || null,
+      label: lead.vehicle.label || [lead.vehicle.brand || 'Kia', model].filter(Boolean).join(' '),
+    };
+  }
+
+  return null;
 }
 
 /**

@@ -110,7 +110,11 @@ export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
     }
 
     // Explizites Modellinteresse → Spur fokussieren (Favorit nur bei Favorit-Cue)
+    // PDF↔Akte-Konflikt: Fokus nicht still auf PDF-Modell umschalten
     if (fact.field === 'vehicleInterest' && fact.value?.modelKey) {
+      if (fact.value.conflictWithActive || fact.value.preserveActiveFocus) {
+        if (fact.value.acceptModelSwitch !== true) continue;
+      }
       const trackId = resolveTrackIdForModel(lead, fact.value.modelKey);
       const entry = ensure(trackId);
       if (entry) {
@@ -119,41 +123,63 @@ export function mapSellerFactsToTrackFeedback(facts = [], lead = {}) {
           ? VEHICLE_TRACK_STATUS.FAVORITE
           : VEHICLE_TRACK_STATUS.ACTIVE;
       }
+      continue;
+    }
+
+    // Multi-Capture: alle Modelle als offene Spuren markieren (Status nur wenn Track schon existiert)
+    if (fact.field === 'vehicleInterestMulti') {
+      const entries = Array.isArray(fact.value) ? fact.value : [];
+      for (const entry of entries) {
+        const key = typeof entry === 'string' ? entry : (entry?.modelKey || entry?.model);
+        const trackId = resolveTrackIdForModel(lead, key);
+        const mapped = ensure(trackId);
+        if (mapped && !mapped.status) {
+          mapped.status = VEHICLE_TRACK_STATUS.OPEN;
+        }
+      }
     }
   }
 
-  // Requirements / Farbe / Lieferzeit dem Favoriten (oder einzigen Feedback-Track) zuordnen
-  const favoriteEntry = [...byTrack.values()].find(
+  // Requirements / Farbe / Lieferzeit: bei Multi auf alle betroffenen Spuren,
+  // sonst dem Favoriten (oder einzigen Feedback-Track)
+  const targetEntries = [...byTrack.values()];
+  const favoriteEntry = targetEntries.find(
     (e) => e.status === VEHICLE_TRACK_STATUS.FAVORITE,
-  ) ?? [...byTrack.values()][0] ?? null;
+  ) ?? targetEntries[0] ?? null;
 
-  if (favoriteEntry) {
-    const reqs = new Set(favoriteEntry.customerRequirements ?? []);
-    for (const fact of facts) {
-      if (!fact || fact.needsConfirmation) continue;
-      if (fact.field === 'towHitchRequired' && fact.value) {
-        reqs.add('AHK wichtig');
+  const shareTargets = targetEntries.length > 1
+    ? targetEntries
+    : (favoriteEntry ? [favoriteEntry] : []);
+
+  if (shareTargets.length) {
+    for (const target of shareTargets) {
+      const reqs = new Set(target.customerRequirements ?? []);
+      for (const fact of facts) {
+        if (!fact || fact.needsConfirmation) continue;
+        if (fact.field === 'towHitchRequired' && fact.value) {
+          reqs.add('AHK wichtig');
+        }
+        if (fact.field === 'colorPreference' && (fact.value || fact.label)) {
+          const color = String(fact.value || fact.label);
+          target.preferredColor = color;
+          reqs.add(color.charAt(0).toUpperCase() + color.slice(1));
+        }
+        if (
+          (fact.field === 'deliveryDeadline' && fact.value?.important)
+          || (fact.field === 'deliveryEstimateMonths' && /wichtig/i.test(String(fact.label || '')))
+          || fact.field === 'deliveryTimeImportance'
+          || (fact.factClass === SELLER_FACT_CLASS.CUSTOMER_NEED && /lieferzeit/i.test(String(fact.label || '')))
+        ) {
+          target.deliveryTimeImportance = 'high';
+          reqs.add('Lieferzeit wichtig');
+        }
+        if (fact.field === 'sunroofRequired' && fact.value) {
+          reqs.add('Schiebedach');
+        }
       }
-      if (fact.field === 'colorPreference' && (fact.value || fact.label)) {
-        const color = String(fact.value || fact.label);
-        favoriteEntry.preferredColor = color;
-        reqs.add(color.charAt(0).toUpperCase() + color.slice(1));
+      if (reqs.size) {
+        target.customerRequirements = [...reqs];
       }
-      if (
-        (fact.field === 'deliveryDeadline' && fact.value?.important)
-        || (fact.field === 'deliveryEstimateMonths' && /wichtig/i.test(String(fact.label || '')))
-        || fact.field === 'deliveryTimeImportance'
-        || (fact.factClass === SELLER_FACT_CLASS.CUSTOMER_NEED && /lieferzeit/i.test(String(fact.label || '')))
-      ) {
-        favoriteEntry.deliveryTimeImportance = 'high';
-        reqs.add('Lieferzeit wichtig');
-      }
-      if (fact.field === 'sunroofRequired' && fact.value) {
-        reqs.add('Schiebedach');
-      }
-    }
-    if (reqs.size) {
-      favoriteEntry.customerRequirements = [...reqs];
     }
   }
 

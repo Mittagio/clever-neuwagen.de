@@ -151,7 +151,9 @@ Rabatt 449 %
     ));
     assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'open_offer_handoff'));
     assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'upload_pdf'));
-    assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'enter_rate'));
+    assert.ok(!offerSec?.primaryActions?.some((a) => a.action === 'enter_rate'));
+    assert.ok(!offerSec?.primaryActions?.some((a) => a.action === 'calc_cash'));
+    assert.match(String(offerSec?.clarifyPrompt || review.summaryLine || ''), /Monatsrate/i);
     assert.doesNotMatch(String(offerSec?.line || ''), /unvollständig/i);
   }
 }

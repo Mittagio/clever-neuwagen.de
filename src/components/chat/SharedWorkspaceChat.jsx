@@ -232,13 +232,24 @@ export default function SharedWorkspaceChat({
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
-    if (!autoGrow || compactMode || composerEditMode) {
+    // Compact Idle: kein Grow. Sobald Text da ist / Expanded: mitwachsen (max ~8 Zeilen).
+    if (!autoGrow || composerEditMode || (compactMode && !String(draft || '').trim())) {
       el.style.height = '';
       return;
     }
+    const styles = window.getComputedStyle(el);
+    const lineHeight = Number.parseFloat(styles.lineHeight) || 22.5;
+    const padY = (Number.parseFloat(styles.paddingTop) || 0)
+      + (Number.parseFloat(styles.paddingBottom) || 0);
+    const minPx = Math.max(44, Math.round(lineHeight + padY));
+    const maxPx = Math.min(
+      Math.round(lineHeight * 8 + padY),
+      Math.round(window.innerHeight * 0.32),
+      240,
+    );
     el.style.height = '0px';
-    const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.42));
-    el.style.height = `${Math.max(44, next)}px`;
+    const next = Math.min(el.scrollHeight, maxPx);
+    el.style.height = `${Math.max(minPx, next)}px`;
   }, [draft, autoGrow, compactMode, composerEditMode]);
 
   const showFeedFilters = role === 'seller' && Array.isArray(items) && items.length > 0;
@@ -542,8 +553,8 @@ export default function SharedWorkspaceChat({
           className={[
             'sw-composer',
             composerEditMode ? 'sw-composer--message-edit' : '',
-            compactMode ? 'sw-composer--compact' : '',
-            autoGrow && !compactMode ? 'sw-composer--autogrow' : '',
+            compactMode && !String(draft || '').trim() ? 'sw-composer--compact' : '',
+            autoGrow && (!compactMode || String(draft || '').trim()) ? 'sw-composer--autogrow' : '',
           ].filter(Boolean).join(' ')}
           onSubmit={handleSubmit}
         >
@@ -787,10 +798,13 @@ export default function SharedWorkspaceChat({
               aria-labelledby={composerLabel ? `sw-composer-mode-${role}` : undefined}
               className={[
                 'sw-composer__input',
-                composerEditMode || (autoGrow && !compactMode) ? 'sw-composer__input--grow' : '',
-                compactMode ? 'sw-composer__input--compact' : '',
+                composerEditMode
+                  || (autoGrow && (!compactMode || String(draft || '').trim()))
+                  ? 'sw-composer__input--grow'
+                  : '',
+                compactMode && !String(draft || '').trim() ? 'sw-composer__input--compact' : '',
               ].filter(Boolean).join(' ')}
-              rows={composerEditMode ? 6 : (compactMode ? 1 : 2)}
+              rows={composerEditMode ? 6 : (compactMode && !String(draft || '').trim() ? 1 : 2)}
               value={draft}
               onChange={(e) => onDraftChange?.(e.target.value)}
               onFocus={() => onComposerFocus?.()}

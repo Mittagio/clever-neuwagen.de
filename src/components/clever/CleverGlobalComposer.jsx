@@ -625,6 +625,9 @@ export default function CleverGlobalComposer() {
         },
       });
       setLastTurn(turn);
+      if (req.leadId && lead?.id && typeof ctx?.setCurrentCustomer === 'function') {
+        ctx.setCurrentCustomer(lead);
+      }
       const model = turn.reviewModel
         || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
       setReviewModel(model);
@@ -1395,8 +1398,7 @@ export default function CleverGlobalComposer() {
     if (action.action === 'enter_rate' || action.id === 'enter_rate') {
       setFocused(true);
       setDraft('Monatsrate ');
-      setReviewModel(null);
-      setLastTurn(null);
+      // Kontext behalten – Agent braucht Lead/Turn für den Folgesatz
       return;
     }
     if (action.action === 'calc_cash' || action.id === 'calc_cash') {
@@ -1457,10 +1459,10 @@ export default function CleverGlobalComposer() {
         setLastTurn(null);
         return;
       }
-      // Incomplete Offer ohne Kundenakte: Rate/PDF statt stillem No-op
+      // Incomplete Offer ohne Kundenakte: Composer-Frage statt Mini-Menü
       setFocused(true);
-      setDraft('Monatsrate ');
-      pushComposerFeedback('Monatsrate eingeben oder Bank-PDF hochladen.', {
+      setDraft('');
+      pushComposerFeedback('Welche Monatsrate möchtest du hinterlegen?', {
         kind: 'neutral',
         ms: 3200,
       });
@@ -2521,7 +2523,7 @@ export default function CleverGlobalComposer() {
           intentChipTooltips={intentChipTooltips}
           hideIntentChips={Boolean(reviewModel) || dockCompact || useHeroPortal}
           compactMode={dockCompact}
-          autoGrow={!dockCompact}
+          autoGrow
           onComposerFocus={() => setFocused(true)}
           onComposerBlur={() => {
             if (

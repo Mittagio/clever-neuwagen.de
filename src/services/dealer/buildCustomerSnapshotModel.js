@@ -198,11 +198,21 @@ const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\
  */
 const HISTORY_NOISE_RE = /^(clever empfahl|clever-empfehlung|angebot |anruf\b|pdf\b|rückruf|✓|kunde hat|geöffnet|angesehen|nachricht |clever hat aufgenommen|wunschkonditionen aktualisiert|clever kundenhelfer aktualisiert|kundenbild aktualisiert|wunschrate aktualisiert|farbe aktualisiert|leasingende aktualisiert|bestandsfahrzeug aktualisiert|kinder aktualisiert|hund aktualisiert|rate aktualisiert)/i;
 /** Apply-/Intake-Prozessstatus – nie Soft-Summary (Confirm/Activity behalten Status). */
-const APPLY_PROCESS_NOISE_RE = /kunde angelegt|kunde verknüpft|angebotsauftrag vorbereitet|multi-source-intake|kundenakte aus multi-source|vertrag bereits vorhanden|neue kundenakte|bereits vorhandene übernahme|altvertrag erfasst|bestehende kundenakte ergänzt|offener angebotsauftrag|idempotenz|bereits übernommen/i;
+const APPLY_PROCESS_NOISE_RE = /kunde angelegt|kunde verknüpft|angebotsauftrag vorbereitet|multi-source-intake|kundenakte aus (?:multi-source|composer)|vertrag bereits vorhanden|neue kundenakte|bereits vorhandene übernahme|altvertrag erfasst|bestehende kundenakte ergänzt|offener angebotsauftrag|idempotenz|bereits übernommen|inbound über composer|kunde aus anfrage angelegt/i;
 /** Kurze System-Bestätigung „… aktualisiert“ / „… aktualisiert: …“ – kein Kundenfakt. */
 const SYSTEM_UPDATE_UPDATE_RE = /^(?:[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*(?:\s+[a-zäöüÄÖÜß0-9][\wäöüÄÖÜß\-]*){0,4})\s+aktualisiert(?:\s*:.*)?\.?$/i;
 /** Kompakt-Bestätigung ohne Chip-Liste („Für X aufgenommen“) – kein Soft-Fakt. */
 const HISTORY_BARE_CONFIRM_RE = /^für\s+.+\s+aufgenommen\.?$/i;
+/**
+ * Inbound-/Formular-Boilerplate – nie Soft-Summary-Chip
+ * („Quelle: https://…“, Kontaktanfrage, Mail-Header-Reste).
+ */
+const INTAKE_FORM_NOISE_RE = /^(?:quelle\s*:|https?:\/\/|www\.)|kontaktanfrage|kontaktformular|es ist eine kontaktanfrage|urspr[uü]ngliche nachricht|weitergeleitete nachricht|begin forwarded message|^(?:von|from|gesendet|sent|an|to|betreff|subject)\s*:/i;
+/** Kontakt-Identität (Tel/Mail/Name) – Header/Kundendaten, nicht Kundenwissen-Summary. */
+const CONTACT_EMAIL_LABEL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const CONTACT_PHONE_LABEL_RE = /^(?:\+?\d[\d\s/().-]{6,}\d)$/;
+/** Nur echte Anrede+Name (Kapitalisierung) – nicht „Frau entscheidet mit“. */
+const CONTACT_NAME_WITH_SALUTATION_RE = /^(?:Herr|Frau|Hr\.|Fr\.)\s+[A-ZÄÖÜ][a-zäöüß'-]+(?:\s+[A-ZÄÖÜ][a-zäöüß'-]+){0,3}$/;
 
 /** True wenn Label Timeline-/System-Rauschen ist (nie Soft-Fakt). */
 export function isSnapshotSystemNoiseLabel(label = '') {
@@ -210,11 +220,68 @@ export function isSnapshotSystemNoiseLabel(label = '') {
   if (!text) return true;
   if (HISTORY_NOISE_RE.test(text) || HISTORY_BARE_CONFIRM_RE.test(text)) return true;
   if (APPLY_PROCESS_NOISE_RE.test(text)) return true;
+  if (INTAKE_FORM_NOISE_RE.test(text)) return true;
   if (text.length <= 72 && SYSTEM_UPDATE_UPDATE_RE.test(text)) return true;
   return false;
 }
+
+function normalizeSoftPhoneDigits(value = '') {
+  return String(value || '').replace(/\D/g, '');
+}
+
+/**
+ * Kontakt-Identität (Name/Tel/Mail) – gehört in Header, nie Soft-Summary.
+ * @param {string} label
+ * @param {object} [lead]
+ */
+export function isSnapshotContactIdentityLabel(label = '', lead = {}) {
+  const text = String(label ?? '').trim();
+  if (!text) return true;
+  if (CONTACT_EMAIL_LABEL_RE.test(text)) return true;
+  if (CONTACT_PHONE_LABEL_RE.test(text) && normalizeSoftPhoneDigits(text).length >= 8) return true;
+  if (CONTACT_NAME_WITH_SALUTATION_RE.test(text)) return true;
+
+  const contact = lead?.contact || {};
+  const email = String(contact.email || lead?.email || '').trim().toLowerCase();
+  if (email && text.toLowerCase() === email) return true;
+
+  const phoneDigits = normalizeSoftPhoneDigits(contact.phone || lead?.phone || '');
+  const labelDigits = normalizeSoftPhoneDigits(text);
+  if (phoneDigits.length >= 8 && labelDigits.length >= 8) {
+    if (
+      phoneDigits === labelDigits
+      || phoneDigits.endsWith(labelDigits.slice(-8))
+      || labelDigits.endsWith(phoneDigits.slice(-8))
+    ) {
+      return true;
+    }
+  }
+
+  const fullName = String(contact.name || lead?.name || '').trim().toLowerCase();
+  const first = String(contact.firstName || '').trim().toLowerCase();
+  const last = String(contact.lastName || '').trim().toLowerCase();
+  const composed = [first, last].filter(Boolean).join(' ');
+  const lower = text.toLowerCase().replace(/^(?:herr|frau|hr\.|fr\.)\s+/i, '').trim();
+  if (fullName && (lower === fullName || text.toLowerCase() === fullName)) return true;
+  if (composed && lower === composed) return true;
+  // Nur Vorname („Marcel“) wenn Nachname in der Akte bekannt – kein Soft-Chip
+  if (first && last && lower === first) return true;
+  // Vorname allein, wenn Kontakt bereits einen Anzeigenamen trägt (kein Soft „Marcel“)
+  if (first && lower === first && fullName && !/^neuer\s+kunde$/i.test(fullName)) return true;
+  // Vorname aus composed contact.name („Marcel Grube“) – kein Soft nur „Marcel“
+  if (
+    fullName
+    && /\s/.test(fullName)
+    && !/^neuer\s+kunde$/i.test(fullName)
+    && lower === fullName.split(/\s+/)[0]
+  ) {
+    return true;
+  }
+  if (last && lower === last && last.length >= 3) return true;
+  return false;
+}
 const DATE_IN_TEXT_RE = /\d{1,2}\.\d{1,2}\.\d{2,4}/;
-const MODEL_TRIM_RE = /\bev\s*[0-9]\b|\bsportage\b|\bceed\b|\bniro\b|\bsorento\b|\bpicanto\b|\bstonic\b|\bproceed\b|gt-?\s*line|\bspirit\b|\bplatinum\b|\bedition\b|\binteressant\b/i;
+const MODEL_TRIM_RE = /\bev\s*[0-9]\b|\bsportage\b|\bceed\b|\bniro\b|\bsorento\b|\bpicanto\b|\bstonic\b|\bproceed\b|\bxceed\b|gt-?\s*line|\bx-?\s*line|\bspirit\b|\bplatinum\b|\bedition\b|\bvision\b|\bair\b|\bearth\b|\bcore\b|\bdrivewise\b|\bstyle\b|\bconnect\b|\bwinter\b|\binteressant\b/i;
 const COMMERCIAL_NOTE_RE = /leasing|finanzierung|\bkauf\b|budget|\brate\b|\b\d+\s*monate?\b|\bkm\b|anzahlung|jahreskilometer|vertragsende|down\s*payment/i;
 const EQUIPMENT_NOTE_RE = /totwinkel|spurhalte|verkehrszeichen|blind\s*spot|lane\s*keep|w[äa]rmepumpe|\bhud\b|kamera|ahk|anh[äa]nger|panorama|sitzheizung|matrix|ausstattung|kofferraum|head-?up|800\s*v|ladeleistung|assistent|tempomat|notbrems|parkassistent|keyless|induktiv/i;
 /** Bestands-/GW-Fakten (Lead-Modell, nicht Kundenwissen-UI). */
@@ -306,11 +373,26 @@ export function classifySnapshotNoteLabel(label = '') {
     return { kind: 'activity', slot: 'activity' };
   }
 
+  // Kontakt-Identität (Tel/Mail/Anrede+Name) – nie Soft/Sonstiges
+  if (isSnapshotContactIdentityLabel(text) || isSnapshotContactIdentityLabel(raw)) {
+    return { kind: 'activity', slot: 'activity' };
+  }
+
   if (
     ACTIVITY_NOTE_RE.test(text)
     || (DATE_IN_TEXT_RE.test(text) && /gespr[äa]ch|termin|uhr|besuch|beratung/i.test(text))
   ) {
     return { kind: 'activity', slot: 'activity' };
+  }
+
+  // Wunsch: Kundenservice in der Rate – Soft, nicht Konditionen-Rauschen
+  if (/kundenservice.{0,48}(?:leasing)?rate|(?:service|wartung).{0,32}in\s+der\s+(?:leasing)?rate/i.test(text)) {
+    return {
+      kind: 'free',
+      slot: 'serviceWish',
+      remapLabel: text,
+      groupId: SOFT_SNAPSHOT_GROUP.SONSTIGES,
+    };
   }
 
   if (COMMERCIAL_NOTE_RE.test(text)) {
@@ -1331,6 +1413,7 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
   const pushUnique = (value, meta = {}) => {
     const text = String(value ?? '').trim();
     if (!text || isSnapshotSystemNoiseLabel(text)) return;
+    if (isSnapshotContactIdentityLabel(text, lead)) return;
     // Activity/System nie als Seller-Label in Soft schleusen
     if (classifySnapshotNoteLabel(text).kind === 'activity') return;
     const key = text.toLowerCase();
@@ -1361,6 +1444,13 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
     if (rawIsSpecificHuman) {
       pushUnique(rawText, meta);
     }
+    // Soft-Wunsch „Kundenservice in der Leasingrate“ – mergeText würde nur „Leasing“ behalten
+    const rawServiceWish = rawText
+      ? classifySnapshotNoteLabel(rawText)
+      : null;
+    if (rawText && rawServiceWish?.slot === 'serviceWish') {
+      pushUnique(rawText, meta);
+    }
     const fromInsight = insight.understoodLabels?.length
       ? insight.understoodLabels
       : [rawText].filter(Boolean);
@@ -1372,6 +1462,10 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
         continue;
       }
       if (rawIsSpecificHuman && isDogFactLabel(rawText) && /^hund$/i.test(display)) {
+        continue;
+      }
+      // Generisches „Leasing“ nicht neben spezifischem Service-in-Rate-Wunsch
+      if (rawServiceWish?.slot === 'serviceWish' && /^leasing$/i.test(display)) {
         continue;
       }
       pushUnique(display, meta);
@@ -2540,7 +2634,7 @@ export function splitExpandedChips(chips = [], maxVisible = SNAPSHOT_EXPANDED_VI
  * @param {object[]} groupsOrFacts
  * @param {number} [maxTokens]
  */
-export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS) {
+export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS, lead = null) {
   const facts = groupsOrFacts[0]?.facts
     ? groupsOrFacts.flatMap((g) => g.facts || [])
     : [...groupsOrFacts];
@@ -2550,6 +2644,7 @@ export function buildSnapshotSummary(groupsOrFacts = [], maxTokens = SNAPSHOT_SU
     if (!label) return false;
     if (/telefon fehlt|e-?mail fehlt/i.test(label)) return false;
     if (isSnapshotSystemNoiseLabel(label)) return false;
+    if (isSnapshotContactIdentityLabel(label, lead || {})) return false;
     return true;
   });
   const ranked = [...usable].sort((a, b) => (
@@ -2707,6 +2802,7 @@ export function buildCustomerSnapshotModel(lead = {}, options = {}) {
   const softSummary = buildSnapshotSummary(
     softGroups,
     options.maxSummaryTokens ?? SNAPSHOT_SUMMARY_MAX_TOKENS,
+    lead,
   );
   const softChips = flattenSnapshotChips(softGroups);
   const kernChips = annotateFacts(kern.chips, relevantSet, highlightSet);

@@ -14,6 +14,7 @@ import {
 import {
   hasExplicitAppointmentSellerCue,
   isOfferPdfDropContext,
+  reconcileOfferPdfVehicleInterestWithLead,
 } from './mapMagicOfferIntentToSellerFacts.js';
 import {
   buildProposedUpdatesFromFacts,
@@ -387,7 +388,10 @@ function finalizeSellerTurn({
 
   const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
 
-  let uniqueFacts = filterDuplicateFacts(facts, workingLead);
+  let uniqueFacts = reconcileOfferPdfVehicleInterestWithLead(
+    filterDuplicateFacts(facts, workingLead),
+    workingLead,
+  );
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
   const assistantContext = resolveAssistantContext({
     lead: workingLead,
@@ -455,11 +459,30 @@ function finalizeSellerTurn({
     ].sort((a, b) => b.confidence - a.confidence);
   }
 
+  // Offenes Angebot + Trim/Farbe-Follow-up („schwarz.“ / „Air.“ / „Mach Earth zu Air.“)
+  const identityOnOffer = uniqueFacts.some((f) => (
+    (f.field === 'trimPreference' || f.field === 'colorPreference')
+    && (
+      f.value?.targetScope === 'offer_vehicle'
+      || Boolean(offerCtx?.offerId || assistantContext.resolvedWorkingContext?.attachedVehicle)
+    )
+  ));
+  if (
+    identityOnOffer
+    && !intents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+  ) {
+    intents = [
+      ...intents,
+      { type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.94 },
+    ].sort((a, b) => b.confidence - a.confidence);
+  }
+
   const missingInformation = resolveMissingInformation({
     intents,
     facts: uniqueFacts,
     lead: workingLead,
     currentOfferContext: offerCtx,
+    workingContext: assistantContext.resolvedWorkingContext,
     sellerInput,
   });
 
@@ -1357,7 +1380,14 @@ export function runCleverSellerTurn({
   void conversationContext;
   void sellerContext;
 
-  const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
+  const interpreted = interpretSellerInput(sellerInput, {
+    attachments,
+    lead,
+    currentOfferContext,
+    workingContext: Array.isArray(workingContextItems)
+      ? { offer: currentOfferContext, attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null }
+      : null,
+  });
   return finalizeSellerTurn({
     lead,
     interpreted,
@@ -1424,7 +1454,14 @@ export async function runCleverSellerTurnAsync({
   offerAction = null,
   purpose = null,
 } = {}) {
-  const interpreted = interpretSellerInput(sellerInput, { attachments, lead });
+  const interpreted = interpretSellerInput(sellerInput, {
+    attachments,
+    lead,
+    currentOfferContext,
+    workingContext: Array.isArray(workingContextItems)
+      ? { offer: currentOfferContext, attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null }
+      : null,
+  });
   const gate = openAiOptions.forceEscalate
     ? {
       shouldEscalate: true,
@@ -1737,6 +1774,19 @@ function buildWarnings(facts, inputMode) {
   }
   if (facts.some((f) => f.field === 'vehicleInterestMulti')) {
     warnings.push('Mehrere Modellinteressen – nicht automatisch auf eines reduziert.');
+  }
+  const modelConflict = facts.find((f) => (
+    f.field === 'vehicleInterest' && f.value?.conflictWithActive
+  ));
+  if (modelConflict?.label) {
+    warnings.push(modelConflict.label);
+  }
+  const netRate = facts.find((f) => (
+    (f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+    && (f.value?.basis === 'net' || /netto/i.test(String(f.label || '')))
+  ));
+  if (netRate) {
+    warnings.push('Netto-Betrag erkannt – nicht still als Brutto übernehmen.');
   }
   return warnings;
 }

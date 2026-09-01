@@ -38,7 +38,7 @@ export default function SellerReviewFactChipEditor({
       ? String(chip.value)
       : String(chip.label || '');
     if (editor === LIVE_EDIT_EDITOR.TERM) {
-      const n = Number(String(chip.value ?? chip.label || '').replace(/\D/g, ''));
+      const n = Number(String(chip.value ?? chip.label ?? '').replace(/\D/g, ''));
       setDraft(Number.isFinite(n) && n > 0 ? String(n) : '');
       setCustomMode(Boolean(n) && !TERM_PRESETS.includes(n));
     } else if (editor === LIVE_EDIT_EDITOR.KM) {

@@ -680,6 +680,8 @@ const SAFE_REMEMBER_FACT_CLASSES = new Set([
 const SAFE_REMEMBER_VEHICLE_INTEREST_FIELDS = new Set([
   'colorPreference',
   'vehicleInterest',
+  // Telefon-Capture: mehrere Modelle in einem Turn → Spuren anlegen, kein Stuck-Review
+  'vehicleInterestMulti',
 ]);
 
 const SAFE_REMEMBER_COMMERCIAL_FIELDS = new Set([
