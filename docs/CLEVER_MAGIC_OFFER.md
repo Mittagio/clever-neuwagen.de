@@ -63,3 +63,5 @@ Keine zweite Angebotswahrheit. Der bisherige Kalkulator bleibt als Fallback („
 > Clever darf rechnen, was mathematisch eindeutig ist.  
 > Clever darf übernehmen, was Verkäufer oder Bank gerechnet haben.  
 > Clever darf niemals Bankkonditionen erfinden.
+
+Siehe auch: [CLEVER_CAPTURE_THEN_OFFER.md](./CLEVER_CAPTURE_THEN_OFFER.md) — Capture first; keine Web-/Katalog-Raten als Offer-Wahrheit.

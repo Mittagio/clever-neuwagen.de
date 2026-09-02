@@ -47,6 +47,7 @@ import { applyCleverAgentMutations } from '../../services/cleverAgent/applyCleve
 import {
   createEmptyAgentWorkingMemory,
   getConversationHistoryForAgent,
+  buildSellerTurnMemoryParams,
   updateAgentWorkingMemory,
   updateMemoryFromSellerTurn,
 } from '../../services/cleverAgent/cleverAgentWorkingMemory.js';
@@ -102,7 +103,7 @@ import {
   resolveIntentSecondaryActions,
   resolveVisiblePrimaryIntentChips,
 } from '../../services/cleverSeller/composerIntentChips.js';
-import { findOfferWorkingContext } from '../../services/crm/composerWorkingContext.js';
+import { findOfferWorkingContext, toCurrentOfferContext } from '../../services/crm/composerWorkingContext.js';
 import {
   applyQuietIntakeSubtaskResult,
   isQuietIntakeReview,
@@ -1340,12 +1341,20 @@ export default function CleverGlobalComposer() {
           customerName: lead?.contact?.name || lead?.name || '',
           scopeHint: 'dashboard',
           workingContextItems: ctx.attachedWorkingObjects || [],
+          ...buildSellerTurnMemoryParams(agentWorkingMemory),
           appContext: {
             routeContext: ctx.routeContext,
             attachedWorkingObjects: ctx.attachedWorkingObjects,
             dashboardContext: ctx.dashboardContext,
           },
         });
+        const policy = resolveSellerResponsePolicy(turn);
+        setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(
+          prev,
+          turn,
+          'Bereite ein Nachfolgeangebot vor.',
+          policy,
+        ));
         setLastTurn(turn);
         const model = turn.reviewModel
           || (shouldShowUniversalReview(turn) ? buildUniversalReviewModel(turn) : null);
@@ -1864,10 +1873,14 @@ export default function CleverGlobalComposer() {
           dashboardContext: ctx?.dashboardContext,
         },
         workingContextItems: ctx?.attachedWorkingObjects || [],
+        currentOfferContext: toCurrentOfferContext(
+          findOfferWorkingContext(ctx?.attachedWorkingObjects || []),
+        ) || buildSellerTurnMemoryParams(agentWorkingMemory).currentOfferContextFromMemory,
         customerName: customerDisplayName || '',
         pendingAction: lastTurn?.pendingAction
           || agentWorkingMemory?.pendingAction
           || null,
+        ...buildSellerTurnMemoryParams(agentWorkingMemory),
         intentConstraint,
         messagePurpose: intentPurpose?.messagePurpose || null,
         memoryCategory: intentPurpose?.memoryCategory || null,

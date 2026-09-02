@@ -27,6 +27,9 @@ import {
   buildContactPayloadFromIdentity,
   deriveContactIdentity,
 } from '../dealer/customerContactIdentity.js';
+import {
+  sanitizeCustomerNameCandidate,
+} from './resolveAssistantContext.js';
 
 const SELLER_COMMAND_START = /^(?:öffne|zeige|zeig|finde|suche|erstell|mach|schreib|sag|was\s+|wann\s+|wie\s+|schlag|bereite)/i;
 
@@ -80,8 +83,8 @@ export function extractStructuredLeadName(raw = '') {
 
   const labeled = text.match(STRUCTURED_LEAD_NAME_LABEL);
   if (labeled?.[1]) {
-    const cleaned = labeled[1].replace(/<[^>]+>/g, '').trim();
-    if (cleaned.length >= 3) return cleaned;
+    const cleaned = sanitizeCustomerNameCandidate(labeled[1].replace(/<[^>]+>/g, '').trim());
+    if (cleaned) return cleaned;
   }
 
   const angle = text.match(
@@ -89,7 +92,10 @@ export function extractStructuredLeadName(raw = '') {
   ) || text.match(
     /\b([A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+)+)\s*<[^>\s]+@[^>\s]+>/,
   );
-  if (angle?.[1]) return angle[1].trim();
+  if (angle?.[1]) {
+    const cleaned = sanitizeCustomerNameCandidate(angle[1].trim());
+    if (cleaned) return cleaned;
+  }
 
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8);
   for (const line of lines) {
@@ -97,15 +103,58 @@ export function extractStructuredLeadName(raw = '') {
       continue;
     }
     if (STRUCTURED_LEAD_NAME_LABEL.test(line)) continue;
-    if (/@/.test(line) || /\d{5,}/.test(line)) continue;
+    if (/@/.test(line) || /\d{5,}/.test(line)) {
+      // „Familie Müller, optional mail: …“ → Name vor Mail noch retten
+      const familyOnMailLine = line.match(/^familie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
+      if (familyOnMailLine) {
+        const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyOnMailLine[1]}`);
+        if (cleaned) return cleaned;
+      }
+      continue;
+    }
     if (STRUCTURED_LEAD_VEHICLE_CUE.test(line) && !/\s/.test(line.trim())) continue;
+
+    const familyLine = line.match(/^familie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
+    if (familyLine) {
+      const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyLine[1]}`);
+      if (cleaned) return cleaned;
+    }
+
     // „Alexander Schlayer“ oder „Schlayer Alexander Aalen“
     if (/^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+){1,3}$/.test(line)
       && line.length <= 60) {
-      return line;
+      const cleaned = sanitizeCustomerNameCandidate(line);
+      if (cleaned) return cleaned;
     }
   }
   return null;
+}
+
+/**
+ * Freier Seller-Capture-Dump (Multi-Fahrzeug + Soft/Konditionen) – kein Inbound-Miss.
+ * Klare Mail-Forwards/Header bleiben Inbound.
+ * @param {string} text
+ */
+export function isSellerFreestyleCaptureDump(text = '') {
+  const raw = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (raw.length < 40) return false;
+
+  const hasForward = /-----Ursprüngliche Nachricht-----|Forwarded message|Weitergeleitete Nachricht|Begin forwarded message|Anfang der weitergeleiteten Nachricht/i.test(raw);
+  const hasMailHeaders = /\b(?:Von|From):\s*.+/i.test(raw)
+    && /\b(?:Betreff|Subject):\s*.+/i.test(raw);
+  if (hasForward || hasMailHeaders) return false;
+  if (STRUCTURED_LEAD_NAME_LABEL.test(raw) && !/\bwill\s+angebote?\s+für\b/i.test(raw)) {
+    // Klassische Händler-Notiz mit Name:-Label bleibt Inbound
+    return false;
+  }
+
+  const evHits = raw.match(/\bev\s*[2-9]\b/gi) || [];
+  const multiVehicle = evHits.length >= 2
+    || (/\b(?:picanto|sportage|xceed|ceed|niro|sorento)\b/i.test(raw) && evHits.length >= 1);
+  const softOrWish = /\b(?:kinder|ahk|entscheidet\s+mit|max\.?\s*\d+|wunsch\s*konditionen|will\s+angebote?\s+für)\b/i.test(raw);
+  const identityCue = /\bfamilie\s+[A-Za-zÄÖÜäöüß-]+|\bkunde\s+hei(?:ss|ß)t\b|\b(?:herr|frau)\s+[A-Za-zÄÖÜäöüß-]{2,}/i.test(raw);
+
+  return Boolean(multiVehicle && (softOrWish || identityCue));
 }
 
 /**
@@ -116,6 +165,8 @@ export function isStructuredLeadNote(text = '') {
   const raw = String(text || '').replace(/\r\n/g, '\n').trim();
   if (raw.length < 50) return false;
   if (SELLER_COMMAND_START.test(raw)) return false;
+  // Multi-Fahrzeug Soft-Dump mit optional Mail → Capture-first, kein Inbound
+  if (isSellerFreestyleCaptureDump(raw)) return false;
 
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 4) return false;

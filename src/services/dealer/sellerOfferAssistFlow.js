@@ -66,6 +66,9 @@ export function enrichOfferTextWithCustomerWish(lead = {}, text = '') {
     parts.push('Kauf');
   }
 
+  // Keine Wunschrate / desiredRate in den Offer-Freitext – Capture-then-Offer:
+  // Budget bleibt Akte; belastbare Rate nur Seller/PDF/Bank im Angebotstool.
+
   return parts.filter(Boolean).join(', ');
 }
 

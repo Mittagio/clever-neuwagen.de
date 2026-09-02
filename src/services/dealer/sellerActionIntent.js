@@ -57,7 +57,9 @@ function isOfferShorthandWithoutWriteCue(text = '') {
 }
 
 const MESSAGE_PATTERNS = [
-  /\b(nachricht|whatsapp|mail|schreib|informier|meld)\b/i,
+  /\b(nachricht|whatsapp|schreib|informier|meld)\b/i,
+  // „mail:“ / „optional mail:“ = Kontakt, nicht Nachrichten-Intent
+  /\b(?:e-?mail|mail)\b(?!\s*:)/i,
   /\b(schick(?:e|en)?\s+(?:ihm|ihr|dem|der)|sag(?:e|en)?\s+(?:ihm|ihr))\b/i,
 ];
 

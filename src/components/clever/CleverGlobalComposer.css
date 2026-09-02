@@ -10,9 +10,10 @@
   justify-content: flex-end;
   margin: 0;
   padding: 0;
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  background: var(--color-surface, #fffcf9);
+  border: 1px solid rgba(28, 27, 25, 0.08);
+  box-shadow: none;
+  font-family: var(--font-sans);
   transition:
     max-height var(--clever-composer-motion),
     box-shadow var(--clever-composer-motion),
@@ -28,8 +29,9 @@
   width: 100%;
   max-height: none;
   border-radius: 24px;
-  border-color: rgba(15, 23, 42, 0.06);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(122, 115, 192, 0.2);
+  background: var(--color-surface, #fffcf9);
+  box-shadow: none;
 }
 
 .clever-global-composer--docked {
@@ -100,21 +102,21 @@
 .clever-global-composer__attach-action {
   flex: 0 0 auto;
   min-height: 30px;
-  padding: 5px 11px;
-  border: 1px solid rgba(109, 91, 184, 0.28);
+  padding: 5px 12px;
+  border: 1px solid rgba(122, 115, 192, 0.22);
   border-radius: 999px;
-  background: rgba(109, 91, 184, 0.08);
-  color: #4c3d8f;
+  background: transparent;
+  color: #4a4660;
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .clever-global-composer__attach-action.is-preselect {
-  border-color: rgba(109, 91, 184, 0.45);
-  background: rgba(109, 91, 184, 0.14);
+  border-color: rgba(122, 115, 192, 0.4);
+  background: rgba(122, 115, 192, 0.08);
 }
 
 .clever-global-composer__quick {
@@ -123,7 +125,7 @@
   justify-content: center;
   gap: 10px;
   margin: 0;
-  padding: 0.55rem 0 0.15rem;
+  padding: 0.75rem 0 0.25rem;
 }
 
 .clever-global-composer__quick-chip {
@@ -131,18 +133,19 @@
   align-items: center;
   gap: 7px;
   flex: 0 0 auto;
-  min-height: 38px;
-  padding: 8px 14px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid rgba(26, 28, 30, 0.1);
   border-radius: 999px;
   background: #fff;
-  color: #334155;
+  color: #4b5563;
   font: inherit;
+  font-family: var(--font-sans);
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 550;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
   transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
 }
 
@@ -157,9 +160,9 @@
 }
 
 .clever-global-composer__quick-chip:hover:not(:disabled) {
-  border-color: rgba(109, 91, 184, 0.35);
-  color: #4c3d8f;
-  background: #f8f6ff;
+  border-color: var(--color-clever-border, rgba(123, 114, 201, 0.35));
+  color: var(--color-clever, #7b72c9);
+  background: var(--color-clever-tint, #f0eef9);
 }
 
 .clever-global-composer__quick-chip:disabled {
@@ -319,12 +322,36 @@
 
 /* Hero: große ruhige Eingabefläche */
 .clever-global-composer--hero .sw-composer__input {
-  min-height: 88px;
+  min-height: 68px;
   max-height: min(36vh, 220px);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 400;
+  color: #1c1b19;
+}
+
+.clever-global-composer--hero .sw-composer {
+  border-top: none;
+  padding: 16px 18px 18px;
+  background: transparent;
+}
+
+.clever-global-composer--hero .sw-composer__card {
+  border: 1px solid rgba(28, 27, 25, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 252, 249, 0.9);
+  box-shadow: none;
+  padding: 14px 16px 12px;
+}
+
+.clever-global-composer--hero .sw-composer__card--edit,
+.clever-global-composer--hero .sw-composer__card:focus-within {
+  border-color: rgba(122, 115, 192, 0.35);
+  box-shadow: 0 0 0 3px rgba(122, 115, 192, 0.08);
 }
 
 .clever-global-composer--hero.clever-global-composer--expanded .sw-composer__input--grow {
-  min-height: 96px;
+  min-height: 84px;
   max-height: min(40vh, 280px);
 }
 

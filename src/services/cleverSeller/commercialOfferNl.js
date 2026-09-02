@@ -72,6 +72,69 @@ export function parseCommercialDownPayment(text = '') {
   return value;
 }
 
+/** Typische AZ-Untergrenze (Einmalbetrag) vs. Wunschrate. */
+export const IMPLICIT_DOWN_PAYMENT_MIN = 1000;
+
+const MONTHLY_BUDGET_CUE_RE = /\b(?:max(?:imal)?\.?|höchstens|hoechstens|bis\s+zu|wunschrate|monatsrate|mtl\.?|monatlich|pro\s+monat|\/\s*monat|(?:monats)?rate)\b/i;
+
+/**
+ * True, wenn nahe dem Betrag ein Monats-/Max-/Rate-Cue steht.
+ * @param {string} text
+ * @param {number} index
+ * @param {number} [spanLen]
+ */
+export function hasMonthlyBudgetCueNear(text = '', index = 0, spanLen = 0) {
+  const t = String(text || '');
+  const start = Math.max(0, Number(index) || 0);
+  const end = start + Math.max(0, Number(spanLen) || 0);
+  const window = t.slice(Math.max(0, start - 28), Math.min(t.length, end + 28));
+  return MONTHLY_BUDGET_CUE_RE.test(window);
+}
+
+/**
+ * Freistehende Euro-Beträge ≥ ~1000 ohne Monats-Cue → Anzahlung,
+ * besonders nach Laufzeit + km (Wittig: „48 12.500 km · 5000 €“).
+ *
+ * @param {string} text
+ * @param {{ hasTermMonths?: boolean, hasAnnualMileage?: boolean }} [ctx]
+ * @returns {number|null}
+ */
+export function parseImplicitDownPayment(text = '', ctx = {}) {
+  const blob = String(text || '').replace(/\u00a0/g, ' ');
+  if (!blob.trim()) return null;
+  if (parseCommercialDownPayment(blob) != null) return null;
+
+  const hasCommercialContext = Boolean(ctx.hasTermMonths && ctx.hasAnnualMileage);
+  const matches = [...blob.matchAll(new RegExp(`\\b${MONEY_FRAG}\\s*(?:€|euro)(?!\\w)`, 'gi'))];
+  for (const m of matches) {
+    const value = parseEuroLoose(m[1]);
+    if (value == null || value < IMPLICIT_DOWN_PAYMENT_MIN || value > 200000) continue;
+    if (hasMonthlyBudgetCueNear(blob, m.index || 0, m[0].length)) continue;
+    const after = blob.slice((m.index || 0) + m[0].length, (m.index || 0) + m[0].length + 16);
+    if (/^\s*(?:anzahlung|az|sonderzahlung)\b/i.test(after)) continue;
+    // Nach Laufzeit+km: nächster großer Euro-Betrag = AZ
+    if (hasCommercialContext) return value;
+    // Ohne Kontext: sehr große Einmalbeträge ebenfalls eher AZ als Monatsrate
+    if (value >= 2000) return value;
+  }
+  return null;
+}
+
+/**
+ * True, wenn Betrag eher Wunsch-/Monatsrate ist (klein oder Monats-Cue).
+ * @param {number} value
+ * @param {string} text
+ * @param {number} [index]
+ * @param {number} [spanLen]
+ */
+export function looksLikeMonthlyBudgetAmount(value, text = '', index = 0, spanLen = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 50 || n > 5000) return false;
+  if (hasMonthlyBudgetCueNear(text, index, spanLen)) return true;
+  // Kleine Beträge ohne Cue bleiben Wunschrate-Kandidaten; große Einmalbeträge nicht
+  return n < IMPLICIT_DOWN_PAYMENT_MIN;
+}
+
 /**
  * Kommerzielle Felder, die PREPARE_OFFER / Offer-Update rechtfertigen.
  * @param {object[]} facts

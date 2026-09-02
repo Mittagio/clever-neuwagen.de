@@ -28,3 +28,9 @@ Unsaubere Sprache darf normalisiert werden, wenn die verifizierte Registry das M
 ## DoD
 
 Der Verkäufer weiß nach dem Gespräch: alles ist einsortiert oder wenigstens als Notiz erhalten.
+
+## Verwandt
+
+- [CLEVER_CAPTURE_THEN_OFFER.md](./CLEVER_CAPTURE_THEN_OFFER.md) – zuerst Capture, dann Angebotstool; Wunsch-Budget ≠ Bankrate
+- [CLEVER_COMPOSER_BRAIN_DOD.md](./CLEVER_COMPOSER_BRAIN_DOD.md) – Dump First-Class
+- [CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md](./CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md) – Track / Rate prüfen

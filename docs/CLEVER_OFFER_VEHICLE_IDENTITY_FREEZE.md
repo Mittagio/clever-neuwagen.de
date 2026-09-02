@@ -93,3 +93,4 @@ Kein Full-Redesign der Kundenakte-Hierarchy. Kein Carwow-Stepper. Später option
 - [CLEVER_MAGIC_OFFER.md](./CLEVER_MAGIC_OFFER.md) – Safe Calculation Boundary
 - [CLEVER_COMPOSER_BRAIN_DOD.md](./CLEVER_COMPOSER_BRAIN_DOD.md) – Gehirn + Manager
 - [CLEVER_ZERO_LOSS_INTAKE.md](./CLEVER_ZERO_LOSS_INTAKE.md) – nichts still verwerfen
+- [CLEVER_CAPTURE_THEN_OFFER.md](./CLEVER_CAPTURE_THEN_OFFER.md) – Capture first; keine Web-Raten als Offer-Wahrheit

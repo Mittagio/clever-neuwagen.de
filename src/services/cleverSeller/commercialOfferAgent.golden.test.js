@@ -12,6 +12,7 @@ import {
   isBareMonthlyRateCue,
   parseCommercialDownPayment,
   parseCommercialMonthlyRate,
+  parseImplicitDownPayment,
 } from './commercialOfferNl.js';
 
 const philipp = {
@@ -57,6 +58,14 @@ function turnFor(sellerInput, extra = {}) {
   assert.equal(parseCommercialDownPayment('0 € Anzahlung'), 0);
   assert.equal(parseCommercialDownPayment('ohne Anzahlung'), 0);
   assert.equal(parseCommercialDownPayment('Anzahlung auf 2.500'), 2500);
+  assert.equal(
+    parseImplicitDownPayment('48 12.500 km\n5000 €', { hasTermMonths: true, hasAnnualMileage: true }),
+    5000,
+  );
+  assert.equal(
+    parseImplicitDownPayment('max 350 €', { hasTermMonths: true, hasAnnualMileage: true }),
+    null,
+  );
   assert.equal(isBareMonthlyRateCue('Monatsrate'), true);
   assert.equal(isBareMonthlyRateCue('Monatsrate 399'), false);
 }

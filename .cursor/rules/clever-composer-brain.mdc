@@ -32,4 +32,5 @@ alwaysApply: true
 - `docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md`
 - `docs/CLEVER_ZERO_LOSS_INTAKE.md`
 - `docs/CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md`
-- Rules: `clever-2-0-assistant.mdc`, `clever-zero-loss-intake.mdc`, `clever-offer-vehicle-identity.mdc`
+- `docs/CLEVER_CAPTURE_THEN_OFFER.md`
+- Rules: `clever-2-0-assistant.mdc`, `clever-zero-loss-intake.mdc`, `clever-offer-vehicle-identity.mdc`, `clever-capture-then-offer.mdc`

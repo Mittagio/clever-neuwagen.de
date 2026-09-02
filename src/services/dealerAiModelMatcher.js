@@ -1,6 +1,12 @@
 /**
  * Einfache lokale Modell-Vorschläge für Dealer AI (Verkäufer-Aha-Moment).
+ *
+ * priceHint = advisory only (non-authoritative). Niemals still als Offer-Monatsrate
+ * oder desiredRate übernehmen — siehe docs/CLEVER_CAPTURE_THEN_OFFER.md.
  */
+
+/** UI-/Advisory-Hinweis – keine Bank-/Offer-Wahrheit */
+export const PRICE_HINT_RATE_AUTHORITY = 'non_authoritative';
 
 export const KIA_SUGGESTED_MODELS = [
   {
@@ -12,6 +18,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Benzin'],
     transmission: ['Automatik'],
     priceHint: 'ab ca. 220–280 €/Monat möglich',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'preislich interessant',
     reason: 'Kompakter SUV, Benziner, Automatik und nah am Wunschbudget.',
     bodyType: 'suv',
@@ -25,6 +32,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Benzin'],
     transmission: ['Automatik'],
     priceHint: 'ca. 250–320 €/Monat möglich',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'passt zur Größe',
     reason: 'Crossover unter 4,50 m, Benziner und Automatik möglich.',
     bodyType: 'suv',
@@ -38,6 +46,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Benzin', 'Hybrid'],
     transmission: ['Automatik'],
     priceHint: 'mit Aktion evtl. passend',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'beliebte Alternative',
     reason: 'Etwas über 4,50 m, aber oft die naheliegende SUV-Alternative.',
     bodyType: 'suv',
@@ -51,6 +60,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Hybrid', 'Elektro'],
     transmission: ['Automatik'],
     priceHint: 'je nach Aktion ca. 280–350 €/Monat',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'Hybrid-Alternative',
     reason: 'Falls der Kunde auch Hybrid akzeptiert, könnte der Niro interessant sein.',
     bodyType: 'suv',
@@ -64,6 +74,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Elektro'],
     transmission: ['Automatik'],
     priceHint: 'ca. 299–380 €/Monat möglich',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'Elektro-Alternative',
     reason: 'Kompakter Elektro-SUV mit guter Reichweite.',
     bodyType: 'suv',
@@ -77,6 +88,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Elektro'],
     transmission: ['Automatik'],
     priceHint: 'ab ca. 419 €/Monat oder ab 45.990 €',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'passt sehr gut',
     reason: 'Großer Elektro-SUV mit viel Platz für Familie und Gepäck.',
     bodyType: 'suv',
@@ -90,6 +102,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Elektro'],
     transmission: ['Automatik'],
     priceHint: 'Elektro-Limousine, je nach Aktion ca. 350–450 €/Monat',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'Elektro-Alternative',
     reason: 'Elektro-Limousine als Alternative im Kia-Sortiment.',
     bodyType: 'limousine',
@@ -103,6 +116,7 @@ export const KIA_SUGGESTED_MODELS = [
     drive: ['Elektro'],
     transmission: ['Automatik'],
     priceHint: 'Premium-Elektro-SUV, je nach Aktion ca. 450–550 €/Monat',
+    rateAuthority: PRICE_HINT_RATE_AUTHORITY,
     badge: 'Elektro-Alternative',
     reason: 'Sportlicher Elektro-Crossover mit starker Reichweite.',
     bodyType: 'suv',

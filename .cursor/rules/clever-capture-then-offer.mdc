@@ -1,0 +1,36 @@
+---
+description: PRODUKTGESETZ Capture then Offer — zuerst Akte füllen, dann Angebotstool; keine Web-Raten
+alwaysApply: true
+---
+
+# PRODUKTGESETZ: CAPTURE THEN OFFER
+
+Vorbild: **Cursor Composer** — reinlegen → verarbeiten; kein Formular-Labyrinth.  
+**Design Freeze:** Keine Kundenakte-Hierarchy-/Layout-Redesigns.
+
+## Verbindlich
+
+1. **Alles zuerst aufnehmen** (Composer Dump → Akte / Kundenwissen / Spuren).
+2. **Dann** erst Angebotstool.
+3. **Keine Web-Raten** — nie „ca. 339–369 €“ aus fremden Quellen als Wahrheit.
+4. UVP/Serie/WLTP nur aus verifizierten Clever-Daten (Briefing ok).
+5. Belastbare Monatsrate erst über Angebotstool + PDF/Bank/Händlerkalkulation („Rate prüfen“ wenn Identity wechselt).
+
+## Gehirn
+
+- Reiche Captures (Modelle, Soft, Wunsch-Konditionen **ohne** echte Bankrate) → `remember` / `compact_confirmation` / `save_with_undo` — **nicht** Offer-Review mit erfundenen Raten.
+- „Angebot“ / Offer-Cue → prepared Offer am **aktiven Track** (oder Clarification bei Multi) — **ohne** Magic-Web-Rate zu injecten.
+- Interpret/Magic/Advisory-Monatsraten aus unsicheren Quellen: strippen oder als non-authoritative markieren; nicht still `desiredRate`/Offer-Rate setzen.
+- Wunsch-Budget („max 350“) ≠ Angebots-Monatsrate.
+
+## Composer
+
+- Multi-Fact-Dump wächst Akte sofort; Partial Success.
+- Kein Stuck-Review nur wegen `paymentType`-Guess.
+- Nach Capture: Next Step Richtung Angebotstool (bestehende CTA) — kein UI-Umbau.
+
+## Code / Doc
+
+- Kern: `src/services/cleverSeller/captureThenOffer.js`
+- Doc: `docs/CLEVER_CAPTURE_THEN_OFFER.md`
+- Cross: Brain DoD, Offer Vehicle Identity Freeze, Zero-Loss, Magic Offer Safe Boundary

@@ -157,11 +157,34 @@ export function findUnconsumedMeaningSpans(sellerInput = '', facts = []) {
       const num = String(fact.value).replace(/\./g, '\\.?');
       remaining = remaining.replace(
         new RegExp(
-          `\\banzahlung\\s*(?:von\\s*)?${num}\\s*(?:€|euro)?\\b|\\b${num}\\s*(?:€|euro)?\\s*(?:az|anzahlung)\\b`,
+          `\\banzahlung\\s*(?:von\\s*)?${num}\\s*(?:€|euro)?\\b|\\b${num}\\s*(?:€|euro)?\\s*(?:az|anzahlung)\\b|\\b${num}\\s*(?:€|euro)\\b`,
           'ig',
         ),
         ' ',
       );
+    }
+    if (
+      fact.field === 'street'
+      || fact.field === 'postalCode'
+      || fact.field === 'zip'
+      || fact.field === 'city'
+      || fact.field === 'address'
+    ) {
+      const addrNeedles = [
+        fact.label,
+        typeof fact.value === 'string' ? fact.value : null,
+        fact.value?.street,
+        fact.value?.houseNumber,
+        fact.value?.postalCode,
+        fact.value?.zip,
+        fact.value?.city,
+        fact.value?.formattedAddress,
+      ].filter(Boolean);
+      for (const needle of addrNeedles) {
+        const n = String(needle).trim();
+        if (n.length < 2) continue;
+        remaining = remaining.replace(new RegExp(escapeRegExp(n), 'ig'), ' ');
+      }
     }
     if (fact.field === 'vehicleInterest' || fact.field === 'vehicleInterestAlias') {
       remaining = remaining.replace(/\beq[2-9]\b|\bev[2-9]\b/ig, ' ');

@@ -548,8 +548,11 @@ function isLikelyCityName(value = '') {
   return GERMAN_CITY_NAMES.has(normalized);
 }
 
-const STREET_LINE_RE = /^(.+?\s)(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/;
+/** Hausnr. inkl. 12a, 12/3, 12-3 */
+const HOUSE_NO_FRAG = '\\d+[a-zA-Z]?(?:[\\/-]\\d+[a-zA-Z]?)?';
+const STREET_LINE_RE = new RegExp(`^(.+?\\s)(${HOUSE_NO_FRAG})$`);
 const PLZ_LINE_RE = /^(\d{5})$/;
+const PLZ_CITY_LINE_RE = /^(\d{5})\s+([A-ZÄÖÜa-zäöüß][A-Za-zÄÖÜäöüß\s\-'.]{1,40})$/;
 
 function isMonthYearLine(line = '') {
   const months = monthPattern();
@@ -631,15 +634,22 @@ export function parseCustomerAddressFromText(text = '') {
     const line = lines[index];
     if (skipLine(line)) continue;
 
+    const plzCity = line.match(PLZ_CITY_LINE_RE);
+    if (plzCity) {
+      postalCode = postalCode ?? plzCity[1];
+      city = city ?? plzCity[2].trim();
+      continue;
+    }
+
     const plzOnly = line.match(PLZ_LINE_RE);
     if (plzOnly) {
       postalCode = plzOnly[1];
       const prev = lines[index - 1];
       const next = lines[index + 1];
-      if (prev && !skipLine(prev) && !STREET_LINE_RE.test(prev) && !PLZ_LINE_RE.test(prev)) {
+      if (prev && !skipLine(prev) && !STREET_LINE_RE.test(prev) && !PLZ_LINE_RE.test(prev) && !PLZ_CITY_LINE_RE.test(prev)) {
         if (isLikelyCityName(prev) || /^[A-ZÄÖÜ]/.test(prev)) city = city ?? prev;
       }
-      if (next && !skipLine(next) && !STREET_LINE_RE.test(next) && !PLZ_LINE_RE.test(next)) {
+      if (next && !skipLine(next) && !STREET_LINE_RE.test(next) && !PLZ_LINE_RE.test(next) && !PLZ_CITY_LINE_RE.test(next)) {
         if (isLikelyCityName(next) || /^[A-ZÄÖÜ]/.test(next)) city = city ?? next;
       }
       continue;
@@ -649,6 +659,13 @@ export function parseCustomerAddressFromText(text = '') {
     if (streetMatch && !/\d{5}/.test(line) && !isMonthYearLine(line)) {
       const nextStreet = streetMatch[1].trim();
       const nextHouse = streetMatch[2];
+      const neighborHasPlz = [lines[index - 1], lines[index + 1]].some((neighbor) => (
+        neighbor && (PLZ_LINE_RE.test(neighbor) || PLZ_CITY_LINE_RE.test(neighbor))
+      ));
+      // „Rate 399“ / „EV2 Earth“ nicht als Straße – nur echte Straßenmuster oder PLZ-Nachbar
+      if (!looksLikeGermanStreetName(nextStreet) && !neighborHasPlz) {
+        continue;
+      }
       const shouldReplace = !street
         || (looksLikeGermanStreetName(nextStreet) && !looksLikeGermanStreetName(street));
       if (shouldReplace) {
@@ -660,7 +677,11 @@ export function parseCustomerAddressFromText(text = '') {
 
     if (!city && (isLikelyCityName(line) || (/^[A-ZÄÖÜ][a-zäöüß-]+$/.test(line) && line.length < 24))) {
       const neighborIsAddress = [lines[index - 1], lines[index + 1]].some((neighbor) => (
-        neighbor && (PLZ_LINE_RE.test(neighbor) || STREET_LINE_RE.test(neighbor))
+        neighbor && (
+          PLZ_LINE_RE.test(neighbor)
+          || PLZ_CITY_LINE_RE.test(neighbor)
+          || STREET_LINE_RE.test(neighbor)
+        )
       ));
       if (neighborIsAddress) city = line;
     }

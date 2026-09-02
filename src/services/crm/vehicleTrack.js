@@ -346,6 +346,8 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
         modelKey: key,
         model: modelLabel,
         trim: entry.trim || null,
+        color: entry.color || entry.preferredColor || null,
+        package: entry.package || entry.equipmentPackage || null,
         make: entry.make || 'Kia',
         label: entry.label
           || [entry.make || 'Kia', modelLabel, entry.trim].filter(Boolean).join(' '),
@@ -390,6 +392,7 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
     const reqs = new Set([
       ...(meta.customerRequirements || []),
       ...sharedRequirements,
+      ...(interest.package ? [interest.package] : []),
     ]);
     next = patchVehicleTrackOnLead(next, ensured.trackId, {
       status: shouldActivate ? VEHICLE_TRACK_STATUS.ACTIVE : (
@@ -399,8 +402,27 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
           : VEHICLE_TRACK_STATUS.OPEN
       ),
       customerRequirements: [...reqs],
+      ...(interest.color ? { preferredColor: interest.color } : {}),
       lastActivityAt: new Date().toISOString(),
     });
+    if (interest.color) {
+      const configs = next.crm?.vehicleConfigurations || [];
+      next = {
+        ...next,
+        crm: {
+          ...(next.crm || {}),
+          vehicleConfigurations: configs.map((config) => (
+            config?.id === ensured.trackId
+              ? {
+                ...config,
+                colorLabel: interest.color,
+                updatedAt: new Date().toISOString(),
+              }
+              : config
+          )),
+        },
+      };
+    }
   });
 
   const firstId = trackIds[0] || null;

@@ -43,6 +43,11 @@ import {
   isSnapshotContactIdentityLabel,
   isSnapshotSystemNoiseLabel,
 } from '../dealer/buildCustomerSnapshotModel.js';
+import {
+  isPlaceholderCustomerName,
+  isPlausibleCustomerName,
+  sanitizeCustomerNameCandidate,
+} from './resolveAssistantContext.js';
 
 /** Kontakt-/Identity-Felder → Header, nicht Soft-Insights. */
 const INSIGHT_SKIP_FIELDS = new Set([
@@ -57,8 +62,9 @@ const INSIGHT_SKIP_FIELDS = new Set([
 
 function scoreCustomerNameCandidate(name = '') {
   const text = String(name || '').trim();
-  if (!text) return -1;
-  const parts = text.replace(/^(?:herr|frau|hr\.|fr\.)\s+/i, '').trim().split(/\s+/).filter(Boolean);
+  if (!text || isPlaceholderCustomerName(text)) return -1;
+  if (!isPlausibleCustomerName(text)) return -1;
+  const parts = text.replace(/^(?:herr|frau|hr\.|fr\.|familie)\s+/i, '').trim().split(/\s+/).filter(Boolean);
   return parts.length * 10 + Math.min(text.length, 40);
 }
 
@@ -78,13 +84,14 @@ function pickBestCustomerName(facts = [], inboundContact = null) {
   let best = '';
   let bestScore = -1;
   for (const name of candidates) {
-    const score = scoreCustomerNameCandidate(name);
+    const cleaned = sanitizeCustomerNameCandidate(name) || name;
+    const score = scoreCustomerNameCandidate(cleaned);
     if (score > bestScore) {
-      best = name;
+      best = cleaned;
       bestScore = score;
     }
   }
-  return best;
+  return bestScore >= 0 ? best : '';
 }
 
 function shouldPersistSellerInsightLabel(fact = {}, lead = {}) {
@@ -238,6 +245,85 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       }
     }
 
+    if (field === 'street' || field === 'postalCode' || field === 'zip' || field === 'city' || field === 'address') {
+      // Adresse aus Dump → contact + crm.customerAddress (klar strukturiert)
+      const patch = {};
+      if (field === 'street') {
+        if (typeof value === 'object' && value) {
+          patch.street = String(value.street || '').trim() || null;
+          patch.houseNumber = String(value.houseNumber || '').trim() || null;
+        } else {
+          const line = String(fact.label || value || '').trim();
+          const m = line.match(/^(.+?)\s+(\d+[a-zA-Z]?(?:[/-]\d+[a-zA-Z]?)?)$/);
+          if (m) {
+            patch.street = m[1].trim();
+            patch.houseNumber = m[2];
+          } else if (line) {
+            patch.street = line;
+          }
+        }
+      }
+      if (field === 'postalCode' || field === 'zip') {
+        patch.postalCode = String(value || fact.label || '').replace(/\D/g, '').slice(0, 5) || null;
+      }
+      if (field === 'city') {
+        if (typeof value === 'object' && value) {
+          patch.city = String(value.city || fact.label || '').trim() || null;
+          if (value.postalCode || value.zip) {
+            patch.postalCode = String(value.postalCode || value.zip).replace(/\D/g, '').slice(0, 5) || null;
+          }
+        } else {
+          patch.city = String(value || fact.label || '').trim() || null;
+        }
+      }
+      if (field === 'address' && typeof value === 'object' && value) {
+        patch.street = value.street ?? patch.street;
+        patch.houseNumber = value.houseNumber ?? patch.houseNumber;
+        patch.postalCode = value.postalCode || value.zip || patch.postalCode;
+        patch.city = value.city ?? patch.city;
+      }
+      const prevAddr = {
+        street: contact.street || next?.crm?.customerAddress?.street || '',
+        houseNumber: contact.houseNumber || next?.crm?.customerAddress?.houseNumber || '',
+        postalCode: contact.postalCode || contact.zip || next?.crm?.customerAddress?.postalCode || '',
+        city: contact.city || next?.crm?.customerAddress?.city || '',
+      };
+      const merged = {
+        street: patch.street ?? prevAddr.street,
+        houseNumber: patch.houseNumber ?? prevAddr.houseNumber,
+        postalCode: patch.postalCode ?? prevAddr.postalCode,
+        city: patch.city ?? prevAddr.city,
+      };
+      if (merged.street) contact.street = merged.street;
+      if (merged.houseNumber) contact.houseNumber = merged.houseNumber;
+      if (merged.postalCode) {
+        contact.postalCode = merged.postalCode;
+        contact.zip = merged.postalCode;
+      }
+      if (merged.city) contact.city = merged.city;
+      const line1 = [merged.street, merged.houseNumber].filter(Boolean).join(' ');
+      const line2 = [merged.postalCode, merged.city].filter(Boolean).join(' ');
+      const formatted = [line1, line2].filter(Boolean).join(' · ');
+      if (formatted) contact.address = formatted;
+      touchedContact = true;
+      next = {
+        ...next,
+        crm: {
+          ...(next.crm || {}),
+          address: formatted || next.crm?.address,
+          customerAddress: {
+            ...(next.crm?.customerAddress || {}),
+            street: merged.street || null,
+            houseNumber: merged.houseNumber || null,
+            postalCode: merged.postalCode || null,
+            city: merged.city || null,
+            country: next.crm?.customerAddress?.country || 'Deutschland',
+            formattedAddress: formatted || null,
+          },
+        },
+      };
+    }
+
     if (field === 'towHitchRequired' && value) {
       profile.towbar = true;
       profile.priorities = pushUnique(profile.priorities ?? [], 'towing');
@@ -266,7 +352,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       const trackId = (typeof value === 'object' && value?.vehicleTrackId)
         || (value?.targetScope === 'offer_vehicle'
           ? (lead?.crm?.focusedVehicleTrackId || null)
-          : null);
+          : null)
+        || lead?.crm?.focusedVehicleTrackId
+        || null;
       if (trackId && colorRaw) {
         nextLeadColorPatches.push({ trackId, preferredColor: String(colorRaw) });
       }
@@ -316,7 +404,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       const focusId = trackId
         || (value?.targetScope === 'offer_vehicle'
           ? (lead?.crm?.focusedVehicleTrackId || null)
-          : null);
+          : null)
+        || lead?.crm?.focusedVehicleTrackId
+        || null;
       for (const trim of trims) {
         const label = String(trim ?? '').trim();
         if (!label) continue;
@@ -413,6 +503,8 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
             modelKey: key,
             model,
             trim: entry.trim || null,
+            color: entry.color || entry.preferredColor || null,
+            package: entry.package || entry.equipmentPackage || null,
             make: entry.make || 'Kia',
             label: entry.label
               || [entry.make || 'Kia', model, entry.trim].filter(Boolean).join(' '),
@@ -481,26 +573,31 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
 
   const bestName = pickBestCustomerName(facts);
   if (bestName) {
+    const currentDisplay = String(contact.name || next.name || '').trim();
+    const nameForIdentity = isPlaceholderCustomerName(currentDisplay)
+      ? bestName
+      : (currentDisplay || bestName);
     const identity = deriveContactIdentity(
       {
         ...contact,
-        name: contact.name || bestName,
-        firstName: contact.firstName,
-        lastName: contact.lastName,
+        name: nameForIdentity,
+        // Placeholder-Kontakt darf first/last nicht leer halten und bestName verdrängen
+        firstName: isPlaceholderCustomerName(currentDisplay) ? '' : contact.firstName,
+        lastName: isPlaceholderCustomerName(currentDisplay) ? '' : contact.lastName,
         salutation: contact.salutation,
       },
       bestName,
     );
-    // Nur anreichern / ersetzen wenn vollständiger als bisher (Vor+Nachname)
-    const currentDisplay = String(contact.name || next.name || '').trim();
     const nextPayload = buildContactPayloadFromIdentity(identity, {
       phone: contact.phone || '',
       email: contact.email || '',
       address: contact.address,
     });
-    const shouldReplaceName = !currentDisplay
+    const currentIsPlaceholder = isPlaceholderCustomerName(currentDisplay);
+    const shouldReplaceName = currentIsPlaceholder
+      || !currentDisplay
       || scoreCustomerNameCandidate(nextPayload.name) >= scoreCustomerNameCandidate(currentDisplay);
-    if (shouldReplaceName) {
+    if (shouldReplaceName && nextPayload.name && !isPlaceholderCustomerName(nextPayload.name)) {
       Object.assign(contact, {
         name: nextPayload.name,
         firstName: nextPayload.firstName,

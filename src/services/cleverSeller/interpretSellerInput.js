@@ -39,6 +39,7 @@ import {
   buildInboundContactFacts,
   extractInboundContact,
   isInboundLeadPaste,
+  isSellerFreestyleCaptureDump,
 } from './inboundLeadIntake.js';
 import {
   isCustomerReplyPaste,
@@ -53,12 +54,18 @@ import {
   isBareMonthlyRateCue,
   isBareOrGenericOfferCue,
   isBatchOfferCue,
+  looksLikeMonthlyBudgetAmount,
   parseCommercialDownPayment,
   parseCommercialMonthlyRate,
+  parseImplicitDownPayment,
   parseOfferIdentityFollowUp,
   shouldBindIdentityToOpenOffer,
   validateOfferVehicleIdentity,
 } from './commercialOfferNl.js';
+import {
+  formatCustomerAddressLine,
+  parseCustomerAddressFromText,
+} from '../dealerAiParser.js';
 import {
   extractTradeInCandidates,
   hasTradeInCue,
@@ -113,7 +120,16 @@ const MONTH_MAP = {
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
-const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR';
+const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite';
+const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP';
+const KIA_INTEREST_COLOR_RE = 'schwarz\\w*|wei[sß]{1,2}\\w*|terracotta|blau\\w*|grau\\w*|silber\\w*|rot\\w*|gr[uü]n\\w*';
+
+/** Word-boundary-safe match (ß/ä ist in JS ohne `u` kein \\w). */
+function matchColorToken(text = '') {
+  return String(text || '').match(
+    new RegExp(`(?:^|[^A-Za-z0-9_])(${KIA_INTEREST_COLOR_RE})(?![A-Za-z0-9_])`, 'i'),
+  );
+}
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
 
@@ -183,13 +199,42 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   const lead = options.lead ?? {};
   if (!t) return facts;
 
+  const memoryOfferCtx = (!options.currentOfferContext && options.workingMemory)
+    ? (() => {
+      try {
+        // lazy import avoided — resolve inline from memory fields
+        const mem = options.workingMemory;
+        const prep = options.previousOfferPreparation || mem?.previousOfferPreparation;
+        const offer = mem?.currentOffer;
+        const vehicle = mem?.resolvedVehicle;
+        const vehicleTrackId = offer?.vehicleTrackId
+          || prep?.vehicleTrackId
+          || prep?.grounded?.vehicleTrackId
+          || prep?.payload?.vehicleTrackId
+          || null;
+        const modelKey = vehicle?.modelKey || offer?.modelKey || prep?.grounded?.modelKey || null;
+        if (!vehicleTrackId && !modelKey && !prep && !offer) return null;
+        return {
+          offerId: offer?.offerId || offer?.id || (prep ? 'session-offer' : null),
+          title: offer?.title || 'Angebot',
+          modelKey,
+          vehicleTrackId,
+          fromWorkingMemory: true,
+        };
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+  const currentOfferContext = options.currentOfferContext || memoryOfferCtx;
+
   const bindToOpenOffer = shouldBindIdentityToOpenOffer({
     sellerInput: t,
-    currentOfferContext: options.currentOfferContext,
+    currentOfferContext,
     workingContext: options.workingContext,
   });
-  const offerTrackId = options.currentOfferContext?.vehicleTrackId
-    || options.currentOfferContext?.vehicleCardId
+  const offerTrackId = currentOfferContext?.vehicleTrackId
+    || currentOfferContext?.vehicleCardId
     || options.workingContext?.attachedVehicle?.vehicleTrackId
     || null;
   const offerIdentityMeta = bindToOpenOffer
@@ -206,7 +251,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       field: 'customerName',
       value: namedCustomer,
       label: namedCustomer,
-      confidence: 0.88,
+      // Identity-Capture: ≥0.9 → safe remember (kein Review nur wegen Name)
+      confidence: 0.94,
     }));
   }
 
@@ -383,6 +429,93 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  const emailMatch = t.match(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
+  if (emailMatch?.[1] && !facts.some((f) => f.field === 'email')) {
+    const email = emailMatch[1].toLowerCase();
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'email',
+      value: email,
+      label: email,
+      confidence: 0.94,
+    }));
+  }
+
+  // DE-Adresse: Straße+Hausnr. · PLZ Ort (klar strukturiert, sonst Note)
+  const parsedAddress = parseCustomerAddressFromText(raw);
+  if (
+    parsedAddress
+    && (parsedAddress.street || parsedAddress.postalCode || parsedAddress.city)
+    && !facts.some((f) => f.field === 'street' || f.field === 'postalCode' || f.field === 'city')
+  ) {
+    const streetLine = [parsedAddress.street, parsedAddress.houseNumber].filter(Boolean).join(' ').trim();
+    const cityLine = [parsedAddress.postalCode, parsedAddress.city].filter(Boolean).join(' ').trim();
+    const clearAddress = Boolean(streetLine && parsedAddress.postalCode && parsedAddress.city);
+    if (streetLine) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+        field: 'street',
+        value: {
+          street: parsedAddress.street || streetLine,
+          houseNumber: parsedAddress.houseNumber || null,
+        },
+        label: streetLine,
+        confidence: clearAddress ? 0.93 : 0.78,
+        needsConfirmation: !clearAddress,
+        rawExpression: streetLine,
+        span: streetLine,
+      }));
+    }
+    if (parsedAddress.postalCode) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+        field: 'postalCode',
+        value: parsedAddress.postalCode,
+        label: parsedAddress.postalCode,
+        confidence: clearAddress ? 0.94 : 0.8,
+        needsConfirmation: !clearAddress,
+        rawExpression: parsedAddress.postalCode,
+        span: parsedAddress.postalCode,
+      }));
+    }
+    if (parsedAddress.city) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+        field: 'city',
+        value: {
+          city: parsedAddress.city,
+          postalCode: parsedAddress.postalCode || null,
+          zip: parsedAddress.postalCode || null,
+        },
+        label: cityLine || parsedAddress.city,
+        confidence: clearAddress ? 0.93 : 0.78,
+        needsConfirmation: !clearAddress,
+        rawExpression: cityLine || parsedAddress.city,
+        span: cityLine || parsedAddress.city,
+      }));
+    }
+    if (clearAddress) {
+      const formatted = parsedAddress.formatted
+        || formatCustomerAddressLine(parsedAddress);
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+        field: 'address',
+        value: {
+          street: parsedAddress.street || null,
+          houseNumber: parsedAddress.houseNumber || null,
+          postalCode: parsedAddress.postalCode || null,
+          zip: parsedAddress.postalCode || null,
+          city: parsedAddress.city || null,
+          formattedAddress: formatted,
+        },
+        label: formatted,
+        confidence: 0.93,
+        rawExpression: formatted,
+        span: formatted,
+      }));
+    }
+  }
+
   const nameBeforeInterest = t.match(
     /\b([A-Za-zÄÖÜäöüß]+)\s+([A-Za-zÄÖÜäöüß]+)\s+([A-Za-zÄÖÜäöüß]+)\s+(?:interesse|probefahrt|termin)\b/i,
   ) || t.match(
@@ -434,10 +567,12 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})(?:\\s+(${KIA_INTEREST_TRIM_RE}))?\\b`,
     'gi',
   );
+  const packageTokenRe = new RegExp(`\\b(${KIA_INTEREST_PACKAGE_RE})\\b`, 'i');
+  const trimTokenRe = new RegExp(`\\b(${KIA_INTEREST_TRIM_RE})\\b`, 'i');
   let interestMatch = interestRe.exec(t);
   while (interestMatch) {
     const modelRaw = interestMatch[1];
-    const trimRaw = interestMatch[2] || null;
+    let trimRaw = interestMatch[2] || null;
     const alias = resolveSellerModelAlias(modelRaw);
     const modelKey = (alias.canonical || modelRaw).toLowerCase();
     // „GW Picanto“ → kein Interesse; „außerdem Picanto“ bleibt Interesse
@@ -445,25 +580,72 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       interestMatch = interestRe.exec(t);
       continue;
     }
+    const afterStart = interestMatch.index + interestMatch[0].length;
+    const nextModelRel = t.slice(afterStart).search(
+      new RegExp(`\\b(?:kia\\s+)?(?:${KIA_INTEREST_MODEL_RE})\\b`, 'i'),
+    );
+    const segmentEnd = nextModelRel >= 0
+      ? afterStart + nextModelRel
+      : Math.min(t.length, afterStart + 48);
+    const segment = t.slice(afterStart, segmentEnd);
+
+    let colorBase = null;
+    let packageLabel = null;
+    if (!trimRaw) {
+      const trimInSeg = segment.match(trimTokenRe);
+      if (trimInSeg?.[1]) trimRaw = trimInSeg[1];
+    }
+    const colorInSeg = matchColorToken(segment);
+    if (colorInSeg?.[1]) {
+      const lower = String(colorInSeg[1]).toLowerCase();
+      colorBase = lower.startsWith('schwarz') ? 'schwarz'
+        : /^wei[sß]/.test(lower) ? 'weiß'
+        : lower.startsWith('blau') ? 'blau'
+        : lower.startsWith('grau') ? 'grau'
+        : lower.startsWith('silber') ? 'silber'
+        : lower.startsWith('rot') ? 'rot'
+        : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
+        : lower.includes('terracotta') ? 'terracotta'
+        : lower;
+    }
+    const pkgInSeg = segment.match(packageTokenRe);
+    if (pkgInSeg?.[1]) {
+      const p = String(pkgInSeg[1]).toLowerCase();
+      packageLabel = /upgrade/i.test(p) ? 'Upgrade'
+        : /heat|wärm|waerm|wp/i.test(p) ? 'Wärmepumpe'
+        : titleCaseToken(pkgInSeg[1]);
+    }
+
     const modelLabel = /^ev\d$/i.test(modelKey)
       ? modelKey.toUpperCase()
       : titleCaseToken(modelRaw);
     const trimLabelRaw = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
     const trimLabel = trimLabelRaw && /^cor$/i.test(trimLabelRaw) ? 'Core' : trimLabelRaw;
     const trimValue = trimLabel && /^core$/i.test(trimLabel) ? 'core' : trimLabel;
+    const labelBits = [modelLabel, trimLabel, colorBase ? titleCaseToken(colorBase) : null, packageLabel]
+      .filter(Boolean);
     const label = normalizeVehicleDisplayLabel({
       make: 'Kia',
       model: modelLabel,
       trim: trimLabel,
-    }) || (trimLabel ? `Kia ${modelLabel} ${trimLabel}` : `Kia ${modelLabel}`);
-    if (!interestHits.some((h) => h.label === label)) {
+    }) || `Kia ${labelBits.join(' ')}`;
+    if (!interestHits.some((h) => h.modelKey === modelKey && h.trim === trimValue)) {
       interestHits.push({
         modelKey,
         trim: trimValue,
+        color: colorBase,
+        package: packageLabel,
         label,
-        value: { make: 'Kia', modelKey, trim: trimValue },
+        value: {
+          make: 'Kia',
+          modelKey,
+          trim: trimValue,
+          ...(colorBase ? { color: colorBase, preferredColor: colorBase } : {}),
+          ...(packageLabel ? { package: packageLabel, equipmentPackage: packageLabel } : {}),
+        },
         rawExpression: interestMatch[0],
         span: interestMatch[0],
+        matchIndex: interestMatch.index,
         canonicalValue: alias.canonical ? modelKey.toUpperCase() : null,
         aliasAmbiguous: alias.ambiguous && !alias.canonical,
       });
@@ -782,24 +964,6 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: isWunsch ? `${commercialRate} € Wunschrate` : `${commercialRate} €/Monat`,
       confidence: 0.94,
     }));
-  } else if (
-    !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
-    && /\b(\d{2,4})\s*(?:€|euro)\b/i.test(t)
-    && !net
-    && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)
-    && !/\banzahlung|az\b/i.test(t)
-  ) {
-    const lone = t.match(/\b(\d{2,4})\s*(?:€|euro)\b/i);
-    if (lone) {
-      pushFact(facts, createExtractedFact({
-        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
-        field: 'monthlyBudget',
-        value: Number(lone[1]),
-        label: `${lone[1]} €`,
-        confidence: 0.55,
-        needsConfirmation: true,
-      }));
-    }
   }
 
   const commercialDown = parseCommercialDownPayment(raw);
@@ -810,7 +974,56 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value: commercialDown,
       label: commercialDown === 0 ? '0 € AZ' : `${commercialDown.toLocaleString('de-DE')} € AZ`,
       confidence: 0.94,
+      rawExpression: String(commercialDown),
+      span: String(commercialDown),
     }));
+  }
+
+  // Freistehender Betrag nach Laufzeit+km ohne Monats-Cue → AZ (Wittig: 5000 €)
+  const hasTermFact = facts.some((f) => f.field === 'termMonths')
+    || termMileage.termMonths != null;
+  const hasMileageFact = facts.some((f) => (
+    f.field === 'annualMileage' || f.field === 'mileagePerYear'
+  )) || termMileage.annualMileage != null;
+  const implicitDown = parseImplicitDownPayment(raw, {
+    hasTermMonths: hasTermFact,
+    hasAnnualMileage: hasMileageFact,
+  });
+  if (implicitDown != null && !facts.some((f) => f.field === 'downPayment')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'downPayment',
+      value: implicitDown,
+      label: `${implicitDown.toLocaleString('de-DE')} € AZ`,
+      confidence: hasTermFact && hasMileageFact ? 0.9 : 0.82,
+      rawExpression: `${implicitDown} €`,
+      span: `${implicitDown} €`,
+    }));
+  }
+
+  // Freistehende kleine Beträge ohne Cue → unsichere Wunschrate (nicht große AZ)
+  if (
+    !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
+    && !net
+    && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)
+    && !/\banzahlung|az\b/i.test(t)
+  ) {
+    const lone = [...t.matchAll(/\b(\d{2,4})\s*(?:€|euro)(?!\w)/gi)]
+      .map((m) => ({ raw: m[0], value: Number(m[1]), index: m.index || 0 }))
+      .find((m) => looksLikeMonthlyBudgetAmount(m.value, t, m.index, m.raw.length)
+        && !facts.some((f) => f.field === 'downPayment' && Number(f.value) === m.value));
+    if (lone) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'monthlyBudget',
+        value: lone.value,
+        label: `${lone.value} €`,
+        confidence: 0.55,
+        needsConfirmation: true,
+        rawExpression: lone.raw,
+        span: lone.raw,
+      }));
+    }
   }
 
   // Soft-Wunsch: Kundenservice in der Leasingrate (nicht Formular-/Quelle-Blob)
@@ -828,7 +1041,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  // Nach AZ: freistehende Rate (z. B. „… 0 € Anzahlung, 399 €“)
+  // Nach AZ: freistehende Rate (z. B. „… 0 € Anzahlung, 399 €“) – keine großen AZ-Beträge
   if (
     !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
     && (facts.some((f) => f.field === 'downPayment') || facts.some((f) => f.field === 'termMonths'))
@@ -836,10 +1049,13 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const rateAfterCommercial = [...t.matchAll(/\b(\d{2,4})\s*(?:€|euro)(?!\w)/gi)]
       .map((m) => ({ raw: m[0], value: Number(m[1]), index: m.index || 0 }))
       .filter((m) => Number.isFinite(m.value) && m.value >= 50 && m.value <= 5000)
+      .filter((m) => looksLikeMonthlyBudgetAmount(m.value, t, m.index, m.raw.length))
       .filter((m) => {
-        // „0 € Anzahlung“ ausfiltern – nicht benachbarte andere Beträge
+        // „0 € Anzahlung“ / bereits als AZ erkannt ausfiltern
         const after = t.slice(m.index + m.raw.length, m.index + m.raw.length + 16);
-        return !/^\s*(?:anzahlung|az|sonderzahlung)\b/i.test(after);
+        if (/^\s*(?:anzahlung|az|sonderzahlung)\b/i.test(after)) return false;
+        if (facts.some((f) => f.field === 'downPayment' && Number(f.value) === m.value)) return false;
+        return true;
       });
     const pick = rateAfterCommercial[rateAfterCommercial.length - 1];
     if (pick) {
@@ -849,6 +1065,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         value: pick.value,
         label: `${pick.value} €/Monat`,
         confidence: 0.88,
+        rawExpression: pick.raw,
+        span: pick.raw,
       }));
     }
   }
@@ -879,12 +1097,18 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       ? 'wichtig'
       : null;
 
-  const color = t.match(/\b(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*)\b/i);
-  if (color) {
+  const color = matchColorToken(t);
+  // Nur bei Multi-Dump mit per-Spur-Farbe kein zusätzliches globales Chip
+  const colorAlreadyOnInterest = Boolean(
+    color
+    && interestHits.length >= 2
+    && interestHits.some((h) => h.color),
+  );
+  if (color && !colorAlreadyOnInterest) {
     const rawColor = color[1];
     const lower = String(rawColor || '').toLowerCase();
     const base = lower.startsWith('schwarz') ? 'schwarz'
-      : lower.startsWith('weiß') || lower.startsWith('weiss') ? 'weiß'
+      : lower.startsWith('weiß') || lower.startsWith('weiss') || /^wei[sß]/.test(lower) ? 'weiß'
       : lower.startsWith('blau') ? 'blau'
       : lower.startsWith('grau') ? 'grau'
       : lower.startsWith('silber') ? 'silber'
@@ -895,13 +1119,22 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       ? `Farbe ${titleCaseToken(base)}`
       : titleCaseToken(base);
     const colorConfidence = bindToOpenOffer || isRememberCue || hasInterest ? 0.94 : 0.82;
+    const focusTrackId = offerTrackId
+      || lead?.crm?.focusedVehicleTrackId
+      || null;
+    const focusMeta = (bindToOpenOffer || (hasInterest && interestHits.length <= 1 && focusTrackId))
+      ? {
+        targetScope: 'offer_vehicle',
+        vehicleTrackId: focusTrackId || offerTrackId,
+      }
+      : offerIdentityMeta;
     pushFact(facts, createExtractedFact({
       factClass: (bindToOpenOffer || isRememberCue)
         ? SELLER_FACT_CLASS.VEHICLE_REQUIREMENT
         : SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
-      value: offerIdentityMeta
-        ? { color: base, ...offerIdentityMeta }
+      value: focusMeta
+        ? { color: base, ...focusMeta }
         : base,
       label,
       confidence: colorConfidence,
@@ -990,7 +1223,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  const trimWish = t.match(/\b(GT-?\s*Line|X-?\s*Line(?:\s*\d+)?|Earth|Air|Spirit|Vision|Core|Drive\s*Wise)\b/gi);
+  const trimWish = t.match(/\b(GT-?\s*Line|X-?\s*Line(?:\s*\d+)?|Earth|Air|Spirit|Vision|Core|Drive\s*Wise|Elite)\b/gi);
   if (trimWish?.length) {
     const unique = [...new Set(trimWish.map((x) => {
       const cleaned = titleCaseToken(x.replace(/\s+/g, ' '));
@@ -1002,7 +1235,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     if (!alreadyOnInterest || unique.length > 1 || bindToOpenOffer) {
       const identityFollowUp = parseOfferIdentityFollowUp(t);
       const primaryTrim = identityFollowUp?.trim || unique[0];
-      const modelKeyForValidation = options.currentOfferContext?.modelKey
+      const modelKeyForValidation = currentOfferContext?.modelKey
         || options.workingContext?.attachedVehicle?.modelKey
         || null;
       const validated = modelKeyForValidation
@@ -1255,7 +1488,14 @@ export function isExplicitCustomerMessageCue(text = '') {
   if (detectSellerActionIntent(t) === SELLER_ACTION_INTENTS.SEND_PORTFOLIO) {
     return false;
   }
-  return /\b(schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|fass(?:e|en)?|zusammenfass(?:e|en)?|whatsapp|mail|e-?mail|schick(?:e|en)?\s+ihm|schick(?:e|en)?\s+ihr)\b/i.test(t);
+  // „optional mail: …“ / „Mail: …“ = Kontaktfeld, kein Schreib-Auftrag
+  const withoutContactMail = t.replace(/\b(?:optional\s+)?(?:e-?mail|mail)\s*:[^\n]*/gi, ' ');
+  if (/\b(schreib(?:e|en)?|sag(?:e|en)?|informier(?:e|en)?|fass(?:e|en)?|zusammenfass(?:e|en)?|whatsapp|schick(?:e|en)?\s+ihm|schick(?:e|en)?\s+ihr)\b/i.test(withoutContactMail)) {
+    return true;
+  }
+  // Bare „Mail“ nur mit Schreib-/Sende-Cue
+  return /\b(?:e-?mail|mail)\b/i.test(withoutContactMail)
+    && /\b(schreib|sag|schick|senden|versend|an\s+den|an\s+die)\b/i.test(withoutContactMail);
 }
 
 /**
@@ -1337,13 +1577,15 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     && isCustomerReplyPaste(t);
   const isInboundPaste = !isContractIntake && !isContractCompare && !isReplyPaste
     && !offerPdfDrop
-    && isInboundLeadPaste(t);
+    && isInboundLeadPaste(t)
+    && !isSellerFreestyleCaptureDump(t);
   const looksLikeContractLookup = isCustomerContractQuery(t)
     && !/\b(kinder|verheiratet|wunschrate|netto|in\s+zahlung|nehmen\s+wir)\b/i.test(t);
   const isContractQuery = !isContractIntake && !isContractCompare && !isInboundPaste && !isReplyPaste
     && looksLikeContractLookup;
   const isInboundLead = isInboundPaste && !isContractQuery;
   const isCustomerReply = isReplyPaste && !isContractQuery;
+  const isCaptureDump = isSellerFreestyleCaptureDump(t);
   const contextClasses = [
     SELLER_FACT_CLASS.CUSTOMER_FACT,
     SELLER_FACT_CLASS.CUSTOMER_NEED,
@@ -1488,9 +1730,9 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     [SELLER_ACTION_INTENTS.ADD_NOTE]: SELLER_TURN_INTENTS.ADD_NOTE,
     [SELLER_ACTION_INTENTS.LOOKUP_FACT]: SELLER_TURN_INTENTS.LOOKUP_VEHICLE_FACT,
   };
-  // Bei Open/Find/Summary/History/Create-Offer/Inbound keinen Message-Default aus Primary-Action
-  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage || isContractIntake || isContractCompare || isContractQuery || isInboundLead || isCustomerReply) {
-    // Navigation / Suche / Angebotsauftrag / Contract Memory / Intake hat Vorrang vor Message-/Offer-Default
+  // Bei Open/Find/Summary/History/Create-Offer/Inbound/Capture keinen Message-Default aus Primary-Action
+  if (isOpenCustomer || isFindCustomer || isSummarizeCustomer || isHistoryQuery || isOfferSentQuery || isCreateOfferCommand || isMessageOnlyPrice || isAmbiguousOfferOrMessage || isContractIntake || isContractCompare || isContractQuery || isInboundLead || isCustomerReply || isCaptureDump) {
+    // Navigation / Suche / Angebotsauftrag / Contract Memory / Intake / Capture hat Vorrang vor Message-/Offer-Default
   } else if (map[primary]) {
     const skipMessageDefault = primary === SELLER_ACTION_INTENTS.MESSAGE_CUSTOMER
       && (
@@ -1508,7 +1750,7 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     if (!skipMessageDefault && !skipWeakOfferDefault) add(map[primary], 0.85);
   }
 
-  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand && !isContractCompare) {
+  if (explicitMessage && !isHistoryQuery && !isNextStepQuery && !isOfferSentQuery && !isOpenCustomer && !isFindCustomer && !isSummarizeCustomer && !isCreateOfferCommand && !isContractCompare && !isInboundLead && !isCustomerReply && !isCaptureDump) {
     add(SELLER_TURN_INTENTS.DRAFT_MESSAGE, 0.96);
   } else if (
     hasContextFacts
@@ -1531,6 +1773,8 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.88);
   } else if (isInboundLead && hasContextFacts) {
     add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.9);
+  } else if (isCaptureDump && hasContextFacts) {
+    add(SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, 0.95);
   }
 
   // Benannter Kunde + Nachricht → Kundensuche (nicht jedes „Schreib …“ mit Großbuchstaben)
@@ -1598,6 +1842,7 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
     add(SELLER_TURN_INTENTS.REQUEST_DOCUMENTS, 0.9);
   }
   // Agent: reine Konditions-Sätze → Angebotspfad (nicht bei gemischtem Understanding-Dump)
+  // Capture-first: paymentType-Guess allein → kein Offer-Stuck
   const onlyCommercialSlots = facts.length > 0
     && facts.every((f) => (
       f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
@@ -1606,8 +1851,15 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
       || f.factClass === SELLER_FACT_CLASS.SELLER_NOTE
     ))
     && hasCommercialOfferSlots(facts);
+  const commercialFacts = facts.filter((f) => (
+    f.factClass === SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE
+    || f.factClass === SELLER_FACT_CLASS.OFFER_INSTRUCTION
+  ));
+  const paymentTypeOnlyCommercial = commercialFacts.length > 0
+    && commercialFacts.every((f) => f.field === 'paymentType');
   if (
     (onlyCommercialSlots || isBareMonthlyRateCue(t))
+    && !paymentTypeOnlyCommercial
     && !isInboundLead
     && !isCustomerReply
     && !isFindCustomer

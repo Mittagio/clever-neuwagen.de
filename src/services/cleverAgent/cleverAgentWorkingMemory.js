@@ -61,6 +61,66 @@ export function getConversationHistoryForAgent(memory = null) {
 }
 
 /**
+ * Offer-/Identity-Kontext aus Session-Memory (Follow-ups ohne frische Offer-Card).
+ * @param {object|null} memory
+ * @param {object|null} [previousOfferPreparation]
+ * @returns {object|null}
+ */
+export function resolveCurrentOfferContextFromMemory(memory = null, previousOfferPreparation = null) {
+  const prep = previousOfferPreparation || memory?.previousOfferPreparation || null;
+  const offer = memory?.currentOffer || null;
+  const vehicle = memory?.resolvedVehicle || null;
+  const pending = memory?.pendingAction || null;
+  const pendingOffer = pending?.type === 'prepare_offer' || pending?.type === 'modify_offer'
+    ? pending
+    : null;
+
+  const vehicleTrackId = offer?.vehicleTrackId
+    || prep?.vehicleTrackId
+    || prep?.grounded?.vehicleTrackId
+    || prep?.payload?.vehicleTrackId
+    || pendingOffer?.payload?.vehicleTrackId
+    || null;
+  const modelKey = vehicle?.modelKey
+    || offer?.modelKey
+    || offer?.modelName
+    || prep?.grounded?.modelKey
+    || prep?.payload?.vehicle?.modelKey
+    || pendingOffer?.payload?.vehicle?.modelKey
+    || null;
+  const offerId = offer?.offerId || offer?.id || prep?.offerId || null;
+
+  if (!vehicleTrackId && !modelKey && !offerId && !prep && !pendingOffer) {
+    return null;
+  }
+
+  return {
+    offerId: offerId || (prep || pendingOffer ? 'session-offer' : null),
+    title: offer?.title || prep?.title || 'Angebot',
+    summary: offer?.summary
+      || prep?.grounded?.summary
+      || (modelKey ? `Kia ${String(modelKey).toUpperCase()}` : null),
+    modelKey: modelKey ? String(modelKey).toLowerCase() : null,
+    vehicleTrackId,
+    monthlyRate: offer?.monthlyRate ?? prep?.payload?.monthlyRate ?? null,
+    fromWorkingMemory: true,
+  };
+}
+
+/**
+ * Params für runCleverSellerTurn / Agent aus Shared Memory.
+ * @param {object|null} memory
+ */
+export function buildSellerTurnMemoryParams(memory = null) {
+  return {
+    conversationHistory: getConversationHistoryForAgent(memory),
+    workingMemory: memory || null,
+    previousOfferPreparation: memory?.previousOfferPreparation || null,
+    currentOfferContextFromMemory: resolveCurrentOfferContextFromMemory(memory),
+  };
+}
+
+/**
  * @param {object|null} prev
  * @param {object} agentResult
  * @param {string} sellerMessage
@@ -240,19 +300,55 @@ export function updateMemoryFromSellerTurn(prev = null, turn = {}, sellerMessage
   const primary = turn.intents?.[0]?.type || turn.intent || null;
   if (primary) next.lastIntent = primary;
 
-  const offerAction = (turn.preparedActions || []).find((a) => a.type === 'prepare_offer');
+  const offerAction = (turn.preparedActions || []).find((a) => (
+    a.type === 'prepare_offer' || a.type === 'modify_offer'
+  ));
   if (offerAction?.payload || turn.pendingAction?.type === 'prepare_offer') {
-    next.previousOfferPreparation = turn.pendingAction || offerAction?.payload || next.previousOfferPreparation;
+    const prepPayload = turn.pendingAction?.payload
+      || offerAction?.payload
+      || turn.pendingAction
+      || null;
+    next.previousOfferPreparation = prepPayload || next.previousOfferPreparation;
     next.pendingAction = turn.pendingAction || {
-      type: 'prepare_offer',
+      type: offerAction?.type || 'prepare_offer',
       status: offerAction?.status || 'prepared',
+      payload: offerAction?.payload || null,
     };
+    const vehicle = offerAction?.payload?.vehicle || prepPayload?.vehicle || null;
+    if (vehicle || offerAction?.payload?.vehicleTrackId) {
+      next.resolvedVehicle = {
+        make: vehicle?.make || 'Kia',
+        model: vehicle?.model || vehicle?.modelKey || null,
+        modelKey: vehicle?.modelKey || null,
+        trim: vehicle?.trim
+          || offerAction?.payload?.identityPatch?.trim
+          || null,
+        color: vehicle?.color
+          || offerAction?.payload?.identityPatch?.color
+          || null,
+        vehicleTrackId: offerAction?.payload?.vehicleTrackId || null,
+      };
+      next.currentOffer = {
+        ...(next.currentOffer || {}),
+        offerId: offerAction?.payload?.offerId || next.currentOffer?.offerId || null,
+        modelKey: vehicle?.modelKey || next.resolvedVehicle.modelKey,
+        modelName: vehicle?.model || next.resolvedVehicle.model,
+        vehicleTrackId: offerAction?.payload?.vehicleTrackId || null,
+        monthlyRate: offerAction?.payload?.monthlyRate ?? next.currentOffer?.monthlyRate ?? null,
+        title: offerAction?.label || next.currentOffer?.title || 'Angebot',
+      };
+    }
   }
 
   const draft = turn.messageDraft
     || (turn.preparedActions || []).find((a) => a.type === 'draft_message')?.payload?.messageDraft;
   if (draft) {
-    next.lastMessageDraft = { body: String(draft).slice(0, 4000), at: new Date().toISOString() };
+    const prevBody = next.lastMessageDraft?.body || null;
+    const nextBody = String(draft).slice(0, 4000);
+    if (prevBody && prevBody !== nextBody) {
+      next.messageDraftHistory = [...(next.messageDraftHistory || []), next.lastMessageDraft].slice(-6);
+    }
+    next.lastMessageDraft = { body: nextBody, at: new Date().toISOString() };
   }
 
   const appt = turn.preparedAppointment

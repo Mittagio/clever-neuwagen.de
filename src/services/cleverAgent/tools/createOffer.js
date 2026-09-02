@@ -68,7 +68,9 @@ function buildSellerOfferText(lead, args = {}, context = {}) {
     parts.push(Number(down) === 0 ? 'keine Anzahlung' : `${Number(down).toLocaleString('de-DE')} € Anzahlung`);
   }
 
-  const rate = args.monthlyRate ?? selected.monthlyRate ?? conditions.desiredRate;
+  // Capture-then-Offer: Wunsch-Budget / Katalog-Selected-Rate nie still als Offer-Monatsrate injecten.
+  // Nur explizite Tool-Args (Seller/PDF) gelten als autoritative Rate.
+  const rate = args.monthlyRate != null ? args.monthlyRate : null;
   if (rate != null) parts.push(`${Number(rate).toLocaleString('de-DE')} €/Monat`);
 
   if (args.discountPercent != null) parts.push(`${args.discountPercent} % Rabatt`);
@@ -339,9 +341,10 @@ export function executePrepareOffer(runtime = {}, args = {}) {
       || context.conditions?.mileage
       || context.selectedOffer?.termMonths,
     );
-    const needsRate = /ask_rate|missing_rate|rate/i.test(String(preparation?.decision?.action || ''))
+  // Capture-then-Offer: Wish-Budget ist kein Ersatz für fehlende Offer-Rate
+  const needsRate = /ask_rate|missing_rate|rate/i.test(String(preparation?.decision?.action || ''))
       || (preparation?.paymentType === 'leasing' && preparation?.intent?.commercialInput?.monthlyRate == null
-        && context.selectedOffer?.monthlyRate == null && context.conditions?.desiredRate == null);
+        && context.selectedOffer?.monthlyRate == null);
 
     let message = preparation?.decision?.message
       || preparation?.groundingMessage

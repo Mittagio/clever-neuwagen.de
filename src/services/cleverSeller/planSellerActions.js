@@ -20,7 +20,11 @@ import {
 } from '../crm/magic/buildMagicAkteContext.js';
 import { isSellerOfferMailShorthand } from '../crm/magic/generateCleverCustomerMessage.js';
 import { deriveContactIdentity } from '../dealer/customerContactIdentity.js';
-import { isBatchOfferCue, hasCommercialOfferSlots } from './commercialOfferNl.js';
+import {
+  isBatchOfferCue,
+  hasCommercialOfferSlots,
+  isBareOrGenericOfferCue,
+} from './commercialOfferNl.js';
 import {
   OFFER_MUTATION_MODE,
   OFFER_VEHICLE_TARGET_STATUS,
@@ -30,6 +34,12 @@ import {
   listCustomerVehicleTracks,
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
+import {
+  RATE_AUTHORITY,
+  extractAuthoritativeOfferRateFromFacts,
+  resolveAuthoritativeOfferMonthlyRate,
+  stripNonAuthoritativeOfferRates,
+} from './captureThenOffer.js';
 
 function salutationName(customerName, facts, lead) {
   const identity = deriveContactIdentity(
@@ -264,6 +274,7 @@ export function planSellerActions({
   pendingAppointment = null,
   now = null,
   calendarAvailability = null,
+  workingMemory = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -275,6 +286,13 @@ export function planSellerActions({
   const moment = goldenMoment
     || runTool('build_golden_moment', { lead }).result
     || null;
+
+  // „schreib ihm das“ → Draft aus Session-Memory (Knowledge/Draft), kein Neustart
+  const referentialWrite = /\bschreib(?:e|en)?\s+(?:ihm|ihr|dem\s+kunden)?\s*das\b/i.test(sellerInput)
+    || /^(?:schreib(?:e|en)?|sag(?:e|en)?)\s+das[.!?]?$/i.test(String(sellerInput || '').trim());
+  if (referentialWrite) {
+    intentTypes.add(SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  }
 
   // Follow-up auf Pending Appointment (ohne neuen Propose-Intent)
   const followUpAppointment = Boolean(pendingAppointment)
@@ -787,14 +805,16 @@ export function planSellerActions({
       const purchaseAmount = typeof purchase?.value === 'object' && purchase?.value
         ? (purchase.value.amount ?? purchase.value.value ?? null)
         : (purchase?.value ?? null);
-      const rateFact = facts.find((f) => (
-        f.field === 'desiredRate' || f.field === 'monthlyBudget' || f.field === 'monthlyLeasingRate'
-      ));
-      const rateAmount = typeof rateFact?.value === 'object' && rateFact?.value
-        ? (rateFact.value.amount ?? rateFact.value.value ?? null)
-        : (rateFact?.value ?? null);
+      const authoritativeRate = extractAuthoritativeOfferRateFromFacts(facts);
+      const rateAmount = authoritativeRate.amount;
       const magic = offer?.results?.[0]?.magic || null;
       const grounded = magic?.grounded || null;
+      const resolvedOfferRate = resolveAuthoritativeOfferMonthlyRate({
+        sellerFactRate: rateAmount,
+        magicCalculationRate: magic?.calculation?.monthlyRate ?? null,
+        magicIntentRate: magic?.intent?.commercialInput?.monthlyRate ?? null,
+        fromPdf: Boolean(magic?.fromPdf),
+      });
       const vehicleFromFacts = facts.find((f) => f.field === 'vehicleInterest');
       const vehicleConflict = Boolean(vehicleFromFacts?.value?.conflictWithActive);
       // Explizites Seller-Modell schlägt Magic-Grounding (EV4 statt klebendem EV3).
@@ -815,8 +835,14 @@ export function planSellerActions({
       const offerType = paymentRaw === 'purchase' || paymentRaw === 'cash'
         ? 'cash'
         : (paymentRaw || (purchase ? 'cash' : null));
-      const hasLeasingRate = offerType === 'leasing' && rateAmount != null;
-      const canCreate = Boolean(magic?.canCreateOffer) || Boolean(purchaseAmount != null) || hasLeasingRate;
+      const offerMonthlyRate = resolvedOfferRate.monthlyRate;
+      const hasLeasingRate = offerType === 'leasing' && offerMonthlyRate != null;
+      const cashReady = (offerType === 'cash' || offerType === 'purchase')
+        && (purchaseAmount != null || Boolean(magic?.canCreateOffer));
+      const canCreate = cashReady
+        || hasLeasingRate
+        || (Boolean(magic?.canCreateOffer) && offerMonthlyRate != null)
+        || Boolean(purchaseAmount != null);
       const vehicleInterest = facts.find((f) => f.field === 'vehicleInterest');
       const targetModel = offerVehicleTarget.modelKey
         || (vehicleConflict
@@ -851,79 +877,98 @@ export function planSellerActions({
         || vehicleLabel
         || offerVehicleTarget.label
         || null;
-      const leasingWithoutRate = offerType === 'leasing'
-        && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'desiredRate' || f.field === 'monthlyLeasingRate')
-        && magic?.decision?.action === 'ask_rate';
+      const leasingWithoutRate = (offerType === 'leasing' || offerType == null)
+        && offerMonthlyRate == null
+        && (
+          magic?.decision?.action === 'ask_rate'
+          || isBareOrGenericOfferCue(sellerInput)
+          || Boolean(offerVehicleTarget.vehicleTrackId)
+        );
       const profileLeasing = lead?.paymentType === 'leasing' || lead?.wish?.paymentType === 'leasing';
       const cashVsLeasingWarning = offerType === 'cash' && profileLeasing
         ? 'In der Kundenakte ist bisher Leasing notiert.'
         : null;
-      const preparedOk = (offer?.ok || purchaseAmount != null || hasLeasingRate) && !leasingWithoutRate;
+      // Capture→Offer: Track-Target ohne Fake-Rate bleibt prepared (Angebotstool), nicht stuck-blocked
+      const bareOfferShell = isBareOrGenericOfferCue(sellerInput)
+        && Boolean(offerVehicleTarget.vehicleTrackId || focusModel);
+      const preparedOk = bareOfferShell
+        || ((offer?.ok || purchaseAmount != null || hasLeasingRate) && !(
+          offerType === 'leasing' && offerMonthlyRate == null && magic?.decision?.action === 'ask_rate'
+        ));
+      const offerPayload = stripNonAuthoritativeOfferRates({
+        canCreateOffer: Boolean(canCreate) && !(
+          offerType === 'leasing' && offerMonthlyRate == null
+        ),
+        purchasePrice: purchaseAmount ?? (
+          (offerType === 'cash' || offerType === 'purchase')
+            ? (magic?.calculation?.endPrice ?? grounded?.basePrice ?? null)
+            : null
+        ),
+        paymentType: paymentRaw,
+        offerType,
+        vehicleLabel: resolvedVehicleLabel,
+        vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
+        createNewAlternative: offerVehicleTarget.createNew === true
+          || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
+        mutationMode: offerVehicleTarget.mutationMode || null,
+        vehicle: {
+          model: focusModel || null,
+          trim: focusTrim,
+          make: 'Kia',
+          modelKey: offerVehicleTarget.modelKey || focusModel || null,
+        },
+        customerId: lead?.id || resolvedCustomer?.id || null,
+        customerName: customerName || lead?.contact?.name || null,
+        monthlyRate: offerMonthlyRate,
+        rateAuthority: offerMonthlyRate != null
+          ? (resolvedOfferRate.rateAuthority || RATE_AUTHORITY.AUTHORITATIVE)
+          : RATE_AUTHORITY.NON_AUTHORITATIVE,
+        discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
+        listPrice: groundedMatchesTarget ? (grounded?.basePrice ?? null) : null,
+        engineLabel: groundedMatchesTarget ? (grounded?.engineLabel ?? null) : null,
+        variantId: groundedMatchesTarget ? (grounded?.variantId ?? null) : null,
+        decisionAction: magic?.decision?.action ?? null,
+        missingRate: (offerType === 'leasing' || offerType == null)
+          && (leasingWithoutRate || magic?.decision?.action === 'ask_rate' || offerMonthlyRate == null)
+          && purchaseAmount == null,
+        attachWorkingContext: true,
+        needsSellerConfirmation: true,
+        mutatesCustomer: false,
+        source: offerVehicleTarget.source || 'seller_input',
+        cashVsLeasingWarning,
+        vehicleModelConflict: vehicleConflict
+          ? {
+            pdfLabel: vehicleInterest?.value?.pdfLabel || vehicleInterest?.label,
+            activeLabel: vehicleInterest?.value?.activeLabel,
+            warning: vehicleInterest?.label,
+          }
+          : null,
+        preparedOffer: {
+          type: 'prepare_offer',
+          customerId: lead?.id || resolvedCustomer?.id || null,
+          vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
+          vehicle: {
+            model: focusModel || null,
+            trim: focusTrim || null,
+            modelKey: offerVehicleTarget.modelKey || focusModel || null,
+          },
+          offerType: offerType || null,
+          purchasePrice: purchaseAmount ?? null,
+          source: 'seller_input',
+          needsSellerConfirmation: true,
+        },
+      });
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
-        label: leasingWithoutRate
+        label: leasingWithoutRate && !bareOfferShell
           ? 'Leasingangebot – Rate fehlt'
           : (canCreate ? 'Angebot vorbereiten' : 'Angebot prüfen'),
         needsSellerConfirmation: true,
         status: preparedOk ? 'prepared' : 'blocked',
         toolId: 'prepare_offer',
         legacy: offer ?? null,
-        payload: {
-          canCreateOffer: canCreate && !leasingWithoutRate,
-          purchasePrice: purchaseAmount ?? magic?.calculation?.endPrice ?? grounded?.basePrice ?? null,
-          paymentType: paymentRaw,
-          offerType,
-          vehicleLabel: resolvedVehicleLabel,
-          vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
-          createNewAlternative: offerVehicleTarget.createNew === true
-            || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
-          mutationMode: offerVehicleTarget.mutationMode || null,
-          vehicle: {
-            model: focusModel || null,
-            trim: focusTrim,
-            make: 'Kia',
-            modelKey: offerVehicleTarget.modelKey || focusModel || null,
-          },
-          customerId: lead?.id || resolvedCustomer?.id || null,
-          customerName: customerName || lead?.contact?.name || null,
-          monthlyRate: magic?.calculation?.monthlyRate
-            ?? magic?.intent?.commercialInput?.monthlyRate
-            ?? rateAmount
-            ?? null,
-          discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
-          listPrice: groundedMatchesTarget ? (grounded?.basePrice ?? null) : null,
-          engineLabel: groundedMatchesTarget ? (grounded?.engineLabel ?? null) : null,
-          variantId: groundedMatchesTarget ? (grounded?.variantId ?? null) : null,
-          decisionAction: magic?.decision?.action ?? null,
-          missingRate: leasingWithoutRate || magic?.decision?.action === 'ask_rate',
-          attachWorkingContext: true,
-          needsSellerConfirmation: true,
-          mutatesCustomer: false,
-          source: offerVehicleTarget.source || 'seller_input',
-          cashVsLeasingWarning,
-          vehicleModelConflict: vehicleConflict
-            ? {
-              pdfLabel: vehicleInterest?.value?.pdfLabel || vehicleInterest?.label,
-              activeLabel: vehicleInterest?.value?.activeLabel,
-              warning: vehicleInterest?.label,
-            }
-            : null,
-          preparedOffer: {
-            type: 'prepare_offer',
-            customerId: lead?.id || resolvedCustomer?.id || null,
-            vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
-            vehicle: {
-              model: focusModel || null,
-              trim: focusTrim || null,
-              modelKey: offerVehicleTarget.modelKey || focusModel || null,
-            },
-            offerType: offerType || null,
-            purchasePrice: purchaseAmount ?? null,
-            source: 'seller_input',
-            needsSellerConfirmation: true,
-          },
-        },
+        payload: offerPayload,
       });
     }
     }
@@ -1155,6 +1200,32 @@ export function planSellerActions({
     && offerAction.payload
     && offerAction.payload.canCreateOffer === false,
   );
+
+  // Session: „schreib ihm das“ aus Memory (Draft / Knowledge)
+  if (
+    referentialWrite
+    && !actions.some((a) => a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE)
+  ) {
+    const fromMemory = workingMemory?.lastMessageDraft?.body
+      || workingMemory?.lastKnowledgeAnswer?.text
+      || null;
+    if (fromMemory) {
+      actions.push({
+        id: 'draft_message',
+        type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+        label: 'Nachricht vorbereiten',
+        needsSellerConfirmation: true,
+        status: 'prepared',
+        toolId: 'draft_customer_message',
+        payload: {
+          messageDraft: String(fromMemory).slice(0, 4000),
+          fromWorkingMemory: true,
+          mutatesCustomer: false,
+          sendable: true,
+        },
+      });
+    }
+  }
 
   // „Angebot“ allein ist kein Message-Intent – erst verstehen/vorbereiten, dann formulieren.
   const explicitWrite = /\b(schreib(?:e|en)?|sag(?:e|en)?\s+ihm|mail\b|nachricht|danke|lieferzeit|verf(?:ue|u|ü)gbar|nachfass|kundenlink)\b/i.test(sellerInput);

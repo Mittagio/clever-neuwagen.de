@@ -15,6 +15,11 @@ import { resolveContractIntakeText } from '../resolveContractIntakeText.js';
 import { isInboundLeadPaste } from '../inboundLeadIntake.js';
 import { isCustomerReplyPaste } from '../customerReplyIntake.js';
 import { isCustomerContractIntakeText } from '../extractCustomerContractFromText.js';
+import {
+  isCustomerNameStopToken,
+  isPlausibleCustomerName,
+  sanitizeCustomerNameCandidate,
+} from '../resolveAssistantContext.js';
 
 const SENSITIVE_FIELD_BLOCKLIST = new Set([
   'iban', 'accountNumber', 'idNumber', 'ausweisnummer', 'income', 'employer',
@@ -339,23 +344,68 @@ export function extractPersonNameFromDump(text = '') {
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
     if (/^(?:test|abgleich|gw|name)\b/i.test(line)) continue;
-    if (/\b(?:ev\s*\d|ahk|km|kinder|haus|leasing|finanz|weiß|weiss|schwarz)\b/i.test(line)) continue;
-    if (/\d/.test(line)) continue;
+    if (/\bangebote?\s+für\b/i.test(line)) continue;
+    if (/\b(?:ev\s*\d|ahk|km|kinder|haus|leasing|finanz|weiß|weiss|schwarz|wunsch\s*konditionen)\b/i.test(line)
+      && !/^familie\b/i.test(line)
+      && !/^(?:herr|frau)\b/i.test(line)
+      && !/\bhei(?:ss|ß)t\b/i.test(line)) {
+      continue;
+    }
+    if (/\d/.test(line) && !/^familie\b/i.test(line)) continue;
+
+    const familyLine = line.match(/^familie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
+    if (familyLine) {
+      const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyLine[1]}`);
+      if (cleaned) return cleaned;
+    }
+
     if (/^[A-ZÄÖÜ][a-zäöüß'-]+(?:\s+[A-ZÄÖÜ][a-zäöüß'-]+){1,2}$/.test(line)) {
-      return line.split(/\s+/).join(' ');
+      const cleaned = sanitizeCustomerNameCandidate(line.split(/\s+/).join(' '));
+      if (cleaned) return cleaned;
     }
   }
-  // Inline „Mazzei Sandro EV4“ / einzeiliger Dump
+  // Inline „Mazzei Sandro EV4“ / einzeiliger Dump – nie „Angebote für EV2“
   const inline = raw.match(
     /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?:EV\s*\d|Kia|Sportage|Picanto|XCeed|Ceed|Niro)/i,
   );
-  if (inline) return `${inline[1]} ${inline[2]}`;
+  if (
+    inline
+    && !isCustomerNameStopToken(inline[1])
+    && !isCustomerNameStopToken(inline[2])
+  ) {
+    const cleaned = sanitizeCustomerNameCandidate(`${inline[1]} ${inline[2]}`);
+    if (cleaned) return cleaned;
+  }
 
   // Letzter Versuch: Name vor GW-/Wunsch-Cue im Fließtext
   const beforeCue = raw.match(
     /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?=(?:GW\b|Inzahlung|EV\s*\d))/i,
   );
-  if (beforeCue) return `${beforeCue[1]} ${beforeCue[2]}`;
+  if (
+    beforeCue
+    && !isCustomerNameStopToken(beforeCue[1])
+    && !isCustomerNameStopToken(beforeCue[2])
+  ) {
+    const cleaned = sanitizeCustomerNameCandidate(`${beforeCue[1]} ${beforeCue[2]}`);
+    if (cleaned) return cleaned;
+  }
+
+  // „Familie Müller, …“ irgendwo im Dump
+  const familyAnywhere = raw.match(/\bfamilie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
+  if (familyAnywhere) {
+    const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyAnywhere[1]}`);
+    if (cleaned) return cleaned;
+  }
+
+  // „Kunde heißt X“
+  const heisst = raw.match(
+    /\b(?:kunde\s+)?(?:hei(?:ss|ß)t|namens)\s+(?:der\s+|die\s+)?((?:familie\s+|herrn?\s+|frau\s+)?[A-Za-zÄÖÜäöüß-]{2,40}(?:\s+[A-Za-zÄÖÜäöüß-]{2,40})?)\b/i,
+  );
+  if (heisst?.[1]) {
+    const cleaned = sanitizeCustomerNameCandidate(heisst[1]);
+    if (cleaned) return cleaned;
+  }
+
   return null;
 }
 
@@ -466,18 +516,20 @@ export function enrichFactsForMultiSource(facts = [], sellerInput = '') {
 
   if (!list.some((f) => f.field === 'customerName')) {
     const name = extractPersonNameFromDump(sellerInput);
-    if (name) {
+    if (name && isPlausibleCustomerName(name)) {
       // „Mazzei Sandro“ → Vorname Sandro Nachname Mazzei wenn italienisch/nachname-first üblich
       const normalized = normalizeDumpPersonName(name);
-      push(createExtractedFact({
-        factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
-        field: 'customerName',
-        value: normalized,
-        label: normalized,
-        source: SELLER_FACT_SOURCE.SELLER_INPUT,
-        confidence: 0.86,
-        needsConfirmation: true,
-      }));
+      if (isPlausibleCustomerName(normalized)) {
+        push(createExtractedFact({
+          factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+          field: 'customerName',
+          value: normalized,
+          label: normalized,
+          source: SELLER_FACT_SOURCE.SELLER_INPUT,
+          confidence: 0.92,
+          needsConfirmation: false,
+        }));
+      }
     }
   }
 

@@ -46,6 +46,7 @@ import { applyCleverAgentMutations } from '../../services/cleverAgent/applyCleve
 import {
   createEmptyAgentWorkingMemory,
   getConversationHistoryForAgent,
+  buildSellerTurnMemoryParams,
   updateAgentWorkingMemory,
   updateMemoryFromSellerTurn,
 } from '../../services/cleverAgent/cleverAgentWorkingMemory.js';
@@ -524,13 +525,16 @@ export default function CustomerAkteSharedWorkspace({
 
   /** Gemeinsamer Orchestrator-Input: fester Lead, Surface Akte (kein zweiter Brain). */
   function buildAkteSellerTurnParams(extra = {}) {
+    const memoryParams = buildSellerTurnMemoryParams(agentWorkingMemory);
     return {
       lead,
       customerName,
       workingContextItems,
-      currentOfferContext: toCurrentOfferContext(findOfferWorkingContext(workingContextItems)),
+      currentOfferContext: toCurrentOfferContext(findOfferWorkingContext(workingContextItems))
+        || memoryParams.currentOfferContextFromMemory,
       scopeHint: AKTE_COMPOSER_SCOPE,
       intentConstraint,
+      ...memoryParams,
       ...extra,
     };
   }
@@ -1826,6 +1830,13 @@ export default function CustomerAkteSharedWorkspace({
           ...buildAkteSellerTurnParams(),
           sellerInput: 'Bereite ein Nachfolgeangebot vor.',
         });
+        const policy = resolveSellerResponsePolicy(turn);
+        setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(
+          prev,
+          turn,
+          'Bereite ein Nachfolgeangebot vor.',
+          policy,
+        ));
         setUniversalTurn(turn);
         setFeedback(turn.reviewModel?.title || 'Nachfolgeangebot vorbereitet – bitte prüfen');
         setTimeout(() => setFeedback(''), 3200);

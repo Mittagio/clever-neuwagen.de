@@ -67,6 +67,7 @@ import {
 import {
   buildInboundLeadProposal,
   extractInboundContact,
+  isSellerFreestyleCaptureDump,
   proposeInboundNextAction,
   resolveInboundCustomer,
 } from './inboundLeadIntake.js';
@@ -89,6 +90,20 @@ import {
   normalizeIntentConstraint,
   COMPOSER_INTENT_CONSTRAINT,
 } from './composerIntentChips.js';
+import {
+  buildCaptureNextStepHint,
+  filterOfferIntentForCaptureFirst,
+  markNonAuthoritativeRateFacts,
+  shouldCaptureBeforeOffer,
+} from './captureThenOffer.js';
+import {
+  listCustomerVehicleTracks,
+  VEHICLE_TRACK_STATUS,
+} from '../crm/vehicleTrack.js';
+import {
+  getConversationHistoryForAgent,
+  resolveCurrentOfferContextFromMemory,
+} from '../cleverAgent/cleverAgentWorkingMemory.js';
 
 function createTurnId() {
   return `cst_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -149,6 +164,9 @@ function finalizeSellerTurn({
   scopeHint = null,
   appContext = null,
   pendingAction: incomingPendingAction = null,
+  workingMemory = null,
+  conversationHistory = [],
+  previousOfferPreparation = null,
   now = null,
   calendarAvailability = null,
   intentConstraint: intentConstraintIn = null,
@@ -158,6 +176,8 @@ function finalizeSellerTurn({
   purpose: purposeIn = null,
 }) {
   void appContext;
+  void conversationHistory;
+  void previousOfferPreparation;
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const intentConstraint = normalizeIntentConstraint(intentConstraintIn);
   const messagePurpose = messagePurposeIn
@@ -388,9 +408,11 @@ function finalizeSellerTurn({
 
   const workingLead = leadResolve.workingLead?.id ? leadResolve.workingLead : (lead || {});
 
-  let uniqueFacts = reconcileOfferPdfVehicleInterestWithLead(
-    filterDuplicateFacts(facts, workingLead),
-    workingLead,
+  let uniqueFacts = markNonAuthoritativeRateFacts(
+    reconcileOfferPdfVehicleInterestWithLead(
+      filterDuplicateFacts(facts, workingLead),
+      workingLead,
+    ),
   );
   const proposedUpdates = buildProposedUpdatesFromFacts(uniqueFacts);
   const assistantContext = resolveAssistantContext({
@@ -436,10 +458,10 @@ function finalizeSellerTurn({
       goldenMoment: assistantContext.goldenMoment,
     });
     if (successionPrep.ok && successionPrep.facts?.length) {
-      uniqueFacts = filterDuplicateFacts(
+      uniqueFacts = markNonAuthoritativeRateFacts(filterDuplicateFacts(
         [...uniqueFacts, ...successionPrep.facts],
         workingLead,
-      );
+      ));
     }
   }
 
@@ -646,6 +668,42 @@ function finalizeSellerTurn({
     });
   }
 
+  // Capture-first: reicher Dump ohne Offer-Cue → kein PREPARE_OFFER / keine Fake-Rate-Review
+  const captureFirst = shouldCaptureBeforeOffer({
+    facts: uniqueFacts,
+    sellerInput: interpreted.normalized || interpreted.raw,
+  })
+    || isSellerFreestyleCaptureDump(interpreted.normalized || interpreted.raw);
+  if (
+    captureFirst
+    && intentConstraint !== COMPOSER_INTENT_CONSTRAINT.OFFER
+    && intentConstraint !== COMPOSER_INTENT_CONSTRAINT.MESSAGE
+    && !offerPdfDropContext
+    && !offerCtx?.offerId
+  ) {
+    effectiveIntents = filterOfferIntentForCaptureFirst(effectiveIntents, {
+      facts: uniqueFacts,
+      sellerInput: interpreted.normalized || interpreted.raw,
+    });
+    // Multi-Fahrzeug Soft-Dump (+ optional Name/Mail): Capture, kein Inbound-/Message-Miss
+    if (isSellerFreestyleCaptureDump(interpreted.normalized || interpreted.raw)) {
+      effectiveIntents = effectiveIntents.filter((i) => (
+        i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
+        && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
+        && i.type !== SELLER_TURN_INTENTS.DRAFT_CUSTOMER_MESSAGE
+        && i.type !== SELLER_TURN_INTENTS.PREPARE_OFFER
+      ));
+      if (!effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT)) {
+        effectiveIntents = [
+          { type: SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, confidence: 0.95 },
+          ...effectiveIntents,
+        ];
+      }
+      inboundLead = null;
+      customerReply = null;
+    }
+  }
+
   let rememberDecision = null;
   const zeroLossIntake = interpreted.zeroLossIntake || null;
   // Zero-Loss: Merken-Chip ODER freier Clever-Dump mit Kundenwissen
@@ -670,8 +728,33 @@ function finalizeSellerTurn({
   if (
     intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
     || (looksLikeKnowledgeDump && !hasHardActionIntent)
+    || (
+      (captureFirst || shouldCaptureBeforeOffer({
+        facts: uniqueFacts,
+        sellerInput: interpreted.normalized || interpreted.raw,
+      }))
+      && !hasHardActionIntent
+    )
   ) {
     rememberDecision = evaluateRememberDecision(uniqueFacts, workingLead);
+  }
+
+  let captureNextStep = null;
+  if (
+    rememberDecision?.mode === 'save_with_undo'
+    || rememberDecision?.mode === 'partial_save_with_undo'
+  ) {
+    const tracks = listCustomerVehicleTracks(workingLead);
+    const hasActiveTrack = tracks.some((t) => (
+      t.status === VEHICLE_TRACK_STATUS.ACTIVE
+      || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+    ));
+    captureNextStep = buildCaptureNextStepHint({
+      trackCount: tracks.length || uniqueFacts.filter((f) => (
+        f.field === 'vehicleInterest' || f.field === 'vehicleInterestMulti'
+      )).length,
+      hasActiveTrack,
+    });
   }
 
   const preparedActions = enabled
@@ -692,6 +775,7 @@ function finalizeSellerTurn({
       pendingAppointment,
       now,
       calendarAvailability,
+      workingMemory,
     })
     : [];
 
@@ -1033,6 +1117,7 @@ function finalizeSellerTurn({
     memoryCategory,
     offerAction,
     rememberDecision,
+    captureNextStep,
     zeroLossIntake,
     inputMode: interpreted.inputMode,
     interpretedInput: {
@@ -1109,6 +1194,7 @@ function finalizeSellerTurn({
       capturedFacts: uniqueFacts
         .filter((f) => !f.needsConfirmation)
         .map((f) => ({ label: f.label, factClass: f.factClass })),
+      captureNextStep,
       progressLines: [
         todayOverview
           ? 'Clever prüft Ihre heutigen Vorgänge …'
@@ -1360,6 +1446,9 @@ export function runCleverSellerTurn({
   sellerInput = '',
   attachments = [],
   conversationContext = null,
+  conversationHistory = [],
+  workingMemory = null,
+  previousOfferPreparation = null,
   currentOfferContext = null,
   sellerContext = null,
   workingContextItems = [],
@@ -1377,15 +1466,37 @@ export function runCleverSellerTurn({
   purpose = null,
   env = typeof process !== 'undefined' ? process.env : {},
 } = {}) {
-  void conversationContext;
   void sellerContext;
+
+  const memory = workingMemory || conversationContext?.workingMemory || null;
+  const history = (Array.isArray(conversationHistory) && conversationHistory.length
+    ? conversationHistory
+    : null)
+    || conversationContext?.history
+    || getConversationHistoryForAgent(memory);
+  const prep = previousOfferPreparation
+    || memory?.previousOfferPreparation
+    || conversationContext?.previousOfferPreparation
+    || null;
+  const effectiveOfferContext = currentOfferContext
+    || resolveCurrentOfferContextFromMemory(memory, prep);
+  const effectivePending = pendingAction
+    || memory?.pendingAction
+    || appContext?.pendingAction
+    || null;
 
   const interpreted = interpretSellerInput(sellerInput, {
     attachments,
     lead,
-    currentOfferContext,
+    currentOfferContext: effectiveOfferContext,
+    workingMemory: memory,
+    conversationHistory: history,
+    previousOfferPreparation: prep,
     workingContext: Array.isArray(workingContextItems)
-      ? { offer: currentOfferContext, attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null }
+      ? {
+        offer: effectiveOfferContext,
+        attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null,
+      }
       : null,
   });
   return finalizeSellerTurn({
@@ -1403,7 +1514,7 @@ export function runCleverSellerTurn({
       latencyMs: null,
       used: false,
     },
-    currentOfferContext,
+    currentOfferContext: effectiveOfferContext,
     workingContextItems,
     customerName,
     sellerInput,
@@ -1411,7 +1522,10 @@ export function runCleverSellerTurn({
     leadsSnapshot,
     scopeHint,
     appContext,
-    pendingAction: pendingAction || appContext?.pendingAction || null,
+    pendingAction: effectivePending,
+    workingMemory: memory,
+    conversationHistory: history,
+    previousOfferPreparation: prep,
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
     intentConstraint,
@@ -1439,6 +1553,10 @@ export async function runCleverSellerTurnAsync({
   attachments = [],
   env = typeof process !== 'undefined' ? process.env : {},
   openAiOptions = {},
+  conversationContext = null,
+  conversationHistory = [],
+  workingMemory = null,
+  previousOfferPreparation = null,
   currentOfferContext = null,
   workingContextItems = [],
   customerName = '',
@@ -1454,12 +1572,35 @@ export async function runCleverSellerTurnAsync({
   offerAction = null,
   purpose = null,
 } = {}) {
+  const memory = workingMemory || conversationContext?.workingMemory || null;
+  const history = (Array.isArray(conversationHistory) && conversationHistory.length
+    ? conversationHistory
+    : null)
+    || conversationContext?.history
+    || getConversationHistoryForAgent(memory);
+  const prep = previousOfferPreparation
+    || memory?.previousOfferPreparation
+    || conversationContext?.previousOfferPreparation
+    || null;
+  const effectiveOfferContext = currentOfferContext
+    || resolveCurrentOfferContextFromMemory(memory, prep);
+  const effectivePending = pendingAction
+    || memory?.pendingAction
+    || appContext?.pendingAction
+    || null;
+
   const interpreted = interpretSellerInput(sellerInput, {
     attachments,
     lead,
-    currentOfferContext,
+    currentOfferContext: effectiveOfferContext,
+    workingMemory: memory,
+    conversationHistory: history,
+    previousOfferPreparation: prep,
     workingContext: Array.isArray(workingContextItems)
-      ? { offer: currentOfferContext, attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null }
+      ? {
+        offer: effectiveOfferContext,
+        attachedVehicle: workingContextItems.find((i) => i?.kind === 'offer' || i?.card)?.card || null,
+      }
       : null,
   });
   const gate = openAiOptions.forceEscalate
@@ -1491,7 +1632,7 @@ export async function runCleverSellerTurnAsync({
     facts: interpreted.facts,
     intents: interpreted.intents,
     env,
-    currentOfferContext,
+    currentOfferContext: effectiveOfferContext,
     workingContextItems,
     customerName,
     sellerInput,
@@ -1499,7 +1640,10 @@ export async function runCleverSellerTurnAsync({
     leadsSnapshot,
     scopeHint,
     appContext,
-    pendingAction: pendingAction || appContext?.pendingAction || null,
+    pendingAction: effectivePending,
+    workingMemory: memory,
+    conversationHistory: history,
+    previousOfferPreparation: prep,
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
     intentConstraint,

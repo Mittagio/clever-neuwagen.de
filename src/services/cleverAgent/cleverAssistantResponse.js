@@ -93,16 +93,19 @@ export function resolveSellerResponsePolicy(turn = {}) {
       : facts.map((f) => f.label).filter(Boolean).slice(0, 10);
     const title = zeroLoss?.title || 'Aufgenommen';
     const noteBit = zeroLoss?.noteCount ? ` · Notizen · ${zeroLoss.noteCount}` : '';
+    const next = turn.captureNextStep || turn.uiEffects?.captureNextStep || null;
+    const nextBit = next?.hint ? ` · ${next.hint}` : '';
     return {
       kind: CLEVER_RESPONSE_KIND.COMPACT_CONFIRMATION,
       message: chips.length
-        ? `${title}: ${chips.join(' · ')}${noteBit}`
-        : `${title}${noteBit}`,
+        ? `${title}: ${chips.join(' · ')}${noteBit}${nextBit}`
+        : `${title}${noteBit}${nextBit}`,
       chips,
       undoAvailable: true,
       showReview: rememberMode === 'partial_save_with_undo'
         && (turn.rememberDecision?.reviewFacts || []).length > 0,
       clarificationOptions: [],
+      nextStep: next,
     };
   }
 
