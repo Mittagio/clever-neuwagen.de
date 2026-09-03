@@ -27,6 +27,7 @@ import {
   sortTracksForOverview,
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
+import { safeSnapshotFactLabel } from '../cleverSeller/normalizeFactDisplayLabel.js';
 
 /** Soft-Gruppen unter „Kundenwissen“ – kanonische Taxonomie. Legacy-Keys als Alias. */
 export const SOFT_SNAPSHOT_GROUP = {
@@ -328,7 +329,9 @@ export function hasExplicitEquipmentPriority(label = '', contextText = '') {
 
 /** Basis-Label ohne Prioritäts-Suffix. */
 export function stripEquipmentPrioritySuffix(label = '') {
-  return String(label ?? '').replace(PRIORITY_SUFFIX_RE, '').trim();
+  const text = safeSnapshotFactLabel(label);
+  if (!text) return '';
+  return text.replace(PRIORITY_SUFFIX_RE, '').trim();
 }
 
 /**
@@ -738,15 +741,15 @@ export function isDecisionSoftFactLabel(label = '') {
 export function buildSoftPanelTopics(groups = []) {
   const byId = new Map((groups || []).map((g) => [g.id, g]));
   const personalFacts = (byId.get(SOFT_SNAPSHOT_GROUP.PERSOENLICHES)?.facts || [])
-    .filter((f) => !f.empty && String(f.label || '').trim());
+    .filter((f) => !f.empty && safeSnapshotFactLabel(f.label));
   const decisionFacts = personalFacts.filter((f) => isDecisionSoftFactLabel(f.label));
   const persoenlichFacts = personalFacts.filter((f) => !isDecisionSoftFactLabel(f.label));
   const vehicleFacts = (byId.get(SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ)?.facts || [])
-    .filter((f) => !f.empty && String(f.label || '').trim());
+    .filter((f) => !f.empty && safeSnapshotFactLabel(f.label));
   const importantFacts = (byId.get(SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK)?.facts || [])
-    .filter((f) => !f.empty && String(f.label || '').trim());
+    .filter((f) => !f.empty && safeSnapshotFactLabel(f.label));
   const otherFacts = (byId.get(SOFT_SNAPSHOT_GROUP.SONSTIGES)?.facts || [])
-    .filter((f) => !f.empty && String(f.label || '').trim());
+    .filter((f) => !f.empty && safeSnapshotFactLabel(f.label));
 
   const topics = [
     { id: 'persoenlich', title: SOFT_PANEL_TOPIC_TITLE.persoenlich, facts: persoenlichFacts },
@@ -761,7 +764,7 @@ export function buildSoftPanelTopics(groups = []) {
     .map((t) => ({
       ...t,
       line: t.facts
-        .map((f) => stripEquipmentPrioritySuffix(f.label) || f.label)
+        .map((f) => stripEquipmentPrioritySuffix(f.label) || safeSnapshotFactLabel(f.label))
         .filter(Boolean)
         .join(' · '),
     }));
@@ -792,7 +795,7 @@ function fact(id, label, {
   confirmed = null,
   empty = false,
 } = {}) {
-  const text = String(label ?? '').trim();
+  const text = safeSnapshotFactLabel(label);
   if (!text) return null;
   const category = tint || SNAPSHOT_TINT.ALLTAG;
   const normalizedSource = normalizeKnowledgeChipSource(source) || source || null;
@@ -1411,7 +1414,7 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
   };
 
   const pushUnique = (value, meta = {}) => {
-    const text = String(value ?? '').trim();
+    const text = safeSnapshotFactLabel(value);
     if (!text || isSnapshotSystemNoiseLabel(text)) return;
     if (isSnapshotContactIdentityLabel(text, lead)) return;
     // Activity/System nie als Seller-Label in Soft schleusen
@@ -1455,7 +1458,7 @@ function collectConfirmedSellerLabelBundle(lead = {}) {
       ? insight.understoodLabels
       : [rawText].filter(Boolean);
     for (const label of fromInsight) {
-      const display = String(label ?? '').trim();
+      const display = safeSnapshotFactLabel(label);
       if (!display) continue;
       // Generisches Familie/Hund nicht neben spezifischem Merken-Label
       if (rawIsSpecificHuman && isChildrenFactLabel(rawText) && /^familie$/i.test(display)) {

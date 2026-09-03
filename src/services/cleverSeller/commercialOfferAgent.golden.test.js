@@ -170,6 +170,30 @@ for (const phrase of phrases) {
   }
 }
 
+// --- E2: Angebot EV3 Earth → Motor/Pakete/Farbe als Rückfragen + Click-Choices ---
+{
+  const lead = {
+    id: 'lead-ev3-earth',
+    name: 'HAP Handels',
+    contact: { name: 'HAP Handels' },
+    wish: { paymentType: 'leasing' },
+    crm: { needProfile: createEmptyNeedProfile() },
+  };
+  const turn = runCleverSellerTurn({
+    lead,
+    sellerInput: 'Angebot für EV3 Earth',
+    customerName: 'HAP Handels',
+    scopeHint: 'customer_akte',
+  });
+  const missIds = new Set((turn.missingInformation || []).map((m) => m.id));
+  // Vision: erster Schritt ist NUR Modell/Trim-Aufnahme („nur EV3 Earth“).
+  // Daher dürfen hier noch keine Identity- bzw. Commercial-Rückfragen erscheinen.
+  assert.ok(!missIds.has('offer_motor'));
+  assert.ok(!missIds.has('offer_packages'));
+  assert.ok(!missIds.has('offer_color'));
+  assert.ok(!missIds.has('monthly_leasing_rate'));
+}
+
 // --- F: Multi-Fact Akte (Sportage) → Review mit Übernehmen, nicht stuck ---
 {
   const input = '48 20.000 km Wunschrate 350 € Sportage Vision';

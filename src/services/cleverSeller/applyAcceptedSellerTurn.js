@@ -48,6 +48,7 @@ import {
   isPlausibleCustomerName,
   sanitizeCustomerNameCandidate,
 } from './resolveAssistantContext.js';
+import { normalizeFactDisplayLabel } from './normalizeFactDisplayLabel.js';
 
 /** Kontakt-/Identity-Felder → Header, nicht Soft-Insights. */
 const INSIGHT_SKIP_FIELDS = new Set([
@@ -58,6 +59,9 @@ const INSIGHT_SKIP_FIELDS = new Set([
   'salutation',
   'firstName',
   'lastName',
+  // Modell/Spur → Track/Header, nicht Soft-Chip
+  'vehicleInterest',
+  'vehicleInterestMulti',
 ]);
 
 function scoreCustomerNameCandidate(name = '') {
@@ -97,8 +101,9 @@ function pickBestCustomerName(facts = [], inboundContact = null) {
 function shouldPersistSellerInsightLabel(fact = {}, lead = {}) {
   const field = String(fact?.field || '');
   if (INSIGHT_SKIP_FIELDS.has(field)) return false;
-  const label = String(fact?.label || fact?.value?.text || '').trim();
-  if (!label) return false;
+  const label = normalizeFactDisplayLabel(fact?.label, fact?.value)
+    || String(fact?.value?.text || '').trim();
+  if (!label || label === '[object Object]') return false;
   if (isSnapshotSystemNoiseLabel(label)) return false;
   if (isSnapshotContactIdentityLabel(label, lead)) return false;
   // Mail-/Formular-Reste als unresolvedNote nie Soft
@@ -115,9 +120,30 @@ function shouldPersistSellerInsightLabel(fact = {}, lead = {}) {
 }
 
 function pushUnique(list, item) {
-  if (!item) return list;
-  if (list.includes(item)) return list;
-  return [...list, item];
+  const text = normalizeFactDisplayLabel(item, null) || (typeof item === 'string' ? item.trim() : '');
+  if (!text || text === '[object Object]') return list;
+  if (list.includes(text)) return list;
+  return [...list, text];
+}
+
+function resolveColorOrTrimTrackId(lead = {}, patch = {}) {
+  const normalizeKey = (raw) => String(raw || '')
+    .toLowerCase()
+    .replace(/^kia\s+/i, '')
+    .replace(/\s+/g, '')
+    .trim();
+  if (patch.modelKey) {
+    const key = normalizeKey(patch.modelKey);
+    const hit = listCustomerVehicleTracks(lead).find((t) => (
+      normalizeKey(t.config?.modelKey || t.modelLabel) === key
+    ));
+    if (hit?.id) return hit.id;
+  }
+  if (patch.bindToFocus || patch.targetScope === 'offer_vehicle') {
+    if (lead?.crm?.focusedVehicleTrackId) return lead.crm.focusedVehicleTrackId;
+  }
+  if (patch.trackId) return patch.trackId;
+  return lead?.crm?.focusedVehicleTrackId || null;
 }
 
 /**
@@ -349,14 +375,28 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         : (value || fact.label);
       profile.colorPreference = String(colorRaw || '').toLowerCase();
       touchedProfile = true;
-      const trackId = (typeof value === 'object' && value?.vehicleTrackId)
-        || (value?.targetScope === 'offer_vehicle'
-          ? (lead?.crm?.focusedVehicleTrackId || null)
-          : null)
-        || lead?.crm?.focusedVehicleTrackId
+      const interestModelKey = facts.find((f) => (
+        f.field === 'vehicleInterest' && f.value?.modelKey && !f.needsConfirmation
+      ))?.value?.modelKey || null;
+      const modelKey = (typeof value === 'object' && value?.modelKey)
+        || interestModelKey
         || null;
-      if (trackId && colorRaw) {
-        nextLeadColorPatches.push({ trackId, preferredColor: String(colorRaw) });
+      const trackId = (typeof value === 'object' && value?.vehicleTrackId)
+        || null;
+      const bindToFocus = Boolean(
+        modelKey
+        || (typeof value === 'object' && value?.targetScope === 'offer_vehicle')
+        || interestModelKey
+        || lead?.crm?.focusedVehicleTrackId,
+      );
+      if (colorRaw) {
+        nextLeadColorPatches.push({
+          trackId: modelKey ? null : trackId,
+          modelKey,
+          preferredColor: String(colorRaw),
+          bindToFocus,
+          targetScope: typeof value === 'object' ? value?.targetScope : null,
+        });
       }
     }
 
@@ -385,6 +425,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
           [wishId]: priority,
           ...(wishLabel && wishLabel !== wishId ? { [wishLabel]: priority } : {}),
         };
+        if (wishLabel) sharedTrackRequirements.push(wishLabel);
         touchedProfile = true;
       }
     }
@@ -399,19 +440,33 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       const trims = Array.isArray(value)
         ? value
         : (value?.trims || (value?.trim ? [value.trim] : [value || fact.label]));
+      const interestModelKey = facts.find((f) => (
+        f.field === 'vehicleInterest' && f.value?.modelKey && !f.needsConfirmation
+      ))?.value?.modelKey || null;
+      const modelKey = (typeof value === 'object' && !Array.isArray(value) && value?.modelKey)
+        || interestModelKey
+        || null;
       const trackId = (typeof value === 'object' && !Array.isArray(value) && value?.vehicleTrackId)
         || null;
-      const focusId = trackId
-        || (value?.targetScope === 'offer_vehicle'
-          ? (lead?.crm?.focusedVehicleTrackId || null)
-          : null)
-        || lead?.crm?.focusedVehicleTrackId
-        || null;
+      const bindToFocus = Boolean(
+        modelKey
+        || (typeof value === 'object' && !Array.isArray(value) && value?.targetScope === 'offer_vehicle')
+        || interestModelKey
+        || lead?.crm?.focusedVehicleTrackId,
+      );
       for (const trim of trims) {
         const label = String(trim ?? '').trim();
         if (!label) continue;
-        if (focusId) {
-          nextLeadTrimPatches.push({ trackId: focusId, trimLabel: label });
+        if (modelKey || trackId || bindToFocus) {
+          nextLeadTrimPatches.push({
+            trackId: modelKey ? null : trackId,
+            modelKey,
+            trimLabel: label,
+            bindToFocus,
+            targetScope: typeof value === 'object' && !Array.isArray(value)
+              ? value?.targetScope
+              : null,
+          });
         } else {
           profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], label);
         }
@@ -476,7 +531,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         model: value.model || value.modelKey,
         trim: value.trim || null,
         make: value.make || 'Kia',
-        label: fact.label || null,
+        label: normalizeFactDisplayLabel(fact.label, value) || null,
+        color: value.color || value.preferredColor || null,
+        package: value.package || value.equipmentPackage || null,
       };
       touchedProfile = true;
     }
@@ -625,48 +682,6 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     next = mergeNeedProfileIntoLead(next, profile);
   }
 
-  for (const patch of nextLeadTrimPatches) {
-    if (!patch?.trackId || !patch.trimLabel) continue;
-    const configs = next?.crm?.vehicleConfigurations ?? [];
-    next = {
-      ...next,
-      crm: {
-        ...(next.crm || {}),
-        vehicleConfigurations: configs.map((config) => (
-          config?.id === patch.trackId
-            ? {
-              ...config,
-              trimLabel: patch.trimLabel,
-              updatedAt: new Date().toISOString(),
-            }
-            : config
-        )),
-      },
-    };
-  }
-  for (const patch of nextLeadColorPatches) {
-    if (!patch?.trackId || !patch.preferredColor) continue;
-    next = patchVehicleTrackOnLead(next, patch.trackId, {
-      preferredColor: patch.preferredColor,
-    });
-    const configs = next?.crm?.vehicleConfigurations ?? [];
-    next = {
-      ...next,
-      crm: {
-        ...(next.crm || {}),
-        vehicleConfigurations: configs.map((config) => (
-          config?.id === patch.trackId
-            ? {
-              ...config,
-              colorLabel: patch.preferredColor,
-              updatedAt: new Date().toISOString(),
-            }
-            : config
-        )),
-      },
-    };
-  }
-
   if (multiVehicleInterests?.length) {
     const multi = ensureMultiVehicleInterestTracksOnLead(next, multiVehicleInterests, {
       sharedRequirements: [...new Set(sharedTrackRequirements)],
@@ -684,7 +699,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       });
     }
   } else if (sharedTrackRequirements.length) {
-    // Soft-Wünsche (AHK) auf alle offenen/aktiven Spuren spiegeln
+    // Soft-Wünsche (AHK / Winterpaket) auf alle offenen/aktiven Spuren spiegeln
     const tracks = listCustomerVehicleTracks(next).filter((t) => (
       t.status === VEHICLE_TRACK_STATUS.OPEN
       || t.status === VEHICLE_TRACK_STATUS.ACTIVE
@@ -696,6 +711,51 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         customerRequirements: [...new Set([...prev, ...sharedTrackRequirements])],
       });
     }
+  }
+
+  // Farbe/Trim nach Fokus auflösen – nie still auf alter Primary-Spur kleben
+  for (const patch of nextLeadTrimPatches) {
+    const trackId = resolveColorOrTrimTrackId(next, patch);
+    if (!trackId || !patch.trimLabel) continue;
+    const configs = next?.crm?.vehicleConfigurations ?? [];
+    next = {
+      ...next,
+      crm: {
+        ...(next.crm || {}),
+        vehicleConfigurations: configs.map((config) => (
+          config?.id === trackId
+            ? {
+              ...config,
+              trimLabel: patch.trimLabel,
+              updatedAt: new Date().toISOString(),
+            }
+            : config
+        )),
+      },
+    };
+  }
+  for (const patch of nextLeadColorPatches) {
+    const trackId = resolveColorOrTrimTrackId(next, patch);
+    if (!trackId || !patch.preferredColor) continue;
+    next = patchVehicleTrackOnLead(next, trackId, {
+      preferredColor: patch.preferredColor,
+    });
+    const configs = next?.crm?.vehicleConfigurations ?? [];
+    next = {
+      ...next,
+      crm: {
+        ...(next.crm || {}),
+        vehicleConfigurations: configs.map((config) => (
+          config?.id === trackId
+            ? {
+              ...config,
+              colorLabel: patch.preferredColor,
+              updatedAt: new Date().toISOString(),
+            }
+            : config
+        )),
+      },
+    };
   }
 
   if (appointmentValue?.startAt) {
@@ -1051,14 +1111,14 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
 
   const labels = facts
     .filter((f) => shouldPersistSellerInsightLabel(f, workingLead))
-    .map((f) => String(f.label ?? '').trim())
+    .map((f) => normalizeFactDisplayLabel(f.label, f.value))
     .filter(Boolean);
   // Inbound-/Extraktions-Accept → Clever-Quelle (nicht Merken/Picker)
   const insightSource = inbound?.detected ? 'clever' : 'seller';
   let nextLead = workingLead;
   for (const fact of facts) {
     if (!shouldPersistSellerInsightLabel(fact, nextLead)) continue;
-    const label = String(fact.label ?? '').trim();
+    const label = normalizeFactDisplayLabel(fact.label, fact.value);
     if (!label) continue;
     const understoodLabels = fact.field === 'serviceInclusionWish'
       || classifySnapshotNoteLabel(label).slot === 'serviceWish'

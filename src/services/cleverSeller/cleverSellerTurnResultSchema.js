@@ -4,6 +4,7 @@
  */
 
 import { SELLER_INPUT_MODE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
+import { normalizeFactDisplayLabel } from './normalizeFactDisplayLabel.js';
 
 /**
  * @returns {object}
@@ -110,11 +111,12 @@ export function createExtractedFact({
   correctionSource = null,
   correctedAt = null,
 } = {}) {
+  const displayLabel = normalizeFactDisplayLabel(label, value);
   return {
     factClass,
     field: field || null,
     value,
-    label: String(label ?? value ?? '').trim(),
+    label: displayLabel,
     source,
     confidence: Number(confidence) || 0,
     needsConfirmation: Boolean(needsConfirmation),

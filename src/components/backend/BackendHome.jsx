@@ -38,8 +38,9 @@ export default function BackendHome({ onNavigateArea }) {
   return (
     <div className="backend-home backend-home--calm">
       <header className="backend-home__greeting" aria-label="Begrüßung">
-        <h1 className="backend-home__greeting-title">Guten Tag.</h1>
-        <p className="backend-home__greeting-sub">Was soll Clever heute für dich erledigen?</p>
+        <h1 className="backend-home__greeting-title">
+          Was brauchst <span className="backend-home__greeting-accent">du</span> heute?
+        </h1>
       </header>
 
       <div

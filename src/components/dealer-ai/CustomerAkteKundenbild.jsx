@@ -19,6 +19,7 @@ import {
   SOFT_SNAPSHOT_GROUP,
   stripEquipmentPrioritySuffix,
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
+import { safeSnapshotFactLabel } from '../../services/cleverSeller/normalizeFactDisplayLabel.js';
 import './CustomerAkteKundenbild.css';
 
 /**
@@ -103,7 +104,7 @@ function formatProvenanceInline(title) {
  */
 function resolveCollapsedSummaryTokens(soft, maxTokens = SNAPSHOT_SUMMARY_MAX_TOKENS) {
   const fromSummary = Array.isArray(soft?.summary?.tokens)
-    ? soft.summary.tokens.filter((t) => !t.empty && String(t.label || '').trim())
+    ? soft.summary.tokens.filter((t) => !t.empty && safeSnapshotFactLabel(t.label))
     : [];
   const summaryOverflow = Number(soft?.summary?.overflow) > 0
     ? Number(soft.summary.overflow)
@@ -116,7 +117,7 @@ function resolveCollapsedSummaryTokens(soft, maxTokens = SNAPSHOT_SUMMARY_MAX_TO
     : (soft?.groups ?? []);
   const built = buildSnapshotSummary(chipSource, maxTokens);
   return {
-    tokens: (built.tokens || []).filter((t) => !t.empty && String(t.label || '').trim()),
+    tokens: (built.tokens || []).filter((t) => !t.empty && safeSnapshotFactLabel(t.label)),
     overflow: Number(built.overflow) > 0 ? Number(built.overflow) : 0,
   };
 }
@@ -134,7 +135,9 @@ function ProvenanceFact({
   showProvenanceMeta = false,
 }) {
   const title = chipTitle(fact);
-  const displayLabel = stripEquipmentPrioritySuffix(fact?.label || '') || fact?.label;
+  const displayLabel = stripEquipmentPrioritySuffix(fact?.label || '')
+    || safeSnapshotFactLabel(fact?.label);
+  if (!displayLabel) return null;
   const Tag = as === 'button' ? 'button' : 'span';
   const inlineTitle = formatProvenanceInline(title);
 
@@ -179,8 +182,9 @@ function SummaryChipLight({
   overflow = false,
 }) {
   const displayLabel = overflow
-    ? `+${fact?.overflow ?? fact?.label ?? ''}`
-    : (stripEquipmentPrioritySuffix(fact?.label || '') || fact?.label);
+    ? `+${fact?.overflow ?? safeSnapshotFactLabel(fact?.label) ?? ''}`
+    : (stripEquipmentPrioritySuffix(fact?.label || '') || safeSnapshotFactLabel(fact?.label));
+  if (!overflow && !displayLabel) return null;
   const title = overflow
     ? `${fact?.overflow || ''} weitere Infos anzeigen`
     : chipTitle(fact);

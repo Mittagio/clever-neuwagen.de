@@ -482,7 +482,7 @@ export function resolveOfferVehicleTarget({
     };
   }
 
-  // Explizites Modell → bestehende Spur matchen oder resolved ohne Default-Trim
+  // Explizites Modell → bestehende Spur matchen oder neue Zielspur anlegen/fokus
   if (explicit?.modelKey) {
     const match = tracks.find((t) => (
       normalizeModelKey(t.config?.modelKey || t.modelLabel) === explicit.modelKey
@@ -490,12 +490,11 @@ export function resolveOfferVehicleTarget({
     const updateExisting = mutationMode === OFFER_MUTATION_MODE.UPDATE_EXISTING
       || Boolean(offerTrackId && match && match.id === offerTrackId)
       || Boolean(focus && match && match.id === focus.id);
+    const createNew = !match && mutationMode !== OFFER_MUTATION_MODE.UPDATE_EXISTING;
     return {
       status: OFFER_VEHICLE_TARGET_STATUS.RESOLVED,
       vehicleTrackId: match?.id || (updateExisting ? offerTrackId : null) || null,
-      createNew: !match && mutationMode !== OFFER_MUTATION_MODE.UPDATE_EXISTING
-        ? mutationMode === OFFER_MUTATION_MODE.CREATE_NEW
-        : false,
+      createNew,
       modelKey: explicit.modelKey,
       model: explicit.model,
       trim: explicit.trim || match?.config?.trimLabel || null,
@@ -505,7 +504,7 @@ export function resolveOfferVehicleTarget({
       source: 'explicit_model',
       mutationMode: updateExisting
         ? OFFER_MUTATION_MODE.UPDATE_EXISTING
-        : mutationMode,
+        : (createNew ? OFFER_MUTATION_MODE.CREATE_NEW : mutationMode),
     };
   }
 

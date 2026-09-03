@@ -222,10 +222,10 @@ export function executeUpdateCustomerFacts(runtime = {}, args = {}) {
     factClass: f.factClass || SELLER_FACT_CLASS.CUSTOMER_FACT,
     field: f.field,
     value: f.value,
-    label: f.label || String(f.value ?? f.field),
+    label: f.label,
     needsConfirmation: Boolean(f.needsConfirmation),
     confidence: f.confidence ?? 0.9,
-  }));
+  })).filter((f) => f.label);
 
   const nextLead = applyStructuredFactsToLead(lead, normalized);
   const labels = normalized.map((f) => f.label).filter(Boolean);

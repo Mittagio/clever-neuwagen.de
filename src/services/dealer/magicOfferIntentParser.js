@@ -7,12 +7,26 @@ import { parseGermanMoney } from './parseGermanMoney.js';
 function normalize(text = '') {
   return String(text ?? '')
     .toLowerCase()
+    // ß bleibt bei NFD erhalten – sonst matcht „schneeweiß“ nicht „schneeweiss“
+    .replace(/ß/g, 'ss')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/€/g, ' euro ')
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/** Benannte Kia-Pakete (Bank-PDF) → P-Codes wie im Konfigurator MJ27 */
+const NAMED_PACKAGE_ALIASES = [
+  { re: /\bupgrade[\s-]?paket\b/, key: 'P5', label: 'Upgrade-Paket' },
+  { re: /\bwinter[\s-]?connect(?:[\s-]?paket)?\b/, key: 'P3', label: 'Winter-Connect-Paket' },
+  { re: /\bbusiness[\s-]?paket\b/, key: 'P4', label: 'Business-Paket' },
+  { re: /\bdrivewise[\s-]?park(?:[\s-]?paket)?\b/, key: 'P6', label: 'DriveWise-Park-Paket' },
+  { re: /\bdesign[\s-]?paket\b/, key: 'P7', label: 'Design-Paket' },
+  { re: /\btechnologie[\s-]?paket\b|\btechnology[\s-]?paket\b/, key: 'technology', label: 'Technology-Paket' },
+  { re: /\bkomfort[\s-]?paket\b|\bcomfort[\s-]?paket\b/, key: 'P11', label: 'Comfort-Paket' },
+  { re: /\bglasdach[\s-]?paket\b/, key: 'P12', label: 'Glasdach-Paket' },
+];
 
 /**
  * @param {string|null|undefined} raw
@@ -42,9 +56,17 @@ export function parseMagicOfferIntent(text = '') {
   const blob = normalize(raw);
 
   const packageKeys = [];
+  const packageLabels = [];
+  const pushPackage = (key, label = null) => {
+    if (!key) return;
+    if (!packageKeys.includes(key)) packageKeys.push(key);
+    if (label && !packageLabels.includes(label)) packageLabels.push(label);
+  };
   for (const match of blob.matchAll(/\bp\s*([1-9]\d?)\b/gi)) {
-    const code = `P${match[1]}`;
-    if (!packageKeys.includes(code)) packageKeys.push(code);
+    pushPackage(`P${match[1]}`);
+  }
+  for (const entry of NAMED_PACKAGE_ALIASES) {
+    if (entry.re.test(blob)) pushPackage(entry.key, entry.label);
   }
 
   let discountPercent = null;
@@ -113,19 +135,25 @@ export function parseMagicOfferIntent(text = '') {
   let monthlyRate = null;
   let monthlyRateBasis = null;
   const rateMatch = blob.match(
-    new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)`, 'i'),
+    new RegExp(`monatliche\\s+gesamtrate[\\s\\S]{0,80}?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
   )
     ?? blob.match(
-      new RegExp(`(?:brutto|netto)[\\s-]*(?:monats)?rate\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+      new RegExp(`monatsrate\\s+finanzleasing\\s*${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
     )
     ?? blob.match(
-      new RegExp(`(?:monats)?rate\\s*(?:brutto|netto)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)`, 'i'),
     )
     ?? blob.match(
-      new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+      new RegExp(`(?:brutto|netto)[\\s-]*(?:monats)?rate\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
     )
     ?? blob.match(
-      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:brutto|netto)\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)?`, 'i'),
+      new RegExp(`(?:monats)?rate\\s*(?:brutto|netto)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:brutto|netto)\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)?`, 'i'),
     );
   if (rateMatch) {
     monthlyRate = parseEuroAmount(rateMatch[1]);
@@ -133,9 +161,13 @@ export function parseMagicOfferIntent(text = '') {
     if (/\bnetto\b/i.test(rateCtx)) monthlyRateBasis = 'net';
     else if (/\bbrutto\b/i.test(rateCtx)) monthlyRateBasis = 'gross';
   }
-  // Kontext um die Rate: „Monatsrate 329 € netto“ / „Netto-Rate“
+  // Kontext um die Rate: „Monatsrate 329 € netto“ / „Netto-Rate“ / Bank „ohne USt“
   if (monthlyRate != null && monthlyRateBasis == null) {
-    if (/\b(?:netto[\s-]*(?:monats)?rate|(?:monats)?rate[\s\S]{0,24}netto)\b/i.test(blob)) {
+    if (
+      /\b(?:netto[\s-]*(?:monats)?rate|(?:monats)?rate[\s\S]{0,24}netto)\b/i.test(blob)
+      || /\balle\s+preise\s+ohne\s+ust\b/.test(blob)
+      || /\bohne\s+ust\b/.test(blob)
+    ) {
       monthlyRateBasis = 'net';
     } else if (/\b(?:brutto[\s-]*(?:monats)?rate|(?:monats)?rate[\s\S]{0,24}brutto)\b/i.test(blob)) {
       monthlyRateBasis = 'gross';
@@ -144,17 +176,30 @@ export function parseMagicOfferIntent(text = '') {
 
   let listPrice = null;
   let listPriceBasis = null;
+  // Gesamt-/Anschaffungspreis vor Grundlistenpreis; UVP auch in Klammern
   const upeMatch = blob.match(
-    new RegExp(`(?:upe|uvp|listenpreis|fahrzeugpreis|barpreis)\\s*(?:brutto|netto)?\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+    new RegExp(`(?:gesamtlistenpreis|anschaffungspreis)[^\\d]{0,48}${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
   )
     ?? blob.match(
-      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:upe|uvp|listenpreis)\\s*(?:brutto|netto)?`, 'i'),
+      new RegExp(`gesamtpreis\\s*\\(?\\s*uvp\\s*\\)?[^\\d]{0,24}${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`\\(\\s*uvp\\s*\\)[^\\d]{0,24}${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`(?:upe|uvp|fahrzeugpreis|barpreis)\\s*(?:brutto|netto)?\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`(?:^|[^a-z])listenpreis\\s*(?:brutto|netto)?\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+    )
+    ?? blob.match(
+      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:upe|uvp|listenpreis)\\s*(?:brutto|netto)?`, 'i'),
     );
   if (upeMatch) {
     listPrice = parseEuroAmount(upeMatch[1] || upeMatch[2]);
     const upeCtx = String(upeMatch[0] || '');
-    if (/\bnetto\b/i.test(upeCtx)) listPriceBasis = 'net';
-    else if (/\bbrutto\b/i.test(upeCtx)) listPriceBasis = 'gross';
+    if (/\bnetto\b/i.test(upeCtx) || /\bohne\s+ust\b/.test(blob)) listPriceBasis = 'net';
+    else if (/\bbrutto\b/i.test(upeCtx) || /\binkl\.?\s*19\s*%?\s*mwst\b/.test(blob)) listPriceBasis = 'gross';
   }
 
   let durationMonths = null;
@@ -173,9 +218,23 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let annualMileageKm = null;
-  const kmMatch = blob.match(/(\d{1,3}(?:[.\s]\d{3})*)\s*(?:km|kilometer)(?:\s*\/?\s*jahr)?/i);
-  if (kmMatch) {
-    annualMileageKm = Number(String(kmMatch[1]).replace(/\./g, '').replace(/\s/g, ''));
+  const kmCandidates = [
+    ...blob.matchAll(/laufleistung(?:\s*\/\s*jahr)?[^\d]{0,40}(\d{1,3}(?:[.\s]\d{3})*)\s*(?:km|kilometer)/gi),
+    ...blob.matchAll(/(\d{1,3}(?:[.\s]\d{3})*)\s*(?:km|kilometer)\s*(?:\/?\s*jahr|pro\s*jahr|p\.?\s*a\.?)/gi),
+    ...blob.matchAll(/(\d{1,3}(?:[.\s]\d{3})*)\s*(?:km|kilometer)/gi),
+  ];
+  for (const kmMatch of kmCandidates) {
+    const rawNum = String(kmMatch[1]).replace(/\./g, '').replace(/\s/g, '');
+    const value = Number(rawNum);
+    if (!Number.isFinite(value)) continue;
+    const start = kmMatch.index ?? blob.indexOf(kmMatch[0]);
+    const before = blob.slice(Math.max(0, start - 12), start);
+    // Verbrauchszeile „kWh/100 km“ / „/100 km“ nie als Jahres-km
+    if (/kwh\s*\/\s*$/.test(before) || /\/\s*$/.test(before)) continue;
+    if (value < 1000) continue;
+    if (value > 100000) continue;
+    annualMileageKm = value;
+    break;
   }
 
   let downPayment = null;
@@ -286,11 +345,14 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let colorHint = null;
+  const lackierungCue = blob.match(
+    /(?:lackierung|farbe\s*aussen|farbe\s+aussen|aussenfarbe)\s*:?\s*([a-z0-9äöü\s-]{3,40})/i,
+  );
   const colorPatterns = [
     [/terracotta/, 'terracotta'],
-    [/snow\s*white(?:\s*pearl)?|schneeweiss/, 'snowwhitepearl'],
+    [/snow\s*white(?:\s*pearl)?|schneeweiss(?:\s*uni)?/, 'snowwhitepearl'],
     [/clear\s*white|klarweiss|clearwhite/, 'clearwhite'],
-    [/(?:^|[^a-z])(weiss|weiß|white)(?:[^a-z]|$)/i, 'white'],
+    [/(?:^|[^a-z])(weiss|white)(?:[^a-z]|$)/i, 'white'],
     [/aurora\s*black|schwarz/, 'aurorablackpearl'],
     [/shale\s*grey|schiefergrau/, 'shalegrey'],
     [/frost\s*blue|\bblau\b/, 'frostblue'],
@@ -298,17 +360,32 @@ export function parseMagicOfferIntent(text = '') {
     [/aventurine\s*green/, 'aventurinegreen'],
     [/wolf\s*gr[ae]y|wolfgray/, 'wolfgray'],
   ];
+  const colorSearchBlob = lackierungCue?.[1]
+    ? normalize(lackierungCue[1])
+    : blob;
   for (const [re, id] of colorPatterns) {
-    if (re.test(blob)) {
+    if (re.test(colorSearchBlob) || (lackierungCue && re.test(blob))) {
       colorHint = id;
       break;
     }
   }
 
   let motorHint = null;
-  if (/\blong\s*range\b|\b81[,.]?4\b/.test(blob)) motorHint = 'ev-long';
-  else if (/\bstandard\s*range\b|\b58[,.]?3\b/.test(blob)) motorHint = 'ev-std';
-  else if (/\bawd\b|\ballrad\b/.test(blob)) motorHint = 'ev-long-awd';
+  if (/\blong\s*range\b|\b81[,.]?4\s*-?\s*kwh\b|\b81[,.]?4\b/.test(blob)) {
+    motorHint = 'ev-long';
+  } else if (
+    /\bstandard\s*range\b/.test(blob)
+    || /\b58[,.]?3\s*-?\s*kwh\b/.test(blob)
+    || /\b58\s*kwh\b/.test(blob)
+    || /\b58[,.]?3\b/.test(blob)
+  ) {
+    motorHint = 'ev-std';
+  }
+  if (/\bawd\b|\ballrad\b/.test(blob) && (motorHint === 'ev-long' || /\b81[,.]?4\b/.test(blob))) {
+    motorHint = 'ev-long-awd';
+  } else if (/\bawd\b|\ballrad\b/.test(blob) && !motorHint) {
+    motorHint = 'ev-long-awd';
+  }
 
   return {
     rawText: raw,
@@ -319,6 +396,7 @@ export function parseMagicOfferIntent(text = '') {
       motorHint,
       transmissionRequirement,
       packageKeys,
+      packageLabels,
       equipmentKeys,
       colorHint,
     },

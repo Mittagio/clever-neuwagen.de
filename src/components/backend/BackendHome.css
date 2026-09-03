@@ -1,18 +1,22 @@
 .backend-home {
   /* Shared content shell: greeting, composer hero, widgets, tools */
   --backend-home-content-max: 1080px;
+  --backend-home-ink: #1c1b19;
+  --backend-home-muted: #6f6b64;
+  font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 36px;
   max-width: var(--backend-home-content-max);
   width: 100%;
   margin: 0 auto;
-  padding: 20px 16px 28px;
+  padding: 36px 24px 48px;
   box-sizing: border-box;
+  color: var(--backend-home-ink);
 }
 
 .backend-home--calm {
-  gap: 24px;
+  gap: 40px;
 }
 
 .backend-home--calm .backend-home__advisor-hero {
@@ -27,26 +31,33 @@
 
 .backend-home__greeting-title {
   margin: 0;
-  font-size: clamp(1.85rem, 4vw, 2.35rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #0b1736;
-  line-height: 1.15;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 4.4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--backend-home-ink);
+  line-height: 1.18;
+}
+
+.backend-home__greeting-accent {
+  color: var(--color-clever, #7a73c0);
+  font-style: italic;
+  font-weight: 550;
 }
 
 .backend-home__greeting-sub {
-  margin: 8px 0 0;
-  font-size: 1rem;
-  color: #64748b;
-  line-height: 1.4;
+  margin: 12px 0 0;
+  font-size: 0.98rem;
+  font-weight: 400;
+  color: var(--backend-home-muted);
+  line-height: 1.45;
 }
 
 .backend-home__composer-slot {
-  /* Full width of .backend-home shell (same as widgets row) */
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -60,7 +71,7 @@
 .backend-home__widgets {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
   align-items: stretch;
 }
 
@@ -73,79 +84,84 @@
 .backend-home__widget {
   display: flex;
   flex-direction: column;
-  min-height: 168px;
-  padding: 16px 16px 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  min-height: 184px;
+  padding: 22px 20px 18px;
+  border: 1px solid rgba(28, 27, 25, 0.07);
+  border-radius: var(--radius-xl, 22px);
+  background: var(--color-surface, #fffcf9);
+  box-shadow: none;
   box-sizing: border-box;
 }
 
 .backend-home__widget--alert {
-  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.28));
-  box-shadow: 0 8px 24px rgba(109, 91, 184, 0.1);
+  border-color: rgba(122, 115, 192, 0.22);
+  box-shadow: none;
+  background: linear-gradient(180deg, rgba(122, 115, 192, 0.04) 0%, var(--color-surface, #fffcf9) 48%);
 }
 
 .backend-home__widget-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .backend-home__widget-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
-  color: var(--color-clever, #6d5bb8);
-  background: var(--color-clever-soft, rgba(109, 91, 184, 0.12));
+  color: var(--color-clever, #7a73c0);
+  background: var(--color-clever-soft);
   flex-shrink: 0;
 }
 
 .backend-home__widget-icon .cn-line-icon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .backend-home__widget-title {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 750;
-  color: #0b1736;
-  line-height: 1.25;
+  font-size: 0.9rem;
+  font-weight: 550;
+  color: var(--backend-home-ink);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .backend-home__widget-stat {
   margin: 0;
-  font-size: 1.55rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 550;
   letter-spacing: -0.03em;
-  color: #0b1736;
+  color: var(--backend-home-ink);
   line-height: 1.15;
 }
 
 .backend-home__widget-sub {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 0.84rem;
-  color: #64748b;
-  line-height: 1.35;
+  font-weight: 400;
+  color: var(--backend-home-muted);
+  line-height: 1.45;
 }
 
 .backend-home__widget-link {
   margin-top: auto;
-  padding-top: 14px;
+  padding-top: 18px;
   font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--color-clever, #6d5bb8);
+  font-weight: 500;
+  color: var(--color-clever, #7a73c0);
   text-decoration: none;
 }
 
 .backend-home__widget-link:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .backend-home__work-stats {
@@ -180,26 +196,26 @@
 }
 
 .backend-home__work-stat strong {
-  font-size: 1.35rem;
-  font-weight: 800;
+  font-size: 1.4rem;
+  font-weight: 600;
   letter-spacing: -0.03em;
-  color: #0b1736;
+  color: var(--backend-home-ink, #1c1b19);
   line-height: 1.1;
 }
 
 .backend-home__work-stat span {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 450;
+  color: var(--backend-home-muted, #6f6b64);
   line-height: 1.25;
 }
 
 .backend-home__work-secondary {
-  margin: 10px 0 0;
+  margin: 14px 0 0;
   font-size: 0.78rem;
-  font-weight: 600;
-  color: #94a3b8;
-  line-height: 1.3;
+  font-weight: 450;
+  color: #8f8a82;
+  line-height: 1.35;
 }
 
 .backend-home__eingang-breakdown {
@@ -227,17 +243,17 @@
 }
 
 .backend-home__eingang-bucket strong {
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  color: #0b1736;
+  color: var(--backend-home-ink, #1c1b19);
   line-height: 1.1;
 }
 
 .backend-home__eingang-bucket span {
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 450;
+  color: var(--backend-home-muted, #6f6b64);
   line-height: 1.2;
 }
 
@@ -247,17 +263,18 @@
 }
 
 .backend-home__tools-heading {
-  margin: 0 0 12px;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #0b1736;
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--backend-home-ink, #1c1b19);
   letter-spacing: -0.02em;
 }
 
 .backend-home__tools-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 @media (max-width: 900px) {
@@ -275,25 +292,26 @@
 .backend-home__tool {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 84px;
-  padding: 14px 12px 14px 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 18px;
-  background: #fff;
+  gap: 14px;
+  min-height: 92px;
+  padding: 18px 16px 18px 18px;
+  border: 1px solid rgba(28, 27, 25, 0.07);
+  border-radius: var(--radius-xl, 22px);
+  background: var(--color-surface, #fffcf9);
   text-align: left;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
   font: inherit;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .backend-home__tool:hover {
-  border-color: var(--color-clever-border, rgba(109, 91, 184, 0.28));
-  box-shadow: 0 8px 22px rgba(109, 91, 184, 0.1);
-  transform: translateY(-1px);
+  border-color: rgba(122, 115, 192, 0.28);
+  background: rgba(122, 115, 192, 0.03);
+  box-shadow: none;
+  transform: none;
 }
 
 .backend-home__tool-icon {
@@ -303,14 +321,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  color: var(--color-clever, #6d5bb8);
-  background: var(--color-clever-soft, rgba(109, 91, 184, 0.12));
+  border-radius: 11px;
+  color: var(--color-clever, #7a73c0);
+  background: var(--color-clever-soft);
 }
 
 .backend-home__tool-icon .cn-line-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .backend-home__tool-copy {
@@ -318,20 +336,22 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .backend-home__tool-title {
   font-size: 0.9rem;
-  font-weight: 750;
-  color: #0b1736;
-  line-height: 1.25;
+  font-weight: 550;
+  color: var(--backend-home-ink, #1c1b19);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .backend-home__tool-sub {
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--backend-home-muted, #6f6b64);
 }
 
 .backend-home__tool-chevron {

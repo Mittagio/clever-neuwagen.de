@@ -484,6 +484,8 @@ export function focusVehicleInterestOnLead(lead = {}, {
   trim = null,
   make = 'Kia',
   label = null,
+  color = null,
+  package: packageLabel = null,
   status = VEHICLE_TRACK_STATUS.ACTIVE,
 } = {}) {
   const key = String(modelKey || model || '')
@@ -527,12 +529,44 @@ export function focusVehicleInterestOnLead(lead = {}, {
     }
   }
 
+  const preferredColor = color
+    ? String(color).toLowerCase()
+    : null;
+  const packageReq = packageLabel ? String(packageLabel).trim() : '';
+  const prevMeta = getVehicleTrackMeta(
+    (next.crm?.vehicleConfigurations || []).find((c) => c?.id === trackId),
+  );
+  const nextReqs = packageReq
+    ? [...new Set([...(prevMeta.customerRequirements || []), packageReq])]
+    : (prevMeta.customerRequirements || []);
+
   next = patchVehicleTrackOnLead(next, trackId, {
     status: status === VEHICLE_TRACK_STATUS.FAVORITE
       ? VEHICLE_TRACK_STATUS.FAVORITE
       : VEHICLE_TRACK_STATUS.ACTIVE,
     lastActivityAt: new Date().toISOString(),
+    ...(preferredColor ? { preferredColor } : {}),
+    ...(packageReq ? { customerRequirements: nextReqs } : {}),
   });
+
+  if (preferredColor) {
+    const nextConfigs = next?.crm?.vehicleConfigurations ?? [];
+    next = {
+      ...next,
+      crm: {
+        ...(next.crm || {}),
+        vehicleConfigurations: nextConfigs.map((config) => (
+          config?.id === trackId
+            ? {
+              ...config,
+              colorLabel: preferredColor,
+              updatedAt: new Date().toISOString(),
+            }
+            : config
+        )),
+      },
+    };
+  }
 
   // Fokussierte Spur nach vorne – primaryCard / Header / CleverEmpfiehlt folgen dem Modell.
   const ordered = [...(next.crm?.vehicleConfigurations ?? [])].sort((a, b) => {

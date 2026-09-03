@@ -3,6 +3,7 @@
  * OpenAI-Facts immer needsConfirmation – kein Auto-Persist.
  */
 import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
+import { normalizeFactDisplayLabel } from './normalizeFactDisplayLabel.js';
 import { SELLER_FACT_SOURCE } from './sellerFactTypes.js';
 
 function factKey(fact = {}) {
@@ -35,11 +36,12 @@ export function mergeSellerInterpretation(deterministicFacts = [], aiFacts = [])
       factClass: raw.factClass || 'seller_note',
       field: raw.field || null,
       value: raw.value ?? null,
-      label: raw.label || String(raw.value ?? ''),
+      label: normalizeFactDisplayLabel(raw.label, raw.value),
       source: SELLER_FACT_SOURCE.OPENAI_INTERPRETATION,
       confidence: Math.min(0.85, Number(raw.confidence) || 0.7),
       needsConfirmation: true,
     });
+    if (!fact.label) continue;
     const key = factKey(fact);
     if (seen.has(key)) continue;
     seen.add(key);

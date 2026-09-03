@@ -121,7 +121,7 @@ const MONTH_MAP = {
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite';
-const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP';
+const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP|Winterpaket|Winter\\s*paket';
 const KIA_INTEREST_COLOR_RE = 'schwarz\\w*|wei[sß]{1,2}\\w*|terracotta|blau\\w*|grau\\w*|silber\\w*|rot\\w*|gr[uü]n\\w*';
 
 /** Word-boundary-safe match (ß/ä ist in JS ohne `u` kein \\w). */
@@ -613,6 +613,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       const p = String(pkgInSeg[1]).toLowerCase();
       packageLabel = /upgrade/i.test(p) ? 'Upgrade'
         : /heat|wärm|waerm|wp/i.test(p) ? 'Wärmepumpe'
+        : /winter/i.test(p) ? 'Winterpaket'
         : titleCaseToken(pkgInSeg[1]);
     }
 
@@ -1119,23 +1120,32 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       ? `Farbe ${titleCaseToken(base)}`
       : titleCaseToken(base);
     const colorConfidence = bindToOpenOffer || isRememberCue || hasInterest ? 0.94 : 0.82;
+    const interestModelKey = interestHits.length === 1 ? interestHits[0].modelKey : null;
     const focusTrackId = offerTrackId
-      || lead?.crm?.focusedVehicleTrackId
+      || (!interestModelKey ? lead?.crm?.focusedVehicleTrackId : null)
       || null;
-    const focusMeta = (bindToOpenOffer || (hasInterest && interestHits.length <= 1 && focusTrackId))
-      ? {
+    let colorValue = base;
+    if (interestModelKey) {
+      // Neue Interesse-Spur: an Modell binden (Track-Id erst nach Focus)
+      colorValue = {
+        color: base,
+        targetScope: 'offer_vehicle',
+        modelKey: interestModelKey,
+      };
+    } else if (bindToOpenOffer || focusTrackId) {
+      colorValue = {
+        color: base,
         targetScope: 'offer_vehicle',
         vehicleTrackId: focusTrackId || offerTrackId,
-      }
-      : offerIdentityMeta;
+        ...(offerIdentityMeta || {}),
+      };
+    }
     pushFact(facts, createExtractedFact({
       factClass: (bindToOpenOffer || isRememberCue)
         ? SELLER_FACT_CLASS.VEHICLE_REQUIREMENT
         : SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
-      value: focusMeta
-        ? { color: base, ...focusMeta }
-        : base,
+      value: colorValue,
       label,
       confidence: colorConfidence,
       needsConfirmation: !(bindToOpenOffer || isRememberCue || hasInterest),
@@ -1196,10 +1206,19 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     { re: /\bw[äa]rmepumpe\b/i, label: 'Wärmepumpe', id: 'heat_pump' },
     { re: /\bsitzheizung\b/i, label: 'Sitzheizung', id: 'heated_seats' },
     { re: /\bpanorama(?:dach)?\b/i, label: 'Panoramadach', id: 'panorama_roof' },
+    { re: /\bwinter(?:\s*|-)?paket\b/i, label: 'Winterpaket', id: 'winter' },
   ];
   for (const rule of equipmentWishRules) {
     if (!rule.re.test(t)) continue;
+    // Bereits am Interest-Hit → kein zweites Chip, nur wenn nicht schon als package
+    if (
+      rule.id === 'winter'
+      && interestHits.some((h) => /winter/i.test(String(h.package || '')))
+    ) {
+      continue;
+    }
     const display = prioritySuffix ? `${rule.label} · ${prioritySuffix}` : rule.label;
+    const interestModelKey = interestHits.length === 1 ? interestHits[0].modelKey : null;
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'equipmentWish',
@@ -1207,6 +1226,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         id: rule.id,
         label: rule.label,
         priority: equipmentPriority,
+        ...(interestModelKey ? { modelKey: interestModelKey, targetScope: 'offer_vehicle' } : {}),
       },
       label: display,
       confidence: isRememberCue || equipmentPriority === 'required' ? 0.95 : 0.9,

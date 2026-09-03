@@ -662,9 +662,15 @@ export function buildUniversalActionSections(turn = {}) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
     const discount = facts.find((f) => f.field === 'discountPercent');
+    const identityMissing = (turn.missingInformation || []).filter((m) => (
+      m.id === 'offer_motor'
+      || m.id === 'offer_packages'
+      || m.id === 'offer_color'
+    ));
     const incomplete = offerSectionSource.payload?.canCreateOffer === false
       || offerSectionSource.payload?.missingRate
       || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate')
+      || identityMissing.length > 0
       || offerSectionSource.status === 'blocked';
     const wish = turn.usedCustomerContext || {};
     const inherited = [
@@ -688,6 +694,19 @@ export function buildUniversalActionSections(turn = {}) {
     const offerPrimaryLabel = incomplete
       ? 'Angebot vervollständigen'
       : (offerEdit ? 'Angebot bearbeiten' : 'Angebot erstellen');
+    const identityActions = identityMissing.flatMap((m) => (
+      (m.choices || []).slice(0, 4).map((choice) => ({
+        id: `${m.id}-${choice.id || choice.label}`,
+        label: choice.label,
+        action: 'clarify_offer_identity',
+        insertText: choice.insertText || choice.label,
+        tone: 'secondary',
+      }))
+    ));
+    const clarifyPrompts = [
+      (turn.missingInformation || []).find((m) => m.id === 'monthly_leasing_rate')?.label || null,
+      ...identityMissing.map((m) => m.label).filter(Boolean),
+    ].filter(Boolean);
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
@@ -711,6 +730,7 @@ export function buildUniversalActionSections(turn = {}) {
       ].filter(Boolean),
       primaryActions: incomplete
         ? [
+          ...identityActions,
           {
             id: 'create_offer',
             label: offerPrimaryLabel,
@@ -744,10 +764,7 @@ export function buildUniversalActionSections(turn = {}) {
         },
       ],
       // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
-      clarifyPrompt: incomplete
-        ? ((turn.missingInformation || []).find((m) => m.id === 'monthly_leasing_rate')?.label
-          || 'Welche Monatsrate möchtest du hinterlegen?')
-        : null,
+      clarifyPrompt: incomplete ? (clarifyPrompts.join(' · ') || 'Welche Monatsrate möchtest du hinterlegen?') : null,
     });
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');

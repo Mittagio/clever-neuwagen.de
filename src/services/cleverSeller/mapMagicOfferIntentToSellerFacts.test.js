@@ -40,6 +40,60 @@ assert.ok(pdfFacts.some((f) => f.field === 'monthlyBudget' && f.value === 329));
 assert.ok(pdfFacts.some((f) => f.field === 'vehicleInterest'));
 assert.ok(pdfFacts.every((f) => f.source === SELLER_FACT_SOURCE.OFFER_PDF));
 
+// HAP-Bank-PDF: Farbe (ß), Pakete, Motor, Gesamtlistenpreis, kein kWh/100-Falschpositiv
+{
+  const hapBank = `Konfiguration und Ausstattung Ihres Fahrzeuges
+Kia EV3 58 kWh 150 kW Earth Frontantrieb
+Lackierung:   Schneeweiß Uni
+Upgrade-Paket   1.084,03   EUR
+Business-Paket   1.000,00   EUR
+Winter-Connect-Paket   1.092,44   EUR
+DriveWise-Park-Paket   747,90   EUR
+Design-Paket (19-Zoll Leichtmetallfelgen)   579,83   EUR
+Gesamtlistenpreis inkl. Sonderausstattung & Zubehör   36.680,67   EUR
+Alle Preise ohne USt
+Monatliche Gesamtrate 406,93 EUR
+Monatsrate Finanzleasing 406,93 EUR
+Anzahlung 0,00 EUR
+Überführung 1.084,03 EUR
+Laufzeit 36 Monate
+Laufleistung / Jahr 10.000 km
+KIA Leasing`;
+  const hapFacts = extractSellerFactsFromOfferPdfText(hapBank);
+  assert.ok(hapFacts.some((f) => f.field === 'colorPreference' && /schneeweiß/i.test(f.label)));
+  assert.ok(hapFacts.some((f) => f.field === 'equipmentWish' && /upgrade/i.test(f.label)));
+  assert.ok(hapFacts.some((f) => f.field === 'equipmentWish' && /winter-connect/i.test(f.label)));
+  assert.ok(hapFacts.some((f) => f.field === 'equipmentWish' && /drivewise/i.test(f.label)));
+  assert.ok(hapFacts.some((f) => f.field === 'equipmentWish' && /58 kWh/i.test(f.label)));
+  assert.ok(hapFacts.some((f) => f.field === 'annualMileage' && f.value === 10000));
+  assert.ok(hapFacts.some((f) => f.field === 'purchasePrice' && (
+    Number(f.value) === 36680.67 || Number(f.value?.amount) === 36680.67
+  )));
+  assert.ok(hapFacts.some((f) => f.field === 'monthlyBudget' && (
+    Number(f.value) === 406.93 || Number(f.value?.amount) === 406.93
+  )));
+}
+
+// Konfigurator: UVP + Farbe, kein 100 km aus kWh/100
+{
+  const cfg = `EV3 Earth Frontantrieb, 58,3-kWh-Batterie; 150 kW (204 PS)
+Stromverbrauch kombiniert 15,8 kWh/100 km; CO₂-Emissionen kombiniert 0 g/km.
+Farbe außen Schneeweiß
+P5 - Upgrade-Paket MJ27 1.290 €
+P3 - Winter-Connect-Paket 1.300 €
+P4 - Business-Paket
+P6 - DriveWise-Park-Paket
+P7 - Design-Paket
+Gesamtpreis (UVP)** 43.650 €* inkl. 19% MwSt.`;
+  const cfgFacts = extractSellerFactsFromOfferPdfText(cfg);
+  assert.ok(!cfgFacts.some((f) => f.field === 'annualMileage'), 'kein kWh/100-Falschpositiv');
+  assert.ok(cfgFacts.some((f) => f.field === 'colorPreference' && /schneeweiß/i.test(f.label)));
+  assert.ok(cfgFacts.some((f) => f.field === 'purchasePrice' && (
+    Number(f.value) === 43650 || Number(f.value?.amount) === 43650
+  )));
+  assert.ok(cfgFacts.some((f) => f.field === 'equipmentWish' && /upgrade/i.test(f.label)));
+}
+
 assert.equal(
   shouldEnrichSellerInputFromOfferPdf([{ kind: 'configurator_pdf' }], 'x'),
   true,

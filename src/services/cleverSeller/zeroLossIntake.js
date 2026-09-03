@@ -39,6 +39,8 @@ const FILLER_TOKENS = new Set([
   'ca', 'circa', 'etwa', 'vielleicht', 'wohl', 'schon', 'sehr',
   'für', 'fuer', 'von', 'mit', 'ohne', 'wie', 'sein', 'seinen', 'seiner',
   'wäre', 'waere', 'wichtig', 'sofort', 'fährt', 'faehrt', 'fahren',
+  // Intent-Wörter (prepare_offer etc.) – keine Soft-Notiz
+  'angebot', 'angebote', 'mach', 'mache', 'machen', 'erstell', 'erstelle', 'erstellen',
 ]);
 
 /**
@@ -195,6 +197,29 @@ export function findUnconsumedMeaningSpans(sellerInput = '', facts = []) {
       const modelKey = fact.value?.modelKey || fact.value?.model;
       if (modelKey) {
         remaining = remaining.replace(new RegExp(`\\b${escapeRegExp(String(modelKey))}\\b`, 'ig'), ' ');
+      }
+      const color = fact.value?.color || fact.value?.preferredColor;
+      if (color) {
+        remaining = remaining.replace(
+          new RegExp(`\\b${escapeRegExp(String(color))}\\w*\\b`, 'ig'),
+          ' ',
+        );
+      }
+      const pkg = fact.value?.package || fact.value?.equipmentPackage;
+      if (pkg) {
+        remaining = remaining.replace(
+          new RegExp(`\\b${escapeRegExp(String(pkg)).replace(/\\s+/g, '\\s*')}\\b`, 'ig'),
+          ' ',
+        );
+      }
+    }
+    if (fact.field === 'equipmentWish') {
+      const equip = fact.value?.label || fact.label;
+      if (equip) {
+        remaining = remaining.replace(
+          new RegExp(`\\b${escapeRegExp(String(equip)).replace(/\\s+/g, '\\s*')}\\b`, 'ig'),
+          ' ',
+        );
       }
     }
     if (fact.field === 'colorPreference') {

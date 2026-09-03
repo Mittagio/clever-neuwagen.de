@@ -36,6 +36,41 @@ const TRIM_LABEL = {
   vision: 'Vision',
 };
 
+const COLOR_LABEL = {
+  terracotta: 'Terracotta',
+  snowwhitepearl: 'Schneeweiß',
+  clearwhite: 'Clear White',
+  white: 'Weiß',
+  aurorablackpearl: 'Schwarz',
+  shalegrey: 'Schiefergrau',
+  frostblue: 'Frost Blue',
+  ivorysilver: 'Ivory Silver',
+  aventurinegreen: 'Aventurine Green',
+  wolfgray: 'Wolf Grey',
+};
+
+const MOTOR_LABEL = {
+  'ev-std': '58 kWh / 150 kW',
+  'ev-long': '81,4 kWh Long Range',
+  'ev-long-awd': '81,4 kWh AWD',
+};
+
+const PACKAGE_CODE_LABEL = {
+  P3: 'Winter-Connect-Paket',
+  P4: 'Business-Paket',
+  P5: 'Upgrade-Paket',
+  P6: 'DriveWise-Park-Paket',
+  P7: 'Design-Paket',
+  P10: 'DriveWise-Park-Paket',
+  P11: 'Comfort-Paket',
+  P12: 'Glasdach-Paket',
+};
+
+const EQUIPMENT_LABEL = {
+  heat_pump: 'Wärmepumpe',
+  towbar: 'Anhängerkupplung',
+};
+
 function formatEuro(value) {
   return `${Number(value).toLocaleString('de-DE')} €`;
 }
@@ -215,13 +250,82 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
   }
 
   if (vehicle.colorHint) {
+    const colorLabel = COLOR_LABEL[vehicle.colorHint] || String(vehicle.colorHint);
     push({
       factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'colorPreference',
-      value: vehicle.colorHint,
-      label: String(vehicle.colorHint),
-      confidence: 0.85,
-      needsConfirmation: true,
+      value: {
+        id: vehicle.colorHint,
+        color: colorLabel,
+        label: colorLabel,
+      },
+      label: colorLabel,
+      confidence: 0.9,
+      needsConfirmation: false,
+    });
+  }
+
+  if (vehicle.motorHint) {
+    const motorLabel = MOTOR_LABEL[vehicle.motorHint] || String(vehicle.motorHint);
+    push({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'equipmentWish',
+      value: {
+        id: vehicle.motorHint,
+        label: motorLabel,
+        kind: 'motor',
+      },
+      label: motorLabel,
+      confidence: 0.9,
+    });
+  }
+
+  const packageLabels = Array.isArray(vehicle.packageLabels) ? vehicle.packageLabels : [];
+  const seenPackageLabels = new Set(packageLabels.map((l) => String(l).toLowerCase()));
+  for (const label of packageLabels) {
+    push({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'equipmentWish',
+      value: {
+        id: String(label).toLowerCase().replace(/\s+/g, '-'),
+        label,
+        kind: 'package',
+      },
+      label,
+      confidence: 0.9,
+    });
+  }
+  for (const code of vehicle.packageKeys || []) {
+    const label = PACKAGE_CODE_LABEL[code] || code;
+    if (seenPackageLabels.has(String(label).toLowerCase())) continue;
+    if (seenPackageLabels.has(String(code).toLowerCase())) continue;
+    seenPackageLabels.add(String(label).toLowerCase());
+    push({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'equipmentWish',
+      value: {
+        id: String(code).toLowerCase(),
+        code,
+        label,
+        kind: 'package',
+      },
+      label,
+      confidence: 0.88,
+    });
+  }
+
+  for (const eq of vehicle.equipmentKeys || []) {
+    const label = EQUIPMENT_LABEL[eq] || eq;
+    push({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'equipmentWish',
+      value: {
+        id: eq,
+        label,
+        kind: 'equipment',
+      },
+      label,
+      confidence: 0.88,
     });
   }
 

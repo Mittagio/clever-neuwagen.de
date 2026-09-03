@@ -118,7 +118,7 @@ assert.ok(homeSource.includes('BackendHomeWidgets'), 'Widgets-Row auf Dashboard'
 assert.ok(homeSource.includes('BackendHomeTools'), 'Werkzeuge auf Dashboard');
 assert.ok(!homeSource.includes('BackendCustomerSearch'), 'Keine Kundensuche-Karte auf Dashboard');
 assert.ok(!homeSource.includes('Kundenakte finden'), 'Keine Kundenakte-finden-Sektion auf Dashboard');
-assert.ok(homeSource.includes('Guten Tag'), 'Begrüßung oben');
+assert.ok(homeSource.includes('Was brauchst'), 'Begrüßung oben');
 assert.ok(homeSource.includes('composer-hero-slot') || homeSource.includes('composerSlotRef'), 'Composer-Hero-Slot');
 assert.ok(homeSource.includes('buildDashboardTodayRecommendations'), 'Empfehlungen ohne Score-Engine');
 assert.ok(homeSource.includes('maxItems: 3'), 'Empfehlungen auf Home auf 3 begrenzt');

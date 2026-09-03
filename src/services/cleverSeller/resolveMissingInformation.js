@@ -10,8 +10,10 @@ import {
 import {
   CLARIFY_VEHICLE_FOR_OFFER_PROMPT,
   OFFER_VEHICLE_TARGET_STATUS,
+  listOfferIdentityColorChoices,
   resolveOfferVehicleTarget,
 } from './offerVehicleIdentity.js';
+import { resolveConfigureModel } from '../configuration/configureModelBridge.js';
 
 /**
  * @param {object} params
@@ -96,6 +98,114 @@ export function resolveMissingInformation({
           label: offerTarget.question || 'Welches Modell soll angeboten werden?',
           field: 'vehicleInterest',
         });
+      }
+    } else if (offerTarget.status === OFFER_VEHICLE_TARGET_STATUS.RESOLVED) {
+      const modelKey = String(offerTarget.modelKey || '').toLowerCase();
+      const modelData = modelKey ? resolveConfigureModel(modelKey)?.data : null;
+      const trimHint = String(
+        offerTarget.trim
+        || facts.find((f) => f.field === 'trimPreference')?.value?.trim
+        || facts.find((f) => f.field === 'trimPreference')?.label
+        || '',
+      ).toLowerCase();
+      const trim = trimHint
+        ? (modelData?.trims || []).find((t) => (
+          String(t.id || '').toLowerCase() === trimHint
+          || String(t.name || '').toLowerCase() === trimHint
+        ))
+        : null;
+
+      // Capture-then-Continue Vision:
+      // Wenn der Verkäufer im ersten Schritt explizit nur Modell/Trim nennt ("EV3 Earth"),
+      // dann machen wir hier erstmal "nur Aufnahme" und stellen noch keine weiteren
+      // (Motor/Pakete/Farbe/Rate) Rückfragen. Das wird im nächsten Schritt im Angebotstool ergänzt.
+      const modelTrimCaptureOnly = (
+        offerTarget.source === 'explicit_model'
+        && Boolean(trim?.id || offerTarget.trim)
+        && !currentOfferContext?.offerId
+      );
+      if (modelTrimCaptureOnly) {
+        // Modell/Trim ist angekommen → keine Missing-Identity und keine Commercial-Fragen
+        // (Rate/Konditionen kommen erst später).
+        return missing;
+      }
+
+      const hasColor = facts.some((f) => f.field === 'colorPreference')
+        || Boolean(currentOfferContext?.color)
+        || Boolean(workingContext?.attachedVehicle?.color)
+        || Boolean(offerTarget.color);
+      if (!hasColor && modelKey) {
+        const colors = listOfferIdentityColorChoices(modelKey).slice(0, 8);
+        missing.push({
+          id: 'offer_color',
+          forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+          label: 'Welche Farbe soll ins Angebot?',
+          field: 'colorPreference',
+          choices: colors.map((c) => ({
+            id: c.id,
+            label: c.label,
+            insertText: c.label,
+          })),
+        });
+      }
+
+      const hasPackage = facts.some((f) => (
+        f.field === 'equipmentWish'
+        && /paket|p\d+/i.test(String(f.label || f.value?.label || f.value?.code || ''))
+      )) || facts.some((f) => (
+        f.field === 'vehicleInterest' && Boolean(f.value?.package || f.value?.equipmentPackage)
+      ));
+      if (!hasPackage && modelData?.packages?.length) {
+        const packageChoices = modelData.packages
+          .filter((pkg) => !trim?.id || !pkg.availableTrims?.length || pkg.availableTrims.includes(trim.id))
+          .slice(0, 8)
+          .map((pkg) => ({
+            id: pkg.code || pkg.id,
+            label: pkg.name,
+            insertText: pkg.code ? `${pkg.code} ${pkg.name}` : pkg.name,
+          }));
+        if (packageChoices.length) {
+          missing.push({
+            id: 'offer_packages',
+            forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+            label: 'Welche Pakete soll ich berücksichtigen?',
+            field: 'equipmentWish',
+            choices: packageChoices,
+          });
+        }
+      }
+
+      const hasMotor = facts.some((f) => (
+        f.field === 'equipmentWish'
+        && /kwh|kw|range|awd|motor/i.test(String(f.label || f.value?.label || ''))
+      )) || Boolean(currentOfferContext?.engineLabel)
+        || Boolean(workingContext?.attachedVehicle?.engineId);
+      if (!hasMotor && modelData?.engines?.length) {
+        const matchingVariants = (modelData.variants || []).filter((v) => (
+          !trim?.id || v.trimId === trim.id
+        ));
+        const engineIds = new Set(
+          (matchingVariants.length ? matchingVariants : (modelData.variants || []))
+            .map((v) => v.engineId)
+            .filter(Boolean),
+        );
+        const engineChoices = (modelData.engines || [])
+          .filter((e) => engineIds.size === 0 || engineIds.has(e.id))
+          .slice(0, 6)
+          .map((e) => ({
+            id: e.id,
+            label: e.name,
+            insertText: e.name,
+          }));
+        if (engineChoices.length > 1) {
+          missing.push({
+            id: 'offer_motor',
+            forIntent: SELLER_TURN_INTENTS.PREPARE_OFFER,
+            label: 'Welche Motorisierung soll angeboten werden?',
+            field: 'equipmentWish',
+            choices: engineChoices,
+          });
+        }
       }
     }
 

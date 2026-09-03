@@ -178,6 +178,7 @@
     "mime-db": "^1.54.0",
     "mime-types": "^3.0.2",
     "openai": "^6.47.0",
+    "puppeteer-core": "^24.43.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0",
@@ -199,5 +200,22 @@
     "pdfjs-dist": "^4.10.38",
     "vite": "^8.0.12",
     "wait-on": "^9.0.10"
-  }
+  },
+  "description": "Clever-Neuwagen – React/Vite Frontend + Express API (Demo/Pilot).",
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mittagio/clever-neuwagen.de.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mittagio/clever-neuwagen.de/issues"
+  },
+  "homepage": "https://github.com/Mittagio/clever-neuwagen.de#readme"
 }

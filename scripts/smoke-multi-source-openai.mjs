@@ -63,8 +63,10 @@ const safe = {
   householdKids: turn.multiSourceIntake?.currentHouseholdFacts?.childrenCount ?? null,
   childrenConflict: Boolean((turn.multiSourceIntake?.conflicts || [])
     .some((c) => c.field === 'childrenCount')),
-  documentChecklist: Boolean((review.progressLines || [])
-    .some((l) => /Dokument zusammengeführt/i.test(l))),
+  documentChecklist: Boolean((review.debugDetails?.progressLines || review.progressLines || [])
+    .some((l) => /Dokument zusammengeführt|Dump.*zusammengeführt/i.test(l))),
+  sellerFacingProtocolSilent: (review.progressLines || []).length === 0
+    && !/Seller-Dump|zusammengeführt|Clever hat/i.test(String(review.title || '')),
 };
 
 console.log(JSON.stringify(safe, null, 2));
@@ -84,7 +86,8 @@ const pass = safe.interpreterSource === 'openai'
   && safe.customerOk
   && safe.householdKids === 2
   && safe.childrenConflict === true
-  && safe.documentChecklist === true;
+  && safe.documentChecklist === true
+  && safe.sellerFacingProtocolSilent === true;
 
 if (!pass) {
   console.error('Smoke fehlgeschlagen (keine PII geloggt).');
