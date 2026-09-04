@@ -679,7 +679,10 @@ export default function CustomerAkteSharedWorkspace({
 
       // Clever Agent (OpenAI → Tools → Business-Logik) – gleicher Pfad für Text + Chips
       if (isCleverAgentClientEnabled()) {
-        const route = routeSellerRequest(text, { workingMemory: agentWorkingMemory });
+        const route = routeSellerRequest(text, {
+          workingMemory: agentWorkingMemory,
+          lead: leadRef.current || lead,
+        });
         if (route === 'clever_agent') {
           progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.AGENT);
           const agentResult = await requestCleverAgent({
@@ -882,20 +885,22 @@ export default function CustomerAkteSharedWorkspace({
       }));
 
       const policy = resolveSellerResponsePolicy(turn);
+      const rememberMode = turn?.rememberDecision?.mode;
+      const willRemember = rememberMode === 'save_with_undo'
+        || rememberMode === 'partial_save_with_undo';
       setAgentWorkingMemory((prev) => {
         const next = updateMemoryFromSellerTurn(prev, turn, text, policy);
-        queueMicrotask(() => {
-          persistWorkingMemoryToLead(next, leadRef.current || lead);
-        });
+        // Remember-Apply schreibt Tracks zuerst – Memory erst danach gegen applied Lead syncen
+        if (!willRemember) {
+          queueMicrotask(() => {
+            persistWorkingMemoryToLead(next, leadRef.current || lead);
+          });
+        }
         return next;
       });
 
       // Zero-Loss Merken: sichere Facts sofort speichern (+ Partial Success)
-      const rememberMode = turn?.rememberDecision?.mode;
-      if (
-        rememberMode === 'save_with_undo'
-        || rememberMode === 'partial_save_with_undo'
-      ) {
+      if (willRemember) {
         setDraft('');
         setOfferPrep(null);
         setAppointmentDraft(null);
@@ -908,7 +913,21 @@ export default function CustomerAkteSharedWorkspace({
             rememberDecision: { ...turn.rememberDecision, mode: 'review' },
           })
         ) {
-          applyRememberWithUndo(turn, { facts: turn.rememberDecision.safeFacts });
+          const rememberedPartial = applyRememberWithUndo(turn, { facts: turn.rememberDecision.safeFacts });
+          if (rememberedPartial?.lead) {
+            setAgentWorkingMemory((prev) => {
+              const next = hydrateWorkingMemoryFromLead(prev, rememberedPartial.lead);
+              const ids = rememberedPartial.lead.crm?.cleverWorkingState?.recentVehicleTrackIds;
+              const keys = rememberedPartial.lead.crm?.cleverWorkingState?.recentVehicleModelKeys;
+              const synced = {
+                ...next,
+                ...(Array.isArray(ids) && ids.length >= 2 ? { recentVehicleTrackIds: [...ids] } : {}),
+                ...(Array.isArray(keys) && keys.length >= 2 ? { recentVehicleModelKeys: [...keys] } : {}),
+              };
+              queueMicrotask(() => persistWorkingMemoryToLead(synced, rememberedPartial.lead));
+              return synced;
+            });
+          }
           showUniversalReview({
             ...turn,
             extractedFacts: turn.rememberDecision.reviewFacts,
@@ -922,6 +941,20 @@ export default function CustomerAkteSharedWorkspace({
           facts: turn.rememberDecision.safeFacts,
           message: policy.message,
         });
+        if (remembered?.lead) {
+          setAgentWorkingMemory((prev) => {
+            const next = hydrateWorkingMemoryFromLead(prev, remembered.lead);
+            const ids = remembered.lead.crm?.cleverWorkingState?.recentVehicleTrackIds;
+            const keys = remembered.lead.crm?.cleverWorkingState?.recentVehicleModelKeys;
+            const synced = {
+              ...next,
+              ...(Array.isArray(ids) && ids.length >= 2 ? { recentVehicleTrackIds: [...ids] } : {}),
+              ...(Array.isArray(keys) && keys.length >= 2 ? { recentVehicleModelKeys: [...keys] } : {}),
+            };
+            queueMicrotask(() => persistWorkingMemoryToLead(synced, remembered.lead));
+            return synced;
+          });
+        }
         // Compact confirmation in Feed (+ Undo). Wichtig: applied Lead nutzen –
         // Feed mit stale `lead` würde sellerInsights/needProfile wieder überschreiben.
         try {

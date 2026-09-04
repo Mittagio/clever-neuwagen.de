@@ -30,9 +30,10 @@ export const OFFER_MUTATION_MODE = Object.freeze({
 
 export const CLARIFY_VEHICLE_FOR_OFFER_PROMPT = 'Für welches Fahrzeug?';
 
-const MODEL_RE = /\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto|stonic|e-?soul)\b/i;
+const MODEL_RE = /\b(ev\s*[2-9]|pv\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto|stonic|e-?soul)\b/i;
 const TRIM_RE = /\b(gt-?\s*line|x-?\s*line(?:\s*\d+)?|earth|air|spirit|vision|drive\s*wise|core|cor)\b/i;
-const COLOR_RE = /\b(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*|clear\s*white)\b/i;
+// Kein \\b vor/nach ß – JS-Word-Boundary bricht „weiß“
+const COLOR_RE = /(?:^|[^A-Za-zÄÖÜäöüß])(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*|clear\s*white)(?=$|[^A-Za-zÄÖÜäöüß])/i;
 
 function normalizeModelKey(raw = '') {
   return String(raw || '')
@@ -247,6 +248,7 @@ function normalizeColorBase(raw = '') {
 /** Primäre Angebots-Modelle für Fact-Popover (kein Carwow-Katalog-Dump). */
 const PRIMARY_OFFER_MODEL_KEYS = Object.freeze([
   'ev2', 'ev3', 'ev4', 'ev5', 'ev6', 'ev9',
+  'pv5',
   'sportage', 'sorento', 'niro', 'ceed', 'picanto', 'stonic', 'xceed',
 ]);
 

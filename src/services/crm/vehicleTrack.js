@@ -325,7 +325,7 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
       if (typeof entry === 'string') {
         const key = String(entry).toLowerCase().replace(/^kia\s+/i, '').trim();
         if (!key) return null;
-        const modelLabel = /^ev\d$/i.test(key) ? key.toUpperCase() : key;
+        const modelLabel = /^(?:ev|pv)\d$/i.test(key) ? key.toUpperCase() : key;
         return {
           modelKey: key,
           model: modelLabel,
@@ -339,7 +339,7 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
         .replace(/^kia\s+/i, '')
         .trim();
       if (!key) return null;
-      const modelLabel = /^ev\d$/i.test(key)
+      const modelLabel = /^(?:ev|pv)\d$/i.test(key)
         ? key.toUpperCase()
         : (entry.model || key);
       return {
@@ -494,7 +494,7 @@ export function focusVehicleInterestOnLead(lead = {}, {
     .trim();
   if (!key) return { lead, trackId: null, created: false };
 
-  const modelLabel = /^ev\d$/i.test(key)
+  const modelLabel = /^(?:ev|pv)\d$/i.test(key)
     ? key.toUpperCase()
     : (model || key);
   const displayName = label
@@ -637,7 +637,7 @@ export function resolveActiveSellerModelInterest(lead = {}) {
     if (!config) return null;
     const key = normalizeKey(config.modelKey || config.model);
     if (!key) return null;
-    const model = /^ev\d$/i.test(key)
+    const model = /^(?:ev|pv)\d$/i.test(key)
       ? key.toUpperCase()
       : String(config.model || key).replace(/^kia\s+/i, '');
     return {
@@ -665,7 +665,7 @@ export function resolveActiveSellerModelInterest(lead = {}) {
     if (key) {
       return {
         modelKey: key,
-        model: /^ev\d$/i.test(key) ? key.toUpperCase() : String(active.modelLabel || key),
+        model: /^(?:ev|pv)\d$/i.test(key) ? key.toUpperCase() : String(active.modelLabel || key),
         trim: active.trimLabel || null,
         label: active.displayName || active.modelLabel || key,
       };
@@ -675,7 +675,7 @@ export function resolveActiveSellerModelInterest(lead = {}) {
   const profile = lead?.crm?.needProfile || {};
   const profileKey = normalizeKey(profile.selectedModelKey || profile.modelHint);
   if (profileKey) {
-    const model = /^ev\d$/i.test(profileKey) ? profileKey.toUpperCase() : profileKey;
+    const model = /^(?:ev|pv)\d$/i.test(profileKey) ? profileKey.toUpperCase() : profileKey;
     return {
       modelKey: profileKey,
       model,
@@ -686,7 +686,7 @@ export function resolveActiveSellerModelInterest(lead = {}) {
 
   const vehicleKey = normalizeKey(lead?.vehicle?.modelKey || lead?.vehicle?.model);
   if (vehicleKey) {
-    const model = /^ev\d$/i.test(vehicleKey)
+    const model = /^(?:ev|pv)\d$/i.test(vehicleKey)
       ? vehicleKey.toUpperCase()
       : String(lead.vehicle.model || vehicleKey).replace(/^kia\s+/i, '');
     return {

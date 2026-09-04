@@ -16,16 +16,14 @@ export const ZERO_LOSS_BUCKET = {
   UNRESOLVED_NOTE: 'unresolved_note',
 };
 
-/** Bekannte Kia-Tippfehler / Umgangssprache → kanonisches Modell (nur mit Registry-Support). */
+/** Bekannte Kia-Tippfehler / Umgangssprache → kanonisches Modell (nur mit Registry-Support).
+ *  PV≠EV: Explizites „PV5“ darf niemals still zu EV5 werden (eigene Modellfamilie).
+ */
 export const SELLER_MODEL_ALIASES = Object.freeze({
   eq2: 'ev2',
   eq3: 'ev3',
   eq4: 'ev4',
   eq5: 'ev5',
-  pv2: 'ev2',
-  pv3: 'ev3',
-  pv4: 'ev4',
-  pv5: 'ev5',
   'e v2': 'ev2',
   'e-v2': 'ev2',
 });

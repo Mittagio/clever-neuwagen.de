@@ -29,6 +29,20 @@ const FAHRWERK = 'Er will nicht wieder so ein komisches Fahrwerk wie sein alter.
 }
 
 {
+  // PV5 ≠ EV5 – explizite Seller-Mention bleibt eigene Identität
+  const pv5Alias = resolveSellerModelAlias('PV5');
+  assert.equal(pv5Alias.canonical, null, 'PV5 hat keinen EV5-Alias');
+  const interpreted = interpretSellerInput('PV5 EV2 EV3 interessieren ihn');
+  const multi = interpreted.facts.find((f) => f.field === 'vehicleInterestMulti');
+  assert.ok(multi, 'Multi-Interest');
+  const keys = (Array.isArray(multi.value) ? multi.value : [])
+    .map((e) => String(e?.modelKey || e || '').toLowerCase())
+    .sort();
+  assert.deepEqual(keys, ['ev2', 'ev3', 'pv5']);
+  assert.ok(!keys.includes('ev5'), 'kein stilles EV5');
+}
+
+{
   // Kanonische Modelle ohne Tippfehler-Alias sind nicht unsicher
   const ev4 = resolveSellerModelAlias('EV4');
   assert.equal(ev4.canonical, null);

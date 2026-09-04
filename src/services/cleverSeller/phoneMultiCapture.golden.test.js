@@ -47,7 +47,7 @@ function emptyLead() {
     .map((v) => String(typeof v === 'string' ? v : v?.modelKey || '').toLowerCase())
     .filter(Boolean)
     .sort();
-  assert.deepEqual(keys, ['ev2', 'ev3', 'ev5'], 'PV5→EV5 Alias + EV2 + EV3');
+  assert.deepEqual(keys, ['ev2', 'ev3', 'pv5'], 'PV5 bleibt PV5 + EV2 + EV3');
 
   assert.ok(fields.has('towHitchRequired'), 'AHK');
   assert.ok(fields.has('childrenCount'), '2 Kinder');
@@ -88,7 +88,7 @@ function emptyLead() {
   const tracks = listCustomerVehicleTracks(applied);
   assert.equal(tracks.length, 3, '3 Fahrzeugspuren');
   const keys = tracks.map((t) => String(t.config?.modelKey || '').toLowerCase()).sort();
-  assert.deepEqual(keys, ['ev2', 'ev3', 'ev5']);
+  assert.deepEqual(keys, ['ev2', 'ev3', 'pv5']);
 
   const profile = getNeedProfileFromLead(applied);
   assert.equal(profile.towbar, true);

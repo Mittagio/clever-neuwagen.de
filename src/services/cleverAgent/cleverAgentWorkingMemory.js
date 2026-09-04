@@ -618,7 +618,6 @@ function extractModelKeysFromSellerText(text = '') {
   let m = re.exec(t);
   while (m) {
     let key = String(m[1] || '').replace(/\s+/g, '').toLowerCase();
-    if (key === 'pv5') key = 'ev5';
     if (key && !keys.includes(key)) keys.push(key);
     m = re.exec(t);
   }

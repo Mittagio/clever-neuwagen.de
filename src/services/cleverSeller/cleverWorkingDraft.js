@@ -84,6 +84,33 @@ export function getCleverWorkingState(lead = null) {
   return createEmptyCleverWorkingState(lead?.id || null);
 }
 
+function normalizeDraftModelKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/^kia\s+/i, '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+/**
+ * Offer Draft by modelKey – bevorzugt Track-gebundene Batch-Drafts.
+ * Explizites „EV2 …“ darf nicht den aktiven EV3-Draft umschreiben.
+ */
+export function findOfferDraftByModelKey(lead, modelKey) {
+  const key = normalizeDraftModelKey(modelKey);
+  if (!key || !lead?.id) return null;
+  const state = getCleverWorkingState(lead);
+  const matches = Object.values(state.offerDrafts || {})
+    .filter((d) => normalizeDraftModelKey(d?.focusModelKey) === key);
+  if (!matches.length) return null;
+  matches.sort((a, b) => {
+    const trackScore = Number(Boolean(b?.vehicleTrackId)) - Number(Boolean(a?.vehicleTrackId));
+    if (trackScore) return trackScore;
+    return String(b?.updatedAt || '').localeCompare(String(a?.updatedAt || ''));
+  });
+  return getOfferDraftById(lead, matches[0].offerDraftId);
+}
+
 /**
  * Aktiven Offer Draft aus Lead und/oder Session-Memory.
  */
@@ -117,6 +144,30 @@ export function resolveActiveOfferDraft({ lead = null, workingMemory = null } = 
     };
   }
   return null;
+}
+
+/**
+ * Follow-up-Ziel: bei explizitem Modell → Draft dieses Modells (Retarget),
+ * sonst aktueller Draft. Modellnennung ist Adresse, kein stilles Umbenennen.
+ */
+export function resolveOfferDraftForFollowUp({
+  lead = null,
+  workingMemory = null,
+  sellerInput = '',
+  facts = [],
+} = {}) {
+  const followUp = parseWorkingDraftFollowUp(sellerInput, facts);
+  if (followUp?.modelKey) {
+    const byModel = findOfferDraftByModelKey(lead, followUp.modelKey);
+    if (byModel?.offerDraftId) {
+      return { draft: byModel, followUp, retargeted: true };
+    }
+  }
+  return {
+    draft: resolveActiveOfferDraft({ lead, workingMemory }),
+    followUp,
+    retargeted: false,
+  };
 }
 
 /**
@@ -232,14 +283,21 @@ export function shouldMutateExistingOfferDraft({
   createNewAlternative = false,
 } = {}) {
   if (createNewAlternative) return false;
-  const active = resolveActiveOfferDraft({ lead, workingMemory });
+  const { draft: active, followUp, retargeted } = resolveOfferDraftForFollowUp({
+    lead,
+    workingMemory,
+    sellerInput,
+    facts,
+  });
   if (!active?.offerDraftId || !active?.vehicleIdentityDraft) return false;
-  const followUp = parseWorkingDraftFollowUp(sellerInput, facts);
   if (!followUp) return false;
-  // Explizites anderes Modell ohne „doch“ auf bestehendem → oft neue Spur; „Doch EV2 Earth“ ist update
-  if (followUp.kind === 'vehicle_identity' && followUp.modelKey) {
-    const currentKey = String(active.vehicleIdentityDraft.modelKey || '').toLowerCase();
-    if (followUp.modelKey !== currentKey && !/\bdoch\b/i.test(sellerInput)) {
+  // Explizites anderes Modell ohne „doch“ und ohne bestehenden Draft dieses Modells
+  // → oft neue Spur; „Doch EV2 Earth“ / Retarget auf EV2-Draft = update
+  if (followUp.kind === 'vehicle_identity' && followUp.modelKey && !retargeted) {
+    const currentKey = normalizeDraftModelKey(
+      active.vehicleIdentityDraft.modelKey || active.focusModelKey,
+    );
+    if (normalizeDraftModelKey(followUp.modelKey) !== currentKey && !/\bdoch\b/i.test(sellerInput)) {
       return false;
     }
   }
@@ -247,7 +305,7 @@ export function shouldMutateExistingOfferDraft({
 }
 
 /**
- * Mutiert aktiven Offer Draft; behält IDs.
+ * Mutiert Ziel-Offer-Draft (aktiv oder per Modell-Retarget); behält IDs.
  */
 export function mutateActiveOfferDraft({
   lead = null,
@@ -255,11 +313,21 @@ export function mutateActiveOfferDraft({
   sellerInput = '',
   facts = [],
 } = {}) {
-  const active = resolveActiveOfferDraft({ lead, workingMemory });
+  const { draft: active, followUp, retargeted } = resolveOfferDraftForFollowUp({
+    lead,
+    workingMemory,
+    sellerInput,
+    facts,
+  });
   if (!active?.offerDraftId || !active?.vehicleIdentityDraft) return null;
-  const followUp = parseWorkingDraftFollowUp(sellerInput, facts);
   const patch = followUpToIdentityPatch(followUp);
   if (!patch) return null;
+  // Modellnennung war Adresse zum Draft – Track/Identität nicht umbenennen
+  if (retargeted) {
+    delete patch.modelKey;
+    delete patch.model;
+  }
+  if (!Object.keys(patch).length) return null;
 
   const nextIdentity = applyIdentityFollowUpPatch(active.vehicleIdentityDraft, patch);
   // IDs hard stabil
@@ -272,6 +340,7 @@ export function mutateActiveOfferDraft({
     vehicleIdentityDraftId: nextIdentity.id,
     vehicleIdentityDraft: nextIdentity,
     vehicleTrackId: active.vehicleTrackId || null,
+    focusModelKey: active.focusModelKey || nextIdentity.modelKey || null,
     commercialScenarioId: active.commercialScenarioId || null,
     commercialScenario: active.commercialScenario || null,
     rate: null,
@@ -290,6 +359,7 @@ export function mutateActiveOfferDraft({
     vehicleIdentityDraft: nextIdentity,
     changedFields,
     followUp,
+    retargeted,
   };
 }
 
@@ -368,19 +438,31 @@ export function syncWorkingDraftsFromMemoryToLead(lead, memory) {
   }
   const memIds = Array.isArray(memory.recentVehicleTrackIds) ? memory.recentVehicleTrackIds : [];
   const memKeys = Array.isArray(memory.recentVehicleModelKeys) ? memory.recentVehicleModelKeys : [];
-  if (memIds.length >= 2 || memKeys.length >= 2) {
-    const prev = next.crm?.cleverWorkingState || {};
-    const prevIds = Array.isArray(prev.recentVehicleTrackIds) ? prev.recentVehicleTrackIds : [];
-    const sameIds = memIds.length === prevIds.length && memIds.every((id, i) => id === prevIds[i]);
-    if (!sameIds || (memKeys.length && memKeys.join() !== (prev.recentVehicleModelKeys || []).join())) {
+  const prev = next.crm?.cleverWorkingState || {};
+  const prevIds = Array.isArray(prev.recentVehicleTrackIds) ? prev.recentVehicleTrackIds : [];
+  const prevKeys = Array.isArray(prev.recentVehicleModelKeys) ? prev.recentVehicleModelKeys : [];
+  // Nie kürzeren Memory-Scope über längeren Lead-Scope schreiben (Race nach Apply)
+  const nextIds = memIds.length >= 2
+    ? memIds
+    : (prevIds.length >= 2 ? prevIds : (memIds.length ? memIds : prevIds));
+  const nextKeys = memKeys.length >= 2
+    ? memKeys
+    : (prevKeys.length >= 2 ? prevKeys : (memKeys.length ? memKeys : prevKeys));
+  if (
+    nextIds.length >= 2
+    || nextKeys.length >= 2
+  ) {
+    const sameIds = nextIds.length === prevIds.length && nextIds.every((id, i) => id === prevIds[i]);
+    const sameKeys = nextKeys.join() === prevKeys.join();
+    if (!sameIds || !sameKeys) {
       next = {
         ...next,
         crm: {
           ...(next.crm || {}),
           cleverWorkingState: {
             ...prev,
-            recentVehicleTrackIds: memIds.length ? memIds : prevIds,
-            recentVehicleModelKeys: memKeys.length ? memKeys : (prev.recentVehicleModelKeys || []),
+            recentVehicleTrackIds: nextIds,
+            recentVehicleModelKeys: nextKeys,
             updatedAt: nowIso(),
           },
         },

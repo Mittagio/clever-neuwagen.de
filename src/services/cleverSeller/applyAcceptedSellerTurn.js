@@ -555,7 +555,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
           if (typeof entry === 'string') {
             const key = String(entry).toLowerCase().replace(/^kia\s+/i, '').trim();
             if (!key) return null;
-            const model = /^ev\d$/i.test(key) ? key.toUpperCase() : key;
+            const model = /^(?:ev|pv)\d$/i.test(key) ? key.toUpperCase() : key;
             return { modelKey: key, model, make: 'Kia', label: `Kia ${model}` };
           }
           const key = String(entry?.modelKey || entry?.model || '')
@@ -563,7 +563,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
             .replace(/^kia\s+/i, '')
             .trim();
           if (!key) return null;
-          const model = /^ev\d$/i.test(key)
+          const model = /^(?:ev|pv)\d$/i.test(key)
             ? key.toUpperCase()
             : (entry.model || key);
           return {

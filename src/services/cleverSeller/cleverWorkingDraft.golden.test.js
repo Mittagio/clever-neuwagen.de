@@ -213,7 +213,7 @@ assert.equal(isMessageSendCue('senden'), true);
   const batchKeys = (batchAction.payload.offers || [])
     .map((o) => String(o.focusModelKey || '').toLowerCase())
     .sort();
-  assert.deepEqual(batchKeys, ['ev2', 'ev3', 'ev5'], 'exakt PV5/EV5 + EV2 + EV3');
+  assert.deepEqual(batchKeys, ['ev2', 'ev3', 'pv5'], 'exakt PV5 + EV2 + EV3');
   assert.ok(!batchKeys.includes('ev4'), 'kein EV4');
   const ids = new Set(batchAction.payload.offerDraftIds);
   assert.equal(ids.size, batchAction.payload.offerDraftIds.length, 'IDs unique');
@@ -222,7 +222,70 @@ assert.equal(isMessageSendCue('senden'), true);
   for (const id of batchAction.payload.offerDraftIds) {
     assert.ok(getOfferDraftById(lead, id), `Batch draft ${id} persistiert`);
   }
-  console.log('✓ Multi-Track + drei Angebote');
+
+  // current = letzter Batch-Draft (EV3) – „EV2 Air weiß“ darf EV3 nicht zu EV2 machen
+  const byKey = Object.fromEntries(
+    (batchAction.payload.offers || []).map((o) => [String(o.focusModelKey).toLowerCase(), o.offerDraftId]),
+  );
+  lead = {
+    ...lead,
+    crm: {
+      ...lead.crm,
+      cleverWorkingState: {
+        ...lead.crm.cleverWorkingState,
+        currentOfferDraftId: byKey.ev3,
+      },
+    },
+  };
+  const crossEv2 = runCleverSellerTurn({
+    sellerInput: 'EV2 Air weiß',
+    lead,
+    leads: [lead],
+    ...buildSellerTurnMemoryParams(memory, lead),
+  });
+  lead = applyAcceptedSellerTurn(lead, crossEv2, { postFeedCard: false }).lead;
+  const dEv2 = getOfferDraftById(lead, byKey.ev2);
+  const dEv3 = getOfferDraftById(lead, byKey.ev3);
+  const dPv5 = getOfferDraftById(lead, byKey.pv5);
+  assert.equal(String(dEv2?.focusModelKey || '').toLowerCase(), 'ev2', 'EV2 bleibt EV2');
+  assert.equal(String(dEv3?.focusModelKey || '').toLowerCase(), 'ev3', 'EV3 bleibt EV3 (kein Leak)');
+  assert.equal(String(dPv5?.focusModelKey || '').toLowerCase(), 'pv5', 'PV5 unverändert');
+  const idEv2 = dEv2?.vehicleIdentityDraft;
+  assert.ok(
+    /air/i.test(String(idEv2?.trim?.canonical || idEv2?.trim?.raw || '')),
+    'EV2: Air gesetzt',
+  );
+  assert.ok(
+    /wei(ss|ß)/i.test(String(idEv2?.color?.canonical || idEv2?.color?.raw || '')),
+    'EV2: weiß gesetzt',
+  );
+
+  const crossEv3 = runCleverSellerTurn({
+    sellerInput: 'EV3 Earth schwarz',
+    lead,
+    leads: [lead],
+    ...buildSellerTurnMemoryParams(memory, lead),
+  });
+  lead = applyAcceptedSellerTurn(lead, crossEv3, { postFeedCard: false }).lead;
+  const dEv2b = getOfferDraftById(lead, byKey.ev2);
+  const dEv3b = getOfferDraftById(lead, byKey.ev3);
+  const dPv5b = getOfferDraftById(lead, byKey.pv5);
+  assert.equal(String(dEv2b?.focusModelKey || '').toLowerCase(), 'ev2');
+  assert.equal(String(dEv3b?.focusModelKey || '').toLowerCase(), 'ev3');
+  assert.equal(String(dPv5b?.focusModelKey || '').toLowerCase(), 'pv5');
+  const idEv3 = dEv3b?.vehicleIdentityDraft;
+  assert.ok(/earth/i.test(String(idEv3?.trim?.canonical || idEv3?.trim?.raw || '')), 'EV3: Earth');
+  assert.ok(/schwarz/i.test(String(idEv3?.color?.canonical || idEv3?.color?.raw || '')), 'EV3: schwarz');
+  assert.ok(
+    /air/i.test(String(dEv2b?.vehicleIdentityDraft?.trim?.canonical || dEv2b?.vehicleIdentityDraft?.trim?.raw || '')),
+    'EV2 Air bleibt nach EV3-Edit',
+  );
+  assert.ok(
+    !dPv5b?.vehicleIdentityDraft?.trim?.canonical && !dPv5b?.vehicleIdentityDraft?.color?.canonical,
+    'PV5 ohne Fact-Leak',
+  );
+
+  console.log('✓ Multi-Track + drei Angebote + Cross-Draft Isolation');
 }
 
 // ========== MESSAGE CONTINUITY ==========

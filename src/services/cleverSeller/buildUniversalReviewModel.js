@@ -659,6 +659,73 @@ export function buildUniversalActionSections(turn = {}) {
   ));
   const offerSectionSource = offerPrep || offerBlockedIncomplete;
   if (offerSectionSource && !sections.some((s) => s.kind === 'offer_change')) {
+    const isBatchOffer = Boolean(
+      offerSectionSource.payload?.batch === true
+      && Array.isArray(offerSectionSource.payload?.trackIds)
+      && offerSectionSource.payload.trackIds.length >= 2
+    );
+    // Batch: mehrere Offer-Drafts vorbereiten – nicht als unvollständiges Einzel-Kaufangebot
+    if (isBatchOffer) {
+      const models = Array.isArray(offerSectionSource.payload?.models)
+        ? offerSectionSource.payload.models
+        : [];
+      const modelKeys = (
+        Array.isArray(offerSectionSource.payload?.batchModelKeys)
+          ? offerSectionSource.payload.batchModelKeys
+          : models.map((m) => m?.modelKey)
+      ).filter(Boolean);
+      const formatModel = (key) => {
+        const raw = String(key || '').replace(/^kia\s+/i, '').trim();
+        if (!raw) return null;
+        return raw.toUpperCase();
+      };
+      const modelLine = (modelKeys.length
+        ? modelKeys.map(formatModel)
+        : models.map((m) => formatModel(m?.displayName || m?.modelKey))
+      ).filter(Boolean).join(' · ');
+      const n = Math.max(
+        offerSectionSource.payload.trackIds.length,
+        modelKeys.length,
+        Array.isArray(offerSectionSource.payload?.offers)
+          ? offerSectionSource.payload.offers.length
+          : 0,
+      );
+      const wish = turn.usedCustomerContext || {};
+      const inherited = [
+        wish.termMonths != null ? `${wish.termMonths} Monate` : null,
+        wish.annualMileage != null || wish.mileagePerYear != null
+          ? `${Number(wish.annualMileage ?? wish.mileagePerYear).toLocaleString('de-DE')} km/Jahr`
+          : null,
+        wish.downPayment != null ? `${Number(wish.downPayment) === 0 ? '0 €' : `${Number(wish.downPayment).toLocaleString('de-DE')} €`} AZ` : null,
+      ].filter(Boolean);
+      sections.unshift({
+        id: 'offer_prepare_batch',
+        kind: 'offer_prepare',
+        title: 'Angebote',
+        headline: offerSectionSource.label || `${n} Angebote vorbereiten`,
+        line: modelLine || null,
+        inheritedLine: inherited.length ? inherited.join(' · ') : null,
+        changes: [],
+        // Kein open_offer_handoff: Accept legt alle Drafts an (Toolbar „Übernehmen“)
+        primaryActions: [],
+        secondaryActions: [
+          {
+            id: 'toggle_context',
+            label: 'Erkannte Angaben anzeigen',
+            action: 'toggle_context',
+            tone: 'compact',
+          },
+          {
+            id: 'discard',
+            label: 'Verwerfen',
+            action: 'discard',
+            tone: 'compact',
+          },
+        ],
+        clarifyPrompt: null,
+        batch: true,
+      });
+    } else {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
     const discount = facts.find((f) => f.field === 'discountPercent');
@@ -790,6 +857,7 @@ export function buildUniversalActionSections(turn = {}) {
       // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
       clarifyPrompt: incomplete ? (clarifyPrompts.join(' · ') || 'Welche Monatsrate möchtest du hinterlegen?') : null,
     });
+    }
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
     const purchase = facts.find((f) => f.field === 'purchasePrice');
     const vehicle = facts.find((f) => f.field === 'vehicleInterest');
@@ -2138,7 +2206,9 @@ export function buildUniversalReviewModel(turn = {}) {
                       : offerPrepareReview
                         ? (offerIncompleteOnly
                           ? 'Angebot vervollständigen'
-                          : (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen'))
+                          : (actionSections.some((s) => s.batch === true || s.id === 'offer_prepare_batch')
+                            ? 'Übernehmen'
+                            : (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen')))
                       : historyOnly
                         ? 'Im Verlauf öffnen'
                         : trackFeedback

@@ -86,7 +86,7 @@ for (const cue of ['mach die drei Angebote', 'mach 3 Angebote']) {
   const action = prepBatch(batch);
   assert.ok(action, `${cue}: Batch-Action`);
   assert.equal(action.payload.offerDraftIds.length, 3, `${cue}: 3 Drafts`);
-  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'ev5']);
+  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'pv5']);
   for (const od of action.payload.offers) {
     assert.equal(od.rate, null, 'rate null');
   }
@@ -197,7 +197,7 @@ for (const cue of ['mach die drei Angebote', 'mach 3 Angebote']) {
   const action = prepBatch(batch);
   assert.ok(action);
   assert.equal(action.payload.offerDraftIds.length, 3);
-  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'ev5']);
+  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'pv5']);
   assert.ok(!modelKeysFromBatch(action).includes('ev4'));
   console.log('✓ D EV4 History ausgeschlossen');
 }
@@ -269,7 +269,7 @@ for (const cue of ['mach die drei Angebote', 'mach 3 Angebote']) {
   );
   const ev2Id = byKey.ev2.offerDraftId;
   const ev3Id = byKey.ev3.offerDraftId;
-  const ev5Id = byKey.ev5.offerDraftId;
+  const pv5Id = byKey.pv5.offerDraftId;
 
   // EV2: Air weiß via Working-Draft-Mutation
   memory = {
@@ -311,15 +311,15 @@ for (const cue of ['mach die drei Angebote', 'mach 3 Angebote']) {
 
   const dEv2 = getOfferDraftById(lead, ev2Id);
   const dEv3 = getOfferDraftById(lead, ev3Id);
-  const dEv5 = getOfferDraftById(lead, ev5Id);
+  const dPv5 = getOfferDraftById(lead, pv5Id);
   const id2 = lead.crm.cleverWorkingState.vehicleIdentityDrafts[dEv2.vehicleIdentityDraftId];
   const id3 = lead.crm.cleverWorkingState.vehicleIdentityDrafts[dEv3.vehicleIdentityDraftId];
-  const id5 = lead.crm.cleverWorkingState.vehicleIdentityDrafts[dEv5.vehicleIdentityDraftId];
+  const idPv5 = lead.crm.cleverWorkingState.vehicleIdentityDrafts[dPv5.vehicleIdentityDraftId];
 
   assert.match(String(id2?.trim?.canonical || id2?.trim?.raw || ''), /air/i);
   assert.match(String(id3?.trim?.canonical || id3?.trim?.raw || ''), /earth/i);
-  assert.equal(String(id5?.modelKey || dEv5.focusModelKey).toLowerCase(), 'ev5');
-  assert.ok(!/air/i.test(String(id5?.trim?.canonical || '')));
+  assert.equal(String(idPv5?.modelKey || dPv5.focusModelKey).toLowerCase(), 'pv5');
+  assert.ok(!/air/i.test(String(idPv5?.trim?.canonical || '')));
   assert.ok(!/earth/i.test(String(id2?.trim?.canonical || '')), 'kein Earth-Leak auf EV2');
   assert.ok(!/air/i.test(String(id3?.trim?.canonical || '')), 'kein Air-Leak auf EV3');
   console.log('✓ F cross-draft isolation');
@@ -339,7 +339,7 @@ for (const cue of ['mach die drei Angebote', 'mach 3 Angebote']) {
   const action = prepBatch(batch);
   assert.ok(action);
   assert.equal(action.payload.trackIds.length, 3);
-  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'ev5']);
+  assert.deepEqual(modelKeysFromBatch(action), ['ev2', 'ev3', 'pv5']);
   console.log('✓ phone path ohne Session-Memory');
 }
 

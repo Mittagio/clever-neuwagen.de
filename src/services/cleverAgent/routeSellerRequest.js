@@ -4,12 +4,18 @@
  */
 
 import { isBatchOfferCue } from '../cleverSeller/commercialOfferNl.js';
+import { extractVehicleModelKeysFromText } from '../cleverSeller/batchOfferTrackScope.js';
+import {
+  findOfferDraftByModelKey,
+  parseWorkingDraftFollowUp,
+} from '../cleverSeller/cleverWorkingDraft.js';
 
 const SIMPLE_FACT_RE = /^(?:was\s+(?:ist|hat|liegt)|anhängelast|wltp|reichweite|heute\s+an|öffne\s+\w+)/i;
 const COMPLEX_HINT_RE = /etstell|erstell|angebot|schreib|schick|merk|gleiche|wp\b|wärmepumpe|und\s+schreib|for\s+|with\s+/i;
 const OFFER_FOLLOW_UP_RE = /gleich|lieber|doch|km|weiß|weiss|wp|rot|blau|schwarz|grau/i;
 const APPOINTMENT_FOLLOW_UP_RE = /lieber|doch|montag|dienstag|mittwoch|donnerstag|freitag|uhr|\d{1,2}\s*:\s*\d{2}/i;
 const MESSAGE_FOLLOW_UP_RE = /kürzer|länger|formeller|lockerer|umformulier|nochmal|senden|abschicken|schick\s*(?:ihm|ihr|es)?/i;
+const MULTI_VEHICLE_INTEREST_RE = /\binteress(?:e|iert|ieren)\b/i;
 
 /**
  * @returns {'deterministic_fast_path'|'clever_agent'}
@@ -22,6 +28,18 @@ export function routeSellerRequest(sellerMessage = '', options = {}) {
 
   // Batch-Angebote: zentraler deterministic Track-Resolver (keine Agent-Single-Offer-Abweichung)
   if (isBatchOfferCue(text)) {
+    return 'deterministic_fast_path';
+  }
+
+  // Multi-Modell-Interesse: Tracks + recentVehicleTrackIds deterministisch anlegen
+  const multiModels = extractVehicleModelKeysFromText(text);
+  if (multiModels.length >= 2 && MULTI_VEHICLE_INTEREST_RE.test(text)) {
+    return 'deterministic_fast_path';
+  }
+
+  // Cross-Draft Follow-up: „EV2 Air weiß“ → Draft dieses Modells (nicht Agent auf aktuellem EV3)
+  const followUp = parseWorkingDraftFollowUp(text, []);
+  if (followUp?.modelKey && findOfferDraftByModelKey(options.lead || null, followUp.modelKey)) {
     return 'deterministic_fast_path';
   }
 

@@ -23,7 +23,7 @@ const COUNT_WORDS = Object.freeze({
 
 /**
  * @param {string} raw
- * @returns {string|null} canonical modelKey (z. B. ev2, ev5)
+ * @returns {string|null} canonical modelKey (z. B. ev2, pv5)
  */
 export function normalizeBatchModelKey(raw = '') {
   const key = String(raw || '')
@@ -241,9 +241,9 @@ export function ensureTracksForBatchModelKeys(lead, modelKeys = []) {
   }
   const interests = keys.map((modelKey) => ({
     modelKey,
-    model: /^ev\d$/i.test(modelKey) ? modelKey.toUpperCase() : modelKey,
+    model: /^(?:ev|pv)\d$/i.test(modelKey) ? modelKey.toUpperCase() : modelKey,
     make: 'Kia',
-    label: `Kia ${/^ev\d$/i.test(modelKey) ? modelKey.toUpperCase() : modelKey}`,
+    label: `Kia ${/^(?:ev|pv)\d$/i.test(modelKey) ? modelKey.toUpperCase() : modelKey}`,
   }));
   const ensured = ensureMultiVehicleInterestTracksOnLead(lead, interests, {
     sharedRequirements: [],
