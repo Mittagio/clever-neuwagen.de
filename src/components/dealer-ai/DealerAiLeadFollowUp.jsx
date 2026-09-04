@@ -2742,7 +2742,16 @@ export default function DealerAiLeadFollowUp({
     const magic = result?.magic ?? null;
     const handoffLead = result?.lead ?? lead;
     if (magic) {
-      onPrepareOffer?.(handoffLead, { magicPreparation: magic });
+      onPrepareOffer?.(handoffLead, {
+        magicPreparation: magic,
+        focusModelKey: magic.focusModelKey
+          || magic.vehicle?.modelKey
+          || magic.vehicleIdentityDraft?.modelKey
+          || null,
+        createNew: magic.createNewAlternative === true,
+        invalidateDesiredRate: magic.invalidateVehicleRate !== false,
+        offerDraftId: magic.offerDraftId || null,
+      });
       setToast('Angebotsskizze bereit');
       setTimeout(() => setToast(''), 2800);
       return;

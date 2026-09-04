@@ -40,6 +40,7 @@ import {
   resolveAuthoritativeOfferMonthlyRate,
   stripNonAuthoritativeOfferRates,
 } from './captureThenOffer.js';
+import { enrichPrepareOfferPayloadWithIdentityDraft } from './vehicleIdentityDraft.js';
 
 function salutationName(customerName, facts, lead) {
   const identity = deriveContactIdentity(
@@ -895,69 +896,75 @@ export function planSellerActions({
         || ((offer?.ok || purchaseAmount != null || hasLeasingRate) && !(
           offerType === 'leasing' && offerMonthlyRate == null && magic?.decision?.action === 'ask_rate'
         ));
-      const offerPayload = stripNonAuthoritativeOfferRates({
-        canCreateOffer: Boolean(canCreate) && !(
-          offerType === 'leasing' && offerMonthlyRate == null
-        ),
-        purchasePrice: purchaseAmount ?? (
-          (offerType === 'cash' || offerType === 'purchase')
-            ? (magic?.calculation?.endPrice ?? grounded?.basePrice ?? null)
-            : null
-        ),
-        paymentType: paymentRaw,
-        offerType,
-        vehicleLabel: resolvedVehicleLabel,
-        vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
-        createNewAlternative: offerVehicleTarget.createNew === true
-          || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
-        mutationMode: offerVehicleTarget.mutationMode || null,
-        vehicle: {
-          model: focusModel || null,
-          trim: focusTrim,
-          make: 'Kia',
-          modelKey: offerVehicleTarget.modelKey || focusModel || null,
-        },
-        customerId: lead?.id || resolvedCustomer?.id || null,
-        customerName: customerName || lead?.contact?.name || null,
-        monthlyRate: offerMonthlyRate,
-        rateAuthority: offerMonthlyRate != null
-          ? (resolvedOfferRate.rateAuthority || RATE_AUTHORITY.AUTHORITATIVE)
-          : RATE_AUTHORITY.NON_AUTHORITATIVE,
-        discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
-        listPrice: groundedMatchesTarget ? (grounded?.basePrice ?? null) : null,
-        engineLabel: groundedMatchesTarget ? (grounded?.engineLabel ?? null) : null,
-        variantId: groundedMatchesTarget ? (grounded?.variantId ?? null) : null,
-        decisionAction: magic?.decision?.action ?? null,
-        missingRate: (offerType === 'leasing' || offerType == null)
-          && (leasingWithoutRate || magic?.decision?.action === 'ask_rate' || offerMonthlyRate == null)
-          && purchaseAmount == null,
-        attachWorkingContext: true,
-        needsSellerConfirmation: true,
-        mutatesCustomer: false,
-        source: offerVehicleTarget.source || 'seller_input',
-        cashVsLeasingWarning,
-        vehicleModelConflict: vehicleConflict
-          ? {
-            pdfLabel: vehicleInterest?.value?.pdfLabel || vehicleInterest?.label,
-            activeLabel: vehicleInterest?.value?.activeLabel,
-            warning: vehicleInterest?.label,
-          }
-          : null,
-        preparedOffer: {
-          type: 'prepare_offer',
-          customerId: lead?.id || resolvedCustomer?.id || null,
+      const offerPayload = stripNonAuthoritativeOfferRates(
+        enrichPrepareOfferPayloadWithIdentityDraft({
+          canCreateOffer: Boolean(canCreate) && !(
+            offerType === 'leasing' && offerMonthlyRate == null
+          ),
+          purchasePrice: purchaseAmount ?? (
+            (offerType === 'cash' || offerType === 'purchase')
+              ? (magic?.calculation?.endPrice ?? grounded?.basePrice ?? null)
+              : null
+          ),
+          paymentType: paymentRaw,
+          offerType,
+          vehicleLabel: resolvedVehicleLabel,
           vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
+          createNewAlternative: offerVehicleTarget.createNew === true
+            || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
+          mutationMode: offerVehicleTarget.mutationMode || null,
           vehicle: {
             model: focusModel || null,
-            trim: focusTrim || null,
+            trim: focusTrim,
+            make: 'Kia',
             modelKey: offerVehicleTarget.modelKey || focusModel || null,
           },
-          offerType: offerType || null,
-          purchasePrice: purchaseAmount ?? null,
-          source: 'seller_input',
+          customerId: lead?.id || resolvedCustomer?.id || null,
+          customerName: customerName || lead?.contact?.name || null,
+          monthlyRate: offerMonthlyRate,
+          rateAuthority: offerMonthlyRate != null
+            ? (resolvedOfferRate.rateAuthority || RATE_AUTHORITY.AUTHORITATIVE)
+            : RATE_AUTHORITY.NON_AUTHORITATIVE,
+          discountPercent: magic?.intent?.commercialInput?.discountPercent ?? null,
+          listPrice: groundedMatchesTarget ? (grounded?.basePrice ?? null) : null,
+          engineLabel: groundedMatchesTarget ? (grounded?.engineLabel ?? null) : null,
+          variantId: groundedMatchesTarget ? (grounded?.variantId ?? null) : null,
+          decisionAction: magic?.decision?.action ?? null,
+          missingRate: (offerType === 'leasing' || offerType == null)
+            && (leasingWithoutRate || magic?.decision?.action === 'ask_rate' || offerMonthlyRate == null)
+            && purchaseAmount == null,
+          attachWorkingContext: true,
           needsSellerConfirmation: true,
-        },
-      });
+          mutatesCustomer: false,
+          source: offerVehicleTarget.source || 'seller_input',
+          cashVsLeasingWarning,
+          vehicleModelConflict: vehicleConflict
+            ? {
+              pdfLabel: vehicleInterest?.value?.pdfLabel || vehicleInterest?.label,
+              activeLabel: vehicleInterest?.value?.activeLabel,
+              warning: vehicleInterest?.label,
+            }
+            : null,
+          preparedOffer: {
+            type: 'prepare_offer',
+            customerId: lead?.id || resolvedCustomer?.id || null,
+            vehicleTrackId: offerVehicleTarget.vehicleTrackId || null,
+            vehicle: {
+              model: focusModel || null,
+              trim: focusTrim || null,
+              modelKey: offerVehicleTarget.modelKey || focusModel || null,
+            },
+            offerType: offerType || null,
+            purchasePrice: purchaseAmount ?? null,
+            source: 'seller_input',
+            needsSellerConfirmation: true,
+          },
+        }, {
+          facts,
+          sellerInput,
+          lead,
+        }),
+      );
       actions.push({
         id: 'prepare_offer',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,

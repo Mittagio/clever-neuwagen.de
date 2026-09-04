@@ -217,6 +217,14 @@ export default function BackendLeadAktePage() {
       openOfferCalculator(navigate, lead, null, {
         returnPath: buildKundenaktePath(leadId),
         magicPreparation: magicPrep,
+        focusModelKey: options.focusModelKey
+          || magicPrep.focusModelKey
+          || magicPrep.vehicle?.modelKey
+          || magicPrep.vehicleIdentityDraft?.modelKey
+          || null,
+        // Keine bestehende EV4-Karte öffnen – neuer Identity-Draft
+        vehicleCardId: magicPrep.createNewAlternative ? null : (options.vehicleCardId ?? null),
+        preferOfferPreview: true,
       });
       showToast('Angebotsskizze – bitte prüfen');
       return;

@@ -68,6 +68,7 @@ export function buildVehicleConfiguration(draft) {
     colorId: draft.colorId ?? null,
     colorLabel: draft.colorLabel ?? null,
     packageIds: [...(draft.packageIds ?? [])],
+    packageLabels: [...(draft.packageLabels ?? [])],
     accessoryIds: [...(draft.accessoryIds ?? [])],
     extras: { ...(draft.extras ?? {}) },
     selectedPackages,

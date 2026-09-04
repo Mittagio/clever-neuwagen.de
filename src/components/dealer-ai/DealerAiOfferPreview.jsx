@@ -33,10 +33,17 @@ function formatCurrency(amount) {
   return `${Number(amount).toLocaleString('de-DE')} €`;
 }
 
-function collectPackagesAndExtras(vehicleConfiguration, payment) {
+function collectPackagesAndExtras(vehicleConfiguration, payment, offerDraft = null) {
   const items = [];
   for (const pkg of vehicleConfiguration?.selectedPackages ?? []) {
     items.push(pkg.name);
+  }
+  for (const label of vehicleConfiguration?.packageLabels ?? []) {
+    if (label && !items.includes(label)) items.push(label);
+  }
+  for (const pkg of offerDraft?.vehicleIdentityDraft?.packages ?? []) {
+    const label = pkg?.canonical || pkg?.raw;
+    if (label && !items.includes(label)) items.push(label);
   }
   for (const acc of vehicleConfiguration?.accessories ?? []) {
     items.push(acc.name);
@@ -563,8 +570,15 @@ export default function DealerAiOfferPreview({
     ?? vehicleConfiguration?.batteryLabel
     ?? vehicle?.battery
     ?? null;
-  const colorLabel = vehicleConfiguration?.colorLabel ?? vehicle?.color ?? null;
-  const colorId = vehicleConfiguration?.colorId ?? vehicle?.colorId ?? null;
+  const colorLabel = vehicleConfiguration?.colorLabel
+    ?? offerDraft?.vehicleIdentityDraft?.color?.canonical
+    ?? offerDraft?.vehicleIdentityDraft?.color?.raw
+    ?? vehicle?.color
+    ?? null;
+  const colorId = vehicleConfiguration?.colorId
+    ?? offerDraft?.vehicleIdentityDraft?.colorId
+    ?? vehicle?.colorId
+    ?? null;
   const colorSwatch = resolveColorSwatch(colorId, colorLabel);
   const modelKey = vehicleConfiguration?.modelKey ?? vehicle?.modelKey ?? null;
   const modelLabel = vehicleConfiguration?.model ?? vehicle?.model ?? null;
@@ -609,7 +623,7 @@ export default function DealerAiOfferPreview({
     ?? (uvpTotal != null && housePrice != null ? uvpTotal - housePrice : null);
 
   const paymentLabel = PAYMENT_TYPE_LABELS[activeOfferType] ?? activeOfferType;
-  const packageItems = collectPackagesAndExtras(vehicleConfiguration, payment);
+  const packageItems = collectPackagesAndExtras(vehicleConfiguration, payment, offerDraft);
   const showPackages = packageItems.length > 0;
   const saved = isSaved;
 

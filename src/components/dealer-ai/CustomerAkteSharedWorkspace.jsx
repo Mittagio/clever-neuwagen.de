@@ -93,6 +93,7 @@ import {
 } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { tryCreateTesseractOcrEngine } from '../../services/cleverSeller/createCleverContractOcrProvider.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
+import { enrichPrepareOfferPayloadWithIdentityDraft } from '../../services/cleverSeller/vehicleIdentityDraft.js';
 import {
   enrichSellerTurnWithMagicPropose,
 } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
@@ -1789,15 +1790,42 @@ export default function CustomerAkteSharedWorkspace({
       return;
     }
     if (action.action === 'open_offer_handoff' || action.id === 'create_offer') {
-      const magic = offerPrep
+      const rawPayload = offerPrep
         || universalTurn.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
           ?.payload
         || universalTurn.pendingAction
         || null;
+      // Facts in die Akte übernehmen (Zero-Loss), bevor das Angebotstool öffnet
+      let handoffLead = lead;
+      try {
+        const applied = applyAcceptedSellerTurn(lead, universalTurn, { postFeedCard: false });
+        if (applied?.ok && applied.lead) {
+          handoffLead = applied.lead;
+          persistMessages(
+            handoffLead,
+            applied.acceptedLabels?.length
+              ? `Clever: ${applied.acceptedLabels.length} Angaben für Angebot übernommen`
+              : 'Clever Angebotsentwurf übernommen',
+          );
+        }
+      } catch {
+        // Handoff trotzdem fortsetzen – Draft darf Navigation nicht blockieren
+      }
+      const magic = rawPayload?.offerDraftId && rawPayload?.vehicleIdentityDraft
+        ? rawPayload
+        : enrichPrepareOfferPayloadWithIdentityDraft(rawPayload || {}, {
+          facts: universalTurn.extractedFacts || [],
+          sellerInput: universalTurn.sellerInput || universalTurn.rawInput || '',
+          lead: handoffLead,
+        });
       clearAssist();
       setUniversalTurn(null);
+      if (onPrepareOfferDraft && magic?.offerDraftId) {
+        onPrepareOfferDraft({ magic, lead: handoffLead });
+        return;
+      }
       if (onPrepareOfferDraft && magic) {
-        onPrepareOfferDraft({ magic, lead });
+        onPrepareOfferDraft({ magic, lead: handoffLead });
         return;
       }
       onOpenOffer?.();

@@ -11,6 +11,7 @@ import {
   COMMERCIAL_SOURCE,
 } from './magicOfferSafeCalculation.js';
 import { assessCommercialPlausibility } from './parseGermanMoney.js';
+import { readIdentityFromPreparation } from '../cleverSeller/vehicleIdentityDraft.js';
 
 function paymentTypeFromOfferType(offerType) {
   if (offerType === 'purchase') return 'cash';
@@ -120,26 +121,37 @@ function resolveTrimFromHints(...hints) {
 }
 
 /**
- * Fahrzeug aus Grounding, Offer-Interpretation, Intent oder Headline ableiten.
+ * Fahrzeug aus Grounding, Offer-Interpretation, Intent, Identity-Draft oder Headline ableiten.
  * Braucht kein prior parsed.ok – PDF-Leasing ohne Katalog-UPE bleibt navigierbar.
+ * Expliziter Composer-Identity-Draft schlägt Lead-/History-Fallback.
  */
 export function resolveMagicVehicleFields(preparation) {
+  const identity = readIdentityFromPreparation(preparation);
   const g = preparation?.grounded ?? {};
   const oiRoot = preparation?.offerInterpretation?.interpretation
     ?? preparation?.offerInterpretation
     ?? {};
   const oiVehicle = oiRoot.vehicle ?? {};
   const vr = preparation?.intent?.vehicleRequest ?? {};
-  const headline = preparation?.headline ?? '';
+  const directVehicle = preparation?.vehicle ?? {};
+  const headline = preparation?.headline ?? preparation?.vehicleLabel ?? '';
 
   const modelKey = g.modelKey
+    || preparation?.focusModelKey
+    || identity?.modelKey
+    || resolveMagicModelKey(directVehicle.modelKey)
+    || resolveMagicModelKey(directVehicle.model)
     || resolveMagicModelKey(oiVehicle.modelKey)
     || resolveMagicModelKey(oiVehicle.model)
     || resolveMagicModelKey(vr.modelHint)
+    || resolveMagicModelKey(identity?.model?.canonical || identity?.model?.raw)
     || resolveMagicModelKey(headline)
     || null;
 
   const model = g.model
+    || identity?.model?.canonical
+    || identity?.model?.raw
+    || directVehicle.model
     || oiVehicle.model
     || displayModelFromKey(modelKey)
     || displayModelFromKey(resolveMagicModelKey(vr.modelHint));
@@ -147,6 +159,9 @@ export function resolveMagicVehicleFields(preparation) {
   const trimResolved = resolveTrimFromHints(
     g.trimLabel,
     g.trimId,
+    identity?.trim?.canonical,
+    identity?.trim?.raw,
+    directVehicle.trim,
     oiVehicle.trim,
     vr.trimHint,
     headline,
@@ -157,7 +172,24 @@ export function resolveMagicVehicleFields(preparation) {
     model: model || null,
     brand: g.brand || oiVehicle.brand || vr.brandHint || 'Kia',
     trimId: g.trimId || trimResolved.trimId,
-    trimLabel: g.trimLabel || oiVehicle.trim || trimResolved.trimLabel,
+    trimLabel: g.trimLabel
+      || identity?.trim?.canonical
+      || identity?.trim?.raw
+      || directVehicle.trim
+      || oiVehicle.trim
+      || trimResolved.trimLabel,
+    colorLabel: g.colorLabel
+      || identity?.color?.canonical
+      || identity?.color?.raw
+      || directVehicle.color
+      || vr.colorHint
+      || null,
+    colorId: g.colorId || identity?.colorId || directVehicle.colorId || null,
+    packageLabels: g.packageLabels
+      || (identity?.packages || []).map((p) => p.canonical || p.raw).filter(Boolean)
+      || directVehicle.packages
+      || vr.packageHints
+      || [],
   };
 }
 
@@ -577,6 +609,9 @@ export function magicPreparationToConfigurePatch(preparation) {
   const c = preparation?.intent?.commercialInput ?? {};
   const calc = preparation?.calculation ?? {};
   const vehicle = resolveMagicVehicleFields(preparation);
+  const invalidateRate = preparation?.invalidateVehicleRate === true
+    || preparation?.createNewAlternative === true
+    || preparation?.mode === 'composer_identity_draft';
   if (
     !vehicle.modelKey
     && !vehicle.model
@@ -588,6 +623,8 @@ export function magicPreparationToConfigurePatch(preparation) {
     if (!preparation?.intent?.vehicleRequest?.modelHint) return null;
   }
 
+  const packageLabels = vehicle.packageLabels || g.packageLabels || [];
+
   return {
     modelKey: vehicle.modelKey ?? g.modelKey ?? null,
     model: vehicle.model ?? g.model ?? preparation?.intent?.vehicleRequest?.modelHint ?? null,
@@ -596,11 +633,18 @@ export function magicPreparationToConfigurePatch(preparation) {
     trimLabel: vehicle.trimLabel ?? g.trimLabel ?? preparation?.intent?.vehicleRequest?.trimHint ?? null,
     engineId: g.engineId,
     motorLabel: g.engineLabel,
-    colorId: g.colorId,
-    colorLabel: g.colorLabel ?? preparation?.intent?.vehicleRequest?.colorHint ?? null,
+    colorId: vehicle.colorId ?? g.colorId ?? null,
+    colorLabel: vehicle.colorLabel
+      ?? g.colorLabel
+      ?? preparation?.intent?.vehicleRequest?.colorHint
+      ?? null,
     packageIds: g.packageIds ?? [],
+    packageLabels,
     paymentType: preparation.paymentType,
-    desiredRate: calc.monthlyRate ?? c.monthlyRate ?? null,
+    // Neue Vehicle Identity → keine alte Fahrzeugrate übernehmen
+    desiredRate: invalidateRate
+      ? null
+      : (calc.monthlyRate ?? c.monthlyRate ?? null),
     desiredPrice: preparation.mode === 'cash_magic' ? calc.endPrice ?? null : null,
     termMonths: c.durationMonths ?? calc.durationMonths ?? null,
     mileagePerYear: c.annualMileageKm ?? calc.annualMileageKm ?? null,
@@ -609,6 +653,8 @@ export function magicPreparationToConfigurePatch(preparation) {
     customDiscountPercent: calc.discountPercent ?? c.discountPercent ?? null,
     customerGroup: (calc.discountPercent != null || c.discountPercent != null) ? 'custom' : 'standard',
     balloonPayment: c.finalPayment ?? calc.finalPayment ?? null,
+    offerDraftId: preparation.offerDraftId || null,
+    vehicleIdentityDraftId: preparation.vehicleIdentityDraftId || null,
   };
 }
 

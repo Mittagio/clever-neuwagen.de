@@ -681,6 +681,17 @@ export function buildUniversalActionSections(turn = {}) {
       wish.downPayment != null ? `${Number(wish.downPayment) === 0 ? '0 €' : `${Number(wish.downPayment).toLocaleString('de-DE')} €`} AZ` : null,
     ].filter(Boolean);
     const lineParts = [];
+    const identityExtras = offerSectionSource.payload?.identityExtrasLine
+      || [
+        ...(offerSectionSource.payload?.vehicleIdentityDraft?.packages || [])
+          .map((p) => p.canonical || p.raw)
+          .filter(Boolean),
+        offerSectionSource.payload?.vehicleIdentityDraft?.color?.canonical
+          || offerSectionSource.payload?.vehicleIdentityDraft?.color?.raw
+          || null,
+      ].filter(Boolean).join(' · ')
+      || null;
+    if (identityExtras) lineParts.push(identityExtras);
     if (discount?.label) lineParts.push(discount.label);
     if (offerSectionSource.payload?.listPrice != null) {
       lineParts.push(`UPE ${Number(offerSectionSource.payload.listPrice).toLocaleString('de-DE')} €`);
@@ -689,6 +700,12 @@ export function buildUniversalActionSections(turn = {}) {
       lineParts.push(purchase.label);
     } else if (!incomplete && offerSectionSource.payload?.monthlyRate != null) {
       lineParts.push(`${Number(offerSectionSource.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+    } else if (
+      incomplete
+      || offerSectionSource.payload?.missingRate
+      || offerSectionSource.payload?.invalidateVehicleRate
+    ) {
+      lineParts.push('Rate noch offen');
     }
     const offerEdit = Boolean(offerCtx?.offerId);
     const offerPrimaryLabel = incomplete
@@ -707,13 +724,20 @@ export function buildUniversalActionSections(turn = {}) {
       (turn.missingInformation || []).find((m) => m.id === 'monthly_leasing_rate')?.label || null,
       ...identityMissing.map((m) => m.label).filter(Boolean),
     ].filter(Boolean);
+    const commercialLine = inherited.length
+      ? inherited.join(' · ')
+      : null;
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
       title: 'Angebot',
       headline: offerSectionSource.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
       line: lineParts.join(' · ') || null,
-      inheritedLine: inherited.length ? `Übernommen: ${inherited.join(' · ')}` : null,
+      inheritedLine: commercialLine
+        ? (incomplete || offerSectionSource.payload?.missingRate
+          ? commercialLine
+          : `Übernommen: ${commercialLine}`)
+        : null,
       changes: [
         purchase ? {
           id: 'price',

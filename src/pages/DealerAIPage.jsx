@@ -724,12 +724,30 @@ export default function DealerAIPage() {
     const skipReview = shouldSkipMagicOfferReview(preparation);
     // PDF-Leasing/Finanzierung: mit Rate zur Vorschau – Confirm-Gate prüft dort
     const allowCommercialBootstrap = skipReview && hasCommercial;
+    const invalidateLeadRate = preparation?.invalidateVehicleRate === true
+      || preparation?.createNewAlternative === true
+      || preparation?.mode === 'composer_identity_draft'
+      || Boolean(preparation?.vehicleIdentityDraft?.modelKey);
 
     let baseParsed = options.baseParsed?.ok
       ? options.baseParsed
       : (parsed?.ok
         ? parsed
         : enrichWithSuggestions(buildParsedFromLead(contextLead ?? {})));
+
+    // Neuer Identity-Draft: Lead-Fahrzeug + alte Rate dürfen nicht kleben
+    if (invalidateLeadRate && baseParsed?.ok) {
+      baseParsed = enrichWithSuggestions(applyDealerAiFields(baseParsed, {
+        modelId: vehicle.modelKey || null,
+        model: vehicle.model || vehicle.modelKey || '',
+        brand: vehicle.brand || 'Kia',
+        trimLabel: vehicle.trimLabel || '',
+        trimId: vehicle.trimId || null,
+        desiredRate: null,
+        colorLabel: vehicle.colorLabel || null,
+        colorId: vehicle.colorId || null,
+      }));
+    }
 
     if (!baseParsed?.ok) {
       baseParsed = {
@@ -741,7 +759,10 @@ export default function DealerAIPage() {
           modelId: vehicle.modelKey || null,
           trimLabel: vehicle.trimLabel || '',
           trimId: vehicle.trimId || null,
+          colorLabel: vehicle.colorLabel || null,
+          colorId: vehicle.colorId || null,
           paymentType: preparation.paymentType ?? 'leasing',
+          desiredRate: null,
         },
         action: 'create_offer',
         actionLabel: 'Angebot erstellen',
@@ -758,6 +779,9 @@ export default function DealerAIPage() {
         brand: vehicle.brand || 'Kia',
         trimLabel: vehicle.trimLabel || baseParsed.fields?.trimLabel,
         trimId: vehicle.trimId || baseParsed.fields?.trimId,
+        colorLabel: vehicle.colorLabel || baseParsed.fields?.colorLabel,
+        colorId: vehicle.colorId || baseParsed.fields?.colorId,
+        ...(invalidateLeadRate ? { desiredRate: null } : {}),
       }));
     }
 
@@ -771,6 +795,7 @@ export default function DealerAIPage() {
           model: vehicle.model || 'Fahrzeug',
           modelId: vehicle.modelKey || null,
           paymentType: preparation.paymentType ?? 'leasing',
+          desiredRate: null,
         },
         action: 'create_offer',
         actionLabel: 'Angebot erstellen',
@@ -781,9 +806,9 @@ export default function DealerAIPage() {
 
     const patch = magicPreparationToConfigurePatch(preparation);
     const resolvedModelKey = patch?.modelKey
-      || configureDraft?.modelKey
-      || baseParsed.fields?.modelId
       || vehicle.modelKey
+      || (invalidateLeadRate ? null : configureDraft?.modelKey)
+      || (invalidateLeadRate ? null : baseParsed.fields?.modelId)
       || null;
 
     if (!resolvedModelKey && !allowCommercialBootstrap) {
@@ -791,14 +816,23 @@ export default function DealerAIPage() {
     }
 
     const nextDraft = {
-      ...(configureDraft ?? buildConfigureDraft(baseParsed, conditions)),
+      ...(invalidateLeadRate
+        ? buildConfigureDraft(baseParsed, conditions)
+        : (configureDraft ?? buildConfigureDraft(baseParsed, conditions))),
       ...(patch ?? {}),
-      modelKey: resolvedModelKey || patch?.modelKey || configureDraft?.modelKey || null,
-      model: patch?.model || vehicle.model || configureDraft?.model || baseParsed.fields?.model,
+      modelKey: resolvedModelKey || patch?.modelKey || (invalidateLeadRate ? null : configureDraft?.modelKey) || null,
+      model: patch?.model || vehicle.model || (invalidateLeadRate ? null : configureDraft?.model) || baseParsed.fields?.model,
       brand: patch?.brand || vehicle.brand || 'Kia',
       paymentType: (patch?.paymentType === 'unknown' || !patch?.paymentType)
-        ? (configureDraft?.paymentType ?? preparation.paymentType ?? 'leasing')
+        ? ((invalidateLeadRate ? null : configureDraft?.paymentType) ?? preparation.paymentType ?? 'leasing')
         : patch.paymentType,
+      desiredRate: invalidateLeadRate ? null : (patch?.desiredRate ?? configureDraft?.desiredRate ?? null),
+      colorId: patch?.colorId ?? vehicle.colorId ?? null,
+      colorLabel: patch?.colorLabel ?? vehicle.colorLabel ?? null,
+      packageLabels: patch?.packageLabels ?? vehicle.packageLabels ?? [],
+      offerDraftId: preparation.offerDraftId || patch?.offerDraftId || null,
+      vehicleIdentityDraftId: preparation.vehicleIdentityDraftId || patch?.vehicleIdentityDraftId || null,
+      vehicleIdentityDraft: preparation.vehicleIdentityDraft || null,
     };
     if (!nextDraft.trimId && vehicle.trimId) nextDraft.trimId = vehicle.trimId;
     if (!nextDraft.trimLabel && vehicle.trimLabel) nextDraft.trimLabel = vehicle.trimLabel;
@@ -822,6 +856,34 @@ export default function DealerAIPage() {
       lead: contextLead,
     });
     offerDraft = overlayMagicOntoOfferDraft(offerDraft, preparation);
+    if (invalidateLeadRate && offerDraft) {
+      offerDraft = {
+        ...offerDraft,
+        rateNeedsReview: true,
+        payment: {
+          ...(offerDraft.payment || {}),
+          budget: null,
+          calculatedRate: null,
+          desiredRate: null,
+        },
+        offerPreview: {
+          ...(offerDraft.offerPreview || {}),
+          monthlyRate: null,
+        },
+        offerCalculation: {
+          ...(offerDraft.offerCalculation || {}),
+          monthlyRate: null,
+        },
+        meta: {
+          ...(offerDraft.meta || {}),
+          offerDraftId: preparation.offerDraftId || null,
+          vehicleIdentityDraftId: preparation.vehicleIdentityDraftId || null,
+          rateNeedsReview: true,
+          rateMissing: true,
+        },
+        vehicleIdentityDraft: preparation.vehicleIdentityDraft || null,
+      };
+    }
     // dataUrl darf nicht verloren gehen (State/Navigation/Overlay)
     offerDraft = ensureOriginalPdfOnOfferDraft(
       offerDraft,
@@ -1381,17 +1443,46 @@ export default function DealerAIPage() {
     setIsFreshLead(false);
 
     let nextParsed = enrichWithSuggestions(buildParsedFromLead(lead));
-    const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
-    if (storedConfig?.modelKey && !hasRecognizedModelKey(nextParsed)) {
+    const magicFocusKey = incomingMagic?.focusModelKey
+      || incomingMagic?.vehicle?.modelKey
+      || incomingMagic?.vehicleIdentityDraft?.modelKey
+      || ctx.focusModelKey
+      || null;
+    const invalidateLeadVehicle = Boolean(
+      incomingMagic?.invalidateVehicleRate
+      || incomingMagic?.createNewAlternative
+      || incomingMagic?.mode === 'composer_identity_draft'
+      || magicFocusKey,
+    );
+    if (invalidateLeadVehicle && magicFocusKey) {
+      const identity = incomingMagic?.vehicleIdentityDraft;
       nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
-        modelId: storedConfig.modelKey,
-        model: storedConfig.model ?? lead.vehicle?.model,
-        trimLabel: storedConfig.trimLabel ?? lead.vehicle?.trim,
+        modelId: magicFocusKey,
+        model: identity?.model?.canonical
+          || incomingMagic?.vehicle?.model
+          || magicFocusKey,
+        trimLabel: identity?.trim?.canonical
+          || incomingMagic?.vehicle?.trim
+          || null,
+        colorLabel: identity?.color?.canonical
+          || identity?.color?.raw
+          || incomingMagic?.vehicle?.color
+          || null,
+        desiredRate: null,
       }));
-    } else if (ctx.focusModelKey && !hasRecognizedModelKey(nextParsed)) {
-      nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
-        modelId: ctx.focusModelKey,
-      }));
+    } else {
+      const storedConfig = (lead.crm?.vehicleConfigurations ?? []).find((entry) => entry?.modelKey);
+      if (storedConfig?.modelKey && !hasRecognizedModelKey(nextParsed)) {
+        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+          modelId: storedConfig.modelKey,
+          model: storedConfig.model ?? lead.vehicle?.model,
+          trimLabel: storedConfig.trimLabel ?? lead.vehicle?.trim,
+        }));
+      } else if (ctx.focusModelKey && !hasRecognizedModelKey(nextParsed)) {
+        nextParsed = enrichWithSuggestions(applyDealerAiFields(nextParsed, {
+          modelId: ctx.focusModelKey,
+        }));
+      }
     }
     setParsed(nextParsed);
     setStartView('home');
@@ -1769,6 +1860,18 @@ export default function DealerAIPage() {
           || magicPrepRaw.mode === 'financing_intake'
         ),
         skipMagicReview: true,
+        invalidateVehicleRate: magicPrepRaw.invalidateVehicleRate !== false
+          || options.invalidateDesiredRate === true
+          || magicPrepRaw.createNewAlternative === true
+          || options.createNew === true
+          || magicPrepRaw.mode === 'composer_identity_draft',
+        createNewAlternative: magicPrepRaw.createNewAlternative === true
+          || options.createNew === true,
+        focusModelKey: options.focusModelKey
+          || magicPrepRaw.focusModelKey
+          || magicPrepRaw.vehicle?.modelKey
+          || magicPrepRaw.vehicleIdentityDraft?.modelKey
+          || null,
       };
       if (magicPrep.fromPdf) {
         magicPrep.skipMagicReview = true;
@@ -1777,6 +1880,12 @@ export default function DealerAIPage() {
       setMagicOfferSeedText(magicPrep?.intent?.rawText || magicPrep?.seedText || '');
       // Angebot bearbeiten / Clever-Handoff: nie Review/Entry – direkt Vorschau
       if (advanceMagicPreparationToPreview(magicPrep)) {
+        return;
+      }
+      // Neuer Identity-Draft: niemals still auf alte Karte (EV4) fallen
+      if (magicPrep.createNewAlternative || magicPrep.mode === 'composer_identity_draft') {
+        showToast('Angebotsentwurf unvollständig – Modell prüfen (kein Fallback auf bestehendes Angebot)');
+        setPhase('conditions');
         return;
       }
       const handoffCard = magicPrep?.card
