@@ -114,7 +114,7 @@ export function resolveCurrentOfferContextFromMemory(memory = null, previousOffe
  * Params für runCleverSellerTurn / Agent aus Shared Memory.
  * @param {object|null} memory
  */
-export function buildSellerTurnMemoryParams(memory = null, lead = null) {
+export function hydrateWorkingMemoryFromLead(memory = null, lead = null) {
   let mem = memory || null;
   // Hydrate aus Lead-Persistenz (Reload)
   if (lead?.crm?.cleverWorkingState?.currentOfferDraftId && !mem?.currentOfferDraft?.offerDraftId) {
@@ -129,6 +129,7 @@ export function buildSellerTurnMemoryParams(memory = null, lead = null) {
           ...od,
           vehicleIdentityDraft: identity,
         },
+        pendingAction: mem?.pendingAction || { type: 'prepare_offer', status: 'prepared' },
         previousOfferPreparation: mem?.previousOfferPreparation || {
           offerDraftId: od.offerDraftId,
           vehicleIdentityDraft: identity,
@@ -165,6 +166,11 @@ export function buildSellerTurnMemoryParams(memory = null, lead = null) {
       };
     }
   }
+  return mem;
+}
+
+export function buildSellerTurnMemoryParams(memory = null, lead = null) {
+  const mem = hydrateWorkingMemoryFromLead(memory, lead);
   return {
     conversationHistory: getConversationHistoryForAgent(mem),
     workingMemory: mem || null,
@@ -318,6 +324,49 @@ export function updateAgentWorkingMemory(prev = null, agentResult = {}, sellerMe
     rememberedAt: new Date().toISOString(),
     lastSellerMessage: String(sellerMessage || '').slice(0, 240),
   };
+
+  // Working Draft IDs aus Agent prepare/modify übernehmen (gleiche Continuity wie Deterministik)
+  const prepPayload = agentResult.pendingAction?.payload
+    || (agentResult.pendingAction?.offerDraftId ? agentResult.pendingAction : null)
+    || lastWrite?.result?.payload
+    || lastWrite?.output?.payload
+    || agentResult.previousOfferPreparation
+    || null;
+  if (prepPayload?.offerDraftId) {
+    next.currentOfferDraftId = prepPayload.offerDraftId;
+    next.currentOfferDraft = {
+      ...(next.currentOfferDraft || {}),
+      offerDraftId: prepPayload.offerDraftId,
+      customerId: prepPayload.customerId || next.currentOfferDraft?.customerId || null,
+      vehicleTrackId: prepPayload.vehicleTrackId || next.currentOfferDraft?.vehicleTrackId || null,
+      vehicleIdentityDraftId: prepPayload.vehicleIdentityDraftId
+        || prepPayload.vehicleIdentityDraft?.id
+        || next.currentOfferDraft?.vehicleIdentityDraftId
+        || null,
+      commercialScenarioId: prepPayload.commercialScenarioId
+        || prepPayload.commercialScenario?.id
+        || next.currentOfferDraft?.commercialScenarioId
+        || null,
+      status: prepPayload.status || 'draft',
+      updatedAt: new Date().toISOString(),
+      vehicleIdentityDraft: prepPayload.vehicleIdentityDraft
+        || next.currentOfferDraft?.vehicleIdentityDraft
+        || null,
+      commercialScenario: prepPayload.commercialScenario
+        || next.currentOfferDraft?.commercialScenario
+        || null,
+      rate: prepPayload.monthlyRate ?? prepPayload.rate ?? next.currentOfferDraft?.rate ?? null,
+      invalidateVehicleRate: prepPayload.invalidateVehicleRate !== false,
+      vehicleLabel: prepPayload.vehicleLabel || next.currentOfferDraft?.vehicleLabel || null,
+      focusModelKey: prepPayload.focusModelKey
+        || prepPayload.vehicle?.modelKey
+        || next.currentOfferDraft?.focusModelKey
+        || null,
+      vehicle: prepPayload.vehicle || next.currentOfferDraft?.vehicle || null,
+      lastChangedFields: prepPayload.lastChangedFields || [],
+    };
+    next.previousOfferPreparation = prepPayload;
+  }
 
   if (sellerMessage) {
     next = appendConversationTurn(next, { role: 'user', text: sellerMessage, kind: 'seller_input' });

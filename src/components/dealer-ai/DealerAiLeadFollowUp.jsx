@@ -3793,6 +3793,9 @@ export default function DealerAiLeadFollowUp({
               ...(nextCrm.focusedVehicleTrackId
                 ? { focusedVehicleTrackId: nextCrm.focusedVehicleTrackId }
                 : {}),
+              ...(nextCrm.cleverWorkingState
+                ? { cleverWorkingState: nextCrm.cleverWorkingState }
+                : {}),
             });
               // Persistenz: Display-Name nie auf Placeholder zurückfallen lassen
               const keepName = String(name || '').trim();

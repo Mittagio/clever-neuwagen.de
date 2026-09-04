@@ -323,6 +323,44 @@ export function buildMutatedPrepareOfferPayload(mutation, { lead = null, sellerI
 }
 
 /**
+ * Handoff-Cue: „Angebot vervollständigen“ → Offer-Tool für aktuellen Draft.
+ */
+export function isOfferHandoffCue(text = '') {
+  const t = String(text || '').trim();
+  if (!t || t.length > 64) return false;
+  return /^(?:angebot\s+vervollst(?:ändigen|andigen)?|angebotstool(?:\s+öffnen)?|zum\s+angebots(?:tool|rechner)|offer\s+(?:complete|vervollst))\s*\.?$/i
+    .test(t)
+    || /\bangebot\s+vervollst(?:ändigen|andigen)\b/i.test(t);
+}
+
+/**
+ * Session-Memory → Lead.crm.cleverWorkingState (Reload / Multi-Tab Basis).
+ */
+export function syncWorkingDraftsFromMemoryToLead(lead, memory) {
+  if (!lead?.id || !memory) return lead;
+  let next = lead;
+  const od = memory.currentOfferDraft;
+  if (od?.offerDraftId) {
+    next = upsertOfferDraftOnLead(next, {
+      ...od,
+      vehicleIdentityDraft: od.vehicleIdentityDraft || null,
+      commercialScenario: od.commercialScenario || null,
+    });
+  }
+  const md = memory.lastMessageDraft;
+  if (md?.messageDraftId && md?.body) {
+    next = upsertMessageDraftOnLead(next, {
+      messageDraftId: md.messageDraftId,
+      body: md.body,
+      intendSend: Boolean(md.intendSend),
+      customerId: lead.id,
+      status: md.intendSend ? 'pending_send' : 'draft',
+    });
+  }
+  return next;
+}
+
+/**
  * Persistiert Offer-/Identity-Drafts auf dem Lead.
  */
 export function upsertOfferDraftOnLead(lead, offerDraft, extras = {}) {

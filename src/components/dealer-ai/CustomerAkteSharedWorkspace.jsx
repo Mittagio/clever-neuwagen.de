@@ -47,6 +47,7 @@ import {
   createEmptyAgentWorkingMemory,
   getConversationHistoryForAgent,
   buildSellerTurnMemoryParams,
+  hydrateWorkingMemoryFromLead,
   updateAgentWorkingMemory,
   updateMemoryFromSellerTurn,
 } from '../../services/cleverAgent/cleverAgentWorkingMemory.js';
@@ -96,6 +97,10 @@ import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes
 import { enrichPrepareOfferPayloadWithIdentityDraft } from '../../services/cleverSeller/vehicleIdentityDraft.js';
 import {
   buildHandoffFromOfferDraftId,
+  buildMutatedPrepareOfferPayload,
+  isOfferHandoffCue,
+  mutateActiveOfferDraft,
+  syncWorkingDraftsFromMemoryToLead,
   upsertOfferDraftOnLead,
   ensureOfferDraftBundleFromPayload,
 } from '../../services/cleverSeller/cleverWorkingDraft.js';
@@ -315,6 +320,58 @@ export default function CustomerAkteSharedWorkspace({
   useEffect(() => {
     leadRef.current = lead;
   }, [lead]);
+
+  // Working Drafts nach Reload aus Lead hydratisieren
+  useEffect(() => {
+    if (!lead?.id) return;
+    setAgentWorkingMemory((prev) => {
+      const hydrated = hydrateWorkingMemoryFromLead(prev, lead);
+      if (!hydrated) return prev;
+      if (
+        hydrated.currentOfferDraftId === prev?.currentOfferDraftId
+        && hydrated.currentMessageDraftId === prev?.currentMessageDraftId
+        && hydrated.currentOfferDraft?.updatedAt === prev?.currentOfferDraft?.updatedAt
+      ) {
+        return prev;
+      }
+      return hydrated;
+    });
+  }, [
+    lead?.id,
+    lead?.crm?.cleverWorkingState?.currentOfferDraftId,
+    lead?.crm?.cleverWorkingState?.updatedAt,
+    lead?.crm?.cleverWorkingState?.currentMessageDraftId,
+  ]);
+
+  function persistWorkingMemoryToLead(memory, baseLead = lead, historyText = null) {
+    if (!baseLead?.id || !memory || typeof onPersistLead !== 'function') return baseLead;
+    const synced = syncWorkingDraftsFromMemoryToLead(baseLead, memory);
+    if (synced === baseLead) return baseLead;
+    onPersistLead(synced, historyText ? { historyText } : undefined);
+    return synced;
+  }
+
+  function openHandoffForOfferDraftId(offerDraftId, sellerInput = '') {
+    if (!offerDraftId || typeof onPrepareOfferDraft !== 'function') return false;
+    const handoffLead = persistWorkingMemoryToLead(agentWorkingMemory, lead);
+    const resolved = buildHandoffFromOfferDraftId(handoffLead, offerDraftId, {
+      sellerInput: sellerInput || '',
+    });
+    if (!resolved.ok) {
+      setFeedback(resolved.message || 'Angebotsentwurf nicht gefunden.');
+      setTimeout(() => setFeedback(''), 4000);
+      return false;
+    }
+    clearAssist();
+    setUniversalTurn(null);
+    setOfferPrep(null);
+    onPrepareOfferDraft({
+      magic: resolved.magic,
+      lead: handoffLead,
+      offerDraftId,
+    });
+    return true;
+  }
 
   useEffect(() => {
     workingContextRef.current = workingContextItems;
@@ -559,6 +616,66 @@ export default function CustomerAkteSharedWorkspace({
       const offerCtx = resolveCurrentOfferContext();
       const workingCtx = resolveMagicWorkingContext();
 
+      // Handoff-Cue auf aktiven Working Draft (kein Notiz-Capture)
+      const activeDraftId = agentWorkingMemory?.currentOfferDraftId
+        || lead?.crm?.cleverWorkingState?.currentOfferDraftId
+        || null;
+      if (isOfferHandoffCue(text) && activeDraftId) {
+        setDraft('');
+        openHandoffForOfferDraftId(activeDraftId, text);
+        return true;
+      }
+
+      // Identity-Follow-up am gleichen Draft (doch Earth / schwarz / Winterpaket raus)
+      const draftMutation = mutateActiveOfferDraft({
+        lead,
+        workingMemory: agentWorkingMemory,
+        sellerInput: text,
+      });
+      if (draftMutation?.offerDraft) {
+        const payload = buildMutatedPrepareOfferPayload(draftMutation, {
+          lead,
+          sellerInput: text,
+        });
+        const nextMem = {
+          ...agentWorkingMemory,
+          currentOfferDraftId: draftMutation.offerDraft.offerDraftId,
+          currentOfferDraft: draftMutation.offerDraft,
+          pendingAction: { type: 'prepare_offer', status: 'prepared', payload },
+          previousOfferPreparation: payload,
+          lastIntent: 'modify_offer',
+          lastSellerMessage: text,
+        };
+        setAgentWorkingMemory(nextMem);
+        persistWorkingMemoryToLead(nextMem, lead, 'Clever Angebotsentwurf angepasst');
+        setDraft('');
+        setAppointmentDraft(null);
+        clearAssist();
+        resetIntentChipsToDefault();
+        setOfferPrep({
+          source: 'working_draft_follow_up',
+          agentSource: 'deterministic',
+          pendingAction: { type: 'prepare_offer', payload },
+          offer: payload,
+        });
+        showUniversalReview({
+          sellerInput: text,
+          assistantReply: null,
+          preparedActions: [{
+            id: 'prepare_offer_follow_up',
+            type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+            label: payload.vehicleLabel || 'Angebot',
+            needsSellerConfirmation: true,
+            status: 'prepared',
+            payload,
+          }],
+          pendingAction: { type: 'prepare_offer', status: 'prepared', payload },
+          extractedFacts: [],
+          agentSource: 'deterministic',
+        });
+        return true;
+      }
+
       // Clever Agent (OpenAI → Tools → Business-Logik) – gleicher Pfad für Text + Chips
       if (isCleverAgentClientEnabled()) {
         const route = routeSellerRequest(text, { workingMemory: agentWorkingMemory });
@@ -579,7 +696,14 @@ export default function CustomerAkteSharedWorkspace({
           });
           progressHintSchedulerRef.current?.clear();
 
-          setAgentWorkingMemory((prev) => updateAgentWorkingMemory(prev, agentResult, text));
+          setAgentWorkingMemory((prev) => {
+            const next = updateAgentWorkingMemory(prev, agentResult, text);
+            // Persist Working Drafts auch im Agent-Pfad (Reload / Handoff by ID)
+            queueMicrotask(() => {
+              persistWorkingMemoryToLead(next, leadRef.current || lead);
+            });
+            return next;
+          });
           const agentPolicy = resolveAgentResponsePolicy(agentResult);
           const contextSwitch = resolveContextSwitchFromAgent(agentResult);
 
@@ -757,7 +881,13 @@ export default function CustomerAkteSharedWorkspace({
       }));
 
       const policy = resolveSellerResponsePolicy(turn);
-      setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
+      setAgentWorkingMemory((prev) => {
+        const next = updateMemoryFromSellerTurn(prev, turn, text, policy);
+        queueMicrotask(() => {
+          persistWorkingMemoryToLead(next, leadRef.current || lead);
+        });
+        return next;
+      });
 
       // Zero-Loss Merken: sichere Facts sofort speichern (+ Partial Success)
       const rememberMode = turn?.rememberDecision?.mode;
@@ -1190,7 +1320,13 @@ export default function CustomerAkteSharedWorkspace({
         sellerInput: text,
       }));
       const policy = resolveSellerResponsePolicy(turn);
-      setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
+      setAgentWorkingMemory((prev) => {
+        const next = updateMemoryFromSellerTurn(prev, turn, text, policy);
+        queueMicrotask(() => {
+          persistWorkingMemoryToLead(next, leadRef.current || lead);
+        });
+        return next;
+      });
       setDraft('');
       if (policy.showReview || shouldShowUniversalReview(turn)) {
         showUniversalReview(turn);
@@ -1900,12 +2036,18 @@ export default function CustomerAkteSharedWorkspace({
           sellerInput: 'Bereite ein Nachfolgeangebot vor.',
         });
         const policy = resolveSellerResponsePolicy(turn);
-        setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(
-          prev,
-          turn,
-          'Bereite ein Nachfolgeangebot vor.',
-          policy,
-        ));
+        setAgentWorkingMemory((prev) => {
+          const next = updateMemoryFromSellerTurn(
+            prev,
+            turn,
+            'Bereite ein Nachfolgeangebot vor.',
+            policy,
+          );
+          queueMicrotask(() => {
+            persistWorkingMemoryToLead(next, leadRef.current || lead);
+          });
+          return next;
+        });
         setUniversalTurn(turn);
         setFeedback(turn.reviewModel?.title || 'Nachfolgeangebot vorbereitet – bitte prüfen');
         setTimeout(() => setFeedback(''), 3200);
