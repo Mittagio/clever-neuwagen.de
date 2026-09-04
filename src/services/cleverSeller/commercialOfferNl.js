@@ -163,10 +163,14 @@ export const MONTHLY_RATE_CLARIFY_PROMPT = 'Welche Monatsrate möchtest du hinte
  */
 export function isBatchOfferCue(text = '') {
   const t = String(text || '');
-  return /\b(?:mach(?:e|en)?|erstell(?:e|en)?|vorbereiten?)\s+(?:mir\s+)?(?:die\s+)?(?:\d+\s+)?angebote\b/i.test(t)
+  // Ziffern + Wortzahlen (drei/beide) + alle
+  return /\b(?:mach(?:e|en)?|erstell(?:e|en)?|vorbereiten?)\s+(?:mir\s+)?(?:die\s+)?(?:\d+|zwei|drei|vier|fünf|fuenf|beide|beiden)\s+angebote\b/i.test(t)
+    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?|vorbereiten?)\s+(?:mir\s+)?(?:die\s+)?angebote\b/i.test(t)
     || /\bangebote\s+(?:für|fuer)\s+alle\b/i.test(t)
     || /\balle\s+(?:\d+\s+)?angebote\b/i.test(t)
-    || /\b(?:die\s+)?(?:\d+\s+)?angebote\s+(?:machen|erstellen|vorbereiten)\b/i.test(t);
+    || /\b(?:die\s+)?(?:\d+|zwei|drei|vier|fünf|fuenf|beide|beiden)\s+angebote\s+(?:machen|erstellen|vorbereiten)\b/i.test(t)
+    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:mir\s+)?(?:die\s+)?beiden\s+angebote\b/i.test(t)
+    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:die\s+)?angebote\s+für\s+beide\b/i.test(t);
 }
 
 export {

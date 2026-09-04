@@ -17,8 +17,13 @@ export const CLEVER_AGENT_FALLBACK_REASONS = new Set([
 ]);
 
 export function isCleverAgentClientEnabled() {
-  return import.meta.env.VITE_CLEVER_AGENT_ENABLED === 'true'
-    || import.meta.env.VITE_CLEVER_AGENT_ENABLED === '1';
+  const raw = import.meta.env.VITE_CLEVER_AGENT_ENABLED;
+  // Explizit aus
+  if (raw === 'false' || raw === '0') return false;
+  // Explizit an
+  if (raw === 'true' || raw === '1') return true;
+  // Phase 2: Freier Clever-Modus → Agent default-on (Fallback bleibt Seller-Turn)
+  return true;
 }
 
 /**

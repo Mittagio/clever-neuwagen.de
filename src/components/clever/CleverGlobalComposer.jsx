@@ -1341,7 +1341,7 @@ export default function CleverGlobalComposer() {
           customerName: lead?.contact?.name || lead?.name || '',
           scopeHint: 'dashboard',
           workingContextItems: ctx.attachedWorkingObjects || [],
-          ...buildSellerTurnMemoryParams(agentWorkingMemory),
+          ...buildSellerTurnMemoryParams(agentWorkingMemory, ctx?.currentCustomer || null),
           appContext: {
             routeContext: ctx.routeContext,
             attachedWorkingObjects: ctx.attachedWorkingObjects,
@@ -1875,12 +1875,12 @@ export default function CleverGlobalComposer() {
         workingContextItems: ctx?.attachedWorkingObjects || [],
         currentOfferContext: toCurrentOfferContext(
           findOfferWorkingContext(ctx?.attachedWorkingObjects || []),
-        ) || buildSellerTurnMemoryParams(agentWorkingMemory).currentOfferContextFromMemory,
+        ) || buildSellerTurnMemoryParams(agentWorkingMemory, ctx?.currentCustomer || null).currentOfferContextFromMemory,
         customerName: customerDisplayName || '',
         pendingAction: lastTurn?.pendingAction
           || agentWorkingMemory?.pendingAction
           || null,
-        ...buildSellerTurnMemoryParams(agentWorkingMemory),
+        ...buildSellerTurnMemoryParams(agentWorkingMemory, ctx?.currentCustomer || null),
         intentConstraint,
         messagePurpose: intentPurpose?.messagePurpose || null,
         memoryCategory: intentPurpose?.memoryCategory || null,

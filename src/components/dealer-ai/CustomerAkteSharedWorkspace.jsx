@@ -95,6 +95,11 @@ import { tryCreateTesseractOcrEngine } from '../../services/cleverSeller/createC
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
 import { enrichPrepareOfferPayloadWithIdentityDraft } from '../../services/cleverSeller/vehicleIdentityDraft.js';
 import {
+  buildHandoffFromOfferDraftId,
+  upsertOfferDraftOnLead,
+  ensureOfferDraftBundleFromPayload,
+} from '../../services/cleverSeller/cleverWorkingDraft.js';
+import {
   enrichSellerTurnWithMagicPropose,
 } from '../../services/cleverSeller/enrichSellerTurnWithMagicPropose.js';
 import {
@@ -526,7 +531,7 @@ export default function CustomerAkteSharedWorkspace({
 
   /** Gemeinsamer Orchestrator-Input: fester Lead, Surface Akte (kein zweiter Brain). */
   function buildAkteSellerTurnParams(extra = {}) {
-    const memoryParams = buildSellerTurnMemoryParams(agentWorkingMemory);
+    const memoryParams = buildSellerTurnMemoryParams(agentWorkingMemory, lead);
     return {
       lead,
       customerName,
@@ -1795,7 +1800,7 @@ export default function CustomerAkteSharedWorkspace({
           ?.payload
         || universalTurn.pendingAction
         || null;
-      // Facts in die Akte übernehmen (Zero-Loss), bevor das Angebotstool öffnet
+      // Facts + Working Draft auf Lead persistieren (Reload / by-ID Handoff)
       let handoffLead = lead;
       try {
         const applied = applyAcceptedSellerTurn(lead, universalTurn, { postFeedCard: false });
@@ -1809,23 +1814,59 @@ export default function CustomerAkteSharedWorkspace({
           );
         }
       } catch {
-        // Handoff trotzdem fortsetzen – Draft darf Navigation nicht blockieren
+        // Handoff trotzdem fortsetzen
       }
-      const magic = rawPayload?.offerDraftId && rawPayload?.vehicleIdentityDraft
+
+      const enriched = rawPayload?.offerDraftId && rawPayload?.vehicleIdentityDraft
         ? rawPayload
         : enrichPrepareOfferPayloadWithIdentityDraft(rawPayload || {}, {
           facts: universalTurn.extractedFacts || [],
           sellerInput: universalTurn.sellerInput || universalTurn.rawInput || '',
           lead: handoffLead,
         });
+
+      // Bundle auf Lead speichern (auch wenn Accept schon lief)
+      if (enriched?.offerDraftId) {
+        const bundle = ensureOfferDraftBundleFromPayload(enriched, {
+          lead: handoffLead,
+          sellerInput: universalTurn.sellerInput || '',
+        });
+        if (bundle?.offerDraft) {
+          handoffLead = upsertOfferDraftOnLead(handoffLead, {
+            ...bundle.offerDraft,
+            vehicleIdentityDraft: bundle.vehicleIdentityDraft,
+          });
+          if (typeof onPersistLead === 'function') {
+            onPersistLead(handoffLead);
+          }
+        }
+      }
+
+      const offerDraftId = enriched?.offerDraftId || null;
       clearAssist();
       setUniversalTurn(null);
-      if (onPrepareOfferDraft && magic?.offerDraftId) {
-        onPrepareOfferDraft({ magic, lead: handoffLead });
-        return;
+
+      if (offerDraftId) {
+        const resolved = buildHandoffFromOfferDraftId(handoffLead, offerDraftId, {
+          sellerInput: universalTurn.sellerInput || '',
+        });
+        if (!resolved.ok) {
+          setFeedback(resolved.message || 'Angebotsentwurf nicht gefunden.');
+          setTimeout(() => setFeedback(''), 4000);
+          return;
+        }
+        if (onPrepareOfferDraft) {
+          onPrepareOfferDraft({
+            magic: resolved.magic,
+            lead: handoffLead,
+            offerDraftId,
+          });
+          return;
+        }
       }
-      if (onPrepareOfferDraft && magic) {
-        onPrepareOfferDraft({ magic, lead: handoffLead });
+
+      if (onPrepareOfferDraft && enriched) {
+        onPrepareOfferDraft({ magic: enriched, lead: handoffLead, offerDraftId });
         return;
       }
       onOpenOffer?.();

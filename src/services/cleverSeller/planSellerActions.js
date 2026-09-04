@@ -41,6 +41,15 @@ import {
   stripNonAuthoritativeOfferRates,
 } from './captureThenOffer.js';
 import { enrichPrepareOfferPayloadWithIdentityDraft } from './vehicleIdentityDraft.js';
+import {
+  shouldMutateExistingOfferDraft,
+  mutateActiveOfferDraft,
+  buildMutatedPrepareOfferPayload,
+  isMessageRewriteCue,
+  isMessageSendCue,
+  rewriteMessageBody,
+  resolveActiveMessageDraft,
+} from './cleverWorkingDraft.js';
 
 function salutationName(customerName, facts, lead) {
   const identity = deriveContactIdentity(
@@ -255,6 +264,30 @@ function buildAttachedOfferSummaryMessageDraft({
   return lines.join('\n');
 }
 
+function stampStableMessageDraftIds(actions = [], workingMemory = null) {
+  const existingId = workingMemory?.currentMessageDraftId
+    || workingMemory?.lastMessageDraft?.messageDraftId
+    || null;
+  let sharedId = existingId;
+  return (actions || []).map((action) => {
+    if (action?.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE || !action.payload) return action;
+    if (action.payload.messageDraftId) {
+      sharedId = action.payload.messageDraftId;
+      return action;
+    }
+    if (!sharedId) {
+      sharedId = `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    }
+    return {
+      ...action,
+      payload: {
+        ...action.payload,
+        messageDraftId: sharedId,
+      },
+    };
+  });
+}
+
 /**
  * @param {object} params
  */
@@ -293,6 +326,62 @@ export function planSellerActions({
     || /^(?:schreib(?:e|en)?|sag(?:e|en)?)\s+das[.!?]?$/i.test(String(sellerInput || '').trim());
   if (referentialWrite) {
     intentTypes.add(SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  }
+
+  // Message Continuity: „kürzer“ / „senden“ auf denselben messageDraftId
+  const activeMessage = resolveActiveMessageDraft({ lead, workingMemory });
+  if (activeMessage?.body && isMessageRewriteCue(sellerInput)) {
+    const messageDraftId = activeMessage.messageDraftId || `msg_${Date.now().toString(36)}`;
+    const nextBody = rewriteMessageBody(activeMessage.body, sellerInput);
+    actions.push({
+      id: 'rewrite_message',
+      type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+      label: 'Nachricht angepasst',
+      needsSellerConfirmation: false,
+      status: 'prepared',
+      toolId: 'draft_customer_message',
+      payload: {
+        messageDraftId,
+        messageDraft: nextBody,
+        previousBody: activeMessage.body,
+        rewriteCue: sellerInput,
+        updateOnly: true,
+        mutatesCustomer: false,
+        sendable: true,
+        fromWorkingMemory: true,
+      },
+    });
+    intentTypes.add(SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  } else if (activeMessage?.body && isMessageSendCue(sellerInput)) {
+    const messageDraftId = activeMessage.messageDraftId || `msg_${Date.now().toString(36)}`;
+    actions.push({
+      id: 'intend_send_message',
+      type: SELLER_TURN_INTENTS.DRAFT_MESSAGE,
+      label: 'Nachricht senden – bitte bestätigen',
+      needsSellerConfirmation: true,
+      status: 'prepared',
+      toolId: 'draft_customer_message',
+      payload: {
+        messageDraftId,
+        messageDraft: activeMessage.body,
+        intendSend: true,
+        needsSellerConfirmation: true,
+        mutatesCustomer: false,
+        sendable: true,
+        fromWorkingMemory: true,
+      },
+    });
+    intentTypes.add(SELLER_TURN_INTENTS.DRAFT_MESSAGE);
+  }
+
+  // Working-Draft Follow-up („doch Earth“, „schwarz“, „Winterpaket raus“) → PREPARE_OFFER mutieren
+  if (shouldMutateExistingOfferDraft({
+    sellerInput,
+    facts,
+    lead,
+    workingMemory,
+  })) {
+    intentTypes.add(SELLER_TURN_INTENTS.PREPARE_OFFER);
   }
 
   // Follow-up auf Pending Appointment (ohne neuen Propose-Intent)
@@ -685,6 +774,42 @@ export function planSellerActions({
     });
     // Telefon Ende: „mach die 3 Angebote“ → eine Batch-Action mit Shells je Spur (kein Multi-UI)
     if (batchCue && openTracks.length >= 2 && !blockedByClarify) {
+      const commercial = null;
+      const batchOffers = openTracks.map((t) => {
+        const modelKey = String(t.config?.modelKey || t.modelLabel || '')
+          .toLowerCase()
+          .replace(/^kia\s+/i, '')
+          .replace(/\s+/g, '');
+        const modelLabel = t.displayName || t.modelLabel || modelKey;
+        const identity = {
+          id: `vid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          customerId: lead?.id || null,
+          model: { raw: modelLabel, canonical: modelKey?.toUpperCase?.() || modelLabel, status: 'captured' },
+          trim: { raw: t.config?.trimLabel || null, canonical: t.config?.trimLabel || null, status: t.config?.trimLabel ? 'captured' : 'open' },
+          powertrainVariant: { raw: null, canonical: null, status: 'open' },
+          color: { raw: null, canonical: null, status: 'open' },
+          packages: [],
+          equipment: [],
+          modelKey: modelKey || null,
+          vehicleLabel: modelLabel ? `Kia ${String(modelLabel).replace(/^kia\s*/i, '')}` : null,
+          source: 'seller_input_batch',
+        };
+        const offerDraftId = `ofd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+        return {
+          offerDraftId,
+          customerId: lead?.id || null,
+          vehicleTrackId: t.id,
+          vehicleIdentityDraftId: identity.id,
+          vehicleIdentityDraft: identity,
+          commercialScenarioId: commercial?.id || null,
+          rate: null,
+          status: 'draft',
+          createNewAlternative: false,
+          invalidateVehicleRate: true,
+          vehicleLabel: identity.vehicleLabel,
+          focusModelKey: modelKey || null,
+        };
+      });
       actions.push({
         id: 'prepare_offers_batch',
         type: SELLER_TURN_INTENTS.PREPARE_OFFER,
@@ -695,6 +820,8 @@ export function planSellerActions({
         payload: {
           batch: true,
           trackIds: openTracks.map((t) => t.id),
+          offerDraftIds: batchOffers.map((o) => o.offerDraftId),
+          offers: batchOffers,
           models: openTracks.map((t) => ({
             trackId: t.id,
             modelKey: t.config?.modelKey || t.modelLabel,
@@ -706,6 +833,10 @@ export function planSellerActions({
           mutatesCustomer: false,
           source: 'seller_input_batch',
           nextStepHint: 'Angebote vorbereiten',
+          // Primärer Draft = erster für Memory Continuity
+          offerDraftId: batchOffers[0]?.offerDraftId || null,
+          vehicleIdentityDraft: batchOffers[0]?.vehicleIdentityDraft || null,
+          vehicleIdentityDraftId: batchOffers[0]?.vehicleIdentityDraftId || null,
         },
       });
     } else if (offerVehicleTarget.status === OFFER_VEHICLE_TARGET_STATUS.NEEDS_CLARIFICATION) {
@@ -751,6 +882,78 @@ export function planSellerActions({
           needsClarification: true,
         },
       });
+    } else if (
+      shouldMutateExistingOfferDraft({
+        sellerInput,
+        facts,
+        lead,
+        workingMemory,
+        createNewAlternative: offerVehicleTarget.createNew === true
+          || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW,
+      })
+    ) {
+      const mutation = mutateActiveOfferDraft({
+        lead,
+        workingMemory,
+        sellerInput,
+        facts,
+      });
+      const mutatedPayload = mutation
+        ? buildMutatedPrepareOfferPayload(mutation, { lead, sellerInput })
+        : null;
+      if (mutatedPayload) {
+        actions.push({
+          id: 'update_working_offer_draft',
+          type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+          label: 'Angebot aktualisiert',
+          needsSellerConfirmation: false,
+          status: 'prepared',
+          toolId: 'modify_offer',
+          payload: mutatedPayload,
+        });
+      } else if (
+        currentOfferContext?.offerId
+        && (commercialOnly || identityOnOpenOffer)
+        && !facts.some((f) => f.field === 'purchasePrice')
+      ) {
+        // Fallback: alter updateOnly-Pfad wenn Mutation fehlschlägt
+        const trimFact = facts.find((f) => f.field === 'trimPreference');
+        const colorFact = facts.find((f) => f.field === 'colorPreference');
+        const trimValue = trimFact?.value?.trim
+          || (Array.isArray(trimFact?.value) ? trimFact.value[0] : null)
+          || (typeof trimFact?.value === 'string' ? trimFact.value : null)
+          || trimFact?.label
+          || null;
+        const colorValue = colorFact?.value?.color
+          || (typeof colorFact?.value === 'string' ? colorFact.value : null)
+          || colorFact?.label
+          || null;
+        actions.push({
+          id: 'update_offer_context',
+          type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+          label: 'Fahrzeugidentität anpassen',
+          needsSellerConfirmation: true,
+          status: 'prepared',
+          toolId: 'modify_offer',
+          payload: {
+            updateOnly: true,
+            offerId: currentOfferContext.offerId,
+            offerSummary: currentOfferContext.summary || currentOfferContext.title || null,
+            vehicleTrackId: offerVehicleTarget.vehicleTrackId
+              || currentOfferContext.vehicleTrackId
+              || currentOfferContext.vehicleCardId
+              || null,
+            identityPatch: (trimValue || colorValue)
+              ? {
+                trim: trimValue,
+                color: colorValue,
+                modelKey: offerVehicleTarget.modelKey || currentOfferContext.modelKey || null,
+                mutationMode: OFFER_MUTATION_MODE.UPDATE_EXISTING,
+              }
+              : null,
+          },
+        });
+      }
     } else if (
       currentOfferContext?.offerId
       && (commercialOnly || identityOnOpenOffer)
@@ -1400,7 +1603,7 @@ export function planSellerActions({
         },
       });
       // bereits gepusht – Skip duplicate push unten
-      return actions;
+      return stampStableMessageDraftIds(actions, workingMemory);
     } else if (wantsCustomerMessage && !offerIncomplete) {
       const instruction = runTool('interpret_message_instruction', { sellerInput }).result;
       const offerFacts = currentOfferContext?.offerId
@@ -1483,7 +1686,7 @@ export function planSellerActions({
     }
   }
 
-  return actions;
+  return stampStableMessageDraftIds(actions, workingMemory);
 }
 
 /**

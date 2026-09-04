@@ -49,6 +49,11 @@ import {
   sanitizeCustomerNameCandidate,
 } from './resolveAssistantContext.js';
 import { normalizeFactDisplayLabel } from './normalizeFactDisplayLabel.js';
+import {
+  upsertOfferDraftOnLead,
+  upsertMessageDraftOnLead,
+  ensureOfferDraftBundleFromPayload,
+} from './cleverWorkingDraft.js';
 
 /** Kontakt-/Identity-Felder → Header, nicht Soft-Insights. */
 const INSIGHT_SKIP_FIELDS = new Set([
@@ -1045,6 +1050,15 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     const batchOnly = applyBatchOfferOrdersIfPresent(nextLead, turn);
     if (batchOnly.applied) {
       nextLead = batchOnly.lead;
+      const batchAction = (turn.preparedActions || []).find((a) => (
+        a.type === SELLER_TURN_INTENTS.PREPARE_OFFER && a.payload?.batch
+      ));
+      if (Array.isArray(batchAction?.payload?.offers)) {
+        for (const od of batchAction.payload.offers) {
+          if (!od?.offerDraftId) continue;
+          nextLead = upsertOfferDraftOnLead(nextLead, od);
+        }
+      }
       if (options.postFeedCard !== false) {
         const posted = postCleverAssistFeedCard({
           lead: nextLead,
@@ -1372,6 +1386,45 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   if (docsWithFacts.applied) {
     nextLead = docsWithFacts.lead;
     labels.push('Sicheren Upload-Link gesendet');
+  }
+
+  // Persistent Working Drafts auf Lead (Reload / Handoff by ID)
+  const offerAction = (turn.preparedActions || []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+    && (a.payload?.offerDraftId || a.payload?.batch)
+  ));
+  if (offerAction?.payload?.batch && Array.isArray(offerAction.payload.offers)) {
+    for (const od of offerAction.payload.offers) {
+      if (!od?.offerDraftId) continue;
+      nextLead = upsertOfferDraftOnLead(nextLead, od, {
+        changedFields: [],
+      });
+    }
+  } else if (offerAction?.payload?.offerDraftId) {
+    const bundle = ensureOfferDraftBundleFromPayload(offerAction.payload, {
+      lead: nextLead,
+      sellerInput: turn.sellerInput || '',
+    });
+    if (bundle?.offerDraft) {
+      nextLead = upsertOfferDraftOnLead(nextLead, {
+        ...bundle.offerDraft,
+        vehicleIdentityDraft: bundle.vehicleIdentityDraft,
+      }, {
+        changedFields: offerAction.payload.lastChangedFields || [],
+      });
+    }
+  }
+  const msgAction = (turn.preparedActions || []).find((a) => (
+    a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.payload?.messageDraft
+  ));
+  if (msgAction?.payload?.messageDraftId) {
+    nextLead = upsertMessageDraftOnLead(nextLead, {
+      messageDraftId: msgAction.payload.messageDraftId,
+      body: msgAction.payload.messageDraft,
+      intendSend: Boolean(msgAction.payload.intendSend),
+      customerId: nextLead.id,
+      status: msgAction.payload.intendSend ? 'pending_send' : 'draft',
+    });
   }
 
   return {

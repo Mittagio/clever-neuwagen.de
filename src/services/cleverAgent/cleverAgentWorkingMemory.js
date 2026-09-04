@@ -9,6 +9,9 @@ export function createEmptyAgentWorkingMemory() {
     resolvedCustomer: null,
     resolvedVehicle: null,
     currentOffer: null,
+    currentOfferDraft: null,
+    currentOfferDraftId: null,
+    currentMessageDraftId: null,
     pendingAction: null,
     recentEntities: [],
     lastRequestedChanges: null,
@@ -111,12 +114,62 @@ export function resolveCurrentOfferContextFromMemory(memory = null, previousOffe
  * Params für runCleverSellerTurn / Agent aus Shared Memory.
  * @param {object|null} memory
  */
-export function buildSellerTurnMemoryParams(memory = null) {
+export function buildSellerTurnMemoryParams(memory = null, lead = null) {
+  let mem = memory || null;
+  // Hydrate aus Lead-Persistenz (Reload)
+  if (lead?.crm?.cleverWorkingState?.currentOfferDraftId && !mem?.currentOfferDraft?.offerDraftId) {
+    const state = lead.crm.cleverWorkingState;
+    const od = state.offerDrafts?.[state.currentOfferDraftId];
+    if (od) {
+      const identity = state.vehicleIdentityDrafts?.[od.vehicleIdentityDraftId] || null;
+      mem = {
+        ...(mem || createEmptyAgentWorkingMemory()),
+        currentOfferDraftId: od.offerDraftId,
+        currentOfferDraft: {
+          ...od,
+          vehicleIdentityDraft: identity,
+        },
+        previousOfferPreparation: mem?.previousOfferPreparation || {
+          offerDraftId: od.offerDraftId,
+          vehicleIdentityDraft: identity,
+          vehicle: identity
+            ? {
+              modelKey: identity.modelKey,
+              model: identity.model?.canonical,
+              trim: identity.trim?.canonical,
+              color: identity.color?.raw,
+            }
+            : null,
+        },
+        currentOffer: {
+          ...(mem?.currentOffer || {}),
+          offerId: od.offerDraftId,
+          offerDraftId: od.offerDraftId,
+          modelKey: identity?.modelKey || od.focusModelKey,
+          vehicleTrackId: od.vehicleTrackId,
+        },
+      };
+    }
+  }
+  if (lead?.crm?.cleverWorkingState?.currentMessageDraftId && !mem?.lastMessageDraft?.messageDraftId) {
+    const md = lead.crm.cleverWorkingState.messageDrafts?.[lead.crm.cleverWorkingState.currentMessageDraftId];
+    if (md?.body) {
+      mem = {
+        ...(mem || createEmptyAgentWorkingMemory()),
+        currentMessageDraftId: md.messageDraftId,
+        lastMessageDraft: {
+          messageDraftId: md.messageDraftId,
+          body: md.body,
+          at: md.updatedAt || new Date().toISOString(),
+        },
+      };
+    }
+  }
   return {
-    conversationHistory: getConversationHistoryForAgent(memory),
-    workingMemory: memory || null,
-    previousOfferPreparation: memory?.previousOfferPreparation || null,
-    currentOfferContextFromMemory: resolveCurrentOfferContextFromMemory(memory),
+    conversationHistory: getConversationHistoryForAgent(mem),
+    workingMemory: mem || null,
+    previousOfferPreparation: mem?.previousOfferPreparation || null,
+    currentOfferContextFromMemory: resolveCurrentOfferContextFromMemory(mem),
   };
 }
 
@@ -315,22 +368,54 @@ export function updateMemoryFromSellerTurn(prev = null, turn = {}, sellerMessage
       payload: offerAction?.payload || null,
     };
     const vehicle = offerAction?.payload?.vehicle || prepPayload?.vehicle || null;
-    if (vehicle || offerAction?.payload?.vehicleTrackId) {
+    if (prepPayload?.offerDraftId || vehicle || offerAction?.payload?.vehicleTrackId) {
+      // Persistent Working Draft – IDs halten
+      if (prepPayload?.offerDraftId) {
+        next.currentOfferDraftId = prepPayload.offerDraftId;
+        next.currentOfferDraft = {
+          offerDraftId: prepPayload.offerDraftId,
+          customerId: prepPayload.customerId || null,
+          vehicleTrackId: prepPayload.vehicleTrackId || null,
+          vehicleIdentityDraftId: prepPayload.vehicleIdentityDraftId
+            || prepPayload.vehicleIdentityDraft?.id
+            || null,
+          commercialScenarioId: prepPayload.commercialScenarioId
+            || prepPayload.commercialScenario?.id
+            || null,
+          status: prepPayload.status || 'draft',
+          updatedAt: new Date().toISOString(),
+          vehicleIdentityDraft: prepPayload.vehicleIdentityDraft || null,
+          commercialScenario: prepPayload.commercialScenario || null,
+          rate: prepPayload.monthlyRate ?? prepPayload.rate ?? null,
+          invalidateVehicleRate: prepPayload.invalidateVehicleRate !== false,
+          createNewAlternative: Boolean(prepPayload.createNewAlternative),
+          vehicleLabel: prepPayload.vehicleLabel || null,
+          focusModelKey: prepPayload.focusModelKey || vehicle?.modelKey || null,
+          vehicle: vehicle || prepPayload.vehicle || null,
+          lastChangedFields: prepPayload.lastChangedFields || [],
+        };
+      }
       next.resolvedVehicle = {
         make: vehicle?.make || 'Kia',
         model: vehicle?.model || vehicle?.modelKey || null,
         modelKey: vehicle?.modelKey || null,
         trim: vehicle?.trim
           || offerAction?.payload?.identityPatch?.trim
+          || prepPayload?.vehicleIdentityDraft?.trim?.canonical
           || null,
         color: vehicle?.color
           || offerAction?.payload?.identityPatch?.color
+          || prepPayload?.vehicleIdentityDraft?.color?.raw
           || null,
         vehicleTrackId: offerAction?.payload?.vehicleTrackId || null,
       };
       next.currentOffer = {
         ...(next.currentOffer || {}),
-        offerId: offerAction?.payload?.offerId || next.currentOffer?.offerId || null,
+        offerId: prepPayload?.offerDraftId
+          || offerAction?.payload?.offerId
+          || next.currentOffer?.offerId
+          || 'session-offer',
+        offerDraftId: prepPayload?.offerDraftId || next.currentOfferDraftId || null,
         modelKey: vehicle?.modelKey || next.resolvedVehicle.modelKey,
         modelName: vehicle?.model || next.resolvedVehicle.model,
         vehicleTrackId: offerAction?.payload?.vehicleTrackId || null,
@@ -340,15 +425,35 @@ export function updateMemoryFromSellerTurn(prev = null, turn = {}, sellerMessage
     }
   }
 
+  const draftAction = (turn.preparedActions || []).find((a) => a.type === 'draft_message');
   const draft = turn.messageDraft
-    || (turn.preparedActions || []).find((a) => a.type === 'draft_message')?.payload?.messageDraft;
+    || draftAction?.payload?.messageDraft;
   if (draft) {
+    const messageDraftId = draftAction?.payload?.messageDraftId
+      || next.currentMessageDraftId
+      || next.lastMessageDraft?.messageDraftId
+      || `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const prevBody = next.lastMessageDraft?.body || null;
     const nextBody = String(draft).slice(0, 4000);
     if (prevBody && prevBody !== nextBody) {
       next.messageDraftHistory = [...(next.messageDraftHistory || []), next.lastMessageDraft].slice(-6);
     }
-    next.lastMessageDraft = { body: nextBody, at: new Date().toISOString() };
+    next.currentMessageDraftId = messageDraftId;
+    next.lastMessageDraft = {
+      messageDraftId,
+      body: nextBody,
+      at: new Date().toISOString(),
+      intendSend: Boolean(draftAction?.payload?.intendSend),
+    };
+    if (draftAction?.payload?.intendSend) {
+      next.pendingAction = {
+        type: 'intend_send',
+        status: 'needs_confirmation',
+        messageDraftId,
+        messageDraft: nextBody,
+        payload: draftAction.payload,
+      };
+    }
   }
 
   const appt = turn.preparedAppointment
