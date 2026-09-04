@@ -1,0 +1,46 @@
+---
+description: PRODUKT-FREEZE Composer Working-Draft Core — keine Grundarchitektur-Änderungen außer P0-Regression
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: COMPOSER WORKING-DRAFT CORE
+
+**Status: FROZEN** (P0 Multi-Draft Abnahme bestanden).
+
+## Produktsatz
+
+> Composer nimmt auf. Working Draft hält fest. Folge-Turns verändern. Das Fachtool präzisiert. Externe Aktion bestätigt.
+
+## Wichtigerer Freeze
+
+> Clever darf nicht bei jedem neuen Satz neu überlegen, woran der Verkäufer arbeitet. Es arbeitet am bestehenden Working State weiter.
+
+## Eingefroren (nur bei echtem P0-Regressionstest anfassen)
+
+- Working-Draft-Persistenz / Continuity (`cleverWorkingDraft.js`)
+- Multi-Track + Gesprächs-Scope (`batchOfferTrackScope.js`, `recentVehicleTrackIds`)
+- Batch → mehrere Offer Drafts
+- Handoff by `offerDraftId` (kein Fahrzeug-Fallback)
+- Vehicle Identity Freeze / PV≠EV
+- Zero-Loss Intake
+- Capture-then-Offer Boundary (keine Fake-Web-Raten)
+
+## Explizit NICHT in diesem Freeze öffnen
+
+- Kein Umbau der Working-Draft-/Multi-Track-/Scope-/Handoff-Grundlogik „zur Verbesserung“
+- Kein zweites Gehirn, keine parallele Offer-State-Maschine
+- Kein Design-Hierarchy-Redesign der Akte
+
+## P1-Reihenfolge (nach dem Freeze)
+
+1. Message-Loop Browser härten: schreib ihm → kürzer → freundlicher → senden
+2. Offer Tool: Modell/Trim/Farbe/Pakete am **selben** Draft
+3. Angebote → Öffnen auf **strict offerDraftId** (keine alten Track-Raten als Draft)
+4. UX-Reste: grüne Kommentare, doppelte „verstanden“-Meldungen, unnötige Reviews
+5. Agent-Failure + Two-Tab Robustheit
+
+## Code / Doc
+
+- Doc: `docs/CLEVER_WORKING_DRAFT_CORE_FREEZE.md`
+- Kern: `src/services/cleverSeller/cleverWorkingDraft.js`
+- Cross: Brain DoD, Zero-Loss, Offer Vehicle Identity, Capture-then-Offer
