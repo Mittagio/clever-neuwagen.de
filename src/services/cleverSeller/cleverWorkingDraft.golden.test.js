@@ -210,6 +210,11 @@ assert.equal(isMessageSendCue('senden'), true);
   const batchAction = prepOffer(batch);
   assert.ok(batchAction?.payload?.batch, 'Batch-Action');
   assert.ok(batchAction.payload.offerDraftIds?.length >= 3, '3 getrennte offerDraftIds');
+  const batchKeys = (batchAction.payload.offers || [])
+    .map((o) => String(o.focusModelKey || '').toLowerCase())
+    .sort();
+  assert.deepEqual(batchKeys, ['ev2', 'ev3', 'ev5'], 'exakt PV5/EV5 + EV2 + EV3');
+  assert.ok(!batchKeys.includes('ev4'), 'kein EV4');
   const ids = new Set(batchAction.payload.offerDraftIds);
   assert.equal(ids.size, batchAction.payload.offerDraftIds.length, 'IDs unique');
 

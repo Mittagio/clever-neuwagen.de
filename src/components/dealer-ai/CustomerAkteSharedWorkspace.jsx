@@ -94,6 +94,7 @@ import {
 } from '../../services/cleverSeller/resolveCleverOcrProvider.js';
 import { tryCreateTesseractOcrEngine } from '../../services/cleverSeller/createCleverContractOcrProvider.js';
 import { SELLER_TURN_INTENTS } from '../../services/cleverSeller/sellerFactTypes.js';
+import { isBatchOfferCue } from '../../services/cleverSeller/commercialOfferNl.js';
 import { enrichPrepareOfferPayloadWithIdentityDraft } from '../../services/cleverSeller/vehicleIdentityDraft.js';
 import {
   buildHandoffFromOfferDraftId,
@@ -943,6 +944,18 @@ export default function CustomerAkteSharedWorkspace({
       }
 
       // Magic: LLM / grounded Writer ersetzt Template-Mails
+      // Batch-Angebote: kein Magic-Single-Offer – Review mit exaktem Track-Scope
+      const batchOfferPrepared = (turn.preparedActions || []).some((a) => (
+        a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
+        && a.payload?.batch === true
+        && a.status === 'prepared'
+      ));
+      if (batchOfferPrepared || isBatchOfferCue(text)) {
+        resetIntentChipsToDefault();
+        showUniversalReview(turn);
+        return true;
+      }
+
       progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.MAGIC_PROPOSE);
       const enriched = await enrichSellerTurnWithMagicPropose({
         turn,

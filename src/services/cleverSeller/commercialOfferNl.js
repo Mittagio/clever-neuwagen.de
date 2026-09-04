@@ -170,7 +170,9 @@ export function isBatchOfferCue(text = '') {
     || /\balle\s+(?:\d+\s+)?angebote\b/i.test(t)
     || /\b(?:die\s+)?(?:\d+|zwei|drei|vier|fünf|fuenf|beide|beiden)\s+angebote\s+(?:machen|erstellen|vorbereiten)\b/i.test(t)
     || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:mir\s+)?(?:die\s+)?beiden\s+angebote\b/i.test(t)
-    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:die\s+)?angebote\s+für\s+beide\b/i.test(t);
+    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:die\s+)?angebote\s+für\s+beide\b/i.test(t)
+    // „mach beide“ / „mach die beiden“ ohne explizites „Angebote“
+    || /\b(?:mach(?:e|en)?|erstell(?:e|en)?)\s+(?:mir\s+)?(?:die\s+)?beide(?:n)?\b/i.test(t);
 }
 
 export {

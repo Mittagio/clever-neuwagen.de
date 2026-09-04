@@ -14,6 +14,9 @@ export function createEmptyAgentWorkingMemory() {
     currentMessageDraftId: null,
     pendingAction: null,
     recentEntities: [],
+    /** Gesprächs-Scope für Batch-Angebote (exakte Track-IDs) */
+    recentVehicleTrackIds: [],
+    recentVehicleModelKeys: [],
     lastRequestedChanges: null,
     previousOfferPreparation: null,
     lastMessageDraft: null,
@@ -166,6 +169,28 @@ export function hydrateWorkingMemoryFromLead(memory = null, lead = null) {
       };
     }
   }
+
+  const ws = lead?.crm?.cleverWorkingState;
+  if (ws && (Array.isArray(ws.recentVehicleTrackIds) || Array.isArray(ws.recentVehicleModelKeys))) {
+    const base = mem || createEmptyAgentWorkingMemory();
+    const leadIds = Array.isArray(ws.recentVehicleTrackIds) ? ws.recentVehicleTrackIds : [];
+    const leadKeys = Array.isArray(ws.recentVehicleModelKeys) ? ws.recentVehicleModelKeys : [];
+    const memIds = Array.isArray(base.recentVehicleTrackIds) ? base.recentVehicleTrackIds : [];
+    const memKeys = Array.isArray(base.recentVehicleModelKeys) ? base.recentVehicleModelKeys : [];
+    if (leadIds.length >= 2 || (leadIds.length && memIds.length < 2)) {
+      mem = {
+        ...base,
+        recentVehicleTrackIds: leadIds.length ? [...leadIds] : memIds,
+        recentVehicleModelKeys: leadKeys.length ? [...leadKeys] : memKeys,
+      };
+    } else if (leadKeys.length >= 2 && memKeys.length < 2) {
+      mem = {
+        ...base,
+        recentVehicleModelKeys: [...leadKeys],
+      };
+    }
+  }
+
   return mem;
 }
 
@@ -526,6 +551,32 @@ export function updateMemoryFromSellerTurn(prev = null, turn = {}, sellerMessage
 
   next.lastRequestedChanges = extractRequestedChanges(sellerMessage) || next.lastRequestedChanges;
 
+  // Batch-Scope: Track-IDs aus Batch-Payload oder Multi-Mention im Seller-Text
+  const batchPayload = offerAction?.payload?.batch
+    ? offerAction.payload
+    : null;
+  if (batchPayload?.trackIds?.length >= 2) {
+    next.recentVehicleTrackIds = [...batchPayload.trackIds];
+    if (Array.isArray(batchPayload.batchModelKeys) && batchPayload.batchModelKeys.length) {
+      next.recentVehicleModelKeys = [...batchPayload.batchModelKeys];
+    }
+  } else {
+    const multiFact = (turn.extractedFacts || []).find((f) => f.field === 'vehicleInterestMulti');
+    const multiKeys = Array.isArray(multiFact?.value)
+      ? multiFact.value
+        .map((e) => String(e?.modelKey || e?.model || e || '').toLowerCase().replace(/^kia\s+/i, '').trim())
+        .filter(Boolean)
+      : [];
+    if (multiKeys.length >= 2) {
+      next.recentVehicleModelKeys = multiKeys;
+    } else {
+      const fromText = extractModelKeysFromSellerText(sellerMessage);
+      if (fromText.length >= 2) {
+        next.recentVehicleModelKeys = fromText;
+      }
+    }
+  }
+
   if (sellerMessage) {
     next = appendConversationTurn(next, { role: 'user', text: sellerMessage, kind: 'seller_input' });
   }
@@ -558,6 +609,20 @@ function extractRequestedChanges(text = '') {
     if (color) changes.color = color;
   }
   return Object.keys(changes).length ? changes : null;
+}
+
+function extractModelKeysFromSellerText(text = '') {
+  const t = String(text || '');
+  const keys = [];
+  const re = /\b(?:kia\s+)?(pv\s*5|ev\s*[2-9]|sportage|ceed|niro|picanto|sorento|stonic|seltos|k4|k5)\b/gi;
+  let m = re.exec(t);
+  while (m) {
+    let key = String(m[1] || '').replace(/\s+/g, '').toLowerCase();
+    if (key === 'pv5') key = 'ev5';
+    if (key && !keys.includes(key)) keys.push(key);
+    m = re.exec(t);
+  }
+  return keys;
 }
 
 /** Kompakter Prompt-Block für den Agent. */

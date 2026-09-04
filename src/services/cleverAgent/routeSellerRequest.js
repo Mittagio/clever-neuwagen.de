@@ -3,6 +3,8 @@
  * Kein Keyword-Gehirn für komplexe Dumps – nur hohe Sicherheit.
  */
 
+import { isBatchOfferCue } from '../cleverSeller/commercialOfferNl.js';
+
 const SIMPLE_FACT_RE = /^(?:was\s+(?:ist|hat|liegt)|anhängelast|wltp|reichweite|heute\s+an|öffne\s+\w+)/i;
 const COMPLEX_HINT_RE = /etstell|erstell|angebot|schreib|schick|merk|gleiche|wp\b|wärmepumpe|und\s+schreib|for\s+|with\s+/i;
 const OFFER_FOLLOW_UP_RE = /gleich|lieber|doch|km|weiß|weiss|wp|rot|blau|schwarz|grau/i;
@@ -17,6 +19,12 @@ export function routeSellerRequest(sellerMessage = '', options = {}) {
   if (!text) return 'clever_agent';
 
   if (options.forceAgent) return 'clever_agent';
+
+  // Batch-Angebote: zentraler deterministic Track-Resolver (keine Agent-Single-Offer-Abweichung)
+  if (isBatchOfferCue(text)) {
+    return 'deterministic_fast_path';
+  }
+
   const memory = options.workingMemory || null;
   if (memory?.pendingAction) return 'clever_agent';
   if (memory?.previousOfferPreparation && OFFER_FOLLOW_UP_RE.test(text)) {

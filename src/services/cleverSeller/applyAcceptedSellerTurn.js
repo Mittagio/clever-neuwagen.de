@@ -54,6 +54,11 @@ import {
   upsertMessageDraftOnLead,
   ensureOfferDraftBundleFromPayload,
 } from './cleverWorkingDraft.js';
+import {
+  normalizeBatchModelKey,
+  setRecentVehicleTracksOnLead,
+  ensureTracksForBatchModelKeys,
+} from './batchOfferTrackScope.js';
 
 /** Kontakt-/Identity-Felder → Header, nicht Soft-Insights. */
 const INSIGHT_SKIP_FIELDS = new Set([
@@ -692,6 +697,10 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       sharedRequirements: [...new Set(sharedTrackRequirements)],
     });
     next = multi.lead;
+    const modelKeys = multiVehicleInterests
+      .map((e) => normalizeBatchModelKey(e.modelKey || e.model))
+      .filter(Boolean);
+    next = setRecentVehicleTracksOnLead(next, multi.trackIds || [], modelKeys);
   } else if (vehicleInterestFocus?.modelKey) {
     const focused = focusVehicleInterestOnLead(next, vehicleInterestFocus);
     next = focused.lead;
@@ -818,16 +827,50 @@ function applyBatchOfferOrdersIfPresent(lead, turn) {
   if (!batchOfferAction) {
     return { lead, applied: false, labels: [] };
   }
+  let nextLead = lead;
+  const ensuredConfigs = batchOfferAction.payload?.ensuredVehicleConfigurations;
+  if (Array.isArray(ensuredConfigs) && ensuredConfigs.length) {
+    const prev = nextLead.crm?.vehicleConfigurations || [];
+    const byId = new Map(prev.map((c) => [c.id, c]));
+    for (const cfg of ensuredConfigs) {
+      if (cfg?.id) byId.set(cfg.id, { ...(byId.get(cfg.id) || {}), ...cfg });
+    }
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...(nextLead.crm || {}),
+        vehicleConfigurations: [...byId.values()],
+      },
+    };
+  } else if (Array.isArray(batchOfferAction.payload?.batchModelKeys)
+    && batchOfferAction.payload.batchModelKeys.length >= 2) {
+    const ensured = ensureTracksForBatchModelKeys(
+      nextLead,
+      batchOfferAction.payload.batchModelKeys,
+    );
+    nextLead = ensured.lead;
+  }
+  const modelKeys = (batchOfferAction.payload.batchModelKeys || [])
+    .map(normalizeBatchModelKey)
+    .filter(Boolean);
+  if (modelKeys.length >= 2) {
+    nextLead = setRecentVehicleTracksOnLead(
+      nextLead,
+      batchOfferAction.payload.trackIds || [],
+      modelKeys,
+    );
+  }
+
   const nowIso = new Date().toISOString();
-  const existingOrders = Array.isArray(lead.crm?.openOfferOrders)
-    ? lead.crm.openOfferOrders
+  const existingOrders = Array.isArray(nextLead.crm?.openOfferOrders)
+    ? nextLead.crm.openOfferOrders
     : [];
   const models = Array.isArray(batchOfferAction.payload.models)
     ? batchOfferAction.payload.models
     : [];
   const batchOrders = batchOfferAction.payload.trackIds.map((trackId, index) => {
     const modelMeta = models.find((m) => m?.trackId === trackId) || {};
-    const track = listCustomerVehicleTracks(lead).find((t) => t.id === trackId);
+    const track = listCustomerVehicleTracks(nextLead).find((t) => t.id === trackId);
     const displayName = modelMeta.displayName
       || track?.displayName
       || modelMeta.modelKey
@@ -850,9 +893,9 @@ function applyBatchOfferOrdersIfPresent(lead, turn) {
   ));
   return {
     lead: {
-      ...lead,
+      ...nextLead,
       crm: {
-        ...(lead.crm || {}),
+        ...(nextLead.crm || {}),
         openOfferOrders: [...batchOrders, ...kept],
       },
     },

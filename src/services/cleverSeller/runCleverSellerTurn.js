@@ -176,7 +176,6 @@ function finalizeSellerTurn({
   purpose: purposeIn = null,
 }) {
   void appContext;
-  void conversationHistory;
   void previousOfferPreparation;
   const enabled = isCleverSellerOrchestratorEnabled(env);
   const intentConstraint = normalizeIntentConstraint(intentConstraintIn);
@@ -776,10 +775,10 @@ function finalizeSellerTurn({
       now,
       calendarAvailability,
       workingMemory,
+      conversationHistory,
     })
     : [];
 
-  // Customer-search results aus Resolve oder Find-Action
   const customerSearchAction = preparedActions.find((a) => (
     a.type === SELLER_TURN_INTENTS.FIND_CUSTOMER
     || a.type === SELLER_TURN_INTENTS.OPEN_CUSTOMER

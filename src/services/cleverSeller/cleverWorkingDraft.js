@@ -38,6 +38,9 @@ export function createEmptyCleverWorkingState(customerId = null) {
     currentOfferDraftId: null,
     currentMessageDraftId: null,
     currentVehicleTrackId: null,
+    /** Gesprächs-Scope für Batch („die drei“) – keine CRM-Primary-Injektion */
+    recentVehicleTrackIds: [],
+    recentVehicleModelKeys: [],
     offerDrafts: {},
     vehicleIdentityDrafts: {},
     commercialScenarios: {},
@@ -66,6 +69,12 @@ export function getCleverWorkingState(lead = null) {
       vehicleIdentityDrafts: { ...(existing.vehicleIdentityDrafts || {}) },
       commercialScenarios: { ...(existing.commercialScenarios || {}) },
       messageDrafts: { ...(existing.messageDrafts || {}) },
+      recentVehicleTrackIds: Array.isArray(existing.recentVehicleTrackIds)
+        ? [...existing.recentVehicleTrackIds]
+        : [],
+      recentVehicleModelKeys: Array.isArray(existing.recentVehicleModelKeys)
+        ? [...existing.recentVehicleModelKeys]
+        : [],
       recentWorkingContext: {
         ...createEmptyCleverWorkingState().recentWorkingContext,
         ...(existing.recentWorkingContext || {}),
@@ -356,6 +365,27 @@ export function syncWorkingDraftsFromMemoryToLead(lead, memory) {
       customerId: lead.id,
       status: md.intendSend ? 'pending_send' : 'draft',
     });
+  }
+  const memIds = Array.isArray(memory.recentVehicleTrackIds) ? memory.recentVehicleTrackIds : [];
+  const memKeys = Array.isArray(memory.recentVehicleModelKeys) ? memory.recentVehicleModelKeys : [];
+  if (memIds.length >= 2 || memKeys.length >= 2) {
+    const prev = next.crm?.cleverWorkingState || {};
+    const prevIds = Array.isArray(prev.recentVehicleTrackIds) ? prev.recentVehicleTrackIds : [];
+    const sameIds = memIds.length === prevIds.length && memIds.every((id, i) => id === prevIds[i]);
+    if (!sameIds || (memKeys.length && memKeys.join() !== (prev.recentVehicleModelKeys || []).join())) {
+      next = {
+        ...next,
+        crm: {
+          ...(next.crm || {}),
+          cleverWorkingState: {
+            ...prev,
+            recentVehicleTrackIds: memIds.length ? memIds : prevIds,
+            recentVehicleModelKeys: memKeys.length ? memKeys : (prev.recentVehicleModelKeys || []),
+            updatedAt: nowIso(),
+          },
+        },
+      };
+    }
   }
   return next;
 }

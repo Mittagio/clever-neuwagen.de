@@ -21,19 +21,18 @@ import {
 import { isSellerOfferMailShorthand } from '../crm/magic/generateCleverCustomerMessage.js';
 import { deriveContactIdentity } from '../dealer/customerContactIdentity.js';
 import {
-  isBatchOfferCue,
-  hasCommercialOfferSlots,
-  isBareOrGenericOfferCue,
-} from './commercialOfferNl.js';
-import {
   OFFER_MUTATION_MODE,
   OFFER_VEHICLE_TARGET_STATUS,
   resolveOfferVehicleTarget,
 } from './offerVehicleIdentity.js';
 import {
-  listCustomerVehicleTracks,
-  VEHICLE_TRACK_STATUS,
-} from '../crm/vehicleTrack.js';
+  resolveBatchOfferTracks,
+} from './batchOfferTrackScope.js';
+import {
+  isBatchOfferCue,
+  hasCommercialOfferSlots,
+  isBareOrGenericOfferCue,
+} from './commercialOfferNl.js';
 import {
   RATE_AUTHORITY,
   extractAuthoritativeOfferRateFromFacts,
@@ -309,6 +308,7 @@ export function planSellerActions({
   now = null,
   calendarAvailability = null,
   workingMemory = null,
+  conversationHistory = null,
 } = {}) {
   const actions = [];
   const intentTypes = new Set(intents.map((i) => i.type));
@@ -755,16 +755,30 @@ export function planSellerActions({
   }
 
   if (intentTypes.has(SELLER_TURN_INTENTS.PREPARE_OFFER)) {
+    const batchCue = isBatchOfferCue(sellerInput);
+    // Batch löst Multi-Fahrzeug selbst – kein clarify_vehicle_for_offer-Block
     const blockedByClarify = missingInformation.some((m) => (
       m.id === 'clarify_purchase_vs_leasing'
-      || m.id === 'clarify_vehicle_for_offer'
+      || (m.id === 'clarify_vehicle_for_offer' && !batchCue)
     ));
-    const batchCue = isBatchOfferCue(sellerInput);
-    const openTracks = listCustomerVehicleTracks(lead).filter((t) => (
-      t.status === VEHICLE_TRACK_STATUS.OPEN
-      || t.status === VEHICLE_TRACK_STATUS.ACTIVE
-      || t.status === VEHICLE_TRACK_STATUS.FAVORITE
-    ));
+    const batchResolved = batchCue
+      ? resolveBatchOfferTracks({
+        lead,
+        sellerInput,
+        workingMemory,
+        conversationHistory,
+        // Scope-Tracks nachziehen (auch wenn Remember Configs noch nicht persistiert hat)
+        ensureMissingTracks: true,
+      })
+      : null;
+    const openTracks = batchResolved?.ok
+      ? batchResolved.tracks
+      : [];
+    // Ensure erzeugt neues Lead-Objekt – Configs für Apply mitschicken
+    const ensuredVehicleConfigurations = batchResolved?.ok
+      && Array.isArray(batchResolved.lead?.crm?.vehicleConfigurations)
+      ? batchResolved.lead.crm.vehicleConfigurations
+      : null;
     const offerVehicleTarget = resolveOfferVehicleTarget({
       lead,
       sellerInput,
@@ -772,7 +786,7 @@ export function planSellerActions({
       currentOfferContext,
       workingContext,
     });
-    // Telefon Ende: „mach die 3 Angebote“ → eine Batch-Action mit Shells je Spur (kein Multi-UI)
+    // Telefon Ende: „mach die 3 Angebote“ → exakter Gesprächs-Scope (keine EV4-History)
     if (batchCue && openTracks.length >= 2 && !blockedByClarify) {
       const commercial = null;
       const batchOffers = openTracks.map((t) => {
@@ -827,6 +841,9 @@ export function planSellerActions({
             modelKey: t.config?.modelKey || t.modelLabel,
             displayName: t.displayName,
           })),
+          batchScope: batchResolved?.scope || null,
+          batchModelKeys: batchResolved?.modelKeys || [],
+          ensuredVehicleConfigurations,
           canCreateOffer: false,
           attachWorkingContext: true,
           needsSellerConfirmation: true,
@@ -837,6 +854,26 @@ export function planSellerActions({
           offerDraftId: batchOffers[0]?.offerDraftId || null,
           vehicleIdentityDraft: batchOffers[0]?.vehicleIdentityDraft || null,
           vehicleIdentityDraftId: batchOffers[0]?.vehicleIdentityDraftId || null,
+        },
+      });
+    } else if (batchCue && !blockedByClarify) {
+      // Batch-Cue erkannt, aber Scope unklar – kein Single-Offer mit CRM-Primary/EV4
+      actions.push({
+        id: 'prepare_offers_batch_clarify',
+        type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+        label: 'Angebote – Fahrzeuge klären',
+        needsSellerConfirmation: true,
+        status: 'blocked',
+        payload: {
+          needsClarification: true,
+          clarifyVehicleForOffer: true,
+          batch: true,
+          question: 'Für welche Fahrzeuge soll ich Angebote vorbereiten?',
+          choices: (batchResolved?.modelKeys || []).map((k) => ({
+            id: k,
+            label: String(k).toUpperCase(),
+          })),
+          reason: batchResolved?.reason || 'insufficient_batch_tracks',
         },
       });
     } else if (offerVehicleTarget.status === OFFER_VEHICLE_TARGET_STATUS.NEEDS_CLARIFICATION) {
