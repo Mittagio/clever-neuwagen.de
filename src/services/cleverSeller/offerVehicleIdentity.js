@@ -396,6 +396,56 @@ export function listOfferIdentityTrimChoices(modelKey = '') {
 }
 
 /**
+ * Motor/Batterie-Choices aus verifizierten Modelldaten (kein Default raten).
+ * @param {string} [modelKey]
+ */
+export function listOfferIdentityPowertrainChoices(modelKey = '') {
+  const key = normalizeModelKey(modelKey);
+  const entry = key ? resolveConfigureModel(key) : null;
+  const engines = entry?.data?.engines || [];
+  if (!engines.length) return [];
+  const seen = new Set();
+  return engines
+    .map((eng) => ({
+      id: String(eng.id || normalizeModelKey(eng.name)),
+      label: String(eng.name || eng.id || '').trim(),
+    }))
+    .filter((e) => {
+      if (!e.label || seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+}
+
+/**
+ * Paket-Choices für ein Modell (optional trim-gefiltert).
+ * @param {string} [modelKey]
+ * @param {{ trimId?: string|null }} [opts]
+ */
+export function listOfferIdentityPackageChoices(modelKey = '', opts = {}) {
+  const key = normalizeModelKey(modelKey);
+  const entry = key ? resolveConfigureModel(key) : null;
+  const packages = entry?.data?.packages || [];
+  if (!packages.length) return [];
+  const trimId = opts.trimId ? String(opts.trimId).toLowerCase() : null;
+  const seen = new Set();
+  return packages
+    .filter((pkg) => {
+      if (!trimId || !Array.isArray(pkg.availableTrims) || !pkg.availableTrims.length) return true;
+      return pkg.availableTrims.some((t) => String(t).toLowerCase() === trimId);
+    })
+    .map((pkg) => ({
+      id: String(pkg.id || normalizeModelKey(pkg.name)),
+      label: String(pkg.name || pkg.id || '').trim(),
+    }))
+    .filter((p) => {
+      if (!p.label || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+}
+
+/**
  * Gültige Farben für ein Modell (+ Swatch). Fallback: sinnvolle Basisfarben.
  * @param {string} [modelKey]
  */

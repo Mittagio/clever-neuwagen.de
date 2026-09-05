@@ -12,6 +12,8 @@ import {
 } from './magicOfferSafeCalculation.js';
 import { assessCommercialPlausibility } from './parseGermanMoney.js';
 import { readIdentityFromPreparation } from '../cleverSeller/vehicleIdentityDraft.js';
+import { mergeIdentitySlot } from '../cleverSeller/offerDraftIntakeMerge.js';
+import { RATE_AUTHORITY } from '../cleverSeller/captureThenOffer.js';
 
 function paymentTypeFromOfferType(offerType) {
   if (offerType === 'purchase') return 'cash';
@@ -775,12 +777,96 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
     offerCalculation.preparationFee = payment.transferCost ?? offerCalculation.preparationFee;
   }
 
+  // Vehicle Identity: leere Slots aus PDF füllen; Konflikte slotweise (kein stilles Überschreiben)
+  const vehicle = { ...(offerDraft.vehicle ?? {}) };
+  const vehicleConfiguration = { ...(offerDraft.vehicleConfiguration ?? {}) };
+  const vr = preparation.intent?.vehicleRequest ?? {};
+  const grounded = preparation.grounded
+    || preparation.offerInterpretation?.interpretation?.vehicle
+    || preparation.offerInterpretation?.vehicle
+    || null;
+  const modelKey = vehicleConfiguration.modelKey || vehicle.modelKey || null;
+  const identityConflicts = [];
+
+  const pdfTrim = grounded?.trimLabel || vr.trimHint || null;
+  const trimMerge = mergeIdentitySlot({
+    existingSlot: {
+      raw: vehicleConfiguration.trimLabel || vehicle.trimLabel || null,
+      canonical: vehicleConfiguration.trimLabel || vehicle.trimLabel || null,
+    },
+    incomingRaw: pdfTrim,
+    field: 'trim',
+    modelKey,
+  });
+  if (trimMerge.conflict) identityConflicts.push(trimMerge.conflict);
+  else if (trimMerge.patch?.trim) {
+    vehicle.trimLabel = trimMerge.patch.trim;
+    vehicleConfiguration.trimLabel = trimMerge.patch.trim;
+    vehicleConfiguration.trimId = String(trimMerge.patch.trim).toLowerCase().replace(/\s+/g, '-');
+  }
+
+  const pdfColor = grounded?.colorLabel || vr.colorHint || null;
+  const colorMerge = mergeIdentitySlot({
+    existingSlot: {
+      raw: vehicleConfiguration.colorLabel || vehicle.color || null,
+      canonical: vehicleConfiguration.colorLabel || vehicle.color || null,
+    },
+    incomingRaw: pdfColor,
+    field: 'color',
+    modelKey,
+  });
+  if (colorMerge.conflict) identityConflicts.push(colorMerge.conflict);
+  else if (colorMerge.patch?.color) {
+    vehicle.color = colorMerge.patch.color;
+    vehicleConfiguration.colorLabel = colorMerge.patch.color;
+  }
+
+  const pdfMotor = grounded?.engineLabel || vr.motorHint || null;
+  if (pdfMotor && !(vehicleConfiguration.motorLabel || vehicle.battery)) {
+    vehicle.battery = pdfMotor;
+    vehicleConfiguration.motorLabel = pdfMotor;
+    vehicleConfiguration.batteryLabel = pdfMotor;
+  }
+
+  const pdfPackages = [
+    ...(Array.isArray(vr.packageKeys) ? vr.packageKeys : []),
+    ...(Array.isArray(grounded?.packageLabels) ? grounded.packageLabels : []),
+  ].filter(Boolean);
+  if (pdfPackages.length) {
+    const existing = new Set([
+      ...(vehicleConfiguration.packageLabels || []),
+      ...((vehicleConfiguration.selectedPackages || []).map((p) => p.name).filter(Boolean)),
+    ]);
+    const nextLabels = [...(vehicleConfiguration.packageLabels || [])];
+    for (const pkg of pdfPackages) {
+      const label = String(pkg).trim();
+      if (label && !existing.has(label)) {
+        nextLabels.push(label);
+        existing.add(label);
+      }
+    }
+    vehicleConfiguration.packageLabels = nextLabels;
+  }
+
+  const rateFromPdf = payment.calculatedRate ?? offerPreview.monthlyRate ?? null;
+  const rateAuthority = preparation.fromPdf && rateFromPdf != null
+    ? RATE_AUTHORITY.AUTHORITATIVE
+    : (offerDraft.rateAuthority || null);
+
   return {
     ...offerDraft,
     payment,
     offerPreview,
     offerCalculation,
+    vehicle,
+    vehicleConfiguration,
     source,
+    identityConflicts,
+    rateAuthority,
+    // Rate nur belastbar, wenn Identity zum aktuellen Draft passt (Konflikt → Rate prüfen)
+    rateNeedsReview: identityConflicts.length > 0
+      ? true
+      : (rateFromPdf != null ? false : offerDraft.rateNeedsReview),
     sellerConfirm: {
       required: Boolean(preparation.fromPdf)
         && (preparation.mode === 'leasing_intake' || preparation.mode === 'financing_intake'),
@@ -798,6 +884,7 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
           ?? preparation.offerInterpretation?.warnings
           ?? []),
         ...(preparation.commercialPlausibility?.warnings ?? []),
+        ...identityConflicts.map((c) => c.label),
       ],
       plausibilityFlags: preparation.commercialPlausibility?.flags ?? {},
       recognized: {

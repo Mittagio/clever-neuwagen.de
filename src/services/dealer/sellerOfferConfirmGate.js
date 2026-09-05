@@ -22,7 +22,7 @@ export function editablePriceDetailFields(offerType) {
   const type = String(offerType || 'leasing');
   if (type === 'cash') return ['offerType', 'transferFee', 'monthlyRate'];
   if (type === 'financing' || type === 'threeWayFinancing') {
-    return ['offerType', 'termMonths', 'downPayment', 'transferFee', 'monthlyRate'];
+    return ['offerType', 'termMonths', 'downPayment', 'transferFee', 'finalRate', 'monthlyRate'];
   }
   return ['offerType', 'termMonths', 'annualMileage', 'downPayment', 'transferFee', 'monthlyRate'];
 }
@@ -193,6 +193,13 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
       offerCalculation.preparationFee = fee;
     }
   }
+  if ('finalRate' in patch && patch.finalRate != null) {
+    const finalRate = Number(patch.finalRate);
+    if (Number.isFinite(finalRate)) {
+      payment.finalRate = finalRate;
+      offerCalculation.finalPayment = finalRate;
+    }
+  }
   if ('offerType' in patch && patch.offerType) {
     const type = String(patch.offerType);
     payment.type = type === 'cash' ? 'cash' : type;
@@ -248,6 +255,31 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
     vehicleConfiguration.colorId = nextColorId;
     identityTouched = true;
   }
+  if ('motorLabel' in patch) {
+    const motor = patch.motorLabel != null ? String(patch.motorLabel).trim() : '';
+    vehicle.battery = motor || null;
+    vehicleConfiguration.motorLabel = motor || null;
+    vehicleConfiguration.batteryLabel = motor || null;
+    vehicleConfiguration.engineId = patch.engineId != null
+      ? String(patch.engineId)
+      : (motor ? motor.toLowerCase().replace(/\s+/g, '-') : null);
+    identityTouched = true;
+  }
+  if ('engineId' in patch && !('motorLabel' in patch)) {
+    vehicleConfiguration.engineId = patch.engineId != null && String(patch.engineId).trim()
+      ? String(patch.engineId)
+      : null;
+    identityTouched = true;
+  }
+  if ('packageLabels' in patch && Array.isArray(patch.packageLabels)) {
+    vehicleConfiguration.packageLabels = patch.packageLabels
+      .map((p) => String(p || '').trim())
+      .filter(Boolean);
+    identityTouched = true;
+  }
+  if ('clearIdentityConflict' in patch && patch.clearIdentityConflict) {
+    // no-op here – handled below via identityConflicts strip
+  }
 
   // Identity-Wechsel: bestehende Rate nicht als sicher gültig stehen lassen (keine Neuberechnung).
   if (identityTouched && !rateTouched) {
@@ -276,6 +308,17 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
     rateCalibratedFor = patch.rateCalibratedFor || null;
   }
 
+  let identityConflicts = Array.isArray(offerDraft.identityConflicts)
+    ? [...offerDraft.identityConflicts]
+    : [];
+  if (patch.resolveIdentityConflict?.field) {
+    const field = String(patch.resolveIdentityConflict.field);
+    identityConflicts = identityConflicts.filter((c) => c.field !== field);
+  }
+  if (patch.clearIdentityConflicts === true) {
+    identityConflicts = [];
+  }
+
   return {
     ...offerDraft,
     payment,
@@ -283,6 +326,7 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
     offerCalculation,
     rateNeedsReview,
     rateCalibratedFor,
+    identityConflicts,
     ...(identityTouched
       ? {
         vehicle,

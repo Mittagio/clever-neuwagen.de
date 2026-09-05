@@ -30,15 +30,22 @@ export const MAGIC_DECISION = {
  * }} input
  */
 export function decideMagicOfferAction(input = {}) {
+  const type = input.offerType;
+  // Unbekannte Pakete: bei PDF-Leasing/Finanzierung mit Rate nicht blockieren
+  // (Pakete bleiben slotweise / als Labels – Commercial Facts dürfen durch).
   if (input.unresolvedPackages?.length) {
-    return {
-      action: MAGIC_DECISION.NEEDS_REVIEW,
-      reason: 'unknown_package',
-      message: 'Paket konnte ich nicht sicher verifizieren.',
-    };
+    const pdfCommercialOk = Boolean(input.fromPdf)
+      && input.monthlyRate != null
+      && (type === 'leasing' || type === 'financing');
+    if (!pdfCommercialOk) {
+      return {
+        action: MAGIC_DECISION.NEEDS_REVIEW,
+        reason: 'unknown_package',
+        message: 'Paket konnte ich nicht sicher verifizieren.',
+      };
+    }
   }
 
-  const type = input.offerType;
   const canIntakeWithoutFullPrice = (type === 'leasing' || type === 'financing')
     && input.monthlyRate != null;
 

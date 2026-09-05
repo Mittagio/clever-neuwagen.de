@@ -26,15 +26,24 @@ const css = readFileSync(join(__dirname, 'DealerAiOfferPreview.css'), 'utf8');
 
 assert.ok(source.includes('Aktuelles PDF ersetzen'), 'PDF-Replace-Pfad bleibt erhalten');
 assert.ok(source.includes('dai-opreview-identity'), 'Identity-Zeile in Angebot prüfen');
-assert.ok(source.includes('Fahrzeugidentität'), 'Identity aria-label');
+assert.ok(source.includes('aria-label="Fahrzeug"'), 'FAHRZEUG aria-label');
+assert.ok(source.includes('FAHRZEUG'), 'FAHRZEUG-Sektion');
+assert.ok(source.includes('aria-label="RATE"'), 'RATE aria-label');
 assert.ok(source.includes('IdentityFactPopover'), 'Identity nutzt Fact-Popover');
 assert.ok(source.includes('listOfferIdentityModelChoices'), 'Modell-Choices aus Lexikon-Pfad');
 assert.ok(source.includes('listOfferIdentityTrimChoices'), 'Linien-Choices modellbezogen');
 assert.ok(source.includes('listOfferIdentityColorChoices'), 'Farb-Choices mit Swatch');
+assert.ok(source.includes('listOfferIdentityPowertrainChoices'), 'Antrieb-Choices');
+assert.ok(source.includes('listOfferIdentityPackageChoices'), 'Paket-Choices');
 assert.ok(source.includes('applyIdentityChoice'), 'Identity-Choice schreibt denselben State');
+assert.ok(source.includes('identityConflicts'), 'Konflikt-Banner am Draft');
+assert.ok(source.includes('Variante prüfen'), 'Trim-Konflikt-Copy');
+assert.ok(source.includes('resolveIdentityConflict'), 'Konflikt-Auflösung am selben Draft');
+assert.ok(source.includes("'offen'"), 'Offene Slots ohne Defaults');
 assert.ok(source.includes('Rate prüfen'), 'Stale-Rate Copy');
 assert.ok(source.includes('Fahrzeug wurde geändert'), 'Identity-Change Hinweis');
 assert.ok(source.includes('rateNeedsReview'), 'Rate-Stale-Flag in Preview');
+assert.ok(source.includes('rateSourceLabel'), 'Rate Source/Evidence');
 assert.ok(!source.includes('Klicken zum Bearbeiten'), 'Kein Freitext-Hilfetext');
 assert.ok(!source.includes('openIdentityEdit'), 'Kein Freitext-Identity-Edit als Default');
 assert.ok(!source.includes('identityDraft'), 'Kein Freitext-Identity-Draft');
@@ -42,6 +51,8 @@ assert.ok(source.includes('Werte bearbeiten'), 'Manueller Edit-Pfad ist sichtbar
 assert.ok(css.includes('dai-opreview-identity'), 'Identity Styles');
 assert.ok(css.includes('dai-opreview-identity__popover'), 'Popover Styles');
 assert.ok(css.includes('dai-opreview-summary__rate--stale'), 'Stale-Rate Styles');
+assert.ok(css.includes('dai-opreview-conflict'), 'Konflikt Styles');
+assert.ok(css.includes('dai-opreview-summary__rate--missing'), 'Missing-Rate Styles');
 assert.ok(source.includes('editablePriceDetailFields'), 'Preisdetails nutzen editierbare Felder');
 assert.ok(source.includes("editMode ? 'Fertig' : 'Werte bearbeiten'"), 'Preisdetails-Header toggelt Bearbeiten');
 assert.ok(source.includes('aria-label="Preisdetails bearbeiten"'), 'Preisdetails haben Edit-Modus');
@@ -70,7 +81,7 @@ assert.ok(source.includes('dai-opreview-summary__image'), 'Bild als Card-Media')
 assert.ok(source.includes('dai-opreview-summary__rate'), 'Purple Rate-Box');
 assert.ok(source.includes('dai-opreview-summary__swatch'), 'Farb-Swatch');
 assert.ok(source.includes('Angebot geprüft'), 'Grünes Checked-Badge');
-assert.ok(source.includes("title: 'Preisdetails'"), 'Preisdetails-Header');
+assert.ok(source.includes("title: 'KONDITIONEN'"), 'KONDITIONEN-Header');
 assert.ok(source.includes('dai-opreview-pdf-btn-row'), 'PDF-Buttons nebeneinander');
 assert.ok(source.includes('PDF-Vorschau'), 'PDF-Vorschau bleibt');
 assert.ok(source.includes('kein Einmal-Limit'), 'PDF als Replace klar kommuniziert');
@@ -89,7 +100,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   editablePriceDetailFields('financing'),
-  ['offerType', 'termMonths', 'downPayment', 'transferFee', 'monthlyRate'],
+  ['offerType', 'termMonths', 'downPayment', 'transferFee', 'finalRate', 'monthlyRate'],
 );
 assert.deepEqual(
   editablePriceDetailFields('cash'),

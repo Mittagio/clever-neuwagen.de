@@ -17,8 +17,11 @@ import { resolveConfigureHeroImage } from '../../services/dealerAiVehicleConfigu
 import {
   listOfferIdentityColorChoices,
   listOfferIdentityModelChoices,
+  listOfferIdentityPackageChoices,
+  listOfferIdentityPowertrainChoices,
   listOfferIdentityTrimChoices,
 } from '../../services/cleverSeller/offerVehicleIdentity.js';
+import { RATE_AUTHORITY } from '../../services/cleverSeller/captureThenOffer.js';
 import { IconChevronRight } from './AkteIcons.jsx';
 import {
   FlowCard,
@@ -84,6 +87,7 @@ const FIELD_LABELS = {
   termMonths: 'Laufzeit',
   annualMileage: 'Kilometer',
   transferFee: 'Überführung',
+  finalRate: 'Schlussrate',
   offerType: 'Angebotsart',
 };
 
@@ -201,6 +205,10 @@ function buildInitialConfirmValues(offerDraft) {
     termMonths: offerDraft?.payment?.termMonths ?? recognized.termMonths ?? null,
     annualMileage: offerDraft?.payment?.mileagePerYear ?? recognized.annualMileage ?? null,
     transferFee: offerDraft?.payment?.transferCost ?? recognized.transferFee ?? null,
+    finalRate: offerDraft?.payment?.finalRate
+      ?? offerDraft?.offerCalculation?.finalPayment
+      ?? recognized.finalPayment
+      ?? null,
     offerType: offerDraft?.payment?.type ?? recognized.offerType ?? 'leasing',
   };
 }
@@ -349,7 +357,7 @@ function IdentityFactPopover({
         disabled={disabled}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={`${label}: ${selectedLabel || 'wählen'}`}
+        aria-label={`${label}: ${selectedLabel || 'offen'}`}
       >
         {showSwatch && (
           <span
@@ -358,7 +366,9 @@ function IdentityFactPopover({
             aria-hidden
           />
         )}
-        <span>{selectedLabel || label}</span>
+        <span className={!selectedLabel ? 'dai-opreview-identity__chip-open' : undefined}>
+          {selectedLabel || 'offen'}
+        </span>
       </button>
       {open && !disabled && (
         <ul className="dai-opreview-identity__popover" role="listbox" aria-label={`${label} wählen`}>
@@ -589,6 +599,31 @@ export default function DealerAiOfferPreview({
   const modelChoices = listOfferIdentityModelChoices({ currentModelKey: modelKey });
   const trimChoices = listOfferIdentityTrimChoices(modelKey);
   const colorChoices = listOfferIdentityColorChoices(modelKey);
+  const powertrainChoices = listOfferIdentityPowertrainChoices(modelKey);
+  const packageChoices = listOfferIdentityPackageChoices(modelKey, {
+    trimId: trimId || (trimLabel ? String(trimLabel).toLowerCase().replace(/\s+/g, '-') : null),
+  });
+  const powertrainLabel = vehicleMotorLine
+    || offerDraft?.vehicleIdentityDraft?.powertrainVariant?.canonical
+    || offerDraft?.vehicleIdentityDraft?.powertrainVariant?.raw
+    || null;
+  const identityConflicts = Array.isArray(offerDraft?.identityConflicts)
+    ? offerDraft.identityConflicts
+    : [];
+  const rateSourceLabel = (() => {
+    if (rateNeedsReview) return null;
+    const auth = offerDraft?.rateAuthority;
+    if (auth === RATE_AUTHORITY.AUTHORITATIVE || fromPdf) {
+      const ev = evidence?.monthlyRate?.sourceText || evidence?.monthlyRate?.raw;
+      if (ev) return `Quelle: PDF · „${ev}“`;
+      if (originalPdfFileName) return `Quelle: PDF · ${originalPdfFileName}`;
+      return 'Quelle: PDF';
+    }
+    if (offerDraft?.offerPreview?.monthlyRate != null || offerDraft?.payment?.calculatedRate != null) {
+      return recognized?.monthlyRate != null ? 'Quelle: Verkäufer / Bank' : 'Quelle: Angebot';
+    }
+    return null;
+  })();
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
@@ -740,9 +775,47 @@ export default function DealerAiOfferPreview({
     } else if (field === 'color') {
       patch.colorLabel = choice.label;
       patch.colorId = choice.id;
+    } else if (field === 'powertrain') {
+      patch.motorLabel = choice.label;
+      patch.engineId = choice.id;
+    } else if (field === 'package') {
+      const current = collectPackagesAndExtras(
+        offerDraft?.vehicleConfiguration,
+        offerDraft?.payment,
+        offerDraft,
+      );
+      const has = current.some((p) => String(p).toLowerCase() === String(choice.label).toLowerCase());
+      patch.packageLabels = has
+        ? current.filter((p) => String(p).toLowerCase() !== String(choice.label).toLowerCase())
+        : [...current, choice.label];
     }
     onCommercialChange(patch);
     closeIdentityPopover();
+  }
+
+  function resolveIdentityConflict(conflict, choice) {
+    if (!onCommercialChange || !conflict || !choice) return;
+    const patch = {
+      resolveIdentityConflict: { field: conflict.field },
+    };
+    if (conflict.field === 'trim') {
+      patch.trimLabel = choice.value;
+      patch.trimId = String(choice.value).toLowerCase().replace(/\s+/g, '-');
+    } else if (conflict.field === 'color') {
+      patch.colorLabel = choice.value;
+    } else if (conflict.field === 'model') {
+      patch.modelKey = choice.value;
+      patch.model = String(choice.value).toUpperCase();
+    } else if (conflict.field === 'powertrain') {
+      patch.motorLabel = choice.value;
+    }
+    // PDF-Wert übernommen + Rate aus PDF → wieder belastbar; Draft behalten → Rate prüfen
+    if (choice.id === 'take_pdf' && (offerDraft?.payment?.calculatedRate != null || offerDraft?.offerPreview?.monthlyRate != null)) {
+      patch.rateNeedsReview = false;
+    } else if (choice.id === 'keep_draft') {
+      patch.rateNeedsReview = true;
+    }
+    onCommercialChange(patch);
   }
 
   async function handleSaveClick() {
@@ -854,6 +927,18 @@ export default function DealerAiOfferPreview({
           label: 'Überführung',
           value: formatCurrency(transferCost),
           field: 'transferFee',
+        });
+      }
+      const finalRate = draftValues.finalRate
+        ?? payment.finalRate
+        ?? offerDraft?.offerCalculation?.finalPayment
+        ?? null;
+      if (isFinance && finalRate != null) {
+        rows.push({
+          key: 'finalRate',
+          label: 'Schlussrate',
+          value: formatCurrency(finalRate),
+          field: 'finalRate',
         });
       }
     }
@@ -1116,8 +1201,7 @@ export default function DealerAiOfferPreview({
     ? formatCurrency(offerPrice)
     : (offerPrice != null ? formatEuroDe(Number(offerPrice)) : '–');
   const rateSuffix = !isCash && offerPrice != null ? ' / Monat' : '';
-  const rateLabel = isCash ? 'Angebotspreis' : 'Monatliche Rate';
-  const showRateStale = rateNeedsReview && !isCash;
+  const showRateStale = (rateNeedsReview || identityConflicts.length > 0) && !isCash;
 
   return (
     <OfferFlowLayout
@@ -1126,14 +1210,14 @@ export default function DealerAiOfferPreview({
       onBack={!saved ? onBack : null}
       title="Angebot prüfen"
     >
-      {/* 1. Fahrzeug-Summary-Card (Mockup: Titel | Bild | Rate) */}
+      {/* 1. FAHRZEUG · RATE */}
       <section
         className={`dai-opreview-summary${requireConfirm ? ' dai-opreview-summary--confirm' : ''}`}
-        aria-label="Fahrzeug und Preis"
+        aria-label="Fahrzeug und Rate"
       >
         <div className="dai-opreview-summary__info">
-          <div className="dai-opreview-identity" aria-label="Fahrzeugidentität">
-            <p className="dai-opreview-identity__eyebrow">Fahrzeug</p>
+          <div className="dai-opreview-identity" aria-label="Fahrzeug">
+            <p className="dai-opreview-identity__eyebrow">FAHRZEUG</p>
             <div className="dai-opreview-identity__row">
               <IdentityFactPopover
                 field="model"
@@ -1158,6 +1242,17 @@ export default function DealerAiOfferPreview({
                 disabled={saved || !onCommercialChange}
               />
               <IdentityFactPopover
+                field="powertrain"
+                label="Antrieb"
+                open={identityPopover === 'powertrain'}
+                choices={powertrainChoices}
+                selectedId={vehicleConfiguration?.engineId || null}
+                selectedLabel={powertrainLabel}
+                onToggle={setIdentityPopover}
+                onSelect={(choice) => applyIdentityChoice('powertrain', choice)}
+                disabled={saved || !onCommercialChange || powertrainChoices.length === 0}
+              />
+              <IdentityFactPopover
                 field="color"
                 label="Farbe"
                 open={identityPopover === 'color'}
@@ -1170,11 +1265,19 @@ export default function DealerAiOfferPreview({
                 showSwatch
                 swatchColor={colorSwatch}
               />
+              <IdentityFactPopover
+                field="package"
+                label="Pakete"
+                open={identityPopover === 'package'}
+                choices={packageChoices}
+                selectedId={null}
+                selectedLabel={packageItems.length ? packageItems.join(' · ') : null}
+                onToggle={setIdentityPopover}
+                onSelect={(choice) => applyIdentityChoice('package', choice)}
+                disabled={saved || !onCommercialChange || packageChoices.length === 0}
+              />
             </div>
           </div>
-          {vehicleMotorLine && (
-            <p className="dai-opreview-summary__motor">{vehicleMotorLine}</p>
-          )}
           {showCheckedBadge && (
             <span className="dai-opreview-summary__checked">Angebot geprüft</span>
           )}
@@ -1190,13 +1293,6 @@ export default function DealerAiOfferPreview({
               ))}
             </div>
           )}
-          {showPackages && (
-            <ul className="dai-opreview-summary__packages">
-              {packageItems.map((label) => (
-                <li key={label}>{label}</li>
-              ))}
-            </ul>
-          )}
         </div>
 
         {heroImage && (
@@ -1210,10 +1306,10 @@ export default function DealerAiOfferPreview({
         )}
 
         <div
-          className={`dai-opreview-summary__rate${showRateStale ? ' dai-opreview-summary__rate--stale' : ''}`}
-          aria-label={rateLabel}
+          className={`dai-opreview-summary__rate${showRateStale ? ' dai-opreview-summary__rate--stale' : ''}${offerPrice == null && !showRateStale ? ' dai-opreview-summary__rate--missing' : ''}`}
+          aria-label="RATE"
         >
-          <p className="dai-opreview-summary__rate-label">{rateLabel}</p>
+          <p className="dai-opreview-summary__rate-label">RATE</p>
           {showRateStale ? (
             <>
               <p className="dai-opreview-summary__rate-value dai-opreview-summary__rate-value--stale">
@@ -1230,16 +1326,56 @@ export default function DealerAiOfferPreview({
                 </p>
               )}
             </>
+          ) : offerPrice == null ? (
+            <>
+              <p className="dai-opreview-summary__rate-value dai-opreview-summary__rate-value--missing">
+                fehlt
+              </p>
+              <p className="dai-opreview-summary__rate-stale-hint">
+                PDF hochladen oder Rate eintragen
+              </p>
+            </>
           ) : (
-            <p className="dai-opreview-summary__rate-value">
-              {rateMain}
-              {rateSuffix && (
-                <span className="dai-opreview-summary__rate-suffix">{rateSuffix}</span>
+            <>
+              <p className="dai-opreview-summary__rate-value">
+                {rateMain}
+                {rateSuffix && (
+                  <span className="dai-opreview-summary__rate-suffix">{rateSuffix}</span>
+                )}
+              </p>
+              {rateSourceLabel && (
+                <p className="dai-opreview-summary__rate-source">{rateSourceLabel}</p>
               )}
-            </p>
+            </>
           )}
         </div>
       </section>
+
+      {identityConflicts.length > 0 && (
+        <div className="dai-opreview-conflict" role="alertdialog" aria-label="Variante prüfen">
+          {identityConflicts.map((conflict) => (
+            <div key={conflict.field} className="dai-opreview-conflict__item">
+              <p className="dai-opreview-conflict__title">{conflict.label || 'Angabe prüfen'}</p>
+              <p className="dai-opreview-conflict__line">
+                Entwurf: {conflict.draftValue} · PDF: {conflict.pdfValue}
+              </p>
+              <div className="dai-opreview-conflict__actions">
+                {(conflict.choices || []).slice(0, 2).map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    className={`dai-opreview-conflict__btn${choice.id === 'take_pdf' ? ' is-primary' : ''}`}
+                    onClick={() => resolveIdentityConflict(conflict, choice)}
+                    disabled={saved || !onCommercialChange}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {rateImplausible && !isCash && (
         <div className="dai-opreview-warn" role="alert">
@@ -1267,7 +1403,7 @@ export default function DealerAiOfferPreview({
             aria-label="Erkannte Konditionen"
           >
             {renderPriceDetailsHeader({
-              title: 'Preisdetails',
+              title: 'KONDITIONEN',
               showEdit: !saved,
             })}
 
@@ -1351,7 +1487,7 @@ export default function DealerAiOfferPreview({
       ) : (
         <FlowCard className="dai-opreview-price-card">
           {renderPriceDetailsHeader({
-            title: 'Preisdetails',
+            title: 'KONDITIONEN',
             showEdit: !saved && Boolean(onCommercialChange),
           })}
           {editMode && !saved ? (
