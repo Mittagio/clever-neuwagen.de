@@ -265,6 +265,10 @@ export function followUpToIdentityPatch(followUp) {
   }
   if (followUp.trim != null) patch.trim = followUp.trim;
   if (followUp.color != null) patch.color = String(followUp.color).replace(/^farbe\s*/i, '').trim();
+  if (followUp.powertrain != null) patch.powertrain = followUp.powertrain;
+  if (Array.isArray(followUp.packages) && followUp.packages.length) {
+    patch.addPackages = [...followUp.packages];
+  }
   if (followUp.removePackages) patch.removePackages = followUp.removePackages;
   if (followUp.kind === 'remove_package' && followUp.removePackages) {
     patch.removePackages = followUp.removePackages;
@@ -374,6 +378,11 @@ export function buildMutatedPrepareOfferPayload(mutation, { lead = null, sellerI
     sellerInput,
     paymentType: od.commercialScenario?.paymentType || lead?.paymentType || 'leasing',
   });
+  const keepAuthoritativeRate = Boolean(
+    mutation.fromPdf
+    && od.rate != null
+    && od.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE,
+  );
   return {
     ...handoff,
     updateOnly: true,
@@ -388,16 +397,22 @@ export function buildMutatedPrepareOfferPayload(mutation, { lead = null, sellerI
     identityExtrasLine: formatIdentityDraftExtrasLine(identity),
     createNewAlternative: false,
     mutationMode: OFFER_MUTATION_MODE.UPDATE_EXISTING,
-    invalidateVehicleRate: true,
-    monthlyRate: null,
-    missingRate: true,
+    invalidateVehicleRate: !keepAuthoritativeRate,
+    monthlyRate: keepAuthoritativeRate ? od.rate : null,
+    rateAuthority: keepAuthoritativeRate
+      ? RATE_AUTHORITY.AUTHORITATIVE
+      : RATE_AUTHORITY.NON_AUTHORITATIVE,
+    missingRate: !keepAuthoritativeRate,
     canCreateOffer: false,
     attachWorkingContext: true,
     needsSellerConfirmation: true,
     mutatesCustomer: false,
-    source: 'working_draft_follow_up',
+    source: mutation.fromPdf ? 'offer_pdf' : 'working_draft_follow_up',
     lastChangedFields: mutation.changedFields || [],
     vehicle: handoff.vehicle,
+    calculation: keepAuthoritativeRate
+      ? { monthlyRate: od.rate }
+      : handoff.calculation,
   };
 }
 

@@ -24,6 +24,7 @@ import {
   OFFER_MUTATION_MODE,
   OFFER_VEHICLE_TARGET_STATUS,
   resolveOfferVehicleTarget,
+  isModelOnlyOfferCue,
 } from './offerVehicleIdentity.js';
 import {
   resolveBatchOfferTracks,
@@ -49,6 +50,10 @@ import {
   rewriteMessageBody,
   resolveActiveMessageDraft,
 } from './cleverWorkingDraft.js';
+import {
+  mergePdfIntoActiveOfferDraft,
+  shouldRefineActiveOfferFromPdf,
+} from './offerDraftIntakeMerge.js';
 
 function salutationName(customerName, facts, lead) {
   const identity = deriveContactIdentity(
@@ -920,6 +925,54 @@ export function planSellerActions({
         },
       });
     } else if (
+      shouldRefineActiveOfferFromPdf({
+        lead,
+        workingMemory,
+        attachments,
+        facts,
+      })
+      && (() => {
+        const pdfMerged = mergePdfIntoActiveOfferDraft({
+          lead,
+          workingMemory,
+          facts,
+          sellerInput,
+        });
+        if (!pdfMerged.ok) return false;
+        const mutatedPayload = buildMutatedPrepareOfferPayload(pdfMerged.mutation, {
+          lead,
+          sellerInput,
+        });
+        if (!mutatedPayload) return false;
+        actions.push({
+          id: 'refine_offer_from_pdf',
+          type: SELLER_TURN_INTENTS.PREPARE_OFFER,
+          label: pdfMerged.conflicts.length
+            ? 'PDF übernommen – bitte Konflikt prüfen'
+            : 'PDF in Angebot übernommen',
+          needsSellerConfirmation: pdfMerged.conflicts.length > 0,
+          status: 'prepared',
+          toolId: 'modify_offer',
+          payload: {
+            ...mutatedPayload,
+            // Bei Konflikt: volle Review (nicht updateOnly-Skip)
+            updateOnly: pdfMerged.conflicts.length === 0,
+            fromPdf: true,
+            refineExistingDraft: true,
+            identityConflicts: pdfMerged.conflicts,
+            monthlyRate: pdfMerged.rate,
+            rateAuthority: pdfMerged.rate != null
+              ? RATE_AUTHORITY.AUTHORITATIVE
+              : RATE_AUTHORITY.NON_AUTHORITATIVE,
+            missingRate: pdfMerged.rate == null,
+            commercialScenario: pdfMerged.commercial,
+          },
+        });
+        return true;
+      })()
+    ) {
+      // PDF in denselben Offer Draft gemerged
+    } else if (
       shouldMutateExistingOfferDraft({
         sellerInput,
         facts,
@@ -1089,28 +1142,33 @@ export function planSellerActions({
         || (vehicleConflict
           ? (vehicleInterest?.value?.activeModelKey || vehicleInterest?.value?.activeModel)
           : (vehicleInterest?.value?.modelKey || vehicleInterest?.value?.model));
-      // Kein stilles Magic-Default-Trim (Earth) – nur Seller-Fact / Track / explizit geparstes Trim
-      const targetTrim = vehicleConflict
+      // Kein stilles Magic-/Track-Default-Trim – nur Seller-Fact / explizit geparstes Trim
+      const modelOnlyConcept = isModelOnlyOfferCue(sellerInput)
+        || offerVehicleTarget.modelOnlyConcept === true;
+      const targetTrim = modelOnlyConcept
         ? null
-        : (
-          vehicleInterest?.value?.trim
-          || offerVehicleTarget.trim
-          || facts.find((f) => f.field === 'trimPreference')?.value?.trim
-          || (Array.isArray(facts.find((f) => f.field === 'trimPreference')?.value)
-            ? facts.find((f) => f.field === 'trimPreference').value[0]
-            : null)
-          || null
-        );
+        : (vehicleConflict
+          ? null
+          : (
+            vehicleInterest?.value?.trim
+            || offerVehicleTarget.trim
+            || facts.find((f) => f.field === 'trimPreference')?.value?.trim
+            || (Array.isArray(facts.find((f) => f.field === 'trimPreference')?.value)
+              ? facts.find((f) => f.field === 'trimPreference').value[0]
+              : null)
+            || null
+          ));
       // Magic-Grounding nur wenn Modell zum Target passt – sonst klebt EV3 nicht über EV2
-      const groundedMatchesTarget = grounded?.modelKey
+      const groundedMatchesTarget = !modelOnlyConcept
+        && grounded?.modelKey
         && targetModel
         && String(grounded.modelKey).toLowerCase() === String(targetModel).toLowerCase();
       const focusModel = targetModel
         || (groundedMatchesTarget ? grounded?.model : null)
         || null;
-      const focusTrim = targetTrim
-        || (groundedMatchesTarget ? grounded?.trimLabel : null)
-        || null;
+      const focusTrim = modelOnlyConcept
+        ? null
+        : (targetTrim || (groundedMatchesTarget ? grounded?.trimLabel : null) || null);
       const resolvedVehicleLabel = [
         focusModel ? `Kia ${String(focusModel).replace(/^kia\s*/i, '')}` : null,
         focusTrim,

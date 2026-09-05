@@ -703,9 +703,13 @@ export default function CustomerAkteSharedWorkspace({
           setAgentWorkingMemory((prev) => {
             const next = updateAgentWorkingMemory(prev, agentResult, text);
             // Persist Working Drafts auch im Agent-Pfad (Reload / Handoff by ID)
-            queueMicrotask(() => {
+            if (next?.currentOfferDraftId && next?.currentOfferDraft?.vehicleIdentityDraft) {
               persistWorkingMemoryToLead(next, leadRef.current || lead);
-            });
+            } else {
+              queueMicrotask(() => {
+                persistWorkingMemoryToLead(next, leadRef.current || lead);
+              });
+            }
             return next;
           });
           const agentPolicy = resolveAgentResponsePolicy(agentResult);
@@ -892,15 +896,26 @@ export default function CustomerAkteSharedWorkspace({
         const next = updateMemoryFromSellerTurn(prev, turn, text, policy);
         // Remember-Apply schreibt Tracks zuerst – Memory erst danach gegen applied Lead syncen
         if (!willRemember) {
-          queueMicrotask(() => {
+          // Concept/Working Draft sofort auf Lead (Manual/PDF-Refinement am selben offerDraftId)
+          if (next?.currentOfferDraftId && next?.currentOfferDraft?.vehicleIdentityDraft) {
             persistWorkingMemoryToLead(next, leadRef.current || lead);
-          });
+          } else {
+            queueMicrotask(() => {
+              persistWorkingMemoryToLead(next, leadRef.current || lead);
+            });
+          }
         }
         return next;
       });
 
       // Zero-Loss Merken: sichere Facts sofort speichern (+ Partial Success)
-      if (willRemember) {
+      // Ausnahme: PREPARE_OFFER / Concept Draft hat Vorrang (Offer Intake Freeze)
+      const hasPreparedOfferAction = (turn.preparedActions || []).some((a) => (
+        (a.type === SELLER_TURN_INTENTS.PREPARE_OFFER || a.type === 'prepare_offer')
+        && a.status === 'prepared'
+        && a.payload?.offerDraftId
+      ));
+      if (willRemember && !hasPreparedOfferAction) {
         setDraft('');
         setOfferPrep(null);
         setAppointmentDraft(null);
@@ -974,6 +989,15 @@ export default function CustomerAkteSharedWorkspace({
         } catch { /* optional */ }
         resetIntentChipsToDefault();
         return true;
+      }
+
+      // Offer Intake: Interest merken + Concept Draft Review (Remember darf Offer nicht schlucken)
+      if (willRemember && hasPreparedOfferAction) {
+        try {
+          applyRememberWithUndo(turn, {
+            facts: turn.rememberDecision?.safeFacts || turn.extractedFacts || [],
+          });
+        } catch { /* optional */ }
       }
 
       // Magic: LLM / grounded Writer ersetzt Template-Mails

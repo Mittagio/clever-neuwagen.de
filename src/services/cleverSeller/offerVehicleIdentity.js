@@ -189,7 +189,7 @@ export function parseTrimSwitchPhrase(text = '') {
 }
 
 /**
- * Standalone Trim / Farbe für offenen Offer-Kontext.
+ * Standalone Trim / Farbe / Paket / Powertrain für offenen Offer-Kontext.
  * @param {string} text
  */
 export function parseOfferIdentityFollowUp(text = '') {
@@ -199,19 +199,60 @@ export function parseOfferIdentityFollowUp(text = '') {
   if (trimSwitch) {
     return { kind: 'trim', trim: trimSwitch.to, fromTrim: trimSwitch.from, raw: t };
   }
-  // Nur Trim / Farbe / kurzes „Doch EV2 Earth“
   const color = t.match(COLOR_RE);
   const trim = t.match(TRIM_RE);
   const model = t.match(MODEL_RE);
-  if (model && (trim || color || /\bdoch\b/i.test(t))) {
+  const packages = [];
+  if (/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i.test(t)) {
+    packages.push(/connect/i.test(t) ? 'Winter-Connect-Paket' : 'Winterpaket');
+  }
+  if (/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('DriveWise Paket');
+  if (/\bbusiness(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('Business Paket');
+  if (/\bupgrade(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('Upgrade Paket');
+  const powertrainMatch = t.match(/\blong\s*range\b/i)
+    || t.match(/(\d{2,3}(?:[.,]\d+)?)\s*kwh/i);
+  const powertrain = powertrainMatch
+    ? (/long\s*range/i.test(powertrainMatch[0])
+      ? 'Long Range'
+      : `${String(powertrainMatch[1] || powertrainMatch[0]).replace(',', '.')} kWh`)
+    : null;
+
+  if (model && (trim || color || packages.length || powertrain || /\bdoch\b/i.test(t))) {
     return {
       kind: 'vehicle_identity',
       modelKey: normalizeModelKey(model[1]),
       model: displayModel(model[1]),
       trim: trim ? normalizeTrimLabel(trim[1]) : null,
       color: color ? normalizeColorBase(color[1]) : null,
+      packages: packages.length ? packages : undefined,
+      powertrain: powertrain || null,
       raw: t,
     };
+  }
+  // Multi-Slot ohne Modell: „Earth Long Range schwarz Winterpaket“
+  if ((trim || color || packages.length || powertrain)
+    && t.length <= 120
+    && !/\b(?:monat|km|rate|anzahlung|leasing|finanz)\b/i.test(t)) {
+    const multi = Boolean(
+      (trim && color)
+      || (trim && packages.length)
+      || (trim && powertrain)
+      || (color && packages.length)
+      || packages.length
+      || powertrain,
+    );
+    if (multi || (trim && t.length > 12) || (color && t.length > 8)) {
+      return {
+        kind: 'vehicle_identity',
+        modelKey: null,
+        model: null,
+        trim: trim ? normalizeTrimLabel(trim[1]) : null,
+        color: color ? normalizeColorBase(color[1]) : null,
+        packages: packages.length ? packages : undefined,
+        powertrain: powertrain || null,
+        raw: t,
+      };
+    }
   }
   if (trim && t.length <= 40 && !/\b(?:monat|km|rate|anzahlung|leasing|finanz)\b/i.test(t)) {
     return { kind: 'trim', trim: normalizeTrimLabel(trim[1]), raw: t };
@@ -220,6 +261,26 @@ export function parseOfferIdentityFollowUp(text = '') {
     return { kind: 'color', color: normalizeColorBase(color[1]), raw: t };
   }
   return null;
+}
+
+/**
+ * Nur Modell + Angebot – keine Trim/Farbe/Paket-Defaults aus Track/Magic.
+ * „EV2 Angebot“ → unvollständiger Concept Draft.
+ */
+export function isModelOnlyOfferCue(text = '') {
+  const t = String(text || '').trim();
+  if (!t || !/\bangebot\b/i.test(t)) return false;
+  if (!MODEL_RE.test(t)) return false;
+  const rest = t
+    .replace(MODEL_RE, ' ')
+    .replace(/\b(?:kia|angebot|bitte|mach(?:en|e)?|erstell(?:e|en)?|ein|das|den|der|für|ihn|ihr)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!rest) return true;
+  if (TRIM_RE.test(rest) || COLOR_RE.test(rest) || /\b(?:paket|long\s*range|kwh|weiss|weiß|schwarz)\b/i.test(rest)) {
+    return false;
+  }
+  return rest.length < 4;
 }
 
 function normalizeTrimLabel(raw = '') {
@@ -499,7 +560,8 @@ export function resolveOfferVehicleTarget({
       createNew,
       modelKey: explicit.modelKey,
       model: explicit.model,
-      trim: explicit.trim || match?.config?.trimLabel || null,
+      // Explizites Modell ohne Trim im Cue → Slot bleibt open (kein Track-Default)
+      trim: explicit.trim || null,
       label: explicit.label
         || match?.displayName
         || displayModel(explicit.modelKey),
@@ -507,6 +569,7 @@ export function resolveOfferVehicleTarget({
       mutationMode: updateExisting
         ? OFFER_MUTATION_MODE.UPDATE_EXISTING
         : (createNew ? OFFER_MUTATION_MODE.CREATE_NEW : mutationMode),
+      modelOnlyConcept: !explicit.trim,
     };
   }
 

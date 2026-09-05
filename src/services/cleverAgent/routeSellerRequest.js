@@ -8,7 +8,9 @@ import { extractVehicleModelKeysFromText } from '../cleverSeller/batchOfferTrack
 import {
   findOfferDraftByModelKey,
   parseWorkingDraftFollowUp,
+  resolveActiveOfferDraft,
 } from '../cleverSeller/cleverWorkingDraft.js';
+import { isModelOnlyOfferCue } from '../cleverSeller/offerVehicleIdentity.js';
 
 const SIMPLE_FACT_RE = /^(?:was\s+(?:ist|hat|liegt)|anhängelast|wltp|reichweite|heute\s+an|öffne\s+\w+)/i;
 const COMPLEX_HINT_RE = /etstell|erstell|angebot|schreib|schick|merk|gleiche|wp\b|wärmepumpe|und\s+schreib|for\s+|with\s+/i;
@@ -31,21 +33,36 @@ export function routeSellerRequest(sellerMessage = '', options = {}) {
     return 'deterministic_fast_path';
   }
 
+  // Concept Draft: „EV2 Angebot“ – keine Agent-Defaults, Working-Draft-Core
+  if (isModelOnlyOfferCue(text)) {
+    return 'deterministic_fast_path';
+  }
+
   // Multi-Modell-Interesse: Tracks + recentVehicleTrackIds deterministisch anlegen
   const multiModels = extractVehicleModelKeysFromText(text);
   if (multiModels.length >= 2 && MULTI_VEHICLE_INTEREST_RE.test(text)) {
     return 'deterministic_fast_path';
   }
 
-  // Cross-Draft Follow-up: „EV2 Air weiß“ → Draft dieses Modells (nicht Agent auf aktuellem EV3)
+  const memory = options.workingMemory || null;
+  const activeDraft = resolveActiveOfferDraft({
+    lead: options.lead || null,
+    workingMemory: memory,
+  });
+
+  // Identity-Follow-up am offenen Concept Draft (Manual Refinement)
   const followUp = parseWorkingDraftFollowUp(text, []);
+  if (followUp && activeDraft?.offerDraftId) {
+    return 'deterministic_fast_path';
+  }
+
+  // Cross-Draft Follow-up: „EV2 Air weiß“ → Draft dieses Modells (nicht Agent auf aktuellem EV3)
   if (followUp?.modelKey && findOfferDraftByModelKey(options.lead || null, followUp.modelKey)) {
     return 'deterministic_fast_path';
   }
 
-  const memory = options.workingMemory || null;
-  if (memory?.pendingAction) return 'clever_agent';
-  if (memory?.previousOfferPreparation && OFFER_FOLLOW_UP_RE.test(text)) {
+  if (memory?.pendingAction && !followUp) return 'clever_agent';
+  if (memory?.previousOfferPreparation && OFFER_FOLLOW_UP_RE.test(text) && !followUp) {
     return 'clever_agent';
   }
   if (memory?.lastAppointmentProposal && APPOINTMENT_FOLLOW_UP_RE.test(text)) {

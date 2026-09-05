@@ -794,12 +794,33 @@ export function buildUniversalActionSections(turn = {}) {
     const commercialLine = inherited.length
       ? inherited.join(' · ')
       : null;
+    const identityConflicts = Array.isArray(offerSectionSource.payload?.identityConflicts)
+      ? offerSectionSource.payload.identityConflicts
+      : [];
+    const conflictActions = identityConflicts.flatMap((c) => (
+      (c.choices || []).slice(0, 2).map((choice) => ({
+        id: `conflict-${c.field}-${choice.id}`,
+        label: choice.label,
+        action: 'resolve_identity_conflict',
+        field: c.field,
+        value: choice.value,
+        insertText: choice.value,
+        tone: choice.id === 'take_pdf' ? 'primary' : 'secondary',
+      }))
+    ));
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
       title: 'Angebot',
-      headline: offerSectionSource.payload?.vehicleLabel || vehicle?.label || 'Kaufangebot',
-      line: lineParts.join(' · ') || null,
+      headline: identityConflicts[0]?.label
+        || offerSectionSource.payload?.vehicleLabel
+        || vehicle?.label
+        || 'Kaufangebot',
+      line: identityConflicts.length
+        ? identityConflicts.map((c) => (
+          `Entwurf: ${c.draftValue} · PDF: ${c.pdfValue}`
+        )).join(' · ')
+        : (lineParts.join(' · ') || null),
       inheritedLine: commercialLine
         ? (incomplete || offerSectionSource.payload?.missingRate
           ? commercialLine
@@ -819,27 +840,29 @@ export function buildUniversalActionSections(turn = {}) {
           to: discount.label,
         } : null,
       ].filter(Boolean),
-      primaryActions: incomplete
-        ? [
-          ...identityActions,
-          {
-            id: 'create_offer',
-            label: offerPrimaryLabel,
-            leadId: turn.resolvedCustomer?.id || null,
-            action: 'open_offer_handoff',
-            tone: 'primary',
-          },
-          { id: 'upload_pdf', label: 'PDF hochladen', action: 'upload_pdf', tone: 'secondary' },
-        ]
-        : [
-          {
-            id: 'create_offer',
-            label: offerPrimaryLabel,
-            leadId: turn.resolvedCustomer?.id || null,
-            action: 'open_offer_handoff',
-            tone: 'primary',
-          },
-        ],
+      primaryActions: identityConflicts.length
+        ? conflictActions
+        : (incomplete
+          ? [
+            ...identityActions,
+            {
+              id: 'create_offer',
+              label: offerPrimaryLabel,
+              leadId: turn.resolvedCustomer?.id || null,
+              action: 'open_offer_handoff',
+              tone: 'primary',
+            },
+            { id: 'upload_pdf', label: 'PDF hochladen', action: 'upload_pdf', tone: 'secondary' },
+          ]
+          : [
+            {
+              id: 'create_offer',
+              label: offerPrimaryLabel,
+              leadId: turn.resolvedCustomer?.id || null,
+              action: 'open_offer_handoff',
+              tone: 'primary',
+            },
+          ]),
       secondaryActions: [
         {
           id: 'toggle_context',
@@ -855,7 +878,9 @@ export function buildUniversalActionSections(turn = {}) {
         },
       ],
       // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
-      clarifyPrompt: incomplete ? (clarifyPrompts.join(' · ') || 'Welche Monatsrate möchtest du hinterlegen?') : null,
+      clarifyPrompt: identityConflicts.length
+        ? null
+        : (incomplete ? (clarifyPrompts.join(' · ') || 'Welche Monatsrate möchtest du hinterlegen?') : null),
     });
     }
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {

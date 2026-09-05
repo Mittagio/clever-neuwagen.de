@@ -1,0 +1,39 @@
+---
+description: PRODUKT-FREEZE Offer Intake – Manual + PDF refinement am selben Offer Draft
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: OFFER INTAKE (MANUAL + PDF)
+
+**Status: FREEZE**
+
+## Produktsätze
+
+> Composer erstellt das Konzept.
+
+> PDF und Verkäufer präzisieren denselben Draft.
+
+> Unvollständig ist erlaubt. Geraten ist nicht erlaubt.
+
+> Clever liest nicht nur die Rate – Clever versteht das Angebot.
+
+## Verbindlich
+
+1. „EV2 Angebot“ → Concept Draft: nur Modell; trim/powertrain/color/packages offen; Rate null. **Keine** stillen Defaults (Air, Long Range, Clear White, …).
+2. Manual Refinement (Composer oder Offer-Tool-Klick) → **gleicher** `offerDraftId` / `vehicleIdentityDraftId`.
+3. PDF-Upload nach Concept → Merge Identity + Konditionen in **denselben** Draft. Kein zweiter unabhängiger Offer Draft.
+4. Merge: leerer Slot ergänzen; kompatibel normalisieren; Konflikt nur slotweise („Variante prüfen“) – Rest darf durch. Nie still überschreiben.
+5. Jeder Wert behält Source (`seller_input` / `pdf` / …). Original-PDF am Draft.
+6. Rate nur aus PDF / Verkäufer / Bank / nachweisbarer Offer Source – nie LLM oder fremdes Fahrzeugangebot.
+
+## Code / Doc
+
+- Merge: `src/services/cleverSeller/offerDraftIntakeMerge.js`
+- Plan: `refine_offer_from_pdf` in `planSellerActions.js`
+- Golden: `offerIntakeFreeze.golden.test.js`
+- Doc: `docs/CLEVER_OFFER_INTAKE_FREEZE.md`
+
+## Nicht
+
+- Keine neue Offer-Architektur (baut auf Working-Draft-Core)
+- Kein Carwow-Stepper / Akte-Hierarchy-Redesign

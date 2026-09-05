@@ -411,6 +411,17 @@ export function applyIdentityFollowUpPatch(draft, patch = {}) {
       }));
     }
   }
+  if (patch.powertrain !== undefined) {
+    if (patch.powertrain == null || patch.powertrain === '') {
+      next.powertrainVariant = slot({ status: IDENTITY_SLOT_STATUS.OPEN });
+    } else {
+      next.powertrainVariant = slot({
+        raw: String(patch.powertrain),
+        canonical: null,
+        status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+      });
+    }
+  }
   if (Array.isArray(patch.removePackages)) {
     const remove = new Set(patch.removePackages.map(normalizeKey));
     next.packages = next.packages.filter((p) => !remove.has(normalizeKey(p.raw)));

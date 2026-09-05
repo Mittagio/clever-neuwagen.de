@@ -31,6 +31,7 @@ import {
   isPrepareSuccessionOfferCue,
   prepareSuccessionOfferFromLead,
 } from './prepareSuccessionOfferFromLead.js';
+import { isModelOnlyOfferCue } from './offerVehicleIdentity.js';
 import {
   evaluateSellerInterpretEscalation,
   isCleverSellerOrchestratorEnabled,
@@ -668,11 +669,19 @@ function finalizeSellerTurn({
   }
 
   // Capture-first: reicher Dump ohne Offer-Cue → kein PREPARE_OFFER / keine Fake-Rate-Review
-  const captureFirst = shouldCaptureBeforeOffer({
-    facts: uniqueFacts,
-    sellerInput: interpreted.normalized || interpreted.raw,
-  })
-    || isSellerFreestyleCaptureDump(interpreted.normalized || interpreted.raw);
+  // Ausnahme Offer Intake Freeze: „EV2 Angebot“ ist Concept Draft, kein Capture-Dump
+  // (auch gegen OpenAI-Normalisierung: Original-Seller-Input prüfen)
+  const sellerRawForCapture = interpreted.normalized || interpreted.raw;
+  const modelOnlyOfferConcept = isModelOnlyOfferCue(sellerInput)
+    || isModelOnlyOfferCue(interpreted?.raw)
+    || isModelOnlyOfferCue(sellerRawForCapture);
+  const captureFirst = !modelOnlyOfferConcept && (
+    shouldCaptureBeforeOffer({
+      facts: uniqueFacts,
+      sellerInput: sellerRawForCapture,
+    })
+    || isSellerFreestyleCaptureDump(sellerRawForCapture)
+  );
   if (
     captureFirst
     && intentConstraint !== COMPOSER_INTENT_CONSTRAINT.OFFER
@@ -682,10 +691,10 @@ function finalizeSellerTurn({
   ) {
     effectiveIntents = filterOfferIntentForCaptureFirst(effectiveIntents, {
       facts: uniqueFacts,
-      sellerInput: interpreted.normalized || interpreted.raw,
+      sellerInput: sellerRawForCapture,
     });
     // Multi-Fahrzeug Soft-Dump (+ optional Name/Mail): Capture, kein Inbound-/Message-Miss
-    if (isSellerFreestyleCaptureDump(interpreted.normalized || interpreted.raw)) {
+    if (isSellerFreestyleCaptureDump(sellerRawForCapture)) {
       effectiveIntents = effectiveIntents.filter((i) => (
         i.type !== SELLER_TURN_INTENTS.INBOUND_LEAD
         && i.type !== SELLER_TURN_INTENTS.DRAFT_MESSAGE
@@ -701,6 +710,17 @@ function finalizeSellerTurn({
       inboundLead = null;
       customerReply = null;
     }
+  }
+
+  // Offer Intake: Concept Draft Intent hart setzen (auch nach OpenAI/Capture-Heuristik)
+  if (
+    modelOnlyOfferConcept
+    && !effectiveIntents.some((i) => i.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+  ) {
+    effectiveIntents = [
+      { type: SELLER_TURN_INTENTS.PREPARE_OFFER, confidence: 0.99 },
+      ...effectiveIntents,
+    ];
   }
 
   let rememberDecision = null;
@@ -725,14 +745,17 @@ function finalizeSellerTurn({
     || i.type === SELLER_TURN_INTENTS.CUSTOMER_REPLY
   ));
   if (
-    intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
-    || (looksLikeKnowledgeDump && !hasHardActionIntent)
-    || (
-      (captureFirst || shouldCaptureBeforeOffer({
-        facts: uniqueFacts,
-        sellerInput: interpreted.normalized || interpreted.raw,
-      }))
-      && !hasHardActionIntent
+    !modelOnlyOfferConcept
+    && (
+      intentConstraint === COMPOSER_INTENT_CONSTRAINT.REMEMBER
+      || (looksLikeKnowledgeDump && !hasHardActionIntent)
+      || (
+        (captureFirst || shouldCaptureBeforeOffer({
+          facts: uniqueFacts,
+          sellerInput: interpreted.normalized || interpreted.raw,
+        }))
+        && !hasHardActionIntent
+      )
     )
   ) {
     rememberDecision = evaluateRememberDecision(uniqueFacts, workingLead);
