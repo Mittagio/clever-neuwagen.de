@@ -617,13 +617,21 @@ export default function DealerAiOfferPreview({
       const ev = evidence?.monthlyRate?.sourceText || evidence?.monthlyRate?.raw;
       if (ev) return `Quelle: PDF · „${ev}“`;
       if (originalPdfFileName) return `Quelle: PDF · ${originalPdfFileName}`;
-      return 'Quelle: PDF';
+      return fromPdf || originalPdfFileName ? 'Quelle: PDF' : 'Quelle: Verkäufer / Bank';
     }
-    if (offerDraft?.offerPreview?.monthlyRate != null || offerDraft?.payment?.calculatedRate != null) {
-      return recognized?.monthlyRate != null ? 'Quelle: Verkäufer / Bank' : 'Quelle: Angebot';
-    }
+    if (recognized?.monthlyRate != null) return 'Quelle: Verkäufer / Bank';
     return null;
   })();
+  const rateIsAuthoritative = Boolean(
+    !rateNeedsReview
+    && identityConflicts.length === 0
+    && (
+      offerDraft?.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE
+      || fromPdf
+      || recognized?.monthlyRate != null
+      || Boolean(edited?.monthlyRate)
+    )
+  );
 
   const uvpTotal = preview.uvpConfigurationPrice
     ?? vehicleConfiguration?.uvpConfigurationPrice
@@ -652,7 +660,7 @@ export default function DealerAiOfferPreview({
     ?? null;
   const offerPrice = isCash
     ? (calculatedRate ?? (housePrice != null && transferCost != null ? housePrice + transferCost : null))
-    : calculatedRate;
+    : (rateIsAuthoritative ? calculatedRate : null);
 
   const savings = discountAmount
     ?? (uvpTotal != null && housePrice != null ? uvpTotal - housePrice : null);

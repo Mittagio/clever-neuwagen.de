@@ -863,6 +863,7 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
     source,
     identityConflicts,
     rateAuthority,
+    missingRate: rateFromPdf != null ? false : offerDraft.missingRate,
     // Rate nur belastbar, wenn Identity zum aktuellen Draft passt (Konflikt → Rate prüfen)
     rateNeedsReview: identityConflicts.length > 0
       ? true

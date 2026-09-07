@@ -153,18 +153,23 @@ export function buildOfferDraftFromExistingCard({
 
   if (!offerDraft) return null;
 
-  const rate = enriched.calculatedRate
+  // Nur gespeicherte / Verkäufer-Raten – keine Katalog-/Preview-Schätzung (Capture-then-Offer)
+  const storedRate = enriched.calculatedRate
     ?? vehicleOffer?.monthlyRate
     ?? vehicleOffer?.boardOffer?.payment?.monthlyRate
-    ?? offerDraft.payment?.calculatedRate
     ?? null;
   const isCash = (configureDraft.paymentType ?? offerDraft.payment?.type) === 'cash';
   const cashPrice = enriched.calculatedPrice
     ?? vehicleOffer?.boardOffer?.payment?.cashPrice
     ?? null;
+  const createdFromPdf = Boolean(originalPdf)
+    || vehicleOffer?.source?.createdFrom === 'magic_offer_pdf';
+  const rateAuthority = createdFromPdf || storedRate != null || cashPrice != null
+    ? 'authoritative'
+    : 'non_authoritative';
 
-  if (rate != null || cashPrice != null) {
-    const value = isCash ? (cashPrice ?? rate) : rate;
+  if (storedRate != null || cashPrice != null) {
+    const value = isCash ? (cashPrice ?? storedRate) : storedRate;
     offerDraft = {
       ...offerDraft,
       payment: {
@@ -187,11 +192,34 @@ export function buildOfferDraftFromExistingCard({
         mileagePerYear: enriched.mileagePerYear ?? offerDraft.offerCalculation?.mileagePerYear,
         downPayment: enriched.downPayment ?? offerDraft.offerCalculation?.downPayment,
       },
+      rateAuthority,
+      missingRate: false,
+    };
+  } else {
+    // Concept / unvollständiger Draft: Katalog-Rate aus Preview verwerfen
+    offerDraft = {
+      ...offerDraft,
+      payment: {
+        ...offerDraft.payment,
+        calculatedRate: null,
+        budget: null,
+        termMonths: enriched.termMonths ?? offerDraft.payment?.termMonths ?? null,
+        mileagePerYear: enriched.mileagePerYear ?? offerDraft.payment?.mileagePerYear ?? null,
+        downPayment: enriched.downPayment ?? offerDraft.payment?.downPayment ?? 0,
+        transferCost: enriched.preparationFee ?? offerDraft.payment?.transferCost ?? null,
+      },
+      offerPreview: {
+        ...offerDraft.offerPreview,
+        monthlyRate: null,
+      },
+      offerCalculation: {
+        ...offerDraft.offerCalculation,
+        monthlyRate: null,
+      },
+      rateAuthority,
+      missingRate: !isCash,
     };
   }
-
-  const createdFromPdf = Boolean(originalPdf)
-    || vehicleOffer?.source?.createdFrom === 'magic_offer_pdf';
 
   offerDraft = {
     ...offerDraft,
@@ -202,9 +230,9 @@ export function buildOfferDraftFromExistingCard({
     updatedAt: vehicleOffer?.updatedAt ?? null,
     preparedAt: vehicleOffer?.preparedAt ?? null,
     createdAt: vehicleOffer?.createdAt ?? null,
-    monthlyRate: vehicleOffer?.monthlyRate
-      ?? offerDraft.payment?.calculatedRate
-      ?? null,
+    monthlyRate: storedRate ?? null,
+    rateAuthority: offerDraft.rateAuthority ?? rateAuthority,
+    missingRate: Boolean(offerDraft.missingRate),
     source: {
       ...offerDraft.source,
       createdFrom: createdFromPdf

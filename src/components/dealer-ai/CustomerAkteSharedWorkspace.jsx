@@ -910,10 +910,13 @@ export default function CustomerAkteSharedWorkspace({
 
       // Zero-Loss Merken: sichere Facts sofort speichern (+ Partial Success)
       // Ausnahme: PREPARE_OFFER / Concept Draft hat Vorrang (Offer Intake Freeze)
+      // Concept ohne Rate ist oft status=blocked („Rate fehlt“) – trotzdem Offer-Review, kein Remember-Schlucken
       const hasPreparedOfferAction = (turn.preparedActions || []).some((a) => (
         (a.type === SELLER_TURN_INTENTS.PREPARE_OFFER || a.type === 'prepare_offer')
-        && a.status === 'prepared'
+        && (a.status === 'prepared' || a.status === 'blocked')
         && a.payload?.offerDraftId
+        && !a.payload?.needsClarification
+        && !a.payload?.clarifyVehicleForOffer
       ));
       if (willRemember && !hasPreparedOfferAction) {
         setDraft('');

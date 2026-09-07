@@ -1181,16 +1181,18 @@ export function planSellerActions({
         && (
           magic?.decision?.action === 'ask_rate'
           || isBareOrGenericOfferCue(sellerInput)
+          || modelOnlyConcept
           || Boolean(offerVehicleTarget.vehicleTrackId)
         );
       const profileLeasing = lead?.paymentType === 'leasing' || lead?.wish?.paymentType === 'leasing';
       const cashVsLeasingWarning = offerType === 'cash' && profileLeasing
         ? 'In der Kundenakte ist bisher Leasing notiert.'
         : null;
-      // Capture→Offer: Track-Target ohne Fake-Rate bleibt prepared (Angebotstool), nicht stuck-blocked
-      const bareOfferShell = isBareOrGenericOfferCue(sellerInput)
+      // Capture→Offer: Track-/Concept-Target ohne Fake-Rate bleibt prepared (Angebotstool), nicht stuck-blocked
+      const bareOfferShell = (isBareOrGenericOfferCue(sellerInput) || modelOnlyConcept)
         && Boolean(offerVehicleTarget.vehicleTrackId || focusModel);
       const preparedOk = bareOfferShell
+        || modelOnlyConcept
         || ((offer?.ok || purchaseAmount != null || hasLeasingRate) && !(
           offerType === 'leasing' && offerMonthlyRate == null && magic?.decision?.action === 'ask_rate'
         ));

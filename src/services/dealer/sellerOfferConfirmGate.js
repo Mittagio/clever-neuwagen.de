@@ -327,6 +327,12 @@ export function applyCommercialConfirmPatch(offerDraft, patch = {}) {
     rateNeedsReview,
     rateCalibratedFor,
     identityConflicts,
+    ...(rateTouched
+      ? {
+        rateAuthority: 'authoritative',
+        missingRate: false,
+      }
+      : {}),
     ...(identityTouched
       ? {
         vehicle,
