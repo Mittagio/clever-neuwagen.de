@@ -152,7 +152,7 @@ function prepOffer(turn) {
 }
 
 {
-  // C) Konflikt: Draft Air + PDF Earth → nur Trim-Konflikt, Rest übernimmt
+  // C) Konflikt: Draft Earth + PDF Air → nur Trim-Konflikt, Rest übernimmt
   const extracted = await extractPdfFixture(
     join(fixtures, 'EV2_Earth_vs_Air_Conflict.pdf'),
     'EV2_Earth_vs_Air_Conflict.pdf',
@@ -160,17 +160,17 @@ function prepOffer(turn) {
   assert.ok(extracted.ok, 'Conflict PDF extract');
 
   const offerDraftId = 'od-precision-conflict';
-  const draftAir = {
+  const draftEarth = {
     offerDraftId,
     payment: { type: 'leasing' },
     offerPreview: {},
     offerCalculation: {},
-    vehicle: { model: 'EV2', modelKey: 'ev2', trimLabel: 'Air' },
+    vehicle: { model: 'EV2', modelKey: 'ev2', trimLabel: 'Earth' },
     vehicleConfiguration: {
       model: 'EV2',
       modelKey: 'ev2',
-      trimLabel: 'Air',
-      trimId: 'air',
+      trimLabel: 'Earth',
+      trimId: 'earth',
     },
     source: {},
   };
@@ -190,28 +190,28 @@ function prepOffer(turn) {
     offerInterpretation: interpretation,
   });
 
-  const merged = overlayMagicOntoOfferDraft(draftAir, preparation);
+  const merged = overlayMagicOntoOfferDraft(draftEarth, preparation);
   assert.equal(merged.offerDraftId, offerDraftId);
-  assert.equal(merged.vehicleConfiguration.trimLabel, 'Air', 'Trim bleibt bis Entscheidung');
+  assert.equal(merged.vehicleConfiguration.trimLabel, 'Earth', 'Trim bleibt bis Entscheidung');
   const trimConflict = (merged.identityConflicts || []).find((c) => c.field === 'trim');
   assert.ok(trimConflict, 'Trim-Konflikt vorhanden');
   assert.equal(trimConflict.label, 'Variante prüfen');
-  assert.match(String(trimConflict.draftValue), /Air/i);
-  assert.match(String(trimConflict.pdfValue), /Earth/i);
-  assert.ok(trimConflict.choices?.some((c) => /Earth.*übernehmen|übernehmen/i.test(c.label)));
-  assert.ok(trimConflict.choices?.some((c) => /Air.*behalten|behalten/i.test(c.label)));
+  assert.match(String(trimConflict.draftValue), /Earth/i);
+  assert.match(String(trimConflict.pdfValue), /Air/i);
+  assert.ok(trimConflict.choices?.some((c) => /Air.*übernehmen|übernehmen/i.test(c.label)));
+  assert.ok(trimConflict.choices?.some((c) => /Earth.*behalten|behalten/i.test(c.label)));
   assert.equal(merged.payment.calculatedRate, 301.5, 'Commercial Rate aus PDF');
   assert.equal(merged.payment.termMonths, 36, 'Laufzeit aus PDF');
   assert.equal(merged.rateNeedsReview, true, 'Konflikt → Rate prüfen');
 
-  // Earth übernehmen → Konflikt weg, Rate belastbar
+  // Air übernehmen → Konflikt weg, Rate belastbar
   const takePdf = applyCommercialConfirmPatch(merged, {
-    trimLabel: 'Earth',
-    trimId: 'earth',
+    trimLabel: 'Air',
+    trimId: 'air',
     resolveIdentityConflict: { field: 'trim' },
     rateNeedsReview: false,
   });
-  assert.equal(takePdf.vehicleConfiguration.trimLabel, 'Earth');
+  assert.equal(takePdf.vehicleConfiguration.trimLabel, 'Air');
   assert.equal((takePdf.identityConflicts || []).length, 0);
   assert.equal(takePdf.rateNeedsReview, false);
   assert.equal(takePdf.payment.calculatedRate, 301.5);

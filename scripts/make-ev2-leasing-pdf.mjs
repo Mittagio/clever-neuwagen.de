@@ -61,9 +61,10 @@ const earthLines = [
   'Laufleistung / Jahr 15.000 km',
 ];
 
+// Draft typisch Earth (nach 289-PDF) → dieser PDF liefert Air → Trim-Konflikt
 const airConflictLines = [
   'KIA Leasing Kalkulation',
-  'Kia EV2 Earth 64 kWh Frontantrieb',
+  'Kia EV2 Air 64 kWh Frontantrieb',
   'Lackierung: Clear White',
   'Monatliche Gesamtrate 301,50 EUR',
   'Monatsrate Finanzleasing 301,50 EUR',

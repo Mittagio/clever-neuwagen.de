@@ -17,6 +17,7 @@ import { applyAcceptedSellerTurn } from './applyAcceptedSellerTurn.js';
 import { runCleverSellerTurn } from './runCleverSellerTurn.js';
 import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { getOfferDraftById } from './cleverWorkingDraft.js';
+import { buildUniversalReviewModel } from './buildUniversalReviewModel.js';
 import {
   mergePdfIntoActiveOfferDraft,
   mergeIdentitySlot,
@@ -171,6 +172,58 @@ function pdfFactsForEarthOffer() {
   assert.equal(action.payload?.monthlyRate ?? action.payload?.offerDraft?.rate ?? null, null);
   assert.ok(action.payload?.offerDraftId, 'A: offerDraftId');
   console.log('✓ Golden A – EV2 Konzept ohne Defaults');
+}
+
+// ========== GOLDEN A2: EV2 Angebot trotz offenem Fremd-Angebot → Concept, kein updateOnly ==========
+{
+  const lead = baseLead({
+    crm: {
+      needProfile: createEmptyNeedProfile(),
+      focusedVehicleTrackId: 'vc-ev3',
+      vehicleConfigurations: [
+        {
+          id: 'vc-ev3',
+          brand: 'Kia',
+          model: 'EV3',
+          modelKey: 'ev3',
+          trimLabel: 'Earth',
+          vehicleTrack: { status: VEHICLE_TRACK_STATUS.ACTIVE },
+        },
+      ],
+      vehicleOffers: {
+        'vo-ev3': {
+          id: 'vo-ev3',
+          vehicleCardId: 'vc-ev3',
+          monthlyRate: 438.59,
+        },
+      },
+    },
+  });
+  const turn = runCleverSellerTurn({
+    sellerInput: 'EV2 Angebot',
+    lead,
+    leads: [lead],
+    currentOfferContext: {
+      offerId: 'vo-ev3',
+      title: 'EV3 Earth',
+      modelKey: 'ev3',
+      vehicleTrackId: 'vc-ev3',
+      summary: 'EV3 Earth · 36 M',
+      monthlyRate: 438.59,
+    },
+  });
+  const action = prepOffer(turn);
+  assert.ok(action, 'A2: PREPARE_OFFER');
+  assert.notEqual(action.payload?.updateOnly, true, 'A2: kein updateOnly am EV3');
+  assert.ok(action.payload?.offerDraftId, 'A2: neues Concept offerDraftId');
+  assert.equal(action.payload?.vehicleIdentityDraft?.modelKey, 'ev2');
+  const review = buildUniversalReviewModel(turn);
+  assert.ok(
+    (review.actionSections || []).some((s) => s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'),
+    'A2: Offer-Sektion statt nur Interesse',
+  );
+  assert.ok(!review.understandingFactReview, 'A2: kein Interest-only Fallback');
+  console.log('✓ Golden A2 – Concept trotz offenem Fremd-Angebot');
 }
 
 // ========== GOLDEN B: Manual Refinement gleicher Draft ==========

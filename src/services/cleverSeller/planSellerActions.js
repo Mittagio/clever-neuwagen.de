@@ -913,6 +913,11 @@ export function planSellerActions({
         || Boolean(currentOfferContext?.offerId)
       )
     ));
+    // „EV2 Angebot“ / neues Modell → Concept Draft, kein updateOnly am offenen Fremd-Angebot
+    const wantsNewConceptOffer = offerVehicleTarget.createNew === true
+      || offerVehicleTarget.mutationMode === OFFER_MUTATION_MODE.CREATE_NEW
+      || offerVehicleTarget.modelOnlyConcept === true
+      || isModelOnlyOfferCue(sellerInput);
     if (blockedByClarify) {
       actions.push({
         id: 'prepare_offer',
@@ -1004,6 +1009,7 @@ export function planSellerActions({
       } else if (
         currentOfferContext?.offerId
         && (commercialOnly || identityOnOpenOffer)
+        && !wantsNewConceptOffer
         && !facts.some((f) => f.field === 'purchasePrice')
       ) {
         // Fallback: alter updateOnly-Pfad wenn Mutation fehlschlägt
@@ -1047,6 +1053,7 @@ export function planSellerActions({
     } else if (
       currentOfferContext?.offerId
       && (commercialOnly || identityOnOpenOffer)
+      && !wantsNewConceptOffer
       && !facts.some((f) => f.field === 'purchasePrice')
     ) {
       const trimFact = facts.find((f) => f.field === 'trimPreference');
