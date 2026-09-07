@@ -130,7 +130,8 @@ assert.ok(kundenbildSource.includes('cust-kundenbild__summary-chips'), 'Summary-
 assert.ok(kundenbildSource.includes('SummaryChipLight'), 'SummaryChipLight-Komponente');
 assert.ok(kundenbildSource.includes('SoftTopicLine'), 'Themenzeilen im Panel');
 assert.ok(kundenbildSource.includes('ProvenanceFact'), 'Provenance auf Fakten');
-assert.ok(kundenbildSource.includes('showProvenanceMeta'), 'Provenance im Expanded-Detail');
+assert.ok(kundenbildSource.includes('cust-kundenbild__fact--chip'), 'Fact-Chips im Expanded');
+assert.ok(kundenbildSource.includes('showProvenanceMeta'), 'Provenance-Prop vorhanden');
 assert.ok(!kundenbildSource.includes('LONG_PRESS_MS'), 'Kein Long-Press in Summary');
 assert.ok(
   !kundenbildSource.includes('is-empty-scaffold'),

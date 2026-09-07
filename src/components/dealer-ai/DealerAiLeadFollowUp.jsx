@@ -436,8 +436,6 @@ export default function DealerAiLeadFollowUp({
   /** @type {[{ previousLead: object, label: string }|null, Function]} */
   const [knowledgeUndo, setKnowledgeUndo] = useState(null);
   const [wissenPickerOpen, setWissenPickerOpen] = useState(false);
-  const [knowledgeUndo, setKnowledgeUndo] = useState(null);
-  const [wissenPickerOpen, setWissenPickerOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   /** Freeze: Kundenwissen startet collapsed → light Summary-Chips sichtbar */
   const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
@@ -2482,9 +2480,12 @@ export default function DealerAiLeadFollowUp({
       dog: Boolean(profile.dog),
       termMonths: wishTermMonths || '',
       mileagePerYear: wishMileage || '',
-      preferredColor: favorite?.config?.vehicleTrack?.preferredColor
-        || profile.colorPreference
-        || '',
+      preferredColor: snapshotChipEditor?.key === SNAPSHOT_MINI_EDITOR.COLOR
+        && snapshotChipEditor?.factLabel
+        ? snapshotChipEditor.factLabel
+        : (favorite?.config?.vehicleTrack?.preferredColor
+          || profile.colorPreference
+          || ''),
       delivery: wishDelivery || '',
       hasExistingVehicle: hasExisting,
       existingVehicle: tradeIn.vehicle
@@ -2532,10 +2533,11 @@ export default function DealerAiLeadFollowUp({
     return String(label || '').replace(/\s*[·|]\s*(muss|wichtig|nice|wunsch)\s*$/i, '').trim();
   }
 
-  /** Kundenbild-Chip → feld-spezifischer Mini-Editor (kein generisches Offen-Sheet). */
+  /** Kundenbild-Chip → feld-spezifischer Mini-Editor; nie toter Klick. */
   function handleKundenbildFactTap(fact) {
     const mini = String(fact?.miniEditor ?? '').trim();
     const label = String(fact?.label || '').trim();
+    const lower = label.toLowerCase();
     if (mini && Object.values(SNAPSHOT_MINI_EDITOR).includes(mini)) {
       setSnapshotChipEditor({
         key: mini,
@@ -2551,6 +2553,24 @@ export default function DealerAiLeadFollowUp({
       return;
     }
     if (!key && !label) return;
+
+    // Label-Heuristik: auch falsch gruppierten Soft-Facts den richtigen Editor geben
+    if (/^\d+\s*kinder\b|^1\s*kind\b|^kinder$/i.test(lower) || key === 'children' || key === 'family') {
+      setSnapshotChipEditor({
+        key: SNAPSHOT_MINI_EDITOR.CHILDREN,
+        factId: fact?.id || null,
+        factLabel: label,
+      });
+      return;
+    }
+    if (/\bhund\b|^1\s*hund/i.test(lower) || key === 'dog') {
+      setSnapshotChipEditor({
+        key: SNAPSHOT_MINI_EDITOR.DOG,
+        factId: fact?.id || null,
+        factLabel: label,
+      });
+      return;
+    }
     if (key === 'desiredRate' || key === 'downPayment' || key === 'paymentType'
       || key === 'termMonths' || key === 'mileagePerYear' || key === 'delivery'
       || key === 'leasingEndDate') {
@@ -2566,19 +2586,14 @@ export default function DealerAiLeadFollowUp({
       setSnapshotChipEditor({ key: editorMap[key], factId: fact?.id || null, factLabel: label });
       return;
     }
-    if (key === 'children' || key === 'dog' || key === 'family') {
-      setSnapshotChipEditor({
-        key: key === 'dog' ? SNAPSHOT_MINI_EDITOR.DOG : SNAPSHOT_MINI_EDITOR.CHILDREN,
-        factId: fact?.id || null,
-        factLabel: label,
-      });
-      return;
-    }
     if (key === 'tradeIn') {
       setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.TRADE_IN, factId: fact?.id || null, factLabel: label });
       return;
     }
-    if (key === 'vehicleTrack' && (relevance === 'preferredColor' || String(fact?.id || '').startsWith('color:'))) {
+    if (
+      key === 'vehicleTrack' && (relevance === 'preferredColor' || String(fact?.id || '').startsWith('color:'))
+      || /^(schwarz|wei[sß]|grau|blau|rot|silber|terracotta|magma|grün|gruen|beige)$/i.test(lower)
+    ) {
       setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.COLOR, factId: fact?.id || null, factLabel: label });
       return;
     }
@@ -2586,10 +2601,16 @@ export default function DealerAiLeadFollowUp({
       setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.MODEL, factId: fact?.id || null, factLabel: label });
       return;
     }
-    if (key === 'equipment' || relevance === 'equipment' || relevance === 'drive') {
+    if (
+      key === 'equipment'
+      || relevance === 'equipment'
+      || relevance === 'drive'
+      || /elektro|hybrid|diesel|benzin|allrad|frontantrieb|heckantrieb|phev|plug/i.test(lower)
+    ) {
       const driveMini = resolveDriveMiniEditor(label);
-      const isDrive = relevance === 'drive' || driveMini === SNAPSHOT_MINI_EDITOR.DRIVE
-        || /elektro|hybrid|diesel|benzin|allrad|front|heck/i.test(label);
+      const isDrive = relevance === 'drive'
+        || driveMini === SNAPSHOT_MINI_EDITOR.DRIVE
+        || /elektro|hybrid|diesel|benzin|allrad|front|heck|phev|plug/i.test(lower);
       setSnapshotChipEditor({
         key: isDrive ? driveMini : SNAPSHOT_MINI_EDITOR.EQUIPMENT,
         factId: fact?.id || null,
@@ -2597,13 +2618,12 @@ export default function DealerAiLeadFollowUp({
       });
       return;
     }
-    if (key === 'bedarf' || key === 'usage' || key === 'space' || !key) {
-      setSnapshotChipEditor({
-        key: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
-        factId: fact?.id || null,
-        factLabel: label,
-      });
-    }
+    // Generischer Fallback – kein Fact darf tot sein
+    setSnapshotChipEditor({
+      key: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
+      factId: fact?.id || null,
+      factLabel: label,
+    });
   }
 
   function applySnapshotChipEdit(editorKey, draft = {}) {

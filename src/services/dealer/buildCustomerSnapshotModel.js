@@ -197,7 +197,7 @@ const ACTIVITY_NOTE_RE = /beratungsgespr[äa]ch|verkaufsgespr[äa]ch|telefonat|\
  * Deckt u. a. „Wunschkonditionen aktualisiert“, „Clever Kundenhelfer aktualisiert“,
  * Multi-Source-Apply-Prozesslabels („Kunde angelegt“, „Angebotsauftrag vorbereitet“).
  */
-const HISTORY_NOISE_RE = /^(clever empfahl|clever-empfehlung|angebot |anruf\b|pdf\b|rückruf|✓|kunde hat|geöffnet|angesehen|nachricht |clever hat aufgenommen|wunschkonditionen aktualisiert|clever kundenhelfer aktualisiert|kundenbild aktualisiert|wunschrate aktualisiert|farbe aktualisiert|leasingende aktualisiert|bestandsfahrzeug aktualisiert|kinder aktualisiert|hund aktualisiert|rate aktualisiert)/i;
+const HISTORY_NOISE_RE = /^(clever empfahl|clever-empfehlung|angebot |anruf\b|pdf\b|rückruf|✓|kunde hat|geöffnet|angesehen|nachricht |clever hat aufgenommen|wunschkonditionen aktualisiert|clever kundenhelfer aktualisiert|kundenbild aktualisiert|wunschrate aktualisiert|farbe aktualisiert|leasingende aktualisiert|bestandsfahrzeug aktualisiert|kinder aktualisiert|hund aktualisiert|rate aktualisiert|kundendaten ergänzt)/i;
 /** Apply-/Intake-Prozessstatus – nie Soft-Summary (Confirm/Activity behalten Status). */
 const APPLY_PROCESS_NOISE_RE = /kunde angelegt|kunde verknüpft|angebotsauftrag vorbereitet|multi-source-intake|kundenakte aus (?:multi-source|composer)|vertrag bereits vorhanden|neue kundenakte|bereits vorhandene übernahme|altvertrag erfasst|bestehende kundenakte ergänzt|offener angebotsauftrag|idempotenz|bereits übernommen|inbound über composer|kunde aus anfrage angelegt/i;
 /** Kurze System-Bestätigung „… aktualisiert“ / „… aktualisiert: …“ – kein Kundenfakt. */

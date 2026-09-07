@@ -163,6 +163,9 @@ function ProvenanceFact({
   return (
     <Tag {...props}>
       <span className="cust-kundenbild__fact-label">{displayLabel}</span>
+      {as === 'button' ? (
+        <span className="cust-kundenbild__fact-edit" aria-hidden>✎</span>
+      ) : null}
       {showProvenanceMeta && inlineTitle ? (
         <span className="cust-kundenbild__fact-meta" aria-hidden>
           {inlineTitle}
@@ -318,7 +321,7 @@ function SoftKnowledgeEmptyState({ onMerken = null }) {
 }
 
 /**
- * Ruhige Themenzeile: Label + einzeln tippbare Facts (kein Bucket-Chrome).
+ * Ruhige Themenzeile: Label + klickbare Fact-Chips (kein Bucket-Chrome).
  */
 function SoftTopicLine({ topic, onFactTap = null }) {
   const facts = topic?.facts ?? [];
@@ -333,7 +336,8 @@ function SoftTopicLine({ topic, onFactTap = null }) {
               fact={fact}
               onFactTap={onFactTap}
               as="button"
-              showProvenanceMeta
+              className="cust-kundenbild__fact--chip"
+              showProvenanceMeta={false}
             />
           </li>
         ))}

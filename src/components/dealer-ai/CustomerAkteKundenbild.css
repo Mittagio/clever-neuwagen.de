@@ -574,8 +574,10 @@ button.cust-kundenbild__fact--with-meta:focus-visible {
 
 .cust-kundenbild__topic-list {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -596,6 +598,73 @@ button.cust-kundenbild__fact--with-meta:focus-visible {
 .cust-kundenbild__topic-dot {
   color: #94a3b8;
   font-weight: 500;
+}
+
+/* Expanded Soft-Facts = echte Chips, nie Textzeile */
+button.cust-kundenbild__fact--chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid rgba(28, 27, 25, 0.12);
+  border-radius: 999px;
+  background: #f7f6f3;
+  color: #1c1b19;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.cust-kundenbild__fact--chip .cust-kundenbild__fact-label {
+  display: inline;
+  text-decoration: none;
+}
+
+button.cust-kundenbild__fact--chip[data-source='customer'] {
+  border-color: rgba(124, 117, 163, 0.42);
+  background: rgba(124, 117, 163, 0.08);
+}
+
+button.cust-kundenbild__fact--chip[data-source='clever'] {
+  border-color: rgba(124, 117, 163, 0.28);
+  background: rgba(124, 117, 163, 0.05);
+}
+
+button.cust-kundenbild__fact--chip[data-confirmed='false'] {
+  border-style: dashed;
+}
+
+button.cust-kundenbild__fact--chip:hover,
+button.cust-kundenbild__fact--chip:focus-visible {
+  background: rgba(124, 117, 163, 0.14);
+  border-color: rgba(124, 117, 163, 0.5);
+  outline: none;
+}
+
+button.cust-kundenbild__fact--chip:hover .cust-kundenbild__fact-label,
+button.cust-kundenbild__fact--chip:focus-visible .cust-kundenbild__fact-label {
+  text-decoration: none;
+}
+
+.cust-kundenbild__fact-edit {
+  display: none;
+  flex-shrink: 0;
+  margin-left: 2px;
+  color: #8a84a8;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.cust-kundenbild__fact--chip:hover .cust-kundenbild__fact-edit,
+  button.cust-kundenbild__fact--chip:focus-visible .cust-kundenbild__fact-edit {
+    display: inline;
+  }
 }
 
 .cust-kundenbild__wissen-add {
@@ -624,7 +693,6 @@ button.cust-kundenbild__fact--with-meta:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .cust-kundenbild__fact:hover .cust-kundenbild__fact-label,
   .cust-kundenbild__summary-chip:hover .cust-kundenbild__summary-chip-label {
     text-decoration: underline;
     text-decoration-color: rgba(124, 117, 163, 0.45);

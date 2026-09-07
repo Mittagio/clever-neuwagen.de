@@ -9,7 +9,7 @@ import './CustomerAkteSnapshotChipEditor.css';
 
 const TERM_PRESETS = [24, 36, 48, 60];
 const KM_PRESETS = [10000, 15000, 20000, 25000, 30000];
-const COLOR_PRESETS = ['Schwarz', 'Weiß', 'Grau', 'Blau', 'Rot', 'Silber'];
+const COLOR_PRESETS = ['Schwarz', 'Weiß', 'Grau', 'Blau', 'Rot', 'Silber', 'Terracotta'];
 const FUEL_PRESETS = [
   { id: 'electric', label: 'Elektro' },
   { id: 'hybrid', label: 'Hybrid' },
@@ -143,29 +143,41 @@ export default function CustomerAkteSnapshotChipEditor({
           ) : null}
 
           {editorKey === SNAPSHOT_MINI_EDITOR.CHILDREN ? (
-            <div className="cust-snap-editor__stepper">
+            <>
+              <div className="cust-snap-editor__stepper">
+                <button
+                  type="button"
+                  className="cust-snap-editor__step-btn"
+                  onClick={() => patch({ children: Math.max(0, Number(draft.children || 0) - 1) })}
+                  aria-label="Weniger"
+                >
+                  −
+                </button>
+                <span className="cust-snap-editor__step-value" aria-live="polite">
+                  {Number(draft.children || 0) === 1
+                    ? '1 Kind'
+                    : `${Number(draft.children || 0)} Kinder`}
+                </span>
+                <button
+                  type="button"
+                  className="cust-snap-editor__step-btn"
+                  onClick={() => patch({ children: Math.min(8, Number(draft.children || 0) + 1) })}
+                  aria-label="Mehr"
+                >
+                  +
+                </button>
+              </div>
               <button
                 type="button"
-                className="cust-snap-editor__step-btn"
-                onClick={() => patch({ children: Math.max(0, Number(draft.children || 0) - 1) })}
-                aria-label="Weniger"
+                className="cust-snap-editor__btn cust-snap-editor__btn--ghost"
+                onClick={() => {
+                  patch({ children: 0 });
+                  onApply?.(editorKey, { ...draft, children: 0 });
+                }}
               >
-                −
+                Entfernen
               </button>
-              <span className="cust-snap-editor__step-value" aria-live="polite">
-                {Number(draft.children || 0) === 1
-                  ? '1 Kind'
-                  : `${Number(draft.children || 0)} Kinder`}
-              </span>
-              <button
-                type="button"
-                className="cust-snap-editor__step-btn"
-                onClick={() => patch({ children: Math.min(8, Number(draft.children || 0) + 1) })}
-                aria-label="Mehr"
-              >
-                +
-              </button>
-            </div>
+            </>
           ) : null}
 
           {editorKey === SNAPSHOT_MINI_EDITOR.TERM_MONTHS ? (
@@ -304,22 +316,39 @@ export default function CustomerAkteSnapshotChipEditor({
           ) : null}
 
           {editorKey === SNAPSHOT_MINI_EDITOR.DOG ? (
-            <div className="cust-snap-editor__segments" role="group" aria-label="Hund">
-              {[
-                { id: true, label: 'Ja' },
-                { id: false, label: 'Nein' },
-              ].map((opt) => (
+            <>
+              <div className="cust-snap-editor__stepper">
                 <button
-                  key={String(opt.id)}
                   type="button"
-                  className={`cust-snap-editor__seg${Boolean(draft.dog) === opt.id ? ' is-active' : ''}`}
-                  onClick={() => patch({ dog: opt.id })}
-                  aria-pressed={Boolean(draft.dog) === opt.id}
+                  className="cust-snap-editor__step-btn"
+                  onClick={() => patch({ dog: false, dogCount: 0 })}
+                  aria-label="Weniger"
                 >
-                  {opt.label}
+                  −
                 </button>
-              ))}
-            </div>
+                <span className="cust-snap-editor__step-value" aria-live="polite">
+                  {draft.dog ? '1 Hund' : 'Kein Hund'}
+                </span>
+                <button
+                  type="button"
+                  className="cust-snap-editor__step-btn"
+                  onClick={() => patch({ dog: true, dogCount: 1 })}
+                  aria-label="Mehr"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                type="button"
+                className="cust-snap-editor__btn cust-snap-editor__btn--ghost"
+                onClick={() => {
+                  patch({ dog: false, remove: true });
+                  onApply?.(editorKey, { ...draft, dog: false, remove: true });
+                }}
+              >
+                Entfernen
+              </button>
+            </>
           ) : null}
 
           {editorKey === SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE ? (
