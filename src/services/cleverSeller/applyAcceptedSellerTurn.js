@@ -607,6 +607,14 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'pet' || field === 'hasPet') {
+      const hasPetFlag = typeof value === 'object' && value && 'hasPet' in value
+        ? Boolean(value.hasPet)
+        : value !== false && value !== 'false' && value != null;
+      if (!hasPetFlag) {
+        profile.dog = false;
+        touchedProfile = true;
+        continue;
+      }
       const petType = value?.type
         || (typeof value === 'string' ? value : null)
         || (/hund/i.test(String(fact.label || '')) ? 'dog' : null);

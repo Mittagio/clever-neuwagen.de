@@ -547,7 +547,32 @@ export const SNAPSHOT_MINI_EDITOR = {
   PAYMENT_TYPE: 'paymentType',
   DOWN_PAYMENT: 'downPayment',
   LEASING_END: 'leasingEndDate',
+  FUEL: 'fuelPreference',
+  DRIVE: 'drivePreference',
+  MODEL: 'preferredModel',
+  EQUIPMENT: 'equipmentWish',
+  FREE_NOTE: 'freeNote',
 };
+
+/** Verifizierte Kia-Modellwahl für Kundenwunsch-Mini-Editor. */
+export const SNAPSHOT_MODEL_CHOICES = Object.freeze([
+  { modelKey: 'ev2', label: 'EV2' },
+  { modelKey: 'ev3', label: 'EV3' },
+  { modelKey: 'ev4', label: 'EV4' },
+  { modelKey: 'ev5', label: 'EV5' },
+  { modelKey: 'ev6', label: 'EV6' },
+  { modelKey: 'ev9', label: 'EV9' },
+  { modelKey: 'niro-ev', label: 'Niro EV' },
+  { modelKey: 'soul-ev', label: 'Soul EV' },
+]);
+
+export function resolveDriveMiniEditor(label = '') {
+  const t = String(label || '').toLowerCase();
+  if (/allrad|awd|frontantrieb|fwd|heckantrieb|rwd|front|heck/.test(t)) {
+    return SNAPSHOT_MINI_EDITOR.DRIVE;
+  }
+  return SNAPSHOT_MINI_EDITOR.FUEL;
+}
 
 export const SNAPSHOT_RATE_MODES = {
   APPROX: 'approx',
@@ -645,7 +670,9 @@ export function normalizeKnowledgeChipSource(raw = null) {
   ) {
     return 'customer';
   }
-  if (key === 'seller' || key === 'verkaeufer' || key === 'verkäufer') return 'seller';
+  if (key === 'seller' || key === 'verkaeufer' || key === 'verkäufer' || key === 'seller_correction' || key === 'manual_edit') {
+    return 'seller';
+  }
   if (key === 'document' || key === 'dokument' || key === 'pdf') return 'document';
   if (
     key === 'clever'
@@ -1796,6 +1823,7 @@ function buildDecisiveRequirementFacts(
       editKey: 'bedarf',
       groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
       tint: SNAPSHOT_TINT.WICHTIG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
       // Summary: nach Bestand, vor Fahrzeugpräferenz
       summaryPriority: key === 'charging' ? 25 : key === 'range' ? 26 : 28,
       ...customerProv,
@@ -1891,7 +1919,7 @@ function buildHumanSellerFacts(
       editKey: item.isDog ? 'dog' : 'bedarf',
       groupId: SOFT_SNAPSHOT_GROUP.PERSOENLICHES,
       tint: SNAPSHOT_TINT.ALLTAG,
-      miniEditor: item.isDog ? SNAPSHOT_MINI_EDITOR.DOG : null,
+      miniEditor: item.isDog ? SNAPSHOT_MINI_EDITOR.DOG : SNAPSHOT_MINI_EDITOR.FREE_NOTE,
       summaryPriority: item.isUrgency ? 9 : item.isDog ? 12 : 18,
       icon: 'alltag',
       state: SNAPSHOT_FACT_STATE.CONFIRMED,
@@ -1974,6 +2002,7 @@ function buildRemappedStructuredFacts(
         relevanceKey: 'equipment',
         groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
         tint: SNAPSHOT_TINT.WICHTIG,
+        miniEditor: SNAPSHOT_MINI_EDITOR.EQUIPMENT,
         summaryPriority: priority === EQUIPMENT_WISH_PRIORITY.REQUIRED
           ? 28
           : priority === EQUIPMENT_WISH_PRIORITY.IMPORTANT
@@ -1985,12 +2014,15 @@ function buildRemappedStructuredFacts(
       }));
     } else {
       const idPrefix = classified.slot === 'color' ? 'color' : 'drive';
+      const mini = classified.slot === 'color'
+        ? SNAPSHOT_MINI_EDITOR.COLOR
+        : resolveDriveMiniEditor(remap);
       pushFact(preferenceFacts, fact(`${idPrefix}:${remap}`, remap, {
         editKey: classified.slot === 'color' ? 'vehicleTrack' : 'equipment',
         relevanceKey: classified.slot === 'color' ? 'preferredColor' : classified.slot,
         groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
         tint: SNAPSHOT_TINT.FAHRZEUG,
-        miniEditor: classified.slot === 'color' ? SNAPSHOT_MINI_EDITOR.COLOR : null,
+        miniEditor: mini,
         summaryPriority: classified.slot === 'color' ? 35 : 36,
         icon: 'car',
         ...sellerProv,
@@ -2369,6 +2401,26 @@ function buildFahrzeugpraeferenzFacts(
     usedLabels.add(display.toLowerCase());
   }
 
+  // Soft-Modellwunsch (Preference) – editierbar, kein Offer-Draft
+  const modelKey = String(profile.selectedModelKey || profile.modelHint || '').trim().toLowerCase();
+  if (modelKey) {
+    const modelLabel = modelDisplayLabel(modelKey) || modelKey.toUpperCase();
+    if (!usedLabels.has(modelLabel.toLowerCase()) && !usedLabels.has(modelKey)) {
+      pushFact(facts, fact(`model:${modelKey}`, modelLabel, {
+        editKey: 'vehicleTrack',
+        relevanceKey: 'preferredModel',
+        groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+        tint: SNAPSHOT_TINT.FAHRZEUG,
+        miniEditor: SNAPSHOT_MINI_EDITOR.MODEL,
+        summaryPriority: 33,
+        icon: 'car',
+        ...customerProv,
+      }));
+      usedLabels.add(modelLabel.toLowerCase());
+      usedLabels.add(modelKey);
+    }
+  }
+
   const fuelLabel = FUEL_DISPLAY[profile.fuel] || null;
   if (fuelLabel && !usedLabels.has(fuelLabel.toLowerCase())) {
     pushFact(facts, fact('fuel', fuelLabel, {
@@ -2376,11 +2428,34 @@ function buildFahrzeugpraeferenzFacts(
       relevanceKey: 'drive',
       groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.FUEL,
       summaryPriority: 36,
       icon: 'car',
       ...customerProv,
     }));
     usedLabels.add(fuelLabel.toLowerCase());
+  }
+
+  const driveFromProfile = profile.drive || (profile.allradNeed || (profile.priorities || []).includes('awd') ? 'awd' : null);
+  const driveLabel = driveFromProfile === 'awd' || driveFromProfile === 'allrad'
+    ? 'Allrad'
+    : driveFromProfile === 'fwd' || driveFromProfile === 'front'
+      ? 'Frontantrieb'
+      : driveFromProfile === 'rwd' || driveFromProfile === 'heck'
+        ? 'Heckantrieb'
+        : null;
+  if (driveLabel && !usedLabels.has(driveLabel.toLowerCase())) {
+    pushFact(facts, fact('drive', driveLabel, {
+      editKey: 'equipment',
+      relevanceKey: 'drive',
+      groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
+      tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.DRIVE,
+      summaryPriority: 36,
+      icon: 'car',
+      ...customerProv,
+    }));
+    usedLabels.add(driveLabel.toLowerCase());
   }
 
   const transmissionLabel = TRANSMISSION_DISPLAY[profile.transmission] || null;
@@ -2390,6 +2465,7 @@ function buildFahrzeugpraeferenzFacts(
       relevanceKey: 'drive',
       groupId: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ,
       tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.FUEL,
       summaryPriority: 36,
       icon: 'car',
       ...customerProv,
@@ -2460,6 +2536,7 @@ function buildAusstattungTechnikFacts(
       editKey: 'equipment',
       groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
       tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.EQUIPMENT,
       summaryPriority: 50,
       icon: 'car',
       ...customerProv,
@@ -2489,6 +2566,7 @@ function buildAusstattungTechnikFacts(
       editKey: 'equipment',
       groupId: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK,
       tint: SNAPSHOT_TINT.FAHRZEUG,
+      miniEditor: SNAPSHOT_MINI_EDITOR.EQUIPMENT,
       summaryPriority: priority === EQUIPMENT_WISH_PRIORITY.REQUIRED
         ? 28
         : priority === EQUIPMENT_WISH_PRIORITY.IMPORTANT
@@ -2554,6 +2632,7 @@ function buildSonstigesFacts(
       editKey: 'bedarf',
       groupId: SOFT_SNAPSHOT_GROUP.SONSTIGES,
       tint: SNAPSHOT_TINT.NOTIZ,
+      miniEditor: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
       summaryPriority: 70,
       ...sellerFactProvenance(label, provenanceByLabel),
     }));
@@ -2577,6 +2656,7 @@ function buildSonstigesFacts(
         editKey: 'bedarf',
         groupId: SOFT_SNAPSHOT_GROUP.SONSTIGES,
         tint: SNAPSHOT_TINT.NOTIZ,
+        miniEditor: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
         summaryPriority: 72,
       }));
       usedLabels.add(lower);

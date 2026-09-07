@@ -618,6 +618,133 @@ button.cust-kundenbild__fact--with-meta:focus-visible {
   outline: none;
 }
 
+/* Soft-Facts: subtil editierbar (Hover), kein permanenter Stift */
+.cust-kundenbild__fact {
+  position: relative;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cust-kundenbild__fact:hover .cust-kundenbild__fact-label,
+  .cust-kundenbild__summary-chip:hover .cust-kundenbild__summary-chip-label {
+    text-decoration: underline;
+    text-decoration-color: rgba(124, 117, 163, 0.45);
+    text-underline-offset: 2px;
+  }
+}
+
+.cust-wissen-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(28, 27, 25, 0.28);
+}
+
+.cust-wissen-picker__sheet {
+  width: min(420px, 100%);
+  margin: 0;
+  padding: 16px 16px 20px;
+  border-radius: 16px 16px 0 0;
+  background: #faf9f7;
+  box-shadow: 0 -8px 28px rgba(28, 27, 25, 0.12);
+}
+
+.cust-wissen-picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cust-wissen-picker__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: #1c1b19;
+}
+
+.cust-wissen-picker__close {
+  border: none;
+  background: transparent;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #8f8a82;
+  cursor: pointer;
+}
+
+.cust-wissen-picker__list {
+  display: grid;
+  gap: 8px;
+}
+
+.cust-wissen-picker__item {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(28, 27, 25, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  color: #1c1b19;
+  cursor: pointer;
+}
+
+.cust-wissen-picker__item:hover,
+.cust-wissen-picker__item:focus-visible {
+  border-color: rgba(124, 117, 163, 0.45);
+  outline: none;
+}
+
+.cust-wissen-picker__composer {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: #5c6478;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.cust-knowledge-undo {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  z-index: 70;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(124, 117, 163, 0.14);
+  color: #3f3a55;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  box-shadow: 0 4px 16px rgba(28, 27, 25, 0.08);
+}
+
+.cust-knowledge-undo__btn {
+  border: none;
+  background: transparent;
+  color: #5b5288;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cust-snap-editor__textarea {
+  resize: vertical;
+  min-height: 72px;
+  font: inherit;
+}
+
 .cust-kundenbild__soft-footer {
   grid-column: 1 / -1;
   margin: 0;

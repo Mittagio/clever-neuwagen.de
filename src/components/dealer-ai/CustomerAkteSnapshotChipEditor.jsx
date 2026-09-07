@@ -3,12 +3,26 @@ import {
   SNAPSHOT_MINI_EDITOR,
   SNAPSHOT_RATE_MODES,
   SNAPSHOT_RATE_MODE_LABELS,
+  SNAPSHOT_MODEL_CHOICES,
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
 import './CustomerAkteSnapshotChipEditor.css';
 
 const TERM_PRESETS = [24, 36, 48, 60];
 const KM_PRESETS = [10000, 15000, 20000, 25000, 30000];
 const COLOR_PRESETS = ['Schwarz', 'Weiß', 'Grau', 'Blau', 'Rot', 'Silber'];
+const FUEL_PRESETS = [
+  { id: 'electric', label: 'Elektro' },
+  { id: 'hybrid', label: 'Hybrid' },
+  { id: 'phev', label: 'Plug-in-Hybrid' },
+  { id: 'benzin', label: 'Benzin' },
+  { id: 'diesel', label: 'Diesel' },
+];
+const DRIVE_PRESETS = [
+  { id: 'awd', label: 'Allrad' },
+  { id: 'fwd', label: 'Frontantrieb' },
+  { id: 'rwd', label: 'Heckantrieb' },
+  { id: 'offen', label: 'offen' },
+];
 
 const EDITOR_TITLES = {
   [SNAPSHOT_MINI_EDITOR.DESIRED_RATE]: 'Wunschrate',
@@ -22,6 +36,11 @@ const EDITOR_TITLES = {
   [SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE]: 'Zahlungsart',
   [SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT]: 'Anzahlung',
   [SNAPSHOT_MINI_EDITOR.LEASING_END]: 'Leasingende',
+  [SNAPSHOT_MINI_EDITOR.FUEL]: 'Antrieb',
+  [SNAPSHOT_MINI_EDITOR.DRIVE]: 'Traktion',
+  [SNAPSHOT_MINI_EDITOR.MODEL]: 'Modell',
+  [SNAPSHOT_MINI_EDITOR.EQUIPMENT]: 'Ausstattung',
+  [SNAPSHOT_MINI_EDITOR.FREE_NOTE]: 'Notiz',
 };
 
 /**
@@ -57,12 +76,26 @@ export default function CustomerAkteSnapshotChipEditor({
     onApply?.(editorKey, draft);
   }
 
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose?.();
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const tag = String(e.target?.tagName || '').toLowerCase();
+      if (tag === 'textarea') return;
+      e.preventDefault();
+      handleSave();
+    }
+  }
+
   function handleBackdrop(e) {
     if (e.target === e.currentTarget) onClose?.();
   }
 
   return (
-    <div className="cust-snap-editor" role="presentation" onClick={handleBackdrop}>
+    <div className="cust-snap-editor" role="presentation" onClick={handleBackdrop} onKeyDown={handleKeyDown}>
       <div
         className="cust-snap-editor__sheet"
         role="dialog"
@@ -337,6 +370,102 @@ export default function CustomerAkteSnapshotChipEditor({
                 autoFocus
               />
             </>
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.FUEL ? (
+            <div className="cust-snap-editor__segments cust-snap-editor__segments--wrap" role="group" aria-label="Antrieb">
+              {FUEL_PRESETS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`cust-snap-editor__seg${draft.fuel === opt.id ? ' is-active' : ''}`}
+                  onClick={() => patch({ fuel: opt.id, fuelLabel: opt.label })}
+                  aria-pressed={draft.fuel === opt.id}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.DRIVE ? (
+            <div className="cust-snap-editor__segments cust-snap-editor__segments--wrap" role="group" aria-label="Traktion">
+              {DRIVE_PRESETS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`cust-snap-editor__seg${draft.drive === opt.id ? ' is-active' : ''}`}
+                  onClick={() => patch({ drive: opt.id, driveLabel: opt.label, remove: opt.id === 'offen' })}
+                  aria-pressed={draft.drive === opt.id}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.MODEL ? (
+            <div className="cust-snap-editor__segments cust-snap-editor__segments--wrap" role="group" aria-label="Modell">
+              {SNAPSHOT_MODEL_CHOICES.map((opt) => (
+                <button
+                  key={opt.modelKey}
+                  type="button"
+                  className={`cust-snap-editor__seg${draft.modelKey === opt.modelKey ? ' is-active' : ''}`}
+                  onClick={() => patch({ modelKey: opt.modelKey, modelLabel: opt.label })}
+                  aria-pressed={draft.modelKey === opt.modelKey}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.EQUIPMENT ? (
+            <>
+              {!draft.equipmentLabel ? (
+                <input
+                  className="cust-snap-editor__input"
+                  type="text"
+                  placeholder="z. B. elektrische Heckklappe"
+                  value={draft.equipmentLabel ?? ''}
+                  onChange={(e) => patch({ equipmentLabel: e.target.value, label: e.target.value })}
+                  autoFocus
+                />
+              ) : (
+                <p className="cust-snap-editor__label">{draft.equipmentLabel}</p>
+              )}
+              <div className="cust-snap-editor__segments" role="group" aria-label="Status">
+                {[
+                  { id: 'desired', label: 'gewünscht' },
+                  { id: 'remove', label: 'entfernen' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`cust-snap-editor__seg${(draft.equipmentStatus || 'desired') === opt.id ? ' is-active' : ''}`}
+                    onClick={() => patch({
+                      equipmentStatus: opt.id,
+                      remove: opt.id === 'remove',
+                      status: opt.id,
+                    })}
+                    aria-pressed={(draft.equipmentStatus || 'desired') === opt.id}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {editorKey === SNAPSHOT_MINI_EDITOR.FREE_NOTE ? (
+            <textarea
+              className="cust-snap-editor__input cust-snap-editor__textarea"
+              rows={3}
+              placeholder="Text bearbeiten"
+              value={draft.noteText ?? ''}
+              onChange={(e) => patch({ noteText: e.target.value })}
+              autoFocus
+            />
           ) : null}
         </div>
 

@@ -129,7 +129,12 @@ import {
   SNAPSHOT_RATE_MODES,
   SOFT_GROUP_ADD_CATEGORY,
   SOFT_SNAPSHOT_GROUP,
+  resolveDriveMiniEditor,
 } from '../../services/dealer/buildCustomerSnapshotModel.js';
+import {
+  applyCustomerKnowledgeChange,
+  knowledgeKindFromMiniEditor,
+} from '../../services/cleverSeller/applyCustomerKnowledgeChange.js';
 import { COMPOSER_INTENT_CONSTRAINT } from '../../services/cleverSeller/composerIntentChips.js';
 import {
   getNeedProfileFromLead,
@@ -428,6 +433,11 @@ export default function DealerAiLeadFollowUp({
   const [composerIntentFocusConstraint, setComposerIntentFocusConstraint] = useState(null);
   const [snapshotHighlightLabels, setSnapshotHighlightLabels] = useState([]);
   const [snapshotChipEditor, setSnapshotChipEditor] = useState(null);
+  /** @type {[{ previousLead: object, label: string }|null, Function]} */
+  const [knowledgeUndo, setKnowledgeUndo] = useState(null);
+  const [wissenPickerOpen, setWissenPickerOpen] = useState(false);
+  const [knowledgeUndo, setKnowledgeUndo] = useState(null);
+  const [wissenPickerOpen, setWissenPickerOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   /** Freeze: Kundenwissen startet collapsed → light Summary-Chips sichtbar */
   const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
@@ -2458,14 +2468,23 @@ export default function DealerAiLeadFollowUp({
     );
     const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
     const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
+    const children = profile.children ?? profile.household?.childrenCount ?? 0;
+    const factLabel = snapshotChipEditor?.factLabel || '';
+    const fuelFromLabel = /elektro|hybrid|diesel|benzin|phev|plug/i.test(factLabel)
+      ? factLabel
+      : null;
+    const driveFromProfile = profile.drive
+      || (profile.allradNeed || (profile.priorities || []).includes('awd') ? 'awd' : null);
     return {
       desiredRate: wishDesiredRate || '',
       desiredRateMode: lead?.wish?.desiredRateMode || profile?.budget?.rateMode || SNAPSHOT_RATE_MODES.APPROX,
-      children: profile.children ?? 0,
+      children: Number(children) || 0,
       dog: Boolean(profile.dog),
       termMonths: wishTermMonths || '',
       mileagePerYear: wishMileage || '',
-      preferredColor: favorite?.config?.vehicleTrack?.preferredColor || '',
+      preferredColor: favorite?.config?.vehicleTrack?.preferredColor
+        || profile.colorPreference
+        || '',
       delivery: wishDelivery || '',
       hasExistingVehicle: hasExisting,
       existingVehicle: tradeIn.vehicle
@@ -2475,6 +2494,15 @@ export default function DealerAiLeadFollowUp({
       paymentType: wishPaymentType || 'leasing',
       downPayment: wishDownPayment || '',
       leasingEndDate: lead?.wish?.leasingEndDate || lead?.leasingEndDate || '',
+      fuel: profile.fuel || (fuelFromLabel ? undefined : 'electric'),
+      fuelLabel: FUEL_DISPLAY_SAFE(profile.fuel) || fuelFromLabel || '',
+      drive: driveFromProfile || (/allrad/i.test(factLabel) ? 'awd' : 'offen'),
+      modelKey: profile.selectedModelKey || profile.modelHint || '',
+      modelLabel: factLabel || '',
+      equipmentLabel: stripEquipLabel(factLabel) || factLabel,
+      equipmentStatus: 'desired',
+      noteText: factLabel,
+      replaceLabel: factLabel,
     };
   }, [
     lead,
@@ -2484,13 +2512,36 @@ export default function DealerAiLeadFollowUp({
     wishDelivery,
     wishPaymentType,
     wishDownPayment,
+    snapshotChipEditor,
   ]);
+
+  function FUEL_DISPLAY_SAFE(fuel) {
+    const map = {
+      electric: 'Elektro',
+      elektro: 'Elektro',
+      hybrid: 'Hybrid',
+      phev: 'Plug-in-Hybrid',
+      diesel: 'Diesel',
+      benzin: 'Benzin',
+      benziner: 'Benzin',
+    };
+    return map[String(fuel || '').toLowerCase()] || null;
+  }
+
+  function stripEquipLabel(label) {
+    return String(label || '').replace(/\s*[·|]\s*(muss|wichtig|nice|wunsch)\s*$/i, '').trim();
+  }
 
   /** Kundenbild-Chip → feld-spezifischer Mini-Editor (kein generisches Offen-Sheet). */
   function handleKundenbildFactTap(fact) {
     const mini = String(fact?.miniEditor ?? '').trim();
+    const label = String(fact?.label || '').trim();
     if (mini && Object.values(SNAPSHOT_MINI_EDITOR).includes(mini)) {
-      setSnapshotChipEditor({ key: mini, factId: fact?.id || null });
+      setSnapshotChipEditor({
+        key: mini,
+        factId: fact?.id || null,
+        factLabel: label,
+      });
       return;
     }
     const key = String(fact?.editKey ?? '').trim();
@@ -2499,7 +2550,7 @@ export default function DealerAiLeadFollowUp({
       openSheet(SHEETS.customer);
       return;
     }
-    if (!key) return;
+    if (!key && !label) return;
     if (key === 'desiredRate' || key === 'downPayment' || key === 'paymentType'
       || key === 'termMonths' || key === 'mileagePerYear' || key === 'delivery'
       || key === 'leasingEndDate') {
@@ -2512,125 +2563,51 @@ export default function DealerAiLeadFollowUp({
         delivery: SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY,
         leasingEndDate: SNAPSHOT_MINI_EDITOR.LEASING_END,
       };
-      setSnapshotChipEditor({ key: editorMap[key], factId: fact?.id || null });
+      setSnapshotChipEditor({ key: editorMap[key], factId: fact?.id || null, factLabel: label });
       return;
     }
     if (key === 'children' || key === 'dog' || key === 'family') {
       setSnapshotChipEditor({
         key: key === 'dog' ? SNAPSHOT_MINI_EDITOR.DOG : SNAPSHOT_MINI_EDITOR.CHILDREN,
         factId: fact?.id || null,
+        factLabel: label,
       });
       return;
     }
     if (key === 'tradeIn') {
-      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.TRADE_IN, factId: fact?.id || null });
+      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.TRADE_IN, factId: fact?.id || null, factLabel: label });
       return;
     }
-    // Farbe nur bei Farb-Chips – Modell/Trim nicht in Color-Editor
     if (key === 'vehicleTrack' && (relevance === 'preferredColor' || String(fact?.id || '').startsWith('color:'))) {
-      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.COLOR, factId: fact?.id || null });
+      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.COLOR, factId: fact?.id || null, factLabel: label });
       return;
     }
-    // Kein generisches Offen-Sheet für übrige Chips
+    if (key === 'vehicleTrack' && (relevance === 'preferredModel' || relevance === 'favoriteVehicle')) {
+      setSnapshotChipEditor({ key: SNAPSHOT_MINI_EDITOR.MODEL, factId: fact?.id || null, factLabel: label });
+      return;
+    }
+    if (key === 'equipment' || relevance === 'equipment' || relevance === 'drive') {
+      const driveMini = resolveDriveMiniEditor(label);
+      const isDrive = relevance === 'drive' || driveMini === SNAPSHOT_MINI_EDITOR.DRIVE
+        || /elektro|hybrid|diesel|benzin|allrad|front|heck/i.test(label);
+      setSnapshotChipEditor({
+        key: isDrive ? driveMini : SNAPSHOT_MINI_EDITOR.EQUIPMENT,
+        factId: fact?.id || null,
+        factLabel: label,
+      });
+      return;
+    }
+    if (key === 'bedarf' || key === 'usage' || key === 'space' || !key) {
+      setSnapshotChipEditor({
+        key: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
+        factId: fact?.id || null,
+        factLabel: label,
+      });
+    }
   }
 
   function applySnapshotChipEdit(editorKey, draft = {}) {
-    const profile = { ...(getNeedProfileFromLead(lead) || {}) };
-    let nextLead = lead;
-    let historyText = 'Kundenbild aktualisiert';
-
-    if (editorKey === SNAPSHOT_MINI_EDITOR.DESIRED_RATE) {
-      const rate = draft.desiredRate !== '' && draft.desiredRate != null
-        ? Number(draft.desiredRate)
-        : null;
-      const mode = draft.desiredRateMode || SNAPSHOT_RATE_MODES.APPROX;
-      setWishDesiredRate(rate != null && Number.isFinite(rate) ? String(rate) : '');
-      profile.budget = {
-        ...(profile.budget ?? {}),
-        maxMonthlyRate: rate != null && Number.isFinite(rate) ? rate : null,
-        rateMode: mode,
-      };
-      nextLead = mergeNeedProfileIntoLead(lead, profile);
-      nextLead = {
-        ...nextLead,
-        desiredRate: rate != null && Number.isFinite(rate) ? rate : null,
-        wish: {
-          ...(nextLead.wish ?? {}),
-          desiredRate: rate != null && Number.isFinite(rate) ? rate : null,
-          desiredRateMode: mode,
-        },
-      };
-      historyText = 'Wunschrate aktualisiert';
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.CHILDREN) {
-      profile.children = Math.max(0, Number(draft.children) || 0);
-      if (profile.children > 0 && !profile.priorities?.includes('family')) {
-        profile.priorities = [...(profile.priorities ?? []), 'family'];
-      }
-      nextLead = mergeNeedProfileIntoLead(lead, profile);
-      historyText = 'Kinder aktualisiert';
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.DOG) {
-      profile.dog = Boolean(draft.dog);
-      nextLead = mergeNeedProfileIntoLead(lead, profile);
-      historyText = 'Hund aktualisiert';
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.TERM_MONTHS) {
-      applyWishConditions({ termMonths: draft.termMonths });
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.MILEAGE) {
-      applyWishConditions({ mileagePerYear: draft.mileagePerYear });
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.PAYMENT_TYPE) {
-      applyWishConditions({ paymentType: draft.paymentType });
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.DOWN_PAYMENT) {
-      applyWishConditions({ downPayment: draft.downPayment });
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.PRIORITY_DELIVERY) {
-      const delivery = draft.delivery === 'wichtig' ? 'wichtig' : (draft.delivery ?? '');
-      applyWishConditions({ delivery });
-      if (delivery === 'wichtig') {
-        const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
-        const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
-        if (favorite?.id) {
-          nextLead = patchVehicleTrackOnLead(lead, favorite.id, { deliveryTimeImportance: 'high' });
-          onSave?.(buildSavePayload({
-            vehicleConfigurations: nextLead.crm?.vehicleConfigurations,
-            needProfile: nextLead.crm?.needProfile,
-          }), { historyText: 'Lieferzeit-Priorität gesetzt', addFollowupHistory: false });
-        }
-      }
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.COLOR) {
-      const color = String(draft.preferredColor ?? '').trim();
-      const tracks = sortTracksForOverview(listCustomerVehicleTracks(lead));
-      const favorite = tracks.find((t) => t.status === VEHICLE_TRACK_STATUS.FAVORITE) || tracks[0];
-      if (favorite?.id && color) {
-        nextLead = patchVehicleTrackOnLead(lead, favorite.id, { preferredColor: color });
-        onSave?.(buildSavePayload({
-          vehicleConfigurations: nextLead.crm?.vehicleConfigurations,
-        }), { historyText: 'Farbe aktualisiert', addFollowupHistory: false });
-        setSnapshotHighlightLabels([color]);
-        window.setTimeout(() => setSnapshotHighlightLabels([]), 2200);
-      }
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.LEASING_END) {
-      const end = String(draft.leasingEndDate ?? '').trim().slice(0, 7);
-      onSave?.({
-        ...buildSavePayload(),
-        leasingEndDate: end || null,
-        wish: {
-          ...(lead?.wish ?? {}),
-          leasingEndDate: end || null,
-        },
-      }, { historyText: 'Leasingende aktualisiert', addFollowupHistory: false });
-      setSnapshotChipEditor(null);
-      return;
-    } else if (editorKey === SNAPSHOT_MINI_EDITOR.TRADE_IN) {
+    if (editorKey === SNAPSHOT_MINI_EDITOR.TRADE_IN) {
       if (!draft.hasExistingVehicle) {
         const cleared = patchTradeIn(getTradeIn(lead), { vehicle: '', datValue: null });
         setTradeInData(cleared);
@@ -2651,19 +2628,102 @@ export default function DealerAiLeadFollowUp({
       }
       setSnapshotChipEditor(null);
       return;
-    } else {
+    }
+
+    if (editorKey === SNAPSHOT_MINI_EDITOR.LEASING_END) {
+      const end = String(draft.leasingEndDate ?? '').trim().slice(0, 7);
+      onSave?.({
+        ...buildSavePayload(),
+        leasingEndDate: end || null,
+        wish: {
+          ...(lead?.wish ?? {}),
+          leasingEndDate: end || null,
+        },
+      }, { historyText: 'Leasingende aktualisiert', addFollowupHistory: false });
       setSnapshotChipEditor(null);
       return;
     }
 
+    const kind = knowledgeKindFromMiniEditor(editorKey);
+    if (!kind) {
+      setSnapshotChipEditor(null);
+      return;
+    }
+
+    let previousLead = null;
+    try {
+      previousLead = JSON.parse(JSON.stringify(lead));
+    } catch {
+      previousLead = lead;
+    }
+
+    const result = applyCustomerKnowledgeChange(lead, {
+      kind,
+      draft,
+      factId: snapshotChipEditor?.factId || null,
+      actor: { type: 'seller', name: name?.trim() || 'Verkäufer' },
+    });
+    if (!result.applied) {
+      setSnapshotChipEditor(null);
+      return;
+    }
+
+    const nextLead = result.lead;
     onSave?.({
       ...buildSavePayload({
         needProfile: nextLead.crm?.needProfile,
+        vehicleConfigurations: nextLead.crm?.vehicleConfigurations,
+        sellerInsights: nextLead.crm?.sellerInsights,
       }),
       desiredRate: nextLead.desiredRate,
       wish: nextLead.wish,
-    }, { historyText, addFollowupHistory: false });
+      paymentType: nextLead.paymentType,
+    }, { historyText: result.meta.historyLabel, addFollowupHistory: false });
+
+    if (result.meta.undoLabel && previousLead) {
+      setKnowledgeUndo({ previousLead, label: result.meta.undoLabel });
+      window.setTimeout(() => setKnowledgeUndo(null), 6000);
+    }
+    setSnapshotHighlightLabels([result.meta.undoLabel].filter(Boolean));
+    window.setTimeout(() => setSnapshotHighlightLabels([]), 2200);
     setSnapshotChipEditor(null);
+  }
+
+  function undoKnowledgeChange() {
+    if (!knowledgeUndo?.previousLead) return;
+    const prev = knowledgeUndo.previousLead;
+    onSave?.({
+      ...buildSavePayload({
+        needProfile: prev.crm?.needProfile,
+        vehicleConfigurations: prev.crm?.vehicleConfigurations,
+        sellerInsights: prev.crm?.sellerInsights,
+      }),
+      desiredRate: prev.desiredRate,
+      wish: prev.wish,
+      paymentType: prev.paymentType,
+    }, { historyText: 'Kundenwissen rückgängig', addFollowupHistory: false });
+    setKnowledgeUndo(null);
+  }
+
+  function openWissenPicker() {
+    setKundenbildExpanded(true);
+    setWissenPickerOpen(true);
+  }
+
+  function handleWissenPickerChoice(groupId) {
+    setWissenPickerOpen(false);
+    const starters = {
+      [SOFT_SNAPSHOT_GROUP.PERSOENLICHES]: SNAPSHOT_MINI_EDITOR.CHILDREN,
+      [SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ]: SNAPSHOT_MINI_EDITOR.COLOR,
+      [SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK]: SNAPSHOT_MINI_EDITOR.EQUIPMENT,
+      [SOFT_SNAPSHOT_GROUP.SONSTIGES]: SNAPSHOT_MINI_EDITOR.FREE_NOTE,
+    };
+    const key = starters[groupId] || SNAPSHOT_MINI_EDITOR.FREE_NOTE;
+    setSnapshotChipEditor({
+      key,
+      factId: null,
+      factLabel: groupId === SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK ? '' : '',
+    });
   }
 
   function openSheet(id) {
@@ -3911,10 +3971,7 @@ export default function DealerAiLeadFollowUp({
             onFactTap={handleKundenbildFactTap}
             onAddToGroup={handleAddToSoftGroup}
             onEditConditions={() => openWishConditionsSheet()}
-            onMerken={() => focusChatComposer({
-              clever: true,
-              intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
-            })}
+            onMerken={openWissenPicker}
             onAusstattungErgaenzen={handleAusstattungErgaenzen}
           />
         ) : null}
@@ -3975,6 +4032,61 @@ export default function DealerAiLeadFollowUp({
         onApply={applySnapshotChipEdit}
         saving={isSaving}
       />
+      {wissenPickerOpen ? (
+        <div className="cust-wissen-picker" role="dialog" aria-label="Wissen ergänzen">
+          <div className="cust-wissen-picker__sheet">
+            <header className="cust-wissen-picker__head">
+              <h2 className="cust-wissen-picker__title">Wissen ergänzen</h2>
+              <button
+                type="button"
+                className="cust-wissen-picker__close"
+                onClick={() => setWissenPickerOpen(false)}
+                aria-label="Schließen"
+              >
+                ×
+              </button>
+            </header>
+            <div className="cust-wissen-picker__list">
+              {[
+                { id: SOFT_SNAPSHOT_GROUP.PERSOENLICHES, label: 'Persönliches' },
+                { id: SOFT_SNAPSHOT_GROUP.FAHRZEUGPRAEFERENZ, label: 'Fahrzeugwunsch' },
+                { id: SOFT_SNAPSHOT_GROUP.AUSSTATTUNG_TECHNIK, label: 'Ausstattung' },
+                { id: SOFT_SNAPSHOT_GROUP.SONSTIGES, label: 'Sonstiges' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="cust-wissen-picker__item"
+                  onClick={() => handleWissenPickerChoice(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="cust-wissen-picker__composer"
+              onClick={() => {
+                setWissenPickerOpen(false);
+                focusChatComposer({
+                  clever: true,
+                  intentConstraint: COMPOSER_INTENT_CONSTRAINT.REMEMBER,
+                });
+              }}
+            >
+              Lieber im Composer sagen …
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {knowledgeUndo ? (
+        <div className="cust-knowledge-undo" role="status">
+          <span>{knowledgeUndo.label} · </span>
+          <button type="button" className="cust-knowledge-undo__btn" onClick={undoKnowledgeChange}>
+            Rückgängig
+          </button>
+        </div>
+      ) : null}
 
       <LeadDetailPanel
         open={activeSheet === SHEETS.boardOffers}
