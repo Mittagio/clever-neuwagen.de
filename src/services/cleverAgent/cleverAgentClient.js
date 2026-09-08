@@ -3,6 +3,7 @@
  */
 
 const API_BASE = '/api/v1';
+const AGENT_TIMEOUT_MS = 28000;
 
 /** Gründe, bei denen UI sauber auf deterministischen Seller-Turn fällt. */
 export const CLEVER_AGENT_FALLBACK_REASONS = new Set([
@@ -43,9 +44,14 @@ export function shouldFallbackToSellerTurn(agentResult = {}) {
 
 /**
  * @param {object} payload
- * @param {{ sellerId?: string, dealerId?: string }} [opts]
+ * @param {{ sellerId?: string, dealerId?: string, timeoutMs?: number }} [opts]
  */
 export async function requestCleverAgent(payload = {}, opts = {}) {
+  const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : AGENT_TIMEOUT_MS;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
   let response;
   try {
     response = await fetch(`${API_BASE}/clever-agent`, {
@@ -56,18 +62,24 @@ export async function requestCleverAgent(payload = {}, opts = {}) {
         ...(opts.dealerId ? { 'X-Dealer-Id': String(opts.dealerId) } : {}),
       },
       body: JSON.stringify(payload),
+      ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (err) {
+    const aborted = err?.name === 'AbortError';
     return {
       ok: false,
-      message: 'Clever Agent nicht erreichbar – ich nutze den klassischen Pfad.',
-      error: 'network_error',
-      fallbackReason: 'network_error',
+      message: aborted
+        ? 'Clever Agent braucht zu lange – ich nutze den klassischen Pfad.'
+        : 'Clever Agent nicht erreichbar – ich nutze den klassischen Pfad.',
+      error: aborted ? 'timeout' : 'network_error',
+      fallbackReason: aborted ? 'timeout' : 'network_error',
       artifacts: [],
       suggestedActions: [],
       mutations: [],
       detail: String(err?.message || err).slice(0, 160),
     };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 
   const data = await response.json().catch(() => ({}));

@@ -40,8 +40,10 @@ function assertSellerPermission(req) {
 
 /** Kein Full-Lead / keine Kontaktdaten an die Interpretations-Pipeline. */
 function slimLeadForSellerTurn(lead = {}) {
+  const working = lead.crm?.cleverWorkingState || null;
   return {
     id: lead.id ?? null,
+    paymentType: lead.paymentType ?? null,
     crm: {
       needProfile: lead.crm?.needProfile ?? null,
       sellerInsights: (lead.crm?.sellerInsights ?? []).slice(-8).map((insight) => ({
@@ -49,6 +51,19 @@ function slimLeadForSellerTurn(lead = {}) {
         labels: (insight.understoodLabels ?? insight.labels ?? []).slice(0, 8),
         context: insight.context ?? null,
       })),
+      // Working-Draft Continuity (ohne Full-History)
+      ...(working ? {
+        cleverWorkingState: {
+          currentOfferDraftId: working.currentOfferDraftId ?? null,
+          currentOfferDraft: working.currentOfferDraft ?? null,
+          recentVehicleTrackIds: Array.isArray(working.recentVehicleTrackIds)
+            ? working.recentVehicleTrackIds.slice(0, 8)
+            : [],
+          recentVehicleModelKeys: Array.isArray(working.recentVehicleModelKeys)
+            ? working.recentVehicleModelKeys.slice(0, 8)
+            : [],
+        },
+      } : {}),
     },
   };
 }
@@ -421,6 +436,11 @@ router.post('/clever/seller-turn', express.json({ limit: '128kb' }), async (req,
       scopeHint = null,
       now = null,
       intentConstraint = null,
+      messagePurpose = null,
+      memoryCategory = null,
+      offerAction = null,
+      currentOfferContext = null,
+      workingMemory = null,
     } = req.body ?? {};
 
     const leadInput = slimLeadForSellerTurn(lead ?? {
@@ -444,6 +464,11 @@ router.post('/clever/seller-turn', express.json({ limit: '128kb' }), async (req,
       scopeHint: scopeHint || 'dashboard',
       now: now || null,
       intentConstraint: intentConstraint || null,
+      messagePurpose: messagePurpose || null,
+      memoryCategory: memoryCategory || null,
+      offerAction: offerAction || null,
+      currentOfferContext: currentOfferContext || null,
+      workingMemory: workingMemory || null,
       env: process.env,
     });
 

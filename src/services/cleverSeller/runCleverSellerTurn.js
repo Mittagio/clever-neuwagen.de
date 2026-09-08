@@ -98,6 +98,7 @@ import {
   shouldCaptureBeforeOffer,
 } from './captureThenOffer.js';
 import { buildSellerWorkBriefing } from './buildSellerWorkBriefing.js';
+import { softenInterpretWarnings } from './presentSellerIntakeFeedback.js';
 import {
   listCustomerVehicleTracks,
   VEHICLE_TRACK_STATUS,
@@ -772,11 +773,22 @@ function finalizeSellerTurn({
       t.status === VEHICLE_TRACK_STATUS.ACTIVE
       || t.status === VEHICLE_TRACK_STATUS.FAVORITE
     ));
+    const hasVehicleModel = uniqueFacts.some((f) => (
+      (f.field === 'vehicleInterest' && f.value?.modelKey)
+      || (
+        f.field === 'vehicleInterestMulti'
+        && Array.isArray(f.value)
+        && f.value.some((v) => v?.modelKey)
+      )
+    ));
     captureNextStep = buildCaptureNextStepHint({
       trackCount: tracks.length || uniqueFacts.filter((f) => (
         f.field === 'vehicleInterest' || f.field === 'vehicleInterestMulti'
       )).length,
       hasActiveTrack,
+      hasVehicleModel,
+      fuelPreference: uniqueFacts.find((f) => f.field === 'fuelPreference')?.value || null,
+      needsConsultation: !hasVehicleModel,
     });
   }
 
@@ -1117,10 +1129,13 @@ function finalizeSellerTurn({
   });
 
   const primaryIntent = effectiveIntents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
-  const warnings = [
+  const warnings = softenInterpretWarnings([
     ...buildWarnings(uniqueFacts, interpreted.inputMode),
     ...warningsExtra,
-  ];
+  ], {
+    extractedFacts: uniqueFacts,
+    rememberDecision,
+  });
 
   const interpretedGoal = buildInterpretedGoal({
     intents: effectiveIntents,
@@ -1652,6 +1667,7 @@ export async function runCleverSellerTurnAsync({
         attachments,
         facts: interpreted.facts,
       }),
+      semanticFirst: true,
     }
     : evaluateSellerInterpretEscalation({
       ...interpreted,
@@ -1777,9 +1793,7 @@ export async function runCleverSellerTurnAsync({
     } catch (err) {
       return baseFinalize({
         multiSourceIntakeOverride: baselineIntake,
-        warningsExtra: [
-          'Clever konnte den gesamten Fall nicht vollständig mit dem Sprachmodell interpretieren. Bitte prüfen Sie die erkannten Angaben.',
-        ],
+        warningsExtra: [],
         openaiEscalation: {
           used: false,
           reason: gate.reason,
@@ -1813,11 +1827,8 @@ export async function runCleverSellerTurnAsync({
 
     return baseFinalize({
       multiSourceIntakeOverride: aiMs.intake || baselineIntake,
-      warningsExtra: aiMs.ok
-        ? ['Semantische Interpretation – bitte in der Review prüfen.']
-        : [
-          'Clever konnte den gesamten Fall nicht vollständig mit dem Sprachmodell interpretieren. Bitte prüfen Sie die erkannten Angaben.',
-        ],
+      // Partial Success: kein globales „Fall fehlgeschlagen“ – UI entscheidet über Warning
+      warningsExtra: aiMs.ok ? [] : [],
       openaiEscalation: {
         used: Boolean(aiMs.ok),
         reason: gate.reason,
@@ -1832,26 +1843,35 @@ export async function runCleverSellerTurnAsync({
     });
   }
 
-  // --- Schwache Facts-Eskalation (bestehend) ---
+  // --- Semantic-first Facts-Pfad (OpenAI versteht, Clever prüft) ---
   const safeContext = buildSellerInterpretSafeContext(lead, {
     sellerInput: interpreted.normalized || sellerInput,
     attachmentTypes: interpreted.attachmentTypes,
     attachments,
     deterministic: interpreted,
     includeAttachmentExcerpts: false,
+    currentOfferContext: effectiveOfferContext,
+    workingContext: Array.isArray(workingContextItems) ? workingContextItems[0] : null,
+    workingMemory: memory,
+    conversationHistory: history,
   });
+
+  const mergeMode = gate.semanticFirst === false && !openAiOptions.forceEscalate
+    ? 'legacy'
+    : 'semantic_first';
 
   let ai;
   try {
     ai = await interpretSellerInputWithOpenAi(safeContext, openAiOptions);
   } catch (err) {
     return baseFinalize({
-      warningsExtra: ['OpenAI-Eskalation fehlgeschlagen – nur Regel-Interpretation.'],
+      warningsExtra: [],
       openaiEscalation: {
         used: false,
         reason: gate.reason,
         error: err?.message || 'openai_error',
         interpreterSource: 'fallback',
+        semanticFirst: mergeMode === 'semantic_first',
       },
       interpreterDiagnostics: {
         interpreterSource: 'fallback',
@@ -1875,12 +1895,13 @@ export async function runCleverSellerTurnAsync({
 
   if (!ai?.ok) {
     return baseFinalize({
-      warningsExtra: ['OpenAI nicht verfügbar – nur Regel-Interpretation.'],
+      warningsExtra: [],
       openaiEscalation: {
         used: false,
         reason: gate.reason,
         error: ai?.error || 'openai_failed',
         interpreterSource: 'fallback',
+        semanticFirst: mergeMode === 'semantic_first',
       },
       interpreterDiagnostics: {
         interpreterSource: 'fallback',
@@ -1902,9 +1923,15 @@ export async function runCleverSellerTurnAsync({
     });
   }
 
-  const facts = mergeSellerInterpretation(interpreted.facts, ai.facts);
-  const intents = mergeSellerIntents(interpreted.intents, ai.intents);
+  const facts = mergeSellerInterpretation(interpreted.facts, ai.facts, { mode: mergeMode });
+  const intents = mergeSellerIntents(interpreted.intents, ai.intents, { mode: mergeMode });
   const confidence = Math.max(interpreted.confidence || 0, ai.confidence || 0);
+  const hasReviewFacts = facts.some((f) => f.needsConfirmation);
+  const warningsExtra = mergeMode === 'semantic_first'
+    ? (hasReviewFacts
+      ? ['Semantische Interpretation: einzelne Angaben bitte prüfen.']
+      : [])
+    : ['OpenAI hat ergänzt – bitte in der Review prüfen.'];
 
   return finalizeSellerTurn({
     lead,
@@ -1912,23 +1939,33 @@ export async function runCleverSellerTurnAsync({
     facts,
     intents,
     env,
-    warningsExtra: ['OpenAI hat ergänzt – bitte in der Review prüfen.'],
+    warningsExtra,
     openaiEscalation: {
       used: true,
       reason: gate.reason,
       path: 'facts',
       aiFactCount: ai.facts.length,
       interpreterSource: 'openai',
+      semanticFirst: mergeMode === 'semantic_first',
     },
     interpreterDiagnostics: {
       interpreterSource: 'openai',
       responseId: null,
       model: null,
+      attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+      attachmentContextMode: 'none',
+      complexityReasons: gate.complexity?.complexityReasons || [],
+      schemaValid: true,
+      validatorWarningsCount: 0,
+      toolCalls: 0,
+      fallbackReason: null,
+      durationMs: null,
       reason: gate.reason,
       latencyMs: null,
       used: true,
+      semanticFirst: mergeMode === 'semantic_first',
     },
-    currentOfferContext,
+    currentOfferContext: effectiveOfferContext,
     workingContextItems,
     customerName,
     sellerInput,
@@ -1936,9 +1973,17 @@ export async function runCleverSellerTurnAsync({
     leadsSnapshot,
     scopeHint,
     appContext,
-    pendingAction: pendingAction || appContext?.pendingAction || null,
+    pendingAction: effectivePending,
+    workingMemory: memory,
+    conversationHistory: history,
+    previousOfferPreparation: prep,
     now: now || appContext?.now || null,
     calendarAvailability: calendarAvailability || appContext?.calendarAvailability || null,
+    intentConstraint,
+    messagePurpose,
+    memoryCategory,
+    offerAction,
+    purpose,
   });
 }
 
@@ -1991,10 +2036,14 @@ export async function runCleverSellerTurnWithCalendar(params = {}) {
     sellerInput: rest.sellerInput,
     attachments: rest.attachments || [],
   });
+  const openAiEnabled = isCleverSellerOpenAiInterpretEnabled(rest.env);
+  // Freier Clever-Input + Flag → immer Async/Semantic-First (nicht nur bei Komplexität)
   const preferAsync = Boolean(
     forceAsyncInterpret
-    || (complexity.isComplex && isCleverSellerOpenAiInterpretEnabled(rest.env))
     || openAiOptions?.forceEscalate
+    || openAiOptions?.preferSemanticFirst
+    || (openAiEnabled && String(rest.sellerInput || '').trim().length >= 3)
+    || (complexity.isComplex && openAiEnabled)
   );
 
   const executeTurn = async (turnParams) => {
@@ -2065,6 +2114,7 @@ export {
   isCleverSellerOpenAiInterpretEnabled,
   evaluateSellerInterpretEscalation,
   shouldEscalateSellerInterpretation,
+  isFreeCleverSemanticInput,
   evaluateComplexSellerTurn,
   shouldUseSemanticInterpreter,
 } from './cleverSellerOrchestratorConfig.js';

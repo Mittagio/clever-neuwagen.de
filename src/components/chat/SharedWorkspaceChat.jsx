@@ -264,7 +264,8 @@ export default function SharedWorkspaceChat({
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!draft.trim() || sending) return;
+    if (!draft.trim() || magicBusy) return;
+    // Auch bei sending: Parent darf Feedback zeigen oder Stuck-State lösen
     onSend?.(draft.trim());
   }
 
@@ -901,7 +902,8 @@ export default function SharedWorkspaceChat({
               <button
                 type="submit"
                 className={`sw-composer__send${sendLabel ? ' sw-composer__send--labeled' : ''}`}
-                disabled={sending || magicBusy || !draft.trim()}
+                disabled={magicBusy || !draft.trim()}
+                aria-busy={sending || undefined}
                 aria-label={sendAriaLabel || sendLabel || 'Senden'}
                 title={sendAriaLabel || sendLabel || 'Senden'}
               >

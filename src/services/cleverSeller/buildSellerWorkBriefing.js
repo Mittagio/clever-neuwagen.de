@@ -3,6 +3,7 @@
  * Keine zweite KI-Wahrheit – nur Formatierung vorhandener Slots.
  */
 import { buildCaptureNextStepHint } from './captureThenOffer.js';
+import { presentIntakeNextStepLabel } from './presentSellerIntakeFeedback.js';
 
 function pickFact(facts, field) {
   return (facts || []).find((f) => f?.field === field && !f?.value?.remove) || null;
@@ -23,6 +24,12 @@ function titleCaseWords(raw = '') {
     })
     .join(' ');
 }
+
+const MONTH_LABELS = {
+  '01': 'Januar', '02': 'Februar', '03': 'März', '04': 'April',
+  '05': 'Mai', '06': 'Juni', '07': 'Juli', '08': 'August',
+  '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Dezember',
+};
 
 function formatVehicleLine(facts = [], draft = null) {
   const interest = pickFact(facts, 'vehicleInterest');
@@ -69,6 +76,40 @@ function formatVehicleLine(facts = [], draft = null) {
   return [modelLabel, trimPart, color, ...uniqEquip].filter(Boolean).join(' · ') || null;
 }
 
+function formatCustomerPicture(facts = [], lead = null) {
+  const parts = [];
+  const children = pickFact(facts, 'childrenCount');
+  const childrenVal = children?.value ?? lead?.crm?.needProfile?.household?.childrenCount
+    ?? lead?.crm?.needProfile?.children ?? null;
+  if (childrenVal != null) parts.push(`${Number(childrenVal)} Kinder`);
+
+  const pet = pickFact(facts, 'pet') || pickFact(facts, 'hasPet');
+  const dog = lead?.crm?.needProfile?.dog === true
+    || pet?.value?.type === 'dog'
+    || /hund/i.test(String(pet?.label || ''));
+  if (dog) parts.push('Hund');
+  else if (pet?.value?.type === 'cat' || /katze/i.test(String(pet?.label || ''))) {
+    parts.push('Katze');
+  }
+
+  return parts.length ? parts.join(' · ') : null;
+}
+
+function formatSoughtLine(facts = [], draft = null) {
+  if (pickFact(facts, 'vehicleInterest')?.value?.modelKey
+    || draft?.vehicleIdentityDraft?.modelKey) {
+    return null;
+  }
+  const fuel = pickFact(facts, 'fuelPreference');
+  const fuelVal = fuel?.value || null;
+  if (fuelVal === 'electric' || fuelVal === 'elektro' || fuelVal === 'bev'
+    || /elektro/i.test(String(fuel?.label || ''))) {
+    return 'Elektroauto';
+  }
+  if (fuel?.label) return String(fuel.label);
+  return null;
+}
+
 function formatLeasingLine(facts = [], lead = null) {
   const wish = lead?.wish || {};
   const payment = pickFact(facts, 'paymentType');
@@ -86,8 +127,10 @@ function formatLeasingLine(facts = [], lead = null) {
   }
 
   const pay = payment?.value || wish.paymentType || null;
-  if (pay === 'leasing' && !parts.includes('Privat') && !parts.includes('Gewerbe')) {
-    parts.push(/privatleasing/i.test(String(payment?.label || '')) ? 'Privatleasing' : 'Leasing');
+  // Bare „Leasing“ weglassen – Abschnitts-Titel „Leasingwunsch“ reicht;
+  // Privatleasing / Finanzierung / Kauf weiter anzeigen
+  if (pay === 'leasing' && /privatleasing/i.test(String(payment?.label || ''))) {
+    if (!parts.includes('Privat')) parts.push('Privatleasing');
   } else if (pay === 'financing') {
     parts.push('Finanzierung');
   } else if (pay === 'cash') {
@@ -95,19 +138,76 @@ function formatLeasingLine(facts = [], lead = null) {
   }
 
   const months = term?.value ?? wish.termMonths ?? null;
-  if (months != null) parts.push(`${Number(months)} Monate`);
+  if (months != null && Number(months) > 0) {
+    parts.push(`${Number(months)} Monate`);
+  }
 
+  // 0 km ist Missing – nie als Fachwert anzeigen
   const mileage = km?.value ?? wish.mileagePerYear ?? null;
-  if (mileage != null) {
+  if (mileage != null && Number(mileage) > 0) {
     parts.push(`${Number(mileage).toLocaleString('de-DE')} km/Jahr`);
   }
 
   const az = down?.value ?? wish.downPayment ?? null;
-  if (az != null && az !== '') {
+  // downPayment 0 ist gültig („ohne AZ“)
+  if (az != null && az !== '' && Number.isFinite(Number(az))) {
     parts.push(`${Number(az).toLocaleString('de-DE')} € Sonderzahlung`);
   }
 
   return parts.length ? parts.join(' · ') : null;
+}
+
+function formatImportantLine(facts = []) {
+  const parts = [];
+  const seen = new Set();
+  const push = (label) => {
+    const key = String(label || '').toLowerCase().trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    parts.push(label);
+  };
+
+  for (const f of pickFacts(facts, 'equipmentWish')) {
+    if (['winter_tires', 'winter_wheel_set'].includes(f.value?.id)) continue;
+    const label = String(f.value?.label || f.label || '')
+      .replace(/\s*[·|]\s*(muss|wichtig|nice)\s*$/i, '')
+      .trim();
+    if (label) push(label);
+  }
+  const ahk = pickFact(facts, 'towHitchRequired');
+  if (ahk && !ahk.value?.remove) {
+    push(/ahk/i.test(String(ahk.label || '')) ? 'Anhängerkupplung' : (ahk.label || 'Anhängerkupplung'));
+  }
+  return parts.length ? parts.join(' · ') : null;
+}
+
+function formatCurrentVehicleLine(facts = [], lead = null) {
+  const existing = pickFact(facts, 'existingVehicle');
+  const crm = lead?.crm?.existingVehicle || null;
+  const make = existing?.value?.make || crm?.make || null;
+  const model = existing?.value?.model || crm?.model || null;
+  const color = existing?.value?.color || crm?.color || null;
+  const label = [make, model].filter(Boolean).join(' ')
+    || (existing?.label ? String(existing.label).replace(/\s*·\s*.*$/, '').trim() : null)
+    || crm?.label
+    || null;
+  if (!label) return null;
+  const colorLabel = color ? String(color).toLowerCase() : null;
+  return [label, colorLabel].filter(Boolean).join(' · ');
+}
+
+function formatPlannedLine(facts = [], lead = null) {
+  const deadline = pickFact(facts, 'deliveryDeadline');
+  const endDate = deadline?.value?.endDate
+    || lead?.wish?.desiredDeliveryDate
+    || null;
+  if (!endDate) return null;
+  const m = String(endDate).match(/^(20\d{2})-(\d{2})(?:-\d{2})?$/);
+  if (m) {
+    const monthLabel = MONTH_LABELS[m[2]] || m[2];
+    return `${monthLabel} ${m[1]}`;
+  }
+  return String(deadline?.label || endDate).replace(/^Geplant\s+/i, '');
 }
 
 function formatExtrasLine(facts = []) {
@@ -169,6 +269,33 @@ function formatClarifyLine(facts = [], draft = null) {
   return parts.length ? parts.join(' · ') : null;
 }
 
+function resolveNextStepLabel(params = {}) {
+  const facts = Array.isArray(params.facts) ? params.facts : [];
+  const draft = params.draft || null;
+  const nextHint = params.nextStepHint || null;
+  const hasModel = Boolean(
+    pickFact(facts, 'vehicleInterest')?.value?.modelKey
+    || draft?.vehicleIdentityDraft?.modelKey
+    || draft?.modelKey
+  );
+  const fuel = pickFact(facts, 'fuelPreference');
+  const isElectric = fuel?.value === 'electric'
+    || fuel?.value === 'elektro'
+    || fuel?.value === 'bev'
+    || /elektro/i.test(String(fuel?.label || ''));
+
+  const presented = presentIntakeNextStepLabel(nextHint);
+  if (presented) return presented;
+
+  if (!hasModel && (isElectric || pickFact(facts, 'childrenCount') || pickFact(facts, 'existingVehicle'))) {
+    return 'Passende Fahrzeuge finden';
+  }
+  if (nextHint?.cta === 'Angebot' || /angebot/i.test(String(nextHint?.label || ''))) {
+    return 'Angebot vorbereiten';
+  }
+  return nextHint?.label || 'Angebot vorbereiten';
+}
+
 /**
  * @param {{
  *   facts?: object[],
@@ -177,13 +304,7 @@ function formatClarifyLine(facts = [], draft = null) {
  *   nextStepHint?: object|null,
  * }} params
  * @returns {{
- *   sections: {
- *     customerWants: string|null,
- *     leasingWish: string|null,
- *     extras: string|null,
- *     toClarify: string|null,
- *     nextStep: string,
- *   },
+ *   sections: object,
  *   lines: string[],
  *   text: string,
  *   source: 'structured_facts',
@@ -193,38 +314,75 @@ export function buildSellerWorkBriefing(params = {}) {
   const facts = Array.isArray(params.facts) ? params.facts : [];
   const draft = params.draft || null;
   const lead = params.lead || null;
+  const hasModel = Boolean(
+    pickFact(facts, 'vehicleInterest')?.value?.modelKey
+    || draft?.vehicleIdentityDraft?.modelKey
+    || draft?.modelKey
+  );
   const nextHint = params.nextStepHint || buildCaptureNextStepHint({
     hasActiveTrack: Boolean(lead?.crm?.focusedVehicleTrackId),
     trackCount: Array.isArray(lead?.crm?.vehicleConfigurations)
       ? lead.crm.vehicleConfigurations.length
       : 0,
+    hasVehicleModel: hasModel,
+    fuelPreference: pickFact(facts, 'fuelPreference')?.value || null,
+    needsConsultation: !hasModel,
   });
 
+  const customerPicture = formatCustomerPicture(facts, lead);
+  const sought = formatSoughtLine(facts, draft);
   const customerWants = formatVehicleLine(facts, draft);
   const leasingWish = formatLeasingLine(facts, lead);
+  const important = formatImportantLine(facts);
   const extras = formatExtrasLine(facts);
+  const currentVehicle = formatCurrentVehicleLine(facts, lead);
+  const planned = formatPlannedLine(facts, lead);
   const toClarify = formatClarifyLine(facts, draft);
-  const nextStep = nextHint?.cta === 'Angebot' || /angebot/i.test(String(nextHint?.label || ''))
-    ? 'Angebot vorbereiten'
-    : (nextHint?.label || 'Angebot vorbereiten');
+  const nextStep = resolveNextStepLabel({ facts, draft, nextStepHint: nextHint });
 
   const lines = [];
+  if (customerPicture) {
+    lines.push('Kundenbild:');
+    lines.push(customerPicture);
+  }
+  if (sought) {
+    if (lines.length) lines.push('');
+    lines.push('Gesucht:');
+    lines.push(sought);
+  }
   if (customerWants) {
-    lines.push(`Kunde möchte:`);
+    if (lines.length) lines.push('');
+    lines.push('Kunde möchte:');
     lines.push(customerWants);
   }
   if (leasingWish) {
-    lines.push('');
+    if (lines.length) lines.push('');
     lines.push('Leasingwunsch:');
     lines.push(leasingWish);
   }
+  if (important && !customerWants) {
+    // Need-Consultation: Ausstattung als „Wichtig“, nicht im Fahrzeug-Chip
+    if (lines.length) lines.push('');
+    lines.push('Wichtig:');
+    lines.push(important);
+  }
   if (extras) {
-    lines.push('');
+    if (lines.length) lines.push('');
     lines.push('Zusätzlich:');
     lines.push(extras);
   }
+  if (currentVehicle) {
+    if (lines.length) lines.push('');
+    lines.push('Aktuelles Fahrzeug:');
+    lines.push(currentVehicle);
+  }
+  if (planned) {
+    if (lines.length) lines.push('');
+    lines.push('Geplant:');
+    lines.push(planned);
+  }
   if (toClarify) {
-    lines.push('');
+    if (lines.length) lines.push('');
     lines.push('Noch zu klären:');
     lines.push(toClarify);
   }
@@ -234,9 +392,14 @@ export function buildSellerWorkBriefing(params = {}) {
 
   return {
     sections: {
+      customerPicture,
+      sought,
       customerWants,
       leasingWish,
+      important,
       extras,
+      currentVehicle,
+      planned,
       toClarify,
       nextStep,
     },

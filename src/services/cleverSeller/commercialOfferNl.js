@@ -66,7 +66,9 @@ export function parseCommercialDownPayment(text = '') {
   }
   const m = blob.match(new RegExp(`(?:anzahlung|sonderzahlung|az)\\s*(?:von\\s*|auf\\s*|in\\s+h[öo]he\\s+von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
     || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzahlung|sonderzahlung|az)\\b`, 'i'))
-    || blob.match(new RegExp(`(?:sonderzahlung|anzahlung)\\s+in\\s+h[öo]he\\s+von\\s+${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'));
+    || blob.match(new RegExp(`(?:sonderzahlung|anzahlung)\\s+in\\s+h[öo]he\\s+von\\s+${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
+    || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'))
+    || blob.match(new RegExp(`(?:kann|möchte|moechte|will)\\s+(?:bis\\s+zu\\s+)?${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'));
   if (!m?.[1]) return null;
   const value = parseEuroLoose(m[1]);
   if (value == null || value < 0 || value > 200000) return null;

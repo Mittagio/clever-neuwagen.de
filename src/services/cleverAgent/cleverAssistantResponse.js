@@ -5,6 +5,11 @@
  * @see docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md
  */
 
+import {
+  presentCompactConfirmation,
+  sanitizeIntakeDisplayChips,
+} from '../cleverSeller/presentSellerIntakeFeedback.js';
+
 export const CLEVER_RESPONSE_KIND = Object.freeze({
   DIRECT_ANSWER: 'direct_answer',
   COMPACT_CONFIRMATION: 'compact_confirmation',
@@ -25,7 +30,6 @@ export const CLEVER_RESPONSE_KIND = Object.freeze({
  */
 export function resolveSellerResponsePolicy(turn = {}) {
   const rememberMode = turn.rememberDecision?.mode;
-  const zeroLoss = turn.zeroLossIntake?.summary;
   const assistantReply = String(turn.assistantReply || '').trim();
   const facts = turn.extractedFacts || [];
   const prepared = turn.preparedActions || [];
@@ -88,24 +92,18 @@ export function resolveSellerResponsePolicy(turn = {}) {
     rememberMode === 'save_with_undo'
     || rememberMode === 'partial_save_with_undo'
   ) {
-    const chips = zeroLoss?.chips?.length
-      ? zeroLoss.chips
-      : facts.map((f) => f.label).filter(Boolean).slice(0, 10);
-    const title = zeroLoss?.title || 'Aufgenommen';
-    const noteBit = zeroLoss?.noteCount ? ` · Notizen · ${zeroLoss.noteCount}` : '';
+    const presented = presentCompactConfirmation(turn);
     const next = turn.captureNextStep || turn.uiEffects?.captureNextStep || null;
-    const nextBit = next?.hint ? ` · ${next.hint}` : '';
     return {
       kind: CLEVER_RESPONSE_KIND.COMPACT_CONFIRMATION,
-      message: chips.length
-        ? `${title}: ${chips.join(' · ')}${noteBit}${nextBit}`
-        : `${title}${noteBit}${nextBit}`,
-      chips,
+      message: presented.message,
+      chips: presented.chips,
       undoAvailable: true,
       showReview: rememberMode === 'partial_save_with_undo'
         && (turn.rememberDecision?.reviewFacts || []).length > 0,
       clarificationOptions: [],
       nextStep: next,
+      showGlobalWarning: presented.showGlobalWarning,
     };
   }
 
@@ -175,8 +173,8 @@ export function resolveSellerResponsePolicy(turn = {}) {
     return {
       kind: CLEVER_RESPONSE_KIND.DIRECT_ANSWER,
       message: assistantReply
-        || (facts.map((f) => f.label).filter(Boolean).slice(0, 6).join(' · ') || 'Verstanden.'),
-      chips: facts.map((f) => f.label).filter(Boolean).slice(0, 8),
+        || (sanitizeIntakeDisplayChips(facts).slice(0, 6).join(' · ') || 'Verstanden.'),
+      chips: sanitizeIntakeDisplayChips(facts).slice(0, 8),
       undoAvailable: false,
       showReview: false,
       clarificationOptions: [],

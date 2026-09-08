@@ -1121,4 +1121,140 @@ Falls möglich, würde ich das Fahrzeug gern direkt mit Winterreifen statt Somme
   console.log('✓ Clever Agent V1 – Mail→Akte→Angebot-Handoff E2E');
 }
 
+{
+  // Golden 21: Need Consultation / echtes Kundengespräch (fixes now = 2026-09-08)
+  const text = 'Der Kunde hat zwei Kinder und einen Hund. Er möchte ein Elektroauto leasen, am liebsten für vier Jahre mit 15.000 Kilometern im Jahr. Er kann 3.000 Euro anzahlen. Wichtig ist ihm eine Wärmepumpe und eine Anhängerkupplung. Aktuell fährt er einen schwarzen VW Polo. Das neue Fahrzeug plant er für Dezember dieses Jahres.';
+  const NOW = '2026-09-08T10:00:00';
+  const lead0 = baseLead();
+
+  const interpretation = interpretCleverInput({ text, lead: lead0, now: NOW });
+  const facts = interpretation.extractedData.facts || [];
+
+  assert.ok(
+    interpretation.intent === 'need_consultation'
+    || interpretation.intent === 'capture_customer_information',
+    `Intent need/capture, got ${interpretation.intent}`,
+  );
+
+  assert.ok(facts.some((f) => f.field === 'childrenCount' && Number(f.value) === 2));
+  assert.ok(facts.some((f) => (
+    f.field === 'pet' && (f.value?.type === 'dog' || /hund/i.test(String(f.label || '')))
+  )));
+  assert.ok(facts.some((f) => (
+    f.field === 'fuelPreference'
+    && (f.value === 'electric' || f.value === 'elektro' || f.value === 'bev')
+  )));
+  assert.ok(facts.some((f) => f.field === 'paymentType' && f.value === 'leasing'));
+  assert.ok(facts.some((f) => f.field === 'termMonths' && Number(f.value) === 48));
+  assert.ok(facts.some((f) => f.field === 'annualMileage' && Number(f.value) === 15000));
+  assert.ok(facts.some((f) => f.field === 'downPayment' && Number(f.value) === 3000));
+  assert.ok(facts.some((f) => (
+    f.field === 'equipmentWish'
+    && (f.value?.id === 'heat_pump' || /wärmepumpe|waermepumpe/i.test(String(f.label || '')))
+  )));
+  assert.ok(facts.some((f) => f.field === 'towHitchRequired' && f.value !== false && !f.value?.remove));
+
+  const existing = facts.find((f) => f.field === 'existingVehicle');
+  assert.ok(existing, 'existingVehicle Fact');
+  assert.match(String(existing.value?.make || existing.label || ''), /VW|Volkswagen/i);
+  assert.match(String(existing.value?.model || existing.label || ''), /Polo/i);
+  assert.match(String(existing.value?.color || ''), /schwarz/i);
+
+  assert.ok(!facts.some((f) => f.field === 'tradeInRequested'), 'kein tradeInRequested');
+  assert.ok(!facts.some((f) => f.field === 'tradeInVehicle'), 'kein tradeInVehicle');
+  assert.equal(interpretation.extractedData.tradeIn?.status ?? null, null);
+  assert.ok(!facts.some((f) => f.field === 'vehicleInterest'), 'kein Wunschmodell / kein Polo-Interest');
+  assert.ok(!facts.some((f) => f.field === 'colorPreference'), 'keine Wunschfarbe schwarz');
+
+  const deadline = facts.find((f) => f.field === 'deliveryDeadline');
+  assert.ok(deadline, 'deliveryDeadline');
+  assert.equal(deadline.value?.endDate, '2026-12');
+  assert.ok(!/2026-12-\d{2}/.test(String(deadline.value?.endDate || '')), 'kein erfundener Tag');
+
+  assert.ok(!interpretation.proposedActions?.some((a) => (
+    a.type === 'prepare_offer_concept_draft' || a.type === 'prepare_offer_review'
+  )), 'kein Concept-Draft ohne Modell');
+  assert.equal(interpretation.extractedData.leasing?.rate ?? null, null);
+
+  const turn = runCleverSellerTurn({ lead: lead0, sellerInput: text, now: NOW });
+  assert.ok(
+    (turn.intents || []).some((i) => i.type === 'update_customer_context')
+    || turn.intent === 'update_customer_context'
+    || /need_consultation|capture_customer/i.test(String(turn.intent || '')),
+  );
+  assert.ok(!(turn.preparedActions || []).some((a) => (
+    a.type === 'prepare_offer' && a.status === 'prepared' && a.payload?.offerDraftId
+  )), 'kein Concept-/Offer-Draft');
+  // Kein globaler Review-Blocker nur wegen fehlendem Modell
+  assert.ok(
+    turn.reviewModel == null
+    || turn.reviewModel?.suppressGlobalReview === true
+    || turn.responseKind === 'compact_confirmation'
+    || turn.responseKind === 'direct_answer'
+    || turn.rememberDecision?.mode === 'save_with_undo'
+    || turn.rememberDecision?.mode === 'partial_save_with_undo'
+    || (turn.preparedActions || []).every((a) => a.type !== 'prepare_offer' || a.status !== 'needs_review'),
+    'kein globaler Review-Blocker',
+  );
+
+  const briefing = turn.workBriefing || buildSellerWorkBriefing({
+    facts: turn.extractedFacts || facts,
+    lead: lead0,
+    nextStepHint: turn.captureNextStep,
+  });
+  const s = briefing.sections;
+  assert.match(String(s.customerPicture || ''), /2\s*Kinder/i);
+  assert.match(String(s.customerPicture || ''), /Hund/i);
+  assert.match(String(s.sought || ''), /Elektroauto/i);
+  assert.match(String(s.leasingWish || ''), /48\s*Monate/i);
+  assert.match(String(s.leasingWish || ''), /15\.000\s*km/i);
+  assert.match(String(s.leasingWish || ''), /3\.000\s*€/i);
+  assert.match(String(s.important || ''), /Wärmepumpe|Waermepumpe/i);
+  assert.match(String(s.important || ''), /Anhängerkupplung|AHK/i);
+  assert.match(String(s.currentVehicle || ''), /VW\s*Polo/i);
+  assert.match(String(s.currentVehicle || ''), /schwarz/i);
+  assert.match(String(s.planned || ''), /Dezember\s*2026/i);
+  assert.match(
+    String(s.nextStep || ''),
+    /Passende Fahrzeuge finden|Elektrofahrzeuge finden|Fahrzeugberatung/i,
+  );
+  assert.ok(!/Angebot vorbereiten/i.test(String(s.nextStep || '')), 'kein Angebot-Next-Step ohne Modell');
+
+  const applied = applyAcceptedSellerTurn(lead0, {
+    ...turn,
+    extractedFacts: [...(turn.extractedFacts || facts)].reverse(),
+    sellerInput: text,
+  }, { postFeedCard: false });
+  assert.equal(applied.ok, true);
+
+  const profile = getNeedProfileFromLead(applied.lead);
+  assert.equal(Number(profile?.household?.childrenCount ?? profile?.children), 2);
+  assert.equal(profile?.dog, true);
+  assert.equal(profile?.fuel, 'electric');
+  assert.equal(applied.lead.wish?.paymentType, 'leasing');
+  assert.equal(applied.lead.wish?.termMonths, 48);
+  assert.equal(applied.lead.wish?.mileagePerYear, 15000);
+  assert.equal(applied.lead.wish?.downPayment, 3000);
+  assert.equal(applied.lead.wish?.desiredDeliveryDate, '2026-12');
+
+  const ev = applied.lead.crm?.existingVehicle;
+  assert.ok(ev, 'crm.existingVehicle');
+  assert.match(String(ev.make || ''), /VW/i);
+  assert.match(String(ev.model || ''), /Polo/i);
+  assert.match(String(ev.color || ''), /schwarz/i);
+  assert.equal(ev.tradeInCandidate, false);
+
+  const tradeIn = getTradeIn(applied.lead);
+  assert.ok(
+    !tradeIn?.vehicle
+    && !/Polo|Inzahlungnahme/i.test(String(tradeIn?.notes || '')),
+    'kein Trade-in aus Bestandfahrzeug',
+  );
+  assert.ok(!applied.lead.crm?.cleverWorkingState?.currentOfferDraftId, 'kein Offer-Draft');
+  assert.equal(applied.lead.wish?.desiredRate ?? null, null);
+  assert.ok(!/schwarz/i.test(String(profile?.colorPreference || applied.lead.wish?.preferredColor || '')));
+
+  console.log('✓ Clever Agent V1 – Need Consultation / echtes Kundengespräch E2E (Golden 21)');
+}
+
 console.log('interpretCleverInput.golden.test.js: ok');

@@ -1494,9 +1494,37 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
   ));
   const tradeInRequested = Boolean(tradeInRequestedFact)
     || facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT && f.field === 'tradeInVehicle');
-  if (tradeInRequested || existingVehicle || tradeInVehicleFact) {
+
+  // Bestandfahrzeug ohne Inzahlungnahme-Cue → crm.existingVehicle (nicht tradeIn)
+  if (existingVehicle && !tradeInRequested && !tradeInVehicleFact) {
+    const v = existingVehicle.value || {};
+    const label = v.model
+      ? [v.make, v.model].filter(Boolean).join(' ')
+      : String(existingVehicle.label || '').replace(/\s*·\s*.*$/, '').trim();
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...(nextLead.crm ?? {}),
+        existingVehicle: {
+          ...(nextLead.crm?.existingVehicle || {}),
+          make: v.make || nextLead.crm?.existingVehicle?.make || null,
+          model: v.model || nextLead.crm?.existingVehicle?.model || null,
+          color: v.color || nextLead.crm?.existingVehicle?.color || null,
+          transmission: v.transmission || nextLead.crm?.existingVehicle?.transmission || null,
+          label: label || nextLead.crm?.existingVehicle?.label || null,
+          role: 'existing_vehicle',
+          tradeInCandidate: false,
+          source: 'seller_input',
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    };
+    if (label) labels.push(`Aktuelles Fahrzeug: ${label}`);
+  }
+
+  if (tradeInRequested || tradeInVehicleFact) {
     const current = getTradeIn(nextLead);
-    const vehicleFact = tradeInVehicleFact || existingVehicle;
+    const vehicleFact = tradeInVehicleFact || (tradeInRequested ? existingVehicle : null);
     const vehicleLabel = vehicleFact?.value?.model
       ? [vehicleFact.value.make, vehicleFact.value.model].filter(Boolean).join(' ')
       : (vehicleFact?.label
@@ -1527,6 +1555,19 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
             detailParts.join(' · '),
           ].filter(Boolean).join(' · '),
         }),
+        ...(existingVehicle ? {
+          existingVehicle: {
+            ...(nextLead.crm?.existingVehicle || {}),
+            make: existingVehicle.value?.make || null,
+            model: existingVehicle.value?.model || null,
+            color: existingVehicle.value?.color || null,
+            label: vehicleLabel || null,
+            role: 'existing_vehicle',
+            tradeInCandidate: true,
+            source: 'seller_input',
+            updatedAt: new Date().toISOString(),
+          },
+        } : {}),
       },
     };
   }

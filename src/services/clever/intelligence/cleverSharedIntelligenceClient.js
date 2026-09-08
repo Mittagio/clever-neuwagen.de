@@ -17,8 +17,41 @@ export function isCleverSellerOpenAiInterpretClientEnabled() {
 }
 
 /**
- * UI-Routing: komplexer Turn → Server (kein Browser-API-Key).
- * Nutzt dieselbe Heuristik wie der Orchestrator.
+ * Lead für Seller-Turn API verkleinern (kein Full-History / Kontakt-Dump).
+ * Server slimt zusätzlich – Client vermeidet 413 / stringify-Hänger.
+ */
+export function slimLeadForSellerTurnClient(lead = null) {
+  if (!lead || typeof lead !== 'object') return {};
+  const working = lead.crm?.cleverWorkingState || null;
+  return {
+    id: lead.id ?? null,
+    paymentType: lead.paymentType ?? null,
+    crm: {
+      needProfile: lead.crm?.needProfile ?? null,
+      sellerInsights: (lead.crm?.sellerInsights ?? []).slice(-8).map((insight) => ({
+        text: String(insight?.text ?? '').slice(0, 400),
+        labels: (insight?.understoodLabels ?? insight?.labels ?? []).slice(0, 8),
+        context: insight?.context ?? null,
+      })),
+      ...(working ? {
+        cleverWorkingState: {
+          currentOfferDraftId: working.currentOfferDraftId ?? null,
+          currentOfferDraft: working.currentOfferDraft ?? null,
+          recentVehicleTrackIds: Array.isArray(working.recentVehicleTrackIds)
+            ? working.recentVehicleTrackIds.slice(0, 8)
+            : [],
+          recentVehicleModelKeys: Array.isArray(working.recentVehicleModelKeys)
+            ? working.recentVehicleModelKeys.slice(0, 8)
+            : [],
+        },
+      } : {}),
+    },
+  };
+}
+
+/**
+ * UI-Routing: freier Clever-Input → Server-Interpret (Semantic-First).
+ * Browser hat keinen API-Key; komplexer Multi-Source bleibt eingeschlossen.
  */
 export async function shouldRequestServerSellerTurn({
   sellerInput = '',
@@ -26,8 +59,15 @@ export async function shouldRequestServerSellerTurn({
   facts = [],
   appContext = null,
   workingContext = null,
+  forceSemanticFirst = true,
 } = {}) {
   if (!isCleverSellerOpenAiInterpretClientEnabled()) return false;
+  const text = String(sellerInput || '').trim();
+  if (text.length < 3) return false;
+
+  // Produkt: freier Clever-Composer nutzt Server-LLM als Primärpfad
+  if (forceSemanticFirst) return true;
+
   const { shouldUseSemanticInterpreter } = await import(
     '../../cleverSeller/multiSource/evaluateComplexSellerTurn.js'
   );
@@ -130,20 +170,44 @@ export async function requestCleverScreenshotInterpret(payload = {}) {
 /**
  * Universal Seller Turn inkl. optionaler OpenAI-Eskalation (Server).
  * @param {object} payload
+ * @param {{ timeoutMs?: number }} [opts]
  */
-export async function requestCleverSellerTurn(payload = {}) {
-  const response = await fetch(`${API_BASE}/clever/seller-turn`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(payload.sellerId ? { 'X-Seller-Id': String(payload.sellerId) } : {}),
-      ...(payload.dealerId ? { 'X-Dealer-Id': String(payload.dealerId) } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
+export async function requestCleverSellerTurn(payload = {}, opts = {}) {
+  const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 45000;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/clever/seller-turn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(payload.sellerId ? { 'X-Seller-Id': String(payload.sellerId) } : {}),
+        ...(payload.dealerId ? { 'X-Dealer-Id': String(payload.dealerId) } : {}),
+      },
+      body: JSON.stringify({
+        ...payload,
+        lead: slimLeadForSellerTurnClient(payload.lead),
+      }),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } catch (err) {
+    const aborted = err?.name === 'AbortError';
+    return {
+      ok: false,
+      error: aborted ? 'timeout' : 'network_error',
+      message: aborted
+        ? 'Semantische Interpretation dauert zu lange.'
+        : 'Seller-Turn nicht erreichbar.',
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    return { ok: false, error: data.error ?? 'request_failed' };
+    return { ok: false, error: data.error ?? 'request_failed', message: data.message || null };
   }
   return data;
 }

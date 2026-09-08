@@ -86,6 +86,15 @@ function mapCaptureIntent(primaryIntent, facts = []) {
   if (primaryIntent === SELLER_TURN_INTENTS.PREPARE_OFFER) {
     return 'prepare_offer_concept';
   }
+  const hasModel = facts.some((f) => f.field === 'vehicleInterest' && f.value?.modelKey);
+  const needConsult = !hasModel && facts.some((f) => (
+    f.field === 'fuelPreference'
+    || f.field === 'childrenCount'
+    || f.field === 'pet'
+    || f.field === 'existingVehicle'
+    || f.field === 'deliveryDeadline'
+  ));
+  if (needConsult) return 'need_consultation';
   if (facts.some((f) => (
     f.field === 'vehicleInterest'
     || f.field === 'termMonths'
@@ -150,12 +159,13 @@ function pickCustomer(facts = []) {
 function pickTradeIn(facts = []) {
   const requested = facts.find((f) => f.field === 'tradeInRequested');
   const vehicle = facts.find((f) => (
-    (f.field === 'tradeInVehicle' || f.field === 'existingVehicle')
+    f.field === 'tradeInVehicle'
     && !f.needsConfirmation
   ));
+  // existingVehicle ≠ Trade-in – nur bei explizitem Cue / tradeInVehicle
   const status = requested?.value?.status
     || (requested ? 'requested' : null)
-    || (vehicle ? 'possible' : null);
+    || (vehicle ? 'requested' : null);
   return {
     status,
     vehicle: vehicle?.value?.model

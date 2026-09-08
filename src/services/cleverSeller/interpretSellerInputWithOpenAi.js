@@ -1,6 +1,6 @@
 /**
- * OpenAI-Interpretation für Seller-Freitext (optional, serverseitig).
- * Ergebnis immer needsConfirmation – Clever persistiert erst nach Review.
+ * OpenAI-Interpretation für Seller-Freitext (primäre Semantik im freien Clever-Modus).
+ * Clever persistiert erst nach Validate/Apply – LLM mutiert keinen Lead.
  */
 import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 
@@ -24,13 +24,14 @@ const RESULT_JSON_SCHEMA = {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['factClass', 'label', 'field', 'value', 'confidence'],
+          required: ['factClass', 'label', 'field', 'value', 'confidence', 'evidence'],
           properties: {
             factClass: { type: 'string' },
             field: { type: ['string', 'null'] },
             value: {},
             label: { type: 'string' },
             confidence: { type: 'number' },
+            evidence: { type: ['string', 'null'] },
           },
         },
       },
@@ -53,13 +54,14 @@ const RESULT_JSON_SCHEMA = {
 function sanitizeAiResult(parsed = {}) {
   const facts = (parsed.facts ?? [])
     .filter((f) => f && ALLOWED_FACT_CLASSES.has(f.factClass) && String(f.label || '').trim())
-    .slice(0, 16)
+    .slice(0, 24)
     .map((f) => ({
       factClass: f.factClass,
       field: f.field || null,
       value: f.value ?? null,
       label: String(f.label).trim().slice(0, 160),
       confidence: Number(f.confidence) || 0.7,
+      evidence: f.evidence != null ? String(f.evidence).trim().slice(0, 160) : null,
     }));
 
   const intents = (parsed.intents ?? [])
@@ -79,9 +81,43 @@ function sanitizeAiResult(parsed = {}) {
 
 /**
  * @param {object} safeContext – buildSellerInterpretSafeContext()
- * @param {{ fetchImpl?: typeof fetch, apiKey?: string|null, model?: string }} [options]
+ * @param {{
+ *   fetchImpl?: typeof fetch,
+ *   apiKey?: string|null,
+ *   model?: string,
+ *   interpretImpl?: (ctx: object) => Promise<object>|object,
+ * }} [options]
  */
 export async function interpretSellerInputWithOpenAi(safeContext = {}, options = {}) {
+  if (typeof options.interpretImpl === 'function') {
+    try {
+      const custom = await options.interpretImpl(safeContext, options);
+      if (custom?.ok === false) {
+        return {
+          ok: false,
+          error: custom.error || 'interpret_impl_failed',
+          facts: [],
+          intents: [],
+          confidence: 0,
+        };
+      }
+      const sanitized = sanitizeAiResult({
+        facts: custom?.facts ?? [],
+        intents: custom?.intents ?? [],
+        confidence: custom?.confidence ?? 0.9,
+      });
+      return { ok: true, error: null, ...sanitized };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err?.message || 'interpret_impl_failed',
+        facts: [],
+        intents: [],
+        confidence: 0,
+      };
+    }
+  }
+
   const apiKey = options.apiKey ?? ENV.OPENAI_API_KEY ?? null;
   if (!apiKey) {
     return { ok: false, error: 'missing_api_key', facts: [], intents: [], confidence: 0 };
@@ -110,27 +146,34 @@ export async function interpretSellerInputWithOpenAi(safeContext = {}, options =
         {
           role: 'system',
           content: [
-            'Du interpretierst Verkäufer-Notizen eines Autohauses (Kia) nach Zero-Loss Intake.',
+            'Du bist der primäre semantische Interpreter für Verkäufer-Notizen (Autohaus, Kia).',
+            'Verstehe Umgangssprache, Tippfehler, Diktat und Abkürzungen (leasn→leasing, stromer→electric, 15 tausend→15000, 15tkm→15000).',
             'Extrahiere ALLES, was du sicher verstehst. Erfinde nichts.',
             'Kein bedeutungstragender Teil darf verworfen werden.',
             'Nicht sicher klassifizierbar → factClass seller_note, field unresolvedNote, value.text = Originalformulierung.',
+            'field = Slotname (fuelPreference, paymentType, termMonths, annualMileage, colorPreference, …).',
+            'factClass nur aus erlaubter Liste. Jahre→termMonths (4 Jahre=48). Kilometer/Jahr→annualMileage.',
+            'fuelPreference value: electric | hybrid | diesel | petrol. paymentType: leasing | financing | cash.',
+            'evidence = kurze Originalspanne aus dem Input (z. B. \"stromer\", \"leasn\").',
             'EQ2/EQ3 o.ä. Tippfehler → kanonisch EV2/EV3 wenn klar Kia-Kontext, sonst niedriger confidence + raw in label.',
-            'Bestandsfahrzeug („fährt einen …“) ≠ Wunschfahrzeug.',
-            'GW / Inzahlungnahme separat von Interesse.',
+            'Bestandsfahrzeug („fährt einen …“) ≠ Wunschfahrzeug; field existingVehicle, nicht vehicleInterest.',
+            'GW / Inzahlungnahme nur bei explizitem Cue (tradeInRequested / tradeInVehicle).',
+            'workingState beachten: „doch weiß“ / „nee lieber weiß“ = Korrektur colorPreference am bestehenden Track/Draft – kein neues Modell.',
+            'Keine Namen/Telefon/E-Mail erfinden. Keine Angebotsraten/Monatsraten erfinden.',
+            'Kein Modell erfinden, wenn keines genannt wurde.',
+            'Partial Success: unsichere Einzelteile markieren (niedrige confidence), sichere trotzdem liefern.',
             'Antworte NUR als JSON gemäß Schema.',
             'factClass nur aus:',
             Object.values(SELLER_FACT_CLASS).join(', '),
             'intent type nur aus:',
             Object.values(SELLER_TURN_INTENTS).join(', '),
-            'Keine Namen/Telefon/E-Mail erfinden. Keine Angebotspreise raten.',
-            'Partial Success: unsichere Einzelteile markieren, sichere trotzdem liefern.',
-            'Bei Unsicherheit: confidence senken und ggf. unresolvedNote – nicht den ganzen Input weglassen.',
           ].join('\n'),
         },
         {
           role: 'user',
           content: JSON.stringify({
             sellerInput,
+            workingState: safeContext.workingState ?? {},
             knownLabels: safeContext.knownLabels ?? [],
             customerLabels: safeContext.customerLabels ?? [],
             needProfileHints: safeContext.needProfileHints ?? {},
@@ -170,3 +213,5 @@ export async function interpretSellerInputWithOpenAi(safeContext = {}, options =
     return { ok: false, error: 'invalid_json', facts: [], intents: [], confidence: 0 };
   }
 }
+
+export { RESULT_JSON_SCHEMA, sanitizeAiResult };

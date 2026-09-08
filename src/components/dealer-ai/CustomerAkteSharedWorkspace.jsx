@@ -36,6 +36,8 @@ import {
   isCleverSellerOpenAiInterpretClientEnabled,
   requestCleverMagicMessage,
   requestCleverScreenshotInterpret,
+  requestCleverSellerTurn,
+  shouldRequestServerSellerTurn,
 } from '../../services/clever/intelligence/cleverSharedIntelligenceClient.js';
 import {
   isCleverAgentClientEnabled,
@@ -257,6 +259,8 @@ export default function CustomerAkteSharedWorkspace({
   const [feedback, setFeedback] = useState('');
   const [progressHint, setProgressHint] = useState(null);
   const [sending, setSending] = useState(false);
+  const sendingWatchdogRef = useRef(null);
+  const sendingRef = useRef(false);
   const [assist, setAssist] = useState(null);
   const [universalTurn, setUniversalTurn] = useState(null);
   const [selectedIntentChipId, setSelectedIntentChipId] = useState(
@@ -299,6 +303,30 @@ export default function CustomerAkteSharedWorkspace({
   useEffect(() => {
     composerModeRef.current = composerMode;
   }, [composerMode]);
+
+  // HMR / hängende Requests: sending darf den Composer nicht dauerhaft blockieren
+  useEffect(() => {
+    if (!sending) {
+      if (sendingWatchdogRef.current) {
+        clearTimeout(sendingWatchdogRef.current);
+        sendingWatchdogRef.current = null;
+      }
+      return undefined;
+    }
+    sendingWatchdogRef.current = setTimeout(() => {
+      sendingWatchdogRef.current = null;
+      sendingRef.current = false;
+      setSending(false);
+      setFeedback('Clever hat zu lange gebraucht – bitte nochmal senden.');
+      setTimeout(() => setFeedback(''), 4000);
+    }, 55000);
+    return () => {
+      if (sendingWatchdogRef.current) {
+        clearTimeout(sendingWatchdogRef.current);
+        sendingWatchdogRef.current = null;
+      }
+    };
+  }, [sending]);
 
   function pinAssist(next) {
     assistPinnedRef.current = true;
@@ -548,7 +576,12 @@ export default function CustomerAkteSharedWorkspace({
 
   function applyRememberWithUndo(turn, options = {}) {
     if (!lead?.id || typeof onPersistLead !== 'function') return false;
-    const previousLead = JSON.parse(JSON.stringify(lead));
+    let previousLead = lead;
+    try {
+      previousLead = JSON.parse(JSON.stringify(lead));
+    } catch {
+      previousLead = { ...lead, crm: { ...(lead.crm || {}) } };
+    }
     const factsToApply = options.facts
       || turn?.rememberDecision?.safeFacts
       || turn?.extractedFacts
@@ -607,8 +640,10 @@ export default function CustomerAkteSharedWorkspace({
   /** Clever-Arbeit: Input → Magic-Nachricht oben (Cursor-ähnlich). */
   async function runCleverProposeFromInput(rawText) {
     const text = String(rawText ?? '').trim();
-    if (!text || sending) return false;
+    if (!text || sendingRef.current) return false;
+    sendingRef.current = true;
     setSending(true);
+    setFeedback('Clever arbeitet …');
     progressHintSchedulerRef.current?.clear();
     try {
       if (onResolveOfferReference) {
@@ -624,6 +659,7 @@ export default function CustomerAkteSharedWorkspace({
         || null;
       if (isOfferHandoffCue(text) && activeDraftId) {
         setDraft('');
+        setFeedback('');
         openHandoffForOfferDraftId(activeDraftId, text);
         return true;
       }
@@ -651,6 +687,7 @@ export default function CustomerAkteSharedWorkspace({
         setAgentWorkingMemory(nextMem);
         persistWorkingMemoryToLead(nextMem, lead, 'Clever Angebotsentwurf angepasst');
         setDraft('');
+        setFeedback('');
         setAppointmentDraft(null);
         clearAssist();
         resetIntentChipsToDefault();
@@ -678,13 +715,23 @@ export default function CustomerAkteSharedWorkspace({
         return true;
       }
 
-      // Clever Agent (OpenAI → Tools → Business-Logik) – gleicher Pfad für Text + Chips
+      // Semantic-First: freier Capture → Server Seller-Turn.
+      // Agent nur bei Message-/Termin-Follow-up oder wenn Semantic-First aus.
+      const preferSemanticFirst = isCleverSellerOpenAiInterpretClientEnabled();
+
       if (isCleverAgentClientEnabled()) {
         const route = routeSellerRequest(text, {
           workingMemory: agentWorkingMemory,
           lead: leadRef.current || lead,
         });
-        if (route === 'clever_agent') {
+        const agentFollowUp = Boolean(
+          agentWorkingMemory?.lastMessageDraft?.body
+          || agentWorkingMemory?.lastAppointmentProposal
+          || agentWorkingMemory?.pendingAction,
+        );
+        const runAgent = route === 'clever_agent'
+          && (!preferSemanticFirst || agentFollowUp);
+        if (runAgent) {
           progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.AGENT);
           const agentResult = await requestCleverAgent({
             sellerMessage: text,
@@ -718,6 +765,7 @@ export default function CustomerAkteSharedWorkspace({
 
           if (agentResult?.ok || (agentResult?.mutations?.length > 0) || agentResult?.confirmationRequired) {
             setDraft('');
+            setFeedback('');
             setOfferPrep(null);
             setAppointmentDraft(null);
             clearAssist();
@@ -825,6 +873,7 @@ export default function CustomerAkteSharedWorkspace({
             /* sauberer Fallback auf klassischen Seller-Turn */
           } else if (agentResult?.message) {
             setDraft('');
+            setFeedback('');
             setUniversalTurn(null);
             clearAssist();
             try {
@@ -877,7 +926,7 @@ export default function CustomerAkteSharedWorkspace({
         }
       })();
 
-      const turn = await runCleverSellerTurnWithCalendar(buildAkteSellerTurnParams({
+      const turnParams = buildAkteSellerTurnParams({
         sellerInput: text,
         currentOfferContext: offerCtx,
         pendingAction: universalTurn?.pendingAction
@@ -887,7 +936,41 @@ export default function CustomerAkteSharedWorkspace({
         messagePurpose: intentPurpose?.messagePurpose || null,
         memoryCategory: intentPurpose?.memoryCategory || null,
         offerAction: intentPurpose?.offerAction || null,
-      }));
+      });
+
+      let turn;
+      const useServerSemantic = isCleverSellerOpenAiInterpretClientEnabled()
+        && await shouldRequestServerSellerTurn({
+          sellerInput: text,
+          forceSemanticFirst: true,
+        });
+      if (useServerSemantic) {
+        progressHintSchedulerRef.current?.start(CLEVER_LONG_JOB.SERVER_INTERPRET);
+        const serverTurn = await requestCleverSellerTurn({
+          lead,
+          sellerInput: text,
+          scopeHint: AKTE_COMPOSER_SCOPE,
+          sellerId: lead?.crm?.sellerId || lead?.ownerId || 'seller',
+          dealerId: lead?.crm?.dealerId || lead?.dealerId || null,
+          intentConstraint,
+          messagePurpose: intentPurpose?.messagePurpose || null,
+          memoryCategory: intentPurpose?.memoryCategory || null,
+          offerAction: intentPurpose?.offerAction || null,
+          currentOfferContext: offerCtx,
+          workingMemory: agentWorkingMemory,
+        }, { timeoutMs: 45000 });
+        progressHintSchedulerRef.current?.clear();
+        if (serverTurn?.turnId || serverTurn?.ok || serverTurn?.extractedFacts || serverTurn?.preparedActions) {
+          turn = serverTurn;
+        }
+      }
+      if (!turn) {
+        // Fallback: lokal deterministisch (kein Browser-OpenAI-Hang)
+        turn = await runCleverSellerTurnWithCalendar({
+          ...turnParams,
+          forceAsyncInterpret: false,
+        });
+      }
 
       const policy = resolveSellerResponsePolicy(turn);
       const rememberMode = turn?.rememberDecision?.mode;
@@ -991,6 +1074,7 @@ export default function CustomerAkteSharedWorkspace({
             onPersistLead(posted.lead);
           }
         } catch { /* optional */ }
+        setFeedback('');
         resetIntentChipsToDefault();
         return true;
       }
@@ -1112,12 +1196,19 @@ export default function CustomerAkteSharedWorkspace({
       setUniversalTurn(null);
       setLastComposerAction(null);
       return false;
-    } catch {
+    } catch (err) {
       progressHintSchedulerRef.current?.clear();
-      setFeedback('');
+      console.error('[Clever Akte Composer]', err);
+      setFeedback(
+        err?.message
+          ? `Clever-Fehler: ${String(err.message).slice(0, 120)}`
+          : 'Clever konnte die Eingabe nicht verarbeiten. Bitte nochmal senden.',
+      );
+      setTimeout(() => setFeedback(''), 4500);
       return false;
     } finally {
       progressHintSchedulerRef.current?.clear();
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -1366,7 +1457,15 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleSend(text) {
-    if (!text || sending) return;
+    if (!text) return;
+    if (sendingRef.current || sending) {
+      // Stuck nach HMR / Timeout: Reset und sofort erneut senden
+      progressHintSchedulerRef.current?.clear();
+      sendingRef.current = false;
+      setSending(false);
+      void runCleverProposeFromInput(text);
+      return;
+    }
 
     const editing = isCustomerMessageEditMode(composerModeRef.current);
     if (editing) {

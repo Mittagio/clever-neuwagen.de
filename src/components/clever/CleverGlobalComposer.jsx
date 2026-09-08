@@ -70,7 +70,6 @@ import {
 } from '../../services/cleverAgent/cleverProgressHint.js';
 import { CleverChatMessage } from '../chat/WorkspaceChatCards.jsx';
 import { isPrepareSuccessionOfferCue } from '../../services/cleverSeller/prepareSuccessionOfferFromLead.js';
-import { shouldUseSemanticInterpreter } from '../../services/cleverSeller/multiSource/evaluateComplexSellerTurn.js';
 import { applyConfirmedMultiSourceIntakePlan } from '../../services/cleverSeller/multiSource/applyConfirmedMultiSourceIntakePlan.js';
 import { buildMultiSourceApplyResultReview } from '../../services/cleverSeller/multiSource/buildMultiSourceApplyResultReview.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
@@ -119,6 +118,9 @@ import {
   IconFile,
   IconTag,
 } from '../dealer-ai/AkteIcons.jsx';
+import {
+  shouldShowGlobalInterpretWarning,
+} from '../../services/cleverSeller/presentSellerIntakeFeedback.js';
 import './CleverGlobalComposer.css';
 
 const FALLBACK_INTERPRET_WARNING = [
@@ -1669,16 +1671,6 @@ export default function CleverGlobalComposer() {
       lastTurn,
       workingContextItems: ctx.attachedWorkingObjects || [],
     });
-    const semantic = shouldUseSemanticInterpreter({
-      sellerInput: text,
-      attachments: composerAttachments,
-      appContext: {
-        routeContext: ctx?.routeContext,
-        attachedWorkingObjects: ctx?.attachedWorkingObjects,
-        dashboardContext: ctx?.dashboardContext,
-      },
-      workingContext: ctx?.attachedWorkingObjects || [],
-    });
 
     try {
       // Clever 2.0: Agent-Pfad wenn verfügbar (gleiche Experience wie Akte)
@@ -1854,11 +1846,12 @@ export default function CleverGlobalComposer() {
         }
       }
 
-      const useServerInterpret = semantic.use
-        && isCleverSellerOpenAiInterpretClientEnabled()
+      const clientSemantic = isCleverSellerOpenAiInterpretClientEnabled();
+      const useServerInterpret = clientSemantic
         && await shouldRequestServerSellerTurn({
           sellerInput: text,
           attachments: composerAttachments,
+          forceSemanticFirst: true,
         });
 
       const localTurnParams = {
@@ -1905,14 +1898,19 @@ export default function CleverGlobalComposer() {
         if (serverTurn?.turnId || serverTurn?.ok || serverTurn?.multiSourceIntake) {
           turn = serverTurn;
         } else {
+          // Server down → Async/Fallback (semantic first wenn möglich)
           turn = await runCleverSellerTurnWithCalendar({
             ...localTurnParams,
-            forceAsyncInterpret: semantic.use,
+            forceAsyncInterpret: true,
+            openAiOptions: { preferSemanticFirst: true },
           });
         }
-      } else if (semantic.use && isCleverSellerOpenAiInterpretClientEnabled()) {
-        // Komplex + Flag, aber kein Server: Async-Pfad (Key nur serverseitig sinnvoll)
-        turn = await runCleverSellerTurnAsync(localTurnParams);
+      } else if (clientSemantic) {
+        // Flag an, Server nicht: Async-Pfad (Key nur serverseitig sinnvoll → Fallback det.)
+        turn = await runCleverSellerTurnAsync({
+          ...localTurnParams,
+          openAiOptions: { preferSemanticFirst: true },
+        });
       } else {
         turn = await runCleverSellerTurnWithCalendar({
           ...localTurnParams,
@@ -2132,10 +2130,8 @@ export default function CleverGlobalComposer() {
         restoreQuietIntakeWorkContext(turn);
         return;
       }
-      const source = turn?.interpreterDiagnostics?.interpreterSource
-        || turn?.openaiEscalation?.interpreterSource
-        || null;
-      const isFallback = source === 'fallback' || source === 'openai_fallback';
+      const showGlobalWarn = shouldShowGlobalInterpretWarning(turn)
+        || Boolean(policy.showGlobalWarning);
       const showReview = policy.showReview || shouldShowUniversalReview(turn);
 
       if (showReview) {
@@ -2143,7 +2139,7 @@ export default function CleverGlobalComposer() {
         const model = turn.reviewModel || buildUniversalReviewModel(turn);
         setReviewModel(model);
         resetIntentChipsToDefault();
-        if (isFallback) {
+        if (showGlobalWarn) {
           pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
         } else {
           pushComposerFeedback(quietReviewFeedback(
@@ -2164,7 +2160,7 @@ export default function CleverGlobalComposer() {
         assistantReply: policy.message || turn.assistantReply,
       });
       resetIntentChipsToDefault();
-      if (isFallback) {
+      if (showGlobalWarn) {
         pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
       } else {
         setFeedback('');
@@ -2468,9 +2464,8 @@ export default function CleverGlobalComposer() {
           <p className="clever-global-composer__hint" role="status">{progressHint}</p>
         )}
         {(
-          lastTurn?.interpreterDiagnostics?.interpreterSource === 'fallback'
-          || lastTurn?.interpreterDiagnostics?.interpreterSource === 'openai_fallback'
-          || lastTurn?.openaiEscalation?.interpreterSource === 'fallback'
+          shouldShowGlobalInterpretWarning(lastTurn)
+          || lastTurn?.assistantPolicy?.showGlobalWarning
         ) && (
           <p className="clever-global-composer__hint" role="alert">
             {FALLBACK_INTERPRET_WARNING}

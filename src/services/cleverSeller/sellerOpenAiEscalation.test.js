@@ -59,16 +59,44 @@ assert.equal(
   'Flag aus → keine Eskalation',
 );
 
-const merged = mergeSellerInterpretation(
+assert.equal(
+  evaluateSellerInterpretEscalation({
+    sellerInput: 'kunde will elektro leasn 4 jahre',
+    facts: [{ field: 'termMonths', value: 48, label: '48 Monate', confidence: 0.9 }],
+    intents: [{ type: SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, confidence: 0.9 }],
+    inputMode: 'clever_work_input',
+    confidence: 0.9,
+  }, {
+    CLEVER_SELLER_OPENAI_INTERPRET_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test',
+  }, { sellerInput: 'kunde will elektro leasn 4 jahre' }).reason,
+  'semantic_first',
+  'Partial Regex Success überspringt OpenAI nicht mehr',
+);
+
+const mergedLegacy = mergeSellerInterpretation(
   [{ factClass: 'customer_fact', field: 'childrenCount', label: '2 Kinder', confidence: 0.9 }],
   [{ factClass: 'customer_fact', field: 'maritalStatus', label: 'verheiratet', confidence: 0.8 }],
+  { mode: 'legacy' },
 );
-assert.equal(merged.length, 2);
-assert.ok(merged.every((f) => (
-  f.source !== SELLER_FACT_SOURCE.OPENAI_INTERPRETATION || f.needsConfirmation === true
-)));
-assert.equal(merged[1].needsConfirmation, true);
-assert.equal(merged[1].source, SELLER_FACT_SOURCE.OPENAI_INTERPRETATION);
+assert.equal(mergedLegacy.length, 2);
+assert.equal(mergedLegacy[1].needsConfirmation, true);
+assert.equal(mergedLegacy[1].source, SELLER_FACT_SOURCE.OPENAI_INTERPRETATION);
+
+const mergedSemantic = mergeSellerInterpretation(
+  [],
+  [{
+    factClass: 'commercial_preference',
+    field: 'termMonths',
+    value: 48,
+    label: '48 Monate',
+    confidence: 0.96,
+    evidence: 'vier Jahre',
+  }],
+  { mode: 'semantic_first' },
+);
+assert.equal(mergedSemantic[0].needsConfirmation, false);
+assert.equal(mergedSemantic[0].value, 48);
 
 const intents = mergeSellerIntents(
   [{ type: SELLER_TURN_INTENTS.UPDATE_CUSTOMER_CONTEXT, confidence: 0.9 }],
@@ -90,6 +118,7 @@ const fakeFetch = async () => ({
             value: 350,
             label: '350 € Wunschrate',
             confidence: 0.8,
+            evidence: '350',
           }],
           intents: [{ type: 'update_customer_context', confidence: 0.7 }],
         }),
@@ -104,6 +133,7 @@ const ai = await interpretSellerInputWithOpenAi(
 );
 assert.equal(ai.ok, true);
 assert.equal(ai.facts[0].label, '350 € Wunschrate');
+assert.equal(ai.facts[0].evidence, '350');
 
 const turn = await runCleverSellerTurnAsync({
   lead: { id: 'lead-esc', crm: { needProfile: {}, sellerInsights: [] } },
@@ -116,7 +146,6 @@ const turn = await runCleverSellerTurnAsync({
   openAiOptions: { fetchImpl: fakeFetch, apiKey: 'sk-test', forceEscalate: true },
 });
 assert.equal(turn.openaiEscalation?.used, true);
-assert.ok(turn.extractedFacts.some((f) => f.needsConfirmation && /Wunschrate/i.test(f.label)));
-assert.ok(turn.warnings.some((w) => /OpenAI/i.test(w)));
+assert.ok(turn.extractedFacts.some((f) => /Wunschrate/i.test(f.label)));
 
 console.log('sellerOpenAiEscalation.test.js: ok');

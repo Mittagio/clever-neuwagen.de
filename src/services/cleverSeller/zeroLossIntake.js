@@ -362,22 +362,40 @@ export function buildZeroLossIntakeSummary(facts = [], opts = {}) {
     if (!label) continue;
     if (f.field === 'unresolvedNote' || f.preserveAsNote) {
       notes.push(label);
-    } else {
-      structured.push(label);
+      continue;
     }
+    // Missing ≠ 0: erfundene Null-Kilometer nicht in Chips
+    if (
+      (f.field === 'annualMileage' || f.field === 'mileagePerYear')
+      && (Number(f.value) <= 0 || /^0(\.0+)?\s*km/i.test(label))
+    ) {
+      continue;
+    }
+    if ((f.field === 'termMonths' || f.field === 'durationMonths') && Number(f.value) <= 0) {
+      continue;
+    }
+    structured.push(label);
   }
 
   return {
     title,
-    chipLine: structured.slice(0, 12).join(' · '),
-    chips: structured.slice(0, 12),
+    chipLine: sanitizeDisplayLabels(structured).slice(0, 12).join(' · '),
+    chips: sanitizeDisplayLabels(structured).slice(0, 12),
     notes,
     noteCount: notes.length,
-    feedbackLine: [
-      structured.length ? structured.slice(0, 8).join(' · ') : null,
-      notes.length ? `Notizen · ${notes.length}` : null,
-    ].filter(Boolean).join(' · ') || 'Nichts Neues',
+    // Kein „Notizen · N“ im Primär-Feedback – Notes bleiben in notes[]
+    feedbackLine: sanitizeDisplayLabels(structured).slice(0, 8).join(' · ') || 'Nichts Neues',
   };
+}
+
+function sanitizeDisplayLabels(labels = []) {
+  return (labels || []).filter((label) => {
+    const t = String(label || '').trim();
+    if (!t) return false;
+    if (/^0(\.0+)?\s*km(\s*\/?\s*jahr)?$/i.test(t)) return false;
+    if (/^notizen\s*·\s*\d+$/i.test(t)) return false;
+    return true;
+  });
 }
 
 /**

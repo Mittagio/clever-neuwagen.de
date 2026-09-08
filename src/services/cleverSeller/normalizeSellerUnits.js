@@ -29,7 +29,7 @@ export function extractSellerUnitTokens(text = '') {
       unit: 'eur',
     },
     {
-      re: /\b(\d{1,3}(?:\.\d{3})?|\d{3,6})\s*(?:tkm|km(?:\/jahr|\/jahre|\/a| p\.?\s*a\.?)?)\b/gi,
+      re: /\b(\d{1,3}(?:\.\d{3})?|\d{3,6})\s*(?:tkm|km|kilometer(?:n)?)(?:\s*(?:\/\s*jahr|\/\s*jahre|\/\s*a|p\.?\s*a\.?|im\s+jahr|pro\s+jahr|jährlich|jaehrlich))?\b/gi,
       kind: 'mileage',
       unit: 'km',
     },
@@ -37,6 +37,11 @@ export function extractSellerUnitTokens(text = '') {
       re: /\b(\d{1,3})\s*(?:monate?|mts?)\b/gi,
       kind: 'term_months',
       unit: 'months',
+    },
+    {
+      re: /\b(\d{1,2})\s*jahre?\b/gi,
+      kind: 'term_years',
+      unit: 'years',
     },
     {
       re: /\b(\d{2,4})\s*(?:€|euro)?\s*(?:wunsch)?rate\b/gi,
@@ -59,6 +64,17 @@ export function extractSellerUnitTokens(text = '') {
         else if (value < 1000 && !/tkm/i.test(m[0])) {
           // „15 tkm“ already handled; bare small km like „500 km“ stays
         }
+      }
+      if (kind === 'term_years') {
+        tokens.push({
+          kind: 'term_months',
+          value: value * 12,
+          raw: m[0],
+          unit: 'months',
+          index: m.index,
+        });
+        m = re.exec(raw);
+        continue;
       }
       tokens.push({
         kind,
@@ -89,7 +105,28 @@ export function parseTermAndMileageShorthand(text = '') {
   const termM = raw.match(/\b(\d{1,3})\s*(?:monate?|mts?)\b/i);
   if (termM) explicit.termMonths = Number(termM[1]);
 
-  const kmM = raw.match(/\b(\d{1,3}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km)\b/i);
+  // „vier Jahre“ / „4 Jahre“ / „für vier Jahre“
+  if (explicit.termMonths == null) {
+    const WORD_YEARS = {
+      einem: 1, eine: 1, ein: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5,
+      sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10,
+    };
+    const yearsNum = raw.match(/\b(?:für\s+|auf\s+)?(\d{1,2})\s*jahre?\b/i);
+    const yearsWord = raw.match(
+      /\b(?:für\s+|auf\s+)?(einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn)\s+jahre?\b/i,
+    );
+    if (yearsNum) {
+      const y = Number(yearsNum[1]);
+      if (y >= 1 && y <= 10) explicit.termMonths = y * 12;
+    } else if (yearsWord) {
+      const y = WORD_YEARS[String(yearsWord[1]).toLowerCase()];
+      if (y) explicit.termMonths = y * 12;
+    }
+  }
+
+  const kmM = raw.match(
+    /\b(\d{1,3}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km|kilometer(?:n)?)(?:\s*(?:\/\s*jahr|im\s+jahr|pro\s+jahr|jährlich|jaehrlich))?\b/i,
+  );
   if (kmM) {
     let v = parseDeInt(kmM[1]);
     if (v != null) {
@@ -103,8 +140,8 @@ export function parseTermAndMileageShorthand(text = '') {
 
   // „48 10.000 km“ ohne „Monate“ – nur wenn Fahrzeug-/Konditionskontext
   if (explicit.termMonths == null || explicit.annualMileage == null) {
-    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|finanz|gw|ahk|air|vision)\b/i.test(raw);
-    const shorthand = raw.match(/\b(\d{2})\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\s*km\b/i);
+    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|leasen|finanz|gw|ahk|air|vision|elektro)\b/i.test(raw);
+    const shorthand = raw.match(/\b(\d{2})\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\s*(?:km|kilometer(?:n)?)\b/i);
     if (vehicleCue && shorthand) {
       if (explicit.termMonths == null) {
         const months = Number(shorthand[1]);

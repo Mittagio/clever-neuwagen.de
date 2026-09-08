@@ -326,9 +326,39 @@ export function filterOfferIntentForCaptureFirst(intents = [], ctx = {}) {
 
 /**
  * Next-Step-Hinweis nach erfolgreichem Capture (bestehende CTA, kein UI-Redesign).
- * @param {{ trackCount?: number, hasActiveTrack?: boolean }} opts
+ * @param {{
+ *   trackCount?: number,
+ *   hasActiveTrack?: boolean,
+ *   hasVehicleModel?: boolean,
+ *   modelKey?: string|null,
+ *   fuelPreference?: string|null,
+ *   needsConsultation?: boolean,
+ * }} opts
  */
 export function buildCaptureNextStepHint(opts = {}) {
+  const hasModel = Boolean(opts.hasVehicleModel || opts.modelKey);
+  const fuel = String(opts.fuelPreference || '').toLowerCase();
+  const isElectric = fuel === 'electric' || fuel === 'elektro' || fuel === 'bev';
+
+  // Nur ohne Modell → Beratung. Elektro allein reicht nicht, wenn Modell schon da
+  // (auch wenn das Modell noch needsConfirmation hat).
+  if (!hasModel && opts.needsConsultation) {
+    return {
+      id: 'capture_then_consult',
+      label: 'Passende Fahrzeuge finden',
+      cta: 'Beratung',
+      hint: 'Passende Fahrzeuge finden',
+    };
+  }
+  if (!hasModel && isElectric) {
+    return {
+      id: 'capture_then_consult',
+      label: 'Passende Fahrzeuge finden',
+      cta: 'Beratung',
+      hint: 'Passende Fahrzeuge finden',
+    };
+  }
+
   if (opts.trackCount > 1 && !opts.hasActiveTrack) {
     return {
       id: 'capture_then_offer',

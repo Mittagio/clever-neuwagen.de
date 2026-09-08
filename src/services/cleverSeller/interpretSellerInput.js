@@ -191,6 +191,48 @@ function parseMonthYear(text = '') {
 }
 
 /**
+ * „Dezember dieses Jahres“ / „für Dezember“ → YYYY-MM (kein Tag).
+ * @param {string} text
+ * @param {Date|string|number|null} [now]
+ * @returns {string|null}
+ */
+function parseRelativeMonthYear(text = '', now = null) {
+  const t = String(text || '');
+  const monthRe = '(januar|jan|februar|feb|märz|maerz|mar|april|apr|mai|juni|jun|juli|jul|august|aug|september|sep|sept|oktober|okt|november|nov|dezember|dez)';
+  const rel = t.match(new RegExp(
+    `\\b${monthRe}\\.?\\s+(dieses\\s+jahres|diesen\\s+jahres|dieses\\s+jahr|n(?:ä|ae)chsten?\\s+jahres|n(?:ä|ae)chstes\\s+jahr)\\b`,
+    'i',
+  )) || t.match(new RegExp(
+    `\\b(?:plant|planung|liefern|lieferung|bereit|ab|für|zum|im)\\s+(?:das\\s+neue\\s+fahrzeug\\s+)?(?:er\\s+|sie\\s+)?(?:für\\s+|im\\s+|ab\\s+|zum\\s+)?${monthRe}\\.?(?:\\s+(dieses\\s+jahres|diesen\\s+jahres|dieses\\s+jahr|n(?:ä|ae)chsten?\\s+jahres|n(?:ä|ae)chstes\\s+jahr|20\\d{2}|\\d{2}))?\\b`,
+    'i',
+  ));
+  if (!rel) return null;
+  const monthToken = String(rel[1] || '').toLowerCase();
+  const month = MONTH_MAP[monthToken];
+  if (!month) return null;
+  const relPhrase = String(rel[2] || '').toLowerCase();
+  const base = now != null ? new Date(now) : new Date();
+  const baseYear = Number.isFinite(base.getFullYear()) ? base.getFullYear() : new Date().getFullYear();
+  let year = baseYear;
+  if (/^20\d{2}$/.test(relPhrase)) {
+    year = Number(relPhrase);
+  } else if (/^\d{2}$/.test(relPhrase)) {
+    year = 2000 + Number(relPhrase);
+  } else if (/n(?:ä|ae)chst/.test(relPhrase)) {
+    year = baseYear + 1;
+  } else if (/dieses|diesen/.test(relPhrase) || !relPhrase) {
+    // „für Dezember“ ohne Jahr: nach dem Monat im Kalenderjahr, sonst nächstes Jahr
+    const monthNum = Number(month);
+    if (!relPhrase && monthNum < (base.getMonth() + 1)) {
+      year = baseYear + 1;
+    } else {
+      year = baseYear;
+    }
+  }
+  return `${year}-${month}`;
+}
+
+/**
  * Multi-Fact Extraktion aus natürlichem Seller-Input.
  * @param {string} text
  * @param {{ lead?: object, currentOfferContext?: object|null, workingContext?: object|null }} [options]
@@ -850,29 +892,46 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   const existingCandidates = [];
   const existingRe = new RegExp(
-    `\\b(${EXISTING_MAKE_RE})\\s+([a-z0-9-]{2,20})(?:\\s+(schalter|automatik|dsg))?\\b`,
+    `\\b(?:(schwarz\\w*|wei[sß]{1,2}\\w*|blau\\w*|grau\\w*|silber\\w*|rot\\w*|gr[uü]n\\w*)\\s+)?(${EXISTING_MAKE_RE})\\s+([a-z0-9-]{2,20})(?:\\s+(schalter|automatik|dsg))?\\b`,
     'gi',
   );
   let existingMatch = existingRe.exec(t);
   while (existingMatch) {
-    const makeRaw = existingMatch[1];
-    const modelRaw = existingMatch[2];
-    const gearRaw = existingMatch[3] || null;
+    const colorRaw = existingMatch[1] || null;
+    const makeRaw = existingMatch[2];
+    const modelRaw = existingMatch[3];
+    const gearRaw = existingMatch[4] || null;
     const isKiaInterest = /^kia$/i.test(makeRaw)
       && new RegExp(`^(?:${KIA_INTEREST_MODEL_RE})$`, 'i').test(modelRaw);
     if (isKiaInterest) {
       existingMatch = existingRe.exec(t);
       continue;
     }
-    const make = titleCaseToken(makeRaw.replace(/volkswagen/i, 'VW').replace(/škoda/i, 'Skoda'));
+    const makeNorm = /^volkswagen$/i.test(makeRaw) || /^vw$/i.test(makeRaw)
+      ? 'VW'
+      : (/^škoda$/i.test(makeRaw) ? 'Skoda' : titleCaseToken(makeRaw));
     const model = titleCaseToken(modelRaw);
     const gear = gearRaw ? titleCaseToken(gearRaw) : null;
-    const label = [make, model, gear].filter(Boolean).join(' ');
+    let color = null;
+    if (colorRaw) {
+      const lower = String(colorRaw).toLowerCase();
+      color = lower.startsWith('schwarz') ? 'schwarz'
+        : lower.startsWith('weiß') || lower.startsWith('weiss') || /^wei[sß]/.test(lower) ? 'weiß'
+        : lower.startsWith('blau') ? 'blau'
+        : lower.startsWith('grau') ? 'grau'
+        : lower.startsWith('silber') ? 'silber'
+        : lower.startsWith('rot') ? 'rot'
+        : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
+        : lower;
+    }
+    const label = [makeNorm, model, gear].filter(Boolean).join(' ');
     existingCandidates.push({
-      make,
+      make: makeNorm,
       model,
       gear,
+      color,
       label,
+      span: existingMatch[0],
       prefer: !/^kia$/i.test(makeRaw),
     });
     existingMatch = existingRe.exec(t);
@@ -889,9 +948,14 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         make: existingPick.make,
         model: existingPick.model,
         transmission: existingPick.gear || null,
+        color: existingPick.color || null,
       },
-      label: existingPick.label,
-      confidence: existingPick.gear ? 0.92 : 0.9,
+      label: existingPick.color
+        ? `${existingPick.label} · ${titleCaseToken(existingPick.color)}`
+        : existingPick.label,
+      confidence: existingPick.gear || existingPick.color ? 0.93 : 0.9,
+      rawExpression: existingPick.span,
+      span: existingPick.span,
     }));
   }
 
@@ -950,11 +1014,13 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   } else if (
     /\bprivatleasing\b/i.test(t)
     || /\bleasingangebot\b|\bleasing\s+(?:anbieten|machen|erstellen)\b/i.test(t)
+    || /\bleasen\b/i.test(t)
     || (
       /\b(?:privat)?leasing\b/i.test(t)
       && (
         (/\b\d{2}\s*monate?\b/i.test(t) && /\b(?:km|kilometer)\b/i.test(t))
-        || /\banzahlung|sonderzahlung\b/i.test(t)
+        || /\b(?:\d{1,2}|einem|eine|zwei|drei|vier|fünf|fuenf|sechs)\s+jahre?\b/i.test(t)
+        || /\banzahlung|sonderzahlung|anzahlen|anzuzahlen\b/i.test(t)
       )
     )
   ) {
@@ -998,8 +1064,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       rawExpression: String(termMileage.termMonths),
       span: String(termMileage.termMonths),
     }));
-    if (!facts.some((f) => f.field === 'paymentType') && /\bleasing\b/i.test(t)) {
-      // Nur bei explizitem „Leasing“ – nie aus Laufzeit/km erfinden
+    if (!facts.some((f) => f.field === 'paymentType') && /\b(?:leasing|leasen)\b/i.test(t)) {
+      // Nur bei explizitem „Leasing/leasen“ – nie aus Laufzeit/km erfinden
       pushFact(facts, createExtractedFact({
         factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
         field: 'paymentType',
@@ -1204,6 +1270,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       : lower.startsWith('rot') ? 'rot'
       : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
       : lower;
+    // Farbe gehört zum Bestandfahrzeug („schwarzen VW Polo“) – kein Wunschfarbe-Chip
+    const existingColorOwnsToken = Boolean(
+      existingPick?.color
+      && existingPick.color === base
+      && !hasInterest
+      && !bindToOpenOffer,
+    );
+    if (existingColorOwnsToken) {
+      // skip global colorPreference
+    } else {
     const label = /\bfarbe\b/i.test(t) && !/^farbe/i.test(rawColor)
       ? `Farbe ${titleCaseToken(base)}`
       : titleCaseToken(base);
@@ -1250,6 +1326,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       confidence: safeColorUpdate ? Math.max(colorConfidence, 0.92) : colorConfidence,
       needsConfirmation: !safeColorUpdate,
     }));
+    }
   }
 
   const hasAhkToken = /\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t);
@@ -1304,13 +1381,13 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  if (/\belektro\b|\belektrisch\b/i.test(t) && !/\bhybrid\b/i.test(t)) {
+  if (/\belektro(?:auto|fahrzeug|wagen)?\b|\belektrisch\b|\bbev\b/i.test(t) && !/\bhybrid\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'fuelPreference',
       value: 'electric',
-      label: 'Elektro',
-      confidence: isRememberCue ? 0.94 : 0.9,
+      label: 'Elektroauto',
+      confidence: isRememberCue ? 0.94 : 0.92,
     }));
   }
 
@@ -1561,6 +1638,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   const deliveryUntil = t.match(
     /\blieferzeit\s*(?:bis\s*)?(?:ca\.?\s*)?(0?[1-9]|1[0-2])[./](20\d{2}|\d{2})\b/i,
   ) || (/\blieferzeit\b/i.test(t) && t.match(/\bbis\s+(0?[1-9]|1[0-2])[./](20\d{2}|\d{2})\b/i));
+  const plannedMonthYear = parseRelativeMonthYear(t, options.now);
   const deliveryAnswer = parseDeliveryTimeAnswerFromText(t);
   const delivery = t.match(/\b(?:lieferzeit|lieferbar)\s*(?:ca\.?\s*|circa\.?\s*)?(\d{1,2})\s*monate?\b/i)
     || t.match(/\bin\s*(?:ca\.?\s*)?(\d{1,2})\s*monaten?\b/i)
@@ -1577,6 +1655,24 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: important
         ? `Lieferzeit bis ${month}.${year} wichtig`
         : `Lieferzeit bis ${month}.${year}`,
+      confidence: 0.9,
+    }));
+  } else if (
+    plannedMonthYear
+    && !facts.some((f) => f.field === 'deliveryDeadline' || f.field === 'existingContractEnd')
+    && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin)\b/i.test(t)
+  ) {
+    const [year, month] = plannedMonthYear.split('-');
+    const monthNames = {
+      '01': 'Januar', '02': 'Februar', '03': 'März', '04': 'April',
+      '05': 'Mai', '06': 'Juni', '07': 'Juli', '08': 'August',
+      '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Dezember',
+    };
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'deliveryDeadline',
+      value: { endDate: plannedMonthYear, important: false, precision: 'month' },
+      label: `Geplant ${monthNames[month] || month} ${year}`,
       confidence: 0.9,
     }));
   } else if (deliveryAnswer) {
@@ -1639,18 +1735,21 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   ) {
     const value = Number(String(km[1]).replace(/\./g, '')) * (/tkm/i.test(km[0]) && Number(km[1]) < 100 ? 1000 : 1);
     const normalized = value < 1000 ? value * 1000 : value;
-    pushFact(facts, createExtractedFact({
-      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
-      field: 'annualMileage',
-      value: normalized,
-      label: `${normalized.toLocaleString('de-DE')} km`,
-      confidence: /\bdoch\b|statt/i.test(t) ? 0.95 : 0.92,
-      rawExpression: km[0],
-      span: km[0],
-    }));
+    if (normalized > 0) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'annualMileage',
+        value: normalized,
+        label: `${normalized.toLocaleString('de-DE')} km`,
+        confidence: /\bdoch\b|statt/i.test(t) ? 0.95 : 0.92,
+        rawExpression: km[0],
+        span: km[0],
+      }));
+    }
   } else if (
     !tradeInOdometerContext
     && termMileage.annualMileage != null
+    && Number(termMileage.annualMileage) > 0
     && !facts.some((f) => f.field === 'annualMileage')
   ) {
     const kmLabel = `${termMileage.annualMileage.toLocaleString('de-DE')} km`;
@@ -2294,6 +2393,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     lead: options.lead,
     currentOfferContext: options.currentOfferContext,
     workingContext: options.workingContext,
+    now: options.now ?? null,
   });
 
   if (shouldEnrichSellerInputFromOfferPdf(options.attachments, normalized)) {
