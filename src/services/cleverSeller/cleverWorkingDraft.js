@@ -196,14 +196,20 @@ export function parseWorkingDraftFollowUp(sellerInput = '', facts = []) {
   const text = String(sellerInput || '').trim();
   if (!text) return null;
 
-  // Paket entfernen
+  // Paket entfernen („Winterpaket raus“, „Nimm das Winterpaket wieder raus“)
   const removePkg = text.match(
-    /\b([\wÄÖÜäöüß-]*(?:paket|package|winter(?:\s*-?\s*paket)?|drive\s*wise|upgrade|business|heat\s*pump|wärmepumpe))\s*(?:raus|weg|entfernen|ohne)\b/i,
+    /\b([\wÄÖÜäöüß-]*(?:paket|package|winter(?:\s*-?\s*paket)?|drive\s*wise|upgrade|business|heat\s*pump|wärmepumpe))\s*(?:wieder\s+)?(?:raus|weg|entfernen|ohne)\b/i,
   ) || text.match(
-    /\b(?:raus|weg|entfernen|ohne)\s+([\wÄÖÜäöüß-]*(?:paket|winter|drive\s*wise|upgrade|business))\b/i,
-  ) || text.match(/\bwinter(?:\s*-?\s*)?paket\s*(?:raus|weg|entfernen)\b/i);
-  if (removePkg || /\bwinter(?:\s*-?\s*)?paket\s*(?:raus|weg)\b/i.test(text)) {
-    const label = removePkg?.[1] && !/^(raus|weg|ohne|entfernen)$/i.test(removePkg[1])
+    /\b(?:raus|weg|entfernen|ohne)\s+(?:das\s+|den\s+|die\s+)?([\wÄÖÜäöüß-]*(?:paket|winter|drive\s*wise|upgrade|business))\b/i,
+  ) || text.match(
+    /\b(?:nimm|entferne|streich(?:e)?)(?:\s+das|\s+den|\s+die)?\s+([\wÄÖÜäöüß-]*(?:winter(?:\s*-?\s*paket)?|paket|drive\s*wise|upgrade|business))(?:\s+\w+){0,2}\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i,
+  ) || text.match(/\bwinter(?:\s*-?\s*)?paket\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i);
+  if (
+    removePkg
+    || /\bwinter(?:\s*-?\s*)?paket\s*(?:wieder\s+)?(?:raus|weg)\b/i.test(text)
+    || /\b(?:nimm|entferne).{0,40}\bwinter(?:\s*-?\s*)?paket\b.{0,20}\b(?:raus|weg|entfernen)\b/i.test(text)
+  ) {
+    const label = removePkg?.[1] && !/^(raus|weg|ohne|entfernen|wieder|das|den|die|nimm)$/i.test(removePkg[1])
       ? removePkg[1]
       : 'Winterpaket';
     return {
@@ -700,7 +706,8 @@ export function buildHandoffFromOfferDraftId(lead, offerDraftId, extras = {}) {
   };
   const magic = buildComposerOfferHandoff(full, {
     sellerInput: extras.sellerInput || '',
-    paymentType: draft.commercialScenario?.paymentType || lead?.paymentType || 'leasing',
+    paymentType: draft.commercialScenario?.paymentType || lead?.wish?.paymentType || lead?.paymentType || null,
+    customerType: draft.commercialScenario?.customerType || lead?.wish?.customerType || null,
   });
   return { ok: true, magic, offerDraft: full };
 }

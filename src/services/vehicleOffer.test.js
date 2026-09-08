@@ -18,6 +18,8 @@ import {
   markOfferSent,
   mergeVehicleOffersPatch,
   recordOfferOpened,
+  resolveSourceOfferDraftId,
+  attachSourceOfferDraftId,
   shouldBumpOfferVersionOnSave,
 } from './vehicleOffer.js';
 import {
@@ -133,6 +135,15 @@ assert.ok(when.startsWith('Heute'));
   assert.equal(history[0].isCurrent, true);
   assert.equal(history[1].label, 'v1');
   assert.equal(history[1].isCurrent, false);
+}
+
+{
+  const withOrigin = attachSourceOfferDraftId(
+    { id: 'vo-1', source: { createdFrom: 'dealer_ai_calculator' } },
+    'ofd_concept_1',
+  );
+  assert.equal(resolveSourceOfferDraftId(withOrigin), 'ofd_concept_1');
+  assert.equal(withOrigin.source.offerDraftId, 'ofd_concept_1');
 }
 
 console.log('vehicleOffer.test.js: OK');

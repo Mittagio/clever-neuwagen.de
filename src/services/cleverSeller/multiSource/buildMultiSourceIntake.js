@@ -345,7 +345,7 @@ export function extractPersonNameFromDump(text = '') {
   for (const line of lines) {
     if (/^(?:test|abgleich|gw|name)\b/i.test(line)) continue;
     if (/\bangebote?\s+für\b/i.test(line)) continue;
-    if (/\b(?:ev\s*\d|ahk|km|kinder|haus|leasing|finanz|weiß|weiss|schwarz|wunsch\s*konditionen)\b/i.test(line)
+    if (/\b(?:ev\s*\d|ahk|km|kinder|haus|(?:privat)?leasing|finanz|weiß|weiss|schwarz|wunsch\s*konditionen|überführung|einmalkosten|förderung|foerderung)\b/i.test(line)
       && !/^familie\b/i.test(line)
       && !/^(?:herr|frau)\b/i.test(line)
       && !/\bhei(?:ss|ß)t\b/i.test(line)) {
@@ -364,27 +364,29 @@ export function extractPersonNameFromDump(text = '') {
       if (cleaned) return cleaned;
     }
   }
-  // Inline „Mazzei Sandro EV4“ / einzeiliger Dump – nie „Angebote für EV2“
+  // Inline „Mazzei Sandro EV4“ / einzeiliger Dump – nie „Angebote für EV2“ / „Privatleasing … EV4“
   const inline = raw.match(
-    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?:EV\s*\d|Kia|Sportage|Picanto|XCeed|Ceed|Niro)/i,
+    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?:EV\s*\d|Kia|Sportage|Picanto|XCeed|Ceed|Niro)/,
   );
   if (
     inline
     && !isCustomerNameStopToken(inline[1])
     && !isCustomerNameStopToken(inline[2])
+    && !/\b(?:privat)?leasing\b/i.test(`${inline[1]} ${inline[2]}`)
   ) {
     const cleaned = sanitizeCustomerNameCandidate(`${inline[1]} ${inline[2]}`);
     if (cleaned) return cleaned;
   }
 
-  // Letzter Versuch: Name vor GW-/Wunsch-Cue im Fließtext
+  // Letzter Versuch: Name vor GW-/Wunsch-Cue im Fließtext (kein /i – Großschreibung = Name)
   const beforeCue = raw.match(
-    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?=(?:GW\b|Inzahlung|EV\s*\d))/i,
+    /\b([A-ZÄÖÜ][a-zäöüß'-]+)\s+([A-ZÄÖÜ][a-zäöüß'-]+)\s+(?=(?:GW\b|Inzahlung|EV\s*\d))/,
   );
   if (
     beforeCue
     && !isCustomerNameStopToken(beforeCue[1])
     && !isCustomerNameStopToken(beforeCue[2])
+    && !/\b(?:privat)?leasing\b/i.test(`${beforeCue[1]} ${beforeCue[2]}`)
   ) {
     const cleaned = sanitizeCustomerNameCandidate(`${beforeCue[1]} ${beforeCue[2]}`);
     if (cleaned) return cleaned;
@@ -546,22 +548,23 @@ export function enrichFactsForMultiSource(facts = [], sellerInput = '') {
   }
 
   for (const ti of extractTradeInCandidates(sellerInput)) {
+    if (list.some((f) => f.field === 'tradeInVehicle' || f.field === 'existingVehicle')) {
+      continue;
+    }
     push(createExtractedFact({
       factClass: SELLER_FACT_CLASS.TRADE_IN_FACT,
       field: 'tradeInVehicle',
-      value: { make: ti.make, model: ti.model },
+      value: {
+        make: ti.make,
+        model: ti.model,
+        year: ti.year ?? null,
+        mileageKm: ti.mileageKm ?? null,
+        mileageApproximate: Boolean(ti.mileageApproximate),
+      },
       label: `Inzahlungnahme: ${ti.label}`,
       source: SELLER_FACT_SOURCE.SELLER_INPUT,
       confidence: ti.ambiguous ? 0.7 : 0.94,
       needsConfirmation: ti.ambiguous,
-    }));
-    push(createExtractedFact({
-      factClass: SELLER_FACT_CLASS.EXISTING_VEHICLE,
-      field: 'existingVehicle',
-      value: { make: ti.make, model: ti.model },
-      label: ti.label,
-      source: SELLER_FACT_SOURCE.SELLER_INPUT,
-      confidence: 0.9,
     }));
   }
 

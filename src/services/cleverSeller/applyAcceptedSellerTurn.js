@@ -38,6 +38,7 @@ import {
   buildContactPayloadFromIdentity,
   deriveContactIdentity,
 } from '../dealer/customerContactIdentity.js';
+import { ensureConceptOfferDraftFromCapture } from './ensureConceptOfferDraftFromCapture.js';
 import {
   classifySnapshotNoteLabel,
   isSnapshotContactIdentityLabel,
@@ -174,7 +175,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
   let appointmentValue = null;
   let vehicleInterestFocus = null;
   let multiVehicleInterests = null;
+  let pendingMotorLabel = null;
   const sharedTrackRequirements = [];
+  const removeTrackRequirements = [];
   const nextLeadColorPatches = [];
   const nextLeadTrimPatches = [];
 
@@ -360,11 +363,27 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       };
     }
 
-    if (field === 'towHitchRequired' && value) {
-      profile.towbar = true;
-      profile.priorities = pushUnique(profile.priorities ?? [], 'towing');
-      sharedTrackRequirements.push('AHK wichtig');
-      touchedProfile = true;
+    if (field === 'towHitchRequired') {
+      const removeAhk = value === false
+        || value?.remove === true
+        || /entfernen|raus|ohne|nicht/i.test(String(fact.label || ''));
+      if (removeAhk) {
+        profile.towbar = false;
+        profile.priorities = (profile.priorities || []).filter((p) => (
+          !/tow|ahk|anhänger/i.test(String(p))
+        ));
+        profile.equipmentWishes = (profile.equipmentWishes || []).filter((w) => (
+          !/^(?:towbar|ahk|anhängerkupplung)$/i.test(String(w))
+        ));
+        removeTrackRequirements.push('AHK wichtig', 'AHK', 'towbar', 'Anhängerkupplung');
+        touchedProfile = true;
+      } else if (value) {
+        profile.towbar = true;
+        profile.priorities = pushUnique(profile.priorities ?? [], 'towing');
+        profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], 'towbar');
+        sharedTrackRequirements.push('AHK wichtig');
+        touchedProfile = true;
+      }
     }
 
     if (field === 'decisionPartner') {
@@ -377,6 +396,15 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
       }
       touchedProfile = true;
+    }
+
+    if (field === 'openCustomerQuestion') {
+      // Offene Kosten-/Förderfragen: nur Label merken, nie Beträge erfinden
+      const label = String(fact.label || value?.question || value?.topic || '').trim();
+      if (label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+        touchedProfile = true;
+      }
     }
 
     if (field === 'colorPreference' && (value || fact.label)) {
@@ -422,11 +450,56 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    // Powertrain / Batterie – nur wenn explizit genannt (nie raten)
+    if ((field === 'motorPreference' || field === 'batteryPreference') && (value || fact.label)) {
+      const motorLabel = String(
+        (typeof value === 'object' && value
+          ? (value.label || value.hint || fact.label)
+          : (value || fact.label)) || '',
+      ).trim();
+      if (motorLabel) {
+        pendingMotorLabel = motorLabel;
+        profile.motorPreference = motorLabel;
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], motorLabel);
+        sharedTrackRequirements.push(motorLabel);
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'equipmentWish') {
       const wishLabel = String(value?.label || fact.label || '')
         .replace(/\s*[·|]\s*(muss|wichtig|nice)\s*$/i, '')
+        .replace(/\s+entfernen\s*$/i, '')
         .trim();
       const wishId = String(value?.id || wishLabel || '').trim();
+      if (value?.remove === true || /entfernen/i.test(String(fact.label || ''))) {
+        const strip = (list = []) => (list || []).filter((item) => {
+          const s = String(item || '');
+          return s !== wishId
+            && s !== wishLabel
+            && !new RegExp(wishLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(s)
+            && !(wishId === 'winter' && /winter/i.test(s));
+        });
+        profile.equipmentWishes = strip(profile.equipmentWishes);
+        if (profile.equipmentWishPriorities) {
+          const nextPri = { ...profile.equipmentWishPriorities };
+          for (const key of Object.keys(nextPri)) {
+            if (
+              key === wishId
+              || key === wishLabel
+              || (wishId === 'winter' && /winter/i.test(key))
+              || new RegExp(wishLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(key)
+            ) {
+              delete nextPri[key];
+            }
+          }
+          profile.equipmentWishPriorities = nextPri;
+        }
+        if (wishLabel) removeTrackRequirements.push(wishLabel);
+        if (wishId === 'winter') removeTrackRequirements.push('Winterpaket');
+        touchedProfile = true;
+        continue;
+      }
       const priority = value?.priority || 'preferred';
       if (wishId) {
         profile.equipmentWishes = pushUnique(profile.equipmentWishes ?? [], wishId);
@@ -492,6 +565,17 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         touchedWish = true;
       }
     }
+    if (field === 'customerType' && value) {
+      const normalized = String(value).toLowerCase() === 'business'
+        || String(value).toLowerCase() === 'gewerbe'
+        || String(value).toLowerCase() === 'gewerblich'
+        ? 'business'
+        : String(value).toLowerCase() === 'private' || String(value).toLowerCase() === 'privat'
+          ? 'private'
+          : String(value);
+      wish.customerType = normalized;
+      touchedWish = true;
+    }
     if (field === 'discountPercentInvalid') {
       continue;
     }
@@ -543,7 +627,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         make: value.make || 'Kia',
         label: normalizeFactDisplayLabel(fact.label, value) || null,
         color: value.color || value.preferredColor || null,
-        package: value.package || value.equipmentPackage || null,
+        package: value.package || value.equipmentPackage || pendingMotorLabel || null,
       };
       touchedProfile = true;
     }
@@ -710,6 +794,12 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       .filter(Boolean);
     next = setRecentVehicleTracksOnLead(next, multi.trackIds || [], modelKeys);
   } else if (vehicleInterestFocus?.modelKey) {
+    if (pendingMotorLabel && !vehicleInterestFocus.package) {
+      vehicleInterestFocus = {
+        ...vehicleInterestFocus,
+        package: pendingMotorLabel,
+      };
+    }
     const focused = focusVehicleInterestOnLead(next, vehicleInterestFocus);
     next = focused.lead;
     if (sharedTrackRequirements.length && focused.trackId) {
@@ -732,6 +822,27 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       next = patchVehicleTrackOnLead(next, track.id, {
         customerRequirements: [...new Set([...prev, ...sharedTrackRequirements])],
       });
+    }
+  }
+
+  if (removeTrackRequirements.length) {
+    const removeKeys = new Set(
+      removeTrackRequirements.map((r) => String(r || '').toLowerCase()).filter(Boolean),
+    );
+    const tracks = listCustomerVehicleTracks(next);
+    for (const track of tracks) {
+      const prev = track.customerRequirements || [];
+      const filtered = prev.filter((req) => {
+        const key = String(req || '').toLowerCase();
+        if (removeKeys.has(key)) return false;
+        if ([...removeKeys].some((r) => key.includes(r) || r.includes(key))) return false;
+        return true;
+      });
+      if (filtered.length !== prev.length) {
+        next = patchVehicleTrackOnLead(next, track.id, {
+          customerRequirements: filtered,
+        });
+      }
     }
   }
 
@@ -1374,23 +1485,47 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     nextLead = applyScenarioOfferFeedbackFacts(nextLead, scenarioFeedbackFacts);
   }
 
-  const tradeInRequested = facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT);
-  const existingVehicle = facts.find((f) => f.factClass === SELLER_FACT_CLASS.EXISTING_VEHICLE);
-  if (tradeInRequested || existingVehicle) {
+  const tradeInRequestedFact = facts.find((f) => f.field === 'tradeInRequested');
+  const tradeInVehicleFact = facts.find((f) => (
+    f.field === 'tradeInVehicle' && !f.needsConfirmation
+  ));
+  const existingVehicle = facts.find((f) => (
+    f.field === 'existingVehicle' && !f.needsConfirmation
+  ));
+  const tradeInRequested = Boolean(tradeInRequestedFact)
+    || facts.some((f) => f.factClass === SELLER_FACT_CLASS.TRADE_IN_FACT && f.field === 'tradeInVehicle');
+  if (tradeInRequested || existingVehicle || tradeInVehicleFact) {
     const current = getTradeIn(nextLead);
-    const vehicleLabel = existingVehicle?.label
-      || (existingVehicle?.value
-        ? `${existingVehicle.value.make ?? ''} ${existingVehicle.value.model ?? ''}`.trim()
+    const vehicleFact = tradeInVehicleFact || existingVehicle;
+    const vehicleLabel = vehicleFact?.value?.model
+      ? [vehicleFact.value.make, vehicleFact.value.model].filter(Boolean).join(' ')
+      : (vehicleFact?.label
+        ? String(vehicleFact.label).replace(/^Inzahlungnahme:\s*/i, '')
         : current.vehicle);
+    const year = vehicleFact?.value?.year ?? null;
+    const mileageKm = vehicleFact?.value?.mileageKm ?? null;
+    const mileageApprox = Boolean(vehicleFact?.value?.mileageApproximate);
+    const possible = tradeInRequestedFact?.value?.status === 'possible'
+      || /eventuell/i.test(String(tradeInRequestedFact?.label || ''));
+    const detailParts = [];
+    if (year) detailParts.push(String(year));
+    if (mileageKm != null) {
+      detailParts.push(
+        `${mileageApprox ? 'ca. ' : ''}${Number(mileageKm).toLocaleString('de-DE')} km`,
+      );
+    }
+    if (possible) detailParts.push('Inzahlungnahme eventuell');
+    else if (tradeInRequested) detailParts.push('Inzahlungnahme gewünscht');
     nextLead = {
       ...nextLead,
       crm: {
         ...(nextLead.crm ?? {}),
         tradeIn: patchTradeIn(current, {
           vehicle: vehicleLabel || current.vehicle,
-          notes: tradeInRequested
-            ? [current.notes, 'Inzahlungnahme gewünscht'].filter(Boolean).join(' · ')
-            : current.notes,
+          notes: [
+            current.notes,
+            detailParts.join(' · '),
+          ].filter(Boolean).join(' · '),
         }),
       },
     };
@@ -1464,6 +1599,24 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
         changedFields: offerAction.payload.lastChangedFields || [],
       });
     }
+  } else if (
+    // Clever Agent V1: Capture mit genug Identity/Konditionen → Concept-Draft (rate null)
+    facts.some((f) => f.field === 'vehicleInterest' && f.value?.modelKey && !f.needsConfirmation)
+    && facts.some((f) => (
+      !f?.needsConfirmation && (
+        f.field === 'termMonths'
+        || f.field === 'durationMonths'
+        || f.field === 'annualMileage'
+        || f.field === 'colorPreference'
+        || f.field === 'motorPreference'
+      )
+    ))
+  ) {
+    const ensured = ensureConceptOfferDraftFromCapture(nextLead, facts, {
+      sellerInput: turn.sellerInput || '',
+      createNewAlternative: true,
+    });
+    nextLead = ensured.lead;
   }
   const msgAction = (turn.preparedActions || []).find((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.payload?.messageDraft

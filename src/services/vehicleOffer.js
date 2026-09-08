@@ -472,6 +472,35 @@ export function mergeVehicleOffersPatch(lead = {}, vehicleCardId, patch) {
 }
 
 /**
+ * Herkunft Concept-Draft → VehicleOffer / Portfolio-Item.
+ * Kein neues Parallelmodell – nur Referenz auf bestehende offerDraftId.
+ */
+export function resolveSourceOfferDraftId(entity = null) {
+  if (!entity || typeof entity !== 'object') return null;
+  return entity.offerDraftId
+    || entity.sourceOfferDraftId
+    || entity.source?.offerDraftId
+    || entity.meta?.offerDraftId
+    || null;
+}
+
+/**
+ * Hängt Concept-Draft-Herkunft an VehicleOffer / Source an (idempotent).
+ */
+export function attachSourceOfferDraftId(entity = null, offerDraftId = null) {
+  const id = offerDraftId || resolveSourceOfferDraftId(entity);
+  if (!entity || !id) return entity;
+  return {
+    ...entity,
+    offerDraftId: id,
+    source: {
+      ...(entity.source || {}),
+      offerDraftId: id,
+    },
+  };
+}
+
+/**
  * Patch / upsert by offer id (preferred for scenario-bound offers).
  * Also syncs track.offerIds when vehicleTrackId is known.
  */

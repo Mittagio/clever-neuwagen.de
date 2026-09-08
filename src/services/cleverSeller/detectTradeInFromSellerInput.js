@@ -115,7 +115,7 @@ export function extractTradeInCandidates(text = '') {
         continue;
       }
       const veh = lineText.match(new RegExp(`\\b(${MAKE_RE})\\s+([A-Za-zÄÖÜäöüß0-9-]{2,20})\\b`, 'i'));
-      if (veh) {
+      if (veh && !isStopModel(veh[2])) {
         out.push({
           make: title(veh[1]),
           model: title(veh[2]),
@@ -129,7 +129,107 @@ export function extractTradeInCandidates(text = '') {
     }
   }
 
+  // „hat noch einen Sportage von 2021 … in Zahlung“ – Kia-Modell ohne Marke
+  if (hasTradeInCue(raw)) {
+    const kiaStandalone = new RegExp(
+      `\\b(?:einen?|seinen?|ihren?|das|den|die)?\\s*(?:kia\\s+)?(${KIA_STANDALONE_MODELS})\\b(?:\\s+von\\s+(20\\d{2}))?`,
+      'gi',
+    );
+    let sm = kiaStandalone.exec(raw);
+    while (sm) {
+      const model = normalizeKiaModel(sm[1]);
+      if (model && !isStopModel(model) && !isSecondVehicleInterestCue(raw, sm[1])) {
+        const before = raw.slice(Math.max(0, sm.index - 28), sm.index);
+        const around = raw.slice(Math.max(0, sm.index - 12), sm.index + sm[0].length + 28);
+        const looksLikeTradeVehicle = /\b(?:hat\s+noch|fährt|faehrt|von\s+20\d{2})\b/i.test(around)
+          || /^(?:einen?|seinen?|ihren?)\s+/i.test(String(sm[0]).trim())
+          || (
+            /\b(?:gw|gebrauchtwagen|in\s*zahlung|aktuelles?\s+fahrzeug|altes?\s+fahrzeug)\b/i.test(before)
+            && !/\bund\b/i.test(before)
+          );
+        if (looksLikeTradeVehicle) {
+          const year = sm[2] ? Number(sm[2]) : extractNearbyYear(raw, sm.index);
+          const already = out.some((o) => String(o.model || '').toLowerCase() === model.toLowerCase());
+          if (!already) {
+            out.push({
+              make: 'Kia',
+              model,
+              year: Number.isFinite(year) ? year : null,
+              label: year ? `Kia ${model} (${year})` : `Kia ${model}`,
+              cue: 'trade_in_context',
+              span: sm[0],
+              ambiguous: false,
+            });
+          } else if (year) {
+            const hit = out.find((o) => String(o.model || '').toLowerCase() === model.toLowerCase());
+            if (hit && !hit.year) {
+              hit.year = year;
+              hit.label = `Kia ${model} (${year})`;
+            }
+          }
+        }
+      }
+      sm = kiaStandalone.exec(raw);
+    }
+  }
+
+  // Meta: Jahr / km an Kandidaten anreichern
+  const meta = extractTradeInMeta(raw);
+  for (const c of out) {
+    if (meta.year != null && c.year == null) c.year = meta.year;
+    if (meta.mileageKm != null && c.mileageKm == null) {
+      c.mileageKm = meta.mileageKm;
+      c.mileageApproximate = meta.mileageApproximate;
+    }
+    if (c.year && c.label && !/\(\d{4}\)/.test(c.label)) {
+      c.label = `${c.label} (${c.year})`;
+    }
+  }
+
   return dedupe(out);
+}
+
+const KIA_STANDALONE_MODELS = 'EV\\s*[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Stonic|Rio|Seltos|Soul|PV5';
+
+function normalizeKiaModel(raw = '') {
+  const t = String(raw || '').replace(/\s+/g, '');
+  if (/^ev\d$/i.test(t)) return t.toUpperCase();
+  return title(raw);
+}
+
+function extractNearbyYear(text = '', index = 0) {
+  const window = String(text || '').slice(Math.max(0, index - 10), index + 40);
+  const m = window.match(/\bvon\s+(20\d{2})\b|\b(20\d{2})\b/);
+  if (!m) return null;
+  const y = Number(m[1] || m[2]);
+  return y >= 1990 && y <= 2100 ? y : null;
+}
+
+/**
+ * Jahr / km im Trade-in-Kontext (ohne als Wunsch-Jahreskilometer zu werten).
+ * @param {string} text
+ */
+export function extractTradeInMeta(text = '') {
+  const raw = String(text || '');
+  const yearMatch = raw.match(/\bvon\s+(20\d{2})\b/) || raw.match(/\b(20\d{2})\s*(?:er|Baujahr)?\b/);
+  let year = null;
+  if (yearMatch) {
+    const y = Number(yearMatch[1]);
+    if (y >= 1990 && y <= 2100) year = y;
+  }
+  const kmMatch = raw.match(
+    /\b((?:ca\.?|circa|ungefähr|ungefaehr|etwa)\s*)?(\d{1,2}(?:\.\d{3})+|\d{4,6})\s*km\b/i,
+  );
+  let mileageKm = null;
+  let mileageApproximate = false;
+  if (kmMatch) {
+    const n = Number(String(kmMatch[2]).replace(/\./g, ''));
+    if (Number.isFinite(n)) {
+      mileageKm = n < 1000 ? n * 1000 : n;
+      mileageApproximate = Boolean(kmMatch[1]) || /\b(?:ca\.?|circa|ungefähr|ungefaehr|etwa)\b/i.test(raw);
+    }
+  }
+  return { year, mileageKm, mileageApproximate };
 }
 
 /**
@@ -172,7 +272,7 @@ function inferMakeNear(raw, index) {
 }
 
 function isStopModel(model = '') {
-  return /^(mit|und|oder|für|fur|weiss|weiß|schwarz|blau|km|monate)$/i.test(model);
+  return /^(?:mit|und|oder|für|fur|weiss|weiß|schwarz|blau|km|monate?|geben|möchte|moechte|den|der|die|das|er|sie|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|noch|hat|einen|einem|von|jahr|jahre)$/i.test(model);
 }
 
 function dedupe(list) {

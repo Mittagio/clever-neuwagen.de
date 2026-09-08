@@ -46,7 +46,7 @@ export function isExplicitOfferCue(text = '') {
     || /(?:erstell(?:e|en)?|mach(?:e|en)?)\b.{0,60}\b(?:ein\s+)?[\wÄÖÜäöüß-]+-?angebot\b/i.test(t)
     || (
       /\b(ev\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto)\b/i.test(t)
-      && /\bangebot\b/i.test(t)
+      && /\b(?:angebot|entwurf)\b/i.test(t)
       && !/\b(schreib|sag(?:e|en)?\s+ihm|mail\b|nachricht|whatsapp)\b/i.test(t)
     );
 }

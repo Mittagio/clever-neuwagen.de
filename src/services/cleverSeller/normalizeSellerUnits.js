@@ -143,6 +143,11 @@ export function isNumberBoundToMileage(text = '', value) {
  */
 export function extractPurchasePriceUnitAware(text = '') {
   const raw = String(text || '');
+  // Anzahlung/Sonderzahlung ist nie Kaufpreis
+  if (/\b(?:anzahlung|sonderzahlung|\baz\b)\b/i.test(raw)
+    && !/\b(?:kaufpreis|listenpreis|uvp)\b/i.test(raw)) {
+    return null;
+  }
   const tokens = extractSellerUnitTokens(raw);
   const money = tokens.find((t) => t.kind === 'money' && t.value >= 5000);
   if (money) {

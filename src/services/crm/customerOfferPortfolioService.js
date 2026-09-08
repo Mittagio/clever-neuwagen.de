@@ -72,6 +72,7 @@ import {
   getOfferByCommercialScenarioId,
   isScenarioOfferReady,
   recordOfferOpened,
+  resolveSourceOfferDraftId,
 } from '../vehicleOffer.js';
 import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 import { applyPortfolioReactionToTracks } from './mapPortfolioReactionToTrackFeedback.js';
@@ -295,6 +296,7 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
     groupId: null,
     variantId: null,
     vehicleCardId: card.id,
+    offerDraftId: resolveSourceOfferDraftId(vehicleOffer) || resolveSourceOfferDraftId(card) || null,
     modelKey: card.modelKey,
     modelLabel: title,
     trimLabel: card.trimLabel ?? null,
@@ -313,6 +315,7 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
       declineReason: null,
       declineNote: '',
       questionText: '',
+      changeDimension: null,
       reactedAt: null,
     },
   }, {
@@ -777,6 +780,7 @@ function buildInboxForPortfolioEvent({
   eventType,
   message,
   questionText = '',
+  changeDimension = null,
 }) {
   const customerName = lead.contact?.name ?? '';
   const vehicleLabel = item.trimLabel
@@ -823,7 +827,10 @@ function buildInboxForPortfolioEvent({
       dedupeKey: `portfolio:${lead.id}:${item.id}:${eventType}`,
       portfolioItemId: item.id,
       portfolioId: lead.crm?.customerOfferPortfolio?.id,
+      offerDraftId: resolveSourceOfferDraftId(item) || null,
+      vehicleCardId: item.vehicleCardId ?? null,
       ...(trimmedQuestion ? { questionText: trimmedQuestion } : {}),
+      ...(changeDimension ? { changeDimension } : {}),
       suggestedIntent: eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST
         ? 'offer_change_request'
         : eventType === PORTFOLIO_EVENTS.OPENED
@@ -931,7 +938,13 @@ function syncPortfolioEventToCrm(lead, {
  * Kundenreaktion auf ein Portfolio-Angebot.
  */
 export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, options = {}) {
-  const { declineReason, declineNote, questionText, token = null } = options;
+  const {
+    declineReason,
+    declineNote,
+    questionText,
+    changeDimension = null,
+    token = null,
+  } = options;
   const portfolio = resolvePortfolioFromLead(lead, token);
   if (!portfolio) {
     return { ok: false, error: 'portfolio_not_found' };
@@ -1011,6 +1024,7 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
           declineReason: declineReason ?? null,
           declineNote: declineNote?.trim() ?? '',
           questionText: questionText?.trim() ?? '',
+          changeDimension: changeDimension || null,
           reactedAt: now,
         },
       };
@@ -1106,6 +1120,7 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
         eventType,
         message: historyText,
         questionText: trimmed,
+        changeDimension,
       })
       : mirrored.inboxItem;
   }

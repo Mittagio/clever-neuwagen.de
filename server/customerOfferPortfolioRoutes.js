@@ -64,6 +64,7 @@ router.post('/customer-offer-portfolio/event', express.json({ limit: '32kb' }), 
       declineReason: req.body?.declineReason ?? null,
       declineNote: req.body?.declineNote ?? '',
       questionText: req.body?.questionText ?? '',
+      changeDimension: req.body?.changeDimension ?? null,
     },
   );
 

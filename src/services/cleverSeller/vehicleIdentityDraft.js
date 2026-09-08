@@ -257,7 +257,10 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
     }));
   };
   for (const fact of packageFacts) {
-    pushPackage(packageLabelFromFact(fact), fact.value?.id);
+    const canonicalId = fact?.value?.validationStatus === 'needs_review'
+      ? null
+      : fact.value?.id;
+    pushPackage(packageLabelFromFact(fact), canonicalId);
   }
   // Zero-Loss: Paket oft in vehicleInterest.value statt separatem equipmentWish
   if (interest?.value && typeof interest.value === 'object') {
@@ -270,13 +273,18 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
   }
   // Seller-Text + unresolvedNotes Fallback (Zero-Loss, keine Erfindung)
   const packageHaystack = [input.sellerInput, ...unresolvedNotes].filter(Boolean).join(' ');
-  if (packageHaystack) {
+  const isPackageRemoveCue = /\b(?:raus|weg|entfernen|ohne)\b/i.test(packageHaystack)
+    || /\b(?:nimm|entferne|streich).{0,40}\b(?:raus|weg|entfernen)\b/i.test(packageHaystack);
+  if (packageHaystack && !isPackageRemoveCue) {
     const winter = packageHaystack.match(/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i);
     if (winter) pushPackage(/connect/i.test(winter[0]) ? 'Winter-Connect-Paket' : 'Winterpaket');
     const driveWise = packageHaystack.match(/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i);
     if (driveWise) pushPackage('DriveWise Paket');
-    const business = packageHaystack.match(/\bbusiness(?:\s*-?\s*paket)?\b/i);
-    if (business) pushPackage('Business Paket');
+    // Nur explizites „Business Paket“ – nacktes „Business“ → customerType, kein Paket raten
+    const businessPaket = packageHaystack.match(/\bbusiness\s*-?\s*paket\b/i);
+    if (businessPaket) pushPackage('Business Paket');
+    const upDrive = packageHaystack.match(/\bup\s*-?\s*drive\b/i);
+    if (upDrive) pushPackage('Up Drive');
     const upgrade = packageHaystack.match(/\bupgrade(?:\s*-?\s*paket)?\b/i);
     if (upgrade) pushPackage('Upgrade Paket');
   }
@@ -289,8 +297,22 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
   })();
   if (!powertrain.raw) {
     const kwhHaystack = [input.sellerInput, ...unresolvedNotes].filter(Boolean).join(' ');
+    const longRange = kwhHaystack.match(/\blong\s*range\b/i);
+    const standardRange = kwhHaystack.match(/\bstandard\s*range\b/i);
     const kwh = kwhHaystack.match(/(\d{2,3}(?:[.,]\d+)?)\s*kwh/i);
-    if (kwh) {
+    if (longRange) {
+      powertrain = slot({
+        raw: 'Long Range',
+        canonical: 'long_range',
+        status: IDENTITY_SLOT_STATUS.CAPTURED,
+      });
+    } else if (standardRange) {
+      powertrain = slot({
+        raw: 'Standard Range',
+        canonical: 'standard_range',
+        status: IDENTITY_SLOT_STATUS.CAPTURED,
+      });
+    } else if (kwh) {
       powertrain = slot({
         raw: `${kwh[1].replace(',', '.')} kWh`,
         canonical: null,
@@ -468,6 +490,7 @@ export function buildCommercialScenarioFromLead(lead = {}, facts = []) {
   const kmFromFact = facts.find((f) => f.field === 'annualMileage' || f.field === 'mileagePerYear');
   const azFromFact = facts.find((f) => f.field === 'downPayment');
   const paymentFromFact = facts.find((f) => f.field === 'paymentType');
+  const customerTypeFromFact = facts.find((f) => f.field === 'customerType');
 
   const termMonths = termFromFact?.value ?? wish.termMonths ?? lead?.termMonths ?? null;
   const annualMileage = kmFromFact?.value
@@ -480,10 +503,20 @@ export function buildCommercialScenarioFromLead(lead = {}, facts = []) {
     || wish.paymentType
     || lead?.paymentType
     || null;
+  const customerTypeRaw = customerTypeFromFact?.value
+    || wish.customerType
+    || lead?.customerType
+    || null;
+  const customerType = customerTypeRaw === 'privat' || customerTypeRaw === 'private'
+    ? 'private'
+    : (customerTypeRaw === 'business' || customerTypeRaw === 'gewerbe'
+      ? 'business'
+      : (customerTypeRaw || null));
 
   return {
     id: uid('com'),
     paymentType: paymentType === 'unknown' ? null : paymentType,
+    customerType,
     termMonths: termMonths != null ? Number(termMonths) : null,
     annualMileage: annualMileage != null ? Number(annualMileage) : null,
     downPayment: downPayment != null ? Number(downPayment) : null,
@@ -506,6 +539,8 @@ export function buildOfferDraftFromIdentity({
   monthlyRate = null,
   rateAuthority = RATE_AUTHORITY.NON_AUTHORITATIVE,
   sellerInput = '',
+  offerDraftId = null,
+  createdAt = null,
 } = {}) {
   const now = new Date().toISOString();
   const invalidateVehicleRate = createNewAlternative === true
@@ -515,7 +550,8 @@ export function buildOfferDraftFromIdentity({
     : monthlyRate;
 
   return {
-    offerDraftId: uid('ofd'),
+    // Bestehenden Concept-Draft weiterverwenden, wenn ID bekannt – kein stiller Zweit-Draft
+    offerDraftId: offerDraftId || uid('ofd'),
     customerId: customerId || vehicleIdentityDraft?.customerId || null,
     vehicleIdentityDraftId: vehicleIdentityDraft?.id || null,
     vehicleIdentityDraft: vehicleIdentityDraft || null,
@@ -529,7 +565,7 @@ export function buildOfferDraftFromIdentity({
     rateAuthority: safeRate != null ? rateAuthority : RATE_AUTHORITY.NON_AUTHORITATIVE,
     status: OFFER_DRAFT_STATUS.DRAFT,
     sellerInput: sellerInput || null,
-    createdAt: now,
+    createdAt: createdAt || now,
     updatedAt: now,
   };
 }
@@ -629,7 +665,10 @@ export function buildComposerOfferHandoff(offerDraft, extras = {}) {
     calculation: {
       monthlyRate: offerDraft?.rate ?? null,
     },
-    paymentType: commercial?.paymentType || extras.paymentType || 'leasing',
+    paymentType: commercial?.paymentType || extras.paymentType || null,
+    customerType: commercial?.customerType
+      || extras.customerType
+      || null,
     rateAuthority: offerDraft?.rateAuthority || RATE_AUTHORITY.NON_AUTHORITATIVE,
     missingRate: offerDraft?.rate == null,
   };
@@ -638,12 +677,49 @@ export function buildComposerOfferHandoff(offerDraft, extras = {}) {
 /**
  * Aus PREPARE_OFFER-Payload + Facts den vollständigen Handoff bauen.
  */
+function readStoredOfferDraftLoose(lead, offerDraftId) {
+  if (!lead || !offerDraftId) return null;
+  const state = lead?.crm?.cleverWorkingState;
+  const draft = state?.offerDrafts?.[offerDraftId] || null;
+  if (!draft) return null;
+  return {
+    ...draft,
+    vehicleIdentityDraft: state?.vehicleIdentityDrafts?.[draft.vehicleIdentityDraftId]
+      || draft.vehicleIdentityDraft
+      || null,
+    commercialScenario: state?.commercialScenarios?.[draft.commercialScenarioId]
+      || draft.commercialScenario
+      || null,
+  };
+}
+
 export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
   facts = [],
   sellerInput = '',
   lead = null,
 } = {}) {
   if (!payload || typeof payload !== 'object') return payload;
+
+  const createNew = payload.createNewAlternative === true
+    || payload.mutationMode === 'create_new';
+
+  // Bestehenden Concept-Draft wiederverwenden (Payload-ID oder aktueller Lead-Draft)
+  let reuseOfferDraftId = payload.offerDraftId
+    || payload.offerDraft?.offerDraftId
+    || null;
+  if (!createNew && !reuseOfferDraftId) {
+    reuseOfferDraftId = lead?.crm?.cleverWorkingState?.currentOfferDraftId || null;
+  }
+  const existingStored = !createNew
+    ? readStoredOfferDraftLoose(lead, reuseOfferDraftId)
+    : null;
+  if (!createNew && !existingStored) {
+    // Unbekannte ID nicht erzwingen – sonst Upsert mit leerem Zweit-Draft
+    if (reuseOfferDraftId && !payload.offerDraft?.vehicleIdentityDraft
+      && !payload.vehicleIdentityDraft) {
+      reuseOfferDraftId = null;
+    }
+  }
 
   const identity = buildVehicleIdentityDraftFromFacts({
     facts,
@@ -653,32 +729,39 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
     model: payload.vehicle?.model || null,
     trim: payload.vehicle?.trim || null,
     vehicleLabel: payload.vehicleLabel || null,
-    existingDraft: payload.vehicleIdentityDraft || null,
+    existingDraft: payload.vehicleIdentityDraft
+      || existingStored?.vehicleIdentityDraft
+      || null,
   });
 
   const commercial = payload.commercialScenario
+    || existingStored?.commercialScenario
     || buildCommercialScenarioFromLead(lead || {}, facts);
-
-  const createNew = payload.createNewAlternative === true
-    || payload.mutationMode === 'create_new';
 
   const offerDraft = buildOfferDraftFromIdentity({
     vehicleIdentityDraft: identity,
     commercialScenario: commercial,
     customerId: payload.customerId || lead?.id || null,
-    vehicleTrackId: payload.vehicleTrackId || null,
+    vehicleTrackId: payload.vehicleTrackId
+      || existingStored?.vehicleTrackId
+      || null,
     createNewAlternative: createNew,
     mutationMode: payload.mutationMode || null,
-    monthlyRate: createNew ? null : (payload.monthlyRate ?? null),
+    monthlyRate: createNew
+      ? null
+      : (payload.monthlyRate ?? existingStored?.rate ?? null),
     rateAuthority: createNew
       ? RATE_AUTHORITY.NON_AUTHORITATIVE
-      : (payload.rateAuthority || RATE_AUTHORITY.NON_AUTHORITATIVE),
+      : (payload.rateAuthority || existingStored?.rateAuthority || RATE_AUTHORITY.NON_AUTHORITATIVE),
     sellerInput,
+    offerDraftId: createNew ? null : (reuseOfferDraftId || null),
+    createdAt: existingStored?.createdAt || null,
   });
 
   const handoff = buildComposerOfferHandoff(offerDraft, {
     sellerInput,
     paymentType: payload.paymentType || commercial.paymentType,
+    customerType: payload.customerType || commercial.customerType,
     vehicleTrackId: payload.vehicleTrackId,
     createNewAlternative: createNew,
     mutationMode: payload.mutationMode,

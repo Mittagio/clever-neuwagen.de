@@ -104,6 +104,7 @@ import {
   syncWorkingDraftsFromMemoryToLead,
   upsertOfferDraftOnLead,
   ensureOfferDraftBundleFromPayload,
+  getOfferDraftById,
 } from '../../services/cleverSeller/cleverWorkingDraft.js';
 import {
   enrichSellerTurnWithMagicPropose,
@@ -2024,6 +2025,32 @@ export default function CustomerAkteSharedWorkspace({
         }
       } catch {
         // Handoff trotzdem fortsetzen
+      }
+
+      // Prefer bestehenden Concept-Draft (gleiche offerDraftId) – kein Enrich-Zweit-Draft
+      const preferredDraftId = rawPayload?.offerDraftId
+        || handoffLead?.crm?.cleverWorkingState?.currentOfferDraftId
+        || null;
+      const preferredDraft = preferredDraftId
+        ? getOfferDraftById(handoffLead, preferredDraftId)
+        : null;
+      if (preferredDraft?.vehicleIdentityDraft && preferredDraftId && onPrepareOfferDraft) {
+        const resolved = buildHandoffFromOfferDraftId(handoffLead, preferredDraftId, {
+          sellerInput: universalTurn.sellerInput || '',
+        });
+        clearAssist();
+        setUniversalTurn(null);
+        if (!resolved.ok) {
+          setFeedback(resolved.message || 'Angebotsentwurf nicht gefunden.');
+          setTimeout(() => setFeedback(''), 4000);
+          return;
+        }
+        onPrepareOfferDraft({
+          magic: resolved.magic,
+          lead: handoffLead,
+          offerDraftId: preferredDraftId,
+        });
+        return;
       }
 
       const enriched = rawPayload?.offerDraftId && rawPayload?.vehicleIdentityDraft

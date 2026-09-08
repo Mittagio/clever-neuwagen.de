@@ -642,7 +642,10 @@ export function magicPreparationToConfigurePatch(preparation) {
       ?? null,
     packageIds: g.packageIds ?? [],
     packageLabels,
-    paymentType: preparation.paymentType,
+    paymentType: preparation.paymentType ?? null,
+    customerType: preparation.customerType
+      || preparation.commercialScenario?.customerType
+      || null,
     // Neue Vehicle Identity → keine alte Fahrzeugrate übernehmen
     desiredRate: invalidateRate
       ? null
@@ -650,7 +653,8 @@ export function magicPreparationToConfigurePatch(preparation) {
     desiredPrice: preparation.mode === 'cash_magic' ? calc.endPrice ?? null : null,
     termMonths: c.durationMonths ?? calc.durationMonths ?? null,
     mileagePerYear: c.annualMileageKm ?? calc.annualMileageKm ?? null,
-    downPayment: c.downPayment ?? c.specialPayment ?? calc.downPayment ?? calc.specialPayment ?? 0,
+    // Keine erfundene AZ 0 – nur echte Sonderzahlung aus Capture/Draft
+    downPayment: c.downPayment ?? c.specialPayment ?? calc.downPayment ?? calc.specialPayment ?? null,
     preparationFee: c.transferCost ?? calc.transferCost ?? null,
     customDiscountPercent: calc.discountPercent ?? c.discountPercent ?? null,
     customerGroup: (calc.discountPercent != null || c.discountPercent != null) ? 'custom' : 'standard',
@@ -727,6 +731,14 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
     magicDecision: preparation.decision?.action ?? null,
     originalPdf,
   };
+  const conceptOfferDraftId = preparation.offerDraftId
+    || offerDraft.offerDraftId
+    || offerDraft.meta?.offerDraftId
+    || offerDraft.source?.offerDraftId
+    || null;
+  if (conceptOfferDraftId) {
+    source.offerDraftId = conceptOfferDraftId;
+  }
 
   if (preparation.mode === 'cash_magic' && calc.ok) {
     payment.type = 'cash';
@@ -861,6 +873,14 @@ export function overlayMagicOntoOfferDraft(offerDraft, preparation) {
     vehicle,
     vehicleConfiguration,
     source,
+    ...(conceptOfferDraftId ? { offerDraftId: conceptOfferDraftId } : {}),
+    meta: {
+      ...(offerDraft.meta || {}),
+      ...(conceptOfferDraftId ? { offerDraftId: conceptOfferDraftId } : {}),
+      ...(preparation.vehicleIdentityDraftId
+        ? { vehicleIdentityDraftId: preparation.vehicleIdentityDraftId }
+        : {}),
+    },
     identityConflicts,
     rateAuthority,
     missingRate: rateFromPdf != null ? false : offerDraft.missingRate,

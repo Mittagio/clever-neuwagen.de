@@ -64,8 +64,9 @@ export function parseCommercialDownPayment(text = '') {
     || /\banzahlung\s*(?:auf\s*)?0\s*(?:€|euro)?\b/i.test(blob)) {
     return 0;
   }
-  const m = blob.match(new RegExp(`(?:anzahlung|sonderzahlung|az)\\s*(?:von\\s*|auf\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
-    || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzahlung|sonderzahlung|az)\\b`, 'i'));
+  const m = blob.match(new RegExp(`(?:anzahlung|sonderzahlung|az)\\s*(?:von\\s*|auf\\s*|in\\s+h[öo]he\\s+von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
+    || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzahlung|sonderzahlung|az)\\b`, 'i'))
+    || blob.match(new RegExp(`(?:sonderzahlung|anzahlung)\\s+in\\s+h[öo]he\\s+von\\s+${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'));
   if (!m?.[1]) return null;
   const value = parseEuroLoose(m[1]);
   if (value == null || value < 0 || value > 200000) return null;
@@ -130,6 +131,10 @@ export function parseImplicitDownPayment(text = '', ctx = {}) {
 export function looksLikeMonthlyBudgetAmount(value, text = '', index = 0, spanLen = 0) {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 50 || n > 5000) return false;
+  const t = String(text || '');
+  const start = Math.max(0, Number(index) || 0);
+  // „4.500 €“ → Match auf „500 €“ ist Tausender-Splitter, keine Wunschrate
+  if (start > 0 && /[.\d]/.test(t[start - 1] || '')) return false;
   if (hasMonthlyBudgetCueNear(text, index, spanLen)) return true;
   // Kleine Beträge ohne Cue bleiben Wunschrate-Kandidaten; große Einmalbeträge nicht
   return n < IMPLICIT_DOWN_PAYMENT_MIN;
@@ -182,6 +187,7 @@ export {
   parseOfferIdentityFollowUp,
   parseTrimSwitchPhrase,
   validateOfferVehicleIdentity,
+  validateOfferPackageAgainstCatalog,
   shouldBindIdentityToOpenOffer,
   CLARIFY_VEHICLE_FOR_OFFER_PROMPT,
   OFFER_VEHICLE_TARGET_STATUS,

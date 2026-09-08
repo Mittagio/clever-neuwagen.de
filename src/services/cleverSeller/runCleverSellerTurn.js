@@ -97,6 +97,7 @@ import {
   markNonAuthoritativeRateFacts,
   shouldCaptureBeforeOffer,
 } from './captureThenOffer.js';
+import { buildSellerWorkBriefing } from './buildSellerWorkBriefing.js';
 import {
   listCustomerVehicleTracks,
   VEHICLE_TRACK_STATUS,
@@ -1108,6 +1109,13 @@ function finalizeSellerTurn({
     inputMode: interpreted.inputMode,
   });
 
+  const workBriefing = buildSellerWorkBriefing({
+    facts: uniqueFacts,
+    draft: offerPrepareAction?.payload || null,
+    lead,
+    nextStepHint: captureNextStep,
+  });
+
   const primaryIntent = effectiveIntents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
   const warnings = [
     ...buildWarnings(uniqueFacts, interpreted.inputMode),
@@ -1140,6 +1148,7 @@ function finalizeSellerTurn({
     offerAction,
     rememberDecision,
     captureNextStep,
+    workBriefing,
     zeroLossIntake,
     inputMode: interpreted.inputMode,
     interpretedInput: {
@@ -1514,6 +1523,7 @@ export function runCleverSellerTurn({
     workingMemory: memory,
     conversationHistory: history,
     previousOfferPreparation: prep,
+    now: now || appContext?.now || null,
     workingContext: Array.isArray(workingContextItems)
       ? {
         offer: effectiveOfferContext,
@@ -1618,6 +1628,7 @@ export async function runCleverSellerTurnAsync({
     workingMemory: memory,
     conversationHistory: history,
     previousOfferPreparation: prep,
+    now: now || appContext?.now || null,
     workingContext: Array.isArray(workingContextItems)
       ? {
         offer: effectiveOfferContext,
@@ -2044,6 +2055,11 @@ export async function runCleverSellerTurnWithCalendar(params = {}) {
 }
 
 export { interpretSellerInput } from './interpretSellerInput.js';
+export {
+  interpretCleverInput,
+  applyInterpretedCleverCapture,
+} from './interpretCleverInput.js';
+export { ensureConceptOfferDraftFromCapture } from './ensureConceptOfferDraftFromCapture.js';
 export {
   isCleverSellerOrchestratorEnabled,
   isCleverSellerOpenAiInterpretEnabled,

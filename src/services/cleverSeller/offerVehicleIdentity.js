@@ -203,12 +203,18 @@ export function parseOfferIdentityFollowUp(text = '') {
   const trim = t.match(TRIM_RE);
   const model = t.match(MODEL_RE);
   const packages = [];
-  if (/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i.test(t)) {
-    packages.push(/connect/i.test(t) ? 'Winter-Connect-Paket' : 'Winterpaket');
+  const isPackageRemoveCue = /\b(?:raus|weg|entfernen|ohne)\b/i.test(t)
+    || /\b(?:nimm|entferne|streich).{0,40}\b(?:raus|weg|entfernen)\b/i.test(t);
+  if (!isPackageRemoveCue) {
+    if (/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i.test(t)) {
+      packages.push(/connect/i.test(t) ? 'Winter-Connect-Paket' : 'Winterpaket');
+    }
+    if (/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('DriveWise Paket');
+    // Nur „Business Paket“ – nacktes „Business“ ist Kundengruppe (customerType), kein Paket
+    if (/\bbusiness\s*-?\s*paket\b/i.test(t)) packages.push('Business Paket');
+    if (/\bupgrade(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('Upgrade Paket');
+    if (/\bup\s*-?\s*drive\b/i.test(t)) packages.push('Up Drive');
   }
-  if (/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('DriveWise Paket');
-  if (/\bbusiness(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('Business Paket');
-  if (/\bupgrade(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('Upgrade Paket');
   const powertrainMatch = t.match(/\blong\s*range\b/i)
     || t.match(/(\d{2,3}(?:[.,]\d+)?)\s*kwh/i);
   const powertrain = powertrainMatch
@@ -264,16 +270,16 @@ export function parseOfferIdentityFollowUp(text = '') {
 }
 
 /**
- * Nur Modell + Angebot – keine Trim/Farbe/Paket-Defaults aus Track/Magic.
- * „EV2 Angebot“ → unvollständiger Concept Draft.
+ * Nur Modell + Angebot/Entwurf – keine Trim/Farbe/Paket-Defaults aus Track/Magic.
+ * „EV2 Angebot“ / „Mach erstmal nur einen EV3 Entwurf“ → unvollständiger Concept Draft.
  */
 export function isModelOnlyOfferCue(text = '') {
   const t = String(text || '').trim();
-  if (!t || !/\bangebot\b/i.test(t)) return false;
+  if (!t || !/\b(?:angebot|entwurf)\b/i.test(t)) return false;
   if (!MODEL_RE.test(t)) return false;
   const rest = t
     .replace(MODEL_RE, ' ')
-    .replace(/\b(?:kia|angebot|bitte|mach(?:en|e)?|erstell(?:e|en)?|ein|das|den|der|für|ihn|ihr)\b/gi, ' ')
+    .replace(/\b(?:kia|angebot|entwurf|bitte|mach(?:en|e)?|erstell(?:e|en)?|ein|eine|einen|das|den|der|für|ihn|ihr|erstmal|nur|mal)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!rest) return true;
@@ -542,6 +548,63 @@ export function validateOfferVehicleIdentity(identity = {}) {
     colorLabel,
     trimOk,
     colorOk,
+  };
+}
+
+/**
+ * Paket gegen verifizierte Modelldaten (optional Trim-Kompatibilität).
+ * OpenAI versteht „Up Drive“ – Clever prüft Fahrzeugwahrheit.
+ *
+ * @param {{ modelKey?: string, packageLabel?: string, trimId?: string|null, trim?: string|null }} input
+ */
+export function validateOfferPackageAgainstCatalog(input = {}) {
+  const modelKey = normalizeModelKey(input.modelKey);
+  const rawLabel = String(input.packageLabel || input.raw || '').trim();
+  if (!modelKey || !rawLabel) {
+    return {
+      ok: false,
+      reason: 'missing_input',
+      uncertainty: true,
+      packageLabel: rawLabel || null,
+      packageId: null,
+    };
+  }
+  const trimHint = input.trimId || input.trim || null;
+  const trimId = trimHint
+    ? (validateOfferVehicleIdentity({ modelKey, trim: trimHint }).trimId || normalizeModelKey(trimHint))
+    : null;
+  const choices = listOfferIdentityPackageChoices(modelKey, { trimId });
+  const needle = normalizeModelKey(rawLabel);
+  const hit = choices.find((p) => {
+    const id = normalizeModelKey(p.id);
+    const label = normalizeModelKey(p.label);
+    return id === needle
+      || label === needle
+      || label.includes(needle)
+      || needle.includes(label)
+      || id.includes(needle);
+  });
+  if (hit) {
+    return {
+      ok: true,
+      uncertainty: false,
+      packageId: hit.id,
+      packageLabel: hit.label,
+      raw: rawLabel,
+      modelKey,
+      trimId,
+    };
+  }
+  return {
+    ok: false,
+    reason: 'unknown_or_ambiguous_package',
+    uncertainty: true,
+    packageId: null,
+    packageLabel: rawLabel,
+    raw: rawLabel,
+    modelKey,
+    trimId,
+    candidates: choices.slice(0, 8),
   };
 }
 

@@ -30,7 +30,7 @@ import {
   appendSellerInsightsFromTexts,
   SELLER_INSIGHT_CONTEXT,
 } from './dealer/sellerInsights.js';
-import { VEHICLE_OFFER_STATUS, createNextOfferVersion, markOfferPrepared, shouldBumpOfferVersionOnSave } from './vehicleOffer.js';
+import { VEHICLE_OFFER_STATUS, createNextOfferVersion, markOfferPrepared, shouldBumpOfferVersionOnSave, resolveSourceOfferDraftId } from './vehicleOffer.js';
 import { buildBoardOfferFromDraft, BOARD_OFFER_STATUS } from './dealer/boardOfferModel.js';
 import { PAYMENT_TYPE_LABELS } from './dealerAiParser.js';
 import { mergeOfferCommercialIntoWish } from './sales/wishConditionsSync.js';
@@ -206,7 +206,24 @@ export function buildOfferDraft({
       originalText: parsedFields.rawText ?? parsed?.rawInput ?? '',
       parsedFields: mergedFields,
       confidence: parsed?.confidence ?? null,
+      ...(configureDraft.offerDraftId
+        ? { offerDraftId: configureDraft.offerDraftId }
+        : {}),
+      ...(configureDraft.vehicleIdentityDraftId
+        ? { vehicleIdentityDraftId: configureDraft.vehicleIdentityDraftId }
+        : {}),
     },
+    meta: {
+      ...(configureDraft.meta || {}),
+      offerDraftId: configureDraft.offerDraftId || configureDraft.meta?.offerDraftId || null,
+      vehicleIdentityDraftId: configureDraft.vehicleIdentityDraftId
+        || configureDraft.meta?.vehicleIdentityDraftId
+        || null,
+    },
+    ...(configureDraft.vehicleIdentityDraft
+      ? { vehicleIdentityDraft: configureDraft.vehicleIdentityDraft }
+      : {}),
+    offerDraftId: configureDraft.offerDraftId || configureDraft.meta?.offerDraftId || null,
   };
 }
 
@@ -467,12 +484,16 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
     : null;
 
   const existingOffer = existingLead?.crm?.vehicleOffers?.[cardId] ?? null;
+  const conceptOfferDraftId = resolveSourceOfferDraftId(offerDraft)
+    || resolveSourceOfferDraftId(existingOffer)
+    || null;
   const sourcePayload = {
     createdFrom: offerDraft.source?.createdFrom ?? 'dealer_ai_mail',
     originalPdf: originalPdf ?? null,
     previousPdfs: Array.isArray(offerDraft.source?.previousPdfs)
       ? offerDraft.source.previousPdfs
       : (existingOffer?.source?.previousPdfs ?? []),
+    ...(conceptOfferDraftId ? { offerDraftId: conceptOfferDraftId } : {}),
   };
 
   const baseVehicleOffer = {
@@ -491,6 +512,7 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
     deliveryFee: offerDraft.payment.transferCost ?? 990,
     pdf: pdfPayload,
     source: sourcePayload,
+    ...(conceptOfferDraftId ? { offerDraftId: conceptOfferDraftId } : {}),
     onlineLink: null,
     tracking: { openCount: 0, lastOpenedAt: null, firstOpenedAt: null },
     sentVia: null,
@@ -512,6 +534,7 @@ export function buildKundenakteEnrichmentFromOfferDraft(offerDraft, {
       deliveryFee: baseVehicleOffer.deliveryFee,
       pdf: pdfPayload,
       source: sourcePayload,
+      ...(conceptOfferDraftId ? { offerDraftId: conceptOfferDraftId } : {}),
       onlineLink: null,
       sentVia: null,
       sentAt: null,

@@ -37,7 +37,7 @@ export function isPlaceholderCustomerName(name = '') {
  * z. B. „Angebote für“, „Earth weiß“, „EV2 Air“.
  */
 export function isCustomerNameStopToken(token = '') {
-  return /^(?:ein|eine|ihm|ihr|dem|den|das|des|der|die|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|leasing|finanzierung|für|an|will|möchte|moechte|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|und|oder|mit|ohne|max|km|monate?|kinder|ahk|pv\d)$/i
+  return /^(?:ein|eine|einen|einem|einer|eines|ihm|ihr|dem|den|das|des|der|die|noch|hat|gibt|geben|möchte|moechte|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|leasing|privatleasing|privat|finanzierung|für|an|will|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|wolfsgrau|metallic|und|oder|mit|ohne|max|km|monate?|kinder|ahk|pv\d|donnerstag|montag|dienstag|mittwoch|freitag|rückruf|anrufen|erstmal|nur|entscheidet|entscheiden|entwurf|seine|ihre|interessiere|inklusive|farbe|wunschkonditionen)$/i
     .test(String(token || '').trim());
 }
 

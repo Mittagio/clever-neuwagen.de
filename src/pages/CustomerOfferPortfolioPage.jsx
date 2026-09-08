@@ -501,6 +501,7 @@ export default function CustomerOfferPortfolioPage() {
                           disabled={busy || !question.trim()}
                           onClick={() => sendEvent(item.id, PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST, {
                             questionText: question.trim(),
+                            changeDimension: changeDimension || null,
                           })}
                         >
                           Änderungswunsch senden

@@ -47,6 +47,21 @@ export function resolveRelativeDateTime(sellerInput = '', options = {}) {
   }
 
   if (!parsed.startAt) {
+    // Interner Rückruf: Wochentag ohne Uhrzeit → Datum behalten, Standardfenster 10:00
+    // (keine erfundenen Kundentermine; Seller-Reminder braucht konkreten startsAt)
+    const isCallbackCue = /\b(?:rückruf|ruckruf|anrufen|callback|ruf\s+(?:ihn|sie|ihm|den|die)|nochmal\s+an)\b/i.test(raw);
+    if (
+      isCallbackCue
+      && parsed.missing === 'time'
+      && parsed.partialDate
+    ) {
+      const d = new Date(parsed.partialDate);
+      d.setHours(10, 0, 0, 0);
+      parsed = { startAt: d.toISOString(), missing: null, timeDefaulted: true };
+    }
+  }
+
+  if (!parsed.startAt) {
     return {
       ok: false,
       startsAt: null,
