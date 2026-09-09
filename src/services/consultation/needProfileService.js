@@ -28,8 +28,9 @@ function clampConfidence(value) {
 }
 
 function pushUnique(list, item) {
-  if (!item || list.includes(item)) return list;
-  return [...list, item];
+  const arr = Array.isArray(list) ? list : [];
+  if (!item || arr.includes(item)) return arr;
+  return [...arr, item];
 }
 
 /**
@@ -237,7 +238,9 @@ function applyIntentToNeedProfile(profile, intent = {}, text = '') {
     confidence += 6;
   }
 
-  if (intent.towCapacityKg >= 750 || intent.features?.some((f) => f.includes('tow'))) {
+  if (intent.towCapacityKg >= 750 || intent.features?.some((f) => (
+    typeof f === 'string' && f.includes('tow')
+  ))) {
     if (detectTowCapacityRange(text)) {
       next.towbar = true;
       next.priorities = pushUnique(next.priorities, 'towing');
@@ -305,7 +308,18 @@ export function computeMissingNeedFields(profile = {}, ctx = {}) {
  */
 export function mergeTextIntoNeedProfile(text = '', base = null) {
   const trimmed = String(text ?? '').trim();
-  let profile = base ?? createEmptyNeedProfile(trimmed);
+  // Unvollständige Lead-Profile (z. B. needProfile: {}) müssen Defaults behalten
+  let profile = base
+    ? {
+      ...createEmptyNeedProfile(trimmed),
+      ...base,
+      rawMessages: Array.isArray(base.rawMessages) ? base.rawMessages : [],
+      equipmentWishes: Array.isArray(base.equipmentWishes) ? base.equipmentWishes : [],
+      priorities: Array.isArray(base.priorities) ? base.priorities : [],
+      understoodLabels: Array.isArray(base.understoodLabels) ? base.understoodLabels : [],
+      missingFields: Array.isArray(base.missingFields) ? base.missingFields : [],
+    }
+    : createEmptyNeedProfile(trimmed);
   if (trimmed && !profile.rawMessages.includes(trimmed)) {
     profile = {
       ...profile,
@@ -329,7 +343,23 @@ export function mergeTextIntoNeedProfile(text = '', base = null) {
  * @param {object} lead
  */
 export function getNeedProfileFromLead(lead = {}) {
-  if (lead?.crm?.needProfile) return lead.crm.needProfile;
+  const raw = lead?.crm?.needProfile;
+  if (raw && typeof raw === 'object') {
+    // Leeres/unvollständiges Objekt (z. B. {}) mit Defaults füllen – keine Crash-Quelle
+    return {
+      ...createEmptyNeedProfile(),
+      ...raw,
+      equipmentWishes: Array.isArray(raw.equipmentWishes) ? raw.equipmentWishes : [],
+      priorities: Array.isArray(raw.priorities) ? raw.priorities : [],
+      understoodLabels: Array.isArray(raw.understoodLabels) ? raw.understoodLabels : [],
+      missingFields: Array.isArray(raw.missingFields) ? raw.missingFields : [],
+      design: Array.isArray(raw.design) ? raw.design : [],
+      technology: Array.isArray(raw.technology) ? raw.technology : [],
+      usage: Array.isArray(raw.usage) ? raw.usage : [],
+      openQuestions: Array.isArray(raw.openQuestions) ? raw.openQuestions : [],
+      rawMessages: Array.isArray(raw.rawMessages) ? raw.rawMessages : [],
+    };
+  }
   const initial = lead?.sonderwuensche?.consultation?.consultationProfile?.initialWish
     ?? lead?.inquiryBrief?.searchQuery
     ?? '';

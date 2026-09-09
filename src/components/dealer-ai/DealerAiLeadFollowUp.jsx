@@ -175,6 +175,11 @@ import {
   patchVehicleTrackOnLead,
 } from '../../services/crm/vehicleTrack.js';
 import { buildGoldenMomentView } from '../../services/journey/goldenMoment.js';
+import { buildSellerWorkBriefing } from '../../services/cleverSeller/buildSellerWorkBriefing.js';
+import {
+  overlayNextStepWithNba,
+  findSendableVehicleOffer,
+} from '../../services/cleverSeller/determineNextBestSellerAction.js';
 import {
   appointmentTypeLabel,
   formatAppointmentWhen,
@@ -983,6 +988,13 @@ export default function DealerAiLeadFollowUp({
     wishPaymentType,
   }), [lead, journeyResult, reminderEval, vehicleCards, resolvedSelectionGroups, name, phone, email, kundenhelferNotes, wishPaymentType]);
 
+  /** Lead-first Arbeitsgrundlage + eine Primary Action (kein Turn-State nötig). */
+  const sellerWorkBriefing = useMemo(
+    () => (lead ? buildSellerWorkBriefing({ lead, facts: [] }) : null),
+    [lead],
+  );
+  const nextBestSellerAction = sellerWorkBriefing?.nextBestAction || null;
+
   const cleverEmpfiehltView = useMemo(() => {
     let view = journeyResult?.view;
     if (!view || !advisorNextStepHint) {
@@ -999,16 +1011,87 @@ export default function DealerAiLeadFollowUp({
           });
         }
       }
-      return view;
+    } else {
+      view = {
+        ...view,
+        headline: advisorNextStepHint.title ?? view.headline,
+        subline: advisorNextStepHint.text ?? view.subline,
+        reminderLine: reminderEval?.displayLine ?? view.reminderLine,
+        messageSuggestion,
+      };
     }
+
+    // Ohne Journey-View: minimale Stage aus NBA (Need-Consultation etc.)
+    if (!view && nextBestSellerAction) {
+      view = {
+        actionId: nextBestSellerAction.id,
+        headline: nextBestSellerAction.label,
+        subline: '',
+        reminderLine: '',
+        actions: [],
+        recommendation: {
+          actionId: nextBestSellerAction.id,
+          ctaLabel: nextBestSellerAction.label,
+          handlerType: nextBestSellerAction.handler,
+          title: nextBestSellerAction.label,
+          meta: nextBestSellerAction.contextPayload || {},
+        },
+        handlerType: nextBestSellerAction.handler,
+        ctaLabel: nextBestSellerAction.label,
+        offerSnapshot: null,
+        nextStep: null,
+        stage: {
+          recommendLabel: 'Clever empfiehlt',
+          canSend: false,
+          canOpenOffer: false,
+        },
+      };
+    }
+
+    if (!view) return view;
+
+    const offerSendable = Boolean(findSendableVehicleOffer(lead));
+    const nextStep = overlayNextStepWithNba(nextBestSellerAction, view.nextStep, {
+      offerSendable,
+    });
+    const stageSecondary = nextStep?.secondary || null;
     return {
       ...view,
-      headline: advisorNextStepHint.title ?? view.headline,
-      subline: advisorNextStepHint.text ?? view.subline,
-      reminderLine: reminderEval?.displayLine ?? view.reminderLine,
-      messageSuggestion,
+      nextStep: nextStep || view.nextStep,
+      ctaLabel: nextStep?.primary?.label || view.ctaLabel,
+      handlerType: nextBestSellerAction?.handler || view.handlerType,
+      workBriefing: sellerWorkBriefing,
+      nextBestAction: nextBestSellerAction,
+      stage: {
+        ...(view.stage || {}),
+        primaryReviewLabel: nextStep?.primary?.label
+          || view.stage?.primaryReviewLabel,
+        recommendLabel: nextStep?.recommendLabel
+          || view.stage?.recommendLabel
+          || 'Clever empfiehlt',
+        // Senden nur bei echt sendbarem VehicleOffer (keine Concept-Draft-Rate)
+        canSend: offerSendable && nextBestSellerAction?.handler === 'intend_send'
+          ? true
+          : (offerSendable ? Boolean(stageSecondary?.type === 'send') : false),
+        secondaryAction: stageSecondary,
+        // Angebotstool nur öffnen wenn NBA prepare/modify/send
+        canOpenOffer: nextBestSellerAction
+          ? ['prepare_offer', 'modify_offer', 'intend_send'].includes(nextBestSellerAction.handler)
+          : view.stage?.canOpenOffer,
+      },
     };
-  }, [journeyResult, advisorNextStepHint, reminderEval, messageSuggestion, crm.followUpAt, crm.nextStepLabel, crm.journeyReminderReason]);
+  }, [
+    journeyResult,
+    advisorNextStepHint,
+    reminderEval,
+    messageSuggestion,
+    crm.followUpAt,
+    crm.nextStepLabel,
+    crm.journeyReminderReason,
+    nextBestSellerAction,
+    sellerWorkBriefing,
+    lead,
+  ]);
 
   const sellerCleverMoment = useMemo(
     () => buildSellerCleverMoment(lead),
@@ -3434,7 +3517,107 @@ export default function DealerAiLeadFollowUp({
     }), { silent: true });
   }
 
+  function handleNextBestSellerAction(view, action) {
+    const nba = view?.nextBestAction || nextBestSellerAction || null;
+    const handler = action?.handlerType
+      || nba?.handler
+      || view?.nextStep?.primary?.handlerType
+      || null;
+    const payload = action?.contextPayload
+      || nba?.contextPayload
+      || view?.nextStep?.primary?.contextPayload
+      || {};
+
+    if (handler === 'intend_send') {
+      handleCleverSendToCustomer({
+        ...view,
+        handlerType: 'offer_send_portfolio',
+        meta: { ...(view?.meta || {}), cardId: payload.cardId },
+      });
+      return true;
+    }
+    if (handler === 'prepare_offer') {
+      if (payload.modelKey && onPrepareOffer) {
+        onPrepareOffer({
+          id: payload.modelKey,
+          modelKey: payload.modelKey,
+          name: `Kia ${String(payload.modelKey).toUpperCase()}`,
+          trimLabel: payload.trim || undefined,
+          offerDraftId: payload.offerDraftId || undefined,
+          paymentType: payload.paymentType || undefined,
+          termMonths: payload.termMonths || undefined,
+          mileagePerYear: payload.annualMileage || undefined,
+          downPayment: payload.downPayment || undefined,
+        });
+        return true;
+      }
+      if (onPrepareOfferFromClever) {
+        onPrepareOfferFromClever();
+        return true;
+      }
+      focusChatComposer({
+        clever: true,
+        seedDraft: payload.seedDraft
+          || (payload.modelKey
+            ? `Bereite Angebot für ${String(payload.modelKey).toUpperCase()} vor.`
+            : 'Bereite ein Angebot vor.'),
+      });
+      return true;
+    }
+    if (handler === 'modify_offer') {
+      const cardId = payload.cardId;
+      const card = cardId
+        ? vehicleCards.find((c) => c.id === cardId)
+        : vehicleCards[0];
+      if (card && onOpenOfferEdit) {
+        onOpenOfferEdit(card);
+      } else if (card) {
+        openBoardOfferFromCard(card);
+      }
+      focusChatComposer({
+        clever: true,
+        seedDraft: payload.seedDraft
+          || (payload.questionText
+            ? `Passe Angebot an: ${payload.questionText}`
+            : 'Passe das Angebot an die Kundenänderung an.'),
+      });
+      return true;
+    }
+    if (handler === 'consultation') {
+      // Bestehender Beratung-Handoff – bekannte Need-Daten mitnehmen, nicht neu abfragen
+      if (onReturnToReview) {
+        onReturnToReview({
+          source: 'nba_consultation',
+          needContext: payload,
+        });
+        return true;
+      }
+      focusChatComposer({
+        clever: true,
+        seedDraft: 'Finde passende Fahrzeuge zum erfassten Bedarf.',
+      });
+      return true;
+    }
+    if (handler === 'propose_appointment') {
+      focusChatComposer({
+        clever: true,
+        seedDraft: 'Probefahrt anbieten.',
+      });
+      return true;
+    }
+    if (handler === 'request_documents') {
+      openSheet(SHEETS.unterlagen);
+      return true;
+    }
+    if (handler === 'create_follow_up') {
+      openCleverAntworten('nachfassen');
+      return true;
+    }
+    return false;
+  }
+
   function handleCleverEmpfiehltAction(view, action) {
+    if (handleNextBestSellerAction(view, action)) return;
     const hint = cleverActionToHint(view?.recommendation ?? cleverRecommendation, { telHref });
     if (action?.type === 'call' || action?.type === 'whatsapp' || action?.type === 'email') {
       trackCleverActionFollowed(hint);
@@ -3652,22 +3835,16 @@ export default function DealerAiLeadFollowUp({
   const offerWorkPanel = renderOfferWorkPanel();
   const offerWorkAssist = renderOfferWorkPanel();
 
-  /** Mitte: konkreter Clever-Schritt (kein generischer Idle), nur Clever-Tab. */
+  /** Mitte: Arbeitsgrundlage + genau eine Primary CTA (NBA). Golden Moment nur ohne NBA. */
   const cleverStageSlot = hideComposerFeed ? (
-    goldenMomentView ? (
-      <div className="sw-chat__empty-recommend sw-chat__empty-recommend--stage">
-        <CustomerAkteGoldenMomentCard
-          moment={goldenMomentView}
-          onPrimary={handleGoldenMomentPrimary}
-          onSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
-        />
-      </div>
-    ) : cleverEmpfiehltView ? (
+    (nextBestSellerAction || cleverEmpfiehltView) ? (
       <CleverEmpfiehltCard
         view={{
-          ...cleverEmpfiehltView,
+          ...(cleverEmpfiehltView || {}),
           closureChance: undefined,
           closureLabel: undefined,
+          workBriefing: sellerWorkBriefing,
+          nextBestAction: nextBestSellerAction,
         }}
         telHref={telHref}
         onPrimaryAction={handleCleverEmpfiehltAction}
@@ -3680,6 +3857,14 @@ export default function DealerAiLeadFollowUp({
         recentActivities={recentStageActivities}
         onOpenAllActivities={openActivitiesSheet}
       />
+    ) : goldenMomentView ? (
+      <div className="sw-chat__empty-recommend sw-chat__empty-recommend--stage">
+        <CustomerAkteGoldenMomentCard
+          moment={goldenMomentView}
+          onPrimary={handleGoldenMomentPrimary}
+          onSecondary={() => focusChatComposer({ seedDraft: 'Nachfassen.' })}
+        />
+      </div>
     ) : sellerCleverMoment ? (
       <CleverMoment
         className="cn-clever-moment--lavender"

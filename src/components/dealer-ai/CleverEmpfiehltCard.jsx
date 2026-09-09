@@ -59,7 +59,7 @@ function splitRate(snapshot) {
 
 /**
  * Clever-Stage der Kundenakte:
- * 1 Angebotskontext · 1 dynamischer Primär-CTA · max. 1 Sekundär · Timeline.
+ * Kompakter Kundenstand (Work Briefing) · 1 Primär-CTA · max. 1 Sekundär · Timeline.
  */
 export default function CleverEmpfiehltCard({
   view,
@@ -104,8 +104,43 @@ export default function CleverEmpfiehltCard({
     || view.ctaLabel
     || 'Weiter';
   const reasonTitle = nextStep?.reasonSource?.detail || primaryLabel;
+  const briefingSections = view.workBriefing?.sections || null;
+  const briefingRows = briefingSections
+    ? [
+      { key: 'customerPicture', title: 'Kundenbild', value: briefingSections.customerPicture },
+      { key: 'sought', title: 'Gesucht', value: briefingSections.sought },
+      { key: 'customerWants', title: 'Kunde möchte', value: briefingSections.customerWants },
+      { key: 'leasingWish', title: 'Leasing', value: briefingSections.leasingWish },
+      { key: 'important', title: 'Wichtig', value: briefingSections.important },
+      { key: 'currentVehicle', title: 'Aktuell', value: briefingSections.currentVehicle },
+      { key: 'planned', title: 'Geplant', value: briefingSections.planned },
+      { key: 'toClarify', title: 'Noch zu klären', value: briefingSections.toClarify },
+    ].filter((row) => Boolean(row.value))
+    : [];
 
   function handlePrimaryClick() {
+    const handler = primaryAction?.handlerType
+      || view.nextBestAction?.handler
+      || null;
+    // NBA-Handler immer über Primary-Action (Kontext mitnehmen)
+    if (handler && [
+      'consultation',
+      'prepare_offer',
+      'modify_offer',
+      'intend_send',
+      'propose_appointment',
+      'request_documents',
+      'create_follow_up',
+    ].includes(handler)) {
+      onPrimaryAction?.(view, {
+        ...primaryAction,
+        handlerType: handler,
+        contextPayload: primaryAction?.contextPayload
+          || view.nextBestAction?.contextPayload
+          || {},
+      });
+      return;
+    }
     if (primaryAction?.type === 'call' && (primaryAction.href || telHref)) {
       onPrimaryAction?.(view, primaryAction);
       return;
@@ -160,6 +195,17 @@ export default function CleverEmpfiehltCard({
           ) : null}
 
           <div className="clever-empfiehlt__work-main">
+            {briefingRows.length > 0 ? (
+              <dl className="clever-empfiehlt__briefing" data-testid="clever-work-briefing">
+                {briefingRows.map((row) => (
+                  <div key={row.key} className="clever-empfiehlt__briefing-row">
+                    <dt>{row.title}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+
             {snapshot ? (
               <>
                 <header className="clever-empfiehlt__offer-head">
@@ -211,11 +257,11 @@ export default function CleverEmpfiehltCard({
                   </button>
                 ) : null}
               </>
-            ) : (
+            ) : briefingRows.length === 0 ? (
               <div className="clever-empfiehlt__offer-empty">
                 <h3 className="clever-empfiehlt__offer-title">Noch kein Angebot</h3>
               </div>
-            )}
+            ) : null}
 
             <div className="clever-empfiehlt__next">
               <p className="clever-empfiehlt__recommend-label">{recommendLabel}</p>
@@ -236,6 +282,7 @@ export default function CleverEmpfiehltCard({
                   className="clever-empfiehlt__btn clever-empfiehlt__btn--primary"
                   onClick={handlePrimaryClick}
                   title={reasonTitle}
+                  data-testid="clever-primary-cta"
                 >
                   <IconSparkle />
                   <span>{primaryLabel}</span>

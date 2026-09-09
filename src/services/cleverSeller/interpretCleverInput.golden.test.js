@@ -1205,7 +1205,7 @@ Falls möglich, würde ich das Fahrzeug gern direkt mit Winterreifen statt Somme
   const s = briefing.sections;
   assert.match(String(s.customerPicture || ''), /2\s*Kinder/i);
   assert.match(String(s.customerPicture || ''), /Hund/i);
-  assert.match(String(s.sought || ''), /Elektroauto/i);
+  assert.match(String(s.sought || ''), /Elektrofahrzeug|Elektroauto/i);
   assert.match(String(s.leasingWish || ''), /48\s*Monate/i);
   assert.match(String(s.leasingWish || ''), /15\.000\s*km/i);
   assert.match(String(s.leasingWish || ''), /3\.000\s*€/i);

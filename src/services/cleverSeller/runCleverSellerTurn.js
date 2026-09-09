@@ -1121,12 +1121,23 @@ function finalizeSellerTurn({
     inputMode: interpreted.inputMode,
   });
 
+  // Lead-first: nach Apply-Pfad workingLead; Turn-Facts nur ergänzend.
+  // nextStep kommt aus determineNextBestSellerAction (via Briefing), Hint nur Signal.
   const workBriefing = buildSellerWorkBriefing({
     facts: uniqueFacts,
     draft: offerPrepareAction?.payload || null,
-    lead,
+    lead: workingLead || lead,
     nextStepHint: captureNextStep,
   });
+  if (workBriefing?.nextBestAction && captureNextStep) {
+    // Hint behält Signal-Charakter; Primary-Label kommt aus NBA
+    captureNextStep = {
+      ...captureNextStep,
+      label: workBriefing.nextBestAction.label || captureNextStep.label,
+      hint: workBriefing.nextBestAction.label || captureNextStep.hint,
+      primaryActionId: workBriefing.nextBestAction.id,
+    };
+  }
 
   const primaryIntent = effectiveIntents[0]?.type || SELLER_TURN_INTENTS.UNKNOWN;
   const warnings = softenInterpretWarnings([

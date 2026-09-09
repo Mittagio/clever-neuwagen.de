@@ -1,9 +1,16 @@
 /**
  * Verkäufer-Arbeitsgrundlage aus bereits strukturierten Facts/Draft/OpenQuestions.
+ * Lead-first: nach Reload aus NeedProfile/wish/tracks reproduzierbar.
  * Keine zweite KI-Wahrheit – nur Formatierung vorhandener Slots.
  */
 import { buildCaptureNextStepHint } from './captureThenOffer.js';
 import { presentIntakeNextStepLabel } from './presentSellerIntakeFeedback.js';
+import {
+  determineNextBestSellerAction,
+  resolveConcreteVehicleModel,
+} from './determineNextBestSellerAction.js';
+import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
+import { resolveActiveOfferDraft } from './cleverWorkingDraft.js';
 
 function pickFact(facts, field) {
   return (facts || []).find((f) => f?.field === field && !f?.value?.remove) || null;
@@ -31,16 +38,64 @@ const MONTH_LABELS = {
   '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Dezember',
 };
 
-function formatVehicleLine(facts = [], draft = null) {
+const EQUIPMENT_ID_LABEL = {
+  heat_pump: 'Wärmepumpe',
+  towbar: 'Anhängerkupplung',
+  ahk: 'Anhängerkupplung',
+  seat_heating: 'Sitzheizung',
+  steering_wheel_heating: 'Lenkradheizung',
+  winter_tires: 'Winterreifen',
+  winter_wheel_set: 'Winterradsatz',
+};
+
+function resolveDraft(lead, draft) {
+  if (draft?.vehicleIdentityDraft || draft?.modelKey) return draft;
+  return resolveActiveOfferDraft({ lead, workingMemory: lead?.crm?.cleverWorkingState })
+    || lead?.crm?.cleverWorkingState?.currentOfferDraft
+    || draft
+    || null;
+}
+
+function formatVehicleLine(facts = [], draft = null, lead = null) {
   const interest = pickFact(facts, 'vehicleInterest');
-  const modelKey = interest?.value?.modelKey || draft?.vehicleIdentityDraft?.modelKey || null;
+  const modelFromLead = resolveConcreteVehicleModel(lead, lead?.crm?.cleverWorkingState);
+  const modelKey = interest?.value?.modelKey
+    || draft?.vehicleIdentityDraft?.modelKey
+    || modelFromLead?.modelKey
+    || null;
   const model = interest?.value?.model
     || draft?.vehicleIdentityDraft?.model?.canonical
     || draft?.vehicleIdentityDraft?.model?.raw
     || (modelKey ? String(modelKey).toUpperCase() : null);
+
+  const motorFact = pickFact(facts, 'motorPreference') || pickFact(facts, 'batteryPreference');
+  const motorFromFact = motorFact?.value?.label
+    || motorFact?.value?.hint
+    || motorFact?.label
+    || null;
+  const motorFromProfile = lead?.crm?.needProfile?.motorPreference || null;
+  const powertrainFromDraft = draft?.vehicleIdentityDraft?.powertrain?.canonical
+    || draft?.vehicleIdentityDraft?.powertrain?.raw
+    || null;
+  const tracks = listCustomerVehicleTracks(lead) || [];
+  const trackForModel = modelKey
+    ? tracks.find((t) => String(t.modelKey || '').toLowerCase() === String(modelKey).toLowerCase())
+    : null;
+  const track = trackForModel || tracks[0] || null;
+  const motorFromTrack = (track?.customerRequirements || []).find((r) => (
+    /long\s*range|standard\s*range|extended\s*range/i.test(String(r || ''))
+  )) || null;
+
   const trim = interest?.value?.trim
     || draft?.vehicleIdentityDraft?.trim?.canonical
     || draft?.vehicleIdentityDraft?.trim?.raw
+    || modelFromLead?.trim
+    || track?.trim
+    || track?.trimLabel
+    || powertrainFromDraft
+    || motorFromFact
+    || motorFromProfile
+    || motorFromTrack
     || null;
   const colorFact = pickFact(facts, 'colorPreference');
   const colorRaw = colorFact?.value?.color
@@ -54,21 +109,20 @@ function formatVehicleLine(facts = [], draft = null) {
   const modelLabel = model
     ? String(model).replace(/^Kia\s+/i, '').replace(/\s+/g, ' ').trim()
     : null;
-  // „EV4 Air“ nicht doppelt, wenn model schon Trim trägt
-  const trimPart = trim && modelLabel && !new RegExp(trim.replace(/\s+/g, '\\s*'), 'i').test(modelLabel)
-    ? trim
-    : (trim && !modelLabel ? trim : null);
+  const trimPart = trim && modelLabel && !new RegExp(String(trim).replace(/\s+/g, '\\s*'), 'i').test(modelLabel)
+    ? String(trim).trim()
+    : (trim && !modelLabel ? String(trim).trim() : null);
 
   const equip = pickFacts(facts, 'equipmentWish')
     .filter((f) => !['winter_tires', 'winter_wheel_set'].includes(f.value?.id))
     .map((f) => String(f.value?.label || f.label || '').trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    // Powertrain gehört in Trim-Slot, nicht als Ausstattungs-Chip
+    .filter((label) => !/long\s*range|standard\s*range/i.test(label));
 
-  // Sitzheizung-Label aus Fact bevorzugen (vorn)
   const uniqEquip = [];
   for (const label of equip) {
     if (uniqEquip.some((x) => x.toLowerCase() === label.toLowerCase())) continue;
-    // Winterpaket-Duplikat vermeiden, wenn Winter-Paket P1 schon da
     if (/^winterpaket$/i.test(label) && uniqEquip.some((x) => /winter-?paket/i.test(x))) continue;
     uniqEquip.push(label);
   }
@@ -78,13 +132,18 @@ function formatVehicleLine(facts = [], draft = null) {
 
 function formatCustomerPicture(facts = [], lead = null) {
   const parts = [];
+  const profile = lead?.crm?.needProfile || {};
   const children = pickFact(facts, 'childrenCount');
-  const childrenVal = children?.value ?? lead?.crm?.needProfile?.household?.childrenCount
-    ?? lead?.crm?.needProfile?.children ?? null;
-  if (childrenVal != null) parts.push(`${Number(childrenVal)} Kinder`);
+  const childrenVal = children?.value
+    ?? profile?.household?.childrenCount
+    ?? profile?.children
+    ?? null;
+  if (childrenVal != null && Number(childrenVal) > 0) {
+    parts.push(`${Number(childrenVal)} Kinder`);
+  }
 
   const pet = pickFact(facts, 'pet') || pickFact(facts, 'hasPet');
-  const dog = lead?.crm?.needProfile?.dog === true
+  const dog = profile?.dog === true
     || pet?.value?.type === 'dog'
     || /hund/i.test(String(pet?.label || ''));
   if (dog) parts.push('Hund');
@@ -95,16 +154,19 @@ function formatCustomerPicture(facts = [], lead = null) {
   return parts.length ? parts.join(' · ') : null;
 }
 
-function formatSoughtLine(facts = [], draft = null) {
-  if (pickFact(facts, 'vehicleInterest')?.value?.modelKey
-    || draft?.vehicleIdentityDraft?.modelKey) {
+function formatSoughtLine(facts = [], draft = null, lead = null) {
+  if (
+    pickFact(facts, 'vehicleInterest')?.value?.modelKey
+    || draft?.vehicleIdentityDraft?.modelKey
+    || resolveConcreteVehicleModel(lead, lead?.crm?.cleverWorkingState)?.modelKey
+  ) {
     return null;
   }
   const fuel = pickFact(facts, 'fuelPreference');
-  const fuelVal = fuel?.value || null;
+  const fuelVal = fuel?.value || lead?.crm?.needProfile?.fuel || null;
   if (fuelVal === 'electric' || fuelVal === 'elektro' || fuelVal === 'bev'
     || /elektro/i.test(String(fuel?.label || ''))) {
-    return 'Elektroauto';
+    return 'Elektrofahrzeug';
   }
   if (fuel?.label) return String(fuel.label);
   return null;
@@ -127,8 +189,6 @@ function formatLeasingLine(facts = [], lead = null) {
   }
 
   const pay = payment?.value || wish.paymentType || null;
-  // Bare „Leasing“ weglassen – Abschnitts-Titel „Leasingwunsch“ reicht;
-  // Privatleasing / Finanzierung / Kauf weiter anzeigen
   if (pay === 'leasing' && /privatleasing/i.test(String(payment?.label || ''))) {
     if (!parts.includes('Privat')) parts.push('Privatleasing');
   } else if (pay === 'financing') {
@@ -142,14 +202,12 @@ function formatLeasingLine(facts = [], lead = null) {
     parts.push(`${Number(months)} Monate`);
   }
 
-  // 0 km ist Missing – nie als Fachwert anzeigen
-  const mileage = km?.value ?? wish.mileagePerYear ?? null;
+  const mileage = km?.value ?? wish.mileagePerYear ?? wish.annualMileage ?? null;
   if (mileage != null && Number(mileage) > 0) {
     parts.push(`${Number(mileage).toLocaleString('de-DE')} km/Jahr`);
   }
 
   const az = down?.value ?? wish.downPayment ?? null;
-  // downPayment 0 ist gültig („ohne AZ“)
   if (az != null && az !== '' && Number.isFinite(Number(az))) {
     parts.push(`${Number(az).toLocaleString('de-DE')} € Sonderzahlung`);
   }
@@ -157,7 +215,7 @@ function formatLeasingLine(facts = [], lead = null) {
   return parts.length ? parts.join(' · ') : null;
 }
 
-function formatImportantLine(facts = []) {
+function formatImportantLine(facts = [], lead = null) {
   const parts = [];
   const seen = new Set();
   const push = (label) => {
@@ -178,6 +236,17 @@ function formatImportantLine(facts = []) {
   if (ahk && !ahk.value?.remove) {
     push(/ahk/i.test(String(ahk.label || '')) ? 'Anhängerkupplung' : (ahk.label || 'Anhängerkupplung'));
   }
+
+  // Lead-first: NeedProfile-Ausstattung
+  const profile = lead?.crm?.needProfile || {};
+  for (const wishId of profile.equipmentWishes || []) {
+    const id = String(wishId);
+    if (/^(winter_tires|winter_wheel_set)$/i.test(id)) continue;
+    push(EQUIPMENT_ID_LABEL[id] || (/wärm|heat/i.test(id) ? 'Wärmepumpe' : id));
+  }
+  if (profile.towbar === true) push('Anhängerkupplung');
+  if ((profile.priorities || []).includes('towing')) push('Anhängerkupplung');
+
   return parts.length ? parts.join(' · ') : null;
 }
 
@@ -223,7 +292,7 @@ function formatExtrasLine(facts = []) {
   return parts.length ? parts.join(' · ') : null;
 }
 
-function formatClarifyLine(facts = [], draft = null) {
+function formatClarifyLine(facts = [], draft = null, lead = null) {
   const parts = [];
   const seen = new Set();
   const push = (label) => {
@@ -239,7 +308,6 @@ function formatClarifyLine(facts = [], draft = null) {
     else if (topic === 'one_time_costs') push('weitere Einmalkosten');
     else if (topic === 'subsidy') push('Förderung');
     else if (topic === 'quote_on_basis') {
-      // Wunsch nach Ausweis – kein Klärpunkt, wenn Konditionen schon strukturiert sind
       continue;
     } else if (q.label) {
       push(String(q.label).replace(/\s*erfragen\s*$/i, '').trim());
@@ -252,7 +320,6 @@ function formatClarifyLine(facts = [], draft = null) {
     || colorSlot?.status === 'open'
     || pickFact(facts, 'colorPreference')?.needsConfirmation
   ) {
-    // Farbe ist genannt, aber Katalog-ungeprüft → lokaler Hinweis
     if (colorSlot?.raw || pickFact(facts, 'colorPreference')) {
       push('Farbe prüfen');
     }
@@ -266,22 +333,34 @@ function formatClarifyLine(facts = [], draft = null) {
     }
   }
 
+  // Lead: offene Labels aus NeedProfile (Förderung etc.)
+  for (const label of lead?.crm?.needProfile?.understoodLabels || []) {
+    if (/förder|farbe\s*prüfen|überführung/i.test(String(label))) {
+      push(String(label).replace(/\s*erfragen\s*$/i, '').trim());
+    }
+  }
+
   return parts.length ? parts.join(' · ') : null;
 }
 
 function resolveNextStepLabel(params = {}) {
+  const nextBest = params.nextBestAction || null;
+  if (nextBest?.label) return nextBest.label;
+
   const facts = Array.isArray(params.facts) ? params.facts : [];
   const draft = params.draft || null;
+  const lead = params.lead || null;
   const nextHint = params.nextStepHint || null;
   const hasModel = Boolean(
     pickFact(facts, 'vehicleInterest')?.value?.modelKey
     || draft?.vehicleIdentityDraft?.modelKey
-    || draft?.modelKey
+    || resolveConcreteVehicleModel(lead, lead?.crm?.cleverWorkingState)?.modelKey
   );
   const fuel = pickFact(facts, 'fuelPreference');
   const isElectric = fuel?.value === 'electric'
     || fuel?.value === 'elektro'
     || fuel?.value === 'bev'
+    || lead?.crm?.needProfile?.fuel === 'electric'
     || /elektro/i.test(String(fuel?.label || ''));
 
   const presented = presentIntakeNextStepLabel(nextHint);
@@ -302,43 +381,85 @@ function resolveNextStepLabel(params = {}) {
  *   draft?: object|null,
  *   lead?: object|null,
  *   nextStepHint?: object|null,
+ *   workingState?: object|null,
+ *   portalState?: object|null,
+ *   nextBestAction?: object|null,
  * }} params
  * @returns {{
  *   sections: object,
  *   lines: string[],
  *   text: string,
  *   source: 'structured_facts',
+ *   nextBestAction: object|null,
  * }}
  */
 export function buildSellerWorkBriefing(params = {}) {
   const facts = Array.isArray(params.facts) ? params.facts : [];
-  const draft = params.draft || null;
   const lead = params.lead || null;
+  const draft = resolveDraft(lead, params.draft || null);
+  const workingState = params.workingState || lead?.crm?.cleverWorkingState || null;
+  const modelInfo = resolveConcreteVehicleModel(lead, workingState);
   const hasModel = Boolean(
     pickFact(facts, 'vehicleInterest')?.value?.modelKey
     || draft?.vehicleIdentityDraft?.modelKey
     || draft?.modelKey
+    || modelInfo?.modelKey
   );
   const nextHint = params.nextStepHint || buildCaptureNextStepHint({
     hasActiveTrack: Boolean(lead?.crm?.focusedVehicleTrackId),
-    trackCount: Array.isArray(lead?.crm?.vehicleConfigurations)
-      ? lead.crm.vehicleConfigurations.length
-      : 0,
+    trackCount: listCustomerVehicleTracks(lead).length
+      || (Array.isArray(lead?.crm?.vehicleConfigurations)
+        ? lead.crm.vehicleConfigurations.length
+        : 0),
     hasVehicleModel: hasModel,
-    fuelPreference: pickFact(facts, 'fuelPreference')?.value || null,
+    fuelPreference: pickFact(facts, 'fuelPreference')?.value
+      || lead?.crm?.needProfile?.fuel
+      || null,
     needsConsultation: !hasModel,
   });
 
   const customerPicture = formatCustomerPicture(facts, lead);
-  const sought = formatSoughtLine(facts, draft);
-  const customerWants = formatVehicleLine(facts, draft);
+  const sought = formatSoughtLine(facts, draft, lead);
+  const customerWants = formatVehicleLine(facts, draft, lead);
   const leasingWish = formatLeasingLine(facts, lead);
-  const important = formatImportantLine(facts);
+  const important = formatImportantLine(facts, lead);
   const extras = formatExtrasLine(facts);
   const currentVehicle = formatCurrentVehicleLine(facts, lead);
   const planned = formatPlannedLine(facts, lead);
-  const toClarify = formatClarifyLine(facts, draft);
-  const nextStep = resolveNextStepLabel({ facts, draft, nextStepHint: nextHint });
+  const toClarify = formatClarifyLine(facts, draft, lead);
+
+  // Partial sections for NBA (toClarify blockiert nicht)
+  const partialBriefing = {
+    sections: {
+      customerPicture,
+      sought,
+      customerWants,
+      leasingWish,
+      important,
+      extras,
+      currentVehicle,
+      planned,
+      toClarify,
+    },
+  };
+
+  const nextBestAction = params.nextBestAction
+    || determineNextBestSellerAction({
+      lead,
+      workBriefing: partialBriefing,
+      workingState,
+      portalState: params.portalState || null,
+      draft,
+      facts,
+    });
+
+  const nextStep = resolveNextStepLabel({
+    facts,
+    draft,
+    lead,
+    nextStepHint: nextHint,
+    nextBestAction,
+  });
 
   const lines = [];
   if (customerPicture) {
@@ -357,11 +478,10 @@ export function buildSellerWorkBriefing(params = {}) {
   }
   if (leasingWish) {
     if (lines.length) lines.push('');
-    lines.push('Leasingwunsch:');
+    lines.push('Leasing:');
     lines.push(leasingWish);
   }
   if (important && !customerWants) {
-    // Need-Consultation: Ausstattung als „Wichtig“, nicht im Fahrzeug-Chip
     if (lines.length) lines.push('');
     lines.push('Wichtig:');
     lines.push(important);
@@ -373,7 +493,7 @@ export function buildSellerWorkBriefing(params = {}) {
   }
   if (currentVehicle) {
     if (lines.length) lines.push('');
-    lines.push('Aktuelles Fahrzeug:');
+    lines.push('Aktuell:');
     lines.push(currentVehicle);
   }
   if (planned) {
@@ -406,5 +526,6 @@ export function buildSellerWorkBriefing(params = {}) {
     lines,
     text: lines.filter((l, i, arr) => !(l === '' && arr[i - 1] === '')).join('\n').trim(),
     source: 'structured_facts',
+    nextBestAction,
   };
 }

@@ -73,6 +73,8 @@ const INSIGHT_SKIP_FIELDS = new Set([
   // Modell/Spur → Track/Header, nicht Soft-Chip
   'vehicleInterest',
   'vehicleInterestMulti',
+  // Bestandfahrzeug → crm.existingVehicle, nicht nur Insight-Chip
+  'existingVehicle',
 ]);
 
 function scoreCustomerNameCandidate(name = '') {
@@ -168,7 +170,20 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
   const contact = { ...(next.contact ?? {}) };
   let desiredRate = next.desiredRate ?? wish.desiredRate ?? null;
   let paymentType = next.paymentType ?? wish.paymentType ?? null;
-  let profile = { ...(getNeedProfileFromLead(next) || createEmptyNeedProfile()) };
+  // needProfile: {} ist truthy – trotzdem Defaults für Arrays/Felder
+  const rawProfile = getNeedProfileFromLead(next);
+  let profile = {
+    ...createEmptyNeedProfile(),
+    ...(rawProfile && typeof rawProfile === 'object' ? rawProfile : {}),
+    equipmentWishes: Array.isArray(rawProfile?.equipmentWishes)
+      ? rawProfile.equipmentWishes
+      : [],
+    priorities: Array.isArray(rawProfile?.priorities) ? rawProfile.priorities : [],
+    understoodLabels: Array.isArray(rawProfile?.understoodLabels)
+      ? rawProfile.understoodLabels
+      : [],
+    missingFields: Array.isArray(rawProfile?.missingFields) ? rawProfile.missingFields : [],
+  };
   let touchedWish = false;
   let touchedContact = false;
   let touchedProfile = false;

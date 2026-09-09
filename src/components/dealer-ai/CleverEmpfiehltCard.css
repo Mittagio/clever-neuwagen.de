@@ -680,7 +680,7 @@ button.clever-empfiehlt__activity:focus-visible {
   }
 }
 
-/* ? Hierarchy v2: 1 Arbeitsblock · 1 CTA · Timeline ? */
+/* ? Hierarchy v2: 1 Arbeitsblock Â· 1 CTA Â· Timeline ? */
 .clever-empfiehlt--hierarchy .clever-empfiehlt__stage {
   border: 1px solid rgba(28, 27, 25, 0.08);
   border-radius: 20px;
@@ -893,4 +893,36 @@ button.clever-empfiehlt__activity:focus-visible {
   font-weight: 450;
   color: #8f8a82;
   white-space: nowrap;
+}
+
+/* Kompakter Kundenstand (Work Briefing) â€“ keine Debug-Facts */
+.clever-empfiehlt__briefing {
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clever-empfiehlt__briefing-row {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.clever-empfiehlt__briefing-row dt {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #6f6b64;
+}
+
+.clever-empfiehlt__briefing-row dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1c1b19;
+  line-height: 1.35;
 }
