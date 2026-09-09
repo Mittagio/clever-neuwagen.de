@@ -429,14 +429,19 @@ export default function SellerUniversalReviewCard({
     || isCustomerIntakeReview
     || model?.kind === 'multi_source_intake'
     || model?.reviewType === 'customer_contract_tradein_intake_review';
-  const liveEditEnabled = Boolean(
-    model?.liveEditEnabled
-    || isSilentIntake
-    || isCustomerIntakeReview,
+  // Partial Success / Briefing: nie Chip-Review-Chrome – auch bei altem Model-State
+  const hardReviewRequired = Boolean(model?.hardReviewRequired);
+  const useBriefingUi = Boolean(model?.briefingPresenter)
+    || (isCustomerIntakeReview && !hardReviewRequired);
+  // Briefing-Presenter: Live-Edit nur bei Hard Review.
+  const liveEditEnabled = (
+    useBriefingUi
+      ? false
+      : Boolean(model?.liveEditEnabled || isSilentIntake || isCustomerIntakeReview)
   ) && typeof onLiveEditChip === 'function';
-  const quickCorrectActions = Array.isArray(model?.quickCorrectActions)
-    ? model.quickCorrectActions.slice(0, 3)
-    : [];
+  const quickCorrectActions = (useBriefingUi || !liveEditEnabled)
+    ? []
+    : (Array.isArray(model?.quickCorrectActions) ? model.quickCorrectActions.slice(0, 3) : []);
   const settled = Boolean(status) || isApplyResult;
   const showFactGroups = !isAppointmentReview && !isOfferReview && groups.length > 0 && (
     isCompactReview
@@ -444,13 +449,25 @@ export default function SellerUniversalReviewCard({
   );
   const hero = model?.hero || null;
   const heroHeadline = hero?.headline || null;
-  const heroName = isAppointmentReview
+  const rawHeroName = isAppointmentReview
     ? (appointmentReview?.whenLine || hero?.name || null)
     : isOfferReview
       ? (offerReview?.heroLine || hero?.name || null)
       : (hero?.name
         || groups.find((g) => g.id === 'customer')?.line
         || null);
+  // Defense: alte Review-Systemtitel aus Hero entfernen
+  const heroName = rawHeroName
+    ? String(rawHeroName)
+      .replace(/\s*·\s*neue Kundenakte\s*$/i, '')
+      .replace(/\s*·\s*Kundenakte öffnen\s*$/i, '')
+      .trim()
+    : null;
+  const heroSubtitleRaw = hero?.subtitle || null;
+  const heroSubtitle = (useBriefingUi
+    || /Von Clever erkannt/i.test(String(heroSubtitleRaw || '')))
+    ? null
+    : heroSubtitleRaw;
   // Intake / Multi-Source: keine Protokoll-Statuszeilen (Seller-Dump / „sucht…“)
   const statusLines = (isAppointmentReview || isOfferReview || isSilentIntake)
     ? []
@@ -568,10 +585,22 @@ export default function SellerUniversalReviewCard({
       else primaryBtnActions.push(action);
     });
   }
-  const compactBtnActions = isCompactReview
+  // Briefing: Review-Systemlinks und „Kundenakte anlegen“-Systemton unterdrücken
+  const mappedPrimaryBtnActions = useBriefingUi
+    ? primaryBtnActions.map((action) => {
+      if (/Kundenakte anlegen|In Kundenakte weitermachen|Übernehmen & weitermachen/i.test(String(action?.label || ''))) {
+        return {
+          ...action,
+          label: 'Angebot vorbereiten',
+          intentChipId: action.intentChipId || 'angebot',
+        };
+      }
+      return action;
+    })
+    : primaryBtnActions;
+  const compactBtnActions = (isCompactReview && !useBriefingUi)
     ? [...compactFromPrimary, ...secondaryReviewActions]
       .filter((action) => (
-        // Appointment hat eigenen Kontext-Toggle; Offer zeigt „Erkannte Angaben“ als Link
         isOfferReview || action?.action !== 'toggle_context'
       ))
     : [];
@@ -611,8 +640,8 @@ export default function SellerUniversalReviewCard({
               {heroName ? (
                 <p className="sur-card__hero-customer">{heroName}</p>
               ) : null}
-              {hero?.subtitle ? (
-                <p className="sur-card__hero-sub">{hero.subtitle}</p>
+              {hero?.subtitle && heroSubtitle ? (
+                <p className="sur-card__hero-sub">{heroSubtitle}</p>
               ) : null}
             </>
           ) : (
@@ -640,13 +669,30 @@ export default function SellerUniversalReviewCard({
                   ) : null}
                 </div>
               ) : isOfferReview ? (
-                (offerReview?.conditionsLine || hero?.subtitle) ? (
-                  <p className="sur-card__hero-sub">
-                    {offerReview?.conditionsLine || hero.subtitle}
-                  </p>
-                ) : null
-              ) : hero?.subtitle ? (
-                <p className="sur-card__hero-sub">{hero.subtitle}</p>
+                <>
+                  {(offerReview?.conditionsLine || hero?.subtitle) ? (
+                    <p className="sur-card__hero-sub">
+                      {offerReview?.conditionsLine || hero.subtitle}
+                    </p>
+                  ) : null}
+                  {offerReview?.extrasLine ? (
+                    <p className="sur-card__hero-sub sur-card__hero-sub--muted">
+                      Enthalten: {offerReview.extrasLine}
+                    </p>
+                  ) : null}
+                  {offerReview?.rateBreakdownLine ? (
+                    <p className="sur-card__hero-sub sur-card__hero-sub--muted">
+                      Details: {offerReview.rateBreakdownLine}
+                    </p>
+                  ) : null}
+                  {offerReview?.listPriceLine ? (
+                    <p className="sur-card__hero-sub sur-card__hero-sub--muted">
+                      {offerReview.listPriceLine}
+                    </p>
+                  ) : null}
+                </>
+              ) : heroSubtitle ? (
+                <p className="sur-card__hero-sub">{heroSubtitle}</p>
               ) : null}
             </>
           )}
@@ -700,7 +746,7 @@ export default function SellerUniversalReviewCard({
       ) : null}
 
       {showFactGroups ? (
-        <ul className={`sur-card__facts${isCompactReview ? ' sur-card__facts--compact' : ''}`} aria-label="Erkannte Angaben">
+        <ul className={`sur-card__facts${isCompactReview ? ' sur-card__facts--compact' : ''}`} aria-label={useBriefingUi || model?.briefingPresenter ? 'Kundenstand' : 'Erkannte Angaben'}>
           {groups
             .filter((group) => {
               const hasContent = (
@@ -709,13 +755,17 @@ export default function SellerUniversalReviewCard({
                 || Boolean(String(group.line || '').trim())
               );
               if (!hasContent) return false;
+              if (useBriefingUi && group.id === 'facts') return false;
               return !(isCompactReview && group.id === 'customer' && heroName);
             })
             .map((group) => {
               const chips = Array.isArray(group.chips) && group.chips.length
                 ? group.chips
                 : null;
-              const chipNodes = chips
+              const isBriefingRow = useBriefingUi
+                || group.mode === 'briefing'
+                || (model?.briefingPresenter && group.id !== 'matches' && group.id !== 'facts');
+              const chipNodes = (!isBriefingRow && chips)
                 ? renderSurChips(chips, group.id || group.title, {
                   highlightLabels: model?.highlightChipLabels || [],
                   liveEditEnabled,
@@ -736,23 +786,41 @@ export default function SellerUniversalReviewCard({
               const showItemList = !isCompactReview
                 && Array.isArray(group.items)
                 && group.items.length > 1
-                && !chips;
+                && !chips
+                && !isBriefingRow;
               const chipsAlways = isCustomerIntakeReview
                 || group.id === 'facts'
                 || group.id === 'contact'
                 || group.id === 'notes'
                 || group.id === 'open'
                 || group.id === 'matches';
-              const factTitle = String(group.title || '').trim();
+              const factTitle = String(group.title || '').trim()
+                .replace(/^Von Clever erkannt$/i, '');
+              const localActions = Array.isArray(group.localActions) ? group.localActions : [];
+              const briefingLine = isBriefingRow
+                ? String(
+                  group.line
+                  || (Array.isArray(group.items)
+                    ? group.items.map((i) => i.label).filter(Boolean).join(' · ')
+                    : '')
+                  || (chips
+                    ? chips.map((c) => (typeof c === 'string' ? c : c.label)).filter(Boolean).join(' · ')
+                    : ''),
+                )
+                  .replace(/Telefon fehlt\s*[→\-–]\s*Ergänzen/i, 'Telefonnummer')
+                  .replace(/Modell unsicher\s*[→\-–]\s*Korrigieren/i, 'Modell')
+                : group.line;
               return (
                 <li
                   key={group.id || group.title || group.line}
-                  className={`sur-card__fact${group.id === 'open' ? ' sur-card__fact--open' : ''}`}
+                  className={`sur-card__fact${group.id === 'open' || group.id === 'clarify' ? ' sur-card__fact--open' : ''}${isBriefingRow ? ' sur-card__fact--briefing' : ''}`}
                 >
                   {factTitle ? (
                     <span className="sur-card__fact-title">{factTitle}</span>
                   ) : null}
-                  {isCompactReview && chipNodes ? (
+                  {isBriefingRow ? (
+                    <span className="sur-card__fact-line">{briefingLine}</span>
+                  ) : (isCompactReview && chipNodes) ? (
                     <span className={`sur-card__chips${chipsAlways || isSilentIntake ? ' sur-card__chips--always' : ''}`}>
                       {chipNodes}
                     </span>
@@ -770,6 +838,20 @@ export default function SellerUniversalReviewCard({
                         </li>
                       ))}
                     </ul>
+                  ) : null}
+                  {localActions.length > 0 ? (
+                    <div className="sur-card__local-actions">
+                      {localActions.map((action) => (
+                        <button
+                          key={action.id || action.label}
+                          type="button"
+                          className="sur-card__local-action"
+                          onClick={() => handleReviewAction(action)}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
                   ) : null}
                 </li>
               );
@@ -848,7 +930,7 @@ export default function SellerUniversalReviewCard({
         isCompactReview ? (
           <div className="sur-card__actions" role="group" aria-label="Review-Aktionen">
             <div className="sur-card__actions-main">
-              {primaryBtnActions.map((action, index) => {
+              {mappedPrimaryBtnActions.map((action, index) => {
                 const tone = actionTone(action, index);
                 return (
                   <button

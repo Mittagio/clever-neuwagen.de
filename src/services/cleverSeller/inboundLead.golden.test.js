@@ -100,6 +100,13 @@ assert.equal(formatIntakeTermLabel(null), null);
   assert.ok(presentation.recognizedChips.includes('a@b.de'));
   assert.ok(!presentation.recognizedChips.includes('Neu anlegen'));
   assert.ok(!/^\d+\s+\d/.test(presentation.conditionLine || ''), 'kein Roh-Zahlenblob');
+  // Briefing-Sections (Verkäuferstand) statt Chip-Wolke
+  assert.ok(presentation.briefingSections.some((s) => s.title === 'Kunde möchte'));
+  assert.ok(presentation.briefingSections.some((s) => (
+    s.title === 'Leasing' && /48 Monate/.test(s.line) && /Sonderzahlung/.test(s.line)
+  )));
+  assert.ok(presentation.briefingSections.some((s) => s.title === 'Kontakt'));
+  assert.equal(presentation.isConfidentIntake, true);
 }
 
 // --- noteChips ≠ recognizedChips (Meta nicht als Erkannt-Facts) ---
@@ -176,10 +183,12 @@ assert.ok(contact.phone);
   assert.equal(review.compactUi, true, 'Intake-Review compact – Accept-CTA als Primary-Button');
   assert.ok(review.hero?.name, 'Hero-Name für sichtbaren Accept-Flow');
   assert.equal(review.hero?.headline, null, 'CTA nur als Button, nicht als Hero-Headline');
-  assert.match(review.hero?.name || '', /Kundenakte öffnen/i);
-  assert.equal(review.hero?.subtitle, 'Von Clever erkannt');
+  assert.match(review.hero?.name || '', /Brandes/i);
+  assert.ok(!/neue Kundenakte|Von Clever erkannt/i.test(review.hero?.name || ''));
+  assert.equal(review.hero?.subtitle, null, 'kein „Von Clever erkannt“');
   assert.equal(String(review.title || '').trim(), '', 'kein Narrations-Titel');
   assert.equal(review.quietIntake, true);
+  assert.equal(review.briefingPresenter, true);
   assert.equal(review.progressLines?.length || 0, 0, 'keine Protokoll-Statuszeilen');
   assert.equal(turn.uiEffects?.progressLines?.length || 0, 0, 'keine Protokoll-Zeilen in uiEffects');
   assert.ok(
@@ -196,23 +205,20 @@ assert.ok(contact.phone);
   assert.ok(review.actionSections?.some((s) => (
     s.id === 'customer_intake_review' && s.kind === 'customer_intake_review' && s.title === 'Kundenanfrage'
   )));
-  assert.ok(!review.groups.some((g) => /^(KONTAKT|ERKANNT|ERKANNTE ANGABEN|NÄCHSTE AKTION)$/i.test(g.title || '')));
-  assert.match(review.primaryCta, /In Kundenakte weitermachen/i);
-  const erkannt = review.groups.find((g) => g.id === 'facts');
-  if (erkannt?.chips?.length) {
-    assert.ok(
-      erkannt.chips.every((c) => (typeof c === 'string' ? false : c.source === 'clever')),
-      'Erkannt-Chips mit Clever-Source',
-    );
-  }
+  assert.ok(!review.groups.some((g) => /^(ERKANNT|ERKANNTE ANGABEN|NÄCHSTE AKTION)$/i.test(g.title || '')));
+  assert.ok(
+    review.groups.some((g) => g.title === 'Kontakt' || g.id === 'contact' || g.id === 'customerWants'),
+    'Briefing-Sections sichtbar',
+  );
+  assert.match(review.primaryCta, /Angebot vorbereiten/i);
+  assert.ok(!review.groups.some((g) => g.id === 'facts'), 'keine Fact-Chip-Wolke im confident Briefing');
   assert.equal(
     review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.tone,
     'primary',
   );
   const secondary = review.actionSections.find((s) => s.kind === 'customer_intake_review')?.secondaryActions || [];
-  assert.ok(secondary.some((a) => a.label === 'Korrigieren' && a.action === 'revise_intake'));
-  assert.ok(secondary.some((a) => a.label === 'Erneut suchen'));
-  assert.ok(secondary.some((a) => a.label === 'Verwerfen'));
+  assert.equal(secondary.length, 0, 'kein Review-Systemlinks im confident Zustand');
+  assert.equal(review.secondaryCta, null);
 
   // Confirm → Fakten auf bestehenden Lead, kein neuer Lead
   const applied = applyAcceptedSellerTurn(brandes, turn, { postFeedCard: false });
@@ -239,30 +245,22 @@ assert.ok(contact.phone);
   assert.equal(review.reviewType, 'customer_intake_review');
   assert.equal(review.legacyReviewType, 'inbound_lead_review');
   assert.equal(review.compactUi, true);
-  assert.match(review.hero?.name || '', /Neumann.*neue Kundenakte/i);
+  assert.match(review.hero?.name || '', /Lisa Neumann/i);
+  assert.ok(!/neue Kundenakte/i.test(review.hero?.name || ''));
   assert.equal(review.hero?.headline, null);
-  assert.equal(review.hero?.subtitle, 'Von Clever erkannt');
-  assert.match(review.primaryCta, /anlegen & weitermachen/i);
-  assert.match(review.secondaryCta, /Korrigieren|Erneut suchen|Verwerfen/i);
-  assert.match(review.summaryLine || '', /neue Kundenakte/i);
-  const factGroup = review.groups.find((g) => g.id === 'facts');
-  const chipLabel = (c) => (typeof c === 'string' ? c : c?.label || '');
-  assert.ok(
-    !(factGroup?.chips || []).some((c) => /Neu anlegen/i.test(chipLabel(c))),
-    'kein technisches Chip „Neu anlegen“',
-  );
-  assert.ok(
-    (factGroup?.chips || []).every((c) => typeof c === 'object' && c.source === 'clever'),
-    'Erkannt-Chips Clever-Source bei neuem Lead',
-  );
+  assert.equal(review.hero?.subtitle, null);
+  assert.equal(review.briefingPresenter, true);
+  assert.match(review.primaryCta, /Angebot vorbereiten/i);
+  assert.equal(review.secondaryCta, null);
+  assert.equal(review.summaryLine, null);
+  assert.ok(review.groups.some((g) => g.id === 'customerWants' || g.title === 'Kunde möchte'));
+  assert.ok(!review.groups.some((g) => g.id === 'facts'));
+  const secondaryNew = review.actionSections.find((s) => s.kind === 'customer_intake_review')?.secondaryActions || [];
+  assert.equal(secondaryNew.length, 0);
   assert.equal(
     review.actionSections.find((s) => s.kind === 'customer_intake_review')?.primaryActions?.[0]?.action,
     'accept_inbound_lead',
   );
-  // Hero-Subline: gelabelte Konditionen wenn vorhanden
-  if (review.hero?.subtitle) {
-    assert.ok(!/\b\d{2}\s+\d{1,2}\.\d{3}\s+km\s+\d+\s*€\b/i.test(review.hero.subtitle));
-  }
 
   // Ohne Accept: Snapshot unverändert (kein Side-Effect im Turn)
   assert.equal([brandes].length, 1);
@@ -322,9 +320,13 @@ assert.ok(contact.phone);
   assert.ok(!turn.messageDraft);
   const review = turn.reviewModel || buildUniversalReviewModel(turn);
   assert.equal(review.reviewType, 'customer_intake_review');
-  assert.match(review.hero?.name || '', /Schlayer.*neue Kundenakte/i);
-  assert.match(review.primaryCta || '', /anlegen & weitermachen/i);
-  assert.ok(review.groups.some((g) => g.id === 'facts' || g.id === 'notes'));
+  assert.match(review.hero?.name || '', /Alexander Schlayer|Schlayer/i);
+  assert.ok(!/neue Kundenakte/i.test(review.hero?.name || ''));
+  assert.match(review.primaryCta || '', /Angebot vorbereiten/i);
+  assert.ok(review.groups.some((g) => (
+    g.id === 'customerWants' || g.title === 'Kunde möchte' || g.id === 'contact'
+  )));
+  assert.ok(!review.groups.some((g) => g.id === 'facts'));
   assert.ok(!/Seller-Dump|zusammengeführt|sucht in Kunden|Clever wertet aus|Clever hat erkannt|Erkannt als neue Anfrage|Neu anlegen\?/i
     .test(JSON.stringify({
       title: review.title,

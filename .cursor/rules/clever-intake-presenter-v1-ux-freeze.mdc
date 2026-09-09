@@ -1,0 +1,37 @@
+---
+description: PRODUKT-FREEZE Intake Presenter V1 – Briefing statt Chip-Review bei Partial Success
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: INTAKE PRESENTER V1 UX BASELINE
+
+**Status: FREEZE** (Schlayer-Abnahme bestanden)
+
+## Produktsätze
+
+> Clever hat den Kunden verstanden – nicht Felder extrahiert.
+
+> Partial Success → ruhiges Briefing + lokale offene Punkte + eine Primary Action.
+
+> Hard Review nur bei echter Ambiguität oder Duplikat-Gefahr.
+
+## Verbindlich
+
+1. **Partial Success** (`hardReviewRequired === false`): Briefing-Zeilen, lokale Offenpunkte, genau eine Primary CTA. Keine Fact-Chip-Wolke, kein „Von Clever erkannt“, kein „Schnell korrigieren“, kein dauerhaftes „Kundenakte anlegen & weitermachen“, keine Review-Systemlinks.
+2. **Hard Review** nur bei `ambiguous` oder `duplicateHint`. Soft Needs (Telefon fehlt) und unsichere Zusatzinfos („Bar“) sind **kein** Hard Review.
+3. Composer setzt Intake-Review über `ensureQuietIntakeBriefingModel` – kein stale Chip-Model im normalen Zustand.
+4. Card (`SellerUniversalReviewCard`) darf Recognition-Chrome im Intake nur bei `hardReviewRequired` zeigen.
+
+## Code / Doc
+
+- Presenter: `src/services/cleverSeller/inboundLeadIntake.js`
+- Ensure: `ensureQuietIntakeBriefingModel` in `quietIntakeReview.js`
+- Card: `src/components/dealer-ai/SellerUniversalReviewCard.jsx`
+- Golden: Schlayer-Block in `quietIntakeReview.test.js`
+- Doc: `docs/CLEVER_INTAKE_PRESENTER_V1_UX_FREEZE.md`
+
+## Nicht
+
+- Keine neue Architektur / NBA / Parser „für die UI“
+- Kein paralleles Recognition + Briefing
+- Kein Akte-Hierarchy-Redesign

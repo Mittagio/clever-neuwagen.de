@@ -89,8 +89,8 @@ import { SELLER_FACT_SOURCE } from './sellerFactTypes.js';
   assert.match(patched.microConfirm?.text || '', /Telefon/i);
   assert.ok((patched.highlightChipLabels || []).length >= 1);
   assert.ok(patched.reviewModel?.groups?.some((g) => (
-    (g.chips || []).some((c) => c.field === 'phone' && /01511/.test(c.label))
-  )));
+    g.id === 'contact' && /01511/.test(String(g.line || ''))
+  )), 'Telefon in Kontakt-Briefing-Zeile');
 
   const undone = undoSellerReviewFactPatch({
     turn: patched.lastTurn,
@@ -222,8 +222,12 @@ import { SELLER_FACT_SOURCE } from './sellerFactTypes.js';
   assert.ok(phoneActions.length <= 3);
 
   const model = buildInboundLeadReviewModel(needPhone, needTurn);
-  assert.equal(model.liveEditEnabled, true);
-  assert.ok(Array.isArray(model.quickCorrectActions));
+  assert.equal(model.liveEditEnabled, false, 'confident Briefing: kein Live-Edit-Modus');
+  assert.deepEqual(model.quickCorrectActions, []);
+  assert.equal(model.primaryCta, 'Angebot vorbereiten');
+  const open = model.groups.find((g) => g.id === 'open');
+  assert.equal(open?.line, 'Telefonnummer');
+  assert.ok((open?.localActions || []).some((a) => /Telefon ergänzen/i.test(a.label)));
 }
 
 console.log('patchSellerReviewFact.test.js: ok');

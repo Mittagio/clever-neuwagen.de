@@ -30,6 +30,7 @@ const PAYMENT_VALUE = {
 
 const TRIM_LABEL = {
   'gt-line': 'GT-Line',
+  gt: 'GT',
   earth: 'Earth',
   air: 'Air',
   spirit: 'Spirit',
@@ -41,7 +42,7 @@ const COLOR_LABEL = {
   snowwhitepearl: 'Schneeweiß',
   clearwhite: 'Clear White',
   white: 'Weiß',
-  aurorablackpearl: 'Schwarz',
+  aurorablackpearl: 'Auroraschwarz Metallic',
   shalegrey: 'Schiefergrau',
   frostblue: 'Frost Blue',
   ivorysilver: 'Ivory Silver',
@@ -53,6 +54,8 @@ const MOTOR_LABEL = {
   'ev-std': '58 kWh / 150 kW',
   'ev-long': '81,4 kWh Long Range',
   'ev-long-awd': '81,4 kWh AWD',
+  'ev-84': '84 kWh',
+  'ev-84-awd': '84 kWh · AWD',
 };
 
 const PACKAGE_CODE_LABEL = {
@@ -64,6 +67,7 @@ const PACKAGE_CODE_LABEL = {
   P10: 'DriveWise-Park-Paket',
   P11: 'Comfort-Paket',
   P12: 'Glasdach-Paket',
+  winter_wheels: 'Winterräder',
 };
 
 const EQUIPMENT_LABEL = {
@@ -145,28 +149,70 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
     const rate = Number(commercial.monthlyRate);
     const basis = commercial.monthlyRateBasis || null;
     const basisLabel = basis === 'net'
-      ? 'Netto'
-      : (basis === 'gross' ? 'Brutto' : null);
+      ? 'netto'
+      : (basis === 'gross' ? 'brutto' : null);
+    // PDF „Alle Preise ohne USt“ = sichere Netto-Wahrheit, kein Review-Zwang
+    const netAuthoritative = basis === 'net';
+    const total = commercial.monthlyTotalRate != null
+      ? Number(commercial.monthlyTotalRate)
+      : null;
+    const finance = commercial.financeLeaseRate != null
+      ? Number(commercial.financeLeaseRate)
+      : null;
+    const logistics = commercial.logisticsMonthlyRate != null
+      ? Number(commercial.logisticsMonthlyRate)
+      : null;
+    const primaryRate = total != null ? total : rate;
+    const hasBreakdown = total != null
+      && ((finance != null && finance !== total) || logistics != null);
     push({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'monthlyBudget',
-      value: basis
-        ? { amount: rate, basis }
-        : rate,
+      value: (basis || hasBreakdown)
+        ? {
+          amount: primaryRate,
+          basis: basis || null,
+          monthlyTotalRate: total,
+          financeLeaseRate: finance,
+          logisticsMonthlyRate: logistics,
+          label: total != null ? 'monthlyTotalRate' : 'monthlyRate',
+        }
+        : primaryRate,
       label: basisLabel
-        ? `${formatEuro(rate)} Rate (${basisLabel}${basis === 'net' ? ' – bitte prüfen' : ''})`
-        : `${formatEuro(rate)} Rate`,
-      confidence: basis === 'net' ? 0.72 : 0.88,
-      needsConfirmation: true,
+        ? `${formatEuro(primaryRate)} ${basisLabel} / Monat`
+        : `${formatEuro(primaryRate)} / Monat`,
+      confidence: netAuthoritative ? 0.93 : (basis === 'net' ? 0.72 : 0.88),
+      needsConfirmation: !netAuthoritative && basis === 'net',
     });
+    if (finance != null && total != null && finance !== total) {
+      push({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'financeLeaseRate',
+        value: { amount: finance, basis: basis || null },
+        label: `${formatEuro(finance)} Finanzleasing`,
+        confidence: 0.92,
+        needsConfirmation: false,
+      });
+    }
+    if (logistics != null) {
+      push({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'logisticsMonthlyRate',
+        value: { amount: logistics, basis: basis || null },
+        label: `${formatEuro(logistics)} Logistik`,
+        confidence: 0.92,
+        needsConfirmation: false,
+      });
+    }
   }
 
   if (commercial.listPrice != null) {
     const upe = Number(commercial.listPrice);
     const basis = commercial.listPriceBasis || null;
     const basisLabel = basis === 'net'
-      ? 'Netto'
-      : (basis === 'gross' ? 'Brutto' : null);
+      ? 'netto'
+      : (basis === 'gross' ? 'brutto' : null);
+    const netAuthoritative = basis === 'net';
     push({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'purchasePrice',
@@ -174,10 +220,10 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
         ? { amount: upe, basis }
         : upe,
       label: basisLabel
-        ? `UPE ${formatEuro(upe)} (${basisLabel}${basis === 'net' ? ' – bitte prüfen' : ''})`
-        : `UPE ${formatEuro(upe)}`,
-      confidence: basis === 'net' ? 0.7 : 0.86,
-      needsConfirmation: basis === 'net',
+        ? `Listenpreis ${formatEuro(upe)} ${basisLabel}`
+        : `Listenpreis ${formatEuro(upe)}`,
+      confidence: netAuthoritative ? 0.92 : (basis === 'net' ? 0.7 : 0.86),
+      needsConfirmation: !netAuthoritative && basis === 'net',
     });
   }
 
@@ -299,6 +345,13 @@ export function mapMagicOfferIntentToSellerFacts(intent = {}) {
     const label = PACKAGE_CODE_LABEL[code] || code;
     if (seenPackageLabels.has(String(label).toLowerCase())) continue;
     if (seenPackageLabels.has(String(code).toLowerCase())) continue;
+    // „Winterräder 21 Zoll“ schon als Label → kein zweites „Winterräder“
+    if (
+      /winterr/i.test(String(label))
+      && [...seenPackageLabels].some((l) => /winterr/i.test(l))
+    ) {
+      continue;
+    }
     seenPackageLabels.add(String(label).toLowerCase());
     push({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
@@ -404,12 +457,24 @@ export function reconcileOfferPdfVehicleInterestWithLead(facts = [], lead = {}) 
  * @returns {object[]}
  */
 export function mergeOfferPdfFactsIntoSellerFacts(existing = [], incoming = []) {
+  const MULTI_VALUE_FIELDS = new Set([
+    'equipmentWish',
+    'unresolvedNote',
+    'packagePreference',
+  ]);
+  const factKey = (fact) => {
+    if (!fact?.field) return `label:${String(fact?.label || '').toLowerCase()}`;
+    if (MULTI_VALUE_FIELDS.has(fact.field)) {
+      const id = fact.value?.id || fact.value?.code || fact.label || '';
+      return `${fact.field}:${String(id).toLowerCase()}`;
+    }
+    return fact.field;
+  };
   const next = [...existing];
   for (const fact of incoming) {
     if (!fact?.field && !fact?.label) continue;
-    const idx = fact.field
-      ? next.findIndex((f) => f.field === fact.field)
-      : next.findIndex((f) => String(f.label).toLowerCase() === String(fact.label).toLowerCase());
+    const key = factKey(fact);
+    const idx = next.findIndex((f) => factKey(f) === key);
     if (idx < 0) {
       next.push(fact);
       continue;

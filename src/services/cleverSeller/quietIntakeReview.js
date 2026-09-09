@@ -87,9 +87,23 @@ function chipFromNextAction(action) {
  */
 export function resolveQuietIntakeSuggestChips(turn = null) {
   if (!isQuietIntakeTurn(turn) && !turn?.inboundLead?.detected) return [];
+  // Primary + lokale „Noch offen“-Aktion sitzen auf der Intake-Karte.
+  // Keine zweite Toolbar mit Telefon/Angebot – nur echte Unsicherheit als Suggest.
   return buildIntakeNextActions(turn?.inboundLead || null, turn)
+    .filter((action) => action.kind === 'uncertainty')
     .map(chipFromNextAction)
     .filter(Boolean);
+}
+
+/**
+ * Partial Success: immer frischen Briefing-Presenter nutzen (nie stale Chip-Review).
+ * Hard Review bleibt unberührt.
+ */
+export function ensureQuietIntakeBriefingModel(turn = null, model = null) {
+  if (!turn?.inboundLead?.detected) return model;
+  if (model?.hardReviewRequired === true) return model;
+  const rebuilt = buildInboundLeadReviewModel(turn.inboundLead, turn);
+  return rebuilt || model;
 }
 
 function collectCompletedFacts(completedTurn = null) {

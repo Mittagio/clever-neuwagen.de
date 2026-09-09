@@ -2014,9 +2014,11 @@ function buildWarnings(facts, inputMode) {
   if (modelConflict?.label) {
     warnings.push(modelConflict.label);
   }
+  // Nur unsichere Netto-Facts warnen („Alle Preise ohne USt“ = autoritativ → kein Review)
   const netRate = facts.find((f) => (
     (f.field === 'monthlyBudget' || f.field === 'purchasePrice')
     && (f.value?.basis === 'net' || /netto/i.test(String(f.label || '')))
+    && f.needsConfirmation
   ));
   if (netRate) {
     warnings.push('Netto-Betrag erkannt – nicht still als Brutto übernehmen.');

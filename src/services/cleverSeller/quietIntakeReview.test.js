@@ -64,7 +64,7 @@ assert.equal(
   'MODELL KORRIGIEREN · Matthias Wittig',
 );
 
-// --- Wittig: Telefon fehlt, EV2 Earth high-confidence, Deal-Facts → max 3, kein Notiz/Modell ---
+// --- Wittig UI-Golden: Briefing statt Fact-Chips / Review ---
 {
   const inbound = {
     detected: true,
@@ -72,7 +72,7 @@ assert.equal(
     resolutionStatus: 'none',
     contact: {
       fullName: 'Matthias Wittig',
-      email: 'matthias.wittig@example.org',
+      email: 'm.wittig@wittig.de',
     },
   };
   const turn = {
@@ -80,14 +80,28 @@ assert.equal(
     extractedFacts: [
       {
         field: 'vehicleInterest',
-        label: 'EV2 Earth',
-        value: { model: 'EV2', trim: 'Earth' },
+        label: 'Kia EV2 Earth',
+        value: { make: 'Kia', model: 'EV2', trim: 'Earth' },
         confidence: 0.95,
         needsConfirmation: false,
       },
       { field: 'paymentType', label: 'Leasing', value: 'leasing', confidence: 0.9 },
-      { field: 'termMonths', label: '36 Monate', value: 36, confidence: 0.92 },
+      { field: 'termMonths', label: '48 Monate', value: 48, confidence: 0.92 },
       { field: 'annualMileage', label: '12.500 km', value: 12500, confidence: 0.92 },
+      { field: 'downPayment', label: '5.000 €', value: 5000, confidence: 0.9 },
+      {
+        field: 'city',
+        label: '73614 Schorndorf',
+        value: { postalCode: '73614', city: 'Schorndorf' },
+        confidence: 0.9,
+      },
+      {
+        field: 'street',
+        label: 'Hauptstraße 12-3',
+        value: 'Hauptstraße 12-3',
+        confidence: 0.9,
+      },
+      { field: 'postalCode', label: '73614', value: '73614', confidence: 0.9 },
     ],
   };
 
@@ -111,30 +125,56 @@ assert.equal(
     'Telefon und Angebot nicht gleichgewichtig',
   );
 
+  // Keine doppelten Suggest-CTAs unter der Karte (Telefon/Angebot sitzen auf der Karte)
   const chips = resolveQuietIntakeSuggestChips(turn);
-  assert.equal(chips.length, actions.length);
-  assert.ok(chips.length <= 3);
-  const phone = chips.find((c) => c.id === 'qi_phone');
-  assert.equal(phone?.composerTitle, 'TELEFON ERGÄNZEN · Matthias Wittig');
-  assert.match(phone?.placeholder || '', /Telefonnummer/i);
-  assert.equal(phone?.label, 'Telefon ergänzen');
-  assert.equal(phone?.important, true);
-  const offerChip = chips.find((c) => c.id === 'qi_offer');
-  assert.equal(offerChip?.secondary, true);
-  assert.ok(!chips.some((c) => /Modell korrigieren|Notiz merken/i.test(c.label || '')));
+  assert.equal(chips.length, 0, 'keine Toolbar-Chips bei Soft Need ohne Unsicherheit');
 
   const review = buildInboundLeadReviewModel(inbound, turn);
-  assert.match(review.hero?.name || '', /Wittig.*neue Kundenakte/i);
-  assert.ok(!/Neu anlegen\?/i.test(review.hero?.name || ''));
-  assert.equal(review.hero?.subtitle, 'Von Clever erkannt');
-  assert.equal(review.primaryCta, 'Kundenakte anlegen & weitermachen');
+  assert.equal(review.hero?.name, 'Matthias Wittig');
+  assert.ok(!/neue Kundenakte/i.test(review.hero?.name || ''));
+  assert.equal(review.hero?.subtitle, null);
+  assert.equal(review.briefingPresenter, true);
+  assert.equal(review.primaryCta, 'Angebot vorbereiten');
+  assert.equal(review.secondaryCta, null);
+  assert.equal(review.liveEditEnabled, false);
+  assert.deepEqual(review.quickCorrectActions, []);
+
+  const wants = review.groups.find((g) => g.id === 'customerWants');
+  assert.equal(wants?.title, 'Kunde möchte');
+  assert.match(wants?.line || '', /Kia EV2 Earth/i);
+  assert.equal(wants?.mode, 'briefing');
+
+  const leasing = review.groups.find((g) => g.id === 'leasingWish');
+  assert.equal(leasing?.title, 'Leasing');
+  assert.match(leasing?.line || '', /48 Monate/);
+  assert.match(leasing?.line || '', /12\.500 km\/Jahr/);
+  assert.match(leasing?.line || '', /5\.000 € Sonderzahlung/);
+
+  const contact = review.groups.find((g) => g.id === 'contact');
+  assert.equal(contact?.title, 'Kontakt');
+  assert.match(contact?.line || '', /m\.wittig@wittig\.de/);
+  assert.match(contact?.line || '', /73614 Schorndorf/);
+  assert.ok(!/Hauptstraße/i.test(contact?.line || ''), 'Straße nicht im Hero');
+
   const openGroup = review.groups.find((g) => g.id === 'open');
   assert.ok(openGroup, 'Noch offen Gruppe');
   assert.equal(openGroup.title, 'Noch offen');
-  assert.ok((openGroup.chips || []).some((c) => /Telefon fehlt/i.test(c.label)));
-  const facts = review.groups.find((g) => g.id === 'facts');
-  assert.ok((facts?.chips || []).every((c) => c.source === 'clever'));
-  assert.ok(!review.groups.some((g) => /ERKANNTE ANGABEN/i.test(g.title || '')));
+  assert.equal(openGroup.line, 'Telefonnummer');
+  assert.ok(!(openGroup.chips || []).length, 'keine Open-Chips');
+  assert.ok(
+    (openGroup.localActions || []).some((a) => a.label === 'Telefon ergänzen'),
+    'lokale Aktion Telefon ergänzen',
+  );
+
+  assert.ok(!review.groups.some((g) => g.id === 'facts'), 'keine Fact-Chip-Wolke');
+  const secondary = review.actionSections?.[0]?.secondaryActions || [];
+  assert.equal(secondary.length, 0, 'kein Korrigieren/Erneut suchen/Verwerfen');
+  assert.ok(!/Kundenakte anlegen/i.test(review.primaryCta || ''));
+  assert.ok(!/Von Clever erkannt/i.test(JSON.stringify(review.hero)));
+  assert.equal(
+    (review.actionSections?.[0]?.primaryActions || []).filter((a) => a.tone === 'primary').length,
+    1,
+  );
 }
 
 // --- High-confidence Modell → kein qi_model; Phone vorhanden → kein Telefon ---
@@ -205,6 +245,13 @@ assert.equal(
   assert.ok(choices.some((c) => /EV3/i.test(c.label)));
   assert.ok(choices.some((c) => c.label === 'Anderes'));
   assert.ok((model.choiceChips || []).length >= 2);
+
+  // Unsicherheit → Suggest-Chip erlaubt
+  const suggest = resolveQuietIntakeSuggestChips({
+    inboundLead: { detected: true, contact: { fullName: 'Test', phone: '0171' } },
+    extractedFacts: [vehicle],
+  });
+  assert.ok(suggest.some((c) => c.id === 'qi_model'));
 }
 
 assert.equal(resolveQuietIntakeSuggestChips({ messageDraft: 'x' }).length, 0);
@@ -252,15 +299,77 @@ assert.equal(resolveQuietIntakeSuggestChips({ messageDraft: 'x' }).length, 0);
   const offerAfter = next.find((a) => a.id === 'qi_offer');
   assert.equal(offerAfter?.important, true, 'nach Telefon: Angebot promoted');
   assert.equal(offerAfter?.secondary, false);
-  assert.match(merged.reviewModel?.primaryCta || '', /Kundenakte anlegen & weitermachen/i);
-  assert.match(merged.reviewModel?.hero?.name || '', /Wittig.*neue Kundenakte/i);
+  assert.equal(merged.reviewModel?.primaryCta, 'Angebot vorbereiten');
+  assert.equal(merged.reviewModel?.hero?.name, 'Matthias Wittig');
   assert.ok(!merged.reviewModel?.groups?.some((g) => g.id === 'open'));
-  // Phone erscheint in Clever-Chips
-  const factGroup = merged.reviewModel?.groups?.find((g) => g.id === 'facts');
+  // Kontakt enthält Telefon nach Ergänzung (Briefing)
+  const contactGroup = merged.reviewModel?.groups?.find((g) => g.id === 'contact');
   assert.ok(
-    (factGroup?.chips || []).some((c) => /0171|5556677/.test(String(c.label || ''))),
-    'Telefon in aktualisierter Karte',
+    /0171|5556677/.test(String(contactGroup?.line || '')),
+    'Telefon in Kontakt-Zeile nach Ergänzung',
   );
+  assert.ok(!merged.reviewModel?.groups?.some((g) => g.id === 'facts'));
+}
+
+// --- Schlayer UI-Golden: Briefing statt Chip-Review ---
+{
+  const inbound = {
+    detected: true,
+    proposeCreateCustomer: true,
+    resolutionStatus: 'none',
+    contact: {
+      fullName: 'Alexander Schlayer',
+      email: 's_alexander1@hotmail.de',
+    },
+  };
+  const turn = {
+    inboundLead: inbound,
+    extractedFacts: [
+      {
+        field: 'vehicleInterest',
+        label: 'Kia EV3 Air',
+        value: { make: 'Kia', model: 'EV3', trim: 'Air' },
+        confidence: 0.95,
+        needsConfirmation: false,
+      },
+      { field: 'email', label: 's_alexander1@hotmail.de', value: 's_alexander1@hotmail.de', confidence: 0.94 },
+      {
+        field: 'city',
+        label: 'Bar',
+        value: { city: 'Bar' },
+        confidence: 0.78,
+        needsConfirmation: true,
+      },
+      { field: 'maritalStatus', label: 'ledig', value: 'single', confidence: 0.95 },
+      { field: 'existingVehicle', label: 'Audi A4', value: { make: 'Audi', model: 'A4' }, confidence: 0.9 },
+    ],
+  };
+
+  const review = buildInboundLeadReviewModel(inbound, turn);
+  assert.equal(review.hardReviewRequired, false);
+  assert.equal(review.briefingPresenter, true);
+  assert.equal(review.hero?.name, 'Alexander Schlayer');
+  assert.equal(review.hero?.subtitle, null);
+  assert.equal(review.primaryCta, 'Angebot vorbereiten');
+  assert.equal(review.secondaryCta, null);
+  assert.deepEqual(review.quickCorrectActions, []);
+  assert.equal(review.liveEditEnabled, false);
+  assert.equal((review.actionSections?.[0]?.secondaryActions || []).length, 0);
+
+  assert.ok(review.groups.some((g) => g.id === 'customerWants' && /EV3 Air/i.test(g.line)));
+  assert.ok(review.groups.some((g) => g.id === 'customerPicture' && /ledig/i.test(g.line)));
+  assert.ok(review.groups.some((g) => g.id === 'currentVehicle' && /Audi A4/i.test(g.line)));
+  assert.ok(review.groups.some((g) => g.id === 'contact' && /s_alexander1@hotmail\.de/i.test(g.line)));
+  const open = review.groups.find((g) => g.id === 'open');
+  assert.equal(open?.line, 'Telefonnummer');
+  assert.ok((open?.localActions || []).some((a) => /Telefon ergänzen/i.test(a.label)));
+  const clarify = review.groups.find((g) => g.id === 'clarify');
+  assert.ok(clarify, 'Bar lokal unter Noch zu klären');
+  assert.match(clarify.line || '', /Bar/i);
+  assert.ok((clarify.localActions || []).some((a) => /Bar.*prüfen|prüfen/i.test(a.label)));
+  assert.ok(!review.groups.some((g) => g.id === 'facts'));
+  assert.ok(!/Von Clever erkannt|Kundenakte anlegen|Schnell korrigieren/i.test(JSON.stringify(review)));
+  assert.equal(resolveQuietIntakeSuggestChips(turn).length, 0);
 }
 
 console.log('quietIntakeReview.test.js: OK');

@@ -105,6 +105,7 @@ import {
 import { findOfferWorkingContext, toCurrentOfferContext } from '../../services/crm/composerWorkingContext.js';
 import {
   applyQuietIntakeSubtaskResult,
+  ensureQuietIntakeBriefingModel,
   isQuietIntakeReview,
   isQuietIntakeTurn,
   resolveQuietIntakeSuggestChips,
@@ -1050,6 +1051,18 @@ export default function CleverGlobalComposer() {
 
   function handleReviewAction(action) {
     if (!action || !lastTurn) return;
+    if (action.action === 'intake_next_action') {
+      startComposerTaskFromChip({
+        id: action.nextActionId || action.id || null,
+        label: action.label,
+        intentChipId: action.intentChipId,
+        draft: action.draft,
+        composerTitle: action.composerTitle,
+        placeholder: action.placeholder,
+        choiceChips: action.choiceChips,
+      });
+      return;
+    }
     if (action.action === 'discard') {
       setReviewModel(null);
       setLastTurn(null);
@@ -1157,6 +1170,9 @@ export default function CleverGlobalComposer() {
       const existing = matchedId
         ? (snapshot.find((l) => l.id === matchedId) || null)
         : null;
+      const openOffer = action.intentChipId === 'angebot'
+        || /angebot vorbereiten/i.test(String(action.label || ''));
+      const openOpts = openOffer ? { focus: 'offer' } : undefined;
 
       if (inbound?.proposeCreateCustomer && !existing?.id) {
         const applied = applyAcceptedSellerTurn({}, lastTurn, {
@@ -1169,8 +1185,10 @@ export default function CleverGlobalComposer() {
           return;
         }
         if (typeof addLead === 'function') addLead(applied.lead);
-        handleOpenLead(applied.lead.id);
-        setFeedback('Kundenakte angelegt – weitermachen.');
+        handleOpenLead(applied.lead.id, openOpts);
+        setFeedback(openOffer
+          ? 'Kundenakte angelegt – Angebot vorbereiten.'
+          : 'Kundenakte angelegt – weitermachen.');
         setTimeout(() => setFeedback(''), 3200);
         setReviewModel(null);
         setLastTurn(null);
@@ -1187,8 +1205,10 @@ export default function CleverGlobalComposer() {
       if (applied.ok && applied.lead && typeof updateLead === 'function') {
         updateLead(existing.id, applied.lead);
       }
-      handleOpenLead(existing.id);
-      setFeedback('In Kundenakte weitermachen – Angaben übernommen.');
+      handleOpenLead(existing.id, openOpts);
+      setFeedback(openOffer
+        ? 'Kundenakte geöffnet – Angebot vorbereiten.'
+        : 'In Kundenakte weitermachen – Angaben übernommen.');
       setTimeout(() => setFeedback(''), 3200);
       setReviewModel(null);
       setLastTurn(null);
@@ -2136,7 +2156,10 @@ export default function CleverGlobalComposer() {
 
       if (showReview) {
         setLastTurn(turn);
-        const model = turn.reviewModel || buildUniversalReviewModel(turn);
+        const model = ensureQuietIntakeBriefingModel(
+          turn,
+          turn.reviewModel || buildUniversalReviewModel(turn),
+        );
         setReviewModel(model);
         resetIntentChipsToDefault();
         if (showGlobalWarn) {

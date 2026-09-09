@@ -703,7 +703,7 @@ export function buildIntakeModelChoiceChips(vehicle = null) {
  * Kontextuelle Clever-Next-Actions aus Intake-Fallstand.
  * Universal grammar: Soft Need prominent → Unsicherheit → Business Step secondary.
  * Permanent „Notiz merken“ / „Modell korrigieren“ bei High-Confidence entfallen.
- * Primary CTA „Kundenakte anlegen & weitermachen“ bleibt auf der Review-Karte.
+ * Primary CTA sitzt auf der Briefing-Karte (eine Aktion); Soft Needs lokal bei „Noch offen“.
  * Keine gleichgewichtigen Toolbar-Chips für Telefon + Angebot.
  *
  * @param {object|null} inbound
@@ -1044,13 +1044,126 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
   const uniqueRecognized = uniqueFactChips.map((c) => c.label);
 
   const nextActions = buildIntakeNextActions(inbound, turn);
-  // Soft Need + Unsicherheit → „Noch offen“; Business Steps bleiben secondary/CTA
+  // Soft Need + Unsicherheit → „Noch offen“ (menschliche Labels, keine Debug-Chips)
   const openNeeds = nextActions
     .filter((a) => a.kind === 'soft_need' || a.kind === 'uncertainty')
-    .map((a) => a.openLabel || a.label)
+    .map((a) => {
+      if (a.id === 'qi_phone') return 'Telefonnummer';
+      if (a.id === 'qi_model') return 'Modell';
+      return a.label;
+    })
     .filter(Boolean);
 
+  const openLocalActions = nextActions
+    .filter((a) => a.kind === 'soft_need' || a.kind === 'uncertainty')
+    .map((a) => ({
+      id: a.id,
+      label: a.label,
+      intentChipId: a.intentChipId,
+      draft: a.draft || '',
+      composerTitle: a.composerTitle,
+      placeholder: a.placeholder,
+      kind: a.kind,
+    }));
+
+  // Kompakte Verkäufer-Arbeitsgrundlage (keine Fact-Chip-Wolke)
+  const leasingLine = [term, mileage, downPayment
+    ? String(downPayment).replace(/\s*AZ\s*$/i, ' Sonderzahlung')
+    : null]
+    .filter(Boolean)
+    .join(' · ') || null;
+  const contactCityCompact = (() => {
+    if (cityFact?.needsConfirmation || (cityFact && Number(cityFact.confidence || 1) < 0.75)) {
+      return null;
+    }
+    const zip = cityFact?.value?.postalCode || cityFact?.value?.zip || null;
+    const city = cityFact?.value?.city
+      || (cityFact?.label && !/^\d{5}$/.test(String(cityFact.label).trim())
+        ? String(cityFact.label).replace(/^\d{5}\s*/, '').trim()
+        : null);
+    if (zip && city) return `${zip} ${city}`;
+    if (cityLine && !/^\d{5}$/.test(String(cityLine).trim())) return cityLine;
+    return cityLine || null;
+  })();
+  const contactLine = [
+    contactEmail,
+    inbound.contact?.phone || null,
+    contactCityCompact,
+  ].filter(Boolean).join(' · ') || null;
+  const vehicleLine = vehicle
+    ? (/^kia\b/i.test(vehicle) ? vehicle : `Kia ${vehicle}`)
+    : null;
+
+  const maritalFact = pickIntakeFact(facts, 'maritalStatus');
+  const maritalLine = maritalFact?.label
+    ? String(maritalFact.label).replace(/^Familienstand:\s*/i, '').trim()
+    : null;
+  const existingFact = pickIntakeFact(facts, 'existingVehicle');
+  const existingLine = existingFact
+    ? (
+      [existingFact.value?.make, existingFact.value?.model].filter(Boolean).join(' ')
+      || String(existingFact.label || '').replace(/\s*·\s*.*$/, '').trim()
+      || null
+    )
+    : null;
+
+  // Unsicheres „Bar“ (oft Stadt-Fehlparse) → lokal klären, nie Hero-Chip
+  const clarifyItems = [];
+  if (
+    cityFact?.needsConfirmation
+    || (cityFact && Number(cityFact.confidence || 1) < 0.8)
+  ) {
+    const rawCity = String(cityFact?.label || cityFact?.value?.city || '').trim();
+    if (rawCity && /^bar$/i.test(rawCity)) {
+      clarifyItems.push({
+        id: 'clarify_bar',
+        label: '„Bar“ prüfen',
+        field: cityFact.field || 'city',
+        draft: '',
+        composerTitle: `ANGABE PRÜFEN · ${inbound.contact?.fullName || 'Kunde'}`,
+        placeholder: 'Meinten Sie Barzahlung / Kauf – oder einen Ort?',
+      });
+    }
+  }
+  // Klare Zahlungsart Bar/Kauf → Konditionen-Zeile
+  const clearCash = payment === 'Kauf'
+    || paymentFact?.value === 'cash'
+    || (paymentFact && /\bbar\b/i.test(String(paymentFact.label || ''))
+      && !paymentFact.needsConfirmation
+      && Number(paymentFact.confidence || 1) >= 0.8);
+
+  /** @type {{ id: string, title: string, line: string }[]} */
+  const briefingSections = [];
+  if (vehicleLine) {
+    briefingSections.push({ id: 'customerWants', title: 'Kunde möchte', line: vehicleLine });
+  }
+  if (maritalLine) {
+    briefingSections.push({ id: 'customerPicture', title: 'Kundenbild', line: maritalLine });
+  }
+  if (existingLine) {
+    briefingSections.push({ id: 'currentVehicle', title: 'Aktuelles Fahrzeug', line: existingLine });
+  }
+  if (leasingLine && (payment === 'Leasing' || paymentFact?.value === 'leasing' || !payment)) {
+    briefingSections.push({ id: 'leasingWish', title: payment || 'Leasing', line: leasingLine });
+  } else if (leasingLine && payment) {
+    briefingSections.push({ id: 'commercial', title: payment, line: leasingLine });
+  } else if (clearCash && !leasingLine) {
+    briefingSections.push({ id: 'commercial', title: 'Konditionen', line: 'Kauf / Bar' });
+  } else if (payment && !leasingLine && payment !== 'Kauf') {
+    briefingSections.push({ id: 'commercial', title: 'Konditionen', line: payment });
+  }
+  if (contactLine) {
+    briefingSections.push({ id: 'contact', title: 'Kontakt', line: contactLine });
+  }
+
   const quickCorrectActions = buildIntakeQuickCorrectActions(inbound, turn);
+  // Hard Review nur bei echter Zuordnungs-/Identitätsgefahr – nicht bei Soft Needs
+  const hardReviewRequired = Boolean(
+    inbound.duplicateHint
+    || inbound.resolutionStatus === 'ambiguous'
+  );
+  const isConfidentIntake = Boolean(vehicleLine) && !hardReviewRequired
+    && !intakeVehicleNeedsModelCheck(vehicleFact);
 
   return {
     conditionLine,
@@ -1059,9 +1172,18 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
     contactChips: [...new Set(contactChips)].slice(0, 4),
     noteChips: uniqueNoteChips,
     openNeeds: [...new Set(openNeeds)].slice(0, 3),
+    openLocalActions,
+    briefingSections,
+    clarifyItems,
     nextActions,
-    quickCorrectActions,
+    // Kein permanentes „Schnell korrigieren“ im ruhigen Verkäuferzustand
+    quickCorrectActions: hardReviewRequired ? quickCorrectActions : [],
     cityLine,
+    contactLine,
+    vehicleLine,
+    leasingLine,
+    isConfidentIntake,
+    hardReviewRequired,
   };
 }
 
@@ -1129,7 +1251,8 @@ export function buildIntakeQuickCorrectActions(inbound = null, turn = {}) {
 }
 
 /**
- * Review-Model für Inbound – kompakt: Status · Ergebnis · nächster Klick.
+ * Review-Model für Inbound – Verkäuferstand: Briefing + eine Primary Action.
+ * Hard Review (Chip-/System-UI) nur bei echter Zuordnungsgefahr.
  */
 export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
   if (!inbound?.detected) return null;
@@ -1141,17 +1264,18 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     || inbound.contact?.fullName
     || 'Neue Anfrage';
 
-  const workTitle = inbound.proposeCreateCustomer
-    ? `${customerName} · neue Kundenakte`
-    : inbound.resolutionStatus === 'unique'
-      ? `${customerName} · Kundenakte öffnen`
-      : inbound.resolutionStatus === 'ambiguous'
-        ? (customerName && customerName !== 'Neue Anfrage'
-          ? `${customerName} · Treffer prüfen…`
-          : 'Treffer prüfen…')
-        : customerName;
+  const hardReviewRequired = Boolean(presentation.hardReviewRequired);
+  const isAmbiguous = inbound.resolutionStatus === 'ambiguous';
+  const useBriefing = !hardReviewRequired;
 
-  if (inbound.resolutionStatus === 'ambiguous') {
+  // Hero: nur Kundenname – nie „Von Clever erkannt“ / „neue Kundenakte“
+  const workTitle = isAmbiguous
+    ? (customerName && customerName !== 'Neue Anfrage'
+      ? `${customerName} · Treffer prüfen…`
+      : 'Treffer prüfen…')
+    : customerName;
+
+  if (isAmbiguous) {
     const candidates = (inbound.customerSearchResults || []).slice(0, 4)
       .map((r) => r.customerName || 'Kunde')
       .filter((label) => label && !INTAKE_META_CHIP_LABELS.has(label));
@@ -1171,6 +1295,154 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     }
   }
 
+  if (useBriefing) {
+    // Partial Success: Work-Briefing-Zeilen, keine Fact-Chip-Wolke
+    for (const section of (presentation.briefingSections || [])) {
+      groups.push({
+        id: section.id,
+        title: section.title,
+        line: section.line,
+        mode: 'briefing',
+        chips: [],
+        items: [{ label: section.line }],
+      });
+    }
+
+    const nextActions = presentation.nextActions || buildIntakeNextActions(inbound, turn);
+    if (presentation.openNeeds?.length) {
+      const phoneLocal = (presentation.openLocalActions || [])
+        .find((a) => a.id === 'qi_phone');
+      groups.push({
+        id: 'open',
+        title: 'Noch offen',
+        line: presentation.openNeeds.join(' · '),
+        mode: 'briefing',
+        chips: [],
+        items: presentation.openNeeds.map((label) => ({
+          label,
+          tone: 'open',
+        })),
+        localActions: phoneLocal
+          ? [{
+            id: phoneLocal.id,
+            label: 'Telefon ergänzen',
+            action: 'intake_next_action',
+            nextActionId: phoneLocal.id,
+            intentChipId: phoneLocal.intentChipId,
+            draft: phoneLocal.draft,
+            composerTitle: phoneLocal.composerTitle,
+            placeholder: phoneLocal.placeholder,
+            tone: 'local',
+          }]
+          : (presentation.openLocalActions || []).slice(0, 1).map((a) => ({
+            id: a.id,
+            label: a.label,
+            action: 'intake_next_action',
+            nextActionId: a.id,
+            intentChipId: a.intentChipId,
+            draft: a.draft,
+            composerTitle: a.composerTitle,
+            placeholder: a.placeholder,
+            tone: 'local',
+          })),
+      });
+    }
+
+    if (presentation.clarifyItems?.length) {
+      groups.push({
+        id: 'clarify',
+        title: 'Noch zu klären',
+        line: presentation.clarifyItems
+          .map((c) => String(c.label || '').replace(/\s*prüfen\s*$/i, '').trim() || c.label)
+          .join(' · '),
+        mode: 'briefing',
+        chips: [],
+        items: presentation.clarifyItems.map((c) => ({
+          label: c.label,
+          tone: 'open',
+        })),
+        localActions: presentation.clarifyItems.slice(0, 2).map((c) => ({
+          id: c.id,
+          label: c.label,
+          action: 'intake_next_action',
+          nextActionId: c.id,
+          draft: c.draft || '',
+          composerTitle: c.composerTitle,
+          placeholder: c.placeholder,
+          tone: 'local',
+        })),
+      });
+    }
+
+    const hasVehicle = Boolean(presentation.vehicleLine);
+    const primaryCta = isAmbiguous
+      ? 'Treffer prüfen & weitermachen'
+      : hasVehicle
+        ? 'Angebot vorbereiten'
+        : 'Angaben übernehmen';
+
+    return {
+      title: '',
+      groups,
+      body: null,
+      hero: {
+        headline: null,
+        name: workTitle,
+        subtitle: null,
+      },
+      compactUi: true,
+      quietIntake: true,
+      briefingPresenter: true,
+      hardReviewRequired: false,
+      actionSections: [{
+        id: 'customer_intake_review',
+        kind: 'customer_intake_review',
+        title: 'Kundenanfrage',
+        headline: primaryCta,
+        body: null,
+        inboundLead: inbound,
+        primaryActions: isAmbiguous
+          ? []
+          : [{
+            id: 'accept_inbound',
+            label: primaryCta,
+            action: 'accept_inbound_lead',
+            leadId: inbound.matchedLeadId || null,
+            tone: 'primary',
+            intentChipId: hasVehicle ? 'angebot' : undefined,
+          }],
+        secondaryActions: [],
+      }],
+      factCount: presentation.recognizedChips.length,
+      summaryLine: null,
+      missingLine: presentation.openNeeds?.[0] || null,
+      nextActions,
+      quickCorrectActions: [],
+      liveEditEnabled: false,
+      primaryCta,
+      secondaryCta: null,
+      progressLines: [],
+      debugDetails: {
+        progressLines: turn.uiEffects?.progressLines || [],
+        resolutionStatus: inbound.resolutionStatus,
+        sourceHint: inbound.contact?.sourceHint || null,
+        nextAction: inbound.nextAction?.label || null,
+        nextActions: nextActions.map((a) => a.id),
+        briefingSections: presentation.briefingSections || [],
+        hardReviewRequired: false,
+      },
+      reviewType: 'customer_intake_review',
+      legacyReviewType: 'inbound_lead_review',
+      kind: 'customer_intake',
+      inboundLead: inbound,
+      resolvedCustomer: inbound.matchedLeadId
+        ? { id: inbound.matchedLeadId, name: inbound.matchedLeadName }
+        : null,
+    };
+  }
+
+  // --- Hard Review: Chip-/System-UI nur hier ---
+  const nextActions = presentation.nextActions || buildIntakeNextActions(inbound, turn);
   if (presentation.recognizedChips.length) {
     const factChips = Array.isArray(presentation.recognizedFactChips)
       && presentation.recognizedFactChips.length
@@ -1178,13 +1450,11 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       : presentation.recognizedChips.map((label) => ({
         label,
         source: 'clever',
-        title: 'Von Clever erkannt',
         editable: false,
       }));
     groups.push({
       id: 'facts',
-      // Kein „ERKANNT“-Lärm – Chips sprechen für sich
-      title: '',
+      title: 'Von Clever erkannt',
       line: presentation.conditionLine || presentation.recognizedChips.join(' · '),
       chips: factChips,
       items: factChips.map((chip) => ({
@@ -1195,8 +1465,6 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       })),
     });
   }
-
-  const nextActions = presentation.nextActions || buildIntakeNextActions(inbound, turn);
   if (presentation.openNeeds?.length) {
     groups.push({
       id: 'open',
@@ -1205,22 +1473,18 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       chips: presentation.openNeeds.map((label) => ({
         label,
         source: 'meta',
-        title: 'Noch offen',
         tone: 'open',
       })),
-      items: presentation.openNeeds.map((label) => ({
-        label,
-        tone: 'open',
-      })),
+      items: presentation.openNeeds.map((label) => ({ label, tone: 'open' })),
     });
   }
 
-  const primaryCta = inbound.proposeCreateCustomer
-    ? 'Kundenakte anlegen & weitermachen'
-    : inbound.resolutionStatus === 'unique'
-      ? 'In Kundenakte weitermachen'
-      : inbound.resolutionStatus === 'ambiguous'
-        ? 'Treffer prüfen & weitermachen'
+  const primaryCta = isAmbiguous
+    ? 'Treffer prüfen & weitermachen'
+    : inbound.proposeCreateCustomer
+      ? 'Kundenakte anlegen & weitermachen'
+      : inbound.resolutionStatus === 'unique'
+        ? 'In Kundenakte weitermachen'
         : 'Übernehmen & weitermachen';
 
   const secondaryActions = [
@@ -1229,27 +1493,19 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     { id: 'discard_intake', label: 'Verwerfen', action: 'discard', tone: 'compact' },
   ];
 
-  const summaryLine = inbound.proposeCreateCustomer
-    ? `${customerName} · neue Kundenakte`
-    : inbound.resolutionStatus === 'unique'
-      ? `${inbound.matchedLeadName || customerName} · Kundenakte öffnen`
-      : inbound.resolutionStatus === 'ambiguous'
-        ? 'Treffer prüfen…'
-        : null;
-
   return {
-    // Kein Clever-Narrations-Titel – Seller sieht nur die Karte
     title: '',
     groups,
     body: null,
     hero: {
-      // Name · Kontext oben; CTA nur als Primary-Button
       headline: null,
       name: workTitle,
-      subtitle: 'Von Clever erkannt',
+      subtitle: null,
     },
     compactUi: true,
     quietIntake: true,
+    briefingPresenter: false,
+    hardReviewRequired: true,
     actionSections: [{
       id: 'customer_intake_review',
       kind: 'customer_intake_review',
@@ -1257,8 +1513,7 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       headline: primaryCta,
       body: null,
       inboundLead: inbound,
-      // Ambiguous: Kundenwahl nur über Composer-Pills (keine doppelten Text-Links)
-      primaryActions: inbound.resolutionStatus === 'ambiguous'
+      primaryActions: isAmbiguous
         ? []
         : [{
           id: 'accept_inbound',
@@ -1270,14 +1525,13 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       secondaryActions,
     }],
     factCount: presentation.recognizedChips.length,
-    summaryLine,
-    missingLine: presentation.openNeeds?.[0] || presentation.noteChips[0] || null,
+    summaryLine: null,
+    missingLine: presentation.openNeeds?.[0] || null,
     nextActions,
     quickCorrectActions: presentation.quickCorrectActions || [],
     liveEditEnabled: true,
     primaryCta,
     secondaryCta: 'Korrigieren',
-    // Keine Protokoll-Statuszeilen in der Seller-UI (Debug behalten)
     progressLines: [],
     debugDetails: {
       progressLines: turn.uiEffects?.progressLines || [],
@@ -1285,6 +1539,7 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
       sourceHint: inbound.contact?.sourceHint || null,
       nextAction: inbound.nextAction?.label || null,
       nextActions: nextActions.map((a) => a.id),
+      hardReviewRequired: true,
     },
     reviewType: 'customer_intake_review',
     legacyReviewType: 'inbound_lead_review',

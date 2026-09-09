@@ -257,6 +257,7 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
     }));
   };
   for (const fact of packageFacts) {
+    if (fact?.value?.kind === 'motor') continue;
     const canonicalId = fact?.value?.validationStatus === 'needs_review'
       ? null
       : fact.value?.id;
@@ -276,6 +277,8 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
   const isPackageRemoveCue = /\b(?:raus|weg|entfernen|ohne)\b/i.test(packageHaystack)
     || /\b(?:nimm|entferne|streich).{0,40}\b(?:raus|weg|entfernen)\b/i.test(packageHaystack);
   if (packageHaystack && !isPackageRemoveCue) {
+    const winterWheels = packageHaystack.match(/Winterr[aä]der(?:\s+\d+\s*Zoll)?/i);
+    if (winterWheels) pushPackage(String(winterWheels[0]).replace(/\s+/g, ' ').trim());
     const winter = packageHaystack.match(/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i);
     if (winter) pushPackage(/connect/i.test(winter[0]) ? 'Winter-Connect-Paket' : 'Winterpaket');
     const driveWise = packageHaystack.match(/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i);
@@ -543,11 +546,16 @@ export function buildOfferDraftFromIdentity({
   createdAt = null,
 } = {}) {
   const now = new Date().toISOString();
-  const invalidateVehicleRate = createNewAlternative === true
-    || Boolean(vehicleIdentityDraft?.modelKey);
-  const safeRate = invalidateVehicleRate && rateAuthority !== RATE_AUTHORITY.AUTHORITATIVE
-    ? null
-    : monthlyRate;
+  const hasAuthRate = rateAuthority === RATE_AUTHORITY.AUTHORITATIVE
+    && monthlyRate != null
+    && Number.isFinite(Number(monthlyRate));
+  const invalidateVehicleRate = !hasAuthRate && (
+    createNewAlternative === true
+    || Boolean(vehicleIdentityDraft?.modelKey)
+  );
+  const safeRate = hasAuthRate
+    ? Number(monthlyRate)
+    : (invalidateVehicleRate ? null : monthlyRate);
 
   return {
     // Bestehenden Concept-Draft weiterverwenden, wenn ID bekannt – kein stiller Zweit-Draft
@@ -600,14 +608,19 @@ export function buildComposerOfferHandoff(offerDraft, extras = {}) {
   return {
     mode: 'composer_identity_draft',
     skipMagicReview: true,
-    canCreateOffer: false,
-    fromPdf: false,
+    canCreateOffer: extras.canCreateOffer === true
+      || (offerDraft?.rate != null && offerDraft?.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE),
+    fromPdf: Boolean(extras.fromPdf)
+      || offerDraft?.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE,
     offerDraftId: offerDraft?.offerDraftId || extras.offerDraftId || null,
     vehicleIdentityDraftId: identity?.id || null,
     vehicleIdentityDraft: identity,
     commercialScenario: commercial,
     createNewAlternative: Boolean(offerDraft?.createNewAlternative ?? extras.createNewAlternative),
-    invalidateVehicleRate: offerDraft?.invalidateVehicleRate !== false,
+    invalidateVehicleRate: offerDraft?.rate != null
+      && offerDraft?.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE
+      ? false
+      : (offerDraft?.invalidateVehicleRate !== false),
     mutationMode: offerDraft?.mutationMode || extras.mutationMode || null,
     vehicleTrackId: offerDraft?.vehicleTrackId || extras.vehicleTrackId || null,
     focusModelKey: modelKey,
@@ -738,6 +751,19 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
     || existingStored?.commercialScenario
     || buildCommercialScenarioFromLead(lead || {}, facts);
 
+  // Autoritativer PDF-/Bank-Rate auch bei neuem Draft behalten (nicht still strippen)
+  const authoritativeIncomingRate = payload.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE
+    && payload.monthlyRate != null
+    && Number.isFinite(Number(payload.monthlyRate));
+  const monthlyRateForDraft = authoritativeIncomingRate
+    ? Number(payload.monthlyRate)
+    : (createNew ? null : (payload.monthlyRate ?? existingStored?.rate ?? null));
+  const rateAuthorityForDraft = authoritativeIncomingRate
+    ? RATE_AUTHORITY.AUTHORITATIVE
+    : (createNew
+      ? RATE_AUTHORITY.NON_AUTHORITATIVE
+      : (payload.rateAuthority || existingStored?.rateAuthority || RATE_AUTHORITY.NON_AUTHORITATIVE));
+
   const offerDraft = buildOfferDraftFromIdentity({
     vehicleIdentityDraft: identity,
     commercialScenario: commercial,
@@ -747,12 +773,8 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
       || null,
     createNewAlternative: createNew,
     mutationMode: payload.mutationMode || null,
-    monthlyRate: createNew
-      ? null
-      : (payload.monthlyRate ?? existingStored?.rate ?? null),
-    rateAuthority: createNew
-      ? RATE_AUTHORITY.NON_AUTHORITATIVE
-      : (payload.rateAuthority || existingStored?.rateAuthority || RATE_AUTHORITY.NON_AUTHORITATIVE),
+    monthlyRate: monthlyRateForDraft,
+    rateAuthority: rateAuthorityForDraft,
     sellerInput,
     offerDraftId: createNew ? null : (reuseOfferDraftId || null),
     createdAt: existingStored?.createdAt || null,
@@ -766,7 +788,14 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
     createNewAlternative: createNew,
     mutationMode: payload.mutationMode,
     vehicleLabel: payload.vehicleLabel,
+    fromPdf: authoritativeIncomingRate || Boolean(payload.fromPdf),
+    canCreateOffer: authoritativeIncomingRate
+      ? Boolean(payload.canCreateOffer !== false)
+      : false,
   });
+
+  const hasAuthRate = offerDraft.rate != null
+    && offerDraft.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE;
 
   return {
     ...payload,
@@ -776,10 +805,6 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
     offerDraft,
     commercialScenario: commercial,
     identityExtrasLine: formatIdentityDraftExtrasLine(identity),
-    invalidateVehicleRate: true,
-    monthlyRate: createNew ? null : payload.monthlyRate,
-    missingRate: createNew || payload.monthlyRate == null,
-    canCreateOffer: false,
     // Magic-kompatible Felder direkt am Payload (Handoff = Payload)
     ...handoff,
     // Payload-Felder nicht überschreiben die expliziten vehicle-Keys falsch
@@ -787,7 +812,31 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
       ...(payload.vehicle || {}),
       ...handoff.vehicle,
     },
-    vehicleLabel: handoff.vehicleLabel || payload.vehicleLabel,
+    vehicleLabel: (() => {
+      let label = handoff.vehicleLabel || payload.vehicleLabel || null;
+      const transmissionLabel = (facts || []).find((f) => (
+        f.field === 'transmissionPreference' && f.label
+      ))?.label || null;
+      if (
+        label
+        && transmissionLabel
+        && !new RegExp(String(transmissionLabel).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(label)
+      ) {
+        label = `${label} ${transmissionLabel}`;
+      }
+      return label;
+    })(),
+    // Autoritativer Rate-Handoff: nicht durch createNew-/Default-Flags löschen
+    monthlyRate: hasAuthRate ? offerDraft.rate : (createNew ? null : payload.monthlyRate),
+    rateAuthority: hasAuthRate
+      ? RATE_AUTHORITY.AUTHORITATIVE
+      : (createNew ? RATE_AUTHORITY.NON_AUTHORITATIVE : (payload.rateAuthority || handoff.rateAuthority)),
+    missingRate: !hasAuthRate && (createNew || payload.monthlyRate == null),
+    canCreateOffer: hasAuthRate
+      ? Boolean(payload.canCreateOffer !== false)
+      : false,
+    invalidateVehicleRate: !hasAuthRate,
+    fromPdf: hasAuthRate || Boolean(payload.fromPdf) || Boolean(handoff.fromPdf),
   };
 }
 

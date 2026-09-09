@@ -3,7 +3,7 @@
  * „Kia EV2 Air · Rot“ statt „Kia EV2 Air / Kia EV2 · Rot · EV2 Air“.
  */
 
-const TRIM_RE = /\b(gt-?\s*line|air|earth|spirit|vision|core|drivewise|x-?\s*line(?:\s*\d+)?)\b/i;
+const TRIM_RE = /\b(gt-?\s*line|gt|air|earth|spirit|vision|core|drivewise|x-?\s*line(?:\s*\d+)?)\b/i;
 
 /**
  * @param {string|null|undefined} raw
@@ -14,6 +14,7 @@ export function normalizeTrimToken(raw) {
   const s = String(raw).replace(/\s+/g, ' ').trim();
   if (!s) return null;
   if (/^gt-?\s*line$/i.test(s)) return 'GT-Line';
+  if (/^gt$/i.test(s)) return 'GT';
   if (/^x-?\s*line(?:\s*(\d+))?$/i.test(s)) {
     const m = s.match(/^x-?\s*line(?:\s*(\d+))?$/i);
     return m?.[1] ? `X-Line ${m[1]}` : 'X-Line';

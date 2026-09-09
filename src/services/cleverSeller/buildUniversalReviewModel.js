@@ -93,14 +93,43 @@ function buildOfferHeroPresentation(facts = [], offerSec = null, turn = {}) {
   const term = pickFactByField(facts, 'termMonths');
   const km = pickFactByField(facts, 'annualMileage');
   const purchase = pickFactByField(facts, 'purchasePrice');
+  const rate = pickFactByField(facts, 'monthlyBudget');
+  const down = pickFactByField(facts, 'downPayment');
+  const color = pickFactByField(facts, 'colorPreference');
   const wish = turn.usedCustomerContext || {};
 
+  const motorFacts = (facts || []).filter((f) => (
+    f.field === 'equipmentWish'
+    && (f.value?.kind === 'motor' || /kwh|awd|allrad/i.test(String(f.label || '')))
+  ));
+  const motorBits = motorFacts
+    .map((f) => String(f.label || '').replace(/\s*·\s*/g, ' · ').trim())
+    .filter(Boolean);
+  // „84 kWh · AWD“ nicht doppelt splitten wenn schon kombiniert
+  const motorLine = motorBits.length
+    ? [...new Set(motorBits.flatMap((b) => b.split(/\s*·\s*/).map((s) => s.trim())).filter(Boolean))].join(' · ')
+    : null;
+
   // Bei PDF↔Akte-Konflikt: Hero folgt bestätigtem Akte-Fokus, nicht PDF-Modell
-  const vehicleLabel = normalizeVehicleDisplayLabel(
+  const rawModel = vehicle?.value?.model || vehicle?.value?.modelKey || null;
+  const displayModel = rawModel && /^ev\s?\d$/i.test(String(rawModel).replace(/\s+/g, ''))
+    ? String(rawModel).replace(/\s+/g, '').toUpperCase()
+    : rawModel;
+  let vehicleLabel = normalizeVehicleDisplayLabel(
     vehicle?.value?.conflictWithActive
       ? (vehicle.value.activeLabel || offerSec?.payload?.vehicleLabel || null)
-      : (offerSec?.headline || offerSec?.payload?.vehicleLabel || vehicle?.label || null),
+      : {
+        label: offerSec?.payload?.vehicleLabel || vehicle?.label || offerSec?.headline || null,
+        model: displayModel,
+        trim: vehicle?.value?.trim || null,
+      },
   ) || null;
+  if (vehicleLabel && motorLine && !/kwh|awd/i.test(vehicleLabel)) {
+    vehicleLabel = `${vehicleLabel} · ${motorLine}`;
+  }
+  if (vehicleLabel && color?.label && !String(vehicleLabel).toLowerCase().includes(String(color.label).toLowerCase().slice(0, 8))) {
+    vehicleLabel = `${vehicleLabel} · ${color.label}`;
+  }
 
   let paymentLabel = null;
   if (payment?.label) paymentLabel = payment.label.replace(/^Zahlungsart:\s*/i, '');
@@ -109,46 +138,83 @@ function buildOfferHeroPresentation(facts = [], offerSec = null, turn = {}) {
   else if (payment?.value === 'financing') paymentLabel = 'Finanzierung';
   else if (/leasing/i.test(String(offerSec?.line || ''))) paymentLabel = 'Leasing';
 
-  const heroLine = [vehicleLabel, paymentLabel].filter(Boolean).join(' · ')
-    || vehicleLabel
+  // Identity zuerst (kein „EV6 · Leasing“ ohne GT/Antrieb)
+  const heroLine = vehicleLabel
     || offerSec?.headline
     || 'Angebot';
 
   const conditions = [];
+  // Primary Rate zuerst (Gesamtrate), nicht UPE
+  if (rate?.label) {
+    conditions.push(String(rate.label).trim());
+  } else if (rate?.value?.amount != null || (typeof rate?.value === 'number')) {
+    const amount = Number(rate.value?.amount ?? rate.value);
+    const basis = rate.value?.basis === 'net' ? ' netto' : '';
+    conditions.push(`${amount.toLocaleString('de-DE')} €${basis} / Monat`);
+  } else if (offerSec?.payload?.monthlyRate != null) {
+    conditions.push(`${Number(offerSec.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+  }
+
   if (term?.label) conditions.push(term.label);
   else if (term?.value != null) conditions.push(`${Number(term.value)} Monate`);
   else if (wish.termMonths != null) conditions.push(`${wish.termMonths} Monate`);
 
-  if (km?.label) {
-    conditions.push(/km/i.test(km.label) ? km.label : formatKm(km.value));
-  } else if (km?.value != null) {
-    conditions.push(formatKm(km.value));
-  } else if (wish.annualMileage != null || wish.mileagePerYear != null) {
-    conditions.push(formatKm(wish.annualMileage ?? wish.mileagePerYear));
+  const kmValue = km?.value ?? wish.annualMileage ?? wish.mileagePerYear ?? null;
+  if (kmValue != null && Number(kmValue) > 0) {
+    conditions.push(`${Number(kmValue).toLocaleString('de-DE')} km/Jahr`);
+  } else if (km?.label && /km/i.test(km.label)) {
+    conditions.push(/jahr/i.test(km.label) ? km.label : `${km.label}/Jahr`);
   }
 
-  if (purchase?.label) conditions.push(purchase.label);
-  else if (offerSec?.payload?.monthlyRate != null) {
-    conditions.push(`${Number(offerSec.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
+  // Explizite 0 € AZ ist echter Wert – anzeigen
+  if (down && down.value != null) {
+    const downVal = Number(down.value);
+    if (Number.isFinite(downVal)) {
+      conditions.push(downVal === 0 ? '0 € Sonderzahlung' : `${downVal.toLocaleString('de-DE')} € Sonderzahlung`);
+    }
   }
 
   if (!conditions.length && offerSec?.inheritedLine) {
     const inherited = String(offerSec.inheritedLine).replace(/^Übernommen:\s*/i, '');
-    conditions.push(...inherited.split(/\s*·\s*/).filter(Boolean).slice(0, 3));
+    conditions.push(...inherited.split(/\s*·\s*/).filter(Boolean).slice(0, 4));
   }
   if (!conditions.length && offerSec?.line) {
     conditions.push(
       ...String(offerSec.line).split(/\s*·\s*/)
         .filter((p) => p && !/ungültig|offen/i.test(p))
-        .slice(0, 3),
+        .slice(0, 4),
     );
   }
+
+  const extras = [];
+  const seenExtra = new Set();
+  for (const f of facts || []) {
+    if (f.field !== 'equipmentWish') continue;
+    if (f.value?.kind === 'motor') continue;
+    const label = String(f.label || '').trim();
+    if (!label || !/winterr/i.test(label)) continue;
+    // Negativ-/Entfernen-Cues nicht als „Enthalten“ zeigen
+    if (/\b(entfernen|raus|weg|ohne)\b/i.test(label)) continue;
+    const key = label.toLowerCase();
+    if (seenExtra.has(key)) continue;
+    if ([...seenExtra].some((k) => k.includes(key) || key.includes(k))) continue;
+    seenExtra.add(key);
+    extras.push(label);
+  }
+  const rateBreakdown = [
+    pickFactByField(facts, 'financeLeaseRate')?.label || null,
+    pickFactByField(facts, 'logisticsMonthlyRate')?.label || null,
+  ].filter(Boolean);
 
   return {
     vehicleLabel,
     paymentLabel,
     heroLine,
-    conditionsLine: [...new Set(conditions.filter(Boolean))].slice(0, 3).join(' · ') || null,
+    identityLine: [motorLine, color?.label].filter(Boolean).join(' · ') || null,
+    conditionsLine: [...new Set(conditions.filter(Boolean))].slice(0, 4).join(' · ') || null,
+    extrasLine: extras.length ? extras.join(' · ') : null,
+    rateBreakdownLine: rateBreakdown.length ? rateBreakdown.join(' · ') : null,
+    listPriceLine: purchase?.label || null,
   };
 }
 
@@ -174,6 +240,7 @@ function buildOfferConflictBox(discountWarnings = [], turnWarnings = [], facts =
   const netAmount = (facts || []).find((f) => (
     (f.field === 'monthlyBudget' || f.field === 'purchasePrice')
     && (f.value?.basis === 'net' || /netto/i.test(String(f.label || '')))
+    && f.needsConfirmation
   ));
   if (netAmount) {
     return {
@@ -199,6 +266,7 @@ function buildOfferConflictBox(discountWarnings = [], turnWarnings = [], facts =
   const other = turnWarnings.find((w) => (
     w
     && !GENERIC_CONFIRMATION_WARNING_RE.test(w)
+    && !/Netto-Betrag erkannt/i.test(String(w))
   ));
   if (!other) return null;
   return {
@@ -2011,6 +2079,9 @@ export function buildUniversalReviewModel(turn = {}) {
       paymentLabel: offerHero?.paymentLabel || null,
       heroLine: offerHeroLabel,
       conditionsLine: offerHero?.conditionsLine || null,
+      extrasLine: offerHero?.extrasLine || null,
+      rateBreakdownLine: offerHero?.rateBreakdownLine || null,
+      listPriceLine: offerHero?.listPriceLine || null,
       inCustomerAkte,
       conflict: offerConflictBox,
     }

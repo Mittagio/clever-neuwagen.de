@@ -1,7 +1,7 @@
 /**
  * Missing-Information Resolver – nur was für die aktuelle Aufgabe fehlt.
  */
-import { SELLER_FACT_CLASS, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
+import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE, SELLER_TURN_INTENTS } from './sellerFactTypes.js';
 import { getNeedProfileFromLead } from '../consultation/needProfileService.js';
 import {
   isBareMonthlyRateCue,
@@ -155,7 +155,11 @@ export function resolveMissingInformation({
       )) || facts.some((f) => (
         f.field === 'vehicleInterest' && Boolean(f.value?.package || f.value?.equipmentPackage)
       ));
-      if (!hasPackage && modelData?.packages?.length) {
+      // PDF-Angebot mit echter Rate: keine Katalog-Package-/Motor-Choices als Missing erzwingen
+      const pdfOfferComplete = facts.some((f) => f.source === SELLER_FACT_SOURCE.OFFER_PDF)
+        && facts.some((f) => f.field === 'monthlyBudget')
+        && facts.some((f) => f.field === 'vehicleInterest');
+      if (!hasPackage && modelData?.packages?.length && !pdfOfferComplete) {
         const packageChoices = modelData.packages
           .filter((pkg) => !trim?.id || !pkg.availableTrims?.length || pkg.availableTrims.includes(trim.id))
           .slice(0, 8)
@@ -180,7 +184,7 @@ export function resolveMissingInformation({
         && /kwh|kw|range|awd|motor/i.test(String(f.label || f.value?.label || ''))
       )) || Boolean(currentOfferContext?.engineLabel)
         || Boolean(workingContext?.attachedVehicle?.engineId);
-      if (!hasMotor && modelData?.engines?.length) {
+      if (!hasMotor && modelData?.engines?.length && !pdfOfferComplete) {
         const matchingVariants = (modelData.variants || []).filter((v) => (
           !trim?.id || v.trimId === trim.id
         ));

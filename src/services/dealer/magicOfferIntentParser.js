@@ -89,9 +89,12 @@ export function parseMagicOfferIntent(text = '') {
   const pctMatch = rabattPctMatch || genericPctMatch;
   if (pctMatch) {
     const rawPct = pctMatch[0] || '';
+    const pctIdx = blob.indexOf(rawPct);
+    const pctCtx = pctIdx >= 0 ? blob.slice(Math.max(0, pctIdx - 28), pctIdx + rawPct.length + 8) : rawPct;
     const isInterestOrTax = Boolean(interestOrTaxPct)
       && String(interestOrTaxPct[1]) === String(pctMatch[1]);
-    const nearTaxOrInterest = /(?:effektiv|jahreszins|sollzins|mwst|ust|mehrwert)/i.test(rawPct)
+    const nearTaxOrInterest = /(?:effektiv|jahreszins|sollzins|mwst|ust|mehrwert|leasingfaktor|faktor)/i.test(rawPct)
+      || /(?:leasingfaktor|leasing\s*faktor)/i.test(pctCtx)
       || (
         interestOrTaxPct
         && blob.indexOf(rawPct) >= 0
@@ -134,30 +137,58 @@ export function parseMagicOfferIntent(text = '') {
 
   let monthlyRate = null;
   let monthlyRateBasis = null;
-  const rateMatch = blob.match(
-    new RegExp(`monatliche\\s+gesamtrate[\\s\\S]{0,80}?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
-  )
-    ?? blob.match(
-      new RegExp(`monatsrate\\s+finanzleasing\\s*${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
-    )
-    ?? blob.match(
-      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)`, 'i'),
-    )
-    ?? blob.match(
-      new RegExp(`(?:brutto|netto)[\\s-]*(?:monats)?rate\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
-    )
-    ?? blob.match(
-      new RegExp(`(?:monats)?rate\\s*(?:brutto|netto)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
-    )
-    ?? blob.match(
-      new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
-    )
-    ?? blob.match(
-      new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:brutto|netto)\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)?`, 'i'),
+  let monthlyTotalRate = null;
+  let financeLeaseRate = null;
+  let logisticsMonthlyRate = null;
+
+  // HAP: „Monatliche Gesamtrate … <langer Satz> 759,46 EUR“ – Fenster groß genug
+  const totalRateMatch = blob.match(
+    new RegExp(`monatliche\\s+gesamtrate[\\s\\S]{0,320}?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+  );
+  if (totalRateMatch) {
+    monthlyTotalRate = parseEuroAmount(totalRateMatch[1]);
+  }
+  const financeRateMatch = blob.match(
+    new RegExp(`monatsrate\\s+finanzleasing\\s*${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+  );
+  if (financeRateMatch) {
+    financeLeaseRate = parseEuroAmount(financeRateMatch[1]);
+  }
+  const logisticsRateMatch = blob.match(
+    new RegExp(`monatsrate\\s+logistik\\s*${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+  );
+  if (logisticsRateMatch) {
+    logisticsMonthlyRate = parseEuroAmount(logisticsRateMatch[1]);
+  }
+
+  // Primary = Gesamtrate wenn PDF sie nennt; nie Finanzleasing als Gesamtrate ausgeben
+  const rateMatch = monthlyTotalRate != null
+    ? totalRateMatch
+    : (
+      financeRateMatch
+      ?? blob.match(
+        new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)`, 'i'),
+      )
+      ?? blob.match(
+        new RegExp(`(?:brutto|netto)[\\s-]*(?:monats)?rate\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+      )
+      ?? blob.match(
+        new RegExp(`(?:monats)?rate\\s*(?:brutto|netto)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+      )
+      ?? blob.match(
+        new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro|eur)?`, 'i'),
+      )
+      ?? blob.match(
+        new RegExp(`${MONEY_FRAG}\\s*(?:€|euro|eur)?\\s*(?:brutto|netto)\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich)?`, 'i'),
+      )
     );
-  if (rateMatch) {
+  if (monthlyTotalRate != null) {
+    monthlyRate = monthlyTotalRate;
+  } else if (rateMatch) {
     monthlyRate = parseEuroAmount(rateMatch[1]);
-    const rateCtx = String(rateMatch[0] || '');
+  }
+  if (rateMatch || monthlyTotalRate != null) {
+    const rateCtx = String(totalRateMatch?.[0] || rateMatch?.[0] || '');
     if (/\bnetto\b/i.test(rateCtx)) monthlyRateBasis = 'net';
     else if (/\bbrutto\b/i.test(rateCtx)) monthlyRateBasis = 'gross';
   }
@@ -328,6 +359,7 @@ export function parseMagicOfferIntent(text = '') {
   } else if (/\bspirit\b/.test(blob)) trimHint = 'spirit';
   else if (/\bvision\b/.test(blob)) trimHint = 'vision';
   else if (/\b(?:core|cor)\b/.test(blob)) trimHint = 'core';
+  else if (/\bgt\b/.test(blob)) trimHint = 'gt';
 
   const equipmentKeys = [];
   if (/\bwarmepumpe\b/.test(blob) || /(^|[^a-z0-9])wp([^a-z0-9]|$)/.test(blob)) {
@@ -335,6 +367,13 @@ export function parseMagicOfferIntent(text = '') {
   }
   if (/\bahk\b|\banhaenger(?:kupplung)?\b|\banhänger(?:kupplung)?\b/.test(blob)) {
     equipmentKeys.push('towbar');
+  }
+  // Zubehör aus PDF (kein Katalog-Package)
+  const winterWheelsMatch = raw.match(/Winterr[aä]der(?:\s+\d+\s*Zoll)?/i)
+    || blob.match(/winterr[aä]der(?:\s+\d+\s*zoll)?/i);
+  if (winterWheelsMatch) {
+    const winterLabel = String(winterWheelsMatch[0] || '').replace(/\s+/g, ' ').trim();
+    if (winterLabel) pushPackage('winter_wheels', /zoll/i.test(winterLabel) ? winterLabel : 'Winterräder');
   }
 
   let transmissionRequirement = null;
@@ -371,7 +410,11 @@ export function parseMagicOfferIntent(text = '') {
   }
 
   let motorHint = null;
-  if (/\blong\s*range\b|\b81[,.]?4\s*-?\s*kwh\b|\b81[,.]?4\b/.test(blob)) {
+  // „Allradantrieb“ hat keine Wortgrenze nach allrad
+  const hasAwd = /\bawd\b|\ballrad/.test(blob);
+  if (/\b84\s*kwh\b/.test(blob)) {
+    motorHint = hasAwd ? 'ev-84-awd' : 'ev-84';
+  } else if (/\blong\s*range\b|\b81[,.]?4\s*-?\s*kwh\b|\b81[,.]?4\b/.test(blob)) {
     motorHint = 'ev-long';
   } else if (
     /\bstandard\s*range\b/.test(blob)
@@ -381,9 +424,9 @@ export function parseMagicOfferIntent(text = '') {
   ) {
     motorHint = 'ev-std';
   }
-  if (/\bawd\b|\ballrad\b/.test(blob) && (motorHint === 'ev-long' || /\b81[,.]?4\b/.test(blob))) {
+  if (motorHint === 'ev-long' && hasAwd) {
     motorHint = 'ev-long-awd';
-  } else if (/\bawd\b|\ballrad\b/.test(blob) && !motorHint) {
+  } else if (!motorHint && hasAwd) {
     motorHint = 'ev-long-awd';
   }
 
@@ -406,6 +449,9 @@ export function parseMagicOfferIntent(text = '') {
       transferCost,
       monthlyRate,
       monthlyRateBasis,
+      monthlyTotalRate,
+      financeLeaseRate,
+      logisticsMonthlyRate,
       listPrice,
       listPriceBasis,
       durationMonths,

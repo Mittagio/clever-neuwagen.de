@@ -114,6 +114,40 @@
   font-weight: 500;
 }
 
+.sur-card__fact--briefing .sur-card__fact-title {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6f6b64;
+}
+
+.sur-card__local-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.sur-card__local-action {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #5e44a5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sur-card__local-action:hover {
+  color: #43307a;
+}
+
 .sur-card__fact-items {
   list-style: none;
   margin: 0.2rem 0 0;
@@ -274,6 +308,11 @@
   font-size: 0.8125rem;
   line-height: 1.35;
   color: #6b7280;
+}
+
+.sur-card__hero-sub--muted {
+  color: #8b93a3;
+  font-weight: 500;
 }
 
 .sur-card__hero--action-first .sur-card__hero-sub {
