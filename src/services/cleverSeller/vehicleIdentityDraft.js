@@ -110,7 +110,17 @@ function resolveColorAgainstCatalog(modelKey, colorRaw) {
       status: IDENTITY_SLOT_STATUS.RESOLVED,
     };
   }
-  // „weiß“ / „schwarz“ etc. behalten – Angebotstool präzisiert
+  // Basisfarbe als Kundenwunsch sicher speichern – Katalogfarbe später lokal im Offer
+  const basePreference = /^(weiss|weiß|schwarz|blau|grau|silber|rot|gruen|grün|terracotta)(?:\s*metallic)?$/i
+    .test(String(colorRaw || '').trim())
+    || /^(weiss|weiß|schwarz|blau|grau|silber|rot|gruen|grün)/i.test(needle);
+  if (basePreference) {
+    return {
+      canonical: null,
+      colorId: null,
+      status: IDENTITY_SLOT_STATUS.CAPTURED,
+    };
+  }
   return {
     canonical: null,
     colorId: null,
@@ -282,7 +292,7 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
     const winter = packageHaystack.match(/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i);
     if (winter) pushPackage(/connect/i.test(winter[0]) ? 'Winter-Connect-Paket' : 'Winterpaket');
     const driveWise = packageHaystack.match(/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i);
-    if (driveWise) pushPackage('DriveWise Paket');
+    if (driveWise) pushPackage('Drive Wise');
     // Nur explizites „Business Paket“ – nacktes „Business“ → customerType, kein Paket raten
     const businessPaket = packageHaystack.match(/\bbusiness\s*-?\s*paket\b/i);
     if (businessPaket) pushPackage('Business Paket');
@@ -355,6 +365,7 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
       canonical: colorResolved.canonical,
       status: colorRaw
         ? (colorResolved.status === IDENTITY_SLOT_STATUS.RESOLVED
+          || colorResolved.status === IDENTITY_SLOT_STATUS.CAPTURED
           ? IDENTITY_SLOT_STATUS.CAPTURED
           : IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT)
         : IDENTITY_SLOT_STATUS.OPEN,
@@ -418,6 +429,7 @@ export function applyIdentityFollowUpPatch(draft, patch = {}) {
         raw: String(patch.color),
         canonical: resolved.canonical,
         status: resolved.status === IDENTITY_SLOT_STATUS.RESOLVED
+          || resolved.status === IDENTITY_SLOT_STATUS.CAPTURED
           ? IDENTITY_SLOT_STATUS.CAPTURED
           : IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
       });
@@ -738,9 +750,13 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
     facts,
     sellerInput,
     customerId: payload.customerId || lead?.id || null,
-    modelKey: payload.vehicle?.modelKey || payload.preparedOffer?.vehicle?.modelKey || null,
-    model: payload.vehicle?.model || null,
-    trim: payload.vehicle?.trim || null,
+    modelKey: payload.modelKey
+      || payload.focusModelKey
+      || payload.vehicle?.modelKey
+      || payload.preparedOffer?.vehicle?.modelKey
+      || null,
+    model: payload.vehicle?.model || payload.model || null,
+    trim: payload.vehicle?.trim || payload.trim || null,
     vehicleLabel: payload.vehicleLabel || null,
     existingDraft: payload.vehicleIdentityDraft
       || existingStored?.vehicleIdentityDraft

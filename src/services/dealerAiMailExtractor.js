@@ -108,6 +108,8 @@ export function cleanMailHtmlArtifacts(raw) {
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/tr>/gi, '\n')
+    // E-Mail in spitzen Klammern behalten, bevor generische Tags entfernt werden
+    .replace(/<([^<>\s]+@[^<>\s]+)>/g, ' $1 ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\t/g, ' ')
     .replace(/\u00a0/g, ' ')
@@ -247,6 +249,16 @@ function findThreadCutIndex(lines, fromIdx = 0) {
 
 function isBoilerplateLine(line) {
   return SIGNATURE_BOILERPLATE_PATTERNS.some((re) => re.test(line));
+}
+
+/** Grußformeln sind nie Personennamen. */
+function isMailGreetingLine(line = '') {
+  const t = String(line || '').trim();
+  if (!t) return false;
+  if (SIGNATURE_START_PATTERNS.some((re) => re.test(t))) return true;
+  return /^(?:viele|beste|freundliche|herzliche|liebe)\s+gr(?:ü|ue)(?:ß|ss)e?\b/i.test(t)
+    || /^mit\s+freundlichen\s+gr(?:ü|ue)(?:ß|ss)en?\b/i.test(t)
+    || /^(?:mfg|lg|vg)\b\.?$/i.test(t);
 }
 
 /** Signatur für Kontaktdaten behalten, aus Anfragetext entfernen */
@@ -463,8 +475,11 @@ export function parseCustomerNameFromMail(inquiryText, signatureBlock = '') {
   }
 
   const sigLines = linesOf(signatureBlock);
-  for (const line of sigLines) {
-    if (/@/.test(line) || /\d{5,}/.test(line) || isBoilerplateLine(line)) continue;
+  for (let i = 0; i < sigLines.length; i += 1) {
+    const line = sigLines[i];
+    if (!line || /@/.test(line) || /\d{5,}/.test(line) || isBoilerplateLine(line)) continue;
+    // Grußformel selbst nie als Name; Zeile darunter ist starker Kandidat
+    if (isMailGreetingLine(line)) continue;
     const nameLine = line.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)$/);
     if (nameLine) return nameLine[1].trim();
   }

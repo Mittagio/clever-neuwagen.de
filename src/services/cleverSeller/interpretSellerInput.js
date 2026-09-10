@@ -62,7 +62,14 @@ import {
   shouldBindIdentityToOpenOffer,
   validateOfferVehicleIdentity,
   validateOfferPackageAgainstCatalog,
+  validateOfferPowerAgainstCatalog,
+  validateOfferEquipmentAgainstCatalog,
 } from './commercialOfferNl.js';
+import {
+  findSellerAliasesInText,
+  findSellerPowerMentions,
+  parseSellerCommercialAliasShorthand,
+} from './sellerAliasRegistry.js';
 import { resolveRelativeDateTime } from './resolveRelativeDateTime.js';
 import {
   formatCustomerAddressLine,
@@ -125,7 +132,7 @@ const MONTH_MAP = {
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite';
 const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP|Winterpaket|Winter\\s*paket';
-const KIA_INTEREST_COLOR_RE = 'wolfsgrau(?:\\s*metallic)?|schwarz\\w*|wei[sß]{1,2}\\w*|terracotta|blau\\w*|grau\\w*(?:\\s*metallic)?|silber\\w*|rot\\w*|gr[uü]n\\w*';
+const KIA_INTEREST_COLOR_RE = 'wolfsgrau(?:\\s*metallic)?|schwarz\\w*|wei[sß]{1,2}\\w*|\\bwei\\b|terracotta|blau\\w*|grau\\w*(?:\\s*metallic)?|silber\\w*|rot\\w*|gr[uü]n\\w*';
 
 /** Word-boundary-safe match (ß/ä ist in JS ohne `u` kein \\w). */
 function matchColorToken(text = '') {
@@ -204,6 +211,10 @@ function parseRelativeMonthYear(text = '', now = null) {
     'i',
   )) || t.match(new RegExp(
     `\\b(?:plant|planung|liefern|lieferung|bereit|ab|für|zum|im)\\s+(?:das\\s+neue\\s+fahrzeug\\s+)?(?:er\\s+|sie\\s+)?(?:für\\s+|im\\s+|ab\\s+|zum\\s+)?${monthRe}\\.?(?:\\s+(dieses\\s+jahres|diesen\\s+jahres|dieses\\s+jahr|n(?:ä|ae)chsten?\\s+jahres|n(?:ä|ae)chstes\\s+jahr|20\\d{2}|\\d{2}))?\\b`,
+    'i',
+  )) || t.match(new RegExp(
+    // „ungefähr im Dezember benötigen“ / „im Dezember brauche ich …“
+    `\\b(?:ungefähr|ungefaehr|etwa|ca\\.?)?\\s*(?:im|in)\\s+${monthRe}\\.?\\s+(?:benötig\\w*|brauch\\w*)`,
     'i',
   ));
   if (!rel) return null;
@@ -666,7 +677,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     if (colorInSeg?.[1]) {
       const lower = String(colorInSeg[1]).toLowerCase();
       colorBase = lower.startsWith('schwarz') ? 'schwarz'
-        : /^wei[sß]/.test(lower) ? 'weiß'
+        : /^wei([sß]|$)/.test(lower) ? 'weiß'
         : /wolfsgrau/.test(lower) ? 'wolfsgrau metallic'
         : lower.startsWith('blau') ? 'blau'
         : lower.startsWith('grau') ? (/metallic/.test(lower) ? 'grau metallic' : 'grau')
@@ -691,6 +702,43 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const trimLabelRaw = trimRaw ? titleCaseToken(trimRaw.replace(/\s+/g, ' ')) : null;
     const trimLabel = trimLabelRaw && /^cor$/i.test(trimLabelRaw) ? 'Core' : trimLabelRaw;
     const trimValue = trimLabel && /^core$/i.test(trimLabel) ? 'core' : trimLabel;
+    const existingHit = interestHits.find((h) => h.modelKey === modelKey);
+    if (existingHit) {
+      // Gleiches Modell anreichern (EV3 → Air → Long Range), kein Sibling
+      if (trimValue && !existingHit.trim) {
+        existingHit.trim = trimValue;
+        existingHit.value = { ...existingHit.value, trim: trimValue };
+      }
+      if (colorBase && !existingHit.color) {
+        existingHit.color = colorBase;
+        existingHit.value = {
+          ...existingHit.value,
+          color: colorBase,
+          preferredColor: colorBase,
+        };
+      }
+      if (packageLabel && !existingHit.package) {
+        existingHit.package = packageLabel;
+        existingHit.value = {
+          ...existingHit.value,
+          package: packageLabel,
+          equipmentPackage: packageLabel,
+        };
+      }
+      const enrichBits = [
+        modelLabel,
+        existingHit.trim,
+        existingHit.color ? titleCaseToken(existingHit.color) : null,
+        existingHit.package,
+      ].filter(Boolean);
+      existingHit.label = normalizeVehicleDisplayLabel({
+        make: 'Kia',
+        model: modelLabel,
+        trim: existingHit.trim,
+      }) || `Kia ${enrichBits.join(' ')}`;
+      interestMatch = interestRe.exec(t);
+      continue;
+    }
     const labelBits = [modelLabel, trimLabel, colorBase ? titleCaseToken(colorBase) : null, packageLabel]
       .filter(Boolean);
     const label = normalizeVehicleDisplayLabel({
@@ -698,27 +746,25 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       model: modelLabel,
       trim: trimLabel,
     }) || `Kia ${labelBits.join(' ')}`;
-    if (!interestHits.some((h) => h.modelKey === modelKey && h.trim === trimValue)) {
-      interestHits.push({
+    interestHits.push({
+      modelKey,
+      trim: trimValue,
+      color: colorBase,
+      package: packageLabel,
+      label,
+      value: {
+        make: 'Kia',
         modelKey,
         trim: trimValue,
-        color: colorBase,
-        package: packageLabel,
-        label,
-        value: {
-          make: 'Kia',
-          modelKey,
-          trim: trimValue,
-          ...(colorBase ? { color: colorBase, preferredColor: colorBase } : {}),
-          ...(packageLabel ? { package: packageLabel, equipmentPackage: packageLabel } : {}),
-        },
-        rawExpression: interestMatch[0],
-        span: interestMatch[0],
-        matchIndex: interestMatch.index,
-        canonicalValue: alias.canonical ? modelKey.toUpperCase() : null,
-        aliasAmbiguous: alias.ambiguous && !alias.canonical,
-      });
-    }
+        ...(colorBase ? { color: colorBase, preferredColor: colorBase } : {}),
+        ...(packageLabel ? { package: packageLabel, equipmentPackage: packageLabel } : {}),
+      },
+      rawExpression: interestMatch[0],
+      span: interestMatch[0],
+      matchIndex: interestMatch.index,
+      canonicalValue: alias.canonical ? modelKey.toUpperCase() : null,
+      aliasAmbiguous: alias.ambiguous && !alias.canonical,
+    });
     interestMatch = interestRe.exec(t);
   }
 
@@ -876,8 +922,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Trade-in / existing vehicle (Kia-Interesse nicht als Alt-Fzg. werten)
-  const tradeIn = /\b(in\s*zahlung|inzahlungnahme|nehmen wir in zahlung|nehmen wir mit)\b/i.test(t);
-  if (tradeIn) {
+  // hasTradeInCue respektiert Negation („nicht in Zahlung geben“)
+  if (hasTradeInCue(raw)) {
     const tentative = /\b(eventuell|vielleicht|ggf\.?|evtl\.?|gegebenenfalls|könnte|koennte)\b/i.test(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.TRADE_IN_FACT,
@@ -1155,6 +1201,22 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
+  // Seller-Alias „3k“ → 3000 € AZ (nur wenn noch keine AZ)
+  if (!facts.some((f) => f.field === 'downPayment')) {
+    const aliasCommercial = parseSellerCommercialAliasShorthand(raw);
+    if (aliasCommercial.downPayment != null) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'downPayment',
+        value: aliasCommercial.downPayment,
+        label: `${aliasCommercial.downPayment.toLocaleString('de-DE')} € AZ`,
+        confidence: 0.9,
+        rawExpression: aliasCommercial.evidence?.[0] || `${aliasCommercial.downPayment}`,
+        span: aliasCommercial.evidence?.[0] || String(aliasCommercial.downPayment),
+      }));
+    }
+  }
+
   // Freistehende kleine Beträge ohne Cue → unsichere Wunschrate (nicht große AZ)
   if (
     !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
@@ -1262,7 +1324,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const rawColor = color[1];
     const lower = String(rawColor || '').toLowerCase();
     const base = lower.startsWith('schwarz') ? 'schwarz'
-      : lower.startsWith('weiß') || lower.startsWith('weiss') || /^wei[sß]/.test(lower) ? 'weiß'
+      : lower.startsWith('weiß') || lower.startsWith('weiss') || /^wei([sß]|$)/.test(lower) ? 'weiß'
       : /wolfsgrau/.test(lower) ? 'wolfsgrau metallic'
       : lower.startsWith('blau') ? 'blau'
       : lower.startsWith('grau') ? (/metallic/.test(lower) ? 'grau metallic' : 'grau')
@@ -1395,7 +1457,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     { re: /\btotwinkel(?:assistent)?\b/i, label: 'Totwinkelassistent', id: 'blind_spot' },
     { re: /\bspurhalte(?:assistent)?\b/i, label: 'Spurhalteassistent', id: 'lane_assist' },
     { re: /\bverkehrszeichenerkennung\b|\bvze\b/i, label: 'Verkehrszeichenerkennung', id: 'traffic_sign' },
-    { re: /\bw[äa]rmepumpe\b/i, label: 'Wärmepumpe', id: 'heat_pump' },
+    { re: /\bw[äa]rmepumpe\b|\bwp\b/i, label: 'Wärmepumpe', id: 'heat_pump', validateEquipment: true },
     { re: /\bsitzheizung(?:\s+vorn)?\b/i, label: 'Sitzheizung', id: 'heated_seats' },
     { re: /\blenkradheizung\b/i, label: 'Lenkradheizung', id: 'heated_steering' },
     { re: /\bpanorama(?:dach)?\b/i, label: 'Panoramadach', id: 'panorama_roof' },
@@ -1445,6 +1507,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       continue;
     }
     let packageValidation = null;
+    let equipmentValidation = null;
     if (rule.validatePackage && interestModelKey) {
       packageValidation = validateOfferPackageAgainstCatalog({
         modelKey: interestModelKey,
@@ -1452,33 +1515,224 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         trim: interestTrim,
       });
     }
+    if (rule.validateEquipment && interestModelKey) {
+      equipmentValidation = validateOfferEquipmentAgainstCatalog({
+        modelKey: interestModelKey,
+        equipmentId: rule.id,
+        label: equipLabel,
+      });
+    }
     const packageUnresolved = Boolean(rule.validatePackage && packageValidation && !packageValidation.ok);
+    const equipmentUnresolved = Boolean(rule.validateEquipment && equipmentValidation && !equipmentValidation.ok);
+    const unresolved = packageUnresolved || equipmentUnresolved;
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'equipmentWish',
       value: {
-        // Nur Katalog-ID als canonical – sonst Review-Slot ohne Fake-Resolve
-        id: packageValidation?.ok
-          ? packageValidation.packageId
-          : (rule.validatePackage ? null : rule.id),
-        label: packageValidation?.packageLabel || equipLabel,
+        id: unresolved
+          ? null
+          : (packageValidation?.packageId
+            || equipmentValidation?.equipmentId
+            || rule.id),
+        label: packageValidation?.packageLabel
+          || equipmentValidation?.equipmentLabel
+          || equipLabel,
         priority: equipmentPriority,
         ...(interestModelKey ? { modelKey: interestModelKey, targetScope: 'offer_vehicle' } : {}),
         ...(rule.id === 'winter_wheel_set' ? { alternative: true } : {}),
-        ...(packageUnresolved ? {
+        ...(unresolved ? {
           validationStatus: 'needs_review',
-          validationReason: packageValidation?.reason || 'unknown_or_ambiguous_package',
+          validationReason: packageValidation?.reason
+            || equipmentValidation?.reason
+            || 'unknown_or_ambiguous_package',
         } : {}),
       },
-      label: display,
-      confidence: packageUnresolved
+      label: unresolved ? `${equipLabel} prüfen` : display,
+      confidence: unresolved
         ? 0.72
         : (isRememberCue || equipmentPriority === 'required' ? 0.95 : 0.9),
-      // Einzelner Slot prüfen – kein globaler Turn-Abbruch
-      needsConfirmation: packageUnresolved,
+      needsConfirmation: unresolved,
       rawExpression: equipLabel,
       span: equipLabel,
     }));
+  }
+
+  // Zentrale Seller-Alias-Registry (WP, WIN, DW, LR, …) – Katalog validiert
+  const interestModelKeyForAlias = interestHits.length === 1 ? interestHits[0].modelKey : null;
+  const interestTrimForAlias = interestHits.length === 1 ? (interestHits[0].trim || null) : null;
+  for (const hit of findSellerAliasesInText(raw)) {
+    if (hit.kind === 'color') {
+      if (facts.some((f) => f.field === 'colorPreference')) continue;
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+        field: 'colorPreference',
+        value: hit.canonicalId || hit.label,
+        label: hit.label,
+        confidence: 0.93,
+        rawExpression: hit.matched,
+        span: hit.matched,
+      }));
+      continue;
+    }
+    if (hit.kind === 'propulsion') {
+      if (facts.some((f) => f.field === 'motorPreference' || f.field === 'batteryPreference')) continue;
+      if (hit.canonicalId === 'long_range' || hit.canonicalId === 'standard_range') {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+          field: 'motorPreference',
+          value: { id: hit.canonicalId, label: hit.label, hint: hit.label },
+          label: hit.label,
+          confidence: 0.93,
+          rawExpression: hit.matched,
+          span: hit.matched,
+        }));
+      } else if (hit.canonicalId === 'awd' || hit.canonicalId === 'rwd') {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+          field: 'motorPreference',
+          value: { id: hit.canonicalId, label: hit.label, drive: hit.canonicalId },
+          label: hit.label,
+          confidence: 0.9,
+          rawExpression: hit.matched,
+          span: hit.matched,
+        }));
+      }
+      continue;
+    }
+    if (hit.kind === 'trim') {
+      // Trim meist schon am Interest; Alias nur wenn fehlend
+      if (interestHits.length === 1 && !interestHits[0].trim) {
+        interestHits[0].trim = hit.label;
+      }
+      continue;
+    }
+    if (hit.field === 'towHitchRequired') {
+      if (facts.some((f) => f.field === 'towHitchRequired')) continue;
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+        field: 'towHitchRequired',
+        value: true,
+        label: 'AHK · wichtig',
+        confidence: 0.95,
+        rawExpression: hit.matched,
+        span: hit.matched,
+      }));
+      continue;
+    }
+    if (hit.kind === 'equipment' || hit.kind === 'package') {
+      const already = facts.some((f) => (
+        f.field === 'equipmentWish'
+        && (
+          f.value?.id === hit.canonicalId
+          || /wärmepumpe|heat_pump/i.test(String(f.label || '')) && hit.canonicalId === 'heat_pump'
+          || /drive\s*wise/i.test(String(f.label || '')) && /drive\s*wise/i.test(hit.label)
+          || /^winter/i.test(String(f.label || '')) && hit.canonicalId === 'winter'
+        )
+      ));
+      if (already) continue;
+
+      let packageValidation = null;
+      let equipmentValidation = null;
+      if (hit.validatePackage && interestModelKeyForAlias) {
+        packageValidation = validateOfferPackageAgainstCatalog({
+          modelKey: interestModelKeyForAlias,
+          packageLabel: hit.label,
+          trim: interestTrimForAlias,
+        });
+      }
+      if (hit.validateEquipment && interestModelKeyForAlias) {
+        equipmentValidation = validateOfferEquipmentAgainstCatalog({
+          modelKey: interestModelKeyForAlias,
+          equipmentId: hit.canonicalId,
+          label: hit.label,
+        });
+      }
+      const unresolved = (hit.validatePackage && packageValidation && !packageValidation.ok)
+        || (hit.validateEquipment && equipmentValidation && !equipmentValidation.ok);
+      const resolvedId = packageValidation?.ok
+        ? packageValidation.packageId
+        : (equipmentValidation?.ok ? (equipmentValidation.equipmentId || hit.canonicalId) : (
+          (hit.validatePackage || hit.validateEquipment) ? null : hit.canonicalId
+        ));
+      const resolvedLabel = packageValidation?.packageLabel
+        || equipmentValidation?.equipmentLabel
+        || hit.label;
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+        field: 'equipmentWish',
+        value: {
+          id: resolvedId,
+          label: resolvedLabel,
+          ...(interestModelKeyForAlias
+            ? { modelKey: interestModelKeyForAlias, targetScope: 'offer_vehicle' }
+            : {}),
+          ...(unresolved ? {
+            validationStatus: 'needs_review',
+            validationReason: packageValidation?.reason
+              || equipmentValidation?.reason
+              || 'unknown_or_ambiguous',
+          } : {}),
+        },
+        label: unresolved ? `${hit.label} prüfen` : resolvedLabel,
+        confidence: unresolved ? 0.72 : 0.93,
+        needsConfirmation: Boolean(unresolved),
+        rawExpression: hit.matched,
+        span: hit.matched,
+      }));
+    }
+  }
+
+  // Leistungsangabe „229 PS“ → Katalog-Motor, sonst lokaler Offenpunkt
+  if (!facts.some((f) => f.field === 'motorPreference' || f.field === 'batteryPreference')) {
+    for (const power of findSellerPowerMentions(raw)) {
+      const modelKey = interestModelKeyForAlias
+        || interestHits[0]?.modelKey
+        || null;
+      const validated = modelKey
+        ? validateOfferPowerAgainstCatalog({
+          modelKey,
+          powerPs: power.unit === 'ps' ? power.value : null,
+          powerKw: power.unit === 'kw' ? power.value : null,
+          raw: power.raw,
+        })
+        : { ok: false, uncertainty: true, reason: 'missing_model', raw: power.raw };
+      if (validated.ok) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+          field: 'motorPreference',
+          value: {
+            id: validated.engineId,
+            label: validated.engineLabel,
+            powerPs: validated.powerPs,
+            powerKw: validated.powerKw,
+            hint: validated.engineLabel,
+          },
+          label: validated.engineLabel || power.raw,
+          confidence: 0.94,
+          rawExpression: power.raw,
+          span: power.raw,
+        }));
+      } else {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+          field: 'motorPreference',
+          value: {
+            id: null,
+            label: power.raw,
+            powerPs: power.unit === 'ps' ? power.value : null,
+            powerKw: power.unit === 'kw' ? power.value : null,
+            validationStatus: 'needs_review',
+            validationReason: validated.reason || 'unknown_power',
+          },
+          label: `${power.raw} prüfen`,
+          confidence: 0.7,
+          needsConfirmation: true,
+          rawExpression: power.raw,
+          span: power.raw,
+        }));
+      }
+      break;
+    }
   }
 
   // „Business“ / „Privatleasing“ → bestehende Kundengruppe
@@ -1660,7 +1914,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   } else if (
     plannedMonthYear
     && !facts.some((f) => f.field === 'deliveryDeadline' || f.field === 'existingContractEnd')
-    && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin)\b/i.test(t)
+    && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin|benötig|brauch|fahrzeug)\b/i.test(t)
   ) {
     const [year, month] = plannedMonthYear.split('-');
     const monthNames = {

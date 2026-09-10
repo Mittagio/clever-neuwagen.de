@@ -1,9 +1,21 @@
 /**
  * Trade-in / GW-Erkennung – allgemein, nicht modellspezifisch.
  * GW + Fahrzeug → Trade-in Candidate, nicht Vehicle Interest.
+ *
+ * Negation („nicht in Zahlung geben“) ist kein Trade-in-Intent:
+ * Bestandfahrzeug bleibt existingVehicle, kein tradeInRequested.
  */
 
 const TRADE_IN_CUE = /\b(?:gw|gebrauchtwagen|in\s*zahlung|inzahlungnahme|nehmen\s+wir\s+in\s+zahlung|nehmen\s+wir\s+mit|aktuelles?\s+fahrzeug|altes?\s+fahrzeug|kommt\s+zurück|rückläufer|ruecklaeufer|vertrag\s+zum\s+bisherigen)\b/i;
+
+/** Positiv-Cue ohne „in Zahlung“-Phrase (Negation trifft diese nicht). */
+const TRADE_IN_POSITIVE_CUE = /\b(?:gw|gebrauchtwagen|nehmen\s+wir\s+in\s+zahlung|nehmen\s+wir\s+mit|aktuelles?\s+fahrzeug|altes?\s+fahrzeug|kommt\s+zurück|rückläufer|ruecklaeufer|vertrag\s+zum\s+bisherigen)\b/i;
+
+/**
+ * Explizite Ablehnung einer Inzahlungnahme.
+ * „möchte diesen aber nicht in Zahlung geben“ / „keine Inzahlungnahme“ / „bleibt bei mir“.
+ */
+const TRADE_IN_NEGATION = /\b(?:nicht|kein(?:e|en)?)\s+in\s*zahlung(?:nahme)?\b|\bkeine\s+inzahlungnahme\b|\bkein\s+trade[\s-]?in\b|\bnicht\s+in\s*zahlung\s+geben\b|\bbleibt\s+bei\s+mir\b|\bnicht\s+abgeben\b/i;
 
 const MAKE_RE = 'Kia|Ford|VW|Volkswagen|BMW|Mercedes(?:-Benz)?|Audi|Opel|Toyota|Hyundai|Skoda|Škoda|Seat|SEAT|Renault|Peugeot|Suzuki|Dacia|Cupra|Mazda|Nissan|Volvo|Mini|Fiat|Jeep|Smart';
 
@@ -16,8 +28,19 @@ const MULTIWORD_MODELS = [
 /**
  * @param {string} text
  */
+export function hasTradeInNegation(text = '') {
+  return TRADE_IN_NEGATION.test(String(text || ''));
+}
+
+/**
+ * @param {string} text
+ */
 export function hasTradeInCue(text = '') {
-  return TRADE_IN_CUE.test(String(text || ''));
+  const raw = String(text || '');
+  if (!TRADE_IN_CUE.test(raw)) return false;
+  // Reine Negation („nicht in Zahlung“) ohne positiven GW-/Trade-Cue → kein Trade-in
+  if (hasTradeInNegation(raw) && !TRADE_IN_POSITIVE_CUE.test(raw)) return false;
+  return true;
 }
 
 /**
@@ -58,12 +81,17 @@ export function extractTradeInCandidates(text = '') {
   }
 
   // „GW Kia Picanto“ / „GW: Picanto“ / „Inzahlungnahme Ford Kuga“
+  // Negations-Spans („nicht in Zahlung geben“) nicht als Label-Trade-in werten
   const labeled = new RegExp(
     `\\b(?:gw|gebrauchtwagen|in\\s*zahlung(?:nahme)?|aktuelles?\\s+fahrzeug|altes?\\s+fahrzeug)\\s*[:\\-]?\\s*((?:${MAKE_RE})\\s+)?([A-Za-zÄÖÜäöüß0-9-]{2,20})\\b`,
     'gi',
   );
   let m = labeled.exec(raw);
   while (m) {
+    if (isNegatedTradeInSpan(raw, m.index)) {
+      m = labeled.exec(raw);
+      continue;
+    }
     // Skip if already captured as multiword (e.g. GW Smart → only "Smart")
     if (out.some((o) => /smart/i.test(o.make || '') && /smart/i.test(m[0]))) {
       m = labeled.exec(raw);
@@ -105,15 +133,11 @@ export function extractTradeInCandidates(text = '') {
   }
 
   // Fallback: Cue irgendwo + Fahrzeug in derselben Zeile
+  // Wichtig: split statt /^(.*)$/gim — Zero-Length-Match-Loop bei Leerzeilen (\n\n)
   if (!out.length && hasTradeInCue(raw)) {
-    const lineRe = /^(.*)$/gim;
-    let line = lineRe.exec(raw);
-    while (line) {
-      const lineText = line[1];
-      if (!TRADE_IN_CUE.test(lineText)) {
-        line = lineRe.exec(raw);
-        continue;
-      }
+    for (const lineText of raw.split(/\r?\n/)) {
+      if (!lineText.trim()) continue;
+      if (!TRADE_IN_CUE.test(lineText) || isNegatedTradeInSpan(lineText, 0)) continue;
       const veh = lineText.match(new RegExp(`\\b(${MAKE_RE})\\s+([A-Za-zÄÖÜäöüß0-9-]{2,20})\\b`, 'i'));
       if (veh && !isStopModel(veh[2])) {
         out.push({
@@ -125,7 +149,6 @@ export function extractTradeInCandidates(text = '') {
           ambiguous: false,
         });
       }
-      line = lineRe.exec(raw);
     }
   }
 
@@ -141,6 +164,11 @@ export function extractTradeInCandidates(text = '') {
       if (model && !isStopModel(model) && !isSecondVehicleInterestCue(raw, sm[1])) {
         const before = raw.slice(Math.max(0, sm.index - 28), sm.index);
         const around = raw.slice(Math.max(0, sm.index - 12), sm.index + sm[0].length + 28);
+        // Neuwagen-Interesse („interessiere mich für einen Kia EV3“) ≠ Trade-in
+        if (isNewVehicleInterestNear(raw, sm.index, sm[1])) {
+          sm = kiaStandalone.exec(raw);
+          continue;
+        }
         const looksLikeTradeVehicle = /\b(?:hat\s+noch|fährt|faehrt|von\s+20\d{2})\b/i.test(around)
           || /^(?:einen?|seinen?|ihren?)\s+/i.test(String(sm[0]).trim())
           || (
@@ -203,6 +231,29 @@ function extractNearbyYear(text = '', index = 0) {
   if (!m) return null;
   const y = Number(m[1] || m[2]);
   return y >= 1990 && y <= 2100 ? y : null;
+}
+
+/**
+ * „nicht in Zahlung …“ direkt vor dem Match-Span.
+ * @param {string} text
+ * @param {number} index
+ */
+function isNegatedTradeInSpan(text = '', index = 0) {
+  const before = String(text || '').slice(Math.max(0, index - 48), index);
+  return /\b(?:nicht|kein(?:e|en)?)\s*$/i.test(before)
+    || /\b(?:nicht|kein(?:e|en)?)\s+in\s*$/i.test(before)
+    || TRADE_IN_NEGATION.test(String(text || '').slice(Math.max(0, index - 24), index + 48));
+}
+
+/**
+ * Neuwagen-Interesse in der Nähe des Modell-Spans.
+ * @param {string} text
+ * @param {number} index
+ * @param {string} model
+ */
+function isNewVehicleInterestNear(text = '', index = 0, model = '') {
+  const window = String(text || '').slice(Math.max(0, index - 80), index + String(model || '').length + 8);
+  return /\b(?:interess(?:iere|iert|e)|anfrage|angebot|leasing|ausstattung|möchte\s+(?:gern(?:e)?\s+)?(?:einen?|die|das)|liebsten\s+hätte)\b/i.test(window);
 }
 
 /**
