@@ -98,17 +98,34 @@ export function extractStructuredLeadName(raw = '') {
   }
 
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 8);
+  let fromLine = null;
   for (const line of lines) {
     if (/^(?:von|from|betreff|subject|an|to|gesendet|sent|email|e-?mail|tel|telefon|phone)\b/i.test(line)) {
       continue;
     }
     if (STRUCTURED_LEAD_NAME_LABEL.test(line)) continue;
+
+    // „Ehrlich 0173 …“ / „Andreas Ehrlich 0173…“ – Name vor Telefon auf derselben Zeile
+    const nameBeforePhone = line.match(
+      /^([A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]{1,40})?)\s+(?:\+49|0\d)/,
+    );
+    if (nameBeforePhone?.[1]) {
+      const cleaned = sanitizeCustomerNameCandidate(nameBeforePhone[1].trim());
+      if (cleaned) {
+        fromLine = cleaned;
+        break;
+      }
+    }
+
     if (/@/.test(line) || /\d{5,}/.test(line)) {
       // „Familie Müller, optional mail: …“ → Name vor Mail noch retten
       const familyOnMailLine = line.match(/^familie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
       if (familyOnMailLine) {
         const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyOnMailLine[1]}`);
-        if (cleaned) return cleaned;
+        if (cleaned) {
+          fromLine = cleaned;
+          break;
+        }
       }
       continue;
     }
@@ -117,16 +134,43 @@ export function extractStructuredLeadName(raw = '') {
     const familyLine = line.match(/^familie\s+([A-Za-zÄÖÜäöüß-]{2,40})\b/i);
     if (familyLine) {
       const cleaned = sanitizeCustomerNameCandidate(`Familie ${familyLine[1]}`);
-      if (cleaned) return cleaned;
+      if (cleaned) {
+        fromLine = cleaned;
+        break;
+      }
     }
 
     // „Alexander Schlayer“ oder „Schlayer Alexander Aalen“
     if (/^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß'-]+){1,3}$/.test(line)
       && line.length <= 60) {
       const cleaned = sanitizeCustomerNameCandidate(line);
-      if (cleaned) return cleaned;
+      if (cleaned) {
+        fromLine = cleaned;
+        break;
+      }
     }
   }
+
+  // E-Mail lokal: nachname-vorname@ → Vorname Nachname
+  let fromEmail = null;
+  const email = text.match(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/)?.[1];
+  if (email) {
+    const local = String(email.split('@')[0] || '');
+    const parts = local.split(/[-_.]/).filter(Boolean);
+    if (parts.length === 2 && /^[a-zäöüß]+$/i.test(parts[0]) && /^[a-zäöüß]+$/i.test(parts[1])) {
+      const last = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+      const first = parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase();
+      const cleaned = sanitizeCustomerNameCandidate(`${first} ${last}`);
+      if (cleaned) fromEmail = cleaned;
+    }
+  }
+
+  // Nur Nachname in Zeile + passende Mail → voller Name aus Mail
+  if (fromLine && fromEmail && !/\s/.test(fromLine)) {
+    if (fromEmail.toLowerCase().includes(fromLine.toLowerCase())) return fromEmail;
+  }
+  if (fromLine) return fromLine;
+  if (fromEmail) return fromEmail;
   return null;
 }
 
@@ -278,6 +322,9 @@ export function extractInboundContact(text = '') {
     inquiryText: mail.inquiryText || raw,
     isForwarded: Boolean(mail.isForwarded || forwardRaw),
     sourceHint,
+    onBehalfOf: mail.onBehalfOf || null,
+    onBehalfPlace: mail.onBehalfPlace || null,
+    customerMailNote: mail.customerMailNote || null,
   };
 }
 
@@ -319,6 +366,22 @@ export function buildInboundContactFacts(contact = {}) {
       source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
       confidence: 0.92,
       needsConfirmation: true,
+    }));
+  }
+  if (contact.onBehalfOf) {
+    facts.push(createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'onBehalfOf',
+      value: {
+        name: contact.onBehalfOf,
+        place: contact.onBehalfPlace || null,
+        role: 'buyer',
+      },
+      label: contact.onBehalfPlace
+        ? `Im Auftrag von ${contact.onBehalfOf} (${contact.onBehalfPlace})`
+        : `Im Auftrag von ${contact.onBehalfOf}`,
+      source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
+      confidence: 0.93,
     }));
   }
   return facts;
@@ -630,6 +693,7 @@ export function intakeVehicleNeedsModelCheck(fact) {
   const confidence = Number(fact.confidence ?? 1);
   if (fact.value?.ambiguous || fact.ambiguous) return true;
   if (fact.field === 'vehicleInterestMulti') {
+    if (fact.consultationCandidates === true) return false;
     const vals = Array.isArray(fact.value) ? fact.value : [];
     if (vals.length > 1) return true;
     if (/\boder\b|\//i.test(String(fact.label || ''))) return true;
@@ -639,8 +703,13 @@ export function intakeVehicleNeedsModelCheck(fact) {
   return false;
 }
 
+function isConsultationCandidateFact(fact) {
+  return fact?.field === 'vehicleInterestMulti' && fact?.consultationCandidates === true;
+}
+
 function hasEnoughDealFactsForOffer(facts = []) {
-  if (!pickIntakeVehicleFact(facts)) return false;
+  const vehicle = pickIntakeVehicleFact(facts);
+  if (!vehicle || isConsultationCandidateFact(vehicle)) return false;
   return facts.some((f) => (
     f?.field === 'paymentType'
     || f?.field === 'termMonths'
@@ -934,7 +1003,9 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
     recognizedFactChips.push(chip);
   };
 
-  if (vehicle) pushFactChip(vehicleFact?.field || 'vehicleInterest', vehicle, vehicleFact);
+  if (vehicle && !isConsultationCandidateFact(vehicleFact)) {
+    pushFactChip(vehicleFact?.field || 'vehicleInterest', vehicle, vehicleFact);
+  }
   if (payment) pushFactChip('paymentType', payment, paymentFact, paymentFact?.value);
   if (termChip) pushFactChip(termFact?.field || 'termMonths', termChip, termFact, termFact?.value);
   if (mileageChip) {
@@ -1090,7 +1161,8 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
     inbound.contact?.phone || null,
     contactCityCompact,
   ].filter(Boolean).join(' · ') || null;
-  const vehicleLine = vehicle
+  const consultationCase = isConsultationCandidateFact(vehicleFact);
+  const vehicleLine = (!consultationCase && vehicle)
     ? (/^kia\b/i.test(vehicle) ? vehicle : `Kia ${vehicle}`)
     : null;
 
@@ -1106,6 +1178,22 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
       || null
     )
     : null;
+
+  const rangeFact = pickIntakeFact(facts, 'rangeNeed');
+  const importantBits = [
+    rangeFact?.label || null,
+    ...facts.filter((f) => f.field === 'equipmentWish').map((f) => f.label),
+    pickIntakeFact(facts, 'availabilityPreference')?.label || null,
+  ].filter(Boolean);
+  const importantLine = importantBits.length ? [...new Set(importantBits)].join(' · ') : null;
+  const candidatesLine = consultationCase
+    ? String(vehicleFact?.label || '')
+    : null;
+  const openQuestionLine = facts
+    .filter((f) => f.field === 'openCustomerQuestion')
+    .map((f) => f.label)
+    .filter(Boolean)
+    .join(' · ') || null;
 
   // Unsicheres „Bar“ (oft Stadt-Fehlparse) → lokal klären, nie Hero-Chip
   const clarifyItems = [];
@@ -1136,6 +1224,26 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
   const briefingSections = [];
   if (vehicleLine) {
     briefingSections.push({ id: 'customerWants', title: 'Kunde möchte', line: vehicleLine });
+  } else if (consultationCase) {
+    const fuel = pickIntakeFact(facts, 'fuelPreference');
+    const seek = fuel?.value === 'electric' || /elektro/i.test(String(fuel?.label || ''))
+      ? 'vollelektrischen Neuwagen'
+      : 'passendes Fahrzeug';
+    briefingSections.push({
+      id: 'sought',
+      title: 'Sucht',
+      line: seek,
+    });
+  }
+  if (importantLine) {
+    briefingSections.push({ id: 'important', title: 'Wichtig', line: importantLine });
+  }
+  if (candidatesLine) {
+    briefingSections.push({
+      id: 'modelCandidates',
+      title: 'Interessante Modelle',
+      line: candidatesLine,
+    });
   }
   if (maritalLine) {
     briefingSections.push({ id: 'customerPicture', title: 'Kundenbild', line: maritalLine });
@@ -1149,8 +1257,24 @@ export function buildInboundIntakePresentation(inbound = {}, turn = {}) {
     briefingSections.push({ id: 'commercial', title: payment, line: leasingLine });
   } else if (clearCash && !leasingLine) {
     briefingSections.push({ id: 'commercial', title: 'Konditionen', line: 'Kauf / Bar' });
-  } else if (payment && !leasingLine && payment !== 'Kauf') {
+  } else   if (payment && !leasingLine && payment !== 'Kauf') {
     briefingSections.push({ id: 'commercial', title: 'Konditionen', line: payment });
+  }
+  const financeWish = pickIntakeFact(facts, 'financeWish');
+  if (financeWish?.label && (payment === 'Finanzierung' || paymentFact?.value === 'financing')) {
+    const commercial = briefingSections.find((s) => s.id === 'commercial' || s.id === 'leasingWish');
+    if (commercial && !commercial.line.includes('Jahreszins')) {
+      commercial.line = [commercial.line, financeWish.label].filter(Boolean).join(' · ');
+    } else if (!commercial) {
+      briefingSections.push({
+        id: 'commercial',
+        title: 'Finanzierung',
+        line: financeWish.label,
+      });
+    }
+  }
+  if (openQuestionLine) {
+    briefingSections.push({ id: 'open', title: 'Offen', line: openQuestionLine });
   }
   if (contactLine) {
     briefingSections.push({ id: 'contact', title: 'Kontakt', line: contactLine });
@@ -1375,11 +1499,18 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
     }
 
     const hasVehicle = Boolean(presentation.vehicleLine);
+    const consultationCase = Boolean(
+      (turn?.extractedFacts || turn?.sellerFacts || []).some((f) => (
+        f?.field === 'vehicleInterestMulti' && f?.consultationCandidates === true
+      )),
+    );
     const primaryCta = isAmbiguous
       ? 'Treffer prüfen & weitermachen'
-      : hasVehicle
-        ? 'Angebot vorbereiten'
-        : 'Angaben übernehmen';
+      : consultationCase
+        ? 'Passende Fahrzeuge finden'
+        : hasVehicle
+          ? 'Angebot vorbereiten'
+          : 'Angaben übernehmen';
 
     return {
       title: '',
@@ -1409,7 +1540,9 @@ export function buildInboundLeadReviewModel(inbound = null, turn = {}) {
             action: 'accept_inbound_lead',
             leadId: inbound.matchedLeadId || null,
             tone: 'primary',
-            intentChipId: hasVehicle ? 'angebot' : undefined,
+            intentChipId: consultationCase
+              ? undefined
+              : (hasVehicle ? 'angebot' : undefined),
           }],
         secondaryActions: [],
       }],

@@ -4,6 +4,12 @@
  */
 import { SELLER_FACT_CLASS, SELLER_FACT_SOURCE } from './sellerFactTypes.js';
 import { createExtractedFact } from './cleverSellerTurnResultSchema.js';
+import {
+  SELLER_MODEL_ALIASES,
+  resolveSellerModelAlias,
+} from './sellerAliasRegistry.js';
+
+export { SELLER_MODEL_ALIASES, resolveSellerModelAlias };
 
 export const ZERO_LOSS_BUCKET = {
   STRUCTURED_CUSTOMER_FACT: 'structured_customer_fact',
@@ -15,18 +21,6 @@ export const ZERO_LOSS_BUCKET = {
   PREPARED_ACTION: 'prepared_action',
   UNRESOLVED_NOTE: 'unresolved_note',
 };
-
-/** Bekannte Kia-Tippfehler / Umgangssprache → kanonisches Modell (nur mit Registry-Support).
- *  PV≠EV: Explizites „PV5“ darf niemals still zu EV5 werden (eigene Modellfamilie).
- */
-export const SELLER_MODEL_ALIASES = Object.freeze({
-  eq2: 'ev2',
-  eq3: 'ev3',
-  eq4: 'ev4',
-  eq5: 'ev5',
-  'e v2': 'ev2',
-  'e-v2': 'ev2',
-});
 
 const FILLER_TOKENS = new Set([
   'der', 'die', 'das', 'ein', 'eine', 'einen', 'einem', 'einer',
@@ -40,22 +34,6 @@ const FILLER_TOKENS = new Set([
   // Intent-Wörter (prepare_offer etc.) – keine Soft-Notiz
   'angebot', 'angebote', 'mach', 'mache', 'machen', 'erstell', 'erstelle', 'erstellen',
 ]);
-
-/**
- * @param {string} rawMention
- * @returns {{ canonical: string|null, ambiguous: boolean, rawExpression: string }}
- */
-export function resolveSellerModelAlias(rawMention = '') {
-  const rawExpression = String(rawMention || '').trim();
-  const key = rawExpression.toLowerCase().replace(/\s+/g, ' ');
-  const canonical = SELLER_MODEL_ALIASES[key] || null;
-  if (!canonical) {
-    // Kein Alias-Treffer ≠ Unsicherheit: „EV4“/„Sportage“ sind kanonisch und
-    // brauchen keine Confirm nur weil sie nicht in der Tippfehler-Tabelle stehen.
-    return { canonical: null, ambiguous: false, rawExpression };
-  }
-  return { canonical, ambiguous: false, rawExpression };
-}
 
 /**
  * @param {object} fact

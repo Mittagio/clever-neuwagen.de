@@ -236,6 +236,137 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       touchedProfile = true;
     }
 
+    if (field === 'annualMileageVariants' && Array.isArray(value) && value.length) {
+      const variants = [...new Set(value.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0))];
+      if (variants.length) {
+        profile.annualMileageVariants = variants;
+        // Primary-Slot offen lassen bei Mehrfachvarianten (kein last-wins)
+        if (variants.length === 1) {
+          wish.mileagePerYear = variants[0];
+          profile.annualKm = variants[0];
+          touchedWish = true;
+        }
+        for (const km of variants) {
+          profile.understoodLabels = pushUnique(
+            profile.understoodLabels ?? [],
+            `${Number(km).toLocaleString('de-DE')} km/Jahr`,
+          );
+        }
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'batteryVariantWishes' && Array.isArray(value) && value.length) {
+      profile.batteryVariantWishes = value.map((v) => (
+        typeof v === 'object' && v
+          ? { id: v.id || null, label: String(v.label || '').trim() }
+          : { id: null, label: String(v).trim() }
+      )).filter((v) => v.label);
+      for (const v of profile.batteryVariantWishes) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], v.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'leaseCalcScenarioWishes' && Array.isArray(value) && value.length) {
+      profile.leaseCalcScenarioWishes = value.map((s) => (
+        typeof s === 'object' && s
+          ? {
+            id: s.id || null,
+            label: String(s.label || '').trim(),
+            downPayment: s.downPayment ?? null,
+            maxMonthlyRate: s.maxMonthlyRate ?? null,
+          }
+          : { id: null, label: String(s).trim() }
+      )).filter((s) => s.label);
+      for (const s of profile.leaseCalcScenarioWishes) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], s.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'leaseTotalMileageWishes' && Array.isArray(value) && value.length) {
+      profile.leaseTotalMileageWishes = value.map((s) => (
+        typeof s === 'object' && s
+          ? {
+            quantity: s.quantity ?? null,
+            termMonths: s.termMonths ?? null,
+            totalKm: s.totalKm ?? null,
+            annualMileage: s.annualMileage ?? null,
+            label: String(s.label || '').trim(),
+          }
+          : { label: String(s).trim() }
+      )).filter((s) => s.label || s.totalKm != null);
+      for (const s of profile.leaseTotalMileageWishes) {
+        if (s.label) {
+          profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], s.label);
+        }
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'onBehalfOf' && (value || fact.label)) {
+      const behalfName = typeof value === 'object' && value
+        ? (value.name || fact.label)
+        : (value || fact.label);
+      const place = typeof value === 'object' ? (value.place || null) : null;
+      profile.onBehalfOf = {
+        name: String(behalfName || '').replace(/^Im Auftrag von\s+/i, '').trim(),
+        place: place || null,
+        role: (typeof value === 'object' && value?.role) || 'buyer',
+      };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'pastVehicleInquiry' && (value || fact.label)) {
+      profile.pastVehicleInquiry = typeof value === 'object' && value
+        ? value
+        : { label: fact.label };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'abrufschein' && value) {
+      profile.abrufschein = true;
+      profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label || 'Abrufschein');
+      touchedProfile = true;
+    }
+
+    if (field === 'subsidyEligibility') {
+      profile.subsidyEligibility = typeof value === 'object' && value
+        ? value
+        : { eligible: false };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'vehicleConditionPreference') {
+      profile.vehicleConditionPreference = typeof value === 'object' && value
+        ? value
+        : { usedOk: true, newRequired: false };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
+    }
+
+    if (field === 'attachmentContext' && (value || fact.label)) {
+      profile.attachmentContext = typeof value === 'object' && value
+        ? { ...value, label: fact.label || value.label || null }
+        : { kind: 'configuration_expected', label: fact.label || String(value) };
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
+    }
+
     if ((field === 'termMonths' || field === 'durationMonths') && value != null) {
       const months = typeof value === 'object' ? value.value : value;
       if (months) {
@@ -268,6 +399,14 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         touchedWish = true;
         touchedProfile = true;
       }
+    }
+
+    if (field === 'preparedOutboundOffer' && value) {
+      profile.preparedOutboundOffer = true;
+      if (fact.label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
+      }
+      touchedProfile = true;
     }
 
     if (field === 'phone') {
@@ -632,6 +771,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       }
       profile.selectedModelKey = value.modelKey;
       profile.modelHint = value.modelKey;
+      profile.consultationPending = false;
       if (String(value.modelKey).toLowerCase().startsWith('ev')) {
         profile.fuel = 'electric';
       }
@@ -680,12 +820,49 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       const keys = normalized.map((e) => e.modelKey).filter(Boolean);
       if (keys.length) {
         profile.modelCandidates = keys;
-        multiVehicleInterests = normalized;
+        // Beratungsfall: Kandidaten nur als Kontext – keine Offer-Tracks
+        if (fact.consultationCandidates === true) {
+          profile.selectedModelKey = profile.selectedModelKey || null;
+          profile.consultationPending = true;
+          multiVehicleInterests = null;
+        } else {
+          multiVehicleInterests = normalized;
+          profile.consultationPending = false;
+        }
       }
       if (fact.label) {
         profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], fact.label);
       }
       // kein selectedModelKey – Mehrdeutigkeit bewusst offen lassen (Tracks werden unten angelegt)
+      touchedProfile = true;
+    }
+
+    if (field === 'rangeNeed' && (value?.km != null || value != null)) {
+      const km = Number(value?.km ?? value);
+      if (Number.isFinite(km) && km > 0) {
+        profile.rangeKmMin = km;
+        profile.priorities = pushUnique(profile.priorities ?? [], 'range');
+        const rangeLabel = value?.approximate
+          ? `ca. ${km} km Reichweite`
+          : `${km} km Reichweite`;
+        profile.understoodLabels = (profile.understoodLabels || [])
+          .filter((l) => !/\b\d+\s*km\s*reichweite\b/i.test(String(l)));
+        profile.understoodLabels = pushUnique(profile.understoodLabels, rangeLabel);
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'financeWish' && value) {
+      const label = String(fact.label || 'niedriger effektiver Jahreszins').trim();
+      profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+      profile.financeWish = value;
+      touchedProfile = true;
+    }
+
+    if (field === 'availabilityPreference' && value) {
+      const label = String(fact.label || 'kurzfristig verfügbar').trim();
+      profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+      profile.availabilityPreference = value;
       touchedProfile = true;
     }
 
@@ -1657,20 +1834,40 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     }
   } else if (
     // Clever Agent V1: Capture mit genug Identity/Konditionen → Concept-Draft (rate null)
+    // Nach Beratungsfall: bewusste Modellwahl (z. B. „EV4“) → genau ein Concept Draft
     facts.some((f) => f.field === 'vehicleInterest' && f.value?.modelKey && !f.needsConfirmation)
-    && facts.some((f) => (
-      !f?.needsConfirmation && (
-        f.field === 'termMonths'
-        || f.field === 'durationMonths'
-        || f.field === 'annualMileage'
-        || f.field === 'colorPreference'
-        || f.field === 'motorPreference'
+    && (
+      facts.some((f) => (
+        !f?.needsConfirmation && (
+          f.field === 'termMonths'
+          || f.field === 'durationMonths'
+          || f.field === 'annualMileage'
+          || f.field === 'colorPreference'
+          || f.field === 'motorPreference'
+        )
+      ))
+      || Boolean(nextLead?.wish?.paymentType || nextLead?.wish?.downPayment
+        || nextLead?.wish?.termMonths || nextLead?.crm?.needProfile?.fuel)
+      || (
+        Array.isArray(nextLead?.crm?.needProfile?.modelCandidates)
+        && nextLead.crm.needProfile.modelCandidates.length > 0
       )
-    ))
+    )
   ) {
     const ensured = ensureConceptOfferDraftFromCapture(nextLead, facts, {
       sellerInput: turn.sellerInput || '',
       createNewAlternative: true,
+      force: Boolean(
+        Array.isArray(nextLead?.crm?.needProfile?.modelCandidates)
+        && nextLead.crm.needProfile.modelCandidates.length > 0
+        && !facts.some((f) => (
+          f.field === 'termMonths'
+          || f.field === 'durationMonths'
+          || f.field === 'annualMileage'
+          || f.field === 'colorPreference'
+          || f.field === 'motorPreference'
+        ))
+      ),
     });
     nextLead = ensured.lead;
   }

@@ -575,7 +575,7 @@ export function validateOfferPackageAgainstCatalog(input = {}) {
     : null;
   const choices = listOfferIdentityPackageChoices(modelKey, { trimId });
   const needle = normalizeModelKey(rawLabel);
-  const hit = choices.find((p) => {
+  const hits = choices.filter((p) => {
     const id = normalizeModelKey(p.id);
     const label = normalizeModelKey(p.label);
     return id === needle
@@ -584,6 +584,15 @@ export function validateOfferPackageAgainstCatalog(input = {}) {
       || needle.includes(label)
       || id.includes(needle);
   });
+  // Eindeutig: exakter Label-/Id-Treffer bevorzugt
+  const exact = hits.filter((p) => {
+    const id = normalizeModelKey(p.id);
+    const label = normalizeModelKey(p.label);
+    return id === needle || label === needle;
+  });
+  const hit = exact.length === 1
+    ? exact[0]
+    : (hits.length === 1 ? hits[0] : null);
   if (hit) {
     return {
       ok: true,
@@ -597,14 +606,166 @@ export function validateOfferPackageAgainstCatalog(input = {}) {
   }
   return {
     ok: false,
-    reason: 'unknown_or_ambiguous_package',
+    reason: hits.length > 1 ? 'ambiguous_package' : 'unknown_or_ambiguous_package',
     uncertainty: true,
     packageId: null,
     packageLabel: rawLabel,
     raw: rawLabel,
     modelKey,
     trimId,
-    candidates: choices.slice(0, 8),
+    candidates: (hits.length ? hits : choices).slice(0, 8),
+  };
+}
+
+const KW_TO_PS = 1.35962;
+
+/**
+ * Leistungsangabe (PS/kW) gegen verifizierte Engine-Daten.
+ * Kein erfundener Motor – nur eindeutiger Katalog-Treffer.
+ *
+ * @param {{ modelKey?: string, powerPs?: number|null, powerKw?: number|null, raw?: string }} input
+ */
+export function validateOfferPowerAgainstCatalog(input = {}) {
+  const modelKey = normalizeModelKey(input.modelKey);
+  const raw = String(input.raw || '').trim();
+  let powerPs = input.powerPs != null ? Number(input.powerPs) : null;
+  let powerKw = input.powerKw != null ? Number(input.powerKw) : null;
+  if (!Number.isFinite(powerPs)) powerPs = null;
+  if (!Number.isFinite(powerKw)) powerKw = null;
+
+  if (!modelKey || (powerPs == null && powerKw == null)) {
+    return {
+      ok: false,
+      uncertainty: true,
+      reason: 'missing_input',
+      engineId: null,
+      engineLabel: null,
+      raw: raw || null,
+    };
+  }
+
+  const entry = resolveConfigureModel(modelKey);
+  const engines = entry?.data?.engines || [];
+  if (!engines.length) {
+    return {
+      ok: false,
+      uncertainty: true,
+      reason: 'no_engines',
+      engineId: null,
+      engineLabel: null,
+      raw: raw || `${powerPs ?? powerKw} ${powerPs != null ? 'PS' : 'kW'}`,
+      modelKey,
+    };
+  }
+
+  const hits = engines.filter((eng) => {
+    const kw = Number(eng.powerKw);
+    if (!Number.isFinite(kw)) return false;
+    if (powerKw != null) return Math.abs(kw - powerKw) <= 1;
+    const ps = Math.round(kw * KW_TO_PS);
+    return Math.abs(ps - powerPs) <= 1;
+  });
+
+  if (hits.length === 1) {
+    const hit = hits[0];
+    return {
+      ok: true,
+      uncertainty: false,
+      engineId: hit.id,
+      engineLabel: hit.name || hit.id,
+      powerKw: hit.powerKw,
+      powerPs: Math.round(Number(hit.powerKw) * KW_TO_PS),
+      raw: raw || `${powerPs ?? powerKw} ${powerPs != null ? 'PS' : 'kW'}`,
+      modelKey,
+    };
+  }
+
+  return {
+    ok: false,
+    uncertainty: true,
+    reason: hits.length > 1 ? 'ambiguous_power' : 'unknown_power',
+    engineId: null,
+    engineLabel: null,
+    raw: raw || `${powerPs ?? powerKw} ${powerPs != null ? 'PS' : 'kW'}`,
+    modelKey,
+    candidates: engines.slice(0, 8).map((e) => ({
+      id: e.id,
+      label: e.name,
+      powerKw: e.powerKw,
+      powerPs: Math.round(Number(e.powerKw) * KW_TO_PS),
+    })),
+  };
+}
+
+/**
+ * Ausstattung (z. B. heat_pump) gegen verifizierte Equipment-Liste.
+ *
+ * @param {{ modelKey?: string, equipmentId?: string, label?: string }} input
+ */
+export function validateOfferEquipmentAgainstCatalog(input = {}) {
+  const modelKey = normalizeModelKey(input.modelKey);
+  const equipmentId = String(input.equipmentId || '').trim().toLowerCase();
+  const label = String(input.label || '').trim();
+  if (!modelKey || (!equipmentId && !label)) {
+    return {
+      ok: false,
+      uncertainty: true,
+      reason: 'missing_input',
+      equipmentId: null,
+      equipmentLabel: label || null,
+    };
+  }
+
+  const entry = resolveConfigureModel(modelKey);
+  const equipment = entry?.data?.equipment || [];
+  const needleId = equipmentId;
+  const needleLabel = normalizeModelKey(label || equipmentId);
+
+  const hit = equipment.find((eq) => {
+    const id = String(eq.id || '').toLowerCase();
+    const name = normalizeModelKey(eq.name || '');
+    if (needleId && (id === needleId || id.endsWith(`-${needleId}`) || id.includes(needleId))) {
+      return true;
+    }
+    if (needleLabel && (name === needleLabel || name.includes(needleLabel) || needleLabel.includes(name))) {
+      return true;
+    }
+    // heat_pump ↔ waermepumpe
+    if (needleId === 'heat_pump' && /waermepumpe|wärmepumpe|heat.?pump/i.test(`${id} ${eq.name || ''}`)) {
+      return true;
+    }
+    return false;
+  });
+
+  if (hit) {
+    return {
+      ok: true,
+      uncertainty: false,
+      equipmentId: hit.id,
+      equipmentLabel: hit.name || label || equipmentId,
+      modelKey,
+    };
+  }
+
+  // Requirement ohne Katalog-Eintrag: als Wunsch zulässig (kein Fake-Paket)
+  if (equipmentId === 'heat_pump' || equipmentId === 'towbar') {
+    return {
+      ok: true,
+      uncertainty: false,
+      equipmentId,
+      equipmentLabel: label || (equipmentId === 'heat_pump' ? 'Wärmepumpe' : 'Anhängerkupplung'),
+      modelKey,
+      asRequirement: true,
+    };
+  }
+
+  return {
+    ok: false,
+    uncertainty: true,
+    reason: 'unknown_equipment',
+    equipmentId: null,
+    equipmentLabel: label || equipmentId,
+    modelKey,
   };
 }
 

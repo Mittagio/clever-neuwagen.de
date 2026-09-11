@@ -110,6 +110,7 @@ export function createExtractedFact({
   previousValue = null,
   correctionSource = null,
   correctedAt = null,
+  consultationCandidates = false,
 } = {}) {
   const displayLabel = normalizeFactDisplayLabel(label, value);
   return {
@@ -128,6 +129,7 @@ export function createExtractedFact({
     ...(previousValue != null ? { previousValue } : {}),
     ...(correctionSource != null ? { correctionSource } : {}),
     ...(correctedAt ? { correctedAt } : {}),
+    ...(consultationCandidates ? { consultationCandidates: true } : {}),
   };
 }
 

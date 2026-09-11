@@ -12,6 +12,8 @@ import { calendarAvailabilityLabel } from './checkCalendarAvailability.js';
 import { INVALID_DISCOUNT_WARNING } from './validateDiscountPercent.js';
 import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js';
 import { detectVehicleTrimConflict } from './detectVehicleTrimConflict.js';
+import { findSendableVehicleOffer } from './determineNextBestSellerAction.js';
+import { RATE_AUTHORITY } from './captureThenOffer.js';
 
 /** Generische Unsicherheits-Narration – nie seller-facing anzeigen. */
 export const GENERIC_CONFIRMATION_WARNING_RE = /Mindestens ein Wert braucht kurze Bestätigung/i;
@@ -263,17 +265,121 @@ function buildOfferConflictBox(discountWarnings = [], turnWarnings = [], facts =
       },
     };
   }
-  const other = turnWarnings.find((w) => (
-    w
-    && !GENERIC_CONFIRMATION_WARNING_RE.test(w)
-    && !/Netto-Betrag erkannt/i.test(String(w))
-  ));
-  if (!other) return null;
+  // Kein generisches „Angaben bitte prüfen“ ohne echten Konflikt
+  return null;
+}
+
+/**
+ * Genau eine Offer-Primary: Vervollständigen vs. An Kunden senden.
+ * Nutzt bestehende Sendability (VehicleOffer) bzw. canCreateOffer+Rate – keine neue Send-Logik.
+ */
+function resolveOfferReviewPrimaryAction({
+  incomplete,
+  payload = {},
+  lead = null,
+  leadId = null,
+  identityConflicts = [],
+} = {}) {
+  if (identityConflicts.length) {
+    return {
+      id: 'review_identity_conflict',
+      label: 'Fahrzeugvariante prüfen',
+      leadId,
+      action: 'resolve_model_conflict',
+      tone: 'primary',
+    };
+  }
+  if (incomplete) {
+    return {
+      id: 'create_offer',
+      label: 'Angebot vervollständigen',
+      leadId,
+      action: 'open_offer_handoff',
+      tone: 'primary',
+    };
+  }
+  const sendable = lead ? findSendableVehicleOffer(lead) : null;
+  if (sendable) {
+    return {
+      id: 'intend_send',
+      label: 'An Kunden senden',
+      leadId,
+      action: 'intend_send',
+      tone: 'primary',
+      cardId: sendable.cardId || null,
+      offerDraftId: sendable.offerDraftId || null,
+    };
+  }
+  const ready = Boolean(payload?.canCreateOffer)
+    && payload?.monthlyRate != null
+    && payload?.rateAuthority === RATE_AUTHORITY.AUTHORITATIVE;
+  if (ready) {
+    return {
+      id: 'create_offer',
+      label: 'An Kunden senden',
+      leadId,
+      action: 'open_offer_handoff',
+      tone: 'primary',
+    };
+  }
   return {
-    title: 'Angaben bitte prüfen',
-    body: String(other),
-    action: null,
+    id: 'create_offer',
+    label: 'Angebot vervollständigen',
+    leadId,
+    action: 'open_offer_handoff',
+    tone: 'primary',
   };
+}
+
+/**
+ * Lokaler Identity-Hinweis (kein Choice-Wolken-Primary).
+ */
+function buildOfferLocalClarify({
+  identityConflicts = [],
+  identityMissing = [],
+  incomplete = false,
+  missingRate = false,
+} = {}) {
+  if (identityConflicts[0]) {
+    const c = identityConflicts[0];
+    return {
+      title: 'Fahrzeugvariante prüfen',
+      body: [
+        c.draftValue != null ? `Akte: ${c.draftValue}` : null,
+        c.pdfValue != null ? `PDF: ${c.pdfValue}` : null,
+        c.label || null,
+      ].filter(Boolean).join(' · ') || String(c.label || 'Bitte Variante prüfen.'),
+      actionLabel: 'prüfen',
+      action: 'resolve_model_conflict',
+      field: c.field || null,
+    };
+  }
+  const slot = identityMissing[0];
+  if (slot) {
+    const title = slot.id === 'offer_color'
+      ? 'Farbe prüfen'
+      : (slot.id === 'offer_motor'
+        ? 'Variante prüfen'
+        : (slot.id === 'offer_packages' ? 'Ausstattung prüfen' : 'Angabe prüfen'));
+    return {
+      title,
+      body: slot.label || null,
+      actionLabel: 'prüfen',
+      action: 'clarify_offer_identity_focus',
+      field: slot.field || null,
+      insertText: slot.choices?.[0]?.insertText || slot.choices?.[0]?.label || null,
+    };
+  }
+  if (incomplete && missingRate) {
+    return {
+      title: 'Noch offen',
+      body: 'Rate',
+      actionLabel: null,
+      action: null,
+      field: 'monthlyLeasingRate',
+    };
+  }
+  return null;
 }
 
 function isCustomerAkteScope(turn = {}) {
@@ -802,10 +908,10 @@ export function buildUniversalActionSections(turn = {}) {
       || m.id === 'offer_packages'
       || m.id === 'offer_color'
     ));
+    // Identity-Missing ≠ Screen-incomplete (lokaler Hinweis statt Choice-Wolke)
     const incomplete = offerSectionSource.payload?.canCreateOffer === false
       || offerSectionSource.payload?.missingRate
       || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate')
-      || identityMissing.length > 0
       || offerSectionSource.status === 'blocked';
     const wish = turn.usedCustomerContext || {};
     const inherited = [
@@ -835,26 +941,13 @@ export function buildUniversalActionSections(turn = {}) {
       lineParts.push(purchase.label);
     } else if (!incomplete && offerSectionSource.payload?.monthlyRate != null) {
       lineParts.push(`${Number(offerSectionSource.payload.monthlyRate).toLocaleString('de-DE')} €/Monat`);
-    } else if (
+    } else     if (
       incomplete
       || offerSectionSource.payload?.missingRate
       || offerSectionSource.payload?.invalidateVehicleRate
     ) {
       lineParts.push('Rate noch offen');
     }
-    const offerEdit = Boolean(offerCtx?.offerId);
-    const offerPrimaryLabel = incomplete
-      ? 'Angebot vervollständigen'
-      : (offerEdit ? 'Angebot bearbeiten' : 'Angebot erstellen');
-    const identityActions = identityMissing.flatMap((m) => (
-      (m.choices || []).slice(0, 4).map((choice) => ({
-        id: `${m.id}-${choice.id || choice.label}`,
-        label: choice.label,
-        action: 'clarify_offer_identity',
-        insertText: choice.insertText || choice.label,
-        tone: 'secondary',
-      }))
-    ));
     const clarifyPrompts = [
       (turn.missingInformation || []).find((m) => m.id === 'monthly_leasing_rate')?.label || null,
       ...identityMissing.map((m) => m.label).filter(Boolean),
@@ -865,17 +958,33 @@ export function buildUniversalActionSections(turn = {}) {
     const identityConflicts = Array.isArray(offerSectionSource.payload?.identityConflicts)
       ? offerSectionSource.payload.identityConflicts
       : [];
-    const conflictActions = identityConflicts.flatMap((c) => (
-      (c.choices || []).slice(0, 2).map((choice) => ({
-        id: `conflict-${c.field}-${choice.id}`,
-        label: choice.label,
-        action: 'resolve_identity_conflict',
-        field: c.field,
-        value: choice.value,
-        insertText: choice.value,
-        tone: choice.id === 'take_pdf' ? 'primary' : 'secondary',
-      }))
-    ));
+    const missingRate = Boolean(
+      offerSectionSource.payload?.missingRate
+      || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate'),
+    );
+    // Identity-Choices nicht als Primary-Wolke – nur lokaler Hinweis
+    const localClarify = buildOfferLocalClarify({
+      identityConflicts,
+      identityMissing: identityConflicts.length ? [] : identityMissing,
+      incomplete,
+      missingRate,
+    });
+    const primaryAction = resolveOfferReviewPrimaryAction({
+      incomplete,
+      payload: offerSectionSource.payload || {},
+      lead: turn.lead || turn.workingLead || null,
+      leadId: turn.resolvedCustomer?.id || null,
+      identityConflicts,
+    });
+    const secondaryActions = [];
+    if (incomplete || missingRate) {
+      secondaryActions.push({
+        id: 'upload_pdf',
+        label: 'PDF hochladen',
+        action: 'upload_pdf',
+        tone: 'compact',
+      });
+    }
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
@@ -908,47 +1017,17 @@ export function buildUniversalActionSections(turn = {}) {
           to: discount.label,
         } : null,
       ].filter(Boolean),
-      primaryActions: identityConflicts.length
-        ? conflictActions
-        : (incomplete
-          ? [
-            ...identityActions,
-            {
-              id: 'create_offer',
-              label: offerPrimaryLabel,
-              leadId: turn.resolvedCustomer?.id || null,
-              action: 'open_offer_handoff',
-              tone: 'primary',
-            },
-            { id: 'upload_pdf', label: 'PDF hochladen', action: 'upload_pdf', tone: 'secondary' },
-          ]
-          : [
-            {
-              id: 'create_offer',
-              label: offerPrimaryLabel,
-              leadId: turn.resolvedCustomer?.id || null,
-              action: 'open_offer_handoff',
-              tone: 'primary',
-            },
-          ]),
-      secondaryActions: [
-        {
-          id: 'toggle_context',
-          label: 'Erkannte Angaben anzeigen',
-          action: 'toggle_context',
-          tone: 'compact',
-        },
-        {
-          id: 'discard',
-          label: 'Verwerfen',
-          action: 'discard',
-          tone: 'compact',
-        },
-      ],
+      primaryActions: [primaryAction],
+      secondaryActions,
+      localClarify,
       // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
       clarifyPrompt: identityConflicts.length
         ? null
-        : (incomplete ? (clarifyPrompts.join(' · ') || 'Welche Monatsrate möchtest du hinterlegen?') : null),
+        : (incomplete
+          ? (missingRate
+            ? 'Noch offen: Rate'
+            : (clarifyPrompts[0] || localClarify?.body || null))
+          : null),
     });
     }
   } else if (offerClarify && !sections.some((s) => s.kind === 'offer_change')) {
@@ -2063,12 +2142,7 @@ export function buildUniversalReviewModel(turn = {}) {
       groups: contentGroups,
     }
     : null;
-  const offerCollapsedContext = compactOfferReview
-    ? {
-      summary: offerHero?.conditionsLine || null,
-      groups: collapsedGroups,
-    }
-    : null;
+  const offerCollapsedContext = null;
   const visibleGroups = (appointmentMessageReview || compactOfferReview)
     ? []
     : contentGroups;
@@ -2084,11 +2158,17 @@ export function buildUniversalReviewModel(turn = {}) {
       listPriceLine: offerHero?.listPriceLine || null,
       inCustomerAkte,
       conflict: offerConflictBox,
+      localClarify: (actionSections.find((s) => (
+        s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
+      ))?.localClarify) || null,
+      openLine: (actionSections.find((s) => (
+        s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
+      ))?.clarifyPrompt) || null,
     }
     : null;
 
-  // Toggle-Label an Offer-Sections anhängen, falls noch nicht gesetzt
-  if (compactOfferReview && collapsedGroups.length) {
+  // Offer-Normalzustand: kein „Erkannte Angaben“-Toggle / kein Review-Chrome
+  if (compactOfferReview) {
     for (const sec of actionSections) {
       if (
         sec.kind === 'offer_prepare'
@@ -2097,14 +2177,11 @@ export function buildUniversalReviewModel(turn = {}) {
         || sec.kind === 'offer_and_appointment_review'
       ) {
         if (!Array.isArray(sec.secondaryActions)) sec.secondaryActions = [];
-        if (!sec.secondaryActions.some((a) => a.action === 'toggle_context')) {
-          sec.secondaryActions.unshift({
-            id: 'toggle_context',
-            label: 'Erkannte Angaben anzeigen',
-            action: 'toggle_context',
-            tone: 'compact',
-          });
-        }
+        sec.secondaryActions = sec.secondaryActions.filter((a) => (
+          a?.action !== 'toggle_context'
+          && a?.action !== 'discard'
+          && a?.id !== 'discard'
+        ));
       }
     }
   }
@@ -2303,8 +2380,11 @@ export function buildUniversalReviewModel(turn = {}) {
                         ? (offerIncompleteOnly
                           ? 'Angebot vervollständigen'
                           : (actionSections.some((s) => s.batch === true || s.id === 'offer_prepare_batch')
-                            ? 'Übernehmen'
-                            : (turn.currentOfferContext?.offerId ? 'Angebot bearbeiten' : 'Angebot erstellen')))
+                            ? 'Angebot vervollständigen'
+                            : ((actionSections.find((s) => (
+                              s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
+                            ))?.primaryActions?.[0]?.label)
+                              || 'An Kunden senden')))
                       : historyOnly
                         ? 'Im Verlauf öffnen'
                         : trackFeedback
@@ -2329,8 +2409,8 @@ export function buildUniversalReviewModel(turn = {}) {
       : clarifyGoal
       ? 'Nur Nachricht schreiben'
       : trackFeedback
-        ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Verwerfen')
-        : 'Verwerfen',
+        ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || 'Schließen')
+        : null,
     reviseOfferCta: trackFeedback
       ? (actionSections.find((s) => s.kind === 'track_feedback')?.reviseOfferLabel || null)
       : null,

@@ -151,13 +151,14 @@ assert.notEqual(pdfReview?.reviewType, 'appointment_and_message_review');
 assert.equal(pdfReview?.compactUi, true);
 assert.equal(pdfReview?.groups?.length || 0, 0, 'Fact-Gruppen sind eingeklappt');
 assert.ok(
-  (pdfReview?.collapsedContext?.groups || []).length > 0,
-  'Erkannte Angaben liegen in collapsedContext',
+  pdfReview?.collapsedContext == null
+  || !(pdfReview?.collapsedContext?.groups || []).length,
+  'Offer ohne Erkannte-Angaben-Collapse',
 );
 assert.ok(
   pdfReview?.actionSections?.some((s) => (
     (s.primaryActions || []).some((a) => (
-      /Angebot (erstellen|bearbeiten|vervollständigen)/i.test(a.label || '')
+      /Angebot vervollständigen|An Kunden senden/i.test(a.label || '')
     ))
   )),
 );

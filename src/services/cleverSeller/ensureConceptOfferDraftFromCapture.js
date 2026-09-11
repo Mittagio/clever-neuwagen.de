@@ -17,6 +17,17 @@ import { stripNonAuthoritativeOfferRates } from './captureThenOffer.js';
  */
 export function ensureConceptOfferDraftFromCapture(lead = {}, facts = [], options = {}) {
   const sellerInput = String(options.sellerInput || '').trim();
+  if (facts.some((f) => f.field === 'vehicleInterestMulti' && f.consultationCandidates === true)) {
+    return { lead, offerDraftId: null };
+  }
+  const profile = lead?.crm?.needProfile || {};
+  if (
+    profile.consultationPending === true
+    && !profile.selectedModelKey
+    && !facts.some((f) => f.field === 'vehicleInterest' && f.value?.modelKey)
+  ) {
+    return { lead, offerDraftId: null };
+  }
   const modelKey = options.modelKey
     || facts.find((f) => f.field === 'vehicleInterest' && f.value?.modelKey && !f.needsConfirmation)
       ?.value?.modelKey
@@ -28,9 +39,13 @@ export function ensureConceptOfferDraftFromCapture(lead = {}, facts = [], option
       f.field === 'termMonths'
       || f.field === 'durationMonths'
       || f.field === 'annualMileage'
+      || f.field === 'annualMileageVariants'
+      || f.field === 'leaseCalcScenarioWishes'
+      || f.field === 'downPayment'
       || f.field === 'colorPreference'
       || f.field === 'motorPreference'
       || f.field === 'batteryPreference'
+      || f.field === 'batteryVariantWishes'
     )
   ));
   if (!hasCommercialOrIdentity && options.force !== true) {

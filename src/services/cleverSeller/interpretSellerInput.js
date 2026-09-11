@@ -59,6 +59,7 @@ import {
   parseCommercialMonthlyRate,
   parseImplicitDownPayment,
   parseOfferIdentityFollowUp,
+  hasPreparedOutboundOfferCue,
   shouldBindIdentityToOpenOffer,
   validateOfferVehicleIdentity,
   validateOfferPackageAgainstCatalog,
@@ -130,18 +131,108 @@ const MONTH_MAP = {
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
 const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
-const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite';
+const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite|Passenger';
 const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP|Winterpaket|Winter\\s*paket';
-const KIA_INTEREST_COLOR_RE = 'wolfsgrau(?:\\s*metallic)?|schwarz\\w*|wei[sß]{1,2}\\w*|\\bwei\\b|terracotta|blau\\w*|grau\\w*(?:\\s*metallic)?|silber\\w*|rot\\w*|gr[uü]n\\w*';
+/**
+ * Farb-Aliases exakt (kein Substring-Fragment).
+ * „grundsätzlich“ darf NICHT als grün/grau matchen (`gr[uü]n\\w*` war False-Positive).
+ */
+const COLOR_ALIAS_RE = String.raw`wolfsgrau(?:\s+metallic)?|schwarz(?:e[rnms]?)?|wei(?:ss|ß)(?:e[rnms]?)?|terracotta|blau(?:e[rnms]?)?|grau(?:e[rnms]?)?(?:\s+metallic)?|silber(?:ne?[rnms]?)?|rot(?:e[rnms]?)?|gr(?:ü|ue)n(?:e[rnms]?)?`;
 
 /** Word-boundary-safe match (ß/ä ist in JS ohne `u` kein \\w). */
 function matchColorToken(text = '') {
   return String(text || '').match(
-    new RegExp(`(?:^|[^A-Za-z0-9_])(${KIA_INTEREST_COLOR_RE})(?![A-Za-z0-9_])`, 'i'),
+    new RegExp(`(?:^|[^A-Za-zÄÖÜäöüß0-9_])(${COLOR_ALIAS_RE})(?![A-Za-zÄÖÜäöüß0-9_])`, 'i'),
   );
 }
+
+const EXISTING_VEHICLE_OWNERSHIP_RE = /\b(?:ich\s+fahre(?:\s+aktuell)?|(?:aktuell\s+)?fährt(?:\s+er|\s+sie|\s+aktuell)?|mein\s+bisheriges|derzeit\s+habe\s+ich|mein\s+(?:aktuelles\s+)?(?:auto|fahrzeug|wagen)|aktuell(?:es)?\s+(?:auto|fahrzeug|wagen)|besitzt|vorhanden|bleibt\s+bei\s+mir|in\s+zahlung|gebrauchtwagen|\bgw\b|hat\s+(?:einen?|einen|eine)\s+)/i;
+
+const RANGE_CONTEXT_RE = /\b(?:wltp|reichweite|pro\s+ladung|mit\s+(?:einer\s+)?ladung|km\s*wltp)\b/i;
+const FINANCE_APR_CONTEXT_RE = /\b(?:effektiv(?:er)?\s+jahreszins|sollzins|zinssatz|jahreszins|%\s*effektiv|0(?:[.,]\d+)?\s*%\s*(?:bzw\.?|oder)|niedriger\s+effektiv)\b/i;
+
+const COMPARISON_LIST_CUE_RE = /\b(?:interessant(?:e|en)?|interessieren|besonders\s+interessant|z\.?\s*b\.?|beispielsweise|vergleichbar(?:e)?|oder\s+vergleichbare|bzw\.?)\b/i;
+
+/** Cross-brand / Beratungs-Kandidaten (kein Besitz, kein Concept-Draft). */
+const COMPARISON_MODEL_SPECS = [
+  {
+    re: /\b(?:kia\s+)?niro(?:\s+ev)?\b/i,
+    modelKey: 'niro',
+    make: 'Kia',
+    label: 'Kia Niro EV',
+  },
+  {
+    re: /\b(?:hyundai\s+)?kona(?:\s+elektro)?\b/i,
+    modelKey: 'kona',
+    make: 'Hyundai',
+    label: 'Hyundai Kona Elektro',
+  },
+  {
+    re: /\brenaul?t\s*4\s*[\/|]\s*5(?:\s*e-?tech)?\b/i,
+    modelKey: 'renault-4-5',
+    make: 'Renault',
+    label: 'Renault 4/5 E-Tech',
+  },
+  {
+    re: /\brenaul?t\s+(?:5|4)\s*e-?tech\b/i,
+    modelKey: 'renault-4-5',
+    make: 'Renault',
+    label: 'Renault 4/5 E-Tech',
+  },
+];
+
+function extractComparisonModelCandidates(text = '') {
+  const t = String(text || '');
+  if (!COMPARISON_LIST_CUE_RE.test(t) && !/\boder\b.+\boder\b/i.test(t)) {
+    return [];
+  }
+  const out = [];
+  const seen = new Set();
+  for (const spec of COMPARISON_MODEL_SPECS) {
+    if (!spec.re.test(t)) continue;
+    const key = String(spec.modelKey).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      modelKey: key,
+      model: spec.label.replace(/^(?:Kia|Hyundai|Renault)\s+/i, ''),
+      make: spec.make,
+      label: spec.label,
+    });
+  }
+  return out;
+}
+
+function hasExistingVehicleOwnershipCue(text = '', matchSpan = '') {
+  const t = String(text || '');
+  if (EXISTING_VEHICLE_OWNERSHIP_RE.test(t)) return true;
+  if (hasTradeInCue(t)) return true;
+  const span = String(matchSpan || '');
+  if (!span) return false;
+  const idx = t.toLowerCase().indexOf(span.toLowerCase());
+  if (idx < 0) return false;
+  const window = t.slice(Math.max(0, idx - 80), Math.min(t.length, idx + span.length + 40));
+  return EXISTING_VEHICLE_OWNERSHIP_RE.test(window);
+}
+
+/**
+ * Früherer Kontakt / Historie („vor einigen Jahren … Niro“) ≠ aktuelles Fahrzeuginteresse.
+ */
+function isHistoricalVehicleMention(text = '', matchIndex = 0, matchLen = 0) {
+  const t = String(text || '');
+  if (!t || matchIndex < 0) return false;
+  const start = Math.max(0, matchIndex - 100);
+  const end = Math.min(t.length, matchIndex + matchLen + 60);
+  const window = t.slice(start, end);
+  const historyCue = /vor\s+(?:\d+\s+)?(?:einigen\s+)?jahren|damals|früher|seinerzeit|bereits\s+(?:einmal|früher)|kontakt\s+wegen|wegen\s+einem|hatten\s+.{0,40}kontakt/i.test(window);
+  if (!historyCue) return false;
+  // Aktuelles Angebot/Suche in unmittelbarer Nähe hält Interesse
+  const local = t.slice(matchIndex, Math.min(t.length, matchIndex + 70));
+  if (/\b(?:aktuell|jetzt|suche|interess|brauche|angebot\s+für)\b/i.test(local)) return false;
+  return true;
+}
 const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
-const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne)$/i;
+const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne|er|sie|es|ich|wir|man|mein|seine|ihre)$/i;
 
 function titleCaseToken(token = '') {
   const s = String(token).trim();
@@ -157,6 +248,10 @@ function titleCaseToken(token = '') {
 
 function formatPhoneLabel(raw = '') {
   const digits = String(raw).replace(/\D/g, '');
+  // Mobilfunk 015x/016x/017x: 0xxx + Rest (nie 01758 aus 0175…)
+  if (digits.length >= 10 && digits.length <= 12 && /^01[567]\d/.test(digits)) {
+    return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+  }
   if (digits.length === 11 && digits.startsWith('0')) {
     return `${digits.slice(0, 4)} ${digits.slice(4)}`;
   }
@@ -639,8 +734,10 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Vehicle interest (Kia Neuwagen) – Trade-in-Modelle (GW …) ausschließen
+  // Historie („vor einigen Jahren Niro“) ≠ aktuelles Interesse
   const tradeInKeys = tradeInModelKeys(raw);
   const interestHits = [];
+  const historicalHits = [];
   const interestRe = new RegExp(
     `\\b(?:kia\\s+)?(${KIA_INTEREST_MODEL_RE})(?:\\s+(${KIA_INTEREST_TRIM_RE}))?\\b`,
     'gi',
@@ -655,6 +752,20 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     const modelKey = (alias.canonical || modelRaw).toLowerCase();
     // „GW Picanto“ → kein Interesse; „außerdem Picanto“ bleibt Interesse
     if (tradeInKeys.has(modelKey) && !isSecondVehicleInterestCue(raw, modelRaw)) {
+      interestMatch = interestRe.exec(t);
+      continue;
+    }
+    if (isHistoricalVehicleMention(t, interestMatch.index, interestMatch[0].length)) {
+      const histLabel = /^ev\d$/i.test(modelKey)
+        ? modelKey.toUpperCase()
+        : titleCaseToken(modelRaw);
+      if (!historicalHits.some((h) => h.modelKey === modelKey)) {
+        historicalHits.push({
+          modelKey,
+          label: `Kia ${histLabel}`,
+          span: interestMatch[0],
+        });
+      }
       interestMatch = interestRe.exec(t);
       continue;
     }
@@ -768,6 +879,24 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     interestMatch = interestRe.exec(t);
   }
 
+  // Flotten-/Mengen-Cue: „1 × Kia PV5“, „3 × EV9“
+  for (const hit of interestHits) {
+    const key = String(hit.modelKey || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!key) continue;
+    const qtyRe = new RegExp(`(\\d{1,3})\\s*[×x]\\s*(?:kia\\s+)?${key}\\b`, 'i');
+    const qtyMatch = t.match(qtyRe);
+    if (!qtyMatch) continue;
+    const quantity = Number(qtyMatch[1]);
+    if (!Number.isFinite(quantity) || quantity < 1 || quantity > 999) continue;
+    hit.quantity = quantity;
+    hit.value = { ...hit.value, quantity };
+  }
+
+  // Beratungsfall: Vergleichs-/Beispielmodelle → modelCandidates, kein Fokusmodell
+  const comparisonCandidates = extractComparisonModelCandidates(raw);
+  const isConsultationCandidateList = comparisonCandidates.length >= 2
+    || (comparisonCandidates.length >= 1 && /\bvergleichbar/i.test(t));
+
   const interestTrimConflict = detectInterestTrimConflict(interestHits);
   if (interestTrimConflict.conflict) {
     pushFact(facts, createExtractedFact({
@@ -781,12 +910,43 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       confidence: 0.95,
       needsConfirmation: true,
     }));
+  } else if (isConsultationCandidateList) {
+    const byKey = new Map();
+    for (const c of comparisonCandidates) {
+      byKey.set(String(c.modelKey).toLowerCase(), c);
+    }
+    // Kia-Hits aus demselben Vergleichssatz anreichern (Niro EV), ohne Fokus zu setzen
+    for (const h of interestHits) {
+      const key = String(h.modelKey || '').toLowerCase();
+      if (!key || byKey.has(key)) continue;
+      if (COMPARISON_LIST_CUE_RE.test(t)) {
+        byKey.set(key, {
+          modelKey: key,
+          model: h.value?.model || key,
+          make: h.value?.make || 'Kia',
+          label: h.label,
+          trim: h.trim || null,
+        });
+      }
+    }
+    const merged = [...byKey.values()];
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
+      field: 'vehicleInterestMulti',
+      value: merged,
+      label: merged.map((c) => c.label).join(' · '),
+      confidence: 0.92,
+      consultationCandidates: true,
+    }));
   } else if (interestHits.length >= 2) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_INTEREST,
       field: 'vehicleInterestMulti',
       value: interestHits.map((h) => h.value),
-      label: interestHits.map((h) => h.label.replace(/^Kia\s+/i, 'Kia ')).join(' / '),
+      label: interestHits.map((h) => {
+        const bare = String(h.label || '').replace(/^Kia\s+/i, '');
+        return h.quantity != null ? `${h.quantity}× ${bare}` : `Kia ${bare}`;
+      }).join(' / '),
       confidence: 0.93,
     }));
   } else if (interestHits.length === 1) {
@@ -812,8 +972,48 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
+  for (const hist of historicalHits) {
+    if (facts.some((f) => f.field === 'pastVehicleInquiry' && f.value?.modelKey === hist.modelKey)) {
+      continue;
+    }
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.SELLER_NOTE,
+      field: 'pastVehicleInquiry',
+      value: { modelKey: hist.modelKey, status: 'historical' },
+      label: `Früherer Kontakt: ${hist.label}`,
+      confidence: 0.9,
+      rawExpression: hist.span,
+      span: hist.span,
+    }));
+  }
+
   // Powertrain / Batterie (explizit genannt – nie raten)
-  if (!facts.some((f) => f.field === 'motorPreference' || f.field === 'batteryPreference')) {
+  // Variantenwünsche „großer + kleiner Akku“ ≠ konkrete kWh / kein zweiter Track
+  if (
+    !facts.some((f) => f.field === 'batteryVariantWishes')
+    && (
+      /(?:gro(?:ß|ss)e[nmr]?|großen).{0,32}(?:und|sowie|bzw\.?).{0,32}kleine[nmr]?\s+akk/i.test(t)
+      || (
+        /\bgro(?:ß|ss)e[nmr]?\s+akk/i.test(t)
+        && /\bkleine[nmr]?\s+akk/i.test(t)
+      )
+    )
+  ) {
+    const variants = [
+      { id: 'large', label: 'großer Akku' },
+      { id: 'small', label: 'kleiner Akku' },
+    ];
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'batteryVariantWishes',
+      value: variants,
+      label: 'großer und kleiner Akku',
+      confidence: 0.93,
+      rawExpression: 'großer/kleiner Akku',
+      span: 'großer/kleiner Akku',
+    }));
+  }
+  if (!facts.some((f) => f.field === 'motorPreference' || f.field === 'batteryPreference' || f.field === 'batteryVariantWishes')) {
     const longRange = t.match(/\blong\s*range\b/i);
     const standardRange = t.match(/\bstandard\s*range\b/i);
     const kwh = t.match(/\b(\d{2,3}(?:[.,]\d+)?)\s*kwh\b/i);
@@ -848,6 +1048,20 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         rawExpression: kwh[0],
         span: kwh[0],
       }));
+    } else {
+      const largeBatt = t.match(/\b(?:gro(?:ß|ss)er?|grosse[rn]?)\s+(?:batterie|akku)\b/i);
+      const smallBatt = t.match(/\b(?:kleiner?|kleine[rn]?)\s+(?:batterie|akku)\b/i);
+      if (largeBatt && !smallBatt) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+          field: 'batteryPreference',
+          value: { id: 'large', label: 'große Batterie' },
+          label: 'große Batterie',
+          confidence: 0.9,
+          rawExpression: largeBatt[0],
+          span: largeBatt[0],
+        }));
+      }
     }
   }
 
@@ -986,7 +1200,19 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     || (!hasInterest ? existingCandidates[0] : null)
     || existingCandidates.find((c) => !/^kia$/i.test(c.make))
     || null;
-  if (existingPick) {
+  // Besitzkontext ODER klassischer Dealer-Dump (Fremdmarke neben Kia-Interesse, kein Vergleichsliste)
+  const dealerDumpExisting = Boolean(
+    existingPick
+    && hasInterest
+    && !isConsultationCandidateList
+    && !COMPARISON_LIST_CUE_RE.test(t)
+    && !/^kia$/i.test(existingPick.make),
+  );
+  if (
+    existingPick
+    && !isConsultationCandidateList
+    && (hasExistingVehicleOwnershipCue(raw, existingPick.span) || dealerDumpExisting)
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.EXISTING_VEHICLE,
       field: 'existingVehicle',
@@ -1041,13 +1267,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: 'Leasing',
       confidence: 0.94,
     }));
-  } else if (/\b(?:barangebot|barkauf|barzahlung)\b/i.test(t)) {
+  } else if (
+    /\b(?:barangebot|barkauf|barzahlung)\b/i.test(t)
+    || /(?:^|[\s,;/\n])BAR(?:[\s,;/\n]|$)/.test(raw)
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'paymentType',
       value: 'cash',
       label: 'Kauf / Bar',
-      confidence: 0.9,
+      confidence: 0.92,
     }));
   } else if (/\bfinanzierung\b/i.test(t) && !/\b(?:privat)?leasing\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
@@ -1081,7 +1310,21 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Wunschrate / commercial – unit-aware (km ≠ Kaufpreis; Anzahlung ≠ Kaufpreis)
-  const purchasePrice = extractPurchasePriceUnitAware(raw);
+  // „bis 37.000 €“ = Preisdeckel / Budget, keine AZ
+  let purchasePrice = extractPurchasePriceUnitAware(raw);
+  if (!purchasePrice) {
+    const bisPrice = raw.match(/\bbis\s*(?:zu\s*)?(\d{1,3}(?:[.\s]\d{3})+|\d{4,7})\s*(?:€|euro)/i);
+    if (bisPrice?.[1]) {
+      const value = Number(String(bisPrice[1]).replace(/[.\s]/g, ''));
+      if (Number.isFinite(value) && value >= 5000 && value <= 200000) {
+        purchasePrice = {
+          value,
+          label: `bis ${value.toLocaleString('de-DE')} €`,
+          confidence: 0.93,
+        };
+      }
+    }
+  }
   if (purchasePrice && !/\b(?:anzahlung|sonderzahlung|az)\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
@@ -1090,13 +1333,15 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: purchasePrice.label,
       confidence: purchasePrice.confidence,
     }));
-    pushFact(facts, createExtractedFact({
-      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
-      field: 'paymentType',
-      value: 'cash',
-      label: 'Kaufangebot',
-      confidence: 0.82,
-    }));
+    if (!facts.some((f) => f.field === 'paymentType')) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'paymentType',
+        value: 'cash',
+        label: 'Kaufangebot',
+        confidence: 0.82,
+      }));
+    }
   }
 
   const termMileage = parseTermAndMileageShorthand(raw);
@@ -1122,6 +1367,44 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  // Dual Lease-Kalkulationsszenarien (ohne Dual-Offer-Shells / commercialScenarios)
+  // Szenario 1: ohne AZ → Monatsrate?  Szenario 2: AZ für Rate unter X?
+  const hasLeaseCalcScenarioPair = (
+    /szenario\s*1/i.test(t)
+    && /szenario\s*2/i.test(t)
+    && /\bohne\s+anzahlung\b/i.test(t)
+    && /unter\s+(\d{2,4})\s*(?:€|euro)?/i.test(t)
+  ) || (
+    /\bohne\s+anzahlung\b/i.test(t)
+    && /(?:rate\s+unter|unter\s+\d{2,4}\s*(?:€|euro).{0,20}rate|damit\s+die\s+monatliche\s+rate\s+unter)/i.test(t)
+    && /\bangezahlt|anzahlung\b/i.test(t)
+  );
+  if (hasLeaseCalcScenarioPair && !facts.some((f) => f.field === 'leaseCalcScenarioWishes')) {
+    const rateCapMatch = t.match(/unter\s+(\d{2,4})\s*(?:€|euro)?/i);
+    const rateCap = rateCapMatch ? Number(rateCapMatch[1]) : null;
+    const scenarios = [
+      {
+        id: 'no_downpayment',
+        downPayment: 0,
+        label: 'ohne Anzahlung – Monatsrate?',
+      },
+      {
+        id: 'rate_under_cap',
+        maxMonthlyRate: rateCap,
+        label: rateCap != null
+          ? `AZ für Rate unter ${rateCap} €`
+          : 'AZ für Zielrate ermitteln',
+      },
+    ];
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'leaseCalcScenarioWishes',
+      value: scenarios,
+      label: scenarios.map((s) => s.label).join(' · '),
+      confidence: 0.94,
+    }));
+  }
+
   const commercialRate = parseCommercialMonthlyRate(raw);
   const maxRateMatch = t.match(
     /\b(?:max(?:imal)?\.?|höchstens|hoechstens|bis\s+zu)\s*(\d{2,4})\s*(?:€|euro)?\b/i,
@@ -1136,8 +1419,10 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   const maxRateValue = maxRateMatch
     ? Number(String(maxRateMatch[1]).replace(/\D/g, ''))
     : null;
+  const skipSingularCommercialFromScenarios = facts.some((f) => f.field === 'leaseCalcScenarioWishes');
   if (
-    maxRateValue != null
+    !skipSingularCommercialFromScenarios
+    && maxRateValue != null
     && Number.isFinite(maxRateValue)
     && maxRateValue >= 50
     && maxRateValue <= 5000
@@ -1153,7 +1438,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       span: maxRateMatch[0],
     }));
   } else if (
-    commercialRate != null
+    !skipSingularCommercialFromScenarios
+    && commercialRate != null
     && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
   ) {
     const isWunsch = /\bwunschrate\b/i.test(t);
@@ -1167,7 +1453,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   const commercialDown = parseCommercialDownPayment(raw);
-  if (commercialDown != null && !facts.some((f) => f.field === 'downPayment')) {
+  if (
+    !skipSingularCommercialFromScenarios
+    && commercialDown != null
+    && !facts.some((f) => f.field === 'downPayment')
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'downPayment',
@@ -1189,7 +1479,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     hasTermMonths: hasTermFact,
     hasAnnualMileage: hasMileageFact,
   });
-  if (implicitDown != null && !facts.some((f) => f.field === 'downPayment')) {
+  if (
+    implicitDown != null
+    && !facts.some((f) => f.field === 'downPayment')
+    && !facts.some((f) => f.field === 'purchasePrice' && Number(f.value) === Number(implicitDown))
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'downPayment',
@@ -1219,7 +1513,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   // Freistehende kleine Beträge ohne Cue → unsichere Wunschrate (nicht große AZ)
   if (
-    !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
+    !skipSingularCommercialFromScenarios
+    && !facts.some((f) => f.field === 'purchasePrice' || f.field === 'monthlyBudget')
     && !net
     && !/\b(rabatt|sonderrabatt|%\b)/i.test(t)
     && !/\banzahlung|az\b|sonderzahlung\b/i.test(t)
@@ -1259,7 +1554,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   // Nach AZ: freistehende Rate (z. B. „… 0 € Anzahlung, 399 €“) – keine großen AZ-Beträge
   if (
-    !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
+    !skipSingularCommercialFromScenarios
+    && !facts.some((f) => f.field === 'monthlyBudget' || f.field === 'purchasePrice')
     && (facts.some((f) => f.field === 'downPayment') || facts.some((f) => f.field === 'termMonths'))
   ) {
     const rateAfterCommercial = [...t.matchAll(/\b(\d{2,4})\s*(?:€|euro)(?!\w)/gi)]
@@ -1297,6 +1593,18 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       rawExpression: 'sofort verfügbar',
       span: 'sofort',
     }));
+  } else if (
+    /\bkurzfristig\s+verf[üu]gbar\b/i.test(t)
+    || /\bmaximal\s+2\s*[–\-bis]+\s*4\s*wochen\b/i.test(t)
+    || /\b2\s*[–\-]\s*4\s*wochen\b/i.test(t)
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'availabilityPreference',
+      value: { kind: 'short_term', maxWeeks: 4 },
+      label: 'kurzfristig verfügbar / max. 2–4 Wochen',
+      confidence: 0.92,
+    }));
   }
 
   const isRememberCue = /\bmerk(?:e|en)?\s*dir\b|\bmerken\b|\bnotier(?:e|en)?\b/i.test(t);
@@ -1313,6 +1621,44 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       ? 'wichtig'
       : null;
 
+  // Strukturierte Label-Zeilen (Farbe: …) – Wert wörtlich halten, kein Alias-Zwang
+  const labeledColor = raw.match(/\bfarbe\s*:\s*([^\n•|;]+)/i);
+  if (labeledColor?.[1] && !facts.some((f) => f.field === 'colorPreference')) {
+    const colorRaw = String(labeledColor[1]).replace(/\s+/g, ' ').trim()
+      .replace(/[.,;:]+$/g, '')
+      .trim();
+    if (colorRaw && colorRaw.length >= 2 && colorRaw.length <= 60) {
+      const interestModelKey = interestHits.length === 1 ? interestHits[0].modelKey : null;
+      const focusTrackId = offerTrackId
+        || (!interestModelKey ? lead?.crm?.focusedVehicleTrackId : null)
+        || null;
+      let colorValue = colorRaw;
+      if (interestModelKey) {
+        colorValue = {
+          color: colorRaw,
+          targetScope: 'offer_vehicle',
+          modelKey: interestModelKey,
+        };
+      } else if (bindToOpenOffer || focusTrackId) {
+        colorValue = {
+          color: colorRaw,
+          targetScope: 'offer_vehicle',
+          vehicleTrackId: focusTrackId || offerTrackId,
+          ...(offerIdentityMeta || {}),
+        };
+      }
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+        field: 'colorPreference',
+        value: colorValue,
+        label: `Farbe ${colorRaw}`,
+        confidence: 0.94,
+        rawExpression: labeledColor[0],
+        span: labeledColor[0],
+      }));
+    }
+  }
+
   const color = matchColorToken(t);
   // Nur bei Multi-Dump mit per-Spur-Farbe kein zusätzliches globales Chip
   const colorAlreadyOnInterest = Boolean(
@@ -1320,7 +1666,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     && interestHits.length >= 2
     && interestHits.some((h) => h.color),
   );
-  if (color && !colorAlreadyOnInterest) {
+  if (color && !colorAlreadyOnInterest && !facts.some((f) => f.field === 'colorPreference')) {
     const rawColor = color[1];
     const lower = String(rawColor || '').toLowerCase();
     const base = lower.startsWith('schwarz') ? 'schwarz'
@@ -1441,9 +1787,36 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: 'Automatik',
       confidence: existingPick?.gear && /schalter/i.test(existingPick.gear) ? 0.88 : 0.94,
     }));
+  } else if (/\b(?:manuell|schalter|schaltgetriebe)\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'transmissionPreference',
+      value: 'manual',
+      label: 'Manuell',
+      confidence: 0.93,
+    }));
   }
 
-  if (/\belektro(?:auto|fahrzeug|wagen)?\b|\belektrisch\b|\bbev\b/i.test(t) && !/\bhybrid\b/i.test(t)) {
+  if (/\bdiesel\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'fuelPreference',
+      value: 'diesel',
+      label: 'Diesel',
+      confidence: 0.94,
+    }));
+  } else if (/\bbenzin\b/i.test(t) && !/\bhybrid\b/i.test(t)) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'fuelPreference',
+      value: 'petrol',
+      label: 'Benzin',
+      confidence: 0.92,
+    }));
+  } else if (
+    /\bvoll\s*elektrisch|\belektro(?:auto|fahrzeug|wagen)?\b|\belektrisch(?:es|e|er|em)?\b|\bbev\b|\be[-\s]?autos?\b/i.test(t)
+    && !/\bhybrid\b/i.test(t)
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'fuelPreference',
@@ -1453,11 +1826,35 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
+  if (
+    /\bmuss\s+kein\s+neuwagen\b|\bkein\s+neuwagen\s+(?:sein|nötig|erforderlich|muss)\b|\bauch\s+(?:als\s+)?gebraucht|\bjahreswagen\s+(?:ok|möglich|reicht)\b/i.test(t)
+    && !facts.some((f) => f.field === 'vehicleConditionPreference')
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'vehicleConditionPreference',
+      value: { newRequired: false, usedOk: true },
+      label: 'Muss kein Neuwagen sein',
+      confidence: 0.93,
+    }));
+  }
+
+  if (/\babrufschein\b/i.test(t) && !facts.some((f) => f.field === 'abrufschein')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'abrufschein',
+      value: true,
+      label: 'Abrufschein',
+      confidence: 0.94,
+    }));
+  }
+
   const equipmentWishRules = [
     { re: /\btotwinkel(?:assistent)?\b/i, label: 'Totwinkelassistent', id: 'blind_spot' },
     { re: /\bspurhalte(?:assistent)?\b/i, label: 'Spurhalteassistent', id: 'lane_assist' },
     { re: /\bverkehrszeichenerkennung\b|\bvze\b/i, label: 'Verkehrszeichenerkennung', id: 'traffic_sign' },
     { re: /\bw[äa]rmepumpe\b|\bwp\b/i, label: 'Wärmepumpe', id: 'heat_pump', validateEquipment: true },
+    { re: /\bdc[-\s]?schnell(?:lade(?:f[äa]higkeit|n)?)?|\bschnelllade(?:leistung|f[äa]higkeit)\b/i, label: 'gute DC-Ladeleistung', id: 'dc_fast_charging' },
     { re: /\bsitzheizung(?:\s+vorn)?\b/i, label: 'Sitzheizung', id: 'heated_seats' },
     { re: /\blenkradheizung\b/i, label: 'Lenkradheizung', id: 'heated_steering' },
     { re: /\bpanorama(?:dach)?\b/i, label: 'Panoramadach', id: 'panorama_roof' },
@@ -1855,10 +2252,32 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Offer instructions – ungültige %-Werte (z. B. 449) nicht als Rabatt übernehmen
+  // Zins / effektiver Jahreszins ≠ Rabatt
+  const financeAprContext = FINANCE_APR_CONTEXT_RE.test(t)
+    || /\b(?:0(?:[.,]\d+)?\s*%|0,99\s*%).{0,40}(?:zins|effektiv|finanz)/i.test(t)
+    || /\b(?:zins|effektiv|finanz).{0,40}(?:0(?:[.,]\d+)?\s*%|0,99\s*%)/i.test(t);
+  if (financeAprContext) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'financeWish',
+      value: { kind: 'low_effective_interest' },
+      label: 'möglichst niedriger effektiver Jahreszins',
+      confidence: 0.9,
+    }));
+    if (!facts.some((f) => f.field === 'paymentType')) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'paymentType',
+        value: 'financing',
+        label: 'Finanzierung',
+        confidence: 0.9,
+      }));
+    }
+  }
   const discount = t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)\s*(?:sonder)?rabatt\b/i)
-    || t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*%(?!\d)/)
-    || t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*prozent\b/i);
-  if (discount) {
+    || (!financeAprContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*%(?!\d)/))
+    || (!financeAprContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*prozent\b/i));
+  if (discount && !financeAprContext) {
     const hasOfferCue = /\brabatt|angebot|erstell|mach|sonder|leasing|finanz/i.test(t);
     const checked = validateDiscountPercent(discount[1]);
     if (!checked.ok) {
@@ -1976,16 +2395,181 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  // Gesamtlaufleistung (Vertrag) ≠ Jahreskilometer
+  // „48 Monaten und 80.000 km Gesamtlaufleistung“ → annual = total / Jahre
+  const totalMileageCue = /gesamtlaufleistung|vertragslaufleistung|gesamt\s*kilometer|km\s*gesamt\b/i.test(t);
+  if (totalMileageCue) {
+    const totalScenarios = [];
+    const pairRe = /(\d{1,3})\s*fahrzeuge?\b[^\n.]{0,60}?(\d{1,3})\s*monaten?\b[^\n.]{0,80}?(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*km(?:\s*(?:gesamtlaufleistung|vertragslaufleistung))?/gi;
+    let pair = pairRe.exec(t);
+    while (pair) {
+      const quantity = Number(pair[1]);
+      const term = Number(pair[2]);
+      const totalKm = Number(String(pair[3]).replace(/\./g, ''));
+      if (term >= 12 && term <= 72 && totalKm >= 10000 && totalKm <= 500000) {
+        const years = term / 12;
+        const annual = Math.round(totalKm / years);
+        totalScenarios.push({
+          quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
+          termMonths: term,
+          totalKm,
+          annualMileage: annual,
+          label: [
+            quantity ? `${quantity}×` : null,
+            `${term} Monate`,
+            `${totalKm.toLocaleString('de-DE')} km gesamt`,
+            `(${annual.toLocaleString('de-DE')} km/Jahr)`,
+          ].filter(Boolean).join(' · '),
+        });
+      }
+      pair = pairRe.exec(t);
+    }
+    if (!totalScenarios.length) {
+      const looseRe = /(\d{1,3})\s*monaten?\b[^\n.]{0,80}?(\d{1,3}(?:\.\d{3})+|\d{4,7})\s*km\s*(?:gesamtlaufleistung|vertragslaufleistung)/gi;
+      let loose = looseRe.exec(t);
+      while (loose) {
+        const term = Number(loose[1]);
+        const totalKm = Number(String(loose[2]).replace(/\./g, ''));
+        if (term >= 12 && term <= 72 && totalKm >= 10000 && totalKm <= 500000) {
+          const years = term / 12;
+          const annual = Math.round(totalKm / years);
+          totalScenarios.push({
+            quantity: null,
+            termMonths: term,
+            totalKm,
+            annualMileage: annual,
+            label: [
+              `${term} Monate`,
+              `${totalKm.toLocaleString('de-DE')} km gesamt`,
+              `(${annual.toLocaleString('de-DE')} km/Jahr)`,
+            ].join(' · '),
+          });
+        }
+        loose = looseRe.exec(t);
+      }
+    }
+    if (totalScenarios.length) {
+      if (!facts.some((f) => f.field === 'termMonths')) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'termMonths',
+          value: totalScenarios[0].termMonths,
+          label: `${totalScenarios[0].termMonths} Monate`,
+          confidence: 0.94,
+        }));
+      }
+      const annuals = [...new Set(totalScenarios.map((s) => s.annualMileage).filter((n) => n >= 5000 && n <= 80000))];
+      if (annuals.length >= 2 && !facts.some((f) => f.field === 'annualMileageVariants' || f.field === 'annualMileage')) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'annualMileageVariants',
+          value: annuals,
+          label: annuals.map((n) => `${n.toLocaleString('de-DE')} km/Jahr`).join(' sowie '),
+          confidence: 0.93,
+        }));
+      } else if (annuals.length === 1 && !facts.some((f) => f.field === 'annualMileage' || f.field === 'annualMileageVariants')) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'annualMileage',
+          value: annuals[0],
+          label: `${annuals[0].toLocaleString('de-DE')} km/Jahr`,
+          confidence: 0.93,
+        }));
+      }
+      if (!facts.some((f) => f.field === 'leaseTotalMileageWishes')) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'leaseTotalMileageWishes',
+          value: totalScenarios,
+          label: totalScenarios.map((s) => s.label).join(' · '),
+          confidence: 0.93,
+        }));
+      }
+    }
+  }
+
   // Mileage – nur unit-aware; Shorthand setzt annualMileage ggf. schon
   // Trade-in-Odograph („Sportage von 2021 mit ungefähr 70.000 km“) ≠ Wunsch-Jahreskilometer
+  // WLTP / Reichweite ≠ Jahreskilometer
+  // Mehrere Wunsch-km („15.000 sowie 20.000 km/Jahr“) → Varianten, kein last-wins
+  // Gesamtlaufleistung bereits oben als annual/Varianten umgesetzt – Roh-Total nicht als Jahres-km
   const tradeInOdometerContext = /\bvon\s+20\d{2}\b[\s\S]{0,80}\b(?:ca\.?|circa|ungefähr|ungefaehr|etwa)?\s*\d[\d.]*\s*km\b/i.test(raw)
     || /\b(?:ca\.?|circa|ungefähr|ungefaehr|etwa)\s*\d[\d.]*\s*km\b[\s\S]{0,60}\bin\s*zahlung/i.test(raw);
+  const rangeContext = RANGE_CONTEXT_RE.test(t)
+    || /\b(?:ca\.?\s*|circa\s+|mindestens\s+|min\.?\s+)?\d{2,4}\s*km\s*(?:wltp|reichweite|oder\s+mehr)\b/i.test(t)
+    || /\b(?:wltp|reichweite).{0,30}\d{2,4}\s*km\b/i.test(t)
+    || /\bmindestens\s+\d{2,4}\s*km\s+statt\b/i.test(t);
+  const rangeMatch = t.match(
+    /\b(?:ca\.?\s*|circa\s+|mindestens\s+|min\.?\s+)?(\d{2,4})\s*km\s*(?:wltp|reichweite)?(?:\s+oder\s+mehr)?\b/i,
+  ) || t.match(
+    /\b(?:wltp|reichweite)[^\d]{0,24}(?:ca\.?\s*|circa\s+|mindestens\s+)?(\d{2,4})\s*km\b/i,
+  ) || t.match(
+    /\bmindestens\s+(\d{2,4})\s*km\s+statt\b/i,
+  );
+  if (rangeContext && rangeMatch && !facts.some((f) => f.field === 'rangeNeed')) {
+    const kmVal = Number(String(rangeMatch[1]).replace(/\./g, ''));
+    if (kmVal >= 50 && kmVal <= 1200) {
+      const approx = /\bca\.?\b|\bcirca\b/i.test(rangeMatch[0]) || /\boder\s+mehr\b/i.test(t);
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+        field: 'rangeNeed',
+        value: {
+          km: kmVal,
+          approximate: approx,
+          source: /wltp/i.test(t) ? 'wltp' : 'range',
+        },
+        label: approx
+          ? `ca. ${kmVal} km Reichweite`
+          : `${kmVal} km Reichweite`,
+        confidence: 0.93,
+        rawExpression: rangeMatch[0],
+        span: rangeMatch[0],
+      }));
+    }
+  }
+  const normalizeAnnualKm = (rawNum, unitToken = '') => {
+    let value = Number(String(rawNum).replace(/\./g, ''));
+    if (/tkm/i.test(unitToken) && value < 100) value *= 1000;
+    if (value > 0 && value < 1000) value *= 1000;
+    return value;
+  };
+  const multiKmMatch = !tradeInOdometerContext && !rangeContext
+    ? (
+      t.match(
+        /\b(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:sowie|oder|bzw\.?|und)\s+(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km|kilometer)(?:\s*\/?\s*jahr)?\b/i,
+      )
+      || t.match(
+        /\b(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km|kilometer)(?:\s*\/?\s*jahr)?\s*(?:sowie|oder|bzw\.?|und)\s+(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km|kilometer)(?:\s*\/?\s*jahr)?\b/i,
+      )
+    )
+    : null;
+  if (
+    multiKmMatch
+    && !facts.some((f) => f.field === 'annualMileageVariants' || f.field === 'annualMileage')
+  ) {
+    const a = normalizeAnnualKm(multiKmMatch[1], multiKmMatch[0]);
+    const b = normalizeAnnualKm(multiKmMatch[2], multiKmMatch[0]);
+    const variants = [...new Set([a, b].filter((n) => n >= 5000 && n <= 80000))];
+    if (variants.length >= 2) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'annualMileageVariants',
+        value: variants,
+        label: variants.map((n) => `${n.toLocaleString('de-DE')} km/Jahr`).join(' sowie '),
+        confidence: 0.94,
+        rawExpression: multiKmMatch[0],
+        span: multiKmMatch[0],
+      }));
+    }
+  }
   const km = t.match(/\b(\d{1,2}(?:\.\d{3})?|\d{4,6})\s*(?:tkm|km|kilometer)\b/i)
     || t.match(/\bdoch\s+(\d{4,6})\s*(?:km|kilometer)\b/i);
   if (
     km
     && !tradeInOdometerContext
-    && !facts.some((f) => f.field === 'annualMileage')
+    && !rangeContext
+    && !totalMileageCue
+    && !facts.some((f) => f.field === 'annualMileage' || f.field === 'annualMileageVariants')
   ) {
     const value = Number(String(km[1]).replace(/\./g, '')) * (/tkm/i.test(km[0]) && Number(km[1]) < 100 ? 1000 : 1);
     const normalized = value < 1000 ? value * 1000 : value;
@@ -2002,9 +2586,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   } else if (
     !tradeInOdometerContext
+    && !rangeContext
+    && !totalMileageCue
     && termMileage.annualMileage != null
     && Number(termMileage.annualMileage) > 0
-    && !facts.some((f) => f.field === 'annualMileage')
+    && !facts.some((f) => f.field === 'annualMileage' || f.field === 'annualMileageVariants')
   ) {
     const kmLabel = `${termMileage.annualMileage.toLocaleString('de-DE')} km`;
     pushFact(facts, createExtractedFact({
@@ -2048,6 +2634,18 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   // Offene Kundenfragen / Unsicherheiten – keine erfundenen Beträge
   // Kein \\b vor Umlaut (JS \\w kennt ü/ö/ä nicht)
   const openQuestionSpecs = [];
+  if (
+    /nicht\s+(?:für\s+(?:die\s+)?)?(?:bundes)?förderung\s+berechtigt|nicht\s+förderberechtigt|keine\s+(?:anspruch\s+auf\s+)?(?:bundes)?förderung/i.test(t)
+    && !facts.some((f) => f.field === 'subsidyEligibility')
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_NEED,
+      field: 'subsidyEligibility',
+      value: { eligible: false, kind: 'federal' },
+      label: 'Nicht für Bundesförderung berechtigt',
+      confidence: 0.94,
+    }));
+  }
   if (/überführungskosten|ueberfuehrungskosten|überführung(?:skosten)?/i.test(t)
     && /(?:teilen|mitteilen|bitte|erfahren|wie\s+hoch|welche)/i.test(t)) {
     openQuestionSpecs.push({
@@ -2062,11 +2660,19 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: 'weitere Einmalkosten erfragen',
     });
   }
-  if (/(?:mögliche(?:n)?\s+)?förderung|foerderung/i.test(t)
-    && /(?:möglich|vorbehaltlich|eventuell|falls)/i.test(t)) {
+  if (
+    !facts.some((f) => f.field === 'subsidyEligibility' && f.value?.eligible === false)
+    && /(?:e-?auto-?)?förderung|foerderung/i.test(t)
+    && (
+      /förderung\s*2026|(?:e-?auto-?)?förderung.{0,40}\b2026\b|\b2026\b.{0,40}förderung/i.test(t)
+      || /(?:mögliche(?:n)?|vorbehaltlich|eventuell|grundsätzlich|infrage|berücksichtigen)\s+(?:die\s+)?(?:staatliche\s+)?(?:e-?auto-?)?förderung/i.test(t)
+      || /(?:e-?auto-?)?förderung\s+(?:möglich|berücksichtigen|infrage)/i.test(t)
+    )
+    && !/\belektroförderung\b/i.test(t)
+  ) {
     openQuestionSpecs.push({
       topic: 'subsidy',
-      label: 'mögliche Förderung (offen)',
+      label: 'E-Auto-Förderung 2026',
       uncertain: true,
     });
   }
@@ -2074,6 +2680,50 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     openQuestionSpecs.push({
       topic: 'quote_on_basis',
       label: 'Konditionen auf dieser Basis gewünscht',
+    });
+  }
+  if (/\bhsn\s*\/?\s*tsn\b/i.test(t)
+    && /(?:mitteilen|übermitteln|uebermitteln|teilen|bitte|könnten|koennten)/i.test(t)) {
+    openQuestionSpecs.push({
+      topic: 'hsn_tsn',
+      label: 'HSN/TSN je Konfiguration mitteilen',
+    });
+  }
+  if (
+    /mehrkilometer|mehr-?km|kosten\s+(?:pro\s+)?(?:mehr)?kilometer/i.test(t)
+    || (
+      /20\.?000\s*km/i.test(t)
+      && /(?:teurer|kosten|was\s+kostet|wären|bzw)/i.test(t)
+      && /15\.?000\s*km/i.test(t)
+    )
+  ) {
+    openQuestionSpecs.push({
+      topic: 'excess_mileage',
+      label: '20.000 km / Mehrkilometer-Kosten',
+    });
+  }
+  if (
+    /verbrieftem?\s+rückgaberecht|rückgaberecht\s+nach\s+ende|finanzierungsmethode.{0,40}rückgabe/i.test(t)
+  ) {
+    openQuestionSpecs.push({
+      topic: 'finance_with_return',
+      label: 'Finanzierung mit Rückgaberecht prüfen',
+    });
+  }
+  if (
+    /(?:voraussichtlichen?\s+)?lieferzeiten?\b/i.test(t)
+    && /(?:teilen|mitteilen|bitte|freuen|könnten|koennten|mit\b)/i.test(t)
+    && !facts.some((f) => f.field === 'deliveryTimeImportance' || f.field === 'deliveryEstimateMonths')
+  ) {
+    openQuestionSpecs.push({
+      topic: 'delivery_times',
+      label: 'Lieferzeiten mitteilen',
+    });
+  }
+  if (/\bflottenkonditionen\b/i.test(t)) {
+    openQuestionSpecs.push({
+      topic: 'fleet_terms',
+      label: 'Flottenkonditionen',
     });
   }
   for (const q of openQuestionSpecs) {
@@ -2091,6 +2741,37 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       needsConfirmation: Boolean(q.uncertain),
       rawExpression: q.label,
       span: q.label,
+    }));
+  }
+
+  // Anhang-/Konfigurationshinweis – keine Fake-Details ohne Attachment
+  if (
+    !facts.some((f) => f.field === 'attachmentContext')
+    && (
+      /\banbei\b[\s\S]{0,100}\bkonfiguration/i.test(t)
+      || /\bkonfiguration\b[\s\S]{0,80}\b(?:anbei|anhang|anlage|beigefügt|beigelegt)/i.test(t)
+      || /\b(?:übersende|uebersende|sende)\s+ich\s+ihnen\s+die\s+konfiguration\b/i.test(t)
+    )
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.DOCUMENT_FACT,
+      field: 'attachmentContext',
+      value: {
+        kind: 'configuration_expected',
+        status: 'expected',
+      },
+      label: 'Konfiguration liegt im Anhang / muss geprüft werden',
+      confidence: 0.92,
+    }));
+  }
+
+  if (hasPreparedOutboundOfferCue(raw) && !facts.some((f) => f.field === 'preparedOutboundOffer')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.OFFER_INSTRUCTION,
+      field: 'preparedOutboundOffer',
+      value: true,
+      label: 'Angebot bereits vorbereitet',
+      confidence: 0.95,
     }));
   }
 
@@ -2121,7 +2802,10 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       || facts.some((f) => f.field === 'tradeInVehicle' || f.field === 'tradeInRequested')
     )) continue;
     if (legacy.key === 'color' && facts.some((f) => f.field === 'colorPreference')) continue;
-    if (legacy.key === 'discount' && facts.some((f) => f.field === 'discountPercent')) continue;
+    if (legacy.key === 'discount' && (
+      facts.some((f) => f.field === 'discountPercent' || f.field === 'financeWish')
+      || financeAprContext
+    )) continue;
     // Budget/AZ ≠ Angebotsrate – kein paralleles Legacy-rate-Fact
     if (legacy.key === 'rate' && (
       facts.some((f) => f.field === 'monthlyBudget' || f.field === 'downPayment')
@@ -2675,23 +3359,35 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
     const contactFacts = buildInboundContactFacts(inboundContact);
     for (const fact of contactFacts) {
       const key = `${fact.field}:${String(fact.label).toLowerCase()}`;
-      if (!facts.some((f) => `${f.field}:${String(f.label).toLowerCase()}` === key)) {
-        facts.push(fact);
+      if (facts.some((f) => `${f.field}:${String(f.label).toLowerCase()}` === key)) continue;
+      // Gleiche Telefonziffern nicht als zweites Fact mit anderer Formatierung
+      if (fact.field === 'phone' || fact.field === 'mobile') {
+        const digits = String(fact.value || fact.label || '').replace(/\D/g, '');
+        if (digits && facts.some((f) => (
+          (f.field === 'phone' || f.field === 'mobile')
+          && String(f.value || f.label || '').replace(/\D/g, '') === digits
+        ))) {
+          continue;
+        }
       }
+      facts.push(fact);
     }
-    // Voller Inbound-Name schlägt Einzelwort „Marcel“ aus extractNamedCustomerFromInput
+    // Signatur-/Absender-Name schlägt Anrede-Empfänger („Herr Quach“) und Body-Rauschen
     if (inboundContact?.fullName || inboundContact?.lastName) {
       const full = String(
         inboundContact.fullName
         || [inboundContact.firstName, inboundContact.lastName].filter(Boolean).join(' '),
       ).trim();
+      const fullNorm = full.toLowerCase();
       facts = facts.filter((f) => {
         if (f.field !== 'customerName') return true;
         const label = String(f.label || f.value || '').trim();
         if (!label) return false;
-        if (!/\s/.test(label) && full.toLowerCase().includes(label.toLowerCase())) {
-          return false;
-        }
+        const labelNorm = label.toLowerCase();
+        if (labelNorm === fullNorm) return true;
+        if (!/\s/.test(label) && fullNorm.includes(labelNorm)) return false;
+        // Konkurrierender Anrede-/Body-Name → Signatur gewinnt
+        if (full && labelNorm !== fullNorm) return false;
         return true;
       });
       if (full && !facts.some((f) => f.field === 'customerName')) {
@@ -2701,7 +3397,7 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
           value: full,
           label: full,
           source: SELLER_FACT_SOURCE.CUSTOMER_MESSAGE,
-          confidence: 0.9,
+          confidence: 0.92,
           needsConfirmation: true,
         }));
       }

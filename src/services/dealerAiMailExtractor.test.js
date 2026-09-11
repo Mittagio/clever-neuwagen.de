@@ -165,6 +165,7 @@ const behalfMail = [
 const behalfCtx = preprocessCustomerMail(behalfMail);
 assert.equal(behalfCtx.customerName, 'Michael Kübler');
 assert.equal(behalfCtx.onBehalfOf, 'Andreas Kübler');
+assert.equal(behalfCtx.onBehalfPlace, null);
 assert.equal(behalfCtx.customerMailNote, 'Sucht im Auftrag von Andreas Kübler.');
 
 const behalfParsed = parseDealerAiInput(behalfMail);

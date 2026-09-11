@@ -289,15 +289,29 @@ export function splitInquiryAndSignature(text, startIdx = 0) {
 }
 
 export function parseOnBehalfOf(text) {
-  const patterns = [
-    /(?:schreib\w*|anfrage(?:\s+stelle\s+ich)?)\s+im\s+Auftrag\s+(?:von|meines|meiner)\s+(?:meines\s+|meiner\s+)?(?:(?:bruders|vaters|sohnes|mannes|mutter|vater|frau)\s+)?([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i,
-    /im\s+Auftrag\s+(?:von|meines|meiner)\s+(?:(?:bruders|vaters|sohnes|mannes|mutter|vater|frau)\s+)?([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i,
-  ];
-  for (const re of patterns) {
-    const m = text.match(re);
-    if (m?.[1]) return m[1].trim();
-  }
-  return null;
+  const raw = String(text || '');
+  // Cue case-insensitive; Personenname case-sensitiv – sonst frisst /i „aus Iggingen … Neuwagen“
+  const cueRe = /(?:schreib\w*|such\w*|anfrage(?:\s+stelle\s+ich)?)\s+im\s+Auftrag\s+(?:von|meines|meiner)\s+(?:(?:bruders|schwester|vaters|sohnes|mannes|mutter|vater|frau|ehefrau)\s+)?/i;
+  const cueReShort = /im\s+Auftrag\s+(?:von|meines|meiner)\s+(?:(?:bruders|schwester|vaters|sohnes|mannes|mutter|vater|frau|ehefrau)\s+)?/i;
+  const cue = raw.match(cueRe) || raw.match(cueReShort);
+  if (!cue) return null;
+  const rest = raw.slice(cue.index + cue[0].length);
+  const name = rest.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/);
+  if (!name?.[1]) return null;
+  return name[1].trim();
+}
+
+/** Wohnort hinter „Andreas Kübler aus Iggingen“ */
+export function parseOnBehalfPlace(text, onBehalfName = null) {
+  const raw = String(text || '');
+  const name = onBehalfName || parseOnBehalfOf(raw);
+  if (!name) return null;
+  const at = raw.indexOf(name);
+  if (at < 0) return null;
+  const after = raw.slice(at + name.length);
+  // Case-sensitiv: nur Ortsname, nicht „im Ostalbkreis“
+  const m = after.match(/^\s+aus\s+([A-ZÄÖÜ][a-zäöüß-]+)/);
+  return m?.[1] ? m[1].trim() : null;
 }
 
 function findAllEmails(text) {
@@ -397,8 +411,11 @@ export function preprocessCustomerMail(rawText) {
   }
 
   const onBehalfOf = parseOnBehalfOf(inquiryText);
+  const onBehalfPlace = onBehalfOf ? parseOnBehalfPlace(inquiryText, onBehalfOf) : null;
   const customerMailNote = onBehalfOf
-    ? `Sucht im Auftrag von ${onBehalfOf}.`
+    ? (onBehalfPlace
+      ? `Sucht im Auftrag von ${onBehalfOf} (${onBehalfPlace}).`
+      : `Sucht im Auftrag von ${onBehalfOf}.`)
     : null;
 
   if (!customerName) {
@@ -416,6 +433,7 @@ export function preprocessCustomerMail(rawText) {
     customerName,
     customerEmail,
     onBehalfOf,
+    onBehalfPlace,
     customerMailNote,
   };
 }
@@ -461,27 +479,55 @@ export function splitCustomerName(fullName) {
   };
 }
 
+/**
+ * Signatur-/Absendername – inkl. Initial + Nachname („S. Hafner“).
+ * Anrede-Empfänger („Sehr geehrter Herr Quach“) ist kein Kunde.
+ */
+function isPlausibleMailPersonName(name = '') {
+  const raw = String(name || '').trim();
+  if (!raw || raw.length < 2 || raw.length > 60) return false;
+  if (/\b(?:angebot|angebote|leasing|finanz|konfiguration|akku)\b/i.test(raw)) return false;
+  if (/^(?:ihr|mein|unser|sein|dein|euer)\b/i.test(raw)) return false;
+  if (isMailGreetingLine(raw)) return false;
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (!parts.length || parts.some((p) => /@/.test(p) || /^\d+$/.test(p))) return false;
+  return true;
+}
+
+function parseNameFromSignatureBlock(signatureBlock = '') {
+  const sigLines = linesOf(signatureBlock);
+  for (let i = 0; i < sigLines.length; i += 1) {
+    const line = String(sigLines[i] || '').trim();
+    if (!line || /@/.test(line) || /\d{5,}/.test(line) || isBoilerplateLine(line)) continue;
+    if (isMailGreetingLine(line)) continue;
+    // „S. Hafner“ / „S.Hafner“ / „Max Mustermann“
+    const initialLast = line.match(/^([A-ZÄÖÜ]\.)\s*([A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)$/);
+    if (initialLast) {
+      const name = `${initialLast[1]} ${initialLast[2]}`.trim();
+      if (isPlausibleMailPersonName(name)) return name;
+    }
+    const fullName = line.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)$/);
+    if (fullName && isPlausibleMailPersonName(fullName[1])) return fullName[1].trim();
+  }
+  return null;
+}
+
 export function parseCustomerNameFromMail(inquiryText, signatureBlock = '') {
+  // Signatur / Absender gewinnt vor Body-Heuristiken (Empfänger ≠ Kunde)
+  const fromSignature = parseNameFromSignatureBlock(signatureBlock);
+  if (fromSignature) return fromSignature;
+
   const body = inquiryText.replace(/\s+/g, ' ').trim();
+  // Kein /i auf Capital-Klassen – sonst matcht „für Ihr Angebot mir ein …“
   const patterns = [
-    /(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i,
-    /(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\s+(?:ein|eine|einen|bitte)/i,
-    /(?:herr|frau)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/i,
+    /(?:für|an)\s+(?:herrn|frau|hr\.|fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/,
+    /(?:für)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\s+(?:ein|eine|einen|bitte)/,
+    /(?:herr|frau)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)/,
   ];
 
   for (const re of patterns) {
     const m = body.match(re);
-    if (m?.[1]) return m[1].trim();
-  }
-
-  const sigLines = linesOf(signatureBlock);
-  for (let i = 0; i < sigLines.length; i += 1) {
-    const line = sigLines[i];
-    if (!line || /@/.test(line) || /\d{5,}/.test(line) || isBoilerplateLine(line)) continue;
-    // Grußformel selbst nie als Name; Zeile darunter ist starker Kandidat
-    if (isMailGreetingLine(line)) continue;
-    const nameLine = line.match(/^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)$/);
-    if (nameLine) return nameLine[1].trim();
+    if (m?.[1] && isPlausibleMailPersonName(m[1])) return m[1].trim();
   }
 
   return null;

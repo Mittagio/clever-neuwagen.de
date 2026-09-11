@@ -7,6 +7,8 @@ import { buildCaptureNextStepHint } from './captureThenOffer.js';
 import { presentIntakeNextStepLabel } from './presentSellerIntakeFeedback.js';
 import {
   determineNextBestSellerAction,
+  hasCustomerOfferCommitment,
+  resolvePostCommitOpenWork,
   resolveConcreteVehicleModel,
 } from './determineNextBestSellerAction.js';
 import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
@@ -46,6 +48,7 @@ const EQUIPMENT_ID_LABEL = {
   steering_wheel_heating: 'Lenkradheizung',
   winter_tires: 'Winterreifen',
   winter_wheel_set: 'Winterradsatz',
+  dc_fast_charging: 'gute DC-Ladeleistung',
 };
 
 function resolveDraft(lead, draft) {
@@ -57,6 +60,35 @@ function resolveDraft(lead, draft) {
 }
 
 function formatVehicleLine(facts = [], draft = null, lead = null) {
+  const multi = pickFact(facts, 'vehicleInterestMulti');
+  if (
+    Array.isArray(multi?.value)
+    && multi.value.length >= 2
+    && !multi.consultationCandidates
+  ) {
+    const bits = multi.value.map((item) => {
+      if (!item || typeof item !== 'object') {
+        return String(item || '').replace(/^kia\s+/i, '').toUpperCase();
+      }
+      const key = String(item.modelKey || item.model || '').replace(/^kia\s+/i, '');
+      const model = /^ev\d$/i.test(key) || /^pv\d$/i.test(key)
+        ? key.toUpperCase()
+        : titleCaseWords(key);
+      const trim = item.trim ? String(item.trim) : null;
+      const qty = item.quantity != null && Number(item.quantity) > 0
+        ? `${Number(item.quantity)}×`
+        : null;
+      return [qty, model, trim].filter(Boolean).join(' ');
+    }).filter(Boolean);
+    if (bits.length >= 2) {
+      const batt = pickFact(facts, 'batteryPreference');
+      const battLabel = batt?.value?.id === 'large' || /groß/i.test(String(batt?.label || ''))
+        ? 'große Batterie'
+        : null;
+      return [...bits, battLabel].filter(Boolean).join(' · ');
+    }
+  }
+
   const interest = pickFact(facts, 'vehicleInterest');
   const modelFromLead = resolveConcreteVehicleModel(lead, lead?.crm?.cleverWorkingState);
   const modelKey = interest?.value?.modelKey
@@ -73,6 +105,16 @@ function formatVehicleLine(facts = [], draft = null, lead = null) {
     || motorFact?.value?.hint
     || motorFact?.label
     || null;
+  const batteryVariantsFact = pickFact(facts, 'batteryVariantWishes');
+  const batteryVariantsFromProfile = Array.isArray(lead?.crm?.needProfile?.batteryVariantWishes)
+    ? lead.crm.needProfile.batteryVariantWishes
+    : null;
+  const batteryVariantLabels = (
+    Array.isArray(batteryVariantsFact?.value) ? batteryVariantsFact.value : batteryVariantsFromProfile
+  )
+    ?.map((v) => (typeof v === 'object' ? (v.label || null) : String(v || '')))
+    .filter(Boolean)
+    || [];
   const motorFromProfile = lead?.crm?.needProfile?.motorPreference || null;
   const powertrainFromDraft = draft?.vehicleIdentityDraft?.powertrain?.canonical
     || draft?.vehicleIdentityDraft?.powertrain?.raw
@@ -106,9 +148,24 @@ function formatVehicleLine(facts = [], draft = null, lead = null) {
     ? titleCaseWords(String(colorRaw).replace(/^farbe\s+/i, ''))
     : null;
 
+  const fuelFact = pickFact(facts, 'fuelPreference');
+  const fuelLabel = fuelFact?.value === 'diesel' || /diesel/i.test(String(fuelFact?.label || ''))
+    ? 'Diesel'
+    : (fuelFact?.value === 'petrol' || /benzin/i.test(String(fuelFact?.label || ''))
+      ? 'Benzin'
+      : null);
+  const gearFact = pickFact(facts, 'transmissionPreference');
+  const gearLabel = gearFact?.value === 'manual' || /manuell|schalter/i.test(String(gearFact?.label || ''))
+    ? 'Manuell'
+    : (gearFact?.value === 'automatic' || /automatik/i.test(String(gearFact?.label || ''))
+      ? 'Automatik'
+      : null);
+
   const modelLabel = model
     ? String(model).replace(/^Kia\s+/i, '').replace(/\s+/g, ' ').trim()
     : null;
+  // Beratungsfall / Need ohne Fokusmodell: keine Fake-„Kunde möchte“-Zeile nur aus Ausstattung
+  if (!modelLabel && !modelKey) return null;
   const trimPart = trim && modelLabel && !new RegExp(String(trim).replace(/\s+/g, '\\s*'), 'i').test(modelLabel)
     ? String(trim).trim()
     : (trim && !modelLabel ? String(trim).trim() : null);
@@ -127,7 +184,7 @@ function formatVehicleLine(facts = [], draft = null, lead = null) {
     uniqEquip.push(label);
   }
 
-  return [modelLabel, trimPart, color, ...uniqEquip].filter(Boolean).join(' · ') || null;
+  return [modelLabel, trimPart, fuelLabel, gearLabel, color, ...batteryVariantLabels, ...uniqEquip].filter(Boolean).join(' · ') || null;
 }
 
 function formatCustomerPicture(facts = [], lead = null) {
@@ -179,6 +236,8 @@ function formatLeasingLine(facts = [], lead = null) {
   const term = pickFact(facts, 'termMonths') || pickFact(facts, 'durationMonths');
   const km = pickFact(facts, 'annualMileage') || pickFact(facts, 'mileagePerYear');
   const down = pickFact(facts, 'downPayment');
+  const purchase = pickFact(facts, 'purchasePrice');
+  const financeWish = pickFact(facts, 'financeWish');
 
   const parts = [];
   const ct = customerType?.value || wish.customerType || null;
@@ -202,14 +261,44 @@ function formatLeasingLine(facts = [], lead = null) {
     parts.push(`${Number(months)} Monate`);
   }
 
-  const mileage = km?.value ?? wish.mileagePerYear ?? wish.annualMileage ?? null;
-  if (mileage != null && Number(mileage) > 0) {
-    parts.push(`${Number(mileage).toLocaleString('de-DE')} km/Jahr`);
+  const mileageVariants = pickFact(facts, 'annualMileageVariants')
+    || (Array.isArray(lead?.crm?.needProfile?.annualMileageVariants)
+      ? { value: lead.crm.needProfile.annualMileageVariants }
+      : null);
+  if (Array.isArray(mileageVariants?.value) && mileageVariants.value.length >= 2) {
+    parts.push(
+      mileageVariants.value
+        .map((n) => `${Number(n).toLocaleString('de-DE')} km/Jahr`)
+        .join(' sowie '),
+    );
+  } else {
+    const mileage = km?.value ?? wish.mileagePerYear ?? wish.annualMileage ?? null;
+    if (mileage != null && Number(mileage) > 0) {
+      parts.push(`${Number(mileage).toLocaleString('de-DE')} km/Jahr`);
+    }
   }
 
   const az = down?.value ?? wish.downPayment ?? null;
-  if (az != null && az !== '' && Number.isFinite(Number(az))) {
-    parts.push(`${Number(az).toLocaleString('de-DE')} € Sonderzahlung`);
+  if (purchase?.value != null && Number.isFinite(Number(purchase.value))) {
+    parts.push(purchase.label || `bis ${Number(purchase.value).toLocaleString('de-DE')} €`);
+  } else if (az != null && az !== '' && Number.isFinite(Number(az))) {
+    parts.push(
+      Number(az) === 0
+        ? '0 € Anzahlung'
+        : `${Number(az).toLocaleString('de-DE')} € Sonderzahlung`,
+    );
+  }
+
+  const budget = pickFact(facts, 'monthlyBudget');
+  const budgetVal = budget?.value ?? lead?.crm?.needProfile?.budget?.maxMonthlyRate ?? null;
+  if (budgetVal != null && Number.isFinite(Number(budgetVal))) {
+    parts.push(`max. ${Number(budgetVal).toLocaleString('de-DE')} €/Monat`);
+  }
+
+  if (financeWish?.label) {
+    parts.push(String(financeWish.label));
+  } else if (lead?.crm?.needProfile?.financeWish) {
+    parts.push('möglichst niedriger effektiver Jahreszins');
   }
 
   return parts.length ? parts.join(' · ') : null;
@@ -225,6 +314,13 @@ function formatImportantLine(facts = [], lead = null) {
     parts.push(label);
   };
 
+  const rangeFact = pickFact(facts, 'rangeNeed');
+  if (rangeFact?.value?.km != null) {
+    push(rangeFact.label || `ca. ${rangeFact.value.km} km Reichweite`);
+  } else if (lead?.crm?.needProfile?.rangeKmMin != null) {
+    push(`ca. ${lead.crm.needProfile.rangeKmMin} km Reichweite`);
+  }
+
   for (const f of pickFacts(facts, 'equipmentWish')) {
     if (['winter_tires', 'winter_wheel_set'].includes(f.value?.id)) continue;
     const label = String(f.value?.label || f.label || '')
@@ -237,17 +333,109 @@ function formatImportantLine(facts = [], lead = null) {
     push(/ahk/i.test(String(ahk.label || '')) ? 'Anhängerkupplung' : (ahk.label || 'Anhängerkupplung'));
   }
 
+  const leaseScenarios = pickFact(facts, 'leaseCalcScenarioWishes')
+    || (Array.isArray(lead?.crm?.needProfile?.leaseCalcScenarioWishes)
+      ? { value: lead.crm.needProfile.leaseCalcScenarioWishes }
+      : null);
+  if (Array.isArray(leaseScenarios?.value)) {
+    for (const s of leaseScenarios.value) {
+      const label = typeof s === 'object' ? s.label : String(s || '');
+      if (label) push(label);
+    }
+  }
+
+  const totalMileageWishes = pickFact(facts, 'leaseTotalMileageWishes')
+    || (Array.isArray(lead?.crm?.needProfile?.leaseTotalMileageWishes)
+      ? { value: lead.crm.needProfile.leaseTotalMileageWishes }
+      : null);
+  if (Array.isArray(totalMileageWishes?.value)) {
+    for (const s of totalMileageWishes.value) {
+      const label = typeof s === 'object' ? s.label : String(s || '');
+      if (label) push(label);
+    }
+  }
+
+  const battPref = pickFact(facts, 'batteryPreference');
+  if (battPref?.value?.id === 'large' || /groß/i.test(String(battPref?.label || ''))) {
+    push('große Batterie');
+  }
+
+  const onBehalf = pickFact(facts, 'onBehalfOf') || lead?.crm?.needProfile?.onBehalfOf;
+  if (onBehalf) {
+    const name = typeof onBehalf === 'object'
+      ? (onBehalf.value?.name || onBehalf.name || onBehalf.label)
+      : onBehalf;
+    const place = typeof onBehalf === 'object'
+      ? (onBehalf.value?.place || onBehalf.place || null)
+      : null;
+    if (name) {
+      push(place
+        ? `Im Auftrag von ${String(name).replace(/^Im Auftrag von\s+/i, '')} (${place})`
+        : (String(name).startsWith('Im Auftrag') ? String(name) : `Im Auftrag von ${name}`));
+    }
+  }
+
+  const abruf = pickFact(facts, 'abrufschein') || lead?.crm?.needProfile?.abrufschein;
+  if (abruf) push('Abrufschein');
+
+  const condition = pickFact(facts, 'vehicleConditionPreference')
+    || lead?.crm?.needProfile?.vehicleConditionPreference;
+  if (condition?.value?.usedOk || condition?.usedOk) {
+    push('Muss kein Neuwagen sein');
+  } else if (condition?.label) {
+    push(String(condition.label));
+  }
+
+  const subsidy = pickFact(facts, 'subsidyEligibility')
+    || lead?.crm?.needProfile?.subsidyEligibility;
+  if (subsidy?.value?.eligible === false || subsidy?.eligible === false) {
+    push('Nicht für Bundesförderung berechtigt');
+  } else if (subsidy?.label && /nicht/i.test(String(subsidy.label))) {
+    push(String(subsidy.label));
+  }
+
+  const pastInquiry = pickFact(facts, 'pastVehicleInquiry')
+    || lead?.crm?.needProfile?.pastVehicleInquiry;
+  if (pastInquiry?.label || pastInquiry?.value?.modelKey) {
+    push(pastInquiry.label || `Früherer Kontakt: ${String(pastInquiry.value?.modelKey || '').toUpperCase()}`);
+  }
+
+  const availability = pickFact(facts, 'availabilityPreference');
+  if (availability?.label) push(availability.label);
+
   // Lead-first: NeedProfile-Ausstattung
   const profile = lead?.crm?.needProfile || {};
   for (const wishId of profile.equipmentWishes || []) {
     const id = String(wishId);
     if (/^(winter_tires|winter_wheel_set)$/i.test(id)) continue;
-    push(EQUIPMENT_ID_LABEL[id] || (/wärm|heat/i.test(id) ? 'Wärmepumpe' : id));
+    push(EQUIPMENT_ID_LABEL[id] || (/wärm|heat/i.test(id) ? 'Wärmepumpe' : (
+      /dc_fast/i.test(id) ? 'gute DC-Ladeleistung' : id
+    )));
   }
   if (profile.towbar === true) push('Anhängerkupplung');
   if ((profile.priorities || []).includes('towing')) push('Anhängerkupplung');
+  for (const label of profile.understoodLabels || []) {
+    if (/kurzfristig|reichweite|dc-?lade/i.test(String(label))) push(String(label));
+  }
 
   return parts.length ? parts.join(' · ') : null;
+}
+
+function formatCandidatesLine(facts = [], lead = null) {
+  const multi = pickFact(facts, 'vehicleInterestMulti');
+  if (multi?.consultationCandidates || multi?.label) {
+    if (multi.consultationCandidates || lead?.crm?.needProfile?.consultationPending) {
+      return String(multi.label || '') || null;
+    }
+  }
+  const keys = lead?.crm?.needProfile?.modelCandidates || [];
+  if (!keys.length || lead?.crm?.needProfile?.selectedModelKey) return null;
+  const labels = {
+    niro: 'Niro EV',
+    kona: 'Kona Elektro',
+    'renault-4-5': 'Renault 4/5',
+  };
+  return keys.map((k) => labels[String(k).toLowerCase()] || String(k)).join(' · ');
 }
 
 function formatCurrentVehicleLine(facts = [], lead = null) {
@@ -306,12 +494,25 @@ function formatClarifyLine(facts = [], draft = null, lead = null) {
     const topic = q.value?.topic;
     if (topic === 'transfer_costs') push('Überführungskosten');
     else if (topic === 'one_time_costs') push('weitere Einmalkosten');
-    else if (topic === 'subsidy') push('Förderung');
+    else if (topic === 'subsidy') push(q.label || 'Förderung 2026');
+    else if (topic === 'hsn_tsn') push(q.label || 'HSN/TSN je Konfiguration mitteilen');
+    else if (topic === 'excess_mileage') push(q.label || '20.000 km / Mehrkilometer-Kosten');
+    else if (topic === 'finance_with_return') push(q.label || 'Finanzierung mit Rückgaberecht');
+    else if (topic === 'delivery_times') push(q.label || 'Lieferzeiten mitteilen');
+    else if (topic === 'fleet_terms') push(q.label || 'Flottenkonditionen');
     else if (topic === 'quote_on_basis') {
       continue;
     } else if (q.label) {
       push(String(q.label).replace(/\s*erfragen\s*$/i, '').trim());
     }
+  }
+
+  const attachmentFact = pickFact(facts, 'attachmentContext');
+  const attachmentFromProfile = lead?.crm?.needProfile?.attachmentContext;
+  if (attachmentFact?.label) {
+    push('Konfigurationen aus Anhang prüfen');
+  } else if (attachmentFromProfile?.kind === 'configuration_expected' || attachmentFromProfile?.label) {
+    push('Konfigurationen aus Anhang prüfen');
   }
 
   const colorSlot = draft?.vehicleIdentityDraft?.color;
@@ -333,9 +534,9 @@ function formatClarifyLine(facts = [], draft = null, lead = null) {
     }
   }
 
-  // Lead: offene Labels aus NeedProfile (Förderung etc.)
+  // Lead: offene Labels aus NeedProfile (Förderung / HSN / Anhang)
   for (const label of lead?.crm?.needProfile?.understoodLabels || []) {
-    if (/förder|farbe\s*prüfen|überführung/i.test(String(label))) {
+    if (/förder|farbe\s*prüfen|überführung|hsn|tsn|konfiguration.*anhang|anhang.*prüfen/i.test(String(label))) {
       push(String(label).replace(/\s*erfragen\s*$/i, '').trim());
     }
   }
@@ -423,6 +624,7 @@ export function buildSellerWorkBriefing(params = {}) {
   const customerWants = formatVehicleLine(facts, draft, lead);
   const leasingWish = formatLeasingLine(facts, lead);
   const important = formatImportantLine(facts, lead);
+  const modelCandidates = formatCandidatesLine(facts, lead);
   const extras = formatExtrasLine(facts);
   const currentVehicle = formatCurrentVehicleLine(facts, lead);
   const planned = formatPlannedLine(facts, lead);
@@ -436,6 +638,7 @@ export function buildSellerWorkBriefing(params = {}) {
       customerWants,
       leasingWish,
       important,
+      modelCandidates,
       extras,
       currentVehicle,
       planned,
@@ -461,8 +664,33 @@ export function buildSellerWorkBriefing(params = {}) {
     nextBestAction,
   });
 
+  const committed = hasCustomerOfferCommitment(lead);
+  const postCommitWork = committed ? resolvePostCommitOpenWork(lead) : null;
+  let dealStatus = null;
+  let openWorkLine = null;
+  if (committed) {
+    dealStatus = 'Kunde hat zugesagt';
+    const openBits = [];
+    if (postCommitWork?.documentsIncomplete) openBits.push('Unterlagen');
+    if (postCommitWork?.selfDisclosureIncomplete) openBits.push('Selbstauskunft');
+    if (!openBits.length && nextBestAction?.handler === 'application_prepare') {
+      openBits.push('Antrag / Abschluss');
+    }
+    openWorkLine = openBits.length ? openBits.join(' / ') : null;
+  }
+
   const lines = [];
+  if (dealStatus) {
+    lines.push('Stand:');
+    lines.push(dealStatus);
+    if (openWorkLine) {
+      lines.push('');
+      lines.push('Noch offen:');
+      lines.push(openWorkLine);
+    }
+  }
   if (customerPicture) {
+    if (lines.length) lines.push('');
     lines.push('Kundenbild:');
     lines.push(customerPicture);
   }
@@ -478,13 +706,23 @@ export function buildSellerWorkBriefing(params = {}) {
   }
   if (leasingWish) {
     if (lines.length) lines.push('');
-    lines.push('Leasing:');
+    const pay = pickFact(facts, 'paymentType')?.value || lead?.wish?.paymentType;
+    lines.push(
+      pay === 'financing' ? 'Finanzierung:'
+        : pay === 'cash' ? 'Kauf:'
+          : 'Leasing:',
+    );
     lines.push(leasingWish);
   }
-  if (important && !customerWants) {
+  if (important) {
     if (lines.length) lines.push('');
     lines.push('Wichtig:');
     lines.push(important);
+  }
+  if (modelCandidates) {
+    if (lines.length) lines.push('');
+    lines.push('Interessante Modelle:');
+    lines.push(modelCandidates);
   }
   if (extras) {
     if (lines.length) lines.push('');
@@ -512,11 +750,14 @@ export function buildSellerWorkBriefing(params = {}) {
 
   return {
     sections: {
+      dealStatus,
+      openWork: openWorkLine,
       customerPicture,
       sought,
       customerWants,
       leasingWish,
       important,
+      modelCandidates,
       extras,
       currentVehicle,
       planned,
@@ -527,5 +768,62 @@ export function buildSellerWorkBriefing(params = {}) {
     text: lines.filter((l, i, arr) => !(l === '' && arr[i - 1] === '')).join('\n').trim(),
     source: 'structured_facts',
     nextBestAction,
+  };
+}
+
+/**
+ * Kompakte Eingangs-Vorschau für Beratungsfälle (bestehende Clever-Eingang-Fläche).
+ * Keine neue Inbox-Architektur.
+ */
+export function buildConsultationCasePreview(lead = {}, facts = []) {
+  const profile = lead?.crm?.needProfile || {};
+  const candidates = profile.modelCandidates || [];
+  const consultation = profile.consultationPending === true
+    || (candidates.length > 0 && !profile.selectedModelKey);
+  if (!consultation) return null;
+
+  const name = lead?.contact?.name || lead?.name || null;
+  const fuel = profile.fuel === 'electric' ? 'Elektro' : null;
+  const payment = lead?.wish?.paymentType === 'financing'
+    ? 'Finanzierung'
+    : (lead?.wish?.paymentType === 'leasing' ? 'Leasing' : null);
+  const contextLine = [fuel, payment].filter(Boolean).join(' · ') || null;
+
+  const seekBits = [];
+  if (profile.rangeKmMin) seekBits.push(`${profile.rangeKmMin} km+`);
+  for (const id of profile.equipmentWishes || []) {
+    if (id === 'heat_pump') seekBits.push('Wärmepumpe');
+    if (id === 'dc_fast_charging') seekBits.push('DC-Laden');
+  }
+  for (const label of profile.understoodLabels || []) {
+    if (/kurzfristig/i.test(String(label))) seekBits.push('kurzfristig verfügbar');
+  }
+
+  const labelMap = {
+    niro: 'Niro EV',
+    kona: 'Kona Elektro',
+    'renault-4-5': 'Renault 4/5',
+  };
+  const interestBits = candidates.map((k) => labelMap[String(k).toLowerCase()] || String(k));
+  if (/\bvergleichbar/i.test(String(profile.understoodLabels?.join(' ') || ''))) {
+    interestBits.push('vergleichbar');
+  } else if (interestBits.length) {
+    interestBits.push('vergleichbar');
+  }
+
+  const openBits = [];
+  for (const label of profile.understoodLabels || []) {
+    if (/förder/i.test(String(label))) openBits.push('Förderung 2026');
+  }
+
+  return {
+    name,
+    contextLine,
+    seeksLine: seekBits.length ? seekBits.join(' · ') : null,
+    interestLine: interestBits.length ? interestBits.join(' · ') : null,
+    openLine: openBits.length ? [...new Set(openBits)].join(' · ') : null,
+    primaryAction: 'Kundenakte öffnen',
+    secondaryAction: 'Passende Fahrzeuge finden',
+    offerAction: null,
   };
 }

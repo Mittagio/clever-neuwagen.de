@@ -257,7 +257,9 @@ function parseTermMonths(text) {
   if (leaseBundle) return Number(leaseBundle[1]);
 
   if (/leasing|finanzier/i.test(text)) {
-    const inLeasingContext = text.match(/\b(12|24|36|48|60)\b(?!\s*€)/i);
+    // Uhrzeiten („14:38:36“) und reine Sekunden-Zahlen ≠ Leasinglaufzeit
+    const withoutClocks = String(text || '').replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, ' ');
+    const inLeasingContext = withoutClocks.match(/\b(12|24|36|48|60)\b(?!\s*€)/i);
     if (inLeasingContext) return Number(inLeasingContext[1]);
   }
 
@@ -634,6 +636,22 @@ export function parseCustomerAddressFromText(text = '') {
     const line = lines[index];
     if (skipLine(line)) continue;
 
+    // Kompakt: „Murrhardt Wiesenstraße 51 71540“ (+ optional Telefon)
+    const compactCityStreetPlz = line.match(
+      /^([A-ZÄÖÜ][a-zäöüß-]+)\s+(.+?)\s+(\d+[a-zA-Z]?)\s+(\d{5})(?:\s+(?:\+49|0)\d[\d\s/-]*)?\s*$/,
+    );
+    if (
+      compactCityStreetPlz
+      && looksLikeGermanStreetName(compactCityStreetPlz[2])
+      && !/@/.test(line)
+    ) {
+      city = city ?? compactCityStreetPlz[1];
+      street = street ?? compactCityStreetPlz[2].trim();
+      houseNumber = houseNumber ?? compactCityStreetPlz[3];
+      postalCode = postalCode ?? compactCityStreetPlz[4];
+      continue;
+    }
+
     const plzCity = line.match(PLZ_CITY_LINE_RE);
     if (plzCity) {
       postalCode = postalCode ?? plzCity[1];
@@ -849,6 +867,10 @@ function normalizePhone(raw) {
   if (cleaned.startsWith('0049')) return `+49 ${cleaned.slice(4)}`;
   if (cleaned.startsWith('49') && cleaned.length > 10) return `+49 ${cleaned.slice(2)}`;
   if (cleaned.startsWith('0')) {
+    // Mobilfunk 015x/016x/017x: Vorwahl immer 4 Stellen (0175 …), nie greedy 01758
+    if (/^01[567]\d/.test(cleaned) && cleaned.length >= 10) {
+      return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`;
+    }
     const spaced = cleaned.replace(/^0(\d{2,4})(\d+)/, '0$1 $2');
     return spaced.length > 6 ? spaced : cleaned;
   }

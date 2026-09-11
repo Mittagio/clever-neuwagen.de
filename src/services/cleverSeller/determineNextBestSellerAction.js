@@ -16,19 +16,37 @@ import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 import {
   listStoredVehicleOffers,
   resolveSourceOfferDraftId,
+  VEHICLE_OFFER_STATUS,
 } from '../vehicleOffer.js';
+import {
+  countUnterlagenOpenTasks,
+} from '../cleverUnterlagen.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
 import { resolveActiveOfferDraft } from './cleverWorkingDraft.js';
+import { hasPreparedOutboundOfferCue } from './commercialOfferNl.js';
 
 export const NEXT_BEST_ACTION_ID = Object.freeze({
   MODIFY_OFFER: 'modify_offer',
   INTEND_SEND: 'intend_send',
   PREPARE_OFFER: 'prepare_offer',
+  DRAFT_MESSAGE: 'draft_message',
   CONSULTATION: 'capture_then_consult',
   PROPOSE_APPOINTMENT: 'propose_appointment',
   REQUEST_DOCUMENTS: 'request_documents',
+  /** Bestehender Clever-Action-Handoff (Unterlagen/SA), kein neuer Status */
+  REQUEST_SELF_DISCLOSURE: 'self_disclosure_request',
+  /** Bestehender Clever-Action-Handoff nach Docs+SA */
+  APPLICATION_PREPARE: 'application_prepare',
   CREATE_FOLLOW_UP: 'create_follow_up',
 });
+
+const UNTERLAGEN_DONE = new Set(['uploaded', 'checked', 'replaced', 'not_needed', 'received']);
+const OFFER_ALREADY_WITH_CUSTOMER = new Set([
+  VEHICLE_OFFER_STATUS.SENT,
+  VEHICLE_OFFER_STATUS.OPENED,
+  VEHICLE_OFFER_STATUS.ACCEPTED,
+  VEHICLE_OFFER_STATUS.REJECTED,
+]);
 
 /**
  * @param {object} lead
@@ -284,20 +302,132 @@ function hasOpenTestDriveAppointment(lead = {}) {
   });
 }
 
-function needsDocuments(lead = {}) {
-  const summary = lead?.crm?.unterlagenSummary || lead?.crm?.documentsSummary || null;
-  if (summary?.openCount > 0 || summary?.missingCount > 0) return true;
-  const docs = lead?.crm?.requestedDocuments || lead?.crm?.documentRequests || [];
-  if (Array.isArray(docs) && docs.some((d) => d.status === 'missing' || d.status === 'open')) {
+/**
+ * Kundenzusage / Commit-Signal (bestehende Werte – kein neues Enum).
+ * Portfolio: interested · VehicleOffer: accepted
+ */
+export function hasCustomerOfferCommitment(lead = {}) {
+  const items = lead?.crm?.customerOfferPortfolio?.items;
+  if (Array.isArray(items)
+    && items.some((i) => i?.customerReaction?.status === PORTFOLIO_REACTION_STATUS.INTERESTED)) {
     return true;
   }
-  // Explizite Zusage-Signale
-  const reaction = (lead?.crm?.customerOfferPortfolio?.items || [])
-    .some((i) => i?.customerReaction?.status === PORTFOLIO_REACTION_STATUS.INTERESTED);
-  const commitment = /zusage|angenommen|genommen|kaufzusage/i.test(
-    String(lead?.crm?.pipelineStatusId || lead?.status || ''),
-  );
-  return Boolean(reaction && commitment && (summary?.openCount == null || summary.openCount > 0));
+  const offers = listStoredVehicleOffers(lead) || [];
+  return offers.some((o) => String(o?.status || '').toLowerCase() === VEHICLE_OFFER_STATUS.ACCEPTED);
+}
+
+/**
+ * Angebot muss dem Kunden noch zugestellt werden (neue Version / nie gesendet).
+ * Bereits sent/opened/accepted zählen nicht als Send-Primary nach Commit.
+ */
+export function offerNeedsCustomerDelivery(offer = null, { committed = false } = {}) {
+  if (!offer || typeof offer !== 'object') return false;
+  const status = String(offer.status || '').toLowerCase();
+  if (OFFER_ALREADY_WITH_CUSTOMER.has(status)) return false;
+  if (!status) {
+    // Ohne Status: vor Commit senden ok; nach Commit kein Fake-Resend
+    return !committed;
+  }
+  return true;
+}
+
+/**
+ * Sendbares Offer, das der Kunde noch nicht hat (Resend nach Anpassung).
+ */
+export function findUnsentSendableVehicleOffer(lead = {}, { committed = false } = {}) {
+  const offers = listStoredVehicleOffers(lead) || [];
+  for (const offer of offers) {
+    if (!offerNeedsCustomerDelivery(offer, { committed })) continue;
+    const rate = Number(
+      offer.monthlyRate
+      ?? offer.boardOffer?.payment?.monthlyRate
+      ?? offer.offerPreview?.monthlyRate,
+    );
+    const cash = Number(offer.boardOffer?.payment?.cashPrice ?? offer.cashPrice);
+    const hasRate = Number.isFinite(rate) && rate > 0;
+    const hasCash = Number.isFinite(cash) && cash > 0;
+    if (!hasRate && !hasCash) continue;
+    const authority = offer.rateAuthority || offer.boardOffer?.rateAuthority || null;
+    if (authority === RATE_AUTHORITY.STALE || authority === RATE_AUTHORITY.NON_AUTHORITATIVE) {
+      continue;
+    }
+    if (offer.invalidateVehicleRate || offer.rateNeedsReview) continue;
+    return {
+      offer,
+      cardId: offer.id || offer.vehicleCardId,
+      offerDraftId: resolveSourceOfferDraftId(offer) || null,
+      monthlyRate: hasRate ? rate : null,
+      cashPrice: hasCash ? cash : null,
+    };
+  }
+  if (!committed) {
+    const sendable = findSendableVehicleOffer(lead);
+    if (sendable && offerNeedsCustomerDelivery(sendable.offer, { committed })) {
+      return sendable;
+    }
+  }
+  return null;
+}
+
+/**
+ * Aktive Portfolio-Zusage (interested) – blockiert Send, bis Change/Resend-Pfad greift.
+ */
+export function hasActivePortfolioInterest(lead = {}) {
+  const items = lead?.crm?.customerOfferPortfolio?.items;
+  if (!Array.isArray(items)) return false;
+  return items.some((i) => i?.customerReaction?.status === PORTFOLIO_REACTION_STATUS.INTERESTED);
+}
+
+/**
+ * Post-Commit: Unterlagen vs. Selbstauskunft getrennt (bestehende Unterlagen-Slots).
+ */
+export function resolvePostCommitOpenWork(lead = {}) {
+  const summary = lead?.crm?.unterlagenSummary || lead?.crm?.documentsSummary || null;
+  const requested = lead?.crm?.requestedDocuments || lead?.crm?.documentRequests || [];
+  const requestedOpen = Array.isArray(requested)
+    && requested.some((d) => {
+      const st = String(d?.status || '').toLowerCase();
+      return st === 'missing' || st === 'open' || st === 'requested';
+    });
+  const tasks = countUnterlagenOpenTasks(lead);
+  const docSlotsOpen = (tasks.summary?.slots || []).filter((slot) => {
+    if (slot.id === 'selbstauskunft') return false;
+    const st = String(tasks.summary?.items?.[slot.id]?.status || 'open').toLowerCase();
+    return !UNTERLAGEN_DONE.has(st);
+  }).length;
+
+  let documentsIncomplete;
+  let selfDisclosureIncomplete;
+
+  if (summary && typeof summary.openCount === 'number') {
+    // Explizite CRM-/Selftest-Summary hat Vorrang
+    documentsIncomplete = summary.openCount > 0
+      || Number(summary.missingCount) > 0
+      || requestedOpen;
+    if (!documentsIncomplete && summary.openCount === 0 && !Number(summary.missingCount)) {
+      // Summary „alles klar“ → auch SA als erledigt für NBA (kein zweites Enum)
+      selfDisclosureIncomplete = false;
+    } else {
+      selfDisclosureIncomplete = Boolean(tasks.showSa && !tasks.saComplete);
+    }
+  } else {
+    documentsIncomplete = docSlotsOpen > 0 || requestedOpen;
+    selfDisclosureIncomplete = Boolean(tasks.showSa && !tasks.saComplete);
+  }
+
+  return {
+    documentsIncomplete,
+    selfDisclosureIncomplete,
+    openCount: documentsIncomplete
+      ? Math.max(docSlotsOpen, Number(summary?.openCount) || 0, requestedOpen ? 1 : 0)
+      : (selfDisclosureIncomplete ? 1 : 0),
+    tasks,
+  };
+}
+
+function needsDocuments(lead = {}) {
+  const work = resolvePostCommitOpenWork(lead);
+  return work.documentsIncomplete || work.selfDisclosureIncomplete;
 }
 
 function followUpDue(lead = {}, portalState = null) {
@@ -339,13 +469,18 @@ export function determineNextBestSellerAction({
   portalState = null,
   draft = null,
   facts = null,
+  sellerInput = null,
 } = {}) {
   if (!lead || typeof lead !== 'object') return null;
 
   const ws = workingState
     || lead.crm?.cleverWorkingState
     || null;
-  const turnOpts = { draft, facts: Array.isArray(facts) ? facts : [] };
+  const turnOpts = {
+    draft,
+    facts: Array.isArray(facts) ? facts : [],
+    sellerInput: sellerInput || null,
+  };
 
   // 1) Portal Change Request → modify_offer
   const change = findPortalChangeRequest(lead);
@@ -369,7 +504,72 @@ export function determineNextBestSellerAction({
     };
   }
 
-  // 2) Sendbares VehicleOffer → intend_send
+  const committed = hasCustomerOfferCommitment(lead);
+
+  // 2) Post-Commit: nach Zusage keine Offer-Phase – außer neue ungesendete Version
+  if (committed) {
+    const activeInterest = hasActivePortfolioInterest(lead);
+    // intend_send nur wenn keine aktive Zusage mehr (Change resolved → neue Version)
+    // oder explizit ungesendete Prepared-Version ohne aktive Interest-Sperre
+    const unsent = !activeInterest
+      ? findUnsentSendableVehicleOffer(lead, { committed: true })
+      : null;
+    if (unsent) {
+      return {
+        id: NEXT_BEST_ACTION_ID.INTEND_SEND,
+        label: 'An Kunden senden',
+        toolId: 'intend_send',
+        handler: 'intend_send',
+        contextPayload: {
+          cardId: unsent.cardId,
+          offerDraftId: unsent.offerDraftId,
+          monthlyRate: unsent.monthlyRate,
+          cashPrice: unsent.cashPrice,
+        },
+        reason: 'post_commit_unsent_offer',
+      };
+    }
+
+    const openWork = resolvePostCommitOpenWork(lead);
+    if (openWork.documentsIncomplete) {
+      return {
+        id: NEXT_BEST_ACTION_ID.REQUEST_DOCUMENTS,
+        label: 'Unterlagen anfordern',
+        toolId: 'request_documents',
+        handler: 'request_documents',
+        contextPayload: {
+          openCount: openWork.openCount,
+          postCommit: true,
+        },
+        reason: 'post_commit_documents_missing',
+      };
+    }
+    if (openWork.selfDisclosureIncomplete) {
+      return {
+        id: NEXT_BEST_ACTION_ID.REQUEST_SELF_DISCLOSURE,
+        label: 'Selbstauskunft anfordern',
+        toolId: 'self_disclosure_request',
+        handler: 'self_disclosure_request',
+        contextPayload: {
+          postCommit: true,
+        },
+        reason: 'post_commit_self_disclosure_open',
+      };
+    }
+    // Bestehender Abschluss-Handoff (Clever Action APPLICATION_PREPARE)
+    return {
+      id: NEXT_BEST_ACTION_ID.APPLICATION_PREPARE,
+      label: 'Antrag vorbereiten',
+      toolId: 'application_prepare',
+      handler: 'application_prepare',
+      contextPayload: {
+        postCommit: true,
+      },
+      reason: 'post_commit_application_prepare',
+    };
+  }
+
+  // 3) Sendbares VehicleOffer → intend_send (vor Commit)
   const sendable = findSendableVehicleOffer(lead);
   if (sendable) {
     return {
@@ -387,7 +587,68 @@ export function determineNextBestSellerAction({
     };
   }
 
-  // 3) Konkretes Modell → prepare_offer
+  // 3.4) Outbound-/Prepared-Kontext: Angebotstext schon formuliert → kein prepare_offer
+  {
+    const profile = lead.crm?.needProfile || {};
+    const sellerInputText = String(turnOpts.sellerInput || '').trim();
+    const preparedCue = profile.preparedOutboundOffer === true
+      || turnOpts.facts.some((f) => f?.field === 'preparedOutboundOffer' && f.value)
+      || hasPreparedOutboundOfferCue(sellerInputText);
+    if (preparedCue) {
+      return {
+        id: NEXT_BEST_ACTION_ID.DRAFT_MESSAGE,
+        label: 'Nachricht prüfen',
+        toolId: 'draft_message',
+        handler: 'draft_message',
+        contextPayload: {
+          seedDraft: sellerInputText || null,
+          preparedOutboundOffer: true,
+          modelKey: resolveConcreteVehicleModel(lead, ws, turnOpts)?.modelKey || null,
+        },
+        reason: 'prepared_outbound_message',
+      };
+    }
+  }
+
+  // 3.5) Beratungsfall: modelCandidates ohne selectedModelKey → Consultation
+  // (kein Concept-Draft / prepare_offer nur wegen Kandidaten)
+  {
+    const profile = lead.crm?.needProfile || {};
+    const turnPickedModel = turnOpts.facts.some((f) => (
+      f?.field === 'vehicleInterest' && f?.value?.modelKey && !f?.needsConfirmation
+    ));
+    const hasCandidates = Array.isArray(profile.modelCandidates)
+      && profile.modelCandidates.length > 0;
+    if (
+      !turnPickedModel
+      && !profile.selectedModelKey
+      && (
+        profile.consultationPending === true
+        || (hasCandidates && !draft?.vehicleIdentityDraft?.modelKey
+          && !listCustomerVehicleTracks(lead).some((t) => (
+            t.status === VEHICLE_TRACK_STATUS.ACTIVE
+            || t.status === VEHICLE_TRACK_STATUS.FAVORITE
+          )))
+      )
+    ) {
+      return {
+        id: NEXT_BEST_ACTION_ID.CONSULTATION,
+        label: 'Passende Fahrzeuge finden',
+        toolId: 'capture_then_consult',
+        handler: 'consultation',
+        contextPayload: {
+          modelCandidates: profile.modelCandidates || [],
+          fuelPreference: profile.fuel || null,
+          equipmentWishes: profile.equipmentWishes || [],
+          paymentType: lead.wish?.paymentType || null,
+          rangeKmMin: profile.rangeKmMin || null,
+        },
+        reason: 'consultation_candidates',
+      };
+    }
+  }
+
+  // 4) Konkretes Modell → prepare_offer
   const model = resolveConcreteVehicleModel(lead, ws, turnOpts);
   if (model?.modelKey) {
     const wish = lead.wish || {};
@@ -417,7 +678,7 @@ export function determineNextBestSellerAction({
     };
   }
 
-  // 4) Need ohne Modell → Consultation-Handoff
+  // 5) Need ohne Modell → Consultation-Handoff
   if (hasMeaningfulNeed(lead, workBriefing) || turnOpts.facts.length > 0) {
     const profile = lead.crm?.needProfile || {};
     const wish = lead.wish || {};
@@ -467,7 +728,7 @@ export function determineNextBestSellerAction({
     }
   }
 
-  // 5) Probefahrt ohne Termin
+  // 6) Probefahrt ohne Termin
   if (wantsTestDrive(lead) && !hasOpenTestDriveAppointment(lead)) {
     return {
       id: NEXT_BEST_ACTION_ID.PROPOSE_APPOINTMENT,
@@ -482,7 +743,7 @@ export function determineNextBestSellerAction({
     };
   }
 
-  // 6) Unterlagen
+  // 7) Unterlagen (ohne Commit – Legacy-Pfad)
   if (needsDocuments(lead)) {
     return {
       id: NEXT_BEST_ACTION_ID.REQUEST_DOCUMENTS,
@@ -494,7 +755,7 @@ export function determineNextBestSellerAction({
     };
   }
 
-  // 7) Follow-up fällig
+  // 8) Follow-up fällig
   if (followUpDue(lead, portalState)) {
     return {
       id: NEXT_BEST_ACTION_ID.CREATE_FOLLOW_UP,

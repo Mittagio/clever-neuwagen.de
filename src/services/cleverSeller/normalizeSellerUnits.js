@@ -3,6 +3,8 @@
  * Einheiten haben Vorrang vor bloßen Zahlenmustern – kein modellspezifischer Sonderfall.
  */
 
+import { parseSellerCommercialAliasShorthand } from './sellerAliasRegistry.js';
+
 /**
  * @typedef {{ kind: 'money'|'mileage'|'term_months'|'rate'|'number'|'unknown', value: number, raw: string, unit: string|null, index: number }} SellerUnitToken
  */
@@ -34,7 +36,7 @@ export function extractSellerUnitTokens(text = '') {
       unit: 'km',
     },
     {
-      re: /\b(\d{1,3})\s*(?:monate?|mts?)\b/gi,
+      re: /\b(\d{1,3})\s*(?:monaten|monate|monat|mts?)\b/gi,
       kind: 'term_months',
       unit: 'months',
     },
@@ -102,7 +104,7 @@ export function parseTermAndMileageShorthand(text = '') {
     annualMileage: null,
   };
 
-  const termM = raw.match(/\b(\d{1,3})\s*(?:monate?|mts?)\b/i);
+  const termM = raw.match(/\b(\d{1,3})\s*(?:monaten|monate|monat|mts?)\b/i);
   if (termM) explicit.termMonths = Number(termM[1]);
 
   // „vier Jahre“ / „4 Jahre“ / „für vier Jahre“
@@ -140,7 +142,7 @@ export function parseTermAndMileageShorthand(text = '') {
 
   // „48 10.000 km“ ohne „Monate“ – nur wenn Fahrzeug-/Konditionskontext
   if (explicit.termMonths == null || explicit.annualMileage == null) {
-    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|leasen|finanz|gw|ahk|air|vision|elektro)\b/i.test(raw);
+    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|leasen|finanz|gw|ahk|air|vision|elektro|wp|win)\b/i.test(raw);
     const shorthand = raw.match(/\b(\d{2})\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\s*(?:km|kilometer(?:n)?)\b/i);
     if (vehicleCue && shorthand) {
       if (explicit.termMonths == null) {
@@ -151,6 +153,17 @@ export function parseTermAndMileageShorthand(text = '') {
         let v = parseDeInt(shorthand[2]);
         if (v != null) explicit.annualMileage = v < 1000 ? v * 1000 : v;
       }
+    }
+  }
+
+  // Seller-Alias: „48/15“ → 48 Monate · 15.000 km
+  if (explicit.termMonths == null || explicit.annualMileage == null) {
+    const aliasCommercial = parseSellerCommercialAliasShorthand(raw);
+    if (explicit.termMonths == null && aliasCommercial.termMonths != null) {
+      explicit.termMonths = aliasCommercial.termMonths;
+    }
+    if (explicit.annualMileage == null && aliasCommercial.annualMileage != null) {
+      explicit.annualMileage = aliasCommercial.annualMileage;
     }
   }
 

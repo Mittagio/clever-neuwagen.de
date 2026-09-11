@@ -196,7 +196,8 @@ export function extractSellerFactsFromInput(text = '') {
     facts.push({ key: 'rate', label: `${rate[1]} €`, source: 'seller_input' });
   }
 
-  const months = t.match(/\b(24|36|48|60)\s*(?:monate|monat)?\b/i)
+  // Monat-Wort Pflicht – nie bare 24/36/48/60 (Uhrzeit „14:38:36“ ≠ Laufzeit)
+  const months = t.match(/\b(24|36|48|60)\s*(?:monaten|monate|monat)\b/i)
     || t.match(/\bauf\s+(zwei|drei|vier)\s*jahre/i);
   if (months) {
     const map = { zwei: 24, drei: 36, vier: 48 };

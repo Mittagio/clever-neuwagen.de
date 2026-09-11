@@ -60,16 +60,12 @@ Rabatt 449 %
   );
   assert.equal(review.compactUi, true);
   assert.equal((review.groups || []).length, 0, 'offene Fact-Gruppen müssen leer sein');
-  assert.ok(review.collapsedContext?.groups?.length > 0, 'Erkannte Angaben hinter Collapse');
+  // Phase 1: keine Fact-Chip-Collapse mehr im Offer-Normalzustand
   assert.ok(
-    !(review.collapsedContext.groups || []).some((g) => g.id === 'customer'),
-    'Kundenname nicht in Collapse wenn bereits in Akte',
-  );
-  assert.ok(
-    !(review.collapsedContext.groups || []).some((g) => (
-      !g.line && !(g.chips || []).length && !(g.items || []).length
-    )),
-    'leere Fact-Gruppen nie rendern',
+    review.collapsedContext == null
+    || !(review.collapsedContext.groups || []).length
+    || review.reviewType === 'appointment_and_message_review',
+    'Offer ohne Erkannte-Angaben-Collapse',
   );
 
   assert.ok(review.offerReview);
@@ -93,11 +89,13 @@ Rabatt 449 %
     || s.kind === 'offer_prepare'
     || s.kind === 'offer_incomplete'
   ));
-  assert.ok(offerSec?.primaryActions?.some((a) => /Angebot/i.test(a.label || '')));
+  assert.ok(offerSec?.primaryActions?.length === 1, 'genau eine Primary');
+  assert.ok(offerSec?.primaryActions?.some((a) => /Angebot|senden/i.test(a.label || '')));
   assert.ok(
-    (offerSec?.secondaryActions || []).some((a) => a.action === 'toggle_context'),
-    'Erkannte Angaben anzeigen',
+    !(offerSec?.secondaryActions || []).some((a) => a.action === 'toggle_context'),
+    'kein Erkannte-Angaben-Toggle',
   );
+  assert.ok(!(offerSec?.secondaryActions || []).some((a) => a.action === 'discard'));
   assert.ok(!String(offerSec?.body || '').includes('FINANZIELL'));
   assert.ok(!String(offerSec?.body || '').includes('INTERESSE'));
 }
@@ -150,10 +148,17 @@ Rabatt 449 %
       s.kind === 'offer_incomplete' || s.kind === 'offer_prepare'
     ));
     assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'open_offer_handoff'));
-    assert.ok(offerSec?.primaryActions?.some((a) => a.action === 'upload_pdf'));
+    assert.equal(offerSec?.primaryActions?.length, 1);
+    assert.ok(!offerSec?.primaryActions?.some((a) => a.action === 'upload_pdf'));
+    assert.ok(
+      (offerSec?.secondaryActions || []).every((a) => a.action !== 'upload_pdf' || a.tone === 'compact'),
+    );
     assert.ok(!offerSec?.primaryActions?.some((a) => a.action === 'enter_rate'));
     assert.ok(!offerSec?.primaryActions?.some((a) => a.action === 'calc_cash'));
-    assert.match(String(offerSec?.clarifyPrompt || review.summaryLine || ''), /Monatsrate/i);
+    assert.match(
+      String(offerSec?.clarifyPrompt || review.offerReview?.openLine || review.summaryLine || ''),
+      /Rate|Monatsrate/i,
+    );
     assert.doesNotMatch(String(offerSec?.line || ''), /unvollständig/i);
   }
 }

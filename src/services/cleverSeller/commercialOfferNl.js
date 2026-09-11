@@ -59,20 +59,40 @@ export function parseCommercialMonthlyRate(text = '') {
  */
 export function parseCommercialDownPayment(text = '') {
   const blob = String(text || '').toLowerCase().replace(/\u00a0/g, ' ');
-  if (/\b(?:keine|ohne|null|0)\s*(?:€|euro)?\s*(?:anzahlung|az|sonderzahlung)\b/i.test(blob)
-    || /\b(?:anzahlung|az|sonderzahlung)\s*(?:keine|ohne|null|0)\b/i.test(blob)
-    || /\banzahlung\s*(?:auf\s*)?0\s*(?:€|euro)?\b/i.test(blob)) {
+  // „0 EUR Anzahlung“ / „ohne Anzahlung“ / „Anzahlung 0 €“ – 0 ist echter Wert, nicht missing
+  if (/\b(?:keine|ohne|null|0)\s*(?:€|eur(?:o)?)?\s*(?:anzahlung|az|sonderzahlung)\b/i.test(blob)
+    || /\b(?:anzahlung|az|sonderzahlung)\s*(?:keine|ohne|null|0)\s*(?:€|eur(?:o)?)?\b/i.test(blob)
+    || /\banzahlung\s*(?:auf\s*)?0\s*(?:€|eur(?:o)?)?\b/i.test(blob)
+    || /\b0\s*(?:€|eur(?:o)?)\s+anzahlung\b/i.test(blob)) {
     return 0;
   }
-  const m = blob.match(new RegExp(`(?:anzahlung|sonderzahlung|az)\\s*(?:von\\s*|auf\\s*|in\\s+h[öo]he\\s+von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
-    || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzahlung|sonderzahlung|az)\\b`, 'i'))
-    || blob.match(new RegExp(`(?:sonderzahlung|anzahlung)\\s+in\\s+h[öo]he\\s+von\\s+${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'))
-    || blob.match(new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'))
-    || blob.match(new RegExp(`(?:kann|möchte|moechte|will)\\s+(?:bis\\s+zu\\s+)?${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'));
+  const moneyUnit = '(?:€|eur(?:o)?)';
+  const m = blob.match(new RegExp(`(?:anzahlung|sonderzahlung|az)\\s*(?:von\\s*|auf\\s*|in\\s+h[öo]he\\s+von\\s*)?${MONEY_FRAG}\\s*${moneyUnit}?`, 'i'))
+    || blob.match(new RegExp(`${MONEY_FRAG}\\s*${moneyUnit}?\\s*(?:anzahlung|sonderzahlung|az)\\b`, 'i'))
+    || blob.match(new RegExp(`(?:sonderzahlung|anzahlung)\\s+in\\s+h[öo]he\\s+von\\s+${MONEY_FRAG}\\s*${moneyUnit}?`, 'i'))
+    || blob.match(new RegExp(`${MONEY_FRAG}\\s*${moneyUnit}?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'))
+    || blob.match(new RegExp(`(?:kann|möchte|moechte|will)\\s+(?:bis\\s+zu\\s+)?${MONEY_FRAG}\\s*${moneyUnit}?\\s*(?:anzuzahlen|anzahlen)\\b`, 'i'));
   if (!m?.[1]) return null;
   const value = parseEuroLoose(m[1]);
   if (value == null || value < 0 || value > 200000) return null;
   return value;
+}
+
+/**
+ * Outbound-/Prepared-Angebotstext („habe ich für Sie vorbereitet“) –
+ * kein Signal, dass Clever das Angebot erst noch erzeugen muss.
+ * @param {string} text
+ */
+export function hasPreparedOutboundOfferCue(text = '') {
+  const t = String(text || '');
+  if (!t.trim()) return false;
+  if (/\bhabe\s+ich\s+für\s+sie\s+vorbereitet\b/i.test(t)) return true;
+  if (/\b(?:persönliches\s+)?(?:leasing)?angebot\b/i.test(t)
+    && /\bvorbereitet\b/i.test(t)
+    && /\b(?:für\s+sie|ihnen|leasingangebot|fahrzeugdetails)\b/i.test(t)) {
+    return true;
+  }
+  return false;
 }
 
 /** Typische AZ-Untergrenze (Einmalbetrag) vs. Wunschrate. */
@@ -113,6 +133,9 @@ export function parseImplicitDownPayment(text = '', ctx = {}) {
     const value = parseEuroLoose(m[1]);
     if (value == null || value < IMPLICIT_DOWN_PAYMENT_MIN || value > 200000) continue;
     if (hasMonthlyBudgetCueNear(blob, m.index || 0, m[0].length)) continue;
+    const before = blob.slice(Math.max(0, (m.index || 0) - 16), m.index || 0);
+    // „bis 37.000 €“ = Preisdeckel, keine AZ
+    if (/\bbis\s*(?:zu\s*)?$/i.test(before)) continue;
     const after = blob.slice((m.index || 0) + m[0].length, (m.index || 0) + m[0].length + 16);
     if (/^\s*(?:anzahlung|az|sonderzahlung)\b/i.test(after)) continue;
     // Nach Laufzeit+km: nächster großer Euro-Betrag = AZ
@@ -190,8 +213,16 @@ export {
   parseTrimSwitchPhrase,
   validateOfferVehicleIdentity,
   validateOfferPackageAgainstCatalog,
+  validateOfferPowerAgainstCatalog,
+  validateOfferEquipmentAgainstCatalog,
   shouldBindIdentityToOpenOffer,
   CLARIFY_VEHICLE_FOR_OFFER_PROMPT,
   OFFER_VEHICLE_TARGET_STATUS,
   OFFER_MUTATION_MODE,
 } from './offerVehicleIdentity.js';
+
+export {
+  parseSellerCommercialAliasShorthand,
+  findSellerAliasesInText,
+  resolveSellerAliasToken,
+} from './sellerAliasRegistry.js';

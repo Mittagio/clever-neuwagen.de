@@ -37,7 +37,7 @@ export function isPlaceholderCustomerName(name = '') {
  * z. B. „Angebote für“, „Earth weiß“, „EV2 Air“.
  */
 export function isCustomerNameStopToken(token = '') {
-  return /^(?:ein|eine|einen|einem|einer|eines|ihm|ihr|dem|den|das|des|der|die|noch|hat|gibt|geben|möchte|moechte|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|leasing|privatleasing|privat|finanzierung|für|an|will|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|wolfsgrau|metallic|und|oder|mit|ohne|max|km|monate?|kinder|ahk|pv\d|donnerstag|montag|dienstag|mittwoch|freitag|rückruf|anrufen|erstmal|nur|entscheidet|entscheiden|entwurf|seine|ihre|interessiere|inklusive|farbe|wunschkonditionen|viele|beste|freundliche|herzliche|liebe|grüße|gruesse|gruß|gruss|mit)$/i
+  return /^(?:ein|eine|einen|einem|einer|eines|ihm|ihr|dem|den|das|des|der|die|er|sie|es|ich|wir|man|mein|noch|hat|gibt|geben|möchte|moechte|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|leasing|privatleasing|privat|finanzierung|für|an|will|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|wolfsgrau|metallic|und|oder|mit|ohne|max|km|monate?|kinder|ahk|pv\d|donnerstag|montag|dienstag|mittwoch|freitag|rückruf|anrufen|erstmal|nur|entscheidet|entscheiden|entwurf|seine|ihre|interessiere|inklusive|farbe|wunschkonditionen|viele|beste|freundliche|herzliche|liebe|grüße|gruesse|gruß|gruss|mit|diesel|benzin|hybrid|elektro|manuell|automatik|schalter|abrufschein|bar|barkauf|ps|kw|kwh)$/i
     .test(String(token || '').trim());
 }
 
@@ -49,7 +49,8 @@ export function isPlausibleCustomerName(name = '') {
   const raw = String(name || '').trim();
   if (!raw || raw.length < 2 || raw.length > 60) return false;
   if (isPlaceholderCustomerName(raw)) return false;
-  if (/\b(?:angebot|angebote|ev\s*\d|leasing|finanz)\b/i.test(raw)) return false;
+  if (/\b(?:angebot|angebote|ev\s*\d|leasing|finanz|diesel|manuell|abrufschein)\b/i.test(raw)) return false;
+  if (/^(?:ihr|mein|unser)\b/i.test(raw)) return false;
   if (/^(?:viele|beste|freundliche|herzliche|liebe)\s+gr(?:ü|ue)(?:ß|ss)e?\b/i.test(raw)) return false;
   if (/^mit\s+freundlichen\s+gr(?:ü|ue)(?:ß|ss)en?\b/i.test(raw)) return false;
   if (/\b(?:earth|air|spirit|vision|elite)\s+(?:weiß|weiss|schwarz|blau|grau|rot)\b/i.test(raw)) {
@@ -61,8 +62,10 @@ export function isPlausibleCustomerName(name = '') {
     .split(/\s+/)
     .filter(Boolean);
   if (!parts.length) return false;
-  if (parts.some((p) => isCustomerNameStopToken(p))) return false;
-  if (parts.some((p) => /^\d+$/.test(p) || /@/.test(p))) return false;
+  // Initial „S.“ in Signaturen erlauben
+  const nameParts = parts.map((p) => p.replace(/\.$/, '')).filter(Boolean);
+  if (nameParts.some((p) => p.length > 1 && isCustomerNameStopToken(p))) return false;
+  if (nameParts.some((p) => /^\d+$/.test(p) || /@/.test(p))) return false;
   return true;
 }
 
@@ -104,10 +107,29 @@ export function sanitizeCustomerNameCandidate(raw = '', opts = {}) {
  * Explizit genannten Kundennamen aus Seller-Input ziehen.
  * z. B. „Schreibe Garritano ein Angebot …“, „Familie Müller …“, „Kunde heißt …“
  */
+/**
+ * Anrede-Empfänger in Kundenmail („Sehr geehrter Herr Quach“) ≠ Kunde,
+ * wenn eine Absender-Signatur vorhanden ist.
+ */
+function isGreetingRecipientCapture(fullText = '', matchIndex = 0) {
+  const before = String(fullText).slice(Math.max(0, matchIndex - 48), matchIndex);
+  return /(?:sehr\s+geehrte[rn]?|guten\s+(?:tag|morgen|abend)|hallo|liebe[rn]?)\s*$/i.test(before);
+}
+
+function hasCustomerMailSignatureName(text = '') {
+  const raw = String(text || '');
+  if (!/mit\s+freundlichen\s+gr(?:ü|ue)(?:ß|ss)en|viele\s+gr(?:ü|ue)(?:ß|ss)e|beste\s+gr(?:ü|ue)(?:ß|ss)e/i.test(raw)) {
+    return false;
+  }
+  // Signaturzeile: „S. Hafner“ oder „Max Mustermann“
+  return /(?:^|\n)\s*(?:[A-ZÄÖÜ]\.\s*[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?|[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+)\s*(?:\n|$)/m.test(raw);
+}
+
 export function extractNamedCustomerFromInput(sellerInput = '') {
   const t = String(sellerInput ?? '').trim();
   if (!t) return null;
 
+  const skipGreetingRecipient = hasCustomerMailSignatureName(t);
   const nameToken = '([A-Za-zÄÖÜäöüß-]{2,40}(?:\\s+[A-Za-zÄÖÜäöüß-]{2,40})?)';
   const patterns = [
     // „Familie Müller,“ / „Familie Müller will …“
@@ -145,6 +167,14 @@ export function extractNamedCustomerFromInput(sellerInput = '') {
   for (const re of patterns) {
     const m = t.match(re);
     if (!m?.[1]) continue;
+    const matchIndex = typeof m.index === 'number' ? m.index : t.indexOf(m[0]);
+    if (
+      skipGreetingRecipient
+      && isGreetingRecipientCapture(t, matchIndex)
+      && /\b(?:herrn?|frau)\s+/i.test(m[0])
+    ) {
+      continue;
+    }
     const cleaned = sanitizeCustomerNameCandidate(m[1]);
     if (cleaned) return cleaned;
   }
