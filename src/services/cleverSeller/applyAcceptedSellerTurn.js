@@ -256,6 +256,57 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       }
     }
 
+    if (field === 'termMonthsVariants' && Array.isArray(value) && value.length) {
+      const variants = [...new Set(value.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n >= 12 && n <= 72))];
+      if (variants.length) {
+        profile.termMonthsVariants = variants;
+        if (variants.length === 1) {
+          wish.termMonths = variants[0];
+          touchedWish = true;
+        }
+        for (const months of variants) {
+          profile.understoodLabels = pushUnique(
+            profile.understoodLabels ?? [],
+            `${months} Monate`,
+          );
+        }
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'downPaymentRange' && value && (value.min != null || value.max != null || Array.isArray(value))) {
+      const min = Array.isArray(value) ? Number(value[0]) : Number(value.min);
+      const max = Array.isArray(value) ? Number(value[1]) : Number(value.max);
+      if (Number.isFinite(min) && Number.isFinite(max) && min <= max) {
+        profile.downPaymentRange = { min, max };
+        profile.understoodLabels = pushUnique(
+          profile.understoodLabels ?? [],
+          `AZ ${min.toLocaleString('de-DE')}–${max.toLocaleString('de-DE')} €`,
+        );
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'customerContext' && (value || fact.label)) {
+      profile.customerContext = value === 'existing_customer' || /bestand/i.test(String(fact.label || ''))
+        ? 'existing_customer'
+        : String(value || fact.label);
+      profile.understoodLabels = pushUnique(
+        profile.understoodLabels ?? [],
+        fact.label || 'Bestandskunde',
+      );
+      touchedProfile = true;
+    }
+
+    if (field === 'personalNote' && (value || fact.label)) {
+      const text = String(value?.text || fact.label || '').trim();
+      if (text) {
+        profile.personalNotes = pushUnique(profile.personalNotes ?? [], text);
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], text);
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'batteryVariantWishes' && Array.isArray(value) && value.length) {
       profile.batteryVariantWishes = value.map((v) => (
         typeof v === 'object' && v
@@ -598,9 +649,15 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
     }
 
     if (field === 'fuelPreference' && value) {
-      profile.fuel = String(value) === 'electric' || String(value) === 'elektro'
+      const pref = typeof value === 'object' && value
+        ? (value.preference || value.id || value.value)
+        : value;
+      profile.fuel = String(pref) === 'electric' || String(pref) === 'elektro'
         ? 'electric'
-        : String(value);
+        : String(pref);
+      if (typeof value === 'object' && value?.soft) {
+        profile.fuelPreferenceSoft = true;
+      }
       touchedProfile = true;
     }
 
@@ -906,6 +963,22 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         monthlyNetIncome: Number(value),
       };
       touchedProfile = true;
+    }
+
+    if (field === 'monthlyNetIncomeRange' && value) {
+      const min = Number(value.min ?? value[0]);
+      const max = Number(value.max ?? value[1]);
+      if (Number.isFinite(min) && Number.isFinite(max)) {
+        profile.finance = {
+          ...(profile.finance ?? {}),
+          monthlyNetIncomeRange: { min, max },
+        };
+        profile.understoodLabels = pushUnique(
+          profile.understoodLabels ?? [],
+          `Netto ca. ${min.toLocaleString('de-DE')}–${max.toLocaleString('de-DE')} €`,
+        );
+        touchedProfile = true;
+      }
     }
   }
 

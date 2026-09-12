@@ -1,0 +1,47 @@
+---
+description: Pattern-Freeze Free Speech / Dictation Intake V1 – pilotfähig
+alwaysApply: true
+---
+
+# PATTERN-FREEZE: Free Speech / Dictation Intake V1
+
+**Status: pilotfähig**
+
+## Produktsatz
+
+> Lose Verkäufer-Diktate → strukturierter Verkaufsstand. Rolle vor Wert. Kontext vor Keyword.
+
+## Produktregeln
+
+1. Rolle vor Wert
+2. Kontext vor Keyword
+3. Spanne bleibt Spanne
+4. Bestandsfahrzeug ≠ Wunschfahrzeug
+5. persönliche Notiz ≠ Fahrzeugmerkmal
+6. Commercial ohne Modell → Consultation, kein Concept Draft / prepare_offer
+
+## Eingefroren
+
+- Name-Diktat am Anfang + Stopwörter (Status/Rollen ≠ Name)
+- Ownership-Cue → `existingVehicle` (nicht Interest)
+- Contract-End mit Vertrag/leasen
+- `termMonthsVariants` aus „drei oder vier Jahre“
+- `downPaymentRange` aus „zwischen X und Y“
+- Fahrzeugfarbe nur mit Fahrzeugkontext (Kaffee schwarz = Notiz)
+- Soft-Elektro bei Hedge
+- Golden: `brandesFreeSpeech.golden.test.js`
+
+## Nicht
+
+- Keine neue Parser-/LLM-Pipeline
+- Keine Regex-Satzmaschine
+- Keine Sonderregeln nur für einzelne Testpersonen
+- Keine weiteren künstlichen Diktatfälle erfinden
+
+## Nächster Prozess
+
+echte Anfrage → neues Muster ja/nein → nur systemisch fixen → Golden → Regression
+
+## Doc
+
+`docs/CLEVER_ZERO_LOSS_INTAKE.md`

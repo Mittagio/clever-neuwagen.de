@@ -1,0 +1,35 @@
+---
+description: Pattern-Freeze Seller Shorthand / Fuzzy Input V1 – pilotfähig; keine künstlichen Teststrings
+alwaysApply: true
+---
+
+# PATTERN-FREEZE: Seller Shorthand / Fuzzy Input V1
+
+**Status: pilotfähig**
+
+## Produktsatz
+
+> Kontrollierte Normalisierung vor Validierung – kein Fuzzy-Labor, keine Sonderregel pro Teststring.
+
+## Eingefroren
+
+- Seller Alias Registry (`sellerAliasRegistry.js`): Tokens, `FINANCING_ALIAS_RE`, Commercial-Shorthand (`48/15`, `48 15k`, `3k` nur mit AZ-Cue / kleinem k)
+- Modell-Normalisierung `ev 5` → EV5 (Alias, keine neue Modelllogik)
+- Drive Wise / DW-Tippfehler → Candidate → Katalog → sonst lokal „… prüfen“
+- Name-Stopwörter (`kunde`, `kundin`, `interessent(in)`, `herr`, `frau`) – keine Personen-NER
+- Presenter-Dedupe „prüfen prüfen“
+- Golden: `sellerAliasShorthand.golden.test.js`
+
+## Nicht
+
+- Keine neuen künstlichen Shorthand-/Tippfehler-Teststrings „zur Absicherung“
+- Keine neue Parser-Pipeline / kein freies Fuzzy über den Satz
+- Keine Verwechslung Finanzierung ↔ Leasing
+
+## Nächster Prozess
+
+echte Anfrage → neues Muster ja/nein → nur systemischen Fehler fixen → Golden → Regression
+
+## Doc
+
+`docs/CLEVER_ZERO_LOSS_INTAKE.md` § Verkäufer-Kurzschrift

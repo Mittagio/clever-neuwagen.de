@@ -40,15 +40,28 @@ export function ensureConceptOfferDraftFromCapture(lead = {}, facts = [], option
       || f.field === 'durationMonths'
       || f.field === 'annualMileage'
       || f.field === 'annualMileageVariants'
+      || f.field === 'termMonthsVariants'
       || f.field === 'leaseCalcScenarioWishes'
       || f.field === 'downPayment'
+      || f.field === 'downPaymentRange'
       || f.field === 'colorPreference'
       || f.field === 'motorPreference'
       || f.field === 'batteryPreference'
       || f.field === 'batteryVariantWishes'
     )
   ));
-  if (!hasCommercialOrIdentity && options.force !== true) {
+  const leadHasCommercial = Boolean(
+    lead?.wish?.paymentType
+    || lead?.wish?.termMonths
+    || lead?.wish?.mileagePerYear
+    || lead?.wish?.annualMileage
+    || lead?.wish?.downPayment
+    || lead?.crm?.needProfile?.fuel
+    || (Array.isArray(lead?.crm?.needProfile?.termMonthsVariants)
+      && lead.crm.needProfile.termMonthsVariants.length > 0)
+    || lead?.crm?.needProfile?.downPaymentRange
+  );
+  if (!hasCommercialOrIdentity && !leadHasCommercial && options.force !== true) {
     return { lead, offerDraftId: null };
   }
 

@@ -1,5 +1,15 @@
 /**
- * Verkäufer-Kurzschrift – Seller Alias Registry + Katalogvalidierung.
+ * Pattern-Freeze: Seller Shorthand / Fuzzy Input V1 · Status: pilotfähig
+ *
+ * Neues Muster? ja (kontrollierte Alias-/Normalisierung vor Katalog-Validierung)
+ * Keine Sonderregel pro Tippfehler · keine neuen künstlichen Shorthand-Teststrings.
+ *
+ * Nächster Prozess: echte Anfrage → neues Muster ja/nein → nur systemisch fixen → Golden.
+ *
+ * Kern: sellerAliasRegistry.js · normalizeSellerUnits.js · FINANCING_ALIAS_RE · Name-Stopwörter
+ * Golden: dieses File (Regressionsschutz, kein Teststring-Labor)
+ * Doc: docs/CLEVER_ZERO_LOSS_INTAKE.md § Verkäufer-Kurzschrift
+ *
  * node --test src/services/cleverSeller/sellerAliasShorthand.golden.test.js
  */
 import assert from 'node:assert/strict';

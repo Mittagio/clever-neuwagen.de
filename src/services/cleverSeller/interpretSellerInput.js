@@ -56,6 +56,7 @@ import {
   isBatchOfferCue,
   looksLikeMonthlyBudgetAmount,
   parseCommercialDownPayment,
+  parseCommercialDownPaymentRange,
   parseCommercialMonthlyRate,
   parseImplicitDownPayment,
   parseOfferIdentityFollowUp,
@@ -67,6 +68,7 @@ import {
   validateOfferEquipmentAgainstCatalog,
 } from './commercialOfferNl.js';
 import {
+  FINANCING_ALIAS_RE,
   findSellerAliasesInText,
   findSellerPowerMentions,
   parseSellerCommercialAliasShorthand,
@@ -130,7 +132,7 @@ const MONTH_MAP = {
 };
 
 /** Kia-Modelle, die als Neuwagen-Interesse gelten (nicht als aktuelles Fzg.). */
-const KIA_INTEREST_MODEL_RE = 'EV[2-9]|EQ[2-9]|PV[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
+const KIA_INTEREST_MODEL_RE = 'EV\\s*[2-9]|EQ\\s*[2-9]|PV\\s*[2-9]|Sportage|Sorento|Ceed|XCeed|Niro|Picanto|Seltos|K4|Stonic|Rio|Proceed|Soul|Carnival|Tivoli';
 const KIA_INTEREST_TRIM_RE = 'SW|GT-?Line|X-?Line(?:\\s*\\d+)?|Spirit|Earth|Vision|Air|DriveWise|Core|COR|Elite|Passenger';
 const KIA_INTEREST_PACKAGE_RE = 'Upgrade|Heat\\s*Pump|W(?:ä|ae)rmepumpe|WP|Winterpaket|Winter\\s*paket';
 /**
@@ -146,12 +148,23 @@ function matchColorToken(text = '') {
   );
 }
 
-const EXISTING_VEHICLE_OWNERSHIP_RE = /\b(?:ich\s+fahre(?:\s+aktuell)?|(?:aktuell\s+)?fährt(?:\s+er|\s+sie|\s+aktuell)?|mein\s+bisheriges|derzeit\s+habe\s+ich|mein\s+(?:aktuelles\s+)?(?:auto|fahrzeug|wagen)|aktuell(?:es)?\s+(?:auto|fahrzeug|wagen)|besitzt|vorhanden|bleibt\s+bei\s+mir|in\s+zahlung|gebrauchtwagen|\bgw\b|hat\s+(?:einen?|einen|eine)\s+)/i;
+/** Farbe nur mit Fahrzeugkontext – nicht „Kaffee schwarz“. */
+function hasVehicleColorContext(text = '', matchIndex = 0, opts = {}) {
+  if (opts.hasInterest || opts.bindToOpenOffer || opts.isRememberCue) return true;
+  if (opts.wishColorCue) return true;
+  const t = String(text || '');
+  const start = Math.max(0, Number(matchIndex) || 0);
+  const window = t.slice(Math.max(0, start - 56), Math.min(t.length, start + 48));
+  if (/\b(?:kaffee|tee|espresso|cappuccino|milchkaffee)\b/i.test(window)) return false;
+  return /\b(?:auto|wagen|fahrzeug|farbe|lack|metallic|wunschfarbe|ev\s*\d|kia|in\s+(?:schwarz|weiß|weiss|blau|grau)|schwarz(?:en?)?\s+(?:auto|wagen|fahrzeug|ev)|hätte\s+(?:ihn|sie|das)|gern(?:e)?\s+(?:in\s+)?(?:schwarz|weiß|weiss))\b/i.test(window);
+}
+
+const EXISTING_VEHICLE_OWNERSHIP_RE = /\b(?:ich\s+fahre(?:\s+aktuell)?|aktuell\s+fahre\s+ich|fahre\s+ich(?:\s+aktuell)?|(?:aktuell\s+)?fährt(?:\s+er|\s+sie|\s+aktuell)?|fährt\s+aktuell|fährt\s+derzeit|mein\s+bisheriges|bisheriges\s+fahrzeug|derzeit\s+habe\s+ich|mein\s+(?:aktuelles\s+)?(?:auto|fahrzeug|wagen)|aktuell(?:es)?\s+(?:auto|fahrzeug|wagen)|besitzt|vorhanden|bleibt\s+bei\s+mir|in\s+zahlung|gebrauchtwagen|\bgw\b|hat\s+(?:einen?|einen|eine)\s+|vertrag\s+läuft|vertrag\s+laeuft|vertrag\s+endet)\b/i;
 
 const RANGE_CONTEXT_RE = /\b(?:wltp|reichweite|pro\s+ladung|mit\s+(?:einer\s+)?ladung|km\s*wltp)\b/i;
 const FINANCE_APR_CONTEXT_RE = /\b(?:effektiv(?:er)?\s+jahreszins|sollzins|zinssatz|jahreszins|%\s*effektiv|0(?:[.,]\d+)?\s*%\s*(?:bzw\.?|oder)|niedriger\s+effektiv)\b/i;
 
-const COMPARISON_LIST_CUE_RE = /\b(?:interessant(?:e|en)?|interessieren|besonders\s+interessant|z\.?\s*b\.?|beispielsweise|vergleichbar(?:e)?|oder\s+vergleichbare|bzw\.?)\b/i;
+const COMPARISON_LIST_CUE_RE = /\b(?:interessant(?:e|en)?|interessieren|besonders\s+interessant|z\.?\s*b\.?|beispielsweise|vergleichbar(?:e)?|oder\s+vergleichbare|bzw\.?|schwank(?:e|t|en)?\s+zwischen|miteinander\s+vergleichen)\b/i;
 
 /** Cross-brand / Beratungs-Kandidaten (kein Besitz, kein Concept-Draft). */
 const COMPARISON_MODEL_SPECS = [
@@ -231,7 +244,7 @@ function isHistoricalVehicleMention(text = '', matchIndex = 0, matchLen = 0) {
   if (/\b(?:aktuell|jetzt|suche|interess|brauche|angebot\s+für)\b/i.test(local)) return false;
   return true;
 }
-const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia';
+const EXISTING_MAKE_RE = 'ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|kia|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia|ssangyong|ssang[\\s-]?yong';
 const NAME_STOP = /^(kia|ford|vw|volkswagen|skoda|škoda|bmw|audi|mercedes|hyundai|opel|seat|toyota|interesse|probefahrt|termin|automatik|schalter|kunde|hat|der|die|das|ein|eine|einer|eines|mit|von|zum|zur|und|oder|auch|noch|schon|will|möchte|moechte|irgendwie|irgendwas|neues|neuen|neuem|auto|wagen|fahrzeug|leasing|finanzierung|angebot|nachricht|heute|morgen|bitte|sehr|gerne|er|sie|es|ich|wir|man|mein|seine|ihre)$/i;
 
 function titleCaseToken(token = '') {
@@ -491,10 +504,40 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  // Self-disclosure / finance
+  // Self-disclosure / finance – Spanne oder Punktwert; nie Bonität ableiten
+  const netRange = t.match(
+    /\b(?:netto(?:einkommen)?|einkommen)\b[^.\n]{0,48}?\b(?:irgendwo\s+)?(?:zwischen\s+)?(zweieinhalb|2(?:[.\s]?500)|2500)\s*(?:€|euro)?\s*(?:bis|–|-|und)\s*(dreitausend|3(?:[.\s]?000)|3000)\s*(?:€|euro)?/i,
+  ) || t.match(
+    /\b(?:netto(?:einkommen)?|einkommen)\b[^.\n]{0,48}?\b(\d{1,2}(?:[.\s]\d{3})+|\d{3,5})\s*(?:€|euro)?\s*(?:bis|–|-|und)\s*(\d{1,2}(?:[.\s]\d{3})+|\d{3,5})\s*(?:€|euro)?/i,
+  );
+  if (netRange && !facts.some((f) => f.field === 'monthlyNetIncome' || f.field === 'monthlyNetIncomeRange')) {
+    const WORD_NET = { zweieinhalb: 2500, dreitausend: 3000 };
+    const parseNet = (raw) => {
+      const key = String(raw || '').toLowerCase().replace(/\s/g, '');
+      if (WORD_NET[key]) return WORD_NET[key];
+      const n = Number(String(raw).replace(/[.\s]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    };
+    const min = parseNet(netRange[1]);
+    const max = parseNet(netRange[2]);
+    if (min != null && max != null && min <= max) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.SELF_DISCLOSURE_FACT,
+        field: 'monthlyNetIncomeRange',
+        value: { min, max },
+        label: `Netto ca. ${min.toLocaleString('de-DE')}–${max.toLocaleString('de-DE')} €`,
+        confidence: 0.9,
+        rawExpression: netRange[0],
+        span: netRange[0],
+      }));
+    }
+  }
   const net = t.match(/\b(?:netto|nettoeinkommen|einkommen)\s*(?:ca\.?\s*)?(\d{1,2}(?:[.\s]\d{3})*|\d{3,5})\b/i)
     || t.match(/\b(\d{3,5})\s*(?:€|euro)?\s*netto\b/i);
-  if (net) {
+  if (
+    net
+    && !facts.some((f) => f.field === 'monthlyNetIncome' || f.field === 'monthlyNetIncomeRange')
+  ) {
     const value = Number(String(net[1]).replace(/[.\s]/g, ''));
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.SELF_DISCLOSURE_FACT,
@@ -502,6 +545,18 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       value,
       label: `Netto ${value.toLocaleString('de-DE')} €`,
       confidence: 0.95,
+    }));
+  }
+
+  if (/\bbestandskunde(?:n|in)?\b/i.test(t) && !facts.some((f) => f.field === 'customerContext')) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.CUSTOMER_FACT,
+      field: 'customerContext',
+      value: 'existing_customer',
+      label: 'Bestandskunde',
+      confidence: 0.95,
+      rawExpression: 'Bestandskunde',
+      span: 'Bestandskunde',
     }));
   }
 
@@ -524,7 +579,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
-  const children = t.match(/\b(\d)\s*kinder?\b/i) || t.match(/\bzwei\s*kinder\b/i);
+  const children = t.match(/\b(\d)\s*kinder(?:n)?\b/i) || t.match(/\bzwei\s*kinder(?:n)?\b/i);
   if (children) {
     const value = /zwei/i.test(children[0]) ? 2 : Number(children[1]);
     pushFact(facts, createExtractedFact({
@@ -535,6 +590,28 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       confidence: 0.97,
       rawExpression: children[0],
       span: children[0],
+    }));
+  }
+
+  // Persönliche Notiz – Getränk ≠ Fahrzeugfarbe
+  const beverageNote = t.match(
+    /\b((?:kaffee|tee|espresso|cappuccino)\s+trinkt\s+(?:er|sie)\s+\w+)/i,
+  ) || t.match(
+    /\b(trinkt\s+(?:er|sie)\s+(?:den\s+)?(?:kaffee|tee|espresso)\s+\w+)/i,
+  );
+  if (beverageNote && !facts.some((f) => f.field === 'personalNote')) {
+    const noteText = String(beverageNote[1] || '').replace(/\s+/g, ' ').trim();
+    const short = /kaffee.{0,20}schwarz/i.test(noteText)
+      ? 'Kaffee schwarz'
+      : noteText;
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.SELLER_NOTE,
+      field: 'personalNote',
+      value: { text: short },
+      label: short,
+      confidence: 0.9,
+      rawExpression: beverageNote[0],
+      span: beverageNote[0],
     }));
   }
 
@@ -769,6 +846,20 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       interestMatch = interestRe.exec(t);
       continue;
     }
+    // Besitz-/Bestandsmarker → existingVehicle, kein Wunschinteresse
+    const interestWindow = t.slice(
+      Math.max(0, interestMatch.index - 72),
+      Math.min(t.length, interestMatch.index + interestMatch[0].length + 48),
+    );
+    const foreignMakeBefore = /(?:ssangyong|ssang[\s-]?yong|ford|vw|volkswagen|opel|bmw|audi|mercedes|toyota|hyundai|skoda|škoda|seat|renault|peugeot|mini|mazda|nissan|cupra|dacia)\s+$/i
+      .test(t.slice(Math.max(0, interestMatch.index - 24), interestMatch.index));
+    if (
+      hasExistingVehicleOwnershipCue(interestWindow, interestMatch[0])
+      || foreignMakeBefore
+    ) {
+      interestMatch = interestRe.exec(t);
+      continue;
+    }
     const afterStart = interestMatch.index + interestMatch[0].length;
     const nextModelRel = t.slice(afterStart).search(
       new RegExp(`\\b(?:kia\\s+)?(?:${KIA_INTEREST_MODEL_RE})\\b`, 'i'),
@@ -895,7 +986,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   // Beratungsfall: Vergleichs-/Beispielmodelle → modelCandidates, kein Fokusmodell
   const comparisonCandidates = extractComparisonModelCandidates(raw);
   const isConsultationCandidateList = comparisonCandidates.length >= 2
-    || (comparisonCandidates.length >= 1 && /\bvergleichbar/i.test(t));
+    || (comparisonCandidates.length >= 1 && /\bvergleichbar/i.test(t))
+    || (
+      interestHits.length >= 2
+      && /\bschwank(?:e|t|en)?\s+zwischen\b|\bmiteinander\s+vergleichen\b|\bwelches\s+der\s+beiden\b/i.test(t)
+    );
 
   const interestTrimConflict = detectInterestTrimConflict(interestHits);
   if (interestTrimConflict.conflict) {
@@ -1169,7 +1264,8 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
     const makeNorm = /^volkswagen$/i.test(makeRaw) || /^vw$/i.test(makeRaw)
       ? 'VW'
-      : (/^škoda$/i.test(makeRaw) ? 'Skoda' : titleCaseToken(makeRaw));
+      : (/^škoda$/i.test(makeRaw) ? 'Skoda'
+        : (/^ssang[\s-]?yong$/i.test(makeRaw) ? 'SsangYong' : titleCaseToken(makeRaw)));
     const model = titleCaseToken(modelRaw);
     const gear = gearRaw ? titleCaseToken(gearRaw) : null;
     let color = null;
@@ -1201,6 +1297,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     || existingCandidates.find((c) => !/^kia$/i.test(c.make))
     || null;
   // Besitzkontext ODER klassischer Dealer-Dump (Fremdmarke neben Kia-Interesse, kein Vergleichsliste)
+  // Beratungsfall unterdrückt Besitz NICHT, wenn klarer Ownership-Cue („ich fahre …“)
   const dealerDumpExisting = Boolean(
     existingPick
     && hasInterest
@@ -1208,10 +1305,12 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     && !COMPARISON_LIST_CUE_RE.test(t)
     && !/^kia$/i.test(existingPick.make),
   );
+  const ownershipCue = existingPick
+    ? hasExistingVehicleOwnershipCue(raw, existingPick.span)
+    : false;
   if (
     existingPick
-    && !isConsultationCandidateList
-    && (hasExistingVehicleOwnershipCue(raw, existingPick.span) || dealerDumpExisting)
+    && (ownershipCue || dealerDumpExisting)
   ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.EXISTING_VEHICLE,
@@ -1234,15 +1333,15 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   // Contract end (kurz) – kein Vollimport; Vollimport = import_customer_contract
   // Nur bei klaren End-Cues – nicht „Gesendet: … September“ + Leasing-Wunsch
   if (!isCustomerContractIntakeText(t)
-    && /\bleasing\b/i.test(t)
-    && /\b(auslauf|läuft|laeuft|vertragsende|leasingende|endet\b|läuft\s+aus|laeuft\s+aus|bis\s+\d|ende\s+(?:im|am|zum|der|des)?\s*\d|leasing\s+(?:ende|bis))\b/i.test(t)) {
+    && /\b(?:leasing|leasen|vertrag)\b/i.test(t)
+    && /\b(auslauf|läuft|laeuft|vertragsende|leasingende|endet\b|läuft\s+aus|laeuft\s+aus|bis\s+\d|ende\s+(?:im|am|zum|der|des)?\s*\d|leasing\s+(?:ende|bis)|vertrag\s+läuft|vertrag\s+laeuft)\b/i.test(t)) {
     const endDate = parseMonthYear(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.CONTRACT_FACT,
       field: 'existingContractEnd',
       value: endDate ? { type: 'leasing', endDate } : { type: 'leasing' },
       label: endDate
-        ? (formatContractEndLabel(endDate, { type: 'leasing' }) || `Leasingende ${endDate}`)
+        ? (formatContractEndLabel(endDate, { type: 'leasing' }) || `Vertragsende ${endDate}`)
         : 'Leasingvertrag vorhanden',
       confidence: endDate ? 0.93 : 0.8,
       needsConfirmation: !endDate,
@@ -1278,7 +1377,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: 'Kauf / Bar',
       confidence: 0.92,
     }));
-  } else if (/\bfinanzierung\b/i.test(t) && !/\b(?:privat)?leasing\b/i.test(t)) {
+  } else if (FINANCING_ALIAS_RE.test(t) && !/\b(?:privat)?leasing\b/i.test(t)) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'paymentType',
@@ -1344,8 +1443,48 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  const YEAR_WORD_TO_N = {
+    einem: 1, eine: 1, ein: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5,
+    sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10,
+  };
+  const parseYearToken = (raw) => {
+    const s = String(raw || '').toLowerCase();
+    if (YEAR_WORD_TO_N[s] != null) return YEAR_WORD_TO_N[s];
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : null;
+  };
+
+  // „entweder drei oder vier Jahre“ → Varianten vor Singular-Shorthand
+  if (!facts.some((f) => f.field === 'termMonthsVariants')) {
+    const dualYears = t.match(
+      /\b(?:entweder\s+)?(ein|eine|einem|zwei|drei|vier|fünf|fuenf|sechs|\d{1,2})\s+oder\s+(ein|eine|einem|zwei|drei|vier|fünf|fuenf|sechs|\d{1,2})\s*jahre?\b/i,
+    );
+    if (dualYears) {
+      const a = parseYearToken(dualYears[1]);
+      const b = parseYearToken(dualYears[2]);
+      const uniqYearTerms = [...new Set([a, b].filter((n) => n != null).map((y) => y * 12))]
+        .filter((m) => m >= 12 && m <= 72)
+        .sort((x, y) => x - y);
+      if (uniqYearTerms.length >= 2) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'termMonthsVariants',
+          value: uniqYearTerms,
+          label: uniqYearTerms.map((n) => `${n} Monate`).join(' sowie '),
+          confidence: 0.93,
+          rawExpression: dualYears[0],
+          span: dualYears[0],
+        }));
+      }
+    }
+  }
+
   const termMileage = parseTermAndMileageShorthand(raw);
-  if (termMileage.termMonths != null && !facts.some((f) => f.field === 'termMonths')) {
+  if (
+    termMileage.termMonths != null
+    && !facts.some((f) => f.field === 'termMonths')
+    && !facts.some((f) => f.field === 'termMonthsVariants')
+  ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
       field: 'termMonths',
@@ -1364,6 +1503,44 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
         label: 'Leasing',
         confidence: 0.9,
       }));
+    }
+  } else if (
+    facts.some((f) => f.field === 'termMonthsVariants')
+    && !facts.some((f) => f.field === 'paymentType')
+    && /\b(?:leasing|leasen)\b/i.test(t)
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'paymentType',
+      value: 'leasing',
+      label: 'Leasing',
+      confidence: 0.9,
+    }));
+  }
+
+  // Mehrere Laufzeiten („48 Monate / 10.000 km“ + „36 Monate / 10.000 km“)
+  if (!facts.some((f) => f.field === 'termMonthsVariants')) {
+    const termVariantHits = [...t.matchAll(
+      /\b(12|24|36|42|48|60)\s*monaten?\b/gi,
+    )].map((m) => Number(m[1]));
+    const uniqTerms = [...new Set(termVariantHits.filter((n) => n >= 12 && n <= 72))];
+    if (uniqTerms.length >= 2) {
+      pushFact(facts, createExtractedFact({
+        factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+        field: 'termMonthsVariants',
+        value: uniqTerms,
+        label: uniqTerms.map((n) => `${n} Monate`).join(' sowie '),
+        confidence: 0.93,
+      }));
+      if (!facts.some((f) => f.field === 'termMonths')) {
+        pushFact(facts, createExtractedFact({
+          factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+          field: 'termMonths',
+          value: uniqTerms[0],
+          label: `${uniqTerms[0]} Monate`,
+          confidence: 0.9,
+        }));
+      }
     }
   }
 
@@ -1452,11 +1629,27 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   }
 
+  const commercialDownRange = parseCommercialDownPaymentRange(raw);
+  if (
+    commercialDownRange
+    && !facts.some((f) => f.field === 'downPaymentRange' || f.field === 'downPayment')
+  ) {
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
+      field: 'downPaymentRange',
+      value: commercialDownRange,
+      label: `AZ ${commercialDownRange.min.toLocaleString('de-DE')}–${commercialDownRange.max.toLocaleString('de-DE')} €`,
+      confidence: 0.93,
+      rawExpression: `${commercialDownRange.min}-${commercialDownRange.max}`,
+      span: `${commercialDownRange.min}-${commercialDownRange.max}`,
+    }));
+  }
+
   const commercialDown = parseCommercialDownPayment(raw);
   if (
     !skipSingularCommercialFromScenarios
     && commercialDown != null
-    && !facts.some((f) => f.field === 'downPayment')
+    && !facts.some((f) => f.field === 'downPayment' || f.field === 'downPaymentRange')
   ) {
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.COMMERCIAL_PREFERENCE,
@@ -1470,7 +1663,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   }
 
   // Freistehender Betrag nach Laufzeit+km ohne Monats-Cue → AZ (Wittig: 5000 €)
-  const hasTermFact = facts.some((f) => f.field === 'termMonths')
+  const hasTermFact = facts.some((f) => f.field === 'termMonths' || f.field === 'termMonthsVariants')
     || termMileage.termMonths != null;
   const hasMileageFact = facts.some((f) => (
     f.field === 'annualMileage' || f.field === 'mileagePerYear'
@@ -1481,7 +1674,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   });
   if (
     implicitDown != null
-    && !facts.some((f) => f.field === 'downPayment')
+    && !facts.some((f) => f.field === 'downPayment' || f.field === 'downPaymentRange')
     && !facts.some((f) => f.field === 'purchasePrice' && Number(f.value) === Number(implicitDown))
   ) {
     pushFact(facts, createExtractedFact({
@@ -1659,6 +1852,35 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
+  // Wunschfarbe vor Bestand: „am liebsten in Schwarz“ / „optisch … weiß“
+  const wishColorMatch = t.match(
+    /\b(?:am\s+liebsten|optisch|wunschfarbe|farbe)\b[\s\S]{0,40}?\b(schwarz\w*|wei(?:ss|ß)\w*|blau\w*|grau\w*|silber\w*|rot\w*|gr(?:ü|ue)n\w*|terracotta|wolfsgrau(?:\s+metallic)?)\b/i,
+  ) || t.match(
+    /\b(?:in|auf)\s+(schwarz\w*|wei(?:ss|ß)\w*|blau\w*|grau\w*|silber\w*|rot\w*|gr(?:ü|ue)n\w*|terracotta)\b/i,
+  );
+  if (wishColorMatch?.[1] && !facts.some((f) => f.field === 'colorPreference')) {
+    const lower = String(wishColorMatch[1]).toLowerCase();
+    const base = lower.startsWith('schwarz') ? 'schwarz'
+      : lower.startsWith('weiß') || lower.startsWith('weiss') || /^wei([sß]|$)/.test(lower) ? 'weiß'
+      : /wolfsgrau/.test(lower) ? 'wolfsgrau metallic'
+      : lower.startsWith('blau') ? 'blau'
+      : lower.startsWith('grau') ? (/metallic/.test(lower) ? 'grau metallic' : 'grau')
+      : lower.startsWith('silber') ? 'silber'
+      : lower.startsWith('rot') ? 'rot'
+      : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
+      : lower.includes('terracotta') ? 'terracotta'
+      : lower;
+    pushFact(facts, createExtractedFact({
+      factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
+      field: 'colorPreference',
+      value: { color: base },
+      label: titleCaseToken(base),
+      confidence: 0.93,
+      rawExpression: wishColorMatch[0],
+      span: wishColorMatch[0],
+    }));
+  }
+
   const color = matchColorToken(t);
   // Nur bei Multi-Dump mit per-Spur-Farbe kein zusätzliches globales Chip
   const colorAlreadyOnInterest = Boolean(
@@ -1666,7 +1888,24 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     && interestHits.length >= 2
     && interestHits.some((h) => h.color),
   );
-  if (color && !colorAlreadyOnInterest && !facts.some((f) => f.field === 'colorPreference')) {
+  const colorMatchIndex = color
+    ? (typeof color.index === 'number' ? color.index : t.toLowerCase().indexOf(String(color[1] || '').toLowerCase()))
+    : -1;
+  const colorWishCueForGuard = /\bam\s+liebsten\b|\boptisch\b|\bwunschfarbe\b|\bfarbe\s*:/i.test(t);
+  const colorHasVehicleContext = color
+    ? hasVehicleColorContext(t, colorMatchIndex, {
+      hasInterest,
+      bindToOpenOffer,
+      isRememberCue,
+      wishColorCue: colorWishCueForGuard,
+    })
+    : false;
+  if (
+    color
+    && colorHasVehicleContext
+    && !colorAlreadyOnInterest
+    && !facts.some((f) => f.field === 'colorPreference')
+  ) {
     const rawColor = color[1];
     const lower = String(rawColor || '').toLowerCase();
     const base = lower.startsWith('schwarz') ? 'schwarz'
@@ -1679,11 +1918,13 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       : lower.startsWith('grün') || lower.startsWith('gruen') ? 'grün'
       : lower;
     // Farbe gehört zum Bestandfahrzeug („schwarzen VW Polo“) – kein Wunschfarbe-Chip
+    const colorWishCue = /\bam\s+liebsten\b|\boptisch\b|\bwunschfarbe\b|\bfarbe\s*:/i.test(t);
     const existingColorOwnsToken = Boolean(
       existingPick?.color
       && existingPick.color === base
       && !hasInterest
-      && !bindToOpenOffer,
+      && !bindToOpenOffer
+      && !colorWishCue,
     );
     if (existingColorOwnsToken) {
       // skip global colorPreference
@@ -1817,12 +2058,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     /\bvoll\s*elektrisch|\belektro(?:auto|fahrzeug|wagen)?\b|\belektrisch(?:es|e|er|em)?\b|\bbev\b|\be[-\s]?autos?\b/i.test(t)
     && !/\bhybrid\b/i.test(t)
   ) {
+    const softElectric = /\b(?:vielleicht|eher|eventuell|ggf\.?|erstmal|schauen\s+was\s+passt|noch\s+nicht\s+fest)\b/i.test(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.VEHICLE_REQUIREMENT,
       field: 'fuelPreference',
-      value: 'electric',
-      label: 'Elektroauto',
-      confidence: isRememberCue ? 0.94 : 0.92,
+      value: softElectric
+        ? { preference: 'electric', soft: true }
+        : 'electric',
+      label: softElectric ? 'eher Elektro' : 'Elektroauto',
+      confidence: softElectric ? 0.78 : (isRememberCue ? 0.94 : 0.92),
+      needsConfirmation: softElectric,
     }));
   }
 
@@ -2332,8 +2577,13 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }));
   } else if (
     plannedMonthYear
-    && !facts.some((f) => f.field === 'deliveryDeadline' || f.field === 'existingContractEnd')
+    && !facts.some((f) => f.field === 'deliveryDeadline')
     && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin|benötig|brauch|fahrzeug)\b/i.test(t)
+    // Vertragsende und geplanter Wechsel dürfen koexistieren („endet …“ ≠ „benötige ab …“)
+    && (
+      !facts.some((f) => f.field === 'existingContractEnd')
+      || /\b(?:benötig|brauch|ungefähr\s+ab|ab\s+(?:januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)|neues?\s+fahrzeug\s+würde)\b/i.test(t)
+    )
   ) {
     const [year, month] = plannedMonthYear.split('-');
     const monthNames = {
@@ -2802,6 +3052,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       || facts.some((f) => f.field === 'tradeInVehicle' || f.field === 'tradeInRequested')
     )) continue;
     if (legacy.key === 'color' && facts.some((f) => f.field === 'colorPreference')) continue;
+    if (legacy.key === 'color' && (
+      facts.some((f) => f.field === 'personalNote' && /kaffee|tee|espresso/i.test(String(f.label || '')))
+      || /\b(?:kaffee|tee|espresso|cappuccino)\b.{0,24}\bschwarz\b/i.test(t)
+      || /\bschwarz\b.{0,24}\b(?:kaffee|tee|espresso)\b/i.test(t)
+    )) continue;
     if (legacy.key === 'discount' && (
       facts.some((f) => f.field === 'discountPercent' || f.field === 'financeWish')
       || financeAprContext

@@ -261,6 +261,18 @@ function formatLeasingLine(facts = [], lead = null) {
     parts.push(`${Number(months)} Monate`);
   }
 
+  const termVariants = pickFact(facts, 'termMonthsVariants')
+    || (Array.isArray(lead?.crm?.needProfile?.termMonthsVariants)
+      ? { value: lead.crm.needProfile.termMonthsVariants }
+      : null);
+  if (Array.isArray(termVariants?.value) && termVariants.value.length >= 2) {
+    // Ersetzt Einzel-Laufzeit in der Zeile
+    const idx = parts.findIndex((p) => /\d+\s*Monate/i.test(String(p)));
+    const label = termVariants.value.map((n) => `${Number(n)} Monate`).join(' sowie ');
+    if (idx >= 0) parts[idx] = label;
+    else parts.push(label);
+  }
+
   const mileageVariants = pickFact(facts, 'annualMileageVariants')
     || (Array.isArray(lead?.crm?.needProfile?.annualMileageVariants)
       ? { value: lead.crm.needProfile.annualMileageVariants }
@@ -530,7 +542,9 @@ function formatClarifyLine(facts = [], draft = null, lead = null) {
     if (!f?.needsConfirmation) continue;
     if (f.field === 'openCustomerQuestion') continue;
     if (f.field === 'equipmentWish' && f.label) {
-      push(`${String(f.label).replace(/\s*·.*$/, '').trim()} prüfen`);
+      const base = String(f.label).replace(/\s*·.*$/, '').trim();
+      // Label kann schon „… prüfen“ tragen (Alias/Katalog) – nicht verdoppeln
+      push(/\bprüfen\s*$/i.test(base) ? base : `${base} prüfen`);
     }
   }
 

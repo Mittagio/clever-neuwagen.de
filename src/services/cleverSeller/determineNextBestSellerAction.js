@@ -690,6 +690,9 @@ export function determineNextBestSellerAction({
         || f?.field === 'equipmentWish'
         || f?.field === 'paymentType'
         || f?.field === 'termMonths'
+        || f?.field === 'termMonthsVariants'
+        || f?.field === 'downPaymentRange'
+        || f?.field === 'monthlyBudget'
       ));
     if (hasNeedSignal) {
       return {

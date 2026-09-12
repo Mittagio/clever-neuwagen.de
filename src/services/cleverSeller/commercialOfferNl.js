@@ -40,7 +40,7 @@ export function isBareMonthlyRateCue(text = '') {
 export function parseCommercialMonthlyRate(text = '') {
   const blob = String(text || '').toLowerCase().replace(/\u00a0/g, ' ');
   const patterns = [
-    new RegExp(`(?:monats|wunsch)?rate\\s*(?:von\\s*|ist\\s*|auf\\s*|=\\s*|ca\\.?\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
+    new RegExp(`(?:monats|wunsch)?rate\\s*(?:so\\s+)?(?:um\\s+die\\s+|ca\\.?\\s*|von\\s*|ist\\s*|auf\\s*|=\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
     new RegExp(`${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:\\/\\s*monat|pro\\s+monat|mtl\\.?|monatlich|(?:monats|wunsch)?rate)`, 'i'),
     new RegExp(`(?:rate|leasing)\\s*(?:von\\s*)?${MONEY_FRAG}\\s*(?:€|euro)?`, 'i'),
   ];
@@ -54,10 +54,43 @@ export function parseCommercialMonthlyRate(text = '') {
 }
 
 /**
+ * AZ-Spanne: „irgendwo zwischen 1.000 und 3.000“ – bleibt Spanne, kein Punktwert.
+ * @param {string} text
+ * @returns {{ min: number, max: number }|null}
+ */
+export function parseCommercialDownPaymentRange(text = '') {
+  const blob = String(text || '').toLowerCase().replace(/\u00a0/g, ' ');
+  if (!/\b(?:anzahlung|sonderzahlung|az|down)\b/i.test(blob)) return null;
+  const m = blob.match(
+    new RegExp(
+      `(?:anzahlung|sonderzahlung|az)\\s*(?:irgendwo\\s+)?(?:zwischen\\s+|von\\s+)?${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:bis|–|-|und)\\s*${MONEY_FRAG}\\s*(?:€|euro)?`,
+      'i',
+    ),
+  ) || blob.match(
+    new RegExp(
+      `(?:irgendwo\\s+)?zwischen\\s+${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:bis|–|-|und)\\s*${MONEY_FRAG}\\s*(?:€|euro)?.{0,24}(?:anzahlung|sonderzahlung|az)\\b`,
+      'i',
+    ),
+  ) || blob.match(
+    new RegExp(
+      `${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:bis|–|-)\\s*${MONEY_FRAG}\\s*(?:€|euro)?\\s*(?:anzahlung|sonderzahlung|az)\\b`,
+      'i',
+    ),
+  );
+  if (!m?.[1] || !m?.[2]) return null;
+  const min = parseEuroLoose(m[1]);
+  const max = parseEuroLoose(m[2]);
+  if (min == null || max == null || min < 0 || max > 200000 || min > max) return null;
+  if (min === max) return null;
+  return { min, max };
+}
+
+/**
  * @param {string} text
  * @returns {number|null} 0 allowed
  */
 export function parseCommercialDownPayment(text = '') {
+  if (parseCommercialDownPaymentRange(text)) return null;
   const blob = String(text || '').toLowerCase().replace(/\u00a0/g, ' ');
   // „0 EUR Anzahlung“ / „ohne Anzahlung“ / „Anzahlung 0 €“ – 0 ist echter Wert, nicht missing
   if (/\b(?:keine|ohne|null|0)\s*(?:€|eur(?:o)?)?\s*(?:anzahlung|az|sonderzahlung)\b/i.test(blob)

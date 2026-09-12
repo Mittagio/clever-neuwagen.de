@@ -107,22 +107,25 @@ export function parseTermAndMileageShorthand(text = '') {
   const termM = raw.match(/\b(\d{1,3})\s*(?:monaten|monate|monat|mts?)\b/i);
   if (termM) explicit.termMonths = Number(termM[1]);
 
-  // „vier Jahre“ / „4 Jahre“ / „für vier Jahre“
+  // „vier Jahre“ / „4 Jahre“ / „für vier Jahre“ – nicht bei „drei oder vier Jahre“
   if (explicit.termMonths == null) {
-    const WORD_YEARS = {
-      einem: 1, eine: 1, ein: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5,
-      sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10,
-    };
-    const yearsNum = raw.match(/\b(?:für\s+|auf\s+)?(\d{1,2})\s*jahre?\b/i);
-    const yearsWord = raw.match(
-      /\b(?:für\s+|auf\s+)?(einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn)\s+jahre?\b/i,
-    );
-    if (yearsNum) {
-      const y = Number(yearsNum[1]);
-      if (y >= 1 && y <= 10) explicit.termMonths = y * 12;
-    } else if (yearsWord) {
-      const y = WORD_YEARS[String(yearsWord[1]).toLowerCase()];
-      if (y) explicit.termMonths = y * 12;
+    const dualYearsCue = /\b(?:entweder\s+)?(?:\d{1,2}|einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs)\s+oder\s+(?:\d{1,2}|einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs)\s*jahre?\b/i.test(raw);
+    if (!dualYearsCue) {
+      const WORD_YEARS = {
+        einem: 1, eine: 1, ein: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5,
+        sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10,
+      };
+      const yearsNum = raw.match(/\b(?:für\s+|auf\s+)?(\d{1,2})\s*jahre?\b/i);
+      const yearsWord = raw.match(
+        /\b(?:für\s+|auf\s+)?(einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn)\s+jahre?\b/i,
+      );
+      if (yearsNum) {
+        const y = Number(yearsNum[1]);
+        if (y >= 1 && y <= 10) explicit.termMonths = y * 12;
+      } else if (yearsWord) {
+        const y = WORD_YEARS[String(yearsWord[1]).toLowerCase()];
+        if (y) explicit.termMonths = y * 12;
+      }
     }
   }
 
@@ -142,7 +145,7 @@ export function parseTermAndMileageShorthand(text = '') {
 
   // „48 10.000 km“ ohne „Monate“ – nur wenn Fahrzeug-/Konditionskontext
   if (explicit.termMonths == null || explicit.annualMileage == null) {
-    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|leasen|finanz|gw|ahk|air|vision|elektro|wp|win)\b/i.test(raw);
+    const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|leasing|leasen|finanz|gw|ahk|air|vision|elektro|wp|win|dw|drive)\b/i.test(raw);
     const shorthand = raw.match(/\b(\d{2})\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\s*(?:km|kilometer(?:n)?)\b/i);
     if (vehicleCue && shorthand) {
       if (explicit.termMonths == null) {
@@ -156,7 +159,7 @@ export function parseTermAndMileageShorthand(text = '') {
     }
   }
 
-  // Seller-Alias: „48/15“ → 48 Monate · 15.000 km
+  // Seller-Alias: „48/15“ / „48 15k“ → 48 Monate · 15.000 km
   if (explicit.termMonths == null || explicit.annualMileage == null) {
     const aliasCommercial = parseSellerCommercialAliasShorthand(raw);
     if (explicit.termMonths == null && aliasCommercial.termMonths != null) {
@@ -164,6 +167,32 @@ export function parseTermAndMileageShorthand(text = '') {
     }
     if (explicit.annualMileage == null && aliasCommercial.annualMileage != null) {
       explicit.annualMileage = aliasCommercial.annualMileage;
+    }
+  }
+
+  // „4 Jahre 15000“ / „48 Monate 15000“ – Zahl nach Laufzeit ohne Geld-Cue → km/Jahr
+  if (explicit.termMonths != null && explicit.annualMileage == null) {
+    const moneyCueNear = (idx, len) => {
+      const around = raw.slice(Math.max(0, idx - 12), idx + len + 20);
+      return /\b(?:€|euro|az|anzahlung|sonderzahlung|down(?:\s*payment)?)\b/i.test(around);
+    };
+    const afterYears = raw.match(
+      /\b(?:\d{1,2}|einem|eine|ein|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn)\s*jahre?\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\b/i,
+    );
+    const afterMonths = raw.match(
+      /\b(?:12|24|36|42|48|60|72)\s*(?:monaten|monate|monat|mts?)?\s+(\d{1,3}(?:\.\d{3})|\d{4,6})\b/i,
+    );
+    const bare = afterYears || afterMonths;
+    if (bare?.[1]) {
+      const idx = bare.index + bare[0].lastIndexOf(bare[1]);
+      if (!moneyCueNear(idx, bare[1].length)) {
+        let v = parseDeInt(bare[1]);
+        if (v != null && v >= 5000 && v <= 80000) {
+          explicit.annualMileage = v;
+        } else if (v != null && v >= 5 && v <= 80) {
+          explicit.annualMileage = v * 1000;
+        }
+      }
     }
   }
 

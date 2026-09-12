@@ -37,7 +37,7 @@ export function isPlaceholderCustomerName(name = '') {
  * z. B. „Angebote für“, „Earth weiß“, „EV2 Air“.
  */
 export function isCustomerNameStopToken(token = '') {
-  return /^(?:ein|eine|einen|einem|einer|eines|ihm|ihr|dem|den|das|des|der|die|er|sie|es|ich|wir|man|mein|noch|hat|gibt|geben|möchte|moechte|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|leasing|privatleasing|privat|finanzierung|für|an|will|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|wolfsgrau|metallic|und|oder|mit|ohne|max|km|monate?|kinder|ahk|pv\d|donnerstag|montag|dienstag|mittwoch|freitag|rückruf|anrufen|erstmal|nur|entscheidet|entscheiden|entwurf|seine|ihre|interessiere|inklusive|farbe|wunschkonditionen|viele|beste|freundliche|herzliche|liebe|grüße|gruesse|gruß|gruss|mit|diesel|benzin|hybrid|elektro|manuell|automatik|schalter|abrufschein|bar|barkauf|ps|kw|kwh)$/i
+  return /^(?:ein|eine|einen|einem|einer|eines|ihm|ihr|dem|den|das|des|der|die|er|sie|es|ich|wir|man|mein|noch|hat|gibt|geben|möchte|moechte|eventuell|vielleicht|ungefähr|ungefaehr|circa|ca|kunde|kundin|interessent|interessentin|herr|frau|herrn|bestandskunde|bestandskundin|verheiratet|ledig|geschieden|verwitwet|hund|hunde|katze|kinder|kind|netto|nettoeinkommen|einkommen|leasing|leasen|finanzierung|finanz|anzahlung|wunschrate|picanto|sportage|xceed|ceed|niro|sorento|stonic|soul|ev\d|kia|angebot|angebote|termin|nachricht|leasingangebot|privatleasing|privat|für|an|will|optional|mail|e-?mail|earth|air|spirit|vision|elite|core|gt-?line|x-?line|weiß|weiss|schwarz|blau|grau|silber|rot|grün|gruen|terracotta|wolfsgrau|metallic|und|oder|mit|ohne|max|km|monate?|ahk|pv\d|donnerstag|montag|dienstag|mittwoch|freitag|rückruf|anrufen|erstmal|nur|entscheidet|entscheiden|entwurf|seine|ihre|interessiere|inklusive|farbe|wunschkonditionen|viele|beste|freundliche|herzliche|liebe|grüße|gruesse|gruß|gruss|mit|diesel|benzin|hybrid|elektro|manuell|automatik|schalter|abrufschein|bar|barkauf|ps|kw|kwh)$/i
     .test(String(token || '').trim());
 }
 
@@ -134,19 +134,28 @@ export function extractNamedCustomerFromInput(sellerInput = '') {
   const patterns = [
     // „Familie Müller,“ / „Familie Müller will …“
     /\b(familie\s+[A-Za-zÄÖÜäöüß-]{2,40})\b/i,
+    // Diktat: „Dirk Brandes Bestandskunde …“
+    new RegExp(
+      `^(${nameToken})\\s+(?:bestandskunde|bestandskundin|kunde|kundin)\\b`,
+      'i',
+    ),
     // „Michael Wittig EV2 …“ – Vor+Nachname vor Fahrzeugmodell
     new RegExp(
       `^(${nameToken})\\s+(?:kia\\s+)?(?:ev\\s*\\d|sportage|picanto|xceed|ceed|niro|sorento|soul|stonic|rio)\\b`,
       'i',
     ),
-    // „Thomas Müller hat zwei Kinder …“ / „Sabine Maier möchte …“ – Name am Satzanfang vor Verb
+    // „Thomas Müller hat zwei Kinder …“ / „Dirk Brandes … fährt …“
     new RegExp(
-      `^(${nameToken})\\s+(?:hat|möchte|moechte|will|braucht|sucht|interessiert(?:\\s+sich)?|plant|fährt|faehrt)\\b`,
+      `^(${nameToken})\\s+(?:(?:bestandskunde|bestandskundin|kunde|kundin)\\s+)?(?:hat|möchte|moechte|will|braucht|sucht|interessiert(?:\\s+sich)?|plant|fährt|faehrt)\\b`,
       'i',
     ),
-    // „Kunde heißt Familie Müller“ / „heißt Max Mustermann“
+    // „Kunde heißt Familie Müller“ / „heißt Max Mustermann“ – nicht „ist verheiratet“
     new RegExp(
-      `\\b(?:kunde\\s+)?(?:hei(?:ss|ß)t|namens|ist)\\s+(?:der\\s+|die\\s+)?(?:familie\\s+|herrn?\\s+|frau\\s+)?${nameToken}\\b`,
+      `\\b(?:kunde\\s+)?(?:hei(?:ss|ß)t|namens)\\s+(?:der\\s+|die\\s+)?(?:familie\\s+|herrn?\\s+|frau\\s+)?${nameToken}\\b`,
+      'i',
+    ),
+    new RegExp(
+      `\\b(?:kunde\\s+)?ist\\s+(?:der\\s+|die\\s+)?(?:familie\\s+|herrn?\\s+|frau\\s+)?${nameToken}\\b`,
       'i',
     ),
     // „Name: …“ / „Kunde: …“

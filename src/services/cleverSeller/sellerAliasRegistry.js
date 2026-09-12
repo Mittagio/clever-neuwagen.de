@@ -1,6 +1,8 @@
 /**
  * Seller Alias Registry – Verkäufer-Kurzschrift → kanonische Intent-Kandidaten.
  *
+ * Pattern-Freeze: Seller Shorthand / Fuzzy Input V1 · Status: pilotfähig
+ *
  * Produktregel:
  * LLM liest Verkäufer-Slang.
  * Seller Alias Registry normalisiert Fachkürzel.
@@ -9,9 +11,12 @@
  * Unsicherheit bleibt lokal.
  *
  * Alias ≠ Fahrzeugwahrheit. Keine Verfügbarkeit behaupten.
+ * Kein freies Fuzzy über den ganzen Satz. Keine Sonderregel pro Teststring.
+ * Erweiterungen nur aus echter Verkäuferrealität (systemische Lücke).
  *
  * @see docs/CLEVER_ZERO_LOSS_INTAKE.md
  * @see docs/CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md
+ * @see sellerAliasShorthand.golden.test.js
  */
 
 /** @typedef {'equipment'|'package'|'propulsion'|'trim'|'color'|'model'} SellerAliasKind */
@@ -37,6 +42,12 @@ export const SELLER_MODEL_ALIASES = Object.freeze({
   'e v2': 'ev2',
   'e-v2': 'ev2',
 });
+
+/**
+ * Kontrollierte Finanzierungs-Wörter (Tippfehler + Kurzform).
+ * Kein freies Fuzzy über den Satz; nie Leasing.
+ */
+export const FINANCING_ALIAS_RE = /\b(?:finanzierung|finanzirung|fiannzierung|finanzieren|finanz)\b/i;
 
 /** @type {SellerAliasEntry[]} */
 export const SELLER_ALIAS_ENTRIES = Object.freeze([
@@ -97,7 +108,16 @@ export const SELLER_ALIAS_ENTRIES = Object.freeze([
   },
   // Packages – Label-Kandidat; Katalog validiert
   {
-    tokens: ['dw', 'drivewise', 'drive wise', 'drive-wise'],
+    tokens: [
+      'dw',
+      'drivewise',
+      'drive wise',
+      'drive-wise',
+      'drvie wise',
+      'driveweis',
+      'drvie wies',
+      'drive wiese',
+    ],
     kind: 'package',
     canonicalId: null,
     label: 'Drive Wise',
@@ -151,11 +171,19 @@ function normalizeAliasKey(raw = '') {
 export function resolveSellerModelAlias(rawMention = '') {
   const rawExpression = String(rawMention || '').trim();
   const key = rawExpression.toLowerCase().replace(/\s+/g, ' ');
-  const canonical = SELLER_MODEL_ALIASES[key] || null;
-  if (!canonical) {
-    return { canonical: null, ambiguous: false, rawExpression };
+  const collapsed = key.replace(/[\s-]+/g, '');
+  const fromMap = SELLER_MODEL_ALIASES[key] || SELLER_MODEL_ALIASES[collapsed] || null;
+  if (fromMap) {
+    return { canonical: fromMap, ambiguous: false, rawExpression };
   }
-  return { canonical, ambiguous: false, rawExpression };
+  // „ev 5“ / „EV 5“ → ev5 (nur Normalisierung, keine neue Modelllogik)
+  if (/^ev[2-9]$/.test(collapsed)) {
+    return { canonical: collapsed, ambiguous: false, rawExpression };
+  }
+  if (/^pv[2-9]$/.test(collapsed)) {
+    return { canonical: collapsed, ambiguous: false, rawExpression };
+  }
+  return { canonical: null, ambiguous: false, rawExpression };
 }
 
 /**
@@ -303,10 +331,10 @@ export function parseSellerCommercialAliasShorthand(text = '') {
   let annualMileage = null;
   let downPayment = null;
 
-  const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|soul|leasing|leasen|finanz|air|earth|vision|gt|elektro|wp|ahk|win)\b/i.test(raw)
+  const vehicleCue = /\b(?:ev\s*\d|sportage|picanto|xceed|ceed|niro|sorento|soul|leasing|leasen|finanz|air|earth|vision|gt|elektro|wp|ahk|win|dw|drive)\b/i.test(raw)
     || /\b\d{2,4}\s*ps\b/i.test(raw);
 
-  // „48/15“ oder „48 / 15“ → 48 Monate · 15.000 km (zweite Zahl als Tausender wenn ≤ 80)
+  // „48/15“ oder „48 / 15“ → 48 Monate · 15.000 km
   const slash = raw.match(/\b(\d{2})\s*\/\s*(\d{1,2})\b/);
   if (slash && vehicleCue) {
     const months = Number(slash[1]);
@@ -321,14 +349,34 @@ export function parseSellerCommercialAliasShorthand(text = '') {
     }
   }
 
-  // „3k“ / „3K“ → 3000 € AZ-Kandidat (nur mit Fahrzeug-/Konditionskontext, kein Rate-Cue)
+  // „48 15k“ / „48/15k“ → Laufzeit + km/Jahr (nie 15k als AZ)
+  const termKmK = raw.match(/\b(12|24|36|42|48|60)\s*(?:\/\s*)?(\d{1,2})\s*k\b/i);
+  let mileageKConsumed = null;
+  if (termKmK && vehicleCue) {
+    const months = Number(termKmK[1]);
+    const second = Number(termKmK[2]);
+    if (months >= 12 && months <= 72) {
+      termMonths = termMonths ?? months;
+      evidence.push(termKmK[0]);
+    }
+    if (second >= 5 && second <= 80) {
+      annualMileage = annualMileage ?? (second * 1000);
+      mileageKConsumed = second;
+      evidence.push(termKmK[0]);
+    }
+  }
+
+  // „3k“ → AZ nur mit AZ-Cue oder kleinem k (1–10), nie wenn dieselbe Zahl schon km war
+  const azCue = /\b(?:az|anzahlung|sonderzahlung|down(?:\s*payment)?)\b/i.test(raw);
   if (vehicleCue && !/\b(?:rate|mtl|monatlich|max|wunschrate)\b/i.test(raw)) {
     const kMatch = raw.match(/\b(\d{1,3})\s*k\b/i);
     if (kMatch) {
       const n = Number(kMatch[1]);
-      if (Number.isFinite(n) && n >= 1 && n <= 80) {
-        downPayment = n * 1000;
-        evidence.push(kMatch[0]);
+      if (Number.isFinite(n) && n >= 1 && n <= 80 && n !== mileageKConsumed) {
+        if (azCue || n <= 10) {
+          downPayment = n * 1000;
+          evidence.push(kMatch[0]);
+        }
       }
     }
   }
